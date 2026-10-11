@@ -35,3 +35,8 @@
 - 做了什么：新增互动规则表 config/interactions.json（19 条规则）与台词表 characters/xiaoxun/dialogue.json（草稿，19 组）；新增 src/core/zinteract 引擎；zpet 接入情绪入口 zpet_express 与语音事件入口 zpet_call_event；预览新增 /api/speech.json、/api/express、/api/call；规划写入 docs/INTERACTION_PLAN.md，任务写入 TASKS T5–T8。
 - 遇到/修了什么：修复引擎缺陷：rig 动作缺省 loop 被当成 true，导致 head_pat/happy 等永不回 idle（现缺省不循环）；call_start 改用 talk 以免被循环中的 sad 盖住；台词可选字段缺省时不再刷屏警告。
 - 下一步：等用户确认：A/B 表情对齐方案、台词草稿语气；随后做 T2.1.2 起的表情拆件与 T5.3 输入检测。
+
+## 2026-10-11 07:59
+- 做了什么：方案 A 执行：以 smile.png 为基准 img2img 生成 8 张同取景表情（happy/shy/angry/sad/surprised/thinking/sleepy/closed），存于 parts_src/expressions_a/；对齐 dry-run 与正式切件（/tmp）均成功，缩放 0.62–0.67、锚点偏差约 10px，但嘴部切块 48×36 边缘疑似带肤色块，未进入角色目录。
+- 遇到/修了什么：嘴部需改为暗线蒙版切割（参照 teen mouth_open 的做法），并补跑洋红残留与白边检查后再入库；虹膜检测在闭眼/^^ 眼上不可靠，眼部需改用眼线中心。
+- 下一步：T2.1.1 保持 [~]：嘴与眼用蒙版重切→通过 sprites 报告→入库；之后 T2.1.2–T2.1.9。语音供应商与台词草稿语气仍待用户确认。
