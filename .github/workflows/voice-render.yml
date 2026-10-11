@@ -27,8 +27,7 @@ on:
       - ".github/workflows/voice-render.yml"
 
 permissions:
-  contents: read
-  issues: write
+  contents: write      # 失败时把日志提交回仓库（沙箱读不到 Actions 日志域名，只能这样回传）
 
 jobs:
   render:
@@ -50,21 +49,33 @@ jobs:
         run: python -m pip install --quiet edge-tts
 
       - name: 合成语音
+        id: render
+        continue-on-error: true
         run: |
           set -uo pipefail
           ARGS=""
-          [ -n "$VOICE" ] && ARGS="--voice $VOICE"
-          if ! python tools/voice_render.py --character "$CHARACTER" --root . --only "$ONLY" $ARGS 2>&1 | tee /tmp/render.log; then
-            echo "::error::合成失败，错误已回传到 Issue"
-            jq -n --arg t "voice-render 失败 $(date -u +%FT%TZ)" \
-                  --arg b "$(tail -c 3500 /tmp/render.log)" \
-                  '{title:$t, body:$b}' > /tmp/payload.json
-            curl -sS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
-                 -H "Accept: application/vnd.github+json" \
-                 "https://api.github.com/repos/$GITHUB_REPOSITORY/issues" \
-                 -d @/tmp/payload.json | head -c 200 || true
-            exit 1
-          fi
+          if [ -n "$VOICE" ]; then ARGS="--voice $VOICE"; fi
+          python tools/voice_render.py --character "$CHARACTER" --root . --only "$ONLY" $ARGS 2>&1 | tee /tmp/render.log
+          exit ${PIPESTATUS[0]}
+
+      - name: 失败日志回传（提交到仓库，便于沙箱读取）
+        if: steps.render.outcome == 'failure'
+        run: |
+          set -uo pipefail
+          mkdir -p logs
+          { echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; \
+            echo "step: ${{ steps.render.outcome }}"; \
+            echo "---- 输出（结尾 5000 字符）----"; \
+            tail -c 5000 /tmp/render.log; } > logs/ci-voice-render.log
+          git config user.email "actions@github.com"
+          git config user.name "voice-render bot"
+          git add logs/ci-voice-render.log
+          git commit -q -m "ci: voice-render 失败日志 [skip ci]" || true
+          git push -q origin "HEAD:$GITHUB_REF_NAME" || true
+
+      - name: 合成失败则终止（保持红叉）
+        if: steps.render.outcome == 'failure'
+        run: exit 1
 
       - name: 校验产物（数量与非空）
         run: |
