@@ -83,6 +83,11 @@ int   zpet_call_event(zpet *p, const char *kind, const char *text, const char *m
 /* 最近一句台词/回复原文，最近一次情绪（UI 显示用；无则为空串） */
 const char *zpet_last_line(const zpet *p);
 const char *zpet_last_mood(const zpet *p);
+/* 好感度：当前值、档位下标、档位名（如 初识/熟络/亲近/挚友）；测试与预览用可直接设置 */
+int         zpet_affection(const zpet *p);
+int         zpet_affection_tier(const zpet *p);
+const char *zpet_affection_tier_name(const zpet *p);
+void        zpet_set_affection(zpet *p, int points);
 
 /* --------------------------------------------------------------- 形态/服装 */
 int   zpet_form_count(const zpet *p);

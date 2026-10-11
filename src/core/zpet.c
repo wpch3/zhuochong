@@ -4,6 +4,7 @@
 #include "zinteract.h"
 
 #include <math.h>
+#include <time.h>
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -433,16 +434,31 @@ static const zi_rule *match_rule(zpet *p, const char *kind, const char *region,
 }
 
 /* 执行规则：动作（无规则时用回退动作）+ 台词（受冷却/间隔限制）。 */
+static int local_day(void)
+{
+    time_t t = time(NULL);
+    struct tm *tm = localtime(&t);
+    return tm ? tm->tm_year * 400 + tm->tm_yday : 0;
+}
+
 static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
                     const char *fb_reason, int fb_force, double now)
 {
     char line[256] = "";
-    int ok;
+    int ok, up = 0;
     if (!p->rig) return 0;
     if (!r) return zrig_action_request(p->rig, fb_action, fb_reason, fb_force);
     ok = zrig_action_request(p->rig, r->action, r->id, r->force);
-    if (p->inter && zinteract_speak(p->inter, r, now, line, sizeof(line)))
+    if (p->inter && r->affection_gain)
+        up = zinteract_add_affection(p->inter, r->affection_gain, local_day());
+    if (up) {
+        /* 好感升档：优先说升档台词，本次互动的普通台词让位 */
+        const zi_rule *tu = match_rule(p, "tier_up", "", NULL, 0);
+        if (tu && zinteract_speak(p->inter, tu, now, line, sizeof(line)))
+            z_strlcpy(p->last_line, line, sizeof(p->last_line));
+    } else if (p->inter && zinteract_speak(p->inter, r, now, line, sizeof(line))) {
         z_strlcpy(p->last_line, line, sizeof(p->last_line));
+    }
     return ok;
 }
 
@@ -522,6 +538,18 @@ int zpet_call_event(zpet *p, const char *kind, const char *text, const char *moo
 
 const char *zpet_last_line(const zpet *p) { return p ? p->last_line : ""; }
 const char *zpet_last_mood(const zpet *p) { return p ? p->last_mood : ""; }
+
+/* ------------------------------------------------------------ 好感度 */
+int zpet_affection(const zpet *p) { return p && p->inter ? zinteract_affection(p->inter) : 0; }
+int zpet_affection_tier(const zpet *p) { return p && p->inter ? zinteract_tier(p->inter) : 0; }
+const char *zpet_affection_tier_name(const zpet *p)
+{
+    return p && p->inter ? zinteract_tier_name(p->inter) : "";
+}
+void zpet_set_affection(zpet *p, int points)
+{
+    if (p && p->inter) zinteract_set_affection(p->inter, points);
+}
 void zpet_hover(zpet *p, int x, int y, int inside, double now)
 {
     if (!p || !p->rig) return;

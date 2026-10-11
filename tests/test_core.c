@@ -651,6 +651,147 @@ static void test_interactions(void)
     }
 }
 
+/* -------------------------------------------------------- 好感度 / 角色台词 */
+static void test_affection(void)
+{
+    zdiag diag;
+    zinteract *z;
+    const zi_rule *r;
+    char out[256];
+    zconfig cfg;
+    zpet *pet;
+    char cfgdir[1024];
+    static const char *const chars[] = {"xiaoxun", "shenyu", "xiaochen", "xingxuan",
+                                        "shuangxi", "tonglin", "yuejian", "shandian"};
+    enum { NCHARS = 8 };
+    static char first[NCHARS][256];
+    int i, j;
+
+    SECTION("好感度分级：档位、每日上限、减少不受限");
+    zdiag_init(&diag);
+    z = zinteract_load(g_root, "xiaoxun", &diag);
+    CHECK(z != NULL, "互动规则应加载成功（错误 %d 条）", diag.error_count);
+    if (!z) return;
+    CHECK(z->ntiers == 4, "默认四档，实际 %d", z->ntiers);
+    CHECK(z_streq(z->tiers[1].name, "熟络") && z->tiers[1].min_points == 30, "第二档 熟络 30");
+    CHECK(zinteract_tier(z) == 0 && z_streq(zinteract_tier_name(z), "初识"), "初始为初识");
+    CHECK(zinteract_add_affection(z, 50, 1) == 1, "一次加 50 受每日上限 30 约束，应升到熟络");
+    CHECK(zinteract_affection(z) == 30, "每日上限 30，实际 %d", zinteract_affection(z));
+    CHECK(zinteract_add_affection(z, 10, 1) == 0 && zinteract_affection(z) == 30, "同日达上限后不再增加");
+    CHECK(zinteract_add_affection(z, 10, 2) == 0 && zinteract_affection(z) == 40, "次日重新计数，+10 = 40");
+    CHECK(zinteract_add_affection(z, -100, 2) == 0 && zinteract_affection(z) == 0, "减少不受限且不低于 0");
+    zinteract_set_affection(z, 100);
+    CHECK(zinteract_tier(z) == 2 && z_streq(zinteract_tier_name(z), "亲近"), "100 → 亲近");
+    zinteract_set_affection(z, 249);
+    CHECK(zinteract_tier(z) == 2, "249 仍是亲近");
+    zinteract_set_affection(z, 250);
+    CHECK(zinteract_tier(z) == 3 && z_streq(zinteract_tier_name(z), "挚友"), "250 → 挚友");
+    zinteract_free(z);
+
+    SECTION("台词按好感档选择变体");
+    zdiag_init(&diag);
+    z = zinteract_load(g_root, "xiaoxun", &diag);
+    if (!z) return;
+    r = zinteract_match(z, "tier_up", "", NULL, 0);
+    CHECK(r != NULL, "应存在 tier_up 规则");
+    zinteract_set_affection(z, 0);
+    CHECK(zinteract_speak(z, r, 1000.0, out, sizeof(out)) == 1 && strstr(out, "更熟") != NULL,
+          "初识档用基础台词，实际 [%s]", out);
+    zinteract_set_affection(z, 100);
+    CHECK(zinteract_speak(z, r, 2000.0, out, sizeof(out)) == 1 && strstr(out, "一直在") != NULL,
+          "亲近档用亲近变体，实际 [%s]", out);
+    zinteract_set_affection(z, 300);
+    CHECK(zinteract_speak(z, r, 3000.0, out, sizeof(out)) == 1 && strstr(out, "朋友啦") != NULL,
+          "挚友档用最高档变体，实际 [%s]", out);
+    zinteract_free(z);
+
+    SECTION("八个角色：台词齐全、各自性格不同");
+    for (i = 0; i < NCHARS; ++i) {
+        zdiag_init(&diag);
+        z = zinteract_load(g_root, chars[i], &diag);
+        CHECK(z != NULL, "角色 %s 的互动/台词应加载成功（错误 %d）", chars[i], diag.error_count);
+        first[i][0] = 0;
+        if (!z) continue;
+        CHECK(z->dialogue_status_draft == 1, "角色 %s 台词应标记为草稿", chars[i]);
+        zinteract_set_affection(z, 0);
+        r = zinteract_match(z, "hammer", "", NULL, 0);
+        CHECK(zinteract_speak(z, r, 1000.0, first[i], sizeof(first[i])) == 1,
+              "角色 %s 被敲击应有台词", chars[i]);
+        zinteract_set_affection(z, 300);
+        r = zinteract_match(z, "tier_up", "", NULL, 0);
+        CHECK(zinteract_speak(z, r, 2000.0, out, sizeof(out)) == 1 && out[0] != 0,
+              "角色 %s 挚友档应有升档台词", chars[i]);
+        zinteract_free(z);
+    }
+    for (i = 0; i < NCHARS; ++i)
+        for (j = i + 1; j < NCHARS; ++j)
+            CHECK(strcmp(first[i], first[j]) != 0,
+                  "角色 %s 与 %s 的同一台词不能相同（性格应不同）", chars[i], chars[j]);
+
+    SECTION("好感配置错误：报出文件与字段");
+    {
+        char root[256], dir[300];
+        z_snprintf(root, sizeof(root), "/tmp/zc_affection_bad_%d", (int)getpid());
+        z_snprintf(dir, sizeof(dir), "%s/config", root);
+        z_mkdir_p(dir);
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad", root);
+        z_mkdir_p(dir);
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad/dialogue.json", root);
+        write_text(dir, "{\"lines\":[{\"id\":\"tier_up\",\"texts\":[\"x\"]}]}");
+        z_snprintf(dir, sizeof(dir), "%s/config/interactions.json", root);
+
+        write_text(dir, "{\"schema_version\":\"1.0\",\"affection\":{\"tiers\":[{\"name\":\"a\",\"min\":5}]},\"rules\":[]}");
+        zdiag_init(&diag);
+        CHECK(zinteract_load(root, "bad", &diag) == NULL, "第一档 min 不是 0 必须失败");
+        CHECK(diag_has(&diag, "第一档"), "诊断应指出第一档 min");
+
+        write_text(dir, "{\"schema_version\":\"1.0\",\"affection\":{\"tiers\":[{\"name\":\"a\",\"min\":0},{\"name\":\"b\",\"min\":10},{\"name\":\"c\",\"min\":10}]},\"rules\":[]}");
+        zdiag_init(&diag);
+        CHECK(zinteract_load(root, "bad", &diag) == NULL, "档位不递增必须失败");
+        CHECK(diag_has(&diag, "递增"), "诊断应指出档位递增");
+
+        write_text(dir, "{\"schema_version\":\"1.0\",\"affection\":{\"tiers\":[{\"name\":\"a\",\"min\":0}]},\"rules\":[]}");
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad/dialogue.json", root);
+        write_text(dir, "{\"lines\":[{\"id\":\"x\",\"tiers\":[{\"tier\":0,\"texts\":[\"q\"]}]}]}");
+        z_snprintf(dir, sizeof(dir), "%s/config/interactions.json", root);
+        write_text(dir, "{\"schema_version\":\"1.0\",\"affection\":{\"tiers\":[{\"name\":\"a\",\"min\":0}]},\"rules\":[]}");
+        zdiag_init(&diag);
+        CHECK(zinteract_load(root, "bad", &diag) == NULL, "台词缺少基础 texts 必须失败");
+        CHECK(diag_has(&diag, "基础文本"), "诊断应指出缺少基础文本");
+
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad/dialogue.json", root);
+        write_text(dir, "{\"lines\":[{\"id\":\"x\",\"texts\":[\"a\"],\"tiers\":[{\"tier\":2,\"texts\":[\"q\"]}]}]}");
+        zdiag_init(&diag);
+        CHECK(zinteract_load(root, "bad", &diag) == NULL, "档位超过配置的档数必须失败");
+        CHECK(diag_has(&diag, "超出好感档位数"), "诊断应指出档位越界");
+    }
+
+    SECTION("互动带来好感：摸头加好感，升档时说升档台词");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (pet) {
+        int fw = 0, fh = 0;
+        zpet_tick(pet, 1.0);
+        zpet_frame(pet, &fw, &fh);
+        zpet_set_affection(pet, 0);
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 10.0);
+        CHECK(zpet_affection(pet) == 2, "摸头 +2，实际 %d", zpet_affection(pet));
+        zpet_set_affection(pet, 29);
+        zpet_tick(pet, 20.0);
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 30.0);
+        CHECK(zpet_affection(pet) == 31, "29 摸头 +2 应为 31，实际 %d", zpet_affection(pet));
+        CHECK(z_streq(zpet_affection_tier_name(pet), "熟络"), "31 应升到熟络，实际 %s",
+              zpet_affection_tier_name(pet));
+        CHECK(strstr(zpet_last_line(pet), "熟起来") != NULL,
+              "升档应显示升档台词，实际 [%s]", zpet_last_line(pet));
+        zpet_destroy(pet);
+    }
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -667,6 +808,7 @@ int main(int argc, char **argv)
     test_bad_config();
     test_rig_channels();
     test_interactions();
+    test_affection();
 
     printf("\n通过 %d 项，失败 %d 项\n", g_pass, g_fail);
     if (g_fail) {

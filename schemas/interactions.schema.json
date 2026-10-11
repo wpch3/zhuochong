@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "interactions.json - 互动规则表",
+  "title": "interactions.json - 互动规则、台词调度与好感分级",
   "type": "object",
   "required": ["schema_version", "rules"],
   "properties": {
@@ -10,6 +10,25 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "min_gap_s": { "type": "number", "minimum": 0, "maximum": 600 }
+      }
+    },
+    "affection": {
+      "type": "object",
+      "properties": {
+        "daily_cap": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "tiers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["name", "min"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 23 },
+              "min": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+            }
+          }
+        }
       }
     },
     "rules": {
@@ -23,7 +42,7 @@
           "kind": {
             "type": "string",
             "enum": ["poke", "hammer", "drag_start", "drag_end", "wake", "mood",
-                     "call_start", "call_end", "call_user_speaking", "call_reply"]
+                     "call_start", "call_end", "call_user_speaking", "call_reply", "tier_up"]
           },
           "region": { "type": "string", "enum": ["", "head", "body", "feet"] },
           "mood": {
@@ -35,6 +54,7 @@
           "reset_count": { "type": "boolean" },
           "priority": { "type": "integer", "minimum": -100, "maximum": 100 },
           "min_count": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "affection_gain": { "type": "integer", "minimum": -50, "maximum": 50 },
           "cooldown_s": { "type": "number", "minimum": 0, "maximum": 3600 },
           "lines": {
             "type": "array",

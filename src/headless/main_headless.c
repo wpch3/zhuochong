@@ -336,10 +336,12 @@ static void handle_request(zsock fd, const http_req *r)
         return;
     }
     if (strcmp(r->path, "/api/speech.json") == 0) {
-        char body[512];
+        char body[640];
         LOCK();
-        z_snprintf(body, sizeof(body), "{\"line\":\"%s\",\"mood\":\"%s\"}",
-                   zpet_last_line(g_pet), zpet_last_mood(g_pet));
+        z_snprintf(body, sizeof(body),
+                   "{\"line\":\"%s\",\"mood\":\"%s\",\"affection\":%d,\"tier\":\"%s\"}",
+                   zpet_last_line(g_pet), zpet_last_mood(g_pet),
+                   zpet_affection(g_pet), zpet_affection_tier_name(g_pet));
         UNLOCK();
         send_text(fd, 200, "application/json", body);
         return;
