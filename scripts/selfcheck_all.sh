@@ -52,7 +52,18 @@ for f in config/*.json; do
   if grep -q '"schema_version"' "$f"; then ok "$f 带 schema_version"; else bad "$f 缺少 schema_version"; fi
 done
 
-step "4/6 素材验收（透明通道/分辨率/键色残留）"
+step "4/6 素材验收（形状/色卡/对位/透明通道/残留）"
+# 完整验收：形状(IoU)、色卡距离、关节对位、落在身体内、键色与白边残留
+if [ -n "$PY" ] && [ -f tools/check_assets.py ]; then
+  if "$PY" tools/check_assets.py --character xiaoxun --form teen --quiet \
+       --json logs/asset_qa/report.json >/dev/null 2>&1; then
+    ok "素材机器验收全部通过（详见 logs/asset_qa/report.json）"
+  else
+    bad "素材机器验收有不合格项（看 logs/asset_qa/report.json）"
+  fi
+else
+  echo "  跳过完整验收（缺少带 pillow 的 Python）"
+fi
 REPORT="characters/xiaoxun/forms/teen/sprites_report.json"
 if [ -f "$REPORT" ]; then
   MAGE=$("${PY:-python3}" - "$REPORT" <<'PY' 2>/dev/null
