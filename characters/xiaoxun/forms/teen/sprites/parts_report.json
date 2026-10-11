@@ -1,0 +1,60 @@
+{
+  "source": "./characters/xiaoxun/forms/teen/sprites/body_full.png",
+  "parts": [
+    {
+      "name": "eye_open_left.png",
+      "size": [
+        117,
+        68
+      ],
+      "pos": [
+        98,
+        178
+      ]
+    },
+    {
+      "name": "eye_closed_left.png",
+      "size": [
+        116,
+        12
+      ],
+      "pos": [
+        99,
+        208
+      ]
+    },
+    {
+      "name": "eye_open_right.png",
+      "size": [
+        119,
+        68
+      ],
+      "pos": [
+        228,
+        178
+      ]
+    },
+    {
+      "name": "eye_closed_right.png",
+      "size": [
+        119,
+        12
+      ],
+      "pos": [
+        228,
+        208
+      ]
+    },
+    {
+      "name": "mouth_open.png",
+      "size": [
+        44,
+        23
+      ],
+      "pos": [
+        212,
+        252
+      ]
+    }
+  ]
+}

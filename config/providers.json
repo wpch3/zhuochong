@@ -1,0 +1,13 @@
+{
+  // API 供应商。测试阶段只用中转站；官方直连默认关闭（交接文件第六节）。
+  "schema_version": "1.0",
+  "providers": [
+    { "id": "relay_test", "name": "测试中转站", "kind": "openai_compatible",
+      "base_url": "https://example-relay.invalid/v1", "model": "gemini-flash", "enabled": false },
+    { "id": "deepseek",   "name": "DeepSeek",  "kind": "openai_compatible",
+      "base_url": "https://api.deepseek.com/v1", "model": "deepseek-chat", "enabled": false },
+    { "id": "openai_official", "name": "OpenAI 官方", "kind": "official",
+      "base_url": "https://api.openai.com/v1", "model": "gpt-4o-mini",
+      "enabled": false, "official": true }
+  ]
+}

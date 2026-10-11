@@ -1,0 +1,27 @@
+{
+  // 桌宠窗口与交互（本项目新增文件；改完重启程序生效）
+  "schema_version": "1.0",
+  "window": {
+    "x": 1073741824,          // 1073741824 = 自动放到屏幕右下角（首次运行时用）
+    "y": 1073741824,
+    "scale": 0.55,            // 立绘缩放：1.0 表示按画布 848x1360 原始大小
+    "scale_min": 0.2,
+    "scale_max": 2.0,
+    "fps": 30,
+    "always_on_top": true,
+    "click_through": false    // true = 整窗穿透（角色也点不到）；false = 像素级（推荐）
+  },
+  "interaction": {
+    "hit_alpha_threshold": 24,   // 像素命中阈值：alpha 大于它的位置才算“角色”
+    "head_ratio": 0.30,          // 头部区域占角色高度比例（摸头判定；区域以 rig.json 的 regions 为准）
+    "idle_sleep_seconds": 90,    // 空闲多少秒后睡觉，任何输入唤醒
+    "tool": 0                    // 0 = 手（抚摸/摸头），1 = 锤子
+  },
+  "tray": { "enabled": true },
+  "character": {
+    "id": "xiaoxun",             // characters/ 下的角色包目录名
+    "form": "teen",              // forms/ 下的形态目录名（少女）
+    "outfit": "default"          // outfits/ 下的服装 id；default 表示不换装
+  },
+  "log": { "file": "logs/pet.log", "level": 1 }
+}

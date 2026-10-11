@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "providers.json - API 供应商与中转站",
+  "type": "object",
+  "required": ["schema_version", "providers"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "kind", "base_url", "enabled"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string" },
+          "kind": { "type": "string", "enum": ["openai_compatible", "official", "local"] },
+          "base_url": { "type": "string" },
+          "model": { "type": "string" },
+          "enabled": { "type": "boolean" },
+          "official": { "type": "boolean" },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}
