@@ -80,6 +80,20 @@ jobs:
         if: steps.render.outcome == 'failure'
         run: exit 1
 
+      - name: 提交合成结果到分支（沙箱可直接读取，无需下载 artifact）
+        if: steps.render.outcome == 'success'
+        run: |
+          set +e
+          git config user.email "actions@github.com"
+          git config user.name "voice-render bot"
+          git add -f "characters/$CHARACTER/voice/samples" "characters/$CHARACTER/voice/lines" \
+                     "characters/$CHARACTER/voice/catalog.json" 2>/dev/null
+          git commit -q -m "voice-render: 合成结果 [skip ci]"
+          git fetch -q origin "$GITHUB_REF_NAME"
+          git rebase "origin/$GITHUB_REF_NAME" || git rebase --abort
+          git push -q origin "HEAD:$GITHUB_REF_NAME"
+          echo "已提交合成结果"
+
       - name: 校验产物（数量与非空）
         run: |
           set -e

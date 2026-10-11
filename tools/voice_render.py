@@ -143,6 +143,7 @@ async def main() -> int:
     girl_voice = args.voice or form_voices.get("teen") or "zh-CN-XiaoyiNeural"
     sample_text = plan.get("sample_text", SAMPLE_TEXT)
 
+    failed: list[dict] = []
     catalog: dict = {
         "schema_version": "1.0",
         "character": args.character,
@@ -166,7 +167,12 @@ async def main() -> int:
             label = c.get("label", short_name(v))
             tag = f"{short_name(v)}_{_clean(c_pitch)}_{_clean(c_rate)}"
             out = os.path.join(vdir, "samples", f"{i:02d}_{tag}.mp3")
-            size = await synth(sample_text, v, out, c_rate, c_pitch, volume)
+            try:
+                size = await synth(sample_text, v, out, c_rate, c_pitch, volume)
+            except Exception as exc:  # noqa: BLE001 - 某个音色失效不该拖垮整批
+                print(f"[跳过] {label}（{v}）：{exc}", file=sys.stderr)
+                failed.append({"kind": "sample", "label": label, "voice": v, "error": str(exc)[:200]})
+                continue
             print(f"[采样] {label}（{v} pitch={c_pitch} rate={c_rate}）→ {os.path.basename(out)}")
             catalog.setdefault("samples", []).append(
                 {"index": i, "label": label, "voice": v, "pitch": c_pitch, "rate": c_rate,
@@ -181,7 +187,13 @@ async def main() -> int:
         for n, it in enumerate(items, 1):
             fname = f"{it['id']}_{it['variant']}.mp3"
             out = os.path.join(vdir, "lines", fname)
-            size = await synth(it["text"], girl_voice, out, rate, pitch, volume)
+            try:
+                size = await synth(it["text"], girl_voice, out, rate, pitch, volume)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[跳过] {fname}：{exc}", file=sys.stderr)
+                failed.append({"kind": "line", "id": it["id"], "variant": it["variant"],
+                               "error": str(exc)[:200]})
+                continue
             catalog["lines"].append(
                 {"id": it["id"], "variant": it["variant"], "tier": it["tier"], "text": it["text"],
                  "voice": girl_voice, "file": os.path.relpath(out, root).replace(os.sep, "/"),
@@ -189,11 +201,15 @@ async def main() -> int:
             )
             print(f"[{n}/{len(items)}] {fname}（{size} 字节）")
 
+    catalog["failed"] = failed
     os.makedirs(vdir, exist_ok=True)
     with open(os.path.join(vdir, "catalog.json"), "w", encoding="utf-8") as f:
         json.dump(catalog, f, ensure_ascii=False, indent=2)
-    print(f"[完成] 目录已写入 {os.path.join(vdir, 'catalog.json')}")
-    return 0
+    print(f"[完成] 目录已写入 {os.path.join(vdir, 'catalog.json')}"
+          f"（失败 {len(failed)} 项）")
+    # 全部失败才算失败（单个音色/台词失败不阻断整批，失败明细写在 catalog.failed）
+    ok = len(catalog.get("samples", [])) + len(catalog.get("lines", []))
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
