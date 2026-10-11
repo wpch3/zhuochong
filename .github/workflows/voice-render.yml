@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   render:
@@ -46,13 +47,24 @@ jobs:
           python-version: "3.12"
 
       - name: 安装 edge-tts
-        run: python -m pip install --quiet edge-tts==7.2.8
+        run: python -m pip install --quiet edge-tts
 
       - name: 合成语音
         run: |
-          set -e
-          python tools/voice_render.py --character "$CHARACTER" --root . --only "$ONLY" \
-            ${VOICE:+--voice "$VOICE"}
+          set -uo pipefail
+          ARGS=""
+          [ -n "$VOICE" ] && ARGS="--voice $VOICE"
+          if ! python tools/voice_render.py --character "$CHARACTER" --root . --only "$ONLY" $ARGS 2>&1 | tee /tmp/render.log; then
+            echo "::error::合成失败，错误已回传到 Issue"
+            jq -n --arg t "voice-render 失败 $(date -u +%FT%TZ)" \
+                  --arg b "$(tail -c 3500 /tmp/render.log)" \
+                  '{title:$t, body:$b}' > /tmp/payload.json
+            curl -sS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
+                 -H "Accept: application/vnd.github+json" \
+                 "https://api.github.com/repos/$GITHUB_REPOSITORY/issues" \
+                 -d @/tmp/payload.json | head -c 200 || true
+            exit 1
+          fi
 
       - name: 校验产物（数量与非空）
         run: |
