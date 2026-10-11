@@ -1,0 +1,25 @@
+run: https://github.com/wpch3/zhuochong/actions/runs/38129601618
+time: 2026-10-11T09:47:29Z
+---- 输出（结尾 5000 字符）----
+[采样] 晓伊-标准（zh-CN-XiaoyiNeural pitch=+0Hz rate=+0%）→ 01_Xiaoyi_up0Hz_up0pct.mp3
+[采样] 晓伊-升15Hz（zh-CN-XiaoyiNeural pitch=+15Hz rate=+0%）→ 02_Xiaoyi_up15Hz_up0pct.mp3
+[采样] 晓伊-升30Hz（zh-CN-XiaoyiNeural pitch=+30Hz rate=+0%）→ 03_Xiaoyi_up30Hz_up0pct.mp3
+Traceback (most recent call last):
+  File "/home/runner/work/zhuochong/zhuochong/tools/voice_render.py", line 200, in <module>
+    raise SystemExit(asyncio.run(main()))
+                     ^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/runner/work/zhuochong/zhuochong/tools/voice_render.py", line 169, in main
+    size = await synth(sample_text, v, out, c_rate, c_pitch, volume)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/zhuochong/zhuochong/tools/voice_render.py", line 100, in synth
+    raise RuntimeError(f"合成失败（{voice} / {text[:16]}…）：{last}")
+RuntimeError: 合成失败（zh-CN-XiaoshuangNeural / 你好呀，我是小寻。今天也一起加油…）：NoAudioReceived: No audio was received. Please verify that your parameters are correct.
