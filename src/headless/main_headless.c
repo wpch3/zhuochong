@@ -212,7 +212,9 @@ static const char *PAGE =
 "<h1>小寻 · C 引擎预览</h1>"
 "<small>这张图是 C 代码实时渲染的结果：PNG 解码 → 骨架分组 → 仿射合成 → RGBA 输出。"
 "点击角色＝摸头/抚摸，切锤子＝锤击。</small>"
-"<div id=\"info\" style=\"margin-top:10px\"></div>"
+"<div id=\"speech\" style=\"margin-top:10px;min-height:1.6em;font-size:15px\"></div>"
+"<div id=\"mood\" style=\"font-size:12px;opacity:.7\"></div>"
+"<div id=\"info\" style=\"margin-top:6px\"></div>"
 "<h2>工具</h2><div id=\"tools\"></div>"
 "<h2>动作</h2><div id=\"acts\"></div>"
 "<h2>形态与服装</h2><div id=\"forms\"></div>"
@@ -274,6 +276,10 @@ static const char *PAGE =
 "setInterval(refresh,200);\n"
 "setInterval(loadInfo,700);\n"
 "loadInfo();\n"
+"function loadSpeech(){api('/api/speech.json').then(d=>{\n"
+"  document.getElementById('speech').textContent=d.line?('「'+d.line+'」'):'';\n"
+"  document.getElementById('mood').textContent=d.mood?('情绪：'+d.mood):'';});}\n"
+"setInterval(loadSpeech,500);\n"
 "</script></body></html>";
 
 /* ------------------------------------------------------------ 请求处理 */
@@ -327,6 +333,40 @@ static void handle_request(zsock fd, const http_req *r)
         } else {
             send_text(fd, 500, "text/plain", "无帧");
         }
+        return;
+    }
+    if (strcmp(r->path, "/api/speech.json") == 0) {
+        char body[512];
+        LOCK();
+        z_snprintf(body, sizeof(body), "{\"line\":\"%s\",\"mood\":\"%s\"}",
+                   zpet_last_line(g_pet), zpet_last_mood(g_pet));
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/express") == 0) {
+        char mood[32];
+        if (qstr(r, "mood", mood, sizeof(mood))) {
+            LOCK();
+            zpet_express(g_pet, mood, z_now_seconds());
+            zpet_tick(g_pet, z_now_seconds());
+            UNLOCK();
+        }
+        send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/call") == 0) {
+        /* 沙箱模拟语音通话事件：kind=call_start|call_end|call_user_speaking|call_reply&text=&mood= */
+        char kind[32], text[512], mood[32];
+        if (qstr(r, "kind", kind, sizeof(kind))) {
+            if (!qstr(r, "text", text, sizeof(text))) text[0] = 0;
+            if (!qstr(r, "mood", mood, sizeof(mood))) mood[0] = 0;
+            LOCK();
+            zpet_call_event(g_pet, kind, text, mood, z_now_seconds());
+            zpet_tick(g_pet, z_now_seconds());
+            UNLOCK();
+        }
+        send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;
     }
     if (strcmp(r->path, "/api/poke") == 0) {

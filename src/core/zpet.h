@@ -72,6 +72,18 @@ void  zpet_report_idle(zpet *p, double seconds);
 /* 直接触发动作（托盘菜单用） */
 int   zpet_action_request(zpet *p, const char *id, const char *reason, int force);
 
+/* --------------------------------------------------------------- 情绪与语音 */
+/* 情绪表达：mood 取 joy/sad/surprise/think/sleepy 等（见 interactions.json）。
+ * 有对应规则时切换动作并可能说话；没有则只记录。 */
+int   zpet_express(zpet *p, const char *mood, double now);
+/* 语音通话事件（语音模块接入后调用，语音模块未接入前可由测试/预览调用）：
+ *   kind ∈ call_start / call_end / call_user_speaking / call_reply。
+ *   call_reply 时 text 为模型回复原文（优先显示）；mood 可选（回复情绪）。 */
+int   zpet_call_event(zpet *p, const char *kind, const char *text, const char *mood, double now);
+/* 最近一句台词/回复原文，最近一次情绪（UI 显示用；无则为空串） */
+const char *zpet_last_line(const zpet *p);
+const char *zpet_last_mood(const zpet *p);
+
 /* --------------------------------------------------------------- 形态/服装 */
 int   zpet_form_count(const zpet *p);
 const char *zpet_form_id_at(const zpet *p, int i);

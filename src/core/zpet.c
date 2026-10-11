@@ -1,6 +1,7 @@
 /* zpet.c - 桌宠应用逻辑实现 */
 #include "zpet.h"
 #include "zjson.h"
+#include "zinteract.h"
 
 #include <math.h>
 
@@ -42,9 +43,19 @@ struct zpet {
 
     int     hover_inside;
     double  hover_x, hover_y;
+
+    /* 互动规则与台词（config/interactions.json + dialogue.json） */
+    zinteract *inter;
+    char    last_line[256];
+    char    last_mood[24];
 };
 
 #define ZPET_MAX_ACTIONS 32
+
+static const zi_rule *match_rule(zpet *p, const char *kind, const char *region,
+                                 const char *mood, int count);
+static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
+                    const char *fb_reason, int fb_force, double now);
 
 /* ------------------------------------------------------------ 目录扫描 */
 static void scan_forms(zpet *p)
@@ -248,6 +259,10 @@ zpet *zpet_create(const zconfig *cfg, zdiag *diag)
             return NULL;
         }
     }
+    /* 互动规则：加载失败不致命，回退到内置的最简互动（诊断已写入 diag） */
+    p->inter = zinteract_load(cfg->root_dir, cfg->pet.character, diag);
+    if (!p->inter)
+        zdiag_warn(diag, cfg->root_dir, 0, 0, "interactions", "互动规则加载失败，已回退为最简互动（只做动作）");
     /* 默认服装（存在且配置指定才应用） */
     if (cfg->pet.outfit[0] && !z_streq(cfg->pet.outfit, "default")) {
         zdiag tmp;
@@ -260,6 +275,7 @@ zpet *zpet_create(const zconfig *cfg, zdiag *diag)
 void zpet_destroy(zpet *p)
 {
     if (!p) return;
+    zinteract_free(p->inter);
     zrig_free(p->rig);
     free(p);
 }
@@ -281,7 +297,7 @@ int zpet_tick(zpet *p, double now)
             p->sleeping = 0;
             zrig_blink_set_enabled(p->rig, 1);
             /* 唤醒必须 force：sleep 优先级最高且声明为不可中断 */
-            zrig_action_request(p->rig, "idle", "wake_up", 1);
+            run_rule(p, match_rule(p, "wake", "", NULL, 0), "idle", "wake_up", 1, now);
             ZLOGI("pet", "用户输入，唤醒");
             changed = 1;
         }
@@ -409,10 +425,33 @@ int zpet_action_request(zpet *p, const char *id, const char *reason, int force)
     return zrig_action_request(p->rig, id, reason, force);
 }
 
+/* ------------------------------------------------------------ 互动分发 */
+static const zi_rule *match_rule(zpet *p, const char *kind, const char *region,
+                                 const char *mood, int count)
+{
+    return p->inter ? zinteract_match(p->inter, kind, region, mood, count) : NULL;
+}
+
+/* 执行规则：动作（无规则时用回退动作）+ 台词（受冷却/间隔限制）。 */
+static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
+                    const char *fb_reason, int fb_force, double now)
+{
+    char line[256] = "";
+    int ok;
+    if (!p->rig) return 0;
+    if (!r) return zrig_action_request(p->rig, fb_action, fb_reason, fb_force);
+    ok = zrig_action_request(p->rig, r->action, r->id, r->force);
+    if (p->inter && zinteract_speak(p->inter, r, now, line, sizeof(line)))
+        z_strlcpy(p->last_line, line, sizeof(p->last_line));
+    return ok;
+}
+
 int zpet_poke(zpet *p, int x, int y, zpet_tool tool, double now)
 {
     char action[48] = {0};
     const char *region = NULL;
+    const char *kind;
+    const zi_rule *r;
     if (!p || !p->rig) return 0;
     p->idle_seconds = 0.0;
     if (p->sleeping) {
@@ -426,46 +465,63 @@ int zpet_poke(zpet *p, int x, int y, zpet_tool tool, double now)
         zrig_blink_trigger(p->rig);
         p->pat_count = 0;
         ZLOGD("pet", "锤击 (%d,%d) 区域=%s", x, y, region ? region : "无");
-        return zrig_action_request(p->rig, "hammered", "hammer", 1);
-    }
-    /* 手：头部 → 摸头；其它 → 抚摸 */
-    if (region && z_streq(region, "head")) {
-        p->pat_count++;
-        p->pat_last_at = now;
-        if (p->pat_count >= 3) {
-            p->pat_count = 0;
-            return zrig_action_request(p->rig, "happy", "head_pat_combo", 0);
+        kind = "hammer";
+    } else {
+        kind = "poke";
+        /* 连续摸头计数只统计头部 */
+        if (region && z_streq(region, "head")) {
+            p->pat_count++;
+            p->pat_last_at = now;
         }
-        return zrig_action_request(p->rig, "head_pat", "head_pat", 0);
     }
-    if (region && z_streq(region, "body")) {
-        return zrig_action_request(p->rig, "stroke", "stroke", 0);
-    }
-    if (region && z_streq(region, "feet")) {
-        return zrig_action_request(p->rig, "surprised", "poke_feet", 0);
-    }
-    return zrig_action_request(p->rig, "clicked", "click", 0);
+    r = match_rule(p, kind, region ? region : "", NULL, p->pat_count);
+    if (r && r->reset_count) p->pat_count = 0;
+    if (!r) return run_rule(p, NULL, "clicked", "click", 0, now);
+    return run_rule(p, r, NULL, NULL, 0, now);
 }
 
 int zpet_drag_start(zpet *p, int x, int y, double now)
 {
-    (void)x; (void)y; (void)now;
+    (void)x; (void)y;
     if (!p) return 0;
     p->idle_seconds = 0.0;
-    if (p->rig) {
-        zrig_blink_trigger(p->rig);
-        return zrig_action_request(p->rig, "dragged", "drag", 0);
-    }
-    return 0;
+    if (!p->rig) return 0;
+    zrig_blink_trigger(p->rig);
+    return run_rule(p, match_rule(p, "drag_start", "", NULL, 0), "dragged", "drag", 0, now);
 }
 
 int zpet_drag_end(zpet *p, double now)
 {
-    (void)now;
     if (!p || !p->rig) return 0;
-    return zrig_action_request(p->rig, "surprised", "drag_drop", 0);
+    return run_rule(p, match_rule(p, "drag_end", "", NULL, 0), "surprised", "drag_drop", 0, now);
 }
 
+/* ------------------------------------------------------------ 情绪与语音事件 */
+int zpet_express(zpet *p, const char *mood, double now)
+{
+    const zi_rule *r;
+    if (!p || !p->rig || !mood || !mood[0]) return 0;
+    z_strlcpy(p->last_mood, mood, sizeof(p->last_mood));
+    r = match_rule(p, "mood", "", mood, 0);
+    if (!r) return 0;   /* 没有对应规则：只记录情绪，不改动作 */
+    return run_rule(p, r, NULL, NULL, 0, now);
+}
+
+int zpet_call_event(zpet *p, const char *kind, const char *text, const char *mood, double now)
+{
+    const zi_rule *r;
+    int ok = 0;
+    if (!p || !p->rig || !kind) return 0;
+    if (z_streq(kind, "call_reply") && text && text[0])
+        z_strlcpy(p->last_line, text, sizeof(p->last_line));   /* 模型回复原文优先于台词表 */
+    r = match_rule(p, kind, "", NULL, 0);
+    if (r) ok = run_rule(p, r, NULL, NULL, 0, now);
+    if (mood && mood[0]) ok = zpet_express(p, mood, now) || ok;
+    return ok;
+}
+
+const char *zpet_last_line(const zpet *p) { return p ? p->last_line : ""; }
+const char *zpet_last_mood(const zpet *p) { return p ? p->last_mood : ""; }
 void zpet_hover(zpet *p, int x, int y, int inside, double now)
 {
     if (!p || !p->rig) return;

@@ -386,7 +386,8 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
         z_snprintf(buf, sizeof(buf), "actions[%s]", id);
 
         a->priority = (int)zjson_int(zjson_obj_get(aj, "priority"), 0);
-        a->loop = zjson_bool(zjson_obj_get(aj, "loop"), 1);
+        /* 默认不循环：只有写了 "loop": true 的动作才循环（否则 head_pat/happy 等永远不回 idle） */
+        a->loop = zjson_bool(zjson_obj_get(aj, "loop"), 0);
         a->interruptible = zjson_bool(zjson_obj_get(aj, "interruptible"), 1);
         a->dim = zjson_num(zjson_obj_get(aj, "dim"), 0.0);
         a->duration = zjson_num(zjson_obj_get(aj, "duration"), a->loop ? -1.0 : 1.0);

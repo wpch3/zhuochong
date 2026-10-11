@@ -17,9 +17,14 @@
 #include "../src/core/zpet.h"
 #include "../src/core/zconfig.h"
 #include "../src/core/zrig.h"
+#include "../src/core/zinteract.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
+#ifndef _WIN32
+#  include <unistd.h>
+#endif
 
 static int g_pass = 0, g_fail = 0;
 static const char *g_section = "";
@@ -516,6 +521,136 @@ static void test_rig_channels(void)
     }
 }
 
+/* -------------------------------------------------------- 互动规则 / 台词 / 情绪 */
+static void write_text(const char *path, const char *text)
+{
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    fwrite(text, 1, strlen(text), f);
+    fclose(f);
+}
+
+static int diag_has(const zdiag *d, const char *needle)
+{
+    int i;
+    for (i = 0; i < d->count; ++i)
+        if (strstr(d->items[i].msg, needle)) return 1;
+    return 0;
+}
+
+static void test_interactions(void)
+{
+    zdiag diag;
+    zinteract *z;
+    const zi_rule *r;
+    char buf[256];
+    int i;
+    zconfig cfg;
+    zpet *pet;
+    char cfgdir[1024];
+
+    SECTION("互动规则：加载、匹配、台词冷却");
+    zdiag_init(&diag);
+    z = zinteract_load(g_root, "xiaoxun", &diag);
+    CHECK(z != NULL, "互动规则应加载成功（错误 %d 条）", diag.error_count);
+    if (!z) return;
+    CHECK(z->nrules >= 15, "规则应不少于 15 条，实际 %d", z->nrules);
+    CHECK(z->nlines >= 15, "台词应不少于 15 条，实际 %d", z->nlines);
+    CHECK(z->dialogue_status_draft == 1, "小寻台词标记为草稿（待用户确认）");
+
+    r = zinteract_match(z, "hammer", "", NULL, 0);
+    CHECK(r && z_streq(r->id, "hammer_any"), "锤击应匹配 hammer_any");
+    r = zinteract_match(z, "poke", "head", NULL, 1);
+    CHECK(r && z_streq(r->id, "pat_head"), "摸头 1 次应匹配 pat_head");
+    r = zinteract_match(z, "poke", "head", NULL, 3);
+    CHECK(r && z_streq(r->id, "pat_head_combo"), "摸头 3 次应匹配连击（优先级更高）");
+    r = zinteract_match(z, "poke", "body", NULL, 0);
+    CHECK(r && z_streq(r->id, "stroke_body"), "身体应匹配 stroke_body");
+    r = zinteract_match(z, "poke", "", NULL, 0);
+    CHECK(r && z_streq(r->id, "poke_other"), "其它位置应匹配 poke_other（兜底）");
+    r = zinteract_match(z, "mood", "", "joy", 0);
+    CHECK(r && z_streq(r->id, "mood_joy") && z_streq(r->action, "happy"), "情绪 joy → happy");
+    CHECK(zinteract_match(z, "mood", "", "no_such", 0) == NULL, "未知情绪不匹配任何规则");
+    CHECK(zinteract_match(z, "call_reply", "", NULL, 0) != NULL, "语音回复事件有规则");
+
+    /* 台词冷却：同一规则 2 秒内只说一次；同一规则冷却未过不说；轮换变体 */
+    r = zinteract_match(z, "poke", "head", NULL, 1);
+    CHECK(zinteract_speak(z, r, 100.0, buf, sizeof(buf)) == 1, "首次应说话");
+    CHECK(buf[0] != 0, "台词不能为空");
+    CHECK(zinteract_speak(z, r, 100.5, buf, sizeof(buf)) == 0, "间隔不足 2 秒不说话");
+    CHECK(buf[0] == 0, "不说话时输出应清空");
+    CHECK(zinteract_speak(z, r, 102.5, buf, sizeof(buf)) == 0, "同一规则冷却 8 秒内不重复说话");
+    {
+        char first[256], second[256];
+        zinteract_speak(z, zinteract_match(z, "hammer", "", NULL, 0), 200.0, first, sizeof(first));
+        zinteract_speak(z, zinteract_match(z, "hammer", "", NULL, 0), 210.0, second, sizeof(second));
+        CHECK(first[0] && second[0] && strcmp(first, second) != 0, "同一台词组的变体应轮换");
+    }
+    z->speech_enabled = 0;
+    CHECK(zinteract_speak(z, zinteract_match(z, "drag_start", "", NULL, 0), 500.0, buf, sizeof(buf)) == 0,
+          "speech.enabled=false 时不说话");
+    zinteract_free(z);
+
+    SECTION("互动规则：坏配置报出文件与字段");
+    {
+        char root[256], dir[300];
+        z_snprintf(root, sizeof(root), "/tmp/zc_interact_bad_%d", (int)getpid());
+        z_snprintf(dir, sizeof(dir), "%s/config", root);
+        z_mkdir_p(dir);
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad", root);
+        z_mkdir_p(dir);
+        z_snprintf(dir, sizeof(dir), "%s/config/interactions.json", root);
+        write_text(dir, "{\"schema_version\":\"1.0\",\"rules\":[{\"id\":\"a\",\"kind\":\"dance\",\"action\":\"idle\"}]}");
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad/dialogue.json", root);
+        write_text(dir, "{\"lines\":[{\"id\":\"x\",\"texts\":[\"hi\"]}]}");
+        zdiag_init(&diag);
+        z = zinteract_load(root, "bad", &diag);
+        CHECK(z == NULL, "未知 kind 必须加载失败");
+        CHECK(diag.error_count >= 1, "应记录至少一条错误");
+        CHECK(diag_has(&diag, "dance"), "诊断应指出非法 kind 的值");
+
+        z_snprintf(dir, sizeof(dir), "%s/config/interactions.json", root);
+        write_text(dir, "{\"schema_version\":\"1.0\",\"rules\":[{\"id\":\"a\",\"kind\":\"poke\",\"action\":\"idle\",\"lines\":[\"nope\"]}]}");
+        zdiag_init(&diag);
+        z = zinteract_load(root, "bad", &diag);
+        CHECK(z == NULL, "引用不存在的台词 id 必须失败");
+        CHECK(diag.error_count >= 1 && diag_has(&diag, "nope"), "诊断应包含缺失的台词 id");
+        (void)i;
+    }
+
+    SECTION("互动：摸头连击、锤击、情绪与语音事件驱动宠物");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (pet) {
+        int fw = 0, fh = 0;
+        zpet_tick(pet, 1.0);            /* 第一帧由 tick 渲染，之前帧缓冲为空 */
+        zpet_frame(pet, &fw, &fh);
+        zpet_report_idle(pet, 0.0);
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 10.0);
+        CHECK(z_streq(zpet_action(pet), "head_pat"), "摸头 → head_pat，实际 %s", zpet_action(pet));
+        CHECK(zpet_last_line(pet)[0] != 0, "摸头应有台词");
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 11.0);
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 12.0);
+        CHECK(z_streq(zpet_action(pet), "happy"), "连续摸 3 次 → happy，实际 %s", zpet_action(pet));
+
+        zpet_tick(pet, 30.0);           /* 让 happy 等动作播完，非强制请求才能切换 */
+        zpet_express(pet, "sad", 30.0);
+        CHECK(z_streq(zpet_last_mood(pet), "sad"), "情绪应被记录");
+        CHECK(z_streq(zpet_action(pet), "sad"), "sad 情绪 → sad 动作，实际 %s", zpet_action(pet));
+
+        zpet_call_event(pet, "call_reply", "今天的天气很好哦", NULL, 40.0);
+        CHECK(z_streq(zpet_last_line(pet), "今天的天气很好哦"), "语音回复原文应优先显示");
+        zpet_tick(pet, 50.0);
+        zpet_call_event(pet, "call_start", NULL, NULL, 50.0);
+        CHECK(z_streq(zpet_action(pet), "talk"), "通话开始 → talk（priority 4 盖过循环中的 sad），实际 %s", zpet_action(pet));
+        zpet_destroy(pet);
+    }
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -531,6 +666,7 @@ int main(int argc, char **argv)
     test_config_and_pet();
     test_bad_config();
     test_rig_channels();
+    test_interactions();
 
     printf("\n通过 %d 项，失败 %d 项\n", g_pass, g_fail);
     if (g_fail) {

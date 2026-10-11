@@ -30,3 +30,8 @@
 - 做了什么：T2.1.1 表情素材：生成 10 张同取景特写（smile/happy/shy/surprised/sleepy/angry/sad/thinking/closed/pat）。写 make_face_parts.py（脸框 + 虹膜检测），抠图背景判定改为边框中位数。
 - 遇到/修了什么：对齐未解决：虹膜检测对闭眼/开心^^失效，脸框高度受脖肩影响；10 张图的缩放与眼位仍不一致，部件切出会错位。已停止在算法对齐上继续调参。
 - 下一步：二选一：A) 用参考底稿做改表情的 img2img 保持取景；B) 人工标注每张图双眼中心，再由脚本归一。确认后继续 T2.1.1。
+
+## 2026-10-11 07:55
+- 做了什么：新增互动规则表 config/interactions.json（19 条规则）与台词表 characters/xiaoxun/dialogue.json（草稿，19 组）；新增 src/core/zinteract 引擎；zpet 接入情绪入口 zpet_express 与语音事件入口 zpet_call_event；预览新增 /api/speech.json、/api/express、/api/call；规划写入 docs/INTERACTION_PLAN.md，任务写入 TASKS T5–T8。
+- 遇到/修了什么：修复引擎缺陷：rig 动作缺省 loop 被当成 true，导致 head_pat/happy 等永不回 idle（现缺省不循环）；call_start 改用 talk 以免被循环中的 sad 盖住；台词可选字段缺省时不再刷屏警告。
+- 下一步：等用户确认：A/B 表情对齐方案、台词草稿语气；随后做 T2.1.2 起的表情拆件与 T5.3 输入检测。

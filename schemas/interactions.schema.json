@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "interactions.json - 互动规则表",
+  "type": "object",
+  "required": ["schema_version", "rules"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "speech": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "min_gap_s": { "type": "number", "minimum": 0, "maximum": 600 }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "action"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 47 },
+          "kind": {
+            "type": "string",
+            "enum": ["poke", "hammer", "drag_start", "drag_end", "wake", "mood",
+                     "call_start", "call_end", "call_user_speaking", "call_reply"]
+          },
+          "region": { "type": "string", "enum": ["", "head", "body", "feet"] },
+          "mood": {
+            "type": "string",
+            "enum": ["", "joy", "sad", "surprise", "think", "sleepy", "shy", "angry", "calm"]
+          },
+          "action": { "type": "string", "minLength": 1, "maxLength": 47 },
+          "force": { "type": "boolean" },
+          "reset_count": { "type": "boolean" },
+          "priority": { "type": "integer", "minimum": -100, "maximum": 100 },
+          "min_count": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "cooldown_s": { "type": "number", "minimum": 0, "maximum": 3600 },
+          "lines": {
+            "type": "array",
+            "maxItems": 8,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}
