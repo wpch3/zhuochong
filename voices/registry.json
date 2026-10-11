@@ -11,8 +11,9 @@
       "source": "https://github.com/xiongxiongge1/ai_cartoon_person (static/tts_models/piper)",
       "path": "voices/xiaoya",
       "sample": "voices/xiaoya/sample.wav",
-      "installed_at": "2026-10-11 10:04",
-      "usable": true
+      "installed_at": "",
+      "usable": false,
+      "note": "模型文件不入库（>50MB）；运行 bash tools/voice_setup.sh 或 tools/voice_packs.py install 后恢复"
     },
     {
       "id": "chaowen",
@@ -24,8 +25,9 @@
       "source": "https://github.com/xiongxiongge1/ai_cartoon_person (static/tts_models/piper)",
       "path": "voices/chaowen",
       "sample": "voices/chaowen/sample.wav",
-      "installed_at": "2026-10-11 10:04",
-      "usable": true
+      "installed_at": "",
+      "usable": false,
+      "note": "模型文件不入库（>50MB）；运行 bash tools/voice_setup.sh 或 tools/voice_packs.py install 后恢复"
     }
   ]
 }
