@@ -1,12 +1,14 @@
 {
   // 小寻的音色方案（改这里换音色，不需要改任何代码）
-  // 生成方式：微软神经网络 TTS（edge-tts），即网上“AI 少女音”最常用的那套合成器。
-  // 音色全部来自供应商正规音色表，不克隆任何真人声音、不使用商业角色语音。
+  // 生成方式：神经网络 TTS 的少女音色（网上“AI 少女音”的常规做法），不克隆任何真人声音。
+  // 两条渲染路线：
+  //   A. 云端 edge-tts（微软音色，晓伊=少女 / 晓双=小女孩）→ tools/voice_render.py
+  //   B. 本地离线 Piper 音色 + 少女化处理 → tools/voice_local.py + tools/voice_pitch.py
   "schema_version": "1.0",
   "character": "xiaoxun",
   "provider": "edge-tts",
 
-  // 形态 → 音色。少女(teen)用晓伊；萝莉(loli)/Q版(chibi)用晓双；成年形态用晓晓。
+  // 形态 → 音色（少女形态用晓伊；萝莉/Q版用晓双；成年形态用晓晓）
   "form_voices": {
     "teen": "zh-CN-XiaoyiNeural",
     "loli": "zh-CN-XiaoshuangNeural",
@@ -14,19 +16,19 @@
     "adult": "zh-CN-XiaoxiaoNeural"
   },
 
-  // 统一风格参数（所有形态共用；语速/音调/音量）
+  // 统一风格参数
   "style": { "rate": "+0%", "pitch": "+0Hz", "volume": "+0%" },
 
   // 挑音色用的采样句（只用于 samples/，不是台词）
   "sample_text": "你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。",
 
-  // 候选音色：同一句话各出一版，方便对比后替换 form_voices
+  // 候选音色：同一句话各出一版，重点是年龄感（晓双=童声，晓伊升调=更少女）
   "candidates": [
-    "zh-CN-XiaoyiNeural",
-    "zh-CN-XiaoshuangNeural",
-    "zh-CN-XiaomengNeural",
-    "zh-CN-XiaoxuanNeural",
-    "zh-CN-XiaohanNeural",
-    "zh-CN-XiaoruiNeural"
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+0Hz",  "label": "晓伊-标准" },
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+15Hz", "label": "晓伊-升15Hz" },
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+30Hz", "label": "晓伊-升30Hz" },
+    { "voice": "zh-CN-XiaoshuangNeural", "pitch": "+0Hz",  "label": "晓双-标准" },
+    { "voice": "zh-CN-XiaoshuangNeural", "pitch": "+15Hz", "label": "晓双-升15Hz" },
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+15Hz", "rate": "-5%", "label": "晓伊-升15Hz-慢5%" }
   ]
 }

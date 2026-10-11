@@ -1,8 +1,9 @@
 name: voice-render
 
-# 为什么用 Actions 渲声音：沙箱出网白名单到不了任何 TTS 端点，
-# 而这里用的 edge-tts（微软神经网络 TTS）就是网上“AI 少女音”最常用的生成方式。
-# 产物：样例音色采样 + 全部台词 mp3，打包成 artifact 供下载。
+# 云端渲染语音（GitHub Actions）。用途：
+#   - edge-tts（微软神经网络语音）：晓伊=少女、晓双=小女孩，即网上“AI 少女音”的主流做法
+#   - 需要联网与密钥的供应商也可在这里加步骤（沙箱内出网受限，见 docs/HANDOFF_VOICE.md）
+# 触发：手动 workflow_dispatch，或改动 voice 配置/台词/脚本时自动跑。
 on:
   workflow_dispatch:
     inputs:
@@ -18,6 +19,12 @@ on:
         description: "可选：覆盖少女音色（如 zh-CN-XiaoyiNeural）"
         required: false
         default: ""
+  push:
+    paths:
+      - "characters/*/voice/plan.json"
+      - "characters/*/voice/triggers/**"
+      - "tools/voice_render.py"
+      - ".github/workflows/voice-render.yml"
 
 permissions:
   contents: read
@@ -25,6 +32,10 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
+    env:
+      CHARACTER: ${{ inputs.character || 'xiaoxun' }}
+      ONLY: ${{ inputs.only || 'all' }}
+      VOICE: ${{ inputs.voice || '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,13 +50,14 @@ jobs:
 
       - name: 合成语音
         run: |
-          python tools/voice_render.py --character "${{ inputs.character }}" --root . \
-            --only "${{ inputs.only }}" ${{ inputs.voice && format('--voice {0}', inputs.voice) || '' }}
+          set -e
+          python tools/voice_render.py --character "$CHARACTER" --root . --only "$ONLY" \
+            ${VOICE:+--voice "$VOICE"}
 
       - name: 校验产物（数量与非空）
         run: |
           set -e
-          D="characters/${{ inputs.character }}/voice"
+          D="characters/$CHARACTER/voice"
           echo "--- 采样 ---"; ls -la "$D/samples" || true
           echo "--- 台词数 ---"; ls "$D/lines" | wc -l
           find "$D" -name '*.mp3' -size -2k -print | tee /tmp/bad.txt
@@ -53,11 +65,11 @@ jobs:
 
       - name: 打包
         run: |
-          cd "characters/${{ inputs.character }}/voice"
-          zip -q -r "$GITHUB_WORKSPACE/voice_${{ inputs.character }}.zip" samples lines catalog.json plan.json
+          cd "characters/$CHARACTER/voice"
+          zip -q -r "$GITHUB_WORKSPACE/voice_$CHARACTER.zip" samples lines catalog.json plan.json
 
       - uses: actions/upload-artifact@v4
         with:
-          name: voice-${{ inputs.character }}
-          path: voice_${{ inputs.character }}.zip
+          name: voice-${{ env.CHARACTER }}
+          path: voice_${{ env.CHARACTER }}.zip
           retention-days: 30

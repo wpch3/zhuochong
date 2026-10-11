@@ -70,6 +70,12 @@ def load_json(path: str) -> dict:
     return json.loads("".join(out))
 
 
+def _clean(s: str) -> str:
+    """把 +15Hz / -5% 这类参数变成文件名安全的形式：up15Hz / down5pct。"""
+    return (str(s).replace("+", "up").replace("-", "down")
+            .replace("%", "pct").replace("Hz", "Hz").replace("/", "_").replace(" ", ""))
+
+
 def short_name(voice: str) -> str:
     """zh-CN-XiaoyiNeural → Xiaoyi（用作文件名，避免大小写导致的重复名问题）。"""
     m = re.match(r"^[a-z]{2}-[A-Z]{2}-([A-Za-z0-9]+)Neural$", voice)
@@ -147,15 +153,24 @@ async def main() -> int:
         "lines": [],
     }
 
-    # 1) 候选音色采样：同一句话，用同一套参数，便于对比挑选
-    samples = plan.get("candidates", []) or []
-    if samples and args.only in ("all", "samples"):
-        for v in samples:
-            out = os.path.join(vdir, "samples", f"{short_name(v)}.mp3")
-            size = await synth(sample_text, v, out, rate, pitch, volume)
-            print(f"[采样] {v} → {out}（{size} 字节）")
+    # 1) 候选音色采样：同一句话各出一版，便于按“年龄感”挑选
+    #    candidates 支持两种写法：字符串（只用统一参数）或对象（可单独指定 pitch/rate/label）
+    cands = plan.get("candidates", []) or []
+    if cands and args.only in ("all", "samples"):
+        for i, c in enumerate(cands, 1):
+            if isinstance(c, str):
+                c = {"voice": c}
+            v = c.get("voice", girl_voice)
+            c_pitch = c.get("pitch", pitch)
+            c_rate = c.get("rate", rate)
+            label = c.get("label", short_name(v))
+            tag = f"{short_name(v)}_{_clean(c_pitch)}_{_clean(c_rate)}"
+            out = os.path.join(vdir, "samples", f"{i:02d}_{tag}.mp3")
+            size = await synth(sample_text, v, out, c_rate, c_pitch, volume)
+            print(f"[采样] {label}（{v} pitch={c_pitch} rate={c_rate}）→ {os.path.basename(out)}")
             catalog.setdefault("samples", []).append(
-                {"voice": v, "file": os.path.relpath(out, root).replace(os.sep, "/"),
+                {"index": i, "label": label, "voice": v, "pitch": c_pitch, "rate": c_rate,
+                 "file": os.path.relpath(out, root).replace(os.sep, "/"),
                  "text": sample_text, "bytes": size}
             )
 
