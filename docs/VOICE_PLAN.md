@@ -79,3 +79,31 @@
 
 - 测试 key：请在 Arena 环境变量中设置 `ZC_RELAY_BASE_URL=https://（OhMyGPT 的接口地址）` 与 `ZC_RELAY_KEY`，不要在聊天里发送。
 - 确认：同步方式（精确时间戳优先，没有则估算）是否可以；每日上限默认 2000 字符是否可以。
+
+## 8. 同步方案调研（2026-10-11，待确认）
+
+- **Neuro-sama（公开资料）**：LLM 生成文本 → 文本转语音（Azure “Ashley” 音色，音调上调 25%）→ 字幕就是这段 LLM 文本，随语音显示。她的字幕是**整句/短句级同步**，不是逐词对齐。她的做法是：每次只说一小段完整句子，避免截断。
+  - 参考：[Wikipedia][1]、[Fandom Wiki][2]、[Reddit 讨论][3]。
+  - 注意：Reddit 上关于“字幕来源文件”的说法只是猜测，未经证实。
+- **EmotionTTS**：搜索到的同名项目有 Korean 研究版（`emotiontts_open_db`，CC-BY-NC-SA，**禁止商用**）和 HMM 类研究项目，不适合做我们的正式方案。
+  - 参考：[emotiontts_open_db][4]、[hmm-for-emo-tts][5]。
+- **逐词时间戳（适合所有引擎的思路）**：
+  - 有些供应商会直接返回字符/词的时间戳，例如 ElevenLabs 的 alignment 接口，适合精确同步。
+  - 也可以对合成后的音频做强制对齐（whisperX 类方案），精度约 100 ms 量级，但需要额外模型，在 Windows 本地跑成本较高。
+  - 参考：[ElevenLabs alignment][6]、[WhisperX 指南][7]。
+
+**建议：分三层，按引擎能力自动选择**
+
+1. **首选：引擎返回时间戳** → 逐字高亮，效果最接近豆包。
+2. **次选：按音频时长估算** → 文字按字数比例推进，句间停顿按标点加权。这是我们需要做的主要路线，因为能力不依赖供应商。
+3. **保底：句级同步**（Neuro-sama 的做法）→ 每句在开始播放时出现，最省额度、最稳。
+
+默认先做句级同步，逐字估算作为可选项。
+
+[1]: https://en.wikipedia.org/wiki/Neuro-sama
+[2]: https://virtualyoutuber.fandom.com/wiki/Neuro-sama
+[3]: https://www.reddit.com/r/NeuroSama/comments/11dgxis/neurosama_subtitles/
+[4]: https://github.com/emotiontts/emotiontts_open_db
+[5]: https://github.com/Emotional-Text-to-Speech/hmm-for-emo-tts
+[6]: https://wavespeed.ai/models/elevenlabs/eleven-v3/timing
+[7]: https://localaimaster.com/blog/whisperx-guide
