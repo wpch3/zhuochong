@@ -126,6 +126,7 @@ const ACTION_NAMES = {
   idle: "待机", focus: "专注", happy: "开心", sad: "难过", surprised: "惊讶",
   think: "思考", talk: "说话", sleep: "睡觉", head_pat: "摸头", stroke: "抚摸",
   hammered: "被锤", clicked: "被点", dragged: "被拖", wake: "叫醒",
+  breath: "呼吸", sway: "摇摆", wave: "挥手",
 };
 function actionName(id) { return ACTION_NAMES[id] || id; }
 const MOODS = [["joy", "开心"], ["sad", "难过"], ["surprise", "惊讶"], ["think", "思考"], ["sleepy", "困倦"]];

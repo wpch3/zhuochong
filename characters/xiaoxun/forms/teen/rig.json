@@ -354,19 +354,21 @@
           "phase": 0.15
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "seg_arm_l",
+          "param": "bend_x",
           "wave": "sine",
-          "amp": 0.4,
+          "amp": 1.5,
           "freq": 0.28,
+          "curve": "tip",
           "phase": 0.15
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "seg_arm_r",
+          "param": "bend_x",
           "wave": "sine",
-          "amp": -0.4,
+          "amp": 1.5,
           "freq": 0.28,
+          "curve": "tip",
           "phase": 0.15
         }
       ]
@@ -402,36 +404,22 @@
           "freq": 0.18
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "seg_arm_l",
+          "param": "bend_x",
           "wave": "sine",
-          "amp": 1.6,
+          "amp": 7.0,
           "freq": 0.18,
-          "phase": 0.22
+          "curve": "tip",
+          "phase": 0.06
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "seg_arm_r",
+          "param": "bend_x",
           "wave": "sine",
-          "amp": -1.6,
+          "amp": 7.0,
           "freq": 0.18,
-          "phase": 0.22
-        },
-        {
-          "target": "arm_l",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.8,
-          "freq": 0.18,
-          "phase": 0.25
-        },
-        {
-          "target": "arm_r",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.8,
-          "freq": 0.18,
-          "phase": 0.25
+          "curve": "tip",
+          "phase": 0.06
         }
       ]
     },
@@ -494,19 +482,21 @@
           "freq": 0.2
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "seg_arm_l",
+          "param": "bend_x",
           "wave": "sine",
-          "amp": 0.5,
+          "amp": 2.2,
           "freq": 0.06,
+          "curve": "tip",
           "phase": 0.12
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "seg_arm_r",
+          "param": "bend_x",
           "wave": "sine",
-          "amp": -0.5,
+          "amp": 2.2,
           "freq": 0.06,
+          "curve": "tip",
           "phase": 0.12
         },
         {
@@ -620,19 +610,21 @@
           "dur": 0.5
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "seg_arm_l",
+          "param": "bend_x",
           "wave": "bounce",
-          "amp": 3.0,
+          "amp": -9.0,
           "freq": 0.0,
+          "curve": "tip",
           "dur": 0.5
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "seg_arm_r",
+          "param": "bend_x",
           "wave": "bounce",
-          "amp": -3.0,
+          "amp": 9.0,
           "freq": 0.0,
+          "curve": "tip",
           "dur": 0.5
         }
       ],
@@ -770,19 +762,21 @@
           "dur": 0.7
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "seg_arm_l",
+          "param": "bend_x",
           "wave": "decay",
-          "amp": 2.5,
+          "amp": 10.0,
           "freq": 2.6,
+          "curve": "tip",
           "dur": 0.7
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "seg_arm_r",
+          "param": "bend_x",
           "wave": "decay",
-          "amp": -2.5,
+          "amp": 10.0,
           "freq": 2.6,
+          "curve": "tip",
           "dur": 0.7
         }
       ],
@@ -995,6 +989,63 @@
         },
         "eye_closed_right": {
           "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": "wave",
+      "priority": 6,
+      "duration": 2.4,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "seg_arm_r",
+          "param": "bend_x",
+          "wave": "pulse",
+          "amp": 92.0,
+          "curve": "tip",
+          "dur": 2.4,
+          "ease": "out"
+        },
+        {
+          "target": "seg_arm_r",
+          "param": "bend_y",
+          "wave": "pulse",
+          "amp": -78.0,
+          "curve": "tip",
+          "dur": 2.4,
+          "ease": "out"
+        },
+        {
+          "target": "seg_arm_r",
+          "param": "bend_x",
+          "wave": "sine",
+          "amp": 26.0,
+          "curve": "tip",
+          "freq": 1.8,
+          "dur": 2.4
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 0.8,
+          "dur": 2.4
+        },
+        {
+          "target": "root",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -2.0,
+          "freq": 1.6,
+          "dur": 2.4
+        }
+      ],
+      "part_overrides": {
+        "mouth_open": {
+          "opacity": 0.8
         }
       }
     }

@@ -239,34 +239,58 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     a["channels"].extend(chans)
 
         def arm(side, param, amp, freq, phase=0.0, wave="sine", **kw):
-            c = {"target": f"arm_{side}", "param": param, "wave": wave,
-                 "amp": amp, "freq": freq}
+            """手臂通道。**整块旋转手臂会在肩膀露接缝**：手臂是竖切下来的，
+               里面带着一条外套前襟，转 26° 时那条会甩到身体轮廓外面（实测）。
+               所以手臂一律用网格形变 bend：curve=tip 表示顶边（肩）钉死、
+               越往下位移越大——和 Live2D 的手臂变形器同一个思路，肩膀永远不裂。"""
+            tgt = f"seg_arm_{side}" if param.startswith("bend") else f"arm_{side}"
+            c = {"target": tgt, "param": param, "wave": wave, "amp": amp, "freq": freq}
+            if param.startswith("bend"):
+                c["curve"] = "tip"
             if phase:
                 c["phase"] = phase
             c.update(kw)
             return c
 
         # 待机：手臂跟着重心极慢地荡，相位比身体晚一点（次级动作的惯性感）
-        add("idle", [arm("l", "rot_deg", 0.5, 0.06, 0.12),
-                     arm("r", "rot_deg", -0.5, 0.06, 0.12),
+        add("idle", [arm("l", "bend_x", 2.2, 0.06, 0.12),
+                     arm("r", "bend_x", 2.2, 0.06, 0.12),
                      arm("l", "dy", 0.6, 0.24, 0.18),
                      arm("r", "dy", 0.6, 0.24, 0.18)])
         # 呼吸：肩胛随胸腔起伏
         add("breath", [arm("l", "dy", 1.0, 0.28, 0.15),
                        arm("r", "dy", 1.0, 0.28, 0.15),
-                       arm("l", "rot_deg", 0.4, 0.28, 0.15),
-                       arm("r", "rot_deg", -0.4, 0.28, 0.15)])
-        # 左右摇摆：手臂甩得比身体晚，两侧反相；腿不动（脚要钉在地上）
-        add("sway", [arm("l", "rot_deg", 1.6, 0.18, 0.22),
-                     arm("r", "rot_deg", -1.6, 0.18, 0.22),
-                     arm("l", "dx", 1.8, 0.18, 0.25),
-                     arm("r", "dx", 1.8, 0.18, 0.25)])
+                       arm("l", "bend_x", 1.5, 0.28, 0.15),
+                       arm("r", "bend_x", 1.5, 0.28, 0.15)])
+        # 左右摇摆：手臂甩得比身体晚一点，幅度比身体小（次级动作）
+        add("sway", [arm("l", "bend_x", 7.0, 0.18, 0.06),
+                     arm("r", "bend_x", 7.0, 0.18, 0.06)])
         # 开心：整个人跳起来时手臂有滞后
-        add("happy", [arm("l", "rot_deg", 3.0, 0.0, 0.0, wave="bounce", dur=0.5),
-                      arm("r", "rot_deg", -3.0, 0.0, 0.0, wave="bounce", dur=0.5)])
+        add("happy", [arm("l", "bend_x", -9.0, 0.0, 0.0, wave="bounce", dur=0.5),
+                      arm("r", "bend_x", 9.0, 0.0, 0.0, wave="bounce", dur=0.5)])
         # 被敲：手臂跟着抖
-        add("hammered", [arm("l", "rot_deg", 2.5, 2.6, 0.0, wave="decay", dur=0.7),
-                         arm("r", "rot_deg", -2.5, 2.6, 0.0, wave="decay", dur=0.7)])
+        add("hammered", [arm("l", "bend_x", 10.0, 2.6, 0.0, wave="decay", dur=0.7),
+                         arm("r", "bend_x", 10.0, 2.6, 0.0, wave="decay", dur=0.7)])
+
+        # 挥手：单图层时代做不到的动作（没有独立手臂，一抬就整张图跟着转）。
+        # 同样用 bend：肩膀钉死，手往外甩 + 往上抬，再叠一个快速左右摆。
+        actions.append({
+            "id": "wave", "priority": 6, "duration": 2.4, "return_state": "idle",
+            "interruptible": False,
+            "channels": [
+                {"target": "seg_arm_r", "param": "bend_x", "wave": "pulse",
+                 "amp": 92.0, "curve": "tip", "dur": 2.4, "ease": "out"},
+                {"target": "seg_arm_r", "param": "bend_y", "wave": "pulse",
+                 "amp": -78.0, "curve": "tip", "dur": 2.4, "ease": "out"},
+                {"target": "seg_arm_r", "param": "bend_x", "wave": "sine",
+                 "amp": 26.0, "curve": "tip", "freq": 1.8, "dur": 2.4},
+                {"target": "head", "param": "rot_deg", "wave": "sine",
+                 "amp": 2.0, "freq": 0.8, "dur": 2.4},
+                {"target": "root", "param": "dy", "wave": "sine",
+                 "amp": -2.0, "freq": 1.6, "dur": 2.4},
+            ],
+            "part_overrides": {"mouth_open": {"opacity": 0.8}},
+        })
 
     # ---- 组（骨架）。枢轴=真关节点；bend_follow=跟着谁的网格形变走 ----
     # bend_follow 的取样高度有两种语义，别搞混：
