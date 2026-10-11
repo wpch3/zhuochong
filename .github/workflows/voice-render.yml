@@ -60,18 +60,21 @@ jobs:
 
       - name: 失败日志回传（提交到仓库，便于沙箱读取）
         if: steps.render.outcome == 'failure'
+        continue-on-error: true
         run: |
-          set -uo pipefail
+          set +e
           mkdir -p logs
           { echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; \
-            echo "step: ${{ steps.render.outcome }}"; \
+            echo "time: $(date -u +%FT%TZ)"; \
             echo "---- 输出（结尾 5000 字符）----"; \
-            tail -c 5000 /tmp/render.log; } > logs/ci-voice-render.log
+            tail -c 5000 /tmp/render.log 2>/dev/null; } > logs/ci-voice-render.log
           git config user.email "actions@github.com"
           git config user.name "voice-render bot"
           git add logs/ci-voice-render.log
-          git commit -q -m "ci: voice-render 失败日志 [skip ci]" || true
-          git push -q origin "HEAD:$GITHUB_REF_NAME" || true
+          git commit -q -m "ci: voice-render 日志 [skip ci]"
+          git fetch -q origin "$GITHUB_REF_NAME"
+          git rebase "origin/$GITHUB_REF_NAME" || git rebase --abort
+          git push -q origin "HEAD:$GITHUB_REF_NAME"
 
       - name: 合成失败则终止（保持红叉）
         if: steps.render.outcome == 'failure'

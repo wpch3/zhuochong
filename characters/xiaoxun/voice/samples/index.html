@@ -3,73 +3,84 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>小寻 · 音色试听</title>
+<title>小寻 · 音色试听（少女音）</title>
 <style>
   :root { --pink:#ff9ec2; --blue:#7fc4e8; --ink:#4a4a5a; --card:#fffafc; }
   * { box-sizing:border-box; }
-  body { margin:0; padding:28px 16px 60px; font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  body { margin:0; padding:26px 16px 60px; font-family:"PingFang SC","Microsoft YaHei",sans-serif;
          color:var(--ink); background:linear-gradient(160deg,#fdf3f8 0%,#eef7fd 100%); }
   h1 { font-size:22px; text-align:center; margin:0 0 6px; }
-  .sub { text-align:center; font-size:13px; color:#8a8aa0; margin-bottom:22px; line-height:1.7; }
-  .wrap { max-width:720px; margin:0 auto; }
+  .sub { text-align:center; font-size:13px; color:#8a8aa0; margin-bottom:20px; line-height:1.7; }
+  .wrap { max-width:760px; margin:0 auto; }
+  .sec { font-size:14px; font-weight:700; color:#e0679a; margin:22px 0 10px; }
   .card { background:var(--card); border:2px solid #ffe1ee; border-radius:18px;
-          box-shadow:0 6px 18px rgba(255,158,194,.15); padding:16px 18px; margin-bottom:14px; }
-  .card h2 { font-size:16px; margin:0 0 4px; }
+          box-shadow:0 6px 18px rgba(255,158,194,.15); padding:14px 18px; margin-bottom:12px; }
+  .card h2 { font-size:15px; margin:0 0 4px; }
   .tag { display:inline-block; font-size:11px; padding:2px 9px; border-radius:10px;
          background:#eaf6ff; color:#4b93c4; margin-left:8px; vertical-align:2px; }
-  .txt { font-size:13px; color:#7c7c92; margin:6px 0 12px; line-height:1.6; }
+  .tag.young { background:#ffe9f3; color:#e0679a; }
+  .txt { font-size:13px; color:#7c7c92; margin:5px 0 10px; line-height:1.6; }
   audio { width:100%; }
-  .pick { text-align:center; font-size:13px; color:#8a8aa0; margin-top:26px; line-height:1.8; }
-  .pick b { color:#e0679a; }
+  .fold { font-size:12px; color:#9a9ab0; margin-top:18px; line-height:1.8; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>小寻 · 音色试听</h1>
   <div class="sub">
-    本地神经网络语音合成（Piper VITS，离线运行、不消耗任何额度）<br>
-    音色取自公开音色表，没有克隆任何真人声音
+    目标：<b>16 岁少女</b>，温柔、大方、贤惠、智慧，普通话<br>
+    全部离线本地合成（不联网、不要 key、不花额度）；音色为公开音色表，未克隆任何真人声音
   </div>
 
+  <div class="sec">① 少女化后（推荐先听这组，已按“少女音”处理）</div>
+
   <div class="card">
-    <h2>1. 小雅 · 少女音色<span class="tag">推荐</span></h2>
+    <h2>1. 少女音 · 基频 267 Hz<span class="tag young">少女区间</span></h2>
     <div class="txt">「你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。」</div>
-    <audio controls preload="auto" src="1_xiao_ya.wav"></audio>
+    <audio controls preload="auto" src="local_xy_265.wav"></audio>
   </div>
 
   <div class="card">
-    <h2>2. 小雅 · 升调 6%<span class="tag">更少女</span></h2>
-    <div class="txt">同一句，整体升调 6%，听起来更年轻一点。</div>
-    <audio controls preload="none" src="2_xiao_ya_pitch6.wav"></audio>
+    <h2>2. 少女音 · 基频 288 Hz<span class="tag young">更年轻</span></h2>
+    <div class="txt">同一句，年龄感再往下走一点。</div>
+    <audio controls preload="none" src="local_xy_285.wav"></audio>
   </div>
 
   <div class="card">
-    <h2>3. 小雅 · 升调 12%<span class="tag">更甜</span></h2>
-    <div class="txt">同一句，升调 12%，偏“甜”路线，可能偏幼。</div>
-    <audio controls preload="none" src="3_xiao_ya_pitch12.wav"></audio>
+    <h2>3. 少女音 · 基频 304 Hz<span class="tag young">偏幼</span></h2>
+    <div class="txt">再高一点，接近萝莉；如果 1、2 号太成熟可以听这个。</div>
+    <audio controls preload="none" src="local_xy_305.wav"></audio>
   </div>
 
   <div class="card">
-    <h2>4. 华言 · 温柔女声</h2>
-    <div class="txt">另一套中文女声，偏温柔大方、成熟一些。</div>
+    <h2>4. 少女音 · 288 Hz + 语速快 6%<span class="tag young">更活泼</span></h2>
+    <div class="txt">语速稍快，听起来更精神、更活泼。</div>
+    <audio controls preload="none" src="local_xy_285_fast.wav"></audio>
+  </div>
+
+  <div class="card">
+    <h2>5. 另一套音色少女化 · 283 Hz</h2>
+    <div class="txt">底子更温柔一些（华言），同样抬到少女区间，气质偏“贤惠”。</div>
+    <audio controls preload="none" src="local_hy_280.wav"></audio>
+  </div>
+
+  <div class="sec">② 处理前（用来对比年龄感）</div>
+
+  <div class="card">
+    <h2>6. 小雅 · 原始（基频 234 Hz）</h2>
+    <div class="txt">这就是你之前说“年龄偏大”的那版，可以直接对比。</div>
+    <audio controls preload="none" src="1_xiao_ya.wav"></audio>
+  </div>
+
+  <div class="card">
+    <h2>7. 华言 · 原始（基频 214 Hz）</h2>
+    <div class="txt">另一套原始女声。</div>
     <audio controls preload="none" src="4_huayan.wav"></audio>
   </div>
 
-  <div class="card">
-    <h2>5. 台词实测 · 困倦</h2>
-    <div class="txt">「唔…我没有睡着哦。今天就到这里吧，剩下的明天再做也不迟呀。」</div>
-    <audio controls preload="none" src="5_line_sleepy.wav"></audio>
-  </div>
-
-  <div class="card">
-    <h2>6. 台词实测 · 害羞</h2>
-    <div class="txt">「摸这么多次…我、我会害羞的啦！」</div>
-    <audio controls preload="none" src="6_line_shy.wav"></audio>
-  </div>
-
-  <div class="pick">
-    选好后告诉我编号，例如 <b>“用 2 号”</b>，我就把它写进 <b>config/voices.json</b>，
-    并把 dialogue.json 的全部台词批量渲染成音频（同一音色、同一风格）。
+  <div class="fold">
+    说明：基频用 pyin 实测中位数（成年女声约 165–255 Hz，少女约 200–300 Hz，童声约 250–400 Hz）。<br>
+    选定编号后我会写进 <b>config/voices.json</b>，并把 dialogue.json 全部台词批量渲染成音频。
   </div>
 </div>
 </body>
