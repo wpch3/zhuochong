@@ -55,11 +55,20 @@ def key_out(im: Image.Image, tol: int = 60, despill: int = 1) -> tuple[Image.Ima
     """
     a = np.asarray(im).astype(np.int16)
     h, w, _ = a.shape
-    corners = np.stack([a[2, 2], a[2, w - 3], a[h - 3, 2], a[h - 3, w - 3]]).astype(np.float32)
-    key = tuple(int(round(v)) for v in corners.mean(0))
-    spread = float(np.abs(corners - corners.mean(0)).max())
-    if spread > 40:
-        raise SystemExit("[错误] 四角颜色不一致，无法自动抠背景；请提供纯色背景的设计图")
+    # 背景色判定：取四条边框采样点的**中位数**。不用四角平均值是因为
+    # 表情特写图里角色肩膀会占住下边两角（见 make_face_parts.py），
+    # 四角一致的要求会误报；中位数对少量非背景点不敏感。
+    border = np.concatenate([
+        a[2, ::max(1, w // 32)].reshape(-1, 3),
+        a[h - 3, ::max(1, w // 32)].reshape(-1, 3),
+        a[::max(1, h // 32), 2].reshape(-1, 3),
+        a[::max(1, h // 32), w - 3].reshape(-1, 3),
+    ]).astype(np.float32)
+    key = tuple(int(round(v)) for v in np.median(border, axis=0))
+    # 判定有效性：至少 25% 的边框采样点贴近该背景色，否则视为非纯色背景
+    close = np.abs(border - np.array(key)).max(axis=1) < 60
+    if close.mean() < 0.25:
+        raise SystemExit("[错误] 边框颜色不一致，无法自动抠背景；请提供纯色背景的设计图")
     best = min(KEY_COLORS, key=lambda k: sum((k[i] - key[i]) ** 2 for i in range(3)))
     if sum((best[i] - key[i]) ** 2 for i in range(3)) < 60 * 60:
         key = best

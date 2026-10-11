@@ -84,7 +84,9 @@ done
 step "5/6 Windows 交叉编译"
 if command -v python3 >/dev/null; then :; fi
 ZIG=$(ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/ziglang/zig 2>/dev/null | head -1)
-if [ -n "${ZIG:-}" ]; then
+if [ -z "${ZIG:-}" ]; then
+  bad "找不到 zig：请安装 ziglang==0.17.0（见 docs/memory/LESSONS.md 第六节），不能跳过 Windows 编译"
+elif [ -n "${ZIG:-}" ]; then
   if make win >/tmp/zc_win.log 2>&1 && [ -f dist/windows/x86_64/zhuochong.exe ]; then
     SUB=$(python3 - <<'PY'
 import struct
