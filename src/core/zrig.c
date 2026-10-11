@@ -26,7 +26,9 @@ enum {
 };
 
 /* 通道参数 */
-enum { P_DX = 0, P_DY, P_SX, P_SY, P_ROT, P_ALPHA };
+enum { P_DX = 0, P_DY, P_SX, P_SY, P_ROT, P_ALPHA, P_BEND_X, P_BEND_Y };
+/* 形变曲线：0=根部固定（头发/裙摆） 1=中间最大（弯腰/呼吸） 2=线性 */
+enum { BEND_ROOT = 0, BEND_SINE, BEND_LINEAR };
 /* 通道波形 */
 enum { W_SINE = 0, W_BOUNCE, W_PULSE, W_DECAY };
 
@@ -59,6 +61,8 @@ typedef struct {
     int    wave;
     double amp, freq, phase, dur;
     zease  ease;
+    int    curve;             /* 形变曲线（仅 bend_* 用） */
+    int    strips;            /* 分段数（仅 bend_* 用；0=默认 24） */
 } zchan;
 
 typedef struct { char part[64]; double opacity; int has_dx, has_dy; double dx, dy; } zoverride;
@@ -133,6 +137,9 @@ struct zrig {
 
     /* 部件通道（每帧计算）：用于口型、眼部动画等 */
     double p_dx[ZRIG_MAX_PARTS], p_dy[ZRIG_MAX_PARTS];
+    double p_bendx[ZRIG_MAX_PARTS], p_bendy[ZRIG_MAX_PARTS];   /* 分段形变（网格形变的简化实现） */
+    int    p_bendc[ZRIG_MAX_PARTS];                           /* 形变曲线 */
+    int    p_bends[ZRIG_MAX_PARTS];                           /* 分段数 */
     double p_sx[ZRIG_MAX_PARTS], p_sy[ZRIG_MAX_PARTS];
     double p_rot[ZRIG_MAX_PARTS], p_alpha[ZRIG_MAX_PARTS];
 
@@ -152,6 +159,8 @@ static int parse_param(const char *name, int *out)
     if (z_streq(name, "sy")) { *out = P_SY; return 0; }
     if (z_streq(name, "rot_deg")) { *out = P_ROT; return 0; }
     if (z_streq(name, "alpha")) { *out = P_ALPHA; return 0; }
+    if (z_streq(name, "bend_x")) { *out = P_BEND_X; return 0; }
+    if (z_streq(name, "bend_y")) { *out = P_BEND_Y; return 0; }
     return -1;
 }
 
@@ -420,9 +429,18 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                         return -1;
                     }
                 }
+                {
+                    const char *cname = zjson_str(zjson_obj_get(cj, "curve"), NULL);
+                    if (cname) {
+                        if (z_streq(cname, "root")) c->curve = BEND_ROOT;
+                        else if (z_streq(cname, "sine")) c->curve = BEND_SINE;
+                        else if (z_streq(cname, "linear")) c->curve = BEND_LINEAR;
+                    }
+                    if (zjson_get(cj, "strips")) c->strips = (int)zjson_num(zjson_obj_get(cj, "strips"), 0);
+                }
                 if (!pname || parse_param(pname, &c->param) != 0) {
                     zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha）");
+                                "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha/bend_x/bend_y）");
                     return -1;
                 }
                 if (parse_wave(wname, &c->wave) != 0) {
@@ -694,6 +712,9 @@ static void compute_group_transforms(zrig *r)
     }
     for (i = 0; i < r->nparts; ++i) {
         r->p_dx[i] = r->p_dy[i] = 0.0;
+        r->p_bendx[i] = r->p_bendy[i] = 0.0;
+        r->p_bendc[i] = BEND_ROOT;
+        r->p_bends[i] = 0;
         r->p_sx[i] = r->p_sy[i] = 1.0;
         r->p_rot[i] = 0.0;
         r->p_alpha[i] = 1.0;
@@ -714,6 +735,10 @@ static void compute_group_transforms(zrig *r)
                     case P_SY:  r->p_sy[pi] += v; break;
                     case P_ROT: r->p_rot[pi] += v; break;
                     case P_ALPHA: r->p_alpha[pi] *= ZC_CLAMP(1.0 + v, 0.0, 1.0); break;
+                    case P_BEND_X: r->p_bendx[pi] += v; r->p_bendc[pi] = c->curve;
+                                   r->p_bends[pi] = c->strips; break;
+                    case P_BEND_Y: r->p_bendy[pi] += v; r->p_bendc[pi] = c->curve;
+                                   r->p_bends[pi] = c->strips; break;
                 }
                 continue;
             }
@@ -921,7 +946,14 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
             } else {
                 memcpy(m, lm, sizeof(lm));
             }
-            zimg_draw(r->fb, src, m, opacity);
+            {
+                double bx = r->p_bendx[pi] * scale, by = r->p_bendy[pi] * scale;
+                if (fabs(bx) > 0.05 || fabs(by) > 0.05) {
+                    zimg_draw_warp(r->fb, src, m, opacity, bx, by, r->p_bendc[pi]);
+                } else {
+                    zimg_draw(r->fb, src, m, opacity);
+                }
+            }
         }
     }
 
@@ -1149,6 +1181,8 @@ double zrig_part_channel(const zrig *r, const char *part_id, const char *param)
     if (pi < 0) return 0.0;
     if (parse_param(param, &ip) != 0) return 0.0;
     switch (ip) {
+        case P_BEND_X: return r->p_bendx[pi];
+        case P_BEND_Y: return r->p_bendy[pi];
         case P_DX: return r->p_dx[pi];
         case P_DY: return r->p_dy[pi];
         case P_SX: return r->p_sx[pi];

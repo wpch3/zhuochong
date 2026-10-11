@@ -426,6 +426,40 @@ void zimg_make_matrix(double m[6], double tx, double ty, double sx, double sy,
 
 void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity)
 {
+    zimg_draw_rect(dst, src, m, opacity, 0, 0, src ? src->w : 0, src ? src->h : 0);
+}
+
+/* 内部实现：bend 参数为 0 时等价于 zimg_draw */
+static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
+                      int sx0, int sy0, int sx1, int sy1,
+                      double bend_x, double bend_y, int curve);
+
+void zimg_draw_rect(zimg *dst, const zimg *src, const double m[6], double opacity,
+                    int sx0, int sy0, int sx1, int sy1)
+{
+    draw_impl(dst, src, m, opacity, sx0, sy0, sx1, sy1, 0.0, 0.0, 2);
+}
+
+void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacity,
+                    double bend_x, double bend_y, int curve)
+{
+    if (!src) return;
+    draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h, bend_x, bend_y, curve);
+}
+
+static double bend_factor(double t, int curve)
+{
+    if (t < 0.0) t = 0.0;
+    if (t > 1.0) t = 1.0;
+    if (curve == 0) return t * t;                    /* 根部固定 */
+    if (curve == 1) return sin(t * 3.14159265358979);/* 中间最大 */
+    return t;                                        /* 线性 */
+}
+
+static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
+                      int sx0, int sy0, int sx1, int sy1,
+                      double bend_x, double bend_y, int curve)
+{
     double det, inv[6];
     int x0, y0, x1, y1, px, py;
     if (!dst || !src) return;
@@ -456,14 +490,32 @@ void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity)
     x0 = ZC_CLAMP(x0, 0, dst->w); x1 = ZC_CLAMP(x1, 0, dst->w);
     y0 = ZC_CLAMP(y0, 0, dst->h); y1 = ZC_CLAMP(y1, 0, dst->h);
 
+    /* 源矩形约束（半像素容差，保证相邻分段不重叠也不漏缝） */
+    if (sx0 < 0) sx0 = 0;
+    if (sy0 < 0) sy0 = 0;
+    if (sx1 > src->w) sx1 = src->w;
+    if (sy1 > src->h) sy1 = src->h;
+    if (sx1 <= sx0 || sy1 <= sy0) return;
+
     for (py = y0; py < y1; ++py) {
         for (px = x0; px < x1; ++px) {
-            double fx = inv[0] * (px + 0.5) + inv[2] * (py + 0.5) + inv[4];
-            double fy = inv[1] * (px + 0.5) + inv[3] * (py + 0.5) + inv[5];
+            double fx, fy;
+            if (bend_x != 0.0 || bend_y != 0.0) {
+                /* 先估一次源位置求形变权重 t，再把目标坐标按位移反查（逐像素，无接缝） */
+                double ay = inv[1] * (px + 0.5) + inv[3] * (py + 0.5) + inv[5];
+                double f = bend_factor(ay / (double)src->h, curve);
+                double dx = bend_x * f, dy = bend_y * f;
+                fx = inv[0] * (px + 0.5 - dx) + inv[2] * (py + 0.5 - dy) + inv[4];
+                fy = inv[1] * (px + 0.5 - dx) + inv[3] * (py + 0.5 - dy) + inv[5];
+            } else {
+                fx = inv[0] * (px + 0.5) + inv[2] * (py + 0.5) + inv[4];
+                fy = inv[1] * (px + 0.5) + inv[3] * (py + 0.5) + inv[5];
+            }
             double s[4];
             uint8_t *q;
             double sa, da, oa;
             if (fx < -0.5 || fy < -0.5 || fx > src->w - 0.5 || fy > src->h - 0.5) continue;
+            if (fx < sx0 - 0.5 || fx > sx1 - 0.5 || fy < sy0 - 0.5 || fy > sy1 - 0.5) continue;
             sample_premul(src, fx - 0.5, fy - 0.5, s);
             sa = s[3] * opacity;
             if (sa <= 0.0001) continue;
@@ -502,4 +554,31 @@ int zimg_hit_test(const zimg *im, int x, int y, int threshold)
 {
     if (!im || x < 0 || y < 0 || x >= im->w || y >= im->h) return 0;
     return im->px[((size_t)y * im->w + x) * 4 + 3] > threshold;
+}
+
+void zimg_draw_bend(zimg *dst, const zimg *src, const double m[6], double opacity,
+                    double bend_x, double bend_y, int curve, int strips)
+{
+    int i;
+    if (!dst || !src) return;
+    if (fabs(bend_x) < 0.05 && fabs(bend_y) < 0.05) {
+        zimg_draw(dst, src, m, opacity);
+        return;
+    }
+    if (strips < 1) strips = 1;
+    if (strips > 64) strips = 64;
+    for (i = 0; i < strips; ++i) {
+        int y0 = (int)((long)src->h * i / strips);
+        int y1 = (int)((long)src->h * (i + 1) / strips);
+        double t, f, mb[6];
+        if (y1 <= y0) continue;
+        t = (double)(y0 + y1) * 0.5 / (double)src->h;
+        if (curve == 0)      f = t * t;                        /* 根部固定 */
+        else if (curve == 1) f = sin(t * 3.14159265358979);    /* 中间最大 */
+        else                 f = t;                            /* 线性 */
+        memcpy(mb, m, sizeof(mb));
+        mb[4] += bend_x * f;
+        mb[5] += bend_y * f;
+        zimg_draw_rect(dst, src, mb, opacity, 0, y0, src->w, y1);
+    }
 }

@@ -54,6 +54,10 @@
 #endif
 
 static zpet *g_pet = NULL;
+/* UI 与静态资源目录：界面文件放 web/，媒体（配音/素材）走 /media/，
+ * 这样改界面完全不用动 C 代码（对应“全部可自定义”的原则）。 */
+static char g_root[1024] = ".";
+static char g_frames_dir[1024] = "web";
 static zconfig g_cfg;
 static double g_start_time = 0.0;
 static volatile int g_quit = 0;
@@ -177,6 +181,56 @@ static void send_png(zsock fd, const zimg *im)
     free(data);
 }
 
+/* ------------------------------------------------------ 静态文件服务 */
+
+static const char *ctype_for(const char *path)
+{
+    const char *dot = strrchr(path, '.');
+    if (!dot) return "application/octet-stream";
+    if (z_streq(dot, ".html")) return "text/html";
+    if (z_streq(dot, ".css")) return "text/css";
+    if (z_streq(dot, ".js")) return "application/javascript";
+    if (z_streq(dot, ".json")) return "application/json";
+    if (z_streq(dot, ".png")) return "image/png";
+    if (z_streq(dot, ".jpg") || z_streq(dot, ".jpeg")) return "image/jpeg";
+    if (z_streq(dot, ".mp3")) return "audio/mpeg";
+    if (z_streq(dot, ".wav")) return "audio/wav";
+    if (z_streq(dot, ".ogg")) return "audio/ogg";
+    return "application/octet-stream";
+}
+
+/* 相对路径安全检查：拒绝 .. / 绝对路径 / 反斜杠 / 冒号（避免越界读文件） */
+static int safe_relpath(const char *rel)
+{
+    if (!rel || !rel[0]) return 0;
+    if (rel[0] == '/' || rel[0] == '\\') return 0;
+    if (strstr(rel, "..")) return 0;
+    if (strchr(rel, ':') || strchr(rel, '\\')) return 0;
+    return 1;
+}
+
+static int send_file(zsock fd, const char *path)
+{
+    zerr e;
+    size_t len = 0;
+    char *data;
+    char head[512];
+    zerr_clear(&e);
+    data = z_read_file(path, &len, &e);
+    if (!data || len == 0) {
+        free(data);
+        return -1;
+    }
+    z_snprintf(head, sizeof(head),
+               "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %zu\r\n"
+               "Cache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n",
+               ctype_for(path), len);
+    send_all(fd, head, strlen(head));
+    send_all(fd, data, len);
+    free(data);
+    return 0;
+}
+
 /* ------------------------------------------------------------ 页面 */
 static const char *PAGE =
 "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
@@ -287,8 +341,34 @@ static void handle_request(zsock fd, const http_req *r)
 {
     char buf[2048];
     if (strcmp(r->path, "/") == 0 || strcmp(r->path, "/index.html") == 0) {
-        send_text(fd, 200, "text/html", PAGE);
+        char p[1024];
+        z_path_join(p, sizeof(p), g_frames_dir, "index.html");
+        if (send_file(fd, p) == 0) return;      /* 优先用 web/ 里的界面 */
+        send_text(fd, 200, "text/html", PAGE);  /* 缺失时退回内置调试页 */
         return;
+    }
+    /* 媒体文件：/media/<仓库内相对路径>（只允许 web/ 与 characters/ 下的音频图片） */
+    if (strncmp(r->path, "/media/", 7) == 0) {
+        char rel[1024], p[1024];
+        z_strlcpy(rel, r->path + 7, sizeof(rel));
+        if (!safe_relpath(rel) ||
+            (strncmp(rel, "characters/", 11) != 0 && strncmp(rel, "web/", 4) != 0 &&
+             strncmp(rel, "voices/", 7) != 0 && strncmp(rel, "logs/", 5) != 0)) {
+            send_text(fd, 403, "text/plain", "路径不允许");
+            return;
+        }
+        z_path_join(p, sizeof(p), g_root, rel);
+        if (send_file(fd, p) != 0) send_text(fd, 404, "text/plain", "文件不存在");
+        return;
+    }
+    /* 其余非 /api/ 的 GET：当作 web/ 下的静态资源（css/js/图片/清单） */
+    if (strncmp(r->path, "/api/", 5) != 0 && r->path[0] == '/') {
+        char rel[1024], p[1024];
+        z_strlcpy(rel, r->path + 1, sizeof(rel));
+        if (safe_relpath(rel)) {
+            z_path_join(p, sizeof(p), g_frames_dir, rel);
+            if (send_file(fd, p) == 0) return;
+        }
     }
     if (strcmp(r->path, "/api/info.json") == 0) {
         char body[3072];
@@ -477,10 +557,20 @@ int main(int argc, char **argv)
 
     for (i = 1; i < argc; ++i) {
         if (z_streq(argv[i], "--root") && i + 1 < argc) root = argv[++i];
+        else if (z_streq(argv[i], "--web") && i + 1 < argc) {
+            z_strlcpy(g_frames_dir, argv[++i], sizeof(g_frames_dir));
+            continue;
+        }
         else if (z_streq(argv[i], "--port") && i + 1 < argc) port = atoi(argv[++i]);
         else if (z_streq(argv[i], "--bind") && i + 1 < argc) bind_ip = argv[++i];
     }
 
+    z_strlcpy(g_root, root, sizeof(g_root));
+    if (g_frames_dir[0] != '/') {                 /* 相对路径按 root 解析 */
+        char tmp[1024];
+        z_strlcpy(tmp, g_frames_dir, sizeof(tmp));
+        z_path_join(g_frames_dir, sizeof(g_frames_dir), root, tmp);
+    }
     zlog_set_level(ZLOG_INFO);
     {
         char log_dir[1024];

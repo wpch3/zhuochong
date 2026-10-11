@@ -53,6 +53,23 @@ zimg *zimg_place(const zimg *im, int cw, int ch, int x, int y);
 /* --------------------------------------------------------------- 合成 */
 /* 仿射矩阵（行主序）：x' = m0*x + m2*y + m4 ; y' = m1*x + m3*y + m5 */
 void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity);
+
+/* 只在源图的 (sx0,sy0)-(sx1,sy1) 矩形内绘制（用于分段形变，避免重复混合）。
+   源坐标越界会被夹到图像范围内；矩形为空则什么都不画。 */
+void zimg_draw_rect(zimg *dst, const zimg *src, const double m[6], double opacity,
+                    int sx0, int sy0, int sx1, int sy1);
+
+/* 平滑形变（推荐）：逐像素反查，源图在目标空间按 bend·f(t) 位移，无分段接缝。
+   curve 同下（0=根部固定 1=中间最大 2=线性）。 */
+void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacity,
+                    double bend_x, double bend_y, int curve);
+
+/* 分段形变（保留：需要把部件切块处理时使用；平滑形变请用 zimg_draw_warp）：
+   把源图按 y 切成 strips 条，每条按曲线 f(t) 施加 (bend_x,bend_y) 偏移。
+   curve: 0=根部固定（t²，头发/裙摆摆动）1=中间最大（sin，弯腰/呼吸）2=线性。
+   t 为 0（顶部）到 1（底部）的归一化位置。 */
+void zimg_draw_bend(zimg *dst, const zimg *src, const double m[6], double opacity,
+                    double bend_x, double bend_y, int curve, int strips);
 /* 便捷：把 src 缩放到 scale、绕锚点 anchor(0..1) 平移 pos（画布坐标）。 */
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,
                       double anchor_x, double anchor_y, double scale,

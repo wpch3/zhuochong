@@ -63,6 +63,23 @@ def build(parts, sprite, canvas, name, cw, ch):
     ]
 
     actions = [
+        # 形变演示：分段形变（bend_x/bend_y）——Live2D 式形变的等价实现，
+        # curve=root 根部固定（头发/裙摆摆动），curve=sine 中间最大（弯腰/呼吸）。
+        {"id": "breath", "priority": 1, "duration": 0, "loop": True, "return_state": "idle",
+         "channels": [
+             {"target": "body_full", "param": "bend_y", "wave": "sine", "amp": -3, "freq": 0.28,
+              "curve": "sine", "strips": 24},
+             {"target": "head", "param": "dy", "wave": "sine", "amp": 2.0, "freq": 0.3},
+         ]},
+        {"id": "sway", "priority": 2, "duration": 0, "loop": True, "return_state": "idle",
+         "channels": [
+             {"target": "body_full", "param": "bend_x", "wave": "sine", "amp": 9, "freq": 0.18,
+              "curve": "root", "strips": 28},
+             {"target": "body_full", "param": "bend_y", "wave": "sine", "amp": -5, "freq": 0.36,
+              "curve": "sine", "strips": 28},
+             {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 1.5, "freq": 0.18},
+             {"target": "head", "param": "dx", "wave": "sine", "amp": 3, "freq": 0.18},
+         ]},
         {"id": "idle", "priority": 0, "loop": True, "interruptible": True,
          "channels": [
              {"target": "head", "param": "dy", "wave": "sine", "amp": 1.6, "freq": 0.22},

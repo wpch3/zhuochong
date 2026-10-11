@@ -127,7 +127,7 @@ def phonemize_espeak(text: str, cfg: dict) -> list[str]:
 
 
 def synth(text: str, voice: str, cfg: dict, sess: ort.InferenceSession,
-          length_scale: float | None = None) -> np.ndarray:
+          length_scale: float | None = None, noise_scale: float = 0.0) -> np.ndarray:
     """合成一段音频，返回 float32 单声道波形。"""
     id_map = cfg["phoneme_id_map"]
     if cfg.get("phoneme_type") == "espeak":
@@ -143,7 +143,7 @@ def synth(text: str, voice: str, cfg: dict, sess: ort.InferenceSession,
         return np.zeros(0, dtype=np.float32)
     ids = phonemes_to_ids(ph, id_map)
     infer = cfg.get("inference", {})
-    scales = np.array([infer.get("noise_scale", 0.667),
+    scales = np.array([noise_scale if noise_scale > 0 else infer.get("noise_scale", 0.667),
                        length_scale if length_scale else infer.get("length_scale", 1.0),
                        infer.get("noise_w", 0.8)], dtype=np.float32)
     audio = sess.run(None, {
@@ -173,6 +173,22 @@ def time_stretch(x: np.ndarray, speed: float, method: str = "wsola") -> np.ndarr
     import librosa
 
     return np.asarray(librosa.effects.time_stretch(x, rate=speed), dtype=np.float32)
+
+
+def praat_feminize(x: np.ndarray, sr: int, target_f0: float,
+                   formant_ratio: float = 1.10) -> np.ndarray:
+    """Praat「Change gender」：同时调整基频中位数与共振峰比例（比 PSOLA 更接近真实音色）。
+
+    - target_f0：目标基频中位数（少女区间建议 250–290 Hz）
+    - formant_ratio：共振峰缩放（>1 表示共鸣腔更小、更“小只”）
+    需要 praat-parselmouth（pip install praat-parselmouth）。
+    """
+    import parselmouth
+    from parselmouth.praat import call
+
+    snd = parselmouth.Sound(np.asarray(x, dtype=np.float64), sampling_frequency=sr)
+    out = call(snd, "Change gender", 75, 500, formant_ratio, target_f0, 1.0, 1.0)
+    return np.asarray(out.values[0], dtype=np.float32)
 
 
 def td_psola(x: np.ndarray, sr: int, factor: float,
@@ -222,10 +238,14 @@ def pitch_shift(x: np.ndarray, factor: float, method: str = "psola",
 
     method=resample：只做降采样，音高与共振峰一起抬高，副作用是语速略快（无金属音）；
     method=stretch ：降采样后再变速拉回原长（语速不变，理论上更自然，需 WSOLA）；
-    method=psola   ：TD-PSOLA，只抬基频、共振峰与时长都不变（推荐，最接近“少女化”）。
+    method=psola   ：TD-PSOLA，只抬基频、共振峰与时长都不变；
+    method=praat   ：Praat 换性别（改基频中位数 + 共振峰比例，音色更自然，推荐）。
     """
     if abs(factor - 1.0) < 1e-3 or x.size == 0:
         return x
+    if method == "praat":
+        return praat_feminize(x, sr, target_f0=240.0 * factor,
+                              formant_ratio=1.0 + 0.35 * (factor - 1.0))
     if method == "psola":
         return td_psola(x, sr, factor)
     n_out = int(round(x.size / factor))
@@ -284,8 +304,9 @@ def main() -> int:
     ap.add_argument("--render-dialogue", action="store_true")
     ap.add_argument("--character", default="xiaoxun")
     ap.add_argument("--root", default=".")
-    ap.add_argument("--shift-method", choices=["resample", "stretch", "psola"], default="psola",
-                    help="psola=只抬基频保共振峰（推荐）；stretch=降采样+WSOLA；resample=只降采样")
+    ap.add_argument("--shift-method", choices=["praat", "psola", "stretch", "resample"], default="praat",
+                    help="praat=换性别（改基频+共振峰，推荐）；psola=只抬基频；stretch=降采样+WSOLA；resample=只降采样")
+    ap.add_argument("--noise-scale", type=float, default=0.0, help="合成噪声尺度（越小越干净，默认用音色自带值）")
     args = ap.parse_args()
 
     if not os.path.isdir(MODEL_DIR):
@@ -299,14 +320,14 @@ def main() -> int:
         items = load_lines(args.root, args.character)
         outdir = os.path.join(args.root, "characters", args.character, "voice", "lines_" + args.voice)
         for n, it in enumerate(items, 1):
-            x = synth(it["text"], args.voice, cfg, sess, args.length_scale or None)
+            x = synth(it["text"], args.voice, cfg, sess, args.length_scale or None, args.noise_scale)
             x = pitch_shift(x, args.pitch, args.shift_method, sr)
             path = os.path.join(outdir, f"{it['id']}_{it['variant']}.wav")
             size = write_wav(path, x, sr)
             print(f"[{n}/{len(items)}] {os.path.basename(path)}  {size // 1024} KB")
         return 0
 
-    x = synth(args.text, args.voice, cfg, sess, args.length_scale or None)
+    x = synth(args.text, args.voice, cfg, sess, args.length_scale or None, args.noise_scale)
     x = pitch_shift(x, args.pitch, args.shift_method, sr)
     size = write_wav(args.out, x, sr)
     print(f"{args.out}: {size // 1024} KB, {round(x.size / sr, 2)} 秒, 音色 {args.voice}, 升调 {args.pitch}")

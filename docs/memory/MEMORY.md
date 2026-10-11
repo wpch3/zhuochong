@@ -86,3 +86,14 @@
 - Windows 层：`src/win32/{main_win.c,zw32.c}` ｜ 预览层：`src/headless/main_headless.c`
 - 素材工具：`tools/{prepare_sprites.py,make_parts.py,make_rig.py}`
 - 记忆区：`docs/memory/` ｜ 规格：`docs/PROJECT_SPEC.md` ｜ 交接：`docs/HANDOVER.md`
+
+14. **Live2D 的本质（2026-10-11 已查源码）**：每个部件是**独立网格** + 独立绘序 + 遮罩 + 参数驱动的形变层级（deformer）。
+    本项目等价实现：rig.json 的部件/层级 + `zimg_draw_warp`（逐像素平滑形变）+ `bend_x/bend_y` 通道（curve=root/sine/linear）。
+    **拆件必须每个部件独立、且带自己的形变信息**；缺的只有"部件内细分网格"和"顶点级遮罩"（T12.6）。
+15. **歌声（2026-10-11）**：网上"AI 模仿动漫角色唱歌"= SVC（So-VITS-SVC / RVC）或 DiffSinger，**本地可跑（需 GPU）**；
+    合规红线：只能用自有/已授权音源；本项目先做"TTS 唱句 + 音高对齐"，SVC 产物按音色包接入。
+16. **参考项目（2026-10-11 第二轮）**：七个全部拉取（~/.cache/zc-refs：bongocat-sdl/-tauri、ds-local-pet、vpet、airi、
+    cubism-web-fw、photocraft），关键文件已查验并写入 `docs/REFERENCE_NOTES.md`（含 VPet 的 Mod 接口、airi 的语音流水线、
+    Cubism 的 drawMeshWebGL/参数 id、photocraft 的 selection/图层）。
+17. **完全自定义（2026-10-11）**：已在 `docs/PRODUCT_PLAN.md` 第七节给出**逐项矩阵**（改哪个文件、是否已实现、怎么验证）；
+    新增 i18n/多档案/通知/导入导出/自动化/远程访问 六项缺口（T16）。
