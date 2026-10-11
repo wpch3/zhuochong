@@ -38,6 +38,7 @@ TH = {
     "iou": 0.80,               # 形状重合度下限（与设计图同区域比）
     "palette_dist": 70,        # 主色到色卡的 RGB 距离上限（超过就是配色画歪了）
     "anchor_tol": 0.04,        # 对位容差（占全身高的比例，约 ±50px@1292）
+    "joint_hole": 60,          # 压力姿势下关节处允许新增的空洞像素（再多就是会穿帮）
 }
 
 
@@ -103,6 +104,7 @@ def check(character, form, root=".", strict=False, out_json=None):
         th["iou"] = 0.88
         th["key_residue"] = 60
         th["white_edge"] = 300
+        th["joint_hole"] = 20
 
     # 色卡（数据驱动：改配色只改这个文件，不改代码）
     pal_path = os.path.join(root, "characters", character, "design", "palette.json")
@@ -238,6 +240,60 @@ def check(character, form, root=".", strict=False, out_json=None):
             design = v
             add("body_full", "形状(与设计图 IoU)", v >= th["iou"],
                 f"IoU {v:.3f}（下限 {th['iou']}，参照 {os.path.basename(pick)}）")
+
+    # ------------------------------------------------ 分段身体（有才查）
+    seg_path = os.path.join(base, "sprites", "body_parts.json")
+    anchor_path = os.path.join(base, "design", "anchors.json")
+    if os.path.exists(seg_path) and os.path.exists(anchor_path):
+        with open(seg_path, encoding="utf-8") as f:
+            bp = json.load(f)
+        with open(anchor_path, encoding="utf-8") as f:
+            AP = json.load(f)["points"]
+        SW, SH = bp["image_size"]
+        ov = bp["overlap_px"]
+        miss = [sp["id"] for sp in bp["parts"]
+                if not os.path.exists(os.path.join(base, sp["file"]))]
+        add("分段", "部件齐全", not miss, f"{len(bp['parts'])} 个部件" + (f"，缺 {miss}" if miss else ""))
+
+        def compose(angles):
+            """按层序叠出整个人；angles 按组给旋转角（度，绕锚点）。"""
+            c = Image.new("RGBA", (SW, SH), (0, 0, 0, 0))
+            piv = {"head": AP["neck"], "arm_l": AP["shoulder_l"], "arm_r": AP["shoulder_r"],
+                   "chest": AP["hip"], "leg_l": AP["hip"], "leg_r": AP["hip"]}
+            for sp in sorted(bp["parts"], key=lambda q: q["layer"]):
+                im = Image.open(os.path.join(base, sp["file"])).convert("RGBA")
+                lay = Image.new("RGBA", (SW, SH), (0, 0, 0, 0))
+                lay.paste(im, tuple(sp["pos"]))
+                ang = angles.get(sp["group"], 0.0)
+                if ang:
+                    px, py = piv[sp["group"]]
+                    lay = lay.rotate(ang, resample=Image.BICUBIC, center=(float(px), float(py)))
+                c.alpha_composite(lay)
+            return np.asarray(c)[..., 3] > 24
+
+        if not miss:
+            body_m = alpha_mask(load_rgba(os.path.join(base, "sprites", "body_full.png")))
+            flat = compose({})
+            lost = int((body_m & ~flat).sum())
+            # 静止时把部件叠回去，必须和原图一模一样：少一块就是切丢了东西
+            add("分段", "无损切分", lost == 0, f"静止合成比原图少 {lost} 像素")
+
+            def holes(a, y0, y1):
+                """这一段里的"内部空洞"：透明、但上下左右都还有身体。"""
+                sl = a[max(0, y0):min(SH, y1)]
+                if sl.size == 0:
+                    return 0
+                up = np.maximum.accumulate(sl, 0); dn = np.maximum.accumulate(sl[::-1], 0)[::-1]
+                lf = np.maximum.accumulate(sl, 1); rt = np.maximum.accumulate(sl[:, ::-1], 1)[:, ::-1]
+                return int(((~sl) & up & dn & lf & rt).sum())
+
+            # 压力姿势：远超实际动作（头 ≤5°、手臂 ≤2°），关节处仍然不能露底
+            pose = compose({"head": -15.0, "arm_l": 10.0, "arm_r": -10.0})
+            for label, y in (("颈", int(AP["neck"][1])), ("肩", int(AP["shoulder"][1])),
+                             ("髋", int(AP["hip"][1]))):
+                d = holes(pose, y - ov * 2, y + ov * 2) - holes(flat, y - ov * 2, y + ov * 2)
+                add("分段", f"关节不露底({label})", d <= th["joint_hole"],
+                    f"压力姿势新增空洞 {d} 像素（上限 {th['joint_hole']}）")
 
     report = {
         "character": character, "form": form,

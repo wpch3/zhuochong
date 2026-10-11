@@ -60,19 +60,31 @@ rm -rf build && make test      # 改了头文件或引擎结构时，先清后�
 ### 3.3 素材流水线（禁止手写坐标）
 ```
 AI 生成 → prepare_sprites.py（抠图去噪） → make_anchors.py（量关节锚点）
-        → make_parts.py（拆件） → make_rig.py（生成 rig.json）
-        → check_assets.py（机器验收，不过就重做） → 入库
+        → make_parts.py（五官拆件） → make_body_parts.py（身体分段）
+        → make_rig.py（生成 rig.json） → check_assets.py（机器验收，不过就重做） → 入库
 ```
-两个把关工具（2026-10-11 新增）：
+三个把关工具（2026-10-11 新增）：
 ```bash
 # 锚点：从剪影量出 头顶/眼线/嘴线/颈/肩/肘/腕/腰/髋/膝/踝/脚底
 ~/.imgenv/bin/python tools/make_anchors.py --character xiaoxun --form teen
 #   → characters/<id>/forms/<form>/design/anchors.json
 #   → logs/asset_qa/anchors_preview.png（人眼复核用，不入库）
-# 验收：形状 IoU / 色卡距离 / 关节对位 / 落在身体内 / 键色与白边残留
+# 身体分段：按锚点把单图层身体切成 头/躯干/两臂/两腿 六件，关节留重叠带
+~/.imgenv/bin/python tools/make_body_parts.py --character xiaoxun --form teen
+#   → sprites/seg_*.png + sprites/body_parts.json
+#   → logs/asset_qa/segments_preview.png（人眼复核切线，不入库）
+# 验收：形状 IoU / 色卡距离 / 关节对位 / 无损切分 / 关节不露底 / 键色与白边残留
 ~/.imgenv/bin/python tools/check_assets.py --character xiaoxun --form teen [--strict]
 #   退出码非 0 = 不合格；自检第 4 步已接入
 ```
+分段三条铁律（都是实测踩出来的）：
+- **横切靠重叠带，竖切靠真实轮廓**。头/腿是横切，留 3% 身高的重叠带就不会露缝；
+  手臂在"离身行"（剪影出现 手臂|身体|手臂 三段）以下按真实剪影抠，以上才竖切，
+  否则会把外套前襟和裙边一起带走。
+- **重叠带里不能存"错的内容"**。躯干顶端那条带原本是下巴，一转头就露出重影下巴；
+  必须用颈线那一行向上复制成"脖子桩"（最便宜的关节补图）。
+- **腿的切线只在躯干 x 范围内判**：垂在两侧的手也是独立剪影段，不排除就会把裙子
+  从髋部劈成两半；还要求连续 8 行、每段够宽，否则 1px 的描边缝隙就能骗过去。
 - 色卡是数据：`characters/<id>/design/palette.json`（改配色只改这里，验收自动跟着变）。
 - 锚点是数据：拆件、补图、rig 枢轴、换装对位都以 `anchors.json` 为准，**不手写数字**。
 - **坐标一律脚本量取**，手写魔法数字必然对不齐（踩过）。

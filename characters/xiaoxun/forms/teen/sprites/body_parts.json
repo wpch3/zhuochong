@@ -1,0 +1,109 @@
+{
+  "schema_version": "1.0",
+  "source": "sprites/body_full.png",
+  "image_size": [
+    445,
+    1292
+  ],
+  "overlap_px": 38,
+  "cut_lines": {
+    "neck": 278,
+    "shoulder": 364,
+    "hip": 704,
+    "legs_top": 738,
+    "wrist": 708,
+    "arm_split": 640,
+    "torso_left": 89,
+    "torso_right": 354,
+    "center_x": 218
+  },
+  "patches": [
+    "颈部重叠带=颈线复制出的脖子桩（避免转头露出重影下巴）"
+  ],
+  "parts": [
+    {
+      "id": "seg_leg_l",
+      "file": "sprites/seg_leg_l.png",
+      "pos": [
+        82,
+        700
+      ],
+      "size": [
+        136,
+        592
+      ],
+      "group": "leg_l",
+      "layer": 60
+    },
+    {
+      "id": "seg_leg_r",
+      "file": "sprites/seg_leg_r.png",
+      "pos": [
+        218,
+        700
+      ],
+      "size": [
+        136,
+        592
+      ],
+      "group": "leg_r",
+      "layer": 61
+    },
+    {
+      "id": "seg_torso",
+      "file": "sprites/seg_torso.png",
+      "pos": [
+        82,
+        240
+      ],
+      "size": [
+        273,
+        537
+      ],
+      "group": "chest",
+      "layer": 100
+    },
+    {
+      "id": "seg_arm_l",
+      "file": "sprites/seg_arm_l.png",
+      "pos": [
+        0,
+        326
+      ],
+      "size": [
+        128,
+        409
+      ],
+      "group": "arm_l",
+      "layer": 140
+    },
+    {
+      "id": "seg_arm_r",
+      "file": "sprites/seg_arm_r.png",
+      "pos": [
+        316,
+        326
+      ],
+      "size": [
+        129,
+        409
+      ],
+      "group": "arm_r",
+      "layer": 141
+    },
+    {
+      "id": "seg_head",
+      "file": "sprites/seg_head.png",
+      "pos": [
+        99,
+        0
+      ],
+      "size": [
+        248,
+        317
+      ],
+      "group": "head",
+      "layer": 180
+    }
+  ]
+}

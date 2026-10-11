@@ -41,6 +41,7 @@ typedef struct {
     int    parent;            /* 组索引，-1 无 */
     char   follow_id[64];     /* bend_follow：跟随哪个部件的形变（解析期暂存 id） */
     int    follow_part;       /* 解析后的部件索引，-1 表示不跟随 */
+    double follow_at;         /* bend_follow_at：按这个画布高度取样（0=按部件自身高度） */
 } zgroup;
 
 typedef struct {
@@ -249,11 +250,17 @@ static int load_groups(zrig *r, const zjson *jgroups, zdiag *d, const char *file
         g->parent = -1;
         g->follow_part = -1;
         g->follow_id[0] = 0;
+        g->follow_at = 0.0;
         {
             /* bend_follow：本组里的部件要跟着某个父部件一起弯（例：五官跟着身体摆）。
                部件此时还没加载，先记 id，load_parts 之后再解析。 */
             const char *bf = zjson_str(zjson_obj_get(gj, "bend_follow"), NULL);
             if (bf && *bf) z_strlcpy(g->follow_id, bf, sizeof(g->follow_id));
+            /* bend_follow_at：关节点高度。头接在脖子上、手臂接在肩上——
+               这类"整块挂在关节上"的部件要在关节处取样；
+               不写就按部件自己的高度取样（适合贴在父部件上的五官）。 */
+            if (zjson_get(gj, "bend_follow_at"))
+                g->follow_at = zjson_num(zjson_obj_get(gj, "bend_follow_at"), 0.0);
         }
         z_snprintf(path, sizeof(path), "groups.%s.pivot", gid);
         read_pair(zjson_obj_get(gj, "pivot"), r->origin[0], r->origin[1], g->pivot);
@@ -822,7 +829,9 @@ static void part_follow_offset(const zrig *r, int pi, double *out_dx, double *ou
         int fp = r->groups[gi].follow_part;
         if (fp < 0) continue;
         if (fp == pi) return;                 /* 自己就是形变源，不跟随自己 */
-        bend_follow_abs(r, fp, p->pos[1], out_dx, out_dy);
+        bend_follow_abs(r, fp,
+                        r->groups[gi].follow_at > 0.0 ? r->groups[gi].follow_at : p->pos[1],
+                        out_dx, out_dy);
         return;                               /* 只认最近的一层，避免重复叠加 */
     }
 }
@@ -880,6 +889,28 @@ double zrig_part_pos_y(const zrig *r, const char *part_id)
     if (!r || !part_id) return 0.0;
     pi = find_part(r, part_id);
     return pi < 0 ? 0.0 : r->parts[pi].pos[1];
+}
+
+double zrig_part_follow_y(const zrig *r, const char *part_id)
+{
+    int pi, gi;
+    if (!r || !part_id) return 0.0;
+    pi = find_part(r, part_id);
+    if (pi < 0) return 0.0;
+    gi = r->parts[pi].group;
+    if (gi >= 0 && r->groups[gi].follow_at > 0.0) return r->groups[gi].follow_at;
+    return r->parts[pi].pos[1];
+}
+
+const char *zrig_part_follow_src(const zrig *r, const char *part_id)
+{
+    int pi, gi;
+    if (!r || !part_id) return NULL;
+    pi = find_part(r, part_id);
+    if (pi < 0) return NULL;
+    gi = r->parts[pi].group;
+    if (gi < 0 || r->groups[gi].follow_part < 0) return NULL;
+    return r->parts[r->groups[gi].follow_part].id;
 }
 
 double zrig_group_offset_x(const zrig *r, const char *group_id) { return group_offset(r, group_id, 0); }

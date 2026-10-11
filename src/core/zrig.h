@@ -83,6 +83,11 @@ double zrig_bend_at(const zrig *r, const char *part_id, double canvas_y);
 /* 部件这一帧的实际横向位移（通道 + 组 + 跟随形变）与它的画布纵坐标。 */
 double zrig_part_offset_x(const zrig *r, const char *part_id);
 double zrig_part_pos_y(const zrig *r, const char *part_id);
+/* 这个部件的"跟随取样高度"：组写了 bend_follow_at 就是那个关节点高度，
+   否则是部件自己的纵坐标。验证跟随对不对时要用它，不能想当然用部件高度。 */
+double zrig_part_follow_y(const zrig *r, const char *part_id);
+/* 这个部件跟随的是哪个部件（组的 bend_follow）；不跟随返回 NULL。 */
+const char *zrig_part_follow_src(const zrig *r, const char *part_id);
 
 /* 调试/测试：强制闭眼或恢复自动 */
 void  zrig_blink_force(zrig *r, int force_closed);

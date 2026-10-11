@@ -576,23 +576,33 @@ static void test_rig_channels(void)
            身体 bend 时 head 组里的五官必须自动跟着走，否则眼睛会从脸上滑走。 */
         {
             int i, fw = 0, fh = 0;
-            double peak_body = 0.0, worst = 0.0;
+            double peak_body = 0.0, worst = 0.0, worst_rigid = 0.0;
+            /* 跟随源与取样高度都从 rig 里读：单图层骨架（眼睛贴在整张身体上，
+               按自己高度取样）和分段骨架（头整块挂在脖子上，按关节点取样）
+               用同一套断言，换素材不用改测试。 */
+            const char *src = zrig_part_follow_src(r, "eye_open_left");
+            CHECK(src != NULL, "眼睛所在的组必须声明 bend_follow");
             zrig_action_request(r, "sway", "t", 1);
-            for (i = 0; i < 300; ++i) {          /* 扫 5 秒，覆盖 sway 的一个周期 */
-                double follow, body, gap;
+            for (i = 0; i < 300 && src; ++i) {   /* 扫 5 秒，覆盖 sway 的一个周期 */
+                double follow, body, gap, rigid;
                 zrig_tick(r, 200.0 + i / 60.0);
                 zrig_frame(r, 1.0, &fw, &fh);
                 follow = zrig_part_offset_x(r, "eye_open_left");   /* 眼睛实际被推了多远 */
-                body   = zrig_bend_at(r, "body_full",
-                                      zrig_part_pos_y(r, "eye_open_left")); /* 身体在眼睛那一行推了多远 */
+                body   = zrig_bend_at(r, src,
+                                      zrig_part_follow_y(r, "eye_open_left"));
                 gap = fabs(follow - body);
+                /* 同一个头上的部件必须刚性同步，差一点点都会看成"五官在脸上滑" */
+                rigid = fabs(follow - zrig_part_offset_x(r, "mouth_open"));
                 if (fabs(body) > fabs(peak_body)) peak_body = body;
                 if (gap > worst) worst = gap;
+                if (rigid > worst_rigid) worst_rigid = rigid;
             }
             CHECK(fabs(peak_body) > 2.0,
-                  "sway 时身体在眼睛高度确实要弯（实际 %.2f px）", peak_body);
+                  "sway 时身体在取样高度确实要弯（实际 %.2f px）", peak_body);
             CHECK(worst < 0.01,
-                  "五官要按自己所在高度跟住身体形变，最大偏差 %.3f px", worst);
+                  "五官要按跟随取样高度跟住身体形变，最大偏差 %.3f px", worst);
+            CHECK(worst_rigid < 0.01,
+                  "同一组的五官必须刚性同步，最大偏差 %.3f px", worst_rigid);
         }
         zrig_free(r);
     }

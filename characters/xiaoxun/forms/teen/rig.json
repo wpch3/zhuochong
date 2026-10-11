@@ -21,19 +21,51 @@
     },
     "chest": {
       "pivot": [
-        424,
-        533
+        419,
+        772
       ],
-      "parent": "root",
-      "bend_follow": "body_full"
+      "parent": "root"
     },
     "head": {
       "pivot": [
-        424,
-        403
+        417,
+        346
       ],
       "parent": "chest",
-      "bend_follow": "body_full"
+      "bend_follow": "seg_torso",
+      "bend_follow_at": 346
+    },
+    "arm_l": {
+      "pivot": [
+        298,
+        432
+      ],
+      "parent": "chest",
+      "bend_follow": "seg_torso",
+      "bend_follow_at": 432
+    },
+    "arm_r": {
+      "pivot": [
+        547,
+        432
+      ],
+      "parent": "chest",
+      "bend_follow": "seg_torso",
+      "bend_follow_at": 432
+    },
+    "leg_l": {
+      "pivot": [
+        384,
+        772
+      ],
+      "parent": "root"
+    },
+    "leg_r": {
+      "pivot": [
+        454,
+        772
+      ],
+      "parent": "root"
     }
   },
   "gaze": {
@@ -54,13 +86,49 @@
   },
   "parts": [
     {
-      "id": "body_full",
-      "file": "sprites/body_full.png",
-      "group": "root",
+      "id": "seg_leg_l",
+      "file": "sprites/seg_leg_l.png",
+      "group": "leg_l",
+      "layer": 60,
+      "pos": [
+        283,
+        768
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "leg"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "seg_leg_r",
+      "file": "sprites/seg_leg_r.png",
+      "group": "leg_r",
+      "layer": 61,
+      "pos": [
+        419,
+        768
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "leg"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "seg_torso",
+      "file": "sprites/seg_torso.png",
+      "group": "chest",
       "layer": 100,
       "pos": [
-        201,
-        68
+        283,
+        308
       ],
       "anchor": [
         0,
@@ -69,7 +137,61 @@
       "tags": [
         "body"
       ],
-      "note": "全身（待 AI 拆件：手臂/上下半身/关节补图）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "seg_arm_l",
+      "file": "sprites/seg_arm_l.png",
+      "group": "arm_l",
+      "layer": 140,
+      "pos": [
+        201,
+        394
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "seg_arm_r",
+      "file": "sprites/seg_arm_r.png",
+      "group": "arm_r",
+      "layer": 141,
+      "pos": [
+        517,
+        394
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "seg_head",
+      "file": "sprites/seg_head.png",
+      "group": "head",
+      "layer": 180,
+      "pos": [
+        300,
+        68
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "head_base"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
     },
     {
       "id": "mouth_open",
@@ -208,12 +330,44 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "body_full",
+          "target": "seg_torso",
           "param": "bend_y",
           "wave": "sine",
           "amp": -3.2,
           "freq": 0.28,
           "curve": "sine"
+        },
+        {
+          "target": "arm_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.0,
+          "freq": 0.28,
+          "phase": 0.15
+        },
+        {
+          "target": "arm_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.0,
+          "freq": 0.28,
+          "phase": 0.15
+        },
+        {
+          "target": "arm_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 0.4,
+          "freq": 0.28,
+          "phase": 0.15
+        },
+        {
+          "target": "arm_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -0.4,
+          "freq": 0.28,
+          "phase": 0.15
         }
       ]
     },
@@ -225,7 +379,7 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "body_full",
+          "target": "seg_torso",
           "param": "bend_x",
           "wave": "sine",
           "amp": 10,
@@ -233,12 +387,51 @@
           "curve": "root"
         },
         {
-          "target": "body_full",
+          "target": "seg_torso",
           "param": "bend_y",
           "wave": "sine",
           "amp": -4,
           "freq": 0.36,
           "curve": "sine"
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.18
+        },
+        {
+          "target": "arm_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.6,
+          "freq": 0.18,
+          "phase": 0.22
+        },
+        {
+          "target": "arm_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -1.6,
+          "freq": 0.18,
+          "phase": 0.22
+        },
+        {
+          "target": "arm_l",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.8,
+          "freq": 0.18,
+          "phase": 0.25
+        },
+        {
+          "target": "arm_r",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.8,
+          "freq": 0.18,
+          "phase": 0.25
         }
       ]
     },
@@ -249,7 +442,7 @@
       "interruptible": true,
       "channels": [
         {
-          "target": "body_full",
+          "target": "seg_torso",
           "param": "bend_y",
           "wave": "sine",
           "amp": -2.0,
@@ -257,12 +450,20 @@
           "curve": "sine"
         },
         {
-          "target": "body_full",
+          "target": "seg_torso",
           "param": "bend_x",
           "wave": "sine",
           "amp": 2.6,
           "freq": 0.06,
           "curve": "root"
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 0.7,
+          "freq": 0.13,
+          "phase": 0.3
         },
         {
           "target": "eye_open_left",
@@ -291,6 +492,38 @@
           "wave": "sine",
           "amp": 0.5,
           "freq": 0.2
+        },
+        {
+          "target": "arm_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.06,
+          "phase": 0.12
+        },
+        {
+          "target": "arm_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -0.5,
+          "freq": 0.06,
+          "phase": 0.12
+        },
+        {
+          "target": "arm_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.6,
+          "freq": 0.24,
+          "phase": 0.18
+        },
+        {
+          "target": "arm_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.6,
+          "freq": 0.24,
+          "phase": 0.18
         }
       ]
     },
@@ -378,6 +611,29 @@
           "amp": -12.0,
           "dur": 0.5,
           "ease": "out_back"
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "bounce",
+          "amp": 5.0,
+          "dur": 0.5
+        },
+        {
+          "target": "arm_l",
+          "param": "rot_deg",
+          "wave": "bounce",
+          "amp": 3.0,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "arm_r",
+          "param": "rot_deg",
+          "wave": "bounce",
+          "amp": -3.0,
+          "freq": 0.0,
+          "dur": 0.5
         }
       ],
       "part_overrides": {
@@ -412,6 +668,13 @@
           "amp": 6.0,
           "dur": 0.5,
           "ease": "out"
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.0,
+          "freq": 0.12
         }
       ],
       "part_overrides": {
@@ -497,6 +760,30 @@
           "amp": 8.0,
           "freq": 4.0,
           "dur": 0.7
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": 7.0,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "arm_l",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": 2.5,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "arm_r",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": -2.5,
+          "freq": 2.6,
+          "dur": 0.7
         }
       ],
       "part_overrides": {
@@ -558,6 +845,14 @@
           "wave": "bounce",
           "amp": -6.0,
           "dur": 0.28
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": 3.5,
+          "freq": 3.0,
+          "dur": 0.4
         }
       ]
     },
@@ -629,6 +924,14 @@
       "channels": [
         {
           "target": "head",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": -5.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "head",
           "param": "dx",
           "wave": "sine",
           "amp": 1.2,
@@ -665,6 +968,13 @@
           "freq": 0.11
         },
         {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 0.07
+        },
+        {
           "target": "root",
           "param": "dy",
           "wave": "pulse",
@@ -688,6 +998,5 @@
         }
       }
     }
-  ],
-  "notes": "头部未拆件：已省略 head 组的 rot_deg 通道，拆出 head_base.png 后重跑 make_rig.py 自动恢复。"
+  ]
 }
