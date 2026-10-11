@@ -1,0 +1,427 @@
+{
+  "schema_version": "1.0",
+  "character": "xiaoxun",
+  "provider": "edge-tts",
+  "engine_note": "微软神经网络 TTS（edge-tts）；音色为供应商正规音色，不使用真人克隆",
+  "style": {
+    "rate": "+0%",
+    "pitch": "+0Hz",
+    "volume": "+0%"
+  },
+  "form_voices": {
+    "teen": "zh-CN-XiaoyiNeural",
+    "loli": "zh-CN-XiaoshuangNeural",
+    "chibi": "zh-CN-XiaoshuangNeural",
+    "adult": "zh-CN-XiaoxiaoNeural"
+  },
+  "lines": [
+    {
+      "id": "hammer_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "哇！别敲啦，会痛的！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/hammer_1_base0.mp3",
+      "bytes": 19440
+    },
+    {
+      "id": "hammer_1",
+      "variant": "base1",
+      "tier": 0,
+      "text": "咚——！好痛呀，你是想把我敲成扁扁的吗？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/hammer_1_base1.mp3",
+      "bytes": 27360
+    },
+    {
+      "id": "hammer_1",
+      "variant": "tier1_0",
+      "tier": 1,
+      "text": "又敲我？我记住你了哦！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/hammer_1_tier1_0.mp3",
+      "bytes": 19008
+    },
+    {
+      "id": "hammer_1",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "你敲我，我也会有点委屈…不过你是故意的吧？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/hammer_1_tier2_0.mp3",
+      "bytes": 28224
+    },
+    {
+      "id": "hammer_2",
+      "variant": "base0",
+      "tier": 0,
+      "text": "再这样我要生气了哦！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/hammer_2_base0.mp3",
+      "bytes": 15408
+    },
+    {
+      "id": "pat_combo",
+      "variant": "base0",
+      "tier": 0,
+      "text": "摸这么多次…我、我会害羞的啦！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/pat_combo_base0.mp3",
+      "bytes": 21888
+    },
+    {
+      "id": "pat_combo",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "再这样摸下去，我的脸要烧起来了…",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/pat_combo_tier2_0.mp3",
+      "bytes": 21888
+    },
+    {
+      "id": "pat_head_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "嘿嘿，好舒服～",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/pat_head_1_base0.mp3",
+      "bytes": 13392
+    },
+    {
+      "id": "pat_head_1",
+      "variant": "base1",
+      "tier": 0,
+      "text": "头发会被你摸乱啦。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/pat_head_1_base1.mp3",
+      "bytes": 15840
+    },
+    {
+      "id": "pat_head_1",
+      "variant": "tier1_0",
+      "tier": 1,
+      "text": "嗯…你摸得还挺轻的嘛。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/pat_head_1_tier1_0.mp3",
+      "bytes": 16416
+    },
+    {
+      "id": "pat_head_1",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "每次被你摸，我都会乖乖不动哦。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/pat_head_1_tier2_0.mp3",
+      "bytes": 21600
+    },
+    {
+      "id": "pat_head_1",
+      "variant": "tier3_0",
+      "tier": 3,
+      "text": "有你在身边，摸头都变得好安心呀。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/pat_head_1_tier3_0.mp3",
+      "bytes": 23472
+    },
+    {
+      "id": "pat_head_2",
+      "variant": "base0",
+      "tier": 0,
+      "text": "再摸一下下就好～",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/pat_head_2_base0.mp3",
+      "bytes": 12816
+    },
+    {
+      "id": "stroke_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "呀，别碰那里啦！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/stroke_1_base0.mp3",
+      "bytes": 14400
+    },
+    {
+      "id": "stroke_1",
+      "variant": "base1",
+      "tier": 0,
+      "text": "痒、痒痒的…",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/stroke_1_base1.mp3",
+      "bytes": 12528
+    },
+    {
+      "id": "stroke_2",
+      "variant": "base0",
+      "tier": 0,
+      "text": "你还要继续吗？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/stroke_2_base0.mp3",
+      "bytes": 11376
+    },
+    {
+      "id": "feet_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "脚脚是很敏感的！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/feet_1_base0.mp3",
+      "bytes": 13968
+    },
+    {
+      "id": "click_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "我在这里哦～",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/click_1_base0.mp3",
+      "bytes": 11232
+    },
+    {
+      "id": "click_1",
+      "variant": "base1",
+      "tier": 0,
+      "text": "怎么啦？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/click_1_base1.mp3",
+      "bytes": 11232
+    },
+    {
+      "id": "click_1",
+      "variant": "tier1_0",
+      "tier": 1,
+      "text": "又找我呀？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/click_1_tier1_0.mp3",
+      "bytes": 11232
+    },
+    {
+      "id": "click_1",
+      "variant": "tier3_0",
+      "tier": 3,
+      "text": "你每次叫我，我都超开心的！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/click_1_tier3_0.mp3",
+      "bytes": 19728
+    },
+    {
+      "id": "click_2",
+      "variant": "base0",
+      "tier": 0,
+      "text": "找我有事吗？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/click_2_base0.mp3",
+      "bytes": 11232
+    },
+    {
+      "id": "drag_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "啊啊啊，带我去哪里呀？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/drag_1_base0.mp3",
+      "bytes": 15840
+    },
+    {
+      "id": "drop_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "呼…落地成功！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/drop_1_base0.mp3",
+      "bytes": 13968
+    },
+    {
+      "id": "wake_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "唔…我没有睡着哦。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/wake_1_base0.mp3",
+      "bytes": 14400
+    },
+    {
+      "id": "mood_joy_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "今天好开心呀！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/mood_joy_1_base0.mp3",
+      "bytes": 13104
+    },
+    {
+      "id": "mood_joy_1",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "和你在一起，每天都好开心。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/mood_joy_1_tier2_0.mp3",
+      "bytes": 20592
+    },
+    {
+      "id": "mood_sad_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "有点难过…",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/mood_sad_1_base0.mp3",
+      "bytes": 11232
+    },
+    {
+      "id": "mood_surprise_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "诶？真的吗！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/mood_surprise_1_base0.mp3",
+      "bytes": 14544
+    },
+    {
+      "id": "mood_think_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "让我想想…",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/mood_think_1_base0.mp3",
+      "bytes": 11232
+    },
+    {
+      "id": "mood_sleepy_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "好困…晚安。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/mood_sleepy_1_base0.mp3",
+      "bytes": 13824
+    },
+    {
+      "id": "call_start_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "电话接通啦，我在听哦。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/call_start_1_base0.mp3",
+      "bytes": 16992
+    },
+    {
+      "id": "call_start_1",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "终于等到你的电话啦，我一直在等你呢。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/call_start_1_tier2_0.mp3",
+      "bytes": 23472
+    },
+    {
+      "id": "call_end_1",
+      "variant": "base0",
+      "tier": 0,
+      "text": "下次再聊呀。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/call_end_1_base0.mp3",
+      "bytes": 11520
+    },
+    {
+      "id": "tier_up",
+      "variant": "base0",
+      "tier": 0,
+      "text": "我们更熟了一点呢。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/tier_up_base0.mp3",
+      "bytes": 13536
+    },
+    {
+      "id": "tier_up",
+      "variant": "tier1_0",
+      "tier": 1,
+      "text": "我们熟起来啦，以后多找我玩吧！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/tier_up_tier1_0.mp3",
+      "bytes": 20448
+    },
+    {
+      "id": "tier_up",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "好像离你越来越近了呢，我会一直在。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/tier_up_tier2_0.mp3",
+      "bytes": 22896
+    },
+    {
+      "id": "tier_up",
+      "variant": "tier3_0",
+      "tier": 3,
+      "text": "我们是最好的朋友啦，说好了哦！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/tier_up_tier3_0.mp3",
+      "bytes": 19584
+    }
+  ],
+  "samples": [
+    {
+      "index": 1,
+      "label": "晓伊-标准",
+      "voice": "zh-CN-XiaoyiNeural",
+      "pitch": "+0Hz",
+      "rate": "+0%",
+      "file": "characters/xiaoxun/voice/samples/01_Xiaoyi_up0Hz_up0pct.mp3",
+      "text": "你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。",
+      "bytes": 44352
+    },
+    {
+      "index": 2,
+      "label": "晓伊-升15Hz",
+      "voice": "zh-CN-XiaoyiNeural",
+      "pitch": "+15Hz",
+      "rate": "+0%",
+      "file": "characters/xiaoxun/voice/samples/02_Xiaoyi_up15Hz_up0pct.mp3",
+      "text": "你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。",
+      "bytes": 44352
+    },
+    {
+      "index": 3,
+      "label": "晓伊-升30Hz",
+      "voice": "zh-CN-XiaoyiNeural",
+      "pitch": "+30Hz",
+      "rate": "+0%",
+      "file": "characters/xiaoxun/voice/samples/03_Xiaoyi_up30Hz_up0pct.mp3",
+      "text": "你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。",
+      "bytes": 44352
+    },
+    {
+      "index": 4,
+      "label": "晓伊-升45Hz",
+      "voice": "zh-CN-XiaoyiNeural",
+      "pitch": "+45Hz",
+      "rate": "+0%",
+      "file": "characters/xiaoxun/voice/samples/04_Xiaoyi_up45Hz_up0pct.mp3",
+      "text": "你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。",
+      "bytes": 44352
+    },
+    {
+      "index": 5,
+      "label": "晓伊-升30Hz-慢5%",
+      "voice": "zh-CN-XiaoyiNeural",
+      "pitch": "+30Hz",
+      "rate": "-5%",
+      "file": "characters/xiaoxun/voice/samples/05_Xiaoyi_up30Hz_down5pct.mp3",
+      "text": "你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。",
+      "bytes": 46800
+    }
+  ],
+  "failed": [
+    {
+      "kind": "sample",
+      "label": "晓萌-标准",
+      "voice": "zh-CN-XiaomengNeural",
+      "error": "合成失败（zh-CN-XiaomengNeural / 你好呀，我是小寻。今天也一起加油…）：NoAudioReceived: No audio was received. Please verify that your parameters are correct."
+    },
+    {
+      "kind": "sample",
+      "label": "晓双-童声",
+      "voice": "zh-CN-XiaoshuangNeural",
+      "error": "合成失败（zh-CN-XiaoshuangNeural / 你好呀，我是小寻。今天也一起加油…）：NoAudioReceived: No audio was received. Please verify that your parameters are correct."
+    }
+  ]
+}
