@@ -1,0 +1,9 @@
+{
+  // 角色 → 音色映射（按供应商分组）。音色绑定角色，形态切换不换音色，形态可单独覆盖。
+  "schema_version": "1.0",
+  "voices": [
+    { "id": "xiaoxun_default", "character": "xiaoxun", "form": "",
+      "provider": "", "voice": "", "style": "温柔、语速偏慢",
+      "note": "供应商接入后填写 voice 字段；留空则在语音功能启用时提示选择" }
+  ]
+}

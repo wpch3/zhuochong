@@ -1,0 +1,692 @@
+{
+  "schema_version": "1.0",
+  "id": "小寻_teen",
+  "name": "小寻",
+  "canvas": {
+    "w": 848,
+    "h": 1360
+  },
+  "origin": [
+    424,
+    1360
+  ],
+  "ground_line": 1352,
+  "groups": {
+    "root": {
+      "pivot": [
+        424,
+        1360
+      ],
+      "parent": ""
+    },
+    "chest": {
+      "pivot": [
+        424,
+        533
+      ],
+      "parent": "root"
+    },
+    "head": {
+      "pivot": [
+        424,
+        403
+      ],
+      "parent": "chest"
+    }
+  },
+  "gaze": {
+    "max_offset": [
+      3.0,
+      2.0
+    ]
+  },
+  "blink": {
+    "enabled": true,
+    "closing_s": 0.1,
+    "closed_s": 0.05,
+    "opening_s": 0.15,
+    "interval_min_s": 2.0,
+    "interval_max_s": 8.0,
+    "interval_exponential": false,
+    "note": "参数与 Live2D CubismEyeBlink 的五态机一致：等待 → 闭合 → 保持 → 睁开"
+  },
+  "parts": [
+    {
+      "id": "body_full",
+      "file": "sprites/body_full.png",
+      "group": "root",
+      "layer": 100,
+      "pos": [
+        201,
+        68
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "全身（待 AI 拆件：手臂/上下半身/关节补图）"
+    },
+    {
+      "id": "mouth_open",
+      "file": "sprites/mouth_open.png",
+      "group": "head",
+      "layer": 210,
+      "pos": [
+        413,
+        320
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "mouth"
+      ],
+      "note": "口型 A：说话时按通道闪烁"
+    },
+    {
+      "id": "eye_open_left",
+      "file": "sprites/eye_open_left.png",
+      "group": "head",
+      "layer": 220,
+      "pos": [
+        299,
+        246
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open",
+        "gaze"
+      ],
+      "note": ""
+    },
+    {
+      "id": "eye_open_right",
+      "file": "sprites/eye_open_right.png",
+      "group": "head",
+      "layer": 221,
+      "pos": [
+        429,
+        246
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open",
+        "gaze"
+      ],
+      "note": ""
+    },
+    {
+      "id": "eye_closed_left",
+      "file": "sprites/eye_closed_left.png",
+      "group": "head",
+      "layer": 230,
+      "pos": [
+        300,
+        276
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_closed"
+      ],
+      "note": "闭眼：眨眼时与睁眼交叉淡化"
+    },
+    {
+      "id": "eye_closed_right",
+      "file": "sprites/eye_closed_right.png",
+      "group": "head",
+      "layer": 231,
+      "pos": [
+        429,
+        276
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_closed"
+      ],
+      "note": ""
+    }
+  ],
+  "regions": [
+    {
+      "id": "head",
+      "rect": [
+        245,
+        0,
+        356,
+        310
+      ],
+      "action": "head_pat",
+      "cursor": "hand"
+    },
+    {
+      "id": "body",
+      "rect": [
+        254,
+        310,
+        338,
+        775
+      ],
+      "action": "stroke",
+      "cursor": "hand"
+    },
+    {
+      "id": "feet",
+      "rect": [
+        254,
+        1085,
+        338,
+        207
+      ],
+      "action": "surprised",
+      "cursor": "hand"
+    }
+  ],
+  "actions": [
+    {
+      "id": "idle",
+      "priority": 0,
+      "loop": true,
+      "interruptible": true,
+      "channels": [
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.6,
+          "freq": 0.22
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 0.7,
+          "freq": 0.13,
+          "phase": 0.3
+        },
+        {
+          "target": "eye_open_left",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_open_right",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_closed_left",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_closed_right",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        }
+      ]
+    },
+    {
+      "id": "focus",
+      "priority": 2,
+      "loop": true,
+      "interruptible": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.3
+        },
+        {
+          "target": "head",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 0.17
+        }
+      ]
+    },
+    {
+      "id": "head_pat",
+      "priority": 6,
+      "duration": 1.0,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "pulse",
+          "amp": -7.0,
+          "dur": 0.35,
+          "ease": "out_back"
+        },
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 3.5,
+          "dur": 1.0
+        }
+      ],
+      "part_overrides": {
+        "eye_open_left": {
+          "opacity": 0.0
+        },
+        "eye_open_right": {
+          "opacity": 0.0
+        },
+        "eye_closed_left": {
+          "opacity": 1.0
+        },
+        "eye_closed_right": {
+          "opacity": 1.0
+        }
+      }
+    },
+    {
+      "id": "happy",
+      "priority": 7,
+      "duration": 1.6,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "root",
+          "param": "dy",
+          "wave": "bounce",
+          "amp": -22.0,
+          "dur": 0.45,
+          "ease": "out_back"
+        },
+        {
+          "target": "root",
+          "param": "dy",
+          "wave": "bounce",
+          "amp": -12.0,
+          "dur": 0.5,
+          "ease": "out_back"
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "bounce",
+          "amp": 5.0,
+          "dur": 0.5
+        }
+      ],
+      "part_overrides": {
+        "eye_open_left": {
+          "opacity": 0.0
+        },
+        "eye_open_right": {
+          "opacity": 0.0
+        },
+        "eye_closed_left": {
+          "opacity": 1.0
+        },
+        "eye_closed_right": {
+          "opacity": 1.0
+        },
+        "mouth_open": {
+          "opacity": 0.85
+        }
+      }
+    },
+    {
+      "id": "sad",
+      "priority": 3,
+      "loop": true,
+      "interruptible": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "pulse",
+          "amp": 6.0,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.0,
+          "freq": 0.12
+        }
+      ],
+      "part_overrides": {
+        "eye_open_left": {
+          "opacity": 0.7
+        },
+        "eye_open_right": {
+          "opacity": 0.7
+        }
+      }
+    },
+    {
+      "id": "surprised",
+      "priority": 6,
+      "duration": 0.9,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "bounce",
+          "amp": -10.0,
+          "dur": 0.35,
+          "ease": "out_back"
+        },
+        {
+          "target": "eye_open_left",
+          "param": "sx",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_open_right",
+          "param": "sx",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_open_left",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_open_right",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.2
+        },
+        {
+          "target": "mouth_open",
+          "param": "alpha",
+          "wave": "pulse",
+          "amp": -0.55,
+          "dur": 0.25
+        }
+      ]
+    },
+    {
+      "id": "hammered",
+      "priority": 9,
+      "duration": 0.85,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "root",
+          "param": "dx",
+          "wave": "decay",
+          "amp": 14.0,
+          "freq": 3.2,
+          "dur": 0.7
+        },
+        {
+          "target": "root",
+          "param": "dy",
+          "wave": "decay",
+          "amp": 8.0,
+          "freq": 4.0,
+          "dur": 0.7
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": 7.0,
+          "freq": 2.6,
+          "dur": 0.7
+        }
+      ],
+      "part_overrides": {
+        "mouth_open": {
+          "opacity": 0.7
+        }
+      }
+    },
+    {
+      "id": "stroke",
+      "priority": 5,
+      "loop": true,
+      "interruptible": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "root",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.6,
+          "freq": 0.45
+        },
+        {
+          "target": "head",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 3.0,
+          "freq": 0.45
+        }
+      ],
+      "part_overrides": {
+        "eye_open_left": {
+          "opacity": 0.25
+        },
+        "eye_open_right": {
+          "opacity": 0.25
+        },
+        "eye_closed_left": {
+          "opacity": 0.75
+        },
+        "eye_closed_right": {
+          "opacity": 0.75
+        },
+        "mouth_open": {
+          "opacity": 0.35
+        }
+      }
+    },
+    {
+      "id": "clicked",
+      "priority": 4,
+      "duration": 0.55,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "root",
+          "param": "dy",
+          "wave": "bounce",
+          "amp": -6.0,
+          "dur": 0.28
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": 3.5,
+          "freq": 3.0,
+          "dur": 0.4
+        }
+      ]
+    },
+    {
+      "id": "dragged",
+      "priority": 5,
+      "loop": true,
+      "interruptible": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "root",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 3.0,
+          "freq": 0.4
+        },
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 2.5,
+          "freq": 0.8
+        }
+      ],
+      "part_overrides": {
+        "mouth_open": {
+          "opacity": 0.6
+        }
+      }
+    },
+    {
+      "id": "talk",
+      "priority": 4,
+      "loop": true,
+      "interruptible": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "mouth_open",
+          "param": "alpha",
+          "wave": "pulse",
+          "amp": -0.5,
+          "dur": 0.12,
+          "ease": "out"
+        },
+        {
+          "target": "mouth_open",
+          "param": "sy",
+          "wave": "sine",
+          "amp": 0.12,
+          "freq": 3.0
+        },
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.5
+        }
+      ]
+    },
+    {
+      "id": "think",
+      "priority": 3,
+      "loop": true,
+      "interruptible": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": -5.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "head",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_open_left",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
+          "target": "eye_open_right",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        }
+      ]
+    },
+    {
+      "id": "sleep",
+      "priority": 8,
+      "loop": true,
+      "interruptible": false,
+      "dim": 0.35,
+      "channels": [
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 3.0,
+          "freq": 0.11
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 0.07
+        },
+        {
+          "target": "root",
+          "param": "dy",
+          "wave": "pulse",
+          "amp": 4.0,
+          "dur": 1.2,
+          "ease": "out"
+        }
+      ],
+      "part_overrides": {
+        "eye_open_left": {
+          "opacity": 0.0
+        },
+        "eye_open_right": {
+          "opacity": 0.0
+        },
+        "eye_closed_left": {
+          "opacity": 1.0
+        },
+        "eye_closed_right": {
+          "opacity": 1.0
+        }
+      }
+    }
+  ]
+}

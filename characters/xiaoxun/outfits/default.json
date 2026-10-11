@@ -1,0 +1,17 @@
+{
+  // 默认校服（与设计图一致的“常服”）。这里显式列出全部部件，
+  // 便于以后新增服装时对照复制。
+  "schema_version": "1.0",
+  "id": "default",
+  "name": "常服（棒球外套）",
+  "forms": ["teen"],
+  "parts": {
+    "body_full": { "file": "sprites/body_full.png" },
+    "eye_open_left": { "file": "sprites/eye_open_left.png" },
+    "eye_open_right": { "file": "sprites/eye_open_right.png" },
+    "eye_closed_left": { "file": "sprites/eye_closed_left.png" },
+    "eye_closed_right": { "file": "sprites/eye_closed_right.png" },
+    "mouth_open": { "file": "sprites/mouth_open.png" }
+  },
+  "note": "新增服装：复制本文件，改 id/name，并把要替换的部件文件指向新素材。核心代码无需改动。"
+}

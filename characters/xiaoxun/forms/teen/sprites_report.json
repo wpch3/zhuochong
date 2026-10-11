@@ -1,0 +1,93 @@
+{
+  "source": "characters/xiaoxun/design/design_sheet_short.png",
+  "output": "./characters/xiaoxun/forms/teen/sprites/body_full.png",
+  "key_color": [
+    255,
+    0,
+    255
+  ],
+  "canvas": [
+    848,
+    1360
+  ],
+  "sprite_size": [
+    445,
+    1292
+  ],
+  "scale": 0.8898,
+  "alpha_bbox": [
+    0,
+    0,
+    444,
+    1291
+  ],
+  "transparent_ratio": 0.5673,
+  "white_residue_pixels": 494,
+  "magenta_residue_pixels": 48,
+  "palette": [
+    {
+      "hex": "#F0F0F0",
+      "share": 0.1462
+    },
+    {
+      "hex": "#FCE4D8",
+      "share": 0.1083
+    },
+    {
+      "hex": "#6CB4C0",
+      "share": 0.0574
+    },
+    {
+      "hex": "#FCF0F0",
+      "share": 0.0549
+    },
+    {
+      "hex": "#6CB4B4",
+      "share": 0.0426
+    },
+    {
+      "hex": "#D8CCD8",
+      "share": 0.0393
+    },
+    {
+      "hex": "#3C4860",
+      "share": 0.0338
+    },
+    {
+      "hex": "#3C3C60",
+      "share": 0.0327
+    },
+    {
+      "hex": "#FCFCF0",
+      "share": 0.0224
+    },
+    {
+      "hex": "#F0E4D8",
+      "share": 0.0173
+    }
+  ],
+  "suggested_regions": {
+    "head": [
+      245,
+      0,
+      356,
+      310
+    ],
+    "body": [
+      254,
+      310,
+      338,
+      775
+    ],
+    "feet": [
+      254,
+      1085,
+      338,
+      207
+    ],
+    "origin_x": 424,
+    "origin_y": 1292,
+    "sprite_w": 445,
+    "sprite_h": 1292
+  }
+}

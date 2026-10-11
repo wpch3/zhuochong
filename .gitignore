@@ -1,0 +1,19 @@
+# 构建产物
+build/
+*.o
+*.obj
+*.pdb
+
+# 运行期数据（只存本机，不入库）
+logs/
+data/
+config/settings.json
+
+# 工具缓存
+__pycache__/
+*.pyc
+.venv/
+
+# 临时
+*.tmp
+/tmp/
