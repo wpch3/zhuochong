@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小寻 · 音色试听</title>
+<style>
+  :root { --pink:#ff9ec2; --blue:#7fc4e8; --ink:#4a4a5a; --card:#fffafc; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:28px 16px 60px; font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+         color:var(--ink); background:linear-gradient(160deg,#fdf3f8 0%,#eef7fd 100%); }
+  h1 { font-size:22px; text-align:center; margin:0 0 6px; }
+  .sub { text-align:center; font-size:13px; color:#8a8aa0; margin-bottom:22px; line-height:1.7; }
+  .wrap { max-width:720px; margin:0 auto; }
+  .card { background:var(--card); border:2px solid #ffe1ee; border-radius:18px;
+          box-shadow:0 6px 18px rgba(255,158,194,.15); padding:16px 18px; margin-bottom:14px; }
+  .card h2 { font-size:16px; margin:0 0 4px; }
+  .tag { display:inline-block; font-size:11px; padding:2px 9px; border-radius:10px;
+         background:#eaf6ff; color:#4b93c4; margin-left:8px; vertical-align:2px; }
+  .txt { font-size:13px; color:#7c7c92; margin:6px 0 12px; line-height:1.6; }
+  audio { width:100%; }
+  .pick { text-align:center; font-size:13px; color:#8a8aa0; margin-top:26px; line-height:1.8; }
+  .pick b { color:#e0679a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>小寻 · 音色试听</h1>
+  <div class="sub">
+    本地神经网络语音合成（Piper VITS，离线运行、不消耗任何额度）<br>
+    音色取自公开音色表，没有克隆任何真人声音
+  </div>
+
+  <div class="card">
+    <h2>1. 小雅 · 少女音色<span class="tag">推荐</span></h2>
+    <div class="txt">「你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。」</div>
+    <audio controls preload="auto" src="1_xiao_ya.wav"></audio>
+  </div>
+
+  <div class="card">
+    <h2>2. 小雅 · 升调 6%<span class="tag">更少女</span></h2>
+    <div class="txt">同一句，整体升调 6%，听起来更年轻一点。</div>
+    <audio controls preload="none" src="2_xiao_ya_pitch6.wav"></audio>
+  </div>
+
+  <div class="card">
+    <h2>3. 小雅 · 升调 12%<span class="tag">更甜</span></h2>
+    <div class="txt">同一句，升调 12%，偏“甜”路线，可能偏幼。</div>
+    <audio controls preload="none" src="3_xiao_ya_pitch12.wav"></audio>
+  </div>
+
+  <div class="card">
+    <h2>4. 华言 · 温柔女声</h2>
+    <div class="txt">另一套中文女声，偏温柔大方、成熟一些。</div>
+    <audio controls preload="none" src="4_huayan.wav"></audio>
+  </div>
+
+  <div class="card">
+    <h2>5. 台词实测 · 困倦</h2>
+    <div class="txt">「唔…我没有睡着哦。今天就到这里吧，剩下的明天再做也不迟呀。」</div>
+    <audio controls preload="none" src="5_line_sleepy.wav"></audio>
+  </div>
+
+  <div class="card">
+    <h2>6. 台词实测 · 害羞</h2>
+    <div class="txt">「摸这么多次…我、我会害羞的啦！」</div>
+    <audio controls preload="none" src="6_line_shy.wav"></audio>
+  </div>
+
+  <div class="pick">
+    选好后告诉我编号，例如 <b>“用 2 号”</b>，我就把它写进 <b>config/voices.json</b>，
+    并把 dialogue.json 的全部台词批量渲染成音频（同一音色、同一风格）。
+  </div>
+</div>
+</body>
+</html>
