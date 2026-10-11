@@ -17,3 +17,6 @@ __pycache__/
 # 临时
 *.tmp
 /tmp/
+
+ZC_RELAY_BASE_URL=https://api.ohmygpt.com/v1
+ZC_RELAY_KEY=sk-EEa7pFi06043E7938154T3BLbkFJ297fB5A68ef14429bE77
