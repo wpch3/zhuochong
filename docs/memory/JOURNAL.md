@@ -51,3 +51,8 @@
 - 做了什么：交接：写入 docs/HANDOVER_NEXT_AGENT.md，记录分支/PR 状态、用户确认的决定（OhMyGPT 测试、16 岁少女普通话音色、句级同步、默认关闭语音、每日上限 2000）、阻塞点（沙箱无法访问 OhMyGPT，环境变量未注入）、key 安全处理、add_voice 试听失败记录、待办优先级。
 - 遇到/修了什么：无新代码改动；语音代码与实测均未完成。
 - 下一步：下一位代理先做语音配置与句级出声模块（假 TTS 测试），再根据用户的 tts_probe 输出实测。
+
+## 2026-10-11 09:34
+- 做了什么：语音：打通沙箱内离线神经语音合成（这是用户当前唯一在追的任务）。思考：用户已明确“知道那种方法就用”——网上美少女音=神经网络 TTS 多说话人音色，不是手工调出来的；沙箱网络白名单到不了任何 TTS 端点（edge-tts 的微软端点、HF 模型、GitHub release 资产全部不通），Actions 又因令牌无 workflows 权限推不上工作流，所以必须走“模型在仓库内 + 本地推理”这条路。做了：在 GitHub 仓库内找到 Piper 中文音色（xiao_ya 少女向 / huayan 温柔女声，xiongxiongge1/ai_cartoon_person），经 api.github.com 下模型到 ~/.cache/piper-voices；装 piper-tts 1.8.0（自带 espeak-ng）；xiao_ya 需要的 g2pW 音素模型是 LFS 指针拿不到，改为自写 pypinyin 音素器（tools/voice_local.py 直接喂 ONNX），打通合成；出 6 个试听样本 + 试听页（端口 5180）+ voice_setup.sh 可复现脚本；首次推送因 .github/workflows 被拒，把工作流挪到 docs/ops/ 后推送成功（85fe333）。
+- 遇到/修了什么：踩坑：① piper 的 pinyin 音色必须要 g2pW 模型（HF 下载被墙、GitHub 上的全是 LFS 指针）→ 自写音素器绕过；② espeak 类音色（huayan）走 piper 自带 EspeakPhonemizer；③ 令牌无 workflows 权限，含 .github/workflows 的提交会被远端拒绝 → 文件移到 docs/ops/ 并 amend 提交；④ ~/.cache 与 /tmp 不随工作区快照持久化，模型和 venv 每会话都要用 tools/voice_setup.sh 重建。
+- 下一步：下一步：等用户从试听页选音色编号 → 写进 config/voices.json（形态也可覆盖）→ 用 voice_local.py --render-dialogue 批量出 dialogue.json 全部台词 → 把播放接入预览/Windows；随后按用户要求重做人物形象（上一版拆件不合格，用户要求直接重做）。
