@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse, json, os, sys
 
 
-def build(parts, sprite, canvas, name, cw, ch):
+def build(parts, sprite, canvas, name, cw, ch, head_is_part=False):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -66,16 +66,15 @@ def build(parts, sprite, canvas, name, cw, ch):
     #   root = 底边固定、越往上位移越大（身体侧摆，头跟着走）
     #   sine = 两端固定、中段最大（呼吸、弯腰）
     #   tip  = 顶边固定、越往下越大（后发、裙摆、尾巴这类吊着的部件）
-    # 注意：当前素材是单图层全身图，五官是贴在上面的独立部件，
-    #   所以身体弯多少，head 组就要跟着位移多少，否则眼睛会从脸上滑走。
-    #   跟随量 = amp x f(u)，脸部 u≈0.77 → root:0.59、sine:0.66。
+    # 注意：当前素材是单图层全身图，五官是贴在上面的独立部件。
+    #   身体弯曲时五官必须跟着走，否则眼睛会从脸上滑走——这件事由引擎的
+    #   groups.*.bend_follow 自动完成（按组枢轴所在高度取同一条曲线的权重），
+    #   所以这里**不要**再手写跟随通道，写了会动两次。
     actions = [
         {"id": "breath", "priority": 1, "duration": 0, "loop": True, "return_state": "idle",
          "channels": [
              {"target": "body_full", "param": "bend_y", "wave": "sine", "amp": -3.2, "freq": 0.28,
               "curve": "sine"},
-             # 脸跟着胸腔一起起伏（-3.2 x 0.66 ≈ -2.1），方向必须与身体一致
-             {"target": "head", "param": "dy", "wave": "sine", "amp": -2.1, "freq": 0.28},
          ]},
         {"id": "sway", "priority": 2, "duration": 0, "loop": True, "return_state": "idle",
          "channels": [
@@ -84,9 +83,6 @@ def build(parts, sprite, canvas, name, cw, ch):
              {"target": "body_full", "param": "bend_y", "wave": "sine", "amp": -4, "freq": 0.36,
               "curve": "sine"},
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 1.2, "freq": 0.18},
-             # 10 x 0.59 ≈ 5.9：五官跟上身体的横摆
-             {"target": "head", "param": "dx", "wave": "sine", "amp": 5.9, "freq": 0.18},
-             {"target": "head", "param": "dy", "wave": "sine", "amp": -2.6, "freq": 0.36},
          ]},
         {"id": "idle", "priority": 0, "loop": True, "interruptible": True,
          "channels": [
@@ -96,8 +92,6 @@ def build(parts, sprite, canvas, name, cw, ch):
              # 极慢的重心左右移动，避免"站成雕像"
              {"target": "body_full", "param": "bend_x", "wave": "sine", "amp": 2.6, "freq": 0.06,
               "curve": "root"},
-             {"target": "head", "param": "dy", "wave": "sine", "amp": -1.3, "freq": 0.24},
-             {"target": "head", "param": "dx", "wave": "sine", "amp": 1.5, "freq": 0.06},
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 0.7, "freq": 0.13, "phase": 0.3},
              {"target": "eye_open_left", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
              {"target": "eye_open_right", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
@@ -202,7 +196,7 @@ def build(parts, sprite, canvas, name, cw, ch):
          }},
     ]
 
-    return {
+    rig = {
         "schema_version": "1.0",
         "id": f"{name}_teen",
         "name": name,
@@ -211,8 +205,10 @@ def build(parts, sprite, canvas, name, cw, ch):
         "ground_line": ch - 8,
         "groups": {
             "root": {"pivot": [cw // 2, ch], "parent": ""},
-            "chest": {"pivot": [cw // 2, chest_y], "parent": "root"},
-            "head": {"pivot": [cw // 2, neck_y], "parent": "chest"},
+            # bend_follow：身体部件弯曲时，挂在这两个组上的五官/配饰自动跟着位移，
+            # 跟随量由引擎按"组枢轴落在部件的哪个高度"算（换素材不用重算系数）。
+            "chest": {"pivot": [cw // 2, chest_y], "parent": "root", "bend_follow": "body_full"},
+            "head": {"pivot": [cw // 2, neck_y], "parent": "chest", "bend_follow": "body_full"},
         },
         "gaze": {"max_offset": [3.0, 2.0]},
         "blink": {
@@ -225,6 +221,19 @@ def build(parts, sprite, canvas, name, cw, ch):
         "regions": regions,
         "actions": actions,
     }
+
+
+    # 素材没有独立头部时，去掉所有作用在 head 组上的旋转通道（见 main 里的说明）
+    if not head_is_part:
+        for a in rig["actions"]:
+            a["channels"] = [
+                c for c in a["channels"]
+                if not (c.get("target") == "head" and c.get("param") == "rot_deg")
+            ]
+        rig["notes"] = (rig.get("notes", "") +
+                        " 头部未拆件：已省略 head 组的 rot_deg 通道，"
+                        "拆出 head_base.png 后重跑 make_rig.py 自动恢复。").strip()
+    return rig
 
 
 def main() -> int:
@@ -241,7 +250,14 @@ def main() -> int:
         parts = json.load(f)
     with open(os.path.join(base, "sprites_report.json"), encoding="utf-8") as f:
         sprite = json.load(f)
-    rig = build(parts, sprite, args.canvas, args.name, cw, ch)
+    # 头是不是独立部件？决定能不能发"头部旋转"通道。
+    # 单图层全身图里，头是画在身体上的：这时让 head 组转动，只会把贴在上面的
+    # 五官转走（看起来像眼睛在脸上滑），所以生成器直接不发 rot_deg。
+    # 等拆件产出 head_base.png（或任何带 head_base 标签的部件）后，自动恢复。
+    head_is_part = any(
+        n.startswith(("head_base", "head.")) for n in (p["name"] for p in parts["parts"])
+    )
+    rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

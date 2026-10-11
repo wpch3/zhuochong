@@ -73,6 +73,17 @@ void  zrig_gaze_reset(zrig *r);
 /* 部件级通道当前值（调试/测试用），param 为 dx/dy/sx/sy/rot_deg/alpha */
 double zrig_part_channel(const zrig *r, const char *part_id, const char *param);
 
+/* 调试/测试用的只读查询：
+   zrig_group_offset_x/y —— 组这一帧的横/纵位移（通道位移 + 自动跟随形变的位移，画布像素）。
+   zrig_bend_at          —— 某部件的形变在画布高度 canvas_y 处把像素推了多远（画布像素）。
+   二者配合可以验证"五官有没有跟住身体"。查不到对象时返回 0。 */
+double zrig_group_offset_x(const zrig *r, const char *group_id);
+double zrig_group_offset_y(const zrig *r, const char *group_id);
+double zrig_bend_at(const zrig *r, const char *part_id, double canvas_y);
+/* 部件这一帧的实际横向位移（通道 + 组 + 跟随形变）与它的画布纵坐标。 */
+double zrig_part_offset_x(const zrig *r, const char *part_id);
+double zrig_part_pos_y(const zrig *r, const char *part_id);
+
 /* 调试/测试：强制闭眼或恢复自动 */
 void  zrig_blink_force(zrig *r, int force_closed);
 /* 立即触发一次眨眼（用于交互反馈，如被锤击） */

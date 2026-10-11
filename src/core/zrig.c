@@ -39,6 +39,8 @@ typedef struct {
     char   id[48];
     double pivot[2];
     int    parent;            /* 组索引，-1 无 */
+    char   follow_id[64];     /* bend_follow：跟随哪个部件的形变（解析期暂存 id） */
+    int    follow_part;       /* 解析后的部件索引，-1 表示不跟随 */
 } zgroup;
 
 typedef struct {
@@ -245,6 +247,14 @@ static int load_groups(zrig *r, const zjson *jgroups, zdiag *d, const char *file
         char path[256];
         z_strlcpy(g->id, gid, sizeof(g->id));
         g->parent = -1;
+        g->follow_part = -1;
+        g->follow_id[0] = 0;
+        {
+            /* bend_follow：本组里的部件要跟着某个父部件一起弯（例：五官跟着身体摆）。
+               部件此时还没加载，先记 id，load_parts 之后再解析。 */
+            const char *bf = zjson_str(zjson_obj_get(gj, "bend_follow"), NULL);
+            if (bf && *bf) z_strlcpy(g->follow_id, bf, sizeof(g->follow_id));
+        }
         z_snprintf(path, sizeof(path), "groups.%s.pivot", gid);
         read_pair(zjson_obj_get(gj, "pivot"), r->origin[0], r->origin[1], g->pivot);
         z_snprintf(path, sizeof(path), "groups.%s.parent", gid);
@@ -590,6 +600,22 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     }
     if (load_groups(r, zjson_obj_get(root, "groups"), diag, file) != 0) goto fail;
     if (load_parts(r, zjson_obj_get(root, "parts"), diag, file) != 0) goto fail;
+    /* 解析 bend_follow（必须在部件加载之后） */
+    {
+        int gi;
+        for (gi = 0; gi < r->ngroups; ++gi) {
+            zgroup *g = &r->groups[gi];
+            if (!g->follow_id[0]) continue;
+            g->follow_part = find_part(r, g->follow_id);
+            if (g->follow_part < 0) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "groups.%s.bend_follow", g->id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "bend_follow 指向的部件 '%s' 不存在", g->follow_id);
+                goto fail;
+            }
+        }
+    }
     sort_parts(r);
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
@@ -763,19 +789,112 @@ static void compute_group_transforms(zrig *r)
 }
 
 /* 求组的完整矩阵（含父链） */
-static void group_matrix(const zrig *r, int gi, double m[6])
+/* 子组跟随父部件的形变：把组的枢轴换算到被跟随部件的源图纵坐标，取同一条曲线的权重，
+   得到"这一高度上部件被推了多远"，组就跟着推多远。
+   这样素材一换（部件高度/位置变了），跟随量自动变，不用在 rig.json 里手算系数。 */
+static void bend_follow_abs(const zrig *r, int fp, double pivot_y,
+                            double *out_dx, double *out_dy)
+{
+    const zpart *p;
+    double h_canvas, top_canvas, t;
+    *out_dx = *out_dy = 0.0;
+    if (fp < 0) return;
+    p = &r->parts[fp];
+    if (!p->img || p->img->h <= 0 || p->scale <= 0.0) return;
+    if (fabs(r->p_bendx[fp]) < 1e-6 && fabs(r->p_bendy[fp]) < 1e-6) return;
+    h_canvas   = (double)p->img->h * p->scale;        /* 部件在画布上的高度 */
+    top_canvas = p->pos[1] - p->anchor[1] * h_canvas; /* 部件顶边的画布纵坐标 */
+    t = (pivot_y - top_canvas) / h_canvas;            /* 0=部件顶边 1=部件底边 */
+    *out_dx = r->p_bendx[fp] * zimg_bend_factor(t, r->p_bendcx[fp]);
+    *out_dy = r->p_bendy[fp] * zimg_bend_factor(t, r->p_bendcy[fp]);
+}
+
+/* 部件级跟随：部件所在的组（或祖先组）声明了 bend_follow 时，
+   这个部件就按**它自己所在的高度**取父部件的形变位移。
+   比"整组按枢轴平移"更接近 Live2D 的逐顶点形变：眼睛取眼睛那一行、嘴取嘴那一行，
+   所以五官不会随着身体弯曲程度的变化而在脸上滑移。 */
+static void part_follow_offset(const zrig *r, int pi, double *out_dx, double *out_dy)
+{
+    const zpart *p = &r->parts[pi];
+    int gi;
+    *out_dx = *out_dy = 0.0;
+    for (gi = p->group; gi >= 0; gi = r->groups[gi].parent) {
+        int fp = r->groups[gi].follow_part;
+        if (fp < 0) continue;
+        if (fp == pi) return;                 /* 自己就是形变源，不跟随自己 */
+        bend_follow_abs(r, fp, p->pos[1], out_dx, out_dy);
+        return;                               /* 只认最近的一层，避免重复叠加 */
+    }
+}
+
+/* 组矩阵。scale 是画布→帧的缩放：枢轴与位移都要换算到帧坐标，
+   否则旋转会绕错点（缩放 0.55 时枢轴会偏出近一倍距离）。 */
+static void group_matrix(const zrig *r, int gi, double scale, double m[6])
 {
     const zgroup *g = &r->groups[gi];
     double local[6];
-    zimg_make_matrix(local, g->pivot[0] + r->g_dx[gi], g->pivot[1] + r->g_dy[gi],
-                     r->g_sx[gi], r->g_sy[gi], r->g_rot[gi], g->pivot[0], g->pivot[1]);
+    double px = g->pivot[0] * scale, py = g->pivot[1] * scale;
+    zimg_make_matrix(local,
+                     px + r->g_dx[gi] * scale,
+                     py + r->g_dy[gi] * scale,
+                     r->g_sx[gi], r->g_sy[gi], r->g_rot[gi], px, py);
     if (g->parent >= 0) {
         double pm[6];
-        group_matrix(r, g->parent, pm);
+        group_matrix(r, g->parent, scale, pm);
         zimg_matrix_mul(m, pm, local);
     } else {
         memcpy(m, local, sizeof(local));
     }
+}
+
+/* 只读查询：组的实际位移（通道 + 自动跟随），画布像素 */
+static double group_offset(const zrig *r, const char *group_id, int want_y)
+{
+    int gi;
+    double sum = 0.0;
+    if (!r || !group_id) return 0.0;
+    gi = find_group(r, group_id);
+    if (gi < 0) return 0.0;
+    /* 组矩阵是父子相乘的，所以实际位移 = 本组 + 所有祖先组的位移之和 */
+    for (; gi >= 0; gi = r->groups[gi].parent)
+        sum += want_y ? r->g_dy[gi] : r->g_dx[gi];
+    return sum;
+}
+
+double zrig_part_offset_x(const zrig *r, const char *part_id)
+{
+    int pi;
+    double fdx = 0.0, fdy = 0.0;
+    if (!r || !part_id) return 0.0;
+    pi = find_part(r, part_id);
+    if (pi < 0) return 0.0;
+    part_follow_offset(r, pi, &fdx, &fdy);
+    (void)fdy;
+    return r->p_dx[pi] + fdx + group_offset(r, r->parts[pi].group >= 0 ?
+                                            r->groups[r->parts[pi].group].id : "", 0);
+}
+
+double zrig_part_pos_y(const zrig *r, const char *part_id)
+{
+    int pi;
+    if (!r || !part_id) return 0.0;
+    pi = find_part(r, part_id);
+    return pi < 0 ? 0.0 : r->parts[pi].pos[1];
+}
+
+double zrig_group_offset_x(const zrig *r, const char *group_id) { return group_offset(r, group_id, 0); }
+double zrig_group_offset_y(const zrig *r, const char *group_id) { return group_offset(r, group_id, 1); }
+
+double zrig_bend_at(const zrig *r, const char *part_id, double canvas_y)
+{
+    int pi;
+    double dx = 0.0, dy = 0.0;
+    if (!r || !part_id) return 0.0;
+    pi = find_part(r, part_id);
+    if (pi < 0) return 0.0;
+    bend_follow_abs(r, pi, canvas_y, &dx, &dy);
+    (void)dy;
+    return dx;
 }
 
 /* ============================================================ 眨眼 */
@@ -912,6 +1031,13 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                 extra_dx += r->gaze_x * r->gaze_max_dx;
                 extra_dy += r->gaze_y * r->gaze_max_dy;
             }
+            /* 跟随父部件的形变（五官跟着身体弯） */
+            {
+                double fdx = 0.0, fdy = 0.0;
+                part_follow_offset(r, pi, &fdx, &fdy);
+                extra_dx += fdx;
+                extra_dy += fdy;
+            }
             /* 部件通道里的缩放：取平均作用到等比缩放上 */
             part_scale *= (r->p_sx[pi] + r->p_sy[pi]) * 0.5;
 
@@ -945,7 +1071,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                                  p->rot_deg + part_rot, anchor_px, anchor_py);
             }
             if (p->group >= 0) {
-                group_matrix(r, p->group, gm);
+                group_matrix(r, p->group, scale, gm);
                 zimg_matrix_mul(m, gm, lm);
             } else {
                 memcpy(m, lm, sizeof(lm));

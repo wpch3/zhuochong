@@ -70,6 +70,10 @@ void zimg_draw_rect(zimg *dst, const zimg *src, const double m[6], double opacit
 #define ZIMG_BEND_LINEAR 2
 #define ZIMG_BEND_TIP    3
 
+/* 形变权重 f(t)：t 是部件内的归一化纵坐标（0=顶边，1=底边）。
+   给外部（zrig 的"子组跟随父部件形变"）用，保证跟随量与实际绘制完全一致。 */
+double zimg_bend_factor(double t, int curve);
+
 /* 平滑形变（推荐）：逐像素反查，源图在目标空间按 bend·f(u) 位移，无分段接缝。
    X 与 Y 各有自己的曲线（例：侧摆用 ROOT，同时呼吸用 SINE，互不干扰）。 */
 void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacity,

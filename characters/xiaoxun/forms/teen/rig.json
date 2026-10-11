@@ -24,14 +24,16 @@
         424,
         533
       ],
-      "parent": "root"
+      "parent": "root",
+      "bend_follow": "body_full"
     },
     "head": {
       "pivot": [
         424,
         403
       ],
-      "parent": "chest"
+      "parent": "chest",
+      "bend_follow": "body_full"
     }
   },
   "gaze": {
@@ -212,13 +214,6 @@
           "amp": -3.2,
           "freq": 0.28,
           "curve": "sine"
-        },
-        {
-          "target": "head",
-          "param": "dy",
-          "wave": "sine",
-          "amp": -2.1,
-          "freq": 0.28
         }
       ]
     },
@@ -244,27 +239,6 @@
           "amp": -4,
           "freq": 0.36,
           "curve": "sine"
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 1.2,
-          "freq": 0.18
-        },
-        {
-          "target": "head",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 5.9,
-          "freq": 0.18
-        },
-        {
-          "target": "head",
-          "param": "dy",
-          "wave": "sine",
-          "amp": -2.6,
-          "freq": 0.36
         }
       ]
     },
@@ -289,28 +263,6 @@
           "amp": 2.6,
           "freq": 0.06,
           "curve": "root"
-        },
-        {
-          "target": "head",
-          "param": "dy",
-          "wave": "sine",
-          "amp": -1.3,
-          "freq": 0.24
-        },
-        {
-          "target": "head",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.06
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 0.7,
-          "freq": 0.13,
-          "phase": 0.3
         },
         {
           "target": "eye_open_left",
@@ -426,13 +378,6 @@
           "amp": -12.0,
           "dur": 0.5,
           "ease": "out_back"
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "bounce",
-          "amp": 5.0,
-          "dur": 0.5
         }
       ],
       "part_overrides": {
@@ -467,13 +412,6 @@
           "amp": 6.0,
           "dur": 0.5,
           "ease": "out"
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 1.0,
-          "freq": 0.12
         }
       ],
       "part_overrides": {
@@ -559,14 +497,6 @@
           "amp": 8.0,
           "freq": 4.0,
           "dur": 0.7
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "decay",
-          "amp": 7.0,
-          "freq": 2.6,
-          "dur": 0.7
         }
       ],
       "part_overrides": {
@@ -628,14 +558,6 @@
           "wave": "bounce",
           "amp": -6.0,
           "dur": 0.28
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "decay",
-          "amp": 3.5,
-          "freq": 3.0,
-          "dur": 0.4
         }
       ]
     },
@@ -707,14 +629,6 @@
       "channels": [
         {
           "target": "head",
-          "param": "rot_deg",
-          "wave": "pulse",
-          "amp": -5.0,
-          "dur": 0.6,
-          "ease": "out"
-        },
-        {
-          "target": "head",
           "param": "dx",
           "wave": "sine",
           "amp": 1.2,
@@ -751,13 +665,6 @@
           "freq": 0.11
         },
         {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 2.0,
-          "freq": 0.07
-        },
-        {
           "target": "root",
           "param": "dy",
           "wave": "pulse",
@@ -781,5 +688,6 @@
         }
       }
     }
-  ]
+  ],
+  "notes": "头部未拆件：已省略 head 组的 rot_deg 通道，拆出 head_base.png 后重跑 make_rig.py 自动恢复。"
 }

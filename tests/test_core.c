@@ -572,6 +572,28 @@ static void test_rig_channels(void)
             id = zrig_region_at(r, 5, 5, act, sizeof(act));
             CHECK(id == NULL, "左上角透明处不应命中任何区域");
         }
+        /* 形变跟随（放在最后：它会推进时间轴，不能影响前面的用例）。
+           身体 bend 时 head 组里的五官必须自动跟着走，否则眼睛会从脸上滑走。 */
+        {
+            int i, fw = 0, fh = 0;
+            double peak_body = 0.0, worst = 0.0;
+            zrig_action_request(r, "sway", "t", 1);
+            for (i = 0; i < 300; ++i) {          /* 扫 5 秒，覆盖 sway 的一个周期 */
+                double follow, body, gap;
+                zrig_tick(r, 200.0 + i / 60.0);
+                zrig_frame(r, 1.0, &fw, &fh);
+                follow = zrig_part_offset_x(r, "eye_open_left");   /* 眼睛实际被推了多远 */
+                body   = zrig_bend_at(r, "body_full",
+                                      zrig_part_pos_y(r, "eye_open_left")); /* 身体在眼睛那一行推了多远 */
+                gap = fabs(follow - body);
+                if (fabs(body) > fabs(peak_body)) peak_body = body;
+                if (gap > worst) worst = gap;
+            }
+            CHECK(fabs(peak_body) > 2.0,
+                  "sway 时身体在眼睛高度确实要弯（实际 %.2f px）", peak_body);
+            CHECK(worst < 0.01,
+                  "五官要按自己所在高度跟住身体形变，最大偏差 %.3f px", worst);
+        }
         zrig_free(r);
     }
 }

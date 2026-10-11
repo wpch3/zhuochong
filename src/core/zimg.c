@@ -450,7 +450,7 @@ void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacit
 
 /* 形变权重。入参 t 是源图内的归一化纵坐标（0=顶边，1=底边）；
    内部换算成 u = 1 - t（0=底边，1=顶边），因为"根"默认在底边（人物站在地上）。 */
-static double bend_factor(double t, int curve)
+double zimg_bend_factor(double t, int curve)
 {
     double u;
     if (t < 0.0) t = 0.0;
@@ -519,8 +519,8 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
                 double ay = inv[1] * (px + 0.5) + inv[3] * (py + 0.5) + inv[5];
                 double t  = ay / (double)src->h;
                 /* X 与 Y 分别用各自的曲线：侧摆（根部固定）与呼吸（中段最大）可以同时存在 */
-                double dx = bend_x * bend_factor(t, curve_x);
-                double dy = bend_y * bend_factor(t, curve_y);
+                double dx = bend_x * zimg_bend_factor(t, curve_x);
+                double dy = bend_y * zimg_bend_factor(t, curve_y);
                 fx = inv[0] * (px + 0.5 - dx) + inv[2] * (py + 0.5 - dy) + inv[4];
                 fy = inv[1] * (px + 0.5 - dx) + inv[3] * (py + 0.5 - dy) + inv[5];
             } else {
@@ -589,7 +589,7 @@ void zimg_draw_bend(zimg *dst, const zimg *src, const double m[6], double opacit
         double t, f, mb[6];
         if (y1 <= y0) continue;
         t = (double)(y0 + y1) * 0.5 / (double)src->h;
-        f = bend_factor(t, curve);   /* 与平滑形变共用同一套曲线语义 */
+        f = zimg_bend_factor(t, curve);   /* 与平滑形变共用同一套曲线语义 */
         memcpy(mb, m, sizeof(mb));
         mb[4] += bend_x * f;
         mb[5] += bend_y * f;
