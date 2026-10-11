@@ -21,3 +21,7 @@ __pycache__/
 # 密钥与本机环境（绝不入库）
 .env
 *.env.local
+
+# 语音模型（大文件，不入库；voice_packs.py 安装后在本地，用 voice_setup.sh 可重新下载）
+voices/*/model.onnx
+voices/*/model.onnx.json
