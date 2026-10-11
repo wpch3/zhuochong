@@ -97,6 +97,16 @@
 
 <footer class="footer">
   <span>引擎：C11 数据驱动立绘（rig.json）｜界面：web/（改界面不动 C 代码）</span>
+  <span class="mono">画质
+    <select id="quality" title="远程预览是按帧传 PNG 的，画质越高越吃带宽">
+      <option value="auto">自动</option>
+      <option value="50">流畅 50%</option>
+      <option value="60">均衡 60%</option>
+      <option value="75">清晰 75%</option>
+      <option value="100">原始 100%</option>
+    </select>
+  </span>
+  <span id="fps" class="mono">—</span>
   <span id="conn" class="mono">连接中…</span>
 </footer>
 

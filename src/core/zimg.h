@@ -26,6 +26,9 @@ zimg *zimg_new(int w, int h);                  /* 全透明 */
 zimg *zimg_new_filled(int w, int h, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void  zimg_free(zimg *im);
 zimg *zimg_clone(const zimg *im);
+/* 盒式平均缩小（按 alpha 预乘）。dw/dh 不小于原图时等同于 clone。
+   预览按帧走网络，像素数直接等于流畅度——这是唯一的降码率手段。 */
+zimg *zimg_downscale(const zimg *im, int dw, int dh);
 void  zimg_clear(zimg *im);                    /* 清为全透明 */
 
 /* --------------------------------------------------------------- 读写 */

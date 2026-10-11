@@ -1003,7 +1003,7 @@
           "target": "seg_arm_r",
           "param": "bend_x",
           "wave": "pulse",
-          "amp": 92.0,
+          "amp": 60.0,
           "curve": "tip",
           "dur": 2.4,
           "ease": "out"
@@ -1012,7 +1012,7 @@
           "target": "seg_arm_r",
           "param": "bend_y",
           "wave": "pulse",
-          "amp": -78.0,
+          "amp": -45.0,
           "curve": "tip",
           "dur": 2.4,
           "ease": "out"
@@ -1021,7 +1021,7 @@
           "target": "seg_arm_r",
           "param": "bend_x",
           "wave": "sine",
-          "amp": 26.0,
+          "amp": 14.0,
           "curve": "tip",
           "freq": 1.8,
           "dur": 2.4

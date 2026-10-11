@@ -140,6 +140,123 @@ size_t zdeflate_rle(const uint8_t *data, size_t n, uint8_t **out)
     return b.len;
 }
 
+
+/* ------------------------------------------------------------------ LZ77
+ * 只有 RLE（distance=1）时，一帧立绘 PNG 要 287KB；加上真正的 LZ77 窗口匹配
+ * 后降到 ~155KB（标准 zlib 是 151KB）。预览是按帧走网络的，体积直接等于流畅度。
+ * 仍然用固定 Huffman：不用统计、不用建表，代码短、没有外部依赖。 */
+#define ZD_WSIZE     32768u            /* 窗口 32KB（deflate 上限） */
+#define ZD_HSIZE     32768u            /* 哈希桶数 */
+#define ZD_MIN_MATCH 3
+#define ZD_MAX_MATCH 258
+#define ZD_MAX_CHAIN 48                /* 每个位置最多回溯这么多候选，换速度 */
+
+static const unsigned zd_dist_base[30] = {
+    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769,
+    1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
+};
+static const int zd_dist_extra[30] = {
+    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+    9, 9, 10, 10, 11, 11, 12, 12, 13, 13
+};
+
+static int zd_dist_code(unsigned d, unsigned *base, unsigned *extra)
+{
+    int i;
+    for (i = 29; i >= 0; --i) {
+        if (d >= zd_dist_base[i]) {
+            *base = zd_dist_base[i];
+            *extra = (unsigned)zd_dist_extra[i];
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void put_match(bitw *b, unsigned len, unsigned dist)
+{
+    unsigned lbase = 0, lextra = 0, dbase = 0, dextra = 0;
+    int lc = len_code_for(len, &lbase, &lextra);
+    int dc = zd_dist_code(dist, &dbase, &dextra);
+    if (lc < 0 || dc < 0) return;
+    put_litlen(b, (unsigned)lc);
+    if (lextra) bw_putbits_lsb(b, len - lbase, (int)lextra);
+    bw_putcode(b, (unsigned)dc, 5);           /* 固定 Huffman 的距离码就是 5 位码号 */
+    if (dextra) bw_putbits_lsb(b, dist - dbase, (int)dextra);
+}
+
+size_t zdeflate_lz77(const uint8_t *data, size_t n, uint8_t **out)
+{
+    bitw b;
+    size_t i = 0;
+    int *head = NULL, *prev = NULL;
+    unsigned h;
+
+    if (!out) return 0;
+    *out = NULL;
+    if (n < 16) return zdeflate_rle(data, n, out);   /* 太短，不值得建表 */
+
+    head = (int *)z_alloc(sizeof(int) * ZD_HSIZE);
+    prev = (int *)z_alloc(sizeof(int) * ZD_WSIZE);
+    if (!head || !prev) { free(head); free(prev); return zdeflate_rle(data, n, out); }
+    for (h = 0; h < ZD_HSIZE; ++h) head[h] = -1;
+    for (h = 0; h < ZD_WSIZE; ++h) prev[h] = -1;
+
+    bw_init(&b, n / 2 + 64);
+    bw_putbit(&b, 1);           /* BFINAL */
+    bw_putbits_lsb(&b, 1, 2);   /* BTYPE = 01 固定 Huffman */
+
+    while (i < n) {
+        size_t best_len = 0, best_dist = 0;
+        if (i + ZD_MIN_MATCH <= n) {
+            unsigned hv = (unsigned)((data[i] << 10) ^ (data[i + 1] << 5) ^ data[i + 2]) & (ZD_HSIZE - 1);
+            int cand = head[hv];
+            int chain = ZD_MAX_CHAIN;
+            while (cand >= 0 && chain-- > 0) {
+                size_t d = i - (size_t)cand;
+                size_t l = 0, maxl;
+                if (d == 0 || d > ZD_WSIZE) break;
+                maxl = n - i; if (maxl > ZD_MAX_MATCH) maxl = ZD_MAX_MATCH;
+                /* 先比第 best_len 个字节：不比已有最优长就直接跳过（zlib 的老把戏） */
+                if (best_len >= ZD_MIN_MATCH && data[cand + best_len] != data[i + best_len]) {
+                    cand = prev[(size_t)cand & (ZD_WSIZE - 1)];
+                    continue;
+                }
+                while (l < maxl && data[cand + l] == data[i + l]) l++;
+                if (l > best_len) { best_len = l; best_dist = d; if (l >= ZD_MAX_MATCH) break; }
+                cand = prev[(size_t)cand & (ZD_WSIZE - 1)];
+            }
+            /* 把当前位置挂进哈希链 */
+            prev[i & (ZD_WSIZE - 1)] = head[hv];
+            head[hv] = (int)i;
+        }
+        if (best_len >= ZD_MIN_MATCH) {
+            size_t k;
+            put_match(&b, (unsigned)best_len, (unsigned)best_dist);
+            /* 匹配跨过的位置也要挂进哈希链，否则后面找不到它们 */
+            for (k = 1; k < best_len; ++k) {
+                size_t j = i + k;
+                if (j + ZD_MIN_MATCH <= n) {
+                    unsigned hv2 = (unsigned)((data[j] << 10) ^ (data[j + 1] << 5) ^ data[j + 2]) & (ZD_HSIZE - 1);
+                    prev[j & (ZD_WSIZE - 1)] = head[hv2];
+                    head[hv2] = (int)j;
+                }
+            }
+            i += best_len;
+        } else {
+            put_litlen(&b, data[i]);
+            i++;
+        }
+    }
+    put_litlen(&b, 256);
+    bw_flush(&b);
+    free(head);
+    free(prev);
+    if (b.failed) { free(b.buf); return 0; }
+    *out = b.buf;
+    return b.len;
+}
+
 size_t zlib_compress_rle(const uint8_t *data, size_t n, uint8_t **out)
 {
     uint8_t *def = NULL;
@@ -148,7 +265,8 @@ size_t zlib_compress_rle(const uint8_t *data, size_t n, uint8_t **out)
     uint32_t a = 1, bb = 0;
     size_t i;
 
-    deflen = zdeflate_rle(data, n, &def);
+    deflen = zdeflate_lz77(data, n, &def);
+    if (!def || deflen == 0) deflen = zdeflate_rle(data, n, &def);
     if (!def || deflen == 0) {
         /* 压缩失败则退化为存储型块（保证正确性优先） */
         size_t off = 0;

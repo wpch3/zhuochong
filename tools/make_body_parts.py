@@ -199,7 +199,8 @@ def main() -> int:
            "cut_lines": {"neck": neck_y, "shoulder": shoulder_y, "hip": hip_y,
                          "legs_top": legs_top, "wrist": wrist_y, "arm_split": split_y,
                          "torso_left": TL, "torso_right": TR, "center_x": center_x},
-           "patches": ["颈部重叠带=颈线复制出的脖子桩（避免转头露出重影下巴）"],
+           "patches": ["颈部重叠带=颈线复制出的脖子桩（避免转头露出重影下巴）",
+                       "头/双臂/双腿的重叠带做了 alpha 渐隐（避免错位时出现硬切割线）"],
            "parts": []}
     preview = np.zeros((H, W, 4), dtype=np.uint8)
     tint = {"seg_head": (255, 120, 140), "seg_torso": (120, 200, 255),
@@ -216,9 +217,34 @@ def main() -> int:
         rgba_neck[stub_top:neck_y] = rgba[neck_y]
         mask_neck[stub_top:neck_y] = mask[neck_y]
 
+    # 接缝羽化：重叠带的边缘如果是硬的，部件一动就看到一条直的切割线。
+    # 把重叠带做成**渐隐**（往父部件那一侧 alpha 线性降到 0），静止时下面压着
+    # 一模一样的像素（混合结果不变、无损切分仍然成立），一动则是柔和过渡。
+    def feather(img, x0, y0, pid):
+        if img is None:
+            return img
+        a = np.asarray(img).astype(np.float32).copy()
+        hh, ww = a.shape[:2]
+        gx = np.arange(ww, dtype=np.float32) + x0
+        gy = np.arange(hh, dtype=np.float32) + y0
+        if pid == "seg_arm_l":            # 内侧（向右）渐隐
+            r = np.clip((TL + ov - gx) / max(1.0, float(ov)), 0.0, 1.0)
+            a[..., 3] *= r[None, :]
+        elif pid == "seg_arm_r":          # 内侧（向左）渐隐
+            r = np.clip((gx - (TR - ov)) / max(1.0, float(ov)), 0.0, 1.0)
+            a[..., 3] *= r[None, :]
+        elif pid == "seg_head":           # 下缘（脖子处）渐隐
+            r = np.clip((neck_y + ov - gy) / max(1.0, float(ov)), 0.0, 1.0)
+            a[..., 3] *= r[:, None]
+        elif pid in ("seg_leg_l", "seg_leg_r"):   # 上缘（裙摆下）渐隐
+            r = np.clip((gy - (legs_top - ov)) / max(1.0, float(ov)), 0.0, 1.0)
+            a[..., 3] *= r[:, None]
+        return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
+
     for pid, reg in regions.items():
         src_rgba, src_mask = (rgba_neck, mask_neck) if pid == "seg_torso" else (rgba, mask)
         img, (x0, y0) = cut(src_mask, src_rgba, reg)
+        img = feather(img, x0, y0, pid)
         if img is None:
             print(f"  跳过 {pid}（这块没有像素）")
             continue

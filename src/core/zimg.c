@@ -45,6 +45,54 @@ void zimg_free(zimg *im)
     free(im);
 }
 
+zimg *zimg_downscale(const zimg *im, int dw, int dh)
+{
+    /* 盒式平均缩小。**必须按 alpha 预乘再平均**：直接平均 RGB 会把透明像素里
+       残留的颜色也算进去，边缘会发白发灰（抠图那边踩过同一个坑）。 */
+    zimg *out;
+    int x, y;
+    if (!im || dw <= 0 || dh <= 0) return NULL;
+    if (dw >= im->w || dh >= im->h) return zimg_clone(im);
+    out = zimg_new(dw, dh);
+    if (!out) return NULL;
+    for (y = 0; y < dh; ++y) {
+        int sy0 = (int)((long long)y * im->h / dh);
+        int sy1 = (int)((long long)(y + 1) * im->h / dh);
+        if (sy1 <= sy0) sy1 = sy0 + 1;
+        for (x = 0; x < dw; ++x) {
+            int sx0 = (int)((long long)x * im->w / dw);
+            int sx1 = (int)((long long)(x + 1) * im->w / dw);
+            unsigned long ar = 0, ag = 0, ab = 0, aa = 0;
+            int cnt = 0, sx, sy;
+            if (sx1 <= sx0) sx1 = sx0 + 1;
+            for (sy = sy0; sy < sy1 && sy < im->h; ++sy) {
+                const uint8_t *row = im->px + (size_t)sy * (size_t)im->w * 4;
+                for (sx = sx0; sx < sx1 && sx < im->w; ++sx) {
+                    const uint8_t *p = row + (size_t)sx * 4;
+                    unsigned a = p[3];
+                    ar += (unsigned long)p[0] * a;
+                    ag += (unsigned long)p[1] * a;
+                    ab += (unsigned long)p[2] * a;
+                    aa += a;
+                    cnt++;
+                }
+            }
+            {
+                uint8_t *d = out->px + ((size_t)y * (size_t)dw + (size_t)x) * 4;
+                if (cnt > 0 && aa > 0) {
+                    d[0] = (uint8_t)(ar / aa);
+                    d[1] = (uint8_t)(ag / aa);
+                    d[2] = (uint8_t)(ab / aa);
+                    d[3] = (uint8_t)(aa / (unsigned long)cnt);
+                } else {
+                    d[0] = d[1] = d[2] = d[3] = 0;
+                }
+            }
+        }
+    }
+    return out;
+}
+
 zimg *zimg_clone(const zimg *im)
 {
     zimg *out;

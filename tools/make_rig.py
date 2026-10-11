@@ -274,16 +274,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
 
         # 挥手：单图层时代做不到的动作（没有独立手臂，一抬就整张图跟着转）。
         # 同样用 bend：肩膀钉死，手往外甩 + 往上抬，再叠一个快速左右摆。
+        # 幅度上限是算出来的：手臂内侧那条重叠带 38px，它在最低一行（离身行）
+        # 的形变权重是 0.59，所以 amp ≤ 38/0.59 ≈ 64 才不会把重叠带甩出兜底范围。
+        # 想要更大的动作必须先补关节图（GAPS G4c）。
         actions.append({
             "id": "wave", "priority": 6, "duration": 2.4, "return_state": "idle",
             "interruptible": False,
             "channels": [
                 {"target": "seg_arm_r", "param": "bend_x", "wave": "pulse",
-                 "amp": 92.0, "curve": "tip", "dur": 2.4, "ease": "out"},
+                 "amp": 60.0, "curve": "tip", "dur": 2.4, "ease": "out"},
                 {"target": "seg_arm_r", "param": "bend_y", "wave": "pulse",
-                 "amp": -78.0, "curve": "tip", "dur": 2.4, "ease": "out"},
+                 "amp": -45.0, "curve": "tip", "dur": 2.4, "ease": "out"},
                 {"target": "seg_arm_r", "param": "bend_x", "wave": "sine",
-                 "amp": 26.0, "curve": "tip", "freq": 1.8, "dur": 2.4},
+                 "amp": 14.0, "curve": "tip", "freq": 1.8, "dur": 2.4},
                 {"target": "head", "param": "rot_deg", "wave": "sine",
                  "amp": 2.0, "freq": 0.8, "dur": 2.4},
                 {"target": "root", "param": "dy", "wave": "sine",

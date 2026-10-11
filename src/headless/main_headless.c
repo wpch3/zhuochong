@@ -417,10 +417,19 @@ static void handle_request(zsock fd, const http_req *r)
         const zimg *fr;
         zimg *copy = NULL;
         int fw = 0, fh = 0;
+        /* ?s=50..100：按百分比缩小后再编码。浏览器会拉回原尺寸显示，
+           画面略软但码率降到 1/4，远程预览能不能流畅全看这个。 */
+        int spct = qint(r, "s", 100);
+        if (spct < 25) spct = 25;
+        if (spct > 100) spct = 100;
         LOCK();
         fr = zpet_frame(g_pet, &fw, &fh);
         if (fr) copy = zimg_clone(fr);
         UNLOCK();
+        if (copy && spct < 100) {
+            zimg *small = zimg_downscale(copy, copy->w * spct / 100, copy->h * spct / 100);
+            if (small) { zimg_free(copy); copy = small; }
+        }
         if (copy) {
             send_png(fd, copy);
             zimg_free(copy);

@@ -17,16 +17,60 @@ let frameTimer = null;
 let interval = 1000 / 12;   // 12 fps：预览足够流畅，也不至于把沙箱压满
 let failures = 0;
 
+/* 远程预览是**按帧传 PNG** 的：原始尺寸一帧约 190KB，12fps 就要 2.2MB/s，
+   公网上必然卡。所以这里按实测的单帧耗时自动降档（服务端 ?s= 按百分比缩小，
+   浏览器再拉回原尺寸显示）。本地运行的桌面版不走网络，没有这个问题。 */
+const QUALITY_STEPS = [50, 60, 75, 100];
+let qualityMode = "auto";       // auto | 固定百分比
+let qualityIdx = 1;             // 自动模式下的当前档位
+let frameMs = 0;                // 单帧耗时的滑动平均
+let fpsCount = 0, fpsAt = performance.now(), lastBytes = 0;
+
+function currentQuality() {
+  return qualityMode === "auto" ? QUALITY_STEPS[qualityIdx] : parseInt(qualityMode, 10);
+}
+
+function tuneQuality() {
+  if (qualityMode !== "auto") return;
+  if (frameMs > 220 && qualityIdx > 0) qualityIdx--;             // 太慢：降档
+  else if (frameMs < 90 && qualityIdx < QUALITY_STEPS.length - 1) qualityIdx++;
+}
+
+function showFps(bytes) {
+  fpsCount++;
+  const now = performance.now();
+  if (now - fpsAt >= 1000) {
+    const el = $("fps");
+    if (el) {
+      el.textContent = fpsCount + " fps · " + Math.round(lastBytes / 1024) + " KB/帧 · "
+                     + currentQuality() + "%";
+    }
+    fpsCount = 0;
+    fpsAt = now;
+  }
+  if (bytes) lastBytes = bytes;
+}
+
 function scheduleFrame() {
   frameTimer = setTimeout(async () => {
     if (!document.hidden) {
+      const t0 = performance.now();
       try {
-        const img = new Image();
-        img.src = "/api/frame.png?t=" + Date.now();
-        await img.decode();
-        petImg.src = img.src;
+        const url = "/api/frame.png?s=" + currentQuality() + "&t=" + Date.now();
+        const resp = await fetch(url, { cache: "no-store" });
+        const blob = await resp.blob();
+        const next = URL.createObjectURL(blob);
+        const old = petImg.dataset.blob;
+        petImg.src = next;
+        if (old) URL.revokeObjectURL(old);
+        petImg.dataset.blob = next;
+        const dt = performance.now() - t0;
+        frameMs = frameMs ? frameMs * 0.7 + dt * 0.3 : dt;
+        tuneQuality();
+        showFps(blob.size);
         failures = 0;
-        interval = 1000 / 12;
+        /* 上一帧还没到就不要再排队，否则请求会堆成雪球 */
+        interval = Math.max(1000 / 12, frameMs * 0.2);
       } catch (e) {
         failures++;
         interval = Math.min(2000, 500 * failures);   // 出错退避，避免刷爆
@@ -327,6 +371,10 @@ renderUsage();
 pollInfo();
 pollSpeech();
 scheduleFrame();
+{
+  const q = $("quality");
+  if (q) q.addEventListener("change", () => { qualityMode = q.value; frameMs = 0; });
+}
 setInterval(pollInfo, 600);    // 状态：0.6 秒
 setInterval(pollSpeech, 400);  // 台词：0.4 秒
 document.addEventListener("visibilitychange", () => setConn(!document.hidden));

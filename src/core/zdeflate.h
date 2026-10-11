@@ -20,6 +20,10 @@ extern "C" {
  * out 为动态分配的缓冲，调用者负责 free。返回压缩后长度，0 表示失败。 */
 size_t zdeflate_rle(const uint8_t *data, size_t n, uint8_t **out);
 
+/* deflate：固定 Huffman + 32KB 窗口的 LZ77（哈希链，链长上限 48）。
+ * 压缩率接近 zlib（实测一帧立绘 287KB → 155KB，zlib 为 151KB），速度够实时。 */
+size_t zdeflate_lz77(const uint8_t *data, size_t n, uint8_t **out);
+
 /* zlib 封装：2 字节头(0x78 0x01) + 一个或多个 deflate 块 + adler32。 */
 size_t zlib_compress_rle(const uint8_t *data, size_t n, uint8_t **out);
 
