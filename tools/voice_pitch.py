@@ -74,10 +74,25 @@ def youthify(x: np.ndarray, sr: int, factor: float, tempo: float = 1.0) -> np.nd
         up = librosa.resample(x, orig_sr=int(round(sr * factor)), target_sr=sr,
                               res_type="soxr_hq" if _has_soxr() else "kaiser_best")
         up = np.asarray(up, dtype=np.float32)
-        x = np.asarray(librosa.effects.time_stretch(up, rate=1.0 / factor), dtype=np.float32)
+        x = _stretch(up, 1.0 / factor)
     if abs(tempo - 1.0) > 1e-3:
-        x = np.asarray(librosa.effects.time_stretch(x, rate=tempo), dtype=np.float32)
+        x = _stretch(x, tempo)
     return x
+
+
+def _stretch(x: np.ndarray, speed: float) -> np.ndarray:
+    """变速不变调：优先 WSOLA（波形相似叠加，语音最自然），失败退回相位声码器。"""
+    try:
+        from audiotsm import wsola
+        from audiotsm.io.array import ArrayReader, ArrayWriter
+
+        reader = ArrayReader(x.reshape(1, -1).astype(np.float32))
+        writer = ArrayWriter(channels=1)
+        wsola(channels=1, speed=speed).run(reader, writer)
+        return np.asarray(writer.data, dtype=np.float32).reshape(-1)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[提示] WSOLA 不可用（{exc}），改用相位声码器", file=sys.stderr)
+    return np.asarray(librosa.effects.time_stretch(x, rate=speed), dtype=np.float32)
 
 
 def _has_soxr() -> bool:

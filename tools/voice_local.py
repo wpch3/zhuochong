@@ -57,35 +57,37 @@ def split_initial_final(syl: str) -> tuple[str, str]:
 
 
 def phonemize(text: str, id_map: dict) -> list[str]:
-    """文本 → 音素序列（声母 / 韵母 / 声调 / 标点）。"""
+    """文本 → 音素序列（声母 / 韵母 / 声调 / 标点）。
+
+    关键：必须**整句**交给 pypinyin，它才会用词组做多音字消歧
+    （逐字转换会把 银行→yin2 xing2、重复→zhong4 fu4 念错，听起来就是“机械/念错字”）。
+    """
     from pypinyin import Style, pinyin
 
+    # 整句转换；非中文字符返回空串，稍后按字符对齐跳过
+    readings = pinyin(text, style=Style.TONE3, heteronym=False,
+                      neutral_tone_with_five=True,
+                      errors=lambda s: [[""]] * len(s))
     out: list[str] = []
-    for ch in text:
+    for ch, rd in zip(text, readings):
         if ch in PUNCT:
             if ch in id_map:
                 out.append(ch)
             continue
-        if "\u4e00" <= ch <= "\u9fff":
-            py = pinyin(ch, style=Style.TONE3, heteronym=False,
-                        errors=lambda x: [""])[0][0]
-            py = py.replace("ü", "v").replace("Ü", "v")
-            m = re.match(r"^([a-z]+)([1-5])?$", py)
-            if not m:
-                continue
-            syl, tone = m.group(1), (m.group(2) or "5")
-            ini, fin = split_initial_final(syl)
-            if fin not in id_map:          # 罕见韵母（如 io）：退化为逐字母兜底
-                fin = {"io": "o", "iai": "ai", "uo": "uo"}.get(fin, fin)
-            if fin not in id_map:
-                continue
-            out.append(ini if ini in id_map else "Ø")
-            out.append(fin)
-            out.append(tone)
+        py = (rd[0] if rd else "") or ""
+        py = py.replace("ü", "v").replace("Ü", "v")
+        m = re.match(r"^([a-z]+)([1-5])?$", py)
+        if not m:
+            continue                      # 非中文 / 数字等：跳过（保留标点停顿）
+        syl, tone = m.group(1), (m.group(2) or "5")
+        ini, fin = split_initial_final(syl)
+        if fin not in id_map:             # 罕见韵母兜底
+            fin = {"io": "o", "iai": "ai"}.get(fin, fin)
+        if fin not in id_map:
             continue
-        # 非中文：数字转读法，其余忽略
-        if ch.isdigit():
-            continue
+        out.append(ini if ini in id_map else "Ø")
+        out.append(fin)
+        out.append(tone)
     return out
 
 
@@ -141,13 +143,41 @@ def synth(text: str, voice: str, cfg: dict, sess: ort.InferenceSession,
     return np.asarray(audio).reshape(-1).astype(np.float32)
 
 
-def pitch_shift(x: np.ndarray, factor: float) -> np.ndarray:
-    """整体升/降调（重采样法）：factor>1 更清亮，略带加快，适合做“少女化”。"""
+def time_stretch(x: np.ndarray, speed: float, method: str = "wsola") -> np.ndarray:
+    """变速不变调。method=wsola 用波形相似叠加（语音更自然，去金属音），phase 用相位声码器兜底。"""
+    if abs(speed - 1.0) < 1e-3 or x.size == 0:
+        return x
+    if method == "wsola":
+        try:
+            import audiotsm
+            from audiotsm.io.array import ArrayReader, ArrayWriter
+
+            reader = ArrayReader(x.reshape(1, -1).astype(np.float32))
+            writer = ArrayWriter(channels=1)
+            tsm = audiotsm.wsola(channels=1, speed=speed)
+            tsm.run(reader, writer)
+            return np.asarray(writer.data, dtype=np.float32).reshape(-1)
+        except Exception as exc:  # noqa: BLE001 - 装不上就退回相位声码器
+            print(f"[提示] WSOLA 不可用（{exc}），改用相位声码器", file=sys.stderr)
+    import librosa
+
+    return np.asarray(librosa.effects.time_stretch(x, rate=speed), dtype=np.float32)
+
+
+def pitch_shift(x: np.ndarray, factor: float, method: str = "resample") -> np.ndarray:
+    """把音高与共振峰抬高 factor 倍（少女化）。
+
+    method=resample：只做降采样，音高与共振峰一起抬高，副作用是语速略快（无金属音）；
+    method=stretch ：降采样后再变速拉回原长（语速不变，理论上更自然，需 WSOLA）。
+    """
     if abs(factor - 1.0) < 1e-3 or x.size == 0:
         return x
     n_out = int(round(x.size / factor))
     src = np.linspace(0, x.size - 1, n_out)
-    return np.interp(src, np.arange(x.size), x).astype(np.float32)
+    y = np.interp(src, np.arange(x.size), x).astype(np.float32)
+    if method == "stretch":
+        y = time_stretch(y, 1.0 / factor, method="wsola")
+    return y
 
 
 def write_wav(path: str, x: np.ndarray, sr: int) -> int:
@@ -199,6 +229,8 @@ def main() -> int:
     ap.add_argument("--render-dialogue", action="store_true")
     ap.add_argument("--character", default="xiaoxun")
     ap.add_argument("--root", default=".")
+    ap.add_argument("--shift-method", choices=["resample", "stretch"], default="resample",
+                    help="resample=只降采样（无金属音，语速略快）；stretch=变速拉回原长")
     args = ap.parse_args()
 
     if not os.path.isdir(MODEL_DIR):
@@ -213,14 +245,14 @@ def main() -> int:
         outdir = os.path.join(args.root, "characters", args.character, "voice", "lines_" + args.voice)
         for n, it in enumerate(items, 1):
             x = synth(it["text"], args.voice, cfg, sess, args.length_scale or None)
-            x = pitch_shift(x, args.pitch)
+            x = pitch_shift(x, args.pitch, args.shift_method)
             path = os.path.join(outdir, f"{it['id']}_{it['variant']}.wav")
             size = write_wav(path, x, sr)
             print(f"[{n}/{len(items)}] {os.path.basename(path)}  {size // 1024} KB")
         return 0
 
     x = synth(args.text, args.voice, cfg, sess, args.length_scale or None)
-    x = pitch_shift(x, args.pitch)
+    x = pitch_shift(x, args.pitch, args.shift_method)
     size = write_wav(args.out, x, sr)
     print(f"{args.out}: {size // 1024} KB, {round(x.size / sr, 2)} 秒, 音色 {args.voice}, 升调 {args.pitch}")
     return 0
