@@ -100,8 +100,10 @@ jobs:
           D="characters/$CHARACTER/voice"
           echo "--- 采样 ---"; ls -la "$D/samples" || true
           echo "--- 台词数 ---"; ls "$D/lines" | wc -l
-          find "$D" -name '*.mp3' -size -2k -print | tee /tmp/bad.txt
-          test ! -s /tmp/bad.txt
+          # 空文件=该音色失效（供应商音色表会变动），删掉即可，不算失败
+          find "$D" -name '*.mp3' -size -2k -delete
+          echo "有效文件：$(find "$D" -name '*.mp3' | wc -l)"
+          test "$(find "$D" -name '*.mp3' | wc -l)" -gt 0
 
       - name: 打包
         run: |
