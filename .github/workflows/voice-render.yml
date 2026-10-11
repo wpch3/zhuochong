@@ -63,14 +63,14 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          mkdir -p logs
+          mkdir -p ci-logs
           { echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; \
             echo "time: $(date -u +%FT%TZ)"; \
             echo "---- 输出（结尾 5000 字符）----"; \
-            tail -c 5000 /tmp/render.log 2>/dev/null; } > logs/ci-voice-render.log
+            tail -c 5000 /tmp/render.log 2>/dev/null; } > ci-logs/voice-render.log
           git config user.email "actions@github.com"
           git config user.name "voice-render bot"
-          git add logs/ci-voice-render.log
+          git add ci-logs/voice-render.log
           git commit -q -m "ci: voice-render 日志 [skip ci]"
           git fetch -q origin "$GITHUB_REF_NAME"
           git rebase "origin/$GITHUB_REF_NAME" || git rebase --abort
