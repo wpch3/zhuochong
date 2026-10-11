@@ -61,3 +61,8 @@
 - 做了什么：语音：云端微软少女音色跑通（这是用户最急的点）。思考：用户否掉'年龄感'两次，说'你到底能不能行'；行业做法就是用带少女音色的神经 TTS。行动：① 用户补了 workflows 权限后，把 .github/workflows/voice-render.yml 真正推上去并跑通 Actions（沙箱读不到 Actions 日志域名，改成失败时把日志提交回仓库 ci-logs/，注意 logs/ 被 .gitignore 忽略导致第一次白提交）；② 定位失败原因：edge-tts 锁 7.2.8 版本会失败，放开版本即可合成；晓双/晓萌音色已失效（NoAudioReceived），脚本已改为单个音色失败不阻断整批；③ 云端产出：晓伊 5 版样本（0/+15/+30/+45Hz、+30Hz 慢5%）+ 38 条台词全部渲染，结果由 Actions 自动提交回分支；④ 本地另有一条离线路线（Piper + 少女化），修好 resample 方向后实测 267/288/304 Hz，与云端形成对照。
 - 遇到/修了什么：踩坑：① .gitignore 忽略 logs/，CI 回传日志必须换目录（已改 ci-logs/）；② edge-tts 单个音色失效会让整批中断（已容错）；③ 沙箱读不到 results-receiver.actions.githubusercontent.com 的日志下载域名，只能靠回传；④ 本地 resample 方向搞反会降音高（已修，纯音验证 234→264.5/286.7/305.5 Hz）。
 - 下一步：下一步：等用户从试听页选编号 → 写 config/voices.json → 用选定音色重渲全部台词 → 接播放链路；随后重做人物形象。
+
+## 2026-10-11 10:05
+- 做了什么：语音与规划：本地音色的真正解法 + 产品总规划。思考：用户明确否掉小雅/华言（都是青年女性），并问'本地还有什么办法/能不能自己下载音色/能不能做训练功能'。判断：本地缺的不是算法而是少女音色的底子模型，正确解法=①音色包机制（下载即装）②少女化用 TD-PSOLA（只抬基频保共振峰）③训练走外部工具+音色包导出。做了：① tools/voice_local.py 新增 TD-PSOLA（实测 238→284/321Hz，时长不变，无金属音）与音色包路径查找；② 新增 tools/voice_packs.py（install/list/verify/remove，zip 或目录、自动生成试听样音、强制登记 license/source）+ voices/ 目录与 README + registry.json；实测装好 xiaoya 与 chaowen 两个包（chaowen 实测 133Hz 是男声，坐实'本地缺少女音'）；③ config/voices.json 定案：云端晓伊标准（用户选定）+ 本地 xiaoya+psola 兜底；④ docs/VOICES.md（音色手册：支持格式、实测记录、合法来源清单 Kokoro/sherpa-onnx、训练可行性与边界、合规红线）；⑤ docs/PRODUCT_PLAN.md（三进程架构 + 15 个功能分区 + 20 项缺口清单 P0-P2 + M1-M6 里程碑）；TASKS 追加 T9-T14。
+- 遇到/修了什么：踩坑与结论：① pyworld 在沙箱编译不了 → 改用纯 numpy 的 TD-PSOLA（索引映射版，第一版按时间映射导致基频反而降低，改按索引比例映射后正确）；② 音色包 install 需支持 zip 内子目录与子目录里的 meta.json（已修）；③ 试听页不能引用服务器根目录之外的音频 → 把音色包样音复制进 samples/；④ Piper 只有 3 个中文音色且都不够少女，本地必须靠用户下载新音色包或训练。
+- 下一步：下一步：等用户在试听页选（云端标准已定；本地可试 16/17/18 PSOLA 三档）→ 用选定音色重渲台词并接播放链路；随后按用户命令做人物重做（先出 3 版设定图给用户挑）+ 按 T9 起做工作区骨架。

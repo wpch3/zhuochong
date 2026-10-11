@@ -29,6 +29,7 @@
 | 沙箱预览 | ✅ 端口 5173，C 引擎实时渲染，可点击交互 |
 | 小寻形态 | 🟡 只有 teen 一形态、全身单图层（手臂/上下半身未分段）；用户要求**重做形象** |
 | 拆件与表情 | 🟡 眼睛(睁/闭几何版)、嘴(暗线蒙版)；完整拆件与表情集 = **当前任务** |
+| 软件形态 | 🟡 规划完成（`docs/PRODUCT_PLAN.md`）：三进程（桌宠 C / 本地 Web 工作区 / 本地网关）+ 三张注册表（skills / providers / modules）；缺口清单与里程碑已列 |
 | 语音合成 | ✅ [沙箱实测] 本地离线神经语音（Piper 中文音色）：`tools/voice_setup.sh` + `tools/voice_local.py`；试听页 `characters/xiaoxun/voice/samples/index.html`（6 样本，含少女音色小雅与升调变体）；等用户选音色后写 `config/voices.json` 并批量渲染台词 |
 | UI | ⬜ 未开始（用户：测试程序不需要 UI 时先做拆件） |
 | 其余 6 角色 × 4 形态 | ⬜ 未开始 |

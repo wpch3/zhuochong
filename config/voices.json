@@ -1,9 +1,23 @@
 {
   // 角色 → 音色映射（按供应商分组）。音色绑定角色，形态切换不换音色，形态可单独覆盖。
+  // 用户 2026-10-11 决定：小寻的少女音 = 云端「晓伊」标准（不加音调偏移）。
+  // 本地兜底：voices/xiaoya（Piper 音色包）+ psola 1.25（只抬基频、保共振峰）。
   "schema_version": "1.0",
   "voices": [
-    { "id": "xiaoxun_default", "character": "xiaoxun", "form": "",
-      "provider": "", "voice": "", "style": "温柔、语速偏慢",
-      "note": "供应商接入后填写 voice 字段；留空则在语音功能启用时提示选择" }
+    { "id": "xiaoxun_teen", "character": "xiaoxun", "form": "teen",
+      "provider": "edge-tts", "voice": "zh-CN-XiaoyiNeural",
+      "style": "少女音（标准，pitch=+0Hz）；温柔、大方，语速正常",
+      "note": "云端首选（已由 GitHub Actions 渲染验证）。断网兜底：本音色包 xiaoya + psola 1.25" },
+    { "id": "xiaoxun_loli", "character": "xiaoxun", "form": "loli",
+      "provider": "edge-tts", "voice": "zh-CN-XiaoyiNeural",
+      "style": "同一音色，本地处理时用 psola 1.35（只抬基频）",
+      "note": "萝莉形态；供应商少女音色失效过半，故统一用晓伊 + 处理参数区分" },
+    { "id": "xiaoxun_adult", "character": "xiaoxun", "form": "adult",
+      "provider": "edge-tts", "voice": "zh-CN-XiaoxiaoNeural",
+      "style": "成年女性音色", "note": "仅成年形态使用" },
+    { "id": "xiaoxun_local_fallback", "character": "xiaoxun", "form": "",
+      "provider": "piper-local", "voice": "xiaoya",
+      "style": "离线兜底：psola 1.25（基频 ×1.25，共振峰不变）",
+      "note": "文件在 voices/xiaoya/；由 tools/voice_packs.py 安装与校验" }
   ]
 }

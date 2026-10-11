@@ -43,8 +43,19 @@ SENT_SPLIT = re.compile(r"(?<=[。！？!?…；;])")
 CLAUSE_SPLIT = re.compile(r"(?<=[，,、：:])")
 
 
+def voice_path(voice: str) -> str:
+    """音色查找顺序：音色包目录 ./voices/<id>/ → 缓存目录 ~/.cache/piper-voices/。"""
+    for base in (os.path.join("voices", voice), os.path.join(MODEL_DIR, voice)):
+        if os.path.exists(base + ".onnx"):
+            return base
+        if os.path.exists(os.path.join(base, "model.onnx")):
+            return os.path.join(base, "model")
+    return os.path.join(MODEL_DIR, voice)
+
+
 def load_config(voice: str) -> dict:
-    with open(os.path.join(MODEL_DIR, voice + ".onnx.json"), encoding="utf-8") as f:
+    base = voice_path(voice)
+    with open(base + ".onnx.json", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -164,14 +175,59 @@ def time_stretch(x: np.ndarray, speed: float, method: str = "wsola") -> np.ndarr
     return np.asarray(librosa.effects.time_stretch(x, rate=speed), dtype=np.float32)
 
 
-def pitch_shift(x: np.ndarray, factor: float, method: str = "resample") -> np.ndarray:
+def td_psola(x: np.ndarray, sr: int, factor: float,
+             fmin: int = 90, fmax: int = 400, frame: int = 1024) -> np.ndarray:
+    """TD-PSOLA：抬高基频 factor 倍，**共振峰不变、时长不变**（少女化的正确做法）。
+
+    原理：找出原声的基音脉冲位置（源端点），在输出里按 period/factor 密集排布端点，
+    每个颗粒从原声原样复制（不重采样、变速）→ 脉冲率上升（音更高），而颗粒内部的
+    频谱包络（共振峰）保持，所以不会像重采样那样整体变成“花栗鼠”，也不会有相位声码器的金属音。
+    """
+    import librosa
+
+    hop = frame // 4
+    f0, _, _ = librosa.pyin(x, fmin=fmin, fmax=fmax, sr=sr,
+                            frame_length=frame, hop_length=hop)
+    times = librosa.times_like(f0, sr=sr, hop_length=hop)
+    f0_i = np.interp(np.arange(x.size) / sr, times, np.nan_to_num(f0, nan=0.0))
+    voiced = f0_i > 1.0
+    ph = np.cumsum(voiced.astype(np.float64) * np.maximum(f0_i, 0.0) / sr)
+    marks = np.where(np.diff(np.floor(ph)) > 0)[0]
+    if marks.size < 8:
+        return x.copy()
+    t_med = float(np.median(1.0 / np.maximum(f0_i[marks], 1.0)))
+    n_out = int(np.floor(x.size / sr / (t_med / factor)))
+    j = np.arange(n_out)
+    src_idx = np.clip(np.round(np.interp(j, [0, n_out - 1], [0, marks.size - 1])).astype(int),
+                      1, marks.size - 2)
+    half = max(24, int(round(1.5 * t_med * sr)))
+    out = np.zeros(x.size + 4 * half, dtype=np.float32)
+    env = np.zeros_like(out)
+    win = np.hanning(2 * half).astype(np.float32)
+    for k in range(n_out):
+        s = marks[src_idx[k]]
+        d = int(round(k * (t_med / factor) * sr)) + 2 * half
+        if s - half < 0 or s + half > x.size or d - half < 0 or d + half > out.size:
+            continue
+        out[d - half:d + half] += x[s - half:s + half] * win
+        env[d - half:d + half] += win
+    env[env < 1e-3] = 1.0
+    y = out[2 * half:2 * half + x.size] / env[2 * half:2 * half + x.size]
+    return y.astype(np.float32)
+
+
+def pitch_shift(x: np.ndarray, factor: float, method: str = "psola",
+                sr: int = 22050) -> np.ndarray:
     """把音高与共振峰抬高 factor 倍（少女化）。
 
     method=resample：只做降采样，音高与共振峰一起抬高，副作用是语速略快（无金属音）；
-    method=stretch ：降采样后再变速拉回原长（语速不变，理论上更自然，需 WSOLA）。
+    method=stretch ：降采样后再变速拉回原长（语速不变，理论上更自然，需 WSOLA）；
+    method=psola   ：TD-PSOLA，只抬基频、共振峰与时长都不变（推荐，最接近“少女化”）。
     """
     if abs(factor - 1.0) < 1e-3 or x.size == 0:
         return x
+    if method == "psola":
+        return td_psola(x, sr, factor)
     n_out = int(round(x.size / factor))
     src = np.linspace(0, x.size - 1, n_out)
     y = np.interp(src, np.arange(x.size), x).astype(np.float32)
@@ -194,8 +250,7 @@ def write_wav(path: str, x: np.ndarray, sr: int) -> int:
 
 def open_voice(voice: str) -> tuple[dict, ort.InferenceSession]:
     cfg = load_config(voice)
-    sess = ort.InferenceSession(os.path.join(MODEL_DIR, voice + ".onnx"),
-                                providers=["CPUExecutionProvider"])
+    sess = ort.InferenceSession(voice_path(voice) + ".onnx", providers=["CPUExecutionProvider"])
     return cfg, sess
 
 
@@ -229,8 +284,8 @@ def main() -> int:
     ap.add_argument("--render-dialogue", action="store_true")
     ap.add_argument("--character", default="xiaoxun")
     ap.add_argument("--root", default=".")
-    ap.add_argument("--shift-method", choices=["resample", "stretch"], default="resample",
-                    help="resample=只降采样（无金属音，语速略快）；stretch=变速拉回原长")
+    ap.add_argument("--shift-method", choices=["resample", "stretch", "psola"], default="psola",
+                    help="psola=只抬基频保共振峰（推荐）；stretch=降采样+WSOLA；resample=只降采样")
     args = ap.parse_args()
 
     if not os.path.isdir(MODEL_DIR):
@@ -245,14 +300,14 @@ def main() -> int:
         outdir = os.path.join(args.root, "characters", args.character, "voice", "lines_" + args.voice)
         for n, it in enumerate(items, 1):
             x = synth(it["text"], args.voice, cfg, sess, args.length_scale or None)
-            x = pitch_shift(x, args.pitch, args.shift_method)
+            x = pitch_shift(x, args.pitch, args.shift_method, sr)
             path = os.path.join(outdir, f"{it['id']}_{it['variant']}.wav")
             size = write_wav(path, x, sr)
             print(f"[{n}/{len(items)}] {os.path.basename(path)}  {size // 1024} KB")
         return 0
 
     x = synth(args.text, args.voice, cfg, sess, args.length_scale or None)
-    x = pitch_shift(x, args.pitch, args.shift_method)
+    x = pitch_shift(x, args.pitch, args.shift_method, sr)
     size = write_wav(args.out, x, sr)
     print(f"{args.out}: {size // 1024} KB, {round(x.size / sr, 2)} 秒, 音色 {args.voice}, 升调 {args.pitch}")
     return 0

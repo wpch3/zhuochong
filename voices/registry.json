@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "voices": [
+    {
+      "id": "xiaoya",
+      "name": "小雅（少女向）",
+      "lang": "zh-CN",
+      "gender": "female",
+      "age": "少女感",
+      "license": "见来源（Piper 音色表；训练数据来源需按上游标注核对）",
+      "source": "https://github.com/xiongxiongge1/ai_cartoon_person (static/tts_models/piper)",
+      "path": "voices/xiaoya",
+      "sample": "voices/xiaoya/sample.wav",
+      "installed_at": "2026-10-11 10:04",
+      "usable": true
+    },
+    {
+      "id": "chaowen",
+      "name": "超文（待听）",
+      "lang": "zh-CN",
+      "gender": "",
+      "age": "待听",
+      "license": "见来源（Piper 音色表）",
+      "source": "https://github.com/xiongxiongge1/ai_cartoon_person (static/tts_models/piper)",
+      "path": "voices/chaowen",
+      "sample": "voices/chaowen/sample.wav",
+      "installed_at": "2026-10-11 10:04",
+      "usable": true
+    }
+  ]
+}
