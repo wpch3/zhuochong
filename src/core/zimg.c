@@ -432,33 +432,41 @@ void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity)
 /* 内部实现：bend 参数为 0 时等价于 zimg_draw */
 static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
                       int sx0, int sy0, int sx1, int sy1,
-                      double bend_x, double bend_y, int curve);
+                      double bend_x, int curve_x, double bend_y, int curve_y);
 
 void zimg_draw_rect(zimg *dst, const zimg *src, const double m[6], double opacity,
                     int sx0, int sy0, int sx1, int sy1)
 {
-    draw_impl(dst, src, m, opacity, sx0, sy0, sx1, sy1, 0.0, 0.0, 2);
+    draw_impl(dst, src, m, opacity, sx0, sy0, sx1, sy1,
+              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR);
 }
 
 void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacity,
-                    double bend_x, double bend_y, int curve)
+                    double bend_x, int curve_x, double bend_y, int curve_y)
 {
     if (!src) return;
-    draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h, bend_x, bend_y, curve);
+    draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h, bend_x, curve_x, bend_y, curve_y);
 }
 
+/* 形变权重。入参 t 是源图内的归一化纵坐标（0=顶边，1=底边）；
+   内部换算成 u = 1 - t（0=底边，1=顶边），因为"根"默认在底边（人物站在地上）。 */
 static double bend_factor(double t, int curve)
 {
+    double u;
     if (t < 0.0) t = 0.0;
     if (t > 1.0) t = 1.0;
-    if (curve == 0) return t * t;                    /* 根部固定 */
-    if (curve == 1) return sin(t * 3.14159265358979);/* 中间最大 */
-    return t;                                        /* 线性 */
+    u = 1.0 - t;
+    switch (curve) {
+    case ZIMG_BEND_SINE:   return sin(u * 3.14159265358979);  /* 两端固定、中段最大 */
+    case ZIMG_BEND_LINEAR: return u;                          /* 底 0 顶 1 */
+    case ZIMG_BEND_TIP:    return t * t;                      /* 顶边固定，底端最大 */
+    default:               return u * u;                      /* ROOT：底边固定，顶端最大 */
+    }
 }
 
 static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
                       int sx0, int sy0, int sx1, int sy1,
-                      double bend_x, double bend_y, int curve)
+                      double bend_x, int curve_x, double bend_y, int curve_y)
 {
     double det, inv[6];
     int x0, y0, x1, y1, px, py;
@@ -486,6 +494,12 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
         }
         x0 = (int)floor(minx); y0 = (int)floor(miny);
         x1 = (int)ceil(maxx);  y1 = (int)ceil(maxy);
+        /* 形变会把像素推出原包围盒：按最大位移把扫描范围撑开，否则弯曲的那一端会被裁掉。
+           （单测"root 曲线顶端位移大"就是被这个裁没的） */
+        if (bend_x != 0.0 || bend_y != 0.0) {
+            int ex = (int)ceil(fabs(bend_x)) + 1, ey = (int)ceil(fabs(bend_y)) + 1;
+            x0 -= ex; x1 += ex; y0 -= ey; y1 += ey;
+        }
     }
     x0 = ZC_CLAMP(x0, 0, dst->w); x1 = ZC_CLAMP(x1, 0, dst->w);
     y0 = ZC_CLAMP(y0, 0, dst->h); y1 = ZC_CLAMP(y1, 0, dst->h);
@@ -503,8 +517,10 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
             if (bend_x != 0.0 || bend_y != 0.0) {
                 /* 先估一次源位置求形变权重 t，再把目标坐标按位移反查（逐像素，无接缝） */
                 double ay = inv[1] * (px + 0.5) + inv[3] * (py + 0.5) + inv[5];
-                double f = bend_factor(ay / (double)src->h, curve);
-                double dx = bend_x * f, dy = bend_y * f;
+                double t  = ay / (double)src->h;
+                /* X 与 Y 分别用各自的曲线：侧摆（根部固定）与呼吸（中段最大）可以同时存在 */
+                double dx = bend_x * bend_factor(t, curve_x);
+                double dy = bend_y * bend_factor(t, curve_y);
                 fx = inv[0] * (px + 0.5 - dx) + inv[2] * (py + 0.5 - dy) + inv[4];
                 fy = inv[1] * (px + 0.5 - dx) + inv[3] * (py + 0.5 - dy) + inv[5];
             } else {
@@ -573,9 +589,7 @@ void zimg_draw_bend(zimg *dst, const zimg *src, const double m[6], double opacit
         double t, f, mb[6];
         if (y1 <= y0) continue;
         t = (double)(y0 + y1) * 0.5 / (double)src->h;
-        if (curve == 0)      f = t * t;                        /* 根部固定 */
-        else if (curve == 1) f = sin(t * 3.14159265358979);    /* 中间最大 */
-        else                 f = t;                            /* 线性 */
+        f = bend_factor(t, curve);   /* 与平滑形变共用同一套曲线语义 */
         memcpy(mb, m, sizeof(mb));
         mb[4] += bend_x * f;
         mb[5] += bend_y * f;

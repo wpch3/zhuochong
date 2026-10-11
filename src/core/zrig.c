@@ -28,7 +28,10 @@ enum {
 /* 通道参数 */
 enum { P_DX = 0, P_DY, P_SX, P_SY, P_ROT, P_ALPHA, P_BEND_X, P_BEND_Y };
 /* 形变曲线：0=根部固定（头发/裙摆） 1=中间最大（弯腰/呼吸） 2=线性 */
-enum { BEND_ROOT = 0, BEND_SINE, BEND_LINEAR };
+/* 形变曲线与 zimg 保持同一套语义（底边=根）：root 底固定/顶部最大，sine 中段最大，
+   linear 线性，tip 顶固定/底端最大（后发、裙摆、尾巴）。 */
+enum { BEND_ROOT = ZIMG_BEND_ROOT, BEND_SINE = ZIMG_BEND_SINE,
+       BEND_LINEAR = ZIMG_BEND_LINEAR, BEND_TIP = ZIMG_BEND_TIP };
 /* 通道波形 */
 enum { W_SINE = 0, W_BOUNCE, W_PULSE, W_DECAY };
 
@@ -137,8 +140,8 @@ struct zrig {
 
     /* 部件通道（每帧计算）：用于口型、眼部动画等 */
     double p_dx[ZRIG_MAX_PARTS], p_dy[ZRIG_MAX_PARTS];
-    double p_bendx[ZRIG_MAX_PARTS], p_bendy[ZRIG_MAX_PARTS];   /* 分段形变（网格形变的简化实现） */
-    int    p_bendc[ZRIG_MAX_PARTS];                           /* 形变曲线 */
+    double p_bendx[ZRIG_MAX_PARTS], p_bendy[ZRIG_MAX_PARTS];   /* 形变位移（像素，画布坐标） */
+    int    p_bendcx[ZRIG_MAX_PARTS], p_bendcy[ZRIG_MAX_PARTS]; /* 形变曲线：X 与 Y 各一条，互不覆盖 */
     int    p_bends[ZRIG_MAX_PARTS];                           /* 分段数 */
     double p_sx[ZRIG_MAX_PARTS], p_sy[ZRIG_MAX_PARTS];
     double p_rot[ZRIG_MAX_PARTS], p_alpha[ZRIG_MAX_PARTS];
@@ -435,6 +438,7 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                         if (z_streq(cname, "root")) c->curve = BEND_ROOT;
                         else if (z_streq(cname, "sine")) c->curve = BEND_SINE;
                         else if (z_streq(cname, "linear")) c->curve = BEND_LINEAR;
+                        else if (z_streq(cname, "tip")) c->curve = BEND_TIP;
                     }
                     if (zjson_get(cj, "strips")) c->strips = (int)zjson_num(zjson_obj_get(cj, "strips"), 0);
                 }
@@ -713,7 +717,7 @@ static void compute_group_transforms(zrig *r)
     for (i = 0; i < r->nparts; ++i) {
         r->p_dx[i] = r->p_dy[i] = 0.0;
         r->p_bendx[i] = r->p_bendy[i] = 0.0;
-        r->p_bendc[i] = BEND_ROOT;
+        r->p_bendcx[i] = r->p_bendcy[i] = BEND_ROOT;
         r->p_bends[i] = 0;
         r->p_sx[i] = r->p_sy[i] = 1.0;
         r->p_rot[i] = 0.0;
@@ -735,9 +739,9 @@ static void compute_group_transforms(zrig *r)
                     case P_SY:  r->p_sy[pi] += v; break;
                     case P_ROT: r->p_rot[pi] += v; break;
                     case P_ALPHA: r->p_alpha[pi] *= ZC_CLAMP(1.0 + v, 0.0, 1.0); break;
-                    case P_BEND_X: r->p_bendx[pi] += v; r->p_bendc[pi] = c->curve;
+                    case P_BEND_X: r->p_bendx[pi] += v; r->p_bendcx[pi] = c->curve;
                                    r->p_bends[pi] = c->strips; break;
-                    case P_BEND_Y: r->p_bendy[pi] += v; r->p_bendc[pi] = c->curve;
+                    case P_BEND_Y: r->p_bendy[pi] += v; r->p_bendcy[pi] = c->curve;
                                    r->p_bends[pi] = c->strips; break;
                 }
                 continue;
@@ -949,7 +953,8 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
             {
                 double bx = r->p_bendx[pi] * scale, by = r->p_bendy[pi] * scale;
                 if (fabs(bx) > 0.05 || fabs(by) > 0.05) {
-                    zimg_draw_warp(r->fb, src, m, opacity, bx, by, r->p_bendc[pi]);
+                    zimg_draw_warp(r->fb, src, m, opacity,
+                                   bx, r->p_bendcx[pi], by, r->p_bendcy[pi]);
                 } else {
                     zimg_draw(r->fb, src, m, opacity);
                 }

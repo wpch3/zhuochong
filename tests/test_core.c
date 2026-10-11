@@ -239,6 +239,19 @@ static void test_blink(void)
 }
 
 /* ---------------------------------------------------------- 图像 */
+/* 某一行的 alpha 加权横向重心；行里没有像素时返回 -1。用于量形变位移。 */
+static double row_centroid(const zimg *im, int y)
+{
+    double wsum = 0.0, xsum = 0.0;
+    int x;
+    if (!im || y < 0 || y >= im->h) return -1.0;
+    for (x = 0; x < im->w; ++x) {
+        double a = im->px[((size_t)y * im->w + x) * 4 + 3];
+        wsum += a; xsum += a * x;
+    }
+    return wsum > 0.0 ? xsum / wsum : -1.0;
+}
+
 static void test_image(void)
 {
     SECTION("图像：缩放 / 合成 / 命中 / PNG 往返");
@@ -258,6 +271,48 @@ static void test_image(void)
         CHECK(zimg_hit_test(c, 0, 0, 24) == 1, "不透明处命中");
         CHECK(zimg_hit_test(c, 7, 7, 24) == 0, "透明处不命中");
         zimg_free(a); zimg_free(b); zimg_free(c);
+    }
+    {
+        /* 形变（Live2D 式网格形变的等价实现）：验证"哪一端固定、哪一端动"。
+           源图是一根 8x64 的竖条，底边=根。row_shift() 量出某一行的横向重心偏移。 */
+        zimg *src = zimg_new_filled(8, 64, 255, 255, 255, 255);
+        zimg *dst;
+        double m[6];
+        double top_root, bot_root, top_tip, bot_tip, mid_sine, top_sine;
+        zimg_make_matrix(m, 40.0, 8.0, 1.0, 1.0, 0.0, 0.0, 0.0);  /* 贴到 (40,8) */
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT);
+        top_root = row_centroid(dst, 10) - 44.0;   /* 竖条原本中心 x=44 */
+        bot_root = row_centroid(dst, 68) - 44.0;
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp(dst, src, m, 1.0, 12.0, ZIMG_BEND_TIP, 0.0, ZIMG_BEND_TIP);
+        top_tip = row_centroid(dst, 10) - 44.0;
+        bot_tip = row_centroid(dst, 68) - 44.0;
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp(dst, src, m, 1.0, 12.0, ZIMG_BEND_SINE, 0.0, ZIMG_BEND_SINE);
+        mid_sine = row_centroid(dst, 40) - 44.0;
+        top_sine = row_centroid(dst, 10) - 44.0;
+        zimg_free(dst);
+
+        CHECK(top_root > 9.0 && fabs(bot_root) < 1.5,
+              "root 曲线：顶端位移大（%.1f）、底端固定（%.1f）", top_root, bot_root);
+        CHECK(bot_tip > 9.0 && fabs(top_tip) < 1.5,
+              "tip 曲线：底端位移大（%.1f）、顶端固定（%.1f）", bot_tip, top_tip);
+        CHECK(mid_sine > 10.0 && fabs(top_sine) < 2.0,
+              "sine 曲线：中段最大（%.1f）、两端收口（%.1f）", mid_sine, top_sine);
+
+        /* X 与 Y 用不同曲线时互不干扰（曾经共用一个字段，后写的会覆盖先写的） */
+        dst = zimg_new(96, 96);
+        zimg_draw_warp(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT, -10.0, ZIMG_BEND_SINE);
+        CHECK(row_centroid(dst, 10) - 44.0 > 9.0,
+              "X 用 root 时顶端仍要大幅横移（不被 Y 的 sine 覆盖）");
+        zimg_free(dst);
+        zimg_free(src);
     }
     {
         /* 半透明叠加公式检查：0.5 白 over 黑 = 128 */

@@ -199,17 +199,110 @@
   ],
   "actions": [
     {
+      "id": "breath",
+      "priority": 1,
+      "duration": 0,
+      "loop": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "body_full",
+          "param": "bend_y",
+          "wave": "sine",
+          "amp": -3.2,
+          "freq": 0.28,
+          "curve": "sine"
+        },
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -2.1,
+          "freq": 0.28
+        }
+      ]
+    },
+    {
+      "id": "sway",
+      "priority": 2,
+      "duration": 0,
+      "loop": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "body_full",
+          "param": "bend_x",
+          "wave": "sine",
+          "amp": 10,
+          "freq": 0.18,
+          "curve": "root"
+        },
+        {
+          "target": "body_full",
+          "param": "bend_y",
+          "wave": "sine",
+          "amp": -4,
+          "freq": 0.36,
+          "curve": "sine"
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.18
+        },
+        {
+          "target": "head",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 5.9,
+          "freq": 0.18
+        },
+        {
+          "target": "head",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -2.6,
+          "freq": 0.36
+        }
+      ]
+    },
+    {
       "id": "idle",
       "priority": 0,
       "loop": true,
       "interruptible": true,
       "channels": [
         {
+          "target": "body_full",
+          "param": "bend_y",
+          "wave": "sine",
+          "amp": -2.0,
+          "freq": 0.24,
+          "curve": "sine"
+        },
+        {
+          "target": "body_full",
+          "param": "bend_x",
+          "wave": "sine",
+          "amp": 2.6,
+          "freq": 0.06,
+          "curve": "root"
+        },
+        {
           "target": "head",
           "param": "dy",
           "wave": "sine",
-          "amp": 1.6,
-          "freq": 0.22
+          "amp": -1.3,
+          "freq": 0.24
+        },
+        {
+          "target": "head",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.06
         },
         {
           "target": "head",
@@ -687,72 +780,6 @@
           "opacity": 1.0
         }
       }
-    },
-    {
-      "id": "breath",
-      "priority": 1,
-      "duration": 0,
-      "loop": true,
-      "return_state": "idle",
-      "channels": [
-        {
-          "target": "body_full",
-          "param": "bend_y",
-          "wave": "sine",
-          "amp": -3,
-          "freq": 0.28,
-          "curve": "sine",
-          "strips": 24
-        },
-        {
-          "target": "head",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 2.0,
-          "freq": 0.3
-        }
-      ]
-    },
-    {
-      "id": "sway",
-      "priority": 2,
-      "duration": 0,
-      "loop": true,
-      "return_state": "idle",
-      "channels": [
-        {
-          "target": "body_full",
-          "param": "bend_x",
-          "wave": "sine",
-          "amp": 9,
-          "freq": 0.18,
-          "curve": "root",
-          "strips": 28
-        },
-        {
-          "target": "body_full",
-          "param": "bend_y",
-          "wave": "sine",
-          "amp": -5,
-          "freq": 0.36,
-          "curve": "sine",
-          "strips": 28
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.18
-        },
-        {
-          "target": "head",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 3,
-          "freq": 0.18
-        }
-      ]
     }
   ]
 }

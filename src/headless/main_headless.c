@@ -371,19 +371,26 @@ static void handle_request(zsock fd, const http_req *r)
         }
     }
     if (strcmp(r->path, "/api/info.json") == 0) {
-        char body[3072];
+        char body[4096];
         char *p = body;
         int i, fw = 0, fh = 0;
         size_t cap = sizeof(body);
+        const char *mood;
         LOCK();
         zpet_frame(g_pet, &fw, &fh);
+        /* 界面的状态片要显示真实情绪与好感，所以这里把 zpet 的内部状态一并导出；
+           mood 可能为空（还没表达过情绪），统一给 "calm" 以免界面显示破折号。 */
+        mood = zpet_last_mood(g_pet);
+        if (!mood || !*mood) mood = "calm";
         p += z_snprintf(p, cap - (size_t)(p - body),
             "{\"engine\":\"%s\",\"action\":\"%s\",\"reason\":\"%s\",\"blink\":%.3f,"
             "\"scale\":%.3f,\"form\":\"%s\",\"form_name\":\"%s\",\"outfit\":\"%s\","
+            "\"mood\":\"%s\",\"affection\":%d,\"tier\":%d,\"tier_name\":\"%s\","
             "\"sleeping\":%s,\"idle\":%.1f,\"frame_w\":%d,\"frame_h\":%d,\"character\":\"%s\","
             "\"root\":\"%s\",\"actions\":[",
             ZC_VERSION, zpet_action(g_pet), zpet_last_reason(g_pet), zpet_blink(g_pet),
             zpet_scale(g_pet), zpet_form(g_pet), zpet_form_name(g_pet), zpet_outfit(g_pet),
+            mood, zpet_affection(g_pet), zpet_affection_tier(g_pet), zpet_affection_tier_name(g_pet),
             zpet_sleeping(g_pet) ? "true" : "false", zpet_idle_seconds(g_pet), fw, fh,
             zpet_character(g_pet), g_cfg.root_dir);
         for (i = 0; i < zpet_action_count(g_pet); ++i)
@@ -391,9 +398,16 @@ static void handle_request(zsock fd, const http_req *r)
         p += z_snprintf(p, cap - (size_t)(p - body), "],\"forms\":[");
         for (i = 0; i < zpet_form_count(g_pet); ++i)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_form_id_at(g_pet, i));
+        /* 界面按钮要显示中文名（"小寻"）而不是形态 id（"teen"），所以 id 与名字成对导出。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"form_names\":[");
+        for (i = 0; i < zpet_form_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_form_name_at(g_pet, i));
         p += z_snprintf(p, cap - (size_t)(p - body), "],\"outfits\":[");
         for (i = 0; i < zpet_outfit_count(g_pet); ++i)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_outfit_id_at(g_pet, i));
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"outfit_names\":[");
+        for (i = 0; i < zpet_outfit_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_outfit_name_at(g_pet, i));
         z_snprintf(p, cap - (size_t)(p - body), "]}");
         UNLOCK();
         send_text(fd, 200, "application/json", body);

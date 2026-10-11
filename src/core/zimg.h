@@ -59,15 +59,25 @@ void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity);
 void zimg_draw_rect(zimg *dst, const zimg *src, const double m[6], double opacity,
                     int sx0, int sy0, int sx1, int sy1);
 
-/* 平滑形变（推荐）：逐像素反查，源图在目标空间按 bend·f(t) 位移，无分段接缝。
-   curve 同下（0=根部固定 1=中间最大 2=线性）。 */
+/* 形变曲线：决定"部件的哪一端固定、哪一端位移最大"。
+   约定 u = 1 - y/h（0=图像底边，1=图像顶边），即**底边是根**（站立的人物脚踩地）。
+   ZIMG_BEND_ROOT   底边固定，越往上位移越大（u²）——身体侧摆、脖子带动头。
+   ZIMG_BEND_SINE   两端固定、中段最大（sin πu）——呼吸、弯腰。
+   ZIMG_BEND_LINEAR 底边 0、顶边 1 线性（u）。
+   ZIMG_BEND_TIP    顶边固定，越往下位移越大（(1-u)²）——后发、裙摆、尾巴这类"吊在上面"的部件。 */
+#define ZIMG_BEND_ROOT   0
+#define ZIMG_BEND_SINE   1
+#define ZIMG_BEND_LINEAR 2
+#define ZIMG_BEND_TIP    3
+
+/* 平滑形变（推荐）：逐像素反查，源图在目标空间按 bend·f(u) 位移，无分段接缝。
+   X 与 Y 各有自己的曲线（例：侧摆用 ROOT，同时呼吸用 SINE，互不干扰）。 */
 void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacity,
-                    double bend_x, double bend_y, int curve);
+                    double bend_x, int curve_x, double bend_y, int curve_y);
 
 /* 分段形变（保留：需要把部件切块处理时使用；平滑形变请用 zimg_draw_warp）：
    把源图按 y 切成 strips 条，每条按曲线 f(t) 施加 (bend_x,bend_y) 偏移。
-   curve: 0=根部固定（t²，头发/裙摆摆动）1=中间最大（sin，弯腰/呼吸）2=线性。
-   t 为 0（顶部）到 1（底部）的归一化位置。 */
+   curve 取值见上面的 ZIMG_BEND_*（与 zimg_draw_warp 同一套语义）。 */
 void zimg_draw_bend(zimg *dst, const zimg *src, const double m[6], double opacity,
                     double bend_x, double bend_y, int curve, int strips);
 /* 便捷：把 src 缩放到 scale、绕锚点 anchor(0..1) 平移 pos（画布坐标）。 */

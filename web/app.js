@@ -52,7 +52,7 @@ async function pollInfo() {
     setConn(true);
     $("chip-action").textContent = "动作 " + (d.action || "—");
     $("chip-mood").textContent = "情绪 " + (d.mood || "—");
-    $("chip-aff").textContent = "好感 " + (d.affection ?? "—") + (d.tier ? ` · ${d.tier}` : "");
+    $("chip-aff").textContent = "好感 " + (d.affection ?? "—") + (d.tier_name ? ` · ${d.tier_name}` : "");
     $("chip-form").textContent = "形态 " + (d.form_name || d.form || "—");
     $("chip-scale").textContent = "缩放 " + (d.scale ?? "—");
     if (d.scale && Math.abs(Number($("scale").value) - d.scale) > 0.001) {
@@ -170,6 +170,7 @@ function markActive(parent, btn) {
 
 /* ------------------------------------------------------------ 形态 / 服装 / 缩放 */
 /* 形态与服装：列表由引擎扫描角色包给出（新增形态/服装会自动出现在这里） */
+/* 兜底名字表：引擎没给名字时才用（新增形态应在 character.json 里写 name，不改这里） */
 const FORM_NAMES = { teen: "少女", loli: "萝莉", adult: "青年女性", chibi: "Q 版" };
 let optionsLoaded = false;
 
@@ -179,9 +180,12 @@ function applyOptions(d) {
   const forms = d.forms || [];
   if (!optionsLoaded) {
     formSel.innerHTML = "";
-    forms.forEach((id) => {
+    const formNames = d.form_names || [];
+    forms.forEach((id, i) => {
       const o = document.createElement("option");
-      o.value = id; o.textContent = (FORM_NAMES[id] || id) + "（" + id + "）";
+      /* 名字优先用角色包里写的（引擎导出 form_names），这样新增形态不用改前端 */
+      const name = formNames[i] || FORM_NAMES[id] || id;
+      o.value = id; o.textContent = name + "（" + id + "）";
       formSel.appendChild(o);
     });
     formSel.addEventListener("change", async () => {
@@ -191,9 +195,11 @@ function applyOptions(d) {
 
     const outfitSel = $("outfit");
     outfitSel.innerHTML = "";
-    outfits.forEach((id) => {
+    const outfitNames = d.outfit_names || [];
+    outfits.forEach((id, i) => {
       const o = document.createElement("option");
-      o.value = id; o.textContent = id === "default" ? "常服（默认）" : id;
+      const name = outfitNames[i] || (id === "default" ? "常服" : id);
+      o.value = id; o.textContent = name + "（" + id + "）";
       outfitSel.appendChild(o);
     });
     outfitSel.addEventListener("change", async () => {

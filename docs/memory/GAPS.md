@@ -14,7 +14,7 @@
 | --- | --- |
 | C 桌宠本体 | `dist/windows/x86_64/zhuochong.exe`（370 KB，零依赖）[需真机] |
 | 立绘引擎（数据驱动） | `src/core/zrig.c` + `characters/xiaoxun/forms/teen/rig.json`（15 动作） |
-| **Live2D 式形变** | `zimg_draw_warp`（逐像素平滑）+ `bend_x`/`bend_y` 通道 + curve(root/sine/linear)；动作 breath / sway |
+| **Live2D 式形变** | `zimg_draw_warp`（逐像素平滑，X/Y 各自曲线）+ curve(root/sine/linear/tip)；**idle 常驻呼吸**；动作 breath / sway |
 | 交互 | 18 条规则 `config/interactions.json`；摸头/摸脸/锤击/点击/睡眠唤醒 |
 | 眨眼与视线 | 五态机（对齐 Cubism）+ 虹膜跟随 |
 | 换形态/换装 | `zpet_set_form` / `zpet_set_outfit`（机制就绪，缺素材） |
@@ -76,8 +76,8 @@
 ### 小修（随手就能做，别积压）
 | # | 缺什么 | 位置 |
 | --- | --- | --- |
-| G30 | `/api/info.json` 没有 `mood` / `affection` / `tier`，界面上的状态片是占位数据 | `src/headless/main_headless.c` |
-| G31 | 界面显示 `form_name` 而不是形态 id | `web/app.js` |
+| ~~G30~~ | ✅ 2026-10-11 已修：`/api/info.json` 增加 `mood`/`affection`/`tier`/`tier_name` | `src/headless/main_headless.c` |
+| ~~G31~~ | ✅ 2026-10-11 已修：增加 `form_names`/`outfit_names`，界面显示角色包里写的中文名（新增形态不改前端） | `main_headless.c` + `web/app.js` |
 | G32 | `send_png` 用 `/tmp` 固定文件名，同秒并发有碰撞风险 | `src/headless/main_headless.c` |
 | G33 | 本地 Praat 样音 `local5_praat_1.10/1.20/1.32`（267/284/315 Hz）还没进试听页 21–23 | `characters/xiaoxun/voice/samples/index.html` |
 
