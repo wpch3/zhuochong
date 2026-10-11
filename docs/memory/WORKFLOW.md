@@ -59,9 +59,22 @@ rm -rf build && make test      # 改了头文件或引擎结构时，先清后�
 
 ### 3.3 素材流水线（禁止手写坐标）
 ```
-AI 生成 → tools/prepare_sprites.py（抠图去噪） → tools/make_parts.py（拆件）
-        → tools/make_rig.py（生成 rig.json） → 机器验收 → 入库
+AI 生成 → prepare_sprites.py（抠图去噪） → make_anchors.py（量关节锚点）
+        → make_parts.py（拆件） → make_rig.py（生成 rig.json）
+        → check_assets.py（机器验收，不过就重做） → 入库
 ```
+两个把关工具（2026-10-11 新增）：
+```bash
+# 锚点：从剪影量出 头顶/眼线/嘴线/颈/肩/肘/腕/腰/髋/膝/踝/脚底
+~/.imgenv/bin/python tools/make_anchors.py --character xiaoxun --form teen
+#   → characters/<id>/forms/<form>/design/anchors.json
+#   → logs/asset_qa/anchors_preview.png（人眼复核用，不入库）
+# 验收：形状 IoU / 色卡距离 / 关节对位 / 落在身体内 / 键色与白边残留
+~/.imgenv/bin/python tools/check_assets.py --character xiaoxun --form teen [--strict]
+#   退出码非 0 = 不合格；自检第 4 步已接入
+```
+- 色卡是数据：`characters/<id>/design/palette.json`（改配色只改这里，验收自动跟着变）。
+- 锚点是数据：拆件、补图、rig 枢轴、换装对位都以 `anchors.json` 为准，**不手写数字**。
 - **坐标一律脚本量取**，手写魔法数字必然对不齐（踩过）。
 - 改 rig 行为优先改 `tools/make_rig.py` 并重新生成，**不要只改 rig.json**，否则下次重生成就丢。
 - 验收不过：重试最多 3 次，仍不过**记录原因、不入库、不标完成**。
