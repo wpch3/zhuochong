@@ -224,6 +224,17 @@ def check_rig(root):
               f"坏链 {badchain} 坏形变器 {baddfm}" if (badchain or baddfm)
               else f"{nchain} 条串在别的摆后面")
 
+        # 混合模式（A7）：只认 normal/add/multiply；加算·乘算的零件必须有东西垫在底下
+        # （它们不改目标 alpha，画在空白处等于白画），所以层号不能是最底层。
+        badblend = [f"{p['id']}={p['blend']}" for p in r["parts"]
+                    if p.get("blend") not in (None, "normal", "add", "multiply")]
+        nb = [p for p in r["parts"] if p.get("blend") in ("add", "multiply")]
+        minlayer = min([p.get("layer", 0) for p in r["parts"]], default=0)
+        lowblend = [p["id"] for p in nb if p.get("layer", 0) <= minlayer]
+        check("混合模式零件写法合法", not badblend and not lowblend,
+              f"坏取值 {badblend} 压在最底层 {lowblend}" if (badblend or lowblend)
+              else f"{len(nb)} 件（加算/乘算）")
+
         # 关键帧曲线（≈ .motion3）：时间必须递增、每帧两个数、不能越过动作时长太多
         badkeys = []
         for a in r.get("actions", []):

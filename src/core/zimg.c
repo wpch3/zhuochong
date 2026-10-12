@@ -45,7 +45,43 @@ void zimg_free(zimg *im)
     free(im);
 }
 
+/* 一个像素的混合：q 是目标像素，(sr,sg,sb) 是**非预乘**源颜色 0..1，sa 是源 alpha 0..1。
+   加算/乘算都遵循 Live2D 的约定——只改颜色，不改目标 alpha。 */
+static void blend_px(uint8_t *q, double sr, double sg, double sb, double sa, int blend)
+{
+    double da = q[3] / 255.0;
+    double dr = q[0] / 255.0, dg = q[1] / 255.0, db = q[2] / 255.0;
+    double rr, rg, rb, oa;
+    /* 加算/乘算都只改颜色不改 alpha：目标是全透明的地方本来就没有东西可以提亮或压暗，
+       直接跳过。否则会留下一堆 alpha=0 但 RGB 不为 0 的"鬼像素"。 */
+    if (blend != ZIMG_BLEND_NORMAL && da <= 0.0) return;
+    if (blend == ZIMG_BLEND_ADD) {
+        rr = dr + sr * sa; rg = dg + sg * sa; rb = db + sb * sa;
+        oa = da;
+    } else if (blend == ZIMG_BLEND_MULTIPLY) {
+        rr = dr * (1.0 - sa + sa * sr);
+        rg = dg * (1.0 - sa + sa * sg);
+        rb = db * (1.0 - sa + sa * sb);
+        oa = da;
+    } else {
+        oa = sa + da * (1.0 - sa);
+        rr = (sr * sa + dr * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
+        rg = (sg * sa + dg * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
+        rb = (sb * sa + db * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
+    }
+    /* 四舍五入而不是截断：截断会让每一层合成都掉半个色阶，叠十几层就肉眼可见地发暗 */
+    q[0] = (uint8_t)ZC_CLAMP(rr * 255.0 + 0.5, 0, 255);
+    q[1] = (uint8_t)ZC_CLAMP(rg * 255.0 + 0.5, 0, 255);
+    q[2] = (uint8_t)ZC_CLAMP(rb * 255.0 + 0.5, 0, 255);
+    q[3] = (uint8_t)ZC_CLAMP(oa * 255.0 + 0.5, 0, 255);
+}
+
 void zimg_composite_masked(zimg *dst, const zimg *src, const zimg *mask)
+{
+    zimg_composite_masked_blend(dst, src, mask, ZIMG_BLEND_NORMAL);
+}
+
+void zimg_composite_masked_blend(zimg *dst, const zimg *src, const zimg *mask, int blend)
 {
     /* 把 src 合成到 dst，但只在 mask 不透明的地方生效（alpha 相乘）。
        这就是 Live2D 的 clipping mask：眼球画成完整的圆，靠眼眶形状裁出可见部分，
@@ -61,16 +97,11 @@ void zimg_composite_masked(zimg *dst, const zimg *src, const zimg *mask)
         for (x = 0; x < dst->w; ++x, dp += 4, sp += 4) {
             unsigned sa = sp[3];
             unsigned ma = mp ? mp[x * 4 + 3] : 255u;
-            unsigned a, inv;
+            unsigned a;
             if (sa == 0 || ma == 0) continue;
             a = (sa * ma + 127u) / 255u;
             if (a == 0) continue;
-            inv = 255u - a;
-            dp[0] = (uint8_t)((sp[0] * a + dp[0] * inv + 127u) / 255u);
-            dp[1] = (uint8_t)((sp[1] * a + dp[1] * inv + 127u) / 255u);
-            dp[2] = (uint8_t)((sp[2] * a + dp[2] * inv + 127u) / 255u);
-            dp[3] = (uint8_t)(a + (dp[3] * inv + 127u) / 255u > 255u ? 255u
-                              : a + (dp[3] * inv + 127u) / 255u);
+            blend_px(dp, sp[0] / 255.0, sp[1] / 255.0, sp[2] / 255.0, a / 255.0, blend);
         }
     }
 }
@@ -510,20 +541,36 @@ void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity)
 /* 内部实现：bend 参数为 0 时等价于 zimg_draw */
 static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
                       int sx0, int sy0, int sx1, int sy1,
-                      double bend_x, int curve_x, double bend_y, int curve_y);
+                      double bend_x, int curve_x, double bend_y, int curve_y, int blend);
 
 void zimg_draw_rect(zimg *dst, const zimg *src, const double m[6], double opacity,
                     int sx0, int sy0, int sx1, int sy1)
 {
     draw_impl(dst, src, m, opacity, sx0, sy0, sx1, sy1,
-              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR);
+              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, ZIMG_BLEND_NORMAL);
 }
 
 void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacity,
                     double bend_x, int curve_x, double bend_y, int curve_y)
 {
     if (!src) return;
-    draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h, bend_x, curve_x, bend_y, curve_y);
+    draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
+              bend_x, curve_x, bend_y, curve_y, ZIMG_BLEND_NORMAL);
+}
+
+void zimg_draw_blend(zimg *dst, const zimg *src, const double m[6], double opacity, int blend)
+{
+    if (!src) return;
+    draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
+              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, blend);
+}
+
+void zimg_draw_warp_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
+                          double bend_x, int curve_x, double bend_y, int curve_y, int blend)
+{
+    if (!src) return;
+    draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
+              bend_x, curve_x, bend_y, curve_y, blend);
 }
 
 /* 形变权重。入参 t 是源图内的归一化纵坐标（0=顶边，1=底边）；
@@ -544,7 +591,7 @@ double zimg_bend_factor(double t, int curve)
 
 static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
                       int sx0, int sy0, int sx1, int sy1,
-                      double bend_x, int curve_x, double bend_y, int curve_y)
+                      double bend_x, int curve_x, double bend_y, int curve_y, int blend)
 {
     double det, inv[6];
     int x0, y0, x1, y1, px, py;
@@ -607,28 +654,14 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
             }
             double s[4];
             uint8_t *q;
-            double sa, da, oa;
+            double sa;
             if (fx < -0.5 || fy < -0.5 || fx > src->w - 0.5 || fy > src->h - 0.5) continue;
             if (fx < sx0 - 0.5 || fx > sx1 - 0.5 || fy < sy0 - 0.5 || fy > sy1 - 0.5) continue;
             sample_premul(src, fx - 0.5, fy - 0.5, s);
             sa = s[3] * opacity;
             if (sa <= 0.0001) continue;
             q = dst->px + ((size_t)py * dst->w + px) * 4;
-            da = q[3] / 255.0;
-            oa = sa + da * (1.0 - sa);
-            {
-                double sr = (sa > 1e-9) ? s[0] / s[3] : 0.0;
-                double sg = (sa > 1e-9) ? s[1] / s[3] : 0.0;
-                double sb = (sa > 1e-9) ? s[2] / s[3] : 0.0;
-                double dr = q[0] / 255.0, dg = q[1] / 255.0, db = q[2] / 255.0;
-                double rr = (sr * sa + dr * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
-                double rg = (sg * sa + dg * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
-                double rb = (sb * sa + db * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
-                q[0] = (uint8_t)ZC_CLAMP(rr * 255.0, 0, 255);
-                q[1] = (uint8_t)ZC_CLAMP(rg * 255.0, 0, 255);
-                q[2] = (uint8_t)ZC_CLAMP(rb * 255.0, 0, 255);
-                q[3] = (uint8_t)ZC_CLAMP(oa * 255.0, 0, 255);
-            }
+            blend_px(q, s[0] / s[3], s[1] / s[3], s[2] / s[3], sa, blend);
         }
     }
 }
@@ -639,7 +672,7 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
    这样做的好处：不需要去求整张网格的逆映射，格子怎么扭都不会裂缝。 */
 static void draw_tri(zimg *dst, const zimg *src, double opacity,
                      const double sx[3], const double sy[3],
-                     const double dx[3], const double dy[3])
+                     const double dx[3], const double dy[3], int blend)
 {
     double den, minx, miny, maxx, maxy;
     int x0, y0, x1, y1, px, py;
@@ -661,7 +694,7 @@ static void draw_tri(zimg *dst, const zimg *src, double opacity,
     for (py = y0; py < y1; ++py) {
         for (px = x0; px < x1; ++px) {
             double qx = px + 0.5, qy = py + 0.5;
-            double w0, w1, w2, fx, fy, s[4], sa, da, oa;
+            double w0, w1, w2, fx, fy, s[4], sa;
             uint8_t *q;
             w0 = ((dy[1] - dy[2]) * (qx - dx[2]) + (dx[2] - dx[1]) * (qy - dy[2])) / den;
             w1 = ((dy[2] - dy[0]) * (qx - dx[2]) + (dx[0] - dx[2]) * (qy - dy[2])) / den;
@@ -675,21 +708,7 @@ static void draw_tri(zimg *dst, const zimg *src, double opacity,
             sa = s[3] * opacity;
             if (sa <= 0.0001) continue;
             q = dst->px + ((size_t)py * dst->w + px) * 4;
-            da = q[3] / 255.0;
-            oa = sa + da * (1.0 - sa);
-            {
-                double sr = (sa > 1e-9) ? s[0] / s[3] : 0.0;
-                double sg = (sa > 1e-9) ? s[1] / s[3] : 0.0;
-                double sb = (sa > 1e-9) ? s[2] / s[3] : 0.0;
-                double dr = q[0] / 255.0, dg = q[1] / 255.0, db = q[2] / 255.0;
-                double rr = (sr * sa + dr * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
-                double rg = (sg * sa + dg * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
-                double rb = (sb * sa + db * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
-                q[0] = (uint8_t)ZC_CLAMP(rr * 255.0, 0, 255);
-                q[1] = (uint8_t)ZC_CLAMP(rg * 255.0, 0, 255);
-                q[2] = (uint8_t)ZC_CLAMP(rb * 255.0, 0, 255);
-                q[3] = (uint8_t)ZC_CLAMP(oa * 255.0, 0, 255);
-            }
+            blend_px(q, s[0] / s[3], s[1] / s[3], s[2] / s[3], sa, blend);
         }
     }
 }
@@ -697,14 +716,22 @@ static void draw_tri(zimg *dst, const zimg *src, double opacity,
 void zimg_draw_mesh(zimg *dst, const zimg *src, const double m[6], double opacity,
                     int cols, int rows, const double *offsets)
 {
+    zimg_draw_mesh_blend(dst, src, m, opacity, cols, rows, offsets, ZIMG_BLEND_NORMAL);
+}
+
+void zimg_draw_mesh_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
+                          int cols, int rows, const double *offsets, int blend)
+{
     int c, rr, moved = 0, np;
-    if (!dst || !src || cols < 1 || rows < 1 || !offsets) { zimg_draw(dst, src, m, opacity); return; }
+    if (!dst || !src || cols < 1 || rows < 1 || !offsets) {
+        zimg_draw_blend(dst, src, m, opacity, blend); return;
+    }
     if (cols > 16) cols = 16;
     if (rows > 16) rows = 16;
     np = (cols + 1) * (rows + 1);
     for (c = 0; c < np * 2; ++c)
         if (fabs(offsets[c]) > 1e-6) { moved = 1; break; }
-    if (!moved) { zimg_draw(dst, src, m, opacity); return; }   /* 没挪控制点就走原路 */
+    if (!moved) { zimg_draw_blend(dst, src, m, opacity, blend); return; }  /* 没挪控制点就走原路 */
 
     for (rr = 0; rr < rows; ++rr) {
         for (c = 0; c < cols; ++c) {
@@ -734,7 +761,7 @@ void zimg_draw_mesh(zimg *dst, const zimg *src, const double m[6], double opacit
                         tsx[k] = sx[a[t][k]]; tsy[k] = sy[a[t][k]];
                         tdx[k] = dxp[a[t][k]]; tdy[k] = dyp[a[t][k]];
                     }
-                    draw_tri(dst, src, opacity, tsx, tsy, tdx, tdy);
+                    draw_tri(dst, src, opacity, tsx, tsy, tdx, tdy, blend);
                 }
             }
         }

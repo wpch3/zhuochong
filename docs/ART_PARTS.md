@@ -162,6 +162,7 @@
 | `GET /api/blink?v=` | 按住眨眼（`v=auto` 交回自动） |
 | `GET /api/gaze?x=&y=[&off=1]` | 视线方向 |
 | `GET /api/scale?s=` | 整体缩放 |
+| `GET /api/pause?on=0\|1` | 冻结/恢复引擎时钟。冻结后连续两帧**逐字节相同** —— 抓对照图、做哈希断言时不会被呼吸/眨眼/物理搅乱 |
 | `GET /api/form[?id=]` / `GET /api/outfit[?id=]` | 切形态 / 切服装 |
 | `GET /api/idle?s=` | 伪造空闲秒数（测睡眠用） |
 | `GET /api/quit` | 关掉预览进程 |
@@ -246,6 +247,45 @@
 - `"deformer": "<形变器 id>"` 让物理输出直接写进网格形变器的 `amount`（本例 = 呆毛 S 形），
   这就是 Live2D「物理 → 变形器」的接法；不写 `deformer` 时还是走部件通道 `param`。
 - 调试：`zrig_phys_output(rig, "ahoge_tip")` 读这一段当前输出。
+
+### 3.5 混合模式（A7）怎么写
+
+```jsonc
+{"id": "blush_l",  "file": "sprites/blush_l.png",  "layer": 203, "blend": "multiply", "opacity": 1.0}
+{"id": "eye_hl_l", "file": "sprites/eye_hl_l.png", "layer": 219, "blend": "add",
+ "mask": "eye_l_socket", "tags": ["gaze", "eye_open"]}
+```
+
+- `blend` 只有三种：`normal`（默认）/ `add` 加算 / `multiply` 乘算，写别的**加载失败**。
+- 公式（和 Live2D 一致，都**不改目标 alpha**）：
+  - 加算 `C = Cd + Cs·As`：只在已经有画面的地方提亮；透明背景上画加算层 = 什么都不会出现。
+  - 乘算 `C = Cd·(1 − As + As·Cs)`：只压暗底下的像素，腮红是"透出来"的而不是糊上去的。
+- 因为它们不改 alpha，**层号不能是最底层**（底下没东西就等于白画）——`selfcheck_repo.py` 会拦。
+- 和遮罩可以叠加：被裁的部件先用普通混合画进 scratch，再由
+  `zimg_composite_masked_blend()` 按真正的混合模式合到画面上（眼高光就是这条路径）。
+- 开关靠参数：零件 `opacity` 写 1.0，参数 bind 用 **`"offset": -1.0`** 先把 alpha 压到 0，
+  于是「最终透明度 = 参数值」。小寻现有 `ParamBlush`（0..1）与 `ParamEyeSparkle`（0..1，默认 0.55），
+  表情里 害羞=脸红 0.95、吃惊=高光 1.0、难过=高光 0.18。
+- 素材是**程序化画的**（`tools/make_blend_parts.py`，软边椭圆 + 腮红斜线），不走 AI 生图；
+  位置/大小/颜色都在那个文件顶部的 `BLUSH` / `HIGHLIGHT` 常量里。
+- 证据：`logs/asset_qa/a7_blend.jpg`（冻结时钟后 blush/sparkle 0→1 对照）。
+  实测：腮红区 RGB `159.9,186.8,217.0 → 157.8,172.2,201.9`（G/B 掉得比 R 多 = 变暖变粉）、
+  高光区 `80.9,104.8,135.7 → 150.5,170.7,195.3`（整体提亮）、**两者 alpha 改变像素数都是 0**。
+
+### 3.6 抓对照图怎么不被动画搅乱（/api/pause）
+
+以前抓两张图做对比，中间隔着呼吸、眨眼、物理摆动，像素差里全是噪声（实测噪声能到
+和效果同一量级）。现在先 `GET /api/pause?on=1` 冻结引擎时钟：
+
+```bash
+curl -s "$P/pause?on=1"
+curl -s "$P/param?id=ParamBlush&v=0" && curl -s "$P/frame.png" -o off.png
+curl -s "$P/param?id=ParamBlush&v=1" && curl -s "$P/frame.png" -o on.png
+curl -s "$P/pause?on=0"
+```
+
+冻结期间连续两帧**逐字节相同**（冒烟测试里有这条断言），所以两张图的差 = 参数的影响，
+不掺别的东西。
 
 ### 3.2 口型同步（A4）怎么跑通
 

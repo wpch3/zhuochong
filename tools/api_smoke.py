@@ -155,6 +155,25 @@ def run(base, root):
         a.hit("/api/param?id=ParamHairAhogeS&reset=1")
         a.hit("/api/action?id=idle&force=1"); time.sleep(0.2)
 
+    # A7 混合模式 + 冻结时钟：暂停后两帧必须逐字节相同，然后只有参数能改画面
+    a.hit("/api/action?id=idle&force=1"); time.sleep(0.4)
+    a.hit("/api/pause?on=1"); time.sleep(0.15)
+    p1, _ = a.frame_hash(); p2, _ = a.frame_hash()
+    check("冻结时钟后连续两帧完全相同", p1 == p2, "%s vs %s" % (p1, p2))
+    if "ParamBlush" in pids:
+        a.hit("/api/param?id=ParamBlush&v=0"); b0, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamBlush&v=1"); b1, _ = a.frame_hash()
+        check("腮红（乘算）改变画面", b0 != b1, "%s → %s" % (b0, b1))
+        a.hit("/api/param?id=ParamBlush&reset=1")
+    if "ParamEyeSparkle" in pids:
+        a.hit("/api/param?id=ParamEyeSparkle&v=0"); s0, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamEyeSparkle&v=1"); s1, _ = a.frame_hash()
+        check("眼高光（加算）改变画面", s0 != s1, "%s → %s" % (s0, s1))
+        a.hit("/api/param?id=ParamEyeSparkle&reset=1")
+    a.hit("/api/pause?on=0"); time.sleep(0.2)
+    u1, _ = a.frame_hash(); time.sleep(0.45); u2, _ = a.frame_hash()
+    check("恢复后画面重新动起来", u1 != u2, "%s → %s" % (u1, u2))
+
     # A6 关键帧动作（≈ .motion3）：nod 是逐帧给值的曲线，不是波形
     if "nod" in a.json("/api/info.json").get("actions", []):
         a.hit("/api/action?id=sleep&force=1"); time.sleep(0.4)
@@ -311,8 +330,13 @@ def run(base, root):
               len(lids) >= 2 and {"eye_l_lid", "eye_r_lid"} <= lid_ids
               and all(p.get("eyelid_travel", 0) > 0 for p in lids),
               " ".join("%s:%d" % (p["id"], p.get("eyelid_travel", 0)) for p in lids))
+    # 带 gaze 的除了两颗眼球，还有跟着眼球走的加算高光（A7）
     gz = [p for p in rig["parts"] if "gaze" in p.get("tags", [])]
-    check("眼球部件带 gaze 标签", len(gz) == 2, " ".join(p["id"] for p in gz))
+    gz_ids = {p["id"] for p in gz}
+    check("眼球部件带 gaze 标签",
+          {"eye_l_ball", "eye_r_ball"} <= gz_ids and gz_ids <= {
+              "eye_l_ball", "eye_r_ball", "eye_hl_l", "eye_hl_r"},
+          " ".join(sorted(gz_ids)))
     layers = [p["layer"] for p in rig["parts"]]
     check("层号不重复", len(set(layers)) == len(layers), "%d 层" % len(layers))
     if all(k in parts for k in ("eye_l_lid", "brow_l", "hair_front")):

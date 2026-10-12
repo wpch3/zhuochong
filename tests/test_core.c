@@ -1921,6 +1921,116 @@ static void test_keys_and_chain(void)
     CHECK(diag_has(&d, "driver"), "诊断应指出 driver 不对");
 }
 
+
+/* ---- 混合模式（≈ Live2D CubismBlendMode：加算 / 乘算） ---- */
+static void test_blend(void)
+{
+    SECTION("混合模式：加算提亮、乘算压暗，而且都不改目标 alpha");
+    {
+        zimg *dst = zimg_new_filled(8, 8, 100, 120, 140, 200);
+        zimg *src = zimg_new_filled(8, 8, 128, 128, 128, 255);
+        double m[6];
+        zimg_make_matrix(m, 0, 0, 1, 1, 0, 0, 0);
+
+        /* 加算：C = Cd + Cs·As → 100 + 128 = 228；alpha 必须还是 200 */
+        zimg_draw_blend(dst, src, m, 1.0, ZIMG_BLEND_ADD);
+        CHECK(dst->px[0] == 228, "加算后 R 应是 228，实为 %d", dst->px[0]);
+        CHECK(dst->px[3] == 200, "加算不许改 alpha，实为 %d", dst->px[3]);
+
+        /* 乘算：C = Cd·(1 − As + As·Cs)，As=1 → Cd·Cs/255 = 228*128/255 ≈ 114 */
+        zimg_draw_blend(dst, src, m, 1.0, ZIMG_BLEND_MULTIPLY);
+        CHECK(dst->px[0] >= 113 && dst->px[0] <= 115,
+              "乘算后 R 应≈114，实为 %d", dst->px[0]);
+        CHECK(dst->px[3] == 200, "乘算不许改 alpha，实为 %d", dst->px[3]);
+
+        /* 普通模式仍然是 source-over：不透明源会盖掉目标并把 alpha 顶满 */
+        zimg_draw_blend(dst, src, m, 1.0, ZIMG_BLEND_NORMAL);
+        CHECK(dst->px[0] == 128 && dst->px[3] == 255,
+              "普通模式应覆盖为 128/255，实为 %d/%d", dst->px[0], dst->px[3]);
+        zimg_free(dst); zimg_free(src);
+    }
+    {   /* 加算画在全透明区域上：什么都不该出现（否则透明背景会多出一块白斑） */
+        zimg *dst = zimg_new(8, 8);
+        zimg *src = zimg_new_filled(8, 8, 255, 255, 255, 255);
+        double m[6];
+        int i, nonzero = 0;
+        zimg_make_matrix(m, 0, 0, 1, 1, 0, 0, 0);
+        zimg_draw_blend(dst, src, m, 1.0, ZIMG_BLEND_ADD);
+        for (i = 0; i < 8 * 8 * 4; ++i) if (dst->px[i]) nonzero = 1;
+        CHECK(!nonzero, "加算不该在全透明背景上留下任何像素");
+        zimg_free(dst); zimg_free(src);
+    }
+    {   /* 遮罩 + 混合模式一起用（腮红被脸裁、眼高光被眼眶裁就是这条路径） */
+        zimg *fb = zimg_new_filled(4, 4, 80, 80, 80, 255);
+        zimg *layer = zimg_new_filled(4, 4, 100, 100, 100, 255);
+        zimg *mask = zimg_new(4, 4);
+        int i;
+        for (i = 0; i < 4; ++i) mask->px[i * 4 + 3] = 255;   /* 只开第一行 */
+        zimg_composite_masked_blend(fb, layer, mask, ZIMG_BLEND_ADD);
+        CHECK(fb->px[0] == 180, "遮罩内应加算到 180，实为 %d", fb->px[0]);
+        CHECK(fb->px[(size_t)4 * 4 + 0] == 80, "遮罩外必须原样不动，实为 %d",
+              fb->px[(size_t)4 * 4 + 0]);
+        zimg_free(fb); zimg_free(layer); zimg_free(mask);
+    }
+
+    SECTION("rig 的 blend 字段：解析三种取值，写错要加载失败");
+    {
+        char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+        zdiag d;
+        zrig *r;
+        z_snprintf(dir, sizeof(dir), "/tmp/zc_blend");
+        z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+        z_mkdir_p(dir); z_mkdir_p(sprites);
+        z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+        z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+        if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+        z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"b\",\"name\":\"混合\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+            " {\"id\":\"glow\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":11,\"pos\":[60,40],\"anchor\":[0,0],\"blend\":\"add\",\"opacity\":1.0}],"
+            "\"params\":[{\"id\":\"ParamGlow\",\"min\":0,\"max\":1,\"default\":0,"
+            "  \"binds\":[{\"part\":\"glow\",\"param\":\"alpha\",\"scale\":1.0,\"offset\":-1.0}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "blend:add 的 rig 应加载成功");
+        if (r) {
+            int w = 0, h = 0;
+            const zimg *f1, *f2;
+            long sum1 = 0, sum2 = 0;
+            int x, y;
+            /* 参数 0 → offset −1 把 alpha 压到 0 → 加算层完全不出现 */
+            zrig_tick(r, 0.1);
+            f1 = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                sum1 += f1->px[((size_t)y * w + x) * 4];
+            zrig_param_set(r, "ParamGlow", 1.0);
+            zrig_tick(r, 0.2);
+            f2 = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                sum2 += f2->px[((size_t)y * w + x) * 4];
+            CHECK(sum2 > sum1, "加算层打开后画面应更亮（%ld → %ld）", sum1, sum2);
+            zrig_free(r);
+        }
+        /* 写错混合模式必须报错，不许默默当普通模式 */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"b\",\"name\":\"坏混合\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],\"blend\":\"screen\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "未知的 blend 取值必须加载失败");
+        CHECK(diag_has(&d, "blend"), "诊断里应点名 blend");
+    }
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -1945,6 +2055,7 @@ int main(int argc, char **argv)
     test_lipsync();
     test_mesh();
     test_keys_and_chain();
+    test_blend();
     test_longrun();
     test_expression();
     test_motion_from();

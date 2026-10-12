@@ -54,11 +54,19 @@ zimg *zimg_resize(const zimg *im, int w, int h);
 zimg *zimg_place(const zimg *im, int cw, int ch, int x, int y);
 
 /* --------------------------------------------------------------- 合成 */
+/* 混合模式（≈ Live2D 的 CubismBlendMode）。
+   NORMAL   普通 source-over。
+   ADD      加算：C = Cd + Cs·As，**不改目标 alpha** —— 高光/发光只在已有画面上提亮，
+            不会在透明背景上凭空多出一块。
+   MULTIPLY 乘算：C = Cd·(1 − As + As·Cs)，同样不改目标 alpha —— 腮红/阴影压暗底下的皮肤。 */
+enum { ZIMG_BLEND_NORMAL = 0, ZIMG_BLEND_ADD = 1, ZIMG_BLEND_MULTIPLY = 2 };
 /* 仿射矩阵（行主序）：x' = m0*x + m2*y + m4 ; y' = m1*x + m3*y + m5 */
 void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity);
 /* 遮罩合成：把 src 叠到 dst，但只在 mask 不透明处生效（三张图尺寸必须一致）。
    Live2D 的 clipping mask 等价物——眼球/高光/腮红靠它被眼眶或脸裁住。 */
 void zimg_composite_masked(zimg *dst, const zimg *src, const zimg *mask);
+/* 同上，但按 blend 指定的混合模式叠加（ZIMG_BLEND_*）。 */
+void zimg_composite_masked_blend(zimg *dst, const zimg *src, const zimg *mask, int blend);
 
 /* 只在源图的 (sx0,sy0)-(sx1,sy1) 矩形内绘制（用于分段形变，避免重复混合）。
    源坐标越界会被夹到图像范围内；矩形为空则什么都不画。 */
@@ -97,6 +105,13 @@ void zimg_draw_bend(zimg *dst, const zimg *src, const double m[6], double opacit
    位移全为 0 时自动走普通绘制（和 zimg_draw 像素级一致）。 */
 void zimg_draw_mesh(zimg *dst, const zimg *src, const double m[6], double opacity,
                     int cols, int rows, const double *offsets);
+
+/* 带混合模式的三个入口（blend 取 ZIMG_BLEND_*；传 NORMAL 时与不带后缀的版本完全一致）。 */
+void zimg_draw_blend(zimg *dst, const zimg *src, const double m[6], double opacity, int blend);
+void zimg_draw_warp_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
+                          double bend_x, int curve_x, double bend_y, int curve_y, int blend);
+void zimg_draw_mesh_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
+                          int cols, int rows, const double *offsets, int blend);
 
 /* 便捷：把 src 缩放到 scale、绕锚点 anchor(0..1) 平移 pos（画布坐标）。 */
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,

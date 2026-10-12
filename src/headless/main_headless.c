@@ -13,6 +13,7 @@
  *   GET /api/action?id=        触发动作
  *   GET /api/hover?x=&y=&in=   上报鼠标位置（视线/专注/唤醒）
  *   GET /api/scale?s=          设置缩放
+ *   GET /api/pause?on=         冻结/恢复引擎时钟（冻结后连续两帧完全相同，便于抓图比对）
  *   GET /api/params.json       命名参数表（≈ Live2D ParamXxx）与当前值
  *   GET /api/param?id=&v=      直接写一个参数（reset=1 回默认；all=1 全部复位）
  *   GET /api/expression?id=    叠一个表情（off=1 取消），表情和动作是两条轨
@@ -55,6 +56,15 @@
 #  define ZSOCK_INVALID (-1)
 #  define zsock_close close
 #endif
+
+/* 冻结时钟（/api/pause）：暂停后所有 tick 都用同一个时间戳，
+   于是连续两帧**逐字节相同**——抓对照图、做哈希断言时不会被呼吸/眨眼/物理搅乱。 */
+static int    g_frozen = 0;
+static double g_freeze_t = 0.0;
+static double pet_now(void)
+{
+    return g_frozen ? g_freeze_t : z_now_seconds();
+}
 
 static zpet *g_pet = NULL;
 /* UI 与静态资源目录：界面文件放 web/，媒体（配音/素材）走 /media/，
@@ -170,7 +180,7 @@ static void send_png(zsock fd, const zimg *im)
     {
         static unsigned long seq = 0;
         static unsigned start_tag = 0;
-        if (start_tag == 0) start_tag = (unsigned)(z_now_seconds() * 1000.0);
+        if (start_tag == 0) start_tag = (unsigned)(pet_now() * 1000.0);
         z_snprintf(tmp_path, sizeof(tmp_path), "/tmp/zc_frame_%u_%lu.png",
                    start_tag, seq++);
     }
@@ -475,8 +485,8 @@ static void handle_request(zsock fd, const http_req *r)
         char mood[32];
         if (qstr(r, "mood", mood, sizeof(mood))) {
             LOCK();
-            zpet_express(g_pet, mood, z_now_seconds());
-            zpet_tick(g_pet, z_now_seconds());
+            zpet_express(g_pet, mood, pet_now());
+            zpet_tick(g_pet, pet_now());
             UNLOCK();
         }
         send_text(fd, 200, "application/json", "{\"ok\":true}");
@@ -489,8 +499,8 @@ static void handle_request(zsock fd, const http_req *r)
             if (!qstr(r, "text", text, sizeof(text))) text[0] = 0;
             if (!qstr(r, "mood", mood, sizeof(mood))) mood[0] = 0;
             LOCK();
-            zpet_call_event(g_pet, kind, text, mood, z_now_seconds());
-            zpet_tick(g_pet, z_now_seconds());
+            zpet_call_event(g_pet, kind, text, mood, pet_now());
+            zpet_tick(g_pet, pet_now());
             UNLOCK();
         }
         send_text(fd, 200, "application/json", "{\"ok\":true}");
@@ -499,8 +509,8 @@ static void handle_request(zsock fd, const http_req *r)
     if (strcmp(r->path, "/api/poke") == 0) {
         int x = qint(r, "x", 0), y = qint(r, "y", 0), tool = qint(r, "tool", 0);
         LOCK();
-        zpet_poke(g_pet, x, y, tool ? ZPET_TOOL_HAMMER : ZPET_TOOL_HAND, z_now_seconds());
-        zpet_tick(g_pet, z_now_seconds());
+        zpet_poke(g_pet, x, y, tool ? ZPET_TOOL_HAMMER : ZPET_TOOL_HAND, pet_now());
+        zpet_tick(g_pet, pet_now());
         UNLOCK();
         send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;
@@ -533,8 +543,8 @@ static void handle_request(zsock fd, const http_req *r)
             return;
         }
         LOCK();
-        rc = zpet_lipsync_load(g_pet, id, z_now_seconds());
-        zpet_tick(g_pet, z_now_seconds());
+        rc = zpet_lipsync_load(g_pet, id, pet_now());
+        zpet_tick(g_pet, pet_now());
         z_snprintf(body, sizeof(body),
                    "{\"ok\":%s,\"id\":\"%s\",\"text\":\"%s\",\"remain\":%.3f}",
                    rc == 0 ? "true" : "false", zpet_lipsync_id(g_pet),
@@ -547,7 +557,7 @@ static void handle_request(zsock fd, const http_req *r)
         int x = qint(r, "x", 0), y = qint(r, "y", 0), inside = qint(r, "in", 1);
         LOCK();
         /* 视线换算在 zpet_hover 里做（它知道上一帧多大），这里不要重复渲染 */
-        zpet_hover(g_pet, x, y, inside, z_now_seconds());
+        zpet_hover(g_pet, x, y, inside, pet_now());
         UNLOCK();
         send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;
@@ -675,6 +685,21 @@ static void handle_request(zsock fd, const http_req *r)
         }
         return;
     }
+    if (strcmp(r->path, "/api/pause") == 0) {
+        /* 冻结/恢复引擎时钟。on=1 冻结（默认），on=0 恢复。
+           冻结期间 /api/frame.png 反复取是同一帧，参数一改就只有参数的影响。 */
+        char body[128];
+        int on = 1;
+        if (r->query[0]) on = qint(r, "on", 1);
+        LOCK();
+        if (on && !g_frozen) { g_freeze_t = z_now_seconds(); g_frozen = 1; }
+        else if (!on) { g_frozen = 0; }
+        zpet_tick(g_pet, pet_now());
+        UNLOCK();
+        z_snprintf(body, sizeof(body), "{\"ok\":true,\"paused\":%s}", on ? "true" : "false");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
     if (strcmp(r->path, "/api/scale") == 0) {
         char s[32];
         if (qstr(r, "s", s, sizeof(s))) {
@@ -780,7 +805,7 @@ int main(int argc, char **argv)
         zdiag_print(&diag, stderr);
         return 3;
     }
-    g_start_time = z_now_seconds();
+    g_start_time = pet_now();
 
     signal(SIGPIPE, SIG_IGN);
 #ifndef _WIN32
@@ -858,7 +883,7 @@ int main(int argc, char **argv)
             }
         }
         /* 每轮推进一次引擎：状态机、眨眼、空闲 */
-        zpet_tick(g_pet, z_now_seconds());
+        zpet_tick(g_pet, pet_now());
     }
 
     zsock_close(srv);

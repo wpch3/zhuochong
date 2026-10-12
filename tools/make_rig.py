@@ -14,7 +14,8 @@ from __future__ import annotations
 import argparse, json, os, sys
 
 
-def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False):
+def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
+               has_blend=False):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -95,10 +96,23 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         {"id": "ParamHairAhogeS", "label": "呆毛 S 形甩动", "min": -1.0, "max": 1.0,
          "default": 0.0, "binds": [{"deformer": "ahoge_s", "scale": 1.0}]},
     ]
+    if has_blend:
+        # A7 混合模式：腮红走乘算、眼高光走加算（见 make_blend_parts.py）
+        out += [
+            {"id": "ParamBlush", "label": "脸红 浓淡", "min": 0.0, "max": 1.0, "default": 0.0,
+             # 零件基础 opacity 是 1，alpha 通道用 offset −1 先把它压到全透明，
+             # 于是「最终透明度 = 参数值」。参数 0 = 完全看不见。
+             "binds": [{"part": "blush_l", "param": "alpha", "scale": 1.0, "offset": -1.0},
+                       {"part": "blush_r", "param": "alpha", "scale": 1.0, "offset": -1.0}]},
+            {"id": "ParamEyeSparkle", "label": "眼高光 强弱", "min": 0.0, "max": 1.0,
+             "default": 0.55,
+             "binds": [{"part": "eye_hl_l", "param": "alpha", "scale": 1.0, "offset": -1.0},
+                       {"part": "eye_hl_r", "param": "alpha", "scale": 1.0, "offset": -1.0}]},
+        ]
     return out
 
 
-def expression_list(mouth=None, has_brows=True, head_is_part=True):
+def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=False):
     """表情集。每条 = 一组参数偏移（mode 缺省 add，set 为覆盖），fade 是淡入淡出秒数。
 
     只用 param_list 里声明过的参数（引擎加载时会校验），所以改表情不用动 C 代码。
@@ -123,32 +137,44 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True):
     def mopen(v):
         return [P("ParamMouthOpenY", v)] if mouth else []
 
+    def blush(v):
+        """脸红（乘算腮红）。没有腮红零件时自动留空。"""
+        return [P("ParamBlush", v, "set")] if has_blend else []
+
+    def sparkle(v):
+        """眼高光（加算）。情绪低落时眼里的光会变弱——这是最省力的\"演技\"。"""
+        return [P("ParamEyeSparkle", v, "set")] if has_blend else []
+
     out = [
         {"id": "smile", "name": "微笑", "fade": 0.3,
-         "params": brows(0.25, 0.25) + mform(0.7) + [P("ParamEyeOpen", 0.85, "set")]},
+         "params": brows(0.25, 0.25) + mform(0.7) + [P("ParamEyeOpen", 0.85, "set")]
+                   + blush(0.22) + sparkle(0.75)},
         {"id": "shy", "name": "害羞", "fade": 0.35,
          "params": brows(-0.3, -0.3) + mform(0.35)
                    + [P("ParamEyeOpen", 0.7, "set")]
+                   + blush(0.95) + sparkle(0.8)
                    + ([P("ParamAngleZ", -4.0)] if head_is_part else [])},
         {"id": "angry", "name": "生气", "fade": 0.22,
          "params": brows(-0.7, -0.7, -0.8, -0.8) + mform(-0.7)
-                   + [P("ParamEyeOpen", 0.9, "set")]},
+                   + [P("ParamEyeOpen", 0.9, "set")] + blush(0.45) + sparkle(0.3)},
         {"id": "sad", "name": "难过", "fade": 0.4,
          "params": brows(-0.45, -0.45, 0.7, 0.7) + mform(-0.5)
-                   + [P("ParamEyeOpen", 0.75, "set")]},
+                   + [P("ParamEyeOpen", 0.75, "set")] + blush(0.0) + sparkle(0.18)},
         {"id": "surprise", "name": "吃惊", "fade": 0.12,
          "params": brows(0.9, 0.9) + mopen(0.55)
-                   + [P("ParamEyeOpen", 1.0, "set"), P("ParamEyeBallY", -0.15)]},
+                   + [P("ParamEyeOpen", 1.0, "set"), P("ParamEyeBallY", -0.15)]
+                   + sparkle(1.0)},
         {"id": "sleepy", "name": "困倦", "fade": 0.5,
          "params": brows(-0.2, -0.2) + mopen(0.15)
-                   + [P("ParamEyeOpen", 0.3, "set"), P("ParamEyeBallY", 0.2)]},
+                   + [P("ParamEyeOpen", 0.3, "set"), P("ParamEyeBallY", 0.2)]
+                   + blush(0.0) + sparkle(0.12)},
     ]
     return out
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
-          closed=None):
+          closed=None, blendp=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -361,6 +387,30 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         "通道值照抄 brow_" + side,
             })
     parts_list = parts_list + brow_ghosts
+    # A7 混合模式零件（tools/make_blend_parts.py 画的，不是从立绘上抠的）：
+    #   腮红 = 乘算（multiply）：只压暗底下的皮肤，不会糊一层不透明的粉膜；
+    #   眼高光 = 加算（add）：只在已有画面上提亮，透明背景上不会凭空多个白点。
+    # 位置用的是画布坐标（blend_parts.json 里直接写死），所以不再加 ox/oy。
+    if blendp:
+        for side, lay in (("l", 203), ("r", 204)):
+            b = blendp["blush"][side]
+            parts_list.append({
+                "id": f"blush_{side}", "file": b["file"], "group": "head", "layer": lay,
+                "pos": list(b["pos"]), "anchor": [0, 0], "opacity": 1.0,
+                "blend": "multiply", "tags": [],
+                "note": "腮红（乘算）：默认全透明，由 ParamBlush / 害羞表情推上来",
+            })
+        # 层号挑在眼球（218/228）之上、睫毛（220/230）之下：
+        # 睫毛本来就该压住高光，眉毛在 232/233，别撞。
+        for side, lay in (("l", 219), ("r", 229)):
+            hl = blendp["highlight"][side]
+            parts_list.append({
+                "id": f"eye_hl_{side}", "file": hl["file"], "group": "head", "layer": lay,
+                "pos": list(hl["pos"]), "anchor": [0, 0], "opacity": 1.0,
+                "blend": "add", "tags": ["gaze", "eye_open"],
+                "mask": f"eye_{side}_socket",
+                "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
+            })
     if not eyes:
         # 没拆件的旧素材才用"整张闭眼图淡入"的老办法
         parts_list = parts_list + [
@@ -900,12 +950,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "params": param_list(mouth=mouth,
                              has_brows=any(p["id"] == "brow_l" for p in parts_list),
                              head_is_part=head_is_part,
-                             jointed_arms=bool(armp)),
+                             jointed_arms=bool(armp),
+                             has_blend=bool(blendp)),
         # 表情层（Live2D 的 expression）：一组参数偏移，叠在当前动作之上。
         # 和动作是两条轨 —— 可以"笑着挥手"，不用为每种组合再做一个动作。
         "expressions": expression_list(mouth=mouth,
                                        has_brows=any(p["id"] == "brow_l" for p in parts_list),
-                                       head_is_part=head_is_part),
+                                       head_is_part=head_is_part,
+                                       has_blend=bool(blendp)),
     }
 
 
@@ -983,6 +1035,17 @@ def main() -> int:
                    for c in closed["eyes"]):
             closed = None
 
+    # A7 混合模式零件（tools/make_blend_parts.py 的产物）
+    blendp = None
+    blend_path = os.path.join(base, "sprites", "blend_parts.json")
+    if os.path.exists(blend_path):
+        with open(blend_path, encoding="utf-8") as f:
+            blendp = json.load(f)
+        files = [v["file"] for g in ("blush", "highlight") for v in blendp[g].values()]
+        if not all(os.path.exists(os.path.join(base, f)) for f in files):
+            print("警告：腮红/高光缺图，跳过混合模式零件", file=sys.stderr)
+            blendp = None
+
     # 上眼睑拆件（tools/make_eyelid_parts.py 的产物）
     lids = None
     lid_path = os.path.join(base, "sprites", "eyelid_parts.json")
@@ -1013,7 +1076,7 @@ def main() -> int:
             mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
                 seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp,
-                closed=closed)
+                closed=closed, blendp=blendp)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

@@ -75,6 +75,7 @@ typedef struct {
     char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
     int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
+    int    blend;             /* 混合模式 ZIMG_BLEND_*（≈ Live2D CubismBlendMode） */
 } zpart;
 
 /* 网格形变器（≈ Live2D 的 ワープデフォーマ）：
@@ -171,7 +172,8 @@ typedef struct {
     int    deform;            /* >=0 写网格形变器的 amount（part/group 都 <0 时才看） */
     int    param;             /* P_DX … P_BEND_Y */
     int    curve, strips;     /* bend_* 用 */
-    double scale;             /* 通道值 = 参数值 × scale */
+    double scale;
+    double offset;            /* 常数偏移：通道值 = 参数值×scale + offset */             /* 通道值 = 参数值 × scale */
 } zpbind;
 
 /* 表情（Live2D 的 expression）：一组参数偏移，叠在当前动作之上，自带淡入淡出。
@@ -557,6 +559,17 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
         /* 眼睑行程：带 eyelid 标签的部件按 blink 参数下滑这么多像素。
            眨眼不再靠「睁眼图淡出 / 闭眼图淡入」，而是真的有一片眼皮盖下来。 */
         p->eyelid_travel = zjson_num(zjson_obj_get(pj, "eyelid_travel"), 0.0);
+        {   /* 混合模式：normal（默认）/ add 加算高光 / multiply 乘算腮红·阴影 */
+            const char *bl = zjson_str(zjson_obj_get(pj, "blend"), "normal");
+            if (z_streq(bl, "add") || z_streq(bl, "additive")) p->blend = ZIMG_BLEND_ADD;
+            else if (z_streq(bl, "multiply") || z_streq(bl, "mult")) p->blend = ZIMG_BLEND_MULTIPLY;
+            else if (z_streq(bl, "normal")) p->blend = ZIMG_BLEND_NORMAL;
+            else {
+                zdiag_error(d, file, pj ? pj->line : 0, 0, buf,
+                            "blend 只能是 normal/add/multiply，写了 '%s'", bl);
+                return -1;
+            }
+        }
         {
             const char *gid = zjson_str(zjson_obj_get(pj, "group"), "root");
             p->group = find_group(r, gid);
@@ -897,6 +910,9 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
             else if (z_streq(cv, "linear")) b->curve = BEND_LINEAR;
             b->strips = (int)zjson_int(zjson_obj_get(bj, "strips"), 0);
             b->scale = zjson_num(zjson_obj_get(bj, "scale"), 1.0);
+            /* offset：参数为 0 时通道也可以不是 0。腮红/高光这种"基础 opacity=1、
+               靠 alpha 通道减到 0"的零件要用它（scale 1 + offset −1 → 透明度 = 参数值）。 */
+            b->offset = zjson_num(zjson_obj_get(bj, "offset"), 0.0);
             r->npbinds++;
             q->nbind++;
         }
@@ -1674,15 +1690,16 @@ static void compute_group_transforms(zrig *r)
                 case PBI_EYEBALL_Y: r->gaze_ny = ZC_CLAMP(r->gaze_ny + off, -1.0, 1.0); continue;
                 default: break;
             }
-            if (q->nbind <= 0 || fabs(v) < 1e-9) continue;
+            if (q->nbind <= 0) continue;
             for (k = 0; k < q->nbind; ++k) {
                 const zpbind *b = &r->pbinds[q->bind0 + k];
+                double bv = v * b->scale + b->offset;
+                if (fabs(bv) < 1e-12) continue;
                 if (b->deform >= 0 && b->deform < r->ndeforms) {
-                    r->deforms[b->deform].amount += v * b->scale;
+                    r->deforms[b->deform].amount += bv;
                     continue;
                 }
-                apply_chan(r, b->part, b->group, b->param,
-                           v * b->scale, b->curve, b->strips);
+                apply_chan(r, b->part, b->group, b->param, bv, b->curve, b->strips);
             }
         }
         /* 指针跟随叠加在动作之上（Live2D 里这是参数层，不属于任何一个 motion）。
@@ -2245,15 +2262,21 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                     if (!r->scratch) r->scratch = zimg_new(r->fb->w, r->fb->h);
                     if (r->scratch) { zimg_clear(r->scratch); target = r->scratch; }
                 }
-                if (dg)
-                    zimg_draw_mesh(target, src, m, opacity, dg->cols, dg->rows, mesh_off);
-                else if (warped)
-                    zimg_draw_warp(target, src, m, opacity,
-                                   bx, r->p_bendcx[mi], by, r->p_bendcy[mi]);
-                else
-                    zimg_draw(target, src, m, opacity);
+                /* 被遮罩的部件先画进 scratch（那里是空的，必须用普通混合），
+                   混合模式留到 composite_masked 那一步再按真正的目标画面算。 */
+                {
+                    int bl = (target == r->fb) ? p->blend : ZIMG_BLEND_NORMAL;
+                    if (dg)
+                        zimg_draw_mesh_blend(target, src, m, opacity,
+                                             dg->cols, dg->rows, mesh_off, bl);
+                    else if (warped)
+                        zimg_draw_warp_blend(target, src, m, opacity,
+                                             bx, r->p_bendcx[mi], by, r->p_bendcy[mi], bl);
+                    else
+                        zimg_draw_blend(target, src, m, opacity, bl);
+                }
                 if (target != r->fb)
-                    zimg_composite_masked(r->fb, r->scratch, r->maskbuf);
+                    zimg_composite_masked_blend(r->fb, r->scratch, r->maskbuf, p->blend);
             }
         }
     }
