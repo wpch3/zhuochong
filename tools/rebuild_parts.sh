@@ -22,36 +22,39 @@ done
 
 step() { printf "\n=== %s ===\n" "$1"; }
 
-step "1/10 身体分段（头/躯干/双臂/双腿）"
+step "1/11 身体分段（头/躯干/双臂/双腿）"
 "$PY" tools/make_body_parts.py --character "$CH" --form "$FM"
 
-step "2/10 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
+step "2/11 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
 "$PY" tools/make_arm_parts.py --character "$CH" --form "$FM"
 
-step "3/10 眼部四件（眼眶/眼白/眼球/眼线）"
+step "3/11 眼部四件（眼眶/眼白/眼球/眼线）"
 "$PY" tools/make_eye_parts.py --character "$CH" --form "$FM"
 
-step "4/10 嘴三件（量嘴线 + 先铺一版几何口内兜底）"
+step "4/11 嘴三件（量嘴线 + 先铺一版几何口内兜底）"
 "$PY" tools/make_mouth_parts.py --character "$CH" --form "$FM"
 
-step "5/10 张嘴真素材（AI 重绘张嘴脸 → 虹膜配准 → 取口内）"
+step "5/11 张嘴真素材（AI 重绘张嘴脸 → 虹膜配准 → 取口内）"
 "$PY" tools/make_mouth_open_parts.py --character "$CH" --form "$FM"
 
-step "6/10 呆毛（无损切出）"
+step "6/11 呆毛（无损切出）"
 "$PY" tools/make_hair_parts.py --character "$CH" --form "$FM"
 
-step "7/10 刘海 + 额头（AI 重绘回贴）"
+step "7/11 刘海 + 额头（AI 重绘回贴）"
 "$PY" tools/make_bangs_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nobangs.png
 
-step "8/10 眉毛（AI 重绘 + alpha 抠像）"
+step "8/11 眉毛（AI 重绘 + alpha 抠像）"
 "$PY" tools/make_brow_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nobrows.png
 
-step "9/10 上眼睑（眨眼时真的盖下来）"
+step "9/11 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切补片）"
+"$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM"
+
+step "10/11 上眼睑（没有闭眼真素材时的兜底方案）"
 "$PY" tools/make_eyelid_parts.py --character "$CH" --form "$FM"
 
-step "10/10 生成 rig 并验收"
+step "11/11 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__

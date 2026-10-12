@@ -141,7 +141,8 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True):
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
-          seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None):
+          seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
+          closed=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -249,18 +250,23 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"},
                 {"id": f"{sid}_base", "file": f"sprites/{e['base']}", "group": "head",
                  "layer": L + 1, "pos": [ox + px, oy + py], "anchor": [0, 0],
-                 "tags": [], "mask": f"{sid}_socket",
+                 "tags": ["eye_open"] if closed else [], "mask": f"{sid}_socket",
                  # 眼白也要被眼眶裁住：它比眼眶大一圈，不裁的话闭眼时眼皮盖不住那一圈，
                  # 眼睛底下会留一条蓝边（实测）。脸上本来就画着同样的眼睛，裁掉不丢东西。
                  "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"},
                 {"id": f"{sid}_ball", "file": f"sprites/{e['ball']}", "group": "head",
                  "layer": L + 2, "pos": [ox + bx, oy + by], "anchor": [0, 0],
-                 "tags": ["gaze"], "mask": f"{sid}_socket",
+                 "tags": ["gaze", "eye_open"] if closed else ["gaze"], "mask": f"{sid}_socket",
                  "note": f"眼球：完整的圆（被眼皮挡住的部分已补全），"
                          f"可动范围 ±{e['travel'][0]}/±{e['travel'][1]}px，由眼眶裁切"},
             ]
-            # 上眼睑（make_eyelid_parts.py 的产物）：藏在眼眶上面，按 blink 下滑。
-            lid = next((p for p in (lids or {}).get("lids", []) if p["side"] == side), None)
+            # 上眼睑：
+            #   · 有 AI 重绘的「闭眼脸」时（eye_closed_parts.json）→ 走交叉淡化，
+            #     不再需要几何眼皮（那东西闭到底就是一块比脸亮的肤色饼）；
+            #   · 没有时退回老方案：从眼睛上方切一块皮肤往下滑。
+            cl = next((c for c in (closed or {}).get("eyes", []) if c["side"] == side), None)
+            lid = None if cl else next(
+                (p for p in (lids or {}).get("lids", []) if p["side"] == side), None)
             if lid:
                 eye_parts.append(
                     {"id": f"{sid}_lid", "file": f"sprites/{lid['file']}", "group": "head",
@@ -284,6 +290,16 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 lash_part["eyelid_travel"] = lash_travel
                 lash_part["mask"] = f"{sid}_socket"
             eye_parts.append(lash_part)
+            # 闭眼真素材：AI 重绘的闭眼脸切下来的补片，blink=1 时完全盖住原画的眼睛。
+            # 引擎里 tags:["eye_closed"] 就是 opacity *= blink（与 eye_open 交叉淡化），
+            # 等价于 Live2D 的 ParamEyeLOpen 在贴图版里的做法。
+            if cl:
+                eye_parts.append(
+                    {"id": f"{sid}_closed", "file": f"sprites/{cl['file']}", "group": "head",
+                     "layer": L + 5, "pos": [ox + cl["pos"][0], oy + cl["pos"][1]],
+                     "anchor": [0, 0], "tags": ["eye_closed"],
+                     "note": f"闭眼（AI 重绘·盖住原画眼睛 {cl['checks']['cover_ratio']*100:.1f}%，"
+                             f"接缝色差 {cl['checks']['seam_mean_abs']}）：blink=1 时完全显形"})
             eye_ball_ids.append(f"{sid}_ball")
     else:
         eye_parts = [
@@ -629,9 +645,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     # 眼睛拆件后，老动作里写的 eye_open_left/right 要摊到四个零件上：
     # 眼眶（遮罩）必须和眼白底、眼线一起动，否则遮罩不跟手，裁切就错位了。
     if eyes:
+        # 有闭眼真素材时没有 *_lid 这个部件，换成 *_closed（它也要跟着一起位移，
+        # 否则偏头/挤眼的时候闭眼补片会掉队）。
+        tail = ("socket", "base", "ball", "closed", "lash") if closed else \
+               ("socket", "base", "ball", "lid", "lash")
         expand = {
-            "eye_open_left":  [f"eye_l_{k}" for k in ("socket", "base", "ball", "lid", "lash")],
-            "eye_open_right": [f"eye_r_{k}" for k in ("socket", "base", "ball", "lid", "lash")],
+            "eye_open_left":  [f"eye_l_{k}" for k in tail],
+            "eye_open_right": [f"eye_r_{k}" for k in tail],
         }
         for a in actions:
             chans = []
@@ -909,6 +929,16 @@ def main() -> int:
         if miss:
             print(f"警告：眼部拆件缺图 {miss}，退回整块眼睛贴图", file=sys.stderr)
             eyes = None
+    # 闭眼真素材（tools/make_eye_closed_parts.py 的产物；有它就不用几何眼皮）
+    closed = None
+    cl_path = os.path.join(base, "sprites", "eye_closed_parts.json")
+    if os.path.exists(cl_path):
+        with open(cl_path, encoding="utf-8") as f:
+            closed = json.load(f)
+        if not all(os.path.exists(os.path.join(base, "sprites", c["file"]))
+                   for c in closed["eyes"]):
+            closed = None
+
     # 上眼睑拆件（tools/make_eyelid_parts.py 的产物）
     lids = None
     lid_path = os.path.join(base, "sprites", "eyelid_parts.json")
@@ -938,7 +968,8 @@ def main() -> int:
             print("警告：嘴部零件缺图，跳过口内", file=sys.stderr)
             mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
-                seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp)
+                seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp,
+                closed=closed)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

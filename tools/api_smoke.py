@@ -245,14 +245,30 @@ def run(base, root):
     rig = a.json("/media/characters/%s/forms/%s/rig.json" % (info["character"], info["form"]))
     check("rig.json 能读", bool(rig.get("parts")), "%d 件" % len(rig.get("parts", [])))
     parts = {p["id"]: p for p in rig["parts"]}
-    # 带 eyelid 标签的 = 两片眼皮 + 跟着下滑的两条睫毛（睫毛行程比眼皮少几像素，
-    # 这样闭到底时它停在眼眶下沿当闭眼线，而不是被盖进去）
+    # 闭眼有两种实现，二选一都得能过：
+    #   · 新（G4r）：AI 重绘的闭眼真素材，tags:["eye_closed"]，和睁眼件交叉淡化；
+    #   · 旧（兜底）：几何眼皮 tags:["eyelid"] + eyelid_travel 往下滑。
+    closed = [p for p in rig["parts"] if "eye_closed" in p.get("tags", [])]
     lids = [p for p in rig["parts"] if "eyelid" in p.get("tags", [])]
     lid_ids = {p["id"] for p in lids}
-    check("眼睑部件带行程",
-          len(lids) >= 2 and {"eye_l_lid", "eye_r_lid"} <= lid_ids
-          and all(p.get("eyelid_travel", 0) > 0 for p in lids),
-          " ".join("%s:%d" % (p["id"], p.get("eyelid_travel", 0)) for p in lids))
+    if closed:
+        opens = [p for p in rig["parts"] if "eye_open" in p.get("tags", [])]
+        check("闭眼件与睁眼件成对",
+              len(closed) == 2 and {"eye_l_closed", "eye_r_closed"} == {p["id"] for p in closed}
+              and len(opens) >= 2,
+              "闭眼 %d 件、睁眼 %d 件" % (len(closed), len(opens)))
+        def lash_layer(side):
+            return parts.get("eye_%s_lash" % side, {}).get("layer", 0)
+        ok_layer = all(parts["eye_%s_closed" % sd]["layer"] > lash_layer(sd) for sd in ("l", "r"))
+        check("闭眼件压在睁眼件上面",
+              ok_layer and all("mask" not in p for p in closed),
+              " ".join("%s:%d>%d" % (sd, parts["eye_%s_closed" % sd]["layer"], lash_layer(sd))
+                       for sd in ("l", "r")))
+    else:
+        check("眼睑部件带行程",
+              len(lids) >= 2 and {"eye_l_lid", "eye_r_lid"} <= lid_ids
+              and all(p.get("eyelid_travel", 0) > 0 for p in lids),
+              " ".join("%s:%d" % (p["id"], p.get("eyelid_travel", 0)) for p in lids))
     gz = [p for p in rig["parts"] if "gaze" in p.get("tags", [])]
     check("眼球部件带 gaze 标签", len(gz) == 2, " ".join(p["id"] for p in gz))
     layers = [p["layer"] for p in rig["parts"]]

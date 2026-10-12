@@ -425,7 +425,9 @@
         0,
         0
       ],
-      "tags": [],
+      "tags": [
+        "eye_open"
+      ],
       "mask": "eye_l_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"
     },
@@ -443,30 +445,11 @@
         0
       ],
       "tags": [
-        "gaze"
+        "gaze",
+        "eye_open"
       ],
       "mask": "eye_l_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±5/±4px，由眼眶裁切"
-    },
-    {
-      "id": "eye_l_lid",
-      "file": "sprites/eye_l_lid.png",
-      "group": "head",
-      "layer": 219,
-      "pos": [
-        353,
-        195
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "eyelid"
-      ],
-      "mask": "eye_l_socket",
-      "eyelid_travel": 45,
-      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 45px 盖满眼眶"
     },
     {
       "id": "eye_l_lash",
@@ -482,11 +465,27 @@
         0
       ],
       "tags": [
-        "eyelid"
+        "eye_open"
       ],
-      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线",
-      "eyelid_travel": 39,
-      "mask": "eye_l_socket"
+      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"
+    },
+    {
+      "id": "eye_l_closed",
+      "file": "sprites/eye_l_closed.png",
+      "group": "head",
+      "layer": 221,
+      "pos": [
+        356,
+        245
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_closed"
+      ],
+      "note": "闭眼（AI 重绘·盖住原画眼睛 99.5%，接缝色差 4.53）：blink=1 时完全显形"
     },
     {
       "id": "eye_r_socket",
@@ -518,7 +517,9 @@
         0,
         0
       ],
-      "tags": [],
+      "tags": [
+        "eye_open"
+      ],
       "mask": "eye_r_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"
     },
@@ -536,30 +537,11 @@
         0
       ],
       "tags": [
-        "gaze"
+        "gaze",
+        "eye_open"
       ],
       "mask": "eye_r_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±4/±4px，由眼眶裁切"
-    },
-    {
-      "id": "eye_r_lid",
-      "file": "sprites/eye_r_lid.png",
-      "group": "head",
-      "layer": 229,
-      "pos": [
-        434,
-        198
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "eyelid"
-      ],
-      "mask": "eye_r_socket",
-      "eyelid_travel": 41,
-      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 41px 盖满眼眶"
     },
     {
       "id": "eye_r_lash",
@@ -575,11 +557,27 @@
         0
       ],
       "tags": [
-        "eyelid"
+        "eye_open"
       ],
-      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线",
-      "eyelid_travel": 35,
-      "mask": "eye_r_socket"
+      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"
+    },
+    {
+      "id": "eye_r_closed",
+      "file": "sprites/eye_r_closed.png",
+      "group": "head",
+      "layer": 231,
+      "pos": [
+        429,
+        240
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_closed"
+      ],
+      "note": "闭眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.26）：blink=1 时完全显形"
     },
     {
       "id": "brow_l_ghost",
@@ -857,7 +855,7 @@
           "freq": 0.2
         },
         {
-          "target": "eye_l_lid",
+          "target": "eye_l_closed",
           "param": "dy",
           "wave": "sine",
           "amp": 0.5,
@@ -892,7 +890,7 @@
           "freq": 0.2
         },
         {
-          "target": "eye_r_lid",
+          "target": "eye_r_closed",
           "param": "dy",
           "wave": "sine",
           "amp": 0.5,
@@ -1678,7 +1676,7 @@
           "freq": 0.25
         },
         {
-          "target": "eye_l_lid",
+          "target": "eye_l_closed",
           "param": "dx",
           "wave": "sine",
           "amp": 1.5,
@@ -1713,7 +1711,7 @@
           "freq": 0.25
         },
         {
-          "target": "eye_r_lid",
+          "target": "eye_r_closed",
           "param": "dx",
           "wave": "sine",
           "amp": 1.5,
