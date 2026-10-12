@@ -4,37 +4,37 @@
    "side": "l",
    "file": "eye_l_lid.png",
    "pos": [
-    163,
-    146
+    153,
+    127
    ],
    "size": [
-    37,
-    40
+    56,
+    51
    ],
-   "travel": 34,
+   "travel": 45,
    "aperture": [
-    27,
-    30
+    46,
+    41
    ],
-   "liner_top": 9
+   "liner_top": 1
   },
   {
    "side": "r",
    "file": "eye_r_lid.png",
    "pos": [
-    242,
-    140
+    234,
+    130
    ],
    "size": [
-    35,
-    41
+    53,
+    47
    ],
-   "travel": 35,
+   "travel": 41,
    "aperture": [
-    25,
-    31
+    43,
+    37
    ],
-   "liner_top": 4
+   "liner_top": 0
   }
  ]
 }

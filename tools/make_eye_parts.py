@@ -222,11 +222,56 @@ def split_eye(path, side, debug=None):
     soft = np.clip((430 - rgb.sum(2)) / 60.0, 0.0, 1.0)
     lash_img[..., 3] = (np.where(lash, 1.0, 0.0) * soft * (al / 255.0) * 255.0).astype(np.uint8)
 
-    # 8) 眼眶剪影（遮罩源）：实心白 + 1px 软边
+    # 8) 眼眶剪影（遮罩源）
+    #    遮罩要比"眼眶"再往下吃一点：原画里眼白下缘有一层淡蓝（#CCE2E7 一类），
+    #    蓝红差只有 27，第 2 步的 flood 判据（>38）够不着，于是它既不在眼眶里、
+    #    也就不在遮罩里 —— 眼皮盖下来时这条淡蓝一直露在外面，眼睛**闭不严**
+    #    （实测闭眼帧画布 y279..285 那条淡蓝和睁眼帧一模一样）。
+    #    所以逐列往下延伸，直到撞上下眼睑的皮肤为止（最多 8px）。
+    #    只放大遮罩，不动 aperture：眼白/虹膜/眼线的判定还按原来的来，
+    #    睁眼时这块淡蓝保持原画像素不变。
+    sock_m = aperture.copy()
+    skin_px_m = solid & (rgb[..., 0] > 200) & (rgb[..., 0] > rgb[..., 2] + 18)
+    for c in range(w):
+        rows = np.nonzero(aperture[:, c])[0]
+        if not len(rows):
+            continue
+        for y in range(int(rows.max()) + 1, min(h, int(rows.max()) + 9)):
+            if skin_px_m[y, c] or not solid[y, c]:
+                break
+            sock_m[y, c] = True
+    # 再把"眼角那两撇"吃进来：外眼角的眼白和那根睫毛尖在第 2 步的 flood 判据之外
+    #   （眼白 R≈250 B≈247 既不蓝也不暗），它们不在遮罩里，闭眼时就留在脸上
+    #   （实测闭眼帧左眼 x363..370 y271..281 还是一块白）。
+    #   做法：从现有遮罩往外长，只认"眼白色"和"眼线黑"，范围限制在眼眶外扩 10px 内。
+    ay_, ax_ = np.nonzero(aperture)
+    bb = (max(0, ay_.min() - 10), min(h, ay_.max() + 11),
+          max(0, ax_.min() - 10), min(w, ax_.max() + 11))
+    zone = np.zeros((h, w), bool)
+    zone[bb[0]:bb[1], bb[2]:bb[3]] = True
+    sclera_like = solid & (rgb.min(2) > 225) & (np.abs(rgb[..., 0] - rgb[..., 2]) < 18)
+    dark_like = solid & (rgb.sum(2) < 430)
+    growable = zone & (sclera_like | dark_like)
+    for _ in range(10):
+        nxt = sock_m | (dilate(sock_m, 1) & growable)
+        if nxt.sum() == sock_m.sum():
+            break
+        sock_m = nxt
+    sock_m = fill_holes(sock_m)
     sock = np.zeros((h, w, 4), np.uint8)
     sock[..., :3] = 255
-    edge = aperture & ~erode(aperture, 1)
-    sock[..., 3] = np.where(aperture, np.where(edge, 170, 255), 0).astype(np.uint8)
+    # 边缘给 2px 斜坡（不是一圈 170 的硬边），遮罩边界才不会出现阶梯
+    cov = sock_m.astype(np.float32)
+    for _ in range(2):
+        acc = cov.copy()
+        for dy2 in (-1, 0, 1):
+            for dx2 in (-1, 0, 1):
+                if dy2 or dx2:
+                    acc += np.roll(np.roll(cov, dy2, 0), dx2, 1)
+        cov = acc / 9.0
+    cov = np.clip(cov * 1.45 - 0.25, 0.0, 1.0)
+    cov[sock_m & (cov > 0.6)] = 1.0
+    sock[..., 3] = np.clip(cov * 255.0 + 0.5, 0, 255).astype(np.uint8)
 
     # 眼球可移动范围：虹膜本来就快把眼眶填满，所以移动时被眼眶裁掉一点是正常的
     # （这正是遮罩存在的意义）。按眼眶尺寸给个自然幅度，而不是要求"完全不被裁"。

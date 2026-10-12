@@ -21,27 +21,30 @@ done
 
 step() { printf "\n=== %s ===\n" "$1"; }
 
-step "1/7 身体分段（头/躯干/双臂/双腿）"
+step "1/8 身体分段（头/躯干/双臂/双腿）"
 "$PY" tools/make_body_parts.py --character "$CH" --form "$FM"
 
-step "2/7 眼部四件（眼眶/眼白/眼球/眼线）"
+step "2/8 眼部四件（眼眶/眼白/眼球/眼线）"
 "$PY" tools/make_eye_parts.py --character "$CH" --form "$FM"
 
-step "3/7 嘴三件（开口遮罩/口内/唇线）"
+step "3/8 嘴三件（开口遮罩/口内/唇线）"
 "$PY" tools/make_mouth_parts.py --character "$CH" --form "$FM"
 
-step "4/7 呆毛（无损切出）"
+step "4/8 呆毛（无损切出）"
 "$PY" tools/make_hair_parts.py --character "$CH" --form "$FM"
 
-step "5/7 刘海 + 额头（AI 重绘回贴）"
+step "5/8 刘海 + 额头（AI 重绘回贴）"
 "$PY" tools/make_bangs_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nobangs.png
 
-step "6/7 眉毛（AI 重绘 + alpha 抠像）"
+step "6/8 眉毛（AI 重绘 + alpha 抠像）"
 "$PY" tools/make_brow_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nobrows.png
 
-step "7/7 生成 rig 并验收"
+step "7/8 上眼睑（眨眼时真的盖下来）"
+"$PY" tools/make_eyelid_parts.py --character "$CH" --form "$FM"
+
+step "8/8 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__

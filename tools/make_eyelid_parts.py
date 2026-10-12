@@ -80,7 +80,12 @@ def main():
         # 逐列取皮肤色：取眼线上沿再往上 4..24px 的那条带（眉毛拆走后就是干净皮肤）
         samp_y1 = max(0, py + liner_top - hy - 4)
         samp_y0 = max(0, samp_y1 - 20)
-        cols = []
+        # 下眼睑那一侧也取一条：眼眶下沿再往下 2..10px。
+        # 只取上面那条的话，眼皮是**额头**的亮肤色，闭眼时脸上会多出一块比周围亮
+        # 十来个灰阶的方块（实测眼皮 253,239,226 vs 眼周 248,229,220）。
+        samp2_y0 = min(HH - 1, py + ay1 - hy + 2)
+        samp2_y1 = min(HH, samp2_y0 + 8)
+        cols, cols_lo = [], []
         for i in range(lid_w):
             cx = bx + i - hx
             col = fallback
@@ -88,9 +93,19 @@ def main():
                 m = skin_m[samp_y0:samp_y1, cx]
                 if m.sum() >= 3:
                     col = np.median(hrgb[samp_y0:samp_y1, cx][m], axis=0)
+            lo = col * 0.97
+            if 0 <= cx < HW and samp2_y1 > samp2_y0:
+                m2 = skin_m[samp2_y0:samp2_y1, cx]
+                if m2.sum() >= 3:
+                    lo = np.median(hrgb[samp2_y0:samp2_y1, cx][m2], axis=0)
             cols.append(col)
+            cols_lo.append(lo)
+        # 上下两色按行线性过渡 = 眼皮自带一点明暗，贴上去才像脸的一部分
+        top = np.array(cols, float)[None, :, :]
+        low = np.array(cols_lo, float)[None, :, :]
+        t = (np.arange(lid_h, dtype=float) / max(lid_h - 1, 1))[:, None, None]
         rgba = np.zeros((lid_h, lid_w, 4), np.uint8)
-        rgba[..., :3] = np.array(cols, float).round().astype(np.uint8)[None, :, :]
+        rgba[..., :3] = np.clip(top * (1 - t) + low * t, 0, 255).round().astype(np.uint8)
         rgba[..., 3] = 255
 
         # 下沿 = 眼眶的下沿曲线（逐列），所以闭到底时正好贴着下眼睑，不会糊到脸上。
@@ -114,8 +129,13 @@ def main():
                 rgba[yb + 1:, i, 3] = 0
                 if yb + 1 < lid_h:
                     rgba[yb + 1, i, 3] = 110
+                # 闭眼线要画在"闭到底时正好落在眼眶下沿"的那几行，也就是
+                # 要把 OVERSHOOT 那几行让出来 —— 不然线落到眼眶外面，
+                # 被眼眶遮罩一刀切掉，闭眼时只剩一块白板，看不到那条线
+                # （实测：lid 自身 R=76 的线在渲染帧里完全不见）。
+                yl = int(np.clip(yb - OVERSHOOT, 2, lid_h - 1))
                 for dy, w in ((0, 0.85), (-1, 0.45), (-2, 0.15)):
-                    y = yb + dy
+                    y = yl + dy
                     if 0 <= y < lid_h:
                         base_c = rgba[y, i, :3].astype(float)
                         rgba[y, i, :3] = (base_c * (1 - w) + line * w).round().astype(np.uint8)

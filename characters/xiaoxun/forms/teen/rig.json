@@ -21,14 +21,14 @@
     },
     "chest": {
       "pivot": [
-        419,
+        418,
         772
       ],
       "parent": "root"
     },
     "head": {
       "pivot": [
-        417,
+        416,
         346
       ],
       "parent": "chest",
@@ -37,7 +37,7 @@
     },
     "arm_l": {
       "pivot": [
-        298,
+        297,
         432
       ],
       "parent": "chest",
@@ -46,7 +46,7 @@
     },
     "arm_r": {
       "pivot": [
-        547,
+        546,
         432
       ],
       "parent": "chest",
@@ -55,14 +55,14 @@
     },
     "leg_l": {
       "pivot": [
-        384,
+        383,
         772
       ],
       "parent": "root"
     },
     "leg_r": {
       "pivot": [
-        454,
+        453,
         772
       ],
       "parent": "root"
@@ -91,7 +91,7 @@
       "group": "leg_l",
       "layer": 60,
       "pos": [
-        283,
+        282,
         768
       ],
       "anchor": [
@@ -109,7 +109,7 @@
       "group": "leg_r",
       "layer": 61,
       "pos": [
-        419,
+        418,
         768
       ],
       "anchor": [
@@ -127,7 +127,7 @@
       "group": "chest",
       "layer": 100,
       "pos": [
-        283,
+        282,
         308
       ],
       "anchor": [
@@ -145,7 +145,7 @@
       "group": "arm_l",
       "layer": 140,
       "pos": [
-        201,
+        200,
         394
       ],
       "anchor": [
@@ -163,7 +163,7 @@
       "group": "arm_r",
       "layer": 141,
       "pos": [
-        517,
+        516,
         394
       ],
       "anchor": [
@@ -181,7 +181,7 @@
       "group": "head",
       "layer": 180,
       "pos": [
-        300,
+        299,
         68
       ],
       "anchor": [
@@ -199,7 +199,7 @@
       "group": "head",
       "layer": 190,
       "pos": [
-        389,
+        388,
         68
       ],
       "anchor": [
@@ -217,8 +217,8 @@
       "group": "head",
       "layer": 240,
       "pos": [
-        354,
-        164
+        352,
+        163
       ],
       "anchor": [
         0,
@@ -235,7 +235,7 @@
       "group": "head",
       "layer": 232,
       "pos": [
-        375,
+        374,
         236
       ],
       "anchor": [
@@ -253,7 +253,7 @@
       "group": "head",
       "layer": 233,
       "pos": [
-        462,
+        461,
         230
       ],
       "anchor": [
@@ -271,7 +271,7 @@
       "group": "head",
       "layer": 205,
       "pos": [
-        423,
+        422,
         316
       ],
       "anchor": [
@@ -294,7 +294,7 @@
       "group": "head",
       "layer": 206,
       "pos": [
-        423,
+        422,
         316
       ],
       "anchor": [
@@ -313,7 +313,7 @@
       "group": "head",
       "layer": 210,
       "pos": [
-        413,
+        412,
         320
       ],
       "anchor": [
@@ -331,7 +331,7 @@
       "group": "head",
       "layer": 216,
       "pos": [
-        299,
+        298,
         246
       ],
       "anchor": [
@@ -348,7 +348,7 @@
       "group": "head",
       "layer": 217,
       "pos": [
-        299,
+        298,
         246
       ],
       "anchor": [
@@ -365,7 +365,7 @@
       "group": "head",
       "layer": 218,
       "pos": [
-        370,
+        369,
         258
       ],
       "anchor": [
@@ -384,8 +384,8 @@
       "group": "head",
       "layer": 219,
       "pos": [
-        364,
-        214
+        353,
+        195
       ],
       "anchor": [
         0,
@@ -395,8 +395,8 @@
         "eyelid"
       ],
       "mask": "eye_l_socket",
-      "eyelid_travel": 34,
-      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 34px 盖满眼眶"
+      "eyelid_travel": 45,
+      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 45px 盖满眼眶"
     },
     {
       "id": "eye_l_lash",
@@ -404,7 +404,7 @@
       "group": "head",
       "layer": 220,
       "pos": [
-        299,
+        298,
         246
       ],
       "anchor": [
@@ -412,9 +412,11 @@
         0
       ],
       "tags": [
-        "eye_open"
+        "eyelid"
       ],
-      "note": "眼线睫毛：压在眼球上面；眨眼时淡出（脸上本来就画着同一条眼线，淡出只是去掉压在眼皮上的那一份重影）"
+      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线",
+      "eyelid_travel": 39,
+      "mask": "eye_l_socket"
     },
     {
       "id": "eye_r_socket",
@@ -422,7 +424,7 @@
       "group": "head",
       "layer": 226,
       "pos": [
-        429,
+        428,
         246
       ],
       "anchor": [
@@ -439,7 +441,7 @@
       "group": "head",
       "layer": 227,
       "pos": [
-        429,
+        428,
         246
       ],
       "anchor": [
@@ -456,7 +458,7 @@
       "group": "head",
       "layer": 228,
       "pos": [
-        443,
+        442,
         253
       ],
       "anchor": [
@@ -475,8 +477,8 @@
       "group": "head",
       "layer": 229,
       "pos": [
-        443,
-        208
+        434,
+        198
       ],
       "anchor": [
         0,
@@ -486,8 +488,8 @@
         "eyelid"
       ],
       "mask": "eye_r_socket",
-      "eyelid_travel": 35,
-      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 35px 盖满眼眶"
+      "eyelid_travel": 41,
+      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 41px 盖满眼眶"
     },
     {
       "id": "eye_r_lash",
@@ -495,7 +497,7 @@
       "group": "head",
       "layer": 230,
       "pos": [
-        429,
+        428,
         246
       ],
       "anchor": [
@@ -503,18 +505,20 @@
         0
       ],
       "tags": [
-        "eye_open"
+        "eyelid"
       ],
-      "note": "眼线睫毛：压在眼球上面；眨眼时淡出（脸上本来就画着同一条眼线，淡出只是去掉压在眼皮上的那一份重影）"
+      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线",
+      "eyelid_travel": 35,
+      "mask": "eye_r_socket"
     }
   ],
   "regions": [
     {
       "id": "head",
       "rect": [
-        245,
+        244,
         0,
-        356,
+        357,
         310
       ],
       "action": "head_pat",
@@ -523,9 +527,9 @@
     {
       "id": "body",
       "rect": [
-        254,
+        253,
         310,
-        338,
+        339,
         775
       ],
       "action": "stroke",
@@ -534,9 +538,9 @@
     {
       "id": "feet",
       "rect": [
-        254,
+        253,
         1085,
-        338,
+        339,
         207
       ],
       "action": "surprised",

@@ -126,7 +126,6 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                          f"可动范围 ±{e['travel'][0]}/±{e['travel'][1]}px，由眼眶裁切"},
             ]
             # 上眼睑（make_eyelid_parts.py 的产物）：藏在眼眶上面，按 blink 下滑。
-            # 睫毛打同样的标签跟着一起下来 —— 闭眼那条线就是它。
             lid = next((p for p in (lids or {}).get("lids", []) if p["side"] == side), None)
             if lid:
                 eye_parts.append(
@@ -135,12 +134,22 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                      "anchor": [0, 0], "tags": ["eyelid"], "mask": f"{sid}_socket",
                      "eyelid_travel": lid["travel"],
                      "note": f"上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 {lid['travel']}px 盖满眼眶"})
-            eye_parts.append(
-                {"id": f"{sid}_lash", "file": f"sprites/{e['lash']}", "group": "head",
-                 "layer": L + 4, "pos": [ox + px, oy + py], "anchor": [0, 0],
-                 "tags": ["eye_open"],
-                 "note": "眼线睫毛：压在眼球上面；眨眼时淡出（脸上本来就画着同一条眼线，"
-                         "淡出只是去掉压在眼皮上的那一份重影）"})
+            # 睫毛跟着眼皮一起往下走（Live2D 的做法：上睫毛本来就长在眼皮上）。
+            #   · 之前是"淡出"：半闭时眼睛先丢掉上眼线，像眼眶被擦掉（实测 blink=0.4 的帧）；
+            #   · 之后试过"不动 + 被眼皮盖住"：闭眼时睫毛留在最上面，底下一大片空白皮肤，
+            #     读起来像翻白眼。
+            #   · 现在是跟着下滑并挂眼眶遮罩：闭到底时它正好落在眼眶下沿 = 那条闭眼线；
+            #     溢出眼眶的部分被遮罩裁掉，眼角那截由脸上的原画顶着，不会缺。
+            # 行程比眼皮少几像素：眼皮要盖过下沿（OVERSHOOT），睫毛要停在下沿上。
+            lash_travel = max(2, int(lid["travel"]) - 6) if lid else 0
+            lash_part = {"id": f"{sid}_lash", "file": f"sprites/{e['lash']}", "group": "head",
+                         "layer": L + 4, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                         "tags": ["eyelid"] if lid else ["eye_open"],
+                         "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"}
+            if lid:
+                lash_part["eyelid_travel"] = lash_travel
+                lash_part["mask"] = f"{sid}_socket"
+            eye_parts.append(lash_part)
             eye_ball_ids.append(f"{sid}_ball")
     else:
         eye_parts = [

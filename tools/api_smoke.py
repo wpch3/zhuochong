@@ -194,8 +194,13 @@ def run(base, root):
     rig = a.json("/media/characters/%s/forms/%s/rig.json" % (info["character"], info["form"]))
     check("rig.json 能读", bool(rig.get("parts")), "%d 件" % len(rig.get("parts", [])))
     parts = {p["id"]: p for p in rig["parts"]}
+    # 带 eyelid 标签的 = 两片眼皮 + 跟着下滑的两条睫毛（睫毛行程比眼皮少几像素，
+    # 这样闭到底时它停在眼眶下沿当闭眼线，而不是被盖进去）
     lids = [p for p in rig["parts"] if "eyelid" in p.get("tags", [])]
-    check("眼睑部件带行程", len(lids) == 2 and all(p.get("eyelid_travel", 0) > 0 for p in lids),
+    lid_ids = {p["id"] for p in lids}
+    check("眼睑部件带行程",
+          len(lids) >= 2 and {"eye_l_lid", "eye_r_lid"} <= lid_ids
+          and all(p.get("eyelid_travel", 0) > 0 for p in lids),
           " ".join("%s:%d" % (p["id"], p.get("eyelid_travel", 0)) for p in lids))
     gz = [p for p in rig["parts"] if "gaze" in p.get("tags", [])]
     check("眼球部件带 gaze 标签", len(gz) == 2, " ".join(p["id"] for p in gz))

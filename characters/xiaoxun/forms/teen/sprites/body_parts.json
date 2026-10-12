@@ -129,12 +129,12 @@
    "id": "hair_front",
    "file": "sprites/hair_front.png",
    "pos": [
-    153,
-    96
+    152,
+    95
    ],
    "size": [
-    131,
-    109
+    133,
+    111
    ],
    "group": "head",
    "layer": 240,

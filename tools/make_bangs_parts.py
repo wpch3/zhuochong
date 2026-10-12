@@ -193,10 +193,27 @@ def main():
     fixed = np.clip(aligned * gain + off, 0, 255)
 
     # --- 4) 刘海零件 = 原画像素；头 = 换成重绘的额头
+    # 切口必须是软的：二值掩码切出来的边界只有 0 和 255 两种 alpha，
+    # 刘海压在额头上就是一条阶梯状的"剪刀印"（用户说的"切割感"）。
+    # 这里把掩码做两遍 3x3 平均，得到约 2 像素的过渡；再把内部拉回全不透明，
+    # 只让边界一圈带上分数 alpha——和原画里发丝压着皮肤的抗锯齿是一个意思。
+    softm = occluded.astype(np.float32)
+    for _ in range(2):
+        acc = softm.copy()
+        for dy2 in (-1, 0, 1):
+            for dx2 in (-1, 0, 1):
+                if dy2 or dx2:
+                    acc += np.roll(np.roll(softm, dy2, 0), dx2, 1)
+        softm = acc / 9.0
+    softm = np.clip(softm * 1.35 - 0.18, 0.0, 1.0)
+    softm[occluded & (softm > 0.75)] = 1.0
     bangs = np.zeros((H, W, 4), np.uint8)
-    bangs[..., :3] = np.where(occluded[..., None], hrgb, 0)
-    bangs[..., 3] = np.where(occluded, hal, 0)
-    ys, xs = np.nonzero(occluded)
+    # 颜色取原画像素（含刘海压皮肤那圈混合色），alpha 用软掩码乘头部自身 alpha
+    bangs[..., :3] = np.where(softm[..., None] > 0, hrgb, 0)
+    bangs[..., 3] = np.clip(hal * softm, 0, 255).round().astype(np.uint8)
+    soft_region = softm > 0.02     # 只有"切出来的零件范围"按软掩码算；
+                                   # 换额头仍然按原来的硬掩码，多铺 2px 会啃到眉毛
+    ys, xs = np.nonzero(soft_region)
     by0, by1, bx0, bx1 = int(ys.min()), int(ys.max()) + 1, int(xs.min()), int(xs.max()) + 1
     Image.fromarray(bangs[by0:by1, bx0:bx1]).save(os.path.join(sp, "hair_front.png"))
 
