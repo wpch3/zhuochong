@@ -128,12 +128,12 @@
       "id": "hair_front",
       "file": "sprites/hair_front.png",
       "pos": [
-        152,
-        100
+        153,
+        96
       ],
       "size": [
-        132,
-        105
+        131,
+        109
       ],
       "group": "head",
       "layer": 188,
@@ -143,12 +143,12 @@
       "id": "brow_l",
       "file": "sprites/brow_l.png",
       "pos": [
-        145,
-        141
+        149,
+        159
       ],
       "size": [
-        53,
-        33
+        51,
+        18
       ],
       "group": "head",
       "layer": 181,
@@ -158,12 +158,12 @@
       "id": "brow_r",
       "file": "sprites/brow_r.png",
       "pos": [
-        235,
+        237,
         155
       ],
       "size": [
-        55,
-        14
+        48,
+        15
       ],
       "group": "head",
       "layer": 182,

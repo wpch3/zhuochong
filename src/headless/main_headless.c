@@ -162,7 +162,15 @@ static void send_png(zsock fd, const zimg *im)
     char *data;
     zerr e;
     zerr_clear(&e);
-    z_snprintf(tmp_path, sizeof(tmp_path), "/tmp/zc_preview_frame_%d.png", (int)(z_now_seconds() * 1000) % 100000);
+    /* 文件名要带进程号与自增序号：只用时间戳的话，两个并发请求会撞在同一个
+       文件上，一边写一边被另一边 remove，前端就会收到半张图。 */
+    {
+        static unsigned long seq = 0;
+        static unsigned start_tag = 0;
+        if (start_tag == 0) start_tag = (unsigned)(z_now_seconds() * 1000.0);
+        z_snprintf(tmp_path, sizeof(tmp_path), "/tmp/zc_frame_%u_%lu.png",
+                   start_tag, seq++);
+    }
     if (!im || zimg_save_png(im, tmp_path, &e) != 0) {
         send_text(fd, 500, "text/plain", "帧编码失败");
         return;
@@ -496,18 +504,8 @@ static void handle_request(zsock fd, const http_req *r)
     if (strcmp(r->path, "/api/hover") == 0) {
         int x = qint(r, "x", 0), y = qint(r, "y", 0), inside = qint(r, "in", 1);
         LOCK();
+        /* 视线换算在 zpet_hover 里做（它知道上一帧多大），这里不要重复渲染 */
         zpet_hover(g_pet, x, y, inside, z_now_seconds());
-        if (inside) {
-            int fw = 0, fh = 0;
-            zpet_frame(g_pet, &fw, &fh);
-            if (fw > 0 && fh > 0) {
-                /* 归一化视线方向：以角色胸口为原点 */
-                double nx = ((double)x - fw * 0.5) / (fw * 0.5);
-                double ny = ((double)y - fh * 0.35) / (fh * 0.5);
-                zrig_gaze(NULL, 0, 0);
-                (void)nx; (void)ny;
-            }
-        }
         UNLOCK();
         send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;

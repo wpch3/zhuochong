@@ -20,7 +20,7 @@
 
 用法：
   ~/.imgenv/bin/python tools/make_brow_parts.py --character xiaoxun --form teen \
-      --redraw logs/asset_qa/head_nobrows.png
+      --redraw characters/xiaoxun/design/redraw/head_nobrows.png
 """
 from __future__ import annotations
 import argparse, json, os, sys
@@ -95,13 +95,15 @@ def main():
     warm_s = (hrgb[..., 0] > hrgb[..., 2] + 18) & (hrgb[..., 0] > 200)
     warm_g = (skin[..., 0] > skin[..., 2] + 18) & (skin[..., 0] > 200)
     band = solid & zone & warm_s & warm_g
+    # 只配「中位数」，不配方差：额头是平涂的，重绘图比原图更平，
+    # 按 std 算增益会被钳到 1.25（实测），等于把重绘皮肤做了次对比度拉伸，
+    # 后面解混出来的眉色就飘成灰紫（#887898），过不了色卡。
     gain, off = np.ones(3), np.zeros(3)
     for c in range(3):
         a_v = hrgb[..., c][band].astype(float)
         b_v = skin[..., c][band].astype(float)
-        if len(a_v) > 50 and b_v.std() > 1.0:
-            gain[c] = float(np.clip(a_v.std() / b_v.std(), 0.8, 1.25))
-            off[c] = a_v.mean() - gain[c] * b_v.mean()
+        if len(a_v) > 50:
+            off[c] = float(np.median(a_v) - np.median(b_v))
     skin = np.clip(skin * gain + off, 0, 255)
 
     # --- 3) 找眉毛：**不靠重绘图找**（AI 构图总有残差），而是拿脸自己比。
@@ -119,7 +121,23 @@ def main():
     # 注意：眉毛本身比 200 暗，**不能**要求候选像素是"皮肤"。
     skin_m = solid & warm_s
 
-    near = dilate(skin_m, 7)
+    # 候选范围要卡在「脸的内部」，不能只是「离皮肤近」：
+    #   鲸鱼发卡就贴在脸左边，dilate(skin,7) 会把它整只圈进来，
+    #   结果眉毛零件里带出来半只鲸鱼（2026-10-12 实测）。
+    #   做法 = 取最大的一块皮肤连通域 → 把里面的洞（眉毛本身就是洞）填上 → 外扩 2px。
+    face_blobs = components(skin_m, 200)
+    face = np.zeros((H, W), bool)
+    if face_blobs:
+        for y, x in max(face_blobs, key=len):
+            face[y, x] = True
+    holes = np.zeros((H, W), bool)
+    for blob in components(~face, 1):
+        ys_ = [q[0] for q in blob]
+        xs_ = [q[1] for q in blob]
+        if min(ys_) > 0 and max(ys_) < H - 1 and min(xs_) > 0 and max(xs_) < W - 1:
+            for y, x in blob:
+                holes[y, x] = True          # 不挨边框的空洞 = 脸内部的五官
+    near = dilate(face | holes, 2)
     dgen = np.clip(lum(skin) - lum(hrgb), 0, 255)   # 比"没眉毛的重绘脸"暗多少
     # 眉毛是**暖褐色**（R 明显大于 B），额头上零星的发丝是冷紫灰（R≈B）——先按颜色筛一遍
     # 两套判据分工：
@@ -144,14 +162,24 @@ def main():
     for pts in components(hopen(cand_seed, 2), 30):
         cx = float(np.mean([q[1] for q in pts]))
         sides["l" if cx < W / 2 else "r"].append(pts)
+    # 每边只留**最大**的一条：鲸鱼发卡边上也能凑出一小块横向的暖色种子，
+    # 留着它行窗就会从眉毛一路开到发卡（眉毛零件里带出半只鲸鱼）。
+    for side in ("l", "r"):
+        if len(sides[side]) > 1:
+            sides[side] = [max(sides[side], key=len)]
     if not sides["l"] or not sides["r"]:
+        if os.path.exists(os.path.join(sp, "brow_l.png")):
+            print("脸上已经没有眉毛了（之前拆过），跳过")
+            return
         raise SystemExit(f"眉毛种子不齐（左 {len(sides['l'])} 右 {len(sides['r'])}），"
                          "检查重绘图或眉毛带范围")
 
     comps = []
     for side in ("l", "r"):
         allp = [q for g in sides[side] for q in g]
-        r0, r1 = min(q[0] for q in allp) - 2, max(q[0] for q in allp) + 2
+        # 行窗比种子多放 4 行：眉毛上下缘是软笔触，种子（横向开运算后）只剩笔画中段，
+        # 只放 2 行会把软边切掉 —— 右眉一度只剩 10px 高，过不了 check_assets 的尺寸关。
+        r0, r1 = min(q[0] for q in allp) - 4, max(q[0] for q in allp) + 4
         win = np.zeros((H, W), bool)
         win[max(0, r0):r1 + 1, :] = True
         grow = cand & win                       # 从种子长回完整笔触，但不许跑出这条带
@@ -167,19 +195,69 @@ def main():
                     if 0 <= v < H and 0 <= u < W and grow[v, u] and not seen[v, u]:
                         seen[v, u] = True
                         dq.append((v, u))
+        # 长完还要去掉「冷色」像素：鲸鱼发卡是蓝的（B-R>40），一旦和眉毛连上，
+        # 整只鲸鱼都会被当成眉毛长进来。眉毛上缘那道冷灰描边 B-R≈8，所以阈值取 22：
+        # 留得住描边，拦得住发卡。去掉之后只保留还压着种子的那一块连通域。
+        cold = (hrgb[..., 2] - hrgb[..., 0]) > 22
+        # 再按「重绘图到底擦掉了什么」剪一刀：额头上那几根淡紫发丝在无眉图里
+        # 原样还在（dgen≈0），只有眉毛被擦掉（dgen 几十）。对齐残差 0.2px 时这刀很准。
+        seen &= ~cold & (dgen > 4)
+        # 最后再按「离笔画有多远」收一刀：发卡那边还剩十几个像素会跟着眉毛一起动，
+        # 它们离种子笔画 20 行以外。种子外扩 7px 就是眉毛的软边范围。
+        seed_m = np.zeros((H, W), bool)
+        for q in allp:
+            seed_m[q] = True
+        seen &= dilate(seed_m, 7)
+        seedset = set(allp)
+        keep = np.zeros((H, W), bool)
+        for blob in components(seen, 1):
+            if any(q in seedset for q in blob):
+                for y, x in blob:
+                    keep[y, x] = True
+        seen = keep
         pts = [(int(y), int(x)) for y, x in zip(*np.nonzero(seen))]
-        frac = sum(1 for y, x in pts if dgen[y, x] > 14) / max(len(pts), 1)
-        if frac < 0.3:
-            raise SystemExit(f"{side} 眉和无眉重绘图差异太小（{frac:.2f}），对齐可能不对")
+        # 对齐没对上的话，这块区域在重绘图里还是眉毛，两张图就不会有像样的差。
+        # 判据用「最暗的一成有多暗」而不是「多少像素超过阈值」：眉毛笔触边缘本来
+        # 就软，软边占比会随重绘图的轻重变化（实测 0.24~0.45 都是对的），
+        # 但只要对上了，笔触中心的差一定很大（实测 p90≈66）。
+        dvals = np.array([dgen[y, x] for y, x in pts])
+        frac = float((dvals > 14).mean()) if len(dvals) else 0.0
+        p90 = float(np.percentile(dvals, 90)) if len(dvals) else 0.0
+        if p90 < 35 or frac < 0.15:
+            raise SystemExit(f"{side} 眉和无眉重绘图差异太小（p90={p90:.0f} 占比={frac:.2f}），"
+                             "对齐可能不对")
         comps.append(pts)
-    mask = np.zeros((H, W), bool)
+    # 笔画外再带 2px 的软边：抗锯齿那一圈本来就是眉毛的一部分，
+    # 不带的话右眉只剩 11px 高（check_assets 的最小边长是 12，判为抠错）。
+    # 这圈像素 alpha 算出来接近 0，叠回去对静止画面没有影响。
+    comps_m = []
     for pts in comps:
+        m1 = np.zeros((H, W), bool)
         for y, x in pts:
-            mask[y, x] = True
+            m1[y, x] = True
+        comps_m.append(dilate(m1, 2) & solid)
+    mask = np.zeros((H, W), bool)
+    for m1 in comps_m:
+        mask |= m1
 
     # --- 4) alpha 抠像 + 解混
-    ref = np.percentile(diff[mask], 97)
-    alpha = np.clip(diff / max(ref, 1.0), 0, 1) * mask
+    # alpha 怎么定？单张图里 a 和眉色是乘在一起的，分不开（a 大一点、颜色浅一点
+    # 合成结果一样）。所以**以色卡上的眉毛褐为准**反解 a：
+    #     src = a*C0 + (1-a)*S   →   a = <S-src, S-C0> / |S-C0|^2
+    # 这样切出来的颜色天然落在色卡上（不用这条约束时主色会飘成 #987888，
+    # 离色卡 88，直接被 check_assets 拦下）。
+    pal_path = os.path.join(args.root, "characters", args.character, "design", "palette.json")
+    c0 = (0x78, 0x48, 0x48)
+    if os.path.exists(pal_path):
+        for c in json.load(open(pal_path, encoding="utf-8"))["colors"]:
+            if c["name"].startswith("眉毛褐"):
+                h = c["hex"].lstrip("#")
+                c0 = tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+    C0 = np.array(c0, float)
+    dpix = skin - hrgb                       # S - src
+    dref = skin - C0                         # S - C0
+    alpha = np.clip((dpix * dref).sum(-1) / np.maximum((dref * dref).sum(-1), 1e-6),
+                    0, 1) * mask
     a3 = alpha[..., None]
     # 解混：src = a*眉色 + (1-a)*皮肤  →  眉色 = (src - (1-a)*皮肤) / a
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -198,11 +276,7 @@ def main():
     cx = [np.mean([p[1] for p in pts]) for pts in comps]
     order = np.argsort(cx)          # 画面左边那条 = 角色的右眉，按 Live2D 习惯仍叫 l/r（画面左右）
     for side, idx in zip(("l", "r"), order):
-        pts = comps[idx]
-        sub = np.zeros((H, W), bool)
-        for y, x in pts:
-            sub[y, x] = True
-        sub = dilate(sub, 2) & mask
+        sub = comps_m[idx]
         ys, xs = np.nonzero(sub)
         y0, y1, x0, x1 = int(ys.min()), int(ys.max()) + 1, int(xs.min()), int(xs.max()) + 1
         rgba = np.zeros((y1 - y0, x1 - x0, 4), np.uint8)

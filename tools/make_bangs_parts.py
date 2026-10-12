@@ -20,7 +20,7 @@
 
 用法：
   ~/.imgenv/bin/python tools/make_bangs_parts.py --character xiaoxun --form teen \
-      --redraw logs/asset_qa/head_nobangs.png
+      --redraw characters/xiaoxun/design/redraw/head_nobangs.png
 """
 from __future__ import annotations
 import argparse, json, os

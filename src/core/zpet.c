@@ -44,6 +44,7 @@ struct zpet {
 
     int     hover_inside;
     double  hover_x, hover_y;
+    int     last_fw, last_fh;   /* 上一帧尺寸：hover 换算视线方向要用 */
 
     /* 互动规则与台词（config/interactions.json + dialogue.json） */
     zinteract *inter;
@@ -320,8 +321,15 @@ int zpet_tick(zpet *p, double now)
 
 const zimg *zpet_frame(zpet *p, int *out_w, int *out_h)
 {
+    const zimg *fr;
+    int w = 0, h = 0;
     if (!p || !p->rig) return NULL;
-    return zrig_frame(p->rig, p->scale, out_w, out_h);
+    fr = zrig_frame(p->rig, p->scale, &w, &h);
+    p->last_fw = w;
+    p->last_fh = h;
+    if (out_w) *out_w = w;
+    if (out_h) *out_h = h;
+    return fr;
 }
 
 const char *zpet_character(const zpet *p) { return p ? p->cfg.pet.character : ""; }
@@ -560,9 +568,22 @@ void zpet_hover(zpet *p, int x, int y, int inside, double now)
         p->idle_seconds = 0.0;
         if (z_streq(zrig_action(p->rig), "idle"))
             zrig_action_request(p->rig, "focus", "hover", 0);
+        /* 视线跟随光标：眼球是独立部件（带 gaze 标签），这里把屏幕坐标
+           换成 [-1,1] 的方向喂给 rig。原来这段算完就丢了（zrig_gaze(NULL,0,0)），
+           等于拆了眼球却没人看 —— 2026-10-12 修。 */
+        if (p->last_fw > 0 && p->last_fh > 0) {
+            double nx = ((double)x - p->last_fw * 0.5) / (p->last_fw * 0.5);
+            double ny = ((double)y - p->last_fh * 0.32) / (p->last_fh * 0.5);
+            if (nx < -1.0) nx = -1.0;
+            if (nx > 1.0) nx = 1.0;
+            if (ny < -1.0) ny = -1.0;
+            if (ny > 1.0) ny = 1.0;
+            zrig_gaze(p->rig, nx, ny);
+        }
     } else {
         if (z_streq(zrig_action(p->rig), "focus"))
             zrig_action_request(p->rig, "idle", "hover_end", 0);
+        zrig_gaze_reset(p->rig);
     }
     (void)now;
 }

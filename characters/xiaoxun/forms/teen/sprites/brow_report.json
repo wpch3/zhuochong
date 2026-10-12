@@ -1,41 +1,41 @@
 {
-  "redraw": "logs/asset_qa/head_nobrows.png",
+  "redraw": "characters/xiaoxun/design/redraw/head_nobrows.png",
   "align": {
-    "scale": 0.8071,
-    "dx": 3.5,
-    "dy": 4.7
+    "scale": 0.8136,
+    "dx": 0.7,
+    "dy": 1.0
   },
   "skin_gain": [
-    1.25,
-    1.0365,
-    1.1341
+    1.0,
+    1.0,
+    1.0
   ],
   "skin_offset": [
-    -61.15,
-    -3.45,
-    -19.61
+    1.0,
+    10.0,
+    11.0
   ],
   "brows": [
     {
       "side": "l",
       "box": [
-        46,
-        141,
-        53,
-        33
+        50,
+        159,
+        51,
+        18
       ],
-      "px": 614,
+      "px": 464,
       "max_alpha": 255
     },
     {
       "side": "r",
       "box": [
-        136,
+        138,
         155,
-        55,
-        14
+        48,
+        15
       ],
-      "px": 305,
+      "px": 378,
       "max_alpha": 255
     }
   ]
