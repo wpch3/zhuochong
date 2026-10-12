@@ -194,6 +194,48 @@
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
     },
     {
+      "id": "mouth_mask",
+      "file": "sprites/mouth_mask.png",
+      "group": "head",
+      "layer": 205,
+      "pos": [
+        423,
+        316
+      ],
+      "anchor": [
+        0.5,
+        0
+      ],
+      "scale": [
+        1.0,
+        0.063
+      ],
+      "tags": [
+        "mouth"
+      ],
+      "mask_only": true,
+      "note": "开口形状：锚点在上唇线，sy=0.063 是闭嘴，sy≈0.85 是张到最大（15px）"
+    },
+    {
+      "id": "mouth_cavity",
+      "file": "sprites/mouth_cavity.png",
+      "group": "head",
+      "layer": 206,
+      "pos": [
+        423,
+        316
+      ],
+      "anchor": [
+        0.5,
+        0
+      ],
+      "tags": [
+        "mouth"
+      ],
+      "mask": "mouth_mask",
+      "note": "口内（上颚/口腔/舌/下唇线），被开口形状裁切；自己不缩放"
+    },
+    {
       "id": "mouth_open",
       "file": "sprites/mouth_open.png",
       "group": "head",
@@ -209,7 +251,7 @@
       "tags": [
         "mouth"
       ],
-      "note": "口型 A：说话时按通道闪烁"
+      "note": "上唇线（闭合笑线），压在口内上面"
     },
     {
       "id": "eye_l_socket",
@@ -798,6 +840,14 @@
           "freq": 0.0,
           "curve": "tip",
           "dur": 0.5
+        },
+        {
+          "target": "mouth_mask",
+          "param": "sy",
+          "wave": "bounce",
+          "amp": 0.487,
+          "dur": 1.2,
+          "ease": "out"
         }
       ],
       "part_overrides": {
@@ -1019,6 +1069,14 @@
           "wave": "pulse",
           "amp": -0.55,
           "dur": 0.25
+        },
+        {
+          "target": "mouth_mask",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.887,
+          "dur": 0.12,
+          "ease": "out"
         }
       ]
     },
@@ -1070,6 +1128,14 @@
           "freq": 2.6,
           "curve": "tip",
           "dur": 0.7
+        },
+        {
+          "target": "mouth_mask",
+          "param": "sy",
+          "wave": "decay",
+          "amp": 0.637,
+          "dur": 0.8,
+          "freq": 2.0
         }
       ],
       "part_overrides": {
@@ -1216,6 +1282,13 @@
           "wave": "sine",
           "amp": 1.2,
           "freq": 0.5
+        },
+        {
+          "target": "mouth_mask",
+          "param": "sy",
+          "wave": "flap",
+          "amp": 0.737,
+          "freq": 3.0
         }
       ]
     },
@@ -1327,6 +1400,13 @@
           "amp": 4.0,
           "dur": 1.2,
           "ease": "out"
+        },
+        {
+          "target": "mouth_mask",
+          "param": "sy",
+          "wave": "sine",
+          "amp": 0.237,
+          "freq": 0.12
         }
       ],
       "part_overrides": {

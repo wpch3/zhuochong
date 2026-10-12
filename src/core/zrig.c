@@ -33,7 +33,7 @@ enum { P_DX = 0, P_DY, P_SX, P_SY, P_ROT, P_ALPHA, P_BEND_X, P_BEND_Y };
 enum { BEND_ROOT = ZIMG_BEND_ROOT, BEND_SINE = ZIMG_BEND_SINE,
        BEND_LINEAR = ZIMG_BEND_LINEAR, BEND_TIP = ZIMG_BEND_TIP };
 /* 通道波形 */
-enum { W_SINE = 0, W_BOUNCE, W_PULSE, W_DECAY };
+enum { W_SINE = 0, W_BOUNCE, W_PULSE, W_DECAY, W_FLAP };
 
 typedef struct {
     char   id[48];
@@ -53,7 +53,8 @@ typedef struct {
     int    group;             /* 组索引 */
     double pos[2];            /* 画布坐标（锚点落点） */
     double anchor[2];         /* 0..1，相对部件图像 */
-    double scale;
+    double scale;             /* 等比基准缩放（老字段，保留） */
+    double scale_x, scale_y;  /* 分轴基准缩放："scale":[sx,sy] 时用，嘴的开合靠它 */
     double rot_deg;
     double opacity;
     unsigned tags;
@@ -183,6 +184,7 @@ static int parse_wave(const char *name, int *out)
     if (z_streq(name, "bounce")) { *out = W_BOUNCE; return 0; }
     if (z_streq(name, "pulse")) { *out = W_PULSE; return 0; }
     if (z_streq(name, "decay")) { *out = W_DECAY; return 0; }
+    if (z_streq(name, "flap")) { *out = W_FLAP; return 0; }
     return -1;
 }
 
@@ -346,7 +348,19 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
         p->layer = (int)zjson_int(zjson_obj_get(pj, "layer"), 0);
         read_pair(zjson_obj_get(pj, "anchor"), 0.5, 0.5, p->anchor);
         read_pair(zjson_obj_get(pj, "pos"), r->origin[0], r->origin[1], p->pos);
-        p->scale = zjson_num(zjson_obj_get(pj, "scale"), 1.0);
+        {
+            /* scale 可以写成一个数（等比），也可以写成 [sx, sy]（分轴）。
+               分轴是嘴开合这类动作的前提：嘴型要上下压扁而不是整体缩小。 */
+            const zjson *sj = zjson_obj_get(pj, "scale");
+            p->scale = 1.0;
+            p->scale_x = p->scale_y = 1.0;
+            if (zjson_is(sj, ZJSON_ARR)) {
+                p->scale_x = zjson_num(zjson_at(sj, 0), 1.0);
+                p->scale_y = zjson_num(zjson_at(sj, 1), 1.0);
+            } else if (sj) {
+                p->scale = zjson_num(sj, 1.0);
+            }
+        }
         p->rot_deg = zjson_num(zjson_obj_get(pj, "rot_deg"), 0.0);
         p->opacity = zjson_num(zjson_obj_get(pj, "opacity"), 1.0);
             /* 遮罩（Live2D 的 clipping mask 等价物）：本部件只在 mask 指向的那个
@@ -803,6 +817,11 @@ static double eval_channel(const zchan *c, double t, double total)
             }
             return c->amp * k;
         }
+        case W_FLAP: {
+            /* 只往一个方向摆的余弦：0 → amp → 0 循环。
+               嘴的开合必须用它——用 sine 会摆到负数，缩放成负值就是把嘴翻过来画。 */
+            return c->amp * (0.5 - 0.5 * cos(2.0 * 3.14159265358979323846 * c->freq * t));
+        }
         case W_DECAY:
         default: {
             /* 阻尼振荡：被打/被锤后的抖动 */
@@ -1134,7 +1153,8 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
             zpart *p = &r->parts[pi];
             double opacity = p->opacity * r->p_alpha[pi];
             double extra_dx = r->p_dx[pi], extra_dy = r->p_dy[pi];
-            double part_scale = 1.0, part_rot = r->p_rot[pi];
+            double part_rot = r->p_rot[pi];
+            double part_sx = 1.0, part_sy = 1.0;
             double gm[6], lm[6], m[6];
             const zimg *src = p->img_scaled ? p->img_scaled : p->img;
             /* 视线跟随：只影响带 gaze 标签的部件（虹膜拆分后自动升级为真·视线） */
@@ -1150,7 +1170,12 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                 extra_dy += fdy;
             }
             /* 部件通道里的缩放：取平均作用到等比缩放上 */
-            part_scale *= (r->p_sx[pi] + r->p_sy[pi]) * 0.5;
+            /* 通道里的 sx/sy 相对基准做加法（基准为 1 时与过去的乘法完全一致），
+               这样 "scale":[1,0.06] + sy 通道 0.8 → 实际 0.86，rig 里读起来就是它的意思 */
+            part_sx = p->scale_x + (r->p_sx[pi] - 1.0);
+            part_sy = p->scale_y + (r->p_sy[pi] - 1.0);
+            if (part_sx < 0.0) part_sx = 0.0;
+            if (part_sy < 0.0) part_sy = 0.0;
 
             /* 动作对部件的覆盖 */
             if (a) {
@@ -1178,7 +1203,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                 double anchor_py = src->h * p->anchor[1];
                 double pos_x = (p->pos[0] + extra_dx) * scale;
                 double pos_y = (p->pos[1] + extra_dy) * scale;
-                zimg_make_matrix(lm, pos_x, pos_y, p->scale * part_scale, p->scale * part_scale,
+                zimg_make_matrix(lm, pos_x, pos_y, p->scale * part_sx, p->scale * part_sy,
                                  p->rot_deg + part_rot, anchor_px, anchor_py);
             }
             if (p->group >= 0) {

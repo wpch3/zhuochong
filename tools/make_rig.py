@@ -15,7 +15,7 @@ import argparse, json, os, sys
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
-          seg=None, anchors=None, eyes=None):
+          seg=None, anchors=None, eyes=None, mouth=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -124,8 +124,27 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             part("eye_open_left.png", "head", ["eye_open", "gaze"], 220),
             part("eye_open_right.png", "head", ["eye_open", "gaze"], 221),
         ]
-    parts_list = body_parts_list + [
-        part("mouth_open.png", "head", ["mouth"], 210, "口型 A：说话时按通道闪烁"),
+    # 嘴：开口形状（遮罩）+ 口内。原画没有口腔，口内是 make_mouth_parts.py 画出来的；
+    # 张开多少 = 压缩遮罩的 sy（锚点在上唇线，所以是往下张开）。
+    mouth_parts = []
+    if mouth:
+        # 这两件的 anchor 是 [0.5, 0]（上唇线中点），所以 pos 要给锚点所在的位置，
+        # 给左上角会整体偏半个嘴宽——第一版就是这么偏的。
+        mx, my = mouth.get("anchor_pos", mouth["pos"])
+        mx, my = int(round(mx)), int(round(my))
+        mouth_parts = [
+            {"id": "mouth_mask", "file": f"sprites/{mouth['mask']}", "group": "head",
+             "layer": 205, "pos": [ox + mx, oy + my], "anchor": [0.5, 0],
+             "scale": [1.0, mouth["closed_sy"]], "tags": ["mouth"], "mask_only": True,
+             "note": f"开口形状：锚点在上唇线，sy={mouth['closed_sy']} 是闭嘴，"
+                     f"sy≈0.85 是张到最大（{mouth['open_h']}px）"},
+            {"id": "mouth_cavity", "file": f"sprites/{mouth['cavity']}", "group": "head",
+             "layer": 206, "pos": [ox + mx, oy + my], "anchor": [0.5, 0],
+             "tags": ["mouth"], "mask": "mouth_mask",
+             "note": "口内（上颚/口腔/舌/下唇线），被开口形状裁切；自己不缩放"},
+        ]
+    parts_list = body_parts_list + mouth_parts + [
+        part("mouth_open.png", "head", ["mouth"], 210, "上唇线（闭合笑线），压在口内上面"),
     ] + eye_parts + [
         part("eye_closed_left.png", "head", ["eye_closed"], 230, "闭眼：眨眼时与睁眼交叉淡化"),
         part("eye_closed_right.png", "head", ["eye_closed"], 231),
@@ -403,6 +422,34 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         ]
         actions.append(look)
 
+    # 张嘴的动作：只动遮罩的 sy，口内自己不变形（Live2D 的 ParamMouthOpenY 就是这么做的）
+    if mouth:
+        closed = mouth["closed_sy"]
+        def open_to(v):
+            """把"张到 v（0~1）"换算成通道增量：实际 sy = 基准 + 增量"""
+            return round(v - closed, 3)
+        by_id = {a["id"]: a for a in actions}
+        if "talk" in by_id:
+            by_id["talk"]["channels"].append(
+                {"target": "mouth_mask", "param": "sy", "wave": "flap",
+                 "amp": open_to(0.80), "freq": 3.0})
+        if "happy" in by_id:
+            by_id["happy"]["channels"].append(
+                {"target": "mouth_mask", "param": "sy", "wave": "bounce",
+                 "amp": open_to(0.55), "dur": 1.2, "ease": "out"})
+        if "surprised" in by_id:
+            by_id["surprised"]["channels"].append(
+                {"target": "mouth_mask", "param": "sy", "wave": "pulse",
+                 "amp": open_to(0.95), "dur": 0.12, "ease": "out"})
+        if "hammered" in by_id:
+            by_id["hammered"]["channels"].append(
+                {"target": "mouth_mask", "param": "sy", "wave": "decay",
+                 "amp": open_to(0.70), "dur": 0.8, "freq": 2.0})
+        if "sleep" in by_id:
+            by_id["sleep"]["channels"].append(
+                {"target": "mouth_mask", "param": "sy", "wave": "sine",
+                 "amp": open_to(0.30), "freq": 0.12})
+
     rig = {
         "schema_version": "1.0",
         "id": f"{name}_teen",
@@ -486,8 +533,18 @@ def main() -> int:
     )
     if seg and any(sp["id"] == "seg_head" for sp in seg["parts"]):
         head_is_part = True          # 分段素材里头是独立一张图，可以放心转头
+    # 嘴部零件（tools/make_mouth_parts.py 的产物）
+    mouth = None
+    mouth_path = os.path.join(base, "sprites", "mouth_parts.json")
+    if os.path.exists(mouth_path):
+        with open(mouth_path, encoding="utf-8") as f:
+            mouth = json.load(f)
+        if not all(os.path.exists(os.path.join(base, "sprites", mouth[k]))
+                   for k in ("mask", "cavity")):
+            print("警告：嘴部零件缺图，跳过口内", file=sys.stderr)
+            mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
-                seg=seg, anchors=anchors, eyes=eyes)
+                seg=seg, anchors=anchors, eyes=eyes, mouth=mouth)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

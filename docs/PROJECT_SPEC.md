@@ -99,7 +99,7 @@ dist/windows/x86_64/    zhuochong.exe
 
 ### 通道（通道曲线）参数
 `actions[].channels[]`：`target`（组 id 或部件 id）、`param`（`dx/dy/sx/sy/rot_deg/alpha`）、
-`wave`（`sine` 循环晃动 / `bounce` 抬手回落 / `pulse` 进入并保持 / `decay` 阻尼抖动）、
+`wave`（`sine` 循环晃动 / `bounce` 抬手回落 / `pulse` 进入并保持 / `decay` 阻尼抖动 / `flap` 只朝一个方向的循环开合，用于嘴型）、
 `amp`、`freq`、`phase`、`dur`、`ease`（`linear/in/out/in_out/out_back/out_elastic/out_bounce`）。
 
 ### 部件标签（tags）

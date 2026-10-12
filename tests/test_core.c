@@ -745,6 +745,42 @@ static void test_mask(void)
         }
     }
 
+    /* 分轴缩放："scale":[sx,sy] + sy 通道 = 嘴的开合（压扁遮罩而不是整体缩小） */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"hole\",\"file\":\"sprites/mouth_open.png\",\"group\":\"root\","
+        "  \"layer\":10,\"pos\":[400,300],\"anchor\":[0.5,0],\"scale\":[1.0,0.1],"
+        "  \"mask_only\":true},"
+        " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"hole\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]},"
+        " {\"id\":\"open\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"hole\",\"param\":\"sy\",\"wave\":\"pulse\",\"amp\":0.8,\"dur\":0.05}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带分轴缩放的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int closed_px, open_px;
+            zrig_tick(r, 1.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            closed_px = frame_opaque_px(fb);
+            zrig_action_request(r, "open", "t", 1);
+            zrig_tick(r, 1.2);
+            fb = zrig_frame(r, 1.2, NULL, NULL);
+            open_px = frame_opaque_px(fb);
+            CHECK(open_px > closed_px * 3,
+                  "sy 通道要把遮罩撑开：闭 %d 像素 → 开 %d 像素", closed_px, open_px);
+            zrig_free(r);
+        }
+    }
+
     /* 反例一：遮罩指向不存在的部件 */
     write_text(rigp,
         "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
