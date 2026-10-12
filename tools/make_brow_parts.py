@@ -299,7 +299,7 @@ def main():
         keep.append({
             "id": f"brow_{side}", "file": f"sprites/{name}",
             "pos": [hx + x0, hy + y0], "size": [w, h],
-            "group": "head", "layer": 181 + i,
+            "group": "head", "layer": 232 + i,
             "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）",
         })
     bp["parts"] = keep

@@ -22,7 +22,8 @@ enum {
     TAG_HAIR = 1u << 5,
     TAG_ACCESSORY = 1u << 6,
     TAG_TAIL = 1u << 7,
-    TAG_GAZE = 1u << 8      /* 会被视线偏移影响的部件（虹膜/眼球） */
+    TAG_GAZE = 1u << 8,     /* 会被视线偏移影响的部件（虹膜/眼球） */
+    TAG_EYELID = 1u << 9    /* 眼睑：随眨眼参数往下滑（配 eyelid_travel 用） */
 };
 
 /* 通道参数 */
@@ -62,6 +63,7 @@ typedef struct {
     int    mask;              /* 解析后的部件索引，-1 表示不裁切 */
     int    mask_only;         /* 1 = 自己只当遮罩用，不画出来 */
     int    is_mask_src;       /* 1 = 有别的部件拿我当遮罩 */
+    double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
 } zpart;
 
 typedef struct {
@@ -90,6 +92,7 @@ typedef struct {
     zoverride ovr[ZRIG_MAX_OVERRIDES];
     int    novr;
     double dim;               /* 0..1：睡眠等状态的压暗程度 */
+    double blink_hold;        /* 0..1：这个动作期间眼睛闭合到几成（<0 = 不管） */
 } zaction;
 
 typedef struct {
@@ -133,6 +136,7 @@ struct zrig {
     double blink_gap;
     double blink_value;
     int    blink_forced;         /* -1 = 自动 */
+    double blink_manual;         /* <0 = 自动；0..1 = 外部按住（测试台/调参用） */
 
     char  outfit[64];
 
@@ -204,6 +208,7 @@ static unsigned parse_tags(const zjson *arr)
         else if (z_streq(s, "accessory")) t |= TAG_ACCESSORY;
         else if (z_streq(s, "tail")) t |= TAG_TAIL;
         else if (z_streq(s, "gaze")) t |= TAG_GAZE;
+        else if (z_streq(s, "eyelid")) t |= TAG_EYELID;
     }
     return t;
 }
@@ -376,6 +381,9 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
                 p->mask_only = zjson_bool(zjson_obj_get(pj, "mask_only"), 0);
             }
         p->tags = parse_tags(zjson_obj_get(pj, "tags"));
+        /* 眼睑行程：带 eyelid 标签的部件按 blink 参数下滑这么多像素。
+           眨眼不再靠「睁眼图淡出 / 闭眼图淡入」，而是真的有一片眼皮盖下来。 */
+        p->eyelid_travel = zjson_num(zjson_obj_get(pj, "eyelid_travel"), 0.0);
         {
             const char *gid = zjson_str(zjson_obj_get(pj, "group"), "root");
             p->group = find_group(r, gid);
@@ -452,6 +460,9 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
         a->loop = zjson_bool(zjson_obj_get(aj, "loop"), 0);
         a->interruptible = zjson_bool(zjson_obj_get(aj, "interruptible"), 1);
         a->dim = zjson_num(zjson_obj_get(aj, "dim"), 0.0);
+        /* blink_hold：动作期间把眼睛按住在某个闭合度（眯眼笑 0.55、睡着 1.0）。
+           眼皮拆成零件之后，表情不用再换一张「闭眼图」，压参数就行。 */
+        a->blink_hold = zjson_num(zjson_obj_get(aj, "blink_hold"), -1.0);
         a->duration = zjson_num(zjson_obj_get(aj, "duration"), a->loop ? -1.0 : 1.0);
         if (a->loop) a->duration = -1.0;
         {
@@ -609,6 +620,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     zsm_init(&r->sm);
     r->blink_state = BL_FIRST;
     r->blink_forced = -1;
+    r->blink_manual = -1.0;
     r->blink_imin = 2.0;
     r->blink_imax = 8.0;
 
@@ -1025,6 +1037,10 @@ double zrig_bend_at(const zrig *r, const char *part_id, double canvas_y)
 /* ============================================================ 眨眼 */
 static double blink_update(zrig *r, double now)
 {
+    if (r->blink_manual >= 0.0) {       /* 外部按住：测试台拖滑条时用 */
+        r->blink_value = ZC_CLAMP(r->blink_manual, 0.0, 1.0);
+        return r->blink_value;
+    }
     if (!r->blink_enabled || r->blink_forced == 1) {
         r->blink_value = (r->blink_forced == 1) ? 1.0 : 0.0;
         return r->blink_value;
@@ -1065,12 +1081,25 @@ static double blink_update(zrig *r, double now)
             default: r->blink_value = 0.0; break;
         }
     }
+    {
+        /* 动作要求的闭合度只抬不压：眯着眼笑的时候照样能眨一下眼。 */
+        const zaction *a = current_action(r);
+        if (a && a->blink_hold >= 0.0 && a->blink_hold > r->blink_value)
+            r->blink_value = a->blink_hold;
+    }
     return r->blink_value;
 }
 
 void zrig_blink_set_enabled(zrig *r, int enabled) { if (r) r->blink_enabled = enabled; }
 int  zrig_blink_enabled(const zrig *r) { return r ? r->blink_enabled : 0; }
 double zrig_blink_value(const zrig *r) { return r ? r->blink_value : 0.0; }
+
+void zrig_blink_set_manual(zrig *r, double v)
+{
+    if (r) r->blink_manual = (v < 0.0) ? -1.0 : ZC_CLAMP(v, 0.0, 1.0);
+}
+
+double zrig_blink_manual(const zrig *r) { return r ? r->blink_manual : -1.0; }
 
 void zrig_blink_force(zrig *r, int force_closed)
 {
@@ -1162,6 +1191,10 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                 extra_dx += r->gaze_x * r->gaze_max_dx;
                 extra_dy += r->gaze_y * r->gaze_max_dy;
             }
+            /* 眼睑：眨眼参数直接变成往下滑的位移。
+               眼皮本身是从眼睛上方那块皮肤切出来的，静止时被眼眶遮罩挡住看不见，
+               blink=1 时正好滑满整个眼眶 —— 这才是 Live2D 里眼睛的做法。 */
+            if (p->tags & TAG_EYELID) extra_dy += blink * p->eyelid_travel;
             /* 跟随父部件的形变（五官跟着身体弯） */
             {
                 double fdx = 0.0, fdy = 0.0;

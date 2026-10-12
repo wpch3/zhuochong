@@ -67,6 +67,11 @@ int   zpet_drag_end(zpet *p, double now);
 void  zpet_hover(zpet *p, int x, int y, int inside, double now);
 /* 外部活动（键盘/鼠标输入）发生时调用，用于唤醒 */
 void  zpet_notify_user_activity(zpet *p, double now);
+
+/* 测试台用的直控：按住眨眼参数（<0 恢复自动）、直接给视线方向 */
+void   zpet_set_blink(zpet *p, double v);
+double zpet_blink_manual(const zpet *p);
+void   zpet_set_gaze(zpet *p, double nx, double ny, int on);
 /* 上报系统级空闲秒数（Windows 用 GetLastInputInfo，其它平台可传 0） */
 void  zpet_report_idle(zpet *p, double seconds);
 /* 直接触发动作（托盘菜单用） */

@@ -215,7 +215,7 @@
       "id": "hair_front",
       "file": "sprites/hair_front.png",
       "group": "head",
-      "layer": 188,
+      "layer": 240,
       "pos": [
         354,
         164
@@ -233,7 +233,7 @@
       "id": "brow_l",
       "file": "sprites/brow_l.png",
       "group": "head",
-      "layer": 181,
+      "layer": 232,
       "pos": [
         375,
         236
@@ -251,7 +251,7 @@
       "id": "brow_r",
       "file": "sprites/brow_r.png",
       "group": "head",
-      "layer": 182,
+      "layer": 233,
       "pos": [
         462,
         230
@@ -338,9 +338,7 @@
         0,
         0
       ],
-      "tags": [
-        "eye_open"
-      ],
+      "tags": [],
       "mask_only": true,
       "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"
     },
@@ -357,10 +355,9 @@
         0,
         0
       ],
-      "tags": [
-        "eye_open"
-      ],
-      "note": "眼白底：眼球移开也不会露洞"
+      "tags": [],
+      "mask": "eye_l_socket",
+      "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"
     },
     {
       "id": "eye_l_ball",
@@ -376,17 +373,36 @@
         0
       ],
       "tags": [
-        "eye_open",
         "gaze"
       ],
       "mask": "eye_l_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±5/±4px，由眼眶裁切"
     },
     {
+      "id": "eye_l_lid",
+      "file": "sprites/eye_l_lid.png",
+      "group": "head",
+      "layer": 219,
+      "pos": [
+        364,
+        214
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eyelid"
+      ],
+      "mask": "eye_l_socket",
+      "eyelid_travel": 34,
+      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 34px 盖满眼眶"
+    },
+    {
       "id": "eye_l_lash",
       "file": "sprites/eye_l_lash.png",
       "group": "head",
-      "layer": 219,
+      "layer": 220,
       "pos": [
         299,
         246
@@ -398,7 +414,7 @@
       "tags": [
         "eye_open"
       ],
-      "note": "眼线睫毛：压在眼球上面，眼球上翻时会被它盖住"
+      "note": "眼线睫毛：压在眼球上面；眨眼时淡出（脸上本来就画着同一条眼线，淡出只是去掉压在眼皮上的那一份重影）"
     },
     {
       "id": "eye_r_socket",
@@ -413,9 +429,7 @@
         0,
         0
       ],
-      "tags": [
-        "eye_open"
-      ],
+      "tags": [],
       "mask_only": true,
       "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"
     },
@@ -432,10 +446,9 @@
         0,
         0
       ],
-      "tags": [
-        "eye_open"
-      ],
-      "note": "眼白底：眼球移开也不会露洞"
+      "tags": [],
+      "mask": "eye_r_socket",
+      "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"
     },
     {
       "id": "eye_r_ball",
@@ -451,17 +464,36 @@
         0
       ],
       "tags": [
-        "eye_open",
         "gaze"
       ],
       "mask": "eye_r_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±4/±4px，由眼眶裁切"
     },
     {
+      "id": "eye_r_lid",
+      "file": "sprites/eye_r_lid.png",
+      "group": "head",
+      "layer": 229,
+      "pos": [
+        443,
+        208
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eyelid"
+      ],
+      "mask": "eye_r_socket",
+      "eyelid_travel": 35,
+      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 35px 盖满眼眶"
+    },
+    {
       "id": "eye_r_lash",
       "file": "sprites/eye_r_lash.png",
       "group": "head",
-      "layer": 229,
+      "layer": 230,
       "pos": [
         429,
         246
@@ -473,43 +505,7 @@
       "tags": [
         "eye_open"
       ],
-      "note": "眼线睫毛：压在眼球上面，眼球上翻时会被它盖住"
-    },
-    {
-      "id": "eye_closed_left",
-      "file": "sprites/eye_closed_left.png",
-      "group": "head",
-      "layer": 230,
-      "pos": [
-        300,
-        276
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "eye_closed"
-      ],
-      "note": "闭眼：眨眼时与睁眼交叉淡化"
-    },
-    {
-      "id": "eye_closed_right",
-      "file": "sprites/eye_closed_right.png",
-      "group": "head",
-      "layer": 231,
-      "pos": [
-        429,
-        276
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "eye_closed"
-      ],
-      "note": ""
+      "note": "眼线睫毛：压在眼球上面；眨眼时淡出（脸上本来就画着同一条眼线，淡出只是去掉压在眼皮上的那一份重影）"
     }
   ],
   "regions": [
@@ -733,6 +729,13 @@
           "freq": 0.2
         },
         {
+          "target": "eye_l_lid",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
           "target": "eye_l_lash",
           "param": "dy",
           "wave": "sine",
@@ -761,21 +764,14 @@
           "freq": 0.2
         },
         {
+          "target": "eye_r_lid",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
           "target": "eye_r_lash",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_closed_left",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_closed_right",
           "param": "dy",
           "wave": "sine",
           "amp": 0.5,
@@ -938,38 +934,8 @@
           "freq": 1.0
         }
       ],
-      "part_overrides": {
-        "eye_l_socket": {
-          "opacity": 0.0
-        },
-        "eye_l_base": {
-          "opacity": 0.0
-        },
-        "eye_l_ball": {
-          "opacity": 0.0
-        },
-        "eye_l_lash": {
-          "opacity": 0.0
-        },
-        "eye_r_socket": {
-          "opacity": 0.0
-        },
-        "eye_r_base": {
-          "opacity": 0.0
-        },
-        "eye_r_ball": {
-          "opacity": 0.0
-        },
-        "eye_r_lash": {
-          "opacity": 0.0
-        },
-        "eye_closed_left": {
-          "opacity": 1.0
-        },
-        "eye_closed_right": {
-          "opacity": 1.0
-        }
-      }
+      "blink_hold": 0.95,
+      "part_overrides": {}
     },
     {
       "id": "happy",
@@ -1062,37 +1028,8 @@
           "ease": "out"
         }
       ],
+      "blink_hold": 0.78,
       "part_overrides": {
-        "eye_l_socket": {
-          "opacity": 0.0
-        },
-        "eye_l_base": {
-          "opacity": 0.0
-        },
-        "eye_l_ball": {
-          "opacity": 0.0
-        },
-        "eye_l_lash": {
-          "opacity": 0.0
-        },
-        "eye_r_socket": {
-          "opacity": 0.0
-        },
-        "eye_r_base": {
-          "opacity": 0.0
-        },
-        "eye_r_ball": {
-          "opacity": 0.0
-        },
-        "eye_r_lash": {
-          "opacity": 0.0
-        },
-        "eye_closed_left": {
-          "opacity": 1.0
-        },
-        "eye_closed_right": {
-          "opacity": 1.0
-        },
         "mouth_open": {
           "opacity": 0.85
         }
@@ -1149,32 +1086,8 @@
           "freq": 0.25
         }
       ],
-      "part_overrides": {
-        "eye_l_socket": {
-          "opacity": 0.7
-        },
-        "eye_l_base": {
-          "opacity": 0.7
-        },
-        "eye_l_ball": {
-          "opacity": 0.7
-        },
-        "eye_l_lash": {
-          "opacity": 0.7
-        },
-        "eye_r_socket": {
-          "opacity": 0.7
-        },
-        "eye_r_base": {
-          "opacity": 0.7
-        },
-        "eye_r_ball": {
-          "opacity": 0.7
-        },
-        "eye_r_lash": {
-          "opacity": 0.7
-        }
-      }
+      "blink_hold": 0.32,
+      "part_overrides": {}
     },
     {
       "id": "surprised",
@@ -1406,37 +1319,8 @@
           "freq": 0.45
         }
       ],
+      "blink_hold": 0.7,
       "part_overrides": {
-        "eye_l_socket": {
-          "opacity": 0.25
-        },
-        "eye_l_base": {
-          "opacity": 0.25
-        },
-        "eye_l_ball": {
-          "opacity": 0.25
-        },
-        "eye_l_lash": {
-          "opacity": 0.25
-        },
-        "eye_r_socket": {
-          "opacity": 0.25
-        },
-        "eye_r_base": {
-          "opacity": 0.25
-        },
-        "eye_r_ball": {
-          "opacity": 0.25
-        },
-        "eye_r_lash": {
-          "opacity": 0.25
-        },
-        "eye_closed_left": {
-          "opacity": 0.75
-        },
-        "eye_closed_right": {
-          "opacity": 0.75
-        },
         "mouth_open": {
           "opacity": 0.35
         }
@@ -1590,6 +1474,13 @@
           "freq": 0.25
         },
         {
+          "target": "eye_l_lid",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
           "target": "eye_l_lash",
           "param": "dx",
           "wave": "sine",
@@ -1612,6 +1503,13 @@
         },
         {
           "target": "eye_r_ball",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
+          "target": "eye_r_lid",
           "param": "dx",
           "wave": "sine",
           "amp": 1.5,
@@ -1721,38 +1619,8 @@
           "freq": 0.1
         }
       ],
-      "part_overrides": {
-        "eye_l_socket": {
-          "opacity": 0.0
-        },
-        "eye_l_base": {
-          "opacity": 0.0
-        },
-        "eye_l_ball": {
-          "opacity": 0.0
-        },
-        "eye_l_lash": {
-          "opacity": 0.0
-        },
-        "eye_r_socket": {
-          "opacity": 0.0
-        },
-        "eye_r_base": {
-          "opacity": 0.0
-        },
-        "eye_r_ball": {
-          "opacity": 0.0
-        },
-        "eye_r_lash": {
-          "opacity": 0.0
-        },
-        "eye_closed_left": {
-          "opacity": 1.0
-        },
-        "eye_closed_right": {
-          "opacity": 1.0
-        }
-      }
+      "blink_hold": 1.0,
+      "part_overrides": {}
     },
     {
       "id": "wave",

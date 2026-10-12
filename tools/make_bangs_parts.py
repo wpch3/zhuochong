@@ -217,7 +217,7 @@ def main():
         "pos": [head_pos[0] + bx0, head_pos[1] + by0],
         "size": [bx1 - bx0, by1 - by0],
         "group": "head",
-        "layer": 188,
+        "layer": 240,
         "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动",
     }
     bp["parts"] = [p for p in bp["parts"] if p["id"] != "hair_front"] + [entry]

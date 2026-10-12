@@ -395,12 +395,12 @@ static void handle_request(zsock fd, const http_req *r)
             "\"scale\":%.3f,\"form\":\"%s\",\"form_name\":\"%s\",\"outfit\":\"%s\","
             "\"mood\":\"%s\",\"affection\":%d,\"tier\":%d,\"tier_name\":\"%s\","
             "\"sleeping\":%s,\"idle\":%.1f,\"frame_w\":%d,\"frame_h\":%d,\"character\":\"%s\","
-            "\"root\":\"%s\",\"actions\":[",
+            "\"root\":\"%s\",\"blink_manual\":%.3f,\"actions\":[",
             ZC_VERSION, zpet_action(g_pet), zpet_last_reason(g_pet), zpet_blink(g_pet),
             zpet_scale(g_pet), zpet_form(g_pet), zpet_form_name(g_pet), zpet_outfit(g_pet),
             mood, zpet_affection(g_pet), zpet_affection_tier(g_pet), zpet_affection_tier_name(g_pet),
             zpet_sleeping(g_pet) ? "true" : "false", zpet_idle_seconds(g_pet), fw, fh,
-            zpet_character(g_pet), g_cfg.root_dir);
+            zpet_character(g_pet), g_cfg.root_dir, zpet_blink_manual(g_pet));
         for (i = 0; i < zpet_action_count(g_pet); ++i)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_action_id_at(g_pet, i));
         p += z_snprintf(p, cap - (size_t)(p - body), "],\"forms\":[");
@@ -506,6 +506,29 @@ static void handle_request(zsock fd, const http_req *r)
         LOCK();
         /* 视线换算在 zpet_hover 里做（它知道上一帧多大），这里不要重复渲染 */
         zpet_hover(g_pet, x, y, inside, z_now_seconds());
+        UNLOCK();
+        send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/blink") == 0) {
+        /* 测试台的眨眼滑条：v=0..1 按住，v=auto 交回自动眨眼 */
+        char s[32];
+        if (qstr(r, "v", s, sizeof(s))) {
+            LOCK();
+            zpet_set_blink(g_pet, (z_streq(s, "auto") || !*s) ? -1.0 : atof(s));
+            UNLOCK();
+        }
+        send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/gaze") == 0) {
+        /* 视线直控：x、y ∈ [-1,1]；off=1 收回视线 */
+        char sx[32], sy[32];
+        int off = qint(r, "off", 0);
+        double nx = qstr(r, "x", sx, sizeof(sx)) ? atof(sx) : 0.0;
+        double ny = qstr(r, "y", sy, sizeof(sy)) ? atof(sy) : 0.0;
+        LOCK();
+        zpet_set_gaze(g_pet, nx, ny, !off);
         UNLOCK();
         send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;

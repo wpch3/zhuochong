@@ -70,6 +70,9 @@ double zrig_blink_value(const zrig *r);       /* 0 睁 1 闭 */
 /* 视线跟随：nx、ny ∈ [-1,1]（归一化屏幕方向）。只作用于带 gaze 标签的部件。 */
 void  zrig_gaze(zrig *r, double nx, double ny);
 void  zrig_gaze_reset(zrig *r);
+/* 手动按住眨眼参数（0=睁 1=闭，传 <0 恢复自动）。测试台的眨眼滑条用。 */
+void   zrig_blink_set_manual(zrig *r, double v);
+double zrig_blink_manual(const zrig *r);
 /* 部件级通道当前值（调试/测试用），param 为 dx/dy/sx/sy/rot_deg/alpha */
 double zrig_part_channel(const zrig *r, const char *part_id, const char *param);
 

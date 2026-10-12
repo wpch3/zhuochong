@@ -15,7 +15,7 @@ import argparse, json, os, sys
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
-          seg=None, anchors=None, eyes=None, mouth=None):
+          seg=None, anchors=None, eyes=None, mouth=None, lids=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -111,22 +111,36 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             eye_parts += [
                 {"id": f"{sid}_socket", "file": f"sprites/{e['socket']}", "group": "head",
                  "layer": L, "pos": [ox + px, oy + py], "anchor": [0, 0],
-                 "tags": ["eye_open"], "mask_only": True,
+                 "tags": [], "mask_only": True,
                  "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"},
                 {"id": f"{sid}_base", "file": f"sprites/{e['base']}", "group": "head",
                  "layer": L + 1, "pos": [ox + px, oy + py], "anchor": [0, 0],
-                 "tags": ["eye_open"],
-                 "note": "眼白底：眼球移开也不会露洞"},
+                 "tags": [], "mask": f"{sid}_socket",
+                 # 眼白也要被眼眶裁住：它比眼眶大一圈，不裁的话闭眼时眼皮盖不住那一圈，
+                 # 眼睛底下会留一条蓝边（实测）。脸上本来就画着同样的眼睛，裁掉不丢东西。
+                 "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"},
                 {"id": f"{sid}_ball", "file": f"sprites/{e['ball']}", "group": "head",
                  "layer": L + 2, "pos": [ox + bx, oy + by], "anchor": [0, 0],
-                 "tags": ["eye_open", "gaze"], "mask": f"{sid}_socket",
+                 "tags": ["gaze"], "mask": f"{sid}_socket",
                  "note": f"眼球：完整的圆（被眼皮挡住的部分已补全），"
                          f"可动范围 ±{e['travel'][0]}/±{e['travel'][1]}px，由眼眶裁切"},
-                {"id": f"{sid}_lash", "file": f"sprites/{e['lash']}", "group": "head",
-                 "layer": L + 3, "pos": [ox + px, oy + py], "anchor": [0, 0],
-                 "tags": ["eye_open"],
-                 "note": "眼线睫毛：压在眼球上面，眼球上翻时会被它盖住"},
             ]
+            # 上眼睑（make_eyelid_parts.py 的产物）：藏在眼眶上面，按 blink 下滑。
+            # 睫毛打同样的标签跟着一起下来 —— 闭眼那条线就是它。
+            lid = next((p for p in (lids or {}).get("lids", []) if p["side"] == side), None)
+            if lid:
+                eye_parts.append(
+                    {"id": f"{sid}_lid", "file": f"sprites/{lid['file']}", "group": "head",
+                     "layer": L + 3, "pos": [ox + lid["pos"][0], oy + lid["pos"][1]],
+                     "anchor": [0, 0], "tags": ["eyelid"], "mask": f"{sid}_socket",
+                     "eyelid_travel": lid["travel"],
+                     "note": f"上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 {lid['travel']}px 盖满眼眶"})
+            eye_parts.append(
+                {"id": f"{sid}_lash", "file": f"sprites/{e['lash']}", "group": "head",
+                 "layer": L + 4, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                 "tags": ["eye_open"],
+                 "note": "眼线睫毛：压在眼球上面；眨眼时淡出（脸上本来就画着同一条眼线，"
+                         "淡出只是去掉压在眼皮上的那一份重影）"})
             eye_ball_ids.append(f"{sid}_ball")
     else:
         eye_parts = [
@@ -154,10 +168,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         ]
     parts_list = body_parts_list + mouth_parts + [
         part("mouth_open.png", "head", ["mouth"], 210, "上唇线（闭合笑线），压在口内上面"),
-    ] + eye_parts + [
-        part("eye_closed_left.png", "head", ["eye_closed"], 230, "闭眼：眨眼时与睁眼交叉淡化"),
-        part("eye_closed_right.png", "head", ["eye_closed"], 231),
-    ]
+    ] + eye_parts
+    if not eyes:
+        # 没拆件的旧素材才用"整张闭眼图淡入"的老办法
+        parts_list = parts_list + [
+            part("eye_closed_left.png", "head", ["eye_closed"], 230, "闭眼：与睁眼交叉淡化"),
+            part("eye_closed_right.png", "head", ["eye_closed"], 231),
+        ]
 
     # 网格形变（Live2D 式）的曲线语义：**底边是根**（人物站在地上）。
     #   root = 底边固定、越往上位移越大（身体侧摆，头跟着走）
@@ -192,8 +209,6 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 0.7, "freq": 0.13, "phase": 0.3},
              {"target": "eye_open_left", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
              {"target": "eye_open_right", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
-             {"target": "eye_closed_left", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
-             {"target": "eye_closed_right", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
          ]},
         {"id": "focus", "priority": 2, "loop": True, "interruptible": True, "return_state": "idle",
          "channels": [
@@ -206,10 +221,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "head", "param": "dy", "wave": "pulse", "amp": -7.0, "dur": 0.35, "ease": "out_back"},
              {"target": "head", "param": "dy", "wave": "sine", "amp": 2.0, "freq": 3.5, "dur": 1.0},
          ],
-         "part_overrides": {
-             "eye_open_left": {"opacity": 0.0}, "eye_open_right": {"opacity": 0.0},
-             "eye_closed_left": {"opacity": 1.0}, "eye_closed_right": {"opacity": 1.0},
-         }},
+         "blink_hold": 0.95,
+         "part_overrides": {}},
         {"id": "happy", "priority": 7, "duration": 1.6, "return_state": "idle",
          "interruptible": False,
          "channels": [
@@ -217,17 +230,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "root", "param": "dy", "wave": "bounce", "amp": -12.0, "dur": 0.5, "ease": "out_back"},
              {"target": "head", "param": "rot_deg", "wave": "bounce", "amp": 5.0, "dur": 0.5},
          ],
-         "part_overrides": {
-             "eye_open_left": {"opacity": 0.0}, "eye_open_right": {"opacity": 0.0},
-             "eye_closed_left": {"opacity": 1.0}, "eye_closed_right": {"opacity": 1.0},
-             "mouth_open": {"opacity": 0.85},
-         }},
+         "blink_hold": 0.78,
+         "part_overrides": {"mouth_open": {"opacity": 0.85}}},
         {"id": "sad", "priority": 3, "loop": True, "interruptible": True, "return_state": "idle",
          "channels": [
              {"target": "head", "param": "dy", "wave": "pulse", "amp": 6.0, "dur": 0.5, "ease": "out"},
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 1.0, "freq": 0.12},
          ],
-         "part_overrides": {"eye_open_left": {"opacity": 0.7}, "eye_open_right": {"opacity": 0.7}}},
+         "blink_hold": 0.32,
+         "part_overrides": {}},
         {"id": "surprised", "priority": 6, "duration": 0.9, "return_state": "idle",
          "interruptible": False,
          "channels": [
@@ -251,11 +262,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "root", "param": "rot_deg", "wave": "sine", "amp": 1.6, "freq": 0.45},
              {"target": "head", "param": "dx", "wave": "sine", "amp": 3.0, "freq": 0.45},
          ],
-         "part_overrides": {
-             "eye_open_left": {"opacity": 0.25}, "eye_open_right": {"opacity": 0.25},
-             "eye_closed_left": {"opacity": 0.75}, "eye_closed_right": {"opacity": 0.75},
-             "mouth_open": {"opacity": 0.35},
-         }},
+         "blink_hold": 0.7,
+         "part_overrides": {"mouth_open": {"opacity": 0.35}}},
         {"id": "clicked", "priority": 4, "duration": 0.55, "return_state": "idle",
          "interruptible": False,
          "channels": [
@@ -287,10 +295,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 2.0, "freq": 0.07},
              {"target": "root", "param": "dy", "wave": "pulse", "amp": 4.0, "dur": 1.2, "ease": "out"},
          ],
-         "part_overrides": {
-             "eye_open_left": {"opacity": 0.0}, "eye_open_right": {"opacity": 0.0},
-             "eye_closed_left": {"opacity": 1.0}, "eye_closed_right": {"opacity": 1.0},
-         }},
+         "blink_hold": 1.0,
+         "part_overrides": {}},
     ]
 
     # ---- 分段素材才有的次级动作：手臂摆动、重心移动 ----
@@ -389,8 +395,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     # 眼眶（遮罩）必须和眼白底、眼线一起动，否则遮罩不跟手，裁切就错位了。
     if eyes:
         expand = {
-            "eye_open_left":  [f"eye_l_{k}" for k in ("socket", "base", "ball", "lash")],
-            "eye_open_right": [f"eye_r_{k}" for k in ("socket", "base", "ball", "lash")],
+            "eye_open_left":  [f"eye_l_{k}" for k in ("socket", "base", "ball", "lid", "lash")],
+            "eye_open_right": [f"eye_r_{k}" for k in ("socket", "base", "ball", "lid", "lash")],
         }
         for a in actions:
             chans = []
@@ -616,6 +622,15 @@ def main() -> int:
         if miss:
             print(f"警告：眼部拆件缺图 {miss}，退回整块眼睛贴图", file=sys.stderr)
             eyes = None
+    # 上眼睑拆件（tools/make_eyelid_parts.py 的产物）
+    lids = None
+    lid_path = os.path.join(base, "sprites", "eyelid_parts.json")
+    if os.path.exists(lid_path):
+        with open(lid_path, encoding="utf-8") as f:
+            lids = json.load(f)
+        if not all(os.path.exists(os.path.join(base, "sprites", l["file"])) for l in lids["lids"]):
+            print("警告：眼睑缺图，眨眼退回交叉淡化", file=sys.stderr)
+            lids = None
     # 头是不是独立部件？决定能不能发"头部旋转"通道。
     # 单图层全身图里，头是画在身体上的：这时让 head 组转动，只会把贴在上面的
     # 五官转走（看起来像眼睛在脸上滑），所以生成器直接不发 rot_deg。
@@ -636,7 +651,7 @@ def main() -> int:
             print("警告：嘴部零件缺图，跳过口内", file=sys.stderr)
             mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
-                seg=seg, anchors=anchors, eyes=eyes, mouth=mouth)
+                seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

@@ -588,6 +588,23 @@ void zpet_hover(zpet *p, int x, int y, int inside, double now)
     (void)now;
 }
 
+void zpet_set_blink(zpet *p, double v)
+{
+    if (p && p->rig) zrig_blink_set_manual(p->rig, v);
+}
+
+double zpet_blink_manual(const zpet *p)
+{
+    return (p && p->rig) ? zrig_blink_manual(p->rig) : -1.0;
+}
+
+void zpet_set_gaze(zpet *p, double nx, double ny, int on)
+{
+    if (!p || !p->rig) return;
+    if (on) zrig_gaze(p->rig, nx, ny);
+    else    zrig_gaze_reset(p->rig);
+}
+
 void zpet_notify_user_activity(zpet *p, double now)
 {
     (void)now;
