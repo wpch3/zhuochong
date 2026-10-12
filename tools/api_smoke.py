@@ -107,6 +107,27 @@ def run(base, root):
     a.hit("/api/blink?v=auto")
     check("切回自动眨眼", a.json("/api/info.json")["blink_manual"] < 0)
 
+    print("== 口型同步 LipSync（A4）==")
+    ls = a.json("/api/speak?id=hammer_1_base0")
+    check("能起一条口型包络", ls.get("ok") is True and ls.get("remain", 0) > 1.0,
+          "%s %.2fs" % (ls.get("id"), ls.get("remain", 0)))
+    check("包络带台词文本", bool(ls.get("text")), ls.get("text", ""))
+    lv = []
+    for _ in range(6):
+        time.sleep(0.12)
+        lv.append(a.json("/api/speech.json")["lipsync"]["level"])
+    check("说话时开口度在动", max(lv) > 0.2 and max(lv) > min(lv) + 0.1,
+          "max=%.2f min=%.2f" % (max(lv), min(lv)))
+    a.hit("/api/speak?stop=1"); time.sleep(0.2)
+    st = a.json("/api/speech.json")["lipsync"]
+    check("停下后开口度归零", st["active"] is False and st["level"] < 1e-6,
+          "active=%s level=%s" % (st["active"], st["level"]))
+    try:
+        urllib.request.urlopen(base + "/api/speak?id=no_such_line", timeout=3).read()
+        check("不存在的包络要报 404", False, "返回了 200")
+    except urllib.error.HTTPError as e:
+        check("不存在的包络要报 404", e.code == 404, "HTTP %d" % e.code)
+
     print("== 命名参数层（≈ Live2D ParamXxx）==")
     pr = a.json("/api/params.json")
     plist = pr.get("params", [])

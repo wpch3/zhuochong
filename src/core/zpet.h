@@ -99,6 +99,19 @@ int   zpet_express(zpet *p, const char *mood, double now);
  *   kind ∈ call_start / call_end / call_user_speaking / call_reply。
  *   call_reply 时 text 为模型回复原文（优先显示）；mood 可选（回复情绪）。 */
 int   zpet_call_event(zpet *p, const char *kind, const char *text, const char *mood, double now);
+
+/* ---- 口型同步（A4 / LipSync）----
+ * 喂一条 0~1 的开口度包络（`tools/make_lipsync.py` 的产物），引擎按 fps 推进，
+ * 每帧写进 ParamMouthOpenY，并让动作里的嘴通道让路（zrig_set_mouth_mute）。
+ * 播完自动停：参数回默认、嘴交还给动作。*/
+int    zpet_lipsync_start(zpet *p, const double *values, int n, double fps, double now);
+int    zpet_lipsync_load(zpet *p, const char *line_id, double now);  /* 读 voice/lipsync/<id>.json */
+void   zpet_lipsync_stop(zpet *p);
+int    zpet_lipsync_active(const zpet *p);
+double zpet_lipsync_level(const zpet *p);
+double zpet_lipsync_remain(const zpet *p);
+const char *zpet_lipsync_id(const zpet *p);
+const char *zpet_lipsync_text(const zpet *p);
 /* 最近一句台词/回复原文，最近一次情绪（UI 显示用；无则为空串） */
 const char *zpet_last_line(const zpet *p);
 const char *zpet_last_mood(const zpet *p);

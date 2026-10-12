@@ -198,6 +198,44 @@ async function loadSpeech() {
   }
 }
 
+/* ---------- 口型同步（A4） ---------- */
+let lsTimer = null;
+async function loadLipsync() {
+  const info = await fetch("/api/info.json").then((x) => x.json()).catch(() => null);
+  if (!info) return;
+  const url = `/media/characters/${info.character}/voice/lipsync/index.json`;
+  const idx = await fetch(url).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  const sel = $("ls-line");
+  if (!idx || !idx.items || !idx.items.length) {
+    sel.innerHTML = "<option>（没有包络，先跑 tools/make_lipsync.py）</option>";
+    return;
+  }
+  sel.innerHTML = idx.items
+    .map((it) => `<option value="${it.id}">${it.text || it.id}（${it.dur}s）</option>`)
+    .join("");
+}
+async function speakLine() {
+  const id = $("ls-line").value;
+  if (!id) return;
+  const r = await fetch("/api/speak?id=" + encodeURIComponent(id)).then((x) => x.json())
+    .catch(() => null);
+  if (!r || !r.ok) { log("口型包络读不到：" + id, "bad"); return; }
+  log(`说：「${r.text}」（${r.remain.toFixed(2)}s）`, "ok");
+  if (lsTimer) clearInterval(lsTimer);
+  lsTimer = setInterval(async () => {
+    const d = await fetch("/api/speech.json", { cache: "no-store" })
+      .then((x) => x.json()).catch(() => null);
+    if (!d) return;
+    const ls = d.lipsync || { active: false, level: 0, remain: 0 };
+    $("ls-bar").style.width = Math.round(ls.level * 100) + "%";
+    $("ls-info").textContent = ls.active
+      ? `开口度 ${ls.level.toFixed(2)} · 还剩 ${ls.remain.toFixed(1)}s`
+      : "播完";
+    refresh();
+    if (!ls.active) { clearInterval(lsTimer); lsTimer = null; }
+  }, 60);
+}
+
 /* ---------- 滑杆 ---------- */
 function setBlink(v) {
   if (v === "auto") { $("v-blink").textContent = "auto"; $("s-blink").value = 0; api("/api/blink?v=auto"); }
@@ -529,6 +567,7 @@ async function runSuite() {
   await loadInfo();
   await loadParts();
   await loadParams();
+  await loadLipsync();
   setInterval(() => { if (!suiteRunning) refresh(); }, 100);
   setInterval(loadInfo, 1000);
   setInterval(() => {

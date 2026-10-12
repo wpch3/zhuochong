@@ -227,6 +227,7 @@ struct zrig {
     double blink_value;
     int    blink_forced;         /* -1 = 自动 */
     double blink_manual;         /* <0 = 自动；0..1 = 外部按住（测试台/调参用） */
+    int    mouth_mute;           /* 口型同步接管嘴：动作里的嘴通道全部让路 */
 
     char  outfit[64];
 
@@ -1373,7 +1374,12 @@ static void accumulate_action(zrig *r, const zaction *a, double t, double w, dou
     if (!a || w <= 0.0) return;
     for (i = 0; i < a->nchan; ++i) {
         const zchan *c = &a->chans[i];
-        double v = eval_channel(c, t, total) * w;
+        double v;
+        /* 口型同步接管时，动作里的嘴通道一律让路：
+           否则 talk 的 flap 和包络会叠在一起，嘴越张越大（sy 超过素材高度就是拉伸）。 */
+        if (r->mouth_mute && c->part >= 0 && c->part < r->nparts &&
+            (r->parts[c->part].tags & TAG_MOUTH)) continue;
+        v = eval_channel(c, t, total) * w;
         apply_chan(r, c->part, c->group, c->param, v, c->curve, c->strips);
     }
 }
@@ -1717,6 +1723,9 @@ static double blink_update(zrig *r, double now)
     }
     return r->blink_value;
 }
+
+void zrig_set_mouth_mute(zrig *r, int on) { if (r) r->mouth_mute = on ? 1 : 0; }
+int  zrig_mouth_mute(const zrig *r) { return r ? r->mouth_mute : 0; }
 
 void zrig_blink_set_enabled(zrig *r, int enabled) { if (r) r->blink_enabled = enabled; }
 int  zrig_blink_enabled(const zrig *r) { return r ? r->blink_enabled : 0; }

@@ -90,7 +90,7 @@
 | 旋转变形器（骨骼链：肩→肘→腕） | 抬手、挥手不拉皮 | ⬜ | G4c 之后 |
 | **命名参数层**（`ParamXxx` 外部直驱） | 脚本 / LLM / 口型 / 测试台滑条统一写一张参数表 | ✅ **2026-10-12** | `zrig.c` `load_params`/`zrig_param_set` + rig 顶层 `params` + `/api/param` |
 | **表情叠加**（expression） | 笑着挥手：表情和动作两条轨，互不覆盖 | ✅ **2026-10-12** | `zrig.c` `load_expressions`/`zrig_expression_set` + rig 顶层 `expressions` + `/api/expression` |
-| 口型同步（LipSync，按音量驱动嘴） | 说话时嘴型跟着语音走 | ⬜ | 参数层已就位（写 `ParamMouthOpenY` 即可），差音频包络 |
+| **口型同步**（LipSync） | 说话时嘴跟着语音开合 | ✅ **2026-10-12** | `zpet.c` `lipsync_tick` + `tools/make_lipsync.py` + `/api/speak`；动作里的嘴通道由 `zrig_set_mouth_mute` 让路 |
 
 ### 3.1 新增三块的 rig.json 写法
 
@@ -149,6 +149,27 @@
 | `GET /api/param?id=X&reset=1` | 回默认值（`ParamEyeOpen` 复位 = 交回自动眨眼） |
 | `GET /api/param?all=1` | 全部复位 |
 | `GET /api/expression?id=X` | 叠一个表情（`off=1` 取消；未知 id 404）；当前表情在 `info.json` 的 `expression` |
+| `GET /api/speak?id=X` | 播一条口型包络（`voice/lipsync/<X>.json`）；`stop=1` 立刻收嘴；未知 id 404 |
+| `GET /api/speech.json` | 台词 + 好感，外加 `lipsync:{active,id,level,remain}` |
+
+### 3.2 口型同步（A4）怎么跑通
+
+```
+TTS 产出 mp3 ──► tools/make_lipsync.py ──► voice/lipsync/<id>.json ──► /api/speak?id=<id>
+                     │                        {dur, fps, values:[0..1]}        │
+                     └── 有 wav 就用真 RMS 包络；没有就按台词音节铺节律        └── 引擎每帧写 ParamMouthOpenY
+```
+
+- **包络从哪来**：真机上把 mp3 转 wav（`ffmpeg -i x.mp3 -ac 1 -ar 16000 x.wav`）再跑
+  `--wav`，得到的是**真实音量包络**；沙箱里没有 ffmpeg，所以默认走"文本节律"：
+  mp3 的**时长不解码也能拿到**（直接数 MPEG 帧头），再把台词按音节铺进这段时长
+  （汉字 1 音节、标点闭嘴、每个音节一个"张—保持—收"的小包）。节奏对得上，
+  比固定 3Hz 的 `flap` 自然得多，但**不是音素级**（I/U/E/O 口型还没有，见 T2.1.3）。
+- **为什么要让动作里的嘴让路**：`talk` 动作自己也有 flap 通道，两边叠加会让 `sy`
+  超过素材高度（口内被拉伸）。所以口型同步期间 `zrig_set_mouth_mute(rig,1)`，
+  嘴完全交给参数层；播完自动解除、参数回默认。
+- **边界**：包络 < 2 帧或 fps ≤ 0 直接拒绝；id 只允许 `[A-Za-z0-9_-]`（防 `../` 读任意文件）；
+  上限 4096 帧（30fps ≈ 136 秒）。
 
 **实测（scale=1，sleep 定格）**：`ParamArmRA` = −10 / 0 / +10 → 右臂外缘 x = **606 / 644 / 681**
 （±38px ≈ scale 4.0 × 10，线性）；`ParamMouthOpenY=1` 嘴真的张开，`ParamAngleZ=30` 头歪 15°，

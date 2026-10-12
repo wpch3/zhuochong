@@ -460,9 +460,13 @@ static void handle_request(zsock fd, const http_req *r)
         char body[640];
         LOCK();
         z_snprintf(body, sizeof(body),
-                   "{\"line\":\"%s\",\"mood\":\"%s\",\"affection\":%d,\"tier\":\"%s\"}",
+                   "{\"line\":\"%s\",\"mood\":\"%s\",\"affection\":%d,\"tier\":\"%s\","
+                   "\"lipsync\":{\"active\":%s,\"id\":\"%s\",\"level\":%.3f,\"remain\":%.3f}}",
                    zpet_last_line(g_pet), zpet_last_mood(g_pet),
-                   zpet_affection(g_pet), zpet_affection_tier_name(g_pet));
+                   zpet_affection(g_pet), zpet_affection_tier_name(g_pet),
+                   zpet_lipsync_active(g_pet) ? "true" : "false",
+                   zpet_lipsync_id(g_pet), zpet_lipsync_level(g_pet),
+                   zpet_lipsync_remain(g_pet));
         UNLOCK();
         send_text(fd, 200, "application/json", body);
         return;
@@ -509,6 +513,34 @@ static void handle_request(zsock fd, const http_req *r)
             UNLOCK();
         }
         send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/speak") == 0) {
+        /* 口型同步：/api/speak?id=<包络名>（tools/make_lipsync.py 的产物），
+           /api/speak?stop=1 立刻收嘴。包络播完引擎会自动收尾。 */
+        char id[64], body[512];
+        int rc = -1;
+        if (qint(r, "stop", 0)) {
+            LOCK();
+            zpet_lipsync_stop(g_pet);
+            UNLOCK();
+            send_text(fd, 200, "application/json", "{\"ok\":true,\"stopped\":true}");
+            return;
+        }
+        if (!qstr(r, "id", id, sizeof(id))) {
+            send_text(fd, 400, "application/json",
+                      "{\"ok\":false,\"error\":\"缺少 id（voice/lipsync/<id>.json）\"}");
+            return;
+        }
+        LOCK();
+        rc = zpet_lipsync_load(g_pet, id, z_now_seconds());
+        zpet_tick(g_pet, z_now_seconds());
+        z_snprintf(body, sizeof(body),
+                   "{\"ok\":%s,\"id\":\"%s\",\"text\":\"%s\",\"remain\":%.3f}",
+                   rc == 0 ? "true" : "false", zpet_lipsync_id(g_pet),
+                   zpet_lipsync_text(g_pet), zpet_lipsync_remain(g_pet));
+        UNLOCK();
+        send_text(fd, rc == 0 ? 200 : 404, "application/json", body);
         return;
     }
     if (strcmp(r->path, "/api/hover") == 0) {

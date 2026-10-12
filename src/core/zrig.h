@@ -64,6 +64,11 @@ double zrig_action_elapsed(const zrig *r);
 const char *zrig_action_last_reason(const zrig *r);
 
 /* --------------------------------------------------------------- 眨眼 */
+/* 口型同步接管嘴：打开后，动作里所有打了 mouth 标签的通道都不生效，
+   嘴完全由参数层（ParamMouthOpenY）说了算。关掉就回到动作驱动。 */
+void  zrig_set_mouth_mute(zrig *r, int on);
+int   zrig_mouth_mute(const zrig *r);
+
 void  zrig_blink_set_enabled(zrig *r, int enabled);
 int   zrig_blink_enabled(const zrig *r);
 double zrig_blink_value(const zrig *r);       /* 0 睁 1 闭 */

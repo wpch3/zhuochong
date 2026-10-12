@@ -1590,6 +1590,65 @@ static void test_affection(void)
     }
 }
 
+
+/* ---- A4 口型同步：包络按时间推进、嘴让路、播完收尾 ---- */
+static void test_lipsync(void)
+{
+    zconfig cfg;
+    zdiag diag;
+    zpet *pet;
+    char cfgdir[1024];
+    /* 0 → 1 → 0 的三角包络，10fps，总长 (5-1)/10 = 0.4s */
+    static const double env[5] = { 0.0, 0.5, 1.0, 0.5, 0.0 };
+
+    SECTION("口型同步：包络驱动 ParamMouthOpenY，动作里的嘴通道让路");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (!pet) return;
+
+    zpet_tick(pet, 100.0);
+    CHECK(zpet_lipsync_active(pet) == 0, "默认不在说话");
+
+    CHECK(zpet_lipsync_start(pet, env, 5, 10.0, 100.0) == 0, "喂包络应成功");
+    CHECK(zpet_lipsync_active(pet) == 1, "开始后应处于说话中");
+    CHECK(fabs(zpet_lipsync_remain(pet) - 0.4) < 1e-6,
+          "剩余应为 0.4s，实为 %.3f", zpet_lipsync_remain(pet));
+
+    /* 中点：第 2 帧正好是 1.0 */
+    zpet_tick(pet, 100.2);
+    CHECK(fabs(zpet_lipsync_level(pet) - 1.0) < 1e-6,
+          "0.2s 应取到包络峰值 1.0，实为 %.3f", zpet_lipsync_level(pet));
+    /* 帧间线性插值：0.25s 落在 1.0 与 0.5 中间 */
+    zpet_tick(pet, 100.25);
+    CHECK(fabs(zpet_lipsync_level(pet) - 0.75) < 1e-6,
+          "0.25s 应插值出 0.75，实为 %.3f", zpet_lipsync_level(pet));
+
+    /* 播完自动收尾：参数回默认、嘴交还动作 */
+    zpet_tick(pet, 100.9);
+    CHECK(zpet_lipsync_active(pet) == 0, "播完应自动停");
+    CHECK(fabs(zpet_lipsync_level(pet)) < 1e-9, "停下后开口度应回 0");
+
+    /* 参数不合法要被拒绝 */
+    CHECK(zpet_lipsync_start(pet, env, 1, 10.0, 101.0) == -1, "只有 1 帧应拒绝");
+    CHECK(zpet_lipsync_start(pet, env, 5, 0.0, 101.0) == -1, "fps=0 应拒绝");
+    CHECK(zpet_lipsync_load(pet, "../etc/passwd", 101.0) == -1, "带 ../ 的 id 必须拒绝");
+    CHECK(zpet_lipsync_load(pet, "no_such_line", 101.0) == -1, "不存在的包络应失败");
+
+    /* 真包络文件（tools/make_lipsync.py 的产物）能读起来 */
+    if (zpet_lipsync_load(pet, "hammer_1_base0", 102.0) == 0) {
+        CHECK(zpet_lipsync_active(pet) == 1, "读文件后应在说话");
+        CHECK(zpet_lipsync_remain(pet) > 1.0, "这条台词应超过 1 秒");
+        CHECK(strlen(zpet_lipsync_text(pet)) > 0, "包络里应带台词文本");
+        zpet_lipsync_stop(pet);
+        CHECK(zpet_lipsync_active(pet) == 0, "手动停应立刻生效");
+    }
+    zpet_destroy(pet);
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -1611,6 +1670,7 @@ int main(int argc, char **argv)
     test_physics();
     test_look();
     test_params();
+    test_lipsync();
     test_expression();
     test_motion_from();
     test_interactions();

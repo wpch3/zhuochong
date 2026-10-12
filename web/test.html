@@ -79,7 +79,6 @@ th{color:var(--mut);font-weight:600;position:sticky;top:0;background:#fff}
       <div style="margin-top:8px">
         <span class="pill" id="p-act">动作 —</span>
         <span class="pill" id="p-expr">表情 —</span>
-        <span class="pill" id="p-expr">表情 —</span>
         <span class="pill" id="p-blink">眨眼 —</span>
         <span class="pill" id="p-scale">缩放 —</span>
         <span class="pill" id="p-sleep">清醒</span>
@@ -129,8 +128,18 @@ th{color:var(--mut);font-weight:600;position:sticky;top:0;background:#fff}
       <div id="exprs" class="muted">读取中…</div>
     </div>
     <div class="card">
-      <h2>表情（叠在动作之上，两条轨互不覆盖）</h2>
-      <div id="exprs" class="muted">读取中…</div>
+      <h2>口型同步（A4：按语音包络驱动 ParamMouthOpenY）</h2>
+      <div>
+        <select id="ls-line" style="max-width:260px"></select>
+        <button class="pri sm" onclick="speakLine()">▶ 说</button>
+        <button class="sm" onclick="api('/api/speak?stop=1')">■ 停</button>
+      </div>
+      <div style="margin-top:8px">
+        <div style="height:10px;background:#1b2130;border-radius:5px;overflow:hidden">
+          <div id="ls-bar" style="height:100%;width:0;background:#6cb4c0;transition:width .05s"></div>
+        </div>
+        <div class="muted" id="ls-info" style="font-size:12px;margin-top:4px">未播放</div>
+      </div>
     </div>
     <div class="card">
       <h2>动作（rig.json 里的全部动作）</h2>

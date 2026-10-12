@@ -50,12 +50,23 @@ struct zpet {
     zinteract *inter;
     char    last_line[256];
     char    last_mood[24];
+
+    /* 口型同步（A4）：一条 0~1 的开口度包络按时间推进 */
+    double *ls_vals;
+    int     ls_n;
+    double  ls_fps, ls_t0, ls_level;
+    int     ls_active;
+    char    ls_id[64];
+    char    ls_text[256];
 };
+
+#define ZPET_LIPSYNC_MAX 4096
 
 #define ZPET_MAX_ACTIONS 32
 
 static const zi_rule *match_rule(zpet *p, const char *kind, const char *region,
                                  const char *mood, int count);
+static void lipsync_tick(zpet *p, double now);
 static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
                     const char *fb_reason, int fb_force, double now);
 
@@ -279,6 +290,7 @@ void zpet_destroy(zpet *p)
     if (!p) return;
     zinteract_free(p->inter);
     zrig_free(p->rig);
+    free(p->ls_vals);
     free(p);
 }
 
@@ -292,6 +304,7 @@ int zpet_tick(zpet *p, double now)
     p->now = now;
 
     zrig_tick(p->rig, now);
+    lipsync_tick(p, now);
 
     /* 空闲 → 睡眠；任何输入唤醒（交接文件 6、8.6） */
     if (p->sleeping) {
@@ -428,6 +441,114 @@ const char *zpet_region(const zpet *p, int x, int y, char *out_action, size_t ca
     return id;
 }
 
+/* ---- 口型同步 ---- */
+static void lipsync_apply(zpet *p, double v)
+{
+    p->ls_level = v;
+    if (p->rig) zrig_param_set(p->rig, "ParamMouthOpenY", v);
+}
+
+int zpet_lipsync_start(zpet *p, const double *values, int n, double fps, double now)
+{
+    int i;
+    if (!p || !values || n < 2 || fps <= 0.0) return -1;
+    if (n > ZPET_LIPSYNC_MAX) n = ZPET_LIPSYNC_MAX;
+    free(p->ls_vals);
+    p->ls_vals = (double *)malloc(sizeof(double) * (size_t)n);
+    if (!p->ls_vals) { p->ls_active = 0; return -1; }
+    for (i = 0; i < n; ++i) p->ls_vals[i] = ZC_CLAMP(values[i], 0.0, 1.0);
+    p->ls_n = n;
+    p->ls_fps = fps;
+    p->ls_t0 = now;
+    p->ls_active = 1;
+    if (p->rig) zrig_set_mouth_mute(p->rig, 1);
+    lipsync_apply(p, p->ls_vals[0]);
+    return 0;
+}
+
+void zpet_lipsync_stop(zpet *p)
+{
+    if (!p) return;
+    p->ls_active = 0;
+    p->ls_level = 0.0;
+    if (p->rig) {
+        zrig_param_reset(p->rig, "ParamMouthOpenY");
+        zrig_set_mouth_mute(p->rig, 0);
+    }
+}
+
+int    zpet_lipsync_active(const zpet *p) { return p ? p->ls_active : 0; }
+double zpet_lipsync_level(const zpet *p)  { return p ? p->ls_level : 0.0; }
+const char *zpet_lipsync_id(const zpet *p)   { return (p && p->ls_id[0]) ? p->ls_id : ""; }
+const char *zpet_lipsync_text(const zpet *p) { return (p && p->ls_text[0]) ? p->ls_text : ""; }
+
+double zpet_lipsync_remain(const zpet *p)
+{
+    double total;
+    if (!p || !p->ls_active || p->ls_fps <= 0.0) return 0.0;
+    total = (p->ls_n - 1) / p->ls_fps;
+    total -= (p->now - p->ls_t0);
+    return total > 0.0 ? total : 0.0;
+}
+
+/* 按当前时间取样包络；播完返回 0 并自动收尾 */
+static void lipsync_tick(zpet *p, double now)
+{
+    double x, frac, v;
+    int i;
+    if (!p->ls_active || !p->ls_vals || p->ls_n < 2) return;
+    x = (now - p->ls_t0) * p->ls_fps;
+    if (x <= 0.0) { lipsync_apply(p, p->ls_vals[0]); return; }
+    i = (int)x;
+    if (i >= p->ls_n - 1) { zpet_lipsync_stop(p); return; }
+    frac = x - (double)i;
+    v = p->ls_vals[i] * (1.0 - frac) + p->ls_vals[i + 1] * frac;
+    lipsync_apply(p, v);
+}
+
+int zpet_lipsync_load(zpet *p, const char *line_id, double now)
+{
+    char path[1024];
+    zjson *root = NULL, *arr;
+    zerr err;
+    double *vals = NULL;
+    double fps;
+    int n, i, rc = -1;
+    const char *s;
+    if (!p || !line_id || !*line_id) return -1;
+    /* 只允许安全字符，避免 ../ 之类越权读文件 */
+    for (s = line_id; *s; ++s)
+        if (!((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') ||
+              (*s >= '0' && *s <= '9') || *s == '_' || *s == '-')) return -1;
+    z_snprintf(path, sizeof(path), "%s/voice/lipsync/%s.json", p->char_dir, line_id);
+    root = zjson_parse_file(path, &err);
+    if (!root) {
+        ZLOGW("pet", "口型包络读不到：%s", path);
+        return -1;
+    }
+    arr = zjson_obj_get(root, "values");
+    n = arr ? (int)zjson_count(arr) : 0;
+    fps = zjson_num(zjson_obj_get(root, "fps"), 30.0);
+    if (n >= 2) {
+        if (n > ZPET_LIPSYNC_MAX) n = ZPET_LIPSYNC_MAX;
+        vals = (double *)malloc(sizeof(double) * (size_t)n);
+        if (vals) {
+            for (i = 0; i < n; ++i) vals[i] = zjson_num(zjson_at(arr, (size_t)i), 0.0);
+            rc = zpet_lipsync_start(p, vals, n, fps, now);
+            free(vals);
+        }
+    }
+    if (rc == 0) {
+        z_strlcpy(p->ls_id, line_id, sizeof(p->ls_id));
+        z_strlcpy(p->ls_text, zjson_str(zjson_obj_get(root, "text"), ""), sizeof(p->ls_text));
+        ZLOGI("pet", "口型同步：%s（%d 帧 @ %.0ffps）", line_id, n, fps);
+    } else {
+        ZLOGW("pet", "口型包络格式不对：%s", path);
+    }
+    zjson_free(root);
+    return rc;
+}
+
 int zpet_action_request(zpet *p, const char *id, const char *reason, int force)
 {
     if (!p || !p->rig) return 0;
@@ -449,6 +570,7 @@ static int local_day(void)
     return tm ? tm->tm_year * 400 + tm->tm_yday : 0;
 }
 
+static void lipsync_tick(zpet *p, double now);
 static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
                     const char *fb_reason, int fb_force, double now)
 {
