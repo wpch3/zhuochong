@@ -449,9 +449,15 @@ static void test_bad_config(void)
         zerr e;
         zerr_clear(&e);
         z_mkdir_p("/tmp/zc_badcfg");
-        CHECK(z_write_file("/tmp/zc_badcfg/pet.json",
-                           "{\"schema_version\":\"1.0\",\"window\":{\"scale\":\"大\"},\"interaction\":{\"idle_sleep_seconds\":0}}",
-                           90, &e) == 0, "写出坏配置");
+        {
+            /* 长度必须用 strlen 算：以前这里手写了 90，而字面量只有 89 字节，
+               fwrite 会多读一个字节（ASan 的 global-buffer-overflow）。 */
+            static const char bad_cfg[] =
+                "{\"schema_version\":\"1.0\",\"window\":{\"scale\":\"大\"},"
+                "\"interaction\":{\"idle_sleep_seconds\":0}}";
+            CHECK(z_write_file("/tmp/zc_badcfg/pet.json", bad_cfg,
+                               strlen(bad_cfg), &e) == 0, "写出坏配置");
+        }
         zdiag_init(&d);
         zconfig_load(&cfg, "/tmp/zc_badcfg", &d);
         CHECK(d.error_count >= 1, "坏配置必须产生至少 1 个致命错误，实际 %d", d.error_count);
@@ -1649,6 +1655,49 @@ static void test_lipsync(void)
     zpet_destroy(pet);
 }
 
+
+/* ---- 长稳：连续跑两万帧，画面不崩、数值不发散（配 make asan 查泄漏）---- */
+static void test_longrun(void)
+{
+    zconfig cfg;
+    zdiag diag;
+    zpet *pet;
+    char cfgdir[1024];
+    const char *acts[6] = { "wave", "happy", "think", "surprised", "talk", "idle" };
+    int i, fw = 0, fh = 0, bad = 0;
+    double t;
+
+    SECTION("长稳：2 万帧连续渲染不崩、不发散");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (!pet) return;
+
+    for (i = 0; i < 20000; ++i) {
+        t = 1000.0 + i / 60.0;                      /* 60fps 跑 5 分半 */
+        if (i % 600 == 0) zpet_action_request(pet, acts[(i / 600) % 6], "longrun", 1);
+        if (i % 97 == 0) zpet_hover(pet, (i * 7) % 400, (i * 13) % 700, 1, t);
+        if (i % 311 == 0) zpet_poke(pet, 300, 120, ZPET_TOOL_HAND, t);
+        if (i % 503 == 0) zpet_lipsync_load(pet, "click_1_base0", t);
+        zpet_tick(pet, t);
+        if (i % 50 == 0) {
+            const zimg *fr = zpet_frame(pet, &fw, &fh);
+            if (!fr || fw <= 0 || fh <= 0) bad++;
+        }
+        /* 参数不能发散成 NaN/inf */
+        if (i % 1000 == 0) {
+            double v = zpet_blink(pet);
+            if (!(v >= -0.001 && v <= 1.001)) bad++;
+        }
+    }
+    CHECK(bad == 0, "2 万帧里出现 %d 次异常帧/异常数值", bad);
+    CHECK(fw > 0 && fh > 0, "最后一帧仍能渲染（%dx%d）", fw, fh);
+    zpet_destroy(pet);
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -1671,6 +1720,7 @@ int main(int argc, char **argv)
     test_look();
     test_params();
     test_lipsync();
+    test_longrun();
     test_expression();
     test_motion_from();
     test_interactions();

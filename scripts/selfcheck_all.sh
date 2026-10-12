@@ -29,7 +29,14 @@ step() { printf "\n=== %s ===\n" "$1"; }
 ok()   { printf "  [通过] %s\n" "$1"; }
 bad()  { printf "  [失败] %s\n" "$1"; FAIL=1; }
 
-step "1/7 编译检查（核心代码零告警）"
+step "1/8 仓库静态自检（引用完整性/唯一性/契约/卫生）"
+if "${PY:-python3}" tools/selfcheck_repo.py --root . >/tmp/zc_repo.log 2>&1; then
+  ok "$(tail -1 /tmp/zc_repo.log)"
+else
+  bad "仓库自检不通过：$(grep 不通过 /tmp/zc_repo.log | head -3 | tr '\n' ' ')"
+fi
+
+step "2/8 编译检查（核心代码零告警）"
 if make clean >/dev/null 2>&1 && make build/test_core >/tmp/zc_build.log 2>&1; then
   if grep -qiE "warning|error" /tmp/zc_build.log; then
     bad "编译有告警，见 /tmp/zc_build.log"; cat /tmp/zc_build.log | head -20
@@ -40,20 +47,20 @@ else
   bad "编译失败"; head -30 /tmp/zc_build.log
 fi
 
-step "2/7 单元测试"
+step "3/8 单元测试"
 if ./build/test_core . 2>/dev/null | tail -3 | grep -q "全部通过"; then
   ok "单元测试全部通过"
 else
   bad "单元测试未通过"; ./build/test_core . 2>&1 | tail -12
 fi
 
-step "3/7 配置解析与 schema 校验"
+step "4/8 配置解析与 schema 校验"
 if ./build/test_core . >/dev/null 2>&1; then ok "配置加载与坏配置诊断已覆盖（见单元测试）"; else bad "配置相关测试失败"; fi
 for f in config/*.json; do
   if grep -q '"schema_version"' "$f"; then ok "$f 带 schema_version"; else bad "$f 缺少 schema_version"; fi
 done
 
-step "4/7 素材验收（形状/色卡/对位/透明通道/残留）"
+step "5/8 素材验收（形状/色卡/对位/透明通道/残留）"
 # 完整验收：形状(IoU)、色卡距离、关节对位、落在身体内、键色与白边残留
 if [ -n "$PY" ] && [ -f tools/check_assets.py ]; then
   if "$PY" tools/check_assets.py --character xiaoxun --form teen --quiet \
@@ -93,7 +100,7 @@ PY
 done
 [ $FAIL -eq 0 ] && ok "所有部件都有透明通道"
 
-step "5/7 Windows 交叉编译"
+step "6/8 Windows 交叉编译"
 if command -v python3 >/dev/null; then :; fi
 ZIG=$(ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/ziglang/zig 2>/dev/null | head -1)
 if [ -z "${ZIG:-}" ]; then
@@ -119,7 +126,7 @@ else
   echo "  [跳过] 未找到 zig（沙箱外请自行安装或用 MSVC/MinGW）"
 fi
 
-step "6/7 预览服务"
+step "7/8 预览服务"
 if make build/zhuochong_preview >/tmp/zc_prev.log 2>&1; then
   ./build/zhuochong_preview --root . --port 5199 --bind 127.0.0.1 >/tmp/zc_prev_run.log 2>&1 &
   PID=$!
@@ -137,7 +144,7 @@ else
   bad "预览服务编译失败"
 fi
 
-step "7/7 互动与动作端到端（冒烟）"
+step "8/8 互动与动作端到端（冒烟）"
 if [ -x build/zhuochong_preview ]; then
   if python3 tools/api_smoke.py --spawn --port 5200 --root . >/tmp/zc_smoke.log 2>&1; then
     ok "$(tail -1 /tmp/zc_smoke.log)"

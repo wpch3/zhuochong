@@ -217,8 +217,12 @@ size_t zdeflate_lz77(const uint8_t *data, size_t n, uint8_t **out)
                 size_t l = 0, maxl;
                 if (d == 0 || d > ZD_WSIZE) break;
                 maxl = n - i; if (maxl > ZD_MAX_MATCH) maxl = ZD_MAX_MATCH;
-                /* 先比第 best_len 个字节：不比已有最优长就直接跳过（zlib 的老把戏） */
-                if (best_len >= ZD_MIN_MATCH && data[cand + best_len] != data[i + best_len]) {
+                /* 先比第 best_len 个字节：不比已有最优长就直接跳过（zlib 的老把戏）。
+                   注意 i + best_len 可能正好等于 n（上一轮匹配一直吃到缓冲区末尾），
+                   那时候这个快速判据没法用，必须跳过去走完整比较，否则读越界 1 字节
+                   —— ASan 抓到过（make asan）。 */
+                if (best_len >= ZD_MIN_MATCH && i + best_len < n &&
+                    data[cand + best_len] != data[i + best_len]) {
                     cand = prev[(size_t)cand & (ZD_WSIZE - 1)];
                     continue;
                 }

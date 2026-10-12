@@ -149,6 +149,20 @@
 | `GET /api/param?id=X&reset=1` | 回默认值（`ParamEyeOpen` 复位 = 交回自动眨眼） |
 | `GET /api/param?all=1` | 全部复位 |
 | `GET /api/expression?id=X` | 叠一个表情（`off=1` 取消；未知 id 404）；当前表情在 `info.json` 的 `expression` |
+| `GET /api/info.json` | 当前角色/形态/服装/动作/缩放/眨眼/表情等全部状态 |
+| `GET /api/frame.png` | 当前帧（预览和测试台都靠它） |
+| `GET /api/action?id=X[&force=1]` | 触发动作；`force=1` 越过优先级 |
+| `GET /api/express?mood=X` | 按心情挑动作（走互动规则表） |
+| `GET /api/call?kind=X` | 通话事件（call_start/call_end/call_user_speaking/call_reply） |
+| `GET /api/poke?x=&y=[&tool=]` | 点一下（会走区域命中 → 规则匹配 → 兜底 clicked） |
+| `GET /api/region?x=&y=` | 这个点压在哪个互动区上（含不透明像素命中） |
+| `GET /api/hover?x=&y=&in=` | 指针位置（驱动视线与头部跟随） |
+| `GET /api/blink?v=` | 按住眨眼（`v=auto` 交回自动） |
+| `GET /api/gaze?x=&y=[&off=1]` | 视线方向 |
+| `GET /api/scale?s=` | 整体缩放 |
+| `GET /api/form[?id=]` / `GET /api/outfit[?id=]` | 切形态 / 切服装 |
+| `GET /api/idle?s=` | 伪造空闲秒数（测睡眠用） |
+| `GET /api/quit` | 关掉预览进程 |
 | `GET /api/speak?id=X` | 播一条口型包络（`voice/lipsync/<X>.json`）；`stop=1` 立刻收嘴；未知 id 404 |
 | `GET /api/speech.json` | 台词 + 好感，外加 `lipsync:{active,id,level,remain}` |
 

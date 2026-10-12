@@ -1,0 +1,46 @@
+# 交付保险：每次 push / PR 都把"能在 Linux 上验证的"全跑一遍。
+# 真机项目（透明窗、穿透、托盘、语音播放）CI 验不了，照旧靠 [需真机] 清单。
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 装 Python 依赖（素材验收要 pillow/numpy）
+        run: python3 -m pip install --quiet pillow numpy
+
+      - name: 仓库静态自检（引用完整性/唯一性/契约/卫生）
+        run: python3 tools/selfcheck_repo.py --root . --strict
+
+      - name: 编译（核心代码零告警）
+        run: |
+          make clean
+          make build/test_core 2>&1 | tee /tmp/build.log
+          ! grep -q "warning:" /tmp/build.log
+
+      - name: 单元测试
+        run: make test
+
+      - name: ASan + UBSan（越界/泄漏当场失败）
+        run: make asan
+
+      - name: 素材机器验收
+        run: python3 tools/check_assets.py --character xiaoxun --form teen
+
+      - name: 端到端冒烟（起预览打一圈端点，判据是画面真的变了）
+        run: make smoke
+
+      - name: 出错时把日志捞出来
+        if: failure()
+        run: |
+          tail -50 /tmp/build.log 2>/dev/null || true
+          tail -50 logs/*.log 2>/dev/null || true

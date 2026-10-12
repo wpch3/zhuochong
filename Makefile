@@ -23,7 +23,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check
+.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check
 
 all: test
 
@@ -52,6 +52,25 @@ preview: $(BUILD)/zhuochong_preview
 # 互动/动作端到端冒烟（自己起一个预览再打一圈端点，判据是"画面真的变了"）
 smoke: $(BUILD)/zhuochong_preview
 	@python3 tools/api_smoke.py --spawn --port 5200 --root .
+
+# ---------------------------------------------------------------- 自检（保险）
+# 仓库静态自检：引用完整性 / 唯一性 / 契约 / 卫生（1 秒，不编译不渲染）
+selfcheck:
+	@python3 tools/selfcheck_repo.py --root .
+
+# 带地址消毒器跑一遍单测：越界读写、释放后使用、内存泄漏都会当场炸出来
+$(BUILD)/test_core_asan: tests/test_core.c $(CORE_SRC)
+	@mkdir -p $(BUILD)
+	$(CC) -std=c11 -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer \
+		-Wall -Wextra -Wno-unused-parameter $(INC) -o $@ tests/test_core.c $(CORE_SRC) $(LDLIBS)
+
+asan: $(BUILD)/test_core_asan
+	@echo "== ASan/UBSan 跑单测（慢 3~5 倍，越界/泄漏当场非零退出）=="
+	@ASAN_OPTIONS=detect_leaks=1 ./$(BUILD)/test_core_asan .
+
+# 交付前跑这一条：静态自检 + 单测 + ASan + 端到端冒烟
+check: selfcheck test asan smoke
+	@echo "== 全部保险都过了 =="
 
 # ---------------------------------------------------------------- Windows
 win: $(CORE_OBJ)
