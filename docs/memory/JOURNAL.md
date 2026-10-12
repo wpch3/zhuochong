@@ -176,3 +176,8 @@
 - 做了什么：G4s 张嘴真素材（AI 重绘张嘴脸→虹膜配准 NCC .925→原分辨率取嘴洞→24x22 含牙18/舌183，motion_from 让口内跟着压扁）；G4r 闭眼真素材（AI 重绘闭眼脸→脸部 NCC .684 配准→软椭圆补片 cover 99.5/99.7、seam 4.5/2.3，eye_open↔eye_closed 交叉淡化）
 - 遇到/修了什么：两处配色/配准坑：① 肤色方差太小→最小二乘 gain+offset 病态(解出 gain .15/off 214)把睫毛映射成红杠，改为只解平移且只作用于亮像素；② 用'窗口里的深色像素'定补片框会把眉毛发丝算进去(框 117x68)，改用眼球框外扩
 - 下一步：G19 LipSync 接语音；G15 网格顶点形变；侧发/后发拆件
+
+## 2026-10-12 15:30
+- 做了什么：审计修 4 处记账/口径错误（GAPS 编号冲突→A系列、证据数字入验收 256 项、ParamMouthOpenY 比例跟 closed_sy 走、rig note 文案）；做完 A4 口型同步（make_lipsync.py + zpet lipsync + zrig_set_mouth_mute + /api/speak + 测试台卡片）
+- 遇到/修了什么：test.html 里重复的表情卡片与重复 id；talk flap 与包络叠加会拉伸口内→加嘴通道 mute
+- 下一步：A5 网格顶点形变；I/U/E/O 音素级口型素材；侧发/后发拆件
