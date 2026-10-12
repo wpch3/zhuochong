@@ -743,6 +743,36 @@ int zpet_expression_set(zpet *p, const char *id)
     return (p && p->rig) ? zrig_expression_set(p->rig, id) : -1;
 }
 
+/* Pose：互斥部件组（≈ pose3.json）。zpet 同样只做转发。 */
+int zpet_pose_count(const zpet *p) { return (p && p->rig) ? zrig_pose_count(p->rig) : 0; }
+
+const char *zpet_pose_id_at(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_pose_id(p->rig, i) : "";
+}
+
+int zpet_pose_entry_count(const zpet *p, const char *group)
+{
+    return (p && p->rig) ? zrig_pose_entry_count(p->rig, group) : 0;
+}
+
+const char *zpet_pose_entry_id_at(const zpet *p, const char *group, int i)
+{
+    return (p && p->rig) ? zrig_pose_entry_id(p->rig, group, i) : "";
+}
+
+const char *zpet_pose_current(const zpet *p, const char *group)
+{
+    return (p && p->rig) ? zrig_pose_current(p->rig, group) : "";
+}
+
+int zpet_pose_set(zpet *p, const char *group, const char *entry)
+{
+    return (p && p->rig) ? zrig_pose_set(p->rig, group, entry) : -1;
+}
+
+void zpet_pose_snap(zpet *p) { if (p && p->rig) zrig_pose_snap(p->rig); }
+
 /* 命名参数层（≈ Live2D ParamXxx）：外部直驱一张参数表。
    zpet 只做转发，参数的定义与绑定都在角色包的 rig.json 里。 */
 int zpet_param_count(const zpet *p) { return (p && p->rig) ? zrig_param_count(p->rig) : 0; }

@@ -107,7 +107,9 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
             {"id": "ParamEyeSparkle", "label": "眼高光 强弱", "min": 0.0, "max": 1.0,
              "default": 0.55,
              "binds": [{"part": "eye_hl_l", "param": "alpha", "scale": 1.0, "offset": -1.0},
-                       {"part": "eye_hl_r", "param": "alpha", "scale": 1.0, "offset": -1.0}]},
+                       {"part": "eye_hl_r", "param": "alpha", "scale": 1.0, "offset": -1.0},
+                       {"part": "eye_hl_star_l", "param": "alpha", "scale": 1.0, "offset": -1.0},
+                       {"part": "eye_hl_star_r", "param": "alpha", "scale": 1.0, "offset": -1.0}]},
         ]
     return out
 
@@ -402,7 +404,20 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             })
         # 层号挑在眼球（218/228）之上、睫毛（220/230）之下：
         # 睫毛本来就该压住高光，眉毛在 232/233，别撞。
-        for side, lay in (("l", 219), ("r", 229)):
+        # 星形高光的层号必须**和圆形高光待在同一段遮罩区间里**：
+        # 左眼区间是 eye_l_socket(216) 到 eye_r_socket(226) 之间，右眼是 226 之后到
+        # 下一个遮罩源（hair_front）之前；中间夹了别的遮罩源，引擎会直接拒绝加载。
+        for side, lay, starlay in (("l", 219, 222), ("r", 229, 234)):
+            st = blendp.get("star", {}).get(side)
+            if st:
+                parts_list.append({
+                    "id": f"eye_hl_star_{side}", "file": st["file"], "group": "head",
+                    "layer": starlay,
+                    "pos": list(st["pos"]), "anchor": [0, 0], "opacity": 1.0,
+                    "blend": "add", "tags": ["gaze", "eye_open"],
+                    "mask": f"eye_{side}_socket",
+                    "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
+                })
             hl = blendp["highlight"][side]
             parts_list.append({
                 "id": f"eye_hl_{side}", "file": hl["file"], "group": "head", "layer": lay,
@@ -954,6 +969,16 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                              has_blend=bool(blendp)),
         # 表情层（Live2D 的 expression）：一组参数偏移，叠在当前动作之上。
         # 和动作是两条轨 —— 可以"笑着挥手"，不用为每种组合再做一个动作。
+        # Pose（≈ Live2D pose3.json）：一组互斥差分，同一时刻只有一个档位可见。
+        # 这里是眼高光的形状差分（圆形 / 星形 / 无），切换带淡入淡出。
+        "poses": ([{
+            "id": "eye_hl_style", "fade": 0.3, "default": "round",
+            "entries": [
+                {"id": "round", "parts": ["eye_hl_l", "eye_hl_r"]},
+                {"id": "star", "parts": ["eye_hl_star_l", "eye_hl_star_r"]},
+            ],
+            "note": "眼高光形状差分；切 none 可以整组关掉（死鱼眼）",
+        }] if (blendp and blendp.get("star")) else []),
         "expressions": expression_list(mouth=mouth,
                                        has_brows=any(p["id"] == "brow_l" for p in parts_list),
                                        head_is_part=head_is_part,

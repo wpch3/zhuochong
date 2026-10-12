@@ -67,6 +67,18 @@ const char *zrig_action_last_reason(const zrig *r);
 /* 口型同步接管嘴：打开后，动作里所有打了 mouth 标签的通道都不生效，
    嘴完全由参数层（ParamMouthOpenY）说了算。关掉就回到动作驱动。 */
 /* 网格形变器（A5）：当前形变量（amount）。没有这个 id 返回 0。 */
+/* ---- Pose：互斥部件组（A8，≈ Live2D pose3.json）----
+   一组里同一时刻只有一个档位可见，切换带淡入淡出。
+   zrig_pose_set 的 entry 传 NULL/""/"none" = 整组淡出；组或档位不存在返回 -1。 */
+int    zrig_pose_count(const zrig *r);
+const char *zrig_pose_id(const zrig *r, int i);
+int    zrig_pose_entry_count(const zrig *r, const char *group);
+const char *zrig_pose_entry_id(const zrig *r, const char *group, int i);
+const char *zrig_pose_current(const zrig *r, const char *group);
+double zrig_pose_weight(const zrig *r, const char *group, const char *entry);
+int    zrig_pose_set(zrig *r, const char *group, const char *entry);
+void   zrig_pose_snap(zrig *r);   /* 跳过淡化，直接到位（冻结时钟时用） */
+
 /* 物理摆当前输出（多段摆调试用）。没有这个 id 返回 0。 */
 double zrig_phys_output(const zrig *r, const char *id);
 

@@ -140,6 +140,28 @@ function buildButtons() {
     };
   });
 
+  /* 差分（Pose 互斥组）：同组只有一个档位可见，切换带淡化 */
+  if ($("poses")) {
+    const gs = info.poses || [];
+    $("poses").innerHTML = gs.length
+      ? gs.map((g) =>
+          `<div style="margin-bottom:6px"><b>${g.id}</b>　` +
+          g.entries.map((e) =>
+            `<button class="sm${e === g.current ? " on" : ""}" data-pg="${g.id}" data-pe="${e}">${e}</button>`
+          ).join("") +
+          `<button class="sm${g.current === "" ? " on" : ""}" data-pg="${g.id}" data-pe="none">none</button></div>`
+        ).join("") +
+        `<div class="muted" style="font-size:12px">走 <code>/api/pose?group=&id=</code>，
+          <code>none</code> 把整组关掉。等价 Live2D 的 <code>pose3.json</code>。</div>`
+      : `<div class="muted" style="font-size:12px">这个角色没有互斥差分组</div>`;
+    $("poses").querySelectorAll("button").forEach((b) => {
+      b.onclick = async () => {
+        await api(`/api/pose?group=${encodeURIComponent(b.dataset.pg)}&id=${encodeURIComponent(b.dataset.pe)}`);
+        await pulse(); loadInfo();
+      };
+    });
+  }
+
   /* 形态与服装 */
   let h = "";
   info.forms.forEach((f, i) => {

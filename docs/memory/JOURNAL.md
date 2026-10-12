@@ -196,3 +196,8 @@
 - 做了什么：A7 混合模式（加算/乘算，≈CubismBlendMode）：部件 blend 字段 + zimg blend_px + 遮罩版 composite_masked_blend；程序化腮红/眼高光零件（make_blend_parts.py，12 步重建链）；参数 bind 新增 offset 让「透明度=参数值」；新端点 /api/pause 冻结时钟做确定性抓图。验收 test 363/0、selfcheck 45/0、smoke 59/0、check_assets 284/0
 - 遇到/修了什么：（无）
 - 下一步：（见 TASKS.md）
+
+## 2026-10-12 17:19
+- 做了什么：A8 Pose 互斥部件组（≈pose3.json）：rig poses[] + zrig_pose_set/snap + /api/pose + 测试台差分按钮；示范组 eye_hl_style（圆形/星形/none），星形高光由 make_blend_parts.py 程序化画出。验收 test 384/0、selfcheck 46/0、smoke 64/0。至此 Live2D 对照表只剩顶点级遮罩一项
+- 遇到/修了什么：（无）
+- 下一步：（见 TASKS.md）

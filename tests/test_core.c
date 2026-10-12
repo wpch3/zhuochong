@@ -2031,6 +2031,114 @@ static void test_blend(void)
     }
 }
 
+
+/* ---- Pose：互斥部件组（≈ pose3.json） ---- */
+static void test_pose(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    const char *head =
+        "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"互斥\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"a\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"b\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        "  \"layer\":11,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],";
+
+    SECTION("Pose 互斥组：同组只有一个档位可见，切换带淡化");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_pose");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir); z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    {
+        char buf[2048];
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"fade\":0.4,"
+                   "\"default\":\"A\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head);
+        write_text(rigp, buf);
+    }
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 poses 的 rig 应加载成功");
+    if (r) {
+        double t;
+        CHECK(zrig_pose_count(r) == 1, "应有 1 个互斥组");
+        CHECK(z_streq(zrig_pose_current(r, "g"), "A"), "默认档位应是 A，实为 %s",
+              zrig_pose_current(r, "g"));
+        zrig_tick(r, 0.0);
+        CHECK(fabs(zrig_pose_weight(r, "g", "A") - 1.0) < 1e-9, "A 一开始就是全显");
+        CHECK(fabs(zrig_pose_weight(r, "g", "B")) < 1e-9, "B 一开始必须全隐");
+
+        CHECK(zrig_pose_set(r, "g", "B") == 0, "切到 B 应成功");
+        zrig_tick(r, 0.2);                      /* 淡化 0.4s，才走一半 */
+        CHECK(zrig_pose_weight(r, "g", "A") > 0.2 && zrig_pose_weight(r, "g", "A") < 0.8,
+              "切换中 A 应在淡出途中，实为 %.3f", zrig_pose_weight(r, "g", "A"));
+        CHECK(zrig_pose_weight(r, "g", "B") > 0.2 && zrig_pose_weight(r, "g", "B") < 0.8,
+              "切换中 B 应在淡入途中，实为 %.3f", zrig_pose_weight(r, "g", "B"));
+        for (t = 0.25; t < 1.2; t += 0.05) zrig_tick(r, t);
+        CHECK(fabs(zrig_pose_weight(r, "g", "B") - 1.0) < 1e-6, "淡化走完 B 应全显");
+        CHECK(fabs(zrig_pose_weight(r, "g", "A")) < 1e-6, "淡化走完 A 应全隐");
+
+        /* none = 整组关掉（Live2D 要靠一张透明图，我们直接支持） */
+        CHECK(zrig_pose_set(r, "g", "none") == 0, "切 none 应成功");
+        for (t = 1.2; t < 2.2; t += 0.05) zrig_tick(r, t);
+        CHECK(fabs(zrig_pose_weight(r, "g", "A")) < 1e-6 &&
+              fabs(zrig_pose_weight(r, "g", "B")) < 1e-6, "none 之后两档都该是 0");
+        CHECK(z_streq(zrig_pose_current(r, "g"), ""), "none 时当前档位是空字符串");
+
+        /* 不存在的组/档位必须报错，不许悄悄忽略 */
+        CHECK(zrig_pose_set(r, "g", "nope") == -1, "未知档位应返回 -1");
+        CHECK(zrig_pose_set(r, "nope", "A") == -1, "未知组应返回 -1");
+
+        /* 跳过淡化（冻结时钟时用） */
+        zrig_pose_set(r, "g", "A");
+        zrig_pose_snap(r);
+        CHECK(fabs(zrig_pose_weight(r, "g", "A") - 1.0) < 1e-9, "snap 之后应立刻到位");
+        zrig_free(r);
+    }
+
+    SECTION("Pose 的三种写错法都要在加载时被拦住");
+    {
+        char buf[2048];
+        /* ① 一个部件归两个档位 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"a\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "同一部件进两个档位必须加载失败");
+        /* ② 引用不存在的部件 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"nope\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "引用不存在的部件必须加载失败");
+        /* ③ default 写了不存在的档位 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"default\":\"X\","
+                   "\"entries\":[{\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "default 不在档位里必须加载失败");
+        CHECK(diag_has(&d, "default"), "诊断应点名 default");
+        /* ④ 只有一个档位 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "只有一个档位不叫互斥，必须加载失败");
+    }
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -2056,6 +2164,7 @@ int main(int argc, char **argv)
     test_mesh();
     test_keys_and_chain();
     test_blend();
+    test_pose();
     test_longrun();
     test_expression();
     test_motion_from();

@@ -14,6 +14,7 @@
  *   GET /api/hover?x=&y=&in=   上报鼠标位置（视线/专注/唤醒）
  *   GET /api/scale?s=          设置缩放
  *   GET /api/pause?on=         冻结/恢复引擎时钟（冻结后连续两帧完全相同，便于抓图比对）
+ *   GET /api/pose?group=&id=   互斥部件组切档（≈ pose3.json；id=none 整组关掉）
  *   GET /api/params.json       命名参数表（≈ Live2D ParamXxx）与当前值
  *   GET /api/param?id=&v=      直接写一个参数（reset=1 回默认；all=1 全部复位）
  *   GET /api/expression?id=    叠一个表情（off=1 取消），表情和动作是两条轨
@@ -436,9 +437,52 @@ static void handle_request(zsock fd, const http_req *r)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s{\"id\":\"%s\",\"name\":\"%s\"}",
                             i ? "," : "", zpet_expression_id_at(g_pet, i),
                             zpet_expression_name_at(g_pet, i));
+        /* Pose：互斥部件组 + 每组当前档位（测试台的差分按钮按它生成） */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"poses\":[");
+        for (i = 0; i < zpet_pose_count(g_pet); ++i) {
+            const char *gid = zpet_pose_id_at(g_pet, i);
+            int k;
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                            "%s{\"id\":\"%s\",\"current\":\"%s\",\"entries\":[",
+                            i ? "," : "", gid, zpet_pose_current(g_pet, gid));
+            for (k = 0; k < zpet_pose_entry_count(g_pet, gid); ++k)
+                p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
+                                k ? "," : "", zpet_pose_entry_id_at(g_pet, gid, k));
+            p += z_snprintf(p, cap - (size_t)(p - body), "]}");
+        }
         z_snprintf(p, cap - (size_t)(p - body), "]}");
         UNLOCK();
         send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/pose") == 0) {
+        /* 互斥部件组切档：group=组 id，id=档位 id（none / 省略 = 整组关掉）。
+           组或档位不存在返回 404 —— 差分写错名字必须当场看见。 */
+        char group[64], id[64];
+        int rc;
+        if (!qstr(r, "group", group, sizeof(group))) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 group\"}");
+            return;
+        }
+        if (!qstr(r, "id", id, sizeof(id))) z_strlcpy(id, "none", sizeof(id));
+        LOCK();
+        rc = zpet_pose_set(g_pet, group, id);
+        /* 冻结时钟时淡化走不动（dt 恒为 0），直接到位，否则切档像没反应 */
+        if (g_frozen) zpet_pose_snap(g_pet);
+        zpet_tick(g_pet, pet_now());
+        UNLOCK();
+        if (rc != 0) {
+            char body2[192];
+            z_snprintf(body2, sizeof(body2),
+                       "{\"ok\":false,\"error\":\"没有这个互斥组或档位\","
+                       "\"group\":\"%s\",\"id\":\"%s\"}", group, id);
+            send_text(fd, 404, "application/json", body2);
+        } else {
+            char body2[192];
+            z_snprintf(body2, sizeof(body2), "{\"ok\":true,\"group\":\"%s\",\"id\":\"%s\"}",
+                       group, id);
+            send_text(fd, 200, "application/json", body2);
+        }
         return;
     }
     if (strcmp(r->path, "/api/frame.png") == 0) {

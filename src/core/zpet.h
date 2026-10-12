@@ -79,6 +79,15 @@ const char *zpet_expression_name_at(const zpet *p, int i);
 const char *zpet_expression(const zpet *p);       /* 当前表情 id，无则 NULL */
 int    zpet_expression_set(zpet *p, const char *id);  /* NULL/"" = 取消；未知 id 返回 -1 */
 
+/* Pose：互斥部件组（≈ Live2D pose3.json）。entry 传 NULL/""/"none" = 整组淡出。 */
+int    zpet_pose_count(const zpet *p);
+const char *zpet_pose_id_at(const zpet *p, int i);
+int    zpet_pose_entry_count(const zpet *p, const char *group);
+const char *zpet_pose_entry_id_at(const zpet *p, const char *group, int i);
+const char *zpet_pose_current(const zpet *p, const char *group);
+int    zpet_pose_set(zpet *p, const char *group, const char *entry);
+void   zpet_pose_snap(zpet *p);   /* 跳过淡化直接到位（冻结时钟时用） */
+
 /* 命名参数层（≈ Live2D 的 ParamXxx）：测试台滑条 / 脚本 / 口型都走这张表 */
 int    zpet_param_count(const zpet *p);
 int    zpet_param_info(const zpet *p, int i, zrig_param_desc *out);

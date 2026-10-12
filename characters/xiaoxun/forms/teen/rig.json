@@ -658,6 +658,28 @@
       "note": "腮红（乘算）：默认全透明，由 ParamBlush / 害羞表情推上来"
     },
     {
+      "id": "eye_hl_star_l",
+      "file": "sprites/eye_hl_star_l.png",
+      "group": "head",
+      "layer": 222,
+      "pos": [
+        369,
+        258
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "opacity": 1.0,
+      "blend": "add",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_l_socket",
+      "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位"
+    },
+    {
       "id": "eye_hl_l",
       "file": "sprites/eye_hl_l.png",
       "group": "head",
@@ -678,6 +700,28 @@
       ],
       "mask": "eye_l_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出"
+    },
+    {
+      "id": "eye_hl_star_r",
+      "file": "sprites/eye_hl_star_r.png",
+      "group": "head",
+      "layer": 234,
+      "pos": [
+        442,
+        253
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "opacity": 1.0,
+      "blend": "add",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_r_socket",
+      "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位"
     },
     {
       "id": "eye_hl_r",
@@ -2547,8 +2591,44 @@
           "param": "alpha",
           "scale": 1.0,
           "offset": -1.0
+        },
+        {
+          "part": "eye_hl_star_l",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "eye_hl_star_r",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
         }
       ]
+    }
+  ],
+  "poses": [
+    {
+      "id": "eye_hl_style",
+      "fade": 0.3,
+      "default": "round",
+      "entries": [
+        {
+          "id": "round",
+          "parts": [
+            "eye_hl_l",
+            "eye_hl_r"
+          ]
+        },
+        {
+          "id": "star",
+          "parts": [
+            "eye_hl_star_l",
+            "eye_hl_star_r"
+          ]
+        }
+      ],
+      "note": "眼高光形状差分；切 none 可以整组关掉（死鱼眼）"
     }
   ],
   "expressions": [

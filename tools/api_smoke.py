@@ -174,6 +174,32 @@ def run(base, root):
     u1, _ = a.frame_hash(); time.sleep(0.45); u2, _ = a.frame_hash()
     check("恢复后画面重新动起来", u1 != u2, "%s → %s" % (u1, u2))
 
+    # A8 Pose 互斥部件组（≈ pose3.json）：同组同一时刻只有一个档位可见
+    poses = a.json("/api/info.json").get("poses", [])
+    if poses:
+        g = poses[0]
+        check("info.json 带互斥组表", len(g.get("entries", [])) >= 2,
+              "%s: %s" % (g["id"], ",".join(g.get("entries", []))))
+        a.hit("/api/pause?on=1")
+        shots = {}
+        for ent in g["entries"] + ["none"]:
+            a.hit("/api/pose?group=%s&id=%s" % (g["id"], ent))
+            shots[ent], _ = a.frame_hash()
+        check("每个档位画面都不一样", len(set(shots.values())) == len(shots),
+              " ".join("%s=%s" % (k, v[:6]) for k, v in shots.items()))
+        cur = [x for x in a.json("/api/info.json")["poses"] if x["id"] == g["id"]][0]
+        check("none 之后当前档位为空", cur["current"] == "", "current=%r" % cur["current"])
+        a.hit("/api/pose?group=%s&id=%s" % (g["id"], g["entries"][0]))
+        cur = [x for x in a.json("/api/info.json")["poses"] if x["id"] == g["id"]][0]
+        check("切回第一个档位生效", cur["current"] == g["entries"][0], "current=%s" % cur["current"])
+        try:
+            urllib.request.urlopen(
+                base + "/api/pose?group=%s&id=__nope__" % g["id"], timeout=3).read()
+            check("未知档位要报 404", False, "返回了 200")
+        except urllib.error.HTTPError as e:
+            check("未知档位要报 404", e.code == 404, "HTTP %d" % e.code)
+        a.hit("/api/pause?on=0")
+
     # A6 关键帧动作（≈ .motion3）：nod 是逐帧给值的曲线，不是波形
     if "nod" in a.json("/api/info.json").get("actions", []):
         a.hit("/api/action?id=sleep&force=1"); time.sleep(0.4)
@@ -335,7 +361,8 @@ def run(base, root):
     gz_ids = {p["id"] for p in gz}
     check("眼球部件带 gaze 标签",
           {"eye_l_ball", "eye_r_ball"} <= gz_ids and gz_ids <= {
-              "eye_l_ball", "eye_r_ball", "eye_hl_l", "eye_hl_r"},
+              "eye_l_ball", "eye_r_ball", "eye_hl_l", "eye_hl_r",
+              "eye_hl_star_l", "eye_hl_star_r"},
           " ".join(sorted(gz_ids)))
     layers = [p["layer"] for p in rig["parts"]]
     check("层号不重复", len(set(layers)) == len(layers), "%d 层" % len(layers))

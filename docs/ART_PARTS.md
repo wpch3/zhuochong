@@ -162,6 +162,7 @@
 | `GET /api/blink?v=` | 按住眨眼（`v=auto` 交回自动） |
 | `GET /api/gaze?x=&y=[&off=1]` | 视线方向 |
 | `GET /api/scale?s=` | 整体缩放 |
+| `GET /api/pose?group=&id=` | 互斥部件组切档（≈ pose3.json）。`id=none` 或省略 = 整组关掉；组/档位不存在返回 404 |
 | `GET /api/pause?on=0\|1` | 冻结/恢复引擎时钟。冻结后连续两帧**逐字节相同** —— 抓对照图、做哈希断言时不会被呼吸/眨眼/物理搅乱 |
 | `GET /api/form[?id=]` / `GET /api/outfit[?id=]` | 切形态 / 切服装 |
 | `GET /api/idle?s=` | 伪造空闲秒数（测睡眠用） |
@@ -271,6 +272,32 @@
 - 证据：`logs/asset_qa/a7_blend.jpg`（冻结时钟后 blush/sparkle 0→1 对照）。
   实测：腮红区 RGB `159.9,186.8,217.0 → 157.8,172.2,201.9`（G/B 掉得比 R 多 = 变暖变粉）、
   高光区 `80.9,104.8,135.7 → 150.5,170.7,195.3`（整体提亮）、**两者 alpha 改变像素数都是 0**。
+
+### 3.7 Pose 互斥部件组（A8）怎么写
+
+Live2D 的 `pose3.json` 管的是「差分」：一组部件里同一时刻只能有一个露面
+（手势、眼高光形状、发型差分）。我们的写法：
+
+```jsonc
+"poses": [{
+  "id": "eye_hl_style", "fade": 0.3, "default": "round",
+  "entries": [
+    {"id": "round", "parts": ["eye_hl_l", "eye_hl_r"]},
+    {"id": "star",  "parts": ["eye_hl_star_l", "eye_hl_star_r"]}
+  ]
+}]
+```
+
+- 一个档位可以带多个部件（左右眼要一起切），它们的显隐权重同步。
+- 切换：`zrig_pose_set(rig, "eye_hl_style", "star")` 或 `GET /api/pose?group=&id=`；
+  `id=none` = **整组关掉**（Live2D 得专门放一张透明图，我们直接支持）。
+- 淡化是**定长线性**（`fade` 秒），不是指数趋近：0.3 秒就是 0.3 秒，手感可预期。
+- 加载期校验：部件必须存在、**一个部件只能归一个档位**、`default` 必须是声明过的档位、
+  每组至少两个档位 —— 四条都会让加载失败（`tools/selfcheck_repo.py` 另有静态一遍）。
+- 冻结时钟（`/api/pause`）时 dt 恒为 0，淡化走不动 → `/api/pose` 会自动 `zrig_pose_snap()`
+  直接到位，抓对照图不用等。
+- 证据：`logs/asset_qa/a8_pose.jpg`（round / star / none 三档，同一冻结帧，
+  变化像素 116 / 65 / 123，alpha 改变 0）。
 
 ### 3.6 抓对照图怎么不被动画搅乱（/api/pause）
 

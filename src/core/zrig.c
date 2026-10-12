@@ -12,6 +12,9 @@
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     12
 #define ZRIG_MAX_PARAMS   48
+#define ZRIG_MAX_POSE      8     /* 互斥部件组（≈ pose3.json 的 Groups） */
+#define ZRIG_MAX_POSE_ENT 24     /* 所有组的"档位"总数 */
+#define ZRIG_MAX_POSE_MEM 48     /* 所有档位引用的部件总数 */
 #define ZRIG_MAX_EXPR     16
 #define ZRIG_MAX_EXPR_SET 96
 #define ZRIG_MAX_BINDS    96
@@ -209,6 +212,24 @@ typedef struct {
     char cursor[32];
 } zregion;
 
+/* Pose（A8，≈ pose3.json）：一组互斥的"档位"，同一时刻只有一个可见。
+   典型用法是 Live2D 的差分切换：眼高光 圆形/星形/无、手势 握拳/张开/比耶。
+   { "id":"eye_hl_style", "fade":0.3, "default":"round",
+     "entries":[{"id":"round","parts":["eye_hl_l","eye_hl_r"]},
+                {"id":"star", "parts":["eye_hl_star_l","eye_hl_star_r"]}] } */
+typedef struct {
+    char id[48];
+    int  mem0, nmem;          /* 在 r->posemem 里的区间 */
+    double opacity;           /* 当前显隐权重 0..1（淡入淡出用） */
+} zposeent;
+
+typedef struct {
+    char id[48];
+    double fade;              /* 切换淡化秒数 */
+    int  ent0, nent;          /* 在 r->poseents 里的区间 */
+    int  cur;                 /* 当前档位（相对 ent0 的序号），-1 = 全关 */
+} zpose;
+
 /* 眨眼状态（对齐 Live2D CubismEyeBlink 的五态机） */
 enum { BL_FIRST = 0, BL_INTERVAL, BL_CLOSING, BL_CLOSED, BL_OPENING };
 
@@ -235,6 +256,7 @@ struct zrig {
     zphys   phys[ZRIG_MAX_PHYS];
     int     nphys;
     double  phys_last;           /* 上一次积分的时刻，<0 = 还没开始 */
+    double  pose_last;           /* Pose 淡化上一次推进的时刻，<0 = 还没开始 */
 
     zsm     sm;
 
@@ -296,6 +318,15 @@ struct zrig {
     /* 网格形变器（A5） */
     zdeform deforms[ZRIG_MAX_DEFORMS];
     int     ndeforms;
+
+    /* Pose：互斥部件组（A8，≈ Live2D pose3.json）。
+       一组里同一时刻只有一个档位可见，切换时旧档淡出、新档淡入。 */
+    zpose   poses[ZRIG_MAX_POSE];
+    int     nposes;
+    zposeent poseents[ZRIG_MAX_POSE_ENT];
+    int     nposeents;
+    int     posemem[ZRIG_MAX_POSE_MEM];     /* 档位成员的部件下标（连续分配） */
+    int     nposemem;
 
     /* 关键帧池（所有动作通道共用） */
     double  key_t[ZRIG_MAX_KEYPOOL], key_v[ZRIG_MAX_KEYPOOL];
@@ -920,6 +951,122 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
     return 0;
 }
 
+/* poses：互斥部件组（A8）。写法见上面的 zpose 注释。
+   校验：部件必须存在、同一个部件不能出现在两个档位里（否则谁说了算？）、
+   default 必须是声明过的档位 id。 */
+static int load_poses(zrig *r, const zjson *jp, zdiag *d, const char *file)
+{
+    size_t i, n;
+    if (!jp) return 0;
+    if (!zjson_is(jp, ZJSON_ARR)) {
+        zdiag_error(d, file, jp->line, 0, "poses", "poses 应是数组");
+        return -1;
+    }
+    n = zjson_count((zjson *)jp);
+    for (i = 0; i < n; ++i) {
+        const zjson *gj = zjson_at((zjson *)jp, i);
+        const zjson *ents = zjson_obj_get((zjson *)gj, "entries");
+        const char *gid = zjson_str(zjson_obj_get((zjson *)gj, "id"), NULL);
+        const char *defid = zjson_str(zjson_obj_get((zjson *)gj, "default"), NULL);
+        zpose *g;
+        char path[128];
+        size_t k, kn;
+        if (r->nposes >= ZRIG_MAX_POSE) {
+            zdiag_error(d, file, gj ? gj->line : 0, 0, "poses",
+                        "互斥部件组过多（上限 %d）", ZRIG_MAX_POSE);
+            return -1;
+        }
+        g = &r->poses[r->nposes];
+        memset(g, 0, sizeof(*g));
+        if (!gid || !*gid) {
+            zdiag_error(d, file, gj ? gj->line : 0, 0, "poses", "pose 组缺 id");
+            return -1;
+        }
+        z_strlcpy(g->id, gid, sizeof(g->id));
+        z_snprintf(path, sizeof(path), "poses[%s]", g->id);
+        g->fade = zjson_num(zjson_obj_get((zjson *)gj, "fade"), 0.3);
+        if (g->fade < 0.0) g->fade = 0.0;
+        g->ent0 = r->nposeents;
+        kn = zjson_count((zjson *)ents);
+        if (!ents || !zjson_is(ents, ZJSON_ARR) || kn < 2) {
+            zdiag_error(d, file, gj ? gj->line : 0, 0, path,
+                        "entries 至少要两个档位（只有一个就不叫互斥了）");
+            return -1;
+        }
+        for (k = 0; k < kn; ++k) {
+            const zjson *ej = zjson_at((zjson *)ents, k);
+            const zjson *ps = zjson_obj_get((zjson *)ej, "parts");
+            const char *eid = zjson_str(zjson_obj_get((zjson *)ej, "id"), NULL);
+            zposeent *e;
+            size_t q, qn = zjson_count((zjson *)ps);
+            if (r->nposeents >= ZRIG_MAX_POSE_ENT) {
+                zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                            "档位过多（上限 %d）", ZRIG_MAX_POSE_ENT);
+                return -1;
+            }
+            e = &r->poseents[r->nposeents];
+            memset(e, 0, sizeof(*e));
+            if (!eid || !*eid) {
+                zdiag_error(d, file, ej ? ej->line : 0, 0, path, "档位缺 id");
+                return -1;
+            }
+            z_strlcpy(e->id, eid, sizeof(e->id));
+            e->mem0 = r->nposemem;
+            if (!ps || !zjson_is(ps, ZJSON_ARR) || qn < 1) {
+                zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                            "档位 '%s' 的 parts 至少写一个部件", eid);
+                return -1;
+            }
+            for (q = 0; q < qn; ++q) {
+                const char *pid = zjson_str(zjson_at((zjson *)ps, q), NULL);
+                int pi = pid ? find_part(r, pid) : -1;
+                int t;
+                if (pi < 0) {
+                    zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                                "档位 '%s' 引用了不存在的部件 '%s'", eid, pid ? pid : "(空)");
+                    return -1;
+                }
+                for (t = 0; t < r->nposemem; ++t) {
+                    if (r->posemem[t] == pi) {
+                        zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                                    "部件 '%s' 已经属于另一个档位了（一个部件只能归一处）", pid);
+                        return -1;
+                    }
+                }
+                if (r->nposemem >= ZRIG_MAX_POSE_MEM) {
+                    zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                                "档位成员过多（上限 %d）", ZRIG_MAX_POSE_MEM);
+                    return -1;
+                }
+                r->posemem[r->nposemem++] = pi;
+                e->nmem++;
+            }
+            r->nposeents++;
+            g->nent++;
+        }
+        /* 默认档位：没写就取第一个。切换前所有非当前档都是全透明。 */
+        g->cur = 0;
+        if (defid) {
+            int t, found = -1;
+            for (t = 0; t < g->nent; ++t)
+                if (z_streq(r->poseents[g->ent0 + t].id, defid)) { found = t; break; }
+            if (found < 0) {
+                zdiag_error(d, file, gj ? gj->line : 0, 0, path,
+                            "default '%s' 不是这个组里的档位", defid);
+                return -1;
+            }
+            g->cur = found;
+        }
+        {
+            int t;
+            for (t = 0; t < g->nent; ++t)
+                r->poseents[g->ent0 + t].opacity = (t == g->cur) ? 1.0 : 0.0;
+        }
+        r->nposes++;
+    }
+    return 0;
+}
+
 /* expressions：一组参数偏移。
    { "id":"shy", "name":"害羞", "fade":0.3,
      "params":[ {"id":"ParamBrowLY","value":-0.5},
@@ -1388,6 +1535,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     load_builtin_params(r);
     if (load_params(r, zjson_obj_get(root, "params"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
+    if (load_poses(r, zjson_obj_get(root, "poses"), diag, file) != 0) goto fail;
 
     /* 眨眼 */
     {
@@ -1449,6 +1597,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     r->fade_prev = -1;
     r->expr_cur = r->expr_prev = -1;
     r->phys_last = -1.0;
+    r->pose_last = -1.0;
     r->look_last = -1.0;
     r->cur_id[0] = 0;
     zsm_start(&r->sm, "idle", 0.0);
@@ -1669,6 +1818,30 @@ static void compute_group_transforms(zrig *r)
     }
     accumulate_action(r, a, zsm_elapsed(&r->sm), w, a->loop ? -1.0 : a->duration);
     r->dim_now = prev ? (prev->dim * (1.0 - w) + a->dim * w) : a->dim;
+
+    /* Pose（A8）：把每个档位的显隐权重往目标值推。
+       这里用线性淡化而不是指数趋近：Live2D 的 pose3 也是定长淡化，
+       切换手感更可预期（0.3 秒就是 0.3 秒，不会拖一条长尾巴）。 */
+    if (r->nposes > 0) {
+        int gi;
+        double step, dtp;
+        if (r->pose_last < 0.0) r->pose_last = r->now;
+        dtp = r->now - r->pose_last;
+        r->pose_last = r->now;
+        if (dtp < 0.0) dtp = 0.0;
+        if (dtp > 0.25) dtp = 0.25;
+        for (gi = 0; gi < r->nposes; ++gi) {
+            zpose *g = &r->poses[gi];
+            int t;
+            step = (g->fade > 1e-6) ? (dtp / g->fade) : 1.0;
+            for (t = 0; t < g->nent; ++t) {
+                zposeent *e = &r->poseents[g->ent0 + t];
+                double want = (t == g->cur) ? 1.0 : 0.0;
+                if (e->opacity < want) e->opacity = ZC_MIN(want, e->opacity + step);
+                else if (e->opacity > want) e->opacity = ZC_MAX(want, e->opacity - step);
+            }
+        }
+    }
 
     /* 命名参数层 + 表情层：都叠在动作之上。
        内建参数（跟随/眨眼/眼球）走各自的子系统，其余按 binds 写通道。 */
@@ -2099,6 +2272,21 @@ static int ensure_scaled(zrig *r, double scale)
     return 0;
 }
 
+/* 这个部件属于某个互斥组时的显隐权重；不属于任何组就是 1。 */
+static double pose_opacity(const zrig *r, int part)
+{
+    int gi, t, q;
+    for (gi = 0; gi < r->nposes; ++gi) {
+        const zpose *g = &r->poses[gi];
+        for (t = 0; t < g->nent; ++t) {
+            const zposeent *e = &r->poseents[g->ent0 + t];
+            for (q = 0; q < e->nmem; ++q)
+                if (r->posemem[e->mem0 + q] == part) return e->opacity;
+        }
+    }
+    return 1.0;
+}
+
 const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
 {
     const zaction *a;
@@ -2142,7 +2330,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
             /* motion_from：通道值照抄别的部件（透け眉这类"同一零件画两遍"用）。
                位置、遮罩、透明度仍然是自己的。 */
             int mi = (p->motion_from >= 0) ? p->motion_from : pi;
-            double opacity = p->opacity * r->p_alpha[mi];
+            double opacity = p->opacity * r->p_alpha[mi] * pose_opacity(r, pi);
             double extra_dx = r->p_dx[mi], extra_dy = r->p_dy[mi];
             double part_rot = r->p_rot[mi];
             double part_sx = 1.0, part_sy = 1.0;
@@ -2551,6 +2739,96 @@ int zrig_expression_set(zrig *r, const char *id)
 }
 
 void zrig_expression_clear(zrig *r) { (void)zrig_expression_set(r, NULL); }
+
+/* ---- Pose（A8）---- */
+int zrig_pose_count(const zrig *r) { return r ? r->nposes : 0; }
+
+const char *zrig_pose_id(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nposes) return "";
+    return r->poses[i].id;
+}
+
+int zrig_pose_entry_count(const zrig *r, const char *group)
+{
+    int gi;
+    if (!r || !group) return 0;
+    for (gi = 0; gi < r->nposes; ++gi)
+        if (z_streq(r->poses[gi].id, group)) return r->poses[gi].nent;
+    return 0;
+}
+
+const char *zrig_pose_entry_id(const zrig *r, const char *group, int i)
+{
+    int gi;
+    if (!r || !group) return "";
+    for (gi = 0; gi < r->nposes; ++gi) {
+        const zpose *g = &r->poses[gi];
+        if (!z_streq(g->id, group)) continue;
+        if (i < 0 || i >= g->nent) return "";
+        return r->poseents[g->ent0 + i].id;
+    }
+    return "";
+}
+
+const char *zrig_pose_current(const zrig *r, const char *group)
+{
+    int gi;
+    if (!r || !group) return "";
+    for (gi = 0; gi < r->nposes; ++gi) {
+        const zpose *g = &r->poses[gi];
+        if (!z_streq(g->id, group)) continue;
+        return (g->cur >= 0) ? r->poseents[g->ent0 + g->cur].id : "";
+    }
+    return "";
+}
+
+double zrig_pose_weight(const zrig *r, const char *group, const char *entry)
+{
+    int gi, t;
+    if (!r || !group || !entry) return 0.0;
+    for (gi = 0; gi < r->nposes; ++gi) {
+        const zpose *g = &r->poses[gi];
+        if (!z_streq(g->id, group)) continue;
+        for (t = 0; t < g->nent; ++t)
+            if (z_streq(r->poseents[g->ent0 + t].id, entry))
+                return r->poseents[g->ent0 + t].opacity;
+    }
+    return 0.0;
+}
+
+/* 把所有档位的显隐权重直接拉到目标值（跳过淡化）。
+   冻结时钟时用：那时 dt=0，淡化永远走不完，切档会看起来没反应。 */
+void zrig_pose_snap(zrig *r)
+{
+    int gi, t;
+    if (!r) return;
+    for (gi = 0; gi < r->nposes; ++gi) {
+        zpose *g = &r->poses[gi];
+        for (t = 0; t < g->nent; ++t)
+            r->poseents[g->ent0 + t].opacity = (t == g->cur) ? 1.0 : 0.0;
+    }
+}
+
+/* 切档。entry 传 NULL / "" / "none" = 整组都淡出（Live2D 里要靠一个空白部件实现，
+   我们直接支持"全关"，省一张透明图）。组或档位不存在返回 -1（不许悄悄忽略）。 */
+int zrig_pose_set(zrig *r, const char *group, const char *entry)
+{
+    int gi, t, next = -1;
+    if (!r || !group) return -1;
+    for (gi = 0; gi < r->nposes; ++gi) {
+        zpose *g = &r->poses[gi];
+        if (!z_streq(g->id, group)) continue;
+        if (entry && *entry && !z_streq(entry, "none")) {
+            for (t = 0; t < g->nent; ++t)
+                if (z_streq(r->poseents[g->ent0 + t].id, entry)) { next = t; break; }
+            if (next < 0) return -1;
+        }
+        g->cur = next;
+        return 0;
+    }
+    return -1;
+}
 
 double zrig_expression_weight(const zrig *r)
 {

@@ -235,6 +235,27 @@ def check_rig(root):
               f"坏取值 {badblend} 压在最底层 {lowblend}" if (badblend or lowblend)
               else f"{len(nb)} 件（加算/乘算）")
 
+        # Pose 互斥组（A8）：部件必须存在、一个部件只能归一个档位、default 要在档位里、
+        # 至少两个档位（只有一个就不叫互斥）。
+        badpose, seenmem = [], {}
+        for g in r.get("poses", []):
+            ents = g.get("entries", [])
+            if len(ents) < 2:
+                badpose.append(f"{g.get('id')}:档位不足 2 个")
+            eids = [e.get("id") for e in ents]
+            if g.get("default") and g["default"] not in eids:
+                badpose.append(f"{g['id']}:default={g['default']} 不在档位里")
+            for e in ents:
+                for q in e.get("parts", []):
+                    if q not in pids:
+                        badpose.append(f"{g['id']}/{e.get('id')}:没有部件 {q}")
+                    elif q in seenmem:
+                        badpose.append(f"{q} 同时属于 {seenmem[q]} 和 {g['id']}/{e.get('id')}")
+                    else:
+                        seenmem[q] = f"{g['id']}/{e.get('id')}"
+        check("Pose 互斥组写法合法", not badpose,
+              f"坏组 {badpose[:3]}" if badpose else f"{len(r.get('poses', []))} 组")
+
         # 关键帧曲线（≈ .motion3）：时间必须递增、每帧两个数、不能越过动作时长太多
         badkeys = []
         for a in r.get("actions", []):

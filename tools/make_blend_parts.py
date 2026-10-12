@@ -78,6 +78,31 @@ def speckle(im: Image.Image, n: int = 3) -> Image.Image:
     return im
 
 
+def star(w: int, h: int, rgb, peak: float) -> Image.Image:
+    """四角星高光（Live2D 模型最常见的「キラキラ」差分）。
+
+    用两条正交的纺锤形叠出来：横轴 |y| 衰减快、纵轴 |x| 衰减快，
+    中心再补一个小圆核。比画多边形柔和，缩小后也不会出锯齿。
+    """
+    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    px = im.load()
+    cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+    for y in range(h):
+        for x in range(w):
+            nx = (x - cx) / max(cx, 1e-6)
+            ny = (y - cy) / max(cy, 1e-6)
+            ax, ay = abs(nx), abs(ny)
+            # 两条臂：沿 x 的臂要求 |y| 很小，沿 y 的臂要求 |x| 很小
+            arm_x = max(0.0, 1.0 - ax) * max(0.0, 1.0 - ay * 3.2)
+            arm_y = max(0.0, 1.0 - ay) * max(0.0, 1.0 - ax * 3.2)
+            core = max(0.0, 1.0 - math.hypot(nx, ny) * 2.1)
+            a = peak * min(1.0, arm_x + arm_y + core * 0.9)
+            if a <= 0.004:
+                continue
+            px[x, y] = (rgb[0], rgb[1], rgb[2], int(round(a * 255)))
+    return im
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
@@ -103,9 +128,20 @@ def main() -> int:
         report["highlight"][side] = {"file": f"sprites/eye_hl_{side}.png",
                                      "pos": cfg["pos"], "size": [w, h], "blend": "add"}
 
+    # 星形高光：Pose 互斥组（A8）里的另一个档位，和圆形高光二选一
+    report["star"] = {}
+    for side, cfg in HIGHLIGHT.items():
+        w, h = cfg["size"][0] + 7, cfg["size"][1] + 7      # 星形要大一点才看得出形状
+        im = star(w, h, HL_RGB, peak=0.95)
+        im.save(os.path.join(out_dir, f"eye_hl_star_{side}.png"))
+        pos = [cfg["pos"][0] - 4, cfg["pos"][1] - 4]       # 保持中心和圆形高光重合
+        report["star"][side] = {"file": f"sprites/eye_hl_star_{side}.png",
+                                "pos": pos, "size": [w, h], "blend": "add"}
+
     with open(os.path.join(out_dir, "blend_parts.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
-    print(f"写出 {out_dir}/blush_[lr].png + eye_hl_[lr].png + blend_parts.json")
+    print(f"写出 {out_dir}/blush_[lr].png + eye_hl_[lr].png + eye_hl_star_[lr].png"
+          f" + blend_parts.json")
     return 0
 
 
