@@ -89,7 +89,8 @@
 | 自由变形器（FFD，按控制点拉网格） | 眼睑开合、嘴形连续变化 | ⬜ | 下一步 |
 | 旋转变形器（骨骼链：肩→肘→腕） | 抬手、挥手不拉皮 | ⬜ | G4c 之后 |
 | **命名参数层**（`ParamXxx` 外部直驱） | 脚本 / LLM / 口型 / 测试台滑条统一写一张参数表 | ✅ **2026-10-12** | `zrig.c` `load_params`/`zrig_param_set` + rig 顶层 `params` + `/api/param` |
-| 口型同步（LipSync，按音量驱动嘴） | 说话时嘴型跟着语音走 | ⬜ | `talk` 现在是固定 flap 波形 |
+| **表情叠加**（expression） | 笑着挥手：表情和动作两条轨，互不覆盖 | ✅ **2026-10-12** | `zrig.c` `load_expressions`/`zrig_expression_set` + rig 顶层 `expressions` + `/api/expression` |
+| 口型同步（LipSync，按音量驱动嘴） | 说话时嘴型跟着语音走 | ⬜ | 参数层已就位（写 `ParamMouthOpenY` 即可），差音频包络 |
 
 ### 3.1 新增三块的 rig.json 写法
 
@@ -128,7 +129,18 @@
 //   ParamEyeBallX / ParamEyeBallY → 眼球
 ```
 
-参数层的 HTTP 口子（测试台的滑条就是按它自动生成的，角色加参数不用改前端）：
+```jsonc
+// ⑤ 表情层：rig.json 顶层，一条 = 一组参数偏移（只能写 params 里声明过的参数）
+"expressions": [
+  { "id": "angry", "name": "生气", "fade": 0.22,
+    "params": [ { "id": "ParamBrowLAngle", "value": -0.8 },
+                { "id": "ParamEyeOpen",    "value": 0.9, "mode": "set" } ] }
+]
+// mode: add（缺省，叠加）/ set（覆盖：按权重把参数拉到这个值）。
+// 表情**不占动作状态机**：挥手动作照常跑完，表情只是叠在上面，带独立淡入淡出。
+```
+
+参数层 / 表情层的 HTTP 口子（测试台的滑条与表情按钮都是按它自动生成的，角色加参数不用改前端）：
 
 | 端点 | 作用 |
 | --- | --- |
@@ -136,10 +148,17 @@
 | `GET /api/param?id=X&v=N` | 写一个参数（超出 min/max 自动夹住；不存在的 id 返回 404） |
 | `GET /api/param?id=X&reset=1` | 回默认值（`ParamEyeOpen` 复位 = 交回自动眨眼） |
 | `GET /api/param?all=1` | 全部复位 |
+| `GET /api/expression?id=X` | 叠一个表情（`off=1` 取消；未知 id 404）；当前表情在 `info.json` 的 `expression` |
 
 **实测（scale=1，sleep 定格）**：`ParamArmRA` = −10 / 0 / +10 → 右臂外缘 x = **606 / 644 / 681**
 （±38px ≈ scale 4.0 × 10，线性）；`ParamMouthOpenY=1` 嘴真的张开，`ParamAngleZ=30` 头歪 15°，
 对照图 `logs/asset_qa/param_sheet.png`。
+
+**表情实测**：6 个表情（微笑/害羞/生气/难过/吃惊/困倦）叠加后画面都变（2.6 万～3.6 万像素），
+动作不被顶掉，对照图 `logs/asset_qa/expression_sheet.png`。
+⚠️ 已知局限：**眉毛被刘海盖住**（层序 眉 232/233 < 刘海 240），所以"生气/难过"这类靠眉形的表情
+现在只能靠眼睛开合体现。Live2D 的常规解法是加一层"透け眉"（眉的半透明副本画在刘海之上），
+记为 **G21**，要不要做由用户定。
 
 三者的叠加顺序是固定的：**动作（含淡化混合）→ 指针跟随 → 物理**。
 所以转头会甩起头发，而头发的惯性不会反过来干扰动作。

@@ -72,6 +72,8 @@ async function loadInfo() {
   $("hdr").innerHTML = `引擎 <code>${info.engine}</code> · 角色 <code>${info.character}</code>
      · 形态 <code>${info.form_name || info.form}</code> · 帧 ${info.frame_w}×${info.frame_h}`;
   $("p-act").textContent = "动作 " + info.action;
+  $("p-expr").textContent = "表情 " + (info.expression || "无");
+  $("p-expr").className = "pill" + (info.expression ? " on" : "");
   $("p-blink").textContent = "眨眼 " + info.blink.toFixed(2) +
       (info.blink_manual >= 0 ? "（手动）" : "（自动）");
   $("p-scale").textContent = "缩放 " + info.scale.toFixed(2);
@@ -119,6 +121,23 @@ function buildButtons() {
     `<button class="sm" data-a="${a}">${a}</button>`).join("");
   $("acts").querySelectorAll("button").forEach((b) => {
     b.onclick = async () => { await api("/api/action?id=" + encodeURIComponent(b.dataset.a)); await pulse(); };
+  });
+
+  /* 表情：叠在动作之上，和动作按钮是两条轨 */
+  $("exprs").innerHTML =
+    (info.expressions || []).map((e) =>
+      `<button class="sm" data-e="${e.id}" title="${e.id}">${e.name || e.id}</button>`).join("") +
+    `<button class="sm" data-e="">取消表情</button>` +
+    `<div class="muted" style="font-size:12px;margin-top:4px">
+       走 <code>/api/expression?id=</code>（取消是 <code>off=1</code>）。表情只写
+       <code>params</code> 里的参数，带淡入淡出，动作该怎么跑还怎么跑。
+     </div>`;
+  $("exprs").querySelectorAll("button").forEach((b) => {
+    b.onclick = async () => {
+      await api(b.dataset.e ? "/api/expression?id=" + encodeURIComponent(b.dataset.e)
+                            : "/api/expression?off=1");
+      await pulse(); loadInfo();
+    };
   });
 
   /* 形态与服装 */
@@ -356,6 +375,29 @@ async function runSuite() {
             mo ? `value=${mo.value}` : "读不到");
       const bad = await fetch("/api/param?id=ParamNope&v=1").then((x) => x.status);
       check("不存在的参数要报 404（不能假装成功）", bad === 404, `HTTP ${bad}`);
+      await api("/api/action?id=idle&force=1");
+    }
+  }
+
+  /* 2.6 表情层：叠加后画面要变，动作不能被顶掉 */
+  {
+    const list = (info && info.expressions) || [];
+    check("表情表能读出来", list.length > 0, list.map((e) => e.id).join(" "));
+    if (list.length) {
+      await api("/api/action?id=sleep&force=1"); await sleep(260);
+      const before = await frameHash();
+      const actBefore = (await api("/api/info.json")).data.action;
+      await api("/api/expression?id=" + list[0].id); await sleep(500);
+      const after = await frameHash();
+      const inf = (await api("/api/info.json")).data;
+      check("叠表情后画面有变化", before.hash !== after.hash,
+            `${before.hash.toString(16)} → ${after.hash.toString(16)}`);
+      check("表情不会顶掉当前动作", inf.action === actBefore,
+            `${actBefore} → ${inf.action}`);
+      check("info 里能读回当前表情", inf.expression === list[0].id, inf.expression);
+      const bad = await fetch("/api/expression?id=__nope__").then((x) => x.status);
+      check("不存在的表情要报 404", bad === 404, `HTTP ${bad}`);
+      await api("/api/expression?off=1"); await sleep(400);
       await api("/api/action?id=idle&force=1");
     }
   }

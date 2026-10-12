@@ -72,6 +72,13 @@ void  zpet_notify_user_activity(zpet *p, double now);
 void   zpet_set_blink(zpet *p, double v);
 double zpet_blink_manual(const zpet *p);
 void   zpet_set_gaze(zpet *p, double nx, double ny, int on);
+/* 表情层（≈ Live2D expression）：叠在当前动作之上，和动作互不覆盖 */
+int    zpet_expression_count(const zpet *p);
+const char *zpet_expression_id_at(const zpet *p, int i);
+const char *zpet_expression_name_at(const zpet *p, int i);
+const char *zpet_expression(const zpet *p);       /* 当前表情 id，无则 NULL */
+int    zpet_expression_set(zpet *p, const char *id);  /* NULL/"" = 取消；未知 id 返回 -1 */
+
 /* 命名参数层（≈ Live2D 的 ParamXxx）：测试台滑条 / 脚本 / 口型都走这张表 */
 int    zpet_param_count(const zpet *p);
 int    zpet_param_info(const zpet *p, int i, zrig_param_desc *out);

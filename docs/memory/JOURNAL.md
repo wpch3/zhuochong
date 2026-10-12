@@ -151,3 +151,8 @@
 - 做了什么：命名参数层（G18）：rig.json params[] + 内建 5 参数 + /api/params.json 与 /api/param，zpet/zrig 都接通；测试台滑条按参数表自动生成；make_rig.py 为小寻写入 14 个参数
 - 遇到/修了什么：参数层叠加点放在动作与跟随之后、物理之前；apply_chan 抽成公共函数，动作/物理/参数共用同一套通道语义
 - 下一步：G20 表情叠加 + G19 LipSync（把 TTS 包络接到 ParamMouthOpenY），然后回 G4c 手臂
+
+## 2026-10-12 10:20
+- 做了什么：表情叠加层（G20）：rig.json expressions[]（参数偏移 add/set + fade）、zrig/zpet/HTTP /api/expression、info.json 带表情表、测试台表情按钮；小寻 6 个表情
+- 遇到/修了什么：表情只写参数层、不占动作状态机，所以能笑着挥手；加载期校验表情引用的参数必须已声明
+- 下一步：G19 LipSync（音频包络→ParamMouthOpenY）或 G21 透け眉，然后回 G4c 手臂拆件

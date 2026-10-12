@@ -720,6 +720,99 @@ static void test_motion_fade(void)
     }
 }
 
+static void test_expression(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("表情层：叠在动作之上、带淡入淡出、不顶掉动作");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_expr");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"表情测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"h\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":2,\"freq\":1}]}],"
+        "\"params\":[{\"id\":\"ParamBrowLY\",\"min\":-1,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"part\":\"h\",\"param\":\"dy\",\"scale\":10}]}],"
+        "\"expressions\":[{\"id\":\"angry\",\"name\":\"生气\",\"fade\":0.4,"
+        " \"params\":[{\"id\":\"ParamBrowLY\",\"value\":-0.5},"
+        "             {\"id\":\"ParamEyeOpen\",\"value\":0.5,\"mode\":\"set\"}]},"
+        " {\"id\":\"snap\",\"fade\":0,"
+        "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":1.0,\"mode\":\"set\"}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 expressions 段的 rig 应加载成功");
+        if (r) {
+            double t, mid, done;
+            CHECK(zrig_expression_count(r) == 2, "应读出 2 个表情（%d）",
+                  zrig_expression_count(r));
+            CHECK(z_streq(zrig_expression_name(r, 0), "生气"), "表情中文名应读出来");
+            CHECK(zrig_expression(r) == NULL, "一开始应该没有表情");
+            zrig_tick(r, 0.0);
+            zrig_blink_set_manual(r, 0.0);
+            zrig_tick(r, 0.02);
+            CHECK(fabs(zrig_part_channel(r, "h", "dy")) < 1e-6, "没表情时绑定通道应为 0");
+            /* ① 淡入：不能一帧到位 */
+            CHECK(zrig_expression_set(r, "angry") == 0, "切表情应成功");
+            zrig_tick(r, 0.04);
+            mid = zrig_part_channel(r, "h", "dy");
+            CHECK(mid > -1.0 && mid <= 0.0, "表情要淡入，20ms 时还很小（%.3f / 目标 -5）", mid);
+            for (t = 0.06; t < 0.8; t += 0.02) zrig_tick(r, t);
+            done = zrig_part_channel(r, "h", "dy");
+            CHECK(fabs(done - (-5.0)) < 0.01, "淡入完成应到 -0.5×10（%.3f）", done);
+            CHECK(z_streq(zrig_expression(r), "angry"), "当前表情应可读回");
+            /* ② set 模式作用在内建参数上：眼睛半闭 */
+            CHECK(fabs(zrig_blink_value(r) - 0.0) < 1e-6, "子系统自己的眨眼值不该被改写");
+            /* ③ 动作还在跑（表情和动作是两条轨） */
+            CHECK(z_streq(zrig_action(r), "idle"), "表情不该顶掉动作（%s）", zrig_action(r));
+            CHECK(fabs(zrig_part_channel(r, "h", "dx")) > 1e-9, "动作通道应照常输出");
+            /* ④ fade=0 的表情一帧到位 */
+            zrig_expression_set(r, "snap");
+            zrig_tick(r, t);
+            CHECK(fabs(zrig_part_channel(r, "h", "dy") - 10.0) < 0.01,
+                  "fade=0 应一帧到位（%.3f / 10）", zrig_part_channel(r, "h", "dy"));
+            /* ⑤ 取消：淡出回 0 */
+            zrig_expression_clear(r);
+            for (t += 0.02; t < 2.0; t += 0.02) zrig_tick(r, t);
+            CHECK(zrig_expression(r) == NULL, "取消后不应还有表情");
+            CHECK(fabs(zrig_part_channel(r, "h", "dy")) < 0.01,
+                  "取消后绑定通道应回 0（%.3f）", zrig_part_channel(r, "h", "dy"));
+            /* ⑥ 未知表情要报错 */
+            CHECK(zrig_expression_set(r, "nope") == -1, "未知表情应返回 -1");
+            zrig_free(r);
+        }
+    }
+    /* 反例：表情写了没声明的参数，必须加载失败 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/bad.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+            "\"expressions\":[{\"id\":\"x\",\"params\":[{\"id\":\"ParamNope\",\"value\":1}]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "表情引用未声明的参数应加载失败");
+        if (r) zrig_free(r);
+    }
+}
+
 static void test_params(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -1450,6 +1543,7 @@ int main(int argc, char **argv)
     test_physics();
     test_look();
     test_params();
+    test_expression();
     test_interactions();
     test_affection();
 

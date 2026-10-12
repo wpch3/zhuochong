@@ -74,6 +74,54 @@ def param_list(mouth=None, has_brows=True, head_is_part=True):
     return out
 
 
+def expression_list(mouth=None, has_brows=True, head_is_part=True):
+    """表情集。每条 = 一组参数偏移（mode 缺省 add，set 为覆盖），fade 是淡入淡出秒数。
+
+    只用 param_list 里声明过的参数（引擎加载时会校验），所以改表情不用动 C 代码。
+    """
+    def P(pid, value, mode=None):
+        d = {"id": pid, "value": value}
+        if mode:
+            d["mode"] = mode
+        return d
+
+    def brows(ly, ry, la=0.0, ra=0.0):
+        if not has_brows:
+            return []
+        out = [P("ParamBrowLY", ly), P("ParamBrowRY", ry)]
+        if la or ra:
+            out += [P("ParamBrowLAngle", la), P("ParamBrowRAngle", ra)]
+        return out
+
+    def mform(v):
+        return [P("ParamMouthForm", v)] if mouth else []
+
+    def mopen(v):
+        return [P("ParamMouthOpenY", v)] if mouth else []
+
+    out = [
+        {"id": "smile", "name": "微笑", "fade": 0.3,
+         "params": brows(0.25, 0.25) + mform(0.7) + [P("ParamEyeOpen", 0.85, "set")]},
+        {"id": "shy", "name": "害羞", "fade": 0.35,
+         "params": brows(-0.3, -0.3) + mform(0.35)
+                   + [P("ParamEyeOpen", 0.7, "set")]
+                   + ([P("ParamAngleZ", -4.0)] if head_is_part else [])},
+        {"id": "angry", "name": "生气", "fade": 0.22,
+         "params": brows(-0.7, -0.7, -0.8, -0.8) + mform(-0.7)
+                   + [P("ParamEyeOpen", 0.9, "set")]},
+        {"id": "sad", "name": "难过", "fade": 0.4,
+         "params": brows(-0.45, -0.45, 0.7, 0.7) + mform(-0.5)
+                   + [P("ParamEyeOpen", 0.75, "set")]},
+        {"id": "surprise", "name": "吃惊", "fade": 0.12,
+         "params": brows(0.9, 0.9) + mopen(0.55)
+                   + [P("ParamEyeOpen", 1.0, "set"), P("ParamEyeBallY", -0.15)]},
+        {"id": "sleepy", "name": "困倦", "fade": 0.5,
+         "params": brows(-0.2, -0.2) + mopen(0.15)
+                   + [P("ParamEyeOpen", 0.3, "set"), P("ParamEyeBallY", 0.2)]},
+    ]
+    return out
+
+
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None):
     sp_w, sp_h = sprite["sprite_size"]
@@ -670,6 +718,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "params": param_list(mouth=mouth,
                              has_brows=any(p["id"] == "brow_l" for p in parts_list),
                              head_is_part=head_is_part),
+        # 表情层（Live2D 的 expression）：一组参数偏移，叠在当前动作之上。
+        # 和动作是两条轨 —— 可以"笑着挥手"，不用为每种组合再做一个动作。
+        "expressions": expression_list(mouth=mouth,
+                                       has_brows=any(p["id"] == "brow_l" for p in parts_list),
+                                       head_is_part=head_is_part),
     }
 
 

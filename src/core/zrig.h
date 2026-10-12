@@ -97,6 +97,18 @@ int    zrig_param_set(zrig *r, const char *id, double v);   /* 找不到返回 -
 int    zrig_param_reset(zrig *r, const char *id);           /* 回默认值 */
 void   zrig_param_reset_all(zrig *r);
 
+/* --------------------------------------------- 表情层（≈ Live2D expression）
+   表情 = 一组参数偏移（add 叠加 / set 覆盖），带淡入淡出，叠在当前动作之上。
+   和动作是两条独立的轨：可以"笑着挥手"，不用为每种组合再做一个动作。
+   声明在 rig.json 顶层的 expressions 段。 */
+int    zrig_expression_count(const zrig *r);
+const char *zrig_expression_id(const zrig *r, int i);
+const char *zrig_expression_name(const zrig *r, int i);
+const char *zrig_expression(const zrig *r);        /* 当前表情 id，无则 NULL */
+int    zrig_expression_set(zrig *r, const char *id);  /* id 传 NULL/"" = 取消；未知 id 返回 -1 */
+void   zrig_expression_clear(zrig *r);
+double zrig_expression_weight(const zrig *r);      /* 淡化权重 0..1（测试用） */
+
 /* 手动按住眨眼参数（0=睁 1=闭，传 <0 恢复自动）。测试台的眨眼滑条用。 */
 void   zrig_blink_set_manual(zrig *r, double v);
 double zrig_blink_manual(const zrig *r);

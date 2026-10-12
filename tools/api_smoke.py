@@ -135,6 +135,28 @@ def run(base, root):
     except urllib.error.HTTPError as e:                  # noqa: PERF203
         check("不存在的参数要报 404", e.code == 404, "HTTP %d" % e.code)
 
+    print("== 表情层（≈ Live2D expression）==")
+    exprs = a.json("/api/info.json").get("expressions", [])
+    check("info 里有表情表", len(exprs) >= 1, " ".join(e["id"] for e in exprs))
+    if exprs:
+        a.hit("/api/action?id=sleep&force=1"); time.sleep(0.35)
+        hb, _ = a.frame_hash()
+        act_before = a.json("/api/info.json")["action"]
+        a.hit("/api/expression?id=" + exprs[0]["id"]); time.sleep(0.6)
+        he, _ = a.frame_hash()
+        inf = a.json("/api/info.json")
+        check("叠表情后画面有变化", hb != he, "%s → %s" % (hb, he))
+        check("表情不顶掉动作", inf["action"] == act_before, "%s → %s" % (act_before, inf["action"]))
+        check("info 能读回当前表情", inf["expression"] == exprs[0]["id"], inf["expression"])
+        a.hit("/api/expression?off=1"); time.sleep(0.6)
+        check("取消表情后 info 清空", a.json("/api/info.json")["expression"] == "")
+        a.hit("/api/action?id=idle&force=1")
+        try:
+            urllib.request.urlopen(base + "/api/expression?id=__nope__", timeout=3).read()
+            check("不存在的表情要报 404", False, "返回了 200")
+        except urllib.error.HTTPError as e:                 # noqa: PERF203
+            check("不存在的表情要报 404", e.code == 404, "HTTP %d" % e.code)
+
     print("== 视线 ==")
     a.hit("/api/blink?v=0")
     a.hit("/api/gaze?x=-1&y=0"); time.sleep(0.3)

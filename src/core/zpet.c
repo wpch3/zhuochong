@@ -598,6 +598,29 @@ double zpet_blink_manual(const zpet *p)
     return (p && p->rig) ? zrig_blink_manual(p->rig) : -1.0;
 }
 
+/* 表情层（≈ Live2D expression）：叠在动作之上的一组参数偏移。 */
+int zpet_expression_count(const zpet *p) { return (p && p->rig) ? zrig_expression_count(p->rig) : 0; }
+
+const char *zpet_expression_id_at(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_expression_id(p->rig, i) : NULL;
+}
+
+const char *zpet_expression_name_at(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_expression_name(p->rig, i) : NULL;
+}
+
+const char *zpet_expression(const zpet *p)
+{
+    return (p && p->rig) ? zrig_expression(p->rig) : NULL;
+}
+
+int zpet_expression_set(zpet *p, const char *id)
+{
+    return (p && p->rig) ? zrig_expression_set(p->rig, id) : -1;
+}
+
 /* 命名参数层（≈ Live2D ParamXxx）：外部直驱一张参数表。
    zpet 只做转发，参数的定义与绑定都在角色包的 rig.json 里。 */
 int zpet_param_count(const zpet *p) { return (p && p->rig) ? zrig_param_count(p->rig) : 0; }

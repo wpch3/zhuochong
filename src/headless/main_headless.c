@@ -15,6 +15,7 @@
  *   GET /api/scale?s=          设置缩放
  *   GET /api/params.json       命名参数表（≈ Live2D ParamXxx）与当前值
  *   GET /api/param?id=&v=      直接写一个参数（reset=1 回默认；all=1 全部复位）
+ *   GET /api/expression?id=    叠一个表情（off=1 取消），表情和动作是两条轨
  *   GET /api/form?id=          切换形态
  *   GET /api/outfit?id=        换装
  *   GET /api/idle?s=           上报系统空闲秒数（沙箱里由浏览器上报）
@@ -418,6 +419,13 @@ static void handle_request(zsock fd, const http_req *r)
         p += z_snprintf(p, cap - (size_t)(p - body), "],\"outfit_names\":[");
         for (i = 0; i < zpet_outfit_count(g_pet); ++i)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_outfit_name_at(g_pet, i));
+        /* 表情层：当前表情 + 可选表情表（测试台的表情按钮按它生成） */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"expression\":\"%s\",\"expressions\":[",
+                        zpet_expression(g_pet) ? zpet_expression(g_pet) : "");
+        for (i = 0; i < zpet_expression_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s{\"id\":\"%s\",\"name\":\"%s\"}",
+                            i ? "," : "", zpet_expression_id_at(g_pet, i),
+                            zpet_expression_name_at(g_pet, i));
         z_snprintf(p, cap - (size_t)(p - body), "]}");
         UNLOCK();
         send_text(fd, 200, "application/json", body);
@@ -550,6 +558,32 @@ static void handle_request(zsock fd, const http_req *r)
         zpet_set_gaze(g_pet, nx, ny, !off);
         UNLOCK();
         send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/expression") == 0) {
+        /* 表情层：叠在当前动作之上。off=1 取消；未知 id 返回 404 */
+        char id[64];
+        int rc;
+        if (qint(r, "off", 0) || !qstr(r, "id", id, sizeof(id))) {
+            LOCK();
+            zpet_expression_set(g_pet, NULL);
+            UNLOCK();
+            send_text(fd, 200, "application/json", "{\"ok\":true,\"expression\":\"\"}");
+            return;
+        }
+        LOCK();
+        rc = zpet_expression_set(g_pet, id);
+        UNLOCK();
+        if (rc != 0) {
+            char body[160];
+            z_snprintf(body, sizeof(body),
+                       "{\"ok\":false,\"error\":\"没有这个表情\",\"id\":\"%s\"}", id);
+            send_text(fd, 404, "application/json", body);
+        } else {
+            char body[160];
+            z_snprintf(body, sizeof(body), "{\"ok\":true,\"expression\":\"%s\"}", id);
+            send_text(fd, 200, "application/json", body);
+        }
         return;
     }
     if (strcmp(r->path, "/api/params.json") == 0) {

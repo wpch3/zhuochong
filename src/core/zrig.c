@@ -12,6 +12,8 @@
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     12
 #define ZRIG_MAX_PARAMS   48
+#define ZRIG_MAX_EXPR     16
+#define ZRIG_MAX_EXPR_SET 96
 #define ZRIG_MAX_BINDS    96
 #define ZRIG_MAX_OVERRIDES 32
 
@@ -141,6 +143,23 @@ typedef struct {
     double scale;             /* 通道值 = 参数值 × scale */
 } zpbind;
 
+/* 表情（Live2D 的 expression）：一组参数偏移，叠在当前动作之上，自带淡入淡出。
+   和动作的区别 —— 表情不占用动作状态机，"笑着挥手"不需要再做一个新动作。 */
+enum { EXPR_ADD = 0, EXPR_SET };
+
+typedef struct {
+    int    param;             /* 参数下标 */
+    double value;
+    int    mode;              /* EXPR_ADD / EXPR_SET */
+} zexprp;
+
+typedef struct {
+    char   id[32];
+    char   name[48];
+    double fade;              /* 淡入淡出秒数 */
+    int    p0, np;            /* 在 r->exprps 里的区间 */
+} zexpr;
+
 typedef struct {
     char   id[40];
     char   label[48];         /* 测试台显示用的中文名，可选 */
@@ -239,6 +258,18 @@ struct zrig {
     int     nparams;
     zpbind  pbinds[ZRIG_MAX_BINDS];
     int     npbinds;
+
+    /* 表情层 */
+    zexpr   exprs[ZRIG_MAX_EXPR];
+    int     nexprs;
+    zexprp  exprps[ZRIG_MAX_EXPR_SET];
+    int     nexprps;
+    int     expr_cur, expr_prev;   /* -1 = 无 */
+    double  expr_t0, expr_fade;
+
+    /* 渲染用的"最终值"：表情会往上叠，所以和子系统自己的值分开存 */
+    double  blink_now;
+    double  gaze_nx, gaze_ny;
 
     /* 头/身跟随指针 */
     zlook  looks[ZRIG_MAX_GROUPS];
@@ -709,6 +740,99 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
     return 0;
 }
 
+/* expressions：一组参数偏移。
+   { "id":"shy", "name":"害羞", "fade":0.3,
+     "params":[ {"id":"ParamBrowLY","value":-0.5},
+                {"id":"ParamEyeOpen","value":0.6,"mode":"set"} ] } */
+static int load_expressions(zrig *r, const zjson *je, zdiag *d, const char *file)
+{
+    size_t i, n = zjson_count(je);
+    if (!je) return 0;
+    if (je->type != ZJSON_ARR) {
+        zdiag_error(d, file, je->line, 0, "expressions", "期望 array");
+        return -1;
+    }
+    for (i = 0; i < n; ++i) {
+        const zjson *ej = zjson_at(je, i);
+        const zjson *ps = zjson_obj_get(ej, "params");
+        const char *id = zjson_str(zjson_obj_get(ej, "id"), NULL);
+        size_t k, np = zjson_count(ps);
+        char path[128];
+        zexpr *e;
+        if (!id || !*id) {
+            zdiag_error(d, file, ej ? ej->line : 0, 0, "expressions", "缺少表情 id");
+            return -1;
+        }
+        z_snprintf(path, sizeof(path), "expressions[%s]", id);
+        if (r->nexprs >= ZRIG_MAX_EXPR) {
+            zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                        "表情过多（上限 %d）", ZRIG_MAX_EXPR);
+            return -1;
+        }
+        e = &r->exprs[r->nexprs++];
+        memset(e, 0, sizeof(*e));
+        z_strlcpy(e->id, id, sizeof(e->id));
+        z_strlcpy(e->name, zjson_str(zjson_obj_get(ej, "name"), id), sizeof(e->name));
+        e->fade = zjson_num(zjson_obj_get(ej, "fade"), 0.25);
+        if (e->fade < 0.0) e->fade = 0.0;
+        if (e->fade > 2.0) e->fade = 2.0;
+        e->p0 = r->nexprps;
+        if (ps && ps->type != ZJSON_ARR) {
+            zdiag_error(d, file, ps->line, 0, path, "params 期望 array");
+            return -1;
+        }
+        for (k = 0; k < np; ++k) {
+            const zjson *pj = zjson_at(ps, k);
+            const char *pid = zjson_str(zjson_obj_get(pj, "id"), NULL);
+            const char *md = zjson_str(zjson_obj_get(pj, "mode"), "add");
+            zexprp *x;
+            if (r->nexprps >= ZRIG_MAX_EXPR_SET) {
+                zdiag_error(d, file, pj ? pj->line : 0, 0, path,
+                            "表情参数过多（上限 %d）", ZRIG_MAX_EXPR_SET);
+                return -1;
+            }
+            x = &r->exprps[r->nexprps];
+            memset(x, 0, sizeof(*x));
+            x->param = param_find(r, param_alias(pid));
+            if (x->param < 0) {
+                zdiag_error(d, file, pj ? pj->line : 0, 0, path,
+                            "参数 '%s' 不存在（表情只能写 params 里声明过的参数）",
+                            pid ? pid : "(缺)");
+                return -1;
+            }
+            x->value = zjson_num(zjson_obj_get(pj, "value"), 0.0);
+            x->mode = z_streq(md, "set") ? EXPR_SET : EXPR_ADD;
+            r->nexprps++;
+            e->np++;
+        }
+    }
+    return 0;
+}
+
+/* 这一帧某个参数被表情改了多少（已含淡入淡出权重）。 */
+static double expr_offset(const zrig *r, int pi)
+{
+    double w = 1.0, off = 0.0;
+    int pass;
+    if (r->expr_cur < 0 && r->expr_prev < 0) return 0.0;
+    if (r->expr_fade > 1e-6) w = z_smoothstep(ZC_CLAMP((r->now - r->expr_t0) / r->expr_fade, 0.0, 1.0));
+    for (pass = 0; pass < 2; ++pass) {
+        int ei = pass ? r->expr_prev : r->expr_cur;
+        double ww = pass ? (1.0 - w) : w;
+        const zexpr *e;
+        int k;
+        if (ei < 0 || ei >= r->nexprs || ww <= 0.0) continue;
+        e = &r->exprs[ei];
+        for (k = 0; k < e->np; ++k) {
+            const zexprp *x = &r->exprps[e->p0 + k];
+            if (x->param != pi) continue;
+            if (x->mode == EXPR_SET) off += ww * (x->value - r->params[pi].value);
+            else                     off += ww * x->value;
+        }
+    }
+    return off;
+}
+
 static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
 {
     size_t i, n = zjson_count(jacts);
@@ -1013,6 +1137,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
     load_builtin_params(r);
     if (load_params(r, zjson_obj_get(root, "params"), diag, file) != 0) goto fail;
+    if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
 
     /* 眨眼 */
     {
@@ -1072,6 +1197,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     }
 
     r->fade_prev = -1;
+    r->expr_cur = r->expr_prev = -1;
     r->phys_last = -1.0;
     r->look_last = -1.0;
     r->cur_id[0] = 0;
@@ -1255,26 +1381,41 @@ static void compute_group_transforms(zrig *r)
     accumulate_action(r, a, zsm_elapsed(&r->sm), w, a->loop ? -1.0 : a->duration);
     r->dim_now = prev ? (prev->dim * (1.0 - w) + a->dim * w) : a->dim;
 
-    /* 指针跟随叠加在动作之上（Live2D 里这是参数层，不属于任何一个 motion）。
-       放在动作之后、物理之前：所以转头也会把头发甩起来。 */
-    for (i = 0; i < r->nlooks; ++i) {
-        const zlook *lk = &r->looks[i];
-        if (lk->group < 0 || lk->group >= r->ngroups) continue;
-        r->g_rot[lk->group] += lk->rot * r->look_cx;
-        r->g_dx[lk->group]  += lk->dx  * r->look_cx;
-        r->g_dy[lk->group]  += lk->dy  * r->look_cy;
-    }
-
-    /* 命名参数层：外部（脚本 / 口型 / 表情）写的值，同样叠在动作之上。 */
-    for (i = 0; i < r->nparams; ++i) {
-        const zparam *q = &r->params[i];
-        int k;
-        if (q->builtin != PBI_NONE || q->nbind <= 0) continue;   /* 内建的走子系统 */
-        if (fabs(q->value) < 1e-9) continue;
-        for (k = 0; k < q->nbind; ++k) {
-            const zpbind *b = &r->pbinds[q->bind0 + k];
-            apply_chan(r, b->part, b->group, b->param,
-                       q->value * b->scale, b->curve, b->strips);
+    /* 命名参数层 + 表情层：都叠在动作之上。
+       内建参数（跟随/眨眼/眼球）走各自的子系统，其余按 binds 写通道。 */
+    {
+        double lx = r->look_cx, ly = r->look_cy;
+        r->blink_now = r->blink_value;
+        r->gaze_nx = r->gaze_x;
+        r->gaze_ny = r->gaze_y;
+        for (i = 0; i < r->nparams; ++i) {
+            const zparam *q = &r->params[i];
+            double off = expr_offset(r, i);
+            double v = q->value + off;
+            int k;
+            switch (q->builtin) {
+                case PBI_ANGLE_X:   lx += off / 30.0; continue;
+                case PBI_ANGLE_Y:   ly -= off / 30.0; continue;
+                case PBI_EYE_OPEN:  r->blink_now = ZC_CLAMP(r->blink_now - off, 0.0, 1.0); continue;
+                case PBI_EYEBALL_X: r->gaze_nx = ZC_CLAMP(r->gaze_nx + off, -1.0, 1.0); continue;
+                case PBI_EYEBALL_Y: r->gaze_ny = ZC_CLAMP(r->gaze_ny + off, -1.0, 1.0); continue;
+                default: break;
+            }
+            if (q->nbind <= 0 || fabs(v) < 1e-9) continue;
+            for (k = 0; k < q->nbind; ++k) {
+                const zpbind *b = &r->pbinds[q->bind0 + k];
+                apply_chan(r, b->part, b->group, b->param,
+                           v * b->scale, b->curve, b->strips);
+            }
+        }
+        /* 指针跟随叠加在动作之上（Live2D 里这是参数层，不属于任何一个 motion）。
+           放在动作之后、物理之前：所以转头也会把头发甩起来。 */
+        for (i = 0; i < r->nlooks; ++i) {
+            const zlook *lk = &r->looks[i];
+            if (lk->group < 0 || lk->group >= r->ngroups) continue;
+            r->g_rot[lk->group] += lk->rot * lx;
+            r->g_dx[lk->group]  += lk->dx  * lx;
+            r->g_dy[lk->group]  += lk->dy  * ly;
         }
     }
 }
@@ -1666,7 +1807,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
 
     a = current_action(r);
     {
-        double blink = r->blink_value;
+        double blink = r->blink_now;      /* 表情叠加后的最终闭合度 */
         for (i = 0; i < r->nparts; ++i) {
             int pi = r->order[i];
             zpart *p = &r->parts[pi];
@@ -1677,9 +1818,9 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
             double gm[6], lm[6], m[6];
             const zimg *src = p->img_scaled ? p->img_scaled : p->img;
             /* 视线跟随：只影响带 gaze 标签的部件（虹膜拆分后自动升级为真·视线） */
-            if ((p->tags & TAG_GAZE) && (r->gaze_x != 0.0 || r->gaze_y != 0.0)) {
-                extra_dx += r->gaze_x * r->gaze_max_dx;
-                extra_dy += r->gaze_y * r->gaze_max_dy;
+            if ((p->tags & TAG_GAZE) && (r->gaze_nx != 0.0 || r->gaze_ny != 0.0)) {
+                extra_dx += r->gaze_nx * r->gaze_max_dx;
+                extra_dy += r->gaze_ny * r->gaze_max_dy;
             }
             /* 眼睑：眨眼参数直接变成往下滑的位移。
                眼皮本身是从眼睛上方那块皮肤切出来的，静止时被眼眶遮罩挡住看不见，
@@ -2002,6 +2143,58 @@ void zrig_look(zrig *r, double nx, double ny)
 
 double zrig_look_x(const zrig *r) { return r ? r->look_cx : 0.0; }
 double zrig_look_y(const zrig *r) { return r ? r->look_cy : 0.0; }
+
+/* ------------------------------------------------------------- 表情层 */
+int zrig_expression_count(const zrig *r) { return r ? r->nexprs : 0; }
+
+const char *zrig_expression_id(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nexprs) return NULL;
+    return r->exprs[i].id;
+}
+
+const char *zrig_expression_name(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nexprs) return NULL;
+    return r->exprs[i].name;
+}
+
+const char *zrig_expression(const zrig *r)
+{
+    if (!r || r->expr_cur < 0) return NULL;
+    return r->exprs[r->expr_cur].id;
+}
+
+int zrig_expression_set(zrig *r, const char *id)
+{
+    int i, next = -1;
+    if (!r) return -1;
+    if (id && *id) {
+        for (i = 0; i < r->nexprs; ++i)
+            if (z_streq(r->exprs[i].id, id)) { next = i; break; }
+        if (next < 0) return -1;              /* 没有这个表情：报错，别悄悄忽略 */
+    }
+    if (next == r->expr_cur) return 0;
+    r->expr_prev = r->expr_cur;
+    r->expr_cur = next;
+    r->expr_t0 = r->now;
+    /* 淡入用新表情的 fade；切回"无表情"时用旧表情的 fade 淡出 */
+    r->expr_fade = (next >= 0) ? r->exprs[next].fade
+                 : (r->expr_prev >= 0 ? r->exprs[r->expr_prev].fade : 0.0);
+    return 0;
+}
+
+void zrig_expression_clear(zrig *r) { (void)zrig_expression_set(r, NULL); }
+
+double zrig_expression_weight(const zrig *r)
+{
+    if (!r || (r->expr_cur < 0 && r->expr_prev < 0)) return 0.0;
+    if (r->expr_fade <= 1e-6) return r->expr_cur >= 0 ? 1.0 : 0.0;
+    {
+        double w = z_smoothstep(ZC_CLAMP((r->now - r->expr_t0) / r->expr_fade, 0.0, 1.0));
+        return r->expr_cur >= 0 ? w : 1.0 - w;
+    }
+}
 
 /* ------------------------------------------------- 命名参数层（外部驱动） */
 int zrig_param_count(const zrig *r) { return r ? r->nparams : 0; }
