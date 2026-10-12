@@ -289,7 +289,6 @@ struct zrig {
     /* 帧缓冲 */
     zimg  *fb;
     zimg  *maskbuf;           /* 遮罩部件画在这里（只取它的 alpha） */
-    int    maskbuf_part;      /* maskbuf 当前装的是哪个部件，-1 = 空 */
     zimg  *scratch;           /* 被裁切的部件先画在这里，再按遮罩合成到 fb */
     double fb_scale;
     int    fb_w, fb_h;
@@ -2483,7 +2482,6 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
     }
     if (!r->fb) return NULL;
     zimg_clear(r->fb);
-    r->maskbuf_part = -1;       /* 新的一帧：遮罩缓冲作废 */
 
     a = current_action(r);
     {
