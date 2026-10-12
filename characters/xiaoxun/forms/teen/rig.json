@@ -80,6 +80,20 @@
         621
       ],
       "parent": "arm_r"
+    },
+    "hand_l": {
+      "pivot": [
+        254.5,
+        734.0
+      ],
+      "parent": "forearm_l"
+    },
+    "hand_r": {
+      "pivot": [
+        590.0,
+        734.0
+      ],
+      "parent": "forearm_r"
     }
   },
   "gaze": {
@@ -121,7 +135,7 @@
       "layer": 60,
       "pos": [
         282,
-        768
+        731
       ],
       "anchor": [
         0,
@@ -139,7 +153,7 @@
       "layer": 61,
       "pos": [
         418,
-        768
+        732
       ],
       "anchor": [
         0,
@@ -336,7 +350,7 @@
       "group": "forearm_l",
       "layer": 142,
       "pos": [
-        200,
+        228,
         610
       ],
       "anchor": [
@@ -345,6 +359,24 @@
       ],
       "tags": [
         "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+    },
+    {
+      "id": "hand_l",
+      "file": "sprites/hand_l.png",
+      "group": "hand_l",
+      "layer": 138,
+      "pos": [
+        254,
+        734
+      ],
+      "anchor": [
+        0.6728,
+        0.1585
+      ],
+      "tags": [
+        "body"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
     },
@@ -381,6 +413,24 @@
       ],
       "tags": [
         "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+    },
+    {
+      "id": "hand_r",
+      "file": "sprites/hand_r.png",
+      "group": "hand_r",
+      "layer": 139,
+      "pos": [
+        590,
+        734
+      ],
+      "anchor": [
+        0.321,
+        0.1585
+      ],
+      "tags": [
+        "body"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
     },
@@ -980,6 +1030,40 @@
           "phase": 0.06
         },
         {
+          "target": "hand_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 3.5,
+          "freq": 0.18,
+          "phase": 0.34
+        },
+        {
+          "target": "hand_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -3.5,
+          "freq": 0.18,
+          "phase": 0.34
+        },
+        {
+          "target": "seg_leg_l",
+          "param": "bend_x",
+          "wave": "sine",
+          "amp": 6.0,
+          "freq": 0.18,
+          "curve": "tip",
+          "phase": 0.12
+        },
+        {
+          "target": "seg_leg_r",
+          "param": "bend_x",
+          "wave": "sine",
+          "amp": 6.0,
+          "freq": 0.18,
+          "curve": "tip",
+          "phase": 0.12
+        },
+        {
           "target": "forearm_l",
           "param": "rot_deg",
           "wave": "sine",
@@ -1168,6 +1252,40 @@
           "amp": 0.6,
           "freq": 0.24,
           "phase": 0.18
+        },
+        {
+          "target": "hand_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.06,
+          "phase": 0.42
+        },
+        {
+          "target": "hand_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -1.2,
+          "freq": 0.06,
+          "phase": 0.42
+        },
+        {
+          "target": "seg_leg_l",
+          "param": "bend_x",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.06,
+          "curve": "tip",
+          "phase": 0.2
+        },
+        {
+          "target": "seg_leg_r",
+          "param": "bend_x",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.06,
+          "curve": "tip",
+          "phase": 0.2
         },
         {
           "target": "forearm_l",
@@ -1542,6 +1660,40 @@
           "dur": 0.5
         },
         {
+          "target": "hand_l",
+          "param": "rot_deg",
+          "wave": "bounce",
+          "amp": 12.0,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "hand_r",
+          "param": "rot_deg",
+          "wave": "bounce",
+          "amp": -12.0,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "seg_leg_l",
+          "param": "bend_x",
+          "wave": "bounce",
+          "amp": -7.0,
+          "freq": 0.0,
+          "curve": "tip",
+          "dur": 0.5
+        },
+        {
+          "target": "seg_leg_r",
+          "param": "bend_x",
+          "wave": "bounce",
+          "amp": 7.0,
+          "freq": 0.0,
+          "curve": "tip",
+          "dur": 0.5
+        },
+        {
           "target": "forearm_l",
           "param": "rot_deg",
           "wave": "bounce",
@@ -1739,6 +1891,24 @@
           "dur": 0.25
         },
         {
+          "target": "hand_l",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": 14.0,
+          "freq": 0.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "hand_r",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": -14.0,
+          "freq": 0.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
           "target": "arm_l",
           "param": "rot_deg",
           "wave": "pulse",
@@ -1904,6 +2074,40 @@
           "wave": "decay",
           "amp": -1.666,
           "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "hand_l",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": 11.0,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "hand_r",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": -11.0,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "seg_leg_l",
+          "param": "bend_x",
+          "wave": "decay",
+          "amp": 8.0,
+          "freq": 2.6,
+          "curve": "tip",
+          "dur": 0.7
+        },
+        {
+          "target": "seg_leg_r",
+          "param": "bend_x",
+          "wave": "decay",
+          "amp": 8.0,
+          "freq": 2.6,
+          "curve": "tip",
           "dur": 0.7
         },
         {
@@ -2387,6 +2591,23 @@
           "ease": "out"
         },
         {
+          "target": "hand_r",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": -16.0,
+          "dur": 2.4,
+          "ease": "out"
+        },
+        {
+          "target": "hand_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 20.0,
+          "freq": 2.2,
+          "phase": 0.18,
+          "dur": 2.4
+        },
+        {
           "target": "head",
           "param": "rot_deg",
           "wave": "sine",
@@ -2754,6 +2975,29 @@
       "note": "呆毛上下点头"
     },
     {
+      "id": "hand_l_lag",
+      "part": "hand_l",
+      "driver": "forearm_l",
+      "axis": "x",
+      "param": "rot_deg",
+      "ratio": 0.22,
+      "stiffness": 34,
+      "damping": 4.4,
+      "max": 9,
+      "note": "手腕跟随滞后：部件锚点就在腕上，所以 rot_deg 绕腕转"
+    },
+    {
+      "id": "hand_r_lag",
+      "part": "hand_r",
+      "driver": "forearm_r",
+      "axis": "x",
+      "param": "rot_deg",
+      "ratio": 0.22,
+      "stiffness": 34,
+      "damping": 4.4,
+      "max": 9
+    },
+    {
       "id": "bangs_x",
       "part": "hair_front",
       "driver": "head",
@@ -3046,6 +3290,66 @@
           "group": "forearm_r",
           "param": "rot_deg",
           "scale": -5.0
+        }
+      ]
+    },
+    {
+      "id": "ParamHandL",
+      "label": "左手腕",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "hand_l",
+          "param": "rot_deg",
+          "scale": 22.0
+        }
+      ],
+      "note": "绕腕旋转 ±22°；手往袖子里续了 14px 皮肤，转开不露腕"
+    },
+    {
+      "id": "ParamHandR",
+      "label": "右手腕",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "hand_r",
+          "param": "rot_deg",
+          "scale": -22.0
+        }
+      ]
+    },
+    {
+      "id": "ParamLegL",
+      "label": "左腿 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "seg_leg_l",
+          "param": "bend_x",
+          "scale": 20.0,
+          "curve": "tip"
+        }
+      ],
+      "note": "±20px（脚踝处），裙摆下沿不动"
+    },
+    {
+      "id": "ParamLegR",
+      "label": "右腿 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "seg_leg_r",
+          "param": "bend_x",
+          "scale": 20.0,
+          "curve": "tip"
         }
       ]
     },

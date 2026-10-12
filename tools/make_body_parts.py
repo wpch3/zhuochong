@@ -14,6 +14,16 @@
   leg_l/r: 裙摆底上方一点 → 脚底，按中线左右分
 层序（从后到前）：leg < torso < arm < head
 
+裙下大腿（G4c2）：
+  躯干原先一路切到"裙摆底 + 重叠带"，也就是**裙子下面那截大腿是画在躯干上的**。
+  腿一抬，大腿那截还钉在原地，腿到 y=776 才开始动 —— 接缝处直接豁一个口子。
+  现在改成：① 躯干**逐列切到裙摆下沿**（第一段连续肤色之前），大腿整条归腿件；
+  ② 腿件在裙子里**往上续一段大腿**（塗り足し：按列取裙摆下第一段真皮肤的颜色
+  往上铺，再横向外扩几像素），全部夹在"裙子完全不透明"的范围内，
+  静止合成一个像素都不变，抬腿时却有东西顶在接缝上。
+  （这块按 D19 本该 AI 重绘，但「没有裙子的角色图」既不合适也没必要：
+   这段永远藏在裙子里，露出来的只有贴着裙摆的那十几像素，取真皮肤色外扩即可。）
+
 用法：
   python3 tools/make_body_parts.py --character xiaoxun --form teen
 产出：
@@ -31,6 +41,17 @@ try:
 except ImportError:
     print("需要 pillow 与 numpy：python3 -m venv ~/.imgenv && ~/.imgenv/bin/pip install pillow numpy")
     raise
+
+
+THIGH_EXT = 64      # 大腿往裙子里续多高（像素）
+THIGH_WIDEN = 18    # 续出来的大腿往外胖几像素（抬腿时盖住接缝两侧的缝）
+SKIN_RUN = 4        # 连续多少行肤色才算"裙摆到此为止"
+
+
+def skin_mask(rgb, alpha):
+    """肤色（#FCE4D8 一类）：亮、偏红、R 明显高于 B。裙子是深蓝、袜子/鞋更暗。"""
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    return alpha & (r > 205) & (g > 150) & (r > b + 10) & (r >= g)
 
 
 def erode_h(mask, k):
@@ -177,17 +198,84 @@ def main() -> int:
                     armR[y, max(0, a - pad):b + 1 + pad] = True
             torso_excl[y] = armL[y] | armR[y]
 
+    # ---- 裙摆下沿（逐列）：第一段连续 SKIN_RUN 行肤色的起点 = 大腿开始的地方 ----
+    skin = skin_mask(rgba[..., :3].astype(int), mask)
+    thigh_top = np.full(W, H, int)          # 没有大腿的列 = H（躯干整列都留着）
+    scan0 = max(0, hip_y - 10)
+    for x in range(TL, TR + 1):
+        col = skin[scan0:, x]
+        run = 0
+        for i, v in enumerate(col):
+            run = run + 1 if v else 0
+            if run >= SKIN_RUN:
+                thigh_top[x] = scan0 + i - SKIN_RUN + 1
+                break
+    # 两腿之间那几列（裆下的空档）一路扫到膝盖才碰到肤色 —— 不能照它切，
+    # 否则躯干在两腿中间拖下来一根 4px 宽的静止尖刺。按最近的正常列取值。
+    good = (thigh_top <= legs_top + 30)
+    if good.sum() < 20:
+        raise SystemExit("[make_body_parts] 找不到裙摆下沿（肤色列太少），别往下切了")
+    gi = np.flatnonzero(good)
+    span = np.zeros(W, bool)
+    span[TL:TR + 1] = True
+    fix = span & ~good
+    thigh_top[fix] = thigh_top[gi[np.abs(np.flatnonzero(fix)[:, None] - gi[None, :]).argmin(axis=1)]]
+    has_thigh = span
+    # 躯干逐列止于裙摆下沿；大腿那一截整条让给腿件
+    torso_cut = (ys >= thigh_top[None, :])
+
     regions = {
         # 头：到颈下方一点（含脖子），转头时根部不会断
         "seg_head":  (ys <= neck_y + ov),
         # 躯干：颈上方一点 → 裙摆下方一点；手臂那两块让出去
-        "seg_torso": (ys >= neck_y - ov) & (ys <= legs_top + ov) & ~torso_excl,
+        "seg_torso": (ys >= neck_y - ov) & (ys <= legs_top + ov) & ~torso_excl & ~torso_cut,
         "seg_arm_l": armL,
         "seg_arm_r": armR,
         # 腿：裙摆上方一点 → 脚底，按中线分左右
         "seg_leg_l": (ys >= legs_top - ov) & (xs < center_x) & ~armL & ~armR,
         "seg_leg_r": (ys >= legs_top - ov) & (xs >= center_x) & ~armL & ~armR,
     }
+
+    # ---- 腿件：裙子里那一段原本是**裙子的像素**，腿一转就把一块深蓝拖到裙摆外。
+    #      这里按列把它改画成大腿（颜色取裙摆下第一段真皮肤），再横向外扩几像素。
+    #      只在"裙子完全不透明"的范围里动手，静止合成因此一个像素都不会变。 ----
+    skirt_solid = ((ys >= neck_y - ov) & ~torso_excl & ~torso_cut & (alpha >= 250))
+    rgba_leg = rgba.copy()
+    mask_leg = mask.copy()
+    thigh_fill = np.zeros_like(mask)
+    skin_col = np.zeros((W, 3), np.float32)
+    for x in range(W):
+        if not has_thigh[x]:
+            continue
+        t = thigh_top[x]
+        band = rgba[t:t + 6, x, :3][skin[t:t + 6, x]]
+        if band.size == 0:
+            continue
+        skin_col[x] = np.median(band, axis=0)
+        thigh_fill[max(0, t - THIGH_EXT):t, x] = True
+    # 横向外扩：抬腿时大腿两侧会从裙摆下让出一条缝，胖几像素正好顶上
+    if THIGH_WIDEN > 0:
+        wide = thigh_fill.copy()
+        for k in range(1, THIGH_WIDEN + 1):
+            wide[:, k:] |= thigh_fill[:, :-k]
+            wide[:, :-k] |= thigh_fill[:, k:]
+        thigh_fill = wide
+    thigh_fill &= (skirt_solid | (mask & (ys >= np.maximum(thigh_top - THIGH_EXT, 0)[None, :])
+                                  & (ys < thigh_top[None, :])))
+    thigh_fill &= ~skin                       # 真皮肤的地方不动
+    # 没有自己颜色的列（外扩出去的那几列）借最近一列的肤色
+    known = np.flatnonzero(skin_col.any(axis=1))
+    if known.size:
+        idx = known[np.abs(np.arange(W)[:, None] - known[None, :]).argmin(axis=1)]
+        skin_col = skin_col[idx]
+    shade = np.clip(skin_col * 0.965, 0, 255)         # 裙子底下压一点点暗
+    yy_f, xx_f = np.nonzero(thigh_fill)
+    rgba_leg[yy_f, xx_f, :3] = shade[xx_f].astype(np.uint8)
+    rgba_leg[yy_f, xx_f, 3] = 255
+    mask_leg |= thigh_fill
+    leg_extra = thigh_fill & (xs < center_x), thigh_fill & (xs >= center_x)
+    regions["seg_leg_l"] |= leg_extra[0]
+    regions["seg_leg_r"] |= leg_extra[1]
 
     layers = {"seg_leg_l": 60, "seg_leg_r": 61, "seg_torso": 100,
               "seg_arm_l": 140, "seg_arm_r": 141, "seg_head": 180}
@@ -196,6 +284,8 @@ def main() -> int:
 
     out = {"schema_version": "1.0", "source": "sprites/body_full.png",
            "image_size": [W, H], "overlap_px": ov,
+           "thigh_top": None,          # 逐列的裙摆下沿（下面填），手臂工具重切躯干时要用同一条
+           "thigh_ext_px": THIGH_EXT, "thigh_widen_px": THIGH_WIDEN,
            "cut_lines": {"neck": neck_y, "shoulder": shoulder_y, "hip": hip_y,
                          "legs_top": legs_top, "wrist": wrist_y, "arm_split": split_y,
                          "torso_left": TL, "torso_right": TR, "center_x": center_x},
@@ -236,13 +326,14 @@ def main() -> int:
         elif pid == "seg_head":           # 下缘（脖子处）渐隐
             r = np.clip((neck_y + ov - gy) / max(1.0, float(ov)), 0.0, 1.0)
             a[..., 3] *= r[:, None]
-        elif pid in ("seg_leg_l", "seg_leg_r"):   # 上缘（裙摆下）渐隐
-            r = np.clip((gy - (legs_top - ov)) / max(1.0, float(ov)), 0.0, 1.0)
-            a[..., 3] *= r[:, None]
+        # 腿件不做渐隐：上沿已经被续到裙子深处（THIGH_EXT），
+        # 渐隐只会让大腿根变成半透明 —— 抬腿时那一截直接透出背景。
         return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
 
     for pid, reg in regions.items():
         src_rgba, src_mask = (rgba_neck, mask_neck) if pid == "seg_torso" else (rgba, mask)
+        if pid in ("seg_leg_l", "seg_leg_r"):
+            src_rgba, src_mask = rgba_leg, mask_leg
         img, (x0, y0) = cut(src_mask, src_rgba, reg)
         img = feather(img, x0, y0, pid)
         if img is None:
@@ -259,6 +350,10 @@ def main() -> int:
         preview[m] = (*tint[pid], 210)
         print(f"  {pid:10s} {img.width:4d}x{img.height:4d}  左上 ({x0},{y0})")
 
+    out["thigh_top"] = [int(v) if v < H else -1 for v in thigh_top]
+    out["patches"].append(
+        f"躯干逐列切到裙摆下沿；腿件在裙子里续了 {THIGH_EXT}px 大腿（外扩 {THIGH_WIDEN}px，"
+        f"共 {int(thigh_fill.sum())} 像素），抬腿不露底")
     out["parts"].sort(key=lambda p: p["layer"])
     with open(os.path.join(sprites, "body_parts.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
@@ -272,6 +367,9 @@ def main() -> int:
     pv.convert("RGB").save(pp, quality=92)
 
     print(f"手臂离身行 {split_y}（此行以下按真实轮廓抠，以上竖切）")
+    tt = thigh_top[has_thigh]
+    print(f"裙摆下沿（逐列）y {tt.min()}..{tt.max()}（中位 {int(np.median(tt))}），"
+          f"大腿补了 {int(thigh_fill.sum())} 像素")
     print(f"切线：颈 {neck_y} 肩 {shoulder_y} 髋 {hip_y} 裙摆底 {legs_top} 腕 {wrist_y}；"
           f"躯干 x [{TL},{TR}]；重叠 {ov}px")
     print(f"写出 {os.path.join(sprites,'body_parts.json')}")

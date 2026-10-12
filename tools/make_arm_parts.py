@@ -10,7 +10,8 @@
 切法：
   ① 袖子按颜色 flood（种子放在袖子中段），天然停在白夹克的边上；
   ② 袖口以下用「蛇形」逐行跟随（取包含上一行中心的那段连通前景），把袖口 + 手一起带上；
-  ③ 在肘部（anchors 的 elbow_*）切成上臂 / 前臂两件，留 24px 重叠带并做渐隐，
+  ③ 在肘部（anchors 的 elbow_*）切成上臂 / 前臂 / 手三件（手腕线是逐行实测的
+     袖口下沿，不是 anchors 里按比例算的那条），留 24px 重叠带并做渐隐，
      这样肘部旋转不会出现硬切线。
 
 袖子挪走后躯干会空一块（夹克侧片、下摆条、裙子边），原画里**没有**这些像素 ——
@@ -33,11 +34,36 @@ from PIL import Image
 TEAL = np.array([108, 180, 192])      # 袖子的青
 TEAL_TOL = 150                        # |ΔR|+|ΔG|+|ΔB| 阈值
 ELBOW_OVERLAP = 24                    # 肘部重叠带（上下各一半）
+WRIST_STUB = 10                       # 手腕：手往袖口里续多高的皮肤（藏在袖子里）
+WRIST_STUB_IN = 4                     # 续出来的皮肤要比袖口窄这么多（转手时不许戳出袖子）
+SKIN_RUN = 3                          # 连续几行"这一行基本都是肤色"才算袖口到头了
 FEATHER = 2                         # 切口羽化半径（像素）
 BLEED = 5                           # 躯干切口往外塗り足し的圈数
 LINE_RGB = (90, 90, 110)            # 线稿色 #5A5A6E：补出来的衣片也要有轮廓线
 LINE_W = 2                          # 轮廓线宽（像素）
 SHOULDER_CAP = 46                   # 肩头保留给躯干的高度（像素）
+
+
+def skin_of(rgb, m):
+    """肤色（#FCE4D8 一类）：亮、偏红。青袖 #6CB4C0 的 G/B 高于 R，白夹克 R≈G≈B。"""
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    return m & (r > 205) & (r > b + 12) & (r >= g) & (g > 140)
+
+
+def wrist_row(rgb, m, y_from, y_to):
+    """袖口到头的那一行 = 从肘往下第一次连续 SKIN_RUN 行\"这一行的不透明像素
+       有六成以上是肤色\"。手是从袖口里伸出来的，这一行就是手腕。"""
+    sk = skin_of(rgb, m)
+    run = 0
+    for y in range(y_from, y_to):
+        tot = int(m[y].sum())
+        if tot >= 6 and int(sk[y].sum()) >= tot * 0.6:
+            run += 1
+            if run >= SKIN_RUN:
+                return y - SKIN_RUN + 1
+        else:
+            run = 0
+    return -1
 
 
 def flood(mask, seed):
@@ -290,27 +316,66 @@ def main():
             cur = newbody[..., :3][mask].astype(np.float32)
             newbody[..., :3][mask] = (cur * (1 - k) + ln * k).astype(np.uint8)
     report["checks"]["outline_px"] = int(rim.sum())
+    # 裙摆下沿（G4c2）：躯干只到裙子为止，裙子下面那截大腿归腿件。
+    # make_body_parts 已经按列量好了线，这里必须用**同一条**，
+    # 否则这一步把大腿又原样贴回躯干，腿一抬接缝处就是一段钉死的大腿。
+    tt = bp.get("thigh_top")
+    if tt:
+        tta = np.array(tt, int)
+        tta[tta < 0] = H
+        torso_trim = np.arange(H)[:, None] >= tta[None, :]
+        newbody[..., 3][torso_trim] = 0
+        report["checks"]["torso_thigh_trim_px"] = int(torso_trim.sum())
     tx, ty = torso["pos"]
     tw, th = torso["size"]
     Image.fromarray(newbody[ty:ty + th, tx:tx + tw]).save(os.path.join(sp, "seg_torso.png"))
     report["checks"]["torso_filled_px"] = int(paste.sum())
     report["checks"]["torso_cleared_px"] = int(lost.sum())
 
-    # ---- 四件手臂 ----
+    # ---- 六件手臂（上臂 / 前臂 / 手 × 左右）----
     layer = {"l": 140, "r": 141}
+    hand_layer = {"l": 138, "r": 139}       # 手画在**前臂底下**：袖口要压住手腕那截补画
     for side in ("l", "r"):
         m = arms[side]
         elbow_y = int(pts[f"elbow_{side}"][1])
         half = ELBOW_OVERLAP // 2
         orig_a = (body[..., 3] / 255.0).astype(np.float32)
-        for seg, keep in (("upper", m & (np.arange(H)[:, None] <= elbow_y + half)),
-                          ("fore",  m & (np.arange(H)[:, None] >= elbow_y - half))):
+        yy_col = np.arange(H)[:, None]
+        # 手腕 = 袖口到头的那一行（逐行实测，不用 anchors 里按比例算的 708：
+        # 那条线落在指尖上，照它切会把半只手留在前臂上）
+        wrist_y = wrist_row(rgb, m, elbow_y + 20, H)
+        if wrist_y < 0:
+            raise SystemExit(f"[make_arm_parts] {side} 侧找不到袖口下沿（手腕），别往下切了")
+        # 手往袖子里续一截皮肤（塗り足し）：手腕一转，袖口下面才不会露出背景。
+        # 只在"袖子本来就不透明"的范围里续，静止时完全被袖口压住。
+        hand_rgb = body[..., :3].copy()
+        stub = np.zeros((H, W), bool)
+        # 续出来的皮肤要**缩在袖口里面**：贴着袖口边补的话，手一转那一条就从
+        # 袖子侧面戳出来，成了一小块飘在外面的肉色（实测 ±20° 时左右各一片）。
+        inner = erode(m, WRIST_STUB_IN)
+        top_rows = np.arange(wrist_y, min(H, wrist_y + 4))
+        for x in range(W):
+            if not m[top_rows, x].any():
+                continue
+            cols = hand_rgb[top_rows, x][m[top_rows, x]]
+            c = np.median(cols, axis=0)
+            for y in range(max(0, wrist_y - WRIST_STUB), wrist_y):
+                if inner[y, x] and body[y, x, 3] >= 250:
+                    hand_rgb[y, x] = c
+                    stub[y, x] = True
+        for seg, keep in (("upper", m & (yy_col <= elbow_y + half)),
+                          ("fore",  m & (yy_col >= elbow_y - half) & (yy_col <= wrist_y + 1)),
+                          ("hand",  (m & (yy_col >= wrist_y)) | stub)):
             # 把原画自己的抗锯齿边一起抓进来，掩码内严格保留原 alpha，
             # 只在往外多扩的 2px 上做软边 —— 这样静止合成能逐像素还原
             grab = dilate(keep, 2) & (body[..., 3] > 0)
+            if seg == "hand":
+                grab = (grab | stub) & ~(yy_col < wrist_y - WRIST_STUB)
             sa = soft(dilate(grab, 2))
             sa[grab] = 1.0
             a = orig_a * sa
+            if seg == "hand":
+                a[stub] = 1.0
             # 肘部重叠带：**只让前臂淡入**，上臂在带内保持满值当底，
             # 这样 over 合成仍然是满的（两件都淡的话 0.5 over 0.5 = 0.75，会露底）
             if seg == "fore":
@@ -318,18 +383,32 @@ def main():
                 a = a * np.clip((yy - (elbow_y - half)) / ELBOW_OVERLAP, 0.0, 1.0)
             ys, xs = np.nonzero(a > 0.004)
             box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
-            img = cut(body[..., :3], a, box)
-            name = f"arm_{side}_{seg}"
+            img = cut(hand_rgb if seg == "hand" else body[..., :3], a, box)
+            name = f"arm_{side}_{seg}" if seg != "hand" else f"hand_{side}"
             img.save(os.path.join(sp, name + ".png"))
-            joint = pts[f"shoulder_{side}"] if seg == "upper" else pts[f"elbow_{side}"]
+            if seg == "upper":
+                joint, grp, lay = pts[f"shoulder_{side}"], f"arm_{side}", layer[side]
+                note = "上臂：绕肩旋转"
+            elif seg == "fore":
+                joint, grp, lay = pts[f"elbow_{side}"], f"forearm_{side}", layer[side] + 2
+                note = "前臂：绕肘旋转（父组＝上臂）"
+            else:
+                wx = np.nonzero(m[wrist_y])[0]
+                joint = (float(wx.mean()) if wx.size else float(box[0] + box[2]) / 2.0,
+                         float(wrist_y))
+                grp, lay = f"hand_{side}", hand_layer[side]
+                note = (f"手：绕腕旋转（父组＝前臂）；往袖子里续了 {WRIST_STUB}px 皮肤，"
+                        f"画在前臂底下，静止时被袖口压住")
             report["parts"].append({
                 "id": name, "file": f"sprites/{name}.png",
                 "pos": [box[0], box[1]], "size": [box[2] - box[0], box[3] - box[1]],
-                "group": (f"arm_{side}" if seg == "upper" else f"forearm_{side}"),
-                "layer": layer[side] + (0 if seg == "upper" else 2),
+                "group": grp, "layer": lay,
                 "pivot": [float(joint[0]), float(joint[1])],
-                "note": ("上臂：绕肩旋转" if seg == "upper" else "前臂：绕肘旋转（父组＝上臂）"),
+                "note": note,
             })
+            if seg == "hand":
+                report["checks"].setdefault("wrist_y", {})[side] = int(wrist_y)
+                report["checks"].setdefault("hand_stub_px", {})[side] = int(stub.sum())
 
     # ---- 验收：四件叠回去 + 新躯干，和原画静止帧必须一样 ----
     comp = np.zeros((H, W, 4), np.float32)
@@ -338,8 +417,18 @@ def main():
         dst[..., :3] = src_rgb * a + dst[..., :3] * (1 - a)
         dst[..., 3:] = a + dst[..., 3:] * (1 - a)
         return dst
+    for lid in ("seg_leg_l", "seg_leg_r"):
+        lp = next((q for q in bp["parts"] if q["id"] == lid), None)
+        if not lp:
+            continue
+        li = np.array(Image.open(os.path.join(sp, lid + ".png")).convert("RGBA"))
+        lx, ly = lp["pos"]
+        lb = np.zeros((H, W, 4), np.float32)
+        lb[ly:ly + li.shape[0], lx:lx + li.shape[1], :3] = li[..., :3]
+        lb[ly:ly + li.shape[0], lx:lx + li.shape[1], 3] = li[..., 3] / 255.0
+        comp = over(comp, lb[..., :3], lb[..., 3])
     comp = over(comp, newbody[..., :3].astype(np.float32), (newbody[..., 3] / 255.0).astype(np.float32))
-    for p in report["parts"]:
+    for p in sorted(report["parts"], key=lambda q: q["layer"]):   # 必须按层序叠：手在袖子底下
         im = np.array(Image.open(os.path.join(sp, os.path.basename(p["file"]))).convert("RGBA"))
         x, y = p["pos"]
         h, w = im.shape[:2]

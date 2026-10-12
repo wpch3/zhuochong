@@ -652,6 +652,17 @@ static int frame_opaque_px(const zimg *im)
     return n;
 }
 
+/* 不透明像素的重心 x（量"手被父组带着甩出去多远"） */
+static int frame_centroid_x(const zimg *im)
+{
+    int x, y; long n = 0; long sum = 0;
+    if (!im) return -1;
+    for (y = 0; y < im->h; ++y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) { n++; sum += x; }
+    return n ? (int)(sum / n) : -1;
+}
+
 /* 不透明像素的重心 y（整数放大 1000 倍避免浮点比较） */
 static int frame_centroid_y(const zimg *im)
 {
@@ -1244,6 +1255,78 @@ static void test_eye_aperture(void)
             CHECK(top[2] > top[0] + 8,
                   "上眼皮要往下合（睁 y=%d → 半闭 y=%d）", top[0], top[2]);
             zrig_blink_set_manual(r, -1.0);
+            zrig_free(r);
+        }
+    }
+}
+
+static void test_group_chain(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("三级组链（上臂→前臂→手）：手跟着父组、爷爷组一层层被带走");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_chain");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/a.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"c\",\"name\":\"组链\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{"
+        " \"arm\":{\"pivot\":[200,100],\"parent\":\"\"},"
+        " \"fore\":{\"pivot\":[200,200],\"parent\":\"arm\"},"
+        " \"hand\":{\"pivot\":[200,300],\"parent\":\"fore\"}},"
+        "\"parts\":["
+        " {\"id\":\"h\",\"file\":\"sprites/a.png\",\"group\":\"hand\",\"layer\":10,"
+        "  \"pos\":[200,300],\"anchor\":[0,0]}],"
+        "\"params\":["
+        " {\"id\":\"PArm\",\"min\":0,\"max\":1,\"default\":0,"
+        "  \"binds\":[{\"group\":\"arm\",\"param\":\"rot_deg\",\"scale\":30.0}]},"
+        " {\"id\":\"PFore\",\"min\":0,\"max\":1,\"default\":0,"
+        "  \"binds\":[{\"group\":\"fore\",\"param\":\"rot_deg\",\"scale\":30.0}]},"
+        " {\"id\":\"PHand\",\"min\":0,\"max\":1,\"default\":0,"
+        "  \"binds\":[{\"group\":\"hand\",\"param\":\"rot_deg\",\"scale\":30.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "三级组链应加载成功");
+        if (r) {
+            const zimg *fb;
+            int cx0, d_hand, d_fore, d_arm, back;
+            zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            cx0 = frame_centroid_x(fb);
+            /* 一次只转一级，量这只手被甩开多远（绝对值，不假设引擎的旋转方向） */
+            zrig_param_set(r, "PHand", 1.0);
+            zrig_tick(r, 0.01);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_hand = abs(frame_centroid_x(fb) - cx0);
+            zrig_param_set(r, "PHand", 0.0);
+            zrig_param_set(r, "PFore", 1.0);
+            zrig_tick(r, 0.01);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_fore = abs(frame_centroid_x(fb) - cx0);
+            zrig_param_set(r, "PFore", 0.0);
+            zrig_param_set(r, "PArm", 1.0);
+            zrig_tick(r, 0.01);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_arm = abs(frame_centroid_x(fb) - cx0);
+            zrig_param_set(r, "PArm", 0.0);
+            zrig_tick(r, 0.01);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            back = frame_centroid_x(fb);
+            CHECK(d_hand > 2, "转手腕，手自己要动起来（位移 %d px）", d_hand);
+            CHECK(d_fore > d_hand,
+                  "转前臂时手离枢轴更远，位移该更大（%d > %d）", d_fore, d_hand);
+            CHECK(d_arm > d_fore,
+                  "转上臂（爷爷组）时最大 —— 这就是三级继承（%d > %d）", d_arm, d_fore);
+            CHECK(back == cx0, "参数归零后手回到原位（%d vs %d）", back, cx0);
             zrig_free(r);
         }
     }
@@ -2409,6 +2492,7 @@ int main(int argc, char **argv)
     test_rig_channels();
     test_mask();
     test_eyelid();
+    test_group_chain();
     test_motion_fade();
     test_physics();
     test_look();

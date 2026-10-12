@@ -27,12 +27,12 @@
       "id": "arm_l_fore",
       "file": "sprites/arm_l_fore.png",
       "pos": [
-        0,
+        28,
         542
       ],
       "size": [
-        113,
-        193
+        85,
+        131
       ],
       "group": "forearm_l",
       "layer": 142,
@@ -41,6 +41,25 @@
         553.0
       ],
       "note": "前臂：绕肘旋转（父组＝上臂）"
+    },
+    {
+      "id": "hand_l",
+      "file": "sprites/hand_l.png",
+      "pos": [
+        0,
+        653
+      ],
+      "size": [
+        81,
+        82
+      ],
+      "group": "hand_l",
+      "layer": 138,
+      "pivot": [
+        54.5,
+        666.0
+      ],
+      "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住"
     },
     {
       "id": "arm_r_upper",
@@ -69,8 +88,8 @@
         542
       ],
       "size": [
-        119,
-        193
+        91,
+        131
       ],
       "group": "forearm_r",
       "layer": 143,
@@ -79,13 +98,41 @@
         553.0
       ],
       "note": "前臂：绕肘旋转（父组＝上臂）"
+    },
+    {
+      "id": "hand_r",
+      "file": "sprites/hand_r.png",
+      "pos": [
+        364,
+        653
+      ],
+      "size": [
+        81,
+        82
+      ],
+      "group": "hand_r",
+      "layer": 139,
+      "pivot": [
+        390.0,
+        666.0
+      ],
+      "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住"
     }
   ],
   "checks": {
     "outline_px": 1412,
+    "torso_thigh_trim_px": 148375,
     "torso_filled_px": 2,
     "torso_cleared_px": 36460,
-    "static_diff_px": 242,
+    "wrist_y": {
+      "l": 666,
+      "r": 666
+    },
+    "hand_stub_px": {
+      "l": 338,
+      "r": 346
+    },
+    "static_diff_px": 440,
     "arm_px": {
       "l": 17826,
       "r": 19137

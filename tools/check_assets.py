@@ -273,6 +273,13 @@ def check(character, form, root=".", strict=False, out_json=None):
                "forearm_l": AP.get("elbow_l", AP["shoulder_l"]),
                "forearm_r": AP.get("elbow_r", AP["shoulder_r"])}
         parent = {"forearm_l": "arm_l", "forearm_r": "arm_r"}   # 前臂挂在上臂下面
+        if armp:
+            # G4c2：手挂在前臂下面，枢轴 = make_arm_parts 实测的腕线
+            for q in armp["parts"]:
+                if q["id"].startswith("hand_"):
+                    sd = q["id"].split("_")[1]
+                    piv[f"hand_{sd}"] = q["pivot"]
+                    parent[f"hand_{sd}"] = f"forearm_{sd}"
 
         def compose(angles, offsets=None):
             """按层序叠出整个人；angles 按组给旋转角（度，绕锚点）。
@@ -390,7 +397,8 @@ def check(character, form, root=".", strict=False, out_json=None):
             # 拆件后袖下躯干已补绘、肘部有 24px 重叠带，按挥手的真实幅度 25° 压。
             if armp:
                 pose = compose({"head": -15.0, "arm_l": 25.0, "arm_r": -25.0,
-                                "forearm_l": 20.0, "forearm_r": -20.0})
+                                "forearm_l": 20.0, "forearm_r": -20.0,
+                                "hand_l": 20.0, "hand_r": -20.0})
             else:
                 pose = compose({"head": -15.0, "arm_l": 10.0, "arm_r": -10.0})
             bands = [("颈", int(AP["neck"][1])), ("肩", int(AP["shoulder"][1])),
@@ -430,6 +438,73 @@ def check(character, form, root=".", strict=False, out_json=None):
                         d <= th["sway_hole"],
                         f"发梢甩 ({dx:+d},{dy:+d}) 后身体内部新增空洞 {d} 像素"
                         f"（上限 {th['sway_hole']}）")
+
+            # —— 手腕（G4c2）：手转 20°，袖口和手之间不能豁开 ——
+            #   不能拿"髋 ± 2ov"那种整行横带来数：腕线 y=666 正好落在裙摆上，
+            #   数出来的全是裙子和腿的事（实测 -1404，跟手腕一点关系没有）。
+            #   这里只在**手自己那一小块**（手的外接框往外放 8px）里数内部空洞。
+            for q in (armp["parts"] if armp else []):
+                if not q["id"].startswith("hand_"):
+                    continue
+                hx, hy = q["pos"]
+                hw, hh = q["size"]
+                wy = int(q["pivot"][1])
+                # 只看腕线上下这一小段。放到整只手上就变成在数**手指缝**了
+                # （手一转指缝形状就变，实测 135 像素，跟袖口严不严毫无关系）。
+                y0w, y1w = wy - 18, wy + 14
+                colm = np.zeros((SH, SW), bool)
+                colm[:, max(0, hx - 8):min(SW, hx + hw + 8)] = True
+                sl = slice(max(0, y0w), min(SH, y1w))
+
+                def vhole(a):
+                    """袖口和手之间豁开的缝：只看**同一列上下都还有身体**。
+                       不能用四向的 hole_mask —— 手一转，缝是朝外敞开的，
+                       左右那两条\"还有身体\"的条件根本不成立，缝再大也数不出来
+                       （实测：把袖子里那截皮肤删掉，四向判据照样是 0）。"""
+                    b = a[sl]
+                    up = np.maximum.accumulate(b, 0)
+                    dn = np.maximum.accumulate(b[::-1], 0)[::-1]
+                    return (~b) & up & dn
+
+                # 压力姿势要**只转这只手**：整条手臂一起转的话，手早就转出这个框了，
+                # 框里一片空白，数出来当然是 0（第一版就是这么假过的）。
+                dw = 0
+                for sgn in (20.0, -20.0):
+                    hp = compose({q["group"]: sgn})
+                    dw = max(dw, int((vhole(hp) & ~vhole(flat) & colm[sl]).sum()))
+                add("分段", f"关节不露底(腕 {q['id'][-1]})", dw <= th["joint_hole"],
+                    f"手单独转 ±20° 后腕部新增空洞 {dw} 像素（上限 {th['joint_hole']}）")
+
+            # —— 裙摆接缝（G4c2）：腿一摆，裙摆下沿那条缝不能漏背景 ——
+            # 腿是 bend（顶边=裙子里的大腿根钉死、越往下摆幅越大），所以这里用
+            # 和引擎一样的 t² 剪切来压，而不是整件平移/旋转。
+            #   口径：只数"**静止时是身体、现在变背景**"的像素，而且只在裙摆下沿
+            #   往下 24px 这条带里数 —— 腿摆开之后两腿之间的空档本来就该变大，
+            #   那是合法的，不能算露底。
+            tt_list = bp.get("thigh_top")
+            leg_ids = [sp["id"] for sp in seg_parts if sp["id"].startswith("seg_leg_")]
+            if tt_list and leg_ids:
+                tta = np.array(tt_list, int)
+                band = np.zeros((SH, SW), bool)
+                for xx in np.flatnonzero(tta > 0):
+                    band[tta[xx]:tta[xx] + 24, xx] = True
+                for dx in (-20, 20):
+                    m = compose({}, {i: (dx, 0) for i in leg_ids})
+                    d = int((band & flat & ~m).sum())
+                    add("分段", f"裙摆接缝不露底(腿 {dx:+d}px)", d <= th["joint_hole"],
+                        f"腿摆 {dx:+d}px 后裙摆下 24px 带内新露底 {d} 像素"
+                        f"（上限 {th['joint_hole']}）")
+                # 曲线写反是会反复犯的错（hair_back 就犯过一次）：
+                # root = 底边固定、**顶端**摆 → 裙子里的大腿根直接甩出裙摆。
+                # 实测 root 曲线摆 ±20px 就漏 708/763 像素，所以这里静态卡死。
+                if rig:
+                    for pr in rig.get("params", []):
+                        if pr["id"] not in ("ParamLegL", "ParamLegR"):
+                            continue
+                        okc = all(b.get("curve") == "tip" for b in pr.get("binds", [])
+                                  if b.get("param") == "bend_x")
+                        add("分段", f"{pr['id']} 用 tip 曲线", okc,
+                            "腿的 bend 必须 tip（裙摆下沿钉死）；写 root 会把大腿根甩出裙子")
 
             # —— 键色垃圾像素 ——（教训：alpha=1 的纯绿像素被颜色外扩重写成亮绿点）
             # 纯绿 / 洋红这两种颜色在小寻的色卡里根本不存在，出现就是抠像或重绘的残留。

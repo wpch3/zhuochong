@@ -27,7 +27,7 @@ def png_size(path):
 
 
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
-               has_blend=False, has_side=False):
+               has_blend=False, has_side=False, has_legs=False):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -90,6 +90,12 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "note": "绕肘旋转，±10 → ±50°；肘部 24px 重叠带兜底"},
             {"id": "ParamArmRB", "label": "右小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -5.0}]},
+            # G4c2：手是第三节（绕腕转）。Live2D 标准参数表里就叫 ParamHandL/R。
+            {"id": "ParamHandL", "label": "左手腕", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"group": "hand_l", "param": "rot_deg", "scale": 22.0}],
+             "note": "绕腕旋转 ±22°；手往袖子里续了 14px 皮肤，转开不露腕"},
+            {"id": "ParamHandR", "label": "右手腕", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"group": "hand_r", "param": "rot_deg", "scale": -22.0}]},
         ]
     else:
         out += [
@@ -98,6 +104,18 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
          "note": "手臂只有形变没有肘关节（G4c 未做），上限按 ±40px 给"},
         {"id": "ParamArmRA", "label": "右臂 摆动", "min": -10.0, "max": 10.0, "default": 0.0,
          "binds": [{"part": "seg_arm_r", "param": "bend_x", "scale": 4.0, "curve": "tip"}]},
+        ]
+    if has_legs:
+        # G4c2 裙下大腿：腿**不绕髋旋转**，用 bend（顶边=裙子里的大腿根钉死，越往下摆幅越大）。
+        #   实测：绕髋转哪怕 4°，裙摆内侧也会豁出 109 像素背景（大腿内侧那条边几乎是竖的，
+        #   一转就从裙摆下让出一条缝）；bend 到脚踝位移 20px 时新露底 **0 像素**。
+        #   Live2D 里裙装角色的腿也是这么做的：形变器钉在裙摆下沿。
+        out += [
+            {"id": "ParamLegL", "label": "左腿 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"part": "seg_leg_l", "param": "bend_x", "scale": 20.0, "curve": "tip"}],
+             "note": "±20px（脚踝处），裙摆下沿不动"},
+            {"id": "ParamLegR", "label": "右腿 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"part": "seg_leg_r", "param": "bend_x", "scale": 20.0, "curve": "tip"}]},
         ]
     out += [
         {"id": "ParamHairFront", "label": "刘海 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
@@ -300,6 +318,20 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 bw, bh = size_of[bp_["id"]]
                 bp_["anchor"] = [0.5, 0.5]
                 bp_["pos"] = [bp_["pos"][0] + bw // 2, bp_["pos"][1] + bh // 2]
+        # G4c2 手：锚点挪到腕关节上（anchor 是**比例**，zimg_make_matrix 把锚点放到 pos 上）。
+        # 这样部件级 rot_deg（物理摆用的就是部件级）也绕手腕转，而不是绕图片左上角
+        # —— 绕左上角转的话手会被甩到小腹上。
+        if armp:
+            src_of = {sp["id"]: sp for sp in armp["parts"]}
+            for bp_ in body_parts_list:
+                q = src_of.get(bp_["id"])
+                if not q or not bp_["id"].startswith("hand_"):
+                    continue
+                hw, hh = q["size"]
+                ax = (float(q["pivot"][0]) - q["pos"][0]) / max(1, hw)
+                ay = (float(q["pivot"][1]) - q["pos"][1]) / max(1, hh)
+                bp_["anchor"] = [round(ax, 4), round(ay, 4)]
+                bp_["pos"] = [ox + int(round(q["pivot"][0])), oy + int(round(q["pivot"][1]))]
     else:
         body_parts_list = [body_part]
     # 眼睛：拆成 Live2D 式四件（眼眶遮罩 / 眼白底 / 眼球 / 眼线），
@@ -703,6 +735,43 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         add("hammered", [arm("l", "bend_x", 10.0, 2.6, 0.0, wave="decay", dur=0.7),
                          arm("r", "bend_x", 10.0, 2.6, 0.0, wave="decay", dur=0.7)])
 
+        has_hands = bool(armp) and any(q["id"].startswith("hand_") for q in armp["parts"])
+        has_legs_p = any(q["id"] == "seg_leg_l" for q in parts_list)
+
+        def hand(side, amp, freq=0.0, wave="sine", **kw):
+            """手腕通道（绕腕）。正值 = 往身体外侧翻，左右镜像。"""
+            c = {"target": f"hand_{side}", "param": "rot_deg", "wave": wave,
+                 "amp": amp if side == "l" else -amp, "freq": freq}
+            c.update(kw)
+            return c
+
+        def leg(side, amp, freq=0.0, wave="sine", **kw):
+            """腿通道：bend_x（裙摆下沿钉死、脚踝摆幅最大），不是旋转。"""
+            c = {"target": f"seg_leg_{side}", "param": "bend_x", "wave": wave,
+                 "amp": amp, "freq": freq, "curve": "tip"}
+            c.update(kw)
+            return c
+
+        if has_hands:
+            # 手腕是整条手臂的最后一节，永远比小臂再晚一点（二级惯性）
+            add("idle", [hand("l", 1.2, 0.06, phase=0.42), hand("r", 1.2, 0.06, phase=0.42)])
+            add("sway", [hand("l", 3.5, 0.18, phase=0.34), hand("r", 3.5, 0.18, phase=0.34)])
+            add("happy", [hand("l", 12.0, 0.0, wave="bounce", dur=0.5),
+                          hand("r", 12.0, 0.0, wave="bounce", dur=0.5)])
+            add("hammered", [hand("l", 11.0, 2.6, wave="decay", dur=0.7),
+                             hand("r", 11.0, 2.6, wave="decay", dur=0.7)])
+            add("surprised", [hand("l", 14.0, 0.0, wave="pulse", dur=0.9, ease="out"),
+                              hand("r", 14.0, 0.0, wave="pulse", dur=0.9, ease="out")])
+        if has_legs_p:
+            # 腿：重心一偏，两条腿跟着让一点（同向，幅度比上身小得多）。
+            # 用 bend 不用旋转：裙摆下沿那一排像素必须钉死，否则接缝处漏背景。
+            add("idle", [leg("l", 1.2, 0.06, phase=0.2), leg("r", 1.2, 0.06, phase=0.2)])
+            add("sway", [leg("l", 6.0, 0.18, phase=0.12), leg("r", 6.0, 0.18, phase=0.12)])
+            add("happy", [leg("l", -7.0, 0.0, wave="bounce", dur=0.5),
+                          leg("r", 7.0, 0.0, wave="bounce", dur=0.5)])
+            add("hammered", [leg("l", 8.0, 2.6, wave="decay", dur=0.7),
+                             leg("r", 8.0, 2.6, wave="decay", dur=0.7)])
+
         if armp:
             # 有肘关节之后才做得出来的次级动作：小臂比上臂晚半拍（鞭梢效应）
             add("idle", [fore("l", 0.8, 0.06, phase=0.28), fore("r", 0.8, 0.06, phase=0.28)])
@@ -750,6 +819,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
                  "amp": 6.0, "dur": 2.4, "ease": "out"},
             ]
+            if has_hands:
+                # G4c2：手腕是第三节。挥手时手掌比小臂再晚一点、摆得更大，
+                # 这就是"鞭梢"的最后一节 —— 没有它，举起来的手是一块硬板。
+                wave_channels += [
+                    {"target": "hand_r", "param": "rot_deg", "wave": "pulse",
+                     "amp": -16.0, "dur": 2.4, "ease": "out"},
+                    {"target": "hand_r", "param": "rot_deg", "wave": "sine",
+                     "amp": 20.0, "freq": 2.2, "phase": 0.18, "dur": 2.4},
+                ]
         actions.append({
             "id": "wave", "priority": 6, "duration": 2.4, "return_state": "idle",
             "interruptible": False,
@@ -787,6 +865,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             el_r = apt("elbow_r", 0.428, 0.825)
             groups["forearm_l"] = {"pivot": el_l, "parent": "arm_l"}
             groups["forearm_r"] = {"pivot": el_r, "parent": "arm_r"}
+            # G4c2：手挂在前臂下面，枢轴 = 袖口下沿那条实测的腕线（make_arm_parts 量的）
+            for hp in armp["parts"]:
+                if hp["id"].startswith("hand_"):
+                    side = hp["id"].split("_")[1]
+                    groups[f"hand_{side}"] = {
+                        "pivot": [ox + float(hp["pivot"][0]), oy + float(hp["pivot"][1])],
+                        "parent": f"forearm_{side}"}
     else:
         groups = {
             "root": {"pivot": [cw // 2, ch], "parent": ""},
@@ -1062,6 +1147,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "param": "bend_y", "curve": "root",
              "ratio": 0.45, "stiffness": 55, "damping": 6.0, "max": 5,
              "note": "呆毛上下点头"},
+            # G4c2：手腕滞后（物理输入 = 腕点被前臂组带着走了多少像素）。
+            # 这是"鞭梢"的最后一节：大臂带小臂、小臂带手，手永远慢半拍。
+            {"id": "hand_l_lag", "part": "hand_l", "driver": "forearm_l", "axis": "x",
+             "param": "rot_deg",
+             "ratio": 0.22, "stiffness": 34, "damping": 4.4, "max": 9,
+             "note": "手腕跟随滞后：部件锚点就在腕上，所以 rot_deg 绕腕转"},
+            {"id": "hand_r_lag", "part": "hand_r", "driver": "forearm_r", "axis": "x",
+             "param": "rot_deg",
+             "ratio": 0.22, "stiffness": 34, "damping": 4.4, "max": 9},
             {"id": "bangs_x", "part": "hair_front", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
              "ratio": 0.3, "stiffness": 65, "damping": 7.5, "max": 4,
@@ -1075,7 +1169,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                              head_is_part=head_is_part,
                              jointed_arms=bool(armp),
                              has_blend=bool(blendp),
-                             has_side=any(p["id"] == "hair_side_l" for p in parts_list)),
+                             has_side=any(p["id"] == "hair_side_l" for p in parts_list),
+                             has_legs=any(p["id"] == "seg_leg_l" for p in parts_list)),
         # 表情层（Live2D 的 expression）：一组参数偏移，叠在当前动作之上。
         # 和动作是两条轨 —— 可以"笑着挥手"，不用为每种组合再做一个动作。
         # Pose（≈ Live2D pose3.json）：一组互斥差分，同一时刻只有一个档位可见。
