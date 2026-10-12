@@ -124,7 +124,7 @@ def main():
         "pos": [head_pos[0] + px0, head_pos[1] + py0],
         "size": [px1 - px0, py1 - py0],
         "group": "head",
-        "layer": 182,
+        "layer": 190,
         "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动",
     }
     bp["parts"] = [p for p in bp["parts"] if p["id"] != "hair_ahoge"] + [entry]

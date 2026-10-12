@@ -75,7 +75,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         tag_of = {"seg_head": ["head_base"], "seg_torso": ["body"],
                   "seg_arm_l": ["arm"], "seg_arm_r": ["arm"],
                   "seg_leg_l": ["leg"], "seg_leg_r": ["leg"],
-                  "hair_ahoge": ["hair"], "hair_front": ["hair"]}
+                  "hair_ahoge": ["hair"], "hair_front": ["hair"],
+                  "brow_l": ["brow"], "brow_r": ["brow"]}
         body_parts_list = [{
             "id": sp["id"],
             "file": sp["file"],
@@ -86,6 +87,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "tags": tag_of.get(sp["id"], ["body"]),
             "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
         } for sp in seg["parts"]]
+        # 眉毛要绕自己中心转（挑眉/皱眉），所以锚点放中心、pos 换成中心点
+        size_of = {sp["id"]: sp.get("size") for sp in seg["parts"]}
+        for bp_ in body_parts_list:
+            if bp_["id"].startswith("brow_") and size_of.get(bp_["id"]):
+                bw, bh = size_of[bp_["id"]]
+                bp_["anchor"] = [0.5, 0.5]
+                bp_["pos"] = [bp_["pos"][0] + bw // 2, bp_["pos"][1] + bh // 2]
     else:
         body_parts_list = [body_part]
     # 眼睛：拆成 Live2D 式四件（眼眶遮罩 / 眼白底 / 眼球 / 眼线），
@@ -388,7 +396,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             chans = []
             for c in a.get("channels", []):
                 if c.get("target") in expand:
-                    for nid in expand[c["target"]]:
+                    targets = expand[c["target"]]
+                    # 缩放只给眼球！眼白底/眼眶/眼线都是**矩形小块贴图**，
+                    # 一放大就会把贴图的方边露出来（surprised 里那条横着的"补丁带"就是这么来的）。
+                    # 眼球被眼眶裁切，放大只会看起来像瞳孔放大，安全。
+                    if c.get("param") in ("sx", "sy"):
+                        targets = [t for t in targets if t.endswith("_ball")]
+                    for nid in targets:
                         c2 = dict(c)
                         c2["target"] = nid
                         chans.append(c2)
@@ -493,6 +507,40 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 chan = {"target": "hair_front", "param": "bend_x", "curve": "tip"}
                 chan.update(spec)
                 by_id3[aid]["channels"].append(chan)
+
+    # 眉毛：Live2D 的 ParamBrowLY/RY（上下）+ ParamBrowLAngle/RAngle（倾角）。
+    # 眉下的皮肤是 AI 重绘补出来的（make_brow_parts.py），所以敢让它动；
+    # 往上挑会自动滑进刘海底下（层序：脸 180 < 眉 181/182 < 刘海 188）。
+    if any(p["id"] == "brow_l" for p in parts_list):
+        brow = {
+            "surprised": [("dy", {"wave": "decay", "amp": -4.5, "dur": 0.9, "freq": 2.0}, 1.0),
+                          ("rot_deg", {"wave": "decay", "amp": 3.0, "dur": 0.9, "freq": 2.0}, -1.0)],
+            "happy":     [("dy", {"wave": "bounce", "amp": -2.0, "dur": 1.2, "ease": "out"}, 1.0)],
+            "sad":       [("dy", {"wave": "sine", "amp": 1.6, "freq": 0.25}, 1.0),
+                          ("rot_deg", {"wave": "sine", "amp": 2.5, "freq": 0.25}, 1.0)],
+            "think":     [("dy", {"wave": "sine", "amp": -2.4, "freq": 0.3}, 1.0),
+                          ("rot_deg", {"wave": "sine", "amp": 2.0, "freq": 0.3}, -1.0)],
+            "focus":     [("dy", {"wave": "sine", "amp": 0.9, "freq": 0.4}, 1.0)],
+            "talk":      [("dy", {"wave": "sine", "amp": -0.8, "freq": 1.8}, 1.0)],
+            "head_pat":  [("dy", {"wave": "sine", "amp": -1.4, "freq": 1.0}, 1.0)],
+            "hammered":  [("dy", {"wave": "decay", "amp": 2.6, "dur": 1.0, "freq": 3.0}, 1.0)],
+            "sleep":     [("dy", {"wave": "sine", "amp": 1.0, "freq": 0.1}, 1.0)],
+            "idle":      [("dy", {"wave": "sine", "amp": -0.4, "freq": 0.18}, 1.0)],
+        }
+        by_id4 = {a["id"]: a for a in actions}
+        for aid, chans in brow.items():
+            if aid not in by_id4:
+                continue
+            for pid, sign in (("brow_l", 1.0), ("brow_r", -1.0)):
+                for param, spec, asym in chans:
+                    cc = {"target": pid, "param": param}
+                    cc.update(spec)
+                    # 只有倾角左右反号（两条眉对称地挑/皱），上下是同向的
+                    if param == "rot_deg":
+                        cc["amp"] = spec["amp"] * sign * asym
+                    parts_ok = True
+                    if parts_ok:
+                        by_id4[aid]["channels"].append(cc)
 
     rig = {
         "schema_version": "1.0",

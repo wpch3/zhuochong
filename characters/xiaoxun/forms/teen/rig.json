@@ -197,7 +197,7 @@
       "id": "hair_ahoge",
       "file": "sprites/hair_ahoge.png",
       "group": "head",
-      "layer": 182,
+      "layer": 190,
       "pos": [
         389,
         68
@@ -215,10 +215,10 @@
       "id": "hair_front",
       "file": "sprites/hair_front.png",
       "group": "head",
-      "layer": 183,
+      "layer": 188,
       "pos": [
-        350,
-        160
+        353,
+        168
       ],
       "anchor": [
         0,
@@ -226,6 +226,42 @@
       ],
       "tags": [
         "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "brow_l",
+      "file": "sprites/brow_l.png",
+      "group": "head",
+      "layer": 181,
+      "pos": [
+        372,
+        225
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "tags": [
+        "brow"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "brow_r",
+      "file": "sprites/brow_r.png",
+      "group": "head",
+      "layer": 182,
+      "pos": [
+        463,
+        230
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "tags": [
+        "brow"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
     },
@@ -794,6 +830,20 @@
           "wave": "sine",
           "amp": 0.9,
           "freq": 0.2
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -0.4,
+          "freq": 0.18
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -0.4,
+          "freq": 0.18
         }
       ]
     },
@@ -817,6 +867,20 @@
           "wave": "sine",
           "amp": 2.0,
           "freq": 0.17
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.9,
+          "freq": 0.4
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.9,
+          "freq": 0.4
         }
       ]
     },
@@ -858,6 +922,20 @@
           "wave": "sine",
           "amp": 2.6,
           "freq": 1.1
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -1.4,
+          "freq": 1.0
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -1.4,
+          "freq": 1.0
         }
       ],
       "part_overrides": {
@@ -966,6 +1044,22 @@
           "amp": 3.2,
           "dur": 1.4,
           "ease": "out"
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "bounce",
+          "amp": -2.0,
+          "dur": 1.2,
+          "ease": "out"
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "bounce",
+          "amp": -2.0,
+          "dur": 1.2,
+          "ease": "out"
         }
       ],
       "part_overrides": {
@@ -1025,6 +1119,34 @@
           "wave": "sine",
           "amp": 1.0,
           "freq": 0.12
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.6,
+          "freq": 0.25
+        },
+        {
+          "target": "brow_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 2.5,
+          "freq": 0.25
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.6,
+          "freq": 0.25
+        },
+        {
+          "target": "brow_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -2.5,
+          "freq": 0.25
         }
       ],
       "part_overrides": {
@@ -1070,42 +1192,7 @@
           "ease": "out_back"
         },
         {
-          "target": "eye_l_socket",
-          "param": "sx",
-          "wave": "pulse",
-          "amp": 0.18,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_l_base",
-          "param": "sx",
-          "wave": "pulse",
-          "amp": 0.18,
-          "dur": 0.2
-        },
-        {
           "target": "eye_l_ball",
-          "param": "sx",
-          "wave": "pulse",
-          "amp": 0.18,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_l_lash",
-          "param": "sx",
-          "wave": "pulse",
-          "amp": 0.18,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_r_socket",
-          "param": "sx",
-          "wave": "pulse",
-          "amp": 0.18,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_r_base",
           "param": "sx",
           "wave": "pulse",
           "amp": 0.18,
@@ -1119,27 +1206,6 @@
           "dur": 0.2
         },
         {
-          "target": "eye_r_lash",
-          "param": "sx",
-          "wave": "pulse",
-          "amp": 0.18,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_l_socket",
-          "param": "sy",
-          "wave": "pulse",
-          "amp": 0.22,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_l_base",
-          "param": "sy",
-          "wave": "pulse",
-          "amp": 0.22,
-          "dur": 0.2
-        },
-        {
           "target": "eye_l_ball",
           "param": "sy",
           "wave": "pulse",
@@ -1147,35 +1213,7 @@
           "dur": 0.2
         },
         {
-          "target": "eye_l_lash",
-          "param": "sy",
-          "wave": "pulse",
-          "amp": 0.22,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_r_socket",
-          "param": "sy",
-          "wave": "pulse",
-          "amp": 0.22,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_r_base",
-          "param": "sy",
-          "wave": "pulse",
-          "amp": 0.22,
-          "dur": 0.2
-        },
-        {
           "target": "eye_r_ball",
-          "param": "sy",
-          "wave": "pulse",
-          "amp": 0.22,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_r_lash",
           "param": "sy",
           "wave": "pulse",
           "amp": 0.22,
@@ -1213,6 +1251,38 @@
           "amp": 3.8,
           "dur": 0.8,
           "freq": 2.2
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "decay",
+          "amp": -4.5,
+          "dur": 0.9,
+          "freq": 2.0
+        },
+        {
+          "target": "brow_l",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": -3.0,
+          "dur": 0.9,
+          "freq": 2.0
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "decay",
+          "amp": -4.5,
+          "dur": 0.9,
+          "freq": 2.0
+        },
+        {
+          "target": "brow_r",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": 3.0,
+          "dur": 0.9,
+          "freq": 2.0
         }
       ]
     },
@@ -1290,6 +1360,22 @@
           "amp": 4.0,
           "dur": 1.0,
           "freq": 2.8
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "decay",
+          "amp": 2.6,
+          "dur": 1.0,
+          "freq": 3.0
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "decay",
+          "amp": 2.6,
+          "dur": 1.0,
+          "freq": 3.0
         }
       ],
       "part_overrides": {
@@ -1443,6 +1529,20 @@
           "wave": "flap",
           "amp": 0.737,
           "freq": 3.0
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -0.8,
+          "freq": 1.8
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -0.8,
+          "freq": 1.8
         }
       ]
     },
@@ -1523,6 +1623,34 @@
           "wave": "sine",
           "amp": 1.5,
           "freq": 0.25
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -2.4,
+          "freq": 0.3
+        },
+        {
+          "target": "brow_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -2.0,
+          "freq": 0.3
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": -2.4,
+          "freq": 0.3
+        },
+        {
+          "target": "brow_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 0.3
         }
       ]
     },
@@ -1576,6 +1704,20 @@
           "curve": "tip",
           "wave": "sine",
           "amp": 0.5,
+          "freq": 0.1
+        },
+        {
+          "target": "brow_l",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.0,
+          "freq": 0.1
+        },
+        {
+          "target": "brow_r",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 1.0,
           "freq": 0.1
         }
       ],

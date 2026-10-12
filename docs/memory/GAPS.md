@@ -43,7 +43,8 @@
 | ~~G4h~~ | ✅ 2026-10-12 **呆毛独立**：`tools/make_hair_parts.py` 无损切出 `hair_ahoge`（切线 y=48，根部 12 行渐隐），9 个动作接了摆动通道（curve=root） | — | 无损切分仍 0 像素差；`logs/preview_check/ahoge_strip.png` |
 | G4i | **上下眼睑**：用眼眶遮罩裁一块眼皮滑下来，取代"闭眼贴图淡化" | 现在眨眼是两张图交叉淡化，做不出半眯眼 | 连续开合 + 半眯眼；引擎需加 `eyelid` 标签把眨眼值接到位移 |
 | ~~G4j~~ | ✅ 2026-10-12 **前发分层 + 额头 AI 重绘**：`tools/make_bangs_parts.py` —— 生图重绘无刘海脸 → 按虹膜质心/瞳距解相似变换（scale 0.8555）→ 只回贴被遮的 11773 像素 → 切出 `hair_front.png`(169×169, layer 183)，摆动 `bend_x + curve:tip`。**这是第一件按 D19 走 AI 重绘的零件** | — | 174 项素材验收全过；静止合成仍 0 像素差；证据 `logs/asset_qa/bangs_pipeline.png`、`logs/preview_check/bangs_strip.png` |
-| G4k | **眉毛拆件**（G4j 已解锁）：额头补全后眉毛完整存在，切 `brow_l/r.png` + 脸部可见区遮罩 | 现在眉毛焊死在脸上，做不出挑眉/皱眉 | 眉可上下 ±6px、旋转 ±8°，上挑时自动滑进刘海底下；对应 `ParamBrowLY/RY/LForm/RForm` |
+| ~~G4k~~ | ✅ 2026-10-12 **眉毛拆件**：`tools/make_brow_parts.py` —— 再生一张「无眉脸」→ 带旋转的相似变换对齐（残差 1.5px）→ alpha 抠像 + 解混切出 `brow_l/r.png`（锚点中心，layer 181/182）→ 9 个动作接 `dy`/`rot_deg`（对应 `ParamBrowLY/RY`、`ParamBrowLAngle/RAngle`） | — | 188 项素材验收全过；静止合成 0 像素差；证据 `logs/asset_qa/brow_check.png`、`logs/preview_check/brow_strip.png` |
+| ~~G4l~~ | ✅ 2026-10-12 **修 surprised 的「补丁带」**：老动作把 `sx/sy` 摊给了眼眶/眼白/眼线这些**矩形小块贴图**，一放大就露出方边（脸上横着一条带）。现在缩放只发给眼球（它被眼眶裁切，放大=瞳孔放大） | — | 修前 `logs/preview_check/old_surprised.png`，修后 `logs/preview_check/brow_strip.png` 第二行 |
 | G4c | **关节补图**（手臂与躯干相接处、裙摆下的腿、手指）由 AI 重绘，目前只有重叠带兜底 | 手臂只能用 bend 形变（肩钉死）做动作，**整块旋转超过 ~8° 必裂**；没有肘关节，挥手是"橡皮管"式 | 臂可绕肩旋转 25° 无接缝、有肘关节 |
 | G5 | **语音链路收尾**：Windows 播放与混音、每日额度、缓存、多音字回归测试 | 现在只有文件，没有播放链路 | [需真机] 能听见 |
 | G6 | 配置迁移器 + 诊断包 + 备份恢复 | 版本升级不炸用户数据 | 旧配置能自动升级 |

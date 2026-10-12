@@ -1,0 +1,42 @@
+{
+  "redraw": "logs/asset_qa/head_nobrows.png",
+  "align": {
+    "scale": 0.8071,
+    "dx": 3.5,
+    "dy": 4.7
+  },
+  "skin_gain": [
+    1.25,
+    1.0365,
+    1.1341
+  ],
+  "skin_offset": [
+    -61.15,
+    -3.45,
+    -19.61
+  ],
+  "brows": [
+    {
+      "side": "l",
+      "box": [
+        46,
+        141,
+        53,
+        33
+      ],
+      "px": 614,
+      "max_alpha": 255
+    },
+    {
+      "side": "r",
+      "box": [
+        136,
+        155,
+        55,
+        14
+      ],
+      "px": 305,
+      "max_alpha": 255
+    }
+  ]
+}

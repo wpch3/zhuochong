@@ -57,27 +57,31 @@ def components(mask, min_px=1):
 
 
 def iris_centers(rgb):
-    """找两只眼睛的虹膜中心（按 x 排序）。"""
-    blue = (rgb[..., 2] - rgb[..., 0] > 70) & (rgb[..., 0] < 170) & (rgb[..., 2] > 120)
-    comps = [c for c in components(blue, 60)]
+    """找两只眼睛的虹膜中心（按 x 排序）。
+
+    坑：这个角色的**发梢也是蓝的**（#6599C6），而且左右对称、比眼睛还大一点。
+    第一版判据（B-R>70）把发梢当成了眼睛，整整差了 70px —— 对齐还能凑合，
+    但拿它定"眉毛在哪一条带上"就全错了。
+    现在用两条规矩挡掉：① 虹膜更暗（R<110）；② 成对的候选里取**靠上**那一对。
+    """
+    blue = (rgb[..., 2] - rgb[..., 0] > 40) & (rgb[..., 0] < 110) & \
+           (rgb[..., 2] < 195) & (rgb[..., 2] > 90)
     cs = []
-    for pts in comps[:6]:
+    for pts in components(blue, 60)[:10]:
         ys = [p[0] for p in pts]
         xs = [p[1] for p in pts]
         cs.append((sum(xs) / len(xs), sum(ys) / len(ys), len(pts)))
-    # 两只眼睛是最大的两块里 y 接近的一对
-    cs.sort(key=lambda c: -c[2])
-    best = None
+    pairs = []
     for i in range(len(cs)):
         for j in range(i + 1, len(cs)):
-            if abs(cs[i][1] - cs[j][1]) < max(8, 0.05 * rgb.shape[0]):
-                pair = sorted([cs[i], cs[j]])
-                score = cs[i][2] + cs[j][2]
-                if best is None or score > best[0]:
-                    best = (score, pair)
-    if not best:
+            dy = abs(cs[i][1] - cs[j][1])
+            dxx = abs(cs[i][0] - cs[j][0])
+            if dy < 0.05 * rgb.shape[0] and dxx > 0.15 * rgb.shape[1]:
+                pairs.append(sorted([cs[i], cs[j]]))
+    if not pairs:
         raise SystemExit("找不到两只眼睛，无法对齐")
-    return best[1]
+    pairs.sort(key=lambda pr: (pr[0][1] + pr[1][1]) / 2)   # y 最小的一对 = 眼睛
+    return pairs[0]
 
 
 def dilate(m, r=1):
@@ -134,7 +138,9 @@ def main():
     solid = hal > 100
     warm_src = (hrgb[..., 0] > hrgb[..., 2] + 18) & (hrgb[..., 0] > 200)   # 原图是皮肤
     warm_gen = (aligned[..., 0] > aligned[..., 2] + 18) & (aligned[..., 0] > 200)
-    eye_top = int(min(sy0, sy1) / SCALE) - 6        # 眼睛上沿，再往上才算额头
+    # 刘海会一直垂到眼睛上沿，所以补画区要留到虹膜稍下面一点；
+    # 再往下就进眼睛了（那块由眼睛零件负责）。
+    eye_top = int(min(sy0, sy1) / SCALE) + 60
     zone = np.zeros((H, W), bool)
     zone[:eye_top, :] = True
     occluded = solid & zone & (~warm_src) & warm_gen
@@ -211,7 +217,7 @@ def main():
         "pos": [head_pos[0] + bx0, head_pos[1] + by0],
         "size": [bx1 - bx0, by1 - by0],
         "group": "head",
-        "layer": 183,
+        "layer": 188,
         "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动",
     }
     bp["parts"] = [p for p in bp["parts"] if p["id"] != "hair_front"] + [entry]
