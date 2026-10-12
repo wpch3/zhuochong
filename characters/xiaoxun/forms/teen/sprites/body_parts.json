@@ -25,7 +25,8 @@
     "眉毛已拆件，眉下皮肤由 AI 重绘补全（make_brow_parts.py）",
     "上眼睑已拆件，眨眼改为眼皮下滑（make_eyelid_parts.py）",
     "侧发已拆件（左右各一缕），脸颊/下颌/脖子由 AI 重绘补全（make_sidehair_parts.py）",
-    "后发已拆件，画在脸下面，往脸底下铺了塗り足し（make_sidehair_parts.py）"
+    "后发已拆件，画在脸下面，往脸底下铺了塗り足し（make_sidehair_parts.py）",
+    "脸上的眼白/虹膜/上眼线已挖掉换成眼窝皮肤（make_eyeline_parts.py，G4m）"
   ],
   "parts": [
     {

@@ -663,6 +663,28 @@ static int frame_centroid_y(const zimg *im)
     return n ? (int)(sum / n) : -1;
 }
 
+/* 最上面一行不透明像素的 y（量"上眼皮合下来了没有"） */
+static int frame_top_y(const zimg *im)
+{
+    int x, y;
+    if (!im) return -1;
+    for (y = 0; y < im->h; ++y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) return y;
+    return -1;
+}
+
+/* 最下面一行不透明像素的 y（量"眼眶下沿有没有跟着动"） */
+static int frame_bottom_y(const zimg *im)
+{
+    int x, y;
+    if (!im) return -1;
+    for (y = im->h - 1; y >= 0; --y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) return y;
+    return -1;
+}
+
 static void test_motion_fade(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -1156,6 +1178,72 @@ static void test_eyelid(void)
             CHECK(zrig_blink_manual(r) > 0.99, "手动眨眼值应可读回（%.2f）", zrig_blink_manual(r));
             zrig_blink_set_manual(r, -1.0);
             CHECK(zrig_blink_manual(r) < 0.0, "设成负数应回到自动眨眼");
+            zrig_free(r);
+        }
+    }
+}
+
+
+static void test_eye_aperture(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("眼眶开口：blink 把 eye_aperture 部件按下沿压扁，被它裁的眼白跟着少（真·闭眼）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_aperture");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_socket.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/sock.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 eye_l_socket.png 失败"); return; }
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_base.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/base.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 eye_l_base.png 失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    /* 眼眶当遮罩，锚点放在**开口下沿**（eye_l_socket.png 的开口底在 y=42/68 ≈ 0.618，
+       真 rig 由 eyeline_parts.json 的 aperture_box 算出来）：
+       压扁时下眼睑不动、上眼皮往下合。锚点要是放在整张图的底边（空白行上），
+       整只眼会被"吸"下去 —— 这个测试第一版就是这么挂的（下沿跑了 23px）。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"ap\",\"name\":\"眼眶开口测试\","
+        "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
+        "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"sock\",\"file\":\"sprites/sock.png\",\"group\":\"root\","
+        " \"layer\":10,\"pos\":[150,200],\"anchor\":[0.5,0.618],"
+        " \"tags\":[\"eye_aperture\"],\"aperture_min\":0.06,\"mask_only\":true},"
+        " {\"id\":\"white\",\"file\":\"sprites/base.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[90,130],\"anchor\":[0,0],\"mask\":\"sock\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 eye_aperture 标签的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int px[4], bot[4], top[4], i;
+            const double bl[4] = { 0.0, 0.25, 0.5, 1.0 };
+            for (i = 0; i < 4; ++i) {
+                zrig_blink_set_manual(r, bl[i]);
+                zrig_tick(r, 0.1);
+                fb = zrig_frame(r, 1.0, NULL, NULL);
+                px[i] = frame_opaque_px(fb);
+                bot[i] = frame_bottom_y(fb);
+                top[i] = frame_top_y(fb);
+            }
+            CHECK(px[0] > 200, "睁眼时眼白应可见（%d 像素）", px[0]);
+            CHECK(px[1] < px[0] && px[2] < px[1] && px[3] < px[2],
+                  "眼眶越合，露出来的眼白越少（%d → %d → %d → %d）",
+                  px[0], px[1], px[2], px[3]);
+            CHECK(px[3] * 10 < px[0],
+                  "闭到底应只剩一条缝（闭 %d vs 睁 %d）", px[3], px[0]);
+            /* 位置检查放在半闭那一格：闭到底时开口只剩 6%，可见像素可能归零，
+               这时 top/bottom 都是 -1，量不出东西来。 */
+            CHECK(bot[2] >= 0 && bot[0] >= 0 && abs(bot[2] - bot[0]) <= 4,
+                  "下眼睑不该跟着跑（睁 y=%d vs 半闭 y=%d）", bot[0], bot[2]);
+            CHECK(top[2] > top[0] + 8,
+                  "上眼皮要往下合（睁 y=%d → 半闭 y=%d）", top[0], top[2]);
+            zrig_blink_set_manual(r, -1.0);
             zrig_free(r);
         }
     }
@@ -2313,6 +2401,7 @@ int main(int argc, char **argv)
     test_schema();
     test_state_machine();
     test_blink();
+    test_eye_aperture();
     test_image();
     test_deflate();
     test_config_and_pet();

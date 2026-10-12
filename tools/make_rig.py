@@ -14,6 +14,18 @@ from __future__ import annotations
 import argparse, json, os, sys
 
 
+AP_MIN = 0.06   # 眼眶开口闭到底时纵向还剩几成（引擎 aperture_min 的默认值也是它）
+
+
+def png_size(path):
+    """只读 PNG 头部拿宽高（make_rig 跑在系统 python3 上，没有 PIL）。"""
+    with open(path, "rb") as f:
+        head = f.read(24)
+    if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    return (int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big"))
+
+
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
                has_blend=False, has_side=False):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
@@ -199,7 +211,7 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
-          closed=None, blendp=None):
+          closed=None, blendp=None, eyeline=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -302,11 +314,30 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             px, py = e["patch_pos"]
             bx, by = e["ball_pos"]
             sid = f"eye_{side}"
+            # 眼线已挖掉（脸上不再画着睁眼）时，眼眶就能当"开口"用：
+            # 按 blink 纵向压扁，被它裁切的眼白/眼球/高光跟着被切掉 = 眼睛真的合上。
+            el = next((x for x in (eyeline or {}).get("eyes", []) if x["side"] == side), None)
+            sock = {"id": f"{sid}_socket", "file": f"sprites/{e['socket']}", "group": "head",
+                    "layer": L, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                    "tags": [], "mask_only": True,
+                    "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"}
+            ap_h = 0
+            if el:
+                aw, ah = el.get("socket_size", [0, 0])
+                ax0, ay0, ax1, ay1 = el["aperture_box"]
+                ap_h = ay1 - ay0
+                if aw and ah:
+                    # ⚠ zimg_make_matrix 是把 anchor 这个像素点放到 pos 上，
+                    #    所以改锚点必须同步把 pos 挪到那个点的身体坐标，否则整只眼会跳位。
+                    acx, acy = (ax0 + ax1) * 0.5, float(ay1)
+                    sock["anchor"] = [round(acx / aw, 5), round(acy / ah, 5)]
+                    sock["pos"] = [ox + px + acx, oy + py + acy]
+                    sock["tags"] = ["eye_aperture"]
+                    sock["aperture_min"] = AP_MIN
+                    sock["note"] = (f"眼眶开口（{ax1-ax0}×{ap_h}px）：当遮罩用，"
+                                    f"锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来")
             eye_parts += [
-                {"id": f"{sid}_socket", "file": f"sprites/{e['socket']}", "group": "head",
-                 "layer": L, "pos": [ox + px, oy + py], "anchor": [0, 0],
-                 "tags": [], "mask_only": True,
-                 "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"},
+                sock,
                 {"id": f"{sid}_base", "file": f"sprites/{e['base']}", "group": "head",
                  "layer": L + 1, "pos": [ox + px, oy + py], "anchor": [0, 0],
                  "tags": ["eye_open"] if closed else [], "mask": f"{sid}_socket",
@@ -348,6 +379,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             if lid:
                 lash_part["eyelid_travel"] = lash_travel
                 lash_part["mask"] = f"{sid}_socket"
+            if el and ap_h:
+                # 眼线挖干净以后，上眼线必须跟着眼皮下滑（脸上没有备份了）。
+                # 不挂眼眶遮罩：遮罩自己在压扁，挂上去会把下滑的眼线一起吃掉。
+                # 行程由切件工具逐列实测（眼眶下沿 − 眼线下沿 的中位数）写在 json 里：
+                # 拿"开口高"当行程会滑过头 —— 眼线那条弧画在上眼皮边上，不在开口最顶端，
+                # 实测会变成"眼白露在眼线上方"（_eye_states 0.25 那格）。
+                lash_part["tags"] = ["eyelid"]
+                if el.get("lash_file"):
+                    lash_part["file"] = f"sprites/{el['lash_file']}"
+                lash_part["eyelid_travel"] = el.get("lash_travel") or round(ap_h * (1.0 - AP_MIN), 1)
+                lash_part.pop("mask", None)
+                lash_part["note"] = ("上眼线：脸上的眼线已挖除，这条线随 blink 下滑 "
+                                     f"{lash_part['eyelid_travel']}px，闭到底 = 那条闭眼线")
             eye_parts.append(lash_part)
             # 闭眼真素材：AI 重绘的闭眼脸切下来的补片，blink=1 时完全盖住原画的眼睛。
             # 引擎里 tags:["eye_closed"] 就是 opacity *= blink（与 eye_open 交叉淡化），
@@ -1168,6 +1212,16 @@ def main() -> int:
                    for c in closed["eyes"]):
             closed = None
 
+    # 眼线二次拆件（tools/make_eyeline_parts.py 的产物）：脸上的眼睛已经挖成眼窝皮肤，
+    # 这时眨眼才敢用"压扁眼眶"（底下露出来的是皮肤，不是脸上那只睁着的眼）。
+    eyeline = None
+    el_path = os.path.join(base, "sprites", "eyeline_parts.json")
+    if os.path.exists(el_path):
+        with open(el_path, encoding="utf-8") as f:
+            eyeline = json.load(f)
+        if not eyeline.get("eyes"):
+            eyeline = None
+
     # A7 混合模式零件（tools/make_blend_parts.py 的产物）
     blendp = None
     blend_path = os.path.join(base, "sprites", "blend_parts.json")
@@ -1209,7 +1263,7 @@ def main() -> int:
             mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
                 seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp,
-                closed=closed, blendp=blendp)
+                closed=closed, blendp=blendp, eyeline=eyeline)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

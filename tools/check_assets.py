@@ -41,6 +41,7 @@ TH = {
     "joint_hole": 60,          # 压力姿势下关节处允许新增的空洞像素（再多就是会穿帮）
     "sway_hole": 20,           # 头发摆到最大幅度时允许新增的空洞像素（背后没补画就会炸）
     "junk_px": 0,              # 键色垃圾像素（纯绿/洋红）上限：一个都不许有
+    "eye_residue": 24,         # 脸上眼眶区残留的"眼睛像素"（深眼线/蓝虹膜/纯白眼白）上限
 }
 
 
@@ -444,6 +445,38 @@ def check(character, form, root=".", strict=False, out_json=None):
                 if nj:
                     junk_total += nj
                     junk_where.append(f"{fn}:{nj}")
+            # —— 脸上不许再画着一只睁开的眼 ——（G4m：眼线二次拆件的静态闸）
+            # 眨眼是靠"眼眶开口压扁 + 上眼线下滑"做的；只要 seg_head 的眼眶区里
+            # 还留着原画的眼线/虹膜/眼白，眼眶一收就会把它露出来（实测半闭那一帧
+            # 脸上浮着一只睁着的眼）。所以这里直接查像素。
+            el_path = os.path.join(sprites, "eyeline_parts.json")
+            if os.path.exists(el_path):
+                with open(el_path, encoding="utf-8") as f:
+                    el_js = json.load(f)
+                head_arr = load_rgba(os.path.join(sprites, "seg_head.png")).astype(int)
+                hx, hy = next(q["pos"] for q in bp["parts"] if q["id"] == "seg_head")
+                for e in el_js.get("eyes", []):
+                    side = e["side"]
+                    px, py = e["patch_pos"]
+                    sock_a = load_rgba(os.path.join(sprites, f"eye_{side}_socket.png"))[..., 3]
+                    ph, pw = sock_a.shape
+                    y0, x0 = py - hy, px - hx
+                    sy0, sx0 = max(0, -y0), max(0, -x0)
+                    y0, x0 = max(0, y0), max(0, x0)
+                    y1 = min(head_arr.shape[0], y0 + ph - sy0)
+                    x1 = min(head_arr.shape[1], x0 + pw - sx0)
+                    reg = head_arr[y0:y1, x0:x1]
+                    m = sock_a[sy0:sy0 + (y1 - y0), sx0:sx0 + (x1 - x0)] > 96
+                    R, G, B, A = reg[..., 0], reg[..., 1], reg[..., 2], reg[..., 3]
+                    lum = 0.299 * R + 0.587 * G + 0.114 * B
+                    vis = m & (A > 40)
+                    dark = vis & (lum < 120)                       # 眼线
+                    blue = vis & (B - R > 25) & (B > 110)          # 虹膜
+                    n_eye = int(dark.sum() + blue.sum())
+                    add("眼部", f"脸上无残留睁眼({side})", n_eye <= th["eye_residue"],
+                        f"seg_head 眼眶开口里还剩眼线 {int(dark.sum())} + 虹膜 "
+                        f"{int(blue.sum())} 像素（上限 {th['eye_residue']}）")
+
             add("素材", "无键色垃圾像素", junk_total <= th["junk_px"],
                 f"纯绿/洋红残留 {junk_total} 像素（上限 {th['junk_px']}）"
                 + ("，" + "、".join(junk_where[:4]) if junk_where else ""))

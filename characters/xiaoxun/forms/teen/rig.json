@@ -455,16 +455,19 @@
       "group": "head",
       "layer": 216,
       "pos": [
-        298,
-        246
+        381.0,
+        288.0
       ],
       "anchor": [
-        0,
-        0
+        0.7094,
+        0.61765
       ],
-      "tags": [],
+      "tags": [
+        "eye_aperture"
+      ],
       "mask_only": true,
-      "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"
+      "note": "眼眶开口（46×41px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
+      "aperture_min": 0.06
     },
     {
       "id": "eye_l_base",
@@ -507,7 +510,7 @@
     },
     {
       "id": "eye_l_lash",
-      "file": "sprites/eye_l_lash.png",
+      "file": "sprites/eye_l_lash_up.png",
       "group": "head",
       "layer": 220,
       "pos": [
@@ -519,9 +522,10 @@
         0
       ],
       "tags": [
-        "eye_open"
+        "eyelid"
       ],
-      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"
+      "note": "上眼线：脸上的眼线已挖除，这条线随 blink 下滑 21.5px，闭到底 = 那条闭眼线",
+      "eyelid_travel": 21.5
     },
     {
       "id": "eye_l_closed",
@@ -547,16 +551,19 @@
       "group": "head",
       "layer": 226,
       "pos": [
-        428,
-        246
+        460.5,
+        283.0
       ],
       "anchor": [
-        0,
-        0
+        0.27311,
+        0.54412
       ],
-      "tags": [],
+      "tags": [
+        "eye_aperture"
+      ],
       "mask_only": true,
-      "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"
+      "note": "眼眶开口（43×37px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
+      "aperture_min": 0.06
     },
     {
       "id": "eye_r_base",
@@ -599,7 +606,7 @@
     },
     {
       "id": "eye_r_lash",
-      "file": "sprites/eye_r_lash.png",
+      "file": "sprites/eye_r_lash_up.png",
       "group": "head",
       "layer": 230,
       "pos": [
@@ -611,9 +618,10 @@
         0
       ],
       "tags": [
-        "eye_open"
+        "eyelid"
       ],
-      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"
+      "note": "上眼线：脸上的眼线已挖除，这条线随 blink 下滑 17.0px，闭到底 = 那条闭眼线",
+      "eyelid_travel": 17.0
     },
     {
       "id": "eye_r_closed",

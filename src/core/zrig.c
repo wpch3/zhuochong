@@ -34,7 +34,8 @@ enum {
     TAG_ACCESSORY = 1u << 6,
     TAG_TAIL = 1u << 7,
     TAG_GAZE = 1u << 8,     /* 会被视线偏移影响的部件（虹膜/眼球） */
-    TAG_EYELID = 1u << 9    /* 眼睑：随眨眼参数往下滑（配 eyelid_travel 用） */
+    TAG_EYELID = 1u << 9,   /* 眼睑：随眨眼参数往下滑（配 eyelid_travel 用） */
+    TAG_EYE_APERTURE = 1u << 10 /* 眼眶开口：随眨眼参数按下沿压扁（配 aperture_min 用） */
 };
 
 /* 通道参数 */
@@ -80,6 +81,7 @@ typedef struct {
     char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
     int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
+    double aperture_min;      /* 眼眶开口：眨眼参数 1 时纵向还剩几成（0.06 = 基本闭死） */
     int    blend;             /* 混合模式 ZIMG_BLEND_*（≈ Live2D CubismBlendMode） */
 } zpart;
 
@@ -398,6 +400,7 @@ static unsigned parse_tags(const zjson *arr)
         else if (z_streq(s, "tail")) t |= TAG_TAIL;
         else if (z_streq(s, "gaze")) t |= TAG_GAZE;
         else if (z_streq(s, "eyelid")) t |= TAG_EYELID;
+        else if (z_streq(s, "eye_aperture")) t |= TAG_EYE_APERTURE;
     }
     return t;
 }
@@ -612,6 +615,12 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
         /* 眼睑行程：带 eyelid 标签的部件按 blink 参数下滑这么多像素。
            眨眼不再靠「睁眼图淡出 / 闭眼图淡入」，而是真的有一片眼皮盖下来。 */
         p->eyelid_travel = zjson_num(zjson_obj_get(pj, "eyelid_travel"), 0.0);
+        /* 眼眶开口：带 eye_aperture 标签的部件按 blink 纵向压扁（锚点写在下沿 =
+           上眼皮往下合）。被它当遮罩裁切的眼白/眼球/高光会跟着被切掉 ——
+           这才是真正的"眼睛闭上"，而不是把睁眼图整张淡出。 */
+        p->aperture_min = zjson_num(zjson_obj_get(pj, "aperture_min"), 0.06);
+        if (p->aperture_min < 0.0) p->aperture_min = 0.0;
+        if (p->aperture_min > 1.0) p->aperture_min = 1.0;
         {   /* 混合模式：normal（默认）/ add 加算高光 / multiply 乘算腮红·阴影 */
             const char *bl = zjson_str(zjson_obj_get(pj, "blend"), "normal");
             if (z_streq(bl, "add") || z_streq(bl, "additive")) p->blend = ZIMG_BLEND_ADD;
@@ -2341,6 +2350,9 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     part_sy = p->scale_y + (r->p_sy[mi] - 1.0);
     if (part_sx < 0.0) part_sx = 0.0;
     if (part_sy < 0.0) part_sy = 0.0;
+    /* 眼眶开口：按眨眼参数纵向压扁（锚点在开口下沿，所以是上眼皮往下合）。 */
+    if ((p->tags & TAG_EYE_APERTURE) && blink > 0.0)
+        part_sy *= 1.0 - blink * (1.0 - p->aperture_min);
 
     /* 动作对部件的覆盖 */
     if (a) {
@@ -2353,10 +2365,17 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
             }
         }
     }
-    /* 眨眼：睁眼部件与闭眼部件按参数交叉淡化 */
+    /* 眨眼：睁眼件淡出、闭眼件淡入。
+       ⚠ 不能用线性交叉淡化（opacity = 1-blink / blink）：blink=0.5 时两张图各一半，
+       叠出来是一只"灰色幽灵眼"（用户 7 倍放大一眼就看出来）。
+       改成**两头让开的斜坡**：睁眼件在 blink<0.75 前不掉透明度（这段由眼眶
+       压扁来表现闭合），闭眼件只在最后 25% 淡入——这时两张图都已经是
+       "下眼睑上的一条线"，几乎重合，看不出叠影。 */
     if (r->blink_enabled && blink > 0.001) {
-        if (p->tags & TAG_EYE_OPEN)   opacity *= (1.0 - blink);
-        if (p->tags & TAG_EYE_CLOSED) opacity *= blink;
+        if (p->tags & TAG_EYE_OPEN)
+            opacity *= ZC_CLAMP((1.0 - blink) * 4.0, 0.0, 1.0);
+        if (p->tags & TAG_EYE_CLOSED)
+            opacity *= ZC_CLAMP((blink - 0.75) * 4.0, 0.0, 1.0);
     }
     if (opacity <= 0.001) return 0;
     if ((p->tags & TAG_EYE_CLOSED) && blink <= 0.001) return 0;
