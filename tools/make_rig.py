@@ -566,6 +566,16 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "ground_line": ch - 8,
         "groups": groups,
         "gaze": {"max_offset": [3.0, 2.0]},
+        # 指针跟随：眼睛看过去的同时，头和上身也跟着转一点
+        # （Live2D 的 ParamAngleX/Y + ParamBodyAngleX）。
+        # 幅度刻意保守：头 5° + 4px，上身 1.2° + 1.5px —— 再大就"摇头晃脑"了。
+        "look": {
+            "speed": 9.0,
+            "groups": {
+                "head": {"rot_deg": 5.0, "dx": 4.0, "dy": 3.0},
+                "chest": {"rot_deg": 1.2, "dx": 1.5, "dy": 1.0},
+            },
+        },
         "blink": {
             "enabled": True,
             "closing_s": 0.10, "closed_s": 0.05, "opening_s": 0.15,

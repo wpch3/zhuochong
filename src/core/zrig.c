@@ -115,6 +115,14 @@ typedef struct {
     double pos, vel;          /* 运行状态 */
 } zphys;
 
+/* 指针跟随（Live2D 的 ParamAngleX/Y/Z + ParamBodyAngleX 那一套）：
+   一个 [-1,1] 的方向输入，按组配置成旋转/位移。注意它**不是动作**，
+   是叠加在动作之上的姿态偏置，所以任何动作期间都能跟着指针转头。 */
+typedef struct {
+    int    group;
+    double rot, dx, dy;
+} zlook;
+
 typedef struct {
     char id[48];
     int  rect[4];             /* x, y, w, h（画布坐标） */
@@ -198,6 +206,14 @@ struct zrig {
     /* 视线跟随（幅度来自 rig.json 的 gaze 段） */
     double gaze_x, gaze_y;      /* [-1,1] 归一化方向 */
     double gaze_max_dx, gaze_max_dy;
+
+    /* 头/身跟随指针 */
+    zlook  looks[ZRIG_MAX_GROUPS];
+    int    nlooks;
+    double look_speed;          /* 追踪速度（1/s），越大越跟手 */
+    double look_x, look_y;      /* 目标方向 [-1,1] */
+    double look_cx, look_cy;    /* 平滑后的当前方向 */
+    double look_last;           /* 上次平滑的时刻 */
 
     zrand  rng;
 };
@@ -850,8 +866,39 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         r->gaze_max_dy = pair[1];
     }
 
+    /* 指针跟随：
+       "look": { "speed": 9,
+                 "groups": { "head": {"rot_deg":5,"dx":4,"dy":3},
+                             "chest": {"dx":1.5,"rot_deg":1} } } */
+    r->look_speed = 9.0;
+    {
+        const zjson *lj = zjson_obj_get(root, "look");
+        if (lj) {
+            const zjson *gs = zjson_obj_get(lj, "groups");
+            size_t i, n = zjson_count(gs);
+            r->look_speed = zjson_num(zjson_obj_get(lj, "speed"), 9.0);
+            if (r->look_speed <= 0.0) r->look_speed = 9.0;
+            for (i = 0; i < n && r->nlooks < ZRIG_MAX_GROUPS; ++i) {
+                const char *gid = zjson_key_at(gs, i);
+                const zjson *ej = zjson_at(gs, i);
+                int gi = gid ? find_group(r, gid) : -1;
+                if (gi < 0) {
+                    zdiag_error(diag, file, ej ? ej->line : 0, 0, "look.groups",
+                                "组 '%s' 不存在", gid ? gid : "(空)");
+                    goto fail;
+                }
+                r->looks[r->nlooks].group = gi;
+                r->looks[r->nlooks].rot = zjson_num(zjson_obj_get(ej, "rot_deg"), 0.0);
+                r->looks[r->nlooks].dx  = zjson_num(zjson_obj_get(ej, "dx"), 0.0);
+                r->looks[r->nlooks].dy  = zjson_num(zjson_obj_get(ej, "dy"), 0.0);
+                r->nlooks++;
+            }
+        }
+    }
+
     r->fade_prev = -1;
     r->phys_last = -1.0;
+    r->look_last = -1.0;
     r->cur_id[0] = 0;
     zsm_start(&r->sm, "idle", 0.0);
     zjson_free(root);
@@ -1021,6 +1068,16 @@ static void compute_group_transforms(zrig *r)
     }
     accumulate_action(r, a, zsm_elapsed(&r->sm), w, a->loop ? -1.0 : a->duration);
     r->dim_now = prev ? (prev->dim * (1.0 - w) + a->dim * w) : a->dim;
+
+    /* 指针跟随叠加在动作之上（Live2D 里这是参数层，不属于任何一个 motion）。
+       放在动作之后、物理之前：所以转头也会把头发甩起来。 */
+    for (i = 0; i < r->nlooks; ++i) {
+        const zlook *lk = &r->looks[i];
+        if (lk->group < 0 || lk->group >= r->ngroups) continue;
+        r->g_rot[lk->group] += lk->rot * r->look_cx;
+        r->g_dx[lk->group]  += lk->dx  * r->look_cx;
+        r->g_dy[lk->group]  += lk->dy  * r->look_cy;
+    }
 }
 
 static void group_matrix(const zrig *r, int gi, double scale, double m[6]);
@@ -1322,6 +1379,18 @@ void zrig_tick(zrig *r, double now)
         z_strlcpy(r->cur_id, cur, sizeof(r->cur_id));
     }
     r->cur_t0 = entered;
+
+    /* 指针跟随要平滑，否则鼠标一跳头就瞬移 */
+    {
+        double dt = (r->look_last < 0.0) ? 0.0 : now - r->look_last;
+        double k;
+        r->look_last = now;
+        if (dt < 0.0) dt = 0.0;
+        if (dt > 0.25) dt = 0.25;
+        k = 1.0 - exp(-r->look_speed * dt);
+        r->look_cx += (r->look_x - r->look_cx) * k;
+        r->look_cy += (r->look_y - r->look_cy) * k;
+    }
 
     blink_update(r, now);
     compute_group_transforms(r);
@@ -1695,13 +1764,27 @@ void zrig_gaze(zrig *r, double nx, double ny)
     if (!r) return;
     r->gaze_x = ZC_CLAMP(nx, -1.0, 1.0);
     r->gaze_y = ZC_CLAMP(ny, -1.0, 1.0);
+    /* 眼睛看过去，头也跟着转一点点 —— Live2D 的光标跟随就是这两层一起动。
+       幅度写在 rig.json 的 look 段里，没写就只有眼睛动。 */
+    zrig_look(r, nx, ny);
 }
 
 void zrig_gaze_reset(zrig *r)
 {
     if (!r) return;
     r->gaze_x = r->gaze_y = 0.0;
+    zrig_look(r, 0.0, 0.0);
 }
+
+void zrig_look(zrig *r, double nx, double ny)
+{
+    if (!r) return;
+    r->look_x = ZC_CLAMP(nx, -1.0, 1.0);
+    r->look_y = ZC_CLAMP(ny, -1.0, 1.0);
+}
+
+double zrig_look_x(const zrig *r) { return r ? r->look_cx : 0.0; }
+double zrig_look_y(const zrig *r) { return r ? r->look_cy : 0.0; }
 
 /* 部件级通道的当前值（供外部调试/测试读取） */
 double zrig_part_channel(const zrig *r, const char *part_id, const char *param)

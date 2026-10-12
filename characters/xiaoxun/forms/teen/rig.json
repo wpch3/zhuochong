@@ -74,6 +74,21 @@
       2.0
     ]
   },
+  "look": {
+    "speed": 9.0,
+    "groups": {
+      "head": {
+        "rot_deg": 5.0,
+        "dx": 4.0,
+        "dy": 3.0
+      },
+      "chest": {
+        "rot_deg": 1.2,
+        "dx": 1.5,
+        "dy": 1.0
+      }
+    }
+  },
   "blink": {
     "enabled": true,
     "closing_s": 0.1,

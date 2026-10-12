@@ -82,10 +82,40 @@
 | 组层级 + 枢轴 + 形变跟随 | 头跟着身体走 | ✅ | `zrig.c` `group_matrix` / `bend_follow` |
 | **遮罩（clipping mask）** | 眼球不滑出眼眶、口内不露到脸外 | ✅ **2026-10-12** | `zimg_composite_masked()` + `parts[].mask` |
 | 眨眼五态机 | 自动眨眼 | ✅ | `zrig.c` `blink_update` |
-| 视线跟随 | 眼球看向鼠标 | ✅（标签 `gaze`） | `zrig.c` |
+| 视线跟随（眼球） | 眼球看向鼠标 | ✅（标签 `gaze`） | `zrig.c` |
+| **动作淡入淡出**（motion fade） | 换动作不再瞬间跳帧 | ✅ **2026-10-12** | `zrig.c` `accumulate_action` + `actions[].fade` |
+| **物理摆动**（弹簧惯性） | 甩头时头发晚一拍、停下来还会晃两下 | ✅ **2026-10-12** | `zrig.c` `physics_update` + rig 顶层 `physics` |
+| **指针跟随（头/上身）** | 等价 Live2D `ParamAngleX/Y/Z` + `ParamBodyAngleX` | ✅ **2026-10-12** | `zrig.c` `zrig_look` + rig 顶层 `look` |
 | 自由变形器（FFD，按控制点拉网格） | 眼睑开合、嘴形连续变化 | ⬜ | 下一步 |
 | 旋转变形器（骨骼链：肩→肘→腕） | 抬手、挥手不拉皮 | ⬜ | G4c 之后 |
-| 物理摆动（头发/裙子惯性） | 甩头时头发晚一拍 | ⬜ | 可用简化弹簧 |
+| 命名参数层（`ParamXxx` 外部直驱） | 让脚本/LLM 直接写参数值 | ⬜ | 现在只能走动作与少数专用接口 |
+| 口型同步（LipSync，按音量驱动嘴） | 说话时嘴型跟着语音走 | ⬜ | `talk` 现在是固定 flap 波形 |
+
+### 3.1 新增三块的 rig.json 写法
+
+```jsonc
+// ① 动作淡入淡出：写在单个动作里，单位秒。缺省 0.22；0 = 硬切（打击感动作用）
+{ "id": "wave", "fade": 0.3, "channels": [ ... ] }
+
+// ② 物理摆动：rig.json 顶层，一条 = 一个部件的一个通道
+"physics": [
+  { "id": "ahoge_x", "part": "hair_ahoge", "driver": "head", "axis": "x",
+    "param": "bend_x", "curve": "root",
+    "ratio": 0.5, "stiffness": 42, "damping": 5.0, "max": 8 }
+]
+// 语义：输入 = 驱动组（含父链、含旋转）带着这个部件跑了多远；
+//       acc = stiffness*(ratio*输入 - 位置) - damping*速度；
+//       输出 = clamp(位置 - 输入目标, ±max) —— 静止时收敛回 0，只加惯性、不改静止姿势。
+
+// ③ 指针跟随：rig.json 顶层，speed 越大跟得越快（1-exp(-speed*dt) 平滑）
+"look": { "speed": 9.0, "groups": {
+  "head":  { "rot_deg": 5.0, "dx": 4.0, "dy": 3.0 },
+  "chest": { "rot_deg": 1.2, "dx": 1.5, "dy": 1.0 } } }
+// /api/gaze?x=&y= 会同时驱动眼球和头/上身，off=1 两者一起归零。
+```
+
+三者的叠加顺序是固定的：**动作（含淡化混合）→ 指针跟随 → 物理**。
+所以转头会甩起头发，而头发的惯性不会反过来干扰动作。
 
 ---
 

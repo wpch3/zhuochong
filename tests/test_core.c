@@ -720,6 +720,62 @@ static void test_motion_fade(void)
     }
 }
 
+static void test_look(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("指针跟随：头跟着光标转，平滑过去，复位回 0");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_look");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"l\",\"name\":\"跟随测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+        "\"look\":{\"speed\":9,\"groups\":{\"head\":{\"rot_deg\":5,\"dx\":4,\"dy\":3}}}}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 look 段的 rig 应加载成功");
+        if (r) {
+            double t, first, settled, back;
+            zrig_tick(r, 0.0);
+            zrig_tick(r, 0.1);
+            CHECK(fabs(zrig_group_offset_x(r, "head")) < 0.01, "没给方向时不该偏");
+            zrig_look(r, 1.0, 0.0);
+            zrig_tick(r, 0.12);                 /* 过了 20ms */
+            first = zrig_group_offset_x(r, "head");
+            CHECK(first > 0.0 && first < 3.0, "跟随要平滑，不能一帧到位（%.2f / 目标 4）", first);
+            for (t = 0.14; t < 1.2; t += 0.02) zrig_tick(r, t);
+            settled = zrig_group_offset_x(r, "head");
+            CHECK(settled > 3.8 && settled < 4.05, "跟到底应接近配置幅度（%.2f / 4）", settled);
+            CHECK(zrig_look_x(r) > 0.98, "look_x 应可读回（%.3f）", zrig_look_x(r));
+            zrig_look(r, 0.0, 0.0);
+            for (; t < 2.4; t += 0.02) zrig_tick(r, t);
+            back = zrig_group_offset_x(r, "head");
+            CHECK(fabs(back) < 0.05, "复位后应回到 0（%.3f）", back);
+            /* 视线接口要连带把头也带过去（光标跟随是眼+头两层） */
+            zrig_gaze(r, -1.0, 0.0);
+            for (; t < 3.6; t += 0.02) zrig_tick(r, t);
+            CHECK(zrig_group_offset_x(r, "head") < -3.8,
+                  "zrig_gaze 应同时驱动头部跟随（%.2f）", zrig_group_offset_x(r, "head"));
+            zrig_gaze_reset(r);
+            for (; t < 4.8; t += 0.02) zrig_tick(r, t);
+            CHECK(fabs(zrig_group_offset_x(r, "head")) < 0.05, "gaze_reset 也该把头复位");
+            zrig_free(r);
+        }
+    }
+}
+
 static void test_physics(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -1293,6 +1349,7 @@ int main(int argc, char **argv)
     test_eyelid();
     test_motion_fade();
     test_physics();
+    test_look();
     test_interactions();
     test_affection();
 
