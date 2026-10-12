@@ -38,10 +38,11 @@
 | 9 | 上眼睑 `eyelid_?_up` | 真正的"半眯/眯眼"，不是整块淡出 | `ParamEyeLOpen`/`ParamEyeROpen`、`ParamEyeLSmile` | 形变（变形器） | ⬜ 现用闭眼贴图淡化 |
 | 10 | 下眼睑 `eyelid_?_dn` | 笑眼时下眼睑上推 | `ParamEyeLSmile`/`ParamEyeRSmile` | 形变 | ⬜ |
 | 11 | 眉 `brow_l/r` | 表情的一半信息量在眉毛 | `ParamBrowLY/RY`、`...LX/RX`、`...LAngle/RAngle`、`...LForm/RForm` | 位移 + 旋转 + 形变 | ⬜ |
-| 12 | 上唇/下唇 `lip_up`/`lip_dn` | 开口度与口型 | `ParamMouthOpenY`、`ParamMouthForm` | 形变 | 🟡 只有"张嘴"一张贴图 |
-| 13 | 口内（舌/齿/口腔） `mouth_in` | 张嘴后要有东西露出来 | 随 `ParamMouthOpenY` | **遮罩** | ⬜ |
+| 12 | **上唇线 `mouth_open`** + **开口形状 `mouth_mask`** | 开口度 | `ParamMouthOpenY` | **分轴缩放（sy）** | ✅ |
+| 13 | **口内 `mouth_cavity`**（上颚/口腔/舌/下唇线） | 张嘴后要有东西露出来 | 随 `ParamMouthOpenY` | **遮罩** | ✅ |
 | 14 | 鼻 `nose` | — | — | — | 🟡 并在脸底 |
 | 15 | 前发 `hair_front` / 侧发 `hair_side` | 压在脸上，摇头时摆动 | `ParamHairFront`、`ParamHairSide`、`ParamHairFluffy` | 形变 | ⬜ |
+| 15b | **呆毛 `hair_ahoge`** | 整根露在剪影外，可无损切出；角色的招牌 | `ParamHairFluffy` 一类 | 形变（curve=root） | ✅ |
 
 ### 2. 身体
 
@@ -75,7 +76,9 @@
 | 能力 | 用途 | 状态 | 位置 |
 | --- | --- | --- | --- |
 | 仿射变换（位移/缩放/旋转） | 整块零件动 | ✅ | `zimg_draw()` |
-| 网格弯曲（bend + 四种曲线） | 呼吸、侧摆、裙摆、挥手 | ✅ | `zimg_draw_warp()` |
+| 网格弯曲（bend + 四种曲线） | 呼吸、侧摆、裙摆、挥手、呆毛 | ✅ | `zimg_draw_warp()` |
+| **分轴缩放** `"scale":[sx,sy]` | 嘴的开合（压扁开口形状而不是整体缩小） | ✅ **2026-10-12** | `zrig.c` 部件矩阵 |
+| **flap 波形**（0→amp→0 循环） | 嘴型开合，不会把缩放摆成负数 | ✅ **2026-10-12** | `zrig.c` `W_FLAP` |
 | 组层级 + 枢轴 + 形变跟随 | 头跟着身体走 | ✅ | `zrig.c` `group_matrix` / `bend_follow` |
 | **遮罩（clipping mask）** | 眼球不滑出眼眶、口内不露到脸外 | ✅ **2026-10-12** | `zimg_composite_masked()` + `parts[].mask` |
 | 眨眼五态机 | 自动眨眼 | ✅ | `zrig.c` `blink_update` |
@@ -94,6 +97,8 @@ Live2D 官方教程的顺序是：**分层画稿 → 导入 → 建网格 → �
 ```
 ① 还原分层   tools/make_body_parts.py   身体按关节切段 + 重叠带羽化（过渡方案）
              tools/make_eye_parts.py    眼睛拆成 眼眶/眼白/眼球/眼线（已达标）
+             tools/make_mouth_parts.py  开口形状（遮罩）+ 口内（原画没有，按配色画出来）
+             tools/make_hair_parts.py   呆毛（必须排在 make_body_parts 之后跑）
              ↑ 拆不出来的被遮挡像素 → 用 generate_image 局部重绘（G4c），只回贴被遮区域
 ② 量关节     tools/make_anchors.py      量出颈/肩/肘/腕/髋/膝/踝，写进 design/anchors.json
 ③ 生骨架     tools/make_rig.py          由上面两份产物生成 rig.json（禁止手写 rig.json）
@@ -107,31 +112,50 @@ Live2D 官方教程的顺序是：**分层画稿 → 导入 → 建网格 → �
 
 ---
 
-## 五、眼睛零件（已完成，可作为后续零件的模板）
+## 五、已完成的零件（后续零件照着这三种套路做）
 
-产物（`characters/xiaoxun/forms/teen/sprites/`）：
-
+### 5.1 眼睛（遮罩型）
 | 文件 | 内容 | 在 rig 里 |
 | --- | --- | --- |
-| `eye_?_socket.png` | 眼眶剪影（纯白+软边） | `layer 216/226`，`mask_only: true`（只当遮罩，不画） |
+| `eye_?_socket.png` | 眼眶剪影（纯白+软边） | `layer 216/226`，`mask_only: true` |
 | `eye_?_base.png` | 原贴图，眼眶内填成眼白色 | `layer 217/227` |
 | `eye_?_ball.png` | 完整的虹膜圆（上半部分按列补全） | `layer 218/228`，`mask: eye_?_socket`，标签 `gaze` |
 | `eye_?_lash.png` | 眼线睫毛 | `layer 219/229` |
 
-实测数据（`sprites/eye_parts.json`）：虹膜半径 13.4 / 13.6 px，眼眶 27×30 / 25×31 px，
-眼球可动范围 ±5/±4 px（允许被眼眶裁掉一点——这正是遮罩的意义）。
-新动作 `look_around`：只有眼球在动，眼白与眼线不动。
+实测：虹膜半径 13.4 / 13.6 px，眼眶 27×30 / 25×31 px，眼球可动 ±5/±4 px。
+动作 `look_around`：只有眼球动。证据 `logs/preview_check/eye_zoom.png`。
 
-验收证据：`logs/preview_check/eye_zoom.png`（8 帧眼球位移，瞳孔始终压在眼眶内）。
+### 5.2 嘴（遮罩 + 分轴缩放型；**零件是画出来的**）
+原画只有一条闭合笑线，**没有口腔**——这类零件切不出来，只能按角色配色画。
 
----
+| 文件 | 内容 | 在 rig 里 |
+| --- | --- | --- |
+| `mouth_mask.png` | 最大开口形状，嘴角比中间晚开 | `layer 205`，`mask_only`，`anchor [0.5,0]`（上唇线中点），`scale [1, 0.063]` |
+| `mouth_cavity.png` | 口内：上颚 → 口腔 → 舌 → 下唇线 | `layer 206`，`mask: mouth_mask` |
+| `mouth_open.png` | 原来的闭合笑线，当上唇压在口内上面 | `layer 210` |
+
+张开多少 = 把遮罩的 `sy` 从 0.063（闭）撑到 ~0.85（最大 15px）。
+`talk` 用 `flap` 波形 3Hz 开合，`happy`/`surprised`/`hammered`/`sleep` 各有自己的张法。
+配色由嘴线颜色推导（上颚 #503630 / 口腔 #3E2A25 / 舌 #AF5253 / 下唇 #48312B），已写进色卡。
+证据 `logs/preview_check/mouth_strip.png`。
+
+### 5.3 呆毛（无损切出型）
+整根都在头部剪影之外，背后没有任何零件 → 直接切，不用补画，是最便宜的一件。
+`hair_ahoge.png` 63×60，切线 y=48，根部 12 行渐隐；`layer 182`，组 `head`，
+摆动用 `bend_x + curve:"root"`（根在底边）：呼吸 1.6px、侧摆 4px、高兴 7px、被锤 9px。
+证据 `logs/preview_check/ahoge_strip.png`。
 
 ## 六、下一步顺序（按"看得见的收益 / 风险"排）
 
-1. **嘴**：`mouth_in`（口腔+舌+齿）+ 上下唇，用遮罩裁口内 → 说话时真的会张口，不再只是贴一张"张嘴图"。
-2. **眉**：两条眉独立 + 位移/旋转 → 表情立刻有层次（成本最低、收益最大的一件）。
-3. **眼睑**：上下眼睑独立 + FFD → 半眯眼、笑眼；此时才能退掉"闭眼贴图淡化"。
-4. **手臂关节（G4c）**：上臂/前臂/手分开 + 重绘腋下与袖口 → 真正的抬手；目前挥手幅度被卡在 60px。
-5. **头发**：前发/侧发/后发 + 简化弹簧 → 动起来才像活的。
+1. ~~嘴~~ ✅ 2026-10-12（见 5.2）
+2. ~~呆毛~~ ✅ 2026-10-12（见 5.3）
+3. **上下眼睑**（下一件）：用眼眶遮罩裁一块"眼皮"滑下来，眨眼从"两张图淡入淡出"
+   升级成连续开合，顺带得到半眯眼/笑眼。需要引擎加一个 `eyelid` 标签把眨眼值接到位移上。
+4. **前发/侧发**：把刘海从 `seg_head` 分出来并补画额头 —— 这是**眉毛的前置**：
+   本角色的眉毛大半压在刘海底下，不先分刘海，单独做眉毛没有收益（已实测，见
+   `logs/asset_qa/brow_zoom.png`）。分出来后眉毛用"脸部可见区域"当遮罩，
+   移动时会自动滑到头发底下。
+5. **手臂关节（G4c）**：上臂/前臂/手分开 + 重绘腋下与袖口 → 真正的抬手；
+   目前挥手幅度被卡在 60px。这是唯一需要 AI 重绘的一块，放最后。
 
 每一件的验收关卡都一样：`make test` 全绿 → `check_assets` 全过 → 预览抓帧人工看 → 才算入库。

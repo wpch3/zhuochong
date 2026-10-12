@@ -74,7 +74,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # 分段身体：位置由 make_body_parts.py 从素材量出，这里只做画布平移。
         tag_of = {"seg_head": ["head_base"], "seg_torso": ["body"],
                   "seg_arm_l": ["arm"], "seg_arm_r": ["arm"],
-                  "seg_leg_l": ["leg"], "seg_leg_r": ["leg"]}
+                  "seg_leg_l": ["leg"], "seg_leg_r": ["leg"],
+                  "hair_ahoge": ["hair"]}
         body_parts_list = [{
             "id": sp["id"],
             "file": sp["file"],
@@ -449,6 +450,27 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             by_id["sleep"]["channels"].append(
                 {"target": "mouth_mask", "param": "sy", "wave": "sine",
                  "amp": open_to(0.30), "freq": 0.12})
+
+    # 呆毛：根在底边，所以曲线用 root（底固定、梢摆动）。它是目前唯一一件
+    # 能无损切下来的头发零件，先让它动起来（规格 H3）。
+    if any(p["id"] == "hair_ahoge" for p in parts_list):
+        ah = {
+            "breath":    {"wave": "sine", "amp": 1.6, "freq": 0.3},
+            "idle":      {"wave": "sine", "amp": 1.2, "freq": 0.22},
+            "sway":      {"wave": "sine", "amp": 4.0, "freq": 0.35},
+            "happy":     {"wave": "bounce", "amp": 7.0, "dur": 1.4, "ease": "out"},
+            "surprised": {"wave": "decay", "amp": 8.0, "dur": 0.8, "freq": 2.4},
+            "head_pat":  {"wave": "sine", "amp": 5.0, "freq": 1.1},
+            "hammered":  {"wave": "decay", "amp": 9.0, "dur": 1.0, "freq": 3.0},
+            "wave":      {"wave": "sine", "amp": 3.0, "freq": 1.2},
+            "sleep":     {"wave": "sine", "amp": 1.0, "freq": 0.1},
+        }
+        by_id2 = {a["id"]: a for a in actions}
+        for aid, spec in ah.items():       # 别用 ch 当变量名，那是画布高度
+            if aid in by_id2:
+                c = {"target": "hair_ahoge", "param": "bend_x", "curve": "root"}
+                c.update(spec)
+                by_id2[aid]["channels"].append(c)
 
     rig = {
         "schema_version": "1.0",

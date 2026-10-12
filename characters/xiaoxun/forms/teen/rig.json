@@ -194,6 +194,24 @@
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
     },
     {
+      "id": "hair_ahoge",
+      "file": "sprites/hair_ahoge.png",
+      "group": "head",
+      "layer": 182,
+      "pos": [
+        389,
+        68
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
       "id": "mouth_mask",
       "file": "sprites/mouth_mask.png",
       "group": "head",
@@ -524,6 +542,14 @@
           "freq": 0.28,
           "curve": "tip",
           "phase": 0.15
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "sine",
+          "amp": 1.6,
+          "freq": 0.3
         }
       ]
     },
@@ -574,6 +600,14 @@
           "freq": 0.18,
           "curve": "tip",
           "phase": 0.06
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "sine",
+          "amp": 4.0,
+          "freq": 0.35
         }
       ]
     },
@@ -710,6 +744,14 @@
           "amp": 0.6,
           "freq": 0.24,
           "phase": 0.18
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.22
         }
       ]
     },
@@ -758,6 +800,14 @@
           "amp": 2.0,
           "freq": 3.5,
           "dur": 1.0
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "sine",
+          "amp": 5.0,
+          "freq": 1.1
         }
       ],
       "part_overrides": {
@@ -847,6 +897,15 @@
           "wave": "bounce",
           "amp": 0.487,
           "dur": 1.2,
+          "ease": "out"
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "bounce",
+          "amp": 7.0,
+          "dur": 1.4,
           "ease": "out"
         }
       ],
@@ -1077,6 +1136,15 @@
           "amp": 0.887,
           "dur": 0.12,
           "ease": "out"
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "decay",
+          "amp": 8.0,
+          "dur": 0.8,
+          "freq": 2.4
         }
       ]
     },
@@ -1136,6 +1204,15 @@
           "amp": 0.637,
           "dur": 0.8,
           "freq": 2.0
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "decay",
+          "amp": 9.0,
+          "dur": 1.0,
+          "freq": 3.0
         }
       ],
       "part_overrides": {
@@ -1407,6 +1484,14 @@
           "wave": "sine",
           "amp": 0.237,
           "freq": 0.12
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "sine",
+          "amp": 1.0,
+          "freq": 0.1
         }
       ],
       "part_overrides": {
@@ -1491,6 +1576,14 @@
           "amp": -2.0,
           "freq": 1.6,
           "dur": 2.4
+        },
+        {
+          "target": "hair_ahoge",
+          "param": "bend_x",
+          "curve": "root",
+          "wave": "sine",
+          "amp": 3.0,
+          "freq": 1.2
         }
       ],
       "part_overrides": {
