@@ -86,8 +86,8 @@
 | **动作淡入淡出**（motion fade） | 换动作不再瞬间跳帧 | ✅ **2026-10-12** | `zrig.c` `accumulate_action` + `actions[].fade` |
 | **物理摆动**（弹簧惯性） | 甩头时头发晚一拍、停下来还会晃两下 | ✅ **2026-10-12** | `zrig.c` `physics_update` + rig 顶层 `physics` |
 | **指针跟随（头/上身）** | 等价 Live2D `ParamAngleX/Y/Z` + `ParamBodyAngleX` | ✅ **2026-10-12** | `zrig.c` `zrig_look` + rig 顶层 `look` |
-| 自由变形器（FFD，按控制点拉网格） | 眼睑开合、嘴形连续变化 | ⬜ | 下一步 |
-| 旋转变形器（骨骼链：肩→肘→腕） | 抬手、挥手不拉皮 | ⬜ | G4c 之后 |
+| **自由变形器**（FFD / 网格形变，按控制点拉网格） | 一根呆毛能摆出 S 形；眼睑/嘴形连续变化 | ✅ **2026-10-12** | `zimg.c` `zimg_draw_mesh`（格子拆三角形仿射映射）+ rig 顶层 `deformers` + 通道 `target=形变器 id, param=amount` |
+| 旋转变形器（骨骼链：肩→肘→腕） | 抬手、挥手不拉皮 | ✅ 两级（肩→肘） | `make_arm_parts.py` + 组 `arm_l→forearm_l`；腕还没分（G4c2） |
 | **命名参数层**（`ParamXxx` 外部直驱） | 脚本 / LLM / 口型 / 测试台滑条统一写一张参数表 | ✅ **2026-10-12** | `zrig.c` `load_params`/`zrig_param_set` + rig 顶层 `params` + `/api/param` |
 | **表情叠加**（expression） | 笑着挥手：表情和动作两条轨，互不覆盖 | ✅ **2026-10-12** | `zrig.c` `load_expressions`/`zrig_expression_set` + rig 顶层 `expressions` + `/api/expression` |
 | **口型同步**（LipSync） | 说话时嘴跟着语音开合 | ✅ **2026-10-12** | `zpet.c` `lipsync_tick` + `tools/make_lipsync.py` + `/api/speak`；动作里的嘴通道由 `zrig_set_mouth_mute` 让路 |
@@ -165,6 +165,40 @@
 | `GET /api/quit` | 关掉预览进程 |
 | `GET /api/speak?id=X` | 播一条口型包络（`voice/lipsync/<X>.json`）；`stop=1` 立刻收嘴；未知 id 404 |
 | `GET /api/speech.json` | 台词 + 好感，外加 `lipsync:{active,id,level,remain}` |
+
+### 3.2 网格形变（A5）怎么写
+
+```jsonc
+// rig.json 顶层。cols×rows 是格子数，控制点下标 0..cols / 0..rows。
+// points 里写的是 **amount = 1 时这个控制点挪多少源图像素**，没写到的点不动。
+"deformers": [
+  { "id": "ahoge_s", "part": "hair_ahoge", "cols": 2, "rows": 4,
+    "points": [ {"c":0,"r":0,"dx":11,"dy":-1},   // r=0 是素材顶边（毛梢）
+                {"c":0,"r":1,"dx":4.5},
+                {"c":0,"r":2,"dx":-4},           // 中段反向 → S 形
+                {"c":0,"r":3,"dx":-1.5} ] }      // r=rows 是底边（发根，不动）
+]
+```
+
+驱动方式两种，和别的通道完全一致：
+
+```jsonc
+// ① 动作里：target 写形变器 id，param 固定 amount
+{ "target": "ahoge_s", "param": "amount", "wave": "sine", "amp": 1.0, "freq": 0.4 }
+// ② 参数层：binds 里写 deformer
+{ "id": "ParamHairAhogeS", "min": -1, "max": 1, "default": 0,
+  "binds": [ { "deformer": "ahoge_s", "scale": 1.0 } ] }
+```
+
+- **和 `bend_x` 的区别**：`bend_x` 是一整条曲线把部件整体推歪（只有一个自由度）；
+  网格形变是**每个控制点各推各的**，所以能做出 S 形、局部挤压、一边拉长一边收窄。
+  这就是 Live2D 的 ワープデフォーマ（自由变形器）在做的事。
+- **实现**：每个格子拆成两个三角形做仿射映射（`zimg_draw_mesh`），
+  逐目标像素算重心坐标反查源图，所以格子之间不会裂缝；
+  控制点全为 0 时自动走普通绘制，**像素级与原来一致**（单测里校了这一条）。
+- **边界**：cols/rows 1~16，控制点越界直接加载失败（不许默默画错）；
+  位移写的是原始素材像素，换画布缩放时形变量不变。
+- 证据：`logs/asset_qa/a5_mesh_ahoge.png`（ParamHairAhogeS = −1/−0.5/0/0.5/1 五档 6×）。
 
 ### 3.2 口型同步（A4）怎么跑通
 

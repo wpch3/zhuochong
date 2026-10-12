@@ -67,7 +67,7 @@
 | G12 (T15/M0.5) | **训练区**：数据集管理、配方、执行器（本机 GPU / SSH / 云）、模型库、评估、合规闸门 | **角色 LoRA 最先做** |
 | G13 | 视频区（ffmpeg 链 + 长任务队列） | 沙箱无 ffmpeg，[需真机] |
 | G14 | 桌宠动作扩充：双击/甩动/时间问候/道具/话题 | |
-| A5 (T12.6，原记作 G15) | **部件内细分网格（多控制点）+ 顶点级遮罩** | Live2D 相比我们唯一真正缺的两项 |
+| A5 (T12.6，原记作 G15) | ✅ 2026-10-12 **部件内细分网格**（`zimg_draw_mesh` + rig `deformers`，呆毛 2×4 控制点能摆 S 形，单测 14 项 / 冒烟 1 项）；**仍缺顶点级遮罩**（现在遮罩是整张 alpha 合成，不是逐顶点） | Live2D 相比我们唯一真正缺的两项 |
 | G16 | 物理：布料/头发/尾巴**多段**钟摆（单段弹簧已在 G4q 做完；缺多段串联 + 裙摆/侧发接线） | |
 | ~~A1~~（原记作 G18） | ✅ 2026-10-12 **命名参数层**：rig.json 顶层 `params[]`（id/label/min/max/default + binds 到组或部件通道，`通道值 = 参数值 × scale`）+ 引擎内建 5 个（ParamAngleX/Y、ParamEyeOpen〔含 L/R 别名〕、ParamEyeBallX/Y，路由到跟随/眨眼/眼球）+ `/api/params.json`、`/api/param?id=&v=|reset=1|all=1`；测试台的滑条按参数表**自动生成**，角色加参数不用改前端。小寻 teen 现有 14 个角色参数（ParamAngleZ/BodyAngleX/Z/Breath/MouthOpenY/MouthForm/Brow×4/ArmLA/ArmRA/HairFront/HairAhoge） | — | 单测 `test_params` 17 项（总 **281**）；冒烟 40 项全过；实测 ParamArmRA −10/0/+10 → 右臂外缘 606/644/681px；对照图 `logs/asset_qa/param_sheet.png` |
 | ~~A4~~（原记作 G19） | ✅ 2026-10-12 **LipSync**：`tools/make_lipsync.py`（wav→RMS 包络 / 无 wav 时数 MPEG 帧头拿时长 + 台词音节铺节律）→ `voice/lipsync/*.json` → `/api/speak?id=` → 引擎每帧写 `ParamMouthOpenY`，动作里的嘴通道由 `zrig_set_mouth_mute` 让路。38 条台词已生成包络；**仍缺 I/U/E/O 音素级口型**（T2.1.3） | 依赖 G5 播放链路 |

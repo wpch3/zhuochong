@@ -15,6 +15,8 @@
 #define ZRIG_MAX_EXPR     16
 #define ZRIG_MAX_EXPR_SET 96
 #define ZRIG_MAX_BINDS    96
+#define ZRIG_MAX_DEFORMS  12
+#define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
 #define ZRIG_MAX_OVERRIDES 32
 
 /* 图层标签（tags）：用位标志，加载时解析 */
@@ -32,7 +34,8 @@ enum {
 };
 
 /* 通道参数 */
-enum { P_DX = 0, P_DY, P_SX, P_SY, P_ROT, P_ALPHA, P_BEND_X, P_BEND_Y };
+enum { P_DX = 0, P_DY, P_SX, P_SY, P_ROT, P_ALPHA, P_BEND_X, P_BEND_Y,
+       P_AMOUNT /* 只用于网格形变器 */ };
 /* 形变曲线：0=根部固定（头发/裙摆） 1=中间最大（弯腰/呼吸） 2=线性 */
 /* 形变曲线与 zimg 保持同一套语义（底边=根）：root 底固定/顶部最大，sine 中段最大，
    linear 线性，tip 顶固定/底端最大（后发、裙摆、尾巴）。 */
@@ -73,10 +76,23 @@ typedef struct {
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
 } zpart;
 
+/* 网格形变器（≈ Live2D 的 ワープデフォーマ）：
+   给某个部件铺 cols×rows 的控制网格，points 是"amount = 1 时每个控制点挪多少源图像素"。
+   amount 由动作通道（target = 形变器 id，param = amount）或参数绑定写入，每帧清零重算。 */
 typedef struct {
-    char   target[48];        /* 组 id、部件 id，或 "root" */
+    char   id[48];
+    char   part_id[64];
+    int    part;
+    int    cols, rows;
+    double ox[ZRIG_MAX_DEFPTS], oy[ZRIG_MAX_DEFPTS];   /* 单位位移 */
+    double amount;                                      /* 本帧累加值 */
+} zdeform;
+
+typedef struct {
+    char   target[48];        /* 组 id、部件 id、形变器 id，或 "root" */
     int    group;             /* >=0 表示作用在组 */
     int    part;              /* >=0 表示作用在部件 */
+    int    deform;            /* >=0 表示作用在网格形变器（param 固定为 amount） */
     int    param;
     int    wave;
     double amp, freq, phase, dur;
@@ -140,6 +156,7 @@ enum { PBI_NONE = 0, PBI_ANGLE_X, PBI_ANGLE_Y, PBI_EYE_OPEN,
 typedef struct {
     int    part;              /* >=0 写部件通道 */
     int    group;             /* >=0 写组通道（part < 0 时才看） */
+    int    deform;            /* >=0 写网格形变器的 amount（part/group 都 <0 时才看） */
     int    param;             /* P_DX … P_BEND_Y */
     int    curve, strips;     /* bend_* 用 */
     double scale;             /* 通道值 = 参数值 × scale */
@@ -262,6 +279,10 @@ struct zrig {
     zpbind  pbinds[ZRIG_MAX_BINDS];
     int     npbinds;
 
+    /* 网格形变器（A5） */
+    zdeform deforms[ZRIG_MAX_DEFORMS];
+    int     ndeforms;
+
     /* 表情层 */
     zexpr   exprs[ZRIG_MAX_EXPR];
     int     nexprs;
@@ -296,6 +317,7 @@ static int parse_param(const char *name, int *out)
     if (z_streq(name, "alpha")) { *out = P_ALPHA; return 0; }
     if (z_streq(name, "bend_x")) { *out = P_BEND_X; return 0; }
     if (z_streq(name, "bend_y")) { *out = P_BEND_Y; return 0; }
+    if (z_streq(name, "amount")) { *out = P_AMOUNT; return 0; }
     return -1;
 }
 
@@ -346,6 +368,15 @@ static int find_group(const zrig *r, const char *id)
     int i;
     for (i = 0; i < r->ngroups; ++i)
         if (strcmp(r->groups[i].id, id) == 0) return i;
+    return -1;
+}
+
+static int find_deform(const zrig *r, const char *id)
+{
+    int i;
+    if (!id || !*id) return -1;
+    for (i = 0; i < r->ndeforms; ++i)
+        if (strcmp(r->deforms[i].id, id) == 0) return i;
     return -1;
 }
 
@@ -559,6 +590,82 @@ static void sort_parts(zrig *r)
    { "id":"ahoge", "part":"hair_ahoge", "driver":"head", "axis":"x",
      "param":"bend_x", "curve":"root", "ratio":0.6,
      "stiffness":55, "damping":7, "max":9 } */
+/* 网格形变器（A5，≈ Live2D 的 ワープデフォーマ）：
+   "deformers":[{ "id":"ahoge_wave", "part":"hair_ahoge", "cols":2, "rows":3,
+                  "points":[{"c":1,"r":0,"dx":6,"dy":-2}, ...] }]
+   points 里写的是 **amount=1 时该控制点挪多少源图像素**；没写到的控制点不动。
+   amount 由动作通道（target 写形变器 id，param 写 amount）或参数 binds 写入。 */
+static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
+{
+    size_t i, n;
+    if (!jd) return 0;
+    if (!zjson_is(jd, ZJSON_ARR)) {
+        zdiag_error(d, file, jd->line, 0, "deformers", "deformers 应是数组");
+        return -1;
+    }
+    n = zjson_count(jd);
+    for (i = 0; i < n; ++i) {
+        const zjson *dj = zjson_at((zjson *)jd, i);
+        const zjson *pts;
+        zdeform *g;
+        const char *id = zjson_str(zjson_obj_get((zjson *)dj, "id"), NULL);
+        const char *part = zjson_str(zjson_obj_get((zjson *)dj, "part"), NULL);
+        size_t k, np;
+        if (r->ndeforms >= ZRIG_MAX_DEFORMS) {
+            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                        "网格形变器过多（上限 %d）", ZRIG_MAX_DEFORMS);
+            return -1;
+        }
+        g = &r->deforms[r->ndeforms];
+        memset(g, 0, sizeof(*g));
+        if (!id || !*id) {
+            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers", "形变器缺 id");
+            return -1;
+        }
+        if (find_deform(r, id) >= 0 || find_part(r, id) >= 0 || find_group(r, id) >= 0) {
+            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                        "形变器 id '%s' 和已有的部件/组/形变器重名", id);
+            return -1;
+        }
+        z_strlcpy(g->id, id, sizeof(g->id));
+        g->part = part ? find_part(r, part) : -1;
+        if (g->part < 0) {
+            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                        "形变器 '%s' 的 part '%s' 不存在", id, part ? part : "(缺)");
+            return -1;
+        }
+        z_strlcpy(g->part_id, part, sizeof(g->part_id));
+        g->cols = (int)zjson_int(zjson_obj_get((zjson *)dj, "cols"), 2);
+        g->rows = (int)zjson_int(zjson_obj_get((zjson *)dj, "rows"), 2);
+        if (g->cols < 1 || g->rows < 1 || g->cols > 16 || g->rows > 16) {
+            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                        "形变器 '%s' 的 cols/rows 要在 1~16（实为 %d×%d）",
+                        id, g->cols, g->rows);
+            return -1;
+        }
+        pts = zjson_obj_get((zjson *)dj, "points");
+        np = pts ? zjson_count((zjson *)pts) : 0;
+        for (k = 0; k < np; ++k) {
+            const zjson *pj = zjson_at((zjson *)pts, k);
+            int cc = (int)zjson_int(zjson_obj_get((zjson *)pj, "c"), -1);
+            int rr = (int)zjson_int(zjson_obj_get((zjson *)pj, "r"), -1);
+            int idx;
+            if (cc < 0 || cc > g->cols || rr < 0 || rr > g->rows) {
+                zdiag_error(d, file, pj ? pj->line : 0, 0, "deformers",
+                            "形变器 '%s' 的控制点 (c=%d,r=%d) 越界（网格是 %d×%d，"
+                            "控制点下标 0..%d / 0..%d）",
+                            id, cc, rr, g->cols, g->rows, g->cols, g->rows);
+                return -1;
+            }
+            idx = rr * (g->cols + 1) + cc;
+            g->ox[idx] = zjson_num(zjson_obj_get((zjson *)pj, "dx"), 0.0);
+            g->oy[idx] = zjson_num(zjson_obj_get((zjson *)pj, "dy"), 0.0);
+        }
+        r->ndeforms++;
+    }
+    return 0;
+}
+
 static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
 {
     size_t i, n = zjson_count(jp);
@@ -720,6 +827,15 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
             }
             b = &r->pbinds[r->npbinds];
             memset(b, 0, sizeof(*b));
+            {
+                const char *did = zjson_str(zjson_obj_get(bj, "deformer"), NULL);
+                b->deform = did ? find_deform(r, did) : -1;
+                if (did && b->deform < 0) {
+                    zdiag_error(d, file, bj ? bj->line : 0, 0, path,
+                                "deformer '%s' 不存在", did);
+                    return -1;
+                }
+            }
             b->part = pid ? find_part(r, pid) : -1;
             b->group = gid ? find_group(r, gid) : -1;
             if (pid && b->part < 0) {
@@ -730,11 +846,13 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
                 zdiag_error(d, file, bj ? bj->line : 0, 0, path, "组 '%s' 不存在", gid);
                 return -1;
             }
-            if (b->part < 0 && b->group < 0) {
-                zdiag_error(d, file, bj ? bj->line : 0, 0, path, "binds 要写 part 或 group");
+            if (b->part < 0 && b->group < 0 && b->deform < 0) {
+                zdiag_error(d, file, bj ? bj->line : 0, 0, path,
+                            "binds 要写 part、group 或 deformer");
                 return -1;
             }
-            if (!pn || parse_param(pn, &b->param) != 0) {
+            if (b->deform >= 0) { b->param = P_AMOUNT; b->curve = BEND_ROOT; b->strips = 0; }
+            else if (!pn || parse_param(pn, &b->param) != 0) {
                 zdiag_error(d, file, bj ? bj->line : 0, 0, path,
                             "param 非法：%s", pn ? pn : "(缺)");
                 return -1;
@@ -904,11 +1022,13 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                 z_strlcpy(c->target, tgt, sizeof(c->target));
                 c->group = -1;
                 c->part = -1;
+                c->deform = -1;
                 c->group = find_group(r, tgt);
                 if (c->group < 0) {
-                    /* 允许直接指向部件（口型/眼部动画） */
+                    /* 允许直接指向部件（口型/眼部动画）或网格形变器（A5） */
                     c->part = find_part(r, tgt);
-                    if (c->part < 0) {
+                    if (c->part < 0) c->deform = find_deform(r, tgt);
+                    if (c->part < 0 && c->deform < 0) {
                         zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
                                     "通道 target '%s' 既不是组也不是部件（检查 groups / parts 里的 id）", tgt);
                         return -1;
@@ -1168,6 +1288,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
             }
         }
     }
+    if (load_deformers(r, zjson_obj_get(root, "deformers"), diag, file) != 0) goto fail;
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
@@ -1380,6 +1501,10 @@ static void accumulate_action(zrig *r, const zaction *a, double t, double w, dou
         if (r->mouth_mute && c->part >= 0 && c->part < r->nparts &&
             (r->parts[c->part].tags & TAG_MOUTH)) continue;
         v = eval_channel(c, t, total) * w;
+        if (c->deform >= 0 && c->deform < r->ndeforms) {
+            r->deforms[c->deform].amount += v;    /* 网格形变器只有一个标量 amount */
+            continue;
+        }
         apply_chan(r, c->part, c->group, c->param, v, c->curve, c->strips);
     }
 }
@@ -1405,6 +1530,7 @@ static void compute_group_transforms(zrig *r)
         r->p_rot[i] = 0.0;
         r->p_alpha[i] = 1.0;
     }
+    for (i = 0; i < r->ndeforms; ++i) r->deforms[i].amount = 0.0;
     if (!a) { r->dim_now = 0.0; return; }
     if (prev && r->fade_dur > 1e-6) {
         double u = ZC_CLAMP((r->now - r->fade_t0) / r->fade_dur, 0.0, 1.0);
@@ -1445,6 +1571,10 @@ static void compute_group_transforms(zrig *r)
             if (q->nbind <= 0 || fabs(v) < 1e-9) continue;
             for (k = 0; k < q->nbind; ++k) {
                 const zpbind *b = &r->pbinds[q->bind0 + k];
+                if (b->deform >= 0 && b->deform < r->ndeforms) {
+                    r->deforms[b->deform].amount += v * b->scale;
+                    continue;
+                }
                 apply_chan(r, b->part, b->group, b->param,
                            v * b->scale, b->curve, b->strips);
             }
@@ -1724,6 +1854,19 @@ static double blink_update(zrig *r, double now)
     return r->blink_value;
 }
 
+int zrig_deform_count(const zrig *r) { return r ? r->ndeforms : 0; }
+
+const char *zrig_deform_id(const zrig *r, int i)
+{
+    return (r && i >= 0 && i < r->ndeforms) ? r->deforms[i].id : NULL;
+}
+
+double zrig_deform_amount(const zrig *r, const char *id)
+{
+    int i = r ? find_deform(r, id) : -1;
+    return i >= 0 ? r->deforms[i].amount : 0.0;
+}
+
 void zrig_set_mouth_mute(zrig *r, int on) { if (r) r->mouth_mute = on ? 1 : 0; }
 int  zrig_mouth_mute(const zrig *r) { return r ? r->mouth_mute : 0; }
 
@@ -1927,6 +2070,30 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                 double bx = r->p_bendx[mi] * scale, by = r->p_bendy[mi] * scale;
                 int warped = (fabs(bx) > 0.05 || fabs(by) > 0.05);
                 zimg *target = r->fb;
+                /* 网格形变（A5）：这个部件有没有形变器在推它的控制点。
+                   形变器的位移写的是"原始素材像素"，而这里画的可能是缩放过的缓存图，
+                   所以要按 src->w / img->w 折算，换画布缩放时形变量才不会跟着变。 */
+                const zdeform *dg = NULL;
+                double mesh_off[ZRIG_MAX_DEFPTS * 2];
+                {
+                    int di;
+                    for (di = 0; di < r->ndeforms; ++di) {
+                        const zdeform *cand = &r->deforms[di];
+                        if (cand->part != mi && cand->part != pi) continue;
+                        if (fabs(cand->amount) < 1e-6) continue;
+                        dg = cand;
+                        break;
+                    }
+                    if (dg) {
+                        double k = (p->img && p->img->w > 0)
+                                   ? (double)src->w / (double)p->img->w : 1.0;
+                        int np = (dg->cols + 1) * (dg->rows + 1), q;
+                        for (q = 0; q < np; ++q) {
+                            mesh_off[q * 2]     = dg->ox[q] * dg->amount * k;
+                            mesh_off[q * 2 + 1] = dg->oy[q] * dg->amount * k;
+                        }
+                    }
+                }
 
                 /* 有人拿我当遮罩：我要额外画一份到 maskbuf（只用它的 alpha）。
                    mask_only 的部件只进 maskbuf，不出现在画面上。 */
@@ -1935,7 +2102,10 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                     if (r->maskbuf) {
                         zimg_clear(r->maskbuf);
                         r->maskbuf_part = pi;
-                        if (warped)
+                        if (dg)
+                            zimg_draw_mesh(r->maskbuf, src, m, 1.0,
+                                           dg->cols, dg->rows, mesh_off);
+                        else if (warped)
                             zimg_draw_warp(r->maskbuf, src, m, 1.0,
                                            bx, r->p_bendcx[mi], by, r->p_bendcy[mi]);
                         else
@@ -1951,7 +2121,9 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                     if (!r->scratch) r->scratch = zimg_new(r->fb->w, r->fb->h);
                     if (r->scratch) { zimg_clear(r->scratch); target = r->scratch; }
                 }
-                if (warped)
+                if (dg)
+                    zimg_draw_mesh(target, src, m, opacity, dg->cols, dg->rows, mesh_off);
+                else if (warped)
                     zimg_draw_warp(target, src, m, opacity,
                                    bx, r->p_bendcx[mi], by, r->p_bendcy[mi]);
                 else

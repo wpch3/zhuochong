@@ -90,6 +90,14 @@ void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacit
    curve 取值见上面的 ZIMG_BEND_*（与 zimg_draw_warp 同一套语义）。 */
 void zimg_draw_bend(zimg *dst, const zimg *src, const double m[6], double opacity,
                     double bend_x, double bend_y, int curve, int strips);
+/* 网格形变（≈ Live2D 的 ワープデフォーマ / 自由变形器）：
+   把源图切成 cols×rows 个格子，(cols+1)×(rows+1) 个控制点各自可以挪动。
+   offsets 是每个控制点的位移（**源图像素**，行优先 [(r*(cols+1)+c)*2 + 0/1]），
+   位移完再过矩阵 m。每个格子拆成两个三角形做仿射映射，所以格子之间不会裂缝。
+   位移全为 0 时自动走普通绘制（和 zimg_draw 像素级一致）。 */
+void zimg_draw_mesh(zimg *dst, const zimg *src, const double m[6], double opacity,
+                    int cols, int rows, const double *offsets);
+
 /* 便捷：把 src 缩放到 scale、绕锚点 anchor(0..1) 平移 pos（画布坐标）。 */
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,
                       double anchor_x, double anchor_y, double scale,

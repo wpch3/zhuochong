@@ -66,6 +66,11 @@ const char *zrig_action_last_reason(const zrig *r);
 /* --------------------------------------------------------------- 眨眼 */
 /* 口型同步接管嘴：打开后，动作里所有打了 mouth 标签的通道都不生效，
    嘴完全由参数层（ParamMouthOpenY）说了算。关掉就回到动作驱动。 */
+/* 网格形变器（A5）：当前形变量（amount）。没有这个 id 返回 0。 */
+int    zrig_deform_count(const zrig *r);
+const char *zrig_deform_id(const zrig *r, int i);
+double zrig_deform_amount(const zrig *r, const char *id);
+
 void  zrig_set_mouth_mute(zrig *r, int on);
 int   zrig_mouth_mute(const zrig *r);
 

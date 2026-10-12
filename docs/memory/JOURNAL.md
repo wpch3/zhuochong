@@ -181,3 +181,8 @@
 - 做了什么：审计修 4 处记账/口径错误（GAPS 编号冲突→A系列、证据数字入验收 256 项、ParamMouthOpenY 比例跟 closed_sy 走、rig note 文案）；做完 A4 口型同步（make_lipsync.py + zpet lipsync + zrig_set_mouth_mute + /api/speak + 测试台卡片）
 - 遇到/修了什么：test.html 里重复的表情卡片与重复 id；talk flap 与包络叠加会拉伸口内→加嘴通道 mute
 - 下一步：A5 网格顶点形变；I/U/E/O 音素级口型素材；侧发/后发拆件
+
+## 2026-10-12 16:18
+- 做了什么：加自检与保险体系（selfcheck_repo 42 项 / make asan / 2 万帧长稳 / precommit 钩子 / GitHub CI / make check），ASan 首跑抓出 2 个真内存错并修；做完 A5 网格形变（zimg_draw_mesh 三角仿射 + rig deformers + 呆毛 S 形甩动 + 参数 ParamHairAhogeS）
+- 遇到/修了什么：zdeflate 读越界 1 字节（i+best_len 可能等于 n）；测试里手写长度 90 而字面量 89；自检第一次跑就抓到我自己写的重复编号 G28→改 Q1
+- 下一步：顶点级遮罩（A5 后半）；I/U/E/O 音素口型；侧发/后发拆件

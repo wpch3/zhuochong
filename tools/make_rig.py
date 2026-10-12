@@ -91,6 +91,9 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
          "binds": [{"part": "hair_front", "param": "bend_x", "scale": 6.0, "curve": "tip"}]},
         {"id": "ParamHairAhoge", "label": "呆毛 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
          "binds": [{"part": "hair_ahoge", "param": "bend_x", "scale": 10.0, "curve": "root"}]},
+        # A5：同一根呆毛的 S 形甩动，靠网格形变器（不是整体平移/倾斜）
+        {"id": "ParamHairAhogeS", "label": "呆毛 S 形甩动", "min": -1.0, "max": 1.0,
+         "default": 0.0, "binds": [{"deformer": "ahoge_s", "scale": 1.0}]},
     ]
     return out
 
@@ -839,6 +842,25 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # 输出 = 摆尖落后/过冲的那点距离，静止时收敛回 0。
         # 这样任何动作（不管作者有没有写头发通道）都会带起头发，
         # 而且停下来之后还会自己晃两下 —— 这就是"活"的来源。
+        # —— 网格形变器（A5，≈ Live2D 的 ワープデフォーマ）——
+        # 呆毛被切成 2×4 共 15 个控制点。amount=1 时：梢往右 11px、
+        # 中段往左 4px、根不动 —— 一根 S 形曲线，整体平移/倾斜做不出这个效果。
+        # 行号 r=0 是素材顶边（毛梢），r=4 是底边（发根，固定）。
+        "deformers": [
+            {"id": "ahoge_s", "part": "hair_ahoge", "cols": 2, "rows": 4,
+             "note": "呆毛 S 形甩动：梢与中段朝相反方向，根固定",
+             "points": [
+                 {"c": 0, "r": 0, "dx": 11.0, "dy": -1.0},
+                 {"c": 1, "r": 0, "dx": 11.0, "dy": -1.5},
+                 {"c": 2, "r": 0, "dx": 11.0, "dy": -1.0},
+                 {"c": 0, "r": 1, "dx": 4.5}, {"c": 1, "r": 1, "dx": 4.5},
+                 {"c": 2, "r": 1, "dx": 4.5},
+                 {"c": 0, "r": 2, "dx": -4.0}, {"c": 1, "r": 2, "dx": -4.0},
+                 {"c": 2, "r": 2, "dx": -4.0},
+                 {"c": 0, "r": 3, "dx": -1.5}, {"c": 1, "r": 3, "dx": -1.5},
+                 {"c": 2, "r": 3, "dx": -1.5}
+             ]},
+        ],
         "physics": [
             {"id": "ahoge_x", "part": "hair_ahoge", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "root",

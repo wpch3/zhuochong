@@ -633,6 +633,114 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
     }
 }
 
+/* ---------------- 网格形变（Live2D 的自由变形器等价物） ----------------
+   三角形仿射映射：源三角 (s0,s1,s2) → 目标三角 (d0,d1,d2)。
+   逐目标像素算重心坐标，落在三角形内就反推源坐标取样。
+   这样做的好处：不需要去求整张网格的逆映射，格子怎么扭都不会裂缝。 */
+static void draw_tri(zimg *dst, const zimg *src, double opacity,
+                     const double sx[3], const double sy[3],
+                     const double dx[3], const double dy[3])
+{
+    double den, minx, miny, maxx, maxy;
+    int x0, y0, x1, y1, px, py;
+    den = (dy[1] - dy[2]) * (dx[0] - dx[2]) + (dx[2] - dx[1]) * (dy[0] - dy[2]);
+    if (fabs(den) < 1e-9) return;                 /* 退化三角形 */
+
+    minx = maxx = dx[0]; miny = maxy = dy[0];
+    { int i; for (i = 1; i < 3; ++i) {
+        if (dx[i] < minx) minx = dx[i];
+        if (dx[i] > maxx) maxx = dx[i];
+        if (dy[i] < miny) miny = dy[i];
+        if (dy[i] > maxy) maxy = dy[i];
+    } }
+    x0 = ZC_CLAMP((int)floor(minx), 0, dst->w);
+    x1 = ZC_CLAMP((int)ceil(maxx) + 1, 0, dst->w);
+    y0 = ZC_CLAMP((int)floor(miny), 0, dst->h);
+    y1 = ZC_CLAMP((int)ceil(maxy) + 1, 0, dst->h);
+
+    for (py = y0; py < y1; ++py) {
+        for (px = x0; px < x1; ++px) {
+            double qx = px + 0.5, qy = py + 0.5;
+            double w0, w1, w2, fx, fy, s[4], sa, da, oa;
+            uint8_t *q;
+            w0 = ((dy[1] - dy[2]) * (qx - dx[2]) + (dx[2] - dx[1]) * (qy - dy[2])) / den;
+            w1 = ((dy[2] - dy[0]) * (qx - dx[2]) + (dx[0] - dx[2]) * (qy - dy[2])) / den;
+            w2 = 1.0 - w0 - w1;
+            /* 容差 1e-9：格子边界上的像素宁可多画一次，也不要留一条透明缝 */
+            if (w0 < -1e-9 || w1 < -1e-9 || w2 < -1e-9) continue;
+            fx = w0 * sx[0] + w1 * sx[1] + w2 * sx[2];
+            fy = w0 * sy[0] + w1 * sy[1] + w2 * sy[2];
+            if (fx < -0.5 || fy < -0.5 || fx > src->w - 0.5 || fy > src->h - 0.5) continue;
+            sample_premul(src, fx - 0.5, fy - 0.5, s);
+            sa = s[3] * opacity;
+            if (sa <= 0.0001) continue;
+            q = dst->px + ((size_t)py * dst->w + px) * 4;
+            da = q[3] / 255.0;
+            oa = sa + da * (1.0 - sa);
+            {
+                double sr = (sa > 1e-9) ? s[0] / s[3] : 0.0;
+                double sg = (sa > 1e-9) ? s[1] / s[3] : 0.0;
+                double sb = (sa > 1e-9) ? s[2] / s[3] : 0.0;
+                double dr = q[0] / 255.0, dg = q[1] / 255.0, db = q[2] / 255.0;
+                double rr = (sr * sa + dr * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
+                double rg = (sg * sa + dg * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
+                double rb = (sb * sa + db * da * (1.0 - sa)) / (oa > 1e-9 ? oa : 1.0);
+                q[0] = (uint8_t)ZC_CLAMP(rr * 255.0, 0, 255);
+                q[1] = (uint8_t)ZC_CLAMP(rg * 255.0, 0, 255);
+                q[2] = (uint8_t)ZC_CLAMP(rb * 255.0, 0, 255);
+                q[3] = (uint8_t)ZC_CLAMP(oa * 255.0, 0, 255);
+            }
+        }
+    }
+}
+
+void zimg_draw_mesh(zimg *dst, const zimg *src, const double m[6], double opacity,
+                    int cols, int rows, const double *offsets)
+{
+    int c, rr, moved = 0, np;
+    if (!dst || !src || cols < 1 || rows < 1 || !offsets) { zimg_draw(dst, src, m, opacity); return; }
+    if (cols > 16) cols = 16;
+    if (rows > 16) rows = 16;
+    np = (cols + 1) * (rows + 1);
+    for (c = 0; c < np * 2; ++c)
+        if (fabs(offsets[c]) > 1e-6) { moved = 1; break; }
+    if (!moved) { zimg_draw(dst, src, m, opacity); return; }   /* 没挪控制点就走原路 */
+
+    for (rr = 0; rr < rows; ++rr) {
+        for (c = 0; c < cols; ++c) {
+            int idx[4];
+            double sx[4], sy[4], dxp[4], dyp[4];
+            int k;
+            idx[0] = rr * (cols + 1) + c;           /* 左上 */
+            idx[1] = idx[0] + 1;                    /* 右上 */
+            idx[2] = (rr + 1) * (cols + 1) + c + 1; /* 右下 */
+            idx[3] = idx[2] - 1;                    /* 左下 */
+            sx[0] = (double)src->w * c / cols;       sy[0] = (double)src->h * rr / rows;
+            sx[1] = (double)src->w * (c + 1) / cols; sy[1] = sy[0];
+            sx[2] = sx[1];                           sy[2] = (double)src->h * (rr + 1) / rows;
+            sx[3] = sx[0];                           sy[3] = sy[2];
+            for (k = 0; k < 4; ++k) {
+                double lx = sx[k] + offsets[idx[k] * 2];
+                double ly = sy[k] + offsets[idx[k] * 2 + 1];
+                dxp[k] = m[0] * lx + m[2] * ly + m[4];
+                dyp[k] = m[1] * lx + m[3] * ly + m[5];
+            }
+            {   /* 一个格子 = 两个三角形 */
+                double tsx[3], tsy[3], tdx[3], tdy[3];
+                int a[2][3] = { {0, 1, 2}, {0, 2, 3} };
+                int t;
+                for (t = 0; t < 2; ++t) {
+                    for (k = 0; k < 3; ++k) {
+                        tsx[k] = sx[a[t][k]]; tsy[k] = sy[a[t][k]];
+                        tdx[k] = dxp[a[t][k]]; tdy[k] = dyp[a[t][k]];
+                    }
+                    draw_tri(dst, src, opacity, tsx, tsy, tdx, tdy);
+                }
+            }
+        }
+    }
+}
+
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,
                       double anchor_x, double anchor_y, double scale,
                       double rotate_deg, double opacity)

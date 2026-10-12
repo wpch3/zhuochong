@@ -195,6 +195,15 @@ def check_rig(root):
         check("表情引用的参数都存在", not badexp, f"坏表情：{badexp[:4]}" if badexp else
               f"{len(r.get('expressions', []))} 个表情")
 
+        dfs = r.get("deformers", [])
+        dids = [f["id"] for f in dfs]
+        badd = [f["id"] for f in dfs if f.get("part") not in pids]
+        badd += [i for i in dids if dids.count(i) > 1 or i in pids or i in gids]
+        badpt = [f"{f['id']}({q['c']},{q['r']})" for f in dfs for q in f.get("points", [])
+                 if not (0 <= q["c"] <= f.get("cols", 2) and 0 <= q["r"] <= f.get("rows", 2))]
+        check("网格形变器引用正确", not badd and not badpt,
+              f"坏形变器 {badd} 坏控制点 {badpt}" if (badd or badpt) else f"{len(dfs)} 个")
+
         badphy = [f["id"] for f in r.get("physics", []) if f.get("part") not in pids]
         check("物理绑定的部件都存在", not badphy, f"坏物理：{badphy}" if badphy else
               f"{len(r.get('physics', []))} 条")

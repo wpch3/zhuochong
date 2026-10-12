@@ -146,6 +146,14 @@ def run(base, root):
         v = [q for q in a.json("/api/params.json")["params"] if q["id"] == "ParamMouthOpenY"][0]
         check("参数复位回默认值", abs(v["value"] - v["default"]) < 1e-6, "value=%s" % v["value"])
         a.hit("/api/action?id=idle&force=1")
+    if "ParamHairAhogeS" in pids:
+        a.hit("/api/action?id=sleep&force=1"); time.sleep(0.35)
+        h0, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamHairAhogeS&v=1"); time.sleep(0.35)
+        h1, _ = a.frame_hash()
+        check("网格形变（A5）让画面变了", h0 != h1, "%s → %s" % (h0, h1))
+        a.hit("/api/param?id=ParamHairAhogeS&reset=1")
+        a.hit("/api/action?id=idle&force=1"); time.sleep(0.2)
     a.hit("/api/param?id=ParamAngleX&v=30"); time.sleep(0.6)
     ax = [q for q in a.json("/api/params.json")["params"] if q["id"] == "ParamAngleX"][0]
     check("内建参数读数会跟着子系统走", ax["value"] > 25.0, "ParamAngleX=%.1f" % ax["value"])

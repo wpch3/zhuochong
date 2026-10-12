@@ -213,6 +213,7 @@
 | T17.4 | 提交前保险 `scripts/precommit.sh` + `install_hooks.sh` | [x] | 装钩子后 commit 自动跑；`--no-verify` 可跳过 |
 | T17.5 | GitHub CI `.github/workflows/ci.yml` | [x] | push/PR 自动跑静态自检+编译零告警+单测+ASan+素材验收+冒烟 |
 | T17.6 | 一条命令 `make check` | [x] | 约 90 秒跑完四道关 |
+| T17.8 | 网格形变（A5）：`deformers` + `zimg_draw_mesh` | [x] | 呆毛 S 形甩动；控制点越界必须加载失败 |
 | T17.7 | 真机侧保险（24h 长稳、透明窗/托盘/音频回归） | [ ] | [需真机] 用户机器上跑一轮 |
 
 ### T16 第七轮补充（用户追问"还缺什么"）

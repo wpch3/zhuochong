@@ -1698,6 +1698,124 @@ static void test_longrun(void)
     zpet_destroy(pet);
 }
 
+
+/* ---- A5 网格形变：zimg 级 + rig 级 ---- */
+static int apx(const zimg *im, int x, int y)   /* 取某点 alpha */
+{
+    if (!im || x < 0 || y < 0 || x >= im->w || y >= im->h) return 0;
+    return im->px[((size_t)y * im->w + x) * 4 + 3];
+}
+
+static void test_mesh(void)
+{
+    SECTION("网格形变：控制点推得动像素，没推就和普通绘制一模一样");
+    {
+        zimg *src = zimg_new_filled(40, 40, 255, 0, 0, 255);
+        zimg *a = zimg_new(80, 80), *b = zimg_new(80, 80);
+        double m[6], off[9 * 2];
+        int i;
+        zimg_make_matrix(m, 20, 20, 1, 1, 0, 0, 0);
+        for (i = 0; i < 18; ++i) off[i] = 0.0;
+        /* ① 控制点全不动 = 和 zimg_draw 像素级一致 */
+        zimg_draw(a, src, m, 1.0);
+        zimg_draw_mesh(b, src, m, 1.0, 2, 2, off);
+        {
+            int diff = 0, x, y;
+            for (y = 0; y < 80; ++y)
+                for (x = 0; x < 80; ++x) {
+                    if (abs(apx(a, x, y) - apx(b, x, y)) > 2) diff++;
+                }
+            CHECK(diff == 0, "没挪控制点时应与普通绘制一致，实际差 %d 像素", diff);
+        }
+        /* ② 把右上角那个控制点往右推 20px：右上角应该长出来 */
+        zimg_clear(b);
+        off[2 * 2] = 20.0;                     /* 控制点 (c=2,r=0) 的 dx */
+        zimg_draw_mesh(b, src, m, 1.0, 2, 2, off);
+        CHECK(apx(b, 70, 22) > 128, "右上角被推出去的地方应该有像素");
+        CHECK(apx(a, 70, 22) < 10, "原来那里是空的（对照）");
+        /* ③ 底边没推，应保持原位 */
+        CHECK(apx(b, 30, 58) > 128, "底边不动的部分还在原位");
+        zimg_free(src); zimg_free(a); zimg_free(b);
+    }
+
+    SECTION("网格形变：rig 里声明 deformers，动作通道与参数都能驱动");
+    {
+        char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+        zdiag d;
+        zrig *r;
+        z_snprintf(dir, sizeof(dir), "/tmp/zc_mesh");
+        z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+        z_mkdir_p(dir);
+        z_mkdir_p(sprites);
+        z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+        z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+        if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+        z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"网格测试\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"deformers\":[{\"id\":\"wave\",\"part\":\"h\",\"cols\":2,\"rows\":2,"
+            " \"points\":[{\"c\":0,\"r\":0,\"dx\":8},{\"c\":1,\"r\":0,\"dx\":8},"
+            "  {\"c\":2,\"r\":0,\"dx\":8},{\"c\":0,\"r\":1,\"dx\":-3}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+            "  {\"target\":\"wave\",\"param\":\"amount\",\"wave\":\"sine\","
+            "   \"amp\":1.0,\"freq\":1.0}]}],"
+            "\"params\":[{\"id\":\"ParamWave\",\"min\":-1,\"max\":1,\"default\":0,"
+            " \"binds\":[{\"deformer\":\"wave\",\"scale\":1.0}]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 deformers 段的 rig 应加载成功");
+        if (r) {
+            const zimg *f1, *f2;
+            int w = 0, h = 0, diff = 0, x, y;
+            CHECK(zrig_deform_count(r) == 1, "应解析出 1 个形变器，实为 %d",
+                  zrig_deform_count(r));
+            CHECK(z_streq(zrig_deform_id(r, 0), "wave"), "形变器 id 应是 wave");
+            /* ① 动作通道驱动：sine 在 0.25 秒（freq 1Hz）到峰值 */
+            zrig_tick(r, 0.25);
+            CHECK(zrig_deform_amount(r, "wave") > 0.9,
+                  "动作通道应把 amount 推到 ~1，实为 %.3f", zrig_deform_amount(r, "wave"));
+            f1 = zrig_frame(r, 1.0, &w, &h);
+            CHECK(f1 != NULL && w > 0, "形变后应能渲染");
+            /* ② 回到 0 的那一刻画面应与峰值不同 */
+            {
+                zimg *keep = zimg_clone(f1);
+                zrig_tick(r, 0.5);
+                CHECK(fabs(zrig_deform_amount(r, "wave")) < 0.05,
+                      "半个周期后应回到 0，实为 %.3f", zrig_deform_amount(r, "wave"));
+                f2 = zrig_frame(r, 1.0, &w, &h);
+                for (y = 0; y < h; y += 2)
+                    for (x = 0; x < w; x += 2)
+                        if (abs(apx(keep, x, y) - apx(f2, x, y)) > 24) diff++;
+                CHECK(diff > 20, "形变前后画面必须有可见差异，实际 %d 个采样点不同", diff);
+                zimg_free(keep);
+            }
+            /* ③ 参数层也能驱动同一个形变器 */
+            zrig_param_set(r, "ParamWave", 1.0);
+            zrig_tick(r, 1.0);          /* 1.0s：sine 回到 0，只剩参数的贡献 */
+            CHECK(fabs(zrig_deform_amount(r, "wave") - 1.0) < 0.1,
+                  "参数 1.0 应让 amount≈1，实为 %.3f", zrig_deform_amount(r, "wave"));
+            zrig_free(r);
+        }
+        /* ④ 控制点越界要报错，不能默默画错 */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"坏网格\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"deformers\":[{\"id\":\"bad\",\"part\":\"h\",\"cols\":2,\"rows\":2,"
+            " \"points\":[{\"c\":5,\"r\":0,\"dx\":8}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "控制点越界必须加载失败");
+        CHECK(diag_has(&d, "越界"), "诊断应指出控制点越界");
+    }
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -1720,6 +1838,7 @@ int main(int argc, char **argv)
     test_look();
     test_params();
     test_lipsync();
+    test_mesh();
     test_longrun();
     test_expression();
     test_motion_from();
