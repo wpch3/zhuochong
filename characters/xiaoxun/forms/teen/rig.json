@@ -1832,7 +1832,7 @@
           "target": "arm_r",
           "param": "rot_deg",
           "wave": "pulse",
-          "amp": -52.0,
+          "amp": -58.0,
           "dur": 2.4,
           "ease": "out"
         },
@@ -1840,7 +1840,7 @@
           "target": "forearm_r",
           "param": "rot_deg",
           "wave": "pulse",
-          "amp": -28.0,
+          "amp": -80.0,
           "dur": 2.4,
           "ease": "out"
         },
@@ -1848,7 +1848,7 @@
           "target": "forearm_r",
           "param": "rot_deg",
           "wave": "sine",
-          "amp": 15.0,
+          "amp": 14.0,
           "freq": 2.2,
           "dur": 2.4
         },

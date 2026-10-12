@@ -35,6 +35,9 @@ TEAL_TOL = 150                        # |ΔR|+|ΔG|+|ΔB| 阈值
 ELBOW_OVERLAP = 24                    # 肘部重叠带（上下各一半）
 FEATHER = 2                         # 切口羽化半径（像素）
 BLEED = 5                           # 躯干切口往外塗り足し的圈数
+LINE_RGB = (90, 90, 110)            # 线稿色 #5A5A6E：补出来的衣片也要有轮廓线
+LINE_W = 2                          # 轮廓线宽（像素）
+SHOULDER_CAP = 46                   # 肩头保留给躯干的高度（像素）
 
 
 def flood(mask, seed):
@@ -247,7 +250,12 @@ def main():
         arms[side] = fill_outward(m | close, alpha, side)
 
     # ---- 躯干：袖子那块换成 AI 重绘的夹克侧片 ----
-    occ = dilate(arms["l"] | arms["r"], 2)  # 连袖子的抗锯齿边一起挖掉，免得转开后留残影
+    # 挖袖子时**肩头那一截不挖**：原画里肩膀的圆头是画在袖子上的，
+    # 整块拿走以后躯干的肩膀就是一条平口（用户反馈"这个分割"）。
+    # 让躯干和手臂各留一份肩头（静止时手臂盖在上面、一模一样；
+    # 手臂转开后躯干仍有一个圆肩），这是 2D 拆件里标准的"关节两边各留一份"。
+    sh_y = int(pts["shoulder"][1])
+    occ = dilate(arms["l"] | arms["r"], 2) & (np.arange(H)[:, None] > sh_y + SHOULDER_CAP)
     # 重绘图是洋红底抠出来的，边缘有一圈被烤进 RGB 的紫：这种像素一律不要，
     # 贴进去会直接把 check_assets 的"键色残留"打挂（实测 299/631 是紫边）。
     fr = fill[..., 0].astype(np.int32); fg_ = fill[..., 1].astype(np.int32); fb = fill[..., 2].astype(np.int32)
@@ -267,6 +275,21 @@ def main():
     newbody[..., :3], grown, dist = bleed(newbody[..., :3], keep, lost, rounds=BLEED)
     # 边缘往外长的这几圈做渐隐，手臂转开时看着像衣片自然收边
     newbody[..., 3][grown] = np.clip(255.0 * (1.0 - (dist[grown] - 1.0) / BLEED), 0, 255).astype(np.uint8)
+
+    # ---- 给补出来的衣片描线稿 ----
+    # 原画每一条剪影边上都有一条深紫灰的线；补画区如果只有平涂白，
+    # 手臂一抬，露出来的就是"纸片剪开"的感觉（用户反馈的"这个分割"）。
+    # 所以把新产生的那段剪影边按原画的线稿色描回去。
+    solid = newbody[..., 3] > 128
+    near_cut = dilate(arms["l"] | arms["r"], 8)          # 只描新切出来的边
+    rim = solid & ~erode(solid, LINE_W) & near_cut
+    rim_soft = solid & ~erode(solid, LINE_W + 1) & near_cut
+    ln = np.array(LINE_RGB, np.float32)
+    for mask, k in ((rim_soft, 0.45), (rim, 0.9)):
+        if mask.any():
+            cur = newbody[..., :3][mask].astype(np.float32)
+            newbody[..., :3][mask] = (cur * (1 - k) + ln * k).astype(np.uint8)
+    report["checks"]["outline_px"] = int(rim.sum())
     tx, ty = torso["pos"]
     tw, th = torso["size"]
     Image.fromarray(newbody[ty:ty + th, tx:tx + tw]).save(os.path.join(sp, "seg_torso.png"))

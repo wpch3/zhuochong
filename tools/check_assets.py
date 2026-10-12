@@ -306,6 +306,29 @@ def check(character, form, root=".", strict=False, out_json=None):
                 lf = np.maximum.accumulate(sl, 1); rt = np.maximum.accumulate(sl[:, ::-1], 1)[:, ::-1]
                 return int(((~sl) & up & dn & lf & rt).sum())
 
+            # —— 袖下躯干完整性（手臂外展方向才看得见的东西）——
+            # 注意符号：PIL 的 rotate 是**画面逆时针**，引擎的 rot_deg 是顺时针，
+            # 两者相反。下面的 25° 压力姿势按 PIL 符号写的是「两条手臂往身体内侧转」，
+            # 那个方向是安全方向；真正会露馅的是**外展**（右臂 PIL 正角 / 左臂 PIL 负角）。
+            # 外展时腋下本来就该露出背景，所以不能用整体空洞来判，改判两件事：
+            #   ① 躯干自己不能被挖出新窟窿；② 新切口必须描了线稿（否则是"纸片剪开"感）。
+            if armp:
+                tor = next((q for q in bp["parts"] if q["id"] == "seg_torso"), None)
+                if tor:
+                    ta = load_rgba(os.path.join(base, tor["file"]))
+                    tx, ty = tor["pos"]
+                    th_, tw_ = ta.shape[:2]
+                    ba = load_rgba(os.path.join(base, "sprites", "body_full.png"))[ty:ty + th_, tx:tx + tw_]
+                    def inner_holes(mk):
+                        up = np.maximum.accumulate(mk, 0); dn = np.maximum.accumulate(mk[::-1], 0)[::-1]
+                        lf = np.maximum.accumulate(mk, 1); rt = np.maximum.accumulate(mk[:, ::-1], 1)[:, ::-1]
+                        return (~mk) & up & dn & lf & rt
+                    newh = int((inner_holes(alpha_mask(ta)) & ~inner_holes(alpha_mask(ba))).sum())
+                    add("分段", "袖下躯干无新窟窿", newh <= th["joint_hole"],
+                        f"躯干自身新增内部空洞 {newh} 像素（上限 {th['joint_hole']}）")
+                ol = int(armp.get("checks", {}).get("outline_px", 0))
+                add("分段", "切口描线稿", ol >= 200, f"补画区描了 {ol} 像素线稿（下限 200）")
+
             # 压力姿势：远超实际动作，关节处仍然不能露底。
             # 手臂拆件前只能转 10°（整条手臂一块板，再多就露切口）；
             # 拆件后袖下躯干已补绘、肘部有 24px 重叠带，按挥手的真实幅度 25° 压。

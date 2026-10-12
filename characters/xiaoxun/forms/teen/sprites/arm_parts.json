@@ -82,9 +82,10 @@
     }
   ],
   "checks": {
-    "torso_filled_px": 73,
-    "torso_cleared_px": 40713,
-    "static_diff_px": 76,
+    "outline_px": 1412,
+    "torso_filled_px": 2,
+    "torso_cleared_px": 36460,
+    "static_diff_px": 242,
     "arm_px": {
       "l": 17826,
       "r": 19137

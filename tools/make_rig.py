@@ -564,15 +564,18 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "amp": 14.0, "curve": "tip", "freq": 1.8, "dur": 2.4},
         ]
         if armp:
-            # 真关节版挥手：上臂绕肩抬到 -52°（手举到肩膀以上），
-            # 小臂绕肘再翻 -28° 并以 2.2Hz 左右摆 —— 这才是"挥手"而不是"手臂飘"。
+            # 真关节版挥手。**肘必须往回折，不能顺着大臂继续转**：
+            # 画面 y 轴朝下 → 正角=顺时针；右臂往外抬是负角。
+            # 第一版把前臂也写成 -28°，等于顺着大臂继续外展，整条手臂还是一根直筒
+            # （用户："挥手的肘关节呢？"）。手要举到头侧，前臂相对大臂要再转 ~80°，
+            # 大臂 -58° + 前臂 -80° = 手腕总转 138°，正好是"举手挥"的姿势。
             wave_channels = [
                 {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -52.0, "dur": 2.4, "ease": "out"},
+                 "amp": -58.0, "dur": 2.4, "ease": "out"},
                 {"target": "forearm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -28.0, "dur": 2.4, "ease": "out"},
+                 "amp": -80.0, "dur": 2.4, "ease": "out"},
                 {"target": "forearm_r", "param": "rot_deg", "wave": "sine",
-                 "amp": 15.0, "freq": 2.2, "dur": 2.4},
+                 "amp": 14.0, "freq": 2.2, "dur": 2.4},
                 {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
                  "amp": 6.0, "dur": 2.4, "ease": "out"},
             ]
