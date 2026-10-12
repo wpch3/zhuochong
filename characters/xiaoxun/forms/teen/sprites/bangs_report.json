@@ -1,0 +1,54 @@
+{
+  "redraw": "logs/asset_qa/head_nobangs.png",
+  "align": {
+    "scale": 0.8555,
+    "dx": -18.1,
+    "dy": -36.3,
+    "src_iris": [
+      [
+        235,
+        803
+      ],
+      [
+        501,
+        801
+      ]
+    ],
+    "gen_iris": [
+      [
+        296,
+        982
+      ],
+      [
+        607,
+        978
+      ]
+    ]
+  },
+  "filled_px": 11773,
+  "skin_gain": [
+    0.8,
+    0.8468,
+    0.8311
+  ],
+  "skin_offset": [
+    51.29,
+    37.44,
+    39.36
+  ],
+  "part": {
+    "id": "hair_front",
+    "file": "sprites/hair_front.png",
+    "pos": [
+      149,
+      92
+    ],
+    "size": [
+      169,
+      169
+    ],
+    "group": "head",
+    "layer": 183,
+    "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动"
+  }
+}

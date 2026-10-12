@@ -20,7 +20,8 @@
   "patches": [
     "颈部重叠带=颈线复制出的脖子桩（避免转头露出重影下巴）",
     "头/双臂/双腿的重叠带做了 alpha 渐隐（避免错位时出现硬切割线）",
-    "呆毛已拆成独立部件（make_hair_parts.py）"
+    "呆毛已拆成独立部件（make_hair_parts.py）",
+    "刘海已拆件，额头由 AI 重绘补全（make_bangs_parts.py）"
   ],
   "parts": [
     {
@@ -121,6 +122,21 @@
       "group": "head",
       "layer": 182,
       "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动"
+    },
+    {
+      "id": "hair_front",
+      "file": "sprites/hair_front.png",
+      "pos": [
+        149,
+        92
+      ],
+      "size": [
+        169,
+        169
+      ],
+      "group": "head",
+      "layer": 183,
+      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动"
     }
   ]
 }

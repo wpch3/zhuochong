@@ -121,3 +121,8 @@
 - 做了什么：第十四轮（续）：按用户『先做完零件』继续推进头部与头发零件。① 嘴：引擎补分轴缩放（部件 scale 支持 [sx,sy]，通道 sx/sy 相对基准做加法）+ 新波形 flap（0→amp→0，缩放不会摆成负数）；tools/make_mouth_parts.py 按嘴线实测造出开口形状(遮罩, 嘴角比中间晚开)与口内(上颚/口腔/舌/下唇线)——原画没有口腔，这件只能画；make_rig 接 mouth_mask(205, anchor=上唇线中点, scale=[1,0.063]) + mouth_cavity(206, mask)，talk 用 flap 3Hz，happy/surprised/hammered/sleep 各自张法。② 呆毛：tools/make_hair_parts.py 无损切出 hair_ahoge（切线 y=48、根部 12 行渐隐、从 seg_head 抹掉原发丝、登记进 body_parts.json），9 个动作接 bend_x+curve=root 摆动。③ 色卡补 4 个口内设计色（23 色）。④ 单测 237/0，check_assets 167 项全过（含无损切分仍 0 像素差）。⑤ ART_PARTS.md 更新：三类套路（遮罩型/画出来型/无损切出型）、下一步改序。
 - 遇到/修了什么：两个坑：嘴部件 anchor=[0.5,0] 时 pos 必须给锚点位置而不是左上角，第一版整体偏了半个嘴宽；make_rig 里用 ch 当循环变量覆盖了画布高度参数。另外实测发现本角色眉毛大半压在刘海下，单独做眉毛收益很低 → 把『前发分层 + 额头补画』提为眉毛的前置(G4j)，下一件改做上下眼睑(G4i)。
 - 下一步：① 上下眼睑（遮罩裁眼皮，引擎加 eyelid 标签把眨眼值接到位移）；② 前发/侧发分层 + 额头补画 → 再做眉；③ G4c 手臂关节补图。
+
+## 2026-10-12 06:45
+- 做了什么：第十六轮·刘海+额头 AI 重绘（第一件按 D19 做的零件）：①把 seg_head 放大3倍加洋红底交给生图做局部编辑，得到无刘海的脸 logs/asset_qa/head_nobangs.png；②新工具 tools/make_bangs_parts.py：找蓝色虹膜质心→按两眼中点+瞳距解相似变换（scale 0.8555，平移 -18.1/-36.3）→判定被遮额头（原图非肤∧重绘是肤∧眼上沿以上∧剪影内，向脸侧外扩2px吃掉发丝AA边，再补内部窟窿）→只拿补丁四周一圈皮肤做肤色配准（gain 0.80/0.85/0.83 offset 51.3/37.4/39.4）→切出 hair_front.png 169x169(11773px) 并把同一块换成重绘的皮肤+眉毛；③make_rig 接线：bend_x + curve:tip（吊在顶上，和呆毛的 root 相反），9 个动作 0.5~4.0px；④文档：ART_PARTS 新增 5.4 第四套路+流水线顺序警告，REQUIREMENTS 新增 D19/D20，GAPS G4j 标✅并新增 G4k 眉毛
+- 遇到/修了什么：①生图不保尺寸也不保构图（912x1166 vs 744x951，脸大17%），必须按虹膜解相似变换再回贴；②第一版肤色配准拿整张脸算，被腮红/下巴阴影带偏，额头发黄→改成只取补丁四周一圈皮肤算 gain+offset；③掩膜不外扩的话刘海一摆，额头留一圈发丝幽灵（抗锯齿边）→向脸侧扩2px并补内部小窟窿；④body_parts.json 的 patches 被追加了三遍→工具改成去重；⑤make_body_parts 会重生成 seg_head 冲掉补画，已在文档写明必须重跑 make_bangs_parts；⑥沙箱又重启，重建 ~/.imgenv 与 ~/.cache/tc/zigenv
+- 下一步：眉毛拆件 G4k（额头补全后眉毛已完整，切 brow_l/r + 脸部可见区遮罩，接 ParamBrowLY/Form）→ 眼睑 G4i → 手臂关节 G4c（同样走 AI 重绘：腋下/袖口）

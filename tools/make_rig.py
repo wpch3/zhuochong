@@ -75,7 +75,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         tag_of = {"seg_head": ["head_base"], "seg_torso": ["body"],
                   "seg_arm_l": ["arm"], "seg_arm_r": ["arm"],
                   "seg_leg_l": ["leg"], "seg_leg_r": ["leg"],
-                  "hair_ahoge": ["hair"]}
+                  "hair_ahoge": ["hair"], "hair_front": ["hair"]}
         body_parts_list = [{
             "id": sp["id"],
             "file": sp["file"],
@@ -471,6 +471,28 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 c = {"target": "hair_ahoge", "param": "bend_x", "curve": "root"}
                 c.update(spec)
                 by_id2[aid]["channels"].append(c)
+
+    # 刘海：吊在头顶、发梢在下，所以曲线用 tip（顶固定、下摆动）。
+    # 它底下的额头是 AI 重绘补出来的（make_bangs_parts.py），所以敢让它动；
+    # 幅度压在 4px 以内，再大就会把补画区的边缘露出来。
+    if any(p["id"] == "hair_front" for p in parts_list):
+        fr = {
+            "breath":    {"wave": "sine", "amp": 0.6, "freq": 0.26},
+            "idle":      {"wave": "sine", "amp": 0.9, "freq": 0.20},
+            "sway":      {"wave": "sine", "amp": 2.4, "freq": 0.33},
+            "happy":     {"wave": "bounce", "amp": 3.2, "dur": 1.4, "ease": "out"},
+            "surprised": {"wave": "decay", "amp": 3.8, "dur": 0.8, "freq": 2.2},
+            "head_pat":  {"wave": "sine", "amp": 2.6, "freq": 1.1},
+            "hammered":  {"wave": "decay", "amp": 4.0, "dur": 1.0, "freq": 2.8},
+            "wave":      {"wave": "sine", "amp": 1.4, "freq": 1.2},
+            "sleep":     {"wave": "sine", "amp": 0.5, "freq": 0.1},
+        }
+        by_id3 = {a["id"]: a for a in actions}
+        for aid, spec in fr.items():
+            if aid in by_id3:
+                chan = {"target": "hair_front", "param": "bend_x", "curve": "tip"}
+                chan.update(spec)
+                by_id3[aid]["channels"].append(chan)
 
     rig = {
         "schema_version": "1.0",

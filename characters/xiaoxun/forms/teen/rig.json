@@ -212,6 +212,24 @@
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
     },
     {
+      "id": "hair_front",
+      "file": "sprites/hair_front.png",
+      "group": "head",
+      "layer": 183,
+      "pos": [
+        350,
+        160
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
       "id": "mouth_mask",
       "file": "sprites/mouth_mask.png",
       "group": "head",
@@ -550,6 +568,14 @@
           "wave": "sine",
           "amp": 1.6,
           "freq": 0.3
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.6,
+          "freq": 0.26
         }
       ]
     },
@@ -608,6 +634,14 @@
           "wave": "sine",
           "amp": 4.0,
           "freq": 0.35
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 2.4,
+          "freq": 0.33
         }
       ]
     },
@@ -752,6 +786,14 @@
           "wave": "sine",
           "amp": 1.2,
           "freq": 0.22
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.9,
+          "freq": 0.2
         }
       ]
     },
@@ -807,6 +849,14 @@
           "curve": "root",
           "wave": "sine",
           "amp": 5.0,
+          "freq": 1.1
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 2.6,
           "freq": 1.1
         }
       ],
@@ -905,6 +955,15 @@
           "curve": "root",
           "wave": "bounce",
           "amp": 7.0,
+          "dur": 1.4,
+          "ease": "out"
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "bounce",
+          "amp": 3.2,
           "dur": 1.4,
           "ease": "out"
         }
@@ -1145,6 +1204,15 @@
           "amp": 8.0,
           "dur": 0.8,
           "freq": 2.4
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "decay",
+          "amp": 3.8,
+          "dur": 0.8,
+          "freq": 2.2
         }
       ]
     },
@@ -1213,6 +1281,15 @@
           "amp": 9.0,
           "dur": 1.0,
           "freq": 3.0
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "decay",
+          "amp": 4.0,
+          "dur": 1.0,
+          "freq": 2.8
         }
       ],
       "part_overrides": {
@@ -1492,6 +1569,14 @@
           "wave": "sine",
           "amp": 1.0,
           "freq": 0.1
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.1
         }
       ],
       "part_overrides": {
@@ -1583,6 +1668,14 @@
           "curve": "root",
           "wave": "sine",
           "amp": 3.0,
+          "freq": 1.2
+        },
+        {
+          "target": "hair_front",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 1.4,
           "freq": 1.2
         }
       ],
