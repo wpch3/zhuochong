@@ -306,6 +306,35 @@ def check(character, form, root=".", strict=False, out_json=None):
                 lf = np.maximum.accumulate(sl, 1); rt = np.maximum.accumulate(sl[:, ::-1], 1)[:, ::-1]
                 return int(((~sl) & up & dn & lf & rt).sum())
 
+            # —— AI 重绘真素材的质量门禁（D20：证据数字必须被机器校，不能只写在报告里）——
+            mp_path = os.path.join(base, "sprites", "mouth_parts.json")
+            if os.path.exists(mp_path):
+                mpj = json.load(open(mp_path, encoding="utf-8"))
+                ck = mpj.get("checks", {})
+                reg = mpj.get("register", {})
+                if reg:
+                    add("真素材", "张嘴配准", reg.get("ncc", 0) >= 0.85,
+                        f"虹膜配准 NCC {reg.get('ncc')}（下限 0.85）")
+                    add("真素材", "口内有牙", ck.get("teeth_px", 0) >= 5,
+                        f"牙 {ck.get('teeth_px', 0)} 像素（下限 5）")
+                    add("真素材", "口内有舌", ck.get("tongue_px", 0) >= 30,
+                        f"舌 {ck.get('tongue_px', 0)} 像素（下限 30）")
+                    line_y = mpj.get("line", {}).get("y0", 0)
+                    dy = abs(mpj.get("anchor_pos", [0, 0])[1] - (line_y + 2))
+                    add("真素材", "张嘴对齐笑线", dy <= 3.0,
+                        f"上沿离嘴线 {dy:.1f} 像素（上限 3）")
+            ec_path = os.path.join(base, "sprites", "eye_closed_parts.json")
+            if os.path.exists(ec_path):
+                ecj = json.load(open(ec_path, encoding="utf-8"))
+                add("真素材", "闭眼配准", ecj.get("register", {}).get("ncc", 0) >= 0.6,
+                    f"脸部 NCC {ecj.get('register', {}).get('ncc')}（下限 0.6）")
+                for ey in ecj.get("eyes", []):
+                    c = ey["checks"]
+                    add("真素材", f"闭眼盖住原画({ey['side']})", c["cover_ratio"] >= 0.99,
+                        f"盖住 {c['cover_ratio']*100:.1f}%（下限 99%）")
+                    add("真素材", f"闭眼接缝({ey['side']})", c["seam_mean_abs"] <= 12.0,
+                        f"接缝色差 {c['seam_mean_abs']}（上限 12）")
+
             # —— 袖下躯干完整性（手臂外展方向才看得见的东西）——
             # 注意符号：PIL 的 rotate 是**画面逆时针**，引擎的 rot_deg 是顺时针，
             # 两者相反。下面的 25° 压力姿势按 PIL 符号写的是「两条手臂往身体内侧转」，

@@ -461,6 +461,16 @@ Live2D 官方教程的顺序是：**分层画稿 → 导入 → 建网格 → �
 - 多底验收 = 白 / 灰 (128,128,132) / 黑 (18,18,22) 三底 `alpha_composite` + NEAREST 放大 6~9 倍
   （棋盘格会藏浅色光晕，黑底不会）。
 
+### 5.9 目录里哪些图是"活的"
+`sprites/` 里有 34 张图，rig 只引用 29 张；剩下的别当成垃圾删掉：
+
+| 文件 | 状态 |
+| --- | --- |
+| `body_full.png` | **源图**：所有切件都从它切，必须留 |
+| `eye_open_left/right.png`、`eye_closed_left/right.png` | 未拆件角色的**兜底分支**（`make_rig.py` 里 `if not eyes`） |
+| `eye_l_lid.png`、`eye_r_lid.png` | 没有闭眼真素材时的**兜底眼皮**（`if not closed`） |
+| `seg_arm_l/r.png` | **已被四件臂取代**：`make_body_parts.py` 还在生成，rig 不再引用。留着当对照，不要接回 rig |
+
 ## 六、下一步顺序（按"看得见的收益 / 风险"排）
 
 1. ~~嘴~~ ✅ 2026-10-12（见 5.2）

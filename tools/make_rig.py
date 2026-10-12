@@ -42,7 +42,10 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         # 张嘴：开口形状（遮罩）压高 + 上唇线淡出。scale 取 talk 动作里实测的幅度。
         out.append({"id": "ParamMouthOpenY", "label": "张嘴", "min": 0.0, "max": 1.0,
                     "default": 0.0,
-                    "binds": [{"part": "mouth_mask", "param": "sy", "scale": 0.737},
+                    # 比例要跟着素材走：参数 1.0 = 张到最大（和 surprised 同一口径），
+                    # 写死 0.737 的话换一套嘴素材就对不上了（closed_sy 变了）。
+                    "binds": [{"part": "mouth_mask", "param": "sy",
+                               "scale": round(0.95 - mouth["closed_sy"], 3)},
                               {"part": "mouth_open", "param": "alpha", "scale": -0.9}],
                     "note": "口型同步（LipSync）接进来时写的就是这个参数"})
         out.append({"id": "ParamMouthForm", "label": "嘴形 笑/扁", "min": -1.0, "max": 1.0,
@@ -319,7 +322,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "layer": 205, "pos": [ox + mx, oy + my], "anchor": [0.5, 0],
              "scale": [1.0, mouth["closed_sy"]], "tags": ["mouth"], "mask_only": True,
              "note": f"开口形状：锚点在上唇线，sy={mouth['closed_sy']} 是闭嘴，"
-                     f"sy≈0.85 是张到最大（{mouth['open_h']}px）"},
+                     f"sy≈0.95 是张到最大（{mouth['open_h']}px）"},
             {"id": "mouth_cavity", "file": f"sprites/{mouth['cavity']}", "group": "head",
              "layer": 206, "pos": [ox + mx, oy + my], "anchor": [0.5, 0],
              "scale": [1.0, mouth["closed_sy"]], "tags": ["mouth"], "mask": "mouth_mask",

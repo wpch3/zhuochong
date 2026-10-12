@@ -351,7 +351,7 @@
         "mouth"
       ],
       "mask_only": true,
-      "note": "开口形状：锚点在上唇线，sy=0.0545 是闭嘴，sy≈0.85 是张到最大（22px）"
+      "note": "开口形状：锚点在上唇线，sy=0.0545 是闭嘴，sy≈0.95 是张到最大（22px）"
     },
     {
       "id": "mouth_cavity",
@@ -2069,7 +2069,7 @@
         {
           "part": "mouth_mask",
           "param": "sy",
-          "scale": 0.737
+          "scale": 0.895
         },
         {
           "part": "mouth_open",
