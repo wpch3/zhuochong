@@ -37,8 +37,8 @@
     { "id": "mood_think",     "kind": "mood", "mood": "think",    "action": "think",    "priority": 5, "cooldown_s": 20, "lines": ["mood_think_1"] },
     { "id": "mood_sleepy",    "kind": "mood", "mood": "sleepy",   "action": "sleep",    "priority": 5, "cooldown_s": 60, "lines": ["mood_sleepy_1"] },
     { "id": "call_start",     "kind": "call_start",         "action": "talk",  "affection_gain": 1, "priority": 10, "cooldown_s": 0, "lines": ["call_start_1"] },
-    { "id": "call_user",      "kind": "call_user_speaking", "action": "focus", "priority": 10, "cooldown_s": 0, "lines": [] },
-    { "id": "call_reply",     "kind": "call_reply",         "action": "talk",  "priority": 10, "cooldown_s": 0, "lines": [] },
+    { "id": "call_user",      "kind": "call_user_speaking", "action": "focus", "force": true, "priority": 10, "cooldown_s": 0, "lines": [] },
+    { "id": "call_reply",     "kind": "call_reply",         "action": "talk",  "force": true, "priority": 10, "cooldown_s": 0, "lines": [] },
     { "id": "call_end",       "kind": "call_end",           "action": "idle",  "affection_gain": 1, "priority": 10, "cooldown_s": 0, "lines": ["call_end_1"] },
     { "id": "tier_up",        "kind": "tier_up",            "action": "happy", "priority": 10, "cooldown_s": 0, "lines": ["tier_up"] }
   ]

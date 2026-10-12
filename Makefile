@@ -23,7 +23,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test preview win pack-win clean fmt-check
+.PHONY: all test smoke preview win pack-win clean fmt-check
 
 all: test
 
@@ -46,8 +46,12 @@ $(BUILD)/zhuochong_preview: src/headless/main_headless.c $(CORE_SRC)
 	$(CC) $(CFLAGS) $(INC) -o $@ src/headless/main_headless.c $(CORE_SRC) $(LDLIBS)
 
 preview: $(BUILD)/zhuochong_preview
-	@echo "预览服务：http://0.0.0.0:5173"
+	@echo "预览服务：http://0.0.0.0:5173   测试台：http://0.0.0.0:5173/test.html"
 	./$(BUILD)/zhuochong_preview --root . --port 5173 --bind 0.0.0.0
+
+# 互动/动作端到端冒烟（自己起一个预览再打一圈端点，判据是"画面真的变了"）
+smoke: $(BUILD)/zhuochong_preview
+	@python3 tools/api_smoke.py --spawn --port 5200 --root .
 
 # ---------------------------------------------------------------- Windows
 win: $(CORE_OBJ)

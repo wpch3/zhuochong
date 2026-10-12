@@ -510,6 +510,23 @@ static void handle_request(zsock fd, const http_req *r)
         send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;
     }
+    if (strcmp(r->path, "/api/region") == 0) {
+        /* 测试台要能回答"鼠标现在压在哪个互动区上"：给帧坐标，回区域 id/动作/光标。
+           区域判定还带不透明像素命中（透明的角落不算），所以这里也能验出"点空了"。 */
+        char body[256], action[48];
+        const char *cursor = "arrow";
+        const char *id;
+        int x = qint(r, "x", 0), y = qint(r, "y", 0);
+        action[0] = 0;
+        LOCK();
+        id = zpet_region(g_pet, x, y, action, sizeof(action), &cursor);
+        UNLOCK();
+        z_snprintf(body, sizeof(body),
+                   "{\"region\":\"%s\",\"action\":\"%s\",\"cursor\":\"%s\",\"x\":%d,\"y\":%d}",
+                   id ? id : "", action, cursor ? cursor : "arrow", x, y);
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
     if (strcmp(r->path, "/api/blink") == 0) {
         /* 测试台的眨眼滑条：v=0..1 按住，v=auto 交回自动眨眼 */
         char s[32];

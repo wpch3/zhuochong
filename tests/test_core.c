@@ -646,6 +646,74 @@ static int frame_opaque_px(const zimg *im)
     return n;
 }
 
+/* 不透明像素的重心 y（整数放大 1000 倍避免浮点比较） */
+static int frame_centroid_y(const zimg *im)
+{
+    int x, y; long n = 0; long sum = 0;
+    if (!im) return -1;
+    for (y = 0; y < im->h; ++y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) { n++; sum += y; }
+    return n ? (int)(sum / n) : -1;
+}
+
+static void test_eyelid(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("眼睑：blink 把带 eyelid 标签的部件按行程往下推（眨眼＝眼皮下滑）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_lid");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/lid.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 eye_l_lid.png 失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"眼睑测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"lid\",\"file\":\"sprites/lid.png\",\"group\":\"root\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],"
+        " \"tags\":[\"eyelid\"],\"eyelid_travel\":20}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 eyelid 标签的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int open_y, half_y, shut_y, open_px, shut_px;
+            zrig_blink_set_manual(r, 0.0);
+            zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            open_y = frame_centroid_y(fb);
+            open_px = frame_opaque_px(fb);
+            zrig_blink_set_manual(r, 0.5);
+            zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            half_y = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 1.0);
+            zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            shut_y = frame_centroid_y(fb);
+            shut_px = frame_opaque_px(fb);
+            CHECK(open_y > 0 && shut_y > 0, "眼皮两种状态都该画出东西（%d / %d）", open_y, shut_y);
+            CHECK(shut_y > open_y, "blink=1 时眼皮重心应更靠下（睁 %d → 闭 %d）", open_y, shut_y);
+            CHECK(half_y > open_y && half_y < shut_y,
+                  "blink=0.5 应落在中间（%d < %d < %d）", open_y, half_y, shut_y);
+            CHECK(shut_px > open_px - open_px / 20 && shut_px < open_px + open_px / 20,
+                  "下滑不该改变眼皮的像素量（睁 %d vs 闭 %d）", open_px, shut_px);
+            CHECK(zrig_blink_manual(r) > 0.99, "手动眨眼值应可读回（%.2f）", zrig_blink_manual(r));
+            zrig_blink_set_manual(r, -1.0);
+            CHECK(zrig_blink_manual(r) < 0.0, "设成负数应回到自动眨眼");
+            zrig_free(r);
+        }
+    }
+}
+
 static void test_mask(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -1097,6 +1165,7 @@ int main(int argc, char **argv)
     test_bad_config();
     test_rig_channels();
     test_mask();
+    test_eyelid();
     test_interactions();
     test_affection();
 
