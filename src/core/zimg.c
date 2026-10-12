@@ -45,6 +45,36 @@ void zimg_free(zimg *im)
     free(im);
 }
 
+void zimg_composite_masked(zimg *dst, const zimg *src, const zimg *mask)
+{
+    /* 把 src 合成到 dst，但只在 mask 不透明的地方生效（alpha 相乘）。
+       这就是 Live2D 的 clipping mask：眼球画成完整的圆，靠眼眶形状裁出可见部分，
+       眼球移动时边缘始终贴着眼眶，不会滑出去。 */
+    int x, y;
+    if (!dst || !src) return;
+    if (dst->w != src->w || dst->h != src->h) return;
+    if (mask && (mask->w != dst->w || mask->h != dst->h)) return;
+    for (y = 0; y < dst->h; ++y) {
+        uint8_t *dp = dst->px + (size_t)y * (size_t)dst->w * 4;
+        const uint8_t *sp = src->px + (size_t)y * (size_t)src->w * 4;
+        const uint8_t *mp = mask ? mask->px + (size_t)y * (size_t)mask->w * 4 : NULL;
+        for (x = 0; x < dst->w; ++x, dp += 4, sp += 4) {
+            unsigned sa = sp[3];
+            unsigned ma = mp ? mp[x * 4 + 3] : 255u;
+            unsigned a, inv;
+            if (sa == 0 || ma == 0) continue;
+            a = (sa * ma + 127u) / 255u;
+            if (a == 0) continue;
+            inv = 255u - a;
+            dp[0] = (uint8_t)((sp[0] * a + dp[0] * inv + 127u) / 255u);
+            dp[1] = (uint8_t)((sp[1] * a + dp[1] * inv + 127u) / 255u);
+            dp[2] = (uint8_t)((sp[2] * a + dp[2] * inv + 127u) / 255u);
+            dp[3] = (uint8_t)(a + (dp[3] * inv + 127u) / 255u > 255u ? 255u
+                              : a + (dp[3] * inv + 127u) / 255u);
+        }
+    }
+}
+
 zimg *zimg_downscale(const zimg *im, int dw, int dh)
 {
     /* 盒式平均缩小。**必须按 alpha 预乘再平均**：直接平均 RGB 会把透明像素里

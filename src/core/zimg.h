@@ -56,6 +56,9 @@ zimg *zimg_place(const zimg *im, int cw, int ch, int x, int y);
 /* --------------------------------------------------------------- 合成 */
 /* 仿射矩阵（行主序）：x' = m0*x + m2*y + m4 ; y' = m1*x + m3*y + m5 */
 void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity);
+/* 遮罩合成：把 src 叠到 dst，但只在 mask 不透明处生效（三张图尺寸必须一致）。
+   Live2D 的 clipping mask 等价物——眼球/高光/腮红靠它被眼眶或脸裁住。 */
+void zimg_composite_masked(zimg *dst, const zimg *src, const zimg *mask);
 
 /* 只在源图的 (sx0,sy0)-(sx1,sy1) 矩形内绘制（用于分段形变，避免重复混合）。
    源坐标越界会被夹到图像范围内；矩形为空则什么都不画。 */

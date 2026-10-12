@@ -15,7 +15,7 @@ import argparse, json, os, sys
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
-          seg=None, anchors=None):
+          seg=None, anchors=None, eyes=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -87,10 +87,46 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         } for sp in seg["parts"]]
     else:
         body_parts_list = [body_part]
+    # 眼睛：拆成 Live2D 式四件（眼眶遮罩 / 眼白底 / 眼球 / 眼线），
+    # 眼球单独可动并被眼眶裁切；没有拆件产物时退回整块贴图。
+    eye_parts = []
+    eye_ball_ids = []
+    if eyes:
+        base_layer = {"l": 216, "r": 226}
+        for e in eyes["eyes"]:
+            side = e["side"]
+            L = base_layer[side]
+            px, py = e["patch_pos"]
+            bx, by = e["ball_pos"]
+            sid = f"eye_{side}"
+            eye_parts += [
+                {"id": f"{sid}_socket", "file": f"sprites/{e['socket']}", "group": "head",
+                 "layer": L, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                 "tags": ["eye_open"], "mask_only": True,
+                 "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"},
+                {"id": f"{sid}_base", "file": f"sprites/{e['base']}", "group": "head",
+                 "layer": L + 1, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                 "tags": ["eye_open"],
+                 "note": "眼白底：眼球移开也不会露洞"},
+                {"id": f"{sid}_ball", "file": f"sprites/{e['ball']}", "group": "head",
+                 "layer": L + 2, "pos": [ox + bx, oy + by], "anchor": [0, 0],
+                 "tags": ["eye_open", "gaze"], "mask": f"{sid}_socket",
+                 "note": f"眼球：完整的圆（被眼皮挡住的部分已补全），"
+                         f"可动范围 ±{e['travel'][0]}/±{e['travel'][1]}px，由眼眶裁切"},
+                {"id": f"{sid}_lash", "file": f"sprites/{e['lash']}", "group": "head",
+                 "layer": L + 3, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                 "tags": ["eye_open"],
+                 "note": "眼线睫毛：压在眼球上面，眼球上翻时会被它盖住"},
+            ]
+            eye_ball_ids.append(f"{sid}_ball")
+    else:
+        eye_parts = [
+            part("eye_open_left.png", "head", ["eye_open", "gaze"], 220),
+            part("eye_open_right.png", "head", ["eye_open", "gaze"], 221),
+        ]
     parts_list = body_parts_list + [
         part("mouth_open.png", "head", ["mouth"], 210, "口型 A：说话时按通道闪烁"),
-        part("eye_open_left.png", "head", ["eye_open", "gaze"], 220),
-        part("eye_open_right.png", "head", ["eye_open", "gaze"], 221),
+    ] + eye_parts + [
         part("eye_closed_left.png", "head", ["eye_closed"], 230, "闭眼：眨眼时与睁眼交叉淡化"),
         part("eye_closed_right.png", "head", ["eye_closed"], 231),
     ]
@@ -321,6 +357,52 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "head": {"pivot": [cw // 2, neck_y], "parent": "chest", "bend_follow": body_id},
         }
 
+    # 眼睛拆件后，老动作里写的 eye_open_left/right 要摊到四个零件上：
+    # 眼眶（遮罩）必须和眼白底、眼线一起动，否则遮罩不跟手，裁切就错位了。
+    if eyes:
+        expand = {
+            "eye_open_left":  [f"eye_l_{k}" for k in ("socket", "base", "ball", "lash")],
+            "eye_open_right": [f"eye_r_{k}" for k in ("socket", "base", "ball", "lash")],
+        }
+        for a in actions:
+            chans = []
+            for c in a.get("channels", []):
+                if c.get("target") in expand:
+                    for nid in expand[c["target"]]:
+                        c2 = dict(c)
+                        c2["target"] = nid
+                        chans.append(c2)
+                else:
+                    chans.append(c)
+            a["channels"] = chans
+            ov = a.get("part_overrides")
+            if ov:
+                nov = {}
+                for k, v in ov.items():
+                    if k in expand:
+                        for nid in expand[k]:
+                            nov[nid] = v
+                    else:
+                        nov[k] = v
+                a["part_overrides"] = nov
+        # 新动作：眼球左右看（Live2D 的 ParamEyeBallX/Y 对应物）。
+        # 只有眼球动，眼白与眼线不动——这正是拆件的意义。
+        tl = min(e["travel"][0] for e in eyes["eyes"])
+        tv = min(e["travel"][1] for e in eyes["eyes"])
+        look = {"id": "look_around", "priority": 3, "duration": 4.0, "loop": False,
+                "interruptible": True, "return_state": "idle", "channels": []}
+        for e in eyes["eyes"]:
+            bid = f"eye_{e['side']}_ball"
+            look["channels"] += [
+                {"target": bid, "param": "dx", "wave": "sine", "amp": float(tl), "freq": 0.45},
+                {"target": bid, "param": "dy", "wave": "sine", "amp": float(tv) * 0.5,
+                 "freq": 0.9, "phase": 0.25},
+            ]
+        look["channels"] += [
+            {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 1.5, "freq": 0.45},
+        ]
+        actions.append(look)
+
     rig = {
         "schema_version": "1.0",
         "id": f"{name}_teen",
@@ -384,6 +466,17 @@ def main() -> int:
     if os.path.exists(anchor_path):
         with open(anchor_path, encoding="utf-8") as f:
             anchors = json.load(f)
+    # 眼部拆件（tools/make_eye_parts.py 的产物）
+    eyes = None
+    eye_path = os.path.join(base, "sprites", "eye_parts.json")
+    if os.path.exists(eye_path):
+        with open(eye_path, encoding="utf-8") as f:
+            eyes = json.load(f)
+        miss = [k for e in eyes["eyes"] for k in ("socket", "base", "ball", "lash")
+                if not os.path.exists(os.path.join(base, "sprites", e[k]))]
+        if miss:
+            print(f"警告：眼部拆件缺图 {miss}，退回整块眼睛贴图", file=sys.stderr)
+            eyes = None
     # 头是不是独立部件？决定能不能发"头部旋转"通道。
     # 单图层全身图里，头是画在身体上的：这时让 head 组转动，只会把贴在上面的
     # 五官转走（看起来像眼睛在脸上滑），所以生成器直接不发 rot_deg。
@@ -394,7 +487,7 @@ def main() -> int:
     if seg and any(sp["id"] == "seg_head" for sp in seg["parts"]):
         head_is_part = True          # 分段素材里头是独立一张图，可以放心转头
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
-                seg=seg, anchors=anchors)
+                seg=seg, anchors=anchors, eyes=eyes)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

@@ -580,16 +580,20 @@ static void test_rig_channels(void)
             /* 跟随源与取样高度都从 rig 里读：单图层骨架（眼睛贴在整张身体上，
                按自己高度取样）和分段骨架（头整块挂在脖子上，按关节点取样）
                用同一套断言，换素材不用改测试。 */
-            const char *src = zrig_part_follow_src(r, "eye_open_left");
+            /* 眼睛部件的 id 随拆件程度而变：整块贴图叫 eye_open_left，
+               拆成 Live2D 式零件后眼白底叫 eye_l_base。测试自己挑现有的那个，
+               这样拆件推进时不用改断言。 */
+            const char *eye_id = "eye_l_base";
+            const char *src = zrig_part_follow_src(r, eye_id);
+            if (!src) { eye_id = "eye_open_left"; src = zrig_part_follow_src(r, eye_id); }
             CHECK(src != NULL, "眼睛所在的组必须声明 bend_follow");
             zrig_action_request(r, "sway", "t", 1);
             for (i = 0; i < 300 && src; ++i) {   /* 扫 5 秒，覆盖 sway 的一个周期 */
                 double follow, body, gap, rigid;
                 zrig_tick(r, 200.0 + i / 60.0);
                 zrig_frame(r, 1.0, &fw, &fh);
-                follow = zrig_part_offset_x(r, "eye_open_left");   /* 眼睛实际被推了多远 */
-                body   = zrig_bend_at(r, src,
-                                      zrig_part_follow_y(r, "eye_open_left"));
+                follow = zrig_part_offset_x(r, eye_id);   /* 眼睛实际被推了多远 */
+                body   = zrig_bend_at(r, src, zrig_part_follow_y(r, eye_id));
                 gap = fabs(follow - body);
                 /* 同一个头上的部件必须刚性同步，差一点点都会看成"五官在脸上滑" */
                 rigid = fabs(follow - zrig_part_offset_x(r, "mouth_open"));
@@ -615,6 +619,168 @@ static void write_text(const char *path, const char *text)
     if (!f) return;
     fwrite(text, 1, strlen(text), f);
     fclose(f);
+}
+
+/* ------------------------------------------------- 遮罩（clipping mask） */
+static int diag_has(const zdiag *d, const char *needle);
+static int copy_file(const char *src, const char *dst)
+{
+    FILE *a = fopen(src, "rb"), *b;
+    char buf[8192];
+    size_t n;
+    if (!a) return -1;
+    b = fopen(dst, "wb");
+    if (!b) { fclose(a); return -1; }
+    while ((n = fread(buf, 1, sizeof(buf), a)) > 0) fwrite(buf, 1, n, b);
+    fclose(a); fclose(b);
+    return 0;
+}
+
+static int frame_opaque_px(const zimg *im)
+{
+    int x, y, n = 0;
+    if (!im) return 0;
+    for (y = 0; y < im->h; ++y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) n++;
+    return n;
+}
+
+static void test_mask(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("遮罩：部件只在遮罩形状内可见（眼球不滑出眼眶的前提）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_mask");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/body_full.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/body_full.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 body_full.png 失败"); return; }
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/mouth_open.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/mouth_open.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 mouth_open.png 失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 正例：用小小的嘴去裁切整张身体，画面上应该只剩嘴那一块 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"hole\",\"file\":\"sprites/mouth_open.png\",\"group\":\"root\","
+        "  \"layer\":10,\"pos\":[300,300],\"anchor\":[0,0],\"mask_only\":true},"
+        " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"hole\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带遮罩的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int masked = 0, plain = 0;
+            zrig_tick(r, 1.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            masked = frame_opaque_px(fb);
+            zrig_free(r);
+            /* 同一份 rig，去掉 mask 之后应该画出整张身体 */
+            write_text(rigp,
+                "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+                "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+                "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+                "\"parts\":["
+                " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+                "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0]}],"
+                "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            if (r) {
+                zrig_tick(r, 1.0);
+                fb = zrig_frame(r, 1.0, NULL, NULL);
+                plain = frame_opaque_px(fb);
+                zrig_free(r);
+            }
+            CHECK(masked > 0, "被裁切的部件仍应有可见像素（实际 %d）", masked);
+            CHECK(plain > masked * 10,
+                  "裁切后应只剩遮罩那一小块：裁切 %d 像素 vs 未裁切 %d 像素", masked, plain);
+        }
+    }
+
+    /* 眨眼把遮罩源一起关掉时，被裁切的部件必须跟着消失（遮罩全透明 = 看不见） */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"blink\":{\"enabled\":true},"
+        "\"parts\":["
+        " {\"id\":\"hole\",\"file\":\"sprites/mouth_open.png\",\"group\":\"root\","
+        "  \"layer\":10,\"pos\":[300,300],\"anchor\":[0,0],\"mask_only\":true,"
+        "  \"tags\":[\"eye_open\"]},"
+        " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"hole\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带眨眼标签的遮罩 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int open_px, closed_px;
+            zrig_tick(r, 1.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            open_px = frame_opaque_px(fb);
+            zrig_blink_force(r, 1);
+            zrig_tick(r, 1.1);
+            fb = zrig_frame(r, 1.1, NULL, NULL);
+            closed_px = frame_opaque_px(fb);
+            CHECK(open_px > 0, "睁眼时被裁切的部件可见（%d 像素）", open_px);
+            CHECK(closed_px == 0,
+                  "遮罩被眨眼隐藏后，被裁切的部件也要消失（实际还剩 %d 像素）", closed_px);
+            zrig_free(r);
+        }
+    }
+
+    /* 反例一：遮罩指向不存在的部件 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        " \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"nope\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "遮罩指向不存在的部件应加载失败");
+        CHECK(diag_has(&d, "nope"), "错误信息要点名是哪个 mask 找不到");
+    }
+
+    /* 反例二：遮罩画在被裁切部件后面（层序反了） */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"hole\",\"file\":\"sprites/mouth_open.png\",\"group\":\"root\","
+        "  \"layer\":30,\"pos\":[300,300],\"anchor\":[0,0]},"
+        " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"hole\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "遮罩层序反了应加载失败");
+        CHECK(diag_has(&d, "layer"), "错误信息要说清是层序问题");
+    }
 }
 
 static int diag_has(const zdiag *d, const char *needle)
@@ -894,6 +1060,7 @@ int main(int argc, char **argv)
     test_config_and_pet();
     test_bad_config();
     test_rig_channels();
+    test_mask();
     test_interactions();
     test_affection();
 

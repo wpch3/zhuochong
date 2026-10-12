@@ -57,6 +57,10 @@ typedef struct {
     double rot_deg;
     double opacity;
     unsigned tags;
+    char   mask_id[64];       /* rig 里写的 "mask"：被哪个部件裁切（解析期暂存 id） */
+    int    mask;              /* 解析后的部件索引，-1 表示不裁切 */
+    int    mask_only;         /* 1 = 自己只当遮罩用，不画出来 */
+    int    is_mask_src;       /* 1 = 有别的部件拿我当遮罩 */
 } zpart;
 
 typedef struct {
@@ -133,6 +137,9 @@ struct zrig {
 
     /* 帧缓冲 */
     zimg  *fb;
+    zimg  *maskbuf;           /* 遮罩部件画在这里（只取它的 alpha） */
+    int    maskbuf_part;      /* maskbuf 当前装的是哪个部件，-1 = 空 */
+    zimg  *scratch;           /* 被裁切的部件先画在这里，再按遮罩合成到 fb */
     double fb_scale;
     int    fb_w, fb_h;
 
@@ -342,6 +349,18 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
         p->scale = zjson_num(zjson_obj_get(pj, "scale"), 1.0);
         p->rot_deg = zjson_num(zjson_obj_get(pj, "rot_deg"), 0.0);
         p->opacity = zjson_num(zjson_obj_get(pj, "opacity"), 1.0);
+            /* 遮罩（Live2D 的 clipping mask 等价物）：本部件只在 mask 指向的那个
+               部件的不透明区域内可见。眼球/高光/腮红这类"必须被眼眶或脸裁住"的
+               部件靠它，否则眼球一动就滑出眼眶。
+               约束：遮罩部件的 layer 必须更小（先画），加载时会校验。 */
+            {
+                const char *mk = zjson_str(zjson_obj_get(pj, "mask"), NULL);
+                p->mask = -1;
+                p->mask_id[0] = 0;
+                p->is_mask_src = 0;
+                if (mk && *mk) z_strlcpy(p->mask_id, mk, sizeof(p->mask_id));
+                p->mask_only = zjson_bool(zjson_obj_get(pj, "mask_only"), 0);
+            }
         p->tags = parse_tags(zjson_obj_get(pj, "tags"));
         {
             const char *gid = zjson_str(zjson_obj_get(pj, "group"), "root");
@@ -624,6 +643,60 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         }
     }
     sort_parts(r);
+    /* 解析遮罩引用（必须在 sort_parts 之后：要按最终绘制顺序校验先后） */
+    {
+        int i;
+        for (i = 0; i < r->nparts; ++i) {
+            zpart *p = &r->parts[i];
+            if (!p->mask_id[0]) continue;
+            p->mask = find_part(r, p->mask_id);
+            if (p->mask < 0) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "mask 指向的部件 '%s' 不存在", p->mask_id);
+                goto fail;
+            }
+            if (p->mask == i) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
+                zdiag_error(diag, file, 0, 0, path, "mask 不能指向自己");
+                goto fail;
+            }
+            if (r->parts[p->mask].layer >= p->layer) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "遮罩部件 '%s' 的 layer(%d) 必须小于被裁切部件的 layer(%d)，"
+                            "否则遮罩还没画出来就要用它裁切",
+                            p->mask_id, r->parts[p->mask].layer, p->layer);
+                goto fail;
+            }
+            r->parts[p->mask].is_mask_src = 1;
+        }
+        /* 画一个遮罩只用一块缓冲：遮罩与被裁切部件之间不能插进另一个遮罩源，
+           否则缓冲被覆盖。这里按最终绘制顺序检查，不合规直接报错而不是悄悄画错。 */
+        for (i = 0; i < r->nparts; ++i) {
+            zpart *p = &r->parts[i];
+            int k, pos_self = -1, pos_mask = -1;
+            if (p->mask < 0) continue;
+            for (k = 0; k < r->nparts; ++k) {
+                if (r->order[k] == i) pos_self = k;
+                if (r->order[k] == p->mask) pos_mask = k;
+            }
+            for (k = pos_mask + 1; k < pos_self; ++k) {
+                if (r->parts[r->order[k]].is_mask_src) {
+                    char path[160];
+                    z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
+                    zdiag_error(diag, file, 0, 0, path,
+                                "遮罩 '%s' 与本部件之间夹着另一个遮罩源 '%s'，"
+                                "请调整 layer 让每组遮罩相邻",
+                                p->mask_id, r->parts[r->order[k]].id);
+                    goto fail;
+                }
+            }
+        }
+    }
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
 
@@ -673,6 +746,8 @@ void zrig_free(zrig *r)
         zimg_free(r->parts[i].img_scaled);
     }
     zimg_free(r->fb);
+    zimg_free(r->maskbuf);
+    zimg_free(r->scratch);
     free(r);
 }
 
@@ -1034,17 +1109,22 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
         ensure_scaled(r, scale);
         zimg_free(r->fb);
         r->fb = zimg_new(fw, fh);
+        zimg_free(r->maskbuf); r->maskbuf = NULL;
+        zimg_free(r->scratch); r->scratch = NULL;
         r->fb_scale = scale;
         r->fb_w = fw;
         r->fb_h = fh;
     } else if (!r->fb || r->fb->w != fw || r->fb->h != fh) {
         zimg_free(r->fb);
         r->fb = zimg_new(fw, fh);
+        zimg_free(r->maskbuf); r->maskbuf = NULL;
+        zimg_free(r->scratch); r->scratch = NULL;
         r->fb_w = fw;
         r->fb_h = fh;
     }
     if (!r->fb) return NULL;
     zimg_clear(r->fb);
+    r->maskbuf_part = -1;       /* 新的一帧：遮罩缓冲作废 */
 
     a = current_action(r);
     {
@@ -1109,12 +1189,39 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
             }
             {
                 double bx = r->p_bendx[pi] * scale, by = r->p_bendy[pi] * scale;
-                if (fabs(bx) > 0.05 || fabs(by) > 0.05) {
-                    zimg_draw_warp(r->fb, src, m, opacity,
-                                   bx, r->p_bendcx[pi], by, r->p_bendcy[pi]);
-                } else {
-                    zimg_draw(r->fb, src, m, opacity);
+                int warped = (fabs(bx) > 0.05 || fabs(by) > 0.05);
+                zimg *target = r->fb;
+
+                /* 有人拿我当遮罩：我要额外画一份到 maskbuf（只用它的 alpha）。
+                   mask_only 的部件只进 maskbuf，不出现在画面上。 */
+                if (p->is_mask_src) {
+                    if (!r->maskbuf) r->maskbuf = zimg_new(r->fb->w, r->fb->h);
+                    if (r->maskbuf) {
+                        zimg_clear(r->maskbuf);
+                        r->maskbuf_part = pi;
+                        if (warped)
+                            zimg_draw_warp(r->maskbuf, src, m, 1.0,
+                                           bx, r->p_bendcx[pi], by, r->p_bendcy[pi]);
+                        else
+                            zimg_draw(r->maskbuf, src, m, 1.0);
+                    }
+                    if (p->mask_only) continue;
                 }
+                /* 我被别人裁切：先画到 scratch，再按遮罩 alpha 合成过去 */
+                if (p->mask >= 0) {
+                    /* 遮罩自己没画出来（例如眨眼时眼眶被隐藏）= 遮罩全透明 = 我也看不见，
+                       与 Live2D 的 clipping 语义一致 */
+                    if (r->maskbuf_part != p->mask) continue;
+                    if (!r->scratch) r->scratch = zimg_new(r->fb->w, r->fb->h);
+                    if (r->scratch) { zimg_clear(r->scratch); target = r->scratch; }
+                }
+                if (warped)
+                    zimg_draw_warp(target, src, m, opacity,
+                                   bx, r->p_bendcx[pi], by, r->p_bendcy[pi]);
+                else
+                    zimg_draw(target, src, m, opacity);
+                if (target != r->fb)
+                    zimg_composite_masked(r->fb, r->scratch, r->maskbuf);
             }
         }
     }

@@ -212,10 +212,10 @@
       "note": "口型 A：说话时按通道闪烁"
     },
     {
-      "id": "eye_open_left",
-      "file": "sprites/eye_open_left.png",
+      "id": "eye_l_socket",
+      "file": "sprites/eye_l_socket.png",
       "group": "head",
-      "layer": 220,
+      "layer": 216,
       "pos": [
         299,
         246
@@ -225,19 +225,37 @@
         0
       ],
       "tags": [
-        "eye_open",
-        "gaze"
+        "eye_open"
       ],
-      "note": ""
+      "mask_only": true,
+      "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"
     },
     {
-      "id": "eye_open_right",
-      "file": "sprites/eye_open_right.png",
+      "id": "eye_l_base",
+      "file": "sprites/eye_l_base.png",
       "group": "head",
-      "layer": 221,
+      "layer": 217,
       "pos": [
-        429,
+        299,
         246
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open"
+      ],
+      "note": "眼白底：眼球移开也不会露洞"
+    },
+    {
+      "id": "eye_l_ball",
+      "file": "sprites/eye_l_ball.png",
+      "group": "head",
+      "layer": 218,
+      "pos": [
+        370,
+        258
       ],
       "anchor": [
         0,
@@ -247,7 +265,101 @@
         "eye_open",
         "gaze"
       ],
-      "note": ""
+      "mask": "eye_l_socket",
+      "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±5/±4px，由眼眶裁切"
+    },
+    {
+      "id": "eye_l_lash",
+      "file": "sprites/eye_l_lash.png",
+      "group": "head",
+      "layer": 219,
+      "pos": [
+        299,
+        246
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open"
+      ],
+      "note": "眼线睫毛：压在眼球上面，眼球上翻时会被它盖住"
+    },
+    {
+      "id": "eye_r_socket",
+      "file": "sprites/eye_r_socket.png",
+      "group": "head",
+      "layer": 226,
+      "pos": [
+        429,
+        246
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open"
+      ],
+      "mask_only": true,
+      "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"
+    },
+    {
+      "id": "eye_r_base",
+      "file": "sprites/eye_r_base.png",
+      "group": "head",
+      "layer": 227,
+      "pos": [
+        429,
+        246
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open"
+      ],
+      "note": "眼白底：眼球移开也不会露洞"
+    },
+    {
+      "id": "eye_r_ball",
+      "file": "sprites/eye_r_ball.png",
+      "group": "head",
+      "layer": 228,
+      "pos": [
+        443,
+        253
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open",
+        "gaze"
+      ],
+      "mask": "eye_r_socket",
+      "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±4/±4px，由眼眶裁切"
+    },
+    {
+      "id": "eye_r_lash",
+      "file": "sprites/eye_r_lash.png",
+      "group": "head",
+      "layer": 229,
+      "pos": [
+        429,
+        246
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open"
+      ],
+      "note": "眼线睫毛：压在眼球上面，眼球上翻时会被它盖住"
     },
     {
       "id": "eye_closed_left",
@@ -454,14 +566,56 @@
           "phase": 0.3
         },
         {
-          "target": "eye_open_left",
+          "target": "eye_l_socket",
           "param": "dy",
           "wave": "sine",
           "amp": 0.5,
           "freq": 0.2
         },
         {
-          "target": "eye_open_right",
+          "target": "eye_l_base",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_l_ball",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_l_lash",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_r_socket",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_r_base",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_r_ball",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.2
+        },
+        {
+          "target": "eye_r_lash",
           "param": "dy",
           "wave": "sine",
           "amp": 0.5,
@@ -565,10 +719,28 @@
         }
       ],
       "part_overrides": {
-        "eye_open_left": {
+        "eye_l_socket": {
           "opacity": 0.0
         },
-        "eye_open_right": {
+        "eye_l_base": {
+          "opacity": 0.0
+        },
+        "eye_l_ball": {
+          "opacity": 0.0
+        },
+        "eye_l_lash": {
+          "opacity": 0.0
+        },
+        "eye_r_socket": {
+          "opacity": 0.0
+        },
+        "eye_r_base": {
+          "opacity": 0.0
+        },
+        "eye_r_ball": {
+          "opacity": 0.0
+        },
+        "eye_r_lash": {
           "opacity": 0.0
         },
         "eye_closed_left": {
@@ -629,10 +801,28 @@
         }
       ],
       "part_overrides": {
-        "eye_open_left": {
+        "eye_l_socket": {
           "opacity": 0.0
         },
-        "eye_open_right": {
+        "eye_l_base": {
+          "opacity": 0.0
+        },
+        "eye_l_ball": {
+          "opacity": 0.0
+        },
+        "eye_l_lash": {
+          "opacity": 0.0
+        },
+        "eye_r_socket": {
+          "opacity": 0.0
+        },
+        "eye_r_base": {
+          "opacity": 0.0
+        },
+        "eye_r_ball": {
+          "opacity": 0.0
+        },
+        "eye_r_lash": {
           "opacity": 0.0
         },
         "eye_closed_left": {
@@ -670,10 +860,28 @@
         }
       ],
       "part_overrides": {
-        "eye_open_left": {
+        "eye_l_socket": {
           "opacity": 0.7
         },
-        "eye_open_right": {
+        "eye_l_base": {
+          "opacity": 0.7
+        },
+        "eye_l_ball": {
+          "opacity": 0.7
+        },
+        "eye_l_lash": {
+          "opacity": 0.7
+        },
+        "eye_r_socket": {
+          "opacity": 0.7
+        },
+        "eye_r_base": {
+          "opacity": 0.7
+        },
+        "eye_r_ball": {
+          "opacity": 0.7
+        },
+        "eye_r_lash": {
           "opacity": 0.7
         }
       }
@@ -694,28 +902,112 @@
           "ease": "out_back"
         },
         {
-          "target": "eye_open_left",
+          "target": "eye_l_socket",
           "param": "sx",
           "wave": "pulse",
           "amp": 0.18,
           "dur": 0.2
         },
         {
-          "target": "eye_open_right",
+          "target": "eye_l_base",
           "param": "sx",
           "wave": "pulse",
           "amp": 0.18,
           "dur": 0.2
         },
         {
-          "target": "eye_open_left",
+          "target": "eye_l_ball",
+          "param": "sx",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_l_lash",
+          "param": "sx",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_r_socket",
+          "param": "sx",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_r_base",
+          "param": "sx",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_r_ball",
+          "param": "sx",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_r_lash",
+          "param": "sx",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_l_socket",
           "param": "sy",
           "wave": "pulse",
           "amp": 0.22,
           "dur": 0.2
         },
         {
-          "target": "eye_open_right",
+          "target": "eye_l_base",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_l_ball",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_l_lash",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_r_socket",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_r_base",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_r_ball",
+          "param": "sy",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.2
+        },
+        {
+          "target": "eye_r_lash",
           "param": "sy",
           "wave": "pulse",
           "amp": 0.22,
@@ -809,10 +1101,28 @@
         }
       ],
       "part_overrides": {
-        "eye_open_left": {
+        "eye_l_socket": {
           "opacity": 0.25
         },
-        "eye_open_right": {
+        "eye_l_base": {
+          "opacity": 0.25
+        },
+        "eye_l_ball": {
+          "opacity": 0.25
+        },
+        "eye_l_lash": {
+          "opacity": 0.25
+        },
+        "eye_r_socket": {
+          "opacity": 0.25
+        },
+        "eye_r_base": {
+          "opacity": 0.25
+        },
+        "eye_r_ball": {
+          "opacity": 0.25
+        },
+        "eye_r_lash": {
           "opacity": 0.25
         },
         "eye_closed_left": {
@@ -932,14 +1242,56 @@
           "freq": 0.2
         },
         {
-          "target": "eye_open_left",
+          "target": "eye_l_socket",
           "param": "dx",
           "wave": "sine",
           "amp": 1.5,
           "freq": 0.25
         },
         {
-          "target": "eye_open_right",
+          "target": "eye_l_base",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
+          "target": "eye_l_ball",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
+          "target": "eye_l_lash",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
+          "target": "eye_r_socket",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
+          "target": "eye_r_base",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
+          "target": "eye_r_ball",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.25
+        },
+        {
+          "target": "eye_r_lash",
           "param": "dx",
           "wave": "sine",
           "amp": 1.5,
@@ -978,10 +1330,28 @@
         }
       ],
       "part_overrides": {
-        "eye_open_left": {
+        "eye_l_socket": {
           "opacity": 0.0
         },
-        "eye_open_right": {
+        "eye_l_base": {
+          "opacity": 0.0
+        },
+        "eye_l_ball": {
+          "opacity": 0.0
+        },
+        "eye_l_lash": {
+          "opacity": 0.0
+        },
+        "eye_r_socket": {
+          "opacity": 0.0
+        },
+        "eye_r_base": {
+          "opacity": 0.0
+        },
+        "eye_r_ball": {
+          "opacity": 0.0
+        },
+        "eye_r_lash": {
           "opacity": 0.0
         },
         "eye_closed_left": {
@@ -1048,6 +1418,53 @@
           "opacity": 0.8
         }
       }
+    },
+    {
+      "id": "look_around",
+      "priority": 3,
+      "duration": 4.0,
+      "loop": false,
+      "interruptible": true,
+      "return_state": "idle",
+      "channels": [
+        {
+          "target": "eye_l_ball",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 4.0,
+          "freq": 0.45
+        },
+        {
+          "target": "eye_l_ball",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 0.9,
+          "phase": 0.25
+        },
+        {
+          "target": "eye_r_ball",
+          "param": "dx",
+          "wave": "sine",
+          "amp": 4.0,
+          "freq": 0.45
+        },
+        {
+          "target": "eye_r_ball",
+          "param": "dy",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 0.9,
+          "phase": 0.25
+        },
+        {
+          "target": "head",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.45
+        }
+      ]
     }
   ]
 }
