@@ -657,6 +657,131 @@ static int frame_centroid_y(const zimg *im)
     return n ? (int)(sum / n) : -1;
 }
 
+static void test_motion_fade(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("动作淡入淡出：切动作时两套通道按权重混合，不是一帧跳过去");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_fade");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/a.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    /* idle 不动；lean 把 head 组往右推 20px（pulse 立刻到位），淡入 0.4s */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"f\",\"name\":\"淡入测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"a\",\"file\":\"sprites/a.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]},"
+        " {\"id\":\"lean\",\"loop\":true,\"fade\":0.4,\"channels\":["
+        "   {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"pulse\",\"amp\":20,\"dur\":0.01}]},"
+        " {\"id\":\"snap\",\"loop\":true,\"fade\":0,\"channels\":["
+        "   {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"pulse\",\"amp\":20,\"dur\":0.01}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 fade 的 rig 应加载成功");
+        if (r) {
+            double at_switch, mid, after;
+            zrig_tick(r, 1.0);
+            CHECK(fabs(zrig_group_offset_x(r, "head")) < 0.01, "idle 时不该有位移");
+            zrig_action_request(r, "lean", "test", 1);
+            zrig_tick(r, 1.0);
+            at_switch = zrig_group_offset_x(r, "head");
+            zrig_tick(r, 1.2);                       /* 淡入过半 */
+            mid = zrig_group_offset_x(r, "head");
+            zrig_tick(r, 1.5);                       /* 淡入结束 */
+            after = zrig_group_offset_x(r, "head");
+            CHECK(at_switch < 1.0, "刚切过去的那一帧应几乎还在原位（%.2f）", at_switch);
+            CHECK(mid > 3.0 && mid < 18.0, "淡入过半应落在中间（%.2f，目标 20）", mid);
+            CHECK(after > 19.0, "淡入结束应到达目标（%.2f）", after);
+            /* fade:0 的动作要立刻到位——打击感不能被淡入磨掉 */
+            zrig_action_request(r, "idle", "test", 1);
+            zrig_tick(r, 3.0);
+            zrig_action_request(r, "snap", "test", 1);
+            zrig_tick(r, 3.02);        /* pulse 的 dur=0.01，这时波形本身已到位 */
+            CHECK(zrig_group_offset_x(r, "head") > 19.0,
+                  "fade=0 的动作应一帧到位（%.2f）", zrig_group_offset_x(r, "head"));
+            /* 对照：同样过了 0.02s，带 0.4s 淡入的动作此时几乎还没动 */
+            zrig_action_request(r, "idle", "test", 1);
+            zrig_tick(r, 5.0);
+            zrig_action_request(r, "lean", "test", 1);
+            zrig_tick(r, 5.02);
+            CHECK(zrig_group_offset_x(r, "head") < 2.0,
+                  "带淡入的动作同一时刻应几乎还没动（%.2f）", zrig_group_offset_x(r, "head"));
+            zrig_free(r);
+        }
+    }
+}
+
+static void test_physics(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("物理摆动：头发跟着身体动，有落后、有过冲、停下来会收敛回 0");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_phys");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"物理测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"hair\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]},"
+        " {\"id\":\"push\",\"loop\":true,\"fade\":0,\"channels\":["
+        "   {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"pulse\",\"amp\":30,\"dur\":0.01}]}],"
+        "\"physics\":[{\"id\":\"ahoge\",\"part\":\"hair\",\"driver\":\"head\",\"axis\":\"x\","
+        " \"param\":\"bend_x\",\"curve\":\"root\",\"ratio\":1.0,"
+        " \"stiffness\":60,\"damping\":6,\"max\":30}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 physics 的 rig 应加载成功");
+        if (r) {
+            double t, lag = 0.0, overshoot = 0.0, settled;
+            int i;
+            zrig_tick(r, 0.0);
+            zrig_tick(r, 0.016);
+            CHECK(fabs(zrig_part_channel(r, "hair", "bend_x")) < 0.01,
+                  "没动的时候物理输出应为 0");
+            zrig_action_request(r, "push", "test", 1);
+            /* 头突然右移 30px：头发应先落在后面（输出为负） */
+            for (i = 1, t = 0.016; i <= 6; ++i) {
+                t += 0.016;
+                zrig_tick(r, t);
+                if (zrig_part_channel(r, "hair", "bend_x") < lag)
+                    lag = zrig_part_channel(r, "hair", "bend_x");
+            }
+            CHECK(lag < -1.0, "起步时头发该落在后面（最低 %.2f px）", lag);
+            /* 继续跑：弹簧会过冲到正的一侧 */
+            for (; t < 0.9; t += 0.016) {
+                zrig_tick(r, t);
+                if (zrig_part_channel(r, "hair", "bend_x") > overshoot)
+                    overshoot = zrig_part_channel(r, "hair", "bend_x");
+            }
+            CHECK(overshoot > 0.3, "之后应过冲到另一侧（最高 %.2f px）", overshoot);
+            /* 再跑几秒，收敛回 0（头不动了，头发就该垂下来） */
+            for (; t < 4.0; t += 0.016) zrig_tick(r, t);
+            settled = zrig_part_channel(r, "hair", "bend_x");
+            CHECK(fabs(settled) < 0.2, "停下来之后应收敛回 0（%.3f px）", settled);
+            zrig_free(r);
+        }
+    }
+}
+
 static void test_eyelid(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -1166,6 +1291,8 @@ int main(int argc, char **argv)
     test_rig_channels();
     test_mask();
     test_eyelid();
+    test_motion_fade();
+    test_physics();
     test_interactions();
     test_affection();
 

@@ -10,6 +10,7 @@
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
+#define ZRIG_MAX_PHYS     12
 #define ZRIG_MAX_OVERRIDES 32
 
 /* 图层标签（tags）：用位标志，加载时解析 */
@@ -93,7 +94,26 @@ typedef struct {
     int    novr;
     double dim;               /* 0..1：睡眠等状态的压暗程度 */
     double blink_hold;        /* 0..1：这个动作期间眼睛闭合到几成（<0 = 不管） */
+    double fade;              /* 秒：从上一个动作淡入到这个动作的时间（Live2D 的 FadeInTime） */
 } zaction;
+
+/* 物理摆动（Live2D physics 的最小可用版）：
+   一根挂在驱动组上的弹簧-阻尼摆。输入 = 驱动组这一帧的位移，
+   输出 = 摆尖**落后/过冲**的那一点距离，加到部件的形变通道上。
+   静止时输出收敛到 0，所以它只负责"动起来之后的惯性"，不改变静止姿态。 */
+typedef struct {
+    char   id[32];
+    int    part;              /* 输出到哪个部件 */
+    int    driver;            /* 驱动组索引 */
+    int    axis;              /* 0 = 看驱动组的 dx，1 = dy */
+    int    param;             /* 输出通道（bend_x/bend_y/dx/dy/rot_deg） */
+    int    curve;             /* 形变曲线（仅 bend_* 用） */
+    double ratio;             /* 摆尖跟随驱动位移的比例 */
+    double stiffness;         /* 弹簧刚度（1/s²，越大越跟手） */
+    double damping;           /* 阻尼（1/s，越大越快停） */
+    double max;               /* 输出限幅（像素或度） */
+    double pos, vel;          /* 运行状态 */
+} zphys;
 
 typedef struct {
     char id[48];
@@ -125,7 +145,21 @@ struct zrig {
     zregion regions[ZRIG_MAX_REGIONS];
     int     nregions;
 
+    zphys   phys[ZRIG_MAX_PHYS];
+    int     nphys;
+    double  phys_last;           /* 上一次积分的时刻，<0 = 还没开始 */
+
     zsm     sm;
+
+    /* 动作淡入淡出（Live2D 的 motion fade）：切动作时两套通道按权重混合，
+       否则每次切换都是一帧跳变 —— 挥手结束回 idle 时手会"啪"地弹回去。 */
+    double  now;
+    char    cur_id[48];          /* 上一帧看到的动作 id */
+    double  cur_t0;              /* 当前动作的绝对起始时刻 */
+    int     fade_prev;           /* 正在淡出的那个动作索引，-1 = 没有 */
+    double  fade_prev_t0;        /* 它的绝对起始时刻（淡出期间它继续往前走） */
+    double  fade_t0, fade_dur;   /* 淡入开始时刻 / 时长 */
+    double  dim_now;             /* 混合后的压暗量 */
 
     /* 眨眼配置 */
     int    blink_enabled, blink_expo;
@@ -429,6 +463,63 @@ static void sort_parts(zrig *r)
     }
 }
 
+/* physics：弹簧摆配置。可选，没写就没有物理。
+   { "id":"ahoge", "part":"hair_ahoge", "driver":"head", "axis":"x",
+     "param":"bend_x", "curve":"root", "ratio":0.6,
+     "stiffness":55, "damping":7, "max":9 } */
+static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
+{
+    size_t i, n = zjson_count(jp);
+    if (!jp) return 0;
+    if (jp->type != ZJSON_ARR) {
+        zdiag_error(d, file, jp->line, 0, "physics", "期望 array");
+        return -1;
+    }
+    for (i = 0; i < n && r->nphys < ZRIG_MAX_PHYS; ++i) {
+        const zjson *pj = zjson_at(jp, i);
+        zphys *ph = &r->phys[r->nphys];
+        const char *pid = zjson_str(zjson_obj_get(pj, "part"), NULL);
+        const char *drv = zjson_str(zjson_obj_get(pj, "driver"), NULL);
+        const char *ax  = zjson_str(zjson_obj_get(pj, "axis"), "x");
+        const char *pn  = zjson_str(zjson_obj_get(pj, "param"), "bend_x");
+        const char *cv  = zjson_str(zjson_obj_get(pj, "curve"), "root");
+        char path[128];
+        memset(ph, 0, sizeof(*ph));
+        z_strlcpy(ph->id, zjson_str(zjson_obj_get(pj, "id"), pid ? pid : "phys"), sizeof(ph->id));
+        z_snprintf(path, sizeof(path), "physics[%s]", ph->id);
+        ph->part = pid ? find_part(r, pid) : -1;
+        if (ph->part < 0) {
+            zdiag_error(d, file, pj ? pj->line : 0, 0, path,
+                        "part '%s' 不存在", pid ? pid : "(缺)");
+            return -1;
+        }
+        ph->driver = drv ? find_group(r, drv) : -1;
+        if (ph->driver < 0) {
+            zdiag_error(d, file, pj ? pj->line : 0, 0, path,
+                        "driver 组 '%s' 不存在", drv ? drv : "(缺)");
+            return -1;
+        }
+        ph->axis = (ax && (*ax == 'y' || *ax == 'Y')) ? 1 : 0;
+        if (parse_param(pn, &ph->param) != 0) {
+            zdiag_error(d, file, pj ? pj->line : 0, 0, path, "param 非法：%s", pn);
+            return -1;
+        }
+        ph->curve = BEND_ROOT;
+        if (z_streq(cv, "tip")) ph->curve = BEND_TIP;
+        else if (z_streq(cv, "sine")) ph->curve = BEND_SINE;
+        else if (z_streq(cv, "linear")) ph->curve = BEND_LINEAR;
+        ph->ratio     = zjson_num(zjson_obj_get(pj, "ratio"), 0.6);
+        ph->stiffness = zjson_num(zjson_obj_get(pj, "stiffness"), 55.0);
+        ph->damping   = zjson_num(zjson_obj_get(pj, "damping"), 7.0);
+        ph->max       = zjson_num(zjson_obj_get(pj, "max"), 10.0);
+        if (ph->stiffness <= 0.0) ph->stiffness = 55.0;
+        if (ph->damping < 0.0) ph->damping = 0.0;
+        if (ph->max <= 0.0) ph->max = 10.0;
+        r->nphys++;
+    }
+    return 0;
+}
+
 static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
 {
     size_t i, n = zjson_count(jacts);
@@ -463,6 +554,11 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
         /* blink_hold：动作期间把眼睛按住在某个闭合度（眯眼笑 0.55、睡着 1.0）。
            眼皮拆成零件之后，表情不用再换一张「闭眼图」，压参数就行。 */
         a->blink_hold = zjson_num(zjson_obj_get(aj, "blink_hold"), -1.0);
+        /* fade：从上一个动作淡入到这个动作要多久。0 = 立刻切（锤子这种打击感要的就是硬切）。
+           默认 0.22s —— 比 Live2D 默认的 0.5s 短，桌宠的反馈要更跟手。 */
+        a->fade = zjson_num(zjson_obj_get(aj, "fade"), 0.22);
+        if (a->fade < 0.0) a->fade = 0.0;
+        if (a->fade > 2.0) a->fade = 2.0;
         a->duration = zjson_num(zjson_obj_get(aj, "duration"), a->loop ? -1.0 : 1.0);
         if (a->loop) a->duration = -1.0;
         {
@@ -725,6 +821,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     }
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
+    if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
 
     /* 眨眼 */
     {
@@ -753,6 +850,9 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         r->gaze_max_dy = pair[1];
     }
 
+    r->fade_prev = -1;
+    r->phys_last = -1.0;
+    r->cur_id[0] = 0;
     zsm_start(&r->sm, "idle", 0.0);
     zjson_free(root);
     return r;
@@ -844,9 +944,52 @@ static double eval_channel(const zchan *c, double t, double total)
     }
 }
 
+/* 把一个动作在时刻 t 的所有通道按权重 w 累加进当前帧的变换数组。
+   w < 1 时就是"淡入淡出"里的那一份权重，两个动作各累加一次即可。 */
+static void accumulate_action(zrig *r, const zaction *a, double t, double w, double total)
+{
+    int i;
+    if (!a || w <= 0.0) return;
+    for (i = 0; i < a->nchan; ++i) {
+        const zchan *c = &a->chans[i];
+        double v = eval_channel(c, t, total) * w;
+        if (c->part >= 0) {          /* 部件级通道 */
+            int pi = c->part;
+            switch (c->param) {
+                case P_DX:  r->p_dx[pi] += v; break;
+                case P_DY:  r->p_dy[pi] += v; break;
+                case P_SX:  r->p_sx[pi] += v; break;
+                case P_SY:  r->p_sy[pi] += v; break;
+                case P_ROT: r->p_rot[pi] += v; break;
+                case P_ALPHA: r->p_alpha[pi] *= ZC_CLAMP(1.0 + v, 0.0, 1.0); break;
+                case P_BEND_X: r->p_bendx[pi] += v; r->p_bendcx[pi] = c->curve;
+                               r->p_bends[pi] = c->strips; break;
+                case P_BEND_Y: r->p_bendy[pi] += v; r->p_bendcy[pi] = c->curve;
+                               r->p_bends[pi] = c->strips; break;
+            }
+            continue;
+        }
+        {
+            int g = c->group;
+            if (g < 0 || g >= r->ngroups) continue;
+            switch (c->param) {
+                case P_DX:  r->g_dx[g] += v; break;
+                case P_DY:  r->g_dy[g] += v; break;
+                case P_SX:  r->g_sx[g] += v; break;
+                case P_SY:  r->g_sy[g] += v; break;
+                case P_ROT: r->g_rot[g] += v; break;
+                case P_ALPHA: break;   /* 组级 alpha 未使用（部件级用 p_alpha） */
+            }
+        }
+    }
+}
+
 static void compute_group_transforms(zrig *r)
 {
     const zaction *a = current_action(r);
+    const zaction *prev = (r->fade_prev >= 0 && r->fade_prev < r->nactions)
+                          ? &r->actions[r->fade_prev] : NULL;
+    double w = 1.0;
     int i;
     for (i = 0; i < r->ngroups; ++i) {
         r->g_dx[i] = r->g_dy[i] = 0.0;
@@ -862,41 +1005,77 @@ static void compute_group_transforms(zrig *r)
         r->p_rot[i] = 0.0;
         r->p_alpha[i] = 1.0;
     }
-    if (!a) return;
-    {
-        double t = zsm_elapsed(&r->sm);
-        double total = a->loop ? -1.0 : a->duration;
-        for (i = 0; i < a->nchan; ++i) {
-            const zchan *c = &a->chans[i];
-            double v = eval_channel(c, t, total);
-            if (c->part >= 0) {          /* 部件级通道 */
-                int pi = c->part;
-                switch (c->param) {
-                    case P_DX:  r->p_dx[pi] += v; break;
-                    case P_DY:  r->p_dy[pi] += v; break;
-                    case P_SX:  r->p_sx[pi] += v; break;
-                    case P_SY:  r->p_sy[pi] += v; break;
-                    case P_ROT: r->p_rot[pi] += v; break;
-                    case P_ALPHA: r->p_alpha[pi] *= ZC_CLAMP(1.0 + v, 0.0, 1.0); break;
-                    case P_BEND_X: r->p_bendx[pi] += v; r->p_bendcx[pi] = c->curve;
-                                   r->p_bends[pi] = c->strips; break;
-                    case P_BEND_Y: r->p_bendy[pi] += v; r->p_bendcy[pi] = c->curve;
-                                   r->p_bends[pi] = c->strips; break;
-                }
-                continue;
-            }
-            {
-                int g = c->group;
-                if (g < 0 || g >= r->ngroups) continue;
-                switch (c->param) {
-                    case P_DX:  r->g_dx[g] += v; break;
-                    case P_DY:  r->g_dy[g] += v; break;
-                    case P_SX:  r->g_sx[g] += v; break;
-                    case P_SY:  r->g_sy[g] += v; break;
-                    case P_ROT: r->g_rot[g] += v; break;
-                    case P_ALPHA: break;   /* 组级 alpha 未使用（部件级用 p_alpha） */
-                }
-            }
+    if (!a) { r->dim_now = 0.0; return; }
+    if (prev && r->fade_dur > 1e-6) {
+        double u = ZC_CLAMP((r->now - r->fade_t0) / r->fade_dur, 0.0, 1.0);
+        w = z_smoothstep(u);                 /* 两头平滑，中间快 */
+        if (u >= 1.0) { r->fade_prev = -1; prev = NULL; w = 1.0; }
+    } else {
+        prev = NULL;
+    }
+    if (prev) {
+        /* 淡出的那个动作继续往前走（Live2D 也是这么做的，不然会卡在最后一帧） */
+        double tp = r->now - r->fade_prev_t0;
+        double totp = prev->loop ? -1.0 : prev->duration;
+        accumulate_action(r, prev, tp, 1.0 - w, totp);
+    }
+    accumulate_action(r, a, zsm_elapsed(&r->sm), w, a->loop ? -1.0 : a->duration);
+    r->dim_now = prev ? (prev->dim * (1.0 - w) + a->dim * w) : a->dim;
+}
+
+static void group_matrix(const zrig *r, int gi, double scale, double m[6]);
+
+/* 驱动输入：拿部件自己的锚点，经过驱动组（含父链）的完整矩阵变换一次，
+   位移 = 变换后 − 原位。这样**旋转**也能带动头发（头一歪，呆毛就该甩），
+   不是只看 dx/dy —— 实测这个角色的动作里绝大多数头部运动都是 rot_deg。 */
+static void physics_input(const zrig *r, const zphys *ph, double *out_x, double *out_y)
+{
+    double m[6], x0, y0;
+    const zpart *p = &r->parts[ph->part];
+    *out_x = *out_y = 0.0;
+    if (ph->driver < 0) return;
+    x0 = p->pos[0];
+    y0 = p->pos[1];
+    group_matrix(r, ph->driver, 1.0, m);
+    *out_x = (m[0] * x0 + m[2] * y0 + m[4]) - x0;
+    *out_y = (m[1] * x0 + m[3] * y0 + m[5]) - y0;
+}
+
+/* 物理摆动积分：必须在 compute_group_transforms 之后跑，
+   因为它的输入就是这一帧算出来的驱动组位移。 */
+static void physics_update(zrig *r, double now)
+{
+    double dt;
+    int i;
+    if (r->nphys <= 0) return;
+    if (r->phys_last < 0.0) { r->phys_last = now; return; }
+    dt = now - r->phys_last;
+    r->phys_last = now;
+    if (dt <= 0.0) return;
+    if (dt > 0.1) dt = 0.1;              /* 掉帧时别让积分炸掉 */
+    for (i = 0; i < r->nphys; ++i) {
+        zphys *ph = &r->phys[i];
+        double in, target, acc, out;
+        if (ph->part < 0 || ph->driver < 0) continue;
+        {
+            double ix, iy;
+            physics_input(r, ph, &ix, &iy);
+            in = (ph->axis == 1) ? iy : ix;
+        }
+        target = in * ph->ratio;
+        acc = ph->stiffness * (target - ph->pos) - ph->damping * ph->vel;
+        ph->vel += acc * dt;
+        ph->pos += ph->vel * dt;
+        /* 输出 = 摆尖相对驱动位置的落后量：静止时 pos→target，输出归零，
+           所以它只加"惯性"，不会把头发永久吹偏。 */
+        out = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
+        switch (ph->param) {
+            case P_DX: r->p_dx[ph->part] += out; break;
+            case P_DY: r->p_dy[ph->part] += out; break;
+            case P_ROT: r->p_rot[ph->part] += out; break;
+            case P_BEND_Y: r->p_bendy[ph->part] += out; r->p_bendcy[ph->part] = ph->curve; break;
+            case P_BEND_X:
+            default: r->p_bendx[ph->part] += out; r->p_bendcx[ph->part] = ph->curve; break;
         }
     }
 }
@@ -1118,10 +1297,35 @@ void zrig_blink_trigger(zrig *r)
 /* ============================================================ 每帧 */
 void zrig_tick(zrig *r, double now)
 {
+    const char *cur;
+    double entered;
     if (!r) return;
+    r->now = now;
     zsm_update(&r->sm, now);
+
+    /* 动作换了没有？换了就把旧动作挂到"正在淡出"那一路上。
+       重播同一个动作（连击 force）不算切换，不淡入，要的就是那一下干脆。 */
+    cur = zsm_current_id(&r->sm);
+    entered = now - zsm_elapsed(&r->sm);
+    if (cur && strcmp(cur, r->cur_id) != 0) {
+        int newi = zsm_index(&r->sm, cur);
+        if (r->cur_id[0]) {
+            int previ = zsm_index(&r->sm, r->cur_id);
+            if (previ >= 0 && previ < r->nactions) {
+                r->fade_prev = previ;
+                r->fade_prev_t0 = r->cur_t0;
+                r->fade_t0 = now;
+                r->fade_dur = (newi >= 0 && newi < r->nactions) ? r->actions[newi].fade : 0.22;
+                if (r->fade_dur <= 1e-6) r->fade_prev = -1;
+            }
+        }
+        z_strlcpy(r->cur_id, cur, sizeof(r->cur_id));
+    }
+    r->cur_t0 = entered;
+
     blink_update(r, now);
     compute_group_transforms(r);
+    physics_update(r, now);
 }
 
 static int ensure_scaled(zrig *r, double scale)
@@ -1285,9 +1489,9 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
     }
 
     /* 状态压暗（睡眠等） */
-    if (a && a->dim > 0.001) {
+    if (r->dim_now > 0.001) {
         size_t n = (size_t)r->fb->w * r->fb->h, k;
-        double dim = ZC_CLAMP(a->dim, 0.0, 1.0);
+        double dim = ZC_CLAMP(r->dim_now, 0.0, 1.0);
         double f = 1.0 - 0.45 * dim;
         for (k = 0; k < n; ++k) {
             uint8_t *q = r->fb->px + k * 4;

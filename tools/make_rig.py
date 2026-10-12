@@ -575,6 +575,25 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "parts": parts_list,
         "regions": regions,
         "actions": actions,
+        # 物理摆动（引擎的 physics 段）：头一动，头发自己甩。
+        # 输入 = 部件锚点经过 head 组完整矩阵（含旋转和父链）之后的位移，
+        # 输出 = 摆尖落后/过冲的那点距离，静止时收敛回 0。
+        # 这样任何动作（不管作者有没有写头发通道）都会带起头发，
+        # 而且停下来之后还会自己晃两下 —— 这就是"活"的来源。
+        "physics": [
+            {"id": "ahoge_x", "part": "hair_ahoge", "driver": "head", "axis": "x",
+             "param": "bend_x", "curve": "root",
+             "ratio": 0.5, "stiffness": 42, "damping": 5.0, "max": 8,
+             "note": "呆毛左右甩：根在底边，所以曲线用 root"},
+            {"id": "ahoge_y", "part": "hair_ahoge", "driver": "head", "axis": "y",
+             "param": "bend_y", "curve": "root",
+             "ratio": 0.45, "stiffness": 55, "damping": 6.0, "max": 5,
+             "note": "呆毛上下点头"},
+            {"id": "bangs_x", "part": "hair_front", "driver": "head", "axis": "x",
+             "param": "bend_x", "curve": "tip",
+             "ratio": 0.3, "stiffness": 65, "damping": 7.5, "max": 4,
+             "note": "刘海吊在额头上，发梢在下 → 曲线 tip，幅度要小"},
+        ],
     }
 
 
