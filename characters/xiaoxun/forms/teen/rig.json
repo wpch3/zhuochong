@@ -345,13 +345,13 @@
       ],
       "scale": [
         1.0,
-        0.063
+        0.0545
       ],
       "tags": [
         "mouth"
       ],
       "mask_only": true,
-      "note": "开口形状：锚点在上唇线，sy=0.063 是闭嘴，sy≈0.85 是张到最大（15px）"
+      "note": "开口形状：锚点在上唇线，sy=0.0545 是闭嘴，sy≈0.85 是张到最大（22px）"
     },
     {
       "id": "mouth_cavity",
@@ -366,11 +366,16 @@
         0.5,
         0
       ],
+      "scale": [
+        1.0,
+        0.0545
+      ],
       "tags": [
         "mouth"
       ],
       "mask": "mouth_mask",
-      "note": "口内（上颚/口腔/舌/下唇线），被开口形状裁切；自己不缩放"
+      "motion_from": "mouth_mask",
+      "note": "口内（牙/上颚/舌/嘴角，AI 重绘的真素材）。motion_from=mouth_mask：口内跟着开口形状一起压扁，所以半开时是一张压扁的嘴，而不是把整张口内图裁掉下半截（那样半开只剩一条黑缝）"
     },
     {
       "id": "mouth_open",
@@ -1140,7 +1145,7 @@
           "target": "mouth_mask",
           "param": "sy",
           "wave": "bounce",
-          "amp": 0.487,
+          "amp": 0.496,
           "dur": 1.2,
           "ease": "out"
         },
@@ -1287,7 +1292,7 @@
           "target": "mouth_open",
           "param": "alpha",
           "wave": "pulse",
-          "amp": -0.55,
+          "amp": -0.9,
           "dur": 0.25
         },
         {
@@ -1328,7 +1333,7 @@
           "target": "mouth_mask",
           "param": "sy",
           "wave": "pulse",
-          "amp": 0.887,
+          "amp": 0.895,
           "dur": 0.12,
           "ease": "out"
         },
@@ -1451,7 +1456,7 @@
           "target": "mouth_mask",
           "param": "sy",
           "wave": "decay",
-          "amp": 0.637,
+          "amp": 0.645,
           "dur": 0.8,
           "freq": 2.0
         },
@@ -1588,7 +1593,7 @@
           "target": "mouth_open",
           "param": "alpha",
           "wave": "pulse",
-          "amp": -0.5,
+          "amp": -0.75,
           "dur": 0.12,
           "ease": "out"
         },
@@ -1610,7 +1615,7 @@
           "target": "mouth_mask",
           "param": "sy",
           "wave": "flap",
-          "amp": 0.737,
+          "amp": 0.746,
           "freq": 3.0
         },
         {
@@ -1784,7 +1789,7 @@
           "target": "mouth_mask",
           "param": "sy",
           "wave": "sine",
-          "amp": 0.237,
+          "amp": 0.245,
           "freq": 0.12
         },
         {
@@ -2071,7 +2076,7 @@
         {
           "part": "mouth_open",
           "param": "alpha",
-          "scale": -0.55
+          "scale": -0.9
         }
       ],
       "note": "口型同步（LipSync）接进来时写的就是这个参数"
