@@ -71,8 +71,10 @@ typedef struct {
     double rot_deg;
     double opacity;
     unsigned tags;
-    char   mask_id[64];       /* rig 里写的 "mask"：被哪个部件裁切（解析期暂存 id） */
-    int    mask;              /* 解析后的部件索引，-1 表示不裁切 */
+    char   mask_id[4][64];    /* rig 里写的 "mask"：被哪些部件裁切（解析期暂存 id） */
+    int    mask[4];           /* 解析后的部件索引 */
+    int    nmask;             /* 0 = 不裁切；多个遮罩取**并集**（≈ Live2D 的多重 clipping） */
+    int    mask_invert;       /* 1 = 取反：只在遮罩**外面**可见（≈ IsInverted） */
     int    mask_only;         /* 1 = 自己只当遮罩用，不画出来 */
     int    is_mask_src;       /* 1 = 有别的部件拿我当遮罩 */
     char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
@@ -570,11 +572,32 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
                部件靠它，否则眼球一动就滑出眼眶。
                约束：遮罩部件的 layer 必须更小（先画），加载时会校验。 */
             {
-                const char *mk = zjson_str(zjson_obj_get(pj, "mask"), NULL);
-                p->mask = -1;
-                p->mask_id[0] = 0;
+                /* "mask" 可以写一个部件 id，也可以写一个数组（多个遮罩取并集）。 */
+                const zjson *mj = zjson_obj_get(pj, "mask");
+                p->nmask = 0;
                 p->is_mask_src = 0;
-                if (mk && *mk) z_strlcpy(p->mask_id, mk, sizeof(p->mask_id));
+                memset(p->mask_id, 0, sizeof(p->mask_id));
+                if (mj && zjson_is(mj, ZJSON_ARR)) {
+                    size_t q, qn = zjson_count((zjson *)mj);
+                    if (qn > 4) {
+                        zdiag_error(d, file, mj->line, 0, buf,
+                                    "一个部件最多挂 4 个遮罩（写了 %d 个）", (int)qn);
+                        return -1;
+                    }
+                    for (q = 0; q < qn; ++q) {
+                        const char *mk = zjson_str(zjson_at((zjson *)mj, q), NULL);
+                        if (!mk || !*mk) continue;
+                        z_strlcpy(p->mask_id[p->nmask], mk, sizeof(p->mask_id[0]));
+                        p->nmask++;
+                    }
+                } else {
+                    const char *mk = zjson_str(mj, NULL);
+                    if (mk && *mk) {
+                        z_strlcpy(p->mask_id[0], mk, sizeof(p->mask_id[0]));
+                        p->nmask = 1;
+                    }
+                }
+                p->mask_invert = zjson_bool(zjson_obj_get(pj, "mask_invert"), 0);
                 p->mask_only = zjson_bool(zjson_obj_get(pj, "mask_only"), 0);
             }
             /* motion_from：这个部件不自己接通道，照抄另一个部件的动作值。
@@ -1477,54 +1500,37 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     /* 解析遮罩引用（必须在 sort_parts 之后：要按最终绘制顺序校验先后） */
     {
         int i;
+        /* 遮罩是渲染时**当场画**的（build_maskbuf），所以既不要求遮罩和被裁件在
+           图层里挨着，也不要求遮罩画在前面——只要求不自指、不套娃。 */
         for (i = 0; i < r->nparts; ++i) {
             zpart *p = &r->parts[i];
-            if (!p->mask_id[0]) continue;
-            p->mask = find_part(r, p->mask_id);
-            if (p->mask < 0) {
+            int q;
+            for (q = 0; q < p->nmask; ++q) {
                 char path[160];
+                int mk = find_part(r, p->mask_id[q]);
                 z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
-                zdiag_error(diag, file, 0, 0, path,
-                            "mask 指向的部件 '%s' 不存在", p->mask_id);
-                goto fail;
-            }
-            if (p->mask == i) {
-                char path[160];
-                z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
-                zdiag_error(diag, file, 0, 0, path, "mask 不能指向自己");
-                goto fail;
-            }
-            if (r->parts[p->mask].layer >= p->layer) {
-                char path[160];
-                z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
-                zdiag_error(diag, file, 0, 0, path,
-                            "遮罩部件 '%s' 的 layer(%d) 必须小于被裁切部件的 layer(%d)，"
-                            "否则遮罩还没画出来就要用它裁切",
-                            p->mask_id, r->parts[p->mask].layer, p->layer);
-                goto fail;
-            }
-            r->parts[p->mask].is_mask_src = 1;
-        }
-        /* 画一个遮罩只用一块缓冲：遮罩与被裁切部件之间不能插进另一个遮罩源，
-           否则缓冲被覆盖。这里按最终绘制顺序检查，不合规直接报错而不是悄悄画错。 */
-        for (i = 0; i < r->nparts; ++i) {
-            zpart *p = &r->parts[i];
-            int k, pos_self = -1, pos_mask = -1;
-            if (p->mask < 0) continue;
-            for (k = 0; k < r->nparts; ++k) {
-                if (r->order[k] == i) pos_self = k;
-                if (r->order[k] == p->mask) pos_mask = k;
-            }
-            for (k = pos_mask + 1; k < pos_self; ++k) {
-                if (r->parts[r->order[k]].is_mask_src) {
-                    char path[160];
-                    z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
+                if (mk < 0) {
                     zdiag_error(diag, file, 0, 0, path,
-                                "遮罩 '%s' 与本部件之间夹着另一个遮罩源 '%s'，"
-                                "请调整 layer 让每组遮罩相邻",
-                                p->mask_id, r->parts[r->order[k]].id);
+                                "mask 指向的部件 '%s' 不存在", p->mask_id[q]);
                     goto fail;
                 }
+                if (mk == i) {
+                    zdiag_error(diag, file, 0, 0, path, "mask 不能指向自己");
+                    goto fail;
+                }
+                p->mask[q] = mk;
+                r->parts[mk].is_mask_src = 1;
+            }
+        }
+        /* 遮罩源自己再被别人裁 = 要递归渲染遮罩，没必要也容易写出环。直接禁掉。 */
+        for (i = 0; i < r->nparts; ++i) {
+            zpart *p = &r->parts[i];
+            if (p->is_mask_src && p->nmask > 0) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.mask", p->id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "'%s' 既被别人当遮罩用，自己又挂着遮罩（遮罩不支持套娃）", p->id);
+                goto fail;
             }
         }
     }
@@ -2287,6 +2293,164 @@ static double pose_opacity(const zrig *r, int part)
     return 1.0;
 }
 
+/* 一个部件这一帧要怎么画：贴图、矩阵、透明度、弯曲、网格形变。
+   抽出来是为了让遮罩可以**按需当场渲染**（不然遮罩缓冲只能靠绘制顺序凑）。
+   返回 0 = 这一帧它根本不出现（透明度为 0 / 眨眼交叉淡化到头）。 */
+typedef struct {
+    const zimg *src;
+    double m[6];
+    double opacity;
+    double bx, by;
+    int    curve_x, curve_y;
+    int    warped;
+    const zdeform *dg;
+    double mesh[ZRIG_MAX_DEFPTS * 2];
+} zdrawst;
+
+static int compute_draw_state(zrig *r, int pi, double scale, double blink,
+                              const zaction *a, zdrawst *st)
+{
+    zpart *p = &r->parts[pi];
+    /* motion_from：通道值照抄别的部件（透け眉这类"同一零件画两遍"用）。
+       位置、遮罩、透明度仍然是自己的。 */
+    int mi = (p->motion_from >= 0) ? p->motion_from : pi;
+    double opacity = p->opacity * r->p_alpha[mi] * pose_opacity(r, pi);
+    double extra_dx = r->p_dx[mi], extra_dy = r->p_dy[mi];
+    double part_rot = r->p_rot[mi];
+    double part_sx, part_sy;
+    double gm[6], lm[6];
+    const zimg *src = p->img_scaled ? p->img_scaled : p->img;
+
+    memset(st, 0, sizeof(*st));
+    if (!src) return 0;
+    /* 视线跟随：只影响带 gaze 标签的部件（虹膜拆分后自动升级为真·视线） */
+    if ((p->tags & TAG_GAZE) && (r->gaze_nx != 0.0 || r->gaze_ny != 0.0)) {
+        extra_dx += r->gaze_nx * r->gaze_max_dx;
+        extra_dy += r->gaze_ny * r->gaze_max_dy;
+    }
+    /* 眼睑：眨眼参数直接变成往下滑的位移。 */
+    if (p->tags & TAG_EYELID) extra_dy += blink * p->eyelid_travel;
+    /* 跟随父部件的形变（五官跟着身体弯） */
+    {
+        double fdx = 0.0, fdy = 0.0;
+        part_follow_offset(r, mi, &fdx, &fdy);
+        extra_dx += fdx;
+        extra_dy += fdy;
+    }
+    /* 通道里的 sx/sy 相对基准做加法（基准为 1 时与过去的乘法完全一致） */
+    part_sx = p->scale_x + (r->p_sx[mi] - 1.0);
+    part_sy = p->scale_y + (r->p_sy[mi] - 1.0);
+    if (part_sx < 0.0) part_sx = 0.0;
+    if (part_sy < 0.0) part_sy = 0.0;
+
+    /* 动作对部件的覆盖 */
+    if (a) {
+        int k;
+        for (k = 0; k < a->novr; ++k) {
+            if (strcmp(a->ovr[k].part, p->id) == 0) {
+                opacity *= a->ovr[k].opacity;
+                if (a->ovr[k].has_dx) extra_dx += a->ovr[k].dx;
+                if (a->ovr[k].has_dy) extra_dy += a->ovr[k].dy;
+            }
+        }
+    }
+    /* 眨眼：睁眼部件与闭眼部件按参数交叉淡化 */
+    if (r->blink_enabled && blink > 0.001) {
+        if (p->tags & TAG_EYE_OPEN)   opacity *= (1.0 - blink);
+        if (p->tags & TAG_EYE_CLOSED) opacity *= blink;
+    }
+    if (opacity <= 0.001) return 0;
+    if ((p->tags & TAG_EYE_CLOSED) && blink <= 0.001) return 0;
+    if ((p->tags & TAG_EYE_OPEN) && blink >= 0.999) return 0;
+
+    /* 部件矩阵（画布缩放 + 锚点 + 自身旋转） */
+    {
+        double anchor_px = src->w * p->anchor[0];
+        double anchor_py = src->h * p->anchor[1];
+        double pos_x = (p->pos[0] + extra_dx) * scale;
+        double pos_y = (p->pos[1] + extra_dy) * scale;
+        zimg_make_matrix(lm, pos_x, pos_y, p->scale * part_sx, p->scale * part_sy,
+                         p->rot_deg + part_rot, anchor_px, anchor_py);
+    }
+    if (p->group >= 0) {
+        group_matrix(r, p->group, scale, gm);
+        zimg_matrix_mul(st->m, gm, lm);
+    } else {
+        memcpy(st->m, lm, sizeof(lm));
+    }
+    st->src = src;
+    st->opacity = opacity;
+    st->bx = r->p_bendx[mi] * scale;
+    st->by = r->p_bendy[mi] * scale;
+    st->curve_x = r->p_bendcx[mi];
+    st->curve_y = r->p_bendcy[mi];
+    st->warped = (fabs(st->bx) > 0.05 || fabs(st->by) > 0.05);
+
+    /* 网格形变（A5）：形变器的位移写的是"原始素材像素"，而这里画的可能是缩放过的
+       缓存图，所以要按 src->w / img->w 折算，换画布缩放时形变量才不会跟着变。 */
+    {
+        int di;
+        for (di = 0; di < r->ndeforms; ++di) {
+            const zdeform *cand = &r->deforms[di];
+            if (cand->part != mi && cand->part != pi) continue;
+            if (fabs(cand->amount) < 1e-6) continue;
+            st->dg = cand;
+            break;
+        }
+        if (st->dg) {
+            double k = (p->img && p->img->w > 0) ? (double)src->w / (double)p->img->w : 1.0;
+            int np = (st->dg->cols + 1) * (st->dg->rows + 1), q;
+            for (q = 0; q < np; ++q) {
+                st->mesh[q * 2]     = st->dg->ox[q] * st->dg->amount * k;
+                st->mesh[q * 2 + 1] = st->dg->oy[q] * st->dg->amount * k;
+            }
+        }
+    }
+    return 1;
+}
+
+/* 按算好的状态画一笔 */
+static void draw_state(zimg *dst, const zdrawst *st, int blend)
+{
+    if (st->dg)
+        zimg_draw_mesh_blend(dst, st->src, st->m, st->opacity,
+                             st->dg->cols, st->dg->rows, st->mesh, blend);
+    else if (st->warped)
+        zimg_draw_warp_blend(dst, st->src, st->m, st->opacity,
+                             st->bx, st->curve_x, st->by, st->curve_y, blend);
+    else
+        zimg_draw_blend(dst, st->src, st->m, st->opacity, blend);
+}
+
+/* 把 p 的遮罩源画进 maskbuf（多个遮罩取并集；mask_invert 时再取反）。
+   返回 0 = 遮罩完全不可见（例如眨眼时眼眶被藏起来）→ 被裁的部件这一帧也不画，
+   与 Live2D 的 clipping 语义一致。取反遮罩则相反：遮罩消失＝整块可见。 */
+static int build_maskbuf(zrig *r, const zpart *p, double scale, double blink,
+                         const zaction *a)
+{
+    int k, any = 0;
+    if (!r->maskbuf) r->maskbuf = zimg_new(r->fb->w, r->fb->h);
+    if (!r->maskbuf) return 0;
+    zimg_clear(r->maskbuf);
+    for (k = 0; k < p->nmask; ++k) {
+        zdrawst ms;
+        if (!compute_draw_state(r, p->mask[k], scale, blink, a, &ms)) continue;
+        ms.opacity = 1.0;              /* 遮罩只用形状，不用它自己的透明度 */
+        draw_state(r->maskbuf, &ms, ZIMG_BLEND_NORMAL);
+        any = 1;
+    }
+    if (p->mask_invert) {
+        size_t n = (size_t)r->maskbuf->w * r->maskbuf->h, q;
+        for (q = 0; q < n; ++q) {
+            uint8_t *px = r->maskbuf->px + q * 4;
+            px[3] = (uint8_t)(255 - px[3]);
+            px[0] = px[1] = px[2] = 255;
+        }
+        return 1;                      /* 取反后遮罩不可能是"全透明" */
+    }
+    return any;
+}
+
 const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
 {
     const zaction *a;
@@ -2327,145 +2491,24 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
         for (i = 0; i < r->nparts; ++i) {
             int pi = r->order[i];
             zpart *p = &r->parts[pi];
-            /* motion_from：通道值照抄别的部件（透け眉这类"同一零件画两遍"用）。
-               位置、遮罩、透明度仍然是自己的。 */
-            int mi = (p->motion_from >= 0) ? p->motion_from : pi;
-            double opacity = p->opacity * r->p_alpha[mi] * pose_opacity(r, pi);
-            double extra_dx = r->p_dx[mi], extra_dy = r->p_dy[mi];
-            double part_rot = r->p_rot[mi];
-            double part_sx = 1.0, part_sy = 1.0;
-            double gm[6], lm[6], m[6];
-            const zimg *src = p->img_scaled ? p->img_scaled : p->img;
-            /* 视线跟随：只影响带 gaze 标签的部件（虹膜拆分后自动升级为真·视线） */
-            if ((p->tags & TAG_GAZE) && (r->gaze_nx != 0.0 || r->gaze_ny != 0.0)) {
-                extra_dx += r->gaze_nx * r->gaze_max_dx;
-                extra_dy += r->gaze_ny * r->gaze_max_dy;
-            }
-            /* 眼睑：眨眼参数直接变成往下滑的位移。
-               眼皮本身是从眼睛上方那块皮肤切出来的，静止时被眼眶遮罩挡住看不见，
-               blink=1 时正好滑满整个眼眶 —— 这才是 Live2D 里眼睛的做法。 */
-            if (p->tags & TAG_EYELID) extra_dy += blink * p->eyelid_travel;
-            /* 跟随父部件的形变（五官跟着身体弯） */
-            {
-                double fdx = 0.0, fdy = 0.0;
-                part_follow_offset(r, mi, &fdx, &fdy);
-                extra_dx += fdx;
-                extra_dy += fdy;
-            }
-            /* 部件通道里的缩放：取平均作用到等比缩放上 */
-            /* 通道里的 sx/sy 相对基准做加法（基准为 1 时与过去的乘法完全一致），
-               这样 "scale":[1,0.06] + sy 通道 0.8 → 实际 0.86，rig 里读起来就是它的意思 */
-            part_sx = p->scale_x + (r->p_sx[mi] - 1.0);
-            part_sy = p->scale_y + (r->p_sy[mi] - 1.0);
-            if (part_sx < 0.0) part_sx = 0.0;
-            if (part_sy < 0.0) part_sy = 0.0;
+            zdrawst st;
+            zimg *target = r->fb;
+            if (!compute_draw_state(r, pi, scale, blink, a, &st)) continue;
+            if (p->mask_only) continue;      /* 只当遮罩用的部件不出现在画面上 */
 
-            /* 动作对部件的覆盖 */
-            if (a) {
-                int k;
-                for (k = 0; k < a->novr; ++k) {
-                    if (strcmp(a->ovr[k].part, p->id) == 0) {
-                        opacity *= a->ovr[k].opacity;
-                        if (a->ovr[k].has_dx) extra_dx += a->ovr[k].dx;
-                        if (a->ovr[k].has_dy) extra_dy += a->ovr[k].dy;
-                    }
-                }
+            /* 被裁切：先按需把遮罩画进 maskbuf（可以是多个部件的并集 + 可取反），
+               再把自己画进 scratch，最后按遮罩 alpha 合成到画面。
+               遮罩是**当场渲染**的，所以不要求遮罩和被裁件在图层里挨着。 */
+            if (p->nmask > 0) {
+                if (!build_maskbuf(r, p, scale, blink, a)) continue;  /* 遮罩全不可见 = 我也看不见 */
+                if (!r->scratch) r->scratch = zimg_new(r->fb->w, r->fb->h);
+                if (r->scratch) { zimg_clear(r->scratch); target = r->scratch; }
             }
-            /* 眨眼：睁眼部件与闭眼部件按参数交叉淡化 */
-            if (r->blink_enabled && blink > 0.001) {
-                if (p->tags & TAG_EYE_OPEN)   opacity *= (1.0 - blink);
-                if (p->tags & TAG_EYE_CLOSED) opacity *= blink;
-            }
-            if (opacity <= 0.001) continue;
-            if ((p->tags & TAG_EYE_CLOSED) && blink <= 0.001) continue;
-            if ((p->tags & TAG_EYE_OPEN) && blink >= 0.999) continue;
-
-            /* 部件矩阵（画布缩放 + 锚点 + 自身旋转） */
-            {
-                double anchor_px = src->w * p->anchor[0];
-                double anchor_py = src->h * p->anchor[1];
-                double pos_x = (p->pos[0] + extra_dx) * scale;
-                double pos_y = (p->pos[1] + extra_dy) * scale;
-                zimg_make_matrix(lm, pos_x, pos_y, p->scale * part_sx, p->scale * part_sy,
-                                 p->rot_deg + part_rot, anchor_px, anchor_py);
-            }
-            if (p->group >= 0) {
-                group_matrix(r, p->group, scale, gm);
-                zimg_matrix_mul(m, gm, lm);
-            } else {
-                memcpy(m, lm, sizeof(lm));
-            }
-            {
-                double bx = r->p_bendx[mi] * scale, by = r->p_bendy[mi] * scale;
-                int warped = (fabs(bx) > 0.05 || fabs(by) > 0.05);
-                zimg *target = r->fb;
-                /* 网格形变（A5）：这个部件有没有形变器在推它的控制点。
-                   形变器的位移写的是"原始素材像素"，而这里画的可能是缩放过的缓存图，
-                   所以要按 src->w / img->w 折算，换画布缩放时形变量才不会跟着变。 */
-                const zdeform *dg = NULL;
-                double mesh_off[ZRIG_MAX_DEFPTS * 2];
-                {
-                    int di;
-                    for (di = 0; di < r->ndeforms; ++di) {
-                        const zdeform *cand = &r->deforms[di];
-                        if (cand->part != mi && cand->part != pi) continue;
-                        if (fabs(cand->amount) < 1e-6) continue;
-                        dg = cand;
-                        break;
-                    }
-                    if (dg) {
-                        double k = (p->img && p->img->w > 0)
-                                   ? (double)src->w / (double)p->img->w : 1.0;
-                        int np = (dg->cols + 1) * (dg->rows + 1), q;
-                        for (q = 0; q < np; ++q) {
-                            mesh_off[q * 2]     = dg->ox[q] * dg->amount * k;
-                            mesh_off[q * 2 + 1] = dg->oy[q] * dg->amount * k;
-                        }
-                    }
-                }
-
-                /* 有人拿我当遮罩：我要额外画一份到 maskbuf（只用它的 alpha）。
-                   mask_only 的部件只进 maskbuf，不出现在画面上。 */
-                if (p->is_mask_src) {
-                    if (!r->maskbuf) r->maskbuf = zimg_new(r->fb->w, r->fb->h);
-                    if (r->maskbuf) {
-                        zimg_clear(r->maskbuf);
-                        r->maskbuf_part = pi;
-                        if (dg)
-                            zimg_draw_mesh(r->maskbuf, src, m, 1.0,
-                                           dg->cols, dg->rows, mesh_off);
-                        else if (warped)
-                            zimg_draw_warp(r->maskbuf, src, m, 1.0,
-                                           bx, r->p_bendcx[mi], by, r->p_bendcy[mi]);
-                        else
-                            zimg_draw(r->maskbuf, src, m, 1.0);
-                    }
-                    if (p->mask_only) continue;
-                }
-                /* 我被别人裁切：先画到 scratch，再按遮罩 alpha 合成过去 */
-                if (p->mask >= 0) {
-                    /* 遮罩自己没画出来（例如眨眼时眼眶被隐藏）= 遮罩全透明 = 我也看不见，
-                       与 Live2D 的 clipping 语义一致 */
-                    if (r->maskbuf_part != p->mask) continue;
-                    if (!r->scratch) r->scratch = zimg_new(r->fb->w, r->fb->h);
-                    if (r->scratch) { zimg_clear(r->scratch); target = r->scratch; }
-                }
-                /* 被遮罩的部件先画进 scratch（那里是空的，必须用普通混合），
-                   混合模式留到 composite_masked 那一步再按真正的目标画面算。 */
-                {
-                    int bl = (target == r->fb) ? p->blend : ZIMG_BLEND_NORMAL;
-                    if (dg)
-                        zimg_draw_mesh_blend(target, src, m, opacity,
-                                             dg->cols, dg->rows, mesh_off, bl);
-                    else if (warped)
-                        zimg_draw_warp_blend(target, src, m, opacity,
-                                             bx, r->p_bendcx[mi], by, r->p_bendcy[mi], bl);
-                    else
-                        zimg_draw_blend(target, src, m, opacity, bl);
-                }
-                if (target != r->fb)
-                    zimg_composite_masked_blend(r->fb, r->scratch, r->maskbuf, p->blend);
-            }
+            /* 被遮罩的部件先画进 scratch（那里是空的，必须用普通混合），
+               混合模式留到 composite_masked 那一步再按真正的目标画面算。 */
+            draw_state(target, &st, (target == r->fb) ? p->blend : ZIMG_BLEND_NORMAL);
+            if (target != r->fb)
+                zimg_composite_masked_blend(r->fb, r->scratch, r->maskbuf, p->blend);
         }
     }
 

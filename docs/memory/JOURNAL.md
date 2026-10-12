@@ -201,3 +201,8 @@
 - 做了什么：A8 Pose 互斥部件组（≈pose3.json）：rig poses[] + zrig_pose_set/snap + /api/pose + 测试台差分按钮；示范组 eye_hl_style（圆形/星形/none），星形高光由 make_blend_parts.py 程序化画出。验收 test 384/0、selfcheck 46/0、smoke 64/0。至此 Live2D 对照表只剩顶点级遮罩一项
 - 遇到/修了什么：（无）
 - 下一步：（见 TASKS.md）
+
+## 2026-10-12 17:30
+- 做了什么：A9 遮罩升级：遮罩按需当场渲染（compute_draw_state/draw_state/build_maskbuf 重构），支持多遮罩并集（≤4）、mask_invert 取反、取消图层相邻与层序限制、新增禁止遮罩套娃。验收 test 393/0、asan 0 报错、selfcheck 46/0、smoke 64/0。Live2D 对照表至此全部打勾
+- 遇到/修了什么：（无）
+- 下一步：（见 TASKS.md）

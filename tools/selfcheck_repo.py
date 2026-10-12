@@ -158,8 +158,23 @@ def check_rig(root):
         miss = [p["file"] for p in parts if not os.path.exists(os.path.join(base, p["file"]))]
         check("部件贴图都在", not miss, f"缺：{miss[:3]}" if miss else f"{len(parts)} 张")
 
-        badmask = [p["id"] for p in parts if p.get("mask") and p["mask"] not in pids]
-        check("遮罩指向真部件", not badmask, f"坏遮罩：{badmask}" if badmask else "")
+        # 遮罩可以写一个 id，也可以写数组（多个遮罩取并集，A9）
+        def masklist(p):
+            m = p.get("mask")
+            if not m:
+                return []
+            return list(m) if isinstance(m, list) else [m]
+
+        badmask = [f"{p['id']}→{q}" for p in parts for q in masklist(p)
+                   if q not in pids or q == p["id"]]
+        # 遮罩源自己不能再被裁（引擎不支持套娃，会直接加载失败）
+        masksrc = {q for p in parts for q in masklist(p)}
+        nested = [p["id"] for p in parts if p["id"] in masksrc and masklist(p)]
+        over4 = [p["id"] for p in parts if len(masklist(p)) > 4]
+        check("遮罩指向真部件", not badmask and not nested and not over4,
+              f"坏遮罩 {badmask[:3]} 套娃 {nested} 超 4 个 {over4}"
+              if (badmask or nested or over4)
+              else f"{sum(1 for p in parts if masklist(p))} 件被裁")
 
         badmf = [p["id"] for p in parts
                  if p.get("motion_from") and (p["motion_from"] not in pids or

@@ -1313,7 +1313,8 @@ static void test_mask(void)
         CHECK(diag_has(&d, "nope"), "错误信息要点名是哪个 mask 找不到");
     }
 
-    /* 反例二：遮罩画在被裁切部件后面（层序反了） */
+    /* A9 之后：遮罩是渲染时当场画的，层序反了也能正确裁切（不再是加载错误）。
+       以前这里断言"必须报错"，现在断言"照样能用"——这正是去掉那条限制的意义。 */
     write_text(rigp,
         "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
         "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
@@ -1329,8 +1330,28 @@ static void test_mask(void)
         zrig *r;
         zdiag_init(&d);
         r = zrig_load(rigp, dir, &d);
-        CHECK(r == NULL, "遮罩层序反了应加载失败");
-        CHECK(diag_has(&d, "layer"), "错误信息要说清是层序问题");
+        CHECK(r != NULL, "遮罩层号比被裁件大也应该能加载（遮罩当场渲染）");
+        if (r) {
+            int w = 0, h = 0;
+            const zimg *f;
+            long inside = 0, outside = 0;
+            int x, y;
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            /* hole 在 (300,300) 一带，body 只应在那块里露出来 */
+            for (y = 0; y < h; ++y) {
+                for (x = 0; x < w; ++x) {
+                    int a = f->px[((size_t)y * w + x) * 4 + 3];
+                    if (!a) continue;
+                    if (x >= 290 && x <= 460 && y >= 290 && y <= 420) inside += 1;
+                    else outside += 1;
+                }
+            }
+            CHECK(inside > 200, "遮罩区域内应该有像素，实为 %ld", inside);
+            CHECK(outside < inside / 4, "遮罩区域外不该漏出来（内 %ld 外 %ld）",
+                  inside, outside);
+            zrig_free(r);
+        }
     }
 }
 
@@ -2139,6 +2160,149 @@ static void test_pose(void)
     }
 }
 
+
+/* ---- A9 遮罩升级：多遮罩并集 / 取反 / 不限层序 ---- */
+static void test_mask_multi(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    const char *head =
+        "{\"schema_version\":\"1.0\",\"id\":\"mm\",\"name\":\"多遮罩\","
+        "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
+        "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},";
+
+    SECTION("多遮罩取并集、取反遮罩、遮罩不许套娃");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_mask2");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir); z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/body_full.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/big.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制大图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    {   /* 两个小遮罩分别在左右，被裁的大图应该**两处都露**（并集） */
+        char buf[2048];
+        long only_a = 0, both = 0;
+        int w = 0, h = 0, x, y;
+        const zimg *f;
+        z_snprintf(buf, sizeof(buf), "%s\"parts\":["
+            " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[20,100],\"anchor\":[0,0],\"mask_only\":true},"
+            " {\"id\":\"mb\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":11,"
+            "  \"pos\":[200,100],\"anchor\":[0,0],\"mask_only\":true},"
+            " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":[\"ma\"]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "单遮罩写成数组也应加载成功");
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) only_a++;
+            zrig_free(r);
+        }
+        z_snprintf(buf, sizeof(buf), "%s\"parts\":["
+            " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[20,100],\"anchor\":[0,0],\"mask_only\":true},"
+            " {\"id\":\"mb\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":11,"
+            "  \"pos\":[200,100],\"anchor\":[0,0],\"mask_only\":true},"
+            " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":[\"ma\",\"mb\"]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "两个遮罩的 rig 应加载成功");
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) both++;
+            zrig_free(r);
+        }
+        CHECK(both > only_a * 3 / 2, "两个遮罩取并集应该露出更多（%ld → %ld）",
+              only_a, both);
+    }
+
+    {   /* 取反遮罩：只在遮罩**外面**可见，和正向遮罩互补 */
+        char buf[2048];
+        long fwd = 0, inv = 0, total = 0;
+        int w = 0, h = 0, x, y;
+        const zimg *f;
+        const char *tpl =
+            "%s\"parts\":["
+            " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[100,100],\"anchor\":[0,0],\"mask_only\":true},"
+            " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":\"ma\"%s}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}";
+        z_snprintf(buf, sizeof(buf), tpl, head, "");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) fwd++;
+            zrig_free(r);
+        }
+        z_snprintf(buf, sizeof(buf), tpl, head, ",\"mask_invert\":true");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "取反遮罩的 rig 应加载成功");
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) inv++;
+            zrig_free(r);
+        }
+        /* 没有遮罩时的总可见面积 */
+        z_snprintf(buf, sizeof(buf),
+            "%s\"parts\":[{\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\","
+            "  \"layer\":20,\"pos\":[0,0],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) total++;
+            zrig_free(r);
+        }
+        CHECK(fwd > 100 && inv > 100, "正反遮罩都应该留下东西（%ld / %ld）", fwd, inv);
+        CHECK(fwd + inv > total * 9 / 10 && fwd + inv < total * 11 / 10,
+              "正向 + 取反应该≈完整图（%ld + %ld vs %ld）", fwd, inv, total);
+    }
+
+    {   /* 遮罩套娃要被拦住 */
+        char buf[2048];
+        z_snprintf(buf, sizeof(buf), "%s\"parts\":["
+            " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[20,100],\"anchor\":[0,0]},"
+            " {\"id\":\"mb\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":11,"
+            "  \"pos\":[60,100],\"anchor\":[0,0],\"mask\":\"ma\"},"
+            " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":\"mb\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "遮罩套娃必须加载失败");
+        CHECK(diag_has(&d, "套娃"), "诊断应点名套娃");
+    }
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -2165,6 +2329,7 @@ int main(int argc, char **argv)
     test_keys_and_chain();
     test_blend();
     test_pose();
+    test_mask_multi();
     test_longrun();
     test_expression();
     test_motion_from();
