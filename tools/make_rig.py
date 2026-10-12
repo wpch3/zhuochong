@@ -286,6 +286,30 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     parts_list = body_parts_list + mouth_parts + [
         part("mouth_open.png", "head", ["mouth"], 210, "上唇线（闭合笑线），压在口内上面"),
     ] + eye_parts
+    # 透け眉（眉毛透过刘海）：动漫立绘的常规做法 —— 眉毛本体画在刘海底下（层 232/233），
+    # 再把同一张图的半透明副本画在刘海之上（层 241/242），并用 hair_front 当遮罩，
+    # 所以它**只在被刘海挡住的那块**显形。副本靠 motion_from 照抄本体的通道值，
+    # 挑眉/皱眉/表情一起动，不用在每个动作里再写一遍通道。
+    brow_ghosts = []
+    if any(p["id"] == "brow_l" for p in body_parts_list) and \
+       any(p["id"] == "hair_front" for p in body_parts_list):
+        for side, lay in (("l", 241), ("r", 242)):
+            srcp = next(x for x in body_parts_list if x["id"] == f"brow_{side}")
+            brow_ghosts.append({
+                "id": f"brow_{side}_ghost",
+                "file": srcp["file"],
+                "group": srcp["group"],
+                "layer": lay,
+                "pos": list(srcp["pos"]),
+                "anchor": list(srcp["anchor"]),
+                "opacity": 0.42,
+                "tags": ["brow"],
+                "mask": "hair_front",
+                "motion_from": f"brow_{side}",
+                "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；"
+                        "通道值照抄 brow_" + side,
+            })
+    parts_list = parts_list + brow_ghosts
     if not eyes:
         # 没拆件的旧素材才用"整张闭眼图淡入"的老办法
         parts_list = parts_list + [

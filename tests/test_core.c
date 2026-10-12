@@ -720,6 +720,74 @@ static void test_motion_fade(void)
     }
 }
 
+static void test_motion_from(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("motion_from：副本照抄本体的通道（透け眉用）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_mfrom");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/brow_l.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/b.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"镜像测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"b\",\"file\":\"sprites/b.png\",\"group\":\"head\","
+        "  \"layer\":10,\"pos\":[60,60],\"anchor\":[0.5,0.5]},"
+        " {\"id\":\"b_ghost\",\"file\":\"sprites/b.png\",\"group\":\"head\",\"layer\":20,"
+        "  \"pos\":[60,60],\"anchor\":[0.5,0.5],\"opacity\":0.4,\"motion_from\":\"b\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"b\",\"param\":\"dy\",\"wave\":\"sine\",\"amp\":4,\"freq\":1}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 motion_from 的 rig 应加载成功");
+        if (r) {
+            int w, h;
+            double t;
+            /* 副本自己没有通道，但画面上必须跟着本体走：
+               用渲染结果验证 —— 本体动起来时整帧必须变。 */
+            const zimg *f1, *f2;
+            unsigned long s1 = 0, s2 = 0;
+            int i;
+            zrig_tick(r, 0.0);
+            f1 = zrig_frame(r, 1.0, &w, &h);
+            for (i = 0; i < w * h; ++i) s1 += (unsigned long)f1->px[i * 4 + 3];
+            CHECK(fabs(zrig_part_channel(r, "b_ghost", "dy")) < 1e-9,
+                  "副本自己的通道值应为 0（它只是照抄）");
+            for (t = 0.02; t < 0.3; t += 0.02) zrig_tick(r, t);
+            CHECK(fabs(zrig_part_channel(r, "b", "dy")) > 0.5, "本体通道应有值");
+            f2 = zrig_frame(r, 1.0, &w, &h);
+            for (i = 0; i < w * h; ++i) s2 += (unsigned long)f2->px[i * 4 + 3];
+            CHECK(s1 != s2, "本体动了，画面（含副本）必须跟着变（%lu → %lu）", s1, s2);
+            zrig_free(r);
+        }
+    }
+    /* 反例：指向不存在的部件 / 套娃 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/bad.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"b\",\"file\":\"sprites/b.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,60],\"anchor\":[0.5,0.5],\"motion_from\":\"nope\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "motion_from 指向不存在的部件应加载失败");
+        if (r) zrig_free(r);
+    }
+}
+
 static void test_expression(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -1544,6 +1612,7 @@ int main(int argc, char **argv)
     test_look();
     test_params();
     test_expression();
+    test_motion_from();
     test_interactions();
     test_affection();
 

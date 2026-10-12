@@ -68,6 +68,8 @@ typedef struct {
     int    mask;              /* 解析后的部件索引，-1 表示不裁切 */
     int    mask_only;         /* 1 = 自己只当遮罩用，不画出来 */
     int    is_mask_src;       /* 1 = 有别的部件拿我当遮罩 */
+    char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
+    int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
 } zpart;
 
@@ -493,6 +495,15 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
                 p->is_mask_src = 0;
                 if (mk && *mk) z_strlcpy(p->mask_id, mk, sizeof(p->mask_id));
                 p->mask_only = zjson_bool(zjson_obj_get(pj, "mask_only"), 0);
+            }
+            /* motion_from：这个部件不自己接通道，照抄另一个部件的动作值。
+               用来做"同一个零件画两遍"的场合 —— 典型就是透け眉（眉毛的半透明
+               副本画在刘海之上），副本必须和本体分毫不差地一起动。 */
+            {
+                const char *mf = zjson_str(zjson_obj_get(pj, "motion_from"), NULL);
+                p->motion_from = -1;
+                p->motion_id[0] = 0;
+                if (mf && *mf) z_strlcpy(p->motion_id, mf, sizeof(p->motion_id));
             }
         p->tags = parse_tags(zjson_obj_get(pj, "tags"));
         /* 眼睑行程：带 eyelid 标签的部件按 blink 参数下滑这么多像素。
@@ -1078,6 +1089,30 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         }
     }
     sort_parts(r);
+    /* 解析 motion_from 引用 */
+    {
+        int i;
+        for (i = 0; i < r->nparts; ++i) {
+            zpart *p = &r->parts[i];
+            if (!p->motion_id[0]) continue;
+            p->motion_from = find_part(r, p->motion_id);
+            if (p->motion_from < 0 || p->motion_from == i) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.motion_from", p->id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "motion_from 指向的部件 '%s' %s", p->motion_id,
+                            (p->motion_from == i) ? "不能是自己" : "不存在");
+                goto fail;
+            }
+            if (r->parts[p->motion_from].motion_id[0]) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.motion_from", p->id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "motion_from 不能套娃（'%s' 自己也在抄别人）", p->motion_id);
+                goto fail;
+            }
+        }
+    }
     /* 解析遮罩引用（必须在 sort_parts 之后：要按最终绘制顺序校验先后） */
     {
         int i;
@@ -1811,9 +1846,12 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
         for (i = 0; i < r->nparts; ++i) {
             int pi = r->order[i];
             zpart *p = &r->parts[pi];
-            double opacity = p->opacity * r->p_alpha[pi];
-            double extra_dx = r->p_dx[pi], extra_dy = r->p_dy[pi];
-            double part_rot = r->p_rot[pi];
+            /* motion_from：通道值照抄别的部件（透け眉这类"同一零件画两遍"用）。
+               位置、遮罩、透明度仍然是自己的。 */
+            int mi = (p->motion_from >= 0) ? p->motion_from : pi;
+            double opacity = p->opacity * r->p_alpha[mi];
+            double extra_dx = r->p_dx[mi], extra_dy = r->p_dy[mi];
+            double part_rot = r->p_rot[mi];
             double part_sx = 1.0, part_sy = 1.0;
             double gm[6], lm[6], m[6];
             const zimg *src = p->img_scaled ? p->img_scaled : p->img;
@@ -1829,15 +1867,15 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
             /* 跟随父部件的形变（五官跟着身体弯） */
             {
                 double fdx = 0.0, fdy = 0.0;
-                part_follow_offset(r, pi, &fdx, &fdy);
+                part_follow_offset(r, mi, &fdx, &fdy);
                 extra_dx += fdx;
                 extra_dy += fdy;
             }
             /* 部件通道里的缩放：取平均作用到等比缩放上 */
             /* 通道里的 sx/sy 相对基准做加法（基准为 1 时与过去的乘法完全一致），
                这样 "scale":[1,0.06] + sy 通道 0.8 → 实际 0.86，rig 里读起来就是它的意思 */
-            part_sx = p->scale_x + (r->p_sx[pi] - 1.0);
-            part_sy = p->scale_y + (r->p_sy[pi] - 1.0);
+            part_sx = p->scale_x + (r->p_sx[mi] - 1.0);
+            part_sy = p->scale_y + (r->p_sy[mi] - 1.0);
             if (part_sx < 0.0) part_sx = 0.0;
             if (part_sy < 0.0) part_sy = 0.0;
 
@@ -1877,7 +1915,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                 memcpy(m, lm, sizeof(lm));
             }
             {
-                double bx = r->p_bendx[pi] * scale, by = r->p_bendy[pi] * scale;
+                double bx = r->p_bendx[mi] * scale, by = r->p_bendy[mi] * scale;
                 int warped = (fabs(bx) > 0.05 || fabs(by) > 0.05);
                 zimg *target = r->fb;
 
@@ -1890,7 +1928,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                         r->maskbuf_part = pi;
                         if (warped)
                             zimg_draw_warp(r->maskbuf, src, m, 1.0,
-                                           bx, r->p_bendcx[pi], by, r->p_bendcy[pi]);
+                                           bx, r->p_bendcx[mi], by, r->p_bendcy[mi]);
                         else
                             zimg_draw(r->maskbuf, src, m, 1.0);
                     }
@@ -1906,7 +1944,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                 }
                 if (warped)
                     zimg_draw_warp(target, src, m, opacity,
-                                   bx, r->p_bendcx[pi], by, r->p_bendcy[pi]);
+                                   bx, r->p_bendcx[mi], by, r->p_bendcy[mi]);
                 else
                     zimg_draw(target, src, m, opacity);
                 if (target != r->fb)
