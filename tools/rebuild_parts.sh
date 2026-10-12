@@ -2,8 +2,9 @@
 # rebuild_parts.sh - 从设计图把所有零件重新切一遍（顺序不能换）
 #
 # 为什么要有这个脚本：
-#   make_body_parts.py 会重新生成 seg_head.png 和 body_parts.json，
-#   把后面几步补进去的东西（呆毛切口、AI 重绘的额头、拆走的眉毛）全部冲掉。
+#   make_body_parts.py 会重新生成 seg_head.png / seg_torso.png 和 body_parts.json，
+#   把后面几步补进去的东西（手臂拆件挖掉的袖子、呆毛切口、AI 重绘的额头、
+#   拆走的眉毛）全部冲掉。
 #   所以只要动了身体分段，后面几步必须按这个顺序重跑一遍。
 #
 # 用法：bash tools/rebuild_parts.sh [角色] [形态]
@@ -21,30 +22,33 @@ done
 
 step() { printf "\n=== %s ===\n" "$1"; }
 
-step "1/8 身体分段（头/躯干/双臂/双腿）"
+step "1/9 身体分段（头/躯干/双臂/双腿）"
 "$PY" tools/make_body_parts.py --character "$CH" --form "$FM"
 
-step "2/8 眼部四件（眼眶/眼白/眼球/眼线）"
+step "2/9 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
+"$PY" tools/make_arm_parts.py --character "$CH" --form "$FM"
+
+step "3/9 眼部四件（眼眶/眼白/眼球/眼线）"
 "$PY" tools/make_eye_parts.py --character "$CH" --form "$FM"
 
-step "3/8 嘴三件（开口遮罩/口内/唇线）"
+step "4/9 嘴三件（开口遮罩/口内/唇线）"
 "$PY" tools/make_mouth_parts.py --character "$CH" --form "$FM"
 
-step "4/8 呆毛（无损切出）"
+step "5/9 呆毛（无损切出）"
 "$PY" tools/make_hair_parts.py --character "$CH" --form "$FM"
 
-step "5/8 刘海 + 额头（AI 重绘回贴）"
+step "6/9 刘海 + 额头（AI 重绘回贴）"
 "$PY" tools/make_bangs_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nobangs.png
 
-step "6/8 眉毛（AI 重绘 + alpha 抠像）"
+step "7/9 眉毛（AI 重绘 + alpha 抠像）"
 "$PY" tools/make_brow_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nobrows.png
 
-step "7/8 上眼睑（眨眼时真的盖下来）"
+step "8/9 上眼睑（眨眼时真的盖下来）"
 "$PY" tools/make_eyelid_parts.py --character "$CH" --form "$FM"
 
-step "8/8 生成 rig 并验收"
+step "9/9 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__

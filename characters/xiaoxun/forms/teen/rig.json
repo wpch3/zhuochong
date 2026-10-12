@@ -66,6 +66,20 @@
         772
       ],
       "parent": "root"
+    },
+    "forearm_l": {
+      "pivot": [
+        276,
+        621
+      ],
+      "parent": "arm_l"
+    },
+    "forearm_r": {
+      "pivot": [
+        567,
+        621
+      ],
+      "parent": "arm_r"
     }
   },
   "gaze": {
@@ -155,42 +169,6 @@
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
     },
     {
-      "id": "seg_arm_l",
-      "file": "sprites/seg_arm_l.png",
-      "group": "arm_l",
-      "layer": 140,
-      "pos": [
-        200,
-        394
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "arm"
-      ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
-    },
-    {
-      "id": "seg_arm_r",
-      "file": "sprites/seg_arm_r.png",
-      "group": "arm_r",
-      "layer": 141,
-      "pos": [
-        516,
-        394
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "arm"
-      ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
-    },
-    {
       "id": "seg_head",
       "file": "sprites/seg_head.png",
       "group": "head",
@@ -224,7 +202,7 @@
       "tags": [
         "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动"
     },
     {
       "id": "hair_front",
@@ -242,7 +220,7 @@
       "tags": [
         "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动"
     },
     {
       "id": "brow_l",
@@ -260,7 +238,7 @@
       "tags": [
         "brow"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）"
     },
     {
       "id": "brow_r",
@@ -278,7 +256,79 @@
       "tags": [
         "brow"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）"
+    },
+    {
+      "id": "arm_l_upper",
+      "file": "sprites/arm_l_upper.png",
+      "group": "arm_l",
+      "layer": 140,
+      "pos": [
+        241,
+        400
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+    },
+    {
+      "id": "arm_l_fore",
+      "file": "sprites/arm_l_fore.png",
+      "group": "forearm_l",
+      "layer": 142,
+      "pos": [
+        200,
+        610
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+    },
+    {
+      "id": "arm_r_upper",
+      "file": "sprites/arm_r_upper.png",
+      "group": "arm_r",
+      "layer": 141,
+      "pos": [
+        511,
+        400
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+    },
+    {
+      "id": "arm_r_fore",
+      "file": "sprites/arm_r_fore.png",
+      "group": "forearm_r",
+      "layer": 143,
+      "pos": [
+        526,
+        610
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
     },
     {
       "id": "mouth_mask",
@@ -637,21 +687,19 @@
           "phase": 0.15
         },
         {
-          "target": "seg_arm_l",
-          "param": "bend_x",
+          "target": "arm_l",
+          "param": "rot_deg",
           "wave": "sine",
-          "amp": 1.5,
+          "amp": -0.25,
           "freq": 0.28,
-          "curve": "tip",
           "phase": 0.15
         },
         {
-          "target": "seg_arm_r",
-          "param": "bend_x",
+          "target": "arm_r",
+          "param": "rot_deg",
           "wave": "sine",
-          "amp": 1.5,
+          "amp": -0.25,
           "freq": 0.28,
-          "curve": "tip",
           "phase": 0.15
         },
         {
@@ -703,22 +751,36 @@
           "freq": 0.18
         },
         {
-          "target": "seg_arm_l",
-          "param": "bend_x",
+          "target": "arm_l",
+          "param": "rot_deg",
           "wave": "sine",
-          "amp": 7.0,
+          "amp": -1.166,
           "freq": 0.18,
-          "curve": "tip",
           "phase": 0.06
         },
         {
-          "target": "seg_arm_r",
-          "param": "bend_x",
+          "target": "arm_r",
+          "param": "rot_deg",
           "wave": "sine",
-          "amp": 7.0,
+          "amp": -1.166,
           "freq": 0.18,
-          "curve": "tip",
           "phase": 0.06
+        },
+        {
+          "target": "forearm_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 2.4,
+          "freq": 0.18,
+          "phase": 0.22
+        },
+        {
+          "target": "forearm_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -2.4,
+          "freq": 0.18,
+          "phase": 0.22
         },
         {
           "target": "hair_ahoge",
@@ -839,21 +901,19 @@
           "freq": 0.2
         },
         {
-          "target": "seg_arm_l",
-          "param": "bend_x",
+          "target": "arm_l",
+          "param": "rot_deg",
           "wave": "sine",
-          "amp": 2.2,
+          "amp": -0.366,
           "freq": 0.06,
-          "curve": "tip",
           "phase": 0.12
         },
         {
-          "target": "seg_arm_r",
-          "param": "bend_x",
+          "target": "arm_r",
+          "param": "rot_deg",
           "wave": "sine",
-          "amp": 2.2,
+          "amp": -0.366,
           "freq": 0.06,
-          "curve": "tip",
           "phase": 0.12
         },
         {
@@ -871,6 +931,22 @@
           "amp": 0.6,
           "freq": 0.24,
           "phase": 0.18
+        },
+        {
+          "target": "forearm_l",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 0.8,
+          "freq": 0.06,
+          "phase": 0.28
+        },
+        {
+          "target": "forearm_r",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": -0.8,
+          "freq": 0.06,
+          "phase": 0.28
         },
         {
           "target": "hair_ahoge",
@@ -1029,21 +1105,35 @@
           "dur": 0.5
         },
         {
-          "target": "seg_arm_l",
-          "param": "bend_x",
+          "target": "arm_l",
+          "param": "rot_deg",
           "wave": "bounce",
-          "amp": -9.0,
+          "amp": 1.499,
           "freq": 0.0,
-          "curve": "tip",
           "dur": 0.5
         },
         {
-          "target": "seg_arm_r",
-          "param": "bend_x",
+          "target": "arm_r",
+          "param": "rot_deg",
           "wave": "bounce",
-          "amp": 9.0,
+          "amp": -1.499,
           "freq": 0.0,
-          "curve": "tip",
+          "dur": 0.5
+        },
+        {
+          "target": "forearm_l",
+          "param": "rot_deg",
+          "wave": "bounce",
+          "amp": 14.0,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "forearm_r",
+          "param": "rot_deg",
+          "wave": "bounce",
+          "amp": -14.0,
+          "freq": 0.0,
           "dur": 0.5
         },
         {
@@ -1201,6 +1291,40 @@
           "dur": 0.25
         },
         {
+          "target": "arm_l",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": 16.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "arm_r",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": -16.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "forearm_l",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": 22.0,
+          "freq": 0.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "forearm_r",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": -22.0,
+          "freq": 0.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
           "target": "mouth_mask",
           "param": "sy",
           "wave": "pulse",
@@ -1292,21 +1416,35 @@
           "dur": 0.7
         },
         {
-          "target": "seg_arm_l",
-          "param": "bend_x",
+          "target": "arm_l",
+          "param": "rot_deg",
           "wave": "decay",
-          "amp": 10.0,
+          "amp": -1.666,
           "freq": 2.6,
-          "curve": "tip",
           "dur": 0.7
         },
         {
-          "target": "seg_arm_r",
-          "param": "bend_x",
+          "target": "arm_r",
+          "param": "rot_deg",
           "wave": "decay",
-          "amp": 10.0,
+          "amp": -1.666,
           "freq": 2.6,
-          "curve": "tip",
+          "dur": 0.7
+        },
+        {
+          "target": "forearm_l",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": 9.0,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "forearm_r",
+          "param": "rot_deg",
+          "wave": "decay",
+          "amp": -9.0,
+          "freq": 2.6,
           "dur": 0.7
         },
         {
@@ -1691,31 +1829,36 @@
       "interruptible": false,
       "channels": [
         {
-          "target": "seg_arm_r",
-          "param": "bend_x",
+          "target": "arm_r",
+          "param": "rot_deg",
           "wave": "pulse",
-          "amp": 60.0,
-          "curve": "tip",
+          "amp": -52.0,
           "dur": 2.4,
           "ease": "out"
         },
         {
-          "target": "seg_arm_r",
-          "param": "bend_y",
+          "target": "forearm_r",
+          "param": "rot_deg",
           "wave": "pulse",
-          "amp": -45.0,
-          "curve": "tip",
+          "amp": -28.0,
           "dur": 2.4,
           "ease": "out"
         },
         {
-          "target": "seg_arm_r",
-          "param": "bend_x",
+          "target": "forearm_r",
+          "param": "rot_deg",
           "wave": "sine",
-          "amp": 14.0,
-          "curve": "tip",
-          "freq": 1.8,
+          "amp": 15.0,
+          "freq": 2.2,
           "dur": 2.4
+        },
+        {
+          "target": "arm_l",
+          "param": "rot_deg",
+          "wave": "pulse",
+          "amp": 6.0,
+          "dur": 2.4,
+          "ease": "out"
         },
         {
           "target": "head",
@@ -2010,32 +2153,59 @@
     },
     {
       "id": "ParamArmLA",
-      "label": "左臂 摆动",
+      "label": "左臂 抬起",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
       "binds": [
         {
-          "part": "seg_arm_l",
-          "param": "bend_x",
-          "scale": -4.0,
-          "curve": "tip"
+          "group": "arm_l",
+          "param": "rot_deg",
+          "scale": 6.0
         }
       ],
-      "note": "手臂只有形变没有肘关节（G4c 未做），上限按 ±40px 给"
+      "note": "绕肩旋转，±10 → ±60°（袖下躯干已 AI 补绘，转开不露洞）"
     },
     {
       "id": "ParamArmRA",
-      "label": "右臂 摆动",
+      "label": "右臂 抬起",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
       "binds": [
         {
-          "part": "seg_arm_r",
-          "param": "bend_x",
-          "scale": 4.0,
-          "curve": "tip"
+          "group": "arm_r",
+          "param": "rot_deg",
+          "scale": -6.0
+        }
+      ]
+    },
+    {
+      "id": "ParamArmLB",
+      "label": "左小臂 弯曲",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "forearm_l",
+          "param": "rot_deg",
+          "scale": 5.0
+        }
+      ],
+      "note": "绕肘旋转，±10 → ±50°；肘部 24px 重叠带兜底"
+    },
+    {
+      "id": "ParamArmRB",
+      "label": "右小臂 弯曲",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "forearm_r",
+          "param": "rot_deg",
+          "scale": -5.0
         }
       ]
     },

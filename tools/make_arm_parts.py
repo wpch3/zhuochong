@@ -1,0 +1,349 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""make_arm_parts.py - 把两条手臂从躯干上拆成「上臂 + 前臂」四件，并补上袖子底下的夹克。
+
+为什么要重切（G4c）：
+  make_body_parts.py 是按**直线**切的：手臂 = x<127 / x>316 的一整块矩形板，
+  里头连夹克的侧片一起切走了。那块板一旋转，夹克就跟着歪 → 整块旋转超过 8° 必裂。
+  Live2D 的切法是沿**袖子的缝**切：袖子（青色）是一件，夹克身（白色）是另一件。
+
+切法：
+  ① 袖子按颜色 flood（种子放在袖子中段），天然停在白夹克的边上；
+  ② 袖口以下用「蛇形」逐行跟随（取包含上一行中心的那段连通前景），把袖口 + 手一起带上；
+  ③ 在肘部（anchors 的 elbow_*）切成上臂 / 前臂两件，留 24px 重叠带并做渐隐，
+     这样肘部旋转不会出现硬切线。
+
+袖子挪走后躯干会空一块（夹克侧片、下摆条、裙子边），原画里**没有**这些像素 ——
+按 D19 必须 AI 重绘：design/redraw/torso_noarms.png（无手臂躯干，已做过各向异性配准 +
+逐通道颜色配准），只回贴「被袖子遮住」的那些像素。
+
+输入：sprites/body_full.png、design/anchors.json、design/redraw/torso_noarms.png
+输出：sprites/arm_{l,r}_{upper,fore}.png、sprites/seg_torso.png（补全侧片）、sprites/arm_parts.json
+
+用法：
+  ~/.imgenv/bin/python tools/make_arm_parts.py --character xiaoxun --form teen
+"""
+from __future__ import annotations
+import argparse, json, os, sys
+from collections import deque
+
+import numpy as np
+from PIL import Image
+
+TEAL = np.array([108, 180, 192])      # 袖子的青
+TEAL_TOL = 150                        # |ΔR|+|ΔG|+|ΔB| 阈值
+ELBOW_OVERLAP = 24                    # 肘部重叠带（上下各一半）
+FEATHER = 2                         # 切口羽化半径（像素）
+BLEED = 5                           # 躯干切口往外塗り足し的圈数
+
+
+def flood(mask, seed):
+    """四邻域 flood fill（沙箱没有 scipy，自己写）。"""
+    h, w = mask.shape
+    out = np.zeros((h, w), bool)
+    q = deque([seed])
+    out[seed] = True
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not out[ny, nx]:
+                out[ny, nx] = True
+                q.append((ny, nx))
+    return out
+
+
+def sleeve_mask(rgb, alpha, x0, x1):
+    """在 [x0,x1) 这一侧找袖子：先按青色取候选，再从中段 flood。"""
+    cand = (np.abs(rgb - TEAL).sum(axis=2) < TEAL_TOL) & alpha
+    sub = cand[400:520, x0:x1]
+    ys, xs = np.nonzero(sub)
+    if len(ys) == 0:
+        raise SystemExit(f"[make_arm_parts] x[{x0},{x1}) 里找不到袖子（青色）像素")
+    seed = (400 + int(np.median(ys)), x0 + int(np.median(xs)))
+    return flood(cand, seed)
+
+
+def row_runs(row):
+    """一行里的所有连通段 [(a, b), ...]（闭区间）。"""
+    idx = np.nonzero(row)[0]
+    if idx.size == 0:
+        return []
+    cuts = np.nonzero(np.diff(idx) > 1)[0]
+    runs, start = [], 0
+    for c in cuts:
+        runs.append((int(idx[start]), int(idx[c])))
+        start = c + 1
+    runs.append((int(idx[start]), int(idx[-1])))
+    return runs
+
+
+def grow_down(mask, alpha, max_run=150, slack=6):
+    """从袖子最下面一行往下逐行跟随，把袖口和手一起带上。
+
+    一行里可能有**好几段**（五根手指张开时就是五段），所以不能只跟"包含上一行
+    中心的那一段"——那样手指缝两侧会被漏掉，叠回去就少像素（实测漏 755px）。
+    这里改成：上一行占住的区间左右各放宽 slack 像素，这一行凡是和它相交的段**全要**。
+    再用 max_run 封顶，防止袖口和下摆连在一起时一路跑进躯干。
+    """
+    h, w = alpha.shape
+    m = mask.copy()
+    rows = np.nonzero(mask.any(axis=1))[0]
+    y = int(rows.max())
+    cols = np.nonzero(mask[y])[0]
+    lo, hi = int(cols.min()), int(cols.max())
+    y += 1
+    miss = 0
+    while y < h and miss < 6:
+        runs = [r for r in row_runs(alpha[y])
+                if r[1] >= lo - slack and r[0] <= hi + slack]
+        if not runs:
+            miss += 1
+            y += 1
+            continue
+        nlo, nhi = min(r[0] for r in runs), max(r[1] for r in runs)
+        if nhi - nlo > max_run:          # 和躯干连上了：裁回上一行的范围，别一路吃进去
+            nlo, nhi = max(nlo, lo - slack), min(nhi, hi + slack)
+        for a, b in runs:
+            a, b = max(a, nlo), min(b, nhi)
+            if a <= b:
+                m[y, a:b + 1] = True
+        lo, hi = nlo, nhi
+        miss = 0
+        y += 1
+    return m
+
+
+def fill_outward(m, alpha, side, limit=40):
+    """每一行从袖子的最外侧像素补到人物轮廓外缘。
+
+    袖口的三道白条不是青色，按颜色 flood 吃不到；它们又贴着轮廓（不是内部孔洞），
+    所以闭运算也补不回来 —— 实测左右各漏掉一块 ~100px 的楔形。
+    手臂在这些行里本来就是画面最外侧的东西，直接按行补到轮廓即可：
+    左臂往左补、右臂往右补，并且只补前景像素（手指缝里的背景不要）。
+    """
+    out = m.copy()
+    for y in np.nonzero(m.any(axis=1))[0]:
+        fg = np.nonzero(alpha[y])[0]
+        xs = np.nonzero(m[y])[0]
+        if fg.size == 0 or xs.size == 0:
+            continue
+        if side == "l":
+            a, b = int(fg.min()), int(xs.min())
+        else:
+            a, b = int(xs.max()) + 1, int(fg.max()) + 1
+        if 0 < b - a <= limit:
+            out[y, a:b] = alpha[y, a:b]
+    return out
+
+
+def shift(m, dy, dx):
+    """不绕回的平移（np.roll 会把左边卷到右边，手臂贴着画布边时会炸）。"""
+    out = np.zeros_like(m)
+    h, w = m.shape
+    ys0, ys1 = max(0, dy), min(h, h + dy)
+    xs0, xs1 = max(0, dx), min(w, w + dx)
+    out[ys0:ys1, xs0:xs1] = m[ys0 - dy:ys1 - dy, xs0 - dx:xs1 - dx]
+    return out
+
+
+def dilate(mask, n=1):
+    m = mask.copy()
+    for _ in range(n):
+        m = (m | shift(m, 1, 0) | shift(m, -1, 0) | shift(m, 0, 1) | shift(m, 0, -1))
+    return m
+
+
+def erode(mask, n=1):
+    return ~dilate(~mask, n)
+
+
+def soft(mask, feather=FEATHER):
+    """二值掩码 → 软边 alpha（和其它拆件脚本同一套配方）。"""
+    from PIL import ImageFilter
+    im = Image.fromarray((mask.astype(np.float32) * 255).astype(np.uint8))
+    for _ in range(feather):
+        im = im.filter(ImageFilter.BoxBlur(1))
+    a = np.asarray(im).astype(np.float32) / 255.0
+    a = np.clip(a * 1.35 - 0.18, 0.0, 1.0)
+    a[mask & (a > 0.75)] = 1.0
+    return a
+
+
+def bleed(rgb, have, into, rounds=5):
+    """塗り足し：把已有像素的颜色往 into 区域里长几圈，
+    免得零件的软边底下露出透明（Live2D 素材的标准做法）。"""
+    out_rgb = rgb.copy()
+    cur = have.copy()
+    grown = np.zeros_like(have)
+    dist = np.zeros(have.shape, np.float32)
+    for r in range(1, rounds + 1):
+        ring = dilate(cur, 1) & ~cur & into
+        if not ring.any():
+            break
+        acc = np.zeros(rgb.shape, np.float32)
+        cnt = np.zeros(have.shape, np.float32)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nb = shift(cur, dy, dx)
+            nbrgb = np.dstack([shift(out_rgb[..., c], dy, dx) for c in range(3)])
+            use = ring & nb
+            acc[use] += nbrgb[use]
+            cnt[use] += 1
+        ok = ring & (cnt > 0)
+        out_rgb[ok] = (acc[ok] / cnt[ok][:, None]).astype(rgb.dtype)
+        dist[ok] = r
+        cur = cur | ok
+        grown |= ok
+    return out_rgb, grown, dist
+
+
+def cut(rgb, alpha_f, box):
+    """按 box=(x0,y0,x1,y1) 裁出 RGBA 图。"""
+    x0, y0, x1, y1 = box
+    out = np.zeros((y1 - y0, x1 - x0, 4), np.uint8)
+    out[..., :3] = rgb[y0:y1, x0:x1]
+    out[..., 3] = (alpha_f[y0:y1, x0:x1] * 255).round().astype(np.uint8)
+    return Image.fromarray(out)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--character", required=True)
+    ap.add_argument("--form", required=True)
+    ap.add_argument("--root", default=".")
+    args = ap.parse_args()
+    base = os.path.join(args.root, "characters", args.character, "forms", args.form)
+    sp = os.path.join(base, "sprites")
+    body = np.array(Image.open(os.path.join(sp, "body_full.png")).convert("RGBA"))
+    H, W = body.shape[:2]
+    rgb = body[..., :3].astype(int)
+    alpha = body[..., 3] > 16
+
+    anchors = json.load(open(os.path.join(base, "design", "anchors.json"), encoding="utf-8"))
+    pts = anchors["points"]
+    redraw_path = os.path.join(args.root, "characters", args.character,
+                               "design", "redraw", "torso_noarms.png")
+    if not os.path.exists(redraw_path):
+        raise SystemExit(f"[make_arm_parts] 缺少 AI 重绘底图：{redraw_path}（D19：被遮挡像素必须重绘）")
+    fill = np.array(Image.open(redraw_path).convert("RGBA"))
+    if fill.shape[:2] != (H, W):
+        raise SystemExit("[make_arm_parts] 重绘底图尺寸必须与 body_full.png 一致")
+
+    bp_path = os.path.join(sp, "body_parts.json")
+    bp = json.load(open(bp_path, encoding="utf-8"))
+    torso = next(p for p in bp["parts"] if p["id"] == "seg_torso")
+
+    report = {"schema_version": "1.0", "source": "sprites/body_full.png",
+              "redraw": "design/redraw/torso_noarms.png",
+              "elbow_overlap_px": ELBOW_OVERLAP, "parts": [], "checks": {}}
+    arms = {}
+    yy_all = np.arange(H)[:, None]
+    for side, (x0, x1) in (("l", (0, 150)), ("r", (300, W))):
+        m = grow_down(sleeve_mask(rgb, alpha, x0, x1), alpha)
+        # 袖口的白条不是青色，flood 吃不到；它贴着轮廓所以也不算"内部孔洞"。
+        # 肘部以下做一次形态学闭运算（只在前景里补），把这种开口缺块补回来。
+        # 只在肘以下做：上臂内侧紧挨着夹克，闭运算会把夹克的凹处也吃进来。
+        close = erode(dilate(m, 6), 6) & (alpha > 0) & (yy_all > int(pts[f"elbow_{side}"][1]))
+        arms[side] = fill_outward(m | close, alpha, side)
+
+    # ---- 躯干：袖子那块换成 AI 重绘的夹克侧片 ----
+    occ = dilate(arms["l"] | arms["r"], 2)  # 连袖子的抗锯齿边一起挖掉，免得转开后留残影
+    # 重绘图是洋红底抠出来的，边缘有一圈被烤进 RGB 的紫：这种像素一律不要，
+    # 贴进去会直接把 check_assets 的"键色残留"打挂（实测 299/631 是紫边）。
+    fr = fill[..., 0].astype(np.int32); fg_ = fill[..., 1].astype(np.int32); fb = fill[..., 2].astype(np.int32)
+    key_d = np.sqrt(((fill[..., :3].astype(np.float32) - np.array([255.0, 0.0, 255.0])) ** 2).sum(axis=2))
+    # 被洋红污染的像素一律：红蓝都明显高于绿（品红 = R、B 高、G 低）。
+    # 角色这块只有白夹克（R≈G≈B）和青袖（G≥R），所以这条判据不会误伤。
+    purple = (np.minimum(fr, fb) - fg_) > 25
+    have = (fill[..., 3] > 200) & (key_d > 150.0) & ~purple
+    newbody = body.copy()
+    paste = occ & have
+    newbody[..., :3][paste] = fill[..., :3][paste]
+    newbody[..., 3][paste] = 255
+    lost = occ & ~have                      # 重绘也没有的（袖子外侧本来就是背景）
+    newbody[..., 3][lost] = 0
+    # 剩下的空洞边缘往外长 5 圈颜色，保证手臂转开时切口不是硬透明边
+    keep = newbody[..., 3] > 16
+    newbody[..., :3], grown, dist = bleed(newbody[..., :3], keep, lost, rounds=BLEED)
+    # 边缘往外长的这几圈做渐隐，手臂转开时看着像衣片自然收边
+    newbody[..., 3][grown] = np.clip(255.0 * (1.0 - (dist[grown] - 1.0) / BLEED), 0, 255).astype(np.uint8)
+    tx, ty = torso["pos"]
+    tw, th = torso["size"]
+    Image.fromarray(newbody[ty:ty + th, tx:tx + tw]).save(os.path.join(sp, "seg_torso.png"))
+    report["checks"]["torso_filled_px"] = int(paste.sum())
+    report["checks"]["torso_cleared_px"] = int(lost.sum())
+
+    # ---- 四件手臂 ----
+    layer = {"l": 140, "r": 141}
+    for side in ("l", "r"):
+        m = arms[side]
+        elbow_y = int(pts[f"elbow_{side}"][1])
+        half = ELBOW_OVERLAP // 2
+        orig_a = (body[..., 3] / 255.0).astype(np.float32)
+        for seg, keep in (("upper", m & (np.arange(H)[:, None] <= elbow_y + half)),
+                          ("fore",  m & (np.arange(H)[:, None] >= elbow_y - half))):
+            # 把原画自己的抗锯齿边一起抓进来，掩码内严格保留原 alpha，
+            # 只在往外多扩的 2px 上做软边 —— 这样静止合成能逐像素还原
+            grab = dilate(keep, 2) & (body[..., 3] > 0)
+            sa = soft(dilate(grab, 2))
+            sa[grab] = 1.0
+            a = orig_a * sa
+            # 肘部重叠带：**只让前臂淡入**，上臂在带内保持满值当底，
+            # 这样 over 合成仍然是满的（两件都淡的话 0.5 over 0.5 = 0.75，会露底）
+            if seg == "fore":
+                yy = np.arange(H)[:, None].astype(np.float32)
+                a = a * np.clip((yy - (elbow_y - half)) / ELBOW_OVERLAP, 0.0, 1.0)
+            ys, xs = np.nonzero(a > 0.004)
+            box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
+            img = cut(body[..., :3], a, box)
+            name = f"arm_{side}_{seg}"
+            img.save(os.path.join(sp, name + ".png"))
+            joint = pts[f"shoulder_{side}"] if seg == "upper" else pts[f"elbow_{side}"]
+            report["parts"].append({
+                "id": name, "file": f"sprites/{name}.png",
+                "pos": [box[0], box[1]], "size": [box[2] - box[0], box[3] - box[1]],
+                "group": (f"arm_{side}" if seg == "upper" else f"forearm_{side}"),
+                "layer": layer[side] + (0 if seg == "upper" else 2),
+                "pivot": [float(joint[0]), float(joint[1])],
+                "note": ("上臂：绕肩旋转" if seg == "upper" else "前臂：绕肘旋转（父组＝上臂）"),
+            })
+
+    # ---- 验收：四件叠回去 + 新躯干，和原画静止帧必须一样 ----
+    comp = np.zeros((H, W, 4), np.float32)
+    def over(dst, src_rgb, src_a):
+        a = src_a[..., None]
+        dst[..., :3] = src_rgb * a + dst[..., :3] * (1 - a)
+        dst[..., 3:] = a + dst[..., 3:] * (1 - a)
+        return dst
+    comp = over(comp, newbody[..., :3].astype(np.float32), (newbody[..., 3] / 255.0).astype(np.float32))
+    for p in report["parts"]:
+        im = np.array(Image.open(os.path.join(sp, os.path.basename(p["file"]))).convert("RGBA"))
+        x, y = p["pos"]
+        h, w = im.shape[:2]
+        layerbuf = np.zeros((H, W, 4), np.float32)
+        layerbuf[y:y + h, x:x + w, :3] = im[..., :3]
+        layerbuf[y:y + h, x:x + w, 3] = im[..., 3] / 255.0
+        comp = over(comp, layerbuf[..., :3], layerbuf[..., 3])
+    orig_a = (body[..., 3] / 255.0).astype(np.float32)
+    # comp[...,:3] 累加出来已经是预乘 alpha 的值，原图要乘一次 alpha 才同口径
+    diff = np.abs(comp[..., :3] - body[..., :3].astype(np.float32) * orig_a[..., None])
+    bad = int((diff.max(axis=2) > 12).sum())
+    report["checks"]["static_diff_px"] = bad
+    if os.environ.get("ARM_DEBUG"):
+        Image.fromarray(newbody).save("/tmp/g4c_newbody.png")
+        dm = (diff.max(axis=2) > 12)
+        Image.fromarray((dm * 255).astype(np.uint8)).save("/tmp/g4c_diffmap.png")
+        print("  [debug] 差异分布：", {f"y{y0}-{y1}": int(dm[y0:y1].sum())
+              for y0, y1 in ((0, 330), (330, 560), (560, 760), (760, 1292))})
+    report["checks"]["arm_px"] = {s: int(arms[s].sum()) for s in arms}
+    json.dump(report, open(os.path.join(sp, "arm_parts.json"), "w", encoding="utf-8"),
+              ensure_ascii=False, indent=2)
+    print(f"手臂拆件完成：4 件；躯干补了 {report['checks']['torso_filled_px']} 像素、"
+          f"清掉 {report['checks']['torso_cleared_px']} 像素；静止合成差 {bad} 像素")
+    for p in report["parts"]:
+        print(f"  {p['id']:14s} pos={p['pos']} size={p['size']} pivot={p['pivot']} layer={p['layer']}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

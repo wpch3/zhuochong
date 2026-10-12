@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse, json, os, sys
 
 
-def param_list(mouth=None, has_brows=True, head_is_part=True):
+def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -60,12 +60,30 @@ def param_list(mouth=None, has_brows=True, head_is_part=True):
             {"id": "ParamBrowRAngle", "label": "右眉 角度", "min": -1.0, "max": 1.0, "default": 0.0,
              "binds": [{"part": "brow_r", "param": "rot_deg", "scale": -7.0}]},
         ]
-    out += [
+    if jointed_arms:
+        # G4c 拆件后手臂是真关节：上臂绕肩、前臂绕肘。正值 = 往身体外侧抬。
+        # 画面 y 轴朝下，所以顺时针为正 → 左臂（画面左）抬手是正、右臂是负。
+        out += [
+            {"id": "ParamArmLA", "label": "左臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
+             "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 6.0}],
+             "note": "绕肩旋转，±10 → ±60°（袖下躯干已 AI 补绘，转开不露洞）"},
+            {"id": "ParamArmRA", "label": "右臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
+             "binds": [{"group": "arm_r", "param": "rot_deg", "scale": -6.0}]},
+            {"id": "ParamArmLB", "label": "左小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
+             "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 5.0}],
+             "note": "绕肘旋转，±10 → ±50°；肘部 24px 重叠带兜底"},
+            {"id": "ParamArmRB", "label": "右小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
+             "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -5.0}]},
+        ]
+    else:
+        out += [
         {"id": "ParamArmLA", "label": "左臂 摆动", "min": -10.0, "max": 10.0, "default": 0.0,
          "binds": [{"part": "seg_arm_l", "param": "bend_x", "scale": -4.0, "curve": "tip"}],
          "note": "手臂只有形变没有肘关节（G4c 未做），上限按 ±40px 给"},
         {"id": "ParamArmRA", "label": "右臂 摆动", "min": -10.0, "max": 10.0, "default": 0.0,
          "binds": [{"part": "seg_arm_r", "param": "bend_x", "scale": 4.0, "curve": "tip"}]},
+        ]
+    out += [
         {"id": "ParamHairFront", "label": "刘海 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
          "binds": [{"part": "hair_front", "param": "bend_x", "scale": 6.0, "curve": "tip"}]},
         {"id": "ParamHairAhoge", "label": "呆毛 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
@@ -123,7 +141,7 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True):
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
-          seg=None, anchors=None, eyes=None, mouth=None, lids=None):
+          seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -182,9 +200,17 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # 分段身体：位置由 make_body_parts.py 从素材量出，这里只做画布平移。
         tag_of = {"seg_head": ["head_base"], "seg_torso": ["body"],
                   "seg_arm_l": ["arm"], "seg_arm_r": ["arm"],
+                  "arm_l_upper": ["arm"], "arm_l_fore": ["arm"],
+                  "arm_r_upper": ["arm"], "arm_r_fore": ["arm"],
                   "seg_leg_l": ["leg"], "seg_leg_r": ["leg"],
                   "hair_ahoge": ["hair"], "hair_front": ["hair"],
                   "brow_l": ["brow"], "brow_r": ["brow"]}
+        seg_src = list(seg["parts"])
+        if armp:
+            # G4c：整条手臂（seg_arm_l/r）作废，换成上臂 + 前臂四件真关节零件
+            seg_src = [sp for sp in seg_src if sp["id"] not in ("seg_arm_l", "seg_arm_r")]
+            seg_src += [dict(sp, note="手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）")
+                        for sp in armp["parts"]]
         body_parts_list = [{
             "id": sp["id"],
             "file": sp["file"],
@@ -193,8 +219,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "pos": [ox + sp["pos"][0], oy + sp["pos"][1]],
             "anchor": [0, 0],
             "tags": tag_of.get(sp["id"], ["body"]),
-            "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
-        } for sp in seg["parts"]]
+            "note": sp.get("note", "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"),
+        } for sp in seg_src]
         # 眉毛要绕自己中心转（挑眉/皱眉），所以锚点放中心、pos 换成中心点
         size_of = {sp["id"]: sp.get("size") for sp in seg["parts"]}
         for bp_ in body_parts_list:
@@ -449,17 +475,40 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 if a["id"] == action_id:
                     a["channels"].extend(chans)
 
+        # 肩到腕 = 708-364 = 344px：手臂整块绕肩转 1° 时腕部横移 344*π/180 ≈ 6.0px。
+        # 老动作的幅度都是按"腕部位移多少像素"调出来的，这里按这个系数换算成角度，
+        # 观感完全一致，差别只在于现在是真关节在转、不是网格在拉。
+        DEG_PER_PX = 180.0 / (3.14159265358979 * 344.0)
+
         def arm(side, param, amp, freq, phase=0.0, wave="sine", **kw):
-            """手臂通道。**整块旋转手臂会在肩膀露接缝**：手臂是竖切下来的，
-               里面带着一条外套前襟，转 26° 时那条会甩到身体轮廓外面（实测）。
-               所以手臂一律用网格形变 bend：curve=tip 表示顶边（肩）钉死、
-               越往下位移越大——和 Live2D 的手臂变形器同一个思路，肩膀永远不裂。"""
+            """手臂通道。
+
+            G4c 之前：手臂是竖切下来的一整块，里面带着一条外套前襟，整块转 26°
+            那条会甩到身体轮廓外（实测），所以只能用网格形变 bend（curve=tip，
+            肩部钉死、越往下位移越大）。
+            G4c 之后：袖下躯干已 AI 补绘、沿袖缝切成上臂+前臂两级关节，
+            于是 bend 通道一律换成绕肩的真旋转 —— 和 Live2D 的手臂旋转变形器一致。"""
+            if armp and param.startswith("bend"):
+                # bend_x 正向 = 手往画面右边推；绕肩顺时针（正角）会把手往左带，
+                # 所以换算要取负号。bend_y（上下推）没有等价旋转，退回竖向位移。
+                if param == "bend_x":
+                    return {"target": f"arm_{side}", "param": "rot_deg", "wave": wave,
+                            "amp": round(-amp * DEG_PER_PX, 3), "freq": freq,
+                            **({"phase": phase} if phase else {}), **kw}
+                param, amp = "dy", amp * 0.5
             tgt = f"seg_arm_{side}" if param.startswith("bend") else f"arm_{side}"
             c = {"target": tgt, "param": param, "wave": wave, "amp": amp, "freq": freq}
             if param.startswith("bend"):
                 c["curve"] = "tip"
             if phase:
                 c["phase"] = phase
+            c.update(kw)
+            return c
+
+        def fore(side, amp, freq=0.0, wave="sine", **kw):
+            """前臂通道（绕肘）。正值 = 往身体外侧甩，左右镜像。"""
+            c = {"target": f"forearm_{side}", "param": "rot_deg", "wave": wave,
+                 "amp": amp if side == "l" else -amp, "freq": freq}
             c.update(kw)
             return c
 
@@ -483,21 +532,54 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         add("hammered", [arm("l", "bend_x", 10.0, 2.6, 0.0, wave="decay", dur=0.7),
                          arm("r", "bend_x", 10.0, 2.6, 0.0, wave="decay", dur=0.7)])
 
+        if armp:
+            # 有肘关节之后才做得出来的次级动作：小臂比上臂晚半拍（鞭梢效应）
+            add("idle", [fore("l", 0.8, 0.06, phase=0.28), fore("r", 0.8, 0.06, phase=0.28)])
+            add("sway", [fore("l", 2.4, 0.18, phase=0.22), fore("r", 2.4, 0.18, phase=0.22)])
+            add("happy", [fore("l", 14.0, 0.0, wave="bounce", dur=0.5),
+                          fore("r", 14.0, 0.0, wave="bounce", dur=0.5)])
+            add("hammered", [fore("l", 9.0, 2.6, wave="decay", dur=0.7),
+                             fore("r", 9.0, 2.6, wave="decay", dur=0.7)])
+            # 吓一跳：两只手一起向外抬 + 小臂抬起护在身前（以前只能抖一抖）
+            add("surprised", [
+                {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
+                 "amp": 16.0, "dur": 0.9, "ease": "out"},
+                {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
+                 "amp": -16.0, "dur": 0.9, "ease": "out"},
+                fore("l", 22.0, 0.0, wave="pulse", dur=0.9, ease="out"),
+                fore("r", 22.0, 0.0, wave="pulse", dur=0.9, ease="out"),
+            ])
+
         # 挥手：单图层时代做不到的动作（没有独立手臂，一抬就整张图跟着转）。
         # 同样用 bend：肩膀钉死，手往外甩 + 往上抬，再叠一个快速左右摆。
         # 幅度上限是算出来的：手臂内侧那条重叠带 38px，它在最低一行（离身行）
         # 的形变权重是 0.59，所以 amp ≤ 38/0.59 ≈ 64 才不会把重叠带甩出兜底范围。
         # 想要更大的动作必须先补关节图（GAPS G4c）。
+        wave_channels = [
+            {"target": "seg_arm_r", "param": "bend_x", "wave": "pulse",
+             "amp": 60.0, "curve": "tip", "dur": 2.4, "ease": "out"},
+            {"target": "seg_arm_r", "param": "bend_y", "wave": "pulse",
+             "amp": -45.0, "curve": "tip", "dur": 2.4, "ease": "out"},
+            {"target": "seg_arm_r", "param": "bend_x", "wave": "sine",
+             "amp": 14.0, "curve": "tip", "freq": 1.8, "dur": 2.4},
+        ]
+        if armp:
+            # 真关节版挥手：上臂绕肩抬到 -52°（手举到肩膀以上），
+            # 小臂绕肘再翻 -28° 并以 2.2Hz 左右摆 —— 这才是"挥手"而不是"手臂飘"。
+            wave_channels = [
+                {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
+                 "amp": -52.0, "dur": 2.4, "ease": "out"},
+                {"target": "forearm_r", "param": "rot_deg", "wave": "pulse",
+                 "amp": -28.0, "dur": 2.4, "ease": "out"},
+                {"target": "forearm_r", "param": "rot_deg", "wave": "sine",
+                 "amp": 15.0, "freq": 2.2, "dur": 2.4},
+                {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
+                 "amp": 6.0, "dur": 2.4, "ease": "out"},
+            ]
         actions.append({
             "id": "wave", "priority": 6, "duration": 2.4, "return_state": "idle",
             "interruptible": False,
-            "channels": [
-                {"target": "seg_arm_r", "param": "bend_x", "wave": "pulse",
-                 "amp": 60.0, "curve": "tip", "dur": 2.4, "ease": "out"},
-                {"target": "seg_arm_r", "param": "bend_y", "wave": "pulse",
-                 "amp": -45.0, "curve": "tip", "dur": 2.4, "ease": "out"},
-                {"target": "seg_arm_r", "param": "bend_x", "wave": "sine",
-                 "amp": 14.0, "curve": "tip", "freq": 1.8, "dur": 2.4},
+            "channels": wave_channels + [
                 {"target": "head", "param": "rot_deg", "wave": "sine",
                  "amp": 2.0, "freq": 0.8, "dur": 2.4},
                 {"target": "root", "param": "dy", "wave": "sine",
@@ -525,6 +607,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "leg_l": {"pivot": [hip_pt[0] - int(sp_w * 0.08), hip_pt[1]], "parent": "root"},
             "leg_r": {"pivot": [hip_pt[0] + int(sp_w * 0.08), hip_pt[1]], "parent": "root"},
         }
+        if armp:
+            # 前臂挂在上臂下面：枢轴 = 肘关节（anchors 实测），父组旋转自动继承
+            el_l = apt("elbow_l", 0.428, 0.172)
+            el_r = apt("elbow_r", 0.428, 0.825)
+            groups["forearm_l"] = {"pivot": el_l, "parent": "arm_l"}
+            groups["forearm_r"] = {"pivot": el_r, "parent": "arm_r"}
     else:
         groups = {
             "root": {"pivot": [cw // 2, ch], "parent": ""},
@@ -741,7 +829,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # ParamEyeBallX/Y 由引擎注册，这里补角色自己的那些。
         "params": param_list(mouth=mouth,
                              has_brows=any(p["id"] == "brow_l" for p in parts_list),
-                             head_is_part=head_is_part),
+                             head_is_part=head_is_part,
+                             jointed_arms=bool(armp)),
         # 表情层（Live2D 的 expression）：一组参数偏移，叠在当前动作之上。
         # 和动作是两条轨 —— 可以"笑着挥手"，不用为每种组合再做一个动作。
         "expressions": expression_list(mouth=mouth,
@@ -792,6 +881,17 @@ def main() -> int:
     if os.path.exists(anchor_path):
         with open(anchor_path, encoding="utf-8") as f:
             anchors = json.load(f)
+    # 手臂拆件（tools/make_arm_parts.py 的产物：上臂/前臂四件 + 补绘过的躯干）
+    armp = None
+    arm_path = os.path.join(base, "sprites", "arm_parts.json")
+    if seg and os.path.exists(arm_path):
+        with open(arm_path, encoding="utf-8") as f:
+            armp = json.load(f)
+        miss = [a["id"] for a in armp["parts"]
+                if not os.path.exists(os.path.join(base, a["file"]))]
+        if miss:
+            print(f"警告：手臂拆件缺图 {miss}，退回整条手臂 bend", file=sys.stderr)
+            armp = None
     # 眼部拆件（tools/make_eye_parts.py 的产物）
     eyes = None
     eye_path = os.path.join(base, "sprites", "eye_parts.json")
@@ -832,7 +932,7 @@ def main() -> int:
             print("警告：嘴部零件缺图，跳过口内", file=sys.stderr)
             mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
-                seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids)
+                seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

@@ -251,23 +251,42 @@ def check(character, form, root=".", strict=False, out_json=None):
             AP = json.load(f)["points"]
         SW, SH = bp["image_size"]
         ov = bp["overlap_px"]
-        miss = [sp["id"] for sp in bp["parts"]
+        seg_parts = list(bp["parts"])
+        # 手臂拆件（make_arm_parts.py）在场时，整条 seg_arm_l/r 作废，
+        # 验收必须按 rig 实际用的四件（上臂/前臂）来叠，否则查的是过期素材。
+        arm_path = os.path.join(base, "sprites", "arm_parts.json")
+        armp = None
+        if os.path.exists(arm_path):
+            with open(arm_path, encoding="utf-8") as f:
+                armp = json.load(f)
+            seg_parts = [sp for sp in seg_parts
+                         if sp["id"] not in ("seg_arm_l", "seg_arm_r")] + armp["parts"]
+        miss = [sp["id"] for sp in seg_parts
                 if not os.path.exists(os.path.join(base, sp["file"]))]
-        add("分段", "部件齐全", not miss, f"{len(bp['parts'])} 个部件" + (f"，缺 {miss}" if miss else ""))
+        add("分段", "部件齐全", not miss, f"{len(seg_parts)} 个部件" + (f"，缺 {miss}" if miss else ""))
+
+        piv = {"head": AP["neck"], "arm_l": AP["shoulder_l"], "arm_r": AP["shoulder_r"],
+               "chest": AP["hip"], "leg_l": AP["hip"], "leg_r": AP["hip"],
+               "forearm_l": AP.get("elbow_l", AP["shoulder_l"]),
+               "forearm_r": AP.get("elbow_r", AP["shoulder_r"])}
+        parent = {"forearm_l": "arm_l", "forearm_r": "arm_r"}   # 前臂挂在上臂下面
 
         def compose(angles):
-            """按层序叠出整个人；angles 按组给旋转角（度，绕锚点）。"""
+            """按层序叠出整个人；angles 按组给旋转角（度，绕锚点）。
+               子组（前臂）要先绕自己的关节转，再跟着父组绕父关节转。"""
             c = Image.new("RGBA", (SW, SH), (0, 0, 0, 0))
-            piv = {"head": AP["neck"], "arm_l": AP["shoulder_l"], "arm_r": AP["shoulder_r"],
-                   "chest": AP["hip"], "leg_l": AP["hip"], "leg_r": AP["hip"]}
-            for sp in sorted(bp["parts"], key=lambda q: q["layer"]):
+            for sp in sorted(seg_parts, key=lambda q: q["layer"]):
                 im = Image.open(os.path.join(base, sp["file"])).convert("RGBA")
                 lay = Image.new("RGBA", (SW, SH), (0, 0, 0, 0))
                 lay.paste(im, tuple(sp["pos"]))
-                ang = angles.get(sp["group"], 0.0)
-                if ang:
-                    px, py = piv[sp["group"]]
-                    lay = lay.rotate(ang, resample=Image.BICUBIC, center=(float(px), float(py)))
+                g = sp["group"]
+                while g:
+                    ang = angles.get(g, 0.0)
+                    if ang:
+                        px, py = piv[g]
+                        lay = lay.rotate(ang, resample=Image.BICUBIC,
+                                         center=(float(px), float(py)))
+                    g = parent.get(g, "")
                 c.alpha_composite(lay)
             return np.asarray(c)[..., 3] > 24
 
@@ -287,10 +306,19 @@ def check(character, form, root=".", strict=False, out_json=None):
                 lf = np.maximum.accumulate(sl, 1); rt = np.maximum.accumulate(sl[:, ::-1], 1)[:, ::-1]
                 return int(((~sl) & up & dn & lf & rt).sum())
 
-            # 压力姿势：远超实际动作（头 ≤5°、手臂 ≤2°），关节处仍然不能露底
-            pose = compose({"head": -15.0, "arm_l": 10.0, "arm_r": -10.0})
-            for label, y in (("颈", int(AP["neck"][1])), ("肩", int(AP["shoulder"][1])),
-                             ("髋", int(AP["hip"][1]))):
+            # 压力姿势：远超实际动作，关节处仍然不能露底。
+            # 手臂拆件前只能转 10°（整条手臂一块板，再多就露切口）；
+            # 拆件后袖下躯干已补绘、肘部有 24px 重叠带，按挥手的真实幅度 25° 压。
+            if armp:
+                pose = compose({"head": -15.0, "arm_l": 25.0, "arm_r": -25.0,
+                                "forearm_l": 20.0, "forearm_r": -20.0})
+            else:
+                pose = compose({"head": -15.0, "arm_l": 10.0, "arm_r": -10.0})
+            bands = [("颈", int(AP["neck"][1])), ("肩", int(AP["shoulder"][1])),
+                     ("髋", int(AP["hip"][1]))]
+            if armp:
+                bands.append(("肘", int(AP["elbow_l"][1])))
+            for label, y in bands:
                 d = holes(pose, y - ov * 2, y + ov * 2) - holes(flat, y - ov * 2, y + ov * 2)
                 add("分段", f"关节不露底({label})", d <= th["joint_hole"],
                     f"压力姿势新增空洞 {d} 像素（上限 {th['joint_hole']}）")

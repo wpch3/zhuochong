@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "source": "sprites/body_full.png",
+  "redraw": "design/redraw/torso_noarms.png",
+  "elbow_overlap_px": 24,
+  "parts": [
+    {
+      "id": "arm_l_upper",
+      "file": "sprites/arm_l_upper.png",
+      "pos": [
+        41,
+        332
+      ],
+      "size": [
+        92,
+        239
+      ],
+      "group": "arm_l",
+      "layer": 140,
+      "pivot": [
+        97.0,
+        364.0
+      ],
+      "note": "上臂：绕肩旋转"
+    },
+    {
+      "id": "arm_l_fore",
+      "file": "sprites/arm_l_fore.png",
+      "pos": [
+        0,
+        542
+      ],
+      "size": [
+        113,
+        193
+      ],
+      "group": "forearm_l",
+      "layer": 142,
+      "pivot": [
+        76.5,
+        553.0
+      ],
+      "note": "前臂：绕肘旋转（父组＝上臂）"
+    },
+    {
+      "id": "arm_r_upper",
+      "file": "sprites/arm_r_upper.png",
+      "pos": [
+        311,
+        332
+      ],
+      "size": [
+        93,
+        239
+      ],
+      "group": "arm_r",
+      "layer": 141,
+      "pivot": [
+        346.0,
+        364.0
+      ],
+      "note": "上臂：绕肩旋转"
+    },
+    {
+      "id": "arm_r_fore",
+      "file": "sprites/arm_r_fore.png",
+      "pos": [
+        326,
+        542
+      ],
+      "size": [
+        119,
+        193
+      ],
+      "group": "forearm_r",
+      "layer": 143,
+      "pivot": [
+        367.0,
+        553.0
+      ],
+      "note": "前臂：绕肘旋转（父组＝上臂）"
+    }
+  ],
+  "checks": {
+    "torso_filled_px": 73,
+    "torso_cleared_px": 40713,
+    "static_diff_px": 76,
+    "arm_px": {
+      "l": 17826,
+      "r": 19137
+    }
+  }
+}
