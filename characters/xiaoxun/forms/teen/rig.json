@@ -259,6 +259,60 @@
       "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）"
     },
     {
+      "id": "hair_side_l",
+      "file": "sprites/hair_side_l.png",
+      "group": "head",
+      "layer": 245,
+      "pos": [
+        299,
+        221
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "hair_side_r",
+      "file": "sprites/hair_side_r.png",
+      "group": "head",
+      "layer": 246,
+      "pos": [
+        443,
+        221
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "hair_back",
+      "file": "sprites/hair_back.png",
+      "group": "head",
+      "layer": 170,
+      "pos": [
+        302,
+        116
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
       "id": "arm_l_upper",
       "file": "sprites/arm_l_upper.png",
       "group": "arm_l",
@@ -844,6 +898,30 @@
           "wave": "sine",
           "amp": 0.6,
           "freq": 0.26
+        },
+        {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.8,
+          "freq": 0.24
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.8,
+          "freq": 0.24
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.3,
+          "freq": 0.24
         }
       ]
     },
@@ -924,6 +1002,30 @@
           "wave": "sine",
           "amp": 2.4,
           "freq": 0.33
+        },
+        {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 3.6,
+          "freq": 0.31
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 3.6,
+          "freq": 0.31
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 1.6,
+          "freq": 0.3
         }
       ]
     },
@@ -1092,6 +1194,30 @@
           "freq": 0.2
         },
         {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 1.3,
+          "freq": 0.19
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 1.3,
+          "freq": 0.19
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.18
+        },
+        {
           "target": "brow_l",
           "param": "dy",
           "wave": "sine",
@@ -1229,6 +1355,54 @@
               0.0
             ]
           ]
+        },
+        {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              -2.2
+            ],
+            [
+              0.6,
+              1.6
+            ],
+            [
+              1.1,
+              0.0
+            ]
+          ],
+          "interp": "smooth"
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              -2.2
+            ],
+            [
+              0.6,
+              1.6
+            ],
+            [
+              1.1,
+              0.0
+            ]
+          ],
+          "interp": "smooth"
         }
       ]
     },
@@ -1270,6 +1444,30 @@
           "wave": "sine",
           "amp": 2.6,
           "freq": 1.1
+        },
+        {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 3.6,
+          "freq": 1.0
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 3.6,
+          "freq": 1.0
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 1.0
         },
         {
           "target": "brow_l",
@@ -1374,6 +1572,33 @@
           "curve": "tip",
           "wave": "bounce",
           "amp": 3.2,
+          "dur": 1.4,
+          "ease": "out"
+        },
+        {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "bounce",
+          "amp": 4.8,
+          "dur": 1.4,
+          "ease": "out"
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "bounce",
+          "amp": 4.8,
+          "dur": 1.4,
+          "ease": "out"
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "bounce",
+          "amp": 1.9,
           "dur": 1.4,
           "ease": "out"
         },
@@ -1566,6 +1791,33 @@
           "freq": 2.2
         },
         {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "decay",
+          "amp": 5.4,
+          "dur": 0.9,
+          "freq": 2.2
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "decay",
+          "amp": 5.4,
+          "dur": 0.9,
+          "freq": 2.2
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "decay",
+          "amp": 2.2,
+          "dur": 0.9,
+          "freq": 2.0
+        },
+        {
           "target": "brow_l",
           "param": "dy",
           "wave": "decay",
@@ -1687,6 +1939,33 @@
           "amp": 4.0,
           "dur": 1.0,
           "freq": 2.8
+        },
+        {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "decay",
+          "amp": 6.0,
+          "dur": 1.0,
+          "freq": 2.8
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "decay",
+          "amp": 6.0,
+          "dur": 1.0,
+          "freq": 2.8
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "decay",
+          "amp": 2.6,
+          "dur": 1.0,
+          "freq": 2.6
         },
         {
           "target": "brow_l",
@@ -2019,6 +2298,30 @@
           "freq": 0.1
         },
         {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.6,
+          "freq": 0.1
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.6,
+          "freq": 0.1
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.25,
+          "freq": 0.1
+        },
+        {
           "target": "brow_l",
           "param": "dy",
           "wave": "sine",
@@ -2105,6 +2408,30 @@
           "curve": "tip",
           "wave": "sine",
           "amp": 1.4,
+          "freq": 1.2
+        },
+        {
+          "target": "hair_side_l",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 1.2
+        },
+        {
+          "target": "hair_side_r",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 2.0,
+          "freq": 1.2
+        },
+        {
+          "target": "hair_back",
+          "param": "bend_x",
+          "curve": "tip",
+          "wave": "sine",
+          "amp": 0.9,
           "freq": 1.2
         }
       ],
@@ -2234,6 +2561,150 @@
           "dx": -1.5
         }
       ]
+    },
+    {
+      "id": "side_l_s",
+      "part": "hair_side_l",
+      "cols": 2,
+      "rows": 4,
+      "note": "侧发 S 形甩动：发根固定，中段与发梢反向",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": -1.4
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": -1.6
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": -1.4
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": -3.2
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": -3.6
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": -3.2
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": 1.8
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 2.2
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": 1.8
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": 5.4,
+          "dy": 1.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 5.8,
+          "dy": 1.2
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": 5.4,
+          "dy": 1.0
+        }
+      ]
+    },
+    {
+      "id": "side_r_s",
+      "part": "hair_side_r",
+      "cols": 2,
+      "rows": 4,
+      "note": "侧发 S 形甩动：发根固定，中段与发梢反向",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": -1.4
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": -1.6
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": -1.4
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": -3.2
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": -3.6
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": -3.2
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": 1.8
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 2.2
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": 1.8
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": 5.4,
+          "dy": 1.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 5.8,
+          "dy": 1.2
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": 5.4,
+          "dy": 1.0
+        }
+      ]
     }
   ],
   "physics": [
@@ -2286,6 +2757,67 @@
       "damping": 7.5,
       "max": 4,
       "note": "刘海吊在额头上，发梢在下 → 曲线 tip，幅度要小"
+    },
+    {
+      "id": "side_l_x",
+      "part": "hair_side_l",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.55,
+      "stiffness": 46,
+      "damping": 5.4,
+      "max": 7,
+      "note": "左侧发第一段：整缕跟着头甩，根固定所以曲线用 tip"
+    },
+    {
+      "id": "side_l_tip",
+      "part": "hair_side_l",
+      "driver": "side_l_x",
+      "deformer": "side_l_s",
+      "ratio": 0.85,
+      "stiffness": 22,
+      "damping": 3.0,
+      "max": 1.0,
+      "note": "左侧发第二段（梢）：串在第一段后面，比发根再慢半拍"
+    },
+    {
+      "id": "side_r_x",
+      "part": "hair_side_r",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.55,
+      "stiffness": 46,
+      "damping": 5.4,
+      "max": 7,
+      "note": "右侧发第一段"
+    },
+    {
+      "id": "side_r_tip",
+      "part": "hair_side_r",
+      "driver": "side_r_x",
+      "deformer": "side_r_s",
+      "ratio": 0.85,
+      "stiffness": 22,
+      "damping": 3.0,
+      "max": 1.0,
+      "note": "右侧发第二段（梢）"
+    },
+    {
+      "id": "back_x",
+      "part": "hair_back",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.22,
+      "stiffness": 72,
+      "damping": 8.0,
+      "max": 3.5,
+      "note": "后发：整团壳只慢半拍地晃一点点（幅度大了会从脸边上露出来）"
     }
   ],
   "params": [
@@ -2549,6 +3081,59 @@
         {
           "deformer": "ahoge_s",
           "scale": 1.0
+        }
+      ]
+    },
+    {
+      "id": "ParamHairSide",
+      "label": "侧发 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hair_side_l",
+          "param": "bend_x",
+          "scale": 7.0,
+          "curve": "tip"
+        },
+        {
+          "part": "hair_side_r",
+          "param": "bend_x",
+          "scale": 7.0,
+          "curve": "tip"
+        }
+      ]
+    },
+    {
+      "id": "ParamHairSideS",
+      "label": "侧发 S 形甩动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "side_l_s",
+          "scale": 1.0
+        },
+        {
+          "deformer": "side_r_s",
+          "scale": 1.0
+        }
+      ]
+    },
+    {
+      "id": "ParamHairBack",
+      "label": "后发 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hair_back",
+          "param": "bend_x",
+          "scale": 5.0,
+          "curve": "tip"
         }
       ]
     },

@@ -15,7 +15,7 @@ import argparse, json, os, sys
 
 
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
-               has_blend=False):
+               has_blend=False, has_side=False):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -96,6 +96,29 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         {"id": "ParamHairAhogeS", "label": "呆毛 S 形甩动", "min": -1.0, "max": 1.0,
          "default": 0.0, "binds": [{"deformer": "ahoge_s", "scale": 1.0}]},
     ]
+    if has_side:
+        # 侧发/后发（Live2D 的 ParamHairSide / ParamHairBack）。
+        # ⚠ 曲线语义（zimg_bend_factor）：tip = **顶边固定、底端最大**（t²），
+        #   root = 底边固定、顶端最大（u²）。
+        #   侧发吊在太阳穴上、发梢在下 → tip；
+        #   后发同样是从头顶长下来的，**头顶那条边就是脑袋的剪影，绝对不能动** → 也用 tip。
+        #   第一版把后发写成 root，实测摆动集中在头顶（帧 y63~88），整个头形在晃。
+        out += [
+            {"id": "ParamHairSide", "label": "侧发 摆动", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"part": "hair_side_l", "param": "bend_x", "scale": 7.0,
+                        "curve": "tip"},
+                       {"part": "hair_side_r", "param": "bend_x", "scale": 7.0,
+                        "curve": "tip"}]},
+            {"id": "ParamHairSideS", "label": "侧发 S 形甩动", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"deformer": "side_l_s", "scale": 1.0},
+                       {"deformer": "side_r_s", "scale": 1.0}]},
+            {"id": "ParamHairBack", "label": "后发 摆动", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"part": "hair_back", "param": "bend_x", "scale": 5.0,
+                        "curve": "tip"}]},
+        ]
     if has_blend:
         # A7 混合模式：腮红走乘算、眼高光走加算（见 make_blend_parts.py）
         out += [
@@ -239,6 +262,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                   "arm_r_upper": ["arm"], "arm_r_fore": ["arm"],
                   "seg_leg_l": ["leg"], "seg_leg_r": ["leg"],
                   "hair_ahoge": ["hair"], "hair_front": ["hair"],
+                  "hair_side_l": ["hair"], "hair_side_r": ["hair"],
+                  "hair_back": ["hair"],
                   "brow_l": ["brow"], "brow_r": ["brow"]}
         seg_src = list(seg["parts"])
         if armp:
@@ -852,6 +877,46 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 chan.update(spec)
                 by_id3[aid]["channels"].append(chan)
 
+    # 侧发：两缕垂在脸旁的头发，摆幅全身最大（它底下的脸颊/下颌是 AI 重绘补出来的，
+    # 所以敢让它甩）。后发是整团扣在头上的壳，只跟着慢半拍地晃一点点。
+    if any(p["id"] == "hair_side_l" for p in parts_list):
+        side = {
+            "breath":    {"wave": "sine", "amp": 0.8, "freq": 0.24},
+            "idle":      {"wave": "sine", "amp": 1.3, "freq": 0.19},
+            "sway":      {"wave": "sine", "amp": 3.6, "freq": 0.31},
+            "happy":     {"wave": "bounce", "amp": 4.8, "dur": 1.4, "ease": "out"},
+            "surprised": {"wave": "decay", "amp": 5.4, "dur": 0.9, "freq": 2.2},
+            "head_pat":  {"wave": "sine", "amp": 3.6, "freq": 1.0},
+            "hammered":  {"wave": "decay", "amp": 6.0, "dur": 1.0, "freq": 2.8},
+            "wave":      {"wave": "sine", "amp": 2.0, "freq": 1.2},
+            "sleep":     {"wave": "sine", "amp": 0.6, "freq": 0.1},
+            "nod":       {"keys": [[0.0, 0.0], [0.25, -2.2], [0.6, 1.6], [1.1, 0.0]],
+                          "interp": "smooth"},
+        }
+        back = {
+            "breath":    {"wave": "sine", "amp": 0.3, "freq": 0.24},
+            "idle":      {"wave": "sine", "amp": 0.5, "freq": 0.18},
+            "sway":      {"wave": "sine", "amp": 1.6, "freq": 0.30},
+            "happy":     {"wave": "bounce", "amp": 1.9, "dur": 1.4, "ease": "out"},
+            "surprised": {"wave": "decay", "amp": 2.2, "dur": 0.9, "freq": 2.0},
+            "head_pat":  {"wave": "sine", "amp": 1.5, "freq": 1.0},
+            "hammered":  {"wave": "decay", "amp": 2.6, "dur": 1.0, "freq": 2.6},
+            "wave":      {"wave": "sine", "amp": 0.9, "freq": 1.2},
+            "sleep":     {"wave": "sine", "amp": 0.25, "freq": 0.1},
+        }
+        by_id4 = {a["id"]: a for a in actions}
+        for aid, spec in side.items():
+            if aid in by_id4:
+                for pid in ("hair_side_l", "hair_side_r"):
+                    ch2 = {"target": pid, "param": "bend_x", "curve": "tip"}
+                    ch2.update(spec)
+                    by_id4[aid]["channels"].append(ch2)
+        for aid, spec in back.items():
+            if aid in by_id4:
+                ch2 = {"target": "hair_back", "param": "bend_x", "curve": "tip"}
+                ch2.update(spec)
+                by_id4[aid]["channels"].append(ch2)
+
     # 眉毛：Live2D 的 ParamBrowLY/RY（上下）+ ParamBrowLAngle/RAngle（倾角）。
     # 眉下的皮肤是 AI 重绘补出来的（make_brow_parts.py），所以敢让它动；
     # 往上挑会自动滑进刘海底下（层序：脸 180 < 眉 181/182 < 刘海 188）。
@@ -965,7 +1030,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                              has_brows=any(p["id"] == "brow_l" for p in parts_list),
                              head_is_part=head_is_part,
                              jointed_arms=bool(armp),
-                             has_blend=bool(blendp)),
+                             has_blend=bool(blendp),
+                             has_side=any(p["id"] == "hair_side_l" for p in parts_list)),
         # 表情层（Live2D 的 expression）：一组参数偏移，叠在当前动作之上。
         # 和动作是两条轨 —— 可以"笑着挥手"，不用为每种组合再做一个动作。
         # Pose（≈ Live2D pose3.json）：一组互斥差分，同一时刻只有一个档位可见。
@@ -984,6 +1050,49 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                                        has_blend=bool(blendp)),
     }
 
+
+    # —— 侧发/后发的网格形变器与摆链（A5 + G16）——
+    # 侧发是两条“根在上、梢在下”的长条：r=0 是素材顶边（发根，固定），
+    # r=4 是底边（发梢）。amount=1 时中段往左、梢往右 = 一条 S，和整体倾斜不一样。
+    if any(p["id"] == "hair_side_l" for p in rig["parts"]):
+        for pid in ("hair_side_l", "hair_side_r"):
+            tag = pid[-1]
+            rig["deformers"].append(
+                {"id": f"side_{tag}_s", "part": pid, "cols": 2, "rows": 4,
+                 "note": "侧发 S 形甩动：发根固定，中段与发梢反向",
+                 "points": [
+                     {"c": 0, "r": 1, "dx": -1.4}, {"c": 1, "r": 1, "dx": -1.6},
+                     {"c": 2, "r": 1, "dx": -1.4},
+                     {"c": 0, "r": 2, "dx": -3.2}, {"c": 1, "r": 2, "dx": -3.6},
+                     {"c": 2, "r": 2, "dx": -3.2},
+                     {"c": 0, "r": 3, "dx": 1.8}, {"c": 1, "r": 3, "dx": 2.2},
+                     {"c": 2, "r": 3, "dx": 1.8},
+                     {"c": 0, "r": 4, "dx": 5.4, "dy": 1.0},
+                     {"c": 1, "r": 4, "dx": 5.8, "dy": 1.2},
+                     {"c": 2, "r": 4, "dx": 5.4, "dy": 1.0},
+                 ]})
+        rig["physics"] += [
+            {"id": "side_l_x", "part": "hair_side_l", "driver": "head", "axis": "x",
+             "param": "bend_x", "curve": "tip",
+             "ratio": 0.55, "stiffness": 46, "damping": 5.4, "max": 7,
+             "note": "左侧发第一段：整缕跟着头甩，根固定所以曲线用 tip"},
+            {"id": "side_l_tip", "part": "hair_side_l", "driver": "side_l_x",
+             "deformer": "side_l_s",
+             "ratio": 0.85, "stiffness": 22, "damping": 3.0, "max": 1.0,
+             "note": "左侧发第二段（梢）：串在第一段后面，比发根再慢半拍"},
+            {"id": "side_r_x", "part": "hair_side_r", "driver": "head", "axis": "x",
+             "param": "bend_x", "curve": "tip",
+             "ratio": 0.55, "stiffness": 46, "damping": 5.4, "max": 7,
+             "note": "右侧发第一段"},
+            {"id": "side_r_tip", "part": "hair_side_r", "driver": "side_r_x",
+             "deformer": "side_r_s",
+             "ratio": 0.85, "stiffness": 22, "damping": 3.0, "max": 1.0,
+             "note": "右侧发第二段（梢）"},
+            {"id": "back_x", "part": "hair_back", "driver": "head", "axis": "x",
+             "param": "bend_x", "curve": "tip",
+             "ratio": 0.22, "stiffness": 72, "damping": 8.0, "max": 3.5,
+             "note": "后发：整团壳只慢半拍地晃一点点（幅度大了会从脸边上露出来）"},
+        ]
 
     # 素材没有独立头部时，去掉所有作用在 head 组上的旋转通道（见 main 里的说明）
     if not head_is_part:

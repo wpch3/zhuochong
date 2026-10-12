@@ -372,6 +372,24 @@ def check_tools(root):
         used = sorted(set(re.findall(r"tools/([a-z_0-9]+\.py)", open(rb, encoding="utf-8").read())))
         miss = [u for u in used if not os.path.exists(os.path.join(root, "tools", u))]
         check("重建链里的工具都在", not miss, f"{len(used)} 个" + (f"，缺 {miss}" if miss else ""))
+        # 反向再查一遍：切件工具漏进重建链 = 零件会静默过期。
+        # （真出过两次：眼睑那次七步漏一步、侧发那次十二步漏一步，
+        #   表现都是"单独跑一遍工具好好的，重建一次零件就没了"。）
+        txt = open(rb, encoding="utf-8").read()
+        allmk = sorted(os.path.basename(f) for f in
+                       glob.glob(os.path.join(root, "tools", "make_*_parts.py")))
+        # 例外：不是从 base.png 这条身体重建链上走的工具（输入是另一批图）
+        off_chain = {"make_face_parts.py"}    # 表情特写切件，输入是 parts_src/expressions
+        notin = [m for m in allmk if m not in txt and m not in off_chain]
+        check("切件工具都进了重建链", not notin,
+              f"{len(allmk)} 个" + (f"，漏了 {notin}" if notin else ""))
+        # 步骤编号必须连号、总数一致（改脚本时最容易忘改的就是这个）
+        steps = re.findall(r'step\s+"(\d+)/(\d+)\s', txt)
+        nums = [int(a) for a, _ in steps]
+        tots = {int(b) for _, b in steps}
+        ok = bool(steps) and nums == list(range(1, len(nums) + 1)) and tots == {len(nums)}
+        check("重建链步骤编号连号", ok,
+              f"{len(nums)} 步，分母 {sorted(tots)}")
     bad = []
     pys = glob.glob(os.path.join(root, "tools/*.py")) + glob.glob(os.path.join(root, "scripts/*.py"))
     for f in pys:

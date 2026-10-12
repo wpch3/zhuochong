@@ -23,7 +23,7 @@ from __future__ import annotations
 import argparse, json, os, sys
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageFilter
     import numpy as np
 except ImportError:
     print("需要 pillow 与 numpy：python3 -m venv ~/.imgenv && ~/.imgenv/bin/pip install pillow numpy")
@@ -39,6 +39,8 @@ TH = {
     "palette_dist": 70,        # 主色到色卡的 RGB 距离上限（超过就是配色画歪了）
     "anchor_tol": 0.04,        # 对位容差（占全身高的比例，约 ±50px@1292）
     "joint_hole": 60,          # 压力姿势下关节处允许新增的空洞像素（再多就是会穿帮）
+    "sway_hole": 20,           # 头发摆到最大幅度时允许新增的空洞像素（背后没补画就会炸）
+    "junk_px": 0,              # 键色垃圾像素（纯绿/洋红）上限：一个都不许有
 }
 
 
@@ -271,12 +273,33 @@ def check(character, form, root=".", strict=False, out_json=None):
                "forearm_r": AP.get("elbow_r", AP["shoulder_r"])}
         parent = {"forearm_l": "arm_l", "forearm_r": "arm_r"}   # 前臂挂在上臂下面
 
-        def compose(angles):
+        def compose(angles, offsets=None):
             """按层序叠出整个人；angles 按组给旋转角（度，绕锚点）。
-               子组（前臂）要先绕自己的关节转，再跟着父组绕父关节转。"""
+               子组（前臂）要先绕自己的关节转，再跟着父组绕父关节转。
+               offsets 按**部件 id** 给像素平移（头发摆动压力测试用）。"""
+            offsets = offsets or {}
             c = Image.new("RGBA", (SW, SH), (0, 0, 0, 0))
             for sp in sorted(seg_parts, key=lambda q: q["layer"]):
                 im = Image.open(os.path.join(base, sp["file"])).convert("RGBA")
+                if sp["id"] in offsets:
+                    # 按引擎的 bend 曲线 tip 来剪切：顶边（发根）不动，
+                    # 越往下位移越大（权重 t²，和 zimg_bend_factor 一致）。
+                    # 整件平移是假的压力测试：那会把钉死在头皮上的发根也挪走。
+                    ox, oy = offsets[sp["id"]]
+                    arr = np.asarray(im).copy()
+                    hgt = arr.shape[0]
+                    outa = np.zeros_like(arr)
+                    for r in range(hgt):
+                        t = r / max(1, hgt - 1)
+                        kx, ky = int(round(ox * t * t)), int(round(oy * t * t))
+                        rr = r + ky
+                        if not (0 <= rr < hgt):
+                            continue
+                        if kx >= 0:
+                            outa[rr, kx:] = arr[r, :arr.shape[1] - kx] if kx else arr[r]
+                        else:
+                            outa[rr, :kx] = arr[r, -kx:]
+                    im = Image.fromarray(outa)
                 lay = Image.new("RGBA", (SW, SH), (0, 0, 0, 0))
                 lay.paste(im, tuple(sp["pos"]))
                 g = sp["group"]
@@ -297,14 +320,17 @@ def check(character, form, root=".", strict=False, out_json=None):
             # 静止时把部件叠回去，必须和原图一模一样：少一块就是切丢了东西
             add("分段", "无损切分", lost == 0, f"静止合成比原图少 {lost} 像素")
 
-            def holes(a, y0, y1):
-                """这一段里的"内部空洞"：透明、但上下左右都还有身体。"""
+            def hole_mask(a, y0, y1):
+                """这一段里的"内部空洞"掩码：透明、但上下左右都还有身体。"""
                 sl = a[max(0, y0):min(SH, y1)]
                 if sl.size == 0:
-                    return 0
+                    return np.zeros((0, 0), bool)
                 up = np.maximum.accumulate(sl, 0); dn = np.maximum.accumulate(sl[::-1], 0)[::-1]
                 lf = np.maximum.accumulate(sl, 1); rt = np.maximum.accumulate(sl[:, ::-1], 1)[:, ::-1]
-                return int(((~sl) & up & dn & lf & rt).sum())
+                return (~sl) & up & dn & lf & rt
+
+            def holes(a, y0, y1):
+                return int(hole_mask(a, y0, y1).sum())
 
             # —— AI 重绘真素材的质量门禁（D20：证据数字必须被机器校，不能只写在报告里）——
             mp_path = os.path.join(base, "sprites", "mouth_parts.json")
@@ -374,6 +400,53 @@ def check(character, form, root=".", strict=False, out_json=None):
                 d = holes(pose, y - ov * 2, y + ov * 2) - holes(flat, y - ov * 2, y + ov * 2)
                 add("分段", f"关节不露底({label})", d <= th["joint_hole"],
                     f"压力姿势新增空洞 {d} 像素（上限 {th['joint_hole']}）")
+
+            # —— 头发摆动压力测试 ——（教训：静止 0 像素差只是及格线）
+            # 侧发/后发一摆，背后那块脸颊/耳朵/脖子就得有东西；没按 D19 重绘补画
+            # 或者塗り足し铺得不够，静止时一点看不出来，动起来才露底。
+            # 这里把头发零件整体平移到**超过实际摆幅**的距离，再数新增空洞。
+            sway_ids = [sp["id"] for sp in seg_parts
+                        if sp["id"].startswith("hair_side") or sp["id"] == "hair_back"]
+            if sway_ids:
+                y_lo, y_hi = 0, int(AP["neck"][1]) + ov * 2
+                base_hm = hole_mask(flat, y_lo, y_hi)
+                # 只数「身体里面深处」的洞：头发本来就长在剪影边上，一摆开，
+                # 外缘那一两像素露出背景是**正确**的（原画里那块就是背景，
+                # 重绘的脸比带发的轮廓窄）。把剪影往里腐蚀 4px 再数，
+                # 剩下的才是"背后该有脸却没画"的真漏洞。
+                body_in = Image.fromarray(
+                    ((flat[max(0, y_lo):min(SH, y_hi)]) * 255).astype(np.uint8))
+                deep = np.array(body_in.filter(ImageFilter.MinFilter(9))) > 127
+                # 只甩左右：上下甩是用整行位移模拟的，行与行的取整差会在零件
+                # **自己身上**切出 1px 横缝（引擎的 bend 是反向采样，不会有），
+                # 那是测试工具的假阳性，不是素材的问题。
+                for dx, dy in ((-12, 0), (12, 0)):
+                    m = compose({}, {i: (dx, dy) for i in sway_ids})
+                    # 必须**逐像素**比：头发一挪会顺手盖住别处的缝，拿总数相减
+                    # 会被这几百像素的负数吃掉（实测挖了个 3x3 的洞照样"通过"）。
+                    d = int((hole_mask(m, y_lo, y_hi) & ~base_hm & deep).sum())
+                    add("分段", f"头发摆动不露底({dx:+d},{dy:+d})",
+                        d <= th["sway_hole"],
+                        f"发梢甩 ({dx:+d},{dy:+d}) 后身体内部新增空洞 {d} 像素"
+                        f"（上限 {th['sway_hole']}）")
+
+            # —— 键色垃圾像素 ——（教训：alpha=1 的纯绿像素被颜色外扩重写成亮绿点）
+            # 纯绿 / 洋红这两种颜色在小寻的色卡里根本不存在，出现就是抠像或重绘的残留。
+            junk_total, junk_where = 0, []
+            for fn in sorted(os.listdir(os.path.join(base, "sprites"))):
+                if not fn.endswith(".png"):
+                    continue
+                aj = load_rgba(os.path.join(base, "sprites", fn)).astype(int)
+                Rj, Gj, Bj, Aj = aj[..., 0], aj[..., 1], aj[..., 2], aj[..., 3]
+                vis = Aj > 40
+                nj = int((vis & (Gj - np.maximum(Rj, Bj) > 60)).sum()
+                         + (vis & (Rj - Gj > 60) & (Bj - Gj > 60) & (Rj > 150) & (Bj > 150)).sum())
+                if nj:
+                    junk_total += nj
+                    junk_where.append(f"{fn}:{nj}")
+            add("素材", "无键色垃圾像素", junk_total <= th["junk_px"],
+                f"纯绿/洋红残留 {junk_total} 像素（上限 {th['junk_px']}）"
+                + ("，" + "、".join(junk_where[:4]) if junk_where else ""))
 
     report = {
         "character": character, "form": form,
