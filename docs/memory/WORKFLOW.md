@@ -40,9 +40,10 @@
 
 ### 3.1 编译与测试
 ```bash
-make test                      # [测试锁] 单元测试（现 217 项），必须 0 失败
+make test                      # [测试锁] 单元测试（现 244 项），必须 0 失败
+make smoke                     # 互动/动作端到端冒烟（34 项；自己起预览，判据是画面真的变了）
 make                           # 预览端构建
-bash scripts/selfcheck_all.sh  # 交付前六步全绿（编译告警/测试/schema/素材/配置/预览）
+bash scripts/selfcheck_all.sh  # 交付前七步全绿（编译告警/测试/schema/素材/Windows/预览/互动冒烟）
 rm -rf build && make test      # 改了头文件或引擎结构时，先清后编，避免增量假绿
 ```
 
@@ -111,7 +112,9 @@ bash tools/voice_setup.sh           # 音色包丢失时一键重建（模型不
 | --- | --- |
 | 编译 | **零告警**（告警等于没做完） |
 | 单测 | `make test` 全通过；新功能必须补单测 |
-| 自检 | `bash scripts/selfcheck_all.sh` 六步全绿 |
+| 自检 | `bash scripts/selfcheck_all.sh` 七步全绿 |
+| 互动 | `make smoke` 全过；改了动作/互动/区域/眨眼一定要跑 |
+| 手测 | 预览 `http://localhost:5173/test.html` 测试台点一遍（动作/互动/滑杆都在这页） |
 | 实测 | 沙箱内能验证的必须真跑一遍并给**数字证据**（帧差像素数、HTTP 码、基频 Hz、文件大小） |
 | 文档 | 新机制要写进 `docs/` 对应文件，并在记忆区留指针 |
 | 记忆 | `JOURNAL.md` 追加本轮日志；`MEMORY.md` 更新"当前状态"；要求有变更就改 `REQUIREMENTS.md` |
