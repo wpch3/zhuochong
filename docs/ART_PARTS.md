@@ -88,7 +88,7 @@
 | **指针跟随（头/上身）** | 等价 Live2D `ParamAngleX/Y/Z` + `ParamBodyAngleX` | ✅ **2026-10-12** | `zrig.c` `zrig_look` + rig 顶层 `look` |
 | 自由变形器（FFD，按控制点拉网格） | 眼睑开合、嘴形连续变化 | ⬜ | 下一步 |
 | 旋转变形器（骨骼链：肩→肘→腕） | 抬手、挥手不拉皮 | ⬜ | G4c 之后 |
-| 命名参数层（`ParamXxx` 外部直驱） | 让脚本/LLM 直接写参数值 | ⬜ | 现在只能走动作与少数专用接口 |
+| **命名参数层**（`ParamXxx` 外部直驱） | 脚本 / LLM / 口型 / 测试台滑条统一写一张参数表 | ✅ **2026-10-12** | `zrig.c` `load_params`/`zrig_param_set` + rig 顶层 `params` + `/api/param` |
 | 口型同步（LipSync，按音量驱动嘴） | 说话时嘴型跟着语音走 | ⬜ | `talk` 现在是固定 flap 波形 |
 
 ### 3.1 新增三块的 rig.json 写法
@@ -112,7 +112,34 @@
   "head":  { "rot_deg": 5.0, "dx": 4.0, "dy": 3.0 },
   "chest": { "rot_deg": 1.2, "dx": 1.5, "dy": 1.0 } } }
 // /api/gaze?x=&y= 会同时驱动眼球和头/上身，off=1 两者一起归零。
+
+// ④ 命名参数层：rig.json 顶层，一条 = 一个外部可写的参数 + 它写到哪些通道
+"params": [
+  { "id": "ParamMouthOpenY", "label": "张嘴", "min": 0, "max": 1, "default": 0,
+    "binds": [ { "part": "mouth_mask", "param": "sy",    "scale":  0.737 },
+               { "part": "mouth_open", "param": "alpha", "scale": -0.55 } ] },
+  { "id": "ParamAngleZ", "min": -30, "max": 30, "default": 0,
+    "binds": [ { "group": "head", "param": "rot_deg", "scale": 0.5 } ] }
+]
+// 通道值 = 参数值 × scale，叠在动作之上（位移/旋转累加，alpha 相乘）。
+// 引擎另外内建 5 个参数，不用写进 rig 也一定存在，它们直接路由到已有子系统：
+//   ParamAngleX / ParamAngleY  → 指针跟随（ParamEyeLOpen/ParamEyeROpen 是 ParamEyeOpen 的别名）
+//   ParamEyeOpen               → 眨眼（1=睁 0=闭；reset 交回自动眨眼）
+//   ParamEyeBallX / ParamEyeBallY → 眼球
 ```
+
+参数层的 HTTP 口子（测试台的滑条就是按它自动生成的，角色加参数不用改前端）：
+
+| 端点 | 作用 |
+| --- | --- |
+| `GET /api/params.json` | 参数表 + 当前值（内建参数的值每帧回写，能看见自动眨眼在动） |
+| `GET /api/param?id=X&v=N` | 写一个参数（超出 min/max 自动夹住；不存在的 id 返回 404） |
+| `GET /api/param?id=X&reset=1` | 回默认值（`ParamEyeOpen` 复位 = 交回自动眨眼） |
+| `GET /api/param?all=1` | 全部复位 |
+
+**实测（scale=1，sleep 定格）**：`ParamArmRA` = −10 / 0 / +10 → 右臂外缘 x = **606 / 644 / 681**
+（±38px ≈ scale 4.0 × 10，线性）；`ParamMouthOpenY=1` 嘴真的张开，`ParamAngleZ=30` 头歪 15°，
+对照图 `logs/asset_qa/param_sheet.png`。
 
 三者的叠加顺序是固定的：**动作（含淡化混合）→ 指针跟随 → 物理**。
 所以转头会甩起头发，而头发的惯性不会反过来干扰动作。

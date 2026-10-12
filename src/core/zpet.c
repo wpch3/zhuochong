@@ -598,6 +598,30 @@ double zpet_blink_manual(const zpet *p)
     return (p && p->rig) ? zrig_blink_manual(p->rig) : -1.0;
 }
 
+/* 命名参数层（≈ Live2D ParamXxx）：外部直驱一张参数表。
+   zpet 只做转发，参数的定义与绑定都在角色包的 rig.json 里。 */
+int zpet_param_count(const zpet *p) { return (p && p->rig) ? zrig_param_count(p->rig) : 0; }
+
+int zpet_param_info(const zpet *p, int i, zrig_param_desc *out)
+{
+    return (p && p->rig) ? zrig_param_info(p->rig, i, out) : -1;
+}
+
+int zpet_param_set(zpet *p, const char *id, double v)
+{
+    return (p && p->rig) ? zrig_param_set(p->rig, id, v) : -1;
+}
+
+int zpet_param_reset(zpet *p, const char *id)
+{
+    return (p && p->rig) ? zrig_param_reset(p->rig, id) : -1;
+}
+
+void zpet_param_reset_all(zpet *p)
+{
+    if (p && p->rig) zrig_param_reset_all(p->rig);
+}
+
 void zpet_set_gaze(zpet *p, double nx, double ny, int on)
 {
     if (!p || !p->rig) return;

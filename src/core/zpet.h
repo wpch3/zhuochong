@@ -72,6 +72,13 @@ void  zpet_notify_user_activity(zpet *p, double now);
 void   zpet_set_blink(zpet *p, double v);
 double zpet_blink_manual(const zpet *p);
 void   zpet_set_gaze(zpet *p, double nx, double ny, int on);
+/* 命名参数层（≈ Live2D 的 ParamXxx）：测试台滑条 / 脚本 / 口型都走这张表 */
+int    zpet_param_count(const zpet *p);
+int    zpet_param_info(const zpet *p, int i, zrig_param_desc *out);
+int    zpet_param_set(zpet *p, const char *id, double v);
+int    zpet_param_reset(zpet *p, const char *id);
+void   zpet_param_reset_all(zpet *p);
+
 /* 上报系统级空闲秒数（Windows 用 GetLastInputInfo，其它平台可传 0） */
 void  zpet_report_idle(zpet *p, double seconds);
 /* 直接触发动作（托盘菜单用） */

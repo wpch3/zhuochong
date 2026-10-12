@@ -76,6 +76,27 @@ void  zrig_gaze_reset(zrig *r);
 void   zrig_look(zrig *r, double nx, double ny);
 double zrig_look_x(const zrig *r);     /* 平滑后的当前值，测试/调试用 */
 double zrig_look_y(const zrig *r);
+/* --------------------------------------------- 命名参数层（≈ Live2D ParamXxx）
+   一张"参数表"：内建参数路由到视线/眨眼/头部跟随，其余由 rig.json 的 params 段
+   声明并绑定到组或部件的通道。外部（脚本、口型、表情、测试台滑条）只写这张表，
+   不需要知道角色内部结构。内建 id：ParamAngleX / ParamAngleY / ParamEyeOpen
+   （ParamEyeLOpen / ParamEyeROpen 是它的别名）/ ParamEyeBallX / ParamEyeBallY。 */
+typedef struct {
+    const char *id;
+    const char *label;        /* 中文名，可能是空串 */
+    double vmin, vmax, vdef, value;
+    int    builtin;           /* 1 = 内建（走子系统），0 = rig.json 声明的绑定参数 */
+    int    binds;             /* 绑定条数 */
+} zrig_param_desc;
+
+int    zrig_param_count(const zrig *r);
+const char *zrig_param_id(const zrig *r, int i);
+int    zrig_param_info(const zrig *r, int i, zrig_param_desc *out);
+double zrig_param_get(const zrig *r, const char *id);
+int    zrig_param_set(zrig *r, const char *id, double v);   /* 找不到返回 -1 */
+int    zrig_param_reset(zrig *r, const char *id);           /* 回默认值 */
+void   zrig_param_reset_all(zrig *r);
+
 /* 手动按住眨眼参数（0=睁 1=闭，传 <0 恢复自动）。测试台的眨眼滑条用。 */
 void   zrig_blink_set_manual(zrig *r, double v);
 double zrig_blink_manual(const zrig *r);

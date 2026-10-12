@@ -720,6 +720,105 @@ static void test_motion_fade(void)
     }
 }
 
+static void test_params(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("命名参数层：内建参数路由 + rig 声明的绑定参数");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_param");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"参数测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+        "\"look\":{\"speed\":30,\"groups\":{\"head\":{\"dx\":4}}},"
+        "\"params\":[{\"id\":\"ParamAngleZ\",\"label\":\"歪头\",\"min\":-30,\"max\":30,"
+        " \"default\":0,\"binds\":[{\"group\":\"head\",\"param\":\"rot_deg\",\"scale\":0.5}]},"
+        "{\"id\":\"ParamHairAhoge\",\"min\":-1,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"part\":\"h\",\"param\":\"dx\",\"scale\":10}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 params 段的 rig 应加载成功");
+        if (r) {
+            zrig_param_desc pd;
+            double t;
+            /* 内建 5 个（ParamAngleX/Y、ParamEyeOpen、ParamEyeBallX/Y）+ rig 里 2 个 */
+            CHECK(zrig_param_count(r) == 7, "参数表应有 7 项（内建 5 + 角色 2），实为 %d",
+                  zrig_param_count(r));
+            CHECK(zrig_param_info(r, 0, &pd) == 0 && z_streq(pd.id, "ParamAngleX") && pd.builtin,
+                  "第一项应是内建 ParamAngleX");
+            /* ① 绑定参数：直接写部件通道 */
+            CHECK(zrig_param_set(r, "ParamHairAhoge", 0.5) == 0, "写绑定参数应成功");
+            zrig_tick(r, 0.0);
+            CHECK(fabs(zrig_part_channel(r, "h", "dx") - 5.0) < 1e-6,
+                  "0.5 × scale 10 应给部件 dx = 5（实为 %.3f）", zrig_part_channel(r, "h", "dx"));
+            /* ② 超出 min/max 要夹住 */
+            zrig_param_set(r, "ParamHairAhoge", 9.0);
+            zrig_tick(r, 0.02);
+            CHECK(fabs(zrig_part_channel(r, "h", "dx") - 10.0) < 1e-6, "超范围应夹到 max");
+            /* ③ 复位 */
+            zrig_param_reset(r, "ParamHairAhoge");
+            zrig_tick(r, 0.04);
+            CHECK(fabs(zrig_part_channel(r, "h", "dx")) < 1e-6, "复位后应回 0");
+            /* ④ 内建参数：ParamAngleX 应驱动头部跟随（和 zrig_look 同一条路） */
+            CHECK(zrig_param_set(r, "ParamAngleX", 30.0) == 0, "写内建参数应成功");
+            for (t = 0.06; t < 1.2; t += 0.02) zrig_tick(r, t);
+            CHECK(zrig_group_offset_x(r, "head") > 3.8,
+                  "ParamAngleX=30 应把头带到最大幅度（%.2f）", zrig_group_offset_x(r, "head"));
+            CHECK(zrig_param_get(r, "ParamAngleX") > 29.0,
+                  "内建参数读数应回写当前值（%.2f）", zrig_param_get(r, "ParamAngleX"));
+            /* ⑤ 眨眼：ParamEyeOpen=0 等于闭眼，别名 ParamEyeLOpen 也认 */
+            zrig_param_set(r, "ParamEyeOpen", 0.0);
+            zrig_tick(r, t);
+            CHECK(zrig_blink_value(r) > 0.99, "ParamEyeOpen=0 应等于闭眼（%.2f）",
+                  zrig_blink_value(r));
+            CHECK(zrig_param_set(r, "ParamEyeLOpen", 1.0) == 0, "ParamEyeLOpen 应是别名");
+            zrig_tick(r, t + 0.02);
+            CHECK(zrig_blink_value(r) < 0.01, "别名写 1 应睁眼");
+            zrig_param_reset(r, "ParamEyeOpen");
+            CHECK(zrig_blink_manual(r) < 0.0, "眨眼参数复位应交回自动");
+            /* ⑥ 不存在的参数要报错，不能假装成功 */
+            CHECK(zrig_param_set(r, "ParamNope", 1.0) == -1, "未知参数应返回 -1");
+            /* ⑦ 全部复位 */
+            zrig_param_set(r, "ParamHairAhoge", 1.0);
+            zrig_param_reset_all(r);
+            zrig_tick(r, t + 0.04);
+            CHECK(fabs(zrig_part_channel(r, "h", "dx")) < 1e-6, "全部复位应把绑定通道清零");
+            zrig_free(r);
+        }
+    }
+    /* 反例：绑定到不存在的部件必须加载失败 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/bad.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+            "\"params\":[{\"id\":\"X\",\"min\":0,\"max\":1,"
+            " \"binds\":[{\"part\":\"nope\",\"param\":\"dx\",\"scale\":1}]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "绑定到不存在的部件应加载失败");
+        if (r) zrig_free(r);
+    }
+}
+
 static void test_look(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -1350,6 +1449,7 @@ int main(int argc, char **argv)
     test_motion_fade();
     test_physics();
     test_look();
+    test_params();
     test_interactions();
     test_affection();
 

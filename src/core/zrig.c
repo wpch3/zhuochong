@@ -11,6 +11,8 @@
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     12
+#define ZRIG_MAX_PARAMS   48
+#define ZRIG_MAX_BINDS    96
 #define ZRIG_MAX_OVERRIDES 32
 
 /* 图层标签（tags）：用位标志，加载时解析 */
@@ -123,6 +125,31 @@ typedef struct {
     double rot, dx, dy;
 } zlook;
 
+/* ---------------- 命名参数层（对齐 Live2D 的 ParamXxx） ----------------
+   Live2D 里「一切都是参数」：动作、表情、物理、口型最后都只是在写同一张
+   参数表，外部（脚本 / LLM / 口型驱动）也写同一张表。我们这边补的就是这层：
+     - 内建参数（builtin）路由到已有子系统（视线 / 眨眼 / 头部跟随）；
+     - 普通参数靠 binds 直接写组或部件的通道，rig.json 里声明，不改 C 代码。 */
+enum { PBI_NONE = 0, PBI_ANGLE_X, PBI_ANGLE_Y, PBI_EYE_OPEN,
+       PBI_EYEBALL_X, PBI_EYEBALL_Y };
+
+typedef struct {
+    int    part;              /* >=0 写部件通道 */
+    int    group;             /* >=0 写组通道（part < 0 时才看） */
+    int    param;             /* P_DX … P_BEND_Y */
+    int    curve, strips;     /* bend_* 用 */
+    double scale;             /* 通道值 = 参数值 × scale */
+} zpbind;
+
+typedef struct {
+    char   id[40];
+    char   label[48];         /* 测试台显示用的中文名，可选 */
+    double vmin, vmax, vdef;
+    double value;
+    int    builtin;           /* PBI_* */
+    int    bind0, nbind;      /* 在 r->pbinds 里的区间 */
+} zparam;
+
 typedef struct {
     char id[48];
     int  rect[4];             /* x, y, w, h（画布坐标） */
@@ -206,6 +233,12 @@ struct zrig {
     /* 视线跟随（幅度来自 rig.json 的 gaze 段） */
     double gaze_x, gaze_y;      /* [-1,1] 归一化方向 */
     double gaze_max_dx, gaze_max_dy;
+
+    /* 命名参数层 */
+    zparam  params[ZRIG_MAX_PARAMS];
+    int     nparams;
+    zpbind  pbinds[ZRIG_MAX_BINDS];
+    int     npbinds;
 
     /* 头/身跟随指针 */
     zlook  looks[ZRIG_MAX_GROUPS];
@@ -536,6 +569,146 @@ static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
     return 0;
 }
 
+/* ---------------- 命名参数层 ----------------
+   内建参数在 load 时固定注册（即使 rig.json 什么都不写也有一张可用的表），
+   rig.json 的 "params" 段再往上加角色自己的参数：
+   { "id":"ParamMouthOpenY", "label":"张嘴", "min":0, "max":1, "default":0,
+     "binds":[ {"part":"mouth_mask","param":"sy","scale":0.737},
+               {"part":"mouth_open","param":"alpha","scale":-0.5} ] } */
+static int param_find(const zrig *r, const char *id)
+{
+    int i;
+    if (!id) return -1;
+    for (i = 0; i < r->nparams; ++i)
+        if (z_streq(r->params[i].id, id)) return i;
+    return -1;
+}
+
+/* Live2D 的左右眼分开，我们现在只有一个眨眼量 —— 收到 L/R 都映射到同一个。 */
+static const char *param_alias(const char *id)
+{
+    if (z_streq(id, "ParamEyeLOpen") || z_streq(id, "ParamEyeROpen")) return "ParamEyeOpen";
+    return id;
+}
+
+static void param_add_builtin(zrig *r, const char *id, const char *label,
+                              double vmin, double vmax, double vdef, int kind)
+{
+    zparam *q;
+    if (r->nparams >= ZRIG_MAX_PARAMS) return;
+    q = &r->params[r->nparams++];
+    memset(q, 0, sizeof(*q));
+    z_strlcpy(q->id, id, sizeof(q->id));
+    z_strlcpy(q->label, label, sizeof(q->label));
+    q->vmin = vmin; q->vmax = vmax; q->vdef = vdef; q->value = vdef;
+    q->builtin = kind;
+    q->bind0 = r->npbinds;
+    q->nbind = 0;
+}
+
+static void load_builtin_params(zrig *r)
+{
+    param_add_builtin(r, "ParamAngleX",   "头 左右", -30.0, 30.0, 0.0, PBI_ANGLE_X);
+    param_add_builtin(r, "ParamAngleY",   "头 上下", -30.0, 30.0, 0.0, PBI_ANGLE_Y);
+    param_add_builtin(r, "ParamEyeOpen",  "睁眼",     0.0,  1.0, 1.0, PBI_EYE_OPEN);
+    param_add_builtin(r, "ParamEyeBallX", "眼球 左右", -1.0, 1.0, 0.0, PBI_EYEBALL_X);
+    param_add_builtin(r, "ParamEyeBallY", "眼球 上下", -1.0, 1.0, 0.0, PBI_EYEBALL_Y);
+}
+
+static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
+{
+    size_t i, n = zjson_count(jp);
+    if (!jp) return 0;
+    if (jp->type != ZJSON_ARR) {
+        zdiag_error(d, file, jp->line, 0, "params", "期望 array");
+        return -1;
+    }
+    for (i = 0; i < n; ++i) {
+        const zjson *qj = zjson_at(jp, i);
+        const zjson *bs = zjson_obj_get(qj, "binds");
+        const char *id = zjson_str(zjson_obj_get(qj, "id"), NULL);
+        size_t k, nb = zjson_count(bs);
+        char path[128];
+        zparam *q;
+        if (!id || !*id) {
+            zdiag_error(d, file, qj ? qj->line : 0, 0, "params", "缺少参数 id");
+            return -1;
+        }
+        z_snprintf(path, sizeof(path), "params[%s]", id);
+        if (param_find(r, id) >= 0) {
+            zdiag_error(d, file, qj ? qj->line : 0, 0, path, "参数 id 重复");
+            return -1;
+        }
+        if (r->nparams >= ZRIG_MAX_PARAMS) {
+            zdiag_error(d, file, qj ? qj->line : 0, 0, path,
+                        "参数过多（上限 %d）", ZRIG_MAX_PARAMS);
+            return -1;
+        }
+        q = &r->params[r->nparams++];
+        memset(q, 0, sizeof(*q));
+        z_strlcpy(q->id, id, sizeof(q->id));
+        z_strlcpy(q->label, zjson_str(zjson_obj_get(qj, "label"), ""), sizeof(q->label));
+        q->vmin = zjson_num(zjson_obj_get(qj, "min"), -1.0);
+        q->vmax = zjson_num(zjson_obj_get(qj, "max"), 1.0);
+        q->vdef = zjson_num(zjson_obj_get(qj, "default"), 0.0);
+        if (q->vmax <= q->vmin) {
+            zdiag_error(d, file, qj ? qj->line : 0, 0, path, "max 必须大于 min");
+            return -1;
+        }
+        q->vdef = ZC_CLAMP(q->vdef, q->vmin, q->vmax);
+        q->value = q->vdef;
+        q->builtin = PBI_NONE;
+        q->bind0 = r->npbinds;
+        if (bs && bs->type != ZJSON_ARR) {
+            zdiag_error(d, file, bs->line, 0, path, "binds 期望 array");
+            return -1;
+        }
+        for (k = 0; k < nb; ++k) {
+            const zjson *bj = zjson_at(bs, k);
+            const char *pid = zjson_str(zjson_obj_get(bj, "part"), NULL);
+            const char *gid = zjson_str(zjson_obj_get(bj, "group"), NULL);
+            const char *pn  = zjson_str(zjson_obj_get(bj, "param"), NULL);
+            const char *cv  = zjson_str(zjson_obj_get(bj, "curve"), "root");
+            zpbind *b;
+            if (r->npbinds >= ZRIG_MAX_BINDS) {
+                zdiag_error(d, file, bj ? bj->line : 0, 0, path,
+                            "绑定过多（上限 %d）", ZRIG_MAX_BINDS);
+                return -1;
+            }
+            b = &r->pbinds[r->npbinds];
+            memset(b, 0, sizeof(*b));
+            b->part = pid ? find_part(r, pid) : -1;
+            b->group = gid ? find_group(r, gid) : -1;
+            if (pid && b->part < 0) {
+                zdiag_error(d, file, bj ? bj->line : 0, 0, path, "part '%s' 不存在", pid);
+                return -1;
+            }
+            if (gid && b->group < 0) {
+                zdiag_error(d, file, bj ? bj->line : 0, 0, path, "组 '%s' 不存在", gid);
+                return -1;
+            }
+            if (b->part < 0 && b->group < 0) {
+                zdiag_error(d, file, bj ? bj->line : 0, 0, path, "binds 要写 part 或 group");
+                return -1;
+            }
+            if (!pn || parse_param(pn, &b->param) != 0) {
+                zdiag_error(d, file, bj ? bj->line : 0, 0, path,
+                            "param 非法：%s", pn ? pn : "(缺)");
+                return -1;
+            }
+            b->curve = BEND_ROOT;
+            if (z_streq(cv, "tip")) b->curve = BEND_TIP;
+            else if (z_streq(cv, "sine")) b->curve = BEND_SINE;
+            else if (z_streq(cv, "linear")) b->curve = BEND_LINEAR;
+            b->strips = (int)zjson_int(zjson_obj_get(bj, "strips"), 0);
+            b->scale = zjson_num(zjson_obj_get(bj, "scale"), 1.0);
+            r->npbinds++;
+            q->nbind++;
+        }
+    }
+    return 0;
+}
+
 static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
 {
     size_t i, n = zjson_count(jacts);
@@ -838,6 +1011,8 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
+    load_builtin_params(r);
+    if (load_params(r, zjson_obj_get(root, "params"), diag, file) != 0) goto fail;
 
     /* 眨眼 */
     {
@@ -993,6 +1168,44 @@ static double eval_channel(const zchan *c, double t, double total)
 
 /* 把一个动作在时刻 t 的所有通道按权重 w 累加进当前帧的变换数组。
    w < 1 时就是"淡入淡出"里的那一份权重，两个动作各累加一次即可。 */
+/* 把一个数值写进「部件或组的某条通道」。动作、物理、参数层共用同一套语义：
+   位移/旋转/形变是累加，alpha 是相乘（0.5 两次 = 0.25），缩放累加在基准 1.0 上。 */
+static void apply_chan(zrig *r, int part, int group, int param,
+                       double v, int curve, int strips)
+{
+    if (part >= 0 && part < r->nparts) {
+        switch (param) {
+            case P_DX:  r->p_dx[part] += v; break;
+            case P_DY:  r->p_dy[part] += v; break;
+            case P_SX:  r->p_sx[part] += v; break;
+            case P_SY:  r->p_sy[part] += v; break;
+            case P_ROT: r->p_rot[part] += v; break;
+            case P_ALPHA: r->p_alpha[part] *= ZC_CLAMP(1.0 + v, 0.0, 1.0); break;
+            case P_BEND_X:
+                r->p_bendx[part] += v;
+                r->p_bendcx[part] = curve;
+                if (strips > 0) r->p_bends[part] = strips;
+                break;
+            case P_BEND_Y:
+                r->p_bendy[part] += v;
+                r->p_bendcy[part] = curve;
+                if (strips > 0) r->p_bends[part] = strips;
+                break;
+        }
+        return;
+    }
+    if (group < 0 || group >= r->ngroups) return;
+    switch (param) {
+        case P_DX:  r->g_dx[group] += v; break;
+        case P_DY:  r->g_dy[group] += v; break;
+        case P_SX:  r->g_sx[group] += v; break;
+        case P_SY:  r->g_sy[group] += v; break;
+        case P_ROT: r->g_rot[group] += v; break;
+        case P_ALPHA: break;   /* 组级 alpha 未使用（部件级用 p_alpha） */
+        default: break;
+    }
+}
+
 static void accumulate_action(zrig *r, const zaction *a, double t, double w, double total)
 {
     int i;
@@ -1000,34 +1213,7 @@ static void accumulate_action(zrig *r, const zaction *a, double t, double w, dou
     for (i = 0; i < a->nchan; ++i) {
         const zchan *c = &a->chans[i];
         double v = eval_channel(c, t, total) * w;
-        if (c->part >= 0) {          /* 部件级通道 */
-            int pi = c->part;
-            switch (c->param) {
-                case P_DX:  r->p_dx[pi] += v; break;
-                case P_DY:  r->p_dy[pi] += v; break;
-                case P_SX:  r->p_sx[pi] += v; break;
-                case P_SY:  r->p_sy[pi] += v; break;
-                case P_ROT: r->p_rot[pi] += v; break;
-                case P_ALPHA: r->p_alpha[pi] *= ZC_CLAMP(1.0 + v, 0.0, 1.0); break;
-                case P_BEND_X: r->p_bendx[pi] += v; r->p_bendcx[pi] = c->curve;
-                               r->p_bends[pi] = c->strips; break;
-                case P_BEND_Y: r->p_bendy[pi] += v; r->p_bendcy[pi] = c->curve;
-                               r->p_bends[pi] = c->strips; break;
-            }
-            continue;
-        }
-        {
-            int g = c->group;
-            if (g < 0 || g >= r->ngroups) continue;
-            switch (c->param) {
-                case P_DX:  r->g_dx[g] += v; break;
-                case P_DY:  r->g_dy[g] += v; break;
-                case P_SX:  r->g_sx[g] += v; break;
-                case P_SY:  r->g_sy[g] += v; break;
-                case P_ROT: r->g_rot[g] += v; break;
-                case P_ALPHA: break;   /* 组级 alpha 未使用（部件级用 p_alpha） */
-            }
-        }
+        apply_chan(r, c->part, c->group, c->param, v, c->curve, c->strips);
     }
 }
 
@@ -1077,6 +1263,36 @@ static void compute_group_transforms(zrig *r)
         r->g_rot[lk->group] += lk->rot * r->look_cx;
         r->g_dx[lk->group]  += lk->dx  * r->look_cx;
         r->g_dy[lk->group]  += lk->dy  * r->look_cy;
+    }
+
+    /* 命名参数层：外部（脚本 / 口型 / 表情）写的值，同样叠在动作之上。 */
+    for (i = 0; i < r->nparams; ++i) {
+        const zparam *q = &r->params[i];
+        int k;
+        if (q->builtin != PBI_NONE || q->nbind <= 0) continue;   /* 内建的走子系统 */
+        if (fabs(q->value) < 1e-9) continue;
+        for (k = 0; k < q->nbind; ++k) {
+            const zpbind *b = &r->pbinds[q->bind0 + k];
+            apply_chan(r, b->part, b->group, b->param,
+                       q->value * b->scale, b->curve, b->strips);
+        }
+    }
+}
+
+/* 内建参数的"读数"每帧回写一次：测试台的滑条上能直接看见自动眨眼在动。 */
+static void params_refresh_builtin(zrig *r)
+{
+    int i;
+    for (i = 0; i < r->nparams; ++i) {
+        zparam *q = &r->params[i];
+        switch (q->builtin) {
+            case PBI_ANGLE_X:   q->value = r->look_cx * 30.0; break;
+            case PBI_ANGLE_Y:   q->value = -r->look_cy * 30.0; break;
+            case PBI_EYE_OPEN:  q->value = 1.0 - r->blink_value; break;
+            case PBI_EYEBALL_X: q->value = r->gaze_x; break;
+            case PBI_EYEBALL_Y: q->value = r->gaze_y; break;
+            default: break;
+        }
     }
 }
 
@@ -1393,6 +1609,7 @@ void zrig_tick(zrig *r, double now)
     }
 
     blink_update(r, now);
+    params_refresh_builtin(r);
     compute_group_transforms(r);
     physics_update(r, now);
 }
@@ -1785,6 +2002,81 @@ void zrig_look(zrig *r, double nx, double ny)
 
 double zrig_look_x(const zrig *r) { return r ? r->look_cx : 0.0; }
 double zrig_look_y(const zrig *r) { return r ? r->look_cy : 0.0; }
+
+/* ------------------------------------------------- 命名参数层（外部驱动） */
+int zrig_param_count(const zrig *r) { return r ? r->nparams : 0; }
+
+const char *zrig_param_id(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nparams) return NULL;
+    return r->params[i].id;
+}
+
+int zrig_param_info(const zrig *r, int i, zrig_param_desc *out)
+{
+    const zparam *q;
+    if (!r || !out || i < 0 || i >= r->nparams) return -1;
+    q = &r->params[i];
+    out->id = q->id;
+    out->label = q->label;
+    out->vmin = q->vmin;
+    out->vmax = q->vmax;
+    out->vdef = q->vdef;
+    out->value = q->value;
+    out->builtin = (q->builtin != PBI_NONE);
+    out->binds = q->nbind;
+    return 0;
+}
+
+double zrig_param_get(const zrig *r, const char *id)
+{
+    int i;
+    if (!r) return 0.0;
+    i = param_find(r, param_alias(id));
+    return (i < 0) ? 0.0 : r->params[i].value;
+}
+
+int zrig_param_set(zrig *r, const char *id, double v)
+{
+    int i;
+    zparam *q;
+    if (!r) return -1;
+    i = param_find(r, param_alias(id));
+    if (i < 0) return -1;
+    q = &r->params[i];
+    v = ZC_CLAMP(v, q->vmin, q->vmax);
+    q->value = v;
+    switch (q->builtin) {                       /* 内建的转发给对应子系统 */
+        case PBI_ANGLE_X:   r->look_x = ZC_CLAMP(v / 30.0, -1.0, 1.0); break;
+        case PBI_ANGLE_Y:   r->look_y = ZC_CLAMP(-v / 30.0, -1.0, 1.0); break;
+        case PBI_EYE_OPEN:  r->blink_manual = ZC_CLAMP(1.0 - v, 0.0, 1.0); break;
+        case PBI_EYEBALL_X: r->gaze_x = ZC_CLAMP(v, -1.0, 1.0); break;
+        case PBI_EYEBALL_Y: r->gaze_y = ZC_CLAMP(v, -1.0, 1.0); break;
+        default: break;
+    }
+    return 0;
+}
+
+int zrig_param_reset(zrig *r, const char *id)
+{
+    int i;
+    if (!r) return -1;
+    i = param_find(r, param_alias(id));
+    if (i < 0) return -1;
+    if (r->params[i].builtin == PBI_EYE_OPEN) {  /* 眨眼复位 = 交回自动 */
+        r->blink_manual = -1.0;
+        r->params[i].value = r->params[i].vdef;
+        return 0;
+    }
+    return zrig_param_set(r, r->params[i].id, r->params[i].vdef);
+}
+
+void zrig_param_reset_all(zrig *r)
+{
+    int i;
+    if (!r) return;
+    for (i = 0; i < r->nparams; ++i) zrig_param_reset(r, r->params[i].id);
+}
 
 /* 部件级通道的当前值（供外部调试/测试读取） */
 double zrig_part_channel(const zrig *r, const char *part_id, const char *param)

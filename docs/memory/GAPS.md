@@ -66,7 +66,7 @@
 | G14 | 桌宠动作扩充：双击/甩动/时间问候/道具/话题 | |
 | G15 (T12.6) | **部件内细分网格（多控制点）+ 顶点级遮罩** | Live2D 相比我们唯一真正缺的两项 |
 | G16 | 物理：布料/头发/尾巴**多段**钟摆（单段弹簧已在 G4q 做完；缺多段串联 + 裙摆/侧发接线） | |
-| G18 | **命名参数层**（`ParamAngleX`/`ParamMouthOpenY` 等外部直驱）：现在只能走动作与 blink/gaze 专用接口，脚本与 LLM 没法逐参数写值 | Live2D 对照表里我们唯一的"接口形态"差距 |
+| ~~G18~~ | ✅ 2026-10-12 **命名参数层**：rig.json 顶层 `params[]`（id/label/min/max/default + binds 到组或部件通道，`通道值 = 参数值 × scale`）+ 引擎内建 5 个（ParamAngleX/Y、ParamEyeOpen〔含 L/R 别名〕、ParamEyeBallX/Y，路由到跟随/眨眼/眼球）+ `/api/params.json`、`/api/param?id=&v=|reset=1|all=1`；测试台的滑条按参数表**自动生成**，角色加参数不用改前端。小寻 teen 现有 14 个角色参数（ParamAngleZ/BodyAngleX/Z/Breath/MouthOpenY/MouthForm/Brow×4/ArmLA/ArmRA/HairFront/HairAhoge） | — | 单测 `test_params` 17 项（总 **281**）；冒烟 40 项全过；实测 ParamArmRA −10/0/+10 → 右臂外缘 606/644/681px；对照图 `logs/asset_qa/param_sheet.png` |
 | G19 | **LipSync**：`talk` 现在是固定 flap 波形，没接音频包络；要做「TTS 产出 wav → 取 RMS 包络 → 驱动嘴 open」 | 依赖 G5 播放链路 |
 | G20 | **表情叠加层**（expression）：在当前动作之上叠一层持续偏移（脸红/眯眼/鼓腮），和动作互不覆盖 | 现在表情是整条动作，叠不上去 |
 | G17 (T16.7) | **歌声**：TTS 唱句 + 音高对齐；SVC 产物按音色包接入 | 用户问过"AI 翻唱"，路线已定 |
@@ -122,7 +122,7 @@
 
 ## 四、执行顺序（我接下来按这个走，除非用户改）
 
-1. **动画底层**：G4q 三块已完成 → next 是 **G18 命名参数层**（把 blink/gaze/look 收口成统一参数表）与 **G20 表情叠加**，再回 G4c 手臂拆件。
+1. **动画底层**：G4q 三块 + G18 参数层已完成 → next 是 **G20 表情叠加**（在动作之上叠持续偏移）与 **G19 LipSync**（TTS 包络写 ParamMouthOpenY），再回 G4c 手臂拆件。
 2. **素材工具先行**（G4 前置）：锚点标注工具 + 蒙版验收工具，再出设定图。
 3. **工作区骨架 G1 + 网关 G2 + 计费 G3**（M2/M3 里程碑）。
 4. **训练区 G12**（角色 LoRA 优先，解决素材风格一致的根问题）。

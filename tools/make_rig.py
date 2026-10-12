@@ -14,6 +14,66 @@ from __future__ import annotations
 import argparse, json, os, sys
 
 
+def param_list(mouth=None, has_brows=True, head_is_part=True):
+    """角色级命名参数（名字对齐 Live2D 标准参数表）。
+
+    每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
+    所以 scale 就是"参数开到最大时这条通道动多少"（像素或度）。
+    """
+    out = []
+    if head_is_part:
+        out.append({"id": "ParamAngleZ", "label": "头 歪头", "min": -30.0, "max": 30.0,
+                    "default": 0.0,
+                    "binds": [{"group": "head", "param": "rot_deg", "scale": 0.5}],
+                    "note": "±30 → 实际 ±15°，再大颈部接缝会露"})
+    out += [
+        {"id": "ParamBodyAngleX", "label": "上身 左右", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"group": "chest", "param": "rot_deg", "scale": 0.12},
+                   {"group": "chest", "param": "dx", "scale": 0.35}]},
+        {"id": "ParamBodyAngleZ", "label": "上身 倾斜", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"group": "chest", "param": "rot_deg", "scale": 0.25}]},
+        {"id": "ParamBreath", "label": "呼吸", "min": 0.0, "max": 1.0, "default": 0.0,
+         "binds": [{"group": "chest", "param": "sy", "scale": 0.012},
+                   {"group": "chest", "param": "dy", "scale": -1.2}]},
+    ]
+    if mouth:
+        # 张嘴：开口形状（遮罩）压高 + 上唇线淡出。scale 取 talk 动作里实测的幅度。
+        out.append({"id": "ParamMouthOpenY", "label": "张嘴", "min": 0.0, "max": 1.0,
+                    "default": 0.0,
+                    "binds": [{"part": "mouth_mask", "param": "sy", "scale": 0.737},
+                              {"part": "mouth_open", "param": "alpha", "scale": -0.55}],
+                    "note": "口型同步（LipSync）接进来时写的就是这个参数"})
+        out.append({"id": "ParamMouthForm", "label": "嘴形 笑/扁", "min": -1.0, "max": 1.0,
+                    "default": 0.0,
+                    "binds": [{"part": "mouth_open", "param": "sx", "scale": 0.08},
+                              {"part": "mouth_mask", "param": "sx", "scale": 0.06}]})
+    if has_brows:
+        out += [
+            {"id": "ParamBrowLY", "label": "左眉 上下", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"part": "brow_l", "param": "dy", "scale": -3.0}]},
+            {"id": "ParamBrowRY", "label": "右眉 上下", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"part": "brow_r", "param": "dy", "scale": -3.0}]},
+            {"id": "ParamBrowLAngle", "label": "左眉 角度", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"part": "brow_l", "param": "rot_deg", "scale": 7.0}]},
+            {"id": "ParamBrowRAngle", "label": "右眉 角度", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"part": "brow_r", "param": "rot_deg", "scale": -7.0}]},
+        ]
+    out += [
+        {"id": "ParamArmLA", "label": "左臂 摆动", "min": -10.0, "max": 10.0, "default": 0.0,
+         "binds": [{"part": "seg_arm_l", "param": "bend_x", "scale": -4.0, "curve": "tip"}],
+         "note": "手臂只有形变没有肘关节（G4c 未做），上限按 ±40px 给"},
+        {"id": "ParamArmRA", "label": "右臂 摆动", "min": -10.0, "max": 10.0, "default": 0.0,
+         "binds": [{"part": "seg_arm_r", "param": "bend_x", "scale": 4.0, "curve": "tip"}]},
+        {"id": "ParamHairFront", "label": "刘海 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
+         "binds": [{"part": "hair_front", "param": "bend_x", "scale": 6.0, "curve": "tip"}]},
+        {"id": "ParamHairAhoge", "label": "呆毛 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
+         "binds": [{"part": "hair_ahoge", "param": "bend_x", "scale": 10.0, "curve": "root"}]},
+    ]
+    return out
+
+
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None):
     sp_w, sp_h = sprite["sprite_size"]
@@ -604,6 +664,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "ratio": 0.3, "stiffness": 65, "damping": 7.5, "max": 4,
              "note": "刘海吊在额头上，发梢在下 → 曲线 tip，幅度要小"},
         ],
+        # 命名参数层（对齐 Live2D 的 ParamXxx）：外部（脚本 / LLM / 口型 / 测试台滑条）
+        # 只认参数名，不用知道角色内部拆了几件。内建的 ParamAngleX/Y、ParamEyeOpen、
+        # ParamEyeBallX/Y 由引擎注册，这里补角色自己的那些。
+        "params": param_list(mouth=mouth,
+                             has_brows=any(p["id"] == "brow_l" for p in parts_list),
+                             head_is_part=head_is_part),
     }
 
 

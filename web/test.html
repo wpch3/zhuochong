@@ -104,6 +104,16 @@ th{color:var(--mut);font-weight:600;position:sticky;top:0;background:#fff}
         <code id="v-scale">1.00</code></label>
       <button class="sm" onclick="resetParams()">全部复位</button>
     </div>
+
+    <div class="card">
+      <h2>命名参数层 <span class="muted" id="paramcount"></span></h2>
+      <div class="muted" style="margin-bottom:6px">
+        rig.json 的 <code>params</code> 段 + 引擎内建参数（≈ Live2D 的 ParamXxx）。
+        这排滑条是按 <code>/api/params.json</code> 自动长出来的 —— 角色加参数不用改前端。
+      </div>
+      <div id="params" class="scroll" style="max-height:320px">读取中…</div>
+      <button class="sm" onclick="resetAllParams()">参数全部复位</button>
+    </div>
   </div>
 
   <!-- 中：互动 -->

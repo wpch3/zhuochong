@@ -1802,5 +1802,230 @@
       "max": 4,
       "note": "刘海吊在额头上，发梢在下 → 曲线 tip，幅度要小"
     }
+  ],
+  "params": [
+    {
+      "id": "ParamAngleZ",
+      "label": "头 歪头",
+      "min": -30.0,
+      "max": 30.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "head",
+          "param": "rot_deg",
+          "scale": 0.5
+        }
+      ],
+      "note": "±30 → 实际 ±15°，再大颈部接缝会露"
+    },
+    {
+      "id": "ParamBodyAngleX",
+      "label": "上身 左右",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "chest",
+          "param": "rot_deg",
+          "scale": 0.12
+        },
+        {
+          "group": "chest",
+          "param": "dx",
+          "scale": 0.35
+        }
+      ]
+    },
+    {
+      "id": "ParamBodyAngleZ",
+      "label": "上身 倾斜",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "chest",
+          "param": "rot_deg",
+          "scale": 0.25
+        }
+      ]
+    },
+    {
+      "id": "ParamBreath",
+      "label": "呼吸",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "chest",
+          "param": "sy",
+          "scale": 0.012
+        },
+        {
+          "group": "chest",
+          "param": "dy",
+          "scale": -1.2
+        }
+      ]
+    },
+    {
+      "id": "ParamMouthOpenY",
+      "label": "张嘴",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "mouth_mask",
+          "param": "sy",
+          "scale": 0.737
+        },
+        {
+          "part": "mouth_open",
+          "param": "alpha",
+          "scale": -0.55
+        }
+      ],
+      "note": "口型同步（LipSync）接进来时写的就是这个参数"
+    },
+    {
+      "id": "ParamMouthForm",
+      "label": "嘴形 笑/扁",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "mouth_open",
+          "param": "sx",
+          "scale": 0.08
+        },
+        {
+          "part": "mouth_mask",
+          "param": "sx",
+          "scale": 0.06
+        }
+      ]
+    },
+    {
+      "id": "ParamBrowLY",
+      "label": "左眉 上下",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "brow_l",
+          "param": "dy",
+          "scale": -3.0
+        }
+      ]
+    },
+    {
+      "id": "ParamBrowRY",
+      "label": "右眉 上下",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "brow_r",
+          "param": "dy",
+          "scale": -3.0
+        }
+      ]
+    },
+    {
+      "id": "ParamBrowLAngle",
+      "label": "左眉 角度",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "brow_l",
+          "param": "rot_deg",
+          "scale": 7.0
+        }
+      ]
+    },
+    {
+      "id": "ParamBrowRAngle",
+      "label": "右眉 角度",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "brow_r",
+          "param": "rot_deg",
+          "scale": -7.0
+        }
+      ]
+    },
+    {
+      "id": "ParamArmLA",
+      "label": "左臂 摆动",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "seg_arm_l",
+          "param": "bend_x",
+          "scale": -4.0,
+          "curve": "tip"
+        }
+      ],
+      "note": "手臂只有形变没有肘关节（G4c 未做），上限按 ±40px 给"
+    },
+    {
+      "id": "ParamArmRA",
+      "label": "右臂 摆动",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "seg_arm_r",
+          "param": "bend_x",
+          "scale": 4.0,
+          "curve": "tip"
+        }
+      ]
+    },
+    {
+      "id": "ParamHairFront",
+      "label": "刘海 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hair_front",
+          "param": "bend_x",
+          "scale": 6.0,
+          "curve": "tip"
+        }
+      ]
+    },
+    {
+      "id": "ParamHairAhoge",
+      "label": "呆毛 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hair_ahoge",
+          "param": "bend_x",
+          "scale": 10.0,
+          "curve": "root"
+        }
+      ]
+    }
   ]
 }

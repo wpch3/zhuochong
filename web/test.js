@@ -202,6 +202,47 @@ function resetParams() {
   api("/api/blink?v=auto"); api("/api/gaze?off=1"); api("/api/scale?s=1");
 }
 
+/* ---------- 命名参数层：按 /api/params.json 自动长滑条 ---------- */
+let paramTimer = null;
+async function loadParams() {
+  const r = await fetch("/api/params.json").then((x) => x.json()).catch(() => null);
+  if (!r || !r.params) return;
+  const box = $("params");
+  $("paramcount").textContent = `${r.params.length} 个`;
+  box.innerHTML = "";
+  r.params.forEach((p) => {
+    const row = document.createElement("label");
+    row.className = "row";
+    const step = (p.max - p.min) / 200;
+    row.innerHTML =
+      `<span title="${p.id}">${p.label || p.id}${p.builtin ? " ·内建" : ""}</span>` +
+      `<input type="range" min="${p.min}" max="${p.max}" step="${step}" value="${p.value}" data-id="${p.id}">` +
+      `<code id="pv-${p.id}">${(+p.value).toFixed(2)}</code>`;
+    const sl = row.querySelector("input");
+    sl.oninput = (e) => {
+      $("pv-" + p.id).textContent = (+e.target.value).toFixed(2);
+      api(`/api/param?id=${encodeURIComponent(p.id)}&v=${(+e.target.value).toFixed(4)}`);
+    };
+    box.appendChild(row);
+  });
+  /* 内建参数（自动眨眼、视线）会自己动，低频回读一下让数字是活的 */
+  if (paramTimer) clearInterval(paramTimer);
+  paramTimer = setInterval(refreshParamValues, 700);
+}
+async function refreshParamValues() {
+  if (document.hidden) return;
+  const r = await fetch("/api/params.json").then((x) => x.json()).catch(() => null);
+  if (!r || !r.params) return;
+  r.params.forEach((p) => {
+    const el = document.getElementById("pv-" + p.id);
+    if (!el || !p.builtin) return;          /* 手拖的那些不要被覆盖 */
+    el.textContent = (+p.value).toFixed(2);
+    const sl = document.querySelector(`#params input[data-id="${p.id}"]`);
+    if (sl && document.activeElement !== sl) sl.value = p.value;
+  });
+}
+function resetAllParams() { api("/api/param?all=1").then(loadParams); }
+
 /* ---------- 画面上的鼠标：悬停＝视线，点击＝摸头 ---------- */
 function bindStage() {
   const img = $("pet");
@@ -294,6 +335,30 @@ async function runSuite() {
   await api("/api/blink?v=auto");
   const ba = await api("/api/info.json");
   check("切回自动眨眼", ba.data && ba.data.blink_manual < 0, "blink_manual<0");
+
+  /* 2.5 命名参数层：写一个参数画面必须变，复位必须回去 */
+  {
+    const r = await fetch("/api/params.json").then((x) => x.json()).catch(() => null);
+    const n = r && r.params ? r.params.length : 0;
+    check("参数表能读出来（/api/params.json）", n >= 5, `${n} 个参数`);
+    if (n) {
+      await api("/api/action?id=sleep&force=1"); await sleep(260);   /* 先停下来，免得呼吸干扰 */
+      const base = await frameHash();
+      await api("/api/param?id=ParamMouthOpenY&v=1"); await sleep(260);
+      const open = await frameHash();
+      check("写 ParamMouthOpenY 画面有变化（参数层真的接到渲染上）",
+            base.hash !== open.hash,
+            `${base.hash.toString(16)} → ${open.hash.toString(16)}`);
+      await api("/api/param?id=ParamMouthOpenY&reset=1"); await sleep(120);
+      const after = await fetch("/api/params.json").then((x) => x.json());
+      const mo = after.params.find((p) => p.id === "ParamMouthOpenY");
+      check("参数复位后值回默认", mo && Math.abs(mo.value - mo.default) < 1e-6,
+            mo ? `value=${mo.value}` : "读不到");
+      const bad = await fetch("/api/param?id=ParamNope&v=1").then((x) => x.status);
+      check("不存在的参数要报 404（不能假装成功）", bad === 404, `HTTP ${bad}`);
+      await api("/api/action?id=idle&force=1");
+    }
+  }
 
   /* 3. 视线：左看 / 右看 两帧必须不一样 */
   await api("/api/blink?v=0");           /* 闭着眼看不出眼球动，先睁开 */
@@ -421,6 +486,7 @@ async function runSuite() {
   bindStage();
   await loadInfo();
   await loadParts();
+  await loadParams();
   setInterval(() => { if (!suiteRunning) refresh(); }, 100);
   setInterval(loadInfo, 1000);
   setInterval(() => {

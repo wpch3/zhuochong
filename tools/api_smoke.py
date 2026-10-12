@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 
 PASS, FAIL = [], []
@@ -105,6 +106,34 @@ def run(base, root):
     check("info 能读回手动眨眼值", abs(a.json("/api/info.json")["blink_manual"] - 0.5) < 0.01)
     a.hit("/api/blink?v=auto")
     check("切回自动眨眼", a.json("/api/info.json")["blink_manual"] < 0)
+
+    print("== 命名参数层（≈ Live2D ParamXxx）==")
+    pr = a.json("/api/params.json")
+    plist = pr.get("params", [])
+    pids = [q["id"] for q in plist]
+    check("params.json 能读", len(plist) >= 5, "%d 个参数" % len(plist))
+    check("内建参数在表里", all(k in pids for k in
+          ("ParamAngleX", "ParamAngleY", "ParamEyeOpen", "ParamEyeBallX")),
+          " ".join(pids[:5]))
+    if "ParamMouthOpenY" in pids:
+        a.hit("/api/action?id=sleep&force=1"); time.sleep(0.3)
+        hb, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamMouthOpenY&v=1"); time.sleep(0.3)
+        ho, _ = a.frame_hash()
+        check("写 ParamMouthOpenY 画面有变化", hb != ho, "%s → %s" % (hb, ho))
+        a.hit("/api/param?id=ParamMouthOpenY&reset=1"); time.sleep(0.2)
+        v = [q for q in a.json("/api/params.json")["params"] if q["id"] == "ParamMouthOpenY"][0]
+        check("参数复位回默认值", abs(v["value"] - v["default"]) < 1e-6, "value=%s" % v["value"])
+        a.hit("/api/action?id=idle&force=1")
+    a.hit("/api/param?id=ParamAngleX&v=30"); time.sleep(0.6)
+    ax = [q for q in a.json("/api/params.json")["params"] if q["id"] == "ParamAngleX"][0]
+    check("内建参数读数会跟着子系统走", ax["value"] > 25.0, "ParamAngleX=%.1f" % ax["value"])
+    a.hit("/api/param?all=1"); time.sleep(0.4)
+    try:
+        urllib.request.urlopen(base + "/api/param?id=ParamNope&v=1", timeout=3).read()
+        check("不存在的参数要报 404", False, "返回了 200")
+    except urllib.error.HTTPError as e:                  # noqa: PERF203
+        check("不存在的参数要报 404", e.code == 404, "HTTP %d" % e.code)
 
     print("== 视线 ==")
     a.hit("/api/blink?v=0")

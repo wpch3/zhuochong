@@ -13,6 +13,8 @@
  *   GET /api/action?id=        触发动作
  *   GET /api/hover?x=&y=&in=   上报鼠标位置（视线/专注/唤醒）
  *   GET /api/scale?s=          设置缩放
+ *   GET /api/params.json       命名参数表（≈ Live2D ParamXxx）与当前值
+ *   GET /api/param?id=&v=      直接写一个参数（reset=1 回默认；all=1 全部复位）
  *   GET /api/form?id=          切换形态
  *   GET /api/outfit?id=        换装
  *   GET /api/idle?s=           上报系统空闲秒数（沙箱里由浏览器上报）
@@ -548,6 +550,63 @@ static void handle_request(zsock fd, const http_req *r)
         zpet_set_gaze(g_pet, nx, ny, !off);
         UNLOCK();
         send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/params.json") == 0) {
+        /* 命名参数层：测试台据此自动长出一排滑条，加参数不用改前端 */
+        char body[8192];
+        size_t off = 0;
+        int i, n;
+        body[0] = 0;
+        off += (size_t)z_snprintf(body + off, sizeof(body) - off, "{\"params\":[");
+        LOCK();
+        n = zpet_param_count(g_pet);
+        for (i = 0; i < n; ++i) {
+            zrig_param_desc d;
+            if (zpet_param_info(g_pet, i, &d) != 0) continue;
+            if (off + 256 >= sizeof(body)) break;
+            off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                "%s{\"id\":\"%s\",\"label\":\"%s\",\"min\":%.3f,\"max\":%.3f,"
+                "\"default\":%.3f,\"value\":%.4f,\"builtin\":%s,\"binds\":%d}",
+                i ? "," : "", d.id, d.label ? d.label : "", d.vmin, d.vmax,
+                d.vdef, d.value, d.builtin ? "true" : "false", d.binds);
+        }
+        UNLOCK();
+        z_snprintf(body + off, sizeof(body) - off, "]}");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/param") == 0) {
+        char id[64], sv[32];
+        int rc = 0;
+        if (qint(r, "all", 0)) {
+            LOCK();
+            zpet_param_reset_all(g_pet);
+            UNLOCK();
+            send_text(fd, 200, "application/json", "{\"ok\":true,\"reset\":\"all\"}");
+            return;
+        }
+        if (!qstr(r, "id", id, sizeof(id))) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 id\"}");
+            return;
+        }
+        LOCK();
+        if (qint(r, "reset", 0)) rc = zpet_param_reset(g_pet, id);
+        else if (qstr(r, "v", sv, sizeof(sv))) rc = zpet_param_set(g_pet, id, atof(sv));
+        else rc = -2;
+        UNLOCK();
+        if (rc == -1) {
+            char body[160];
+            z_snprintf(body, sizeof(body),
+                       "{\"ok\":false,\"error\":\"没有这个参数\",\"id\":\"%s\"}", id);
+            send_text(fd, 404, "application/json", body);
+        } else if (rc == -2) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 v\"}");
+        } else {
+            char body[160];
+            z_snprintf(body, sizeof(body), "{\"ok\":true,\"id\":\"%s\"}", id);
+            send_text(fd, 200, "application/json", body);
+        }
         return;
     }
     if (strcmp(r->path, "/api/scale") == 0) {

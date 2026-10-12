@@ -146,3 +146,8 @@
 - 做了什么：补动画底层第三块：指针跟随（rig 顶层 look 段，/api/gaze 同时驱动眼球+头/上身，1-exp(-speed·dt) 平滑），make_rig.py 写入 head 5°/4px + chest 1.2°/1.5px
 - 遇到/修了什么：动作淡入淡出与物理摆动已在 c4f205f 落地；本轮补 test_look 单测（总 264/0），端到端抓帧确认头部质心 ±25px、复位残差 0.1px
 - 下一步：G18 命名参数层 + G20 表情叠加，然后回 G4c 手臂拆件
+
+## 2026-10-12 10:12
+- 做了什么：命名参数层（G18）：rig.json params[] + 内建 5 参数 + /api/params.json 与 /api/param，zpet/zrig 都接通；测试台滑条按参数表自动生成；make_rig.py 为小寻写入 14 个参数
+- 遇到/修了什么：参数层叠加点放在动作与跟随之后、物理之前；apply_chan 抽成公共函数，动作/物理/参数共用同一套通道语义
+- 下一步：G20 表情叠加 + G19 LipSync（把 TTS 包络接到 ParamMouthOpenY），然后回 G4c 手臂
