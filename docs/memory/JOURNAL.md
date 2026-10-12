@@ -186,3 +186,8 @@
 - 做了什么：加自检与保险体系（selfcheck_repo 42 项 / make asan / 2 万帧长稳 / precommit 钩子 / GitHub CI / make check），ASan 首跑抓出 2 个真内存错并修；做完 A5 网格形变（zimg_draw_mesh 三角仿射 + rig deformers + 呆毛 S 形甩动 + 参数 ParamHairAhogeS）
 - 遇到/修了什么：zdeflate 读越界 1 字节（i+best_len 可能等于 n）；测试里手写长度 90 而字面量 89；自检第一次跑就抓到我自己写的重复编号 G28→改 Q1
 - 下一步：顶点级遮罩（A5 后半）；I/U/E/O 音素口型；侧发/后发拆件
+
+## 2026-10-12 16:48
+- 做了什么：A6 关键帧动作曲线 + G16 多段物理摆链：通道 keys/interp（linear/smooth/step，循环取模，池上限 1024）取代纯波形，示范动作 nod；physics.driver 可串前一条 physics、输出可写 deformer，示范链 head→ahoge_x→ahoge_tip→ahoge_s。验收 test 351/0、selfcheck 44/0、smoke 55/0，证据 logs/asset_qa/a6_nod_keys.jpg
+- 遇到/修了什么：（无）
+- 下一步：（见 TASKS.md）

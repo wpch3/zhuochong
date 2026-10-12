@@ -85,6 +85,8 @@
 | 视线跟随（眼球） | 眼球看向鼠标 | ✅（标签 `gaze`） | `zrig.c` |
 | **动作淡入淡出**（motion fade） | 换动作不再瞬间跳帧 | ✅ **2026-10-12** | `zrig.c` `accumulate_action` + `actions[].fade` |
 | **物理摆动**（弹簧惯性） | 甩头时头发晚一拍、停下来还会晃两下 | ✅ **2026-10-12** | `zrig.c` `physics_update` + rig 顶层 `physics` |
+| **多段物理摆链**（2~3 段串联） | 发根先甩、发梢再慢半拍，侧发/裙摆才像布料 | ✅ **2026-10-13** | `physics[].driver` 写另一条 physics 的 id；输出可写 `deformer` |
+| **关键帧动作曲线**（≈ `.motion3.json`） | 不对称节奏：快速低头 → 停顿 → 缓慢抬起带过冲 | ✅ **2026-10-13** | 通道 `keys:[[t,v],…]` + `interp: linear/smooth/step`，`zrig.c` `eval_keys` |
 | **指针跟随（头/上身）** | 等价 Live2D `ParamAngleX/Y/Z` + `ParamBodyAngleX` | ✅ **2026-10-12** | `zrig.c` `zrig_look` + rig 顶层 `look` |
 | **自由变形器**（FFD / 网格形变，按控制点拉网格） | 一根呆毛能摆出 S 形；眼睑/嘴形连续变化 | ✅ **2026-10-12** | `zimg.c` `zimg_draw_mesh`（格子拆三角形仿射映射）+ rig 顶层 `deformers` + 通道 `target=形变器 id, param=amount` |
 | 旋转变形器（骨骼链：肩→肘→腕） | 抬手、挥手不拉皮 | ✅ 两级（肩→肘） | `make_arm_parts.py` + 组 `arm_l→forearm_l`；腕还没分（G4c2） |
@@ -199,6 +201,51 @@
 - **边界**：cols/rows 1~16，控制点越界直接加载失败（不许默默画错）；
   位移写的是原始素材像素，换画布缩放时形变量不变。
 - 证据：`logs/asset_qa/a5_mesh_ahoge.png`（ParamHairAhogeS = −1/−0.5/0/0.5/1 五档 6×）。
+
+### 3.3 关键帧动作曲线（A6）怎么写
+
+参数化波形（sine/bounce/pulse/decay/flap）只能做**对称、周期**的动作。
+真正的动作表演是不对称的——「0.18 秒猛地低头，停 0.24 秒，再用 0.33 秒抬起来并过冲一点」，
+这就是 Live2D `.motion3.json` 在干的事：逐关键帧给值，中间插值。
+
+```jsonc
+{"id": "nod", "priority": 6, "duration": 1.1, "fade": 0.12, "channels": [
+  {"target": "head", "param": "rot_deg", "interp": "smooth",
+   "keys": [[0.0, 0.0], [0.18, 9.0], [0.42, 9.5], [0.75, -2.5], [1.1, 0.0]]}
+]}
+```
+
+- 一条 `keys` 就是 `[[时间秒, 数值], …]`；**写了 keys 就不再看 `wave/amp/freq/phase`**，
+  其余字段（target / param / 形变器 amount / 淡化权重）行为完全不变，所以能和波形通道混用。
+- `interp`：`smooth`（默认，`z_smoothstep` 缓入缓出）/ `linear`（匀速）/ `step`（阶梯，到点才跳）。
+  区间按**半开** `[t_i, t_{i+1})` 取，所以正好踩在关键帧时刻时阶梯插值已经跳过去了。
+- 循环动作（`loop:true`）会对**最后一帧的时间**取模回绕；一次性动作在末帧之后保持末值。
+- 校验：时间必须递增、每帧至少两个数、全仓关键帧总数 ≤ 1024（`ZRIG_MAX_KEYPOOL`），
+  违反直接加载失败；`tools/selfcheck_repo.py` 也会静态拦一遍。
+- 证据：`logs/asset_qa/a6_nod_keys.jpg`（`/api/action?id=nod` 连拍 6 帧）。
+
+### 3.4 多段物理摆链（G16）怎么写
+
+一段弹簧只能做「整体晚一拍」。真实的头发/裙摆是**一节带一节**：
+根部先被甩出去，梢部又比根部晚半拍，于是摆出 S 形。做法是把第二段的**输入**
+接到第一段的**输出**上（而不是再接一次头的位移）：
+
+```jsonc
+"physics": [
+  {"id": "ahoge_x",   "part": "hair_ahoge", "driver": "head",     "axis": "x",
+   "param": "bend_x", "curve": "root", "ratio": 0.5, "stiffness": 42, "damping": 5.0, "max": 8},
+  {"id": "ahoge_tip", "part": "hair_ahoge", "driver": "ahoge_x",
+   "deformer": "ahoge_s", "ratio": 0.9, "stiffness": 26, "damping": 3.4, "max": 1.0}
+]
+```
+
+- `driver` 先当组名查，查不到再当**前面已经声明过的** physics id 查；
+  写成后面声明的（或拼错）直接加载失败——否则这一帧读到的是上一帧的旧值。
+- 第二段的 `stiffness` 要比第一段**软**、`damping` 更小，才会"慢半拍"；
+  想要几段就串几段（根→梢顺序声明即可）。
+- `"deformer": "<形变器 id>"` 让物理输出直接写进网格形变器的 `amount`（本例 = 呆毛 S 形），
+  这就是 Live2D「物理 → 变形器」的接法；不写 `deformer` 时还是走部件通道 `param`。
+- 调试：`zrig_phys_output(rig, "ahoge_tip")` 读这一段当前输出。
 
 ### 3.2 口型同步（A4）怎么跑通
 

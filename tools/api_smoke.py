@@ -154,6 +154,19 @@ def run(base, root):
         check("网格形变（A5）让画面变了", h0 != h1, "%s → %s" % (h0, h1))
         a.hit("/api/param?id=ParamHairAhogeS&reset=1")
         a.hit("/api/action?id=idle&force=1"); time.sleep(0.2)
+
+    # A6 关键帧动作（≈ .motion3）：nod 是逐帧给值的曲线，不是波形
+    if "nod" in a.json("/api/info.json").get("actions", []):
+        a.hit("/api/action?id=sleep&force=1"); time.sleep(0.4)
+        k0, _ = a.frame_hash()
+        a.hit("/api/action?id=nod&force=1"); time.sleep(0.3)
+        k1, _ = a.frame_hash()
+        check("关键帧动作 nod 让画面变了", k0 != k1, "%s → %s" % (k0, k1))
+        cur = a.json("/api/info.json").get("action")
+        check("nod 播放时就是当前动作", cur == "nod", "当前=%s" % cur)
+        time.sleep(1.1)
+        check("nod 播完回到 idle", a.json("/api/info.json").get("action") in ("idle", "breath", "sway"),
+              "当前=%s" % a.json("/api/info.json").get("action"))
     a.hit("/api/param?id=ParamAngleX&v=30"); time.sleep(0.6)
     ax = [q for q in a.json("/api/params.json")["params"] if q["id"] == "ParamAngleX"][0]
     check("内建参数读数会跟着子系统走", ax["value"] > 25.0, "ParamAngleX=%.1f" % ax["value"])

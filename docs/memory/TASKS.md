@@ -214,6 +214,7 @@
 | T17.5 | GitHub CI `.github/workflows/ci.yml` | [x] | push/PR 自动跑静态自检+编译零告警+单测+ASan+素材验收+冒烟 |
 | T17.6 | 一条命令 `make check` | [x] | 约 90 秒跑完四道关 |
 | T17.8 | 网格形变（A5）：`deformers` + `zimg_draw_mesh` | [x] | 呆毛 S 形甩动；控制点越界必须加载失败 |
+- **T17.9（2026-10-13）** 关键帧曲线 + 多段摆链进自检：`selfcheck_repo.py` 新增「关键帧曲线写法合法」（时间递增/帧格式/interp 取值）与「多段摆链的 driver 按根→梢顺序声明」（driver 必须是组或**前面**的 physics、deformer 必须存在）→ **44 项**；`api_smoke.py` 新增 nod 三项 → **55 项**；`test_core.c` 新增 `test_keys_and_chain` → **351 项**。
 | T17.7 | 真机侧保险（24h 长稳、透明窗/托盘/音频回归） | [ ] | [需真机] 用户机器上跑一轮 |
 
 ### T16 第七轮补充（用户追问"还缺什么"）

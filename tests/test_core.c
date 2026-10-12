@@ -1816,6 +1816,111 @@ static void test_mesh(void)
     }
 }
 
+
+/* ---- 关键帧曲线（≈ .motion3）与多段物理摆链（G16） ---- */
+static void test_keys_and_chain(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+
+    SECTION("关键帧曲线：逐帧给值、三种插值、循环回绕、时间必须递增");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_keys");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"k\",\"name\":\"关键帧\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"h\",\"param\":\"dx\",\"interp\":\"linear\","
+        "   \"keys\":[[0,0],[0.5,10],[1.0,0]]},"
+        "  {\"target\":\"h\",\"param\":\"dy\",\"interp\":\"step\","
+        "   \"keys\":[[0,0],[0.5,8],[1.0,0]]}]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 keys 的 rig 应加载成功");
+    if (r) {
+        zrig_tick(r, 0.25);
+        CHECK(fabs(zrig_part_channel(r, "h", "dx") - 5.0) < 1e-6,
+              "线性插值 0.25s 应是 5，实为 %.3f", zrig_part_channel(r, "h", "dx"));
+        CHECK(fabs(zrig_part_channel(r, "h", "dy")) < 1e-9,
+              "阶梯插值 0.25s 还停在前一帧的 0，实为 %.3f", zrig_part_channel(r, "h", "dy"));
+        zrig_tick(r, 0.5);
+        CHECK(fabs(zrig_part_channel(r, "h", "dx") - 10.0) < 1e-6, "0.5s 应到峰值 10");
+        CHECK(fabs(zrig_part_channel(r, "h", "dy") - 8.0) < 1e-6, "阶梯插值 0.5s 跳到 8");
+        zrig_tick(r, 1.25);      /* 循环动作：曲线整体回绕，等价于 0.25s */
+        CHECK(fabs(zrig_part_channel(r, "h", "dx") - 5.0) < 1e-6,
+              "循环动作应回绕到 0.25s 的 5，实为 %.3f", zrig_part_channel(r, "h", "dx"));
+        zrig_free(r);
+    }
+    /* 时间不递增要报错 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"k\",\"name\":\"坏关键帧\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"h\",\"param\":\"dx\",\"keys\":[[0,0],[0.9,5],[0.4,2]]}]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "关键帧时间倒退必须加载失败");
+    CHECK(diag_has(&d, "递增"), "诊断应指出时间要递增");
+
+    SECTION("多段摆链：第二段吃第一段的输出，梢比根慢半拍");
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"c\",\"name\":\"摆链\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"tipwave\",\"part\":\"h\",\"cols\":1,\"rows\":2,"
+        " \"points\":[{\"c\":0,\"r\":0,\"dx\":6},{\"c\":1,\"r\":0,\"dx\":6}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":20,\"freq\":1.5}]}],"
+        "\"physics\":[{\"id\":\"seg1\",\"part\":\"h\",\"driver\":\"head\",\"axis\":\"x\","
+        "  \"param\":\"bend_x\",\"ratio\":0.6,\"stiffness\":40,\"damping\":5,\"max\":12},"
+        " {\"id\":\"seg2\",\"part\":\"h\",\"driver\":\"seg1\",\"deformer\":\"tipwave\","
+        "  \"ratio\":0.9,\"stiffness\":22,\"damping\":3,\"max\":2}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "多段摆 rig 应加载成功");
+    if (r) {
+        double t, s1peak = 0.0, s2peak = 0.0, dpeak = 0.0;
+        for (t = 0.0; t < 2.0; t += 1.0 / 60.0) {
+            zrig_tick(r, t);
+            if (fabs(zrig_phys_output(r, "seg1")) > s1peak) s1peak = fabs(zrig_phys_output(r, "seg1"));
+            if (fabs(zrig_phys_output(r, "seg2")) > s2peak) s2peak = fabs(zrig_phys_output(r, "seg2"));
+            if (fabs(zrig_deform_amount(r, "tipwave")) > dpeak)
+                dpeak = fabs(zrig_deform_amount(r, "tipwave"));
+        }
+        CHECK(s1peak > 0.5, "第一段应该被头的摆动带起来，峰值 %.3f", s1peak);
+        CHECK(s2peak > 0.01, "第二段应该被第一段带起来，峰值 %.3f", s2peak);
+        CHECK(dpeak > 0.01, "第二段的输出应该写进网格形变器，峰值 %.3f", dpeak);
+        zrig_free(r);
+    }
+    /* 驱动写了不存在的名字要报错 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"c\",\"name\":\"坏摆链\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+        "\"physics\":[{\"id\":\"s2\",\"part\":\"h\",\"driver\":\"nope\","
+        "  \"param\":\"bend_x\"}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "driver 名字不存在必须加载失败");
+    CHECK(diag_has(&d, "driver"), "诊断应指出 driver 不对");
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -1839,6 +1944,7 @@ int main(int argc, char **argv)
     test_params();
     test_lipsync();
     test_mesh();
+    test_keys_and_chain();
     test_longrun();
     test_expression();
     test_motion_from();

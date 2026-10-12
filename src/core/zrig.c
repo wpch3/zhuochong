@@ -17,6 +17,7 @@
 #define ZRIG_MAX_BINDS    96
 #define ZRIG_MAX_DEFORMS  12
 #define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
+#define ZRIG_MAX_KEYPOOL  1024  /* 所有关键帧共用一个池子，通道里只存 [起点,个数) */
 #define ZRIG_MAX_OVERRIDES 32
 
 /* 图层标签（tags）：用位标志，加载时解析 */
@@ -99,7 +100,13 @@ typedef struct {
     zease  ease;
     int    curve;             /* 形变曲线（仅 bend_* 用） */
     int    strips;            /* 分段数（仅 bend_* 用；0=默认 24） */
+    /* 关键帧曲线（≈ Live2D 的 .motion3 曲线）：有 keys 时忽略 wave/amp/freq。
+       key0 是在 r->key_t / r->key_v 池子里的起点。 */
+    int    key0, nkeys;
+    int    interp;            /* KI_LINEAR / KI_SMOOTH / KI_STEP */
 } zchan;
+
+enum { KI_LINEAR = 0, KI_SMOOTH, KI_STEP };
 
 typedef struct { char part[64]; double opacity; int has_dx, has_dy; double dx, dy; } zoverride;
 
@@ -135,6 +142,11 @@ typedef struct {
     double damping;           /* 阻尼（1/s，越大越快停） */
     double max;               /* 输出限幅（像素或度） */
     double pos, vel;          /* 运行状态 */
+    /* 多段摆（G16）：driver 写另一条 physics 的 id 时，输入就是**上一段的输出**，
+       这样两三段串起来就是一条有惯性传递的摆链（头发梢比发根再慢半拍）。 */
+    int    driver_phys;       /* >=0 = 上一段的下标（必须比自己小，保证先算父段） */
+    int    deform;            /* >=0 = 输出到网格形变器的 amount，而不是部件通道 */
+    double out_last;          /* 上一帧输出，供下一段当输入 */
 } zphys;
 
 /* 指针跟随（Live2D 的 ParamAngleX/Y/Z + ParamBodyAngleX 那一套）：
@@ -282,6 +294,10 @@ struct zrig {
     /* 网格形变器（A5） */
     zdeform deforms[ZRIG_MAX_DEFORMS];
     int     ndeforms;
+
+    /* 关键帧池（所有动作通道共用） */
+    double  key_t[ZRIG_MAX_KEYPOOL], key_v[ZRIG_MAX_KEYPOOL];
+    int     nkeypool;
 
     /* 表情层 */
     zexpr   exprs[ZRIG_MAX_EXPR];
@@ -693,13 +709,31 @@ static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
             return -1;
         }
         ph->driver = drv ? find_group(r, drv) : -1;
-        if (ph->driver < 0) {
+        ph->driver_phys = -1;
+        if (ph->driver < 0 && drv) {
+            /* driver 不是组，就看看是不是上一段摆（多段摆链） */
+            int q;
+            for (q = 0; q < r->nphys; ++q)
+                if (strcmp(r->phys[q].id, drv) == 0) { ph->driver_phys = q; break; }
+        }
+        if (ph->driver < 0 && ph->driver_phys < 0) {
             zdiag_error(d, file, pj ? pj->line : 0, 0, path,
-                        "driver 组 '%s' 不存在", drv ? drv : "(缺)");
+                        "driver '%s' 既不是组，也不是**写在它前面**的另一条 physics"
+                        "（多段摆要按根→梢的顺序声明）", drv ? drv : "(缺)");
             return -1;
         }
         ph->axis = (ax && (*ax == 'y' || *ax == 'Y')) ? 1 : 0;
-        if (parse_param(pn, &ph->param) != 0) {
+        {
+            const char *dfm = zjson_str(zjson_obj_get(pj, "deformer"), NULL);
+            ph->deform = dfm ? find_deform(r, dfm) : -1;
+            if (dfm && ph->deform < 0) {
+                zdiag_error(d, file, pj ? pj->line : 0, 0, path,
+                            "deformer '%s' 不存在", dfm);
+                return -1;
+            }
+        }
+        if (ph->deform >= 0) ph->param = P_AMOUNT;
+        else if (parse_param(pn, &ph->param) != 0) {
             zdiag_error(d, file, pj ? pj->line : 0, 0, path, "param 非法：%s", pn);
             return -1;
         }
@@ -1049,9 +1083,52 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                                 "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha/bend_x/bend_y）");
                     return -1;
                 }
-                if (parse_wave(wname, &c->wave) != 0) {
+                /* 关键帧曲线（≈ .motion3）：有 keys 就不看 wave/amp/freq。
+                   写法 "keys":[[0,0],[0.3,-12],[1.2,0]]，可选 "interp":"linear|smooth|step"。 */
+                {
+                    const zjson *ks = zjson_obj_get(cj, "keys");
+                    if (ks) {
+                        size_t kn = zjson_count(ks), q;
+                        const char *ipn = zjson_str(zjson_obj_get(cj, "interp"), "smooth");
+                        if (!zjson_is(ks, ZJSON_ARR) || kn < 1) {
+                            zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                                        "keys 应是至少 1 个 [时间,数值] 的数组");
+                            return -1;
+                        }
+                        if (r->nkeypool + (int)kn > ZRIG_MAX_KEYPOOL) {
+                            zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                                        "关键帧总数超上限 %d", ZRIG_MAX_KEYPOOL);
+                            return -1;
+                        }
+                        c->key0 = r->nkeypool;
+                        for (q = 0; q < kn; ++q) {
+                            const zjson *kj = zjson_at((zjson *)ks, q);
+                            double kt, kv;
+                            if (!zjson_is(kj, ZJSON_ARR) || zjson_count((zjson *)kj) < 2) {
+                                zdiag_error(d, file, kj ? kj->line : 0, 0, buf,
+                                            "第 %d 个关键帧应写成 [时间, 数值]", (int)q + 1);
+                                return -1;
+                            }
+                            kt = zjson_num(zjson_at((zjson *)kj, 0), 0.0);
+                            kv = zjson_num(zjson_at((zjson *)kj, 1), 0.0);
+                            if (q > 0 && kt < r->key_t[r->nkeypool - 1]) {
+                                zdiag_error(d, file, kj ? kj->line : 0, 0, buf,
+                                            "关键帧时间必须递增（第 %d 个 %.3f 比上一个还早）",
+                                            (int)q + 1, kt);
+                                return -1;
+                            }
+                            r->key_t[r->nkeypool] = kt;
+                            r->key_v[r->nkeypool] = kv;
+                            r->nkeypool++;
+                        }
+                        c->nkeys = (int)kn;
+                        c->interp = z_streq(ipn, "linear") ? KI_LINEAR
+                                  : (z_streq(ipn, "step") ? KI_STEP : KI_SMOOTH);
+                    }
+                }
+                if (c->nkeys == 0 && parse_wave(wname, &c->wave) != 0) {
                     zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                "通道 wave 非法（允许 sine/bounce/pulse/decay）");
+                                "通道 wave 非法（允许 sine/bounce/pulse/decay/flap）");
                     return -1;
                 }
                 c->amp = zjson_num(zjson_obj_get(cj, "amp"), 0.0);
@@ -1412,8 +1489,37 @@ void zrig_describe(const zrig *r, char *out, size_t cap)
 }
 
 /* ============================================================ 通道求值 */
-static double eval_channel(const zchan *c, double t, double total)
+/* 关键帧曲线取样。t 落在两帧之间按 interp 插值；
+   循环动作把 t 对最后一帧的时间取模（曲线自己就是一个循环周期）。 */
+static double eval_keys(const zrig *r, const zchan *c, double t, double total)
 {
+    const double *kt = r->key_t + c->key0, *kv = r->key_v + c->key0;
+    int n = c->nkeys, i;
+    double span = kt[n - 1];
+    if (n == 1) return kv[0];
+    if (total < 0.0 && span > 1e-6) {           /* 循环动作：曲线整体循环 */
+        t = fmod(t, span);
+        if (t < 0.0) t += span;
+    }
+    if (t <= kt[0]) return kv[0];
+    if (t >= kt[n - 1]) return kv[n - 1];
+    for (i = 0; i < n - 1; ++i) {
+        /* 半开区间 [kt[i], kt[i+1])：正好落在关键帧上时要算"已经到了这一帧"，
+           否则阶梯插值在关键帧时刻还停在上一段的值。 */
+        if (t >= kt[i] && t < kt[i + 1]) {
+            double d = kt[i + 1] - kt[i];
+            double u = (d > 1e-9) ? (t - kt[i]) / d : 0.0;
+            if (c->interp == KI_STEP) return kv[i];
+            if (c->interp == KI_SMOOTH) u = z_smoothstep(u);
+            return kv[i] + (kv[i + 1] - kv[i]) * u;
+        }
+    }
+    return kv[n - 1];
+}
+
+static double eval_channel(const zrig *r, const zchan *c, double t, double total)
+{
+    if (c->nkeys > 0) return eval_keys(r, c, t, total);
     switch (c->wave) {
         case W_SINE:
             return c->amp * sin(2.0 * 3.14159265358979323846 * (c->freq * t + c->phase));
@@ -1500,7 +1606,7 @@ static void accumulate_action(zrig *r, const zaction *a, double t, double w, dou
            否则 talk 的 flap 和包络会叠在一起，嘴越张越大（sy 超过素材高度就是拉伸）。 */
         if (r->mouth_mute && c->part >= 0 && c->part < r->nparts &&
             (r->parts[c->part].tags & TAG_MOUTH)) continue;
-        v = eval_channel(c, t, total) * w;
+        v = eval_channel(r, c, t, total) * w;
         if (c->deform >= 0 && c->deform < r->ndeforms) {
             r->deforms[c->deform].amount += v;    /* 网格形变器只有一个标量 amount */
             continue;
@@ -1618,6 +1724,10 @@ static void physics_input(const zrig *r, const zphys *ph, double *out_x, double 
     double m[6], x0, y0;
     const zpart *p = &r->parts[ph->part];
     *out_x = *out_y = 0.0;
+    if (ph->driver_phys >= 0) {          /* 多段摆：输入 = 上一段这一帧的输出 */
+        *out_x = *out_y = r->phys[ph->driver_phys].out_last;
+        return;
+    }
     if (ph->driver < 0) return;
     x0 = p->pos[0];
     y0 = p->pos[1];
@@ -1641,7 +1751,7 @@ static void physics_update(zrig *r, double now)
     for (i = 0; i < r->nphys; ++i) {
         zphys *ph = &r->phys[i];
         double in, target, acc, out;
-        if (ph->part < 0 || ph->driver < 0) continue;
+        if (ph->part < 0 || (ph->driver < 0 && ph->driver_phys < 0)) continue;
         {
             double ix, iy;
             physics_input(r, ph, &ix, &iy);
@@ -1654,6 +1764,11 @@ static void physics_update(zrig *r, double now)
         /* 输出 = 摆尖相对驱动位置的落后量：静止时 pos→target，输出归零，
            所以它只加"惯性"，不会把头发永久吹偏。 */
         out = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
+        ph->out_last = out;                      /* 给下一段当输入 */
+        if (ph->deform >= 0 && ph->deform < r->ndeforms) {
+            r->deforms[ph->deform].amount += out;
+            continue;
+        }
         switch (ph->param) {
             case P_DX: r->p_dx[ph->part] += out; break;
             case P_DY: r->p_dy[ph->part] += out; break;
@@ -1852,6 +1967,15 @@ static double blink_update(zrig *r, double now)
             r->blink_value = a->blink_hold;
     }
     return r->blink_value;
+}
+
+double zrig_phys_output(const zrig *r, const char *id)
+{
+    int i;
+    if (!r || !id) return 0.0;
+    for (i = 0; i < r->nphys; ++i)
+        if (strcmp(r->phys[i].id, id) == 0) return r->phys[i].out_last;
+    return 0.0;
 }
 
 int zrig_deform_count(const zrig *r) { return r ? r->ndeforms : 0; }

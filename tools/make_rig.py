@@ -407,6 +407,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "head", "param": "dy", "wave": "sine", "amp": 1.2, "freq": 0.3},
              {"target": "head", "param": "dx", "wave": "sine", "amp": 2.0, "freq": 0.17},
          ]},
+        # 关键帧曲线动作（≈ Live2D 的 .motion3）：这条不是波形，而是逐帧给值。
+        # 波形做不出"快速下点 → 停顿 → 慢慢抬回"这种不对称节奏。
+        {"id": "nod", "priority": 6, "duration": 1.1, "return_state": "idle",
+         "interruptible": False, "fade": 0.12,
+         "channels": [
+             {"target": "head", "param": "rot_deg", "interp": "smooth",
+              "keys": [[0.0, 0.0], [0.18, 9.0], [0.42, 9.5], [0.75, -2.5], [1.1, 0.0]],
+              "note": "低头 9°，停一下，抬起时过冲 -2.5° 再回正"},
+             {"target": "head", "param": "dy", "interp": "smooth",
+              "keys": [[0.0, 0.0], [0.18, 4.0], [0.42, 4.0], [0.8, -1.0], [1.1, 0.0]]},
+             {"target": "chest", "param": "dy", "interp": "linear",
+              "keys": [[0.0, 0.0], [0.25, 2.0], [0.7, 0.0], [1.1, 0.0]]},
+         ]},
         {"id": "head_pat", "priority": 6, "duration": 1.0, "return_state": "idle",
          "interruptible": False,
          "channels": [
@@ -866,6 +879,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "param": "bend_x", "curve": "root",
              "ratio": 0.5, "stiffness": 42, "damping": 5.0, "max": 8,
              "note": "呆毛左右甩：根在底边，所以曲线用 root"},
+            # G16 多段摆：第二段的输入是第一段的输出（不是头的位移），
+            # 输出写进 S 形网格形变器 → 发根先动、发梢再慢半拍地甩出 S 形。
+            {"id": "ahoge_tip", "part": "hair_ahoge", "driver": "ahoge_x",
+             "deformer": "ahoge_s",
+             "ratio": 0.9, "stiffness": 26, "damping": 3.4, "max": 1.0,
+             "note": "呆毛第二段（梢）：串在 ahoge_x 后面，驱动 S 形形变器"},
             {"id": "ahoge_y", "part": "hair_ahoge", "driver": "head", "axis": "y",
              "param": "bend_y", "curve": "root",
              "ratio": 0.45, "stiffness": 55, "damping": 6.0, "max": 5,

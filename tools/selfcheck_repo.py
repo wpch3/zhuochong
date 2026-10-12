@@ -208,6 +208,39 @@ def check_rig(root):
         check("物理绑定的部件都存在", not badphy, f"坏物理：{badphy}" if badphy else
               f"{len(r.get('physics', []))} 条")
 
+        # 多段摆链（G16）：driver 要么是组，要么是**写在自己前面**的另一条 physics；
+        # 写在后面 = 这一帧拿到的是上一帧的旧值，引擎直接拒绝加载，所以这里先拦下来。
+        phys = r.get("physics", [])
+        seen, badchain, baddfm = [], [], []
+        for f in phys:
+            drv = f.get("driver")
+            if drv not in gids and drv not in seen:
+                badchain.append(f"{f['id']}→{drv}")
+            if f.get("deformer") and f["deformer"] not in dids:
+                baddfm.append(f"{f['id']}→{f['deformer']}")
+            seen.append(f.get("id"))
+        nchain = sum(1 for f in phys if f.get("driver") not in gids)
+        check("多段摆链的 driver 按根→梢顺序声明", not badchain and not baddfm,
+              f"坏链 {badchain} 坏形变器 {baddfm}" if (badchain or baddfm)
+              else f"{nchain} 条串在别的摆后面")
+
+        # 关键帧曲线（≈ .motion3）：时间必须递增、每帧两个数、不能越过动作时长太多
+        badkeys = []
+        for a in r.get("actions", []):
+            for ci, c in enumerate(a.get("channels", [])):
+                ks = c.get("keys")
+                if not ks:
+                    continue
+                if any(len(k) < 2 for k in ks):
+                    badkeys.append(f"{a['id']}#{ci}:帧要写成[时间,值]")
+                elif any(ks[i][0] > ks[i + 1][0] for i in range(len(ks) - 1)):
+                    badkeys.append(f"{a['id']}#{ci}:时间倒退")
+                elif c.get("interp") not in (None, "linear", "smooth", "step"):
+                    badkeys.append(f"{a['id']}#{ci}:interp={c['interp']}")
+        nkey = sum(1 for a in r.get("actions", []) for c in a.get("channels", []) if c.get("keys"))
+        check("关键帧曲线写法合法", not badkeys,
+              f"坏关键帧 {badkeys[:3]}" if badkeys else f"{nkey} 条关键帧通道")
+
 
 # ------------------------------------------------------------------ 4 角色包其它引用
 def check_character(root):
