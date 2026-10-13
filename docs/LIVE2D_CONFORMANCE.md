@@ -135,6 +135,56 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 证据：`logs/asset_qa/_viseme_sheet.jpg`（冻结时钟 + 7× 放大的七张嘴）；
 闸门：`test_viseme()` 要求 A/I/U/E/O **两两像素差 > 25px**，且 い 必须比 う 宽。
 
+### 表情和口型抢同一个参数时谁说了算（执行序）
+
+笑着说「う」：笑脸要把 `ParamMouthForm` 推向 +（横咧），「う」要把它推向 −（撅圆）。
+两层写同一个参数，**谁后跑谁说了算**。官方的答案写在
+`CubismWebFramework/src/motion/icubismupdater.ts` 的执行序常量里
+（`CubismUpdateScheduler` 按这个号排序，不是按 `addUpdatableList` 的调用顺序）：
+
+| 序号 | 官方更新器 | 小寻对应 | 实现 |
+| --- | --- | --- | --- |
+| 200 | EyeBlink | 自动眨眼状态机 | `zrig_blink_*`（五态） |
+| 300 | Expression | 表情层（两条轨 + 淡入淡出） | `expr_apply()` |
+| 400 | Drag（视线跟随） | `/api/gaze` + 跟随平滑 | `zrig_gaze_*` |
+| 500 | Breath | 呼吸 | `ParamBreath` 通道 |
+| 600 | Physics | 物理摆链（多段） | `zrig_physics_*` |
+| **700** | **LipSync** | **口型音素层** | `param_effective()` 里的音素段 |
+| 800 | Pose | 互斥组淡化 | `zrig_pose_*` |
+
+所以我们的一帧是：**动作（含 fade）→ Pose → 参数 + 表情 → 口型 → 跟随 → 物理**，
+口型排在表情之后 —— 这一条有单测守着（`test_expr_viseme_order()`）。
+
+**一处有意偏差，必须登记：官方 LipSync 是纯加算，我们是「口型落位 + 给表情留余味」。**
+
+| | 官方 | 小寻 | 为什么 |
+| --- | --- | --- | --- |
+| 写法 | `addParameterValueById(id, v, 0.8)`（`lappmodel.ts`） | `v = viseme + (表情后的值 − 默认值) × (1 − w)`，`w = viseme_weight` 默认 **0.8** | 官方的 LipSync 组**只含 `ParamMouthOpenY`**（单调开合，加算不会打架）；我们把 `ParamMouthForm` 也纳入音素层（五张嘴必须有嘴形），纯加算会让「笑(+0.7) + う(−1.0)」抵消成 −0.3 的中性嘴，口型白做 |
+| 权重 | 0.8 | `rig.json` 顶层 `viseme_weight`，默认 0.8（同一个数） | 1.0 = 说话时表情完全不参与；0 = 口型不接管嘴 |
+| 结果 | 嘴形被表情拖走 | 笑 + う → Form **−0.86**（仍是撅圆），不笑的 う → −1.00 | 表情的"味道"留 20% |
+
+实测（`/api/params.json` 的 `value` / `expr` / `effective` 三列，冻结时钟）：
+
+| 状态 | `ParamMouthForm` 参数值 | 过表情后 | 最终 | `ParamMouthOpenY` 最终 |
+| --- | --- | --- | --- | --- |
+| 中性 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 只笑 | 0.00 | +0.70 | **+0.70** | 0.00 |
+| 只说 う | 0.00 | 0.00 | **−1.00** | 0.30 |
+| 笑着说 う | 0.00 | +0.70 | **−0.86** | 0.30 |
+
+证据图 `logs/asset_qa/_expr_viseme_sheet.jpg`（四张嘴的特写）；
+闸门：`test_expr_viseme_order()`（笑 + う 的 Form 必须 < −0.5，且像素上和"只笑"不是同一张嘴）、
+`test_expression_blend()`（Add / Multiply / Overwrite 三种混合的算术）、
+`api_smoke.py` 的 4 项、`selfcheck_repo.py` 的 7 项静态闸。
+负控做过三次：`viseme_weight=0` → 判红、`=1.0` → 判红（表情余味没了）、
+把 `EXPR_MUL` 退化成加算 → 判红。
+
+**表情三种 Blend 的算术**（照 `CubismExpressionMotion::calculateExpressionParameters`，
+也和 BongoCat 的 `evaluate_expression_parameter` 一致）：三个累加器
+`overwrite = 基准值`、`additive = 0`、`multiply = 1`，逐层按淡入权重 `w` 线性混，
+最后 `(overwrite + additive) × multiply`。我们的两条轨（当前表情 `w`、上一个表情 `1−w`）
+就是按这个口径算的。
+
 ## 二、文件结构对照（model3 / motion3 / exp3 / physics3 / pose3 …）
 
 | Live2D 文件 | 作用 | 小寻怎么对应 | 判定 |
@@ -144,7 +194,7 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 | `.model3.json` `Groups` | `EyeBlink` / `LipSync` 两组 | **本轮补** `rig.json` 的 `param_groups` | ✅ 而且**不是摆设**：自动眨眼只眨组里列的眼，口型只写组里声明的参数（改组名会改行为，有单测守着） |
 | `.model3.json` `HitAreas` | `Head` / `Body` 点击区 | `regions`（head / body / feet 三块，各自带动作与光标） | 等价且更强（我们多一层"点了触发哪个动作"） |
 | `.motion3.json` | 关键帧动作曲线，目标是**参数** | `actions[].channels[].keys`，**本轮起 `target` 可以直接写 `ParamXxx`** | ✅ 协议打通。差异：我们是 `linear/smooth/step`，官方是贝塞尔；可后加，属于纯增量 |
-| `.exp3.json` | 表情（参数偏移，Add/Multiply/Overwrite） | `expressions[].params[].mode = add / set` | 基本等价（缺 multiply，需要时再加） |
+| `.exp3.json` | 表情（参数偏移，Add/Multiply/Overwrite） | `expressions[].params[].mode = add / set(=overwrite) / multiply` | ✅ 三种混合都有，求值照 `CubismExpressionMotion` 的三累加器 |
 | `.physics3.json` | 摆动：**参数 → 参数**，带 Vertices 摆链 | `physics[]`：**部件/形变器 → 位移**，driver 可串另一条 physics（多段摆链） | 功能等价，**语义不同**（见下） |
 | `.pose3.json` | 互斥部件组 + 淡入淡出 | `poses[]`（眼高光形状差分在用） | 等价 |
 | `.cdi3.json` | 编辑器显示信息（参数中文名/分组） | 参数的 `label` 字段 + `/api/params.json` | 等价（测试台的滑条就是它长出来的） |
@@ -183,7 +233,7 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 | 🔴 **补不回来**（会污染全部动作/表情/外部接口） | 参数命名空间与语义（左右眼拆分、`ParamCheek` 正名、取值范围对齐官方） | **本轮已做**，并用 `selfcheck`（静态）+ `test_core`（运行时）双闸焊死 |
 | 🔴 **补不回来** | 素材的拆件结构（挡住的地方必须有画、关节两侧要塗り足し） | 已做：眼/嘴/眉/发/臂/腕/腿全部拆到位 |
 | 🟠 代价大 | 动作改成"写参数"而不是"写部件通道" | 通道已支持 `target:"ParamXxx"`；现有 18 个动作仍写部件（能跑、可逐个迁移） |
-| 🟢 随时能补 | physics 的参数级 I/O、motion3 贝塞尔、exp3 multiply、cdi3 导出 | 纯增量，不动素材 |
+| 🟢 随时能补 | physics 的参数级 I/O、motion3 贝塞尔、cdi3 导出（~~exp3 multiply~~ 2026-10-13 已补） | 纯增量，不动素材 |
 | 🟢 随时能补 | 笑眼 / 眉形 / 瞳孔形状 / I·U·E·O 口型 | 画了就能挂，结构已经留好 |
 
 ---

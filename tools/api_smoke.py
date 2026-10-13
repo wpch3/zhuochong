@@ -212,6 +212,44 @@ def run(base, root):
     time.sleep(0.25)
     off_hash, _ = a.frame_hash()
     check("松口后嘴回到闭合", off_hash != hashes["A"], "%s vs %s" % (off_hash, hashes["A"]))
+    # 表情 × 口型：Cubism 执行序里 LipSync(700) 排在 Expression(300) 之后，
+    # 所以「笑着说 う」嘴还得是撅的，不能被笑脸抵消成中性。
+    def _eff(pid):
+        for q in (a.json("/api/params.json") or {}).get("params", []):
+            if q["id"] == pid:
+                return q.get("effective")
+        return None
+    check("params.json 每个参数都带 effective（合成后的最终值）",
+          all("effective" in q for q in (pj.get("params") or [])),
+          "%d 个参数" % len(pj.get("params") or []))
+    check("params.json 每个参数都带 expr（只过表情那一层）",
+          all("expr" in q for q in (pj.get("params") or [])),
+          "%d 个参数" % len(pj.get("params") or []))
+    check("params.json 报出口型权重和当前表情",
+          "viseme_weight" in pj and "expression" in pj,
+          json.dumps({k: pj.get(k) for k in ("viseme_weight", "expression")},
+                     ensure_ascii=False))
+    a.hit("/api/expression?id=smile")   # 冻结时钟下服务端会自动 snap
+    time.sleep(0.15)
+    mouth = next((q for q in (a.json("/api/params.json") or {}).get("params", [])
+                  if q["id"] == "ParamMouthForm"), {})
+    check("表情只改合成结果，不写坏参数本身的值",
+          abs(mouth.get("value", 1)) < 1e-6 and mouth.get("expr", 0) > 0.1,
+          "value %.3f / expr %.3f" % (mouth.get("value", 0), mouth.get("expr", 0)))
+    form_smile = _eff("ParamMouthForm")
+    check("笑脸把 MouthForm 推向 +（横咧）", (form_smile or 0) > 0.1, str(form_smile))
+    smile_hash, _ = a.frame_hash()
+    a.json("/api/viseme?v=U&w=1")
+    time.sleep(0.15)
+    form_smile_u = _eff("ParamMouthForm")
+    check("笑着说 う 时嘴还是撅的（口型压过表情）", (form_smile_u or 0) < -0.5,
+          "笑 %.3f → 笑+う %.3f" % (form_smile or 0, form_smile_u or 0))
+    smile_u_hash, _ = a.frame_hash()
+    check("笑 + う 和只笑不是同一张嘴", smile_hash != smile_u_hash,
+          "%s vs %s" % (smile_hash[:6], smile_u_hash[:6]))
+    a.hit("/api/viseme?v=off")
+    a.hit("/api/expression?off=1")
+    time.sleep(0.2)
     if "ParamEyeSparkle" in pids:
         a.hit("/api/param?id=ParamEyeSparkle&v=0"); s0, _ = a.frame_hash()
         a.hit("/api/param?id=ParamEyeSparkle&v=1"); s1, _ = a.frame_hash()
@@ -427,6 +465,14 @@ def run(base, root):
         except Exception:                            # noqa: BLE001
             st, b = 0, b""
         check("页面 %s 能打开" % path, st == 200 and len(b) > 500, "%d 字节" % len(b))
+    try:
+        _, page = a.get("/test.html")
+        _, js = a.get("/test.js")
+    except Exception:                                # noqa: BLE001
+        page, js = b"", b""
+    check("测试台有「表情 × 口型」分层看板",
+          b"mx-table" in page and b"mixRefresh" in js,
+          "test.html %d 字节 / test.js %d 字节" % (len(page), len(js)))
 
 
 def main():

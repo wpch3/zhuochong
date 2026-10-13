@@ -41,6 +41,11 @@ def section(title):
         print(f"\n== {title} ==")
 
 
+def read(path):
+    """读源码文本；文件不在就返回空串（后面的 check 自然判红）。"""
+    return io.open(path, encoding="utf-8").read() if os.path.exists(path) else ""
+
+
 def jsonc(path):
     """读 JSONC（配置里允许 // 注释）。"""
     txt = open(path, encoding="utf-8").read()
@@ -418,6 +423,38 @@ def check_live2d(root):
             missing = [i for i in ids if i not in doc_txt]
             check("对照表覆盖所有参数", not missing,
                   f"文档里查不到 {missing[:4]}" if missing else f"{len(ids)} 个参数都有记载")
+
+        # ⑧ 表情 × 口型的叠加口径：权重要在 0~1，而且必须在对照表里登记成偏差
+        vw = r.get("viseme_weight", 0.8)
+        check("口型权重 viseme_weight 在 0~1", isinstance(vw, (int, float)) and 0.0 <= vw <= 1.0,
+              f"{tag}：viseme_weight={vw}")
+        if doc_txt:
+            check("对照表登记了口型压过表情的口径", "viseme_weight" in doc_txt,
+                  "docs/LIVE2D_CONFORMANCE.md 里要写明 LipSync 为什么不是纯加算")
+
+    # ⑨ 引擎这边：三种 Blend 都在、执行序是「表情 → 口型」、API 把分层值报出来
+    rig_c = read(os.path.join(root, "src/core/zrig.c"))
+    head_c = read(os.path.join(root, "src/headless/main_headless.c"))
+    test_c = read(os.path.join(root, "tests/test_core.c"))
+    page = read(os.path.join(root, "web/test.html"))
+    check("表情支持 Cubism 的三种 Blend（add / multiply / overwrite）",
+          all(k in rig_c for k in ("EXPR_MUL", '"multiply"', '"overwrite"')),
+          "src/core/zrig.c")
+    check("表情按三累加器求值（overwrite + additive）× multiply",
+          "expr_apply" in rig_c and "(base + ov + add) * mul" in rig_c.replace("  ", " "),
+          "照 CubismExpressionMotion 的 calculateExpressionParameters")
+    check("口型层排在表情之后（param_effective 里先表情后音素）",
+          "param_effective" in rig_c
+          and rig_c.index("expr_apply(r, pi") < rig_c.index("viseme_slot(r, pi)"),
+          "官方执行序 Expression 300 < LipSync 700")
+    check("音素层不回写基础参数值（分层，不是改滑条）",
+          "viseme_write" not in rig_c, "viseme_write() 已删除")
+    check("/api/params.json 报出分层值（value / expr / effective）",
+          all(k in head_c for k in ('\\"expr\\":', '\\"effective\\":')), "src/headless/main_headless.c")
+    check("有「表情 × 口型」的单测和负控判据",
+          "test_expr_viseme_order" in test_c and "test_expression_blend" in test_c,
+          "tests/test_core.c")
+    check("测试台有分层看板", "mx-table" in page, "web/test.html")
 
 # ------------------------------------------------------------------ 4 角色包其它引用
 def check_character(root):

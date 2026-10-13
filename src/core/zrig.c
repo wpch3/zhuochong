@@ -192,7 +192,9 @@ typedef struct {
 
 /* 表情（Live2D 的 expression）：一组参数偏移，叠在当前动作之上，自带淡入淡出。
    和动作的区别 —— 表情不占用动作状态机，"笑着挥手"不需要再做一个新动作。 */
-enum { EXPR_ADD = 0, EXPR_SET };
+/* Cubism 的 exp3.json 有三种 Blend：Add / Multiply / Overwrite —— 三种都要有，
+   否则别人做的表情文件导进来会按加算算，数值差一大截。 */
+enum { EXPR_ADD = 0, EXPR_SET, EXPR_MUL };
 
 typedef struct {
     int    param;             /* 参数下标 */
@@ -377,6 +379,7 @@ struct zrig {
     double  vis_weight;      /* 目标强度 0..1（= 这一帧的音量） */
     int     vis_active;      /* 嘴是否由音素层接管 */
     double  vis_last;        /* 上次平滑的时刻，<0 = 还没开始 */
+    double  vis_mix;         /* 口型压过表情的权重（官方 SDK 对 LipSync 用 0.8） */
 
     /* 渲染用的"最终值"：表情会往上叠，所以和子系统自己的值分开存 */
     double  blink_now;
@@ -1162,6 +1165,10 @@ static int load_visemes(zrig *r, const zjson *jv, zdiag *d, const char *file)
     r->vis_weight = 0.0;
     r->vis_active = 0;
     r->vis_last = -1.0;
+    /* 只夹范围，不替换 0：写 0 的意思就是「口型不压表情」，必须照做，
+       否则负控试验永远红不了（见 LESSONS「跳过即通过」）。 */
+    if (r->vis_mix < 0.0) r->vis_mix = 0.0;
+    if (r->vis_mix > 1.0) r->vis_mix = 1.0;
     if (!jv) { viseme_default_table(r); return 0; }
     if (!zjson_is(jv, ZJSON_ARR)) {
         zdiag_error(d, file, jv->line, 0, "visemes", "期望 array");
@@ -1224,20 +1231,12 @@ static double viseme_target_for(const zrig *r, int pi)
     return base;
 }
 
-static void viseme_write(zrig *r)
-{
-    int k;
-    for (k = 0; k < r->nvis_p; ++k)
-        zrig_param_set(r, r->params[r->vis_pidx[k]].id, r->vis_cur[k]);
-}
-
 static void viseme_release(zrig *r)
 {
     int k;
     for (k = 0; k < r->nvis_p; ++k) {
-        int pi = r->vis_pidx[k];
-        r->vis_cur[k] = r->params[pi].vdef;
-        zrig_param_reset(r, r->params[pi].id);
+        /* 只收回音素层自己的值；基础参数是用户/动作的地盘，不碰 */
+        r->vis_cur[k] = r->params[r->vis_pidx[k]].vdef;
     }
     r->vis_active = 0;
     r->vis_target = -1;
@@ -1270,7 +1269,6 @@ static void viseme_update(zrig *r, double now)
         if (fabs(cur - base) > 4e-3) settled = 0;
         if (fabs(tgt - base) > 1e-6) all_base = 0;
     }
-    viseme_write(r);
     if (settled && all_base) viseme_release(r);   /* 收干净了就把嘴交还给动作 */
 }
 
@@ -1348,9 +1346,10 @@ void zrig_viseme_snap(zrig *r)
     if (!r || !r->vis_active) return;
     for (k = 0; k < r->nvis_p; ++k)
         r->vis_cur[k] = viseme_target_for(r, r->vis_pidx[k]);
-    viseme_write(r);
     r->vis_last = r->now;
 }
+
+double zrig_viseme_mix(const zrig *r) { return r ? r->vis_mix : 0.0; }
 
 const char *zrig_viseme_current(const zrig *r)
 {
@@ -1540,7 +1539,8 @@ static int load_expressions(zrig *r, const zjson *je, zdiag *d, const char *file
                 return -1;
             }
             x->value = zjson_num(zjson_obj_get(pj, "value"), 0.0);
-            x->mode = z_streq(md, "set") ? EXPR_SET : EXPR_ADD;
+            x->mode = (z_streq(md, "set") || z_streq(md, "overwrite")) ? EXPR_SET
+                    : ((z_streq(md, "multiply") || z_streq(md, "mul")) ? EXPR_MUL : EXPR_ADD);
             r->nexprps++;
             e->np++;
         }
@@ -1549,11 +1549,14 @@ static int load_expressions(zrig *r, const zjson *je, zdiag *d, const char *file
 }
 
 /* 这一帧某个参数被表情改了多少（已含淡入淡出权重）。 */
-static double expr_offset(const zrig *r, int pi)
+/* 表情层：把 base 过一遍当前/上一个表情（带淡化权重），返回表情之后的值。
+   三个累加器照搬 Cubism 的 CubismExpressionMotion：overwrite / additive / multiply，
+   最终 (overwrite + additive) * multiply。 */
+static double expr_apply(const zrig *r, int pi, double base)
 {
-    double w = 1.0, off = 0.0;
+    double w = 1.0, ov = 0.0, add = 0.0, mul = 1.0;
     int pass;
-    if (r->expr_cur < 0 && r->expr_prev < 0) return 0.0;
+    if (r->expr_cur < 0 && r->expr_prev < 0) return base;
     if (r->expr_fade > 1e-6) w = z_smoothstep(ZC_CLAMP((r->now - r->expr_t0) / r->expr_fade, 0.0, 1.0));
     for (pass = 0; pass < 2; ++pass) {
         int ei = pass ? r->expr_prev : r->expr_cur;
@@ -1565,11 +1568,44 @@ static double expr_offset(const zrig *r, int pi)
         for (k = 0; k < e->np; ++k) {
             const zexprp *x = &r->exprps[e->p0 + k];
             if (x->param != pi) continue;
-            if (x->mode == EXPR_SET) off += ww * (x->value - r->params[pi].value);
-            else                     off += ww * x->value;
+            if (x->mode == EXPR_SET)      ov  += ww * (x->value - base);
+            else if (x->mode == EXPR_MUL) mul += ww * (x->value - 1.0);
+            else                          add += ww * x->value;
         }
     }
-    return off;
+    return (base + ov + add) * mul;
+}
+
+/* 这个参数是不是正由口型音素层接管？是就返回它在音素层里的槽位。 */
+static int viseme_slot(const zrig *r, int pi)
+{
+    int k;
+    if (!r->vis_active) return -1;
+    for (k = 0; k < r->nvis_p; ++k)
+        if (r->vis_pidx[k] == pi) return k;
+    return -1;
+}
+
+/* 一个参数这一帧的**最终值**：动作通道 → 表情 → 口型。
+   顺序照 Cubism 官方的执行序（ICubismUpdater：EyeBlink 200 / Expression 300 /
+   Drag 400 / Breath 500 / Physics 600 / **LipSync 700** / Pose 800）——
+   口型排在表情后面，所以「笑着说う」时嘴还是撅圆的，不会被笑脸抵消成中性。 */
+static double param_effective(const zrig *r, int pi)
+{
+    const zparam *q = &r->params[pi];
+    double v = expr_apply(r, pi, q->value + r->p_action[pi]);
+    int k = viseme_slot(r, pi);
+    if (k >= 0) {
+        /* 口型层落到自己的目标形（嘴该多大就多大），只给表情/动作留 1-w 的余味。
+           官方是 addParameterValueById(id, v, 0.8)，纯加算——对只驱动开合的
+           ParamMouthOpenY 没问题，但我们连 ParamMouthForm 一起驱动，加算会让
+           「笑(+Form) + う(-Form)」抵消成中性嘴，所以改成这个口径（见
+           docs/LIVE2D_CONFORMANCE.md 的偏差登记）。 */
+        v = r->vis_cur[k] + (v - q->vdef) * (1.0 - r->vis_mix);
+    }
+    if (v < q->vmin) v = q->vmin;
+    if (v > q->vmax) v = q->vmax;
+    return v;
 }
 
 static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
@@ -1947,6 +1983,12 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
     if (load_param_groups(r, zjson_obj_get(root, "param_groups"), diag, file) != 0) goto fail;
+    {   /* 口型压过表情的权重：官方 SDK 对 LipSync 用 0.8，缺省就取它 */
+        const zjson *jw = zjson_obj_get(root, "viseme_weight");
+        r->vis_mix = zjson_num(jw, 0.8);
+        if (jw && (r->vis_mix < 0.0 || r->vis_mix > 1.0))
+            zdiag_warn(diag, file, jw->line, 0, "viseme_weight", "应在 0~1，已夹回");
+    }
     /* 音素表要用参数下标，必须排在 params / param_groups 之后 */
     if (load_visemes(r, zjson_obj_get(root, "visemes"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
@@ -2273,9 +2315,9 @@ static void compute_group_transforms(zrig *r)
         r->gaze_ny = r->gaze_y;
         for (i = 0; i < r->nparams; ++i) {
             const zparam *q = &r->params[i];
-            /* 叠加序：动作通道（≈ .motion3 曲线）→ 表情偏移 → 参数自身的值 */
-            double off = expr_offset(r, i) + r->p_action[i];
-            double v = q->value + off;
+            /* 叠加序：动作通道（≈ .motion3 曲线）→ 表情 → 口型音素（官方 LipSync 排在表情之后） */
+            double v = param_effective(r, i);
+            double off = v - q->value;
             int k;
             switch (q->builtin) {
                 case PBI_ANGLE_X:   lx += off / 30.0; continue;
@@ -3229,6 +3271,16 @@ int zrig_expression_set(zrig *r, const char *id)
 
 void zrig_expression_clear(zrig *r) { (void)zrig_expression_set(r, NULL); }
 
+/* 跳过表情的淡入淡出直接到位：冻结时钟（/api/pause）下 now 不走，
+   淡入永远卡在 0，测试台和 smoke 就看不到表情——和 zrig_viseme_snap 同一个理由。 */
+void zrig_expression_snap(zrig *r)
+{
+    if (!r) return;
+    r->expr_prev = -1;
+    r->expr_fade = 0.0;
+    r->expr_t0 = r->now;
+}
+
 /* ---- Pose（A8）---- */
 int zrig_pose_count(const zrig *r) { return r ? r->nposes : 0; }
 
@@ -3360,6 +3412,26 @@ double zrig_param_get(const zrig *r, const char *id)
     if (!r) return 0.0;
     i = param_find(r, param_alias(id));
     return (i < 0) ? 0.0 : r->params[i].value;
+}
+
+/* 参数这一帧的最终值（动作 + 表情 + 口型都算进去）。
+   `zrig_param_get` 给的是"参数自己的值"，两者在表情/口型期间会不一样。 */
+double zrig_param_effective(const zrig *r, const char *id)
+{
+    int i;
+    if (!r) return 0.0;
+    i = param_find(r, param_alias(id));
+    return (i < 0) ? 0.0 : param_effective(r, i);
+}
+
+/* 只走到表情那一层（不含口型）：测试台要并排显示 参数值 → 表情后 → 最终 */
+double zrig_param_expr_value(const zrig *r, const char *id)
+{
+    int pi;
+    if (!r || !id) return 0.0;
+    pi = param_find(r, id);
+    if (pi < 0) return 0.0;
+    return expr_apply(r, pi, r->params[pi].value + r->p_action[pi]);
 }
 
 int zrig_param_set(zrig *r, const char *id, double v)

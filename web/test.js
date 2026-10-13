@@ -254,6 +254,7 @@ async function loadVisemes() {
     b.onclick = async () => {
       const w = +$("s-visw").value;
       const r = await api(`/api/viseme?v=${encodeURIComponent(b.dataset.v)}&w=${w.toFixed(2)}`);
+      mixRefresh();
       $("vis-info").textContent = r && r.ok
         ? `音素 ${r.viseme || "—"} · 强度 ${(+r.weight).toFixed(2)} · ` +
           `OpenY ${(+r.open).toFixed(2)} / Form ${(+r.form).toFixed(2)}`
@@ -262,6 +263,55 @@ async function loadVisemes() {
     };
   });
 }
+/* ---------- 表情 × 口型：分层求值看板 ----------
+   参考 Cubism 的 ICubismUpdater 执行序（Expression 300 在 LipSync 700 之前）、
+   airi devtools 的分层显示、BongoCat expression.rs 的三累加器求值。 */
+const MIX_PARAMS = ["ParamMouthOpenY", "ParamMouthForm"];
+async function loadMixPanel() {
+  const d = await fetch("/api/params.json").then((x) => x.json()).catch(() => null);
+  const es = (info && info.expressions) || [];
+  const se = $("mx-expr"), sv = $("mx-vis");
+  if (!se || !sv) return;
+  se.innerHTML = `<option value="">（无表情）</option>` +
+    es.map((e) => `<option value="${e.id}">${e.name || e.id}</option>`).join("");
+  sv.innerHTML = `<option value="">（不说话）</option>` +
+    ((d && d.visemes) || []).map((v) => `<option value="${v}">${v}</option>`).join("");
+  mixRefresh();
+}
+async function mixApply() {
+  const e = $("mx-expr").value, v = $("mx-vis").value;
+  await api(e ? "/api/expression?id=" + encodeURIComponent(e) : "/api/expression?off=1");
+  await api(v ? `/api/viseme?v=${v}&w=${(+$("s-visw").value).toFixed(2)}` : "/api/viseme?v=off");
+  await sleep(320);                 /* 等表情淡入和口型平滑走完 */
+  refresh(); mixRefresh();
+}
+async function mixPreset(e, v) {
+  $("mx-expr").value = e; $("mx-vis").value = v;
+  await mixApply();
+}
+async function mixRefresh() {
+  const body = $("mx-body");
+  if (!body) return;
+  const d = await fetch("/api/params.json", { cache: "no-store" })
+    .then((x) => x.json()).catch(() => null);
+  if (!d || !d.params) return;
+  const rows = MIX_PARAMS.map((id) => d.params.find((p) => p.id === id)).filter(Boolean);
+  body.innerHTML = rows.map((p) => {
+    const moved = Math.abs((p.effective ?? 0) - (p.expr ?? 0)) > 0.005;
+    return `<tr>
+      <td><code>${p.id}</code></td>
+      <td>${(+p.value).toFixed(3)}</td>
+      <td>${(+(p.expr ?? 0)).toFixed(3)}</td>
+      <td style="color:${moved ? "#6cb4c0" : "#cfd4e0"}">
+        <b>${(+(p.effective ?? 0)).toFixed(3)}</b></td></tr>`;
+  }).join("");
+  const vi = d.viseme || {};
+  $("mx-info").textContent =
+    `当前表情 ${(d.expression || "—")} · 口型 ${vi.id || "—"}` +
+    (vi.id ? ` 强度 ${(+vi.weight).toFixed(2)}` : "") +
+    ` · 口型权重 ${(d.viseme_weight ?? 0.8)}（官方 LipSync 用 0.8）`;
+}
+
 async function playVowels() {
   const seq = ["A", "I", "U", "E", "O", "SIL"];
   for (const v of seq) {
@@ -634,6 +684,7 @@ async function runSuite() {
   await loadParams();
   await loadLipsync();
   await loadVisemes();
+  await loadMixPanel();
   setInterval(() => { if (!suiteRunning) refresh(); }, 100);
   setInterval(loadInfo, 1000);
   setInterval(() => {

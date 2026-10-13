@@ -1272,6 +1272,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # 口型音素表（Live2D 的「母音認識方式」）。官方标准参数里没有
         # ParamMouthA/I/U/E/O —— あ/い/う/え/お 是「开多大 × 嘴形」的组合，
         # 所以这里是一张组合表，而不是五个自造参数。引擎按它平滑地摆嘴形。
+        # 口型层压过表情的权重：官方 SDK 给 LipSync 用的就是 0.8
+        # （CubismWebSamples lappmodel.ts: addParameterValueById(id, value, 0.8)）。
+        # 1.0 = 说话时表情完全不参与；0 = 口型不接管嘴。
+        "viseme_weight": 0.8,
         "visemes": viseme_list(mouth=mouth),
         "expressions": expression_list(mouth=mouth,
                                        has_brows=any(p["id"] == "brow_l" for p in parts_list),

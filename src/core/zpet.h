@@ -90,6 +90,8 @@ void   zpet_pose_snap(zpet *p);   /* 跳过淡化直接到位（冻结时钟时�
 
 /* 命名参数层（≈ Live2D 的 ParamXxx）：测试台滑条 / 脚本 / 口型都走这张表 */
 double zpet_param_get(const zpet *p, const char *id);
+double zpet_param_effective(const zpet *p, const char *id);
+double zpet_param_expr_value(const zpet *p, const char *id);
 /* model3.json 的 Groups：口型写哪个参数 / 自动眨眼眨哪只眼（位 0 左、位 1 右） */
 const char *zpet_lipsync_param(const zpet *p);
 int    zpet_blink_targets(const zpet *p);
@@ -101,6 +103,8 @@ int    zpet_param_set(zpet *p, const char *id, double v);
 int         zpet_viseme_set(zpet *p, const char *id, double weight);
 void        zpet_viseme_clear(zpet *p);
 void        zpet_viseme_snap(zpet *p);   /* 冻结时钟时跳过平滑 */
+void        zpet_expression_snap(zpet *p);  /* 冻结时钟时表情直接到位 */
+double      zpet_viseme_mix(const zpet *p);  /* 口型压过表情的权重（官方 0.8） */
 const char *zpet_viseme_current(const zpet *p);   /* 没接管时是空串 */
 double      zpet_viseme_weight(const zpet *p);
 int         zpet_viseme_count(const zpet *p);

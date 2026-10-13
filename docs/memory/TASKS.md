@@ -17,6 +17,7 @@
 两档平滑（attack 50/s、release 30/s）。`ParamMouthForm` 的 bind 提到 ±22/26% 并把上唇线锚点挪到中点。
 闸门：`test_viseme()`（两两 >25px、い 比 う 宽）+ smoke 10 项 + selfcheck 6 项；
 证据图 `logs/asset_qa/_viseme_sheet.jpg` |
+| T2.1.3b | 表情 × 口型的叠加口径（G38） | [x] | ✅ 2026-10-13 照官方 `ICubismUpdater` 执行序把口型排在表情之后（Expression 300 < LipSync 700）：`param_effective()` = 动作 → 表情（三累加器 `(base+ov+add)×mul`，补齐 exp3 的 multiply）→ 口型（按 `viseme_weight` 默认 0.8 落位，给表情留 20% 余味）。「笑着说う」Form −0.86（纯加算会抵消成 −0.30）。音素层不再回写基础参数；`/api/params.json` 报 `value / expr / effective` 三列；测试台加分层看板。闸门：`test_expr_viseme_order()` + `test_expression_blend()` + smoke 6 项 + selfcheck 9 项，负控 3 次全红 |
 | T2.1.4 | 眉毛：常态/上扬（喜）/下压（怒、悲）/八字（害羞） | [ ] | 左右分开，位置对齐 |
 | T2.1.5 | 前发分层：刘海（中/左/右）、鬓角 L/R | [ ] | 切到头发时能单独摆动；被遮挡的额头要补图 |
 | T2.1.6 | 后发（短发版 / 中长发版） | [ ] | 发根补图，转头不裂缝 |

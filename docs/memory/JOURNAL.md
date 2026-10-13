@@ -247,3 +247,27 @@
 - 负控：把 `visemes` 里 U 改成和 I 一模一样 → 「最接近的两个音素 I/U 也要差 >25px（实际 0）」+「い 要比 う 宽」双红；把 `ParamMouthForm` 的 binds 清空 → 「标准参数不能是死的」+「い 比 う 宽」双红；复原后 450/0。
 - 数字：单测 **450/0**（+28）、selfcheck **64/0**（+8）、smoke **78/0**（+10）、ASan 0、check_assets 358/0。证据图 `logs/asset_qa/_viseme_sheet.jpg`（七张嘴，冻结时钟 + 7× 放大）。
 - 下一步：表情与口型的叠加口径（说话时做"笑"表情，两边抢 `ParamMouthForm`）；之后是 `ParamEyeLSmile/RSmile` 的笑眼素材。
+
+## 2026-10-13 表情 × 口型的叠加口径（G38）
+
+- 做了什么：先查官方 SDK 的执行序再动手（`icubismupdater.ts`：EyeBlink 200 / Expression 300 /
+  Drag 400 / Breath 500 / Physics 600 / **LipSync 700** / Pose 800）→ 把口型层挪到表情之后；
+  表情求值重写成 Cubism 的三累加器 `(base + overwrite + additive) × multiply`
+  （照 `cubismexpressionmotion.ts` 与 BongoCat 的 `expression.rs`），顺手补上第三种混合
+  **multiply**（原来只有 add / set）；音素层**不再回写基础参数**（删掉 `viseme_write()`），
+  改成 `param_effective()` 分层合成；`/api/params.json` 每个参数多报
+  `expr`（过表情后）和 `effective`（最终）两列；测试台加「表情 × 口型」看板。
+- 效果：「笑着说う」的 `ParamMouthForm` 从被抵消的 −0.30 变成 **−0.86**（仍是撅圆的嘴），
+  只笑 +0.70、只说う −1.00。证据图 `logs/asset_qa/_expr_viseme_sheet.jpg`（四张嘴特写）。
+- 遇到/修了什么：① 官方的 LipSync 是纯加算，但它的 LipSync 组**只含 `ParamMouthOpenY`**；
+  我们连 `ParamMouthForm` 一起驱动，加算必然抵消 → 改成"音素落位 + 给表情留 (1−w) 余味"，
+  这是有意偏差，已登记进合规表；② 发现一个**自己埋的"跳过即通过"**：
+  `load_visemes()` 里写着 `if (vis_mix <= 0) vis_mix = 0.8`，于是把权重设 0 的负控永远红不了
+  —— 改成只夹范围不替换 0；③ 冻结时钟（`/api/pause`）下表情淡入走不动，smoke 里刚设上的表情
+  等于没设 → 补 `zrig_expression_snap()`，`/api/expression` 在 `g_frozen` 时自动调用
+  （和 `zrig_viseme_snap` 同一个理由）；④ 音素层改成分层后，`zrig_param_get` 不再跟着动，
+  老断言要改读 `zrig_param_effective`，同时新增一条"音素不许回写基础参数值"。
+- 负控（三次，都确认判红）：`viseme_weight=0` → 「笑着说う」红；`viseme_weight=1.0` →
+  「表情余味」红；把 `EXPR_MUL` 退化成加算 → 乘算两条红。复原后全绿。
+- 数字：单测 **466/0**（+16）、selfcheck **73/0**（+9）、smoke **86/0**（+8）、check_assets 358/0。
+- 下一步：笑眼素材 `ParamEyeLSmile` / `ParamEyeRSmile`（补齐合规表的 ⬜5）。

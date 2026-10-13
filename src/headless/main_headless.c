@@ -653,12 +653,14 @@ static void handle_request(zsock fd, const http_req *r)
         if (qint(r, "off", 0) || !qstr(r, "id", id, sizeof(id))) {
             LOCK();
             zpet_expression_set(g_pet, NULL);
+            if (g_frozen) zpet_expression_snap(g_pet);
             UNLOCK();
             send_text(fd, 200, "application/json", "{\"ok\":true,\"expression\":\"\"}");
             return;
         }
         LOCK();
         rc = zpet_expression_set(g_pet, id);
+        if (g_frozen) zpet_expression_snap(g_pet);  /* 冻结时钟时淡入走不动，直接到位 */
         UNLOCK();
         if (rc != 0) {
             char body[160];
@@ -674,7 +676,7 @@ static void handle_request(zsock fd, const http_req *r)
     }
     if (strcmp(r->path, "/api/params.json") == 0) {
         /* 命名参数层：测试台据此自动长出一排滑条，加参数不用改前端 */
-        char body[8192];
+        char body[16384];
         size_t off = 0;
         int i, n;
         body[0] = 0;
@@ -684,12 +686,15 @@ static void handle_request(zsock fd, const http_req *r)
         for (i = 0; i < n; ++i) {
             zrig_param_desc d;
             if (zpet_param_info(g_pet, i, &d) != 0) continue;
-            if (off + 256 >= sizeof(body)) break;
+            if (off + 320 >= sizeof(body)) break;
             off += (size_t)z_snprintf(body + off, sizeof(body) - off,
                 "%s{\"id\":\"%s\",\"label\":\"%s\",\"min\":%.3f,\"max\":%.3f,"
-                "\"default\":%.3f,\"value\":%.4f,\"builtin\":%s,\"binds\":%d}",
+                "\"default\":%.3f,\"value\":%.4f,\"expr\":%.4f,\"effective\":%.4f,"
+                "\"builtin\":%s,\"binds\":%d}",
                 i ? "," : "", d.id, d.label ? d.label : "", d.vmin, d.vmax,
-                d.vdef, d.value, d.builtin ? "true" : "false", d.binds);
+                d.vdef, d.value, zpet_param_expr_value(g_pet, d.id),
+                zpet_param_effective(g_pet, d.id),
+                d.builtin ? "true" : "false", d.binds);
         }
         /* Live2D model3.json 的 Groups：口型写哪个参数、自动眨眼眨哪只眼 */
         off += (size_t)z_snprintf(body + off, sizeof(body) - off,
@@ -715,8 +720,11 @@ static void handle_request(zsock fd, const http_req *r)
             }
         }
         off += (size_t)z_snprintf(body + off, sizeof(body) - off,
-                                  "],\"viseme\":{\"id\":\"%s\",\"weight\":%.3f}",
-                                  zpet_viseme_current(g_pet), zpet_viseme_weight(g_pet));
+                                  "],\"viseme\":{\"id\":\"%s\",\"weight\":%.3f},"
+                                  "\"viseme_weight\":%.3f,\"expression\":\"%s\"",
+                                  zpet_viseme_current(g_pet), zpet_viseme_weight(g_pet),
+                                  zpet_viseme_mix(g_pet),
+                                  zpet_expression(g_pet) ? zpet_expression(g_pet) : "");
         UNLOCK();
         z_snprintf(body + off, sizeof(body) - off, "}");
         send_text(fd, 200, "application/json", body);
@@ -750,8 +758,8 @@ static void handle_request(zsock fd, const http_req *r)
             z_snprintf(body2, sizeof(body2),
                        "{\"ok\":true,\"viseme\":\"%s\",\"weight\":%.3f,\"open\":%.4f,\"form\":%.4f}",
                        zpet_viseme_current(g_pet), zpet_viseme_weight(g_pet),
-                       zpet_param_get(g_pet, zpet_lipsync_param(g_pet)),
-                       zpet_param_get(g_pet, "ParamMouthForm"));
+                       zpet_param_effective(g_pet, zpet_lipsync_param(g_pet)),
+                       zpet_param_effective(g_pet, "ParamMouthForm"));
             UNLOCK();
             send_text(fd, 200, "application/json", body2);
         }

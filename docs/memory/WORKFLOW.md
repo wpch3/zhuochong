@@ -35,6 +35,11 @@
    ```
    白名单只放行 github.com / api.github.com / codeload.github.com / pypi / npm，
    `docs.live2d.com` 打不开 —— 官方口径改从 `Live2D/CubismWebFramework` 仓库和 web_search 摘要取。
+   **找官方口径先认路**：表情/口型/执行序这些在 `src/motion/` 下（`cubismexpressionmotion.ts`、
+   `cubismlipsyncupdater.ts`、**`icubismupdater.ts`＝执行序常量**），`src/effect/` 只有
+   breath / eyeblink / look / pose；盲猜路径会 404，先列树再取文件。
+   **注意"调用顺序 ≠ 执行顺序"**：`lappmodel.ts` 里 `addUpdatableList` 的顺序是加载顺序，
+   真正的执行顺序只看 `CubismUpdateOrder_*` 常量。
 2. 源码里找不到 → 上网查，**把 URL 与结论写进 `docs/REFERENCE_NOTES.md`**。
    **这一条对"测试软件/新模块"是硬要求（用户 2026-10-13）：先看那五个桌宠项目怎么做，再动手。**
 3. 查完 `bash scripts/clean_references.sh` 清缓存（仓库外目录，不占仓库体积）。

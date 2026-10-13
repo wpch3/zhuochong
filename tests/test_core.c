@@ -1494,23 +1494,26 @@ static void test_viseme(void)
             zrig_viseme_clear(r);
             zrig_viseme_set(r, "A", 0.3);
             zrig_viseme_snap(r);
-            CHECK(fabs(zrig_param_get(r, "ParamMouthOpenY") - 0.3) < 0.02,
+            CHECK(fabs(zrig_param_effective(r, "ParamMouthOpenY") - 0.3) < 0.02,
                   "A 配 weight 0.3 时开口应 ≈0.3（实际 %.3f）",
+                  zrig_param_effective(r, "ParamMouthOpenY"));
+            CHECK(fabs(zrig_param_get(r, "ParamMouthOpenY")) < 1e-6,
+                  "音素是叠在上面的一层，不许回写基础参数值（%.3f）",
                   zrig_param_get(r, "ParamMouthOpenY"));
             /* 平滑：张开要快但不是瞬间（一帧就到位 = 机器嘴） */
             zrig_viseme_clear(r);
             zrig_viseme_set(r, "A", 1.0);
             zrig_tick(r, T + 0.008);
-            CHECK(zrig_param_get(r, "ParamMouthOpenY") > 0.05 &&
-                  zrig_param_get(r, "ParamMouthOpenY") < 0.9,
+            CHECK(zrig_param_effective(r, "ParamMouthOpenY") > 0.05 &&
+                  zrig_param_effective(r, "ParamMouthOpenY") < 0.9,
                   "8ms 后应在路上而不是瞬间到位（实际 %.3f）",
-                  zrig_param_get(r, "ParamMouthOpenY"));
+                  zrig_param_effective(r, "ParamMouthOpenY"));
             CHECK(zrig_mouth_mute(r) == 1, "说话时动作里的嘴通道要让路");
             /* 松口：参数回默认，嘴还给动作 */
             zrig_viseme_clear(r);
             zrig_tick(r, T + 0.02);
-            CHECK(fabs(zrig_param_get(r, "ParamMouthOpenY")) < 1e-6 &&
-                  fabs(zrig_param_get(r, "ParamMouthForm")) < 1e-6,
+            CHECK(fabs(zrig_param_effective(r, "ParamMouthOpenY")) < 1e-6 &&
+                  fabs(zrig_param_effective(r, "ParamMouthForm")) < 1e-6,
                   "松口后两个嘴参数都要回默认");
             CHECK(zrig_mouth_mute(r) == 0, "松口后嘴要还给动作");
             CHECK(zrig_viseme_current(r) == NULL, "松口后当前音素应为空");
@@ -1520,6 +1523,143 @@ static void test_viseme(void)
             CHECK(zrig_mouth_mute(r) == 0, "喂 SIL 之后应自动松口");
         }
         zrig_free(r);
+    }
+}
+
+/* 表情和口型抢同一个参数时谁说了算：Cubism 的执行序是
+   EyeBlink 200 → Expression 300 → … → LipSync 700 → Pose 800，口型在表情之后。
+   「笑着说う」必须还是撅圆的嘴，不能被笑脸抵消成中性。 */
+static void test_expr_viseme_order(void)
+{
+    char dir[1024], rig_path[1024];
+    const int MX0 = 196, MY0 = 150, MX1 = 266, MY1 = 202;
+    const double T = 1.5;
+    SECTION("表情 × 口型：口型排在表情之后（官方执行序），笑着说 う 还是撅圆");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载真 rig 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);
+        zrig_action_request(r, "idle", "test", 1);
+        {
+            const zimg *fb;
+            unsigned char *smile_only;
+            double t, form_smile, form_smile_u, form_u;
+            double mix = zrig_viseme_mix(r);
+            CHECK(mix > 0.5 && mix <= 1.0, "口型权重应在 0.5~1（官方 LipSync 用 0.8），实际 %.2f", mix);
+            for (t = 0.0; t < T; t += 0.02) zrig_tick(r, t);
+            zrig_tick(r, T);
+
+            /* ① 只有表情：笑 → MouthForm 往 + 走 */
+            CHECK(zrig_expression_set(r, "smile") == 0, "应有 smile 表情");
+            for (t = 0.0; t < 0.8; t += 0.02) zrig_tick(r, T + t);
+            form_smile = zrig_param_effective(r, "ParamMouthForm");
+            CHECK(form_smile > 0.1, "笑脸应把 MouthForm 推到正方向（%.3f）", form_smile);
+            fb = zrig_frame(r, 0.55, NULL, NULL);
+            smile_only = frame_snapshot(fb);
+
+            /* ② 笑 + う：嘴形必须还是撅圆（负），不能被笑脸抵消 */
+            zrig_viseme_set(r, "U", 1.0);
+            zrig_viseme_snap(r);
+            zrig_tick(r, T + 0.8);
+            fb = zrig_frame(r, 0.55, NULL, NULL);     /* 改完要重新合成，不然比的是旧帧 */
+            form_smile_u = zrig_param_effective(r, "ParamMouthForm");
+            CHECK(form_smile_u < -0.5,
+                  "笑着说 う 时 MouthForm 应仍明显为负（%.3f，笑脸单独是 %.3f）",
+                  form_smile_u, form_smile);
+            CHECK(frame_diff_box(fb, smile_only, MX0, MY0, MX1, MY1) > 20,
+                  "笑 + う 的嘴要和只笑不一样（%d px）",
+                  frame_diff_box(fb, smile_only, MX0, MY0, MX1, MY1));
+            free(smile_only);
+
+            /* ③ 表情的味道还留一点（权重 0.8 不是 1.0 覆盖） */
+            zrig_expression_clear(r);
+            for (t = 0.0; t < 0.8; t += 0.02) zrig_tick(r, T + 0.8 + t);
+            zrig_viseme_set(r, "U", 1.0);
+            zrig_viseme_snap(r);
+            zrig_tick(r, T + 1.6);
+            form_u = zrig_param_effective(r, "ParamMouthForm");
+            CHECK(form_u < form_smile_u,
+                  "不笑时的 う 应该比笑着说 う 更撅（%.3f < %.3f）", form_u, form_smile_u);
+
+            /* ④ 没有表情也没有口型时，最终值 = 参数自己的值 */
+            zrig_viseme_clear(r);
+            zrig_tick(r, T + 1.7);
+            zrig_param_set(r, "ParamMouthForm", 0.5);
+            zrig_tick(r, T + 1.72);
+            CHECK(fabs(zrig_param_effective(r, "ParamMouthForm") - 0.5) < 1e-6,
+                  "没表情没口型时最终值应等于参数值（%.3f）",
+                  zrig_param_effective(r, "ParamMouthForm"));
+            zrig_param_reset(r, "ParamMouthForm");
+        }
+        zrig_free(r);
+    }
+}
+
+/* Cubism exp3 的三种 Blend 都要有：Add / Multiply / Overwrite */
+static void test_expression_blend(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("表情混合模式：Add / Multiply / Overwrite 三种都按 Cubism 的算法走");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_exprblend");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"b\",\"name\":\"混合\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+        "\"params\":[{\"id\":\"ParamBrowLY\",\"min\":-2,\"max\":2,\"default\":0,"
+        " \"binds\":[{\"part\":\"h\",\"param\":\"dy\",\"scale\":10}]}],"
+        "\"expressions\":[{\"id\":\"add\",\"fade\":0,"
+        "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":0.25,\"mode\":\"add\"}]},"
+        " {\"id\":\"mul\",\"fade\":0,"
+        "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":2.0,\"mode\":\"multiply\"}]},"
+        " {\"id\":\"ovr\",\"fade\":0,"
+        "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":-1.0,\"mode\":\"overwrite\"}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "三种 Blend 的 rig 应加载成功（错误 %d 条）", d.error_count);
+        if (r) {
+            zrig_tick(r, 0.0);
+            zrig_param_set(r, "ParamBrowLY", 0.5);
+            zrig_tick(r, 0.02);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - 0.5) < 1e-6, "无表情时就是参数值");
+            zrig_expression_set(r, "add");
+            zrig_tick(r, 0.04);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - 0.75) < 1e-6,
+                  "Add：0.5 + 0.25 = 0.75（%.3f）", zrig_param_effective(r, "ParamBrowLY"));
+            zrig_expression_set(r, "mul");
+            zrig_tick(r, 0.06);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - 1.0) < 1e-6,
+                  "Multiply：0.5 × 2 = 1.0（%.3f）", zrig_param_effective(r, "ParamBrowLY"));
+            CHECK(fabs(zrig_part_channel(r, "h", "dy") - 10.0) < 0.01,
+                  "乘算结果要真的写进通道（dy 应为 10，实际 %.3f）",
+                  zrig_part_channel(r, "h", "dy"));
+            zrig_expression_set(r, "ovr");
+            zrig_tick(r, 0.08);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - (-1.0)) < 1e-6,
+                  "Overwrite：直接覆盖成 -1（%.3f）", zrig_param_effective(r, "ParamBrowLY"));
+            zrig_expression_clear(r);
+            zrig_tick(r, 0.10);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - 0.5) < 1e-6, "取消表情回到参数值");
+            zrig_free(r);
+        }
     }
 }
 
@@ -2893,6 +3033,8 @@ int main(int argc, char **argv)
     test_group_chain();
     test_live2d_standard();
     test_viseme();
+    test_expr_viseme_order();
+    test_expression_blend();
     test_action_drives_param();
     test_motion_fade();
     test_physics();

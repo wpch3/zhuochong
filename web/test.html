@@ -148,6 +148,30 @@ th{color:var(--mut);font-weight:600;position:sticky;top:0;background:#fff}
       <div class="muted" id="vis-info" style="font-size:12px;margin-top:4px">未接管</div>
     </div>
     <div class="card">
+      <h2>表情 × 口型（谁说了算：Cubism 的执行序）</h2>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">
+        官方 <code>ICubismUpdater</code> 的执行序是 EyeBlink 200 → <b>Expression 300</b> →
+        Drag 400 → Breath 500 → Physics 600 → <b>LipSync 700</b> → Pose 800 ——
+        口型排在表情后面，所以「笑着说 う」嘴还得是撅圆的，不会被笑脸抵消成中性。
+      </div>
+      <div style="margin-bottom:6px">
+        <select id="mx-expr" style="max-width:150px"></select>
+        <select id="mx-vis" style="max-width:120px"></select>
+        <button class="pri sm" onclick="mixApply()">叠加看看</button>
+        <button class="sm" onclick="mixPreset('smile','')">只笑</button>
+        <button class="sm" onclick="mixPreset('','U')">只说 う</button>
+        <button class="sm" onclick="mixPreset('smile','U')">笑着说 う</button>
+        <button class="sm" onclick="mixPreset('','')">清空</button>
+      </div>
+      <table id="mx-table" style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr style="text-align:left;color:#8b93a7">
+          <th>参数</th><th>参数值</th><th>过表情后</th><th>最终（口型压过表情）</th>
+        </tr></thead>
+        <tbody id="mx-body"><tr><td colspan="4" class="muted">读取中…</td></tr></tbody>
+      </table>
+      <div class="muted" id="mx-info" style="font-size:12px;margin-top:4px"></div>
+    </div>
+    <div class="card">
       <h2>口型同步（A4：按语音包络驱动 ParamMouthOpenY）</h2>
       <div>
         <select id="ls-line" style="max-width:260px"></select>

@@ -834,6 +834,17 @@ double zpet_param_get(const zpet *p, const char *id)
     return (p && p->rig) ? zrig_param_get(p->rig, id) : 0.0;
 }
 
+/* 合成后的最终值：动作 → 表情 → 口型（测试台要看分层结果，不是滑条值） */
+double zpet_param_effective(const zpet *p, const char *id)
+{
+    return (p && p->rig) ? zrig_param_effective(p->rig, id) : 0.0;
+}
+
+double zpet_param_expr_value(const zpet *p, const char *id)
+{
+    return (p && p->rig) ? zrig_param_expr_value(p->rig, id) : 0.0;
+}
+
 const char *zpet_lipsync_param(const zpet *p)
 {
     return (p && p->rig) ? zrig_lipsync_param(p->rig) : "ParamMouthOpenY";
@@ -853,6 +864,8 @@ int zpet_viseme_set(zpet *p, const char *id, double weight)
 
 void zpet_viseme_clear(zpet *p) { if (p && p->rig) zrig_viseme_clear(p->rig); }
 void zpet_viseme_snap(zpet *p)  { if (p && p->rig) zrig_viseme_snap(p->rig); }
+void zpet_expression_snap(zpet *p) { if (p && p->rig) zrig_expression_snap(p->rig); }
+double zpet_viseme_mix(const zpet *p) { return (p && p->rig) ? zrig_viseme_mix(p->rig) : 0.0; }
 
 const char *zpet_viseme_current(const zpet *p)
 {

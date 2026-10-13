@@ -77,6 +77,7 @@
 | ~~A6~~ | ✅ 2026-10-13 **关键帧动作曲线**（≈ `.motion3.json`）：通道写 `"keys":[[t,v],…]` + `"interp":"linear\|smooth\|step"`，取代只能做对称周期的参数化波形；循环动作对末帧时间取模回绕，一次性动作保持末值；时间倒退/帧格式错/超 1024 帧池直接加载失败。示范动作 `nod`（0.18s 低头 9° → 停 → 抬起过冲 −2.5°） | 单测 7 项、静态自检 1 项、冒烟 3 项；证据 `logs/asset_qa/a6_nod_keys.jpg` |
 | ~~A1~~（原记作 G18） | ✅ 2026-10-12 **命名参数层**：rig.json 顶层 `params[]`（id/label/min/max/default + binds 到组或部件通道，`通道值 = 参数值 × scale`）+ 引擎内建 5 个（ParamAngleX/Y、ParamEyeOpen〔含 L/R 别名〕、ParamEyeBallX/Y，路由到跟随/眨眼/眼球）+ `/api/params.json`、`/api/param?id=&v=|reset=1|all=1`；测试台的滑条按参数表**自动生成**，角色加参数不用改前端。小寻 teen 现有 14 个角色参数（ParamAngleZ/BodyAngleX/Z/Breath/MouthOpenY/MouthForm/Brow×4/ArmLA/ArmRA/HairFront/HairAhoge） | — | 单测 `test_params` 17 项（总 **281**）；冒烟 40 项全过；实测 ParamArmRA −10/0/+10 → 右臂外缘 606/644/681px；对照图 `logs/asset_qa/param_sheet.png` |
 | ~~A4~~（原记作 G19） | ✅ 2026-10-12 **LipSync**：`tools/make_lipsync.py`（wav→RMS 包络 / 无 wav 时数 MPEG 帧头拿时长 + 台词音节铺节律）→ `voice/lipsync/*.json` → `/api/speak?id=` → 引擎每帧写 `ParamMouthOpenY`，动作里的嘴通道由 `zrig_set_mouth_mute` 让路。38 条台词已生成包络；~~仍缺 I/U/E/O 音素级口型~~ **✅ 2026-10-13 补齐（见 G37）** | 依赖 G5 播放链路 |
+| ~~G38~~ | ✅ 2026-10-13 **表情 × 口型的叠加口径**：照官方 `ICubismUpdater` 执行序（EyeBlink 200 / Expression 300 / Drag 400 / Breath 500 / Physics 600 / **LipSync 700** / Pose 800）把口型排在表情之后，「笑着说う」Form 从被抵消的 −0.30 变成 **−0.86**（仍是撅圆）；表情求值重写成 Cubism 的三累加器 `(base+overwrite+additive)×multiply`，补上第三种混合 **multiply**；音素层不再回写基础参数（`viseme_write()` 删除），改为 `param_effective()` 分层合成；`/api/params.json` 每个参数报 `value / expr / effective` 三列，测试台加「表情 × 口型」看板。闸门：单测 2 组（含 3 次负控）、smoke 6 项、selfcheck 9 项 | 查证记录见 `docs/REFERENCE_NOTES.md` 第三批 |
 | ~~G37~~ | ✅ 2026-10-13 **口型音素（母音識別 / T2.1.3）**：`rig.json` 的 `visemes` 表（音素 → `ParamMouthOpenY`×`ParamMouthForm`，官方标准表里没有 ParamMouthA/I/U/E/O，所以不自造参数）+ `viseme_update()` 两档平滑（attack 50/s、release 30/s，学 airi 的 wlipsync vowel driver）+ `/api/viseme` + 包络音素轨（pypinyin 取韵母）。闸门：`test_viseme()` / smoke 10 项 / selfcheck 6 项 | 查证记录见 `docs/REFERENCE_NOTES.md` 第二批 |
 | ~~A2~~（原记作 G20） | ✅ 2026-10-12 **表情叠加层**：rig.json 顶层 `expressions[]`（一组参数偏移，mode add/set，自带 fade），`/api/expression?id=|off=1`，info.json 带 `expression` + 表情表，测试台表情按钮自动生成。小寻 teen 现有 6 个：微笑/害羞/生气/难过/吃惊/困倦。表情**不占动作状态机**（能"笑着挥手"） | — | 单测 `test_expression` 17 项（总 **298**）；冒烟 46 项全过；对照图 `logs/asset_qa/expression_sheet.png` |
 | ~~A3~~（原记作 G21） | ✅ 2026-10-12 **透け眉**：眉的半透明副本（层 241/242、opacity 0.42）画在刘海之上并用 `mask:"hair_front"` 裁切，只在被刘海挡住处显形；引擎新增 `motion_from` 字段让副本照抄本体的全部通道（动作/参数/表情/形变跟随一起动，不用重写通道） | — | 单测 `test_motion_from` 5 项（总 **303**）；生气/难过/吃惊眉区变化 9880/10231/9885 像素（原来 0）；对照图 `logs/asset_qa/brow_ghost.png` |
@@ -134,8 +135,8 @@
 
 ## 四、执行顺序（我接下来按这个走，除非用户改）
 
-1. **动画底层**：G4q（淡入淡出/物理/跟随）+ G18 参数层 + G20 表情层 + G21 motion_from 已完成；**G4c 手臂真关节已完成**（2026-10-12）→ 只剩 **G19 LipSync**（TTS 包络写 `ParamMouthOpenY`，依赖 G5 播放链路）与 **G15 网格顶点级编辑**；立绘侧 **侧发/后发（G4n）、眼线二次拆件（G4m）、手腕+裙下大腿（G4c2）都已完成（2026-10-13）**，**I/U/E/O 四音素口型（T2.1.3）也已完成（2026-10-13，G37）**，
-   下一件 = **表情与口型的叠加口径**（说话时做"笑"表情，两边抢 `ParamMouthForm`）。
+1. **动画底层**：G4q（淡入淡出/物理/跟随）+ G18 参数层 + G20 表情层 + G21 motion_from 已完成；**G4c 手臂真关节已完成**（2026-10-12）→ 只剩 **G19 LipSync**（TTS 包络写 `ParamMouthOpenY`，依赖 G5 播放链路）与 **G15 网格顶点级编辑**；立绘侧 **侧发/后发（G4n）、眼线二次拆件（G4m）、手腕+裙下大腿（G4c2）都已完成（2026-10-13）**，**I/U/E/O 四音素口型（T2.1.3，G37）与表情×口型叠加口径（G38）也已完成（2026-10-13）**，
+   下一件 = **笑眼素材 `ParamEyeLSmile`/`ParamEyeRSmile`**（补齐 CONFORMANCE 的 ⬜5），随后 18 个动作从部件通道迁到参数通道、动作 fade 线性→正弦。
 2. **素材工具先行**（G4 前置）：锚点标注工具 + 蒙版验收工具，再出设定图。
 3. **工作区骨架 G1 + 网关 G2 + 计费 G3**（M2/M3 里程碑）。
 4. **训练区 G12**（角色 LoRA 优先，解决素材风格一致的根问题）。

@@ -118,6 +118,10 @@ int    zrig_param_count(const zrig *r);
 const char *zrig_param_id(const zrig *r, int i);
 int    zrig_param_info(const zrig *r, int i, zrig_param_desc *out);
 double zrig_param_get(const zrig *r, const char *id);
+/* 这一帧的最终值：参数值 → 动作通道 → 表情（Add/Multiply/Overwrite）→ 口型音素。
+   `zrig_param_get` 只给参数自己的值，排查"表情和口型抢同一个参数"时要看这个。 */
+double zrig_param_effective(const zrig *r, const char *id);
+double zrig_param_expr_value(const zrig *r, const char *id); /* 只到表情层，不含口型 */
 int    zrig_param_set(zrig *r, const char *id, double v);   /* 找不到返回 -1 */
 int    zrig_param_reset(zrig *r, const char *id);           /* 回默认值 */
 void   zrig_param_reset_all(zrig *r);
@@ -132,6 +136,7 @@ const char *zrig_expression_name(const zrig *r, int i);
 const char *zrig_expression(const zrig *r);        /* 当前表情 id，无则 NULL */
 int    zrig_expression_set(zrig *r, const char *id);  /* id 传 NULL/"" = 取消；未知 id 返回 -1 */
 void   zrig_expression_clear(zrig *r);
+void   zrig_expression_snap(zrig *r);   /* 跳过淡入淡出直接到位（冻结时钟时用） */
 double zrig_expression_weight(const zrig *r);      /* 淡化权重 0..1（测试用） */
 
 /* 手动按住眨眼参数（0=睁 1=闭，传 <0 恢复自动）。测试台的眨眼滑条用。 */
@@ -163,7 +168,9 @@ int         zrig_viseme_set(zrig *r, const char *id, double weight);  /* 不认�
 void        zrig_viseme_clear(zrig *r);     /* 立刻松口，嘴交还给动作 */
 void        zrig_viseme_snap(zrig *r);      /* 跳过平滑直接到位（冻结时钟时用） */
 const char *zrig_viseme_current(const zrig *r);   /* 没接管时返回 NULL */
-double      zrig_viseme_weight(const zrig *r);
+double      zrig_viseme_weight(const zrig *r);   /* 这一帧的音量/强度 0..1（不是下面那个） */
+/* 口型压过表情的权重（rig.json 的 viseme_weight，默认 0.8 = 官方 SDK 对 LipSync 的权重）。 */
+double      zrig_viseme_mix(const zrig *r);
 
 /* 调试/测试用的只读查询：
    zrig_group_offset_x/y —— 组这一帧的横/纵位移（通道位移 + 自动跟随形变的位移，画布像素）。
