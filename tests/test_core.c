@@ -2534,6 +2534,107 @@ static void test_sleep_wake_blink(void)
    这两条以前都是错的：draw_state 里 mesh 和 bend 是 if/else，形变器一上来
    bend 就被整个丢掉（多段摆链的第一段因此白写）；找形变器又是找到第一张就
    break，第二张起静默失效。合成 rig 让每种组合各渲一帧，直接比像素。 */
+/* 眉形 ParamBrowLForm / ParamBrowRForm（合规表最后两个 ⬜）。
+   官方 Cubism 手册的口径：−1 = 眉をしかめる（皱起），+1 = 山なりに上がる（隆起）；
+   而且「変形」不许带位置移动——上下/左右/角度各有自己的参数。
+   几何上那条"净位移要小"的约束由 selfcheck 静态核（它看得到配置），
+   这里只管运行时：参数在、能改画面、改的地方只在眉毛那一条带上。 */
+static void test_brow_form(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    int i;
+    SECTION("眉形：ParamBrowLForm / ParamBrowRForm");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（眉形）");
+    if (!r) return;
+
+    CHECK(zrig_param_set(r, "ParamBrowLForm", 0.0) == 0, "rig 里应有 ParamBrowLForm");
+    CHECK(zrig_param_set(r, "ParamBrowRForm", 0.0) == 0, "rig 里应有 ParamBrowRForm");
+
+    /* 冻结时钟做像素对照：时间一动 idle 和物理就跟着变，差异会糊成一片。
+       先逐帧跑够让状态收敛，再把时钟钉死在同一个值上。 */
+    for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);
+    zrig_tick(r, 500.0);
+    zrig_tick(r, 500.0);
+    {
+        unsigned char *base = NULL;
+        int w = 0, h = 0, k;
+        const zimg *im;
+        size_t n;
+        zrig_param_set(r, "ParamBrowLForm", 0.0);
+        zrig_param_set(r, "ParamBrowRForm", 0.0);
+        zrig_tick(r, 500.0);
+        im = zrig_frame(r, 1.0, &w, &h);
+        CHECK(im != NULL && w > 0, "应能渲染基准帧");
+        if (!im) { zrig_free(r); return; }
+        n = (size_t)w * h * 4;
+        base = (unsigned char *)malloc(n);
+        CHECK(base != NULL, "应能分配基准帧缓冲");
+        if (!base) { zrig_free(r); return; }
+        memcpy(base, im->px, n);
+
+        /* amount 必须跟着参数走（形变器是靠 bind 驱动的） */
+        zrig_param_set(r, "ParamBrowLForm", 1.0);
+        zrig_tick(r, 500.0);
+        CHECK(fabs(zrig_deform_amount(r, "brow_l_form") - 1.0) < 1e-6,
+              "ParamBrowLForm=1 时 brow_l_form 的量应为 1（实际 %.4f）",
+              zrig_deform_amount(r, "brow_l_form"));
+        zrig_param_set(r, "ParamBrowLForm", 0.0);
+
+        for (k = 0; k < 2; ++k) {
+            double v = k ? -1.0 : 1.0;
+            int x, y, diff = 0, outside = 0, ymin = 99999, ymax = -1;
+            zrig_param_set(r, "ParamBrowLForm", v);
+            zrig_param_set(r, "ParamBrowRForm", v);
+            zrig_tick(r, 500.0);
+            im = zrig_frame(r, 1.0, &w, &h);
+            if (!im) break;
+            for (y = 0; y < h; ++y) {
+                for (x = 0; x < w; ++x) {
+                    size_t o = ((size_t)y * w + x) * 4;
+                    int dd = abs((int)im->px[o]     - (int)base[o])
+                           + abs((int)im->px[o + 1] - (int)base[o + 1])
+                           + abs((int)im->px[o + 2] - (int)base[o + 2])
+                           + abs((int)im->px[o + 3] - (int)base[o + 3]);
+                    if (dd <= 24) continue;
+                    ++diff;
+                    if (y < ymin) ymin = y;
+                    if (y > ymax) ymax = y;
+                    /* 眉毛在画布 y≈224~245。改眉形不该牵动别处。 */
+                    if (y < 200 || y > 260) ++outside;
+                }
+            }
+            CHECK(diff > 100, "眉形 %+.0f 要看得出变化（实际 %d 像素）", v, diff);
+            CHECK(outside == 0,
+                  "眉形只该动眉毛那一条带（%+.0f 时有 %d 像素跑到 y200~260 之外，y 范围 %d~%d）",
+                  v, outside, ymin, ymax);
+            zrig_param_set(r, "ParamBrowLForm", 0.0);
+            zrig_param_set(r, "ParamBrowRForm", 0.0);
+        }
+        free(base);
+    }
+    /* 表情要真的用上它（Haru 的 exp3 里六个表情都在用眉形） */
+    {
+        int used = 0, i2;
+        const char *names[3] = { "angry", "surprise", "sad" };
+        for (i2 = 0; i2 < 3; ++i2) {
+            zrig_param_reset_all(r);
+            zrig_expression_set(r, names[i2]);
+            zrig_expression_snap(r);
+            zrig_tick(r, 600.0 + i2);
+            if (fabs(zrig_param_effective(r, "ParamBrowLForm")) > 0.2) ++used;
+        }
+        CHECK(used == 3, "angry/surprise/sad 都该用上眉形（实际 %d/3）", used);
+        zrig_expression_set(r, "");
+    }
+    zrig_free(r);
+}
+
 static void test_mesh_bend_coexist(void)
 {
     char tmp_rig[1024], dir[1024];
@@ -3850,6 +3951,7 @@ int main(int argc, char **argv)
     test_eye_smile();
     test_action_param_channels();
     test_action_fade_sine();
+    test_brow_form();
     test_mesh_bend_coexist();
     test_skirt_physics();
     test_action_drives_param();

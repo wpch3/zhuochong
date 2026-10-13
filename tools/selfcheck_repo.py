@@ -382,6 +382,34 @@ def check_live2d(root):
           "0.5 - 0.5 * cos(t * 3.14159265358979323846)" in
           io.open(os.path.join(root, "src/core/zc.c"), encoding="utf-8").read(),
           "src/core/zc.c:z_ease_sine")
+    # ⑯ 眉形 ParamBrowL/RForm 的几何约束。官方 Cubism 手册：
+    #    「変形」只改形状、不带位置移动（上下/左右/角度另有参数）。
+    #    这是配置层的事（看得到每个控制点），所以在这里核，不在单测里核。
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        r = jsonc(rp)
+        dfs = {g["id"]: g for g in r.get("deformers", [])}
+        pids2 = {q["id"] for q in r.get("params", [])}
+        if "ParamBrowLForm" not in pids2:
+            continue
+        for side in ("l", "r"):
+            gid = f"brow_{side}_form"
+            g = dfs.get(gid)
+            check(f"{gid} 存在", g is not None, gid)
+            if not g:
+                continue
+            cols = {}
+            for q in g.get("points", []):
+                cols.setdefault(q["c"], q.get("dy", 0.0))
+            vs = [cols[c] for c in sorted(cols)]
+            mid = vs[len(vs) // 2]
+            ends = (vs[0] + vs[-1]) / 2.0
+            check(f"{gid} 中段与两端反向（才是'变形'不是'平移'）",
+                  mid * ends < 0, f"中段 {mid:+.2f} / 两端均值 {ends:+.2f}")
+            tot, mag = sum(vs), sum(abs(v) for v in vs)
+            check(f"{gid} 净位移要远小于形变量（官方：変形不带位置移动）",
+                  mag > 0 and abs(tot) / mag < 0.25,
+                  f"净和 {tot:+.2f} / 形变量 {mag:.2f} = {abs(tot)/mag:.3f}")
+
     # ⑮ 网格形变器与 bend 必须共存、同部件多张网格必须累加（G43 修的两个 bug）。
     #    单测从像素那头验效果，这里从源码这头把退化路径钉死。
     zimgc = io.open(os.path.join(root, "src/core/zimg.c"), encoding="utf-8").read()

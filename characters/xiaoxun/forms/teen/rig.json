@@ -2487,6 +2487,174 @@
       ]
     },
     {
+      "id": "brow_l_form",
+      "part": "brow_l",
+      "cols": 4,
+      "rows": 2,
+      "note": "眉形：+1 中段隆起（山なり/惊讶），−1 中段下压（しかめ/困扰）；只改形状不挪位置，上下/左右/角度另有参数",
+      "points": [
+        {
+          "c": 0,
+          "r": 0,
+          "dy": 2.3
+        },
+        {
+          "c": 0,
+          "r": 1,
+          "dy": 2.3
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dy": 2.3
+        },
+        {
+          "c": 1,
+          "r": 0,
+          "dy": -1.1
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dy": -1.1
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dy": -1.1
+        },
+        {
+          "c": 2,
+          "r": 0,
+          "dy": -3.6
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dy": -3.6
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dy": -3.6
+        },
+        {
+          "c": 3,
+          "r": 0,
+          "dy": -1.1
+        },
+        {
+          "c": 3,
+          "r": 1,
+          "dy": -1.1
+        },
+        {
+          "c": 3,
+          "r": 2,
+          "dy": -1.1
+        },
+        {
+          "c": 4,
+          "r": 0,
+          "dy": 1.8
+        },
+        {
+          "c": 4,
+          "r": 1,
+          "dy": 1.8
+        },
+        {
+          "c": 4,
+          "r": 2,
+          "dy": 1.8
+        }
+      ]
+    },
+    {
+      "id": "brow_r_form",
+      "part": "brow_r",
+      "cols": 4,
+      "rows": 2,
+      "note": "眉形：+1 中段隆起（山なり/惊讶），−1 中段下压（しかめ/困扰）；只改形状不挪位置，上下/左右/角度另有参数",
+      "points": [
+        {
+          "c": 0,
+          "r": 0,
+          "dy": 1.8
+        },
+        {
+          "c": 0,
+          "r": 1,
+          "dy": 1.8
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dy": 1.8
+        },
+        {
+          "c": 1,
+          "r": 0,
+          "dy": -1.1
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dy": -1.1
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dy": -1.1
+        },
+        {
+          "c": 2,
+          "r": 0,
+          "dy": -3.6
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dy": -3.6
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dy": -3.6
+        },
+        {
+          "c": 3,
+          "r": 0,
+          "dy": -1.1
+        },
+        {
+          "c": 3,
+          "r": 1,
+          "dy": -1.1
+        },
+        {
+          "c": 3,
+          "r": 2,
+          "dy": -1.1
+        },
+        {
+          "c": 4,
+          "r": 0,
+          "dy": 2.3
+        },
+        {
+          "c": 4,
+          "r": 1,
+          "dy": 2.3
+        },
+        {
+          "c": 4,
+          "r": 2,
+          "dy": 2.3
+        }
+      ]
+    },
+    {
       "id": "skirt_sway_x",
       "part": "seg_torso",
       "cols": 2,
@@ -3088,6 +3256,32 @@
       ]
     },
     {
+      "id": "ParamBrowLForm",
+      "label": "左眉 变形",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "brow_l_form",
+          "scale": 1.0
+        }
+      ]
+    },
+    {
+      "id": "ParamBrowRForm",
+      "label": "右眉 变形",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "brow_r_form",
+          "scale": 1.0
+        }
+      ]
+    },
+    {
       "id": "ParamBrowLX",
       "label": "左眉 左右",
       "min": -1.0,
@@ -3562,6 +3756,14 @@
           "value": 0.25
         },
         {
+          "id": "ParamBrowLForm",
+          "value": 0.3
+        },
+        {
+          "id": "ParamBrowRForm",
+          "value": 0.3
+        },
+        {
           "id": "ParamMouthForm",
           "value": 0.7
         },
@@ -3593,6 +3795,14 @@
         },
         {
           "id": "ParamBrowRY",
+          "value": -0.3
+        },
+        {
+          "id": "ParamBrowLForm",
+          "value": -0.3
+        },
+        {
+          "id": "ParamBrowRForm",
           "value": -0.3
         },
         {
@@ -3642,6 +3852,14 @@
           "value": -0.8
         },
         {
+          "id": "ParamBrowLForm",
+          "value": -1.0
+        },
+        {
+          "id": "ParamBrowRForm",
+          "value": -1.0
+        },
+        {
           "id": "ParamMouthForm",
           "value": -0.7
         },
@@ -3684,6 +3902,14 @@
           "value": 0.7
         },
         {
+          "id": "ParamBrowLForm",
+          "value": -0.55
+        },
+        {
+          "id": "ParamBrowRForm",
+          "value": -0.55
+        },
+        {
           "id": "ParamMouthForm",
           "value": -0.5
         },
@@ -3716,6 +3942,14 @@
         {
           "id": "ParamBrowRY",
           "value": 0.9
+        },
+        {
+          "id": "ParamBrowLForm",
+          "value": 1.0
+        },
+        {
+          "id": "ParamBrowRForm",
+          "value": 1.0
         },
         {
           "id": "ParamMouthOpenY",
@@ -3787,6 +4021,14 @@
         {
           "id": "ParamBrowRY",
           "value": 0.32
+        },
+        {
+          "id": "ParamBrowLForm",
+          "value": 0.4
+        },
+        {
+          "id": "ParamBrowRForm",
+          "value": 0.4
         },
         {
           "id": "ParamMouthForm",

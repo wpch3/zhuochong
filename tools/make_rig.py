@@ -118,6 +118,18 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "binds": [{"part": "brow_r", "param": "dy", "scale": -5.0}]},
             {"id": "ParamBrowLAngle", "label": "左眉 角度", "min": -1.0, "max": 1.0, "default": 0.0,
              "binds": [{"part": "brow_l", "param": "rot_deg", "scale": 7.0}]},
+            # Live2D 标准表的「左眉／右眉 変形」。官方 Cubism 手册的口径：
+            # −1 = 眉をしかめるような寄せる形（皱眉／困扰），
+            # +1 = 山なりに眉が上がる形（眉峰隆起／惊讶）。
+            # 关键约束（官方手册 + 多篇教程一致）：**変形 不许带位置移动** ——
+            # 上下归 ParamBrowLY、左右归 ParamBrowLX、角度归 ParamBrowLAngle，
+            # Form 只负责"原地改形状"，所以网格两端往下、中段往上，整体重心基本不动。
+            {"id": "ParamBrowLForm", "label": "左眉 变形", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"deformer": "brow_l_form", "scale": 1.0}]},
+            {"id": "ParamBrowRForm", "label": "右眉 变形", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"deformer": "brow_r_form", "scale": 1.0}]},
             {"id": "ParamBrowLX", "label": "左眉 左右", "min": -1.0, "max": 1.0,
              "default": 0.0,
              "binds": [{"part": "brow_l", "param": "dx", "scale": 4.0}]},
@@ -272,12 +284,15 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
             d["mode"] = mode
         return d
 
-    def brows(ly, ry, la=0.0, ra=0.0):
+    def brows(ly, ry, la=0.0, ra=0.0, lf=0.0, rf=0.0):
         if not has_brows:
             return []
         out = [P("ParamBrowLY", ly), P("ParamBrowRY", ry)]
         if la or ra:
             out += [P("ParamBrowLAngle", la), P("ParamBrowRAngle", ra)]
+        # 変形（眉形）：Haru 的 exp3 里六个表情都在用，和上下/角度叠着给层次
+        if lf or rf:
+            out += [P("ParamBrowLForm", lf), P("ParamBrowRForm", rf)]
         return out
 
     def mform(v):
@@ -296,21 +311,21 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
 
     out = [
         {"id": "smile", "name": "微笑", "fade": 0.3,
-         "params": brows(0.25, 0.25) + mform(0.7) + [P("ParamEyeOpen", 0.85, "set")]
+         "params": brows(0.25, 0.25, lf=0.3, rf=0.3) + mform(0.7) + [P("ParamEyeOpen", 0.85, "set")]
                    + blush(0.22) + sparkle(0.75)},
         {"id": "shy", "name": "害羞", "fade": 0.35,
-         "params": brows(-0.3, -0.3) + mform(0.35)
+         "params": brows(-0.3, -0.3, lf=-0.3, rf=-0.3) + mform(0.35)
                    + [P("ParamEyeOpen", 0.7, "set")]
                    + blush(0.95) + sparkle(0.8)
                    + ([P("ParamAngleZ", -4.0)] if head_is_part else [])},
         {"id": "angry", "name": "生气", "fade": 0.22,
-         "params": brows(-0.7, -0.7, -0.8, -0.8) + mform(-0.7)
+         "params": brows(-0.7, -0.7, -0.8, -0.8, lf=-1.0, rf=-1.0) + mform(-0.7)
                    + [P("ParamEyeOpen", 0.9, "set")] + blush(0.45) + sparkle(0.3)},
         {"id": "sad", "name": "难过", "fade": 0.4,
-         "params": brows(-0.45, -0.45, 0.7, 0.7) + mform(-0.5)
+         "params": brows(-0.45, -0.45, 0.7, 0.7, lf=-0.55, rf=-0.55) + mform(-0.5)
                    + [P("ParamEyeOpen", 0.75, "set")] + blush(0.0) + sparkle(0.18)},
         {"id": "surprise", "name": "吃惊", "fade": 0.12,
-         "params": brows(0.9, 0.9) + mopen(0.55)
+         "params": brows(0.9, 0.9, lf=1.0, rf=1.0) + mopen(0.55)
                    + [P("ParamEyeOpen", 1.0, "set"), P("ParamEyeBallY", -0.15)]
                    + sparkle(1.0)},
         {"id": "sleepy", "name": "困倦", "fade": 0.5,
@@ -324,7 +339,7 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
     if has_smile_eyes:
         out.append(
             {"id": "happy", "name": "开心（笑眼）", "fade": 0.28,
-             "params": brows(0.32, 0.32) + mform(1.0)
+             "params": brows(0.32, 0.32, lf=0.4, rf=0.4) + mform(1.0)
                        + [P("ParamEyeLSmile", 1.0, "set"), P("ParamEyeRSmile", 1.0, "set")]
                        + blush(0.38) + sparkle(1.0),
              "note": "笑眼 = 山型闭眼（Live2D 标准做法），参考官方 Haru 的 F05"})
@@ -1529,6 +1544,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # rows=10 把这个误差压到百位数。行 y = 501*r/10，裙腰(y≈300) 正好落在 r=6。
         _SKX = {6: 0.5, 7: 1.8, 8: 4.2, 9: 7.0, 10: 10.0}       # 横摆：越往下甩得越远
         _SKY = {6: 0.2, 7: 0.7, 8: 1.6, 9: 2.6, 10: 3.8}        # 纵摆：上下滞后
+        # —— 眉形（ParamBrowL/RForm）——
+        # 合规表最后两个 ⬜。不需要新素材：眉毛本来就是一条横着的网格能表达的形状。
+        # brow_l 的眉头在右端（c=4，靠中线），brow_r 的眉头在左端（c=0）——
+        # 眉头那一侧给得比眉尾轻一点，+1 时才像"眉峰在中后段隆起"而不是整条拱桥。
+        for _pid, _inner in (("brow_l", 4), ("brow_r", 0)):
+            _amp = {0: 2.3, 1: -1.1, 2: -3.6, 3: -1.1, 4: 2.3}
+            _amp[_inner] = 1.8                      # 眉头端收一点
+            rig["deformers"].append(
+                {"id": f"{_pid}_form", "part": _pid, "cols": 4, "rows": 2,
+                 "note": "眉形：+1 中段隆起（山なり/惊讶），−1 中段下压（しかめ/困扰）；"
+                         "只改形状不挪位置，上下/左右/角度另有参数",
+                 "points": [{"c": c, "r": r, "dy": round(v, 3)}
+                            for c, v in _amp.items() for r in (0, 1, 2)]})
         rig["deformers"] += [
             {"id": "skirt_sway_x", "part": "seg_torso", "cols": 2, "rows": 10,
              "note": "裙摆横摆：裙腰(r=6)固定，越往下甩得越远，中列比两侧多一点",
