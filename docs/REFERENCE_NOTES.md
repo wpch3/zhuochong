@@ -249,3 +249,53 @@ C 版见 `src/win32/zw32.c` 主循环里的 `LASTINPUTINFO` 段：差值转秒�
 - **airi**：`packages/stage-ui-live2d/src/utils/eye-motions.ts` 里不是笑眼，是**扫视（saccade）间隔分布** ——
   `EYE_SACCADE_INT_P` 用累积概率挑 0~3200ms 的间隔。这个以后做视线微动（G4 跟随）时直接能用。
 - bongocat-sdl / bongocat-tauri / ds-local-pet：确认无表情参数层（第二批已扫过，不再重复翻）。
+
+## 2026-10-13（第六批查证）动作曲线只能打在什么上？
+
+> 这一批是为"18 个动作从部件通道迁到参数通道"查的。
+
+### 1. 官方把答案写死在三个常量里
+
+`gh api repos/Live2D/CubismWebFramework/contents/src/motion/cubismmotion.ts`
+
+```ts
+const TargetNameModel = 'Model';
+const TargetNameParameter = 'Parameter';
+const TargetNamePartOpacity = 'PartOpacity';
+```
+
+`parse()` 里只认这三个，其它一律 `CubismLogWarning('Unable to get segment type from Curve!')`。
+`doUpdateParameters()` 按这三类**分段顺序处理**（Model 段 → Parameter 段 → PartOpacity 段）：
+
+- `Model` 段只认三个特殊 id：`Opacity`、`EyeBlink`、`LipSync`
+  （前两个是给眨眼/口型"让路"用的系数，不是画面本身）。
+- `Parameter` 段：`model.getParameterIndex(curve.id)` → 写参数值。
+- `PartOpacity` 段：同样按 id 找，写部件不透明度。
+
+→ **结论：Live2D 的动作不能直接写"某个部件挪几个像素"。** 位移/旋转/缩放只能是
+参数经过变形器（ワープデフォーマ / 回転デフォーマ）产生的结果。
+我们的 `actions[].channels` 以前 197 条全是"写部件几何"，这是**唯一一个结构性偏差**，
+这一轮清掉了。
+
+### 2. 官方动作数据长什么样（拿真文件数一遍）
+
+`Samples/Resources/Haru/motions/haru_g_m01.motion3.json`（`Duration 2.9 / Fps 30 / CurveCount 63`）：
+
+| Target | 条数 | 例子 |
+| --- | --- | --- |
+| `Parameter` | **42** | ParamAngleX/Y/Z、ParamBodyAngleX/Y/Z、ParamArmLA/RA/LB/RB、ParamBrow*、ParamMouthForm/OpenY、ParamHairFront、ParamBreath、ParamEyeBallX/Y… |
+| `PartOpacity` | 20 | `Part01Core`、`Part01Eye001`、`Part01Mouth001`… |
+| `Model` | 1 | `Opacity` |
+
+曲线段类型统计：bezier 60 / linear 63 / stepped 20（`Meta.AreBeziersRestricted = true`）。
+→ 我们现在是 `linear / smooth / step`，贝塞尔属于后补的纯增量项（合规表里记在 🟢）。
+
+→ 另一个收获：官方参数名表和我们的命名**几乎一一对应**，说明前面几轮"对齐标准参数名"
+的方向是对的，`ParamArmLA/LB` 这种我们照搬的名字在官方模型里就是这么用的。
+
+### 3. 官方的 ParamBreath 是怎么被驱动的
+
+`CubismBreath`（`src/effect/cubismbreath.ts`）：`value = offset + peak * sin(t * 2π / cycle)`，
+默认那组参数就是 `ParamBreath, offset 0.5, peak 0.5, cycle 3.2345, weight 0.5` —— **0..1 的单向值**。
+我们的波形通道以前只有振幅没有偏置，纯正弦会被 `ParamBreath` 的下限 clamp 掉半个周期，
+所以这轮给通道加了 `bias` 字段（就是官方的 offset）。

@@ -27,7 +27,8 @@ def png_size(path):
 
 
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
-               has_blend=False, has_side=False, has_legs=False):
+               has_blend=False, has_side=False, has_legs=False,
+               body_id="seg_torso", has_eyeballs=False):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -40,10 +41,14 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                     "binds": [{"group": "head", "param": "rot_deg", "scale": 0.5}],
                     "note": "±30 → 实际 ±15°，再大颈部接缝会露"})
     out += [
+        # 躯干左右摆：网格弯曲是主力（腰以上越来越偏），胸组的平移/旋转是配角。
+        # 满格 10 = 原 sway 动作的幅度（bend_x 10px）。
         {"id": "ParamBodyAngleX", "label": "上身 左右", "min": -10.0, "max": 10.0,
          "default": 0.0,
-         "binds": [{"group": "chest", "param": "rot_deg", "scale": 0.12},
-                   {"group": "chest", "param": "dx", "scale": 0.35}]},
+         "binds": [{"part": body_id, "param": "bend_x", "scale": 1.0, "curve": "root"}],
+         "note": "只驱动躯干网格弯曲（满格 = 腰以上最多偏 10px）。"
+                 "不再叠胸组的平移/旋转：bend 已经表达了同一件事，"
+                 "再叠一层会让五官相对身体形变多走一个固定量（单测的刚性跟随会红）"},
         {"id": "ParamBodyAngleZ", "label": "上身 倾斜", "min": -10.0, "max": 10.0,
          "default": 0.0,
          "binds": [{"group": "chest", "param": "rot_deg", "scale": 0.25}]},
@@ -51,8 +56,10 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         # 负值=挺起来。只动上身组，腿不跟着走。
         {"id": "ParamBodyAngleY", "label": "上身 上下", "min": -10.0, "max": 10.0,
          "default": 0.0,
-         "binds": [{"group": "chest", "param": "dy", "scale": 0.9},
-                   {"group": "chest", "param": "sy", "scale": -0.004}]},
+         "binds": [{"part": body_id, "param": "bend_y", "scale": 0.4, "curve": "sine"},
+                   {"group": "chest", "param": "dy", "scale": 0.25},
+                   {"group": "chest", "param": "sy", "scale": -0.001}],
+         "note": "满格 10 = 躯干纵向弯 4px + 胸组下沉 2.5px + 压扁 1%"},
         # 肩上下（耸肩）。两条手臂组一起升降，上身跟一点点，不然肩膀会从袖子里脱出。
         {"id": "ParamShoulderY", "label": "肩 上下", "min": -10.0, "max": 10.0,
          "default": 0.0,
@@ -62,13 +69,24 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         # 全身位移（Live2D 的 ParamBaseX/Y）：根组平移，用来做"整个人往旁边挪一点"。
         {"id": "ParamBaseX", "label": "全身 左右", "min": -10.0, "max": 10.0,
          "default": 0.0,
-         "binds": [{"group": "root", "param": "dx", "scale": 1.0}]},
+         "binds": [{"group": "root", "param": "dx", "scale": 2.0}],
+         "note": "满格 = 整个人横移 20px（被敲飞那下用到 14px）"},
         {"id": "ParamBaseY", "label": "全身 上下", "min": -10.0, "max": 10.0,
          "default": 0.0,
-         "binds": [{"group": "root", "param": "dy", "scale": -1.0}]},
+         "binds": [{"group": "root", "param": "dy", "scale": -4.0}],
+         "note": "满格 = 跳起 40px；happy 两段弹跳叠起来是 8.5"},
+        # 全身旋转。Live2D 标准表里没有这一项（整体倾斜通常靠 ParamBodyAngleZ），
+        # 我们的\"被摸头 / 被拖拽\"要整个人晃，所以登记为扩展参数（见合规表第二节）。
+        {"id": "ParamBaseRot", "label": "全身 倾斜", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"group": "root", "param": "rot_deg", "scale": 0.5}]},
+        # 官方 CubismBreath 就是拿 offset + peak*sin 驱动这个参数（0..1），
+        # 所以 breath 动作写的是 {amp 0.5, bias 0.5}，而不是 ±1 的双向正弦。
         {"id": "ParamBreath", "label": "呼吸", "min": 0.0, "max": 1.0, "default": 0.0,
-         "binds": [{"group": "chest", "param": "sy", "scale": 0.012},
-                   {"group": "chest", "param": "dy", "scale": -1.2}]},
+         "binds": [{"group": "chest", "param": "sy", "scale": 0.004},
+                   {"group": "chest", "param": "dy", "scale": -0.8}],
+         "note": "满格 = 胸腔拉伸 0.4% + 上浮 0.8px；拉伸作用在整个上身组上，"
+                 "1% 就能把头顶推走 8px，所以这个系数必须小"},
     ]
     if mouth:
         # 张嘴：开口形状（遮罩）压高 + 上唇线淡出。scale 取 talk 动作里实测的幅度。
@@ -78,7 +96,8 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                     # 写死 0.737 的话换一套嘴素材就对不上了（closed_sy 变了）。
                     "binds": [{"part": "mouth_mask", "param": "sy",
                                "scale": round(0.95 - mouth["closed_sy"], 3)},
-                              {"part": "mouth_open", "param": "alpha", "scale": -0.9}],
+                              {"part": "mouth_open", "param": "alpha", "scale": -0.9},
+                              {"part": "mouth_open", "param": "sy", "scale": 0.144}],
                     "note": "口型同步（LipSync）接进来时写的就是这个参数"})
         # 嘴形：Live2D 标准口径 —— + 是咧开（笑 / い・え），- 是撅圆（怒 / う・お）。
         # 母音口型就是靠它和 ParamMouthOpenY 的组合摆出来的（见 rig 的 visemes 段），
@@ -91,10 +110,12 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                               {"part": "mouth_mask", "param": "sy", "scale": -0.045}]})
     if has_brows:
         out += [
+            # scale 定在 -5：满格 = 眉毛上下 5px = surprised 那下挑眉的幅度。
+            # （定小了动作迁到参数通道后会顶到 ±1 被 clamp，挑眉就挑不起来。）
             {"id": "ParamBrowLY", "label": "左眉 上下", "min": -1.0, "max": 1.0, "default": 0.0,
-             "binds": [{"part": "brow_l", "param": "dy", "scale": -3.0}]},
+             "binds": [{"part": "brow_l", "param": "dy", "scale": -5.0}]},
             {"id": "ParamBrowRY", "label": "右眉 上下", "min": -1.0, "max": 1.0, "default": 0.0,
-             "binds": [{"part": "brow_r", "param": "dy", "scale": -3.0}]},
+             "binds": [{"part": "brow_r", "param": "dy", "scale": -5.0}]},
             {"id": "ParamBrowLAngle", "label": "左眉 角度", "min": -1.0, "max": 1.0, "default": 0.0,
              "binds": [{"part": "brow_l", "param": "rot_deg", "scale": 7.0}]},
             {"id": "ParamBrowLX", "label": "左眉 左右", "min": -1.0, "max": 1.0,
@@ -116,10 +137,10 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
             {"id": "ParamArmRA", "label": "右臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_r", "param": "rot_deg", "scale": -6.0}]},
             {"id": "ParamArmLB", "label": "左小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
-             "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 5.0}],
-             "note": "绕肘旋转，±10 → ±50°；肘部 24px 重叠带兜底"},
+             "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 10.0}],
+             "note": "绕肘旋转，±10 → ±100°；挥手那下肘要折 80° 再叠 14° 的摆"},
             {"id": "ParamArmRB", "label": "右小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
-             "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -5.0}]},
+             "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -10.0}]},
             # G4c2：手是第三节（绕腕转）。Live2D 标准参数表里就叫 ParamHandL/R。
             {"id": "ParamHandL", "label": "左手腕", "min": -1.0, "max": 1.0, "default": 0.0,
              "binds": [{"group": "hand_l", "param": "rot_deg", "scale": 22.0}],
@@ -200,6 +221,17 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                        {"part": "eye_hl_star_l", "param": "alpha", "scale": 1.0, "offset": -1.0},
                        {"part": "eye_hl_star_r", "param": "alpha", "scale": 1.0, "offset": -1.0}]},
         ]
+    if has_eyeballs:
+        # 标准参数表的"瞳孔形状"。贴图模型做不出真正的变形，就用瞳孔缩放代替：
+        # +1 = 瞳孔睁圆放大（吓一跳），-1 = 缩成一点（惊恐/呆滞）。
+        # 只缩放眼球件 —— 眼白底/眼眶/眼线都是矩形小块贴图，一放大就露方边。
+        out.append({"id": "ParamEyeBallForm", "label": "瞳孔 放大/缩小",
+                    "min": -1.0, "max": 1.0, "default": 0.0,
+                    "binds": [{"part": "eye_l_ball", "param": "sx", "scale": 0.18},
+                              {"part": "eye_r_ball", "param": "sx", "scale": 0.18},
+                              {"part": "eye_l_ball", "param": "sy", "scale": 0.22},
+                              {"part": "eye_r_ball", "param": "sy", "scale": 0.22}],
+                    "note": "surprised 动作把它推到 1.0"})
     return out
 
 
@@ -1187,6 +1219,153 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         elif "r" in _tok or "right" in _tok:
             _p["eye_side"] = "r"
 
+    # ------------------------------------------------------------------
+    # 动作通道 → 参数通道（Live2D 合规：.motion3 的曲线只能打在参数上）
+    # ------------------------------------------------------------------
+    # 官方 motion3.json 的 Curve.Target 只有三种：Model（Opacity/EyeBlink/LipSync）、
+    # Parameter、PartOpacity —— **没有"直接写部件位移/旋转/缩放"这种通道**
+    # （CubismWebFramework/src/motion/cubismmotion.ts 第 38~40 行的三个常量，
+    #  实测 Haru 的 haru_g_m01.motion3.json：Parameter 42 条 + PartOpacity 20 条 + Model 1 条）。
+    #
+    # 上面那些动作是按"这个零件挪几个像素"调出来的，数值本身是美术成果，不能丢；
+    # 所以这里不重写动作，而是把每条几何通道按**参数的 bind 系数反算**成参数值：
+    #
+    #     参数振幅 = 几何振幅 ÷ bind scale
+    #
+    # 换完之后 rig.json 里就只剩参数通道了，对外接口（LLM/脚本/测试台）也从
+    # "你得知道角色拆了几件"变成"你只要会写 ParamXxx"。
+    #
+    # 新动作请**直接写参数**；这张表只是一次性换算 + 守门人：
+    # 出现没有登记的几何目标就直接报错，防止几何通道偷偷长回来。
+    GEO2PARAM = {
+        # (目标, 几何量): (参数 id, bind scale)
+        ("head", "rot_deg"):        ("ParamAngleZ", 0.5),
+        # 头的平移走 ParamAngleX/Y：它们是内建参数，没有 bind，
+        # "scale" 来自 look.groups.head（dx 4.0 / dy 10.0，再除以参数满量程 30）。
+        ("head", "dx"):             ("ParamAngleX", 4.0 / 30.0),
+        ("head", "dy"):             ("ParamAngleY", -10.0 / 30.0),
+        ("chest", "dy"):            ("ParamBodyAngleY", 0.25),
+        ("root", "dx"):             ("ParamBaseX", 2.0),
+        ("root", "dy"):             ("ParamBaseY", -4.0),
+        ("root", "rot_deg"):        ("ParamBaseRot", 0.5),
+        (body_id, "bend_x"):        ("ParamBodyAngleX", 1.0),
+        (body_id, "bend_y"):        ("ParamBodyAngleY", 0.4),
+        ("arm_l", "dy"):            ("ParamShoulderY", -0.8),
+        ("arm_r", "dy"):            ("ParamShoulderY", -0.8),
+        ("arm_l", "rot_deg"):       ("ParamArmLA", 6.0),
+        ("arm_r", "rot_deg"):       ("ParamArmRA", -6.0),
+        ("forearm_l", "rot_deg"):   ("ParamArmLB", 10.0),
+        ("forearm_r", "rot_deg"):   ("ParamArmRB", -10.0),
+        ("hand_l", "rot_deg"):      ("ParamHandL", 22.0),
+        ("hand_r", "rot_deg"):      ("ParamHandR", -22.0),
+        ("seg_leg_l", "bend_x"):    ("ParamLegL", 20.0),
+        ("seg_leg_r", "bend_x"):    ("ParamLegR", 20.0),
+        ("brow_l", "dy"):           ("ParamBrowLY", -5.0),
+        ("brow_r", "dy"):           ("ParamBrowRY", -5.0),
+        ("brow_l", "rot_deg"):      ("ParamBrowLAngle", 7.0),
+        ("brow_r", "rot_deg"):      ("ParamBrowRAngle", -7.0),
+        ("hair_ahoge", "bend_x"):   ("ParamHairAhoge", 10.0),
+        ("hair_front", "bend_x"):   ("ParamHairFront", 6.0),
+        ("hair_side_l", "bend_x"):  ("ParamHairSide", 7.0),
+        ("hair_side_r", "bend_x"):  ("ParamHairSide", 7.0),
+        ("hair_back", "bend_x"):    ("ParamHairBack", 5.0),
+        ("mouth_mask", "sy"):       ("ParamMouthOpenY", round(0.95 - mouth["closed_sy"], 3) if mouth else 0.895),
+        ("mouth_open", "alpha"):    ("ParamMouthOpenY", -0.9),
+        ("mouth_open", "sy"):       ("ParamMouthOpenY", 0.144),
+        # 眼球：左右/上下走 gaze（max_offset 4.0 / 2.5），缩放走瞳孔形状参数
+        ("eye_l_ball", "dx"):       ("ParamEyeBallX", 4.0),
+        ("eye_r_ball", "dx"):       ("ParamEyeBallX", 4.0),
+        ("eye_l_ball", "dy"):       ("ParamEyeBallY", 2.5),
+        ("eye_r_ball", "dy"):       ("ParamEyeBallY", 2.5),
+        ("eye_open_left", "dx"):    ("ParamEyeBallX", 4.0),
+        ("eye_open_right", "dx"):   ("ParamEyeBallX", 4.0),
+        ("eye_open_left", "sx"):    ("ParamEyeBallForm", 0.18),
+        ("eye_open_right", "sx"):   ("ParamEyeBallForm", 0.18),
+        ("eye_open_left", "sy"):    ("ParamEyeBallForm", 0.22),
+        ("eye_open_right", "sy"):   ("ParamEyeBallForm", 0.22),
+        ("eye_l_ball", "sx"):       ("ParamEyeBallForm", 0.18),
+        ("eye_r_ball", "sx"):       ("ParamEyeBallForm", 0.18),
+        ("eye_l_ball", "sy"):       ("ParamEyeBallForm", 0.22),
+        ("eye_r_ball", "sy"):       ("ParamEyeBallForm", 0.22),
+    }
+    # 直接删掉的通道：整只眼（眼眶+眼白+睫毛）在脸上平移。
+    # 这件事本来就该由 head 组的位移带着走（眼部件全在 head 组里），
+    # 动作里再逐件写一遍等于动两次；而且新加的零件（比如笑眼件）不会出现在这张
+    # 手写清单里 —— 笑眼件没有这条通道，眨眼时就会掉队。幅度只有 0.5~1.5px，删掉看不出来。
+    # （动作定义里写的是 eye_open_left/right，上面那段会先摊到五个零件上，
+    #   所以这里按摊开后的零件名列。）
+    GEO_DROP = {("eye_open_left", "dy"), ("eye_open_right", "dy")} | {
+        (f"eye_{_s}_{_k}", _p)
+        for _s in ("l", "r")
+        for _k in ("socket", "base", "lid", "closed", "lash", "smile")
+        for _p in ("dx", "dy", "sx", "sy")
+    }
+    # 一个动作里几条嘴通道原本分写（遮罩高度 / 上唇线透明度 / 开口高度），
+    # 换算后它们是同一个 ParamMouthOpenY，波形却不一样，不能简单相加（会 clamp 成 1.0）。
+    # 这几个动作手工给一条合并后的曲线。
+    MOUTH_MERGE = {
+        "talk":      {"wave": "flap", "amp": 0.833, "freq": 3.0},
+        "surprised": {"wave": "pulse", "amp": 1.0, "dur": 0.25, "ease": "out"},
+    }
+    # 呼吸动作额外挂一条官方口径的 ParamBreath：CubismBreath 输出的是
+    # offset + peak*sin（0..1 的单向值），所以写 {amp 0.5, bias 0.5} 而不是双向正弦。
+    # 它驱动胸腔的起伏与纵向缩放，躯干的弯曲由上面换算出来的 ParamBodyAngleY 负责。
+    BREATH_CH = {"target": "ParamBreath", "wave": "sine", "amp": 0.5, "bias": 0.5, "freq": 0.28}
+
+    def to_param_channels(acts):
+        n_in = n_out = 0
+        for a in acts:
+            out_ch, seen = [], set()
+            mouth_merged = False
+            for c in a.get("channels", []):
+                n_in += 1
+                tgt, prop = c.get("target"), c.get("param")
+                if (tgt, prop) in GEO_DROP:
+                    continue
+
+                key = (tgt, prop)
+                if key not in GEO2PARAM:
+                    raise SystemExit(
+                        f"[make_rig] 动作 {a['id']} 的通道 {tgt}.{prop} 没有对应的参数；"
+                        f"请先在 param_list() 里给它一个参数再加动作"
+                        f"（Live2D 的动作只能打在参数上）")
+                pid, scale = GEO2PARAM[key]
+                if pid == "ParamMouthOpenY" and a["id"] in MOUTH_MERGE:
+                    if mouth_merged:
+                        continue
+                    mouth_merged = True
+                    nc = {"target": "ParamMouthOpenY"}
+                    nc.update(MOUTH_MERGE[a["id"]])
+                    out_ch.append(nc)
+                    continue
+                nc = {"target": pid}
+                for k, v in c.items():
+                    if k in ("target", "param", "curve", "strips"):
+                        continue        # curve/strips 是 bind 的属性，跟着参数走
+                    if k == "amp":
+                        nc["amp"] = round(v / scale, 4)
+                    elif k == "keys":
+                        nc["keys"] = [[t, round(val / scale, 4)] for t, val in v]
+                    else:
+                        nc[k] = v
+                # 左右对称的两条（侧发 / 两肩 / 两只眼球）换算后完全一样，
+                # 合成一条就够——它们本来就归同一个参数。
+                sig = tuple(sorted((k, tuple(map(tuple, v)) if k == "keys" else v)
+                                   for k, v in nc.items()))
+                if sig in seen:
+                    continue
+                seen.add(sig)
+                out_ch.append(nc)
+            if a["id"] == "breath":
+                out_ch.insert(0, dict(BREATH_CH))
+            a["channels"] = out_ch
+            n_out += len(out_ch)
+        return n_in, n_out
+
+    _n_in, _n_out = to_param_channels(actions)
+    print(f"  动作通道：{_n_in} 条几何通道 → {_n_out} 条参数通道"
+          f"（≈ Live2D .motion3 的 Parameter 曲线）")
+
     rig = {
         "schema_version": "1.0",
         "id": f"{name}_teen",
@@ -1195,14 +1374,17 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "origin": [cw // 2, ch],
         "ground_line": ch - 8,
         "groups": groups,
-        "gaze": {"max_offset": [3.0, 2.0]},
+        # 眼球左右 ±4px / 上下 ±2.5px：满格 ParamEyeBallX/Y = look_around 动作的幅度。
+        "gaze": {"max_offset": [4.0, 2.5]},
         # 指针跟随：眼睛看过去的同时，头和上身也跟着转一点
         # （Live2D 的 ParamAngleX/Y + ParamBodyAngleX）。
         # 幅度刻意保守：头 5° + 4px，上身 1.2° + 1.5px —— 再大就"摇头晃脑"了。
         "look": {
             "speed": 9.0,
             "groups": {
-                "head": {"rot_deg": 5.0, "dx": 4.0, "dy": 3.0},
+                # dy 10：ParamAngleY 满格 = 头上下 10px = surprised 缩脖子那下的幅度。
+                # 动作和指针跟随写的是同一个参数，幅度也必须是同一套（官方就是这么做的）。
+                "head": {"rot_deg": 5.0, "dx": 4.0, "dy": 10.0},
                 "chest": {"rot_deg": 1.2, "dx": 1.5, "dy": 1.0},
             },
         },
@@ -1277,7 +1459,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                              jointed_arms=bool(armp),
                              has_blend=bool(blendp),
                              has_side=any(p["id"] == "hair_side_l" for p in parts_list),
-                             has_legs=any(p["id"] == "seg_leg_l" for p in parts_list)),
+                             has_legs=any(p["id"] == "seg_leg_l" for p in parts_list),
+                             body_id=body_id,
+                             has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list)),
         # 表情层（Live2D 的 expression）：一组参数偏移，叠在当前动作之上。
         # 和动作是两条轨 —— 可以"笑着挥手"，不用为每种组合再做一个动作。
         # Pose（≈ Live2D pose3.json）：一组互斥差分，同一时刻只有一个档位可见。

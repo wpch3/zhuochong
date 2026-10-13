@@ -255,6 +255,47 @@ def run(base, root):
               "L=%s R=%s" % (eff.get("ParamEyeLSmile"), eff.get("ParamEyeRSmile")))
         a.hit("/api/expression?off=1")
         a.hit("/api/blink?on=1")
+
+    # ---- 动作通道全部打在参数上（≈ .motion3 的 Parameter 曲线）----
+    # 端到端口径：请求一个动作，参数表里对应的参数就该自己动起来。
+    # 以前动作直接写部件几何，外面读 params.json 是看不出动作在跑的。
+    # 上面那段像素对照是在 /api/pause?on=1 里跑的（冻结时钟才比得了像素）。
+    # 动作要跑起来必须先解冻，这一段做完再冻回去给后面的口型对照用。
+    a.hit("/api/pause?on=0"); time.sleep(0.15)
+    check("瞳孔形状用标准名 ParamEyeBallForm", "ParamEyeBallForm" in pids, " ".join(pids[:8]))
+    check("全身倾斜扩展参数 ParamBaseRot 在册", "ParamBaseRot" in pids, " ".join(pids[:8]))
+    if "ParamEyeBallForm" in pids:
+        a.hit("/api/action?id=idle&force=1"); time.sleep(0.25)
+        s0, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamEyeBallForm&v=1")
+        s1, _ = a.frame_hash()
+        check("瞳孔放大改变画面", s0 != s1, "%s → %s" % (s0, s1))
+        a.hit("/api/param?id=ParamEyeBallForm&reset=1")
+    a.hit("/api/action?id=wave&force=1")
+    peak_a = peak_b = 0.0
+    for _ in range(14):                     # 窗口内轮询取极值（动作淡入要时间）
+        time.sleep(0.12)
+        eff = {q["id"]: (q.get("effective") or 0)
+               for q in (a.json("/api/params.json") or {}).get("params", [])}
+        peak_a = max(peak_a, eff.get("ParamArmRA") or 0)
+        peak_b = max(peak_b, eff.get("ParamArmRB") or 0)
+    check("挥手动作要驱动 ParamArmRA（大臂）", peak_a > 4.0, "峰值 %.2f" % peak_a)
+    check("挥手动作要驱动 ParamArmRB（肘）", peak_b > 3.0, "峰值 %.2f" % peak_b)
+    a.hit("/api/action?id=breath&force=1")
+    lo, hi = 9.9, -9.9
+    for _ in range(16):
+        time.sleep(0.12)
+        eff = {q["id"]: (q.get("effective") or 0)
+               for q in (a.json("/api/params.json") or {}).get("params", [])}
+        v = eff.get("ParamBreath")
+        if v is None:
+            continue
+        lo = min(lo, v); hi = max(hi, v)
+    check("呼吸动作驱动官方口径的 ParamBreath（0..1，带 bias）",
+          hi > 0.6 and lo >= -1e-6, "区间 %.3f..%.3f" % (lo, hi))
+    a.hit("/api/action?id=idle&force=1")
+    a.hit("/api/pause?on=1"); time.sleep(0.15)
+
     # 口型音素（母音識別）：A/I/U/E/O 必须是五张不同的嘴
     pj = a.json("/api/params.json") or {}
     vis = pj.get("visemes") or []

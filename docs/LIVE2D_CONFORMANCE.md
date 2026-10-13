@@ -41,9 +41,9 @@ Pose 互斥组、混合模式、自动眨眼、口型同步）**全部有对应�
 | 7 | `ParamEyeRSmile` | 右眼 笑眼 | ✅ | 同上，左右分家（闸门验"只笑左眼时右眼 0 像素变化"） |
 | 8 | `ParamEyeBallX` | 眼球 左右 | ✅ | 内建，驱动 `gaze` 标签部件，被眼眶遮罩裁切 |
 | 9 | `ParamEyeBallY` | 眼球 上下 | ✅ | 同上 |
-| 10 | `ParamEyeBallForm` | 瞳孔 形状 | ⬜ | 要新素材（猫瞳/竖瞳差分），优先级低 |
-| 11 | `ParamBrowLY` | 左眉 上下 | ✅ | `brow_l` `dy × −3` |
-| 12 | `ParamBrowRY` | 右眉 上下 | ✅ | `brow_r` `dy × −3` |
+| 10 | `ParamEyeBallForm` | 瞳孔 形状 | ✅ | **2026-10-13 补**：贴图模型做不出真正的瞳形变形，用瞳孔缩放代替 —— `eye_l/r_ball` `sx × 0.18`、`sy × 0.22`（只缩放眼球件，眼白底/眼眶/眼线都是矩形小块，一放大就露方边）。surprised 动作把它推到 1.0 |
+| 11 | `ParamBrowLY` | 左眉 上下 | ✅ | `brow_l` `dy × −5`（满格 = surprised 挑眉的幅度） |
+| 12 | `ParamBrowRY` | 右眉 上下 | ✅ | `brow_r` `dy × −5` |
 | 13 | `ParamBrowLX` | 左眉 左右 | ✅ | **本轮补**：`brow_l` `dx × 4` |
 | 14 | `ParamBrowRX` | 右眉 左右 | ✅ | **本轮补**：`brow_r` `dx × 4` |
 | 15 | `ParamBrowLAngle` | 左眉 角度 | ✅ | `brow_l` `rot_deg × 7` |
@@ -74,7 +74,7 @@ Pose 互斥组、混合模式、自动眨眼、口型同步）**全部有对应�
 | 40 | `ParamBaseY` | 全身 上下 | ✅ | **本轮补**：`root` 组 `dy` |
 | 41 | `ParamNONE` | 占位 | ➖ | SDK 内部用的空参数，不需要 |
 
-**合计：✅ 36 ／ ⬜ 3（都缺素材：瞳形 `ParamEyeBallForm`、眉形 `ParamBrowL/RForm`） ／ ➖ 4（角色不适用）**
+**合计：✅ 37 ／ ⬜ 2（都缺素材：眉形 `ParamBrowLForm` / `ParamBrowRForm`） ／ ➖ 4（角色不适用）**
 
 ### 我们在标准表之外的扩展（每一个都必须登记在这里）
 
@@ -85,6 +85,7 @@ Pose 互斥组、混合模式、自动眨眼、口型同步）**全部有对应�
 | `ParamHairSideS` | 侧发的 S 形（FFD），和整体摆动分开 |
 | `ParamEyeSparkle` | 眼高光强弱（加算图层），用来演"眼里的光灭了" |
 | `ParamEyeOpen` | 两眼一起开合的便捷入口（引擎内建，L/R 之外的额外一个） |
+| `ParamBaseRot` | **2026-10-13 补**：全身倾斜。标准表只有 `ParamBodyAngleZ`（上身），而"被摸头 / 被拖拽"时要整个人（含腿）一起晃，所以另立一个绑 `root` 组 `rot_deg × 0.5` |
 
 > 闸门：`tools/selfcheck_repo.py` 的「自定义参数都已登记」会把**没写进这张表**的新参数判红。
 > 这就是防"命名慢慢跑偏"的那道锁。
@@ -209,12 +210,46 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 | `.model3.json` `FileReferences` | 把各文件串起来 | `rig.json` 一个文件全包 | 等价 |
 | `.model3.json` `Groups` | `EyeBlink` / `LipSync` 两组 | **本轮补** `rig.json` 的 `param_groups` | ✅ 而且**不是摆设**：自动眨眼只眨组里列的眼，口型只写组里声明的参数（改组名会改行为，有单测守着） |
 | `.model3.json` `HitAreas` | `Head` / `Body` 点击区 | `regions`（head / body / feet 三块，各自带动作与光标） | 等价且更强（我们多一层"点了触发哪个动作"） |
-| `.motion3.json` | 关键帧动作曲线，目标是**参数** | `actions[].channels[].keys`，**本轮起 `target` 可以直接写 `ParamXxx`** | ✅ 协议打通。差异：我们是 `linear/smooth/step`，官方是贝塞尔；可后加，属于纯增量 |
+| `.motion3.json` | 关键帧动作曲线，目标是**参数** | `actions[].channels[].target = "ParamXxx"`，**2026-10-13 起 18 个动作全部如此** | ✅ 协议打通（见下面「动作通道」）。差异：我们是 `linear/smooth/step`，官方是贝塞尔；可后加，属于纯增量 |
 | `.exp3.json` | 表情（参数偏移，Add/Multiply/Overwrite） | `expressions[].params[].mode = add / set(=overwrite) / multiply` | ✅ 三种混合都有，求值照 `CubismExpressionMotion` 的三累加器 |
 | `.physics3.json` | 摆动：**参数 → 参数**，带 Vertices 摆链 | `physics[]`：**部件/形变器 → 位移**，driver 可串另一条 physics（多段摆链） | 功能等价，**语义不同**（见下） |
 | `.pose3.json` | 互斥部件组 + 淡入淡出 | `poses[]`（眼高光形状差分在用） | 等价 |
 | `.cdi3.json` | 编辑器显示信息（参数中文名/分组） | 参数的 `label` 字段 + `/api/params.json` | 等价（测试台的滑条就是它长出来的） |
 | `.userdata3.json` | 自定义元数据 | 暂无需求 | ➖ |
+
+### 动作通道：只能打在参数上（2026-10-13 完成迁移）
+
+官方 `motion3.json` 里每条曲线的 `Target` **只有三种取值**
+（`CubismWebFramework/src/motion/cubismmotion.ts` 第 38~40 行的三个常量）：
+
+| Target | 含义 | 我们的对应 |
+| --- | --- | --- |
+| `Parameter` | 打在参数上 | `{"target": "ParamXxx", ...}` ← 现在 160 条通道全是这种 |
+| `PartOpacity` | 打在部件不透明度上 | `{"target": "<部件 id>", "param": "alpha"}`（仍然允许） |
+| `Model` | 只认 `Opacity` / `EyeBlink` / `LipSync` 三个特殊 id | 我们用 `dim` / `blink_hold` / `mouth_mute` 表达 |
+
+**没有"直接写部件位移/旋转/缩放"这一类**。我们以前有（18 个动作共 197 条），
+2026-10-13 全部迁走：
+
+- 迁法不是重写动作 —— 那些像素/角度是美术调出来的成果。而是**按参数的 bind 系数反算**：
+  `参数振幅 = 几何振幅 ÷ bind scale`。换算表在 `tools/make_rig.py` 的 `GEO2PARAM`，
+  **出现没登记的几何目标就直接报错**（新动作请直接写参数，换算表只是守门人）。
+- 顺带清掉两类脏东西：① 左右对称的两条通道（侧发/两肩/两眼球）换算后是同一个参数，合成一条；
+  ② idle/think 里"整只眼在脸上平移"那 24 条逐件通道直接删 —— 眼部件全在 head 组里，
+  组位移本来就带着它们走，再逐件写一遍等于动两次，而且新加的零件（比如笑眼件）
+  不会出现在那张手写清单里，眨眼时就会掉队。
+- 新增 `bias` 字段（直流偏置）：官方 `CubismBreath` 是 `offset + peak*sin`，
+  `ParamBreath` 值域 0..1，纯正弦会被下限 clamp 掉半个周期。breath 动作写
+  `{"wave":"sine","amp":0.5,"bias":0.5}`。
+- 为此调整了几个 bind 系数，口径统一成"**参数满格 = 这个动作能做到的最大幅度**"：
+  `ParamBrowL/RY` −3→−5、`ParamBaseX` 1→2、`ParamBaseY` −1→−4、`ParamArmL/RB` ±5→±10、
+  `gaze.max_offset` [3,2]→[4,2.5]、`look.groups.head.dy` 3→10
+  （跟随和动作写的是同一个参数，幅度体系也必须是同一套 —— 官方就是这么做的）。
+- **回归证据**：18 个动作 × 7 个时刻逐像素对照，质心位移最大 5.3px（breath 的呼吸起伏）、
+  横向最大 5.0px（stroke/focus 的 `head.dx → ParamAngleX` 连带了头部旋转，Live2D 语义，更自然），
+  其余 ≤2.2px。证据图 `logs/asset_qa/_param_channel_ab.jpg`。
+- **闸门**：`zrig_action_geom_channels()` 必须返回 0；单测还拿一个**故意写几何通道的合成 rig**
+  反向验证这个计数器不是永远返回 0。
 
 ### physics 的语义差异（唯一一处"做法不同"，已评估可后补）
 
@@ -248,9 +283,9 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 | --- | --- | --- |
 | 🔴 **补不回来**（会污染全部动作/表情/外部接口） | 参数命名空间与语义（左右眼拆分、`ParamCheek` 正名、取值范围对齐官方） | **本轮已做**，并用 `selfcheck`（静态）+ `test_core`（运行时）双闸焊死 |
 | 🔴 **补不回来** | 素材的拆件结构（挡住的地方必须有画、关节两侧要塗り足し） | 已做：眼/嘴/眉/发/臂/腕/腿全部拆到位 |
-| 🟠 代价大 | 动作改成"写参数"而不是"写部件通道" | 通道已支持 `target:"ParamXxx"`；现有 18 个动作仍写部件（能跑、可逐个迁移） |
+| ~~🟠 代价大~~ ✅ | 动作改成"写参数"而不是"写部件通道" | **2026-10-13 已完成**：18 个动作 197 条几何通道 → 160 条参数通道，`zrig_action_geom_channels()` 恒为 0（单测 + selfcheck 双闸）。见下面「动作通道」一节 |
 | 🟢 随时能补 | physics 的参数级 I/O、motion3 贝塞尔、cdi3 导出（~~exp3 multiply~~ 2026-10-13 已补） | 纯增量，不动素材 |
-| 🟢 随时能补 | 笑眼 / 眉形 / 瞳孔形状 / I·U·E·O 口型 | 画了就能挂，结构已经留好 |
+| 🟢 随时能补 | ~~笑眼~~ / 眉形 / ~~瞳孔形状~~ / ~~I·U·E·O 口型~~ | 只剩眉形 `ParamBrowL/RForm` 要新素材 |
 
 ---
 

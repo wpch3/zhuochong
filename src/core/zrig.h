@@ -61,6 +61,9 @@ int   zrig_action_request(zrig *r, const char *id, const char *reason, int force
 const char *zrig_action(const zrig *r);
 int   zrig_action_priority(const zrig *r);
 double zrig_action_elapsed(const zrig *r);
+/* 动作通道里"直接写部件几何"的条数。Live2D 的 .motion3 只有 Parameter /
+   PartOpacity / Model 三种曲线目标，所以合规的 rig 这里应该返回 0。 */
+int   zrig_action_geom_channels(const zrig *r);
 const char *zrig_action_last_reason(const zrig *r);
 
 /* --------------------------------------------------------------- 眨眼 */

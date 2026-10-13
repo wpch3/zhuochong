@@ -190,11 +190,17 @@ def check_rig(root):
         check("部件的组都存在", not badg, f"坏组：{badg}" if badg else f"{len(gids)} 组")
 
         # ★ 这条就是上次预览 exit 3 的那个坑：删了部件却忘改动作展开表
+        # 动作通道现在打在参数上（≈ .motion3 的 Parameter 曲线），
+        # 参数名的正确性由下面 check_live2d 的 ⑬ 组单独核；这里只拦
+        # "指向一个不存在的部件/组/形变器" 这种删件漏改。
         ghosts = []
+        dfids = {q.get("id") for q in r.get("deformers", [])}
         for a in r.get("actions", []):
             for c in a.get("channels", []):
                 t = c.get("target", "")
-                if t and t not in pids and t not in gids:
+                if t.startswith("Param"):
+                    continue
+                if t and t not in pids and t not in gids and t not in dfids:
                     ghosts.append(f"{a['id']}→{t}")
         check("动作通道没有幽灵 target", not ghosts, f"坏通道：{ghosts[:4]}" if ghosts else
               f"{sum(len(a.get('channels', [])) for a in r.get('actions', []))} 条通道")
@@ -322,6 +328,7 @@ L2D_EXTENSIONS = {
     "ParamHairSideS": "侧发 S 形（网格形变器）",
     "ParamEyeSparkle": "眼高光强弱（加算图层）",
     "ParamEyeOpen": "两眼一起开合的便捷参数（引擎内建，L/R 之外的额外入口）",
+    "ParamBaseRot": "全身倾斜（标准表只有 ParamBodyAngleZ=上身；被摸头/被拖拽要整个人晃）",
 }
 # 官方惯例的取值范围（Cubism 标准模板）
 L2D_RANGE = {
@@ -535,6 +542,46 @@ def check_live2d(root):
         check("对照表把笑眼登记成已实现",
               "`ParamEyeLSmile` | 左眼 笑眼 | ✅" in doc_txt,
               "docs/LIVE2D_CONFORMANCE.md 第 6/7 行")
+
+    # ⑬ 动作通道：官方 .motion3 的曲线目标只有 Parameter / PartOpacity / Model
+    #    （CubismWebFramework cubismmotion.ts 的 TargetName* 三个常量）。
+    #    直接写部件的位移/旋转/缩放不在其中 —— 这里把门守死。
+    mk = io.open(os.path.join(root, "tools/make_rig.py"), encoding="utf-8").read()
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        tag = os.path.relpath(rp, root)
+        r = jsonc(rp)
+        known = {q["id"] for q in r.get("params", [])} | {
+            "ParamAngleX", "ParamAngleY", "ParamEyeOpen", "ParamEyeLOpen", "ParamEyeROpen",
+            "ParamEyeLSmile", "ParamEyeRSmile", "ParamEyeBallX", "ParamEyeBallY"}
+        geom, unknown = [], []
+        nch = 0
+        for a_ in r.get("actions", []):
+            for c in a_.get("channels", []):
+                nch += 1
+                t = c.get("target", "")
+                if not t.startswith("Param"):
+                    geom.append(f'{a_["id"]}:{t}.{c.get("param")}')
+                elif t not in known:
+                    unknown.append(f'{a_["id"]}:{t}')
+        check("动作通道只打在参数上（≈ .motion3 的 Parameter 曲线）",
+              not geom, f"{tag}：{geom[:4]}" if geom else f"{tag}：{nch} 条全是参数通道")
+        check("动作引用的参数都存在",
+              not unknown, f"{tag}：{unknown[:4]}" if unknown else f"{tag}：{len(known)} 个参数可用")
+    check("make_rig 有几何→参数的换算表，并对漏登记的目标报错",
+          "GEO2PARAM" in mk and "没有对应的参数" in mk,
+          "tools/make_rig.py：新动作直接写参数，换算表只是守门人")
+    check("引擎会数出残留的几何通道",
+          "legacy_geom_chans" in rig_c and "zrig_action_geom_channels" in rig_c,
+          "src/core/zrig.c")
+    check("几何通道计数对外可查",
+          "zrig_action_geom_channels" in io.open(
+              os.path.join(root, "src/core/zrig.h"), encoding="utf-8").read(),
+          "src/core/zrig.h")
+    check("有动作通道的单测（含反向验证计数器）",
+          "test_action_param_channels" in test_c and "zc_geomchan_rig" in test_c,
+          "tests/test_core.c")
+    check("支持直流偏置 bias（官方 CubismBreath 的 offset）",
+          "c->bias" in rig_c and '"bias"' in rig_c, "src/core/zrig.c：value = offset + peak*sin")
 
 # ------------------------------------------------------------------ 4 角色包其它引用
 def check_character(root):

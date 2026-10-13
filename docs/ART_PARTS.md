@@ -461,6 +461,30 @@ TTS 产出 mp3 ──► tools/make_lipsync.py ──► voice/lipsync/<id>.json
   逐块数像素）、smoke 6 项、selfcheck 7 项；负控三次（笑眼不隐含闭眼 / 笑眼件不显形 / 闭眼件不让位）全部判红。
   证据图 `logs/asset_qa/_eye_smile_sheet.jpg`（睁眼 / 谷型闭眼 / 山型笑眼 / 单眼笑 / happy 五格）。
 
+### 3.12 动作通道全部迁到参数上（G41）✅ 2026-10-13
+
+- **为什么要改**：官方 `motion3.json` 的曲线 `Target` 只有三种 —— `Parameter`、
+  `PartOpacity`、`Model`（`cubismmotion.ts` 第 38~40 行三个常量；实测 Haru 的
+  `haru_g_m01.motion3.json` = Parameter 42 条 + PartOpacity 20 条 + Model 1 条）。
+  **没有"直接写部件位移/旋转/缩放"这种通道。** 我们以前 18 个动作共 197 条全是这种，
+  等于要求调用方知道角色拆了几件。
+- **怎么迁**：不重写动作（那些像素/角度是调出来的美术成果），而是**按参数的 bind 系数反算**
+  `参数振幅 = 几何振幅 ÷ bind scale`。换算表 = `tools/make_rig.py` 的 `GEO2PARAM`，
+  遇到没登记的几何目标**直接报错**。结果 197 → 160 条，全部是 `{"target": "ParamXxx"}`。
+- **顺带清掉的脏东西**：① 左右对称的两条通道（侧发 / 两肩 / 两只眼球）换算后归同一个参数，合成一条；
+  ② idle/think 里"整只眼在脸上平移"那 24 条逐件通道**直接删** —— 眼部件全在 head 组里，
+  组位移本来就带着走；而且那是一张手写清单，新加的笑眼件根本不在里面，眨眼时会掉队。
+- **新增 `bias`（直流偏置）**：官方 `CubismBreath` 是 `offset + peak*sin`，`ParamBreath` 值域 0..1，
+  纯正弦会被下限 clamp 掉半个周期。breath 动作写 `{"wave":"sine","amp":0.5,"bias":0.5}`。
+- **顺带补上 `ParamEyeBallForm`**（标准参数表第 10 项，瞳孔形状）：贴图模型做不出真变形，
+  用瞳孔缩放代替（只缩放眼球件 —— 眼白底/眼眶/眼线是矩形小块，一放大就露方边）。
+  合规表 ✅36 → **✅37**。
+- **口径统一成"参数满格 = 这个动作能做到的最大幅度"**，为此调了几个 bind 系数：
+  `ParamBrowL/RY` −3→−5、`ParamBaseX` 1→2、`ParamBaseY` −1→−4、`ParamArmL/RB` ±5→±10、
+  `gaze.max_offset` [3,2]→[4,2.5]、`look.groups.head.dy` 3→10。
+- **回归证据**：18 个动作 × 7 个时刻逐像素对照，质心位移最大 5.3px，其余 ≤2.2px；
+  证据图 `logs/asset_qa/_param_channel_ab.jpg`。
+
 ## 四、生产流程（这就是"Live2D 教程"在我们这边的落法）
 
 Live2D 官方教程的顺序是：**分层画稿 → 导入 → 建网格 → 加变形器/参数 → 绑动作**。
@@ -1056,8 +1080,11 @@ eye_closed *= clamp((blink - 0.75) * 4, 0, 1); /* 只在最后 25% 淡入 */
     AI 重绘山型 ∩ 笑眼脸 → 闭眼那条流水线 `--variant smile`；笑眼隐含闭眼、谷型闭眼件让位；
     新表情 happy。合规表 ✅34 → **✅36**，只剩瞳形/眉形两类共 3 项缺素材）
 
-14. **下一件：18 个动作从部件通道迁到参数通道**（🟠 合规表里最后一个结构性偏差），
-    之后是动作 fade 线性 → 正弦 `0.5−0.5cos(πt)`。
+14. ~~18 个动作从部件通道迁到参数通道~~ ✅ 2026-10-13（见 3.12；197 条几何通道 → 160 条参数通道，
+    合规表里最后一个结构性偏差 🟠 清掉；顺带补 `ParamEyeBallForm`，✅36 → **✅37**）
+
+15. **下一件：动作 fade 线性 → 正弦** `0.5−0.5cos(πt)`（照 BongoCat `motion/weight.rs` 的口径），
+    之后是裙摆接多段摆链、LipSync 接 TTS 包络。
 
 每一件的验收关卡都一样：`make test` 全绿 → `check_assets` 全过 →
 `make smoke`（互动/动作端到端）全过 → 预览抓帧人工看 → 才算入库。

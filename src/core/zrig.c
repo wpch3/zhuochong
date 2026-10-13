@@ -114,6 +114,7 @@ typedef struct {
     int    param;
     int    wave;
     double amp, freq, phase, dur;
+    double bias;              /* 直流偏置：官方 CubismBreath 的 offset（value = offset + peak*sin） */
     zease  ease;
     int    curve;             /* 形变曲线（仅 bend_* 用） */
     int    strips;            /* 分段数（仅 bend_* 用；0=默认 24） */
@@ -276,6 +277,7 @@ struct zrig {
 
     zaction actions[ZRIG_MAX_ACTIONS];
     int     nactions;
+    int    legacy_geom_chans;  /* 动作里"直接写部件几何"的通道条数（合规闸：应为 0） */
 
     zregion regions[ZRIG_MAX_REGIONS];
     int     nregions;
@@ -1600,6 +1602,16 @@ static double expr_apply(const zrig *r, int pi, double base)
 }
 
 /* 这个参数是不是正由口型音素层接管？是就返回它在音素层里的槽位。 */
+/* 这个参数是不是口型表驱动的（不看口型此刻有没有在说话）。
+   动作里的嘴通道要不要让路，看的是"归不归口型管"，不是"现在正不正在说"。 */
+static int param_is_viseme_target(const zrig *r, int pi)
+{
+    int k;
+    for (k = 0; k < r->nvis_p; ++k)
+        if (r->vis_pidx[k] == pi) return 1;
+    return 0;
+}
+
 static int viseme_slot(const zrig *r, int pi)
 {
     int k;
@@ -1751,6 +1763,12 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                                 "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha/bend_x/bend_y）");
                     return -1;
                 }
+                /* 官方 .motion3 的曲线目标只有三种：Model / Parameter / PartOpacity
+                   （CubismWebFramework cubismmotion.ts 的 TargetName* 三个常量）。
+                   直接写部件的位移/旋转/缩放/弯曲不在其中 —— 记一笔，由 selfcheck 与
+                   单测守着它恒为 0，防止几何通道偷偷长回来。 */
+                if (c->pparam < 0 && !(c->part >= 0 && c->param == P_ALPHA))
+                    r->legacy_geom_chans++;
                 /* 关键帧曲线（≈ .motion3）：有 keys 就不看 wave/amp/freq。
                    写法 "keys":[[0,0],[0.3,-12],[1.2,0]]，可选 "interp":"linear|smooth|step"。 */
                 {
@@ -1800,6 +1818,7 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                     return -1;
                 }
                 c->amp = zjson_num(zjson_obj_get(cj, "amp"), 0.0);
+                c->bias = zjson_num(zjson_obj_get(cj, "bias"), 0.0);
                 c->freq = zjson_num(zjson_obj_get(cj, "freq"), 1.0);
                 c->phase = zjson_num(zjson_obj_get(cj, "phase"), 0.0);
                 c->dur = zjson_num(zjson_obj_get(cj, "dur"), a->duration > 0 ? a->duration : 1.0);
@@ -2183,9 +2202,8 @@ static double eval_keys(const zrig *r, const zchan *c, double t, double total)
     return kv[n - 1];
 }
 
-static double eval_channel(const zrig *r, const zchan *c, double t, double total)
+static double eval_channel_wave(const zrig *r, const zchan *c, double t, double total)
 {
-    if (c->nkeys > 0) return eval_keys(r, c, t, total);
     switch (c->wave) {
         case W_SINE:
             return c->amp * sin(2.0 * 3.14159265358979323846 * (c->freq * t + c->phase));
@@ -2219,6 +2237,15 @@ static double eval_channel(const zrig *r, const zchan *c, double t, double total
             return c->amp * k * sin(2.0 * 3.14159265358979323846 * c->freq * t);
         }
     }
+}
+
+/* bias = 直流偏置。官方的 CubismBreath 就是 offset + peak*sin(…)：
+   ParamBreath 的值域是 0..1，纯正弦会摆到负半轴被 clamp 掉半个周期，
+   所以呼吸这种"单向参数"必须写成 {amp 0.5, bias 0.5}。 */
+static double eval_channel(const zrig *r, const zchan *c, double t, double total)
+{
+    if (c->nkeys > 0) return eval_keys(r, c, t, total);
+    return c->bias + eval_channel_wave(r, c, t, total);
 }
 
 /* 把一个动作在时刻 t 的所有通道按权重 w 累加进当前帧的变换数组。
@@ -2270,8 +2297,9 @@ static void accumulate_action(zrig *r, const zaction *a, double t, double w, dou
         double v;
         /* 口型同步接管时，动作里的嘴通道一律让路：
            否则 talk 的 flap 和包络会叠在一起，嘴越张越大（sy 超过素材高度就是拉伸）。 */
-        if (r->mouth_mute && c->part >= 0 && c->part < r->nparts &&
-            (r->parts[c->part].tags & TAG_MOUTH)) continue;
+        if (r->mouth_mute &&
+            ((c->part >= 0 && c->part < r->nparts && (r->parts[c->part].tags & TAG_MOUTH)) ||
+             (c->pparam >= 0 && param_is_viseme_target(r, c->pparam)))) continue;
         v = eval_channel(r, c, t, total) * w;
         if (c->pparam >= 0 && c->pparam < r->nparams) {
             r->p_action[c->pparam] += v;          /* 动作驱动命名参数（≈ .motion3） */
@@ -3313,6 +3341,10 @@ void zrig_look(zrig *r, double nx, double ny)
     r->look_x = ZC_CLAMP(nx, -1.0, 1.0);
     r->look_y = ZC_CLAMP(ny, -1.0, 1.0);
 }
+
+/* 动作里还剩几条"直接写部件几何"的通道（≈ 不合 .motion3 口径的遗留写法）。
+   官方只认 Parameter / PartOpacity / Model 三种曲线目标，所以这个数应该是 0。 */
+int zrig_action_geom_channels(const zrig *r) { return r ? r->legacy_geom_chans : 0; }
 
 double zrig_look_x(const zrig *r) { return r ? r->look_cx : 0.0; }
 double zrig_look_y(const zrig *r) { return r ? r->look_cy : 0.0; }

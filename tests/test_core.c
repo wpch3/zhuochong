@@ -2522,6 +2522,189 @@ static void test_sleep_wake_blink(void)
    Haru 的 F05 表情就是 ParamEyeLOpen=0(Multiply) + ParamEyeLSmile=1(Add)。
    所以这里要守住三件事：① 笑眼真的换了一张脸（不是把闭眼件拿来顶）；
    ② 笑眼自己隐含闭眼（不用调用方再去关睁眼）；③ 左右各走各的。 */
+/* ---- 动作通道：Live2D 的 .motion3 只认 Parameter / PartOpacity / Model ----
+   以前 18 个动作直接写"这个零件挪几个像素"，对外接口等于要求调用方知道角色
+   拆了几件；现在全部改成写参数，几何由参数的 bind 产生。这组测试守三件事：
+     ① 真 rig 里一条几何通道都不许剩（结构闸）；
+     ② 计数器本身是活的（拿一个故意写几何通道的合成 rig 验它会数出来）；
+     ③ 换了通道以后动作还是那个动作（挥手真的把手举起来、惊讶真的张嘴）。 */
+static void test_action_param_channels(void)
+{
+    char rig_path[1024], dir[1024], tmp_rig[1024];
+    zdiag d;
+    zrig *r;
+    SECTION("动作通道：只许打在参数上（≈ .motion3 的 Parameter 曲线）");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（动作通道）");
+    if (!r) return;
+
+    /* ① 结构闸：一条"直接写部件几何"的通道都不许剩 */
+    CHECK(zrig_action_geom_channels(r) == 0,
+          "动作里不许有直接写部件几何的通道（实际还剩 %d 条）",
+          zrig_action_geom_channels(r));
+
+    /* ② 端到端：挥手真的要把手举到身侧外面去。
+          画面右上那块(x 660..848, y 380..700)平时是空的，手举起来才会有像素。 */
+    {
+        const zimg *fb;
+        int i, idle_px, wave_px = 0, peak = 0;
+        double arm_a = 0.0, arm_b = 0.0, clock = 300.0;
+        zrig_blink_set_enabled(r, 0);
+        zrig_action_request(r, "idle", "t", 1);
+        for (i = 0; i < 120; ++i) { clock += 1.0 / 60.0; zrig_tick(r, clock); }
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        idle_px = frame_opaque_box(fb, 660, 380, 848, 700);
+        CHECK(idle_px == 0, "待机时手臂不该伸到画面右上（实际 %d 像素）", idle_px);
+        zrig_action_request(r, "wave", "t", 1);
+        /* 必须逐帧推进：动作切换的淡入权重是在 tick 里发现"动作变了"那一刻起算的，
+           一次跳 1.4 秒的话权重还是 0，看到的永远是"还没动"。 */
+        for (i = 0; i < 84; ++i) {
+            clock += 1.0 / 60.0;
+            zrig_tick(r, clock);
+            if (zrig_param_effective(r, "ParamArmRA") > arm_a)
+                arm_a = zrig_param_effective(r, "ParamArmRA");
+            if (zrig_param_effective(r, "ParamArmRB") > arm_b)
+                arm_b = zrig_param_effective(r, "ParamArmRB");
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            wave_px = frame_opaque_box(fb, 660, 380, 848, 700);
+            if (wave_px > peak) peak = wave_px;
+        }
+        CHECK(arm_a > 6.0, "挥手要把 ParamArmRA 推上去（实际峰值 %.2f）", arm_a);
+        CHECK(arm_b > 5.0, "挥手要把 ParamArmRB（肘）推上去（实际峰值 %.2f）", arm_b);
+        CHECK(peak > 5000, "挥手时手臂要真的出现在画面右上（实际峰值 %d 像素）", peak);
+    }
+
+    /* ③ 呼吸走官方口径的 ParamBreath（0..1 单向），靠 bias 把正弦抬到正半轴。
+          没有 bias 的话正弦会摆到负数，被参数下限 clamp 掉半个周期 —— 呼吸就变成一顿一顿的。 */
+    {
+        int i;
+        double lo = 9.9, hi = -9.9, clock = 500.0;
+        zrig_action_request(r, "breath", "t", 1);
+        for (i = 0; i < 300; ++i) {
+            double v;
+            clock += 1.0 / 60.0;
+            zrig_tick(r, clock);
+            v = zrig_param_effective(r, "ParamBreath");
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+        }
+        CHECK(hi > 0.9, "呼吸要把 ParamBreath 推到接近 1（实际最大 %.3f）", hi);
+        CHECK(lo < 0.1, "呼吸要让 ParamBreath 回到接近 0（实际最小 %.3f）", lo);
+        CHECK(lo > -1e-6, "ParamBreath 不该摆到负半轴（bias 没生效？实际最小 %.3f）", lo);
+    }
+
+    /* ④ 瞳孔形状 ParamEyeBallForm（标准参数表第 10 项）：+1 = 瞳孔放大。
+          眼球被眼眶裁切，所以用"蓝色虹膜在眼眶里占了多少像素"来量。 */
+    {
+        const zimg *fb;
+        unsigned char *snap;
+        int w = 0, h = 0, dd, i;
+        double clk = 700.0;
+        zrig_action_request(r, "idle", "t", 1);
+        zrig_param_reset_all(r);
+        zrig_blink_set_manual(r, 0.0);
+        /* 先跑两秒让动作淡入和物理摆链都收敛，再把时钟冻住做三帧对照
+           （idle 本身一直在动，时钟一走像素就对不上；上一段的淡出没走完也会带进来）*/
+        for (i = 0; i < 120; ++i) { clk += 1.0 / 60.0; zrig_tick(r, clk); }
+        zrig_tick(r, clk);
+        fb = zrig_frame(r, 1.0, &w, &h);
+        snap = frame_snapshot(fb);
+        CHECK(zrig_param_set(r, "ParamEyeBallForm", 1.0) == 0,
+              "rig 里应该有 ParamEyeBallForm（Live2D 标准名）");
+        zrig_tick(r, clk);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        dd = frame_diff_box(fb, snap, 350, 238, 494, 308);
+        CHECK(dd > 200, "瞳孔放大要看得出来（眼部实际只变了 %d 像素）", dd);
+        zrig_param_set(r, "ParamEyeBallForm", 0.0);
+        zrig_tick(r, clk);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        CHECK(frame_diff_box(fb, snap, 350, 238, 494, 308) == 0, "归零要回到原样（实际差 %d 像素）", frame_diff_box(fb, snap, 350, 238, 494, 308));
+        free(snap);
+    }
+
+    /* ⑤ 全身倾斜 ParamBaseRot（扩展参数，被摸头/被拖拽时整个人晃） */
+    {
+        const zimg *fb;
+        unsigned char *snap;
+        int w = 0, h = 0;
+        zrig_param_reset_all(r);
+        zrig_tick(r, 800.0);
+        fb = zrig_frame(r, 1.0, &w, &h);
+        snap = frame_snapshot(fb);
+        CHECK(zrig_param_set(r, "ParamBaseRot", 10.0) == 0, "rig 里应该有 ParamBaseRot");
+        zrig_tick(r, 800.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        CHECK(frame_diff_box(fb, snap, 0, 0, w, h) > 20000,
+              "ParamBaseRot 满格要让整个人明显倾斜");
+        zrig_param_reset_all(r);
+        free(snap);
+    }
+
+    /* ⑥ 口型接管：迁移后嘴的动作通道是 ParamMouthOpenY（参数），
+          不再是"带 mouth 标签的部件"，静音判断必须跟着改口径，否则 talk 的
+          拍嘴会和 TTS 包络叠在一起，嘴越张越大。 */
+    {
+        int i;
+        double with_mute = 0.0, without = 0.0, clock = 900.0;
+        zrig_param_reset_all(r);
+        zrig_set_mouth_mute(r, 0);
+        zrig_action_request(r, "talk", "t", 1);
+        for (i = 0; i < 120; ++i) {
+            clock += 1.0 / 60.0; zrig_tick(r, clock);
+            if (zrig_param_effective(r, "ParamMouthOpenY") > without)
+                without = zrig_param_effective(r, "ParamMouthOpenY");
+        }
+        zrig_set_mouth_mute(r, 1);
+        for (i = 0; i < 120; ++i) {
+            clock += 1.0 / 60.0; zrig_tick(r, clock);
+            if (zrig_param_effective(r, "ParamMouthOpenY") > with_mute)
+                with_mute = zrig_param_effective(r, "ParamMouthOpenY");
+        }
+        CHECK(without > 0.5, "talk 平时要把嘴拍开（实际峰值 %.3f）", without);
+        CHECK(with_mute < 0.05,
+              "口型接管时 talk 的嘴通道必须让路（实际峰值 %.3f）", with_mute);
+        zrig_set_mouth_mute(r, 0);
+    }
+    zrig_free(r);
+
+    /* ⑦ 反向验证计数器本身是活的：故意写一条几何通道的合成 rig 必须被数出来。
+          （不验这一步的话，"恒返回 0" 的实现也能让上面第 ① 条过。） */
+    {
+        FILE *f;
+        zrig *bad;
+        z_snprintf(tmp_rig, sizeof(tmp_rig), "/tmp/zc_geomchan_rig.json");
+        f = fopen(tmp_rig, "wb");
+        CHECK(f != NULL, "应能写出合成 rig");
+        if (f) {
+            fprintf(f,
+                "{\"schema_version\":\"1.0\",\"id\":\"gc\",\"name\":\"gc\","
+                "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+                "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+                "\"parts\":[{\"id\":\"p0\",\"file\":\"sprites/eye_l_base.png\","
+                "\"group\":\"root\",\"pos\":[10,10],\"layer\":1}],"
+                "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+                "{\"target\":\"p0\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":2,\"freq\":1},"
+                "{\"target\":\"p0\",\"param\":\"alpha\",\"wave\":\"sine\",\"amp\":-0.2,\"freq\":1}"
+                "]}]}");
+            fclose(f);
+            zdiag_init(&d);
+            bad = zrig_load(tmp_rig, dir, &d);
+            CHECK(bad != NULL, "合成 rig 应能装载");
+            if (bad) {
+                /* dx 那条要被数出来，alpha 那条是官方的 PartOpacity，不算 */
+                CHECK(zrig_action_geom_channels(bad) == 1,
+                      "几何通道计数器要数得出来（合成 rig 实际 %d，应为 1）",
+                      zrig_action_geom_channels(bad));
+                zrig_free(bad);
+            }
+            remove(tmp_rig);
+        }
+    }
+}
+
 static void test_eye_smile(void)
 {
     char rig_path[1024], dir[1024];
@@ -3408,6 +3591,7 @@ int main(int argc, char **argv)
     test_expression_blend();
     test_sleep_wake_blink();
     test_eye_smile();
+    test_action_param_channels();
     test_action_drives_param();
     test_motion_fade();
     test_physics();

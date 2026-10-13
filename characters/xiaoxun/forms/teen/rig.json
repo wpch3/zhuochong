@@ -98,8 +98,8 @@
   },
   "gaze": {
     "max_offset": [
-      3.0,
-      2.0
+      4.0,
+      2.5
     ]
   },
   "look": {
@@ -108,7 +108,7 @@
       "head": {
         "rot_deg": 5.0,
         "dx": 4.0,
-        "dy": 3.0
+        "dy": 10.0
       },
       "chest": {
         "rot_deg": 1.2,
@@ -954,83 +954,61 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "seg_torso",
-          "param": "bend_y",
+          "target": "ParamBreath",
           "wave": "sine",
-          "amp": -3.2,
-          "freq": 0.28,
-          "curve": "sine"
+          "amp": 0.5,
+          "bias": 0.5,
+          "freq": 0.28
         },
         {
-          "target": "arm_l",
-          "param": "dy",
+          "target": "ParamBodyAngleY",
           "wave": "sine",
-          "amp": 1.0,
-          "freq": 0.28,
-          "phase": 0.15
+          "amp": -8.0,
+          "freq": 0.28
         },
         {
-          "target": "arm_r",
-          "param": "dy",
+          "target": "ParamShoulderY",
           "wave": "sine",
-          "amp": 1.0,
+          "amp": -1.25,
           "freq": 0.28,
           "phase": 0.15
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "ParamArmLA",
           "wave": "sine",
-          "amp": -0.25,
+          "amp": -0.0417,
           "freq": 0.28,
           "phase": 0.15
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRA",
           "wave": "sine",
-          "amp": -0.25,
+          "amp": 0.0417,
           "freq": 0.28,
           "phase": 0.15
         },
         {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "sine",
-          "amp": 1.6,
+          "amp": 0.16,
           "freq": 0.3
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "sine",
-          "amp": 0.6,
+          "amp": 0.1,
           "freq": 0.26
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "sine",
-          "amp": 0.8,
+          "amp": 0.1143,
           "freq": 0.24
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "sine",
-          "amp": 0.8,
-          "freq": 0.24
-        },
-        {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
-          "wave": "sine",
-          "amp": 0.3,
+          "amp": 0.06,
           "freq": 0.24
         }
       ]
@@ -1043,132 +1021,101 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "seg_torso",
-          "param": "bend_x",
+          "target": "ParamBodyAngleX",
           "wave": "sine",
-          "amp": 10,
-          "freq": 0.18,
-          "curve": "root"
-        },
-        {
-          "target": "seg_torso",
-          "param": "bend_y",
-          "wave": "sine",
-          "amp": -4,
-          "freq": 0.36,
-          "curve": "sine"
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 1.2,
+          "amp": 10.0,
           "freq": 0.18
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "ParamBodyAngleY",
           "wave": "sine",
-          "amp": -1.166,
-          "freq": 0.18,
-          "phase": 0.06
+          "amp": -10.0,
+          "freq": 0.36
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": -1.166,
-          "freq": 0.18,
-          "phase": 0.06
-        },
-        {
-          "target": "hand_l",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 3.5,
-          "freq": 0.18,
-          "phase": 0.34
-        },
-        {
-          "target": "hand_r",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": -3.5,
-          "freq": 0.18,
-          "phase": 0.34
-        },
-        {
-          "target": "seg_leg_l",
-          "param": "bend_x",
-          "wave": "sine",
-          "amp": 6.0,
-          "freq": 0.18,
-          "curve": "tip",
-          "phase": 0.12
-        },
-        {
-          "target": "seg_leg_r",
-          "param": "bend_x",
-          "wave": "sine",
-          "amp": 6.0,
-          "freq": 0.18,
-          "curve": "tip",
-          "phase": 0.12
-        },
-        {
-          "target": "forearm_l",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "sine",
           "amp": 2.4,
+          "freq": 0.18
+        },
+        {
+          "target": "ParamArmLA",
+          "wave": "sine",
+          "amp": -0.1943,
+          "freq": 0.18,
+          "phase": 0.06
+        },
+        {
+          "target": "ParamArmRA",
+          "wave": "sine",
+          "amp": 0.1943,
+          "freq": 0.18,
+          "phase": 0.06
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "sine",
+          "amp": 0.1591,
+          "freq": 0.18,
+          "phase": 0.34
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "sine",
+          "amp": 0.1591,
+          "freq": 0.18,
+          "phase": 0.34
+        },
+        {
+          "target": "ParamLegL",
+          "wave": "sine",
+          "amp": 0.3,
+          "freq": 0.18,
+          "phase": 0.12
+        },
+        {
+          "target": "ParamLegR",
+          "wave": "sine",
+          "amp": 0.3,
+          "freq": 0.18,
+          "phase": 0.12
+        },
+        {
+          "target": "ParamArmLB",
+          "wave": "sine",
+          "amp": 0.24,
           "freq": 0.18,
           "phase": 0.22
         },
         {
-          "target": "forearm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRB",
           "wave": "sine",
-          "amp": -2.4,
+          "amp": 0.24,
           "freq": 0.18,
           "phase": 0.22
         },
         {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "sine",
-          "amp": 4.0,
+          "amp": 0.4,
           "freq": 0.35
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "sine",
-          "amp": 2.4,
+          "amp": 0.4,
           "freq": 0.33
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "sine",
-          "amp": 3.6,
+          "amp": 0.5143,
           "freq": 0.31
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "sine",
-          "amp": 3.6,
-          "freq": 0.31
-        },
-        {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
-          "wave": "sine",
-          "amp": 1.6,
+          "amp": 0.32,
           "freq": 0.3
         }
       ]
@@ -1180,233 +1127,127 @@
       "interruptible": true,
       "channels": [
         {
-          "target": "seg_torso",
-          "param": "bend_y",
+          "target": "ParamBodyAngleY",
           "wave": "sine",
-          "amp": -2.0,
-          "freq": 0.24,
-          "curve": "sine"
+          "amp": -5.0,
+          "freq": 0.24
         },
         {
-          "target": "seg_torso",
-          "param": "bend_x",
+          "target": "ParamBodyAngleX",
           "wave": "sine",
           "amp": 2.6,
-          "freq": 0.06,
-          "curve": "root"
+          "freq": 0.06
         },
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "sine",
-          "amp": 0.7,
+          "amp": 1.4,
           "freq": 0.13,
           "phase": 0.3
         },
         {
-          "target": "eye_l_socket",
-          "param": "dy",
+          "target": "ParamEyeBallY",
           "wave": "sine",
-          "amp": 0.5,
+          "amp": 0.2,
           "freq": 0.2
         },
         {
-          "target": "eye_l_base",
-          "param": "dy",
+          "target": "ParamArmLA",
           "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_l_ball",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_l_closed",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_l_lash",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_r_socket",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_r_base",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_r_ball",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_r_closed",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "eye_r_lash",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 0.5,
-          "freq": 0.2
-        },
-        {
-          "target": "arm_l",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": -0.366,
+          "amp": -0.061,
           "freq": 0.06,
           "phase": 0.12
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRA",
           "wave": "sine",
-          "amp": -0.366,
+          "amp": 0.061,
           "freq": 0.06,
           "phase": 0.12
         },
         {
-          "target": "arm_l",
-          "param": "dy",
+          "target": "ParamShoulderY",
           "wave": "sine",
-          "amp": 0.6,
+          "amp": -0.75,
           "freq": 0.24,
           "phase": 0.18
         },
         {
-          "target": "arm_r",
-          "param": "dy",
+          "target": "ParamHandL",
           "wave": "sine",
-          "amp": 0.6,
-          "freq": 0.24,
-          "phase": 0.18
-        },
-        {
-          "target": "hand_l",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 1.2,
+          "amp": 0.0545,
           "freq": 0.06,
           "phase": 0.42
         },
         {
-          "target": "hand_r",
-          "param": "rot_deg",
+          "target": "ParamHandR",
           "wave": "sine",
-          "amp": -1.2,
+          "amp": 0.0545,
           "freq": 0.06,
           "phase": 0.42
         },
         {
-          "target": "seg_leg_l",
-          "param": "bend_x",
+          "target": "ParamLegL",
           "wave": "sine",
-          "amp": 1.2,
+          "amp": 0.06,
           "freq": 0.06,
-          "curve": "tip",
           "phase": 0.2
         },
         {
-          "target": "seg_leg_r",
-          "param": "bend_x",
+          "target": "ParamLegR",
           "wave": "sine",
-          "amp": 1.2,
+          "amp": 0.06,
           "freq": 0.06,
-          "curve": "tip",
           "phase": 0.2
         },
         {
-          "target": "forearm_l",
-          "param": "rot_deg",
+          "target": "ParamArmLB",
           "wave": "sine",
-          "amp": 0.8,
+          "amp": 0.08,
           "freq": 0.06,
           "phase": 0.28
         },
         {
-          "target": "forearm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRB",
           "wave": "sine",
-          "amp": -0.8,
+          "amp": 0.08,
           "freq": 0.06,
           "phase": 0.28
         },
         {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "sine",
-          "amp": 1.2,
+          "amp": 0.12,
           "freq": 0.22
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "sine",
-          "amp": 0.9,
+          "amp": 0.15,
           "freq": 0.2
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "sine",
-          "amp": 1.3,
+          "amp": 0.1857,
           "freq": 0.19
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "sine",
-          "amp": 1.3,
-          "freq": 0.19
-        },
-        {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
-          "wave": "sine",
-          "amp": 0.5,
+          "amp": 0.1,
           "freq": 0.18
         },
         {
-          "target": "brow_l",
-          "param": "dy",
+          "target": "ParamBrowLY",
           "wave": "sine",
-          "amp": -0.4,
+          "amp": 0.08,
           "freq": 0.18
         },
         {
-          "target": "brow_r",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "sine",
-          "amp": -0.4,
+          "amp": 0.08,
           "freq": 0.18
         }
       ]
@@ -1419,31 +1260,27 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "wave": "sine",
-          "amp": 1.2,
+          "amp": -3.6,
           "freq": 0.3
         },
         {
-          "target": "head",
-          "param": "dx",
+          "target": "ParamAngleX",
           "wave": "sine",
-          "amp": 2.0,
+          "amp": 15.0,
           "freq": 0.17
         },
         {
-          "target": "brow_l",
-          "param": "dy",
+          "target": "ParamBrowLY",
           "wave": "sine",
-          "amp": 0.9,
+          "amp": -0.18,
           "freq": 0.4
         },
         {
-          "target": "brow_r",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "sine",
-          "amp": 0.9,
+          "amp": -0.18,
           "freq": 0.4
         }
       ]
@@ -1457,8 +1294,7 @@
       "fade": 0.12,
       "channels": [
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "interp": "smooth",
           "keys": [
             [
@@ -1467,15 +1303,15 @@
             ],
             [
               0.18,
-              9.0
+              18.0
             ],
             [
               0.42,
-              9.5
+              19.0
             ],
             [
               0.75,
-              -2.5
+              -5.0
             ],
             [
               1.1,
@@ -1485,35 +1321,33 @@
           "note": "低头 9°，停一下，抬起时过冲 -2.5° 再回正"
         },
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "interp": "smooth",
           "keys": [
             [
               0.0,
-              0.0
+              -0.0
             ],
             [
               0.18,
-              4.0
+              -12.0
             ],
             [
               0.42,
-              4.0
+              -12.0
             ],
             [
               0.8,
-              -1.0
+              3.0
             ],
             [
               1.1,
-              0.0
+              -0.0
             ]
           ]
         },
         {
-          "target": "chest",
-          "param": "dy",
+          "target": "ParamBodyAngleY",
           "interp": "linear",
           "keys": [
             [
@@ -1522,7 +1356,7 @@
             ],
             [
               0.25,
-              2.0
+              8.0
             ],
             [
               0.7,
@@ -1535,9 +1369,7 @@
           ]
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "keys": [
             [
               0.0,
@@ -1545,35 +1377,11 @@
             ],
             [
               0.25,
-              -2.2
+              -0.3143
             ],
             [
               0.6,
-              1.6
-            ],
-            [
-              1.1,
-              0.0
-            ]
-          ],
-          "interp": "smooth"
-        },
-        {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
-          "keys": [
-            [
-              0.0,
-              0.0
-            ],
-            [
-              0.25,
-              -2.2
-            ],
-            [
-              0.6,
-              1.6
+              0.2286
             ],
             [
               1.1,
@@ -1592,73 +1400,53 @@
       "interruptible": false,
       "channels": [
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "wave": "pulse",
-          "amp": -7.0,
+          "amp": 21.0,
           "dur": 0.35,
           "ease": "out_back"
         },
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "wave": "sine",
-          "amp": 2.0,
+          "amp": -6.0,
           "freq": 3.5,
           "dur": 1.0
         },
         {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "sine",
-          "amp": 5.0,
+          "amp": 0.5,
           "freq": 1.1
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "sine",
-          "amp": 2.6,
+          "amp": 0.4333,
           "freq": 1.1
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "sine",
-          "amp": 3.6,
+          "amp": 0.5143,
           "freq": 1.0
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "sine",
-          "amp": 3.6,
+          "amp": 0.3,
           "freq": 1.0
         },
         {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamBrowLY",
           "wave": "sine",
-          "amp": 1.5,
+          "amp": 0.28,
           "freq": 1.0
         },
         {
-          "target": "brow_l",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "sine",
-          "amp": -1.4,
-          "freq": 1.0
-        },
-        {
-          "target": "brow_r",
-          "param": "dy",
-          "wave": "sine",
-          "amp": -1.4,
+          "amp": 0.28,
           "freq": 1.0
         }
       ],
@@ -1673,160 +1461,127 @@
       "interruptible": false,
       "channels": [
         {
-          "target": "root",
-          "param": "dy",
+          "target": "ParamBaseY",
           "wave": "bounce",
-          "amp": -22.0,
+          "amp": 5.5,
           "dur": 0.45,
           "ease": "out_back"
         },
         {
-          "target": "root",
-          "param": "dy",
+          "target": "ParamBaseY",
           "wave": "bounce",
-          "amp": -12.0,
+          "amp": 3.0,
           "dur": 0.5,
           "ease": "out_back"
         },
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "bounce",
-          "amp": 5.0,
+          "amp": 10.0,
           "dur": 0.5
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "ParamArmLA",
           "wave": "bounce",
-          "amp": 1.499,
+          "amp": 0.2498,
           "freq": 0.0,
           "dur": 0.5
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRA",
           "wave": "bounce",
-          "amp": -1.499,
+          "amp": 0.2498,
           "freq": 0.0,
           "dur": 0.5
         },
         {
-          "target": "hand_l",
-          "param": "rot_deg",
+          "target": "ParamHandL",
           "wave": "bounce",
-          "amp": 12.0,
+          "amp": 0.5455,
           "freq": 0.0,
           "dur": 0.5
         },
         {
-          "target": "hand_r",
-          "param": "rot_deg",
+          "target": "ParamHandR",
           "wave": "bounce",
-          "amp": -12.0,
+          "amp": 0.5455,
           "freq": 0.0,
           "dur": 0.5
         },
         {
-          "target": "seg_leg_l",
-          "param": "bend_x",
+          "target": "ParamLegL",
           "wave": "bounce",
-          "amp": -7.0,
-          "freq": 0.0,
-          "curve": "tip",
-          "dur": 0.5
-        },
-        {
-          "target": "seg_leg_r",
-          "param": "bend_x",
-          "wave": "bounce",
-          "amp": 7.0,
-          "freq": 0.0,
-          "curve": "tip",
-          "dur": 0.5
-        },
-        {
-          "target": "forearm_l",
-          "param": "rot_deg",
-          "wave": "bounce",
-          "amp": 14.0,
+          "amp": -0.35,
           "freq": 0.0,
           "dur": 0.5
         },
         {
-          "target": "forearm_r",
-          "param": "rot_deg",
+          "target": "ParamLegR",
           "wave": "bounce",
-          "amp": -14.0,
+          "amp": 0.35,
           "freq": 0.0,
           "dur": 0.5
         },
         {
-          "target": "mouth_mask",
-          "param": "sy",
+          "target": "ParamArmLB",
           "wave": "bounce",
-          "amp": 0.496,
+          "amp": 1.4,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "bounce",
+          "amp": 1.4,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "ParamMouthOpenY",
+          "wave": "bounce",
+          "amp": 0.5542,
           "dur": 1.2,
           "ease": "out"
         },
         {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "bounce",
-          "amp": 7.0,
+          "amp": 0.7,
           "dur": 1.4,
           "ease": "out"
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "bounce",
-          "amp": 3.2,
+          "amp": 0.5333,
           "dur": 1.4,
           "ease": "out"
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "bounce",
-          "amp": 4.8,
+          "amp": 0.6857,
           "dur": 1.4,
           "ease": "out"
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "bounce",
-          "amp": 4.8,
+          "amp": 0.38,
           "dur": 1.4,
           "ease": "out"
         },
         {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamBrowLY",
           "wave": "bounce",
-          "amp": 1.9,
-          "dur": 1.4,
-          "ease": "out"
-        },
-        {
-          "target": "brow_l",
-          "param": "dy",
-          "wave": "bounce",
-          "amp": -2.0,
+          "amp": 0.4,
           "dur": 1.2,
           "ease": "out"
         },
         {
-          "target": "brow_r",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "bounce",
-          "amp": -2.0,
+          "amp": 0.4,
           "dur": 1.2,
           "ease": "out"
         }
@@ -1846,46 +1601,40 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "wave": "pulse",
-          "amp": 6.0,
+          "amp": -18.0,
           "dur": 0.5,
           "ease": "out"
         },
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "sine",
-          "amp": 1.0,
+          "amp": 2.0,
           "freq": 0.12
         },
         {
-          "target": "brow_l",
-          "param": "dy",
+          "target": "ParamBrowLY",
           "wave": "sine",
-          "amp": 1.6,
+          "amp": -0.32,
           "freq": 0.25
         },
         {
-          "target": "brow_l",
-          "param": "rot_deg",
+          "target": "ParamBrowLAngle",
           "wave": "sine",
-          "amp": 2.5,
+          "amp": 0.3571,
           "freq": 0.25
         },
         {
-          "target": "brow_r",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "sine",
-          "amp": 1.6,
+          "amp": -0.32,
           "freq": 0.25
         },
         {
-          "target": "brow_r",
-          "param": "rot_deg",
+          "target": "ParamBrowRAngle",
           "wave": "sine",
-          "amp": -2.5,
+          "amp": 0.3571,
           "freq": 0.25
         }
       ],
@@ -1900,182 +1649,124 @@
       "interruptible": false,
       "channels": [
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "wave": "bounce",
-          "amp": -10.0,
+          "amp": 30.0,
           "dur": 0.35,
           "ease": "out_back"
         },
         {
-          "target": "eye_l_ball",
-          "param": "sx",
+          "target": "ParamEyeBallForm",
           "wave": "pulse",
-          "amp": 0.18,
+          "amp": 1.0,
           "dur": 0.2
         },
         {
-          "target": "eye_r_ball",
-          "param": "sx",
+          "target": "ParamMouthOpenY",
           "wave": "pulse",
-          "amp": 0.18,
-          "dur": 0.2
+          "amp": 1.0,
+          "dur": 0.25,
+          "ease": "out"
         },
         {
-          "target": "eye_l_ball",
-          "param": "sy",
+          "target": "ParamHandL",
           "wave": "pulse",
-          "amp": 0.22,
-          "dur": 0.2
-        },
-        {
-          "target": "eye_r_ball",
-          "param": "sy",
-          "wave": "pulse",
-          "amp": 0.22,
-          "dur": 0.2
-        },
-        {
-          "target": "mouth_open",
-          "param": "alpha",
-          "wave": "pulse",
-          "amp": -0.9,
-          "dur": 0.25
-        },
-        {
-          "target": "hand_l",
-          "param": "rot_deg",
-          "wave": "pulse",
-          "amp": 14.0,
+          "amp": 0.6364,
           "freq": 0.0,
           "dur": 0.9,
           "ease": "out"
         },
         {
-          "target": "hand_r",
-          "param": "rot_deg",
+          "target": "ParamHandR",
           "wave": "pulse",
-          "amp": -14.0,
+          "amp": 0.6364,
           "freq": 0.0,
           "dur": 0.9,
           "ease": "out"
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "ParamArmLA",
           "wave": "pulse",
-          "amp": 16.0,
+          "amp": 2.6667,
           "dur": 0.9,
           "ease": "out"
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": -16.0,
+          "amp": 2.6667,
           "dur": 0.9,
           "ease": "out"
         },
         {
-          "target": "forearm_l",
-          "param": "rot_deg",
+          "target": "ParamArmLB",
           "wave": "pulse",
-          "amp": 22.0,
+          "amp": 2.2,
           "freq": 0.0,
           "dur": 0.9,
           "ease": "out"
         },
         {
-          "target": "forearm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": -22.0,
+          "amp": 2.2,
           "freq": 0.0,
           "dur": 0.9,
           "ease": "out"
         },
         {
-          "target": "mouth_mask",
-          "param": "sy",
-          "wave": "pulse",
-          "amp": 0.895,
-          "dur": 0.12,
-          "ease": "out"
-        },
-        {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "decay",
-          "amp": 8.0,
+          "amp": 0.8,
           "dur": 0.8,
           "freq": 2.4
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "decay",
-          "amp": 3.8,
+          "amp": 0.6333,
           "dur": 0.8,
           "freq": 2.2
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "decay",
-          "amp": 5.4,
+          "amp": 0.7714,
           "dur": 0.9,
           "freq": 2.2
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "decay",
-          "amp": 5.4,
-          "dur": 0.9,
-          "freq": 2.2
-        },
-        {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
-          "wave": "decay",
-          "amp": 2.2,
+          "amp": 0.44,
           "dur": 0.9,
           "freq": 2.0
         },
         {
-          "target": "brow_l",
-          "param": "dy",
+          "target": "ParamBrowLY",
           "wave": "decay",
-          "amp": -4.5,
+          "amp": 0.9,
           "dur": 0.9,
           "freq": 2.0
         },
         {
-          "target": "brow_l",
-          "param": "rot_deg",
+          "target": "ParamBrowLAngle",
           "wave": "decay",
-          "amp": -3.0,
+          "amp": -0.4286,
           "dur": 0.9,
           "freq": 2.0
         },
         {
-          "target": "brow_r",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "decay",
-          "amp": -4.5,
+          "amp": 0.9,
           "dur": 0.9,
           "freq": 2.0
         },
         {
-          "target": "brow_r",
-          "param": "rot_deg",
+          "target": "ParamBrowRAngle",
           "wave": "decay",
-          "amp": 3.0,
+          "amp": -0.4286,
           "dur": 0.9,
           "freq": 2.0
         }
@@ -2089,161 +1780,128 @@
       "interruptible": false,
       "channels": [
         {
-          "target": "root",
-          "param": "dx",
+          "target": "ParamBaseX",
           "wave": "decay",
-          "amp": 14.0,
+          "amp": 7.0,
           "freq": 3.2,
           "dur": 0.7
         },
         {
-          "target": "root",
-          "param": "dy",
+          "target": "ParamBaseY",
           "wave": "decay",
-          "amp": 8.0,
+          "amp": -2.0,
           "freq": 4.0,
           "dur": 0.7
         },
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "decay",
-          "amp": 7.0,
+          "amp": 14.0,
           "freq": 2.6,
           "dur": 0.7
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "ParamArmLA",
           "wave": "decay",
-          "amp": -1.666,
+          "amp": -0.2777,
           "freq": 2.6,
           "dur": 0.7
         },
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRA",
           "wave": "decay",
-          "amp": -1.666,
+          "amp": 0.2777,
           "freq": 2.6,
           "dur": 0.7
         },
         {
-          "target": "hand_l",
-          "param": "rot_deg",
+          "target": "ParamHandL",
           "wave": "decay",
-          "amp": 11.0,
+          "amp": 0.5,
           "freq": 2.6,
           "dur": 0.7
         },
         {
-          "target": "hand_r",
-          "param": "rot_deg",
+          "target": "ParamHandR",
           "wave": "decay",
-          "amp": -11.0,
+          "amp": 0.5,
           "freq": 2.6,
           "dur": 0.7
         },
         {
-          "target": "seg_leg_l",
-          "param": "bend_x",
+          "target": "ParamLegL",
           "wave": "decay",
-          "amp": 8.0,
-          "freq": 2.6,
-          "curve": "tip",
-          "dur": 0.7
-        },
-        {
-          "target": "seg_leg_r",
-          "param": "bend_x",
-          "wave": "decay",
-          "amp": 8.0,
-          "freq": 2.6,
-          "curve": "tip",
-          "dur": 0.7
-        },
-        {
-          "target": "forearm_l",
-          "param": "rot_deg",
-          "wave": "decay",
-          "amp": 9.0,
+          "amp": 0.4,
           "freq": 2.6,
           "dur": 0.7
         },
         {
-          "target": "forearm_r",
-          "param": "rot_deg",
+          "target": "ParamLegR",
           "wave": "decay",
-          "amp": -9.0,
+          "amp": 0.4,
           "freq": 2.6,
           "dur": 0.7
         },
         {
-          "target": "mouth_mask",
-          "param": "sy",
+          "target": "ParamArmLB",
           "wave": "decay",
-          "amp": 0.645,
+          "amp": 0.9,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "decay",
+          "amp": 0.9,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "ParamMouthOpenY",
+          "wave": "decay",
+          "amp": 0.7207,
           "dur": 0.8,
           "freq": 2.0
         },
         {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "decay",
-          "amp": 9.0,
+          "amp": 0.9,
           "dur": 1.0,
           "freq": 3.0
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "decay",
-          "amp": 4.0,
+          "amp": 0.6667,
           "dur": 1.0,
           "freq": 2.8
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "decay",
-          "amp": 6.0,
+          "amp": 0.8571,
           "dur": 1.0,
           "freq": 2.8
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "decay",
-          "amp": 6.0,
-          "dur": 1.0,
-          "freq": 2.8
-        },
-        {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
-          "wave": "decay",
-          "amp": 2.6,
+          "amp": 0.52,
           "dur": 1.0,
           "freq": 2.6
         },
         {
-          "target": "brow_l",
-          "param": "dy",
+          "target": "ParamBrowLY",
           "wave": "decay",
-          "amp": 2.6,
+          "amp": -0.52,
           "dur": 1.0,
           "freq": 3.0
         },
         {
-          "target": "brow_r",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "decay",
-          "amp": 2.6,
+          "amp": -0.52,
           "dur": 1.0,
           "freq": 3.0
         }
@@ -2262,17 +1920,15 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "root",
-          "param": "rot_deg",
+          "target": "ParamBaseRot",
           "wave": "sine",
-          "amp": 1.6,
+          "amp": 3.2,
           "freq": 0.45
         },
         {
-          "target": "head",
-          "param": "dx",
+          "target": "ParamAngleX",
           "wave": "sine",
-          "amp": 3.0,
+          "amp": 22.5,
           "freq": 0.45
         }
       ],
@@ -2291,17 +1947,15 @@
       "interruptible": false,
       "channels": [
         {
-          "target": "root",
-          "param": "dy",
+          "target": "ParamBaseY",
           "wave": "bounce",
-          "amp": -6.0,
+          "amp": 1.5,
           "dur": 0.28
         },
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "decay",
-          "amp": 3.5,
+          "amp": 7.0,
           "freq": 3.0,
           "dur": 0.4
         }
@@ -2315,17 +1969,15 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "root",
-          "param": "rot_deg",
+          "target": "ParamBaseRot",
           "wave": "sine",
-          "amp": 3.0,
+          "amp": 6.0,
           "freq": 0.4
         },
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "wave": "sine",
-          "amp": 2.5,
+          "amp": -7.5,
           "freq": 0.8
         }
       ],
@@ -2343,46 +1995,27 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "mouth_open",
-          "param": "alpha",
-          "wave": "pulse",
-          "amp": -0.75,
-          "dur": 0.12,
-          "ease": "out"
-        },
-        {
-          "target": "mouth_open",
-          "param": "sy",
-          "wave": "sine",
-          "amp": 0.12,
+          "target": "ParamMouthOpenY",
+          "wave": "flap",
+          "amp": 0.833,
           "freq": 3.0
         },
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "wave": "sine",
-          "amp": 1.2,
+          "amp": -3.6,
           "freq": 0.5
         },
         {
-          "target": "mouth_mask",
-          "param": "sy",
-          "wave": "flap",
-          "amp": 0.746,
-          "freq": 3.0
-        },
-        {
-          "target": "brow_l",
-          "param": "dy",
+          "target": "ParamBrowLY",
           "wave": "sine",
-          "amp": -0.8,
+          "amp": 0.16,
           "freq": 1.8
         },
         {
-          "target": "brow_r",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "sine",
-          "amp": -0.8,
+          "amp": 0.16,
           "freq": 1.8
         }
       ]
@@ -2395,116 +2028,46 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "pulse",
-          "amp": -5.0,
+          "amp": -10.0,
           "dur": 0.6,
           "ease": "out"
         },
         {
-          "target": "head",
-          "param": "dx",
+          "target": "ParamAngleX",
           "wave": "sine",
-          "amp": 1.2,
+          "amp": 9.0,
           "freq": 0.2
         },
         {
-          "target": "eye_l_socket",
-          "param": "dx",
+          "target": "ParamEyeBallX",
           "wave": "sine",
-          "amp": 1.5,
+          "amp": 0.375,
           "freq": 0.25
         },
         {
-          "target": "eye_l_base",
-          "param": "dx",
+          "target": "ParamBrowLY",
           "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "eye_l_ball",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "eye_l_closed",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "eye_l_lash",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "eye_r_socket",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "eye_r_base",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "eye_r_ball",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "eye_r_closed",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "eye_r_lash",
-          "param": "dx",
-          "wave": "sine",
-          "amp": 1.5,
-          "freq": 0.25
-        },
-        {
-          "target": "brow_l",
-          "param": "dy",
-          "wave": "sine",
-          "amp": -2.4,
+          "amp": 0.48,
           "freq": 0.3
         },
         {
-          "target": "brow_l",
-          "param": "rot_deg",
+          "target": "ParamBrowLAngle",
           "wave": "sine",
-          "amp": -2.0,
+          "amp": -0.2857,
           "freq": 0.3
         },
         {
-          "target": "brow_r",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "sine",
-          "amp": -2.4,
+          "amp": 0.48,
           "freq": 0.3
         },
         {
-          "target": "brow_r",
-          "param": "rot_deg",
+          "target": "ParamBrowRAngle",
           "wave": "sine",
-          "amp": 2.0,
+          "amp": -0.2857,
           "freq": 0.3
         }
       ]
@@ -2517,86 +2080,64 @@
       "dim": 0.35,
       "channels": [
         {
-          "target": "head",
-          "param": "dy",
+          "target": "ParamAngleY",
           "wave": "sine",
-          "amp": 3.0,
+          "amp": -9.0,
           "freq": 0.11
         },
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "sine",
-          "amp": 2.0,
+          "amp": 4.0,
           "freq": 0.07
         },
         {
-          "target": "root",
-          "param": "dy",
+          "target": "ParamBaseY",
           "wave": "pulse",
-          "amp": 4.0,
+          "amp": -1.0,
           "dur": 1.2,
           "ease": "out"
         },
         {
-          "target": "mouth_mask",
-          "param": "sy",
+          "target": "ParamMouthOpenY",
           "wave": "sine",
-          "amp": 0.245,
+          "amp": 0.2737,
           "freq": 0.12
         },
         {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "sine",
-          "amp": 1.0,
+          "amp": 0.1,
           "freq": 0.1
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "sine",
-          "amp": 0.5,
+          "amp": 0.0833,
           "freq": 0.1
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "sine",
-          "amp": 0.6,
+          "amp": 0.0857,
           "freq": 0.1
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "sine",
-          "amp": 0.6,
+          "amp": 0.05,
           "freq": 0.1
         },
         {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamBrowLY",
           "wave": "sine",
-          "amp": 0.25,
+          "amp": -0.2,
           "freq": 0.1
         },
         {
-          "target": "brow_l",
-          "param": "dy",
+          "target": "ParamBrowRY",
           "wave": "sine",
-          "amp": 1.0,
-          "freq": 0.1
-        },
-        {
-          "target": "brow_r",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 1.0,
+          "amp": -0.2,
           "freq": 0.1
         }
       ],
@@ -2611,108 +2152,84 @@
       "interruptible": false,
       "channels": [
         {
-          "target": "arm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": -58.0,
+          "amp": 9.6667,
           "dur": 2.4,
           "ease": "out"
         },
         {
-          "target": "forearm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": -80.0,
+          "amp": 8.0,
           "dur": 2.4,
           "ease": "out"
         },
         {
-          "target": "forearm_r",
-          "param": "rot_deg",
+          "target": "ParamArmRB",
           "wave": "sine",
-          "amp": 14.0,
+          "amp": -1.4,
           "freq": 2.2,
           "dur": 2.4
         },
         {
-          "target": "arm_l",
-          "param": "rot_deg",
+          "target": "ParamArmLA",
           "wave": "pulse",
-          "amp": 6.0,
+          "amp": 1.0,
           "dur": 2.4,
           "ease": "out"
         },
         {
-          "target": "hand_r",
-          "param": "rot_deg",
+          "target": "ParamHandR",
           "wave": "pulse",
-          "amp": -16.0,
+          "amp": 0.7273,
           "dur": 2.4,
           "ease": "out"
         },
         {
-          "target": "hand_r",
-          "param": "rot_deg",
+          "target": "ParamHandR",
           "wave": "sine",
-          "amp": 20.0,
+          "amp": -0.9091,
           "freq": 2.2,
           "phase": 0.18,
           "dur": 2.4
         },
         {
-          "target": "head",
-          "param": "rot_deg",
+          "target": "ParamAngleZ",
           "wave": "sine",
-          "amp": 2.0,
+          "amp": 4.0,
           "freq": 0.8,
           "dur": 2.4
         },
         {
-          "target": "root",
-          "param": "dy",
+          "target": "ParamBaseY",
           "wave": "sine",
-          "amp": -2.0,
+          "amp": 0.5,
           "freq": 1.6,
           "dur": 2.4
         },
         {
-          "target": "hair_ahoge",
-          "param": "bend_x",
-          "curve": "root",
+          "target": "ParamHairAhoge",
           "wave": "sine",
-          "amp": 3.0,
+          "amp": 0.3,
           "freq": 1.2
         },
         {
-          "target": "hair_front",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairFront",
           "wave": "sine",
-          "amp": 1.4,
+          "amp": 0.2333,
           "freq": 1.2
         },
         {
-          "target": "hair_side_l",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairSide",
           "wave": "sine",
-          "amp": 2.0,
+          "amp": 0.2857,
           "freq": 1.2
         },
         {
-          "target": "hair_side_r",
-          "param": "bend_x",
-          "curve": "tip",
+          "target": "ParamHairBack",
           "wave": "sine",
-          "amp": 2.0,
-          "freq": 1.2
-        },
-        {
-          "target": "hair_back",
-          "param": "bend_x",
-          "curve": "tip",
-          "wave": "sine",
-          "amp": 0.9,
+          "amp": 0.18,
           "freq": 1.2
         }
       ],
@@ -2731,40 +2248,22 @@
       "return_state": "idle",
       "channels": [
         {
-          "target": "eye_l_ball",
-          "param": "dx",
+          "target": "ParamEyeBallX",
           "wave": "sine",
-          "amp": 4.0,
+          "amp": 1.0,
           "freq": 0.45
         },
         {
-          "target": "eye_l_ball",
-          "param": "dy",
+          "target": "ParamEyeBallY",
           "wave": "sine",
-          "amp": 2.0,
+          "amp": 0.8,
           "freq": 0.9,
           "phase": 0.25
         },
         {
-          "target": "eye_r_ball",
-          "param": "dx",
+          "target": "ParamAngleZ",
           "wave": "sine",
-          "amp": 4.0,
-          "freq": 0.45
-        },
-        {
-          "target": "eye_r_ball",
-          "param": "dy",
-          "wave": "sine",
-          "amp": 2.0,
-          "freq": 0.9,
-          "phase": 0.25
-        },
-        {
-          "target": "head",
-          "param": "rot_deg",
-          "wave": "sine",
-          "amp": 1.5,
+          "amp": 3.0,
           "freq": 0.45
         }
       ]
@@ -3148,16 +2647,13 @@
       "default": 0.0,
       "binds": [
         {
-          "group": "chest",
-          "param": "rot_deg",
-          "scale": 0.12
-        },
-        {
-          "group": "chest",
-          "param": "dx",
-          "scale": 0.35
+          "part": "seg_torso",
+          "param": "bend_x",
+          "scale": 1.0,
+          "curve": "root"
         }
-      ]
+      ],
+      "note": "只驱动躯干网格弯曲（满格 = 腰以上最多偏 10px）。不再叠胸组的平移/旋转：bend 已经表达了同一件事，再叠一层会让五官相对身体形变多走一个固定量（单测的刚性跟随会红）"
     },
     {
       "id": "ParamBodyAngleZ",
@@ -3181,16 +2677,23 @@
       "default": 0.0,
       "binds": [
         {
+          "part": "seg_torso",
+          "param": "bend_y",
+          "scale": 0.4,
+          "curve": "sine"
+        },
+        {
           "group": "chest",
           "param": "dy",
-          "scale": 0.9
+          "scale": 0.25
         },
         {
           "group": "chest",
           "param": "sy",
-          "scale": -0.004
+          "scale": -0.001
         }
-      ]
+      ],
+      "note": "满格 10 = 躯干纵向弯 4px + 胸组下沉 2.5px + 压扁 1%"
     },
     {
       "id": "ParamShoulderY",
@@ -3226,9 +2729,10 @@
         {
           "group": "root",
           "param": "dx",
-          "scale": 1.0
+          "scale": 2.0
         }
-      ]
+      ],
+      "note": "满格 = 整个人横移 20px（被敲飞那下用到 14px）"
     },
     {
       "id": "ParamBaseY",
@@ -3240,7 +2744,22 @@
         {
           "group": "root",
           "param": "dy",
-          "scale": -1.0
+          "scale": -4.0
+        }
+      ],
+      "note": "满格 = 跳起 40px；happy 两段弹跳叠起来是 8.5"
+    },
+    {
+      "id": "ParamBaseRot",
+      "label": "全身 倾斜",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "root",
+          "param": "rot_deg",
+          "scale": 0.5
         }
       ]
     },
@@ -3254,14 +2773,15 @@
         {
           "group": "chest",
           "param": "sy",
-          "scale": 0.012
+          "scale": 0.004
         },
         {
           "group": "chest",
           "param": "dy",
-          "scale": -1.2
+          "scale": -0.8
         }
-      ]
+      ],
+      "note": "满格 = 胸腔拉伸 0.4% + 上浮 0.8px；拉伸作用在整个上身组上，1% 就能把头顶推走 8px，所以这个系数必须小"
     },
     {
       "id": "ParamMouthOpenY",
@@ -3279,6 +2799,11 @@
           "part": "mouth_open",
           "param": "alpha",
           "scale": -0.9
+        },
+        {
+          "part": "mouth_open",
+          "param": "sy",
+          "scale": 0.144
         }
       ],
       "note": "口型同步（LipSync）接进来时写的就是这个参数"
@@ -3317,7 +2842,7 @@
         {
           "part": "brow_l",
           "param": "dy",
-          "scale": -3.0
+          "scale": -5.0
         }
       ]
     },
@@ -3331,7 +2856,7 @@
         {
           "part": "brow_r",
           "param": "dy",
-          "scale": -3.0
+          "scale": -5.0
         }
       ]
     },
@@ -3430,10 +2955,10 @@
         {
           "group": "forearm_l",
           "param": "rot_deg",
-          "scale": 5.0
+          "scale": 10.0
         }
       ],
-      "note": "绕肘旋转，±10 → ±50°；肘部 24px 重叠带兜底"
+      "note": "绕肘旋转，±10 → ±100°；挥手那下肘要折 80° 再叠 14° 的摆"
     },
     {
       "id": "ParamArmRB",
@@ -3445,7 +2970,7 @@
         {
           "group": "forearm_r",
           "param": "rot_deg",
-          "scale": -5.0
+          "scale": -10.0
         }
       ]
     },
@@ -3679,6 +3204,36 @@
           "offset": -1.0
         }
       ]
+    },
+    {
+      "id": "ParamEyeBallForm",
+      "label": "瞳孔 放大/缩小",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "eye_l_ball",
+          "param": "sx",
+          "scale": 0.18
+        },
+        {
+          "part": "eye_r_ball",
+          "param": "sx",
+          "scale": 0.18
+        },
+        {
+          "part": "eye_l_ball",
+          "param": "sy",
+          "scale": 0.22
+        },
+        {
+          "part": "eye_r_ball",
+          "param": "sy",
+          "scale": 0.22
+        }
+      ],
+      "note": "surprised 动作把它推到 1.0"
     }
   ],
   "poses": [
