@@ -51,6 +51,16 @@ class Api:
             print("    （请求失败）", path, e)
             return False
 
+    def code(self, path):
+        """只要状态码（404 也算正常返回，不当异常）。"""
+        try:
+            st, _ = self.get(path)
+            return st
+        except urllib.error.HTTPError as e:
+            return e.code
+        except Exception:                            # noqa: BLE001
+            return 0
+
     def frame_hash(self):
         _, b = self.get("/api/frame.png?t=%d" % (time.time() * 1000))
         return hashlib.sha1(b).hexdigest()[:12], len(b)
@@ -296,6 +306,23 @@ def run(base, root):
         elif dt > 0.78: tail_min = min(tail_min, v)
         time.sleep(0.03)
     check("surprised 中段手臂要摆出去", mid_peak > 1.2, "峰值 %.2f" % mid_peak)
+    # 界面骨架（G1）：界面是 layout.json 装配出来的，这些静态文件必须真能取到。
+    # 少一个组件脚本，页面上就少一块，而且只在浏览器控制台里报错 —— 这里直接拦住。
+    lay = a.json("/layout.json")
+    check("/layout.json 能取到且有区域", bool(lay and lay.get("regions")),
+          "%d 个区域" % len(((lay or {}).get("regions") or {})))
+    ids = []
+    for items in ((lay or {}).get("regions") or {}).values():
+        for it in items:
+            ids.append(it if isinstance(it, str) else it.get("id"))
+    bad = [c for c in ids if a.code("/components/%s.js" % c) != 200]
+    check("每个组件脚本都能下载", not bad, "取不到 %s" % bad if bad else "%d 个都 200" % len(ids))
+    badt = [t.get("id") for t in ((lay or {}).get("themes") or [])
+            if a.code("/themes/%s.json" % t.get("id")) != 200]
+    check("每个主题文件都能下载", not badt, "取不到 %s" % badt if badt else "主题齐")
+    check("不存在的组件要 404（不能回落成首页）",
+          a.code("/components/__no_such__.js") == 404, "404")
+
     # 裙摆摆链（G43）：ParamBodyAngleX 只绑 seg_torso.bend_x，不动头组，
     # 所以把它一把推到满格后，画面里还在继续变的就只剩裙摆的惯性。
     # 没有物理的话，参数一写完画面立刻定住，连抓几帧会是同一张。

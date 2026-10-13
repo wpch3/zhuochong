@@ -491,3 +491,61 @@ F08:                                      BrowForm −0.33   （只动变形）
 原因是组合爆炸——"３つの動きを描画オブジェクトとデフォーマに分散させると、
 ３＋３＋９ で１５パターンで済む"。我们的结构正好是这样：
 `Form` 走网格形变器，`Y/X/Angle` 走部件通道。
+
+
+---
+
+## 第十批（2026-10-13）：桌宠软件的界面怎么做成可扩展的
+
+### 1. VPet 的插件模型（`LorisYounger/VPet`，直接照搬了它的结构）
+
+`VPet-Simulator.Windows.Interface/MainPlugin.cs` —— 插件基类短到可以全文抄在这里：
+
+```csharp
+public abstract class MainPlugin {
+    public abstract string PluginName { get; }
+    public IMainWindow MW;                       // 宿主门面
+    public MainPlugin(IMainWindow mainwin) { MW = mainwin; }
+    public virtual void LoadPlugin() { }         // 固定生命周期钩子
+    public virtual void GameLoaded() { }
+    public virtual void EndGame() { }
+    public virtual void Save() { }
+    public virtual void Setting() { }            // 每个插件自带设置入口
+    public virtual void LoadDIY() { }
+}
+```
+
+`IMainWindow.cs` 是那个**门面**，它给插件暴露：游戏设置、宠物加载器列表、
+**所有可用聊天 API**、当前 TalkBox、数据核心、**所有三方插件**（插件之间能互相发现）、
+图片/文件资源、以及"显示设置页面（带 page 参数）""设置缩放""保存设置"这些动作。
+
+三条直接搬过来的结论：
+
+1. **组件只认一个宿主门面对象**，不去 import 别的组件、也不直接摸全局 DOM。
+   我们的 `host` 就是 `IMainWindow`：`api() / on,emit / state / el,card / refresh() /
+   components() / find() / theme(),setTheme()`。
+2. **生命周期是固定的几个钩子**，不是自由注册。我们取了 `mount / onInfo / onSpeech / destroy`
+   四个 —— `onInfo` 对应 VPet 的 `GameLoaded`（状态到了再填充自己）。
+3. **插件之间要能互相发现**（VPet 的"所有三方插件"）。`host.components()` / `host.find(id)`。
+
+`IModInfo.cs` 那边还有一条：模组带 `Name / Author / Intro / Path`，**元信息和实现分开**。
+我们的组件也带 `id / title`，布局表里显示用的就是它。
+
+### 2. 为什么是"配置装配"而不是"写死在 HTML 里"
+
+VPet 的模组、airi 的多渲染后端舞台抽象，解决的是同一个问题：
+**不改核心代码就能加东西**（这正是用户 A1 那条硬要求）。落到我们这儿：
+
+- `web/layout.json` = 唯一的装配表（哪些组件、哪个区域、什么顺序、给什么参数）
+- `web/components/<id>.js` = 组件自己 `ZC.register({...})`
+- `web/themes/<id>.json` = 一张 CSS 变量表
+
+加一个卡片 = 放一个文件 + 在 layout 里写一行，`index.html` 和 `app.js` 都不用动。
+
+### 3. 没有浏览器怎么测界面
+
+沙箱里没有浏览器，但 node 有。`tests/test_web.js` 用一个 ~90 行的 DOM stub
+（createElement / appendChild / classList / querySelectorAll / dataset / style）
+把 `app.js` 和九个组件**真的跑一遍**：按 layout 装配、推一次 `info`、点几个按钮，
+断言 DOM 结构、挂载区域、挂载顺序、发出去的请求 URL 和换算后的点击坐标。
+脚本标签的"插进 head 就执行"也模拟了，所以**内核按配置动态加载组件**那条路是真的走过的。

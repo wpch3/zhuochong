@@ -69,7 +69,11 @@ asan: $(BUILD)/test_core_asan
 	@ASAN_OPTIONS=detect_leaks=1 ./$(BUILD)/test_core_asan .
 
 # 交付前跑这一条：静态自检 + 单测 + ASan + 端到端冒烟
-check: selfcheck test asan smoke
+# 界面内核与组件的单测（node + DOM stub，不需要浏览器）
+web-test:
+	@node tests/test_web.js
+
+check: selfcheck test asan smoke web-test
 	@echo "== 全部保险都过了 =="
 
 # ---------------------------------------------------------------- Windows

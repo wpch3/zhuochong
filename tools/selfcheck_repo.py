@@ -382,6 +382,57 @@ def check_live2d(root):
           "0.5 - 0.5 * cos(t * 3.14159265358979323846)" in
           io.open(os.path.join(root, "src/core/zc.c"), encoding="utf-8").read(),
           "src/core/zc.c:z_ease_sine")
+    # ⑰ 界面骨架（G1）：layout.json 是界面的唯一装配表，它和组件文件必须对得上。
+    #    配置里写了但组件不存在 / 组件文件忘了 register / 主题缺色键 —— 这三样
+    #    在浏览器里都只表现为"某块空白"，静态核一遍最省事。
+    web = os.path.join(root, "web")
+    lay_p = os.path.join(web, "layout.json")
+    if os.path.exists(lay_p):
+        lay = json.load(io.open(lay_p, encoding="utf-8"))
+        regions = lay.get("regions", {})
+        ids = []
+        for rk, items in regions.items():
+            for it in items:
+                ids.append(it if isinstance(it, str) else it.get("id"))
+        check("layout.json 能解析且有区域", bool(regions), f"{len(regions)} 个区域 / {len(ids)} 个组件")
+        missing, unreg = [], []
+        for cid in ids:
+            f = os.path.join(web, "components", f"{cid}.js")
+            if not os.path.exists(f):
+                missing.append(cid)
+                continue
+            src = io.open(f, encoding="utf-8").read()
+            if f'id: "{cid}"' not in src and f"id: '{cid}'" not in src:
+                unreg.append(cid)
+        check("layout 引用的组件文件都在", not missing, f"缺 {missing}" if missing else f"{len(ids)} 个都在")
+        check("每个组件文件都注册了同名 id", not unreg,
+              f"对不上 {unreg}" if unreg else "id 与文件名一致")
+        # 区域容器必须在 index.html 里真的存在，否则那一区整块不显示
+        idx = io.open(os.path.join(web, "index.html"), encoding="utf-8").read()
+        noreg = [rk for rk in regions if f'id="region-{rk}"' not in idx]
+        check("index.html 里有 layout 用到的全部区域容器", not noreg,
+              f"缺 #region-{noreg}" if noreg else " ".join(sorted(regions)))
+        # 主题：每个主题都要给齐同一套变量，少一个色就会露出上一个主题的残留
+        themes = [t.get("id") for t in lay.get("themes", [])] or ["sakura"]
+        keysets, badt = {}, []
+        for t in themes:
+            tp = os.path.join(web, "themes", f"{t}.json")
+            if not os.path.exists(tp):
+                badt.append(t)
+                continue
+            keysets[t] = set((json.load(io.open(tp, encoding="utf-8")).get("vars") or {}).keys())
+        check("layout 里列出的主题文件都在", not badt, f"缺 {badt}" if badt else " ".join(themes))
+        if len(keysets) > 1:
+            base = set.union(*keysets.values())
+            diff = {t: sorted(base - ks) for t, ks in keysets.items() if base - ks}
+            check("各主题的变量表要齐平（少一个色就会串主题）", not diff,
+                  f"缺色 {diff}" if diff else f"{len(base)} 个变量")
+        # 内核不该再残留业务逻辑：app.js 里写死 getElementById 就说明组件化没做干净
+        app_js = io.open(os.path.join(web, "app.js"), encoding="utf-8").read()
+        hard = app_js.count("getElementById")
+        check("内核 app.js 不写死页面元素（业务归组件）", hard <= 1,
+              f"{hard} 处 getElementById（只许保留查区域容器那一处）")
+
     # ⑯ 眉形 ParamBrowL/RForm 的几何约束。官方 Cubism 手册：
     #    「変形」只改形状、不带位置移动（上下/左右/角度另有参数）。
     #    这是配置层的事（看得到每个控制点），所以在这里核，不在单测里核。

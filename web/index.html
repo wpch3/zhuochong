@@ -6,6 +6,11 @@
 <title>小寻 · 桌面伴侣工作台</title>
 <link rel="stylesheet" href="app.css">
 </head>
+<!--
+  这份 HTML 只剩"区域容器"：哪些卡片、什么顺序、放哪个区域，全部由 web/layout.json 决定，
+  内核（app.js）按配置动态加载 components/<id>.js 并挂载。
+  加一个卡片 = 放一个组件文件 + 在 layout.json 里写上它的 id，**不改这份文件，也不改 JS 内核**。
+-->
 <body>
 <header class="topbar">
   <div class="brand">
@@ -15,100 +20,16 @@
       <p class="sub">桌面伴侣 · 基础软件（沙箱预览）</p>
     </div>
   </div>
-  <div class="chips" id="chips">
-    <span class="chip" id="chip-action">动作 —</span>
-    <span class="chip" id="chip-mood">情绪 —</span>
-    <span class="chip" id="chip-aff">好感 —</span>
-    <span class="chip" id="chip-form">形态 —</span>
-    <span class="chip" id="chip-scale">缩放 —</span>
-    <a class="chip" href="test.html" style="text-decoration:none;cursor:pointer">🧪 测试台</a>
-  </div>
+  <div id="region-topbar" class="region region-topbar"></div>
 </header>
 
 <main>
-  <!-- 动态立绘舞台 -->
-  <section class="stage card">
-    <div class="bubble" id="bubble" hidden><span id="bubble-text"></span></div>
-    <div class="pet-wrap" id="pet-wrap">
-      <img id="pet" src="/api/frame.png" alt="小寻的立绘" draggable="false">
-      <div class="hit-hint" id="hit-hint"></div>
-    </div>
-    <div class="quick">
-      <button class="btn primary" data-poke="head">摸头</button>
-      <button class="btn" data-poke="body">抚摸</button>
-      <button class="btn" data-poke="feet">点脚</button>
-      <button class="btn warn" data-poke="hammer">锤击</button>
-      <button class="btn" id="btn-wake">叫醒</button>
-    </div>
-    <p class="hint">点击立绘任意位置 = 手（头部为摸头，身体为抚摸）；拖动在 Windows 真机上有效。</p>
-  </section>
-
-  <!-- 右侧面板 -->
-  <aside class="panels">
-    <div class="card">
-      <h2>动作</h2>
-      <div class="grid" id="actions"></div>
-    </div>
-
-    <div class="card">
-      <h2>情绪</h2>
-      <div class="grid" id="moods"></div>
-    </div>
-
-    <div class="card">
-      <h2>形态 / 服装 / 缩放</h2>
-      <div class="row">
-        <label>形态</label><select id="form"></select>
-      </div>
-      <div class="row">
-        <label>服装</label><select id="outfit"></select>
-      </div>
-      <div class="row">
-        <label>缩放</label><input type="range" id="scale" min="0.30" max="1.20" step="0.05">
-        <span class="mono" id="scale-val">—</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>语音 <span class="tag" id="voice-engine">加载中…</span></h2>
-      <div class="row">
-        <label>分组</label><select id="voice-group"></select>
-      </div>
-      <div class="voice-list" id="voice-list"></div>
-      <audio id="player" preload="none"></audio>
-      <p class="hint" id="voice-note">台词为已渲染的音频；说话时立绘会自动进入说话动作。</p>
-    </div>
-
-    <div class="card">
-      <h2>用量（Token 计费）<span class="tag">占位</span></h2>
-      <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
-      <p class="mono" id="usage">本次会话：0 次调用 · 0 token</p>
-      <p class="hint">本地网关（T9.2）接入后，这里显示真实用量与费用；数据只存本机。</p>
-    </div>
-
-    <div class="card">
-      <h2>设置</h2>
-      <div class="row"><label>整窗穿透</label><button class="btn small" id="btn-passthrough">仅真机可用</button></div>
-      <div class="row"><label>日志</label><button class="btn small" id="btn-log">查看末尾</button></div>
-      <pre class="log" id="log" hidden></pre>
-      <p class="hint">透明窗、像素级穿透、托盘与热键在 Windows 真机上生效，沙箱预览只演示引擎与交互。</p>
-    </div>
-  </aside>
+  <div id="region-stage" class="region region-stage"></div>
+  <aside id="region-side" class="region panels"></aside>
 </main>
 
 <footer class="footer">
-  <span>引擎：C11 数据驱动立绘（rig.json）｜界面：web/（改界面不动 C 代码）</span>
-  <span class="mono">画质
-    <select id="quality" title="远程预览是按帧传 PNG 的，画质越高越吃带宽">
-      <option value="auto">自动</option>
-      <option value="50">流畅 50%</option>
-      <option value="60">均衡 60%</option>
-      <option value="75">清晰 75%</option>
-      <option value="100">原始 100%</option>
-    </select>
-  </span>
-  <span id="fps" class="mono">—</span>
-  <span id="conn" class="mono">连接中…</span>
+  <div id="region-footer" class="region region-footer"></div>
 </footer>
 
 <script src="app.js"></script>

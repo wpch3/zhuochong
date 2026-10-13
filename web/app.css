@@ -148,3 +148,17 @@ select {
   display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   padding: 10px 22px 22px; font-size: 12px; color: var(--ink-soft);
 }
+
+/* ---------------------------------------------------------- G1 组件骨架 */
+/* 区域容器与组件插槽对布局**完全透明**：用 display:contents 让组件自己的根节点
+   直接成为原来那个父容器的子项，这样加这两层包装不会改变任何既有排版规则。
+   （#region-side 例外 —— 它本身就是右栏那一列，带着 .panels 类。） */
+.region-topbar, .region-stage, .region-footer, .footer-inner, .slot { display: contents; }
+/* 右栏：卡片之间留空。重构前这一列没有任何规则，卡片是紧贴的。 */
+.panels { display: flex; flex-direction: column; gap: 16px; }
+
+/* 组件挂载失败时就地显示，不让整页白屏 */
+.err {
+  background: #fff0f4; border: 1px dashed var(--pink-deep); color: var(--pink-deep);
+  border-radius: 12px; padding: 10px 12px; font-size: 12px; margin: 6px 0;
+}

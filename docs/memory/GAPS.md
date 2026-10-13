@@ -31,7 +31,7 @@
 ### P0 —— 不做就不算"软件"
 | # | 缺什么 | 为什么要 | 验收 |
 | --- | --- | --- | --- |
-| G1 (T9.1) | **主工作区骨架**：本地 Web + 事件总线 + 主题系统 + 布局配置 + 组件注册表 | 现在只有桌宠预览页，没有"工作台" | 换主题/改布局不改代码 |
+| ~~G1 (T9.1)~~ | ✅ 2026-10-13 **主工作区骨架**：界面从"写死在 index.html 里的一堆卡片 + 380 行全局 app.js"改成**配置装配**。`web/layout.json` 是唯一装配表（区域 / 顺序 / 每个组件的参数），内核 `web/app.js` 按它**动态加载** `components/<id>.js` 并挂载；组件只认一个宿主门面 `host`（照搬 VPet 的 `IMainWindow`：`api/on/emit/state/el/card/refresh/components/find/theme`），生命周期四个钩子 `mount/onInfo/onSpeech/destroy`；主题 `themes/<id>.json` 是一张 CSS 变量表，写进 `:root`。九个组件：stage / statuschips / actions / moods / appearance / voice / usage / settings / statusbar。**业务逻辑原样搬移，没有重写**，内核里只剩一处 `getElementById`（查区域容器） | 闸门：**新增 `tests/test_web.js`（node + DOM stub，39 项）** 真正挂载全部组件并断言 DOM/区域/顺序/请求 URL/点击坐标换算；selfcheck 新增 ⑰ 组 7 项（layout 引用完整性、组件文件 id 对得上、区域容器存在、主题变量齐平、内核不写死元素）；smoke 新增 4 项（layout/组件脚本/主题文件都能下载、不存在的组件要 404）。`make check` 加挂 `web-test` | 验收实测：把 `side` 倒序 + `usage` 挪到顶栏 + 删掉 `voice`，**一行代码没动**，顺序/区域/挂载三条断言全过。负控：删掉一个组件文件 → selfcheck 与 web-test 同时判红 |
 | G2 (T9.2) | **本地 API 网关**：Key 只存本机、统一转发、计量、限流、离线降级 | 多模型对话的前提；Key 安全红线 | 假服务器契约测试 [测试锁] |
 | G3 (T9.3) | **Token 计费与用量看板**：价目表、按功能分类、预算告警、导出 | 用户点名要"用量记录" | 一次调用落一条账 |
 | G4 | **人物素材重做**：小寻 4 形态（设计图→拆件→rig→表情集） | 现在是单图层，表情/口型全是占位 | 机器验收通过率 100% |
