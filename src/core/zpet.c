@@ -69,6 +69,18 @@ struct zpet {
 static const zi_rule *match_rule(zpet *p, const char *kind, const char *region,
                                  const char *mood, int count);
 static void lipsync_tick(zpet *p, double now);
+/* 唤醒必须成套做：清睡眠标志 + 解除强制闭眼 + 把眨眼交回自动。
+   少做一步的后果是"醒了但眼睛永远闭着"（2026-10-13 真实踩过），
+   所以两条唤醒路径都只能调这一个函数。 */
+static void pet_wake(zpet *p)
+{
+    if (!p) return;
+    p->sleeping = 0;
+    if (p->rig) {
+        zrig_blink_force(p->rig, -1);     /* 解除睡觉时的强制闭眼 */
+        zrig_blink_set_enabled(p->rig, 1);
+    }
+}
 static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
                     const char *fb_reason, int fb_force, double now);
 
@@ -312,8 +324,7 @@ int zpet_tick(zpet *p, double now)
     /* 空闲 → 睡眠；任何输入唤醒（交接文件 6、8.6） */
     if (p->sleeping) {
         if (p->idle_seconds < 0.5) {
-            p->sleeping = 0;
-            zrig_blink_set_enabled(p->rig, 1);
+            pet_wake(p);
             /* 唤醒必须 force：sleep 优先级最高且声明为不可中断 */
             run_rule(p, match_rule(p, "wake", "", NULL, 0), "idle", "wake_up", 1, now);
             ZLOGI("pet", "用户输入，唤醒");
@@ -507,9 +518,13 @@ void zpet_lipsync_stop(zpet *p)
     free(p->ls_vis);
     p->ls_vis = NULL;
     if (p->rig) {
-        zrig_viseme_clear(p->rig);
-        zrig_param_reset(p->rig, zrig_lipsync_param(p->rig));
-        zrig_set_mouth_mute(p->rig, 0);
+        if (zrig_viseme_current(p->rig)) {
+            /* 音素层接管中：平滑收口，收干净了它自己会把嘴还给动作 */
+            zrig_viseme_clear(p->rig);
+        } else {
+            zrig_param_reset(p->rig, zrig_lipsync_param(p->rig));
+            zrig_set_mouth_mute(p->rig, 0);
+        }
     }
 }
 
@@ -648,8 +663,7 @@ int zpet_poke(zpet *p, int x, int y, zpet_tool tool, double now)
     if (!p || !p->rig) return 0;
     p->idle_seconds = 0.0;
     if (p->sleeping) {
-        p->sleeping = 0;
-        zrig_blink_force(p->rig, -1);
+        pet_wake(p);
         zrig_action_request(p->rig, "idle", "wake_by_poke", 1);
     }
     region = zpet_region(p, x, y, action, sizeof(action), NULL);
@@ -759,7 +773,26 @@ void zpet_hover(zpet *p, int x, int y, int inside, double now)
 
 void zpet_set_blink(zpet *p, double v)
 {
-    if (p && p->rig) zrig_blink_set_manual(p->rig, v);
+    if (!p || !p->rig) return;
+    zrig_blink_set_manual(p->rig, v);
+    /* v<0 = 交回自动：顺手解除"睡觉强制闭眼"，否则滑条拖到 auto 也救不回来 */
+    if (v < 0.0) { zrig_blink_force(p->rig, -1); zrig_blink_set_enabled(p->rig, 1); }
+}
+
+/* 开/关自动眨眼：关 = 眼睛常睁（抓帧对比时用），开 = 交回状态机。 */
+void zpet_set_blink_enabled(zpet *p, int on)
+{
+    if (!p || !p->rig) return;
+    zrig_blink_set_enabled(p->rig, on ? 1 : 0);
+    /* 两个方向都要解除"睡觉强制闭眼"：关自动眨眼的本意是"眼睛别动"，
+       不是"闭着别动"——否则睡过一次之后抓的对比图全是闭眼的。 */
+    zrig_blink_force(p->rig, -1);
+    if (on) zrig_blink_set_manual(p->rig, -1.0);
+}
+
+int zpet_blink_enabled(const zpet *p)
+{
+    return (p && p->rig) ? zrig_blink_enabled(p->rig) : 0;
 }
 
 double zpet_blink_manual(const zpet *p)

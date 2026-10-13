@@ -24,6 +24,8 @@
 #define ZRIG_MAX_VISEME_P  4     /* 一个音素最多同时写几个参数 */
 #define ZRIG_VIS_ATTACK   50.0   /* 口型张开的速度（1/s） */
 #define ZRIG_VIS_RELEASE  30.0   /* 收口的速度：比张开慢，否则收口像开关 */
+#define ZRIG_VIS_RELEASE_OFF  8.0 /* 整句说完的松口：比音素之间的回落再慢一档，
+                                     否则嘴会"抽"一下弹回表情（2026-10-13 用户反馈） */
 #define ZRIG_MAX_KEYPOOL  1024  /* 所有关键帧共用一个池子，通道里只存 [起点,个数) */
 #define ZRIG_MAX_OVERRIDES 32
 
@@ -1256,7 +1258,9 @@ static void viseme_update(zrig *r, double now)
     if (dt < 0.0) dt = 0.0;
     if (dt > 0.25) dt = 0.25;
     kup = 1.0 - exp(-ZRIG_VIS_ATTACK * dt);
-    kdn = 1.0 - exp(-ZRIG_VIS_RELEASE * dt);
+    /* 还在说话（weight>0）= 音素之间的回落，要快；整句说完（weight=0）= 松口，要慢 */
+    kdn = 1.0 - exp(-((r->vis_weight > 1e-6) ? ZRIG_VIS_RELEASE
+                                             : ZRIG_VIS_RELEASE_OFF) * dt);
     for (k = 0; k < r->nvis_p; ++k) {
         int pi = r->vis_pidx[k];
         double base = r->params[pi].vdef;
@@ -1333,10 +1337,20 @@ int zrig_viseme_set(zrig *r, const char *id, double weight)
     return 0;
 }
 
+/* 松口：不是"啪"地一下清零，而是把目标收回默认值，让平滑把嘴送回去
+   （release 30/s）；收干净了 viseme_update() 会自动 viseme_release()。
+   说完话一帧之内从说话嘴形弹回笑脸，人眼看着就是"抽一下"（2026-10-13 用户反馈）。 */
 void zrig_viseme_clear(zrig *r)
 {
     if (!r || r->nvis_p <= 0) return;
-    viseme_release(r);
+    if (!r->vis_active) { viseme_release(r); return; }
+    r->vis_weight = 0.0;        /* 目标 = 默认值；vis_target 保留，形状一路收回去 */
+}
+
+/* 真的立刻清掉（换角色/换形态这种"不用管好不好看"的场合） */
+void zrig_viseme_reset(zrig *r)
+{
+    if (r) viseme_release(r);
 }
 
 /* 冻结时钟（dt 恒为 0）时平滑走不动，直接到位——测试台和自检靠它 */
@@ -1590,18 +1604,39 @@ static int viseme_slot(const zrig *r, int pi)
    顺序照 Cubism 官方的执行序（ICubismUpdater：EyeBlink 200 / Expression 300 /
    Drag 400 / Breath 500 / Physics 600 / **LipSync 700** / Pose 800）——
    口型排在表情后面，所以「笑着说う」时嘴还是撅圆的，不会被笑脸抵消成中性。 */
+/* 口型层这一帧"用了多大力"：所有音素参数里偏离默认值最多的那个（归一化 0..1）。
+   说「あ」用满力、停顿（SIL）是 0、小声说话介于中间。
+   接管力度随它走，于是：① 停顿时表情自己回来；② 说完松口是连续的，没有跳变；
+   ③ 小声说话时表情还能透出来。 */
+static double viseme_activity(const zrig *r)
+{
+    int k;
+    double act = 0.0;
+    for (k = 0; k < r->nvis_p; ++k) {
+        const zparam *q = &r->params[r->vis_pidx[k]];
+        double rng = ZC_MAX(q->vmax - q->vdef, q->vdef - q->vmin);
+        double d;
+        if (rng <= 1e-9) continue;
+        d = fabs(r->vis_cur[k] - q->vdef) / rng;
+        if (d > act) act = d;
+    }
+    return ZC_CLAMP(act, 0.0, 1.0);
+}
+
 static double param_effective(const zrig *r, int pi)
 {
     const zparam *q = &r->params[pi];
     double v = expr_apply(r, pi, q->value + r->p_action[pi]);
     int k = viseme_slot(r, pi);
     if (k >= 0) {
-        /* 口型层落到自己的目标形（嘴该多大就多大），只给表情/动作留 1-w 的余味。
+        /* 口型层落到自己的目标形（嘴该多大就多大），给表情/动作留 1-w 的余味，
+           w 随这一帧的口型用力程度缩放（停顿时 w→0，表情完整回来，衔接连续）。
            官方是 addParameterValueById(id, v, 0.8)，纯加算——对只驱动开合的
            ParamMouthOpenY 没问题，但我们连 ParamMouthForm 一起驱动，加算会让
            「笑(+Form) + う(-Form)」抵消成中性嘴，所以改成这个口径（见
            docs/LIVE2D_CONFORMANCE.md 的偏差登记）。 */
-        v = r->vis_cur[k] + (v - q->vdef) * (1.0 - r->vis_mix);
+        double w = r->vis_mix * viseme_activity(r);
+        v = r->vis_cur[k] + (v - q->vdef) * (1.0 - w);
     }
     if (v < q->vmin) v = q->vmin;
     if (v > q->vmax) v = q->vmax;
@@ -1985,7 +2020,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_param_groups(r, zjson_obj_get(root, "param_groups"), diag, file) != 0) goto fail;
     {   /* 口型压过表情的权重：官方 SDK 对 LipSync 用 0.8，缺省就取它 */
         const zjson *jw = zjson_obj_get(root, "viseme_weight");
-        r->vis_mix = zjson_num(jw, 0.8);
+        r->vis_mix = zjson_num(jw, 1.0);
         if (jw && (r->vis_mix < 0.0 || r->vis_mix > 1.0))
             zdiag_warn(diag, file, jw->line, 0, "viseme_weight", "应在 0~1，已夹回");
     }
@@ -2676,10 +2711,15 @@ void zrig_blink_set_manual(zrig *r, double v)
 
 double zrig_blink_manual(const zrig *r) { return r ? r->blink_manual : -1.0; }
 
-void zrig_blink_force(zrig *r, int force_closed)
+/* mode > 0 = 强制闭眼（睡觉）；mode <= 0 = 交回自动。
+   这里原先是 bool（"非 0 就闭眼"），可字段本身用 -1 表示自动，
+   调用方照字段语义写 zrig_blink_force(r, -1) 想表达"取消"，结果被当成真 ——
+   醒来之后眼睛永远闭着（2026-10-13 用户在测试台看到的就是这个）。
+   现在 0 和 -1 都表示取消，两种写法都对。 */
+void zrig_blink_force(zrig *r, int mode)
 {
     if (!r) return;
-    r->blink_forced = force_closed ? 1 : -1;
+    r->blink_forced = (mode > 0) ? 1 : -1;
 }
 
 void zrig_blink_trigger(zrig *r)
@@ -2842,7 +2882,12 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
        改成**两头让开的斜坡**：睁眼件在 blink<0.75 前不掉透明度（这段由眼眶
        压扁来表现闭合），闭眼件只在最后 25% 淡入——这时两张图都已经是
        "下眼睑上的一条线"，几乎重合，看不出叠影。 */
-    if (r->blink_enabled && blink > 0.001) {
+    /* ⚠ 这里**不能**再看 r->blink_enabled：enabled 只管"自动眨眼定时器要不要跑"，
+       不管"这一帧眼睛闭了多少"。曾经写成 (blink_enabled && blink>0.001)，结果关掉
+       自动眨眼之后，任何把闭合度推离 0 的东西（表情的 ParamEyeOpen、手动按住、
+       blink_hold）都会跳过淡化 → 闭眼件以 100% 不透明直接盖住睁眼件 = 整只眼睛
+       突然全闭。判据只看 blink 本身。 */
+    if (blink > 0.001) {
         if (p->tags & TAG_EYE_OPEN)
             opacity *= ZC_CLAMP((1.0 - blink) * 4.0, 0.0, 1.0);
         if (p->tags & TAG_EYE_CLOSED)

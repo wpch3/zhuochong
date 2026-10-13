@@ -156,3 +156,50 @@ C 版见 `src/win32/zw32.c` 主循环里的 `LASTINPUTINFO` 段：差值转秒�
    并有 `test_expr_viseme_order()` + 3 次负控守着。
 4. 测试台的分层看板（`value / 过表情后 / 最终` 三列）思路取自 airi devtools 的分层显示：
    调参数时能看见每一层各自贡献了多少，而不是只看最终一个数。
+
+## 2026-10-13（第四批查证）验收反馈的三件事：眨眼开关的语义、口型接管力度、整句松口
+
+> 背景：用户在测试台上看到两件事 ——「小寻一直闭眼」「张嘴时微笑衔接过慢，张嘴了微笑还在」。
+> 按既定规矩，动手前先翻五个桌宠项目和官方 SDK，不闷头改。
+
+### 1. `blink_enabled` 到底该管到哪一层（官方 CubismEyeBlink）
+
+- `Live2D/CubismWebFramework` → `src/effect/cubismeyeblink.ts`
+  （`gh api repos/Live2D/CubismWebFramework/contents/src/effect/cubismeyeblink.ts`）：
+  `updateParameters()` 的状态机是 `First → Interval → Closing → Closed → Opening`
+  （和我们的五态一一对应），**最后一步只是**
+  `for (...) model.setParameterValueById(this._parameterIds[i], parameterValue)`。
+  也就是说官方的眨眼器**只写参数**，写完就不管了；画成什么样是 `CubismModel.update()`
+  按参数值算的，**和"眨眼器开没开"没有任何关系**。官方甚至没有 enabled 开关：
+  不想自动眨眼就不把 `CubismEyeBlinkUpdater` 加进调度器（`lappmodel.ts:298-303`）。
+- 结论（本轮据此修的 bug）：`blink_enabled` 只能管"自动眨眼的定时器要不要跑"，
+  **绝不能出现在"这一帧眼睛画成什么样"的判断里**。我们原来的
+  `if (r->blink_enabled && blink > 0.001) { 睁眼件淡出；闭眼件淡入 }` 违反了这一条：
+  关掉自动眨眼以后，任何把闭合度推离 0 的东西（表情的 `ParamEyeOpen=0.85`、手动按住、
+  动作的 `blink_hold`）都会跳过淡化，闭眼件以 100% 不透明盖住睁眼件 → **一上表情就全闭眼**。
+- 另一处值得抄的做法：`lappmodel.ts:685` 在播动作时调
+  `motion.setEffectIds(this._eyeBlinkIds, this._lipSyncIds)` —— 官方把"眨眼参数"和
+  "口型参数"单独标出来，让 motion 曲线对它们**让路**而不是硬覆盖。
+  这正是我们 `blink_hold`（动作只抬不压闭合度）和 `zrig_set_mouth_mute`（动作嘴通道让路）
+  在做的事，口径一致，保留。
+
+### 2. 口型接管力度要不要随"这一帧嘴用了多大力"变（五个桌宠项目 + airi）
+
+- 五个桌宠项目里只有 **airi** 有口型层：`model-driver-lipsync/.../vowel-driver.ts`
+  的做法是「赢家母音 + 响度」两路 —— 母音决定**写哪张嘴**，响度决定**写多重**，
+  小声时参数幅度本来就小。它没有"表情层"，所以不存在抢参数的问题。
+- 我们有表情层，于是把"响度"这一路翻译成**接管权重**：
+  `w = viseme_weight × viseme_activity`，`viseme_activity` = 本帧口型相对默认值用了多大力（0..1）。
+  静音 SIL=0（表情全额拿回嘴）、小声=按比例（笑意透出来）、满力「あ」=1（口型独占）。
+  这是官方没有的扩展，已登记进 `docs/LIVE2D_CONFORMANCE.md` 的偏差表。
+- `viseme_weight` 从官方 LipSync 的 0.8 调到 **1.0**：0.8 是官方给"只驱动 `ParamMouthOpenY`"
+  定的，我们还驱动 `ParamMouthForm`，残留 20% 的笑在满口型上肉眼可见（用户看到的就是这个）。
+
+### 3. 整句说完怎么收口（没有现成答案，取 airi 的两档思路自己定）
+
+- airi 的 vowel driver 只有一组 attack/release（50 / 30 每秒）用于**音素之间**切换，
+  整句结束靠"静默 160ms 保持 + 响度归零"自然收，它的嘴只有开合、收得快也看不出。
+- 我们收的是嘴形（Form 从 −1.0 回 +0.70 跨度 1.7），同样 30/s 收尾仍是 0.267 的单帧跳变，
+  肉眼就是"抽一下"。于是加第二档 **`ZRIG_VIS_RELEASE_OFF = 8.0`**（整句松口专用，
+  比音素间慢近四倍），实测单帧跳变降到 < 0.12，约 1.8s 平滑叹回表情。
+  12.0 试过仍有 0.122 的跳变，所以定 8.0。

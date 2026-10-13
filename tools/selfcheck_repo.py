@@ -456,6 +456,51 @@ def check_live2d(root):
           "tests/test_core.c")
     check("测试台有分层看板", "mx-table" in page, "web/test.html")
 
+    # ⑩ 睡醒要成套：唤醒只能走 pet_wake()，强制闭眼不是 bool（2026-10-13 事故）
+    pet_c = read(os.path.join(root, "src/core/zpet.c"))
+    wake_sites = [ln.strip() for ln in pet_c.splitlines() if re.search(r"\bsleeping\s*=\s*0\b", ln)]
+    check("唤醒只有一处（统一走 pet_wake，少一步就是醒着也闭眼）",
+          len(wake_sites) == 1, "src/core/zpet.c 里 %d 处 sleeping=0：%s" % (len(wake_sites), wake_sites))
+    check("pet_wake 会解除强制闭眼",
+          "static void pet_wake" in pet_c
+          and "zrig_blink_force" in pet_c.split("static void pet_wake")[1][:400],
+          "src/core/zpet.c")
+    check("zrig_blink_force 是三态（>0 闭眼，<=0 取消），不是 bool",
+          "(mode > 0) ? 1 : -1" in rig_c,
+          "传 -1 想表达\"取消\"却被当成真 → 醒着也永远闭眼")
+    check("/api/blink 认 on= 且参数缺失会报错",
+          'qstr(r, "on"' in head_c and "要给 v=0..1|auto 或 on=0|1" in head_c,
+          "src/headless/main_headless.c")
+
+    # ⑪ 口型接管与松口（2026-10-13「张嘴了微笑还在 / 收尾抽一下」两个事故的闸）
+    check("口型接管力度随本帧口型用力程度缩放（不是恒定权重）",
+          "viseme_activity" in rig_c
+          and "vis_mix * viseme_activity" in rig_c.replace("  ", " "),
+          "小声说话要漏出表情，满力说话由口型独占")
+    clear_body = rig_c.split("void zrig_viseme_clear")[1].split("\n}")[0] if "void zrig_viseme_clear" in rig_c else ""
+    # 没在说话时直接清是允许的（本来就没有可见跳变）；在说话时必须走 vis_weight→0 的平滑收口
+    hard = [ln for ln in clear_body.splitlines()
+            if "viseme_release" in ln and "vis_active" not in ln]
+    check("zrig_viseme_clear 是平滑松口（不许一帧切回表情）",
+          bool(clear_body) and not hard and "vis_weight = 0" in clear_body,
+          "硬切 = 说完话嘴角抽一下；要立刻清零请用 zrig_viseme_reset()")
+    check("有 zrig_viseme_reset（换角色 / 测试基准用的立即清零）",
+          "void zrig_viseme_reset" in rig_c, "src/core/zrig.c")
+    mo = re.search(r"ZRIG_VIS_RELEASE_OFF\s+([0-9.]+)", rig_c)
+    mr = re.search(r"ZRIG_VIS_RELEASE\s+([0-9.]+)", rig_c)
+    check("整句松口比音素间回落更慢（两档 release）",
+          bool(mo and mr) and float(mo.group(1)) < float(mr.group(1)),
+          "RELEASE_OFF=%s / RELEASE=%s" % (mo.group(1) if mo else "?", mr.group(1) if mr else "?"))
+    draw = rig_c.split("compute_draw_state")[-1] if "compute_draw_state" in rig_c else ""
+    fade = draw.split("TAG_EYE_CLOSED")[0][-600:] if "TAG_EYE_CLOSED" in draw else ""
+    check("眼件淡化只看闭合度，不看 blink_enabled",
+          "blink_enabled" not in fade,
+          "关掉自动眨眼后闭眼件会 100% 盖住睁眼件 = 一上表情就全闭眼")
+    if doc_txt:
+        check("对照表登记了口型接管与松口的偏差",
+              "viseme_activity" in doc_txt and "RELEASE_OFF" in doc_txt,
+              "docs/LIVE2D_CONFORMANCE.md 要写明权重调制与两档 release")
+
 # ------------------------------------------------------------------ 4 角色包其它引用
 def check_character(root):
     section("角色包其它引用：服装 / 互动 / 语音 / 口型包络")

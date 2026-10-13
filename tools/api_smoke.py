@@ -106,6 +106,50 @@ def run(base, root):
     check("info 能读回手动眨眼值", abs(a.json("/api/info.json")["blink_manual"] - 0.5) < 0.01)
     a.hit("/api/blink?v=auto")
     check("切回自动眨眼", a.json("/api/info.json")["blink_manual"] < 0)
+    r = a.json("/api/blink?on=0") or {}
+    check("on=0 能真的关掉自动眨眼（以前这个参数被静默忽略）",
+          r.get("ok") is True and r.get("auto") is False, json.dumps(r, ensure_ascii=False))
+    r = a.json("/api/blink?on=1") or {}
+    check("on=1 交回自动", r.get("ok") is True and r.get("auto") is True,
+          json.dumps(r, ensure_ascii=False))
+    a.hit("/api/idle?s=99999")          # 先睡着（强制闭眼）
+    time.sleep(0.3)
+    a.hit("/api/blink?on=0")            # 关自动眨眼：本意是"眼睛别动"，不是"闭着别动"
+    time.sleep(0.2)                     # 响应里的 blink 是本帧旧值，等下一帧
+    r = a.json("/api/info.json") or {}
+    check("关自动眨眼 = 眼睛常睁（不是停在闭眼上）", (r.get("blink", 1)) < 0.01,
+          "blink=%s" % r.get("blink"))
+    a.hit("/api/idle?s=0")
+    a.hit("/api/blink?on=1")
+    try:
+        a.json("/api/blink")
+        bad = False
+        detail = "居然回了 2xx"
+    except urllib.error.HTTPError as e:
+        bad, detail = e.code == 400, "HTTP %d" % e.code
+    check("/api/blink 不给参数要报 400（不许静默当成功）", bad, detail)
+    # 睡着 → 非 poke 唤醒 → 眼睛必须还回来（2026-10-13 事故：醒着也永远闭眼）
+    a.hit("/api/idle?s=99999")
+    time.sleep(0.35)
+    sleep_info = a.json("/api/info.json") or {}
+    check("空闲超时会睡着并闭眼",
+          sleep_info.get("action") == "sleep" and sleep_info.get("blink", 0) > 0.9,
+          "action=%s blink=%s" % (sleep_info.get("action"), sleep_info.get("blink")))
+    a.hit("/api/idle?s=0")
+    a.hit("/api/action?id=idle")
+    # ⚠ 不能只抓一帧：醒来后自动眨眼又开始跑了，单帧有概率正好抓在眨眼中间。
+    #    判据是"这 1.5 秒里眼睛确实睁开过"。
+    woke_blink, woke_eye = 1.0, 0.0
+    for _ in range(15):
+        time.sleep(0.1)
+        b = (a.json("/api/info.json") or {}).get("blink", 1.0)
+        e = next((q for q in (a.json("/api/params.json") or {}).get("params", [])
+                  if q["id"] == "ParamEyeLOpen"), {}).get("effective", 0.0)
+        woke_blink, woke_eye = min(woke_blink, b), max(woke_eye, e)
+        if woke_blink < 0.5 and woke_eye > 0.5: break
+    check("醒来之后眼睛要睁开（强制闭眼必须解除）",
+          woke_blink < 0.5 and woke_eye > 0.5,
+          "1.5s 内最小 blink=%.2f / 最大 ParamEyeLOpen=%.2f" % (woke_blink, woke_eye))
 
     print("== 口型同步 LipSync（A4）==")
     ls = a.json("/api/speak?id=hammer_1_base0")
@@ -470,6 +514,27 @@ def run(base, root):
         _, js = a.get("/test.js")
     except Exception:                                # noqa: BLE001
         page, js = b"", b""
+    # 收尾自检：跑完不许给用户留下一个"闭着眼 / 卡着表情 / 还在说话"的小寻
+    a.hit("/api/blink?v=auto")
+    a.hit("/api/expression?off=1")
+    a.hit("/api/viseme?v=off")
+    a.hit("/api/param?all=1")
+    a.hit("/api/speak?stop=1")
+    a.hit("/api/idle?s=0")
+    time.sleep(0.6)
+    fin = a.json("/api/info.json") or {}
+    pend = {q["id"]: q for q in (a.json("/api/params.json") or {}).get("params", [])}
+    check("收尾：眨眼回到自动", fin.get("blink_manual", 0) < 0, str(fin.get("blink_manual")))
+    check("收尾：眼睛是睁开的（别给用户留个闭眼的小寻）",
+          pend.get("ParamEyeLOpen", {}).get("effective", 0) > 0.5
+          and pend.get("ParamEyeROpen", {}).get("effective", 0) > 0.5,
+          "L=%s R=%s" % (pend.get("ParamEyeLOpen", {}).get("effective"),
+                         pend.get("ParamEyeROpen", {}).get("effective")))
+    check("收尾：没有卡住的表情和口型",
+          not fin.get("expression") and not (a.json("/api/params.json") or {})
+          .get("viseme", {}).get("id"),
+          "expression=%r" % fin.get("expression"))
+
     check("测试台有「表情 × 口型」分层看板",
           b"mx-table" in page and b"mixRefresh" in js,
           "test.html %d 字节 / test.js %d 字节" % (len(page), len(js)))

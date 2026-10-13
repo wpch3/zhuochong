@@ -1440,7 +1440,7 @@ static void test_viseme(void)
             for (i = 0; i < 5; ++i) {
                 int x, y, x0 = 9999, x1 = -1;
                 unsigned char *base;
-                zrig_viseme_clear(r);
+                zrig_viseme_reset(r);     /* 基准必须干净：clear 是平滑收，冻结时钟下收不完 */
                 zrig_tick(r, T);
                 fb = zrig_frame(r, 0.55, NULL, NULL);
                 base = frame_snapshot(fb);        /* 每个音素现拍自己的基准 */
@@ -1464,7 +1464,7 @@ static void test_viseme(void)
                 wid[i] = (x1 >= x0) ? (x1 - x0 + 1) : 0;
                 free(base);
             }
-            zrig_viseme_clear(r);
+            zrig_viseme_reset(r);
             /* 两两都要不一样 —— 这是"五张嘴"而不是"一张嘴五个大小"的判据 */
             {
                 int worst = 1 << 30;
@@ -1491,7 +1491,7 @@ static void test_viseme(void)
             for (i = 0; i < 5; ++i) free(snap[i]);
 
             /* 强度：音素给形状，weight 给大小 */
-            zrig_viseme_clear(r);
+            zrig_viseme_reset(r);
             zrig_viseme_set(r, "A", 0.3);
             zrig_viseme_snap(r);
             CHECK(fabs(zrig_param_effective(r, "ParamMouthOpenY") - 0.3) < 0.02,
@@ -1501,7 +1501,7 @@ static void test_viseme(void)
                   "音素是叠在上面的一层，不许回写基础参数值（%.3f）",
                   zrig_param_get(r, "ParamMouthOpenY"));
             /* 平滑：张开要快但不是瞬间（一帧就到位 = 机器嘴） */
-            zrig_viseme_clear(r);
+            zrig_viseme_reset(r);
             zrig_viseme_set(r, "A", 1.0);
             zrig_tick(r, T + 0.008);
             CHECK(zrig_param_effective(r, "ParamMouthOpenY") > 0.05 &&
@@ -1511,7 +1511,10 @@ static void test_viseme(void)
             CHECK(zrig_mouth_mute(r) == 1, "说话时动作里的嘴通道要让路");
             /* 松口：参数回默认，嘴还给动作 */
             zrig_viseme_clear(r);
-            zrig_tick(r, T + 0.02);
+            {   /* 松口是平滑收回去的，给它时间收干净（收完会自动把嘴还给动作） */
+                double tt;
+                for (tt = 0.02; tt < 1.2; tt += 0.016) zrig_tick(r, T + tt);
+            }
             CHECK(fabs(zrig_param_effective(r, "ParamMouthOpenY")) < 1e-6 &&
                   fabs(zrig_param_effective(r, "ParamMouthForm")) < 1e-6,
                   "松口后两个嘴参数都要回默认");
@@ -1577,21 +1580,58 @@ static void test_expr_viseme_order(void)
                   frame_diff_box(fb, smile_only, MX0, MY0, MX1, MY1));
             free(smile_only);
 
-            /* ③ 表情的味道还留一点（权重 0.8 不是 1.0 覆盖） */
-            zrig_expression_clear(r);
-            for (t = 0.0; t < 0.8; t += 0.02) zrig_tick(r, T + 0.8 + t);
+            /* ③ 接管力度随"这一帧口型用了多大力"缩放：
+                  满力说话时口型完全说了算，小声时表情透出来，停顿时表情完整回来。
+                  （2026-10-13 用户反馈：张着嘴还挂着笑嘴角、说完一下子弹回笑脸，很怪） */
             zrig_viseme_set(r, "U", 1.0);
             zrig_viseme_snap(r);
-            zrig_tick(r, T + 1.6);
+            zrig_tick(r, T + 0.82);
             form_u = zrig_param_effective(r, "ParamMouthForm");
-            CHECK(form_u < form_smile_u,
-                  "不笑时的 う 应该比笑着说 う 更撅（%.3f < %.3f）", form_u, form_smile_u);
-
+            CHECK(fabs(form_u - form_smile_u) < 1e-6,
+                  "满力说话时笑不笑都该是同一张嘴（%.3f vs %.3f）", form_smile_u, form_u);
+            zrig_viseme_set(r, "U", 0.25);         /* 小声说：口型只用了两成力 */
+            zrig_viseme_snap(r);
+            zrig_tick(r, T + 0.84);
+            {
+                double soft = zrig_param_effective(r, "ParamMouthForm");
+                CHECK(soft > 0.05 && soft < form_smile - 0.05,
+                      "小声说话时笑意还要占主导（%.3f 要在 0 和 %.3f 之间；"
+                      "接管力度不随用力程度缩放的话这里会是负的）", soft, form_smile);
+            }
+            /* 张满嘴说「あ」：Form 目标是 0（中性嘴形），这时不许还挂着笑嘴角 */
+            zrig_viseme_set(r, "A", 1.0);
+            zrig_viseme_snap(r);
+            zrig_tick(r, T + 0.85);
+            CHECK(fabs(zrig_param_effective(r, "ParamMouthForm")) < 0.05,
+                  "满力张嘴时不该还挂着笑的嘴角（%.3f）",
+                  zrig_param_effective(r, "ParamMouthForm"));
+            CHECK(zrig_param_effective(r, "ParamMouthOpenY") > 0.95,
+                  "满力张嘴要真的张到底（%.3f）",
+                  zrig_param_effective(r, "ParamMouthOpenY"));
+            /* 说完松口：一路平滑回到笑脸，相邻帧不许跳变（用户说"一下子弹回去很怪"） */
+            {
+                double prev = zrig_param_effective(r, "ParamMouthForm");
+                double worst = 0.0;
+                int step;
+                zrig_viseme_clear(r);
+                for (step = 1; step <= 40; ++step) {
+                    double now_v;
+                    zrig_tick(r, T + 0.85 + 0.016 * step);
+                    now_v = zrig_param_effective(r, "ParamMouthForm");
+                    if (fabs(now_v - prev) > worst) worst = fabs(now_v - prev);
+                    prev = now_v;
+                }
+                CHECK(worst < 0.12, "松口要平滑过渡，单帧跳变最大 %.3f（阈值 0.12）", worst);
+                CHECK(fabs(prev - form_smile) < 0.02,
+                      "松口后应回到笑脸的嘴形（%.3f → %.3f）", prev, form_smile);
+            }
             /* ④ 没有表情也没有口型时，最终值 = 参数自己的值 */
-            zrig_viseme_clear(r);
-            zrig_tick(r, T + 1.7);
+            zrig_expression_clear(r);
+            zrig_viseme_reset(r);
+            for (t = 0.0; t < 1.0; t += 0.02) zrig_tick(r, T + 1.0 + t);
+
             zrig_param_set(r, "ParamMouthForm", 0.5);
-            zrig_tick(r, T + 1.72);
+            zrig_tick(r, T + 2.02);
             CHECK(fabs(zrig_param_effective(r, "ParamMouthForm") - 0.5) < 1e-6,
                   "没表情没口型时最终值应等于参数值（%.3f）",
                   zrig_param_effective(r, "ParamMouthForm"));
@@ -2327,6 +2367,122 @@ static void test_affection(void)
 }
 
 
+/* 睡着了要能醒：空闲超时会强制闭眼，醒来必须把眼睛还回来。
+   2026-10-13 真实事故 —— 唤醒只清了 sleeping 标志，强制闭眼没解除，
+   而且 zrig_blink_force(r, -1) 想表达"取消"却被当成"非 0 = 闭眼"，
+   于是测试台上的小寻醒着也永远闭眼，连 /api/param?all=1 都救不回来。 */
+static void test_sleep_wake_blink(void)
+{
+    char cfgdir[1024];
+    zconfig cfg;
+    zdiag diag;
+    zpet *pet;
+    SECTION("睡醒了眼睛要还回来（强制闭眼必须解除）");
+
+    /* ① zrig 层：force(-1) / force(0) 都该是"交回自动"，只有 >0 才是闭眼 */
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d2;
+        zrig *r;
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        zdiag_init(&d2);
+        r = zrig_load(rig_path, dir, &d2);
+        CHECK(r != NULL, "装载真 rig 应成功");
+        if (r) {
+            double t;
+            zrig_blink_force(r, 1);
+            zrig_tick(r, 1.0);
+            CHECK(zrig_blink_value(r) > 0.99, "force(1) 要强制闭眼（%.2f）", zrig_blink_value(r));
+            zrig_blink_force(r, -1);          /* 按字段语义写的"取消" */
+            zrig_tick(r, 1.02);
+            CHECK(zrig_blink_value(r) < 0.99,
+                  "force(-1) 是取消，不是闭眼（%.2f）", zrig_blink_value(r));
+            zrig_blink_force(r, 1);
+            zrig_tick(r, 1.04);
+            zrig_blink_force(r, 0);           /* bool 写法的"取消" */
+            zrig_tick(r, 1.06);
+            CHECK(zrig_blink_value(r) < 0.99, "force(0) 也要取消（%.2f）", zrig_blink_value(r));
+            /* 取消之后状态机要真的还在走：一段时间内必须出现一次闭眼 */
+            {
+                int blinked = 0;
+                for (t = 1.1; t < 20.0; t += 0.05) {
+                    zrig_tick(r, t);
+                    if (zrig_blink_value(r) > 0.9) { blinked = 1; break; }
+                }
+                CHECK(blinked, "解除强制后 20 秒内应至少自动眨一次眼");
+            }
+            zrig_free(r);
+        }
+    }
+
+    /* ② zpet 层：空闲到睡着 → 用"非 poke"的方式唤醒（点动作/说话都走这条） */
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zdiag_init(&diag);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (pet) {
+        double t;
+        int blinked = 0;
+        zpet_tick(pet, 1.0);
+        zpet_report_idle(pet, 99999.0);       /* 空闲很久 */
+        zpet_tick(pet, 2.0);
+        CHECK(zpet_sleeping(pet), "空闲超时应进入睡眠");
+        zpet_tick(pet, 2.05);                 /* 睡眠是在 tick 末尾设的，下一帧才生效 */
+        CHECK(zpet_blink(pet) > 0.99, "睡着时眼睛应闭上（%.2f）", zpet_blink(pet));
+        zpet_report_idle(pet, 0.0);           /* 有输入了（点按钮、说话…） */
+        zpet_tick(pet, 2.1);
+        CHECK(!zpet_sleeping(pet), "有输入应唤醒");
+        for (t = 2.2; t < 25.0; t += 0.05) {
+            zpet_tick(pet, t);
+            if (zpet_blink(pet) < 0.01) blinked = 1;      /* 眼睛真的睁开过 */
+        }
+        CHECK(blinked, "醒来之后眼睛必须睁开（否则就是强制闭眼没解除）");
+        zpet_destroy(pet);
+    }
+
+    /* ③ 渲染闸：blink_enabled 只管"自动眨眼定时器"，不许影响"这一帧眼睛画成什么样"。
+       真 bug：淡化判断写成 (blink_enabled && blink>0.001)，关掉自动眨眼以后，
+       任何把闭合度推离 0 的东西（表情里的 ParamEyeOpen=0.85、手动按住、blink_hold）
+       都会跳过淡化 → 闭眼件以 100% 不透明盖住睁眼件 = 一上表情整只眼睛全闭。 */
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d3;
+        zrig *r;
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        zdiag_init(&d3);
+        r = zrig_load(rig_path, dir, &d3);
+        CHECK(r != NULL, "装载真 rig 应成功（眨眼渲染闸）");
+        if (r) {
+            const zimg *fb;
+            unsigned char *snap_on;
+            int w = 0, h = 0, d_off, d_shut;
+            zrig_blink_set_enabled(r, 1);
+            zrig_blink_set_manual(r, 0.15);        /* 轻微眯眼：闭眼件还不该露脸 */
+            zrig_tick(r, 5.0);
+            fb = zrig_frame(r, 1.0, &w, &h);
+            snap_on = frame_snapshot(fb);
+            zrig_blink_set_enabled(r, 0);          /* 只关自动眨眼，画面不该动 */
+            zrig_tick(r, 5.0);                     /* 同一时刻，排除别的动画干扰 */
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_off = frame_diff_box(fb, snap_on, 0, 0, w, h);
+            CHECK(d_off == 0,
+                  "关自动眨眼不该改变这一帧（差了 %d 像素 = 闭眼件被整张糊上去了）", d_off);
+            zrig_blink_set_manual(r, 1.0);         /* 自动仍关着，手动按到全闭 */
+            zrig_tick(r, 5.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_shut = frame_diff_box(fb, snap_on, 0, 0, w, h);
+            CHECK(d_shut > 200,
+                  "关自动眨眼后手动按住仍要能闭上（只差了 %d 像素）", d_shut);
+            free(snap_on);
+            zrig_free(r);
+        }
+    }
+}
+
 /* ---- A4 口型同步：包络按时间推进、嘴让路、播完收尾 ---- */
 static void test_lipsync(void)
 {
@@ -3035,6 +3191,7 @@ int main(int argc, char **argv)
     test_viseme();
     test_expr_viseme_order();
     test_expression_blend();
+    test_sleep_wake_blink();
     test_action_drives_param();
     test_motion_fade();
     test_physics();

@@ -625,13 +625,37 @@ static void handle_request(zsock fd, const http_req *r)
     }
     if (strcmp(r->path, "/api/blink") == 0) {
         /* 测试台的眨眼滑条：v=0..1 按住，v=auto 交回自动眨眼 */
+        /* on=0 关自动眨眼（常睁）、on=1 开；一个都没给就报 400 ——
+           以前 `?on=0` 会被静默忽略还回 ok，"关眨眼"根本没生效（见 LESSONS 的"跳过即通过"）。 */
         char s[32];
+        int got = 0;
         if (qstr(r, "v", s, sizeof(s))) {
             LOCK();
             zpet_set_blink(g_pet, (z_streq(s, "auto") || !*s) ? -1.0 : atof(s));
             UNLOCK();
+            got = 1;
         }
-        send_text(fd, 200, "application/json", "{\"ok\":true}");
+        if (qstr(r, "on", s, sizeof(s))) {
+            LOCK();
+            zpet_set_blink_enabled(g_pet, atoi(s) != 0);
+            UNLOCK();
+            got = 1;
+        }
+        if (!got) {
+            send_text(fd, 400, "application/json",
+                      "{\"ok\":false,\"error\":\"要给 v=0..1|auto 或 on=0|1\"}");
+            return;
+        }
+        {
+            char body[128];
+            LOCK();
+            z_snprintf(body, sizeof(body),
+                       "{\"ok\":true,\"blink\":%.3f,\"manual\":%.3f,\"auto\":%s}",
+                       zpet_blink(g_pet), zpet_blink_manual(g_pet),
+                       zpet_blink_enabled(g_pet) ? "true" : "false");
+            UNLOCK();
+            send_text(fd, 200, "application/json", body);
+        }
         return;
     }
     if (strcmp(r->path, "/api/gaze") == 0) {

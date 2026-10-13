@@ -70,6 +70,8 @@ void  zpet_notify_user_activity(zpet *p, double now);
 
 /* 测试台用的直控：按住眨眼参数（<0 恢复自动）、直接给视线方向 */
 void   zpet_set_blink(zpet *p, double v);
+void   zpet_set_blink_enabled(zpet *p, int on);  /* 关=常睁，开=交回自动 */
+int    zpet_blink_enabled(const zpet *p);
 double zpet_blink_manual(const zpet *p);
 void   zpet_set_gaze(zpet *p, double nx, double ny, int on);
 /* 表情层（≈ Live2D expression）：叠在当前动作之上，和动作互不覆盖 */

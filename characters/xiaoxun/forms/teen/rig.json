@@ -3682,7 +3682,7 @@
       ]
     }
   ],
-  "viseme_weight": 0.8,
+  "viseme_weight": 1.0,
   "visemes": [
     {
       "id": "SIL",

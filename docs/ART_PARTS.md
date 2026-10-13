@@ -424,9 +424,17 @@ TTS 产出 mp3 ──► tools/make_lipsync.py ──► voice/lipsync/<id>.json
   —— EyeBlink 200 → **Expression 300** → Drag 400 → Breath 500 → Physics 600 →
   **LipSync 700** → Pose 800。**口型在表情之后，嘴由口型说了算。**
 - **我们怎么做**：`param_effective()` = 动作 → 表情（三累加器）→ 口型。
-  口型按 `viseme_weight`（rig.json 顶层，默认 0.8 = 官方 SDK 给 LipSync 的权重）落位，
-  只给表情留 20% 的"余味"：笑 + う → Form **−0.86**，不笑的 う → −1.00，只笑 → +0.70。
-  纯加算（官方写法）会把笑 + う 抵消成 −0.30 的中性嘴 —— 这是有意偏差，已登记在合规表。
+  纯加算（官方写法）会把笑 + う 抵消成 −0.30 的中性嘴 —— 所以改成"口型落位 + 表情留余味"，
+  这是有意偏差，已登记在合规表。
+- **接管力度随口型用力程度走（2026-10-13 修，G39）**：`w = viseme_weight × viseme_activity`。
+  `viseme_activity` = 本帧口型相对默认值用了多大力（0..1）；`viseme_weight` 默认 **1.0**
+  （0.8 是官方给"只驱动 `ParamMouthOpenY`"定的，我们还驱动 `ParamMouthForm`，
+  残留 20% 的笑在满口型上一眼就能看见）。于是：满力说「う」→ Form **−1.00**（笑不笑都一样，
+  口型独占）、小声说「う」(力度 0.25) → **+0.44**（笑意透出来）、停顿 → **+0.70**（表情全额拿回）。
+  改之前是恒定权重，笑着说一整句时 Form 全程卡在 0.14 = 用户说的"张嘴了微笑还在"。
+- **松口要平滑**：`zrig_viseme_clear()` 是"松口"（`vis_weight→0`，形状一路收回默认，
+  收干净了才真正释放），整句松口用慢一档的 `ZRIG_VIS_RELEASE_OFF = 8/s`（音素之间仍是 30/s），
+  实测单帧跳变 < 0.12、约 1.8s 叹回表情；要"立刻清零"（换角色 / 取测试基准）用 `zrig_viseme_reset()`。
 - **表情混合**：补上 Cubism exp3 的第三种 Blend `multiply`（`mode: "multiply"`），
   求值 `(base + overwrite + additive) × multiply`，和 `CubismExpressionMotion` 一致。
 - **怎么看**：测试台「表情 × 口型」面板（组合按钮 + `value / 过表情后 / 最终` 三列实时表），
@@ -1014,9 +1022,16 @@ eye_closed *= clamp((blink - 0.75) * 4, 0, 1); /* 只在最后 25% 淡入 */
     い/え 真能咧开、う/お 真能撅圆）
 
 11. ~~表情与口型的叠加口径~~ ✅ 2026-10-13（见 3.10；口型排在表情之后，
-    「笑着说う」Form −0.86 仍是撅圆；表情补上 multiply 混合）
+    表情补上 multiply 混合）
 
-12. **下一件：笑眼素材**（`ParamEyeLSmile` / `ParamEyeRSmile`，补齐合规表里的 ⬜5）。
+12. ~~验收反馈的四个真 bug（G39）~~ ✅ 2026-10-13：① 睡醒还闭眼（`blink_force` 当年写成 bool，
+    −1「交回自动」被当成真）；② 关掉自动眨眼就全闭眼（绘制判断里混进了 `blink_enabled`，
+    闭眼件跳过淡化直接盖住睁眼件）；③ 张嘴了微笑还在（口型接管权重恒定 → 改成随
+    `viseme_activity` 缩放，权重 0.8→1.0，满力说话口型独占、小声时笑意透出来）；
+    ④ 说完话嘴角抽一下（`viseme_clear` 硬切 → 平滑松口 + 整句专用 release 8/s，
+    另给"要立刻清零"的场合留 `viseme_reset`）。证据图 `logs/asset_qa/_expr_viseme_sheet.jpg`
+
+13. **下一件：笑眼素材**（`ParamEyeLSmile` / `ParamEyeRSmile`，补齐合规表里的 ⬜5）。
 
 每一件的验收关卡都一样：`make test` 全绿 → `check_assets` 全过 →
 `make smoke`（互动/动作端到端）全过 → 预览抓帧人工看 → 才算入库。

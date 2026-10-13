@@ -165,7 +165,8 @@ int         zrig_viseme_entry_count(const zrig *r, int vi);
 int         zrig_viseme_entry(const zrig *r, int vi, int k,
                               const char **param_id, double *value);
 int         zrig_viseme_set(zrig *r, const char *id, double weight);  /* 不认识的音素返回 -1 */
-void        zrig_viseme_clear(zrig *r);     /* 立刻松口，嘴交还给动作 */
+void        zrig_viseme_clear(zrig *r);     /* 松口：平滑收回，收干净后自动交还动作 */
+void        zrig_viseme_reset(zrig *r);     /* 立刻清空（换角色/换形态用，会跳变） */
 void        zrig_viseme_snap(zrig *r);      /* 跳过平滑直接到位（冻结时钟时用） */
 const char *zrig_viseme_current(const zrig *r);   /* 没接管时返回 NULL */
 double      zrig_viseme_weight(const zrig *r);   /* 这一帧的音量/强度 0..1（不是下面那个） */
@@ -189,7 +190,7 @@ double zrig_part_follow_y(const zrig *r, const char *part_id);
 const char *zrig_part_follow_src(const zrig *r, const char *part_id);
 
 /* 调试/测试：强制闭眼或恢复自动 */
-void  zrig_blink_force(zrig *r, int force_closed);
+void  zrig_blink_force(zrig *r, int mode);   /* >0 强制闭眼；<=0 交回自动 */
 /* 立即触发一次眨眼（用于交互反馈，如被锤击） */
 void  zrig_blink_trigger(zrig *r);
 
