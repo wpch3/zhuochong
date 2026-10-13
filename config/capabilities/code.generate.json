@@ -1,0 +1,16 @@
+{
+  "id": "code.generate",
+  "name": "生成代码",
+  "kind": "generate",
+  "unit": "token",
+  "input": {
+    "spec": "text",
+    "lang": "enum?"
+  },
+  "output": {
+    "files": "file[]"
+  },
+  "ui": {
+    "panel": "code"
+  }
+}

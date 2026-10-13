@@ -1,0 +1,38 @@
+{
+  "id": "ollama",
+  "name": "Ollama（本机）",
+  "kind": "openai_compatible",
+  "local": true,
+  "base_url": "http://127.0.0.1:11434/v1",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "qwen2.5:7b",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "qwen2.5:7b",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "embed.text",
+      "model": "nomic-embed-text",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "note": "本地模型：不花钱、不出网。用户没装也不影响框架——网关按可用性路由。",
+  "enabled": true
+}

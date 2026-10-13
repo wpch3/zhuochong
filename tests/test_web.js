@@ -136,6 +136,11 @@ function makeFetch() {
       blob: async () => ({ size: 1234 }),
     });
     if (u.startsWith("layout.json")) return json(JSON.parse(fs.readFileSync(path.join(WEB, "layout.json"), "utf8")));
+    if (u.includes("platform.json")) {
+      const f = path.join(WEB, "platform.json");
+      if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
+      return json(JSON.parse(fs.readFileSync(f, "utf8")));
+    }
     if (u.startsWith("themes/")) {
       const f = path.join(WEB, u.split("?")[0]);
       if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
@@ -357,6 +362,30 @@ function slotOf(id) {
     const meter = walk(usageEl).filter((n) => n.className === "meter-fill")[0];
     CHECK(meter && meter.style.width && meter.style.width !== "0.0%",
           "用量条应随之变长（实际 " + (meter && meter.style.width) + "）");
+  }
+
+  SECTION("平台能力总览（G50）：契约 → 清单 → 面板");
+  {
+    const el = slotOf("platform");
+    await new Promise((r) => setImmediate(r));       /* 等它 fetch 完 */
+    await new Promise((r) => setImmediate(r));
+    const pf = JSON.parse(fs.readFileSync(path.join(WEB, "platform.json"), "utf8"));
+    const rows = walk(el).filter((n) => n.className === "voice-item");
+    CHECK(rows.length === pf.capabilities.length,
+          "每种能力都应列出来（契约 " + pf.capabilities.length + " 种，面板 " + rows.length + " 行）");
+    const chips = walk(el).filter((n) => n.className.startsWith("chip"));
+    CHECK(chips.length === pf.providers.length,
+          "每个供应商都应有一枚标签（契约 " + pf.providers.length + " 个，面板 " + chips.length + "）");
+    const txt = walk(el).map((n) => n._text).join(" ");
+    CHECK(txt.includes("本机") && txt.includes("网络"),
+          "要分得清本地模型和网络服务（用户要求两者都兼容）");
+    CHECK(txt.includes("（待接入）"),
+          "还没有供应商的能力要明确标出来，不能假装能用");
+    /* 契约与清单必须同步：清单里的供应商 id 都要能在 config/providers 下找到文件 */
+    const provDir = path.join(__dirname, "..", "config", "providers");
+    const missing = pf.providers.filter((p) => !fs.existsSync(path.join(provDir, p.id + ".json")));
+    CHECK(missing.length === 0,
+          "清单里的供应商都应有契约文件（缺 " + missing.map((m) => m.id).join(",") + "）");
   }
 
   SECTION("容错：布局写错不该让整个界面白屏");

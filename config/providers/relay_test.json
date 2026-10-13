@@ -1,0 +1,38 @@
+{
+  "id": "relay_test",
+  "name": "测试中转站",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "base_url": "https://example-relay.invalid/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://relay_test"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "gemini-flash",
+      "price": {
+        "in": 0.0,
+        "out": 0.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "gemini-flash",
+      "price": {
+        "in": 0.0,
+        "out": 0.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "从旧 config/providers.json 迁来。中转站大多是 one-api 系，/dashboard 可查额度，接入时按实际填 balance.path。"
+}

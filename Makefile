@@ -69,6 +69,10 @@ asan: $(BUILD)/test_core_asan
 	@ASAN_OPTIONS=detect_leaks=1 ./$(BUILD)/test_core_asan .
 
 # 交付前跑这一条：静态自检 + 单测 + ASan + 端到端冒烟
+# 平台契约校验 + 生成 web/platform.json（能力 × 供应商清单）
+platform:
+	@python3 tools/check_platform.py
+
 # 界面内核与组件的单测（node + DOM stub，不需要浏览器）
 web-test:
 	@node tests/test_web.js

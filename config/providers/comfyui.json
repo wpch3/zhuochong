@@ -1,0 +1,31 @@
+{
+  "id": "comfyui",
+  "name": "ComfyUI（本机）",
+  "kind": "comfyui",
+  "local": true,
+  "base_url": "http://127.0.0.1:8188",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "image.generate",
+      "model": "workflow:txt2img",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "image.edit",
+      "model": "workflow:img2img",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "note": "本机出图。model 字段指向工作流名，具体工作流放 config/workflows/。",
+  "enabled": true
+}

@@ -549,3 +549,79 @@ VPet 的模组、airi 的多渲染后端舞台抽象，解决的是同一个问�
 把 `app.js` 和九个组件**真的跑一遍**：按 layout 装配、推一次 `info`、点几个按钮，
 断言 DOM 结构、挂载区域、挂载顺序、发出去的请求 URL 和换算后的点击坐标。
 脚本标签的"插进 head 就执行"也模拟了，所以**内核按配置动态加载组件**那条路是真的走过的。
+
+
+---
+
+## 第十一批（2026-10-13）：全能桌宠平台的框架该怎么搭
+
+用户这轮要的是"API 连接 / token 余额 / 聊天 / 任务 / 工作区 / 文件区 / 记忆区 /
+代理 / skills / 生图生视频生代码生建模 / 本地与网络 AI 都兼容 / 陪伴 /
+neuro-sama 模仿开源项目 / 真正的思考载入"，并且明确**先把框架做好**。
+下面是动手前查的六个项目（`gh api` 2026-10-13 实测全部可达）。
+
+| 仓库 | ★ | 许可 | 看它什么 |
+| --- | --- | --- | --- |
+| `moeru-ai/airi` | 50347 | MIT | **就是 neuro-sama 的开源重建**（README 原话 "Re-creating Neuro-sama"）。用户点名的那类项目，我们从第四批起就在参考 |
+| `heshengtao/super-agent-party` | 2733 | AGPL-3.0 | 自称 "Self hosted neuro sama"。**功能面和用户要求几乎一一对应**；skills 目录结构直接可借鉴（只看结构，AGPL 不抄实现） |
+| `elizaOS/eliza` | 19586 | MIT | 自称 "agentic operating system" |
+| `KroMiose/nekro-agent` | 1142 | — | "集 Claude Code 沙盒执行、工作区编排、长期记忆" —— 和我们的 L1/L5 完全对口 |
+| `songquanpeng/one-api` | 37134 | MIT | 多供应商分发与计费 |
+| `modelcontextprotocol/servers` | 91210 | — | MCP 工具生态 |
+
+### 1. skills 的格式：不要自造，Agent Skills 已是事实标准
+
+`super-agent-party` 的 `skills/` 目录：
+
+```
+skills/skill-creator/SKILL.md          ← 连"造技能的技能"都有
+skills/find-skills/SKILL.md
+skills/officeCLI/SKILL.md
+skills/sap-extension-creator/
+    SKILL.md
+    assets/node-template/...           ← 可带模板
+    references/node-entry-spec.md      ← 可带规格文档
+```
+
+`SKILL.md` 的头部是 YAML frontmatter：
+
+```markdown
+---
+name: skill-creator
+description: Guide for creating effective skills. This skill should be used when
+             users want to create a new skill ... 
+license: Complete terms in LICENSE.txt
+---
+# Skill Creator
+## About Skills
+Skills are modular, self-contained packages that extend Claude's capabilities ...
+### Concise is Key
+The context window is a public good. ...
+```
+
+三条要点：
+1. **`description` 要写"什么时候该用它"**，不是"它是什么" —— 因为模型是靠这句话决定要不要加载。
+2. **正文是给模型看的操作手册**，不是给人看的介绍。
+3. **上下文是公共资源**（原文 "The context window is a public good"）：
+   skill 的元信息常驻、正文按需加载，所以描述要短、正文要分文件。
+
+结论：我们的 `skills/<name>/SKILL.md` **直接采用这套**，整个 Claude Skills 生态的技能包可以原样放进来。
+
+### 2. eliza 的插件装载（`packages/agent/src/runtime/plugin-types.ts`）
+
+关键字段：`dropInRecords`（丢进目录就装）、`installRecords`、
+`corePluginNames`（核心插件不可卸）、`denyList`（黑名单）、`pluginsToLoad`、
+`accepted/skipped`。插件从 package 的 `exports` 解析入口。
+
+学到的：**装载要区分"核心/第三方"，要有黑名单，要记录"装了什么、跳过了什么"**。
+我们的 provider / capability 注册表照这个思路：`enabled` 开关 + 校验时报告"跳过了谁"。
+
+### 3. 为什么能力要和供应商解耦
+
+`one-api` 的本质就是"一个接口后面挂 N 家供应商"。我们把它推到能力粒度：
+调用方说 `image.generate`，不说"调 OpenAI"。好处有三个，都直接对应用户的要求：
+
+- **本地与网络都兼容**（A17）：同一个能力，底下可以是 ComfyUI 也可以是 OpenAI；
+- **token 余额识别**（A10）：余额是**供应商**的属性（`balance.mode`：api / ledger / none），
+  本地供应商天然 `none`；
+- **"2027 年以内所有事"**（A18）：新能力只是多一份契约文件，内核不改。

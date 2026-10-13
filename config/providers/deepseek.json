@@ -1,0 +1,49 @@
+{
+  "id": "deepseek",
+  "name": "DeepSeek",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "base_url": "https://api.deepseek.com/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://deepseek"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "deepseek-chat",
+      "price": {
+        "in": 0.14,
+        "out": 0.28,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "deepseek-chat",
+      "price": {
+        "in": 0.14,
+        "out": 0.28,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "code.generate",
+      "model": "deepseek-chat",
+      "price": {
+        "in": 0.14,
+        "out": 0.28,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "api",
+    "path": "/user/balance"
+  },
+  "note": "从旧 config/providers.json 迁来（2026-10-13）。它有余额接口，所以 balance.mode=api。"
+}

@@ -95,7 +95,7 @@ dist/windows/x86_64/    zhuochong.exe
 | 加配饰 | 在 `parts` 里加部件并挂到 `head`/`root` 组 | 层级由 `layer` 决定 |
 | 加功能模块 | `config/features.json` 加一条（默认关闭 + token 上限） | schema 校验 |
 | 加主题 | `config/ui.json` 换主题名与调色板 | schema 校验 |
-| 加供应商 | `config/providers.json` 加一条（OpenAI 兼容） | schema 校验；官方直连默认关 |
+| 加供应商 | `config/providers/<id>.json` 加一份（G50 契约：声明能力 + 定价 + 余额口径） | `tools/check_platform.py` 校验；官方直连默认关；密钥只写 `secret://` 引用 |
 
 ### 通道（通道曲线）参数
 `actions[].channels[]`：`target`（组 id 或部件 id）、`param`（`dx/dy/sx/sy/rot_deg/alpha`）、

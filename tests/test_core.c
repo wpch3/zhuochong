@@ -397,7 +397,10 @@ static void test_config_and_pet(void)
     z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
     CHECK(zconfig_load(&cfg, cfgdir, &diag) == 0, "正常配置应加载成功（错误 %d）", diag.error_count);
     CHECK(cfg.nmodules >= 20, "功能模块应至少 20 个，实际 %d", cfg.nmodules);
-    CHECK(cfg.nproviders == 3, "供应商 3 个");
+    /* 供应商数 = config/providers/ 下的契约文件数（G50 起 config/providers.json 是
+       由 tools/check_platform.py 生成的兼容投影，不再手写）。加供应商要同步改这个数，
+       这是故意的——数字对不上就说明投影没重新生成。 */
+    CHECK(cfg.nproviders == 6, "供应商 6 个（实际 %d）", cfg.nproviders);
     CHECK(zconfig_module_enabled(&cfg, "chat") == 0, "功能默认必须全部关闭");
     CHECK(cfg.pet.idle_sleep_seconds == 90, "默认空闲入睡 90 秒");
 

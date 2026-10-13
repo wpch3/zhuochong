@@ -382,6 +382,31 @@ def check_live2d(root):
           "0.5 - 0.5 * cos(t * 3.14159265358979323846)" in
           io.open(os.path.join(root, "src/core/zc.c"), encoding="utf-8").read(),
           "src/core/zc.c:z_ease_sine")
+    # ⑱ 平台契约（G50）：能力/供应商/网关三份契约与生成出来的清单必须同步。
+    #    细目由 tools/check_platform.py 负责，这里只盯"清单没过期"这件事 ——
+    #    契约改了却忘了重新生成 web/platform.json，界面上看到的就是旧的。
+    import subprocess
+    rc = subprocess.run([sys.executable, os.path.join(root, "tools/check_platform.py"), "--check"],
+                        capture_output=True, text=True)
+    check("平台契约自检通过（tools/check_platform.py）", rc.returncode == 0,
+          (rc.stdout.strip().splitlines() or ["?"])[-1])
+    pf_p = os.path.join(root, "web/platform.json")
+    if os.path.exists(pf_p):
+        pf = json.load(io.open(pf_p, encoding="utf-8"))
+        cap_dir = os.path.join(root, "config/capabilities")
+        prov_dir = os.path.join(root, "config/providers")
+        n_cap = len([x for x in os.listdir(cap_dir) if x.endswith(".json")])
+        n_prov = len([x for x in os.listdir(prov_dir) if x.endswith(".json")])
+        check("web/platform.json 与契约数量一致（改了契约要重新生成）",
+              len(pf.get("capabilities", [])) == n_cap and len(pf.get("providers", [])) == n_prov,
+              f"清单 {len(pf.get('capabilities', []))}/{len(pf.get('providers', []))} vs 契约 {n_cap}/{n_prov}")
+        ids = {p["id"] for p in pf.get("providers", [])}
+        onfile = {x[:-5] for x in os.listdir(prov_dir) if x.endswith(".json")}
+        check("清单里的供应商都有契约文件", ids == onfile,
+              f"清单独有 {sorted(ids - onfile)} / 文件独有 {sorted(onfile - ids)}" if ids != onfile else f"{len(ids)} 个")
+    else:
+        check("web/platform.json 已生成", False, "跑 python3 tools/check_platform.py")
+
     # ⑰ 界面骨架（G1）：layout.json 是界面的唯一装配表，它和组件文件必须对得上。
     #    配置里写了但组件不存在 / 组件文件忘了 register / 主题缺色键 —— 这三样
     #    在浏览器里都只表现为"某块空白"，静态核一遍最省事。

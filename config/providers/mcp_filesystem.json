@@ -1,0 +1,24 @@
+{
+  "id": "mcp_filesystem",
+  "name": "MCP · 文件系统",
+  "kind": "mcp",
+  "local": true,
+  "base_url": "stdio://npx -y @modelcontextprotocol/server-filesystem",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "file.read",
+      "model": "tool:read_file",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "note": "MCP 适配器示例：把 MCP server 暴露的 tool 映射成我们的能力。接一次就能用整个 MCP 生态（官方 servers 仓库 ★91210）。",
+  "enabled": true
+}

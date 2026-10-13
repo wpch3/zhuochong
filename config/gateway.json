@@ -1,0 +1,33 @@
+{
+  "_note": "网关：所有外部调用的唯一出口。密钥不写在这里，只写 secret:// 引用；真实值放本机 .env（不入库）。",
+  "proxy": {
+    "enabled": false,
+    "url": "",
+    "no_proxy": [
+      "127.0.0.1",
+      "localhost"
+    ]
+  },
+  "routing": {
+    "strategy": "prefer_local",
+    "fallback": true,
+    "_strategy_values": [
+      "prefer_local",
+      "prefer_cheap",
+      "prefer_quality",
+      "fixed"
+    ],
+    "fixed": {}
+  },
+  "limits": {
+    "max_concurrency": 4,
+    "timeout_s": 120,
+    "retry": 2
+  },
+  "accounting": {
+    "enabled": true,
+    "ledger": "data/usage.jsonl",
+    "currency_display": "CNY",
+    "usd_to_cny": 7.1
+  }
+}

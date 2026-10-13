@@ -18,6 +18,7 @@
       "moods",
       "appearance",
       "voice",
+      "platform",
       {
         "id": "usage",
         "options": {

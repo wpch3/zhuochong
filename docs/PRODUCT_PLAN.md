@@ -227,7 +227,7 @@ docs/               规格、规划、手册、记忆
 | 主题（颜色/圆角/阴影/字体/动效） | `config/ui.json` + `themes/<id>/` | 🟡 配置在，主题包待做 | 换主题只改配置 |
 | 界面布局与组件 | `config/ui.json` layout + 组件注册表 | 🟡 规划（T9.1） | 布局变更不改代码 |
 | 音频/语音资产 | `voices/<id>/`（音色包）+ `characters/*/voice/` | ✅ | `voice_packs.py verify` |
-| 语音供应商 | `config/providers.json`（能力声明） | 🟡 配置在，适配层待做（T13.7） | 假服务器契约测试 |
+| 语音供应商 | `config/providers/<id>.json`（能力声明；2026-10-13 起按 G50 契约，旧的扁平 providers.json 已删） | 🟡 配置在，适配层待做（T13.7） | 假服务器契约测试 |
 | 功能模块（社交/生图/…） | `modules/<id>/module.json` + `config/features.json` | 🟡 配置与开关就绪，模块目录待建 | 默认关闭 + token 上限 |
 | **AI 技能（Skills）** | `skills/<id>/skill.json` + 提示词 + 工具声明 | 🟡 规划（T10.3） | 新增技能不改代码 |
 | 训练配方 | `train/recipes/<id>.json` | 🟡 规划（T15.2） | 新增训练方法不改代码 |

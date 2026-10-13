@@ -499,3 +499,61 @@ idle 和 physics 全在动，差异糊成全身 54643 像素。改成同一时�
 
 **中途沙箱第三次重置**（HEAD 退回 `3b5d17b`，`build/` 和 `~/.imgenv` 全没了），
 `git reset --mixed ddfedba` 对回去，工作区一个字没丢。
+
+## 2026-10-13（第 N+8 段）全能桌宠平台：框架计划 + G50 契约与注册表
+
+用户提出了平台级愿景（API 连接 / token 余额 / 聊天 / 任务 / 三个资源区 / 代理 /
+skills / 生图生视频生代码生建模 / 本地与网络 AI / 陪伴 / neuro-sama 模仿项目 /
+"真正的思考载入"），并且明确**"这个是计划先把框架做好才行"**。
+
+**先查**（F15 硬要求）。用户点名的"neurosama 的模仿开源项目"查到了，
+而且**我们已经在参考的 `moeru-ai/airi` 就是**（★50347，README 第一句就是
+"Re-creating Neuro-sama"）。另外找到 `heshengtao/super-agent-party`
+（自称 "Self hosted neuro sama"，功能面和用户要求几乎一一对应）、
+`elizaOS/eliza`（"agentic operating system"）、`KroMiose/nekro-agent`
+（沙盒执行 + 工作区编排 + 长期记忆）。六个仓库全部 `gh api` 实测可达。
+
+**最有价值的一条发现：skills 不用自造格式。** super-agent-party 的 `skills/` 用的
+就是 Agent Skills 规范（`SKILL.md` + YAML frontmatter + `assets/` + `references/`），
+连"造技能的技能"都有。采标准 = 整个生态的技能包能直接放进来用。
+
+**计划成文**：`docs/PLATFORM_PLAN.md` —— 七层分层、四份契约、三个资源区、
+里程碑 P0~P3、范围边界。最关键的是第零节那条总原则：
+**"2027 年以内 AI 能做到的所有事"是列不完的，所以框架不能去列它** ——
+能力必须是注册出来的，加一种新能力不改内核。
+
+**入库**：REQUIREMENTS 新增 A9~A21（用户原话逐条）、GAPS 新增 G50~G63、TASKS 新增 T20 系列。
+
+**动手第一块 G50**：
+- 15 份能力契约 `config/capabilities/*.json`（用户点名的生图/生视频/生代码/生建模全在内）
+- 6 份供应商契约 `config/providers/*.json`：openai / deepseek / relay_test（网络）
+  + ollama / comfyui / mcp_filesystem（本机）
+- `config/gateway.json`：代理出口、路由策略、记账账本
+- `tools/check_platform.py`：校验 + 生成 `web/platform.json`
+- 新组件 `components/platform.js`：界面上能看见能力 × 供应商矩阵
+
+**顺手清掉一处概念打架**：`config/providers.json`（旧的扁平清单，只有 base_url 和
+model，没有能力声明/定价/余额）和新契约目录会并存成两套。查了一遍**没有任何代码在读它**
+（只有文档提到），于是把三条供应商迁进新契约后删掉旧文件。
+
+**负控四道全判红**：供应商声明不存在的能力 / 契约里写明文密钥 /
+本地供应商却声明 api 余额 / 能力 id 与文件名不一致。
+另外还有一道"改了契约但忘了重新生成清单" —— selfcheck 也判红。
+
+**★ 上面那句"没有任何代码在读它"是错的，`make -s check` 当场打脸。**
+`tests/test_core.c:400` 判红：`供应商 3 个` 变成 0 个。真相是 `src/core/zconfig.c`
+里写的是 `load_one_json(c, "providers.json", ...)` —— **路径是拼出来的**，
+grep 全路径或 `config/providers.json` 永远命中不了。
+
+**没有选"恢复旧文件"（那就退回两套并存），也没有选"改 C 代码读新目录"（动运行时有风险）。**
+走第三条路：**旧文件从此是生成物** —— `tools/check_platform.py` 从新契约投影出
+老格式的 `config/providers.json`，C 侧一行不改，而真相只有一份。
+投影时 `kind` 要映射：C 只认 `openai_compatible/official/local`，
+新契约的 `comfyui`/`mcp` 投成 `local`，原值留在 `kind_ext`（C 忽略未知字段）。
+
+**顺带堵上一个更阴的洞**：原先 `--check` 的语义是"跳过生成"，
+于是"改了契约但忘记重算投影"能一路绿灯过闸。改成**算出应有内容、与磁盘比对、
+不一致判红**。两道新负控都红了：改契约不重算 / 手改生成物。
+platform 从 11 项涨到 **13 项**。
+
+**闸门**：platform **13/0**、selfcheck 128/0、web-test 44/0、smoke 119/0、**test 564/0**。

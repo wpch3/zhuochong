@@ -1,13 +1,72 @@
 {
-  // API 供应商。测试阶段只用中转站；官方直连默认关闭（交接文件第六节）。
+  "_note": "由 tools/check_platform.py 从 config/providers/*.json 生成，不要手改。新增供应商请在 config/providers/ 下加契约文件。",
   "schema_version": "1.0",
   "providers": [
-    { "id": "relay_test", "name": "测试中转站", "kind": "openai_compatible",
-      "base_url": "https://example-relay.invalid/v1", "model": "gemini-flash", "enabled": false },
-    { "id": "deepseek",   "name": "DeepSeek",  "kind": "openai_compatible",
-      "base_url": "https://api.deepseek.com/v1", "model": "deepseek-chat", "enabled": false },
-    { "id": "openai_official", "name": "OpenAI 官方", "kind": "official",
-      "base_url": "https://api.openai.com/v1", "model": "gpt-4o-mini",
-      "enabled": false, "official": true }
+    {
+      "id": "comfyui",
+      "name": "ComfyUI（本机）",
+      "kind": "local",
+      "kind_ext": "comfyui",
+      "base_url": "http://127.0.0.1:8188",
+      "model": "workflow:txt2img",
+      "enabled": true,
+      "official": false,
+      "local": true
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "kind": "openai_compatible",
+      "kind_ext": "openai_compatible",
+      "base_url": "https://api.deepseek.com/v1",
+      "model": "deepseek-chat",
+      "enabled": false,
+      "official": false,
+      "local": false
+    },
+    {
+      "id": "mcp_filesystem",
+      "name": "MCP · 文件系统",
+      "kind": "local",
+      "kind_ext": "mcp",
+      "base_url": "stdio://npx -y @modelcontextprotocol/server-filesystem",
+      "model": "tool:read_file",
+      "enabled": true,
+      "official": false,
+      "local": true
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama（本机）",
+      "kind": "openai_compatible",
+      "kind_ext": "openai_compatible",
+      "base_url": "http://127.0.0.1:11434/v1",
+      "model": "qwen2.5:7b",
+      "enabled": true,
+      "official": false,
+      "local": true
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "kind": "openai_compatible",
+      "kind_ext": "openai_compatible",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "enabled": false,
+      "official": false,
+      "local": false
+    },
+    {
+      "id": "relay_test",
+      "name": "测试中转站",
+      "kind": "openai_compatible",
+      "kind_ext": "openai_compatible",
+      "base_url": "https://example-relay.invalid/v1",
+      "model": "gemini-flash",
+      "enabled": false,
+      "official": false,
+      "local": false
+    }
   ]
 }

@@ -306,6 +306,19 @@ def run(base, root):
         elif dt > 0.78: tail_min = min(tail_min, v)
         time.sleep(0.03)
     check("surprised 中段手臂要摆出去", mid_peak > 1.2, "峰值 %.2f" % mid_peak)
+    # 平台契约清单（G50）：界面靠它画"能力与供应商"面板
+    pf = a.json("/platform.json")
+    check("/platform.json 能取到", bool(pf and pf.get("capabilities")),
+          "%d 能力 / %d 供应商" % (len((pf or {}).get("capabilities") or []),
+                                  len((pf or {}).get("providers") or [])))
+    core = {"chat.completion", "image.generate", "code.generate"}
+    have = {c["id"] for c in ((pf or {}).get("capabilities") or [])}
+    check("用户点名的核心能力都已登记", core <= have, "缺 %s" % sorted(core - have) if core - have else "齐")
+    locals_ = [p for p in ((pf or {}).get("providers") or []) if p.get("local")]
+    nets = [p for p in ((pf or {}).get("providers") or []) if not p.get("local")]
+    check("本地与网络供应商都有（两者都要兼容）", locals_ and nets,
+          "本机 %d / 网络 %d" % (len(locals_), len(nets)))
+
     # 界面骨架（G1）：界面是 layout.json 装配出来的，这些静态文件必须真能取到。
     # 少一个组件脚本，页面上就少一块，而且只在浏览器控制台里报错 —— 这里直接拦住。
     lay = a.json("/layout.json")

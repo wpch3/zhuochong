@@ -1,0 +1,16 @@
+{
+  "id": "web.search",
+  "name": "联网搜索",
+  "kind": "analyze",
+  "unit": "call",
+  "input": {
+    "query": "text",
+    "depth": "int?"
+  },
+  "output": {
+    "results": "result[]"
+  },
+  "ui": {
+    "panel": "list"
+  }
+}
