@@ -121,6 +121,10 @@ double zrig_param_get(const zrig *r, const char *id);
 /* 这一帧的最终值：参数值 → 动作通道 → 表情（Add/Multiply/Overwrite）→ 口型音素。
    `zrig_param_get` 只给参数自己的值，排查"表情和口型抢同一个参数"时要看这个。 */
 double zrig_param_effective(const zrig *r, const char *id);
+/* 本帧左右眼各自的状态（side: 0=左 1=右）。闭合度 1 = 完全闭上；
+   笑眼量 1 = 山型笑眼。笑眼隐含闭眼，所以 close 会 >= smile。 */
+double zrig_eye_close(const zrig *r, int side);
+double zrig_eye_smile(const zrig *r, int side);
 double zrig_param_expr_value(const zrig *r, const char *id); /* 只到表情层，不含口型 */
 int    zrig_param_set(zrig *r, const char *id, double v);   /* 找不到返回 -1 */
 int    zrig_param_reset(zrig *r, const char *id);           /* 回默认值 */

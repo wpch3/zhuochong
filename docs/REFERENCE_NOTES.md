@@ -203,3 +203,49 @@ C 版见 `src/win32/zw32.c` 主循环里的 `LASTINPUTINFO` 段：差值转秒�
   肉眼就是"抽一下"。于是加第二档 **`ZRIG_VIS_RELEASE_OFF = 8.0`**（整句松口专用，
   比音素间慢近四倍），实测单帧跳变降到 < 0.12，约 1.8s 平滑叹回表情。
   12.0 试过仍有 0.122 的跳变，所以定 8.0。
+
+## 2026-10-13（第五批查证）笑眼 `ParamEyeLSmile` / `ParamEyeRSmile` 怎么做
+
+> 规矩照旧：先翻五个桌宠项目和官方 SDK 的真实数据，再上网看做模型的人怎么说。
+
+### 1. 官方模型里笑眼到底怎么用（Live2D/CubismWebSamples 的 Haru）
+
+`gh api repos/Live2D/CubismWebSamples/contents/Samples/Resources/Haru/expressions/F0x.exp3.json`
+把八个表情全拉下来，眼睛相关的写法是：
+
+| 表情 | 眼睛部分 | 读出来的意思 |
+| --- | --- | --- |
+| **F05** | `ParamEyeLOpen=0 (Multiply)`、**`ParamEyeLSmile=1 (Add)`**、右眼同、`ParamBrowL/RY=0.32 (Add)` | **笑眼 = 先把眼睛关到 0，再把笑眼开到 1**，眉毛抬 0.32 |
+| F04 / F07 / F08 | `ParamEyeLOpen=0.8 / 0.89 (Multiply)` | 眯眼是**乘**出来的（不管此刻眨眼到哪一步，乘一下就行） |
+| F06 | `ParamEyeLOpen=2 (Multiply)` | 瞪大：官方自己会把参数推到 1 以外 |
+
+→ 这就是我们这次的实现依据：笑眼不是"另一种睁眼"，是**另一种闭眼**。
+我们让笑眼自己隐含闭眼（`blink = max(blink, smile)`），调用方推一个参数就够，
+官方那种"两个参数一起写"的写法也照样成立（`max` 不会把眼睛又睁开）。
+
+### 2. 做模型的人怎么说（四篇独立教程口径一致）
+
+- 伊糖だねこ《Live2D練習記録③ 目》 https://note.com/itodaneko/n/n7d73fd172f6d
+  —— 「笑顔の目は閉じている状態になるので、笑顔を作るときは**開閉のパラメータは 0 に合わせておきます**」。
+- するめいか《目の作り方を解説》 https://surume1ka.com/archives/2226
+  —— 「**目の開閉パラメータ値 0.0（閉眼）の状態で**、笑顔のパラメータに紐づけて下さい」。
+- 愛《谷型の閉じ目から『笑顔の閉じ目』を作る手順》 https://note.com/hoshinotomoshibi/n/n0538bd256cf1
+  —— 标题即结论：**谷型（∪）闭眼 → 山型（∩）笑眼**，睫毛、下睫毛、白目、卧蚕逐个往山型弯。
+- CGbox《基本の表情！綺麗に笑顔を作る方法》 https://cgbox.jp/2020/04/14/live2d-smile/
+  —— 参数范围 0~1、两点キー；另提到"笑眼时还要不要眨眼"是取舍（我们选"笑眼期间不再被眨眼打断"）。
+- 官方标准参数表 https://docs.live2d.com/en/cubism-editor-manual/standard-parameter-list/
+  —— `ParamEyeLSmile` **min 0 / default 0 / max 1**，"Make smiley eye when +"。
+
+→ 贴图版的等价做法：**再 AI 重绘一张"山型笑眼脸"，走闭眼那条同样的流水线切补片**
+（`tools/make_eye_closed_parts.py --variant smile`），位置、配准、肤色对齐、羽化全部复用，
+只是底图换一张。切出来两件 57×56 / 57×58，和闭眼件**同位同尺寸**。
+
+### 3. 五个桌宠项目的做法（确认没有可抄的参数层）
+
+- **VPet**（`gh api repos/LorisYounger/VPet/git/trees/HEAD?recursive=1`）：
+  `mod/0000_core/pet/vup/Default/Happy/1/循环A_000_125.png` …… 每种情绪一整套**逐帧 PNG 序列**
+  （文件名尾数就是帧时长 ms）。印证了"2D 桌宠的笑眼普遍是另画一张，不是把睁眼变形"，
+  但它没有参数层，没法抄口径。
+- **airi**：`packages/stage-ui-live2d/src/utils/eye-motions.ts` 里不是笑眼，是**扫视（saccade）间隔分布** ——
+  `EYE_SACCADE_INT_P` 用累积概率挑 0~3200ms 的间隔。这个以后做视线微动（G4 跟随）时直接能用。
+- bongocat-sdl / bongocat-tauri / ds-local-pet：确认无表情参数层（第二批已扫过，不再重复翻）。

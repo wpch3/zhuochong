@@ -41,7 +41,8 @@ enum {
     TAG_TAIL = 1u << 7,
     TAG_GAZE = 1u << 8,     /* 会被视线偏移影响的部件（虹膜/眼球） */
     TAG_EYELID = 1u << 9,   /* 眼睑：随眨眼参数往下滑（配 eyelid_travel 用） */
-    TAG_EYE_APERTURE = 1u << 10 /* 眼眶开口：随眨眼参数按下沿压扁（配 aperture_min 用） */
+    TAG_EYE_APERTURE = 1u << 10, /* 眼眶开口：随眨眼参数按下沿压扁（配 aperture_min 用） */
+    TAG_EYE_SMILE = 1u << 11 /* 笑眼（山型 ∩ 的闭眼）：ParamEyeL/RSmile 淡入，顶替谷型闭眼件 */
 };
 
 /* 通道参数 */
@@ -180,7 +181,8 @@ typedef struct {
      - 普通参数靠 binds 直接写组或部件的通道，rig.json 里声明，不改 C 代码。 */
 enum { PBI_NONE = 0, PBI_ANGLE_X, PBI_ANGLE_Y, PBI_EYE_OPEN,
        PBI_EYEBALL_X, PBI_EYEBALL_Y,
-       PBI_EYE_L_OPEN, PBI_EYE_R_OPEN };   /* Live2D 标准：左右眼各一个参数 */
+       PBI_EYE_L_OPEN, PBI_EYE_R_OPEN,
+       PBI_EYE_L_SMILE, PBI_EYE_R_SMILE };   /* Live2D 标准：左右眼各一个参数 */
 
 typedef struct {
     int    part;              /* >=0 写部件通道 */
@@ -386,6 +388,7 @@ struct zrig {
     /* 渲染用的"最终值"：表情会往上叠，所以和子系统自己的值分开存 */
     double  blink_now;
     double  blink_l, blink_r;          /* 本帧左右眼各自的闭合度 */
+    double  smile_l, smile_r;          /* 本帧左右眼各自的笑眼量（0..1，1 = 山型笑眼） */
     double  blink_manual_l, blink_manual_r;  /* <0 = 跟随两眼共同值 */
     double  gaze_nx, gaze_ny;
 
@@ -436,6 +439,7 @@ static unsigned parse_tags(const zjson *arr)
         else if (z_streq(s, "head")) t |= TAG_HEAD;
         else if (z_streq(s, "eye_open")) t |= TAG_EYE_OPEN;
         else if (z_streq(s, "eye_closed")) t |= TAG_EYE_CLOSED;
+        else if (z_streq(s, "eye_smile")) t |= TAG_EYE_SMILE;
         else if (z_streq(s, "mouth")) t |= TAG_MOUTH;
         else if (z_streq(s, "hair")) t |= TAG_HAIR;
         else if (z_streq(s, "accessory")) t |= TAG_ACCESSORY;
@@ -927,6 +931,11 @@ static void load_builtin_params(zrig *r)
     param_add_builtin(r, "ParamEyeOpen",  "睁眼(两眼)", 0.0, 1.0, 1.0, PBI_EYE_OPEN);
     param_add_builtin(r, "ParamEyeLOpen", "左眼 睁开", 0.0,  1.0, 1.0, PBI_EYE_L_OPEN);
     param_add_builtin(r, "ParamEyeROpen", "右眼 睁开", 0.0,  1.0, 1.0, PBI_EYE_R_OPEN);
+    /* 笑眼：官方标准表里是 min 0 / default 0 / max 1，「+ 时变成笑眼」。
+       做法上笑眼 = 闭着的眼的另一种形状（谷型 ∪ → 山型 ∩），
+       所以它隐含"眼睛是闭的"——见 accumulate 里的 blink = max(blink, smile)。 */
+    param_add_builtin(r, "ParamEyeLSmile", "左眼 笑眼", 0.0, 1.0, 0.0, PBI_EYE_L_SMILE);
+    param_add_builtin(r, "ParamEyeRSmile", "右眼 笑眼", 0.0, 1.0, 0.0, PBI_EYE_R_SMILE);
     param_add_builtin(r, "ParamEyeBallX", "眼球 左右", -1.0, 1.0, 0.0, PBI_EYEBALL_X);
     param_add_builtin(r, "ParamEyeBallY", "眼球 上下", -1.0, 1.0, 0.0, PBI_EYEBALL_Y);
 }
@@ -2345,6 +2354,7 @@ static void compute_group_transforms(zrig *r)
     {
         double lx = r->look_cx, ly = r->look_cy;
         double blink_off_l = 0.0, blink_off_r = 0.0;
+        double smile_v_l = 0.0, smile_v_r = 0.0;
         r->blink_now = r->blink_value;
         r->gaze_nx = r->gaze_x;
         r->gaze_ny = r->gaze_y;
@@ -2360,6 +2370,9 @@ static void compute_group_transforms(zrig *r)
                 case PBI_EYE_OPEN:  r->blink_now = ZC_CLAMP(r->blink_now - off, 0.0, 1.0); continue;
                 case PBI_EYE_L_OPEN: blink_off_l += off; continue;
                 case PBI_EYE_R_OPEN: blink_off_r += off; continue;
+                /* 笑眼没有别的子系统在写，直接取最终值（不像睁眼那样要算相对眨眼的偏移） */
+                case PBI_EYE_L_SMILE: smile_v_l = v; continue;
+                case PBI_EYE_R_SMILE: smile_v_r = v; continue;
                 case PBI_EYEBALL_X: r->gaze_nx = ZC_CLAMP(r->gaze_nx + off, -1.0, 1.0); continue;
                 case PBI_EYEBALL_Y: r->gaze_ny = ZC_CLAMP(r->gaze_ny + off, -1.0, 1.0); continue;
                 default: break;
@@ -2384,6 +2397,14 @@ static void compute_group_transforms(zrig *r)
                    : ((r->blink_targets & 2) ? r->blink_now : 0.0);
         r->blink_l = ZC_CLAMP(r->blink_l - blink_off_l, 0.0, 1.0);
         r->blink_r = ZC_CLAMP(r->blink_r - blink_off_r, 0.0, 1.0);
+        /* 笑眼：Live2D 的标准做法是"在闭眼的基础上把睫毛线弯成山型"，
+           官方 Haru 的 F05 表情写的就是 ParamEyeLOpen=0(Multiply) + ParamEyeLSmile=1(Add)。
+           我们让笑眼自己隐含闭眼（取 max），调用方推一个参数就够；
+           官方那种"两个参数一起写"的写法照样成立，因为 max 不会把眼睛又睁开。 */
+        r->smile_l = ZC_CLAMP(smile_v_l, 0.0, 1.0);
+        r->smile_r = ZC_CLAMP(smile_v_r, 0.0, 1.0);
+        if (r->smile_l > r->blink_l) r->blink_l = r->smile_l;
+        if (r->smile_r > r->blink_r) r->blink_r = r->smile_r;
 
         /* 指针跟随叠加在动作之上（Live2D 里这是参数层，不属于任何一个 motion）。
            放在动作之后、物理之前：所以转头也会把头发甩起来。 */
@@ -2700,6 +2721,18 @@ double zrig_deform_amount(const zrig *r, const char *id)
 void zrig_set_mouth_mute(zrig *r, int on) { if (r) r->mouth_mute = on ? 1 : 0; }
 int  zrig_mouth_mute(const zrig *r) { return r ? r->mouth_mute : 0; }
 
+double zrig_eye_close(const zrig *r, int side)
+{
+    if (!r) return 0.0;
+    return side ? r->blink_r : r->blink_l;
+}
+
+double zrig_eye_smile(const zrig *r, int side)
+{
+    if (!r) return 0.0;
+    return side ? r->smile_r : r->smile_l;
+}
+
 void zrig_blink_set_enabled(zrig *r, int enabled) { if (r) r->blink_enabled = enabled; }
 int  zrig_blink_enabled(const zrig *r) { return r ? r->blink_enabled : 0; }
 double zrig_blink_value(const zrig *r) { return r ? r->blink_value : 0.0; }
@@ -2834,14 +2867,15 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     double extra_dx = r->p_dx[mi], extra_dy = r->p_dy[mi];
     double part_rot = r->p_rot[mi];
     double part_sx, part_sy;
+    double smile = 0.0;
     double gm[6], lm[6];
     const zimg *src = p->img_scaled ? p->img_scaled : p->img;
 
     memset(st, 0, sizeof(*st));
     if (!src) return 0;
     /* 左眼件只看 ParamEyeLOpen，右眼件只看 ParamEyeROpen（眨单眼 / 笑眼都靠这个）。 */
-    if (p->eye_side == 1) blink = r->blink_l;
-    else if (p->eye_side == 2) blink = r->blink_r;
+    if (p->eye_side == 1) { blink = r->blink_l; smile = r->smile_l; }
+    else if (p->eye_side == 2) { blink = r->blink_r; smile = r->smile_r; }
     /* 视线跟随：只影响带 gaze 标签的部件（虹膜拆分后自动升级为真·视线） */
     if ((p->tags & TAG_GAZE) && (r->gaze_nx != 0.0 || r->gaze_ny != 0.0)) {
         extra_dx += r->gaze_nx * r->gaze_max_dx;
@@ -2893,9 +2927,18 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         if (p->tags & TAG_EYE_CLOSED)
             opacity *= ZC_CLAMP((blink - 0.75) * 4.0, 0.0, 1.0);
     }
+    /* 笑眼和闭眼是同一条睫毛线的两种形状（山型 / 谷型），两张一起画会叠成一团黑：
+       笑眼涨多少，谷型闭眼就让多少。笑眼件本身也走"最后 25% 才淡入"那条斜坡，
+       前面 75% 由眼眶压扁表现，和闭眼件口径一致。 */
+    if (smile > 0.001) {
+        if (p->tags & TAG_EYE_CLOSED) opacity *= 1.0 - smile;
+        if (p->tags & TAG_EYE_SMILE)
+            opacity *= ZC_CLAMP((smile - 0.75) * 4.0, 0.0, 1.0);
+    }
     if (opacity <= 0.001) return 0;
     if ((p->tags & TAG_EYE_CLOSED) && blink <= 0.001) return 0;
     if ((p->tags & TAG_EYE_OPEN) && blink >= 0.999) return 0;
+    if ((p->tags & TAG_EYE_SMILE) && smile <= 0.001) return 0;
 
     /* 部件矩阵（画布缩放 + 锚点 + 自身旋转） */
     {

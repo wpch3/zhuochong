@@ -19,8 +19,14 @@
 
 输出：sprites/eye_l_closed.png、eye_r_closed.png、eye_closed_parts.json
 
+同一条流水线还切\"笑眼\"（`--variant smile`，底图 design/redraw/face_eyesmile.png）：
+  Live2D 的标准做法是**笑眼 = 闭眼的另一种形状**（谷型 ∪ → 山型 ∩），
+  官方 Haru 的 F05 表情就是 `ParamEyeLOpen=0(Multiply) + ParamEyeLSmile=1(Add)`，
+  所以笑眼件和闭眼件位置、口径完全一样，只是换一张重绘底图。
+
 用法：
   ~/.imgenv/bin/python tools/make_eye_closed_parts.py --character xiaoxun --form teen
+  ~/.imgenv/bin/python tools/make_eye_closed_parts.py --character xiaoxun --form teen --variant smile
 """
 from __future__ import annotations
 import argparse, json, os
@@ -56,13 +62,18 @@ def main():
     ap.add_argument("--character", required=True)
     ap.add_argument("--form", required=True)
     ap.add_argument("--root", default=".")
+    ap.add_argument("--variant", default="closed", choices=("closed", "smile"),
+                    help="closed = 谷型闭眼（ParamEyeLOpen=0），smile = 山型笑眼（ParamEyeLSmile=1）")
     args = ap.parse_args()
+    variant = args.variant
+    src_name = {"closed": "face_eyesclosed.png", "smile": "face_eyesmile.png"}[variant]
+    label = {"closed": "闭眼", "smile": "笑眼"}[variant]
     base = os.path.join(args.root, "characters", args.character, "forms", args.form)
     sp = os.path.join(base, "sprites")
     redraw = os.path.join(args.root, "characters", args.character,
-                          "design", "redraw", "face_eyesclosed.png")
+                          "design", "redraw", src_name)
     if not os.path.exists(redraw):
-        raise SystemExit(f"[eye_closed] 缺少 AI 重绘底图：{redraw}（D19：原画没有闭眼，必须重绘）")
+        raise SystemExit(f"[eye_{variant}] 缺少 AI 重绘底图：{redraw}（D19：原画没有这张脸，必须重绘）")
 
     body = np.array(Image.open(os.path.join(sp, "body_full.png")).convert("RGBA"))
     H, W = body.shape[:2]
@@ -141,7 +152,7 @@ def main():
                 if v > ncc:
                     ncc, s, tx, ty = v, ss, txx, tyy
 
-    out = {"source": "design/redraw/face_eyesclosed.png（AI 重绘闭眼脸）",
+    out = {"source": f"design/redraw/{src_name}（AI 重绘{label}脸）",
            "register": {"scale": round(s, 4), "ncc": round(ncc, 4)}, "eyes": []}
 
     for side in ("l", "r"):
@@ -160,7 +171,7 @@ def main():
                  max(0, gx0 - 6 - ax0):gx0 + gw + 6 - ax0] = True
         patch, pa = warp_box(rd_rgba, s, tx, ty, box)
         if (pa > 128).mean() < 0.9:
-            raise SystemExit(f"[eye_closed] {side} 眼补片在重绘图里没盖满（配准失败？）")
+            raise SystemExit(f"[eye_{variant}] {side} 眼补片在重绘图里没盖满（配准失败？）")
         hh, ww = patch.shape[:2]
         tgt = brgb[ay0:ay1, ax0:ax1]
         bk_box = bkeep[ay0:ay1, ax0:ax1]
@@ -207,7 +218,7 @@ def main():
         img = np.zeros((hh, ww, 4), np.uint8)
         img[..., :3] = patch.round().astype(np.uint8)
         img[..., 3] = (alpha * 255).round().astype(np.uint8)
-        fn = f"eye_{side}_closed.png"
+        fn = f"eye_{side}_{variant}.png"
         Image.fromarray(img, "RGBA").save(os.path.join(sp, fn))
 
         edge = (alpha > 0.05) & (alpha < 0.95) & both_skin
@@ -218,12 +229,12 @@ def main():
             "checks": {"cover_ratio": round(cover, 4), "seam_mean_abs": round(seam, 2),
                        "opaque_px": int((alpha > 0.9).sum())},
         })
-        print(f"闭眼 {side}: {ww}x{hh} @ 身体({ax0},{ay0})  盖住原画眼睛 {cover*100:.1f}%  "
+        print(f"{label} {side}: {ww}x{hh} @ 身体({ax0},{ay0})  盖住原画眼睛 {cover*100:.1f}%  "
               f"接缝色差 {seam:.1f}")
 
-    json.dump(out, open(os.path.join(sp, "eye_closed_parts.json"), "w", encoding="utf-8"),
+    json.dump(out, open(os.path.join(sp, f"eye_{variant}_parts.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
-    print(f"配准 scale={s:.4f} NCC={ncc:.3f} → sprites/eye_closed_parts.json")
+    print(f"配准 scale={s:.4f} NCC={ncc:.3f} → sprites/eye_{variant}_parts.json")
 
 
 if __name__ == "__main__":

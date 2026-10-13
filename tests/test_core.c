@@ -662,6 +662,39 @@ static int frame_diff_box(const zimg *a, const unsigned char *snap,
     return n;
 }
 
+/* 框里有多少不透明像素（"这一块到底画没画东西"） */
+static int frame_opaque_box(const zimg *a, int x0, int y0, int x1, int y1)
+{
+    int x, y, n = 0;
+    if (!a) return -1;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > a->w) x1 = a->w;
+    if (y1 > a->h) y1 = a->h;
+    for (y = y0; y < y1; ++y)
+        for (x = x0; x < x1; ++x)
+            if (a->px[((size_t)y * (size_t)a->w + (size_t)x) * 4 + 3] > 128) n++;
+    return n;
+}
+
+/* 框里有多少"线条像素"（睫毛/眼线这种深色）。用来回答"这一帧到底画没画那条线" */
+static int frame_dark_box(const zimg *a, int x0, int y0, int x1, int y1)
+{
+    int x, y, n = 0;
+    if (!a) return -1;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > a->w) x1 = a->w;
+    if (y1 > a->h) y1 = a->h;
+    for (y = y0; y < y1; ++y)
+        for (x = x0; x < x1; ++x) {
+            size_t o = ((size_t)y * (size_t)a->w + (size_t)x) * 4;
+            int lum = ((int)a->px[o] + (int)a->px[o+1] + (int)a->px[o+2]) / 3;
+            if (a->px[o+3] > 128 && lum < 165) n++;
+        }
+    return n;
+}
+
 /* 存一份当前帧（给 frame_diff_box 当基准） */
 static unsigned char *frame_snapshot(const zimg *a)
 {
@@ -985,8 +1018,9 @@ static void test_params(void)
         if (r) {
             zrig_param_desc pd;
             double t;
-            /* 内建 7 个（ParamAngleX/Y、ParamEyeOpen + 左右眼各一个、ParamEyeBallX/Y）+ rig 里 2 个 */
-            CHECK(zrig_param_count(r) == 9, "参数表应有 9 项（内建 7 + 角色 2），实为 %d",
+            /* 内建 9 个（ParamAngleX/Y、ParamEyeOpen + 左右眼开合各一个、
+               左右眼笑眼各一个、ParamEyeBallX/Y）+ rig 里 2 个 */
+            CHECK(zrig_param_count(r) == 11, "参数表应有 11 项（内建 9 + 角色 2），实为 %d",
                   zrig_param_count(r));
             CHECK(zrig_param_info(r, 0, &pd) == 0 && z_streq(pd.id, "ParamAngleX") && pd.builtin,
                   "第一项应是内建 ParamAngleX");
@@ -2483,6 +2517,187 @@ static void test_sleep_wake_blink(void)
     }
 }
 
+/* ---- 笑眼（ParamEyeLSmile / ParamEyeRSmile）：Live2D 标准参数 6/7 ----
+   官方口径：笑眼 = 闭着的眼的另一种形状（谷型 ∪ → 山型 ∩），
+   Haru 的 F05 表情就是 ParamEyeLOpen=0(Multiply) + ParamEyeLSmile=1(Add)。
+   所以这里要守住三件事：① 笑眼真的换了一张脸（不是把闭眼件拿来顶）；
+   ② 笑眼自己隐含闭眼（不用调用方再去关睁眼）；③ 左右各走各的。 */
+static void test_eye_smile(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    /* 眼件在画布上的位置来自 rig.json：eye_l_smile [356,245] 57x56、eye_r_smile [429,240] 57x58 */
+    const int LX0 = 350, LY0 = 238, LX1 = 421, LY1 = 308;
+    const int RX0 = 423, RY0 = 233, RX1 = 494, RY1 = 303;
+    SECTION("笑眼：山型 ∩ 的闭眼，和谷型闭眼是两张不同的脸");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（笑眼）");
+    if (!r) return;
+    {
+        const zimg *fb;
+        unsigned char *snap_open = NULL, *snap_closed = NULL;
+        int w = 0, h = 0, d_closed, d_smile, d_vs_closed, d_wink_l, d_wink_r, d_back;
+        int dark_closed = 0, dark_smile = 0;
+
+        CHECK(zrig_param_set(r, "ParamEyeLSmile", 0.0) == 0
+              && zrig_param_set(r, "ParamEyeRSmile", 0.0) == 0,
+              "rig 里应该有 ParamEyeLSmile / ParamEyeRSmile（Live2D 标准名）");
+        zrig_blink_set_enabled(r, 0);          /* 自动眨眼会搅乱像素对照 */
+        zrig_blink_set_manual(r, 0.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, &w, &h);
+        snap_open = frame_snapshot(fb);
+
+        /* ① 谷型闭眼（基准之一） */
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        d_closed = frame_diff_box(fb, snap_open, LX0, LY0, LX1, LY1);
+        snap_closed = frame_snapshot(fb);
+        dark_closed = frame_dark_box(fb, LX0, LY0, LX1, LY1);
+        CHECK(d_closed > 400, "闭眼要能看出来（左眼区变了 %d 像素）", d_closed);
+
+        /* ② 笑眼：只推 ParamEyeL/RSmile，不碰睁眼参数 —— 眼睛必须自己闭上并换成山型 */
+        zrig_blink_set_manual(r, -1.0);        /* 交回自动；enabled=0 所以闭合度回 0 */
+        zrig_param_set(r, "ParamEyeLSmile", 1.0);
+        zrig_param_set(r, "ParamEyeRSmile", 1.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        d_smile = frame_diff_box(fb, snap_open, LX0, LY0, LX1, LY1);
+        d_vs_closed = frame_diff_box(fb, snap_closed, LX0, LY0, LX1, LY1);
+        CHECK(d_smile > 400,
+              "笑眼要自己把眼睛闭上（不用再写 ParamEyeOpen；左眼区变了 %d 像素）", d_smile);
+        CHECK(d_vs_closed > 150,
+              "笑眼和谷型闭眼必须是两张脸（只差了 %d 像素 = 多半在拿闭眼件顶）", d_vs_closed);
+        /* 「笑眼隐含闭眼」在画面上看不出来（笑眼补片本来就盖住整只眼），
+           所以直接问引擎要本帧的闭合度 —— 这条才是 Haru F05 那套口径的本体。 */
+        CHECK(zrig_eye_smile(r, 0) > 0.99 && zrig_eye_smile(r, 1) > 0.99,
+              "两只眼的笑眼量应为 1（L=%.2f R=%.2f）", zrig_eye_smile(r, 0), zrig_eye_smile(r, 1));
+        CHECK(zrig_eye_close(r, 0) > 0.99 && zrig_eye_close(r, 1) > 0.99,
+              "笑眼必须隐含闭眼：闭合度应为 1（L=%.2f R=%.2f）",
+              zrig_eye_close(r, 0), zrig_eye_close(r, 1));
+        /* 画面上也得真有那条山型线：既不能什么都不画（笑眼件没显形），
+           也不能把山型和谷型两条线一起画（那会叠成一团黑）。 */
+        dark_smile = frame_dark_box(fb, LX0, LY0, LX1, LY1);
+        CHECK(dark_smile > dark_closed / 2,
+              "笑眼帧的眼区要有睫毛线（暗像素 %d，闭眼帧是 %d）", dark_smile, dark_closed);
+        CHECK(dark_smile < dark_closed * 16 / 10,
+              "笑眼不该和谷型闭眼叠着画（暗像素 %d，闭眼帧才 %d）", dark_smile, dark_closed);
+
+        /* ③ 左右分家：只笑左眼，右眼区不许动 */
+        zrig_param_set(r, "ParamEyeRSmile", 0.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        d_wink_l = frame_diff_box(fb, snap_open, LX0, LY0, LX1, LY1);
+        d_wink_r = frame_diff_box(fb, snap_open, RX0, RY0, RX1, RY1);
+        CHECK(d_wink_l > 400 && d_wink_r == 0,
+              "单眼笑：左眼变 %d 像素、右眼必须一点都不动（实际 %d）", d_wink_l, d_wink_r);
+        CHECK(zrig_eye_close(r, 0) > 0.99 && zrig_eye_close(r, 1) < 0.01,
+              "单眼笑：左眼闭合 %.2f、右眼仍睁着 %.2f",
+              zrig_eye_close(r, 0), zrig_eye_close(r, 1));
+
+        /* ④ 收回去要干净：参数归零 = 回到一开始那一帧 */
+        zrig_param_set(r, "ParamEyeLSmile", 0.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        d_back = frame_diff_box(fb, snap_open, 0, 0, w, h);
+        CHECK(d_back == 0, "笑眼归零应完全回到睁眼那一帧（还差 %d 像素）", d_back);
+
+        /* ⑤ 官方那种写法（表情同时写 EyeOpen=0 + Smile=1）也不能把眼睛弄睁 */
+        zrig_param_set(r, "ParamEyeLSmile", 1.0);
+        zrig_param_set(r, "ParamEyeOpen", 0.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        CHECK(frame_diff_box(fb, snap_open, LX0, LY0, LX1, LY1) > 400,
+              "Haru F05 那种写法（EyeOpen=0 + Smile=1）也要是笑眼");
+        zrig_param_set(r, "ParamEyeOpen", 1.0);
+        zrig_param_set(r, "ParamEyeLSmile", 0.0);
+
+        /* ⑥ 表情 happy 应该带笑眼 */
+        zrig_expression_set(r, "happy");
+        zrig_expression_snap(r);
+        zrig_tick(r, 5.0);
+        CHECK(zrig_param_effective(r, "ParamEyeLSmile") > 0.9
+              && zrig_param_effective(r, "ParamEyeRSmile") > 0.9,
+              "表情 happy 要把两只眼都变成笑眼（L=%.2f R=%.2f）",
+              zrig_param_effective(r, "ParamEyeLSmile"),
+              zrig_param_effective(r, "ParamEyeRSmile"));
+        free(snap_open);
+        free(snap_closed);
+    }
+    zrig_free(r);
+
+    /* ⑦ 结构闸：在真 rig 上"笑眼件画没画"很难数清楚（眼线件下滑后也在同一位置留一条线），
+       所以另起一个合成 rig，把睁眼/谷型闭眼/山型笑眼三张真素材摆在互不重叠的位置，
+       这样每一块有没有画出来就是能逐像素数的。 */
+    {
+        char rigp[1024], dir2[1024];
+        zdiag d2;
+        zrig *r2;
+        z_snprintf(dir2, sizeof(dir2), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rigp, sizeof(rigp), "/tmp/zc_eye_smile_rig.json");
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"es\",\"name\":\"笑眼结构闸\","
+            "\"canvas\":{\"w\":848,\"h\":400},\"origin\":[424,400],"
+            "\"groups\":{\"root\":{\"pivot\":[424,400],\"parent\":\"\"}},"
+            "\"blink\":{\"enabled\":true},"
+            "\"param_groups\":[{\"name\":\"EyeBlink\","
+            " \"ids\":[\"ParamEyeLOpen\",\"ParamEyeROpen\"]}],"
+            "\"parts\":["
+            " {\"id\":\"o\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\","
+            "  \"layer\":10,\"pos\":[100,100],\"anchor\":[0,0],"
+            "  \"tags\":[\"eye_open\"],\"eye_side\":\"l\"},"
+            " {\"id\":\"c\",\"file\":\"sprites/eye_l_closed.png\",\"group\":\"root\","
+            "  \"layer\":11,\"pos\":[300,100],\"anchor\":[0,0],"
+            "  \"tags\":[\"eye_closed\"],\"eye_side\":\"l\"},"
+            " {\"id\":\"s\",\"file\":\"sprites/eye_l_smile.png\",\"group\":\"root\","
+            "  \"layer\":12,\"pos\":[500,100],\"anchor\":[0,0],"
+            "  \"tags\":[\"eye_smile\"],\"eye_side\":\"l\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d2);
+        r2 = zrig_load(rigp, dir2, &d2);
+        CHECK(r2 != NULL, "合成 rig（三张眼）应加载成功");
+        if (r2) {
+            const zimg *fb;
+            int po, pc, ps;
+            zrig_blink_set_enabled(r2, 0);
+            zrig_blink_set_manual(r2, 0.0);
+            zrig_tick(r2, 1.0);
+            fb = zrig_frame(r2, 1.0, NULL, NULL);
+            po = frame_opaque_box(fb,  90,  90, 260, 260);
+            pc = frame_opaque_box(fb, 290,  90, 460, 260);
+            ps = frame_opaque_box(fb, 490,  90, 660, 260);
+            CHECK(po > 500 && pc == 0 && ps == 0,
+                  "睁着时只画睁眼件（睁 %d / 闭 %d / 笑 %d）", po, pc, ps);
+
+            zrig_blink_set_manual(r2, 1.0);          /* 谷型闭眼 */
+            zrig_tick(r2, 1.1);
+            fb = zrig_frame(r2, 1.0, NULL, NULL);
+            po = frame_opaque_box(fb,  90,  90, 260, 260);
+            pc = frame_opaque_box(fb, 290,  90, 460, 260);
+            ps = frame_opaque_box(fb, 490,  90, 660, 260);
+            CHECK(po == 0 && pc > 500 && ps == 0,
+                  "闭眼时只画谷型闭眼件（睁 %d / 闭 %d / 笑 %d）", po, pc, ps);
+
+            zrig_blink_set_manual(r2, -1.0);
+            zrig_param_set(r2, "ParamEyeLSmile", 1.0);
+            zrig_tick(r2, 1.2);
+            fb = zrig_frame(r2, 1.0, NULL, NULL);
+            po = frame_opaque_box(fb,  90,  90, 260, 260);
+            pc = frame_opaque_box(fb, 290,  90, 460, 260);
+            ps = frame_opaque_box(fb, 490,  90, 660, 260);
+            CHECK(ps > 500, "笑眼时山型笑眼件必须画出来（实际 %d 像素）", ps);
+            CHECK(pc == 0, "笑眼时谷型闭眼件必须让位（还画着 %d 像素 = 两条线叠一起）", pc);
+            CHECK(po == 0, "笑眼时睁眼件必须收掉（还画着 %d 像素）", po);
+            zrig_free(r2);
+        }
+    }
+}
+
 /* ---- A4 口型同步：包络按时间推进、嘴让路、播完收尾 ---- */
 static void test_lipsync(void)
 {
@@ -3192,6 +3407,7 @@ int main(int argc, char **argv)
     test_expr_viseme_order();
     test_expression_blend();
     test_sleep_wake_blink();
+    test_eye_smile();
     test_action_drives_param();
     test_motion_fade();
     test_physics();

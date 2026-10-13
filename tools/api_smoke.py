@@ -226,6 +226,35 @@ def run(base, root):
         check("闭右眼和闭左眼不是同一张脸", el != er, "%s vs %s" % (el, er))
         a.hit("/api/param?id=ParamEyeROpen&reset=1")
         a.hit("/api/blink?on=1")
+    # Live2D 标准 6/7：笑眼 = 山型 ∩ 的闭眼（官方 Haru F05 = EyeOpen 0 Multiply + Smile 1 Add）
+    check("笑眼用标准名 ParamEyeLSmile / ParamEyeRSmile",
+          "ParamEyeLSmile" in pids and "ParamEyeRSmile" in pids, " ".join(pids[:8]))
+    if "ParamEyeLSmile" in pids:
+        a.hit("/api/blink?on=0"); time.sleep(0.1)
+        s0, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamEyeLOpen&v=0"); a.hit("/api/param?id=ParamEyeROpen&v=0")
+        s_closed, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamEyeLOpen&reset=1"); a.hit("/api/param?id=ParamEyeROpen&reset=1")
+        a.hit("/api/param?id=ParamEyeLSmile&v=1"); a.hit("/api/param?id=ParamEyeRSmile&v=1")
+        s_smile, _ = a.frame_hash()
+        check("笑眼改变画面（不用再写 ParamEyeOpen）", s0 != s_smile, "%s → %s" % (s0, s_smile))
+        check("笑眼和谷型闭眼不是同一张脸", s_smile != s_closed,
+              "smile %s vs closed %s" % (s_smile, s_closed))
+        a.hit("/api/param?id=ParamEyeRSmile&reset=1")
+        s_wink, _ = a.frame_hash()
+        check("单眼笑（只笑左眼）又是另一张脸", s_wink not in (s0, s_smile, s_closed), s_wink)
+        a.hit("/api/param?id=ParamEyeLSmile&reset=1")
+        back, _ = a.frame_hash()
+        check("笑眼归零回到原样", back == s0, "%s vs %s" % (back, s0))
+        r = a.json("/api/expression?id=happy") or {}
+        time.sleep(0.45)
+        eff = {q["id"]: q.get("effective") for q in (a.json("/api/params.json") or {}).get("params", [])}
+        check("表情 happy 带笑眼",
+              r.get("ok") is not False
+              and (eff.get("ParamEyeLSmile") or 0) > 0.9 and (eff.get("ParamEyeRSmile") or 0) > 0.9,
+              "L=%s R=%s" % (eff.get("ParamEyeLSmile"), eff.get("ParamEyeRSmile")))
+        a.hit("/api/expression?off=1")
+        a.hit("/api/blink?on=1")
     # 口型音素（母音識別）：A/I/U/E/O 必须是五张不同的嘴
     pj = a.json("/api/params.json") or {}
     vis = pj.get("visemes") or []

@@ -37,8 +37,8 @@ Pose 互斥组、混合模式、自动眨眼、口型同步）**全部有对应�
 | 3 | `ParamAngleZ` | 头 歪头 | ✅ | 绑 `head` 组 `rot_deg × 0.5`（±30 → ±15°，再大颈缝会露） |
 | 4 | `ParamEyeLOpen` | 左眼 睁开 | ✅ | **2026-10-13 拆开**：部件带 `eye_side`，引擎按眼别取闭合度 |
 | 5 | `ParamEyeROpen` | 右眼 睁开 | ✅ | 同上。闸门会验"闭左眼时右眼 0 像素变化" |
-| 6 | `ParamEyeLSmile` | 左眼 笑眼 | ⬜ | **要新素材**（弯月形笑眼）。用现有闭眼件假冒＝灰幽灵，不做 |
-| 7 | `ParamEyeRSmile` | 右眼 笑眼 | ⬜ | 同上 |
+| 6 | `ParamEyeLSmile` | 左眼 笑眼 | ✅ | **2026-10-13 补素材**：AI 重绘"山型 ∩ 笑眼脸"→ 同闭眼那条流水线切补片（`make_eye_closed_parts.py --variant smile`）。内建参数 0..1 默认 0；**笑眼隐含闭眼**（`blink = max(blink, smile)`），谷型闭眼件按 `1−smile` 让位 |
+| 7 | `ParamEyeRSmile` | 右眼 笑眼 | ✅ | 同上，左右分家（闸门验"只笑左眼时右眼 0 像素变化"） |
 | 8 | `ParamEyeBallX` | 眼球 左右 | ✅ | 内建，驱动 `gaze` 标签部件，被眼眶遮罩裁切 |
 | 9 | `ParamEyeBallY` | 眼球 上下 | ✅ | 同上 |
 | 10 | `ParamEyeBallForm` | 瞳孔 形状 | ⬜ | 要新素材（猫瞳/竖瞳差分），优先级低 |
@@ -74,7 +74,7 @@ Pose 互斥组、混合模式、自动眨眼、口型同步）**全部有对应�
 | 40 | `ParamBaseY` | 全身 上下 | ✅ | **本轮补**：`root` 组 `dy` |
 | 41 | `ParamNONE` | 占位 | ➖ | SDK 内部用的空参数，不需要 |
 
-**合计：✅ 34 ／ ⬜ 5（都缺素材） ／ ➖ 4（角色不适用）**
+**合计：✅ 36 ／ ⬜ 3（都缺素材：瞳形 `ParamEyeBallForm`、眉形 `ParamBrowL/RForm`） ／ ➖ 4（角色不适用）**
 
 ### 我们在标准表之外的扩展（每一个都必须登记在这里）
 

@@ -601,6 +601,25 @@
       "eye_side": "l"
     },
     {
+      "id": "eye_l_smile",
+      "file": "sprites/eye_l_smile.png",
+      "group": "head",
+      "layer": 223,
+      "pos": [
+        356,
+        245
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_smile"
+      ],
+      "note": "笑眼（AI 重绘·盖住原画眼睛 99.5%，接缝色差 4.04）：ParamEyeL/RSmile=1 时显形",
+      "eye_side": "l"
+    },
+    {
       "id": "eye_r_socket",
       "file": "sprites/eye_r_socket.png",
       "group": "head",
@@ -699,6 +718,25 @@
         "eye_closed"
       ],
       "note": "闭眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.26）：blink=1 时完全显形",
+      "eye_side": "r"
+    },
+    {
+      "id": "eye_r_smile",
+      "file": "sprites/eye_r_smile.png",
+      "group": "head",
+      "layer": 235,
+      "pos": [
+        429,
+        240
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_smile"
+      ],
+      "note": "笑眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.23）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "r"
     },
     {
@@ -3968,6 +4006,46 @@
           "mode": "set"
         }
       ]
+    },
+    {
+      "id": "happy",
+      "name": "开心（笑眼）",
+      "fade": 0.28,
+      "params": [
+        {
+          "id": "ParamBrowLY",
+          "value": 0.32
+        },
+        {
+          "id": "ParamBrowRY",
+          "value": 0.32
+        },
+        {
+          "id": "ParamMouthForm",
+          "value": 1.0
+        },
+        {
+          "id": "ParamEyeLSmile",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeRSmile",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamCheek",
+          "value": 0.38,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeSparkle",
+          "value": 1.0,
+          "mode": "set"
+        }
+      ],
+      "note": "笑眼 = 山型闭眼（Live2D 标准做法），参考官方 Haru 的 F05"
     }
   ]
 }

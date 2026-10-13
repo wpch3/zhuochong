@@ -22,49 +22,52 @@ done
 
 step() { printf "\n=== %s ===\n" "$1"; }
 
-step "1/14 身体分段（头/躯干/双臂/双腿）"
+step "1/15 身体分段（头/躯干/双臂/双腿）"
 "$PY" tools/make_body_parts.py --character "$CH" --form "$FM"
 
-step "2/14 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
+step "2/15 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
 "$PY" tools/make_arm_parts.py --character "$CH" --form "$FM"
 
-step "3/14 眼部四件（眼眶/眼白/眼球/眼线）"
+step "3/15 眼部四件（眼眶/眼白/眼球/眼线）"
 "$PY" tools/make_eye_parts.py --character "$CH" --form "$FM"
 
-step "4/14 嘴三件（量嘴线 + 先铺一版几何口内兜底）"
+step "4/15 嘴三件（量嘴线 + 先铺一版几何口内兜底）"
 "$PY" tools/make_mouth_parts.py --character "$CH" --form "$FM"
 
-step "5/14 张嘴真素材（AI 重绘张嘴脸 → 虹膜配准 → 取口内）"
+step "5/15 张嘴真素材（AI 重绘张嘴脸 → 虹膜配准 → 取口内）"
 "$PY" tools/make_mouth_open_parts.py --character "$CH" --form "$FM"
 
-step "6/14 呆毛（无损切出）"
+step "6/15 呆毛（无损切出）"
 "$PY" tools/make_hair_parts.py --character "$CH" --form "$FM"
 
-step "7/14 刘海 + 额头（AI 重绘回贴）"
+step "7/15 刘海 + 额头（AI 重绘回贴）"
 "$PY" tools/make_bangs_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nobangs.png
 
-step "8/14 眉毛（AI 重绘 + alpha 抠像）"
+step "8/15 眉毛（AI 重绘 + alpha 抠像）"
 "$PY" tools/make_brow_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nobrows.png
 
-step "9/14 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切补片）"
+step "9/15 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切补片）"
 "$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM"
 
-step "10/14 上眼睑（没有闭眼真素材时的兜底方案）"
+step "10/15 笑眼真素材（同一条流水线，底图换成山型 ∩ 的笑眼脸）"
+"$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant smile
+
+step "11/15 上眼睑（没有闭眼真素材时的兜底方案）"
 "$PY" tools/make_eyelid_parts.py --character "$CH" --form "$FM"
 
-step "11/14 混合模式零件（腮红·乘算 / 眼高光·加算，程序化画出来的）"
+step "12/15 混合模式零件（腮红·乘算 / 眼高光·加算，程序化画出来的）"
 "$PY" tools/make_blend_parts.py --character "$CH" --form "$FM"
 
-step "12/14 侧发两缕 + 后发（AI 重绘无侧发的脸 → 虹膜配准 → 挖发补脸）"
+step "13/15 侧发两缕 + 后发（AI 重绘无侧发的脸 → 虹膜配准 → 挖发补脸）"
 "$PY" tools/make_sidehair_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nosidehair.png
 
-step "13/14 眼线二次拆件（最后跑：脸上那只睁眼挖成眼窝皮肤，必须排在所有改 seg_head 的工具之后）"
+step "14/15 眼线二次拆件（最后跑：脸上那只睁眼挖成眼窝皮肤，必须排在所有改 seg_head 的工具之后）"
 "$PY" tools/make_eyeline_parts.py --character "$CH" --form "$FM"
 
-step "14/14 生成 rig 并验收"
+step "15/15 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__

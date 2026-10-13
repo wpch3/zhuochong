@@ -440,6 +440,27 @@ TTS 产出 mp3 ──► tools/make_lipsync.py ──► voice/lipsync/<id>.json
 - **怎么看**：测试台「表情 × 口型」面板（组合按钮 + `value / 过表情后 / 最终` 三列实时表），
   或 `/api/params.json` 的同名三列。证据图 `logs/asset_qa/_expr_viseme_sheet.jpg`。
 
+### 3.11 笑眼 `ParamEyeLSmile` / `ParamEyeRSmile`（G40）✅ 2026-10-13
+
+- **官方口径**：笑眼**不是另一种睁眼，是另一种闭眼** —— 谷型 ∪ → 山型 ∩。
+  官方 Haru 的 F05 表情写得很直白：`ParamEyeLOpen=0 (Multiply)` + `ParamEyeLSmile=1 (Add)`
+  + 眉毛 `ParamBrowL/RY=0.32`。四篇独立的日文建模教程也都强调"做笑眼时要先把开闭参数打到 0"。
+- **素材**：AI 重绘一张"山型笑眼脸"`design/redraw/face_eyesmile.png`（同一张脸、只改眼睛），
+  走闭眼那条**同一条流水线**切补片：`make_eye_closed_parts.py --variant smile`
+  （肤色外接框定初值 → 挖掉眼睛带的脸部 NCC 微调 → 眼球框外扩切补片 → 逐通道肤色平移 → 软椭圆羽化）。
+  切出来 `eye_l_smile.png` 57×56 @ (156,177)、`eye_r_smile.png` 57×58 @ (229,172)，
+  和闭眼件**同位同尺寸**，覆盖率 99.5% / 99.7%，接缝色差 4.0 / 2.2。
+- **引擎**：新标签 `eye_smile` + 内建参数 `ParamEyeLSmile/RSmile`（0..1，默认 0）。
+  三条规矩：① **笑眼隐含闭眼** `blink = max(blink, smile)`（调用方推一个参数就够）；
+  ② 笑眼涨多少，谷型闭眼件就按 `1 − smile` 让多少（两条睫毛线一起画会叠成一团黑）；
+  ③ 笑眼件走和闭眼件一样的"最后 25% 才淡入"斜坡，前 75% 由眼眶压扁表现。
+  层号：笑眼件压在同侧所有眼部件之上（左 223 / 右 235）。
+- **表情**：新增 `happy`（开心·笑眼）= 笑眼 1.0 + `ParamMouthForm` +1.0 + 眉 +0.32（照 F05）
+  + 腮红 0.38 + 眼高光 1.0，fade 0.28s。
+- **闸门**：单测 `test_eye_smile()`（真 rig 像素闸 + **合成 rig 结构闸**：三张眼摆在互不重叠的位置，
+  逐块数像素）、smoke 6 项、selfcheck 7 项；负控三次（笑眼不隐含闭眼 / 笑眼件不显形 / 闭眼件不让位）全部判红。
+  证据图 `logs/asset_qa/_eye_smile_sheet.jpg`（睁眼 / 谷型闭眼 / 山型笑眼 / 单眼笑 / happy 五格）。
+
 ## 四、生产流程（这就是"Live2D 教程"在我们这边的落法）
 
 Live2D 官方教程的顺序是：**分层画稿 → 导入 → 建网格 → 加变形器/参数 → 绑动作**。
@@ -1031,7 +1052,12 @@ eye_closed *= clamp((blink - 0.75) * 4, 0, 1); /* 只在最后 25% 淡入 */
     ④ 说完话嘴角抽一下（`viseme_clear` 硬切 → 平滑松口 + 整句专用 release 8/s，
     另给"要立刻清零"的场合留 `viseme_reset`）。证据图 `logs/asset_qa/_expr_viseme_sheet.jpg`
 
-13. **下一件：笑眼素材**（`ParamEyeLSmile` / `ParamEyeRSmile`，补齐合规表里的 ⬜5）。
+13. ~~笑眼素材（`ParamEyeLSmile` / `ParamEyeRSmile`）~~ ✅ 2026-10-13（见 3.11；
+    AI 重绘山型 ∩ 笑眼脸 → 闭眼那条流水线 `--variant smile`；笑眼隐含闭眼、谷型闭眼件让位；
+    新表情 happy。合规表 ✅34 → **✅36**，只剩瞳形/眉形两类共 3 项缺素材）
+
+14. **下一件：18 个动作从部件通道迁到参数通道**（🟠 合规表里最后一个结构性偏差），
+    之后是动作 fade 线性 → 正弦 `0.5−0.5cos(πt)`。
 
 每一件的验收关卡都一样：`make test` 全绿 → `check_assets` 全过 →
 `make smoke`（互动/动作端到端）全过 → 预览抓帧人工看 → 才算入库。

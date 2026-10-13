@@ -305,3 +305,29 @@
   写死坐标在角色位移后会拍出四张白图）。
 - 下一步：笑眼素材 `ParamEyeLSmile` / `ParamEyeRSmile`（补齐合规表的 ⬜5）。
 
+## 2026-10-13（第 N+2 段）笑眼 ParamEyeLSmile / ParamEyeRSmile（G40）
+
+- 先查后做（用户硬要求）：把官方 Haru 的八个 `exp3.json` 全拉下来，**F05 就是笑眼表情**，
+  写的是 `ParamEyeLOpen=0 (Multiply)` + `ParamEyeLSmile=1 (Add)` + 眉毛 `0.32`；
+  再搜四篇独立的日文建模教程，口径完全一致：**笑眼是"闭着的眼"的另一种形状**，
+  做的时候要先把开闭参数打到 0，再把谷型 ∪ 弯成山型 ∩。VPet 那种逐帧 PNG 序列不可抄；
+  airi 的 `eye-motions.ts` 其实是扫视间隔分布（留给以后做视线微动）。
+- 素材：AI 重绘 `design/redraw/face_eyesmile.png`（同一张脸只改眼睛），然后把
+  `make_eye_closed_parts.py` 参数化成 `--variant closed|smile` —— 配准、切补片、肤色平移、
+  羽化、覆盖率自检全部复用，只换底图。切出来和闭眼件**同位同尺寸**，覆盖 99.5%/99.7%。
+- 引擎：`eye_smile` 标签 + `ParamEyeLSmile/RSmile` 两个内建参数（0..1 默认 0）。三条规矩：
+  ① 笑眼隐含闭眼 `blink = max(blink, smile)`；② 谷型闭眼件按 `1−smile` 让位；
+  ③ 笑眼件走和闭眼件一样的"最后 25% 淡入"。新增表情 `happy`。
+- **踩坑（值得记）：在真 rig 上用像素闸根本测不出"笑眼件到底画没画"。**
+  第一版三条负控全部没红：(a) 去掉"笑眼隐含闭眼" → 笑眼补片本来就盖住整只眼，画面一模一样；
+  (b) 让笑眼件永不显形 → 眼线件下滑后也在同一位置留一条线，暗像素数几乎不变（131 vs 135）；
+  (c) 让闭眼件不让位 → 两条线叠着，像素差异仍然"够大"。
+  改法：① 加两个只读查询 `zrig_eye_close/zrig_eye_smile`，把"隐含闭眼"这条用数值断言；
+  ② 另起一个**合成 rig**，把睁眼/谷型/山型三张真素材摆在互不重叠的位置，逐块数不透明像素。
+  改完三条负控分别判红 2 / 1 / 1 项。
+- 数字：单测 **504/0**（+11）、smoke **101/0**（+6）、selfcheck **90/0**（+7）、check_assets **372/0**（+14）。
+  合规表 ✅34 → **✅36 / ⬜3 / ➖4**（只剩瞳形 `ParamEyeBallForm` 和眉形 `ParamBrowL/RForm`）。
+  `rebuild_parts.sh` 14 步 → 15 步。证据图 `logs/asset_qa/_eye_smile_sheet.jpg`。
+- 下一步：18 个动作从部件通道迁到参数通道（合规表里最后一个结构性偏差），
+  然后动作 fade 线性 → 正弦。
+

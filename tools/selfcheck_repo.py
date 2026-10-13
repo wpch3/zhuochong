@@ -501,6 +501,41 @@ def check_live2d(root):
               "viseme_activity" in doc_txt and "RELEASE_OFF" in doc_txt,
               "docs/LIVE2D_CONFORMANCE.md 要写明权重调制与两档 release")
 
+    # ⑫ 笑眼（Live2D 标准 6/7）：山型 ∩ 的闭眼，官方 Haru F05 的口径
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        tag = os.path.relpath(rp, root)
+        r = jsonc(rp)
+        sm = [p for p in r.get("parts", []) if "eye_smile" in (p.get("tags") or [])]
+        if not sm:
+            continue
+        check("笑眼件左右各一、都标了 eye_side",
+              len(sm) == 2 and {p.get("eye_side") for p in sm} == {"l", "r"},
+              f"{tag}：{[(p['id'], p.get('eye_side')) for p in sm]}")
+        # 笑眼件必须压在同侧闭眼件之上，否则谷型线会盖住山型线
+        closed = {p.get("eye_side"): p for p in r.get("parts", [])
+                  if "eye_closed" in (p.get("tags") or [])}
+        bad = [p["id"] for p in sm
+               if closed.get(p.get("eye_side")) and p["layer"] <= closed[p["eye_side"]]["layer"]]
+        check("笑眼件画在谷型闭眼件之上", not bad, f"{tag}：{bad}" if bad else "（层号已排好）")
+        exprs = {e["id"]: e for e in r.get("expressions", [])}
+        hp = exprs.get("happy", {})
+        pids = {q.get("id"): q for q in hp.get("params", [])}
+        check("有带笑眼的表情（happy）",
+              "ParamEyeLSmile" in pids and "ParamEyeRSmile" in pids,
+              f"{tag}：happy={list(pids)}")
+    check("笑眼隐含闭眼（照 Haru F05：EyeOpen=0 + Smile=1）",
+          "r->smile_l > r->blink_l" in rig_c and "r->smile_r > r->blink_r" in rig_c,
+          "src/core/zrig.c：blink = max(blink, smile)")
+    check("笑眼显形时谷型闭眼件要让位",
+          "TAG_EYE_CLOSED) opacity *= 1.0 - smile" in rig_c,
+          "两条睫毛线一起画会叠成一团黑")
+    check("有笑眼的单测（含结构闸）",
+          "test_eye_smile" in test_c and "frame_opaque_box" in test_c, "tests/test_core.c")
+    if doc_txt:
+        check("对照表把笑眼登记成已实现",
+              "`ParamEyeLSmile` | 左眼 笑眼 | ✅" in doc_txt,
+              "docs/LIVE2D_CONFORMANCE.md 第 6/7 行")
+
 # ------------------------------------------------------------------ 4 角色包其它引用
 def check_character(root):
     section("角色包其它引用：服装 / 互动 / 语音 / 口型包络")

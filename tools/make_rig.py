@@ -228,7 +228,8 @@ def viseme_list(mouth=None):
     ]
 
 
-def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=False):
+def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=False,
+                    has_smile_eyes=False):
     """表情集。每条 = 一组参数偏移（mode 缺省 add，set 为覆盖），fade 是淡入淡出秒数。
 
     只用 param_list 里声明过的参数（引擎加载时会校验），所以改表情不用动 C 代码。
@@ -285,12 +286,22 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
                    + [P("ParamEyeOpen", 0.3, "set"), P("ParamEyeBallY", 0.2)]
                    + blush(0.0) + sparkle(0.12)},
     ]
+    # 开心（眯眼笑）：照官方 Haru 的 F05 表情 —— ParamEyeLOpen=0(Multiply) + ParamEyeLSmile=1(Add)
+    # + 眉毛抬 0.32。笑眼本身就是"闭着的眼"，所以这里不再写 ParamEyeOpen
+    # （引擎里 blink = max(blink, smile) 已经隐含了闭眼）。
+    if has_smile_eyes:
+        out.append(
+            {"id": "happy", "name": "开心（笑眼）", "fade": 0.28,
+             "params": brows(0.32, 0.32) + mform(1.0)
+                       + [P("ParamEyeLSmile", 1.0, "set"), P("ParamEyeRSmile", 1.0, "set")]
+                       + blush(0.38) + sparkle(1.0),
+             "note": "笑眼 = 山型闭眼（Live2D 标准做法），参考官方 Haru 的 F05"})
     return out
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
-          closed=None, blendp=None, eyeline=None):
+          closed=None, blendp=None, eyeline=None, smile_eyes=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -405,6 +416,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     eye_ball_ids = []
     if eyes:
         base_layer = {"l": 216, "r": 226}
+        # 笑眼件要压在同侧所有眼部件之上（含星形高光 222/234），所以单独给层号
+        smile_layer = {"l": 223, "r": 235}
+        smiles = {e["side"]: e for e in (smile_eyes or {}).get("eyes", [])}
         for e in eyes["eyes"]:
             side = e["side"]
             L = base_layer[side]
@@ -500,6 +514,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                      "anchor": [0, 0], "tags": ["eye_closed"],
                      "note": f"闭眼（AI 重绘·盖住原画眼睛 {cl['checks']['cover_ratio']*100:.1f}%，"
                              f"接缝色差 {cl['checks']['seam_mean_abs']}）：blink=1 时完全显形"})
+            # 笑眼真素材：同一条流水线、同一个位置，只是底图换成"山型笑眼"的重绘脸。
+            # Live2D 的标准做法就是"笑眼 = 闭眼的另一种形状"（官方 Haru 的 F05：
+            # ParamEyeLOpen=0 Multiply + ParamEyeLSmile=1 Add），所以它压在闭眼件之上，
+            # 由 tags:["eye_smile"] 按 ParamEyeL/RSmile 淡入、同时把谷型闭眼件让掉。
+            sm = smiles.get(side)
+            if sm:
+                eye_parts.append(
+                    {"id": f"{sid}_smile", "file": f"sprites/{sm['file']}", "group": "head",
+                     "layer": smile_layer[side],
+                     "pos": [ox + sm["pos"][0], oy + sm["pos"][1]],
+                     "anchor": [0, 0], "tags": ["eye_smile"],
+                     "note": f"笑眼（AI 重绘·盖住原画眼睛 {sm['checks']['cover_ratio']*100:.1f}%，"
+                             f"接缝色差 {sm['checks']['seam_mean_abs']}）：ParamEyeL/RSmile=1 时显形"})
             eye_ball_ids.append(f"{sid}_ball")
     else:
         eye_parts = [
@@ -1280,7 +1307,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "expressions": expression_list(mouth=mouth,
                                        has_brows=any(p["id"] == "brow_l" for p in parts_list),
                                        head_is_part=head_is_part,
-                                       has_blend=bool(blendp)),
+                                       has_blend=bool(blendp),
+                                       has_smile_eyes=any(p["id"].endswith("_smile")
+                                                          for p in parts_list)),
     }
 
 
@@ -1401,6 +1430,16 @@ def main() -> int:
                    for c in closed["eyes"]):
             closed = None
 
+    # 笑眼真素材（make_eye_closed_parts.py --variant smile 的产物）：山型 ∩ 的闭眼
+    smile_eyes = None
+    sm_path = os.path.join(base, "sprites", "eye_smile_parts.json")
+    if os.path.exists(sm_path):
+        with open(sm_path, encoding="utf-8") as f:
+            smile_eyes = json.load(f)
+        if not all(os.path.exists(os.path.join(base, "sprites", c["file"]))
+                   for c in smile_eyes["eyes"]):
+            smile_eyes = None
+
     # 眼线二次拆件（tools/make_eyeline_parts.py 的产物）：脸上的眼睛已经挖成眼窝皮肤，
     # 这时眨眼才敢用"压扁眼眶"（底下露出来的是皮肤，不是脸上那只睁着的眼）。
     eyeline = None
@@ -1452,7 +1491,7 @@ def main() -> int:
             mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
                 seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp,
-                closed=closed, blendp=blendp, eyeline=eyeline)
+                closed=closed, blendp=blendp, eyeline=eyeline, smile_eyes=smile_eyes)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)
