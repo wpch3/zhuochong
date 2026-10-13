@@ -112,6 +112,12 @@ void zimg_draw_warp_blend(zimg *dst, const zimg *src, const double m[6], double 
                           double bend_x, int curve_x, double bend_y, int curve_y, int blend);
 void zimg_draw_mesh_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
                           int cols, int rows, const double *offsets, int blend);
+/* 网格形变与平滑形变叠加（≈ Live2D 变形器嵌套）。两者不是二选一：
+   多段摆链的第一段写 bend、第二段写形变器，必须同时生效。 */
+void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
+                               int cols, int rows, const double *offsets,
+                               double bend_x, int curve_x, double bend_y, int curve_y,
+                               int blend);
 
 /* 便捷：把 src 缩放到 scale、绕锚点 anchor(0..1) 平移 pos（画布坐标）。 */
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,

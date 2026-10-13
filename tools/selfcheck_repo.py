@@ -238,14 +238,25 @@ def check_rig(root):
         # 写在后面 = 这一帧拿到的是上一帧的旧值，引擎直接拒绝加载，所以这里先拦下来。
         phys = r.get("physics", [])
         seen, badchain, baddfm = [], [], []
+        pnames = {q["id"] for q in r.get("params", [])}
+        badin = []
         for f in phys:
             drv = f.get("driver")
-            if drv not in gids and drv not in seen:
+            ins = f.get("input") or []
+            # G43：输入可以是参数数组（官方 physics3 的 Input），这类没有 driver
+            if ins:
+                for one in ins:
+                    if one.get("param") not in pnames:
+                        badin.append(f"{f['id']}→{one.get('param')}")
+            elif drv not in gids and drv not in seen:
                 badchain.append(f"{f['id']}→{drv}")
             if f.get("deformer") and f["deformer"] not in dids:
                 baddfm.append(f"{f['id']}→{f['deformer']}")
             seen.append(f.get("id"))
-        nchain = sum(1 for f in phys if f.get("driver") not in gids)
+        check("physics 的参数输入都指向真参数", not badin,
+              f"坏输入 {badin}" if badin else
+              f"{sum(1 for f in phys if f.get('input'))} 条吃参数")
+        nchain = sum(1 for f in phys if not f.get("input") and f.get("driver") not in gids)
         check("多段摆链的 driver 按根→梢顺序声明", not badchain and not baddfm,
               f"坏链 {badchain} 坏形变器 {baddfm}" if (badchain or baddfm)
               else f"{nchain} 条串在别的摆后面")
@@ -371,6 +382,32 @@ def check_live2d(root):
           "0.5 - 0.5 * cos(t * 3.14159265358979323846)" in
           io.open(os.path.join(root, "src/core/zc.c"), encoding="utf-8").read(),
           "src/core/zc.c:z_ease_sine")
+    # ⑮ 网格形变器与 bend 必须共存、同部件多张网格必须累加（G43 修的两个 bug）。
+    #    单测从像素那头验效果，这里从源码这头把退化路径钉死。
+    zimgc = io.open(os.path.join(root, "src/core/zimg.c"), encoding="utf-8").read()
+    m2 = re.search(r"static void draw_state\(.*?\n\}\n", rigc, re.S)
+    ds = m2.group(0) if m2 else ""
+    check("能定位 draw_state（决定一笔怎么画）", bool(ds), f"{len(ds)} 字符")
+    check("网格路径要把 bend 一起带上", "zimg_draw_mesh_bend_blend" in ds,
+          "mesh+bend 同时画" if "zimg_draw_mesh_bend_blend" in ds else "又退回 if/else 互斥了")
+    check("网格路径不许丢 bend", "st->warped ? st->bx" in ds,
+          "bx/by 传进去了" if "st->warped ? st->bx" in ds else "bend 参数被写死成 0")
+    check("zimg 侧有 mesh+bend 的实现", "zimg_draw_mesh_bend_blend" in zimgc and
+          "zimg_bend_factor(tb, curve_x)" in zimgc, "src/core/zimg.c")
+    mdg = re.search(r"/\* 一个部件可以挂多张网格.*?\n    \}", rigc, re.S)
+    dgs = mdg.group(0) if mdg else ""
+    # 注意：别直接 grep "break" —— 这段代码的注释里就写着"不能找到第一张就 break"，
+    # 会把自己判红（已经踩过一次）。只认带分号的真语句。
+    dgs_code = "\n".join(ln.split("/*")[0] for ln in dgs.splitlines())
+    check("同部件的多张网格要累加",
+          bool(dgs) and "+=" in dgs_code and "break;" not in dgs_code,
+          "累加且不提前 break" if dgs and "+=" in dgs_code and "break;" not in dgs_code
+          else "又变回「找到第一张就 break」了")
+    check("加载时拦住同部件不同尺寸的网格", "网格尺寸不一样" in rigc,
+          "load_deformers 有校验")
+    check("physics 支持参数输入（官方 physics3 的 Input）",
+          "ph->n_in" in rigc and "in_param" in rigc, "zphys.n_in / in_param")
+
     check("pulse 波形不再自带收尾 hack",
           "total - 0.15" not in rigc,
           "干净" if "total - 0.15" not in rigc else "W_PULSE 里还留着 total-0.15 的后门")

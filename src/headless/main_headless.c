@@ -450,7 +450,16 @@ static void handle_request(zsock fd, const http_req *r)
                                 k ? "," : "", zpet_pose_entry_id_at(g_pet, gid, k));
             p += z_snprintf(p, cap - (size_t)(p - body), "]}");
         }
-        z_snprintf(p, cap - (size_t)(p - body), "]}");
+        /* 形变器当前量：摆链（头发/裙摆）的输出就落在这里。
+           光看截图没法判断"裙摆是不是真的在荡"，这组数能直接读。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"deformers\":{");
+        for (i = 0; i < zpet_deform_count(g_pet); ++i) {
+            const char *did = zpet_deform_id_at(g_pet, i);
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\":%.5f",
+                            i ? "," : "", did ? did : "?",
+                            zpet_deform_amount(g_pet, did));
+        }
+        z_snprintf(p, cap - (size_t)(p - body), "}}");
         UNLOCK();
         send_text(fd, 200, "application/json", body);
         return;

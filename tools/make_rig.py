@@ -1517,6 +1517,35 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                      {"c": 1, "r": 4, "dx": 5.8, "dy": 1.2},
                      {"c": 2, "r": 4, "dx": 5.4, "dy": 1.0},
                  ]})
+        # 裙摆的两张网格：seg_torso 是 273x501，裙子占下 42%（y>=290）。
+        # rows=5 → 控制点行落在 y = 0 / 100 / 200 / 301 / 401 / 501，
+        # r=0~2 是上身（一个点都不动），r=3 正好压在裙腰上（当"根"），
+        # r=4/5 是裙身和裙底 —— 所以**裙子不用拆成独立部件**，
+        # 一张挂在躯干上的网格就能只摆裙摆。裙底下的大腿早就拆出来并重绘过了，
+        # 裙摆荡开露出来的是真大腿，不是空洞。
+        # rows=10 不是为了裙摆本身的精度，是为了**上身的 bend**：
+        # 网格路径下 bend 曲线是在控制点上采样、格子内线性插值的，
+        # rows=5 时 u² 曲线被折成 6 段，上身轮廓会有 1000+ 像素的偏移；
+        # rows=10 把这个误差压到百位数。行 y = 501*r/10，裙腰(y≈300) 正好落在 r=6。
+        _SKX = {6: 0.5, 7: 1.8, 8: 4.2, 9: 7.0, 10: 10.0}       # 横摆：越往下甩得越远
+        _SKY = {6: 0.2, 7: 0.7, 8: 1.6, 9: 2.6, 10: 3.8}        # 纵摆：上下滞后
+        rig["deformers"] += [
+            {"id": "skirt_sway_x", "part": "seg_torso", "cols": 2, "rows": 10,
+             "note": "裙摆横摆：裙腰(r=6)固定，越往下甩得越远，中列比两侧多一点",
+             "points": [
+                 {"c": c, "r": r, "dx": round(v * (1.08 if c == 1 else 1.0), 3),
+                  **({"dy": round(v * 0.09, 3)} if r == 10 else {})}
+                 for r, v in _SKX.items() for c in (0, 1, 2)
+             ]},
+            {"id": "skirt_sway_y", "part": "seg_torso", "cols": 2, "rows": 10,
+             "note": "裙摆纵摆：上下滞后，裙底顺带略微张开/收拢（布料的伞效应）",
+             "points": [
+                 {"c": c, "r": r, "dy": round(v * (1.1 if c == 1 else 1.0), 3),
+                  **({"dx": round(v * (-0.32 if c == 0 else 0.32), 3)}
+                     if (c != 1 and r >= 8) else {})}
+                 for r, v in _SKY.items() for c in (0, 1, 2)
+             ]},
+        ]
         rig["physics"] += [
             {"id": "side_l_x", "part": "hair_side_l", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
@@ -1534,6 +1563,26 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "deformer": "side_r_s",
              "ratio": 0.85, "stiffness": 22, "damping": 3.0, "max": 1.0,
              "note": "右侧发第二段（梢）"},
+            # —— 裙摆（G43）——
+            # 照官方 Hiyori 的 physics3：裙子不是"串成多段"，而是**横摆和纵摆两条
+            # 独立通道**（「スカート　横揺れ」/「スカート　縦揺れ」）。
+            #   横摆 IN = ParamBodyAngleX(X) + ParamBodyAngleZ(Angle)，各 weight 100
+            #   纵摆 IN = ParamBodyAngleY(X)，weight 100
+            #   两条都不吃头部参数 —— 裙子挂在身上，摇头不该让它动。
+            # 纵摆比横摆钝（官方 mobility 0.8/0.9、delay 0.9/0.6），这里体现为
+            # 更小的刚度 + 更大的阻尼比。
+            #
+            # 输入必须是**参数**而不是驱动组：ParamBodyAngleX 绑的是
+            # seg_torso.bend_x，弯曲是非仿射的、根本不进组矩阵，拿组位移读不到。
+            {"id": "skirt_x", "part": "seg_torso", "deformer": "skirt_sway_x",
+             "input": [{"param": "ParamBodyAngleX", "weight": 1.0},
+                       {"param": "ParamBodyAngleZ", "weight": 1.0}],
+             "ratio": 0.12, "stiffness": 24, "damping": 6.5, "max": 1.0,
+             "note": "裙摆横摆：上身左右倾/旋转带动，裙腰不动、裙底甩出去"},
+            {"id": "skirt_y", "part": "seg_torso", "deformer": "skirt_sway_y",
+             "input": [{"param": "ParamBodyAngleY", "weight": 1.0}],
+             "ratio": 0.055, "stiffness": 19, "damping": 6.8, "max": 1.0,
+             "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更钝"},
             {"id": "back_x", "part": "hair_back", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
              "ratio": 0.22, "stiffness": 72, "damping": 8.0, "max": 3.5,

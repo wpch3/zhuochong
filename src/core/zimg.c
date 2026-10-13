@@ -722,16 +722,40 @@ void zimg_draw_mesh(zimg *dst, const zimg *src, const double m[6], double opacit
 void zimg_draw_mesh_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
                           int cols, int rows, const double *offsets, int blend)
 {
+    zimg_draw_mesh_bend_blend(dst, src, m, opacity, cols, rows, offsets,
+                              0.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT, blend);
+}
+
+/* 网格形变 + 平滑形变一起画。
+   以前这两条路是 if/else 互斥的：部件一旦挂上形变器，它的 bend_x/bend_y 就被整个
+   丢掉。多段摆链正是"第一段写 bend、第二段写形变器"，所以第一段一直白写。
+   Live2D 的变形器本来就是可以嵌套叠加的，这里按同样的语义来：
+   先把控制点按 offsets（源图像素）挪好、过矩阵，再在**目标坐标**上叠 bend 位移——
+   和 draw_impl 里逐像素那套用的是同一个 zimg_bend_factor，口径一致。
+   差别只在采样密度：warp 是逐像素求 t，这里是逐控制点求 t、格子内线性插值，
+   所以网格行数太少时 bend 的曲线会被折线化（rows>=4 肉眼已看不出）。 */
+void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
+                               int cols, int rows, const double *offsets,
+                               double bend_x, int curve_x, double bend_y, int curve_y,
+                               int blend)
+{
     int c, rr, moved = 0, np;
+    int bent = (fabs(bend_x) > 1e-9 || fabs(bend_y) > 1e-9);
     if (!dst || !src || cols < 1 || rows < 1 || !offsets) {
-        zimg_draw_blend(dst, src, m, opacity, blend); return;
+        if (bent) zimg_draw_warp_blend(dst, src, m, opacity, bend_x, curve_x, bend_y, curve_y, blend);
+        else      zimg_draw_blend(dst, src, m, opacity, blend);
+        return;
     }
     if (cols > 16) cols = 16;
     if (rows > 16) rows = 16;
     np = (cols + 1) * (rows + 1);
     for (c = 0; c < np * 2; ++c)
         if (fabs(offsets[c]) > 1e-6) { moved = 1; break; }
-    if (!moved) { zimg_draw_blend(dst, src, m, opacity, blend); return; }  /* 没挪控制点就走原路 */
+    if (!moved) {                        /* 没挪控制点就走原路（但 bend 不能丢） */
+        if (bent) zimg_draw_warp_blend(dst, src, m, opacity, bend_x, curve_x, bend_y, curve_y, blend);
+        else      zimg_draw_blend(dst, src, m, opacity, blend);
+        return;
+    }
 
     for (rr = 0; rr < rows; ++rr) {
         for (c = 0; c < cols; ++c) {
@@ -751,6 +775,11 @@ void zimg_draw_mesh_blend(zimg *dst, const zimg *src, const double m[6], double 
                 double ly = sy[k] + offsets[idx[k] * 2 + 1];
                 dxp[k] = m[0] * lx + m[2] * ly + m[4];
                 dyp[k] = m[1] * lx + m[3] * ly + m[5];
+                if (bent) {               /* 叠加平滑形变（和 warp 同一套曲线） */
+                    double tb = sy[k] / (double)src->h;
+                    dxp[k] += bend_x * zimg_bend_factor(tb, curve_x);
+                    dyp[k] += bend_y * zimg_bend_factor(tb, curve_y);
+                }
             }
             {   /* 一个格子 = 两个三角形 */
                 double tsx[3], tsy[3], tdx[3], tdy[3];

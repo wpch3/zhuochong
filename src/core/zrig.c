@@ -166,6 +166,13 @@ typedef struct {
     int    driver_phys;       /* >=0 = 上一段的下标（必须比自己小，保证先算父段） */
     int    deform;            /* >=0 = 输出到网格形变器的 amount，而不是部件通道 */
     double out_last;          /* 上一帧输出，供下一段当输入 */
+    /* 参数输入（对齐官方 .physics3 的 Input 数组）：官方摆链的输入**就是参数**，
+       不是"某个组移动了多少像素"。我们原来只会读驱动组的位移，于是凡是
+       「只改形状、不改组矩阵」的参数（典型就是 ParamBodyAngleX → seg_torso.bend_x，
+       弯曲是非仿射的，根本不在组矩阵里）都驱动不了摆链。裙摆就卡在这儿。 */
+    int    n_in;
+    int    in_param[4];       /* 参数下标 */
+    double in_weight[4];      /* 对应权重（官方的 Input[].Weight，那边是 0..100） */
 } zphys;
 
 /* 指针跟随（Live2D 的 ParamAngleX/Y/Z + ParamBodyAngleX 那一套）：
@@ -789,6 +796,21 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
         z_strlcpy(g->part_id, part, sizeof(g->part_id));
         g->cols = (int)zjson_int(zjson_obj_get((zjson *)dj, "cols"), 2);
         g->rows = (int)zjson_int(zjson_obj_get((zjson *)dj, "rows"), 2);
+        {
+            /* 同一个部件上的多张网格要逐点相加（裙摆 = 横摆 + 纵摆两张），
+               尺寸不一样就加不起来。与其在渲染里静默丢掉一张，不如这里就拦住。 */
+            int q;
+            for (q = 0; q < r->ndeforms; ++q) {
+                if (r->deforms[q].part != g->part) continue;
+                if (r->deforms[q].cols == g->cols && r->deforms[q].rows == g->rows) continue;
+                zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                            "形变器 '%s' 和同一部件上的 '%s' 网格尺寸不一样"
+                            "（%dx%d vs %dx%d）：同部件的多张网格要逐点相加，必须同尺寸",
+                            id, r->deforms[q].id, g->cols, g->rows,
+                            r->deforms[q].cols, r->deforms[q].rows);
+                return -1;
+            }
+        }
         if (g->cols < 1 || g->rows < 1 || g->cols > 16 || g->rows > 16) {
             zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
                         "形变器 '%s' 的 cols/rows 要在 1~16（实为 %d×%d）",
@@ -818,6 +840,9 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
     return 0;
 }
 
+/* param_find 的函数体在下面（参数层那一节），physics 的 input 要先用到它 */
+static int param_find(const zrig *r, const char *id);
+
 static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
 {
     size_t i, n = zjson_count(jp);
@@ -844,6 +869,33 @@ static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
                         "part '%s' 不存在", pid ? pid : "(缺)");
             return -1;
         }
+        /* input: [{"param":"ParamBodyAngleX","weight":1.0}, ...]
+           有它就不看 driver（官方 physics3 也是只有 Input 一种来源）。 */
+        ph->n_in = 0;
+        {
+            const zjson *ij = zjson_obj_get(pj, "input");
+            if (ij && ij->type == ZJSON_ARR) {
+                int k, n = (int)zjson_count((zjson *)ij);
+                if (n > 4) {
+                    zdiag_error(d, file, pj ? pj->line : 0, 0, path,
+                                "input 最多 4 项（给了 %d 项）", n);
+                    return -1;
+                }
+                for (k = 0; k < n; ++k) {
+                    const zjson *one = zjson_at(ij, k);
+                    const char *pnm = zjson_str(zjson_obj_get(one, "param"), NULL);
+                    int idx = pnm ? param_find(r, pnm) : -1;
+                    if (idx < 0) {
+                        zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                    "input[%d] 的参数 '%s' 不存在", k, pnm ? pnm : "(缺)");
+                        return -1;
+                    }
+                    ph->in_param[ph->n_in] = idx;
+                    ph->in_weight[ph->n_in] = zjson_num(zjson_obj_get(one, "weight"), 1.0);
+                    ph->n_in++;
+                }
+            }
+        }
         ph->driver = drv ? find_group(r, drv) : -1;
         ph->driver_phys = -1;
         if (ph->driver < 0 && drv) {
@@ -852,10 +904,11 @@ static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
             for (q = 0; q < r->nphys; ++q)
                 if (strcmp(r->phys[q].id, drv) == 0) { ph->driver_phys = q; break; }
         }
-        if (ph->driver < 0 && ph->driver_phys < 0) {
+        if (ph->driver < 0 && ph->driver_phys < 0 && ph->n_in == 0) {
             zdiag_error(d, file, pj ? pj->line : 0, 0, path,
-                        "driver '%s' 既不是组，也不是**写在它前面**的另一条 physics"
-                        "（多段摆要按根→梢的顺序声明）", drv ? drv : "(缺)");
+                        "没有输入：driver '%s' 既不是组，也不是**写在它前面**的另一条 physics"
+                        "（多段摆要按根→梢的顺序声明），也没给 input 参数数组",
+                        drv ? drv : "(缺)");
             return -1;
         }
         ph->axis = (ax && (*ax == 'y' || *ax == 'Y')) ? 1 : 0;
@@ -2500,6 +2553,14 @@ static void physics_input(const zrig *r, const zphys *ph, double *out_x, double 
     double m[6], x0, y0;
     const zpart *p = &r->parts[ph->part];
     *out_x = *out_y = 0.0;
+    if (ph->n_in > 0) {                  /* 参数输入（官方 physics3 的 Input） */
+        int k;
+        double sum = 0.0;
+        for (k = 0; k < ph->n_in; ++k)
+            sum += param_effective(r, ph->in_param[k]) * ph->in_weight[k];
+        *out_x = *out_y = sum;
+        return;
+    }
     if (ph->driver_phys >= 0) {          /* 多段摆：输入 = 上一段这一帧的输出 */
         *out_x = *out_y = r->phys[ph->driver_phys].out_last;
         return;
@@ -2527,7 +2588,7 @@ static void physics_update(zrig *r, double now)
     for (i = 0; i < r->nphys; ++i) {
         zphys *ph = &r->phys[i];
         double in, target, acc, out;
-        if (ph->part < 0 || (ph->driver < 0 && ph->driver_phys < 0)) continue;
+        if (ph->part < 0 || (ph->driver < 0 && ph->driver_phys < 0 && ph->n_in == 0)) continue;
         {
             double ix, iy;
             physics_input(r, ph, &ix, &iy);
@@ -3015,20 +3076,27 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     /* 网格形变（A5）：形变器的位移写的是"原始素材像素"，而这里画的可能是缩放过的
        缓存图，所以要按 src->w / img->w 折算，换画布缩放时形变量才不会跟着变。 */
     {
+        /* 一个部件可以挂多张网格（裙摆就是横摆 + 纵摆两张）：全部累加，
+           不能找到第一张就 break——那样第二张起全部静默失效。
+           网格尺寸必须一致才能逐点相加，load_deformers 里已经把这条拦住了。 */
         int di;
+        double k = (p->img && p->img->w > 0) ? (double)src->w / (double)p->img->w : 1.0;
         for (di = 0; di < r->ndeforms; ++di) {
             const zdeform *cand = &r->deforms[di];
+            int np, q;
             if (cand->part != mi && cand->part != pi) continue;
             if (fabs(cand->amount) < 1e-6) continue;
-            st->dg = cand;
-            break;
-        }
-        if (st->dg) {
-            double k = (p->img && p->img->w > 0) ? (double)src->w / (double)p->img->w : 1.0;
-            int np = (st->dg->cols + 1) * (st->dg->rows + 1), q;
+            if (!st->dg) {
+                st->dg = cand;
+                np = (cand->cols + 1) * (cand->rows + 1);
+                for (q = 0; q < np * 2; ++q) st->mesh[q] = 0.0;
+            } else if (cand->cols != st->dg->cols || cand->rows != st->dg->rows) {
+                continue;                       /* 理论上不会发生（加载时已校验） */
+            }
+            np = (cand->cols + 1) * (cand->rows + 1);
             for (q = 0; q < np; ++q) {
-                st->mesh[q * 2]     = st->dg->ox[q] * st->dg->amount * k;
-                st->mesh[q * 2 + 1] = st->dg->oy[q] * st->dg->amount * k;
+                st->mesh[q * 2]     += cand->ox[q] * cand->amount * k;
+                st->mesh[q * 2 + 1] += cand->oy[q] * cand->amount * k;
             }
         }
     }
@@ -3039,8 +3107,11 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
 static void draw_state(zimg *dst, const zdrawst *st, int blend)
 {
     if (st->dg)
-        zimg_draw_mesh_blend(dst, st->src, st->m, st->opacity,
-                             st->dg->cols, st->dg->rows, st->mesh, blend);
+        /* 网格 + 平滑形变一起画：以前这里丢掉 bend，多段摆链的第一段就白写了 */
+        zimg_draw_mesh_bend_blend(dst, st->src, st->m, st->opacity,
+                                  st->dg->cols, st->dg->rows, st->mesh,
+                                  st->warped ? st->bx : 0.0, st->curve_x,
+                                  st->warped ? st->by : 0.0, st->curve_y, blend);
     else if (st->warped)
         zimg_draw_warp_blend(dst, st->src, st->m, st->opacity,
                              st->bx, st->curve_x, st->by, st->curve_y, blend);

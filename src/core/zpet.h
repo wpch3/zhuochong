@@ -73,6 +73,10 @@ void   zpet_set_blink(zpet *p, double v);
 void   zpet_set_blink_enabled(zpet *p, int on);  /* 关=常睁，开=交回自动 */
 int    zpet_blink_enabled(const zpet *p);
 double zpet_blink_manual(const zpet *p);
+/* 形变器（网格形变）当前量：摆链输出多半落在这儿，便于观测与端到端自检 */
+int         zpet_deform_count(const zpet *p);
+const char *zpet_deform_id_at(const zpet *p, int i);
+double      zpet_deform_amount(const zpet *p, const char *id);
 void   zpet_set_gaze(zpet *p, double nx, double ny, int on);
 /* 表情层（≈ Live2D expression）：叠在当前动作之上，和动作互不覆盖 */
 int    zpet_expression_count(const zpet *p);

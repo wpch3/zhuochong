@@ -795,6 +795,23 @@ int zpet_blink_enabled(const zpet *p)
     return (p && p->rig) ? zrig_blink_enabled(p->rig) : 0;
 }
 
+/* 形变器当前量（网格形变的 amount）。摆链的输出大多落在这里，
+   暴露出来才能在不截图的情况下看见"裙摆现在荡到哪了"。 */
+int zpet_deform_count(const zpet *p)
+{
+    return (p && p->rig) ? zrig_deform_count(p->rig) : 0;
+}
+
+const char *zpet_deform_id_at(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_deform_id(p->rig, i) : NULL;
+}
+
+double zpet_deform_amount(const zpet *p, const char *id)
+{
+    return (p && p->rig) ? zrig_deform_amount(p->rig, id) : 0.0;
+}
+
 double zpet_blink_manual(const zpet *p)
 {
     return (p && p->rig) ? zrig_blink_manual(p->rig) : -1.0;

@@ -2530,6 +2530,182 @@ static void test_sleep_wake_blink(void)
      ③ 换了通道以后动作还是那个动作（挥手真的把手举起来、惊讶真的张嘴）。 */
 /* 动作淡入淡出要和官方一条曲线：CubismMath.getEasingSine = 0.5 − 0.5·cos(πt)，
    而且非循环动作得按自己的 FadeOutTime 收尾，循环动作（endTime<0）不收。 */
+/* 网格形变器与平滑形变（bend）必须能共存，而且同一部件上的多张网格要累加。
+   这两条以前都是错的：draw_state 里 mesh 和 bend 是 if/else，形变器一上来
+   bend 就被整个丢掉（多段摆链的第一段因此白写）；找形变器又是找到第一张就
+   break，第二张起静默失效。合成 rig 让每种组合各渲一帧，直接比像素。 */
+static void test_mesh_bend_coexist(void)
+{
+    char tmp_rig[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    FILE *f;
+    SECTION("形变器 × 平滑形变：能共存，且同部件多张网格要累加");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(tmp_rig, sizeof(tmp_rig), "/tmp/zc_meshbend_rig.json");
+    f = fopen(tmp_rig, "wb");
+    CHECK(f != NULL, "应能写出合成 rig");
+    if (!f) return;
+    /* 一个部件、两张同尺寸网格、一条绑 bend_x 的参数。
+       网格只动底边（r=2），bend 用 root 曲线（底固定、顶最大）——
+       两者作用在**不同的行**上，所以各自生效与否一眼能分开。 */
+    fprintf(f,
+        "{\"schema_version\":\"1.0\",\"id\":\"mb\",\"name\":\"mb\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{\"root\":{\"pivot\":[200,400],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"p0\",\"file\":\"sprites/seg_torso.png\","
+        "\"group\":\"root\",\"pos\":[40,20],\"layer\":1}],"
+        "\"deformers\":["
+        "{\"id\":\"d_a\",\"part\":\"p0\",\"cols\":2,\"rows\":2,\"points\":["
+        "{\"c\":0,\"r\":2,\"dx\":18},{\"c\":1,\"r\":2,\"dx\":18},{\"c\":2,\"r\":2,\"dx\":18}]},"
+        "{\"id\":\"d_b\",\"part\":\"p0\",\"cols\":2,\"rows\":2,\"points\":["
+        "{\"c\":0,\"r\":2,\"dy\":16},{\"c\":1,\"r\":2,\"dy\":16},{\"c\":2,\"r\":2,\"dy\":16}]}],"
+        "\"params\":["
+        "{\"id\":\"PBend\",\"label\":\"b\",\"min\":-1,\"max\":1,\"default\":0,"
+        "\"binds\":[{\"part\":\"p0\",\"param\":\"bend_x\",\"scale\":26}]},"
+        "{\"id\":\"PDefA\",\"label\":\"a\",\"min\":0,\"max\":1,\"default\":0,"
+        "\"binds\":[{\"deformer\":\"d_a\",\"scale\":1}]},"
+        "{\"id\":\"PDefB\",\"label\":\"b2\",\"min\":0,\"max\":1,\"default\":0,"
+        "\"binds\":[{\"deformer\":\"d_b\",\"scale\":1}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    fclose(f);
+    zdiag_init(&d);
+    r = zrig_load(tmp_rig, dir, &d);
+    CHECK(r != NULL, "合成 rig 应能装载（%s）", d.count ? d.items[0].msg : "-");
+    if (!r) return;
+    {
+        /* 四种组合各取一张帧的"不透明像素分布指纹"：用每一列的最高不透明行，
+           能同时反映横向位移和纵向位移，比单纯数像素数灵敏。 */
+        double base[4] = {0, 0, 0, 0};
+        int i;
+        struct { double bend, da, db; const char *name; } cases[4] = {
+            { 0.0, 0.0, 0.0, "都不开" },
+            { 1.0, 0.0, 0.0, "只有 bend" },
+            { 0.0, 1.0, 0.0, "只有网格 A" },
+            { 1.0, 1.0, 0.0, "bend + 网格 A" }
+        };
+        for (i = 0; i < 4; ++i) {
+            const zimg *im;
+            int w = 0, h = 0, x, y;
+            double acc = 0.0;
+            zrig_param_set(r, "PBend",  cases[i].bend);
+            zrig_param_set(r, "PDefA",  cases[i].da);
+            zrig_param_set(r, "PDefB",  cases[i].db);
+            zrig_tick(r, 100.0 + i);
+            im = zrig_frame(r, 1.0, &w, &h);
+            CHECK(im != NULL, "应能渲染（%s）", cases[i].name);
+            if (!im) { zrig_free(r); return; }
+            for (x = 0; x < w; ++x)
+                for (y = 0; y < h; ++y)
+                    if (im->px[((size_t)y * im->w + x) * 4 + 3] > 40) { acc += x * 1.0 + y * 0.37; break; }
+            base[i] = acc;
+        }
+        CHECK(fabs(base[1] - base[0]) > 50.0,
+              "bend 单独要能改变画面（指纹 %.1f → %.1f）", base[0], base[1]);
+        CHECK(fabs(base[2] - base[0]) > 50.0,
+              "网格单独要能改变画面（指纹 %.1f → %.1f）", base[0], base[2]);
+        /* 核心：两个一起开时，不许退化成"只有网格"——那就是 bend 被吃了 */
+        CHECK(fabs(base[3] - base[2]) > 50.0,
+              "网格和 bend 必须同时生效，不能被网格吃掉（只有网格 %.1f，两个一起 %.1f）",
+              base[2], base[3]);
+    }
+    {
+        /* 同部件两张网格：要测的是"两张都算进去了"。
+           只比 A+B 和 B 是不够的 —— 掉了 B 的实现会退化成 A，照样不等于 B，
+           负控就抓不住（实测过，这正是判据写松的典型）。三个都要比。 */
+        double v[3] = {0, 0, 0};     /* 0=只有 A，1=只有 B，2=两张一起 */
+        int i;
+        for (i = 0; i < 3; ++i) {
+            const zimg *im;
+            int w = 0, h = 0, x, y;
+            double acc = 0.0;
+            zrig_param_set(r, "PBend", 0.0);
+            zrig_param_set(r, "PDefA", (i == 0 || i == 2) ? 1.0 : 0.0);
+            zrig_param_set(r, "PDefB", (i == 1 || i == 2) ? 1.0 : 0.0);
+            zrig_tick(r, 200.0 + i);
+            im = zrig_frame(r, 1.0, &w, &h);
+            if (!im) break;
+            for (x = 0; x < w; ++x)
+                for (y = 0; y < h; ++y)
+                    if (im->px[((size_t)y * im->w + x) * 4 + 3] > 40) { acc += x * 1.0 + y * 0.37; break; }
+            v[i] = acc;
+        }
+        CHECK(fabs(v[0] - v[1]) > 50.0,
+              "两张网格本身要有区别（只有 A %.1f，只有 B %.1f）", v[0], v[1]);
+        CHECK(fabs(v[2] - v[0]) > 50.0,
+              "两张一起时第二张不许被丢掉（只有 A %.1f，A+B %.1f）", v[0], v[2]);
+        CHECK(fabs(v[2] - v[1]) > 50.0,
+              "两张一起时第一张不许被丢掉（只有 B %.1f，A+B %.1f）", v[1], v[2]);
+    }
+    zrig_free(r);
+}
+
+/* 裙摆摆链（G43）：照官方 Hiyori 的 physics3，横摆吃身体左右、纵摆吃身体上下，
+   两条都不吃头部参数；静止下来要收敛回零（只给惯性，不把裙子永久吹偏）。 */
+static void test_skirt_physics(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    int i;
+    double sway_x = 0.0, head_x = 0.0, rest_x = 0.0, nod_y = 0.0;
+    SECTION("裙摆摆链：参数输入 / 只吃身体不吃头 / 静止归零");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（裙摆）");
+    if (!r) return;
+
+    /* ① 摇摆：横摆通道要被身体带起来 */
+    for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);
+    zrig_action_request(r, "sway", "test", 1);
+    for (i = 1; i <= 240; ++i) {
+        zrig_tick(r, 2.0 + i / 60.0);
+        if (fabs(zrig_deform_amount(r, "skirt_sway_x")) > sway_x)
+            sway_x = fabs(zrig_deform_amount(r, "skirt_sway_x"));
+    }
+    CHECK(sway_x > 0.15, "摇摆时裙摆要横着甩（实际峰值 %.3f）", sway_x);
+    CHECK(sway_x < 1.0, "裙摆横摆不该一路顶到限幅（实际峰值 %.3f）", sway_x);
+
+    /* ② 点头：纵摆要动（官方 スカート縦揺れ 吃 ParamBodyAngleY） */
+    zrig_action_request(r, "nod", "test", 1);
+    for (i = 1; i <= 180; ++i) {
+        zrig_tick(r, 10.0 + i / 60.0);
+        if (fabs(zrig_deform_amount(r, "skirt_sway_y")) > nod_y)
+            nod_y = fabs(zrig_deform_amount(r, "skirt_sway_y"));
+    }
+    CHECK(nod_y > 0.15 && nod_y < 1.0,
+          "上身上下起伏要带起裙摆纵摆，且不顶限幅（实际峰值 %.3f）", nod_y);
+
+    /* ③ 只摇头：裙子挂在身上，不该跟着头动（官方的 Input 里没有 ParamAngle*） */
+    zrig_action_request(r, "idle", "test", 1);
+    for (i = 0; i < 240; ++i) zrig_tick(r, 20.0 + i / 60.0);
+    zrig_param_reset_all(r);
+    for (i = 1; i <= 240; ++i) {
+        double t = 24.0 + i / 60.0;
+        zrig_param_set(r, "ParamAngleX", 30.0 * ((i / 20) % 2 ? -1.0 : 1.0));
+        zrig_param_set(r, "ParamAngleZ", 30.0 * ((i / 20) % 2 ? -1.0 : 1.0));
+        zrig_tick(r, t);
+        if (fabs(zrig_deform_amount(r, "skirt_sway_x")) > head_x)
+            head_x = fabs(zrig_deform_amount(r, "skirt_sway_x"));
+    }
+    CHECK(head_x < 0.08,
+          "光摇头不该把裙子带起来（头摆满格时裙摆仍有 %.3f）", head_x);
+
+    /* ④ 身体保持倾斜不动：摆链收敛，输出回零（只加惯性，不永久偏） */
+    zrig_param_reset_all(r);
+    for (i = 1; i <= 600; ++i) {
+        zrig_param_set(r, "ParamBodyAngleX", 10.0);
+        zrig_tick(r, 40.0 + i / 60.0);
+    }
+    rest_x = fabs(zrig_deform_amount(r, "skirt_sway_x"));
+    CHECK(rest_x < 0.02,
+          "身体停住后裙摆要收敛回零，不能被永久吹偏（残留 %.4f）", rest_x);
+    zrig_param_reset_all(r);
+    zrig_free(r);
+}
+
 static void test_action_fade_sine(void)
 {
     char rig_path[1024], dir[1024];
@@ -3674,6 +3850,8 @@ int main(int argc, char **argv)
     test_eye_smile();
     test_action_param_channels();
     test_action_fade_sine();
+    test_mesh_bend_coexist();
+    test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();
     test_physics();

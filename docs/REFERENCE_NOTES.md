@@ -372,3 +372,69 @@ rhubarb 在排到 G19 时读，其余按模块排期到了再读。
 
 **查证方式不变**：`gh api repos/<owner>/<repo>/git/trees/HEAD?recursive=1` 列文件 →
 grep 定位 → `contents/<path>` 取单文件，不整克隆；读到的结论连同 URL 回写本文件。
+
+
+---
+
+## 第八批（2026-10-13）：裙子的物理该怎么做
+
+### 1. 先翻遍官方示例，看谁给裙子做了物理
+
+`gh api repos/Live2D/CubismWebSamples/...`，8 个模型的 `PhysicsDictionary`：
+
+| 模型 | 组数 | 名字 |
+|---|---|---|
+| Haru | 4 | 前髪 / 横髪 / 後ろ髪 / **スカーフ** |
+| **Hiyori** | 11 | 前髪 / 後ろ髪 / リボン髪 / **スカート　横揺れ** / **スカート　縦揺れ** / リボン体 / 胸揺れ / サイドアップ左右 / 横髪左右 |
+| Mao | 16 | …帽子つば / 帽子リボン / 羽 / パーカーひも / 首飾り / **ローブ揺れ** / **ローブ揺れY** |
+| Natori | 11 | …燕尾揺れ / 懐中時計腰 / 腰のチェーン |
+| Ren | 16 | 体X / 重心 / 体Y / 肩 / …襟ひも / ネックレス / **ジャケット** |
+| Rice | 9 | 後髪ABC / 左右横髪 / 前髪 / 頭リボン / 胸リボン / 腰リボン |
+| Mark | 1 | 髪揺れ |
+| Wanko | 4 | お椀揺れ / 揺れ / 右耳 / 左耳 |
+
+**Haru 这种"只给头发 + 一条围巾"的最常见；真给裙子做物理的是 Hiyori**，
+而且 Mao 的ローブ（长袍）也是 **X 和 Y 分成两组**——这是布料的通用写法。
+
+### 2. Hiyori 的裙子怎么配的（本轮直接照抄的拓扑）
+
+```
+## スカート　横揺れ
+   IN  ParamBodyAngleX  type=X      weight=100
+   IN  ParamBodyAngleZ  type=Angle  weight=100
+   OUT ParamSkirt       type=Angle  vIdx=1 scale=1.434 weight=100
+    v0 pos=(0,0)  mob=1   delay=1   accel=1   radius=0
+    v1 pos=(0,10) mob=0.9 delay=0.6 accel=1.5 radius=10
+
+## スカート　縦揺れ
+   IN  ParamBodyAngleY  type=X      weight=100
+   OUT ParamSkirt2      type=Angle  vIdx=1 scale=1.306 weight=100
+    v1 pos=(0,10) mob=0.8 delay=0.9 accel=2   radius=10
+```
+
+读出四条结论：
+
+1. **裙子不是"串成多段"，是横摆、纵摆两条独立通道。** 原计划"裙摆接多段摆链"
+   按这个改成了两条单段。
+2. **输入只有身体参数，一个头部参数都没有**（对比头发是 `ParamAngleX/Z` 60 +
+   `ParamBodyAngleX/Z` 40）。裙子挂在身上，摇头不该带起裙摆——已写成单测。
+3. **纵摆比横摆钝**：mobility 0.8 vs 0.9、delay 0.9 vs 0.6、accel 2 vs 1.5。
+4. 摆长（v1 的 y）是布料长度的量纲：裙子/围巾 10、头发 8、**胸揺れ只有 3**。
+
+### 3. Inochi2D 的阻尼口径（比裸写 damping 好用）
+
+`Inochi2D/inochi2d` `source/inochi2d/nodes/legacy/simplephysics.d`：
+
+```d
+float lengthRatio = driver.finalGravity / driver.finalLength;
+float critDamp = 2 * sqrt(lengthRatio);
+float dd = -lengthRatio * sin(angle);
+dd -= dAngle * driver.finalAngleDamping * critDamp;
+```
+
+它把阻尼表示成**相对临界阻尼的比例**（`angleDamping × 2√(g/L)`），而不是裸系数。
+好处是这个数直接读得懂：<1 会回弹、=1 不回弹。我们的弹簧是
+`acc = k(target−pos) − c·vel`，对应 **阻尼比 = c / (2√k)**。
+照这个口径回头看自己的参数：头发 0.40、裙摆横摆 0.66、裙摆纵摆 0.78 ——
+布料比头发钝，和 Hiyori 的 mobility/delay 差异方向一致。
+（Inochi2D 还有 `SpringPendulum`，摆长也能伸缩，我们暂时用不上。）

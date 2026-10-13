@@ -283,6 +283,35 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 
 ---
 
+### physics 的输入输出：输入已经参数化，输出还没有（2026-10-13）
+
+官方 `.physics3.json` 的一组摆链长这样：
+
+```
+Input :  [{Source: ParamBodyAngleX, Type: X,     Weight: 100},
+          {Source: ParamBodyAngleZ, Type: Angle, Weight: 100}]
+Output:  [{Destination: ParamSkirt, Type: Angle, Scale: 1.434, Weight: 100}]
+Vertices: v0(0,0) mobility 1   delay 1   accel 1   radius 0
+          v1(0,10) mobility 0.9 delay 0.6 accel 1.5 radius 10
+```
+
+**输入**：2026-10-13 起我们也支持参数输入（`physics[].input` 数组，
+对应官方的 `Input`），裙摆两条就是这么接的。原来只能"读某个驱动组的位移"，
+碰上 `ParamBodyAngleX → seg_torso.bend_x` 这种只改形状不改组矩阵的参数就读不到。
+组驱动的写法保留，两种可以共存（头发仍走组驱动）。
+
+**输出**：我们仍然直接写部件通道或形变器 `amount`，官方是写回一个参数
+（`ParamSkirt`）再由美术把那个参数绑到形变器上。差别是**多一层间接**：
+官方那层让动作/表情也能手 K 裙摆。这项列为 **GAPS G44**，纯增量，不影响现有素材。
+
+**顶点参数的对应**：官方用 `mobility / delay / acceleration / radius` 描述摆，
+我们用 `stiffness / damping / ratio / max`。两者都能表达"摆长决定固有频率、
+阻尼决定晃几下"，换算不是一一对应，但有个好用的口径——
+**阻尼比 = damping / (2·√stiffness)**（Inochi2D 的 `critDamp = 2·sqrt(g/L)` 同一回事）。
+现在的取值：头发 0.40（晃得欢）、裙摆横摆 0.66、裙摆纵摆 0.78（布料更钝）。
+
+---
+
 ## 三、美术/素材规范对照
 
 | 规范 | 官方说法 | 小寻 | 闸门 |

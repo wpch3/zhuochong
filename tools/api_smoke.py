@@ -296,6 +296,36 @@ def run(base, root):
         elif dt > 0.78: tail_min = min(tail_min, v)
         time.sleep(0.03)
     check("surprised 中段手臂要摆出去", mid_peak > 1.2, "峰值 %.2f" % mid_peak)
+    # 裙摆摆链（G43）：ParamBodyAngleX 只绑 seg_torso.bend_x，不动头组，
+    # 所以把它一把推到满格后，画面里还在继续变的就只剩裙摆的惯性。
+    # 没有物理的话，参数一写完画面立刻定住，连抓几帧会是同一张。
+    a.hit("/api/action?id=idle&force=1"); time.sleep(0.4)
+    a.hit("/api/param?id=ParamBodyAngleX&reset=1"); time.sleep(0.6)
+    a.hit("/api/param?id=ParamBodyAngleX&v=10")
+    hs = []
+    for _ in range(7):
+        h, _ = a.frame_hash()
+        hs.append(h)
+        time.sleep(0.07)
+    check("推上身一把，裙摆要继续荡几帧（惯性）", len(set(hs)) >= 3,
+          "%d/%d 帧不同" % (len(set(hs)), len(hs)))
+    # 收敛只能看数值，不能看整帧 hash —— idle 一直在跑，画面永远不会完全静止。
+    # /api/info.json 的 deformers 就是摆链的实时输出。
+    dfm = (a.json("/api/info.json") or {}).get("deformers") or {}
+    check("info.json 暴露形变器当前量（摆链可观测）",
+          "skirt_sway_x" in dfm and "skirt_sway_y" in dfm,
+          " ".join(sorted(dfm)[:6]))
+    peak = 0.0
+    for _ in range(10):
+        dfm = (a.json("/api/info.json") or {}).get("deformers") or {}
+        peak = max(peak, abs(dfm.get("skirt_sway_x") or 0.0))
+        time.sleep(0.05)
+    time.sleep(2.0)                       # 等摆链收敛
+    rest = abs(((a.json("/api/info.json") or {}).get("deformers") or {}).get("skirt_sway_x") or 0.0)
+    check("停住之后裙摆要收敛回零（只给惯性，不永久吹偏）", rest < 0.05,
+          "刚推时 %.3f → 静止后 %.4f" % (peak, rest))
+    a.hit("/api/param?id=ParamBodyAngleX&reset=1"); time.sleep(0.5)
+
     check("非循环动作结束前要淡出（FadeOutTime）",
           tail_min < max(mid_peak * 0.5, 0.9),
           "中段峰 %.2f → 尾窗最小 %.2f" % (mid_peak, tail_min))
