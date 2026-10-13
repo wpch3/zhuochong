@@ -386,6 +386,15 @@ function slotOf(id) {
     const missing = pf.providers.filter((p) => !fs.existsSync(path.join(provDir, p.id + ".json")));
     CHECK(missing.length === 0,
           "清单里的供应商都应有契约文件（缺 " + missing.map((m) => m.id).join(",") + "）");
+    /* 上面那些只数行数和标签数 —— 字段名写错（清单把 capabilities 扁平成 caps、
+       balance 扁平成 balance_mode）时行数照样对，断言照样绿。所以这里按内容核对：
+       真实的供应商归属和余额口径必须出现在面板文本里。 */
+    const apiProv = pf.providers.filter((p) => p.balance_mode === "api");
+    CHECK(apiProv.length > 0 && apiProv.every((p) => txt.includes(p.name + " · 网络 · 余额:api")),
+          "能查余额的供应商要标出余额口径（" + apiProv.map((p) => p.id).join(",") + "）");
+    const served = pf.capabilities.filter((c) => c.providers.length);
+    CHECK(served.length > 0 && served.every((c) => txt.includes(c.name + " — " + c.providers.join(" / "))),
+          "每种能力要列出真实的供应商归属，不能只渲染空行（" + served.length + " 种有供应商）");
   }
 
   SECTION("容错：布局写错不该让整个界面白屏");
