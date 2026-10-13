@@ -2528,6 +2528,87 @@ static void test_sleep_wake_blink(void)
      ① 真 rig 里一条几何通道都不许剩（结构闸）；
      ② 计数器本身是活的（拿一个故意写几何通道的合成 rig 验它会数出来）；
      ③ 换了通道以后动作还是那个动作（挥手真的把手举起来、惊讶真的张嘴）。 */
+/* 动作淡入淡出要和官方一条曲线：CubismMath.getEasingSine = 0.5 − 0.5·cos(πt)，
+   而且非循环动作得按自己的 FadeOutTime 收尾，循环动作（endTime<0）不收。 */
+static void test_action_fade_sine(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    int i;
+    double peak = 0.0, tail = 0.0, t;
+    SECTION("动作淡化曲线：官方 getEasingSine + 动作自带的 FadeOutTime");
+
+    /* ① 缓动曲线本身：官方写死 0.5 − 0.5·cos(πt)，两端带钳位 */
+    CHECK(fabs(z_ease_sine(0.0) - 0.0) < 1e-12, "ease_sine(0)=0（实际 %.6f）", z_ease_sine(0.0));
+    CHECK(fabs(z_ease_sine(1.0) - 1.0) < 1e-12, "ease_sine(1)=1（实际 %.6f）", z_ease_sine(1.0));
+    CHECK(fabs(z_ease_sine(0.5) - 0.5) < 1e-12, "ease_sine(0.5)=0.5（实际 %.6f）", z_ease_sine(0.5));
+    CHECK(fabs(z_ease_sine(-3.0)) < 1e-12, "t<0 钳到 0（实际 %.6f）", z_ease_sine(-3.0));
+    CHECK(fabs(z_ease_sine(9.0) - 1.0) < 1e-12, "t>1 钳到 1（实际 %.6f）", z_ease_sine(9.0));
+    /* 0.25 处 = 0.5−0.5cos(45°) = 0.146447，而 smoothstep 是 0.156250：
+       差得不多，但口径只能有一个，这条就是用来认出口径的。 */
+    CHECK(fabs(z_ease_sine(0.25) - 0.1464466094) < 1e-9,
+          "ease_sine(0.25) 要等于官方的 0.146447（实际 %.9f）", z_ease_sine(0.25));
+    CHECK(fabs(z_ease_sine(0.25) - z_smoothstep(0.25)) > 1e-3,
+          "动作淡化不能再退回 smoothstep（两者在 0.25 处本该差 %.6f）",
+          fabs(z_ease_sine(0.25) - z_smoothstep(0.25)));
+
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（动作淡化）");
+    if (!r) return;
+
+    /* ② 非循环动作：surprised 的 ParamArmLA 是 pulse+out、dur 跟动作一样长，
+       不收尾的话会在最后一帧停在满值然后硬切。动作级 FadeOutTime=0.2 要把它带回零。
+       （时间必须逐帧推，一次跳过去看到的是淡入还没起算的那一帧。） */
+    for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);          /* 先让 idle 收敛 */
+    zrig_action_request(r, "surprised", "test:fade", 1);
+    for (i = 1; i <= 54; ++i) {                                 /* 0.9s = 54 帧 */
+        double v;
+        t = 2.0 + i / 60.0;
+        zrig_tick(r, t);
+        v = fabs(zrig_param_effective(r, "ParamArmLA"));
+        if (i <= 42 && v > peak) peak = v;                      /* 淡出窗口之前的峰值 */
+        if (i == 53) tail = v;                                  /* 结束前 1 帧 */
+    }
+    CHECK(peak > 2.0, "surprised 前段 ParamArmLA 要摆到位（实际峰值 %.3f）", peak);
+    CHECK(tail < peak * 0.15,
+          "非循环动作结束前要按 FadeOutTime 收回去（峰值 %.3f，末帧 %.3f）", peak, tail);
+
+    /* ②b 演完之后不许冒鬼影：动作结束那一刻它会变成"正在淡出的上一个动作"，
+       这条路径同样要按它自己的 FadeOutTime 收。只给"当前动作"加淡出、
+       漏掉淡出中的旧动作，会在结束瞬间把 pulse 的满值整个闪出来。 */
+    {
+        double ghost = 0.0;
+        for (i = 55; i <= 90; ++i) {       /* 0.92s ~ 1.50s，动作已经演完 */
+            zrig_tick(r, 2.0 + i / 60.0);
+            if (fabs(zrig_param_effective(r, "ParamArmLA")) > ghost)
+                ghost = fabs(zrig_param_effective(r, "ParamArmLA"));
+        }
+        CHECK(ghost < 0.25,
+              "动作演完后不许残留鬼影（峰值 %.3f，结束后还有 %.3f）", peak, ghost);
+    }
+
+    /* ③ 循环动作不收尾（官方：endTime<0 时 tmpFadeOut 恒为 1）。
+       breath 一直跑，幅度不能随时间缩水。 */
+    {
+        double hi_early = 0.0, hi_late = 0.0;
+        zrig_action_request(r, "breath", "test:fade", 1);
+        for (i = 1; i <= 900; ++i) {
+            double v;
+            zrig_tick(r, 5.0 + i / 60.0);
+            v = zrig_param_effective(r, "ParamBreath");
+            if (i > 60 && i <= 300 && v > hi_early) hi_early = v;
+            if (i > 660 && v > hi_late) hi_late = v;
+        }
+        CHECK(hi_early > 0.9 && hi_late > 0.9,
+              "循环动作不许淡出（前段峰 %.3f，后段峰 %.3f）", hi_early, hi_late);
+    }
+    zrig_free(r);
+}
+
 static void test_action_param_channels(void)
 {
     char rig_path[1024], dir[1024], tmp_rig[1024];
@@ -3592,6 +3673,7 @@ int main(int argc, char **argv)
     test_sleep_wake_blink();
     test_eye_smile();
     test_action_param_channels();
+    test_action_fade_sine();
     test_action_drives_param();
     test_motion_fade();
     test_physics();

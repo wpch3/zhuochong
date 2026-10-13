@@ -263,6 +263,26 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 
 ---
 
+### 动作的淡入淡出：曲线和时长都按官方来（2026-10-13）
+
+| | 官方（`CubismMotion` / `CubismMath`） | 我们（`src/core/zrig.c` `compute_group_transforms`） |
+|---|---|---|
+| 缓动曲线 | `getEasingSine(v) = 0.5 − 0.5·cos(vπ)`，两端钳 0/1 | `z_ease_sine()`，同式同钳位 |
+| 淡入 | `getEasingSine((now − fadeInStart) / FadeInTime)` | 动作的 `fade`（默认 0.22s） |
+| 淡出 | `getEasingSine((endTime − now) / FadeOutTime)` | 动作的 `fade_out`（默认 0.2s） |
+| 循环动作 | `endTime < 0` ⇒ 不淡出 | `loop` 时 `duration` 传 −1，淡出乘法被 `tot > 0.0` 挡掉 |
+| 权重合成 | 每个 motion 各算 `fadeIn × fadeOut`，按队列逐个 `v = src + (val−src)·w` 覆盖 | 我们是**累加**模型，所以新旧两个动作仍保持 `w` / `1−w` 互补，再各乘自己的 `fade_out` |
+
+**最后一行是刻意的偏差，记在这里**：官方是"插值覆盖"，权重不必互补；
+我们是"把各通道的值加到参数上"，互补权重才不会超量。等将来真上 motion queue
+（多动作并存、优先级抢占）再换插值模型，那是另一件事，不在本轮。
+
+**淡出属于动作自己**，不属于"接替它的那个动作"——所以正在淡出的旧动作也要乘它自己的
+`fade_out`。三道静态闸（`tools/selfcheck_repo.py` ⑭ 组）盯着调用点，
+防的是"函数还在、调用处偷偷换回 smoothstep"这种单测抓不到的退化。
+
+---
+
 ## 三、美术/素材规范对照
 
 | 规范 | 官方说法 | 小寻 | 闸门 |

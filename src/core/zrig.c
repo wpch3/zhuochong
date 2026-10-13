@@ -141,7 +141,8 @@ typedef struct {
     int    novr;
     double dim;               /* 0..1：睡眠等状态的压暗程度 */
     double blink_hold;        /* 0..1：这个动作期间眼睛闭合到几成（<0 = 不管） */
-    double fade;              /* 秒：从上一个动作淡入到这个动作的时间（Live2D 的 FadeInTime） */
+    double fade;              /* 秒：淡入这个动作要多久（Live2D 的 FadeInTime） */
+    double fade_out;          /* 秒：非循环动作在**结束前**自己淡出的时长（Live2D 的 FadeOutTime） */
 } zaction;
 
 /* 物理摆动（Live2D physics 的最小可用版）：
@@ -1701,6 +1702,12 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
         /* fade：从上一个动作淡入到这个动作要多久。0 = 立刻切（锤子这种打击感要的就是硬切）。
            默认 0.22s —— 比 Live2D 默认的 0.5s 短，桌宠的反馈要更跟手。 */
         a->fade = zjson_num(zjson_obj_get(aj, "fade"), 0.22);
+        /* FadeOutTime：官方每个 motion 自带，非循环动作快演完时按
+           getEasingSine((结束时刻 − 现在) / FadeOutTime) 自己收尾。
+           以前我们是在 W_PULSE 波形里硬写"结束前 0.15 秒乘个衰减"，
+           那只管得到 pulse 一种波形，别的波形该怎么收尾全靠运气。 */
+        a->fade_out = zjson_num(zjson_obj_get(aj, "fade_out"), 0.2);
+        if (a->fade_out < 0.0) a->fade_out = 0.0;
         if (a->fade < 0.0) a->fade = 0.0;
         if (a->fade > 2.0) a->fade = 2.0;
         a->duration = zjson_num(zjson_obj_get(aj, "duration"), a->loop ? -1.0 : 1.0);
@@ -2218,10 +2225,8 @@ static double eval_channel_wave(const zrig *r, const zchan *c, double t, double 
             double d = c->dur > 0 ? c->dur : 0.2;
             double u = ZC_CLAMP(t / d, 0.0, 1.0);
             double k = z_ease_apply(c->ease, u);
-            if (total > 0 && t > total - 0.15) {   /* 结束前回零，避免突跳 */
-                double back = ZC_CLAMP((t - (total - 0.15)) / 0.15, 0.0, 1.0);
-                k *= (1.0 - z_smoothstep(back));
-            }
+            /* 收尾不在这里做：整个动作的淡出由 compute_group_transforms 按
+               动作自己的 fade_out（≈ FadeOutTime）统一处理，和官方一致。 */
             return c->amp * k;
         }
         case W_FLAP: {
@@ -2339,18 +2344,34 @@ static void compute_group_transforms(zrig *r)
     if (!a) { r->dim_now = 0.0; return; }
     if (prev && r->fade_dur > 1e-6) {
         double u = ZC_CLAMP((r->now - r->fade_t0) / r->fade_dur, 0.0, 1.0);
-        w = z_smoothstep(u);                 /* 两头平滑，中间快 */
+        w = z_ease_sine(u);                  /* 官方 CubismMath.getEasingSine */
         if (u >= 1.0) { r->fade_prev = -1; prev = NULL; w = 1.0; }
     } else {
         prev = NULL;
     }
     if (prev) {
-        /* 淡出的那个动作继续往前走（Live2D 也是这么做的，不然会卡在最后一帧） */
+        /* 淡出的那个动作继续往前走（Live2D 也是这么做的，不然会卡在最后一帧）。
+           它同样要吃自己的 FadeOutTime：官方每个 motion 的淡出是挂在
+           motion 身上的，不是挂在"谁接替它"身上。漏掉这一乘，动作演完的
+           那一帧会把 pulse 的满值整个闪出来（实测 ParamArmLA 0 → 2.67）。 */
         double tp = r->now - r->fade_prev_t0;
         double totp = prev->loop ? -1.0 : prev->duration;
-        accumulate_action(r, prev, tp, 1.0 - w, totp);
+        double wp = 1.0 - w;
+        if (totp > 0.0 && prev->fade_out > 1e-6)
+            wp *= z_ease_sine((totp - tp) / prev->fade_out);
+        accumulate_action(r, prev, tp, wp, totp);
     }
-    accumulate_action(r, a, zsm_elapsed(&r->sm), w, a->loop ? -1.0 : a->duration);
+    {
+        /* 非循环动作的收尾淡出（≈ Live2D 的 FadeOutTime）：
+           官方 tmpFadeOut = getEasingSine((endTime − now) / fadeOutSeconds)，
+           循环动作（endTime < 0）不淡出。整段动作一起收，所以不管通道写的是
+           哪种波形都能平稳落地，不用再给某一种波形开后门。 */
+        double el = zsm_elapsed(&r->sm);
+        double tot = a->loop ? -1.0 : a->duration;
+        if (tot > 0.0 && a->fade_out > 1e-6)
+            w *= z_ease_sine((tot - el) / a->fade_out);
+        accumulate_action(r, a, el, w, tot);
+    }
     r->dim_now = prev ? (prev->dim * (1.0 - w) + a->dim * w) : a->dim;
 
     /* Pose（A8）：把每个档位的显隐权重往目标值推。

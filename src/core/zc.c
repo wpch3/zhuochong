@@ -522,6 +522,16 @@ void z_sleep_ms(int ms)
 /* ================================================================ 数学 */
 double z_lerp(double a, double b, double t) { return a + (b - a) * t; }
 
+/* Live2D 官方动作淡入淡出用的缓动（CubismMath.getEasingSine）：
+   0.5 − 0.5·cos(πt)。和 smoothstep 形状很像（最大只差 0.01），
+   但这是官方写死的那条曲线，动作权重一律用它，别再混用两种口径。 */
+double z_ease_sine(double t)
+{
+    if (t <= 0.0) return 0.0;
+    if (t >= 1.0) return 1.0;
+    return 0.5 - 0.5 * cos(t * 3.14159265358979323846);
+}
+
 double z_smoothstep(double t)
 {
     t = ZC_CLAMP(t, 0.0, 1.0);

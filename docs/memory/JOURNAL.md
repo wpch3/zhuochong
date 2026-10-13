@@ -358,3 +358,31 @@
   （stroke/focus 的 `head.dx → ParamAngleX` 连带头部旋转，Live2D 语义，更自然），其余 ≤2.2px。
 - 下一步：动作 fade 线性 → 正弦 `0.5−0.5cos(πt)`。
 
+
+## 2026-10-13（第 N+4 段）动作淡化对齐官方：getEasingSine + 每动作 FadeOutTime（G42）
+
+**先查后做**（用户硬要求）：这件的权威不在那五个桌宠，而在 Live2D 官方运行时。
+`gh api` 取 `CubismWebFramework/src/math/cubismmath.ts` → `getEasingSine(v) = 0.5 − 0.5cos(vπ)`，
+两端钳 0/1；`cubismmotion.ts:417-430` 用它分别算 `tmpFadeIn` / `tmpFadeOut`，
+`endTime < 0`（循环）时 `tmpFadeOut` 恒 1，最后 `weight × fin × fout`。
+第四批记过 BongoCat `motion/weight.rs` 也是 `0.5−0.5cos(π·progress)` —— 现在知道**它抄的是官方**。
+
+**改了三处**：① `z_ease_sine()` 进 `zc.c`，`compute_group_transforms` 的淡入换掉 smoothstep；
+② 动作加 `fade_out` 字段（默认 0.2s），非循环动作结束前整段按官方公式收，循环动作不收；
+③ 拆掉 `W_PULSE` 里硬写的"结束前 0.15 秒回零"——那是只给一种波形开的后门。
+
+**抓到一个真 bug（本段最大收获）**：改完跑逐帧回归，发现 `surprised` 在 t=0.90
+（动作刚演完）`ParamArmLA` 从 0 跳到 **2.667** 并持续约 0.2 秒。原因是淡出只加在"当前动作"上，
+漏了 `prev` 分支——动作演完的那一刻它变成"正在淡出的旧动作"，走的是另一条累加路径。
+官方的 FadeOutTime 是挂在 motion 自己身上的，两条路径都得乘。补上后，
+`wave` 原有的 0.262 尾部偏差也跟着消失（同一个病）。
+**先把这条写成单测看它判红（鬼影 2.629），再修**，不是修完补测。
+
+**闸门**：单测 535/0、smoke 109/0、selfcheck 104/0、check_assets 372/0。
+负控四道：动作级淡出不生效 / ease_sine 实现退回 smoothstep / 循环动作也淡出（连带打穿 4 项既有断言）/
+静态闸把调用点换回 smoothstep —— 全部判红后还原。
+
+**顺带回答了用户的问题**（"除了这五个桌宠还需要什么类型的参考项目"）：
+九个候选全部 `gh api` 验证可达，写进 `docs/REFERENCE_NOTES.md` 第七批第 3 节并排了优先级，
+头两个是 `Inochi2D/inochi2d`（开源的 Live2D 等价引擎，和我们在做的事最同构）和
+`guansss/pixi-live2d-display`（motion queue / 优先级抢占的完整实现）。

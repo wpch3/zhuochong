@@ -348,6 +348,33 @@ L2D_RANGE = {
 
 def check_live2d(root):
     section("Live2D 标准合规：参数命名 / 取值范围 / model3 分组（静态）")
+
+    # ⑭ 动作淡化只认官方那条曲线（CubismMath.getEasingSine = 0.5−0.5cos(πt)）。
+    #    单测能抓"函数算错了"，抓不住"函数还在、调用处偷偷换回 smoothstep"，
+    #    所以这里盯住调用点本身。
+    rigc = io.open(os.path.join(root, "src/core/zrig.c"), encoding="utf-8").read()
+    m = re.search(r"static void compute_group_transforms\(.*?\n\}\n", rigc, re.S)
+    body = m.group(0) if m else ""
+    check("能定位 compute_group_transforms（动作淡化在这里算）", bool(body),
+          f"{len(body)} 字符")
+    check("动作淡入用官方 getEasingSine", "z_ease_sine(u)" in body,
+          "z_ease_sine(u)" if "z_ease_sine(u)" in body else "没找到，是不是换回 smoothstep 了")
+    check("动作淡化不许再用 smoothstep", "z_smoothstep" not in body,
+          "干净" if "z_smoothstep" not in body else "compute_group_transforms 里还有 z_smoothstep")
+    check("非循环动作按自己的 FadeOutTime 收尾",
+          "a->fade_out" in body and "tot > 0.0" in body,
+          "w *= z_ease_sine((tot - el) / a->fade_out)")
+    check("循环动作不淡出（官方 endTime<0 时 fadeOut 恒 1）",
+          re.search(r"tot > 0\.0 && a->fade_out", body) is not None,
+          "淡出乘法被 tot>0 挡住")
+    check("ease_sine 实现就是 0.5-0.5cos(pi t)",
+          "0.5 - 0.5 * cos(t * 3.14159265358979323846)" in
+          io.open(os.path.join(root, "src/core/zc.c"), encoding="utf-8").read(),
+          "src/core/zc.c:z_ease_sine")
+    check("pulse 波形不再自带收尾 hack",
+          "total - 0.15" not in rigc,
+          "干净" if "total - 0.15" not in rigc else "W_PULSE 里还留着 total-0.15 的后门")
+
     doc = os.path.join(root, "docs/LIVE2D_CONFORMANCE.md")
     doc_txt = io.open(doc, encoding="utf-8").read() if os.path.exists(doc) else ""
     check("有合规对照表文档", bool(doc_txt), "docs/LIVE2D_CONFORMANCE.md")

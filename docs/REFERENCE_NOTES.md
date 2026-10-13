@@ -299,3 +299,76 @@ const TargetNamePartOpacity = 'PartOpacity';
 默认那组参数就是 `ParamBreath, offset 0.5, peak 0.5, cycle 3.2345, weight 0.5` —— **0..1 的单向值**。
 我们的波形通道以前只有振幅没有偏置，纯正弦会被 `ParamBreath` 的下限 clamp 掉半个周期，
 所以这轮给通道加了 `bias` 字段（就是官方的 offset）。
+
+
+---
+
+## 第七批（2026-10-13）：动作淡入淡出的官方口径
+
+### 1. 缓动曲线只有一条：`getEasingSine`
+
+`Live2D/CubismWebFramework/src/math/cubismmath.ts:107`
+
+```ts
+static getEasingSine(value: number): number {
+  if (value < 0.0) return 0.0;
+  else if (value > 1.0) return 1.0;
+  return 0.5 - 0.5 * Math.cos(value * Math.PI);
+}
+```
+
+官方动作的淡入淡出**只用这一条**。我们原来用的是 `smoothstep = t²(3−2t)`，
+两者最大只差 0.0098（t≈0.25 处 0.15625 vs 0.146447）——肉眼完全看不出，
+但没有理由保留第二种口径，已统一换掉。
+（第四批记的 BongoCat `motion/weight.rs` 的 `0.5−0.5cos(π·progress)` 其实就是这条，
+**它抄的是官方**；所以该照的源头是 Cubism 而不是 BongoCat。）
+
+### 2. 淡入和淡出是两个独立权重，相乘
+
+`cubismmotion.ts:417-430`：
+
+```ts
+const tmpFadeIn  = this._fadeInSeconds <= 0.0 ? 1.0
+  : CubismMath.getEasingSine((userTimeSeconds - entry.getFadeInStartTime()) / this._fadeInSeconds);
+const tmpFadeOut = (this._fadeOutSeconds <= 0.0 || entry.getEndTime() < 0.0) ? 1.0
+  : CubismMath.getEasingSine((entry.getEndTime() - userTimeSeconds) / this._fadeOutSeconds);
+```
+
+要点三条：
+
+1. **FadeOutTime 挂在 motion 身上**，不是挂在"下一个动作"身上——
+   一个动作怎么收尾，由它自己说了算。
+2. **`getEndTime() < 0` 就不淡出**，这正是循环动作（loop）的表示法。
+3. 最终 `paramWeight = this._weight * fin * fout`（`:564`），
+   每条曲线还能用 `curve.fadeInTime / fadeOutTime` 覆盖整段的值（`:542-559`），
+   没写（<0）就用整段的 `tmpFadeIn / tmpFadeOut`。曲线级的 fade 我们暂不做，
+   记在这里备查。
+
+写参数时官方是 `v = sourceValue + (value - sourceValue) * fadeWeight`（`:535`）——
+**插值覆盖**，不是累加。我们是累加模型，这处差异已登记在
+`docs/LIVE2D_CONFORMANCE.md` 的「动作的淡入淡出」表里。
+
+### 3. 还该参考哪些项目（回答"除了那五个桌宠还需要什么类型"）
+
+五个桌宠项目（bongocat-sdl / bongocat-tauri / ds-local-pet / vpet / airi）能回答的是
+**"桌宠该长什么样、交互怎么接"**；回答不了**"等价于 Live2D 的引擎内部该怎么写"**，
+也回答不了训练、网关、计费这些后端问题。按我们还没做完的模块各补一个对口的参考，
+下面九个**全部已验证可达**（`gh api repos/...`，2026-10-13 实测）：
+
+| 仓库 | ★ | 许可 | 对口我们的哪一块 |
+|---|---|---|---|
+| **`Inochi2D/inochi2d`** | 1811 | BSD-2 | **最同构的一个**：开源的 Live2D 等价引擎，deformer / physics / 参数系统全部开源可读（Live2D 本体只开源 runtime，不开源编辑器那套数据结构）。我们做 G15 网格顶点级编辑、裙摆多段摆链时该先读它 |
+| `guansss/pixi-live2d-display` | 1508 | MIT | 第三方 Live2D 运行时：**motion queue / 优先级抢占**的完整实现，正是我们「累加模型 → 插值覆盖模型」那一步要参考的 |
+| `EsotericSoftware/spine-runtimes` | 5316 | 专有许可（只读思路） | 2D 骨骼 / 网格 / IK 的工业级做法，对两级手臂往上加 IK 有用 |
+| `DragonBones/DragonBonesCPP` | 434 | MIT | C++ 的 2D 骨骼运行时，和我们同语言，数据结构可直接对照 |
+| **`DanielSWolf/rhubarb-lip-sync`** | 2650 | 需确认 | 从音频提 A–H 口型，**G19「LipSync 接 TTS 包络」最对口的参考** |
+| `rhasspy/piper` | 11299 | MIT | 本地 TTS。音色被否过两次（见 LESSONS），但它的**音素时间轴输出**对口型有用 |
+| `SillyTavern/SillyTavern` | 34397 | AGPL-3.0 | 角色卡 / 世界书 / 记忆的成熟形态，对人格与记忆区。**AGPL，只读思路不抄代码** |
+| `kohya-ss/sd-scripts` | 7242 | Apache-2.0 | 训练区 G12 的 LoRA 事实标准实现 |
+| `songquanpeng/one-api` | 37132 | MIT | 网关 G2 / 计费 G3：多家 LLM 的渠道管理、配额与计费，整套都做好了 |
+
+排序即优先级：**Inochi2D 和 pixi-live2d-display 是动画底层还没做完那部分的首选**，
+rhubarb 在排到 G19 时读，其余按模块排期到了再读。
+
+**查证方式不变**：`gh api repos/<owner>/<repo>/git/trees/HEAD?recursive=1` 列文件 →
+grep 定位 → `contents/<path>` 取单文件，不整克隆；读到的结论连同 URL 回写本文件。

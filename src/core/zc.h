@@ -129,6 +129,8 @@ void   z_sleep_ms(int ms);
 #endif
 double z_lerp(double a, double b, double t);
 double z_smoothstep(double t);
+/* Live2D 官方的动作淡化曲线 CubismMath.getEasingSine：0.5 − 0.5·cos(πt)，自带 0/1 钳位 */
+double z_ease_sine(double t);
 /* 缓动函数（动效用，配置里的 ease 名称解析到这里） */
 typedef enum {
     ZEASE_LINEAR = 0, ZEASE_IN, ZEASE_OUT, ZEASE_IN_OUT,

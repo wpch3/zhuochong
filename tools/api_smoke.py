@@ -281,6 +281,24 @@ def run(base, root):
         peak_b = max(peak_b, eff.get("ParamArmRB") or 0)
     check("挥手动作要驱动 ParamArmRA（大臂）", peak_a > 4.0, "峰值 %.2f" % peak_a)
     check("挥手动作要驱动 ParamArmRB（肘）", peak_b > 3.0, "峰值 %.2f" % peak_b)
+
+    # 非循环动作的收尾：surprised 的手臂通道是 pulse+out、长度跟动作一样，
+    # 没有动作级 FadeOutTime 的话最后一帧会停在满值（≈2.67）再硬切回 idle。
+    # 真实时钟下单点采样抖得厉害，所以在尾窗里连采取最小值。
+    a.hit("/api/action?id=surprised&force=1")
+    t0 = time.time(); tail_min = 9.9; mid_peak = 0.0
+    while time.time() - t0 < 0.88:
+        eff = {q["id"]: abs(q.get("effective") or 0)
+               for q in (a.json("/api/params.json") or {}).get("params", [])}
+        v = eff.get("ParamArmLA") or 0.0
+        dt = time.time() - t0
+        if dt < 0.60: mid_peak = max(mid_peak, v)
+        elif dt > 0.78: tail_min = min(tail_min, v)
+        time.sleep(0.03)
+    check("surprised 中段手臂要摆出去", mid_peak > 1.2, "峰值 %.2f" % mid_peak)
+    check("非循环动作结束前要淡出（FadeOutTime）",
+          tail_min < max(mid_peak * 0.5, 0.9),
+          "中段峰 %.2f → 尾窗最小 %.2f" % (mid_peak, tail_min))
     a.hit("/api/action?id=breath&force=1")
     lo, hi = 9.9, -9.9
     for _ in range(16):

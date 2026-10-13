@@ -485,6 +485,32 @@ TTS 产出 mp3 ──► tools/make_lipsync.py ──► voice/lipsync/<id>.json
 - **回归证据**：18 个动作 × 7 个时刻逐像素对照，质心位移最大 5.3px，其余 ≤2.2px；
   证据图 `logs/asset_qa/_param_channel_ab.jpg`。
 
+### 3.13 动作淡化换成官方曲线 + 每个动作自带 FadeOutTime（G42）✅ 2026-10-13
+
+**以前**：动作淡入用 `z_smoothstep`（自己挑的 S 曲线），收尾则靠 `W_PULSE` 波形里
+一句硬编码——"结束前 0.15 秒乘个衰减"。两处都不是官方口径，而且收尾那句**只管 pulse 一种波形**，
+别的波形（decay/bounce/keys）怎么落地全看运气。
+
+**现在**照 `CubismMath.getEasingSine` 与 `CubismMotion.doUpdateParameters` 重写（依据见
+`docs/REFERENCE_NOTES.md` 第七批）：
+
+| | 官方 | 我们 |
+|---|---|---|
+| 淡化曲线 | `getEasingSine(v) = 0.5 − 0.5·cos(vπ)`，`v<0→0`、`v>1→1` | `z_ease_sine()`（`src/core/zc.c`），同式同钳位 |
+| 淡入 | `tmpFadeIn = getEasingSine((now − fadeInStart) / FadeInTime)` | `w = z_ease_sine(u)`，`u` 用动作自己的 `fade`（默认 0.22s） |
+| 淡出 | `tmpFadeOut = getEasingSine((endTime − now) / FadeOutTime)` | `w *= z_ease_sine((duration − elapsed) / fade_out)`，`fade_out` 默认 0.2s，可在 rig 里按动作写 |
+| 循环动作 | `endTime < 0` ⇒ `tmpFadeOut` 恒 1 | `loop` 的 `duration` 传 −1，淡出那一乘被 `tot > 0.0` 挡掉 |
+
+**淡出挂在动作身上，不是挂在"谁接替它"身上**——所以正在淡出的**上一个**动作
+（`compute_group_transforms` 的 `prev` 分支）同样要乘它自己的 `fade_out`。
+漏掉这一乘会在动作演完那一帧把 pulse 的满值整个闪出来（实测 `ParamArmLA` 0 → 2.667，
+持续约 0.2 秒），**这个 bug 是靠逐帧回归采样抓出来的，不是靠眼睛**。
+
+换曲线本身几乎看不出来（smoothstep 与 sine 最大只差 0.0098），**改的是口径不是观感**；
+真正改掉观感的是动作级 FadeOutTime：所有波形统一收尾，W_PULSE 里的后门拆掉。
+证据图 `logs/asset_qa/_fade_sine_ab.jpg`（左＝两条曲线及其 ×20 差值；
+右上＝ head_pat t=0.90 落在淡出窗口内的像素对照；右下＝ surprised 的 `ParamArmLA` 时间序列）。
+
 ## 四、生产流程（这就是"Live2D 教程"在我们这边的落法）
 
 Live2D 官方教程的顺序是：**分层画稿 → 导入 → 建网格 → 加变形器/参数 → 绑动作**。
@@ -1083,8 +1109,13 @@ eye_closed *= clamp((blink - 0.75) * 4, 0, 1); /* 只在最后 25% 淡入 */
 14. ~~18 个动作从部件通道迁到参数通道~~ ✅ 2026-10-13（见 3.12；197 条几何通道 → 160 条参数通道，
     合规表里最后一个结构性偏差 🟠 清掉；顺带补 `ParamEyeBallForm`，✅36 → **✅37**）
 
-15. **下一件：动作 fade 线性 → 正弦** `0.5−0.5cos(πt)`（照 BongoCat `motion/weight.rs` 的口径），
-    之后是裙摆接多段摆链、LipSync 接 TTS 包络。
+15. ~~动作 fade 换官方正弦 + 每个动作自带 FadeOutTime~~ ✅ 2026-10-13（见 3.13；
+    `z_ease_sine = 0.5−0.5cos(πt)` 对齐 `CubismMath.getEasingSine`，
+    收尾从"W_PULSE 里硬写 0.15 秒"升成动作级 `fade_out`，循环动作不收尾；
+    顺带修掉一个淡出中的旧动作会闪满值的鬼影 bug）
+
+16. **下一件：裙摆接多段摆链**（G16 的摆链已经能跑多段，裙子还在用单段形变），
+    之后是 LipSync 接 TTS 包络（G19）、网格顶点级编辑（G15）。
 
 每一件的验收关卡都一样：`make test` 全绿 → `check_assets` 全过 →
 `make smoke`（互动/动作端到端）全过 → 预览抓帧人工看 → 才算入库。
