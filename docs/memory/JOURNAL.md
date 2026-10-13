@@ -234,3 +234,16 @@
 - 负控：`ParamShoulderY` binds 清空 → 「标准参数不能是死的」红；`EyeBlink` 组只留左眼 → 「应覆盖左右两只眼」红；把右眼件的 `eye_side` 改成 l → 「右眼不能跟着动（470 像素）」红
 - 结论（写进 CONFORMANCE）：标准参数 **✅34 / ⬜5（笑眼·眉形·瞳形，都缺素材、结构已留好）/ ➖4（角色无该部件）**；文件结构除 physics 是"部件级而非参数级"外全部等价，且该差异属于**随时能补**（不动素材）
 - 下一步：I/U/E/O 四音素口型（T2.1.3，顺带把 `ParamEyeLSmile/RSmile` 的笑眼素材一起排）
+
+## 2026-10-14 01:10
+- 做了什么：**I/U/E/O 四音素口型（T2.1.3 / G37）**，并按用户当轮要求「做测试软件要参考那五个桌宠项目、不会的上网找资料、不要闷头做」**先查证后动手**。
+  ① 查五个桌宠项目（沙箱里不克隆 3 GB，改用 `gh api .../git/trees/HEAD?recursive=1` 列目录 + `Accept: application/vnd.github.raw` 取单文件）：**airi** 的 `packages/model-driver-lipsync/src/shared/wlipsync/vowel-driver.ts` 给出完整母音驱动策略（赢家+亚军、`amp=min(vol*0.9,1)^0.7`、静默 160ms 保持、attack 50/s + release 30/s 两档指数平滑）；**ayangweb/BongoCat** 的 `bongocat-live2d-playback` 给出动作求值三类样本与**正弦淡化** `0.5-0.5cos(πt)`（我们现在是线性，记为 🟢 待改）；**vladelaina/BongoCat / VPet / ds-local-pet** 逐仓库扫过文件树，确认它们的说话是**序列帧**不是参数模型，口型这块无参考价值（结论写进 REFERENCE_NOTES，避免下次重复翻）。
+  ② 上网核官方口径：Live2D《Standard Parameter List》嘴只有 `ParamMouthOpenY`+`ParamMouthForm`，**没有 ParamMouthA/I/U/E/O**；Animaze 的 viseme 映射表也全落在这两个参数上；日文教程明确「母音認識方式 = 事先做好 OpenY×Form 的组合 keyform」。→ **决定不自造五个参数**，改做一张音素表。
+  ③ 引擎：`zrig.c` 加音素层（`load_visemes` / `viseme_update` / `zrig_viseme_set|clear|snap`），表在 rig.json 顶层 `visemes`，缺省内建；平滑张开快收口慢，收干净自动 `mouth_mute=0` 把嘴还给动作；加载顺序排在 params/param_groups 之后。
+  ④ 素材侧：`ParamMouthForm` 的 bind 从象征性的 ±0.08/0.06 提到 **lip ±0.22 / mask ±0.26 + mask sy −0.045**；上唇线 `mouth_open` 锚点从左上角挪到中点（`pos` 412→434 同步改）。
+  ⑤ 语音侧：`make_lipsync.py` 用 pypinyin 取每字韵母 → 母音，写进包络 `visemes` 轨（38/38 条）；`zpet_lipsync_start_v()` 播放时逐帧 `zrig_viseme_set(音素, 包络值)`；端到端实测「电话接通啦，我在听哦。」→ A A E O A。
+  ⑥ 测试软件（test.html/test.js）加口型音素面板：音素按钮 + 强度滑杆 + 「念一串 a-i-u-e-o」；`/api/params.json` 补上 `groups`（model3 的 Groups）与 `visemes`，`/api/viseme?v=&w=` 新端点。
+- 遇到/修了什么：① 第一版只改参数不改锚点 —— 上唇线锚点在左上角，`sx` 一缩整条线往右平移（看起来像嘴歪了），改中点并同步改 `pos` 才是两边一起咧开；② 幅度不够等于没做（±8% 在 466px 帧上不到 1px）；③ 冻结时钟（dt=0）下平滑走不动 → 加 `zrig_viseme_snap()`，`/api/viseme` 在 `g_frozen` 时自动调用，和 pose 的处理保持一致；④ pypinyin 是可选依赖，裸环境重跑会**静默**抹掉音素轨 → 生成时打警告 + 自检加「口型包络带母音音素轨」，让它变红而不是悄悄降级。
+- 负控：把 `visemes` 里 U 改成和 I 一模一样 → 「最接近的两个音素 I/U 也要差 >25px（实际 0）」+「い 要比 う 宽」双红；把 `ParamMouthForm` 的 binds 清空 → 「标准参数不能是死的」+「い 比 う 宽」双红；复原后 450/0。
+- 数字：单测 **450/0**（+28）、selfcheck **64/0**（+8）、smoke **78/0**（+10）、ASan 0、check_assets 358/0。证据图 `logs/asset_qa/_viseme_sheet.jpg`（七张嘴，冻结时钟 + 7× 放大）。
+- 下一步：表情与口型的叠加口径（说话时做"笑"表情，两边抢 `ParamMouthForm`）；之后是 `ParamEyeLSmile/RSmile` 的笑眼素材。

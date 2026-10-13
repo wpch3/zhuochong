@@ -95,6 +95,7 @@
 | **命名参数层**（`ParamXxx` 外部直驱） | 脚本 / LLM / 口型 / 测试台滑条统一写一张参数表 | ✅ **2026-10-12** | `zrig.c` `load_params`/`zrig_param_set` + rig 顶层 `params` + `/api/param` |
 | **表情叠加**（expression） | 笑着挥手：表情和动作两条轨，互不覆盖 | ✅ **2026-10-12** | `zrig.c` `load_expressions`/`zrig_expression_set` + rig 顶层 `expressions` + `/api/expression` |
 | **口型同步**（LipSync） | 说话时嘴跟着语音开合 | ✅ **2026-10-12** | `zpet.c` `lipsync_tick` + `tools/make_lipsync.py` + `/api/speak`；动作里的嘴通道由 `zrig_set_mouth_mute` 让路 |
+| **口型音素**（母音識別 / viseme） | 说「あいうえお」时嘴形不同，不只是开合大小 | ✅ **2026-10-13** | `zrig.c` `load_visemes`/`viseme_update` + rig 顶层 `visemes`（音素 → `ParamMouthOpenY`×`ParamMouthForm`）+ `/api/viseme`；包络带 `visemes` 轨时自动走这条路 |
 
 > **合规对照表另开了一份：`docs/LIVE2D_CONFORMANCE.md`** —— 41 个官方标准参数逐条判定、
 > model3/motion3/exp3/physics3/pose3 结构对照、以及"哪些现在不做以后补不回来"的风险分级。
@@ -160,6 +161,7 @@
 | 端点 | 作用 |
 | --- | --- |
 | `GET /api/params.json` | 参数表 + 当前值（内建参数的值每帧回写，能看见自动眨眼在动） |
+| `GET /api/viseme?v=A&w=1` | 口型音素（母音識別）：v ∈ SIL/A/I/U/E/O/N，`off`/`-` 松口；w = 这一帧的音量。写错音素名返回 404 |
 | `GET /api/param?id=X&v=N` | 写一个参数（超出 min/max 自动夹住；不存在的 id 返回 404） |
 | `GET /api/param?id=X&reset=1` | 回默认值（`ParamEyeOpen` 复位 = 交回自动眨眼） |
 | `GET /api/param?all=1` | 全部复位 |
@@ -357,7 +359,34 @@ TTS 产出 mp3 ──► tools/make_lipsync.py ──► voice/lipsync/<id>.json
   `--wav`，得到的是**真实音量包络**；沙箱里没有 ffmpeg，所以默认走"文本节律"：
   mp3 的**时长不解码也能拿到**（直接数 MPEG 帧头），再把台词按音节铺进这段时长
   （汉字 1 音节、标点闭嘴、每个音节一个"张—保持—收"的小包）。节奏对得上，
-  比固定 3Hz 的 `flap` 自然得多，但**不是音素级**（I/U/E/O 口型还没有，见 T2.1.3）。
+  比固定 3Hz 的 `flap` 自然得多。**2026-10-13 起这条管线还会产出音素轨**（见 3.9）。
+### 3.9 口型音素（母音識別 / viseme，T2.1.3）✅ 2026-10-13
+
+- **为什么不是五个新参数**：Live2D 官方标准参数表里**没有** `ParamMouthA/I/U/E/O`。
+  嘴只有 `ParamMouthOpenY`（0..1）和 `ParamMouthForm`（-1..1，+ 笑 / − 怒），
+  あ/い/う/え/お 是这两者的**组合**（官方叫「母音認識方式」）。所以我们加的是一张表，不是五个参数。
+- **表在哪**：`rig.json` 顶层 `visemes`（`make_rig.py` 的 `viseme_list()` 生成）。
+  | 音素 | OpenY | Form | 形状 |
+  | --- | --- | --- | --- |
+  | A | 1.00 | 0.00 | 张到最大 |
+  | I | 0.22 | +1.00 | 不张，咧到最宽 |
+  | U | 0.30 | −1.00 | 小口撅圆 |
+  | E | 0.58 | +0.55 | 半开偏宽 |
+  | O | 0.88 | −0.70 | 大口撅圆 |
+  | N | 0.06 | −0.35 | 闭音 |
+- **驱动口径**（学 airi 的 wlipsync vowel driver）：每帧只喂**一个赢家音素 + 当前响度**，
+  `zrig_viseme_set(r,"I",0.8)`；引擎做 **attack 50/s、release 30/s** 的两档指数平滑
+  （收口比张口慢，否则像开关），收干净后自动把嘴交还给动作。
+- **素材侧改了什么**：`ParamMouthForm` 的 bind 从 ±0.08/0.06 提到 **lip ±0.22 / mask ±0.26**，
+  并给 mask 加了 **sy −0.045** 的耦合（撅圆时开口更高）；上唇线 `mouth_open` 的锚点
+  从左上角挪到**中点**（`pos` 同步从 412 改到 434），否则 sx 一缩整条唇线往右平移。
+- **语音侧**：`tools/make_lipsync.py` 用 pypinyin 取每个字的**韵母**→ 母音（`ia→A`、`ong→O`、
+  `ie→E`、`i→I`、`u→U`…），写进包络的 `visemes` 轨；引擎 `zpet_lipsync_start_v()` 有音素轨
+  就走母音識別，没有就退回只开合。**没装 pypinyin 会打警告并被自检判红**，不会静默降级。
+- **闸门**：`test_viseme()`（A/I/U/E/O 两两像素差 > 25px、い 比 う 宽、weight 比例、
+  8ms 不许瞬间到位、松口要还嘴）、smoke 10 项、selfcheck 6 项（音素只许写标准嘴参数、
+  不许重样、文档要记载）。证据图 `logs/asset_qa/_viseme_sheet.jpg`。
+
 - **为什么要让动作里的嘴让路**：`talk` 动作自己也有 flap 通道，两边叠加会让 `sy`
   超过素材高度（口内被拉伸）。所以口型同步期间 `zrig_set_mouth_mute(rig,1)`，
   嘴完全交给参数层；播完自动解除、参数回默认。
@@ -964,7 +993,12 @@ eye_closed *= clamp((blink - 0.75) * 4, 0, 1); /* 只在最后 25% 淡入 */
 9. ~~手腕 / 裙下大腿（G4c2）~~ ✅ 2026-10-13（见 5.12；四件臂 → 六件臂，
    手腕 ±22°（安全 ≤40°）；裙下大腿归位到腿件，腿改 bend ±20px 零露底）
 
-10. **I/U/E/O 四个音素口型（T2.1.3）**：现在只有 A（张嘴）+ 闭嘴 + 微笑三形。
+10. ~~I/U/E/O 四个音素口型（T2.1.3）~~ ✅ 2026-10-13（见 3.9；不是加五个新参数，
+    而是一张「音素 → `ParamMouthOpenY` × `ParamMouthForm`」表 + 两档平滑；
+    `ParamMouthForm` 的 bind 从象征性的 ±8% 提到 ±22/26% 并把上唇线锚点挪到中点，
+    い/え 真能咧开、う/お 真能撅圆）
+
+11. **下一件：表情与口型的叠加口径**（说话时同时做"笑"表情，MouthForm 两边抢）。
 
 每一件的验收关卡都一样：`make test` 全绿 → `check_assets` 全过 →
 `make smoke`（互动/动作端到端）全过 → 预览抓帧人工看 → 才算入库。

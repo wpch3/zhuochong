@@ -53,8 +53,10 @@ struct zpet {
 
     /* 口型同步（A4）：一条 0~1 的开口度包络按时间推进 */
     double *ls_vals;
+    int    *ls_vis;        /* 每帧的音素（rig 音素表下标，-1 = 没有）；NULL = 只有音量 */
     int     ls_n;
     double  ls_fps, ls_t0, ls_level;
+    double  ls_cursor;     /* 当前采样位置（帧），音素查表用 */
     int     ls_active;
     char    ls_id[64];
     char    ls_text[256];
@@ -291,6 +293,7 @@ void zpet_destroy(zpet *p)
     zinteract_free(p->inter);
     zrig_free(p->rig);
     free(p->ls_vals);
+    free(p->ls_vis);
     free(p);
 }
 
@@ -445,25 +448,54 @@ const char *zpet_region(const zpet *p, int x, int y, char *out_action, size_t ca
 static void lipsync_apply(zpet *p, double v)
 {
     p->ls_level = v;
-    if (p->rig) zrig_param_set(p->rig, zrig_lipsync_param(p->rig), v);
+    if (!p->rig) return;
+    if (p->ls_vis) {              /* 母音識別方式：音素给嘴形，包络给强度 */
+        int i = (int)p->ls_cursor;
+        const char *vid;
+        if (i < 0) i = 0;
+        if (i >= p->ls_n) i = p->ls_n - 1;
+        vid = zrig_viseme_id(p->rig, p->ls_vis[i]);
+        if (vid) { zrig_viseme_set(p->rig, vid, v); return; }
+    }
+    zrig_param_set(p->rig, zrig_lipsync_param(p->rig), v);   /* 音量连动方式 */
 }
 
-int zpet_lipsync_start(zpet *p, const double *values, int n, double fps, double now)
+int zpet_lipsync_start_v(zpet *p, const double *values, const char *const *visemes,
+                         int n, double fps, double now)
 {
     int i;
     if (!p || !values || n < 2 || fps <= 0.0) return -1;
     if (n > ZPET_LIPSYNC_MAX) n = ZPET_LIPSYNC_MAX;
     free(p->ls_vals);
+    free(p->ls_vis);
+    p->ls_vis = NULL;
     p->ls_vals = (double *)malloc(sizeof(double) * (size_t)n);
     if (!p->ls_vals) { p->ls_active = 0; return -1; }
     for (i = 0; i < n; ++i) p->ls_vals[i] = ZC_CLAMP(values[i], 0.0, 1.0);
+    if (visemes && p->rig && zrig_viseme_count(p->rig) > 0) {
+        p->ls_vis = (int *)malloc(sizeof(int) * (size_t)n);
+        if (p->ls_vis) {
+            for (i = 0; i < n; ++i) {
+                int vi = visemes[i] ? zrig_viseme_find(p->rig, visemes[i]) : -1;
+                if (vi < 0) vi = zrig_viseme_find(p->rig, "SIL");
+                if (vi < 0) vi = 0;
+                p->ls_vis[i] = vi;
+            }
+        }
+    }
     p->ls_n = n;
     p->ls_fps = fps;
     p->ls_t0 = now;
+    p->ls_cursor = 0.0;
     p->ls_active = 1;
     if (p->rig) zrig_set_mouth_mute(p->rig, 1);
     lipsync_apply(p, p->ls_vals[0]);
     return 0;
+}
+
+int zpet_lipsync_start(zpet *p, const double *values, int n, double fps, double now)
+{
+    return zpet_lipsync_start_v(p, values, NULL, n, fps, now);
 }
 
 void zpet_lipsync_stop(zpet *p)
@@ -471,7 +503,11 @@ void zpet_lipsync_stop(zpet *p)
     if (!p) return;
     p->ls_active = 0;
     p->ls_level = 0.0;
+    p->ls_cursor = 0.0;
+    free(p->ls_vis);
+    p->ls_vis = NULL;
     if (p->rig) {
+        zrig_viseme_clear(p->rig);
         zrig_param_reset(p->rig, zrig_lipsync_param(p->rig));
         zrig_set_mouth_mute(p->rig, 0);
     }
@@ -498,10 +534,11 @@ static void lipsync_tick(zpet *p, double now)
     int i;
     if (!p->ls_active || !p->ls_vals || p->ls_n < 2) return;
     x = (now - p->ls_t0) * p->ls_fps;
-    if (x <= 0.0) { lipsync_apply(p, p->ls_vals[0]); return; }
+    if (x <= 0.0) { p->ls_cursor = 0.0; lipsync_apply(p, p->ls_vals[0]); return; }
     i = (int)x;
     if (i >= p->ls_n - 1) { zpet_lipsync_stop(p); return; }
     frac = x - (double)i;
+    p->ls_cursor = x;
     v = p->ls_vals[i] * (1.0 - frac) + p->ls_vals[i + 1] * frac;
     lipsync_apply(p, v);
 }
@@ -530,13 +567,23 @@ int zpet_lipsync_load(zpet *p, const char *line_id, double now)
     n = arr ? (int)zjson_count(arr) : 0;
     fps = zjson_num(zjson_obj_get(root, "fps"), 30.0);
     if (n >= 2) {
+        /* 可选的 visemes：每帧一个音素名（"A"/"I"/…）。有就走母音識別，
+           没有就还是音量连动——不编口型，编出来的嘴型对不上反而更假。 */
+        zjson *vis = zjson_obj_get(root, "visemes");
+        const char **vnames = NULL;
         if (n > ZPET_LIPSYNC_MAX) n = ZPET_LIPSYNC_MAX;
         vals = (double *)malloc(sizeof(double) * (size_t)n);
+        if (vis && zjson_is(vis, ZJSON_ARR) && (int)zjson_count(vis) >= n)
+            vnames = (const char **)malloc(sizeof(char *) * (size_t)n);
         if (vals) {
             for (i = 0; i < n; ++i) vals[i] = zjson_num(zjson_at(arr, (size_t)i), 0.0);
-            rc = zpet_lipsync_start(p, vals, n, fps, now);
+            if (vnames)
+                for (i = 0; i < n; ++i)
+                    vnames[i] = zjson_str(zjson_at(vis, (size_t)i), "SIL");
+            rc = zpet_lipsync_start_v(p, vals, vnames, n, fps, now);
             free(vals);
         }
+        free((void *)vnames);
     }
     if (rc == 0) {
         z_strlcpy(p->ls_id, line_id, sizeof(p->ls_id));
@@ -780,6 +827,49 @@ int zpet_param_count(const zpet *p) { return (p && p->rig) ? zrig_param_count(p-
 int zpet_param_info(const zpet *p, int i, zrig_param_desc *out)
 {
     return (p && p->rig) ? zrig_param_info(p->rig, i, out) : -1;
+}
+
+double zpet_param_get(const zpet *p, const char *id)
+{
+    return (p && p->rig) ? zrig_param_get(p->rig, id) : 0.0;
+}
+
+const char *zpet_lipsync_param(const zpet *p)
+{
+    return (p && p->rig) ? zrig_lipsync_param(p->rig) : "ParamMouthOpenY";
+}
+
+int zpet_blink_targets(const zpet *p)
+{
+    return (p && p->rig) ? zrig_blink_targets(p->rig) : 3;
+}
+
+/* ---- 口型音素层（测试台 / 语音模块用）---- */
+int zpet_viseme_set(zpet *p, const char *id, double weight)
+{
+    if (!p || !p->rig) return -1;
+    return zrig_viseme_set(p->rig, id, weight);
+}
+
+void zpet_viseme_clear(zpet *p) { if (p && p->rig) zrig_viseme_clear(p->rig); }
+void zpet_viseme_snap(zpet *p)  { if (p && p->rig) zrig_viseme_snap(p->rig); }
+
+const char *zpet_viseme_current(const zpet *p)
+{
+    const char *v = (p && p->rig) ? zrig_viseme_current(p->rig) : NULL;
+    return v ? v : "";
+}
+
+double zpet_viseme_weight(const zpet *p)
+{
+    return (p && p->rig) ? zrig_viseme_weight(p->rig) : 0.0;
+}
+
+int zpet_viseme_count(const zpet *p) { return (p && p->rig) ? zrig_viseme_count(p->rig) : 0; }
+
+const char *zpet_viseme_id(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_viseme_id(p->rig, i) : NULL;
 }
 
 int zpet_param_set(zpet *p, const char *id, double v)

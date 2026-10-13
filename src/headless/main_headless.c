@@ -691,9 +691,70 @@ static void handle_request(zsock fd, const http_req *r)
                 i ? "," : "", d.id, d.label ? d.label : "", d.vmin, d.vmax,
                 d.vdef, d.value, d.builtin ? "true" : "false", d.binds);
         }
+        /* Live2D model3.json 的 Groups：口型写哪个参数、自动眨眼眨哪只眼 */
+        off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+            "],\"groups\":{\"LipSync\":[\"%s\"],\"EyeBlink\":[",
+            zpet_lipsync_param(g_pet));
+        {
+            int bt = zpet_blink_targets(g_pet);
+            int first = 1;
+            if (bt & 1) { off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                                                    "\"ParamEyeLOpen\""); first = 0; }
+            if (bt & 2) off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                                                  "%s\"ParamEyeROpen\"", first ? "" : ",");
+        }
+        /* 口型音素表（母音識別方式）：测试台据此长出 A/I/U/E/O 按钮 */
+        off += (size_t)z_snprintf(body + off, sizeof(body) - off, "]},\"visemes\":[");
+        {
+            int vi, vn = zpet_viseme_count(g_pet);
+            for (vi = 0; vi < vn; ++vi) {
+                const char *vid = zpet_viseme_id(g_pet, vi);
+                if (!vid || off + 64 >= sizeof(body)) break;
+                off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                                          "%s\"%s\"", vi ? "," : "", vid);
+            }
+        }
+        off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                                  "],\"viseme\":{\"id\":\"%s\",\"weight\":%.3f}",
+                                  zpet_viseme_current(g_pet), zpet_viseme_weight(g_pet));
         UNLOCK();
-        z_snprintf(body + off, sizeof(body) - off, "]}");
+        z_snprintf(body + off, sizeof(body) - off, "}");
         send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/viseme") == 0) {
+        /* 口型音素：v=A/I/U/E/O/N/SIL（off/- = 松口），w=0..1 是这一帧的音量。
+           音素决定嘴形，w 决定张多大 —— 和真语音接上时 w 就是包络。 */
+        char v[16], sw[32];
+        double w = 1.0;
+        int rc = 0;
+        if (!qstr(r, "v", v, sizeof(v))) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 v\"}");
+            return;
+        }
+        if (qstr(r, "w", sw, sizeof(sw))) w = atof(sw);
+        LOCK();
+        if (strcmp(v, "off") == 0 || strcmp(v, "-") == 0) zpet_viseme_clear(g_pet);
+        else rc = zpet_viseme_set(g_pet, v, w);
+        if (g_frozen) zpet_viseme_snap(g_pet);   /* 冻结时钟时平滑走不动，直接到位 */
+        zpet_tick(g_pet, pet_now());
+        UNLOCK();
+        if (rc != 0) {
+            char body2[192];
+            z_snprintf(body2, sizeof(body2),
+                       "{\"ok\":false,\"error\":\"没有这个音素\",\"v\":\"%s\"}", v);
+            send_text(fd, 404, "application/json", body2);
+        } else {
+            char body2[192];
+            LOCK();
+            z_snprintf(body2, sizeof(body2),
+                       "{\"ok\":true,\"viseme\":\"%s\",\"weight\":%.3f,\"open\":%.4f,\"form\":%.4f}",
+                       zpet_viseme_current(g_pet), zpet_viseme_weight(g_pet),
+                       zpet_param_get(g_pet, zpet_lipsync_param(g_pet)),
+                       zpet_param_get(g_pet, "ParamMouthForm"));
+            UNLOCK();
+            send_text(fd, 200, "application/json", body2);
+        }
         return;
     }
     if (strcmp(r->path, "/api/param") == 0) {

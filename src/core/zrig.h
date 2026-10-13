@@ -145,6 +145,26 @@ double zrig_part_channel(const zrig *r, const char *part_id, const char *param);
 const char *zrig_lipsync_param(const zrig *r);
 int         zrig_blink_targets(const zrig *r);
 
+/* ------------------------------------------- 口型音素层（母音識別 / viseme）
+   Live2D 官方标准参数里没有 ParamMouthA/I/U/E/O：あ/い/う/え/お 是用
+   「ParamMouthOpenY（开多大）× ParamMouthForm（咧开 / 撅圆）」两个标准参数的
+   组合摆出来的。这里就是那张组合表 + 一个带张开快/收口慢的平滑器。
+   表默认内建，可在 rig.json 顶层用 "visemes" 覆盖：
+     "visemes":[{"id":"A","params":{"ParamMouthOpenY":1.0,"ParamMouthForm":0.0}}, ...]
+   用法：zrig_viseme_set(r,"I",0.8) 每帧喂「当前音素 + 当前音量」，
+         不说话时 zrig_viseme_set(r,"SIL",0) 或 zrig_viseme_clear(r)。 */
+int         zrig_viseme_count(const zrig *r);
+const char *zrig_viseme_id(const zrig *r, int i);
+int         zrig_viseme_find(const zrig *r, const char *id);     /* 大小写不敏感，-1 = 没有 */
+int         zrig_viseme_entry_count(const zrig *r, int vi);
+int         zrig_viseme_entry(const zrig *r, int vi, int k,
+                              const char **param_id, double *value);
+int         zrig_viseme_set(zrig *r, const char *id, double weight);  /* 不认识的音素返回 -1 */
+void        zrig_viseme_clear(zrig *r);     /* 立刻松口，嘴交还给动作 */
+void        zrig_viseme_snap(zrig *r);      /* 跳过平滑直接到位（冻结时钟时用） */
+const char *zrig_viseme_current(const zrig *r);   /* 没接管时返回 NULL */
+double      zrig_viseme_weight(const zrig *r);
+
 /* 调试/测试用的只读查询：
    zrig_group_offset_x/y —— 组这一帧的横/纵位移（通道位移 + 自动跟随形变的位移，画布像素）。
    zrig_bend_at          —— 某部件的形变在画布高度 canvas_y 处把像素推了多远（画布像素）。

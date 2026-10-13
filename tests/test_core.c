@@ -1386,6 +1386,143 @@ static void test_group_chain(void)
    解法 = 用同一个时间戳反复 tick（dt=0，等价预览的 /api/pause），
    两帧之间只有参数变了。跟随类（ParamAngleX/Y）是平滑收敛的，dt=0 下不动，
    所以单独用"settle 一段时间"的办法量，阈值取大。 */
+/* 口型音素（母音識別）：A/I/U/E/O 必须是**五张不一样的嘴**，
+   而且宽窄要对得上（い 比 う 宽）。靠一个参数淡入淡出假装口型会被这里抓住。 */
+static void test_viseme(void)
+{
+    char dir[1024], rig_path[1024];
+    static const char *VIS[] = { "A", "I", "U", "E", "O" };
+    /* 嘴在帧里的位置（画布 (422,316) × 0.55），留够余量 */
+    const int MX0 = 196, MY0 = 150, MX1 = 266, MY1 = 202;
+    const double T = 1.5;
+    SECTION("口型音素：A/I/U/E/O 是五张不同的嘴，不是一个参数淡入淡出");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载真 rig 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);
+        zrig_action_request(r, "idle", "test", 1);
+        {
+            const zimg *fb;
+            unsigned char *snap[5];
+            int wid[5];
+            size_t i, j;
+            double t;
+            int bad = 0, nvis = zrig_viseme_count(r);
+            CHECK(nvis >= 6, "音素表至少 6 行（SIL + AIUEO），实际 %d", nvis);
+            CHECK(zrig_viseme_find(r, "A") >= 0 && zrig_viseme_find(r, "i") >= 0,
+                  "音素查找要大小写不敏感且 A/I 都在");
+            CHECK(zrig_viseme_find(r, "ParamMouthXyz") < 0, "不认识的音素必须查不到");
+            CHECK(zrig_viseme_set(r, "NOPE", 1.0) == -1,
+                  "写错音素名要报错，不能当静默吞掉");
+            /* 音素只许写 Live2D 标准参数，不许偷偷自造 ParamMouthA 这类 */
+            for (i = 0; i < (size_t)nvis; ++i) {
+                int k, nk = zrig_viseme_entry_count(r, i);
+                CHECK(nk >= 1, "音素 %s 至少写一个参数", zrig_viseme_id(r, (int)i));
+                for (k = 0; k < nk; ++k) {
+                    const char *pid = NULL;
+                    double v = 0.0;
+                    zrig_viseme_entry(r, (int)i, k, &pid, &v);
+                    if (!pid) { bad++; continue; }
+                    if (strcmp(pid, "ParamMouthOpenY") != 0 &&
+                        strcmp(pid, "ParamMouthForm") != 0) bad++;
+                }
+            }
+            CHECK(bad == 0, "音素只能写标准嘴参数（OpenY / Form），越界 %d 处", bad);
+
+            for (t = 0.0; t < T; t += 0.02) zrig_tick(r, t);
+            zrig_tick(r, T);                      /* dt = 0：时间停住 */
+            for (i = 0; i < 5; ++i) {
+                int x, y, x0 = 9999, x1 = -1;
+                unsigned char *base;
+                zrig_viseme_clear(r);
+                zrig_tick(r, T);
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                base = frame_snapshot(fb);        /* 每个音素现拍自己的基准 */
+                zrig_viseme_set(r, VIS[i], 1.0);
+                zrig_viseme_snap(r);              /* dt=0 下平滑走不动，直接到位 */
+                zrig_tick(r, T);
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                snap[i] = frame_snapshot(fb);
+                CHECK(frame_diff_box(fb, base, MX0, MY0, MX1, MY1) > 20,
+                      "音素 %s 相对闭嘴要有明显变化（%d px）", VIS[i],
+                      frame_diff_box(fb, base, MX0, MY0, MX1, MY1));
+                /* 变化像素的横向跨度 = 这张嘴有多宽 */
+                for (y = MY0; y < MY1 && base; ++y)
+                    for (x = MX0; x < MX1; ++x) {
+                        size_t o = ((size_t)y * (size_t)fb->w + (size_t)x) * 4;
+                        int dd = abs((int)fb->px[o] - (int)base[o])
+                               + abs((int)fb->px[o+1] - (int)base[o+1])
+                               + abs((int)fb->px[o+2] - (int)base[o+2]);
+                        if (dd > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
+                    }
+                wid[i] = (x1 >= x0) ? (x1 - x0 + 1) : 0;
+                free(base);
+            }
+            zrig_viseme_clear(r);
+            /* 两两都要不一样 —— 这是"五张嘴"而不是"一张嘴五个大小"的判据 */
+            {
+                int worst = 1 << 30;
+                const char *wa = "", *wb = "";
+                for (i = 0; i < 5; ++i)
+                    for (j = i + 1; j < 5; ++j) {
+                        int n;
+                        unsigned char *tmp;
+                        zrig_viseme_set(r, VIS[i], 1.0);
+                        zrig_viseme_snap(r);
+                        zrig_tick(r, T);
+                        fb = zrig_frame(r, 0.55, NULL, NULL);
+                        tmp = frame_snapshot(fb);
+                        n = frame_diff_box(fb, snap[j], MX0, MY0, MX1, MY1);
+                        free(tmp);
+                        if (n < worst) { worst = n; wa = VIS[i]; wb = VIS[j]; }
+                    }
+                CHECK(worst > 25, "最接近的两个音素 %s/%s 也要差 >25px（实际 %d）",
+                      wa, wb, worst);
+            }
+            CHECK(wid[1] > wid[2], "い 的嘴要比 う 宽（实测 I=%d px, U=%d px）",
+                  wid[1], wid[2]);
+            CHECK(wid[0] > 0 && wid[4] > 0, "あ/お 都要量得到嘴宽");
+            for (i = 0; i < 5; ++i) free(snap[i]);
+
+            /* 强度：音素给形状，weight 给大小 */
+            zrig_viseme_clear(r);
+            zrig_viseme_set(r, "A", 0.3);
+            zrig_viseme_snap(r);
+            CHECK(fabs(zrig_param_get(r, "ParamMouthOpenY") - 0.3) < 0.02,
+                  "A 配 weight 0.3 时开口应 ≈0.3（实际 %.3f）",
+                  zrig_param_get(r, "ParamMouthOpenY"));
+            /* 平滑：张开要快但不是瞬间（一帧就到位 = 机器嘴） */
+            zrig_viseme_clear(r);
+            zrig_viseme_set(r, "A", 1.0);
+            zrig_tick(r, T + 0.008);
+            CHECK(zrig_param_get(r, "ParamMouthOpenY") > 0.05 &&
+                  zrig_param_get(r, "ParamMouthOpenY") < 0.9,
+                  "8ms 后应在路上而不是瞬间到位（实际 %.3f）",
+                  zrig_param_get(r, "ParamMouthOpenY"));
+            CHECK(zrig_mouth_mute(r) == 1, "说话时动作里的嘴通道要让路");
+            /* 松口：参数回默认，嘴还给动作 */
+            zrig_viseme_clear(r);
+            zrig_tick(r, T + 0.02);
+            CHECK(fabs(zrig_param_get(r, "ParamMouthOpenY")) < 1e-6 &&
+                  fabs(zrig_param_get(r, "ParamMouthForm")) < 1e-6,
+                  "松口后两个嘴参数都要回默认");
+            CHECK(zrig_mouth_mute(r) == 0, "松口后嘴要还给动作");
+            CHECK(zrig_viseme_current(r) == NULL, "松口后当前音素应为空");
+            /* 静默音素也要能自己收干净（不是一直占着嘴） */
+            zrig_viseme_set(r, "SIL", 0.0);
+            for (t = 0.0; t < 0.5; t += 0.02) zrig_tick(r, T + 0.1 + t);
+            CHECK(zrig_mouth_mute(r) == 0, "喂 SIL 之后应自动松口");
+        }
+        zrig_free(r);
+    }
+}
+
 static void test_live2d_standard(void)
 {
     char dir[1024], rig_path[1024];
@@ -2755,6 +2892,7 @@ int main(int argc, char **argv)
     test_eyelid();
     test_group_chain();
     test_live2d_standard();
+    test_viseme();
     test_action_drives_param();
     test_motion_fade();
     test_physics();

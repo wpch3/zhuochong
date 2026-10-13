@@ -108,6 +108,54 @@ def wav_envelope(path, fps=FPS):
     return vals, nfr / float(sr)
 
 
+# ---------------- 母音（viseme）----------------
+# 引擎的音素表是 SIL/A/I/U/E/O/N（见 rig.json 的 visemes）。
+# 汉语拼音的韵母 → 口型母音：取韵母里"最张开的那个"，这正是 Live2D
+# 母音認識方式要的东西（嘴形由 ParamMouthOpenY × ParamMouthForm 摆出来）。
+try:
+    from pypinyin import lazy_pinyin, Style     # 可选依赖：pip install pypinyin
+    HAS_PINYIN = True
+except Exception:                               # noqa: BLE001
+    HAS_PINYIN = False
+
+FINAL_SPECIAL = {"iu": "O", "ui": "E", "un": "E", "vn": "U", "v": "U", "ve": "E",
+                 "er": "E", "n": "N", "ng": "N", "m": "N"}
+DIGIT_VOWEL = {"0": "I", "1": "I", "2": "E", "3": "A", "4": "I",
+               "5": "U", "6": "O", "7": "I", "8": "A", "9": "O"}
+
+
+def final_to_vowel(fin):
+    """韵母 → A/I/U/E/O/N。顺序就是口型的开口度优先级。"""
+    f = (fin or "").strip().lower()
+    if not f:
+        return "A"
+    if f in FINAL_SPECIAL:
+        return FINAL_SPECIAL[f]
+    for ch, v in (("a", "A"), ("o", "O"), ("e", "E"), ("v", "U"), ("u", "U"), ("i", "I")):
+        if ch in f:
+            return v
+    return "A"
+
+
+def text_vowels(text):
+    """台词 → 每个音节一个母音；拿不准就返回 None（宁可只做开合，不编口型）。"""
+    if not HAS_PINYIN:
+        return None
+    out = []
+    for ch in text:
+        if ch in PAUSE:
+            continue
+        if ch.isdigit():
+            out.append(DIGIT_VOWEL.get(ch, "A"))
+        elif ord(ch) > 0x2E80:                  # CJK
+            fin = lazy_pinyin(ch, style=Style.FINALS, strict=False)
+            out.append(final_to_vowel(fin[0] if fin else ""))
+        elif unicodedata.category(ch).startswith("L") and ord(ch) < 128:
+            out.append(("A" if ch.lower() not in "aeiou" else
+                        {"a": "A", "e": "E", "i": "I", "o": "O", "u": "U"}[ch.lower()]))
+    return out or None
+
+
 # ---------------- 文本节律 ----------------
 PAUSE = {"，": 0.5, "、": 0.4, "。": 0.9, "！": 0.9, "？": 0.9, "…": 0.8, "—": 0.5,
          ",": 0.5, ".": 0.8, "!": 0.8, "?": 0.8, "~": 0.3, " ": 0.2}
@@ -135,17 +183,28 @@ def syllables(text):
 
 
 def text_envelope(text, dur, fps=FPS, seed=0):
+    """返回 (开口度包络, 音素轨)。音素轨拿不到拼音时是 None —— 不编口型。"""
     units = syllables(text)
+    vowels = text_vowels(text)
+    vi = 0
     total_w = sum(w for _, w in units) or 1.0
     head, tail = dur * 0.06, dur * 0.08         # 前后留一点静音
     body = max(0.1, dur - head - tail)
     n = max(2, int(round(dur * fps)))
     vals = [0.0] * n
+    vis = ["SIL"] * n if vowels else None
     t = head
     h = seed * 2654435761 & 0xFFFFFFFF
     for kind, w in units:
         span = body * (w / total_w)
         if kind == "s":
+            if vis is not None:
+                v_here = vowels[vi] if vi < len(vowels) else vowels[-1]
+                vi += 1
+                for k in range(n):
+                    tt = k / fps - t
+                    if 0 <= tt <= span:
+                        vis[k] = v_here
             h = (h * 1103515245 + 12345) & 0x7FFFFFFF
             amp = 0.55 + 0.45 * ((h >> 8) % 1000) / 999.0     # 每个音节开口不一样
             a, hold = span * 0.35, span * 0.25                 # 张 / 保持 / 收
@@ -166,7 +225,7 @@ def text_envelope(text, dur, fps=FPS, seed=0):
         vals = [vals[0]] + [(vals[i - 1] + 2 * vals[i] + vals[i + 1]) / 4.0
                             for i in range(1, n - 1)] + [vals[-1]]
     vals[0] = vals[-1] = 0.0
-    return [round(min(1.0, max(0.0, v)), 3) for v in vals]
+    return [round(min(1.0, max(0.0, v)), 3) for v in vals], vis
 
 
 def write_env(path, obj):
@@ -190,7 +249,8 @@ def main():
         write_env(out, {"id": os.path.basename(out)[:-5], "text": args.text,
                         "dur": round(dur, 3), "fps": args.fps, "source": "wav_rms",
                         "values": [round(v, 3) for v in vals]})
-        print(f"口型包络（音频）→ {out}：{dur:.2f}s / {len(vals)} 帧")
+        print(f"口型包络（音频）→ {out}：{dur:.2f}s / {len(vals)} 帧"
+              "（音频包络只给开口度，母音要靠文本节律那条路）")
         return
 
     if not args.character:
@@ -201,7 +261,7 @@ def main():
         raise SystemExit(f"[lipsync] 找不到语音目录清单：{cat_path}（先跑 voice_render.py）")
     cat = json.load(open(cat_path, encoding="utf-8"))
     outdir = os.path.join(cdir, "voice", "lipsync")
-    index, ok, miss = [], 0, 0
+    index, ok, miss, nvis = [], 0, 0, 0
     for ln in cat.get("lines", []):
         mp3 = os.path.join(args.root, ln["file"]) if not os.path.isabs(ln["file"]) else ln["file"]
         base = os.path.splitext(os.path.basename(mp3))[0]
@@ -212,11 +272,16 @@ def main():
         if dur <= 0.05:
             miss += 1
             continue
-        vals = text_envelope(ln.get("text", ""), dur, args.fps, seed=abs(hash(base)) % 9973)
-        write_env(os.path.join(outdir, base + ".json"),
-                  {"id": base, "line": ln["id"], "text": ln.get("text", ""),
-                   "dur": round(dur, 3), "fps": args.fps, "source": "text_rhythm",
-                   "values": vals})
+        vals, vis = text_envelope(ln.get("text", ""), dur, args.fps,
+                                  seed=abs(hash(base)) % 9973)
+        env = {"id": base, "line": ln["id"], "text": ln.get("text", ""),
+               "dur": round(dur, 3), "fps": args.fps, "source": "text_rhythm",
+               "values": vals}
+        if vis:
+            env["visemes"] = vis                 # 引擎有这个就走母音識別，没有就只开合
+            env["viseme_source"] = "pinyin_finals"
+            nvis += 1
+        write_env(os.path.join(outdir, base + ".json"), env)
         index.append({"id": base, "line": ln["id"], "text": ln.get("text", ""),
                       "dur": round(dur, 3)})
         ok += 1
@@ -226,7 +291,12 @@ def main():
               ensure_ascii=False, indent=1)
     avg = sum(i["dur"] for i in index) / max(1, len(index))
     print(f"口型包络（文本节律）：{ok} 条 → {outdir}，平均时长 {avg:.2f}s"
-          + (f"；{miss} 条缺音频跳过" if miss else ""))
+          + (f"；{miss} 条缺音频跳过" if miss else "")
+          + f"；带母音口型 {nvis} 条")
+    if not HAS_PINYIN:
+        # ⚠ 不要静默降级：没有 pypinyin 就只剩开合，嘴型会退回"只会张合"的老样子
+        print("[警告] 没装 pypinyin（pip install pypinyin），这批包络没有母音口型，"
+              "引擎会退回只开合的音量连动方式。自检会因此判红。", file=sys.stderr)
 
 
 if __name__ == "__main__":

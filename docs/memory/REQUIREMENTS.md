@@ -119,6 +119,7 @@
 | F12 | 答复要给**可执行的下一步**，不解释、不重复发问 | [聊天] | 汇报格式 | ✅ |
 | F13 | **聊天框里的所有要求必须完整计入仓库记忆区**（本轮新增） | [聊天] 2026-10-11 | 本文件 + WORKFLOW.md + GAPS.md | ✅ 本次完成 |
 | F14 | 交付前 `bash scripts/selfcheck_all.sh` 全绿 | [交接]六 | CI/自检 | ✅ |
+| F15 | **做测试软件 / 新模块前先参考那五个桌宠项目**（bongocat-sdl、bongocat-tauri、ds-local-pet、vpet、airi），**不会的上网找资料，不许闷头做**；查到什么、从哪查的要写进 `docs/REFERENCE_NOTES.md` | [聊天] 2026-10-13 | `docs/REFERENCE_NOTES.md` + `WORKFLOW.md` 二 | ✅ 本轮按此做了口型音素的查证 |
 
 ## G. 变更记录（要求被覆盖时写这里）
 

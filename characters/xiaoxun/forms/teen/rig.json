@@ -487,17 +487,17 @@
       "group": "head",
       "layer": 210,
       "pos": [
-        412,
-        320
+        434.0,
+        320.0
       ],
       "anchor": [
-        0,
-        0
+        0.5,
+        0.0
       ],
       "tags": [
         "mouth"
       ],
-      "note": "上唇线（闭合笑线），压在口内上面"
+      "note": "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移"
     },
     {
       "id": "eye_l_socket",
@@ -3255,12 +3255,17 @@
         {
           "part": "mouth_open",
           "param": "sx",
-          "scale": 0.08
+          "scale": 0.22
         },
         {
           "part": "mouth_mask",
           "param": "sx",
-          "scale": 0.06
+          "scale": 0.26
+        },
+        {
+          "part": "mouth_mask",
+          "param": "sy",
+          "scale": -0.045
         }
       ]
     },
@@ -3675,6 +3680,64 @@
       "ids": [
         "ParamMouthOpenY"
       ]
+    }
+  ],
+  "visemes": [
+    {
+      "id": "SIL",
+      "note": "静默：闭嘴",
+      "params": {
+        "ParamMouthOpenY": 0.0,
+        "ParamMouthForm": 0.0
+      }
+    },
+    {
+      "id": "A",
+      "note": "あ：张到最大，嘴形中性",
+      "params": {
+        "ParamMouthOpenY": 1.0,
+        "ParamMouthForm": 0.0
+      }
+    },
+    {
+      "id": "I",
+      "note": "い：几乎不张，横向咧到最宽",
+      "params": {
+        "ParamMouthOpenY": 0.22,
+        "ParamMouthForm": 1.0
+      }
+    },
+    {
+      "id": "U",
+      "note": "う：小口撅圆",
+      "params": {
+        "ParamMouthOpenY": 0.3,
+        "ParamMouthForm": -1.0
+      }
+    },
+    {
+      "id": "E",
+      "note": "え：半开偏宽",
+      "params": {
+        "ParamMouthOpenY": 0.58,
+        "ParamMouthForm": 0.55
+      }
+    },
+    {
+      "id": "O",
+      "note": "お：大口撅圆",
+      "params": {
+        "ParamMouthOpenY": 0.88,
+        "ParamMouthForm": -0.7
+      }
+    },
+    {
+      "id": "N",
+      "note": "ん / m・n 闭音：基本闭上，嘴角收住",
+      "params": {
+        "ParamMouthOpenY": 0.06,
+        "ParamMouthForm": -0.35
+      }
     }
   ],
   "expressions": [

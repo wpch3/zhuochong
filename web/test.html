@@ -132,6 +132,22 @@ th{color:var(--mut);font-weight:600;position:sticky;top:0;background:#fff}
       <div id="poses" class="muted">读取中…</div>
     </div>
     <div class="card">
+      <h2>口型音素（母音識別：ParamMouthOpenY × ParamMouthForm）</h2>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">
+        Live2D 标准参数里没有 ParamMouthA/I/U/E/O —— あ/い/う/え/お 是「开多大 × 咧开还是撅圆」
+        的组合。下面每个按钮按住一个音素，强度滑杆相当于那一帧的音量。
+      </div>
+      <div id="visemes" class="muted">读取中…</div>
+      <label class="row" style="margin-top:6px"><span>强度</span>
+        <input type="range" id="s-visw" min="0" max="1" step="0.05" value="1">
+        <code id="v-visw">1.00</code></label>
+      <div style="margin-top:6px">
+        <button class="pri sm" onclick="playVowels()">▶ 念一串 a-i-u-e-o</button>
+        <button class="sm" onclick="api('/api/viseme?v=off').then(refresh)">■ 松口</button>
+      </div>
+      <div class="muted" id="vis-info" style="font-size:12px;margin-top:4px">未接管</div>
+    </div>
+    <div class="card">
       <h2>口型同步（A4：按语音包络驱动 ParamMouthOpenY）</h2>
       <div>
         <select id="ls-line" style="max-width:260px"></select>

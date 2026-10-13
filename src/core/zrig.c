@@ -20,6 +20,10 @@
 #define ZRIG_MAX_BINDS    96
 #define ZRIG_MAX_DEFORMS  12
 #define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
+#define ZRIG_MAX_VISEME    8     /* 口型音素表的行数（SIL/A/I/U/E/O/N…） */
+#define ZRIG_MAX_VISEME_P  4     /* 一个音素最多同时写几个参数 */
+#define ZRIG_VIS_ATTACK   50.0   /* 口型张开的速度（1/s） */
+#define ZRIG_VIS_RELEASE  30.0   /* 收口的速度：比张开慢，否则收口像开关 */
 #define ZRIG_MAX_KEYPOOL  1024  /* 所有关键帧共用一个池子，通道里只存 [起点,个数) */
 #define ZRIG_MAX_OVERRIDES 32
 
@@ -196,6 +200,16 @@ typedef struct {
     int    mode;              /* EXPR_ADD / EXPR_SET */
 } zexprp;
 
+/* 口型音素（Live2D 的「母音認識方式」）：一个音素 = 一组标准参数取值。
+   音量连动只能开合嘴（ParamMouthOpenY），あ/い/う/え/お 的区别靠的是
+   「开多大 × 嘴形横向咧开还是撅圆（ParamMouthForm）」的组合。 */
+typedef struct {
+    char   id[8];                      /* "SIL"/"A"/"I"/"U"/"E"/"O"/"N" */
+    int    np;
+    int    pidx[ZRIG_MAX_VISEME_P];    /* 参数下标 */
+    double val[ZRIG_MAX_VISEME_P];     /* 该音素下这个参数的取值 */
+} zvisrow;
+
 typedef struct {
     char   id[32];
     char   name[48];
@@ -352,6 +366,17 @@ struct zrig {
        不是摆设 —— 自动眨眼只眨 EyeBlink 里列出来的那只眼，口型只写 LipSync 里的参数。 */
     int     blink_targets;       /* 位 0 = 左眼、位 1 = 右眼；0 = 没声明 → 两眼都眨 */
     char    lipsync_param[64];   /* LipSync 组的第一个参数，默认 ParamMouthOpenY */
+
+    /* 口型音素层（见 zvisrow）。表来自 rig.json 的 "visemes"，没写就用内建默认表。 */
+    zvisrow vis_rows[ZRIG_MAX_VISEME];
+    int     nvis;
+    int     vis_pidx[ZRIG_MAX_VISEME_P];  /* 音素表用到的参数（并集） */
+    double  vis_cur[ZRIG_MAX_VISEME_P];   /* 平滑后的当前值 */
+    int     nvis_p;
+    int     vis_target;      /* 当前目标音素下标，-1 = 没有 */
+    double  vis_weight;      /* 目标强度 0..1（= 这一帧的音量） */
+    int     vis_active;      /* 嘴是否由音素层接管 */
+    double  vis_last;        /* 上次平滑的时刻，<0 = 还没开始 */
 
     /* 渲染用的"最终值"：表情会往上叠，所以和子系统自己的值分开存 */
     double  blink_now;
@@ -1075,6 +1100,269 @@ const char *zrig_lipsync_param(const zrig *r)
     return (r && r->lipsync_param[0]) ? r->lipsync_param : "ParamMouthOpenY";
 }
 
+/* ------------------------------------------------ 口型音素表（visemes）
+   内建默认表。数值取自 Live2D 标准参数的约定：
+     ParamMouthOpenY 0..1（0 闭 1 张到最大）、ParamMouthForm -1..1（+ 咧开笑、- 撅圆）。
+   官方标准参数表里**没有** ParamMouthA/I/U/E/O 这种音素参数，
+   母音是用「开合 × 嘴形」两个标准参数的组合摆出来的，所以这里是一张表而不是五个新参数。 */
+static const struct { const char *id; double open, form; } VIS_DEFAULT[] = {
+    { "SIL", 0.00,  0.00 },   /* 静默：闭嘴 */
+    { "A",   1.00,  0.00 },   /* あ：张到最大，嘴形中性 */
+    { "I",   0.22,  1.00 },   /* い：几乎不张，横向咧到最宽 */
+    { "U",   0.30, -1.00 },   /* う：小口撅圆 */
+    { "E",   0.58,  0.55 },   /* え：半开偏宽 */
+    { "O",   0.88, -0.70 },   /* お：大口撅圆 */
+    { "N",   0.06, -0.35 }    /* ん/闭音：基本闭上，嘴角收住 */
+};
+
+/* 音素层用到的参数做个并集，平滑状态按并集存（将来加 ParamMouthSize 也不用改结构） */
+static int viseme_add_param(zrig *r, int pi)
+{
+    int k;
+    for (k = 0; k < r->nvis_p; ++k)
+        if (r->vis_pidx[k] == pi) return k;
+    if (r->nvis_p >= ZRIG_MAX_VISEME_P) return -1;
+    r->vis_pidx[r->nvis_p] = pi;
+    r->vis_cur[r->nvis_p] = r->params[pi].vdef;
+    return r->nvis_p++;
+}
+
+static void viseme_default_table(zrig *r)
+{
+    int po = param_find(r, zrig_lipsync_param(r));
+    int pf = param_find(r, "ParamMouthForm");
+    size_t k;
+    if (po < 0 && pf < 0) return;            /* 这个角色没有嘴参数，就没有音素层 */
+    for (k = 0; k < sizeof(VIS_DEFAULT) / sizeof(VIS_DEFAULT[0]); ++k) {
+        zvisrow *row;
+        if (r->nvis >= ZRIG_MAX_VISEME) break;
+        row = &r->vis_rows[r->nvis++];
+        memset(row, 0, sizeof(*row));
+        z_strlcpy(row->id, VIS_DEFAULT[k].id, sizeof(row->id));
+        if (po >= 0 && viseme_add_param(r, po) >= 0) {
+            row->pidx[row->np] = po;
+            row->val[row->np++] = VIS_DEFAULT[k].open;
+        }
+        if (pf >= 0 && viseme_add_param(r, pf) >= 0) {
+            row->pidx[row->np] = pf;
+            row->val[row->np++] = VIS_DEFAULT[k].form;
+        }
+    }
+}
+
+/* rig.json:
+     "visemes":[ {"id":"A","params":{"ParamMouthOpenY":1.0,"ParamMouthForm":0.0}}, ... ]
+   参数必须是模型里真有的参数（写错名字当场报错，不静默忽略）。 */
+static int load_visemes(zrig *r, const zjson *jv, zdiag *d, const char *file)
+{
+    size_t i;
+    r->nvis = 0;
+    r->nvis_p = 0;
+    r->vis_target = -1;
+    r->vis_weight = 0.0;
+    r->vis_active = 0;
+    r->vis_last = -1.0;
+    if (!jv) { viseme_default_table(r); return 0; }
+    if (!zjson_is(jv, ZJSON_ARR)) {
+        zdiag_error(d, file, jv->line, 0, "visemes", "期望 array");
+        return -1;
+    }
+    for (i = 0; i < zjson_count(jv); ++i) {
+        const zjson *vj = zjson_at((zjson *)jv, i);
+        const char *id = zjson_str(zjson_obj_get((zjson *)vj, "id"), NULL);
+        zjson *pj = zjson_obj_get((zjson *)vj, "params");
+        zvisrow *row;
+        size_t k;
+        char path[64];
+        z_snprintf(path, sizeof(path), "visemes[%d]", (int)i);
+        if (!id || !*id) {
+            zdiag_error(d, file, vj->line, 0, path, "缺少 id");
+            return -1;
+        }
+        if (r->nvis >= ZRIG_MAX_VISEME) {
+            zdiag_error(d, file, vj->line, 0, path, "音素最多 %d 个", ZRIG_MAX_VISEME);
+            return -1;
+        }
+        if (!pj || !zjson_is(pj, ZJSON_OBJ)) {
+            zdiag_error(d, file, vj->line, 0, path, "params 期望 object");
+            return -1;
+        }
+        row = &r->vis_rows[r->nvis++];
+        memset(row, 0, sizeof(*row));
+        z_strlcpy(row->id, id, sizeof(row->id));
+        for (k = 0; k < zjson_count(pj); ++k) {
+            const char *pid = zjson_key_at(pj, k);
+            int pi = pid ? param_find(r, param_alias(pid)) : -1;
+            if (pi < 0) {
+                zdiag_error(d, file, pj->line, 0, path,
+                            "参数 '%s' 不存在（音素只能写模型声明过的参数）",
+                            pid ? pid : "?");
+                return -1;
+            }
+            if (row->np >= ZRIG_MAX_VISEME_P || viseme_add_param(r, pi) < 0) {
+                zdiag_error(d, file, pj->line, 0, path,
+                            "一个音素最多写 %d 个参数", ZRIG_MAX_VISEME_P);
+                return -1;
+            }
+            row->pidx[row->np] = pi;
+            row->val[row->np++] = zjson_num(zjson_obj_get(pj, pid), 0.0);
+        }
+    }
+    return 0;
+}
+
+/* 这个参数在该音素下的目标值（按当前强度插在默认值和音素值之间） */
+static double viseme_target_for(const zrig *r, int pi)
+{
+    const zvisrow *row;
+    int k;
+    double base = r->params[pi].vdef;
+    if (r->vis_target < 0 || r->vis_target >= r->nvis) return base;
+    row = &r->vis_rows[r->vis_target];
+    for (k = 0; k < row->np; ++k)
+        if (row->pidx[k] == pi) return base + (row->val[k] - base) * r->vis_weight;
+    return base;
+}
+
+static void viseme_write(zrig *r)
+{
+    int k;
+    for (k = 0; k < r->nvis_p; ++k)
+        zrig_param_set(r, r->params[r->vis_pidx[k]].id, r->vis_cur[k]);
+}
+
+static void viseme_release(zrig *r)
+{
+    int k;
+    for (k = 0; k < r->nvis_p; ++k) {
+        int pi = r->vis_pidx[k];
+        r->vis_cur[k] = r->params[pi].vdef;
+        zrig_param_reset(r, r->params[pi].id);
+    }
+    r->vis_active = 0;
+    r->vis_target = -1;
+    r->vis_weight = 0.0;
+    r->mouth_mute = 0;
+}
+
+/* 每帧平滑。张开快、收口慢（参考 airi 的 wlipsync vowel driver：
+   attack/release 两档指数平滑；一口气切到目标会抖得像机器）。 */
+static void viseme_update(zrig *r, double now)
+{
+    double dt, kup, kdn;
+    int k, settled = 1, all_base = 1;
+    if (!r->vis_active || r->nvis_p <= 0) { r->vis_last = now; return; }
+    dt = (r->vis_last < 0.0) ? 0.0 : now - r->vis_last;
+    r->vis_last = now;
+    if (dt < 0.0) dt = 0.0;
+    if (dt > 0.25) dt = 0.25;
+    kup = 1.0 - exp(-ZRIG_VIS_ATTACK * dt);
+    kdn = 1.0 - exp(-ZRIG_VIS_RELEASE * dt);
+    for (k = 0; k < r->nvis_p; ++k) {
+        int pi = r->vis_pidx[k];
+        double base = r->params[pi].vdef;
+        double tgt = viseme_target_for(r, pi);
+        double cur = r->vis_cur[k];
+        double kk = (fabs(tgt - base) > fabs(cur - base)) ? kup : kdn;
+        cur += (tgt - cur) * kk;
+        if (fabs(cur - tgt) < 1e-4) cur = tgt;
+        r->vis_cur[k] = cur;
+        if (fabs(cur - base) > 4e-3) settled = 0;
+        if (fabs(tgt - base) > 1e-6) all_base = 0;
+    }
+    viseme_write(r);
+    if (settled && all_base) viseme_release(r);   /* 收干净了就把嘴交还给动作 */
+}
+
+/* ------------------------------------------------ 口型音素层（对外） */
+int zrig_viseme_count(const zrig *r) { return r ? r->nvis : 0; }
+
+const char *zrig_viseme_id(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nvis) return NULL;
+    return r->vis_rows[i].id;
+}
+
+int zrig_viseme_find(const zrig *r, const char *id)
+{
+    int i;
+    if (!r || !id || !*id) return -1;
+    for (i = 0; i < r->nvis; ++i) {
+        const char *a = r->vis_rows[i].id;
+        const char *b = id;
+        while (*a && *b) {
+            int ca = (*a >= 'a' && *a <= 'z') ? *a - 32 : *a;
+            int cb = (*b >= 'a' && *b <= 'z') ? *b - 32 : *b;
+            if (ca != cb) break;
+            ++a; ++b;
+        }
+        if (!*a && !*b) return i;
+    }
+    return -1;
+}
+
+int zrig_viseme_entry(const zrig *r, int vi, int k, const char **param_id, double *value)
+{
+    const zvisrow *row;
+    if (!r || vi < 0 || vi >= r->nvis) return -1;
+    row = &r->vis_rows[vi];
+    if (k < 0 || k >= row->np) return -1;
+    if (param_id) *param_id = r->params[row->pidx[k]].id;
+    if (value) *value = row->val[k];
+    return 0;
+}
+
+int zrig_viseme_entry_count(const zrig *r, int vi)
+{
+    if (!r || vi < 0 || vi >= r->nvis) return 0;
+    return r->vis_rows[vi].np;
+}
+
+int zrig_viseme_set(zrig *r, const char *id, double weight)
+{
+    int vi;
+    if (!r || r->nvis <= 0) return -1;
+    if (!id || !*id) vi = zrig_viseme_find(r, "SIL");
+    else {
+        vi = zrig_viseme_find(r, id);
+        if (vi < 0) return -1;              /* 不认识的音素要报错，不能当静默吞掉 */
+    }
+    r->vis_target = vi;
+    r->vis_weight = ZC_CLAMP(weight, 0.0, 1.0);
+    if (!r->vis_active) r->vis_last = r->now;   /* 重新接管时别用上一次的时间差 */
+    r->vis_active = 1;
+    r->mouth_mute = 1;                      /* 说话时动作里的嘴通道让路 */
+    return 0;
+}
+
+void zrig_viseme_clear(zrig *r)
+{
+    if (!r || r->nvis_p <= 0) return;
+    viseme_release(r);
+}
+
+/* 冻结时钟（dt 恒为 0）时平滑走不动，直接到位——测试台和自检靠它 */
+void zrig_viseme_snap(zrig *r)
+{
+    int k;
+    if (!r || !r->vis_active) return;
+    for (k = 0; k < r->nvis_p; ++k)
+        r->vis_cur[k] = viseme_target_for(r, r->vis_pidx[k]);
+    viseme_write(r);
+    r->vis_last = r->now;
+}
+
+const char *zrig_viseme_current(const zrig *r)
+{
+    if (!r || !r->vis_active || r->vis_target < 0) return NULL;
+    return r->vis_rows[r->vis_target].id;
+}
+
+double zrig_viseme_weight(const zrig *r)
+{
+    return (r && r->vis_active) ? r->vis_weight : 0.0;
+}
+
 /* 自动眨眼眨哪只眼：位 0 = 左、位 1 = 右（= model3.json 的 EyeBlink 组）。 */
 int zrig_blink_targets(const zrig *r) { return r ? r->blink_targets : 3; }
 
@@ -1659,6 +1947,8 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
     if (load_param_groups(r, zjson_obj_get(root, "param_groups"), diag, file) != 0) goto fail;
+    /* 音素表要用参数下标，必须排在 params / param_groups 之后 */
+    if (load_visemes(r, zjson_obj_get(root, "visemes"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
     if (load_poses(r, zjson_obj_get(root, "poses"), diag, file) != 0) goto fail;
 
@@ -2400,6 +2690,7 @@ void zrig_tick(zrig *r, double now)
     }
 
     blink_update(r, now);
+    viseme_update(r, now);
     params_refresh_builtin(r);
     compute_group_transforms(r);
     physics_update(r, now);

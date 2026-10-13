@@ -236,6 +236,44 @@ async function loadLipsync() {
     .map((it) => `<option value="${it.id}">${it.text || it.id}（${it.dur}s）</option>`)
     .join("");
 }
+/* ---------- 口型音素（母音識別）----------
+   音素给嘴形、强度给音量 —— 和 airi 的 wlipsync vowel driver 一个路子：
+   每帧只认一个“赢家”母音 + 当前响度，而不是五个口型一起加权糊在一起。 */
+async function loadVisemes() {
+  const d = await fetch("/api/params.json").then((x) => x.json()).catch(() => null);
+  const box = $("visemes");
+  if (!d || !d.visemes || !d.visemes.length) {
+    box.textContent = "（这个角色没有音素表）";
+    return;
+  }
+  const label = { SIL: "闭嘴", A: "a / あ", I: "i / い", U: "u / う",
+                  E: "e / え", O: "o / お", N: "n / ん" };
+  box.innerHTML = d.visemes
+    .map((v) => `<button class="sm" data-v="${v}">${label[v] || v}</button>`).join("");
+  box.querySelectorAll("button").forEach((b) => {
+    b.onclick = async () => {
+      const w = +$("s-visw").value;
+      const r = await api(`/api/viseme?v=${encodeURIComponent(b.dataset.v)}&w=${w.toFixed(2)}`);
+      $("vis-info").textContent = r && r.ok
+        ? `音素 ${r.viseme || "—"} · 强度 ${(+r.weight).toFixed(2)} · ` +
+          `OpenY ${(+r.open).toFixed(2)} / Form ${(+r.form).toFixed(2)}`
+        : "设置失败";
+      refresh();
+    };
+  });
+}
+async function playVowels() {
+  const seq = ["A", "I", "U", "E", "O", "SIL"];
+  for (const v of seq) {
+    await api(`/api/viseme?v=${v}&w=${v === "SIL" ? 0 : (+$("s-visw").value).toFixed(2)}`);
+    $("vis-info").textContent = "念：" + v;
+    refresh();
+    await sleep(260);
+  }
+  await api("/api/viseme?v=off");
+  refresh();
+}
+
 async function speakLine() {
   const id = $("ls-line").value;
   if (!id) return;
@@ -262,6 +300,10 @@ async function speakLine() {
 function setBlink(v) {
   if (v === "auto") { $("v-blink").textContent = "auto"; $("s-blink").value = 0; api("/api/blink?v=auto"); }
   else { $("v-blink").textContent = (+v).toFixed(2); api("/api/blink?v=" + v); }
+}
+function bindVisemeSlider() {
+  const s = $("s-visw");
+  if (s) s.addEventListener("input", (e) => { $("v-visw").textContent = (+e.target.value).toFixed(2); });
 }
 function bindSliders() {
   let gaze = { x: 0, y: 0 };
@@ -585,11 +627,13 @@ async function runSuite() {
 /* ---------- 启动 ---------- */
 (async function start() {
   bindSliders();
+  bindVisemeSlider();
   bindStage();
   await loadInfo();
   await loadParts();
   await loadParams();
   await loadLipsync();
+  await loadVisemes();
   setInterval(() => { if (!suiteRunning) refresh(); }, 100);
   setInterval(loadInfo, 1000);
   setInterval(() => {

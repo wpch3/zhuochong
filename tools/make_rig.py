@@ -80,10 +80,15 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                                "scale": round(0.95 - mouth["closed_sy"], 3)},
                               {"part": "mouth_open", "param": "alpha", "scale": -0.9}],
                     "note": "口型同步（LipSync）接进来时写的就是这个参数"})
+        # 嘴形：Live2D 标准口径 —— + 是咧开（笑 / い・え），- 是撅圆（怒 / う・お）。
+        # 母音口型就是靠它和 ParamMouthOpenY 的组合摆出来的（见 rig 的 visemes 段），
+        # 所以幅度必须够大，象征性的 ±8% 在 466px 的帧上只有半个像素，等于没做。
         out.append({"id": "ParamMouthForm", "label": "嘴形 笑/扁", "min": -1.0, "max": 1.0,
                     "default": 0.0,
-                    "binds": [{"part": "mouth_open", "param": "sx", "scale": 0.08},
-                              {"part": "mouth_mask", "param": "sx", "scale": 0.06}]})
+                    "binds": [{"part": "mouth_open", "param": "sx", "scale": 0.22},
+                              {"part": "mouth_mask", "param": "sx", "scale": 0.26},
+                              # 撅圆时开口要略高一点（う/お 是小而圆，不是小而扁）
+                              {"part": "mouth_mask", "param": "sy", "scale": -0.045}]})
     if has_brows:
         out += [
             {"id": "ParamBrowLY", "label": "左眉 上下", "min": -1.0, "max": 1.0, "default": 0.0,
@@ -198,6 +203,31 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
     return out
 
 
+def viseme_list(mouth=None):
+    """口型音素表：音素 → 标准参数取值。
+
+    依据（2026-10-13 查证）：
+      - Live2D 官方标准参数表只有 ParamMouthOpenY(0..1) 与 ParamMouthForm(-1..1)，
+        且 ParamMouthForm 是「+ 笑 / - 怒」的嘴形，不是母音参数本身；
+      - 母音要靠两者组合，业界（Animaze 的 viseme→Live2D 映射表）也是这么做的。
+    数值按我们自己的素材标定过：い 不张嘴但最宽，う 小而圆，お 大而圆。
+    """
+    if not mouth:
+        return []
+    def v(vid, open_y, form, note):
+        return {"id": vid, "note": note,
+                "params": {"ParamMouthOpenY": open_y, "ParamMouthForm": form}}
+    return [
+        v("SIL", 0.00,  0.00, "静默：闭嘴"),
+        v("A",   1.00,  0.00, "あ：张到最大，嘴形中性"),
+        v("I",   0.22,  1.00, "い：几乎不张，横向咧到最宽"),
+        v("U",   0.30, -1.00, "う：小口撅圆"),
+        v("E",   0.58,  0.55, "え：半开偏宽"),
+        v("O",   0.88, -0.70, "お：大口撅圆"),
+        v("N",   0.06, -0.35, "ん / m・n 闭音：基本闭上，嘴角收住"),
+    ]
+
+
 def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=False):
     """表情集。每条 = 一组参数偏移（mode 缺省 add，set 为覆盖），fade 是淡入淡出秒数。
 
@@ -269,15 +299,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     # 形变通道要打到躯干那一段上。
     body_id = "seg_torso" if seg else "body_full"
 
-    def part(img_name, group, tags, layer, order_note=""):
+    def part(img_name, group, tags, layer, order_note="", anchor=(0, 0)):
+        # anchor 不是左上角时 pos 要跟着挪：pos 给的是“锚点落在画布哪里”，
+        # 只改 anchor 不改 pos 会整体偏掉半个零件（第一版嘴就是这么偏的）。
         p = by_name[img_name]
+        w, h = p["size"]
         return {
             "id": img_name.replace(".png", ""),
             "file": f"sprites/{img_name}",
             "group": group,
             "layer": layer,
-            "pos": [ox + p["pos"][0], oy + p["pos"][1]],
-            "anchor": [0, 0],
+            "pos": [round(ox + p["pos"][0] + w * anchor[0], 2),
+                    round(oy + p["pos"][1] + h * anchor[1], 2)],
+            "anchor": [anchor[0], anchor[1]],
             "tags": tags,
             "note": order_note,
         }
@@ -495,7 +529,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                      "而不是把整张口内图裁掉下半截（那样半开只剩一条黑缝）"},
         ]
     parts_list = body_parts_list + mouth_parts + [
-        part("mouth_open.png", "head", ["mouth"], 210, "上唇线（闭合笑线），压在口内上面"),
+        part("mouth_open.png", "head", ["mouth"], 210,
+             "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，"
+             "所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移",
+             anchor=(0.5, 0.0)),
     ] + eye_parts
     # 透け眉（眉毛透过刘海）：动漫立绘的常规做法 —— 眉毛本体画在刘海底下（层 232/233），
     # 再把同一张图的半透明副本画在刘海之上（层 241/242），并用 hair_front 当遮罩，
@@ -1232,6 +1269,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             {"name": "EyeBlink", "ids": ["ParamEyeLOpen", "ParamEyeROpen"]},
             {"name": "LipSync", "ids": ["ParamMouthOpenY"]},
         ],
+        # 口型音素表（Live2D 的「母音認識方式」）。官方标准参数里没有
+        # ParamMouthA/I/U/E/O —— あ/い/う/え/お 是「开多大 × 嘴形」的组合，
+        # 所以这里是一张组合表，而不是五个自造参数。引擎按它平滑地摆嘴形。
+        "visemes": viseme_list(mouth=mouth),
         "expressions": expression_list(mouth=mouth,
                                        has_brows=any(p["id"] == "brow_l" for p in parts_list),
                                        head_is_part=head_is_part,

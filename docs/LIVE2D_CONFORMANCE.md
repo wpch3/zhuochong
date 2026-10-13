@@ -103,6 +103,38 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 
 ---
 
+### 口型音素（あいうえお）：为什么不是五个新参数
+
+**官方标准参数表里没有 `ParamMouthA/I/U/E/O`。** 查证结论（2026-10-13）：
+
+| 来源 | 结论 |
+| --- | --- |
+| Live2D 官方《标准参数列表》 | 嘴只有两项：`ParamMouthOpenY` 0..1、`ParamMouthForm` -1..1（**+ 笑 / − 怒**） |
+| Live2D 教程（母音認識方式） | あいうえお = 给「开合 × 嘴形」事先做好几组 keyform，按识别到的母音切换；`ParamMouthForm` 本身**不是母音参数** |
+| Animaze（FaceRig 后继）的 viseme→Live2D 映射表 | 每个 viseme 也都落到 `ParamMouthOpenY` + `ParamMouthForm` 两个标准参数上 |
+| airi `packages/model-driver-lipsync` | 每帧只取**一个赢家母音 + 当前响度**，再加 attack/release 平滑，而不是五个口型一起加权 |
+
+所以我们做的是一张**音素 → 标准参数取值**的表（rig.json 顶层 `visemes`），
+而不是自造五个参数。换角色换表，引擎不用改。
+
+| 音素 | 读音 | `ParamMouthOpenY` | `ParamMouthForm` | 形状 |
+| --- | --- | --- | --- | --- |
+| SIL | 静默 | 0.00 | 0.00 | 闭嘴 |
+| A | あ / a | 1.00 | 0.00 | 张到最大，嘴形中性 |
+| I | い / i | 0.22 | +1.00 | 几乎不张，横向咧到最宽 |
+| U | う / u | 0.30 | −1.00 | 小口撅圆 |
+| E | え / e | 0.58 | +0.55 | 半开偏宽 |
+| O | お / o | 0.88 | −0.70 | 大口撅圆 |
+| N | ん / m・n | 0.06 | −0.35 | 基本闭上，嘴角收住 |
+
+驱动方式：`zrig_viseme_set(r, "I", 0.8)` —— **音素给嘴形，权重给音量**；
+引擎按 attack 50/s、release 30/s 做指数平滑（收口比张口慢，否则像开关），
+收干净后自动把嘴交还给动作（`mouth_mute` 归 0）。
+预览端点 `/api/viseme?v=A&w=1`，测试台有一排按钮和「念一串 a-i-u-e-o」。
+
+证据：`logs/asset_qa/_viseme_sheet.jpg`（冻结时钟 + 7× 放大的七张嘴）；
+闸门：`test_viseme()` 要求 A/I/U/E/O **两两像素差 > 25px**，且 い 必须比 う 宽。
+
 ## 二、文件结构对照（model3 / motion3 / exp3 / physics3 / pose3 …）
 
 | Live2D 文件 | 作用 | 小寻怎么对应 | 判定 |

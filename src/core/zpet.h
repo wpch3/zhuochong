@@ -89,9 +89,22 @@ int    zpet_pose_set(zpet *p, const char *group, const char *entry);
 void   zpet_pose_snap(zpet *p);   /* 跳过淡化直接到位（冻结时钟时用） */
 
 /* 命名参数层（≈ Live2D 的 ParamXxx）：测试台滑条 / 脚本 / 口型都走这张表 */
+double zpet_param_get(const zpet *p, const char *id);
+/* model3.json 的 Groups：口型写哪个参数 / 自动眨眼眨哪只眼（位 0 左、位 1 右） */
+const char *zpet_lipsync_param(const zpet *p);
+int    zpet_blink_targets(const zpet *p);
 int    zpet_param_count(const zpet *p);
 int    zpet_param_info(const zpet *p, int i, zrig_param_desc *out);
 int    zpet_param_set(zpet *p, const char *id, double v);
+
+/* ---- 口型音素（母音識別）：见 zrig.h 的说明 ---- */
+int         zpet_viseme_set(zpet *p, const char *id, double weight);
+void        zpet_viseme_clear(zpet *p);
+void        zpet_viseme_snap(zpet *p);   /* 冻结时钟时跳过平滑 */
+const char *zpet_viseme_current(const zpet *p);   /* 没接管时是空串 */
+double      zpet_viseme_weight(const zpet *p);
+int         zpet_viseme_count(const zpet *p);
+const char *zpet_viseme_id(const zpet *p, int i);
 int    zpet_param_reset(zpet *p, const char *id);
 void   zpet_param_reset_all(zpet *p);
 
@@ -114,6 +127,10 @@ int   zpet_call_event(zpet *p, const char *kind, const char *text, const char *m
  * 每帧写进 ParamMouthOpenY，并让动作里的嘴通道让路（zrig_set_mouth_mute）。
  * 播完自动停：参数回默认、嘴交还给动作。*/
 int    zpet_lipsync_start(zpet *p, const double *values, int n, double fps, double now);
+/* 带音素的版本：visemes[i] 是第 i 帧的音素名（"A"/"I"/"U"/"E"/"O"/"N"/"SIL"），
+   传 NULL 就退回只有开合的音量连动方式。音素给嘴形，包络给强度。 */
+int    zpet_lipsync_start_v(zpet *p, const double *values, const char *const *visemes,
+                            int n, double fps, double now);
 int    zpet_lipsync_load(zpet *p, const char *line_id, double now);  /* 读 voice/lipsync/<id>.json */
 void   zpet_lipsync_stop(zpet *p);
 int    zpet_lipsync_active(const zpet *p);

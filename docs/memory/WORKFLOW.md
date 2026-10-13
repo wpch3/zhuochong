@@ -28,7 +28,15 @@
    | `ds-local-pet` | 状态机 `animation/state_machine.py`、空闲检测 `awareness/idle_detector.py` |
    | `bongocat-sdl` / `bongocat-tauri` | 透明窗与托盘思路、全局输入钩子、动作重叠 |
    | `photocraft` | 选区/蒙版/图层 `crates/algo/src/selection.rs`、`crates/engine/` |
+1.5 **沙箱里别克隆**（七个仓库约 3 GB，而且会被沙箱重置冲掉）。单文件查阅用：
+   ```bash
+   gh api "repos/<owner>/<repo>/git/trees/HEAD?recursive=1" --jq '.tree[].path' | grep -i lip
+   gh api "repos/<owner>/<repo>/contents/<路径>" -H "Accept: application/vnd.github.raw"
+   ```
+   白名单只放行 github.com / api.github.com / codeload.github.com / pypi / npm，
+   `docs.live2d.com` 打不开 —— 官方口径改从 `Live2D/CubismWebFramework` 仓库和 web_search 摘要取。
 2. 源码里找不到 → 上网查，**把 URL 与结论写进 `docs/REFERENCE_NOTES.md`**。
+   **这一条对"测试软件/新模块"是硬要求（用户 2026-10-13）：先看那五个桌宠项目怎么做，再动手。**
 3. 查完 `bash scripts/clean_references.sh` 清缓存（仓库外目录，不占仓库体积）。
 4. **不准照搬代码**（BongoCat-C 是 AGPL）：只学结构与思路，自己用 C 重写。
 

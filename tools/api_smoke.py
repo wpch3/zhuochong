@@ -182,6 +182,36 @@ def run(base, root):
         check("闭右眼和闭左眼不是同一张脸", el != er, "%s vs %s" % (el, er))
         a.hit("/api/param?id=ParamEyeROpen&reset=1")
         a.hit("/api/blink?on=1")
+    # 口型音素（母音識別）：A/I/U/E/O 必须是五张不同的嘴
+    pj = a.json("/api/params.json") or {}
+    vis = pj.get("visemes") or []
+    check("params.json 带音素表", len(vis) >= 6, " ".join(vis))
+    check("params.json 带 model3 的 Groups",
+          isinstance(pj.get("groups"), dict)
+          and pj["groups"].get("LipSync") == ["ParamMouthOpenY"]
+          and len(pj["groups"].get("EyeBlink") or []) == 2,
+          json.dumps(pj.get("groups"), ensure_ascii=False))
+    hashes = {}
+    for v in ("A", "I", "U", "E", "O"):
+        r = a.json("/api/viseme?v=%s&w=1" % v) or {}
+        check("音素 %s 能设上" % v, r.get("ok") is True and r.get("viseme") == v,
+              json.dumps(r, ensure_ascii=False))
+        hashes[v], _ = a.frame_hash()
+    uniq = len(set(hashes.values()))
+    check("A/I/U/E/O 是五张不同的嘴", uniq == 5,
+          " ".join("%s=%s" % (k, h[:6]) for k, h in hashes.items()))
+    try:                                  # 404 会抛 HTTPError，正好就是要的结果
+        r = a.json("/api/viseme?v=NOPE") or {}
+        bad_ok = r.get("ok") is False
+        detail = json.dumps(r, ensure_ascii=False)
+    except urllib.error.HTTPError as e:   # noqa: PERF203
+        bad_ok = e.code == 404
+        detail = "HTTP %d" % e.code
+    check("写错音素名要报错（不能静默当静默音）", bad_ok, detail)
+    a.hit("/api/viseme?v=off")
+    time.sleep(0.25)
+    off_hash, _ = a.frame_hash()
+    check("松口后嘴回到闭合", off_hash != hashes["A"], "%s vs %s" % (off_hash, hashes["A"]))
     if "ParamEyeSparkle" in pids:
         a.hit("/api/param?id=ParamEyeSparkle&v=0"); s0, _ = a.frame_hash()
         a.hit("/api/param?id=ParamEyeSparkle&v=1"); s1, _ = a.frame_hash()

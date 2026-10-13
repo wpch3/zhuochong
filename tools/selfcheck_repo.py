@@ -378,7 +378,42 @@ def check_live2d(root):
         check("眼部件都标了 eye_side", not noside,
               f"{tag}：{noside[:4]} 没标左右" if noside else f"{len(eye)} 件都标了")
 
-        # ⑥ 文档与 rig 对得上：每个参数都要在对照表里出现
+        # ⑥ 口型音素表（母音識別）：必须齐、必须只写标准嘴参数、五个母音不许重样
+        vis = r.get("visemes", [])
+        vids = [v.get("id") for v in vis]
+        if "ParamMouthOpenY" in ids:
+            check("有口型音素表且五个母音齐全",
+                  set(["SIL", "A", "I", "U", "E", "O"]).issubset(set(vids)),
+                  f"{tag}：visemes={vids}")
+            offenders, outrange, rows = [], [], {}
+            prange = {q["id"]: (q.get("min", 0.0), q.get("max", 1.0)) for q in params}
+            for v in vis:
+                ps = v.get("params", {})
+                for pid, pv in ps.items():
+                    # 音素只能写模型声明过的标准嘴参数 —— 不许偷偷自造 ParamMouthA 这类
+                    if pid not in ids or pid not in ("ParamMouthOpenY", "ParamMouthForm"):
+                        offenders.append(f"{v.get('id')}:{pid}")
+                    lo, hi = prange.get(pid, (0.0, 1.0))
+                    if not (lo - 1e-9 <= pv <= hi + 1e-9):
+                        outrange.append(f"{v.get('id')}:{pid}={pv}∉[{lo},{hi}]")
+                rows[v.get("id")] = tuple(sorted(ps.items()))
+            check("音素只写标准嘴参数（OpenY / Form）", not offenders,
+                  f"{tag}：{offenders[:4]}" if offenders else "（没有自造音素参数）")
+            check("音素取值都在参数区间内", not outrange, f"{outrange[:3]}" if outrange else "（逐条核对过）")
+            dup = [f"{a_}={b_}" for i, a_ in enumerate(vids) for b_ in vids[i + 1:]
+                   if a_ in rows and b_ in rows and rows[a_] == rows[b_]]
+            check("五个母音互不重样（重样=少一张嘴）", not dup, f"{dup[:3]}" if dup else "（两两都不同）")
+            # 嘴形参数必须真的接到素材上，否则 い/う 只剩开合大小的区别
+            mf = [q for q in params if q["id"] == "ParamMouthForm"]
+            check("ParamMouthForm 真接了素材（≥2 条 bind）",
+                  bool(mf) and len(mf[0].get("binds", [])) >= 2,
+                  f"{tag}：binds={len(mf[0].get('binds', [])) if mf else 0}")
+            if doc_txt:
+                nodoc = [v for v in vids if f"| {v} " not in doc_txt and f"`{v}`" not in doc_txt]
+                check("对照表记载了音素表", not nodoc,
+                      f"文档里查不到音素 {nodoc[:4]}" if nodoc else f"{len(vids)} 个音素都有记载")
+
+        # ⑦ 文档与 rig 对得上：每个参数都要在对照表里出现
         if doc_txt:
             missing = [i for i in ids if i not in doc_txt]
             check("对照表覆盖所有参数", not missing,
@@ -419,6 +454,23 @@ def check_character(root):
             check("口型包络都在", not m2, f"{len(items)} 条" + (f"，缺 {m2[:3]}" if m2 else ""))
             check("口型包络覆盖所有台词", len(items) >= len(lines),
                   f"包络 {len(items)} / 台词 {len(lines)}")
+            # 母音口型：没装 pypinyin 重跑 make_lipsync.py 会把音素轨**静默**抹掉，
+            # 嘴退回只会张合。所以这里要红，不能让它悄悄降级。
+            envs = [f for f in glob.glob(os.path.join(os.path.dirname(idx), "*.json"))
+                    if not f.endswith("index.json")]
+            withvis, badlen = 0, []
+            for f in envs:
+                e = json.load(open(f, encoding="utf-8"))
+                v = e.get("visemes")
+                if not v:
+                    continue
+                withvis += 1
+                if len(v) != len(e.get("values", [])):
+                    badlen.append(os.path.basename(f))
+            check("口型包络带母音音素轨", envs and withvis >= len(envs) * 0.9,
+                  f"{withvis}/{len(envs)} 条带 visemes"
+                  + ("（缺的那些重跑 make_lipsync.py，需要 pypinyin）" if withvis < len(envs) else ""))
+            check("音素轨与包络等长", not badlen, f"{badlen[:3]}" if badlen else f"{withvis} 条逐条核对")
 
 
 # ------------------------------------------------------------------ 5 前端
