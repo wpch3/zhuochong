@@ -105,10 +105,20 @@ def main():
         b = p.get("balance") or {}
         if b.get("mode") not in BAL_MODES:
             bad_bal.append("%s → %s" % (fid, b.get("mode")))
-        if b.get("mode") == "api" and not b.get("path"):
-            bad_bal.append("%s 声明了 api 余额但没给 path" % fid)
+        if b.get("mode") == "api":
+            # 实测自 one-api：各家余额端点和算法都不一样（DeepSeek 直接给 total_balance，
+            # OpenRouter 和 credit_grants 式要 total - used），所以光一个 path 表达不了。
+            if not b.get("endpoint"):
+                bad_bal.append("%s 声明了 api 余额但没给 endpoint" % fid)
+            if not b.get("pick"):
+                bad_bal.append("%s 声明了 api 余额但没说从哪个字段取（pick）" % fid)
+            if b.get("path"):
+                bad_bal.append("%s 还在用老的 balance.path，改成 endpoint + pick" % fid)
         if p.get("local") and b.get("mode") != "none":
             bad_bal.append("%s 是本地供应商，余额口径应为 none" % fid)
+        # 优先级：路由按它分层（照 one-api 的 Ability.priority 做法）
+        if not isinstance(p.get("priority"), int):
+            bad.append("%s 没写 priority（整数，越大越优先）" % fid)
         # 密钥绝不许明文
         blob = json.dumps(p, ensure_ascii=False)
         if SECRET_PAT.search(blob):
@@ -216,6 +226,35 @@ def main():
             })
         emit("config/providers.json", legacy,
              "给 C 侧的兼容投影，%d 条" % len(legacy["providers"]))
+
+        # 路由表：(能力 → 候选供应商) 的反向索引，照 one-api 的 Ability 表物化出来。
+        # 运行时不该去遍历 config/providers/ 再反查——那是每次请求都做一遍的活儿。
+        # 预计算好，C 侧读一个扁平数组就能路由。
+        routes = []
+        for pv in sorted(provs.values(), key=lambda x: x["id"]):
+            for e in pv.get("capabilities", []):
+                pr = e.get("price") or {}
+                routes.append({
+                    "cap": e["cap"], "provider": pv["id"], "model": e.get("model", ""),
+                    "priority": pv.get("priority", 0),
+                    "local": bool(pv.get("local")),
+                    "enabled": bool(pv.get("enabled", True)),
+                    "free": bool(pr.get("free")),
+                    "price_in": float(pr.get("in", 0) or 0),
+                    "price_out": float(pr.get("out", 0) or 0),
+                    "price_per": float(pr.get("per", 0) or 0),
+                })
+        # 排序即优先级：先按能力分组，组内高优先级在前，同级按 id 稳定排序。
+        # 网关取"第一个可用的"就是正确路由，重试则顺序往下走。
+        routes.sort(key=lambda r: (r["cap"], -r["priority"], r["provider"]))
+        emit("config/gateway_routes.json", {
+            "_note": "由 tools/check_platform.py 从 config/providers/*.json 生成，不要手改。"
+                     "这是能力→供应商的路由表，顺序即优先级。",
+            "schema_version": "1.0",
+            "strategy": (gw.get("routing") or {}).get("strategy"),
+            "fallback": (gw.get("routing") or {}).get("fallback", True),
+            "routes": routes,
+        }, "路由表，%d 条" % len(routes))
 
     print("")
     print("合计 %d 项，%d 项不通过 → %s"

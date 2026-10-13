@@ -32,7 +32,12 @@
     }
   ],
   "balance": {
-    "mode": "ledger"
+    "mode": "api",
+    "endpoint": "/dashboard/billing/credit_grants",
+    "pick": "total_granted",
+    "minus": "total_used",
+    "currency": "USD"
   },
-  "note": "从旧 config/providers.json 迁来。中转站大多是 one-api 系，/dashboard 可查额度，接入时按实际填 balance.path。"
+  "note": "从旧 config/providers.json 迁来。中转站大多是 one-api 系，/dashboard 可查额度，接入时按实际填 balance.path。",
+  "priority": 30
 }

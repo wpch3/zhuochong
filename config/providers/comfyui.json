@@ -27,5 +27,6 @@
     "mode": "none"
   },
   "note": "本机出图。model 字段指向工作流名，具体工作流放 config/workflows/。",
-  "enabled": true
+  "enabled": true,
+  "priority": 90
 }

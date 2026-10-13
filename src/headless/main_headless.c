@@ -21,6 +21,7 @@
  *   GET /api/form?id=          切换形态
  *   GET /api/outfit?id=        换装
  *   GET /api/idle?s=           上报系统空闲秒数（沙箱里由浏览器上报）
+ *   GET /api/gateway.json      网关：每种能力实际会路由到谁、账本、密钥是否就位
  *
  * 多线程：渲染在主线程，HTTP 在另一个线程，请求经互斥锁串行化。
  */
@@ -31,6 +32,7 @@
 #endif
 
 #include "../core/zpet.h"
+#include "../core/zgateway.h"
 #include "../core/zconfig.h"
 
 #include <stdio.h>
@@ -68,6 +70,10 @@ static double pet_now(void)
 }
 
 static zpet *g_pet = NULL;
+/* 网关（G51）：进程启动时读一次路由表。读不到不影响桌宠本体跑，
+   只是 /api/gateway.json 会如实说"没加载"。 */
+static zgateway g_gw;
+static int      g_gw_ok = 0;
 /* UI 与静态资源目录：界面文件放 web/，媒体（配音/素材）走 /media/，
  * 这样改界面完全不用动 C 代码（对应“全部可自定义”的原则）。 */
 static char g_root[1024] = ".";
@@ -392,6 +398,49 @@ static void handle_request(zsock fd, const http_req *r)
             if (send_file(fd, p) == 0) return;
         }
     }
+    if (strcmp(r->path, "/api/gateway.json") == 0) {
+        /* 界面要回答用户三个问题：这功能能不能用？会用谁？花了多少钱？
+           所以这里导出的是"路由的结果"，不是路由表原样——原样在 platform.json 里有。 */
+        char body[8192];
+        char *p = body;
+        size_t cap = sizeof(body);
+        int i, shown = 0;
+        static const char *const WATCH[] = {
+            "chat.completion", "chat.stream", "image.generate", "video.generate",
+            "code.generate", "model3d.generate", "tts.speak", "stt.listen",
+            "embed.text", "vision.describe", "web.search", "memory.recall", NULL
+        };
+        LOCK();
+        p += z_snprintf(p, cap - (size_t)(p - body),
+            "{\"loaded\":%s,\"strategy\":\"%s\",\"fallback\":%s,\"routes\":%d,"
+            "\"ledger\":{\"spent\":%.6f,\"held\":%.6f,\"tokens_in\":%ld,\"tokens_out\":%ld,"
+            "\"calls\":%ld,\"failed\":%ld},\"caps\":[",
+            g_gw_ok ? "true" : "false", g_gw_ok ? g_gw.strategy : "",
+            (g_gw_ok && g_gw.fallback) ? "true" : "false", g_gw_ok ? g_gw.nroutes : 0,
+            g_gw.spent_total, zgw_held_amount(&g_gw), g_gw.tokens_in_total,
+            g_gw.tokens_out_total, g_gw.calls_total, g_gw.failed_total);
+        for (i = 0; WATCH[i]; ++i) {
+            zgw_status why = ZGW_NO_SUCH_CAP;
+            const zgw_route *rt = g_gw_ok ? zgw_pick(&g_gw, WATCH[i], 0, &why) : NULL;
+            const char *state = rt ? "ready"
+                              : (why == ZGW_ALL_DISABLED ? "disabled" : "missing");
+            /* 失败原因要分开报：disabled 是"去设置里打开"，missing 是"还没接入"。
+               混成一个 false 的话界面只能说"不可用"，用户不知道该干什么。 */
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                "%s{\"cap\":\"%s\",\"state\":\"%s\",\"provider\":\"%s\",\"model\":\"%s\","
+                "\"local\":%s,\"free\":%s,\"candidates\":%d}",
+                shown++ ? "," : "", WATCH[i], state,
+                rt ? rt->provider : "", rt ? rt->model : "",
+                (rt && rt->local) ? "true" : "false",
+                (rt && (rt->local || rt->is_free)) ? "true" : "false",
+                g_gw_ok ? zgw_candidate_count(&g_gw, WATCH[i]) : 0);
+        }
+        p += z_snprintf(p, cap - (size_t)(p - body), "]}");
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+
     if (strcmp(r->path, "/api/info.json") == 0) {
         char body[4096];
         char *p = body;
@@ -952,6 +1001,22 @@ int main(int argc, char **argv)
         return 3;
     }
     g_start_time = pet_now();
+
+    /* 网关路由表：读不到只是平台功能不可用，桌宠本体照常跑。
+       所以这里不 return，只把失败如实记下来——/api/gateway.json 会报 loaded:false。 */
+    {
+        char gwpath[1200];
+        zdiag gwd;
+        zdiag_init(&gwd);
+        z_snprintf(gwpath, sizeof(gwpath), "%s/config/gateway_routes.json", g_cfg.root_dir);
+        g_gw_ok = (zgw_load(&g_gw, gwpath, &gwd) == 0);
+        if (!g_gw_ok) {
+            ZLOGW("gateway", "路由表没读到（%s），平台功能先关着", gwpath);
+        } else {
+            ZLOGI("gateway", "路由表 %d 条，策略 %s",
+                  g_gw.nroutes, g_gw.strategy);
+        }
+    }
 
     signal(SIGPIPE, SIG_IGN);
 #ifndef _WIN32

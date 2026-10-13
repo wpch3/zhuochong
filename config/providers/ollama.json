@@ -34,5 +34,6 @@
     "mode": "none"
   },
   "note": "本地模型：不花钱、不出网。用户没装也不影响框架——网关按可用性路由。",
-  "enabled": true
+  "enabled": true,
+  "priority": 90
 }

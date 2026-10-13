@@ -253,8 +253,8 @@
 | 编号 | 任务 | 状态 | 说明 |
 | --- | --- | --- | --- |
 | T20.0 | **平台框架计划成文 + 入库** | [x] | 2026-10-13：`docs/PLATFORM_PLAN.md`（七层分层 / 四份契约 / 三个资源区 / 思考载入拆成四条可验收 / 里程碑 P0~P3 / 范围边界）；要求入 REQUIREMENTS A9~A21；缺口入 GAPS G50~G63 |
-| T20.1 | G50 契约与注册表 | [ ] | 框架第一块：能力与供应商解耦 |
-| T20.2 | G51 网关骨架（路由 / 记账 / 密钥引用 / 代理出口） | [ ] | 参考 one-api |
+| T20.1 | G50 契约与注册表 | [x] | 2026-10-13：15 能力 + 6 供应商契约 + gateway.json；skills 采 Agent Skills 规范；`tools/check_platform.py` 校验并生成 `web/platform.json`；旧 `config/providers.json` 改为从契约投影生成（C 侧在读它） |
+| T20.2 | G51 网关骨架（路由 / 记账 / 密钥引用 / 代理出口） | [x] | 2026-10-13：`src/core/zgateway.{c,h}`；路由表预计算成 `config/gateway_routes.json`（照 one-api 的 Ability 表，顺序即优先级）；三段记账（预扣/结算/退还，入账实际值）；`secret://` 引用取不到必须失败；`/api/gateway.json` 三态报告。**真实 HTTP 留给 G54** |
 | T20.3 | G52 资源区（工作区 / 文件区 / 记忆区） | [ ] | 只存本机 |
 | T20.4 | G53 任务机（队列 / 状态机 / 中断 / 回放） | [ ] | |
 | T20.5 | G54~G56 第一条真链路（聊天 + 余额 + skills） | [ ] | P1 |

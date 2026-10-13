@@ -116,6 +116,21 @@ function makeDocument() {
 }
 
 /* ------------------------------------------------------------ fetch stub */
+/* 网关三种状态各给一个样本：能用 / 全关着 / 没接入。
+   三条话术要分得开——统一说"不可用"的话用户不知道该做什么。 */
+const GATEWAY = {
+  loaded: true, strategy: "prefer_local", fallback: true, routes: 16,
+  ledger: { spent: 1.2345, held: 0.5, tokens_in: 1200, tokens_out: 800, calls: 3, failed: 1 },
+  caps: [
+    { cap: "chat.completion", state: "ready", provider: "ollama", model: "qwen2.5:7b",
+      local: true, free: true, candidates: 2 },
+    { cap: "image.generate", state: "disabled", provider: "", model: "",
+      local: false, free: false, candidates: 0 },
+    { cap: "video.generate", state: "missing", provider: "", model: "",
+      local: false, free: false, candidates: 0 },
+  ],
+};
+
 const INFO = {
   action: "idle", mood: "joy", affection: 12, tier_name: "熟识", form: "teen",
   form_name: "少女", forms: ["teen"], form_names: ["少女"],
@@ -146,6 +161,7 @@ function makeFetch() {
       if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
       return json(JSON.parse(fs.readFileSync(f, "utf8")));
     }
+    if (u.includes("/api/gateway.json")) return json(GATEWAY);
     if (u.includes("/api/info.json")) return json(INFO);
     if (u.includes("/api/speech.json")) return json({ line: "" });
     if (u.includes("/voice_manifest.json")) {
@@ -364,7 +380,7 @@ function slotOf(id) {
           "用量条应随之变长（实际 " + (meter && meter.style.width) + "）");
   }
 
-  SECTION("平台能力总览（G50）：契约 → 清单 → 面板");
+  SECTION("平台能力总览（G50/G51）：契约 → 清单 → 网关 → 面板");
   {
     const el = slotOf("platform");
     await new Promise((r) => setImmediate(r));       /* 等它 fetch 完 */
@@ -392,6 +408,16 @@ function slotOf(id) {
     const apiProv = pf.providers.filter((p) => p.balance_mode === "api");
     CHECK(apiProv.length > 0 && apiProv.every((p) => txt.includes(p.name + " · 网络 · 余额:api")),
           "能查余额的供应商要标出余额口径（" + apiProv.map((p) => p.id).join(",") + "）");
+    /* 网关状态（G51）：账本和路由结果要真的显示出来 */
+    CHECK(txt.includes("16 条路由") && txt.includes("prefer_local"),
+          "网关的路由条数和策略要显示出来");
+    CHECK(txt.includes("1.2345"), "已花费要显示真实数字（账本 spent）");
+    CHECK(txt.includes("失败 1 次"), "失败次数要显示——它是换供应商的依据");
+    CHECK(txt.includes("→ ollama（免费）"),
+          "能用的能力要说清楚走谁、花不花钱");
+    CHECK(txt.includes("+1 备选"), "有备选要标出来（candidates=2 时）");
+    CHECK(txt.includes("都没开，去设置里打开"),
+          "全关着的能力要给出可操作的指引，而不是只说不可用");
     const served = pf.capabilities.filter((c) => c.providers.length);
     CHECK(served.length > 0 && served.every((c) => txt.includes(c.name + " — " + c.providers.join(" / "))),
           "每种能力要列出真实的供应商归属，不能只渲染空行（" + served.length + " 种有供应商）");

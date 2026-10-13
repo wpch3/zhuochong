@@ -228,7 +228,7 @@
       "kind": "openai_compatible",
       "local": false,
       "enabled": false,
-      "balance_mode": "ledger",
+      "balance_mode": "api",
       "caps": [
         "chat.completion",
         "chat.stream",
@@ -243,7 +243,7 @@
       "kind": "openai_compatible",
       "local": false,
       "enabled": false,
-      "balance_mode": "ledger",
+      "balance_mode": "api",
       "caps": [
         "chat.completion",
         "chat.stream"

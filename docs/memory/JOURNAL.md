@@ -557,3 +557,40 @@ grep 全路径或 `config/providers.json` 永远命中不了。
 platform 从 11 项涨到 **13 项**。
 
 **闸门**：platform **13/0**、selfcheck 128/0、web-test 44/0、smoke 119/0、**test 564/0**。
+
+---
+
+## 第 N+9 段（2026-10-13）：G51 网关骨架
+
+**先查后做**（用户硬要求）：`gh api` 翻 one-api 的 `model/ability.go`、`relay/adaptor/interface.go`、
+`relay/billing/billing.go`、`controller/channel-billing.go`，再看 airi 的 provider 协议。
+结论写进 REFERENCE_NOTES 第十二批。**查出来的东西当场改了两处设计**：
+
+1. **路由表改成预计算的**。本来打算运行时遍历 `config/providers/` 挑供应商，
+   看到 one-api 的 `Ability` 表才意识到那是每次请求都做一遍的活儿。
+   改成 `tools/check_platform.py` 物化出 `config/gateway_routes.json`，**顺序即优先级**。
+2. **余额契约推倒重来**。G50 里写的是 `balance: {mode, path}`，
+   查 `channel-billing.go` 才发现四家四种算法（DeepSeek 直接给、OpenRouter 和
+   credit_grants 要减、OpenAI 订阅式要查两个端点）。改成 `{mode, endpoint, pick, minus?}`。
+   要是没查就写完了，等接第二家的时候才会发现表达不了。
+
+**做出来的东西**：`src/core/zgateway.{c,h}`，四件事都是纯决策、不碰网络——
+路由（三种失败原因分开报）、估价（按量/按次/免费）、三段记账、密钥引用。
+真实 HTTP 调用**故意不在这件里**（G54 才做）：把"选谁/花多少/钥匙在哪"和"怎么发"切开，
+前者在一台没网、没密钥的机器上就能完整验证，这也是它能有 63 项单测的原因。
+
+新端点 `/api/gateway.json` 报告"每种能力现在实际会走谁"，三态 `ready/disabled/missing`
+——**三态是故意分开的**：全关着要说"去设置里打开"，没接入要说"还没接"，
+统一说"不可用"的话用户不知道该干什么。平台面板把它和契约并排显示。
+
+**负控十一道全判红**：路由不看 enabled / 结算记预扣额 / 密钥失败返回空串 /
+退还也扣钱 / 重复结算不拒 / 三态混成"不可用" / 账本不显示花费 /
+删 enabled 检查（源码闸）/ 把它注释掉（源码闸不能被注释骗）/
+密钥失败路径 return 0（源码闸）/ 路由表顺序打乱（生成端）。
+
+**自己写的闸自己先踩了一个**：selfcheck 的剥注释函数不认字符串字面量，
+`zgateway.c` 里的 `"secret://"` 当中那个 `//` 被当成行注释，把后面半行吃掉，
+于是两条好端端的闸判红。修法是遇到 `"` 就整段保留（含转义）。
+
+**闸门**：test **627/0**（+63）、smoke **138/0**（+19）、selfcheck **136/0**（+8）、
+web-test **52/0**（+6）、platform 14/0。

@@ -407,6 +407,97 @@ def check_live2d(root):
     else:
         check("web/platform.json 已生成", False, "跑 python3 tools/check_platform.py")
 
+    # ⑲ 网关（G51）：这几条约束一旦被改掉，表现都是"悄悄花钱"或"悄悄发空密钥"，
+    #    运行时看不出来，所以钉在源码层面。注意要剥掉注释再 grep ——
+    #    否则注释里提到这些词就能把闸骗过去（之前栽过一次）。
+    def code_of(rel):
+        txt = io.open(os.path.join(root, rel), encoding="utf-8").read()
+        out, i, n = [], 0, len(txt)
+        while i < n:
+            c = txt[i]
+            if c == '"':
+                # 字符串字面量要整段保留：zgateway.c 里就有 "secret://"，
+                # 不认字符串的话里面那个 // 会被当成行注释，把后面半行吃掉。
+                out.append(c); i += 1
+                while i < n:
+                    out.append(txt[i])
+                    if txt[i] == "\\" and i + 1 < n:
+                        out.append(txt[i + 1]); i += 2; continue
+                    if txt[i] == '"':
+                        i += 1; break
+                    i += 1
+                continue
+            if txt.startswith("/*", i):
+                j = txt.find("*/", i + 2)
+                i = n if j < 0 else j + 2
+            elif txt.startswith("//", i):
+                j = txt.find("\n", i)
+                i = n if j < 0 else j
+            else:
+                out.append(c); i += 1
+        return "".join(out)
+
+    gw_c = code_of("src/core/zgateway.c")
+    check("路由必须跳过没启用的供应商",
+          "if (!r->enabled) continue;" in gw_c,
+          "src/core/zgateway.c:zgw_pick —— 少了它，用户关掉的供应商照样会被调用")
+    check("结算入账的是实际花费而不是预扣额",
+          "g->spent_total += actual;" in gw_c and "spent_total += h->estimated" not in gw_c,
+          "src/core/zgateway.c:zgw_hold_settle")
+    check("退还不记花费",
+          "zgw_hold_release" in gw_c and gw_c.count("g->spent_total +=") == 1,
+          "失败的请求不该扣钱，全文件只应有一处 spent_total 累加")
+    check("密钥只认 secret:// 引用",
+          'strncmp(ref, "secret://", 9)' in gw_c,
+          "src/core/zgateway.c:zgw_secret_resolve —— 允许裸值就等于允许密钥进仓库")
+    def body_of(code, sig):
+        """抠出一个 C 函数的函数体（大括号配平）。整文件数 return 0 是没意义的——
+        别的函数成功时也 return 0。"""
+        i = code.find(sig)
+        if i < 0:
+            return ""
+        i = code.find("{", i)
+        if i < 0:
+            return ""
+        depth, j = 0, i
+        while j < len(code):
+            if code[j] == "{":
+                depth += 1
+            elif code[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    return code[i:j + 1]
+            j += 1
+        return code[i:]
+
+    sec_body = body_of(gw_c, "int zgw_secret_resolve")
+    check("密钥取不到时不许返回成功",
+          bool(sec_body) and sec_body.count("return 0;") == 1,
+          "zgw_secret_resolve 里只有拿到密钥那一条路径能 return 0，"
+          "实际 %d 处" % sec_body.count("return 0;"))
+    check("网关端点已注册", '"/api/gateway.json"' in code_of("src/headless/main_headless.c"),
+          "src/headless/main_headless.c")
+
+    # 路由表是生成物，必须和契约对得上（内容一致性由 check_platform --check 管，
+    # 这里只核"每个供应商都写了 priority"——漏写的话路由顺序会变成随机的）
+    gr_p = os.path.join(root, "config/gateway_routes.json")
+    if os.path.exists(gr_p):
+        gr = json.load(io.open(gr_p, encoding="utf-8"))
+        prov_dir = os.path.join(root, "config/providers")
+        noprio = [x for x in os.listdir(prov_dir) if x.endswith(".json")
+                  and not isinstance(json.load(io.open(os.path.join(prov_dir, x),
+                                                       encoding="utf-8")).get("priority"), int)]
+        check("每个供应商都写了 priority", not noprio, str(noprio))
+        rts = gr.get("routes", [])
+        bycap = {}
+        for r in rts:
+            bycap.setdefault(r["cap"], []).append(r["priority"])
+        unsorted_caps = [c for c, ps in bycap.items() if ps != sorted(ps, reverse=True)]
+        check("路由表内每种能力按优先级降序排好", not unsorted_caps,
+              "运行时取第一个就是首选，顺序错了等于路由错 " + str(unsorted_caps))
+    else:
+        check("config/gateway_routes.json 已生成", False, "跑 python3 tools/check_platform.py")
+
     # ⑰ 界面骨架（G1）：layout.json 是界面的唯一装配表，它和组件文件必须对得上。
     #    配置里写了但组件不存在 / 组件文件忘了 register / 主题缺色键 —— 这三样
     #    在浏览器里都只表现为"某块空白"，静态核一遍最省事。

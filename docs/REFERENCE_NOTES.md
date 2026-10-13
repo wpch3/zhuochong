@@ -625,3 +625,80 @@ The context window is a public good. ...
 - **token 余额识别**（A10）：余额是**供应商**的属性（`balance.mode`：api / ledger / none），
   本地供应商天然 `none`；
 - **"2027 年以内所有事"**（A18）：新能力只是多一份契约文件，内核不改。
+
+---
+
+## 第十二批（2026-10-13）：网关怎么做（G51 动手前查的）
+
+动手写 `zgateway` 之前查的，全部来自实际源码而不是猜。
+
+### `songquanpeng/one-api`（★37134，MIT）—— 路由表是**预计算的反向索引**
+
+`model/ability.go`：
+
+```go
+type Ability struct {
+    Group     string  // 用户组
+    Model     string  // 模型名
+    ChannelId int     // 渠道（= 我们的供应商）
+    Enabled   bool
+    Priority  *int64
+}
+func GetRandomSatisfiedChannel(group, model string, ignoreFirstPriority bool) (*Channel, error)
+```
+
+要点三条，我们全都照搬了：
+
+1. **路由不是每次请求去遍历配置算的**，而是维护一张 `(group, model) → channel` 的索引表。
+   我们对应的是 `config/gateway_routes.json`，由 `tools/check_platform.py` 从契约物化，
+   **顺序即优先级**，运行时取第一个 enabled 的就是首选。
+2. **按 priority 分层**：先取最高优先级的那批，组内随机。
+   我们是单机单用户，不需要随机负载均衡，所以组内按 id 稳定排序——
+   **稳定比随机重要**，否则同样的配置每次路由到不同的家，问题没法复现。
+3. `ignoreFirstPriority` 是**重试时降级**用的：首选那批全挂了才往下走。
+   我们对应 `zgw_pick(..., attempt, ...)`，attempt 递增就是依次降级。
+
+`relay/adaptor/interface.go` 的 `Adaptor` 接口九个方法，分四段：
+`Init` → `GetRequestURL`/`SetupRequestHeader`/`ConvertRequest` → `DoRequest` → `DoResponse`（返回 `usage`）。
+**`usage` 是从响应里出来的**，所以记账只能在响应之后——这就是为什么要有预扣。
+
+`relay/billing/billing.go`：**预扣 / 结算 / 退还三段式**。
+
+```go
+func ReturnPreConsumedQuota(ctx, preConsumedQuota int64, tokenId int)      // 退还
+func PostConsumeQuota(ctx, tokenId, quotaDelta, totalQuota int64, ...)     // 结算
+```
+
+关键细节：**结算入账的是实际用量，预扣只是占位**。
+我们的 `zgw_hold_settle(g, id, tin, tout, actual)` 入的是 `actual` 而不是 `h->estimated`，
+单测和 selfcheck 各有一道闸盯着这件事（写错的话用户会按估算值被扣钱）。
+
+### 余额查询：**没有统一标准，四家四种算法**
+
+`controller/channel-billing.go` 里实测到的端点与算法：
+
+| 家 | 端点 | 怎么算 |
+|---|---|---|
+| DeepSeek | `/user/balance` | 直接取 `balance_infos[0].total_balance` |
+| OpenRouter | `/api/v1/credits` | `total_credits − total_usage` |
+| credit_grants 式 | `/dashboard/billing/credit_grants` | `total_granted − total_used` |
+| OpenAI 订阅式 | `/v1/dashboard/billing/subscription` + `/usage` | `hard_limit_usd − total_usage/100`（**要两个端点**） |
+
+→ 这条直接推翻了 G50 里 `balance: {mode, path}` 的设计：一个 `path` 表达不了减法，
+也表达不了"从哪个字段取"。改成 `{mode, endpoint, pick, minus?, currency}`，
+校验器强制 `mode=api` 必须给 `endpoint` + `pick`，还会拦住继续用老 `path` 的写法。
+**OpenAI 订阅式要两个端点，当前契约表达不了，记为已知限制**（它那个端点新账号还常 404，
+所以更该支持"查不到就退回 ledger"）。
+
+### `moeru-ai/airi` —— 插件**不持有**供应商，只向宿主查询
+
+`packages/plugin-sdk/.../resources/providers/index.ts`：
+
+```ts
+export const protocolListProvidersEventName =
+  'proj-airi:plugin-sdk:apis:protocol:resources:providers:list-providers'
+export const protocolListProviders = defineInvokeEventa<{ name: string }[]>(...)
+```
+
+供应商发现是一条**控制面 RPC**，插件声明权限后向宿主要列表。
+和我们 L4/L3 分界是同一个主张：**调用方不知道也不该知道底下是谁**。

@@ -100,7 +100,9 @@
     { "cap": "image.generate", "model": "gpt-image-1",
       "price": { "unit": 0.04, "per": 1, "currency": "USD" } }
   ],
-  "balance": { "mode": "api", "path": "/dashboard/billing/credit_grants" }
+  "priority": 40,
+  "balance": { "mode": "api", "endpoint": "/dashboard/billing/credit_grants",
+               "pick": "total_granted", "minus": "total_used", "currency": "USD" }
 }
 ```
 
@@ -108,6 +110,15 @@
 - `api` —— 供应商有余额接口，直接查；
 - `ledger` —— 没有接口，用本机账本倒推（充值额 − 已用额）；
 - `none` —— 本地模型，不计费（`ollama` / `llamacpp` / `comfyui` 走这条）。
+
+**`api` 模式为什么不是一个 URL 就够**（G51 查 one-api 的 `channel-billing.go` 实测，
+见 REFERENCE_NOTES 第十二批）：四家四种算法——DeepSeek 直接给 `balance_infos[0].total_balance`，
+OpenRouter 和 credit_grants 式要 `总额 − 已用`，OpenAI 订阅式还要查两个端点。
+所以写成 `endpoint` + `pick`（取哪个字段）+ 可选 `minus`（要减的字段）。
+校验器强制 `mode=api` 必须给 `endpoint` 和 `pick`，并拦住继续用老 `path` 的写法。
+**已知限制**：OpenAI 订阅式那种"两个端点"当前表达不了，等真要接的时候再扩。
+
+`priority` 是路由用的（越大越优先）。本机的给 90，所以 `prefer_local` 策略下它们天然排前面。
 
 ### 2.3 技能 `skills/<name>/SKILL.md` —— **直接采用 Agent Skills 规范**
 
@@ -138,6 +149,42 @@ description: 把对话结论导出成 Word/Excel。当用户要"导出报告/做
   "workspace": "ws_weekly", "cost_total": { "tokens": 12840, "cny": 0.31 }
 }
 ```
+
+### 2.5 网关 `src/core/zgateway.{c,h}`（G51 ✅ 2026-10-13）
+
+L2 层的落地。四件事，**全是纯决策，不碰网络**：
+
+| 做什么 | 函数 | 要点 |
+|---|---|---|
+| 路由 | `zgw_pick(g, cap, attempt, &why)` | `attempt` 递增 = 依次降级重试；失败原因分三种 |
+| 估价 | `zgw_estimate(route, tin, tout)` | 按量 / 按次（`price_per=0`）/ 免费（本机或 `free`） |
+| 记账 | `zgw_hold_open` → `_settle` / `_release` | 预扣只占位，**结算入账的是实际值**；失败不扣钱但计失败数 |
+| 密钥 | `zgw_secret_resolve("secret://x", ...)` | → 环境变量 `ZHUOCHONG_SECRET_X`；**取不到必须失败** |
+
+两个设计决定值得记住：
+
+**① 路由表是生成物，不是运行时算的。**
+`tools/check_platform.py` 把 `config/providers/*.json` 物化成 `config/gateway_routes.json`，
+**顺序即优先级**，运行时取第一个 `enabled` 的就是首选。
+照 one-api 的 `Ability` 表做法（见 REFERENCE_NOTES 第十二批）——
+路由是每次请求都要做的事，不该每次去遍历契约目录。
+与 one-api 的唯一差别：它同优先级内**随机**（多用户负载均衡），
+我们按 id **稳定**排序——单机单用户下可复现比均衡重要。
+
+**② 失败原因必须分三种，因为给用户的话完全不同。**
+
+| 原因 | 界面该说什么 |
+|---|---|
+| `ZGW_NO_SUCH_CAP` | 这功能还没接入 |
+| `ZGW_ALL_DISABLED` | 有供应商，但都没开 → **去设置里打开** |
+| `ZGW_EXHAUSTED` | 候选都试过了 → 换个说法或稍后再试 |
+
+统一说"不可用"的话，用户不知道该干什么。`/api/gateway.json` 按这三态报告，
+平台面板直接照它显示。
+
+**范围边界**：真实 HTTP 调用**不在 G51 里**，是 G54。
+把"选谁 / 花多少 / 钥匙在哪"和"怎么发出去"切开，前者在一台没网、
+没配任何密钥的机器上就能完整验证——这是它能有 63 项单测的原因。
 
 ---
 
@@ -187,8 +234,8 @@ description: 把对话结论导出成 Word/Excel。当用户要"导出报告/做
 
 **P0 框架骨架**（当前）
 - [x] L7 组件化（G1）
-- [ ] **G50 契约与注册表**：四份 schema + 加载器 + 校验闸门（能力/供应商注册表）
-- [ ] G51 网关骨架：路由 + 记账 + 密钥引用（不含真实请求）
+- [x] **G50 契约与注册表**：四份 schema + 加载器 + 校验闸门（能力/供应商注册表）—— ✅ 2026-10-13，15 能力 + 6 供应商
+- [x] G51 网关骨架：路由 + 记账 + 密钥引用（不含真实请求）—— ✅ 2026-10-13，`src/core/zgateway.{c,h}`，63 项单测
 - [ ] G52 资源区骨架：workspace / files / memory 的目录契约与索引
 - [ ] G53 任务机：队列 + 状态机 + 可中断 + 回放
 

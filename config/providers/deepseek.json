@@ -43,7 +43,11 @@
   ],
   "balance": {
     "mode": "api",
-    "path": "/user/balance"
+    "endpoint": "/user/balance",
+    "pick": "balance_infos.0.total_balance",
+    "currency_at": "balance_infos.0.currency",
+    "note": "实测自 one-api controller/channel-billing.go：DeepSeek 直接给余额，不用减。"
   },
-  "note": "从旧 config/providers.json 迁来（2026-10-13）。它有余额接口，所以 balance.mode=api。"
+  "note": "从旧 config/providers.json 迁来（2026-10-13）。它有余额接口，所以 balance.mode=api。",
+  "priority": 50
 }

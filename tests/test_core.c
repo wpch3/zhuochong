@@ -18,6 +18,7 @@
 #include "../src/core/zconfig.h"
 #include "../src/core/zrig.h"
 #include "../src/core/zinteract.h"
+#include "../src/core/zgateway.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -2263,6 +2264,235 @@ static void test_interactions(void)
 }
 
 /* -------------------------------------------------------- 好感度 / 角色台词 */
+/* ============================================================ 网关（G51）
+ * 路由 / 估价 / 三段记账 / 密钥引用。全是纯决策，不碰网络——
+ * 这正是把它和"怎么发请求"分开的理由：没有密钥、没有网也能完整验证。 */
+
+static void gw_write(const char *path, const char *body)
+{
+    zerr e;
+    z_mkdir_p("/tmp/zc_gw");
+    if (z_write_file(path, body, strlen(body), &e) != 0)
+        printf("  [警告] 写不了 %s\n", path);
+}
+
+static void test_gateway(void)
+{
+    zgateway g;
+    zdiag d;
+    const zgw_route *r;
+    zgw_status why;
+    char buf[256];
+    const char *err;
+    long h1, h2;
+    char rpath[512];
+
+    SECTION("网关（G51）：真实路由表");
+    zdiag_init(&d);
+    z_snprintf(rpath, sizeof(rpath), "%s/config/gateway_routes.json", g_root);
+    CHECK(zgw_load(&g, rpath, &d) == 0, "路由表应能加载（错误 %d）", d.error_count);
+    CHECK(g.nroutes > 0, "路由表不应为空，实际 %d 条", g.nroutes);
+    CHECK(strcmp(g.strategy, "prefer_local") == 0, "策略应是 prefer_local，实际 %s", g.strategy);
+
+    /* 首选必须是本机的 ollama：prefer_local 的全部意义就在这一条上。
+       要是哪天优先级算错把付费的排前面，用户会莫名其妙开始花钱。 */
+    r = zgw_pick(&g, "chat.completion", 0, &why);
+    CHECK(r != NULL && strcmp(r->provider, "ollama") == 0,
+          "对话的首选应是本机 ollama，实际 %s", r ? r->provider : "(无)");
+    CHECK(r != NULL && r->local && r->is_free, "首选应是本机且免费的");
+    CHECK(r != NULL && strcmp(r->model, "qwen2.5:7b") == 0,
+          "路由要带上模型名，实际 %s", r ? r->model : "(无)");
+
+    /* 其它几家契约里 enabled=false（用户还没填密钥），所以没有第二候选。
+       这条断言盯的是"关掉的供应商不许被选中"。 */
+    r = zgw_pick(&g, "chat.completion", 1, &why);
+    CHECK(r == NULL && why == ZGW_EXHAUSTED,
+          "没开的供应商不该被选中，应报候选用尽（实际 %s）", r ? r->provider : "NULL");
+    CHECK(zgw_candidate_count(&g, "chat.completion") == 1,
+          "对话只有一个可用候选，实际 %d", zgw_candidate_count(&g, "chat.completion"));
+
+    SECTION("网关：路由失败的三种原因要分得清");
+    {
+        /* 自造一张表，把三种情况摆齐。用真表测不到——真表里没有"全关掉"的能力。 */
+        gw_write("/tmp/zc_gw/routes.json",
+            "{\"schema_version\":\"1.0\",\"strategy\":\"priority\",\"fallback\":true,\"routes\":["
+            "{\"cap\":\"a.one\",\"provider\":\"p_hi\",\"model\":\"m1\",\"priority\":90,"
+            "\"local\":false,\"enabled\":true,\"free\":false,"
+            "\"price_in\":2,\"price_out\":4,\"price_per\":1000000},"
+            "{\"cap\":\"a.one\",\"provider\":\"p_lo\",\"model\":\"m2\",\"priority\":10,"
+            "\"local\":false,\"enabled\":true,\"free\":false,"
+            "\"price_in\":1,\"price_out\":1,\"price_per\":0},"
+            "{\"cap\":\"b.off\",\"provider\":\"p_x\",\"model\":\"m3\",\"priority\":50,"
+            "\"local\":false,\"enabled\":false,\"free\":false,"
+            "\"price_in\":1,\"price_out\":1,\"price_per\":1000}"
+            "]}");
+        zdiag_init(&d);
+        CHECK(zgw_load(&g, "/tmp/zc_gw/routes.json", &d) == 0, "自造路由表应能加载");
+
+        r = zgw_pick(&g, "a.one", 0, &why);
+        CHECK(r && strcmp(r->provider, "p_hi") == 0, "高优先级的排前面");
+        r = zgw_pick(&g, "a.one", 1, &why);
+        CHECK(r && strcmp(r->provider, "p_lo") == 0, "重试应降级到下一家");
+        r = zgw_pick(&g, "a.one", 2, &why);
+        CHECK(!r && why == ZGW_EXHAUSTED, "两家都试完了应报用尽");
+
+        r = zgw_pick(&g, "nobody.does.this", 0, &why);
+        CHECK(!r && why == ZGW_NO_SUCH_CAP,
+              "没人提供的能力要报 NO_SUCH_CAP（提示用户去接入）");
+        r = zgw_pick(&g, "b.off", 0, &why);
+        CHECK(!r && why == ZGW_ALL_DISABLED,
+              "有人能做但全关着要报 ALL_DISABLED（提示用户去打开），而不是当成没这功能");
+
+        /* 三种原因必须互不相同，否则界面上没法给出不同的指引 */
+        CHECK(ZGW_NO_SUCH_CAP != ZGW_ALL_DISABLED && ZGW_ALL_DISABLED != ZGW_EXHAUSTED,
+              "三种失败原因必须是不同的值");
+    }
+
+    SECTION("网关：估价");
+    {
+        const zgw_route *hi = zgw_pick(&g, "a.one", 0, NULL);
+        const zgw_route *lo = zgw_pick(&g, "a.one", 1, NULL);
+        double c;
+        /* 按量计价：(2*1e6 + 4*1e6)/1e6 = 6 */
+        c = zgw_estimate(hi, 1000000, 1000000);
+        CHECK(fabs(c - 6.0) < 1e-9, "按量计价应为 6，实际 %.6f", c);
+        /* 用量翻倍，钱翻倍——线性关系要成立 */
+        CHECK(fabs(zgw_estimate(hi, 2000000, 2000000) - 12.0) < 1e-9, "用量翻倍钱要翻倍");
+        /* price_per=0 表示按次计价，与 token 数无关 */
+        CHECK(fabs(zgw_estimate(lo, 1, 1) - zgw_estimate(lo, 999999, 999999)) < 1e-9,
+              "按次计价不该随 token 变");
+        CHECK(fabs(zgw_estimate(lo, 0, 0) - 2.0) < 1e-9, "按次计价应为 in+out=2");
+        /* 本机的恒为 0，哪怕契约里忘了写 free */
+        zdiag_init(&d);
+        zgw_load(&g, rpath, &d);
+        CHECK(fabs(zgw_estimate(zgw_pick(&g, "chat.completion", 0, NULL), 999999, 999999)) < 1e-9,
+              "本机服务不该算出钱来");
+        CHECK(fabs(zgw_estimate(NULL, 100, 100)) < 1e-9, "空路由估价应为 0 而不是崩溃");
+    }
+
+    SECTION("网关：记账三段（预扣 → 结算 / 退还）");
+    {
+        zgateway a;
+        zdiag_init(&d);
+        CHECK(zgw_load(&a, rpath, &d) == 0, "重新加载一份干净的账");
+        CHECK(a.spent_total == 0.0 && a.calls_total == 0, "新账本应是空的");
+
+        h1 = zgw_hold_open(&a, "chat.completion", "deepseek", 0.50);
+        CHECK(h1 > 0, "预扣应返回单号");
+        CHECK(fabs(zgw_held_amount(&a) - 0.50) < 1e-9, "预扣额应被占住");
+        CHECK(a.spent_total == 0.0, "预扣阶段不该计入已花费——它只是占位");
+
+        /* 结算入的是实际花费，不是预扣的数 */
+        CHECK(zgw_hold_settle(&a, h1, 1200, 800, 0.37) == 0, "结算应成功");
+        CHECK(fabs(a.spent_total - 0.37) < 1e-9,
+              "已花费应是实际的 0.37 而不是预扣的 0.50，实际 %.4f", a.spent_total);
+        CHECK(fabs(zgw_held_amount(&a)) < 1e-9, "结算后预扣应释放");
+        CHECK(a.tokens_in_total == 1200 && a.tokens_out_total == 800, "token 用量要入账");
+        CHECK(a.calls_total == 1 && a.failed_total == 0, "成功一次");
+
+        /* 失败的请求：退还预扣，不计花费，但要计失败 */
+        h2 = zgw_hold_open(&a, "image.generate", "comfyui", 0.20);
+        CHECK(zgw_hold_release(&a, h2) == 0, "退还应成功");
+        CHECK(fabs(a.spent_total - 0.37) < 1e-9,
+              "失败的请求不该花钱，实际 %.4f", a.spent_total);
+        CHECK(a.failed_total == 1, "失败次数要记——它是降权的依据");
+        CHECK(fabs(zgw_held_amount(&a)) < 1e-9, "退还后预扣应释放");
+
+        /* 单号用过就作废，重复结算必须被拒：否则一次调用能扣两次钱 */
+        CHECK(zgw_hold_settle(&a, h1, 100, 100, 0.99) == -1, "重复结算必须被拒绝");
+        CHECK(zgw_hold_release(&a, h2) == -1, "重复退还必须被拒绝");
+        CHECK(fabs(a.spent_total - 0.37) < 1e-9, "被拒的重复结算不该改动账本");
+        CHECK(zgw_hold_settle(&a, 99999, 1, 1, 1.0) == -1, "不存在的单号要被拒绝");
+
+        /* 槽位满了要拒绝放行，而不是悄悄丢掉一笔账 */
+        {
+            int i, opened = 0;
+            zgateway b;
+            zdiag_init(&d);
+            zgw_load(&b, rpath, &d);
+            for (i = 0; i < ZGW_MAX_HOLDS + 3; ++i)
+                if (zgw_hold_open(&b, "chat.completion", "x", 1.0) > 0) opened++;
+            CHECK(opened == ZGW_MAX_HOLDS,
+                  "预扣槽位应正好用满 %d 个就不再放行，实际 %d", ZGW_MAX_HOLDS, opened);
+            CHECK(fabs(zgw_held_amount(&b) - (double)ZGW_MAX_HOLDS) < 1e-9,
+                  "占住的额度应等于槽位数");
+        }
+    }
+
+    SECTION("网关：fallback 关掉时不许换家");
+    {
+        zgateway c;
+        gw_write("/tmp/zc_gw/nofb.json",
+            "{\"schema_version\":\"1.0\",\"strategy\":\"priority\",\"fallback\":false,\"routes\":["
+            "{\"cap\":\"a.one\",\"provider\":\"p1\",\"model\":\"m\",\"priority\":9,"
+            "\"local\":false,\"enabled\":true,\"free\":true},"
+            "{\"cap\":\"a.one\",\"provider\":\"p2\",\"model\":\"m\",\"priority\":1,"
+            "\"local\":false,\"enabled\":true,\"free\":true}]}");
+        zdiag_init(&d);
+        CHECK(zgw_load(&c, "/tmp/zc_gw/nofb.json", &d) == 0, "应能加载");
+        CHECK(c.fallback == 0, "fallback 应被读成关");
+        CHECK(zgw_pick(&c, "a.one", 0, NULL) != NULL, "首选仍然要能选到");
+        CHECK(zgw_pick(&c, "a.one", 1, &why) == NULL && why == ZGW_EXHAUSTED,
+              "关掉 fallback 后不许换第二家（有些用户不希望悄悄换供应商）");
+    }
+
+    SECTION("网关：密钥只认 secret:// 引用");
+    {
+        /* 配置里写明文是要拦住的——配置文件会进仓库 */
+        CHECK(zgw_secret_resolve("sk-reallive-looking-key", buf, sizeof(buf), &err) != 0,
+              "明文密钥必须被拒绝");
+        CHECK(err && strstr(err, "secret://") != NULL, "拒绝的理由要说清楚怎么改");
+        CHECK(buf[0] == '\0', "失败时输出必须是空的");
+
+        CHECK(zgw_secret_resolve("secret://", buf, sizeof(buf), &err) != 0,
+              "secret:// 后面没名字要被拒绝");
+        CHECK(zgw_secret_resolve(NULL, buf, sizeof(buf), &err) != 0, "空引用要被拒绝");
+
+        /* 没配环境变量时必须失败，不能返回空串让调用方拿去发请求 */
+        CHECK(zgw_secret_resolve("secret://definitely_not_set_xyz", buf, sizeof(buf), &err) != 0,
+              "没配的密钥必须失败");
+        CHECK(buf[0] == '\0', "没配时输出必须是空的，不能让空密钥流出去");
+
+        /* 配上了就要能取到，且名字映射规则固定：secret://foo-bar → ZHUOCHONG_SECRET_FOO_BAR */
+        putenv((char *)"ZHUOCHONG_SECRET_FOO_BAR=sk-test-12345");
+        CHECK(zgw_secret_resolve("secret://foo-bar", buf, sizeof(buf), &err) == 0,
+              "配好的密钥应能取到");
+        CHECK(strcmp(buf, "sk-test-12345") == 0, "取到的值要对，实际 %s", buf);
+        CHECK(zgw_secret_resolve("secret://FOO-BAR", buf, sizeof(buf), &err) == 0,
+              "名字大小写不该影响解析");
+
+        /* 空值等于没配 */
+        putenv((char *)"ZHUOCHONG_SECRET_EMPTY_ONE=");
+        CHECK(zgw_secret_resolve("secret://empty_one", buf, sizeof(buf), &err) != 0,
+              "空字符串的环境变量等于没配");
+
+        /* 装不下要报错，不能截断——截断的密钥发出去必然 401，还很难查 */
+        {
+            char tiny[4];
+            CHECK(zgw_secret_resolve("secret://foo-bar", tiny, sizeof(tiny), &err) != 0,
+                  "缓冲装不下要失败，不能截断密钥");
+        }
+    }
+
+    SECTION("网关：坏路由表要报错而不是裸奔");
+    {
+        zgateway e2;
+        zdiag_init(&d);
+        gw_write("/tmp/zc_gw/noschema.json", "{\"routes\":[]}");
+        CHECK(zgw_load(&e2, "/tmp/zc_gw/noschema.json", &d) != 0, "缺 schema_version 要失败");
+        CHECK(d.error_count > 0, "要留下诊断信息");
+
+        zdiag_init(&d);
+        CHECK(zgw_load(&e2, "/tmp/zc_gw/__not_exist__.json", &d) != 0, "文件不存在要失败");
+
+        zdiag_init(&d);
+        gw_write("/tmp/zc_gw/broken.json", "{\"schema_version\":\"1.0\",\"routes\":[{\"model\":\"m\"}]}");
+        CHECK(zgw_load(&e2, "/tmp/zc_gw/broken.json", &d) == 0, "个别条目坏掉不该拖垮整张表");
+        CHECK(e2.nroutes == 0, "坏条目要被跳过，实际收了 %d 条", e2.nroutes);
+        CHECK(d.error_count > 0, "跳过的条目要报出来，不能悄悄吞掉");
+    }
+}
+
 static void test_affection(void)
 {
     zdiag diag;
@@ -3973,6 +4203,7 @@ int main(int argc, char **argv)
     test_motion_from();
     test_interactions();
     test_affection();
+    test_gateway();
 
     printf("\n通过 %d 项，失败 %d 项\n", g_pass, g_fail);
     if (g_fail) {

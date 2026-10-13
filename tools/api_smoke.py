@@ -101,6 +101,35 @@ def run(base, root):
     print("== 基本端点 ==")
     info = a.json("/api/info.json")
     check("info.json 能读", bool(info.get("engine")), "引擎 " + str(info.get("engine")))
+
+    print("== 网关（G51） ==")
+    gw = a.json("/api/gateway.json")
+    check("gateway.json 能读", isinstance(gw, dict) and "loaded" in gw)
+    check("路由表要真的加载上", gw.get("loaded") is True,
+          "%d 条路由，策略 %s" % (gw.get("routes", 0), gw.get("strategy")))
+    check("策略应是 prefer_local（本机优先）", gw.get("strategy") == "prefer_local")
+    caps = {c["cap"]: c for c in gw.get("caps", [])}
+    check("网关要报告能力状态", len(caps) >= 10, "%d 种" % len(caps))
+    # 用户点名的能力必须都在这张表里有交代，哪怕交代的是"还没接入"
+    for want in ("chat.completion", "image.generate", "video.generate",
+                 "code.generate", "model3d.generate"):
+        check("能力 %s 有状态交代" % want, want in caps,
+              caps.get(want, {}).get("state", "缺失"))
+    chat = caps.get("chat.completion", {})
+    check("对话应路由到本机 ollama", chat.get("state") == "ready"
+          and chat.get("provider") == "ollama" and chat.get("local") is True,
+          "%s → %s" % (chat.get("state"), chat.get("provider")))
+    # 状态值只有三种，不能冒出别的——界面是按这三种写话术的
+    bad_state = [c for c in gw.get("caps", []) if c.get("state") not in ("ready", "disabled", "missing")]
+    check("能力状态只能是 ready/disabled/missing", not bad_state,
+          str([c.get("state") for c in bad_state]))
+    # 没路由到供应商时不许留下残缺字段（界面会直接拼进字符串）
+    ghost = [c for c in gw.get("caps", []) if c.get("state") != "ready" and c.get("provider")]
+    check("没选中供应商时 provider 必须是空的", not ghost, str(ghost))
+    led = gw.get("ledger") or {}
+    for k in ("spent", "held", "tokens_in", "tokens_out", "calls", "failed"):
+        check("账本有 %s" % k, k in led)
+    check("新进程的账本应是干净的", led.get("spent") == 0 and led.get("calls") == 0)
     h0, n0 = a.frame_hash()
     check("frame.png 是张真图", n0 > 2000, "%d 字节 %dx%d" % (n0, info["frame_w"], info["frame_h"]))
 

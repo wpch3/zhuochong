@@ -44,7 +44,27 @@ ZC.register({
     });
     this.body.appendChild(pbox);
 
-    /* 能力清单：谁能提供它 */
+    /* 网关实时状态（G51）：契约说"谁能做"，网关说"现在实际会走谁"。
+       两者不是一回事——契约里写了四家，但没开密钥的都不会被选中。 */
+    let gw = null;
+    try { gw = await host.api("/api/gateway.json"); } catch (e) { gw = null; }
+    if (gw && gw.loaded) {
+      const lg = gw.ledger || {};
+      this.body.appendChild(host.el("p", "mono",
+        "网关：" + gw.routes + " 条路由 · 策略 " + gw.strategy
+        + (gw.fallback ? " · 失败可换家" : " · 不换家")
+        + " · 已花 " + (lg.spent || 0).toFixed(4)
+        + (lg.held ? "（另占用 " + lg.held.toFixed(4) + "）" : "")
+        + " · 调用 " + (lg.calls || 0) + " 次"
+        + ((lg.failed || 0) ? "，失败 " + lg.failed + " 次" : "")));
+    } else if (gw) {
+      this.body.appendChild(host.el("p", "hint",
+        "网关没加载路由表：跑一次 python3 tools/check_platform.py 生成 config/gateway_routes.json"));
+    }
+    const pick = {};
+    if (gw && gw.caps) gw.caps.forEach((c) => { pick[c.cap] = c; });
+
+    /* 能力清单：谁能提供它 + 现在实际走谁 */
     const list = host.el("div", "cap-list");
     caps.forEach((cp) => {
       const row = host.el("div", "voice-item");
@@ -52,7 +72,17 @@ ZC.register({
       const who = cp.providers.length
         ? cp.providers.join(" / ")
         : "（待接入）";
-      const t = host.el("span", "text", cp.name + " — " + who);
+      const g = pick[cp.id];
+      /* 三种状态给三种话术：能用就说走谁，全关着就说去打开，没接入就说还没接
+         —— 统一说"不可用"的话用户不知道该做什么。 */
+      let tail = "";
+      if (g && g.state === "ready") {
+        tail = " → " + g.provider + (g.free ? "（免费）" : "")
+             + (g.candidates > 1 ? " +" + (g.candidates - 1) + " 备选" : "");
+      } else if (g && g.state === "disabled") {
+        tail = " → 都没开，去设置里打开";
+      }
+      const t = host.el("span", "text", cp.name + " — " + who + tail);
       if (!cp.providers.length) t.style.opacity = "0.55";
       row.appendChild(t);
       list.appendChild(row);

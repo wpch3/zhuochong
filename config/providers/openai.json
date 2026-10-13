@@ -59,8 +59,14 @@
     }
   ],
   "balance": {
-    "mode": "ledger"
+    "mode": "api",
+    "endpoint": "/dashboard/billing/credit_grants",
+    "pick": "total_granted",
+    "minus": "total_used",
+    "currency": "USD",
+    "note": "减法式口径。注意 OpenAI 新账号这个端点可能 404，那时只能退回 ledger（本地累计）——网关要能接受查不到。"
   },
   "note": "OpenAI 兼容协议是事实标准，大多数第三方中转（one-api / new-api 之类）只要换 base_url 就能用同一份契约。 官方直连默认关闭（交接文件第六节），由用户在设置里开。",
-  "enabled": false
+  "enabled": false,
+  "priority": 40
 }
