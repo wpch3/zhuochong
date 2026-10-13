@@ -83,6 +83,7 @@ typedef struct {
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
     double aperture_min;      /* 眼眶开口：眨眼参数 1 时纵向还剩几成（0.06 = 基本闭死） */
     int    blend;             /* 混合模式 ZIMG_BLEND_*（≈ Live2D CubismBlendMode） */
+    int    eye_side;          /* 0=与左右无关 1=左眼 2=右眼（ParamEyeLOpen/ROpen 分开驱动） */
 } zpart;
 
 /* 网格形变器（≈ Live2D 的 ワープデフォーマ）：
@@ -102,6 +103,7 @@ typedef struct {
     int    group;             /* >=0 表示作用在组 */
     int    part;              /* >=0 表示作用在部件 */
     int    deform;            /* >=0 表示作用在网格形变器（param 固定为 amount） */
+    int    pparam;            /* >=0 表示作用在**命名参数**（≈ .motion3 的曲线目标） */
     int    param;
     int    wave;
     double amp, freq, phase, dur;
@@ -171,7 +173,8 @@ typedef struct {
      - 内建参数（builtin）路由到已有子系统（视线 / 眨眼 / 头部跟随）；
      - 普通参数靠 binds 直接写组或部件的通道，rig.json 里声明，不改 C 代码。 */
 enum { PBI_NONE = 0, PBI_ANGLE_X, PBI_ANGLE_Y, PBI_EYE_OPEN,
-       PBI_EYEBALL_X, PBI_EYEBALL_Y };
+       PBI_EYEBALL_X, PBI_EYEBALL_Y,
+       PBI_EYE_L_OPEN, PBI_EYE_R_OPEN };   /* Live2D 标准：左右眼各一个参数 */
 
 typedef struct {
     int    part;              /* >=0 写部件通道 */
@@ -343,8 +346,17 @@ struct zrig {
     int     expr_cur, expr_prev;   /* -1 = 无 */
     double  expr_t0, expr_fade;
 
+    double  p_action[ZRIG_MAX_PARAMS];   /* 本帧由动作通道写进来的参数偏移 */
+
+    /* 参数分组（= model3.json 的 "Groups"）：EyeBlink / LipSync 等。
+       不是摆设 —— 自动眨眼只眨 EyeBlink 里列出来的那只眼，口型只写 LipSync 里的参数。 */
+    int     blink_targets;       /* 位 0 = 左眼、位 1 = 右眼；0 = 没声明 → 两眼都眨 */
+    char    lipsync_param[64];   /* LipSync 组的第一个参数，默认 ParamMouthOpenY */
+
     /* 渲染用的"最终值"：表情会往上叠，所以和子系统自己的值分开存 */
     double  blink_now;
+    double  blink_l, blink_r;          /* 本帧左右眼各自的闭合度 */
+    double  blink_manual_l, blink_manual_r;  /* <0 = 跟随两眼共同值 */
     double  gaze_nx, gaze_ny;
 
     /* 头/身跟随指针 */
@@ -621,6 +633,18 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
         p->aperture_min = zjson_num(zjson_obj_get(pj, "aperture_min"), 0.06);
         if (p->aperture_min < 0.0) p->aperture_min = 0.0;
         if (p->aperture_min > 1.0) p->aperture_min = 1.0;
+        /* 左右眼分开驱动（Live2D 的 ParamEyeLOpen / ParamEyeROpen 是两个参数）：
+           显式写 "eye_side":"l"|"r"，不写就按 id 前缀 eye_l / eye_r 猜。 */
+        {
+            const char *es = zjson_str(zjson_obj_get(pj, "eye_side"), NULL);
+            p->eye_side = 0;
+            if (es && (*es == 'l' || *es == 'L')) p->eye_side = 1;
+            else if (es && (*es == 'r' || *es == 'R')) p->eye_side = 2;
+            else if (!es) {
+                if (strncmp(p->id, "eye_l", 5) == 0) p->eye_side = 1;
+                else if (strncmp(p->id, "eye_r", 5) == 0) p->eye_side = 2;
+            }
+        }
         {   /* 混合模式：normal（默认）/ add 加算高光 / multiply 乘算腮红·阴影 */
             const char *bl = zjson_str(zjson_obj_get(pj, "blend"), "normal");
             if (z_streq(bl, "add") || z_streq(bl, "additive")) p->blend = ZIMG_BLEND_ADD;
@@ -843,10 +867,11 @@ static int param_find(const zrig *r, const char *id)
     return -1;
 }
 
-/* Live2D 的左右眼分开，我们现在只有一个眨眼量 —— 收到 L/R 都映射到同一个。 */
+/* 老名字 → 现名字。2026-10-13 起左右眼是两个真参数（Live2D 标准），
+   这里只保留"历史写法仍然能用"的兼容别名。 */
 static const char *param_alias(const char *id)
 {
-    if (z_streq(id, "ParamEyeLOpen") || z_streq(id, "ParamEyeROpen")) return "ParamEyeOpen";
+    if (z_streq(id, "ParamBlush")) return "ParamCheek";   /* 旧名，标准名是 ParamCheek */
     return id;
 }
 
@@ -869,7 +894,9 @@ static void load_builtin_params(zrig *r)
 {
     param_add_builtin(r, "ParamAngleX",   "头 左右", -30.0, 30.0, 0.0, PBI_ANGLE_X);
     param_add_builtin(r, "ParamAngleY",   "头 上下", -30.0, 30.0, 0.0, PBI_ANGLE_Y);
-    param_add_builtin(r, "ParamEyeOpen",  "睁眼",     0.0,  1.0, 1.0, PBI_EYE_OPEN);
+    param_add_builtin(r, "ParamEyeOpen",  "睁眼(两眼)", 0.0, 1.0, 1.0, PBI_EYE_OPEN);
+    param_add_builtin(r, "ParamEyeLOpen", "左眼 睁开", 0.0,  1.0, 1.0, PBI_EYE_L_OPEN);
+    param_add_builtin(r, "ParamEyeROpen", "右眼 睁开", 0.0,  1.0, 1.0, PBI_EYE_R_OPEN);
     param_add_builtin(r, "ParamEyeBallX", "眼球 左右", -1.0, 1.0, 0.0, PBI_EYEBALL_X);
     param_add_builtin(r, "ParamEyeBallY", "眼球 上下", -1.0, 1.0, 0.0, PBI_EYEBALL_Y);
 }
@@ -985,6 +1012,72 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
 /* poses：互斥部件组（A8）。写法见上面的 zpose 注释。
    校验：部件必须存在、同一个部件不能出现在两个档位里（否则谁说了算？）、
    default 必须是声明过的档位 id。 */
+/* 参数分组（≈ model3.json 的 "Groups"）：
+     "param_groups":[ {"name":"EyeBlink","ids":["ParamEyeLOpen","ParamEyeROpen"]},
+                      {"name":"LipSync","ids":["ParamMouthOpenY"]} ]
+   里面写的参数必须真的存在；EyeBlink 决定自动眨眼眨哪只眼，LipSync 决定口型写哪个参数。 */
+static int load_param_groups(zrig *r, const zjson *jg, zdiag *d, const char *file)
+{
+    size_t i, n;
+    r->blink_targets = 0;
+    z_strlcpy(r->lipsync_param, "ParamMouthOpenY", sizeof(r->lipsync_param));
+    if (!jg) return 0;
+    if (jg->type != ZJSON_ARR) {
+        zdiag_error(d, file, jg->line, 0, "param_groups", "期望 array");
+        return -1;
+    }
+    n = zjson_count(jg);
+    for (i = 0; i < n; ++i) {
+        const zjson *gj = zjson_at(jg, i);
+        const char *name = zjson_str(zjson_obj_get(gj, "name"), NULL);
+        const zjson *ids = zjson_obj_get(gj, "ids");
+        size_t k, m;
+        if (!name) {
+            zdiag_error(d, file, gj ? gj->line : 0, 0, "param_groups", "缺 name");
+            return -1;
+        }
+        if (!ids || ids->type != ZJSON_ARR) {
+            zdiag_error(d, file, gj ? gj->line : 0, 0, "param_groups",
+                        "分组 '%s' 的 ids 期望 array", name);
+            return -1;
+        }
+        m = zjson_count(ids);
+        for (k = 0; k < m; ++k) {
+            const char *pid = zjson_str(zjson_at(ids, k), NULL);
+            int pi = pid ? param_find(r, param_alias(pid)) : -1;
+            if (pi < 0) {
+                zdiag_error(d, file, gj->line, 0, "param_groups",
+                            "分组 '%s' 里的参数 '%s' 不存在", name, pid ? pid : "(缺)");
+                return -1;
+            }
+            if (z_streq(name, "EyeBlink")) {
+                if (r->params[pi].builtin == PBI_EYE_L_OPEN) r->blink_targets |= 1;
+                else if (r->params[pi].builtin == PBI_EYE_R_OPEN) r->blink_targets |= 2;
+                else if (r->params[pi].builtin == PBI_EYE_OPEN) r->blink_targets |= 3;
+                else {
+                    zdiag_error(d, file, gj->line, 0, "param_groups",
+                                "EyeBlink 只能写 ParamEyeLOpen / ParamEyeROpen / ParamEyeOpen，写了 '%s'",
+                                pid);
+                    return -1;
+                }
+            } else if (z_streq(name, "LipSync") && k == 0) {
+                z_strlcpy(r->lipsync_param, r->params[pi].id, sizeof(r->lipsync_param));
+            }
+        }
+    }
+    if (!r->blink_targets) r->blink_targets = 3;   /* 没声明 = 两只眼一起眨（老 rig 照常） */
+    return 0;
+}
+
+/* 口型同步该写哪个参数（= model3.json 的 LipSync 组）。 */
+const char *zrig_lipsync_param(const zrig *r)
+{
+    return (r && r->lipsync_param[0]) ? r->lipsync_param : "ParamMouthOpenY";
+}
+
+/* 自动眨眼眨哪只眼：位 0 = 左、位 1 = 右（= model3.json 的 EyeBlink 组）。 */
+int zrig_blink_targets(const zrig *r) { return r ? r->blink_targets : 3; }
+
 static int load_poses(zrig *r, const zjson *jp, zdiag *d, const char *file)
 {
     size_t i, n;
@@ -1251,14 +1344,19 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                 c->group = -1;
                 c->part = -1;
                 c->deform = -1;
-                c->group = find_group(r, tgt);
-                if (c->group < 0) {
+                c->pparam = -1;
+                /* Live2D 的 .motion3 曲线写的是**参数**，所以 target 先按参数名找：
+                   "target":"ParamMouthOpenY" 这种动作可以直接从 Cubism 搬过来。 */
+                if (strncmp(tgt, "Param", 5) == 0) c->pparam = param_find(r, param_alias(tgt));
+                if (c->pparam < 0) c->group = find_group(r, tgt);
+                if (c->pparam < 0 && c->group < 0) {
                     /* 允许直接指向部件（口型/眼部动画）或网格形变器（A5） */
                     c->part = find_part(r, tgt);
                     if (c->part < 0) c->deform = find_deform(r, tgt);
                     if (c->part < 0 && c->deform < 0) {
                         zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                    "通道 target '%s' 既不是组也不是部件（检查 groups / parts 里的 id）", tgt);
+                                    "通道 target '%s' 既不是参数、组、部件，也不是形变器"
+                                    "（检查 params / groups / parts / deformers 里的 id）", tgt);
                         return -1;
                     }
                 }
@@ -1272,7 +1370,15 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                     }
                     if (zjson_get(cj, "strips")) c->strips = (int)zjson_num(zjson_obj_get(cj, "strips"), 0);
                 }
-                if (!pname || parse_param(pname, &c->param) != 0) {
+                if (c->pparam >= 0) {
+                    /* 参数通道只有一个量：参数值本身。写不写 "param":"value" 都行。 */
+                    if (pname && !z_streq(pname, "value")) {
+                        zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                                    "参数通道的 param 只能是 \"value\"（写了 '%s'）", pname);
+                        return -1;
+                    }
+                    c->param = P_DX;      /* 占位，不会被用到 */
+                } else if (!pname || parse_param(pname, &c->param) != 0) {
                     zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
                                 "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha/bend_x/bend_y）");
                     return -1;
@@ -1433,6 +1539,8 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     r->blink_state = BL_FIRST;
     r->blink_forced = -1;
     r->blink_manual = -1.0;
+    r->blink_manual_l = -1.0;
+    r->blink_manual_r = -1.0;
     r->blink_imin = 2.0;
     r->blink_imax = 8.0;
 
@@ -1543,11 +1651,14 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         }
     }
     if (load_deformers(r, zjson_obj_get(root, "deformers"), diag, file) != 0) goto fail;
+    /* ⚠ 参数必须在动作之前加载：动作通道可以 target 一个 ParamXxx（≈ .motion3 曲线），
+       解析通道时要查得到参数表。参数自己的 binds 只引用组/部件/形变器，都在上面了。 */
+    load_builtin_params(r);
+    if (load_params(r, zjson_obj_get(root, "params"), diag, file) != 0) goto fail;
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
-    load_builtin_params(r);
-    if (load_params(r, zjson_obj_get(root, "params"), diag, file) != 0) goto fail;
+    if (load_param_groups(r, zjson_obj_get(root, "param_groups"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
     if (load_poses(r, zjson_obj_get(root, "poses"), diag, file) != 0) goto fail;
 
@@ -1786,6 +1897,10 @@ static void accumulate_action(zrig *r, const zaction *a, double t, double w, dou
         if (r->mouth_mute && c->part >= 0 && c->part < r->nparts &&
             (r->parts[c->part].tags & TAG_MOUTH)) continue;
         v = eval_channel(r, c, t, total) * w;
+        if (c->pparam >= 0 && c->pparam < r->nparams) {
+            r->p_action[c->pparam] += v;          /* 动作驱动命名参数（≈ .motion3） */
+            continue;
+        }
         if (c->deform >= 0 && c->deform < r->ndeforms) {
             r->deforms[c->deform].amount += v;    /* 网格形变器只有一个标量 amount */
             continue;
@@ -1816,6 +1931,7 @@ static void compute_group_transforms(zrig *r)
         r->p_alpha[i] = 1.0;
     }
     for (i = 0; i < r->ndeforms; ++i) r->deforms[i].amount = 0.0;
+    for (i = 0; i < r->nparams; ++i) r->p_action[i] = 0.0;
     if (!a) { r->dim_now = 0.0; return; }
     if (prev && r->fade_dur > 1e-6) {
         double u = ZC_CLAMP((r->now - r->fade_t0) / r->fade_dur, 0.0, 1.0);
@@ -1861,18 +1977,22 @@ static void compute_group_transforms(zrig *r)
        内建参数（跟随/眨眼/眼球）走各自的子系统，其余按 binds 写通道。 */
     {
         double lx = r->look_cx, ly = r->look_cy;
+        double blink_off_l = 0.0, blink_off_r = 0.0;
         r->blink_now = r->blink_value;
         r->gaze_nx = r->gaze_x;
         r->gaze_ny = r->gaze_y;
         for (i = 0; i < r->nparams; ++i) {
             const zparam *q = &r->params[i];
-            double off = expr_offset(r, i);
+            /* 叠加序：动作通道（≈ .motion3 曲线）→ 表情偏移 → 参数自身的值 */
+            double off = expr_offset(r, i) + r->p_action[i];
             double v = q->value + off;
             int k;
             switch (q->builtin) {
                 case PBI_ANGLE_X:   lx += off / 30.0; continue;
                 case PBI_ANGLE_Y:   ly -= off / 30.0; continue;
                 case PBI_EYE_OPEN:  r->blink_now = ZC_CLAMP(r->blink_now - off, 0.0, 1.0); continue;
+                case PBI_EYE_L_OPEN: blink_off_l += off; continue;
+                case PBI_EYE_R_OPEN: blink_off_r += off; continue;
                 case PBI_EYEBALL_X: r->gaze_nx = ZC_CLAMP(r->gaze_nx + off, -1.0, 1.0); continue;
                 case PBI_EYEBALL_Y: r->gaze_ny = ZC_CLAMP(r->gaze_ny + off, -1.0, 1.0); continue;
                 default: break;
@@ -1889,6 +2009,15 @@ static void compute_group_transforms(zrig *r)
                 apply_chan(r, b->part, b->group, b->param, bv, b->curve, b->strips);
             }
         }
+        /* 左右眼：各自可以被 ParamEyeLOpen / ParamEyeROpen 按住；没按住就跟两眼共同值。
+           眨眼子系统（自动眨眼 / blink_hold）写的是共同值，所以单眼只在被显式驱动时才分家。 */
+        r->blink_l = (r->blink_manual_l >= 0.0) ? r->blink_manual_l
+                   : ((r->blink_targets & 1) ? r->blink_now : 0.0);
+        r->blink_r = (r->blink_manual_r >= 0.0) ? r->blink_manual_r
+                   : ((r->blink_targets & 2) ? r->blink_now : 0.0);
+        r->blink_l = ZC_CLAMP(r->blink_l - blink_off_l, 0.0, 1.0);
+        r->blink_r = ZC_CLAMP(r->blink_r - blink_off_r, 0.0, 1.0);
+
         /* 指针跟随叠加在动作之上（Live2D 里这是参数层，不属于任何一个 motion）。
            放在动作之后、物理之前：所以转头也会把头发甩起来。 */
         for (i = 0; i < r->nlooks; ++i) {
@@ -1911,6 +2040,12 @@ static void params_refresh_builtin(zrig *r)
             case PBI_ANGLE_X:   q->value = r->look_cx * 30.0; break;
             case PBI_ANGLE_Y:   q->value = -r->look_cy * 30.0; break;
             case PBI_EYE_OPEN:  q->value = 1.0 - r->blink_value; break;
+            case PBI_EYE_L_OPEN:
+                q->value = 1.0 - ((r->blink_manual_l >= 0.0) ? r->blink_manual_l : r->blink_value);
+                break;
+            case PBI_EYE_R_OPEN:
+                q->value = 1.0 - ((r->blink_manual_r >= 0.0) ? r->blink_manual_r : r->blink_value);
+                break;
             case PBI_EYEBALL_X: q->value = r->gaze_x; break;
             case PBI_EYEBALL_Y: q->value = r->gaze_y; break;
             default: break;
@@ -2331,6 +2466,9 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
 
     memset(st, 0, sizeof(*st));
     if (!src) return 0;
+    /* 左眼件只看 ParamEyeLOpen，右眼件只看 ParamEyeROpen（眨单眼 / 笑眼都靠这个）。 */
+    if (p->eye_side == 1) blink = r->blink_l;
+    else if (p->eye_side == 2) blink = r->blink_r;
     /* 视线跟随：只影响带 gaze 标签的部件（虹膜拆分后自动升级为真·视线） */
     if ((p->tags & TAG_GAZE) && (r->gaze_nx != 0.0 || r->gaze_ny != 0.0)) {
         extra_dx += r->gaze_nx * r->gaze_max_dx;
@@ -2946,7 +3084,12 @@ int zrig_param_set(zrig *r, const char *id, double v)
     switch (q->builtin) {                       /* 内建的转发给对应子系统 */
         case PBI_ANGLE_X:   r->look_x = ZC_CLAMP(v / 30.0, -1.0, 1.0); break;
         case PBI_ANGLE_Y:   r->look_y = ZC_CLAMP(-v / 30.0, -1.0, 1.0); break;
-        case PBI_EYE_OPEN:  r->blink_manual = ZC_CLAMP(1.0 - v, 0.0, 1.0); break;
+        case PBI_EYE_OPEN:  /* 两眼一起按住：同时交回左右眼的单独控制 */
+            r->blink_manual = ZC_CLAMP(1.0 - v, 0.0, 1.0);
+            r->blink_manual_l = r->blink_manual_r = -1.0;
+            break;
+        case PBI_EYE_L_OPEN: r->blink_manual_l = ZC_CLAMP(1.0 - v, 0.0, 1.0); break;
+        case PBI_EYE_R_OPEN: r->blink_manual_r = ZC_CLAMP(1.0 - v, 0.0, 1.0); break;
         case PBI_EYEBALL_X: r->gaze_x = ZC_CLAMP(v, -1.0, 1.0); break;
         case PBI_EYEBALL_Y: r->gaze_y = ZC_CLAMP(v, -1.0, 1.0); break;
         default: break;
@@ -2962,6 +3105,13 @@ int zrig_param_reset(zrig *r, const char *id)
     if (i < 0) return -1;
     if (r->params[i].builtin == PBI_EYE_OPEN) {  /* 眨眼复位 = 交回自动 */
         r->blink_manual = -1.0;
+        r->blink_manual_l = r->blink_manual_r = -1.0;
+        r->params[i].value = r->params[i].vdef;
+        return 0;
+    }
+    if (r->params[i].builtin == PBI_EYE_L_OPEN || r->params[i].builtin == PBI_EYE_R_OPEN) {
+        if (r->params[i].builtin == PBI_EYE_L_OPEN) r->blink_manual_l = -1.0;
+        else r->blink_manual_r = -1.0;
         r->params[i].value = r->params[i].vdef;
         return 0;
     }

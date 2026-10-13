@@ -96,6 +96,11 @@
 | **表情叠加**（expression） | 笑着挥手：表情和动作两条轨，互不覆盖 | ✅ **2026-10-12** | `zrig.c` `load_expressions`/`zrig_expression_set` + rig 顶层 `expressions` + `/api/expression` |
 | **口型同步**（LipSync） | 说话时嘴跟着语音开合 | ✅ **2026-10-12** | `zpet.c` `lipsync_tick` + `tools/make_lipsync.py` + `/api/speak`；动作里的嘴通道由 `zrig_set_mouth_mute` 让路 |
 
+> **合规对照表另开了一份：`docs/LIVE2D_CONFORMANCE.md`** —— 41 个官方标准参数逐条判定、
+> model3/motion3/exp3/physics3/pose3 结构对照、以及"哪些现在不做以后补不回来"的风险分级。
+> 那份表由 `selfcheck_repo.py check_live2d()` + `test_core.c test_live2d_standard()` 守着，
+> 加参数忘了登记会直接判红。
+>
 > **2026-10-13 起：上表里 Live2D 侧的能力已经全部有对应实现**（部件图层、变形器两级、
 > FFD 网格形变、剪贴蒙版含多重/取反、关键帧动作曲线、物理单段与多段摆链、
 > 混合模式、Pose 差分、表情层、参数层、LipSync、眨眼/呼吸/视线/motion fade）。

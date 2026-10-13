@@ -17,7 +17,7 @@
 用法：python3 tools/selfcheck_repo.py [--root .] [--quiet]
 """
 from __future__ import annotations
-import argparse, datetime, glob, json, os, re, subprocess, sys
+import argparse, datetime, glob, io, json, os, re, subprocess, sys
 
 OK, BAD = "通过", "不通过"
 _fail = 0
@@ -289,6 +289,101 @@ def check_rig(root):
               f"坏关键帧 {badkeys[:3]}" if badkeys else f"{nkey} 条关键帧通道")
 
 
+
+# ------------------------------------------------- 3.5 Live2D 标准合规（静态）
+# 口径来自官方 CubismWebFramework/src/cubismdefaultparameterid.ts（41 个标准参数 ID）
+# 与样本 model3.json 的 Groups（EyeBlink / LipSync）。
+L2D_STANDARD = {
+    "ParamAngleX", "ParamAngleY", "ParamAngleZ",
+    "ParamEyeLOpen", "ParamEyeLSmile", "ParamEyeROpen", "ParamEyeRSmile",
+    "ParamEyeBallX", "ParamEyeBallY", "ParamEyeBallForm",
+    "ParamBrowLY", "ParamBrowRY", "ParamBrowLX", "ParamBrowRX",
+    "ParamBrowLAngle", "ParamBrowRAngle", "ParamBrowLForm", "ParamBrowRForm",
+    "ParamMouthForm", "ParamMouthOpenY", "ParamCheek",
+    "ParamBodyAngleX", "ParamBodyAngleY", "ParamBodyAngleZ", "ParamBreath",
+    "ParamArmLA", "ParamArmRA", "ParamArmLB", "ParamArmRB",
+    "ParamHandL", "ParamHandR",
+    "ParamHairFront", "ParamHairSide", "ParamHairBack", "ParamHairFluffy",
+    "ParamShoulderY", "ParamBustX", "ParamBustY", "ParamBaseX", "ParamBaseY",
+    "ParamNONE",
+}
+# 标准表里没有、但我们确实需要的扩展。每加一个都必须在这里登记 + 写进
+# docs/LIVE2D_CONFORMANCE.md，否则参数命名会慢慢跑偏，以后接任何现成工具都对不上。
+L2D_EXTENSIONS = {
+    "ParamLegL": "裙下大腿 bend（标准表没有腿参数）",
+    "ParamLegR": "同上",
+    "ParamHairAhoge": "呆毛整体摆（标准表只有 Front/Side/Back/Fluffy）",
+    "ParamHairAhogeS": "呆毛 S 形（网格形变器）",
+    "ParamHairSideS": "侧发 S 形（网格形变器）",
+    "ParamEyeSparkle": "眼高光强弱（加算图层）",
+    "ParamEyeOpen": "两眼一起开合的便捷参数（引擎内建，L/R 之外的额外入口）",
+}
+# 官方惯例的取值范围（Cubism 标准模板）
+L2D_RANGE = {
+    "ParamAngleX": (-30, 30), "ParamAngleY": (-30, 30), "ParamAngleZ": (-30, 30),
+    "ParamEyeLOpen": (0, 1), "ParamEyeROpen": (0, 1),
+    "ParamEyeBallX": (-1, 1), "ParamEyeBallY": (-1, 1),
+    "ParamBrowLY": (-1, 1), "ParamBrowRY": (-1, 1),
+    "ParamBrowLX": (-1, 1), "ParamBrowRX": (-1, 1),
+    "ParamMouthForm": (-1, 1), "ParamMouthOpenY": (0, 1), "ParamCheek": (0, 1),
+    "ParamBodyAngleX": (-10, 10), "ParamBodyAngleY": (-10, 10),
+    "ParamBodyAngleZ": (-10, 10), "ParamBreath": (0, 1),
+    "ParamArmLA": (-10, 10), "ParamArmRA": (-10, 10),
+    "ParamArmLB": (-10, 10), "ParamArmRB": (-10, 10),
+    "ParamShoulderY": (-10, 10), "ParamBaseX": (-10, 10), "ParamBaseY": (-10, 10),
+}
+
+
+def check_live2d(root):
+    section("Live2D 标准合规：参数命名 / 取值范围 / model3 分组（静态）")
+    doc = os.path.join(root, "docs/LIVE2D_CONFORMANCE.md")
+    doc_txt = io.open(doc, encoding="utf-8").read() if os.path.exists(doc) else ""
+    check("有合规对照表文档", bool(doc_txt), "docs/LIVE2D_CONFORMANCE.md")
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        tag = os.path.relpath(rp, root)
+        r = jsonc(rp)
+        params = r.get("params", [])
+        ids = [q["id"] for q in params]
+
+        # ① 不许出现"标准表里有、我们却另起炉灶"的名字
+        renamed = [i for i in ids if i in ("ParamBlush", "ParamEyeL", "ParamEyeR")]
+        check("没有被标准名取代的旧参数名", not renamed,
+              f"{tag}：{renamed}（ParamBlush 的标准名是 ParamCheek）" if renamed else "（已对齐）")
+
+        # ② 非标准名必须登记成扩展
+        unknown = [i for i in ids if i not in L2D_STANDARD and i not in L2D_EXTENSIONS]
+        check("自定义参数都已登记", not unknown,
+              f"{tag}：{unknown} 不在标准表也不在扩展表" if unknown else
+              f"扩展 {len([i for i in ids if i in L2D_EXTENSIONS])} 个，其余全是标准名")
+
+        # ③ 取值范围跟官方惯例一致（范围错了，外部的 motion / 表情文件推进来幅度就不对）
+        bad = []
+        for q in params:
+            want = L2D_RANGE.get(q["id"])
+            if want and (abs(q.get("min", 0) - want[0]) > 1e-6 or abs(q.get("max", 0) - want[1]) > 1e-6):
+                bad.append(f"{q['id']} {q.get('min')}..{q.get('max')}≠{want[0]}..{want[1]}")
+        check("标准参数取值范围符合官方惯例", not bad, f"{bad[:3]}" if bad else "（逐条核对过）")
+
+        # ④ model3.json 的 Groups：EyeBlink / LipSync
+        groups = {g.get("name"): g.get("ids", []) for g in r.get("param_groups", [])}
+        check("声明了 EyeBlink 分组",
+              set(groups.get("EyeBlink", [])) == {"ParamEyeLOpen", "ParamEyeROpen"},
+              f"{tag}：EyeBlink={groups.get('EyeBlink')}")
+        check("声明了 LipSync 分组", groups.get("LipSync") == ["ParamMouthOpenY"],
+              f"{tag}：LipSync={groups.get('LipSync')}")
+
+        # ⑤ 眼部件必须标明左右，否则左右眼参数驱动不了
+        eye = [p for p in r.get("parts", []) if p["id"].split("_")[0] == "eye"]
+        noside = [p["id"] for p in eye if p.get("eye_side") not in ("l", "r")]
+        check("眼部件都标了 eye_side", not noside,
+              f"{tag}：{noside[:4]} 没标左右" if noside else f"{len(eye)} 件都标了")
+
+        # ⑥ 文档与 rig 对得上：每个参数都要在对照表里出现
+        if doc_txt:
+            missing = [i for i in ids if i not in doc_txt]
+            check("对照表覆盖所有参数", not missing,
+                  f"文档里查不到 {missing[:4]}" if missing else f"{len(ids)} 个参数都有记载")
+
 # ------------------------------------------------------------------ 4 角色包其它引用
 def check_character(root):
     section("角色包其它引用：服装 / 互动 / 语音 / 口型包络")
@@ -448,7 +543,7 @@ def main():
     _strict = a.strict
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
-    for fn in (check_memory, check_json, check_rig, check_character,
+    for fn in (check_memory, check_json, check_rig, check_live2d, check_character,
                check_web, check_contract, check_tools, check_hygiene):
         try:
             fn(root)

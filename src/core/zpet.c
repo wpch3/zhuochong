@@ -445,7 +445,7 @@ const char *zpet_region(const zpet *p, int x, int y, char *out_action, size_t ca
 static void lipsync_apply(zpet *p, double v)
 {
     p->ls_level = v;
-    if (p->rig) zrig_param_set(p->rig, "ParamMouthOpenY", v);
+    if (p->rig) zrig_param_set(p->rig, zrig_lipsync_param(p->rig), v);
 }
 
 int zpet_lipsync_start(zpet *p, const double *values, int n, double fps, double now)
@@ -472,7 +472,7 @@ void zpet_lipsync_stop(zpet *p)
     p->ls_active = 0;
     p->ls_level = 0.0;
     if (p->rig) {
-        zrig_param_reset(p->rig, "ParamMouthOpenY");
+        zrig_param_reset(p->rig, zrig_lipsync_param(p->rig));
         zrig_set_mouth_mute(p->rig, 0);
     }
 }

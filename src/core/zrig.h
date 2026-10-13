@@ -140,6 +140,11 @@ double zrig_blink_manual(const zrig *r);
 /* 部件级通道当前值（调试/测试用），param 为 dx/dy/sx/sy/rot_deg/alpha */
 double zrig_part_channel(const zrig *r, const char *part_id, const char *param);
 
+/* 参数分组（≈ model3.json 的 "Groups"）：
+   LipSync 组的第一个参数 / EyeBlink 组覆盖的眼（位 0 左、位 1 右）。 */
+const char *zrig_lipsync_param(const zrig *r);
+int         zrig_blink_targets(const zrig *r);
+
 /* 调试/测试用的只读查询：
    zrig_group_offset_x/y —— 组这一帧的横/纵位移（通道位移 + 自动跟随形变的位移，画布像素）。
    zrig_bend_at          —— 某部件的形变在画布高度 canvas_y 处把像素推了多远（画布像素）。

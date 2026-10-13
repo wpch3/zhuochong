@@ -47,6 +47,25 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         {"id": "ParamBodyAngleZ", "label": "上身 倾斜", "min": -10.0, "max": 10.0,
          "default": 0.0,
          "binds": [{"group": "chest", "param": "rot_deg", "scale": 0.25}]},
+        # Live2D 标准表里的"身体上下"。正值=上身往前压低（整体下沉并略压扁），
+        # 负值=挺起来。只动上身组，腿不跟着走。
+        {"id": "ParamBodyAngleY", "label": "上身 上下", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"group": "chest", "param": "dy", "scale": 0.9},
+                   {"group": "chest", "param": "sy", "scale": -0.004}]},
+        # 肩上下（耸肩）。两条手臂组一起升降，上身跟一点点，不然肩膀会从袖子里脱出。
+        {"id": "ParamShoulderY", "label": "肩 上下", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"group": "arm_l", "param": "dy", "scale": -0.8},
+                   {"group": "arm_r", "param": "dy", "scale": -0.8},
+                   {"group": "chest", "param": "dy", "scale": -0.15}]},
+        # 全身位移（Live2D 的 ParamBaseX/Y）：根组平移，用来做"整个人往旁边挪一点"。
+        {"id": "ParamBaseX", "label": "全身 左右", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"group": "root", "param": "dx", "scale": 1.0}]},
+        {"id": "ParamBaseY", "label": "全身 上下", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"group": "root", "param": "dy", "scale": -1.0}]},
         {"id": "ParamBreath", "label": "呼吸", "min": 0.0, "max": 1.0, "default": 0.0,
          "binds": [{"group": "chest", "param": "sy", "scale": 0.012},
                    {"group": "chest", "param": "dy", "scale": -1.2}]},
@@ -73,6 +92,12 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "binds": [{"part": "brow_r", "param": "dy", "scale": -3.0}]},
             {"id": "ParamBrowLAngle", "label": "左眉 角度", "min": -1.0, "max": 1.0, "default": 0.0,
              "binds": [{"part": "brow_l", "param": "rot_deg", "scale": 7.0}]},
+            {"id": "ParamBrowLX", "label": "左眉 左右", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"part": "brow_l", "param": "dx", "scale": 4.0}]},
+            {"id": "ParamBrowRX", "label": "右眉 左右", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"part": "brow_r", "param": "dx", "scale": 4.0}]},
             {"id": "ParamBrowRAngle", "label": "右眉 角度", "min": -1.0, "max": 1.0, "default": 0.0,
              "binds": [{"part": "brow_r", "param": "rot_deg", "scale": -7.0}]},
         ]
@@ -125,6 +150,12 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         # A5：同一根呆毛的 S 形甩动，靠网格形变器（不是整体平移/倾斜）
         {"id": "ParamHairAhogeS", "label": "呆毛 S 形甩动", "min": -1.0, "max": 1.0,
          "default": 0.0, "binds": [{"deformer": "ahoge_s", "scale": 1.0}]},
+        # Live2D 标准表里的 ParamHairFluffy（ふわふわ）：一根滑条让整头头发轻轻飘，
+        # 幅度刻意比单件参数小一截 —— 它是"底噪"，不是动作。
+        {"id": "ParamHairFluffy", "label": "头发 蓬松飘动", "min": -1.0, "max": 1.0,
+         "default": 0.0,
+         "binds": [{"part": "hair_front", "param": "bend_x", "scale": 2.0, "curve": "tip"},
+                   {"part": "hair_ahoge", "param": "bend_x", "scale": 4.0, "curve": "root"}]},
     ]
     if has_side:
         # 侧发/后发（Live2D 的 ParamHairSide / ParamHairBack）。
@@ -152,7 +183,7 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
     if has_blend:
         # A7 混合模式：腮红走乘算、眼高光走加算（见 make_blend_parts.py）
         out += [
-            {"id": "ParamBlush", "label": "脸红 浓淡", "min": 0.0, "max": 1.0, "default": 0.0,
+            {"id": "ParamCheek", "label": "脸红 浓淡", "min": 0.0, "max": 1.0, "default": 0.0,
              # 零件基础 opacity 是 1，alpha 通道用 offset −1 先把它压到全透明，
              # 于是「最终透明度 = 参数值」。参数 0 = 完全看不见。
              "binds": [{"part": "blush_l", "param": "alpha", "scale": 1.0, "offset": -1.0},
@@ -194,7 +225,7 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
 
     def blush(v):
         """脸红（乘算腮红）。没有腮红零件时自动留空。"""
-        return [P("ParamBlush", v, "set")] if has_blend else []
+        return [P("ParamCheek", v, "set")] if has_blend else []
 
     def sparkle(v):
         """眼高光（加算）。情绪低落时眼里的光会变弱——这是最省力的\"演技\"。"""
@@ -501,7 +532,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 "id": f"blush_{side}", "file": b["file"], "group": "head", "layer": lay,
                 "pos": list(b["pos"]), "anchor": [0, 0], "opacity": 1.0,
                 "blend": "multiply", "tags": [],
-                "note": "腮红（乘算）：默认全透明，由 ParamBlush / 害羞表情推上来",
+                "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
             })
         # 层号挑在眼球（218/228）之上、睫毛（220/230）之下：
         # 睫毛本来就该压住高光，眉毛在 232/233，别撞。
@@ -1080,6 +1111,18 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     if parts_ok:
                         by_id4[aid]["channels"].append(cc)
 
+    # —— 左右眼分家（Live2D 标准 ParamEyeLOpen / ParamEyeROpen）——
+    # 引擎按 eye_side 决定这件看左眼还是右眼的闭合度；不写就只能两眼一起眨。
+    # 按下划线分词取 l/r/left/right，避免把 eye_hl_l 里的 "hl" 误判成左。
+    for _p in parts_list:
+        _tok = _p["id"].split("_")
+        if _tok[0] != "eye":
+            continue
+        if "l" in _tok or "left" in _tok:
+            _p["eye_side"] = "l"
+        elif "r" in _tok or "right" in _tok:
+            _p["eye_side"] = "r"
+
     rig = {
         "schema_version": "1.0",
         "id": f"{name}_teen",
@@ -1183,6 +1226,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             ],
             "note": "眼高光形状差分；切 none 可以整组关掉（死鱼眼）",
         }] if (blendp and blendp.get("star")) else []),
+        # 参数分组（= model3.json 的 "Groups"）：告诉外部驱动"哪些参数归自动眨眼/口型管"。
+        # Live2D SDK 就是靠这张表决定 CubismEyeBlink / CubismLipSync 去写哪几个参数的。
+        "param_groups": [
+            {"name": "EyeBlink", "ids": ["ParamEyeLOpen", "ParamEyeROpen"]},
+            {"name": "LipSync", "ids": ["ParamMouthOpenY"]},
+        ],
         "expressions": expression_list(mouth=mouth,
                                        has_brows=any(p["id"] == "brow_l" for p in parts_list),
                                        head_is_part=head_is_part,

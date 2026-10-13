@@ -642,6 +642,38 @@ static int copy_file(const char *src, const char *dst)
     return 0;
 }
 
+/* 两帧在某个矩形框里差了多少像素（量"这个参数到底动了没有、动在哪"） */
+static int frame_diff_box(const zimg *a, const unsigned char *snap,
+                          int x0, int y0, int x1, int y1)
+{
+    int x, y, n = 0;
+    if (!a || !snap) return -1;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > a->w) x1 = a->w;
+    if (y1 > a->h) y1 = a->h;
+    for (y = y0; y < y1; ++y)
+        for (x = x0; x < x1; ++x) {
+            size_t o = ((size_t)y * (size_t)a->w + (size_t)x) * 4;
+            int d = abs((int)a->px[o] - (int)snap[o]) + abs((int)a->px[o+1] - (int)snap[o+1])
+                  + abs((int)a->px[o+2] - (int)snap[o+2]) + abs((int)a->px[o+3] - (int)snap[o+3]);
+            if (d > 8) n++;
+        }
+    return n;
+}
+
+/* 存一份当前帧（给 frame_diff_box 当基准） */
+static unsigned char *frame_snapshot(const zimg *a)
+{
+    size_t n;
+    unsigned char *buf;
+    if (!a) return NULL;
+    n = (size_t)a->w * (size_t)a->h * 4;
+    buf = (unsigned char *)malloc(n);
+    if (buf) memcpy(buf, a->px, n);
+    return buf;
+}
+
 static int frame_opaque_px(const zimg *im)
 {
     int x, y, n = 0;
@@ -953,8 +985,8 @@ static void test_params(void)
         if (r) {
             zrig_param_desc pd;
             double t;
-            /* 内建 5 个（ParamAngleX/Y、ParamEyeOpen、ParamEyeBallX/Y）+ rig 里 2 个 */
-            CHECK(zrig_param_count(r) == 7, "参数表应有 7 项（内建 5 + 角色 2），实为 %d",
+            /* 内建 7 个（ParamAngleX/Y、ParamEyeOpen + 左右眼各一个、ParamEyeBallX/Y）+ rig 里 2 个 */
+            CHECK(zrig_param_count(r) == 9, "参数表应有 9 项（内建 7 + 角色 2），实为 %d",
                   zrig_param_count(r));
             CHECK(zrig_param_info(r, 0, &pd) == 0 && z_streq(pd.id, "ParamAngleX") && pd.builtin,
                   "第一项应是内建 ParamAngleX");
@@ -978,14 +1010,26 @@ static void test_params(void)
                   "ParamAngleX=30 应把头带到最大幅度（%.2f）", zrig_group_offset_x(r, "head"));
             CHECK(zrig_param_get(r, "ParamAngleX") > 29.0,
                   "内建参数读数应回写当前值（%.2f）", zrig_param_get(r, "ParamAngleX"));
-            /* ⑤ 眨眼：ParamEyeOpen=0 等于闭眼，别名 ParamEyeLOpen 也认 */
+            /* ⑤ 眨眼：ParamEyeOpen=0 等于两眼都闭；左右眼是**两个独立参数**（Live2D 标准） */
             zrig_param_set(r, "ParamEyeOpen", 0.0);
             zrig_tick(r, t);
             CHECK(zrig_blink_value(r) > 0.99, "ParamEyeOpen=0 应等于闭眼（%.2f）",
                   zrig_blink_value(r));
-            CHECK(zrig_param_set(r, "ParamEyeLOpen", 1.0) == 0, "ParamEyeLOpen 应是别名");
+            CHECK(zrig_param_set(r, "ParamEyeLOpen", 1.0) == 0, "ParamEyeLOpen 应存在");
+            CHECK(zrig_param_set(r, "ParamEyeROpen", 1.0) == 0, "ParamEyeROpen 应存在");
             zrig_tick(r, t + 0.02);
-            CHECK(zrig_blink_value(r) < 0.01, "别名写 1 应睁眼");
+            CHECK(zrig_param_get(r, "ParamEyeLOpen") > 0.99 &&
+                  zrig_param_get(r, "ParamEyeROpen") > 0.99,
+                  "左右眼参数各自读回 1");
+            /* 单眼：只按住左眼，右眼不受影响（挤眼睛） */
+            zrig_param_set(r, "ParamEyeLOpen", 0.0);
+            zrig_tick(r, t + 0.04);
+            CHECK(zrig_param_get(r, "ParamEyeLOpen") < 0.01 &&
+                  zrig_param_get(r, "ParamEyeROpen") > 0.99,
+                  "左眼闭、右眼睁：L=%.2f R=%.2f",
+                  zrig_param_get(r, "ParamEyeLOpen"), zrig_param_get(r, "ParamEyeROpen"));
+            zrig_param_reset(r, "ParamEyeLOpen");
+            zrig_param_reset(r, "ParamEyeROpen");
             zrig_param_reset(r, "ParamEyeOpen");
             CHECK(zrig_blink_manual(r) < 0.0, "眨眼参数复位应交回自动");
             /* ⑥ 不存在的参数要报错，不能假装成功 */
@@ -1329,6 +1373,223 @@ static void test_group_chain(void)
             CHECK(back == cx0, "参数归零后手回到原位（%d vs %d）", back, cx0);
             zrig_free(r);
         }
+    }
+}
+
+/* ========== Live2D 标准合规：标准参数必须真的接着东西 ========== */
+/* 这条闸是冲着"参数表写得好看、其实是死的"去的：
+   对**真角色的 rig**逐个把标准参数推到极值，渲染，看画面有没有变。
+   一个参数改了却一个像素都不动 = 它是假的，必须红。
+
+   ⚠ 坑：待机动作和物理每帧都在走，拿两个不同时刻的帧相减，光漂移就有十几像素，
+   足以把"死参数"盖过去（第一版就是这样：把 ParamShoulderY 的 binds 删空仍然绿）。
+   解法 = 用同一个时间戳反复 tick（dt=0，等价预览的 /api/pause），
+   两帧之间只有参数变了。跟随类（ParamAngleX/Y）是平滑收敛的，dt=0 下不动，
+   所以单独用"settle 一段时间"的办法量，阈值取大。 */
+static void test_live2d_standard(void)
+{
+    char dir[1024], rig_path[1024];
+    static const struct { const char *id; double v; } probe[] = {
+        { "ParamAngleZ",      30.0 }, { "ParamEyeLOpen",     0.0 },
+        { "ParamEyeROpen",     0.0 }, { "ParamEyeBallX",     1.0 },
+        { "ParamEyeBallY",     1.0 }, { "ParamBrowLY",      -1.0 },
+        { "ParamBrowRY",      -1.0 }, { "ParamBrowLAngle",  -1.0 },
+        { "ParamBrowRAngle",  -1.0 }, { "ParamBrowLX",       1.0 },
+        { "ParamBrowRX",       1.0 }, { "ParamMouthOpenY",   1.0 },
+        { "ParamMouthForm",    1.0 }, { "ParamCheek",        1.0 },
+        { "ParamBodyAngleX",  10.0 }, { "ParamBodyAngleY",  10.0 },
+        { "ParamBodyAngleZ",  10.0 }, { "ParamShoulderY",   10.0 },
+        { "ParamBreath",       1.0 }, { "ParamBaseX",       10.0 },
+        { "ParamBaseY",       10.0 }, { "ParamArmLA",       10.0 },
+        { "ParamArmRA",      -10.0 }, { "ParamArmLB",       10.0 },
+        { "ParamArmRB",      -10.0 }, { "ParamHandL",        1.0 },
+        { "ParamHandR",       -1.0 }, { "ParamLegL",         1.0 },
+        { "ParamLegR",        -1.0 }, { "ParamHairFront",    1.0 },
+        { "ParamHairSide",     1.0 }, { "ParamHairBack",     1.0 },
+        { "ParamHairFluffy",   1.0 }, { "ParamHairAhoge",    1.0 },
+        { "ParamHairAhogeS",   1.0 }, { "ParamEyeSparkle",   0.0 },
+    };
+    const double T = 1.5;                 /* 冻结用的时间戳 */
+    SECTION("Live2D 标准合规：标准参数都在、推到极值真的改画面（防死参数）");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载真 rig 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);          /* 自动眨眼会搅乱对照 */
+        zrig_action_request(r, "idle", "test", 1);
+        {
+            const zimg *fb;
+            unsigned char *base;
+            double t;
+            size_t i;
+            int dead = 0, missing = 0;
+            char deadlist[256];
+            deadlist[0] = 0;
+            for (t = 0.0; t < T; t += 0.02) zrig_tick(r, t);
+            zrig_tick(r, T);                   /* dt = 0：时间停住 */
+            fb = zrig_frame(r, 0.55, NULL, NULL);
+            base = frame_snapshot(fb);
+            CHECK(base != NULL, "基准帧应可保存");
+            for (i = 0; i < sizeof(probe) / sizeof(probe[0]) && base; ++i) {
+                int n;
+                /* ⚠ 第二个坑：上一个参数把物理摆链推歪之后，dt=0 不会让它衰减回去
+                   （弹簧不走，但输出 = pos − target 会随 target 立刻变），
+                   于是"全局基准帧"被污染，后面每个参数都显得活着。
+                   解法 = 每个参数临测前**现拍一张基准**，两帧之间只差这一个参数。 */
+                free(base);
+                zrig_tick(r, T);
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                base = frame_snapshot(fb);
+                if (!base) break;
+                if (zrig_param_set(r, probe[i].id, probe[i].v) != 0) {
+                    missing++;
+                    if (strlen(deadlist) < 170)
+                        z_snprintf(deadlist + strlen(deadlist), sizeof(deadlist) - strlen(deadlist),
+                                   "%s(缺) ", probe[i].id);
+                    continue;
+                }
+                zrig_tick(r, T);               /* 仍然 dt = 0 */
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                n = frame_diff_box(fb, base, 0, 0, fb->w, fb->h);
+                if (n < 12) {
+                    dead++;
+                    if (strlen(deadlist) < 170)
+                        z_snprintf(deadlist + strlen(deadlist), sizeof(deadlist) - strlen(deadlist),
+                                   "%s(%d) ", probe[i].id, n);
+                }
+                zrig_param_reset(r, probe[i].id);
+                zrig_tick(r, T);
+            }
+            CHECK(missing == 0, "标准参数不能缺：%s", deadlist[0] ? deadlist : "(无)");
+            CHECK(dead == 0, "标准参数不能是死的（dt=0 下推到极值，画面一动不动）：%s",
+                  deadlist[0] ? deadlist : "(无)");
+            free(base);
+        }
+        /* 跟随类：ParamAngleX/Y 走的是平滑收敛，必须给时间 */
+        {
+            const zimg *fb;
+            unsigned char *b2;
+            double t, t0 = T;
+            int n;
+            const char *ids[2] = { "ParamAngleX", "ParamAngleY" };
+            int k;
+            for (k = 0; k < 2; ++k) {
+                for (t = t0; t < t0 + 1.2; t += 0.02) zrig_tick(r, t);
+                t0 += 1.2;
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                b2 = frame_snapshot(fb);
+                CHECK(zrig_param_set(r, ids[k], 30.0) == 0, "%s 应存在", ids[k]);
+                for (t = t0; t < t0 + 1.2; t += 0.02) zrig_tick(r, t);
+                t0 += 1.2;
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                n = frame_diff_box(fb, b2, 0, 0, fb->w, fb->h);
+                CHECK(n > 200, "%s=30 应该明显带动头部（%d 像素）", ids[k], n);
+                free(b2);
+                zrig_param_reset(r, ids[k]);
+                for (t = t0; t < t0 + 1.2; t += 0.02) zrig_tick(r, t);
+                t0 += 1.2;
+            }
+        }
+        /* 单眼：ParamEyeLOpen=0 只能动左眼那一块，右眼那一块必须纹丝不动。
+           （Live2D 的 EyeBlink 组就是两个参数，挤眼睛/笑眼全靠这个） */
+        {
+            const zimg *fb;
+            unsigned char *base;
+            int nl, nr;
+            /* 实测（/api/frame.png 对照）：左眼闭合只改 x 197..223 / y 136..163。
+               两眼中线在 231，右眼框从 236 起。 */
+            const int LX0 = 180, LX1 = 231, RX0 = 236, RX1 = 300, EY0 = 128, EY1 = 175;
+            double t;
+            zrig_param_reset_all(r);
+            for (t = 8.0; t < 11.0; t += 0.02) zrig_tick(r, t);
+            zrig_tick(r, 10.98);               /* 冻结 */
+            fb = zrig_frame(r, 0.55, NULL, NULL);
+            base = frame_snapshot(fb);
+            zrig_param_set(r, "ParamEyeLOpen", 0.0);
+            zrig_tick(r, 10.98);               /* 同一时间戳 → 只有参数变了 */
+            fb = zrig_frame(r, 0.55, NULL, NULL);
+            nl = frame_diff_box(fb, base, LX0, EY0, LX1, EY1);
+            nr = frame_diff_box(fb, base, RX0, EY0, RX1, EY1);
+            CHECK(nl > 80, "ParamEyeLOpen=0 应该让左眼明显变化（%d 像素）", nl);
+            CHECK(nr == 0, "右眼不能跟着动（%d 像素）—— 左右眼必须是两个独立参数", nr);
+            free(base);
+        }
+        /* 分组（= model3.json 的 Groups）不是摆设：自动眨眼眨哪只眼、口型写哪个参数，都看它 */
+        CHECK(zrig_blink_targets(r) == 3, "rig 的 EyeBlink 组应覆盖左右两只眼（实为 %d）",
+              zrig_blink_targets(r));
+        CHECK(z_streq(zrig_lipsync_param(r), "ParamMouthOpenY"),
+              "LipSync 组应声明 ParamMouthOpenY（实为 %s）", zrig_lipsync_param(r));
+        zrig_free(r);
+    }
+}
+
+/* 动作通道直接驱动命名参数（Live2D 的 .motion3 曲线就是写参数的） */
+static void test_action_drives_param(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("动作通道可以 target 一个 ParamXxx（≈ .motion3 曲线写参数）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_pchan");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/a.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"pc\",\"name\":\"参数通道\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/a.png\",\"group\":\"root\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"params\":[{\"id\":\"ParamHairAhoge\",\"min\":-1,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"part\":\"h\",\"param\":\"dx\",\"scale\":10.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"ParamHairAhoge\",\"keys\":[[0,0],[0.5,1.0],[1.0,0]],"
+        "   \"interp\":\"linear\"}]},"
+        " {\"id\":\"bad\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带参数通道的 rig 应加载成功（错误 %d 条）", d.error_count);
+        if (r) {
+            double dx0, dx_mid;
+            zrig_tick(r, 0.0);
+            dx0 = zrig_part_channel(r, "h", "dx");
+            zrig_tick(r, 0.5);
+            dx_mid = zrig_part_channel(r, "h", "dx");
+            CHECK(fabs(dx0) < 1e-6, "t=0 关键帧值 0，部件不该动（%.3f）", dx0);
+            CHECK(fabs(dx_mid - 10.0) < 0.5,
+                  "t=0.5 参数应被推到 1.0，经 scale 10 给出 dx=10（实为 %.3f）", dx_mid);
+            zrig_free(r);
+        }
+    }
+    /* 参数通道写错 param 名要报错，不能默默当成别的通道 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/bad.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"pc\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/a.png\",\"group\":\"root\",\"layer\":10,"
+            " \"pos\":[100,100],\"anchor\":[0,0]}],"
+            "\"params\":[{\"id\":\"ParamHairAhoge\",\"min\":-1,\"max\":1,\"default\":0,"
+            " \"binds\":[{\"part\":\"h\",\"param\":\"dx\",\"scale\":10.0}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+            "  {\"target\":\"ParamHairAhoge\",\"param\":\"dx\",\"amp\":1}]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL && d.error_count > 0, "参数通道写 param:\"dx\" 应当场报错");
+        if (r) zrig_free(r);
     }
 }
 
@@ -2493,6 +2754,8 @@ int main(int argc, char **argv)
     test_mask();
     test_eyelid();
     test_group_chain();
+    test_live2d_standard();
+    test_action_drives_param();
     test_motion_fade();
     test_physics();
     test_look();

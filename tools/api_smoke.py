@@ -160,11 +160,28 @@ def run(base, root):
     a.hit("/api/pause?on=1"); time.sleep(0.15)
     p1, _ = a.frame_hash(); p2, _ = a.frame_hash()
     check("冻结时钟后连续两帧完全相同", p1 == p2, "%s vs %s" % (p1, p2))
-    if "ParamBlush" in pids:
-        a.hit("/api/param?id=ParamBlush&v=0"); b0, _ = a.frame_hash()
-        a.hit("/api/param?id=ParamBlush&v=1"); b1, _ = a.frame_hash()
+    # ⚠ 这里以前写的是 ParamBlush，改名成标准的 ParamCheek 之后 if 不成立，
+    #    这条检查**静悄悄少掉了一项**（64 → 63）而不是变红。所以下面改成硬断言：
+    #    参数不在表里 = 直接红，别再出现"跳过即通过"。
+    check("腮红参数用标准名 ParamCheek", "ParamCheek" in pids, " ".join(pids[:6]))
+    if "ParamCheek" in pids:
+        a.hit("/api/param?id=ParamCheek&v=0"); b0, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamCheek&v=1"); b1, _ = a.frame_hash()
         check("腮红（乘算）改变画面", b0 != b1, "%s → %s" % (b0, b1))
-        a.hit("/api/param?id=ParamBlush&reset=1")
+        a.hit("/api/param?id=ParamCheek&reset=1")
+    # Live2D 标准：左右眼是两个参数（EyeBlink 组），挤眼睛要能挤出来
+    check("左右眼各有一个标准参数",
+          "ParamEyeLOpen" in pids and "ParamEyeROpen" in pids, " ".join(pids[:6]))
+    if "ParamEyeLOpen" in pids and "ParamEyeROpen" in pids:
+        a.hit("/api/blink?on=0"); time.sleep(0.1)
+        e0, _ = a.frame_hash()
+        a.hit("/api/param?id=ParamEyeLOpen&v=0"); el, _ = a.frame_hash()
+        check("只闭左眼画面有变化", e0 != el, "%s → %s" % (e0, el))
+        a.hit("/api/param?id=ParamEyeLOpen&reset=1")
+        a.hit("/api/param?id=ParamEyeROpen&v=0"); er, _ = a.frame_hash()
+        check("闭右眼和闭左眼不是同一张脸", el != er, "%s vs %s" % (el, er))
+        a.hit("/api/param?id=ParamEyeROpen&reset=1")
+        a.hit("/api/blink?on=1")
     if "ParamEyeSparkle" in pids:
         a.hit("/api/param?id=ParamEyeSparkle&v=0"); s0, _ = a.frame_hash()
         a.hit("/api/param?id=ParamEyeSparkle&v=1"); s1, _ = a.frame_hash()
