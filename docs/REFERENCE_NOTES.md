@@ -1005,3 +1005,78 @@ Cubism 2 的更物理化的三个量：**质量**（越大摆幅越大）、**�
    顶住了就该降 `ratio` 而不是加大 `max`。
 3. 多输入时有**影响度（影響度）**权重，且"从列表**下面**的项开始算起"；
    两个输入各 100% 会叠成 150% 之类，要留余量防止摆到极限。
+
+---
+
+## 第十八批 · 立绘之外的功能模块（2026-10-14，用户要求"需要教程的都找一下"）
+
+用户列的清单：桌宠程序 / UI 美化 / 代理 / skills / 云端 / 陪伴 / 游戏 /
+生图生视频生代码。本批先把**最能改变设计决策**的两块查了（代理+skills、桌宠窗口），
+其余在下面列了"还欠什么"。
+
+### ★★ 一、代理与 skills 的工程规矩（对应 A9~A21 / G50~G63 / T20）
+
+来源：
+- https://www.useparagon.com/blog/how-to-optimize-tool-calling
+- https://mlflow.org/articles/ai-agent-tool-use-best-practices-for-practitioners/
+- https://axiomstudio.ai/blog/agent-skills-what-they-are-how-to-write-best-practice-guide
+- https://orchestrator.dev/blog/2026-10-09-agentic-workload-design-patterns/
+- https://dev.to/ljhao/5-agent-design-patterns-every-developer-needs-to-know-in-2026-17d8
+
+**带数字的结论（可以直接当设计约束用）**：
+
+| 结论 | 数字 | 对我们的意义 |
+|---|---|---|
+| 单个 agent 的工具数上限 | **5~7 个**，超过后"路由决策明显变差" | 我们 gateway 19 条路由不能一股脑塞给模型，**必须按任务过滤** |
+| 上下文质量开始劣化的点 | **填到 25% 就开始降**，建议常驻 60~80% | 记忆区设计要主动压缩，不是填满为止 |
+| 多 agent 的代价 | **约为单次对话的 15 倍 token** | 只对"可并行且高价值"的活儿才拆多 agent |
+| Plan-and-Execute vs ReAct | 完成率 92% vs 85%，**快 3.6 倍**，但 token 3000~4500 vs 2000~3000 | 复杂任务用前者，闲聊陪伴用后者 |
+| Reflection（自我复核） | HumanEval 91% vs 80% | 生代码场景值得加一轮自检 |
+
+**架构规矩（和我们已有的 A29/A30 对得上，可以互相印证）**：
+- **权限必须落在 harness 代码里，不能写在 prompt 里** —— "prompt 级的限制是可以被绕过的"。
+  → 正是我们 A29（G79）的做法，官方口径支持。**而且这条印证了"网游只读档必须在代码层不接输入通道"**（A25 档一），写进提示词是不够的。
+- **每个 session 要有步数 / token / 时间 / 工具调用次数的硬预算** → 我们 A30（G80）成本熔断。
+- 工具要 **idempotent（可重复调用无副作用）**，失败要返回**结构化错误**而不是空成功。
+- 写/删/花钱的操作要有**人工批准闸**。
+- **skills 的反模式清单**（直接拿来当我们 skills 区的设计检查表）：
+  隐藏状态依赖（"用常用那个路径"）、两个 skill 抢同一件事、
+  只包一个函数的"假 skill"（那应该是 tool）、**只写成功路径不定义失败模式**、
+  吞掉错误、把所有参考文档内联进去（应该按需加载）、触发范围无边界、没有评测集。
+
+### ★★ 二、桌宠窗口：透明 / 置顶 / 点击穿透（对应桌宠程序本体）
+
+来源：
+- https://crabnebula.dev/blog/building-a-desktop-pet-with-tauri/（Tauri 官方生态的完整教程，带可用配置）
+- https://www.edgedrop.app/blog/electron-versus-tauri-for-overlay-utilities（选型对照表）
+- https://dev.to/manasightgg/why-i-chose-tauri-v2-for-a-desktop-overlay-in-2026-597h
+- https://github.com/Scyyyy4/deskpet（Tauri 2 + React 的桌宠，可读源码）
+
+**Tauri vs Electron 实测对照**：
+
+| 维度 | Electron | Tauri |
+|---|---|---|
+| 二进制体积 | 80~150 MB | **5~15 MB** |
+| 空闲内存 | 100~200 MB | **30~80 MB** |
+| 透明窗口 | 成熟 | 支持，边角情况处理得少 |
+| 点击穿透 | **成熟**（`setIgnoreMouseEvents(true,{forward:true})`） | 支持但实战验证少 |
+| 跨平台一致性 | 高（自带 Chromium） | 低（各系统 webview 不同） |
+
+**★ 最关键的一条坑**：**两家都没有"按区域"的点击穿透**。
+Tauri 不提供 per-region hit-testing，实战做法是
+**Rust 里以 ~60fps 轮询鼠标位置，判断是否落在 UI 面板上，再切换
+`set_ignore_cursor_events`**（编译后的紧循环，不是 JS，开销可接受）。
+→ 我们自己做窗口层时要预留这条：**"立绘的不透明区域才吃点击"这件事得自己算**，
+而我们已经有 `/api/region` 和逐像素 alpha，判定数据是现成的。
+
+Tauri 可用配置（原文照抄）：`alwaysOnTop / transparent / decorations:false /
+resizable:false / visibleOnAllWorkspaces / macOSPrivateApi:true`。
+
+### 还欠什么（下次按这个清单继续）
+
+- **UI 美化**：还没查。建议查"桌宠/VTuber 风格的 UI kit"和毛玻璃/圆角规范。
+- **云端**：还没查。重点是 A23 双路由的具体切换判据（已有第十五批的延迟数字打底：
+  云端 GPT-4 每动作 25 秒 vs 本地 llama2-7b 300~500ms）。
+- **陪伴 / neuro-sama 式实时**：第十五批已有部分（事件流、低延迟回路），
+  还缺"主动发言的触发策略"和"实时 STT 选型"。
+- **生图 / 生视频 / 生代码**：还没查。生代码可先用上面 Reflection 那条（91% vs 80%）。
