@@ -126,6 +126,70 @@ def check_memory(root):
 
 
 # ------------------------------------------------------------------ 2 JSON
+def check_decisions(root):
+    """结论登记表必须写全（A33，2026-10-15 加）。
+
+    用户 2026-10-15：「我发现你自行推翻了很多自己得出的结论，下次再给出结论之前
+    一定要仔细确认，再三检查。旧结论可以推翻，但是检查必不可少。」
+
+    复盘 2026-10-14 被推翻的四条，没有一条是算错，全都是**下结论时少做一步**：
+    前提没验 / 只做一次模拟就否决 / 指标选错 / 否定结论没复查。
+    所以把"有后果的结论"做成有字段的登记表，缺字段就判红：
+
+      · 前提     —— 这条结论靠什么成立，**而且这个前提本身怎么验的**
+      · 证据     —— 命令 / 数字 / 路径
+      · 负控     —— 故意改坏它红不红（或说明为什么不适用）
+      · 复查触发 —— 什么情况下这条会失效
+
+    ❌否决类的门槛最高（否决会关掉一条路），不许用"当初没做"糊弄；
+    🔁已推翻的必须写清楚被哪条取代，否则读的人不知道现在该信谁。
+    """
+    section("结论登记表（A33：下结论之前先查）")
+    fp = os.path.join(root, "docs", "memory", "DECISIONS.md")
+    if not check("结论登记表在（docs/memory/DECISIONS.md）", os.path.isfile(fp),
+                 "A33.6 要求的落点"):
+        return
+    with io.open(fp, encoding="utf-8") as fh:
+        txt = fh.read()
+    # 先把 ``` 围栏里的示例剥掉 —— 文件开头那段"怎么写一条"的模板里
+    # 也有一行 ### D##，不剥的话闸会去检查模板本身（第一版就这么红过）。
+    txt = re.sub(r"(?s)```.*?```", "", txt)
+    blocks = re.split(r"(?m)^### ", txt)[1:]
+    ids = []
+    STATUS = ("✅", "❌", "🔁")
+    for b in blocks:
+        head = b.splitlines()[0].strip()
+        m = re.match(r"(D\d+)\s*(\S+)", head)
+        if not check("条目标题写成「D## <状态> 一句话」（%s）" % head[:36], m is not None):
+            continue
+        did, st = m.group(1), m.group(2)
+        ids.append(did)
+        body = b.split("\n### ")[0]
+        check("%s 的状态是 ✅/❌/🔁 之一（实为 %s）" % (did, st), st in STATUS,
+              "状态只有三种，别自创")
+        for field in ("前提", "证据", "负控", "复查触发"):
+            mm = re.search(r"(?m)^-\s*%s[：:]\s*(.+)$" % field, body)
+            check("%s 写了「%s」" % (did, field), mm is not None and len(mm.group(1).strip()) >= 6,
+                  "A33 要求四个字段齐全，缺的那个往往就是翻车的那个")
+        if st == "🔁":
+            check("%s 写了被哪条取代" % did, re.search(r"由\s*D\d+\s*取代", head + body) is not None,
+                  "已推翻的结论必须指向现行结论，否则读的人不知道信谁")
+        if st == "❌":
+            neg = re.search(r"(?m)^-\s*负控[：:]\s*(.+)$", body)
+            bad = neg and ("没做" in neg.group(1) or neg.group(1).strip().startswith("❌"))
+            check("%s 是否决类，负控不许是「没做」" % did, not bad,
+                  "否决会关掉一条路，代价最大 —— 必须回答『如果反过来会怎样』")
+    check("编号不重复", len(ids) == len(set(ids)),
+          "重复：%s" % [i for i in ids if ids.count(i) > 1][:3])
+    # 指向的条目必须真的存在
+    refs = set(re.findall(r"由\s*(D\d+)\s*取代", txt))
+    missing = sorted(refs - set(ids))
+    check("「由 D## 取代」指向的条目都存在", not missing, "找不到：%s" % missing)
+    check("登记表里有本轮（踮脚）那四条被推翻的记录",
+          len([b for b in blocks if b.startswith("D0") and "🔁" in b.splitlines()[0]]) >= 4,
+          "被推翻的中间结论也要留着当反面教材（用户 2026-10-14 的要求）")
+
+
 def check_json(root):
     section("配置与角色包：JSON 全部能解析")
     pats = ["config/*.json", "schemas/*.json", "characters/*/*.json",
@@ -1944,6 +2008,7 @@ def main():
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
+               check_decisions,
                check_json, check_rig, check_engine_caps, check_torso_inertia,
                check_tiptoe_grounded, check_foot_switch, check_feet_on_ground,
                check_head_body_link,
