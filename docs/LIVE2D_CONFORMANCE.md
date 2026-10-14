@@ -89,6 +89,9 @@ I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉
 | 扩展参数 | 为什么标准表里没有 |
 | --- | --- |
 | `ParamLegL` / `ParamLegR` | 标准表压根没有腿参数。我们做的是"裙下大腿 bend"，顶边钉死 ±20px |
+| `ParamKneeL` / `ParamKneeR` | 膝盖屈伸。不用拆件 —— `bend_y` 配 `curve:"sine"`（两端固定、中段最大），峰值正好落在膝盖高度，±9px |
+| `ParamWeightShift` | 重心左右。一个参数三条 bind：骨盆 `root.dx` ±5px + 两腿中段 `sine` 反向补偿 ∓4px。真人站着重心一直在挪 |
+| `ParamTiptoe` | 踮脚。`root.dy` 上提 7px + 两腿 `curve:"tip"`（顶固定、底最大，作用在脚踝）收 5px。裙摆下沿不动所以不露底 |
 | `ParamHairAhoge` / `ParamHairAhogeS` | 标准只有 Front/Side/Back/Fluffy，呆毛是这个角色的招牌 |
 | `ParamHairSideS` | 侧发的 S 形（FFD），和整体摆动分开 |
 | `ParamEyeSparkle` | 眼高光强弱（加算图层），用来演"眼里的光灭了" |

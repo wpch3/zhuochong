@@ -2267,6 +2267,131 @@
           "freq": 0.45
         }
       ]
+    },
+    {
+      "id": "shift_weight",
+      "priority": 2,
+      "duration": 0,
+      "loop": true,
+      "return_state": "idle",
+      "note": "重心在两腿间缓慢移动，膝盖交替轻屈。频率 0.11 比呼吸(0.28)和摇摆(0.18)都慢，三者不会同步成机械感",
+      "channels": [
+        {
+          "target": "ParamWeightShift",
+          "wave": "sine",
+          "amp": 0.75,
+          "freq": 0.11
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "sine",
+          "amp": 0.45,
+          "freq": 0.11
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "sine",
+          "amp": -0.45,
+          "freq": 0.11
+        },
+        {
+          "target": "ParamBaseRot",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.11,
+          "phase": 0.12
+        },
+        {
+          "target": "ParamBodyAngleX",
+          "wave": "sine",
+          "amp": 3.0,
+          "freq": 0.11,
+          "phase": 0.08
+        },
+        {
+          "target": "ParamAngleZ",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 0.11,
+          "phase": 0.2
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.18,
+          "freq": 0.11,
+          "phase": 0.3
+        }
+      ]
+    },
+    {
+      "id": "tiptoe",
+      "priority": 7,
+      "duration": 1.5,
+      "return_state": "idle",
+      "note": "踮脚尖：踮起时双膝微屈，头发与呆毛有一拍滞后",
+      "channels": [
+        {
+          "target": "ParamTiptoe",
+          "wave": "bounce",
+          "amp": 1.0,
+          "dur": 0.75,
+          "ease": "out_back"
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "bounce",
+          "amp": 0.5,
+          "dur": 0.75,
+          "ease": "out_back"
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "bounce",
+          "amp": 0.5,
+          "dur": 0.75,
+          "ease": "out_back"
+        },
+        {
+          "target": "ParamBaseY",
+          "wave": "bounce",
+          "amp": 2.0,
+          "dur": 0.8,
+          "ease": "out_back"
+        },
+        {
+          "target": "ParamAngleZ",
+          "wave": "bounce",
+          "amp": 3.0,
+          "dur": 0.9
+        },
+        {
+          "target": "ParamArmLA",
+          "wave": "bounce",
+          "amp": 0.18,
+          "freq": 0.0,
+          "dur": 0.8
+        },
+        {
+          "target": "ParamArmRA",
+          "wave": "bounce",
+          "amp": 0.18,
+          "freq": 0.0,
+          "dur": 0.8
+        },
+        {
+          "target": "ParamHairAhoge",
+          "wave": "bounce",
+          "amp": 0.6,
+          "dur": 1.0
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "bounce",
+          "amp": 0.4,
+          "dur": 1.0
+        }
+      ]
     }
   ],
   "deformers": [
@@ -3440,6 +3565,91 @@
           "curve": "tip"
         }
       ]
+    },
+    {
+      "id": "ParamKneeL",
+      "label": "左膝 屈伸",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "seg_leg_l",
+          "param": "bend_y",
+          "scale": 9.0,
+          "curve": "sine"
+        }
+      ],
+      "note": "sine 的峰正好落在膝盖高度。+1 膝盖上提 9px（屈膝），−1 下压（绷直）"
+    },
+    {
+      "id": "ParamKneeR",
+      "label": "右膝 屈伸",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "seg_leg_r",
+          "param": "bend_y",
+          "scale": 9.0,
+          "curve": "sine"
+        }
+      ]
+    },
+    {
+      "id": "ParamWeightShift",
+      "label": "重心 左右",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "root",
+          "param": "dx",
+          "scale": 5.0
+        },
+        {
+          "part": "seg_leg_l",
+          "param": "bend_x",
+          "scale": -4.0,
+          "curve": "sine"
+        },
+        {
+          "part": "seg_leg_r",
+          "param": "bend_x",
+          "scale": -4.0,
+          "curve": "sine"
+        }
+      ],
+      "note": "真人站着重心一直在左右微调。一个参数同时驱动骨盆横移与两腿中段补偿"
+    },
+    {
+      "id": "ParamTiptoe",
+      "label": "踮脚",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "root",
+          "param": "dy",
+          "scale": -7.0
+        },
+        {
+          "part": "seg_leg_l",
+          "param": "bend_y",
+          "scale": -5.0,
+          "curve": "tip"
+        },
+        {
+          "part": "seg_leg_r",
+          "param": "bend_y",
+          "scale": -5.0,
+          "curve": "tip"
+        }
+      ],
+      "note": "整体上提 7px + 脚踝收 5px。裙摆下沿仍然不动，所以不会露底"
     },
     {
       "id": "ParamHairFront",

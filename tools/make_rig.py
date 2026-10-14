@@ -179,6 +179,27 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "note": "±20px（脚踝处），裙摆下沿不动"},
             {"id": "ParamLegR", "label": "右腿 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
              "binds": [{"part": "seg_leg_r", "param": "bend_x", "scale": 20.0, "curve": "tip"}]},
+            # ---- 下半身表现力（2026-10-14）。原先腿只有一个 bend_x，18 个动作里
+            #      只有 4 个碰得到腿，角色等于"上半身在演、下半身是根柱子"。
+            #      这里补三件事：膝盖、重心、踮脚。都不用拆件 —— 靠 bend 曲线选对位置：
+            #        curve=sine → 两端固定、中段最大 = 膝盖
+            #        curve=tip  → 顶边固定、底端最大 = 脚踝
+            {"id": "ParamKneeL", "label": "左膝 屈伸", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"part": "seg_leg_l", "param": "bend_y", "scale": 9.0, "curve": "sine"}],
+             "note": "sine 的峰正好落在膝盖高度。+1 膝盖上提 9px（屈膝），−1 下压（绷直）"},
+            {"id": "ParamKneeR", "label": "右膝 屈伸", "min": -1.0, "max": 1.0, "default": 0.0,
+             "binds": [{"part": "seg_leg_r", "param": "bend_y", "scale": 9.0, "curve": "sine"}]},
+            {"id": "ParamWeightShift", "label": "重心 左右", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"group": "root", "param": "dx", "scale": 5.0},
+                       {"part": "seg_leg_l", "param": "bend_x", "scale": -4.0, "curve": "sine"},
+                       {"part": "seg_leg_r", "param": "bend_x", "scale": -4.0, "curve": "sine"}],
+             "note": "真人站着重心一直在左右微调。一个参数同时驱动骨盆横移与两腿中段补偿"},
+            {"id": "ParamTiptoe", "label": "踮脚", "min": 0.0, "max": 1.0, "default": 0.0,
+             "binds": [{"group": "root", "param": "dy", "scale": -7.0},
+                       {"part": "seg_leg_l", "param": "bend_y", "scale": -5.0, "curve": "tip"},
+                       {"part": "seg_leg_r", "param": "bend_y", "scale": -5.0, "curve": "tip"}],
+             "note": "整体上提 7px + 脚踝收 5px。裙摆下沿仍然不动，所以不会露底"},
         ]
     out += [
         {"id": "ParamHairFront", "label": "刘海 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
@@ -1095,6 +1116,53 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         ]
         actions.append(look)
 
+    # ---- 下半身动作（2026-10-14）。按上面 GEO2PARAM 的要求「新动作直接写参数」。
+    #      原先 18 个动作里只有 sway/idle/happy/hammered 四个碰腿，而且只有一个
+    #      左右 bend，所以角色站着时下半身是完全僵的。补两个：
+    #        shift_weight —— 站立微动（真人站着重心一直在两腿间挪）
+    #        tiptoe       —— 踮脚（开心/期待时用）
+    if has_legs_p:
+        actions += [
+            {"id": "shift_weight", "priority": 2, "duration": 0, "loop": True,
+             "return_state": "idle",
+             "note": "重心在两腿间缓慢移动，膝盖交替轻屈。"
+                     "频率 0.11 比呼吸(0.28)和摇摆(0.18)都慢，三者不会同步成机械感",
+             "channels": [
+                 {"target": "ParamWeightShift", "wave": "sine", "amp": 0.75, "freq": 0.11},
+                 # 两膝反相：重心在哪边，哪边腿绷直、另一边放松
+                 {"target": "ParamKneeL", "wave": "sine", "amp": 0.45, "freq": 0.11},
+                 {"target": "ParamKneeR", "wave": "sine", "amp": -0.45, "freq": 0.11},
+                 # 上半身跟着重心有一点延迟（phase 比下半身晚），不然像整块板子在平移
+                 {"target": "ParamBaseRot", "wave": "sine", "amp": 0.5, "freq": 0.11,
+                  "phase": 0.12},
+                 {"target": "ParamBodyAngleX", "wave": "sine", "amp": 3.0, "freq": 0.11,
+                  "phase": 0.08},
+                 {"target": "ParamAngleZ", "wave": "sine", "amp": 1.2, "freq": 0.11,
+                  "phase": 0.2},
+                 {"target": "ParamHairSide", "wave": "sine", "amp": 0.18, "freq": 0.11,
+                  "phase": 0.3},
+             ]},
+            {"id": "tiptoe", "priority": 7, "duration": 1.5, "return_state": "idle",
+             "note": "踮脚尖：踮起时双膝微屈，头发与呆毛有一拍滞后",
+             "channels": [
+                 {"target": "ParamTiptoe", "wave": "bounce", "amp": 1.0, "dur": 0.75,
+                  "ease": "out_back"},
+                 {"target": "ParamKneeL", "wave": "bounce", "amp": 0.5, "dur": 0.75,
+                  "ease": "out_back"},
+                 {"target": "ParamKneeR", "wave": "bounce", "amp": 0.5, "dur": 0.75,
+                  "ease": "out_back"},
+                 {"target": "ParamBaseY", "wave": "bounce", "amp": 2.0, "dur": 0.8,
+                  "ease": "out_back"},
+                 {"target": "ParamAngleZ", "wave": "bounce", "amp": 3.0, "dur": 0.9},
+                 {"target": "ParamArmLA", "wave": "bounce", "amp": 0.18, "freq": 0.0,
+                  "dur": 0.8},
+                 {"target": "ParamArmRA", "wave": "bounce", "amp": 0.18, "freq": 0.0,
+                  "dur": 0.8},
+                 {"target": "ParamHairAhoge", "wave": "bounce", "amp": 0.6, "dur": 1.0},
+                 {"target": "ParamHairSide", "wave": "bounce", "amp": 0.4, "dur": 1.0},
+             ]},
+        ]
+
     # 张嘴的动作：只动遮罩的 sy，口内自己不变形（Live2D 的 ParamMouthOpenY 就是这么做的）
     if mouth:
         closed = mouth["closed_sy"]
@@ -1345,6 +1413,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     # 它驱动胸腔的起伏与纵向缩放，躯干的弯曲由上面换算出来的 ParamBodyAngleY 负责。
     BREATH_CH = {"target": "ParamBreath", "wave": "sine", "amp": 0.5, "bias": 0.5, "freq": 0.28}
 
+    # 参数表提前算一次：下面的通道转换要用它判断"这个 target 是不是参数名"，
+    # 返回字典里也要用。param_list 是纯函数，提前调用没有副作用。
+    PARAMS = param_list(mouth=mouth,
+                        has_brows=any(p["id"] == "brow_l" for p in parts_list),
+                        head_is_part=head_is_part,
+                        jointed_arms=bool(armp),
+                        has_blend=bool(blendp),
+                        has_side=any(p["id"] == "hair_side_l" for p in parts_list),
+                        has_legs=any(p["id"] == "seg_leg_l" for p in parts_list),
+                        body_id=body_id,
+                        has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list))
+    PARAM_IDS = {q["id"] for q in PARAMS}
+
     def to_param_channels(acts):
         n_in = n_out = 0
         for a in acts:
@@ -1354,6 +1435,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 n_in += 1
                 tgt, prop = c.get("target"), c.get("param")
                 if (tgt, prop) in GEO_DROP:
+                    continue
+
+                # 已经是参数通道的直接放行 —— 上面 GEO2PARAM 的注释说了
+                # 「新动作请直接写参数」，这里就是那条路。判据是 target 真的是
+                # param_list() 里登记过的参数 id，所以写错名字仍然会被下面拦住。
+                if prop is None and tgt in PARAM_IDS:
+                    out_ch.append(dict(c))
+                    n_out += 1
                     continue
 
                 key = (tgt, prop)
@@ -1486,15 +1575,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # 命名参数层（对齐 Live2D 的 ParamXxx）：外部（脚本 / LLM / 口型 / 测试台滑条）
         # 只认参数名，不用知道角色内部拆了几件。内建的 ParamAngleX/Y、ParamEyeOpen、
         # ParamEyeBallX/Y 由引擎注册，这里补角色自己的那些。
-        "params": param_list(mouth=mouth,
-                             has_brows=any(p["id"] == "brow_l" for p in parts_list),
-                             head_is_part=head_is_part,
-                             jointed_arms=bool(armp),
-                             has_blend=bool(blendp),
-                             has_side=any(p["id"] == "hair_side_l" for p in parts_list),
-                             has_legs=any(p["id"] == "seg_leg_l" for p in parts_list),
-                             body_id=body_id,
-                             has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list)),
+        "params": PARAMS,
         # 表情层（Live2D 的 expression）：一组参数偏移，叠在当前动作之上。
         # 和动作是两条轨 —— 可以"笑着挥手"，不用为每种组合再做一个动作。
         # Pose（≈ Live2D pose3.json）：一组互斥差分，同一时刻只有一个档位可见。

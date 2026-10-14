@@ -11,7 +11,7 @@
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     12
-#define ZRIG_MAX_PARAMS   48
+#define ZRIG_MAX_PARAMS   64   /* 2026-10-14：下半身补了膝盖/重心/踮脚 4 个参数后 50 个，48 不够用了 */
 #define ZRIG_MAX_POSE      8     /* 互斥部件组（≈ pose3.json 的 Groups） */
 #define ZRIG_MAX_POSE_ENT 24     /* 所有组的"档位"总数 */
 #define ZRIG_MAX_POSE_MEM 48     /* 所有档位引用的部件总数 */

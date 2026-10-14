@@ -340,6 +340,10 @@ L2D_EXTENSIONS = {
     "ParamEyeSparkle": "眼高光强弱（加算图层）",
     "ParamEyeOpen": "两眼一起开合的便捷参数（引擎内建，L/R 之外的额外入口）",
     "ParamBaseRot": "全身倾斜（标准表只有 ParamBodyAngleZ=上身；被摸头/被拖拽要整个人晃）",
+    "ParamKneeL": "左膝屈伸（标准表没有腿参数；bend 的 sine 峰正好落在膝盖高度）",
+    "ParamKneeR": "同上",
+    "ParamWeightShift": "重心左右（一个参数同时驱动骨盆横移与两腿补偿，站立微动）",
+    "ParamTiptoe": "踮脚（整体上提 + 脚踝收，裙摆下沿仍不动）",
 }
 # 官方惯例的取值范围（Cubism 标准模板）
 L2D_RANGE = {

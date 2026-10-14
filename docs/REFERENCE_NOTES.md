@@ -805,3 +805,58 @@ export const protocolListProviders = defineInvokeEventa<{ name: string }[]>(...)
 所以换算必须是 `(ev.clientX - rect.left) / rect.width * info.frame_w`，
 **不能**用 `img.naturalWidth`（它还带着画质档的缩放）。
 2026-10-14 之前 `stage.js` 就是用 naturalWidth 的，画质档恰好是 100 时碰巧对。
+
+---
+
+## 第十五批 · AI 玩「我的世界」与本地/局域网双人陪玩（2026-10-14）
+
+用户把游戏范围限定成：**我的世界、本地双人、局域网双人**；
+**网络竞技游戏（英雄联盟一类）明确不在名单内**。查了一圈，这个限定把技术路线
+从"最难的那条"换成了"最成熟的那条" —— 下面的结论直接改写了 A25。
+
+### ① Minecraft 不需要屏幕捕获，走协议就行
+
+- **Mineflayer**（Node.js，`PrismarineJS/mineflayer`）：用 **TCP/IP Minecraft 协议**
+  以**一个普通玩家客户端**的身份登录服务器，拿到的是**结构化世界数据**
+  （方块、实体、背包、聊天），动作是 `bot.dig()` / `bot.chat()` / pathfinder 寻路。
+  **不装 mod、不读屏幕、不模拟键鼠。** Java 版任意服务器可用。
+  来源：https://dev.to/gaiaai/building-an-ai-powered-minecraft-agent-with-gaia-4afe
+  （含最小可跑代码：`createBot({host:"localhost",port:25565,username:"Gaiabot"})` + `pathfinder`）
+- **Voyager**（NVIDIA/MineDojo，GPT-4，论文 2305.16291，站点 https://voyager.minedojo.org/）：
+  证明了"**代码即动作空间**"这条路 —— LLM 直接生成调用 Mineflayer 的 JavaScript，
+  跑成功的代码存进**技能库**复用。成绩：63 种独特物品（基线 <20，3.3×）、
+  科技树解锁快 15.3×、技能库能迁移到新世界。**不微调、不训练**，纯 prompt + 环境反馈迭代。
+- **MINDcraft**（开源，bot 名 Andy）：在 Voyager 之后做的工程化版本。关键改进是
+  **参数化命令**（让模型输出 `!collectBlocks("oak_log", 1)` 而不是现写一段代码），
+  可靠性高得多；复杂行为才进"写代码模式"。
+  来源：https://blogs.novita.ai/blog/mindcraft-unleashing-novita-ai-llm-api-in-minecraft/
+- **已有现成 MCP 服务器**把 Mineflayer 包成 LLM 可调工具（移动/挖掘/合成/背包/聊天），
+  Claude 这类模型可直接驱动。来源：https://mcpmarket.com/server/minecraft-ai-bot
+  → **和我们已有的 `mcp_filesystem` 供应商是同一条路**，G59（MCP 适配器）做完就能接。
+
+### ② 实测延迟数字（直接印证了「云端+本地双路由」的必要性）
+
+- **Voyager 的 GPT-4 每个动作要 25 秒**（API 往返 + 代码生成），
+  "makes realtime games impossible without local LLM fallbacks"；
+  **本地 llama2-7b 在消费级 GPU 上同类任务决策 300~500ms**。
+  来源：https://theneuralbase.com/ai-for-gaming/learn/advanced/minedojo-voyager/
+- 这正是 A23 要的东西：**快决策（走位、躲怪、应答）必须本地模型**，
+  **慢规划（造房子、定目标）才交给云端**。不是二选一，是分工。
+- GPT-3.5 比 GPT-4 差 **5.7 倍**（发现物品数）→ 本地小模型只适合做"快而浅"的那半。
+
+### ③ 坑（抄作业前先知道）
+
+- **生成的 JS 代码默认没有沙箱**，模型写出死循环或崩溃代码会把 bot 卡死；
+  Voyager 自带的错误恢复不够，会"反复试同一个错误做法，一直烧 API 额度"。
+  → 必须有执行超时 + 失败计数 + 熔断（对应我们的 A30 成本熔断、G80）。
+- 持续跑 Voyager 级别的探索，**API 费用轻松上千美元**。→ 又一次指向本地优先。
+- 技能库里的代码会调用**目标引擎里不存在的 API**，跨引擎迁移要重写 20~40%。
+  → 我们只做 Minecraft，不碰这个问题；但"技能库"这个设计可以照搬到 G56 skills。
+
+### ④ 对本地双人 / 局域网双人的结论
+
+- Minecraft 的局域网联机（"对局域网开放"）本质还是个 Minecraft 服务器，
+  **Mineflayer 一样能以第二个玩家身份加入** → 「AI 陪你玩」和「陪伴联机」在这里是同一件事。
+- 非 Minecraft 的本地双人游戏（手柄分屏那种）才需要走"屏幕捕获 + 虚拟手柄"，
+  那是第二优先级，而且 **用虚拟手柄（vgamepad 一类）比模拟键鼠更贴合"第二个玩家"**。
+- **网游被排除后**，反作弊对抗、封号风险这两条顾虑整个消失，A25 的风险备注要改写。

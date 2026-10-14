@@ -718,3 +718,37 @@ test_core 627 / asan 627 / api_smoke 175 不变。`make -s check` 全绿。
 **沙箱重置第六次**：HEAD 退回分支基点 `3b5d17b`，`git ls-files sprites` 只剩 7 条（磁盘 49）。
 照旧 `git fetch origin` + `git reset --mixed origin/<branch>` + `checkout -- dist/.../zhuochong.exe` 修好，
 `--mixed` 不动工作树所以本轮改动没丢。
+
+## 2026-10-14（续二）游戏范围两次澄清 + 下半身骨骼（G83/G84/G85）
+
+**用户澄清一**：游戏范围是我的世界 / 本地双人 / 局域网双人，英雄联盟等网游不在名单。
+**用户澄清二（以此为准）**：不是完全禁止网游 —— 网游可以**陪伴聊天 + 实时看屏幕回应对话**，
+只是不代打；**其他游戏可以真正游玩**。
+
+**查资料（不闷头做，REFERENCE_NOTES 第十五批）**：
+- Mineflayer 走 **Minecraft 协议**，AI 以一个普通玩家身份登录，拿结构化世界数据，
+  **不装 mod、不截屏、不模拟键鼠**。Voyager（GPT-4）实证 63 种物品 / 科技树快 15.3×。
+- MINDcraft 的**参数化命令**（`!collectBlocks("oak_log",1)`）比现写代码可靠得多。
+- 已有现成 MCP 服务器包装 Mineflayer → 和我们的 G59 MCP 适配器是同一条路。
+- **延迟实测：GPT-4 每动作 25 秒，本地 7B 300~500ms** → 直接印证 A23 双路由不是可选优化，
+  而是 Minecraft 陪玩的前提（本地做快决策、云端做慢规划）。
+- 坑：生成代码默认无沙箱，会"反复试同一个错法、一直烧额度" → 必须限时 + 失败计数 + 熔断。
+
+**计划改动**：A25 重写成**三档模式** —— 档一观战陪聊（所有游戏含网游，零输入，
+代码层面就没有输入通道）／档二 Minecraft 协议游玩／档三本地双人虚拟手柄。
+新增 A25.15 游戏档位表（网游条目不可提升）。A26 增补：Minecraft 局域网世界本质就是服务器，
+Mineflayer 能以第二个玩家加入 → 「陪你玩」与「陪伴联机」在这里是同一件事。
+里程碑新增 G83（MC 协议游玩）/ G84（档位表），GAPS 与 TASKS 同步。
+
+**下半身骨骼（G85）**：上半身 46 参数演得很细，下半身只有一个左右 bend，
+18 个动作里 14 个腿是僵的。不拆件修完 —— 靠选对 bend 曲线：
+sine 峰落膝盖、tip 落脚踝。新增 ParamKneeL/R、ParamWeightShift（一参数绑三条 bind）、
+ParamTiptoe，新动作 shift_weight / tiptoe。
+实测 ParamKneeL 像素差 **100% 落在腿部**；动作 shift_weight 超噪声底 **11.0 倍**、
+tiptoe **8.4 倍**。连带把 `ZRIG_MAX_PARAMS` 48→64（50 个参数撞上限会导致形态加载失败）。
+
+**两个排查教训**：噪声底量到 0 不是干净是**时钟冻结**（上个脚本 404 崩溃没解冻）；
+动作通道打在**参数**上不在组上，按组名 grep 会误判成"腿没有任何动作"。
+
+**闸门**：selfcheck 155 / test_core 627 / asan 627 / api_smoke 175 / web-test 116 /
+check_platform 33，`make check` 全绿。
