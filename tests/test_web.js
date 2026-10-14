@@ -138,6 +138,27 @@ const INFO = {
   scale: 0.75, actions: ["idle", "happy", "wave", "sleep"],
   expressions: [{ id: "smile", name: "微笑" }],
   deformers: { skirt_sway_x: 0.0 },
+  /* 下面这些字段真服务都有。stub 漏字段的后果是组件在测试里跑得好好的、
+     一上真服务就空白 —— api_smoke 有一条闸专门比对这两边的字段集。 */
+  expression: "",
+  viseme: "", viseme_weight: 0.0, visemes: ["SIL", "A", "I", "U", "E", "O", "N"],
+  poses: [{ id: "eye_hl_style", current: "round", entries: ["round", "star"] }],
+};
+
+/* 参数表：真服务 46 个，这里放几个有代表性的（内建 binds=0 的、普通的、负区间的） */
+const PARAMS = {
+  params: [
+    { id: "ParamAngleX", label: "头 左右", min: -30, max: 30, default: 0,
+      value: 0, expr: 0, effective: 0, builtin: true, binds: 0 },
+    { id: "ParamEyeLOpen", label: "左眼 睁开", min: 0, max: 1, default: 1,
+      value: 1, expr: 1, effective: 1, builtin: true, binds: 0 },
+    { id: "ParamBrowLY", label: "左眉 上下", min: -1, max: 1, default: 0,
+      value: 0, expr: 0, effective: 0, builtin: false, binds: 2 },
+    { id: "ParamHairFront", label: "前发 摆动", min: -1, max: 1, default: 0,
+      value: 0, expr: 0, effective: 0, builtin: false, binds: 3 },
+    { id: "ParamMouthOpenY", label: "嘴 张开", min: 0, max: 1, default: 0,
+      value: 0, expr: 0, effective: 0, builtin: false, binds: 1 },
+  ],
 };
 const calls = [];
 function makeFetch() {
@@ -161,6 +182,7 @@ function makeFetch() {
       if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
       return json(JSON.parse(fs.readFileSync(f, "utf8")));
     }
+    if (u.includes("/api/params.json")) return json(PARAMS);
     if (u.includes("voicebank.json")) {
       const f = path.join(WEB, "voicebank.json");
       if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
@@ -388,6 +410,66 @@ function slotOf(id) {
     const meter = walk(usageEl).filter((n) => n.className === "meter-fill")[0];
     CHECK(meter && meter.style.width && meter.style.width !== "0.0%",
           "用量条应随之变长（实际 " + (meter && meter.style.width) + "）");
+  }
+
+  SECTION("立绘调试台（G65）：底层能力要在界面上点得到");
+  {
+    const el = slotOf("rig");
+    /* mount 里串了两个 await（info + params），要多放几个 tick 才渲染完 */
+    for (let i = 0; i < 6; i++) await new Promise((r) => setImmediate(r));
+    const txt = walk(el).map((n) => n._text).join(" ");
+    const btns = walk(el).filter((n) => n.tagName === "BUTTON");
+    const btxt = btns.map((b) => b._text);
+
+    /* 动作：引擎给的都要有按钮，而且 idle/sleep 这两个没出现在 info.actions 里的
+       也要补上 —— 它们是默认动作和睡眠态动作，调试时必须能手动触发 */
+    INFO.actions.forEach((a) => {
+      CHECK(btxt.indexOf(a) >= 0, "动作 " + a + " 要有按钮");
+    });
+    ["idle", "sleep"].forEach((a) => {
+      CHECK(btxt.indexOf(a) >= 0, "隐藏动作 " + a + " 也要能手动触发");
+    });
+
+    /* 表情层和情绪是两个不同的端点，之前界面上只有情绪 */
+    INFO.expressions.forEach((e) => {
+      CHECK(btxt.indexOf(e.name) >= 0, "表情 " + e.name + " 要有按钮");
+    });
+    CHECK(btxt.indexOf("取消") >= 0, "表情要能取消（/api/expression?off=1）");
+
+    /* 口型：7 个音素，列表从 info 来而不是前端硬编码 */
+    INFO.visemes.forEach((v) => {
+      CHECK(btxt.indexOf(v) >= 0, "口型 " + v + " 要有按钮");
+    });
+
+    /* 互斥差分 */
+    INFO.poses.forEach((g) => {
+      g.entries.forEach((e) => {
+        CHECK(btxt.indexOf(e) >= 0, "差分档位 " + e + " 要有按钮");
+      });
+      CHECK(btxt.indexOf("关掉") >= 0, "差分要能整组关掉");
+    });
+
+    /* 开关 */
+    ["暂停动画", "眨一下", "视线跟随", "参数全复位"].forEach((x) => {
+      CHECK(btxt.indexOf(x) >= 0, "要有「" + x + "」");
+    });
+
+    /* 形变器读数：光看图分不出裙摆在不在荡 */
+    CHECK(txt.includes("形变器") && txt.includes("skirt_sway_x"),
+          "形变器当前量要显示出来");
+
+    /* 参数：46 个要分组，不能平铺。组名点开才出滑块。 */
+    CHECK(txt.includes("参数 " + PARAMS.params.length + " 个"),
+          "参数总数要显示（" + PARAMS.params.length + "）");
+    const groups = btxt.filter((t) => t && t.indexOf("▸") === 0);
+    CHECK(groups.length >= 3,
+          "参数要分组折叠（实际 " + groups.length + " 组）");
+    /* 分组要真的按前缀分对：眉毛参数不能跑到眼睛组里 */
+    CHECK(groups.some((g) => g.includes("眼睛")) && groups.some((g) => g.includes("眉毛")),
+          "眼睛和眉毛要分成两组（Live2D 官方前缀规则）");
+    const browGroup = groups.find((g) => g.includes("眉毛"));
+    CHECK(browGroup && browGroup.includes("(1)"),
+          "眉毛组应有 1 个参数（stub 里只放了 ParamBrowLY），实际 " + browGroup);
   }
 
   SECTION("音色库（G64）：契约 → 清单 → 面板，四种情绪通路要显示得出来");

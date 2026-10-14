@@ -568,6 +568,57 @@ def check_live2d(root):
                 continue                       # 动态接口，不是静态文件
             if not os.path.exists(os.path.join(root, "web", m.lstrip("/"))):
                 miss_data.append(f + " 要 " + m)
+    # 跨语言契约：前端拼的 query 参数名，必须和 C 侧 qstr/qint 读的那个名字一致。
+    # 这条是血的教训 —— 2026-10-14 一天之内踩了两次：
+    #   /api/viseme 真实签名是 v=音素&w=音量，前端写成了 id=&v=
+    #   /api/pause  真实签名是 on=0|1，      前端写成了 v=
+    # 两次都"返回 200 ok"，功能静默失效，单测的 fetch stub 又不校验参数名，
+    # 只有拿真服务一个个点才会发现。静态核一遍最省事。
+    import re as _re2
+    hc = io.open(os.path.join(root, "src/headless/main_headless.c"), encoding="utf-8").read()
+
+    def _ep_body(ep):
+        """按大括号配平抠出某个端点的处理块 —— 整文件 grep 会跨到别的端点去。"""
+        m = _re2.search(r'if \(strcmp\(r->path, "%s"\) == 0\) \{' % _re2.escape(ep), hc)
+        if not m:
+            return ""
+        i, d = m.end() - 1, 0
+        while i < len(hc):
+            if hc[i] == "{":
+                d += 1
+            elif hc[i] == "}":
+                d -= 1
+                if d == 0:
+                    break
+            i += 1
+        return hc[m.start():i + 1]
+
+    bad_q = []
+    for f in sorted(os.listdir(comp_dir)):
+        if not f.endswith(".js"):
+            continue
+        src = io.open(os.path.join(comp_dir, f), encoding="utf-8").read()
+        pairs = []
+        # 形式一：api("/api/xx?k=" + v)  —— 抓问号后所有 k=
+        for m in _re2.finditer(r'"(/api/[a-z.]+)\?([^"]*)"', src):
+            ep = m.group(1)
+            for k in _re2.findall(r'([a-zA-Z_][a-zA-Z0-9_]*)=', m.group(2)):
+                pairs.append((ep, k, f))
+        # 形式二：api("/api/xx", { k: v })  —— host.api 会把对象拼成 query
+        for m in _re2.finditer(r'"(/api/[a-z.]+)"\s*,\s*\{([^}]*)\}', src):
+            ep = m.group(1)
+            for k in _re2.findall(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*:', m.group(2)):
+                pairs.append((ep, k, f))
+        for ep, k, fn in pairs:
+            body = _ep_body(ep)
+            if not body:
+                bad_q.append("%s 调了不存在的端点 %s" % (fn, ep))
+                continue
+            if ('"%s"' % k) not in body:
+                bad_q.append("%s 给 %s 传了 %s=，但 C 侧没读这个名字" % (fn, ep, k))
+    check("前端传的参数名和 C 侧读的对得上", not bad_q,
+          "；".join(sorted(set(bad_q))[:4]) if bad_q else "逐个核过")
+
     check("组件要的数据文件都在 web 根下", not miss_data,
           "；".join(miss_data) if miss_data else "都能取到")
 

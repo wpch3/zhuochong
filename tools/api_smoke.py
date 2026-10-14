@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -101,6 +102,112 @@ def run(base, root):
     print("== 基本端点 ==")
     info = a.json("/api/info.json")
     check("info.json 能读", bool(info.get("engine")), "引擎 " + str(info.get("engine")))
+
+    # ---- 单测的 stub 不能比真服务宽松（教训 60 的系统性修法）----
+    # web-test 跑的是一份假的 info.json。真服务加了字段而 stub 没跟上时，
+    # 组件在单测里好好的，一上真服务就取到 undefined。这里拿真响应反查 stub。
+    print("== 测试替身与真服务的字段集 ==")
+    tw = os.path.join(root, "tests/test_web.js")
+    if os.path.exists(tw):
+        with open(tw, encoding="utf-8") as _f:
+            src = _f.read()
+        m = re.search(r"const INFO = \{(.*?)\n\};", src, re.S)
+        if m:
+            stub_keys = set(re.findall(r"[\{\s,]([A-Za-z_][A-Za-z0-9_]*)\s*:", m.group(1)))
+            # 只管组件真的会读的那些（_ 开头的内部字段和纯数值统计不算）
+            real = set(info.keys())
+            # 这几个是每帧都在变的运行时状态，stub 里没有也不影响组件逻辑
+            runtime = {"blink", "idle", "sleeping", "reason", "root", "character",
+                       "frame_w", "frame_h", "blink_manual", "engine", "tier",
+                       "affection", "viseme_weight", "expression"}
+            missing = sorted((real - stub_keys) - runtime)
+            check("web-test 的 INFO 替身覆盖真服务字段", not missing,
+                  "stub 缺 %s —— 组件在单测里读不到这些，上真服务才暴露" % missing)
+
+    # ---- 立绘能力回归（G65）：底层做了的，要确认真能被外部驱动 ----
+    # 判据是"设进去能读回来"，不是"接口返回 200"。今天踩过的坑：参数名写错时
+    # 端点照样回 ok:true，功能静默失效。
+    print("== 立绘能力：每一项都要真能驱动 ==")
+    a.get("/api/pause?on=0")                     # 时钟必须走，look 类参数靠 dt 收敛
+    a.get("/api/param?all=1")
+    pj = a.json("/api/params.json")
+    plist = pj.get("params", [])
+    check("参数表非空", len(plist) >= 30, "%d 个" % len(plist))
+
+    # 每个参数都应该能设进去。look 类（ParamAngleX/Y）是平滑收敛的，给它时间。
+    import time as _t
+    drive_bad = []
+    for d in plist:
+        pid, lo, hi = d["id"], d["min"], d["max"]
+        tgt = hi if abs(hi) >= abs(lo) else lo       # 挑幅度大的那一端
+        if tgt == d["default"]:
+            tgt = lo if hi == d["default"] else hi
+        if tgt == d["default"]:
+            continue                                  # 区间退化，没法测
+        a.get("/api/param?id=%s&v=%s" % (pid, tgt))
+        got = None
+        for _ in range(12):                           # look 类要等收敛
+            _t.sleep(0.05)
+            cur = [x for x in a.json("/api/params.json")["params"] if x["id"] == pid]
+            if cur and abs(cur[0]["value"] - tgt) < max(abs(tgt) * 0.05, 0.02):
+                got = cur[0]["value"]
+                break
+            got = cur[0]["value"] if cur else None
+        if got is None or abs(got - tgt) > max(abs(tgt) * 0.05, 0.02):
+            drive_bad.append("%s 设 %.2f 只到 %s" % (pid, tgt, got))
+        a.get("/api/param?id=%s&reset=1" % pid)
+    check("每个参数都能被设进去", not drive_bad,
+          "；".join(drive_bad[:3]) if drive_bad else "%d 个参数逐个设过" % len(plist))
+    a.get("/api/param?all=1")
+
+    info2 = a.json("/api/info.json")
+    # 表情：每个都要能切进去，而且切完 info 要如实报告
+    exp_bad = []
+    for e in info2.get("expressions", []):
+        a.get("/api/expression?id=" + e["id"])
+        if a.json("/api/info.json").get("expression") != e["id"]:
+            exp_bad.append(e["id"])
+    a.get("/api/expression?off=1")
+    check("每个表情都能切换", not exp_bad, str(exp_bad))
+    check("表情能取消", a.json("/api/info.json").get("expression") == "", "")
+
+    # 口型：7 个音素。参数名是 v=音素&w=音量（不是 id/v —— 今天就栽在这）
+    vis_bad = []
+    for v in info2.get("visemes", []):
+        r = a.json("/api/viseme?v=%s&w=1" % v)
+        # SIL 是静默（闭嘴），语义上等于松口 —— 引擎把它归零并交还嘴形控制权，
+        # 所以 viseme 回空串、weight 回 0 是对的，不是没生效。
+        want = "" if v == "SIL" else v
+        if not r.get("ok") or r.get("viseme") != want:
+            vis_bad.append("%s→%r" % (v, r.get("viseme")))
+    a.get("/api/viseme?v=off")
+    check("每个口型都能驱动", not vis_bad, str(vis_bad))
+
+    # 互斥差分：每个档位 + 整组关掉
+    pose_bad = []
+    for g in info2.get("poses", []):
+        for e in list(g["entries"]) + ["none"]:
+            r = a.json("/api/pose?group=%s&id=%s" % (g["id"], e))
+            if not r.get("ok"):
+                pose_bad.append("%s/%s" % (g["id"], e))
+        a.get("/api/pose?group=%s&id=%s" % (g["id"], g["entries"][0]))
+    check("每个差分档位都能切", not pose_bad, str(pose_bad))
+
+    # 动作：info 列出来的都要能触发，外加 idle/sleep 这两个没列出来的
+    act_bad = []
+    for act in list(info2.get("actions", [])) + ["idle", "sleep"]:
+        if not a.json("/api/action?id=" + act).get("ok"):
+            act_bad.append(act)
+    a.get("/api/action?id=idle")
+    check("每个动作都能触发（含隐藏的 idle/sleep）", not act_bad, str(act_bad))
+
+    # 视线：gaze 要能驱动眼球参数
+    a.get("/api/gaze?x=0.9&y=0.3")
+    _t.sleep(0.25)
+    eb = [x for x in a.json("/api/params.json")["params"] if x["id"] == "ParamEyeBallX"]
+    check("视线能驱动眼球", bool(eb) and abs(eb[0]["value"] - 0.9) < 0.05,
+          "ParamEyeBallX=%s" % (eb[0]["value"] if eb else "?"))
+    a.get("/api/gaze?off=1")
 
     print("== 网关（G51） ==")
     gw = a.json("/api/gateway.json")

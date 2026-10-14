@@ -499,6 +499,14 @@ static void handle_request(zsock fd, const http_req *r)
                                 k ? "," : "", zpet_pose_entry_id_at(g_pet, gid, k));
             p += z_snprintf(p, cap - (size_t)(p - body), "]}");
         }
+        /* 口型音素表 + 当前接管状态（测试台的口型按钮按它生成）。
+           没有这张表，调试台只能把 A/I/U/E/O 硬编码进前端，rig 改了前端就对不上。 */
+        p += z_snprintf(p, cap - (size_t)(p - body),
+                        "],\"viseme\":\"%s\",\"viseme_weight\":%.3f,\"visemes\":[",
+                        zpet_viseme_current(g_pet), zpet_viseme_weight(g_pet));
+        for (i = 0; i < zpet_viseme_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
+                            i ? "," : "", zpet_viseme_id(g_pet, i));
         /* 形变器当前量：摆链（头发/裙摆）的输出就落在这里。
            光看截图没法判断"裙摆是不是真的在荡"，这组数能直接读。 */
         p += z_snprintf(p, cap - (size_t)(p - body), "],\"deformers\":{");
