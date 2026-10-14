@@ -457,12 +457,14 @@ static void handle_request(zsock fd, const http_req *r)
             "{\"engine\":\"%s\",\"action\":\"%s\",\"reason\":\"%s\",\"blink\":%.3f,"
             "\"scale\":%.3f,\"form\":\"%s\",\"form_name\":\"%s\",\"outfit\":\"%s\","
             "\"mood\":\"%s\",\"affection\":%d,\"tier\":%d,\"tier_name\":\"%s\","
-            "\"sleeping\":%s,\"idle\":%.1f,\"frame_w\":%d,\"frame_h\":%d,\"character\":\"%s\","
+            "\"sleeping\":%s,\"idle\":%.1f,\"frame_w\":%d,\"frame_h\":%d,"
+            "\"canvas_w\":%d,\"canvas_h\":%d,\"character\":\"%s\","
             "\"root\":\"%s\",\"blink_manual\":%.3f,\"actions\":[",
             ZC_VERSION, zpet_action(g_pet), zpet_last_reason(g_pet), zpet_blink(g_pet),
             zpet_scale(g_pet), zpet_form(g_pet), zpet_form_name(g_pet), zpet_outfit(g_pet),
             mood, zpet_affection(g_pet), zpet_affection_tier(g_pet), zpet_affection_tier_name(g_pet),
             zpet_sleeping(g_pet) ? "true" : "false", zpet_idle_seconds(g_pet), fw, fh,
+            zpet_canvas_w(g_pet), zpet_canvas_h(g_pet),
             zpet_character(g_pet), g_cfg.root_dir, zpet_blink_manual(g_pet));
         for (i = 0; i < zpet_action_count(g_pet); ++i)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_action_id_at(g_pet, i));
@@ -498,6 +500,20 @@ static void handle_request(zsock fd, const http_req *r)
                 p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
                                 k ? "," : "", zpet_pose_entry_id_at(g_pet, gid, k));
             p += z_snprintf(p, cap - (size_t)(p - body), "]}");
+        }
+        /* 交互区域表：UI 要知道有哪些区域、点下去触发什么、用什么光标。
+           不报这张表前端就只能把 head/body/feet 写死，rig.json 一改区域就对不上。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"regions\":[");
+        for (i = 0; i < zpet_region_count(g_pet); ++i) {
+            int rc[4];
+            if (!zpet_region_rect_at(g_pet, i, rc)) continue;
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                            "%s{\"id\":\"%s\",\"action\":\"%s\",\"cursor\":\"%s\","
+                            "\"rect\":[%d,%d,%d,%d]}",
+                            i ? "," : "", zpet_region_id_at(g_pet, i),
+                            zpet_region_action_at(g_pet, i),
+                            zpet_region_cursor_at(g_pet, i),
+                            rc[0], rc[1], rc[2], rc[3]);
         }
         /* 口型音素表 + 当前接管状态（测试台的口型按钮按它生成）。
            没有这张表，调试台只能把 A/I/U/E/O 硬编码进前端，rig 改了前端就对不上。 */

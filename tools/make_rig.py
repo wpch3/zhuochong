@@ -374,11 +374,29 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "note": order_note,
         }
 
-    # 区域（画布坐标）：来自 sprites_report.json 的建议区域
+    # 区域（画布坐标）：底稿来自 sprites_report.json 的建议区域，但那份是**按比例估**的
+    # （头 = 角色高的 24%，还假设头顶贴着 y=0），和真实几何对不上。
+    # 2026-10-14 实测：head 区域只到画布 y=310，而 seg_head 实际占 y 68..385 ——
+    # 下半张脸（嘴、下巴）点下去触发的是 body 的 stroke「摸身体」而不是 head_pat「摸头」。
+    # 摸头是桌宠最核心的交互，这里改成按 seg_head 的真实 bbox 校正上下界。
     reg = sprite["suggested_regions"]
+    head_rect = list(reg["head"])
+    body_rect = list(reg["body"])
+    seg_head_def = next((sp for sp in (seg or {}).get("parts", [])
+                         if sp["id"] == "seg_head"), None)
+    if seg_head_def and seg_head_def.get("size"):
+        # seg_parts.json 的 pos 是切图内坐标，+oy 才是画布坐标（和上面 body_parts_list 同一套换算）
+        head_top = oy + seg_head_def["pos"][1]
+        head_bot = head_top + seg_head_def["size"][1]
+        # 下巴往下留 6px 余量再交给 body；head 的 x 保持建议值（要罩住比脸更宽的头发）
+        chin = int(round(head_bot)) + 6
+        head_rect[1] = min(head_rect[1], int(round(head_top)))
+        head_rect[3] = chin - head_rect[1]
+        body_rect[3] = body_rect[1] + body_rect[3] - chin      # 先用旧底边算出高
+        body_rect[1] = chin
     regions = [
-        {"id": "head", "rect": reg["head"], "action": "head_pat", "cursor": "hand"},
-        {"id": "body", "rect": reg["body"], "action": "stroke", "cursor": "hand"},
+        {"id": "head", "rect": head_rect, "action": "head_pat", "cursor": "hand"},
+        {"id": "body", "rect": body_rect, "action": "stroke", "cursor": "hand"},
         {"id": "feet", "rect": reg["feet"], "action": "surprised", "cursor": "hand"},
     ]
 

@@ -787,8 +787,8 @@
       "group": "head",
       "layer": 203,
       "pos": [
-        311,
-        300
+        366,
+        299
       ],
       "anchor": [
         0,
@@ -805,8 +805,8 @@
       "group": "head",
       "layer": 204,
       "pos": [
-        472,
-        300
+        437,
+        299
       ],
       "anchor": [
         0,
@@ -917,7 +917,7 @@
         244,
         0,
         357,
-        310
+        391
       ],
       "action": "head_pat",
       "cursor": "hand"
@@ -926,9 +926,9 @@
       "id": "body",
       "rect": [
         253,
-        310,
+        391,
         339,
-        775
+        694
       ],
       "action": "stroke",
       "cursor": "hand"

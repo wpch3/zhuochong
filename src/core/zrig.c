@@ -2213,6 +2213,35 @@ int zrig_part_count(const zrig *r) { return r ? r->nparts : 0; }
 int zrig_action_count(const zrig *r) { return r ? r->nactions : 0; }
 int zrig_region_count(const zrig *r) { return r ? r->nregions : 0; }
 
+/* 按索引读区域定义：平台层要把区域表报给 UI，否则前端只能把 head/body/feet 硬编码，
+   rig.json 改了区域前端就对不上（visemes/poses 当初也是这个理由加的）。 */
+const char *zrig_region_id_at(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nregions) return "";
+    return r->regions[i].id;
+}
+
+const char *zrig_region_action_at(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nregions) return "";
+    return r->regions[i].action;
+}
+
+const char *zrig_region_cursor_at(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nregions) return "arrow";
+    return r->regions[i].cursor;
+}
+
+/* rect 回填画布坐标 [x,y,w,h]；UI 要拿它画区域框 */
+int zrig_region_rect_at(const zrig *r, int i, int out[4])
+{
+    int k;
+    if (!r || i < 0 || i >= r->nregions || !out) return 0;
+    for (k = 0; k < 4; ++k) out[k] = r->regions[i].rect[k];
+    return 1;
+}
+
 const char *zrig_part_id(const zrig *r, int i)
 {
     if (!r || i < 0 || i >= r->nparts) return "";

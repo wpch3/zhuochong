@@ -3,24 +3,24 @@
     "l": {
       "file": "sprites/blush_l.png",
       "pos": [
-        311,
-        300
+        366,
+        299
       ],
       "size": [
-        64,
-        34
+        40,
+        22
       ],
       "blend": "multiply"
     },
     "r": {
       "file": "sprites/blush_r.png",
       "pos": [
-        472,
-        300
+        437,
+        299
       ],
       "size": [
-        64,
-        34
+        40,
+        22
       ],
       "blend": "multiply"
     }

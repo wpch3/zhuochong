@@ -102,7 +102,13 @@ ZC.register({
   },
 
   async poke(kind, ev) {
-    const w = this.img.naturalWidth || 445, h = this.img.naturalHeight || 1292;
+    /* 坐标系：/api/poke 吃的是**引擎帧缓冲**坐标（画布 × pet scale），
+       而 this.img 的尺寸是画布 × 画质档 s%（currentQuality 会在 40/55/100 之间切）。
+       拿 naturalWidth 换算只在两者碰巧相等时对，画质一变或 /api/scale 一改就整体点偏。
+       所以一律按 info.frame_w/h 来。 */
+    const info = (this.host.info && this.host.info()) || {};
+    const w = info.frame_w || this.img.naturalWidth || 445;
+    const h = info.frame_h || this.img.naturalHeight || 1292;
     let x = w * 0.5, y = h * 0.25, tool = 0;
     if (kind === "hammer") { tool = 1; y = h * 0.3; }
     else if (kind === "body") y = h * 0.45;

@@ -31,15 +31,24 @@ from PIL import Image
 #   eye_l_socket pos[298,246] 117×68、eye_r_socket pos[428,246]
 #   mouth pos[422,316]，所以脸颊在 y≈300~340、眼眶外下方。
 BLUSH = {
-    "l": {"pos": [311, 300], "size": [64, 34]},
-    "r": {"pos": [472, 300], "size": [64, 34]},
+    # 2026-10-14 重新定位。原来放在 [311,300]/[472,300]、64×34 —— 实测那片区域
+    # **大半在脸的轮廓外**（seg_head 在画布 y=300 的实心范围只有 x 345..491，
+    # 而且越往下越窄，y=340 时只剩 386..455）。乘算画在透明背景上等于没画，
+    # 所以满值腮红只带来 27 像素可见变化。
+    # 现在按瞳孔位置摆：eye_l_ball 中心 x≈384、eye_r_ball x≈457，腮红落在瞳孔正下方，
+    # 尺寸收到 40×22 以保证整块都压在实心脸上（下沿只溢出 1~2 px 的软边）。
+    "l": {"pos": [366, 299], "size": [40, 22]},
+    "r": {"pos": [437, 299], "size": [40, 22]},   # 对齐右瞳孔中心 457.5
 }
 # 高光落在瞳孔左上（眼球 eye_l_ball pos[369,258] 31×30 / eye_r_ball pos[442,253]）
 HIGHLIGHT = {
     "l": {"pos": [373, 262], "size": [13, 13]},
     "r": {"pos": [446, 257], "size": [13, 13]},
 }
-BLUSH_RGB = (242, 150, 162)      # 乘算色：越暗压得越狠，这个值出来是淡淡的桃粉
+# 乘算色：越暗压得越狠。R 几乎不压、G/B 压到 ~0.57，出来是偏暖的粉（压成紫红会显脏）。
+# 2026-10-14 调浓：原来 (242,150,162) + peak 0.62 实测满值只带来 27 像素可见变化，
+# 表情 shy 用 0.95 都看不出脸红 —— 等于这个零件白做了。
+BLUSH_RGB = (250, 143, 148)
 HL_RGB = (255, 253, 246)         # 加算色：略偏暖的白，纯白会显得发青
 
 
@@ -116,7 +125,7 @@ def main() -> int:
 
     for side, cfg in BLUSH.items():
         w, h = cfg["size"]
-        im = speckle(radial(w, h, BLUSH_RGB, peak=0.62, gamma=1.35))
+        im = speckle(radial(w, h, BLUSH_RGB, peak=0.88, gamma=1.30))
         im.save(os.path.join(out_dir, f"blush_{side}.png"))
         report["blush"][side] = {"file": f"sprites/blush_{side}.png",
                                  "pos": cfg["pos"], "size": [w, h], "blend": "multiply"}

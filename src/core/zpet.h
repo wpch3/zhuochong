@@ -56,6 +56,17 @@ int   zpet_hit(const zpet *p, int x, int y);
 /* 区域查询：x、y 用窗口内（帧缓冲）坐标；返回区域 id（无则 NULL），
  * 并把动作名与光标名写入 out_action / out_cursor */
 
+/* 画布尺寸（画布坐标 ↔ 帧坐标换算用） */
+int         zpet_canvas_w(const zpet *p);
+int         zpet_canvas_h(const zpet *p);
+
+/* 区域表枚举：UI 靠它发现 head/body/feet 而不是硬编码 */
+int         zpet_region_count(const zpet *p);
+const char *zpet_region_id_at(const zpet *p, int i);
+const char *zpet_region_action_at(const zpet *p, int i);
+const char *zpet_region_cursor_at(const zpet *p, int i);
+int         zpet_region_rect_at(const zpet *p, int i, int out[4]);
+
 const char *zpet_region(const zpet *p, int x, int y, char *out_action, size_t cap,
                         const char **out_cursor);
 /* 在某个位置“用工具戳一下”：锤击 → hammered，手 → 抚摸/摸头 */

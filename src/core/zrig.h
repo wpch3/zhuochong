@@ -55,6 +55,11 @@ const char *zrig_region_at(const zrig *r, int x, int y, char *out_action, size_t
 /* 帧缓冲坐标 → 画布坐标（平台层把窗口内坐标换算后调用上面的函数） */
 void zrig_frame_to_canvas(const zrig *r, int fx, int fy, int *cx, int *cy);
 const char *zrig_region_cursor(const zrig *r, const char *region_id);
+/* 按索引枚举区域（给平台层报给 UI 用）；rect 回填画布坐标 [x,y,w,h] */
+const char *zrig_region_id_at(const zrig *r, int i);
+const char *zrig_region_action_at(const zrig *r, int i);
+const char *zrig_region_cursor_at(const zrig *r, int i);
+int         zrig_region_rect_at(const zrig *r, int i, int out[4]);
 
 /* --------------------------------------------------------------- 动作 */
 int   zrig_action_request(zrig *r, const char *id, const char *reason, int force);

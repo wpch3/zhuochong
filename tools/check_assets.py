@@ -552,6 +552,70 @@ def check(character, form, root=".", strict=False, out_json=None):
                         f"seg_head 眼眶开口里还剩眼线 {int(dark.sum())} + 虹膜 "
                         f"{int(blue.sum())} 像素（上限 {th['eye_residue']}）")
 
+            # —— 乘算/加算零件必须压在底图的实心区上 ——（G66 的静态闸）
+            # 腮红走 multiply、眼高光走 additive，这两种混合模式在**透明背景上是无效果的**：
+            # 乘算乘不动 alpha=0 的像素，加算加在空气上也看不见。
+            # 2026-10-14 实测踩过：腮红摆在画布 [311,300]，而 seg_head 在 y=300 的实心范围
+            # 只有 x 345..491 —— 大半块画在脸轮廓外，满值腮红只带来 27 像素可见变化，
+            # 表情 shy 用到 0.95 都看不出脸红。接口全绿、单测全绿，只有看图才发现。
+            # —— 摸头区域必须罩住整张脸 ——（G67 的静态闸）
+            # 区域 rect 原本是**按比例估**的（头 = 角色高的 24%，还假设头顶贴着 y=0），
+            # 2026-10-14 实测：head 只到画布 y=310，而 seg_head 占到 y=385 ——
+            # 嘴和下巴落在 body 里，点脸触发的是「摸身体」而不是「摸头」。
+            # 接口全绿（region 确实返回了 body），只有把区域和素材几何摆一起比才看得出。
+            hd_r = next((q for q in (rig or {}).get("regions", [])
+                         if q.get("id") == "head"), None)
+            hd_p = next((q for q in (rig or {}).get("parts", [])
+                         if q.get("id") == "seg_head"), None)
+            if hd_r and hd_p:
+                hx0, hy0 = hd_p["pos"]
+                ha = load_rgba(os.path.join(sprites, "seg_head.png"))[..., 3]
+                hx1, hy1 = hx0 + ha.shape[1], hy0 + ha.shape[0]
+                rx, ry, rw, rh = hd_r["rect"]
+                inside = (rx <= hx0 and ry <= hy0 and rx + rw >= hx1 and ry + rh >= hy1)
+                add("交互区域", "摸头区域罩住整张脸", inside,
+                    f"head 区域 x{rx}..{rx + rw} y{ry}..{ry + rh}，"
+                    f"而 seg_head 占 x{hx0}..{hx1} y{hy0}..{hy1}"
+                    f"（露在外面的部分会被判成 body，点脸变成摸身体）")
+
+            # —— 腮红必须压在实心脸上 ——（G66 的静态闸）
+            # 腮红走 multiply，而**乘算在透明像素上是无效果的**：乘不动 alpha=0 的地方。
+            # 2026-10-14 踩过：腮红摆在画布 [311,300]，但 seg_head 在 y=300 的实心范围
+            # 只有 x 345..491（脸是上宽下窄的锥形），大半块画在轮廓外 —— 满值腮红只带来
+            # 27 像素可见变化，表情 shy 吃到 0.95 都看不出脸红。
+            # 接口返回 ok、单测全绿、参数回读也正确，只有渲染出来逐像素比才看得见。
+            # 只查腮红：眼高光(highlight/star)压的是眼球不是脸，底图不同，不适用这条。
+            bpj = os.path.join(sprites, "blend_parts.json")
+            if os.path.exists(bpj):
+                with open(bpj, encoding="utf-8") as f:
+                    blend_js = json.load(f)
+                head_a = load_rgba(os.path.join(sprites, "seg_head.png"))[..., 3]
+                # 注意取 rig.json 的 pos：bp(seg_parts.json) 里的 pos 是**切图内坐标**，
+                # 而 blend_parts.json 的 pos 是画布坐标，两者不能直接相减。
+                hd = next((q for q in (rig or {}).get("parts", [])
+                           if q.get("id") == "seg_head"), None)
+                hx, hy = (hd["pos"] if hd else [0, 0])
+                HH, HW = head_a.shape
+                for side, cfg in (blend_js.get("blush") or {}).items():
+                    part_a = load_rgba(os.path.join(root, "characters", character,
+                                                    "forms", form, cfg["file"]))[..., 3]
+                    ph, pw = part_a.shape
+                    lx, ly = cfg["pos"][0] - hx, cfg["pos"][1] - hy   # 换到 seg_head 局部坐标
+                    if lx < 0 or ly < 0 or lx + pw > HW or ly + ph > HH:
+                        add("混合零件", f"腮红_{side} 在脸的画幅内", False,
+                            f"腮红框换算到 seg_head 后是 [{lx},{ly}]+{pw}x{ph}，"
+                            f"越出了 {HW}x{HH} 的脸部画幅")
+                        continue
+                    own = part_a > 24
+                    if not own.any():
+                        add("混合零件", f"腮红_{side} 非空", False, "整块腮红都是透明的")
+                        continue
+                    under = head_a[ly:ly + ph, lx:lx + pw] > 200
+                    cover = float((own & under).sum()) / float(own.sum())
+                    add("混合零件", f"腮红_{side} 压在实心脸上", cover >= 0.80,
+                        f"{cover * 100:.0f}% 的不透明像素落在 seg_head 的实心区上"
+                        f"（要求 ≥80%；multiply 画在透明处等于没画）")
+
             add("素材", "无键色垃圾像素", junk_total <= th["junk_px"],
                 f"纯绿/洋红残留 {junk_total} 像素（上限 {th['junk_px']}）"
                 + ("，" + "、".join(junk_where[:4]) if junk_where else ""))

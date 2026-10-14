@@ -36,6 +36,9 @@ function makeEl(tag) {
     },
     dispatch(evt, arg) { (e._handlers[evt] || []).forEach((f) => f(arg || { target: e })); },
     getBoundingClientRect() { return { left: 0, top: 0, width: 100, height: 300 }; },
+    /* 故意和 info.frame_w/h (466x748) 不一样：坐标换算用错 naturalWidth 立刻看得出来。
+       真实情况也是这样 —— 图片尺寸 = 画布 × 画质档 s%，帧缓冲 = 画布 × pet scale。 */
+    naturalWidth: 848, naturalHeight: 1360,
     setAttribute(k, v) { e.attributes[k] = v; if (k === "class") e.className = v; },
     getAttribute(k) { return e.attributes[k]; },
     get textContent() { return e._text; },
@@ -143,6 +146,13 @@ const INFO = {
   expression: "",
   viseme: "", viseme_weight: 0.0, visemes: ["SIL", "A", "I", "U", "E", "O", "N"],
   poses: [{ id: "eye_hl_style", current: "round", entries: ["round", "star"] }],
+  /* 区域表 + 画布尺寸：UI 要靠它发现区域、做画布↔帧坐标换算，不能硬编码 */
+  canvas_w: 848, canvas_h: 1360, frame_w: 466, frame_h: 748,
+  regions: [
+    { id: "head", action: "head_pat", cursor: "hand", rect: [244, 0, 357, 391] },
+    { id: "body", action: "stroke", cursor: "hand", rect: [253, 391, 339, 694] },
+    { id: "feet", action: "surprised", cursor: "hand", rect: [253, 1085, 339, 207] },
+  ],
 };
 
 /* 参数表：真服务 46 个，这里放几个有代表性的（内建 binds=0 的、普通的、负区间的） */
@@ -161,9 +171,11 @@ const PARAMS = {
   ],
 };
 const calls = [];
+const callsFull = [];      /* calls 把 query 切掉了，查参数名/数值要用这个 */
 function makeFetch() {
   return async function (url) {
     calls.push(String(url).split("?")[0]);
+    callsFull.push(String(url));
     const u = String(url);
     const json = (o) => ({
       ok: true, status: 200,
@@ -195,7 +207,8 @@ function makeFetch() {
     }
     if (u.includes("/api/gateway.json")) return json(GATEWAY);
     if (u.includes("/api/info.json")) return json(INFO);
-    if (u.includes("/api/speech.json")) return json({ line: "" });
+    if (u.includes("/api/speech.json"))
+      return json({ line: "", lipsync: { active: false, id: "", level: 0, remain: 0 } });
     if (u.includes("/voice_manifest.json")) {
       return json({ engine: "zh-CN-XiaoyiNeural", lines: [
         { id: "pat_1", text: "摸头好舒服", file: "a.mp3" },
@@ -388,9 +401,14 @@ function slotOf(id) {
     CHECK(!!poke, "点立绘应调 /api/poke（实际 " + seen.join(",") + "）");
     if (poke) {
       const q = new URLSearchParams(poke.split("?")[1]);
-      /* 显示 100x300，naturalWidth 兜底 445x1292：点 (50,150) → 正中间 */
-      CHECK(Math.abs(Number(q.get("x")) - 222) < 3 && Math.abs(Number(q.get("y")) - 646) < 5,
-            "点击坐标应按显示比例换算成帧坐标（实际 x=" + q.get("x") + " y=" + q.get("y") + "）");
+      /* 显示 100x300，点正中间 (50,150) → 应按 info.frame_w/h (466x748) 换算成 (233,374)。
+         这里**不能**用 img.naturalWidth：图片尺寸是画布 × 画质档 s%，
+         而 /api/poke 吃的是引擎帧缓冲坐标（画布 × pet scale），两者是两回事。
+         stub 故意把 naturalWidth 设成 848x1360，走错分支就会得到 (424,680)。 */
+      const px = Number(q.get("x")), py = Number(q.get("y"));
+      CHECK(Math.abs(px - 233) < 3 && Math.abs(py - 374) < 5,
+            "点击坐标应按 info.frame_w/h 换算（期望 233,374；实际 "
+            + px + "," + py + (Math.abs(px - 424) < 3 ? " ← 用成 naturalWidth 了" : "") + "）");
     }
   }
 
@@ -470,6 +488,60 @@ function slotOf(id) {
     const browGroup = groups.find((g) => g.includes("眉毛"));
     CHECK(browGroup && browGroup.includes("(1)"),
           "眉毛组应有 1 个参数（stub 里只放了 ParamBrowLY），实际 " + browGroup);
+  }
+
+  SECTION("舞台交互（G67）：hover / region / speak 要在界面上点得到");
+  {
+    const el = slotOf("interact");
+    for (let i = 0; i < 6; i++) await new Promise((r) => setImmediate(r));
+    const txt = walk(el).map((n) => n._text).join(" ");
+    const btns = walk(el).filter((n) => n.tagName === "BUTTON");
+    const btxt = btns.map((b) => b._text);
+
+    /* 三个开关 */
+    ["视线跟随鼠标", "区域探针开", "工具：手"].forEach((x) => {
+      CHECK(btxt.some((t) => t && t.indexOf(x) === 0), "要有「" + x + "」开关");
+    });
+
+    /* 区域按钮要从 info.regions 来，不能硬编码。带上动作名，一眼知道点下去会发生什么 */
+    INFO.regions.forEach((g) => {
+      CHECK(btxt.some((t) => t && t.indexOf(g.id) === 0 && t.includes(g.action)),
+            "区域 " + g.id + " 要有按钮且标出动作 " + g.action);
+    });
+    /* rect 要显示出来：调区域边界时要能直接读数，不然只能靠点 */
+    CHECK(txt.includes("244,0,357,391"),
+          "区域 rect 要显示（head 的画布矩形）");
+
+    /* 台词：从 voice_manifest.json 来 */
+    CHECK(txt.includes("台词口型"), "要有台词口型区块");
+    const opts = walk(el).filter((n) => n.tagName === "OPTION");
+    CHECK(opts.length === 2, "两条台词要进下拉（stub 给了 2 条，实际 " + opts.length + "）");
+    CHECK(opts.some((o) => o._text && o._text.includes("摸头好舒服")),
+          "下拉里要显示台词正文，不能只有 id");
+    CHECK(opts.some((o) => o._text && o._text.indexOf("pat_1_base0") === 0),
+          "speak 的 id 是 <line>_<variant>，manifest 没写 variant 时要补 base0");
+    ["播放口型", "停止"].forEach((x) => {
+      CHECK(btxt.indexOf(x) >= 0, "要有「" + x + "」按钮");
+    });
+
+    /* 点区域按钮要发 poke，且坐标必须是**帧坐标**（画布 rect 中心换算过的），
+       直接把画布坐标丢给 /api/poke 会点到画面外 —— 这是本组件最容易写错的地方 */
+    callsFull.length = 0;
+    const headBtn = btns.find((b) => b._text && b._text.indexOf("head") === 0);
+    headBtn.dispatch("click");
+    await new Promise((r) => setImmediate(r));
+    const pk = callsFull.find((c) => c.includes("/api/poke"));
+    CHECK(!!pk, "点区域按钮要发 /api/poke");
+    if (pk) {
+      const u = new URLSearchParams(pk.split("?")[1] || "");
+      const px = Number(u.get("x")), py = Number(u.get("y"));
+      /* head rect [244,0,357,391] 中心 = 画布(422.5, 195.5) → 帧(232, 107) */
+      CHECK(px > 220 && px < 245, "poke 的 x 要换算成帧坐标（期望约 232，实际 " + px + "）");
+      CHECK(py > 95 && py < 120, "poke 的 y 要换算成帧坐标（期望约 107，实际 " + py + "）");
+      CHECK(px < INFO.frame_w && py < INFO.frame_h,
+            "坐标必须落在帧内（" + INFO.frame_w + "x" + INFO.frame_h + "），"
+            + "直接传画布坐标就会越界");
+    }
   }
 
   SECTION("音色库（G64）：契约 → 清单 → 面板，四种情绪通路要显示得出来");

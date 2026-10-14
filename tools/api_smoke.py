@@ -161,6 +161,7 @@ def run(base, root):
     a.get("/api/param?all=1")
 
     info2 = a.json("/api/info.json")
+    sc_boot = info2.get("scale", 1.0)       # 启动时的缩放，用例跑完要还原回去
     # 表情：每个都要能切进去，而且切完 info 要如实报告
     exp_bad = []
     for e in info2.get("expressions", []):
@@ -182,6 +183,142 @@ def run(base, root):
             vis_bad.append("%s→%r" % (v, r.get("viseme")))
     a.get("/api/viseme?v=off")
     check("每个口型都能驱动", not vis_bad, str(vis_bad))
+
+    # —— 交互区域（G67）——
+    # info 要报区域表和画布尺寸，否则前端只能把 head/body/feet 和 848x1360 硬编码。
+    regs = info2.get("regions") or []
+    check("info 报了区域表", len(regs) >= 1, "regions=%d" % len(regs))
+    check("info 报了画布尺寸",
+          info2.get("canvas_w", 0) > 0 and info2.get("canvas_h", 0) > 0,
+          "canvas=%sx%s" % (info2.get("canvas_w"), info2.get("canvas_h")))
+    for g in regs:
+        for k in ("id", "action", "cursor", "rect"):
+            if k not in g:
+                check("区域字段齐全", False, "%s 缺 %s" % (g.get("id"), k))
+                break
+        else:
+            check("区域 %s 字段齐全" % g["id"], len(g["rect"]) == 4, str(g["rect"]))
+
+    # 自洽性：把区域矩形的中心换算成帧坐标，/api/region 必须命中它自己。
+    # 2026-10-14 踩过：head 区域只到画布 y=310，而脸画到 y=385，下半张脸被判成 body
+    #（点嘴巴触发的是「摸身体」）。那种偏移光看接口返回 ok 是发现不了的。
+    cw, ch = info2.get("canvas_w", 0), info2.get("canvas_h", 0)
+    fw, fh = info2.get("frame_w", 0), info2.get("frame_h", 0)
+    if cw and ch and fw and fh:
+        for g in regs:
+            x, y, w, h = g["rect"]
+            # 按网格采样，不用矩形中心：角色是非凸形状，feet 的矩形中心正好落在
+            # 两腿之间的空隙上（alpha=0），而命中测试要求不透明像素，中心必然落空。
+            hits, acts = {}, {}
+            for i in range(1, 5):
+                for j in range(1, 5):
+                    fx = int((x + w * i / 5.0) / cw * fw)
+                    fy = int((y + h * j / 5.0) / ch * fh)
+                    r = a.json("/api/region?x=%d&y=%d" % (fx, fy))
+                    rid = r.get("region") or ""
+                    if rid:
+                        hits[rid] = hits.get(rid, 0) + 1
+                        acts[rid] = r.get("action")
+            check("区域 %s 点得到" % g["id"], hits.get(g["id"], 0) > 0,
+                  "矩形内 16 个采样点一个都没命中它自己（命中分布 %s）；"
+                  "要么矩形画在角色外面，要么被别的区域整个盖住" % (hits or "全空"))
+            check("区域 %s 不串台" % g["id"], set(hits) <= {g["id"]},
+                  "矩形内还命中了别的区域 %s（区域之间不该重叠）"
+                  % sorted(set(hits) - {g["id"]}))
+            if hits.get(g["id"]):
+                check("区域 %s 报对了动作" % g["id"], acts.get(g["id"]) == g["action"],
+                      "%r != %r" % (acts.get(g["id"]), g["action"]))
+        # 画面外必须不命中，否则光标到处变手型
+        r0 = a.json("/api/region?x=2&y=2")
+        check("画面角落不命中任何区域", not r0.get("region"),
+              "左上角回了 %r" % r0.get("region"))
+
+    # 换一个 scale 再测一遍：region/poke 吃的是**引擎帧缓冲**坐标（画布 × pet scale），
+    # 而前端图片的尺寸是画布 × 画质档 s%。两者只在碰巧相等时一致，
+    # 代码里拿 img.naturalWidth 换算就会整体点偏 —— 这条闸专门拦这个。
+    sc0 = info2.get("scale", 1.0)
+    try:
+        a.get("/api/scale?s=1.0")   # 参数名是 s，值是比例不是百分比
+        i3 = a.json("/api/info.json")
+        fw3, fh3 = i3["frame_w"], i3["frame_h"]
+        check("scale 改了帧尺寸要跟着变", (fw3, fh3) != (fw, fh) or abs(sc0 - 1.0) < 1e-6,
+              "scale=1.0 时 frame=%dx%d（原 %dx%d）" % (fw3, fh3, fw, fh))
+        ok_after = 0
+        for g in regs:
+            x, y, w, h = g["rect"]
+            for i in range(1, 5):
+                for j in range(1, 5):
+                    fx = int((x + w * i / 5.0) / cw * fw3)
+                    fy = int((y + h * j / 5.0) / ch * fh3)
+                    if a.json("/api/region?x=%d&y=%d" % (fx, fy)).get("region") == g["id"]:
+                        ok_after += 1
+                        break
+                else:
+                    continue
+                break
+        check("换 scale 后区域仍然点得到", ok_after == len(regs),
+              "%d/%d 个区域在 scale=1.0 下还能命中（坐标换算必须按 info.frame_w/h 走）"
+              % (ok_after, len(regs)))
+        # 改完 scale 必须渲染一帧，帧缓冲才会变成新尺寸。
+        # info.frame_w/h 是立刻就报新值的，但 fb 要等下一帧 —— 这中间 hover/region
+        # 的入参坐标系和 info 报的对不上，点击会偏。这条闸把这个时序钉住。
+        a.get("/api/frame.png?s=100")
+        i4 = a.json("/api/info.json")
+        check("渲染一帧后 info 和帧缓冲尺寸对得上",
+              a.json("/api/region?x=%d&y=%d" % (int(i4["frame_w"] * 0.5),
+                                                int(i4["frame_h"] * 0.12))).get("region")
+              in ("head", "body"),
+              "按 info.frame_w/h 取的点落到了 %r（scale 改完没渲染就用，坐标系会错位）"
+              % a.json("/api/region?x=%d&y=%d" % (int(i4["frame_w"] * 0.5),
+                                                  int(i4["frame_h"] * 0.12))).get("region"))
+    finally:
+        a.get("/api/scale?s=%.3f" % sc0)   # 还原，别把状态漏给后面的用例
+        a.get("/api/frame.png?s=100")      # 还原后同样要推一帧，让 fb 跟上
+
+    # —— 视线跟随 hover（G67）——
+    # 参数名是 x/y/in（不是 on/inside）。hover 走 dt 收敛，要给它时间。
+    a.get("/api/pause?on=0")
+    a.get("/api/idle?s=0")        # 前面的用例会把空闲时间推到 99999 把角色弄睡着，
+    a.get("/api/action?id=idle")  # 睡着时不跟视线，hover 看起来就像坏了
+    a.get("/api/gaze?x=0&y=0")
+    time.sleep(0.4)
+    a.get("/api/hover?x=%d&y=%d&in=1" % (int(fw * 0.92), int(fh * 0.10)))
+    time.sleep(0.9)
+    pv = {p_["id"]: p_["value"] for p_ in a.json("/api/params.json")["params"]}
+    check("hover 能把头转过去", pv.get("ParamAngleX", 0) > 5,
+          "ParamAngleX=%.2f（hover 到右上角后应该明显为正）" % pv.get("ParamAngleX", 0))
+    check("hover 能带动眼球", abs(pv.get("ParamEyeBallX", 0)) > 0.2,
+          "ParamEyeBallX=%.2f" % pv.get("ParamEyeBallX", 0))
+    a.get("/api/hover?x=0&y=0&in=0")
+    time.sleep(0.6)
+    pv2 = {p_["id"]: p_["value"] for p_ in a.json("/api/params.json")["params"]}
+    check("鼠标移出后眼球回正", abs(pv2.get("ParamEyeBallX", 1)) < 0.2,
+          "ParamEyeBallX=%.2f" % pv2.get("ParamEyeBallX", 1))
+
+    # —— 台词口型 speak（G67）——
+    man = a.json("/voice_manifest.json")
+    mlines = man.get("lines") or []
+    check("台词清单可读", len(mlines) > 0, "lines=%d" % len(mlines))
+    if mlines:
+        sid = mlines[0]["id"] + "_" + (mlines[0].get("variant") or "base0")
+        r = a.json("/api/speak?id=%s" % sid)
+        check("台词能播", r.get("ok") and r.get("text"),
+              "speak(%s) → %r" % (sid, r))
+        check("台词返回时长", float(r.get("remain", 0)) > 0, str(r.get("remain")))
+        lv = []
+        for _ in range(6):
+            time.sleep(0.15)
+            lv.append(a.json("/api/speech.json").get("lipsync", {}).get("level", 0))
+        check("口型包络在动", max(lv) > 0.05 and len(set(round(v, 2) for v in lv)) > 1,
+              "电平序列 %s（全 0 或恒定说明包络没驱动嘴）" % [round(v, 3) for v in lv])
+        st = a.json("/api/speak?stop=1")
+        check("台词能停", st.get("stopped") is True, str(st))
+        time.sleep(0.1)
+        check("停了之后口型退出", not a.json("/api/speech.json")
+              .get("lipsync", {}).get("active", True), "")
+        # 不存在的台词必须 404，不能回 200 假装成功（那样前端永远发现不了 id 写错）
+        check("不存在的台词回 404", a.code("/api/speak?id=__no_such_line__") == 404,
+              "实际 %s" % a.code("/api/speak?id=__no_such_line__"))
 
     # 互斥差分：每个档位 + 整组关掉
     pose_bad = []
@@ -745,6 +882,7 @@ def run(base, root):
     check("缩放改变画面尺寸", big["frame_w"] > small["frame_w"],
           "%dx%d → %dx%d" % (small["frame_w"], small["frame_h"], big["frame_w"], big["frame_h"]))
     a.hit("/api/scale?s=1")
+    a.get("/api/scale?s=%.3f" % sc_boot)   # 还原成启动时的值，别把状态漏给后面的用例和预览
     a.hit("/api/idle?s=600"); time.sleep(0.4)
     check("放空够久会睡着", a.json("/api/info.json")["sleeping"] is True)
     a.hit("/api/idle?s=0"); a.hit("/api/call?kind=call_start"); time.sleep(0.3)

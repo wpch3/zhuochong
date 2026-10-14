@@ -935,6 +935,36 @@ const char *zpet_viseme_id(const zpet *p, int i)
     return (p && p->rig) ? zrig_viseme_id(p->rig, i) : NULL;
 }
 
+/* 画布尺寸：UI 要在画布坐标（regions 的 rect）和帧坐标（poke/region 的入参）之间换算，
+   不报出来前端就只能把 848x1360 写死。 */
+int zpet_canvas_w(const zpet *p) { return (p && p->rig) ? zrig_canvas_w(p->rig) : 0; }
+int zpet_canvas_h(const zpet *p) { return (p && p->rig) ? zrig_canvas_h(p->rig) : 0; }
+
+int zpet_region_count(const zpet *p)
+{
+    return (p && p->rig) ? zrig_region_count(p->rig) : 0;
+}
+
+const char *zpet_region_id_at(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_region_id_at(p->rig, i) : "";
+}
+
+const char *zpet_region_action_at(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_region_action_at(p->rig, i) : "";
+}
+
+const char *zpet_region_cursor_at(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_region_cursor_at(p->rig, i) : "arrow";
+}
+
+int zpet_region_rect_at(const zpet *p, int i, int out[4])
+{
+    return (p && p->rig) ? zrig_region_rect_at(p->rig, i, out) : 0;
+}
+
 int zpet_param_set(zpet *p, const char *id, double v)
 {
     return (p && p->rig) ? zrig_param_set(p->rig, id, v) : -1;

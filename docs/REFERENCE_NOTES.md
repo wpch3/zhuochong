@@ -764,3 +764,44 @@ export const protocolListProviders = defineInvokeEventa<{ name: string }[]>(...)
 | `inline_tag` | 文本里嵌 `[excited]` | fish_audio |
 
 映射表落在 `config/emotion_map.json`：每种情绪给出四条通路，外加它对应桌宠脸上的哪个表情。
+
+---
+
+## 第十四批 · 鼠标交互与坐标系（2026-10-14，做 G67 舞台交互时查）
+
+做「鼠标移到立绘上 → 角色看过来 / 知道指到了哪个部位」之前，先看参考项目怎么处理
+**屏幕坐标 → 模型坐标** 这一步。这正是本轮踩坑最深的地方。
+
+### airi（`moeru-ai/airi`）
+- `packages/stage-ui-live2d/src/composables/live2d/eye-tracking.ts` →
+  `useLive2DEyeFocusFor()`，把光标位置换算成 `Live2DModel.focus(x, y)` 的入参：
+
+  ```
+  x: (source.x - canvasRect.left + eyeOffset.x) * renderScale
+  ```
+
+  **要点：拿 `canvasRect`（显示矩形）定位，再乘 `renderScale`（渲染缩放）。**
+  它同时区分三个量 —— 显示矩形 `canvasRect`、渲染缩放 `renderScale`、
+  模型自身缩放 `normalizedScale × scale`。三者是独立的，不能互相替代。
+- 鼠标无效时它 `return { x: 1000, y: 1000 }` —— 给一个**远离画面的坐标**让视线自然回正，
+  而不是 `(0,0)`（那是画面左上角，角色会往左上角瞪着）。
+  我们这边是另一条路：`/api/hover?in=0` 显式告诉引擎"移出去了"，实测眼球回 0.00。
+- 它的组件测试 `InteractiveArea.browser.test.ts` 用 `vitest/browser` 的 `userEvent` 真点，
+  而不是手搓假事件 —— 我们没有浏览器环境，等价做法是本轮加的
+  「poke 的 x/y 必须等于 info.frame_w/h 换算值」这条断言（见 tests/test_web.js）。
+
+### 落到本仓的结论
+参考项目印证了本轮实测出来的坑：**显示尺寸、渲染缓冲尺寸、模型缩放是三个不同的量**。
+对应到我们的实现：
+
+| 量 | 在本仓是什么 | 取值 |
+|---|---|---|
+| 显示矩形 | `img.getBoundingClientRect()` | 随窗口变 |
+| 渲染缓冲 | `info.frame_w/frame_h` = 画布 × pet scale | 466×748（scale 0.55） |
+| 图片尺寸 | `img.naturalWidth` = 帧缓冲 × 画质档 `s%` | s=55 时 256×411 |
+| 画布 | `info.canvas_w/canvas_h`，regions 的 rect 用它 | 848×1360 |
+
+`/api/hover`、`/api/region`、`/api/poke` 吃的都是**渲染缓冲坐标**。
+所以换算必须是 `(ev.clientX - rect.left) / rect.width * info.frame_w`，
+**不能**用 `img.naturalWidth`（它还带着画质档的缩放）。
+2026-10-14 之前 `stage.js` 就是用 naturalWidth 的，画质档恰好是 100 时碰巧对。
