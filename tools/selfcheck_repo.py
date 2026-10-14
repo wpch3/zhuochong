@@ -525,6 +525,52 @@ def check_no_stale_decisions(root):
               else f"lol max_tier={lol.get('max_tier')}")
 
 
+def check_tiptoe_grounded(root):
+    """踮脚时脚底必须留在地面上（2026-10-14 加）。
+
+    用户反馈"踮脚脚部没有变化"。根因有一半在这里：
+    `ParamTiptoe` 的两条绑定原本是**同号**的 ——
+    `root.dy = -7`（整体上提）再加 `seg_leg_*.bend_y = -5`（tip 曲线、底端满额），
+    两个一起往上，结果不是踮脚而是**整个人连脚一起浮空 12px**
+    （引擎实测角色最底行 1359 → 1347）。脚相对身体当然"没有变化" —— 它跟着飘走了。
+
+    正确的关系：root 往上提多少，腿的底端就要往下推多少抵消。
+    tip 曲线 f(t)=t² 在底边权重为 1，所以 **bend_y 的 scale 必须 ≈ -root.dy 的 scale**，
+    两者**异号且等量**。
+    """
+    section("踮脚时脚底钉在地面（不许整个人浮空）")
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if not os.path.isfile(rig_path):
+        return
+    with io.open(rig_path, encoding="utf-8") as fh:
+        rig = json.load(fh)
+    tp = next((p for p in rig.get("params", []) if p["id"] == "ParamTiptoe"), None)
+    if not check("找得到 ParamTiptoe", tp is not None):
+        return
+    lift = None
+    legs = []
+    for b in tp.get("binds", []):
+        if b.get("group") == "root" and b.get("param") == "dy":
+            lift = b.get("scale")
+        elif b.get("param") == "bend_y" and str(b.get("part", "")).startswith("seg_leg"):
+            legs.append((b.get("part"), b.get("scale"), b.get("curve")))
+    if not check("ParamTiptoe 有 root.dy 上提", lift is not None):
+        return
+    if not check("ParamTiptoe 有两条腿的 bend_y", len(legs) == 2,
+                 "实际 %d 条：%s" % (len(legs), legs)):
+        return
+    for part, sc, curve in legs:
+        check("%s 的 bend_y 与 root.dy **异号**（同号 = 整个人浮空）" % part,
+              sc is not None and lift is not None and sc * lift < 0,
+              "root.dy=%s  %s.bend_y=%s —— 同号时实测角色最底行 1359→1347" % (lift, part, sc))
+        check("%s 的 bend_y 量值与 root.dy 相抵（脚底净位移≈0）" % part,
+              sc is not None and abs(abs(sc) - abs(lift)) < 0.75,
+              "|%s| vs |%s|，差 %.2f" % (sc, lift, abs(abs(sc) - abs(lift)))
+              if sc is not None else "")
+        check("%s 的 bend_y 用 tip 曲线（底端满额才抵得掉）" % part, curve == "tip",
+              "实际 curve=%s" % curve)
+
+
 def check_head_body_link(root):
     """头部参数必须带动身体，且摸头不许拉长脖子（2026-10-14 加）。
 
@@ -1514,7 +1560,8 @@ def main():
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
-               check_json, check_rig, check_head_body_link, check_neck_seam,
+               check_json, check_rig, check_tiptoe_grounded, check_head_body_link,
+               check_neck_seam,
                check_action_dead_time,
                check_motion_measure,
                check_form_roadmap,

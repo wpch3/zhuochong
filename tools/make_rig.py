@@ -204,11 +204,26 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                        {"part": "seg_leg_l", "param": "bend_x", "scale": -4.0, "curve": "sine"},
                        {"part": "seg_leg_r", "param": "bend_x", "scale": -4.0, "curve": "sine"}],
              "note": "真人站着重心一直在左右微调。一个参数同时驱动骨盆横移与两腿中段补偿"},
+            # 踮脚：身体升高，**脚底必须留在地面上**，差额由小腿伸展吸收。
+            #
+            # ⚠ 这里原本两条绑定是同号的（root.dy -7 加上两腿 bend_y -5），
+            # 结果不是踮脚而是**整个人连脚一起浮空 12px**（实测角色最底行
+            # 1359 → 1347）。用户反馈"踮脚脚部没有变化"，根子有一半在这 ——
+            # 脚相对身体确实没变化，因为它跟着整个人一起飘起来了。
+            #
+            # 正确的数：root 上提 7px，腿的底端就要**往下推 7px 抵消**，
+            # 净位移 0 = 脚底钉在地上。tip 曲线 f(t)=t² 的权重分布正好合适：
+            #   t=0   髋   -7 + 0    = -7    （跟着身体升）
+            #   t=0.76 踝  -7 + 4.04 = -2.96 （升 3px）
+            #   t=1.0 鞋底 -7 + 7    =  0    （钉住）
+            # 鞋子那一段（t 0.76~1.0）因此被纵向压缩约 3px —— 这个前缩
+            # 正是正面视角下"脚跟抬起"的读感，不需要额外拆件。
             {"id": "ParamTiptoe", "label": "踮脚", "min": 0.0, "max": 1.0, "default": 0.0,
              "binds": [{"group": "root", "param": "dy", "scale": -7.0},
-                       {"part": "seg_leg_l", "param": "bend_y", "scale": -5.0, "curve": "tip"},
-                       {"part": "seg_leg_r", "param": "bend_y", "scale": -5.0, "curve": "tip"}],
-             "note": "整体上提 7px + 脚踝收 5px。裙摆下沿仍然不动，所以不会露底"},
+                       {"part": "seg_leg_l", "param": "bend_y", "scale": 7.0, "curve": "tip"},
+                       {"part": "seg_leg_r", "param": "bend_y", "scale": 7.0, "curve": "tip"}],
+             "note": "整体上提 7px + 腿底端下推 7px 抵消 = 脚底钉在地面；"
+                     "鞋段被压缩约 3px（正面视角下的脚跟抬起读感）"},
         ]
     out += [
         {"id": "ParamHairFront", "label": "刘海 摆动", "min": -1.0, "max": 1.0, "default": 0.0,

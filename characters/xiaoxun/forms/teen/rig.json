@@ -3849,17 +3849,17 @@
         {
           "part": "seg_leg_l",
           "param": "bend_y",
-          "scale": -5.0,
+          "scale": 7.0,
           "curve": "tip"
         },
         {
           "part": "seg_leg_r",
           "param": "bend_y",
-          "scale": -5.0,
+          "scale": 7.0,
           "curve": "tip"
         }
       ],
-      "note": "整体上提 7px + 脚踝收 5px。裙摆下沿仍然不动，所以不会露底"
+      "note": "整体上提 7px + 腿底端下推 7px 抵消 = 脚底钉在地面；鞋段被压缩约 3px（正面视角下的脚跟抬起读感）"
     },
     {
       "id": "ParamHairFront",
