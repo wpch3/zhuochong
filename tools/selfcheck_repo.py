@@ -462,6 +462,69 @@ def check_plan_traceability(root):
     check("代码与配置里没有豆包 / 火山（用户明确排除）", not hit, "；".join(hit[:3]))
 
 
+def check_no_stale_decisions(root):
+    """不许留着已经作废的结论 —— 用户说的「不要出现操作断代」。
+
+    断代最常见的形态不是漏做，而是**文档里留着一个已经被推翻的说法**，
+    后来的人（或后来的我）照着它做。2026-10-14 就真发生过一次：
+    调研笔记第十五批写着"网络竞技游戏明确不在名单内"，而用户后来澄清
+    网游不是排除、只是锁在只读档 —— 两份文档打架。
+
+    规则：凡是记录了"被推翻/已作废"信息的地方，必须在同一份文档里
+    带上修正指引（警示框或「修正」小节），不能只留旧说法。
+    这里盯住几个已知的高风险口径，发现新旧说法并存却没有修正标记就判红。
+    """
+    section("口径一致：不留已作废的结论")
+    docs_dir = os.path.join(root, "docs")
+
+    def rd(rel):
+        fp = os.path.join(root, rel)
+        return io.open(fp, encoding="utf-8").read() if os.path.exists(fp) else ""
+
+    # 判据踩过两次坑才定下来：
+    #   ① 盯"旧说法的原文" —— 原文一改措辞闸就失效（当场踩过）
+    #   ② 盯"整份文档里有没有现行口径" —— 长文档里别处的"只读""档一"会蒙混过关（又踩一次）
+    # 所以按**节**判：某一节里说了网游被排除/不做，就必须在**同一节内**
+    # 给出现行口径或修正指引。半截话留在节里，后来的人只读那一节就会被带沟里。
+    STALE_SAY = re.compile(r"不在名单内|被排除|不做网络竞技|完全禁止网游|排除网游")
+    FIXED_SAY = re.compile(r"修正|档一|只读档|只看不碰|陪聊|不代打|watch_and_chat")
+    TOPIC = re.compile(r"英雄联盟|网络竞技|网游")
+    for rel in ("docs/REFERENCE_NOTES.md", "docs/memory/REQUIREMENTS.md",
+                "docs/PLATFORM_PLAN.md", "docs/memory/GAPS.md"):
+        txt = rd(rel)
+        if not txt:
+            continue
+        # 按二级标题切节；没有标题的文档整篇算一节
+        parts = re.split(r"(?m)^##\s", txt)
+        bad = []
+        for sec in parts:
+            if not TOPIC.search(sec) or not STALE_SAY.search(sec):
+                continue
+            if not FIXED_SAY.search(sec):
+                title = sec.splitlines()[0][:40] if sec.splitlines() else "(无标题)"
+                bad.append(title)
+        check(f"{os.path.basename(rel)} 没有「只说排除、不说现行口径」的半截话",
+              not bad,
+              f"这些小节里只说了网游被排除，没写现在怎么办：{bad[:3]}")
+
+    # 现行口径本身必须自洽：A25 既然是三档，就不能同时写着"不做网游"
+    req = rd("docs/memory/REQUIREMENTS.md")
+    has_tiers = "档一" in req and "档二" in req and "档三" in req
+    says_ban = bool(re.search(r"A25\.\d+\s+\*\*不做网络竞技", req))
+    check("A25 的三档模式没有和「不做网游」并存", not (has_tiers and says_ban),
+          "同一份 REQUIREMENTS 里既写了三档又写了不做网游")
+
+    # 档位表与需求文档必须说同一件事
+    gt = os.path.join(root, "config", "game_tiers.json")
+    if os.path.exists(gt) and has_tiers:
+        d = json.load(io.open(gt, encoding="utf-8"))
+        lol = next((g for g in d.get("games", []) if g.get("id") == "lol"), None)
+        check("档位表与 A25 口径一致（网游在档一而不是被删掉）",
+              bool(lol) and lol.get("max_tier") == 1,
+              "A25 说网游锁档一，档位表里却查不到 lol" if not lol
+              else f"lol max_tier={lol.get('max_tier')}")
+
+
 def check_form_roadmap(root):
     """形态路线图与磁盘必须对得上。
 
@@ -1291,8 +1354,8 @@ def main():
     _strict = a.strict
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
-    for fn in (check_memory, check_plan_traceability, check_json, check_rig,
-               check_form_roadmap,
+    for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
+               check_json, check_rig, check_form_roadmap,
                check_live2d, check_character,
                check_web, check_contract, check_tools, check_hygiene):
         try:

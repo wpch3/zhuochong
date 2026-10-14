@@ -223,3 +223,19 @@ make test && bash scripts/selfcheck_all.sh
 | 语音工具 | `tools/voice_local.py`、`voice_packs.py`、`voice_manifest.py`、`voice_render.py`、`voice_setup.sh` |
 | 规划文档 | `docs/PRODUCT_PLAN.md`、`PROJECT_SPEC.md`、`TRAINING.md`、`VOICES.md`、`REFERENCE_NOTES.md` |
 | 记忆区 | `docs/memory/`（MEMORY / REQUIREMENTS / WORKFLOW / GAPS / TASKS / JOURNAL / LESSONS） |
+
+
+### 被打断之后的收尾动作（2026-10-14 定）
+
+用户中途追加要求、打断当前工作时，恢复后**先做这三件事再往下走**：
+
+1. **核对手头的活**：被打断时正在改的文件改完了没？`git status` 有没有半成品？
+   本轮核对结果是三个提交全部收尾、工作树干净 —— 但这件事必须每次主动查，不能默认。
+2. **找被推翻的结论**：新要求如果修正了旧理解，**旧理解写在哪些文档里**？
+   断代最常见的形态不是漏做，而是文档里留着一句已经作废的话。
+   处置是"加修正指引"而不是"删掉" —— 删了就看不出为什么会变。
+3. **把打断本身记进 JOURNAL**：谁在什么工作中被打断、追加了什么、怎么调整的、
+   手头的活收尾没有。时间线比结论更能防断代。
+
+闸：`selfcheck_repo.py: check_no_stale_decisions()` 按节检查
+"说了排除就必须说现行口径"，防的正是第 2 条。
