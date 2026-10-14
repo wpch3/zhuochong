@@ -159,8 +159,8 @@ def check_decisions(root):
     STATUS = ("✅", "❌", "🔁")
     for b in blocks:
         head = b.splitlines()[0].strip()
-        m = re.match(r"(D\d+)\s*(\S+)", head)
-        if not check("条目标题写成「D## <状态> 一句话」（%s）" % head[:36], m is not None):
+        m = re.match(r"(DC\d+)\s*(\S+)", head)
+        if not check("条目标题写成「DC## <状态> 一句话」（%s）" % head[:36], m is not None):
             continue
         did, st = m.group(1), m.group(2)
         ids.append(did)
@@ -172,7 +172,7 @@ def check_decisions(root):
             check("%s 写了「%s」" % (did, field), mm is not None and len(mm.group(1).strip()) >= 6,
                   "A33 要求四个字段齐全，缺的那个往往就是翻车的那个")
         if st == "🔁":
-            check("%s 写了被哪条取代" % did, re.search(r"由\s*D\d+\s*取代", head + body) is not None,
+            check("%s 写了被哪条取代" % did, re.search(r"由\s*DC\d+\s*取代", head + body) is not None,
                   "已推翻的结论必须指向现行结论，否则读的人不知道信谁")
         if st == "❌":
             neg = re.search(r"(?m)^-\s*负控[：:]\s*(.+)$", body)
@@ -182,14 +182,73 @@ def check_decisions(root):
     check("编号不重复", len(ids) == len(set(ids)),
           "重复：%s" % [i for i in ids if ids.count(i) > 1][:3])
     # 指向的条目必须真的存在
-    refs = set(re.findall(r"由\s*(D\d+)\s*取代", txt))
+    refs = set(re.findall(r"由\s*(DC\d+)\s*取代", txt))
     missing = sorted(refs - set(ids))
-    check("「由 D## 取代」指向的条目都存在", not missing, "找不到：%s" % missing)
+    check("「由 DC## 取代」指向的条目都存在", not missing, "找不到：%s" % missing)
     check("登记表里有本轮（踮脚）那四条被推翻的记录",
-          len([b for b in blocks if b.startswith("D0") and "🔁" in b.splitlines()[0]]) >= 4,
+          len([b for b in blocks if b.startswith("DC0") and "🔁" in b.splitlines()[0]]) >= 4,
           "被推翻的中间结论也要留着当反面教材（用户 2026-10-14 的要求）")
 
 
+def check_acceptance(root):
+    """A32.4：真机验收清单与 TASKS 的 [需真机] 标记双向对账。
+
+    这张表的价值全在"对得上"三个字：
+      · TASKS 里标了 [需真机] 却没登记 → 又变成散在备注里的、永远不会被验的东西；
+      · 清单里留着 TASKS 已经删掉的条目 → 读的人以为还欠着，实际早没了。
+    所以两个方向都查，而且是全称判断（每一处，不是"有一处对"）—— LESSONS 97。
+    """
+    section("真机验收清单（A32 / G82）")
+    fp = os.path.join(root, "docs", "ACCEPTANCE.md")
+    tp = os.path.join(root, "docs", "memory", "TASKS.md")
+    if not check("真机验收清单在（docs/ACCEPTANCE.md）", os.path.isfile(fp),
+                 "A32.1 要求的落点；T23.4"):
+        return
+    with io.open(fp, encoding="utf-8") as fh:
+        txt = re.sub(r"(?s)```.*?```", "", fh.read())
+    with io.open(tp, encoding="utf-8") as fh:
+        tasks = fh.read()
+
+    # —— TASKS 侧：每一处 [需真机] 所在行的任务号
+    marked = []
+    for line in tasks.splitlines():
+        if "[需真机]" not in line:
+            continue
+        m = re.match(r"\|\s*(T\d+\.\d+)\s*\|", line)
+        check("[需真机] 标记写在任务行上（%s）" % line.strip()[:34], m is not None,
+              "标记要挂在某个任务号上，散在说明文字里的无法对账")
+        if m:
+            marked.append(m.group(1))
+
+    # —— 清单侧：### AC-## · T#.# 标题 + 勾选框
+    blocks = re.split(r"(?m)^### ", txt)[1:]
+    listed, acids = [], []
+    for b in blocks:
+        head = b.splitlines()[0].strip()
+        m = re.match(r"(AC-\d+)\s*·\s*(T\d+\.\d+)", head)
+        if not check("条目标题写成「AC-## · T#.# 一句话」（%s）" % head[:34], m is not None):
+            continue
+        acid, tid = m.group(1), m.group(2)
+        acids.append(acid)
+        listed.append(tid)
+        body = b.split("\n### ")[0]
+        check("%s 带勾选框 [ ]/[~]/[x]" % acid,
+              re.search(r"`\[( |~|x)\]`", head) is not None,
+              "没有勾选框就没法表达『你验过了』")
+        for field in ("怎么测", "算过", "不过先查", "沙箱边界"):
+            mm = re.search(r"(?m)^-\s*%s[：:]\s*(.+)$" % field, body)
+            check("%s 写了「%s」" % (acid, field),
+                  mm is not None and len(mm.group(1).strip()) >= 6,
+                  "A32.2/A32.3 要求四栏齐全；最容易糊弄的是『沙箱边界』")
+
+    check("AC 编号不重复", len(acids) == len(set(acids)),
+          "重复：%s" % [i for i in acids if acids.count(i) > 1][:3])
+    miss = sorted(set(marked) - set(listed))
+    check("TASKS 里每处 [需真机] 都登记进清单了（共 %d 处）" % len(marked), not miss,
+          "漏登：%s —— 这正是『写了但从没验证过』的来源" % miss)
+    extra = sorted(set(listed) - set(marked))
+    check("清单里没有 TASKS 已经不标 [需真机] 的条目", not extra,
+          "多出：%s —— 清单比现实旧了" % extra)
 def check_json(root):
     section("配置与角色包：JSON 全部能解析")
     pats = ["config/*.json", "schemas/*.json", "characters/*/*.json",
@@ -2008,7 +2067,7 @@ def main():
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
-               check_decisions,
+               check_decisions, check_acceptance,
                check_json, check_rig, check_engine_caps, check_torso_inertia,
                check_tiptoe_grounded, check_foot_switch, check_feet_on_ground,
                check_head_body_link,
