@@ -232,7 +232,32 @@ def profile(pet, pid, value, step=2, span=(0.10, 0.70)):
         s = row_shift(a, b, fy)
         if s is not None:
             rows.append((fy, s))
-    return rows
+    return rows, a
+
+
+def row_material(img, fy, step=2):
+    """这一行和上一行是不是同一种材质 —— 用来分辨「接缝」和「自由边」。
+
+    2026-10-15 的教训：剖面把"裙摆下沿 → 大腿"那处 +2.35px 的跳变报成接缝，
+    查了半天才发现**那不是裂缝，是一条自由边** —— 裙子跟着上身走、腿站着不动，
+    本来就该错开，就像真人侧身时裙边会相对腿偏一样。
+
+    真接缝（脖子/脚踝那种）两侧是**同一块皮肤或同一件衣服**被切成两半，
+    颜色几乎一样；自由边两侧是两种材质（藏青裙 vs 肤色腿），颜色差一大截。
+    所以这里比两侧的平均色：差得远 = 自由边 = 预期，差得近 = 真接缝 = 要修。
+    """
+    import numpy as _np
+    up = img[max(fy - step, 0)]
+    dn = img[min(fy + step, img.shape[0] - 1)]
+    def mean_rgb(rowpix):
+        m = rowpix[:, 3] > 32 if rowpix.shape[1] > 3 else _np.ones(len(rowpix), bool)
+        if not m.any():
+            return None
+        return rowpix[m][:, :3].astype(float).mean(axis=0)
+    cu, cd = mean_rgb(up), mean_rgb(dn)
+    if cu is None or cd is None:
+        return None
+    return float(_np.sqrt(((cu - cd) ** 2).sum()))
 
 
 def main():
@@ -269,7 +294,7 @@ def main():
 
     if a.profile:
       try:
-        rows = profile(pet, a.profile, a.profile_value)
+        rows, base_img = profile(pet, a.profile, a.profile_value)
         print("逐行水平位移剖面：%s = %s" % (a.profile, a.profile_value))
         print("位移应随 y 连续变化，**跳变就是接缝**\n")
         print("%8s %10s  %s" % ("帧行", "位移px", "图示"))
@@ -285,9 +310,26 @@ def main():
             prev = sh
         print("-" * 56)
         if jumps:
-            print("发现 %d 处跳变：%s" % (len(jumps),
-                  "、".join("帧行%d 差%+.2f" % j for j in jumps)))
-            print("跳变处两侧属于不同的部件/组，它们动得不一致 —— 那里会看到接缝。")
+            # 跳变分两类，别再混为一谈（2026-10-15 为此白查了一轮）：
+            #   · 两侧同材质 → 一块东西被切开了 → 真接缝，要修
+            #   · 两侧不同材质 → 自由边（裙边压着腿这种）→ 本来就该错开
+            # 阈值取 40：实测同材质的三处是 5/9/27，异材质（藏青裙↔肤色腿）是 66，
+            # 取中间而不是贴着 27 —— 贴着实测最大值等于没有余量。
+            MAT = 40.0
+            seams, edges = [], []
+            for fy, dv in jumps:
+                dist = row_material(base_img, fy)
+                (edges if (dist is not None and dist > MAT) else seams).append(
+                    (fy, dv, dist))
+            print("发现 %d 处跳变：" % len(jumps))
+            for fy, dv, dist in seams:
+                print("  ★ 帧行%4d 差%+.2f  两侧同材质（色距 %s）→ **真接缝，要修**"
+                      % (fy, dv, "—" if dist is None else "%.0f" % dist))
+            for fy, dv, dist in edges:
+                print("    帧行%4d 差%+.2f  两侧不同材质（色距 %.0f）→ 自由边，预期如此"
+                      % (fy, dv, dist))
+            if not seams:
+                print("没有真接缝：所有跳变都发生在两种材质的交界上（衣摆/袖口这类自由边）。")
         else:
             print("没有超过 %.2fpx 的跳变，各部分动得一致。" % a.jump)
         for q in pet.param_ids():
