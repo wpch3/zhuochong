@@ -276,6 +276,72 @@ def main():
           "；".join(hits[:3]) if hits
           else "扫了 %d 份配置，%d 个关键词" % (len(scan_files), len(BANNED)))
 
+    # ---- 界面圆角：按 Fluent 的三档来（DC20）----
+    # 微软官方口径：顶层容器 8px、控件 4px、嵌套元素比外层小 2px（→ 6px）、
+    # 与直边相交处 0px。药丸/圆点另算，允许 999px 与 50%。
+    # 为什么值得立闸：圆角是最容易"随手写个 10px 12px 14px"的地方，
+    # 写散了以后整个界面就不像一个系统里的东西了，而这种漂移没人会专门去查。
+    RADIUS_OK = {"0", "0px", "2px", "4px", "6px", "8px", "999px", "9999px", "50%"}
+    css_files, bad_r, nrad = [], [], 0
+    for dirpath, _dn, fns in os.walk(os.path.join(ROOT, "web")):
+        for fn in fns:
+            if fn.endswith(".css"):
+                css_files.append(os.path.join(dirpath, fn))
+    for cf in css_files:
+        txt = io.open(cf, encoding="utf-8").read()
+        # 变量本身也要守规矩，否则 var(--radius) 就是个后门
+        for name, val in re.findall(r"(--[a-z-]*radius[a-z-]*)\s*:\s*([^;]+);", txt):
+            nrad += 1
+            if val.strip() not in RADIUS_OK:
+                bad_r.append("%s 里 %s = %s" % (os.path.basename(cf), name, val.strip()))
+        for val in re.findall(r"border-radius\s*:\s*([^;]+);", txt):
+            nrad += 1
+            v = val.strip()
+            if v.startswith("var(") or v in RADIUS_OK:
+                continue
+            bad_r.append("%s 里 border-radius: %s" % (os.path.basename(cf), v))
+    check("界面圆角只用 Fluent 的档位（0/2/4/6/8/药丸）", not bad_r,
+          "；".join(bad_r[:4]) if bad_r
+          else "扫了 %d 个 css、%d 处圆角" % (len(css_files), nrad))
+
+    # ---- 档一的"零输入"要在代码层成立，不只是配置里写着（AC-20）----
+    # 配置可以改，注释可以删，但"仓库里根本没有发送输入的代码"是查得出来的事实。
+    # 将来真要做档三（手柄），把文件登记进 TIER3_ALLOW，这个闸会继续盯着其余地方。
+    INJECT = [
+        r"\bSendInput\b", r"\bkeybd_event\b", r"\bmouse_event\b", r"\bSetCursorPos\b",
+        r"\bXTestFake(Key|Button|Motion)Event\b", r"\bCGEventPost\b",
+        r"\bpyautogui\b", r"\brobotjs\b", r"\bpynput\b", r"\bvJoy\b", r"\bViGEm\b",
+    ]
+    TIER3_ALLOW = ()      # 档三还没做；做的时候把那个文件写进来
+    SCAN_EXT = (".c", ".h", ".py", ".js", ".ts", ".rs", ".cs", ".json")
+    SKIP_DIRS = {".git", "build", "node_modules", "logs", "dist", "characters"}
+    hits_inj, nscan = [], 0
+    for dirpath, dns, fns in os.walk(ROOT):
+        dns[:] = [d for d in dns if d not in SKIP_DIRS and not d.startswith(".")]
+        for fn in fns:
+            if not fn.endswith(SCAN_EXT):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, fn), ROOT)
+            if rel in TIER3_ALLOW or rel == os.path.join("tools", "check_platform.py"):
+                continue
+            nscan += 1
+            try:
+                txt = io.open(os.path.join(dirpath, fn), encoding="utf-8", errors="ignore").read()
+            except OSError:
+                continue
+            for pat in INJECT:
+                if re.search(pat, txt):
+                    hits_inj.append("%s 里出现 %s" % (rel, pat.strip("\\b")))
+    # 自检：探测器自己得能探到东西，否则"0 命中"可能只是正则写坏了
+    probe_ok = all(re.search(p, s) for p, s in (
+        (INJECT[0], "SendInput(1, &in, sizeof in);"),
+        (INJECT[6], "import pyautogui"),
+    ))
+    check("输入注入探测器自己是好的（自检）", probe_ok,
+          "探测器对样本都不报警的话，下面那条『0 命中』就是假绿")
+    check("代码层面不存在输入通道（档一零输入，AC-20）", not hits_inj,
+          "；".join(hits_inj[:4]) if hits_inj
+          else "扫了 %d 个源文件、%d 个注入 API 关键词" % (nscan, len(INJECT)))
     # ---- 游戏档位表（A25）：网游只能陪聊，不许代打 ----
     # 用户 2026-10-14：「不是完全禁止网游，而是让他们可以在网游也陪伴聊天和
     # 实时屏幕操作进行回应对话，而其他的可以真正的游玩。」
@@ -522,6 +588,8 @@ def main():
             "schema_version": "1.0",
             "strategy": (gw.get("routing") or {}).get("strategy"),
             "fallback": (gw.get("routing") or {}).get("fallback", True),
+            "rules": {k: v for k, v in ((gw.get("routing") or {}).get("rules") or {}).items()
+                      if not k.startswith("_")},
             "routes": routes,
         }, "路由表，%d 条" % len(routes))
 

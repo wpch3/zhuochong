@@ -759,3 +759,40 @@ G89 加的 `bend_hold_above`（颈部形变平台）**只接了 warp 那条绘�
 
 后两个严格说应该用"上半身起伏 + 腿压缩"来表达（chest 组 dy + 腿纵向形变），
 而不是整个人平移。等做 G44（physics 输出参数化）或下半身二级骨骼时一并改。
+
+## G99 · `prefer_local` 只是"有本地就用本地"，不是真双路由（2026-10-15，已做完）
+
+**原来的样子**：`config/gateway.json` 的 `routing.strategy = prefer_local`，
+运行时 `zgw_pick()` 按优先级取第一个 enabled 的。它回答不了两个要命的问题 ——
+"这条请求带隐私标记"和"本地显卡正忙"。更糟的是：**本地那条关掉时它会安静地滑到云端**，
+对普通请求没问题，对带隐私标记的请求就是事故。
+
+**做法**（判据抄自 REFERENCE_NOTES 第二十批，结论登记在 DC18）：
+新增 `zgw_route_for(g, cap, req, &why, &reason)`，三支柱按**不可颠倒的次序**判：
+
+1. **敏感 → 强制本地**。本地不可用时返回 `ZGW_SENSITIVE_NO_LOCAL`，**不退而求其次**。
+   这是整个函数里唯一一个"宁可功能不可用"的分支。
+2. **复杂 / 长 → 云端**：`tokens_est > rules.tokens_cloud`(512) 或 `task == HEAVY`。
+3. **忙 / 故障 → 互相兜底**：本地负载 ≥ `local_busy_pct`(85) 溢出到云端；
+   云端 `cloud_down` 时退回本地。
+
+阈值不写死在代码里：`config/gateway.json` 的 `routing.rules` 是契约，
+`tools/check_platform.py` 把它物化进 `config/gateway_routes.json`（DC24 的老做法）。
+每次决策记一笔 `reason_hits[]` + `picks_local/cloud`，`zgw_local_share()` 给出本地分流占比
+—— 调研给的目标区间是 **0.70~0.85**，长期偏离说明**阈值不对**，而不是用户变了。
+
+新端点 **`/api/route`**（`?cap=&sensitive=&tokens=&load=&cloud_down=&heavy=`）是个纯决策沙盘：
+不发任何网络请求，在没有密钥、没有显卡的机器上也能把规则验到底。
+
+| 实测（本地全关、云端全开的"最诱惑局面"） | 结果 |
+|---|---|
+| `sensitive=1` | **(拒绝)** `reason=sensitive_blocked` |
+| 同一局面、同一能力，只是不带 sensitive | `deepseek` `reason=only_choice` |
+| `tokens=4000` | `deepseek` `reason=long_cloud` |
+
+闸门：`test_core` **653 → 666**；负控 = 在敏感分支偷偷加一句上云 fallback
+（别人最容易"顺手贴心"的那种改动）→ 两项立刻判红。
+
+**还欠**：① 阈值是抄来的，要用 `data/usage.jsonl` 的真实记账重标（DC18 的复查触发）；
+② 还没有"任务类型自动判重活"的分类器，现在 `heavy` 是调用方传的；
+③ 路由决策没写进账本文件，只在内存里计数。

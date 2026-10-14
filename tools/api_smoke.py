@@ -347,6 +347,31 @@ def run(base, root):
     a.get("/api/gaze?off=1")
 
     print("== 网关（G51） ==")
+    # ---- /api/route：双路由沙盘（DC18 / G99）----
+    # 这里用的是真配置（云端默认关着），所以看到的主要是"本地兜住了"；
+    # 三支柱的完整分叉在 test_core 里用自造路由表验（真表验不全）。
+    rt = a.json("/api/route?cap=chat.completion")
+    check("route 端点能读", isinstance(rt, dict) and "reason" in rt)
+    check("默认短请求留在本地", rt.get("local") is True,
+          "%s / %s" % (rt.get("provider"), rt.get("reason")))
+    check("阈值要报出来（不是写死在代码里）",
+          (rt.get("rules") or {}).get("tokens_cloud", 0) > 0,
+          str(rt.get("rules")))
+    sens = a.json("/api/route?cap=chat.completion&sensitive=1")
+    check("敏感请求的落点必须是本地或拒绝，绝不是云端",
+          sens.get("local") is True or sens.get("blocked_sensitive") is True,
+          "provider=%s reason=%s" % (sens.get("provider"), sens.get("reason")))
+    check("敏感请求的理由要写明白", sens.get("reason") in ("sensitive_local", "sensitive_blocked"),
+          sens.get("reason"))
+    down = a.json("/api/route?cap=chat.completion&tokens=4000&cloud_down=1")
+    check("云端挂了要退回本地而不是失败", down.get("ok") is True and down.get("local") is True,
+          down.get("reason"))
+    miss = a.json("/api/route?cap=nobody.does.this")
+    check("没人提供的能力要老实说不行", miss.get("ok") is False, str(miss.get("reason")))
+    st = (a.json("/api/route?cap=chat.completion") or {}).get("stats") or {}
+    check("决策要记账（为了事后重标阈值）", st.get("local", 0) + st.get("cloud", 0) > 0,
+          str(st))
+
     gw = a.json("/api/gateway.json")
     check("gateway.json 能读", isinstance(gw, dict) and "loaded" in gw)
     check("路由表要真的加载上", gw.get("loaded") is True,

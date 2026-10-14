@@ -15,7 +15,7 @@
     "bubble_self": "#FFF3F7",
     "bubble_pet": "#EAF7F6"
   },
-  "shapes": { "corner_radius": 18, "border_width": 3 },
+  "shapes": { "corner_radius": 8, "control_radius": 4, "border_width": 3 },  // Fluent 三档：容器 8 / 控件 4 / 嵌套 6（DC20）
   "motion": { "bounce_amp": 0.08, "duration_s": 0.25 },
   "resources": {
     "bubble": "assets/ui/bubble_pet.png",       // 全部为高清生成 PNG，禁止 emoji/SVG

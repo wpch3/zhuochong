@@ -398,6 +398,47 @@ static void handle_request(zsock fd, const http_req *r)
             if (send_file(fd, p) == 0) return;
         }
     }
+    if (strcmp(r->path, "/api/route") == 0) {
+        /* 双路由沙盘（DC18）：给一条假请求，看它会落到本地还是云端、为什么。
+           这是纯决策，不发任何网络请求 —— 所以在没有密钥、没有显卡的机器上
+           也能把"敏感数据绝不上云"这类规则验到底。 */
+        char body[1024], cap_s[64];
+        zgw_req req;
+        zgw_status why = ZGW_NO_SUCH_CAP;
+        zgw_reason reason = ZGW_R_DEFAULT_LOCAL;
+        const zgw_route *rt;
+        double share;
+
+        if (!qstr(r, "cap", cap_s, sizeof(cap_s)) || !cap_s[0])
+            z_strlcpy(cap_s, "chat.completion", sizeof(cap_s));
+        memset(&req, 0, sizeof(req));
+        req.sensitive      = qint(r, "sensitive", 0) ? 1 : 0;
+        req.tokens_est     = (long)qint(r, "tokens", 0);
+        req.local_load_pct = qint(r, "load", -1);
+        req.cloud_down     = qint(r, "cloud_down", 0) ? 1 : 0;
+        req.task           = qint(r, "heavy", 0) ? ZGW_TASK_HEAVY : ZGW_TASK_SIMPLE;
+
+        LOCK();
+        rt = g_gw_ok ? zgw_route_for(&g_gw, cap_s, &req, &why, &reason) : NULL;
+        share = zgw_local_share(&g_gw);
+        z_snprintf(body, sizeof(body),
+            "{\"cap\":\"%s\",\"ok\":%s,\"provider\":\"%s\",\"model\":\"%s\",\"local\":%s,"
+            "\"reason\":\"%s\",\"blocked_sensitive\":%s,"
+            "\"rules\":{\"tokens_cloud\":%ld,\"local_busy_pct\":%d,\"sensitive_local_only\":%s},"
+            "\"stats\":{\"local\":%ld,\"cloud\":%ld,\"local_share\":%.4f}}",
+            cap_s, rt ? "true" : "false",
+            rt ? rt->provider : "", rt ? rt->model : "",
+            (rt && rt->local) ? "true" : "false",
+            zgw_reason_name(reason),
+            (why == ZGW_SENSITIVE_NO_LOCAL) ? "true" : "false",
+            g_gw.rules.tokens_cloud, g_gw.rules.local_busy_pct,
+            g_gw.rules.sensitive_local_only ? "true" : "false",
+            g_gw.picks_local, g_gw.picks_cloud, share);
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+
     if (strcmp(r->path, "/api/gateway.json") == 0) {
         /* 界面要回答用户三个问题：这功能能不能用？会用谁？花了多少钱？
            所以这里导出的是"路由的结果"，不是路由表原样——原样在 platform.json 里有。 */

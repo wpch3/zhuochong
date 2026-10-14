@@ -3,6 +3,11 @@
   "schema_version": "1.0",
   "strategy": "prefer_local",
   "fallback": true,
+  "rules": {
+    "tokens_cloud": 512,
+    "local_busy_pct": 85,
+    "sensitive_local_only": true
+  },
   "routes": [
     {
       "cap": "chat.completion",

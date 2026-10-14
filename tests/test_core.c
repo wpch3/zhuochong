@@ -2414,6 +2414,95 @@ static void test_gateway(void)
               "三种失败原因必须是不同的值");
     }
 
+    SECTION("网关：本地↔云端双路由（DC18 三支柱）");
+    {
+        /* 一张两边都有候选的表：local 的 l_one 和云端的 c_one。
+           真表测不出来——真表里云端那几家默认是关着的（用户还没填密钥），
+           那样无论怎么问都只会落到本地，看起来"全对"其实什么都没验。 */
+        zgw_req rq;
+        zgw_reason rs = ZGW_R_DEFAULT_LOCAL;
+        zgateway h;
+        int i;
+
+        gw_write("/tmp/zc_gw/hybrid.json",
+            "{\"schema_version\":\"1.0\",\"strategy\":\"prefer_local\",\"fallback\":true,"
+            "\"rules\":{\"tokens_cloud\":512,\"local_busy_pct\":85,\"sensitive_local_only\":true},"
+            "\"routes\":["
+            "{\"cap\":\"chat\",\"provider\":\"l_one\",\"model\":\"q7b\",\"priority\":90,"
+            "\"local\":true,\"enabled\":true,\"free\":true,"
+            "\"price_in\":0,\"price_out\":0,\"price_per\":0},"
+            "{\"cap\":\"chat\",\"provider\":\"c_one\",\"model\":\"big\",\"priority\":50,"
+            "\"local\":false,\"enabled\":true,\"free\":false,"
+            "\"price_in\":1,\"price_out\":2,\"price_per\":1000000}"
+            "]}");
+        zdiag_init(&d);
+        CHECK(zgw_load(&h, "/tmp/zc_gw/hybrid.json", &d) == 0, "混合路由表应能加载");
+        CHECK(h.rules.tokens_cloud == 512 && h.rules.local_busy_pct == 85,
+              "阈值要从表里读出来，不是写死在代码里");
+
+        memset(&rq, 0, sizeof(rq));
+        rq.local_load_pct = -1;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(r && r->local && rs == ZGW_R_DEFAULT_LOCAL,
+              "普通短请求默认留在本地");
+
+        rq.tokens_est = 4000;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(r && !r->local && rs == ZGW_R_LONG_CLOUD,
+              "超过 token 阈值要上云");
+
+        rq.tokens_est = 0;
+        rq.task = ZGW_TASK_HEAVY;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(r && !r->local && rs == ZGW_R_HEAVY_CLOUD,
+              "重活（推理/写码/工具调用）要上云");
+
+        rq.task = ZGW_TASK_SIMPLE;
+        rq.local_load_pct = 92;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(r && !r->local && rs == ZGW_R_LOCAL_BUSY,
+              "本地忙到 92% 要溢出到云端");
+        rq.local_load_pct = 84;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(r && r->local,
+              "84% 还没到 85% 的阈值，不该溢出（阈值要真的是阈值）");
+
+        rq.local_load_pct = -1;
+        rq.tokens_est = 4000;
+        rq.cloud_down = 1;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(r && r->local && rs == ZGW_R_CLOUD_DOWN,
+              "本想上云但云端挂了，要退回本地而不是失败");
+
+        /* ---- 这一条是整组里最重要的：敏感数据绝不偷偷上云 ---- */
+        memset(&rq, 0, sizeof(rq));
+        rq.local_load_pct = -1;
+        rq.sensitive = 1;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(r && r->local && rs == ZGW_R_SENSITIVE_LOCAL,
+              "敏感请求走本地");
+
+        /* 把本地那条关掉，只剩云端——这是最有诱惑力的局面 */
+        for (i = 0; i < h.nroutes; ++i)
+            if (h.routes[i].local) h.routes[i].enabled = 0;
+
+        rq.sensitive = 0;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(r && !r->local,
+              "负对照：同样的局面下，不敏感的请求是会落到云端的");
+
+        rq.sensitive = 1;
+        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        CHECK(!r && why == ZGW_SENSITIVE_NO_LOCAL && rs == ZGW_R_SENSITIVE_BLOCKED,
+              "敏感 + 本地不可用 = 拒绝。宁可功能不可用，也不许上云");
+
+        /* 分流占比：上面一共落地 8 次（被拒的那次不算落地） */
+        CHECK(zgw_local_share(&h) >= 0.0 && zgw_local_share(&h) <= 1.0,
+              "本地分流占比要能算出来（用来事后重标阈值）");
+        CHECK(h.reason_hits[ZGW_R_SENSITIVE_BLOCKED] == 1,
+              "被拒的那次也要记一笔，否则调阈值时看不到代价");
+    }
+
     SECTION("网关：估价");
     {
         const zgw_route *hi = zgw_pick(&g, "a.one", 0, NULL);

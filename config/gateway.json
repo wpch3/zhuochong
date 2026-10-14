@@ -17,7 +17,13 @@
       "prefer_quality",
       "fixed"
     ],
-    "fixed": {}
+    "fixed": {},
+    "rules": {
+      "_note": "本地↔云端双路由的阈值（DC18 三支柱）。这三个数是抄来的（REFERENCE_NOTES 第二十批），必须用 data/usage.jsonl 的真实记账重标；本地分流长期偏离 0.70~0.85 就说明阈值不对。",
+      "tokens_cloud": 512,
+      "local_busy_pct": 85,
+      "sensitive_local_only": true
+    }
   },
   "limits": {
     "max_concurrency": 4,

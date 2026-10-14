@@ -35,6 +35,15 @@ int zgw_load(zgateway *g, const char *routes_path, zdiag *d)
               sizeof(g->strategy));
     g->fallback = zjson_bool(zjson_get(root, "fallback"), 1);
 
+    /* 双路由阈值：表里没写就用抄来的默认值（DC18 的复查触发里写明要重标） */
+    {
+        zjson *ru = zjson_get(root, "rules");
+        g->rules.tokens_cloud   = (long)zjson_int(zjson_obj_get(ru, "tokens_cloud"), 512);
+        g->rules.local_busy_pct = (int)zjson_int(zjson_obj_get(ru, "local_busy_pct"), 85);
+        g->rules.sensitive_local_only =
+            zjson_bool(zjson_obj_get(ru, "sensitive_local_only"), 1);
+    }
+
     arr = zjson_get(root, "routes");
     n = zjson_count(arr);
     for (i = 0; i < n && g->nroutes < ZGW_MAX_ROUTES; ++i) {
@@ -102,6 +111,131 @@ const zgw_route *zgw_pick(const zgateway *g, const char *cap, int attempt, zgw_s
         else            *why = ZGW_EXHAUSTED;     /* 候选用完了 */
     }
     return NULL;
+}
+
+/* ---- 本地↔云端双路由（DC18）----------------------------------------
+ *
+ * 判据抄自 docs/REFERENCE_NOTES 第二十批，三支柱的次序是有讲究的：
+ *   敏感 > 复杂/长 > 忙或故障。
+ * 敏感排第一且**不可被后面两条推翻** —— 本地不可用时宁可失败，也不上云。
+ * 这条是整个函数里唯一一个"宁可功能不可用"的分支，别人改代码时最容易
+ * 顺手给它加个 fallback，所以测试里专门盯着它（test_core / check_platform）。
+ */
+
+const char *zgw_reason_name(zgw_reason r)
+{
+    switch (r) {
+    case ZGW_R_DEFAULT_LOCAL:     return "default_local";
+    case ZGW_R_SENSITIVE_LOCAL:   return "sensitive_local";
+    case ZGW_R_LONG_CLOUD:        return "long_cloud";
+    case ZGW_R_HEAVY_CLOUD:       return "heavy_cloud";
+    case ZGW_R_LOCAL_BUSY:        return "local_busy";
+    case ZGW_R_CLOUD_DOWN:        return "cloud_down";
+    case ZGW_R_ONLY_CHOICE:       return "only_choice";
+    case ZGW_R_SENSITIVE_BLOCKED: return "sensitive_blocked";
+    default:                      return "unknown";
+    }
+}
+
+/* 在同一张表里按优先级挑第一条 enabled 且 local 符合要求的 */
+static const zgw_route *pick_side(const zgateway *g, const char *cap, int want_local)
+{
+    int i;
+    for (i = 0; i < g->nroutes; ++i) {
+        const zgw_route *r = &g->routes[i];
+        if (strcmp(r->cap, cap) != 0) continue;
+        if (!r->enabled) continue;
+        if (!!r->local != !!want_local) continue;
+        return r;
+    }
+    return NULL;
+}
+
+static void note(zgateway *g, zgw_reason why, const zgw_route *r)
+{
+    if (why >= 0 && why < ZGW_R_COUNT) g->reason_hits[why]++;
+    if (r) { if (r->local) g->picks_local++; else g->picks_cloud++; }
+}
+
+const zgw_route *zgw_route_for(zgateway *g, const char *cap, const zgw_req *req,
+                               zgw_status *why, zgw_reason *reason)
+{
+    const zgw_route *local_r, *cloud_r, *r;
+    zgw_rules ru;
+    zgw_reason rs = ZGW_R_DEFAULT_LOCAL;
+    int want_cloud = 0;
+
+    if (why) *why = ZGW_OK;
+    if (reason) *reason = ZGW_R_DEFAULT_LOCAL;
+    if (!g || !cap || !*cap || !req) {
+        if (why) *why = ZGW_NO_SUCH_CAP;
+        return NULL;
+    }
+
+    ru = g->rules;
+    if (ru.tokens_cloud <= 0)   ru.tokens_cloud = 512;
+    if (ru.local_busy_pct <= 0) ru.local_busy_pct = 85;
+
+    local_r = pick_side(g, cap, 1);
+    cloud_r = pick_side(g, cap, 0);
+    if (!local_r && !cloud_r) {
+        /* 分不清是"没人声明过"还是"全关了"，交给 zgw_pick 的口径 */
+        zgw_pick(g, cap, 0, why);
+        if (why && *why == ZGW_OK) *why = ZGW_ALL_DISABLED;
+        return NULL;
+    }
+
+    /* 支柱一：敏感数据强制本地。注意这里**没有** else 去兜云端。 */
+    if (req->sensitive && ru.sensitive_local_only != 0) {
+        if (local_r) {
+            rs = ZGW_R_SENSITIVE_LOCAL;
+            if (reason) *reason = rs;
+            note(g, rs, local_r);
+            return local_r;
+        }
+        rs = ZGW_R_SENSITIVE_BLOCKED;
+        if (reason) *reason = rs;
+        if (why) *why = ZGW_SENSITIVE_NO_LOCAL;
+        note(g, rs, NULL);
+        return NULL;
+    }
+
+    /* 支柱二：复杂 / 长上下文上云 */
+    if (req->tokens_est > ru.tokens_cloud)      { want_cloud = 1; rs = ZGW_R_LONG_CLOUD; }
+    else if (req->task == ZGW_TASK_HEAVY)       { want_cloud = 1; rs = ZGW_R_HEAVY_CLOUD; }
+    /* 支柱三之一：本地忙 → 溢出 */
+    else if (req->local_load_pct >= 0 &&
+             req->local_load_pct >= ru.local_busy_pct) { want_cloud = 1; rs = ZGW_R_LOCAL_BUSY; }
+
+    /* 支柱三之二：云端故障 → 退回本地 */
+    if (want_cloud && req->cloud_down && local_r) {
+        rs = ZGW_R_CLOUD_DOWN;
+        if (reason) *reason = rs;
+        note(g, rs, local_r);
+        return local_r;
+    }
+
+    r = want_cloud ? cloud_r : local_r;
+    if (!r) {                       /* 想要的那边没有候选，只剩另一边 */
+        r = want_cloud ? local_r : cloud_r;
+        rs = ZGW_R_ONLY_CHOICE;
+    }
+    if (!r) {                       /* 理论上到不了这里（上面已排除两边都空） */
+        if (why) *why = ZGW_ALL_DISABLED;
+        return NULL;
+    }
+    if (reason) *reason = rs;
+    note(g, rs, r);
+    return r;
+}
+
+double zgw_local_share(const zgateway *g)
+{
+    long tot;
+    if (!g) return -1.0;
+    tot = g->picks_local + g->picks_cloud;
+    if (tot <= 0) return -1.0;
+    return (double)g->picks_local / (double)tot;
 }
 
 int zgw_candidate_count(const zgateway *g, const char *cap)

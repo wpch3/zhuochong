@@ -50,6 +50,14 @@ function makeEl(tag) {
         add(c) { if (!e.className.split(/\s+/).includes(c)) e.className = (e.className + " " + c).trim(); },
         remove(c) { e.className = e.className.split(/\s+/).filter((x) => x && x !== c).join(" "); },
         contains(c) { return e.className.split(/\s+/).includes(c); },
+        /* 真浏览器有 toggle，stub 漏了它就会出现"组件在页面上好好的、测试里一跑就崩"
+           （反过来更糟：组件为了迁就 stub 写得别扭）。补齐，口径同 DOM 规范。 */
+        toggle(c, force) {
+          const has = this.contains(c);
+          const on = force === undefined ? !has : !!force;
+          if (on) this.add(c); else this.remove(c);
+          return on;
+        },
       };
     },
     querySelectorAll(sel) { return walk(e).filter((n) => matches(n, sel)); },
@@ -199,6 +207,25 @@ function makeFetch() {
       const f = path.join(WEB, u.split("?")[0]);
       if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
       return json(JSON.parse(fs.readFileSync(f, "utf8")));
+    }
+    if (u.includes("/api/route")) {
+      /* 这个假端点必须和 C 侧 zgw_route_for 的口径一致，否则面板测绿了、
+         真服务上却是另一回事（吃过这个亏：stub 漏字段 → 测试绿、真界面空白）。 */
+      const q = Object.fromEntries(new URLSearchParams((u.split("?")[1] || "")));
+      const sens = q.sensitive === "1", heavy = q.heavy === "1";
+      const tok = parseInt(q.tokens || "0", 10), load = parseInt(q.load || "-1", 10);
+      const down = q.cloud_down === "1";
+      let local = true, reason = "default_local", ok = true;
+      if (sens) { reason = "sensitive_local"; }
+      else if (tok > 512) { local = false; reason = "long_cloud"; }
+      else if (heavy) { local = false; reason = "heavy_cloud"; }
+      else if (load >= 85) { local = false; reason = "local_busy"; }
+      if (!local && down) { local = true; reason = "cloud_down"; }
+      return json({ cap: "chat.completion", ok: ok, provider: local ? "ollama" : "deepseek",
+                    model: local ? "qwen2.5:7b" : "deepseek-chat", local: local,
+                    reason: reason, blocked_sensitive: false,
+                    rules: { tokens_cloud: 512, local_busy_pct: 85, sensitive_local_only: true },
+                    stats: { local: 3, cloud: 1, local_share: 0.75 } });
     }
     if (u.includes("/api/params.json")) return json(PARAMS);
     if (u.includes("voicebank.json")) {
@@ -665,6 +692,38 @@ function slotOf(id) {
     const served = pf.capabilities.filter((c) => c.providers.length);
     CHECK(served.length > 0 && served.every((c) => txt.includes(c.name + " — " + c.providers.join(" / "))),
           "每种能力要列出真实的供应商归属，不能只渲染空行（" + served.length + " 种有供应商）");
+  }
+
+  SECTION("双路由沙盘（G99/DC18）：规则要在界面上看得见、拨得动");
+  {
+    const el = slotOf("route");
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    const txt = () => walk(el).map((n) => n._text).join(" ");
+    CHECK(txt().includes("本地"), "默认应显示落点在本地");
+    CHECK(txt().includes("70~85%"), "要把目标分流区间摆出来，否则用户不知道这个数算好还是坏");
+    CHECK(!txt().includes("default_local") || txt().includes("没有任何理由上云"),
+          "理由不能只给英文枚举，要翻成人话");
+
+    /* 拨动"带隐私标记"：落点和理由都得跟着变 —— 只渲染不联动的面板等于贴图 */
+    const before = txt();
+    const bsens = walk(el).find((n) => n.id === "route-sensitive");
+    CHECK(!!bsens, "要有『带隐私标记』开关");
+    bsens.onclick();
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    CHECK(txt() !== before, "拨开关之后面板内容必须变化");
+    CHECK(txt().includes("强制本地"), "带隐私标记时要说清楚是『强制本地』");
+    CHECK(bsens.className.includes("pri"), "按下的开关要高亮（classList.toggle 要真的起作用）");
+
+    /* 长请求要上云 —— 这条是"本地优先不是无脑优先"的可见证据 */
+    const tokr = walk(el).find((n) => n.id === "route-tokens");
+    bsens.onclick();                       /* 先关掉隐私标记 */
+    await new Promise((r) => setImmediate(r));
+    tokr.value = "4000"; tokr.oninput();
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    CHECK(txt().includes("云端"), "4000 token 的请求应该落到云端");
   }
 
   SECTION("容错：布局写错不该让整个界面白屏");

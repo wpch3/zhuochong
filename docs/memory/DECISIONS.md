@@ -190,8 +190,10 @@
   前提的量化依据来自论文对照表（全本地质量 0.42 / 响应 3.97s vs 全云 0.57 / 1.06s）。
 - 证据：<https://arxiv.org/html/2507.15553v1>（★★，路由器综合分 0.752 vs 全云 0.667）；
   三家工程博客给出同一套三支柱与阈值量级（>512 token 上云、GPU 利用率 85/90% 溢出）。
-- 负控：✅ 可在沙箱做 —— `gateway` 已有路由表与记账，写三条伪造请求（带敏感标记 / 超长 /
-  本地标记为忙）断言落点不同；**这条负控本轮尚未写，列入 T20 下一步**。
+- 负控：✅ **已做（2026-10-15）** —— `tests/test_core.c` 用自造混合路由表（本地 + 云端各一条）
+  验了六条分叉；真正的负控是**在敏感分支偷偷加一句上云 fallback**（别人最容易"顺手贴心"的
+  那种改动）→ 两项立刻判红。另有一条同局面负对照：**本地全关时，不敏感的请求确实会落到
+  deepseek，带 sensitive 的那条被拒** —— 两者唯一的差别就是那个标记。
 - 复查触发：阈值（512 token / 85% 利用率）是**抄来的**，必须用自己的记账数据重标；
   真实分流比例若长期偏离 70~85%，说明阈值不对。
 
@@ -215,8 +217,9 @@
   `ControlCornerRadius`=4、`OverlayCornerRadius`=8）与
   <https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/system-backdrop-controller>
   （Mica 用于窗口底层、Acrylic 只用于临时性面）。
-- 负控：✅ 可做 —— `tools/check_platform.py` 加一条：主题/样式表里的圆角只允许 {0,4,6,8}px。
-  **本轮未加，列入 T20。**
+- 负控：✅ **已做（2026-10-15）** —— `tools/check_platform.py` 扫 `web/**.css` 与 `config/ui.json`，
+  圆角只允许 {0,2,4,6,8,999px,50%}；把 `--radius` 改成 13px → 立刻判红。
+  顺带发现**契约自己就不合规**：`config/ui.json` 的 `corner_radius` 当时还是 18，已改 8。
 - 复查触发：改做 macOS 版时换 HIG 口径（vibrancy），不要把 Fluent 的数字照搬过去。
 
 ---
