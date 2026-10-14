@@ -357,6 +357,151 @@ L2D_RANGE = {
 }
 
 
+def check_plan_traceability(root):
+    """「我们所有的计划不能忘」—— 把这句话落成闸。
+
+    用户 2026-10-14 明确要求计划不能只停在对话里。文档会写，但写完照样会忘：
+    真正的风险是**需求写进了 REQUIREMENTS，却没有任何地方安排谁去做**，
+    半年后翻出来发现它从来没进过排期。所以这里做双向追溯：
+
+      · 每条需求（A/B/C/D/E/F/H/I 系）必须在 TASKS 或 GAPS 里被提到
+      · 每个缺口 G<n> 必须在 TASKS 里有落点，或自己写明已修完
+      · PLATFORM_PLAN 里列出的 G 编号必须真的在 GAPS 里登记过
+
+    任何一条断链都判红。这比"记得写文档"可靠，因为它每次 make check 都跑。
+    """
+    section("计划追溯：需求 → 缺口 → 任务，一条都不许断")
+    mem = os.path.join(root, "docs/memory")
+
+    def rd(name, base=mem):
+        fp = os.path.join(base, name)
+        return io.open(fp, encoding="utf-8").read() if os.path.exists(fp) else ""
+
+    req, tasks, gaps = rd("REQUIREMENTS.md"), rd("TASKS.md"), rd("GAPS.md")
+    plan = rd("PLATFORM_PLAN.md", os.path.join(root, "docs"))
+    elsewhere = tasks + gaps + plan
+
+    # ① 每条需求要么自己写明落点（表格第 4 列），要么在排期里被引用到。
+    #    REQUIREMENTS 的表格是 | 编号 | 需求 | 来源 | 落点 | 状态 |，
+    #    落点列填了 T9.1 / src/win32 这种就算有归宿；空着就必须在别处排期。
+    orphan, nreq = [], 0
+    for line in req.splitlines():
+        m = re.match(r"\|\s*([ABCDEFHI]\d+)\s*\|", line)
+        if m:
+            nreq += 1
+            cols = [c.strip() for c in line.strip().strip("|").split("|")]
+            landing = cols[3] if len(cols) > 3 else ""
+            status = cols[4] if len(cols) > 4 else ""
+            if "✅" in status or "已完成" in status:   # 做完了就不用再排期
+                continue
+            if landing in ("", "—", "-", "待定", "TBD"):
+                if not re.search(r"\b" + m.group(1) + r"\b", elsewhere):
+                    orphan.append(m.group(1))
+            continue
+        m = re.match(r"#+\s*([ABCDEFHI]\d+)\s", line)      # 小节形式的需求（A22/A23…）
+        if m:
+            nreq += 1
+            rid = m.group(1)
+            # 小节形式的需求，落点可能写在小节正文里（"已落成闸"/"验收口径"），
+            # 所以正文提到闸或验收也算有归宿。
+            body = req[req.index(line):]
+            body = body[:body.find("\n## ", 1) if body.find("\n## ", 1) > 0 else len(body)]
+            if ("已落成闸" in body or "验收口径" in body
+                    or re.search(r"\b" + rid + r"\b", elsewhere)):
+                continue
+            orphan.append(rid)
+    check("每条需求都有落点（自己写明或排进任务）", not orphan,
+          f"{orphan[:8]} 既没写落点也没进排期 —— 这就是「计划被忘掉」的样子"
+          if orphan else f"{nreq} 条需求全部可追溯")
+
+    # ② 缺口编号都要有归宿：要么排了期，要么自己写明修完了。
+    #    GAPS 里编号有两种写法：老的表格行 | G12 （…） 和新的小节标题 ## G68 …
+    gnums = {int(m) for m in re.findall(r"^#+\s*G(\d+)", gaps, re.M)}
+    gnums |= {int(m) for m in re.findall(r"^\|\s*~*\s*G(\d+)[a-z]?\d?\s*~*\s*[（(|]",
+                                         gaps, re.M)}
+    done = {int(m) for m in re.findall(
+        r"(?:^#+\s*G|^\|\s*~*\s*G)(\d+)[^\n]*?(?:修完|已修|完成|做完|✅|~~)", gaps, re.M)}
+    # 老格式把落点写在编号后的括号里：| G2 (T9.2) | …
+    inline = {int(m) for m in re.findall(r"^\|\s*~*\s*G(\d+)[a-z]?\d?\s*\(T[\d.]+\)",
+                                         gaps, re.M)}
+    lost = sorted(g for g in gnums
+                  if g not in done and g not in inline
+                  and not re.search(r"\bG%d\b" % g, tasks + plan))
+    check("每个缺口要么排了期要么写明修完", not lost,
+          f"G{lost[:8]} 既没修完也没进 TASKS/计划" if lost
+          else f"{len(gnums)} 个缺口，{len(done)} 个已了结，其余都有排期")
+
+    # ③ 计划里提到的 G 编号必须真的在 GAPS 登记过（防止计划里凭空冒出一个编号）
+    plan_g = {int(m) for m in re.findall(r"\bG(\d+)\b", plan)}
+    unlogged = sorted(g for g in plan_g if g not in gnums)
+    check("计划里的缺口编号都在 GAPS 登记过", not unlogged,
+          f"G{unlogged[:8]} 出现在计划里但 GAPS 没这条" if unlogged
+          else f"计划引用 {len(plan_g)} 个编号，全部有据")
+
+    # ④ 用户明确排除的东西，不许偷偷出现在代码和配置里
+    banned = ("doubao", "volcengine", "volces", "火山方舟")
+    hit = []
+    for sub in ("src", "config", "web"):
+        d = os.path.join(root, sub)
+        for dp, _dn, fns in os.walk(d):
+            for fn in fns:
+                if not fn.endswith((".c", ".h", ".js", ".json", ".css")):
+                    continue
+                fp = os.path.join(dp, fn)
+                try:
+                    low = io.open(fp, encoding="utf-8").read().lower()
+                except (UnicodeDecodeError, OSError):
+                    continue
+                for b in banned:
+                    if b in low:
+                        hit.append(os.path.relpath(fp, root) + " 命中 " + b)
+    check("代码与配置里没有豆包 / 火山（用户明确排除）", not hit, "；".join(hit[:3]))
+
+
+def check_form_roadmap(root):
+    """形态路线图与磁盘必须对得上。
+
+    「其他形态先留空、做好了再加」这个做法只有配上这条闸才不会烂掉 —— 否则半年后
+    没人说得清 loli/adult/chibi 是「还没做」还是「做了但坏了」。规则三条：
+      · 清单写 status=ready 的，forms/<id>/rig.json 必须真的存在
+      · 磁盘上有 rig.json 的，必须在清单里登记（做完了忘记登记，名字会退回目录名）
+      · planned 的形态不许留半拉子素材目录（有素材就该做完登记成 ready）
+    """
+    section("形态路线图：声明与磁盘一致")
+    chars_dir = os.path.join(root, "characters")
+    if not os.path.isdir(chars_dir):
+        return
+    for cid in sorted(os.listdir(chars_dir)):
+        cdir = os.path.join(chars_dir, cid)
+        forms_dir = os.path.join(cdir, "forms")
+        rm_path = os.path.join(cdir, "forms.json")
+        if not os.path.isdir(cdir) or not os.path.isdir(forms_dir):
+            continue
+        on_disk = sorted(d for d in os.listdir(forms_dir)
+                         if os.path.exists(os.path.join(forms_dir, d, "rig.json")))
+        check(f"{cid} 有形态路线图 forms.json", os.path.exists(rm_path),
+              "缺了这份清单，界面上就只剩做好的形态，规划中的会凭空消失")
+        if not os.path.exists(rm_path):
+            continue
+        decl = {f["id"]: f for f in
+                json.load(io.open(rm_path, encoding="utf-8")).get("forms", [])}
+        bad = [i for i, f in decl.items()
+               if f.get("status") == "ready" and i not in on_disk]
+        check(f"{cid} 声明 ready 的形态都有 rig.json", not bad,
+              f"{bad} 写着 ready 但 forms/<id>/rig.json 不存在")
+        missing = [i for i in on_disk if i not in decl]
+        check(f"{cid} 磁盘上的形态都已登记", not missing,
+              f"{missing} 有素材却没写进 forms.json")
+        half = [i for i, f in decl.items()
+                if f.get("status") != "ready"
+                and os.path.isdir(os.path.join(forms_dir, i))]
+        check(f"{cid} planned 的形态没有半拉子素材", not half,
+              f"{half} 标着 planned 却有素材目录 —— 要么做完登记 ready，要么删干净")
+        bad_status = [i for i, f in decl.items()
+                      if f.get("status") not in ("ready", "planned")]
+        check(f"{cid} 形态状态只用 ready/planned", not bad_status, f"{bad_status}")
+
+
 def check_live2d(root):
     section("Live2D 标准合规：参数命名 / 取值范围 / model3 分组（静态）")
 
@@ -1142,7 +1287,9 @@ def main():
     _strict = a.strict
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
-    for fn in (check_memory, check_json, check_rig, check_live2d, check_character,
+    for fn in (check_memory, check_plan_traceability, check_json, check_rig,
+               check_form_roadmap,
+               check_live2d, check_character,
                check_web, check_contract, check_tools, check_hygiene):
         try:
             fn(root)

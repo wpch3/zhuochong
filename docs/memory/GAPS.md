@@ -261,3 +261,51 @@ G65 把参数/表情/口型/差分接进了 UI，但 24 个端点里还剩
 
 顺带修掉的状态泄漏：`api_smoke.py` 的 scale 用例跑完把 1.0 留给了后面所有用例
 （也留给预览进程），现在跑完还原成启动值。
+
+## G68 形态分区只有 teen，其余形态在界面上凭空消失（2026-10-14 发现并修完）
+
+**现象**：`characters/xiaoxun/forms/` 只有 `teen/`，而 `config/voice_cast.json` 早就给
+teen/loli/adult 三个形态配好了音色。界面上形态下拉只有一项，用户看不出"还规划了另外三个"。
+
+**根因**：`scan_forms()` 只认磁盘上有 `rig.json` 的目录（这是对的 —— 空目录切过去会白屏），
+但"规划中"这件事没有任何地方记录。而且 **git 不跟踪空目录**，想靠建空文件夹占位是行不通的。
+
+**修法**：加清单文件 `characters/xiaoxun/forms.json` 声明路线图，`status` 只有 `ready`/`planned`。
+引擎 `load_form_roadmap()` 在 `read_form_name()` 之后合并，**以磁盘为准**：清单写 ready 但
+没有 rig.json 的，照样降级成 planned（防止清单吹牛）。`info.json` 新增 `form_roadmap`，
+而 `forms`/`form_names` **继续只含 ready**，不破坏既有调用方。界面上 planned 的形态灰显、
+禁用、鼠标悬停显示"还差什么"。
+
+**顺手修掉的小 bug**：`read_form_name()` 从 `rig.json` 的 `name` 字段取形态显示名，
+但那里存的是**角色名**（"小寻"）。三个形态都做完的话，下拉里会三项全叫"小寻"。
+现在 forms.json 的名字优先，teen 正确显示成"少女"。
+
+**闸**：`selfcheck_repo.py: check_form_roadmap()` 五项 —— ready 必须真有 rig.json /
+磁盘上的必须登记 / planned 不许留半拉子素材 / status 只用两种值。三种坏法都做了负控。
+`test_web.js` 另有 5 项：planned 不许进切换下拉、但必须在界面上看得见且禁用。
+
+**不要为 planned 的形态造模板素材**：假素材会被 `check_assets.py` 的 375 项逐条检查，
+要么全红要么开后门，而且会混进 LoRA 训练数据。空着才是对的。
+
+---
+
+## G69~G78 P4「实时陪玩」缺口（2026-10-14 登记，尚未动工）
+
+用户 2026-10-14 提的四件新能力，拆成 10 个缺口，全部登记在 `docs/PLATFORM_PLAN.md` 第六节 P4。
+这里只记**为什么是缺口**，做法见计划文档。
+
+| 编号 | 缺口 | 现状证据 |
+|---|---|---|
+| G69 | 网关只有 `prefer_local` 一种策略，没有真正的云/本地双路由与降级链 | `config/gateway_routes.json` 的 policy 字段只认一个值 |
+| G70 | 本地模型没有自定义区块：选模型/调参/显存/量化档全缺 | 供应商列表里 ollama 只是一个 base_url，没有任何可调项 |
+| G71 | 没有事件流总线，所有交互都是"用户点一下才动" | `/api` 全是请求-响应，没有事件队列 |
+| G72 | 没有实时 STT，`stt.listen` 能力在 gateway 里是 missing | `/api/gateway.json` 实测 |
+| G73 | 没有延迟预算，也没测过端到端延迟 | 全仓库 grep 无延迟相关指标 |
+| G74 | 角色不会主动开口，只有 idle 动作循环 | `zpet_tick` 里没有发话触发 |
+| G75 | 没有屏幕捕获，`vision.describe` 没有图像来源 | 无捕获代码 |
+| G76 | 没有输入控制，也没有急停机制 | 无 |
+| G77 | 没有联机：状态只存本机单实例 | 无同步层 |
+| G78 | 能对话的供应商只有 4 个，其中 relay_test 是测试桩 | `config/providers.json` 9 个里 4 个有 chat 能力 |
+
+**硬约束（用户明确排除）**：G78 扩充供应商时**绝对不要豆包 / 火山引擎 / 火山方舟 / Seed 系列**。
+已落静态闸 `check_platform.py`「供应商里没有豆包 / 火山引擎」，扫 48 份配置 9 个关键词，负控验过。

@@ -27,6 +27,7 @@ ZC.register({
     srow.appendChild(this.scaleVal);
     c.body.appendChild(srow);
     root.appendChild(c.box);
+    this.body = c.body;
 
     this.form.addEventListener("change", async () => {
       await host.api("/api/form", { id: this.form.value });
@@ -59,6 +60,30 @@ ZC.register({
       fill(this.form, d.forms, d.form_names, (id) => this.FORM_NAMES[id]);
       fill(this.outfit, d.outfits, d.outfit_names, (id) => (id === "default" ? "常服" : id));
       this.filled = true;
+    }
+    /* 形态路线图：把「规划了但还没做」的形态也摆出来（灰色，点不了）。
+       不这么做的话，界面上只有一个 teen，看不出这个角色将来还会有萝莉/御姐/Q 版，
+       而那三个的音色其实早就选好了。做好一个 = 素材进 forms/<id>/ 并生成 rig.json，
+       引擎扫到就自动从 planned 变 ready，这里不用改代码。 */
+    const road = d.form_roadmap || [];
+    const todo = road.filter((g) => g.status !== "ready");
+    if (todo.length && this._roadKey !== todo.map((g) => g.id).join(",")) {
+      this._roadKey = todo.map((g) => g.id).join(",");
+      if (!this.roadBox) {
+        this.roadBox = this.host.el("div", "");
+        this.body.appendChild(this.roadBox);
+      }
+      this.roadBox.textContent = "";
+      this.roadBox.appendChild(this.host.el("p", "hint",
+        "还没做的形态（" + todo.length + "）：做好后放进 characters/<角色>/forms/ 即可自动启用"));
+      const chips = this.host.el("div", "chips");
+      todo.forEach((g) => {
+        const b = this.host.el("button", "btn small", g.name + "（" + g.id + "）");
+        b.disabled = true;
+        b.title = g.note || "还没做";
+        chips.appendChild(b);
+      });
+      this.roadBox.appendChild(chips);
     }
     if (d.form) this.form.value = d.form;
     if (d.outfit) this.outfit.value = d.outfit;

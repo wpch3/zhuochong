@@ -33,6 +33,8 @@ struct zpet {
     /* 形态 / 服装枚举 */
     char    forms[ZPET_MAX_FORMS][48];
     char    form_names[ZPET_MAX_FORMS][96];
+    char    form_status[ZPET_MAX_FORMS][16];   /* ready = 素材齐能渲染；planned = 只在路线图里 */
+    char    form_notes[ZPET_MAX_FORMS][192];
     int     nforms;
     char    outfits[ZPET_MAX_OUTFITS][64];
     char    outfit_names[ZPET_MAX_OUTFITS][128];
@@ -106,6 +108,8 @@ static void scan_forms(zpet *p)
             if (!z_file_exists(rig_path)) continue;
             z_strlcpy(p->forms[p->nforms], fd.cFileName, sizeof(p->forms[0]));
             z_snprintf(p->form_names[p->nforms], sizeof(p->form_names[0]), "%s", fd.cFileName);
+            z_strlcpy(p->form_status[p->nforms], "ready", sizeof(p->form_status[0]));
+            p->form_notes[p->nforms][0] = 0;
             if (++p->nforms >= ZPET_MAX_FORMS) break;
         } while (FindNextFileA(h, &fd));
         FindClose(h);
@@ -122,11 +126,61 @@ static void scan_forms(zpet *p)
             if (!z_file_exists(rig_path)) continue;
             z_strlcpy(p->forms[p->nforms], de->d_name, sizeof(p->forms[0]));
             z_strlcpy(p->form_names[p->nforms], de->d_name, sizeof(p->form_names[0]));
+            z_strlcpy(p->form_status[p->nforms], "ready", sizeof(p->form_status[0]));
+            p->form_notes[p->nforms][0] = 0;
             p->nforms++;
         }
         closedir(dp);
     }
 #endif
+}
+
+/* 读 characters/<c>/forms.json 的形态路线图。
+   目录扫描只认「有 rig.json」的形态（空目录在 git 里根本不存在），
+   所以还没做的形态只能靠这份清单声明。做法是：
+     · 已经扫到的 → 用清单里的中文名覆盖掉那个丑陋的 id
+     · 清单里有、目录里没有 → 追加一条 status=planned，界面上显示成灰色占位
+   这样「规划了什么」和「能用什么」在一个地方说清楚，又不用为没做的形态造假素材。 */
+static void load_form_roadmap(zpet *p)
+{
+    char path[1200];
+    zjson *root, *arr;
+    size_t i, n;
+    int k;
+
+    z_path_join(path, sizeof(path), p->char_dir, "forms.json");
+    if (!z_file_exists(path)) return;
+    root = zjson_parse_file(path, NULL);
+    if (!root) return;
+    arr = zjson_obj_get(root, "forms");
+    if (!zjson_is(arr, ZJSON_ARR)) { zjson_free(root); return; }
+
+    n = zjson_count(arr);
+    for (i = 0; i < n; ++i) {
+        const zjson *e = zjson_at(arr, i);
+        const char *id = zjson_str(zjson_obj_get(e, "id"), NULL);
+        const char *nm = zjson_str(zjson_obj_get(e, "name"), NULL);
+        const char *st = zjson_str(zjson_obj_get(e, "status"), "planned");
+        const char *nt = zjson_str(zjson_obj_get(e, "note"), "");
+        int found = -1;
+        if (!id || !*id) continue;
+        for (k = 0; k < p->nforms; ++k)
+            if (z_streq(p->forms[k], id)) { found = k; break; }
+        if (found >= 0) {
+            if (nm && *nm) z_strlcpy(p->form_names[found], nm, sizeof(p->form_names[0]));
+            z_strlcpy(p->form_notes[found], nt, sizeof(p->form_notes[0]));
+            /* 目录里真有 rig.json 就是 ready，清单写什么都不算数 —— 以磁盘为准 */
+            continue;
+        }
+        if (p->nforms >= ZPET_MAX_FORMS) break;
+        z_strlcpy(p->forms[p->nforms], id, sizeof(p->forms[0]));
+        z_strlcpy(p->form_names[p->nforms], (nm && *nm) ? nm : id, sizeof(p->form_names[0]));
+        z_strlcpy(p->form_status[p->nforms], z_streq(st, "ready") ? "planned" : st,
+                  sizeof(p->form_status[0]));   /* 清单说 ready 但目录没有 → 仍然是 planned */
+        z_strlcpy(p->form_notes[p->nforms], nt, sizeof(p->form_notes[0]));
+        p->nforms++;
+    }
+    zjson_free(root);
 }
 
 static void scan_outfits(zpet *p)
@@ -268,7 +322,11 @@ zpet *zpet_create(const zconfig *cfg, zdiag *diag)
     scan_outfits(p);
     {
         int i;
+        /* 先从 rig.json 取显示名，再让 forms.json 的路线图覆盖。
+           rig.json 的 name 存的是**角色名**（"小寻"），当形态名用会让切换按钮
+           三个形态都叫"小寻"；forms.json 才是专门描述形态的（"少女"/"萝莉"/"Q 版"）。 */
         for (i = 0; i < p->nforms; ++i) read_form_name(p, i);
+        load_form_roadmap(p);
         for (i = 0; i < p->noutfits; ++i) read_outfit_name(p, i);
     }
     if (p->nforms == 0) {
@@ -379,6 +437,28 @@ const char *zpet_form_name(const zpet *p)
 }
 
 int zpet_form_count(const zpet *p) { return p ? p->nforms : 0; }
+
+const char *zpet_form_status_at(const zpet *p, int i)
+{
+    if (!p || i < 0 || i >= p->nforms) return "";
+    return p->form_status[i][0] ? p->form_status[i] : "ready";
+}
+
+const char *zpet_form_note_at(const zpet *p, int i)
+{
+    if (!p || i < 0 || i >= p->nforms) return "";
+    return p->form_notes[i];
+}
+
+/* 能真正切过去的形态数（planned 的不算）—— 切换接口要用它挡住未实装的 */
+int zpet_form_ready_count(const zpet *p)
+{
+    int i, n = 0;
+    if (!p) return 0;
+    for (i = 0; i < p->nforms; ++i)
+        if (z_streq(zpet_form_status_at(p, i), "ready")) n++;
+    return n;
+}
 const char *zpet_form_id_at(const zpet *p, int i)
 {
     if (!p || i < 0 || i >= p->nforms) return "";

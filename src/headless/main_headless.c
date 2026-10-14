@@ -468,13 +468,35 @@ static void handle_request(zsock fd, const http_req *r)
             zpet_character(g_pet), g_cfg.root_dir, zpet_blink_manual(g_pet));
         for (i = 0; i < zpet_action_count(g_pet); ++i)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_action_id_at(g_pet, i));
+        /* forms / form_names 的语义是**能切过去的形态**，所以只报 ready 的。
+           规划中但还没做的形态走下面的 form_roadmap，界面上灰显。
+           两者分开是为了不破坏既有调用方：谁拿 forms 去渲染切换按钮都不会切到空形态。 */
         p += z_snprintf(p, cap - (size_t)(p - body), "],\"forms\":[");
-        for (i = 0; i < zpet_form_count(g_pet); ++i)
-            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_form_id_at(g_pet, i));
-        /* 界面按钮要显示中文名（"小寻"）而不是形态 id（"teen"），所以 id 与名字成对导出。 */
-        p += z_snprintf(p, cap - (size_t)(p - body), "],\"form_names\":[");
-        for (i = 0; i < zpet_form_count(g_pet); ++i)
-            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_form_name_at(g_pet, i));
+        {
+            int shown = 0;
+            for (i = 0; i < zpet_form_count(g_pet); ++i) {
+                if (!z_streq(zpet_form_status_at(g_pet, i), "ready")) continue;
+                p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
+                                shown++ ? "," : "", zpet_form_id_at(g_pet, i));
+            }
+            /* 界面按钮要显示中文名（"少女"）而不是形态 id（"teen"），所以 id 与名字成对导出。 */
+            p += z_snprintf(p, cap - (size_t)(p - body), "],\"form_names\":[");
+            shown = 0;
+            for (i = 0; i < zpet_form_count(g_pet); ++i) {
+                if (!z_streq(zpet_form_status_at(g_pet, i), "ready")) continue;
+                p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
+                                shown++ ? "," : "", zpet_form_name_at(g_pet, i));
+            }
+            /* 形态路线图：ready + planned 全报，界面据此画出「做好的」和「还没做的」。
+               没有这张表，用户看不出这个角色将来还会有萝莉/御姐/Q 版。 */
+            p += z_snprintf(p, cap - (size_t)(p - body), "],\"form_roadmap\":[");
+            for (i = 0; i < zpet_form_count(g_pet); ++i)
+                p += z_snprintf(p, cap - (size_t)(p - body),
+                                "%s{\"id\":\"%s\",\"name\":\"%s\",\"status\":\"%s\",\"note\":\"%s\"}",
+                                i ? "," : "", zpet_form_id_at(g_pet, i),
+                                zpet_form_name_at(g_pet, i), zpet_form_status_at(g_pet, i),
+                                zpet_form_note_at(g_pet, i));
+        }
         p += z_snprintf(p, cap - (size_t)(p - body), "],\"outfits\":[");
         for (i = 0; i < zpet_outfit_count(g_pet); ++i)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_outfit_id_at(g_pet, i));

@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "_note": "形态路线图。这里声明「这个角色规划了哪些形态」，status 决定它在界面上是什么样：\n  ready   = forms/<id>/rig.json 真的存在，能切换、能渲染\n  planned = 还没做，界面上显示成灰色占位卡（点了给提示，不会白屏）\n软件扫描 forms/ 目录得到 ready 的那些；planned 的只有这份清单知道。\n**不要为 planned 的形态造假素材**：假素材会被 check_assets 的 375 项逐条检查，\n要么闸全红、要么给它开后门，而后门一开就再也想不起来关。空目录也不行 —— git 不跟踪空目录。\n做好一个形态 = 把素材放进 forms/<id>/ 并生成 rig.json，这里的 status 改成 ready，闸会自动开始管它。",
+  "character": "xiaoxun",
+  "forms": [
+    {
+      "id": "teen",
+      "name": "少女",
+      "status": "ready",
+      "head_body_ratio": "1:6",
+      "note": "主形态。40 部件 / 18 动作 / 46 参数 / 7 表情，Live2D 合规 39 项全部实测通过。"
+    },
+    {
+      "id": "loli",
+      "name": "萝莉",
+      "status": "planned",
+      "head_body_ratio": "1:4",
+      "voice": "mm_lovely_girl",
+      "note": "H6 要求的四形态之一。音色已经选好（萌萌女童），缺的是设计图 + 拆件 + rig。对应 T2.2.1。"
+    },
+    {
+      "id": "adult",
+      "name": "青年女性",
+      "status": "planned",
+      "head_body_ratio": "1:7",
+      "voice": "mm_yujie",
+      "note": "音色已选（御姐音）。对应 T2.2.2。"
+    },
+    {
+      "id": "chibi",
+      "name": "Q 版",
+      "status": "planned",
+      "head_body_ratio": "1:2.5",
+      "note": "H6 的第四形态。头身比 1:2～1:3，动作集可以比 teen 简化，但表情要更夸张。"
+    }
+  ]
+}

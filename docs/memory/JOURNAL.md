@@ -685,3 +685,36 @@ api_smoke 的 scale 用例跑完不还原，把 1.0 漏给后面所有用例。
 
 闸：selfcheck 146 不变、test_core 627 不变、web-test **92→109**、
 api_smoke **147→175**、check_assets **372→375**、check_platform 32 不变。
+
+## 2026-10-14（续）形态分区 + 把「计划不能忘」落成闸（G68 / T20.8 / T22）
+
+**用户要求**：补形态分区（teen 之外先空白，做好了再加）；回答 AI 模型选型五问；
+把「代理云端和本地 / 本机玩游戏 / 陪伴联机 / neuro-sama 式实时回应 / 本地模型自定义区块」
+写进计划；**绝对不要豆包**；「我们所有的计划不能忘」。
+
+**做了什么**
+1. **形态分区（G68）**：新建 `characters/xiaoxun/forms.json` 路线图（teen=ready，
+   loli/adult/chibi=planned）。引擎加 `load_form_roadmap()`，**以磁盘为准**合并。
+   `info.json` 新增 `form_roadmap`，`forms`/`form_names` 继续只含 ready（向后兼容）。
+   界面上 planned 灰显禁用、悬停说明还差什么。
+   顺手修掉：`read_form_name()` 拿 rig.json 的 `name`（其实是角色名"小寻"）当形态名，
+   四形态做完会全叫"小寻"；现在 forms.json 优先，teen 正确显示"少女"。
+2. **计划落盘**：REQUIREMENTS 新增 A23~A28（代理云端/本地、本地模型自定义区块、
+   本机玩游戏、陪伴联机、实时接取信息、供应商矩阵与排除豆包）；
+   PLATFORM_PLAN 新增 **P4 实时陪玩** 里程碑（G69~G78，含依赖关系）；
+   GAPS 新增 G68 与 G69~G78 缺口表；TASKS 新增 T20.8 与 T21.1~T21.10。
+3. **「不能忘」落成闸**：`check_plan_traceability()` 做需求↔缺口↔任务双向追溯。
+   **第一次跑就挖出 16 个 GAPS 登记过却从来没进排期的老缺口**，全部补登成 T22.1~T22.16。
+4. **禁豆包双闸**：`check_platform.py` 扫 config 48 份；`selfcheck_repo.py` 扫 src/web/config
+   全部源码。关键词覆盖 doubao/volcengine/volces/byteplus/seed-tts/豆包/火山引擎/火山方舟。
+
+**负控（每道闸都验过会红）**：谎报 loli=ready → 红；清单删掉 teen → 红；
+给 planned 的 chibi 建目录 → 红；加一条没落点的需求 I99 → 红；加一个没排期的缺口 G99 → 红；
+往 `zpet.c` 注释塞 volcengine → 红；加个假的火山供应商 json → 红。全部还原后 0 项不通过。
+
+**闸门数字变化**：selfcheck 146→**155**、web-test 109→**116**、check_platform 32→**33**，
+test_core 627 / asan 627 / api_smoke 175 不变。`make -s check` 全绿。
+
+**沙箱重置第六次**：HEAD 退回分支基点 `3b5d17b`，`git ls-files sprites` 只剩 7 条（磁盘 49）。
+照旧 `git fetch origin` + `git reset --mixed origin/<branch>` + `checkout -- dist/.../zhuochong.exe` 修好，
+`--mixed` 不动工作树所以本轮改动没丢。

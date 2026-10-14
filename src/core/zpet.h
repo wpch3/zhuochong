@@ -172,6 +172,10 @@ void        zpet_set_affection(zpet *p, int points);
 int   zpet_form_count(const zpet *p);
 const char *zpet_form_id_at(const zpet *p, int i);
 const char *zpet_form_name_at(const zpet *p, int i);
+/* 形态路线图：status = ready（素材齐，能切）/ planned（只在 forms.json 里声明，界面灰显） */
+const char *zpet_form_status_at(const zpet *p, int i);
+const char *zpet_form_note_at(const zpet *p, int i);
+int         zpet_form_ready_count(const zpet *p);
 int   zpet_set_form(zpet *p, const char *form_id, zdiag *diag);
 int   zpet_outfit_count(const zpet *p);
 const char *zpet_outfit_id_at(const zpet *p, int i);

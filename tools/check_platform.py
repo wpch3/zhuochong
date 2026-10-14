@@ -250,6 +250,32 @@ def main():
                 cast_bad.append("%s 的兜底音色 %s 不存在" % (e.get(sect[:-1]), e["fallback"]))
     check("分配表引用的音色都存在", not cast_bad, "；".join(cast_bad[:3]))
 
+    # 用户点名排除的供应商：豆包 / 火山引擎（含其 Seed 系列模型与 TTS）。
+    # 这条是硬要求，不是偏好 —— 所以要静态拦住，而不是靠记性。
+    # 新增供应商时如果手滑把火山的接入写进来，这里会直接红。
+    BANNED = ("doubao", "volcengine", "volces", "byteplus", "seed-tts",
+              "seedtts", "豆包", "火山引擎", "火山方舟")
+    scan_files = []
+    for sub in ("providers", "capabilities", "voicebank"):
+        d = os.path.join(ROOT, "config", sub)
+        if os.path.isdir(d):
+            scan_files += [os.path.join(d, f) for f in sorted(os.listdir(d))
+                           if f.endswith(".json")]
+    for f in ("providers.json", "voices.json", "voice_cast.json",
+              "gateway_routes.json", "emotion_map.json"):
+        fp = os.path.join(ROOT, "config", f)
+        if os.path.exists(fp):
+            scan_files.append(fp)
+    hits = []
+    for fp in scan_files:
+        low = io.open(fp, encoding="utf-8").read().lower()
+        for b in BANNED:
+            if b in low:
+                hits.append("%s 命中 %s" % (os.path.relpath(fp, ROOT), b))
+    check("供应商里没有豆包 / 火山引擎（用户明确排除）", not hits,
+          "；".join(hits[:3]) if hits
+          else "扫了 %d 份配置，%d 个关键词" % (len(scan_files), len(BANNED)))
+
     agents = cast.get("agents", [])
     av = [a.get("voice") for a in agents]
     dup = sorted({x for x in av if av.count(x) > 1})

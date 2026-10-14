@@ -148,6 +148,12 @@ const INFO = {
   poses: [{ id: "eye_hl_style", current: "round", entries: ["round", "star"] }],
   /* 区域表 + 画布尺寸：UI 要靠它发现区域、做画布↔帧坐标换算，不能硬编码 */
   canvas_w: 848, canvas_h: 1360, frame_w: 466, frame_h: 748,
+  /* 形态路线图：ready 的能切，planned 的只在界面上灰显 */
+  form_roadmap: [
+    { id: "teen", name: "少女", status: "ready", note: "主形态" },
+    { id: "loli", name: "萝莉", status: "planned", note: "音色已选" },
+    { id: "chibi", name: "Q 版", status: "planned", note: "头身比 1:2.5" },
+  ],
   regions: [
     { id: "head", action: "head_pat", cursor: "hand", rect: [244, 0, 357, 391] },
     { id: "body", action: "stroke", cursor: "hand", rect: [253, 391, 339, 694] },
@@ -488,6 +494,28 @@ function slotOf(id) {
     const browGroup = groups.find((g) => g.includes("眉毛"));
     CHECK(browGroup && browGroup.includes("(1)"),
           "眉毛组应有 1 个参数（stub 里只放了 ParamBrowLY），实际 " + browGroup);
+  }
+
+  SECTION("形态路线图（G68）：没做的形态要看得见但点不了");
+  {
+    const el = slotOf("appearance");
+    const txt = walk(el).map((n) => n._text).join(" ");
+    const btns = walk(el).filter((n) => n.tagName === "BUTTON");
+    const opts = walk(el).filter((n) => n.tagName === "OPTION");
+
+    /* 能切的形态只有 ready 的，planned 的绝不能进下拉 —— 切过去会白屏 */
+    const formOpts = opts.map((o) => o.value);
+    CHECK(formOpts.indexOf("teen") >= 0, "ready 的形态要进下拉");
+    CHECK(formOpts.indexOf("loli") < 0 && formOpts.indexOf("chibi") < 0,
+          "planned 的形态不能进切换下拉（实际 " + formOpts.join(",") + "）");
+
+    /* 但要在界面上看得见，否则用户不知道还有这些规划 */
+    INFO.form_roadmap.filter((g) => g.status !== "ready").forEach((g) => {
+      const b = btns.find((x) => x._text && x._text.indexOf(g.name) === 0);
+      CHECK(!!b, "未实装形态 " + g.name + " 要显示出来");
+      CHECK(b && b.disabled === true, "未实装形态 " + g.name + " 的按钮要禁用");
+    });
+    CHECK(txt.includes("还没做的形态"), "要说明这些是还没做的");
   }
 
   SECTION("舞台交互（G67）：hover / region / speak 要在界面上点得到");
