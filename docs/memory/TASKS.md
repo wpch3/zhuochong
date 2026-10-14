@@ -367,7 +367,7 @@ selfcheck 有闸盯着这四件防护不被拆（四种拆法已逐个验红）�
 
 1. `tools/make_foot_parts.py`（新工具，插在 `rebuild_parts.sh` 第 3/16 步）
    从 `body_full.png` 按分段线性映射重采样出四件鞋：
-   鞋底压扁 `ks=0.65`、鞋身拉伸 `ku=1.297`、抬高 `lift=30px`，两张姿态图鞋底同在 y=1291。
+   鞋底压扁 `ks=0.65`、鞋身拉伸 `ku=1.2967`、抬高 `lift=30px`，两张姿态图鞋底同在 y=1291。
 2. 腿件切线（画布 1218）以下**擦像素 + 裁画布**，并把新尺寸写回 `body_parts.json`。
 3. rig：`ParamTiptoe → root.dy −30 + foot_l.dy +30 + foot_r.dy +30`；
    `foot_*` 组 `bend_follow=seg_leg_*` @1218。
@@ -377,7 +377,7 @@ selfcheck 有闸盯着这四件防护不被拆（四种拆法已逐个验红）�
 5. tiptoe 动作波形 bounce → **pulse**（bounce 的峰只停 48ms，鞋一闪而过），
    并删掉动作里的 `ParamBaseY`（那是 happy 跳跃用的，会把脚一起抬走 3px）。
 
-闸门：`check_assets` 415 项（+10 鞋）、`selfcheck` 267 项
+闸门：`check_assets` 415 项（+10 鞋）、`selfcheck` 276 项
 （`check_foot_switch` / `check_feet_on_ground` 新增，`check_tiptoe_grounded`、
 `check_neck_seam` 改写）、`test_core` 653 项（`test_xfade` +23）。全部做过负对照。
 

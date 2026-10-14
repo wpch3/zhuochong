@@ -1162,7 +1162,7 @@ eye_closed *= clamp((blink - 0.75) * 4, 0, 1); /* 只在最后 25% 淡入 */
 - **鞋口上抬的高度 H = h_shoe·(k−1)，这个 H 就是身体要升起的高度。**
 
 实现成分段线性映射（`tools/make_foot_parts.py: warp_rows`）：按离地距离 `d = G − y` 取源行，
-`d' ≤ d_sole·ks` 段用 `ks`（鞋底压扁 0.65），以上用 `ku`（鞋身拉伸 1.297），
+`d' ≤ d_sole·ks` 段用鞋底压扁 `ks=0.65`，以上用鞋身拉伸 `ku=1.2967`，
 鞋口以上整体平移 `lift=30`。源图实测：鞋口 `y_shoe=1156`、白带上沿 `y_sole=1276`、
 地面 `G=1292`、`D=136`、`d_sole=16`、左右分界 `x_split=218`。
 
@@ -1244,7 +1244,7 @@ xfades: {param: ParamTiptoe, in: [0.40,0.60], from: seg_foot_l, to: seg_foot_l_t
 `check_assets.py`（→415 项）：常态鞋/踮脚鞋都触地、鞋口抬高 = `lift_px`、
 腿件切线以下清空、**腿件画布裁到切线**、常态鞋盖过切线 ≥ lift。
 
-`selfcheck_repo.py`（→267 项）：
+`selfcheck_repo.py`（→276 项）：
 - `check_foot_switch`：两件齐全 / 层序（踮脚件在上）/ 同组 / `bend_follow` 与取样线 /
   xfade 的 param·from·to / 窗口又窄又在量程内（≤0.30）。
 - `check_feet_on_ground`：**每个动作**按"通道幅度 × 该参数对鞋底的纵向系数"复算净位移，

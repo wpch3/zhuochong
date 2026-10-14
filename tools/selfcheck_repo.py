@@ -507,6 +507,55 @@ def check_no_stale_decisions(root):
               not bad,
               f"这些小节里只说了网游被排除，没写现在怎么办：{bad[:3]}")
 
+    # —— 第二个高风险口径（2026-10-14 加）：踮脚 ——
+    # 原话在 GAPS G88 / TASKS T24 里写着"脚部拆件已否决""要走 AI 重绘"，
+    # 两条都已被推翻（否决的前提是"踮脚时鞋会变扁"，而正确物理是鞋变高；
+    # AI 重绘两次都保不住构图，最后是几何重采样做成的）。
+    # 这种"把一条对的路否掉"的旧结论留在文档里，杀伤力比漏写大得多。
+    STALE_FOOT = re.compile(r"拆件.{0,6}否决|否决.{0,6}拆件|AI 重绘踮脚|重绘踮脚姿态")
+    FIXED_FOOT = re.compile(r"作废|已推翻|⚠|不是让人照着做|最终实现|正确口径|变高")
+    for rel in ("docs/memory/GAPS.md", "docs/memory/TASKS.md",
+                "docs/ART_PARTS.md", "docs/REFERENCE_NOTES.md"):
+        txt = rd(rel)
+        if not txt:
+            continue
+        bad = []
+        for sec in re.split(r"(?m)^##\s", txt):
+            if not STALE_FOOT.search(sec) or FIXED_FOOT.search(sec):
+                continue
+            bad.append((sec.splitlines() or ["(无标题)"])[0][:40])
+        check(f"{os.path.basename(rel)} 没有留着「脚部拆件已否决」这类已推翻的结论",
+              not bad, f"这些小节还在说踮脚只能 AI 重绘 / 拆件被否决：{bad[:3]}")
+
+    # —— 文档里的数字必须和生成物对得上（2026-10-14 加）——
+    # 断代的另一种形态：文字还在，数字已经过期。照着过期数字去改素材，
+    # 结果就是"按文档做出来的东西过不了闸"。这里盯住踮脚这几个关键常数。
+    art = rd("docs/ART_PARTS.md")
+    fp_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen",
+                           "sprites", "foot_parts.json")
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if art and os.path.isfile(fp_path) and os.path.isfile(rig_path):
+        fj = json.load(io.open(fp_path, encoding="utf-8"))
+        rj = json.load(io.open(rig_path, encoding="utf-8"))
+        # 判据要的是"**每一处**都对"，不是"有一处对"：
+        # 第一版写成 `token in art` 时做负控发现，把文档里某一处 lift 改成 24
+        # 照样绿 —— 因为别处还留着 lift=30。半对半错的文档恰恰最坑人。
+        for label, key, real in (("抬高 lift", "lift", "%g" % fj["lift_px"]),
+                                 ("鞋底压扁 ks", "ks", "%g" % fj["warp"]["sole_squash"]),
+                                 ("鞋身拉伸 ku", "ku", "%g" % fj["warp"]["upper_stretch"])):
+            got = re.findall(r"%s\s*=\s*([0-9.]+)" % key, art)
+            check("ART_PARTS 里的%s处处等于素材的 %s（%d 处）" % (label, real, len(got)),
+                  bool(got) and all(g.rstrip(".") == real for g in got),
+                  "文档里写着 %s —— 数字过期（或只改了一半）的文档比没有文档更坑"
+                  % (sorted(set(got)) or "根本没写"))
+        want = [("腿件切线（画布）", "%d" % (int(fj["cut"]["leg_cut_y"]) + 68))]
+        xf = (rj.get("xfades") or [{}])[0].get("in") or []
+        if len(xf) == 2:
+            want.append(("交叉淡化窗口", "[%.2f,%.2f]" % (xf[0], xf[1])))
+        for label, token in want:
+            check("ART_PARTS 里的%s和素材一致（%s）" % (label, token), token in art,
+                  "文档里找不到 %s —— 数字过期的文档比没有文档更坑" % token)
+
     # 现行口径本身必须自洽：A25 既然是三档，就不能同时写着"不做网游"
     req = rd("docs/memory/REQUIREMENTS.md")
     has_tiers = "档一" in req and "档二" in req and "档三" in req
