@@ -110,6 +110,11 @@ void zimg_draw_mesh(zimg *dst, const zimg *src, const double m[6], double opacit
 void zimg_draw_blend(zimg *dst, const zimg *src, const double m[6], double opacity, int blend);
 void zimg_draw_warp_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
                           double bend_x, int curve_x, double bend_y, int curve_y, int blend);
+/* 同上，但带「形变平台」：源图归一化行 t < bend_tmin 的部分，一律用 bend_tmin 处的
+   形变量。用于躯干这种「贴图顶边其实是脖子」的部件 —— 颈线以上跟着头走，不再加码。 */
+void zimg_draw_warp_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
+                            double bend_x, int curve_x, double bend_y, int curve_y,
+                            int blend, double bend_tmin);
 void zimg_draw_mesh_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
                           int cols, int rows, const double *offsets, int blend);
 /* 网格形变与平滑形变叠加（≈ Live2D 变形器嵌套）。两者不是二选一：

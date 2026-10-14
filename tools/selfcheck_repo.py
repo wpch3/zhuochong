@@ -525,6 +525,47 @@ def check_no_stale_decisions(root):
               else f"lol max_tier={lol.get('max_tier')}")
 
 
+def check_neck_seam(root):
+    """躯干必须设了形变平台，否则脖子/兜帽会横向滑移（2026-10-14 加）。
+
+    躯干贴图的顶边其实是脖子和衣领，而 bend_x 用的 root 曲线 f(t)=(1-t)^2
+    恰好在顶边给出满额形变；头则按颈关节那一行做刚性平移，只拿到 0.854 倍。
+    于是衣领比它上面的头、下面的胸都移动得多 —— 用户实测反馈
+    "颈部会横向整体错误细微的位移，包括兜帽"。
+
+    判据：凡是被 bend_x/bend_y 驱动、且有组以它为 bend_follow 源的部件，
+    必须写 bend_hold_above，且落在该部件的纵向范围内（写到贴图外面等于没写）。
+    """
+    section("躯干有形变平台（脖子不滑移）")
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if not os.path.isfile(rig_path):
+        return
+    with io.open(rig_path, encoding="utf-8") as fh:
+        rig = json.load(fh)
+    parts = {p["id"]: p for p in rig.get("parts", [])}
+    # 谁是 bend_follow 的源头
+    srcs = {g.get("bend_follow") for g in rig.get("groups", {}).values() if g.get("bend_follow")}
+    # 谁被 bend 驱动
+    bent = set()
+    for prm in rig.get("params", []):
+        for b in prm.get("binds", []):
+            if "bend" in str(b.get("param", "")) and b.get("part"):
+                bent.add(b["part"])
+    need = sorted(srcs & bent)
+    check("找得到被弯曲又被跟随的躯干部件", bool(need), "、".join(need) or "一个都没有？")
+    for pid in need:
+        p = parts.get(pid)
+        if not p:
+            continue
+        hold = p.get("bend_hold_above")
+        if not check("%s 写了形变平台 bend_hold_above" % pid, bool(hold),
+                     "没写 → 衣领会比头多动，脖子横向滑移"):
+            continue
+        top = p.get("pos", [0, 0])[1]
+        check("%s 的平台线落在部件范围内" % pid, hold > top,
+              "平台 y=%s 顶边 y=%s" % (hold, top))
+
+
 def check_action_dead_time(root):
     """非循环动作的声明时长不许比通道真实结束晚太多（2026-10-14 加）。
 
@@ -1426,7 +1467,8 @@ def main():
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
-               check_json, check_rig, check_action_dead_time, check_motion_measure,
+               check_json, check_rig, check_neck_seam, check_action_dead_time,
+               check_motion_measure,
                check_form_roadmap,
                check_live2d, check_character,
                check_web, check_contract, check_tools, check_hygiene):

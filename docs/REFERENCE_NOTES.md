@@ -942,3 +942,66 @@ export const protocolListProviders = defineInvokeEventa<{ name: string }[]>(...)
   官方那个做法是在**网格上形变整个眼型**，遮罩方案复现不了。
   要真做到得把眼部件的锚点从左上角改到各自中心再整体缩 —— 属生成器改动，
   留作 GAPS，不在本轮硬凑。**不要看到这条就再加一次 aperture_narrow。**
+
+---
+
+## 第十七批 · Live2D 官方手册与基础教程（2026-10-14，接第十六批）
+
+> ### ⚠ 更正第十六批的一个说法
+> 第十六批写了「基础教程 6 讲全是 YouTube 视频壳，页面几乎没正文」。
+> **这句话过头了。** 实际情况是分两种：
+> - **《10分钟就能看懂的眨眼》这类速成课** = 真·纯视频壳（只能靠字幕）
+> - **基础教程 6 讲** = 视频 + **完整图文「视频回顾」**，每一步都有文字和配图
+> - **嵌入用教程 6 讲** = 纯视频壳，而且视频在 **bilibili** 不是 YouTube
+> - **手册站 `cubism-editor-manual`** = 纯图文，技术细节都在这里
+>
+> 结论：**要技术细节就去手册站，不要去教程站**。
+
+### ★《4. 添加身体动作》图文回顾要点（基础教程，有全文）
+
+来源 https://docs.live2d.com/zh-CHS/cubism-editor-tutorials/deformer/
+
+- **两种变形器分工**：**旋转变形器**（红条）专做旋转，"主要用于脖子、手臂、腿部"；
+  **弯曲变形器**（灰框）做网格变换。
+  → 对应我们的 `groups`（枢轴旋转）与 `deformers`（网格），分工一致。
+- 头部旋转变形器的枢轴**放在下巴位置**。我们 `head.pivot` 用的是颈关节 y=346，同一量级。
+- **★「身体的倾斜应该变换为绘制一个弧线，而不是水平平行移动」** ——
+  我们 `ParamBodyAngleZ → chest.rot_deg` 是真旋转（弧线）✓；
+  `ParamBodyAngleX → seg_torso.bend_x` 是水平错切，属另一条轴，不冲突。
+- **「如果脚浮起，将很难添加动态，所以让脚变换，以确保它们不会离开地面」** ——
+  核对过：`ParamBodyAngleY` 只动 `seg_torso.bend_y` + `chest.dy/sy`，
+  腿挂在 `root` 下不受影响，**脚不会离地** ✓。
+- 手臂参数范围建议 `-30 / 0 / 30`；抬手时还要顺带调粗细（我们没做手臂粗细）。
+
+### ★★ 官方物理模型规格（手册站，对应我们的 G44）
+
+来源 https://docs.live2d.com/en/cubism-editor-manual/physics-operation/
+　　　https://docs.live2d.com/en/cubism-editor-manual/physical-operation-setting/
+　　　（Cubism 2 中文手册 sites.google.com/cybernoids.jp/cubism2 讲得最直白）
+
+官方把摇摆建模成**单摆**，四个可调量：
+
+| 官方项 | 含义 | 官方建议值 |
+|---|---|---|
+| Duration（摇动速度） | 越小摆得越快 | — |
+| **Ease of swinging（揺れやすさ）** | 越大，小输入也摆得大 | **0.7 ~ 0.99** |
+| Reaction time（反应时间） | 1=标准，>1 更灵敏 | 1 |
+| Speed of convergence（收敛速度） | 1=标准，>1 收得快 | 1 |
+
+Cubism 2 的更物理化的三个量：**质量**（越大摆幅越大）、**距离**＝根部到梢的长度
+（越大摆得越慢）、**减衰率**（越大收得越快）。
+
+**我们现有 13 条 physics 的字段**：`stiffness` / `damping` / `ratio` / `max` / `curve`。
+对应关系：`stiffness` ≈ Duration 的倒数、`damping` ≈ 减衰率/收敛速度、
+`ratio` ≈ 单位移动量（输出缩放）、`max` ≈ 输出上限。**缺 Reaction time（反应灵敏度）**，
+多段摆靠 `driver` 串联（`ahoge_tip.driver = ahoge_x`）已经实现了官方说的"多段摆锤"。
+
+**★ 两条可直接用的工程经验**：
+1. **计算 FPS 默认 60**（Cubism 5.0 beta1 起从 30 改成 60）。物理参数和 FPS 绑死，
+   换 FPS 必须重调。我们的物理是按真实 dt 积分的，这条要注意别写成按帧。
+2. **「Output Maximum 超过 100% 会导致动作抽搐（choppiness）」** ——
+   摆的幅度超出了参数量程，摆到了没有形变的区域。
+   → 这正是我们 `max` 字段的作用；**调物理时要盯住输出有没有顶到 max**，
+   顶住了就该降 `ratio` 而不是加大 `max`。
+3. 多输入时有**影响度（影響度）**权重，且"从列表**下面**的项开始算起"；
+   两个输入各 100% 会叠成 150% 之类，要留余量防止摆到极限。

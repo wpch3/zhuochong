@@ -180,7 +180,8 @@
       "tags": [
         "body"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；颈线 y=346 以上形变不再加大（衣领跟着头走，不然脖子会横向滑移）",
+      "bend_hold_above": 346
     },
     {
       "id": "seg_head",

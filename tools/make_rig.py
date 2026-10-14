@@ -473,6 +473,22 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "tags": tag_of.get(sp["id"], ["body"]),
             "note": sp.get("note", "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"),
         } for sp in seg_src]
+        # 躯干的形变平台：颈线以上不再继续加大形变。
+        #
+        # 躯干贴图的顶边（y=308）其实是**脖子和衣领**，而 bend_x 用的 root 曲线
+        # 恰好把最大形变给了顶边（f(t)=(1-t)^2，t=0 时满额）。头则是按颈关节
+        # 那一行（bend_follow_at=346）做刚性平移、只拿到 0.854 倍。
+        # 于是衣领比它上面的头、下面的胸都移动得多，自己"鼓"出来一块 ——
+        # 用户 2026-10-14 实测反馈"颈部会横向整体错误细微的位移，包括兜帽"。
+        # 逐行位移剖面实测：头部恒定 -4.74px，躯干顶边 -5.08px，跳变 0.40px。
+        #
+        # 写上颈线之后，颈线以上的行共用颈线处的形变量，和头完全同步，滑移归零。
+        for bp_ in body_parts_list:
+            if bp_["id"] == body_id:
+                bp_["bend_hold_above"] = neck_pt[1] if seg else neck_y
+                bp_["note"] = (bp_.get("note", "") +
+                               f"；颈线 y={bp_['bend_hold_above']} 以上形变不再加大"
+                               "（衣领跟着头走，不然脖子会横向滑移）")
         # 眉毛要绕自己中心转（挑眉/皱眉），所以锚点放中心、pos 换成中心点
         size_of = {sp["id"]: sp.get("size") for sp in seg["parts"]}
         for bp_ in body_parts_list:

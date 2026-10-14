@@ -89,6 +89,7 @@ typedef struct {
     int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
     double aperture_min;      /* 眼眶开口：眨眼参数 1 时纵向还剩几成（0.06 = 基本闭死） */
+    double bend_hold_above;   /* 形变平台：这个画布高度以上不再继续增大形变（0 = 不设） */
     int    blend;             /* 混合模式 ZIMG_BLEND_*（≈ Live2D CubismBlendMode） */
     int    eye_side;          /* 0=与左右无关 1=左眼 2=右眼（ParamEyeLOpen/ROpen 分开驱动） */
 } zpart;
@@ -687,6 +688,11 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
         /* 眼眶开口：带 eye_aperture 标签的部件按 blink 纵向压扁（锚点写在下沿 =
            上眼皮往下合）。被它当遮罩裁切的眼白/眼球/高光会跟着被切掉 ——
            这才是真正的"眼睛闭上"，而不是把睁眼图整张淡出。 */
+        /* bend_hold_above：形变平台线（画布 y）。
+           躯干贴图的顶边其实是脖子/衣领，而 ROOT 曲线把最大形变给了顶边 ——
+           衣领比它上面的头、下面的胸移动得都多，脖子处就出现横向滑移。
+           写上颈线以后，颈线以上的行共用颈线处的形变量，和头完全同步。 */
+        p->bend_hold_above = zjson_num(zjson_obj_get(pj, "bend_hold_above"), 0.0);
         p->aperture_min = zjson_num(zjson_obj_get(pj, "aperture_min"), 0.06);
         if (p->aperture_min < 0.0) p->aperture_min = 0.0;
         if (p->aperture_min > 1.0) p->aperture_min = 1.0;
@@ -3058,6 +3064,7 @@ typedef struct {
     double m[6];
     double opacity;
     double bx, by;
+    double bend_tmin;
     int    curve_x, curve_y;
     int    warped;
     const zdeform *dg;
@@ -3171,6 +3178,14 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     st->curve_x = r->p_bendcx[mi];
     st->curve_y = r->p_bendcy[mi];
     st->warped = (fabs(st->bx) > 0.05 || fabs(st->by) > 0.05);
+    /* 形变平台换算成源图归一化行：(平台画布y − 部件顶边) / 部件画布高度 */
+    st->bend_tmin = 0.0;
+    if (p->bend_hold_above > 0.0 && src && src->h > 0 && p->scale > 0.0) {
+        double h_canvas   = (double)p->img->h * p->scale;
+        double top_canvas = p->pos[1] - p->anchor[1] * h_canvas;
+        double tm = (p->bend_hold_above - top_canvas) / h_canvas;
+        st->bend_tmin = tm < 0.0 ? 0.0 : (tm > 1.0 ? 1.0 : tm);
+    }
 
     /* 网格形变（A5）：形变器的位移写的是"原始素材像素"，而这里画的可能是缩放过的
        缓存图，所以要按 src->w / img->w 折算，换画布缩放时形变量才不会跟着变。 */
@@ -3212,8 +3227,9 @@ static void draw_state(zimg *dst, const zdrawst *st, int blend)
                                   st->warped ? st->bx : 0.0, st->curve_x,
                                   st->warped ? st->by : 0.0, st->curve_y, blend);
     else if (st->warped)
-        zimg_draw_warp_blend(dst, st->src, st->m, st->opacity,
-                             st->bx, st->curve_x, st->by, st->curve_y, blend);
+        zimg_draw_warp_blend_t(dst, st->src, st->m, st->opacity,
+                               st->bx, st->curve_x, st->by, st->curve_y,
+                               blend, st->bend_tmin);
     else
         zimg_draw_blend(dst, st->src, st->m, st->opacity, blend);
 }

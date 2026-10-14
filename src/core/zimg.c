@@ -541,13 +541,14 @@ void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity)
 /* 内部实现：bend 参数为 0 时等价于 zimg_draw */
 static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
                       int sx0, int sy0, int sx1, int sy1,
-                      double bend_x, int curve_x, double bend_y, int curve_y, int blend);
+                      double bend_x, int curve_x, double bend_y, int curve_y,
+                      double bend_tmin, int blend);
 
 void zimg_draw_rect(zimg *dst, const zimg *src, const double m[6], double opacity,
                     int sx0, int sy0, int sx1, int sy1)
 {
     draw_impl(dst, src, m, opacity, sx0, sy0, sx1, sy1,
-              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, ZIMG_BLEND_NORMAL);
+              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BLEND_NORMAL);
 }
 
 void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacity,
@@ -555,22 +556,30 @@ void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacit
 {
     if (!src) return;
     draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
-              bend_x, curve_x, bend_y, curve_y, ZIMG_BLEND_NORMAL);
+              bend_x, curve_x, bend_y, curve_y, 0.0, ZIMG_BLEND_NORMAL);
 }
 
 void zimg_draw_blend(zimg *dst, const zimg *src, const double m[6], double opacity, int blend)
 {
     if (!src) return;
     draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
-              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, blend);
+              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, 0.0, blend);
 }
 
 void zimg_draw_warp_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
                           double bend_x, int curve_x, double bend_y, int curve_y, int blend)
 {
+    zimg_draw_warp_blend_t(dst, src, m, opacity, bend_x, curve_x, bend_y, curve_y, blend, 0.0);
+}
+
+/* 带形变平台的版本：bend_tmin 以上的行共用 bend_tmin 处的形变量。 */
+void zimg_draw_warp_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
+                            double bend_x, int curve_x, double bend_y, int curve_y,
+                            int blend, double bend_tmin)
+{
     if (!src) return;
     draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
-              bend_x, curve_x, bend_y, curve_y, blend);
+              bend_x, curve_x, bend_y, curve_y, bend_tmin, blend);
 }
 
 /* 形变权重。入参 t 是源图内的归一化纵坐标（0=顶边，1=底边）；
@@ -591,7 +600,8 @@ double zimg_bend_factor(double t, int curve)
 
 static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
                       int sx0, int sy0, int sx1, int sy1,
-                      double bend_x, int curve_x, double bend_y, int curve_y, int blend)
+                      double bend_x, int curve_x, double bend_y, int curve_y,
+                      double bend_tmin, int blend)
 {
     double det, inv[6];
     int x0, y0, x1, y1, px, py;
@@ -643,6 +653,12 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
                 /* 先估一次源位置求形变权重 t，再把目标坐标按位移反查（逐像素，无接缝） */
                 double ay = inv[1] * (px + 0.5) + inv[3] * (py + 0.5) + inv[5];
                 double t  = ay / (double)src->h;
+                /* 形变平台：这一行以上不再继续增大形变。
+                   躯干贴图的顶边是脖子/衣领，而 ROOT 曲线恰好把最大形变给了顶边 ——
+                   结果衣领比它上面的头、下面的胸都移动得多，脖子处出现横向滑移
+                   （2026-10-14 用户反馈"颈部整体细微横向位移，包括兜帽"）。
+                   把颈线以上的 t 钳到颈线处，衣领就和头完全同步了。 */
+                if (t < bend_tmin) t = bend_tmin;
                 /* X 与 Y 分别用各自的曲线：侧摆（根部固定）与呼吸（中段最大）可以同时存在 */
                 double dx = bend_x * zimg_bend_factor(t, curve_x);
                 double dy = bend_y * zimg_bend_factor(t, curve_y);

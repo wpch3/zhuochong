@@ -53,8 +53,10 @@ ALPHA_SOLID = 16            # alpha 超过这个算角色实体像素
 
 
 class Pet:
-    def __init__(self, base):
+    def __init__(self, base, rig=""):
         self.base = base.rstrip("/")
+        self.rig = rig
+        self._pids = None
 
     def get(self, path, timeout=25):
         with urllib.request.urlopen(self.base + path, timeout=timeout) as r:
@@ -74,6 +76,12 @@ class Pet:
 
     def info(self):
         return json.loads(self.get("/api/info.json"))
+
+    def param_ids(self):
+        if getattr(self, "_pids", None) is None:
+            with io.open(self.rig, encoding="utf-8") as f:
+                self._pids = [p["id"] for p in json.load(f).get("params", [])]
+        return self._pids
 
 
 def loop_period(rig_path, aid):
@@ -149,10 +157,72 @@ def self_variance(pet, aid, region, seconds, settle=2.0, gap=0.4):
     return peak
 
 
+
+def row_shift(a, b, y, span=6):
+    """第 y 行在两帧之间的水平位移（亚像素，互相关）。"""
+    ra = a[y, :, 3].astype(float)
+    rb = b[y, :, 3].astype(float)
+    if ra.sum() < 200 or rb.sum() < 200:
+        return None
+    ra = ra - ra.mean()
+    rb = rb - rb.mean()
+
+    def corr(sh):
+        return float(np.dot(ra, np.roll(rb, sh)))
+
+    best, bv = 0, -1e18
+    for sh in range(-span, span + 1):
+        v = corr(sh)
+        if v > bv:
+            bv, best = v, sh
+    y0, y1, y2 = corr(best - 1), corr(best), corr(best + 1)
+    den = y0 - 2 * y1 + y2
+    return best + ((y0 - y2) / (2 * den) if den != 0 else 0.0)
+
+
+def profile(pet, pid, value, step=2, span=(0.10, 0.70)):
+    """逐行水平位移剖面 —— 用来查「各部分动得一不一致」。
+
+    为什么需要它（2026-10-14 吃的亏）：
+    此前所有实测都在量「动作幅度够不够大」（整帧或分区的像素差）。那量的是
+    「有没有动」。用户反馈的却是「颈部会横向整体错误细微的位移，包括兜帽」——
+    **幅度完全正常，是各部分之间动得不一致**，分区像素差对这种问题是瞎的。
+
+    位移随 y 应当连续变化；**出现跳变就是接缝**。实测躯干顶边（脖子/衣领）
+    相对头部跳了 0.40px，根因是 root 曲线把满额形变给了贴图顶边，而头按
+    颈关节那一行刚性平移。
+    """
+    # 必须冻结时钟 —— 否则 idle 动画也在动，逐行位移里混进来的抖动
+    # （实测 ±0.2px）比要找的接缝跳变还大，什么都看不出来。
+    pet.get("/api/action?id=idle")
+    pet.get("/api/pause?on=1")
+    time.sleep(0.4)
+    for q in pet.param_ids():
+        pet.get("/api/param?id=%s&reset=1" % q)
+    time.sleep(0.2)
+    a = np.asarray(pet.frame())
+    pet.get("/api/param?id=%s&v=%s" % (pid, value))
+    time.sleep(0.25)
+    b = np.asarray(pet.frame())
+    h = a.shape[0]
+    rows = []
+    for fy in range(int(h * span[0]), int(h * span[1]), step):
+        s = row_shift(a, b, fy)
+        if s is not None:
+            rows.append((fy, s))
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser(description="动作幅度实测（带负对照和饱和检查）")
     ap.add_argument("--base", default="http://127.0.0.1:5173")
-    ap.add_argument("--actions", required=True, help="逗号分隔的动作 id")
+    ap.add_argument("--actions", default="", help="逗号分隔的动作 id")
+    ap.add_argument("--profile", default="",
+                    help="改查『一致性』：给一个参数 id，输出逐行水平位移剖面。"
+                         "位移应随 y 连续变化，跳变=接缝（颈部滑移就是这么查出来的）")
+    ap.add_argument("--profile-value", default="1.0", help="--profile 时把参数置到多少")
+    ap.add_argument("--jump", type=float, default=0.25,
+                    help="相邻采样行位移差超过这个就标记为跳变（像素）")
     ap.add_argument("--control", default="nod",
                     help="负对照动作：一个确定不受本次改动影响的动作。"
                          "它的读数就是测量误差底，低于它的结果一律不算数")
@@ -168,15 +238,46 @@ def main():
                     help="用来核对循环动作的周期，确认采样窗盖得住")
     a = ap.parse_args()
 
-    pet = Pet(a.base)
+    pet = Pet(a.base, a.rig)
     try:
         info = pet.info()
     except (urllib.error.URLError, OSError) as e:
         sys.exit("连不上预览服务 %s：%s\n先启动：./build/zhuochong_preview "
                  "--port 5173 --root . --host 0.0.0.0" % (a.base, e))
 
+    if a.profile:
+      try:
+        rows = profile(pet, a.profile, a.profile_value)
+        print("逐行水平位移剖面：%s = %s" % (a.profile, a.profile_value))
+        print("位移应随 y 连续变化，**跳变就是接缝**\n")
+        print("%8s %10s  %s" % ("帧行", "位移px", "图示"))
+        print("-" * 56)
+        prev, jumps = None, []
+        for fy, sh in rows:
+            mark = ""
+            if prev is not None and abs(sh - prev) > a.jump:
+                mark = "  ★ 跳变 %+.2f" % (sh - prev)
+                jumps.append((fy, sh - prev))
+            print("%8d %10.2f  %s%s" % (fy, sh, "#" * int(abs(sh) * 8), mark))
+            prev = sh
+        print("-" * 56)
+        if jumps:
+            print("发现 %d 处跳变：%s" % (len(jumps),
+                  "、".join("帧行%d 差%+.2f" % j for j in jumps)))
+            print("跳变处两侧属于不同的部件/组，它们动得不一致 —— 那里会看到接缝。")
+        else:
+            print("没有超过 %.2fpx 的跳变，各部分动得一致。" % a.jump)
+        for q in pet.param_ids():
+            pet.get("/api/param?id=%s&reset=1" % q)
+        pet.get("/api/pause?on=0")      # 一定要解冻，崩在这里会把引擎时钟留在停摆状态
+      finally:
+        pet.get("/api/pause?on=0")
+      return
+
     loops = {s for s in a.loop.split(",") if s}
     acts = [s for s in a.actions.split(",") if s]
+    if not acts:
+        sys.exit("要么给 --actions，要么给 --profile")
     cap = ceiling(pet, a.region)
 
     print("帧 %dx%d  scale %s  区域 %s（占全帧 %.0f%%~%.0f%%）"
