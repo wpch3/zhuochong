@@ -264,6 +264,16 @@ def check(character, form, root=".", strict=False, out_json=None):
                 armp = json.load(f)
             seg_parts = [sp for sp in seg_parts
                          if sp["id"] not in ("seg_arm_l", "seg_arm_r")] + armp["parts"]
+        # 鞋拆件（make_foot_parts.py）在场时，腿件切线以下已经被擦空，
+        # 静止合成必须把**常态鞋**叠回去，否则"无损切分"会凭空少掉两只鞋。
+        # 踮脚鞋（*_tip）不叠：它是同一个部位的另一套姿态，静止时 xfade 权重为 0。
+        foot_path = os.path.join(base, "sprites", "foot_parts.json")
+        footp = None
+        if os.path.exists(foot_path):
+            with open(foot_path, encoding="utf-8") as f:
+                footp = json.load(f)
+            seg_parts = seg_parts + [q for q in footp["parts"]
+                                     if not q["id"].endswith("_tip")]
         miss = [sp["id"] for sp in seg_parts
                 if not os.path.exists(os.path.join(base, sp["file"]))]
         add("分段", "部件齐全", not miss, f"{len(seg_parts)} 个部件" + (f"，缺 {miss}" if miss else ""))
@@ -273,6 +283,10 @@ def check(character, form, root=".", strict=False, out_json=None):
                "forearm_l": AP.get("elbow_l", AP["shoulder_l"]),
                "forearm_r": AP.get("elbow_r", AP["shoulder_r"])}
         parent = {"forearm_l": "arm_l", "forearm_r": "arm_r"}   # 前臂挂在上臂下面
+        if footp:
+            # 脚挂在腿下面，枢轴取脚踝（静止合成用不到角度，但组链必须完整）
+            piv["foot_l"] = piv["foot_r"] = AP["ankle"]
+            parent["foot_l"], parent["foot_r"] = "leg_l", "leg_r"
         if armp:
             # G4c2：手挂在前臂下面，枢轴 = make_arm_parts 实测的腕线
             for q in armp["parts"]:
@@ -327,6 +341,48 @@ def check(character, form, root=".", strict=False, out_json=None):
             lost = int((body_m & ~flat).sum())
             # 静止时把部件叠回去，必须和原图一模一样：少一块就是切丢了东西
             add("分段", "无损切分", lost == 0, f"静止合成比原图少 {lost} 像素")
+
+            # —— 鞋拆件（T24.5）：踮脚这件事全靠三条不变量撑着，机器来校 ——
+            #   ① 两张姿态图都必须**触地**（鞋底在同一行）——否则踮脚变浮空；
+            #   ② 踮脚鞋的鞋口要比常态鞋正好高 lift（身体也升 lift，两边才对得上）；
+            #   ③ 腿件切线以下必须擦干净，且常态鞋往上盖过切线至少 lift
+            #      （不然身体升起来时腿和鞋之间会裂开一条缝）。
+            if footp:
+                lift = float(footp["lift_px"])
+                gy = int(footp["ground_y"]) - 1
+                cutline = int(footp["cut"]["leg_cut_y"])
+                for side in ("l", "r"):
+                    ck = footp["checks"]["foot_" + side]
+                    add("鞋", f"常态鞋触地({side})", ck["flat_bottom"] == gy,
+                        f"鞋底在 y={ck['flat_bottom']}，地面 y={gy}")
+                    add("鞋", f"踮脚鞋触地({side})", ck["tip_bottom"] == gy,
+                        f"鞋底在 y={ck['tip_bottom']}，地面 y={gy}（差一行就是踮脚时脚离地）")
+                    add("鞋", f"踮脚鞋鞋口抬高={lift:.0f}px({side})",
+                        abs(ck["collar_rise"] - lift) <= 1.0,
+                        f"实测抬高 {ck['collar_rise']}px，rig 的 root.dy 按 {lift:.0f}px 配套")
+                for lid, fl in (("seg_leg_l", "l"), ("seg_leg_r", "r")):
+                    lp = next((q for q in bp["parts"] if q["id"] == lid), None)
+                    if not lp:
+                        continue
+                    la = load_rgba(os.path.join(base, lp["file"]))[..., 3] > 24
+                    ly = cutline - lp["pos"][1]
+                    bot = lp["pos"][1] + la.shape[0]
+                    left = int(la[max(0, ly):].sum()) if ly < la.shape[0] else 0
+                    add("鞋", f"腿件切线以下已清空({fl})", left == 0,
+                        f"{lid} 在 y≥{cutline} 还剩 {left} 像素（鞋归脚件管）")
+                    # 画布也要裁到切线：引擎的 bend 曲线按**贴图画布**铺 0..1，
+                    # 画布探到地面以下的话，脚踝那条线就不是 t=1 了 ——
+                    # tip 从 1.00 掉到 0.59（摆腿少 42%），sine 从 0 涨到 0.65
+                    # （屈膝把整只脚抬离地面）。这两个毛病同一个上游。
+                    add("鞋", f"腿件画布裁到切线({fl})", bot <= cutline,
+                        f"{lid} 画布底边 y={bot}，切线 y={cutline}"
+                        f"（多出来的 {bot - cutline}px 空白会把 bend 曲线的 t=1 推到地底下）")
+                for q in footp["parts"]:
+                    if q["id"].endswith("_tip"):
+                        continue
+                    over = cutline - q["pos"][1]
+                    add("鞋", f"常态鞋盖过切线≥{lift:.0f}px({q['id'][-1]})", over >= lift,
+                        f"只盖过 {over}px；身体升 {lift:.0f}px 时腿脚之间会裂缝")
 
             def hole_mask(a, y0, y1):
                 """这一段里的"内部空洞"掩码：透明、但上下左右都还有身体。"""

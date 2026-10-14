@@ -28,7 +28,7 @@ def png_size(path):
 
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
                has_blend=False, has_side=False, has_legs=False,
-               body_id="seg_torso", has_eyeballs=False):
+               body_id="seg_torso", has_eyeballs=False, foot_lift=None):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -218,12 +218,28 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
             #   t=1.0 鞋底 -7 + 7    =  0    （钉住）
             # 鞋子那一段（t 0.76~1.0）因此被纵向压缩约 3px —— 这个前缩
             # 正是正面视角下"脚跟抬起"的读感，不需要额外拆件。
-            {"id": "ParamTiptoe", "label": "踮脚", "min": 0.0, "max": 1.0, "default": 0.0,
-             "binds": [{"group": "root", "param": "dy", "scale": -7.0},
-                       {"part": "seg_leg_l", "param": "bend_y", "scale": 7.0, "curve": "tip"},
-                       {"part": "seg_leg_r", "param": "bend_y", "scale": 7.0, "curve": "tip"}],
-             "note": "整体上提 7px + 腿底端下推 7px 抵消 = 脚底钉在地面；"
-                     "鞋段被压缩约 3px（正面视角下的脚跟抬起读感）"},
+            # ⚠ 2026-10-14 第二次改口径（T24.5）：有了踮脚鞋真素材之后，
+            #   "腿底端下推抵消"这条**作废**。原因见下面 else 分支的注释。
+            (
+                {"id": "ParamTiptoe", "label": "踮脚", "min": 0.0, "max": 1.0, "default": 0.0,
+                 "binds": [{"group": "root", "param": "dy", "scale": -float(foot_lift)},
+                           {"group": "foot_l", "param": "dy", "scale": float(foot_lift)},
+                           {"group": "foot_r", "param": "dy", "scale": float(foot_lift)}],
+                 "note": "整体上提 %.0fpx；两只脚的组同量下压抵消 = 鞋底钉在地面。"
+                         "鞋本身换成踮脚姿态图（seg_foot_*_tip，鞋身纵向拉长 %.0fpx、"
+                         "鞋底带压扁），鞋口因此正好抬到抬高后的脚踝上 —— "
+                         "腿不再需要拉伸" % (foot_lift, foot_lift)}
+                if foot_lift else
+                # 没有踮脚鞋素材时的老做法：身体上提、腿的底端往下推同样多抵消。
+                # 脚底是钉住了，但鞋只是被压扁 3px，用户实测反馈"踮脚脚部没有变化"。
+                # 两条绑定必须**异号等量**（曾经同号 → 整个人连脚浮空 12px）。
+                {"id": "ParamTiptoe", "label": "踮脚", "min": 0.0, "max": 1.0, "default": 0.0,
+                 "binds": [{"group": "root", "param": "dy", "scale": -7.0},
+                           {"part": "seg_leg_l", "param": "bend_y", "scale": 7.0, "curve": "tip"},
+                           {"part": "seg_leg_r", "param": "bend_y", "scale": 7.0, "curve": "tip"}],
+                 "note": "整体上提 7px + 腿底端下推 7px 抵消 = 脚底钉在地面；"
+                         "鞋段被压缩约 3px（没有踮脚鞋素材时的退路）"}
+            ),
         ]
     out += [
         {"id": "ParamHairFront", "label": "刘海 摆动", "min": -1.0, "max": 1.0, "default": 0.0,
@@ -393,7 +409,7 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
-          closed=None, blendp=None, eyeline=None, smile_eyes=None):
+          closed=None, blendp=None, eyeline=None, smile_eyes=None, footp=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -487,6 +503,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             seg_src = [sp for sp in seg_src if sp["id"] not in ("seg_arm_l", "seg_arm_r")]
             seg_src += [dict(sp, note="手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）")
                         for sp in armp["parts"]]
+        if footp:
+            # T24.5：鞋从腿件上拆下来，常态/踮脚两张姿态图各一件（交叉淡化切换）
+            seg_src += list(footp["parts"])
+            tag_of.update({"seg_foot_l": ["leg", "foot"], "seg_foot_r": ["leg", "foot"],
+                           "seg_foot_l_tip": ["leg", "foot"],
+                           "seg_foot_r_tip": ["leg", "foot"]})
         body_parts_list = [{
             "id": sp["id"],
             "file": sp["file"],
@@ -832,6 +854,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
          "part_overrides": {}},
         {"id": "happy", "priority": 7, "duration": 1.45, "return_state": "idle",
          "interruptible": False,
+         # airborne：鞋底纵向净位移 px（蹦起来 —— 这个动作就是要离地）—— check_feet_on_ground 会按
+         # 通道幅度×参数绑定复算一遍，对不上就红，防的是"后来有人把幅度调大了"。
+         "airborne": 34,
          "channels": [
              {"target": "root", "param": "dy", "wave": "bounce", "amp": -22.0, "dur": 0.45, "ease": "out_back"},
              {"target": "root", "param": "dy", "wave": "bounce", "amp": -12.0, "dur": 0.5, "ease": "out_back"},
@@ -858,6 +883,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
          ]},
         {"id": "hammered", "priority": 9, "duration": 0.7, "return_state": "idle",
          "interruptible": False,
+         # airborne：鞋底纵向净位移 px（被砸：整个人往下陷）—— check_feet_on_ground 会按
+         # 通道幅度×参数绑定复算一遍，对不上就红，防的是"后来有人把幅度调大了"。
+         "airborne": 8,
          "channels": [
              {"target": "root", "param": "dx", "wave": "decay", "amp": 14.0, "freq": 3.2, "dur": 0.7},
              {"target": "root", "param": "dy", "wave": "decay", "amp": 8.0, "freq": 4.0, "dur": 0.7},
@@ -878,6 +906,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # 就是这段死时间（2026-10-14 实测修正）。
         {"id": "clicked", "priority": 4, "duration": 0.34, "return_state": "idle",
          "interruptible": False,
+         # airborne：鞋底纵向净位移 px（被戳一下的小跳）—— check_feet_on_ground 会按
+         # 通道幅度×参数绑定复算一遍，对不上就红，防的是"后来有人把幅度调大了"。
+         "airborne": 6,
          "channels": [
              {"target": "root", "param": "dy", "wave": "bounce", "amp": -6.0, "dur": 0.28},
              {"target": "head", "param": "rot_deg", "wave": "decay", "amp": 3.5, "freq": 3.0, "dur": 0.4},
@@ -902,6 +933,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "eye_open_right", "param": "dx", "wave": "sine", "amp": 1.5, "freq": 0.25},
          ]},
         {"id": "sleep", "priority": 8, "loop": True, "interruptible": False, "dim": 0.35,
+         # airborne：鞋底纵向净位移 px（坐下去，重心下沉）—— check_feet_on_ground 会按
+         # 通道幅度×参数绑定复算一遍，对不上就红，防的是"后来有人把幅度调大了"。
+         "airborne": 4,
          "channels": [
              {"target": "head", "param": "dy", "wave": "sine", "amp": 3.0, "freq": 0.11},
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 2.0, "freq": 0.07},
@@ -1073,6 +1107,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         actions.append({
             "id": "wave", "priority": 6, "duration": 2.4, "return_state": "idle",
             "interruptible": False,
+            # airborne：鞋底纵向净位移 px（挥手时跟着节奏轻微起伏）—— check_feet_on_ground 会按
+            # 通道幅度×参数绑定复算一遍，对不上就红，防的是"后来有人把幅度调大了"。
+            "airborne": 2,
             "channels": wave_channels + [
                 {"target": "head", "param": "rot_deg", "wave": "sine",
                  "amp": 2.0, "freq": 0.8, "dur": 2.4},
@@ -1101,6 +1138,24 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "leg_l": {"pivot": [hip_pt[0] - int(sp_w * 0.08), hip_pt[1]], "parent": "root"},
             "leg_r": {"pivot": [hip_pt[0] + int(sp_w * 0.08), hip_pt[1]], "parent": "root"},
         }
+        if footp:
+            # 脚：挂在腿下面的独立组（T24.5）。
+            # 关键是 bend_follow —— 腿是用 bend_x 摆的（ParamLegL 在脚踝处 ±20px），
+            # 而 bend 只作用于**那张贴图自己**。鞋拆出去以后如果不跟着腿的形变走，
+            # 一摆腿鞋就留在原地，脚踝直接错开十几像素。
+            # 取样高度写在切线上（bend_follow_at = 腿件被擦掉的那一行）：
+            # 整只鞋按切线处的形变量做**刚性**平移，和腿的最后一行严丝合缝。
+            # 这和头/肩用 bend_follow_at 挂在关节上是同一套做法。
+            fcut = oy + int(footp["cut"]["leg_cut_y"])
+            for side in ("l", "r"):
+                groups[f"foot_{side}"] = {
+                    "pivot": [ox + int(round((footp["checks"][f"foot_{side}"]["x"][0] +
+                                              footp["checks"][f"foot_{side}"]["x"][1]) / 2)),
+                              fcut],
+                    "parent": f"leg_{side}",
+                    "bend_follow": f"seg_leg_{side}",
+                    "bend_follow_at": fcut,
+                }
         if armp:
             # 前臂挂在上臂下面：枢轴 = 肘关节（anchors 实测），父组旋转自动继承
             el_l = apt("elbow_l", 0.428, 0.172)
@@ -1203,17 +1258,28 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  {"target": "ParamHairSide", "wave": "sine", "amp": 0.18, "freq": 0.11,
                   "phase": 0.3},
              ]},
+            # 2026-10-14（T24.5）：踮起的那三条从 bounce 改成 pulse。
+            # bounce = sin(π·ease(u))，用 out_back 时峰值落在 u≈0.13 —— 实算
+            # ParamTiptoe 只有 **48 毫秒** 站在 0.95 以上，剩下 0.65 秒都在往下掉。
+            # 以前鞋没有姿态图，看不出来；现在鞋真的换了一张图，一闪而过就白做了。
+            # pulse = 冲上去**保持**，收尾交给动作自己的 fade_out（官方 FadeOutTime
+            # 就是干这个的）→ 0.35 秒踮起、0.7 秒保持、0.2 秒落回。
             {"id": "tiptoe", "priority": 7, "duration": 1.05, "return_state": "idle",
-             "note": "踮脚尖：踮起时双膝微屈，头发与呆毛有一拍滞后",
+             "note": "踮脚尖：踮起时双膝微屈，头发与呆毛有一拍滞后；"
+                     "踮起用 pulse（冲上去保持），落回交给 fade_out",
              "channels": [
-                 {"target": "ParamTiptoe", "wave": "bounce", "amp": 1.0, "dur": 0.75,
+                 {"target": "ParamTiptoe", "wave": "pulse", "amp": 1.0, "dur": 0.35,
                   "ease": "out_back"},
-                 {"target": "ParamKneeL", "wave": "bounce", "amp": 0.5, "dur": 0.75,
+                 {"target": "ParamKneeL", "wave": "pulse", "amp": 0.5, "dur": 0.35,
                   "ease": "out_back"},
-                 {"target": "ParamKneeR", "wave": "bounce", "amp": 0.5, "dur": 0.75,
+                 {"target": "ParamKneeR", "wave": "pulse", "amp": 0.5, "dur": 0.35,
                   "ease": "out_back"},
-                 {"target": "ParamBaseY", "wave": "bounce", "amp": 2.0, "dur": 0.8,
-                  "ease": "out_back"},
+                 # 这里原来还有一条 ParamBaseY（全身上下）。删了：
+                 # ParamBaseY 走的是 root.dy，**脚也跟着飞**（它本来就是给
+                 # happy 的跳跃用的，满格 40px）。踮脚的升高已经由 ParamTiptoe
+                 # 给了（root -30 + 两只脚 +30，鞋钉在地上），再叠 BaseY 等于
+                 # 让人整个浮起来 8px —— 实测动作期间画面最底行 747→744。
+                 # 官方《添加身体动作》写死的那条："身体上下时脚不能离地"。
                  {"target": "ParamAngleZ", "wave": "bounce", "amp": 3.0, "dur": 0.9},
                  {"target": "ParamArmLA", "wave": "bounce", "amp": 0.18, "freq": 0.0,
                   "dur": 0.8},
@@ -1484,7 +1550,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         has_side=any(p["id"] == "hair_side_l" for p in parts_list),
                         has_legs=any(p["id"] == "seg_leg_l" for p in parts_list),
                         body_id=body_id,
-                        has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list))
+                        has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list),
+                        foot_lift=(footp["lift_px"] if footp else None))
     PARAM_IDS = {q["id"] for q in PARAMS}
 
     # 引擎自己注册的内建参数（zrig.c 的 param_add_builtin 那一串）。
@@ -1754,6 +1821,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             ],
             "note": "眼高光形状差分；切 none 可以整组关掉（死鱼眼）",
         }] if (blendp and blendp.get("star")) else []),
+        # xfade（T24.5）：参数驱动的两张姿态图交叉淡化。和 Pose 同一件事，
+        # 区别是驱动源 —— Pose 要"切一下"，xfade 跟着参数值走，所以能和
+        # 动作曲线（ParamTiptoe 的 bounce）同步，踮起来和落回去各淡一次。
+        # 淡化窗口取参数量程的中段 [0.40,0.60]：两头留出纯常态/纯踮脚，
+        # 中间那段两张图都在（淡出件按官方 Pose 曲线抬不透明度，背景透出 ≤15%）。
+        # 窗口为什么这么窄：两张姿态图的鞋口差 30px，交叠期一定能看出双轮廓
+        # （官方《创建有姿势切换的动态》也只说"尽量减少"，没法消掉）。
+        # 窗口越窄，参数扫过它的时间越短 —— 实测踮脚动作里交叠只占 0.1 秒上下。
+        "xfades": ([{
+            "id": f"foot_{side}_tiptoe", "param": "ParamTiptoe", "in": [0.40, 0.60],
+            "from": f"seg_foot_{side}", "to": f"seg_foot_{side}_tip",
+            "note": "常态鞋 → 踮脚鞋（鞋身拉长 %.0fpx、鞋底带压扁）" % footp["lift_px"],
+        } for side in ("l", "r")] if footp else []),
         # 参数分组（= model3.json 的 "Groups"）：告诉外部驱动"哪些参数归自动眨眼/口型管"。
         # Live2D SDK 就是靠这张表决定 CubismEyeBlink / CubismLipSync 去写哪几个参数的。
         "param_groups": [
@@ -1935,6 +2015,18 @@ def main() -> int:
         if miss:
             print(f"警告：手臂拆件缺图 {miss}，退回整条手臂 bend", file=sys.stderr)
             armp = None
+    # 脚拆件（tools/make_foot_parts.py 的产物：常态鞋 + 踮脚鞋各两件）
+    footp = None
+    foot_path = os.path.join(base, "sprites", "foot_parts.json")
+    if seg and os.path.exists(foot_path):
+        with open(foot_path, encoding="utf-8") as f:
+            footp = json.load(f)
+        miss = [a["id"] for a in footp["parts"]
+                if not os.path.exists(os.path.join(base, a["file"]))]
+        if miss:
+            print(f"警告：脚拆件缺图 {miss}，退回\"腿底端拉伸\"的老踮脚", file=sys.stderr)
+            footp = None
+
     # 眼部拆件（tools/make_eye_parts.py 的产物）
     eyes = None
     eye_path = os.path.join(base, "sprites", "eye_parts.json")
@@ -2017,7 +2109,8 @@ def main() -> int:
             mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
                 seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp,
-                closed=closed, blendp=blendp, eyeline=eyeline, smile_eyes=smile_eyes)
+                closed=closed, blendp=blendp, eyeline=eyeline, smile_eyes=smile_eyes,
+                footp=footp)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)

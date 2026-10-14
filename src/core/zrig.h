@@ -87,6 +87,20 @@ double zrig_pose_weight(const zrig *r, const char *group, const char *entry);
 int    zrig_pose_set(zrig *r, const char *group, const char *entry);
 void   zrig_pose_snap(zrig *r);   /* 跳过淡化，直接到位（冻结时钟时用） */
 
+/* ---- xfade：参数驱动的交叉淡化（T24.5）----
+   同一个部位有两张姿态图（常态鞋 / 踮脚鞋），由一个参数在两张之间过渡。
+   和 Pose 的区别只在驱动源：Pose 是"切一下、定时淡化"，xfade 是"参数到哪、权重到哪"，
+   所以能跟动作曲线（.motion3 里的 ParamTiptoe）严丝合缝同步。
+   rig.json：{"id":"foot_l_tiptoe","param":"ParamTiptoe","in":[0.25,0.75],
+              "from":"seg_foot_l","to":"seg_foot_l_tip"} */
+int    zrig_xfade_count(const zrig *r);
+const char *zrig_xfade_id(const zrig *r, int i);
+/* 淡入件（to）的当前权重 0..1；没有这个 id 返回 -1。 */
+double zrig_xfade_weight(const zrig *r, const char *id);
+/* 淡出件（from）该留的不透明度 = Live2D SDK CubismPose::DoFade 的曲线
+   （Phi=0.5、BackOpacityThreshold=0.15）。纯函数，单测直接打它。 */
+double zrig_xfade_hidden(double w);
+
 /* 物理摆当前输出（多段摆调试用）。没有这个 id 返回 0。 */
 double zrig_phys_output(const zrig *r, const char *id);
 

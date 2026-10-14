@@ -4081,6 +4081,147 @@ static void test_pose(void)
 }
 
 
+/* ---- T24.5 xfade：参数驱动的两张姿态图交叉淡化（踮脚换鞋用）---- */
+static void test_xfade(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double w, prev;
+    int bad_mono = 0, bad_cover = 0;
+    const char *head =
+        "{\"schema_version\":\"1.0\",\"id\":\"x\",\"name\":\"换鞋\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"g\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"flat\",\"file\":\"sprites/h.png\",\"group\":\"g\","
+        "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"tip\",\"file\":\"sprites/h.png\",\"group\":\"g\","
+        "  \"layer\":11,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"params\":[{\"id\":\"ParamT\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],";
+
+    SECTION("xfade：两张姿态图按参数交叉淡化（官方 Pose 曲线）");
+
+    /* ① 纯函数先打：zrig_xfade_hidden 就是 CubismPose::DoFade 的曲线 */
+    CHECK(fabs(zrig_xfade_hidden(0.0) - 1.0) < 1e-9,
+          "w=0 时淡出件必须全显，实为 %.4f", zrig_xfade_hidden(0.0));
+    CHECK(fabs(zrig_xfade_hidden(1.0)) < 1e-9,
+          "w=1 时淡出件必须全隐，实为 %.4f", zrig_xfade_hidden(1.0));
+    /* 官方常量 Phi=0.5、BackOpacityThreshold=0.15 推出来的中点值：
+       线性交叉淡化在中点只盖住 1-0.5*0.5=0.75，会漏 25% 背景；
+       官方曲线把淡出件抬到 0.7，总覆盖 1-0.3*0.5=0.85。 */
+    CHECK(fabs(zrig_xfade_hidden(0.5) - 0.7) < 1e-6,
+          "w=0.5 时淡出件应留 0.70（不是线性的 0.50），实为 %.4f",
+          zrig_xfade_hidden(0.5));
+    prev = 2.0;
+    for (w = 0.0; w <= 1.0001; w += 0.01) {
+        double a1 = zrig_xfade_hidden(w);
+        double cover = 1.0 - (1.0 - a1) * (1.0 - w);
+        if (a1 > prev + 1e-9) bad_mono++;        /* 只许越来越暗 */
+        if (cover < 0.85 - 1e-6) bad_cover++;    /* 背景最多漏 15% */
+        prev = a1;
+    }
+    CHECK(bad_mono == 0, "淡出件的不透明度必须单调不增，违例 %d 次", bad_mono);
+    CHECK(bad_cover == 0, "两件合起来必须盖住 ≥85%%（官方阈值），违例 %d 次", bad_cover);
+    CHECK(zrig_xfade_hidden(-1.0) <= 1.0 && zrig_xfade_hidden(2.0) >= 0.0,
+          "超出 0..1 的输入也要被钳住，不能跑飞");
+
+    /* ② 装进 rig 里跑：权重要跟着参数走，窗口外是死的 */
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_xfade");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir); z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    {
+        char buf[2048];
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"ParamT\","
+                   "\"in\":[0.40,0.60],\"from\":\"flat\",\"to\":\"tip\"}]}", head);
+        write_text(rigp, buf);
+    }
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 xfades 的 rig 应加载成功");
+    if (r) {
+        int fw = 0, fh = 0, cx = 0, cy = 0, i, best = -1, bestv = -1;
+        const zimg *fr;
+        double a_single = 0.0, a_mid = 0.0;
+
+        CHECK(zrig_xfade_count(r) == 1, "应有 1 条交叉淡化");
+        CHECK(z_streq(zrig_xfade_id(r, 0), "sw"), "id 应是 sw，实为 %s", zrig_xfade_id(r, 0));
+        CHECK(zrig_xfade_weight(r, "nope") < 0.0, "查不存在的 id 应返回 -1");
+
+        zrig_param_set(r, "ParamT", 0.0); zrig_tick(r, 0.0);
+        CHECK(fabs(zrig_xfade_weight(r, "sw")) < 1e-9,
+              "参数 0（窗口左边）→ 权重 0，实为 %.3f", zrig_xfade_weight(r, "sw"));
+        zrig_param_set(r, "ParamT", 0.35); zrig_tick(r, 0.016);
+        CHECK(fabs(zrig_xfade_weight(r, "sw")) < 1e-9,
+              "窗口还没开始（0.35 < 0.40）→ 权重仍是 0，实为 %.3f",
+              zrig_xfade_weight(r, "sw"));
+        zrig_param_set(r, "ParamT", 0.50); zrig_tick(r, 0.032);
+        CHECK(fabs(zrig_xfade_weight(r, "sw") - 0.5) < 1e-6,
+              "正在窗口正中 → 权重 0.5，实为 %.3f", zrig_xfade_weight(r, "sw"));
+        zrig_param_set(r, "ParamT", 0.60); zrig_tick(r, 0.048);
+        CHECK(fabs(zrig_xfade_weight(r, "sw") - 1.0) < 1e-6,
+              "刚走到窗口右沿 → 权重 1，实为 %.3f", zrig_xfade_weight(r, "sw"));
+        zrig_param_set(r, "ParamT", 1.0); zrig_tick(r, 0.064);
+        CHECK(fabs(zrig_xfade_weight(r, "sw") - 1.0) < 1e-6,
+              "参数顶满 → 权重保持 1，实为 %.3f", zrig_xfade_weight(r, "sw"));
+
+        /* ③ 真渲染一帧：中点的合成不透明度必须是 0.85 那档，不是线性的 0.75。
+           这一步是为了证明"权重真的乘进了画的时候"，而不只是算出来摆着。 */
+        zrig_param_set(r, "ParamT", 0.0); zrig_tick(r, 0.08);
+        fr = zrig_frame(r, 1.0, &fw, &fh);
+        CHECK(fr != NULL && fw > 0 && fh > 0, "应渲染出一帧");
+        if (fr) {
+            for (i = 0; i < fw * fh; ++i)       /* 找一个最不透明的像素来量 */
+                if (fr->px[i * 4 + 3] > bestv) { bestv = fr->px[i * 4 + 3]; best = i; }
+            cx = best % fw; cy = best / fw;
+            a_single = bestv / 255.0;
+            CHECK(a_single > 0.98, "基准像素应是完全不透明的，实为 %.3f", a_single);
+        }
+        zrig_param_set(r, "ParamT", 0.5); zrig_tick(r, 0.096);
+        fr = zrig_frame(r, 1.0, &fw, &fh);
+        if (fr && best >= 0 && best < fw * fh) {
+            a_mid = fr->px[(cy * fw + cx) * 4 + 3] / 255.0;
+            CHECK(a_mid > 0.84 && a_mid < 0.87,
+                  "交叠正中合成不透明度应≈0.85（线性会是 0.75），实为 %.3f", a_mid);
+        }
+
+        zrig_free(r);
+    }
+
+    /* ④ 装配写错必须加载失败，不许默默跑着 */
+    {
+        char buf[2048];
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"NoSuchParam\","
+                   "\"in\":[0.4,0.6],\"from\":\"flat\",\"to\":\"tip\"}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "参数名写错必须加载失败");
+        CHECK(diag_has(&d, "NoSuchParam"), "诊断要点名是哪个参数写错了");
+
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"ParamT\","
+                   "\"in\":[0.4,0.6],\"from\":\"flat\",\"to\":\"flat\"}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "from/to 是同一个部件必须加载失败");
+
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"ParamT\","
+                   "\"in\":[0.6,0.4],\"from\":\"flat\",\"to\":\"tip\"}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "in 区间写反必须加载失败");
+
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"ParamT\","
+                   "\"in\":[0.4,0.6],\"from\":\"flat\",\"to\":\"ghost\"}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "to 指向不存在的部件必须加载失败");
+    }
+}
+
 /* ---- A9 遮罩升级：多遮罩并集 / 取反 / 不限层序 ---- */
 static void test_mask_multi(void)
 {
@@ -4263,6 +4404,7 @@ int main(int argc, char **argv)
     test_keys_and_chain();
     test_blend();
     test_pose();
+    test_xfade();
     test_mask_multi();
     test_longrun();
     test_expression();

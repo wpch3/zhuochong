@@ -17,7 +17,7 @@
 用法：python3 tools/selfcheck_repo.py [--root .] [--quiet]
 """
 from __future__ import annotations
-import argparse, datetime, glob, io, json, os, re, subprocess, sys
+import argparse, datetime, glob, io, json, math, os, re, subprocess, sys
 
 OK, BAD = "通过", "不通过"
 _fail = 0
@@ -550,7 +550,7 @@ def check_engine_caps(root):
     with io.open(rig_path, encoding="utf-8") as fh:
         rig = json.load(fh)
     caps = [("ZRIG_MAX_PHYS", "physics"), ("ZRIG_MAX_PARAMS", "params"),
-            ("ZRIG_MAX_PARTS", "parts")]
+            ("ZRIG_MAX_PARTS", "parts"), ("ZRIG_MAX_XFADE", "xfades")]
     for macro, key in caps:
         m = re.search(r"#define\s+%s\s+(\d+)" % macro, csrc)
         if not check("zrig.c 里找得到 %s" % macro, m is not None):
@@ -605,36 +605,71 @@ def check_torso_inertia(root):
 
 
 def check_tiptoe_grounded(root):
-    """踮脚时脚底必须留在地面上（2026-10-14 加）。
+    """踮脚时脚底必须留在地面上（2026-10-14 加；同日 T24.5 改口径）。
 
-    用户反馈"踮脚脚部没有变化"。根因有一半在这里：
-    `ParamTiptoe` 的两条绑定原本是**同号**的 ——
-    `root.dy = -7`（整体上提）再加 `seg_leg_*.bend_y = -5`（tip 曲线、底端满额），
-    两个一起往上，结果不是踮脚而是**整个人连脚一起浮空 12px**
-    （引擎实测角色最底行 1359 → 1347）。脚相对身体当然"没有变化" —— 它跟着飘走了。
+    这条闸的历史值得留着 —— 它换过两次说法，照着旧说法改会直接踩坑：
 
-    正确的关系：root 往上提多少，腿的底端就要往下推多少抵消。
-    tip 曲线 f(t)=t² 在底边权重为 1，所以 **bend_y 的 scale 必须 ≈ -root.dy 的 scale**，
-    两者**异号且等量**。
+    第一版（错）：`root.dy = -7` 和 `seg_leg_*.bend_y = -5` **同号**，
+      两个一起往上 → 不是踮脚，是整个人连脚浮空 12px（最底行 1359 → 1347）。
+      用户反馈"踮脚脚部没有变化"，有一半是这个 —— 脚跟着人飘走了。
+
+    第二版（对，但只是权宜）：root 上提多少，腿的底端就 bend_y 下推多少抵消。
+      脚底钉住了，可鞋本身只被压扁 3px，看不出踮脚。
+
+    第三版（现在，T24.5）：鞋拆成独立部件，另有一张**踮脚姿态**的鞋
+      （鞋身纵向拉长 lift、鞋底带压扁）。于是：
+        root.dy = -lift（整个人升）
+        foot_l/foot_r 两个**组** dy = +lift（鞋钉在地上）
+        腿不再需要拉伸 —— 鞋口自己长高了 lift，正好接住升上去的脚踝。
+      所以有鞋拆件时，ParamTiptoe 上**不应该**再有 seg_leg_* 的 bend_y。
     """
     section("踮脚时脚底钉在地面（不许整个人浮空）")
-    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    base = os.path.join(root, "characters", "xiaoxun", "forms", "teen")
+    rig_path = os.path.join(base, "rig.json")
     if not os.path.isfile(rig_path):
         return
     with io.open(rig_path, encoding="utf-8") as fh:
         rig = json.load(fh)
+    foot_path = os.path.join(base, "sprites", "foot_parts.json")
+    footp = None
+    if os.path.isfile(foot_path):
+        with io.open(foot_path, encoding="utf-8") as fh:
+            footp = json.load(fh)
     tp = next((p for p in rig.get("params", []) if p["id"] == "ParamTiptoe"), None)
     if not check("找得到 ParamTiptoe", tp is not None):
         return
     lift = None
-    legs = []
+    legs, feet = [], []
     for b in tp.get("binds", []):
         if b.get("group") == "root" and b.get("param") == "dy":
             lift = b.get("scale")
         elif b.get("param") == "bend_y" and str(b.get("part", "")).startswith("seg_leg"):
             legs.append((b.get("part"), b.get("scale"), b.get("curve")))
+        elif b.get("param") == "dy" and str(b.get("group", "")).startswith("foot_"):
+            feet.append((b.get("group"), b.get("scale")))
     if not check("ParamTiptoe 有 root.dy 上提", lift is not None):
         return
+
+    if footp:
+        # —— 有踮脚鞋素材：靠两只脚的组反向位移钉地 ——
+        check("踮脚抬起量和鞋素材是同一个数（素材 lift=%s）" % footp.get("lift_px"),
+              abs(abs(lift) - float(footp.get("lift_px", -1))) < 0.51,
+              "rig 的 root.dy=%s，鞋是按 lift=%s 画的；两边不一致 = 鞋口接不上脚踝"
+              % (lift, footp.get("lift_px")))
+        if check("ParamTiptoe 绑了两只脚的组 dy", len(feet) == 2,
+                 "实际 %d 条：%s" % (len(feet), feet)):
+            for grp, sc in feet:
+                check("%s 的 dy 与 root.dy **异号**（同号 = 整个人浮空）" % grp,
+                      sc is not None and sc * lift < 0,
+                      "root.dy=%s  %s.dy=%s" % (lift, grp, sc))
+                check("%s 的 dy 量值与 root.dy 相抵（鞋底净位移≈0）" % grp,
+                      sc is not None and abs(abs(sc) - abs(lift)) < 0.51,
+                      "|%s| vs |%s|" % (sc, lift))
+        check("有鞋拆件时腿不再拉伸（旧口径已作废）", not legs,
+              "ParamTiptoe 上还挂着 %s —— 鞋口已经自己长高 lift，再拉腿会把袜子抻长" % (legs,))
+        return
+
+    # —— 没有踮脚鞋素材时的退路：腿底端下推抵消 ——
     if not check("ParamTiptoe 有两条腿的 bend_y", len(legs) == 2,
                  "实际 %d 条：%s" % (len(legs), legs)):
         return
@@ -648,6 +683,180 @@ def check_tiptoe_grounded(root):
               if sc is not None else "")
         check("%s 的 bend_y 用 tip 曲线（底端满额才抵得掉）" % part, curve == "tip",
               "实际 curve=%s" % curve)
+
+
+def check_foot_switch(root):
+    """踮脚鞋的切换装置（T24.5，2026-10-14 加）。
+
+    鞋拆成独立部件之后，有三件事只要漏一件就当场出洋相，而且都不会报错：
+
+      ① **鞋不跟腿走**：腿是 bend_x 摆的（ParamLegL 在脚踝处 ±20px），
+         bend 只作用于那张贴图自己。鞋是另一张图，不挂 bend_follow 的话
+         一摆腿鞋就留在原地 —— 脚踝直接错开十几像素。
+         所以 foot_* 组必须 `bend_follow` 对应的腿件，且取样高度 = 切线。
+      ② **两张姿态图没有交叉淡化**：会在一帧之间硬切，鞋"跳"一下。
+      ③ **层序反了**：踮脚鞋画在常态鞋下面，淡入的时候被盖住，白做。
+
+    另外淡化窗口要窄（≤0.3 量程）：两张图的鞋口差着 lift，交叠期一定看得见
+    双轮廓（官方《创建有姿势切换的动态》也只说"尽量减少"）。窗口越窄，
+    参数扫过它的时间越短 —— 实测踮脚动作里交叠只有 3 帧 ≈ 50ms。
+    """
+    section("踮脚鞋：拆件 + 交叉淡化装配正确")
+    base = os.path.join(root, "characters", "xiaoxun", "forms", "teen")
+    rig_path = os.path.join(base, "rig.json")
+    foot_path = os.path.join(base, "sprites", "foot_parts.json")
+    if not (os.path.isfile(rig_path) and os.path.isfile(foot_path)):
+        return
+    with io.open(rig_path, encoding="utf-8") as fh:
+        rig = json.load(fh)
+    with io.open(foot_path, encoding="utf-8") as fh:
+        footp = json.load(fh)
+    parts = {p["id"]: p for p in rig.get("parts", [])}
+    groups = rig.get("groups", {})
+    cutline = int(footp["cut"]["leg_cut_y"]) + 68      # 源图 → 画布（+68）
+
+    for side in ("l", "r"):
+        flat, tip = "seg_foot_%s" % side, "seg_foot_%s_tip" % side
+        if not check("rig 里有 %s / %s 两件" % (flat, tip),
+                     flat in parts and tip in parts):
+            continue
+        check("%s 画在 %s 上面（淡入才看得见）" % (tip, flat),
+              parts[tip]["layer"] > parts[flat]["layer"],
+              "layer %s vs %s" % (parts[tip]["layer"], parts[flat]["layer"]))
+        check("两件都在 foot_%s 组里" % side,
+              parts[flat].get("group") == "foot_%s" % side
+              and parts[tip].get("group") == "foot_%s" % side,
+              "%s / %s" % (parts[flat].get("group"), parts[tip].get("group")))
+        g = groups.get("foot_%s" % side)
+        if not check("有 foot_%s 组" % side, isinstance(g, dict)):
+            continue
+        check("foot_%s 挂在 leg_%s 下面" % (side, side), g.get("parent") == "leg_%s" % side,
+              "parent=%s" % g.get("parent"))
+        check("foot_%s 跟着腿的形变走（bend_follow）" % side,
+              g.get("bend_follow") == "seg_leg_%s" % side,
+              "bend_follow=%s —— 不写的话腿一摆（±20px）鞋就留在原地"
+              % g.get("bend_follow"))
+        check("foot_%s 的取样高度 = 切线 y=%d" % (side, cutline),
+              abs(float(g.get("bend_follow_at", -1)) - cutline) <= 1.0,
+              "bend_follow_at=%s，切线在 %d（取样点不在切口上，腿脚之间会错位）"
+              % (g.get("bend_follow_at"), cutline))
+
+    xf = {x["id"]: x for x in rig.get("xfades", [])}
+    check("两只脚各有一条交叉淡化", len(xf) >= 2, "实际 %d 条" % len(xf))
+    for side in ("l", "r"):
+        x = xf.get("foot_%s_tiptoe" % side)
+        if not check("有 foot_%s_tiptoe 这条淡化" % side, x is not None):
+            continue
+        check("foot_%s_tiptoe 由 ParamTiptoe 驱动" % side, x.get("param") == "ParamTiptoe",
+              "param=%s" % x.get("param"))
+        check("foot_%s_tiptoe 是 常态鞋 → 踮脚鞋" % side,
+              x.get("from") == "seg_foot_%s" % side and x.get("to") == "seg_foot_%s_tip" % side,
+              "%s → %s" % (x.get("from"), x.get("to")))
+        w = x.get("in", [0.0, 1.0])
+        ok = (len(w) == 2 and 0.0 < w[0] < w[1] < 1.0 and (w[1] - w[0]) <= 0.30)
+        check("foot_%s_tiptoe 的淡化窗口又窄又在量程内" % side, ok,
+              "in=%s —— 要求 0<in0<in1<1 且宽度≤0.30（窗口越宽，双轮廓看得越久）" % (w,))
+
+
+def check_feet_on_ground(root):
+    """动作跑起来时脚底不许离地（T24.5，2026-10-14 加）。
+
+    官方《4.添加身体动作》写死的一条："身体上下运动时，脚不能离开地面"。
+    桌宠尤其吃这一条 —— 窗口是透明的，人站在任务栏上，脚一浮就是穿帮。
+
+    之前只量过"拉 ParamTiptoe 滑条时底行不动"，**动作跑起来却是另一回事**：
+    tiptoe 里还挂着一条 ParamBaseY（那是给 happy 跳跃用的，走 root.dy、
+    不补偿脚），实测动作期间画面最底行 747→744，整个人浮了 3px。
+    所以这道闸不看参数，看**动作**：把动作里每条通道的幅度乘上该参数
+    对鞋底的纵向系数，加起来必须≈0。
+
+    鞋底的纵向系数 = root.dy（整体升降）
+                  + foot_*.dy（两只脚的反向补偿）
+                  + Σ seg_leg_*.bend_y × 曲线在跟随取样线处的值
+                    （脚是刚性跟随腿在切线处的形变的，腿一纵向形变就把脚抬走）
+
+    真要跳的动作（happy 蹦、hammered 被砸塌、sleep 坐下去）在 rig 里写
+    "airborne": true 明示放行 —— 新动作默认是"必须站稳"，想离地得自己声明。
+    """
+    section("动作跑起来脚也不离地")
+    base = os.path.join(root, "characters", "xiaoxun", "forms", "teen")
+    rig_path = os.path.join(base, "rig.json")
+    bp_path = os.path.join(base, "sprites", "body_parts.json")
+    if not os.path.isfile(rig_path):
+        return
+    with io.open(rig_path, encoding="utf-8") as fh:
+        rig = json.load(fh)
+    sizes = {}
+    if os.path.isfile(bp_path):
+        with io.open(bp_path, encoding="utf-8") as fh:
+            for q in json.load(fh).get("parts", []):
+                if q.get("size"):
+                    sizes[q["id"]] = q["size"]
+    parts = {p["id"]: p for p in rig.get("parts", [])}
+    # 脚在腿的哪条线上取样（画布坐标）
+    follow_at = {}
+    for gname, g in rig.get("groups", {}).items():
+        if gname.startswith("foot_") and g.get("bend_follow"):
+            follow_at[g["bend_follow"]] = g.get("bend_follow_at")
+
+    def curve_at(curve, t):
+        t = max(0.0, min(1.0, t))
+        if curve == "root":
+            return (1.0 - t) ** 2
+        if curve == "tip":
+            return t * t
+        if curve == "sine":
+            return math.sin(math.pi * t)
+        return t
+
+    dsole = {}            # 参数 → 每单位参数值带动鞋底的纵向像素
+    for prm in rig.get("params", []):
+        tot = 0.0
+        for b in prm.get("binds", []):
+            pm, grp, prt = b.get("param"), str(b.get("group", "")), str(b.get("part", ""))
+            sc = float(b.get("scale", 0) or 0)
+            if pm == "dy" and grp == "root":
+                tot += sc
+            elif pm == "dy" and grp.startswith("foot_"):
+                tot += sc / 2.0          # 左右各一条，两条合起来才是一次位移
+            elif pm == "bend_y" and prt in follow_at and prt in sizes:
+                y0 = parts.get(prt, {}).get("pos", [0, 0])[1]
+                h = float(sizes[prt][1]) or 1.0
+                tot += sc * curve_at(str(b.get("curve", "root")),
+                                     (float(follow_at[prt]) - y0) / h) / 2.0
+        if abs(tot) > 1e-9:
+            dsole[prm["id"]] = tot
+    check("找得到会动到鞋底的参数", bool(dsole),
+          "、".join("%s=%+.1f" % kv for kv in sorted(dsole.items())))
+
+    for act in rig.get("actions", []):
+        worst = 0.0
+        terms = []
+        for c in act.get("channels", []):
+            tgt = str(c.get("target", ""))
+            amp = abs(float(c.get("amp", 0) or 0))
+            k = dsole.get(tgt)
+            if k is None and tgt == "root" and c.get("param") == "dy":
+                k = 1.0                     # 直接写部件通道的老写法
+            if not k or amp <= 0:
+                continue
+            worst += amp * abs(k)
+            terms.append("%s %.2f×%+.1f" % (tgt, amp, k))
+        decl = act.get("airborne")
+        if decl is not None:
+            # 声明可以写 true（只表态），也可以写数字（连幅度一起锁住）——
+            # 写数字才拦得住"后来有人把 amp 调大了一倍"这种漂移。
+            if decl is True:
+                check("%s 声明了会离地（%s）" % (act.get("id"), "、".join(terms) or "可并没动到脚"),
+                      worst > 0.5, "写了 airborne 却根本不离地，这标记是抄来的，删掉")
+            else:
+                check("%s 离地幅度和声明对得上（声明 %gpx）" % (act.get("id"), float(decl)),
+                      abs(worst - float(decl)) <= 1.0,
+                      "实际算出来 %.2fpx，来源：%s" % (worst, "、".join(terms) or "?"))
+            continue
+        check("%s 全程脚不离地（净位移 %.2fpx）" % (act.get("id"), worst), worst <= 0.5,
+              "来源：%s —— 要么补偿两只脚的 dy，要么在动作上写 \"airborne\": true"
+              % ("、".join(terms) or "?"))
 
 
 def check_head_body_link(root):
@@ -698,43 +907,90 @@ def check_head_body_link(root):
 
 
 def check_neck_seam(root):
-    """躯干必须设了形变平台，否则脖子/兜帽会横向滑移（2026-10-14 加）。
+    """跟随件和它所跟随的形变之间不许有相对滑移（2026-10-14 加，同日补方向）。
 
     躯干贴图的顶边其实是脖子和衣领，而 bend_x 用的 root 曲线 f(t)=(1-t)^2
     恰好在顶边给出满额形变；头则按颈关节那一行做刚性平移，只拿到 0.854 倍。
     于是衣领比它上面的头、下面的胸都移动得多 —— 用户实测反馈
     "颈部会横向整体错误细微的位移，包括兜帽"。
 
-    判据：凡是被 bend_x/bend_y 驱动、且有组以它为 bend_follow 源的部件，
-    必须写 bend_hold_above，且落在该部件的纵向范围内（写到贴图外面等于没写）。
+    关键是**方向**：出问题的永远是取样线"另一侧"那块本该归跟随件管、
+    却还在跟着源自己的曲线动的贴图。而哪一侧是"另一侧"由曲线说了算：
+
+      · root 曲线（顶端满额）→ 跟随件挂在上面（头/手臂跟躯干）。
+        取样线**以上**的源贴图（脖子、衣领）要被按住 → 必须写
+        bend_hold_above，让那几行共用取样线处的形变量。
+      · tip 曲线（底端满额）→ 跟随件挂在下面（脚跟腿）。
+        取样线**以下**的源贴图要归跟随件 —— 这回不是按住，而是**切掉**：
+        make_foot_parts.py 把 seg_leg_* 在切线以下擦干净，那块像素改由
+        鞋部件自己画。所以这种情况不该有 bend_hold_above，
+        而要求切线和取样线是同一条（差一行，腿脚之间就错一行）。
+        像素层面"真的擦干净了"由 check_assets.py 的「腿件切线以下已清空」把关。
+
+    （引擎目前没有 bend_hold_below。真要加第三种跟随关系时，要么照搬"切掉"
+      这条路，要么先把 bend_hold_below 实现出来，别让这道闸默认放行。）
     """
-    section("躯干有形变平台（脖子不滑移）")
-    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    section("跟随件不相对滑移（脖子/脚踝）")
+    base = os.path.join(root, "characters", "xiaoxun", "forms", "teen")
+    rig_path = os.path.join(base, "rig.json")
     if not os.path.isfile(rig_path):
         return
     with io.open(rig_path, encoding="utf-8") as fh:
         rig = json.load(fh)
     parts = {p["id"]: p for p in rig.get("parts", [])}
-    # 谁是 bend_follow 的源头
-    srcs = {g.get("bend_follow") for g in rig.get("groups", {}).values() if g.get("bend_follow")}
-    # 谁被 bend 驱动
-    bent = set()
+    # 已登记的"切掉"：源部件 → 切线（画布坐标；源图 → 画布要 +68）
+    cuts = {}
+    foot_path = os.path.join(base, "sprites", "foot_parts.json")
+    if os.path.isfile(foot_path):
+        with io.open(foot_path, encoding="utf-8") as fh:
+            fj = json.load(fh)
+        cy = int(fj.get("cut", {}).get("leg_cut_y", 0)) + 68
+        cuts["seg_leg_l"] = cuts["seg_leg_r"] = cy
+    # 每个源部件被哪些 bend 曲线驱动（取 |scale| 最大的那条定性）
+    drv = {}
     for prm in rig.get("params", []):
         for b in prm.get("binds", []):
             if "bend" in str(b.get("param", "")) and b.get("part"):
-                bent.add(b["part"])
-    need = sorted(srcs & bent)
-    check("找得到被弯曲又被跟随的躯干部件", bool(need), "、".join(need) or "一个都没有？")
-    for pid in need:
-        p = parts.get(pid)
-        if not p:
+                d = drv.setdefault(b["part"], {})
+                c = str(b.get("curve", "root"))
+                d[c] = max(d.get(c, 0.0), abs(float(b.get("scale", 0) or 0)))
+    pairs = [(gn, g) for gn, g in rig.get("groups", {}).items() if g.get("bend_follow")]
+    check("找得到跟随形变的组", bool(pairs), "一个都没有？")
+    seen = set()
+    for gname, g in sorted(pairs):
+        src = g["bend_follow"]
+        yat = g.get("bend_follow_at")
+        p = parts.get(src)
+        if not check("%s 跟随的 %s 真的存在" % (gname, src), p is not None):
             continue
+        curves = drv.get(src, {})
+        if not check("%s 真的被 bend 驱动（否则跟随没意义）" % src, bool(curves)):
+            continue
+        top = int(p.get("pos", [0, 0])[1])
+        main = max(curves.items(), key=lambda kv: kv[1])[0]
+        if main == "tip":
+            # 跟随件在下面：取样线以下的源贴图必须已经切掉，交给跟随件画
+            cut = cuts.get(src)
+            check("%s 在取样线以下已登记切掉（而不是靠形变平台）" % src, cut is not None,
+                  "tip 曲线底端满额，取样线以下的贴图会比刚性跟随的脚多动 "
+                  "—— 要么切掉，要么实现 bend_hold_below，不能就这么放着")
+            if cut is not None:
+                check("%s 的切线和 %s 的取样线对齐（%s vs %s）" % (src, gname, cut, yat),
+                      abs(float(cut) - float(yat)) <= 1.0,
+                      "差一行，腿和鞋就错一行")
+            check("%s 不该写 bend_hold_above（那会把整条腿按死，连摆都摆不动）" % src,
+                  p.get("bend_hold_above") is None,
+                  "bend_hold_above=%s" % p.get("bend_hold_above"))
+            continue
+        # 跟随件在上面：取样线以上的源贴图（脖子/衣领）必须被平台按住
+        if src in seen:
+            continue
+        seen.add(src)
         hold = p.get("bend_hold_above")
-        if not check("%s 写了形变平台 bend_hold_above" % pid, bool(hold),
+        if not check("%s 写了形变平台 bend_hold_above" % src, bool(hold),
                      "没写 → 衣领会比头多动，脖子横向滑移"):
             continue
-        top = p.get("pos", [0, 0])[1]
-        check("%s 的平台线落在部件范围内" % pid, hold > top,
+        check("%s 的平台线落在部件范围内" % src, hold > top,
               "平台 y=%s 顶边 y=%s" % (hold, top))
 
 
@@ -1640,7 +1896,7 @@ def main():
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
                check_json, check_rig, check_engine_caps, check_torso_inertia,
-               check_tiptoe_grounded,
+               check_tiptoe_grounded, check_foot_switch, check_feet_on_ground,
                check_head_body_link,
                check_neck_seam,
                check_action_dead_time,

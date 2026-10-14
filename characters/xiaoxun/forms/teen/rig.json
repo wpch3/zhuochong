@@ -67,6 +67,24 @@
       ],
       "parent": "root"
     },
+    "foot_l": {
+      "pivot": [
+        382,
+        1218
+      ],
+      "parent": "leg_l",
+      "bend_follow": "seg_leg_l",
+      "bend_follow_at": 1218
+    },
+    "foot_r": {
+      "pivot": [
+        455,
+        1218
+      ],
+      "parent": "leg_r",
+      "bend_follow": "seg_leg_r",
+      "bend_follow_at": 1218
+    },
     "forearm_l": {
       "pivot": [
         276,
@@ -434,6 +452,82 @@
         "body"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+    },
+    {
+      "id": "seg_foot_l",
+      "file": "sprites/seg_foot_l.png",
+      "group": "foot_l",
+      "layer": 62,
+      "pos": [
+        346,
+        1180
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "leg",
+        "foot"
+      ],
+      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+    },
+    {
+      "id": "seg_foot_l_tip",
+      "file": "sprites/seg_foot_l_tip.png",
+      "group": "foot_l",
+      "layer": 64,
+      "pos": [
+        346,
+        1150
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "leg",
+        "foot"
+      ],
+      "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+    },
+    {
+      "id": "seg_foot_r",
+      "file": "sprites/seg_foot_r.png",
+      "group": "foot_r",
+      "layer": 63,
+      "pos": [
+        418,
+        1180
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "leg",
+        "foot"
+      ],
+      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+    },
+    {
+      "id": "seg_foot_r_tip",
+      "file": "sprites/seg_foot_r_tip.png",
+      "group": "foot_r",
+      "layer": 65,
+      "pos": [
+        418,
+        1150
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "leg",
+        "foot"
+      ],
+      "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
     },
     {
       "id": "mouth_mask",
@@ -1509,6 +1603,7 @@
       "duration": 1.45,
       "return_state": "idle",
       "interruptible": false,
+      "airborne": 34,
       "channels": [
         {
           "target": "ParamBaseY",
@@ -1875,6 +1970,7 @@
       "duration": 0.7,
       "return_state": "idle",
       "interruptible": false,
+      "airborne": 8,
       "channels": [
         {
           "target": "ParamBaseX",
@@ -2042,6 +2138,7 @@
       "duration": 0.34,
       "return_state": "idle",
       "interruptible": false,
+      "airborne": 6,
       "channels": [
         {
           "target": "ParamBaseY",
@@ -2215,6 +2312,7 @@
       "loop": true,
       "interruptible": false,
       "dim": 0.35,
+      "airborne": 4,
       "channels": [
         {
           "target": "ParamAngleY",
@@ -2314,6 +2412,7 @@
       "duration": 2.4,
       "return_state": "idle",
       "interruptible": false,
+      "airborne": 2,
       "channels": [
         {
           "target": "ParamArmRA",
@@ -2534,34 +2633,27 @@
       "priority": 7,
       "duration": 1.05,
       "return_state": "idle",
-      "note": "踮脚尖：踮起时双膝微屈，头发与呆毛有一拍滞后",
+      "note": "踮脚尖：踮起时双膝微屈，头发与呆毛有一拍滞后；踮起用 pulse（冲上去保持），落回交给 fade_out",
       "channels": [
         {
           "target": "ParamTiptoe",
-          "wave": "bounce",
+          "wave": "pulse",
           "amp": 1.0,
-          "dur": 0.75,
+          "dur": 0.35,
           "ease": "out_back"
         },
         {
           "target": "ParamKneeL",
-          "wave": "bounce",
+          "wave": "pulse",
           "amp": 0.5,
-          "dur": 0.75,
+          "dur": 0.35,
           "ease": "out_back"
         },
         {
           "target": "ParamKneeR",
-          "wave": "bounce",
+          "wave": "pulse",
           "amp": 0.5,
-          "dur": 0.75,
-          "ease": "out_back"
-        },
-        {
-          "target": "ParamBaseY",
-          "wave": "bounce",
-          "amp": 2.0,
-          "dur": 0.8,
+          "dur": 0.35,
           "ease": "out_back"
         },
         {
@@ -3861,22 +3953,20 @@
         {
           "group": "root",
           "param": "dy",
-          "scale": -7.0
+          "scale": -30.0
         },
         {
-          "part": "seg_leg_l",
-          "param": "bend_y",
-          "scale": 7.0,
-          "curve": "tip"
+          "group": "foot_l",
+          "param": "dy",
+          "scale": 30.0
         },
         {
-          "part": "seg_leg_r",
-          "param": "bend_y",
-          "scale": 7.0,
-          "curve": "tip"
+          "group": "foot_r",
+          "param": "dy",
+          "scale": 30.0
         }
       ],
-      "note": "整体上提 7px + 腿底端下推 7px 抵消 = 脚底钉在地面；鞋段被压缩约 3px（正面视角下的脚跟抬起读感）"
+      "note": "整体上提 30px；两只脚的组同量下压抵消 = 鞋底钉在地面。鞋本身换成踮脚姿态图（seg_foot_*_tip，鞋身纵向拉长 30px、鞋底带压扁），鞋口因此正好抬到抬高后的脚踝上 —— 腿不再需要拉伸"
     },
     {
       "id": "ParamHairFront",
@@ -4102,6 +4192,30 @@
         }
       ],
       "note": "眼高光形状差分；切 none 可以整组关掉（死鱼眼）"
+    }
+  ],
+  "xfades": [
+    {
+      "id": "foot_l_tiptoe",
+      "param": "ParamTiptoe",
+      "in": [
+        0.4,
+        0.6
+      ],
+      "from": "seg_foot_l",
+      "to": "seg_foot_l_tip",
+      "note": "常态鞋 → 踮脚鞋（鞋身拉长 30px、鞋底带压扁）"
+    },
+    {
+      "id": "foot_r_tiptoe",
+      "param": "ParamTiptoe",
+      "in": [
+        0.4,
+        0.6
+      ],
+      "from": "seg_foot_r",
+      "to": "seg_foot_r_tip",
+      "note": "常态鞋 → 踮脚鞋（鞋身拉长 30px、鞋底带压扁）"
     }
   ],
   "param_groups": [

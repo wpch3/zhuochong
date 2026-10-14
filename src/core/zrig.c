@@ -12,6 +12,7 @@
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     24
 #define ZRIG_MAX_PARAMS   64   /* 2026-10-14：下半身补了膝盖/重心/踮脚 4 个参数后 50 个，48 不够用了 */
+#define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
 #define ZRIG_MAX_POSE      8     /* 互斥部件组（≈ pose3.json 的 Groups） */
 #define ZRIG_MAX_POSE_ENT 24     /* 所有组的"档位"总数 */
 #define ZRIG_MAX_POSE_MEM 48     /* 所有档位引用的部件总数 */
@@ -267,6 +268,20 @@ typedef struct {
     int  cur;                 /* 当前档位（相对 ent0 的序号），-1 = 全关 */
 } zpose;
 
+/* 参数驱动的交叉淡化（T24.5）：同一个部位有两张姿态图（常态鞋 / 踮脚鞋），
+   由一个参数在两张之间过渡。和上面的 Pose 是一回事，区别只在驱动源 ——
+   Pose 是"切一下、定时淡化"，这里是"参数值到哪，权重就到哪"，
+   所以能和动作曲线（.motion3 里的 ParamTiptoe）严丝合缝地同步。
+   { "id":"foot_l_tiptoe", "param":"ParamTiptoe", "in":[0.25,0.75],
+     "from":"seg_foot_l", "to":"seg_foot_l_tip" } */
+typedef struct {
+    char id[48];
+    int  param;               /* 驱动参数下标 */
+    int  from, to;            /* 部件下标：from 淡出、to 淡入 */
+    double in0, in1;          /* 参数区间 → 权重 0..1 */
+    double w;                 /* 本帧权重（= to 件的不透明度） */
+} zxfade;
+
 /* 眨眼状态（对齐 Live2D CubismEyeBlink 的五态机） */
 enum { BL_FIRST = 0, BL_INTERVAL, BL_CLOSING, BL_CLOSED, BL_OPENING };
 
@@ -369,6 +384,9 @@ struct zrig {
 
     /* Pose：互斥部件组（A8，≈ Live2D pose3.json）。
        一组里同一时刻只有一个档位可见，切换时旧档淡出、新档淡入。 */
+    zxfade  xfades[ZRIG_MAX_XFADE];
+    int     nxfades;
+
     zpose   poses[ZRIG_MAX_POSE];
     int     nposes;
     zposeent poseents[ZRIG_MAX_POSE_ENT];
@@ -1477,6 +1495,85 @@ double zrig_viseme_weight(const zrig *r)
 /* 自动眨眼眨哪只眼：位 0 = 左、位 1 = 右（= model3.json 的 EyeBlink 组）。 */
 int zrig_blink_targets(const zrig *r) { return r ? r->blink_targets : 3; }
 
+/* 隐藏件（正在淡出的那张）该留多少不透明度。
+   直接照搬 Live2D SDK 的 CubismPose::DoFade：Phi=0.5、BackOpacityThreshold=0.15。
+   为什么不能用最朴素的 1-w：两张图各画一半时，合成覆盖率 = w + (1-w)² ，
+   w=0.5 时只有 0.75 —— 中途会**透出 25% 的背景**，看起来像鞋突然变半透明。
+   官方的做法是把隐藏件的不透明度抬起来，保证背景透出不超过 15%：
+       a1 = 1-w ；若 (1-a1)(1-w) > 0.15 则 a1 = 1 - 0.15/(1-w)
+   出处：https://docs.live2d.com/en/cubism-sdk-manual/pose/ */
+double zrig_xfade_hidden(double w)
+{
+    const double phi = 0.5, back_thr = 0.15;
+    double a1, rest;
+    w = ZC_CLAMP(w, 0.0, 1.0);
+    a1 = (w < phi) ? (w * (phi - 1.0) / phi + 1.0) : ((1.0 - w) * phi / (1.0 - phi));
+    rest = 1.0 - w;
+    if (rest > 1e-6 && (1.0 - a1) * rest > back_thr) a1 = 1.0 - back_thr / rest;
+    return ZC_CLAMP(a1, 0.0, 1.0);
+}
+
+/* xfades：参数驱动的两张姿态图交叉淡化。结构见上面 zxfade 的注释。 */
+static int load_xfades(zrig *r, const zjson *jx, zdiag *d, const char *file)
+{
+    size_t i, n;
+    if (!jx) return 0;
+    if (!zjson_is(jx, ZJSON_ARR)) {
+        zdiag_error(d, file, jx->line, 0, "xfades", "xfades 应是数组");
+        return -1;
+    }
+    n = zjson_count((zjson *)jx);
+    for (i = 0; i < n; ++i) {
+        const zjson *xj = zjson_at((zjson *)jx, i);
+        const char *xid = zjson_str(zjson_obj_get((zjson *)xj, "id"), NULL);
+        const char *pid = zjson_str(zjson_obj_get((zjson *)xj, "param"), NULL);
+        const char *fid = zjson_str(zjson_obj_get((zjson *)xj, "from"), NULL);
+        const char *tid = zjson_str(zjson_obj_get((zjson *)xj, "to"), NULL);
+        const zjson *in = zjson_obj_get((zjson *)xj, "in");
+        zxfade *x;
+        int line = xj ? xj->line : 0;
+        if (r->nxfades >= ZRIG_MAX_XFADE) {
+            zdiag_error(d, file, line, 0, "xfades", "交叉淡化过多（上限 %d）", ZRIG_MAX_XFADE);
+            return -1;
+        }
+        if (!xid || !pid || !fid || !tid) {
+            zdiag_error(d, file, line, 0, "xfades", "id/param/from/to 四个都要写");
+            return -1;
+        }
+        x = &r->xfades[r->nxfades];
+        memset(x, 0, sizeof(*x));
+        z_strlcpy(x->id, xid, sizeof(x->id));
+        x->param = param_find(r, param_alias(pid));
+        x->from = find_part(r, fid);
+        x->to = find_part(r, tid);
+        if (x->param < 0) {
+            zdiag_error(d, file, line, 0, "xfades", "参数 '%s' 不存在", pid);
+            return -1;
+        }
+        if (x->from < 0 || x->to < 0) {
+            zdiag_error(d, file, line, 0, "xfades", "部件不存在：from='%s' to='%s'", fid, tid);
+            return -1;
+        }
+        if (x->from == x->to) {
+            zdiag_error(d, file, line, 0, "xfades", "from 和 to 是同一个部件");
+            return -1;
+        }
+        x->in0 = 0.0; x->in1 = 1.0;
+        if (in && zjson_is((zjson *)in, ZJSON_ARR) && zjson_count((zjson *)in) == 2) {
+            x->in0 = zjson_num(zjson_at((zjson *)in, 0), 0.0);
+            x->in1 = zjson_num(zjson_at((zjson *)in, 1), 1.0);
+        }
+        if (x->in1 - x->in0 < 1e-6) {
+            zdiag_error(d, file, line, 0, "xfades", "in 区间必须是递增的两个数");
+            return -1;
+        }
+        /* 开机先按参数默认值把权重摆好，免得第一帧闪一下 */
+        x->w = ZC_CLAMP((r->params[x->param].vdef - x->in0) / (x->in1 - x->in0), 0.0, 1.0);
+        r->nxfades++;
+    }
+    return 0;
+}
+
 static int load_poses(zrig *r, const zjson *jp, zdiag *d, const char *file)
 {
     size_t i, n;
@@ -2152,6 +2249,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_visemes(r, zjson_obj_get(root, "visemes"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
     if (load_poses(r, zjson_obj_get(root, "poses"), diag, file) != 0) goto fail;
+    if (load_xfades(r, zjson_obj_get(root, "xfades"), diag, file) != 0) goto fail;
 
     /* 眨眼 */
     {
@@ -2531,6 +2629,16 @@ static void compute_group_transforms(zrig *r)
             double v = param_effective(r, i);
             double off = v - q->value;
             int k;
+            /* 交叉淡化的权重跟着**合成后**的参数值走（不是参数自身的值）：
+               踮脚是动作曲线在推 ParamTiptoe，读 q->value 的话永远是 0。 */
+            if (r->nxfades > 0) {
+                int xi;
+                for (xi = 0; xi < r->nxfades; ++xi) {
+                    zxfade *xf = &r->xfades[xi];
+                    if (xf->param != (int)i) continue;
+                    xf->w = ZC_CLAMP((v - xf->in0) / (xf->in1 - xf->in0), 0.0, 1.0);
+                }
+            }
             switch (q->builtin) {
                 case PBI_ANGLE_X:   lx += off / 30.0; continue;
                 case PBI_ANGLE_Y:   ly -= off / 30.0; continue;
@@ -3186,6 +3294,16 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         if (p->tags & TAG_EYE_SMILE)
             opacity *= ZC_CLAMP((smile - 0.75) * 4.0, 0.0, 1.0);
     }
+    /* 参数驱动的交叉淡化（踮脚鞋）：淡入件按权重，淡出件按官方 Pose 的曲线。
+       放在这里（动作覆盖之后、early-out 之前）是为了和眨眼那套走同一个口径。 */
+    if (r->nxfades > 0) {
+        int xi;
+        for (xi = 0; xi < r->nxfades; ++xi) {
+            const zxfade *xf = &r->xfades[xi];
+            if (xf->to == pi) opacity *= xf->w;
+            else if (xf->from == pi) opacity *= zrig_xfade_hidden(xf->w);
+        }
+    }
     if (opacity <= 0.001) return 0;
     if ((p->tags & TAG_EYE_CLOSED) && blink <= 0.001) return 0;
     if ((p->tags & TAG_EYE_OPEN) && blink >= 0.999) return 0;
@@ -3645,6 +3763,23 @@ void zrig_expression_snap(zrig *r)
 }
 
 /* ---- Pose（A8）---- */
+int zrig_xfade_count(const zrig *r) { return r ? r->nxfades : 0; }
+
+const char *zrig_xfade_id(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nxfades) return "";
+    return r->xfades[i].id;
+}
+
+double zrig_xfade_weight(const zrig *r, const char *id)
+{
+    int i;
+    if (!r || !id) return -1.0;
+    for (i = 0; i < r->nxfades; ++i)
+        if (z_streq(r->xfades[i].id, id)) return r->xfades[i].w;
+    return -1.0;
+}
+
 int zrig_pose_count(const zrig *r) { return r ? r->nposes : 0; }
 
 const char *zrig_pose_id(const zrig *r, int i)

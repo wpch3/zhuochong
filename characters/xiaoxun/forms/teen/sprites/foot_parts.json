@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.0",
+  "source": "sprites/body_full.png",
+  "note": "踮脚鞋 = 已有像素按「绕脚尖旋转 + 俯角投影」重采样，不是 AI 重绘：这个姿态没有新露出的表面，所以不走 D19。",
+  "lift_px": 30.0,
+  "ground_y": 1292,
+  "cut": {
+    "ankle_y": 1142,
+    "shoe_top": 1156,
+    "sole_top": 1276,
+    "leg_cut_y": 1150,
+    "sock_overlap_px": 38,
+    "flat_top": 1112,
+    "tip_top": 1082,
+    "x_split": 218
+  },
+  "warp": {
+    "sole_squash": 0.65,
+    "upper_stretch": 1.2967,
+    "formula": "d'=d_sole*ks+(d-d_sole)*ku（离地距离分段线性），lift=总增量"
+  },
+  "legs_erased_px": {
+    "seg_leg_l": 7934,
+    "seg_leg_r": 7904
+  },
+  "legs_cropped_h": {
+    "seg_leg_l": 487,
+    "seg_leg_r": 486
+  },
+  "parts": [
+    {
+      "id": "seg_foot_l",
+      "file": "sprites/seg_foot_l.png",
+      "pos": [
+        146,
+        1112
+      ],
+      "size": [
+        72,
+        180
+      ],
+      "group": "foot_l",
+      "layer": 62,
+      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+    },
+    {
+      "id": "seg_foot_l_tip",
+      "file": "sprites/seg_foot_l_tip.png",
+      "pos": [
+        146,
+        1082
+      ],
+      "size": [
+        72,
+        210
+      ],
+      "group": "foot_l",
+      "layer": 64,
+      "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+    },
+    {
+      "id": "seg_foot_r",
+      "file": "sprites/seg_foot_r.png",
+      "pos": [
+        218,
+        1112
+      ],
+      "size": [
+        74,
+        180
+      ],
+      "group": "foot_r",
+      "layer": 63,
+      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+    },
+    {
+      "id": "seg_foot_r_tip",
+      "file": "sprites/seg_foot_r_tip.png",
+      "pos": [
+        218,
+        1082
+      ],
+      "size": [
+        74,
+        210
+      ],
+      "group": "foot_r",
+      "layer": 65,
+      "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+    }
+  ],
+  "checks": {
+    "foot_l": {
+      "x": [
+        146,
+        218
+      ],
+      "shoe_top": 1156,
+      "sole_top": 1276,
+      "flat_bottom": 1291,
+      "tip_bottom": 1291,
+      "flat_shoe_top": 1156,
+      "tip_shoe_top": 1126,
+      "collar_rise": 30,
+      "flat_px": 9304,
+      "tip_px": 11128
+    },
+    "foot_r": {
+      "x": [
+        218,
+        292
+      ],
+      "shoe_top": 1156,
+      "sole_top": 1276,
+      "flat_bottom": 1291,
+      "tip_bottom": 1291,
+      "flat_shoe_top": 1156,
+      "tip_shoe_top": 1126,
+      "collar_rise": 30,
+      "flat_px": 9269,
+      "tip_px": 11098
+    }
+  }
+}
