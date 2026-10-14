@@ -525,6 +525,28 @@ def check_no_stale_decisions(root):
               else f"lol max_tier={lol.get('max_tier')}")
 
 
+def check_motion_measure(root):
+    """动画实测工具的三道防护不许被拆（2026-10-14 加）。
+
+    这个工具的价值不在"能跑出数字"，而在它强制带上负对照、饱和检查和周期防呆。
+    拆掉任何一个，它就退化成当初那个"看起来很漂亮但全是假数"的临时脚本
+    （LESSONS 78/79 两次误判都是这么来的）。"""
+    section("动画实测工具的防护没被拆")
+    f = os.path.join(root, "tools", "measure_motion.py")
+    if not check("动画实测工具在", os.path.isfile(f), "tools/measure_motion.py"):
+        return
+    with io.open(f, encoding="utf-8") as fh:
+        txt = fh.read()
+    for need, label, why in (
+        ("--control", "负对照 --control 还在", "没有它量到的是整体位移的混淆"),
+        ("def ceiling", "饱和检查 ceiling() 还在", "不先算天花板就报比例会误判"),
+        ("def self_variance", "自方差 self_variance() 还在", "一次性和循环不能同指标"),
+        ("def loop_period", "周期防呆 loop_period() 还在", "窗盖不住周期就量不到"),
+    ):
+        check(label, need in txt, why)
+    check("提示了要做 A/B", "A/B" in txt, "单边测量不足以归因")
+
+
 def check_form_roadmap(root):
     """形态路线图与磁盘必须对得上。
 
@@ -1355,7 +1377,7 @@ def main():
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
-               check_json, check_rig, check_form_roadmap,
+               check_json, check_rig, check_motion_measure, check_form_roadmap,
                check_live2d, check_character,
                check_web, check_contract, check_tools, check_hygiene):
         try:

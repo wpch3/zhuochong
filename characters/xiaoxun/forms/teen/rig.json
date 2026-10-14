@@ -1448,6 +1448,20 @@
           "wave": "sine",
           "amp": 0.28,
           "freq": 1.0
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "pulse",
+          "amp": 0.2,
+          "dur": 0.35,
+          "ease": "out_back"
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "pulse",
+          "amp": 0.2,
+          "dur": 0.35,
+          "ease": "out_back"
         }
       ],
       "blink_hold": 0.95,
@@ -1636,6 +1650,33 @@
           "wave": "sine",
           "amp": 0.3571,
           "freq": 0.25
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "pulse",
+          "amp": 0.26,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "pulse",
+          "amp": 0.2,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.8,
+          "ease": "out"
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "sine",
+          "amp": 0.08,
+          "freq": 0.09
         }
       ],
       "blink_hold": 0.32,
@@ -1769,6 +1810,26 @@
           "amp": -0.4286,
           "dur": 0.9,
           "freq": 2.0
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "bounce",
+          "amp": 0.48,
+          "dur": 0.5,
+          "ease": "out_back"
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "bounce",
+          "amp": 0.48,
+          "dur": 0.5,
+          "ease": "out_back"
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "bounce",
+          "amp": -0.24,
+          "dur": 0.55
         }
       ]
     },
@@ -2017,6 +2078,26 @@
           "wave": "sine",
           "amp": 0.16,
           "freq": 1.8
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "sine",
+          "amp": 0.14,
+          "freq": 0.33
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "sine",
+          "amp": 0.08,
+          "freq": 0.33,
+          "phase": 0.5
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "sine",
+          "amp": -0.08,
+          "freq": 0.33,
+          "phase": 0.5
         }
       ]
     },
@@ -2069,6 +2150,26 @@
           "wave": "sine",
           "amp": -0.2857,
           "freq": 0.3
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "pulse",
+          "amp": 0.34,
+          "dur": 0.7,
+          "ease": "out"
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "pulse",
+          "amp": 0.24,
+          "dur": 0.7,
+          "ease": "out"
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "sine",
+          "amp": 0.12,
+          "freq": 0.13
         }
       ]
     },
@@ -2139,6 +2240,33 @@
           "wave": "sine",
           "amp": -0.2,
           "freq": 0.1
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "sine",
+          "amp": 0.26,
+          "freq": 0.05
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 1.2,
+          "ease": "out"
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "pulse",
+          "amp": 0.18,
+          "dur": 1.2,
+          "ease": "out"
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "sine",
+          "amp": 0.07,
+          "freq": 0.05,
+          "phase": 0.3
         }
       ],
       "blink_hold": 1.0,
@@ -2231,6 +2359,26 @@
           "wave": "sine",
           "amp": 0.18,
           "freq": 1.2
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "pulse",
+          "amp": -0.4,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "pulse",
+          "amp": 0.22,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "sine",
+          "amp": 0.1,
+          "freq": 0.42
         }
       ],
       "part_overrides": {
@@ -2265,6 +2413,27 @@
           "wave": "sine",
           "amp": 3.0,
           "freq": 0.45
+        },
+        {
+          "target": "ParamWeightShift",
+          "wave": "sine",
+          "amp": 0.2,
+          "freq": 0.45,
+          "phase": 0.18
+        },
+        {
+          "target": "ParamKneeL",
+          "wave": "sine",
+          "amp": 0.09,
+          "freq": 0.45,
+          "phase": 0.18
+        },
+        {
+          "target": "ParamKneeR",
+          "wave": "sine",
+          "amp": -0.09,
+          "freq": 0.45,
+          "phase": 0.18
         }
       ]
     },

@@ -1484,6 +1484,84 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             n_out += len(out_ch)
         return n_in, n_out
 
+    # ------------------------------------------------------------------
+    # 下半身陪衬通道（2026-10-14）
+    # ------------------------------------------------------------------
+    # 上面那批动作是按"上半身怎么演"调出来的，腿基本没管 —— 结果 14 个动作
+    # 下半身完全僵着。人不是这样的：挥手会把重心压到支撑腿，受惊会屈膝，
+    # 思考时会单腿承重，站着发呆重心一直在两腿间慢慢挪。
+    #
+    # 这里集中补，而不是逐个去改上面的定义，原因有三：
+    #   · wave / look_around 是动态拼出来的，没有固定的字面量可改
+    #   · 集中成一张表，幅度好横向对比（都是陪衬，不能喧宾夺主）
+    #   · 将来要整体调强调弱，改一处就行
+    # 幅度一律压在 0.5 以内（参数满量程是 1.0）—— 下半身是伴奏不是主旋律。
+    if has_legs_p:
+        W, KL, KR = "ParamWeightShift", "ParamKneeL", "ParamKneeR"
+        LOWER_EXTRA = {
+            # 挥手：重心压到支撑腿（挥右手→压左腿），另一腿放松微屈
+            "wave": [
+                {"target": W,  "wave": "pulse", "amp": -0.40, "dur": 0.5, "ease": "out"},
+                {"target": KR, "wave": "pulse", "amp": 0.22, "dur": 0.5, "ease": "out"},
+                {"target": W,  "wave": "sine",  "amp": 0.10, "freq": 0.42},
+            ],
+            # 受惊：一个急促的屈膝（人吓到会明显矮一截），然后弹回。
+            # 这里幅度比别的动作大 —— 受惊是全身反应，腿僵着就假了。
+            # 0.30/0.35s 实测只有噪声底 1.7 倍（看不太出来），加到 0.48/0.5s。
+            "surprised": [
+                {"target": KL, "wave": "bounce", "amp": 0.48, "dur": 0.50, "ease": "out_back"},
+                {"target": KR, "wave": "bounce", "amp": 0.48, "dur": 0.50, "ease": "out_back"},
+                {"target": W,  "wave": "bounce", "amp": -0.24, "dur": 0.55},
+            ],
+            # 难过：重心塌下去并偏向一侧，膝盖一直松着
+            "sad": [
+                {"target": KL, "wave": "pulse", "amp": 0.26, "dur": 0.6, "ease": "out"},
+                {"target": KR, "wave": "pulse", "amp": 0.20, "dur": 0.6, "ease": "out"},
+                {"target": W,  "wave": "pulse", "amp": 0.22, "dur": 0.8, "ease": "out"},
+                {"target": W,  "wave": "sine",  "amp": 0.08, "freq": 0.09},
+            ],
+            # 思考：单腿承重（想事情时的典型站姿），重心缓慢游移
+            "think": [
+                {"target": W,  "wave": "pulse", "amp": 0.34, "dur": 0.7, "ease": "out"},
+                {"target": KL, "wave": "pulse", "amp": 0.24, "dur": 0.7, "ease": "out"},
+                {"target": W,  "wave": "sine",  "amp": 0.12, "freq": 0.13},
+            ],
+            # 说话：很轻的重心小挪动，频率跟着语速走
+            "talk": [
+                {"target": W,  "wave": "sine", "amp": 0.14, "freq": 0.33},
+                {"target": KL, "wave": "sine", "amp": 0.08, "freq": 0.33, "phase": 0.5},
+                {"target": KR, "wave": "sine", "amp": -0.08, "freq": 0.33, "phase": 0.5},
+            ],
+            # 站着睡：极慢的摇晃 + 膝盖发软，频率比呼吸还慢
+            "sleep": [
+                {"target": W,  "wave": "sine",  "amp": 0.26, "freq": 0.05},
+                {"target": KL, "wave": "pulse", "amp": 0.18, "dur": 1.2, "ease": "out"},
+                {"target": KR, "wave": "pulse", "amp": 0.18, "dur": 1.2, "ease": "out"},
+                {"target": KL, "wave": "sine",  "amp": 0.07, "freq": 0.05, "phase": 0.3},
+            ],
+            # 环顾：重心跟着视线方向挪，比头慢半拍
+            "look_around": [
+                {"target": W,  "wave": "sine", "amp": 0.20, "freq": 0.45, "phase": 0.18},
+                {"target": KL, "wave": "sine", "amp": 0.09, "freq": 0.45, "phase": 0.18},
+                {"target": KR, "wave": "sine", "amp": -0.09, "freq": 0.45, "phase": 0.18},
+            ],
+            # 被摸头：被按住会往下沉一点，膝盖跟着软
+            "head_pat": [
+                {"target": KL, "wave": "pulse", "amp": 0.20, "dur": 0.35, "ease": "out_back"},
+                {"target": KR, "wave": "pulse", "amp": 0.20, "dur": 0.35, "ease": "out_back"},
+            ],
+        }
+        _patched = 0
+        for _a in actions:
+            _ex = LOWER_EXTRA.get(_a["id"])
+            if _ex:
+                _a.setdefault("channels", []).extend(_ex)
+                _patched += 1
+        if _patched != len(LOWER_EXTRA):
+            _miss = sorted(set(LOWER_EXTRA) - {a["id"] for a in actions})
+            raise SystemExit(f"[make_rig] 下半身陪衬表里有动作不存在：{_miss}")
+        print(f"  下半身陪衬：给 {_patched} 个动作补了腿部通道")
+
     _n_in, _n_out = to_param_channels(actions)
     print(f"  动作通道：{_n_in} 条几何通道 → {_n_out} 条参数通道"
           f"（≈ Live2D .motion3 的 Parameter 曲线）")

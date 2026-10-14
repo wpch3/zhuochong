@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""动作幅度实测 —— 带负对照和饱和检查。
+
+为什么要有这个工具
+------------------
+2026-10-14 给 8 个动作补下半身通道时，判据连废两版，两次都"看起来很漂亮"：
+
+  第一版「腿部变化 ≥ idle 噪声底 2.0 倍」
+    → 负对照 nod/focus/clicked（根本没有腿部通道）照样 1.5~1.7 倍，
+      stroke 更是 5.3 倍。它量的是"切换动作"的扰动，不是"腿在动"。
+
+  第二版「剥掉通道做 A/B」判据对了，但 sleep 报 +1%「基本没用」
+    → 指标饱和：sleep 的腿部变化像素 28745 = 腿区角色像素 27137 的 106%，
+      顶到天花板了。换成自方差后是 734 → 7583，10.3 倍，八个里最强的一个
+      被误判成最弱。
+
+把结论写进 LESSONS 不够 —— 下次换个场景还是会重犯。所以固化成工具：
+**只要用这个脚本量，负对照和饱和检查就是自动跑的，想跳过都不行。**
+
+用法
+----
+    tools/measure_motion.py --actions wave,sad,sleep --control nod
+    tools/measure_motion.py --actions tiptoe --region leg --loop sleep,talk
+
+需要预览服务在跑（make -s build/zhuochong_preview && ./build/zhuochong_preview --port 5173 ...）。
+需要 PIL + numpy（~/.imgenv/bin/python3）。
+"""
+import argparse
+import io
+import json
+import sys
+import time
+import urllib.error
+import urllib.request
+
+try:
+    import numpy as np
+    from PIL import Image
+except ImportError:
+    sys.exit("需要 pillow 和 numpy：python3 -m venv ~/.imgenv && "
+             "~/.imgenv/bin/pip install pillow numpy，然后用 ~/.imgenv/bin/python3 跑")
+
+# 区域按帧高度的比例切，换 scale 也不用改这里
+REGIONS = {
+    "all":  (0.00, 1.00),
+    "head": (0.00, 0.30),
+    "body": (0.30, 0.54),
+    "leg":  (0.54, 1.00),   # 466x748 时约等于 y>=402
+}
+DIFF_THRESHOLD = 8          # 单通道差值超过这个才算"变了"，滤掉抗锯齿抖动
+ALPHA_SOLID = 16            # alpha 超过这个算角色实体像素
+
+
+class Pet:
+    def __init__(self, base):
+        self.base = base.rstrip("/")
+
+    def get(self, path, timeout=25):
+        with urllib.request.urlopen(self.base + path, timeout=timeout) as r:
+            return r.read()
+
+    def frame(self):
+        # 取帧滞后一帧 —— 必须先推一帧再取，否则拿到的是上一帧
+        self.get("/api/frame.png?s=100")
+        raw = self.get("/api/frame.png?s=100")
+        return Image.open(io.BytesIO(raw)).convert("RGBA")
+
+    def rgb(self):
+        return np.asarray(self.frame().convert("RGB"), dtype=np.int16)
+
+    def action(self, aid):
+        self.get("/api/action?id=%s" % aid)
+
+    def info(self):
+        return json.loads(self.get("/api/info.json"))
+
+
+def loop_period(rig_path, aid):
+    """从 rig 里读出这个动作最慢的那条通道的周期（秒）。
+
+    采样窗盖不住一个周期就什么都量不到 —— sleep 的 freq 写的 0.05（周期 20 秒），
+    配 3 秒采样窗，再大的幅度也是一条直线。这个防呆就是为了那次。"""
+    try:
+        with io.open(rig_path, encoding="utf-8") as f:
+            rig = json.load(f)
+    except (OSError, ValueError):
+        return None
+    for act in rig.get("actions", []):
+        if act.get("id") != aid:
+            continue
+        freqs = [c["freq"] for c in act.get("channels", [])
+                 if isinstance(c.get("freq"), (int, float)) and c["freq"] > 0]
+        return 1.0 / min(freqs) if freqs else None
+    return None
+
+
+def band(h, region):
+    lo, hi = REGIONS[region]
+    return int(h * lo), int(h * hi)
+
+
+def changed(a, b, y0, y1):
+    """两帧之间 [y0,y1) 行里有多少像素真的变了"""
+    d = np.abs(a - b).max(axis=2) > DIFF_THRESHOLD
+    return int(d[y0:y1].sum())
+
+
+def ceiling(pet, region):
+    """这个区域里有多少角色实体像素 —— 变化量的天花板。
+
+    不先算出天花板就报比例，是 LESSONS 79 栽过的坑。"""
+    im = np.asarray(pet.frame())
+    y0, y1 = band(im.shape[0], region)
+    return int((im[y0:y1, :, 3] > ALPHA_SOLID).sum())
+
+
+def peak_vs_idle(pet, aid, region, frames, gap):
+    """一次性动作：相对 idle 静止态的峰值差。
+
+    循环动作 t=0 位移为 0（sine 波），所以必须连采多帧取峰值，单帧必然量不到。"""
+    pet.action("idle")
+    time.sleep(0.5)
+    ref = pet.rgb()
+    y0, y1 = band(ref.shape[0], region)
+    pet.action(aid)
+    time.sleep(0.10)
+    peak = 0
+    for _ in range(frames):
+        time.sleep(gap)
+        peak = max(peak, changed(pet.rgb(), ref, y0, y1))
+    return peak
+
+
+def self_variance(pet, aid, region, seconds, settle=2.0, gap=0.4):
+    """循环动作：自方差。
+
+    基准帧取自动作进行中（等它进入循环后再拍），量的是"维持这个状态时
+    身体还动不动"。对 sleep 这种整体位移很大的动作，这是唯一有分辨力的指标。"""
+    pet.action(aid)
+    time.sleep(settle)
+    ref = pet.rgb()
+    y0, y1 = band(ref.shape[0], region)
+    peak = 0
+    t0 = time.time()
+    while time.time() - t0 < seconds:
+        peak = max(peak, changed(pet.rgb(), ref, y0, y1))
+        time.sleep(gap)
+    return peak
+
+
+def main():
+    ap = argparse.ArgumentParser(description="动作幅度实测（带负对照和饱和检查）")
+    ap.add_argument("--base", default="http://127.0.0.1:5173")
+    ap.add_argument("--actions", required=True, help="逗号分隔的动作 id")
+    ap.add_argument("--control", default="nod",
+                    help="负对照动作：一个确定不受本次改动影响的动作。"
+                         "它的读数就是测量误差底，低于它的结果一律不算数")
+    ap.add_argument("--region", default="leg", choices=sorted(REGIONS))
+    ap.add_argument("--loop", default="",
+                    help="逗号分隔：哪些是循环动作（用自方差量）。"
+                         "一次性动作和循环动作不能用同一个指标")
+    ap.add_argument("--frames", type=int, default=10)
+    ap.add_argument("--gap", type=float, default=0.14)
+    ap.add_argument("--loop-seconds", type=float, default=12.0)
+    ap.add_argument("--json", default="", help="把结果写到这个文件，方便做 A/B 相减")
+    ap.add_argument("--rig", default="characters/xiaoxun/forms/teen/rig.json",
+                    help="用来核对循环动作的周期，确认采样窗盖得住")
+    a = ap.parse_args()
+
+    pet = Pet(a.base)
+    try:
+        info = pet.info()
+    except (urllib.error.URLError, OSError) as e:
+        sys.exit("连不上预览服务 %s：%s\n先启动：./build/zhuochong_preview "
+                 "--port 5173 --root . --host 0.0.0.0" % (a.base, e))
+
+    loops = {s for s in a.loop.split(",") if s}
+    acts = [s for s in a.actions.split(",") if s]
+    cap = ceiling(pet, a.region)
+
+    print("帧 %dx%d  scale %s  区域 %s（占全帧 %.0f%%~%.0f%%）"
+          % (info["frame_w"], info["frame_h"], info["scale"], a.region,
+             REGIONS[a.region][0] * 100, REGIONS[a.region][1] * 100))
+    print("该区域角色实体像素 %d ← 变化量的天花板，贴顶就说明指标没分辨力\n" % cap)
+
+    results = {}
+    try:
+        # 负对照先跑 —— 没有它，后面的数字都没有参照系
+        ctrl = peak_vs_idle(pet, a.control, a.region, a.frames, a.gap)
+        results[a.control] = ctrl
+        print("负对照 %s：%d 像素 ← 混淆底" % (a.control, ctrl))
+        print("  这个动作不碰目标区域的参数，它的读数全部来自『整体位移把该区域像素带着变』。")
+        print("  单边测量只要没明显超过它，就不能把效果归因到新通道上。\n")
+
+        print("%-14s %-6s %9s %9s %8s  %s"
+              % ("动作", "类型", "变化像素", "比混淆底", "占天花板", "判定"))
+        print("-" * 68)
+        for aid in acts:
+            if aid in loops:
+                period = loop_period(a.rig, aid)
+                if period and a.loop_seconds < period:
+                    print("   !! %s 最慢通道周期 %.0f 秒，而采样窗只有 %.0f 秒 —— "
+                          "盖不住一个周期，量到的会偏小。建议 --loop-seconds %d"
+                          % (aid, period, a.loop_seconds, int(period * 1.2) + 1))
+                v = self_variance(pet, aid, a.region, a.loop_seconds)
+                kind = "循环"
+            else:
+                v = peak_vs_idle(pet, aid, a.region, a.frames, a.gap)
+                kind = "一次性"
+            results[aid] = v
+            ratio = v / max(ctrl, 1)
+            sat = v / max(cap, 1)
+            if sat > 0.85:
+                verdict = "!! 指标饱和，加 --loop 用自方差重测"
+            elif ratio >= 2.0:
+                verdict = "明显超过混淆底"
+            elif ratio >= 1.3:
+                verdict = "略高于混淆底，需 A/B 确认"
+            else:
+                verdict = "!! 混淆底量级，单边测不出，必须 A/B"
+            print("%-14s %-6s %9d %8.1fx %7.0f%%  %s"
+                  % (aid, kind, v, ratio, sat * 100, verdict))
+        print("-" * 68)
+        print("注：要确认效果真来自某批通道，还得做 A/B —— 把那批通道从 rig.json 剥掉，")
+        print("    重启服务再跑一次本脚本（--json 存两份相减）。只看单边数字不足以下结论。")
+    finally:
+        try:
+            pet.action("idle")
+            print("\n[收尾] 已复位 idle")
+        except Exception as e:                     # noqa: BLE001 - 收尾失败不能盖住主结果
+            print("\n[收尾] 复位失败：%s" % e)
+
+    if a.json:
+        with io.open(a.json, "w", encoding="utf-8") as f:
+            json.dump(results, f, ensure_ascii=False, indent=1)
+        print("结果已写入 %s" % a.json)
+
+
+if __name__ == "__main__":
+    main()

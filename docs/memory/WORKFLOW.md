@@ -220,10 +220,36 @@ make test && bash scripts/selfcheck_all.sh
 | 角色数据 | `characters/<id>/`（`character.json`、`dialogue.json`、`forms/<form>/rig.json`、`outfits/`、`voice/`） |
 | 全局配置 | `config/`（`ui.json`、`features.json`、`providers.json`、`voices.json`、`interactions.json`） |
 | 素材工具 | `tools/prepare_sprites.py`、`make_parts.py`、`make_rig.py` |
+| 动画实测 | `tools/measure_motion.py`（**改完动作必须用它验**，自带负对照 + 饱和检查 + 周期防呆） |
 | 语音工具 | `tools/voice_local.py`、`voice_packs.py`、`voice_manifest.py`、`voice_render.py`、`voice_setup.sh` |
 | 规划文档 | `docs/PRODUCT_PLAN.md`、`PROJECT_SPEC.md`、`TRAINING.md`、`VOICES.md`、`REFERENCE_NOTES.md` |
 | 记忆区 | `docs/memory/`（MEMORY / REQUIREMENTS / WORKFLOW / GAPS / TASKS / JOURNAL / LESSONS） |
 
+
+### 改完动作怎么验（2026-10-14 定，吃过亏）
+
+调完动作参数，**不要靠眼睛看截图下结论，也不要自己临时写测量脚本** ——
+临时脚本里几乎必然漏掉负对照，而漏了负对照的数字全是假的（LESSONS 78/79）。
+
+```bash
+# 1) 先量一遍现状
+~/.imgenv/bin/python3 tools/measure_motion.py \
+    --actions wave,sad,sleep --loop sleep --control nod --json /tmp/after.json
+
+# 2) 想确认效果真来自新通道，必须做 A/B：
+#    把那批通道从 rig.json 剥掉 → stop_process + start_process 重启 → 再量一次
+#    两份 json 相减，差值才是你的贡献。负对照那一行的差值就是测量误差底。
+```
+
+三条硬规矩：
+1. **必须有负对照** —— 一个确定不受本次改动影响的动作。它的读数是混淆底，
+   没超过它就不能把效果归因到你的改动上。
+2. **先看占天花板的比例** —— 超过 85% 说明指标饱和了，数字没有分辨力，
+   循环动作要改用自方差（`--loop`）。
+3. **循环动作的采样窗要盖得住一个周期** —— 工具会自动从 rig 读 freq 算周期并警告。
+
+停预览进程用 `stop_process` 工具，**不要用 `pkill -f`**（同一条命令行里有同名字符串
+会把自己杀掉，LESSONS 80）。
 
 ### 被打断之后的收尾动作（2026-10-14 定）
 
