@@ -1148,8 +1148,9 @@ def check_neck_seam(root):
         而要求切线和取样线是同一条（差一行，腿脚之间就错一行）。
         像素层面"真的擦干净了"由 check_assets.py 的「腿件切线以下已清空」把关。
 
-    （引擎目前没有 bend_hold_below。真要加第三种跟随关系时，要么照搬"切掉"
-      这条路，要么先把 bend_hold_below 实现出来，别让这道闸默认放行。）
+    （2026-10-15 起引擎有 bend_hold_below 了（G97 补上的，下平台，与 bend_hold_above
+      互为镜像）。现有的腿件仍然走"切掉"这条路 —— 既然已经切干净了就别回头改，
+      多一条平台线就多一处要对齐的参数。新增第三种跟随关系时两条路都可以走。）
     """
     section("跟随件不相对滑移（脖子/脚踝）")
     base = os.path.join(root, "characters", "xiaoxun", "forms", "teen")
@@ -1194,7 +1195,7 @@ def check_neck_seam(root):
             cut = cuts.get(src)
             check("%s 在取样线以下已登记切掉（而不是靠形变平台）" % src, cut is not None,
                   "tip 曲线底端满额，取样线以下的贴图会比刚性跟随的脚多动 "
-                  "—— 要么切掉，要么实现 bend_hold_below，不能就这么放着")
+                  "—— 要么切掉，要么写 bend_hold_below（引擎已支持），不能就这么放着")
             if cut is not None:
                 check("%s 的切线和 %s 的取样线对齐（%s vs %s）" % (src, gname, cut, yat),
                       abs(float(cut) - float(yat)) <= 1.0,
@@ -1202,6 +1203,11 @@ def check_neck_seam(root):
             check("%s 不该写 bend_hold_above（那会把整条腿按死，连摆都摆不动）" % src,
                   p.get("bend_hold_above") is None,
                   "bend_hold_above=%s" % p.get("bend_hold_above"))
+            # 切线和下平台是两条**互斥**的路：都写上等于按两次，
+            # 而且切线挪了平台线不会跟着挪，迟早对不齐。
+            check("%s 不要既切掉又写 bend_hold_below" % src,
+                  not (cut is not None and p.get("bend_hold_below")),
+                  "切线 %s + 下平台 %s —— 二选一" % (cut, p.get("bend_hold_below")))
             continue
         # 跟随件在上面：取样线以上的源贴图（脖子/衣领）必须被平台按住
         if src in seen:
@@ -1450,6 +1456,21 @@ def check_live2d(root):
           "实际 %d 处" % sec_body.count("return 0;"))
     check("网关端点已注册", '"/api/gateway.json"' in code_of("src/headless/main_headless.c"),
           "src/headless/main_headless.c")
+
+    # 决策流水（G99）：三条阈值全是抄来的，要用自己的数据重标 —— 前提是先存下来。
+    # 内存计数器一重启就清零，所以这一组守的是"真的落盘了"。
+    mh = code_of("src/headless/main_headless.c")
+    check("路由决策落盘已接线", "zgw_set_usage_log" in mh and "data/usage.jsonl" in mh,
+          "src/headless/main_headless.c —— 不接线的话 usage.jsonl 永远是空的")
+    check("没候选的决策也记流水", "ZGW_R_NO_CANDIDATE" in gw_c,
+          "只记成功的那些会把分母做小，本地占比虚高")
+    check("流水文件会自己滚", "2L * 1024L * 1024L" in gw_c and "rename(" in gw_c,
+          "src/core/zgateway.c:usage_append —— 不滚的话跑一年会涨到几百兆")
+    check("重标工具在", os.path.exists(os.path.join(root, "tools/usage_report.py")),
+          "tools/usage_report.py：按真实流水反算阈值该设多少")
+    check("data/ 不入库", "data/" in open(os.path.join(root, ".gitignore"),
+                                           encoding="utf-8").read(),
+          ".gitignore —— 流水是本机运行数据，带用户的 token 规模，不进仓库")
 
     # 路由表是生成物，必须和契约对得上（内容一致性由 check_platform --check 管，
     # 这里只核"每个供应商都写了 priority"——漏写的话路由顺序会变成随机的）

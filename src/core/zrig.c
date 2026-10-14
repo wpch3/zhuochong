@@ -91,6 +91,7 @@ typedef struct {
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
     double aperture_min;      /* 眼眶开口：眨眼参数 1 时纵向还剩几成（0.06 = 基本闭死） */
     double bend_hold_above;   /* 形变平台：这个画布高度以上不再继续增大形变（0 = 不设） */
+    double bend_hold_below;   /* 下平台：这个画布高度以下不再继续增大形变（0 = 不设） */
     int    blend;             /* 混合模式 ZIMG_BLEND_*（≈ Live2D CubismBlendMode） */
     int    eye_side;          /* 0=与左右无关 1=左眼 2=右眼（ParamEyeLOpen/ROpen 分开驱动） */
 } zpart;
@@ -354,6 +355,7 @@ struct zrig {
     zimg  *scratch;           /* 被裁切的部件先画在这里，再按遮罩合成到 fb */
     double fb_scale;
     int    fb_w, fb_h;
+    double view_scale;        /* 平台层打算用的缩放；首帧渲染出来之前靠它换算坐标 */
 
     /* 组变换（每帧计算） */
     double g_dx[ZRIG_MAX_GROUPS], g_dy[ZRIG_MAX_GROUPS];
@@ -712,6 +714,9 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
            衣领比它上面的头、下面的胸移动得都多，脖子处就出现横向滑移。
            写上颈线以后，颈线以上的行共用颈线处的形变量，和头完全同步。 */
         p->bend_hold_above = zjson_num(zjson_obj_get(pj, "bend_hold_above"), 0.0);
+        /* 下平台：跟随件挂在下面时用（脚跟腿、手跟前臂）。
+           以前没有它，只能靠把源贴图在切线以下整个裁掉来回避（G97）。 */
+        p->bend_hold_below = zjson_num(zjson_obj_get(pj, "bend_hold_below"), 0.0);
         p->aperture_min = zjson_num(zjson_obj_get(pj, "aperture_min"), 0.06);
         if (p->aperture_min < 0.0) p->aperture_min = 0.0;
         if (p->aperture_min > 1.0) p->aperture_min = 1.0;
@@ -3208,6 +3213,7 @@ typedef struct {
     double opacity;
     double bx, by;
     double bend_tmin;
+    double bend_tmax;
     int    curve_x, curve_y;
     int    warped;
     const zdeform *dg;
@@ -3333,11 +3339,21 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     st->warped = (fabs(st->bx) > 0.05 || fabs(st->by) > 0.05);
     /* 形变平台换算成源图归一化行：(平台画布y − 部件顶边) / 部件画布高度 */
     st->bend_tmin = 0.0;
-    if (p->bend_hold_above > 0.0 && src && src->h > 0 && p->scale > 0.0) {
+    st->bend_tmax = 1.0;
+    if (src && src->h > 0 && p->scale > 0.0 && p->img && p->img->h > 0) {
         double h_canvas   = (double)p->img->h * p->scale;
         double top_canvas = p->pos[1] - p->anchor[1] * h_canvas;
-        double tm = (p->bend_hold_above - top_canvas) / h_canvas;
-        st->bend_tmin = tm < 0.0 ? 0.0 : (tm > 1.0 ? 1.0 : tm);
+        if (p->bend_hold_above > 0.0) {
+            double tm = (p->bend_hold_above - top_canvas) / h_canvas;
+            st->bend_tmin = tm < 0.0 ? 0.0 : (tm > 1.0 ? 1.0 : tm);
+        }
+        if (p->bend_hold_below > 0.0) {
+            double tx = (p->bend_hold_below - top_canvas) / h_canvas;
+            st->bend_tmax = tx < 0.0 ? 0.0 : (tx > 1.0 ? 1.0 : tx);
+            /* 两条平台线交叉了说明 rig 写反了：宁可退化成"整块按住"，也不要出现
+               tmin > tmax 这种"下界比上界还大"的状态（那会让钳位顺序决定画面）。 */
+            if (st->bend_tmax < st->bend_tmin) st->bend_tmax = st->bend_tmin;
+        }
     }
 
     /* 网格形变（A5）：形变器的位移写的是"原始素材像素"，而这里画的可能是缩放过的
@@ -3379,11 +3395,11 @@ static void draw_state(zimg *dst, const zdrawst *st, int blend)
                                     st->dg->cols, st->dg->rows, st->mesh,
                                     st->warped ? st->bx : 0.0, st->curve_x,
                                     st->warped ? st->by : 0.0, st->curve_y,
-                                    blend, st->bend_tmin);
+                                    blend, st->bend_tmin, st->bend_tmax);
     else if (st->warped)
         zimg_draw_warp_blend_t(dst, st->src, st->m, st->opacity,
                                st->bx, st->curve_x, st->by, st->curve_y,
-                               blend, st->bend_tmin);
+                               blend, st->bend_tmin, st->bend_tmax);
     else
         zimg_draw_blend(dst, st->src, st->m, st->opacity, blend);
 }
@@ -3525,12 +3541,45 @@ const char *zrig_region_at(const zrig *r, int x, int y, char *out_action, size_t
     return NULL;
 }
 
+/* 现在用的显示缩放：渲染过就按帧缓冲的真实比例算，没渲染过用平台层声明的那个值。
+ *
+ * 2026-10-15 实测到的坑：这里原本在 `r->fb == NULL` 时退化成 1:1，于是
+ * `/api/region` 在**首帧之前收画布坐标、首帧之后收帧坐标** —— 同一个请求，
+ * 渲染过没渲染过给两种答案，而且两种都"看起来正常"。
+ * 坐标系不能跟着渲染历史变，所以这里永远有一个确定的比例。 */
+double zrig_view_scale(const zrig *r)
+{
+    if (!r) return 1.0;
+    if (r->fb && r->fb->w > 0 && r->cw > 0) return (double)r->fb->w / (double)r->cw;
+    return (r->view_scale > 0.0) ? r->view_scale : 1.0;
+}
+
+void zrig_set_view_scale(zrig *r, double s)
+{
+    if (!r || !(s > 0.0)) return;
+    r->view_scale = s;
+}
+
 /* 把帧缓冲坐标换算为画布坐标（平台层用） */
 void zrig_frame_to_canvas(const zrig *r, int fx, int fy, int *cx, int *cy)
 {
+    double s;
     if (!r) return;
-    if (cx) *cx = (r->fb && r->fb->w > 0) ? (int)((long)fx * r->cw / r->fb->w) : fx;
-    if (cy) *cy = (r->fb && r->fb->h > 0) ? (int)((long)fy * r->ch / r->fb->h) : fy;
+    s = zrig_view_scale(r);
+    if (s <= 0.0) s = 1.0;
+    if (cx) *cx = (int)((double)fx / s + 0.5);
+    if (cy) *cy = (int)((double)fy / s + 0.5);
+}
+
+/* 画布坐标 → 帧缓冲坐标（上面那个的反向，给要在画面上标出区域的调用方） */
+void zrig_canvas_to_frame(const zrig *r, int cx, int cy, int *fx, int *fy)
+{
+    double s;
+    if (!r) return;
+    s = zrig_view_scale(r);
+    if (s <= 0.0) s = 1.0;
+    if (fx) *fx = (int)((double)cx * s + 0.5);
+    if (fy) *fy = (int)((double)cy * s + 0.5);
 }
 
 const char *zrig_region_cursor(const zrig *r, const char *region_id)

@@ -292,6 +292,8 @@ static int load_rig_for(zpet *p, const char *form, zdiag *diag)
     if (!r) return -1;
     zrig_free(p->rig);
     p->rig = r;
+    /* 先把缩放告诉 rig：命中测试在首帧渲染出来之前也得能换算坐标 */
+    zrig_set_view_scale(p->rig, p->scale > 0.0 ? p->scale : 1.0);
     z_strlcpy(p->cfg.pet.form, form, sizeof(p->cfg.pet.form));
     collect_actions(p);
     {
@@ -525,11 +527,22 @@ int zpet_hit(const zpet *p, int x, int y)
 const char *zpet_region(const zpet *p, int x, int y, char *out_action, size_t cap,
                         const char **out_cursor)
 {
+    return zpet_region_ex(p, x, y, 0, out_action, cap, out_cursor, NULL, NULL);
+}
+
+/* 带坐标系开关的版本：is_canvas=0 入参是窗口内（帧缓冲）坐标，=1 直接是画布坐标。
+   out_cx/out_cy 回填换算后的画布坐标 —— 调用方能自己核对换算对不对，
+   不用靠猜（这一处的坐标系曾经跟着"渲染过没渲染过"偷偷变，见 LESSONS）。 */
+const char *zpet_region_ex(const zpet *p, int x, int y, int is_canvas,
+                           char *out_action, size_t cap,
+                           const char **out_cursor, int *out_cx, int *out_cy)
+{
     const char *id;
-    int cx = 0, cy = 0;
+    int cx = x, cy = y;
     if (!p || !p->rig) return NULL;
-    /* 入参是窗口内（帧缓冲）坐标；区域定义在画布坐标里 */
-    zrig_frame_to_canvas(p->rig, x, y, &cx, &cy);
+    if (!is_canvas) zrig_frame_to_canvas(p->rig, x, y, &cx, &cy);
+    if (out_cx) *out_cx = cx;
+    if (out_cy) *out_cy = cy;
     id = zrig_region_at(p->rig, cx, cy, out_action, cap);
     if (id && out_cursor) *out_cursor = zrig_region_cursor(p->rig, id);
     return id;
@@ -1096,6 +1109,7 @@ void zpet_set_scale(zpet *p, double scale)
 {
     if (!p) return;
     p->scale = ZC_CLAMP(scale, p->cfg.pet.scale_min, p->cfg.pet.scale_max);
+    zrig_set_view_scale(p->rig, p->scale);   /* 坐标换算跟着一起改，别等下一帧 */
 }
 
 void zpet_scale_step(zpet *p, int dir)
@@ -1111,6 +1125,7 @@ void zpet_scale_reset(zpet *p)
     if (!p) return;
     p->scale = 1.0;
     p->scale = ZC_CLAMP(p->scale, p->cfg.pet.scale_min, p->cfg.pet.scale_max);
+    zrig_set_view_scale(p->rig, p->scale);
 }
 
 void zpet_set_tool(zpet *p, zpet_tool t) { if (p) p->tool = t; }

@@ -535,6 +535,21 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 bp_["note"] = (bp_.get("note", "") +
                                f"；颈线 y={bp_['bend_hold_above']} 以上形变不再加大"
                                "（衣领跟着头走，不然脖子会横向滑移）")
+        # 下平台（G97，2026-10-15 引擎补上）：和上面那条互为镜像 ——
+        # 跟随件挂在**下面**时（脚跟着腿、手跟着前臂），取样线以下的源贴图
+        # 会被 tip 曲线越掰越远，而跟随件自己是刚性平移的，交界处就裂开。
+        #
+        # 现在的腿件走的是另一条路：make_foot_parts.py 把踝线以下整个裁掉，
+        # 没有贴图就没有冲突。两条路**二选一**（selfcheck 里有闸拦重复按压），
+        # 这里只把口子留出来：切件表里写 `hold_below`，就会落到 rig.json 上。
+        hold_below = {sp["id"]: sp.get("hold_below") for sp in seg_src
+                      if sp.get("hold_below")}
+        for bp_ in body_parts_list:
+            hb = hold_below.get(bp_["id"])
+            if hb:
+                bp_["bend_hold_below"] = hb
+                bp_["note"] = (bp_.get("note", "") +
+                               f"；{hb} 以下形变不再加大（跟随件在下面，交给它自己画）")
         # 眉毛要绕自己中心转（挑眉/皱眉），所以锚点放中心、pos 换成中心点
         size_of = {sp["id"]: sp.get("size") for sp in seg["parts"]}
         for bp_ in body_parts_list:

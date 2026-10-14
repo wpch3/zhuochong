@@ -84,6 +84,7 @@ typedef enum {
     ZGW_R_CLOUD_DOWN,          /* 本想上云，云端不可用，退回本地 */
     ZGW_R_ONLY_CHOICE,         /* 想要的那边没有候选，只剩另一边 */
     ZGW_R_SENSITIVE_BLOCKED,   /* 敏感 + 本地不可用 = 拒绝，绝不偷偷上云 */
+    ZGW_R_NO_CANDIDATE,        /* 这个能力两边都没有可用供应商（没接入 / 全关了） */
     ZGW_R_COUNT
 } zgw_reason;
 
@@ -116,7 +117,18 @@ typedef struct {
     long      tokens_out_total;
     long      calls_total;
     long      failed_total;
+
+    /* 决策流水的落点（空 = 不记）。为什么非记不可：
+       512 token / 85% 负载 / 敏感强制本地 这三条阈值全是抄来的（见 DC18），
+       只有拿自己的真实分布才能重标。内存计数器一重启就清零，重标不了。 */
+    char      usage_log[260];
+    long      log_written;    /* 成功写进去几行（没路径就一直是 0） */
+    long      log_failed;     /* 写失败几次：盘满 / 没权限也要能看出来 */
 } zgateway;
+
+/* 设置决策流水的落点；path 传 NULL 或空串 = 关掉。
+   文件超过 2MB 自动滚一次（.1），不会无限长。 */
+void zgw_set_usage_log(zgateway *g, const char *path);
 
 const char *zgw_reason_name(zgw_reason r);
 

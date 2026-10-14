@@ -232,6 +232,25 @@ def run(base, root):
         r0 = a.json("/api/region?x=2&y=2")
         check("画面角落不命中任何区域", not r0.get("region"),
               "左上角回了 %r" % r0.get("region"))
+        # 坐标系必须是写明的，不能靠猜：同一个点用两套坐标问，答案要一样。
+        # 2026-10-15 之前这里只有一套隐式坐标系，而且**渲染过和没渲染过不是同一套**。
+        g0 = regs[0]
+        cx = g0["rect"][0] + g0["rect"][2] // 2
+        cy = g0["rect"][1] + g0["rect"][3] // 3   # 1/3 高：头区取脸，不取发顶空隙
+        rc = a.json("/api/region?x=%d&y=%d&space=canvas" % (cx, cy))
+        rf = a.json("/api/region?x=%d&y=%d" % (int(cx * fw / cw), int(cy * fh / ch)))
+        check("space=canvas 回报 canvas", rc.get("space") == "canvas",
+              "回了 %r" % rc.get("space"))
+        check("不写 space 默认是 frame", rf.get("space") == "frame",
+              "回了 %r" % rf.get("space"))
+        check("同一点两套坐标给同一个答案",
+              rc.get("region") == rf.get("region") and rc.get("region") == g0["id"],
+              "canvas 回 %r / frame 回 %r，期望都是 %r"
+              % (rc.get("region"), rf.get("region"), g0["id"]))
+        check("答复要回报换算后的画布坐标",
+              abs(rf.get("cx", -999) - cx) <= 3 and abs(rf.get("cy", -999) - cy) <= 3,
+              "帧坐标换回画布是 (%s,%s)，期望 ≈(%d,%d)"
+              % (rf.get("cx"), rf.get("cy"), cx, cy))
 
     # 换一个 scale 再测一遍：region/poke 吃的是**引擎帧缓冲**坐标（画布 × pet scale），
     # 而前端图片的尺寸是画布 × 画质档 s%。两者只在碰巧相等时一致，
@@ -379,6 +398,34 @@ def run(base, root):
     st = (a.json("/api/route?cap=chat.completion") or {}).get("stats") or {}
     check("决策要记账（为了事后重标阈值）", st.get("local", 0) + st.get("cloud", 0) > 0,
           str(st))
+
+    # 记账只记在内存里，一重启就没了 —— 阈值要重标就必须落盘（G99/DC18）。
+    # 这里验的是端到端那一段：服务端真的在往 data/usage.jsonl 追行。
+    ulog = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "data", "usage.jsonl")
+    def _ulines():
+        try:
+            with open(ulog, "rb") as f:
+                return f.read().count(b"\n")
+        except IOError:
+            return -1
+    before = _ulines()
+    a.json("/api/route?cap=chat.completion&tokens=1234")
+    after = _ulines()
+    check("路由决策要落盘到 data/usage.jsonl", after > before >= 0,
+          "落盘前 %d 行、后 %d 行（-1 = 文件压根没建）" % (before, after))
+    if after > 0:
+        try:
+            with open(ulog, "rb") as f:
+                last = f.read().strip().split(b"\n")[-1].decode("utf-8")
+            rec = json.loads(last)
+        except Exception as e:
+            rec = {}
+            check("流水最后一行要是能解析的 JSON", False, str(e))
+        if rec:
+            check("流水要记下 token 数（重标 512 那条阈值全靠它）",
+                  rec.get("tokens") == 1234, str(rec.get("tokens")))
+            check("流水要记下理由", bool(rec.get("reason")), str(rec))
 
     gw = a.json("/api/gateway.json")
     check("gateway.json 能读", isinstance(gw, dict) and "loaded" in gw)

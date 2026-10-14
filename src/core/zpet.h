@@ -69,6 +69,10 @@ int         zpet_region_rect_at(const zpet *p, int i, int out[4]);
 
 const char *zpet_region(const zpet *p, int x, int y, char *out_action, size_t cap,
                         const char **out_cursor);
+/* 同上，但可以指明入参就是画布坐标，并回填换算后的画布坐标 */
+const char *zpet_region_ex(const zpet *p, int x, int y, int is_canvas,
+                           char *out_action, size_t cap,
+                           const char **out_cursor, int *out_cx, int *out_cy);
 /* 在某个位置“用工具戳一下”：锤击 → hammered，手 → 抚摸/摸头 */
 int   zpet_poke(zpet *p, int x, int y, zpet_tool tool, double now);
 /* 拖动开始时调用（角色被拽住会挣扎/惊讶） */

@@ -438,7 +438,8 @@ static void handle_request(zsock fd, const http_req *r)
             "\"reason\":\"%s\",\"blocked_sensitive\":%s,"
             "\"task\":\"%s\",\"task_hit\":\"%s\","
             "\"rules\":{\"tokens_cloud\":%ld,\"local_busy_pct\":%d,\"sensitive_local_only\":%s},"
-            "\"stats\":{\"local\":%ld,\"cloud\":%ld,\"local_share\":%.4f}}",
+            "\"stats\":{\"local\":%ld,\"cloud\":%ld,\"local_share\":%.4f,"
+            "\"logged\":%ld,\"log_failed\":%ld}}",
             cap_s, rt ? "true" : "false",
             rt ? rt->provider : "", rt ? rt->model : "",
             (rt && rt->local) ? "true" : "false",
@@ -447,7 +448,8 @@ static void handle_request(zsock fd, const http_req *r)
             req.task == ZGW_TASK_HEAVY ? "heavy" : "simple", task_hit,
             g_gw.rules.tokens_cloud, g_gw.rules.local_busy_pct,
             g_gw.rules.sensitive_local_only ? "true" : "false",
-            g_gw.picks_local, g_gw.picks_cloud, share);
+            g_gw.picks_local, g_gw.picks_cloud, share,
+            g_gw.log_written, g_gw.log_failed);
         UNLOCK();
         send_text(fd, 200, "application/json", body);
         return;
@@ -766,19 +768,31 @@ static void handle_request(zsock fd, const http_req *r)
         return;
     }
     if (strcmp(r->path, "/api/region") == 0) {
-        /* 测试台要能回答"鼠标现在压在哪个互动区上"：给帧坐标，回区域 id/动作/光标。
-           区域判定还带不透明像素命中（透明的角落不算），所以这里也能验出"点空了"。 */
-        char body[256], action[48];
+        /* 测试台要能回答"鼠标现在压在哪个互动区上"：给坐标，回区域 id/动作/光标。
+           区域判定还带不透明像素命中（透明的角落不算），所以这里也能验出"点空了"。
+
+           坐标系要说清楚：默认 `space=frame`（窗口内／帧缓冲坐标，前端鼠标位置就是它），
+           `space=canvas` 时直接按 rig.json 的画布坐标算（info.json 的 rect 就是这套）。
+           答复里回报 `space` 和换算后的 `cx/cy` —— 2026-10-15 之前这里的坐标系
+           会跟着"渲染过没渲染过"偷偷切换，两种都回 200，谁都发现不了。 */
+        char body[320], action[48], space[16];
         const char *cursor = "arrow";
         const char *id;
         int x = qint(r, "x", 0), y = qint(r, "y", 0);
+        int cx = x, cy = y, is_canvas;
         action[0] = 0;
+        space[0] = 0;
+        qstr(r, "space", space, sizeof(space));
+        is_canvas = (strcmp(space, "canvas") == 0);
         LOCK();
-        id = zpet_region(g_pet, x, y, action, sizeof(action), &cursor);
+        id = zpet_region_ex(g_pet, x, y, is_canvas, action, sizeof(action),
+                            &cursor, &cx, &cy);
         UNLOCK();
         z_snprintf(body, sizeof(body),
-                   "{\"region\":\"%s\",\"action\":\"%s\",\"cursor\":\"%s\",\"x\":%d,\"y\":%d}",
-                   id ? id : "", action, cursor ? cursor : "arrow", x, y);
+                   "{\"region\":\"%s\",\"action\":\"%s\",\"cursor\":\"%s\","
+                   "\"x\":%d,\"y\":%d,\"space\":\"%s\",\"cx\":%d,\"cy\":%d}",
+                   id ? id : "", action, cursor ? cursor : "arrow", x, y,
+                   is_canvas ? "canvas" : "frame", cx, cy);
         send_text(fd, 200, "application/json", body);
         return;
     }
@@ -1136,8 +1150,15 @@ int main(int argc, char **argv)
         if (!g_gw_ok) {
             ZLOGW("gateway", "路由表没读到（%s），平台功能先关着", gwpath);
         } else {
-            ZLOGI("gateway", "路由表 %d 条，策略 %s",
-                  g_gw.nroutes, g_gw.strategy);
+            char logpath[1200];
+            /* 决策流水落盘：阈值是抄来的，得用自己的数据重标（DC18 的复查触发）。
+               data/ 不入库，是本机运行数据。 */
+            z_snprintf(logpath, sizeof(logpath), "%s/data", g_cfg.root_dir);
+            z_mkdir_p(logpath);
+            z_snprintf(logpath, sizeof(logpath), "%s/data/usage.jsonl", g_cfg.root_dir);
+            zgw_set_usage_log(&g_gw, logpath);
+            ZLOGI("gateway", "路由表 %d 条，策略 %s，决策流水 %s",
+                  g_gw.nroutes, g_gw.strategy, logpath);
         }
     }
 

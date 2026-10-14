@@ -542,13 +542,13 @@ void zimg_draw(zimg *dst, const zimg *src, const double m[6], double opacity)
 static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
                       int sx0, int sy0, int sx1, int sy1,
                       double bend_x, int curve_x, double bend_y, int curve_y,
-                      double bend_tmin, int blend);
+                      double bend_tmin, double bend_tmax, int blend);
 
 void zimg_draw_rect(zimg *dst, const zimg *src, const double m[6], double opacity,
                     int sx0, int sy0, int sx1, int sy1)
 {
     draw_impl(dst, src, m, opacity, sx0, sy0, sx1, sy1,
-              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BLEND_NORMAL);
+              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, 0.0, 1.0, ZIMG_BLEND_NORMAL);
 }
 
 void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacity,
@@ -556,30 +556,34 @@ void zimg_draw_warp(zimg *dst, const zimg *src, const double m[6], double opacit
 {
     if (!src) return;
     draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
-              bend_x, curve_x, bend_y, curve_y, 0.0, ZIMG_BLEND_NORMAL);
+              bend_x, curve_x, bend_y, curve_y, 0.0, 1.0, ZIMG_BLEND_NORMAL);
 }
 
 void zimg_draw_blend(zimg *dst, const zimg *src, const double m[6], double opacity, int blend)
 {
     if (!src) return;
     draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
-              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, 0.0, blend);
+              0.0, ZIMG_BEND_LINEAR, 0.0, ZIMG_BEND_LINEAR, 0.0, 1.0, blend);
 }
 
 void zimg_draw_warp_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
                           double bend_x, int curve_x, double bend_y, int curve_y, int blend)
 {
-    zimg_draw_warp_blend_t(dst, src, m, opacity, bend_x, curve_x, bend_y, curve_y, blend, 0.0);
+    zimg_draw_warp_blend_t(dst, src, m, opacity, bend_x, curve_x, bend_y, curve_y,
+                           blend, 0.0, 1.0);
 }
 
-/* 带形变平台的版本：bend_tmin 以上的行共用 bend_tmin 处的形变量。 */
+/* 带形变平台的版本：
+   bend_tmin 以上的行共用 bend_tmin 处的形变量（上平台，跟随件在上面时用）；
+   bend_tmax 以下的行共用 bend_tmax 处的形变量（下平台，跟随件在下面时用）。
+   不设下平台就传 1.0。 */
 void zimg_draw_warp_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
                             double bend_x, int curve_x, double bend_y, int curve_y,
-                            int blend, double bend_tmin)
+                            int blend, double bend_tmin, double bend_tmax)
 {
     if (!src) return;
     draw_impl(dst, src, m, opacity, 0, 0, src->w, src->h,
-              bend_x, curve_x, bend_y, curve_y, bend_tmin, blend);
+              bend_x, curve_x, bend_y, curve_y, bend_tmin, bend_tmax, blend);
 }
 
 /* 形变权重。入参 t 是源图内的归一化纵坐标（0=顶边，1=底边）；
@@ -601,7 +605,7 @@ double zimg_bend_factor(double t, int curve)
 static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opacity,
                       int sx0, int sy0, int sx1, int sy1,
                       double bend_x, int curve_x, double bend_y, int curve_y,
-                      double bend_tmin, int blend)
+                      double bend_tmin, double bend_tmax, int blend)
 {
     double det, inv[6];
     int x0, y0, x1, y1, px, py;
@@ -659,6 +663,10 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
                    （2026-10-14 用户反馈"颈部整体细微横向位移，包括兜帽"）。
                    把颈线以上的 t 钳到颈线处，衣领就和头完全同步了。 */
                 if (t < bend_tmin) t = bend_tmin;
+                /* 下平台：这一行以下不再继续增大形变。和上平台互为镜像 ——
+                   跟随件挂在下面时（脚跟着腿、手跟着前臂）用它，
+                   以前只能靠把源贴图在切线以下整个裁掉来回避（G97）。 */
+                if (t > bend_tmax) t = bend_tmax;
                 /* X 与 Y 分别用各自的曲线：侧摆（根部固定）与呼吸（中段最大）可以同时存在 */
                 double dx = bend_x * zimg_bend_factor(t, curve_x);
                 double dy = bend_y * zimg_bend_factor(t, curve_y);
@@ -756,7 +764,7 @@ void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], do
                                int blend)
 {
     zimg_draw_mesh_bend_blend_t(dst, src, m, opacity, cols, rows, offsets,
-                                bend_x, curve_x, bend_y, curve_y, blend, 0.0);
+                                bend_x, curve_x, bend_y, curve_y, blend, 0.0, 1.0);
 }
 
 /* 带形变平台的网格版本。
@@ -768,13 +776,13 @@ void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], do
 void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
                                  int cols, int rows, const double *offsets,
                                  double bend_x, int curve_x, double bend_y, int curve_y,
-                                 int blend, double bend_tmin)
+                                 int blend, double bend_tmin, double bend_tmax)
 {
     int c, rr, moved = 0, np;
     int bent = (fabs(bend_x) > 1e-9 || fabs(bend_y) > 1e-9);
     if (!dst || !src || cols < 1 || rows < 1 || !offsets) {
         if (bent) zimg_draw_warp_blend_t(dst, src, m, opacity, bend_x, curve_x,
-                                         bend_y, curve_y, blend, bend_tmin);
+                                         bend_y, curve_y, blend, bend_tmin, bend_tmax);
         else      zimg_draw_blend(dst, src, m, opacity, blend);
         return;
     }
@@ -785,7 +793,7 @@ void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], 
         if (fabs(offsets[c]) > 1e-6) { moved = 1; break; }
     if (!moved) {                        /* 没挪控制点就走原路（但 bend 和平台都不能丢） */
         if (bent) zimg_draw_warp_blend_t(dst, src, m, opacity, bend_x, curve_x,
-                                         bend_y, curve_y, blend, bend_tmin);
+                                         bend_y, curve_y, blend, bend_tmin, bend_tmax);
         else      zimg_draw_blend(dst, src, m, opacity, blend);
         return;
     }
@@ -811,6 +819,7 @@ void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], 
                 if (bent) {               /* 叠加平滑形变（和 warp 同一套曲线） */
                     double tb = sy[k] / (double)src->h;
                     if (tb < bend_tmin) tb = bend_tmin;   /* 形变平台，口径同 draw_impl */
+                    if (tb > bend_tmax) tb = bend_tmax;
                     dxp[k] += bend_x * zimg_bend_factor(tb, curve_x);
                     dyp[k] += bend_y * zimg_bend_factor(tb, curve_y);
                 }

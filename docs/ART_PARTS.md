@@ -172,7 +172,7 @@
 | `GET /api/express?mood=X` | 按心情挑动作（走互动规则表） |
 | `GET /api/call?kind=X` | 通话事件（call_start/call_end/call_user_speaking/call_reply） |
 | `GET /api/poke?x=&y=[&tool=]` | 点一下（会走区域命中 → 规则匹配 → 兜底 clicked） |
-| `GET /api/region?x=&y=` | 这个点压在哪个互动区上（含不透明像素命中） |
+| `GET /api/region?x=&y=[&space=canvas]` | 这个点压在哪个互动区上（含不透明像素命中）。默认帧坐标；`space=canvas` 按画布坐标。答复回报 `space` 与换算后的 `cx/cy` |
 | `GET /api/hover?x=&y=&in=` | 指针位置（驱动视线与头部跟随） |
 | `GET /api/blink?v=` | 按住眨眼（`v=auto` 交回自动） |
 | `GET /api/gaze?x=&y=[&off=1]` | 视线方向 |

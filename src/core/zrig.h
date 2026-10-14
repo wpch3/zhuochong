@@ -54,6 +54,11 @@ int   zrig_hit_test(const zrig *r, int x, int y, int threshold);
 const char *zrig_region_at(const zrig *r, int x, int y, char *out_action, size_t cap);
 /* 帧缓冲坐标 → 画布坐标（平台层把窗口内坐标换算后调用上面的函数） */
 void zrig_frame_to_canvas(const zrig *r, int fx, int fy, int *cx, int *cy);
+/* 画布坐标 → 帧缓冲坐标 */
+void zrig_canvas_to_frame(const zrig *r, int cx, int cy, int *fx, int *fy);
+/* 当前显示缩放；平台层在首帧之前要先 set，否则坐标换算会按 1:1 算 */
+double zrig_view_scale(const zrig *r);
+void   zrig_set_view_scale(zrig *r, double s);
 const char *zrig_region_cursor(const zrig *r, const char *region_id);
 /* 按索引枚举区域（给平台层报给 UI 用）；rect 回填画布坐标 [x,y,w,h] */
 const char *zrig_region_id_at(const zrig *r, int i);

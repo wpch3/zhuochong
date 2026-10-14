@@ -110,11 +110,15 @@ void zimg_draw_mesh(zimg *dst, const zimg *src, const double m[6], double opacit
 void zimg_draw_blend(zimg *dst, const zimg *src, const double m[6], double opacity, int blend);
 void zimg_draw_warp_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
                           double bend_x, int curve_x, double bend_y, int curve_y, int blend);
-/* 同上，但带「形变平台」：源图归一化行 t < bend_tmin 的部分，一律用 bend_tmin 处的
-   形变量。用于躯干这种「贴图顶边其实是脖子」的部件 —— 颈线以上跟着头走，不再加码。 */
+/* 同上，但带「形变平台」。两条平台线互为镜像，不设就传 0.0 / 1.0：
+     bend_tmin —— 源图归一化行 t < bend_tmin 的部分共用 bend_tmin 处的形变量。
+                  用于躯干这种「贴图顶边其实是脖子」的部件：颈线以上跟着头走，不再加码。
+     bend_tmax —— t > bend_tmax 的部分共用 bend_tmax 处的形变量。
+                  用于「跟随件挂在下面」的部件（脚跟腿、手跟前臂）：
+                  踝线以下交给鞋件自己画，腿不要再把它越掰越远。 */
 void zimg_draw_warp_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
                             double bend_x, int curve_x, double bend_y, int curve_y,
-                            int blend, double bend_tmin);
+                            int blend, double bend_tmin, double bend_tmax);
 void zimg_draw_mesh_blend(zimg *dst, const zimg *src, const double m[6], double opacity,
                           int cols, int rows, const double *offsets, int blend);
 /* 网格形变与平滑形变叠加（≈ Live2D 变形器嵌套）。两者不是二选一：
@@ -128,7 +132,7 @@ void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], do
 void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
                                  int cols, int rows, const double *offsets,
                                  double bend_x, int curve_x, double bend_y, int curve_y,
-                                 int blend, double bend_tmin);
+                                 int blend, double bend_tmin, double bend_tmax);
 
 /* 便捷：把 src 缩放到 scale、绕锚点 anchor(0..1) 平移 pos（画布坐标）。 */
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,

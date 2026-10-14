@@ -107,7 +107,11 @@ ZC.register({
       "判这句话是：" + taskTxt + "\n" +
       "理由：" + d.reason + "\n" +
       "本地分流占比：" + (st.local_share >= 0 ? (st.local_share * 100).toFixed(0) + "%" : "—") +
-      "（本地 " + (st.local || 0) + " 次 / 云端 " + (st.cloud || 0) + " 次，目标区间 70~85%）";
+      "（本地 " + (st.local || 0) + " 次 / 云端 " + (st.cloud || 0) + " 次，目标区间 70~85%）\n" +
+      /* 占比只有攒够量才说明问题，所以把"存了多少条"一起摆出来：
+         上面那三条阈值是抄来的，要靠这些流水重标（tools/usage_report.py --sweep）。 */
+      "决策流水：已存 " + (st.logged || 0) + " 条 → data/usage.jsonl" +
+      (st.log_failed ? "（写失败 " + st.log_failed + " 次，检查磁盘/权限）" : "");
     this.why.textContent = this.explain(d.reason, d);
     this.why.classList.toggle("warn", d.blocked_sensitive === true);
   },

@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <time.h>
 
 /* --------------------------------------------------------------- 加载 */
 
@@ -133,6 +135,7 @@ const char *zgw_reason_name(zgw_reason r)
     case ZGW_R_CLOUD_DOWN:        return "cloud_down";
     case ZGW_R_ONLY_CHOICE:       return "only_choice";
     case ZGW_R_SENSITIVE_BLOCKED: return "sensitive_blocked";
+    case ZGW_R_NO_CANDIDATE:      return "no_candidate";
     default:                      return "unknown";
     }
 }
@@ -195,10 +198,67 @@ static const zgw_route *pick_side(const zgateway *g, const char *cap, int want_l
     return NULL;
 }
 
-static void note(zgateway *g, zgw_reason why, const zgw_route *r)
+void zgw_set_usage_log(zgateway *g, const char *path)
+{
+    if (!g) return;
+    if (!path || !*path) { g->usage_log[0] = 0; return; }
+    z_strlcpy(g->usage_log, path, sizeof(g->usage_log));
+}
+
+/* 往流水里追一行 JSON。
+ *
+ * 为什么是 JSONL 而不是 CSV 或数据库：一行一条、追加写、崩了最多丢最后一行，
+ * 而且用 `grep` / `wc -l` 就能看个大概，不用先起一个服务。
+ *
+ * 为什么连"没选中"（敏感被拒）也记：重标阈值时最需要知道的就是被拒了多少次，
+ * 只记成功的那些会把分母做小，算出来的本地占比虚高。 */
+static void usage_append(zgateway *g, const char *cap, const zgw_req *req,
+                         zgw_reason why, const zgw_route *r)
+{
+    FILE *f;
+    long sz;
+    if (!g || !g->usage_log[0]) return;
+
+    /* 先看要不要滚：2MB 大约是 2 万条决策，够回标用了 */
+    f = fopen(g->usage_log, "rb");
+    if (f) {
+        fseek(f, 0, SEEK_END);
+        sz = ftell(f);
+        fclose(f);
+        if (sz > 2L * 1024L * 1024L) {
+            char old_path[300];
+            z_snprintf(old_path, sizeof(old_path), "%s.1", g->usage_log);
+            remove(old_path);
+            rename(g->usage_log, old_path);
+        }
+    }
+
+    f = fopen(g->usage_log, "ab");
+    if (!f) { g->log_failed++; return; }
+    fprintf(f,
+            "{\"t\":%ld,\"cap\":\"%s\",\"provider\":\"%s\",\"model\":\"%s\","
+            "\"local\":%d,\"reason\":\"%s\",\"task\":\"%s\",\"tokens\":%ld,"
+            "\"load\":%d,\"sensitive\":%d,\"cloud_down\":%d,\"picked\":%d}\n",
+            (long)time(NULL), cap ? cap : "",
+            r ? r->provider : "", r ? r->model : "",
+            r ? (r->local ? 1 : 0) : 0,
+            zgw_reason_name(why),
+            (req && req->task == ZGW_TASK_HEAVY) ? "heavy" : "simple",
+            req ? req->tokens_est : 0L,
+            req ? req->local_load_pct : -1,
+            (req && req->sensitive) ? 1 : 0,
+            (req && req->cloud_down) ? 1 : 0,
+            r ? 1 : 0);
+    fclose(f);
+    g->log_written++;
+}
+
+static void note(zgateway *g, const char *cap, const zgw_req *req,
+                 zgw_reason why, const zgw_route *r)
 {
     if (why >= 0 && why < ZGW_R_COUNT) g->reason_hits[why]++;
     if (r) { if (r->local) g->picks_local++; else g->picks_cloud++; }
+    usage_append(g, cap, req, why, r);
 }
 
 const zgw_route *zgw_route_for(zgateway *g, const char *cap, const zgw_req *req,
@@ -226,6 +286,11 @@ const zgw_route *zgw_route_for(zgateway *g, const char *cap, const zgw_req *req,
         /* 分不清是"没人声明过"还是"全关了"，交给 zgw_pick 的口径 */
         zgw_pick(g, cap, 0, why);
         if (why && *why == ZGW_OK) *why = ZGW_ALL_DISABLED;
+        /* 这一类也要记流水：重标阈值时得知道"根本没候选"占了多少，
+           只记成功的那些会把分母做小、本地占比虚高（这就是它原来一条都不记的坑）。 */
+        rs = ZGW_R_NO_CANDIDATE;
+        if (reason) *reason = rs;
+        note(g, cap, req, rs, NULL);
         return NULL;
     }
 
@@ -234,13 +299,13 @@ const zgw_route *zgw_route_for(zgateway *g, const char *cap, const zgw_req *req,
         if (local_r) {
             rs = ZGW_R_SENSITIVE_LOCAL;
             if (reason) *reason = rs;
-            note(g, rs, local_r);
+            note(g, cap, req, rs, local_r);
             return local_r;
         }
         rs = ZGW_R_SENSITIVE_BLOCKED;
         if (reason) *reason = rs;
         if (why) *why = ZGW_SENSITIVE_NO_LOCAL;
-        note(g, rs, NULL);
+        note(g, cap, req, rs, NULL);
         return NULL;
     }
 
@@ -255,7 +320,7 @@ const zgw_route *zgw_route_for(zgateway *g, const char *cap, const zgw_req *req,
     if (want_cloud && req->cloud_down && local_r) {
         rs = ZGW_R_CLOUD_DOWN;
         if (reason) *reason = rs;
-        note(g, rs, local_r);
+        note(g, cap, req, rs, local_r);
         return local_r;
     }
 
@@ -269,7 +334,7 @@ const zgw_route *zgw_route_for(zgateway *g, const char *cap, const zgw_req *req,
         return NULL;
     }
     if (reason) *reason = rs;
-    note(g, rs, r);
+    note(g, cap, req, rs, r);
     return r;
 }
 

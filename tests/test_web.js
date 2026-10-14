@@ -231,7 +231,8 @@ function makeFetch() {
                     reason: reason, blocked_sensitive: false,
                     task: heavy ? "heavy" : "simple", task_hit: kw || (qt.length >= 200 ? "长文" : ""),
                     rules: { tokens_cloud: 512, local_busy_pct: 85, sensitive_local_only: true },
-                    stats: { local: 3, cloud: 1, local_share: 0.75 } });
+                    stats: { local: 3, cloud: 1, local_share: 0.75,
+                             logged: 4, log_failed: 0 } });
     }
     if (u.includes("/api/params.json")) return json(PARAMS);
     if (u.includes("voicebank.json")) {
@@ -743,6 +744,12 @@ function slotOf(id) {
     await new Promise((r) => setImmediate(r));
     await new Promise((r) => setImmediate(r));
     CHECK(txt().includes("云端"), "4000 token 的请求应该落到云端");
+
+    /* 流水条数要露在面上：占比只有攒够量才说明问题，
+       而且用户得能看出"这些决策是存下来了的"，不然 usage_report 跑出来是空的也不知道为什么 */
+    CHECK(txt().includes("4 条") || txt().includes("已存 4"),
+          "要显示决策流水存了多少条（现在是 " + (txt().match(/已存[^，\n]*/) || ["没显示"])[0] + "）");
+    CHECK(txt().includes("usage.jsonl"), "要写明流水存在哪，用户才找得到文件");
   }
 
   SECTION("容错：布局写错不该让整个界面白屏");

@@ -143,11 +143,11 @@ bash tools/voice_setup.sh           # 音色包丢失时一键重建（模型不
 
 | 命令 | 查什么 | 耗时 |
 | --- | --- | --- |
-| `make selfcheck` | **仓库静态自检** `tools/selfcheck_repo.py`：**562 项**（2026-10-15）。记忆区七件套在不在、JOURNAL 是不是最近更新过、GAPS/TASKS 编号有没有重复、所有 JSON 能不能解析、**rig 里部件/遮罩/motion_from/动作通道 target/参数绑定/物理绑定有没有指向不存在的东西**、服装与语音文件在不在、HTML id 有没有重名、JS 引用的 id 在不在、**代码里的 HTTP 端点有没有写进文档**、重建链引用的工具在不在、Python/Shell 语法、素材有没有漏 git add、logs 有没有误入库 | 1 秒 |
-| `make test` | 单测 **653 项**（含 **2 万帧长稳**：不崩、不发散） | 25 秒 |
+| `make selfcheck` | **仓库静态自检** `tools/selfcheck_repo.py`：**302 项**（2026-10-15 按规则计数，分工程事实 250 / 文档纪律 52 两栏）。记忆区七件套在不在、JOURNAL 是不是最近更新过、GAPS/TASKS 编号有没有重复、所有 JSON 能不能解析、**rig 里部件/遮罩/motion_from/动作通道 target/参数绑定/物理绑定有没有指向不存在的东西**、服装与语音文件在不在、HTML id 有没有重名、JS 引用的 id 在不在、**代码里的 HTTP 端点有没有写进文档**、重建链引用的工具在不在、Python/Shell 语法、素材有没有漏 git add、logs 有没有误入库 | 1 秒 |
+| `make test` | 单测 **696 项**（含 **2 万帧长稳**：不崩、不发散） | 38 秒 |
 | `make asan` | ASan + UBSan 跑单测：越界读写、释放后使用、**内存泄漏**当场失败 | 35 秒 |
-| `make smoke` | 端到端 **175 项**（判据是"画面真的变了"）+ `make web-test` 116 项 | 40 秒 |
-| `make check` | 上面四件 + web-test 一次跑完 | **约 140 秒** |
+| `make smoke` | 端到端 **193 项**（判据是"画面真的变了"）+ `make web-test` **129 项** | 60 秒 |
+| `make check` | 上面四件 + web-test 一次跑完 | **约 175 秒** |
 | `~/.imgenv/bin/python3 tools/check_assets.py --character xiaoxun --form teen` | **素材验收 415 项**（切分无损、关节不露底、鞋触地/腿件裁到切线……）；`rebuild_parts.sh` 最后一步会自动跑 | 2 秒 |
 | `bash scripts/precommit.sh` | 提交前最小保险（静态自检 + 单测 + 素材验收） | 约 60 秒 |
 | `bash scripts/install_hooks.sh` | 把上面那条装成 git pre-commit 钩子（`--no-verify` 可跳过） | — |

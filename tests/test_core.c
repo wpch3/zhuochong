@@ -341,27 +341,27 @@ static void test_image(void)
 
         dst = zimg_new(96, 96);
         zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT,
-                               0.0, ZIMG_BEND_ROOT, ZIMG_BLEND_NORMAL, 0.0);
+                               0.0, ZIMG_BEND_ROOT, ZIMG_BLEND_NORMAL, 0.0, 1.0);
         w_off = row_centroid(dst, 10);
         zimg_free(dst);
 
         dst = zimg_new(96, 96);
         zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT,
-                               0.0, ZIMG_BEND_ROOT, ZIMG_BLEND_NORMAL, TMIN);
+                               0.0, ZIMG_BEND_ROOT, ZIMG_BLEND_NORMAL, TMIN, 1.0);
         w_on = row_centroid(dst, 10);
         zimg_free(dst);
 
         dst = zimg_new(96, 96);
         zimg_draw_mesh_bend_blend_t(dst, src, m, 1.0, 2, 10, off,
                                     12.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT,
-                                    ZIMG_BLEND_NORMAL, 0.0);
+                                    ZIMG_BLEND_NORMAL, 0.0, 1.0);
         me_off = row_centroid(dst, 10);
         zimg_free(dst);
 
         dst = zimg_new(96, 96);
         zimg_draw_mesh_bend_blend_t(dst, src, m, 1.0, 2, 10, off,
                                     12.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT,
-                                    ZIMG_BLEND_NORMAL, TMIN);
+                                    ZIMG_BLEND_NORMAL, TMIN, 1.0);
         me_on = row_centroid(dst, 10);
         zimg_free(dst);
 
@@ -379,6 +379,42 @@ static void test_image(void)
               "—— 相差太多的话，裙子一摆脖子就会突然错位",
               w_off - w_on, me_off - me_on,
               fabs((w_off - w_on) - (me_off - me_on)) / (w_off - w_on) * 100.0);
+        zimg_free(src);
+    }
+    {
+        /* 下平台 bend_tmax（G97）：跟随件挂在**下面**时用。
+           以前只有上平台，"脚跟着腿"只能靠把腿贴图在踝线以下整个裁掉来回避；
+           第三种跟随关系（手跟前臂）一出现这个洞就会暴露。
+
+           用 TIP 曲线测：TIP 是"顶边固定、底端最大"，位移随着往下走越来越大，
+           正好是下平台要按住的那一头。取样放在最底下那一行。 */
+        zimg *src = zimg_new_filled(8, 64, 255, 255, 255, 255);
+        zimg *dst;
+        double m[6];
+        double bot_off, bot_on, top_off, top_on;
+        const double TMAX = 0.75;          /* 下 25% 做平台 */
+        zimg_make_matrix(m, 40.0, 8.0, 1.0, 1.0, 0.0, 0.0, 0.0);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_TIP,
+                               0.0, ZIMG_BEND_TIP, ZIMG_BLEND_NORMAL, 0.0, 1.0);
+        bot_off = row_centroid(dst, 68);   /* 贴图底边附近 */
+        top_off = row_centroid(dst, 20);
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_TIP,
+                               0.0, ZIMG_BEND_TIP, ZIMG_BLEND_NORMAL, 0.0, TMAX);
+        bot_on = row_centroid(dst, 68);
+        top_on = row_centroid(dst, 20);
+        zimg_free(dst);
+
+        CHECK(bot_off - bot_on > 2.0,
+              "下平台要把底部形变按住（无平台 %.2f → 有平台 %.2f）", bot_off, bot_on);
+        /* 负控：平台线**以上**不许被影响。只会"压住下面"才叫平台，
+           整块按住的话等于把这个部件的形变关掉了 —— 那是另一种 bug。 */
+        CHECK(fabs(top_off - top_on) < 0.5,
+              "平台线以上不该受影响（%.2f vs %.2f）", top_off, top_on);
         zimg_free(src);
     }
     {
@@ -647,6 +683,30 @@ static void test_rig_channels(void)
             CHECK(id && z_streq(id, "body"), "身体区域命中");
             id = zrig_region_at(r, 5, 5, act, sizeof(act));
             CHECK(id == NULL, "左上角透明处不应命中任何区域");
+        }
+        /* 坐标换算不许跟着"渲染过没渲染过"变。
+           2026-10-15 实测到：没渲染时 frame→canvas 退化成 1:1，于是同一个
+           /api/region 请求在首帧前后落进两套坐标系，两种都回 200，没人发现。
+           这里拿一个全新的、一帧都没渲过的 rig 来验。 */
+        {
+            zrig *fresh = zrig_load(path, dir, &d);
+            int cx0 = 0, cy0 = 0, cx1 = 0, cy1 = 0, bx = 0, by = 0;
+            if (!fresh) { CHECK(0, "坐标换算用例：rig 装载失败"); }
+            else {
+                zrig_set_view_scale(fresh, 0.55);
+                zrig_frame_to_canvas(fresh, 230, 165, &cx0, &cy0);
+                CHECK(cx0 > 400 && cx0 < 440 && cy0 > 280 && cy0 < 320,
+                      "没渲染过也要按 0.55 换算（帧 230,165 → 画布 %d,%d，期望 ≈418,300）",
+                      cx0, cy0);
+                zrig_frame(fresh, 0.55, NULL, NULL);
+                zrig_frame_to_canvas(fresh, 230, 165, &cx1, &cy1);
+                CHECK(abs(cx1 - cx0) <= 2 && abs(cy1 - cy0) <= 2,
+                      "渲染前后换算结果必须一致（前 %d,%d 后 %d,%d）", cx0, cy0, cx1, cy1);
+                zrig_canvas_to_frame(fresh, cx1, cy1, &bx, &by);
+                CHECK(abs(bx - 230) <= 2 && abs(by - 165) <= 2,
+                      "画布→帧要能换回去（%d,%d，期望 ≈230,165）", bx, by);
+                zrig_free(fresh);
+            }
         }
         /* 形变跟随（放在最后：它会推进时间轴，不能影响前面的用例）。
            身体 bend 时 head 组里的五官必须自动跟着走，否则眼睛会从脸上滑走。 */
@@ -2501,6 +2561,90 @@ static void test_gateway(void)
               "本地分流占比要能算出来（用来事后重标阈值）");
         CHECK(gh.reason_hits[ZGW_R_SENSITIVE_BLOCKED] == 1,
               "被拒的那次也要记一笔，否则调阈值时看不到代价");
+    }
+
+    SECTION("网关：决策流水落盘（阈值要靠它重标）");
+    {
+        /* 内存计数器一重启就清零，重标不了抄来的三条阈值（DC18）。
+           所以每次决策都要往 data/usage.jsonl 追一行。
+           这里用自己的路由表夹具，不读真配置 —— 真配置里哪家开着随环境变，
+           拿它当夹具的话，测试绿不绿取决于本机装没装 ollama。 */
+        const char *LOG = "/tmp/zc_usage.jsonl";
+        const char *FIX = "/tmp/zc_gw/usage_fixture.json";
+        zgateway gl;
+        zgw_req rq;
+        zgw_status why;
+        zgw_reason rs;
+        zdiag d2;
+        char *txt = NULL;
+        size_t len = 0;
+        zerr e;
+
+        remove(LOG);
+        z_mkdir_p("/tmp/zc_gw");
+        write_text(FIX,
+            "{\"schema_version\":\"1.0\",\"strategy\":\"prefer_local\",\"fallback\":true,"
+            "\"rules\":{\"tokens_cloud\":512,\"local_busy_pct\":85,\"sensitive_local_only\":true},"
+            "\"routes\":["
+            "{\"cap\":\"chat\",\"provider\":\"l_one\",\"model\":\"q7b\",\"priority\":90,"
+            "\"local\":true,\"enabled\":true,\"free\":true,"
+            "\"price_in\":0,\"price_out\":0,\"price_per\":0},"
+            "{\"cap\":\"chat\",\"provider\":\"c_one\",\"model\":\"big\",\"priority\":50,"
+            "\"local\":false,\"enabled\":true,\"free\":false,"
+            "\"price_in\":1,\"price_out\":2,\"price_per\":1000000}"
+            "]}");
+        zdiag_init(&d2);
+
+        /* 先验"不设路径就一行都不写" —— 默认不该偷偷在用户盘上写东西 */
+        if (zgw_load(&gl, FIX, &d2) == 0) {
+            memset(&rq, 0, sizeof(rq));
+            rq.local_load_pct = -1;
+            zgw_route_for(&gl, "chat", &rq, &why, &rs);
+            CHECK(gl.log_written == 0 && !z_file_exists(LOG),
+                  "没设流水路径时不该写文件（写了 %ld 行）", gl.log_written);
+        } else {
+            CHECK(0, "夹具路由表装载失败");
+        }
+
+        /* 设上路径，跑四种不同走向的决策 */
+        if (zgw_load(&gl, FIX, &d2) == 0) {
+            zgw_set_usage_log(&gl, LOG);
+
+            memset(&rq, 0, sizeof(rq));
+            rq.local_load_pct = -1;
+            zgw_route_for(&gl, "chat", &rq, &why, &rs);            /* 默认本地 */
+            rq.tokens_est = 4096;
+            zgw_route_for(&gl, "chat", &rq, &why, &rs);            /* 长文上云 */
+            rq.tokens_est = 0;
+            rq.sensitive = 1;
+            zgw_route_for(&gl, "chat", &rq, &why, &rs);            /* 敏感本地 */
+            rq.sensitive = 0;
+            zgw_route_for(&gl, "no_such_cap_xyz", &rq, &why, &rs); /* 没候选 */
+
+            CHECK(gl.log_written == 4 && gl.log_failed == 0,
+                  "四次决策要写四行（写了 %ld，失败 %ld）", gl.log_written, gl.log_failed);
+
+            txt = z_read_file(LOG, &len, &e);
+            if (!txt) {
+                CHECK(0, "流水读不回来：%s", e.msg);
+            } else {
+                int lines = 0;
+                size_t k;
+                for (k = 0; k < len; ++k) if (txt[k] == '\n') lines++;
+                CHECK(lines == 4, "流水应有 4 行，实际 %d 行", lines);
+                CHECK(strstr(txt, "\"tokens\":4096") != NULL,
+                      "长文那条要带上 token 数，否则没法重标 512 这个阈值");
+                CHECK(strstr(txt, "\"sensitive\":1") != NULL, "敏感标记要落进流水");
+                CHECK(strstr(txt, "no_candidate") != NULL,
+                      "两边都没候选的那次也要记，不然分母偏小、本地占比虚高");
+                CHECK(strstr(txt, "\"reason\":\"long_cloud\"") != NULL,
+                      "理由要落进流水（重标时按理由分组看）");
+                CHECK(strstr(txt, "\"provider\":\"c_one\"") != NULL,
+                      "落到哪家也要记，否则算不出每家的真实占比");
+                free(txt);
+            }
+            remove(LOG);
+        }
     }
 
     SECTION("网关：自动判重活（DC27）");
