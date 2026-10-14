@@ -276,6 +276,58 @@ def main():
           "；".join(hits[:3]) if hits
           else "扫了 %d 份配置，%d 个关键词" % (len(scan_files), len(BANNED)))
 
+    # ---- 游戏档位表（A25）：网游只能陪聊，不许代打 ----
+    # 用户 2026-10-14：「不是完全禁止网游，而是让他们可以在网游也陪伴聊天和
+    # 实时屏幕操作进行回应对话，而其他的可以真正的游玩。」
+    # 档位是硬约束不是偏好，所以在这里钉死 —— 将来谁手滑把英雄联盟改成档三会直接红。
+    gt_path = os.path.join(ROOT, "config", "game_tiers.json")
+    if os.path.exists(gt_path):
+        gt = json.load(io.open(gt_path, encoding="utf-8"))
+        tiers, cats, games = gt.get("tiers", {}), gt.get("categories", {}), gt.get("games", [])
+
+        check("档位表默认档是最安全的那档", gt.get("default_tier") == 1,
+              "default_tier=%s，不在表里的游戏必须按档一（零输入）处理" % gt.get("default_tier"))
+
+        t1 = tiers.get("1", {})
+        check("档一是真的零输入（不是『默认关闭』）",
+              t1.get("input") == "none"
+              and {"input.keyboard", "input.mouse", "input.gamepad"} <= set(t1.get("forbidden", [])),
+              "档一 input=%s forbidden=%s" % (t1.get("input"), t1.get("forbidden")))
+
+        # 网游类别必须锁死在档一
+        bad_cat = [k for k, v in cats.items()
+                   if k.startswith("online") and not (v.get("max_tier") == 1 and v.get("locked"))]
+        check("网游类别锁死在档一且不可提升", not bad_cat,
+              "%s 的 max_tier/locked 不对 —— 网游只能陪聊" % bad_cat)
+
+        # 每个游戏不得越过它所属类别的上限
+        over = []
+        for g in games:
+            cap = cats.get(g.get("category"), {}).get("max_tier")
+            if cap is None:
+                over.append("%s 的类别 %s 没定义" % (g.get("id"), g.get("category")))
+            elif g.get("max_tier", 99) > cap:
+                over.append("%s 档位 %s 超过类别上限 %s" % (g.get("id"), g.get("max_tier"), cap))
+        check("没有游戏越过它所属类别的档位上限", not over, "；".join(over[:3]))
+
+        # 用户点名的例子单独钉一遍
+        lol = next((g for g in games if g.get("id") == "lol"), None)
+        check("英雄联盟锁在档一（用户点名的例子）",
+              bool(lol) and lol.get("max_tier") == 1
+              and cats.get(lol.get("category"), {}).get("locked") is True,
+              "表里查不到 lol" if not lol else "max_tier=%s" % lol.get("max_tier"))
+
+        # 档位引用必须有定义
+        undef = [g.get("id") for g in games if str(g.get("max_tier")) not in tiers]
+        check("游戏引用的档位都有定义", not undef, "%s 引用了未定义的档位" % undef[:3])
+
+        # 真玩档必须带安全前提，否则就是裸奔
+        t3 = tiers.get("3", {})
+        check("手柄游玩档带齐安全前提（急停 / 限频 / 显式授权）",
+              {"input.emergency_stop", "input.rate_limit", "user.explicit_grant"}
+              <= set(t3.get("requires", [])),
+              "档三 requires=%s" % t3.get("requires"))
+
     agents = cast.get("agents", [])
     av = [a.get("voice") for a in agents]
     dup = sorted({x for x in av if av.count(x) > 1})
