@@ -38,8 +38,17 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
     if head_is_part:
         out.append({"id": "ParamAngleZ", "label": "头 歪头", "min": -30.0, "max": 30.0,
                     "default": 0.0,
-                    "binds": [{"group": "head", "param": "rot_deg", "scale": 0.5}],
-                    "note": "±30 → 实际 ±15°，再大颈部接缝会露"})
+                    "binds": [{"group": "head", "param": "rot_deg", "scale": 0.5},
+                              # 歪头时上身跟着带一点。Live2D 官方《提高动态质量的技巧》
+                              # 第 1 条：「如果只转动脸部，则会看起来像一个机器人」。
+                              # ParamAngleX/Y 走 look 系统本来就同时给 head 和 chest
+                              # （head.rot 5.0 / chest.rot 1.2），唯独 AngleZ 是普通参数、
+                              # 只绑了 head —— 20 个动作里 12 个用 AngleZ，于是歪头时
+                              # 身体纹丝不动（用户 2026-10-14 反馈"光是头在动，身体没联动"）。
+                              # 比例照抄 look 里已经调好的 1.2/5.0 = 0.24：0.5 × 0.24 = 0.12。
+                              {"group": "chest", "param": "rot_deg", "scale": 0.12}],
+                    "note": "±30 → 实际 ±15°，再大颈部接缝会露；"
+                            "上身跟 0.12（= look 里 chest/head 的 0.24 比例）"})
     out += [
         # 躯干左右摆：网格弯曲是主力（腰以上越来越偏），胸组的平移/旋转是配角。
         # 满格 10 = 原 sway 动作的幅度（bend_x 10px）。
@@ -782,11 +791,27 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "chest", "param": "dy", "interp": "linear",
               "keys": [[0.0, 0.0], [0.25, 2.0], [0.7, 0.0], [1.1, 0.0]]},
          ]},
+        # 摸头：微微歪头 + 一脸开心享受。
+        #
+        # 原来这里是 head.dy = -7.0（pulse 保持）——**字面意义上把整个头往上平移
+        # 7 像素**，而胸只跟 0.7px（look 配置 head.dy=10 vs chest.dy=1），
+        # 净效果就是脖子凭空抽长 6.3px。用户 2026-10-14 实测反馈
+        # "摸头的时候不应该脖子伸长而是微微歪头一脸开心享受"，完全正确。
+        #
+        # 现在：歪头蹭过去（ParamAngleZ，走 head.rot_deg 绕颈关节转，不改变颈长），
+        # 头顺着手的力道微沉一点点（head.dy 取正 = 往下，幅度只有原来的 2/7），
+        # 再配上笑眼 + 脸红 + 嘴角上扬。blink_hold 0.95 配 EyeSmile=1 会让
+        # 山型笑眼顶替谷型闭眼，画出来就是 ∩∩ 的享受脸（见 zrig.c 的交叉淡化）。
         {"id": "head_pat", "priority": 6, "duration": 1.0, "return_state": "idle",
          "interruptible": False,
          "channels": [
-             {"target": "head", "param": "dy", "wave": "pulse", "amp": -7.0, "dur": 0.35, "ease": "out_back"},
-             {"target": "head", "param": "dy", "wave": "sine", "amp": 2.0, "freq": 3.5, "dur": 1.0},
+             {"target": "ParamAngleZ", "wave": "pulse", "amp": 11.0, "dur": 0.40, "ease": "out_back"},
+             {"target": "head", "param": "dy", "wave": "pulse", "amp": 2.0, "dur": 0.40, "ease": "out_back"},
+             {"target": "head", "param": "dy", "wave": "sine", "amp": 1.2, "freq": 3.5, "dur": 1.0},
+             {"target": "ParamEyeLSmile", "wave": "pulse", "amp": 1.0, "dur": 0.30, "ease": "out"},
+             {"target": "ParamEyeRSmile", "wave": "pulse", "amp": 1.0, "dur": 0.30, "ease": "out"},
+             {"target": "ParamMouthForm", "wave": "pulse", "amp": 0.85, "dur": 0.35, "ease": "out"},
+             {"target": "ParamCheek", "wave": "pulse", "amp": 0.60, "dur": 0.40, "ease": "out"},
          ],
          "blink_hold": 0.95,
          "part_overrides": {}},
@@ -1447,6 +1472,17 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list))
     PARAM_IDS = {q["id"] for q in PARAMS}
 
+    # 引擎自己注册的内建参数（zrig.c 的 param_add_builtin 那一串）。
+    # 它们不写进 rig.json 的 params 里，但动作通道可以直接打 —— 引擎解析
+    # target 时走的是 param_find()，内建和声明的参数在同一张表里。
+    # ⚠ 这份名单必须和 zrig.c 保持一致，selfcheck 的 check_builtin_params() 盯着。
+    BUILTIN_PARAM_IDS = {
+        "ParamAngleX", "ParamAngleY", "ParamEyeOpen", "ParamEyeLOpen",
+        "ParamEyeROpen", "ParamEyeLSmile", "ParamEyeRSmile",
+        "ParamEyeBallX", "ParamEyeBallY",
+    }
+    WRITABLE_PARAM_IDS = PARAM_IDS | BUILTIN_PARAM_IDS
+
     def to_param_channels(acts):
         n_in = n_out = 0
         for a in acts:
@@ -1461,7 +1497,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 # 已经是参数通道的直接放行 —— 上面 GEO2PARAM 的注释说了
                 # 「新动作请直接写参数」，这里就是那条路。判据是 target 真的是
                 # param_list() 里登记过的参数 id，所以写错名字仍然会被下面拦住。
-                if prop is None and tgt in PARAM_IDS:
+                if prop is None and tgt in WRITABLE_PARAM_IDS:
                     out_ch.append(dict(c))
                     n_out += 1
                     continue

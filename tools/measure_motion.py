@@ -177,7 +177,14 @@ def row_shift(a, b, y, span=6):
             bv, best = v, sh
     y0, y1, y2 = corr(best - 1), corr(best), corr(best + 1)
     den = y0 - 2 * y1 + y2
-    return best + ((y0 - y2) / (2 * den) if den != 0 else 0.0)
+    # 分母接近 0（这一行几乎没信号）时抛物线插值会炸出天文数字，
+    # 必须钳住：亚像素修正按定义不可能超过半个像素。
+    sub = (y0 - y2) / (2 * den) if abs(den) > 1e-9 else 0.0
+    if sub < -0.5:
+        sub = -0.5
+    elif sub > 0.5:
+        sub = 0.5
+    return best + sub
 
 
 def profile(pet, pid, value, step=2, span=(0.10, 0.70)):
@@ -258,7 +265,8 @@ def main():
             if prev is not None and abs(sh - prev) > a.jump:
                 mark = "  ★ 跳变 %+.2f" % (sh - prev)
                 jumps.append((fy, sh - prev))
-            print("%8d %10.2f  %s%s" % (fy, sh, "#" * int(abs(sh) * 8), mark))
+            bar = "#" * min(60, int(abs(sh) * 8))
+            print("%8d %10.2f  %s%s" % (fy, sh, bar, mark))
             prev = sh
         print("-" * 56)
         if jumps:

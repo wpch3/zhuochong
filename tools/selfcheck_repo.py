@@ -525,6 +525,53 @@ def check_no_stale_decisions(root):
               else f"lol max_tier={lol.get('max_tier')}")
 
 
+def check_head_body_link(root):
+    """头部参数必须带动身体，且摸头不许拉长脖子（2026-10-14 加）。
+
+    Live2D 官方《提高动态质量的技巧》第 1 条：
+    「如果只转动脸部，则会看起来像一个机器人」。
+    用户实测反馈同一句话：「光是头在动，身体没联动，看着还是很怪」。
+
+    ParamAngleX/Y 是引擎内建、走 look 系统，本来就同时给 head 和 chest；
+    唯独 ParamAngleZ 是普通参数，原先只绑 head.rot_deg，20 个动作里 12 个
+    用的正是它 —— A/B 实测：剥掉胸部分量后身体位移是**精确的 0.00px**。
+
+    另外盯住摸头：head.dy 取负 = 把头整个往上平移 = 脖子凭空抽长
+    （实测 -9.48px），正确做法是歪头（ParamAngleZ，绕颈关节转，不改颈长）。
+    """
+    section("头动必须带着身体（不许只有头在动）")
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if not os.path.isfile(rig_path):
+        return
+    with io.open(rig_path, encoding="utf-8") as fh:
+        rig = json.load(fh)
+    az = next((p for p in rig.get("params", []) if p["id"] == "ParamAngleZ"), None)
+    if check("找得到 ParamAngleZ", az is not None):
+        tg = {b.get("group"): b.get("scale") for b in az.get("binds", [])}
+        check("ParamAngleZ 带动 head", "head" in tg, "绑定：%s" % tg)
+        check("ParamAngleZ 也带动 chest（否则歪头时身体是刚体）",
+              "chest" in tg and (tg.get("chest") or 0) > 0,
+              "绑定：%s —— 剥掉它实测身体位移精确为 0.00px" % tg)
+        if "chest" in tg and "head" in tg and tg["head"]:
+            ratio = tg["chest"] / tg["head"]
+            check("chest/head 比例贴着 look 里调好的 0.24", 0.15 <= ratio <= 0.35,
+                  "实际 %.3f（look 里是 chest.rot 1.2 / head.rot 5.0 = 0.24）" % ratio)
+    hp = next((a for a in rig.get("actions", []) if a["id"] == "head_pat"), None)
+    if check("找得到 head_pat", hp is not None):
+        up = [c for c in hp.get("channels", [])
+              if c.get("target") == "head" and c.get("param") == "dy"
+              and (c.get("amp") or 0) < -0.5]
+        check("摸头不许把头整个往上平移（= 脖子抽长）", not up,
+              "有 %d 条 head.dy 负向通道：%s" % (len(up), up) if up else "没有负向 head.dy")
+        joy = {c.get("target") for c in hp.get("channels", [])}
+        check("摸头要有开心表情（笑眼/脸红/笑嘴至少一样）",
+              bool(joy & {"ParamEyeLSmile", "ParamEyeRSmile",
+                          "ParamCheek", "ParamMouthForm"}),
+              "通道目标：%s" % sorted(joy))
+        check("摸头要歪头（ParamAngleZ）", "ParamAngleZ" in joy,
+              "通道目标：%s" % sorted(joy))
+
+
 def check_neck_seam(root):
     """躯干必须设了形变平台，否则脖子/兜帽会横向滑移（2026-10-14 加）。
 
@@ -1467,7 +1514,8 @@ def main():
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
-               check_json, check_rig, check_neck_seam, check_action_dead_time,
+               check_json, check_rig, check_head_body_link, check_neck_seam,
+               check_action_dead_time,
                check_motion_measure,
                check_form_roadmap,
                check_live2d, check_character,

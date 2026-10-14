@@ -1401,18 +1401,53 @@
       "interruptible": false,
       "channels": [
         {
+          "target": "ParamAngleZ",
+          "wave": "pulse",
+          "amp": 11.0,
+          "dur": 0.4,
+          "ease": "out_back"
+        },
+        {
           "target": "ParamAngleY",
           "wave": "pulse",
-          "amp": 21.0,
-          "dur": 0.35,
+          "amp": -6.0,
+          "dur": 0.4,
           "ease": "out_back"
         },
         {
           "target": "ParamAngleY",
           "wave": "sine",
-          "amp": -6.0,
+          "amp": -3.6,
           "freq": 3.5,
           "dur": 1.0
+        },
+        {
+          "target": "ParamEyeLSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.3,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.3,
+          "ease": "out"
+        },
+        {
+          "target": "ParamMouthForm",
+          "wave": "pulse",
+          "amp": 0.85,
+          "dur": 0.35,
+          "ease": "out"
+        },
+        {
+          "target": "ParamCheek",
+          "wave": "pulse",
+          "amp": 0.6,
+          "dur": 0.4,
+          "ease": "out"
         },
         {
           "target": "ParamHairAhoge",
@@ -3311,9 +3346,14 @@
           "group": "head",
           "param": "rot_deg",
           "scale": 0.5
+        },
+        {
+          "group": "chest",
+          "param": "rot_deg",
+          "scale": 0.12
         }
       ],
-      "note": "±30 → 实际 ±15°，再大颈部接缝会露"
+      "note": "±30 → 实际 ±15°，再大颈部接缝会露；上身跟 0.12（= look 里 chest/head 的 0.24 比例）"
     },
     {
       "id": "ParamBodyAngleX",
