@@ -2345,6 +2345,7 @@ static void gw_write(const char *path, const char *body)
 static void test_gateway(void)
 {
     zgateway g;
+    zgateway gh;                 /* 混合路由表（本地+云端各一条），两个小节共用 */
     zdiag d;
     const zgw_route *r;
     zgw_status why;
@@ -2421,7 +2422,6 @@ static void test_gateway(void)
            那样无论怎么问都只会落到本地，看起来"全对"其实什么都没验。 */
         zgw_req rq;
         zgw_reason rs = ZGW_R_DEFAULT_LOCAL;
-        zgateway h;
         int i;
 
         gw_write("/tmp/zc_gw/hybrid.json",
@@ -2436,41 +2436,41 @@ static void test_gateway(void)
             "\"price_in\":1,\"price_out\":2,\"price_per\":1000000}"
             "]}");
         zdiag_init(&d);
-        CHECK(zgw_load(&h, "/tmp/zc_gw/hybrid.json", &d) == 0, "混合路由表应能加载");
-        CHECK(h.rules.tokens_cloud == 512 && h.rules.local_busy_pct == 85,
+        CHECK(zgw_load(&gh, "/tmp/zc_gw/hybrid.json", &d) == 0, "混合路由表应能加载");
+        CHECK(gh.rules.tokens_cloud == 512 && gh.rules.local_busy_pct == 85,
               "阈值要从表里读出来，不是写死在代码里");
 
         memset(&rq, 0, sizeof(rq));
         rq.local_load_pct = -1;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && r->local && rs == ZGW_R_DEFAULT_LOCAL,
               "普通短请求默认留在本地");
 
         rq.tokens_est = 4000;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && !r->local && rs == ZGW_R_LONG_CLOUD,
               "超过 token 阈值要上云");
 
         rq.tokens_est = 0;
         rq.task = ZGW_TASK_HEAVY;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && !r->local && rs == ZGW_R_HEAVY_CLOUD,
               "重活（推理/写码/工具调用）要上云");
 
         rq.task = ZGW_TASK_SIMPLE;
         rq.local_load_pct = 92;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && !r->local && rs == ZGW_R_LOCAL_BUSY,
               "本地忙到 92% 要溢出到云端");
         rq.local_load_pct = 84;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && r->local,
               "84% 还没到 85% 的阈值，不该溢出（阈值要真的是阈值）");
 
         rq.local_load_pct = -1;
         rq.tokens_est = 4000;
         rq.cloud_down = 1;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && r->local && rs == ZGW_R_CLOUD_DOWN,
               "本想上云但云端挂了，要退回本地而不是失败");
 
@@ -2478,29 +2478,80 @@ static void test_gateway(void)
         memset(&rq, 0, sizeof(rq));
         rq.local_load_pct = -1;
         rq.sensitive = 1;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && r->local && rs == ZGW_R_SENSITIVE_LOCAL,
               "敏感请求走本地");
 
         /* 把本地那条关掉，只剩云端——这是最有诱惑力的局面 */
-        for (i = 0; i < h.nroutes; ++i)
-            if (h.routes[i].local) h.routes[i].enabled = 0;
+        for (i = 0; i < gh.nroutes; ++i)
+            if (gh.routes[i].local) gh.routes[i].enabled = 0;
 
         rq.sensitive = 0;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && !r->local,
               "负对照：同样的局面下，不敏感的请求是会落到云端的");
 
         rq.sensitive = 1;
-        r = zgw_route_for(&h, "chat", &rq, &why, &rs);
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(!r && why == ZGW_SENSITIVE_NO_LOCAL && rs == ZGW_R_SENSITIVE_BLOCKED,
               "敏感 + 本地不可用 = 拒绝。宁可功能不可用，也不许上云");
 
         /* 分流占比：上面一共落地 8 次（被拒的那次不算落地） */
-        CHECK(zgw_local_share(&h) >= 0.0 && zgw_local_share(&h) <= 1.0,
+        CHECK(zgw_local_share(&gh) >= 0.0 && zgw_local_share(&gh) <= 1.0,
               "本地分流占比要能算出来（用来事后重标阈值）");
-        CHECK(h.reason_hits[ZGW_R_SENSITIVE_BLOCKED] == 1,
+        CHECK(gh.reason_hits[ZGW_R_SENSITIVE_BLOCKED] == 1,
               "被拒的那次也要记一笔，否则调阈值时看不到代价");
+    }
+
+    SECTION("网关：自动判重活（DC27）");
+    {
+        const char *hit = "";
+        /* 闲聊必须留在本地 —— 这一组是整个分类器的意义所在。
+           如果它把寒暄也判成重活，那"70~85% 走本地"就永远达不到，
+           而且每句"在吗"都要花钱。 */
+        CHECK(zgw_classify("今天天气怎么样呀", &hit) == ZGW_TASK_SIMPLE, "寒暄是简单活");
+        CHECK(zgw_classify("陪我聊聊天", &hit) == ZGW_TASK_SIMPLE, "闲聊是简单活");
+        CHECK(zgw_classify("好耶！", &hit) == ZGW_TASK_SIMPLE, "短感叹是简单活");
+        CHECK(zgw_classify("", &hit) == ZGW_TASK_SIMPLE, "空串不能判成重活");
+        CHECK(zgw_classify(NULL, &hit) == ZGW_TASK_SIMPLE, "NULL 不能崩也不能判重");
+
+        CHECK(zgw_classify("帮我写个快速排序函数", &hit) == ZGW_TASK_HEAVY, "写代码是重活");
+        CHECK(strcmp(hit, "函数") == 0, "要说得出凭哪个词判的（界面要解释给用户听）");
+        CHECK(zgw_classify("为什么踮脚的时候鞋要变高", &hit) == ZGW_TASK_HEAVY, "追问原因是重活");
+        CHECK(zgw_classify("这段代码报错了 TypeError", &hit) == ZGW_TASK_HEAVY, "排错是重活");
+        CHECK(zgw_classify("查一下明天的天气预报", &hit) == ZGW_TASK_HEAVY, "要用工具是重活");
+        CHECK(zgw_classify("```c\nint main(void){return 0;}\n```", &hit) == ZGW_TASK_HEAVY,
+              "代码块是重活");
+        {
+            char longtext[900], midtext[500];
+            memset(longtext, 'a', sizeof(longtext) - 1);
+            longtext[sizeof(longtext) - 1] = 0;
+            CHECK(zgw_classify(longtext, &hit) == ZGW_TASK_HEAVY, "够长也算重活");
+            CHECK(strcmp(hit, "长文") == 0, "长文要说明是因为长，不是因为某个词");
+            /* 把阈值从下面也钉住。只测"长的判重"的话，有人把 600 改成 60
+               （即一句话就算重活）测试照样全绿 —— 负控时真这么漏过一次。 */
+            memset(midtext, 'b', sizeof(midtext) - 1);
+            midtext[sizeof(midtext) - 1] = 0;
+            CHECK(zgw_classify(midtext, &hit) == ZGW_TASK_SIMPLE,
+                  "500 字节还没到 600 的线，不该判重（阈值要真的是阈值）");
+        }
+        /* 分类器接进路由：同一张混合表，光换文本就该换落点。
+           注意要重新加载 —— 上一节把本地那条关掉做负控了，不重载的话
+           这里测到的是"本地不可用"，不是"分类器判对了"（差一点就这么绿过去）。 */
+        {
+            zgw_req rq2;
+            zgw_reason rs2 = ZGW_R_DEFAULT_LOCAL;
+            zdiag_init(&d);
+            CHECK(zgw_load(&gh, "/tmp/zc_gw/hybrid.json", &d) == 0, "重载混合表");
+            memset(&rq2, 0, sizeof(rq2));
+            rq2.local_load_pct = -1;
+            rq2.task = zgw_classify("陪我聊聊天", NULL);
+            r = zgw_route_for(&gh, "chat", &rq2, &why, &rs2);
+            CHECK(r && r->local, "闲聊 → 本地");
+            rq2.task = zgw_classify("帮我写个函数", NULL);
+            r = zgw_route_for(&gh, "chat", &rq2, &why, &rs2);
+            CHECK(r && !r->local && rs2 == ZGW_R_HEAVY_CLOUD, "写代码 → 云端");
+        }
     }
 
     SECTION("网关：估价");

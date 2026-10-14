@@ -368,6 +368,14 @@ def run(base, root):
           down.get("reason"))
     miss = a.json("/api/route?cap=nobody.does.this")
     check("没人提供的能力要老实说不行", miss.get("ok") is False, str(miss.get("reason")))
+    # 自动判重活（DC27）：同一个端点，光换文本就该换判定
+    chat = a.json("/api/route?cap=chat.completion&q=" + urllib.parse.quote("陪我聊聊天"))
+    code = a.json("/api/route?cap=chat.completion&q=" + urllib.parse.quote("帮我写个快速排序函数"))
+    check("闲聊判成简单活", chat.get("task") == "simple", str(chat.get("task_hit")))
+    check("写代码判成重活", code.get("task") == "heavy", str(code.get("task_hit")))
+    check("要说得出凭哪个词判的", bool(code.get("task_hit")),
+          "界面要解释给用户听，不能只给 heavy")
+
     st = (a.json("/api/route?cap=chat.completion") or {}).get("stats") or {}
     check("决策要记账（为了事后重标阈值）", st.get("local", 0) + st.get("cloud", 0) > 0,
           str(st))

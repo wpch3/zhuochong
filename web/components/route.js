@@ -12,7 +12,7 @@ ZC.register({
     this.body = c.body;
     root.appendChild(c.box);
 
-    this.state = { sensitive: 0, tokens: 200, load: -1, cloud_down: 0, heavy: 0 };
+    this.state = { sensitive: 0, tokens: 200, load: -1, cloud_down: 0, q: "" };
 
     const row = (label, node) => {
       const r = host.el("div", "row");
@@ -32,9 +32,17 @@ ZC.register({
     };
     const toggles = host.el("div", "wrap");
     toggles.appendChild(mk("sensitive", "带隐私标记"));
-    toggles.appendChild(mk("heavy", "重活（推理/写码）"));
     toggles.appendChild(mk("cloud_down", "云端挂了"));
     row("请求长什么样", toggles);
+
+    /* 让用户自己打一句话 —— "重活"不是开关拨出来的，是按内容判的（DC27）。
+       能亲手试出"写个函数"和"陪我聊天"落点不同，比看十行说明有用。 */
+    const qin = host.el("input");
+    qin.type = "text";
+    qin.id = "route-q";
+    qin.placeholder = "打一句话试试：陪我聊聊天 / 帮我写个函数";
+    qin.oninput = () => { this.state.q = qin.value; this.refresh(); };
+    row("问它什么", qin);
 
     const tok = host.el("input");
     tok.type = "range"; tok.min = "0"; tok.max = "4000"; tok.step = "100";
@@ -78,20 +86,25 @@ ZC.register({
     const host = this.host, s = this.state;
     const q = "route?cap=chat.completion&sensitive=" + s.sensitive +
               "&tokens=" + s.tokens + "&load=" + s.load +
-              "&cloud_down=" + s.cloud_down + "&heavy=" + s.heavy;
+              "&cloud_down=" + s.cloud_down +
+              (s.q ? "&q=" + encodeURIComponent(s.q) : "");
     let d;
     try { d = await host.api(q); } catch (e) { this.out.textContent = "读不到 /api/route"; return; }
     /* 直接用手里的引用，不走 document.getElementById —— 组件不该依赖全局 DOM，
        而且测试台的假 DOM 里没有这个函数，用了就会在 await 里静默崩掉。 */
-    ["sensitive", "heavy", "cloud_down"].forEach((k) => {
+    ["sensitive", "cloud_down"].forEach((k) => {
       const b = this.btns[k];
       if (b) b.classList.toggle("pri", !!s[k]);
     });
     const where = d.ok ? (d.local ? "本地" : "云端") : "拒绝";
     const who = d.ok ? (d.provider + " / " + d.model) : "——";
     const st = d.stats || {};
+    const taskTxt = d.task === "heavy"
+      ? ("重活（" + (d.task_hit || "长文") + "）")
+      : "简单活";
     this.out.textContent =
       "落点：" + where + "　供应商：" + who + "\n" +
+      "判这句话是：" + taskTxt + "\n" +
       "理由：" + d.reason + "\n" +
       "本地分流占比：" + (st.local_share >= 0 ? (st.local_share * 100).toFixed(0) + "%" : "—") +
       "（本地 " + (st.local || 0) + " 次 / 云端 " + (st.cloud || 0) + " 次，目标区间 70~85%）";

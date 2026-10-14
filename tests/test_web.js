@@ -212,7 +212,12 @@ function makeFetch() {
       /* 这个假端点必须和 C 侧 zgw_route_for 的口径一致，否则面板测绿了、
          真服务上却是另一回事（吃过这个亏：stub 漏字段 → 测试绿、真界面空白）。 */
       const q = Object.fromEntries(new URLSearchParams((u.split("?")[1] || "")));
-      const sens = q.sensitive === "1", heavy = q.heavy === "1";
+      const sens = q.sensitive === "1";
+      /* 跟 C 侧 zgw_classify 同口径的迷你版：关键词 + 长度 */
+      const qt = q.q || "";
+      const KW = ["代码", "函数", "报错", "为什么", "分析", "查一下", "```"];
+      const kw = KW.find((k) => qt.includes(k));
+      const heavy = q.heavy === "1" || !!kw || qt.length >= 200;
       const tok = parseInt(q.tokens || "0", 10), load = parseInt(q.load || "-1", 10);
       const down = q.cloud_down === "1";
       let local = true, reason = "default_local", ok = true;
@@ -224,6 +229,7 @@ function makeFetch() {
       return json({ cap: "chat.completion", ok: ok, provider: local ? "ollama" : "deepseek",
                     model: local ? "qwen2.5:7b" : "deepseek-chat", local: local,
                     reason: reason, blocked_sensitive: false,
+                    task: heavy ? "heavy" : "simple", task_hit: kw || (qt.length >= 200 ? "长文" : ""),
                     rules: { tokens_cloud: 512, local_busy_pct: 85, sensitive_local_only: true },
                     stats: { local: 3, cloud: 1, local_share: 0.75 } });
     }
@@ -717,6 +723,19 @@ function slotOf(id) {
     CHECK(bsens.className.includes("pri"), "按下的开关要高亮（classList.toggle 要真的起作用）");
 
     /* 长请求要上云 —— 这条是"本地优先不是无脑优先"的可见证据 */
+    /* 打一句"帮我写个函数"：面板应该自己判成重活并说出凭哪个词 */
+    const qin = walk(el).find((n) => n.id === "route-q");
+    CHECK(!!qin, "要有能打字的输入框");
+    qin.value = "帮我写个函数"; qin.oninput();
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    CHECK(txt().includes("重活") && txt().includes("函数"),
+          "要判成重活并说出凭哪个词（不能只给个 heavy）");
+    qin.value = "陪我聊聊天"; qin.oninput();
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    CHECK(txt().includes("简单活"), "闲聊要判成简单活，否则每句寒暄都要花钱");
+
     const tokr = walk(el).find((n) => n.id === "route-tokens");
     bsens.onclick();                       /* 先关掉隐私标记 */
     await new Promise((r) => setImmediate(r));

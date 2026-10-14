@@ -120,6 +120,17 @@ typedef struct {
 
 const char *zgw_reason_name(zgw_reason r);
 
+/* 按文本内容判这是不是"重活"（推理 / 写代码 / 工具调用 / 长文）。
+ *
+ * 为什么是关键词而不是模型：调研里这条写得很死 ——
+ * **路由器本身必须 <1ms，不能为了决定路由再调一次 LLM**，那样延迟预算直接爆掉。
+ * 代价是关键词表必然有漏判（见 DECISIONS DC27 的复查触发）：
+ * 漏判的后果是"本该上云的留在了本地"，用户看到的是答得差，不是答不出来 ——
+ * 这个方向的错误比反过来便宜，所以表宁可保守。
+ *
+ * hit 不为 NULL 时写回命中的那个词（指向静态串），给界面解释用。 */
+zgw_task zgw_classify(const char *text, const char **hit);
+
 /* 按三支柱挑路由。g 非 const 是因为每次决策都要记账。
  * 返回 NULL 时 why 给出原因；敏感请求在本地不可用时返回
  * ZGW_SENSITIVE_NO_LOCAL —— **不会**退而求其次去云端。 */

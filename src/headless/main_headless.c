@@ -402,7 +402,7 @@ static void handle_request(zsock fd, const http_req *r)
         /* 双路由沙盘（DC18）：给一条假请求，看它会落到本地还是云端、为什么。
            这是纯决策，不发任何网络请求 —— 所以在没有密钥、没有显卡的机器上
            也能把"敏感数据绝不上云"这类规则验到底。 */
-        char body[1024], cap_s[64];
+        char body[1024], cap_s[64], task_hit[32];
         zgw_req req;
         zgw_status why = ZGW_NO_SUCH_CAP;
         zgw_reason reason = ZGW_R_DEFAULT_LOCAL;
@@ -411,12 +411,24 @@ static void handle_request(zsock fd, const http_req *r)
 
         if (!qstr(r, "cap", cap_s, sizeof(cap_s)) || !cap_s[0])
             z_strlcpy(cap_s, "chat.completion", sizeof(cap_s));
+        task_hit[0] = 0;
         memset(&req, 0, sizeof(req));
         req.sensitive      = qint(r, "sensitive", 0) ? 1 : 0;
         req.tokens_est     = (long)qint(r, "tokens", 0);
         req.local_load_pct = qint(r, "load", -1);
         req.cloud_down     = qint(r, "cloud_down", 0) ? 1 : 0;
-        req.task           = qint(r, "heavy", 0) ? ZGW_TASK_HEAVY : ZGW_TASK_SIMPLE;
+        /* heavy 可以显式传；没传就按文本自动判（q=问题原文）。
+           自动判的结果要连"凭哪个词判的"一起报出去，否则界面只能说"它觉得重"。 */
+        {
+            char qtext[512];
+            const char *hit = "";
+            if (qstr(r, "q", qtext, sizeof(qtext)) && qtext[0]) {
+                req.task = zgw_classify(qtext, &hit);
+                z_strlcpy(task_hit, hit, sizeof(task_hit));
+            }
+            if (r->query[0] && strstr(r->query, "heavy="))
+                req.task = qint(r, "heavy", 0) ? ZGW_TASK_HEAVY : ZGW_TASK_SIMPLE;
+        }
 
         LOCK();
         rt = g_gw_ok ? zgw_route_for(&g_gw, cap_s, &req, &why, &reason) : NULL;
@@ -424,6 +436,7 @@ static void handle_request(zsock fd, const http_req *r)
         z_snprintf(body, sizeof(body),
             "{\"cap\":\"%s\",\"ok\":%s,\"provider\":\"%s\",\"model\":\"%s\",\"local\":%s,"
             "\"reason\":\"%s\",\"blocked_sensitive\":%s,"
+            "\"task\":\"%s\",\"task_hit\":\"%s\","
             "\"rules\":{\"tokens_cloud\":%ld,\"local_busy_pct\":%d,\"sensitive_local_only\":%s},"
             "\"stats\":{\"local\":%ld,\"cloud\":%ld,\"local_share\":%.4f}}",
             cap_s, rt ? "true" : "false",
@@ -431,6 +444,7 @@ static void handle_request(zsock fd, const http_req *r)
             (rt && rt->local) ? "true" : "false",
             zgw_reason_name(reason),
             (why == ZGW_SENSITIVE_NO_LOCAL) ? "true" : "false",
+            req.task == ZGW_TASK_HEAVY ? "heavy" : "simple", task_hit,
             g_gw.rules.tokens_cloud, g_gw.rules.local_busy_pct,
             g_gw.rules.sensitive_local_only ? "true" : "false",
             g_gw.picks_local, g_gw.picks_cloud, share);

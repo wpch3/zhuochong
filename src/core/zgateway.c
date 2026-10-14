@@ -137,6 +137,50 @@ const char *zgw_reason_name(zgw_reason r)
     }
 }
 
+/* 重活的特征词。中文按 UTF-8 字节子串匹配即可（UTF-8 不会出现错位子串）。
+   分三类是为了让界面能说清楚"凭什么判的"。 */
+static const char *const HEAVY_CODE[] = {
+    "```", "def ", "function ", "class ", "SELECT ", "import ",
+    "代码", "函数", "报错", "异常", "调试", "重构", "正则", "脚本", "编译", "堆栈", NULL
+};
+static const char *const HEAVY_REASON[] = {
+    "为什么", "分析", "比较", "权衡", "推导", "证明", "规划", "设计一个", "方案",
+    "逐步", "一步步", "step by step", "原因", "评估", NULL
+};
+static const char *const HEAVY_TOOL[] = {
+    "搜索", "查一下", "查查", "帮我订", "调用", "接口", "爬", "翻译整篇", NULL
+};
+
+static int hit_any(const char *text, const char *const *tab, const char **hit)
+{
+    int i;
+    for (i = 0; tab[i]; ++i) {
+        if (strstr(text, tab[i])) {
+            if (hit) *hit = tab[i];
+            return 1;
+        }
+    }
+    return 0;
+}
+
+zgw_task zgw_classify(const char *text, const char **hit)
+{
+    size_t n;
+    if (hit) *hit = "";
+    if (!text || !*text) return ZGW_TASK_SIMPLE;
+    if (hit_any(text, HEAVY_CODE, hit))   return ZGW_TASK_HEAVY;
+    if (hit_any(text, HEAVY_REASON, hit)) return ZGW_TASK_HEAVY;
+    if (hit_any(text, HEAVY_TOOL, hit))   return ZGW_TASK_HEAVY;
+    /* 够长也算重活：一句话寒暄和一段材料，处理成本差一个量级。
+       600 字节 ≈ 200 个汉字，比 tokens_cloud 那条线更早触发，两条是互补的。 */
+    n = strlen(text);
+    if (n >= 600) {
+        if (hit) *hit = "长文";
+        return ZGW_TASK_HEAVY;
+    }
+    return ZGW_TASK_SIMPLE;
+}
+
 /* 在同一张表里按优先级挑第一条 enabled 且 local 符合要求的 */
 static const zgw_route *pick_side(const zgateway *g, const char *cap, int want_local)
 {

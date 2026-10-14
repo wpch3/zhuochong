@@ -26,17 +26,34 @@ _quiet = False
 _strict = False
 
 
+# 分两栏计数的理由（2026-10-15 自我校准）：
+#   加了结论登记表和真机验收清单之后，600 项里有 324 项（54%）在检查"我有没有好好填表"。
+#   项数一膨胀，"0 不通过"这个信号就变便宜了 —— 读的人分不清这一把绿里有多少是
+#   "软件是对的"、多少是"文档是齐的"。两者的价值完全不同：
+#   文档纪律红了是"记账没跟上"，工程事实红了是"软件坏了"，后者才该拦住交付。
+#   所以这里按小节分类计数，末尾分开报。
+DOC_KEYS = ("记忆区", "结论登记表", "真机验收清单", "口径一致", "计划", "文档",
+            "写进文档", "需求", "交接", "记账")
+_cur_kind = "eng"
+_kind_n = {"eng": 0, "doc": 0}
+_kind_fail = {"eng": 0, "doc": 0}
+
+
 def check(name, cond, detail=""):
     global _fail, _n
     _n += 1
+    _kind_n[_cur_kind] += 1
     if not cond:
         _fail += 1
+        _kind_fail[_cur_kind] += 1
     if not cond or not _quiet:
         print(f"  {OK if cond else BAD}  {name:<28} {detail}")
     return bool(cond)
 
 
 def section(title):
+    global _cur_kind
+    _cur_kind = "doc" if any(k in title for k in DOC_KEYS) else "eng"
     if not _quiet:
         print(f"\n== {title} ==")
 
@@ -127,22 +144,21 @@ def check_memory(root):
 
 # ------------------------------------------------------------------ 2 JSON
 def check_decisions(root):
-    """结论登记表必须写全（A33，2026-10-15 加）。
+    """结论登记表必须写全（A33，2026-10-15 加；同日按用户授权做了校准）。
 
     用户 2026-10-15：「我发现你自行推翻了很多自己得出的结论，下次再给出结论之前
     一定要仔细确认，再三检查。旧结论可以推翻，但是检查必不可少。」
+    后又授权：「你可以自行判断我的规则，做出边界以及优化，不用完全被这个约束。」
 
     复盘 2026-10-14 被推翻的四条，没有一条是算错，全都是**下结论时少做一步**：
     前提没验 / 只做一次模拟就否决 / 指标选错 / 否定结论没复查。
-    所以把"有后果的结论"做成有字段的登记表，缺字段就判红：
+    所以把"有后果的结论"做成有字段的登记表，缺字段就判红。
 
-      · 前提     —— 这条结论靠什么成立，**而且这个前提本身怎么验的**
-      · 证据     —— 命令 / 数字 / 路径
-      · 负控     —— 故意改坏它红不红（或说明为什么不适用）
-      · 复查触发 —— 什么情况下这条会失效
-
-    ❌否决类的门槛最高（否决会关掉一条路），不许用"当初没做"糊弄；
-    🔁已推翻的必须写清楚被哪条取代，否则读的人不知道现在该信谁。
+    —— 校准点（为什么这个函数现在只报 8 项而不是 166 项）——
+    原来每个条目每个字段各算一项，26 条就刷出 166 项。检出能力一点没多，
+    但把"0 不通过"这个信号稀释了：读的人分不清这把绿里有多少是软件真的对。
+    现在改成**每条规则一项、把违例全列在 detail 里** —— 一条规则坏了只红一项，
+    但 detail 直接告诉你是哪几条坏的。负控验证过：四次故意改坏，照样四次报红。
     """
     section("结论登记表（A33：下结论之前先查）")
     fp = os.path.join(root, "docs", "memory", "DECISIONS.md")
@@ -152,42 +168,63 @@ def check_decisions(root):
     with io.open(fp, encoding="utf-8") as fh:
         txt = fh.read()
     # 先把 ``` 围栏里的示例剥掉 —— 文件开头那段"怎么写一条"的模板里
-    # 也有一行 ### D##，不剥的话闸会去检查模板本身（第一版就这么红过）。
+    # 也有一行 ### DC##，不剥的话闸会去检查模板本身（第一版就这么红过）。
     txt = re.sub(r"(?s)```.*?```", "", txt)
     blocks = re.split(r"(?m)^### ", txt)[1:]
-    ids = []
     STATUS = ("✅", "❌", "🔁")
+    ids, bad_head, bad_st, miss_field = [], [], [], []
+    no_super, lazy_neg, weak_na = [], [], []
     for b in blocks:
         head = b.splitlines()[0].strip()
         m = re.match(r"(DC\d+)\s*(\S+)", head)
-        if not check("条目标题写成「DC## <状态> 一句话」（%s）" % head[:36], m is not None):
+        if not m:
+            bad_head.append(head[:28])
             continue
         did, st = m.group(1), m.group(2)
         ids.append(did)
         body = b.split("\n### ")[0]
-        check("%s 的状态是 ✅/❌/🔁 之一（实为 %s）" % (did, st), st in STATUS,
-              "状态只有三种，别自创")
+        if st not in STATUS:
+            bad_st.append("%s=%s" % (did, st))
         for field in ("前提", "证据", "负控", "复查触发"):
             mm = re.search(r"(?m)^-\s*%s[：:]\s*(.+)$" % field, body)
-            check("%s 写了「%s」" % (did, field), mm is not None and len(mm.group(1).strip()) >= 6,
-                  "A33 要求四个字段齐全，缺的那个往往就是翻车的那个")
-        if st == "🔁":
-            check("%s 写了被哪条取代" % did, re.search(r"由\s*DC\d+\s*取代", head + body) is not None,
-                  "已推翻的结论必须指向现行结论，否则读的人不知道信谁")
-        if st == "❌":
-            neg = re.search(r"(?m)^-\s*负控[：:]\s*(.+)$", body)
-            bad = neg and ("没做" in neg.group(1) or neg.group(1).strip().startswith("❌"))
-            check("%s 是否决类，负控不许是「没做」" % did, not bad,
-                  "否决会关掉一条路，代价最大 —— 必须回答『如果反过来会怎样』")
+            if not (mm and len(mm.group(1).strip()) >= 6):
+                miss_field.append("%s 缺%s" % (did, field))
+        neg = re.search(r"(?m)^-\s*负控[：:]\s*(.+)$", body)
+        negtxt = neg.group(1) if neg else ""
+        if st == "🔁" and not re.search(r"由\s*DC\d+\s*取代", head + body):
+            no_super.append(did)
+        if st == "❌" and ("没做" in negtxt or negtxt.strip().startswith("❌")):
+            lazy_neg.append(did)
+        # 校准新增：负控写"不适用"的，必须给出替代检验，不能一句话带过
+        if re.match(r"\s*(➖|不适用|无法)", negtxt) and not re.search(
+                r"替代|反证|代价|对照", negtxt + body):
+            weak_na.append(did)
+
+    check("条目标题都是「DC## <状态> 一句话」", not bad_head,
+          "不合格：%s" % bad_head[:3] if bad_head else "%d 条" % len(ids))
+    check("状态只用 ✅/❌/🔁", not bad_st, "；".join(bad_st[:3]) if bad_st else "无自创状态")
+    check("四个字段（前提/证据/负控/复查触发）齐全", not miss_field,
+          "；".join(miss_field[:5]) if miss_field
+          else "%d 条 × 4 栏全齐" % len(ids))
+    check("🔁已推翻的都写明被哪条取代", not no_super,
+          "没写的：%s" % no_super[:3] if no_super else "读的人不会不知道该信谁")
+    check("❌否决类的负控不是「没做」", not lazy_neg,
+          "糊弄的：%s" % lazy_neg[:3] if lazy_neg
+          else "否决会关掉一条路，必须答『如果反过来会怎样』")
+    check("负控写「不适用」的都给了替代检验", not weak_na,
+          "只写了不适用：%s" % weak_na[:3] if weak_na
+          else "路线类结论做不了负控，但要说清楚拿什么代替")
     check("编号不重复", len(ids) == len(set(ids)),
           "重复：%s" % [i for i in ids if ids.count(i) > 1][:3])
-    # 指向的条目必须真的存在
     refs = set(re.findall(r"由\s*(DC\d+)\s*取代", txt))
     missing = sorted(refs - set(ids))
     check("「由 DC## 取代」指向的条目都存在", not missing, "找不到：%s" % missing)
-    check("登记表里有本轮（踮脚）那四条被推翻的记录",
+    check("登记表里留着被推翻的反面教材", 
           len([b for b in blocks if b.startswith("DC0") and "🔁" in b.splitlines()[0]]) >= 4,
-          "被推翻的中间结论也要留着当反面教材（用户 2026-10-14 的要求）")
+          "被推翻的中间结论也要留着（用户 2026-10-14 的要求）")
+    # 反膨胀：表太长就没人读了，该归档的归档（校准时加的上限）
+    check("登记表没有膨胀到没人读（≤ 40 条）", len(ids) <= 40,
+          "%d 条 —— 超了就把已推翻且无人引用的移进归档段" % len(ids))
 
 
 def check_acceptance(root):
@@ -196,7 +233,9 @@ def check_acceptance(root):
     这张表的价值全在"对得上"三个字：
       · TASKS 里标了 [需真机] 却没登记 → 又变成散在备注里的、永远不会被验的东西；
       · 清单里留着 TASKS 已经删掉的条目 → 读的人以为还欠着，实际早没了。
-    所以两个方向都查，而且是全称判断（每一处，不是"有一处对"）—— LESSONS 97。
+    两个方向都查，而且是全称判断（每一处，不是"有一处对"）—— LESSONS 97。
+
+    同 check_decisions：按规则计数，不按条目×字段计数（校准，见那边的说明）。
     """
     section("真机验收清单（A32 / G82）")
     fp = os.path.join(root, "docs", "ACCEPTANCE.md")
@@ -209,46 +248,56 @@ def check_acceptance(root):
     with io.open(tp, encoding="utf-8") as fh:
         tasks = fh.read()
 
-    # —— TASKS 侧：每一处 [需真机] 所在行的任务号
-    marked = []
+    marked, stray = [], []
     for line in tasks.splitlines():
         if "[需真机]" not in line:
             continue
         m = re.match(r"\|\s*(T\d+\.\d+)\s*\|", line)
-        check("[需真机] 标记写在任务行上（%s）" % line.strip()[:34], m is not None,
-              "标记要挂在某个任务号上，散在说明文字里的无法对账")
         if m:
             marked.append(m.group(1))
+        else:
+            stray.append(line.strip()[:30])
+    check("[需真机] 标记都挂在任务行上", not stray,
+          "散在说明文字里的无法对账：%s" % stray[:2] if stray
+          else "%d 处标记" % len(marked))
 
-    # —— 清单侧：### AC-## · T#.# 标题 + 勾选框
     blocks = re.split(r"(?m)^### ", txt)[1:]
-    listed, acids = [], []
+    listed, acids, bad_head, no_box, miss_field = [], [], [], [], []
     for b in blocks:
         head = b.splitlines()[0].strip()
         m = re.match(r"(AC-\d+)\s*·\s*(T\d+\.\d+)", head)
-        if not check("条目标题写成「AC-## · T#.# 一句话」（%s）" % head[:34], m is not None):
+        if not m:
+            bad_head.append(head[:28])
             continue
         acid, tid = m.group(1), m.group(2)
         acids.append(acid)
         listed.append(tid)
         body = b.split("\n### ")[0]
-        check("%s 带勾选框 [ ]/[~]/[x]" % acid,
-              re.search(r"`\[( |~|x)\]`", head) is not None,
-              "没有勾选框就没法表达『你验过了』")
+        if not re.search(r"`\[( |~|x)\]`", head):
+            no_box.append(acid)
         for field in ("怎么测", "算过", "不过先查", "沙箱边界"):
             mm = re.search(r"(?m)^-\s*%s[：:]\s*(.+)$" % field, body)
-            check("%s 写了「%s」" % (acid, field),
-                  mm is not None and len(mm.group(1).strip()) >= 6,
-                  "A32.2/A32.3 要求四栏齐全；最容易糊弄的是『沙箱边界』")
+            if not (mm and len(mm.group(1).strip()) >= 6):
+                miss_field.append("%s 缺%s" % (acid, field))
 
+    check("条目标题都是「AC-## · T#.#」", not bad_head,
+          "不合格：%s" % bad_head[:3] if bad_head else "%d 条" % len(acids))
+    check("每条都有勾选框 [ ]/[~]/[x]", not no_box,
+          "没框的：%s" % no_box[:3] if no_box else "只有用户能勾")
+    check("四栏（怎么测/算过/不过先查/沙箱边界）齐全", not miss_field,
+          "；".join(miss_field[:5]) if miss_field
+          else "%d 条 × 4 栏全齐；最容易糊弄的是『沙箱边界』" % len(acids))
     check("AC 编号不重复", len(acids) == len(set(acids)),
           "重复：%s" % [i for i in acids if acids.count(i) > 1][:3])
     miss = sorted(set(marked) - set(listed))
-    check("TASKS 里每处 [需真机] 都登记进清单了（共 %d 处）" % len(marked), not miss,
-          "漏登：%s —— 这正是『写了但从没验证过』的来源" % miss)
+    check("TASKS 里每处 [需真机] 都登记进清单了", not miss,
+          "漏登：%s —— 这正是『写了但从没验证过』的来源" % miss
+          if miss else "%d 处全部对上" % len(marked))
     extra = sorted(set(listed) - set(marked))
     check("清单里没有 TASKS 已经不标 [需真机] 的条目", not extra,
-          "多出：%s —— 清单比现实旧了" % extra)
+          "多出：%s —— 清单比现实旧了" % extra if extra else "没有过期条目")
+
+
 def check_json(root):
     section("配置与角色包：JSON 全部能解析")
     pats = ["config/*.json", "schemas/*.json", "characters/*/*.json",
@@ -2082,6 +2131,11 @@ def main():
         except Exception as e:                            # noqa: BLE001
             check(f"{fn.__name__} 本身出错", False, repr(e))
     print(f"\n合计 {_n} 项，{_fail} 项不通过 → " + ("全部通过" if not _fail else "有问题，别交付"))
+    # 分栏报，别让"文档齐不齐"把"软件对不对"稀释掉
+    print(f"  · 工程事实 {_kind_n['eng']} 项，{_kind_fail['eng']} 项不通过"
+          f"（这一栏红了 = 软件坏了，必须拦住交付）")
+    print(f"  · 文档纪律 {_kind_n['doc']} 项，{_kind_fail['doc']} 项不通过"
+          f"（这一栏红了 = 记账没跟上，当轮补齐）")
     sys.exit(1 if _fail else 0)
 
 
