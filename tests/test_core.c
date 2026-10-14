@@ -316,6 +316,72 @@ static void test_image(void)
         zimg_free(src);
     }
     {
+        /* 形变平台 bend_tmin：平台线以上的行共用平台线处的形变量。
+           躯干贴图的顶边其实是脖子和衣领，而 root 曲线恰好把最大形变给了顶边 ——
+           衣领会比它上面的头移动得多，脖子处出现横向滑移（用户 2026-10-14 实测反馈）。
+
+           ★ 这里特意**两条绘制路径都测**：一个部件挂没挂形变器是运行期才定的
+           （形变器 amount 为 0 走 warp 路径、不为 0 走 mesh 路径），
+           两条路的平台效果必须一模一样，否则裙子一摆脖子就突然错位。
+           实际踩过这个坑：bend_tmin 最初只接了 warp 那条，
+           结果"颈部修复只在裙子不动的时候有效"。 */
+        zimg *src = zimg_new_filled(8, 64, 255, 255, 255, 255);
+        zimg *dst;
+        double m[6];
+        double w_off, w_on, me_off, me_on;
+        double off[(2 + 1) * (10 + 1) * 2];
+        int q;
+        const double TMIN = 0.25;          /* 上 25% 做平台 */
+        zimg_make_matrix(m, 40.0, 8.0, 1.0, 1.0, 0.0, 0.0, 0.0);
+        for (q = 0; q < (int)(sizeof(off) / sizeof(off[0])); ++q) off[q] = 0.0;
+        /* 控制点只挪一丁点：够让 moved 判定成立、强制走 mesh 循环就行
+           （全零会 fallback 回 warp，那就测不到网格那条路了）。
+           挪太多会把"网格自身的位移"混进差值里，干扰对平台效果的比较。 */
+        for (q = 0; q < (2 + 1) * (10 + 1); ++q) off[q * 2] = 0.01;
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT,
+                               0.0, ZIMG_BEND_ROOT, ZIMG_BLEND_NORMAL, 0.0);
+        w_off = row_centroid(dst, 10);
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT,
+                               0.0, ZIMG_BEND_ROOT, ZIMG_BLEND_NORMAL, TMIN);
+        w_on = row_centroid(dst, 10);
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_mesh_bend_blend_t(dst, src, m, 1.0, 2, 10, off,
+                                    12.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT,
+                                    ZIMG_BLEND_NORMAL, 0.0);
+        me_off = row_centroid(dst, 10);
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_mesh_bend_blend_t(dst, src, m, 1.0, 2, 10, off,
+                                    12.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT,
+                                    ZIMG_BLEND_NORMAL, TMIN);
+        me_on = row_centroid(dst, 10);
+        zimg_free(dst);
+
+        CHECK(w_off - w_on > 2.0,
+              "平台要真的把顶部形变压下来（warp 无平台 %.2f → 有平台 %.2f）",
+              w_off, w_on);
+        CHECK(me_off - me_on > 2.0,
+              "网格路径上平台也要生效（mesh 无平台 %.2f → 有平台 %.2f）",
+              me_off, me_on);
+        /* 容差说明：mesh 路径是在**控制点**上算曲线再线性插值（10 行网格），
+           warp 路径是逐像素精确求值，两者天然有分段线性近似误差。
+           判据用相对值：平台效果相差不超过 15%，不要求逐像素一致。 */
+        CHECK(fabs((w_off - w_on) - (me_off - me_on)) <= (w_off - w_on) * 0.15,
+              "两条路的平台效果要等量（warp 降了 %.2f，mesh 降了 %.2f，差 %.0f%%）"
+              "—— 相差太多的话，裙子一摆脖子就会突然错位",
+              w_off - w_on, me_off - me_on,
+              fabs((w_off - w_on) - (me_off - me_on)) / (w_off - w_on) * 100.0);
+        zimg_free(src);
+    }
+    {
         /* 半透明叠加公式检查：0.5 白 over 黑 = 128 */
         zimg *dst = zimg_new_filled(2, 2, 0, 0, 0, 255);
         zimg *src = zimg_new_filled(2, 2, 255, 255, 255, 128);

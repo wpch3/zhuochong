@@ -320,6 +320,7 @@ struct zrig {
 
     /* 眨眼配置 */
     int    blink_enabled, blink_expo;
+    int    phys_enabled;      /* 0 = 关掉物理摆（排查接缝时用，见 zrig_phys_set_enabled） */
     double blink_closing, blink_closed, blink_opening;
     double blink_imin, blink_imax;
     int    blink_state;
@@ -2016,6 +2017,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     zrand_seed(&r->rng, 0x5EED1234ull);
     zsm_init(&r->sm);
     r->blink_state = BL_FIRST;
+    r->phys_enabled = 1;
     r->look_blink_init = 0;
     r->look_blink_last = -1e9;
     r->blink_forced = -1;
@@ -2643,6 +2645,24 @@ static void physics_update(zrig *r, double now)
     double dt;
     int i;
     if (r->nphys <= 0) return;
+    /* 关掉物理：把所有摆的输出清零并让状态跟上目标，这样再打开时不会"攒了一大口气"。
+       用途是排查接缝 —— 冻结时钟时物理的 pos 不再积分，而改参数会让 target 立刻跳，
+       输出 pos-target 被人为拉满，剖面上就会凭空多出假跳变
+       （2026-10-14 实测虚报过一处 +2.35px 的"躯干底边接缝"）。 */
+    if (!r->phys_enabled) {
+        for (i = 0; i < r->nphys; ++i) {
+            double ix, iy, in;
+            zphys *ph = &r->phys[i];
+            if (ph->part < 0) continue;
+            physics_input(r, ph, &ix, &iy);
+            in = (ph->axis == 1) ? iy : ix;
+            ph->pos = in * ph->ratio;      /* 停在目标上 = 零滞后 */
+            ph->vel = 0.0;
+            ph->out_last = 0.0;
+        }
+        r->phys_last = now;
+        return;
+    }
     if (r->phys_last < 0.0) { r->phys_last = now; return; }
     dt = now - r->phys_last;
     r->phys_last = now;
@@ -2932,6 +2952,8 @@ double zrig_eye_smile(const zrig *r, int side)
 }
 
 void zrig_blink_set_enabled(zrig *r, int enabled) { if (r) r->blink_enabled = enabled; }
+void zrig_phys_set_enabled(zrig *r, int enabled) { if (r) r->phys_enabled = enabled; }
+int  zrig_phys_enabled(const zrig *r) { return r ? r->phys_enabled : 0; }
 int  zrig_blink_enabled(const zrig *r) { return r ? r->blink_enabled : 0; }
 double zrig_blink_value(const zrig *r) { return r ? r->blink_value : 0.0; }
 
@@ -3235,10 +3257,11 @@ static void draw_state(zimg *dst, const zdrawst *st, int blend)
 {
     if (st->dg)
         /* 网格 + 平滑形变一起画：以前这里丢掉 bend，多段摆链的第一段就白写了 */
-        zimg_draw_mesh_bend_blend(dst, st->src, st->m, st->opacity,
-                                  st->dg->cols, st->dg->rows, st->mesh,
-                                  st->warped ? st->bx : 0.0, st->curve_x,
-                                  st->warped ? st->by : 0.0, st->curve_y, blend);
+        zimg_draw_mesh_bend_blend_t(dst, st->src, st->m, st->opacity,
+                                    st->dg->cols, st->dg->rows, st->mesh,
+                                    st->warped ? st->bx : 0.0, st->curve_x,
+                                    st->warped ? st->by : 0.0, st->curve_y,
+                                    blend, st->bend_tmin);
     else if (st->warped)
         zimg_draw_warp_blend_t(dst, st->src, st->m, st->opacity,
                                st->bx, st->curve_x, st->by, st->curve_y,

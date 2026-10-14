@@ -123,6 +123,12 @@ void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], do
                                int cols, int rows, const double *offsets,
                                double bend_x, int curve_x, double bend_y, int curve_y,
                                int blend);
+/* 同上，但带「形变平台」。必须和 zimg_draw_warp_blend_t 口径一致：
+   同一个部件会按形变器 amount 是否为 0 在两条路之间来回切，算出来的形变必须相同。 */
+void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
+                                 int cols, int rows, const double *offsets,
+                                 double bend_x, int curve_x, double bend_y, int curve_y,
+                                 int blend, double bend_tmin);
 
 /* 便捷：把 src 缩放到 scale、绕锚点 anchor(0..1) 平移 pos（画布坐标）。 */
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,

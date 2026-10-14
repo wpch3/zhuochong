@@ -860,6 +860,17 @@ void zpet_set_blink(zpet *p, double v)
 }
 
 /* 开/关自动眨眼：关 = 眼睛常睁（抓帧对比时用），开 = 交回状态机。 */
+void zpet_set_phys_enabled(zpet *p, int on)
+{
+    if (!p || !p->rig) return;
+    zrig_phys_set_enabled(p->rig, on ? 1 : 0);
+}
+
+int zpet_phys_enabled(const zpet *p)
+{
+    return (p && p->rig) ? zrig_phys_enabled(p->rig) : 0;
+}
+
 void zpet_set_blink_enabled(zpet *p, int on)
 {
     if (!p || !p->rig) return;

@@ -83,6 +83,9 @@ void  zpet_notify_user_activity(zpet *p, double now);
 void   zpet_set_blink(zpet *p, double v);
 void   zpet_set_blink_enabled(zpet *p, int on);  /* 关=常睁，开=交回自动 */
 int    zpet_blink_enabled(const zpet *p);
+/* 物理摆总开关（排查接缝用：冻结时钟时物理会虚报滞后，见 zrig_phys_set_enabled） */
+void   zpet_set_phys_enabled(zpet *p, int on);
+int    zpet_phys_enabled(const zpet *p);
 double zpet_blink_manual(const zpet *p);
 /* 形变器（网格形变）当前量：摆链输出多半落在这儿，便于观测与端到端自检 */
 int         zpet_deform_count(const zpet *p);

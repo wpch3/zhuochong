@@ -199,9 +199,24 @@ def profile(pet, pid, value, step=2, span=(0.10, 0.70)):
     相对头部跳了 0.40px，根因是 root 曲线把满额形变给了贴图顶边，而头按
     颈关节那一行刚性平移。
     """
-    # 必须冻结时钟 —— 否则 idle 动画也在动，逐行位移里混进来的抖动
-    # （实测 ±0.2px）比要找的接缝跳变还大，什么都看不出来。
+    # 取帧的三条规矩，缺一不可（这三条都是踩过坑换来的）：
+    #
+    # ① 冻结时钟。否则 idle 动画也在动，逐行位移里混进来的抖动（实测 ±0.2px）
+    #    比要找的接缝跳变还大，什么都看不出来。
+    #
+    # ② 关掉物理。物理的输出是 `pos - target`：时钟一冻 `pos` 就不再积分，
+    #    而改参数会让 `target` 立刻跳，滞后量被人为拉满 —— 剖面上凭空多出假跳变。
+    #    2026-10-14 实测这样虚报过一处 +2.35px 的"躯干底边接缝"，
+    #    肉眼一看根本没有。
+    #
+    # ③ 不要改用"先跑几秒让物理收敛再冻结"来绕开 ②。试过，更糟：
+    #    settle 期间 idle 也在跑，两次取帧落在不同呼吸相位上，
+    #    同一条剖面从 3 处跳变变成 32 处，全是噪声。
+    #
+    # 结论：**冻结 + 关物理 = 纯几何对比**，这正是"找接缝"要的东西。
+    #    物理摆本身该不该抖，用 --actions 那套幅度量法去看，不要混在一起。
     pet.get("/api/action?id=idle")
+    pet.get("/api/physics?on=0")
     pet.get("/api/pause?on=1")
     time.sleep(0.4)
     for q in pet.param_ids():
@@ -278,8 +293,10 @@ def main():
         for q in pet.param_ids():
             pet.get("/api/param?id=%s&reset=1" % q)
         pet.get("/api/pause?on=0")      # 一定要解冻，崩在这里会把引擎时钟留在停摆状态
+        pet.get("/api/physics?on=1")
       finally:
         pet.get("/api/pause?on=0")
+        pet.get("/api/physics?on=1")    # 物理也必须还回去，否则预览会一直没有摆动
       return
 
     loops = {s for s in a.loop.split(",") if s}

@@ -98,6 +98,10 @@ void  zrig_set_mouth_mute(zrig *r, int on);
 int   zrig_mouth_mute(const zrig *r);
 
 void  zrig_blink_set_enabled(zrig *r, int enabled);
+/* 物理摆总开关。关掉时所有摆立刻停在目标上（输出 0），不攒滞后。
+   排查接缝必须关：冻结时钟时物理的 pos 不积分而 target 会跳，输出被拉满 = 假跳变。 */
+void  zrig_phys_set_enabled(zrig *r, int enabled);
+int   zrig_phys_enabled(const zrig *r);
 int   zrig_blink_enabled(const zrig *r);
 double zrig_blink_value(const zrig *r);       /* 0 睁 1 闭 */
 /* 视线跟随：nx、ny ∈ [-1,1]（归一化屏幕方向）。只作用于带 gaze 标签的部件。 */

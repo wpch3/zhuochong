@@ -755,10 +755,26 @@ void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], do
                                double bend_x, int curve_x, double bend_y, int curve_y,
                                int blend)
 {
+    zimg_draw_mesh_bend_blend_t(dst, src, m, opacity, cols, rows, offsets,
+                                bend_x, curve_x, bend_y, curve_y, blend, 0.0);
+}
+
+/* 带形变平台的网格版本。
+   ⚠ 必须和 zimg_draw_warp_blend_t 口径一致 —— 一个部件挂没挂形变器是**运行期**
+   才知道的（形变器 amount 为 0 时走 warp 路径、不为 0 时走 mesh 路径），
+   两条路算出来的形变必须一模一样，否则裙子一摆脖子就会突然错位
+   （2026-10-14 实测：bend_hold_above 当时只接了 warp 那条，
+    颈部修复"只在裙子不动的时候有效"）。 */
+void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
+                                 int cols, int rows, const double *offsets,
+                                 double bend_x, int curve_x, double bend_y, int curve_y,
+                                 int blend, double bend_tmin)
+{
     int c, rr, moved = 0, np;
     int bent = (fabs(bend_x) > 1e-9 || fabs(bend_y) > 1e-9);
     if (!dst || !src || cols < 1 || rows < 1 || !offsets) {
-        if (bent) zimg_draw_warp_blend(dst, src, m, opacity, bend_x, curve_x, bend_y, curve_y, blend);
+        if (bent) zimg_draw_warp_blend_t(dst, src, m, opacity, bend_x, curve_x,
+                                         bend_y, curve_y, blend, bend_tmin);
         else      zimg_draw_blend(dst, src, m, opacity, blend);
         return;
     }
@@ -767,8 +783,9 @@ void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], do
     np = (cols + 1) * (rows + 1);
     for (c = 0; c < np * 2; ++c)
         if (fabs(offsets[c]) > 1e-6) { moved = 1; break; }
-    if (!moved) {                        /* 没挪控制点就走原路（但 bend 不能丢） */
-        if (bent) zimg_draw_warp_blend(dst, src, m, opacity, bend_x, curve_x, bend_y, curve_y, blend);
+    if (!moved) {                        /* 没挪控制点就走原路（但 bend 和平台都不能丢） */
+        if (bent) zimg_draw_warp_blend_t(dst, src, m, opacity, bend_x, curve_x,
+                                         bend_y, curve_y, blend, bend_tmin);
         else      zimg_draw_blend(dst, src, m, opacity, blend);
         return;
     }
@@ -793,6 +810,7 @@ void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], do
                 dyp[k] = m[1] * lx + m[3] * ly + m[5];
                 if (bent) {               /* 叠加平滑形变（和 warp 同一套曲线） */
                     double tb = sy[k] / (double)src->h;
+                    if (tb < bend_tmin) tb = bend_tmin;   /* 形变平台，口径同 draw_impl */
                     dxp[k] += bend_x * zimg_bend_factor(tb, curve_x);
                     dyp[k] += bend_y * zimg_bend_factor(tb, curve_y);
                 }

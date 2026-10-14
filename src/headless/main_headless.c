@@ -926,6 +926,28 @@ static void handle_request(zsock fd, const http_req *r)
         }
         return;
     }
+    if (strcmp(r->path, "/api/physics") == 0) {
+        /* 物理摆总开关。on=0 关（所有摆立刻停在目标上、输出归零）、on=1 开。
+           排查接缝必须先关它：冻结时钟时物理的 pos 不再积分，而改参数会让
+           target 立刻跳，输出 pos-target 被人为拉满 → 剖面上凭空多出假跳变
+           （2026-10-14 实测虚报过一处 +2.35px 的"躯干底边接缝"）。
+           和 /api/blink 一样：一个参数都没给就报 400，不许静默忽略。 */
+        char s[32];
+        char body[96];
+        if (!qstr(r, "on", s, sizeof(s))) {
+            send_text(fd, 400, "application/json",
+                      "{\"ok\":false,\"error\":\"要给 on=0 或 on=1\"}");
+            return;
+        }
+        LOCK();
+        zpet_set_phys_enabled(g_pet, atoi(s) != 0);
+        zpet_tick(g_pet, pet_now());
+        UNLOCK();
+        z_snprintf(body, sizeof(body), "{\"ok\":true,\"physics\":%s}",
+                   atoi(s) != 0 ? "true" : "false");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
     if (strcmp(r->path, "/api/pause") == 0) {
         /* 冻结/恢复引擎时钟。on=1 冻结（默认），on=0 恢复。
            冻结期间 /api/frame.png 反复取是同一帧，参数一改就只有参数的影响。 */
