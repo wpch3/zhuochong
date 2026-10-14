@@ -409,6 +409,13 @@ def main():
         }, "%d 个音色 / %d 个角色形态 / %d 个 AI"
            % (len(vb), len(cast.get("characters", [])), len(cast.get("agents", []))))
 
+        emit("web/emotion_map.json", {
+            "_note": "由 tools/check_platform.py 从 config/emotion_map.json 投影，不要手改。"
+                     "面板只能从 web 根目录取文件，config/ 下的取不到。",
+            "fallback_order": em.get("fallback_order", []),
+            "emotions": emo,
+        }, "%d 种情绪 x 四条通路" % len(emo))
+
         legacy_voices = {
             "_note": "由 tools/check_platform.py 从 config/voicebank/ 与 config/voice_cast.json 生成，"
                      "不要手改。这里写的是**当前真能用**的音色：首选供应商没开就落到兜底。",

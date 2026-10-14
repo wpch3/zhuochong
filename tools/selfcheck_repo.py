@@ -554,6 +554,23 @@ def check_live2d(root):
         allc += [x if isinstance(x, str) else x.get("id") for x in r]
     check("音色库面板已挂进布局", "voicebank" in allc, str(allc))
 
+    # 组件只能从 web 根目录取文件。写成 config/ 下的路径在单测里（直接读文件）发现不了，
+    # 一跑真服务就 404 —— 整块面板静默降级。这里按组件源码里的 fetch 反查。
+    import re as _re
+    comp_dir = os.path.join(root, "web/components")
+    miss_data = []
+    for f in sorted(os.listdir(comp_dir)):
+        if not f.endswith(".js"):
+            continue
+        src = io.open(os.path.join(comp_dir, f), encoding="utf-8").read()
+        for m in _re.findall(r'api\(\s*"(/[A-Za-z0-9_./\-]+\.json)"', src):
+            if m.startswith("/api/"):
+                continue                       # 动态接口，不是静态文件
+            if not os.path.exists(os.path.join(root, "web", m.lstrip("/"))):
+                miss_data.append(f + " 要 " + m)
+    check("组件要的数据文件都在 web 根下", not miss_data,
+          "；".join(miss_data) if miss_data else "都能取到")
+
     # ⑰ 界面骨架（G1）：layout.json 是界面的唯一装配表，它和组件文件必须对得上。
     #    配置里写了但组件不存在 / 组件文件忘了 register / 主题缺色键 —— 这三样
     #    在浏览器里都只表现为"某块空白"，静态核一遍最省事。
