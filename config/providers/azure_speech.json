@@ -1,0 +1,30 @@
+{
+  "id": "azure_speech",
+  "name": "Azure 语音服务",
+  "kind": "tts",
+  "protocol": "azure_ssml",
+  "local": false,
+  "enabled": false,
+  "priority": 60,
+  "base_url": "https://{region}.tts.speech.microsoft.com/cognitiveservices/v1",
+  "auth": {
+    "type": "header",
+    "key_ref": "secret://azure_speech",
+    "header": "Ocp-Apim-Subscription-Key"
+  },
+  "capabilities": [
+    {
+      "cap": "tts.speak",
+      "model": "neural",
+      "price": {
+        "unit": 15.0,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "情绪最全的一家：SSML 的 mstts:express-as style + styledegree + role。每月 50 万字符免费额度。region 要用户在设置里填（base_url 里的 {region} 占位）。"
+}

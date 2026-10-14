@@ -1,0 +1,45 @@
+{
+  "id": "az_xiaoyi_hd",
+  "name": "晓伊 HD（Azure，可爱/害羞/撒娇）",
+  "provider": "azure_speech",
+  "voice_id": "zh-CN-Xiaoyi:DragonHDFlashLatestNeural",
+  "persona": "shoujo",
+  "anime": true,
+  "langs": [
+    "zh-CN",
+    "en-US"
+  ],
+  "emotion_mode": "style",
+  "emotions": [
+    "angry",
+    "complaining",
+    "cute",
+    "gentle",
+    "nervous",
+    "sad",
+    "shy",
+    "strict"
+  ],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ],
+    "style_degree": [
+      0.01,
+      2.0
+    ]
+  },
+  "recommend": "二次元最贴的一个：cute / shy / complaining / nervous 正好是桌宠要的表情",
+  "source": "Azure Neural HD Flash 音色与 style 表",
+  "roles": [],
+  "enabled": true
+}

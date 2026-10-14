@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "_note": "谁用哪把嗓子。用户 2026-10-14 的硬要求落在这里：每个 AI 的声音都要不同，而且不能都来自同一种生源——两条都由 tools/check_platform.py 判红。",
+  "characters": [
+    {
+      "character": "xiaoxun",
+      "form": "teen",
+      "voice": "mm_shaonv",
+      "fallback": "edge_xiaoyi",
+      "note": "少女：官方音色库里就叫「少女音色」，比现在的晓伊更贴二次元"
+    },
+    {
+      "character": "xiaoxun",
+      "form": "loli",
+      "voice": "mm_lovely_girl",
+      "fallback": "edge_xiaoyi",
+      "note": "萝莉：萌萌女童"
+    },
+    {
+      "character": "xiaoxun",
+      "form": "adult",
+      "voice": "mm_yujie",
+      "fallback": "edge_xiaoxiao",
+      "note": "青年女性：御姐音"
+    }
+  ],
+  "agents": [
+    {
+      "agent": "gpt",
+      "lang": "en-US",
+      "voice": "az_ava_multi",
+      "note": "美国模型用英语：Ava 官方描述 bright / youthful"
+    },
+    {
+      "agent": "gemini",
+      "lang": "en-US",
+      "voice": "mm_sweet_girl",
+      "note": "同样英语，但换一家生源、换一种音色"
+    },
+    {
+      "agent": "deepseek",
+      "lang": "zh-CN",
+      "voice": "az_xiaohan",
+      "note": "中文、情绪谱最全的一个"
+    },
+    {
+      "agent": "ollama",
+      "lang": "zh-CN",
+      "voice": "az_xiaomo",
+      "note": "本机模型：晓墨带 role，可以演不同年龄"
+    },
+    {
+      "agent": "relay_test",
+      "lang": "zh-CN",
+      "voice": "mm_danya_xuejie",
+      "note": "中转站：淡雅学姐"
+    }
+  ]
+}

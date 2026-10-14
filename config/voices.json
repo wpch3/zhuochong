@@ -1,23 +1,33 @@
 {
-  // 角色 → 音色映射（按供应商分组）。音色绑定角色，形态切换不换音色，形态可单独覆盖。
-  // 用户 2026-10-11 决定：小寻的少女音 = 云端「晓伊」标准（不加音调偏移）。
-  // 本地兜底：voices/xiaoya（Piper 音色包）+ psola 1.25（只抬基频、保共振峰）。
+  "_note": "由 tools/check_platform.py 从 config/voicebank/ 与 config/voice_cast.json 生成，不要手改。这里写的是**当前真能用**的音色：首选供应商没开就落到兜底。",
   "schema_version": "1.0",
   "voices": [
-    { "id": "xiaoxun_teen", "character": "xiaoxun", "form": "teen",
-      "provider": "edge-tts", "voice": "zh-CN-XiaoyiNeural",
-      "style": "少女音（标准，pitch=+0Hz）；温柔、大方，语速正常",
-      "note": "云端首选（已由 GitHub Actions 渲染验证）。断网兜底：本音色包 xiaoya + psola 1.25" },
-    { "id": "xiaoxun_loli", "character": "xiaoxun", "form": "loli",
-      "provider": "edge-tts", "voice": "zh-CN-XiaoyiNeural",
-      "style": "同一音色，本地处理时用 psola 1.35（只抬基频）",
-      "note": "萝莉形态；供应商少女音色失效过半，故统一用晓伊 + 处理参数区分" },
-    { "id": "xiaoxun_adult", "character": "xiaoxun", "form": "adult",
-      "provider": "edge-tts", "voice": "zh-CN-XiaoxiaoNeural",
-      "style": "成年女性音色", "note": "仅成年形态使用" },
-    { "id": "xiaoxun_local_fallback", "character": "xiaoxun", "form": "",
-      "provider": "piper-local", "voice": "xiaoya",
-      "style": "离线兜底：psola 1.25（基频 ×1.25，共振峰不变）",
-      "note": "文件在 voices/xiaoya/；由 tools/voice_packs.py 安装与校验" }
+    {
+      "id": "xiaoxun_teen",
+      "character": "xiaoxun",
+      "form": "teen",
+      "provider": "edge_tts",
+      "voice": "zh-CN-XiaoyiNeural",
+      "style": "晓伊（edge-tts 免费通道） ｜ 首选 mm_shaonv 没开，先用兜底",
+      "note": "不要密钥就能用，现有 39 条台词就是它生成的。但官方 README 明说 SSML style 被移除，所以它永远做不到情绪变化——只能靠语速/音调模拟"
+    },
+    {
+      "id": "xiaoxun_loli",
+      "character": "xiaoxun",
+      "form": "loli",
+      "provider": "edge_tts",
+      "voice": "zh-CN-XiaoyiNeural",
+      "style": "晓伊（edge-tts 免费通道） ｜ 首选 mm_lovely_girl 没开，先用兜底",
+      "note": "不要密钥就能用，现有 39 条台词就是它生成的。但官方 README 明说 SSML style 被移除，所以它永远做不到情绪变化——只能靠语速/音调模拟"
+    },
+    {
+      "id": "xiaoxun_adult",
+      "character": "xiaoxun",
+      "form": "adult",
+      "provider": "edge_tts",
+      "voice": "zh-CN-XiaoxiaoNeural",
+      "style": "晓晓（edge-tts 免费通道） ｜ 首选 mm_yujie 没开，先用兜底",
+      "note": "成年女声免费保底"
+    }
   ]
 }

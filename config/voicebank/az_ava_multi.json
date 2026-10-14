@@ -1,0 +1,44 @@
+{
+  "id": "az_ava_multi",
+  "name": "Ava 多语言（明亮少女感）",
+  "provider": "azure_speech",
+  "voice_id": "en-US-AvaMultilingualNeural",
+  "persona": "young_woman",
+  "anime": false,
+  "langs": [
+    "en-US",
+    "zh-CN",
+    "ja-JP"
+  ],
+  "emotion_mode": "style",
+  "emotions": [
+    "chat",
+    "cheerful",
+    "empathetic",
+    "excited",
+    "friendly",
+    "sad"
+  ],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ],
+    "style_degree": [
+      0.01,
+      2.0
+    ]
+  },
+  "recommend": "官方描述 bright, youthful；英语母语最自然的一个",
+  "source": "Azure Voice Gallery：Ava Multilingual",
+  "roles": [],
+  "enabled": true
+}

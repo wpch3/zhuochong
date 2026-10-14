@@ -488,6 +488,7 @@ def check_live2d(root):
                   and not isinstance(json.load(io.open(os.path.join(prov_dir, x),
                                                        encoding="utf-8")).get("priority"), int)]
         check("每个供应商都写了 priority", not noprio, str(noprio))
+
         rts = gr.get("routes", [])
         bycap = {}
         for r in rts:
@@ -497,6 +498,61 @@ def check_live2d(root):
               "运行时取第一个就是首选，顺序错了等于路由错 " + str(unsorted_caps))
     else:
         check("config/gateway_routes.json 已生成", False, "跑 python3 tools/check_platform.py")
+
+    # ⑳ 音色库（G64）：用户 2026-10-14 要求去掉本地声源、全部换云端标准音色，
+    # 并且"每个 AI 的声音都不一样、不能同一种生源"。契约层面的校验在 check_platform
+    # 里（⑱ 组已经 subprocess 调它了），这里守文件层面——防的是"删了一半"和"手改生成物"。
+    vb_dir = os.path.join(root, "config/voicebank")
+    nvb = len([x for x in os.listdir(vb_dir) if x.endswith(".json")]) if os.path.isdir(vb_dir) else 0
+    check("音色库契约齐全", nvb >= 12, "config/voicebank/ 下 %d 个" % nvb)
+
+    # 本地声源必须删干净。留半截的后果是：配置还指着它，跑起来才报找不到模型文件。
+    leftovers = [x for x in ("voices", "tools/voice_local.py", "tools/voice_packs.py",
+                             "tools/voice_setup.sh")
+                 if os.path.exists(os.path.join(root, x))]
+    check("本地声源已删干净", not leftovers, "还剩 %s" % leftovers)
+    # 删文件容易漏引用——配置和脚本里不能再指着它
+    ref_local = []
+    for f in ("config/voices.json", "tools/voice_render.py", "web/layout.json"):
+        fp = os.path.join(root, f)
+        if os.path.exists(fp):
+            t = io.open(fp, encoding="utf-8").read()
+            if "piper" in t.lower() or "voices/xiaoya" in t or "voice_local" in t:
+                ref_local.append(f)
+    check("没有残留的本地声源引用", not ref_local, str(ref_local))
+
+    # config/voices.json 现在是生成物（第四个降级成生成物的遗留格式）。
+    # 手改它会在下次 check_platform 跑的时候被覆盖，所以文件头必须有警告。
+    vj = os.path.join(root, "config/voices.json")
+    if os.path.exists(vj):
+        d = json.load(io.open(vj, encoding="utf-8"))
+        check("voices.json 标明了是生成物",
+              "check_platform" in (d.get("_note") or ""),
+              "缺 _note 警告，会有人手改它")
+        bad_v = [v for v in d.get("voices", []) if not v.get("character")]
+        check("voices.json 每条都有 character", not bad_v,
+              "C 侧 load_voices() 要求非空，否则整条被丢掉")
+
+    # 情绪映射：桌宠脸上的表情和声音里的情绪要对得上
+    emp = os.path.join(root, "config/emotion_map.json")
+    check("情绪映射表在", os.path.exists(emp), "config/emotion_map.json")
+    if os.path.exists(emp):
+        em = json.load(io.open(emp, encoding="utf-8"))
+        # 四条通路缺一不可——少一条就意味着某家供应商没法表达情绪
+        modes = set()
+        for e in em.get("emotions", {}).values():
+            if e.get("style"): modes.add("style")
+            if e.get("minimax"): modes.add("emotion")
+            if e.get("tag"): modes.add("inline_tag")
+            if e.get("prosody"): modes.add("prosody")
+        check("情绪映射覆盖四种通路", len(modes) == 4, "只有 %s" % sorted(modes))
+
+    # 面板要挂上去，不然做了等于没做
+    lay = json.load(io.open(os.path.join(root, "web/layout.json"), encoding="utf-8"))
+    allc = []
+    for r in lay.get("regions", {}).values():
+        allc += [x if isinstance(x, str) else x.get("id") for x in r]
+    check("音色库面板已挂进布局", "voicebank" in allc, str(allc))
 
     # ⑰ 界面骨架（G1）：layout.json 是界面的唯一装配表，它和组件文件必须对得上。
     #    配置里写了但组件不存在 / 组件文件忘了 register / 主题缺色键 —— 这三样

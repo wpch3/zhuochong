@@ -3,6 +3,17 @@
   "schema_version": "1.0",
   "providers": [
     {
+      "id": "azure_speech",
+      "name": "Azure 语音服务",
+      "kind": "local",
+      "kind_ext": "tts",
+      "base_url": "https://{region}.tts.speech.microsoft.com/cognitiveservices/v1",
+      "model": "neural",
+      "enabled": false,
+      "official": false,
+      "local": false
+    },
+    {
       "id": "comfyui",
       "name": "ComfyUI（本机）",
       "kind": "local",
@@ -25,6 +36,17 @@
       "local": false
     },
     {
+      "id": "edge_tts",
+      "name": "Edge TTS（免费通道）",
+      "kind": "local",
+      "kind_ext": "tts",
+      "base_url": "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1",
+      "model": "edge-neural",
+      "enabled": true,
+      "official": false,
+      "local": false
+    },
+    {
       "id": "mcp_filesystem",
       "name": "MCP · 文件系统",
       "kind": "local",
@@ -34,6 +56,17 @@
       "enabled": true,
       "official": false,
       "local": true
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax 语音",
+      "kind": "local",
+      "kind_ext": "tts",
+      "base_url": "https://api.minimax.chat/v1",
+      "model": "speech-02-hd",
+      "enabled": false,
+      "official": false,
+      "local": false
     },
     {
       "id": "ollama",

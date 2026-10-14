@@ -161,6 +161,16 @@ function makeFetch() {
       if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
       return json(JSON.parse(fs.readFileSync(f, "utf8")));
     }
+    if (u.includes("voicebank.json")) {
+      const f = path.join(WEB, "voicebank.json");
+      if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
+      return json(JSON.parse(fs.readFileSync(f, "utf8")));
+    }
+    if (u.includes("emotion_map.json")) {
+      const f = path.join(__dirname, "..", "config", "emotion_map.json");
+      if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
+      return json(JSON.parse(fs.readFileSync(f, "utf8")));
+    }
     if (u.includes("/api/gateway.json")) return json(GATEWAY);
     if (u.includes("/api/info.json")) return json(INFO);
     if (u.includes("/api/speech.json")) return json({ line: "" });
@@ -378,6 +388,58 @@ function slotOf(id) {
     const meter = walk(usageEl).filter((n) => n.className === "meter-fill")[0];
     CHECK(meter && meter.style.width && meter.style.width !== "0.0%",
           "用量条应随之变长（实际 " + (meter && meter.style.width) + "）");
+  }
+
+  SECTION("音色库（G64）：契约 → 清单 → 面板，四种情绪通路要显示得出来");
+  {
+    const el = slotOf("voicebank");
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    const vbf = path.join(WEB, "voicebank.json");
+    const vb = JSON.parse(fs.readFileSync(vbf, "utf8"));
+    const txt = walk(el).map((n) => n._text).join(" ");
+
+    CHECK(vb.voices.length >= 12,
+          "音色得够挑（清单 " + vb.voices.length + " 个）");
+    /* 用户要三种人设都有 */
+    ["loli", "shoujo", "young_woman"].forEach((p) => {
+      CHECK(vb.voices.some((v) => v.persona === p), "要有 " + p + " 音色");
+    });
+    /* 按内容核对而不是数行数：真实音色名要出现在面板里 */
+    const first = vb.voices[0];
+    CHECK(txt.includes(first.name),
+          "面板要列出音色名字（找 " + first.name + "）");
+    /* 诚实标注：免费通道做不了情绪，界面必须说清楚，不能让人以为选了也有情绪 */
+    const pros = vb.voices.filter((v) => v.emotion_mode === "prosody");
+    CHECK(pros.length > 0 && pros.every((v) => v.emotion_distinct === 0),
+          "prosody 档的情绪区分度应为 0（实际 " + pros.map((v) => v.emotion_distinct) + "）");
+    CHECK(txt.includes("无情绪"),
+          "做不了情绪的音色要在界面上写明白");
+    /* 用户两条硬要求要在界面上看得见 */
+    const agents = (vb.cast && vb.cast.agents) || [];
+    CHECK(agents.length >= 3 && agents.every((a) => txt.includes(a.agent)),
+          "每个 AI 用哪把嗓子要列出来");
+    const avoices = agents.map((a) => a.voice);
+    CHECK(new Set(avoices).size === avoices.length,
+          "每个 AI 的声音都不一样（用户硬要求）");
+    const vmap = {};
+    vb.voices.forEach((v) => { vmap[v.id] = v; });
+    CHECK(new Set(avoices.map((v) => vmap[v] && vmap[v].provider)).size > 1,
+          "AI 的声音不能都来自同一家（用户硬要求）");
+    /* 没配密钥的音色要标出来，且角色要显示正在用的兜底 —— 否则界面说能用、实际发不出去 */
+    if (vb.voices.some((v) => !v.ready)) {
+      CHECK(txt.includes("待配密钥"), "没配密钥的音色要标出来");
+    }
+    /* 四种通路的差别必须显示得出来：选中音色后要说清这个情绪怎么发 */
+    const em = JSON.parse(fs.readFileSync(
+      path.join(__dirname, "..", "config", "emotion_map.json"), "utf8"));
+    CHECK(Object.keys(em.emotions).length >= 8,
+          "情绪种类要够用（" + Object.keys(em.emotions).length + " 种）");
+    const sel = vb.voices.find((v) => v.ready) || vb.voices[0];
+    const expect = { style: "SSML style=", emotion: 'emotion="',
+                     inline_tag: "文本里加", prosody: "只能模拟" }[sel.emotion_mode];
+    CHECK(txt.includes(expect),
+          "选中 " + sel.emotion_mode + " 档音色时要显示它怎么发情绪（找「" + expect + "」）");
   }
 
   SECTION("平台能力总览（G50/G51）：契约 → 清单 → 网关 → 面板");

@@ -185,6 +185,42 @@
       "price_per": 1.0
     },
     {
+      "cap": "tts.speak",
+      "provider": "minimax",
+      "model": "speech-02-hd",
+      "priority": 70,
+      "local": false,
+      "enabled": false,
+      "free": false,
+      "price_in": 0.0,
+      "price_out": 0.0,
+      "price_per": 1.0
+    },
+    {
+      "cap": "tts.speak",
+      "provider": "azure_speech",
+      "model": "neural",
+      "priority": 60,
+      "local": false,
+      "enabled": false,
+      "free": false,
+      "price_in": 0.0,
+      "price_out": 0.0,
+      "price_per": 1000000.0
+    },
+    {
+      "cap": "tts.speak",
+      "provider": "edge_tts",
+      "model": "edge-neural",
+      "priority": 20,
+      "local": false,
+      "enabled": true,
+      "free": true,
+      "price_in": 0.0,
+      "price_out": 0.0,
+      "price_per": 0.0
+    },
+    {
       "cap": "vision.describe",
       "provider": "openai",
       "model": "gpt-4o-mini",

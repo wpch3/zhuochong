@@ -137,7 +137,11 @@
       "ui": {
         "panel": "audio"
       },
-      "providers": []
+      "providers": [
+        "azure_speech",
+        "edge_tts",
+        "minimax"
+      ]
     },
     {
       "id": "video.generate",
@@ -174,6 +178,17 @@
   ],
   "providers": [
     {
+      "id": "azure_speech",
+      "name": "Azure 语音服务",
+      "kind": "tts",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "tts.speak"
+      ]
+    },
+    {
       "id": "comfyui",
       "name": "ComfyUI（本机）",
       "kind": "comfyui",
@@ -199,6 +214,17 @@
       ]
     },
     {
+      "id": "edge_tts",
+      "name": "Edge TTS（免费通道）",
+      "kind": "tts",
+      "local": false,
+      "enabled": true,
+      "balance_mode": "none",
+      "caps": [
+        "tts.speak"
+      ]
+    },
+    {
       "id": "mcp_filesystem",
       "name": "MCP · 文件系统",
       "kind": "mcp",
@@ -207,6 +233,17 @@
       "balance_mode": "none",
       "caps": [
         "file.read"
+      ]
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax 语音",
+      "kind": "tts",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "tts.speak"
       ]
     },
     {

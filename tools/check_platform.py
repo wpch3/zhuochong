@@ -26,7 +26,10 @@ PASS, FAIL = [], []
 KINDS = {"generate", "transform", "analyze", "stream"}
 UNITS = {"token", "image", "second", "call", "char"}
 BAL_MODES = {"api", "ledger", "none"}
-PROV_KINDS = {"openai_compatible", "official", "comfyui", "mcp", "local_script"}
+PROV_KINDS = {"openai_compatible", "official", "comfyui", "mcp", "local_script", "tts"}
+PERSONAS = {"loli", "shoujo", "young_woman", "onee_san", "mature", "boy", "youth"}
+# 各家表达情绪的方式完全不同（实测，见 REFERENCE_NOTES 第十三批）
+EMOTION_MODES = {"prosody", "style", "emotion", "inline_tag"}
 # 看着像真密钥的东西，一律拦下（它们只能待在本机 .env 里）
 SECRET_PAT = re.compile(r"(sk-[A-Za-z0-9]{12,}|AIza[A-Za-z0-9_\-]{20,}|ghp_[A-Za-z0-9]{20,})")
 
@@ -147,6 +150,120 @@ def main():
               str((gw.get("accounting") or {}).get("ledger", "")).startswith("data/"),
               (gw.get("accounting") or {}).get("ledger"))
 
+    # ---- 音色库（G64）：全部云端，本地音源已按用户要求去掉 ----
+    vb_dir = os.path.join(ROOT, "config", "voicebank")
+    vb = {}
+    vb_bad = []
+    for fn in sorted(os.listdir(vb_dir)) if os.path.isdir(vb_dir) else []:
+        if not fn.endswith(".json"):
+            continue
+        v = jsonc(os.path.join(vb_dir, fn))
+        vid = fn[:-5]
+        if v.get("id") != vid:
+            vb_bad.append("%s 的 id 与文件名不一致（%s）" % (fn, v.get("id")))
+            continue
+        for k in ("name", "provider", "voice_id", "persona", "emotion_mode", "langs"):
+            if not v.get(k):
+                vb_bad.append("%s 缺 %s" % (fn, k))
+        if v.get("persona") not in PERSONAS:
+            vb_bad.append("%s 的 persona 不在允许列表：%s" % (fn, v.get("persona")))
+        if v.get("emotion_mode") not in EMOTION_MODES:
+            vb_bad.append("%s 的 emotion_mode 不认识：%s" % (fn, v.get("emotion_mode")))
+        if v.get("provider") not in provs:
+            vb_bad.append("%s 指向不存在的供应商 %s" % (fn, v.get("provider")))
+        # prosody 档就是做不了情绪，别在契约里假装能做
+        if v.get("emotion_mode") == "prosody" and v.get("emotions"):
+            vb_bad.append("%s 是 prosody 档（只能调语速音调），不该声明 emotions" % fn)
+        if v.get("emotion_mode") != "prosody" and not v.get("emotions"):
+            vb_bad.append("%s 声明了 %s 档却没列出支持哪些情绪" % (fn, v.get("emotion_mode")))
+        if not v.get("source"):
+            vb_bad.append("%s 没写 source（音色信息必须能追溯到出处）" % fn)
+        vb[vid] = v
+    check("音色库契约齐全", not vb_bad, "；".join(vb_bad[:4]) if vb_bad else "%d 个音色" % len(vb))
+
+    # 本地音源必须已经去掉（用户 2026-10-14 明确要求）
+    local_voice = [v for v in vb.values() if (provs.get(v.get("provider"), {}) or {}).get("local")]
+    check("音色全部是云端的（本地声源已去掉）", not local_voice,
+          str([v["id"] for v in local_voice]))
+
+    # 覆盖面：用户点名要少女、萝莉、青年女性
+    personas = {v["persona"] for v in vb.values()}
+    for need in ("shoujo", "loli", "young_woman"):
+        has = [v["id"] for v in vb.values() if v["persona"] == need]
+        check("有 %s 音色" % need, bool(has), "%d 个：%s" % (len(has), " ".join(has[:3])))
+    anime = [v for v in vb.values() if v.get("anime")]
+    check("二次元风格音色过半", len(anime) * 2 >= len(vb),
+          "%d / %d" % (len(anime), len(vb)))
+    # 英语音色（GPT / Gemini 这类美国模型要用）
+    en = [v["id"] for v in vb.values() if "en-US" in (v.get("langs") or [])]
+    check("有英语音色（给英文模型用）", bool(en), "%d 个" % len(en))
+    # 跨语言：同一把嗓子能说中文和日文/英文
+    cross = [v["id"] for v in vb.values()
+             if "zh-CN" in (v.get("langs") or []) and
+             ({"ja-JP", "en-US"} & set(v.get("langs") or []))]
+    check("有跨语言音色（中文音色也能说日/英）", bool(cross), "%d 个：%s" % (len(cross), " ".join(cross[:3])))
+
+    # ---- 情绪映射：同一个情绪，各家表达方式完全不同 ----
+    em = jsonc(os.path.join(ROOT, "config", "emotion_map.json"))
+    emo = em.get("emotions", {})
+    em_bad = []
+    # 桌宠脸上有哪些表情 —— 声音的情绪不能指向一个不存在的表情，否则脸和声音对不上
+    rigp = os.path.join(ROOT, "characters/xiaoxun/forms/teen/rig.json")
+    rig_exp = set()
+    if os.path.exists(rigp):
+        rig_exp = {e["id"] for e in (jsonc(rigp).get("expressions") or [])}
+    for k, e in emo.items():
+        if e.get("expression") and e["expression"] not in rig_exp:
+            em_bad.append("%s 指向不存在的表情 %s" % (k, e["expression"]))
+        for need in ("minimax", "prosody"):
+            if need not in e:
+                em_bad.append("%s 缺 %s 通路" % (k, need))
+        pr = e.get("prosody") or {}
+        for axis, lim in (("rate", 100), ("pitch", 50), ("volume", 50)):
+            if abs(pr.get(axis, 0)) > lim:
+                em_bad.append("%s 的 %s 超出范围" % (k, axis))
+    check("情绪映射表自洽", not em_bad, "；".join(em_bad[:3]) if em_bad else "%d 种情绪" % len(emo))
+
+    # 写了却没有任何音色支持的 style = 这条映射永远走不到，属于写错
+    styles = {e["style"] for e in emo.values() if e.get("style")}
+    sup = set()
+    for v in vb.values():
+        if v.get("emotion_mode") == "style":
+            sup |= set(v.get("emotions") or [])
+    orphan_style = sorted(styles - sup)
+    check("情绪映射里的 style 都有音色支持", not orphan_style,
+          "没人支持 %s" % orphan_style if orphan_style else "%d 种" % len(styles))
+
+    # 诚实度：prosody 档不许在清单里显得和别家一样能表达情绪
+    pros = [v["id"] for v in vb.values() if v.get("emotion_mode") == "prosody"]
+    check("免费通道如实标注做不了情绪", all(not vb[i].get("emotions") for i in pros),
+          "%s（只能用语速音调模拟）" % " ".join(pros))
+
+    # ---- 分配表：用户两条硬要求 ----
+    cast = jsonc(os.path.join(ROOT, "config", "voice_cast.json"))
+    cast_bad = []
+    for sect in ("characters", "agents"):
+        for e in cast.get(sect, []):
+            if e.get("voice") not in vb:
+                cast_bad.append("%s 用了不存在的音色 %s" % (e.get(sect[:-1]), e.get("voice")))
+            if e.get("fallback") and e["fallback"] not in vb:
+                cast_bad.append("%s 的兜底音色 %s 不存在" % (e.get(sect[:-1]), e["fallback"]))
+    check("分配表引用的音色都存在", not cast_bad, "；".join(cast_bad[:3]))
+
+    agents = cast.get("agents", [])
+    av = [a.get("voice") for a in agents]
+    dup = sorted({x for x in av if av.count(x) > 1})
+    check("每个 AI 的声音都不一样（用户硬要求）", not dup,
+          "重复用了 %s" % dup if dup else "%d 个 AI，%d 种声音" % (len(av), len(set(av))))
+    asrc = {vb[v]["provider"] for v in av if v in vb}
+    check("AI 的声音不是同一种生源（用户硬要求）", len(asrc) > 1,
+          "只有 %s" % sorted(asrc) if len(asrc) <= 1 else "来自 %s" % sorted(asrc))
+    # 每个角色形态都要有免费兜底——没配密钥的用户也得听得到声音
+    nofb = [c.get("form") for c in cast.get("characters", [])
+            if not c.get("fallback") or
+            not (provs.get(vb.get(c.get("fallback"), {}).get("provider"), {}) or {}).get("enabled")]
+    check("每个形态都有能直接用的兜底音色", not nofb, str(nofb))
+
     # ---- 覆盖面：用户点名的能力必须都有人能提供 ----
     served = {}
     for p in provs.values():
@@ -247,6 +364,73 @@ def main():
         # 排序即优先级：先按能力分组，组内高优先级在前，同级按 id 稳定排序。
         # 网关取"第一个可用的"就是正确路由，重试则顺序往下走。
         routes.sort(key=lambda r: (r["cap"], -r["priority"], r["provider"]))
+        # 音色：界面用的全量清单 + C 侧读的老格式投影。
+        # 和 providers 一样的套路——契约是真相，老文件是生成物。
+        def emotion_distinct(v, emo):
+            m = v.get("emotion_mode")
+            sup = set(v.get("emotions") or [])
+            if m == "prosody":
+                return 0          # 做不了情绪，别给它算分
+            if m == "style":
+                return len({e["style"] for e in emo.values() if e.get("style") in sup})
+            if m == "emotion":
+                return len({e["minimax"] for e in emo.values() if e.get("minimax") in sup})
+            return len({e["tag"] for e in emo.values() if e.get("tag")})
+
+        def live(vid):
+            """挑出当前真能用的那个音色：首选供应商没开就落到兜底。
+            和网关的路由逻辑一致（只认 enabled 的），否则界面说能用、实际发不出去。"""
+            v = vb.get(vid)
+            if v and (provs.get(v["provider"], {}) or {}).get("enabled"):
+                return v, False
+            return None, True
+
+        emit("web/voicebank.json", {
+            "_note": "由 tools/check_platform.py 生成，不要手改。源在 config/voicebank/ 与 config/voice_cast.json。",
+            "voices": [
+                {"id": v["id"], "name": v["name"], "provider": v["provider"],
+                 "voice_id": v["voice_id"], "persona": v["persona"],
+                 "anime": bool(v.get("anime")), "langs": v.get("langs", []),
+                 "emotion_mode": v["emotion_mode"], "emotions": v.get("emotions", []),
+                 "roles": v.get("roles", []), "tunable": v.get("tunable", {}),
+                 "recommend": v.get("recommend", ""),
+                 "ready": bool((provs.get(v["provider"], {}) or {}).get("enabled")),
+                 # 区分度 = 这个音色能把 11 种情绪分成几种不同的声音。
+                 # 比"支持几种情绪"诚实：MiniMax 的 11 种情绪其实只落到 5 个不同取值。
+                 "emotion_distinct": emotion_distinct(v, emo)}
+                for v in sorted(vb.values(), key=lambda x: (x["persona"], x["id"]))
+            ],
+            "cast": {
+                "characters": cast.get("characters", []),
+                "agents": cast.get("agents", []),
+            },
+            "personas": sorted(PERSONAS),
+            "emotion_modes": sorted(EMOTION_MODES),
+        }, "%d 个音色 / %d 个角色形态 / %d 个 AI"
+           % (len(vb), len(cast.get("characters", [])), len(cast.get("agents", []))))
+
+        legacy_voices = {
+            "_note": "由 tools/check_platform.py 从 config/voicebank/ 与 config/voice_cast.json 生成，"
+                     "不要手改。这里写的是**当前真能用**的音色：首选供应商没开就落到兜底。",
+            "schema_version": "1.0",
+            "voices": [],
+        }
+        for c in cast.get("characters", []):
+            v, fell = live(c["voice"])
+            if v is None:
+                v = vb.get(c.get("fallback"))
+            if not v:
+                continue
+            legacy_voices["voices"].append({
+                "id": "%s_%s" % (c["character"], c["form"]) if c.get("form") else c["character"],
+                "character": c["character"], "form": c.get("form", ""),
+                "provider": v["provider"], "voice": v["voice_id"],
+                "style": v["name"] + (" ｜ 首选 %s 没开，先用兜底" % c["voice"] if fell else ""),
+                "note": v.get("recommend", ""),
+            })
+        emit("config/voices.json", legacy_voices,
+             "给 C 侧的兼容投影，%d 条" % len(legacy_voices["voices"]))
+
         emit("config/gateway_routes.json", {
             "_note": "由 tools/check_platform.py 从 config/providers/*.json 生成，不要手改。"
                      "这是能力→供应商的路由表，顺序即优先级。",

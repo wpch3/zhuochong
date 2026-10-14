@@ -1,0 +1,29 @@
+{
+  "id": "minimax",
+  "name": "MiniMax 语音",
+  "kind": "tts",
+  "protocol": "minimax_json",
+  "local": false,
+  "enabled": false,
+  "priority": 70,
+  "base_url": "https://api.minimax.chat/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://minimax"
+  },
+  "capabilities": [
+    {
+      "cap": "tts.speak",
+      "model": "speech-02-hd",
+      "price": {
+        "unit": 0.0003,
+        "per": 1,
+        "currency": "CNY"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "二次元音色最全的一家（少女/萌妹/学妹/女童/御姐都是官方内置 voice_id）。情绪走请求里的 emotion 字段。没有公开余额接口，用本地账本。"
+}
