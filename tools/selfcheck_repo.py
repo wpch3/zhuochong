@@ -525,6 +525,55 @@ def check_no_stale_decisions(root):
               else f"lol max_tier={lol.get('max_tier')}")
 
 
+def check_action_dead_time(root):
+    """非循环动作的声明时长不许比通道真实结束晚太多（2026-10-14 加）。
+
+    用户反馈"点击时有个中途卡顿"，查出来是 clicked 声明 0.55 秒，但
+    bounce(dur 0.28) 到点归零、decay 的包络 7*exp(-6t/0.4) 在 0.28s 已衰到
+    0.1 度 —— 后面 0.27 秒角色完全不动，然后"啪"地切回 idle。
+    同样的毛病当时还有 happy / hammered / tiptoe 三个。
+
+    判据按波形算每条通道真正结束的时刻：
+      · bounce  sin(pi*u)，u=t/dur → dur 到点自然归零
+      · decay   amp*exp(-6t/dur)，包络衰到 2% 即看不见 → dur*ln(50)/6
+      · sine/flap 有 freq 的是循环型，铺满整个动作
+      · pulse   冲上去之后**保持**，靠动作的 fade_out 收尾 —— 这种"不动"
+                是有意的姿势保持，不算死时间，所以带 pulse 的动作直接放行
+    """
+    section("动作没有尾巴空转（声明时长要贴着通道）")
+    import math
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if not os.path.isfile(rig_path):
+        return
+    with io.open(rig_path, encoding="utf-8") as fh:
+        rig = json.load(fh)
+    worst = []
+    for a in rig.get("actions", []):
+        dur = a.get("duration")
+        if not dur or a.get("loop"):
+            continue
+        chans = a.get("channels", [])
+        if any(c.get("wave") == "pulse" for c in chans):
+            continue                      # 保持型姿势，尾部静止是有意的
+        ends = []
+        for c in chans:
+            w, d = c.get("wave", "sine"), c.get("dur")
+            if w == "decay" and d:
+                ends.append(d * math.log(50) / 6.0)
+            elif d:
+                ends.append(d)
+            elif c.get("freq"):
+                ends.append(dur)
+        if not ends:
+            continue
+        dead = dur - max(ends)
+        if dead > 0.15:
+            worst.append((a["id"], dur, max(ends), dead))
+    check("没有动作在结尾空转超过 0.15 秒", not worst,
+          "；".join("%s 声明%.2fs 通道%.2fs 空转%.2fs" % w for w in worst)
+          if worst else "逐个核对过")
+
+
 def check_motion_measure(root):
     """动画实测工具的三道防护不许被拆（2026-10-14 加）。
 
@@ -1377,7 +1426,8 @@ def main():
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
-               check_json, check_rig, check_motion_measure, check_form_roadmap,
+               check_json, check_rig, check_action_dead_time, check_motion_measure,
+               check_form_roadmap,
                check_live2d, check_character,
                check_web, check_contract, check_tools, check_hygiene):
         try:

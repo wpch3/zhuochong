@@ -1470,7 +1470,7 @@
     {
       "id": "happy",
       "priority": 7,
-      "duration": 1.6,
+      "duration": 1.45,
       "return_state": "idle",
       "interruptible": false,
       "channels": [
@@ -1836,7 +1836,7 @@
     {
       "id": "hammered",
       "priority": 9,
-      "duration": 0.85,
+      "duration": 0.7,
       "return_state": "idle",
       "interruptible": false,
       "channels": [
@@ -2003,7 +2003,7 @@
     {
       "id": "clicked",
       "priority": 4,
-      "duration": 0.55,
+      "duration": 0.34,
       "return_state": "idle",
       "interruptible": false,
       "channels": [
@@ -2496,7 +2496,7 @@
     {
       "id": "tiptoe",
       "priority": 7,
-      "duration": 1.5,
+      "duration": 1.05,
       "return_state": "idle",
       "note": "踮脚尖：踮起时双膝微屈，头发与呆毛有一拍滞后",
       "channels": [

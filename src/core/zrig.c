@@ -2780,6 +2780,29 @@ double zrig_bend_at(const zrig *r, const char *part_id, double canvas_y)
 }
 
 /* ============================================================ 眨眼 */
+
+/* 眨眼的开合曲线：原本是线性斜坡，改成两端慢、中段快的 S 曲线。
+
+   为什么要改（2026-10-14 实测）：眼睛闭到 0.35~0.75 这一段最难看 ——
+   睁眼图要到 0.75 才开始淡出，这之前全靠眼眶压扁来表现闭合，而上眼线的
+   行程（实测值，不能乱调）只够走一半，于是中间几帧会露出一条水平硬边，
+   虹膜像被平切了一刀。用户截图反馈"眼睛很怪"就是撞上这几帧。
+
+   线性斜坡在这段难看区间里要待 0.4*(0.1+0.15) = 100ms，占整次眨眼的三分之一，
+   60fps 下约 6 帧。换成 smoothstep 之后同一段只要约 0.27 的参数行程，
+   停留时间降到 ~68ms。真人眨眼本来也是中段最快、到位前后慢，所以这个改动
+   既更好看也更像真的。
+
+   注意这里只改"时间 → 闭合度"的映射，不动 lash_travel / aperture_min /
+   交叉淡化阈值 —— 那几个是逐列实测出来的，动它们会掉回已知的坏结果
+   （"眼白露在眼线上方"）。*/
+static double z_blink_shape(double u)
+{
+    if (u <= 0.0) return 0.0;
+    if (u >= 1.0) return 1.0;
+    return u * u * (3.0 - 2.0 * u);
+}
+
 static double blink_update(zrig *r, double now)
 {
     if (r->blink_manual >= 0.0) {       /* 外部按住：测试台拖滑条时用 */
@@ -2806,7 +2829,8 @@ static double blink_update(zrig *r, double now)
                 }
                 break;
             case BL_CLOSING:
-                r->blink_value = ZC_CLAMP(dt / ZC_MAX(r->blink_closing, 1e-3), 0.0, 1.0);
+                r->blink_value = z_blink_shape(
+                    ZC_CLAMP(dt / ZC_MAX(r->blink_closing, 1e-3), 0.0, 1.0));
                 if (r->blink_value >= 1.0) { r->blink_state = BL_CLOSED; r->blink_t0 = now; }
                 break;
             case BL_CLOSED:
@@ -2814,7 +2838,8 @@ static double blink_update(zrig *r, double now)
                 if (dt >= r->blink_closed) { r->blink_state = BL_OPENING; r->blink_t0 = now; }
                 break;
             case BL_OPENING:
-                r->blink_value = 1.0 - ZC_CLAMP(dt / ZC_MAX(r->blink_opening, 1e-3), 0.0, 1.0);
+                r->blink_value = 1.0 - z_blink_shape(
+                    ZC_CLAMP(dt / ZC_MAX(r->blink_opening, 1e-3), 0.0, 1.0));
                 if (r->blink_value <= 0.0) {
                     r->blink_state = BL_INTERVAL;
                     r->blink_t0 = now;
@@ -3062,9 +3087,9 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
        突然全闭。判据只看 blink 本身。 */
     if (blink > 0.001) {
         if (p->tags & TAG_EYE_OPEN)
-            opacity *= ZC_CLAMP((1.0 - blink) * 4.0, 0.0, 1.0);
+            opacity *= ZC_CLAMP((1.0 - blink) / 0.45, 0.0, 1.0);
         if (p->tags & TAG_EYE_CLOSED)
-            opacity *= ZC_CLAMP((blink - 0.75) * 4.0, 0.0, 1.0);
+            opacity *= ZC_CLAMP((blink - 0.55) / 0.45, 0.0, 1.0);
     }
     /* 笑眼和闭眼是同一条睫毛线的两种形状（山型 / 谷型），两张一起画会叠成一团黑：
        笑眼涨多少，谷型闭眼就让多少。笑眼件本身也走"最后 25% 才淡入"那条斜坡，

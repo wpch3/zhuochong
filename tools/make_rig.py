@@ -774,7 +774,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
          ],
          "blink_hold": 0.95,
          "part_overrides": {}},
-        {"id": "happy", "priority": 7, "duration": 1.6, "return_state": "idle",
+        {"id": "happy", "priority": 7, "duration": 1.45, "return_state": "idle",
          "interruptible": False,
          "channels": [
              {"target": "root", "param": "dy", "wave": "bounce", "amp": -22.0, "dur": 0.45, "ease": "out_back"},
@@ -800,7 +800,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "eye_open_right", "param": "sy", "wave": "pulse", "amp": 0.22, "dur": 0.2},
              {"target": "mouth_open", "param": "alpha", "wave": "pulse", "amp": -0.9, "dur": 0.25},
          ]},
-        {"id": "hammered", "priority": 9, "duration": 0.85, "return_state": "idle",
+        {"id": "hammered", "priority": 9, "duration": 0.7, "return_state": "idle",
          "interruptible": False,
          "channels": [
              {"target": "root", "param": "dx", "wave": "decay", "amp": 14.0, "freq": 3.2, "dur": 0.7},
@@ -815,7 +815,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
          ],
          "blink_hold": 0.7,
          "part_overrides": {"mouth_open": {"opacity": 0.35}}},
-        {"id": "clicked", "priority": 4, "duration": 0.55, "return_state": "idle",
+        # ⚠ duration 必须贴着通道真实结束的时间写。
+        # 这里原本是 0.55，但 bounce(dur 0.28) 到点归零、decay 的包络
+        # 7*exp(-6t/0.4) 在 0.28s 已衰到 0.1 度 —— 后面 0.27 秒（将近一半）
+        # 角色完全不动，然后"啪"地切回 idle。用户反馈的"点击时中途卡顿"
+        # 就是这段死时间（2026-10-14 实测修正）。
+        {"id": "clicked", "priority": 4, "duration": 0.34, "return_state": "idle",
          "interruptible": False,
          "channels": [
              {"target": "root", "param": "dy", "wave": "bounce", "amp": -6.0, "dur": 0.28},
@@ -1142,7 +1147,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  {"target": "ParamHairSide", "wave": "sine", "amp": 0.18, "freq": 0.11,
                   "phase": 0.3},
              ]},
-            {"id": "tiptoe", "priority": 7, "duration": 1.5, "return_state": "idle",
+            {"id": "tiptoe", "priority": 7, "duration": 1.05, "return_state": "idle",
              "note": "踮脚尖：踮起时双膝微屈，头发与呆毛有一拍滞后",
              "channels": [
                  {"target": "ParamTiptoe", "wave": "bounce", "amp": 1.0, "dur": 0.75,
