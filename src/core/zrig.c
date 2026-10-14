@@ -269,6 +269,16 @@ typedef struct {
 /* 眨眼状态（对齐 Live2D CubismEyeBlink 的五态机） */
 enum { BL_FIRST = 0, BL_INTERVAL, BL_CLOSING, BL_CLOSED, BL_OPENING };
 
+/* 视线移动多远算"换了个方向"（归一化视线坐标，量程 -1..1）、以及带眨眼的概率。
+   0.45 ≈ 从正前方看到接近一侧极限；0.55 是"经常但不是每次"。 */
+#define LOOK_BLINK_DIST   0.45
+#define LOOK_BLINK_CHANCE 0.55
+/* 两次"因转视线而眨眼"之间至少隔这么久。
+   没有它的话，一次大幅扫视（比如从 -0.9 扫到 +0.9，跨度 1.8）在平滑推进中
+   会反复越过 0.45 阈值，一次转头触发四五回 —— 实测 30 秒眨了 29 次
+   ≈ 58 次/分钟，真人活跃时也就 20~30 次/分钟，看着直抽搐。 */
+#define LOOK_BLINK_COOLDOWN 1.2
+
 struct zrig {
     char  id[96];
     char  name[192];
@@ -408,6 +418,9 @@ struct zrig {
     double look_speed;          /* 追踪速度（1/s），越大越跟手 */
     double look_x, look_y;      /* 目标方向 [-1,1] */
     double look_cx, look_cy;    /* 平滑后的当前方向 */
+    double look_blink_x, look_blink_y;  /* 上次因转视线而眨眼时的方向（算位移用） */
+    double look_blink_last;             /* 上次因转视线而眨眼的时刻（冷却用） */
+    int    look_blink_init;
     double look_last;           /* 上次平滑的时刻 */
 
     zrand  rng;
@@ -1984,6 +1997,8 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     zrand_seed(&r->rng, 0x5EED1234ull);
     zsm_init(&r->sm);
     r->blink_state = BL_FIRST;
+    r->look_blink_init = 0;
+    r->look_blink_last = -1e9;
     r->blink_forced = -1;
     r->blink_manual = -1.0;
     r->blink_manual_l = -1.0;
@@ -2966,6 +2981,35 @@ void zrig_tick(zrig *r, double now)
         k = 1.0 - exp(-r->look_speed * dt);
         r->look_cx += (r->look_x - r->look_cx) * k;
         r->look_cy += (r->look_y - r->look_cy) * k;
+
+        /* 转脸 / 换视线时带一次眨眼。
+           Live2D 官方《提高动态质量的技巧》第 4 条原话：
+           "人在转脸或换视线时经常眨眼"
+           （docs.live2d.com/zh-CHS/cubism-editor-tutorials/motion-hint/）。
+           在这之前我们的眨眼是纯随机定时器，和视线毫无关系 —— 眼珠转过去、
+           眼皮一动不动，正是那篇教程说的"看起来像一个机器人"。
+
+           两个刻意的设计：
+             · 用"自上次触发以来累计移动了多远"而不是瞬时速度 —— 慢慢扫过去
+               和猛地转过去都该眨，判据应该是位移不是速度。
+             · 只有 55% 概率真眨。每次都眨同样像机器人，官方那句说的是"经常"
+               不是"总是"。 */
+        if (!r->look_blink_init) {
+            r->look_blink_x = r->look_cx;
+            r->look_blink_y = r->look_cy;
+            r->look_blink_init = 1;
+        } else if (r->blink_enabled && r->blink_state == BL_INTERVAL
+                   && now - r->look_blink_last >= LOOK_BLINK_COOLDOWN) {
+            double mx = r->look_cx - r->look_blink_x;
+            double my = r->look_cy - r->look_blink_y;
+            if (mx * mx + my * my >= LOOK_BLINK_DIST * LOOK_BLINK_DIST) {
+                r->look_blink_x = r->look_cx;
+                r->look_blink_y = r->look_cy;
+                r->look_blink_last = now;
+                if (zrand_range(&r->rng, 0.0, 1.0) < LOOK_BLINK_CHANCE)
+                    zrig_blink_trigger(r);
+            }
+        }
     }
 
     blink_update(r, now);
@@ -3060,8 +3104,9 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     if (part_sx < 0.0) part_sx = 0.0;
     if (part_sy < 0.0) part_sy = 0.0;
     /* 眼眶开口：按眨眼参数纵向压扁（锚点在开口下沿，所以是上眼皮往下合）。 */
-    if ((p->tags & TAG_EYE_APERTURE) && blink > 0.0)
+    if ((p->tags & TAG_EYE_APERTURE) && blink > 0.0) {
         part_sy *= 1.0 - blink * (1.0 - p->aperture_min);
+    }
 
     /* 动作对部件的覆盖 */
     if (a) {

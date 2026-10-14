@@ -420,3 +420,52 @@ sleep 那行是整轮最大的教训：**饱和的指标把效果最好的一个
 调过一次参：surprised 原本 knee 0.30/0.35s 只有 +?%（第一版判据下 1.7×），
 加到 0.48/0.50s。受惊是全身反应，腿僵着就假了，这个动作幅度就该比别的大。
 
+
+## G86 眨眼和视线/转头完全无关（2026-10-14 发现，未做）
+
+Live2D 官方《提高动态质量的技巧》第 4 条：**"人在转脸或换视线时经常眨眼"**
+（https://docs.live2d.com/zh-CHS/cubism-editor-tutorials/motion-hint/）。
+
+我们现在的眨眼是**纯随机定时器**（`blink_imin/imax` 区间内抽一个间隔），
+和 `look_around`、gaze 跟随、头部转动一概无关。引擎里已经有现成的
+`zrig_blink_trigger()`，接上去成本很低。
+
+做法建议：视线横向位移超过阈值、或 `look_around` 每段转向开始时，
+以一定概率触发一次眨眼（不要每次都眨，否则又变机器人）。
+
+## G87 闭眼时眼型没有横向收窄（2026-10-14 发现，试过一版已撤回）
+
+同一份官方教程的眨眼视频字幕原话：
+**"Making the shape slightly narrower horizontally when the eye is closed
+than when open makes it easy to create a natural blink"**。
+
+**本轮试过 `aperture_narrow`（眼眶遮罩随 blink 横向收 12%），已撤回**：
+实测虹膜宽度 0.25/0.40/0.55 三档都是 123px，**一点没变**。
+因为我们是遮罩裁切，虹膜 31×30 离遮罩左右边缘很远，收 6% 够不到它，
+只削到了眼白外角（变化 1500~2400 像素，肉眼看不出）。
+
+要真做到，得把眼部件的 `anchor` 从 `[0,0]`（左上角）改成各自中心，
+再让整组 eye_open 随 blink 横向缩 —— 锚点一动 `pos` 必须同步改到那个点的
+身体坐标（`zimg_make_matrix` 是把 anchor 这个像素点放到 pos 上），
+属 `make_rig.py` 的结构性改动。
+
+⚠ **不要看到官方那句话就再加一次 aperture_narrow** —— 那条路已经验证过走不通。
+
+## G88 脚是整条腿的一部分，踮脚时鞋子不会转（2026-10-14 用户反馈，未做）
+
+用户实测："踮脚高度有了，只不过脚部的模型没有变化，没有出现鞋子往地垫的动画"。
+**确认属实**：`leg_l`/`leg_r` 两组各只有一个整段部件 `seg_leg_l`/`seg_leg_r`，
+**没有 foot / ankle / shoe 组**。`ParamTiptoe` 能做的只有 root 上提 7px +
+两腿 `bend_y` 用 tip 曲线（底端形变），**没有任何部件可以绕脚尖旋转**，
+所以不可能出现"脚跟抬起、鞋底与地面成角"的效果。
+
+好消息：`tools/make_anchors.py:227-230` **已经算出 `ankle` 和 `foot` 两个锚点**，
+在脚踝处切件的数据是现成的。
+
+做法：
+1. `make_body_parts.py` 把 `seg_leg_*` 在 ankle 线切成小腿 + `seg_foot_*`（带重叠带）
+2. `make_rig.py` 加 `foot_l`/`foot_r` 组，**pivot 放在脚尖**，parent 为 `leg_l`/`leg_r`
+3. `ParamTiptoe` 增绑 `foot_*.rot_deg`（脚跟抬起 = 绕脚尖转）
+4. 脚踝背面转出来的楔形缺口若露底，按 D19 走 AI 重绘补片
+
+成本：要跑 `bash tools/rebuild_parts.sh xiaoxun teen`（≈240s）。
