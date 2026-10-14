@@ -1694,6 +1694,22 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              ]},
         ],
         "physics": [
+            # 上身追赶头部的惯性（Live2D 官方《提高动态质量的技巧》第 2 条：
+            # 「转动脸部，身体会在稍后跟随」—— 脸和身体同时到位仍然像机器人）。
+            #
+            # 为什么能和 ParamAngleZ→chest.rot_deg 那条瞬时绑定共存而不打架：
+            # 物理的输出是 `pos - target`，也就是**纯滞后量**，静止时自动归零
+            # （见 zrig.c physics_update 的注释"只加惯性，不会永久吹偏"）。
+            # 所以稳态倾斜由那条绑定给，这里只补转头过程中的"追赶"。
+            #
+            # 参数取值：ω=√22≈4.7rad/s（周期 1.34s，比头发慢得多，躯干是重的），
+            # 阻尼比 ζ=5.5/(2×4.69)=0.59 —— 收得干净、只留一点点回弹。
+            # 对照：呆毛 ω=6.5 ζ=0.39（更弹），手腕 stiffness 34 damping 4.4。
+            {"id": "torso_follow_head", "part": body_id,
+             "param": "bend_x", "curve": "root",
+             "input": [{"param": "ParamAngleZ", "weight": 1.0}],
+             "ratio": 0.10, "stiffness": 22, "damping": 5.5, "max": 3.0,
+             "note": "上身追赶头部的惯性滞后；输出是 pos-target，静止归零"},
             {"id": "ahoge_x", "part": "hair_ahoge", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "root",
              "ratio": 0.5, "stiffness": 42, "damping": 5.0, "max": 8,

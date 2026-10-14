@@ -3164,6 +3164,23 @@
   ],
   "physics": [
     {
+      "id": "torso_follow_head",
+      "part": "seg_torso",
+      "param": "bend_x",
+      "curve": "root",
+      "input": [
+        {
+          "param": "ParamAngleZ",
+          "weight": 1.0
+        }
+      ],
+      "ratio": 0.1,
+      "stiffness": 22,
+      "damping": 5.5,
+      "max": 3.0,
+      "note": "上身追赶头部的惯性滞后；输出是 pos-target，静止归零"
+    },
+    {
       "id": "ahoge_x",
       "part": "hair_ahoge",
       "driver": "head",

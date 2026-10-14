@@ -10,7 +10,7 @@
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
-#define ZRIG_MAX_PHYS     12
+#define ZRIG_MAX_PHYS     24
 #define ZRIG_MAX_PARAMS   64   /* 2026-10-14：下半身补了膝盖/重心/踮脚 4 个参数后 50 个，48 不够用了 */
 #define ZRIG_MAX_POSE      8     /* 互斥部件组（≈ pose3.json 的 Groups） */
 #define ZRIG_MAX_POSE_ENT 24     /* 所有组的"档位"总数 */
@@ -868,6 +868,19 @@ static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
     if (!jp) return 0;
     if (jp->type != ZJSON_ARR) {
         zdiag_error(d, file, jp->line, 0, "physics", "期望 array");
+        return -1;
+    }
+    /* ⚠ 超了必须报错，不能静默丢。
+       2026-10-14 实测：上限曾是 12，而 rig 里已经声明到 13 条 ——
+       第 13 条 back_x（后发摆动）**一直被悄悄丢掉**，没有任何报错，
+       谁也没发现它是哑的。再加一条之后 skirt_y 也跟着掉了，
+       单测「裙摆纵摆」才终于红出来。
+       同类坑：ZRIG_MAX_PARAMS 也撞过（48 → 64）。 */
+    if (n > ZRIG_MAX_PHYS) {
+        zdiag_error(d, file, jp->line, 0, "physics",
+                    "物理条数 %d 超过上限 %d（超出的会被丢掉，必须改大 "
+                    "ZRIG_MAX_PHYS 而不是让它静默截断）",
+                    (int)n, ZRIG_MAX_PHYS);
         return -1;
     }
     for (i = 0; i < n && r->nphys < ZRIG_MAX_PHYS; ++i) {

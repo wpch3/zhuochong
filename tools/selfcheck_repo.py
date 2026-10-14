@@ -525,6 +525,85 @@ def check_no_stale_decisions(root):
               else f"lol max_tier={lol.get('max_tier')}")
 
 
+def check_engine_caps(root):
+    """rig 里声明的条数不许超过引擎的静态上限（2026-10-14 加）。
+
+    引擎用 `#define ZRIG_MAX_xxx` 开固定数组，解析循环写的是
+    `for (i = 0; i < n && r->nxxx < MAX; ++i)` —— **超出的部分直接丢掉**。
+
+    实测代价：ZRIG_MAX_PHYS 曾是 12，而 rig 里已经声明到 13 条，
+    第 13 条 `back_x`（后发摆动，look_around 时峰值 1.77px，是全场最大的一个摆）
+    **一直是哑的**，从头到尾没有任何报错，谁也没发现。
+    直到再加一条把 skirt_y 也挤掉，单测「裙摆纵摆」才红出来。
+    同类坑 ZRIG_MAX_PARAMS 也撞过（48 → 64）。
+
+    现在引擎里超限已改成硬报错，这道闸是第二层：在**跑之前**就拦住，
+    并且要求留出余量（快顶满时提前提醒，不要等撞上）。
+    """
+    section("rig 的条数没有顶到引擎上限（静默截断）")
+    src = os.path.join(root, "src", "core", "zrig.c")
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if not (os.path.isfile(src) and os.path.isfile(rig_path)):
+        return
+    with io.open(src, encoding="utf-8") as fh:
+        csrc = fh.read()
+    with io.open(rig_path, encoding="utf-8") as fh:
+        rig = json.load(fh)
+    caps = [("ZRIG_MAX_PHYS", "physics"), ("ZRIG_MAX_PARAMS", "params"),
+            ("ZRIG_MAX_PARTS", "parts")]
+    for macro, key in caps:
+        m = re.search(r"#define\s+%s\s+(\d+)" % macro, csrc)
+        if not check("zrig.c 里找得到 %s" % macro, m is not None):
+            continue
+        cap = int(m.group(1))
+        used = len(rig.get(key, []))
+        check("%s 没超（%s 用了 %d / 上限 %d）" % (macro, key, used, cap), used <= cap,
+              "超出的会被静默丢掉 —— back_x 就这么哑了很久")
+        check("%s 还有余量（用量不超过上限的 85%%）" % macro, used <= cap * 0.85,
+              "用了 %d / %d = %.0f%%，快顶满了，加东西之前先把上限调大"
+              % (used, cap, used * 100.0 / cap))
+
+
+def check_torso_inertia(root):
+    """上身要慢半拍追头，而且这个摆必须是收敛的（2026-10-14 加）。
+
+    Live2D 官方《提高动态质量的技巧》第 2 条：
+    「转动脸部，身体会在稍后跟随」—— 脸和身体**同时**到位仍然像机器人。
+
+    实现上靠一条物理：input=ParamAngleZ，输出写 seg_torso.bend_x。
+    它能和 ParamAngleZ→chest.rot_deg 那条瞬时绑定共存而不重复计数，
+    是因为物理的输出是 `pos - target`（纯滞后量），静止时自动归零。
+
+    这里顺便把摆的参数钉住：阻尼比 ζ = damping / (2√stiffness)。
+    ζ 太小会一直晃，太大就等于没有惯性。
+    """
+    section("上身慢半拍追头，且摆是收敛的")
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if not os.path.isfile(rig_path):
+        return
+    with io.open(rig_path, encoding="utf-8") as fh:
+        rig = json.load(fh)
+    ph = next((x for x in rig.get("physics", [])
+               if x.get("id") == "torso_follow_head"), None)
+    if not check("有 torso_follow_head 这条物理", ph is not None,
+                 "没有 → 头和身体同时到位，官方说这仍然像机器人"):
+        return
+    ins = [i.get("param") for i in ph.get("input", [])]
+    check("它的输入是头部歪头参数", "ParamAngleZ" in ins, "输入：%s" % ins)
+    check("它的输出写在躯干上", ph.get("part") == "seg_torso",
+          "part=%s" % ph.get("part"))
+    st, dp = ph.get("stiffness"), ph.get("damping")
+    if check("stiffness / damping 都写了", st and dp):
+        zeta = dp / (2.0 * (st ** 0.5))
+        check("阻尼比 ζ 落在收敛区间 0.4~1.2（太小一直晃，太大等于没惯性）",
+              0.4 <= zeta <= 1.2,
+              "ζ = %.2f / (2*sqrt(%.0f)) = %.3f" % (dp, st, zeta))
+        check("躯干要比头发慢（stiffness 低于呆毛的 42）", st < 42,
+              "躯干 %.0f vs 呆毛 42 —— 躯干是重的，不该跟头发一样弹" % st)
+    check("惯性量被 max 钳住", (ph.get("max") or 0) > 0,
+          "max=%s" % ph.get("max"))
+
+
 def check_tiptoe_grounded(root):
     """踮脚时脚底必须留在地面上（2026-10-14 加）。
 
@@ -1560,7 +1639,9 @@ def main():
     root = os.path.abspath(a.root)
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
-               check_json, check_rig, check_tiptoe_grounded, check_head_body_link,
+               check_json, check_rig, check_engine_caps, check_torso_inertia,
+               check_tiptoe_grounded,
+               check_head_body_link,
                check_neck_seam,
                check_action_dead_time,
                check_motion_measure,
