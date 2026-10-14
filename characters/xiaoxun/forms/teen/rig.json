@@ -2412,7 +2412,6 @@
       "duration": 2.4,
       "return_state": "idle",
       "interruptible": false,
-      "airborne": 2,
       "channels": [
         {
           "target": "ParamArmRA",
@@ -2465,9 +2464,9 @@
           "dur": 2.4
         },
         {
-          "target": "ParamBaseY",
+          "target": "ParamHipDrop",
           "wave": "sine",
-          "amp": 0.5,
+          "amp": 1.0,
           "freq": 1.6,
           "dur": 2.4
         },
@@ -3915,6 +3914,33 @@
           "curve": "sine"
         }
       ]
+    },
+    {
+      "id": "ParamHipDrop",
+      "label": "胯 下沉（屈膝承重）",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "chest",
+          "param": "dy",
+          "scale": 2.0
+        },
+        {
+          "part": "seg_leg_l",
+          "param": "bend_y",
+          "scale": 2.0,
+          "curve": "root"
+        },
+        {
+          "part": "seg_leg_r",
+          "param": "bend_y",
+          "scale": 2.0,
+          "curve": "root"
+        }
+      ],
+      "note": "+1 胯下沉 2px、腿顶跟着下来 2px、脚踝 0 —— 和 ParamBaseY 的区别是它**不动脚**。上下起伏一律用这条，别用 ParamBaseY"
     },
     {
       "id": "ParamWeightShift",

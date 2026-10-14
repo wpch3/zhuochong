@@ -516,6 +516,7 @@ L2D_EXTENSIONS = {
     "ParamKneeR": "同上",
     "ParamWeightShift": "重心左右（一个参数同时驱动骨盆横移与两腿补偿，站立微动）",
     "ParamTiptoe": "踮脚（整体上提 + 脚踝收，裙摆下沿仍不动）",
+    "ParamHipDrop": "胯下沉／屈膝承重（上身起伏但脚不离地；和 ParamBaseY 的区别就是它不动脚）",
 }
 # 官方惯例的取值范围（Cubism 标准模板）
 L2D_RANGE = {

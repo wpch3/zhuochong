@@ -198,6 +198,21 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "note": "sine 的峰正好落在膝盖高度。+1 膝盖上提 9px（屈膝），−1 下压（绷直）"},
             {"id": "ParamKneeR", "label": "右膝 屈伸", "min": -1.0, "max": 1.0, "default": 0.0,
              "binds": [{"part": "seg_leg_r", "param": "bend_y", "scale": 9.0, "curve": "sine"}]},
+            # 屈膝承重（G98，2026-10-15）：上下起伏时**脚必须钉在地上**。
+            # 官方《4.添加身体动作》写死的一条就是"身体上下运动时，脚不能离开地面"。
+            # 原来挥手的起伏走的是 ParamBaseY（root.dy，整个人平移），
+            # 等于连脚一起浮起来，只能靠在动作上声明 airborne 让闸放行 —— 那是权宜。
+            #
+            # 这条参数走人真实的做法：胯往下沉 → 腿顶跟着下来 → 脚踝那一行不动。
+            # 用 root 曲线（底边固定、顶端最大）：脚件是刚性跟随腿在切线处的形变的，
+            # 而 root 曲线在切线（=腿件底边）处正好是 0，所以鞋底净位移是 0。
+            {"id": "ParamHipDrop", "label": "胯 下沉（屈膝承重）", "min": -1.0, "max": 1.0,
+             "default": 0.0,
+             "binds": [{"group": "chest", "param": "dy", "scale": 2.0},
+                       {"part": "seg_leg_l", "param": "bend_y", "scale": 2.0, "curve": "root"},
+                       {"part": "seg_leg_r", "param": "bend_y", "scale": 2.0, "curve": "root"}],
+             "note": "+1 胯下沉 2px、腿顶跟着下来 2px、脚踝 0 —— 和 ParamBaseY 的区别是"
+                     "它**不动脚**。上下起伏一律用这条，别用 ParamBaseY"},
             {"id": "ParamWeightShift", "label": "重心 左右", "min": -1.0, "max": 1.0,
              "default": 0.0,
              "binds": [{"group": "root", "param": "dx", "scale": 5.0},
@@ -1122,14 +1137,22 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         actions.append({
             "id": "wave", "priority": 6, "duration": 2.4, "return_state": "idle",
             "interruptible": False,
-            # airborne：鞋底纵向净位移 px（挥手时跟着节奏轻微起伏）—— check_feet_on_ground 会按
-            # 通道幅度×参数绑定复算一遍，对不上就红，防的是"后来有人把幅度调大了"。
-            "airborne": 2,
+            # 挥手时的上下起伏：**不许整个人平移**。
+            # 原来这里写的是 root.dy ±2px，等于连脚一起浮起来，只能靠声明
+            # "airborne": 2 让闸放行 —— 官方《4.添加身体动作》写死的那条是
+            # "身体上下运动时，脚不能离开地面"，所以那是权宜，不是设计（G98）。
+            #
+            # 改成人真实的做法：**胯往下沉、膝盖吃掉这段行程、脚底钉在地上**。
+            #   chest.dy        上半身（躯干+头+手臂）跟着节奏起伏
+            #   seg_leg_*.bend_y + root 曲线（底边固定、顶端最大）
+            #                   腿顶跟着胯走、脚踝那一行纹丝不动
+            # 脚件是刚性跟随腿在切线处的形变的，root 曲线在切线处正好是 0，
+            # 所以这样加完鞋底净位移仍然是 0 —— 不用再声明 airborne。
             "channels": wave_channels + [
                 {"target": "head", "param": "rot_deg", "wave": "sine",
                  "amp": 2.0, "freq": 0.8, "dur": 2.4},
-                {"target": "root", "param": "dy", "wave": "sine",
-                 "amp": -2.0, "freq": 1.6, "dur": 2.4},
+                {"target": "ParamHipDrop", "wave": "sine",
+                 "amp": 1.0, "freq": 1.6, "dur": 2.4},
             ],
             "part_overrides": {"mouth_open": {"opacity": 0.8}},
         })
