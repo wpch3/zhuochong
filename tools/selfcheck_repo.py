@@ -217,8 +217,23 @@ def check_decisions(root):
     check("编号不重复", len(ids) == len(set(ids)),
           "重复：%s" % [i for i in ids if ids.count(i) > 1][:3])
     refs = set(re.findall(r"由\s*(DC\d+)\s*取代", txt))
-    missing = sorted(refs - set(ids))
-    check("「由 DC## 取代」指向的条目都存在", not missing, "找不到：%s" % missing)
+    # 取代者可能已经被归档 —— 归档不是删除，归档表也是登记表的一部分。
+    # 2026-10-15 踩过：DC05/DC06 外部零引用就被归档了，结果主表里 DC01~DC04 四条
+    # 🔁 全是「由 DC05 取代」，闸当场红。挑归档条目时**必须连"被谁引为取代者"一起看**。
+    arch_p = os.path.join(root, "docs/memory/DECISIONS_ARCHIVE.md")
+    arch_ids = set()
+    if os.path.exists(arch_p):
+        arch_ids = set(re.findall(r"^###\s*(DC\d+)\s",
+                                  io.open(arch_p, encoding="utf-8").read(), re.M))
+    missing = sorted(refs - set(ids) - arch_ids)
+    check("「由 DC## 取代」指向的条目都存在", not missing,
+          "找不到：%s（主表和归档表里都没有）" % missing)
+    # 被引为"取代者"的条目如果在归档表，主表必须留指路牌，否则读的人找不到
+    moved_refs = sorted(refs & arch_ids)
+    check("被引为取代者的条目若已归档，主表要指得到",
+          (not moved_refs) or ("DECISIONS_ARCHIVE.md" in txt),
+          "%s 已归档，主表必须写明去哪找" % moved_refs if moved_refs
+          else "没有取代者被归档")
     check("登记表里留着被推翻的反面教材", 
           len([b for b in blocks if b.startswith("DC0") and "🔁" in b.splitlines()[0]]) >= 4,
           "被推翻的中间结论也要留着（用户 2026-10-14 的要求）")
