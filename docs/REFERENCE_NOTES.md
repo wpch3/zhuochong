@@ -1632,3 +1632,76 @@ DiffSinger / NNSVS（开源，要乐谱 + 1–3h 标注）、
 - **★★ 清华 + 面壁的开源 Proactive Agent** 给了评估口径四件套：
   **需求遗落 / 静默应答 / 正确检测 / 错误检测**。
 - ☆ 可参考实现：`leomariga/ProactiveAgent`（Python，决策引擎可换：AI 判断 / 阈值 / 自定义函数）。
+
+## 第二十四批（2026-10-16）：物理为什么会抖 / 星星眼与卖萌动作官方怎么做
+
+### ★★★ 物理必须固定步长 —— 官方源码与注释（直接推翻我们原来的写法）
+
+来源 `https://raw.githubusercontent.com/Live2D/CubismNativeFramework/develop/src/Physics/CubismPhysics.cpp`
+（Live2D 官方 Native Framework，develop 分支，2026-10-16 取）
+
+```cpp
+const csmFloat32 MaxDeltaTime = 5.0f;          // 累计超过这么多就直接丢弃
+
+void CubismPhysics::Evaluate(CubismModel* model, csmFloat32 deltaTimeSeconds)
+{
+    _currentRemainTime += deltaTimeSeconds;
+    if (_currentRemainTime > MaxDeltaTime) _currentRemainTime = 0.0f;
+
+    physicsDeltaTime = (_physicsRig->Fps > 0.0f) ? 1.0f / _physicsRig->Fps
+                                                 : deltaTimeSeconds;
+    while (_currentRemainTime >= physicsDeltaTime) {
+        previous = current;                                  // 存上一步输出
+        float inputWeight = physicsDeltaTime / _currentRemainTime;
+        //   输入线性插值：cache = inputCache*(1-w) + value*w
+        UpdateParticles(..., physicsDeltaTime, ...);          // 定步积分
+        _currentRemainTime -= physicsDeltaTime;
+    }
+    const float alpha = _currentRemainTime / physicsDeltaTime;
+    Interpolate(model, alpha);        // out = previous*(1-alpha) + current*alpha
+}
+```
+
+官方对这段的注释原文（日/英并列）：
+
+> 「この仕様は**補間範囲を逸脱したことが原因の震えたような見た目**を回避を目的にしている。」
+> "The purpose of this specification is to avoid the **quivering appearance** caused by
+>  deviations from the interpolation range."
+
+**「震えたような見た目」＝ 发抖的观感**，正是用户 2026-10-16 报的"左右轻微抽搐"。
+配套还有 `CubismPhysics::Stabilization()`（docs.live2d.com/en/cubism-sdk-manual/stabilize-physics/），
+用途是**模型刚显示出来那一帧**先把物理稳住，避免初始参数非默认值时炸开。
+
+业界同一套：Gaffer on Games《Fix Your Timestep!》的 accumulator 模式
+（`https://gafferongames.com/post/fix_your_timestep/`，并给出 `frameTime > 0.25` 的上限防"死亡螺旋"）、
+Unity 的 `FixedUpdate`/`Maximum Allowed Timestep`、Unreal 的 substepping、Box2D 的 `MAX_STEPS`。
+
+**我们之前错在哪**：`physics_update` 是 `dt = now - phys_last; if (dt>0.1) dt=0.1;` 后**单步**显式欧拉。
+实测（真实角色，同一真实时刻对 60fps 基准）：2.5fps 时 `ahoge_x` ×3.6、`hand_r_lag` ×11.3。
+注意 `REFERENCE_NOTES` 第 1000 行早就记过「物理参数和 FPS 绑死，换 FPS 必须重调，
+我们的物理是按真实 dt 积分的，这条要注意别写成按帧」—— **当时只看到一半**：
+按真实 dt 积分是对的，但必须是**定步长的真实 dt**，不是整帧一步。
+
+### ★★★ 星星眼（きらきら目 / しいたけ目）
+
+- **归一个参数，别各占一个** —— Live2D 创作者 kawase（`https://x.com/kawase1234567/status/1747491216227516567`）：
+  「■きらきら目・ハート目は→ 同時発動しないので**同一パラメにまとめる**」。
+  同帖还给了另外三档的口径：**驚き目 → 開閉に +1.2**、にやにや目 → 瞳変形 +1、ジト目 → 瞳変形 −1。
+  （和第二十三批的 `ParamEyeLWide` 结论一致：瞪大眼走"开闭超过 1"，不是放大瞳孔。）
+- **差分的标准做法**（`https://surume1ka.com/archives/2207` ★★）：
+  新参数 **min 0 / max 1 / default 0**；差分件用**不透明度** 0%↔100% 切；
+  **差分件必须 clipping 到白眼 ID**，并且在「目 開閉」参数上**也打键**，这样闭眼时差分跟着闭。
+- **要闪烁才"生动"**（`https://note.com/zombiefff/n/nf2758894e049` ★★）：
+  Sway1 = 按正负值**缩放**部件；Sway2 = **warp 变形**做上下左右突出的"キラキラ"；
+  物理 input 接「开闭 / 笑 / 呼吸 / 角度 XYZ」制造随机，output 分配给 Sway1/Sway2，
+  **特别注意 Sway2 的 max 输出**（闪烁强度就靠它）。
+- 静态贴图只是第一步：社区把 sparkle eyes 列为标配表情差分之一
+  （`https://note.com/moimoi_sp/n/n267967b33084`）。
+
+### ★★ 卖萌动作：官方是"手臂差分"，不是把手臂硬转过去
+
+同一篇模型制作记（`https://note.com/moimoi_sp/n/n267967b33084`）把
+**arm variations（手臂差分）和表情差分并列**，都是在 CLIP STUDIO 阶段**另画一套**再导入。
+对我们就是 D19：没画过的角度必须 AI 重绘。
+我们的硬边界：`ParamArmRA → arm_r.rot_deg × −6.0`，参数 ±1 ⇒ **只有 ±6°**；
+举手到脸前需要肩 ~140°、肘 ~90°，硬转必然撞 G103 折痕且袖子露馅。

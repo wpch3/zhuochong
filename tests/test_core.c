@@ -1378,6 +1378,146 @@ static void test_look(void)
     }
 }
 
+/* 物理必须按**固定步长**积分（G113）：同一真实时刻的输出不许随帧率变。
+   背景：原来是"整帧 dt 单步显式欧拉 + clamp 0.1"，2.5fps 时呆毛惯性被放大 3.6 倍、
+   手被放大 11.3 倍，画面就是用户 2026-10-16 报的"左右轻微抽搐"。
+   口径照 Live2D 官方 CubismPhysics::Evaluate（累加器 + 1/60 定步 + 输入/输出插值）。
+   ⚠ 夹具是测试**自己合成**的（DC40：不许借生产素材），四条摆的刚度照抄真实角色的
+     量程 22/42/65/72，这样过冲量和线上一致，而别人调 rig 不会把这条闸碰碎。 */
+static void test_physics_timestep(void)
+{
+    static const char *IDS[4] = { "soft", "mid", "stiff", "stiffest" };
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("物理固定步长：同一时刻的输出不随帧率漂移（G113）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_phys_ts");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    /* 四条摆挂在四个部件上（一个部件只认一条 bend_x），刚度覆盖真实角色的全量程。
+       驱动是一条 sine：头左右晃，摆才有东西可落后。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"pts\",\"name\":\"定步长测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"p0\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"p1\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":11,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"p2\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":12,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"p3\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":13,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"fade\":0,\"channels\":["
+        "   {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":3.0,\"freq\":0.2}]}],"
+        "\"physics\":["
+        " {\"id\":\"soft\",\"part\":\"p0\",\"driver\":\"head\",\"axis\":\"x\",\"param\":\"bend_x\","
+        "  \"curve\":\"root\",\"ratio\":0.10,\"stiffness\":22,\"damping\":5.5,\"max\":3.0},"
+        " {\"id\":\"mid\",\"part\":\"p1\",\"driver\":\"head\",\"axis\":\"x\",\"param\":\"bend_x\","
+        "  \"curve\":\"root\",\"ratio\":0.50,\"stiffness\":42,\"damping\":5.0,\"max\":8.0},"
+        " {\"id\":\"stiff\",\"part\":\"p2\",\"driver\":\"head\",\"axis\":\"x\",\"param\":\"bend_x\","
+        "  \"curve\":\"root\",\"ratio\":0.30,\"stiffness\":65,\"damping\":7.5,\"max\":4.0},"
+        " {\"id\":\"stiffest\",\"part\":\"p3\",\"driver\":\"head\",\"axis\":\"x\",\"param\":\"bend_x\","
+        "  \"curve\":\"root\",\"ratio\":0.22,\"stiffness\":72,\"damping\":8.0,\"max\":3.5}]}");
+    {
+        /* dt_ref = 60fps 基准；另两档模拟"云端预览掉到 10fps / 2.5fps" */
+        const double DTS[3] = { 1.0 / 60.0, 0.1, 0.4 };
+        /* 10fps 要很准；2.5fps 时输入每 0.4s 才采样一次，这是信息论下限
+           （官方同款实现也一样），只要求"不过冲"而不是"逐位相同"。
+           同一夹具上的对照：修前 dt=0.1 偏 128.0%、dt=0.4 偏 452.4%；
+                             修后 dt=0.1 偏 3.9%、dt=0.4 偏 57.9%。 */
+        const double TOL[3] = { 0.0, 0.15, 0.80 };
+        const double T = 6.0;
+        double ref[4];
+        int k, c, alive = 0;
+        zdiag d;
+        zrig *r0;
+        zdiag_init(&d);
+        r0 = zrig_load(rigp, dir, &d);
+        CHECK(r0 != NULL, "定步长夹具应加载成功");
+        if (!r0) return;
+        zrig_blink_set_enabled(r0, 0);
+        { double t; for (t = 0.0; t <= T + 1e-9; t += DTS[0]) zrig_tick(r0, t); }
+        for (k = 0; k < 4; ++k) {
+            ref[k] = zrig_phys_output(r0, IDS[k]);
+            if (fabs(ref[k]) > 0.02) ++alive;
+        }
+        zrig_free(r0);
+        /* 基准本身得"真的在摆"，否则下面全是在比较 0 和 0 —— 那正是 DC40 说的假绿 */
+        CHECK(alive == 4, "60fps 基准下四条摆都应确实在摆（否则这条闸是空的），实测 %d/4"
+                          "  [%.4f %.4f %.4f %.4f]", alive, ref[0], ref[1], ref[2], ref[3]);
+        for (c = 1; c < 3; ++c) {
+            zrig *r;
+            double t, worst = 0.0;
+            const char *worst_id = "-";
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            if (!r) { CHECK(0, "夹具重载失败（dt=%.3f）", DTS[c]); continue; }
+            zrig_blink_set_enabled(r, 0);
+            for (t = 0.0; t <= T + 1e-9; t += DTS[c]) zrig_tick(r, t);
+            for (k = 0; k < 4; ++k) {
+                double got = zrig_phys_output(r, IDS[k]);
+                double base = fabs(ref[k]);
+                double rel;
+                if (base < 0.01) base = 0.01;        /* 别让接近 0 的项放大噪声 */
+                rel = fabs(got - ref[k]) / base;
+                if (rel > worst) { worst = rel; worst_id = IDS[k]; }
+            }
+            CHECK(worst <= TOL[c],
+                  "dt=%.3f（%.1ffps）物理输出相对 60fps 偏差应 <= %.0f%%，实测最差 %s 偏 %.0f%%"
+                  "（修前是单步欧拉过冲，真实角色上 2.5fps 时呆毛 3.6 倍、手 11.3 倍）",
+                  DTS[c], 1.0 / DTS[c], TOL[c] * 100.0, worst_id, worst * 100.0);
+            zrig_free(r);
+        }
+    }
+    /* 帧间隔忽长忽短（云端 RTT 抖动）时也不许抖：逐帧跳变的峰值要明显小于摆的量程。 */
+    {
+        zdiag d;
+        zrig *r;
+        double t = 0.0, prev[4], mx[4];
+        unsigned long s = 12345;
+        /* 四条摆各自的上限与"修前实测值"，并排放着，日后谁动了口径一眼能对账 */
+        static const double JIT_MAX[4] = { 0.09, 0.22, 0.11, 0.08 };
+        static const double JIT_WAS[4] = { 0.1483, 0.5179, 0.1576, 0.0967 };
+        int k, first = 1, n = 0;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        if (!r) { CHECK(0, "夹具重载失败（抖动帧间隔）"); return; }
+        zrig_blink_set_enabled(r, 0);
+        for (k = 0; k < 4; ++k) { prev[k] = 0.0; mx[k] = 0.0; }
+        while (t < 20.0) {
+            double u;
+            zrig_tick(r, t);
+            if (!first) {
+                for (k = 0; k < 4; ++k) {
+                    double v = zrig_phys_output(r, IDS[k]);
+                    double dd = fabs(v - prev[k]);
+                    if (dd > mx[k]) mx[k] = dd;
+                    prev[k] = v;
+                }
+                ++n;
+            } else {
+                for (k = 0; k < 4; ++k) prev[k] = zrig_phys_output(r, IDS[k]);
+                first = 0;
+            }
+            s = s * 6364136223846793005UL + 1442695040888963407UL;
+            u = (double)((s >> 33) & 0xFFFFFF) / 16777216.0;
+            t += 0.4 + (u * 2.0 - 1.0) * 0.15;       /* 2.5fps ± 37% 的抖动 */
+        }
+        CHECK(n > 30, "抖动帧间隔样本应够多，实测 %d 帧", n);
+        /* 阈值是"定步长下实测值 × 1.5"，留出平台浮点差；修前这四条都要大一倍以上。
+           单帧跳变必须远小于各自的 max（3.0/8.0/4.0/3.5），否则就是在抽。 */
+        /* 阈值 = 定步长下实测值 × 1.5，仍远低于修前。同一夹具上的对照：
+             修前 0.1483 / 0.5179 / 0.1576 / 0.0967
+             修后 0.0590 / 0.1370 / 0.0712 / 0.0517   */
+        for (k = 0; k < 4; ++k)
+            CHECK(mx[k] < JIT_MAX[k],
+                  "抖动帧间隔下 %s 单帧跳变应 < %.2f，实测 %.4f（修前 %.4f）",
+                  IDS[k], JIT_MAX[k], mx[k], JIT_WAS[k]);
+        zrig_free(r);
+    }
+}
+
 static void test_physics(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -5280,6 +5420,7 @@ int main(int argc, char **argv)
     test_action_drives_param();
     test_motion_fade();
     test_physics();
+    test_physics_timestep();
     test_look();
     test_params();
     test_lipsync();

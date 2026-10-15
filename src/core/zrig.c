@@ -184,7 +184,15 @@ typedef struct {
        这样两三段串起来就是一条有惯性传递的摆链（头发梢比发根再慢半拍）。 */
     int    driver_phys;       /* >=0 = 上一段的下标（必须比自己小，保证先算父段） */
     int    deform;            /* >=0 = 输出到网格形变器的 amount，而不是部件通道 */
-    double out_last;          /* 上一帧输出，供下一段当输入 */
+    double out_last;          /* 这一帧**插值后**的输出（渲染用的就是它） */
+    /* 固定步长积分的三个状态（G113，照搬官方 CubismPhysics::Evaluate）：
+       out_prev/out_cur = 相邻两个固定步的输出，渲染时按 alpha 在两者之间插值；
+       in_prev = 上一个固定步用过的输入，供"输入线性插值"当起点。
+       没有这三个的话，低帧率下一帧积一大步，显式欧拉过冲，呆毛/手的惯性
+       会被放大好几倍，看着就是**左右抽搐**（2026-10-16 用户报的就是这个）。 */
+    double out_prev, out_cur;
+    double in_prev;
+    int    in_init;           /* in_prev 是否已经装过值（0 = 第一步，直接取当前输入） */
     /* 参数输入（对齐官方 .physics3 的 Input 数组）：官方摆链的输入**就是参数**，
        不是"某个组移动了多少像素"。我们原来只会读驱动组的位移，于是凡是
        「只改形状、不改组矩阵」的参数（典型就是 ParamBodyAngleX → seg_torso.bend_x，
@@ -312,6 +320,21 @@ enum { BL_FIRST = 0, BL_INTERVAL, BL_CLOSING, BL_CLOSED, BL_OPENING };
    ≈ 58 次/分钟，真人活跃时也就 20~30 次/分钟，看着直抽搐。 */
 #define LOOK_BLINK_COOLDOWN 1.2
 
+/* 物理摆的**固定步长**（G113）。
+   口径来自 Live2D 官方 CubismNativeFramework/src/Physics/CubismPhysics.cpp：
+     _currentRemainTime += deltaTime;
+     if (_currentRemainTime > MaxDeltaTime /· 5.0 ·/) _currentRemainTime = 0;
+     physicsDeltaTime = 1 / Fps;                 // physics3.json 的 Fps，5.0 起默认 60
+     while (_currentRemainTime >= physicsDeltaTime) { ...积一步...; _currentRemainTime -= h; }
+     alpha = _currentRemainTime / physicsDeltaTime;  Interpolate(previous, current, alpha);
+   官方对这段的注释原文：「この仕様は補間範囲を逸脱したことが原因の**震えたような見た目**を
+   回避を目的にしている」——"为的就是避免那种发抖的观感"。正是用户 2026-10-16 报的抽搐。
+   ⚠ 绝对不要退回"用整帧 dt 单步积分 + clamp 到 0.1"：实测 2.5fps 时呆毛惯性 ×3.6、
+     手 ×11.3（见 docs/memory/GAPS.md G113）。 */
+#define ZRIG_PHYS_FPS        60.0
+#define ZRIG_PHYS_STEP       (1.0 / ZRIG_PHYS_FPS)
+#define ZRIG_PHYS_MAX_REMAIN 5.0
+
 struct zrig {
     char  id[96];
     char  name[192];
@@ -336,6 +359,7 @@ struct zrig {
     zphys   phys[ZRIG_MAX_PHYS];
     int     nphys;
     double  phys_last;           /* 上一次积分的时刻，<0 = 还没开始 */
+    double  phys_remain;         /* 还没消化掉的真实时间（固定步长积分的累加器） */
     double  pose_last;           /* Pose 淡化上一次推进的时刻，<0 = 还没开始 */
 
     zsm     sm;
@@ -2351,6 +2375,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     r->fade_prev = -1;
     r->expr_cur = r->expr_prev = -1;
     r->phys_last = -1.0;
+    r->phys_remain = 0.0;
     r->pose_last = -1.0;
     r->look_last = -1.0;
     r->cur_id[0] = 0;
@@ -2781,8 +2806,11 @@ static void physics_input(const zrig *r, const zphys *ph, double *out_x, double 
         *out_x = *out_y = sum;
         return;
     }
-    if (ph->driver_phys >= 0) {          /* 多段摆：输入 = 上一段这一帧的输出 */
-        *out_x = *out_y = r->phys[ph->driver_phys].out_last;
+    if (ph->driver_phys >= 0) {          /* 多段摆：输入 = 上一段**这一个固定步**的输出 */
+        /* ⚠ 这里读 out_cur 不是 out_last：out_last 是插值到渲染时刻的值，
+           拿它当下一段的输入会让摆链在子步之间混进半拍的未来值。
+           driver_phys 保证比自己小，所以同一子步里父段已经算完。 */
+        *out_x = *out_y = r->phys[ph->driver_phys].out_cur;
         return;
     }
     if (ph->driver < 0) return;
@@ -2813,33 +2841,64 @@ static void physics_update(zrig *r, double now)
             in = (ph->axis == 1) ? iy : ix;
             ph->pos = in * ph->ratio;      /* 停在目标上 = 零滞后 */
             ph->vel = 0.0;
-            ph->out_last = 0.0;
+            ph->out_last = ph->out_prev = ph->out_cur = 0.0;
+            ph->in_prev = in; ph->in_init = 1;
         }
         r->phys_last = now;
+        r->phys_remain = 0.0;
         return;
     }
     if (r->phys_last < 0.0) { r->phys_last = now; return; }
     dt = now - r->phys_last;
     r->phys_last = now;
-    if (dt <= 0.0) return;
-    if (dt > 0.1) dt = 0.1;              /* 掉帧时别让积分炸掉 */
+    if (dt < 0.0) dt = 0.0;
+    /* ── 固定步长积分（照搬官方 CubismPhysics::Evaluate，见 ZRIG_PHYS_* 的注释）──
+       ⚠ 不要写成 "dt 一大步 + clamp"：那是显式欧拉过冲，低帧率下惯性被放大数倍。 */
+    r->phys_remain += dt;
+    if (r->phys_remain > ZRIG_PHYS_MAX_REMAIN) r->phys_remain = 0.0;  /* 挂起太久就别追了 */
+    while (r->phys_remain >= ZRIG_PHYS_STEP) {
+        /* 输入线性插值：官方那句
+             _parameterCaches[j] = _parameterInputCaches[j]*(1-w) + parameterValues[j]*w
+           的等价物。没有它的话，一帧里的 N 个子步会共用同一个"帧末输入"，
+           摆等于被瞬移的目标拽了 N 次。 */
+        double inw = ZRIG_PHYS_STEP / r->phys_remain;
+        if (inw > 1.0) inw = 1.0;
+        for (i = 0; i < r->nphys; ++i) {
+            zphys *ph = &r->phys[i];
+            double ix, iy, in_now, in, target, acc;
+            if (ph->part < 0 || (ph->driver < 0 && ph->driver_phys < 0 && ph->n_in == 0)) continue;
+            physics_input(r, ph, &ix, &iy);
+            in_now = (ph->axis == 1) ? iy : ix;
+            if (!ph->in_init) { ph->in_prev = in_now; ph->in_init = 1; }
+            in = ph->in_prev * (1.0 - inw) + in_now * inw;
+            ph->in_prev = in;
+            target = in * ph->ratio;
+            acc = ph->stiffness * (target - ph->pos) - ph->damping * ph->vel;
+            ph->vel += acc * ZRIG_PHYS_STEP;
+            ph->pos += ph->vel * ZRIG_PHYS_STEP;
+            /* 输出 = 摆尖相对驱动位置的落后量：静止时 pos→target，输出归零，
+               所以它只加"惯性"，不会把头发永久吹偏。 */
+            ph->out_prev = ph->out_cur;
+            ph->out_cur  = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
+        }
+        r->phys_remain -= ZRIG_PHYS_STEP;
+    }
+    /* 渲染时刻落在两个固定步之间 → 按余量插值（官方的 Interpolate）。
+       ⚠ 写通道这一段必须**每帧都跑**，即使这一帧一个子步都没走：
+         p_dx/p_rot/deform.amount 每帧都被清零重算，漏一帧头发就会"啪"地归位。 */
+    {
+        double alpha = r->phys_remain / ZRIG_PHYS_STEP;
+        if (alpha < 0.0) alpha = 0.0;
+        if (alpha > 1.0) alpha = 1.0;
+        for (i = 0; i < r->nphys; ++i) {
+            zphys *ph = &r->phys[i];
+            ph->out_last = ph->out_prev * (1.0 - alpha) + ph->out_cur * alpha;
+        }
+    }
     for (i = 0; i < r->nphys; ++i) {
         zphys *ph = &r->phys[i];
-        double in, target, acc, out;
+        double out = ph->out_last;
         if (ph->part < 0 || (ph->driver < 0 && ph->driver_phys < 0 && ph->n_in == 0)) continue;
-        {
-            double ix, iy;
-            physics_input(r, ph, &ix, &iy);
-            in = (ph->axis == 1) ? iy : ix;
-        }
-        target = in * ph->ratio;
-        acc = ph->stiffness * (target - ph->pos) - ph->damping * ph->vel;
-        ph->vel += acc * dt;
-        ph->pos += ph->vel * dt;
-        /* 输出 = 摆尖相对驱动位置的落后量：静止时 pos→target，输出归零，
-           所以它只加"惯性"，不会把头发永久吹偏。 */
-        out = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
-        ph->out_last = out;                      /* 给下一段当输入 */
         if (ph->deform >= 0 && ph->deform < r->ndeforms) {
             r->deforms[ph->deform].amount += out;
             continue;

@@ -39,6 +39,22 @@ button.sm{padding:4px 9px;font-size:12px}
 .pill{display:inline-block;background:#EAF7F6;border-radius:999px;padding:2px 10px;
       margin:2px 5px 2px 0;font-size:12px}
 .pill.on{background:#D6F5F1;font-weight:600}
+/* 状态行专用（G114）：这一行的胶囊内容**每 600ms 就换一次**（动作名 idle↔surprised、
+   眨眼 0.00↔1.00、fps 9.9↔10.1）。inline-block + 比例字体下，任何一个变长都会把
+   它右边所有胶囊推着走 —— 用户 2026-10-16 报的"测试台状态会左右轻微抽搐"就是它。
+   修法：① 整行按固定宽度的格子排，谁也推不动谁；② 数字走 tabular-nums 等宽数位。 */
+.pillrow{display:flex;flex-wrap:wrap;gap:4px 0}
+.pillrow .pill{
+  flex:0 0 auto;text-align:center;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+}
+.pillrow .pill[data-w="act"]{min-width:104px}
+.pillrow .pill[data-w="expr"]{min-width:76px}
+.pillrow .pill[data-w="blink"]{min-width:112px}
+.pillrow .pill[data-w="scale"]{min-width:76px}
+.pillrow .pill[data-w="sleep"]{min-width:58px}
+.pillrow .pill[data-w="fps"]{min-width:66px}
+.pillrow .pill[data-w="region"]{min-width:132px;text-align:left}
 label.row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}
 label.row span:first-child{width:62px;color:var(--mut)}
 input[type=range]{flex:1;accent-color:var(--acc)}
@@ -76,14 +92,14 @@ th{color:var(--mut);font-weight:600;position:sticky;top:0;background:#fff}
       <div class="stage" id="stage">
         <img id="pet" src="/api/frame.png" alt="小寻">
       </div>
-      <div style="margin-top:8px">
-        <span class="pill" id="p-act">动作 —</span>
-        <span class="pill" id="p-expr">表情 —</span>
-        <span class="pill" id="p-blink">眨眼 —</span>
-        <span class="pill" id="p-scale">缩放 —</span>
-        <span class="pill" id="p-sleep">清醒</span>
-        <span class="pill" id="p-fps">— fps</span>
-        <span class="pill" id="p-region">鼠标下：—</span>
+      <div class="pillrow" style="margin-top:8px">
+        <span class="pill" data-w="act" id="p-act">动作 —</span>
+        <span class="pill" data-w="expr" id="p-expr">表情 —</span>
+        <span class="pill" data-w="blink" id="p-blink">眨眼 —</span>
+        <span class="pill" data-w="scale" id="p-scale">缩放 —</span>
+        <span class="pill" data-w="sleep" id="p-sleep">清醒</span>
+        <span class="pill" data-w="fps" id="p-fps">— fps</span>
+        <span class="pill" data-w="region" id="p-region">鼠标下：—</span>
       </div>
       <div id="speech" style="margin-top:6px;min-height:1.5em"></div>
     </div>

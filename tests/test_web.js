@@ -881,6 +881,38 @@ function slotOf(id) {
     CHECK(errs2.length && errs2[0]._text.includes("no_such_card"), "错误里应点名是哪个组件");
   }
 
+  /* ---------------------------------------------------------------- G114 */
+  /* 测试台状态行不许"左右抽搐"：那一行的胶囊每 600ms 换一次内容
+     （动作 idle↔surprised、眨眼 0.00↔1.00、fps 9.9↔10.1），
+     只要是 inline-block + 比例字体，任何一个变长都会把右边所有胶囊推着走。
+     用户 2026-10-16 原话："测试台状态会左右轻微抽搐"。
+     这里不跑浏览器，直接查死 test.html 的结构与样式约定。 */
+  {
+    SECTION("测试台状态行：内容变长也不许推动邻居（G114）");
+    const html = fs.readFileSync(path.join(WEB, "test.html"), "utf8");
+    const IDS = ["p-act", "p-expr", "p-blink", "p-scale", "p-sleep", "p-fps", "p-region"];
+    const row = html.match(/<div class="pillrow"[\s\S]*?<\/div>/);
+    CHECK(!!row, "状态行应挂 class=pillrow（固定格子排版）");
+    if (row) {
+      IDS.forEach((id) => {
+        CHECK(row[0].includes('id="' + id + '"'), "状态行应包含胶囊 " + id);
+      });
+      const keys = (row[0].match(/data-w="([a-z]+)"/g) || []).map((m) => m.slice(8, -1));
+      CHECK(keys.length === IDS.length,
+            "每个胶囊都要带 data-w 才能定宽（实际 " + keys.length + "/" + IDS.length + "）");
+      keys.forEach((k) => {
+        const re = new RegExp("\\.pillrow \\.pill\\[data-w=\"" + k + "\"\\][^}]*min-width:\\s*\\d+px");
+        CHECK(re.test(html), "data-w=" + k + " 必须有 min-width，否则内容一变长就推邻居");
+      });
+    }
+    CHECK(/\.pillrow\s*\{[^}]*display:\s*flex/.test(html), "pillrow 应是 flex 容器");
+    CHECK(/\.pillrow \.pill\s*\{[^}]*font-variant-numeric:\s*tabular-nums/.test(html),
+          "状态行数字要走 tabular-nums，否则 0.00→1.00 这种也会抖宽度");
+    /* fps 本身仍要在刷新，别把抖动"修"成不更新了 */
+    const tjs = fs.readFileSync(path.join(WEB, "test.js"), "utf8");
+    CHECK(/\$\("p-fps"\)\.textContent\s*=/.test(tjs), "p-fps 仍要被刷新（别把问题修成不更新）");
+  }
+
   console.log("");
   console.log(fail === 0
     ? "通过 " + pass + " 项，失败 0 项"
