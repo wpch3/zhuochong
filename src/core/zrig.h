@@ -44,6 +44,12 @@ int   zrig_region_count(const zrig *r);
 void  zrig_tick(zrig *r, double now);
 /* 合成当前帧。scale 为窗口缩放（1.0 = 画布原始比例）。
  * 返回内部帧缓冲（只读，尺寸写入 out_w/out_h）。 */
+/* 这一帧用几个线程做分块合成（默认 = CPU 核数，上限 8；
+   环境变量 ZC_RENDER_THREADS 可覆盖，对拍单线程/多线程就靠它）。 */
+int zrig_render_threads(void);
+/* 强制指定渲染线程数（1 = 单线程）。测试拿它做"单线程 vs 多线程逐字节一致"的对拍。 */
+void zrig_set_render_threads(int n);
+
 const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h);
 
 /* --------------------------------------------------------------- 交互 */

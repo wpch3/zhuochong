@@ -747,6 +747,73 @@ def check_no_stale_decisions(root):
               else f"lol max_tier={lol.get('max_tier')}")
 
 
+def check_render_parallel(root):
+    """分块渲染与 PNG 并行编码的结构性前提（T30.2，2026-10-15 加）。
+
+    这两处的正确性闸在 tests/test_core.c（逐字节对拍）和 tools/api_smoke.py
+    （用 Python 标准 zlib 解 /api/frame.png）里，跑起来要半分钟。
+    这里只做**静态**的那几条：谁把关键代码删了，1 秒内就红。
+
+    为什么这几条值得单独拦：
+      · 所有会写 dst 的 zimg 函数都必须尊重 clip_y，漏一个就是静默的数据竞争
+        —— 画面偶尔花一下，复现不出来，查到死；
+      · zimg_new 用的 z_alloc 是裸 malloc，clip 字段不显式清零就是随机裁剪；
+      · send_png 曾经是"写 /tmp 再读回来再 remove"，每帧三次文件系统往返，
+        谁改回去都等于白做这一轮；
+      · adler32 必须是延迟取模版（每字节取模慢 7 倍，4.6MB 14.3ms → 2.1ms）。
+    """
+    section("渲染分块 / PNG 并行的结构前提")
+    zimg_c = os.path.join(root, "src", "core", "zimg.c")
+    zimg_h = os.path.join(root, "src", "core", "zimg.h")
+    zrig_c = os.path.join(root, "src", "core", "zrig.c")
+    zdef_c = os.path.join(root, "src", "core", "zdeflate.c")
+    head_c = os.path.join(root, "src", "headless", "main_headless.c")
+    mk = os.path.join(root, "Makefile")
+    for f in (zimg_c, zimg_h, zrig_c, zdef_c, head_c, mk):
+        if not os.path.isfile(f):
+            return
+    rd = lambda f: io.open(f, encoding="utf-8").read()
+    ic, ih, rc, dc, hc, mkt = rd(zimg_c), rd(zimg_h), rd(zrig_c), rd(zdef_c), rd(head_c), rd(mk)
+
+    check("zimg 结构里有行裁剪字段 clip_y0/clip_y1",
+          "clip_y0" in ih and "clip_y1" in ih)
+    check("zimg_new 显式初始化 clip（z_alloc 不清零）",
+          "im->clip_y0 = 0;" in ic and "im->clip_y1 = 0;" in ic)
+    # 四个会写 dst 的入口都要调一次 zimg_clip_range
+    nclip = ic.count("zimg_clip_range(")
+    check("zimg.c 里尊重 clip 的写入点 ≥ 4 处（clear/draw_impl/draw_tri/composite）",
+          nclip >= 5, f"{nclip} 处（含定义）")
+    check("zimg_band 还在（分块靠它做共享像素的带视图）",
+          "zimg zimg_band(" in ic)
+    check("zrig 每条带各有自己的 scratch/maskbuf（共享会互相 clear 掉）",
+          "band_scratch" in rc and "band_maskbuf" in rc)
+    check("zrig 起线程前预分配带缓冲（惰性分配会在多线程里抢同一个槽）",
+          "if (!r->band_scratch[i]) r->band_scratch[i] = zimg_new(fw, fh);" in rc)
+    check("单线程路径会把带缓冲的 clip 重置成整幅",
+          "b.scratch->clip_y1 = fh;" in rc)
+    check("zrig_set_render_threads 还在（测试靠它做单线程/多线程对拍）",
+          "void zrig_set_render_threads(" in rc)
+
+    check("deflate 支持可拼接分段 zdeflate_lz77_part",
+          "size_t zdeflate_lz77_part(" in dc)
+    check("非末段要补空 stored 块对齐到字节（不然位流错位）",
+          "while (b.bitcnt != 0) bw_putbit(&b, 0);" in dc)
+    check("adler32 是延迟取模版（批长 5552）",
+          "5552" in dc and "z_adler32" in dc)
+    check("拼接流的 adler32 按原始数据算",
+          "z_adler32(raw, rawlen)" in dc)
+    check("PNG 编码走并行行带", "z_parallel_for(nb, png_band" in ic)
+
+    # ⚠ 别拿 "zc_frame_" 当判据：那串字还留在解释这段历史的注释里（第一版就这么误报了）。
+    #    要查的是**代码**：有没有再去写临时文件、再读回来。
+    check("send_png 走内存编码，不再写 /tmp 再读回来",
+          "zimg_encode_png(im, &len)" in hc
+          and "zimg_save_png(im, tmp_path" not in hc
+          and "z_read_file(tmp_path" not in hc)
+    check("Makefile 带 -pthread（少了它线程创建会失败）",
+          "-pthread" in mkt)
+
+
 def check_engine_caps(root):
     """rig 里声明的条数不许超过引擎的静态上限（2026-10-14 加）。
 
@@ -2219,7 +2286,7 @@ def main():
     print(f"仓库自检（静态核对）：{root}")
     for fn in (check_memory, check_plan_traceability, check_no_stale_decisions,
                check_decisions, check_acceptance,
-               check_json, check_rig, check_engine_caps, check_torso_inertia,
+               check_json, check_rig, check_engine_caps, check_render_parallel, check_torso_inertia,
                check_tiptoe_grounded, check_foot_switch, check_feet_on_ground,
                check_head_body_link,
                check_neck_seam,

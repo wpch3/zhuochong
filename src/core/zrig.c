@@ -13,6 +13,21 @@
 #define ZRIG_MAX_PHYS     24
 #define ZRIG_MAX_PARAMS   64   /* 2026-10-14：下半身补了膝盖/重心/踮脚 4 个参数后 50 个，48 不够用了 */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
+#define ZRIG_MAX_BANDS     8     /* 分块渲染最多切几条行带（= 最多用几个线程） */
+
+/* 线程：渲染分块用。没有 pthread / Win32 线程时整体退化成单线程，
+   行为完全一致（render_band 顺序跑），只是慢。 */
+#if defined(_WIN32)
+#  define ZRIG_THREADS 1
+#  include <windows.h>
+#  include <process.h>
+#elif defined(__unix__) || defined(__APPLE__)
+#  define ZRIG_THREADS 1
+#  include <pthread.h>
+#  include <unistd.h>
+#else
+#  define ZRIG_THREADS 0
+#endif
 #define ZRIG_MAX_POSE      8     /* 互斥部件组（≈ pose3.json 的 Groups） */
 #define ZRIG_MAX_POSE_ENT 24     /* 所有组的"档位"总数 */
 #define ZRIG_MAX_POSE_MEM 48     /* 所有档位引用的部件总数 */
@@ -354,6 +369,9 @@ struct zrig {
     zimg  *fb;
     zimg  *maskbuf;           /* 遮罩部件画在这里（只取它的 alpha） */
     zimg  *scratch;           /* 被裁切的部件先画在这里，再按遮罩合成到 fb */
+    /* 分块渲染每条带各一份（共享会被 zimg_clear 互相清掉） */
+    zimg  *band_scratch[ZRIG_MAX_BANDS];
+    zimg  *band_maskbuf[ZRIG_MAX_BANDS];
     double fb_scale;
     int    fb_w, fb_h;
     double view_scale;        /* 平台层打算用的缩放；首帧渲染出来之前靠它换算坐标 */
@@ -2357,6 +2375,13 @@ void zrig_free(zrig *r)
     zimg_free(r->fb);
     zimg_free(r->maskbuf);
     zimg_free(r->scratch);
+    {
+        int bi;
+        for (bi = 0; bi < ZRIG_MAX_BANDS; ++bi) {
+            zimg_free(r->band_scratch[bi]); r->band_scratch[bi] = NULL;
+            zimg_free(r->band_maskbuf[bi]); r->band_maskbuf[bi] = NULL;
+        }
+    }
     free(r);
 }
 
@@ -3440,30 +3465,134 @@ static void draw_state(zimg *dst, const zdrawst *st, int blend)
 /* 把 p 的遮罩源画进 maskbuf（多个遮罩取并集；mask_invert 时再取反）。
    返回 0 = 遮罩完全不可见（例如眨眼时眼眶被藏起来）→ 被裁的部件这一帧也不画，
    与 Live2D 的 clipping 语义一致。取反遮罩则相反：遮罩消失＝整块可见。 */
-static int build_maskbuf(zrig *r, const zpart *p, double scale, double blink,
-                         const zaction *a)
+static int build_maskbuf(zrig *r, zimg *maskbuf, const zpart *p, double scale,
+                         double blink, const zaction *a)
 {
     int k, any = 0;
-    if (!r->maskbuf) r->maskbuf = zimg_new(r->fb->w, r->fb->h);
-    if (!r->maskbuf) return 0;
-    zimg_clear(r->maskbuf);
+    if (!maskbuf) return 0;
+    zimg_clear(maskbuf);
     for (k = 0; k < p->nmask; ++k) {
         zdrawst ms;
         if (!compute_draw_state(r, p->mask[k], scale, blink, a, &ms)) continue;
         ms.opacity = 1.0;              /* 遮罩只用形状，不用它自己的透明度 */
-        draw_state(r->maskbuf, &ms, ZIMG_BLEND_NORMAL);
+        draw_state(maskbuf, &ms, ZIMG_BLEND_NORMAL);
         any = 1;
     }
     if (p->mask_invert) {
-        size_t n = (size_t)r->maskbuf->w * r->maskbuf->h, q;
+        /* 取反也只许碰分给本线程的那几行 */
+        int iy0 = (maskbuf->clip_y1 > maskbuf->clip_y0) ? maskbuf->clip_y0 : 0;
+        int iy1 = (maskbuf->clip_y1 > maskbuf->clip_y0) ? maskbuf->clip_y1 : maskbuf->h;
+        size_t n = (size_t)(iy1 - iy0) * maskbuf->w, q;
+        uint8_t *base = maskbuf->px + (size_t)iy0 * maskbuf->w * 4;
         for (q = 0; q < n; ++q) {
-            uint8_t *px = r->maskbuf->px + q * 4;
+            uint8_t *px = base + q * 4;
             px[3] = (uint8_t)(255 - px[3]);
             px[0] = px[1] = px[2] = 255;
         }
         return 1;                      /* 取反后遮罩不可能是"全透明" */
     }
     return any;
+}
+
+static void free_band_bufs(zrig *r)
+{
+    int bi;
+    for (bi = 0; bi < ZRIG_MAX_BANDS; ++bi) {
+        zimg_free(r->band_scratch[bi]); r->band_scratch[bi] = NULL;
+        zimg_free(r->band_maskbuf[bi]); r->band_maskbuf[bi] = NULL;
+    }
+}
+
+/* ---------------------------------------------- 分块渲染（T30.2）
+   合成本身是"按层序把 44 个部件逐像素混到 fb 上"，不同 y 的像素互不影响，
+   所以按**行带**切开、每个线程在自己的带里跑一遍完整的层序，结果和单线程
+   **逐字节相同**（test_core 有这条闸）。坐标系不切——每个线程拿的是 fb 的
+   浅拷贝头 + 一段 clip_y，画布坐标保持全局，省掉所有矩阵平移的麻烦。
+   maskbuf / scratch 必须每线程一份：它们会被 zimg_clear 整段清掉，共享就是竞争。 */
+typedef struct {
+    zrig          *r;
+    zimg           fb;        /* fb 的带视图（共享像素） */
+    zimg          *scratch;   /* 本线程私有 */
+    zimg          *maskbuf;   /* 本线程私有 */
+    double         scale, blink;
+    const zaction *a;
+} zband;
+
+static void render_band(zband *b)
+{
+    zrig *r = b->r;
+    int i;
+    for (i = 0; i < r->nparts; ++i) {
+        int pi = r->order[i];
+        zpart *p = &r->parts[pi];
+        zdrawst st;
+        zimg *target = &b->fb;
+        if (!compute_draw_state(r, pi, b->scale, b->blink, b->a, &st)) continue;
+        if (p->mask_only) continue;      /* 只当遮罩用的部件不出现在画面上 */
+
+        /* 被裁切：先按需把遮罩画进 maskbuf（可以是多个部件的并集 + 可取反），
+           再把自己画进 scratch，最后按遮罩 alpha 合成到画面。
+           遮罩是**当场渲染**的，所以不要求遮罩和被裁件在图层里挨着。 */
+        if (p->nmask > 0) {
+            if (!build_maskbuf(r, b->maskbuf, p, b->scale, b->blink, b->a)) continue;
+            if (!b->scratch) continue;
+            zimg_clear(b->scratch);
+            target = b->scratch;
+        }
+        /* 被遮罩的部件先画进 scratch（那里是空的，必须用普通混合），
+           混合模式留到 composite_masked 那一步再按真正的目标画面算。 */
+        draw_state(target, &st, (target == &b->fb) ? p->blend : ZIMG_BLEND_NORMAL);
+        if (target != &b->fb)
+            zimg_composite_masked_blend(&b->fb, b->scratch, b->maskbuf, p->blend);
+    }
+}
+
+#if ZRIG_THREADS
+#  ifdef _WIN32
+static unsigned __stdcall band_thread(void *arg) { render_band((zband *)arg); return 0; }
+#  else
+static void *band_thread(void *arg) { render_band((zband *)arg); return NULL; }
+#  endif
+#endif
+
+/* 渲染线程数：默认跟 CPU 核数走（上限 ZRIG_MAX_BANDS），
+   环境变量 ZC_RENDER_THREADS 可以覆盖——**对拍单线程/多线程就靠它**。 */
+static int g_render_threads = -1;   /* <0 = 还没定；由 zrig_render_threads() 首次调用时算出 */
+
+void zrig_set_render_threads(int n)
+{
+    if (n < 1) n = 1;
+    if (n > ZRIG_MAX_BANDS) n = ZRIG_MAX_BANDS;
+    g_render_threads = n;
+}
+
+int zrig_render_threads(void)
+{
+    int cached = g_render_threads;
+    if (cached > 0) return cached;
+    {
+        const char *e = getenv("ZC_RENDER_THREADS");
+        int n = 0;
+        if (e && *e) n = atoi(e);
+        if (n <= 0) {
+#if ZRIG_THREADS
+#  ifdef _WIN32
+            SYSTEM_INFO si;
+            GetSystemInfo(&si);
+            n = (int)si.dwNumberOfProcessors;
+#  else
+            long sc = sysconf(_SC_NPROCESSORS_ONLN);
+            n = (sc > 0) ? (int)sc : 1;
+#  endif
+#else
+            n = 1;
+#endif
+        }
+        if (n < 1) n = 1;
+        if (n > ZRIG_MAX_BANDS) n = ZRIG_MAX_BANDS;
+        g_render_threads = n;
+    }
+    return g_render_threads;
 }
 
 const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
@@ -3485,6 +3614,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
         r->fb = zimg_new(fw, fh);
         zimg_free(r->maskbuf); r->maskbuf = NULL;
         zimg_free(r->scratch); r->scratch = NULL;
+        free_band_bufs(r);
         r->fb_scale = scale;
         r->fb_w = fw;
         r->fb_h = fh;
@@ -3493,6 +3623,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
         r->fb = zimg_new(fw, fh);
         zimg_free(r->maskbuf); r->maskbuf = NULL;
         zimg_free(r->scratch); r->scratch = NULL;
+        free_band_bufs(r);
         r->fb_w = fw;
         r->fb_h = fh;
     }
@@ -3502,27 +3633,62 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
     a = current_action(r);
     {
         double blink = r->blink_now;      /* 表情叠加后的最终闭合度 */
-        for (i = 0; i < r->nparts; ++i) {
-            int pi = r->order[i];
-            zpart *p = &r->parts[pi];
-            zdrawst st;
-            zimg *target = r->fb;
-            if (!compute_draw_state(r, pi, scale, blink, a, &st)) continue;
-            if (p->mask_only) continue;      /* 只当遮罩用的部件不出现在画面上 */
-
-            /* 被裁切：先按需把遮罩画进 maskbuf（可以是多个部件的并集 + 可取反），
-               再把自己画进 scratch，最后按遮罩 alpha 合成到画面。
-               遮罩是**当场渲染**的，所以不要求遮罩和被裁件在图层里挨着。 */
-            if (p->nmask > 0) {
-                if (!build_maskbuf(r, p, scale, blink, a)) continue;  /* 遮罩全不可见 = 我也看不见 */
-                if (!r->scratch) r->scratch = zimg_new(r->fb->w, r->fb->h);
-                if (r->scratch) { zimg_clear(r->scratch); target = r->scratch; }
+        int nb = zrig_render_threads();
+        if (nb > fh) nb = fh;             /* 带比行还多没意义 */
+        if (nb < 1) nb = 1;
+        /* 每条带的 scratch/maskbuf 是惰性分配的，必须在**起线程之前**备好，
+           不然两个线程会同时去 malloc 同一个槽位。 */
+        for (i = 0; i < nb; ++i) {
+            if (!r->band_scratch[i]) r->band_scratch[i] = zimg_new(fw, fh);
+            if (!r->band_maskbuf[i]) r->band_maskbuf[i] = zimg_new(fw, fh);
+        }
+        if (nb == 1) {
+            zband b;
+            b.r = r; b.fb = zimg_band(r->fb, 0, fh);
+            b.scratch = r->band_scratch[0]; b.maskbuf = r->band_maskbuf[0];
+            /* 必须显式写回"整幅"：上一帧可能是多线程跑的，band_scratch[0] 还留着
+               [0, fh/nb) 的旧 clip，不重置的话这一帧 y 靠下的带遮罩部件会整个消失。 */
+            b.scratch->clip_y0 = 0; b.scratch->clip_y1 = fh;
+            b.maskbuf->clip_y0 = 0; b.maskbuf->clip_y1 = fh;
+            b.scale = scale; b.blink = blink; b.a = a;
+            render_band(&b);
+        } else {
+            zband bands[ZRIG_MAX_BANDS];
+            int k;
+            for (k = 0; k < nb; ++k) {
+                int y0 = (int)((long)fh * k / nb);
+                int y1 = (int)((long)fh * (k + 1) / nb);
+                bands[k].r = r;
+                bands[k].fb = zimg_band(r->fb, y0, y1);
+                bands[k].scratch = r->band_scratch[k];
+                bands[k].maskbuf = r->band_maskbuf[k];
+                /* 带视图要和 fb 同尺寸同坐标系，只是 clip 不同 */
+                bands[k].scratch->clip_y0 = y0; bands[k].scratch->clip_y1 = y1;
+                bands[k].maskbuf->clip_y0 = y0; bands[k].maskbuf->clip_y1 = y1;
+                bands[k].scale = scale; bands[k].blink = blink; bands[k].a = a;
             }
-            /* 被遮罩的部件先画进 scratch（那里是空的，必须用普通混合），
-               混合模式留到 composite_masked 那一步再按真正的目标画面算。 */
-            draw_state(target, &st, (target == r->fb) ? p->blend : ZIMG_BLEND_NORMAL);
-            if (target != r->fb)
-                zimg_composite_masked_blend(r->fb, r->scratch, r->maskbuf, p->blend);
+#if ZRIG_THREADS
+            {
+#  ifdef _WIN32
+                HANDLE th[ZRIG_MAX_BANDS];
+                for (k = 1; k < nb; ++k)
+                    th[k] = (HANDLE)_beginthreadex(NULL, 0, band_thread, &bands[k], 0, NULL);
+                render_band(&bands[0]);        /* 主线程也干一份活 */
+                for (k = 1; k < nb; ++k)
+                    if (th[k]) { WaitForSingleObject(th[k], INFINITE); CloseHandle(th[k]); }
+#  else
+                pthread_t th[ZRIG_MAX_BANDS];
+                int started[ZRIG_MAX_BANDS];
+                for (k = 1; k < nb; ++k)
+                    started[k] = (pthread_create(&th[k], NULL, band_thread, &bands[k]) == 0);
+                render_band(&bands[0]);        /* 主线程也干一份活 */
+                for (k = 1; k < nb; ++k)
+                    if (started[k]) pthread_join(th[k], NULL);
+#  endif
+            }
+#else
+            for (k = 0; k < nb; ++k) render_band(&bands[k]);
+#endif
         }
     }
 

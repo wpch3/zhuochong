@@ -13,6 +13,20 @@
 #define STBI_NO_LINEAR
 #include "../third_party/stb_image.h"
 
+/* 取这张图当前允许写的行范围。clip_y1<=clip_y0 = 不裁剪 = 整幅。
+   所有会写 dst 的循环都必须先过这一关，否则分块渲染时线程会互相踩。 */
+static void zimg_clip_range(const zimg *im, int *y0, int *y1)
+{
+    if (im->clip_y1 > im->clip_y0) {
+        *y0 = im->clip_y0 < 0 ? 0 : im->clip_y0;
+        *y1 = im->clip_y1 > im->h ? im->h : im->clip_y1;
+    } else {
+        *y0 = 0;
+        *y1 = im->h;
+    }
+}
+
+
 zimg *zimg_new(int w, int h)
 {
     zimg *im;
@@ -20,6 +34,10 @@ zimg *zimg_new(int w, int h)
     im = (zimg *)z_alloc(sizeof(zimg));
     im->w = w;
     im->h = h;
+    /* z_alloc 是裸 malloc，不清零 —— clip 字段必须显式初始化成"不裁剪"，
+       否则新图会带着垃圾裁剪范围，画出来少半截还查不出原因。 */
+    im->clip_y0 = 0;
+    im->clip_y1 = 0;
     im->px = (uint8_t *)z_calloc((size_t)w * h * 4, 1);
     return im;
 }
@@ -86,11 +104,16 @@ void zimg_composite_masked_blend(zimg *dst, const zimg *src, const zimg *mask, i
     /* 把 src 合成到 dst，但只在 mask 不透明的地方生效（alpha 相乘）。
        这就是 Live2D 的 clipping mask：眼球画成完整的圆，靠眼眶形状裁出可见部分，
        眼球移动时边缘始终贴着眼眶，不会滑出去。 */
-    int x, y;
+    int x, y, y_from, y_to;
     if (!dst || !src) return;
     if (dst->w != src->w || dst->h != src->h) return;
     if (mask && (mask->w != dst->w || mask->h != dst->h)) return;
-    for (y = 0; y < dst->h; ++y) {
+    {
+        int cy0, cy1;
+        zimg_clip_range(dst, &cy0, &cy1);
+        y_from = cy0; y_to = cy1;
+    }
+    for (y = y_from; y < y_to; ++y) {
         uint8_t *dp = dst->px + (size_t)y * (size_t)dst->w * 4;
         const uint8_t *sp = src->px + (size_t)y * (size_t)src->w * 4;
         const uint8_t *mp = mask ? mask->px + (size_t)y * (size_t)mask->w * 4 : NULL;
@@ -165,8 +188,24 @@ zimg *zimg_clone(const zimg *im)
 
 void zimg_clear(zimg *im)
 {
+    int y0, y1;
     if (!im) return;
-    memset(im->px, 0, (size_t)im->w * im->h * 4);
+    zimg_clip_range(im, &y0, &y1);
+    if (y1 <= y0) return;
+    memset(im->px + (size_t)y0 * im->w * 4, 0, (size_t)(y1 - y0) * im->w * 4);
+}
+
+zimg zimg_band(const zimg *im, int y0, int y1)
+{
+    zimg v;
+    memset(&v, 0, sizeof(v));
+    if (!im) return v;
+    v = *im;
+    if (y0 < 0) y0 = 0;
+    if (y1 > im->h) y1 = im->h;
+    v.clip_y0 = y0;
+    v.clip_y1 = y1;
+    return v;
 }
 
 /* stb 回调式读取（不依赖 stdio 之外的东西，但我们要自己控制路径/错误） */
@@ -264,62 +303,119 @@ static void png_chunk(zbuf *out, const char *type, const uint8_t *data, size_t l
     zbuf_be32(out, crc);
 }
 
-int zimg_save_png(const zimg *im, const char *path, zerr *err)
+/* ---------------------------------------------------------- PNG 并行编码
+
+   一帧 848x1360 的编码耗时拆开看（2 核沙箱实测）：滤波 17ms + deflate 72ms。
+   两段都能按**行带**切开并行：
+     - 滤波：第 y 行的 Up 滤波要读第 y-1 行，但那只是**读源图**，跨带读没有竞争；
+       每条带把结果写进 raw 缓冲里自己那一段，互不重叠。
+     - deflate：每条带压成一个 BFINAL=0 的段（末尾补空 stored 块对齐到字节），
+       最后一段 BFINAL=1，按字节拼起来就是合法的 zlib 流（pigz 就是这么干的）。
+   代价是每段开头 LZ77 窗口是空的，压缩率略降；实测 4 段 12.7% → 13.0%，可以接受。 */
+
+#define ZIMG_PNG_MAX_BANDS 8
+
+typedef struct {
+    const zimg *im;
+    uint8_t    *raw;          /* 滤波后的 (1+stride)*h 字节，各带写自己那段 */
+    size_t      stride;
+    int         y0[ZIMG_PNG_MAX_BANDS], y1[ZIMG_PNG_MAX_BANDS];
+    size_t      roff[ZIMG_PNG_MAX_BANDS], rlen[ZIMG_PNG_MAX_BANDS];
+    uint8_t    *part[ZIMG_PNG_MAX_BANDS];
+    size_t      plen[ZIMG_PNG_MAX_BANDS];
+    int         nb;
+} png_job;
+
+static void png_band(void *vctx, int bi)
 {
-    zbuf raw = {0}, png = {0};
-    uint8_t *zdata = NULL;
-    size_t zlen = 0;
+    png_job *j = (png_job *)vctx;
+    const zimg *im = j->im;
+    size_t stride = j->stride;
+    uint8_t *cand = (uint8_t *)z_alloc(stride * 3 + 3);
+    uint8_t *o = j->raw + j->roff[bi];
     int y;
+    for (y = j->y0[bi]; y < j->y1[bi]; ++y) {
+        const uint8_t *cur  = im->px + (size_t)y * stride;
+        /* 第 0 行没有上一行；其它行（含带的第一行）正常读上一行——只读不写，安全 */
+        const uint8_t *prev = (y > 0) ? im->px + (size_t)(y - 1) * stride : NULL;
+        uint8_t *f0 = cand, *f1 = cand + stride, *f2 = cand + stride * 2;
+        long score[3];
+        size_t i;
+        int best = 0;
+        score[0] = score[1] = score[2] = 0;
+        for (i = 0; i < stride; ++i) {
+            int a = (i >= 4) ? cur[i - 4] : 0;
+            int b = prev ? prev[i] : 0;
+            f0[i] = cur[i];
+            f1[i] = (uint8_t)(cur[i] - a);
+            f2[i] = (uint8_t)(cur[i] - b);
+            score[0] += (signed char)f0[i] < 0 ? -(signed char)f0[i] : (signed char)f0[i];
+            score[1] += (signed char)f1[i] < 0 ? -(signed char)f1[i] : (signed char)f1[i];
+            score[2] += (signed char)f2[i] < 0 ? -(signed char)f2[i] : (signed char)f2[i];
+        }
+        if (score[1] < score[best]) best = 1;
+        if (score[2] < score[best]) best = 2;
+        *o++ = (uint8_t)best;
+        memcpy(o, (best == 0) ? f0 : (best == 1 ? f1 : f2), stride);
+        o += stride;
+    }
+    free(cand);
+    j->plen[bi] = zdeflate_lz77_part(j->raw + j->roff[bi], j->rlen[bi],
+                                     &j->part[bi], (bi == j->nb - 1) ? 1 : 0);
+}
+
+/* 把 im 编成 PNG 放进内存，返回 malloc 出来的缓冲（调用方 free），失败返回 NULL。
+   原来只有 zimg_save_png，预览服务器为了拿到字节流只能"写 /tmp 再读回来再 remove"——
+   每帧三次文件系统往返。帧接口是热路径，这条必须走内存。 */
+uint8_t *zimg_encode_png(const zimg *im, size_t *out_len)
+{
+    png_job j;
+    zbuf png;
+    uint8_t *zdata = NULL, *result = NULL;
+    size_t zlen = 0, rawlen;
     uint8_t ihdr[13];
     static const uint8_t sig[8] = { 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
+    int k, nb, ok = 1;
 
-    if (!im || !path) { zerr_set(err, path, 0, 0, "", "参数为空"); return -1; }
+    if (out_len) *out_len = 0;
+    if (!im || im->w <= 0 || im->h <= 0) return NULL;
 
-    /* 逐行自适应滤波（None / Sub / Up），按“绝对值和最小”选择，
-     * 让大片透明与渐变区域更容易被 RLE 压缩。 */
-    {
-        size_t stride = (size_t)im->w * 4;
-        uint8_t *cand = (uint8_t *)z_alloc(stride * 3 + 3);
-        for (y = 0; y < im->h; ++y) {
-            const uint8_t *cur = im->px + (size_t)y * stride;
-            const uint8_t *prev = (y > 0) ? im->px + (size_t)(y - 1) * stride : NULL;
-            size_t i;
-            long score[3] = {0, 0, 0};
-            int best = 0;
-            uint8_t *f0 = cand;
-            uint8_t *f1 = cand + stride;
-            uint8_t *f2 = cand + stride * 2;
-            for (i = 0; i < stride; ++i) {
-                int a = (i >= 4) ? cur[i - 4] : 0;
-                int b = prev ? prev[i] : 0;
-                f0[i] = cur[i];
-                f1[i] = (uint8_t)(cur[i] - a);
-                f2[i] = (uint8_t)(cur[i] - b);
-            }
-            for (i = 0; i < stride; ++i) {
-                score[0] += (signed char)f0[i] < 0 ? -(signed char)f0[i] : (signed char)f0[i];
-                score[1] += (signed char)f1[i] < 0 ? -(signed char)f1[i] : (signed char)f1[i];
-                score[2] += (signed char)f2[i] < 0 ? -(signed char)f2[i] : (signed char)f2[i];
-            }
-            if (score[1] < score[best]) best = 1;
-            if (score[2] < score[best]) best = 2;
-            {
-                uint8_t ft = (uint8_t)best;
-                const uint8_t *src = (best == 0) ? f0 : (best == 1 ? f1 : f2);
-                zbuf_put(&raw, &ft, 1);
-                zbuf_put(&raw, src, stride);
-            }
-        }
-        free(cand);
+    memset(&j, 0, sizeof(j));
+    memset(&png, 0, sizeof(png));
+    j.im = im;
+    j.stride = (size_t)im->w * 4;
+    rawlen = (j.stride + 1) * (size_t)im->h;
+    j.raw = (uint8_t *)z_alloc(rawlen);
+
+    nb = z_hw_threads();
+    if (nb > ZIMG_PNG_MAX_BANDS) nb = ZIMG_PNG_MAX_BANDS;
+    /* 小图分段不划算（线程开销 + 压缩率损失），而且段太碎 adler 都算不回本 */
+    if (rawlen < 256 * 1024) nb = 1;
+    if (nb > im->h) nb = im->h;
+    if (nb < 1) nb = 1;
+    j.nb = nb;
+    for (k = 0; k < nb; ++k) {
+        j.y0[k] = (int)((long)im->h * k / nb);
+        j.y1[k] = (int)((long)im->h * (k + 1) / nb);
+        j.roff[k] = (j.stride + 1) * (size_t)j.y0[k];
+        j.rlen[k] = (j.stride + 1) * (size_t)(j.y1[k] - j.y0[k]);
     }
 
-    zlen = zlib_compress_rle(raw.buf, raw.len, &zdata);
-    free(raw.buf);
-    if (!zdata || zlen == 0) {
-        zerr_set(err, path, 0, 0, "", "压缩失败");
-        free(zdata);
-        return -1;
+    z_parallel_for(nb, png_band, &j);
+
+    for (k = 0; k < nb; ++k) if (!j.part[k] || j.plen[k] == 0) ok = 0;
+    if (ok) {
+        zlen = zlib_wrap_parts((const uint8_t *const *)j.part, j.plen, nb,
+                               j.raw, rawlen, &zdata);
     }
+    if (!ok || !zdata || zlen == 0) {
+        /* 任何一段压缩失败就整体退回单段老路，宁慢勿错 */
+        free(zdata); zdata = NULL;
+        zlen = zlib_compress_rle(j.raw, rawlen, &zdata);
+    }
+    for (k = 0; k < nb; ++k) free(j.part[k]);
+    free(j.raw);
+    if (!zdata || zlen == 0) { free(zdata); return NULL; }
 
     zbuf_put(&png, sig, 8);
     ihdr[0] = (uint8_t)((unsigned)im->w >> 24); ihdr[1] = (uint8_t)((unsigned)im->w >> 16);
@@ -334,11 +430,22 @@ int zimg_save_png(const zimg *im, const char *path, zerr *err)
     png_chunk(&png, "IEND", NULL, 0);
     free(zdata);
 
-    {
-        int rc = z_write_file(path, png.buf, png.len, err);
-        free(png.buf);
-        return rc;
-    }
+    result = png.buf;
+    if (out_len) *out_len = png.len;
+    return result;
+}
+
+int zimg_save_png(const zimg *im, const char *path, zerr *err)
+{
+    size_t len = 0;
+    uint8_t *png;
+    int rc;
+    if (!im || !path) { zerr_set(err, path, 0, 0, "", "参数为空"); return -1; }
+    png = zimg_encode_png(im, &len);
+    if (!png) { zerr_set(err, path, 0, 0, "", "压缩失败"); return -1; }
+    rc = z_write_file(path, png, len, err);
+    free(png);
+    return rc;
 }
 
 /* ============================================================ 抠色/处理 */
@@ -642,6 +749,13 @@ static void draw_impl(zimg *dst, const zimg *src, const double m[6], double opac
     }
     x0 = ZC_CLAMP(x0, 0, dst->w); x1 = ZC_CLAMP(x1, 0, dst->w);
     y0 = ZC_CLAMP(y0, 0, dst->h); y1 = ZC_CLAMP(y1, 0, dst->h);
+    {   /* 分块渲染：只画分给我的那几行（坐标系不变，仍是整幅画布坐标） */
+        int cy0, cy1;
+        zimg_clip_range(dst, &cy0, &cy1);
+        if (y0 < cy0) y0 = cy0;
+        if (y1 > cy1) y1 = cy1;
+        if (y1 <= y0) return;
+    }
 
     /* 源矩形约束（半像素容差，保证相邻分段不重叠也不漏缝） */
     if (sx0 < 0) sx0 = 0;
@@ -714,6 +828,13 @@ static void draw_tri(zimg *dst, const zimg *src, double opacity,
     x1 = ZC_CLAMP((int)ceil(maxx) + 1, 0, dst->w);
     y0 = ZC_CLAMP((int)floor(miny), 0, dst->h);
     y1 = ZC_CLAMP((int)ceil(maxy) + 1, 0, dst->h);
+    {   /* 分块渲染的行裁剪（网格形变这条路也得走，漏一条就是静默的竞争） */
+        int cy0, cy1;
+        zimg_clip_range(dst, &cy0, &cy1);
+        if (y0 < cy0) y0 = cy0;
+        if (y1 > cy1) y1 = cy1;
+        if (y1 <= y0) return;
+    }
 
     for (py = y0; py < y1; ++py) {
         for (px = x0; px < x1; ++px) {

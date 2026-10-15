@@ -148,6 +148,13 @@ double zrand_range(zrand *r, double a, double b);
 /* 指数分布（眨眼间隔用） */
 double zrand_expo(zrand *r, double mean);
 
+/* ------------------------------------------------ 并行（渲染/编码分块用）
+   把 [0,n) 的活分给 n 个 worker 跑。没有线程支持时顺序跑，结果完全一致。
+   fn 必须只碰自己那一份数据——所有调用点都有"并行结果 == 串行结果"的闸。 */
+void z_parallel_for(int n, void (*fn)(void *ctx, int idx), void *ctx);
+/* 可用的硬件并行度（CPU 核数，至少 1）。 */
+int  z_hw_threads(void);
+
 #ifdef __cplusplus
 }
 #endif

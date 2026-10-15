@@ -21,6 +21,8 @@ import time
 import urllib.parse
 import urllib.error
 import urllib.request
+import struct
+import zlib
 
 PASS, FAIL = [], []
 
@@ -456,6 +458,48 @@ def run(base, root):
     check("新进程的账本应是干净的", led.get("spent") == 0 and led.get("calls") == 0)
     h0, n0 = a.frame_hash()
     check("frame.png 是张真图", n0 > 2000, "%d 字节 %dx%d" % (n0, info["frame_w"], info["frame_h"]))
+
+    print("== PNG 并行编码：浏览器用的标准解码器必须认这个流 ==")
+    # T30.2：PNG 的 deflate 现在是**多段并行压完再按字节拼接**的。
+    # 自己编自己解很容易两边一起错，所以这里用 Python 自带的 zlib（和浏览器同一类
+    # 标准实现，完全独立于我们的 C 代码）把流整个解出来，并逐项验：
+    #   结构 / 每个 chunk 的 CRC32 / deflate 流正常终止 / adler32 / 反滤波后的像素数
+    _, png_bytes = a.get("/api/frame.png?t=%d" % (time.time() * 1000))
+    ok_sig = png_bytes[:8] == b"\x89PNG\r\n\x1a\n"
+    check("PNG 签名正确", ok_sig)
+    if ok_sig:
+        off, idat, pw, ph, crc_bad = 8, b"", 0, 0, []
+        while off + 12 <= len(png_bytes):
+            ln = struct.unpack(">I", png_bytes[off:off + 4])[0]
+            typ = png_bytes[off + 4:off + 8]
+            data = png_bytes[off + 8:off + 8 + ln]
+            crc = struct.unpack(">I", png_bytes[off + 8 + ln:off + 12 + ln])[0]
+            if crc != (zlib.crc32(typ + data) & 0xFFFFFFFF):
+                crc_bad.append(typ.decode("ascii", "replace"))
+            if typ == b"IHDR":
+                pw, ph, bd, ct = struct.unpack(">IIBB", data[:10])
+            if typ == b"IDAT":
+                idat += data
+            off += 12 + ln
+        check("每个 chunk 的 CRC32 都对", not crc_bad, str(crc_bad))
+        check("IHDR 尺寸与 info 一致",
+              pw == info["frame_w"] and ph == info["frame_h"],
+              "%dx%d vs %dx%d" % (pw, ph, info["frame_w"], info["frame_h"]))
+        d = zlib.decompressobj()
+        try:
+            un = d.decompress(idat) + d.flush()
+            err = ""
+        except zlib.error as ex:          # adler32 不对、段拼错都会在这里炸
+            un, err = b"", str(ex)
+        check("标准 zlib 能解开 IDAT（段间拼接合法 + adler32 正确）", not err, err)
+        check("deflate 流正常终止（只有最后一段 BFINAL=1）", bool(un) and d.eof)
+        check("解压后末尾没有多余字节", bool(un) and not d.unused_data)
+        check("反滤波前的长度 = (宽*4+1)*高",
+              len(un) == (pw * 4 + 1) * ph, "%d vs %d" % (len(un), (pw * 4 + 1) * ph))
+        # 滤波类型只允许 None/Sub/Up（我们的编码器就产这三种），越界说明段边界错位
+        if un:
+            fts = set(un[i * (pw * 4 + 1)] for i in range(ph))
+            check("滤波类型都在 0/1/2 之内", fts <= {0, 1, 2}, str(sorted(fts)))
 
     print("== 眨眼（眼睑下滑）==")
     a.hit("/api/blink?v=0"); time.sleep(0.25)

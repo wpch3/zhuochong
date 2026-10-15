@@ -11,9 +11,9 @@
 #       不需要安装 MinGW 工具链。
 
 CC        ?= gcc
-CFLAGS    ?= -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter
+CFLAGS    ?= -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter -pthread
 INC        = -Isrc
-LDLIBS     = -lm
+LDLIBS     = -lm -pthread   # 渲染分块用线程（T30.2）
 BUILD      = build
 
 CORE_SRC   = $(wildcard src/core/*.c)
@@ -62,7 +62,7 @@ selfcheck:
 $(BUILD)/test_core_asan: tests/test_core.c $(CORE_SRC)
 	@mkdir -p $(BUILD)
 	$(CC) -std=c11 -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer \
-		-Wall -Wextra -Wno-unused-parameter $(INC) -o $@ tests/test_core.c $(CORE_SRC) $(LDLIBS)
+		-Wall -Wextra -Wno-unused-parameter -pthread $(INC) -o $@ tests/test_core.c $(CORE_SRC) $(LDLIBS)
 
 asan: $(BUILD)/test_core_asan
 	@echo "== ASan/UBSan 跑单测（慢 3~5 倍，越界/泄漏当场非零退出）=="

@@ -606,3 +606,81 @@ double zrand_expo(zrand *r, double mean)
     if (u < 1e-12) u = 1e-12;
     return -mean * log(u);
 }
+
+/* ============================================================ 并行助手 */
+#if defined(_WIN32)
+#  define ZC_THREADS 1
+#  include <windows.h>
+#  include <process.h>
+#elif defined(__unix__) || defined(__APPLE__)
+#  define ZC_THREADS 1
+#  include <pthread.h>
+#  include <unistd.h>
+#else
+#  define ZC_THREADS 0
+#endif
+
+#define ZC_MAX_WORKERS 16
+
+int z_hw_threads(void)
+{
+    static int cached = 0;
+    if (cached > 0) return cached;
+#if ZC_THREADS
+#  ifdef _WIN32
+    { SYSTEM_INFO si; GetSystemInfo(&si); cached = (int)si.dwNumberOfProcessors; }
+#  else
+    { long sc = sysconf(_SC_NPROCESSORS_ONLN); cached = (sc > 0) ? (int)sc : 1; }
+#  endif
+#else
+    cached = 1;
+#endif
+    if (cached < 1) cached = 1;
+    return cached;
+}
+
+typedef struct {
+    void (*fn)(void *, int);
+    void *ctx;
+    int   idx;
+} zc_job;
+
+#if ZC_THREADS
+#  ifdef _WIN32
+static unsigned __stdcall zc_worker(void *p) { zc_job *j = (zc_job *)p; j->fn(j->ctx, j->idx); return 0; }
+#  else
+static void *zc_worker(void *p) { zc_job *j = (zc_job *)p; j->fn(j->ctx, j->idx); return NULL; }
+#  endif
+#endif
+
+void z_parallel_for(int n, void (*fn)(void *ctx, int idx), void *ctx)
+{
+    int i;
+    if (!fn || n <= 0) return;
+    if (n > ZC_MAX_WORKERS) n = ZC_MAX_WORKERS;
+    if (n == 1) { fn(ctx, 0); return; }
+#if ZC_THREADS
+    {
+        zc_job jobs[ZC_MAX_WORKERS];
+#  ifdef _WIN32
+        HANDLE th[ZC_MAX_WORKERS];
+        for (i = 0; i < n; ++i) { jobs[i].fn = fn; jobs[i].ctx = ctx; jobs[i].idx = i; }
+        for (i = 1; i < n; ++i)
+            th[i] = (HANDLE)_beginthreadex(NULL, 0, zc_worker, &jobs[i], 0, NULL);
+        fn(ctx, 0);                       /* 主线程也干一份 */
+        for (i = 1; i < n; ++i)
+            if (th[i]) { WaitForSingleObject(th[i], INFINITE); CloseHandle(th[i]); }
+#  else
+        pthread_t th[ZC_MAX_WORKERS];
+        int ok[ZC_MAX_WORKERS];
+        for (i = 0; i < n; ++i) { jobs[i].fn = fn; jobs[i].ctx = ctx; jobs[i].idx = i; }
+        for (i = 1; i < n; ++i)
+            ok[i] = (pthread_create(&th[i], NULL, zc_worker, &jobs[i]) == 0);
+        fn(ctx, 0);                       /* 主线程也干一份 */
+        for (i = 1; i < n; ++i) if (ok[i]) pthread_join(th[i], NULL);
+#  endif
+    }
+#else
+    for (i = 0; i < n; ++i) fn(ctx, i);
+#endif
+}

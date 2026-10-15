@@ -176,29 +176,18 @@ static void send_text(zsock fd, int code, const char *ctype, const char *body)
 static void send_png(zsock fd, const zimg *im)
 {
     char head[512];
-    /* 内存编码 PNG：复用 zimg_save_png 需要路径，这里用临时文件（沙箱足够） */
-    static char tmp_path[256];
     size_t len = 0;
-    char *data;
-    zerr e;
-    zerr_clear(&e);
-    /* 文件名要带进程号与自增序号：只用时间戳的话，两个并发请求会撞在同一个
-       文件上，一边写一边被另一边 remove，前端就会收到半张图。 */
-    {
-        static unsigned long seq = 0;
-        static unsigned start_tag = 0;
-        if (start_tag == 0) start_tag = (unsigned)(pet_now() * 1000.0);
-        z_snprintf(tmp_path, sizeof(tmp_path), "/tmp/zc_frame_%u_%lu.png",
-                   start_tag, seq++);
-    }
-    if (!im || zimg_save_png(im, tmp_path, &e) != 0) {
+    uint8_t *data;
+    /* 直接在内存里编码。以前这里是"写 /tmp/zc_frame_*.png → 读回来 → remove"，
+       每帧三次文件系统往返，还得给文件名拼进程号+序号防并发撞车；
+       换成 zimg_encode_png 之后那堆问题整个消失了。 */
+    if (!im) {
         send_text(fd, 500, "text/plain", "帧编码失败");
         return;
     }
-    data = z_read_file(tmp_path, &len, &e);
-    remove(tmp_path);
+    data = zimg_encode_png(im, &len);
     if (!data) {
-        send_text(fd, 500, "text/plain", "帧读取失败");
+        send_text(fd, 500, "text/plain", "帧编码失败");
         return;
     }
     z_snprintf(head, sizeof(head),

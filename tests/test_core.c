@@ -3781,6 +3781,287 @@ static void test_action_param_channels(void)
    0.00~0.28s ∪ → 0.30~0.86s ∩ → 1.01s 又 ∪）。截图很容易抓到那两段。
    修法是去掉这些动作的 blink_hold，闭合度交给 blink = max(blink, smile) 自己跟。
    这条闸直接守用户看到的那件事：只要眼睛闭到一半以上，就必须在笑。 */
+/* ============================================================ T30.2 分块渲染
+
+   渲染提速的做法是把画布按**行带**切开、每条带起一个线程各跑一遍完整层序。
+   这类改动最容易出的事是"快了但画面悄悄变了"，所以这里的主闸不是性能数字，
+   而是 **多线程输出必须与单线程逐字节相同**。性能只做弱断言（CI 机器会抖）。 */
+
+static void test_png_parallel_encode(void)
+{
+    /* PNG 编码也按行带并行了（滤波 + deflate 各自分段，段间按字节拼接）。
+       这里的闸同样是"并行 == 串行"，而且要**用独立解码器**验收：
+       自己编自己解很容易两边一起错，所以回读走 stb_image（zimg_load），
+       另外 tools/api_smoke.py 里还有一条用 Python 标准 zlib 解 /api/frame.png 的闸。
+
+       变异检验（2026-10-15 实测）见 api_smoke 与 LESSONS；这里锁的是像素一致性。 */
+    int W = 320, H = 240, x, y;
+    zimg *src = zimg_new(W, H);
+    char path[1024];
+    zerr e;
+    SECTION("PNG 并行编码：分段压缩的流必须能被标准解码器还原成同样的像素");
+    /* 造一张有渐变、有纯色块、有透明区的图：三种滤波器都会被选到 */
+    for (y = 0; y < H; ++y) {
+        for (x = 0; x < W; ++x) {
+            size_t o = ((size_t)y * W + x) * 4;
+            if (x < W / 4) { src->px[o] = (uint8_t)x; src->px[o+1] = (uint8_t)y; src->px[o+2] = 90; src->px[o+3] = 255; }
+            else if (x < W / 2) { src->px[o] = 200; src->px[o+1] = 30; src->px[o+2] = 30; src->px[o+3] = 255; }
+            else if (x < 3 * W / 4) { src->px[o+3] = 0; }
+            else { src->px[o] = (uint8_t)((x * y) & 0xFF); src->px[o+1] = (uint8_t)(x ^ y);
+                   src->px[o+2] = (uint8_t)(x + y); src->px[o+3] = (uint8_t)(128 + (y & 63)); }
+        }
+    }
+    zerr_clear(&e);
+    z_snprintf(path, sizeof(path), "/tmp/zc_png_parallel_%d.png", (int)getpid());
+    CHECK(zimg_save_png(src, path, &e) == 0, "PNG 应能写出");
+    {
+        zimg *back = zimg_load(path, &e);
+        CHECK(back != NULL, "写出的 PNG 应能被 stb_image 读回来（流必须合法）");
+        if (back) {
+            size_t n = (size_t)W * H * 4, q, diff = 0;
+            CHECK(back->w == W && back->h == H, "回读尺寸应一致");
+            if (back->w == W && back->h == H)
+                for (q = 0; q < n; ++q) if (back->px[q] != src->px[q]) ++diff;
+            CHECK(diff == 0, "PNG 必须无损：回读像素与原图逐字节相同");
+            zimg_free(back);
+        }
+    }
+    remove(path);
+
+    {   /* deflate 分段本身：part(final=0) + part(final=1) 拼起来，
+           解出来必须和一次压完的原始数据相同。
+           这是"段间拼接"唯一的正确性来源，必须单独有闸。 */
+        size_t n = 200000, q;
+        uint8_t *data = (uint8_t *)z_alloc(n);
+        uint8_t *p1 = NULL, *p2 = NULL, *whole = NULL, *joined = NULL;
+        size_t l1, l2, lw, lj;
+        const uint8_t *parts[2];
+        size_t plens[2];
+        for (q = 0; q < n; ++q) data[q] = (uint8_t)((q / 97) ^ (q & 0x3F));
+        l1 = zdeflate_lz77_part(data, n / 2, &p1, 0);
+        l2 = zdeflate_lz77_part(data + n / 2, n - n / 2, &p2, 1);
+        CHECK(l1 > 0 && l2 > 0, "两段都应压缩成功");
+        parts[0] = p1; parts[1] = p2;
+        plens[0] = l1; plens[1] = l2;
+        lj = zlib_wrap_parts(parts, plens, 2, data, n, &joined);
+        lw = zlib_compress_rle(data, n, &whole);
+        CHECK(lj > 0 && lw > 0, "拼接与整体压缩都应成功");
+        /* 两个 zlib 流的末 4 字节都是同一份 adler32（按原始数据算） */
+        if (lj > 4 && lw > 4)
+            CHECK(memcmp(joined + lj - 4, whole + lw - 4, 4) == 0,
+                  "拼接流的 adler32 必须和整体压缩的一致（按原始数据算，不是按段）");
+        CHECK(joined && joined[0] == 0x78 && joined[1] == 0x01, "拼接流要有 zlib 头");
+        free(p1); free(p2); free(whole); free(joined); free(data);
+    }
+
+    {   /* adler32 延迟取模必须和朴素每字节取模结果一模一样 */
+        size_t n = 70000, q;
+        uint8_t *d = (uint8_t *)z_alloc(n);
+        uint32_t a = 1, b = 0;
+        for (q = 0; q < n; ++q) d[q] = (uint8_t)(q * 7);
+        for (q = 0; q < n; ++q) { a = (a + d[q]) % 65521; b = (b + a) % 65521; }
+        CHECK(z_adler32(d, n) == ((b << 16) | a),
+              "z_adler32（延迟取模）要与朴素实现同值（跨过 5552 批边界）");
+        free(d);
+    }
+    zimg_free(src);
+}
+
+static void test_zimg_clip_rows(void)
+{
+    /* zimg 层：所有会写 dst 的函数都必须尊重 clip_y。
+       这四个函数任何一个漏掉，多线程就会静默地互相踩。 */
+    int W = 8, H = 8, x, y;
+    SECTION("zimg 行裁剪：clip 外的行一个字节都不许动");
+    {
+        zimg *im = zimg_new(W, H);
+        CHECK(im->clip_y0 == 0 && im->clip_y1 == 0,
+              "zimg_new 必须把 clip 显式清零（z_alloc 是裸 malloc，不清零）");
+        /* --- zimg_clear --- */
+        for (y = 0; y < H; ++y)
+            for (x = 0; x < W; ++x) im->px[((size_t)y * W + x) * 4 + 3] = 255;
+        im->clip_y0 = 2; im->clip_y1 = 5;
+        zimg_clear(im);
+        {
+            int bad_in = 0, bad_out = 0;
+            for (y = 0; y < H; ++y) {
+                int cleared = (im->px[(size_t)y * W * 4 + 3] == 0);
+                if (y >= 2 && y < 5) { if (!cleared) bad_in++; }
+                else                 { if (cleared)  bad_out++; }
+            }
+            CHECK(bad_in == 0,  "zimg_clear 应清掉 clip 内的行");
+            CHECK(bad_out == 0, "zimg_clear 不许碰 clip 外的行");
+        }
+        zimg_free(im);
+    }
+    {   /* --- draw_rect（走 draw_impl，普通部件这条路） --- */
+        zimg *im  = zimg_new(W, H);
+        zimg *src = zimg_new(W, H);
+        double m[6];
+        int bad_in = 0, bad_out = 0;
+        for (y = 0; y < H; ++y) for (x = 0; x < W; ++x) {
+            size_t o = ((size_t)y * W + x) * 4;
+            src->px[o] = 255; src->px[o + 3] = 255;
+        }
+        /* 单位变换：tx = m[0]*x + m[2]*y + m[4]，ty = m[1]*x + m[3]*y + m[5]。
+           m[3] 写成 0 的话行列式就是 0，draw_impl 直接 return，什么都不画（踩过）。 */
+        m[0] = 1.0; m[1] = 0.0; m[2] = 0.0;
+        m[3] = 1.0; m[4] = 0.0; m[5] = 0.0;
+        im->clip_y0 = 2; im->clip_y1 = 5;
+        zimg_draw_rect(im, src, m, 1.0, 0, 0, W, H);
+        for (y = 0; y < H; ++y) {
+            int painted = (im->px[(size_t)y * W * 4 + 3] != 0);
+            if (y >= 2 && y < 5) { if (!painted) bad_in++; }
+            else                 { if (painted)  bad_out++; }
+        }
+        CHECK(bad_in == 0,  "draw_rect 应画满 clip 内的行");
+        CHECK(bad_out == 0, "draw_rect 不许画到 clip 外的行");
+        zimg_free(im); zimg_free(src);
+    }
+    {   /* --- composite_masked_blend（被遮罩的部件走这条路）---
+           注意：真 rig 上这条分支观测不到差异，因为带遮罩的部件（眼睛/眉毛幽灵）
+           全在头部、正好落在第 0 带里。所以负控必须在 zimg 这一层直接做。 */
+        zimg *dst = zimg_new(W, H), *src = zimg_new(W, H), *mask = zimg_new(W, H);
+        int bad_in = 0, bad_out = 0;
+        for (y = 0; y < H; ++y) for (x = 0; x < W; ++x) {
+            size_t o = ((size_t)y * W + x) * 4;
+            dst->px[o] = 10; dst->px[o + 3] = 255;
+            src->px[o] = 200; src->px[o + 3] = 255;
+            mask->px[o + 3] = 255;
+        }
+        dst->clip_y0 = 2; dst->clip_y1 = 5;
+        zimg_composite_masked_blend(dst, src, mask, ZIMG_BLEND_NORMAL);
+        for (y = 0; y < H; ++y) {
+            int changed = (dst->px[(size_t)y * W * 4] != 10);
+            if (y >= 2 && y < 5) { if (!changed) bad_in++; }
+            else                 { if (changed)  bad_out++; }
+        }
+        CHECK(bad_in == 0,  "composite_masked_blend 应合成 clip 内的行");
+        CHECK(bad_out == 0, "composite_masked_blend 不许碰 clip 外的行");
+        zimg_free(dst); zimg_free(src); zimg_free(mask);
+    }
+    {   /* --- zimg_band 自己 --- */
+        zimg *im = zimg_new(W, H);
+        zimg v = zimg_band(im, 3, 6);
+        CHECK(v.px == im->px && v.w == im->w && v.h == im->h,
+              "zimg_band 必须共享像素、保持整幅坐标系（分块不改坐标）");
+        CHECK(v.clip_y0 == 3 && v.clip_y1 == 6, "zimg_band 应设好 clip 范围");
+        v = zimg_band(im, -5, 999);
+        CHECK(v.clip_y0 == 0 && v.clip_y1 == H, "zimg_band 应把越界范围钳回画布内");
+        zimg_free(im);
+    }
+}
+
+/* 渲一帧到新缓冲里（调用方负责 free）。threads<=0 表示不动当前设置。 */
+static uint8_t *render_once(zrig *r, int threads, double scale, int *w, int *h)
+{
+    const zimg *fb;
+    uint8_t *out;
+    if (threads > 0) zrig_set_render_threads(threads);
+    fb = zrig_frame(r, scale, w, h);
+    if (!fb) return NULL;
+    out = (uint8_t *)malloc((size_t)(*w) * (*h) * 4);
+    memcpy(out, fb->px, (size_t)(*w) * (*h) * 4);
+    return out;
+}
+
+/* 把 rig 推到某个动作的第 nframes 帧。时间线必须连续（见 test_smile_action_sync 的坑）。 */
+static void wind_to_action(zrig *r, const char *act, int nframes)
+{
+    int i;
+    for (i = 0; i < nframes; ++i) zrig_tick(r, 100.0 + i * 0.033);
+    zrig_action_request(r, act, "test", 1);
+    for (i = 0; i < nframes; ++i) zrig_tick(r, 100.0 + (nframes + i) * 0.033);
+}
+
+static void test_render_bands_identical(void)
+{
+    /* ★ T30.2 主闸：分块渲染出来的画面必须和单线程**逐字节相同**。
+       变异检验（2026-10-15 实测，848x1360 wave 第 30 帧）：
+         - draw_impl 忽略 clip      → 79052 字节不同，最大差 241  ✅判红
+         - draw_tri 忽略 clip       → 34734 字节不同，最大差 166  ✅判红
+         - 各带共享 scratch/maskbuf → 7877  字节不同，最大差 241  ✅判红
+       （composite 忽略 clip 在真 rig 上观测不到，负控在 test_zimg_clip_rows 里做。） */
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    const char *acts[4];
+    double scales[3];
+    int ai, si;
+    SECTION("分块渲染：多线程输出与单线程逐字节相同");
+    acts[0] = "idle"; acts[1] = "wave"; acts[2] = "head_pat"; acts[3] = "happy";
+    scales[0] = 0.55; scales[1] = 1.0; scales[2] = 1.3;
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（分块渲染）");
+    if (!r) return;
+    zrig_blink_set_enabled(r, 0);   /* 自动眨眼带随机，两次渲染得是同一个状态 */
+
+    for (ai = 0; ai < 4; ++ai) {
+        for (si = 0; si < 3; ++si) {
+            uint8_t *one, *many;
+            int w1, h1, w2, h2;
+            size_t n, q, diff = 0;
+            int maxd = 0;
+            char msg[256];
+            wind_to_action(r, acts[ai], 30);
+            /* 同一个 rig 状态、同一个 scale，只换线程数 */
+            one  = render_once(r, 1, scales[si], &w1, &h1);
+            many = render_once(r, 4, scales[si], &w2, &h2);
+            if (!one || !many) { CHECK(0, "渲染应返回画面"); free(one); free(many); continue; }
+            CHECK(w1 == w2 && h1 == h2, "分块不该改变画面尺寸");
+            n = (size_t)w1 * h1 * 4;
+            for (q = 0; q < n && w1 == w2 && h1 == h2; ++q) {
+                int dd = (int)one[q] - (int)many[q];
+                if (dd) { ++diff; if (dd < 0) dd = -dd; if (dd > maxd) maxd = dd; }
+            }
+            z_snprintf(msg, sizeof(msg),
+                       "%s @scale %.2f：4 线程与单线程逐字节相同（实差 %lu 字节，最大 %d）",
+                       acts[ai], scales[si], (unsigned long)diff, maxd);
+            CHECK(diff == 0, msg);
+            free(one); free(many);
+        }
+    }
+
+    /* 换过线程数之后再换回来也必须一致：band_scratch 的 clip 得被正确重置，
+       否则 y 靠下的带遮罩部件会整个消失（这个 bug 写出来过，当场抓到的）。 */
+    {
+        uint8_t *a1, *a2, *a3;
+        int w, h, w2b, h2b, w3, h3;
+        size_t n, q, d12 = 0, d13 = 0;
+        /* ⚠ 这里必须用 8 线程，不能用 4：scale 1.0 时画布高 1360，
+           4 线程的第 0 带是 [0,340)，眼睛（y≈266~300，唯一带遮罩的部件）正好在里面，
+           clip 没重置也看不出来。8 线程的第 0 带 [0,170) 在眼睛上方，才能把 bug 暴露出来。 */
+        wind_to_action(r, "wave", 30);
+        a1 = render_once(r, 1, 1.0, &w, &h);     /* 一直单线程 */
+        a2 = render_once(r, 8, 1.0, &w2b, &h2b); /* 切到 8 线程 */
+        a3 = render_once(r, 1, 1.0, &w3, &h3);   /* 再切回单线程 */
+        n = (size_t)w * h * 4;
+        if (a1 && a2 && a3 && w == w2b && w == w3 && h == h2b && h == h3) {
+            for (q = 0; q < n; ++q) {
+                if (a1[q] != a2[q]) ++d12;
+                if (a1[q] != a3[q]) ++d13;
+            }
+        }
+        CHECK(d12 == 0, "1→8 线程切换后画面不变");
+        CHECK(d13 == 0, "8→1 线程切回后画面不变（band 缓冲的 clip 必须重置）");
+        free(a1); free(a2); free(a3);
+    }
+
+    zrig_set_render_threads(1);
+    {
+        int n = zrig_render_threads();
+        CHECK(n == 1, "zrig_set_render_threads 应能强制单线程");
+        zrig_set_render_threads(999);
+        CHECK(zrig_render_threads() <= 8, "线程数应被钳在 ZRIG_MAX_BANDS(8) 以内");
+        zrig_set_render_threads(0);
+        CHECK(zrig_render_threads() >= 1, "线程数不许小于 1");
+    }
+    zrig_free(r);
+}
+
 static void test_smile_action_sync(void)
 {
     char rig_path[1024], dir[1024];
@@ -4919,6 +5200,9 @@ int main(int argc, char **argv)
     test_expression_blend();
     test_sleep_wake_blink();
     test_eye_smile();
+    test_png_parallel_encode();
+    test_zimg_clip_rows();
+    test_render_bands_identical();
     test_smile_action_sync();
     test_action_param_channels();
     test_action_fade_sine();

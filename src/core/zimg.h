@@ -19,7 +19,17 @@ extern "C" {
 typedef struct {
     int      w, h;
     uint8_t *px;   /* RGBA8，长度 w*h*4，直通 alpha（非预乘） */
+    /* 行裁剪 [clip_y0, clip_y1)：所有写这张图的函数都只许碰这个范围内的行。
+       clip_y1 <= clip_y0 表示"不裁剪"（zimg_new 默认就是不裁）。
+       这是多线程分块渲染的基础：N 个线程拿同一张 fb 的**浅拷贝头**，
+       各自设一段 y，坐标系完全不变（还是整幅画布的坐标），
+       于是分块前后的像素可以要求**逐字节相同**——那条闸比任何性能数字都重要。 */
+    int      clip_y0, clip_y1;
 } zimg;
+
+/* 做一个共享像素、只负责某几行的"视图"。返回的是栈上可用的值类型，
+   不要对它调 zimg_free（它不拥有 px）。 */
+zimg  zimg_band(const zimg *im, int y0, int y1);
 
 /* --------------------------------------------------------------- 生命周期 */
 zimg *zimg_new(int w, int h);                  /* 全透明 */
@@ -36,6 +46,8 @@ void  zimg_clear(zimg *im);                    /* 清为全透明 */
 zimg     *zimg_load(const char *path, zerr *err);
 /* 写 PNG（RGBA8，无压缩存储块）。成功返回 0。 */
 int       zimg_save_png(const zimg *im, const char *path, zerr *err);
+/* 内存里编 PNG（返回 malloc 的缓冲，调用方 free）。帧接口走这条，不碰磁盘。 */
+uint8_t  *zimg_encode_png(const zimg *im, size_t *out_len);
 
 /* --------------------------------------------------------------- 处理 */
 /* 按键色抠透明（用于 AI 生成图：纯洋红/绿色背景）。
