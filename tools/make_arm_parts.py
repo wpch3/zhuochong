@@ -41,7 +41,13 @@ FEATHER = 2                         # 切口羽化半径（像素）
 BLEED = 5                           # 躯干切口往外塗り足し的圈数
 LINE_RGB = (90, 90, 110)            # 线稿色 #5A5A6E：补出来的衣片也要有轮廓线
 LINE_W = 2                          # 轮廓线宽（像素）
-SHOULDER_CAP = 46                   # 肩头保留给躯干的高度（像素）
+# ---- 袖根塗り足し（G108：上臂看着太细）----
+ROOT_TARGET_Q = 0.80                # 目标袖宽 = 上臂逐行宽度的 80 分位
+ROOT_EXT_MAX = 46                   # 单行最多往身体里补多少像素
+ROOT_TOP_RAMP = 40                  # 顶端这么多行内把补绘量从 0 渐渐加满（不留水平直边）
+ROOT_SHADE = 0.90                   # 补到最里侧时的明度系数（内侧背光，略压暗）
+ROOT_CLEAR_SEAM = 0                 # 0 = **不要**抹上臂贴图里那条袖缝线（试过，静止帧会坏）
+ROOT_LAYER = {"l": 95, "r": 96}     # **画在躯干(100)底下**：静止时被夹克完全盖住
 
 
 def skin_of(rgb, m):
@@ -226,6 +232,75 @@ def bleed(rgb, have, into, rounds=5):
     return out_rgb, grown, dist
 
 
+def root_fill(body, up, side, hidden):
+    """袖根塗り足し（G108）：把上臂的袖子往身体里多画一截，**画在躯干底下**。
+
+    为什么要补：袖子是沿袖缝切的，上臂露出来的只有夹克身**没盖住**的那一条，
+    逐行宽度从肩头的 23px 长到肘部的 68px。手臂一抬，这条楔形整个转出来，
+    肩那头细得像根棍子（用户原话"上臂看起来很细十分不平衡"）。
+    真实的袖子在夹克身底下还有一截，那一截必须补出来。
+
+    为什么安全：补出来的像素全部落在 `hidden`（躯干不透明区 ∪ 袖子自己）里，
+    而且这件的层号 95/96 **低于躯干 100**，静止时一个像素都看不见
+    —— 不是靠"看不出来"，是靠遮挡关系保证，静止合成差不会变。
+
+    怎么补：逐行把宽度补到 80 分位宽（≈肘部宽度），顶端 ROOT_TOP_RAMP 行做
+    smoothstep 渐入，免得转出来是一条水平直边。颜色取袖缝内侧 6px 的中位色
+    （避开 2px 线稿），往里渐暗到 ROOT_SHADE，最后在新的内缘描一道线稿。
+    """
+    H, W = up.shape
+    rows = np.nonzero(up.any(axis=1))[0]
+    if rows.size == 0:
+        return np.zeros((H, W), bool), body[..., :3].copy(), 0.0
+    y0 = int(rows.min())
+    edges, widths = {}, []
+    for y in rows:
+        rs = row_runs(up[y])
+        if not rs:
+            continue
+        # **取整行跨度，不是最长那一段**：袖子一行常常被口袋线/下摆条切成两段
+        # （实测 y=480 是 (320,331)+(333,377)）。按最长段取起点，补绘就会压到
+        # 另一段真袖子上，静止时直接在袖子中间糊出一条平色带（第一版就这么错的）。
+        a, b = min(r[0] for r in rs), max(r[1] for r in rs)
+        edges[int(y)] = (a, b)
+        widths.append(b - a + 1)
+    target = float(np.percentile(widths, ROOT_TARGET_Q * 100.0))
+    ext = np.zeros((H, W), bool)
+    rgb = body[..., :3].copy()
+    for y, (a, b) in edges.items():
+        d = min(ROOT_EXT_MAX, int(round(target - (b - a + 1))))
+        if d <= 0:
+            continue
+        t = min(1.0, (y - y0) / float(ROOT_TOP_RAMP))
+        d = int(round(d * (t * t * (3.0 - 2.0 * t))))      # smoothstep
+        if d <= 0:
+            continue
+        if side == "r":                                     # 右臂往左（身体里）补
+            src = body[y, a + 1:a + 7, :3]
+            x0, x1 = max(0, a - d), a
+            ramp = np.linspace(1.0, ROOT_SHADE, x1 - x0)[::-1]
+        else:                                               # 左臂往右补
+            src = body[y, max(0, b - 6):b, :3]
+            x0, x1 = b + 1, min(W, b + 1 + d)
+            ramp = np.linspace(1.0, ROOT_SHADE, x1 - x0)
+        if src.size == 0 or x1 <= x0:
+            continue
+        col = np.median(src.astype(np.float32), axis=0)
+        rgb[y, x0:x1] = np.clip(col[None, :] * ramp[:, None], 0, 255).astype(rgb.dtype)
+        ext[y, x0:x1] = True
+    ext &= erode(hidden, 2)              # 软边也要藏住：先把遮挡区往里收 2px
+    # 新内缘描线稿：转出来之后这条就是袖子的剪影边，没有线会像一块色块
+    full = ext | up
+    rim = (full & ~erode(full, LINE_W)) & ext
+    rim_s = (full & ~erode(full, LINE_W + 1)) & ext
+    ln = np.array(LINE_RGB, np.float32)
+    for mask, k in ((rim_s, 0.45), (rim, 0.9)):
+        if mask.any():
+            cur = rgb[mask].astype(np.float32)
+            rgb[mask] = (cur * (1 - k) + ln * k).astype(rgb.dtype)
+    return ext, rgb, target
+
+
 def cut(rgb, alpha_f, box):
     """按 box=(x0,y0,x1,y1) 裁出 RGBA 图。"""
     x0, y0, x1, y1 = box
@@ -276,12 +351,17 @@ def main():
         arms[side] = fill_outward(m | close, alpha, side)
 
     # ---- 躯干：袖子那块换成 AI 重绘的夹克侧片 ----
-    # 挖袖子时**肩头那一截不挖**：原画里肩膀的圆头是画在袖子上的，
-    # 整块拿走以后躯干的肩膀就是一条平口（用户反馈"这个分割"）。
-    # 让躯干和手臂各留一份肩头（静止时手臂盖在上面、一模一样；
-    # 手臂转开后躯干仍有一个圆肩），这是 2D 拆件里标准的"关节两边各留一份"。
-    sh_y = int(pts["shoulder"][1])
-    occ = dilate(arms["l"] | arms["r"], 2) & (np.arange(H)[:, None] > sh_y + SHOULDER_CAP)
+    # G102/DC36：这里**整条袖子都要拿走，一个像素都不留给躯干**。
+    #
+    # 旧做法是"肩头 SHOULDER_CAP=46 行不挖"，理由写的是"原画里肩膀的圆头画在袖子上，
+    # 整块拿走躯干的肩膀就成了一条平口"。**这个理由当时没验，而且是错的** ——
+    # 留下来的那 46 行是**青色袖子**，它不跟着手臂转，手臂一抬就变成肩膀上
+    # 悬空的一块青色三角（底边还是条直线），正是用户说的"部件和链接没做好"。
+    # 实测把整条袖子拿走之后，露出来的是夹克自己的肩线：
+    # 右肩外缘 y=330→332 / y=340→333 / y=360→328 / y=400→315，是一条**圆肩 + 袖窿**的曲线，
+    # 不是平口（留证 logs/asset_qa/g102_torso_variants.png 三格对比）。
+    # 静止时手臂画在躯干上面（层 140/141 > 100），这块照样被袖子盖住，合成不变。
+    occ = dilate(arms["l"] | arms["r"], 2)
     # 重绘图是洋红底抠出来的，边缘有一圈被烤进 RGB 的紫：这种像素一律不要，
     # 贴进去会直接把 check_assets 的"键色残留"打挂（实测 299/631 是紫边）。
     fr = fill[..., 0].astype(np.int32); fg_ = fill[..., 1].astype(np.int32); fb = fill[..., 2].astype(np.int32)
@@ -332,13 +412,36 @@ def main():
     report["checks"]["torso_filled_px"] = int(paste.sum())
     report["checks"]["torso_cleared_px"] = int(lost.sum())
 
-    # ---- 六件手臂（上臂 / 前臂 / 手 × 左右）----
+    # ---- 六件手臂（上臂 / 前臂 / 手 × 左右）+ 两件袖根 ----
     layer = {"l": 140, "r": 141}
     hand_layer = {"l": 138, "r": 139}       # 手画在**前臂底下**：袖口要压住手腕那截补画
+    torso_solid = newbody[..., 3] > 200
     for side in ("l", "r"):
         m = arms[side]
         elbow_y = int(pts[f"elbow_{side}"][1])
         half = ELBOW_OVERLAP // 2
+        # G108 袖根：先补，再和上臂一起切（补出来的那块是独立一件，层 95/96）
+        up_mask = m & (np.arange(H)[:, None] <= elbow_y + half)
+        hidden = torso_solid | dilate(m, 2)
+        ext, ext_rgb, ext_target = root_fill(body, up_mask, side, hidden)
+        if ext.any():
+            ea = soft(ext)
+            ea[erode(ext, 1)] = 1.0
+            ys, xs = np.nonzero(ea > 0.004)
+            ebox = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
+            name = f"arm_{side}_root"
+            cut(ext_rgb, ea, ebox).save(os.path.join(sp, name + ".png"))
+            report["parts"].append({
+                "id": name, "file": f"sprites/{name}.png",
+                "pos": [ebox[0], ebox[1]],
+                "size": [ebox[2] - ebox[0], ebox[3] - ebox[1]],
+                "group": f"arm_{side}", "layer": ROOT_LAYER[side],
+                "pivot": [float(pts[f"shoulder_{side}"][0]), float(pts[f"shoulder_{side}"][1])],
+                "note": "袖根塗り足し（G108）：袖子在夹克身底下的那一截，层 95/96 画在躯干下面，"
+                        "静止时完全被夹克盖住，手臂转开后补上肩关节、让上臂不再细得像棍子",
+            })
+            report["checks"].setdefault("root_ext_px", {})[side] = int(ext.sum())
+            report["checks"].setdefault("root_target_w", {})[side] = round(ext_target, 1)
         orig_a = (body[..., 3] / 255.0).astype(np.float32)
         yy_col = np.arange(H)[:, None]
         # 手腕 = 袖口到头的那一行（逐行实测，不用 anchors 里按比例算的 708：
@@ -363,6 +466,18 @@ def main():
                 if inner[y, x] and body[y, x, 3] >= 250:
                     hand_rgb[y, x] = c
                     stub[y, x] = True
+        # 【试过并否掉】把上臂贴图里那条袖缝线抹掉（ROOT_CLEAR_SEAM=1）。
+        # 动机是对的：补了袖根之后，这条线从剪影边变成了袖子中间的一条线。
+        # 但实测**静止帧会坏**：那条线下面压着的是躯干被 bleed 渐隐过的切口，
+        # 线一抹，内缘立刻露出一圈毛糙的浅色麻点（留证
+        # logs/asset_qa/g108_seam_ab.png 第三格，对照第一格原画）。
+        # 静止帧必须逐像素忠实于原画，这条优先级更高 —— 保留袖缝线，
+        # 手臂转开后它读作袖子上的一道折痕（原画袖子本来就有折线）。
+        up_rgb = body[..., :3].copy()
+        if ext.any() and ROOT_CLEAR_SEAM:
+            seam = ext & dilate(up_mask, LINE_W + 2) & ~up_mask
+            up_rgb[seam] = ext_rgb[seam]
+            report["checks"].setdefault("seam_cleared_px", {})[side] = int(seam.sum())
         for seg, keep in (("upper", m & (yy_col <= elbow_y + half)),
                           ("fore",  m & (yy_col >= elbow_y - half) & (yy_col <= wrist_y + 1)),
                           ("hand",  (m & (yy_col >= wrist_y)) | stub)):
@@ -383,7 +498,8 @@ def main():
                 a = a * np.clip((yy - (elbow_y - half)) / ELBOW_OVERLAP, 0.0, 1.0)
             ys, xs = np.nonzero(a > 0.004)
             box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
-            img = cut(hand_rgb if seg == "hand" else body[..., :3], a, box)
+            src_rgb = hand_rgb if seg == "hand" else (up_rgb if seg == "upper" else body[..., :3])
+            img = cut(src_rgb, a, box)
             name = f"arm_{side}_{seg}" if seg != "hand" else f"hand_{side}"
             img.save(os.path.join(sp, name + ".png"))
             if seg == "upper":
@@ -417,25 +533,35 @@ def main():
         dst[..., :3] = src_rgb * a + dst[..., :3] * (1 - a)
         dst[..., 3:] = a + dst[..., 3:] * (1 - a)
         return dst
+    # 层序必须和 rig 一致：腿 60/61 → **袖根 95/96** → 躯干 100 → 手 138/139 → 袖子 140+。
+    # 袖根画在躯干底下，这里要是照旧"先躯干后所有拆件"，补出来的那块就会盖在夹克上面，
+    # 静止合成差会假性爆掉（也就看不出真的回归了）。
+    stack = []
     for lid in ("seg_leg_l", "seg_leg_r"):
         lp = next((q for q in bp["parts"] if q["id"] == lid), None)
         if not lp:
             continue
-        li = np.array(Image.open(os.path.join(sp, lid + ".png")).convert("RGBA"))
-        lx, ly = lp["pos"]
-        lb = np.zeros((H, W, 4), np.float32)
-        lb[ly:ly + li.shape[0], lx:lx + li.shape[1], :3] = li[..., :3]
-        lb[ly:ly + li.shape[0], lx:lx + li.shape[1], 3] = li[..., 3] / 255.0
-        comp = over(comp, lb[..., :3], lb[..., 3])
-    comp = over(comp, newbody[..., :3].astype(np.float32), (newbody[..., 3] / 255.0).astype(np.float32))
-    for p in sorted(report["parts"], key=lambda q: q["layer"]):   # 必须按层序叠：手在袖子底下
-        im = np.array(Image.open(os.path.join(sp, os.path.basename(p["file"]))).convert("RGBA"))
-        x, y = p["pos"]
+        stack.append((lp["layer"], os.path.join(sp, lid + ".png"), lp["pos"]))
+    for p in report["parts"]:
+        stack.append((p["layer"], os.path.join(sp, os.path.basename(p["file"])), p["pos"]))
+    torso_layer = int(torso["layer"])
+    for lay, path, pos in sorted(stack, key=lambda q: q[0]):
+        if lay > torso_layer and not report["checks"].get("_torso_done"):
+            comp = over(comp, newbody[..., :3].astype(np.float32),
+                        (newbody[..., 3] / 255.0).astype(np.float32))
+            report["checks"]["_torso_done"] = True
+        im = np.array(Image.open(path).convert("RGBA"))
+        x, y = pos
         h, w = im.shape[:2]
         layerbuf = np.zeros((H, W, 4), np.float32)
         layerbuf[y:y + h, x:x + w, :3] = im[..., :3]
         layerbuf[y:y + h, x:x + w, 3] = im[..., 3] / 255.0
         comp = over(comp, layerbuf[..., :3], layerbuf[..., 3])
+    if not report["checks"].pop("_torso_done", False):
+        comp = over(comp, newbody[..., :3].astype(np.float32),
+                    (newbody[..., 3] / 255.0).astype(np.float32))
+    else:
+        report["checks"].pop("_torso_done", None)
     orig_a = (body[..., 3] / 255.0).astype(np.float32)
     # comp[...,:3] 累加出来已经是预乘 alpha 的值，原图要乘一次 alpha 才同口径
     diff = np.abs(comp[..., :3] - body[..., :3].astype(np.float32) * orig_a[..., None])

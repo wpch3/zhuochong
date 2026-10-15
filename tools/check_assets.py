@@ -395,6 +395,67 @@ def check(character, form, root=".", strict=False, out_json=None):
                     add("鞋", f"常态鞋盖过切线≥{lift:.0f}px({q['id'][-1]})", over >= lift,
                         f"只盖过 {over}px；身体升 {lift:.0f}px 时腿脚之间会裂缝")
 
+            # —— 肩关节三件套（G102/G108，2026-10-15）——
+            #   ① 躯干上不许再留袖子：留了就是那块不跟着手臂转的青色三角（用户报的
+            #      "部件和链接没做好"）。判据写成"躯干压在上臂芯区的像素"，
+            #      比数青色像素稳：帽檐内衬也是青的，数颜色会误伤。
+            #   ② 袖根件静止时必须**一个像素都看不见**（靠遮挡关系，不是靠"看不出来"）。
+            #   ③ 上臂上半段不许再细过前臂太多（G108 用户原话"上臂看起来很细十分不平衡"）。
+            if armp and all(any(q["id"] == f"arm_{s}_root" for q in armp["parts"])
+                            for s in ("l", "r")):
+                def _ero(m, n):
+                    out = m.copy()
+                    for _ in range(n):
+                        o = out.copy()
+                        o[1:, :] &= out[:-1, :]; o[:-1, :] &= out[1:, :]
+                        o[:, 1:] &= out[:, :-1]; o[:, :-1] &= out[:, 1:]
+                        out = o
+                    return out
+
+                def _plate(pid):
+                    q = next(p for p in seg_parts if p["id"] == pid)
+                    a = load_rgba(os.path.join(base, q["file"]))[..., 3]
+                    buf = np.zeros((SH, SW), np.uint8)
+                    buf[q["pos"][1]:q["pos"][1] + a.shape[0],
+                        q["pos"][0]:q["pos"][0] + a.shape[1]] = a
+                    return buf, q
+
+                def _rowspan(m, rows):
+                    out = []
+                    for y in rows:
+                        idx = np.nonzero(m[y])[0]
+                        if idx.size:
+                            out.append(int(idx.max() - idx.min() + 1))
+                    return np.array(out) if out else np.array([0])
+
+                torso_a, torso_q = _plate("seg_torso")
+                for side in ("l", "r"):
+                    up_a, _ = _plate(f"arm_{side}_upper")
+                    rt_a, rt_q = _plate(f"arm_{side}_root")
+                    fo_a, _ = _plate(f"arm_{side}_fore")
+                    core = _ero(up_a > 200, 6)
+                    keep = int(((torso_a > 128) & core).sum())
+                    add("肩关节", f"躯干上没留袖子({side})", keep <= 40,
+                        f"躯干压在上臂芯区 {keep} 像素（上限 40）"
+                        f"——留下来的那块不跟手臂转，抬手就是一块悬空的青色")
+                    show = int(((rt_a > 40) & ~(torso_a > 200) & ~(up_a > 200)).sum())
+                    add("肩关节", f"袖根静止时完全藏住({side})", show == 0,
+                        f"袖根露出 {show} 像素（必须 0：它是补画的，只能靠夹克/袖子压住）")
+                    add("肩关节", f"袖根画在躯干底下({side})",
+                        rt_q["layer"] < torso_q["layer"],
+                        f"袖根层 {rt_q['layer']} < 躯干层 {torso_q['layer']}"
+                        f"（反过来静止时就直接糊在夹克上）")
+                    rows = np.nonzero((up_a > 128).any(axis=1))[0]
+                    frows = np.nonzero((fo_a > 128).any(axis=1))[0]
+                    if rows.size and frows.size:
+                        half = rows[:len(rows) // 2]
+                        w_top = float(np.median(_rowspan((up_a > 128) | (rt_a > 128), half)))
+                        w_fore = float(np.median(_rowspan(fo_a > 128, frows)))
+                        r = w_top / w_fore if w_fore else 0.0
+                        add("肩关节", f"上臂上半段不比前臂细太多({side})", r >= 0.80,
+                            f"上臂上半段中位 {w_top:.0f}px / 前臂中位 {w_fore:.0f}px = {r:.2f}"
+                            f"（下限 0.80；没补袖根时是 0.57~0.60，用户一眼就看出来了）")
+
             def hole_mask(a, y0, y1):
                 """这一段里的"内部空洞"掩码：透明、但上下左右都还有身体。"""
                 sl = a[max(0, y0):min(SH, y1)]

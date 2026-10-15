@@ -163,7 +163,9 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         out += [
             {"id": "ParamArmLA", "label": "左臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 6.0}],
-             "note": "绕肩旋转，±10 → ±60°（袖下躯干已 AI 补绘，转开不露洞）"},
+             "note": "绕肩旋转，±10 → ±60°。肩关节靠两件东西兜住：① 躯干不留任何袖子像素"
+                     "（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し"
+                     "画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子"},
             {"id": "ParamArmRA", "label": "右臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_r", "param": "rot_deg", "scale": -6.0}]},
             {"id": "ParamArmLB", "label": "左小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
@@ -517,6 +519,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                   "seg_arm_l": ["arm"], "seg_arm_r": ["arm"],
                   "arm_l_upper": ["arm"], "arm_l_fore": ["arm"],
                   "arm_r_upper": ["arm"], "arm_r_fore": ["arm"],
+                  "arm_l_root": ["arm"], "arm_r_root": ["arm"],
                   "seg_leg_l": ["leg"], "seg_leg_r": ["leg"],
                   "hair_ahoge": ["hair"], "hair_front": ["hair"],
                   "hair_side_l": ["hair"], "hair_side_r": ["hair"],

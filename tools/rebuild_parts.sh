@@ -74,6 +74,10 @@ step "16/18 闭合笑线剪切（把笑线从 seg_head 上剪下来，必须排�
 "$PY" tools/make_mouth_line_cut.py --character "$CH" --form "$FM"
 
 step "17/18 切件高清化（每个件生成 2× 的 @2x，make_rig 会自动改用并把 scale 乘 0.5）"
+# 先空跑一遍 make_rig 刷新「rig 引用了哪些件」这张表：高清化只给引用到的件做 @2x，
+# 而它读的是上一次的 rig.json。上一步新增了部件时不刷新，新件就会漏掉 @2x
+# （2026-10-15 加 arm_*_root 时实测漏了 2 个，被 selfcheck 的「全量启用」闸抓到）。
+python3 tools/make_rig.py --character "$CH" --form "$FM" >/dev/null
 "$PY" tools/make_hires_sprites.py --character "$CH" --form "$FM"
 
 step "18/18 生成 rig 并验收"

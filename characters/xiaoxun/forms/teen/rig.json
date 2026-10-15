@@ -357,6 +357,25 @@
       "scale": 0.5
     },
     {
+      "id": "arm_l_root",
+      "file": "sprites/arm_l_root@2x.png",
+      "group": "arm_l",
+      "layer": 95,
+      "pos": [
+        303,
+        407
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale": 0.5
+    },
+    {
       "id": "arm_l_upper",
       "file": "sprites/arm_l_upper@2x.png",
       "group": "arm_l",
@@ -409,6 +428,25 @@
       ],
       "tags": [
         "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale": 0.5
+    },
+    {
+      "id": "arm_r_root",
+      "file": "sprites/arm_r_root@2x.png",
+      "group": "arm_r",
+      "layer": 96,
+      "pos": [
+        487,
+        408
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
       "scale": 0.5
@@ -3848,7 +3886,7 @@
           "scale": 6.0
         }
       ],
-      "note": "绕肩旋转，±10 → ±60°（袖下躯干已 AI 补绘，转开不露洞）"
+      "note": "绕肩旋转，±10 → ±60°。肩关节靠两件东西兜住：① 躯干不留任何袖子像素（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子"
     },
     {
       "id": "ParamArmRA",

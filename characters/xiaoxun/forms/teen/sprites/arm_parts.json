@@ -5,6 +5,25 @@
   "elbow_overlap_px": 24,
   "parts": [
     {
+      "id": "arm_l_root",
+      "file": "sprites/arm_l_root.png",
+      "pos": [
+        103,
+        339
+      ],
+      "size": [
+        49,
+        218
+      ],
+      "group": "arm_l",
+      "layer": 95,
+      "pivot": [
+        97.0,
+        364.0
+      ],
+      "note": "袖根塗り足し（G108）：袖子在夹克身底下的那一截，层 95/96 画在躯干下面，静止时完全被夹克盖住，手臂转开后补上肩关节、让上臂不再细得像棍子"
+    },
+    {
       "id": "arm_l_upper",
       "file": "sprites/arm_l_upper.png",
       "pos": [
@@ -60,6 +79,25 @@
         666.0
       ],
       "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住"
+    },
+    {
+      "id": "arm_r_root",
+      "file": "sprites/arm_r_root.png",
+      "pos": [
+        287,
+        340
+      ],
+      "size": [
+        49,
+        167
+      ],
+      "group": "arm_r",
+      "layer": 96,
+      "pivot": [
+        346.0,
+        364.0
+      ],
+      "note": "袖根塗り足し（G108）：袖子在夹克身底下的那一截，层 95/96 画在躯干下面，静止时完全被夹克盖住，手臂转开后补上肩关节、让上臂不再细得像棍子"
     },
     {
       "id": "arm_r_upper",
@@ -120,10 +158,18 @@
     }
   ],
   "checks": {
-    "outline_px": 1412,
+    "outline_px": 1253,
     "torso_thigh_trim_px": 148375,
-    "torso_filled_px": 2,
-    "torso_cleared_px": 36460,
+    "torso_filled_px": 73,
+    "torso_cleared_px": 40713,
+    "root_ext_px": {
+      "l": 2220,
+      "r": 2698
+    },
+    "root_target_w": {
+      "l": 57.0,
+      "r": 63.0
+    },
     "wrist_y": {
       "l": 666,
       "r": 666
@@ -132,7 +178,7 @@
       "l": 338,
       "r": 346
     },
-    "static_diff_px": 440,
+    "static_diff_px": 321,
     "arm_px": {
       "l": 17826,
       "r": 19137
