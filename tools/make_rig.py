@@ -433,7 +433,8 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
-          closed=None, blendp=None, eyeline=None, smile_eyes=None, footp=None):
+          closed=None, blendp=None, eyeline=None, smile_eyes=None, footp=None,
+          base=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -1810,6 +1811,32 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     print(f"  动作通道：{_n_in} 条几何通道 → {_n_out} 条参数通道"
           f"（≈ Live2D .motion3 的 Parameter 曲线）")
 
+    # —— 高清切件（T30.1）：有 @2x 就改用它，scale 乘 0.5 ——
+    #
+    # 为什么放在这里而不是 part() 里：parts_list 有十几处构造点
+    # （part() 只是其中一个，还有眼/嘴/眉/发/鞋各自直接拼 dict 的地方）。
+    # DC41 的教训是"一个行为有几条入口，修一条不等于修好"，
+    # 所以统一在**组装完成之后、写出之前**扫一遍，只有这一个落点，漏不了。
+    #
+    # 画布坐标完全不动：pos 还是画布坐标，anchor 是比例，
+    # 变的只有素材像素密度和与之配套的 scale。
+    hires_used = 0
+    if base:
+        for _p in parts_list:
+            _f = _p.get("file", "")
+            if not _f.endswith(".png") or _f.endswith("@2x.png"):
+                continue
+            _cand = _f[:-4] + "@2x.png"
+            if not os.path.exists(os.path.join(base, _cand)):
+                continue
+            _p["file"] = _cand
+            _sc = _p.get("scale", 1.0)
+            _p["scale"] = ([_sc[0] * 0.5, _sc[1] * 0.5] if isinstance(_sc, list)
+                           else round(_sc * 0.5, 6))
+            hires_used += 1
+        if hires_used:
+            print(f"[rig] 高清切件 {hires_used}/{len(parts_list)} 个用上 @2x（scale ×0.5）")
+
     rig = {
         "schema_version": "1.0",
         "id": f"{name}_teen",
@@ -2213,6 +2240,7 @@ def main() -> int:
             print("警告：嘴部零件缺图，跳过口内", file=sys.stderr)
             mouth = None
     rig = build(parts, sprite, args.canvas, args.name, cw, ch, head_is_part,
+                base=base,
                 seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp,
                 closed=closed, blendp=blendp, eyeline=eyeline, smile_eyes=smile_eyes,
                 footp=footp)

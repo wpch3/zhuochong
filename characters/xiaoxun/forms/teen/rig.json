@@ -148,7 +148,7 @@
   "parts": [
     {
       "id": "seg_leg_l",
-      "file": "sprites/seg_leg_l.png",
+      "file": "sprites/seg_leg_l@2x.png",
       "group": "leg_l",
       "layer": 60,
       "pos": [
@@ -162,11 +162,12 @@
       "tags": [
         "leg"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale": 0.5
     },
     {
       "id": "seg_leg_r",
-      "file": "sprites/seg_leg_r.png",
+      "file": "sprites/seg_leg_r@2x.png",
       "group": "leg_r",
       "layer": 61,
       "pos": [
@@ -180,11 +181,12 @@
       "tags": [
         "leg"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale": 0.5
     },
     {
       "id": "seg_torso",
-      "file": "sprites/seg_torso.png",
+      "file": "sprites/seg_torso@2x.png",
       "group": "chest",
       "layer": 100,
       "pos": [
@@ -199,11 +201,12 @@
         "body"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；颈线 y=346 以上形变不再加大（衣领跟着头走，不然脖子会横向滑移）",
-      "bend_hold_above": 346
+      "bend_hold_above": 346,
+      "scale": 0.5
     },
     {
       "id": "seg_head",
-      "file": "sprites/seg_head.png",
+      "file": "sprites/seg_head@2x.png",
       "group": "head",
       "layer": 180,
       "pos": [
@@ -217,11 +220,12 @@
       "tags": [
         "head_base"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale": 0.5
     },
     {
       "id": "hair_ahoge",
-      "file": "sprites/hair_ahoge.png",
+      "file": "sprites/hair_ahoge@2x.png",
       "group": "head",
       "layer": 190,
       "pos": [
@@ -235,11 +239,12 @@
       "tags": [
         "hair"
       ],
-      "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动"
+      "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动",
+      "scale": 0.5
     },
     {
       "id": "hair_front",
-      "file": "sprites/hair_front.png",
+      "file": "sprites/hair_front@2x.png",
       "group": "head",
       "layer": 240,
       "pos": [
@@ -253,11 +258,12 @@
       "tags": [
         "hair"
       ],
-      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动"
+      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动",
+      "scale": 0.5
     },
     {
       "id": "brow_l",
-      "file": "sprites/brow_l.png",
+      "file": "sprites/brow_l@2x.png",
       "group": "head",
       "layer": 232,
       "pos": [
@@ -271,11 +277,12 @@
       "tags": [
         "brow"
       ],
-      "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）"
+      "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）",
+      "scale": 0.5
     },
     {
       "id": "brow_r",
-      "file": "sprites/brow_r.png",
+      "file": "sprites/brow_r@2x.png",
       "group": "head",
       "layer": 233,
       "pos": [
@@ -289,11 +296,12 @@
       "tags": [
         "brow"
       ],
-      "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）"
+      "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）",
+      "scale": 0.5
     },
     {
       "id": "hair_side_l",
-      "file": "sprites/hair_side_l.png",
+      "file": "sprites/hair_side_l@2x.png",
       "group": "head",
       "layer": 245,
       "pos": [
@@ -307,11 +315,12 @@
       "tags": [
         "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale": 0.5
     },
     {
       "id": "hair_side_r",
-      "file": "sprites/hair_side_r.png",
+      "file": "sprites/hair_side_r@2x.png",
       "group": "head",
       "layer": 246,
       "pos": [
@@ -325,11 +334,12 @@
       "tags": [
         "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale": 0.5
     },
     {
       "id": "hair_back",
-      "file": "sprites/hair_back.png",
+      "file": "sprites/hair_back@2x.png",
       "group": "head",
       "layer": 170,
       "pos": [
@@ -343,11 +353,12 @@
       "tags": [
         "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale": 0.5
     },
     {
       "id": "arm_l_upper",
-      "file": "sprites/arm_l_upper.png",
+      "file": "sprites/arm_l_upper@2x.png",
       "group": "arm_l",
       "layer": 140,
       "pos": [
@@ -361,11 +372,12 @@
       "tags": [
         "arm"
       ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale": 0.5
     },
     {
       "id": "arm_l_fore",
-      "file": "sprites/arm_l_fore.png",
+      "file": "sprites/arm_l_fore@2x.png",
       "group": "forearm_l",
       "layer": 142,
       "pos": [
@@ -379,11 +391,12 @@
       "tags": [
         "arm"
       ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale": 0.5
     },
     {
       "id": "hand_l",
-      "file": "sprites/hand_l.png",
+      "file": "sprites/hand_l@2x.png",
       "group": "hand_l",
       "layer": 138,
       "pos": [
@@ -397,11 +410,12 @@
       "tags": [
         "body"
       ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale": 0.5
     },
     {
       "id": "arm_r_upper",
-      "file": "sprites/arm_r_upper.png",
+      "file": "sprites/arm_r_upper@2x.png",
       "group": "arm_r",
       "layer": 141,
       "pos": [
@@ -415,11 +429,12 @@
       "tags": [
         "arm"
       ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale": 0.5
     },
     {
       "id": "arm_r_fore",
-      "file": "sprites/arm_r_fore.png",
+      "file": "sprites/arm_r_fore@2x.png",
       "group": "forearm_r",
       "layer": 143,
       "pos": [
@@ -433,11 +448,12 @@
       "tags": [
         "arm"
       ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale": 0.5
     },
     {
       "id": "hand_r",
-      "file": "sprites/hand_r.png",
+      "file": "sprites/hand_r@2x.png",
       "group": "hand_r",
       "layer": 139,
       "pos": [
@@ -451,11 +467,12 @@
       "tags": [
         "body"
       ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）"
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale": 0.5
     },
     {
       "id": "seg_foot_l",
-      "file": "sprites/seg_foot_l.png",
+      "file": "sprites/seg_foot_l@2x.png",
       "group": "foot_l",
       "layer": 62,
       "pos": [
@@ -470,11 +487,12 @@
         "leg",
         "foot"
       ],
-      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）",
+      "scale": 0.5
     },
     {
       "id": "seg_foot_l_tip",
-      "file": "sprites/seg_foot_l_tip.png",
+      "file": "sprites/seg_foot_l_tip@2x.png",
       "group": "foot_l",
       "layer": 64,
       "pos": [
@@ -489,11 +507,12 @@
         "leg",
         "foot"
       ],
-      "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+      "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）",
+      "scale": 0.5
     },
     {
       "id": "seg_foot_r",
-      "file": "sprites/seg_foot_r.png",
+      "file": "sprites/seg_foot_r@2x.png",
       "group": "foot_r",
       "layer": 63,
       "pos": [
@@ -508,11 +527,12 @@
         "leg",
         "foot"
       ],
-      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）",
+      "scale": 0.5
     },
     {
       "id": "seg_foot_r_tip",
-      "file": "sprites/seg_foot_r_tip.png",
+      "file": "sprites/seg_foot_r_tip@2x.png",
       "group": "foot_r",
       "layer": 65,
       "pos": [
@@ -527,11 +547,12 @@
         "leg",
         "foot"
       ],
-      "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+      "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）",
+      "scale": 0.5
     },
     {
       "id": "mouth_mask",
-      "file": "sprites/mouth_mask.png",
+      "file": "sprites/mouth_mask@2x.png",
       "group": "head",
       "layer": 205,
       "pos": [
@@ -543,8 +564,8 @@
         0
       ],
       "scale": [
-        1.0,
-        0.0545
+        0.5,
+        0.02725
       ],
       "tags": [
         "mouth"
@@ -554,7 +575,7 @@
     },
     {
       "id": "mouth_cavity",
-      "file": "sprites/mouth_cavity.png",
+      "file": "sprites/mouth_cavity@2x.png",
       "group": "head",
       "layer": 206,
       "pos": [
@@ -566,8 +587,8 @@
         0
       ],
       "scale": [
-        1.0,
-        0.0545
+        0.5,
+        0.02725
       ],
       "tags": [
         "mouth"
@@ -578,7 +599,7 @@
     },
     {
       "id": "mouth_open",
-      "file": "sprites/mouth_open.png",
+      "file": "sprites/mouth_open@2x.png",
       "group": "head",
       "layer": 210,
       "pos": [
@@ -592,11 +613,12 @@
       "tags": [
         "mouth"
       ],
-      "note": "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移"
+      "note": "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移",
+      "scale": 0.5
     },
     {
       "id": "eye_l_socket",
-      "file": "sprites/eye_l_socket.png",
+      "file": "sprites/eye_l_socket@2x.png",
       "group": "head",
       "layer": 216,
       "pos": [
@@ -613,11 +635,12 @@
       "mask_only": true,
       "note": "眼眶开口（46×41px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
       "aperture_min": 0.06,
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale": 0.5
     },
     {
       "id": "eye_l_base",
-      "file": "sprites/eye_l_base.png",
+      "file": "sprites/eye_l_base@2x.png",
       "group": "head",
       "layer": 217,
       "pos": [
@@ -633,11 +656,12 @@
       ],
       "mask": "eye_l_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale": 0.5
     },
     {
       "id": "eye_l_ball",
-      "file": "sprites/eye_l_ball.png",
+      "file": "sprites/eye_l_ball@2x.png",
       "group": "head",
       "layer": 218,
       "pos": [
@@ -654,11 +678,12 @@
       ],
       "mask": "eye_l_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±5/±4px，由眼眶裁切",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale": 0.5
     },
     {
       "id": "eye_l_lash",
-      "file": "sprites/eye_l_lash_up.png",
+      "file": "sprites/eye_l_lash_up@2x.png",
       "group": "head",
       "layer": 220,
       "pos": [
@@ -675,11 +700,12 @@
       "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 21.5px，闭到底 = 那条闭眼线",
       "eyelid_travel": 21.5,
       "lash_hold": 0.5,
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale": 0.5
     },
     {
       "id": "eye_l_closed",
-      "file": "sprites/eye_l_closed.png",
+      "file": "sprites/eye_l_closed@2x.png",
       "group": "head",
       "layer": 221,
       "pos": [
@@ -694,11 +720,12 @@
         "eye_closed"
       ],
       "note": "闭眼（AI 重绘·盖住原画眼睛 99.5%，接缝色差 4.53）：blink=1 时完全显形",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale": 0.5
     },
     {
       "id": "eye_l_smile",
-      "file": "sprites/eye_l_smile.png",
+      "file": "sprites/eye_l_smile@2x.png",
       "group": "head",
       "layer": 223,
       "pos": [
@@ -713,11 +740,12 @@
         "eye_smile"
       ],
       "note": "笑眼（AI 重绘·盖住原画眼睛 99.5%，接缝色差 4.04）：ParamEyeL/RSmile=1 时显形",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale": 0.5
     },
     {
       "id": "eye_r_socket",
-      "file": "sprites/eye_r_socket.png",
+      "file": "sprites/eye_r_socket@2x.png",
       "group": "head",
       "layer": 226,
       "pos": [
@@ -734,11 +762,12 @@
       "mask_only": true,
       "note": "眼眶开口（43×37px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
       "aperture_min": 0.06,
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale": 0.5
     },
     {
       "id": "eye_r_base",
-      "file": "sprites/eye_r_base.png",
+      "file": "sprites/eye_r_base@2x.png",
       "group": "head",
       "layer": 227,
       "pos": [
@@ -754,11 +783,12 @@
       ],
       "mask": "eye_r_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale": 0.5
     },
     {
       "id": "eye_r_ball",
-      "file": "sprites/eye_r_ball.png",
+      "file": "sprites/eye_r_ball@2x.png",
       "group": "head",
       "layer": 228,
       "pos": [
@@ -775,11 +805,12 @@
       ],
       "mask": "eye_r_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±4/±4px，由眼眶裁切",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale": 0.5
     },
     {
       "id": "eye_r_lash",
-      "file": "sprites/eye_r_lash_up.png",
+      "file": "sprites/eye_r_lash_up@2x.png",
       "group": "head",
       "layer": 230,
       "pos": [
@@ -796,11 +827,12 @@
       "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 17.0px，闭到底 = 那条闭眼线",
       "eyelid_travel": 17.0,
       "lash_hold": 0.5,
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale": 0.5
     },
     {
       "id": "eye_r_closed",
-      "file": "sprites/eye_r_closed.png",
+      "file": "sprites/eye_r_closed@2x.png",
       "group": "head",
       "layer": 231,
       "pos": [
@@ -815,11 +847,12 @@
         "eye_closed"
       ],
       "note": "闭眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.26）：blink=1 时完全显形",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale": 0.5
     },
     {
       "id": "eye_r_smile",
-      "file": "sprites/eye_r_smile.png",
+      "file": "sprites/eye_r_smile@2x.png",
       "group": "head",
       "layer": 235,
       "pos": [
@@ -834,11 +867,12 @@
         "eye_smile"
       ],
       "note": "笑眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.23）：ParamEyeL/RSmile=1 时显形",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale": 0.5
     },
     {
       "id": "brow_l_ghost",
-      "file": "sprites/brow_l.png",
+      "file": "sprites/brow_l@2x.png",
       "group": "head",
       "layer": 241,
       "pos": [
@@ -855,11 +889,12 @@
       ],
       "mask": "hair_front",
       "motion_from": "brow_l",
-      "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；通道值照抄 brow_l"
+      "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；通道值照抄 brow_l",
+      "scale": 0.5
     },
     {
       "id": "brow_r_ghost",
-      "file": "sprites/brow_r.png",
+      "file": "sprites/brow_r@2x.png",
       "group": "head",
       "layer": 242,
       "pos": [
@@ -876,11 +911,12 @@
       ],
       "mask": "hair_front",
       "motion_from": "brow_r",
-      "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；通道值照抄 brow_r"
+      "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；通道值照抄 brow_r",
+      "scale": 0.5
     },
     {
       "id": "blush_l",
-      "file": "sprites/blush_l.png",
+      "file": "sprites/blush_l@2x.png",
       "group": "head",
       "layer": 203,
       "pos": [
@@ -894,11 +930,12 @@
       "opacity": 1.0,
       "blend": "multiply",
       "tags": [],
-      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来"
+      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
+      "scale": 0.5
     },
     {
       "id": "blush_r",
-      "file": "sprites/blush_r.png",
+      "file": "sprites/blush_r@2x.png",
       "group": "head",
       "layer": 204,
       "pos": [
@@ -912,11 +949,12 @@
       "opacity": 1.0,
       "blend": "multiply",
       "tags": [],
-      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来"
+      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
+      "scale": 0.5
     },
     {
       "id": "eye_hl_star_l",
-      "file": "sprites/eye_hl_star_l.png",
+      "file": "sprites/eye_hl_star_l@2x.png",
       "group": "head",
       "layer": 222,
       "pos": [
@@ -935,11 +973,12 @@
       ],
       "mask": "eye_l_socket",
       "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale": 0.5
     },
     {
       "id": "eye_hl_l",
-      "file": "sprites/eye_hl_l.png",
+      "file": "sprites/eye_hl_l@2x.png",
       "group": "head",
       "layer": 219,
       "pos": [
@@ -958,11 +997,12 @@
       ],
       "mask": "eye_l_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale": 0.5
     },
     {
       "id": "eye_hl_star_r",
-      "file": "sprites/eye_hl_star_r.png",
+      "file": "sprites/eye_hl_star_r@2x.png",
       "group": "head",
       "layer": 234,
       "pos": [
@@ -981,11 +1021,12 @@
       ],
       "mask": "eye_r_socket",
       "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale": 0.5
     },
     {
       "id": "eye_hl_r",
-      "file": "sprites/eye_hl_r.png",
+      "file": "sprites/eye_hl_r@2x.png",
       "group": "head",
       "layer": 229,
       "pos": [
@@ -1004,7 +1045,8 @@
       ],
       "mask": "eye_r_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale": 0.5
     }
   ],
   "regions": [

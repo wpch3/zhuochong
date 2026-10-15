@@ -2302,6 +2302,67 @@ def check_tools(root):
               detail or "ROADMAP 与 TASKS 一致；"
               "对不上就跑 python3 tools/roadmap_status.py --fix")
 
+    # 高清切件（T30.1）：file 和 scale 必须配套，一个件都不许漏。
+    #
+    # 做法见 tools/make_hires_sprites.py 的文件头：切件链不动坐标，
+    # 只在最后一步把每个 sprite 换成 2× 像素，rig 里对应把 scale 乘 0.5。
+    # 两件事会悄悄出错，所以必须有闸：
+    #   ① file 指向 @2x 但 scale 忘了减半 → 整件放大一倍，画面直接崩；
+    #   ② 新增部件后忘了跑高清化 → 那个件在放大时糊，而且只有肉眼能发现。
+    # 另外 mask/motion_from 把件两两绑在一起（eye_*_socket 罩 eye_*_base/ball、
+    # mouth_mask 罩 mouth_cavity、hair_front 罩 brow_*_ghost），
+    # **一个 2× 一个 1× 遮罩就对不上**，所以要求全量，不许挑着做。
+    rigp = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    spd = os.path.join(root, "characters", "xiaoxun", "forms", "teen")
+    if os.path.exists(rigp):
+        with open(rigp, encoding="utf-8") as fh:
+            rj = json.load(fh)
+        rparts = [p for p in rj.get("parts", []) if p.get("file")]
+        hires = [p for p in rparts if p["file"].endswith("@2x.png")]
+        plain = [p for p in rparts if not p["file"].endswith("@2x.png")]
+        check("高清切件全量启用（不许一半 2× 一半 1×）",
+              not hires or not plain,
+              f"{len(hires)} 个用 @2x、{len(plain)} 个还是 1×："
+              f"{[p['id'] for p in plain][:4]} —— mask 会对不上"
+              if hires and plain else f"{len(hires)} 个全部 @2x")
+        bad_scale = []
+        for p in hires:
+            sc = p.get("scale", 1.0)
+            vals = sc if isinstance(sc, list) else [sc]
+            # 1× 时该是 1.0 或 [1.0, k]；换成 2× 后每一轴都要恰好减半
+            if isinstance(sc, list):
+                ok = abs(vals[0] - 0.5) < 1e-6
+            else:
+                ok = abs(vals[0] - 0.5) < 1e-6
+            if not ok:
+                bad_scale.append((p["id"], sc))
+        check("用了 @2x 的部件 scale 都减半了", not bad_scale,
+              f"没减半的：{bad_scale[:4]} —— file 换了 scale 没换，画面会大一倍"
+              if bad_scale else f"{len(hires)} 个都是 0.5")
+        missing_h, wrong_size = [], []
+        for p in rparts:
+            f2 = p["file"] if p["file"].endswith("@2x.png") else None
+            if not f2:
+                continue
+            f1 = f2.replace("@2x.png", ".png")
+            p1 = os.path.join(spd, f1)
+            p2 = os.path.join(spd, f2)
+            if not os.path.exists(p2):
+                missing_h.append(p["id"]); continue
+            if os.path.exists(p1):
+                def _wh(fp):
+                    with open(fp, "rb") as fh2:
+                        return struct.unpack(">II", fh2.read(26)[16:24])
+                w1, h1 = _wh(p1)
+                w2, h2 = _wh(p2)
+                if (w2, h2) != (w1 * 2, h1 * 2):
+                    wrong_size.append((p["id"], f"{w1}x{h1}->{w2}x{h2}"))
+        check("rig 引用的 @2x 文件都在", not missing_h,
+              f"缺：{missing_h[:4]}" if missing_h else f"{len(hires)} 个齐全")
+        check("@2x 恰好是 1× 的两倍尺寸", not wrong_size,
+              f"对不上：{wrong_size[:3]} —— 不是同一张图放大来的"
+              if wrong_size else "尺寸全部 ×2")
+
     # 超分基准（T30.1）：判据不许被悄悄放宽，高清 sheet 不许和原图脱钩。
     #
     # 背景：T30.1 原来写的是「按源图 1696x2528 重切」，2026-10-15 查下来前提是错的 ——

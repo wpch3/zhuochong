@@ -493,9 +493,11 @@ A23 的前端部分已完成，但**真正的上限在素材和渲染**，实测
 | T30.1 | sprites 走 2× 高清基准重切 | [~] | **原描述的前提是错的，已更正（DC44）**：拆件基准 `design_sheet_short.png` 只有 1024×1536，根目录那张 1696×2528 是**另一个姿势**的白底参考图；现行降采样率只有 0.889，取消它仅 +7.8% 锐度。真 2× 只能靠超分。**本轮已完成前两步**，见下方 T30.1a~T30.1e |
 | T30.1a | 超分工具 `tools/upscale_sheet.py`（Real-ESRGAN anime v3 x4 ONNX，2.4MB，CPU 22.6s/张）+ 五项换基准判据 + 模型 sha256 校验 | [x] | 判据：倍率误差<1% / bbox 原点偏差≤2px / 轮廓 IoU>0.97 / 前景 NCC>0.97。实测 2.0020·2.0·(-1,0)px·0.9938·0.9821 **全过**。4 条闸 + 3 个负控 |
 | T30.1b | 生成并入库 `design_sheet_short_x2.png`（2048×3072，4.07MB） | [x] | 锐度 +33.3%。留证 `logs/asset_qa/upscale_ab.png` |
-| T30.1c | `prepare_sprites.py` 加 `--density`：输出 density× 的 body_full，report 里记 density | [ ] | 画布坐标系**不动**（848×1360），密度只影响素材像素数 |
-| T30.1d | `make_rig.py` 的 `part()`：pos 除以 density、每件补 `"scale": 1/density`；`ox/oy` 用画布坐标；`DEG_PER_PX` 那个 `344.0`（:1054）要跟着换算 | [ ] | 好消息：make_rig 里几乎没有别的硬编码 body_full 像素常数，坐标基本都来自 parts_report.json；12 个切件脚本读 body_full，坐标系自动跟随，**不用改** |
-| T30.1e | `check_assets.py` 的像素比对与硬编码坐标跟着 density 走；新增「density 前后一致」闸；重跑整链 + 44 件坐标复验 | [ ] | 这是最危险的一步，要先把闸写好再动 |
+| T30.1c | **改坐标系的方案开工前被否了** —— 原计划让整条切件链在 2× 坐标里跑。动手前数改动面：坐标散在 **17 个 JSON、上百个字段名**里（pos/size/pivot/patch_pos/ball_pos/iris_center/travel/aperture_px/socket_size/lash_travel…），而且 `*_px` 里有些是距离有些是统计量，逐个判断必漏，漏一个就整件错位 | [x] | 没有硬干，换了方案（见 T30.1f），**切件链一行没改** |
+| T30.1f | **新方案：切件链不动，末尾加一步高清化**。`tools/make_hires_sprites.py` 给每个件生成 `@2x`（RGB 走 Real-ESRGAN、纯 alpha/近纯色走 LANCZOS、alpha 一律 LANCZOS），`make_rig` 发现 `@2x` 就改用它并把 `scale` 乘 0.5 | [x] | 画布坐标完全不动，rig 里所有像素常数（travel/lift/pivot/hold 线）一个都不用改。**替换点只有一处**（parts_list 组装完之后扫一遍），不逐处改 —— DC41 的教训 |
+| T30.1g | 键色残留抑制 | [x] | 首次全量跑完 check_assets 抓到 **21 个键色垃圾像素**（原图里躲在 alpha<40 的边缘，超分 + alpha 插值把它们抬到 40 以上浮出来了）。这正是 DC44 复查触发条件②。判定口径和 check_assets 一致，用 3×3 邻域非键色均值重填 RGB、两轮后仍是键色的清 alpha |
+| T30.1h | 只给 rig 真正引用的件做 @2x | [x] | 首跑 53 个件里 **11 个 rig 根本不用**（body_full 是切件源图、seg_arm_* 是中间产物、eye_open/closed/lid/lash 是配准中间件），白占 **2.09 MB**。改成读上一次 rig.json 的引用表，配 selfcheck 兜底闸防漏 |
+| T30.1e | 进重建链（17 步 → 18 步）+ 4 条新闸 + 负控 | [x] | 闸：全量启用（不许一半 2× 一半 1×，否则 mask 对不上）/ 用 @2x 的 scale 都减半 / 引用的 @2x 都在 / @2x 恰好是 2 倍尺寸。**三条改坏负控全部精确报红** |
 | T30.2 | 渲染提速：按行带分块多线程（`zimg` 加 clip_y + 每带私有 scratch/maskbuf） | [x] | **2026-10-15 完成（DC37）**。848×1360 渲染 51→30.8ms（1.66×，2 核）。闸 = 多线程与单线程**逐字节相同**，5 个变异全红 |
 | T30.3 | PNG 编码提速：并行行带（滤波+deflate 分段拼接）+ adler32 延迟取模 + send_png 改走内存 | [x] | **2026-10-15 完成（DC37）**。91.5→42.1ms（2.17×）。闸 = stb 回读像素一致 + Python 标准 zlib 解流，5 个变异全红 |
 | T30.5 | 脏矩形增量渲染：idle 时只有头/发/胸在动，整幅重画是浪费。预估再省 2~2.5×，可与分块叠加 | [ ] | 会让"并行==串行"的闸失效（带不再覆盖整幅），要先重新设计闸 |
