@@ -1596,7 +1596,6 @@
           "ease": "out_back"
         }
       ],
-      "blink_hold": 0.95,
       "part_overrides": {}
     },
     {
@@ -1747,7 +1746,6 @@
           "ease": "out"
         }
       ],
-      "blink_hold": 0.95,
       "part_overrides": {
         "mouth_open": {
           "opacity": 0.85
@@ -2155,7 +2153,6 @@
           "ease": "out"
         }
       ],
-      "blink_hold": 0.95,
       "part_overrides": {
         "mouth_open": {
           "opacity": 0.35

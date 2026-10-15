@@ -43,6 +43,22 @@
     {
       "id": "dusk",
       "name": "暮色（深色）"
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek · 深海蓝鲸"
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini · 四色流光"
+    },
+    {
+      "id": "grok",
+      "name": "Grok · 黑白极简"
+    },
+    {
+      "id": "gpt",
+      "name": "GPT · 黑与青绿"
     }
   ]
 }

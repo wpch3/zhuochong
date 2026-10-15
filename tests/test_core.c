@@ -825,6 +825,49 @@ static int frame_dark_box(const zimg *a, int x0, int y0, int x1, int y1)
     return n;
 }
 
+/* 眼线的「弯向」：把眼区按列切成左/中/右三段，各段取暗像素的平均 y，
+   返回 (两端平均 y − 中段平均 y)，单位像素。
+     正值 = 中段比两端高 = 山型 ∩（笑眼）
+     负值 = 中段比两端低 = 谷型 ∪（普通闭眼）
+   为什么要这条：光数暗像素总量（frame_dark_box）分不出 ∩ 和 ∪，
+   睫毛件忘了让位、在笑眼上又叠一条 ∪ 粗线时总量只多一点点，闸照样绿，
+   但用户一眼就看出"抚摸时根本不是笑眼"（2026-10-15 验收退回）。
+   形状问题必须用形状判据守。无暗像素时返回 -9999。 */
+static double frame_dark_sag_t(const zimg *a, int x0, int y0, int x1, int y1, int thr)
+{
+    int x, y, seg, w;
+    double sum[3], cnt[3], edge, mid;
+    if (!a) return -9999.0;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > a->w) x1 = a->w;
+    if (y1 > a->h) y1 = a->h;
+    w = x1 - x0;
+    if (w < 6) return -9999.0;
+    for (seg = 0; seg < 3; ++seg) { sum[seg] = 0.0; cnt[seg] = 0.0; }
+    for (y = y0; y < y1; ++y)
+        for (x = x0; x < x1; ++x) {
+            size_t o = ((size_t)y * (size_t)a->w + (size_t)x) * 4;
+            int lum = ((int)a->px[o] + (int)a->px[o+1] + (int)a->px[o+2]) / 3;
+            if (a->px[o+3] > 128 && lum < thr) {
+                seg = ((x - x0) * 3) / w;
+                if (seg > 2) seg = 2;
+                sum[seg] += (double)y;
+                cnt[seg] += 1.0;
+            }
+        }
+    if (cnt[0] < 3.0 || cnt[1] < 3.0 || cnt[2] < 3.0) return -9999.0;
+    edge = (sum[0] / cnt[0] + sum[2] / cnt[2]) * 0.5;
+    mid  = sum[1] / cnt[1];
+    return edge - mid;
+}
+
+/* 默认阈值版（和 frame_dark_box 同口径 165） */
+static double frame_dark_sag(const zimg *a, int x0, int y0, int x1, int y1)
+{
+    return frame_dark_sag_t(a, x0, y0, x1, y1, 165);
+}
+
 /* 存一份当前帧（给 frame_diff_box 当基准） */
 static unsigned char *frame_snapshot(const zimg *a)
 {
@@ -3730,6 +3773,91 @@ static void test_action_param_channels(void)
     }
 }
 
+/* ---- 笑眼动作的时序：全程不许出现「眼睛闭着但没在笑」的帧 ----
+   2026-10-15 用户验收退回："抚摸 5 秒不是 ∩ 形笑眼"。查出来不是贴图问题也不是
+   渲染问题，是**两条曲线不同步**：blink_hold 让闭合度在动作第 0 帧阶跃到 0.95，
+   而 ParamEyeL/RSmile 是 pulse，要 0.3 秒才爬到 1、收尾还先退场。于是动作
+   开头 0.3 秒、结尾 0.15 秒各露出一段谷型 ∪ 闭眼（实测时间线：
+   0.00~0.28s ∪ → 0.30~0.86s ∩ → 1.01s 又 ∪）。截图很容易抓到那两段。
+   修法是去掉这些动作的 blink_hold，闭合度交给 blink = max(blink, smile) 自己跟。
+   这条闸直接守用户看到的那件事：只要眼睛闭到一半以上，就必须在笑。 */
+static void test_smile_action_sync(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    const char *acts[3];
+    int ai;
+    SECTION("笑眼动作时序：闭着眼的每一帧都必须在笑（没有 ∪ 窗口）");
+    acts[0] = "head_pat"; acts[1] = "stroke"; acts[2] = "happy";
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（笑眼时序）");
+    if (!r) return;
+    zrig_blink_set_enabled(r, 0);   /* 自动眨眼会自己插入闭眼帧，那是另一回事 */
+    for (ai = 0; ai < 3; ++ai) {
+        int k, bad = 0, sawsmile = 0, sawclose = 0;
+        double worst_t = -1.0, worst_close = 0.0, worst_smile = 0.0;
+        /* 先回到干净的 idle，再起这个动作。
+           ⚠ 时间线必须连续：预热和正式扫描之间跳一大段的话，动作的 elapsed
+           一上来就超过 duration，直接按结束处理（第一版写 100.0 → 200.0，
+           结果 head_pat/happy 一帧都没笑过）。 */
+        {
+            double t0 = 300.0 + ai * 20.0;
+            zrig_action_request(r, "idle", "test", 1);
+            for (k = 0; k < 90; ++k) zrig_tick(r, t0 + k / 60.0);
+            zrig_action_request(r, acts[ai], "test", 1);
+        /* 动作全长 + 收尾，按 1/60 秒步进扫一遍 */
+        for (k = 0; k < 150; ++k) {
+            double t = 300.0 + ai * 20.0 + 1.5 + k / 60.0;
+            double close, smile;
+            zrig_tick(r, t);
+            close = zrig_eye_close(r, 0);
+            smile = zrig_eye_smile(r, 0);
+            if (smile > 0.5) sawsmile = 1;
+            if (close > 0.5) sawclose = 1;
+            if (close > 0.5 && smile < 0.5) {
+                bad++;
+                if (close - smile > worst_close - worst_smile) {
+                    worst_t = k / 60.0; worst_close = close; worst_smile = smile;
+                }
+            }
+        }
+        CHECK(sawsmile, "%s 全程应该真的笑过（一帧 smile>0.5 都没有）", acts[ai]);
+        CHECK(sawclose, "%s 笑的时候眼睛应该是闭的（一帧 close>0.5 都没有）", acts[ai]);
+        CHECK(bad == 0,
+              "%s 有 %d 帧「眼睛闭着却没在笑」（最糟 t=%.2fs close=%.2f smile=%.2f）"
+              "——blink_hold 和 EyeSmile 的曲线不同步，画面上就是 ∪ 而不是 ∩",
+              acts[ai], bad, worst_t, worst_close, worst_smile);
+        }
+    }
+
+    /* blink_hold 是**动作**要的闭合度，不归"自动眨眼开关"管。
+       以前 zrig_blink_update 在 !blink_enabled 时直接 return，blink_hold 那段
+       代码根本够不到 —— 于是把自动眨眼一关，连"睡觉"动作的眼睛都是睁的。
+       这个缺陷还正好让上面那组闸永远绿（测试里本来就关着自动眨眼），
+       是做变异检验时才暴露的，所以单独钉一条。 */
+    {
+        int k;
+        double t0 = 500.0, closed_on, closed_off;
+        zrig_blink_set_enabled(r, 1);
+        zrig_action_request(r, "sleep", "test", 1);
+        for (k = 0; k < 120; ++k) zrig_tick(r, t0 + k / 60.0);
+        closed_on = zrig_eye_close(r, 0);
+        zrig_blink_set_enabled(r, 0);
+        for (k = 0; k < 30; ++k) zrig_tick(r, t0 + 2.0 + k / 60.0);
+        closed_off = zrig_eye_close(r, 0);
+        CHECK(closed_on > 0.9, "睡觉动作应该把眼睛闭上（自动眨眼开着时 close=%.2f）", closed_on);
+        CHECK(closed_off > 0.9,
+              "关掉自动眨眼之后睡觉动作的眼睛也必须还闭着（close=%.2f）"
+              "——blink_hold 是动作的要求，不该被眨眼开关吞掉", closed_off);
+        zrig_blink_set_enabled(r, 0);
+    }
+    zrig_free(r);
+}
+
 static void test_eye_smile(void)
 {
     char rig_path[1024], dir[1024];
@@ -3795,6 +3923,39 @@ static void test_eye_smile(void)
               "笑眼帧的眼区要有睫毛线（暗像素 %d，闭眼帧是 %d）", dark_smile, dark_closed);
         CHECK(dark_smile < dark_closed * 16 / 10,
               "笑眼不该和谷型闭眼叠着画（暗像素 %d，闭眼帧才 %d）", dark_smile, dark_closed);
+        /* ★ 形状闸：笑眼必须真的是山型 ∩。上面两条只看暗像素「有多少」，
+           睫毛件忘让位时它在笑眼上又叠一条 ∪ 粗线，总量只多一点点，闸全绿，
+           可用户看到的就是 ∪（2026-10-15 验收退回"抚摸时不是 ∩ 形笑眼"）。
+           sag = 两端平均 y − 中段平均 y：谷型为负、山型为正，必须看符号。 */
+        {
+            /* 量 sag 要用「只圈住眼线那一条」的窄带：LX0..LY1 那个大框还套着
+               眉毛和刘海线稿，它们的暗像素会把中段/两端的平均 y 带偏，
+               实测大框下笑眼算出 −5.7px（看着像 ∪）而窄带是 +1.7px。
+               窄带取自 eye_l_smile 的件位 [356,245] 57x56 的下半截（眼线所在）。 */
+            const int SX0 = 354, SY0 = 266, SX1 = 416, SY1 = 296;
+            double sag_closed, sag_smile;
+            /* 闭眼帧的 sag 要用闭眼那一帧重算 —— 拿 snap_closed 恢复成 zimg 太绕，
+               这里直接再跑一次闭眼状态取值，跑完再回到笑眼状态。 */
+            zrig_param_set(r, "ParamEyeLSmile", 0.0);
+            zrig_param_set(r, "ParamEyeRSmile", 0.0);
+            zrig_blink_set_manual(r, 1.0);
+            zrig_tick(r, 5.0);
+            sag_closed = frame_dark_sag(zrig_frame(r, 1.0, NULL, NULL), SX0, SY0, SX1, SY1);
+            zrig_blink_set_manual(r, -1.0);
+            zrig_param_set(r, "ParamEyeLSmile", 1.0);
+            zrig_param_set(r, "ParamEyeRSmile", 1.0);
+            zrig_tick(r, 5.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            sag_smile = frame_dark_sag(fb, SX0, SY0, SX1, SY1);
+            CHECK(sag_closed > -9000.0 && sag_smile > -9000.0,
+                  "两帧都该量得到眼线（闭眼 sag=%.2f 笑眼 sag=%.2f）", sag_closed, sag_smile);
+            CHECK(sag_smile > sag_closed + 1.0,
+                  "笑眼得比谷型闭眼更「山型」：笑眼 sag=%.2fpx 应明显大于闭眼 sag=%.2fpx"
+                  "（差 %.2f ≤ 1 说明睫毛件没让位，∩ 被 ∪ 盖住了）",
+                  sag_smile, sag_closed, sag_smile - sag_closed);
+            CHECK(sag_smile > 0.0,
+                  "笑眼的眼线中段必须比两端高（sag=%.2fpx，负值 = 看着还是 ∪）", sag_smile);
+        }
 
         /* ③ 左右分家：只笑左眼，右眼区不许动 */
         zrig_param_set(r, "ParamEyeRSmile", 0.0);
@@ -4758,6 +4919,7 @@ int main(int argc, char **argv)
     test_expression_blend();
     test_sleep_wake_blink();
     test_eye_smile();
+    test_smile_action_sync();
     test_action_param_channels();
     test_action_fade_sine();
     test_brow_form();

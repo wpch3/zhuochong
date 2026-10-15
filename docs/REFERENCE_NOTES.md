@@ -1249,3 +1249,38 @@ TTFB（第一个字节）/ TTFA（第一段可播音频）/ 整段完成，差 3
 - ~~实时 STT 选型~~ ✅ 本批第 3 节。
 - ~~生图 / 生视频~~ ✅ 本批第 5 节。**生代码**仍欠（可先用第十八批 Reflection 那条：80%→91%）。
 - **仍欠**：主动发言的触发策略（neuro-sama 式"什么时候插话"）；多人联机同步的具体协议（A24）。
+
+## 第二十一批（2026-10-15）四家 AI 的品牌色 —— 为 A22 的主题定制取证
+
+都是为了 `web/themes/{deepseek,gemini,grok,gpt}.json` 的配色，每条都给出处。
+
+### DeepSeek
+- `https://brandfetch.com/deepseek.com` —— 品牌色 **#4D6BFE**（Dodger Blue）+ #FFFFFF。
+- `https://www.wikidata.org/wiki/Q131983933` —— 官方 logo 条目，sRGB **4D6BFE**，
+  并记了一条有意思的：logo 描绘的是 **Balaenoptera musculus（蓝鲸）**。
+  小寻头上的鲸鱼发卡正好是同一个意象，这套主题因此叫"深海蓝鲸"。
+- `https://oh-my-design.kr/design-systems/deepseek` —— 更细的 token：
+  brand #4d6bfe / 主按钮 **#1a1615（暖近黑，不是蓝）** / 文字 #1e232c / 页面 #f9f8f8 /
+  占位 #8691a1 / 链接 #234792 / 圆角 **8px**；并明确 **"别拿 #4d6bfe 做大面积填充"**，
+  它只该出现在强调和 chip 文字上。主题文件照这条做了：底色走纸白，蓝只在描边和强调。
+
+### Gemini（继承 Google）
+- `https://colorcode.tools/brands/google`、`https://getbrandscan.com/brands/google` ——
+  蓝 **#4285F4** / 红 **#EA4335** / 黄 **#FBBC05**（新版写 #FBBC04）/ 绿 **#34A853**，
+  正文近黑 **#202124**，浅灰面 #F1F3F4，Material 按钮圆角 **4px**。
+- `https://zonalogo.com/logo-google-gemini` —— 明确写了 **Gemini 没有单独发布固定调色板**，
+  它继承 Google 这套，UI 里常以渐变/多色呈现。所以主题里四色都用上了，
+  圆角从 4px 放宽到 12px（桌宠界面太方会发硬）。
+
+### Grok / xAI
+- `https://www.makr.io/design/color/brand-colors` —— xAI 条目就两个色：**#000000 / #FFFFFF**。
+- `https://www.designyourway.net/blog/xai-logo/` —— 官方单色黑白，
+  另记了一个衍生强调色 Dodger Blue #2196F3（非官方主色）。
+  主题因此是四套里**唯一的深色默认**，靠黑白灰层次 + 2px 硬圆角，几乎不上彩。
+
+### GPT / OpenAI
+- `https://colorbase.in/brands/openai` —— **#000000 / #10A37F / #FFFFFF / #202123**。
+- `https://www.loftlyy.com/en/openai` —— 同样三色；并记了 2025 改版引入 OpenAI Sans，
+  整体偏灰蓝中性色。
+- `https://brandpalettes.com/openai-color-codes/` —— 只认黑 #000000 一个色。
+  三处口径有差异（青绿到底算不算品牌色），主题取折中：浅色底 + 青绿作唯一强调色。

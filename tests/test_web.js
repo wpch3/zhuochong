@@ -478,6 +478,42 @@ function slotOf(id) {
       /* 手动档仍按用户选的百分比走 */
       stage.qualityMode = "50";
       CHECK(stage.currentQuality() === 50, "手动选 50% 应原样生效");
+
+      /* ★ 本地模式必须一律不降级（2026-10-15 用户要求：本地要正常分辨率和帧率，
+         要能放大到整个桌面还清晰）。降级那套只为沙箱预览的 PNG 传输开销存在。 */
+      stage.qualityMode = "auto";
+      CHECK(stage.isLocalHost("localhost", "http:") === true, "localhost 应判为本地");
+      CHECK(stage.isLocalHost("127.0.0.1", "http:") === true, "127.0.0.1 应判为本地");
+      CHECK(stage.isLocalHost(null, "file:") === true, "file: 协议应判为本地");
+      /* 方向负控：沙箱预览域名绝不能被当成本地，否则远端用户会卡死 */
+      CHECK(stage.isLocalHost("5173-abc123.e2b.app", "https:") === false,
+            "沙箱预览域名必须判为远程");
+      CHECK(stage.isLocalHost(null, "https:") === false, "读不到 location 时按远程处理");
+
+      const wasLocal = stage.isLocal, wasScales = stage.QUALITY_SCALES, wasMin = stage.minInterval;
+      /* 远程：卡住时该降级 */
+      stage.isLocal = false; stage.QUALITY_SCALES = [0.5, 0.65, 0.8, 1.0];
+      stage.qualityIdx = 3; stage.minInterval = 1000 / 12; stage.frameMs = 500;
+      stage.tuneQuality();
+      CHECK(stage.minInterval > 1000 / 12 || stage.qualityIdx < 3,
+            "远程模式下卡顿应该降级（帧率或分辨率）");
+      /* 本地：同样卡住也绝不降级 */
+      stage.isLocal = true; stage.qualityIdx = 3; stage.minInterval = 1000 / 60; stage.frameMs = 500;
+      stage.tuneQuality();
+      CHECK(stage.qualityIdx === 3 && stage.minInterval === 1000 / 60,
+            "本地模式下即使卡顿也不许降级（实际 idx=" + stage.qualityIdx
+            + " minInterval=" + stage.minInterval + "）");
+      /* 本地：显示高度吃视口、解开 CSS 的 max-height 上限 */
+      ctx.innerHeight = 1400;
+      stage.fitDisplay();
+      CHECK(img.style.maxHeight === "none", "本地模式应解开 #pet 的 max-height 限制");
+      CHECK(parseInt(img.style.height, 10) > 680,
+            "本地模式显示高度应吃满视口而不是钉在 680（实际 " + img.style.height + "）");
+      /* 还原，别影响后面的断言 */
+      stage.isLocal = wasLocal; stage.QUALITY_SCALES = wasScales;
+      stage.minInterval = wasMin; stage.qualityIdx = stage.QUALITY_SCALES.length - 1;
+      delete ctx.innerHeight; img.style.maxHeight = "";
+      stage.fitDisplay();
       stage.qualityMode = "auto";
     }
   }

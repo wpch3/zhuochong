@@ -475,13 +475,24 @@ def run(base, root):
     r = a.json("/api/blink?on=1") or {}
     check("on=1 交回自动", r.get("ok") is True and r.get("auto") is True,
           json.dumps(r, ensure_ascii=False))
-    a.hit("/api/idle?s=99999")          # 先睡着（强制闭眼）
+    # 关自动眨眼的本意是"眼睛别动"，不是"闭着别动"。
+    # ⚠ 这条以前是先 /api/idle?s=99999 把角色弄睡着再关眨眼，然后要求眼睛睁开 ——
+    #   构造场景就选错了：睡着时眼睛本来就该闭。2026-10-15 修了
+    #   「blink_enabled=0 时 blink_hold 够不到」那个缺陷之后，睡着的角色会老老实实
+    #   闭着眼，这条才红出来。拆成两条，把两个意图分开守：
+    a.hit("/api/idle?s=0")              # ① 醒着（idle 没有 blink_hold）
+    a.hit("/api/action?id=idle&force=1")
     time.sleep(0.3)
-    a.hit("/api/blink?on=0")            # 关自动眨眼：本意是"眼睛别动"，不是"闭着别动"
+    a.hit("/api/blink?on=0")
     time.sleep(0.2)                     # 响应里的 blink 是本帧旧值，等下一帧
     r = a.json("/api/info.json") or {}
     check("关自动眨眼 = 眼睛常睁（不是停在闭眼上）", (r.get("blink", 1)) < 0.01,
           "blink=%s" % r.get("blink"))
+    a.hit("/api/idle?s=99999")          # ② 睡着：动作要求闭眼，关不关自动眨眼都得闭
+    time.sleep(0.4)
+    r = a.json("/api/info.json") or {}
+    check("睡着时就算关了自动眨眼，眼睛也必须闭着（blink_hold 是动作的要求，不归眨眼开关管）",
+          (r.get("blink", 0)) > 0.9, "blink=%s sleeping=%s" % (r.get("blink"), r.get("sleeping")))
     a.hit("/api/idle?s=0")
     a.hit("/api/blink?on=1")
     try:

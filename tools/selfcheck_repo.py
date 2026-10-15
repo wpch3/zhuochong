@@ -1174,16 +1174,29 @@ def check_eye_hold_zone(root):
 
     # 眯眼笑要有笑眼件兜底：按到 0.9 以上又没有笑眼通道 = 纯闭眼（睡觉那种），也允许，
     # 但"被摸/开心"这类既按高又该笑的动作，笑眼通道丢了就会变成面无表情地闭眼。
+    #
+    # ⚠ 2026-10-15 这条闸的前提被推翻过一次，改口径时连同理由一起记在这里：
+    #   旧口径要求这些动作「两条 Smile 通道 + blink_hold ≥ 0.9」。但 blink_hold 是
+    #   **阶跃**生效的（动作第 0 帧闭合度直接跳到 0.95），而 Smile 是 pulse（0.3s
+    #   才爬满、收尾又先退场），两条曲线根本不同步 —— 动作开头 0.3 秒和结尾 0.15 秒
+    #   各露出一段「眼睛闭着但没在笑」的谷型 ∪，用户 2026-10-15 验收就是报的这个。
+    #   新口径：有笑眼通道就**不许**再写 blink_hold，闭合度交给引擎的
+    #   blink = max(blink, smile) 自己跟（官方 Haru F05 也是两者同一条淡入）。
+    #   运行时那一面由 test_core 的「笑眼动作时序」守（逐帧扫，闭眼必须在笑）。
     want_smile = ("stroke", "happy", "head_pat")
     missing = []
     for a in rig.get("actions", []):
         if a["id"] not in want_smile:
             continue
         chans = [c for c in a.get("channels", []) if "Smile" in str(c.get("target", ""))]
-        if len(chans) < 2 or float(a.get("blink_hold") or 0) < hi:
-            missing.append(f"{a['id']}(笑眼通道{len(chans)}条, hold={a.get('blink_hold')})")
+        if len(chans) < 2:
+            missing.append(f"{a['id']}(笑眼通道只有{len(chans)}条)")
+        elif a.get("blink_hold") is not None:
+            missing.append(f"{a['id']}(有笑眼通道却还写了 blink_hold={a.get('blink_hold')}，"
+                           f"两条曲线不同步会露出 ∪ 窗口)")
     check("被摸/开心类动作用的是山型笑眼", not missing,
-          f"缺：{missing}" if missing else "stroke/happy/head_pat 都是 hold≥0.9 + 两条 Smile 通道")
+          f"缺：{missing}" if missing
+          else "stroke/happy/head_pat 都是两条 Smile 通道且不再写 blink_hold")
 
     # 上眼线延迟下滑（lash_hold）：半闭时睫毛压进虹膜会出现黑钩、瞳孔被吃掉。
     check("引擎支持 lash_hold（上眼线延迟下滑）", "lash_hold" in src,

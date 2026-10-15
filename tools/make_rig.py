@@ -887,7 +887,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "ParamMouthForm", "wave": "pulse", "amp": 0.85, "dur": 0.35, "ease": "out"},
              {"target": "ParamCheek", "wave": "pulse", "amp": 0.60, "dur": 0.40, "ease": "out"},
          ],
-         "blink_hold": 0.95,
+         # ⚠ 这里**不能**再写 blink_hold：blink_hold 是**阶跃**生效的（动作一开始
+         # 闭合度立刻变 0.95），而 EyeSmile 是 pulse（0.3s 才爬到 1、收尾先退场），
+         # 两条曲线不同步 → 动作头 0.3 秒和尾 0.15 秒各露出一段"眼睛闭着但没在笑"
+         # 的谷型 ∪ 闭眼。用户 2026-10-15 验收"抚摸时不是 ∩ 形笑眼"报的就是它
+         # （实测时间线：0.00~0.28s ∪、0.30~0.86s ∩、1.01s 又 ∪）。
+         # 正解：闭眼交给笑眼自己——引擎 accumulate 里有 blink = max(blink, smile)，
+         # 闭合度天然跟着同一条 pulse 走，两头严丝合缝（官方 Haru F05 也是
+         # EyeOpen 和 EyeSmile 在同一个表情里一起淡入，不是分两套时序）。
          "part_overrides": {}},
         {"id": "happy", "priority": 7, "duration": 1.45, "return_state": "idle",
          "interruptible": False,
@@ -906,7 +913,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "ParamEyeLSmile", "wave": "pulse", "amp": 1.0, "dur": 0.30, "ease": "out"},
              {"target": "ParamEyeRSmile", "wave": "pulse", "amp": 1.0, "dur": 0.30, "ease": "out"},
          ],
-         "blink_hold": 0.95,
+         # ⚠ 这里**不能**再写 blink_hold：blink_hold 是**阶跃**生效的（动作一开始
+         # 闭合度立刻变 0.95），而 EyeSmile 是 pulse（0.3s 才爬到 1、收尾先退场），
+         # 两条曲线不同步 → 动作头 0.3 秒和尾 0.15 秒各露出一段"眼睛闭着但没在笑"
+         # 的谷型 ∪ 闭眼。用户 2026-10-15 验收"抚摸时不是 ∩ 形笑眼"报的就是它
+         # （实测时间线：0.00~0.28s ∪、0.30~0.86s ∩、1.01s 又 ∪）。
+         # 正解：闭眼交给笑眼自己——引擎 accumulate 里有 blink = max(blink, smile)，
+         # 闭合度天然跟着同一条 pulse 走，两头严丝合缝（官方 Haru F05 也是
+         # EyeOpen 和 EyeSmile 在同一个表情里一起淡入，不是分两套时序）。
          "part_overrides": {"mouth_open": {"opacity": 0.85}}},
         {"id": "sad", "priority": 3, "loop": True, "interruptible": True, "return_state": "idle",
          "channels": [
@@ -951,7 +965,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "ParamEyeLSmile", "wave": "pulse", "amp": 1.0, "dur": 0.35, "ease": "out"},
              {"target": "ParamEyeRSmile", "wave": "pulse", "amp": 1.0, "dur": 0.35, "ease": "out"},
          ],
-         "blink_hold": 0.95,
+         # ⚠ 这里**不能**再写 blink_hold：blink_hold 是**阶跃**生效的（动作一开始
+         # 闭合度立刻变 0.95），而 EyeSmile 是 pulse（0.3s 才爬到 1、收尾先退场），
+         # 两条曲线不同步 → 动作头 0.3 秒和尾 0.15 秒各露出一段"眼睛闭着但没在笑"
+         # 的谷型 ∪ 闭眼。用户 2026-10-15 验收"抚摸时不是 ∩ 形笑眼"报的就是它
+         # （实测时间线：0.00~0.28s ∪、0.30~0.86s ∩、1.01s 又 ∪）。
+         # 正解：闭眼交给笑眼自己——引擎 accumulate 里有 blink = max(blink, smile)，
+         # 闭合度天然跟着同一条 pulse 走，两头严丝合缝（官方 Haru F05 也是
+         # EyeOpen 和 EyeSmile 在同一个表情里一起淡入，不是分两套时序）。
          "part_overrides": {"mouth_open": {"opacity": 0.35}}},
         # ⚠ duration 必须贴着通道真实结束的时间写。
         # 这里原本是 0.55，但 bounce(dur 0.28) 到点归零、decay 的包络

@@ -60,12 +60,23 @@ ZC.register({
 
        现在：显示尺寸由 fitDisplay() 显式钉死（跟画质档无关），请求的分辨率
        按"显示尺寸 × devicePixelRatio"算，正常情况下浏览器 1:1 直贴不重采样。*/
-    this.QUALITY_SCALES = [0.5, 0.65, 0.8, 1.0];   /* 相对"刚好铺满显示尺寸"的倍率 */
+    /* ★ 本地模式：一律不降级。
+       降分辨率 / 降帧率这套只有一个存在理由——沙箱预览要把每帧 PNG 经 HTTP
+       送到远端浏览器（实测 scale 1.0 时编码+传输 82ms，比渲染的 60ms 还贵）。
+       在本机跑的时候这段开销根本不存在，用户要的是"放大到整个桌面依然清晰"，
+       任何自动降级都是帮倒忙（2026-10-15 用户明确要求：本地必须正常分辨率和帧率）。
+       判据用 hostname：localhost / 127.0.0.1 / [::1] / file: 都算本地；
+       沙箱预览域名（*.e2b.app 之类）走远程策略。 */
+    this.isLocal = this.isLocalHost(
+      (typeof window !== "undefined" && window.location && window.location.hostname) || null,
+      (typeof window !== "undefined" && window.location && window.location.protocol) || null);
+    this.QUALITY_SCALES = this.isLocal ? [1.0] : [0.5, 0.65, 0.8, 1.0];
     this.qualityMode = "auto";
     this.qualityIdx = this.QUALITY_SCALES.length - 1;  /* 自动档从"原生清晰"起步，卡了再降 */
     this.frameMs = 0;
     this.failures = 0;
-    this.minInterval = 1000 / 12;
+    /* 本地不设 12fps 的保守上限，直接按机器能力跑 */
+    this.minInterval = this.isLocal ? 1000 / 60 : 1000 / 12;
     this.interval = this.minInterval;
     this.alive = true;
     this.nativePct = 100;
@@ -80,6 +91,16 @@ ZC.register({
     this.scheduleFrame();
   },
 
+  /* 这台机器上跑的页面算不算"本地"。抽成独立函数是为了能单测——
+     判定写在 mount 里的话，测试拿不到不同 hostname 的分支。
+     location 读不到时按**远程**处理（保守：远程策略只是会降级，不会坏）。 */
+  isLocalHost(hostname, protocol) {
+    if (protocol === "file:") return true;
+    if (hostname === null || hostname === undefined) return false;
+    return hostname === "localhost" || hostname === "127.0.0.1"
+        || hostname === "::1" || hostname === "[::1]";
+  },
+
   /* 把立绘的显示尺寸钉成固定值，并算出"1:1 不重采样"需要的渲染百分比。
      钉死尺寸是为了：画质档变化时立绘不会忽大忽小（老代码会）。 */
   fitDisplay() {
@@ -90,7 +111,11 @@ ZC.register({
     const fh = info.frame_h || img.naturalHeight || 748;
     const wrap = this.wrap || img.parentNode || img.parent;
     const availW = (wrap && wrap.clientWidth ? wrap.clientWidth : fw) - 8;
-    const availH = 680;                       /* 与 app.css 的 #pet max-height 一致 */
+    /* 远程预览钉在 680（与 app.css 的 #pet max-height 一致，省带宽）；
+       本地要能放大到整个桌面，所以吃满视口高度，并解开 CSS 的 max-height。 */
+    const vh = (typeof window !== "undefined" && window.innerHeight) || 680;
+    const availH = this.isLocal ? Math.max(680, vh - 24) : 680;
+    if (this.isLocal) img.style.maxHeight = "none";
     let h = Math.min(availH, fh);
     if (availW > 0 && h * (fw / fh) > availW) h = availW * (fh / fw);
     h = Math.max(120, Math.round(h));
@@ -114,6 +139,7 @@ ZC.register({
      肉眼最先注意到的退化（2026-10-15 报的"模糊"就是老代码一上来就掉到 60%）。 */
   tuneQuality() {
     if (this.qualityMode !== "auto") return;
+    if (this.isLocal) return;                /* ★ 本地永不降级 */
     const SLOW = 220, FAST = 90, FLOOR_MS = 1000 / 6;
     if (this.frameMs > SLOW) {
       if (this.minInterval < FLOOR_MS) this.minInterval = Math.min(FLOOR_MS, this.minInterval * 1.35);

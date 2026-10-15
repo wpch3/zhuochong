@@ -2995,6 +2995,17 @@ static double blink_update(zrig *r, double now)
     }
     if (!r->blink_enabled || r->blink_forced == 1) {
         r->blink_value = (r->blink_forced == 1) ? 1.0 : 0.0;
+        /* ⚠ blink_hold 是**动作**要求的闭合度（睡觉 1.0、眯眼笑 0.55），和
+           "自动眨眼定时器开不开"是两码事。以前这里直接 return，于是
+           zrig_blink_set_enabled(r,0) 之后睡觉动作的眼睛是睁着的，
+           测试台把自动眨眼一关也复现不出动作该有的闭眼（2026-10-15 发现：
+           为笑眼时序写的闸因为这个在关眨眼的测试里永远绿，变异检验才暴露）。
+           下面这段和函数末尾那段是同一个口径：只抬不压。 */
+        {
+            const zaction *a = current_action(r);
+            if (a && a->blink_hold >= 0.0 && a->blink_hold > r->blink_value)
+                r->blink_value = a->blink_hold;
+        }
         return r->blink_value;
     }
     if (r->blink_t0 <= 0.0) {
