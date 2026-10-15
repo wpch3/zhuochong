@@ -1844,7 +1844,7 @@
         {
           "target": "ParamEyeBallForm",
           "wave": "pulse",
-          "amp": 1.0,
+          "amp": -0.45,
           "dur": 0.2
         },
         {

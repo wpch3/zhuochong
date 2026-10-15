@@ -226,6 +226,39 @@ def check_decisions(root):
     check("登记表没有膨胀到没人读（≤ 40 条）", len(ids) <= 40,
           "%d 条 —— 超了就把已推翻且无人引用的移进归档段" % len(ids))
 
+    # 归档不是删除：搬走的条目必须真的落在归档文件里，而且格式一样。
+    # 2026-10-15 第一次归档（DC07~DC11）时加的闸 —— 没有它的话，"超了就归档"
+    # 这句话很容易变成"超了就删掉"，而用户要求的是**被推翻的中间结论也要留着**。
+    # 另外两类条目永远不许归档：用户硬约束（DC12~DC16）和四条 🔁 反面教材（DC01~DC04）。
+    ap = os.path.join(root, "docs", "memory", "DECISIONS_ARCHIVE.md")
+    if os.path.exists(ap):
+        with io.open(ap, encoding="utf-8") as fh:
+            atxt = fh.read()
+        atxt = re.sub(r"(?s)```.*?```", "", atxt)
+        ablocks = re.split(r"(?m)^### ", atxt)[1:]
+        aids, amiss = [], []
+        for b in ablocks:
+            m = re.match(r"(DC\d+)\s*(\S+)", b.splitlines()[0].strip())
+            if not m:
+                continue
+            aids.append(m.group(1))
+            body = b.split("\n### ")[0]
+            for field in ("前提", "证据", "负控", "复查触发"):
+                mm = re.search(r"(?m)^-\s*%s[：:]\s*(.+)$" % field, body)
+                if not (mm and len(mm.group(1).strip()) >= 6):
+                    amiss.append("%s 缺%s" % (m.group(1), field))
+        check("归档条目的四栏也齐全（归档≠降格）", not amiss,
+              "；".join(amiss[:5]) if amiss else "%d 条 × 4 栏全齐" % len(aids))
+        check("归档与主表没有重号", not (set(aids) & set(ids)),
+              "两边都有：%s" % sorted(set(aids) & set(ids))[:3])
+        NEVER = {"DC01", "DC02", "DC03", "DC04",      # 🔁 反面教材，用户要求留着
+                 "DC12", "DC13", "DC14", "DC15", "DC16"}  # 用户硬约束
+        leaked = sorted(NEVER & set(aids))
+        check("硬约束与反面教材没被归档走", not leaked, "被归档了：%s" % leaked)
+        # 主表里要有指路牌，不然归档等于失踪
+        check("主表写明了归档去向", "DECISIONS_ARCHIVE.md" in txt,
+              "主表里要留一句「DC## 已移到 DECISIONS_ARCHIVE.md」")
+
 
 def check_acceptance(root):
     """A32.4：真机验收清单与 TASKS 的 [需真机] 标记双向对账。
@@ -2237,6 +2270,24 @@ def check_tools(root):
               i_cut > 0 and i_cut > i_eyeline and i_cut > i_sidehair and i_cut < i_rig,
               f"make_mouth_line_cut.py 偏移 {i_cut}（眼线 {i_eyeline} / 侧发 {i_sidehair} "
               f"/ make_rig {i_rig}）")
+
+    # 惊讶时不许把瞳孔放大。
+    # 2026-10-15 用户实拍反馈「眼球会不自然的变大，看着像个怪物」—— 当时 surprised 挂的是
+    # ParamEyeBallForm +1.0，而这个参数在本 rig 里只绑了眼球缩放（sx 0.18 / sy 0.22），
+    # 于是虹膜被撑大 18~22%。官方口径相反：shocked = 眼睛开得更大 + 瞳孔**变小**
+    # （saltech.llc 的 ParamEyeLWide 条目 / Animaze 手册 ParamEyeLOpen 往 max / r/Live2D 两帖）。
+    # 这条闸只认一件事：surprised 的 ParamEyeBallForm 幅度不许为正。
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if os.path.exists(rig_path):
+        with open(rig_path, encoding="utf-8") as f:
+            rigj = json.load(f)
+        sp = next((a for a in rigj.get("actions", []) if a.get("id") == "surprised"), None)
+        if sp:
+            ebf = [c for c in sp.get("channels", []) if c.get("target") == "ParamEyeBallForm"]
+            amps = [c.get("amp", 0) for c in ebf]
+            check("惊讶不许放大瞳孔", all(v <= 0 for v in amps),
+                  "surprised 的 ParamEyeBallForm 幅度 %s（必须 <=0，正值=虹膜被撑大）"
+                  % (amps if amps else "无此通道"))
 
     # 上唇线淡出斜率：参数绑定与 GEO2PARAM 换算表必须是同一个数。
     # 对不上的后果不是报错而是**静默跑偏**——部件级通道换算出来的参数幅度会被

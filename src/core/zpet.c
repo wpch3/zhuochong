@@ -61,6 +61,7 @@ struct zpet {
     double   last_line_at;
     unsigned last_line_seq;
     char     last_line_rule[64];
+    char     last_line_action[48];   /* 产出这句话的那个动作，见 zpet_action_request */
 
     /* 口型同步（A4）：一条 0~1 的开口度包络按时间推进 */
     double *ls_vals;
@@ -713,10 +714,30 @@ int zpet_lipsync_load(zpet *p, const char *line_id, double now)
     return rc;
 }
 
+static void pet_set_line(zpet *p, const char *line, const char *rule_id,
+                         const char *action_id, double now);
+
 int zpet_action_request(zpet *p, const char *id, const char *reason, int force)
 {
+    int ok;
     if (!p || !p->rig) return 0;
-    return zrig_action_request(p->rig, id, reason, force);
+    ok = zrig_action_request(p->rig, id, reason, force);
+    /* 显式切到**别的**动作，上一句台词就过期了 —— 它是上一个动作的说明文字。
+       这条路（/api/action）是调试台的动作按钮和前端「叫醒」在走，它**绕过 run_rule**，
+       所以 G105 第一次只修在 run_rule 里是不够的：用户 2026-10-15 实拍，
+       摸头之后点调试台的「被锤」，动作确实变成 hammered 了，气泡却一直挂着
+       「再摸一下下就好～」。沙箱复现：seq 冻在 10 不动。
+       两个例外不清：
+         ① talk —— 它是**伴随**说话的动作，不是推翻上一句的动作。
+            voice.js 播音前就会先请求 talk，清掉的话这句话刚要念就没字幕了；
+            模型回复（call_reply）的 owner 也记成 talk，正是为了配合这条。
+         ② 请求的就是这句台词自己的动作 —— 连点同一个按钮不该把自己的气泡打掉。
+       自动回 idle / hover 切 focus 走的是 zrig_action_request，不经过这里，
+       所以气泡能安安稳稳活满它的 4.5 秒。 */
+    if (ok && p->last_line[0] && !z_streq(id, "talk")
+            && !z_streq(id, p->last_line_action))
+        pet_set_line(p, "", "", id, p->now);
+    return ok;
 }
 
 /* ------------------------------------------------------------ 互动分发 */
@@ -738,10 +759,12 @@ static void lipsync_tick(zpet *p, double now);
 
 /* 换一句台词：正文可以是空串（= 把气泡收掉）。seq 每次都加一，
    前端只认 seq 变化，这样同一句话重复下发不会把 4.5 秒的隐藏计时反复推后。 */
-static void pet_set_line(zpet *p, const char *line, const char *rule_id, double now)
+static void pet_set_line(zpet *p, const char *line, const char *rule_id,
+                         const char *action_id, double now)
 {
     z_strlcpy(p->last_line, line ? line : "", sizeof(p->last_line));
     z_strlcpy(p->last_line_rule, rule_id ? rule_id : "", sizeof(p->last_line_rule));
+    z_strlcpy(p->last_line_action, action_id ? action_id : "", sizeof(p->last_line_action));
     p->last_line_at = now;
     p->last_line_seq += 1u;
 }
@@ -760,15 +783,15 @@ static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
         /* 好感升档：优先说升档台词，本次互动的普通台词让位 */
         const zi_rule *tu = match_rule(p, "tier_up", "", NULL, 0);
         if (tu && zinteract_speak(p->inter, tu, now, line, sizeof(line)))
-            pet_set_line(p, line, tu->id, now);
+            pet_set_line(p, line, tu->id, tu->action, now);
     } else if (p->inter && zinteract_speak(p->inter, r, now, line, sizeof(line))) {
-        pet_set_line(p, line, r->id, now);
+        pet_set_line(p, line, r->id, r->action, now);
     } else if (p->last_line[0] && !z_streq(p->last_line_rule, r->id)) {
         /* 台词被冷却吞了，而且这次触发的是**另一条**规则：
            旧气泡必须当场收掉，不然"摸头→立刻锤一下"会停在「嘿嘿，好舒服～」上，
            看起来像挨了打还在撒娇（G105）。
            同一条规则连着触发（连续摸头）不清，否则自己的气泡会被自己打断。 */
-        pet_set_line(p, "", r->id, now);
+        pet_set_line(p, "", r->id, r->action, now);
     }
     return ok;
 }
@@ -839,7 +862,7 @@ int zpet_call_event(zpet *p, const char *kind, const char *text, const char *moo
     int ok = 0;
     if (!p || !p->rig || !kind) return 0;
     if (z_streq(kind, "call_reply") && text && text[0])
-        pet_set_line(p, text, "call_reply", now);   /* 模型回复原文优先于台词表 */
+        pet_set_line(p, text, "call_reply", "talk", now);   /* 模型回复原文优先于台词表 */
     r = match_rule(p, kind, "", NULL, 0);
     if (r) ok = run_rule(p, r, NULL, NULL, 0, now);
     if (mood && mood[0]) ok = zpet_express(p, mood, now) || ok;

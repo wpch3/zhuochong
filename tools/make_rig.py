@@ -940,10 +940,22 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
          "interruptible": False,
          "channels": [
              {"target": "head", "param": "dy", "wave": "bounce", "amp": -10.0, "dur": 0.35, "ease": "out_back"},
-             {"target": "eye_open_left", "param": "sx", "wave": "pulse", "amp": 0.18, "dur": 0.2},
-             {"target": "eye_open_right", "param": "sx", "wave": "pulse", "amp": 0.18, "dur": 0.2},
-             {"target": "eye_open_left", "param": "sy", "wave": "pulse", "amp": 0.22, "dur": 0.2},
-             {"target": "eye_open_right", "param": "sy", "wave": "pulse", "amp": 0.22, "dur": 0.2},
+             # 惊讶时的眼睛：**瞳孔略缩**，不是放大（2026-10-15 用户反馈"眼球不自然变大，像个怪物"）。
+             # 原来这里写的是 eye_open_* 的 sx +0.18 / sy +0.22 四条部件通道，换算到
+             # ParamEyeBallForm 刚好是 +1.0 —— 而这个参数在本 rig 里只绑了眼球缩放，
+             # 于是虹膜被撑大 18~22%，整只眼睛鼓出来。
+             # 官方/社区口径正好相反：shocked = 眼睛**开得更大** + 瞳孔**变小** + 挑眉 + 张嘴
+             #   · saltech.llc Live2D 参数表：ParamEyeLWide「Widen the eye beyond ParamEyeLOpen」
+             #     —— 瞪大眼有专门的参数，不是靠放大瞳孔；
+             #   · Animaze 官方手册：ParamEyeLOpen 往 max 方向才是"目を大きく開く"；
+             #   · r/Live2D 两个独立帖子都写 "extra opened eye + smaller pupil"。
+             # 我们暂时没有"瞪大眼"的素材和参数（ParamEyeLOpen/ROpen 由眨眼系统合成，
+             # 不在 params 里，驱不到 >1），所以只做能做对的那一半：瞳孔缩小。
+             # 幅度 -0.45 是渲 4 档对照图挑的（logs/asset_qa/surprised_eyes2.png）：
+             # -0.8 偏呆滞、0.0 没表情、-0.45 露白稍多、读得出"吓一跳"又不怪。
+             # 写成**参数级**一条而不是部件级四条：四条经 GEO2PARAM 换算后会合并成同一个
+             # ParamEyeBallForm，幅度靠 amp/scale 反推，改起来极易算错（嘴那边就是这么翻车的）。
+             {"target": "ParamEyeBallForm", "wave": "pulse", "amp": -0.45, "dur": 0.2},
              {"target": "mouth_open", "param": "alpha", "wave": "pulse", "amp": -0.9, "dur": 0.25},
          ]},
         {"id": "hammered", "priority": 9, "duration": 0.7, "return_state": "idle",

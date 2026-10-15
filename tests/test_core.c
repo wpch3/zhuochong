@@ -688,6 +688,30 @@ static void test_rig_channels(void)
             zrig_param_set(r, "ParamMouthOpenY", 0.0);
             zrig_tick(r, 503.0);
         }
+        /* 惊讶时瞳孔要**变小**，不许变大（2026-10-15 用户反馈"眼球不自然变大，像个怪物"）。
+           官方/社区口径：shocked = 眼睛开得更大 + 瞳孔变小 + 挑眉 + 张嘴
+           （saltech.llc 的 ParamEyeLWide 条目 / Animaze 手册 / r/Live2D 两帖）。
+           改之前 surprised 挂的是 ParamEyeBallForm +1.0，而本 rig 里这个参数只绑了
+           眼球缩放，于是虹膜被撑大到 1.18x/1.22x。现在是 -0.45 → 约 0.92x/0.90x。 */
+        {
+            double sx0, sy0, sx1, sy1;
+            int s;
+            zrig_action_request(r, "idle", "t", 1);
+            for (s = 0; s < 20; ++s) zrig_tick(r, 600.0 + s * 0.05);
+            sx0 = zrig_part_channel(r, "eye_l_ball", "sx");
+            sy0 = zrig_part_channel(r, "eye_l_ball", "sy");
+            zrig_action_request(r, "surprised", "t", 1);
+            for (s = 1; s <= 16; ++s) zrig_tick(r, 601.0 + s * 0.016);
+            sx1 = zrig_part_channel(r, "eye_l_ball", "sx");
+            sy1 = zrig_part_channel(r, "eye_l_ball", "sy");
+            CHECK(sx1 < sx0 && sy1 < sy0,
+                  "惊讶时瞳孔应小于待机（待机 %.3f/%.3f → 惊讶 %.3f/%.3f）",
+                  sx0, sy0, sx1, sy1);
+            CHECK(sx1 > 0.80 && sy1 > 0.80,
+                  "瞳孔也别缩过头（%.3f/%.3f，下限 0.80）", sx1, sy1);
+            zrig_action_request(r, "idle", "t", 1);
+            for (s = 0; s < 20; ++s) zrig_tick(r, 603.0 + s * 0.05);
+        }
         /* 帧尺寸应随缩放变化 */
         {
             int fw = 0, fh = 0;

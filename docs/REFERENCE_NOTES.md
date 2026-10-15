@@ -1314,3 +1314,42 @@ TTFB（第一个字节）/ TTFA（第一段可播音频）/ 整段完成，差 3
 **对我们的直接结论**：闭眼不是一种形状而是**三种** —— ∪（普通闭眼 `eye_*_closed`）、
 ∩（笑眼 `eye_*_smile`，已有）、**倒 V（痛苦/用力闭眼，素材里没有，要补绘）**。
 前两种我们有，第三种缺，所以 `hammered` 才做不出 `>_<`。
+
+---
+
+## 第二十三批（2026-10-15）惊讶 / 瞪大眼的官方口径 —— 直接推翻我们原来的做法
+
+起因：用户实拍反馈「惊讶时眼球会不自然的变大，看着像个怪物一样很怪」。
+我们当时 `surprised` 挂的是 `ParamEyeBallForm +1.0`，而这个参数在本 rig 里只绑了
+**眼球（虹膜）缩放** sx 0.18 / sy 0.22 —— 等于把瞳孔撑大 18~22%。查下来是**反的**。
+
+- **★★★ 瞪大眼有专用参数 `ParamEyeLWide` / `ParamEyeRWide`，范围 0~1**，
+  文档原文：*"Widen the character's left eye **beyond the extents of ParamEyeLOpen**"*
+  （saltech.llc/live2d-support，Vodcasto 的 Live2D 参数支持表 ★★）。
+  → 「睁得更大」是**眼睛开口**的事，不是**瞳孔大小**的事，两者是不同参数。
+
+- **★★★ Animaze 官方手册**：`ParamEyeLOpen`「默认值 = 眼睛完全睁开；**往 max 方向走，
+  映射的是"目を大きく開く"（眼睛瞪大）**；min 到默认值之间才是普通闭眼动作」
+  （animaze.us/manual/gettingstarted2d/diveinto ★★★，日文版 jpnparamlist 同）。
+  建议区间写成 `0 / 0.75 / 1`（min / default / max）。
+  → 官方的瞪大眼做法 = **把 ParamEyeLOpen 的 max 开到 1 以上**，不是放大虹膜。
+
+- **★★★ 惊讶时瞳孔要"变小"，不是变大** —— 两个互相独立的 r/Live2D 帖子都这么写：
+  「0.7 默认、**1.0 是眼睛更开 + 瞳孔更小**」（r/Live2D 19dv4la ★）、
+  「闭眼 0.0 / 睁眼 1.0 / **extra opened eye + smaller pupil 1.2**」（r/Live2D uxc8wh ★）。
+  社区通行做法是把 max 开到 1.2~1.7，超出 1 的那一段专门画"瞪大 + 缩瞳"的形状。
+
+- **★★ shocked 的标准组合** = *Wide eyes, open mouth (slightly), raised eyebrows；
+  Motion: Recoil, jump back*（github.com/fagenorn/handcrafted-persona-engine 的
+  Live2D 接入指南，emoji→表情映射表 ★★）。
+
+**对我们的直接结论（已落地）**：
+1. `surprised` 的眼睛通道从 `ParamEyeBallForm +1.0`（瞳孔放大 18~22%）改成 **−0.45**
+   （瞳孔缩到 ~0.92x/0.90x）。幅度是渲 4 档对照图挑的，不是算出来的：
+   `logs/asset_qa/surprised_eyes2.png`（待机 / +1.0 / 0.0 / −0.45 / −0.8）。
+2. 真正的「瞪大眼」我们**还做不了** —— `ParamEyeLOpen/ROpen` 在本 rig 里是眨眼系统
+   合成的，不在 `params` 段里，驱不到 >1；而且没有"瞪大眼"的素材。
+   要做就得按官方那条路：加 `ParamEyeLWide` 式参数 + 画超出常态开口的眼形。记为 G110。
+3. 顺带注意：我们的 `ParamEyeBallForm` **名字与官方语义不符** —— 官方它是
+   「为补充皱眉/做鬼脸而**弯曲眼睛轮廓**」（第二十二批 Animaze 条目），
+   我们拿它当"瞳孔缩放"用。改名要动 rig 契约，记在 G110 一起处理。

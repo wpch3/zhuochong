@@ -1026,6 +1026,38 @@ def run(base, root):
           bool(s4.get("line")) and s4.get("seq") != s3.get("seq"),
           "「%s」seq=%s age=%s" % (s4.get("line"), s4.get("seq"), s4.get("age")))
 
+    # —— 同一件事的第二条路：/api/action（G105 第二次返工）——
+    # 调试台的动作按钮和前端「叫醒」走的是 /api/action，它**绕过 run_rule**，
+    # 所以上面那几项全绿的时候，用户点调试台的「被锤」气泡照样纹丝不动
+    # （2026-10-15 实拍 + 沙箱复现：动作已经是 hammered，seq 却冻住不变）。
+    # 清句改挂到 zpet_action_request 之后，这条路也要有闸盯着。
+    settle(a)
+    time.sleep(9.0)
+    a.hit(poke_url(info, "head"))
+    time.sleep(0.35)
+    t1 = a.json("/api/speech.json")
+    check("（action 路径）摸头应说出一句", bool(t1.get("line")),
+          "「%s」seq=%s" % (t1.get("line"), t1.get("seq")))
+    a.hit("/api/action?id=head_pat")          # 同一个动作
+    time.sleep(0.35)
+    t2 = a.json("/api/speech.json")
+    check("（action 路径）点同一个动作不该把自己的气泡打掉",
+          t2.get("line") == t1.get("line") and t2.get("seq") == t1.get("seq"),
+          "「%s」seq=%s → 「%s」seq=%s" % (t1.get("line"), t1.get("seq"),
+                                          t2.get("line"), t2.get("seq")))
+    a.hit("/api/action?id=talk")              # talk 是例外：伴随说话，不推翻台词
+    time.sleep(0.35)
+    t3 = a.json("/api/speech.json")
+    check("（action 路径）talk 不清句（voice.js 播音前会先请求它）",
+          t3.get("line") == t1.get("line"),
+          "「%s」" % t3.get("line"))
+    a.hit("/api/action?id=hammered")          # 换动作
+    time.sleep(0.35)
+    t4 = a.json("/api/speech.json")
+    check("（action 路径）切到别的动作要当场清句",
+          t4.get("line") == "" and t4.get("seq") != t3.get("seq"),
+          "「%s」seq=%s（清空前 seq=%s）" % (t4.get("line"), t4.get("seq"), t3.get("seq")))
+
     print("== 连续摸头升级为 happy ==")
     # 连击窗口 0.8 秒（zpet.c：超过就把计数清零），所以要快摸，不能等动作演完
     settle(a)
