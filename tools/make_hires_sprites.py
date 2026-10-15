@@ -207,11 +207,26 @@ def main() -> int:
         want = {os.path.basename(p["file"]).replace(SUFFIX, ".png")
                 for p in rj.get("parts", []) if p.get("file")}
 
+    # 有些件的 @2x 由它们**自己的工具**原生产出（2048px 源图直出，比超分清楚得多），
+    # 本工具既不重做也不清理：重做 = 把原生 2× 换成超分版；清理 = 直接删掉人家的成果。
+    # 目前只有星星眼那一组（tools/make_star_eye_parts.py，排在本工具之后跑）。
+    owned = set()
+    sj = os.path.join(sp_dir, "star_eye_parts.json")
+    if os.path.exists(sj):
+        with open(sj, encoding="utf-8") as f:
+            sjd = json.load(f)
+        owned = {os.path.basename(e["file"]) for e in sjd.get("eyes", [])}
+        if sjd.get("sparkle", {}).get("file"):
+            owned.add(os.path.basename(sjd["sparkle"]["file"]))
+
     srcs = sorted(f for f in glob.glob(os.path.join(sp_dir, "*.png"))
                   if not f.endswith(SUFFIX)
+                  and os.path.basename(f) not in owned
                   and (want is None or os.path.basename(f) in want))
     # 把不再需要的旧 @2x 清掉，别留垃圾在库里
     for stale in glob.glob(os.path.join(sp_dir, "*" + SUFFIX)):
+        if os.path.basename(stale).replace(SUFFIX, ".png") in owned:
+            continue
         if stale[:-len(SUFFIX)] + ".png" not in srcs:
             os.remove(stale)
     t0 = time.time()

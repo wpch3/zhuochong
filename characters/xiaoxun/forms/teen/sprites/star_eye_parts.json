@@ -26,8 +26,10 @@
       ],
       "checks": {
         "keycolor_px": 0,
-        "star_contrast": 108.3,
-        "star_px": 152
+        "star_contrast": 64.6,
+        "edge_contrast": 36.2,
+        "ground_kept": 1.0,
+        "star_px": 105
       }
     },
     {
@@ -45,8 +47,10 @@
       ],
       "checks": {
         "keycolor_px": 0,
-        "star_contrast": 106.5,
-        "star_px": 165
+        "star_contrast": 59.8,
+        "edge_contrast": 45.5,
+        "ground_kept": 1.0,
+        "star_px": 116
       }
     }
   ],

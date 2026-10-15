@@ -84,15 +84,25 @@ SPARK_TIP = np.array([74.0, 143.0, 212.0])     # 尖：#4A8FD4
 # 第一条就是「配色不对」（上一版我做成了小埋的金瞳）。所以只借 AI 的**明暗结构**，
 # 颜色一律落回小寻自己的色卡。
 STAR_SPLIT_Q = 42      # 分割星形用的亮度分位（星内 vs 星外）
-STAR_LO = 0.50         # 星内映射到色卡梯的 [STAR_LO, 1.0]
-GROUND_HI = 0.34       # 星外压到 [0, GROUND_HI]
-STAR_GAMMA = 1.7       # 星内再压一道 gamma：源图星芯的径向辉光很肥，不压的话
-#                        整颗星几乎全白，读起来像「白星」而不是「亮蓝星带白芯」。
-HL_KEEP = 0.80         # 亮过这个的像素（碎钻/小反光）不参与压暗
+STAR_FLOOR = 0.62      # 星内亮度下限（映射到色卡梯的 [STAR_FLOOR, 1.0] = 淡蓝→白）
+STAR_LIFT = 0.24       # 星内相对**当地底色**至少抬这么多 —— 常态虹膜下半本来就亮，
+#                        只按绝对亮度映射的话星在下半截会和底一样白、读不出来。
+EDGE_COLOR = (0x2C, 0x29, 0x39)   # 星形描边色 = 色卡「眼线睫毛 #2C2939」
+EDGE_MIX = 0.78        # 描边浓度
+#   为什么要描边：参考实物（ac-illust「アニメ風キラキラ目」）里瞳孔都有深色边，
+#   亮形状靠深边才"咬"得住。注意这和"源图自带的 1px 描边"不是一回事 ——
+#   那条线是在 2048px 上画的，缩到 31px 就没了；这条是**在最终分辨率上画**的，
+#   1× 画 1px、2× 画 2px，缩放不会吃掉它。
 OPEN_R = 40            # 数角之前开运算的半径（源分辨率像素）。
 #   实测扫过 14/22/30/40/50：≤30 仍数出 6（细颈没断），≥40 才稳定数出 5，
 #   而 r=40 只吃掉星形 4.7% 的面积（r=50 是 7.0%）—— 取 40，离阈值两边都有余量。
-STAR_CONTRAST_MIN = 30.0  # 最终 31px 贴图上「星内 − 星外」的亮度差下限（实测 ~60）
+STAR_CONTRAST_MIN = 30.0  # 最终 31px 贴图上「星内 − 星外」的亮度差下限
+# ⚠ 这条只是"星读不读得出来"的下限，**不是越大越好**：第一版靠把底压黑把它刷到 108，
+#   结果是整只眼睛发黑（用户打回）。所以另加一条上限，见 GROUND_KEEP_MIN。
+EDGE_CONTRAST_MIN = 18.0  # 描边必须比底深这么多（否则亮星在亮底上咬不住）
+GROUND_KEEP_MIN = 0.92    # 星外区域必须和常态虹膜**几乎逐像素一致**（相似度下限）
+#   第二版的做法保证星外一个像素都不动，所以这条实测是 1.000；
+#   它存在的意义是：以后谁再想"顺手调一下整只虹膜的色调"，这条会立刻红。
 
 IRIS_RAMP = [
     (0.00, "#2C2939"),   # 眼线睫毛（线稿最深）—— 虹膜外描边
@@ -126,7 +136,6 @@ SPARKLES = [
 ]
 SPARKLE_PX = 72                                     # 1× 素材边长
 SPARKLE_SCALE = {"lg": 1.0, "md": 0.68, "sm": 0.45}
-HIRES_SRC = "hires_src"           # 原生 2× 源的存放目录（make_hires_sprites 会优先用）
 
 
 # ----------------------------------------------------------------- 小工具
@@ -261,38 +270,55 @@ def _ramp(stops):
     return t, c
 
 
-def repaint_iris(rgb: np.ndarray, a: np.ndarray):
-    """按 IRIS_RAMP 重铺虹膜颜色，并把星形和它的底分成两个亮度区间。
+def star_mask_of(rgb: np.ndarray, a: np.ndarray) -> np.ndarray:
+    """从 AI 原图里把**星形区域**分割出来。只要形状，不要它的颜色。
 
-    为什么要分区间（2026-10-16 实测）：AI 原图里「星」和「星外的虹膜」靠一条
-    **1px 的深色描边**分开，整张图缩到 27px（虹膜在画布上的真实大小）之后
-    那条线连半个像素都不到，星直接糊成一团蓝饼 —— 第一版在引擎里渲出来就是
-    这样（logs/asset_qa/star_eye_zoom.png 的 star_0 格）。
+    2026-10-16 第二版。第一版是「按色卡重铺整只虹膜」，被用户打回：
+    「星星眼的蓝色部分过于深色黑，以及颜色没有类似眼睛的色彩变化，
+      导致也很怪，感觉像眼睛突然黑了，里面有点东西也不明显，反而没看到星星。」
+    —— 说得完全对。第一版为了让星"读得出来"，把星以外的整只虹膜压到色卡梯的
+    最暗段（GROUND_HI=0.34，起点是近黑的 #2C2939），于是指标（星内外亮度差 108）
+    涨了、眼睛却黑成一坨。**对比度是靠压黑底换来的，不是靠把星提亮。**
 
-    解决办法不是把描边加粗（加粗到看得见就不像原画了），而是**让星自己亮起来**：
-      · 先把星形区域分割出来（从虹膜中心洪水填充亮区，描边正好是它的边界）；
-      · 星内映射到色卡梯的 0.50~1.00 段（亮），星外压到 0~0.34 段（深蓝）。
-    这样不靠任何一条细线，纯靠明暗就能读出五角星，缩到 27px 也还在。
-    高亮碎钻（左上那块水晶 + 几颗小亮点）在星外，会被"压暗"误伤，
-    所以最后再用 max() 把 t>HL_KEEP 的像素原样放回去 —— 这正是用户要的
-    「眼内多层高光 + 碎钻反光」那一层，不能丢。
+    参考实物（ac-illust「アニメ風キラキラ目」等）：キラキラ目 = 在**原本的虹膜**上
+    加亮点，虹膜自己那套"上深下亮、饱和蓝"的渐变原样保留。不是重铺。
 
-    返回 (RGB, star_mask)。
+    所以第二版只从 AI 图里取星形**遮罩**，颜色一律由常态虹膜那张贴图提供。
     """
     lum = rgb @ np.array([0.299, 0.587, 0.114])
     vis = a > SOLID_A
     if not vis.any():
-        return rgb, np.zeros(lum.shape, bool)
-    lo, hi = np.percentile(lum[vis], 1), np.percentile(lum[vis], 99)
+        return np.zeros(lum.shape, bool)
+    return largest_blob((lum > np.percentile(lum[vis], STAR_SPLIT_Q)) & vis)
+
+
+def paint_star(base_rgb: np.ndarray, base_a: np.ndarray,
+               star: np.ndarray, edge_w: int = 1) -> np.ndarray:
+    """把星形"点亮"在常态虹膜上：底原样不动，只有星内抬亮度。
+
+    星内的新亮度 = STAR_FLOOR + (1-STAR_FLOOR) × 底自己的亮度
+    —— 保留底的明暗起伏（上深下亮那套），所以星里面也有渐变，
+    不是一块死白。星外一个像素都不碰，颜色变化自然和常态眼完全一致。
+    """
+    vis = base_a > SOLID_A
+    if not (vis.any() and star.any()):
+        return base_rgb
+    lum = base_rgb @ np.array([0.299, 0.587, 0.114])
+    lo, hi = np.percentile(lum[vis], 2), np.percentile(lum[vis], 98)
     t = np.clip((lum - lo) / max(hi - lo, 1e-6), 0.0, 1.0)
-    star = largest_blob((lum > np.percentile(lum[vis], STAR_SPLIT_Q)) & vis)
-    t2 = np.where(star, STAR_LO + (1.0 - STAR_LO) * t ** STAR_GAMMA, GROUND_HI * t)
-    t2 = np.maximum(t2, np.where(t > HL_KEEP, t, 0.0))      # 碎钻高光原样保留
     ts, cs = _ramp(IRIS_RAMP)
-    out = np.empty(rgb.shape, float)
+    out = base_rgb.copy()
+    t2 = np.clip(np.maximum(STAR_FLOOR + (1.0 - STAR_FLOOR) * t, t + STAR_LIFT), 0.0, 1.0)
     for k in range(3):
-        out[..., k] = np.interp(t2, ts, cs[:, k])
-    return out, star
+        ch = np.interp(t2, ts, cs[:, k])
+        out[..., k] = np.where(star, ch, out[..., k])
+    # 描边：星形最外一圈压深，让亮星在亮底上也咬得住
+    edge = star & ~_erode(star, edge_w)
+    for k in range(3):
+        out[..., k] = np.where(edge,
+                               out[..., k] * (1.0 - EDGE_MIX) + EDGE_COLOR[k] * EDGE_MIX,
+                               out[..., k])
+    return out
 
 
 def build_star_iris(src_path: str, sprites: str, report: dict) -> list:
@@ -306,10 +332,10 @@ def build_star_iris(src_path: str, sprites: str, report: dict) -> list:
     x0, y0 = max(0, cx - side // 2), max(0, cy - side // 2)
     x1, y1 = min(im.shape[1], x0 + side), min(im.shape[0], y0 + side)
     crop_rgb, crop_a = im[y0:y1, x0:x1], a[y0:y1, x0:x1]
-    crop_rgb, star_mask = repaint_iris(despill(crop_rgb, crop_a, bg), crop_a)
+    crop_rgb = despill(crop_rgb, crop_a, bg)
+    star_mask = star_mask_of(crop_rgb, crop_a)
     star_ratio = float(star_mask.sum()) / max(float((crop_a > SOLID_A).sum()), 1.0)
 
-    os.makedirs(os.path.join(sprites, HIRES_SRC), exist_ok=True)
     out = []
     for tag in ("l", "r"):
         ball_path = os.path.join(sprites, f"eye_{tag}_ball.png")
@@ -321,46 +347,76 @@ def build_star_iris(src_path: str, sprites: str, report: dict) -> list:
         am = np.asarray(alpha1).astype(np.float64) / 255.0
         d_box = bbox(am > 0.5)                   # 真正画着虹膜的那块
 
-        rgb1, sm1 = _fit(crop_rgb, crop_a, bw, bh, d_box, star_src=star_mask)
+        base1 = np.asarray(ball.convert("RGB")).astype(np.float64)
+        _, sm1 = _fit(crop_rgb, crop_a, bw, bh, d_box, star_src=star_mask)
+        rgb1 = paint_star(base1, am, sm1)
         px = np.zeros((bh, bw, 4), np.uint8)
-        px[..., :3] = rgb1.astype(np.uint8)
+        px[..., :3] = np.clip(rgb1, 0, 255).astype(np.uint8)
         px[..., 3] = np.asarray(alpha1)          # 轮廓完全照抄常态虹膜
         fn = f"eye_{tag}_ball_star.png"
         Image.fromarray(px, "RGBA").save(os.path.join(sprites, fn))
 
-        # 原生 2×：源图有 2048px，直接缩到 62×60 比「缩到 31×30 再超分回去」
-        # 清楚得多（超分只是没有原生源时的退路）。make_hires_sprites 会优先用它。
-        # alpha 用和 make_hires 完全相同的做法（1× alpha 做 LANCZOS 放大），
-        # 这样星形件和常态件的遮罩逐像素一致，切换时不会有一圈错位。
-        bw2, bh2 = bw * 2, bh * 2
-        d_box2 = tuple(v * 2 for v in d_box)
-        rgb2, _ = _fit(crop_rgb, crop_a, bw2, bh2, d_box2)
-        a2 = alpha1.resize((bw2, bh2), Image.LANCZOS)
+        # 2× 直接拿**常态虹膜的 2× 成品**当底（所以本工具必须排在 make_hires_sprites 之后）。
+        # 这样星形件和常态件在星以外的区域逐像素相同 —— 两张图切换时不会有
+        # "锐度忽然变一下"的跳感；而星形边缘来自 2048px 源图，依然干净。
+        b2p = os.path.join(sprites, f"eye_{tag}_ball@2x.png")
+        if not os.path.exists(b2p):
+            raise SystemExit(f"[star_eye] 缺 {b2p} —— 本工具必须排在 make_hires_sprites 之后")
+        ball2 = Image.open(b2p).convert("RGBA")
+        bw2, bh2 = ball2.size
+        if (bw2, bh2) != (bw * 2, bh * 2):
+            raise SystemExit(f"[star_eye] {b2p} 不是 1x 的两倍（{bw2}x{bh2} vs {bw*2}x{bh*2}）")
+        a2 = ball2.split()[3]
+        am2 = np.asarray(a2).astype(np.float64) / 255.0
+        d_box2 = bbox(am2 > 0.5)
+        _, sm2 = _fit(crop_rgb, crop_a, bw2, bh2, d_box2, star_src=star_mask)
+        rgb2 = paint_star(np.asarray(ball2.convert("RGB")).astype(np.float64),
+                          am2, sm2, edge_w=2)      # 2× 上描边也要 2px
         px2 = np.zeros((bh2, bw2, 4), np.uint8)
-        px2[..., :3] = rgb2.astype(np.uint8)
+        px2[..., :3] = np.clip(rgb2, 0, 255).astype(np.uint8)
         px2[..., 3] = np.asarray(a2)
-        Image.fromarray(px2, "RGBA").save(
-            os.path.join(sprites, HIRES_SRC, f"eye_{tag}_ball_star@2x.png"))
+        Image.fromarray(px2, "RGBA").save(os.path.join(sprites, f"eye_{tag}_ball_star@2x.png"))
 
         left = keycolor_left(px[..., :3].astype(np.float64), am)
         if left:
             raise SystemExit(f"[star_eye] {fn} 还剩 {left} 个洋红像素 —— 抠像没干净")
-        # 可量化判据（T39.4）：在**最终那张 31px 贴图**上量「星内 − 星外」的亮度差。
-        # 为什么不量「数出几个角」：那个指标在重跑之间会在 2~5 之间跳
-        # （圆周采样落在哪个像素上全看眼球 alpha 圆的 1px 抖动），拿它当验收判据
-        # 等于掷骰子。亮度差直接对应"星读不读得出来"，而且和分辨率无关。
+
+        # 判据一（T39.4）：星读不读得出来 = 最终 31px 贴图上「星内 - 星外」的亮度差。
+        # 不用"数出几个角"：那个指标重跑之间会在 2~5 之间跳（圆周采样落在哪个像素上
+        # 全看眼球 alpha 圆的 1px 抖动），拿它当验收等于掷骰子。
+        # ⚠ 加了描边之后这个指标要重新定义：星形区域里最外一圈是**故意压深**的描边，
+        #   把它算进"星内均值"会把均值拉下来，于是"描边画得越好、指标越红"（实测
+        #   28.5 < 30 直接把自己拦下来了）。读得出读不出靠的是两个台阶，分别量：
+        #     · 亮芯 vs 底   —— 星是亮的
+        #     · 底   vs 描边 —— 边是深的，亮形状靠它"咬"住
         disc = am > 0.5
         lum1 = rgb1 @ np.array([0.299, 0.587, 0.114])
-        inside, outside = disc & sm1, disc & ~sm1
-        contrast = round(float(lum1[inside].mean() - lum1[outside].mean()), 1)
+        core = disc & _erode(sm1, 1)
+        ring = disc & sm1 & ~core
+        outside = disc & ~sm1
+        contrast = round(float(lum1[core].mean() - lum1[outside].mean()), 1)
+        edge_c = round(float(lum1[outside].mean() - lum1[ring].mean()), 1)
         if contrast < STAR_CONTRAST_MIN:
-            raise SystemExit(f"[star_eye] {fn} 星内外亮度差只有 {contrast}"
+            raise SystemExit(f"[star_eye] {fn} 亮芯比底只亮 {contrast}"
                              f"（下限 {STAR_CONTRAST_MIN}）—— 缩到这个尺寸就读不出星形了")
+        if edge_c < EDGE_CONTRAST_MIN:
+            raise SystemExit(f"[star_eye] {fn} 描边比底只深 {edge_c}"
+                             f"（下限 {EDGE_CONTRAST_MIN}）—— 没有深边，亮星在亮底上糊掉")
+
+        # 判据二（用户 2026-10-16 打回后加的）：**星以外必须还是那只眼睛**。
+        # 量星外区域和常态虹膜的逐像素相似度，1.0 = 一个像素都没动。
+        d_out = np.abs(rgb1 - base1).sum(axis=2)[outside]
+        keep = round(float((d_out < 8).mean()), 3)
+        if keep < GROUND_KEEP_MIN:
+            raise SystemExit(f"[star_eye] {fn} 星外只有 {keep:.0%} 的像素和常态虹膜一致"
+                             f"（下限 {GROUND_KEEP_MIN:.0%}）—— 又在动整只虹膜的颜色了")
+
         out.append({
             "side": tag, "file": f"sprites/{fn}", "size": [int(bw), int(bh)],
             "disc_box": [int(v) for v in d_box],
             "checks": {"keycolor_px": left, "star_contrast": contrast,
-                       "star_px": int(inside.sum())},
+                       "edge_contrast": edge_c, "ground_kept": keep,
+                       "star_px": int(core.sum())},
         })
     report["source_iris"] = os.path.relpath(src_path)
     report["iris_crop"] = [int(x0), int(y0), int(x1 - x0), int(y1 - y0)]
@@ -372,6 +428,17 @@ def build_star_iris(src_path: str, sprites: str, report: dict) -> list:
     if not 0.15 <= star_ratio <= 0.55:
         raise SystemExit(f"[star_eye] 星形分割可疑：占虹膜 {star_ratio:.1%}"
                          f"（期望 15%~55%）—— 换源图了就调 STAR_SPLIT_Q")
+    return out
+
+
+def _erode(mask: np.ndarray, r: int) -> np.ndarray:
+    """四邻域腐蚀 r 次。"""
+    out = mask.copy()
+    for _ in range(max(r, 0)):
+        acc = out.copy()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            acc &= np.roll(np.roll(out, dy, 0), dx, 1)
+        out = acc
     return out
 
 
@@ -452,10 +519,10 @@ def build_sparkle(src_path: str, sprites: str, head_pos, head_size, report: dict
     crop_rgb, crop_a = im[y0:y1, x0:x1], a[y0:y1, x0:x1]
     crop_rgb = despill(crop_rgb, crop_a, bg)
 
-    os.makedirs(os.path.join(sprites, HIRES_SRC), exist_ok=True)
+
     left_total = 0
     for n, dst in ((SPARKLE_PX, os.path.join(sprites, "fx_sparkle.png")),
-                   (SPARKLE_PX * 2, os.path.join(sprites, HIRES_SRC, "fx_sparkle@2x.png"))):
+                   (SPARKLE_PX * 2, os.path.join(sprites, "fx_sparkle@2x.png"))):
         rgb, al = premul_resize(crop_rgb, crop_a, (n, n))
         rgb = _repaint(rgb, al)
         px = np.zeros((n, n, 4), np.uint8)
@@ -515,7 +582,9 @@ def main() -> int:
 
     print(f"写出 {sprites}/eye_[lr]_ball_star.png（{report['star_points']} 个角，"
           f"占虹膜 {report['star_area_ratio']:.0%}，星内外亮度差 "
-          f"{'/'.join(str(e['checks']['star_contrast']) for e in eyes)}）"
+          f"{'/'.join(str(e['checks']['star_contrast']) for e in eyes)}，"
+          f"描边深 {'/'.join(str(e['checks']['edge_contrast']) for e in eyes)}，"
+          f"星外保真 {'/'.join(format(e['checks']['ground_kept'], '.0%') for e in eyes)}）"
           f" + fx_sparkle.png {SPARKLE_PX}×{SPARKLE_PX}"
           f" + {len(spark['instances'])} 个散布点 → star_eye_parts.json")
     return 0
