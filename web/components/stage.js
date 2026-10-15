@@ -43,6 +43,7 @@ ZC.register({
 
     root.appendChild(sec);
     this.img = img; this.wrap = wrap; this.bubble = bubble; this.bubbleText = bubbleText;
+    this.bubbleSeq = null;   /* 上一次显示的台词序号，见 onSpeech */
 
     img.addEventListener("click", (ev) => this.poke("auto", ev));
 
@@ -217,13 +218,24 @@ ZC.register({
     }
   },
 
+  /* 气泡只认 seq：seq 没变就什么都不做。
+     以前这里每次轮询（~80ms）都 clearTimeout 再重设 4500ms，而 /api/speech.json 的
+     line 是"最后说过的那句"、会一直返回同一句，于是隐藏计时被无限推后 ——
+     气泡**永远不会消失**（G105）。line 为空则立刻收掉。 */
   onSpeech(d) {
     const b = this.bubble;
-    if (!d.line) { b.hidden = true; return; }
+    const seq = d && typeof d.seq === "number" ? d.seq : null;
+    if (seq !== null && seq === this.bubbleSeq) return;   /* 还是同一句，别碰计时器 */
+    this.bubbleSeq = seq;
+    clearTimeout(this.bubbleTimer);
+    if (!d || !d.line) { b.hidden = true; return; }
     this.bubbleText.textContent = "「" + d.line + "」";
     b.hidden = false;
-    clearTimeout(this.bubbleTimer);
-    this.bubbleTimer = setTimeout(() => { b.hidden = true; }, 4500);
+    /* age 是这句话在引擎侧已经存在的秒数：刚开页面时接上一句说了很久的台词，
+       应该按它剩下的时间收，而不是从头再给 4.5 秒。 */
+    const age = d && typeof d.age === "number" && d.age > 0 ? d.age : 0;
+    const left = Math.max(300, 4500 - age * 1000);
+    this.bubbleTimer = setTimeout(() => { b.hidden = true; }, left);
   },
 
   destroy() {

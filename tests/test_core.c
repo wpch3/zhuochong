@@ -660,6 +660,34 @@ static void test_rig_channels(void)
             CHECK(min_alpha < 0.6, "说话时口型透明度应下降（最小 %.3f）", min_alpha);
             CHECK(max_alpha - min_alpha > 0.3, "口型通道应有明显变化（%.3f~%.3f）", min_alpha, max_alpha);
         }
+        /* 张嘴时上唇线必须**彻底**消失（G107）。
+           原来斜率是 -0.9，满张时上唇线还剩 10% —— 笑线两端上翘的嘴角露在口内椭圆
+           上方，像嘴上挂了两撇小胡子。现在是 -3.5，张到 ~29% 就归零。
+           这条闸盯住的是"归零"，不是"变淡"；只要有人把斜率调回 -0.9 它就红。
+           注：zrig_part_channel(...,"alpha") 返回的已经是钳位后的**有效** alpha。 */
+        zrig_action_request(r, "idle", "t", 1);
+        {
+            double a_closed, a_half, a_full;
+            int s;
+            /* 强制切回 idle 之后，talk 的通道是**淡出**的，不是立刻断电：
+               实测切完第一帧 ParamMouthOpenY 还有 0.311。先空跑一秒让它淡干净，
+               不然量到的是上一条动作的尾巴。 */
+            for (s = 0; s < 20; ++s) zrig_tick(r, 499.0 + s * 0.05);
+            zrig_param_set(r, "ParamMouthOpenY", 0.0);
+            zrig_tick(r, 500.0); zrig_tick(r, 500.1);
+            a_closed = zrig_part_channel(r, "mouth_open", "alpha");
+            zrig_param_set(r, "ParamMouthOpenY", 0.5);
+            zrig_tick(r, 501.0); zrig_tick(r, 501.1);
+            a_half = zrig_part_channel(r, "mouth_open", "alpha");
+            zrig_param_set(r, "ParamMouthOpenY", 1.0);
+            zrig_tick(r, 502.0); zrig_tick(r, 502.1);
+            a_full = zrig_part_channel(r, "mouth_open", "alpha");
+            CHECK(a_closed > 0.99, "闭嘴时上唇线应完整显示（%.3f）", a_closed);
+            CHECK(a_half < 1e-6, "张到一半时上唇线就该没了（%.3f）", a_half);
+            CHECK(a_full < 1e-6, "满张时上唇线必须归零，否则嘴上挂两撇小胡子（%.3f）", a_full);
+            zrig_param_set(r, "ParamMouthOpenY", 0.0);
+            zrig_tick(r, 503.0);
+        }
         /* 帧尺寸应随缩放变化 */
         {
             int fw = 0, fh = 0;
@@ -2212,9 +2240,20 @@ static void test_mask(void)
     z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/body_full.png", g_root);
     z_snprintf(dst, sizeof(dst), "%s/body_full.png", sprites);
     if (copy_file(src, dst) != 0) { CHECK(0, "复制 body_full.png 失败"); return; }
-    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/mouth_open.png", g_root);
+    /* 遮罩夹具用**合成的**纯色块，不要借生产素材。
+       原来这里拷的是 sprites/mouth_open.png，纯属顺手——这个测试考的是遮罩语义，
+       跟嘴没有任何关系。2026-10-15 把 mouth_open.png 从 44x23 的错位旧件换成
+       28x9 的真笑线（G107）之后，这里的两条像素计数断言当场碎了，排查了半天才发现
+       是夹具耦合。合成块的尺寸写死在测试里，素材怎么改都不会再碰它。 */
     z_snprintf(dst, sizeof(dst), "%s/mouth_open.png", sprites);
-    if (copy_file(src, dst) != 0) { CHECK(0, "复制 mouth_open.png 失败"); return; }
+    {
+        zerr e;
+        zimg *fixture = zimg_new_filled(44, 23, 255, 255, 255, 255);
+        zerr_clear(&e);
+        CHECK(fixture && zimg_save_png(fixture, dst, &e) == 0,
+              "遮罩夹具（44x23 实心块）应能写出：%s", e.msg);
+        if (fixture) zimg_free(fixture);
+    }
     z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
 
     /* 正例：用小小的嘴去裁切整张身体，画面上应该只剩嘴那一块 */
@@ -2322,13 +2361,18 @@ static void test_mask(void)
         CHECK(r != NULL, "带分轴缩放的 rig 应加载成功");
         if (r) {
             const zimg *fb;
-            int closed_px, open_px;
+            int closed_px, open_px, s;
             zrig_tick(r, 1.0);
             fb = zrig_frame(r, 1.0, NULL, NULL);
             closed_px = frame_opaque_px(fb);
             zrig_action_request(r, "open", "t", 1);
-            zrig_tick(r, 1.2);
-            fb = zrig_frame(r, 1.2, NULL, NULL);
+            /* 动作通道是**淡入**的，请求完只跳一帧量到的是半路上的值。
+               原来这里 tick 到 1.2 就取样，而且 zrig_frame 的第二个参数是**缩放**不是
+               时间，开合两次量还用了不同缩放（1.0 vs 1.2）—— 两头都不干净，
+               只是因为旧夹具是一条软边细线、计数非线性，比值才碰巧过了线。
+               现在：跑满淡入，两次都用同一缩放量。 */
+            for (s = 0; s < 20; ++s) zrig_tick(r, 1.2 + s * 0.05);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
             open_px = frame_opaque_px(fb);
             CHECK(open_px > closed_px * 3,
                   "sy 通道要把遮罩撑开：闭 %d 像素 → 开 %d 像素", closed_px, open_px);

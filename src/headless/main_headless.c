@@ -661,13 +661,18 @@ static void handle_request(zsock fd, const http_req *r)
         return;
     }
     if (strcmp(r->path, "/api/speech.json") == 0) {
-        char body[640];
+        /* 832 而不是 640：seq/age 两个字段是 2026-10-15 补的（G105）。
+           line 本身最长 256 字节，加上 mood/tier/lipsync 一圈，640 已经贴边了。 */
+        char body[832];
+        double now_s = pet_now();
         LOCK();
         z_snprintf(body, sizeof(body),
                    "{\"line\":\"%s\",\"mood\":\"%s\",\"affection\":%d,\"tier\":\"%s\","
+                   "\"seq\":%u,\"age\":%.2f,"
                    "\"lipsync\":{\"active\":%s,\"id\":\"%s\",\"level\":%.3f,\"remain\":%.3f}}",
                    zpet_last_line(g_pet), zpet_last_mood(g_pet),
                    zpet_affection(g_pet), zpet_affection_tier_name(g_pet),
+                   zpet_last_line_seq(g_pet), zpet_last_line_age(g_pet, now_s),
                    zpet_lipsync_active(g_pet) ? "true" : "false",
                    zpet_lipsync_id(g_pet), zpet_lipsync_level(g_pet),
                    zpet_lipsync_remain(g_pet));

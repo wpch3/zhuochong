@@ -479,6 +479,38 @@ function slotOf(id) {
       stage.qualityMode = "50";
       CHECK(stage.currentQuality() === 50, "手动选 50% 应原样生效");
 
+      /* ★ 台词气泡只认 seq（G105）。
+         原来 onSpeech 每次轮询（~80ms）都 clearTimeout + 重设 4500ms 隐藏计时，
+         而 /api/speech.json 的 line 是"最后说过的那句"、会一直返回同一句，
+         于是计时被无限推后 —— 气泡**永远不会消失**。
+         这里用 stub 的 timers 数组数"有没有重新排过计时"：同一个 seq 连续喂 5 次，
+         只应该排 1 次。 */
+      {
+        const bubble = walk(slotOf("stage")).filter(
+          (n) => n.className && String(n.className).indexOf("bubble") >= 0)[0];
+        CHECK(!!bubble, "舞台应有气泡元素");
+        const n0 = timers.length;
+        stage.onSpeech({ line: "你好呀", seq: 7, age: 0 });
+        const n1 = timers.length;
+        CHECK(n1 === n0 + 1, "新台词应排一次隐藏计时（实际 " + (n1 - n0) + " 次）");
+        CHECK(bubble && bubble.hidden === false, "新台词应显示气泡");
+        for (let i = 0; i < 5; ++i) stage.onSpeech({ line: "你好呀", seq: 7, age: i });
+        CHECK(timers.length === n1,
+              "seq 没变就不许重排计时，否则气泡永不消失（多排了 "
+              + (timers.length - n1) + " 次）");
+        stage.onSpeech({ line: "哇！别敲啦", seq: 8, age: 0 });
+        CHECK(timers.length === n1 + 1, "换了 seq 才重新计时");
+        CHECK(bubble && bubble.hidden === false, "换句后气泡仍显示");
+        stage.onSpeech({ line: "", seq: 9, age: -1 });
+        CHECK(bubble && bubble.hidden === true, "line 为空应立刻收掉气泡");
+        /* 接上一句说了很久的台词时，按剩余时间收，不从头再给 4.5 秒 */
+        const n2 = timers.length;
+        stage.onSpeech({ line: "说了很久了", seq: 10, age: 4.0 });
+        CHECK(timers.length === n2 + 1 && timers[timers.length - 1].ms <= 600,
+              "age 大的台词应只剩很短的显示时间（实际 "
+              + timers[timers.length - 1].ms + "ms）");
+      }
+
       /* ★ 本地模式必须一律不降级（2026-10-15 用户要求：本地要正常分辨率和帧率，
          要能放大到整个桌面还清晰）。降级那套只为沙箱预览的 PNG 传输开销存在。 */
       stage.qualityMode = "auto";

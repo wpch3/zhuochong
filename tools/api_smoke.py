@@ -991,6 +991,41 @@ def run(base, root):
                                             ("  「%s」" % line) if line else ""))
     a.hit("/api/call?kind=call_end")
 
+    print("== 台词气泡：冷却被吞时旧句必须收掉（G105）==")
+    # 用户 2026-10-15 实拍反馈：摸完头马上锤一下，气泡还停在「嘿嘿，好舒服～」，
+    # 看起来像挨了打还在撒娇。根因两层 ——
+    #   引擎：zpet_last_line 是"最后说过的那句"，冷却吞掉台词时原句原封不动留着；
+    #   前端：每次轮询都 clearTimeout 重设 4.5s，隐藏计时被无限推后，气泡永不消失。
+    # 这里查引擎那一层：换规则要清句 + 同规则不能自己打断自己 + seq 要跟着动。
+    settle(a)
+    time.sleep(9.0)                      # pat_head 冷却 8s，先让它彻底凉透
+    a.hit(poke_url(info, "head"))
+    time.sleep(0.35)
+    s1 = a.json("/api/speech.json")
+    check("摸头应说出一句", bool(s1.get("line")), "「%s」seq=%s" % (s1.get("line"), s1.get("seq")))
+    a.hit(poke_url(info, "head"))         # 同一条规则、还在冷却里
+    time.sleep(0.35)
+    s2 = a.json("/api/speech.json")
+    check("同一规则连点不该把自己的气泡打掉",
+          s2.get("line") == s1.get("line") and s2.get("seq") == s1.get("seq"),
+          "「%s」seq=%s → 「%s」seq=%s" % (s1.get("line"), s1.get("seq"),
+                                          s2.get("line"), s2.get("seq")))
+    a.hit(poke_url(info, "head", tool=1))  # 换成锤击，仍在冷却里
+    time.sleep(0.35)
+    s3 = a.json("/api/speech.json")
+    check("换规则而台词被冷却吞掉时，旧句要当场清空",
+          s3.get("line") == "" and s3.get("seq") != s2.get("seq"),
+          "「%s」seq=%s（清空前 seq=%s）" % (s3.get("line"), s3.get("seq"), s2.get("seq")))
+    check("没有台词时 age 应为 -1", s3.get("age") == -1.0, "age=%s" % s3.get("age"))
+    settle(a)
+    time.sleep(3.2)                        # hammer_any 冷却 3s
+    a.hit(poke_url(info, "head", tool=1))
+    time.sleep(0.35)
+    s4 = a.json("/api/speech.json")
+    check("过了冷却再锤应说出新句",
+          bool(s4.get("line")) and s4.get("seq") != s3.get("seq"),
+          "「%s」seq=%s age=%s" % (s4.get("line"), s4.get("seq"), s4.get("age")))
+
     print("== 连续摸头升级为 happy ==")
     # 连击窗口 0.8 秒（zpet.c：超过就把计数清零），所以要快摸，不能等动作演完
     settle(a)

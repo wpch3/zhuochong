@@ -582,8 +582,8 @@
       "group": "head",
       "layer": 210,
       "pos": [
-        434.0,
-        320.0
+        422.0,
+        312.0
       ],
       "anchor": [
         0.5,
@@ -3649,7 +3649,7 @@
         {
           "part": "mouth_open",
           "param": "alpha",
-          "scale": -0.9
+          "scale": -3.5
         },
         {
           "part": "mouth_open",

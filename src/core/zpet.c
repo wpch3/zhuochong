@@ -52,6 +52,15 @@ struct zpet {
     zinteract *inter;
     char    last_line[256];
     char    last_mood[24];
+    /* 台词的"新鲜度"三件套（G105）：
+       last_line 本身是**最后说过的那句**，以前永不清空 —— 摸完头冷却期内再锤一下，
+       zinteract_speak 被冷却吞掉、last_line 原封不动，前端看到的还是「嘿嘿，好舒服～」，
+       于是用户看到的是"锤了却还在撒娇"。
+       seq 每换一句（含清空）加一，前端靠它判断"这是不是新的一句"；
+       rule 记住产出这句的规则 id，连着摸头不会把自己的气泡打掉，换个动作才清。 */
+    double   last_line_at;
+    unsigned last_line_seq;
+    char     last_line_rule[64];
 
     /* 口型同步（A4）：一条 0~1 的开口度包络按时间推进 */
     double *ls_vals;
@@ -726,6 +735,17 @@ static int local_day(void)
 }
 
 static void lipsync_tick(zpet *p, double now);
+
+/* 换一句台词：正文可以是空串（= 把气泡收掉）。seq 每次都加一，
+   前端只认 seq 变化，这样同一句话重复下发不会把 4.5 秒的隐藏计时反复推后。 */
+static void pet_set_line(zpet *p, const char *line, const char *rule_id, double now)
+{
+    z_strlcpy(p->last_line, line ? line : "", sizeof(p->last_line));
+    z_strlcpy(p->last_line_rule, rule_id ? rule_id : "", sizeof(p->last_line_rule));
+    p->last_line_at = now;
+    p->last_line_seq += 1u;
+}
+
 static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
                     const char *fb_reason, int fb_force, double now)
 {
@@ -740,9 +760,15 @@ static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
         /* 好感升档：优先说升档台词，本次互动的普通台词让位 */
         const zi_rule *tu = match_rule(p, "tier_up", "", NULL, 0);
         if (tu && zinteract_speak(p->inter, tu, now, line, sizeof(line)))
-            z_strlcpy(p->last_line, line, sizeof(p->last_line));
+            pet_set_line(p, line, tu->id, now);
     } else if (p->inter && zinteract_speak(p->inter, r, now, line, sizeof(line))) {
-        z_strlcpy(p->last_line, line, sizeof(p->last_line));
+        pet_set_line(p, line, r->id, now);
+    } else if (p->last_line[0] && !z_streq(p->last_line_rule, r->id)) {
+        /* 台词被冷却吞了，而且这次触发的是**另一条**规则：
+           旧气泡必须当场收掉，不然"摸头→立刻锤一下"会停在「嘿嘿，好舒服～」上，
+           看起来像挨了打还在撒娇（G105）。
+           同一条规则连着触发（连续摸头）不清，否则自己的气泡会被自己打断。 */
+        pet_set_line(p, "", r->id, now);
     }
     return ok;
 }
@@ -813,7 +839,7 @@ int zpet_call_event(zpet *p, const char *kind, const char *text, const char *moo
     int ok = 0;
     if (!p || !p->rig || !kind) return 0;
     if (z_streq(kind, "call_reply") && text && text[0])
-        z_strlcpy(p->last_line, text, sizeof(p->last_line));   /* 模型回复原文优先于台词表 */
+        pet_set_line(p, text, "call_reply", now);   /* 模型回复原文优先于台词表 */
     r = match_rule(p, kind, "", NULL, 0);
     if (r) ok = run_rule(p, r, NULL, NULL, 0, now);
     if (mood && mood[0]) ok = zpet_express(p, mood, now) || ok;
@@ -821,6 +847,12 @@ int zpet_call_event(zpet *p, const char *kind, const char *text, const char *moo
 }
 
 const char *zpet_last_line(const zpet *p) { return p ? p->last_line : ""; }
+unsigned zpet_last_line_seq(const zpet *p) { return p ? p->last_line_seq : 0u; }
+double zpet_last_line_age(const zpet *p, double now)
+{
+    if (!p || !p->last_line[0]) return -1.0;     /* 没有台词 = 没有年龄 */
+    return now > p->last_line_at ? now - p->last_line_at : 0.0;
+}
 const char *zpet_last_mood(const zpet *p) { return p ? p->last_mood : ""; }
 
 /* ------------------------------------------------------------ 好感度 */

@@ -48,13 +48,14 @@
     {
       "name": "mouth_open.png",
       "size": [
-        44,
-        23
+        28,
+        9
       ],
       "pos": [
-        212,
-        252
-      ]
+        208,
+        244
+      ],
+      "note": "由 make_mouth_line_cut.py 从 body_full 精确剪下（不是 make_parts.py 的旧复制件）"
     }
   ]
 }

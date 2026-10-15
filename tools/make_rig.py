@@ -105,9 +105,16 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                     "default": 0.0,
                     # 比例要跟着素材走：参数 1.0 = 张到最大（和 surprised 同一口径），
                     # 写死 0.737 的话换一套嘴素材就对不上了（closed_sy 变了）。
+                    # 上唇线的淡出斜率 -3.5：张到 ~29% 时笑线就要彻底消失（alpha 被
+                    # zrig 钳在 0..1）。原来是 -0.9，满张时还剩 10%，笑线两端上翘的
+                    # 嘴角露在口内椭圆上方，像挂了两撇小胡子（G107）。
+                    # 注意：2026-10-15 以前调这个值是**没有效果**的 —— 那时 mouth_open.png
+                    # 是一张错位的旧拷贝件（body_full y252..275，而笑线在 y246..250），
+                    # 真正的笑线还烙在 seg_head 上。先有 make_mouth_line_cut.py 把笑线
+                    # 真正剪下来，这条斜率才管用。
                     "binds": [{"part": "mouth_mask", "param": "sy",
                                "scale": round(0.95 - mouth["closed_sy"], 3)},
-                              {"part": "mouth_open", "param": "alpha", "scale": -0.9},
+                              {"part": "mouth_open", "param": "alpha", "scale": -3.5},
                               {"part": "mouth_open", "param": "sy", "scale": 0.144}],
                     "note": "口型同步（LipSync）接进来时写的就是这个参数"})
         # 嘴形：Live2D 标准口径 —— + 是咧开（笑 / い・え），- 是撅圆（怒 / う・お）。
@@ -1581,7 +1588,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         ("hair_side_r", "bend_x"):  ("ParamHairSide", 7.0),
         ("hair_back", "bend_x"):    ("ParamHairBack", 5.0),
         ("mouth_mask", "sy"):       ("ParamMouthOpenY", round(0.95 - mouth["closed_sy"], 3) if mouth else 0.895),
-        ("mouth_open", "alpha"):    ("ParamMouthOpenY", -0.9),
+        # 必须和上面 ParamMouthOpenY 的 bind scale 一致，否则部件级通道换算出来的
+        # 参数幅度会被放大/缩小。目前用到这条的两个动作（talk / surprised）都在
+        # MOUTH_MERGE 里被手写曲线整体替换，换算结果不进 rig，但口径仍要对齐。
+        ("mouth_open", "alpha"):    ("ParamMouthOpenY", -3.5),
         ("mouth_open", "sy"):       ("ParamMouthOpenY", 0.144),
         # 眼球：左右/上下走 gaze（max_offset 4.0 / 2.5），缩放走瞳孔形状参数
         ("eye_l_ball", "dx"):       ("ParamEyeBallX", 4.0),

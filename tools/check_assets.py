@@ -36,12 +36,23 @@ TH = {
     "key_residue": 200,        # 键色残留像素上限（抠图没抠干净）
     "white_edge": 900,         # 白边像素上限（边缘一圈的近白像素）
     "iou": 0.80,               # 形状重合度下限（与设计图同区域比）
+
     "palette_dist": 70,        # 主色到色卡的 RGB 距离上限（超过就是配色画歪了）
     "anchor_tol": 0.04,        # 对位容差（占全身高的比例，约 ±50px@1292）
     "joint_hole": 60,          # 压力姿势下关节处允许新增的空洞像素（再多就是会穿帮）
     "sway_hole": 20,           # 头发摆到最大幅度时允许新增的空洞像素（背后没补画就会炸）
     "junk_px": 0,              # 键色垃圾像素（纯绿/洋红）上限：一个都不许有
     "eye_residue": 24,         # 脸上眼眶区残留的"眼睛像素"（深眼线/蓝虹膜/纯白眼白）上限
+}
+
+# min_side 的逐件例外：写在这里的部件允许比 TH["min_side"] 更细，每条都要写清为什么。
+# 这个口子只对"本来就是一条线"的零件开，不许拿来放过抠错的碎片。
+MIN_SIDE_EXEMPT = {
+    # 闭合笑线：原画里就是一条 ~9px 高的弧线（body_full y245..251）。
+    # 2026-10-15 之前这张图是 44x23，能过线是因为它压根没套准笑线——里面装的是
+    # 下巴阴影和一角衣领（G107）。现在由 make_mouth_line_cut.py 精确剪出，
+    # 细是正常的；真正该拦的是"套歪了"，那由下面的「笑线对位」项负责。
+    "mouth_open": 6,
 }
 
 
@@ -147,7 +158,7 @@ def check(character, form, root=".", strict=False, out_json=None):
         rgb, m = a[..., :3], alpha_mask(a)
         add(pid, "透明通道", (a[..., 3] == 0).any(), f"全透明像素 {int((a[...,3]==0).sum())}")
         add(pid, "不是空图", m.sum() > 0, f"不透明像素 {int(m.sum())}")
-        side_ok = min(a.shape[0], a.shape[1]) >= th["min_side"]
+        side_ok = min(a.shape[0], a.shape[1]) >= MIN_SIDE_EXEMPT.get(pid, th["min_side"])
         if pid == "body_full":
             side_ok = side_ok and a.shape[1] >= th["body_min_w"]
         add(pid, "尺寸", side_ok, f"{a.shape[1]}x{a.shape[0]}")
@@ -607,6 +618,56 @@ def check(character, form, root=".", strict=False, out_json=None):
                     add("眼部", f"脸上无残留睁眼({side})", n_eye <= th["eye_residue"],
                         f"seg_head 眼眶开口里还剩眼线 {int(dark.sum())} + 虹膜 "
                         f"{int(blue.sum())} 像素（上限 {th['eye_residue']}）")
+
+            # —— 闭合笑线必须是「剪切」不是「复制」——（G107 的静态闸）
+            # 2026-10-15 之前 sprites/mouth_open.png 是 tools/make_parts.py 用手填的框
+            # 复制出来的，而 make_parts.py 根本不在 rebuild_parts.sh 里，于是它一直停在
+            # 很久以前的旧坐标：实测落在 body_full y252..275，而真正的笑线在 y246..250，
+            # **垂直零重叠** —— 那张"笑线件"里装的是下巴阴影和一角衣领。
+            # 更要命的是原来那条笑线始终烙在 seg_head 上：张嘴时口内椭圆只盖得住中段，
+            # 两端上翘的嘴角露在椭圆上方，像挂了两撇小胡子（用户反馈的"惊讶时嘴型重合"）。
+            # 这两条闸分别盯住"剪对了地方"和"原件真的擦掉了"，少一条都能让它复发。
+            mp_path = os.path.join(sprites, "mouth_parts.json")
+            rp_path = os.path.join(sprites, "parts_report.json")
+            if os.path.exists(mp_path) and os.path.exists(rp_path):
+                with open(mp_path, encoding="utf-8") as f:
+                    mp_js = json.load(f)
+                with open(rp_path, encoding="utf-8") as f:
+                    rp_js = json.load(f)
+                ln = mp_js.get("line")
+                mo = next((q for q in rp_js.get("parts", [])
+                           if q.get("name") == "mouth_open.png"), None)
+                if ln and mo:
+                    mx0, my0 = mo["pos"]
+                    mx1 = mx0 + mo["size"][0] - 1
+                    my1 = my0 + mo["size"][1] - 1
+                    covers = (mx0 <= ln["x0"] and mx1 >= ln["x1"]
+                              and my0 <= ln["y0"] and my1 >= ln["y1"])
+                    add("嘴部", "笑线件套准笑线",
+                        covers,
+                        f"mouth_open 覆盖 x{mx0}..{mx1} y{my0}..{my1}，"
+                        f"实测笑线 x{ln['x0']}..{ln['x1']} y{ln['y0']}..{ln['y1']}"
+                        f"{'' if covers else ' ← 没套住，等于没剪到笑线'}")
+
+                    # 擦除判据：seg_head 上原笑线那一块不能再有"明显偏离周围肤色"的像素。
+                    # 用色差而不是暗度 —— 笑线两端的嘴角高光比肤色还亮，只看暗度会漏掉。
+                    hd = load_rgba(os.path.join(sprites, "seg_head.png")).astype(float)
+                    hx2, hy2 = next(q["pos"] for q in bp["parts"] if q["id"] == "seg_head")
+                    ex0, ey0 = ln["x0"] - hx2, ln["y0"] - hy2
+                    ex1, ey1 = ln["x1"] - hx2, ln["y1"] - hy2
+                    if 1 <= ex0 and ex1 < hd.shape[1] - 1 and 1 <= ey0 and ey1 < hd.shape[0] - 1:
+                        top = hd[ey0 - 1, ex0:ex1 + 1, :3]
+                        bot = hd[ey1 + 1, ex0:ex1 + 1, :3]
+                        hh = ey1 - ey0 + 1
+                        t = ((np.arange(hh, dtype=float) + 1.0) / (hh + 1.0))[:, None, None]
+                        ref = top[None] * (1 - t) + bot[None] * t
+                        blk = hd[ey0:ey1 + 1, ex0:ex1 + 1, :3]
+                        dev = np.abs(blk - ref).max(axis=2)
+                        n_left = int((dev > 24).sum())
+                        add("嘴部", "笑线已从底图剪走",
+                            n_left <= 8,
+                            f"seg_head 原笑线区还剩 {n_left} 个偏离肤色>24 的像素"
+                            f"（上限 8，最大偏离 {dev.max():.0f}）")
 
             # —— 乘算/加算零件必须压在底图的实心区上 ——（G66 的静态闸）
             # 腮红走 multiply、眼高光走 additive，这两种混合模式在**透明背景上是无效果的**：

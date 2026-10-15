@@ -168,6 +168,11 @@ const char *zpet_lipsync_id(const zpet *p);
 const char *zpet_lipsync_text(const zpet *p);
 /* 最近一句台词/回复原文，最近一次情绪（UI 显示用；无则为空串） */
 const char *zpet_last_line(const zpet *p);
+/* 台词序号：每换一句（含被清空）加一。前端靠"seq 变了没"判断是不是新的一句，
+   而不是靠比对正文 —— 比正文的话，同一句重复下发会把隐藏计时无限推后，气泡永不消失。 */
+unsigned    zpet_last_line_seq(const zpet *p);
+/* 这句说出来多久了（秒）。没有台词时返回 -1。 */
+double      zpet_last_line_age(const zpet *p, double now);
 const char *zpet_last_mood(const zpet *p);
 /* 好感度：当前值、档位下标、档位名（如 初识/熟络/亲近/挚友）；测试与预览用可直接设置 */
 int         zpet_affection(const zpet *p);

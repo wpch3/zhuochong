@@ -2226,6 +2226,34 @@ def check_tools(root):
         ok = bool(steps) and nums == list(range(1, len(nums) + 1)) and tots == {len(nums)}
         check("重建链步骤编号连号", ok,
               f"{len(nums)} 步，分母 {sorted(tots)}")
+        # 笑线剪切必须在链上，且排在「所有会改写 seg_head 的工具」之后、make_rig 之前。
+        # 它要擦的是 seg_head 上那条闭合笑线；只要后面还有工具把 AI 重绘回贴到脸上，
+        # 笑线就会被重新盖回去，胡须（G107）当场复发。
+        i_cut = txt.find("make_mouth_line_cut.py")
+        i_eyeline = txt.find("make_eyeline_parts.py")
+        i_sidehair = txt.find("make_sidehair_parts.py")
+        i_rig = txt.find("make_rig.py")
+        check("笑线剪切在重建链上且位置正确",
+              i_cut > 0 and i_cut > i_eyeline and i_cut > i_sidehair and i_cut < i_rig,
+              f"make_mouth_line_cut.py 偏移 {i_cut}（眼线 {i_eyeline} / 侧发 {i_sidehair} "
+              f"/ make_rig {i_rig}）")
+
+    # 上唇线淡出斜率：参数绑定与 GEO2PARAM 换算表必须是同一个数。
+    # 对不上的后果不是报错而是**静默跑偏**——部件级通道换算出来的参数幅度会被
+    # 按错误的比例放大或缩小（amp 是除以 scale 的）。
+    mr = os.path.join(root, "tools", "make_rig.py")
+    if os.path.exists(mr):
+        src = open(mr, encoding="utf-8").read()
+        m1 = re.search(r'\{"part":\s*"mouth_open",\s*"param":\s*"alpha",\s*"scale":\s*(-?[\d.]+)\}', src)
+        m2 = re.search(r'\("mouth_open",\s*"alpha"\):\s*\("ParamMouthOpenY",\s*(-?[\d.]+)\)', src)
+        same = bool(m1 and m2) and float(m1.group(1)) == float(m2.group(1))
+        check("上唇线淡出斜率两处一致", same,
+              f'bind={m1.group(1) if m1 else "缺"} / GEO2PARAM={m2.group(1) if m2 else "缺"}')
+        # 斜率必须 <= -1.0，否则满张嘴时上唇线还有残留（-0.9 时剩 10%，就是那两撇小胡子）。
+        steep = bool(m1) and float(m1.group(1)) <= -1.0
+        check("上唇线满张时能归零", steep,
+              f'scale={m1.group(1) if m1 else "缺"}，'
+              f'张到 {abs(1.0/float(m1.group(1))):.0%} 时归零' if m1 else "没找到绑定")
     bad = []
     pys = glob.glob(os.path.join(root, "tools/*.py")) + glob.glob(os.path.join(root, "scripts/*.py"))
     for f in pys:
