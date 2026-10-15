@@ -488,6 +488,29 @@ def check_rig(root):
         nb = [p for p in r["parts"] if p.get("blend") in ("add", "multiply")]
         minlayer = min([p.get("layer", 0) for p in r["parts"]], default=0)
         lowblend = [p["id"] for p in nb if p.get("layer", 0) <= minlayer]
+        # 特效件（fx_*）画在人物剪影**外面**的空气里，底下根本没有像素可乘可加。
+        # zimg.c:76 的 ADD/MULTIPLY 分支写死 `oa = da`（不改目标 alpha），
+        # 所以这种件用加算 = 一个像素都画不出来。2026-10-16 真机踩过：
+        # 8 颗 ✨ 全写成 blend:"add"，渲染出来一颗都没有，而下面那条
+        # 「层号不能最底」完全拦不住（✨ 在 300~307，是最顶层）。
+        fxbad = [p["id"] for p in r["parts"]
+                 if p["id"].startswith("fx_") and p.get("blend") in ("add", "multiply")]
+        badblend += [f"{i}=特效件不能加算" for i in fxbad]
+
+        # 表情是**状态**（挂上去就一直生效），不许把眼睛开合钉死：
+        # set 之后眨眼驱动再也推不动它，角色会一眼不眨地瞪着人。2026-10-16 真机发现
+        # 六个表情全中（smile/shy/angry/sad/surprise/sleepy），挂上任一个
+        # /api/blink?v=1 就失灵。「眯一点」请用 multiply（乘 0.85，眨眼仍能压到 0），
+        # 「睁大眼」请放进动作（动作有时长，会自己结束）。
+        eye_pin = [f"{ex['id']}.{q['id']}" for ex in r.get("expressions", [])
+                   for q in ex.get("params", [])
+                   if q.get("id") in ("ParamEyeOpen", "ParamEyeLOpen", "ParamEyeROpen")
+                   and q.get("mode") in ("set", "overwrite")]
+        check("表情不许把眼睛开合钉死（否则永远不眨眼）", not eye_pin,
+              f"{eye_pin} —— 表情是状态，set 上去眨眼就被压住了；眯眼用 multiply"
+              if eye_pin else
+              f"{len(r.get('expressions', []))} 个表情，眼开合都没被 set 钉住")
+
         check("混合模式零件写法合法", not badblend and not lowblend,
               f"坏取值 {badblend} 压在最底层 {lowblend}" if (badblend or lowblend)
               else f"{len(nb)} 件（加算/乘算）")
@@ -565,6 +588,9 @@ L2D_EXTENSIONS = {
     "ParamWeightShift": "重心左右（一个参数同时驱动骨盆横移与两腿补偿，站立微动）",
     "ParamTiptoe": "踮脚（整体上提 + 脚踝收，裙摆下沿仍不动）",
     "ParamHipDrop": "胯下沉／屈膝承重（上身起伏但脚不离地；和 ParamBaseY 的区别就是它不动脚）",
+    "ParamStarEye": "星星眼总闸（常态虹膜淡出↔星形虹膜淡入 + 放行画面上的 ✨）",
+    **{f"ParamSparkle{i}": "第 %d 颗 ✨ 的生命周期（scale+alpha 合一，一颗一个参数）" % i
+       for i in range(1, 9)},
 }
 # 官方惯例的取值范围（Cubism 标准模板）
 L2D_RANGE = {
@@ -2328,17 +2354,22 @@ def check_tools(root):
         bad_scale = []
         for p in hires:
             sc = p.get("scale", 1.0)
-            vals = sc if isinstance(sc, list) else [sc]
-            # 1× 时该是 1.0 或 [1.0, k]；换成 2× 后每一轴都要恰好减半
-            if isinstance(sc, list):
-                ok = abs(vals[0] - 0.5) < 1e-6
-            else:
-                ok = abs(vals[0] - 0.5) < 1e-6
-            if not ok:
-                bad_scale.append((p["id"], sc))
+            # 要验的是「换成 2× 素材之后几何没变」= scale 恰好是 1× 口径的一半。
+            # make_rig 把 1× 口径留在 scale_1x 里（它自己就是从那儿算出来的）。
+            # 不能写死"必须等于 0.5"：那隐含假设所有件 1× 的 scale 都是 1.0，
+            # 而闪光件是一张素材复制成大中小（1× scale 0.68/0.45），会被误报。
+            base = p.get("scale_1x")
+            if base is None:
+                bad_scale.append((p["id"], "缺 scale_1x（make_rig 没写）"))
+                continue
+            av = sc if isinstance(sc, list) else [sc]
+            bv = base if isinstance(base, list) else [base]
+            if len(av) != len(bv) or any(abs(a - b * 0.5) > 1e-6
+                                         for a, b in zip(av, bv)):
+                bad_scale.append((p["id"], f"{sc} 不是 {base} 的一半"))
         check("用了 @2x 的部件 scale 都减半了", not bad_scale,
               f"没减半的：{bad_scale[:4]} —— file 换了 scale 没换，画面会大一倍"
-              if bad_scale else f"{len(hires)} 个都是 0.5")
+              if bad_scale else f"{len(hires)} 个都是 1× 口径的一半")
         missing_h, wrong_size = [], []
         for p in rparts:
             f2 = p["file"] if p["file"].endswith("@2x.png") else None

@@ -28,9 +28,30 @@ def png_size(path):
     return (int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big"))
 
 
+# —— 面部层序表（一处定义，别再散落硬编码）——
+#
+# 原来 219/222/229/234 这些数字散在两段代码里，各写各的，插一个新件就要人肉
+# 找一遍谁和谁撞；2026-10-16 加星形虹膜时发现两只眼的层段**已经没有空位**
+# （右眼 229~231 上面紧贴着眉毛 232/233），只能整段重排 —— 所以顺手收口成一张表。
+#
+# 规则：
+#   · 一只眼占 10 个连号（左 216~225 / 右 226~235），插件不用再全表重排；
+#   · 同一只眼内部顺序固定：socket < base < ball < ball_star < lid < hl < lash
+#     < closed < hl_star < smile；
+#   · socket 是遮罩，必须最小（引擎要求遮罩件先画）；
+#   · lash 压住 hl（睫毛本来就该盖住高光），closed/smile 压住 lash；
+#   · 眉毛被挤到 236/237（make_brow_parts.py 同步改了），刘海仍是 240。
+_EYE_ORDER = ("socket", "base", "ball", "ball_star", "lid",
+              "hl", "lash", "closed", "hl_star", "smile")
+FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
+              for side, b in (("l", 216), ("r", 226))}
+SPARKLE_LAYER0 = 300      # ✨ 特效：画在所有人物件之上（最高的头发才 246）
+
+
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
                has_blend=False, has_side=False, has_legs=False,
-               body_id="seg_torso", has_eyeballs=False, foot_lift=None):
+               body_id="seg_torso", has_eyeballs=False, foot_lift=None,
+               star_eyes=None):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -320,6 +341,45 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                        {"part": "eye_hl_star_l", "param": "alpha", "scale": 1.0, "offset": -1.0},
                        {"part": "eye_hl_star_r", "param": "alpha", "scale": 1.0, "offset": -1.0}]},
         ]
+    if star_eyes:
+        n = len(star_eyes["sparkle"]["instances"])
+        # 星星眼开关：一个参数同时做三件事 —— 常态虹膜淡出、星形虹膜淡入、
+        # ✨ 开门。alpha 通道在引擎里是**相乘**累加的（apply_chan 的 P_ALPHA），
+        # 所以 ✨ 的最终透明度 = 开门(本参数) × 这一颗的生命周期(ParamSparkleN)，
+        # 两个参数各管各的，不用再造一个"合成"通道。
+        out.append({
+            "id": "ParamStarEye", "label": "星星眼 0/1", "min": 0.0, "max": 1.0,
+            "default": 0.0,
+            "binds": [{"part": "eye_l_ball", "param": "alpha", "scale": -1.0},
+                      {"part": "eye_r_ball", "param": "alpha", "scale": -1.0},
+                      {"part": "eye_l_ball_star", "param": "alpha",
+                       "scale": 1.0, "offset": -1.0},
+                      {"part": "eye_r_ball_star", "param": "alpha",
+                       "scale": 1.0, "offset": -1.0}]
+                     + [{"part": f"fx_sparkle_{i}", "param": "alpha",
+                         "scale": 1.0, "offset": -1.0} for i in range(1, n + 1)],
+            "note": "0 = 常态蓝瞳，1 = 五角星瞳 + 脸周围 ✨；中间值是交叉淡化",
+        })
+        # 每颗闪光一个参数：0 = 缩到 SPARK_MIN 且全透明，1 = 原尺寸且全亮。
+        # scale 的 offset 把基准压到 SPARK_MIN，于是参数就是整条生命周期的进度。
+        SPARK_MIN = 0.45
+        for i, inst in enumerate(star_eyes["sparkle"]["instances"], 1):
+            g = round(1.0 - SPARK_MIN, 4)
+            out.append({
+                "id": f"ParamSparkle{i}", "label": f"闪光{i} 生命周期",
+                "min": 0.0, "max": 1.0,
+                # 默认值按这一颗的相位错开：别的动作接管时参数停在默认值上，
+                # 八颗一样大就又变成"整齐划一"了。
+                "default": round(0.25 + 0.5 * inst["phase"], 3),
+                "binds": [{"part": inst["id"], "param": "alpha",
+                           "scale": 1.0, "offset": -1.0},
+                          {"part": inst["id"], "param": "sx",
+                           "scale": g, "offset": -g},
+                          {"part": inst["id"], "param": "sy",
+                           "scale": g, "offset": -g}],
+                "note": f"{inst['size_class']}；idle / star_eyes 里以 "
+                        f"freq={inst['freq']} phase={inst['phase']} 驱动",
+            })
     if has_eyeballs:
         # 标准参数表的"瞳孔形状"。贴图模型做不出真正的变形，就用瞳孔缩放代替：
         # +1 = 瞳孔睁圆放大（吓一跳），-1 = 缩成一点（惊恐/呆滞）。
@@ -359,8 +419,14 @@ def viseme_list(mouth=None):
     ]
 
 
+# 表情里的 ParamEyeOpen 一律用 **multiply**，不许用 set（2026-10-16）。
+#   set 会把这个参数钉死，眨眼驱动再也推不动它 —— 实测挂上任一表情之后
+#   /api/blink?v=1 完全没反应，小寻从此一眼不眨（logs/asset_qa/smile_blink.png）。
+#   multiply 是 Live2D expression3 的标准三种模式之一（zrig.c:1818 认 add/set/multiply）：
+#   「微笑时眯一点」= 乘 0.85，睁着时 1.0×0.85=0.85，眨眼压到 0 时 0×0.85=0 —— 照样闭得上。
+#   闸门：selfcheck「表情不许把眼睛开合钉死」。
 def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=False,
-                    has_smile_eyes=False):
+                    has_smile_eyes=False, has_star=False):
     """表情集。每条 = 一组参数偏移（mode 缺省 add，set 为覆盖），fade 是淡入淡出秒数。
 
     只用 param_list 里声明过的参数（引擎加载时会校验），所以改表情不用动 C 代码。
@@ -398,26 +464,26 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
 
     out = [
         {"id": "smile", "name": "微笑", "fade": 0.3,
-         "params": brows(0.25, 0.25, lf=0.3, rf=0.3) + mform(0.7) + [P("ParamEyeOpen", 0.85, "set")]
+         "params": brows(0.25, 0.25, lf=0.3, rf=0.3) + mform(0.7) + [P("ParamEyeOpen", 0.85, "multiply")]
                    + blush(0.22) + sparkle(0.75)},
         {"id": "shy", "name": "害羞", "fade": 0.35,
          "params": brows(-0.3, -0.3, lf=-0.3, rf=-0.3) + mform(0.35)
-                   + [P("ParamEyeOpen", 0.7, "set")]
+                   + [P("ParamEyeOpen", 0.7, "multiply")]
                    + blush(0.95) + sparkle(0.8)
                    + ([P("ParamAngleZ", -4.0)] if head_is_part else [])},
         {"id": "angry", "name": "生气", "fade": 0.22,
          "params": brows(-0.7, -0.7, -0.8, -0.8, lf=-1.0, rf=-1.0) + mform(-0.7)
-                   + [P("ParamEyeOpen", 0.9, "set")] + blush(0.45) + sparkle(0.3)},
+                   + [P("ParamEyeOpen", 0.9, "multiply")] + blush(0.45) + sparkle(0.3)},
         {"id": "sad", "name": "难过", "fade": 0.4,
          "params": brows(-0.45, -0.45, 0.7, 0.7, lf=-0.55, rf=-0.55) + mform(-0.5)
-                   + [P("ParamEyeOpen", 0.75, "set")] + blush(0.0) + sparkle(0.18)},
+                   + [P("ParamEyeOpen", 0.75, "multiply")] + blush(0.0) + sparkle(0.18)},
         {"id": "surprise", "name": "吃惊", "fade": 0.12,
          "params": brows(0.9, 0.9, lf=1.0, rf=1.0) + mopen(0.55)
-                   + [P("ParamEyeOpen", 1.0, "set"), P("ParamEyeBallY", -0.15)]
+                   + [P("ParamEyeBallY", -0.15)]
                    + sparkle(1.0)},
         {"id": "sleepy", "name": "困倦", "fade": 0.5,
          "params": brows(-0.2, -0.2) + mopen(0.15)
-                   + [P("ParamEyeOpen", 0.3, "set"), P("ParamEyeBallY", 0.2)]
+                   + [P("ParamEyeOpen", 0.3, "multiply"), P("ParamEyeBallY", 0.2)]
                    + blush(0.0) + sparkle(0.12)},
     ]
     # 开心（眯眼笑）：照官方 Haru 的 F05 表情 —— ParamEyeLOpen=0(Multiply) + ParamEyeLSmile=1(Add)
@@ -430,13 +496,35 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
                        + [P("ParamEyeLSmile", 1.0, "set"), P("ParamEyeRSmile", 1.0, "set")]
                        + blush(0.38) + sparkle(1.0),
              "note": "笑眼 = 山型闭眼（Live2D 标准做法），参考官方 Haru 的 F05"})
+    # 星星眼（T39）：**状态型**表情 —— 设上就一直是星星眼，直到切别的表情或 off。
+    # 想要"亮一下再收回去"的那种演出，用同名动作（/api/action?id=star_eyes）。
+    # 这里只把眼睛那一摊设满，嘴和脸红给得克制，这样它能和 happy/shy 叠着用。
+    if has_star:
+        out.append(
+            {"id": "star_eyes", "name": "星星眼", "fade": 0.25,
+             "params": brows(0.4, 0.4, lf=0.5, rf=0.5) + mform(0.6)
+                       + [P("ParamStarEye", 1.0, "set"),
+                          P("ParamEyeBallForm", 0.3)]
+                       + blush(0.4) + sparkle(1.0),
+             "note": "L1 星形瞳 + L2 眼内碎钻（画进贴图）+ L3 脸周围 ✨；"
+                     "✨ 的闪烁由 idle 的 ParamSparkle1..N 驱动。"
+                     "这里**故意不写 ParamEyeOpen** —— 见下方注释"})
+        # 为什么表情里不能 set ParamEyeOpen=1（2026-10-16 真机踩出来的）：
+        # 表情是**状态**，挂上去就一直生效。拿 "set" 把 ParamEyeOpen 钉在 1，
+        # 眨眼驱动就再也推不动它了 —— 实测挂上星星眼之后 /api/blink?v=1 完全
+        # 没反应，小寻从此一眼不眨地瞪着你（logs/asset_qa/star_eye_blink.png
+        # 的 star_shut 格和 star_open 格一模一样）。用户上一轮打回惊讶表情的
+        # 原话就是「看着像个怪物一样很怪」，一个永不眨眼的状态正是同一类毛病。
+        # 「睁大眼」确实是星星眼的一部分（booth.pm/ja/items/5711516：
+        # 笑顔で目を見開いたときに），但那是**一瞬间**的演出，归动作管 ——
+        # 动作 star_eyes 只持续 3.4 秒，在那 3.4 秒里钉住 EyeOpen 没有副作用。
     return out
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
           closed=None, blendp=None, eyeline=None, smile_eyes=None, footp=None,
-          base=None):
+          star_eyes=None, base=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -606,13 +694,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     eye_parts = []
     eye_ball_ids = []
     if eyes:
-        base_layer = {"l": 216, "r": 226}
-        # 笑眼件要压在同侧所有眼部件之上（含星形高光 222/234），所以单独给层号
-        smile_layer = {"l": 223, "r": 235}
         smiles = {e["side"]: e for e in (smile_eyes or {}).get("eyes", [])}
+        stars = {e["side"]: e for e in (star_eyes or {}).get("eyes", [])}
         for e in eyes["eyes"]:
             side = e["side"]
-            L = base_layer[side]
+            LY = FACE_LAYER[side]
+            L = LY["socket"]
             px, py = e["patch_pos"]
             bx, by = e["ball_pos"]
             sid = f"eye_{side}"
@@ -620,7 +707,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             # 按 blink 纵向压扁，被它裁切的眼白/眼球/高光跟着被切掉 = 眼睛真的合上。
             el = next((x for x in (eyeline or {}).get("eyes", []) if x["side"] == side), None)
             sock = {"id": f"{sid}_socket", "file": f"sprites/{e['socket']}", "group": "head",
-                    "layer": L, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                    "layer": LY["socket"], "pos": [ox + px, oy + py], "anchor": [0, 0],
                     "tags": [], "mask_only": True,
                     "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"}
             ap_h = 0
@@ -641,17 +728,33 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             eye_parts += [
                 sock,
                 {"id": f"{sid}_base", "file": f"sprites/{e['base']}", "group": "head",
-                 "layer": L + 1, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                 "layer": LY["base"], "pos": [ox + px, oy + py], "anchor": [0, 0],
                  "tags": ["eye_open"] if closed else [], "mask": f"{sid}_socket",
                  # 眼白也要被眼眶裁住：它比眼眶大一圈，不裁的话闭眼时眼皮盖不住那一圈，
                  # 眼睛底下会留一条蓝边（实测）。脸上本来就画着同样的眼睛，裁掉不丢东西。
                  "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"},
                 {"id": f"{sid}_ball", "file": f"sprites/{e['ball']}", "group": "head",
-                 "layer": L + 2, "pos": [ox + bx, oy + by], "anchor": [0, 0],
+                 "layer": LY["ball"], "pos": [ox + bx, oy + by], "anchor": [0, 0],
                  "tags": ["gaze", "eye_open"] if closed else ["gaze"], "mask": f"{sid}_socket",
                  "note": f"眼球：完整的圆（被眼皮挡住的部分已补全），"
                          f"可动范围 ±{e['travel'][0]}/±{e['travel'][1]}px，由眼眶裁切"},
             ]
+            # 星形虹膜（T39.1 / L1+L2）：和常态虹膜同位置同轮廓的差分件。
+            # 这是日文教程里的标准「きらきら目差分」做法 —— 不改眼球几何，
+            # 只拿另一张贴图原地盖上去，用不透明度 0↔100 切（见 ParamStarEye）。
+            #   · motion_from 照抄常态虹膜的通道值 → 视线、瞳孔缩放一起跟着走，
+            #     不用把 GEO2PARAM 里那四条绑定再抄一遍（抄一遍就是 DC41 说的多入口）；
+            #   · tags 仍带 gaze/eye_open：这两件事是引擎按标签逐件算的，不走通道。
+            st = stars.get(side)
+            if st:
+                eye_parts.append(
+                    {"id": f"{sid}_ball_star", "file": st["file"],
+                     "group": "head", "layer": LY["ball_star"],
+                     "pos": [ox + bx, oy + by], "anchor": [0, 0],
+                     "tags": ["gaze", "eye_open"] if closed else ["gaze"],
+                     "mask": f"{sid}_socket", "motion_from": f"{sid}_ball",
+                     "note": "星形虹膜（星星眼 L1+L2：五角星瞳 + 眼内碎钻高光）。"
+                             "ParamStarEye=0 时全透明、常态虹膜露出来；=1 时反过来"})
             # 上眼睑：
             #   · 有 AI 重绘的「闭眼脸」时（eye_closed_parts.json）→ 走交叉淡化，
             #     不再需要几何眼皮（那东西闭到底就是一块比脸亮的肤色饼）；
@@ -662,7 +765,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             if lid:
                 eye_parts.append(
                     {"id": f"{sid}_lid", "file": f"sprites/{lid['file']}", "group": "head",
-                     "layer": L + 3, "pos": [ox + lid["pos"][0], oy + lid["pos"][1]],
+                     "layer": LY["lid"], "pos": [ox + lid["pos"][0], oy + lid["pos"][1]],
                      "anchor": [0, 0], "tags": ["eyelid"], "mask": f"{sid}_socket",
                      "eyelid_travel": lid["travel"],
                      "note": f"上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 {lid['travel']}px 盖满眼眶"})
@@ -675,7 +778,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             # 行程比眼皮少几像素：眼皮要盖过下沿（OVERSHOOT），睫毛要停在下沿上。
             lash_travel = max(2, int(lid["travel"]) - 6) if lid else 0
             lash_part = {"id": f"{sid}_lash", "file": f"sprites/{e['lash']}", "group": "head",
-                         "layer": L + 4, "pos": [ox + px, oy + py], "anchor": [0, 0],
+                         "layer": LY["lash"], "pos": [ox + px, oy + py], "anchor": [0, 0],
                          "tags": ["eyelid"] if lid else ["eye_open"],
                          "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"}
             if lid:
@@ -706,7 +809,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             if cl:
                 eye_parts.append(
                     {"id": f"{sid}_closed", "file": f"sprites/{cl['file']}", "group": "head",
-                     "layer": L + 5, "pos": [ox + cl["pos"][0], oy + cl["pos"][1]],
+                     "layer": LY["closed"], "pos": [ox + cl["pos"][0], oy + cl["pos"][1]],
                      "anchor": [0, 0], "tags": ["eye_closed"],
                      "note": f"闭眼（AI 重绘·盖住原画眼睛 {cl['checks']['cover_ratio']*100:.1f}%，"
                              f"接缝色差 {cl['checks']['seam_mean_abs']}）：blink=1 时完全显形"})
@@ -718,7 +821,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             if sm:
                 eye_parts.append(
                     {"id": f"{sid}_smile", "file": f"sprites/{sm['file']}", "group": "head",
-                     "layer": smile_layer[side],
+                     "layer": LY["smile"],
                      "pos": [ox + sm["pos"][0], oy + sm["pos"][1]],
                      "anchor": [0, 0], "tags": ["eye_smile"],
                      "note": f"笑眼（AI 重绘·盖住原画眼睛 {sm['checks']['cover_ratio']*100:.1f}%，"
@@ -794,11 +897,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 "blend": "multiply", "tags": [],
                 "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
             })
-        # 层号挑在眼球（218/228）之上、睫毛（220/230）之下：
-        # 睫毛本来就该压住高光，眉毛在 232/233，别撞。
+        # 层号全部来自 FACE_LAYER（见文件上方那张表）：高光在虹膜之上、睫毛之下。
         # 层号只要唯一就行：A9 之后遮罩是渲染时当场画的，
         # 不再要求"遮罩和被裁件在图层里挨着"（这条限制以前逼着我们挪层号）。
-        for side, lay, starlay in (("l", 219, 222), ("r", 229, 234)):
+        for side in ("l", "r"):
+            lay, starlay = FACE_LAYER[side]["hl"], FACE_LAYER[side]["hl_star"]
             st = blendp.get("star", {}).get(side)
             if st:
                 parts_list.append({
@@ -817,6 +920,34 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 "mask": f"eye_{side}_socket",
                 "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
             })
+    # ✨ 闪光特效（星星眼 L3，T39.1b/T39.1c）。
+    #
+    # 做法照 Live2D 讲师カワナミ 的《キラキラエフェクト》（REFERENCE_NOTES 第二十五批）：
+    #   · **素材只有一张**，大中小和散布全靠复制 + 变形（scale / rot_deg）；
+    #   · 一颗闪光只要 scale + alpha 两条通道，合并到**一个**参数上
+    #     （参数 0→1 走完 = 放大出现 → 缩小消失一个生命周期）；
+    #   · **每颗各自一个参数，不许共用** —— 共用会整齐划一地闪，一眼假。
+    #     原作者为此用了 28 颗 28 个参数；我们 8 颗 8 个参数，另外把每颗的
+    #     振荡频率也取成两两不同（见 star_eye_parts.json 的 freq），
+    #     这样跑久了也不会重新对齐。
+    # 层号在 300+：这是"画在人物前面的演出效果"，不属于任何五官。
+    if star_eyes and star_eyes.get("sparkle"):
+        sk = star_eyes["sparkle"]
+        for i, inst in enumerate(sk["instances"]):
+            parts_list.append({
+                "id": inst["id"], "file": sk["file"],
+                "group": "head", "layer": SPARKLE_LAYER0 + i,
+                "pos": [ox + inst["pos"][0], oy + inst["pos"][1]],
+                "anchor": [0.5, 0.5],          # 锚点在正中：缩放是"从中心胀开"
+                "scale": inst["scale"], "rot_deg": inst["rot_deg"],
+                # ⚠ 不能用加算：zimg_blend 的 ADD 保留目标 alpha（oa = da），
+                # 画在**透明背景**上等于没画。✨ 恰恰飘在人物剪影外面，
+                # 第一版写 add 的结果是八颗全看不见（实测）。普通混合即可 ——
+                # 素材本身就是白芯蓝尖的发光图，不靠混合模式发光。
+                "opacity": 1.0, "blend": "normal", "tags": [],
+                "note": f"闪光 {inst['size_class']}（加算）：默认全透明，"
+                        f"ParamStarEye 开门、ParamSparkle{i + 1} 管这一颗的生命周期",
+            })
     if not eyes:
         # 没拆件的旧素材才用"整张闭眼图淡入"的老办法
         parts_list = parts_list + [
@@ -832,6 +963,22 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     #   身体弯曲时五官必须跟着走，否则眼睛会从脸上滑走——这件事由引擎的
     #   groups.*.bend_follow 自动完成（按组枢轴所在高度取同一条曲线的权重），
     #   所以这里**不要**再手写跟随通道，写了会动两次。
+    def sparkle_cycle(se):
+        """八颗闪光的生命周期通道。挂在 idle 上 = 星星眼一开就在闪。
+
+        为什么是正弦而不是 pulse：pulse 是一次性的，idle 要一直循环。
+        amp/bias 取 0.62/0.38 → 取值范围 [−0.24, 1.0]，负的那段被 alpha 的
+        ZC_CLAMP 压成全透明 —— 于是每颗有约四分之一个周期是**完全不在**的，
+        看起来才像"闪一下又没了"，而不是八个灯一起呼吸。
+        每颗的 freq 两两不同（star_eyes_parts.json 里定死），所以跑多久都不会重新对齐。
+        """
+        if not se:
+            return []
+        return [{"target": f"ParamSparkle{i}", "wave": "sine",
+                 "amp": 0.62, "bias": 0.38,
+                 "freq": inst["freq"], "phase": inst["phase"]}
+                for i, inst in enumerate(se["sparkle"]["instances"], 1)]
+
     actions = [
         {"id": "breath", "priority": 1, "duration": 0, "loop": True, "return_state": "idle",
          "channels": [
@@ -857,7 +1004,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 0.7, "freq": 0.13, "phase": 0.3},
              {"target": "eye_open_left", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
              {"target": "eye_open_right", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
-         ]},
+         ] + sparkle_cycle(star_eyes)},
         {"id": "focus", "priority": 2, "loop": True, "interruptible": True, "return_state": "idle",
          "channels": [
              {"target": "head", "param": "dy", "wave": "sine", "amp": 1.2, "freq": 0.3},
@@ -1338,6 +1485,40 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         ]
         actions.append(look)
 
+    # 星星眼（T39 / AC-34）：一次完整的"哇——"表演。
+    # 和表情 star_eyes 的分工：表情是**状态**（设上就一直是星星眼），
+    # 动作是**一段演出**（亮起来 → 保持 → 收回去），自己会回 idle。
+    # 节奏参考日文教程里キラキラ的用法：不是常亮，而是"笑着睁大眼的那一下"才出现。
+    if star_eyes:
+        actions.append({
+            "id": "star_eyes", "priority": 6, "duration": 3.4,
+            "return_state": "idle", "interruptible": True, "fade": 0.15,
+            "channels": [
+                # 开门曲线：0.28s 亮满（out_back 会小过冲一下，像"啪"地点亮），
+                # 中间保持，最后 0.6s 收回去。
+                {"target": "ParamStarEye", "interp": "smooth",
+                 "keys": [[0.0, 0.0], [0.28, 1.0], [2.8, 1.0], [3.4, 0.0]]},
+                # 眼睛睁大一点点 + 瞳孔略放大：星星要有地方放
+                {"target": "ParamEyeOpen", "interp": "smooth",
+                 "keys": [[0.0, 0.0], [0.3, 0.25], [2.8, 0.2], [3.4, 0.0]]},
+                {"target": "ParamEyeBallForm", "interp": "smooth",
+                 "keys": [[0.0, 0.0], [0.3, 0.35], [2.8, 0.3], [3.4, 0.0]]},
+                {"target": "ParamMouthForm", "wave": "pulse", "amp": 0.8,
+                 "dur": 0.45, "ease": "out"},
+                {"target": "ParamMouthOpenY", "interp": "smooth",
+                 "keys": [[0.0, 0.0], [0.3, 0.28], [2.6, 0.22], [3.4, 0.0]]},
+                {"target": "ParamCheek", "wave": "pulse", "amp": 0.7,
+                 "dur": 0.5, "ease": "out"},
+                {"target": "ParamEyeSparkle", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.35, "ease": "out"},
+                # 身体：轻轻往前探一下 + 歪头（卖萌的标准姿态），再加一点弹跳
+                {"target": "ParamAngleZ", "interp": "smooth",
+                 "keys": [[0.0, 0.0], [0.5, -5.0], [1.7, 4.0], [2.9, -2.0], [3.4, 0.0]]},
+                {"target": "head", "param": "dy", "wave": "sine",
+                 "amp": 1.6, "freq": 1.1, "dur": 3.4},
+            ],
+        })
+
     # ---- 下半身动作（2026-10-14）。按上面 GEO2PARAM 的要求「新动作直接写参数」。
     #      原先 18 个动作里只有 sway/idle/happy/hammered 四个碰腿，而且只有一个
     #      左右 bend，所以角色站着时下半身是完全僵的。补两个：
@@ -1660,7 +1841,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         has_legs=any(p["id"] == "seg_leg_l" for p in parts_list),
                         body_id=body_id,
                         has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list),
-                        foot_lift=(footp["lift_px"] if footp else None))
+                        foot_lift=(footp["lift_px"] if footp else None),
+                        star_eyes=star_eyes)
     PARAM_IDS = {q["id"] for q in PARAMS}
 
     # 引擎自己注册的内建参数（zrig.c 的 param_add_builtin 那一串）。
@@ -1844,6 +2026,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 continue
             _p["file"] = _cand
             _sc = _p.get("scale", 1.0)
+            # 把 1× 口径的 scale 留在件上：闸门要验的是「几何没变」，
+            # 也就是 scale == scale_1x × 0.5。以前闸门直接写死"必须等于 0.5"，
+            # 那等于假设所有件的 1× scale 都是 1.0 —— 闪光件 1× 就是 0.68/0.45
+            # （一张素材复制成大中小），立刻误报（2026-10-16 实测）。
+            _p["scale_1x"] = _sc if not isinstance(_sc, list) else list(_sc)
             if isinstance(_sc, list):
                 _p["scale"] = [round(_sc[0] * 0.5, 6), round(_sc[1] * 0.5, 6)]
                 hires_additive.add(_p["id"])
@@ -2028,7 +2215,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                                        head_is_part=head_is_part,
                                        has_blend=bool(blendp),
                                        has_smile_eyes=any(p["id"].endswith("_smile")
-                                                          for p in parts_list)),
+                                                          for p in parts_list),
+                                       has_star=bool(star_eyes)),
     }
 
 
@@ -2233,6 +2421,20 @@ def main() -> int:
                    for c in smile_eyes["eyes"]):
             smile_eyes = None
 
+    # 星星眼差分件（tools/make_star_eye_parts.py 的产物）：星形虹膜 + ✨ 素材。
+    # 整组可选 —— 没有这份 json 时 rig 里就没有 ParamStarEye / star_eyes，
+    # 其余一切照旧（这是差分件该有的性质）。
+    star_eyes = None
+    se_path = os.path.join(base, "sprites", "star_eye_parts.json")
+    if os.path.exists(se_path):
+        with open(se_path, encoding="utf-8") as f:
+            star_eyes = json.load(f)
+        need = [e["file"] for e in star_eyes["eyes"]] + [star_eyes["sparkle"]["file"]]
+        miss = [k for k in need if not os.path.exists(os.path.join(base, k))]
+        if miss:
+            print(f"警告：星星眼差分件缺图 {miss}，整组跳过", file=sys.stderr)
+            star_eyes = None
+
     # 眼线二次拆件（tools/make_eyeline_parts.py 的产物）：脸上的眼睛已经挖成眼窝皮肤，
     # 这时眨眼才敢用"压扁眼眶"（底下露出来的是皮肤，不是脸上那只睁着的眼）。
     eyeline = None
@@ -2286,6 +2488,7 @@ def main() -> int:
                 base=base,
                 seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp,
                 closed=closed, blendp=blendp, eyeline=eyeline, smile_eyes=smile_eyes,
+                star_eyes=star_eyes,
                 footp=footp)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:

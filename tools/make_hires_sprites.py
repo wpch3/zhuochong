@@ -24,6 +24,13 @@ socket_size / lash_travel …），而且 `*_px` 里有些是距离、有些是�
 
 放大策略（不是所有件都该走超分）
 --------------------------------
+    有原生 2× 源      → **直接用它**（sprites/hires_src/<件名>@2x.png）
+                        超分是「只有 1× 像素可用」时的退路，不是目的。
+                        AI 生成的差分件（星形虹膜 / 闪光特效）源图就有 2048px，
+                        从源图直接缩到 62px，比「缩到 31px 再超分回 62px」
+                        多留一整档细节 —— 星形的描边和碎钻高光只有这样才活得下来
+                        （2026-10-16 实测，logs/asset_qa/star_eye_v2.png）。
+                        alpha 仍按下面那条规则由 1× 插值而来，所以遮罩与同组件逐像素对齐。
     RGB 有内容        → Real-ESRGAN anime 4× 再降到 2×（和 upscale_sheet.py 同一个模型）
     RGB 空 / 近纯色   → 直接 LANCZOS
                         （mask_only 的 mouth_mask / eye_*_socket 三件 RGB 标准差为 0；
@@ -55,6 +62,7 @@ import sys
 import time
 
 SUFFIX = "@2x.png"
+NATIVE_DIR = "hires_src"   # 原生 2× 源：有就直接用，不走超分（见下）
 FACTOR = 2
 NATIVE = 4            # 模型原生倍率
 FLAT_RGB_STD = 6.0    # RGB 标准差低于这个就认为"没内容"，走插值
@@ -207,19 +215,36 @@ def main() -> int:
         if stale[:-len(SUFFIX)] + ".png" not in srcs:
             os.remove(stale)
     t0 = time.time()
-    rows, n_sr, n_lz, n_fixed = [], 0, 0, 0
+    rows, n_sr, n_lz, n_nat, n_fixed = [], 0, 0, 0, 0
     for src in srcs:
         im = Image.open(src).convert("RGBA")
         w, h = im.size
         arr = np.asarray(im)
-        flat = is_flat_rgb(arr)
-        if flat:
-            big = im.convert("RGB").resize((w * FACTOR, h * FACTOR), Image.LANCZOS)
-            n_lz += 1
-        else:
-            big4 = upscale_rgb(sess, im.convert("RGB"))
-            big = big4.resize((w * FACTOR, h * FACTOR), Image.LANCZOS)
-            n_sr += 1
+        nat = os.path.join(sp_dir, NATIVE_DIR,
+                           os.path.basename(src)[:-4] + SUFFIX)
+        method = None
+        if os.path.exists(nat):
+            cand = Image.open(nat).convert("RGBA")
+            if cand.size == (w * FACTOR, h * FACTOR):
+                big = cand.convert("RGB")
+                method = "native"
+                n_nat += 1
+            else:
+                # 尺寸对不上就不要硬用：这说明 1× 件被重切过而原生源没跟着更新，
+                # 静默缩放会让它和同组件错位。退回超分，并在报告里留痕。
+                print(f"[高清] 忽略 {os.path.basename(nat)}："
+                      f"{cand.size} ≠ {(w * FACTOR, h * FACTOR)}", file=sys.stderr)
+        if method is None:
+            flat = is_flat_rgb(arr)
+            if flat:
+                big = im.convert("RGB").resize((w * FACTOR, h * FACTOR), Image.LANCZOS)
+                method = "lanczos"
+                n_lz += 1
+            else:
+                big4 = upscale_rgb(sess, im.convert("RGB"))
+                big = big4.resize((w * FACTOR, h * FACTOR), Image.LANCZOS)
+                method = "realesrgan"
+                n_sr += 1
         big.putalpha(im.split()[3].resize((w * FACTOR, h * FACTOR), Image.LANCZOS))
         cleaned, n_junk = kill_keycolor(np.asarray(big.convert("RGBA")))
         if n_junk:
@@ -229,8 +254,7 @@ def main() -> int:
         big.save(dst)
         rows.append({"name": os.path.basename(src), "src": [w, h],
                      "dst": [w * FACTOR, h * FACTOR],
-                     "method": "lanczos" if flat else "realesrgan",
-                     "keycolor_fixed": n_junk})
+                     "method": method, "keycolor_fixed": n_junk})
 
     report = {
         "schema_version": "1.0",
@@ -240,6 +264,7 @@ def main() -> int:
         "count": len(rows),
         "realesrgan": n_sr,
         "lanczos": n_lz,
+        "native": n_nat,
         "keycolor_fixed": n_fixed,
         "seconds": round(time.time() - t0, 1),
         "parts": rows,
@@ -248,8 +273,8 @@ def main() -> int:
     with open(os.path.join(sp_dir, "hires_report.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=1)
     print(f"[高清] {len(rows)} 个切件 → 2×   "
-          f"（超分 {n_sr} / 插值 {n_lz}，键色残留修掉 {n_fixed} 像素，"
-          f"{report['seconds']}s）")
+          f"（原生 {n_nat} / 超分 {n_sr} / 插值 {n_lz}，"
+          f"键色残留修掉 {n_fixed} 像素，{report['seconds']}s）")
     return 0
 
 

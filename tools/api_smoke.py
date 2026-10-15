@@ -1125,7 +1125,11 @@ def run(base, root):
     check("眼球部件带 gaze 标签",
           {"eye_l_ball", "eye_r_ball"} <= gz_ids and gz_ids <= {
               "eye_l_ball", "eye_r_ball", "eye_hl_l", "eye_hl_r",
-              "eye_hl_star_l", "eye_hl_star_r"},
+              "eye_hl_star_l", "eye_hl_star_r",
+              # 星形虹膜（T39）：它是常态虹膜的差分件，眼珠往哪看它就得往哪看，
+              # 所以同样带 gaze。白名单是用来拦"不该跟着眼球跑的件误挂 gaze"的，
+              # 新的眼球类差分件要进来就得写在这里。
+              "eye_l_ball_star", "eye_r_ball_star"},
           " ".join(sorted(gz_ids)))
     layers = [p["layer"] for p in rig["parts"]]
     check("层号不重复", len(set(layers)) == len(layers), "%d 层" % len(layers))

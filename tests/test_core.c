@@ -1098,6 +1098,49 @@ static void test_motion_from(void)
             zrig_free(r);
         }
     }
+    /* motion_from 不能连 alpha 一起抄（2026-10-16，星星眼 T39 踩出来的）。
+       差分件的做法是「同一位置两张图、各自淡入淡出」：星形虹膜用 motion_from
+       照抄常态虹膜的位移/缩放，但两者的**透明度必须互相独立** ——
+       以前 compute_draw_state 写的是 p_alpha[motion_from]，于是参数把常态虹膜
+       淡成 0 的同时也把星形件一起抹掉，切到星星眼只剩两颗空白眼球。
+       负控：把 zrig.c 改回 p_alpha[mi]，下面第二条 CHECK 会红（画面变空）。 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/alpha.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"差分\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"b\",\"file\":\"sprites/b.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,60],\"anchor\":[0.5,0.5]},"
+            " {\"id\":\"b_star\",\"file\":\"sprites/b.png\",\"group\":\"head\",\"layer\":20,"
+            "  \"pos\":[60,60],\"anchor\":[0.5,0.5],\"motion_from\":\"b\"}],"
+            "\"params\":[{\"id\":\"Swap\",\"min\":0,\"max\":1,\"default\":0,\"binds\":["
+            "  {\"part\":\"b\",\"param\":\"alpha\",\"scale\":-1.0},"
+            "  {\"part\":\"b_star\",\"param\":\"alpha\",\"scale\":1.0,\"offset\":-1.0}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "差分件 rig 应加载成功");
+        if (r) {
+            int w, h, i;
+            const zimg *f;
+            unsigned long a0 = 0, a1 = 0;
+            zrig_param_set(r, "Swap", 0.0);
+            zrig_tick(r, 0.0);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (i = 0; i < w * h; ++i) a0 += (unsigned long)f->px[i * 4 + 3];
+            zrig_param_set(r, "Swap", 1.0);
+            zrig_tick(r, 0.02);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (i = 0; i < w * h; ++i) a1 += (unsigned long)f->px[i * 4 + 3];
+            CHECK(a0 > 0, "Swap=0 时本体可见（alpha 合计 %lu）", a0);
+            CHECK(a1 > a0 * 9 / 10,
+                  "Swap=1 时差分件必须顶上来，画面不能空（%lu → %lu）", a0, a1);
+            zrig_free(r);
+        }
+    }
     /* 反例：指向不存在的部件 / 套娃 */
     {
         zdiag d;

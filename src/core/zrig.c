@@ -5,13 +5,13 @@
 
 #include <math.h>
 
-#define ZRIG_MAX_PARTS    64
+#define ZRIG_MAX_PARTS    96   /* 2026-10-16：加了星形虹膜 ×2 + 闪光 ×8 之后 56 个，64 太贴脸了 */
 #define ZRIG_MAX_GROUPS   16
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     24
-#define ZRIG_MAX_PARAMS   64   /* 2026-10-14：下半身补了膝盖/重心/踮脚 4 个参数后 50 个，48 不够用了 */
+#define ZRIG_MAX_PARAMS   96   /* 2026-10-14：下半身补了 4 个参数后 50 个，48 不够用；2026-10-16 星星眼 +9 → 60 */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
 #define ZRIG_MAX_BANDS     8     /* 分块渲染最多切几条行带（= 最多用几个线程） */
 
@@ -33,7 +33,10 @@
 #define ZRIG_MAX_POSE_MEM 48     /* 所有档位引用的部件总数 */
 #define ZRIG_MAX_EXPR     16
 #define ZRIG_MAX_EXPR_SET 96
-#define ZRIG_MAX_BINDS    96
+/* 2026-10-16：星星眼（T39）一口气加了 1 + 8 个参数、36 条绑定（八颗 ✨ 各一个
+   参数 × alpha/sx/sy 三条），96 条当场撞上限。和 ZRIG_MAX_PHYS 那次一样 ——
+   上限撞了就改大，绝不能让它静默截断。现在用到 140 条。 */
+#define ZRIG_MAX_BINDS   256
 #define ZRIG_MAX_DEFORMS  12
 #define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
 #define ZRIG_MAX_VISEME    8     /* 口型音素表的行数（SIL/A/I/U/E/O/N…） */
@@ -3337,9 +3340,16 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
 {
     zpart *p = &r->parts[pi];
     /* motion_from：通道值照抄别的部件（透け眉这类"同一零件画两遍"用）。
-       位置、遮罩、透明度仍然是自己的。 */
+       位置、遮罩、透明度仍然是自己的。
+       ⚠ 2026-10-16：alpha 以前错写成 p_alpha[mi]，和上面这行注释自相矛盾。
+       后果是**差分件没法用 motion_from** —— 星形虹膜照抄常态虹膜的位移/缩放
+       （正是想要的），却连带把"常态虹膜已被 ParamStarEye 淡成 0"也抄了过来，
+       于是切到星星眼时两张虹膜一起消失，眼睛变成两颗空白眼球（实测截图）。
+       alpha 必须是自己的：差分切换的整个前提就是"同一位置、两张图各自淡入淡出"。
+       现有的 motion_from 用户（brow_*_ghost / mouth_cavity）都没有 alpha 绑定，
+       所以这一改对它们是逐像素不变的（tests/test_core.c 的 motion_from 用例守着）。 */
     int mi = (p->motion_from >= 0) ? p->motion_from : pi;
-    double opacity = p->opacity * r->p_alpha[mi] * pose_opacity(r, pi);
+    double opacity = p->opacity * r->p_alpha[pi] * pose_opacity(r, pi);
     double extra_dx = r->p_dx[mi], extra_dy = r->p_dy[mi];
     double part_rot = r->p_rot[mi];
     double part_sx, part_sy;

@@ -163,6 +163,7 @@
         "leg"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -183,6 +184,7 @@
         "leg"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -204,6 +206,7 @@
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；颈线 y=346 以上形变不再加大（衣领跟着头走，不然脖子会横向滑移）",
       "bend_hold_above": 346,
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -224,6 +227,7 @@
         "head_base"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -244,6 +248,7 @@
         "hair"
       ],
       "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -264,6 +269,7 @@
         "hair"
       ],
       "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -271,7 +277,7 @@
       "id": "brow_l",
       "file": "sprites/brow_l@2x.png",
       "group": "head",
-      "layer": 232,
+      "layer": 236,
       "pos": [
         374,
         236
@@ -284,6 +290,7 @@
         "brow"
       ],
       "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -291,7 +298,7 @@
       "id": "brow_r",
       "file": "sprites/brow_r@2x.png",
       "group": "head",
-      "layer": 233,
+      "layer": 237,
       "pos": [
         461,
         230
@@ -304,6 +311,7 @@
         "brow"
       ],
       "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -324,6 +332,7 @@
         "hair"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -344,6 +353,7 @@
         "hair"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -364,6 +374,7 @@
         "hair"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -384,6 +395,7 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -404,6 +416,7 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -424,6 +437,7 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -444,6 +458,7 @@
         "body"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -464,6 +479,7 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -484,6 +500,7 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -504,6 +521,7 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -524,6 +542,7 @@
         "body"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -545,6 +564,7 @@
         "foot"
       ],
       "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -566,6 +586,7 @@
         "foot"
       ],
       "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -587,6 +608,7 @@
         "foot"
       ],
       "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -608,6 +630,7 @@
         "foot"
       ],
       "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -633,6 +656,10 @@
       ],
       "mask_only": true,
       "note": "开口形状：锚点在上唇线，sy=0.0545 是闭嘴，sy≈0.95 是张到最大（22px）",
+      "scale_1x": [
+        1.0,
+        0.0545
+      ],
       "hires": 2
     },
     {
@@ -658,6 +685,10 @@
       "mask": "mouth_mask",
       "motion_from": "mouth_mask",
       "note": "口内（牙/上颚/舌/嘴角，AI 重绘的真素材）。motion_from=mouth_mask：口内跟着开口形状一起压扁，所以半开时是一张压扁的嘴，而不是把整张口内图裁掉下半截（那样半开只剩一条黑缝）",
+      "scale_1x": [
+        1.0,
+        0.0545
+      ],
       "hires": 2
     },
     {
@@ -677,6 +708,7 @@
         "mouth"
       ],
       "note": "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -700,6 +732,7 @@
       "note": "眼眶开口（46×41px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
       "aperture_min": 0.06,
       "eye_side": "l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -722,6 +755,7 @@
       "mask": "eye_l_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
       "eye_side": "l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -745,6 +779,32 @@
       "mask": "eye_l_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±5/±4px，由眼眶裁切",
       "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_ball_star",
+      "file": "sprites/eye_l_ball_star@2x.png",
+      "group": "head",
+      "layer": 219,
+      "pos": [
+        369,
+        258
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_l_socket",
+      "motion_from": "eye_l_ball",
+      "note": "星形虹膜（星星眼 L1+L2：五角星瞳 + 眼内碎钻高光）。ParamStarEye=0 时全透明、常态虹膜露出来；=1 时反过来",
+      "eye_side": "l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -752,7 +812,7 @@
       "id": "eye_l_lash",
       "file": "sprites/eye_l_lash_up@2x.png",
       "group": "head",
-      "layer": 220,
+      "layer": 222,
       "pos": [
         298,
         246
@@ -768,6 +828,7 @@
       "eyelid_travel": 21.5,
       "lash_hold": 0.5,
       "eye_side": "l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -775,7 +836,7 @@
       "id": "eye_l_closed",
       "file": "sprites/eye_l_closed@2x.png",
       "group": "head",
-      "layer": 221,
+      "layer": 223,
       "pos": [
         356,
         245
@@ -789,6 +850,7 @@
       ],
       "note": "闭眼（AI 重绘·盖住原画眼睛 99.5%，接缝色差 4.53）：blink=1 时完全显形",
       "eye_side": "l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -796,7 +858,7 @@
       "id": "eye_l_smile",
       "file": "sprites/eye_l_smile@2x.png",
       "group": "head",
-      "layer": 223,
+      "layer": 225,
       "pos": [
         356,
         245
@@ -810,6 +872,7 @@
       ],
       "note": "笑眼（AI 重绘·盖住原画眼睛 99.5%，接缝色差 4.04）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -833,6 +896,7 @@
       "note": "眼眶开口（43×37px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
       "aperture_min": 0.06,
       "eye_side": "r",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -855,6 +919,7 @@
       "mask": "eye_r_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
       "eye_side": "r",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -878,6 +943,32 @@
       "mask": "eye_r_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±4/±4px，由眼眶裁切",
       "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_ball_star",
+      "file": "sprites/eye_r_ball_star@2x.png",
+      "group": "head",
+      "layer": 229,
+      "pos": [
+        442,
+        253
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_r_socket",
+      "motion_from": "eye_r_ball",
+      "note": "星形虹膜（星星眼 L1+L2：五角星瞳 + 眼内碎钻高光）。ParamStarEye=0 时全透明、常态虹膜露出来；=1 时反过来",
+      "eye_side": "r",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -885,7 +976,7 @@
       "id": "eye_r_lash",
       "file": "sprites/eye_r_lash_up@2x.png",
       "group": "head",
-      "layer": 230,
+      "layer": 232,
       "pos": [
         428,
         246
@@ -901,6 +992,7 @@
       "eyelid_travel": 17.0,
       "lash_hold": 0.5,
       "eye_side": "r",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -908,7 +1000,7 @@
       "id": "eye_r_closed",
       "file": "sprites/eye_r_closed@2x.png",
       "group": "head",
-      "layer": 231,
+      "layer": 233,
       "pos": [
         429,
         240
@@ -922,6 +1014,7 @@
       ],
       "note": "闭眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.26）：blink=1 时完全显形",
       "eye_side": "r",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -943,6 +1036,7 @@
       ],
       "note": "笑眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.23）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "r",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -966,6 +1060,7 @@
       "mask": "hair_front",
       "motion_from": "brow_l",
       "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；通道值照抄 brow_l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -989,6 +1084,7 @@
       "mask": "hair_front",
       "motion_from": "brow_r",
       "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；通道值照抄 brow_r",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -1009,6 +1105,7 @@
       "blend": "multiply",
       "tags": [],
       "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -1029,6 +1126,7 @@
       "blend": "multiply",
       "tags": [],
       "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -1036,7 +1134,7 @@
       "id": "eye_hl_star_l",
       "file": "sprites/eye_hl_star_l@2x.png",
       "group": "head",
-      "layer": 222,
+      "layer": 224,
       "pos": [
         369,
         258
@@ -1054,6 +1152,7 @@
       "mask": "eye_l_socket",
       "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
       "eye_side": "l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -1061,7 +1160,7 @@
       "id": "eye_hl_l",
       "file": "sprites/eye_hl_l@2x.png",
       "group": "head",
-      "layer": 219,
+      "layer": 221,
       "pos": [
         373,
         262
@@ -1079,6 +1178,7 @@
       "mask": "eye_l_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
       "eye_side": "l",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -1104,6 +1204,7 @@
       "mask": "eye_r_socket",
       "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
       "eye_side": "r",
+      "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
     },
@@ -1111,7 +1212,7 @@
       "id": "eye_hl_r",
       "file": "sprites/eye_hl_r@2x.png",
       "group": "head",
-      "layer": 229,
+      "layer": 231,
       "pos": [
         446,
         257
@@ -1129,7 +1230,184 @@
       "mask": "eye_r_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
       "eye_side": "r",
+      "scale_1x": 1.0,
       "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_1",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 300,
+      "pos": [
+        239,
+        93
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.5,
+      "rot_deg": -12.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [],
+      "note": "闪光 lg（加算）：默认全透明，ParamStarEye 开门、ParamSparkle1 管这一颗的生命周期",
+      "scale_1x": 1.0,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_2",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 301,
+      "pos": [
+        607,
+        109
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.5,
+      "rot_deg": 14.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [],
+      "note": "闪光 lg（加算）：默认全透明，ParamStarEye 开门、ParamSparkle2 管这一颗的生命周期",
+      "scale_1x": 1.0,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_3",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 302,
+      "pos": [
+        269,
+        207
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.34,
+      "rot_deg": 22.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [],
+      "note": "闪光 md（加算）：默认全透明，ParamStarEye 开门、ParamSparkle3 管这一颗的生命周期",
+      "scale_1x": 0.68,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_4",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 303,
+      "pos": [
+        577,
+        192
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.34,
+      "rot_deg": -18.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [],
+      "note": "闪光 md（加算）：默认全透明，ParamStarEye 开门、ParamSparkle4 管这一颗的生命周期",
+      "scale_1x": 0.68,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_5",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 304,
+      "pos": [
+        331,
+        58
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.34,
+      "rot_deg": 8.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [],
+      "note": "闪光 md（加算）：默认全透明，ParamStarEye 开门、ParamSparkle5 管这一颗的生命周期",
+      "scale_1x": 0.68,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_6",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 305,
+      "pos": [
+        515,
+        52
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.34,
+      "rot_deg": -26.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [],
+      "note": "闪光 md（加算）：默认全透明，ParamStarEye 开门、ParamSparkle6 管这一颗的生命周期",
+      "scale_1x": 0.68,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_7",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 306,
+      "pos": [
+        230,
+        284
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.225,
+      "rot_deg": 31.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [],
+      "note": "闪光 sm（加算）：默认全透明，ParamStarEye 开门、ParamSparkle7 管这一颗的生命周期",
+      "scale_1x": 0.45,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_8",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 307,
+      "pos": [
+        616,
+        271
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.225,
+      "rot_deg": -34.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [],
+      "note": "闪光 sm（加算）：默认全透明，ParamStarEye 开门、ParamSparkle8 管这一颗的生命周期",
+      "scale_1x": 0.45,
       "hires": 2
     }
   ],
@@ -1373,6 +1651,70 @@
           "wave": "sine",
           "amp": 0.2,
           "freq": 0.2
+        },
+        {
+          "target": "ParamSparkle1",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.37,
+          "phase": 0.0
+        },
+        {
+          "target": "ParamSparkle2",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.29,
+          "phase": 0.42
+        },
+        {
+          "target": "ParamSparkle3",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.53,
+          "phase": 0.17
+        },
+        {
+          "target": "ParamSparkle4",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.43,
+          "phase": 0.63
+        },
+        {
+          "target": "ParamSparkle5",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.61,
+          "phase": 0.85
+        },
+        {
+          "target": "ParamSparkle6",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.47,
+          "phase": 0.31
+        },
+        {
+          "target": "ParamSparkle7",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.71,
+          "phase": 0.54
+        },
+        {
+          "target": "ParamSparkle8",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.67,
+          "phase": 0.09
         },
         {
           "target": "ParamArmLA",
@@ -2721,6 +3063,158 @@
           "amp": -0.09,
           "freq": 0.45,
           "phase": 0.18
+        }
+      ]
+    },
+    {
+      "id": "star_eyes",
+      "priority": 6,
+      "duration": 3.4,
+      "return_state": "idle",
+      "interruptible": true,
+      "fade": 0.15,
+      "channels": [
+        {
+          "target": "ParamStarEye",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.28,
+              1.0
+            ],
+            [
+              2.8,
+              1.0
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamEyeOpen",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              0.25
+            ],
+            [
+              2.8,
+              0.2
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamEyeBallForm",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              0.35
+            ],
+            [
+              2.8,
+              0.3
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamMouthForm",
+          "wave": "pulse",
+          "amp": 0.8,
+          "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamMouthOpenY",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              0.28
+            ],
+            [
+              2.6,
+              0.22
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamCheek",
+          "wave": "pulse",
+          "amp": 0.7,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeSparkle",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.35,
+          "ease": "out"
+        },
+        {
+          "target": "ParamAngleZ",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              -5.0
+            ],
+            [
+              1.7,
+              4.0
+            ],
+            [
+              2.9,
+              -2.0
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamAngleY",
+          "wave": "sine",
+          "amp": -4.8,
+          "freq": 1.1,
+          "dur": 3.4
         }
       ]
     },
@@ -4322,6 +4816,310 @@
       ]
     },
     {
+      "id": "ParamStarEye",
+      "label": "星星眼 0/1",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "eye_l_ball",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "eye_r_ball",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "eye_l_ball_star",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "eye_r_ball_star",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_1",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_2",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_3",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_4",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_5",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_6",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_7",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_8",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        }
+      ],
+      "note": "0 = 常态蓝瞳，1 = 五角星瞳 + 脸周围 ✨；中间值是交叉淡化"
+    },
+    {
+      "id": "ParamSparkle1",
+      "label": "闪光1 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.25,
+      "binds": [
+        {
+          "part": "fx_sparkle_1",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_1",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_1",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "lg；idle / star_eyes 里以 freq=0.37 phase=0.0 驱动"
+    },
+    {
+      "id": "ParamSparkle2",
+      "label": "闪光2 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.46,
+      "binds": [
+        {
+          "part": "fx_sparkle_2",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_2",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_2",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "lg；idle / star_eyes 里以 freq=0.29 phase=0.42 驱动"
+    },
+    {
+      "id": "ParamSparkle3",
+      "label": "闪光3 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.335,
+      "binds": [
+        {
+          "part": "fx_sparkle_3",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_3",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_3",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "md；idle / star_eyes 里以 freq=0.53 phase=0.17 驱动"
+    },
+    {
+      "id": "ParamSparkle4",
+      "label": "闪光4 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.565,
+      "binds": [
+        {
+          "part": "fx_sparkle_4",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_4",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_4",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "md；idle / star_eyes 里以 freq=0.43 phase=0.63 驱动"
+    },
+    {
+      "id": "ParamSparkle5",
+      "label": "闪光5 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.675,
+      "binds": [
+        {
+          "part": "fx_sparkle_5",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_5",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_5",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "md；idle / star_eyes 里以 freq=0.61 phase=0.85 驱动"
+    },
+    {
+      "id": "ParamSparkle6",
+      "label": "闪光6 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.405,
+      "binds": [
+        {
+          "part": "fx_sparkle_6",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_6",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_6",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "md；idle / star_eyes 里以 freq=0.47 phase=0.31 驱动"
+    },
+    {
+      "id": "ParamSparkle7",
+      "label": "闪光7 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.52,
+      "binds": [
+        {
+          "part": "fx_sparkle_7",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_7",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_7",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "sm；idle / star_eyes 里以 freq=0.71 phase=0.54 驱动"
+    },
+    {
+      "id": "ParamSparkle8",
+      "label": "闪光8 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.295,
+      "binds": [
+        {
+          "part": "fx_sparkle_8",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_8",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_8",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "sm；idle / star_eyes 里以 freq=0.67 phase=0.09 驱动"
+    },
+    {
       "id": "ParamEyeBallForm",
       "label": "瞳孔 放大/缩小",
       "min": -1.0,
@@ -4503,7 +5301,7 @@
         {
           "id": "ParamEyeOpen",
           "value": 0.85,
-          "mode": "set"
+          "mode": "multiply"
         },
         {
           "id": "ParamCheek",
@@ -4545,7 +5343,7 @@
         {
           "id": "ParamEyeOpen",
           "value": 0.7,
-          "mode": "set"
+          "mode": "multiply"
         },
         {
           "id": "ParamCheek",
@@ -4599,7 +5397,7 @@
         {
           "id": "ParamEyeOpen",
           "value": 0.9,
-          "mode": "set"
+          "mode": "multiply"
         },
         {
           "id": "ParamCheek",
@@ -4649,7 +5447,7 @@
         {
           "id": "ParamEyeOpen",
           "value": 0.75,
-          "mode": "set"
+          "mode": "multiply"
         },
         {
           "id": "ParamCheek",
@@ -4689,11 +5487,6 @@
           "value": 0.55
         },
         {
-          "id": "ParamEyeOpen",
-          "value": 1.0,
-          "mode": "set"
-        },
-        {
           "id": "ParamEyeBallY",
           "value": -0.15
         },
@@ -4724,7 +5517,7 @@
         {
           "id": "ParamEyeOpen",
           "value": 0.3,
-          "mode": "set"
+          "mode": "multiply"
         },
         {
           "id": "ParamEyeBallY",
@@ -4789,6 +5582,53 @@
         }
       ],
       "note": "笑眼 = 山型闭眼（Live2D 标准做法），参考官方 Haru 的 F05"
+    },
+    {
+      "id": "star_eyes",
+      "name": "星星眼",
+      "fade": 0.25,
+      "params": [
+        {
+          "id": "ParamBrowLY",
+          "value": 0.4
+        },
+        {
+          "id": "ParamBrowRY",
+          "value": 0.4
+        },
+        {
+          "id": "ParamBrowLForm",
+          "value": 0.5
+        },
+        {
+          "id": "ParamBrowRForm",
+          "value": 0.5
+        },
+        {
+          "id": "ParamMouthForm",
+          "value": 0.6
+        },
+        {
+          "id": "ParamStarEye",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeBallForm",
+          "value": 0.3
+        },
+        {
+          "id": "ParamCheek",
+          "value": 0.4,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeSparkle",
+          "value": 1.0,
+          "mode": "set"
+        }
+      ],
+      "note": "L1 星形瞳 + L2 眼内碎钻（画进贴图）+ L3 脸周围 ✨；✨ 的闪烁由 idle 的 ParamSparkle1..N 驱动。这里**故意不写 ParamEyeOpen** —— 见下方注释"
     }
   ]
 }

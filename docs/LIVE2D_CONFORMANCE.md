@@ -98,6 +98,8 @@ I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉
 | `ParamEyeSparkle` | 眼高光强弱（加算图层），用来演"眼里的光灭了" |
 | `ParamEyeOpen` | 两眼一起开合的便捷入口（引擎内建，L/R 之外的额外一个） |
 | `ParamBaseRot` | **2026-10-13 补**：全身倾斜。标准表只有 `ParamBodyAngleZ`（上身），而"被摸头 / 被拖拽"时要整个人（含腿）一起晃，所以另立一个绑 `root` 组 `rot_deg × 0.5` |
+| `ParamStarEye` | **2026-10-16 补**：星星眼总闸（0→1）。一条参数三件事：常态虹膜 `alpha × −1`（淡出）、星形虹膜 `alpha × 1 offset −1`（淡入）、8 颗 ✨ 同样 `×1 offset −1`（放行）。官方没有这个参数，但差分件切换的做法是官方的（[surume1ka](https://surume1ka.com/archives/2207)：新参数 min0/def0/max1，用不透明度 0↔100 切）。另见 [@kawase1234567](https://x.com/kawase1234567/status/1747491216227516567)：きらきら目和ハート目不会同时发动，**应当收进同一个参数**，所以这里是一条总闸而不是每种眼睛一条 |
+| `ParamSparkle1` `ParamSparkle2` `ParamSparkle3` `ParamSparkle4` `ParamSparkle5` `ParamSparkle6` `ParamSparkle7` `ParamSparkle8` | **2026-10-16 补**：第 N 颗 ✨ 的生命周期。一颗一个参数，0→1 走完 = 放大出现→缩小消失（`alpha ×1 offset −1` 与 `sx`/`sy ×0.55 offset −0.55` 合在同一条参数上）。**不许八颗共用一条** —— [カワナミ](https://kw-nmnm.hatenablog.com/entry/2019/12/18/000000)（Live2D 讲师）的做法是 28 颗 ✨ 配 28 个参数，共用会让它们整齐划一地闪，一眼假。素材只有一张 `fx_sparkle.png`，大中小靠 `scale` 复制（官方讲座「キラキラ1・2・3」要求三种大小混用） |
 
 > 闸门：`tools/selfcheck_repo.py` 的「自定义参数都已登记」会把**没写进这张表**的新参数判红。
 > 这就是防"命名慢慢跑偏"的那道锁。

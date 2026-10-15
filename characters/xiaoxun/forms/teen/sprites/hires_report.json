@@ -3,11 +3,12 @@
  "factor": 2,
  "suffix": "@2x.png",
  "model": "RealESR-AnimeVideo-v3_x4.onnx",
- "count": 44,
+ "count": 47,
  "realesrgan": 37,
  "lanczos": 7,
+ "native": 3,
  "keycolor_fixed": 11,
- "seconds": 10.5,
+ "seconds": 9.6,
  "parts": [
   {
    "name": "arm_l_fore.png",
@@ -205,6 +206,19 @@
    "keycolor_fixed": 0
   },
   {
+   "name": "eye_l_ball_star.png",
+   "src": [
+    31,
+    30
+   ],
+   "dst": [
+    62,
+    60
+   ],
+   "method": "native",
+   "keycolor_fixed": 0
+  },
+  {
    "name": "eye_l_base.png",
    "src": [
     117,
@@ -283,6 +297,19 @@
    "keycolor_fixed": 0
   },
   {
+   "name": "eye_r_ball_star.png",
+   "src": [
+    31,
+    32
+   ],
+   "dst": [
+    62,
+    64
+   ],
+   "method": "native",
+   "keycolor_fixed": 0
+  },
+  {
    "name": "eye_r_base.png",
    "src": [
     119,
@@ -345,6 +372,19 @@
     136
    ],
    "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "fx_sparkle.png",
+   "src": [
+    72,
+    72
+   ],
+   "dst": [
+    144,
+    144
+   ],
+   "method": "native",
    "keycolor_fixed": 0
   },
   {
