@@ -1284,3 +1284,33 @@ TTFB（第一个字节）/ TTFA（第一段可播音频）/ 整段完成，差 3
   整体偏灰蓝中性色。
 - `https://brandpalettes.com/openai-color-codes/` —— 只认黑 #000000 一个色。
   三处口径有差异（青绿到底算不算品牌色），主题取折中：浅色底 + 青绿作唯一强调色。
+
+## 第二十二批（2026-10-15）表情参数：闭眼的三种形状、嘴型与张嘴的关系
+
+用户报「被锤没有 `>_<` 这种闭眼」「惊讶时张嘴和微笑重合」，并要求"不明白去找教程和参考"。
+查的是 Live2D 官方标准参数定义，证据等级标在每条后面。
+
+- **★★★ `ParamEyeLSmile` / `ParamEyeRSmile`，范围 0~1，「主要用于闭眼」**
+  （niabie.github.io/2019/08/30/cubism笔记 —— 中文 Cubism 笔记，★★；
+  与 cg-method.com/vtuber/live2d-blink-lipsync-parameters/ 的标准参数表一致 ★★）。
+  → 这反过来确认了上一轮 DC35 的修法（笑眼走 `blink=max(blink,smile)`）是官方路子，不是权宜。
+
+- **★★★ `ParamEyeBallForm`：「为补充皱眉/做鬼脸（顔をしかめる）的表情而弯曲眼睛轮廓的动作」**
+  （animaze.us/manual/gettingstarted2djp/jpnparamlist，Animaze 官方手册 ★★★；
+  vtsuku.com/animaze-parameter 复述为「目玉を拡大縮小」★）。
+  → **`>_<` 这种用力闭眼靠的就是它**：闭眼 + 弯曲眼轮廓（倒 V），而不是普通的 ∪。
+  我们的 rig **有** `ParamEyeBallForm` 而且 `surprised` 在用（pulse amp 1.0），
+  但 `hammered` 一条眼睛通道都没有 —— 这是 G106。
+
+- **★★★ `ParamMouthForm` 范围 −1 / 0 / 1 = 悲伤 / 中性 / 笑；`ParamMouthOpenY` 0~1 = 闭口 / 张口**
+  （cg-method.com 标准参数表 ★★；blog.csdn.net/red_redemption/146077891 复述一致 ★）。
+  → 两者是**独立的两轴**：张嘴不会自动把嘴型归中。惊讶时必须**同时**把 `ParamMouthForm` 拉到 0
+  或负值，否则"微笑的嘴形"和"张大的嘴"会叠在一起 —— 这是 G107，用户肉眼就看出来了。
+
+- **☆ 表情混合三种算法 Add / Multiply / Override**（docs.live2d.com/en/cubism-sdk-manual/expression/ ★★★）：
+  exp3.json 里每个参数可单独选。Add 是默认，Multiply 用于"放大/缩小现有动作"。
+  → 我们的 `expressions` 段目前只有覆盖语义，将来做"表情叠在动作上"要补这个区分。
+
+**对我们的直接结论**：闭眼不是一种形状而是**三种** —— ∪（普通闭眼 `eye_*_closed`）、
+∩（笑眼 `eye_*_smile`，已有）、**倒 V（痛苦/用力闭眼，素材里没有，要补绘）**。
+前两种我们有，第三种缺，所以 `hammered` 才做不出 `>_<`。
