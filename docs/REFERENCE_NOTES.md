@@ -1353,3 +1353,109 @@ TTFB（第一个字节）/ TTFA（第一段可播音频）/ 整段完成，差 3
 3. 顺带注意：我们的 `ParamEyeBallForm` **名字与官方语义不符** —— 官方它是
    「为补充皱眉/做鬼脸而**弯曲眼睛轮廓**」（第二十二批 Animaze 条目），
    我们拿它当"瞳孔缩放"用。改名要动 rig 契约，记在 G110 一起处理。
+
+## 第二十四批（2026-10-15）VRChat / VMC / 歌声合成 / 情绪 TTS —— 四个新需求的官方口径
+
+起因：用户问「能否制作接入 vrchat 以及 3d 模型控制，以及唱歌和对话语气变化等」。
+四项分别查官方文档，**最大的发现是前两项其实是同一件事**。
+
+### 一、VRChat OSC（docs.vrchat.com，官方 ★★★）
+
+- **★★★ 端口**：VRChat **收 9000、发 9001**。外部程序往 9000 发、在 9001 收。
+  可用命令行改：`--osc=inPort:senderIP:outPort`，默认等价于 `--osc=9000:127.0.0.1:9001`；
+  中间填局域网 IP 就能把数据发到另一台机器（`--osc=9000:192.168.1.42:9001`）。
+  开关在**动作菜单 Options → OSC → Enabled**，不开什么都收不到。
+- **★★★ `/avatar/parameters/<名字>` 只接受 Int / Bool / Float 三种**，
+  官方原文：*"If you send a Float value to a parameter defined as Bool in your avatar,
+  VRChat will **silently ignore** the message."* —— **类型写错不报错、直接丢**。
+  我们的映射表必须带类型字段，而且要有闸，否则会出现"配好了但没反应"的鬼故事。
+- **★★ 参数名由 avatar 作者定义，每个模型都不一样**。VRChat 会在
+  `%LOCALAPPDATA%Low\VRChat\VRChat\OSC\{userId}\Avatars\{avatarId}.json`
+  自动生成配置，里面列全了每个参数的名字/类型/输入输出地址。
+  → 所以**必须给用户一个 OSC 监视器**（T32.7），不然他配不出映射表。
+  另外换模型时 VRChat 会发 `/avatar/change` 带 avatar id。
+- **★★★ VRChat 持续广播的内置参数**（这是白捡的游戏状态信号源）：
+  `Viseme`(Int 0–14 口型)、`GestureLeft`/`GestureRight`(Int 0–7)、
+  `VelocityX/Y/Z`(Float −1~1)、`Grounded`/`Seated`/`InStation`/`MuteSelf`/`AFK`(Bool)。
+  → **A27「实时接取信息并回应」在 VRChat 场景下不用截图、不用 OCR、不用视觉模型**，
+  游戏自己把结构化状态按帧送上门，延迟是 UDP 级。这比我们原计划的读屏便宜一个数量级。
+- **☆ OSC Trackers**（`/tracking/trackers/1..8/position|rotation`，最多 8 个 + head）
+  是喂全身 IK 的，Unity 左手坐标系、+y 向上、1.0f = 1m、欧拉角按 Z→X→Y 应用。
+  **2D 立绘用不上，明确不做。**
+- ☆ 官方推荐的测试工具：TouchOSC（发）/ Protokol（收）；官方自用的 C# 库是 vrchat/osccore。
+
+### 二、VMC Protocol（protocol.vmc.info / sh-akira，官方 ★★★）
+
+- **★★★ 也是 OSC over UDP** —— 和 VRChat 同一套报文格式。
+  **这就是"做一条总线四处通"的根据**：VRChat、VMC、VSeeFace、Warudo、
+  bHaptics、TouchOSC 全在 OSC 上，我们只要写一次编解码。
+- **★★★ 端口 39539（Marionette 接收方）/ 39540（Performer 发送方）**，现行版本 **V3.1**。
+  UTF-8；bundle 允许但要 **< 1500 字节**（别超 MTU）；**未知消息必须忽略**（向前兼容靠这条）。
+- **★★★ 三种角色**：Performer（发动作，如 VirtualMotionCapture / VSeeFace）、
+  Assistant（补发表情，如 waidayo / face2vmc）、Marionette（接收并应用，如 EVMC4U / VMC4UE / VMC4B）。
+  → **我们当 Marionette**：收 `/VMC/Ext/Blend/Val`(名字+值) 驱动小寻的脸。
+  骨骼 `/VMC/Ext/Bone/Pos`（Unity HumanBodyBones 名 + 位置 + 四元数）我们是 2D，用不上。
+- **★★★ `/VMC/Ext/Blend/Apply` 是提交信号** —— 规范明写：接收方应**先攒住所有
+  Blend/Val，收到 Apply 才一次性生效**。按条即时套用会出现撕裂表情。
+- **★★ VRM0 ↔ VRM1 表情名不一样，接收侧要转**：
+  `Blink_L`↔`blinkLeft`、`Blink_R`↔`blinkRight`、`Sorrow`↔`sad`、
+  `I`↔`ih`、`U`↔`ou`、`E`↔`ee`、`O`↔`oh`。规范建议**发送方统一用 VRM0 格式**。
+- ☆ 生态里 Godot 4.3+ 有官方受信插件，Blender/UE 都有现成 addon —— 说明协议确实稳定。
+
+### 三、歌声合成 SVS（★★ 结论：和 TTS 是两套东西）
+
+- **★★★ SVS 的输入是 music score（歌词 + 音高/MIDI + 时值），TTS 的输入是 text**
+  （DiffSinger，arXiv 2105.02446）。**接口层面就不同** —— 这是 DC43 的根据。
+- **★★ DiffSinger**：MIT 许可，4.9k★，原作 MoonInTheRiver，现由 **OpenVPI 团队维护**；
+  浅扩散机制 + NSF-HiFiGAN 声码器；PNDM 采样器把 1000 步压到 25 步。
+  **OpenUtau 是它的现成图形前端**（需先装 nsf_hifigan 声码器）。
+  OpenUtau 侧暴露的表情曲线很全：PITD(音高) / DYN(音量) / GENC(性别/共振峰 ±12 半音) /
+  VELC / ENE / BREC(气声) / TENC(紧张度) / VOIC / PEXP / SHFC / 音色曲线。
+- **★★ NNSVS**（arXiv 2210.15987）：论文自测 MOS **NNSVS-WORLD v4 = 3.86** vs
+  **DiffSinger = 2.90** vs NNSVS-Mel v2 = 3.58。论文同时指出 DiffSinger 保真度高但
+  **音高容易不连续/不稳**。→ 真要选引擎时别只看名气。
+- **★★ 代价（必须提前告诉用户）**：数据量 NNSVS 1–2 小时标注歌声、UTAU <1 小时；
+  训练要 GPU（"没 GPU 就是几天不是几小时"）；**DiffSinger 的自动建库流程只支持中文**；
+  标注要用 vLabeler / Praat 打音素和时长，或直接用 Opencpop 这类已标注数据集。
+- ☆ 公开数据集：OpenSinger（中文 66 人 50h）、PopCS（DiffSinger 自带，中文 1 人 5.9h，需申请）。
+
+### 四、情绪 / 语气 TTS（★★★ 四项里最便宜的一项）
+
+- **★★★ Azure**：`<mstts:express-as style="cheerful" styledegree="...">`，
+  **styledegree 官方区间 0.01–2.0，连续可调** —— 正好能接我们 mood 的强度值。
+  配套 `<prosody>`/`<break>`/`<emphasis>`/`<phoneme>`/`<say-as>`/`mstts:silence`，
+  并支持**逐词时间戳**（做字幕/口型对齐有用）。
+  **★★ 坑**：style 清单按语言不同 —— 实测报告里**日语当时只有 chat / cheerful /
+  customerservice 三种**。中文支持哪些**必须实测，不许照抄文档总表**。
+- **★★★ ElevenLabs v3 / v4**：走 **audio tags**，行内写 `[happy]` `[sad]` `[angry]`
+  `[whispers]` `[shouts]` `[laughs]` `[sighs]` `[clears throat]`，可叠加
+  （`"[happily][shouts] We did it! [laughs]"`）。
+  **★★ 两条硬限制（官方 FAQ 明写）**：① v3/v4 **不支持 SSML `<break>`**，
+  停顿用 `...`、强调用**大写**；② 官方原话 *"These tips help guide emotional delivery
+  but **do not guarantee** a specific result."* → **不能当确定性接口用**。
+  v3 字符上限 5000；v4 Turbo 中位延迟 ~100ms，v3 Conversational ~280ms。
+- **★★ 两家的性格正好相反**：**Azure = 数值可复现**（styledegree 是数字，
+  同输入同输出）；**ElevenLabs = 表现力强但不可复现**。
+  → 适配层对上统一成 `(mood, intensity 0–1)`，对下各自翻译（T35.1）。
+- ☆ 开源侧备选：**Chatterbox**（首个带"情绪夸张度"单参数控制的开源 TTS）、
+  **IndexTTS-2**（2025-09，**音色与情绪解耦**，可用自然语言描述指定情绪；
+  论文里的毫秒级时长控制**公开代码尚未启用**）。
+- ⛔ 供应商矩阵仍然**排除豆包 / 火山引擎 / Seed-TTS**（A28，用户硬约束）。
+
+### 五、对照：Project AIRI 做了什么（github.com/moeru-ai/airi，MIT，★★ 用来找我们的缺口）
+
+同类项目里跑得最远的一个（Neuro-sama 方向），拿来对照**不是抄，是看我们漏了什么**：
+
+- 它有而**我们计划里原本没有**的：**OBS/直播产出**、**角色卡 CCv3 导入导出**、
+  **插件 SDK（plugin.airi.json）**、**Spine2D / MMD / 立绘(Tachie) 多种模型格式**、
+  **浏览器内向量记忆（DuckDB WASM + pgvector）**、Discord / Telegram 接入、
+  手柄输入、桌面窗口穿透与悬停淡化。→ 已择优补进 **A40 / T37**。
+- 它有而**我们已经计划了**的：Live2D/VRM 双模型、实时语音链（VAD→STT→LLM→TTS）、
+  多供应商路由（xsai）、Minecraft 智能体（Mineflayer）、Factorio（RCON + YOLO 视觉）、
+  屏幕上下文感知、本地推理（WebGPU / Candle+CUDA/Metal）。→ 对应我们 A23–A27。
+- **它的架构和我们相反**：Vue + TypeScript + WebGPU + Electron，一切在浏览器里。
+  我们是纯 C + 自研软渲染 + 零依赖。**它的功能清单可以抄，技术选型不能抄** ——
+  照它那样做等于推翻 DC26 和整个项目的立身之本。
+- ☆ 可借鉴的一个具体细节：它的 Live2D 导入会**先出一份体检报告**
+  （列出模型数据、缺失引用、未被引用的资源、每条怎么修）再导入。
+  我们的素材重建链也该有这么一份（可并入 T31.10 的孤儿切件闸）。
