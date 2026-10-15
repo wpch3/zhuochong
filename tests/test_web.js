@@ -452,6 +452,36 @@ function slotOf(id) {
     }
   }
 
+  {
+    /* 画质 = 显示尺寸 × dpr，不能是写死的低档。
+       2026-10-15 之前这里固定请求 s=60（279x448），再被 CSS 拉到 ~680px 高显示，
+       用户看到的"动作时脸部模糊"就是这一步；而且换档会连带改变图片固有尺寸，
+       立绘跟着忽大忽小（看起来像脸被拉扯）。 */
+    const stage = ZC.host.find("stage");
+    CHECK(!!stage && typeof stage.fitDisplay === "function", "舞台应有 fitDisplay()");
+    if (stage && stage.fitDisplay) {
+      const pct = stage.fitDisplay();
+      /* stub：info.frame_h = 748，可用高度上限 680，dpr 1 → ceil(680/748*100) = 91 */
+      CHECK(pct === 91, "原生画质应按显示高度算（期望 91，实际 " + pct + "）");
+      CHECK(stage.currentQuality() === 91,
+            "自动档应从原生清晰起步（实际 " + stage.currentQuality() + "）");
+      const img = walk(slotOf("stage")).filter((n) => n.tagName === "IMG")[0];
+      CHECK(img.style.height === "680px" && img.style.width === "424px",
+            "显示尺寸应被显式钉死，和画质档无关（实际 "
+            + img.style.width + "x" + img.style.height + "）");
+      /* 降档只该降分辨率，不该改变显示尺寸 */
+      stage.qualityIdx = 0;
+      CHECK(stage.currentQuality() < 91 && img.style.height === "680px",
+            "降档后分辨率变小但显示尺寸不变（实际 " + stage.currentQuality()
+            + " / " + img.style.height + "）");
+      stage.qualityIdx = stage.QUALITY_SCALES.length - 1;
+      /* 手动档仍按用户选的百分比走 */
+      stage.qualityMode = "50";
+      CHECK(stage.currentQuality() === 50, "手动选 50% 应原样生效");
+      stage.qualityMode = "auto";
+    }
+  }
+
   SECTION("组件：语音与用量");
   {
     const el = slotOf("voice");

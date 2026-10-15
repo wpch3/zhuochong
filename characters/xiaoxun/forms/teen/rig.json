@@ -672,8 +672,9 @@
       "tags": [
         "eyelid"
       ],
-      "note": "上眼线：脸上的眼线已挖除，这条线随 blink 下滑 21.5px，闭到底 = 那条闭眼线",
+      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 21.5px，闭到底 = 那条闭眼线",
       "eyelid_travel": 21.5,
+      "lash_hold": 0.5,
       "eye_side": "l"
     },
     {
@@ -792,8 +793,9 @@
       "tags": [
         "eyelid"
       ],
-      "note": "上眼线：脸上的眼线已挖除，这条线随 blink 下滑 17.0px，闭到底 = 那条闭眼线",
+      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 17.0px，闭到底 = 那条闭眼线",
       "eyelid_travel": 17.0,
+      "lash_hold": 0.5,
       "eye_side": "r"
     },
     {
@@ -1626,6 +1628,20 @@
           "dur": 0.5
         },
         {
+          "target": "ParamEyeLSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.3,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.3,
+          "ease": "out"
+        },
+        {
           "target": "ParamArmLA",
           "wave": "bounce",
           "amp": 0.2498,
@@ -1731,7 +1747,7 @@
           "ease": "out"
         }
       ],
-      "blink_hold": 0.78,
+      "blink_hold": 0.95,
       "part_overrides": {
         "mouth_open": {
           "opacity": 0.85
@@ -2123,9 +2139,23 @@
           "wave": "sine",
           "amp": 22.5,
           "freq": 0.45
+        },
+        {
+          "target": "ParamEyeLSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.35,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.35,
+          "ease": "out"
         }
       ],
-      "blink_hold": 0.7,
+      "blink_hold": 0.95,
       "part_overrides": {
         "mouth_open": {
           "opacity": 0.35

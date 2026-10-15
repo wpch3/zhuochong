@@ -1128,6 +1128,73 @@ def check_head_body_link(root):
               "通道目标：%s" % sorted(joy))
 
 
+def check_eye_hold_zone(root):
+    """动作不许把眼睛停在"交叉淡化幽灵区"，上眼线必须延迟下滑。
+
+    背景（2026-10-15 用户实测反馈"眼睛还是会卡住 / 脸部模糊"）：
+    引擎里眨眼是两张图交叉淡化 —— 睁眼件在闭合度 lo 之后开始淡出、闭眼件
+    在 lo 之后淡入（zrig.c 里那两行 ZC_CLAMP）。落在这段中间时，屏幕上同时
+    有"被压扁的睁眼"和"半透明的闭眼线"，叠出来是一条没有瞳孔的扁青带。
+    眨一下眼只路过 0.1 秒看不出来，但 blink_hold 是**一直按着**的：
+    stroke（loop）原本按在 0.7，被抚摸时眼睛就永远停在那个坏画面上。
+    正解是用山型笑眼件（ParamEyeL/RSmile）表现"眯眼笑"，不是把睁眼压扁。
+
+    两端的阈值都从 zrig.c 里**现读**，读不到就直接红 —— 否则引擎改了公式，
+    这个闸会拿着过期的数字继续发绿。
+    """
+    section("眼睛不停在交叉淡化幽灵区")
+    zrig = os.path.join(root, "src", "core", "zrig.c")
+    src = read(zrig)
+    m_open = re.search(r"\(1\.0 - blink\) / ([0-9.]+)", src)
+    m_shut = re.search(r"\(blink - ([0-9.]+)\) / ([0-9.]+)", src)
+    check("能从 zrig.c 读出眨眼交叉淡化的阈值", bool(m_open and m_shut),
+          f"睁眼淡出分母={m_open.group(1) if m_open else '?'}，"
+          f"闭眼起点={m_shut.group(1) if m_shut else '?'}")
+    if not (m_open and m_shut):
+        return
+    lo = float(m_shut.group(1))          # 闭眼件开始淡入的闭合度（现在是 0.55）
+    hi = 0.90                            # 再往上睁眼件只剩 <0.25 不透明度，叠影看不出来
+    rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    if not os.path.isfile(rig_path):
+        return
+    rig = jsonc(rig_path)
+    bad = []
+    for a in rig.get("actions", []):
+        h = a.get("blink_hold")
+        if h is None:
+            continue
+        long_lived = bool(a.get("loop")) or float(a.get("duration") or 0) >= 0.8
+        if long_lived and lo < float(h) < hi:
+            bad.append(f"{a['id']} blink_hold={h}"
+                       + ("（loop）" if a.get("loop") else f"（{a.get('duration')}s）"))
+    check("长动作的 blink_hold 都避开幽灵区", not bad,
+          f"幽灵区 {lo}~{hi}；越界：{bad}" if bad
+          else f"幽灵区 {lo}~{hi}，已检查 "
+               f"{sum(1 for a in rig.get('actions', []) if a.get('blink_hold') is not None)} 个带 blink_hold 的动作")
+
+    # 眯眼笑要有笑眼件兜底：按到 0.9 以上又没有笑眼通道 = 纯闭眼（睡觉那种），也允许，
+    # 但"被摸/开心"这类既按高又该笑的动作，笑眼通道丢了就会变成面无表情地闭眼。
+    want_smile = ("stroke", "happy", "head_pat")
+    missing = []
+    for a in rig.get("actions", []):
+        if a["id"] not in want_smile:
+            continue
+        chans = [c for c in a.get("channels", []) if "Smile" in str(c.get("target", ""))]
+        if len(chans) < 2 or float(a.get("blink_hold") or 0) < hi:
+            missing.append(f"{a['id']}(笑眼通道{len(chans)}条, hold={a.get('blink_hold')})")
+    check("被摸/开心类动作用的是山型笑眼", not missing,
+          f"缺：{missing}" if missing else "stroke/happy/head_pat 都是 hold≥0.9 + 两条 Smile 通道")
+
+    # 上眼线延迟下滑（lash_hold）：半闭时睫毛压进虹膜会出现黑钩、瞳孔被吃掉。
+    check("引擎支持 lash_hold（上眼线延迟下滑）", "lash_hold" in src,
+          "zrig.c 里有 lash_hold 的解析与曲线" if "lash_hold" in src else "引擎没有这个字段")
+    lashes = [p for p in rig.get("parts", []) if p.get("eyelid_travel")]
+    weak = [f"{p['id']} lash_hold={p.get('lash_hold')}" for p in lashes
+            if float(p.get("lash_hold") or 0) < 0.4]
+    check("上眼线都设了 lash_hold≥0.4", lashes and not weak,
+          f"{len(lashes)} 条上眼线" + (f"，不达标：{weak}" if weak else "，都是后半程才滑"))
+
+
 def check_neck_seam(root):
     """跟随件和它所跟随的形变之间不许有相对滑移（2026-10-14 加，同日补方向）。
 
@@ -2143,6 +2210,7 @@ def main():
                check_tiptoe_grounded, check_foot_switch, check_feet_on_ground,
                check_head_body_link,
                check_neck_seam,
+               check_eye_hold_zone,
                check_action_dead_time,
                check_motion_measure,
                check_form_roadmap,

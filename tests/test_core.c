@@ -1403,6 +1403,90 @@ static void test_eyelid(void)
 }
 
 
+/* 眼睑延迟（lash_hold）：半闭之前睫毛按住不动，后半程 smoothstep 补齐。
+   为什么要有它见 zrig.c 的注释 —— 睫毛和眼眶开口一起下滑时，睫毛内眼角那条
+   尾巴会压进虹膜，半闭的眼睛变成一条没有瞳孔的扁青带（用户 2026-10-15 报的
+   "眼睛卡住"）。这里钉三件事：①两端不变 ②中段被按住 ③不写字段 = 旧的线性。 */
+static void test_lash_hold(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("眼睑延迟：lash_hold 之前不下滑，闭到底的落点和线性完全一致");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_lashhold");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/lid.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 eye_l_lid.png 失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"眼睑延迟测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"lid\",\"file\":\"sprites/lid.png\",\"group\":\"root\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],"
+        " \"tags\":[\"eyelid\"],\"eyelid_travel\":20,\"lash_hold\":0.5}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 lash_hold 的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int y0, y30, y50, y75, y100;
+            zrig_blink_set_manual(r, 0.0);  zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y0 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 0.3);  zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y30 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 0.5);  zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y50 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 0.75); zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y75 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 1.0);  zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y100 = frame_centroid_y(fb);
+            CHECK(y30 == y0, "闭合度 0.3 < hold 0.5：睫毛一动都不该动（%d vs %d）", y30, y0);
+            CHECK(y50 == y0, "闭合度正好等于 hold：仍是起点（%d vs %d）", y50, y0);
+            CHECK(y75 > y0 && y75 < y100,
+                  "闭合度 0.75 应落在半途（%d < %d < %d）", y0, y75, y100);
+            /* 两端不变是这条改动的硬约束：闭到底必须还落在那条闭眼线上。 */
+            CHECK(y100 - y0 >= 19 && y100 - y0 <= 21,
+                  "闭到底仍该走满 20px 行程（实走 %d）", y100 - y0);
+            zrig_free(r);
+        }
+    }
+    /* 负控：同一份 rig 去掉 lash_hold，中段必须**恢复**成线性下滑 —— 否则
+       这个测试即使引擎根本没读 lash_hold 也会绿。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"眼睑线性负控\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"lid\",\"file\":\"sprites/lid.png\",\"group\":\"root\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],"
+        " \"tags\":[\"eyelid\"],\"eyelid_travel\":20}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        if (r) {
+            const zimg *fb;
+            int y0, y30;
+            zrig_blink_set_manual(r, 0.0); zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y0 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 0.3); zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y30 = frame_centroid_y(fb);
+            CHECK(y30 > y0, "负控：不写 lash_hold 时 0.3 就该下滑了（%d vs %d）", y30, y0);
+            zrig_free(r);
+        } else {
+            CHECK(0, "负控 rig 应加载成功");
+        }
+    }
+}
+
+
 static void test_eye_aperture(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -4666,6 +4750,7 @@ int main(int argc, char **argv)
     test_rig_channels();
     test_mask();
     test_eyelid();
+    test_lash_hold();
     test_group_chain();
     test_live2d_standard();
     test_viseme();

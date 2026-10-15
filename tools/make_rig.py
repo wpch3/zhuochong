@@ -15,6 +15,8 @@ import argparse, json, os, sys
 
 
 AP_MIN = 0.06   # 眼眶开口闭到底时纵向还剩几成（引擎 aperture_min 的默认值也是它）
+# 上眼线在闭合度到这个值之前不下滑（引擎 lash_hold）。0.5 = 后半程才滑。
+LASH_HOLD = 0.5
 
 
 def png_size(path):
@@ -678,9 +680,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 if el.get("lash_file"):
                     lash_part["file"] = f"sprites/{el['lash_file']}"
                 lash_part["eyelid_travel"] = el.get("lash_travel") or round(ap_h * (1.0 - AP_MIN), 1)
+                # 延迟到后半程再滑（引擎 lash_hold）：半闭时睫毛压进虹膜会出现黑钩、
+                # 瞳孔被吃掉（2026-10-15 用户截图 + logs/asset_qa/lash_ab.png 的 A/B）。
+                # 两端不变：闭合度 0 不动、闭合度 1 仍是满行程落在闭眼线上。
+                lash_part["lash_hold"] = LASH_HOLD
                 lash_part.pop("mask", None)
-                lash_part["note"] = ("上眼线：脸上的眼线已挖除，这条线随 blink 下滑 "
-                                     f"{lash_part['eyelid_travel']}px，闭到底 = 那条闭眼线")
+                lash_part["note"] = ("上眼线：脸上的眼线已挖除，这条线在闭合度 "
+                                     f"{LASH_HOLD} 之后滑 {lash_part['eyelid_travel']}px，"
+                                     "闭到底 = 那条闭眼线")
             eye_parts.append(lash_part)
             # 闭眼真素材：AI 重绘的闭眼脸切下来的补片，blink=1 时完全盖住原画的眼睛。
             # 引擎里 tags:["eye_closed"] 就是 opacity *= blink（与 eye_open 交叉淡化），
@@ -891,8 +898,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "root", "param": "dy", "wave": "bounce", "amp": -22.0, "dur": 0.45, "ease": "out_back"},
              {"target": "root", "param": "dy", "wave": "bounce", "amp": -12.0, "dur": 0.5, "ease": "out_back"},
              {"target": "head", "param": "rot_deg", "wave": "bounce", "amp": 5.0, "dur": 0.5},
+             # 开心要的是 ∩∩ 笑眼，不是"半闭着的睁眼"。原来只写 blink_hold 0.78
+             # 而没有笑眼通道 —— 0.78 落在"睁眼件还没淡出、闭眼件还没淡入"的那
+             # 段里，画出来是一只压扁的、没有瞳孔的眼睛（2026-10-15 实测，见
+             # logs/asset_qa/eye_ladder.png 的 0.2/0.3 两格）。改成和摸头同一套：
+             # blink_hold 0.95 + EyeSmile 1.0，山型笑眼顶替谷型闭眼。
+             {"target": "ParamEyeLSmile", "wave": "pulse", "amp": 1.0, "dur": 0.30, "ease": "out"},
+             {"target": "ParamEyeRSmile", "wave": "pulse", "amp": 1.0, "dur": 0.30, "ease": "out"},
          ],
-         "blink_hold": 0.78,
+         "blink_hold": 0.95,
          "part_overrides": {"mouth_open": {"opacity": 0.85}}},
         {"id": "sad", "priority": 3, "loop": True, "interruptible": True, "return_state": "idle",
          "channels": [
@@ -926,8 +940,18 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
          "channels": [
              {"target": "root", "param": "rot_deg", "wave": "sine", "amp": 1.6, "freq": 0.45},
              {"target": "head", "param": "dx", "wave": "sine", "amp": 3.0, "freq": 0.45},
+             # ⚠ 这个动作是 loop，blink_hold 会一直按着，所以**绝对不能**停在
+             # 0.2~0.8 那段半闭区间：那段里睁眼件还在、闭眼件还没来，眼睛是一条
+             # 没有瞳孔的扁青带，而且一按就是好几秒 —— 用户 2026-10-15 报的
+             # "眼睛还是会卡住"就是它（实测：stroke 期间眼高长时间停在 16~24px，
+             # 其它动作都能回到 33px）。被抚摸要的是"舒服地眯眼笑"，正解是山型
+             # 笑眼件（和摸头同一套），不是把睁眼压扁。
+             # pulse = dur 内升到 amp 然后一直保持（见 zrig.c 的 W_PULSE），
+             # 所以 0.35s 升上去之后整个 loop 都维持笑眼。
+             {"target": "ParamEyeLSmile", "wave": "pulse", "amp": 1.0, "dur": 0.35, "ease": "out"},
+             {"target": "ParamEyeRSmile", "wave": "pulse", "amp": 1.0, "dur": 0.35, "ease": "out"},
          ],
-         "blink_hold": 0.7,
+         "blink_hold": 0.95,
          "part_overrides": {"mouth_open": {"opacity": 0.35}}},
         # ⚠ duration 必须贴着通道真实结束的时间写。
         # 这里原本是 0.55，但 bounce(dur 0.28) 到点归零、decay 的包络

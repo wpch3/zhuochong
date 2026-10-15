@@ -89,6 +89,7 @@ typedef struct {
     char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
     int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
+    double lash_hold;         /* 眼睑延迟：闭合度小于它之前睫毛不动（0.5 = 后半程才滑） */
     double aperture_min;      /* 眼眶开口：眨眼参数 1 时纵向还剩几成（0.06 = 基本闭死） */
     double bend_hold_above;   /* 形变平台：这个画布高度以上不再继续增大形变（0 = 不设） */
     double bend_hold_below;   /* 下平台：这个画布高度以下不再继续增大形变（0 = 不设） */
@@ -706,6 +707,22 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
         /* 眼睑行程：带 eyelid 标签的部件按 blink 参数下滑这么多像素。
            眨眼不再靠「睁眼图淡出 / 闭眼图淡入」，而是真的有一片眼皮盖下来。 */
         p->eyelid_travel = zjson_num(zjson_obj_get(pj, "eyelid_travel"), 0.0);
+        /* 眼睑延迟（lash_hold）：睫毛在闭合度到这个值之前**完全不动**，之后
+           smoothstep 补齐到满行程。为什么要延迟见 2026-10-15 的实测：
+           眼眶开口是按「开口高度 × 闭合度」从上往下收的，睫毛按同样的像素数
+           一起下滑，本意是让两者贴合；但睫毛贴图的弧线本身画在上眼睑线上、
+           比开口顶边高一截，而且内眼角那条尾巴更低 —— 一起下滑的结果是半闭
+           时那条尾巴正好压进虹膜，放大看就是一个黑钩，瞳孔和高光被吃掉，整
+           只眼睛变成一条扁平的青色带（用户 2026-10-15 的截图就是这个画面）。
+           实测 A/B（logs/asset_qa/lash_ab.png）：闭合度 0.3~0.6 这一段，睫毛
+           不滑明显更干净；但全闭时睫毛必须落在闭眼线上，否则闭眼线上方会露
+           出一截睫毛。延迟曲线两头都要：前半程 = 不滑，闭合度 1 = 满行程，
+           和改之前**完全一样**。
+           默认 0 = 旧的线性行程（不写这个字段的 rig 行为完全不变）；小寻的
+           上眼线在 make_rig.py 里显式写 0.5。 */
+        p->lash_hold = zjson_num(zjson_obj_get(pj, "lash_hold"), 0.0);
+        if (p->lash_hold < 0.0) p->lash_hold = 0.0;
+        if (p->lash_hold > 0.95) p->lash_hold = 0.95;
         /* 眼眶开口：带 eye_aperture 标签的部件按 blink 纵向压扁（锚点写在下沿 =
            上眼皮往下合）。被它当遮罩裁切的眼白/眼球/高光会跟着被切掉 ——
            这才是真正的"眼睛闭上"，而不是把睁眼图整张淡出。 */
@@ -3245,8 +3262,13 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         extra_dx += r->gaze_nx * r->gaze_max_dx;
         extra_dy += r->gaze_ny * r->gaze_max_dy;
     }
-    /* 眼睑：眨眼参数直接变成往下滑的位移。 */
-    if (p->tags & TAG_EYELID) extra_dy += blink * p->eyelid_travel;
+    /* 眼睑：闭合度变成往下滑的位移，但前半程按住不动（见 lash_hold 的注释）。
+       lash_hold = 0 时退化成旧的线性行程，两端（0 和 1）在任何 hold 下都不变。 */
+    if (p->tags & TAG_EYELID) {
+        double h = p->lash_hold;
+        double u = (blink - h) / ((1.0 - h) > 1e-6 ? (1.0 - h) : 1e-6);
+        extra_dy += z_blink_shape(ZC_CLAMP(u, 0.0, 1.0)) * p->eyelid_travel;
+    }
     /* 跟随父部件的形变（五官跟着身体弯） */
     {
         double fdx = 0.0, fdy = 0.0;
