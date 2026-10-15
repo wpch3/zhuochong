@@ -456,6 +456,49 @@ def check(character, form, root=".", strict=False, out_json=None):
                             f"上臂上半段中位 {w_top:.0f}px / 前臂中位 {w_fore:.0f}px = {r:.2f}"
                             f"（下限 0.80；没补袖根时是 0.57~0.60，用户一眼就看出来了）")
 
+            # —— 袖缝内缘不许夹带夹克白（G112，2026-10-15）——
+            # 症状：手臂一转开，白夹克和青袖之间多出一道白边，像裂了条缝（用户第三次验收截图3）。
+            # 根因：切袖子时 soft() 往外羽化 2px，把夹克那边的白像素一起切进了袖片；
+            # 静止时它正压在夹克上看不出来，一转就跟着甩出来。
+            # 不变量 = make_arm_parts.seam_trim 的后置条件：**袖片里任何实心像素，
+            # 都不许比这一行最内侧的青色再往里超过 SEAM_KEEP(2) 像素。**
+            # 为什么要有这条闸：那个 bug 第一次修的时候因为 uint8 回绕静默失效了
+            # （白的 g-r 算成 253 > 20 → 白被判成青），747 项全绿但一个像素没裁。
+            if armp:
+                _KEEP, _CUFF = 2, 36
+                _wr = (armp.get("checks") or {}).get("wrist_y") or {}
+                for side, _inner_right in (("l", True), ("r", False)):
+                    for seg in ("upper", "fore"):
+                        pid = f"arm_{side}_{seg}"
+                        q = next((p for p in armp["parts"] if p["id"] == pid), None)
+                        if not q:
+                            continue
+                        im = load_rgba(os.path.join(base, q["file"]))
+                        aa = im[..., 3]
+                        c3 = im[..., :3].astype(np.int16)   # ⚠ 必须转 int：uint8 相减会回绕
+                        _r, _g, _b = c3[..., 0], c3[..., 1], c3[..., 2]
+                        tl = (_g - _r > 20) & (_b - _r > 10) & (_g > 120)
+                        ylim = (_wr.get(side, 10 ** 9) - _CUFF) if seg == "fore" else 10 ** 9
+                        bad = worst = 0
+                        for y in range(aa.shape[0]):
+                            if q["pos"][1] + y > ylim:
+                                continue
+                            sol = aa[y] >= 90
+                            if sol.sum() < 4:
+                                continue
+                            t = np.nonzero(tl[y] & sol)[0]
+                            if t.size == 0:
+                                continue
+                            xs = np.nonzero(sol)[0]
+                            over = int((xs > t.max() + _KEEP).sum()) if _inner_right \
+                                else int((xs < t.min() - _KEEP).sum())
+                            if over:
+                                bad += 1
+                                worst = max(worst, over)
+                        add("肩关节", f"袖片内缘没夹带夹克白({pid})", bad <= 2 and worst <= 4,
+                            f"越界行 {bad}（上限 2），单行最大越界 {worst}px（上限 4）"
+                            f"——设计值 0/0；没裁时 4 件都是 95%~100% 的行越界")
+
             def hole_mask(a, y0, y1):
                 """这一段里的"内部空洞"掩码：透明、但上下左右都还有身体。"""
                 sl = a[max(0, y0):min(SH, y1)]
@@ -633,6 +676,66 @@ def check(character, form, root=".", strict=False, out_json=None):
                                   if b.get("param") == "bend_x")
                         add("分段", f"{pr['id']} 用 tip 曲线", okc,
                             "腿的 bend 必须 tip（裙摆下沿钉死）；写 root 会把大腿根甩出裙子")
+
+            # —— @2x 换算必须连绑定一起换（G111，2026-10-15）——
+            # T30.1 把切件换成 @2x 时只把部件的 scale 乘了 0.5，**没动参数绑定**。
+            # 对标量 scale 没事（zrig 里通道是乘性的：s×p_s，s 减半 + 素材翻倍 = 等价），
+            # 但 `scale:[sx,sy]` 走的是加性通道（part_sy = scale_y + (p_sy-1)），
+            # 基准减半了、增量没减 ⇒ **实际形变整整放大 2 倍**。
+            # 后果：嘴张到最大从 21px 变成 41px，下沿长到下巴以下（用户第三次验收截图1/2）。
+            if rig:
+                _pm = {p["id"]: p for p in rig.get("parts", [])}
+                for pr in rig.get("params", []):
+                    for b in pr.get("binds", []):
+                        if b.get("param") not in ("sx", "sy"):
+                            continue
+                        p = _pm.get(b.get("part") or "")
+                        if not p or not isinstance(p.get("scale"), list):
+                            continue           # 标量 scale 是乘性的，@2x 不影响
+                        if not p.get("hires"):
+                            continue           # 没换 @2x 的件不用换算
+                        add("嘴部", f"@2x 加性绑定已换算({pr['id']}→{p['id']}.{b['param']})",
+                            bool(b.get("hires_halved")),
+                            "数组 scale 的部件换成 @2x 之后，sx/sy 绑定必须同步减半"
+                            "（make_rig 会打 hires_halved 标记）；漏了就是形变翻倍")
+
+            # —— 嘴张到最大不许长过下巴（G111 的美术口径闸）——
+            # 上面那条管的是\"换算有没有做\"，这条管\"做出来的嘴好不好看\"：
+            # 两条都要，因为换算可以对、数值仍然可以被人手调歪。
+            if rig and body_mask is not None:
+                _pm = {p["id"]: p for p in rig.get("parts", [])}
+                mk = _pm.get("mouth_mask")
+                if mk and isinstance(mk.get("scale"), list):
+                    _h = load_rgba(os.path.join(base, mk["file"])).shape[0]
+                    _bd = 0.0
+                    for pr in rig.get("params", []):
+                        if pr["id"] != "ParamMouthOpenY":
+                            continue
+                        for b in pr.get("binds", []):
+                            if b.get("part") == "mouth_mask" and b.get("param") == "sy":
+                                _bd = b["scale"] * pr.get("max", 1.0)
+                    open_h = _h * (mk["scale"][1] + _bd)
+                    add("嘴部", "张到最大的开口高度合理", 16.0 <= open_h <= 26.0,
+                        f"开口 {open_h:.1f}px（区间 16~26；1x 素材的设计值 20.9，"
+                        f"@2x 漏换算时是 40.6）")
+                    # 下巴线现量：中轴那一列、嘴线以下第一段连续肤色的末行。
+                    sk = body
+                    _sm = ((sk[..., 3] > 200) & (sk[..., 0] > 235) & (sk[..., 1] > 195)
+                           & (sk[..., 1] < 245) & (sk[..., 2] > 170) & (sk[..., 2] < 238))
+                    _col = np.nonzero(_sm[:, 210:232].sum(1) >= 14)[0]
+                    _col = _col[(_col > 253) & (_col < 340)]
+                    if _col.size:
+                        chin = int(_col[0])
+                        for _y in _col:
+                            if _y - chin > 3:
+                                break
+                            chin = int(_y)
+                        # 画布 y → body_full y：画布底对齐身体底，所以偏移 = 画布高 − 身体高
+                        _oy = int(rig["canvas"]["h"]) - int(body.shape[0])
+                        bottom = mk["pos"][1] - _oy + open_h
+                        add("嘴部", "张到最大不越过下巴", bottom <= chin,
+                            f"嘴下沿 body_full y={bottom:.0f}，下巴 y={chin}"
+                            f"（越过去就是用户说的\"嘴巴位置偏下\"/一条拖到脖子的黑块）")
 
             # —— 键色垃圾像素 ——（教训：alpha=1 的纯绿像素被颜色外扩重写成亮绿点）
             # 纯绿 / 洋红这两种颜色在小寻的色卡里根本不存在，出现就是抠像或重绘的残留。

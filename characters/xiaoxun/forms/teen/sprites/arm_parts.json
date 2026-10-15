@@ -31,7 +31,7 @@
         332
       ],
       "size": [
-        92,
+        88,
         239
       ],
       "group": "arm_l",
@@ -103,11 +103,11 @@
       "id": "arm_r_upper",
       "file": "sprites/arm_r_upper.png",
       "pos": [
-        311,
+        314,
         332
       ],
       "size": [
-        93,
+        90,
         239
       ],
       "group": "arm_r",
@@ -170,6 +170,16 @@
       "l": 57.0,
       "r": 63.0
     },
+    "seam_trim_px": {
+      "l": {
+        "upper": 805,
+        "fore": 235
+      },
+      "r": {
+        "upper": 768,
+        "fore": 226
+      }
+    },
     "wrist_y": {
       "l": 666,
       "r": 666
@@ -178,7 +188,7 @@
       "l": 338,
       "r": 346
     },
-    "static_diff_px": 321,
+    "static_diff_px": 421,
     "arm_px": {
       "l": 17826,
       "r": 19137

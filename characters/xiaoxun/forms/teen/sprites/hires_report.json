@@ -7,7 +7,7 @@
  "realesrgan": 37,
  "lanczos": 7,
  "keycolor_fixed": 11,
- "seconds": 10.4,
+ "seconds": 10.5,
  "parts": [
   {
    "name": "arm_l_fore.png",
@@ -38,11 +38,11 @@
   {
    "name": "arm_l_upper.png",
    "src": [
-    92,
+    88,
     239
    ],
    "dst": [
-    184,
+    176,
     478
    ],
    "method": "realesrgan",
@@ -77,11 +77,11 @@
   {
    "name": "arm_r_upper.png",
    "src": [
-    93,
+    90,
     239
    ],
    "dst": [
-    186,
+    180,
     478
    ],
    "method": "realesrgan",

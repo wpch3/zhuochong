@@ -49,6 +49,11 @@ ROOT_SHADE = 0.90                   # 补到最里侧时的明度系数（内侧
 ROOT_CLEAR_SEAM = 0                 # 0 = **不要**抹上臂贴图里那条袖缝线（试过，静止帧会坏）
 ROOT_LAYER = {"l": 95, "r": 96}     # **画在躯干(100)底下**：静止时被夹克完全盖住
 
+SEAM_KEEP = 2       # 袖片内缘：最内侧青色之外再留几像素（袖缝线本身要留）
+SEAM_TRIM_MAX = 4   # 单行最多裁几个**实心**像素；超了这一行就不裁（误伤保险）
+SEAM_SOLID = 0.35   # 判"实心"的 alpha 阈值：羽化尾巴不算进上限，但会跟着一起裁
+SEAM_CUFF_SKIP = 36 # 前臂：腕上这么多行不裁（袖口那三道白条就在这儿，没有内缘青色可依）
+
 
 def skin_of(rgb, m):
     """肤色（#FCE4D8 一类）：亮、偏红。青袖 #6CB4C0 的 G/B 高于 R，白夹克 R≈G≈B。"""
@@ -301,6 +306,57 @@ def root_fill(body, up, side, hidden):
     return ext, rgb, target
 
 
+def seam_trim(a, rgb, side, y_max=None, keep=SEAM_KEEP, cap=SEAM_TRIM_MAX):
+    """袖片内缘别把夹克白一起切走（G112）。
+
+    症状：手臂一转开，白夹克和青袖之间多出一道**白边**，像衣袖和身体之间裂了条缝
+    （用户第三次验收截图3）。先定位是哪一层画的 —— 把 arm_r_upper 的 opacity 调成 0，
+    那几个白像素立刻变青 ⇒ **白是上臂贴图自己带的**，不是背景、不是躯干。
+    再查原画：body_full 的袖内缘是「白夹克 → 1~2px 暗缝线 → 青」，**没有白色滚边**
+    （y=420: x315=(248,246,244) / x316=(80,98,103) / x318=(108,186,191)）。
+    所以这 2px 白是 soft() 把掩码往外羽化 2px 时顺手带上的夹克像素：
+    静止时它正压在夹克上，一个像素都看不出来；手臂一转就跟着甩出来。
+
+    做法：逐行找这一行**最内侧的青色**，往内再留 keep 像素（袖缝线要留着，
+    它在原画里就有，转开后读作袖子上的折痕），再往内的一律裁掉。
+    判青用色相（g-r>20 且 b-r>10）而不是到 TEAL 的曼哈顿距离 —— 灰过渡像素
+    (191,178,181) 到 TEAL 只有 96，用距离会被当成青色，裁不干净（试过）。
+    两条保险（都踩过坑）：
+      · cap 只数**实心**像素（alpha ≥ SEAM_SOLID）。拿"所有 alpha>0 的像素"去数，
+        羽化尾巴能长到 6~8px，几乎每一行都超限 → 整条袖子只裁掉 9px，等于没裁。
+      · y_max：前臂的袖口那三道白条没有"内缘青色"可依，一裁就把袖口咬掉
+        （实测静止合成少 8px，闸直接红）。所以腕上 SEAM_CUFF_SKIP 行整段不碰。
+    """
+    # ⚠ 必须先转 int：body[...,:3] 是 uint8，g - r 会**无符号回绕**
+    # （夹克白 g=235 r=238 → 235-238 = 253 > 20 → 白被判成青色，整条裁剪静默失效，
+    #   闸还是全绿 —— 747 项里没有一项管得着"裁了没有"）。
+    rgb = rgb.astype(np.int16)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    teal = (g - r > 20) & (b - r > 10) & (g > 120)
+    out = a.copy()
+    xs_idx = np.arange(a.shape[1])
+    n = 0
+    for y in np.nonzero((a > 0.016).any(axis=1))[0]:
+        if y_max is not None and y > y_max:
+            continue
+        row = a[y] > 0.016
+        solid = a[y] >= SEAM_SOLID
+        if solid.sum() < 4:
+            continue
+        t = np.nonzero(teal[y] & solid)[0]
+        if t.size == 0:
+            continue
+        if side == "l":                       # 画面左臂：外缘在左，内缘在右
+            cl = row & (xs_idx > min(a.shape[1] - 1, int(t.max()) + keep))
+        else:                                 # 画面右臂：内缘在左
+            cl = row & (xs_idx < max(0, int(t.min()) - keep))
+        if int((cl & solid).sum()) > cap or not cl.any():
+            continue
+        out[y][cl] = 0.0
+        n += int(cl.sum())
+    return out, n
+
+
 def cut(rgb, alpha_f, box):
     """按 box=(x0,y0,x1,y1) 裁出 RGBA 图。"""
     x0, y0, x1, y1 = box
@@ -496,6 +552,10 @@ def main():
             if seg == "fore":
                 yy = np.arange(H)[:, None].astype(np.float32)
                 a = a * np.clip((yy - (elbow_y - half)) / ELBOW_OVERLAP, 0.0, 1.0)
+            if seg in ("upper", "fore"):
+                _ymax = (wrist_y - SEAM_CUFF_SKIP) if seg == "fore" else None
+                a, _trim = seam_trim(a, body[..., :3], side, y_max=_ymax)
+                report["checks"].setdefault("seam_trim_px", {}).setdefault(side, {})[seg] = _trim
             ys, xs = np.nonzero(a > 0.004)
             box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
             src_rgb = hand_rgb if seg == "hand" else (up_rgb if seg == "upper" else body[..., :3])

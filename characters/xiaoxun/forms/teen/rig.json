@@ -163,7 +163,8 @@
         "leg"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_leg_r",
@@ -182,7 +183,8 @@
         "leg"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_torso",
@@ -202,7 +204,8 @@
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；颈线 y=346 以上形变不再加大（衣领跟着头走，不然脖子会横向滑移）",
       "bend_hold_above": 346,
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_head",
@@ -221,7 +224,8 @@
         "head_base"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "hair_ahoge",
@@ -240,7 +244,8 @@
         "hair"
       ],
       "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "hair_front",
@@ -259,7 +264,8 @@
         "hair"
       ],
       "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "brow_l",
@@ -278,7 +284,8 @@
         "brow"
       ],
       "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "brow_r",
@@ -297,7 +304,8 @@
         "brow"
       ],
       "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "hair_side_l",
@@ -316,7 +324,8 @@
         "hair"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "hair_side_r",
@@ -335,7 +344,8 @@
         "hair"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "hair_back",
@@ -354,7 +364,8 @@
         "hair"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "arm_l_root",
@@ -373,7 +384,8 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "arm_l_upper",
@@ -392,7 +404,8 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "arm_l_fore",
@@ -411,7 +424,8 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "hand_l",
@@ -430,7 +444,8 @@
         "body"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "arm_r_root",
@@ -449,7 +464,8 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "arm_r_upper",
@@ -457,7 +473,7 @@
       "group": "arm_r",
       "layer": 141,
       "pos": [
-        511,
+        514,
         400
       ],
       "anchor": [
@@ -468,7 +484,8 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "arm_r_fore",
@@ -487,7 +504,8 @@
         "arm"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "hand_r",
@@ -506,7 +524,8 @@
         "body"
       ],
       "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_foot_l",
@@ -526,7 +545,8 @@
         "foot"
       ],
       "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_foot_l_tip",
@@ -546,7 +566,8 @@
         "foot"
       ],
       "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_foot_r",
@@ -566,7 +587,8 @@
         "foot"
       ],
       "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_foot_r_tip",
@@ -586,7 +608,8 @@
         "foot"
       ],
       "note": "踮脚鞋（鞋身×1.297 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "mouth_mask",
@@ -609,7 +632,8 @@
         "mouth"
       ],
       "mask_only": true,
-      "note": "开口形状：锚点在上唇线，sy=0.0545 是闭嘴，sy≈0.95 是张到最大（22px）"
+      "note": "开口形状：锚点在上唇线，sy=0.0545 是闭嘴，sy≈0.95 是张到最大（22px）",
+      "hires": 2
     },
     {
       "id": "mouth_cavity",
@@ -633,7 +657,8 @@
       ],
       "mask": "mouth_mask",
       "motion_from": "mouth_mask",
-      "note": "口内（牙/上颚/舌/嘴角，AI 重绘的真素材）。motion_from=mouth_mask：口内跟着开口形状一起压扁，所以半开时是一张压扁的嘴，而不是把整张口内图裁掉下半截（那样半开只剩一条黑缝）"
+      "note": "口内（牙/上颚/舌/嘴角，AI 重绘的真素材）。motion_from=mouth_mask：口内跟着开口形状一起压扁，所以半开时是一张压扁的嘴，而不是把整张口内图裁掉下半截（那样半开只剩一条黑缝）",
+      "hires": 2
     },
     {
       "id": "mouth_open",
@@ -652,7 +677,8 @@
         "mouth"
       ],
       "note": "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_socket",
@@ -674,7 +700,8 @@
       "note": "眼眶开口（46×41px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
       "aperture_min": 0.06,
       "eye_side": "l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_base",
@@ -695,7 +722,8 @@
       "mask": "eye_l_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
       "eye_side": "l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_ball",
@@ -717,7 +745,8 @@
       "mask": "eye_l_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±5/±4px，由眼眶裁切",
       "eye_side": "l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_lash",
@@ -739,7 +768,8 @@
       "eyelid_travel": 21.5,
       "lash_hold": 0.5,
       "eye_side": "l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_closed",
@@ -759,7 +789,8 @@
       ],
       "note": "闭眼（AI 重绘·盖住原画眼睛 99.5%，接缝色差 4.53）：blink=1 时完全显形",
       "eye_side": "l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_smile",
@@ -779,7 +810,8 @@
       ],
       "note": "笑眼（AI 重绘·盖住原画眼睛 99.5%，接缝色差 4.04）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_socket",
@@ -801,7 +833,8 @@
       "note": "眼眶开口（43×37px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
       "aperture_min": 0.06,
       "eye_side": "r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_base",
@@ -822,7 +855,8 @@
       "mask": "eye_r_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
       "eye_side": "r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_ball",
@@ -844,7 +878,8 @@
       "mask": "eye_r_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±4/±4px，由眼眶裁切",
       "eye_side": "r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_lash",
@@ -866,7 +901,8 @@
       "eyelid_travel": 17.0,
       "lash_hold": 0.5,
       "eye_side": "r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_closed",
@@ -886,7 +922,8 @@
       ],
       "note": "闭眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.26）：blink=1 时完全显形",
       "eye_side": "r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_smile",
@@ -906,7 +943,8 @@
       ],
       "note": "笑眼（AI 重绘·盖住原画眼睛 99.7%，接缝色差 2.23）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "brow_l_ghost",
@@ -928,7 +966,8 @@
       "mask": "hair_front",
       "motion_from": "brow_l",
       "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；通道值照抄 brow_l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "brow_r_ghost",
@@ -950,7 +989,8 @@
       "mask": "hair_front",
       "motion_from": "brow_r",
       "note": "透け眉：眉毛的半透明副本，被刘海遮罩裁切，只在刘海覆盖处显形；通道值照抄 brow_r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "blush_l",
@@ -969,7 +1009,8 @@
       "blend": "multiply",
       "tags": [],
       "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "blush_r",
@@ -988,7 +1029,8 @@
       "blend": "multiply",
       "tags": [],
       "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_hl_star_l",
@@ -1012,7 +1054,8 @@
       "mask": "eye_l_socket",
       "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
       "eye_side": "l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_hl_l",
@@ -1036,7 +1079,8 @@
       "mask": "eye_l_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
       "eye_side": "l",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_hl_star_r",
@@ -1060,7 +1104,8 @@
       "mask": "eye_r_socket",
       "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
       "eye_side": "r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_hl_r",
@@ -1084,7 +1129,8 @@
       "mask": "eye_r_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
       "eye_side": "r",
-      "scale": 0.5
+      "scale": 0.5,
+      "hires": 2
     }
   ],
   "regions": [
@@ -3724,7 +3770,8 @@
         {
           "part": "mouth_mask",
           "param": "sy",
-          "scale": 0.895
+          "scale": 0.4475,
+          "hires_halved": true
         },
         {
           "part": "mouth_open",
@@ -3754,12 +3801,14 @@
         {
           "part": "mouth_mask",
           "param": "sx",
-          "scale": 0.26
+          "scale": 0.13,
+          "hires_halved": true
         },
         {
           "part": "mouth_mask",
           "param": "sy",
-          "scale": -0.045
+          "scale": -0.0225,
+          "hires_halved": true
         }
       ]
     },

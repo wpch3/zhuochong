@@ -1823,7 +1823,17 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     #
     # 画布坐标完全不动：pos 还是画布坐标，anchor 是比例，
     # 变的只有素材像素密度和与之配套的 scale。
+    #
+    # ⚠ 标量 scale 和数组 scale 在引擎里语义**不同**，换算方式也不同（G111）：
+    #   · 标量 `"scale": s`  → zrig 的 p->scale，通道是**乘性**的：
+    #       最终 = s × p_s   → s 减半 + 素材翻倍 = 任何 p_s 下都等价，绑定不用动。
+    #   · 数组 `"scale": [sx,sy]` → zrig 的 p->scale_x/scale_y，通道是**加性**的
+    #       （compute_draw_state: part_sy = scale_y + (p_sy - 1.0)）：
+    #       scale_y 减半了，但绑定里的增量还是 1x 口径 → **位移整整放大 2 倍**。
+    # T30.1 当时只减了 scale，没动绑定，于是嘴张到最大从 22px 变成 41px，
+    # 下沿直接越过下巴长到脖子上（用户第三次验收截图）。所以这里必须一起减。
     hires_used = 0
+    hires_additive = set()          # 换了 @2x 且 scale 是数组 → 绑定增量要跟着减半
     if base:
         for _p in parts_list:
             _f = _p.get("file", "")
@@ -1834,11 +1844,41 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 continue
             _p["file"] = _cand
             _sc = _p.get("scale", 1.0)
-            _p["scale"] = ([_sc[0] * 0.5, _sc[1] * 0.5] if isinstance(_sc, list)
-                           else round(_sc * 0.5, 6))
+            if isinstance(_sc, list):
+                _p["scale"] = [round(_sc[0] * 0.5, 6), round(_sc[1] * 0.5, 6)]
+                hires_additive.add(_p["id"])
+            else:
+                _p["scale"] = round(_sc * 0.5, 6)
+            _p["hires"] = 2         # 自述：素材像素密度 ×2，几何口径已按 2 换算过
             hires_used += 1
         if hires_used:
             print(f"[rig] 高清切件 {hires_used}/{len(parts_list)} 个用上 @2x（scale ×0.5）")
+
+    # —— 加性通道的绑定跟着减半（G111）——
+    # 落点只有这一个：绑定全在 PARAMS 里，动作/表情经 to_param_channels 之后
+    # 一律是参数级通道（下面那条断言就是守这个前提的）。
+    if hires_additive:
+        _halved = 0
+        for _pr in PARAMS:
+            for _b in _pr.get("binds", []):
+                if _b.get("param") in ("sx", "sy") and _b.get("part") in hires_additive:
+                    _b["scale"] = round(_b["scale"] * 0.5, 6)
+                    _b["hires_halved"] = True       # 闸门按这个标记查有没有漏
+                    _halved += 1
+        # 负向断言：万一哪天有人把部件级 sx/sy 写回动作轨，这里立刻拦住，
+        # 不要等到用户看见一张拖到下巴的嘴才发现（DC41：一个行为多条入口）。
+        for _a in actions:
+            for _c in _a.get("channels", []):
+                _t = str(_c.get("target", ""))
+                if "." in _t:
+                    _pid, _ch = _t.split(".", 1)
+                    if _ch in ("sx", "sy") and _pid in hires_additive:
+                        raise SystemExit(
+                            f"[make_rig] 动作 {_a['id']} 直接写了 {_t}，"
+                            f"而 {_pid} 是 @2x 加性缩放件 —— 这条通道不会被减半换算，"
+                            f"请改成参数级通道")
+        print(f"[rig]   其中 {len(hires_additive)} 个是数组 scale（加性通道），"
+              f"已把 {_halved} 条 sx/sy 绑定一并减半")
 
     rig = {
         "schema_version": "1.0",
