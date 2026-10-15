@@ -17,7 +17,7 @@
 用法：python3 tools/selfcheck_repo.py [--root .] [--quiet]
 """
 from __future__ import annotations
-import argparse, datetime, glob, io, json, math, os, re, subprocess, sys
+import argparse, datetime, glob, io, json, math, os, re, struct, subprocess, sys
 
 OK, BAD = "通过", "不通过"
 _fail = 0
@@ -2270,6 +2270,43 @@ def check_tools(root):
               i_cut > 0 and i_cut > i_eyeline and i_cut > i_sidehair and i_cut < i_rig,
               f"make_mouth_line_cut.py 偏移 {i_cut}（眼线 {i_eyeline} / 侧发 {i_sidehair} "
               f"/ make_rig {i_rig}）")
+
+    # 超分基准（T30.1）：判据不许被悄悄放宽，高清 sheet 不许和原图脱钩。
+    #
+    # 背景：T30.1 原来写的是「按源图 1696x2528 重切」，2026-10-15 查下来前提是错的 ——
+    # 真正的拆件基准 design_sheet 只有 1024x1536，而那张 1696x2528 是**另一个姿势**的
+    # 白底参考图。唯一能拿到真 2x 的路是 Real-ESRGAN anime 超分（DC44）。
+    # 能不能直接换基准，全靠 upscale_sheet.py 里那五条判据；判据一松，
+    # 44 个部件的坐标就会在"看起来还行"的对齐度上集体漂掉，而且很难再查出来。
+    up = os.path.join(root, "tools", "upscale_sheet.py")
+    if os.path.exists(up):
+        ups = io.open(up, encoding="utf-8").read()
+        check("超分验收判据没被放宽（NCC/IoU 门槛 0.97）",
+              "iou > 0.97" in ups and "ncc > 0.97" in ups,
+              "upscale_sheet.py 的 verify()：两条门槛都必须是 >0.97。"
+              "放宽等于允许部件坐标集体漂掉")
+        check("超分度量只比两边实心的像素",
+              'aA[..., 3] > 200) & (aB[..., 3] > 200' in ups,
+              "把透明区算进 NCC 会得到假的『不通过』——"
+              "第一版就是这么差点把可行的路否掉的（MAE 61.9 vs 真实 6.35）")
+        check("超分模型有 sha256 校验",
+              "MODEL_SHA256" in ups and "sha256 对不上" in ups,
+              "素材是生成物；拿不认识的权重去生成素材，产物就不可复现了")
+    # 高清 sheet 若已生成，必须恰好是原图的 2 倍（不是另画一张）
+    design = os.path.join(root, "characters", "xiaoxun", "design")
+    base_p = os.path.join(design, "design_sheet_short.png")
+    x2_p = os.path.join(design, "design_sheet_short_x2.png")
+    if os.path.exists(x2_p) and os.path.exists(base_p):
+        def _png_wh(fp):
+            with open(fp, "rb") as fh:
+                d = fh.read(26)
+            return struct.unpack(">II", d[16:24])
+        bw, bh = _png_wh(base_p)
+        xw, xh = _png_wh(x2_p)
+        check("高清 sheet 恰好是原 sheet 的 2 倍",
+              xw == bw * 2 and xh == bh * 2,
+              f"{bw}x{bh} -> {xw}x{xh}（必须正好 2 倍；"
+              f"尺寸对不上说明它不是同一张图超分来的）")
 
     # 惊讶时不许把瞳孔放大。
     # 2026-10-15 用户实拍反馈「眼球会不自然的变大，看着像个怪物」—— 当时 surprised 挂的是

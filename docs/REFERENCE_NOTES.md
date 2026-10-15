@@ -1459,3 +1459,32 @@ TTFB（第一个字节）/ TTFA（第一段可播音频）/ 整段完成，差 3
 - ☆ 可借鉴的一个具体细节：它的 Live2D 导入会**先出一份体检报告**
   （列出模型数据、缺失引用、未被引用的资源、每条怎么修）再导入。
   我们的素材重建链也该有这么一份（可并入 T31.10 的孤儿切件闸）。
+
+## 第二十五批（2026-10-15）动漫超分：给 T30.1 找到的唯一一条真 2× 路径
+
+起因：T30.1「素材 2× 重切」开工验前提，发现**没有 2× 的原始素材可用**（DC44）。
+按用户 2026-10-15 的要求「如果不能就寻找办法，网上总会有的」上网找，找到了。
+
+- **★★★ Real-ESRGAN 的 anime 专用轻量模型**：`RealESR-AnimeVideo-v3 x4`。
+  compact 架构，**ONNX 只有 2.4MB**，CPU 单线程 **14.6 s / 百万输入像素**
+  （沙箱 2 核实测；1024×1536 整张 22.6s）。
+  常规用法是**超到 4× 再 LANCZOS 下采样到 2×**，顺带把超分引入的噪点压掉。
+  许可：模型 reupload 仓库 BSD 3-Clause；Real-ESRGAN 本体（xinntao/Real-ESRGAN）BSD 3-Clause。
+- **★★ 它为什么适合我们**：Real-ESRGAN 是**纯卷积超分**，不是生成模型 ——
+  几何严格对齐。实测倍率 2.0020/1.9993、bbox 原点偏差 (-1,0)px、轮廓 IoU 0.9938。
+  **所以部件坐标直接乘 2 就行，44 件不用重对**。
+  对照：`generate_image` 这类生成模型虽然 IoU 也能到 0.988，但**输出分辨率不受控**
+  （我们那次 1024×1536 进去、843×1264 出来，反而变小了），做超分根本不对路。
+- **★★ 沙箱取模型的坑**：`raw.githubusercontent.com` **不在出网白名单**
+  （白名单只有 github.com / codeload.github.com / api.github.com / registry.npmjs.org /
+  pypi.org / files.pythonhosted.org）。所以要走
+  `https://codeload.github.com/<owner>/<repo>/tar.gz/refs/heads/main` 下整个 tarball 再解。
+  `pip install onnxruntime` 走 pypi 没问题（1.31.0，CPU provider）。
+- **★★ 分块推理要留 overlap**：整张 1024×1536 一次推理要几 GB 临时内存。
+  按 256 的 tile 切、每边多算 16px 再裁掉 —— 不留 overlap 的话块边界上卷积拿不到邻域，
+  拼出来有可见接缝。实测 24 块零接缝。
+- **★ 副作用要知道**：超分会**忠实放大原图的瑕疵**。我们 design_sheet 边缘本来就有
+  抠图残留的发丝杂色（G101 查过，是原画自带的，DC34），超分后更明显。
+  切件时的抠图要能吃掉它，否则要退回 1.5×。已写进 DC44 的复查触发。
+- ☆ 同类备选（本轮没用）：waifu2x（更老，细节保守）、
+  Anime4K（纯 GLSL shader、无需模型，但要 GPU/shader 运行时，我们是 CPU 软渲染，不合适）。
