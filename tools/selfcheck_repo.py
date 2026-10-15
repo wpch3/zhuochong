@@ -2286,6 +2286,22 @@ def check_tools(root):
               f"make_mouth_line_cut.py 偏移 {i_cut}（眼线 {i_eyeline} / 侧发 {i_sidehair} "
               f"/ make_rig {i_rig}）")
 
+    # 路线图不许过期。
+    #
+    # 2026-10-15 盘点时发现 docs/ROADMAP.md 停在 10-11：一个 T 编号都不提，
+    # 还写着「身体分段 ⬜」「嘴待拆 AEIOU」——那时这些早做完了。
+    # **一份过期的路线图比没有路线图更坏，因为它看起来是真的。**
+    # 所以 ROADMAP 改成和 TASKS 挂钩，由 roadmap_status.py 校验：
+    # 每个大项都排进了某个阶段 + 写的进度数字和实际勾选一致。
+    rs = os.path.join(root, "tools", "roadmap_status.py")
+    if os.path.exists(rs):
+        r = subprocess.run([sys.executable, rs, "--root", root],
+                           capture_output=True, text=True)
+        detail = (r.stderr or r.stdout).strip().replace("\n", " ")[:200]
+        check("路线图和任务表对得上（无过期）", r.returncode == 0,
+              detail or "ROADMAP 与 TASKS 一致；"
+              "对不上就跑 python3 tools/roadmap_status.py --fix")
+
     # 超分基准（T30.1）：判据不许被悄悄放宽，高清 sheet 不许和原图脱钩。
     #
     # 背景：T30.1 原来写的是「按源图 1696x2528 重切」，2026-10-15 查下来前提是错的 ——

@@ -85,3 +85,14 @@
 （两条都做了改坏负控，各自精确报红）。
 
 **永不归档**：用户硬约束 DC12~DC16；被推翻的反面教材 DC01~DC04（闸要求 ≥4 条）。
+
+### DC22 ✅ 口型不自造 A/I/U/E/O 五个参数，用「音素表 → OpenY×Form」（2026-10-13）
+
+- 前提：要和 Live2D 生态的参数口径兼容，将来换素材/换模型不用改引擎。
+- 证据：官方《Standard Parameter List》里嘴只有 `ParamMouthOpenY` + `ParamMouthForm`，
+  **没有** ParamMouthA/I/U/E/O；Animaze 的 viseme 映射也落在这两个参数上；
+  airi 的 `vowel-driver.ts` 同样是"赢家+亚军 + 指数平滑"而不是五个独立参数。
+  实测：「电话接通啦，我在听哦。」→ A A E O A（38/38 条包络有 viseme 轨）。
+- 负控：✅ 已做 —— `zrig.c` 的音素层收干净后会把嘴还给动作（`mouth_mute=0`）；
+  把这一步去掉会出现"说完话嘴卡在半开"，当时就是这么发现要加的。
+- 复查触发：若将来要导出给 Cubism 编辑器，需要确认对方的 keyform 组合方式一致。
