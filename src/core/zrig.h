@@ -106,6 +106,10 @@ void   zrig_apply_mood_flick(zrig *r, const char *mood);
 /* 自发抽动的总开关（默认开）。探针量「慢摆」那张表时必须关掉它，
    不然抽动的非周期脉冲会混进峰峰值里，两张表就分不开了。 */
 void   zrig_tail_flick_enable(zrig *r, int on);
+/* 环境摆动（ambient）的总开关（默认开）。测**物理链**时必须关掉：
+   自主摆动一直在跑，不关的话「摇头有没有把裙子带起来」这类断言
+   会把它算进去，分不出位移是谁推的。 */
+void   zrig_ambient_enable(zrig *r, int on);
 int    zrig_pose_count(const zrig *r);
 const char *zrig_pose_id(const zrig *r, int i);
 int    zrig_pose_entry_count(const zrig *r, const char *group);
@@ -131,6 +135,11 @@ double zrig_xfade_hidden(double w);
 
 /* 物理摆当前输出（多段摆调试用）。没有这个 id 返回 0。 */
 double zrig_phys_output(const zrig *r, const char *id);
+/* 列举物理摆链节点。★ 有了它，「摆链有没有收敛」才量得准 ——
+   形变器的当前量是**物理 + 环境摆动**之和，环境摆动一直在跑，
+   拿形变器去断言"停下来要回零"永远不成立（T45.9 踩过）。 */
+int    zrig_phys_count(const zrig *r);
+const char *zrig_phys_id(const zrig *r, int i);
 
 int    zrig_deform_count(const zrig *r);
 const char *zrig_deform_id(const zrig *r, int i);

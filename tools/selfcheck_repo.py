@@ -575,6 +575,9 @@ L2D_STANDARD = {
 # 标准表里没有、但我们确实需要的扩展。每加一个都必须在这里登记 + 写进
 # docs/LIVE2D_CONFORMANCE.md，否则参数命名会慢慢跑偏，以后接任何现成工具都对不上。
 L2D_EXTENSIONS = {
+    "ParamSkirtSway": "裙摆自主摆动（T45.9）。标准表只有身体角度，没有"
+                      "「布自己在动」这一层。两级形变器：裙身 skirt_sway_x + "
+                      "下摆 skirt_hem_x，下摆带 0.11 秒行波延迟",
     "ParamLegL": "裙下大腿 bend（标准表没有腿参数）",
     "ParamLegR": "同上",
     "ParamHairAhoge": "呆毛整体摆（标准表只有 Front/Side/Back/Fluffy）",
@@ -2436,22 +2439,91 @@ def check_swing_headroom(root):
                   "clamp 悄悄削平（T45.2f 就是这么漏的，而且只错放大那一半）"
                   % (lo, hi, pr["min"], pr["max"]))
 
-    # 行波延迟：有形变器的摆动件都该有 lag，否则根和梢同相位 = 僵硬的钟摆
+    # 行波延迟：被 ambient 驱动、且绑了形变器的摆动件，**最后一级形变器**必须有 lag。
+    # 只认 ParamAcc*Swing 是不够的 —— 裙摆叫 ParamSkirtSway，会漏。
     for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
         tag = os.path.relpath(rp, root)
         with io.open(rp, encoding="utf-8") as fh:
             rig = json.load(fh)
+        amb_targets = {c.get("target") for c in rig.get("ambient", [])}
         for pr in rig.get("params", []):
-            if not (pr["id"].startswith("ParamAcc") and pr["id"].endswith("Swing")):
+            if pr["id"] not in amb_targets:
                 continue
             dfm = [b for b in pr.get("binds", []) if "deformer" in b]
-            if not dfm:
+            if len(dfm) < 1:
                 continue
-            bad = [b["deformer"] for b in dfm if not b.get("lag")]
+            # 一级形变器 = 整条一起动，允许（耳朵那种小件）；
+            # 两级以上 = 根和梢，最后一级必须带 lag。
+            need = dfm[1:] if len(dfm) > 1 else dfm
+            bad = [b["deformer"] for b in need if not b.get("lag")]
             check("%s：%s 的梢部形变带行波延迟" % (tag, pr["id"]), not bad,
-                  "lag=%s" % ", ".join("%.2f" % b["lag"] for b in dfm) if not bad else
-                  "形变器 %s 没有 lag —— 尾巴根和尾巴梢会**同相位**被推，"
+                  "lag=%s" % ", ".join("%.2f" % b.get("lag", 0) for b in need)
+                  if not bad else
+                  "形变器 %s 没有 lag —— 根和梢会**同相位**被推，"
                   "那是僵硬的钟摆，不是软组织（动画的 wave principle）" % bad)
+
+
+def check_ambient_sway(root):
+    """自主摆动必须挂在 rig 级的 ambient 上，不许挂进某个动作。
+
+    2026-10-17 量出来的事：裙摆和尾巴的自主摆动写成了 `idle` 的动作通道，
+    而待机动作有四个会轮换 ——
+
+        动作          裙摆形变    尾巴 rot_deg
+        idle          1.1377      7.9751
+        sway          0.7019      6.2181
+        shift_weight  0.1273      5.8572
+        breath        0.0000      3.0466     ← 布料整个冻住
+
+    而且动作通道按"动作内经过时间"求值，一换动作就从 0 重来 ⇒ 相位跳回原点。
+    两个毛病同一个根：**环境摆动不属于任何一个动作**。
+
+    这又是 DC41「一个行为多条入口都要验」的翻版：功能只接了一个入口，
+    而它看起来是好的 —— 因为 idle 恰好是最常出现的那个入口。
+    """
+    section("自主摆动挂在 ambient 上（不是挂在某个动作里）")
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        tag = os.path.relpath(rp, root)
+        with io.open(rp, encoding="utf-8") as fh:
+            rig = json.load(fh)
+        amb = rig.get("ambient") or []
+        # 1) 摆动参数不许出现在任何动作的通道里
+        swing = {pr["id"] for pr in rig.get("params", [])
+                 if (pr["id"].endswith("Swing") or pr["id"].endswith("Sway"))
+                 and any("deformer" in b for b in pr.get("binds", []))}
+        if not swing:
+            continue
+        leaked = sorted({(a["id"], c["target"])
+                         for a in rig.get("actions", [])
+                         for c in a.get("channels", [])
+                         if c.get("target") in swing})
+        check("%s：摆动参数没有被挂进动作里" % tag, not leaked,
+              "%d 条摆动参数全在 ambient" % len(swing) if not leaked else
+              "这些摆动通道挂在动作上，切到别的待机动作就会停："
+              + "、".join("%s→%s" % x for x in leaked))
+        # 2) ambient 必须覆盖到每一条摆动参数
+        covered = {c.get("target") for c in amb}
+        miss = sorted(swing - covered)
+        check("%s：每条摆动参数都有 ambient 在推" % tag, not miss,
+              "%d 条" % len(swing) if not miss else
+              "这些参数没人推，等于不会自己动：" + "、".join(miss))
+        # 3) 频率不许撞车 —— 全身揺れ物同拍子摆是机械感的第二大来源
+        #    （教程：「すべてのパーツが同じ設定だと全部が同じタイミングで揺れて
+        #     機械的に見える。軽いものほど揺れやすく、早く収まるように差をつける」）
+        freqs = {}
+        for c in amb:
+            freqs.setdefault(round(float(c.get("freq", 0)), 4), []).append(c["target"])
+        # 左右成对的件（ParamEarLAngle / ParamEarRAngle）本来就该同频，豁免。
+        # ⚠ 第一版写的是 x.rstrip("LR") —— 而 L 在名字**中间**，rstrip 只削尾部，
+        #   一个字符都削不掉，左右耳被判成"撞车"。配对要按位置去字母。
+        def _pair_key(x):
+            return re.sub(r"(?<=[a-z])[LR](?=[A-Z0-9]|$)", "", x)
+        dup = {f: t for f, t in freqs.items() if len(t) > 1
+               and len({_pair_key(x) for x in t}) > 1}
+        check("%s：各揺れ物的频率是分开调的" % tag, not dup,
+              "%d 条 ambient 通道，频率各不相同" % len(amb) if not dup else
+              "这些件共用同一个频率、会同拍子摆（机械感）："
+              + "；".join("%.3fHz: %s" % (f, "+".join(t)) for f, t in dup.items()))
 
 
 def check_attach_switch(root):
@@ -2870,6 +2942,7 @@ def main():
                check_live2d, check_character,
                check_web, check_contract, check_attach_switch,
                check_no_dead_tables, check_swing_headroom,
+               check_ambient_sway,
                check_effects_table,
                check_tools, check_hygiene):
         try:

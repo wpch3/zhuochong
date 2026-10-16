@@ -3961,6 +3961,12 @@ static void test_skirt_physics(void)
     CHECK(r != NULL, "装载真 rig 应成功（裙摆）");
     if (!r) return;
 
+    /* ★ 下面 ①~④ 测的是**物理链**（谁带动裙子、停下来会不会收敛），
+       所以先把 T45.9 加的**环境摆动**关掉 —— 它不管身体动不动都一直在跑，
+       不关的话「光摇头裙子动了没有」会把它的位移算进来，分不出是谁推的。
+       环境摆动本身另有 ⑤ 单测。 */
+    zrig_ambient_enable(r, 0);
+
     /* ① 摇摆：横摆通道要被身体带起来 */
     for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);
     zrig_action_request(r, "sway", "test", 1);
@@ -4006,6 +4012,51 @@ static void test_skirt_physics(void)
     rest_x = fabs(zrig_deform_amount(r, "skirt_sway_x"));
     CHECK(rest_x < 0.02,
           "身体停住后裙摆要收敛回零，不能被永久吹偏（残留 %.4f）", rest_x);
+    zrig_param_reset_all(r);
+
+    /* ⑤ 环境摆动（T45.9）：布必须**自己**在动，而且**换哪个待机动作都不停**。
+       这一条是补上一个真实缺陷：自主摆动原本写成 idle 的动作通道，
+       而待机动作有四个会轮换，实测切到 breath 时裙摆幅度直接 0.0000 ——
+       布料整个冻住。DC41「一个行为多条入口都要验」的又一次翻版。 */
+    {
+        static const char *IDLE_FAMILY[] = { "idle", "sway", "shift_weight", "breath" };
+        size_t ai;
+        zrig_ambient_enable(r, 1);
+        for (ai = 0; ai < sizeof(IDLE_FAMILY) / sizeof(IDLE_FAMILY[0]); ++ai) {
+            double lo = 1e9, hi = -1e9, base = 100.0 + 40.0 * (double)ai;
+            zrig_param_reset_all(r);
+            zrig_action_request(r, IDLE_FAMILY[ai], "test", 1);
+            for (i = 0; i < 120; ++i) zrig_tick(r, base + i / 60.0);
+            if (strcmp(zrig_action(r), IDLE_FAMILY[ai]) != 0) continue;
+            for (i = 1; i <= 900; ++i) {   /* 15 秒 ≈ 裙摆两个周期 */
+                double v;
+                zrig_tick(r, base + 2.0 + i / 60.0);
+                v = zrig_deform_amount(r, "skirt_sway_x");
+                if (v < lo) lo = v;
+                if (v > hi) hi = v;
+            }
+            CHECK(hi - lo > 0.30,
+                  "待机动作 %s 下裙摆也要自己摆（峰峰值 %.4f，挂在 idle 上时 "
+                  "breath 实测是 0.0000）", IDLE_FAMILY[ai], hi - lo);
+        }
+        /* 下摆是第二级，必须比裙身晚到（行波延迟 lag） */
+        {
+            double da = 0.0, db = 0.0;
+            zrig_action_request(r, "idle", "test", 1);
+            for (i = 0; i < 300; ++i) zrig_tick(r, 300.0 + i / 60.0);
+            for (i = 1; i <= 600; ++i) {
+                double a0, b0;
+                zrig_tick(r, 305.0 + i / 60.0);
+                a0 = zrig_deform_amount(r, "skirt_sway_x");
+                b0 = zrig_deform_amount(r, "skirt_hem_x");
+                if (fabs(a0) > da) da = fabs(a0);
+                if (fabs(b0) > db) db = fabs(b0);
+            }
+            CHECK(da > 0.1 && db > 0.1,
+                  "裙摆是两级的：裙身 %.3f + 下摆 %.3f 都要动（一段式看着像棍子）",
+                  da, db);
+        }
+    }
     zrig_param_reset_all(r);
     zrig_free(r);
 }

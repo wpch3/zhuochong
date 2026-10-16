@@ -782,7 +782,15 @@ def run(base, root):
         peak = max(peak, abs(dfm.get("skirt_sway_x") or 0.0))
         time.sleep(0.05)
     time.sleep(2.0)                       # 等摆链收敛
-    rest = abs(((a.json("/api/info.json") or {}).get("deformers") or {}).get("skirt_sway_x") or 0.0)
+    # ★ 看 physics 不看 deformers（2026-10-17，T45.9）：
+    #   形变器的当前量是**物理摆链 + 环境摆动**之和。环境摆动不管身体动不动
+    #   都一直在跑（就是为了让布别死在那儿），所以拿形变器去断言"停住要回零"
+    #   永远不成立 —— 这条当时就是这么红的。要验的是**摆链**收不收敛。
+    info = a.json("/api/info.json") or {}
+    phys = info.get("physics") or {}
+    check("info.json 暴露物理摆链输出（和形变器分开给）",
+          "skirt_x" in phys and "skirt_y" in phys, " ".join(sorted(phys)[:6]))
+    rest = abs(phys.get("skirt_x") or 0.0)
     check("停住之后裙摆要收敛回零（只给惯性，不永久吹偏）", rest < 0.05,
           "刚推时 %.3f → 静止后 %.4f" % (peak, rest))
     a.hit("/api/param?id=ParamBodyAngleX&reset=1"); time.sleep(0.5)

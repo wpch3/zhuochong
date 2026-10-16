@@ -469,6 +469,21 @@ struct zrig {
        频度和力度都随情绪走，所以表的四个数是 [间隔下限, 间隔上限, 幅度, 时长]。
        ★ 用**自己的随机流** flick_rng：绝不去动 r->rng，那条正在喂眨眼间隔，
          共用会把现有眨眼测试的时序全改掉（而且是悄悄改）。 */
+    /* ── 环境摆动（ambient，T45.9）──
+       尾巴/裙摆这类"自己一直在动"的通道**不属于任何动作**。
+       以前它们写在 idle 的 channels 里，于是：
+         ① 待机动作有四个（idle/sway/shift_weight/breath）会轮换，
+            切到 breath 裙摆幅度直接变 0.0000 —— 布料整个冻住；
+         ② 动作通道按 zsm_elapsed 求值，一换动作就从 0 重来 ⇒ **相位跳回原点**。
+       提升成 rig 级之后：不受动作切换影响，按**绝对时刻 r->now** 求值，
+       相位永远连续。复用 zaction 这个壳，是为了让 accumulate_action 的
+       全部语义（mood_swing 倍率、口型让路、参数/形变器/部件三种目标）原样生效。 */
+    zaction ambient;
+    int    has_ambient;
+    int    ambient_off;      /* 1 = 关掉环境摆动。测物理链时必须关 —— 
+                                否则"摇头有没有把裙子带起来"这种断言会把
+                                一直在跑的自主摆动算进去，分不出是谁推的。 */
+
     int    nflick_param;
     int    flick_param[ZRIG_MAX_MOOD_PARAM];
     double flick_scale[ZRIG_MAX_MOOD_PARAM];        /* 每条参数自己的力度系数 */
@@ -2100,6 +2115,137 @@ static double param_effective(const zrig *r, int pi)
     return v;
 }
 
+/* 解析一组通道（channels）到 a->chans。
+   ★ 抽出来是因为**环境摆动 ambient 和动作共用同一套通道语义**（T45.9）。
+     以前只有 load_actions 会解析通道；ambient 提升成 rig 级之后要是再抄一份，
+     以后给通道加字段就会漏掉一边 —— 那正是"死表"和"只接了一个入口"这两类
+     bug 的温床（LESSONS 169 / DC41）。
+   tag 只用于报错定位（动作写动作名，环境摆动写 "ambient"）。 */
+static int load_channels(zrig *r, zaction *a, const zjson *chs,
+                         zdiag *d, const char *file, const char *buf)
+{
+    /* ⚠ 这里只能有**一层**循环。第一版抽函数时我在外面又包了一个同名的
+       for(k...)，于是 7 条通道被解析成 7×7=49 条，摆动参数被顶到值域两端
+       （尾巴 rot_deg 峰峰值 28.2°，正常是 6.4°）。单条通道的测试 1×1=1
+       恰好看不出来 —— 又一次"一半对一半错"。 */
+    size_t k, kn = zjson_count((zjson *)chs);
+    {
+        for (k = 0; k < kn && a->nchan < ZRIG_MAX_CHANNELS; ++k) {
+            const zjson *cj = zjson_at(chs, k);
+            zchan *c = &a->chans[a->nchan];
+            const char *tgt = zjson_str(zjson_obj_get(cj, "target"), "root");
+            const char *pname = zjson_str(zjson_obj_get(cj, "param"), NULL);
+            const char *wname = zjson_str(zjson_obj_get(cj, "wave"), "sine");
+            memset(c, 0, sizeof(*c));
+            z_strlcpy(c->target, tgt, sizeof(c->target));
+            c->group = -1;
+            c->part = -1;
+            c->deform = -1;
+            c->pparam = -1;
+            /* Live2D 的 .motion3 曲线写的是**参数**，所以 target 先按参数名找：
+               "target":"ParamMouthOpenY" 这种动作可以直接从 Cubism 搬过来。 */
+            if (strncmp(tgt, "Param", 5) == 0) c->pparam = param_find(r, param_alias(tgt));
+            if (c->pparam < 0) c->group = find_group(r, tgt);
+            if (c->pparam < 0 && c->group < 0) {
+                /* 允许直接指向部件（口型/眼部动画）或网格形变器（A5） */
+                c->part = find_part(r, tgt);
+                if (c->part < 0) c->deform = find_deform(r, tgt);
+                if (c->part < 0 && c->deform < 0) {
+                    zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                                "通道 target '%s' 既不是参数、组、部件，也不是形变器"
+                                "（检查 params / groups / parts / deformers 里的 id）", tgt);
+                    return -1;
+                }
+            }
+            {
+                const char *cname = zjson_str(zjson_obj_get(cj, "curve"), NULL);
+                if (cname) {
+                    if (z_streq(cname, "root")) c->curve = BEND_ROOT;
+                    else if (z_streq(cname, "sine")) c->curve = BEND_SINE;
+                    else if (z_streq(cname, "linear")) c->curve = BEND_LINEAR;
+                    else if (z_streq(cname, "tip")) c->curve = BEND_TIP;
+                }
+                if (zjson_get(cj, "strips")) c->strips = (int)zjson_num(zjson_obj_get(cj, "strips"), 0);
+            }
+            if (c->pparam >= 0) {
+                /* 参数通道只有一个量：参数值本身。写不写 "param":"value" 都行。 */
+                if (pname && !z_streq(pname, "value")) {
+                    zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                                "参数通道的 param 只能是 \"value\"（写了 '%s'）", pname);
+                    return -1;
+                }
+                c->param = P_DX;      /* 占位，不会被用到 */
+            } else if (!pname || parse_param(pname, &c->param) != 0) {
+                zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                            "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha/bend_x/bend_y）");
+                return -1;
+            }
+            /* 官方 .motion3 的曲线目标只有三种：Model / Parameter / PartOpacity
+               （CubismWebFramework cubismmotion.ts 的 TargetName* 三个常量）。
+               直接写部件的位移/旋转/缩放/弯曲不在其中 —— 记一笔，由 selfcheck 与
+               单测守着它恒为 0，防止几何通道偷偷长回来。 */
+            if (c->pparam < 0 && !(c->part >= 0 && c->param == P_ALPHA))
+                r->legacy_geom_chans++;
+            /* 关键帧曲线（≈ .motion3）：有 keys 就不看 wave/amp/freq。
+               写法 "keys":[[0,0],[0.3,-12],[1.2,0]]，可选 "interp":"linear|smooth|step"。 */
+            {
+                const zjson *ks = zjson_obj_get(cj, "keys");
+                if (ks) {
+                    size_t kn = zjson_count(ks), q;
+                    const char *ipn = zjson_str(zjson_obj_get(cj, "interp"), "smooth");
+                    if (!zjson_is(ks, ZJSON_ARR) || kn < 1) {
+                        zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                                    "keys 应是至少 1 个 [时间,数值] 的数组");
+                        return -1;
+                    }
+                    if (r->nkeypool + (int)kn > ZRIG_MAX_KEYPOOL) {
+                        zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                                    "关键帧总数超上限 %d", ZRIG_MAX_KEYPOOL);
+                        return -1;
+                    }
+                    c->key0 = r->nkeypool;
+                    for (q = 0; q < kn; ++q) {
+                        const zjson *kj = zjson_at((zjson *)ks, q);
+                        double kt, kv;
+                        if (!zjson_is(kj, ZJSON_ARR) || zjson_count((zjson *)kj) < 2) {
+                            zdiag_error(d, file, kj ? kj->line : 0, 0, buf,
+                                        "第 %d 个关键帧应写成 [时间, 数值]", (int)q + 1);
+                            return -1;
+                        }
+                        kt = zjson_num(zjson_at((zjson *)kj, 0), 0.0);
+                        kv = zjson_num(zjson_at((zjson *)kj, 1), 0.0);
+                        if (q > 0 && kt < r->key_t[r->nkeypool - 1]) {
+                            zdiag_error(d, file, kj ? kj->line : 0, 0, buf,
+                                        "关键帧时间必须递增（第 %d 个 %.3f 比上一个还早）",
+                                        (int)q + 1, kt);
+                            return -1;
+                        }
+                        r->key_t[r->nkeypool] = kt;
+                        r->key_v[r->nkeypool] = kv;
+                        r->nkeypool++;
+                    }
+                    c->nkeys = (int)kn;
+                    c->interp = z_streq(ipn, "linear") ? KI_LINEAR
+                              : (z_streq(ipn, "step") ? KI_STEP : KI_SMOOTH);
+                }
+            }
+            if (c->nkeys == 0 && parse_wave(wname, &c->wave) != 0) {
+                zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                            "通道 wave 非法（允许 sine/drift/bounce/pulse/decay/flap）");
+                return -1;
+            }
+            c->amp = zjson_num(zjson_obj_get(cj, "amp"), 0.0);
+            c->bias = zjson_num(zjson_obj_get(cj, "bias"), 0.0);
+            c->freq = zjson_num(zjson_obj_get(cj, "freq"), 1.0);
+            c->phase = zjson_num(zjson_obj_get(cj, "phase"), 0.0);
+            c->dur = zjson_num(zjson_obj_get(cj, "dur"), a->duration > 0 ? a->duration : 1.0);
+            c->ease = z_ease_from_name(zjson_str(zjson_obj_get(cj, "ease"), "out"));
+            a->nchan++;
+        }
+    }
+    return 0;
+}
+
 static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
 {
     size_t i, n = zjson_count(jacts);
@@ -2152,122 +2298,8 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
             z_strlcpy(a->return_state, rs, sizeof(a->return_state));
         }
         /* 通道 */
-        {
-            const zjson *chs = zjson_obj_get(aj, "channels");
-            size_t k, kn = zjson_count(chs);
-            for (k = 0; k < kn && a->nchan < ZRIG_MAX_CHANNELS; ++k) {
-                const zjson *cj = zjson_at(chs, k);
-                zchan *c = &a->chans[a->nchan];
-                const char *tgt = zjson_str(zjson_obj_get(cj, "target"), "root");
-                const char *pname = zjson_str(zjson_obj_get(cj, "param"), NULL);
-                const char *wname = zjson_str(zjson_obj_get(cj, "wave"), "sine");
-                memset(c, 0, sizeof(*c));
-                z_strlcpy(c->target, tgt, sizeof(c->target));
-                c->group = -1;
-                c->part = -1;
-                c->deform = -1;
-                c->pparam = -1;
-                /* Live2D 的 .motion3 曲线写的是**参数**，所以 target 先按参数名找：
-                   "target":"ParamMouthOpenY" 这种动作可以直接从 Cubism 搬过来。 */
-                if (strncmp(tgt, "Param", 5) == 0) c->pparam = param_find(r, param_alias(tgt));
-                if (c->pparam < 0) c->group = find_group(r, tgt);
-                if (c->pparam < 0 && c->group < 0) {
-                    /* 允许直接指向部件（口型/眼部动画）或网格形变器（A5） */
-                    c->part = find_part(r, tgt);
-                    if (c->part < 0) c->deform = find_deform(r, tgt);
-                    if (c->part < 0 && c->deform < 0) {
-                        zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                    "通道 target '%s' 既不是参数、组、部件，也不是形变器"
-                                    "（检查 params / groups / parts / deformers 里的 id）", tgt);
-                        return -1;
-                    }
-                }
-                {
-                    const char *cname = zjson_str(zjson_obj_get(cj, "curve"), NULL);
-                    if (cname) {
-                        if (z_streq(cname, "root")) c->curve = BEND_ROOT;
-                        else if (z_streq(cname, "sine")) c->curve = BEND_SINE;
-                        else if (z_streq(cname, "linear")) c->curve = BEND_LINEAR;
-                        else if (z_streq(cname, "tip")) c->curve = BEND_TIP;
-                    }
-                    if (zjson_get(cj, "strips")) c->strips = (int)zjson_num(zjson_obj_get(cj, "strips"), 0);
-                }
-                if (c->pparam >= 0) {
-                    /* 参数通道只有一个量：参数值本身。写不写 "param":"value" 都行。 */
-                    if (pname && !z_streq(pname, "value")) {
-                        zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                    "参数通道的 param 只能是 \"value\"（写了 '%s'）", pname);
-                        return -1;
-                    }
-                    c->param = P_DX;      /* 占位，不会被用到 */
-                } else if (!pname || parse_param(pname, &c->param) != 0) {
-                    zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha/bend_x/bend_y）");
-                    return -1;
-                }
-                /* 官方 .motion3 的曲线目标只有三种：Model / Parameter / PartOpacity
-                   （CubismWebFramework cubismmotion.ts 的 TargetName* 三个常量）。
-                   直接写部件的位移/旋转/缩放/弯曲不在其中 —— 记一笔，由 selfcheck 与
-                   单测守着它恒为 0，防止几何通道偷偷长回来。 */
-                if (c->pparam < 0 && !(c->part >= 0 && c->param == P_ALPHA))
-                    r->legacy_geom_chans++;
-                /* 关键帧曲线（≈ .motion3）：有 keys 就不看 wave/amp/freq。
-                   写法 "keys":[[0,0],[0.3,-12],[1.2,0]]，可选 "interp":"linear|smooth|step"。 */
-                {
-                    const zjson *ks = zjson_obj_get(cj, "keys");
-                    if (ks) {
-                        size_t kn = zjson_count(ks), q;
-                        const char *ipn = zjson_str(zjson_obj_get(cj, "interp"), "smooth");
-                        if (!zjson_is(ks, ZJSON_ARR) || kn < 1) {
-                            zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                        "keys 应是至少 1 个 [时间,数值] 的数组");
-                            return -1;
-                        }
-                        if (r->nkeypool + (int)kn > ZRIG_MAX_KEYPOOL) {
-                            zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                        "关键帧总数超上限 %d", ZRIG_MAX_KEYPOOL);
-                            return -1;
-                        }
-                        c->key0 = r->nkeypool;
-                        for (q = 0; q < kn; ++q) {
-                            const zjson *kj = zjson_at((zjson *)ks, q);
-                            double kt, kv;
-                            if (!zjson_is(kj, ZJSON_ARR) || zjson_count((zjson *)kj) < 2) {
-                                zdiag_error(d, file, kj ? kj->line : 0, 0, buf,
-                                            "第 %d 个关键帧应写成 [时间, 数值]", (int)q + 1);
-                                return -1;
-                            }
-                            kt = zjson_num(zjson_at((zjson *)kj, 0), 0.0);
-                            kv = zjson_num(zjson_at((zjson *)kj, 1), 0.0);
-                            if (q > 0 && kt < r->key_t[r->nkeypool - 1]) {
-                                zdiag_error(d, file, kj ? kj->line : 0, 0, buf,
-                                            "关键帧时间必须递增（第 %d 个 %.3f 比上一个还早）",
-                                            (int)q + 1, kt);
-                                return -1;
-                            }
-                            r->key_t[r->nkeypool] = kt;
-                            r->key_v[r->nkeypool] = kv;
-                            r->nkeypool++;
-                        }
-                        c->nkeys = (int)kn;
-                        c->interp = z_streq(ipn, "linear") ? KI_LINEAR
-                                  : (z_streq(ipn, "step") ? KI_STEP : KI_SMOOTH);
-                    }
-                }
-                if (c->nkeys == 0 && parse_wave(wname, &c->wave) != 0) {
-                    zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                "通道 wave 非法（允许 sine/drift/bounce/pulse/decay/flap）");
-                    return -1;
-                }
-                c->amp = zjson_num(zjson_obj_get(cj, "amp"), 0.0);
-                c->bias = zjson_num(zjson_obj_get(cj, "bias"), 0.0);
-                c->freq = zjson_num(zjson_obj_get(cj, "freq"), 1.0);
-                c->phase = zjson_num(zjson_obj_get(cj, "phase"), 0.0);
-                c->dur = zjson_num(zjson_obj_get(cj, "dur"), a->duration > 0 ? a->duration : 1.0);
-                c->ease = z_ease_from_name(zjson_str(zjson_obj_get(cj, "ease"), "out"));
-                a->nchan++;
-            }
-        }
+        if (load_channels(r, a, zjson_obj_get(aj, "channels"),
+                          d, file, buf) != 0) return -1;
         /* 部件覆盖 */
         {
             const zjson *ovs = zjson_obj_get(aj, "part_overrides");
@@ -2528,6 +2560,22 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_visemes(r, zjson_obj_get(root, "visemes"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
     if (load_poses(r, zjson_obj_get(root, "poses"), diag, file) != 0) goto fail;
+    {   /* ambient（T45.9）：环境摆动通道。必须排在 actions / params 之后 ——
+           通道的 target 要能查到参数、组、部件、形变器。
+           借 load_channels()（就是 actions 用的那一个）解析，所以通道以后加字段，
+           动作和环境摆动会自动一起跟上。 */
+        const zjson *amb = zjson_obj_get(root, "ambient");
+        if (amb && zjson_is(amb, ZJSON_ARR) && zjson_count((zjson *)amb) > 0) {
+            memset(&r->ambient, 0, sizeof(r->ambient));
+            z_strlcpy(r->ambient.id, "__ambient", sizeof(r->ambient.id));
+            r->ambient.loop = 1;
+            r->ambient.duration = -1.0;
+            if (load_channels(r, &r->ambient, amb, diag, file, "ambient") != 0)
+                goto fail;
+            r->has_ambient = (r->ambient.nchan > 0);
+        }
+    }
+
     {   /* mood_swing（T45.2f）：情绪 → 摆动倍率。同样要在 params 之后。
            ★ 这张表以前只躺在 design/attachments.json 里，生成器不读、rig 里没有、
              引擎不认识 —— 是一张**死表**：看着像配置，其实只是注释。
@@ -3215,6 +3263,11 @@ static void compute_group_transforms(zrig *r)
             w *= z_ease_sine((tot - el) / a->fade_out);
         accumulate_action(r, a, el, w, tot);
     }
+    /* 环境摆动：按**绝对时刻**求值，所以动作怎么切它都连续（T45.9）。
+       放在动作之后、抽动之前 —— 三者都往 p_action 累加，顺序不影响结果，
+       但这个排法读起来就是「编排好的动作 → 一直在跑的底噪 → 它自己的抽动」。 */
+    if (r->has_ambient && !r->ambient_off)
+        accumulate_action(r, &r->ambient, r->now, 1.0, -1.0);
     accumulate_tail_flick(r);   /* 自发抽动叠在动作通道之上，一起走 binds（含行波延迟） */
     r->dim_now = prev ? (prev->dim * (1.0 - w) + a->dim * w) : a->dim;
 
@@ -3752,6 +3805,13 @@ double zrig_phys_output(const zrig *r, const char *id)
     for (i = 0; i < r->nphys; ++i)
         if (strcmp(r->phys[i].id, id) == 0) return r->phys[i].out_last;
     return 0.0;
+}
+
+int zrig_phys_count(const zrig *r) { return r ? r->nphys : 0; }
+
+const char *zrig_phys_id(const zrig *r, int i)
+{
+    return (r && i >= 0 && i < r->nphys) ? r->phys[i].id : NULL;
 }
 
 int zrig_deform_count(const zrig *r) { return r ? r->ndeforms : 0; }
@@ -4887,7 +4947,9 @@ void zrig_apply_mood_swing(zrig *r, const char *mood)
     for (k = 0; k < r->nmood_swing; ++k)
         if (z_streq(r->mood_swing[k].mood, mood)) break;
     if (k >= r->nmood_swing) return;   /* 查不到就不动（和另外三张情绪表同口径） */
-    now = zrig_action_elapsed(r);
+    /* ★ 基准必须是**绝对时刻** —— 摆动通道搬去 ambient 之后就是按 r->now 求值的
+       （T45.9）。这里要是还拿动作内经过时间算相位补偿，换一次动作补偿量就错一次。 */
+    now = r->now;
     for (i = 0; i < r->nswing_param; ++i) {
         int pi = r->swing_param[i];
         double m0 = r->sw_fmul[pi], m1 = r->mood_swing[k].fmul;
@@ -4922,6 +4984,11 @@ void zrig_apply_mood_flick(zrig *r, const char *mood)
 void zrig_tail_flick_enable(zrig *r, int on)
 {
     if (r) r->flick_off = on ? 0 : 1;
+}
+
+void zrig_ambient_enable(zrig *r, int on)
+{
+    if (r) r->ambient_off = on ? 0 : 1;
 }
 
 void zrig_pose_apply_mood(zrig *r, const char *mood)

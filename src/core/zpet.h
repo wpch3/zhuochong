@@ -92,6 +92,9 @@ void   zpet_set_phys_enabled(zpet *p, int on);
 int    zpet_phys_enabled(const zpet *p);
 double zpet_blink_manual(const zpet *p);
 /* 形变器（网格形变）当前量：摆链输出多半落在这儿，便于观测与端到端自检 */
+int         zpet_phys_count(const zpet *p);
+const char *zpet_phys_id_at(const zpet *p, int i);
+double      zpet_phys_output(const zpet *p, const char *id);
 int         zpet_deform_count(const zpet *p);
 const char *zpet_deform_id_at(const zpet *p, int i);
 double      zpet_deform_amount(const zpet *p, const char *id);

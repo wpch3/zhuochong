@@ -600,6 +600,17 @@ static void handle_request(zsock fd, const http_req *r)
                             i ? "," : "", did ? did : "?",
                             zpet_deform_amount(g_pet, did));
         }
+        /* 物理摆链各节点的输出。★ 和 deformers 分开给，是因为形变器的当前量
+           是**物理 + 环境摆动（ambient）之和** —— 环境摆动不管身体动不动都一直
+           在跑，拿形变器去断言"身体停住后摆链要收敛回零"永远不成立。
+           要验摆链收敛，看的是这一组。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "},\"physics\":{");
+        for (i = 0; i < zpet_phys_count(g_pet); ++i) {
+            const char *xid = zpet_phys_id_at(g_pet, i);
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\":%.5f",
+                            i ? "," : "", xid ? xid : "?",
+                            zpet_phys_output(g_pet, xid));
+        }
         z_snprintf(p, cap - (size_t)(p - body), "}}");
         UNLOCK();
         send_text(fd, 200, "application/json", body);

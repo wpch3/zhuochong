@@ -2098,48 +2098,6 @@
           "wave": "sine",
           "amp": 0.08,
           "freq": 0.18
-        },
-        {
-          "target": "ParamAccTailRelaxedSwing",
-          "wave": "drift",
-          "amp": 1.0,
-          "bias": 0.0,
-          "freq": 0.21
-        },
-        {
-          "target": "ParamAccTailUpSwing",
-          "wave": "drift",
-          "amp": 0.16,
-          "bias": -0.78,
-          "freq": 0.55
-        },
-        {
-          "target": "ParamAccTailPuffSwing",
-          "wave": "drift",
-          "amp": 0.08,
-          "bias": -0.86,
-          "freq": 1.35
-        },
-        {
-          "target": "ParamAccTailTuckSwing",
-          "wave": "drift",
-          "amp": 1.0,
-          "bias": -0.55,
-          "freq": 0.16
-        },
-        {
-          "target": "ParamEarLAngle",
-          "wave": "pulse",
-          "amp": 0.14,
-          "bias": 0.0,
-          "freq": 0.085
-        },
-        {
-          "target": "ParamEarRAngle",
-          "wave": "pulse",
-          "amp": 0.14,
-          "bias": 0.0,
-          "freq": 0.085
         }
       ]
     },
@@ -4136,6 +4094,60 @@
       ]
     },
     {
+      "id": "skirt_hem_x",
+      "part": "seg_torso",
+      "cols": 2,
+      "rows": 10,
+      "note": "下摆第二段：只有最下两行再多甩一点，比裙身慢半拍（见参数 ParamSkirtSway 的 lag）。幅度只有第一段的三成——布越重越不该多摆，而且教程口径是「宁可摆小一点」",
+      "points": [
+        {
+          "c": 0,
+          "r": 8,
+          "dx": 0.6
+        },
+        {
+          "c": 1,
+          "r": 8,
+          "dx": 0.636
+        },
+        {
+          "c": 2,
+          "r": 8,
+          "dx": 0.6
+        },
+        {
+          "c": 0,
+          "r": 9,
+          "dx": 1.9
+        },
+        {
+          "c": 1,
+          "r": 9,
+          "dx": 2.014
+        },
+        {
+          "c": 2,
+          "r": 9,
+          "dx": 1.9
+        },
+        {
+          "c": 0,
+          "r": 10,
+          "dx": 3.4
+        },
+        {
+          "c": 1,
+          "r": 10,
+          "dx": 3.604
+        },
+        {
+          "c": 2,
+          "r": 10,
+          "dx": 3.4
+        }
+      ]
+    },
+    {
       "id": "skirt_sway_y",
       "part": "seg_torso",
       "cols": 2,
@@ -6102,6 +6114,25 @@
       "note": "surprised 动作把它推到 1.0"
     },
     {
+      "id": "ParamSkirtSway",
+      "label": "裙摆摆动",
+      "min": -1.15,
+      "max": 1.15,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "skirt_sway_x",
+          "scale": 1.0
+        },
+        {
+          "deformer": "skirt_hem_x",
+          "scale": 1.0,
+          "lag": 0.11
+        }
+      ],
+      "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 ⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D 「複数階層デフォーマ・親→子」的等价写法）。物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**再叠身体带动的滞后。幅度刻意压小——教程口径是「意外と揺れを控えめにした方が自然に見える」"
+    },
+    {
       "id": "ParamAccTailRelaxedSwing",
       "label": "猫尾摆动（垂下·放松）",
       "min": -4.41,
@@ -6838,6 +6869,57 @@
         }
       ],
       "note": "L1 星形瞳 + L2 眼内碎钻（画进贴图）+ L3 脸周围 ✨；✨ 的闪烁由 idle 的 ParamSparkle1..N 驱动。这里**故意不写 ParamEyeOpen** —— 见下方注释"
+    }
+  ],
+  "ambient": [
+    {
+      "target": "ParamSkirtSway",
+      "wave": "drift",
+      "amp": 0.72,
+      "bias": 0.0,
+      "freq": 0.13
+    },
+    {
+      "target": "ParamAccTailRelaxedSwing",
+      "wave": "drift",
+      "amp": 1.0,
+      "bias": 0.0,
+      "freq": 0.21
+    },
+    {
+      "target": "ParamAccTailUpSwing",
+      "wave": "drift",
+      "amp": 0.16,
+      "bias": -0.78,
+      "freq": 0.55
+    },
+    {
+      "target": "ParamAccTailPuffSwing",
+      "wave": "drift",
+      "amp": 0.08,
+      "bias": -0.86,
+      "freq": 1.35
+    },
+    {
+      "target": "ParamAccTailTuckSwing",
+      "wave": "drift",
+      "amp": 1.0,
+      "bias": -0.55,
+      "freq": 0.16
+    },
+    {
+      "target": "ParamEarLAngle",
+      "wave": "pulse",
+      "amp": 0.14,
+      "bias": 0.0,
+      "freq": 0.085
+    },
+    {
+      "target": "ParamEarRAngle",
+      "wave": "pulse",
+      "amp": 0.14,
+      "bias": 0.0,
+      "freq": 0.085
     }
   ],
   "mood_params": {

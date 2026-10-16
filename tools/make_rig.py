@@ -743,11 +743,16 @@ def attach_emit(rig, base, base_root):
                 "min": round(_lo, 3), "max": round(_hi, 3),
                 "default": float(swp["default"]),
                 "binds": binds, "note": sw["note"]})
-            act = next((x for x in rig["actions"] if x["id"] == mo["action"]), None)
-            if act is None:
+            # ★ 摆动通道进 **ambient**，不进任何动作（T45.9）。
+            #   以前写进 idle.channels，实测的后果：待机动作有四个会轮换，
+            #   切到 breath 时裙摆幅度直接 0.0000、尾巴只剩身体带动；
+            #   而且动作通道按"动作内经过时间"求值，一换动作相位就跳回原点。
+            #   环境摆动按绝对时刻求值，动作怎么切都连续。
+            #   swing.motion.action 保留只为向后兼容，这里只校验它存在。
+            if not any(x["id"] == mo["action"] for x in rig["actions"]):
                 raise SystemExit(f"[make_rig] 挂件 {att['id']} 的 swing.motion.action="
                                  f"{mo['action']!r} 在 actions 里不存在")
-            act.setdefault("channels", []).append({
+            rig.setdefault("ambient", []).append({
                 "target": swp["id"], "wave": mo["wave"],
                 "amp": float(mo["amp"]), "bias": float(mo["bias"]),
                 "freq": float(mo["freq"])})
@@ -2692,6 +2697,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # rows=10 把这个误差压到百位数。行 y = 501*r/10，裙腰(y≈300) 正好落在 r=6。
         _SKX = {6: 0.5, 7: 1.8, 8: 4.2, 9: 7.0, 10: 10.0}       # 横摆：越往下甩得越远
         _SKY = {6: 0.2, 7: 0.7, 8: 1.6, 9: 2.6, 10: 3.8}        # 纵摆：上下滞后
+        # 下摆第二段：只有最下两行。数值取第一段同行的 ~30%——
+        # 它是**叠加**在第一段之上的"再多甩一点"，不是替代。
+        _SKHEM = {8: 0.6, 9: 1.9, 10: 3.4}
         # —— 眉形（ParamBrowL/RForm）——
         # 合规表最后两个 ⬜。不需要新素材：眉毛本来就是一条横着的网格能表达的形状。
         # brow_l 的眉头在右端（c=4，靠中线），brow_r 的眉头在左端（c=0）——
@@ -2712,6 +2720,21 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  {"c": c, "r": r, "dx": round(v * (1.08 if c == 1 else 1.0), 3),
                   **({"dy": round(v * 0.09, 3)} if r == 10 else {})}
                  for r, v in _SKX.items() for c in (0, 1, 2)
+             ]},
+            # 第二段：**只有下摆**（最下两行）的额外横摆。
+            # 教程里「服/头发看着硬」的头号原因就是「揺れが1段しかない —— 髪全体が
+            # 棒のように一体で動いていると硬く見える」，解法是「根元と毛先で分けて
+            # 2段にする」。幅のある布（スカート・後ろ髪）官方也明确建议用
+            # **複数階層のワープデフォーマ**而不是单层变形路径（单层会把形状拧歪）。
+            # 这一段由同一条参数驱动，但绑定带 lag（T45.2g 的行波延迟）⇒ 下摆比
+            # 裙身慢半拍，这就是「親→子」的振り子顺序在本引擎里的等价写法。
+            {"id": "skirt_hem_x", "part": "seg_torso", "cols": 2, "rows": 10,
+             "note": "下摆第二段：只有最下两行再多甩一点，比裙身慢半拍（见参数 "
+                     "ParamSkirtSway 的 lag）。幅度只有第一段的三成——"
+                     "布越重越不该多摆，而且教程口径是「宁可摆小一点」",
+             "points": [
+                 {"c": c, "r": r, "dx": round(v * (1.06 if c == 1 else 1.0), 3)}
+                 for r, v in _SKHEM.items() for c in (0, 1, 2)
              ]},
             {"id": "skirt_sway_y", "part": "seg_torso", "cols": 2, "rows": 10,
              "note": "裙摆纵摆：上下滞后，裙底顺带略微张开/收拢（布料的伞效应）",
@@ -2764,6 +2787,37 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "ratio": 0.22, "stiffness": 72, "damping": 8.0, "max": 3.5,
              "note": "后发：整团壳只慢半拍地晃一点点（幅度大了会从脸边上露出来）"},
         ]
+        # —— 裙摆的自主摆动（T45.9）——
+        # ★ 为什么非加这条参数不可：裙摆原本**只靠物理输入**（ParamBodyAngleX/Z）。
+        #   本引擎物理输出的是**滞后量 pos−target** 不是摆角，待机时身体几乎不动
+        #   ⇒ 滞后量≈0 ⇒ 裙子是死的。实测 idle 60 秒 skirt_sway_x 峰峰值 0.0599、
+        #   频率 0.058Hz（17 秒一个来回）。这正是尾巴 T45.2b 得出过的结论，
+        #   当时只修了尾巴，裙摆漏掉了。Live2D 社区把这个症状叫
+        #   「入力が小さいと振り子が 0 に吸着する」。
+        # ★ 波形用 drift 不用 sine：同 T45.2g —— 单条定频正弦是节拍器。
+        # ★ 参数差异化（教程：軽いものほど揺れやすく、早く収まる）：
+        #     尾巴（轻毛）0.21Hz / 梢延迟 0.17s
+        #     裙子（厚百褶呢）0.13Hz / 下摆延迟 0.11s —— 更慢、更小、延迟更短
+        #   全身的揺れ物用同一组数 = 所有东西同拍子摆，是机械感的第二大来源。
+        rig["params"].append({
+            "id": "ParamSkirtSway", "label": "裙摆摆动",
+            "min": -1.15, "max": 1.15, "default": 0.0,
+            "binds": [
+                {"deformer": "skirt_sway_x", "scale": 1.0},
+                {"deformer": "skirt_hem_x", "scale": 1.0, "lag": 0.11},
+            ],
+            "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 "
+                    "⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D "
+                    "「複数階層デフォーマ・親→子」的等价写法）。"
+                    "物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**"
+                    "再叠身体带动的滞后。幅度刻意压小——教程口径是"
+                    "「意外と揺れを控えめにした方が自然に見える」",
+        })
+        # 进 ambient 而不是 idle：见上面挂件摆动处的说明（T45.9）。
+        rig.setdefault("ambient", []).append(
+            {"target": "ParamSkirtSway", "wave": "drift",
+             "amp": 0.72, "bias": 0.0, "freq": 0.13})
+
 
     # 素材没有独立头部时，去掉所有作用在 head 组上的旋转通道（见 main 里的说明）
     if not head_is_part:

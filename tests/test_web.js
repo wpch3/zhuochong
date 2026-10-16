@@ -148,7 +148,9 @@ const INFO = {
   outfit: "default", outfits: ["default"], outfit_names: ["常服"],
   scale: 0.75, actions: ["idle", "happy", "wave", "sleep"],
   expressions: [{ id: "smile", name: "微笑" }],
-  deformers: { skirt_sway_x: 0.0 },
+  deformers: { skirt_sway_x: 0.0, skirt_hem_x: 0.0 },
+  // 物理摆链输出和形变器分开给：形变器 = 物理 + 环境摆动之和（T45.9）
+  physics: { skirt_x: 0.0, skirt_y: 0.0 },
   /* 下面这些字段真服务都有。stub 漏字段的后果是组件在测试里跑得好好的、
      一上真服务就空白 —— api_smoke 有一条闸专门比对这两边的字段集。 */
   expression: "",
