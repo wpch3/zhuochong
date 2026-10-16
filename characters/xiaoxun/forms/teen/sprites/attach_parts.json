@@ -65,6 +65,24 @@
         181,
         430
       ]
+    },
+    {
+      "id": "ear_cat_l",
+      "slot": "head_under_bangs",
+      "file": "sprites/acc_ear_l.png",
+      "size": [
+        132,
+        122
+      ]
+    },
+    {
+      "id": "ear_cat_r",
+      "slot": "head_under_bangs",
+      "file": "sprites/acc_ear_r.png",
+      "size": [
+        132,
+        122
+      ]
     }
   ]
 }

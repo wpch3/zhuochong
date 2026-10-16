@@ -272,6 +272,40 @@ int z_endswith(const char *s, const char *sfx)
     return strcmp(s + (ls - lf), sfx) == 0;
 }
 
+/* 把缓冲区末尾**不完整的 UTF-8 序列**砍掉（2026-10-16）。
+
+   z_strlcpy 是按**字节**截断的，中文标签一超长就会切在多字节字符中间，
+   产出非法 UTF-8。下游要是把它塞进 JSON，整个响应就解析不了 ——
+   实测 /api/params.json 因为一条 51 字节的标签塞进 char[48]，
+   在第 11435 字节崩掉，make smoke 整个挂掉。
+
+   截断本身没法避免（缓冲区就那么大），但**截在字符边界上**可以。 */
+void z_utf8_trim(char *s)
+{
+    size_t n;
+    if (!s) return;
+    n = strlen(s);
+    while (n > 0) {
+        unsigned char c = (unsigned char)s[n - 1];
+        size_t need;
+        if (c < 0x80) return;                  /* ASCII 结尾，完整 */
+        if ((c & 0xC0) == 0x80) {              /* 续字节：往前找首字节 */
+            size_t k = n;
+            while (k > 0 && ((unsigned char)s[k - 1] & 0xC0) == 0x80) k--;
+            if (k == 0) { s[0] = 0; return; }
+            c = (unsigned char)s[k - 1];
+            need = (c & 0xE0) == 0xC0 ? 2 : (c & 0xF0) == 0xE0 ? 3 :
+                   (c & 0xF8) == 0xF0 ? 4 : 1;
+            if (k - 1 + need == n) return;     /* 刚好完整 */
+            s[k - 1] = 0;                      /* 不完整：整个字符砍掉 */
+            return;
+        }
+        /* 末字节是首字节 ⇒ 后面的续字节被切没了，砍掉它 */
+        s[n - 1] = 0;
+        return;
+    }
+}
+
 size_t z_strlcpy(char *dst, const char *src, size_t cap)
 {
     size_t n;

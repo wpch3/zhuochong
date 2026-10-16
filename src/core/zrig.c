@@ -23,7 +23,8 @@
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     48
-#define ZRIG_MAX_POSE_MOOD 16   /* 每个姿态组能登记多少种情绪（情绪词表现有 11 个） */   /* 2026-10-16 抬：24 → 48。猫尾三姿态差分件各带 3 段摆链 = 9 条，直接把 24 顶到 23/24=96%。每多一种动物形象还要再加 */
+#define ZRIG_MAX_POSE_MOOD 16
+#define ZRIG_MAX_MOOD_PARAM 12   /* mood_params 能登记多少条参数（耳朵 2 条，留余量） */   /* 每个姿态组能登记多少种情绪（情绪词表现有 11 个） */   /* 2026-10-16 抬：24 → 48。猫尾三姿态差分件各带 3 段摆链 = 9 条，直接把 24 顶到 23/24=96%。每多一种动物形象还要再加 */
 #define ZRIG_MAX_PARAMS  160   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
 #define ZRIG_MAX_BLINK_MOOD 16    /* 眨眼情绪表上限：情绪词表现在 11 个，留一倍余量 */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
@@ -419,6 +420,16 @@ struct zrig {
     int    nblink_mood;
     struct { char mood[24]; double rate, closed_scale; } blink_mood[ZRIG_MAX_BLINK_MOOD];
     char   blink_mood_cur[24];
+    /* 情绪 → 参数值（T45.3）。表来自 rig.json 的 mood_params：
+       { "ParamEarLAngle": { "happy": 0.85, "angry": -0.9, ... } }。
+       和 blink.mood_rate、poses[].mood_map 并列的第三张情绪表，口径一致 ——
+       **查不到的情绪不动这条参数**（没写 = 这个情绪跟这条参数无关）。 */
+    int    nmood_param;
+    struct {
+        int    param;                  /* 参数下标 */
+        int    n;
+        struct { char mood[24]; double v; } e[ZRIG_MAX_BLINK_MOOD];
+    } mood_param[ZRIG_MAX_MOOD_PARAM];
     double blink_rate, blink_closed_scale;
     int    phys_enabled;      /* 0 = 关掉物理摆（排查接缝时用，见 zrig_phys_set_enabled） */
     double blink_closing, blink_closed, blink_opening;
@@ -1223,6 +1234,8 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
         memset(q, 0, sizeof(*q));
         z_strlcpy(q->id, id, sizeof(q->id));
         z_strlcpy(q->label, zjson_str(zjson_obj_get(qj, "label"), ""), sizeof(q->label));
+        z_utf8_trim(q->label);   /* 中文标签超长会被按字节切断，必须退回字符边界 */
+
         q->vmin = zjson_num(zjson_obj_get(qj, "min"), -1.0);
         q->vmax = zjson_num(zjson_obj_get(qj, "max"), 1.0);
         q->vdef = zjson_num(zjson_obj_get(qj, "default"), 0.0);
@@ -2424,6 +2437,52 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_visemes(r, zjson_obj_get(root, "visemes"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
     if (load_poses(r, zjson_obj_get(root, "poses"), diag, file) != 0) goto fail;
+    {   /* mood_params（T45.3）：情绪 → 参数值。放在 params/poses 之后解析，
+           因为要按 id 找参数下标。 */
+        const zjson *mp = zjson_obj_get(root, "mood_params");
+        if (mp && zjson_is(mp, ZJSON_OBJ)) {
+            size_t i, n = zjson_count((zjson *)mp);
+            for (i = 0; i < n; ++i) {
+                const char *pid = zjson_key_at((zjson *)mp, i);
+                const zjson *tbl = zjson_at((zjson *)mp, i);
+                int pi;
+                size_t k, kn;
+                if (!pid || !*pid || pid[0] == '_') continue;
+                if (!tbl || !zjson_is(tbl, ZJSON_OBJ)) continue;
+                pi = param_find(r, pid);
+                if (pi < 0) {
+                    zdiag_error(diag, file, tbl->line, 0, "mood_params",
+                                "mood_params 提到了不存在的参数 '%s'", pid);
+                    goto fail;
+                }
+                if (r->nmood_param >= ZRIG_MAX_MOOD_PARAM) {
+                    zdiag_error(diag, file, tbl->line, 0, "mood_params",
+                                "mood_params 条目过多（上限 %d）", ZRIG_MAX_MOOD_PARAM);
+                    goto fail;
+                }
+                r->mood_param[r->nmood_param].param = pi;
+                r->mood_param[r->nmood_param].n = 0;
+                kn = zjson_count((zjson *)tbl);
+                for (k = 0; k < kn; ++k) {
+                    const char *mk = zjson_key_at((zjson *)tbl, k);
+                    int slot = r->mood_param[r->nmood_param].n;
+                    if (!mk || !*mk || mk[0] == '_') continue;
+                    if (slot >= ZRIG_MAX_BLINK_MOOD) {
+                        zdiag_error(diag, file, tbl->line, 0, "mood_params",
+                                    "参数 '%s' 的情绪条目过多（上限 %d）",
+                                    pid, ZRIG_MAX_BLINK_MOOD);
+                        goto fail;
+                    }
+                    z_strlcpy(r->mood_param[r->nmood_param].e[slot].mood, mk,
+                              sizeof(r->mood_param[0].e[0].mood));
+                    r->mood_param[r->nmood_param].e[slot].v =
+                        zjson_num(zjson_at((zjson *)tbl, k), 0.0);
+                    r->mood_param[r->nmood_param].n++;
+                }
+                r->nmood_param++;
+            }
+        }
+    }
     if (load_xfades(r, zjson_obj_get(root, "xfades"), diag, file) != 0) goto fail;
 
     /* 眨眼 */
@@ -4431,6 +4490,20 @@ void zrig_pose_snap(zrig *r)
 
 /* 切档。entry 传 NULL / "" / "none" = 整组都淡出（Live2D 里要靠一个空白部件实现，
    我们直接支持"全关"，省一张透明图）。组或档位不存在返回 -1（不许悄悄忽略）。 */
+void zrig_apply_mood_params(zrig *r, const char *mood)
+{
+    int i, k;
+    if (!r || !mood || !*mood) return;
+    for (i = 0; i < r->nmood_param; ++i) {
+        for (k = 0; k < r->mood_param[i].n; ++k) {
+            if (!z_streq(r->mood_param[i].e[k].mood, mood)) continue;
+            r->params[r->mood_param[i].param].value = r->mood_param[i].e[k].v;
+            break;
+        }
+        /* 查不到就不动：没写 = 这个情绪跟这条参数无关 */
+    }
+}
+
 void zrig_pose_apply_mood(zrig *r, const char *mood)
 {
     int gi, m;

@@ -18,7 +18,9 @@
     "attachments[].pose_group": "同一个 pose_group 的挂件进 rig.poses 互斥组，同一时刻只露一个",
     "attachments[].anchor": "覆盖插槽的锚点。竖起的尾巴尾根在**下**，所以 anchor=[0.5,1.0]",
     "attachments[].curve": "覆盖插槽的曲线。锚点在底边就得用 root（底固定顶端甩），在顶边用 tip",
-    "attachments[].layer": "覆盖插槽层号。互斥姿态组里只有一个会露面，但层号仍得各不相同 —— 「层号不重复」那道闸不认识姿态组，而且让它认识也不划算：真有两件同层同时亮就是 bug"
+    "attachments[].layer": "覆盖插槽层号。互斥姿态组里只有一个会露面，但层号仍得各不相同 —— 「层号不重复」那道闸不认识姿态组，而且让它认识也不划算：真有两件同层同时亮就是 bug",
+    "attachments[].mirror": "用同一张原图水平镜像。左右耳必须镜像而不是各画一张 —— 脸是对称参照物，一不对称特别显眼",
+    "mood_params": "情绪 → 参数值。和 blink.mood_rate / mood_pose 并列的第三张情绪表；查不到的情绪不动"
   },
   "slots": [
     {
@@ -426,6 +428,124 @@
       "_note": "惊吓/极度紧张。行为学依据：炸毛是竖起全身毛发让自己看起来更庞大，常伴哈气、飞机耳、拱背。摆动最快最小 = 僵直发抖，不是摇摆",
       "layer": 32,
       "_size_note": "炸毛保持 430。瘦了默认那根之后，炸毛/常态 = 111/63 = **1.76 倍**，总算接近真猫『炸毛让自己看起来更庞大』的观感。真猫是 3 倍，动漫一般做 2 倍左右，再大就从『受惊』变成『鸡毛掸子』了"
+    },
+    {
+      "id": "ear_cat_l",
+      "label": "猫耳（左）",
+      "slot": "head_under_bangs",
+      "source": "acc_ear_cat.png",
+      "sprite": "acc_ear_l.png",
+      "sprite_h": 122,
+      "mirror": false,
+      "pos": [
+        364,
+        176
+      ],
+      "tags": [
+        "accessory",
+        "ear"
+      ],
+      "param": {
+        "id": "ParamAccEarL",
+        "label": "猫耳L（0=摘 1=戴）",
+        "default": 1.0
+      },
+      "_note": "槽 head_under_bangs = 层 185，夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住耳根 —— 接缝不用自己藏。★ 实测头顶净空只有 69px，所以耳朵**从头发里长出来、只露上半截**，整只画在头顶之上会被画布切掉",
+      "swing": {
+        "param": {
+          "id": "ParamEarLAngle",
+          "label": "猫耳角度r（−1飞机耳 +1竖起）",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        "root_rot_deg": -26.0,
+        "motion": {
+          "action": "idle",
+          "wave": "pulse",
+          "amp": 0.14,
+          "bias": 0.0,
+          "freq": 0.085
+        },
+        "note": "猫耳角度。★ 官方/社区做法是**一条连续参数**不是差分件：「耳揺れ」取 −30~30，「−30で耳が下がる、30ではピンと張る」（otimusya24.com）。我们取 ±26°，正负方向左右相反（镜像件要反号）。情绪映射见 mood_params：直立=快乐/警觉、**飞机耳**=害怕或生气、前倾=好奇。idle 用 pulse 波 0.085Hz（约 12 秒一次）做**偶发抖动** —— 耳朵不该像尾巴那样一直匀速晃，真猫是偶尔抖一下　★ 符号是**实测**翻过来的：第一版左 +26/右 −26，渲染出来 happy 摊平、angry 竖起，正好对调。旋转正负号不能推，必须拿两个极值渲染出来看。"
+      },
+      "physics": {
+        "segments": [
+          {
+            "id": "ear_l_x",
+            "driver": "head",
+            "axis": "x",
+            "param": "bend_x",
+            "ratio": 0.42,
+            "stiffness": 52,
+            "damping": 5.6,
+            "max": 5,
+            "note": "耳朵跟着头甩的滞后。刚度比呆毛(42)还高、幅度比它(8)还小 —— ★「あまり**根本を動かしてしまうと猫耳自体が浮いて見えてしまう**」（vtuberkaibougaku.site）：耳朵是长在头上的，晃大了就像顶着两个帽子"
+          }
+        ]
+      },
+      "layer": 185,
+      "rotate_deg": 0.0,
+      "_size_note": "实测定的：头宽 246px（画布 y=150 一线，左缘 318 右缘 564），单耳取头宽的 1/3 ≈ 82px。**上一版 143px 宽，两只加起来超过头宽，挤成一把扇子**。★ 头顶净空只有 69px（画布 y=69 是发顶），所以耳根要埋进头发里，只露上半截。★ rotate_deg 归 0：原始素材本身已经带约 25° 外倾，我又加了 20°，倾过头看着像两片摊开的叶子。镜像之后左右正好各自朝外。（rotate_deg 这个字段留着，别的挂件可能要用；在切件期转而不是用参数转，是因为参数通道被 mood_params 占着了）"
+    },
+    {
+      "id": "ear_cat_r",
+      "label": "猫耳（右）",
+      "slot": "head_under_bangs",
+      "source": "acc_ear_cat.png",
+      "sprite": "acc_ear_r.png",
+      "sprite_h": 122,
+      "mirror": true,
+      "pos": [
+        498,
+        176
+      ],
+      "tags": [
+        "accessory",
+        "ear"
+      ],
+      "param": {
+        "id": "ParamAccEarR",
+        "label": "猫耳R（0=摘 1=戴）",
+        "default": 1.0
+      },
+      "_note": "槽 head_under_bangs = 层 185，夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住耳根 —— 接缝不用自己藏。★ 实测头顶净空只有 69px，所以耳朵**从头发里长出来、只露上半截**，整只画在头顶之上会被画布切掉",
+      "swing": {
+        "param": {
+          "id": "ParamEarRAngle",
+          "label": "猫耳角度r（−1飞机耳 +1竖起）",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        "root_rot_deg": 26.0,
+        "motion": {
+          "action": "idle",
+          "wave": "pulse",
+          "amp": 0.14,
+          "bias": 0.0,
+          "freq": 0.085
+        },
+        "note": "猫耳角度。★ 官方/社区做法是**一条连续参数**不是差分件：「耳揺れ」取 −30~30，「−30で耳が下がる、30ではピンと張る」（otimusya24.com）。我们取 ±26°，正负方向左右相反（镜像件要反号）。情绪映射见 mood_params：直立=快乐/警觉、**飞机耳**=害怕或生气、前倾=好奇。idle 用 pulse 波 0.085Hz（约 12 秒一次）做**偶发抖动** —— 耳朵不该像尾巴那样一直匀速晃，真猫是偶尔抖一下　★ 符号是**实测**翻过来的：第一版左 +26/右 −26，渲染出来 happy 摊平、angry 竖起，正好对调。旋转正负号不能推，必须拿两个极值渲染出来看。"
+      },
+      "physics": {
+        "segments": [
+          {
+            "id": "ear_r_x",
+            "driver": "head",
+            "axis": "x",
+            "param": "bend_x",
+            "ratio": 0.42,
+            "stiffness": 52,
+            "damping": 5.6,
+            "max": 5,
+            "note": "耳朵跟着头甩的滞后。刚度比呆毛(42)还高、幅度比它(8)还小 —— ★「あまり**根本を動かしてしまうと猫耳自体が浮いて見えてしまう**」（vtuberkaibougaku.site）：耳朵是长在头上的，晃大了就像顶着两个帽子"
+          }
+        ]
+      },
+      "layer": 186,
+      "rotate_deg": 0.0,
+      "_size_note": "实测定的：头宽 246px（画布 y=150 一线，左缘 318 右缘 564），单耳取头宽的 1/3 ≈ 82px。**上一版 143px 宽，两只加起来超过头宽，挤成一把扇子**。★ 头顶净空只有 69px（画布 y=69 是发顶），所以耳根要埋进头发里，只露上半截。★ rotate_deg 归 0：原始素材本身已经带约 25° 外倾，我又加了 20°，倾过头看着像两片摊开的叶子。镜像之后左右正好各自朝外。（rotate_deg 这个字段留着，别的挂件可能要用；在切件期转而不是用参数转，是因为参数通道被 mood_params 占着了）"
     }
   ],
   "pose_groups": [
@@ -498,5 +618,34 @@
       1.0,
       1.0
     ]
+  },
+  "mood_params": {
+    "_note": "情绪 → 参数值。第三张情绪表（前两张是 blink.mood_rate 和 mood_pose）。猫耳行为学依据（REFERENCE_NOTES 第三十二批）：「耳朵**直立**表示很快乐或很警觉；**向后或者低平**（飞机耳）表示被吓到或很生气」「當一隻貓**往前**豎起耳朵時…代表對眼前的人事物感到**相當好奇**」",
+    "ParamEarLAngle": {
+      "happy": 0.85,
+      "affection": 0.7,
+      "cute": 0.8,
+      "smile": 0.55,
+      "surprise": -0.75,
+      "angry": -0.9,
+      "sad": -0.55,
+      "shy": -0.4,
+      "think": 0.45,
+      "sleepy": -0.35,
+      "neutral": 0.0
+    },
+    "ParamEarRAngle": {
+      "happy": 0.85,
+      "affection": 0.7,
+      "cute": 0.8,
+      "smile": 0.55,
+      "surprise": -0.75,
+      "angry": -0.9,
+      "sad": -0.55,
+      "shy": -0.4,
+      "think": 0.45,
+      "sleepy": -0.35,
+      "neutral": 0.0
+    }
   }
 }

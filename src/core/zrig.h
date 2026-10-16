@@ -92,6 +92,9 @@ const char *zrig_action_last_reason(const zrig *r);
 /* 情绪 → 姿态（T45.2d）。按 poses[].mood_map 把每个组切到对应档位；
    某个组没登记这个情绪就**不动它**（没写 = 与该部位无关，不是要复位）。 */
 void   zrig_pose_apply_mood(zrig *r, const char *mood);
+/* 情绪 → 参数值（T45.3）。按 rig.json 的 mood_params 直接写参数当前值；
+   某条参数没登记这个情绪就**不动它**。猫耳的「直立/飞机耳/前倾」走这条。 */
+void   zrig_apply_mood_params(zrig *r, const char *mood);
 int    zrig_pose_count(const zrig *r);
 const char *zrig_pose_id(const zrig *r, int i);
 int    zrig_pose_entry_count(const zrig *r, const char *group);

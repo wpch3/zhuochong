@@ -93,6 +93,23 @@ def build_one(att, slot, redraw_dir, sprites_dir):
         crgb = canvas.astype(np.float64) - (1.0 - aa) * bg.astype(np.float64)
         crgb = np.clip(crgb / np.maximum(aa, 1e-3), 0, 255)
 
+    if att.get("mirror"):
+        # 左右耳用同一张原图镜像出来：AI 画两只一定不对称，而头上的东西
+        # 一不对称就特别显眼（脸是对称参照物）。镜像还省一次出图。
+        crgb = crgb[:, ::-1, :]
+        ca = ca[:, ::-1]
+
+    if att.get("rotate_deg"):
+        # 静态外倾：真猫耳是向外斜的，不是笔直向上。
+        # 在**切件期**转而不是用参数转，是因为参数那条通道已经被
+        # mood_params（情绪→耳角）占着了，再叠一个静态量两边会打架。
+        rot = Image.fromarray(
+            np.dstack([crgb, ca * 255.0]).astype(np.uint8), "RGBA").rotate(
+                float(att["rotate_deg"]), resample=Image.BICUBIC, expand=True)
+        ra = np.asarray(rot)
+        crgb = ra[..., :3].astype(np.float64)
+        ca = ra[..., 3].astype(np.float64) / 255.0
+
     h1 = int(att["sprite_h"])
     w1 = max(1, int(round(h1 * bw / float(bh))))
     made = []

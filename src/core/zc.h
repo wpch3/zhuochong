@@ -87,6 +87,9 @@ int    z_streq(const char *a, const char *b);
 int    z_startswith(const char *s, const char *pfx);
 int    z_endswith(const char *s, const char *sfx);
 size_t z_strlcpy(char *dst, const char *src, size_t cap);
+/* 砍掉末尾不完整的 UTF-8 序列。z_strlcpy 按字节截断，中文一超长就会切在
+   字符中间产出非法 UTF-8；凡是会被塞进 JSON 的定长中文字段，拷完都要走一遍。 */
+void   z_utf8_trim(char *s);
 size_t z_snprintf(char *dst, size_t cap, const char *fmt, ...);
 /* 按分隔符切分（原地修改 buf）。返回片段数，最多 max 段。 */
 int    z_split(char *buf, char sep, char **out, int max);

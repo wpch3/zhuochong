@@ -860,6 +860,9 @@ int zpet_express(zpet *p, const char *mood, double now)
        而且和"有没有对应动作规则"无关 —— 情绪表里没写动作的情绪
        （比如 think）照样该换尾巴姿态。 */
     zrig_pose_apply_mood(p->rig, mood);
+    /* 参数也跟着情绪走（T45.3）：猫耳的直立/飞机耳/前倾是一条连续参数，
+       不是差分件 —— 官方/社区做法就是「耳揺れ」一条参数 −30~30。 */
+    zrig_apply_mood_params(p->rig, mood);
     r = match_rule(p, "mood", "", mood, 0);
     if (!r) return 0;   /* 没有对应规则：只记录情绪，不改动作 */
     return run_rule(p, r, NULL, NULL, 0, now);

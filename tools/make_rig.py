@@ -690,11 +690,17 @@ def attach_emit(rig, base, base_root):
         sw = att.get("swing")
         if sw:
             swp = sw["param"]
-            binds = [{"deformer": att["physics"]["deformer"]["id"],
-                      "scale": float(sw["deformer_scale"])}]
+            # 形变器是可选的：尾巴有（S 形鞭动），耳朵没有（只需要绕耳根转）。
+            binds = []
+            _dfm = (att.get("physics") or {}).get("deformer")
+            if _dfm and sw.get("deformer_scale"):
+                binds.append({"deformer": _dfm["id"],
+                              "scale": float(sw["deformer_scale"])})
             if sw.get("root_rot_deg"):
                 binds.append({"part": pid, "param": "rot_deg",
                               "scale": float(sw["root_rot_deg"])})
+            if not binds:
+                raise SystemExit(f"[make_rig] 挂件 {att['id']} 的 swing 一条绑定都没有")
             rig["params"].append({
                 "id": swp["id"], "label": swp["label"],
                 "min": float(swp["min"]), "max": float(swp["max"]),
@@ -777,6 +783,20 @@ def attach_emit(rig, base, base_root):
             e.update({k: seg_[k] for k in ("ratio", "stiffness", "damping", "max")})
             e["note"] = seg_["note"]
             rig["physics"].append(e)
+
+    # 情绪 → 参数值（T45.3）。和 blink.mood_rate（T44.2）、poses[].mood_map（T45.2d）
+    # 并列的第三张情绪表。只搬运，不在这里解释语义。
+    mps = table.get("mood_params") or {}
+    known = {p["id"] for p in rig["params"]}
+    out = {}
+    for pid_, m in mps.items():
+        if pid_.startswith("_"):
+            continue
+        if pid_ not in known:
+            raise SystemExit(f"[make_rig] mood_params 提到了不存在的参数 {pid_!r}")
+        out[pid_] = {k: float(v) for k, v in m.items() if not k.startswith("_")}
+    if out:
+        rig["mood_params"] = out
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
