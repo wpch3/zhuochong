@@ -303,6 +303,81 @@ static void test_eye_saccade(void)
      · 眼门：fx_eye_open 标签（眼睛闭上 → ✨ 变暗，但留 FX_EYE_OPEN_FLOOR 不全灭）
    眼门**故意不做成硬门**：一次眨眼 0.3 秒，硬门会让一圈 ✨ 整体熄掉再亮起来，
    看着像渲染故障而不是表情。 */
+static void test_eye_variants(void)
+{
+    SECTION("眼形两档：>_< 痛苦闭眼 与 真·瞪大眼（T31.6 / T31.12 / T41.2）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        double pain0, pain1, closed_on_pain, smile_on_pain, base_on_pain, pain_r_side;
+        double wide0, wide1, base_on_wide, lash_on_wide, ball_on_wide, wide_blink;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);
+        zrig_blink_set_manual(r, 0.0);
+
+        /* ---- 常态：两张差分件都不许画 ---- */
+        zrig_tick(r, 0.10);
+        pain0 = zrig_part_draw_opacity(r, "eye_l_pain");
+        wide0 = zrig_part_draw_opacity(r, "eye_l_wide");
+        CHECK(pain0 < 1e-6 && wide0 < 1e-6,
+              "没触发时痛苦眼/瞪大眼都必须完全不可见（实际 %.4f / %.4f）—— "
+              "差分件的基本性质：不开就等于不存在", pain0, wide0);
+
+        /* ---- >_< ：同一条睫毛线的第三种形状，三张不能同时画 ---- */
+        zrig_param_set(r, "ParamEyeLPain", 1.0);
+        zrig_tick(r, 0.20);
+        pain1 = zrig_part_draw_opacity(r, "eye_l_pain");
+        closed_on_pain = zrig_part_draw_opacity(r, "eye_l_closed");
+        smile_on_pain = zrig_part_draw_opacity(r, "eye_l_smile");
+        base_on_pain = zrig_part_draw_opacity(r, "eye_l_base");
+        pain_r_side = zrig_part_draw_opacity(r, "eye_r_pain");
+        CHECK(pain1 > 0.95, "ParamEyeLPain=1 时倒 V 闭眼件应满不透明（实际 %.4f）", pain1);
+        CHECK(closed_on_pain < 1e-6 && smile_on_pain < 1e-6,
+              "痛苦闭眼满值时，谷型闭眼件和山型笑眼件都必须让干净"
+              "（实际 %.4f / %.4f）—— 三张睫毛线叠一起会糊成一团黑",
+              closed_on_pain, smile_on_pain);
+        CHECK(base_on_pain < 1e-6,
+              "痛苦闭眼应隐含闭眼（blink = max(blink, pain)），睁眼件要没（实际 %.4f）—— "
+              "口径和笑眼一致，调用方推一个参数就够", base_on_pain);
+        CHECK(pain_r_side < 1e-6,
+              "只推左眼的痛苦参数时右眼不许跟着变（实际 %.4f）—— "
+              "Live2D 的眼部参数是左右分开的", pain_r_side);
+        zrig_param_set(r, "ParamEyeLPain", 0.0);
+        zrig_tick(r, 0.30);
+
+        /* ---- 真·瞪大眼：顶替眼白和上睫毛，但**虹膜要留着**（视线照常跟随） ---- */
+        zrig_param_set(r, "ParamEyeLWide", 1.0);
+        zrig_tick(r, 0.40);
+        wide1 = zrig_part_draw_opacity(r, "eye_l_wide");
+        base_on_wide = zrig_part_draw_opacity(r, "eye_l_base");
+        lash_on_wide = zrig_part_draw_opacity(r, "eye_l_lash");
+        ball_on_wide = zrig_part_draw_opacity(r, "eye_l_ball");
+        CHECK(wide1 > 0.95, "ParamEyeLWide=1 时瞪大眼补片应满不透明（实际 %.4f）", wide1);
+        CHECK(base_on_wide < 1e-6 && lash_on_wide < 1e-6,
+              "瞪大时常态眼白和上睫毛必须让掉（实际 %.4f / %.4f）—— "
+              "它们画的是常态开口，留着会在补片底下透出一条旧眼线",
+              base_on_wide, lash_on_wide);
+        CHECK(ball_on_wide > 0.95,
+              "瞪大时虹膜件必须还在（实际 %.4f）—— 补片里的虹膜已被挖掉，"
+              "视线仍由 eye_l_ball 负责；连虹膜一起顶替掉的话瞪大期间眼睛就不会看人了",
+              ball_on_wide);
+        /* 眨眼期间瞪大没有意义：半路眨眼不许露出"闭着的眼 + 瞪大的眼白" */
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 0.50);
+        wide_blink = zrig_part_draw_opacity(r, "eye_l_wide");
+        CHECK(wide_blink < 1e-6,
+              "完全闭眼时瞪大眼补片必须归零（实际 %.4f）—— 这张补片画的是睁着的眼",
+              wide_blink);
+        zrig_free(r);
+    }
+}
+
 static void test_sparkle_trigger(void)
 {
     SECTION("✨ 触发条件：笑 + 睁眼（T39.5）");
@@ -1452,9 +1527,10 @@ static void test_params(void)
         if (r) {
             zrig_param_desc pd;
             double t;
-            /* 内建 9 个（ParamAngleX/Y、ParamEyeOpen + 左右眼开合各一个、
-               左右眼笑眼各一个、ParamEyeBallX/Y）+ rig 里 2 个 */
-            CHECK(zrig_param_count(r) == 11, "参数表应有 11 项（内建 9 + 角色 2），实为 %d",
+            /* 内建 13 个（ParamAngleX/Y、ParamEyeOpen + 左右眼开合各一个、
+               左右眼笑眼各一个、左右眼痛苦闭眼各一个、左右眼瞪大各一个、
+               ParamEyeBallX/Y）+ rig 里 2 个 */
+            CHECK(zrig_param_count(r) == 15, "参数表应有 15 项（内建 13 + 角色 2），实为 %d",
                   zrig_param_count(r));
             CHECK(zrig_param_info(r, 0, &pd) == 0 && z_streq(pd.id, "ParamAngleX") && pd.builtin,
                   "第一项应是内建 ParamAngleX");
@@ -5603,6 +5679,7 @@ int main(int argc, char **argv)
     test_blink();
     test_eye_saccade();
     test_sparkle_trigger();
+    test_eye_variants();
     test_eye_aperture();
     test_image();
     test_deflate();

@@ -1,0 +1,65 @@
+{
+  "source": "design/redraw/face_eyeswide.png（AI 重绘瞪大眼脸）",
+  "register": {
+    "scale": 0.2117,
+    "ncc": 0.6926
+  },
+  "eyes": [
+    {
+      "side": "l",
+      "file": "eye_l_wide.png",
+      "pos": [
+        143,
+        166
+      ],
+      "size": [
+        83,
+        78
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        -0.35,
+        3.8,
+        6.52
+      ],
+      "checks": {
+        "cover_ratio": 1.0,
+        "seam_mean_abs": 3.13,
+        "opaque_px": 4186,
+        "iris_erased_px": 820
+      }
+    },
+    {
+      "side": "r",
+      "file": "eye_r_wide.png",
+      "pos": [
+        216,
+        161
+      ],
+      "size": [
+        83,
+        80
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        -0.86,
+        3.21,
+        5.82
+      ],
+      "checks": {
+        "cover_ratio": 1.0,
+        "seam_mean_abs": 2.49,
+        "opaque_px": 4284,
+        "iris_erased_px": 896
+      }
+    }
+  ]
+}

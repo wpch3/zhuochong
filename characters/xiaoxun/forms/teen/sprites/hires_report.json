@@ -3,12 +3,12 @@
  "factor": 2,
  "suffix": "@2x.png",
  "model": "RealESR-AnimeVideo-v3_x4.onnx",
- "count": 44,
- "realesrgan": 37,
+ "count": 48,
+ "realesrgan": 41,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 11,
- "seconds": 9.7,
+ "keycolor_fixed": 14,
+ "seconds": 9.3,
  "parts": [
   {
    "name": "arm_l_fore.png",
@@ -245,6 +245,19 @@
    "keycolor_fixed": 0
   },
   {
+   "name": "eye_l_pain.png",
+   "src": [
+    65,
+    60
+   ],
+   "dst": [
+    130,
+    120
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
    "name": "eye_l_smile.png",
    "src": [
     57,
@@ -269,6 +282,19 @@
    ],
    "method": "lanczos",
    "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_l_wide.png",
+   "src": [
+    83,
+    78
+   ],
+   "dst": [
+    166,
+    156
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 3
   },
   {
    "name": "eye_r_ball.png",
@@ -323,6 +349,19 @@
    "keycolor_fixed": 0
   },
   {
+   "name": "eye_r_pain.png",
+   "src": [
+    65,
+    62
+   ],
+   "dst": [
+    130,
+    124
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
    "name": "eye_r_smile.png",
    "src": [
     57,
@@ -346,6 +385,19 @@
     136
    ],
    "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_r_wide.png",
+   "src": [
+    83,
+    80
+   ],
+   "dst": [
+    166,
+    160
+   ],
+   "method": "realesrgan",
    "keycolor_fixed": 0
   },
   {

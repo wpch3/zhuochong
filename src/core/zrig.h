@@ -168,6 +168,8 @@ double zrig_param_effective(const zrig *r, const char *id);
    笑眼量 1 = 山型笑眼。笑眼隐含闭眼，所以 close 会 >= smile。 */
 double zrig_eye_close(const zrig *r, int side);
 double zrig_eye_smile(const zrig *r, int side);
+double zrig_eye_pain(const zrig *r, int side);   /* >_< 痛苦闭眼量（0..1），side 0=左 1=右 */
+double zrig_eye_wide(const zrig *r, int side);   /* 瞪大量（0..1）；退场由 eye_open 标签管，不在这里压 */
 double zrig_param_expr_value(const zrig *r, const char *id); /* 只到表情层，不含口型 */
 int    zrig_param_set(zrig *r, const char *id, double v);   /* 找不到返回 -1 */
 int    zrig_param_reset(zrig *r, const char *id);           /* 回默认值 */

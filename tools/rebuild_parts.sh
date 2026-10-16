@@ -61,6 +61,10 @@ step "10/19 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切�
 step "11/19 笑眼真素材（同一条流水线，底图换成山型 ∩ 的笑眼脸）"
 "$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant smile
 
+step "11b/19 痛苦闭眼 >_< 与真·瞪大眼（同一条流水线的第三、第四张重绘底图）"
+"$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant pain
+"$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant wide
+
 step "12/19 上眼睑（没有闭眼真素材时的兜底方案）"
 "$PY" tools/make_eyelid_parts.py --character "$CH" --form "$FM"
 

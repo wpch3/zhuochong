@@ -38,11 +38,88 @@ SKIN = (252, 228, 216)
 MARGIN = 9          # 眼眶外扩多少像素（要盖住原画的上睫毛和眼角）
 FEATHER = 7         # 边缘羽化宽度（软椭圆）
 
+# 各档眼形的切法。闭眼/笑眼/痛苦眼都是「一条睫毛线 + 一片皮肤」，框按**眼球**外扩就够
+# （眨到底时 eye_open 件已经淡没了，补片只要盖住虹膜那一小块）；
+# 瞪大眼不一样：它要顶替**整只睁着的眼**（眼白 + 上下眼线都抬高了），框得大一圈。
+# 注意不能直接用 eye_parts.json 的 patch 框（117x68）：那张画布大半是空白，真正的
+# 眼眶墨迹只有 48x42，按 patch 框外扩会一路探到脸外的洋红背景上，补片盖不满直接报错。
+VARIANTS = {
+    #            底图                    中文名   框     额外外扩(x, y)  挖虹膜
+    "closed": ("face_eyesclosed.png", "闭眼",     "ball",  (0, 0),   False),
+    "smile":  ("face_eyesmile.png",   "笑眼",     "ball",  (0, 0),   False),
+    "pain":   ("face_eyespain.png",   "痛苦闭眼", "ball",  (4, 2),   False),
+    "wide":   ("face_eyeswide.png",   "瞪大眼",   "ball",  (13, 11), True),
+}
+
 
 def skin_mask(rgb, keep):
     """暖色皮肤：白夹克 R≈G≈B、头发偏蓝，都要排掉，否则外接框会变成整张图。"""
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
     return keep & (r > 205) & ((r - b) > 18) & ((r - b) < 70) & (g < r) & (g > r - 45)
+
+
+def sclera_color(sprite_path):
+    """从角色**自己的常态眼件**里取眼白色。
+
+    不能在重绘补片里就地采样：补片四角有浅紫头发（低饱和、亮度也 >212）和腮红，
+    中位数会被带成粉紫色——第三版就是这么填出一个粉色大饼的。
+    """
+    try:
+        a = np.array(Image.open(sprite_path).convert("RGBA")).astype(np.int32)
+    except OSError:
+        return np.array([236., 228., 236.], np.float32)
+    rgb, ok = a[..., :3], a[..., 3] > 200
+    sat = rgb.max(axis=2) - rgb.min(axis=2)
+    m = ok & (sat < 20) & (rgb.mean(axis=2) >= 215)
+    if m.sum() < 40:
+        return np.array([236., 228., 236.], np.float32)
+    return np.median(rgb[m], axis=0).astype(np.float32)
+
+
+def erase_iris(patch, alpha_ok, ball_size, sclera):
+    """把 AI 瞪大眼里画死的虹膜抠掉、填成眼白，让原来的 eye_*_ball 继续管视线。
+
+    为什么要挖：补片带着虹膜，瞪大眼期间视线就不动了——眼球件（tags:["gaze"]）被盖住。
+    Live2D 里 ParamEyeLWide 是形变眼眶、虹膜照样跟着 ParamEyeBallX 走，贴图版要等价，
+    补片就只能提供**眼白和眼线**。顺带正好对上 2026-10-15 的验收意见
+    「眼球不自然变大像个怪物」：真·瞪大 = 眼眶开得更大、虹膜**原尺寸**。
+
+    判据为什么是几何的，两版颜色/行扫描都翻了车，记在这里免得再试：
+      v1「B>140 且 B−R>45」：补片缩到 0.21 倍后虹膜被邻域平均、又叠了肤色配色的暖偏移，
+         蓝色退成灰紫，1182px 的盘只逮到 406px，留了一块灰盘。
+      v2「逐行取眼白最左/最右，中间非眼白的就是虹膜」：浅紫头发亮度也 ≥212，
+         被当成眼白，行填充把上睫毛一起吃了，还填成了粉色。
+    现在的做法：虹膜盘**就在补片正中**（补片框是按 ball_pos 居中切的），
+    所以直接按眼球尺寸画个椭圆填掉，只避开皮肤。尺寸不依赖任何检测，不会跑偏；
+    质心用宽松的蓝色判据微调一下，检测失败就退回正中（退化也只是回到几何中心）。
+    """
+    hh, ww = patch.shape[:2]
+    r, g, b = patch[..., 0], patch[..., 1], patch[..., 2]
+    lum = patch.mean(axis=2)
+    skin = skin_mask(patch.astype(np.int32), alpha_ok)
+    yy = np.arange(hh)[:, None].astype(np.float32)
+    xx = np.arange(ww)[None, :].astype(np.float32)
+    cy, cx = (hh - 1) / 2.0, (ww - 1) / 2.0
+    # 质心微调：中心三分之一区域里偏蓝的像素
+    core = (np.abs(xx - cx) < ww * 0.33) & (np.abs(yy - cy) < hh * 0.33)
+    blue = alpha_ok & core & ((b - r) > 20) & ~skin
+    if blue.sum() > 80:
+        ys, xs = np.nonzero(blue)
+        cy, cx = float(ys.mean()), float(xs.mean())
+    # 椭圆半径：实测 AI 画的虹膜是 27x31，常态眼球 31x30 —— 两者差不多大，
+    # 所以略大于眼球一点点就够（多出来的那 1~2px 是抗锯齿边，留着会显脏）。
+    # 第三版按 ball/2*1.35 挖，横向超了 1.5 倍，把下眼睑和整圈眼白全吃了。
+    rx = ball_size[0] * 0.5 * 1.08
+    ry = ball_size[1] * 0.5 * 1.18
+    d2 = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2
+    iris = alpha_ok & ~skin & (d2 <= 1.0)
+    if iris.sum() < 150:
+        return patch, 0
+    fill = sclera
+    # 边缘软一点：按到椭圆边界的距离做 1.5px 过渡
+    t = np.clip((1.0 - np.sqrt(d2)) / 0.06, 0.0, 1.0) * (alpha_ok & ~skin)
+    out = patch * (1 - t[..., None]) + fill[None, None, :] * t[..., None]
+    return out, int(iris.sum())
 
 
 def warp_box(rd_rgba, s, tx, ty, box):
@@ -62,12 +139,12 @@ def main():
     ap.add_argument("--character", required=True)
     ap.add_argument("--form", required=True)
     ap.add_argument("--root", default=".")
-    ap.add_argument("--variant", default="closed", choices=("closed", "smile"),
-                    help="closed = 谷型闭眼（ParamEyeLOpen=0），smile = 山型笑眼（ParamEyeLSmile=1）")
+    ap.add_argument("--variant", default="closed", choices=tuple(VARIANTS),
+                    help="closed = 谷型闭眼（ParamEyeLOpen=0），smile = 山型笑眼（ParamEyeLSmile=1），"
+                         "pain = >_< 痛苦闭眼（ParamEyeL/RPain=1），wide = 真·瞪大眼（ParamEyeL/RWide=1）")
     args = ap.parse_args()
     variant = args.variant
-    src_name = {"closed": "face_eyesclosed.png", "smile": "face_eyesmile.png"}[variant]
-    label = {"closed": "闭眼", "smile": "笑眼"}[variant]
+    src_name, label, box_from, (ex_x, ex_y), want_erase = VARIANTS[variant]
     base = os.path.join(args.root, "characters", args.character, "forms", args.form)
     sp = os.path.join(base, "sprites")
     redraw = os.path.join(args.root, "characters", args.character,
@@ -162,8 +239,14 @@ def main():
         # 框会一路长到把两只眼连起来（实测 dark bbox 117x68 = 整个窗口）。
         gx0, gy0 = e["ball_pos"]
         gw, gh = e["ball_size"]
-        ax0 = max(0, gx0 - MARGIN - 4); ax1 = min(W, gx0 + gw + MARGIN + 4)
-        ay0 = max(0, gy0 - MARGIN - 4); ay1 = min(H, gy0 + gh + MARGIN + 4)
+        if box_from == "patch":
+            # 瞪大眼：框 = 整个眼眶，而且上缘要多让 ex_y（上眼线被抬高了）
+            qx0, qy0 = e["patch_pos"]; qw, qh = e["patch_size"]
+            ax0 = max(0, qx0 - ex_x); ax1 = min(W, qx0 + qw + ex_x)
+            ay0 = max(0, qy0 - ex_y * 2); ay1 = min(H, qy0 + qh + ex_y)
+        else:
+            ax0 = max(0, gx0 - MARGIN - 4 - ex_x); ax1 = min(W, gx0 + gw + MARGIN + 4 + ex_x)
+            ay0 = max(0, gy0 - MARGIN - 4 - ex_y); ay1 = min(H, gy0 + gh + MARGIN + 4 + ex_y)
         box = (ax0, ay0, ax1, ay1)
         # 要盖住的"原画眼睛" = 眼球框再放一点（睫毛和眼角），不含眉毛/头发
         eye_zone = np.zeros((ay1 - ay0, ax1 - ax0), bool)
@@ -173,6 +256,14 @@ def main():
         if (pa > 128).mean() < 0.9:
             raise SystemExit(f"[eye_{variant}] {side} 眼补片在重绘图里没盖满（配准失败？）")
         hh, ww = patch.shape[:2]
+        n_iris = 0
+        if want_erase:
+            # ⚠️ 必须在肤色配色之前挖：配色的权重按亮度走，会把暖偏移糊到虹膜上
+            patch, n_iris = erase_iris(patch, pa > 128, (gw, gh),
+                                       sclera_color(os.path.join(sp, f"eye_{side}_base.png")))
+            if n_iris < 150:
+                raise SystemExit(f"[eye_{variant}] {side} 眼没找到虹膜（只 {n_iris} px）："
+                                 "重绘图的眼白没围成一圈，或瞳色对不上色卡（DC55）")
         tgt = brgb[ay0:ay1, ax0:ax1]
         bk_box = bkeep[ay0:ay1, ax0:ax1]
 
@@ -227,7 +318,8 @@ def main():
             "side": side, "file": fn, "pos": [ax0, ay0], "size": [ww, hh],
             "gain": [round(v, 4) for v in gain], "offset": [round(v, 2) for v in off],
             "checks": {"cover_ratio": round(cover, 4), "seam_mean_abs": round(seam, 2),
-                       "opaque_px": int((alpha > 0.9).sum())},
+                       "opaque_px": int((alpha > 0.9).sum()),
+                       "iris_erased_px": n_iris},
         })
         print(f"{label} {side}: {ww}x{hh} @ 身体({ax0},{ay0})  盖住原画眼睛 {cover*100:.1f}%  "
               f"接缝色差 {seam:.1f}")

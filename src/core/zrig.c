@@ -5,13 +5,25 @@
 
 #include <math.h>
 
-#define ZRIG_MAX_PARTS    96   /* 2026-10-16：加了星形虹膜 ×2 + 闪光 ×8 之后 56 个，64 太贴脸了 */
+/* 2026-10-16 抬到 192/160/512（T43.1）。为什么现在抬：
+     实测当时 部件 56/96、参数 60/96、绑定 104/256。接下来要同时进来三批东西 ——
+       · 三样眼形素材（>_< 倒 V 闭眼 / 真·瞪大眼 / 情绪两档）≈ +6 部件 +3 参数
+       · 手臂差分（T40 卖萌动作）≈ +6 部件 +4 参数
+       · 一批漫符（T43，汗/💢/小阴云/ZZZ）≈ +15 部件 +13 参数
+     加起来部件就到 83、参数到 80，**顶死在 96 上**，而撞上限的表现是
+     zrig_load 直接 exit 3（既定口径：不降级）。做到一半撞墙要返工，所以先抬。
+   代价**实测**（不是估的）：
+     sizeof(zrig)  617248 → 748064 字节（0.59 → 0.71 MB，+131 KB）
+     加载一个角色的常驻内存 12800 → 12876 KB（+76 KB，涨 0.6%）
+   结构体涨得比 RSS 多，是因为新加的那片数组 calloc 出来就没被碰过、页不驻留。
+   换来的是部件/参数/绑定各 2 倍余量。 */
+#define ZRIG_MAX_PARTS   192
 #define ZRIG_MAX_GROUPS   16
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     24
-#define ZRIG_MAX_PARAMS   96   /* 2026-10-14：下半身补了 4 个参数后 50 个，48 不够用；2026-10-16 星星眼 +9 → 60 */
+#define ZRIG_MAX_PARAMS  160   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
 #define ZRIG_MAX_BANDS     8     /* 分块渲染最多切几条行带（= 最多用几个线程） */
 
@@ -36,7 +48,7 @@
 /* 2026-10-16：星星眼（T39）一口气加了 1 + 8 个参数、36 条绑定（八颗 ✨ 各一个
    参数 × alpha/sx/sy 三条），96 条当场撞上限。和 ZRIG_MAX_PHYS 那次一样 ——
    上限撞了就改大，绝不能让它静默截断。现在用到 140 条。 */
-#define ZRIG_MAX_BINDS   256
+#define ZRIG_MAX_BINDS   512   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
 #define ZRIG_MAX_DEFORMS  12
 #define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
 #define ZRIG_MAX_VISEME    8     /* 口型音素表的行数（SIL/A/I/U/E/O/N…） */
@@ -62,7 +74,10 @@ enum {
     TAG_EYELID = 1u << 9,   /* 眼睑：随眨眼参数往下滑（配 eyelid_travel 用） */
     TAG_EYE_APERTURE = 1u << 10, /* 眼眶开口：随眨眼参数按下沿压扁（配 aperture_min 用） */
     TAG_EYE_SMILE = 1u << 11, /* 笑眼（山型 ∩ 的闭眼）：ParamEyeL/RSmile 淡入，顶替谷型闭眼件 */
-    TAG_FX_EYE_OPEN = 1u << 12 /* 画面特效跟着眼睛开合变淡，但**不会全灭**（见 FX_EYE_OPEN_FLOOR） */
+    TAG_FX_EYE_OPEN = 1u << 12, /* 画面特效跟着眼睛开合变淡，但**不会全灭**（见 FX_EYE_OPEN_FLOOR） */
+    TAG_EYE_PAIN = 1u << 13,    /* >_< 痛苦闭眼：倒 V 的闭眼线，顶替谷型闭眼件（口径同 eye_smile） */
+    TAG_EYE_WIDE = 1u << 14,    /* 真·瞪大眼补片：ParamEyeL/RWide 淡入，提供更高的眼线和更多眼白 */
+    TAG_EYE_NOT_WIDE = 1u << 15 /* 会被瞪大眼补片顶替掉的常态眼件（眼白 base / 上睫毛 lash） */
 };
 
 /* 特效件跟随眨眼时的亮度下限。
@@ -229,7 +244,9 @@ typedef struct {
 enum { PBI_NONE = 0, PBI_ANGLE_X, PBI_ANGLE_Y, PBI_EYE_OPEN,
        PBI_EYEBALL_X, PBI_EYEBALL_Y,
        PBI_EYE_L_OPEN, PBI_EYE_R_OPEN,
-       PBI_EYE_L_SMILE, PBI_EYE_R_SMILE };   /* Live2D 标准：左右眼各一个参数 */
+       PBI_EYE_L_SMILE, PBI_EYE_R_SMILE,
+       PBI_EYE_L_PAIN, PBI_EYE_R_PAIN,       /* >_< 痛苦闭眼（非官方参数，口径照搬 Smile） */
+       PBI_EYE_L_WIDE, PBI_EYE_R_WIDE };     /* Live2D 标准：ParamEyeLWide/RWide，超出 Open 范围的睁大 */
 
 typedef struct {
     int    part;              /* >=0 写部件通道 */
@@ -485,6 +502,8 @@ struct zrig {
     double  blink_now;
     double  blink_l, blink_r;          /* 本帧左右眼各自的闭合度 */
     double  smile_l, smile_r;          /* 本帧左右眼各自的笑眼量（0..1，1 = 山型笑眼） */
+    double  pain_l, pain_r;            /* 本帧左右眼各自的痛苦闭眼量（0..1，1 = 倒 V 的 >_<） */
+    double  wide_l, wide_r;            /* 本帧左右眼各自的瞪大量（0..1，1 = 换成瞪大眼补片） */
     double  blink_manual_l, blink_manual_r;  /* <0 = 跟随两眼共同值 */
     double  gaze_nx, gaze_ny;
 
@@ -558,6 +577,9 @@ static unsigned parse_tags(const zjson *arr)
         else if (z_streq(s, "eye_open")) t |= TAG_EYE_OPEN;
         else if (z_streq(s, "eye_closed")) t |= TAG_EYE_CLOSED;
         else if (z_streq(s, "eye_smile")) t |= TAG_EYE_SMILE;
+        else if (z_streq(s, "eye_pain")) t |= TAG_EYE_PAIN;
+        else if (z_streq(s, "eye_wide")) t |= TAG_EYE_WIDE;
+        else if (z_streq(s, "eye_not_wide")) t |= TAG_EYE_NOT_WIDE;
         else if (z_streq(s, "mouth")) t |= TAG_MOUTH;
         else if (z_streq(s, "hair")) t |= TAG_HAIR;
         else if (z_streq(s, "accessory")) t |= TAG_ACCESSORY;
@@ -1138,6 +1160,16 @@ static void load_builtin_params(zrig *r)
        所以它隐含"眼睛是闭的"——见 accumulate 里的 blink = max(blink, smile)。 */
     param_add_builtin(r, "ParamEyeLSmile", "左眼 笑眼", 0.0, 1.0, 0.0, PBI_EYE_L_SMILE);
     param_add_builtin(r, "ParamEyeRSmile", "右眼 笑眼", 0.0, 1.0, 0.0, PBI_EYE_R_SMILE);
+    /* 痛苦闭眼（>_<）：官方标准参数表里没有这一项（只有 Smile），但它和笑眼是同一类东西
+       ——闭着的眼的第三种形状（谷型 ∪ / 山型 ∩ / 倒 V ∧），所以口径完全照搬笑眼，
+       包括"自己隐含闭眼"。素材见 tools/make_eye_closed_parts.py --variant pain。 */
+    param_add_builtin(r, "ParamEyeLPain", "左眼 痛苦闭眼", 0.0, 1.0, 0.0, PBI_EYE_L_PAIN);
+    param_add_builtin(r, "ParamEyeRPain", "右眼 痛苦闭眼", 0.0, 1.0, 0.0, PBI_EYE_R_PAIN);
+    /* 瞪大眼：官方标准参数 ParamEyeLWide / ParamEyeRWide（0~1），
+       存在的理由就是"ParamEyeOpen 的 1.0 只是常态睁开，再睁大要另给一个参数"。
+       和笑眼/痛苦眼相反，它**不隐含闭眼** —— 眼是睁着的，只是睁得更开。 */
+    param_add_builtin(r, "ParamEyeLWide", "左眼 瞪大", 0.0, 1.0, 0.0, PBI_EYE_L_WIDE);
+    param_add_builtin(r, "ParamEyeRWide", "右眼 瞪大", 0.0, 1.0, 0.0, PBI_EYE_R_WIDE);
     param_add_builtin(r, "ParamEyeBallX", "眼球 左右", -1.0, 1.0, 0.0, PBI_EYEBALL_X);
     param_add_builtin(r, "ParamEyeBallY", "眼球 上下", -1.0, 1.0, 0.0, PBI_EYEBALL_Y);
 }
@@ -2734,6 +2766,7 @@ static void compute_group_transforms(zrig *r)
         double lx = r->look_cx, ly = r->look_cy;
         double blink_off_l = 0.0, blink_off_r = 0.0;
         double smile_v_l = 0.0, smile_v_r = 0.0;
+        double pain_v_l = 0.0, pain_v_r = 0.0, wide_v_l = 0.0, wide_v_r = 0.0;
         r->blink_now = r->blink_value;
         /* 微动叠在"用户/动作设定的视线"之上，但**不回写 gaze_x** ——
            gaze_x 是读数（测试台滑条、/api/param 读它），
@@ -2765,6 +2798,10 @@ static void compute_group_transforms(zrig *r)
                 /* 笑眼没有别的子系统在写，直接取最终值（不像睁眼那样要算相对眨眼的偏移） */
                 case PBI_EYE_L_SMILE: smile_v_l = v; continue;
                 case PBI_EYE_R_SMILE: smile_v_r = v; continue;
+                case PBI_EYE_L_PAIN: pain_v_l = v; continue;
+                case PBI_EYE_R_PAIN: pain_v_r = v; continue;
+                case PBI_EYE_L_WIDE: wide_v_l = v; continue;
+                case PBI_EYE_R_WIDE: wide_v_r = v; continue;
                 case PBI_EYEBALL_X: r->gaze_nx = ZC_CLAMP(r->gaze_nx + off, -1.0, 1.0); continue;
                 case PBI_EYEBALL_Y: r->gaze_ny = ZC_CLAMP(r->gaze_ny + off, -1.0, 1.0); continue;
                 default: break;
@@ -2797,6 +2834,18 @@ static void compute_group_transforms(zrig *r)
         r->smile_r = ZC_CLAMP(smile_v_r, 0.0, 1.0);
         if (r->smile_l > r->blink_l) r->blink_l = r->smile_l;
         if (r->smile_r > r->blink_r) r->blink_r = r->smile_r;
+        /* 痛苦闭眼：和笑眼同类，也隐含闭眼（>_< 本来就是闭着的）。 */
+        r->pain_l = ZC_CLAMP(pain_v_l, 0.0, 1.0);
+        r->pain_r = ZC_CLAMP(pain_v_r, 0.0, 1.0);
+        if (r->pain_l > r->blink_l) r->blink_l = r->pain_l;
+        if (r->pain_r > r->blink_r) r->blink_r = r->pain_r;
+        /* 瞪大眼：**不**动 blink —— 眼睛是睁着的。
+           眨眼期间怎么退场**不在这里**算：补片同时挂着 eye_open 标签，
+           走的是和常态睁眼件一模一样的那条曲线（blink 0.45 前全出、0.55 后才轮到闭眼件）。
+           第一版在这里乘了 (1 − blink)，结果眨到一半变成"补片 50% + 常态眼件 50%"
+           两条上眼线一起画，糊成重影 —— 交叉淡化必须硬交接，不能两头都半透明。 */
+        r->wide_l = ZC_CLAMP(wide_v_l, 0.0, 1.0);
+        r->wide_r = ZC_CLAMP(wide_v_r, 0.0, 1.0);
 
         /* 指针跟随叠加在动作之上（Live2D 里这是参数层，不属于任何一个 motion）。
            放在动作之后、物理之前：所以转头也会把头发甩起来。 */
@@ -3221,6 +3270,18 @@ double zrig_eye_smile(const zrig *r, int side)
     return side ? r->smile_r : r->smile_l;
 }
 
+double zrig_eye_pain(const zrig *r, int side)
+{
+    if (!r) return 0.0;
+    return side ? r->pain_r : r->pain_l;
+}
+
+double zrig_eye_wide(const zrig *r, int side)
+{
+    if (!r) return 0.0;
+    return side ? r->wide_r : r->wide_l;
+}
+
 void zrig_blink_set_enabled(zrig *r, int enabled) { if (r) r->blink_enabled = enabled; }
 void zrig_phys_set_enabled(zrig *r, int enabled) { if (r) r->phys_enabled = enabled; }
 int  zrig_phys_enabled(const zrig *r) { return r ? r->phys_enabled : 0; }
@@ -3414,15 +3475,15 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     double extra_dx = r->p_dx[mi], extra_dy = r->p_dy[mi];
     double part_rot = r->p_rot[mi];
     double part_sx, part_sy;
-    double smile = 0.0;
+    double smile = 0.0, pain = 0.0, wide = 0.0;
     double gm[6], lm[6];
     const zimg *src = p->img_scaled ? p->img_scaled : p->img;
 
     memset(st, 0, sizeof(*st));
     if (!src) return 0;
     /* 左眼件只看 ParamEyeLOpen，右眼件只看 ParamEyeROpen（眨单眼 / 笑眼都靠这个）。 */
-    if (p->eye_side == 1) { blink = r->blink_l; smile = r->smile_l; }
-    else if (p->eye_side == 2) { blink = r->blink_r; smile = r->smile_r; }
+    if (p->eye_side == 1) { blink = r->blink_l; smile = r->smile_l; pain = r->pain_l; wide = r->wide_l; }
+    else if (p->eye_side == 2) { blink = r->blink_r; smile = r->smile_r; pain = r->pain_r; wide = r->wide_r; }
     /* 视线跟随：只影响带 gaze 标签的部件（虹膜拆分后自动升级为真·视线） */
     if ((p->tags & TAG_GAZE) && (r->gaze_nx != 0.0 || r->gaze_ny != 0.0)) {
         extra_dx += r->gaze_nx * r->gaze_max_dx;
@@ -3491,6 +3552,24 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         if (p->tags & TAG_EYE_SMILE)
             opacity *= ZC_CLAMP((smile - 0.75) * 4.0, 0.0, 1.0);
     }
+    /* 痛苦闭眼（倒 V）：和笑眼同一条睫毛线的第三种形状，口径完全一致 ——
+       它涨多少，谷型闭眼件和山型笑眼件就让多少，三张不能同时画。 */
+    if (pain > 0.001) {
+        if (p->tags & (TAG_EYE_CLOSED | TAG_EYE_SMILE)) opacity *= 1.0 - pain;
+        if (p->tags & TAG_EYE_PAIN)
+            opacity *= ZC_CLAMP((pain - 0.75) * 4.0, 0.0, 1.0);
+    }
+    /* 瞪大眼：补片**顶替**常态的眼白和上睫毛（它们画的是常态开口，留着会在补片下面
+       透出一条旧眼线）。这里不用笑眼那种"最后 25% 才淡入"的斜坡：
+       瞪大是连续量（惊讶的强弱），要能停在半路，所以线性交叉淡化。
+       虹膜（tags:["gaze"]）不在顶替之列 —— 补片里的虹膜已经被挖掉了，
+       视线照常由 eye_*_ball 负责（见 make_eye_closed_parts.py 的 erase_iris）。 */
+    if (wide > 0.001) {
+        if (p->tags & TAG_EYE_NOT_WIDE) opacity *= 1.0 - wide;
+        if (p->tags & TAG_EYE_WIDE) opacity *= wide;
+    } else if (p->tags & TAG_EYE_WIDE) {
+        return 0;
+    }
     /* 参数驱动的交叉淡化（踮脚鞋）：淡入件按权重，淡出件按官方 Pose 的曲线。
        放在这里（动作覆盖之后、early-out 之前）是为了和眨眼那套走同一个口径。 */
     if (r->nxfades > 0) {
@@ -3505,6 +3584,7 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     if ((p->tags & TAG_EYE_CLOSED) && blink <= 0.001) return 0;
     if ((p->tags & TAG_EYE_OPEN) && blink >= 0.999) return 0;
     if ((p->tags & TAG_EYE_SMILE) && smile <= 0.001) return 0;
+    if ((p->tags & TAG_EYE_PAIN) && pain <= 0.001) return 0;
 
     /* 部件矩阵（画布缩放 + 锚点 + 自身旋转） */
     {

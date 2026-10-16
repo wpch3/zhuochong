@@ -44,10 +44,17 @@ def png_size(path):
 # 眼球微动幅度（归一化视线单位）。标定见 tools/calib_saccade.py。
 SACC_AMP = 0.26
 
-_EYE_ORDER = ("socket", "base", "ball", "ball_star", "lid",
-              "hl", "lash", "closed", "hl_star", "smile")
+# 一只眼的叠放次序（从下往上）。加了两档之后每眼要 12 层，原来的基址 216/226
+# 会撞到眉毛（236/237），所以整条带往下挪到 211 起：L 211~222、R 223~234，
+# 235 空着、眉毛 236/237 原位不动。层号只受"全局不重复"一条约束（selfcheck 有闸），
+# 没有测试硬编码这些数字 —— 挪之前 grep 过 tests/ 和 tools/。
+#   wide  夹在 base 和 ball 之间：它顶替的是眼白和上睫毛，虹膜要画在它**上面**
+#         （补片里的虹膜已被挖掉，视线还归 eye_*_ball 管）。
+#   pain  和 smile 并列放最上：同一条睫毛线的第三种形状（∪ / ∩ / ∧），三选一。
+_EYE_ORDER = ("socket", "base", "wide", "ball", "ball_star", "lid",
+              "hl", "lash", "closed", "hl_star", "smile", "pain")
 FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
-              for side, b in (("l", 216), ("r", 226))}
+              for side, b in (("l", 211), ("r", 223))}
 SPARKLE_LAYER0 = 300      # ✨ 特效：画在所有人物件之上（最高的头发才 246）
 
 
@@ -440,7 +447,8 @@ def viseme_list(mouth=None):
 #   「微笑时眯一点」= 乘 0.85，睁着时 1.0×0.85=0.85，眨眼压到 0 时 0×0.85=0 —— 照样闭得上。
 #   闸门：selfcheck「表情不许把眼睛开合钉死」。
 def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=False,
-                    has_smile_eyes=False, has_star=False):
+                    has_smile_eyes=False, has_star=False,
+                    has_pain_eyes=False, has_wide_eyes=False):
     """表情集。每条 = 一组参数偏移（mode 缺省 add，set 为覆盖），fade 是淡入淡出秒数。
 
     只用 param_list 里声明过的参数（引擎加载时会校验），所以改表情不用动 C 代码。
@@ -494,6 +502,11 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
         {"id": "surprise", "name": "吃惊", "fade": 0.12,
          "params": brows(0.9, 0.9, lf=1.0, rf=1.0) + mopen(0.55)
                    + [P("ParamEyeBallY", -0.15)]
+                   # 真·瞪大眼（Live2D 标准 ParamEyeLWide/RWide）：换一张眼眶开得更大的
+                   # 补片，虹膜**保持原尺寸**。2026-10-15 验收「眼球不自然变大像个怪物」
+                   # 说的就是反过来做（把虹膜吹大）的下场，不能再犯。
+                   + ([P("ParamEyeLWide", 1.0, "set"), P("ParamEyeRWide", 1.0, "set")]
+                      if has_wide_eyes else [])
                    + sparkle(1.0)},
         {"id": "sleepy", "name": "困倦", "fade": 0.5,
          "params": brows(-0.2, -0.2) + mopen(0.15)
@@ -510,6 +523,15 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
                        + [P("ParamEyeLSmile", 1.0, "set"), P("ParamEyeRSmile", 1.0, "set")]
                        + blush(0.38) + sparkle(1.0),
              "note": "笑眼 = 山型闭眼（Live2D 标准做法），参考官方 Haru 的 F05"})
+    # 痛（>_<）：倒 V 闭眼 + 眉头压低 + 嘴角下撇。被戳/被捶时用。
+    if has_pain_eyes:
+        out.append(
+            {"id": "pain", "name": "痛（>_<）", "fade": 0.14,
+             "params": brows(-0.85, -0.85, -0.5, -0.5, lf=-0.9, rf=-0.9) + mform(-0.8)
+                       + mopen(0.25)
+                       + [P("ParamEyeLPain", 1.0, "set"), P("ParamEyeRPain", 1.0, "set")]
+                       + blush(0.5) + sparkle(0.2),
+             "note": "痛苦闭眼：闭眼线的第三种形状（∪ / ∩ / ∧），口径同笑眼"})
     # 星星眼（T39）：**状态型**表情 —— 设上就一直是星星眼，直到切别的表情或 off。
     # 想要"亮一下再收回去"的那种演出，用同名动作（/api/action?id=star_eyes）。
     # 这里只把眼睛那一摊设满，嘴和脸红给得克制，这样它能和 happy/shy 叠着用。
@@ -537,7 +559,8 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
-          closed=None, blendp=None, eyeline=None, smile_eyes=None, footp=None,
+          closed=None, blendp=None, eyeline=None, smile_eyes=None,
+          pain_eyes=None, wide_eyes=None, footp=None,
           star_eyes=None, base=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
@@ -709,6 +732,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     eye_ball_ids = []
     if eyes:
         smiles = {e["side"]: e for e in (smile_eyes or {}).get("eyes", [])}
+        pains = {e["side"]: e for e in (pain_eyes or {}).get("eyes", [])}
+        wides = {e["side"]: e for e in (wide_eyes or {}).get("eyes", [])}
         stars = {e["side"]: e for e in (star_eyes or {}).get("eyes", [])}
         for e in eyes["eyes"]:
             side = e["side"]
@@ -743,7 +768,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 sock,
                 {"id": f"{sid}_base", "file": f"sprites/{e['base']}", "group": "head",
                  "layer": LY["base"], "pos": [ox + px, oy + py], "anchor": [0, 0],
-                 "tags": ["eye_open"] if closed else [], "mask": f"{sid}_socket",
+                 "tags": ((["eye_open"] if closed else [])
+                          + (["eye_not_wide"] if side in wides else [])),
+                 "mask": f"{sid}_socket",
                  # 眼白也要被眼眶裁住：它比眼眶大一圈，不裁的话闭眼时眼皮盖不住那一圈，
                  # 眼睛底下会留一条蓝边（实测）。脸上本来就画着同样的眼睛，裁掉不丢东西。
                  "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"},
@@ -793,7 +820,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             lash_travel = max(2, int(lid["travel"]) - 6) if lid else 0
             lash_part = {"id": f"{sid}_lash", "file": f"sprites/{e['lash']}", "group": "head",
                          "layer": LY["lash"], "pos": [ox + px, oy + py], "anchor": [0, 0],
-                         "tags": ["eyelid"] if lid else ["eye_open"],
+                         "tags": (["eyelid"] if lid else ["eye_open"])
+                                + (["eye_not_wide"] if side in wides else []),
                          "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"}
             if lid:
                 lash_part["eyelid_travel"] = lash_travel
@@ -804,7 +832,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 # 行程由切件工具逐列实测（眼眶下沿 − 眼线下沿 的中位数）写在 json 里：
                 # 拿"开口高"当行程会滑过头 —— 眼线那条弧画在上眼皮边上，不在开口最顶端，
                 # 实测会变成"眼白露在眼线上方"（_eye_states 0.25 那格）。
-                lash_part["tags"] = ["eyelid"]
+                lash_part["tags"] = ["eyelid"] + (["eye_not_wide"] if side in wides else [])
                 if el.get("lash_file"):
                     lash_part["file"] = f"sprites/{el['lash_file']}"
                 lash_part["eyelid_travel"] = el.get("lash_travel") or round(ap_h * (1.0 - AP_MIN), 1)
@@ -840,6 +868,32 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                      "anchor": [0, 0], "tags": ["eye_smile"],
                      "note": f"笑眼（AI 重绘·盖住原画眼睛 {sm['checks']['cover_ratio']*100:.1f}%，"
                              f"接缝色差 {sm['checks']['seam_mean_abs']}）：ParamEyeL/RSmile=1 时显形"})
+            # 痛苦闭眼 >_<：同一条流水线的第三张重绘底图，倒 V 的闭眼线。
+            # 口径和笑眼一字不差（引擎里 pain 涨多少，closed 和 smile 就让多少）。
+            pn = pains.get(side)
+            if pn:
+                eye_parts.append(
+                    {"id": f"{sid}_pain", "file": f"sprites/{pn['file']}", "group": "head",
+                     "layer": LY["pain"],
+                     "pos": [ox + pn["pos"][0], oy + pn["pos"][1]],
+                     "anchor": [0, 0], "tags": ["eye_pain"],
+                     "note": f"痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 "
+                             f"{pn['checks']['cover_ratio']*100:.1f}%，"
+                             f"接缝色差 {pn['checks']['seam_mean_abs']}）：ParamEyeL/RPain=1 时显形"})
+            # 真·瞪大眼：唯一一张"睁着的"重绘补片。它顶替常态的眼白(base)和上睫毛(lash)，
+            # 虹膜已在切件时挖掉，视线照旧由 eye_*_ball 负责（层号排在它上面）。
+            wd = wides.get(side)
+            if wd:
+                eye_parts.append(
+                    {"id": f"{sid}_wide", "file": f"sprites/{wd['file']}", "group": "head",
+                     "layer": LY["wide"],
+                     "pos": [ox + wd["pos"][0], oy + wd["pos"][1]],
+                     # 同时挂 eye_open：这张画的是**睁着的**眼，眨眼时必须和常态睁眼件
+                     # 走同一条退场曲线，否则眨到一半两张上眼线各半透明，糊成重影。
+                     "anchor": [0, 0], "tags": ["eye_wide", "eye_open"],
+                     "note": f"瞪大眼（AI 重绘·挖掉虹膜 "
+                             f"{wd['checks'].get('iris_erased_px', 0)}px）：ParamEyeL/RWide=1 时顶替"
+                             f"常态眼白与上睫毛，虹膜仍是 {sid}_ball"})
             eye_ball_ids.append(f"{sid}_ball")
     else:
         eye_parts = [
@@ -2239,6 +2293,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                                        has_brows=any(p["id"] == "brow_l" for p in parts_list),
                                        head_is_part=head_is_part,
                                        has_blend=bool(blendp),
+                                       has_pain_eyes=any(p["id"].endswith("_pain")
+                                                         for p in parts_list),
+                                       has_wide_eyes=any(p["id"].endswith("_wide")
+                                                         for p in parts_list),
                                        has_smile_eyes=any(p["id"].endswith("_smile")
                                                           for p in parts_list),
                                        has_star=bool(star_eyes)),
@@ -2446,6 +2504,21 @@ def main() -> int:
                    for c in smile_eyes["eyes"]):
             smile_eyes = None
 
+    # 痛苦闭眼 / 瞪大眼真素材（make_eye_closed_parts.py --variant pain|wide 的产物）。
+    # 和笑眼一样整组可选：没有 json 就退回"没有这一档"，rig 里连参数都不出现。
+    pain_eyes, wide_eyes = None, None
+    for _key, _name in (("pain", "pain_eyes"), ("wide", "wide_eyes")):
+        _p = os.path.join(base, "sprites", f"eye_{_key}_parts.json")
+        if not os.path.exists(_p):
+            continue
+        with open(_p, encoding="utf-8") as f:
+            _j = json.load(f)
+        if all(os.path.exists(os.path.join(base, "sprites", c["file"])) for c in _j["eyes"]):
+            if _name == "pain_eyes":
+                pain_eyes = _j
+            else:
+                wide_eyes = _j
+
     # 星星眼差分件（tools/make_star_eye_parts.py 的产物）：星形虹膜 + ✨ 素材。
     # 整组可选 —— 没有这份 json 时 rig 里就没有 ParamStarEye / star_eyes，
     # 其余一切照旧（这是差分件该有的性质）。
@@ -2513,6 +2586,7 @@ def main() -> int:
                 base=base,
                 seg=seg, anchors=anchors, eyes=eyes, mouth=mouth, lids=lids, armp=armp,
                 closed=closed, blendp=blendp, eyeline=eyeline, smile_eyes=smile_eyes,
+                pain_eyes=pain_eyes, wide_eyes=wide_eyes,
                 star_eyes=star_eyes,
                 footp=footp)
     out = os.path.join(base, "rig.json")

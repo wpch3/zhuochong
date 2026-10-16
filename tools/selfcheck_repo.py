@@ -925,6 +925,16 @@ def check_engine_caps(root):
         check("%s 还有余量（用量不超过上限的 85%%）" % macro, used <= cap * 0.85,
               "用了 %d / %d = %.0f%%，快顶满了，加东西之前先把上限调大"
               % (used, cap, used * 100.0 / cap))
+    # ZRIG_MAX_BINDS 不是顶层键（绑定嵌在每个 param 里），上面那个循环覆盖不到。
+    # 2026-10-16 补：绑定数涨得比参数数快得多 —— 一个 ParamStarEye 就带 12 条，
+    # 真顶满了照样是静默截断/硬报错，没理由只守三个不守它。
+    m = re.search(r"#define\s+ZRIG_MAX_BINDS\s+(\d+)", csrc)
+    if check("zrig.c 里找得到 ZRIG_MAX_BINDS", m is not None):
+        cap = int(m.group(1))
+        used = sum(len(q.get("binds", [])) for q in rig.get("params", []))
+        check("ZRIG_MAX_BINDS 没超（binds 用了 %d / 上限 %d）" % (used, cap), used <= cap)
+        check("ZRIG_MAX_BINDS 还有余量（用量不超过上限的 85%)", used <= cap * 0.85,
+              "用了 %d / %d = %.0f%%" % (used, cap, used * 100.0 / cap))
 
 
 def check_torso_inertia(root):
