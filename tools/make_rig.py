@@ -700,8 +700,16 @@ def attach_emit(rig, base, base_root):
             binds = []
             _dfm = (att.get("physics") or {}).get("deformer")
             if _dfm and sw.get("deformer_scale"):
-                binds.append({"deformer": _dfm["id"],
-                              "scale": float(sw["deformer_scale"])})
+                # tip_lag：形变器（= 尾巴**梢**）读的是参数 lag 秒**之前**的值。
+                # 动画教科书的 wave principle —— 尾巴分段、每段比上一段延迟
+                # 2~3 帧，相位差 φ=2πfΔt。根和梢同相位推 = 僵硬的钟摆；
+                # 错开之后形状在 C 形和 S 形之间来回变，这才是「柔软」的来源。
+                # 做在时域而不是写死一个相位偏移：相位偏移只对正弦成立，
+                # 而自发抽动是非周期脉冲，时域延迟对任何波形都对。
+                _b = {"deformer": _dfm["id"], "scale": float(sw["deformer_scale"])}
+                if sw.get("tip_lag"):
+                    _b["lag"] = float(sw["tip_lag"])
+                binds.append(_b)
             if sw.get("root_rot_deg"):
                 binds.append({"part": pid, "param": "rot_deg",
                               "scale": float(sw["root_rot_deg"])})
@@ -718,9 +726,18 @@ def attach_emit(rig, base, base_root):
                                  (table.get("mood_swing") or {}).items()
                                  if not k.startswith("_")
                                  and isinstance(v, (list, tuple)) and len(v) >= 2])
+            # 自发抽动（tail_flick）也要算进值域 —— 它是**叠加**在摆动之上的，
+            # 顶到 clamp 就会被削平（T45.2f 刚栽过：放大倍率全被削成 ×1.00，
+            # 而且缩小的那一半还是对的，症状是"一半对一半错"，极难发现）。
+            # ×1.35：引擎每起一下还会再抖 ±35%，峰值按**上界**留。
+            _fmax = max([0.0] + [float(v[2]) for k, v in
+                                 (table.get("tail_flick") or {}).items()
+                                 if not k.startswith("_")
+                                 and isinstance(v, (list, tuple)) and len(v) >= 4])
+            _fa = _fmax * float(sw.get("flick_scale", 1.0)) * 1.35
             _b, _a = float(mo["bias"]), abs(float(mo["amp"])) * _amax
-            _lo = min(float(swp["min"]), _b - _a) - 0.05
-            _hi = max(float(swp["max"]), _b + _a) + 0.05
+            _lo = min(float(swp["min"]), _b - _a - _fa) - 0.05
+            _hi = max(float(swp["max"]), _b + _a + _fa) + 0.05
             rig["params"].append({
                 "id": swp["id"], "label": swp["label"],
                 "min": round(_lo, 3), "max": round(_hi, 3),
@@ -837,6 +854,32 @@ def attach_emit(rig, base, base_root):
             "_note": "情绪 → [频率倍率, 幅度倍率]。只乘 amp 不乘 bias；"
                      "切换时引擎做相位补偿（zrig.c zrig_apply_mood_swing）。"
                      "查不到的情绪不动 —— 和另外三张情绪表同口径。",
+        }
+
+    # 情绪 → 自发抽动（T45.2g）。**第五张情绪表**。
+    # mood_swing 改的是"摆动长什么样"，这张改的是"它多久自己动一次、动多狠"。
+    # 为什么非要有：一条定频定幅的正弦，60 秒 12 个峰幅度标准差 0.000015° ——
+    # 那是节拍器。行为学上摆尾是阵发事件（de Mouzon 2023：被忽视时平均摆
+    # 13.98 秒，被搭理时 0.39 秒），所以"自己决定什么时候甩"必须单独做。
+    tfl = table.get("tail_flick") or {}
+    flick_moods = {k: [float(v[0]), float(v[1]), float(v[2]), float(v[3])]
+                   for k, v in tfl.items()
+                   if not k.startswith("_")
+                   and isinstance(v, (list, tuple)) and len(v) >= 4}
+    # 每条参数自己的力度系数：四种姿态的 root_rot_deg 差 14 倍，
+    # 同一个 amp 直接套会让竖起的尾巴抽出去半屏。
+    fsc = {a["swing"]["param"]["id"]: float(a["swing"].get("flick_scale", 1.0))
+           for a in table.get("attachments", []) if a.get("swing")}
+    if swing_ids and flick_moods:
+        _ids = sorted(swing_ids)
+        rig["tail_flick"] = {
+            "params": _ids,
+            "scale": [round(fsc.get(i, 1.0), 3) for i in _ids],
+            "moods": flick_moods,
+            "_note": "情绪 → [间隔下限秒, 间隔上限秒, 幅度, 单次时长秒]。"
+                     "引擎每起一下还会再抖力度 ±35%、时长 ±25%、方向随机 —— "
+                     "没有两下是一样的。查不到的情绪不动，和另外四张情绪表同口径。"
+                     "scale 和 params 同序，是每条参数自己的力度系数。",
         }
 
 

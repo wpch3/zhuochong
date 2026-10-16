@@ -27,6 +27,8 @@
 #define ZRIG_MAX_MOOD_PARAM 12   /* mood_params 能登记多少条参数（耳朵 2 条，留余量） */   /* 每个姿态组能登记多少种情绪（情绪词表现有 11 个） */   /* 2026-10-16 抬：24 → 48。猫尾三姿态差分件各带 3 段摆链 = 9 条，直接把 24 顶到 23/24=96%。每多一种动物形象还要再加 */
 #define ZRIG_MAX_PARAMS  160   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
 #define ZRIG_MAX_BLINK_MOOD 16    /* 眨眼情绪表上限：情绪词表现在 11 个，留一倍余量 */
+#define ZRIG_LAG_SLOTS   128     /* 行波延迟环的深度：60fps 够 2.1 秒，240fps 够 0.53 秒 */
+#define ZRIG_LAG_MAX     0.5     /* bind.lag 的上限（秒），超了报错不夹 */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
 #define ZRIG_MAX_BANDS     8     /* 分块渲染最多切几条行带（= 最多用几个线程） */
 
@@ -99,7 +101,7 @@ enum { P_DX = 0, P_DY, P_SX, P_SY, P_ROT, P_ALPHA, P_BEND_X, P_BEND_Y,
 enum { BEND_ROOT = ZIMG_BEND_ROOT, BEND_SINE = ZIMG_BEND_SINE,
        BEND_LINEAR = ZIMG_BEND_LINEAR, BEND_TIP = ZIMG_BEND_TIP };
 /* 通道波形 */
-enum { W_SINE = 0, W_BOUNCE, W_PULSE, W_DECAY, W_FLAP };
+enum { W_SINE = 0, W_BOUNCE, W_PULSE, W_DECAY, W_FLAP, W_DRIFT };
 
 typedef struct {
     char   id[48];
@@ -259,6 +261,7 @@ typedef struct {
     int    curve, strips;     /* bend_* 用 */
     double scale;
     double offset;            /* 常数偏移：通道值 = 参数值×scale + offset */             /* 通道值 = 参数值 × scale */
+    double lag;               /* 读**lag 秒之前**的参数值（行波：梢比根慢半拍） */
 } zpbind;
 
 /* 表情（Live2D 的 expression）：一组参数偏移，叠在当前动作之上，自带淡入淡出。
@@ -446,6 +449,37 @@ struct zrig {
     struct { char mood[24]; double fmul, amul; } mood_swing[ZRIG_MAX_BLINK_MOOD];
     double sw_fmul[ZRIG_MAX_PARAMS], sw_amul[ZRIG_MAX_PARAMS];
     double sw_tshift[ZRIG_MAX_PARAMS];
+
+    /* ── 行波延迟环（bind.lag，T45.2g）──
+       每帧把每条参数的**合成值**压进环，带 lag 的绑定按 now−lag 线性插值回读。
+       时间戳只存一份（所有参数同一帧采样），所以多出来的内存是
+       ZRIG_MAX_PARAMS × ZRIG_LAG_SLOTS 个 double ≈ 160KB，可接受。
+       历史不够长时取最老的一帧（不外推），不会抖。 */
+    int     lag_used;                               /* 没人用 lag 就整块跳过 */
+    int     lag_fill;                               /* 已写入的帧数（上限 SLOTS） */
+    int     lag_head;                               /* 最近一帧所在的槽 */
+    double  lag_t[ZRIG_LAG_SLOTS];
+    double  lag_v[ZRIG_MAX_PARAMS][ZRIG_LAG_SLOTS];
+
+    /* ── 自发抽动（tail_flick，T45.2g）──
+       桌宠**自己**决定什么时候甩一下尾巴，和自动眨眼同构。
+       依据（2023, Université Paris Nanterre, de Mouzon et al.）：猫在被人忽视时
+       平均摆尾 13.98 秒，被搭理时只有 0.39 秒 ⇒ 摆尾是**阵发事件**，
+       不是待机时的匀速节拍。行为学的升级链是「尾尖抽动 → 整条摆 → 拍打」，
+       频度和力度都随情绪走，所以表的四个数是 [间隔下限, 间隔上限, 幅度, 时长]。
+       ★ 用**自己的随机流** flick_rng：绝不去动 r->rng，那条正在喂眨眼间隔，
+         共用会把现有眨眼测试的时序全改掉（而且是悄悄改）。 */
+    int    nflick_param;
+    int    flick_param[ZRIG_MAX_MOOD_PARAM];
+    double flick_scale[ZRIG_MAX_MOOD_PARAM];        /* 每条参数自己的力度系数 */
+    struct { double next_t, t0, amp, dur; } flick_st[ZRIG_MAX_MOOD_PARAM];
+    int    nmood_flick;
+    struct { char mood[24]; double gmin, gmax, amp, dur; }
+           mood_flick[ZRIG_MAX_BLINK_MOOD];
+    double flick_gmin, flick_gmax, flick_amp, flick_dur;   /* 当前情绪那一档 */
+    int    flick_off;        /* 1 = 关掉自发抽动。探针量「慢摆」时必须关，
+                                否则两张表的效果叠在一条曲线上分不开。 */
+    zrand  flick_rng;
     double blink_rate, blink_closed_scale;
     int    phys_enabled;      /* 0 = 关掉物理摆（排查接缝时用，见 zrig_phys_set_enabled） */
     double blink_closing, blink_closed, blink_opening;
@@ -601,6 +635,7 @@ static int parse_param(const char *name, int *out)
 static int parse_wave(const char *name, int *out)
 {
     if (z_streq(name, "sine")) { *out = W_SINE; return 0; }
+    if (z_streq(name, "drift")) { *out = W_DRIFT; return 0; }
     if (z_streq(name, "bounce")) { *out = W_BOUNCE; return 0; }
     if (z_streq(name, "pulse")) { *out = W_PULSE; return 0; }
     if (z_streq(name, "decay")) { *out = W_DECAY; return 0; }
@@ -1320,6 +1355,22 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
             /* offset：参数为 0 时通道也可以不是 0。腮红/高光这种"基础 opacity=1、
                靠 alpha 通道减到 0"的零件要用它（scale 1 + offset −1 → 透明度 = 参数值）。 */
             b->offset = zjson_num(zjson_obj_get(bj, "offset"), 0.0);
+            /* lag：这条绑定读的不是参数**此刻**的值，而是 lag 秒之前的值。
+               动画教科书里「尾巴分段、每段比上一段延迟 2~3 帧」那条规矩
+               （相位差 φ = 2πfΔt）在时域里的直接实现。
+               为什么做在时域而不是直接写个相位偏移：相位偏移只对正弦成立，
+               而自发抽动（tail_flick）是非周期的脉冲 —— 时域延迟对**任何**
+               波形都对，一个字段同时管住慢摆和抽动。
+               根和梢同相位推 = 僵硬的钟摆；错开之后形状在 C 形和 S 形之间
+               来回变，这就是「柔软」的来源。 */
+            b->lag = zjson_num(zjson_obj_get(bj, "lag"), 0.0);
+            if (b->lag < 0.0 || b->lag > ZRIG_LAG_MAX) {
+                zdiag_error(d, file, bj ? bj->line : 0, 0, path,
+                            "bind.lag 要在 0~%.2f 秒之间（写的是 %.3f）",
+                            (double)ZRIG_LAG_MAX, b->lag);
+                return -1;
+            }
+            if (b->lag > 0.0) r->lag_used = 1;
             r->npbinds++;
             q->nbind++;
         }
@@ -2205,7 +2256,7 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
                 }
                 if (c->nkeys == 0 && parse_wave(wname, &c->wave) != 0) {
                     zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                                "通道 wave 非法（允许 sine/bounce/pulse/decay/flap）");
+                                "通道 wave 非法（允许 sine/drift/bounce/pulse/decay/flap）");
                     return -1;
                 }
                 c->amp = zjson_num(zjson_obj_get(cj, "amp"), 0.0);
@@ -2333,6 +2384,20 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
             r->sw_tshift[_i] = 0.0;
         }
     }
+    {   /* 抽动：自己的随机流 + 「还没排过班」的哨兵。
+           flick_amp 默认 0 = 不抽；要等 tail_flick 表里的某一行被应用。 */
+        int _i;
+        zrand_seed(&r->flick_rng, 0xF11CCA7ull);
+        r->flick_gmin = 5.0;
+        r->flick_gmax = 13.0;
+        r->flick_amp  = 0.0;
+        r->flick_dur  = 0.9;
+        for (_i = 0; _i < ZRIG_MAX_MOOD_PARAM; ++_i) {
+            r->flick_st[_i].next_t = -1.0;
+            r->flick_st[_i].t0 = -1.0;
+        }
+    }
+    r->lag_head = -1;
     r->blink_imin = 2.0;
     r->blink_imax = 8.0;
     r->blink_rate = 1.0;
@@ -2522,6 +2587,97 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
                     r->nmood_swing++;
                 }
             }
+        }
+    }
+
+    {   /* tail_flick（T45.2g）：情绪 → **自发抽动**的频度和力度。第五张情绪表。
+           格式：
+             { "params": ["ParamAccTailRelaxedSwing", ...],
+               "scale":  [1.0, 0.25, ...],                 // 和 params 同序
+               "moods":  { "angry": [0.7, 2.0, 1.15, 0.5], ... } }
+                                   // [间隔下限秒, 间隔上限秒, 幅度(参数单位), 时长秒]
+           为什么要有这张表：摆尾在行为学上是**阵发事件**不是匀速节拍
+           （de Mouzon 2023：被忽视时平均摆 13.98 秒，被搭理时 0.39 秒），
+           而「尾尖抽动 → 整条摆 → 拍打」是一条随唤醒度升级的链。
+           口径同前四张情绪表：**查不到的情绪不动**。 */
+        const zjson *tf = zjson_obj_get(root, "tail_flick");
+        if (tf && zjson_is(tf, ZJSON_OBJ)) {
+            const zjson *ps = zjson_obj_get(tf, "params");
+            const zjson *sc = zjson_obj_get(tf, "scale");
+            const zjson *mo = zjson_obj_get(tf, "moods");
+            size_t i, n;
+            if (ps && zjson_is(ps, ZJSON_ARR)) {
+                n = zjson_count((zjson *)ps);
+                for (i = 0; i < n; ++i) {
+                    const char *pid = zjson_str(zjson_at((zjson *)ps, i), NULL);
+                    int pi;
+                    if (!pid || !*pid) continue;
+                    pi = param_find(r, pid);
+                    if (pi < 0) {
+                        zdiag_error(diag, file, ps->line, 0, "tail_flick",
+                                    "tail_flick.params 提到了不存在的参数 '%s'", pid);
+                        goto fail;
+                    }
+                    if (r->nflick_param >= ZRIG_MAX_MOOD_PARAM) {
+                        zdiag_error(diag, file, ps->line, 0, "tail_flick",
+                                    "tail_flick.params 过多（上限 %d）",
+                                    ZRIG_MAX_MOOD_PARAM);
+                        goto fail;
+                    }
+                    r->flick_param[r->nflick_param] = pi;
+                    /* scale 缺省 1.0：四种尾巴姿态的 rot 系数差 14 倍
+                       （relaxed 3.2° / up 20° / puff 16° / tuck 1.4°），
+                       同一个 amp 直接用会让竖起的尾巴抽出去半屏。 */
+                    r->flick_scale[r->nflick_param] =
+                        (sc && zjson_is(sc, ZJSON_ARR) && i < zjson_count((zjson *)sc))
+                        ? ZC_CLAMP(zjson_num(zjson_at((zjson *)sc, i), 1.0), 0.0, 4.0)
+                        : 1.0;
+                    r->nflick_param++;
+                }
+            }
+            if (mo && zjson_is(mo, ZJSON_OBJ)) {
+                n = zjson_count((zjson *)mo);
+                for (i = 0; i < n; ++i) {
+                    const char *mk = zjson_key_at((zjson *)mo, i);
+                    const zjson *pr = zjson_at((zjson *)mo, i);
+                    int slot = r->nmood_flick;
+                    double g0, g1;
+                    if (!mk || !*mk || mk[0] == '_') continue;
+                    if (!pr || !zjson_is(pr, ZJSON_ARR) ||
+                        zjson_count((zjson *)pr) < 4) {
+                        zdiag_error(diag, file, mo->line, 0, "tail_flick",
+                                    "tail_flick.moods['%s'] 要写成 "
+                                    "[间隔下限, 间隔上限, 幅度, 时长]", mk);
+                        goto fail;
+                    }
+                    if (slot >= ZRIG_MAX_BLINK_MOOD) {
+                        zdiag_error(diag, file, mo->line, 0, "tail_flick",
+                                    "tail_flick.moods 条目过多（上限 %d）",
+                                    ZRIG_MAX_BLINK_MOOD);
+                        goto fail;
+                    }
+                    g0 = zjson_num(zjson_at((zjson *)pr, 0), 5.0);
+                    g1 = zjson_num(zjson_at((zjson *)pr, 1), 13.0);
+                    if (g1 < g0) {
+                        zdiag_error(diag, file, mo->line, 0, "tail_flick",
+                                    "tail_flick.moods['%s'] 的间隔上限 %.2f "
+                                    "小于下限 %.2f", mk, g1, g0);
+                        goto fail;
+                    }
+                    z_strlcpy(r->mood_flick[slot].mood, mk,
+                              sizeof(r->mood_flick[0].mood));
+                    r->mood_flick[slot].gmin = ZC_CLAMP(g0, 0.1, 600.0);
+                    r->mood_flick[slot].gmax = ZC_CLAMP(g1, 0.1, 600.0);
+                    r->mood_flick[slot].amp =
+                        ZC_CLAMP(zjson_num(zjson_at((zjson *)pr, 2), 0.0), 0.0, 8.0);
+                    r->mood_flick[slot].dur =
+                        ZC_CLAMP(zjson_num(zjson_at((zjson *)pr, 3), 0.8), 0.05, 6.0);
+                    r->nmood_flick++;
+                }
+            }
+            /* 开机就按 neutral 那一档抽 —— 不这么做的话，在任何人设情绪之前
+               尾巴是**完全**不抽的，而"刚启动的那十几秒"恰恰是最常被看到的。 */
+            zrig_apply_mood_flick(r, "neutral");
         }
     }
 
@@ -2816,6 +2972,28 @@ static double eval_channel_wave(const zrig *r, const zchan *c, double t, double 
                嘴的开合必须用它——用 sine 会摆到负数，缩放成负值就是把嘴翻过来画。 */
             return c->amp * (0.5 - 0.5 * cos(2.0 * 3.14159265358979323846 * c->freq * t));
         }
+        case W_DRIFT: {
+            /* 「活着」的慢摆：三条**不可通约**频率的正弦叠加。
+               频率比取 1 : 1/φ : φ（φ = 黄金比，1.6180339887…），两两之比都是
+               无理数 ⇒ 合成波是准周期的，**永远不会精确重复**。
+
+               为什么不能用单条 sine：拿确定性探针量过现在这条尾巴 ——
+               60 秒里 12 个正峰全是 3.2279°，标准差 0.000015°，变异系数 0.0005%。
+               那是节拍器，不是动物。动画教科书管这叫「僵硬的钟摆摆动」，
+               真实的软组织要「C 形曲线和 S 形曲线反复切换」才有柔软感。
+
+               权重按**和**归一（0.62 + 0.26 + 0.12 = 1.00）⇒ |输出| ≤ amp，
+               绝不会顶到参数值域被 clamp 削平 —— T45.2f 刚在这上面栽过一次
+               （放大倍率全被削成 1.00，而且只错一半，极难发现）。
+
+               两条附加相位（1.7 / 4.1 弧度）是为了让三条波在 t=0 不同时过零，
+               否则开场第一下会像被谁推了一把。 */
+            const double TAU = 2.0 * 3.14159265358979323846;
+            double w = TAU * c->freq, ph = TAU * c->phase;
+            return c->amp * (0.62 * sin(w * t + ph)
+                           + 0.26 * sin(w * 0.6180339887 * t + ph + 1.7)
+                           + 0.12 * sin(w * 1.6180339887 * t + ph + 4.1));
+        }
         case W_DECAY:
         default: {
             /* 阻尼振荡：被打/被锤后的抖动 */
@@ -2912,6 +3090,77 @@ static void accumulate_action(zrig *r, const zaction *a, double t, double w, dou
     }
 }
 
+/* 回读 want 时刻的参数值（行波延迟 bind.lag 用）。
+   线性插值；历史比 lag 还短时取**最老**的一帧，不外推 —— 外推会在刚加载的
+   头几帧甩出一个假峰。 */
+static double lag_sample(const zrig *r, int pi, double want)
+{
+    int n = r->lag_fill, h = r->lag_head, k;
+    if (h < 0) return 0.0;
+    if (n <= 1) return r->lag_v[pi][h];
+    for (k = 0; k < n; ++k) {
+        int idx = (h - k + ZRIG_LAG_SLOTS * 2) % ZRIG_LAG_SLOTS;
+        if (r->lag_t[idx] <= want) {
+            int nxt;
+            double t0, t1, u;
+            if (k == 0) return r->lag_v[pi][idx];   /* 比最新帧还新：就是当前值 */
+            nxt = (idx + 1) % ZRIG_LAG_SLOTS;       /* 它后面那一帧（时间更晚） */
+            t0 = r->lag_t[idx];
+            t1 = r->lag_t[nxt];
+            u = (t1 - t0 > 1e-9) ? (want - t0) / (t1 - t0) : 0.0;
+            if (u < 0.0) u = 0.0;
+            if (u > 1.0) u = 1.0;
+            return r->lag_v[pi][idx] + (r->lag_v[pi][nxt] - r->lag_v[pi][idx]) * u;
+        }
+    }
+    return r->lag_v[pi][(h - (n - 1) + ZRIG_LAG_SLOTS * 2) % ZRIG_LAG_SLOTS];
+}
+
+/* 自发抽动（tail_flick）：在动作通道之外，往摆动参数上叠一个**非周期**的脉冲。
+   这是「桌宠自己操控尾巴」的那一半 —— 慢摆只是底噪，抽动才是它自己的决定。
+   结构和自动眨眼同构：排一个将来的时刻，到点起一次，起完再排下一个。 */
+static void accumulate_tail_flick(zrig *r)
+{
+    const double PI = 3.14159265358979323846;
+    int k;
+    if (r->flick_off || r->nflick_param <= 0 || r->flick_amp <= 0.0) return;
+    for (k = 0; k < r->nflick_param; ++k) {
+        int pi = r->flick_param[k];
+        double u;
+        if (pi < 0 || pi >= r->nparams) continue;
+        /* 没排过班，或者时间往回跳了（探针逐个情绪重跑会把 now 拨回 0）：重排。 */
+        if (r->flick_st[k].next_t < 0.0 ||
+            r->flick_st[k].next_t > r->now + r->flick_gmax + r->flick_dur * 2.0) {
+            r->flick_st[k].next_t =
+                r->now + zrand_range(&r->flick_rng, r->flick_gmin, r->flick_gmax);
+            r->flick_st[k].t0 = -1.0;
+        }
+        if (r->flick_st[k].t0 < 0.0 && r->now >= r->flick_st[k].next_t) {
+            /* 起一次：方向随机，力度 ±35%、时长 ±25% 各自抖一抖。
+               **每一下都不一样大** —— 这正是「节拍器 vs 动物」的分界线。 */
+            double sgn = (zrand_range(&r->flick_rng, 0.0, 1.0) < 0.5) ? -1.0 : 1.0;
+            r->flick_st[k].t0  = r->now;
+            r->flick_st[k].dur = r->flick_dur * zrand_range(&r->flick_rng, 0.8, 1.3);
+            r->flick_st[k].amp = sgn * r->flick_amp * r->flick_scale[k]
+                               * zrand_range(&r->flick_rng, 0.65, 1.35);
+            r->flick_st[k].next_t = r->now + r->flick_st[k].dur
+                + zrand_range(&r->flick_rng, r->flick_gmin, r->flick_gmax);
+        }
+        if (r->flick_st[k].t0 < 0.0) continue;
+        u = (r->now - r->flick_st[k].t0) / r->flick_st[k].dur;
+        if (u < 0.0 || u >= 1.0) { r->flick_st[k].t0 = -1.0; continue; }
+        /* 抽动的形：**急出缓回**的阻尼振荡 exp(−4.2u)·sin(1.6πu)。
+           猫的 flick 是「弹」出去再晃回来，不是对称的来回摆，所以要衰减包络
+           而不是定幅正弦；1.6 个半周期 = 弹出去、回摆过头一点、收住。
+           (1−u⁴) 是收尾闸：不乘它，u→1 时还剩 4% 的值然后被硬切成 0，
+           那一下是个阶跃（在物理链上会炸出一个假抖）。
+           除以 0.3694 把峰值归一到 1.0（极值在 u=0.174，解析可得），
+           这样表里的 amp 就是「参数单位的真实峰值」，不是个要靠猜的系数。 */
+        r->p_action[pi] += r->flick_st[k].amp
+            * exp(-4.2 * u) * sin(PI * 1.6 * u) * (1.0 - u * u * u * u) / 0.3694;
+    }
+}
+
 static void compute_group_transforms(zrig *r)
 {
     const zaction *a = current_action(r);
@@ -2966,6 +3215,7 @@ static void compute_group_transforms(zrig *r)
             w *= z_ease_sine((tot - el) / a->fade_out);
         accumulate_action(r, a, el, w, tot);
     }
+    accumulate_tail_flick(r);   /* 自发抽动叠在动作通道之上，一起走 binds（含行波延迟） */
     r->dim_now = prev ? (prev->dim * (1.0 - w) + a->dim * w) : a->dim;
 
     /* Pose（A8）：把每个档位的显隐权重往目标值推。
@@ -3005,12 +3255,33 @@ static void compute_group_transforms(zrig *r)
            把底噪混进读数会让"我设了 0.5 怎么读出来 0.53"这种鬼问题冒出来。 */
         r->gaze_nx = ZC_CLAMP(r->gaze_x + r->sacc_x, -1.0, 1.0);
         r->gaze_ny = ZC_CLAMP(r->gaze_y + r->sacc_y, -1.0, 1.0);
+        if (r->lag_used) {
+            /* 行波延迟环推进。★ 只在**时钟真的往前走了**的时候才占一个新格子。
+               理由是 /api/pause 的契约（src/headless/main_headless.c:63）：
+               「暂停后所有 tick 都用同一个时间戳，于是连续两帧**逐字节相同**」——
+               引擎必须对"同一时刻重复 tick"幂等。第一版每 tick 都推进一格，
+               冻结时钟下环会一直转，回读到的历史跟着变，连拍的帧就不再相同，
+               api_smoke 的「笑眼归零回到原样」这类像素对照当场挂掉。
+               时间没走就**原地覆盖**当前格（参数值可能被 /api/param 改了）。
+               时间往回跳（重设时钟）则把历史清空 —— 留着会让插值跨过负的时间差。 */
+            int fresh = 1;
+            if (r->lag_fill > 0 && r->lag_head >= 0) {
+                if (r->now < r->lag_t[r->lag_head]) r->lag_fill = 0;
+                else if (r->now <= r->lag_t[r->lag_head]) fresh = 0;
+            }
+            if (fresh) {
+                r->lag_head = (r->lag_head + 1) % ZRIG_LAG_SLOTS;
+                r->lag_t[r->lag_head] = r->now;
+                if (r->lag_fill < ZRIG_LAG_SLOTS) r->lag_fill++;
+            }
+        }
         for (i = 0; i < r->nparams; ++i) {
             const zparam *q = &r->params[i];
             /* 叠加序：动作通道（≈ .motion3 曲线）→ 表情 → 口型音素（官方 LipSync 排在表情之后） */
             double v = param_effective(r, i);
             double off = v - q->value;
             int k;
+            if (r->lag_used && r->lag_head >= 0) r->lag_v[i][r->lag_head] = v;
             /* 交叉淡化的权重跟着**合成后**的参数值走（不是参数自身的值）：
                踮脚是动作曲线在推 ParamTiptoe，读 q->value 的话永远是 0。 */
             if (r->nxfades > 0) {
@@ -3041,7 +3312,11 @@ static void compute_group_transforms(zrig *r)
             if (q->nbind <= 0) continue;
             for (k = 0; k < q->nbind; ++k) {
                 const zpbind *b = &r->pbinds[q->bind0 + k];
-                double bv = v * b->scale + b->offset;
+                /* 行波：带 lag 的绑定读的是 lag 秒之前的值。尾巴梢比尾巴根慢
+                   半拍，形状才会在 C 形和 S 形之间来回变（动画的 wave principle）。 */
+                double src = (b->lag > 0.0)
+                           ? lag_sample(r, i, r->now - b->lag) : v;
+                double bv = src * b->scale + b->offset;
                 if (fabs(bv) < 1e-12) continue;
                 if (b->deform >= 0 && b->deform < r->ndeforms) {
                     r->deforms[b->deform].amount += bv;
@@ -4623,6 +4898,30 @@ void zrig_apply_mood_swing(zrig *r, const char *mood)
         r->sw_fmul[pi] = m1;
         r->sw_amul[pi] = r->mood_swing[k].amul;
     }
+}
+
+void zrig_apply_mood_flick(zrig *r, const char *mood)
+{
+    int k;
+    if (!r || !mood || !*mood || r->nflick_param <= 0) return;
+    for (k = 0; k < r->nmood_flick; ++k)
+        if (z_streq(r->mood_flick[k].mood, mood)) break;
+    if (k >= r->nmood_flick) return;   /* 查不到就不动（和另外四张情绪表同口径） */
+    r->flick_gmin = r->mood_flick[k].gmin;
+    r->flick_gmax = r->mood_flick[k].gmax;
+    r->flick_amp  = r->mood_flick[k].amp;
+    r->flick_dur  = r->mood_flick[k].dur;
+    /* ★ 不动 flick_st[].t0：正在进行中的那一下让它演完。
+       情绪一变就把抽动掐断 = 尾巴瞬间弹回原位，比不抽还假。
+       只改"下一次排在什么时候"：把已排的班重排到新档位里。 */
+    for (k = 0; k < r->nflick_param; ++k)
+        r->flick_st[k].next_t =
+            r->now + zrand_range(&r->flick_rng, r->flick_gmin, r->flick_gmax);
+}
+
+void zrig_tail_flick_enable(zrig *r, int on)
+{
+    if (r) r->flick_off = on ? 0 : 1;
 }
 
 void zrig_pose_apply_mood(zrig *r, const char *mood)

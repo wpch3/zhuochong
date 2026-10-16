@@ -174,11 +174,12 @@
           "max": 1.0,
           "default": 0.0
         },
-        "deformer_scale": 1.0,
+        "tip_lag": 0.17, "flick_scale": 1.00,
+              "deformer_scale": 1.0,
         "root_rot_deg": 3.2,
         "motion": {
           "action": "idle",
-          "wave": "sine",
+          "wave": "drift",
           "amp": 1.0,
           "bias": 0.0,
           "freq": 0.21
@@ -297,11 +298,12 @@
           "max": 1.0,
           "default": 0.0
         },
-        "deformer_scale": 1.0,
+        "tip_lag": 0.10, "flick_scale": 0.22,
+              "deformer_scale": 1.0,
         "root_rot_deg": 20.0,
         "motion": {
           "action": "idle",
-          "wave": "sine",
+          "wave": "drift",
           "amp": 0.16,
           "bias": -0.78,
           "freq": 0.55
@@ -419,11 +421,12 @@
           "max": 1.0,
           "default": 0.0
         },
-        "deformer_scale": 1.0,
+        "tip_lag": 0.05, "flick_scale": 0.13,
+              "deformer_scale": 1.0,
         "root_rot_deg": 16.0,
         "motion": {
           "action": "idle",
-          "wave": "sine",
+          "wave": "drift",
           "amp": 0.08,
           "bias": -0.86,
           "freq": 1.35
@@ -542,11 +545,12 @@
           "max": 1.0,
           "default": 0.0
         },
-        "deformer_scale": 0.34,
+        "tip_lag": 0.07, "flick_scale": 1.30,
+              "deformer_scale": 0.34,
         "root_rot_deg": 1.4,
         "motion": {
           "action": "idle",
-          "wave": "sine",
+          "wave": "drift",
           "amp": 1.0,
           "bias": -0.55,
           "freq": 0.16
@@ -760,6 +764,75 @@
     "neutral": [
       1.0,
       1.0
+    ]
+  },
+  "tail_flick": {
+    "_note": "情绪 → 自发抽动（第五张情绪表）。每行 = [间隔下限秒, 间隔上限秒, 幅度(参数单位), 单次时长秒]。★ 为什么要有它：摆尾在行为学上是**阵发事件**，不是待机时的匀速节拍。de Mouzon 2023（Université Paris Nanterre, Animals）实测，猫在被人忽视时平均摆尾 13.98 秒，被人搭理时只有 0.39 秒 —— 由事件触发，不是一直在摇。行为学的升级链是「尾尖抽动 → 整条摆 → 拍打」，频度和力度随唤醒度一起涨；「尾尖抽动」是最常见的那一档，意思是「注意力漏出来了」。在此之前尾巴只有一条定频定幅的正弦：60 秒 12 个峰，幅度标准差 0.000015°，变异系数 0.0005% —— 那是节拍器，不是动物。这张表补的是「它自己想动」那一半。★ 实际间隔在上下限之间均匀取，每一下的力度再抖 ±35%、时长 ±25%、方向随机，所以没有两下是一样的。查不到的情绪不动（和另外四张情绪表同口径）。★ 各档依据：angry=lash，又密又重，升级链顶端；surprise=交感神经的非自主反应，突发、重、不密；think=狩猎式专注，尾尖高频小幅；affection=竖尾颤抖的问候，密而小；sleepy=睡着的猫偶尔抽一下（做梦）；shy=紧张，少而短促。",
+    "angry": [
+      0.7,
+      2.0,
+      1.6,
+      0.5
+    ],
+    "surprise": [
+      1.8,
+      5.5,
+      1.25,
+      0.42
+    ],
+    "happy": [
+      2.2,
+      6.5,
+      0.95,
+      0.6
+    ],
+    "cute": [
+      2.2,
+      6.5,
+      0.95,
+      0.6
+    ],
+    "neutral": [
+      5.0,
+      14.0,
+      0.78,
+      0.95
+    ],
+    "affection": [
+      1.6,
+      4.5,
+      0.72,
+      0.45
+    ],
+    "smile": [
+      3.5,
+      9.0,
+      0.68,
+      0.8
+    ],
+    "think": [
+      1.1,
+      3.2,
+      0.52,
+      0.35
+    ],
+    "shy": [
+      5.0,
+      14.0,
+      0.45,
+      0.55
+    ],
+    "sad": [
+      9.0,
+      22.0,
+      0.38,
+      1.2
+    ],
+    "sleepy": [
+      12.0,
+      30.0,
+      0.25,
+      1.5
     ]
   },
   "mood_params": {

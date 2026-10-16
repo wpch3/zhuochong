@@ -2365,7 +2365,7 @@ def check_no_dead_tables(root):
                   "没有任何 tools/*.py 提到 %r —— 这张表只是注释、运行时"
                   "完全不生效（mood_swing 就是这么漏掉的）" % key)
     # 落地方：这几张表必须出现在 rig 里
-    must = ("mood_params", "mood_swing")
+    must = ("mood_params", "mood_swing", "tail_flick")
     for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
         tag = os.path.relpath(rp, root)
         dp = os.path.join(root, "characters",
@@ -2381,6 +2381,77 @@ def check_no_dead_tables(root):
             check("%s：设计表的 %s 落到 rig 里了" % (tag, key), key in rig,
                   "已搬运" if key in rig else
                   "design 里有 %s 但 rig 里没有 —— 生成器漏了搬运这一步" % key)
+
+
+def check_swing_headroom(root):
+    """摆动 + 自发抽动的合计行程，必须装得进参数值域（防 clamp 削平）。
+
+    T45.2f 撞到的事：mood_swing 接通之后，**缩小**倍率（0.5/0.6/0.9）全对，
+    **放大**倍率（angry 1.8 / think 2.2）全变成 ×1.00。病根是摆动参数的值域
+    照抄了设计表里写的 ±1，而基准幅度本来就顶着 ±1 —— 放大的那一侧直接
+    撞墙被 clamp 削平。
+
+    这类 bug 最险的地方是「一半对一半错」：抽查很容易抽到对的那一半当场结案。
+    T45.2g 又加了自发抽动（叠加在摆动之上、还带 ±35% 的力度抖动），
+    撞墙的风险只会更大，所以把这条算式固化成闸：
+
+        需要的行程 = |bias| + |amp| × max(幅度倍率) + max(抽动幅度) × scale × 1.35
+
+    1.35 是引擎每起一下抽动的力度抖动上界（zrig.c accumulate_tail_flick）。
+    """
+    section("摆动+抽动装得进参数值域（不会被 clamp 削平）")
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        tag = os.path.relpath(rp, root)
+        with io.open(rp, encoding="utf-8") as fh:
+            rig = json.load(fh)
+        msw = rig.get("mood_swing") or {}
+        tfl = rig.get("tail_flick") or {}
+        if not msw:
+            continue
+        amul = max([1.0] + [float(v[1]) for k, v in (msw.get("moods") or {}).items()
+                            if not k.startswith("_")])
+        fmax = max([0.0] + [float(v[2]) for k, v in (tfl.get("moods") or {}).items()
+                            if not k.startswith("_")])
+        fsc = dict(zip(tfl.get("params") or [], tfl.get("scale") or []))
+        chans = {}
+        for a in rig.get("actions", []):
+            for c in a.get("channels", []):
+                t = c.get("target", "")
+                if t.startswith("ParamAcc") and t.endswith("Swing"):
+                    chans[t] = c
+        for pr in rig.get("params", []):
+            pid = pr["id"]
+            c = chans.get(pid)
+            if c is None:
+                continue
+            bias = float(c.get("bias", 0.0))
+            amp = abs(float(c.get("amp", 0.0))) * amul
+            fl = fmax * float(fsc.get(pid, 1.0)) * 1.35
+            lo, hi = bias - amp - fl, bias + amp + fl
+            ok_ = pr["min"] <= lo + 1e-9 and pr["max"] >= hi - 1e-9
+            check("%s：%s 的值域装得下摆动+抽动" % (tag, pid), ok_,
+                  "需要 [%.3f, %.3f]，值域 [%.3f, %.3f]" % (lo, hi, pr["min"], pr["max"])
+                  if ok_ else
+                  "需要 [%.3f, %.3f] 但值域只有 [%.3f, %.3f] —— 超出的部分会被 "
+                  "clamp 悄悄削平（T45.2f 就是这么漏的，而且只错放大那一半）"
+                  % (lo, hi, pr["min"], pr["max"]))
+
+    # 行波延迟：有形变器的摆动件都该有 lag，否则根和梢同相位 = 僵硬的钟摆
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        tag = os.path.relpath(rp, root)
+        with io.open(rp, encoding="utf-8") as fh:
+            rig = json.load(fh)
+        for pr in rig.get("params", []):
+            if not (pr["id"].startswith("ParamAcc") and pr["id"].endswith("Swing")):
+                continue
+            dfm = [b for b in pr.get("binds", []) if "deformer" in b]
+            if not dfm:
+                continue
+            bad = [b["deformer"] for b in dfm if not b.get("lag")]
+            check("%s：%s 的梢部形变带行波延迟" % (tag, pr["id"]), not bad,
+                  "lag=%s" % ", ".join("%.2f" % b["lag"] for b in dfm) if not bad else
+                  "形变器 %s 没有 lag —— 尾巴根和尾巴梢会**同相位**被推，"
+                  "那是僵硬的钟摆，不是软组织（动画的 wave principle）" % bad)
 
 
 def check_attach_switch(root):
@@ -2798,7 +2869,7 @@ def main():
                check_form_roadmap,
                check_live2d, check_character,
                check_web, check_contract, check_attach_switch,
-               check_no_dead_tables,
+               check_no_dead_tables, check_swing_headroom,
                check_effects_table,
                check_tools, check_hygiene):
         try:

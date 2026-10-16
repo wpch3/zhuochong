@@ -100,6 +100,12 @@ void   zrig_apply_mood_params(zrig *r, const char *mood);
    只缩放 amp 不缩放 bias（bias 是静态姿态偏置），切换时做相位补偿避免跳相。
    和另外三张表同口径：**查不到的情绪不动**。 */
 void   zrig_apply_mood_swing(zrig *r, const char *mood);
+/* 第五张情绪表 tail_flick：情绪 → 自发抽动的频度/力度（T45.2g）。
+   前四张改的是"摆动长什么样"，这张改的是"它多久自己动一次、动多狠"。 */
+void   zrig_apply_mood_flick(zrig *r, const char *mood);
+/* 自发抽动的总开关（默认开）。探针量「慢摆」那张表时必须关掉它，
+   不然抽动的非周期脉冲会混进峰峰值里，两张表就分不开了。 */
+void   zrig_tail_flick_enable(zrig *r, int on);
 int    zrig_pose_count(const zrig *r);
 const char *zrig_pose_id(const zrig *r, int i);
 int    zrig_pose_entry_count(const zrig *r, const char *group);

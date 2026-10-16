@@ -620,8 +620,21 @@ def run(base, root):
     # A7 混合模式 + 冻结时钟：暂停后两帧必须逐字节相同，然后只有参数能改画面
     a.hit("/api/action?id=idle&force=1"); time.sleep(0.4)
     a.hit("/api/pause?on=1"); time.sleep(0.15)
-    p1, _ = a.frame_hash(); p2, _ = a.frame_hash()
-    check("冻结时钟后连续两帧完全相同", p1 == p2, "%s vs %s" % (p1, p2))
+    # ★ 连拍 6 帧而不是 2 帧。2026-10-17 的教训：T45.2g 给尾巴加行波延迟环时，
+    #   每 tick 都往环里压一格 —— 冻结时钟下环照样转，回读到的历史跟着变。
+    #   症状是**第 1 帧和后面几帧不一样、第 3 帧起才稳**，只比两帧有一半概率放过去
+    #   （当时是下游那条「笑眼归零回到原样」替它红的，隔了十几行，很难顺藤摸到）。
+    #   冻结时钟的契约是"同一时刻重复 tick 必须幂等"，所以这里要多比几帧。
+    hs = [a.frame_hash()[0] for _ in range(6)]
+    check("冻结时钟后连拍 6 帧完全相同", len(set(hs)) == 1,
+          "、".join(hs) if len(set(hs)) > 1 else hs[0])
+    # 冻结中改一个参数：画面必须变（证明冻的是时钟不是渲染），且改完再连拍还得稳
+    a.hit("/api/param?id=ParamAngleZ&v=8")
+    hz = [a.frame_hash()[0] for _ in range(4)]
+    check("冻结时钟中改参数后，画面变了且重新稳定",
+          hz[0] != hs[0] and len(set(hz)) == 1,
+          "改前 %s → 改后 %s" % (hs[0], "、".join(hz)))
+    a.hit("/api/param?id=ParamAngleZ&reset=1")
     # ⚠ 这里以前写的是 ParamBlush，改名成标准的 ParamCheek 之后 if 不成立，
     #    这条检查**静悄悄少掉了一项**（64 → 63）而不是变红。所以下面改成硬断言：
     #    参数不在表里 = 直接红，别再出现"跳过即通过"。

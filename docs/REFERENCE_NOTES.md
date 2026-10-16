@@ -2300,3 +2300,79 @@ ph->out_cur = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
 3. 耳朵躲在**半透明发梢**后会把合成 alpha 顶过阈值 ⇒ 整条发缘被判成耳朵。
    ⇒ 判据改成强跃变：戴上 α≥200 **且** 摘掉 α≤60。
 4. 几粒抗锯齿杂点就能把耳高从 95 读成 171。⇒ 连通域标记只留最大两块。
+
+## 第三十四批：尾巴怎么动才像活的 —— 行为学的「阵发」与动画的「行波」（T45.2g，2026-10-17）
+
+**起因**：用户说「我的意思是让尾巴像真正的动物一样能让桌宠自由操控……更自然更真实的活动」。
+先按纪律**自己量**：拿确定性探针跑 60 秒，当时的尾巴是 12 个正峰、幅度**全部 3.2279°**、
+标准差 0.000015°、变异系数 0.0005%，一个周期的自相关 0.982，物理链横向位移全程 0.000。
+**那是节拍器，不是动物。** 带着这个结论去查资料。
+
+### A. 行为学：猫尾的运动是**阵发事件**，不是持续节拍
+
+- **★ 最硬的一条实测数字** `https://blog.catcognition.com/why-do-cats-wag-their-tails/`
+  转述 de Mouzon et al. 2023（Université Paris Nanterre，发表于 *Animals*，12 只猫的
+  先导研究）：猫在**人忽视它**时平均摆尾 **13.98 秒**，而人与它说话并打手势时只有
+  **0.39 秒**。同页：「Lateral tail movements correlated with frustrating situations,
+  not positive interactions」。
+  ⇒ 摆尾是**被事件触发**的，默认状态不是一直在摇。同一篇还指出猫的侧向摆尾
+  **不等于**狗的高兴摇尾，对应的是挫折/冲突/高度专注。
+- **★ 升级链（这决定了"频度和力度要一起涨"）**
+  `https://perfectpetinsurance.co.uk/pet-advice/cat-tail-language/`：
+  「a slow sway means focus or indecision, a twitching tip means concentration or early
+  irritation, a fast side-to-side lash means anger or frustration, a floor thump means
+  the cat wants something to stop…**Speed rises as tolerance falls**」。
+  `https://meowant.com/blogs/cat-facts/cat-tail-language-interpretation-guide`
+  把它写成明确的三级：**① The Tip Twitch（只有尾梢最后一截动）→ ② The Swish（整条像钟摆）
+  → ③ Thump/Lash（拍地）**。
+- **★ 最常见的那一档是"尾尖抽动"，不是整条摆**
+  `https://petsignal.ai/signals/cat-tail-flicking-lying-down`：「Tip-only movement is the
+  calmest entry on the scale — and the version owners see most while a cat is lying down.
+  When just the last inch or two twitches… **Think of it as attention leaking out of the
+  tail.**」
+- **★ 炸毛是非自主的**（所以 puff 的抖应当"突发"而不是"渐强"）
+  `https://petfel.com/why-do-cats-wag-their-tails/`：「A puffed tail is triggered by the
+  **sympathetic nervous system** and happens automatically under fear or threat」；
+  同页：尾巴有 **18~23 节尾椎**。`https://kittysupps.com/...`：1994 年解剖研究，尾巴有
+  **6 对肌肉**，SDL/SVL 收缩产生玩耍或躁动时那种「rapid, strong tail flicks」。
+- 放松时的慢摆是**不规则**的：`https://petsignal.ai/signals/cat-wagging-tail-purring`
+  「Slow sway or sweep：**loose, irregular**, the whole tail drifts side to side」。
+
+### B. 动画原理：行波（wave principle）与跟随（follow-through）
+
+- **★ 相位差有公式** `https://grokipedia.com/page/follow_through_and_overlapping_action`：
+  「In technical implementations, such as procedural animation systems, phase shifts are
+  generated to drive oscillatory behaviors… **φ = 2πfΔt** where f is the frequency of the
+  motion and Δt is the time lag between components」。
+  同页：「a running animal's tail lagging behind its torso before catching up, creating a
+  **wave-like chain of reactions**」。
+- **★ 分段延迟的具体帧数** `https://iwanttobeananimator.wordpress.com/2017/09/03/tutorial-09-how-to-animate-a-tail/`：
+  「go back to animate the rest of the tail, **one section at the time**… **Each section
+  will have a delay of 2/3 frames compared to the previous section**」；而且
+  「each part would **first react** to the movement of the part that drags it, **moving in
+  the opposite direction**」—— 延迟大到一定程度，下一段起步时是**反向**的。
+- **★ 为什么单条正弦看着假（正中我们的 bug）**
+  `https://www.artemisiacollege.com/feeds/blog/follow-through-overlapping-action-animation`：
+  「**breaking the curve**, a technique where a shape shifts from a **C-curve into an
+  S-curve and back again** as it moves. This constant reshaping gives soft materials —
+  hair, tails, capes — that flexible, alive quality **rather than a stiff pendulum swing**」。
+  同页还给了"尾巴尖的轨迹 rarely travels in a straight line，typically arcs through an
+  **S-curve**, reversing direction as it slows"。
+- **尾巴通常是被带动的，不该自己发力**
+  `https://www.animationmentor.com/blog/follow-through-and-overlapping-action-the-12-basic-principles-of-animation/`：
+  「Make sure the tail always feels like it's along for the ride. The tail should **never
+  lead** the action… should never feel like it can exert any energy of its own」。
+  ⚠ **但猫是例外**：猫尾有 6 对肌肉、`大部分尾部动作是自主的`（petfel 同上），
+  所以桌宠的尾巴要**两种来源都有** —— 被身体带动的跟随（物理链）＋ 它自己决定的抽动。
+  我们现在两条都有：物理链做跟随，`tail_flick` 做自主。
+- 社区的一句总结（r/animation）：「**Sine waves. Seriously.** If you understand how to
+  impart the motion of a sine wave, combined with the C, S, and Backwards C shapes, you can
+  animate any tail or tentacle movement」—— 正弦不是错的，**错的是只有一条**。
+
+### C. 由此定下的三条做法（都已实现并实测）
+
+| 问题 | 依据 | 做法 | 实测 |
+|---|---|---|---|
+| 12 个峰一模一样 | 「loose, irregular」 | 新波形 `drift` = 三条**不可通约**频率（比例 1 : 1/φ : φ）的正弦叠加，准周期、永不重复 | 幅度变异系数 0.0005% → **38.4%**，一周期自相关 0.982 → **0.681** |
+| 尾巴不会自己决定动 | de Mouzon 2023 的 13.98s vs 0.39s；升级链 | 第五张情绪表 `tail_flick`：情绪 → [间隔, 幅度, 时长]，引擎自发起一次急出缓回的脉冲 | 11 种情绪的次数与峰值全部落在解析期望内（angry 34 次/6.71°，sleepy 3 次/1.03°） |
+| 根和梢同相位 = 僵硬钟摆 | φ=2πfΔt；每段延迟 2~3 帧；C 形↔S 形 | 绑定新增 `lag` 字段，**时域**延迟（对非周期的抽动也成立，相位偏移做不到） | 根→梢互相关峰值在 **0.167 秒**（设定 0.17） |

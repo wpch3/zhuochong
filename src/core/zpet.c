@@ -866,6 +866,7 @@ int zpet_express(zpet *p, const char *mood, double now)
     /* 第四张情绪表：摆动倍率（生气=快而大地甩、专注=慢而大、困倦=慢而小）。
        必须和上面三张一起调 —— 漏掉这行它就又变回一张死表。 */
     zrig_apply_mood_swing(p->rig, mood);
+    zrig_apply_mood_flick(p->rig, mood);
     r = match_rule(p, "mood", "", mood, 0);
     if (!r) return 0;   /* 没有对应规则：只记录情绪，不改动作 */
     return run_rule(p, r, NULL, NULL, 0, now);
