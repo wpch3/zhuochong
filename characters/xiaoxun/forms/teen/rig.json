@@ -1568,8 +1568,8 @@
       "group": "chest",
       "layer": 30,
       "pos": [
-        316,
-        628
+        318,
+        640
       ],
       "anchor": [
         0.5,
@@ -1590,8 +1590,8 @@
       "group": "chest",
       "layer": 31,
       "pos": [
-        286,
-        712
+        288,
+        716
       ],
       "anchor": [
         0.5,
@@ -1612,8 +1612,8 @@
       "group": "chest",
       "layer": 32,
       "pos": [
-        276,
-        712
+        274,
+        714
       ],
       "anchor": [
         0.5,
@@ -5965,7 +5965,20 @@
           ]
         }
       ],
-      "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。三种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose"
+      "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。三种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose",
+      "mood_map": {
+        "happy": "up",
+        "affection": "up",
+        "cute": "up",
+        "smile": "up",
+        "surprise": "puff",
+        "angry": "relaxed",
+        "sad": "relaxed",
+        "shy": "relaxed",
+        "think": "relaxed",
+        "sleepy": "relaxed",
+        "neutral": "relaxed"
+      }
     }
   ],
   "xfades": [

@@ -89,6 +89,9 @@ const char *zrig_action_last_reason(const zrig *r);
 /* ---- Pose：互斥部件组（A8，≈ Live2D pose3.json）----
    一组里同一时刻只有一个档位可见，切换带淡入淡出。
    zrig_pose_set 的 entry 传 NULL/""/"none" = 整组淡出；组或档位不存在返回 -1。 */
+/* 情绪 → 姿态（T45.2d）。按 poses[].mood_map 把每个组切到对应档位；
+   某个组没登记这个情绪就**不动它**（没写 = 与该部位无关，不是要复位）。 */
+void   zrig_pose_apply_mood(zrig *r, const char *mood);
 int    zrig_pose_count(const zrig *r);
 const char *zrig_pose_id(const zrig *r, int i);
 int    zrig_pose_entry_count(const zrig *r, const char *group);

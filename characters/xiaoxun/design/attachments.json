@@ -65,10 +65,10 @@
       "slot": "hip_back",
       "source": "acc_tail_cat_relaxed.png",
       "sprite": "acc_tail_relaxed.png",
-      "sprite_h": 560,
+      "sprite_h": 410,
       "pos": [
-        316,
-        628
+        318,
+        640
       ],
       "tags": [
         "accessory",
@@ -179,7 +179,8 @@
       "pose_group": "tail_pose",
       "pose_id": "relaxed",
       "_note": "默认姿态。猫放松时尾巴自然下垂轻摆 —— 慢(0.21Hz≈4.8s一个来回)、幅度小。锚点在顶边=挂接处，曲线 tip（顶边固定、底端甩得最大）",
-      "layer": 30
+      "layer": 30,
+      "_size_note": "实测定的，不是估的：笔画粗细 = 前臂(62px)的 1.02 倍 —— 真猫尾粗细≈前肢粗细；长度 378 = 躯干+头(630px)的 0.60，真猫尾长也是体长的 0.6~0.7。上一版 sprite_h=560 时粗细 86px = 前臂 1.39 倍，用户一眼看出太大"
     },
     {
       "id": "tail_cat_up",
@@ -187,10 +188,10 @@
       "slot": "hip_back",
       "source": "acc_tail_cat_up.png",
       "sprite": "acc_tail_up.png",
-      "sprite_h": 470,
+      "sprite_h": 480,
       "pos": [
-        286,
-        712
+        288,
+        716
       ],
       "tags": [
         "accessory",
@@ -311,8 +312,8 @@
       "sprite": "acc_tail_puff.png",
       "sprite_h": 430,
       "pos": [
-        276,
-        712
+        274,
+        714
       ],
       "tags": [
         "accessory",
@@ -423,7 +424,8 @@
       "pose_group": "tail_pose",
       "pose_id": "puff",
       "_note": "惊吓/极度紧张。行为学依据：炸毛是竖起全身毛发让自己看起来更庞大，常伴哈气、飞机耳、拱背。摆动最快最小 = 僵直发抖，不是摇摆",
-      "layer": 32
+      "layer": 32,
+      "_size_note": "炸毛保持 430。瘦了默认那根之后，炸毛/常态 = 111/63 = **1.76 倍**，总算接近真猫『炸毛让自己看起来更庞大』的观感。真猫是 3 倍，动漫一般做 2 倍左右，再大就从『受惊』变成『鸡毛掸子』了"
     }
   ],
   "pose_groups": [

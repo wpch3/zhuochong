@@ -22,7 +22,8 @@
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
-#define ZRIG_MAX_PHYS     48   /* 2026-10-16 抬：24 → 48。猫尾三姿态差分件各带 3 段摆链 = 9 条，直接把 24 顶到 23/24=96%。每多一种动物形象还要再加 */
+#define ZRIG_MAX_PHYS     48
+#define ZRIG_MAX_POSE_MOOD 16   /* 每个姿态组能登记多少种情绪（情绪词表现有 11 个） */   /* 2026-10-16 抬：24 → 48。猫尾三姿态差分件各带 3 段摆链 = 9 条，直接把 24 顶到 23/24=96%。每多一种动物形象还要再加 */
 #define ZRIG_MAX_PARAMS  160   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
 #define ZRIG_MAX_BLINK_MOOD 16    /* 眨眼情绪表上限：情绪词表现在 11 个，留一倍余量 */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
@@ -320,6 +321,12 @@ typedef struct {
     double fade;              /* 切换淡化秒数 */
     int  ent0, nent;          /* 在 r->poseents 里的区间 */
     int  cur;                 /* 当前档位（相对 ent0 的序号），-1 = 全关 */
+    /* 情绪 → 档位（T45.2d）。表来自 rig.json 的 poses[].mood_map：
+       { "happy":"up", "surprise":"puff", ... }。口径和 blink.mood_rate 一样 ——
+       查不到的情绪**不动**当前档位（不是回默认），因为"没写"的含义是
+       "这个情绪跟这个部位无关"，而不是"这个情绪要把它复位"。 */
+    int    nmood;
+    struct { char mood[24]; int ent; } mood_map[ZRIG_MAX_POSE_MOOD];
 } zpose;
 
 /* 参数驱动的交叉淡化（T24.5）：同一个部位有两张姿态图（常态鞋 / 踮脚鞋），
@@ -1817,6 +1824,35 @@ static int load_poses(zrig *r, const zjson *jp, zdiag *d, const char *file)
             int t;
             for (t = 0; t < g->nent; ++t)
                 r->poseents[g->ent0 + t].opacity = (t == g->cur) ? 1.0 : 0.0;
+        }
+        {   /* mood_map: { "happy":"up", "surprise":"puff", ... }（T45.2d） */
+            const zjson *mm = zjson_obj_get((zjson *)gj, "mood_map");
+            if (mm && zjson_is(mm, ZJSON_OBJ)) {
+                size_t mi, mn = zjson_count((zjson *)mm);
+                for (mi = 0; mi < mn; ++mi) {
+                    const char *k = zjson_key_at((zjson *)mm, mi);
+                    const char *v = zjson_str(zjson_at((zjson *)mm, mi), NULL);
+                    int t, found = -1;
+                    if (!k || !*k || k[0] == '_') continue;   /* _note 之类跳过 */
+                    if (g->nmood >= ZRIG_MAX_POSE_MOOD) {
+                        zdiag_error(d, file, gj ? gj->line : 0, 0, path,
+                                    "mood_map 条目过多（上限 %d）", ZRIG_MAX_POSE_MOOD);
+                        return -1;
+                    }
+                    if (!v || !*v) continue;
+                    for (t = 0; t < g->nent; ++t)
+                        if (z_streq(r->poseents[g->ent0 + t].id, v)) { found = t; break; }
+                    if (found < 0) {
+                        zdiag_error(d, file, gj ? gj->line : 0, 0, path,
+                                    "mood_map['%s'] 指向的档位 '%s' 不存在", k, v);
+                        return -1;
+                    }
+                    z_strlcpy(g->mood_map[g->nmood].mood, k,
+                              sizeof(g->mood_map[0].mood));
+                    g->mood_map[g->nmood].ent = found;
+                    g->nmood++;
+                }
+            }
         }
         r->nposes++;
     }
@@ -4395,6 +4431,21 @@ void zrig_pose_snap(zrig *r)
 
 /* 切档。entry 传 NULL / "" / "none" = 整组都淡出（Live2D 里要靠一个空白部件实现，
    我们直接支持"全关"，省一张透明图）。组或档位不存在返回 -1（不许悄悄忽略）。 */
+void zrig_pose_apply_mood(zrig *r, const char *mood)
+{
+    int gi, m;
+    if (!r || !mood || !*mood) return;
+    for (gi = 0; gi < r->nposes; ++gi) {
+        zpose *g = &r->poses[gi];
+        for (m = 0; m < g->nmood; ++m) {
+            if (!z_streq(g->mood_map[m].mood, mood)) continue;
+            g->cur = g->mood_map[m].ent;   /* 淡化由 pose 自己的 fade 负责 */
+            break;
+        }
+        /* 查不到就不动：没写 = 这个情绪跟这个部位无关，不是"要复位" */
+    }
+}
+
 int zrig_pose_set(zrig *r, const char *group, const char *entry)
 {
     int gi, t, next = -1;

@@ -855,6 +855,11 @@ int zpet_express(zpet *p, const char *mood, double now)
        而且和"有没有对应动作规则"无关 —— 情绪表里没写动作的情绪
        （比如 think）照样该改眨眼节奏，否则一半情绪是哑的。 */
     zrig_blink_set_mood(p->rig, mood);
+    /* 姿态也跟着情绪走（T45.2d）：猫尾竖起/垂下/炸毛是三张差分件，
+       靠 poses[].mood_map 切。和上面眨眼一样，放在 match_rule 之前，
+       而且和"有没有对应动作规则"无关 —— 情绪表里没写动作的情绪
+       （比如 think）照样该换尾巴姿态。 */
+    zrig_pose_apply_mood(p->rig, mood);
     r = match_rule(p, "mood", "", mood, 0);
     if (!r) return 0;   /* 没有对应规则：只记录情绪，不改动作 */
     return run_rule(p, r, NULL, NULL, 0, now);

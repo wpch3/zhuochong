@@ -44,8 +44,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_relaxed.png",
       "size": [
-        172,
-        560
+        126,
+        410
       ]
     },
     {
@@ -53,8 +53,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_up.png",
       "size": [
-        112,
-        470
+        114,
+        480
       ]
     },
     {

@@ -721,6 +721,12 @@ def attach_emit(rig, base, base_root):
             if grp is None:
                 grp = {"id": pg["id"], "fade": float(pg["fade"]),
                        "default": pg["default"], "entries": [], "note": pg["note"]}
+                # 情绪 → 档位（T45.2d）。表在 attachments.json 的 mood_pose 里，
+                # 这里只是搬运；引擎按它在 zpet_express() 里自动切。
+                mp = (table.get("mood_pose") or {}).get(pg["id"])
+                if mp:
+                    grp["mood_map"] = {k: v for k, v in mp.items()
+                                       if not k.startswith("_")}
                 rig["poses"].append(grp)
             grp["entries"].append({"id": att["pose_id"], "parts": [pid]})
 
