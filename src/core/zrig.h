@@ -95,6 +95,11 @@ void   zrig_pose_apply_mood(zrig *r, const char *mood);
 /* 情绪 → 参数值（T45.3）。按 rig.json 的 mood_params 直接写参数当前值；
    某条参数没登记这个情绪就**不动它**。猫耳的「直立/飞机耳/前倾」走这条。 */
 void   zrig_apply_mood_params(zrig *r, const char *mood);
+/* 情绪 → 摆动倍率（第四张情绪表，T45.2f）。读 rig.json 的 mood_swing：
+   { "params": [...], "moods": { "angry": [频率倍率, 幅度倍率], ... } }。
+   只缩放 amp 不缩放 bias（bias 是静态姿态偏置），切换时做相位补偿避免跳相。
+   和另外三张表同口径：**查不到的情绪不动**。 */
+void   zrig_apply_mood_swing(zrig *r, const char *mood);
 int    zrig_pose_count(const zrig *r);
 const char *zrig_pose_id(const zrig *r, int i);
 int    zrig_pose_entry_count(const zrig *r, const char *group);

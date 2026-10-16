@@ -442,6 +442,135 @@
       "_size_note": "炸毛保持 430。瘦了默认那根之后，炸毛/常态 = 111/63 = **1.76 倍**，总算接近真猫『炸毛让自己看起来更庞大』的观感。真猫是 3 倍，动漫一般做 2 倍左右，再大就从『受惊』变成『鸡毛掸子』了"
     },
     {
+      "id": "tail_cat_tuck",
+      "label": "夹紧·示弱",
+      "slot": "hip_back",
+      "source": "acc_tail_cat_tuck.png",
+      "sprite": "acc_tail_tuck.png",
+      "sprite_h": 404,
+      "pos": [
+        322,
+        648
+      ],
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "param": {
+        "id": "ParamAccTailCat",
+        "label": "猫尾（0=摘 1=戴）",
+        "default": 1.0
+      },
+      "physics": {
+        "deformer": {
+          "id": "tail_tuck_s",
+          "cols": 2,
+          "rows": 4,
+          "note": "夹紧的 S 形甩动只有 relaxed 的 37% —— 尾巴被压在身上，摆不开。注意这个数**不能**照搬 relaxed 第一版那套（[0,2,5,-4.5,-9]）被否掉的理由：那次是整条 520px 的尾巴只摆 6.6px 等于没动；这里是**有意**让它几乎不动，形状本身已经表达了情绪。",
+          "amp": [
+            0.0,
+            2.2,
+            5.5,
+            -4.6,
+            -9.0
+          ]
+        },
+        "segments": [
+          {
+            "id": "tail_tuck_x",
+            "driver": "chest",
+            "axis": "x",
+            "param": "bend_x",
+            "ratio": 1.0,
+            "stiffness": 34,
+            "damping": 6.0,
+            "max": 9,
+            "note": "刚度 34（relaxed 是 18）、行程 9px（relaxed 24）—— 夹紧的尾巴是**绷住**的，跟着身体甩的余量很小。",
+            "input": [
+              {
+                "param": "ParamBodyAngleX",
+                "weight": 1.0
+              },
+              {
+                "param": "ParamBodyAngleZ",
+                "weight": 0.6
+              },
+              {
+                "param": "ParamBreath",
+                "weight": 2.2
+              }
+            ]
+          },
+          {
+            "id": "tail_tuck_tip",
+            "driver": "tail_tuck_x",
+            "deformer": "tail_tuck_s",
+            "ratio": 0.9,
+            "stiffness": 22,
+            "damping": 4.0,
+            "max": 1.0,
+            "note": "梢段同样收紧，鞭感基本消掉。"
+          },
+          {
+            "id": "tail_tuck_y",
+            "driver": "chest",
+            "axis": "y",
+            "param": "bend_y",
+            "ratio": 0.7,
+            "stiffness": 44,
+            "damping": 6.8,
+            "max": 5,
+            "note": "上下垂荡也压到 5px。",
+            "input": [
+              {
+                "param": "ParamBodyAngleY",
+                "weight": 1.0
+              },
+              {
+                "param": "ParamBreath",
+                "weight": 1.6
+              }
+            ]
+          }
+        ]
+      },
+      "swing": {
+        "param": {
+          "id": "ParamAccTailTuckSwing",
+          "label": "猫尾摆动（夹紧·示弱）",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        "deformer_scale": 0.34,
+        "root_rot_deg": 1.4,
+        "motion": {
+          "action": "idle",
+          "wave": "sine",
+          "amp": 1.0,
+          "bias": -0.55,
+          "freq": 0.16
+        },
+        "note": "夹紧时尾巴几乎不动 —— 这是**恐惧的冻结**，不是放松的慢摆。三个数都往下压：形变器只给 0.34 倍（鞭动基本没了）、根部旋转 1.4°（relaxed 是 3.2°）、0.16Hz（6.3 秒一个来回，比 relaxed 的 0.21Hz 还慢）。bias −0.55 是**静态内收**：把尾巴常态就压向身体一侧，而不是居中摆 —— 「夹紧」的形是姿态给的，「贴着」的感觉靠这个偏置。（一个参数两用：bias 给静态姿态、amp 给动态幅度，见 LESSONS 162）"
+      },
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "pose_group": "tail_pose",
+      "pose_id": "tuck",
+      "_note": "恐惧/示弱。猫行为学（第三十二批）：「藏進雙腿間…**極度沒有安全感**」。★ 这是词汇表里语义最独立的一条 —— 在它之前，11 种情绪有 6 种（angry·sad·shy·think·sleepy·neutral）全挤在 relaxed 一个姿态上，只靠摆速区分。sad/shy 本该是夹紧。",
+      "layer": 33,
+      "_size_note": "实测对齐，不是估的：按**笔画粗细**和 relaxed 对齐。\n  relaxed 源图内容框 495×1645、笔画 278 ⇒ sprite_h=410 时成品笔画 69px（=1.02×前臂62）。\n  tuck 源图内容框 307×1676、笔画 172 ⇒ 同样粗要 sprite_h=675，从胯部(y=648)一路垂到画布底 1323，太长。\n  ⇒ 用 source_crop 截掉上段直杆（尾根本来就被裙子挡着），剩下 60% 含钩的部分，sprite_h=404，和 relaxed 的 410 同量级。\n★ 为什么比 relaxed 略细是对的：害怕时毛贴身不炸开 —— 和 puff(1.76×) 正好两头。",
+      "source_crop": [
+        0.0,
+        0.4,
+        1.0,
+        1.0
+      ]
+    },
+    {
       "id": "ear_cat_l",
       "label": "猫耳（左）",
       "slot": "head_in_hair",
@@ -567,7 +696,7 @@
       "id": "tail_pose",
       "fade": 0.28,
       "default": "relaxed",
-      "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。三种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose"
+      "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。四种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose"
     }
   ],
   "mood_pose": {
@@ -578,13 +707,13 @@
       "smile": "up",
       "surprise": "puff",
       "angry": "relaxed",
-      "sad": "relaxed",
-      "shy": "relaxed",
+      "sad": "tuck",
+      "shy": "tuck",
       "think": "relaxed",
       "sleepy": "relaxed",
       "neutral": "relaxed"
     },
-    "_note": "情绪→尾巴姿态。正面情绪竖起、惊吓炸毛、其余垂下。angry 不另起姿态是因为生气时猫尾是**垂着快速甩/拍地**，形状不变只是摆得快 —— 走 mood_swing"
+    "_note": "情绪→尾巴姿态。正面情绪竖起、惊吓炸毛、**恐惧示弱夹紧**、其余垂下。angry 不另起姿态是因为生气时猫尾是**垂着快速甩/拍地**，形状不变只是摆得快 —— 走 mood_swing。★ 2026-10-16 补 tuck：在它之前 6/11 种情绪全映射到 relaxed，sad 和 shy 跟 neutral 长得一模一样。猫行为学里「夹紧贴腹=恐惧示弱」是和「竖起」「炸毛」并列的一级词汇，不该缺。"
   },
   "mood_swing": {
     "_note": "情绪→摆动倍率（freq×, amp×）。生气=快速大力甩；放松=慢而小",
@@ -621,12 +750,12 @@
       0.9
     ],
     "sad": [
-      0.7,
-      0.5
+      0.8,
+      0.6
     ],
     "shy": [
-      1.1,
-      0.4
+      1.0,
+      0.5
     ],
     "neutral": [
       1.0,

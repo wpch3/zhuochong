@@ -863,6 +863,9 @@ int zpet_express(zpet *p, const char *mood, double now)
     /* 参数也跟着情绪走（T45.3）：猫耳的直立/飞机耳/前倾是一条连续参数，
        不是差分件 —— 官方/社区做法就是「耳揺れ」一条参数 −30~30。 */
     zrig_apply_mood_params(p->rig, mood);
+    /* 第四张情绪表：摆动倍率（生气=快而大地甩、专注=慢而大、困倦=慢而小）。
+       必须和上面三张一起调 —— 漏掉这行它就又变回一张死表。 */
+    zrig_apply_mood_swing(p->rig, mood);
     r = match_rule(p, "mood", "", mood, 0);
     if (!r) return 0;   /* 没有对应规则：只记录情绪，不改动作 */
     return run_rule(p, r, NULL, NULL, 0, now);

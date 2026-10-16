@@ -594,8 +594,8 @@ L2D_EXTENSIONS = {
                    "不能用 ParamMouthForm 代替：Form 被口型同步占着（T44.1 第 ⑦ 条）",
     "ParamAccTailCat": "猫尾挂件开关（0=摘 1=戴）。A49 挂件插槽系统的第一件；走 DC59 差分件口径 min0/max1，绑 alpha 而不是把部件删掉",
     "ParamAccTailSwing": "猫尾自主摆动。本引擎物理输出的是滞后量不是摆角（zrig.c:3013），慢输入推不出位移，所以「自己动」要靠动作通道驱动这条参数",
-    **{f"ParamAccTail{k}Swing": "猫尾摆动（%s 姿态）。三种姿态是互斥差分件，各有各的摆动参数 —— 放松是慢而大，兴奋是快而小，炸毛是僵直发抖" % k
-       for k in ("Relaxed", "Up", "Puff")},
+    **{f"ParamAccTail{k}Swing": "猫尾摆动（%s 姿态）。四种姿态是互斥差分件，各有各的摆动参数 —— 放松是慢而大，兴奋是快而小，炸毛是僵直发抖，夹紧几乎不动（恐惧的冻结）。值域不是 ±1 而是按 mood_swing 的最大幅度倍率撑开的，否则放大那一侧会被 clamp 削平" % k
+       for k in ("Relaxed", "Up", "Puff", "Tuck")},
     **{f"ParamAccEar{k}": "猫耳挂件开关（%s）。0=摘 1=戴" % k for k in ("L", "R")},
     **{f"ParamEar{k}Angle": "猫耳角度（%s）−1 飞机耳 / +1 竖起前倾。官方/社区做法是**一条连续参数**不是差分件（「耳揺れ」−30~30，「−30で耳が下がる、30ではピンと張る」）" % k
        for k in ("L", "R")},
@@ -2331,6 +2331,58 @@ def strip_prose(src):
         return out
 
 
+def check_no_dead_tables(root):
+    """设计表里的顶层字段必须真的有人读（防"死表"）。
+
+    2026-10-16 撞到的事：`design/attachments.json` 里有一张 `mood_swing`
+    （情绪 → [频率倍率, 幅度倍率]），写得有模有样还带注释，但是
+    **生成器不搬运、rig 里没有、引擎不认识**。它完全不起作用，
+    等于在 JSON 里写日记 —— 而「生气时尾巴快速甩」「专注时慢而大」
+    这两条行为词汇因此从来没交付过，我却按"做完了"报了上去。
+
+    这类 bug 的险恶之处：表在、注释在、文档也写了，静态看一切正常，
+    只有去量运行时才看得出来（tools/probe_swing.c：11 种情绪峰峰值全一样）。
+
+    所以设两道闸：
+      1. 设计表的每个顶层表名，必须在某个 tools/*.py 里被字面引用（搬运方）；
+      2. 对已知要进 rig 的表，直接查 rig.json 里在不在（落地方）。
+    """
+    section("设计表没有死表（写了没人读）")
+    designs = sorted(glob.glob(os.path.join(root, "characters/*/design/attachments.json")))
+    srcs = ""
+    for f in sorted(glob.glob(os.path.join(root, "tools", "*.py"))):
+        with io.open(f, encoding="utf-8") as fh:
+            srcs += fh.read()
+    for dp in designs:
+        tag = os.path.relpath(dp, root)
+        t = jsonc(dp)
+        for key in t:
+            if key.startswith("_"):
+                continue
+            ok_ = ('"%s"' % key) in srcs or ("'%s'" % key) in srcs
+            check("%s：顶层表 %s 有生成器读它" % (tag, key), ok_,
+                  "tools/*.py 里有引用" if ok_ else
+                  "没有任何 tools/*.py 提到 %r —— 这张表只是注释、运行时"
+                  "完全不生效（mood_swing 就是这么漏掉的）" % key)
+    # 落地方：这几张表必须出现在 rig 里
+    must = ("mood_params", "mood_swing")
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        tag = os.path.relpath(rp, root)
+        dp = os.path.join(root, "characters",
+                          rp.split(os.sep)[-4], "design", "attachments.json")
+        if not os.path.isfile(dp):
+            continue
+        t = jsonc(dp)
+        with io.open(rp, encoding="utf-8") as fh:
+            rig = json.load(fh)
+        for key in must:
+            if key not in t:
+                continue
+            check("%s：设计表的 %s 落到 rig 里了" % (tag, key), key in rig,
+                  "已搬运" if key in rig else
+                  "design 里有 %s 但 rig 里没有 —— 生成器漏了搬运这一步" % key)
+
+
 def check_attach_switch(root):
     """挂件摘戴开关必须真的能摘掉（T45.3 撞出来的类 bug）。
 
@@ -2746,6 +2798,7 @@ def main():
                check_form_roadmap,
                check_live2d, check_character,
                check_web, check_contract, check_attach_switch,
+               check_no_dead_tables,
                check_effects_table,
                check_tools, check_hygiene):
         try:

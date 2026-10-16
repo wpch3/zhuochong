@@ -707,12 +707,25 @@ def attach_emit(rig, base, base_root):
                               "scale": float(sw["root_rot_deg"])})
             if not binds:
                 raise SystemExit(f"[make_rig] 挂件 {att['id']} 的 swing 一条绑定都没有")
+            mo = sw["motion"]
+            # ★ 值域要按 mood_swing 的**最大幅度倍率**撑开，不能照抄表里写的 ±1。
+            #   摆动的基准幅度本来就顶着 ±1，情绪想把它放大 1.8 倍时会被 clamp 削平 ——
+            #   实测：表里 angry amp×1.8 / think amp×2.2，探针量出来都是 ×1.00，
+            #   而所有 <1 的倍率（0.5/0.6/0.9）都正常。**只有放大那一侧坏了**，
+            #   这种"一半对一半错"的症状最容易被当成生效了。
+            #   bias 不参与缩放，所以中心点取 bias，上下各留 amp×最大倍率。
+            _amax = max([1.0] + [float(v[1]) for k, v in
+                                 (table.get("mood_swing") or {}).items()
+                                 if not k.startswith("_")
+                                 and isinstance(v, (list, tuple)) and len(v) >= 2])
+            _b, _a = float(mo["bias"]), abs(float(mo["amp"])) * _amax
+            _lo = min(float(swp["min"]), _b - _a) - 0.05
+            _hi = max(float(swp["max"]), _b + _a) + 0.05
             rig["params"].append({
                 "id": swp["id"], "label": swp["label"],
-                "min": float(swp["min"]), "max": float(swp["max"]),
+                "min": round(_lo, 3), "max": round(_hi, 3),
                 "default": float(swp["default"]),
                 "binds": binds, "note": sw["note"]})
-            mo = sw["motion"]
             act = next((x for x in rig["actions"] if x["id"] == mo["action"]), None)
             if act is None:
                 raise SystemExit(f"[make_rig] 挂件 {att['id']} 的 swing.motion.action="
@@ -803,6 +816,28 @@ def attach_emit(rig, base, base_root):
         out[pid_] = {k: float(v) for k, v in m.items() if not k.startswith("_")}
     if out:
         rig["mood_params"] = out
+
+    # 情绪 → 摆动倍率（T45.2f）。**第四张情绪表**。
+    # ★ 这张表以前写在 design/attachments.json 里但**这里没有搬运代码** ——
+    #   生成器不读、rig 里没有、引擎不认识。它是一张死表：看着像配置，
+    #   实际只起到注释作用，「生气时尾巴快速甩」「专注时慢而大」从没交付过。
+    #   发现靠 tools/probe_swing.c：11 种情绪跑出来峰峰值全是 6.4、频率全是 0.21Hz。
+    #   ⇒ 教训：设计表加了新顶层字段，必须同时确认**生成器搬运 + 引擎解析 + 闸门盯着**
+    #     三处都有，否则就是在 JSON 里写日记。selfcheck 的 check_mood_swing 就是那道闸。
+    msw = table.get("mood_swing") or {}
+    swing_ids = [pr["id"] for pr in rig["params"]
+                 if pr["id"].endswith("Swing") and pr["id"].startswith("ParamAcc")]
+    moods = {k: [float(v[0]), float(v[1])]
+             for k, v in msw.items()
+             if not k.startswith("_") and isinstance(v, (list, tuple)) and len(v) >= 2}
+    if swing_ids and moods:
+        rig["mood_swing"] = {
+            "params": sorted(swing_ids),
+            "moods": moods,
+            "_note": "情绪 → [频率倍率, 幅度倍率]。只乘 amp 不乘 bias；"
+                     "切换时引擎做相位补偿（zrig.c zrig_apply_mood_swing）。"
+                     "查不到的情绪不动 —— 和另外三张情绪表同口径。",
+        }
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,

@@ -71,6 +71,23 @@ def build_one(att, slot, redraw_dir, sprites_dir):
                          % (att["id"], bg))
     x0, x1, y0, y1 = xs.min(), xs.max() + 1, ys.min(), ys.max() + 1
 
+    # source_crop：在**内容框**里再截一刀，四个数是比例 [左, 上, 右, 下]。
+    # ★ 为什么需要：出图模型对"长度"很难精确控制。猫尾「夹紧」那张，钩是对的，
+    #   但上面的直杆段画得过长 —— 要让笔画粗细对齐 relaxed（69px）就得把
+    #   sprite_h 开到 675，从胯部一路垂到画布底。截掉上段直杆（尾根本来就被
+    #   裙子挡着）之后，同样的粗细只要 404，和 relaxed 的 410 同量级。
+    # 截在**内容框**的比例上而不是原图像素上，是为了换一张同题材的图也能用。
+    cr = att.get("source_crop")
+    if cr:
+        cw, ch = x1 - x0, y1 - y0
+        nx0 = x0 + int(round(cw * float(cr[0])))
+        ny0 = y0 + int(round(ch * float(cr[1])))
+        nx1 = x0 + int(round(cw * float(cr[2])))
+        ny1 = y0 + int(round(ch * float(cr[3])))
+        if not (nx0 < nx1 <= x1 and ny0 < ny1 <= y1):
+            raise SystemExit("[attach] %s：source_crop %s 截出空区间" % (att["id"], cr))
+        x0, x1, y0, y1 = nx0, nx1, ny0, ny1
+
     # ★ 保长宽比。漫符那边裁成正方是因为漫符本来就是方的；
     #   挂件不是 —— 尾巴 1:2，压成正方会变成一坨。
     padx = int(round((x1 - x0) * CROP_MARGIN))

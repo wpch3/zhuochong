@@ -1629,6 +1629,28 @@
       "hires": 2
     },
     {
+      "id": "acc_tail_cat_tuck",
+      "file": "sprites/acc_tail_tuck@2x.png",
+      "group": "chest",
+      "layer": 33,
+      "pos": [
+        322,
+        648
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "note": "夹紧·示弱（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "acc_ear_cat_l",
       "file": "sprites/acc_ear_l@2x.png",
       "group": "head",
@@ -2097,6 +2119,13 @@
           "amp": 0.08,
           "bias": -0.86,
           "freq": 1.35
+        },
+        {
+          "target": "ParamAccTailTuckSwing",
+          "wave": "sine",
+          "amp": 1.0,
+          "bias": -0.55,
+          "freq": 0.16
         },
         {
           "target": "ParamEarLAngle",
@@ -4402,6 +4431,75 @@
           "dx": -27.0
         }
       ]
+    },
+    {
+      "id": "tail_tuck_s",
+      "part": "acc_tail_cat_tuck",
+      "cols": 2,
+      "rows": 4,
+      "note": "夹紧的 S 形甩动只有 relaxed 的 37% —— 尾巴被压在身上，摆不开。注意这个数**不能**照搬 relaxed 第一版那套（[0,2,5,-4.5,-9]）被否掉的理由：那次是整条 520px 的尾巴只摆 6.6px 等于没动；这里是**有意**让它几乎不动，形状本身已经表达了情绪。",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 2.2
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 2.2
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 2.2
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 5.5
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 5.5
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 5.5
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": -4.6
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": -4.6
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": -4.6
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": -9.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": -9.0
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": -9.0
+        }
+      ]
     }
   ],
   "physics": [
@@ -4768,6 +4866,65 @@
       "damping": 5.0,
       "max": 14,
       "note": "第三段：上下垂荡，同样混入呼吸"
+    },
+    {
+      "id": "tail_tuck_x",
+      "part": "acc_tail_cat_tuck",
+      "input": [
+        {
+          "param": "ParamBodyAngleX",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBodyAngleZ",
+          "weight": 0.6
+        },
+        {
+          "param": "ParamBreath",
+          "weight": 2.2
+        }
+      ],
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 1.0,
+      "stiffness": 34,
+      "damping": 6.0,
+      "max": 9,
+      "note": "刚度 34（relaxed 是 18）、行程 9px（relaxed 24）—— 夹紧的尾巴是**绷住**的，跟着身体甩的余量很小。"
+    },
+    {
+      "id": "tail_tuck_tip",
+      "part": "acc_tail_cat_tuck",
+      "driver": "tail_tuck_x",
+      "deformer": "tail_tuck_s",
+      "ratio": 0.9,
+      "stiffness": 22,
+      "damping": 4.0,
+      "max": 1.0,
+      "note": "梢段同样收紧，鞭感基本消掉。"
+    },
+    {
+      "id": "tail_tuck_y",
+      "part": "acc_tail_cat_tuck",
+      "input": [
+        {
+          "param": "ParamBodyAngleY",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBreath",
+          "weight": 1.6
+        }
+      ],
+      "axis": "y",
+      "param": "bend_y",
+      "curve": "tip",
+      "ratio": 0.7,
+      "stiffness": 44,
+      "damping": 6.8,
+      "max": 5,
+      "note": "上下垂荡也压到 5px。"
     },
     {
       "id": "ear_l_x",
@@ -5947,8 +6104,8 @@
     {
       "id": "ParamAccTailRelaxedSwing",
       "label": "猫尾摆动（垂下·放松）",
-      "min": -1.0,
-      "max": 1.0,
+      "min": -2.25,
+      "max": 2.25,
       "default": 0.0,
       "binds": [
         {
@@ -5966,8 +6123,8 @@
     {
       "id": "ParamAccTailUpSwing",
       "label": "猫尾摆动（竖起·开心）",
-      "min": -1.0,
-      "max": 1.0,
+      "min": -1.182,
+      "max": 1.05,
       "default": 0.0,
       "binds": [
         {
@@ -5985,8 +6142,8 @@
     {
       "id": "ParamAccTailPuffSwing",
       "label": "猫尾摆动（炸毛·受惊）",
-      "min": -1.0,
-      "max": 1.0,
+      "min": -1.086,
+      "max": 1.05,
       "default": 0.0,
       "binds": [
         {
@@ -6000,6 +6157,25 @@
         }
       ],
       "note": "炸毛姿态：静态外倾 −13.8°，摆动只有 ±1.3° 但频率 1.35Hz —— 受惊时是**僵直发抖**，不是摇摆"
+    },
+    {
+      "id": "ParamAccTailTuckSwing",
+      "label": "猫尾摆动（夹紧·示弱）",
+      "min": -2.8,
+      "max": 1.7,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "tail_tuck_s",
+          "scale": 0.34
+        },
+        {
+          "part": "acc_tail_cat_tuck",
+          "param": "rot_deg",
+          "scale": 1.4
+        }
+      ],
+      "note": "夹紧时尾巴几乎不动 —— 这是**恐惧的冻结**，不是放松的慢摆。三个数都往下压：形变器只给 0.34 倍（鞭动基本没了）、根部旋转 1.4°（relaxed 是 3.2°）、0.16Hz（6.3 秒一个来回，比 relaxed 的 0.21Hz 还慢）。bias −0.55 是**静态内收**：把尾巴常态就压向身体一侧，而不是居中摆 —— 「夹紧」的形是姿态给的，「贴着」的感觉靠这个偏置。（一个参数两用：bias 给静态姿态、amp 给动态幅度，见 LESSONS 162）"
     },
     {
       "id": "ParamAccEarL",
@@ -6020,8 +6196,8 @@
     {
       "id": "ParamEarLAngle",
       "label": "猫耳角度r（−1飞机耳 +1竖起）",
-      "min": -1.0,
-      "max": 1.0,
+      "min": -1.05,
+      "max": 1.05,
       "default": 0.0,
       "binds": [
         {
@@ -6051,8 +6227,8 @@
     {
       "id": "ParamEarRAngle",
       "label": "猫耳角度r（−1飞机耳 +1竖起）",
-      "min": -1.0,
-      "max": 1.0,
+      "min": -1.05,
+      "max": 1.05,
       "default": 0.0,
       "binds": [
         {
@@ -6109,9 +6285,15 @@
           "parts": [
             "acc_tail_cat_puff"
           ]
+        },
+        {
+          "id": "tuck",
+          "parts": [
+            "acc_tail_cat_tuck"
+          ]
         }
       ],
-      "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。三种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose",
+      "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。四种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose",
       "mood_map": {
         "happy": "up",
         "affection": "up",
@@ -6119,8 +6301,8 @@
         "smile": "up",
         "surprise": "puff",
         "angry": "relaxed",
-        "sad": "relaxed",
-        "shy": "relaxed",
+        "sad": "tuck",
+        "shy": "tuck",
         "think": "relaxed",
         "sleepy": "relaxed",
         "neutral": "relaxed"
@@ -6681,5 +6863,60 @@
       "sleepy": -0.35,
       "neutral": 0.0
     }
+  },
+  "mood_swing": {
+    "params": [
+      "ParamAccTailPuffSwing",
+      "ParamAccTailRelaxedSwing",
+      "ParamAccTailTuckSwing",
+      "ParamAccTailUpSwing"
+    ],
+    "moods": {
+      "angry": [
+        3.2,
+        1.8
+      ],
+      "surprise": [
+        2.4,
+        0.5
+      ],
+      "think": [
+        0.55,
+        2.2
+      ],
+      "sleepy": [
+        0.45,
+        0.6
+      ],
+      "happy": [
+        1.6,
+        1.0
+      ],
+      "cute": [
+        1.6,
+        1.0
+      ],
+      "affection": [
+        1.3,
+        0.9
+      ],
+      "smile": [
+        1.2,
+        0.9
+      ],
+      "sad": [
+        0.8,
+        0.6
+      ],
+      "shy": [
+        1.0,
+        0.5
+      ],
+      "neutral": [
+        1.0,
+        1.0
+      ]
+    },
+    "_note": "情绪 → [频率倍率, 幅度倍率]。只乘 amp 不乘 bias；切换时引擎做相位补偿（zrig.c zrig_apply_mood_swing）。查不到的情绪不动 —— 和另外三张情绪表同口径。"
   }
 }

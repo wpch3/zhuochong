@@ -430,6 +430,22 @@ struct zrig {
         int    n;
         struct { char mood[24]; double v; } e[ZRIG_MAX_BLINK_MOOD];
     } mood_param[ZRIG_MAX_MOOD_PARAM];
+    /* 情绪 → 摆动倍率（T45.2f）。表来自 rig.json 的 mood_swing：
+         { "params": ["ParamAccTailRelaxedSwing", ...],
+           "moods":  { "angry": [3.2, 1.8], ... } }   // [频率倍率, 幅度倍率]
+       这是第四张情绪表（前三张：blink.mood_rate / poses[].mood_map / mood_params）。
+       ★ 口径和前三张一致：**查不到的情绪不动**，不是回 1.0。
+       ★ 只乘 amp 不乘 bias —— bias 是静态姿态偏置，amp 才是动态幅度（LESSONS 162）。
+       sw_tshift 是**相位补偿**：频率倍率变了之后，sin(2π·f·t) 会当场跳相，
+       t 大的时候等于尾巴瞬移。切换时按
+            tshift' = t* − (m_old/m_new)·(t* − tshift)
+       重算，保证切换瞬间相位连续（m 的基频会约掉，所以和通道自己的 freq 无关）。 */
+    int    nswing_param;
+    int    swing_param[ZRIG_MAX_MOOD_PARAM];
+    int    nmood_swing;
+    struct { char mood[24]; double fmul, amul; } mood_swing[ZRIG_MAX_BLINK_MOOD];
+    double sw_fmul[ZRIG_MAX_PARAMS], sw_amul[ZRIG_MAX_PARAMS];
+    double sw_tshift[ZRIG_MAX_PARAMS];
     double blink_rate, blink_closed_scale;
     int    phys_enabled;      /* 0 = 关掉物理摆（排查接缝时用，见 zrig_phys_set_enabled） */
     double blink_closing, blink_closed, blink_opening;
@@ -2307,6 +2323,16 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     r->blink_manual = -1.0;
     r->blink_manual_l = -1.0;
     r->blink_manual_r = -1.0;
+    {   /* ★ 摆动倍率必须显式初始化成 1.0。zrig 是 calloc 出来的 ⇒ 默认 0.0，
+           而 0.0 的含义是"幅度归零、频率归零" —— 不是"不调制"。
+           漏了这步的话，**所有**挂件的自主摆动在加载后就直接死掉。 */
+        int _i;
+        for (_i = 0; _i < ZRIG_MAX_PARAMS; ++_i) {
+            r->sw_fmul[_i] = 1.0;
+            r->sw_amul[_i] = 1.0;
+            r->sw_tshift[_i] = 0.0;
+        }
+    }
     r->blink_imin = 2.0;
     r->blink_imax = 8.0;
     r->blink_rate = 1.0;
@@ -2437,6 +2463,68 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_visemes(r, zjson_obj_get(root, "visemes"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
     if (load_poses(r, zjson_obj_get(root, "poses"), diag, file) != 0) goto fail;
+    {   /* mood_swing（T45.2f）：情绪 → 摆动倍率。同样要在 params 之后。
+           ★ 这张表以前只躺在 design/attachments.json 里，生成器不读、rig 里没有、
+             引擎不认识 —— 是一张**死表**：看着像配置，其实只是注释。
+             「生气时尾巴快速甩」「专注时慢而大」这两条词汇因此从来没交付过。
+             发现它靠的是一个确定性探针（tools/probe_swing.c）：
+             11 种情绪跑出来峰峰值全是 6.4、频率全是 0.21Hz。 */
+        const zjson *ms = zjson_obj_get(root, "mood_swing");
+        if (ms && zjson_is(ms, ZJSON_OBJ)) {
+            const zjson *ps = zjson_obj_get(ms, "params");
+            const zjson *mo = zjson_obj_get(ms, "moods");
+            size_t i, n;
+            if (ps && zjson_is(ps, ZJSON_ARR)) {
+                n = zjson_count((zjson *)ps);
+                for (i = 0; i < n; ++i) {
+                    const char *pid = zjson_str(zjson_at((zjson *)ps, i), NULL);
+                    int pi;
+                    if (!pid || !*pid) continue;
+                    pi = param_find(r, pid);
+                    if (pi < 0) {
+                        zdiag_error(diag, file, ps->line, 0, "mood_swing",
+                                    "mood_swing.params 提到了不存在的参数 '%s'", pid);
+                        goto fail;
+                    }
+                    if (r->nswing_param >= ZRIG_MAX_MOOD_PARAM) {
+                        zdiag_error(diag, file, ps->line, 0, "mood_swing",
+                                    "mood_swing.params 过多（上限 %d）",
+                                    ZRIG_MAX_MOOD_PARAM);
+                        goto fail;
+                    }
+                    r->swing_param[r->nswing_param++] = pi;
+                }
+            }
+            if (mo && zjson_is(mo, ZJSON_OBJ)) {
+                n = zjson_count((zjson *)mo);
+                for (i = 0; i < n; ++i) {
+                    const char *mk = zjson_key_at((zjson *)mo, i);
+                    const zjson *pr = zjson_at((zjson *)mo, i);
+                    int slot = r->nmood_swing;
+                    if (!mk || !*mk || mk[0] == '_') continue;
+                    if (!pr || !zjson_is(pr, ZJSON_ARR) || zjson_count((zjson *)pr) < 2) {
+                        zdiag_error(diag, file, mo->line, 0, "mood_swing",
+                                    "mood_swing.moods['%s'] 要写成 [频率倍率, 幅度倍率]", mk);
+                        goto fail;
+                    }
+                    if (slot >= ZRIG_MAX_BLINK_MOOD) {
+                        zdiag_error(diag, file, mo->line, 0, "mood_swing",
+                                    "mood_swing.moods 条目过多（上限 %d）",
+                                    ZRIG_MAX_BLINK_MOOD);
+                        goto fail;
+                    }
+                    z_strlcpy(r->mood_swing[slot].mood, mk,
+                              sizeof(r->mood_swing[0].mood));
+                    r->mood_swing[slot].fmul =
+                        ZC_CLAMP(zjson_num(zjson_at((zjson *)pr, 0), 1.0), 0.05, 20.0);
+                    r->mood_swing[slot].amul =
+                        ZC_CLAMP(zjson_num(zjson_at((zjson *)pr, 1), 1.0), 0.0, 20.0);
+                    r->nmood_swing++;
+                }
+            }
+        }
+    }
+
     {   /* mood_params（T45.3）：情绪 → 参数值。放在 params/poses 之后解析，
            因为要按 id 找参数下标。 */
         const zjson *mp = zjson_obj_get(root, "mood_params");
@@ -2744,6 +2832,18 @@ static double eval_channel_wave(const zrig *r, const zchan *c, double t, double 
 static double eval_channel(const zrig *r, const zchan *c, double t, double total)
 {
     if (c->nkeys > 0) return eval_keys(r, c, t, total);
+    /* 情绪 → 摆动倍率（mood_swing）。只对**命名参数**通道生效：摆动的语义载体
+       就是那条参数，直接改部件通道会把别的动作也一起缩放。
+       bias 不参与缩放 —— 它是静态姿态偏置（"尾巴常态偏向一侧"），
+       跟着 amp 一起放大会让尾巴整条歪出去。 */
+    if (c->pparam >= 0 && c->pparam < r->nparams &&
+        (r->sw_amul[c->pparam] != 1.0 || r->sw_fmul[c->pparam] != 1.0)) {
+        zchan m = *c;
+        m.amp  *= r->sw_amul[c->pparam];
+        m.freq *= r->sw_fmul[c->pparam];
+        return c->bias + eval_channel_wave(r, &m,
+                                           t - r->sw_tshift[c->pparam], total);
+    }
     return c->bias + eval_channel_wave(r, c, t, total);
 }
 
@@ -4501,6 +4601,27 @@ void zrig_apply_mood_params(zrig *r, const char *mood)
             break;
         }
         /* 查不到就不动：没写 = 这个情绪跟这条参数无关 */
+    }
+}
+
+void zrig_apply_mood_swing(zrig *r, const char *mood)
+{
+    int i, k;
+    double now;
+    if (!r || !mood || !*mood || r->nswing_param <= 0) return;
+    for (k = 0; k < r->nmood_swing; ++k)
+        if (z_streq(r->mood_swing[k].mood, mood)) break;
+    if (k >= r->nmood_swing) return;   /* 查不到就不动（和另外三张情绪表同口径） */
+    now = zrig_action_elapsed(r);
+    for (i = 0; i < r->nswing_param; ++i) {
+        int pi = r->swing_param[i];
+        double m0 = r->sw_fmul[pi], m1 = r->mood_swing[k].fmul;
+        if (pi < 0 || pi >= r->nparams || m1 <= 0.0) continue;
+        /* 相位连续：切换瞬间 f1·(t−shift1) 必须等于 f0·(t−shift0)。
+           f = 基频×倍率，基频约掉 ⇒ 只跟倍率比有关。 */
+        r->sw_tshift[pi] = now - (m0 / m1) * (now - r->sw_tshift[pi]);
+        r->sw_fmul[pi] = m1;
+        r->sw_amul[pi] = r->mood_swing[k].amul;
     }
 }
 

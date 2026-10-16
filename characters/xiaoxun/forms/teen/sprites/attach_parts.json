@@ -79,6 +79,15 @@
       ]
     },
     {
+      "id": "tail_cat_tuck",
+      "slot": "hip_back",
+      "file": "sprites/acc_tail_tuck.png",
+      "size": [
+        127,
+        404
+      ]
+    },
+    {
       "id": "ear_cat_l",
       "slot": "head_in_hair",
       "file": "sprites/acc_ear_l.png",
