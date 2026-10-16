@@ -22,7 +22,7 @@
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  32
-#define ZRIG_MAX_PHYS     24
+#define ZRIG_MAX_PHYS     48   /* 2026-10-16 抬：24 → 48。猫尾三姿态差分件各带 3 段摆链 = 9 条，直接把 24 顶到 23/24=96%。每多一种动物形象还要再加 */
 #define ZRIG_MAX_PARAMS  160   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
 #define ZRIG_MAX_BLINK_MOOD 16    /* 眨眼情绪表上限：情绪词表现在 11 个，留一倍余量 */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */

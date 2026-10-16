@@ -654,9 +654,11 @@ def attach_emit(rig, base, base_root):
             "id": pid,
             "file": hi if use_hi else g["file"],
             "group": slot["group"],
-            "layer": slot["layer"],
+            "layer": int(att.get("layer", slot["layer"])),
             "pos": list(att["pos"]),
-            "anchor": list(slot["anchor"]),
+            # 锚点与曲线可以被**挂件自己**覆盖：同一个槽里，垂下的尾巴尾根在顶边、
+            # 竖起的尾巴尾根在底边，曲线也必须跟着反过来（tip ↔ root）。
+            "anchor": list(att.get("anchor", slot["anchor"])),
             "tags": list(att.get("tags", [])),
             "note": f"{att.get('label', att['id'])}（挂件，槽 {att['slot']}）："
                     f"{slot.get('note', '')}",
@@ -665,14 +667,20 @@ def attach_emit(rig, base, base_root):
         })
 
         # —— 开关参数 ——（DC59 差分件口径：min0 / max1，0=摘掉 1=戴上）
+        # ★ 进了 pose 互斥组的挂件**不发**这条参数：显隐归姿态组管
+        #   （`/api/pose?group=X&id=none` 整组关掉），再发一条就是两套开关打架，
+        #   而且三个姿态 deepcopy 出来会撞同一个参数 id。
         pr = att["param"]
-        rig["params"].append({
-            "id": pr["id"], "label": pr["label"],
-            "min": 0.0, "max": 1.0, "default": float(pr["default"]),
-            "binds": [{"part": pid, "param": "alpha", "scale": 1.0}],
-            "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，"
-                    "不是把部件删掉而是把不透明度压到 0",
-        })
+        if att.get("pose_group"):
+            pr = None
+        if pr:
+            rig["params"].append({
+                "id": pr["id"], "label": pr["label"],
+                "min": 0.0, "max": 1.0, "default": float(pr["default"]),
+                "binds": [{"part": pid, "param": "alpha", "scale": 1.0}],
+                "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，"
+                        "不是把部件删掉而是把不透明度压到 0",
+            })
 
         # —— 自主摆动（T45.2b）——
         # 本引擎物理输出的是**滞后量**（zrig.c:3013 `pos - target`），不是摆角，
@@ -701,6 +709,20 @@ def attach_emit(rig, base, base_root):
                 "target": swp["id"], "wave": mo["wave"],
                 "amp": float(mo["amp"]), "bias": float(mo["bias"]),
                 "freq": float(mo["freq"])})
+
+        if att.get("pose_group"):
+            pg = next((x for x in table.get("pose_groups", [])
+                       if x["id"] == att["pose_group"]), None)
+            if pg is None:
+                raise SystemExit(f"[make_rig] 挂件 {att['id']} 指向不存在的 "
+                                 f"pose_group {att['pose_group']!r}")
+            grp = next((x for x in rig.setdefault("poses", [])
+                        if x["id"] == pg["id"]), None)
+            if grp is None:
+                grp = {"id": pg["id"], "fade": float(pg["fade"]),
+                       "default": pg["default"], "entries": [], "note": pg["note"]}
+                rig["poses"].append(grp)
+            grp["entries"].append({"id": att["pose_id"], "parts": [pid]})
 
         ph = att.get("physics")
         if not ph:
@@ -743,7 +765,7 @@ def attach_emit(rig, base, base_root):
                 e["axis"] = seg_["axis"]
             if "param" in seg_:
                 e["param"] = seg_["param"]
-                e["curve"] = slot["curve"]      # 曲线是**槽**的属性，不是件的
+                e["curve"] = att.get("curve", slot["curve"])
             if "deformer" in seg_:
                 e["deformer"] = seg_["deformer"]
             e.update({k: seg_[k] for k in ("ratio", "stiffness", "damping", "max")})

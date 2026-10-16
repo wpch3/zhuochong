@@ -594,6 +594,8 @@ L2D_EXTENSIONS = {
                    "不能用 ParamMouthForm 代替：Form 被口型同步占着（T44.1 第 ⑦ 条）",
     "ParamAccTailCat": "猫尾挂件开关（0=摘 1=戴）。A49 挂件插槽系统的第一件；走 DC59 差分件口径 min0/max1，绑 alpha 而不是把部件删掉",
     "ParamAccTailSwing": "猫尾自主摆动。本引擎物理输出的是滞后量不是摆角（zrig.c:3013），慢输入推不出位移，所以「自己动」要靠动作通道驱动这条参数",
+    **{f"ParamAccTail{k}Swing": "猫尾摆动（%s 姿态）。三种姿态是互斥差分件，各有各的摆动参数 —— 放松是慢而大，兴奋是快而小，炸毛是僵直发抖" % k
+       for k in ("Relaxed", "Up", "Puff")},
     **{f"ParamSparkle{i}": "第 %d 颗 ✨ 的生命周期（scale+alpha 合一，一颗一个参数）" % i
        for i in range(1, 9)},
 }

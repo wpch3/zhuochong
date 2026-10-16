@@ -1563,8 +1563,8 @@
       "hires": 2
     },
     {
-      "id": "acc_tail_cat",
-      "file": "sprites/acc_tail_cat@2x.png",
+      "id": "acc_tail_cat_relaxed",
+      "file": "sprites/acc_tail_relaxed@2x.png",
       "group": "chest",
       "layer": 30,
       "pos": [
@@ -1579,7 +1579,51 @@
         "accessory",
         "tail"
       ],
-      "note": "猫尾（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
+      "note": "垂下·放松（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_tail_cat_up",
+      "file": "sprites/acc_tail_up@2x.png",
+      "group": "chest",
+      "layer": 31,
+      "pos": [
+        286,
+        712
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "note": "竖起·开心（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_tail_cat_puff",
+      "file": "sprites/acc_tail_puff@2x.png",
+      "group": "chest",
+      "layer": 32,
+      "pos": [
+        276,
+        712
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "note": "炸毛·受惊（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -1990,11 +2034,25 @@
           "freq": 0.18
         },
         {
-          "target": "ParamAccTailSwing",
+          "target": "ParamAccTailRelaxedSwing",
           "wave": "sine",
           "amp": 1.0,
           "bias": 0.0,
           "freq": 0.21
+        },
+        {
+          "target": "ParamAccTailUpSwing",
+          "wave": "sine",
+          "amp": 0.16,
+          "bias": -0.78,
+          "freq": 0.55
+        },
+        {
+          "target": "ParamAccTailPuffSwing",
+          "wave": "sine",
+          "amp": 0.08,
+          "bias": -0.86,
+          "freq": 1.35
         }
       ]
     },
@@ -4081,8 +4139,146 @@
       ]
     },
     {
-      "id": "tail_s",
-      "part": "acc_tail_cat",
+      "id": "tail_relaxed_s",
+      "part": "acc_tail_cat_relaxed",
+      "cols": 2,
+      "rows": 4,
+      "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 6.0
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 6.0
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 6.0
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 15.0
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 15.0
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 15.0
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": -13.5
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": -13.5
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": -13.5
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": -27.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": -27.0
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": -27.0
+        }
+      ]
+    },
+    {
+      "id": "tail_up_s",
+      "part": "acc_tail_cat_up",
+      "cols": 2,
+      "rows": 4,
+      "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 6.0
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 6.0
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 6.0
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 15.0
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 15.0
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 15.0
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": -13.5
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": -13.5
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": -13.5
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": -27.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": -27.0
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": -27.0
+        }
+      ]
+    },
+    {
+      "id": "tail_puff_s",
+      "part": "acc_tail_cat_puff",
       "cols": 2,
       "rows": 4,
       "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
@@ -4339,8 +4535,8 @@
       "note": "后发：整团壳只慢半拍地晃一点点（幅度大了会从脸边上露出来）"
     },
     {
-      "id": "tail_x",
-      "part": "acc_tail_cat",
+      "id": "tail_relaxed_x",
+      "part": "acc_tail_cat_relaxed",
       "input": [
         {
           "param": "ParamBodyAngleX",
@@ -4365,10 +4561,10 @@
       "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）"
     },
     {
-      "id": "tail_tip",
-      "part": "acc_tail_cat",
-      "driver": "tail_x",
-      "deformer": "tail_s",
+      "id": "tail_relaxed_tip",
+      "part": "acc_tail_cat_relaxed",
+      "driver": "tail_relaxed_x",
+      "deformer": "tail_relaxed_s",
       "ratio": 0.9,
       "stiffness": 11,
       "damping": 2.8,
@@ -4376,8 +4572,8 @@
       "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
     },
     {
-      "id": "tail_y",
-      "part": "acc_tail_cat",
+      "id": "tail_relaxed_y",
+      "part": "acc_tail_cat_relaxed",
       "input": [
         {
           "param": "ParamBodyAngleY",
@@ -4391,6 +4587,124 @@
       "axis": "y",
       "param": "bend_y",
       "curve": "tip",
+      "ratio": 0.7,
+      "stiffness": 24,
+      "damping": 5.0,
+      "max": 14,
+      "note": "第三段：上下垂荡，同样混入呼吸"
+    },
+    {
+      "id": "tail_up_x",
+      "part": "acc_tail_cat_up",
+      "input": [
+        {
+          "param": "ParamBodyAngleX",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBodyAngleZ",
+          "weight": 0.6
+        },
+        {
+          "param": "ParamBreath",
+          "weight": 2.2
+        }
+      ],
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "root",
+      "ratio": 1.0,
+      "stiffness": 18,
+      "damping": 4.2,
+      "max": 24,
+      "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）"
+    },
+    {
+      "id": "tail_up_tip",
+      "part": "acc_tail_cat_up",
+      "driver": "tail_up_x",
+      "deformer": "tail_up_s",
+      "ratio": 0.9,
+      "stiffness": 11,
+      "damping": 2.8,
+      "max": 1.0,
+      "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
+    },
+    {
+      "id": "tail_up_y",
+      "part": "acc_tail_cat_up",
+      "input": [
+        {
+          "param": "ParamBodyAngleY",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBreath",
+          "weight": 1.6
+        }
+      ],
+      "axis": "y",
+      "param": "bend_y",
+      "curve": "root",
+      "ratio": 0.7,
+      "stiffness": 24,
+      "damping": 5.0,
+      "max": 14,
+      "note": "第三段：上下垂荡，同样混入呼吸"
+    },
+    {
+      "id": "tail_puff_x",
+      "part": "acc_tail_cat_puff",
+      "input": [
+        {
+          "param": "ParamBodyAngleX",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBodyAngleZ",
+          "weight": 0.6
+        },
+        {
+          "param": "ParamBreath",
+          "weight": 2.2
+        }
+      ],
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "root",
+      "ratio": 1.0,
+      "stiffness": 18,
+      "damping": 4.2,
+      "max": 24,
+      "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）"
+    },
+    {
+      "id": "tail_puff_tip",
+      "part": "acc_tail_cat_puff",
+      "driver": "tail_puff_x",
+      "deformer": "tail_puff_s",
+      "ratio": 0.9,
+      "stiffness": 11,
+      "damping": 2.8,
+      "max": 1.0,
+      "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
+    },
+    {
+      "id": "tail_puff_y",
+      "part": "acc_tail_cat_puff",
+      "input": [
+        {
+          "param": "ParamBodyAngleY",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBreath",
+          "weight": 1.6
+        }
+      ],
+      "axis": "y",
+      "param": "bend_y",
+      "curve": "root",
       "ratio": 0.7,
       "stiffness": 24,
       "damping": 5.0,
@@ -5547,38 +5861,61 @@
       "note": "surprised 动作把它推到 1.0"
     },
     {
-      "id": "ParamAccTailCat",
-      "label": "猫尾（0=摘 1=戴）",
-      "min": 0.0,
-      "max": 1.0,
-      "default": 1.0,
-      "binds": [
-        {
-          "part": "acc_tail_cat",
-          "param": "alpha",
-          "scale": 1.0
-        }
-      ],
-      "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，不是把部件删掉而是把不透明度压到 0"
-    },
-    {
-      "id": "ParamAccTailSwing",
-      "label": "猫尾自主摆动",
+      "id": "ParamAccTailRelaxedSwing",
+      "label": "猫尾摆动（垂下·放松）",
       "min": -1.0,
       "max": 1.0,
       "default": 0.0,
       "binds": [
         {
-          "deformer": "tail_s",
+          "deformer": "tail_relaxed_s",
           "scale": 1.0
         },
         {
-          "part": "acc_tail_cat",
+          "part": "acc_tail_cat_relaxed",
           "param": "rot_deg",
           "scale": 3.2
         }
       ],
       "note": "尾巴自己摆：一条参数同时驱动网格形变器（S 形鞭动）和根部小幅旋转，由 idle 的慢正弦推（0.21Hz ≈ 4.8 秒一个来回，比呼吸 0.28Hz 还慢 —— 猫放松时就是这个节奏）。物理链照旧挂着，在这个自主摆动**之上**再叠一层滞后，所以梢比根慢半拍。★ 为什么不走物理输入：本引擎物理输出的是滞后量不是摆角，慢输入出不来位移（实测 0.3px）"
+    },
+    {
+      "id": "ParamAccTailUpSwing",
+      "label": "猫尾摆动（竖起·开心）",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "tail_up_s",
+          "scale": 1.0
+        },
+        {
+          "part": "acc_tail_cat_up",
+          "param": "rot_deg",
+          "scale": 20.0
+        }
+      ],
+      "note": "竖起姿态：根部旋转同时承担两件事 —— **bias −0.78 × 20° = 静态外倾 −15.6°**（让尾巴斜着升、不被外套挡住；笔直向上会像从腋下长出来），**amp 0.16 × 20° = ±3.2° 的摆动**。兴奋时猫尾是尖端颤，不是大摆，所以幅度小频率高"
+    },
+    {
+      "id": "ParamAccTailPuffSwing",
+      "label": "猫尾摆动（炸毛·受惊）",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "tail_puff_s",
+          "scale": 1.0
+        },
+        {
+          "part": "acc_tail_cat_puff",
+          "param": "rot_deg",
+          "scale": 16.0
+        }
+      ],
+      "note": "炸毛姿态：静态外倾 −13.8°，摆动只有 ±1.3° 但频率 1.35Hz —— 受惊时是**僵直发抖**，不是摇摆"
     }
   ],
   "poses": [
@@ -5603,6 +5940,32 @@
         }
       ],
       "note": "眼高光形状差分；切 none 可以整组关掉（死鱼眼）"
+    },
+    {
+      "id": "tail_pose",
+      "fade": 0.28,
+      "default": "relaxed",
+      "entries": [
+        {
+          "id": "relaxed",
+          "parts": [
+            "acc_tail_cat_relaxed"
+          ]
+        },
+        {
+          "id": "up",
+          "parts": [
+            "acc_tail_cat_up"
+          ]
+        },
+        {
+          "id": "puff",
+          "parts": [
+            "acc_tail_cat_puff"
+          ]
+        }
+      ],
+      "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。三种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose"
     }
   ],
   "xfades": [
