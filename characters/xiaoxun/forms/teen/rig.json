@@ -1568,8 +1568,8 @@
       "group": "chest",
       "layer": 30,
       "pos": [
-        300,
-        636
+        316,
+        628
       ],
       "anchor": [
         0.5,
@@ -1988,6 +1988,13 @@
           "wave": "sine",
           "amp": 0.08,
           "freq": 0.18
+        },
+        {
+          "target": "ParamAccTailSwing",
+          "wave": "sine",
+          "amp": 1.0,
+          "bias": 0.0,
+          "freq": 0.21
         }
       ]
     },
@@ -4334,7 +4341,20 @@
     {
       "id": "tail_x",
       "part": "acc_tail_cat",
-      "driver": "chest",
+      "input": [
+        {
+          "param": "ParamBodyAngleX",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBodyAngleZ",
+          "weight": 0.6
+        },
+        {
+          "param": "ParamBreath",
+          "weight": 2.2
+        }
+      ],
       "axis": "x",
       "param": "bend_x",
       "curve": "tip",
@@ -4342,7 +4362,7 @@
       "stiffness": 18,
       "damping": 4.2,
       "max": 24,
-      "note": "第一段：整条尾巴跟着身体左右甩。比呆毛(42)软得多、幅度(14 vs 8)大得多 —— 尾巴长、重、远离支点"
+      "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）"
     },
     {
       "id": "tail_tip",
@@ -4358,7 +4378,16 @@
     {
       "id": "tail_y",
       "part": "acc_tail_cat",
-      "driver": "chest",
+      "input": [
+        {
+          "param": "ParamBodyAngleY",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBreath",
+          "weight": 1.6
+        }
+      ],
       "axis": "y",
       "param": "bend_y",
       "curve": "tip",
@@ -4366,7 +4395,7 @@
       "stiffness": 24,
       "damping": 5.0,
       "max": 14,
-      "note": "第三段：上下起伏（走动/点头时的垂荡）"
+      "note": "第三段：上下垂荡，同样混入呼吸"
     }
   ],
   "params": [
@@ -5531,6 +5560,25 @@
         }
       ],
       "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，不是把部件删掉而是把不透明度压到 0"
+    },
+    {
+      "id": "ParamAccTailSwing",
+      "label": "猫尾自主摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "tail_s",
+          "scale": 1.0
+        },
+        {
+          "part": "acc_tail_cat",
+          "param": "rot_deg",
+          "scale": 3.2
+        }
+      ],
+      "note": "尾巴自己摆：一条参数同时驱动网格形变器（S 形鞭动）和根部小幅旋转，由 idle 的慢正弦推（0.21Hz ≈ 4.8 秒一个来回，比呼吸 0.28Hz 还慢 —— 猫放松时就是这个节奏）。物理链照旧挂着，在这个自主摆动**之上**再叠一层滞后，所以梢比根慢半拍。★ 为什么不走物理输入：本引擎物理输出的是滞后量不是摆角，慢输入出不来位移（实测 0.3px）"
     }
   ],
   "poses": [

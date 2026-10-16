@@ -32,6 +32,30 @@ from make_manpu_parts import (SOLID_A, bg_color, key_alpha, left_magenta,
                               relay_colors, CROP_MARGIN)
 
 
+def key_alpha_soft(rgb: np.ndarray, bg: np.ndarray) -> np.ndarray:
+    """洋红底的**精确** alpha —— 给要保留渐变的挂件用。
+
+    `make_manpu_parts.key_alpha` 用「到背景的欧氏距离」估覆盖度。那对漫符够用
+    （硬边 + 事后按色卡重铺，边上那点误差被重铺盖掉了），但对要保留渐变的柔边
+    **会系统性高估**：30% 白压在洋红上得到 (255,76,255)，距离法给 0.57，真值是 0.30。
+    结果就是一圈半透明的紫边，而且去边公式拿错 a 一除，紫得更凶。
+
+    洋红底其实有精确解：背景是 (255,0,255)，G 通道为 0，所以
+        观测G = a·前景G + (1−a)·0 = a·前景G
+    把「比中性色多出来多少洋红」定义成 excess = (R+B)/2 − G，
+    纯背景 excess = 255、纯中性前景 excess = 0，于是 a = 1 − excess/255。
+    代回上面的例子：excess = 255−76 = 179 ⇒ a = 0.30。**对上了。**
+
+    前提：前景本身不能是洋红系。银紫→青蓝的尾巴满足；真要做粉色挂件得换判据。
+    """
+    f = rgb.astype(np.float64)
+    excess = (f[..., 0] + f[..., 2]) * 0.5 - f[..., 1]
+    denom = (float(bg[0]) + float(bg[2])) * 0.5 - float(bg[1])
+    if denom < 1.0:
+        raise SystemExit("[attach] 背景不是洋红系，key_alpha_soft 用不了")
+    return np.clip(1.0 - np.maximum(excess, 0.0) / denom, 0.0, 1.0)
+
+
 def build_one(att, slot, redraw_dir, sprites_dir):
     src = os.path.join(redraw_dir, att["source"])
     if not os.path.exists(src):
@@ -59,8 +83,15 @@ def build_one(att, slot, redraw_dir, sprites_dir):
     sx1, sy1 = min(bx0 + bw, rgb.shape[1]), min(by0 + bh, rgb.shape[0])
     canvas[sy0 - by0:sy1 - by0, sx0 - bx0:sx1 - bx0] = rgb[sy0:sy1, sx0:sx1]
 
-    ca = key_alpha(canvas, bg)
-    crgb = relay_colors(canvas, ca, att["recolor"])
+    if att.get("recolor"):
+        ca = key_alpha(canvas, bg)
+        crgb = relay_colors(canvas, ca, att["recolor"])
+    else:
+        # 保留渐变的路径：精确 alpha + 反预乘去边。
+        ca = key_alpha_soft(canvas, bg)
+        aa = ca[..., None]
+        crgb = canvas.astype(np.float64) - (1.0 - aa) * bg.astype(np.float64)
+        crgb = np.clip(crgb / np.maximum(aa, 1e-3), 0, 255)
 
     h1 = int(att["sprite_h"])
     w1 = max(1, int(round(h1 * bw / float(bh))))

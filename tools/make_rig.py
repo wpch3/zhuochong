@@ -674,6 +674,34 @@ def attach_emit(rig, base, base_root):
                     "不是把部件删掉而是把不透明度压到 0",
         })
 
+        # —— 自主摆动（T45.2b）——
+        # 本引擎物理输出的是**滞后量**（zrig.c:3013 `pos - target`），不是摆角，
+        # 所以慢输入（呼吸 0.28Hz）推不出位移 —— 实测只有 0.3px。
+        # 「自己动」必须有驱动源：一条参数 + 动作通道的慢正弦，
+        # 物理链在它**之上**再叠二次滞后（梢比根慢半拍）。
+        sw = att.get("swing")
+        if sw:
+            swp = sw["param"]
+            binds = [{"deformer": att["physics"]["deformer"]["id"],
+                      "scale": float(sw["deformer_scale"])}]
+            if sw.get("root_rot_deg"):
+                binds.append({"part": pid, "param": "rot_deg",
+                              "scale": float(sw["root_rot_deg"])})
+            rig["params"].append({
+                "id": swp["id"], "label": swp["label"],
+                "min": float(swp["min"]), "max": float(swp["max"]),
+                "default": float(swp["default"]),
+                "binds": binds, "note": sw["note"]})
+            mo = sw["motion"]
+            act = next((x for x in rig["actions"] if x["id"] == mo["action"]), None)
+            if act is None:
+                raise SystemExit(f"[make_rig] 挂件 {att['id']} 的 swing.motion.action="
+                                 f"{mo['action']!r} 在 actions 里不存在")
+            act.setdefault("channels", []).append({
+                "target": swp["id"], "wave": mo["wave"],
+                "amp": float(mo["amp"]), "bias": float(mo["bias"]),
+                "freq": float(mo["freq"])})
+
         ph = att.get("physics")
         if not ph:
             continue
@@ -703,7 +731,14 @@ def attach_emit(rig, base, base_root):
         # （zrig.c:210 多段摆 G16：driver 写另一条 physics 的 id 时，
         #   输入就是上一段的输出，而且下标必须比自己小，所以顺序不能乱）。
         for seg_ in ph["segments"]:
-            e = {"id": seg_["id"], "part": pid, "driver": seg_["driver"]}
+            e = {"id": seg_["id"], "part": pid}
+            # input（参数直驱）优先于 driver（跟某个组）—— 引擎也是这个优先级
+            # （zrig.c:1050「有它就不看 driver」）。悬垂挂件靠它混入呼吸，
+            # 这样静止时也一直在晃（社区做法，见 attachments.json 的 note）。
+            if "input" in seg_:
+                e["input"] = seg_["input"]
+            else:
+                e["driver"] = seg_["driver"]
             if "axis" in seg_:
                 e["axis"] = seg_["axis"]
             if "param" in seg_:
