@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import io
 import os
 import sys
 
@@ -117,25 +118,40 @@ IRIS_RAMP = [
 ]
 
 # —— 闪光散布表 ——
-# 坐标是**头部切片包围盒的归一化坐标**（u 横向 0=左边 1=右边，v 纵向 0=顶 1=底），
-# 允许越界 = 飘到头外面。来源 body_parts.json 的 seg_head。
-# size: 'lg'/'md'/'sm' → 三种大小混用（官方讲座《エフェクトの作り方～キラキラ編》
-#       明说「キラキラ1・2・3 三种构造」，一个大小会假）。
-# freq/phase: 每颗自己的生命周期。**频率必须两两不同**，否则跑久了会重新对齐，
-#       又变成「整齐划一地闪」（カワナミ 用 28 颗 28 个参数就是为了避开这个）。
-SPARKLES = [
-    # (u,      v,     size, rot_deg, freq, phase)
-    (-0.24,  0.08, "lg",  -12.0, 0.37, 0.00),
-    ( 1.24,  0.13, "lg",   14.0, 0.29, 0.42),
-    (-0.12,  0.44, "md",   22.0, 0.53, 0.17),
-    ( 1.12,  0.39, "md",  -18.0, 0.43, 0.63),
-    ( 0.13, -0.03, "md",    8.0, 0.61, 0.85),
-    ( 0.87, -0.05, "md",  -26.0, 0.47, 0.31),
-    (-0.28,  0.68, "sm",   31.0, 0.71, 0.54),
-    ( 1.28,  0.64, "sm",  -34.0, 0.67, 0.09),
-]
-SPARKLE_PX = 72                                     # 1× 素材边长
-SPARKLE_SCALE = {"lg": 1.0, "md": 0.68, "sm": 0.45}
+# ✨ 的几何、尺寸档、动法全部搬到 **design/effects.json**（T43.2 / G117）。
+# 这里只负责"按表出图"，不再持有任何一颗的坐标 —— 加一种新漫符不该改这个文件。
+# load_effect() 在 main 里调用后填充下面三个模块级变量。
+SPARKLES = []           # [(u, v, size, rot_deg, freq, phase), ...]
+SPARKLE_PX = 0          # 1× 素材边长
+SPARKLE_SCALE = {}      # {"lg": 1.0, ...}
+
+
+def load_effect(design_dir, eff_id="sparkle"):
+    """从 design/effects.json 取一组特效的声明，填进模块级变量。
+
+    刻意不做默认值兜底：表里缺字段就直接炸，而不是悄悄用一个硬编码的旧值
+    —— 那正是 G117 要消灭的东西（源码里藏着一份影子配置）。
+    """
+    global SPARKLES, SPARKLE_PX, SPARKLE_SCALE
+    path = os.path.join(design_dir, "effects.json")
+    with io.open(path, encoding="utf-8") as f:
+        tbl = json.load(f)
+    hit = [e for e in tbl["effects"] if e["id"] == eff_id]
+    if not hit:
+        raise SystemExit(f"[star_eye] {path} 里没有 id={eff_id} 的特效组")
+    e = hit[0]
+    SPARKLE_PX = int(e["sprite_px"])
+    SPARKLE_SCALE = dict(e["size_class"])
+    SPARKLES = [(i["u"], i["v"], i["size"], i["rot_deg"], i["freq"], i["phase"])
+                for i in e["instances"]]
+    for _, _, sz, _, _, _ in SPARKLES:
+        if sz not in SPARKLE_SCALE:
+            raise SystemExit(f"[star_eye] effects.json: size={sz!r} 不在 size_class 表里")
+    freqs = [i[4] for i in SPARKLES]
+    if len(set(freqs)) != len(freqs):
+        raise SystemExit("[star_eye] effects.json: freq 必须两两不同，"
+                         "否则跑久了会重新对齐，又变成『整齐划一地闪』")
+    return e
 
 
 # ----------------------------------------------------------------- 小工具
@@ -546,6 +562,8 @@ def build_sparkle(src_path: str, sprites: str, head_pos, head_size, report: dict
     report["source_sparkle"] = os.path.relpath(src_path)
     return {"file": "sprites/fx_sparkle.png", "size": [SPARKLE_PX, SPARKLE_PX],
             "blend": "add", "keycolor_px": left_total, "instances": inst}
+    # ⚠ 这里的 "blend":"add" 只是切件器的历史字段，rig 侧**不读它**；
+    #    真正落到 rig.json 的混合模式来自 effects.json 的 "blend"（DC57：剪影外只能 normal）。
 
 
 # ----------------------------------------------------------------- main
@@ -565,10 +583,13 @@ def main() -> int:
             print(f"[star_eye] 没有 {p}，跳过（星星眼是可选差分件）")
             return 0
 
+    eff = load_effect(os.path.join(base, "design"))    # ← T43.2：几何从表来，不在源码里
+
     bp = os.path.join(sprites, "body_parts.json")
     with open(bp, encoding="utf-8") as fh:
         body = json.load(fh)
-    head = next(p for p in body["parts"] if p["id"] == "seg_head")
+    anchor_box = eff.get("anchor", {}).get("box", "seg_head")
+    head = next(p for p in body["parts"] if p["id"] == anchor_box)
 
     report: dict = {"schema_version": "1.0"}
     eyes = build_star_iris(iris_src, sprites, report)

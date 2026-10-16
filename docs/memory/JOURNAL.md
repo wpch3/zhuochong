@@ -2208,3 +2208,37 @@ T44.1 盘参数本轮没动（眼形占满了），仍在队列里。
 **闸**：test_core 809→822（+13），五枪变异全中（去 rate / 去 closed_scale /
 未知情绪不回落 / 旋转改小 / 脸颊同号）。selfcheck 345/0（新增 `ParamMouthX`
 的合规对照表条目）。`make -s check` exit 0。
+
+
+## 续三十八（2026-10-16）：T43.2 声明式特效表，G117 关掉
+
+✨ 原来是这么做的：8 颗的坐标/尺寸/旋转/频率/相位是 `make_star_eye_parts.py` 里的一张
+字面量元组表，层号 `SPARKLE_LAYER0 = 300`、部件名 `f"fx_sparkle_{i}"`、
+参数名 `f"ParamSparkle{i}"`、门控系数 `2.0 / -1.0`、动法 `amp 0.62 bias 0.38`
+散落在 `make_rig.py` 的四个地方。要上四种漫符就得照抄四遍。
+
+现在全部搬进 `characters/xiaoxun/design/effects.json`。两个生成器：
+切件器加了 `load_effect()`（`SPARKLES` 变成空壳 `[]`），
+`make_rig.py` 删了 `SPARKLE_LAYER0`、加了 `fx_gate_binds()`，所有字面量换成读表。
+
+**验收口径是"迁完输出必须逐字节相同"，达成了** —— `rig.json` 和 `star_eye_parts.json`
+两个 `diff -q` 都静默通过。
+
+**五枪表生效验证**：改 `layer0` → 层号跟着变；改 `param.prefix` → 参数名跟着变；
+改 `gates[1].scale` → MouthForm 笑门的系数跟着变；改 `motion.amp` → idle 通道跟着变；
+删 3 片 → 部件与参数从 8 降到 5。
+
+第 5 枪一开始**没过** —— 删了 3 片但片数还是 8。查出来是数据流有两段：
+`effects.json` →（切件器）→ `star_eye_parts.json` →（make_rig）→ `rig.json`，
+片数走第一段，只跑 make_rig 当然不动。重跑切件器就对了。
+这是个会咬人的隐性约定，已写进 T43.2 / T43.3 的备注和教训 149。
+
+**反向闸（教训 148）**：这类重构的特有失败模式是"表迁好了，下次有人又在代码里塞字面量"。
+所以 selfcheck 新增一节 10 项（345→355），除了查表本身（字段齐全、
+blend 必须 normal 照 DC57、freq 两两不同、尺寸档要混用），
+还**反向查源码里不许再出现** `SPARKLE_LAYER0` / `f"fx_sparkle_{i}"` / `f"ParamSparkle{i}"`，
+且切件器的 `SPARKLES` 必须恰好是 `[]`。三枪变异全中。
+（查之前先把注释行剥掉，否则讲解这件事的注释会把自己判红 —— 这个坑踩过。）
+
+**下一步 T43.3** 起第一批漫符素材（汗 / 💢 / 暗雲 / ZZZ）。接线方式已经就绪：
+加一种 = `effects.json` 里加一条 + 一张素材，不用动生成器。

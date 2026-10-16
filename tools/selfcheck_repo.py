@@ -2288,6 +2288,74 @@ def check_contract(root):
 
 
 # ------------------------------------------------------------------ 7 工具链
+def check_effects_table(root):
+    """声明式特效表（T43.2 / G117）。
+
+    这一节防的是**回退**：G117 的病根是特效的几何/层号/动法写死在 .py 源码里，
+    加一种漫符就得照抄一遍代码。迁到 design/effects.json 之后，最容易发生的事
+    就是下一个人图省事，又在生成器里塞一行字面量 —— 那张表就名存实亡了。
+    所以这里既查表本身的完整性，也**反向查源码里不许再出现那些字面量**。
+    """
+    section("声明式特效表（T43.2 / G117）")
+    tables = sorted(glob.glob(os.path.join(root, "characters/*/design/effects.json")))
+    check("有角色声明了特效表", bool(tables),
+          "%d 份" % len(tables) if tables else "一份都没有 —— G117 还没迁")
+    for tp in tables:
+        tag = os.path.relpath(tp, root)
+        t = jsonc(tp)
+        effs = t.get("effects", [])
+        check("%s：effects 非空" % tag, bool(effs), "%d 组" % len(effs))
+        for e in effs:
+            eid = e.get("id", "?")
+            need = ["id", "sprite", "sprite_px", "layer0", "blend", "tags",
+                    "anchor", "size_class", "param", "motion", "instances"]
+            miss = [k for k in need if k not in e]
+            check("%s#%s：字段齐全" % (tag, eid), not miss,
+                  "齐" if not miss else "缺 %s" % miss)
+            # DC57：剪影外的特效件只能 normal。ADD 保留目标 alpha，
+            # 画在透明背景上等于没画（第一版八颗全看不见就是这么来的）。
+            check("%s#%s：混合模式是 normal（DC57）" % (tag, eid),
+                  e.get("blend") == "normal", "blend=%r" % e.get("blend"))
+            inst = e.get("instances", [])
+            fr = [i.get("freq") for i in inst]
+            check("%s#%s：每片的 freq 两两不同" % (tag, eid),
+                  len(set(fr)) == len(fr),
+                  "%d 片 %d 个不同频率（相同会跑着跑着对齐成『整齐划一地闪』）"
+                  % (len(fr), len(set(fr))))
+            sc = e.get("size_class", {})
+            used = set(i.get("size") for i in inst)
+            bad = sorted(used - set(sc))
+            check("%s#%s：每片的 size 都在 size_class 表里" % (tag, eid), not bad,
+                  "都在" if not bad else "表外的档位 %s" % bad)
+            check("%s#%s：尺寸档位混用（官方讲座：一个大小会假）" % (tag, eid),
+                  len(used) >= 2, "用了 %s" % sorted(used))
+
+    # ★ 反向闸：生成器里不许再出现特效的几何/层号/动法字面量。
+    #   这一条比上面所有条都重要 —— 表在不在不要紧，源码里有没有影子配置才要紧。
+    gen = os.path.join(root, "tools/make_rig.py")
+    gtxt = io.open(gen, encoding="utf-8").read() if os.path.exists(gen) else ""
+    code = "\n".join(ln.split("#")[0] for ln in gtxt.splitlines())   # 去掉注释再查
+    banned = [
+        ("SPARKLE_LAYER0", "✨ 的起始层号，该在 effects.json 的 layer0"),
+        ('f"fx_sparkle_{i}"', "✨ 的部件 id，该由 effects.json 的 id 派生"),
+        ('f"ParamSparkle{i}"', "✨ 的参数名，该由 effects.json 的 param.prefix 派生"),
+    ]
+    hit = ["%s（%s）" % (k, v) for k, v in banned if k in code]
+    check("make_rig.py 里不再写死 ✨ 的层号/部件名/参数名", not hit,
+          "干净" if not hit else "又有影子配置了：" + "；".join(hit))
+
+    cut = os.path.join(root, "tools/make_star_eye_parts.py")
+    ctxt = io.open(cut, encoding="utf-8").read() if os.path.exists(cut) else ""
+    ccode = "\n".join(ln.split("#")[0] for ln in ctxt.splitlines())
+    m = re.search(r"(?m)^SPARKLES\s*=\s*(.+)$", ccode)
+    check("make_star_eye_parts.py 的 SPARKLES 是空壳（几何来自表）",
+          bool(m) and m.group(1).strip() == "[]",
+          "SPARKLES = %s" % (m.group(1).strip() if m else "（找不到）"))
+    check("切件器有 load_effect（真的会去读表）",
+          "def load_effect(" in ctxt and "effects.json" in ctxt,
+          "有" if "def load_effect(" in ctxt else "没有，等于表白写")
+
+
 def check_tools(root):
     section("工具链：重建脚本引用的工具都在 + 全部能编译")
     rb = os.path.join(root, "tools", "rebuild_parts.sh")
@@ -2547,7 +2615,8 @@ def main():
                check_motion_measure,
                check_form_roadmap,
                check_live2d, check_character,
-               check_web, check_contract, check_tools, check_hygiene):
+               check_web, check_contract, check_effects_table,
+               check_tools, check_hygiene):
         try:
             fn(root)
         except Exception as e:                            # noqa: BLE001

@@ -55,21 +55,41 @@ _EYE_ORDER = ("socket", "base", "wide", "ball", "ball_star", "lid",
               "hl", "lash", "closed", "hl_star", "smile", "pain")
 FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
               for side, b in (("l", 211), ("r", 223))}
-SPARKLE_LAYER0 = 300      # ✨ 特效：画在所有人物件之上（最高的头发才 246）
+# ✨ 的层号/混合/标签/动法都搬进 design/effects.json 了（T43.2 / G117）。
+# 这里**故意不留** SPARKLE_LAYER0 这类常量：留着就等于源码里还有一份影子配置，
+# 改表改不动它，下一个人照着它加漫符就又回到 G117。
 
 
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
                has_blend=False, has_side=False, has_legs=False,
                body_id="seg_torso", has_eyeballs=False, foot_lift=None,
-               star_eyes=None):
+               star_eyes=None, fx_table=None):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
     所以 scale 就是"参数开到最大时这条通道动多少"（像素或度）。
     """
     # ✨ 的颗数：ParamMouthForm 的「笑门」要给每颗各写一条绑定，所以得先知道有几颗。
+    fx_table = fx_table or {}
+    fx_spark = fx_table.get("sparkle")
     n_sparkle = (len(star_eyes["sparkle"]["instances"])
                  if star_eyes and star_eyes.get("sparkle") else 0)
+
+    def fx_gate_binds(param_id):
+        """某个参数作为"门"要挂的特效绑定。系数来自 design/effects.json 的 gates，
+        源码里不再出现 2.0 / -1.0 这种字面量 —— 加一种漫符只改表。"""
+        out_b = []
+        for eff in fx_table.values():
+            n = n_sparkle if eff["id"] == "sparkle" else 0
+            if not n:
+                continue
+            for g in eff.get("gates", []):
+                if g["param"] != param_id:
+                    continue
+                out_b += [{"part": f"fx_{eff['id']}_{i}", "param": "alpha",
+                           "scale": g["scale"], "offset": g["offset"]}
+                          for i in range(1, n + 1)]
+        return out_b
     out = []
     if head_is_part:
         out.append({"id": "ParamAngleZ", "label": "头 歪头", "min": -30.0, "max": 30.0,
@@ -165,9 +185,7 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                               # 不是开了星星眼就一直闪。scale 2.0 / offset -1.0 =
                               # 嘴角 0 完全不出、0.25 出一半、>=0.5 满亮（之后夹紧），
                               # 正好覆盖表情的 0.6 与动作 pulse 的 0.8 两条入口。
-                              + ([{"part": f"fx_sparkle_{i}", "param": "alpha",
-                                   "scale": 2.0, "offset": -1.0}
-                                  for i in range(1, n_sparkle + 1)] if n_sparkle else [])})
+                              + fx_gate_binds("ParamMouthForm")})
         # 单边嘴角（坏笑 / 不以为然 / 忍笑）。T44.1 盘点的结论是：**不造一对
         # MouthCornerL/R**，照 Animaze《复杂口角形状的 Live2D 模型制作方法》的
         # 扩展参数表走一个 ParamMouthX —— 原文口径是「口角を『クイッ』と上げる
@@ -409,21 +427,23 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                        "scale": 1.0, "offset": -1.0},
                       {"part": "eye_r_ball_star", "param": "alpha",
                        "scale": 1.0, "offset": -1.0}]
-                     + [{"part": f"fx_sparkle_{i}", "param": "alpha",
-                         "scale": 1.0, "offset": -1.0} for i in range(1, n + 1)],
+                     + fx_gate_binds("ParamStarEye"),
             "note": "0 = 常态蓝瞳，1 = 五角星瞳 + 脸周围 ✨；中间值是交叉淡化",
         })
         # 每颗闪光一个参数：0 = 缩到 SPARK_MIN 且全透明，1 = 原尺寸且全亮。
         # scale 的 offset 把基准压到 SPARK_MIN，于是参数就是整条生命周期的进度。
-        SPARK_MIN = 0.45
+        SPARK_MIN = fx_spark["param"]["min_scale"]
+        _pfx = fx_spark["param"]["prefix"]
+        _plb = fx_spark["param"]["label"]
+        _d0, _d1 = fx_spark["param"]["default_from_phase"]
         for i, inst in enumerate(star_eyes["sparkle"]["instances"], 1):
             g = round(1.0 - SPARK_MIN, 4)
             out.append({
-                "id": f"ParamSparkle{i}", "label": f"闪光{i} 生命周期",
+                "id": f"{_pfx}{i}", "label": _plb.replace("{i}", str(i)),
                 "min": 0.0, "max": 1.0,
                 # 默认值按这一颗的相位错开：别的动作接管时参数停在默认值上，
                 # 八颗一样大就又变成"整齐划一"了。
-                "default": round(0.25 + 0.5 * inst["phase"], 3),
+                "default": round(_d0 + _d1 * inst["phase"], 3),
                 "binds": [{"part": inst["id"], "param": "alpha",
                            "scale": 1.0, "offset": -1.0},
                           {"part": inst["id"], "param": "sx",
@@ -593,7 +613,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
           closed=None, blendp=None, eyeline=None, smile_eyes=None,
           pain_eyes=None, wide_eyes=None, footp=None,
-          star_eyes=None, base=None):
+          star_eyes=None, base=None, fx_table=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -1033,10 +1053,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     # 层号在 300+：这是"画在人物前面的演出效果"，不属于任何五官。
     if star_eyes and star_eyes.get("sparkle"):
         sk = star_eyes["sparkle"]
+        _fx = (fx_table or {})["sparkle"]
+        _lay0, _grp = _fx["layer0"], _fx["anchor"]["group"]
+        _blend, _tags = _fx["blend"], list(_fx["tags"])
         for i, inst in enumerate(sk["instances"]):
             parts_list.append({
                 "id": inst["id"], "file": sk["file"],
-                "group": "head", "layer": SPARKLE_LAYER0 + i,
+                "group": _grp, "layer": _lay0 + i,
                 "pos": [ox + inst["pos"][0], oy + inst["pos"][1]],
                 "anchor": [0.5, 0.5],          # 锚点在正中：缩放是"从中心胀开"
                 "scale": inst["scale"], "rot_deg": inst["rot_deg"],
@@ -1048,7 +1071,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 # 这是 T39.5「目を見開いたときに」的一半 —— 眼睛闭上时 ✨ 不该还在满亮。
                 # 刻意不用 eye_open（那条会归零）：眨一次眼 0.3s，硬门会让一圈 ✨
                 # 整体熄掉再亮起来，看着像渲染故障。
-                "opacity": 1.0, "blend": "normal", "tags": ["fx_eye_open"],
+                "opacity": 1.0, "blend": _blend, "tags": _tags,
                 "note": f"闪光 {inst['size_class']}（加算）：默认全透明，"
                         f"ParamStarEye 开门、ParamSparkle{i + 1} 管这一颗的生命周期",
             })
@@ -1078,8 +1101,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         """
         if not se:
             return []
-        return [{"target": f"ParamSparkle{i}", "wave": "sine",
-                 "amp": 0.62, "bias": 0.38,
+        _fx = (fx_table or {}).get("sparkle")
+        if not _fx:
+            return []
+        _m, _p = _fx["motion"], _fx["param"]["prefix"]
+        return [{"target": f"{_p}{i}", "wave": _m["wave"],
+                 "amp": _m["amp"], "bias": _m["bias"],
                  "freq": inst["freq"], "phase": inst["phase"]}
                 for i, inst in enumerate(se["sparkle"]["instances"], 1)]
 
@@ -1946,7 +1973,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         body_id=body_id,
                         has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list),
                         foot_lift=(footp["lift_px"] if footp else None),
-                        star_eyes=star_eyes)
+                        star_eyes=star_eyes, fx_table=fx_table)
     PARAM_IDS = {q["id"] for q in PARAMS}
 
     # 引擎自己注册的内建参数（zrig.c 的 param_add_builtin 那一串）。
@@ -2487,6 +2514,7 @@ def main() -> int:
     args = ap.parse_args()
     cw, ch = (int(v) for v in args.canvas.lower().split("x"))
     base = os.path.join(args.root, "characters", args.character, "forms", args.form)
+    base_root = os.path.join(args.root, "characters", args.character)   # 角色级 design/（特效表在这里）
     with open(os.path.join(base, "sprites", "parts_report.json"), encoding="utf-8") as f:
         parts = json.load(f)
     with open(os.path.join(base, "sprites_report.json"), encoding="utf-8") as f:
@@ -2589,6 +2617,19 @@ def main() -> int:
             print(f"警告：星星眼差分件缺图 {miss}，整组跳过", file=sys.stderr)
             star_eyes = None
 
+    # 声明式特效表（T43.2 / G117）。✨ 的层号、参数名、门控、动法原来全写死在
+    # 本文件里，现在只从这张表读。**没有兜底默认值** —— 表缺了就炸，
+    # 免得源码里又藏一份影子配置（那正是 G117 要消灭的东西）。
+    fx_table = {}
+    fx_path = os.path.join(base_root, "design", "effects.json")
+    if os.path.exists(fx_path):
+        with open(fx_path, encoding="utf-8") as f:
+            for e in json.load(f)["effects"]:
+                fx_table[e["id"]] = e
+    if star_eyes and "sparkle" not in fx_table:
+        raise SystemExit(f"[make_rig] 有 ✨ 差分件但 {fx_path} 里没有 id=sparkle —— "
+                         f"特效的几何/动法必须在表里声明（T43.2）")
+
     # 眼线二次拆件（tools/make_eyeline_parts.py 的产物）：脸上的眼睛已经挖成眼窝皮肤，
     # 这时眨眼才敢用"压扁眼眶"（底下露出来的是皮肤，不是脸上那只睁着的眼）。
     eyeline = None
@@ -2644,6 +2685,7 @@ def main() -> int:
                 closed=closed, blendp=blendp, eyeline=eyeline, smile_eyes=smile_eyes,
                 pain_eyes=pain_eyes, wide_eyes=wide_eyes,
                 star_eyes=star_eyes,
+                fx_table=fx_table,
                 footp=footp)
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
