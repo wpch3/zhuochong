@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "slots": [
+    {
+      "id": "hip_back",
+      "label": "胯后（整个身体之后）",
+      "layer": 30,
+      "group": "chest",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）"
+    },
+    {
+      "id": "head_under_bangs",
+      "label": "头上、刘海之下",
+      "layer": 185,
+      "group": "head",
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "curve": "root",
+      "note": "兽耳。层 181~189 夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住一截，接缝不用自己藏。锚点在底边 = 耳根，所以和呆毛同曲线"
+    },
+    {
+      "id": "head_over_hair",
+      "label": "压在所有头发之上",
+      "layer": 250,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "curve": "root",
+      "note": "发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量"
+    }
+  ],
+  "attachments": [
+    {
+      "id": "tail_cat",
+      "slot": "hip_back",
+      "file": "sprites/acc_tail_cat.png",
+      "size": [
+        131,
+        520
+      ]
+    }
+  ]
+}

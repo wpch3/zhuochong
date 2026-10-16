@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.0",
+  "_note": "挂件插槽表（A49 / T45.1）。口径延续 effects.json（G117 / T43.2）：几何、层号、物理系数、开关参数全在这张表里，生成器只读表不写死。加一个挂件 = 这里加一条 + 往 design/redraw/ 放一张洋红底素材，不改任何 .py。★ 插槽是「位置」不是「某个具体挂件」—— 一个槽能换不同的件，这才叫可自定义（A49 硬要求 2）。",
+  "_fields": {
+    "slots[].id": "插槽名，挂件用 slot 引用它",
+    "slots[].layer": "该槽的绘制层号。★ 实测：rig 里最低层号是 60（腿），所以 0~59 整段空着 —— 那里才是「身体之后」。66~94 在腿之上，放尾巴会盖住腿",
+    "slots[].group": "父组，挂件跟着这个组一起动",
+    "slots[].anchor": "锚点（0..1，相对部件图像）。zrig.c:751 默认 (0.5,0.5)=中心；pos 指的就是这个锚点落在画布的哪里。悬垂件要把锚点放在根部，根部就是物理支点",
+    "slots[].curve": "形变曲线。zimg.h:93 原文：BEND_TIP『顶边固定，越往下位移越大 —— 后发、裙摆、尾巴这类吊在上面的部件』；BEND_ROOT 反过来（底边固定），呆毛用的是它",
+    "attachments[].slot": "落在哪个插槽",
+    "attachments[].source": "design/redraw/ 下的洋红底原图",
+    "attachments[].sprite_h": "成品高度（像素，1x）。宽度按原图长宽比自动算 —— 挂件不像漫符是方的",
+    "attachments[].pos": "锚点的画布坐标",
+    "attachments[].recolor": "按亮度聚类重铺的色卡梯度。AI 只出形状，颜色一律不信（D19 / DC55）。每一站必须是 palette.json 里的颜色",
+    "attachments[].param": "开关参数。走 DC59 差分件口径：min0 / default0 / max1，0=摘掉 1=戴上",
+    "attachments[].physics": "物理链。segments 按顺序串联：第一段 driver 是父组，后面每段 driver 是上一段的 id（zrig.c:210 多段摆 G16）。deformer 给网格 S 形变"
+  },
+  "slots": [
+    {
+      "id": "hip_back",
+      "label": "胯后（整个身体之后）",
+      "layer": 30,
+      "group": "chest",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）"
+    },
+    {
+      "id": "head_under_bangs",
+      "label": "头上、刘海之下",
+      "layer": 185,
+      "group": "head",
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "curve": "root",
+      "note": "兽耳。层 181~189 夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住一截，接缝不用自己藏。锚点在底边 = 耳根，所以和呆毛同曲线"
+    },
+    {
+      "id": "head_over_hair",
+      "label": "压在所有头发之上",
+      "layer": 250,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "curve": "root",
+      "note": "发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量"
+    }
+  ],
+  "attachments": [
+    {
+      "id": "tail_cat",
+      "label": "猫尾",
+      "slot": "hip_back",
+      "source": "acc_tail_cat.png",
+      "sprite": "acc_tail_cat.png",
+      "sprite_h": 520,
+      "pos": [
+        300,
+        636
+      ],
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "recolor": [
+        {
+          "at": 0.0,
+          "hex": "#5A5A6E",
+          "note": "线稿"
+        },
+        {
+          "at": 0.45,
+          "hex": "#C9CBE0",
+          "note": "头发暗部 —— 尾巴是毛，和头发同一套色"
+        },
+        {
+          "at": 0.8,
+          "hex": "#D8D8E8",
+          "note": "头发主色"
+        },
+        {
+          "at": 1.0,
+          "hex": "#FFFFFF",
+          "note": "梢的高光"
+        }
+      ],
+      "param": {
+        "id": "ParamAccTailCat",
+        "label": "猫尾（0=摘 1=戴）",
+        "default": 1.0
+      },
+      "physics": {
+        "deformer": {
+          "id": "tail_s",
+          "cols": 2,
+          "rows": 4,
+          "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+          "amp": [
+            0.0,
+            6.0,
+            15.0,
+            -13.5,
+            -27.0
+          ]
+        },
+        "segments": [
+          {
+            "id": "tail_x",
+            "driver": "chest",
+            "axis": "x",
+            "param": "bend_x",
+            "ratio": 1.0,
+            "stiffness": 18,
+            "damping": 4.2,
+            "max": 24,
+            "note": "第一段：整条尾巴跟着身体左右甩。比呆毛(42)软得多、幅度(14 vs 8)大得多 —— 尾巴长、重、远离支点"
+          },
+          {
+            "id": "tail_tip",
+            "driver": "tail_x",
+            "deformer": "tail_s",
+            "ratio": 0.9,
+            "stiffness": 11,
+            "damping": 2.8,
+            "max": 1.0,
+            "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
+          },
+          {
+            "id": "tail_y",
+            "driver": "chest",
+            "axis": "y",
+            "param": "bend_y",
+            "ratio": 0.7,
+            "stiffness": 24,
+            "damping": 5.0,
+            "max": 14,
+            "note": "第三段：上下起伏（走动/点头时的垂荡）"
+          }
+        ]
+      },
+      "_pos_note": "根部 (300,636) 藏在裙后，梢扫到画布 x≈234~366 / y≈636~1156 的空档 —— 第一版放 x352 结果整条压在腿后面只露一条缝"
+    }
+  ]
+}

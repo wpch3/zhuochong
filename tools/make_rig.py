@@ -609,6 +609,113 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
     return out
 
 
+def attach_emit(rig, base, base_root):
+    """把挂件（耳饰 / 尾饰 / 装饰品）挂进 rig（A49 / T45）。
+
+    口径完全延续 T43.2 的特效表：**层号、父组、锚点、曲线、物理系数、开关参数
+    全部来自 design/attachments.json，本函数一个字面量都不持有**。
+    加一个挂件 = 表里加一条 + 放一张素材，不改这个文件。
+
+    几何来自 sprites/attach_parts.json（切件器 make_attach_parts.py 的产物，
+    带成品的真实宽高）；语义来自 design/attachments.json。两份都在才挂 ——
+    整组可选，缺了就当没这回事，其余一切照旧（差分件该有的性质）。
+
+    ★ 为什么挂件不能复用 ✨ 那条路径：✨ 是**散布型**，一张素材铺 N 片、
+    不接物理、只被情绪门控开关；挂件是**一件一个部件**，要接物理链和网格
+    形变器，还要跟着父组一起动。两者只有「键色 + 重铺」那一段是共用的。
+    """
+    ap = os.path.join(base, "sprites", "attach_parts.json")
+    tp = os.path.join(base_root, "design", "attachments.json")
+    if not (os.path.exists(ap) and os.path.exists(tp)):
+        return
+    with open(ap, encoding="utf-8") as f:
+        cut = json.load(f)
+    with open(tp, encoding="utf-8") as f:
+        table = json.load(f)
+    slots = {x["id"]: x for x in table["slots"]}
+    geom = {x["id"]: x for x in cut["attachments"]}
+
+    for att in table["attachments"]:
+        g = geom.get(att["id"])
+        if g is None:
+            print(f"警告：挂件 {att['id']} 没有切件产物，跳过", file=sys.stderr)
+            continue
+        if not os.path.exists(os.path.join(base, g["file"])):
+            print(f"警告：挂件 {att['id']} 缺图 {g['file']}，跳过", file=sys.stderr)
+            continue
+        slot = slots[att["slot"]]          # 没有兜底：槽不存在就 KeyError 当场炸
+        pid = f"acc_{att['id']}"
+        w, h = g["size"]
+
+        # —— 部件 ——（@2x 走 DC48 的末尾高清口径：文件指 @2x，scale 减半）
+        hi = g["file"].replace(".png", "@2x.png")
+        use_hi = os.path.exists(os.path.join(base, hi))
+        rig["parts"].append({
+            "id": pid,
+            "file": hi if use_hi else g["file"],
+            "group": slot["group"],
+            "layer": slot["layer"],
+            "pos": list(att["pos"]),
+            "anchor": list(slot["anchor"]),
+            "tags": list(att.get("tags", [])),
+            "note": f"{att.get('label', att['id'])}（挂件，槽 {att['slot']}）："
+                    f"{slot.get('note', '')}",
+            "scale_1x": 1.0,
+            **({"scale": 0.5, "hires": 2} if use_hi else {}),
+        })
+
+        # —— 开关参数 ——（DC59 差分件口径：min0 / max1，0=摘掉 1=戴上）
+        pr = att["param"]
+        rig["params"].append({
+            "id": pr["id"], "label": pr["label"],
+            "min": 0.0, "max": 1.0, "default": float(pr["default"]),
+            "binds": [{"part": pid, "param": "alpha", "scale": 1.0}],
+            "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，"
+                    "不是把部件删掉而是把不透明度压到 0",
+        })
+
+        ph = att.get("physics")
+        if not ph:
+            continue
+
+        # —— 网格形变器 ——
+        # 表里只给每一行的振幅 amp[]，逐点展开在这里做：整条一起平移会像根棍子，
+        # 分行反向才有鞭感（和呆毛 ahoge_s / 侧发 side_l_s 同一套写法）。
+        dfm = ph.get("deformer")
+        if dfm:
+            amp = dfm["amp"]
+            if len(amp) != dfm["rows"] + 1:
+                raise SystemExit(
+                    f"[make_rig] 挂件 {att['id']} 的 deformer.amp 有 {len(amp)} 项，"
+                    f"rows={dfm['rows']} 需要 {dfm['rows'] + 1} 项"
+                    f"（网格是 rows+1 条横线）")
+            rig["deformers"].append({
+                "id": dfm["id"], "part": pid,
+                "cols": dfm["cols"], "rows": dfm["rows"],
+                "note": dfm["note"],
+                "points": [{"c": c, "r": r, "dx": round(float(v), 3)}
+                           for r, v in enumerate(amp)
+                           for c in range(dfm["cols"] + 1) if abs(v) > 1e-9],
+            })
+
+        # —— 物理链 ——
+        # 第一段的 driver 是父组；后面每段的 driver 是上一段的 id
+        # （zrig.c:210 多段摆 G16：driver 写另一条 physics 的 id 时，
+        #   输入就是上一段的输出，而且下标必须比自己小，所以顺序不能乱）。
+        for seg_ in ph["segments"]:
+            e = {"id": seg_["id"], "part": pid, "driver": seg_["driver"]}
+            if "axis" in seg_:
+                e["axis"] = seg_["axis"]
+            if "param" in seg_:
+                e["param"] = seg_["param"]
+                e["curve"] = slot["curve"]      # 曲线是**槽**的属性，不是件的
+            if "deformer" in seg_:
+                e["deformer"] = seg_["deformer"]
+            e.update({k: seg_[k] for k in ("ratio", "stiffness", "damping", "max")})
+            e["note"] = seg_["note"]
+            rig["physics"].append(e)
+
+
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
           closed=None, blendp=None, eyeline=None, smile_eyes=None,
@@ -2687,6 +2794,8 @@ def main() -> int:
                 star_eyes=star_eyes,
                 fx_table=fx_table,
                 footp=footp)
+    attach_emit(rig, base, base_root)   # 挂件（A49 / T45）：表在就挂，不在就当没有
+
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(rig, f, ensure_ascii=False, indent=2)
