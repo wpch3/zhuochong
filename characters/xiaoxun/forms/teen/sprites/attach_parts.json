@@ -104,6 +104,15 @@
         88,
         104
       ]
+    },
+    {
+      "id": "hood_up",
+      "slot": "head_over_hair",
+      "file": "sprites/acc_hood_up.png",
+      "size": [
+        360,
+        400
+      ]
     }
   ]
 }

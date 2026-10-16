@@ -775,7 +775,12 @@ def attach_emit(rig, base, base_root):
                     grp["mood_map"] = {k: v for k, v in mp.items()
                                        if not k.startswith("_")}
                 rig["poses"].append(grp)
-            grp["entries"].append({"id": att["pose_id"], "parts": [pid]})
+            ent = next((e for e in grp["entries"]
+                        if e["id"] == att["pose_id"]), None)
+            if ent is None:
+                ent = {"id": att["pose_id"], "parts": []}
+                grp["entries"].append(ent)
+            ent["parts"].append(pid)
 
         ph = att.get("physics")
         if not ph:
@@ -838,6 +843,29 @@ def attach_emit(rig, base, base_root):
         out[pid_] = {k: float(v) for k, v in m.items() if not k.startswith("_")}
     if out:
         rig["mood_params"] = out
+
+    # pose_groups[].extra_parts（T45.10）：把**既有部件**也塞进某个档位。
+    # 用处：兜帽戴上时呆毛要消失（教程「帽子をかぶったらアホ毛を消す」）。
+    # 做成互斥组的一个档位，而不是另写一条「戴上→关呆毛」的联动规则 ——
+    # 联动规则是第二个需要同步的地方，迟早会和本体对不上（死表那一类病）。
+    for _pg in table.get("pose_groups", []):
+        _ex = _pg.get("extra_parts")
+        if not _ex:
+            continue
+        _grp = next((x for x in rig.get("poses", []) if x["id"] == _pg["id"]), None)
+        if _grp is None:
+            raise SystemExit(f"[make_rig] pose_group {_pg['id']!r} 写了 extra_parts，"
+                             f"但这个组里一个挂件都没有（组不会被建出来）")
+        for _eid, _parts in _ex.items():
+            for _p in _parts:
+                if not any(x["id"] == _p for x in rig["parts"]):
+                    raise SystemExit(f"[make_rig] pose_group {_pg['id']!r} 的 "
+                                     f"extra_parts 引用了不存在的部件 {_p!r}")
+            _ent = next((e for e in _grp["entries"] if e["id"] == _eid), None)
+            if _ent is None:
+                _ent = {"id": _eid, "parts": []}
+                _grp["entries"].append(_ent)
+            _ent["parts"] += [p for p in _parts if p not in _ent["parts"]]
 
     # 情绪 → 摆动倍率（T45.2f）。**第四张情绪表**。
     # ★ 这张表以前写在 design/attachments.json 里但**这里没有搬运代码** ——
