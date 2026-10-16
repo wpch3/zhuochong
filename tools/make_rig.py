@@ -677,9 +677,15 @@ def attach_emit(rig, base, base_root):
             rig["params"].append({
                 "id": pr["id"], "label": pr["label"],
                 "min": 0.0, "max": 1.0, "default": float(pr["default"]),
-                "binds": [{"part": pid, "param": "alpha", "scale": 1.0}],
+                "binds": [{"part": pid, "param": "alpha",
+                           "scale": 1.0, "offset": -1.0}],
                 "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，"
-                        "不是把部件删掉而是把不透明度压到 0",
+                        "不是把部件删掉而是把不透明度压到 0。"
+                        "★ offset 必须是 −1：引擎的 alpha 是**乘性**的 —— "
+                        "zrig.c:2764 `p_alpha *= clamp(1.0 + v, 0, 1)`。"
+                        "少了 offset 时 v=参数值∈[0,1] ⇒ 因子 clamp(1..2)≡1，"
+                        "开关怎么拨都摘不掉。配方见 zrig.c:1305 的注释："
+                        "scale 1 + offset −1 ⇒ 透明度 = 参数值。",
             })
 
         # —— 自主摆动（T45.2b）——

@@ -14,6 +14,18 @@
       "note": "尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）"
     },
     {
+      "id": "head_in_hair",
+      "label": "插进头发里（耳根被发丝盖住）",
+      "layer": 165,
+      "group": "head",
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "curve": "root",
+      "note": "兽耳专用。层 144~169 整段空着，夹在手臂(143) 和 hair_back(170) 之间。★ 关键：必须在 hair_back 之下。头顶那片头发就是 hair_back，hair_front(240) 从 y=163 才开始、只盖刘海，指望它压耳根是压不住的（旧版就栽在这）。教程口径：「髪の上に耳を『乗せる』のではなく、頭のラインに沿って『差し込む』イメージで描く」—— 耳が浮いて見える原因就是画在髪の上。kiri-hana.com"
+    },
+    {
       "id": "head_under_bangs",
       "label": "头上、刘海之下",
       "layer": 185,
@@ -68,20 +80,20 @@
     },
     {
       "id": "ear_cat_l",
-      "slot": "head_under_bangs",
+      "slot": "head_in_hair",
       "file": "sprites/acc_ear_l.png",
       "size": [
-        132,
-        122
+        88,
+        104
       ]
     },
     {
       "id": "ear_cat_r",
-      "slot": "head_under_bangs",
+      "slot": "head_in_hair",
       "file": "sprites/acc_ear_r.png",
       "size": [
-        132,
-        122
+        88,
+        104
       ]
     }
   ]

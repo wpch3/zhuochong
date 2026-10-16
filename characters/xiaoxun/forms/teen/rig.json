@@ -1632,10 +1632,10 @@
       "id": "acc_ear_cat_l",
       "file": "sprites/acc_ear_l@2x.png",
       "group": "head",
-      "layer": 185,
+      "layer": 165,
       "pos": [
         364,
-        176
+        178
       ],
       "anchor": [
         0.5,
@@ -1645,7 +1645,7 @@
         "accessory",
         "ear"
       ],
-      "note": "猫耳（左）（挂件，槽 head_under_bangs）：兽耳。层 181~189 夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住一截，接缝不用自己藏。锚点在底边 = 耳根，所以和呆毛同曲线",
+      "note": "猫耳（左）（挂件，槽 head_in_hair）：兽耳专用。层 144~169 整段空着，夹在手臂(143) 和 hair_back(170) 之间。★ 关键：必须在 hair_back 之下。头顶那片头发就是 hair_back，hair_front(240) 从 y=163 才开始、只盖刘海，指望它压耳根是压不住的（旧版就栽在这）。教程口径：「髪の上に耳を『乗せる』のではなく、頭のラインに沿って『差し込む』イメージで描く」—— 耳が浮いて見える原因就是画在髪の上。kiri-hana.com",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -1654,10 +1654,10 @@
       "id": "acc_ear_cat_r",
       "file": "sprites/acc_ear_r@2x.png",
       "group": "head",
-      "layer": 186,
+      "layer": 166,
       "pos": [
-        498,
-        176
+        474,
+        178
       ],
       "anchor": [
         0.5,
@@ -1667,7 +1667,7 @@
         "accessory",
         "ear"
       ],
-      "note": "猫耳（右）（挂件，槽 head_under_bangs）：兽耳。层 181~189 夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住一截，接缝不用自己藏。锚点在底边 = 耳根，所以和呆毛同曲线",
+      "note": "猫耳（右）（挂件，槽 head_in_hair）：兽耳专用。层 144~169 整段空着，夹在手臂(143) 和 hair_back(170) 之间。★ 关键：必须在 hair_back 之下。头顶那片头发就是 hair_back，hair_front(240) 从 y=163 才开始、只盖刘海，指望它压耳根是压不住的（旧版就栽在这）。教程口径：「髪の上に耳を『乗せる』のではなく、頭のラインに沿って『差し込む』イメージで描く」—— 耳が浮いて見える原因就是画在髪の上。kiri-hana.com",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -6011,10 +6011,11 @@
         {
           "part": "acc_ear_cat_l",
           "param": "alpha",
-          "scale": 1.0
+          "scale": 1.0,
+          "offset": -1.0
         }
       ],
-      "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，不是把部件删掉而是把不透明度压到 0"
+      "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，不是把部件删掉而是把不透明度压到 0。★ offset 必须是 −1：引擎的 alpha 是**乘性**的 —— zrig.c:2764 `p_alpha *= clamp(1.0 + v, 0, 1)`。少了 offset 时 v=参数值∈[0,1] ⇒ 因子 clamp(1..2)≡1，开关怎么拨都摘不掉。配方见 zrig.c:1305 的注释：scale 1 + offset −1 ⇒ 透明度 = 参数值。"
     },
     {
       "id": "ParamEarLAngle",
@@ -6041,10 +6042,11 @@
         {
           "part": "acc_ear_cat_r",
           "param": "alpha",
-          "scale": 1.0
+          "scale": 1.0,
+          "offset": -1.0
         }
       ],
-      "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，不是把部件删掉而是把不透明度压到 0"
+      "note": "挂件开关：0 = 摘掉、1 = 戴上。走 DC59 差分件口径，不是把部件删掉而是把不透明度压到 0。★ offset 必须是 −1：引擎的 alpha 是**乘性**的 —— zrig.c:2764 `p_alpha *= clamp(1.0 + v, 0, 1)`。少了 offset 时 v=参数值∈[0,1] ⇒ 因子 clamp(1..2)≡1，开关怎么拨都摘不掉。配方见 zrig.c:1305 的注释：scale 1 + offset −1 ⇒ 透明度 = 参数值。"
     },
     {
       "id": "ParamEarRAngle",

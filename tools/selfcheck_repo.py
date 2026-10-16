@@ -2331,6 +2331,52 @@ def strip_prose(src):
         return out
 
 
+def check_attach_switch(root):
+    """挂件摘戴开关必须真的能摘掉（T45.3 撞出来的类 bug）。
+
+    病根：引擎的 alpha 是**乘性**的 —— zrig.c:2764
+
+        case P_ALPHA: r->p_alpha[part] *= ZC_CLAMP(1.0 + v, 0.0, 1.0); break;
+
+    绑定写 `{"param":"alpha","scale":1.0}` 时 v = 参数值 ∈ [0,1]，
+    因子 = clamp(1.0~2.0) **恒为 1**，开关怎么拨都摘不掉，而且不报错、不告警。
+    正确配方就写在同一个文件 zrig.c:1305 的注释里：**scale 1 + offset −1**
+    ⇒ 透明度 = 参数值。
+
+    这个 bug 从 T45.1（猫尾）起就在，直到 T45.3 做几何检测、需要"摘掉"那一档
+    来做差分时才撞出来 —— 没有量化验收就发现不了。所以设闸：
+    凡是「0=摘 1=戴」这类开关参数，绑到 alpha 上就必须带 offset=-1。
+    """
+    section("挂件摘戴开关（alpha 是乘性的，必须带 offset=-1）")
+    rigs = sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json")))
+    seen = 0
+    bad = []
+    for rp in rigs:
+        with io.open(rp, encoding="utf-8") as fh:
+            rig = json.load(fh)
+        for prm in rig.get("params", []):
+            pid = prm.get("id", "")
+            if not pid.startswith("ParamAcc"):
+                continue
+            for b in prm.get("binds", []):
+                if b.get("param") != "alpha":
+                    continue
+                seen += 1
+                if abs(float(b.get("offset", 0.0)) + 1.0) > 1e-9:
+                    bad.append("%s→%s offset=%s" % (pid, b.get("part"),
+                                                    b.get("offset", 0.0)))
+    check("挂件开关的 alpha 绑定都带 offset=-1", not bad,
+          "%d 条绑定全部合规" % seen if not bad
+          else "这些开关是摆设，拨了也摘不掉：" + "；".join(bad[:6]))
+    zr = os.path.join(root, "src", "core", "zrig.c")
+    if os.path.isfile(zr):
+        with io.open(zr, encoding="utf-8") as fh:
+            src = fh.read()
+        check("zrig.c 的 alpha 仍是乘性（上面那条闸的依据）",
+              "r->p_alpha[part] *= ZC_CLAMP(1.0 + v" in src,
+              "zrig.c:2764 一线；语义若改，offset=-1 这条闸要跟着重订")
+
+
 def check_effects_table(root):
     """声明式特效表（T43.2 / G117）。
 
@@ -2699,7 +2745,8 @@ def main():
                check_motion_measure,
                check_form_roadmap,
                check_live2d, check_character,
-               check_web, check_contract, check_effects_table,
+               check_web, check_contract, check_attach_switch,
+               check_effects_table,
                check_tools, check_hygiene):
         try:
             fn(root)

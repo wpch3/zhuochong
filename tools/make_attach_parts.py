@@ -111,7 +111,11 @@ def build_one(att, slot, redraw_dir, sprites_dir):
         ca = ra[..., 3].astype(np.float64) / 255.0
 
     h1 = int(att["sprite_h"])
-    w1 = max(1, int(round(h1 * bw / float(bh))))
+    # width_ratio：横向压扁/拉宽系数，1.0 = 保持原图宽高比。
+    # ★ 猫耳要用到：素材画出来的宽高比是 1.09（扁三角），但真猫耳从正面看
+    #   底宽约为高的 0.8，1.09 会让两只耳朵横着铺满整个头顶 —— 用户原话「过宽」。
+    #   不在原图上改，是因为原图还要留给别的槽复用；压扁放在切件期做。
+    w1 = max(1, int(round(h1 * bw / float(bh) * float(att.get("width_ratio", 1.0)))))
     made = []
     for mul, name in ((1, att["sprite"]),
                       (2, att["sprite"].replace(".png", "@2x.png"))):
