@@ -243,6 +243,15 @@ double zrig_part_follow_y(const zrig *r, const char *part_id);
 const char *zrig_part_follow_src(const zrig *r, const char *part_id);
 
 /* 调试/测试：强制闭眼或恢复自动 */
+/* 眨眼随情绪漂移（T44.2）。mood 用平台层的情绪词（happy/angry/sleepy…），
+   查 rig.json 的 blink.mood_rate；表里没有就回落常态（1.0/1.0），不算错误。
+   rate>1 = 眨得更勤，closed_scale>1 = 每次闭得更久（困倦）。 */
+void   zrig_blink_set_mood(zrig *r, const char *mood);
+double zrig_blink_rate(const zrig *r);
+double zrig_blink_closed_scale(const zrig *r);
+const char *zrig_blink_mood(const zrig *r);
+int    zrig_blink_mood_count(const zrig *r);
+
 void  zrig_blink_force(zrig *r, int mode);   /* >0 强制闭眼；<=0 交回自动 */
 /* 立即触发一次眨眼（用于交互反馈，如被锤击） */
 void  zrig_blink_trigger(zrig *r);

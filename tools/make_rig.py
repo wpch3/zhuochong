@@ -168,6 +168,38 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                               + ([{"part": f"fx_sparkle_{i}", "param": "alpha",
                                    "scale": 2.0, "offset": -1.0}
                                   for i in range(1, n_sparkle + 1)] if n_sparkle else [])})
+        # 单边嘴角（坏笑 / 不以为然 / 忍笑）。T44.1 盘点的结论是：**不造一对
+        # MouthCornerL/R**，照 Animaze《复杂口角形状的 Live2D 模型制作方法》的
+        # 扩展参数表走一个 ParamMouthX —— 原文口径是「口角を『クイッ』と上げる
+        # ような、左右の位置を調整するパラメータ」，即嘴整体左右偏 + 顺带把偏过去
+        # 那侧的嘴角带高，「頬も同様に口の動きに合わせて少し上がるように」。
+        # 一个参数办两件事，正好卡住官方"一个表情最多 2 个参数"的负荷惯例。
+        #
+        # 为什么不能复用 ParamMouthForm（T44.1 第 ⑦ 条）：Form 已经被口型同步
+        # 占满了（visemes 里 I=+1.0 / U=-1.0 / O=-0.7 / N=-0.35），而且引擎口径是
+        # 口型层覆盖、表情只拿 (1-w) 的余味（src/core/zrig.c viseme 段）——
+        # 挂在 Form 上的微表情一说话就被压掉。所以必须自带通道。
+        #
+        # 符号约定：**+1 = 嘴向画面右移，画面右侧那个嘴角上扬**；-1 反之。
+        # 幅度**实测定的**（2026-10-16 做了四档扫描，留证 logs/asset_qa/mouthx_sweep.png）：
+        # 平移 ±1.5px + 旋转 ±8°。扫描结论是 **平移越大越像"嘴整个滑到一边"**（是缺陷
+        # 不是表情），**抬一侧嘴角全靠旋转**，所以平移压到只够制造"支点在一侧"的错觉。
+        # ⚠ 诚实边界：闭嘴时这张脸的嘴只有 16×3 px（466px 帧上），±8° 只改到 29~43 个
+        # 像素，缩到真实观看尺寸基本看不出来 —— 见 G121 / T44.3。
+        out.append({"id": "ParamMouthX", "label": "嘴 左右（单边嘴角）",
+                    "min": -1.0, "max": 1.0, "default": 0.0,
+                    "binds": [{"part": "mouth_mask", "param": "dx", "scale": 1.5},
+                              {"part": "mouth_mask", "param": "rot_deg", "scale": 8.0},
+                              {"part": "mouth_open", "param": "dx", "scale": 1.5},
+                              {"part": "mouth_open", "param": "rot_deg", "scale": 8.0},
+                              # 脸颊跟着嘴角走：上扬那侧抬、另一侧略沉。
+                              # 两侧反号 = 整块颊部随嘴倾斜，这正是真人坏笑的样子，
+                              # 不是"两边一起抬"（那是咧嘴笑，归 ParamMouthForm）。
+                              {"part": "blush_r", "param": "dy", "scale": -1.6},
+                              {"part": "blush_l", "param": "dy", "scale": 1.6}],
+                    "note": "单边嘴角：Animaze 扩展参数表 ParamMouthX。"
+                            "mouth_cavity 靠 motion_from=mouth_mask 自动跟随，不用单列。"
+                            "不要用 ParamMouthForm 代替 —— 那条被口型同步占着"})
     if has_brows:
         out += [
             # scale 定在 -5：满格 = 眉毛上下 5px = surprised 那下挑眉的幅度。
@@ -2172,6 +2204,30 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "enabled": True,
             "closing_s": 0.10, "closed_s": 0.05, "opening_s": 0.15,
             "interval_min_s": 2.0, "interval_max_s": 8.0, "interval_exponential": False,
+            # 眨眼频率随情绪漂移（T44.2）。基线 [2,8]s = 均值 5s = 12 次/分，
+            # 比成人实测的 15~20 次/分稍慢一点 —— 这是**故意的**：大森ら(1997)
+            # 的对人认知实验发现"眨眼多的人"会被评价为缺乏力动性、诚实性与亲近感，
+            # 桌宠常态该偏少。情绪倍率就在这个基线上浮动。
+            # 依据逐条见 docs/REFERENCE_NOTES.md 第二十九批，摘要：
+            #   · 怒り/興奮 → 非常に多くなる（Ponder & Kennedy 1927；中野珠実）
+            #   · 緊張・不安 → 増える，不安傾向と瞬目率に高い正の相関（Harris 1966）
+            #   · 難しい課題に向かう時も急激に増加（≠ 盯着看，那是减少）
+            #   · 覚醒水準の低下（疲労）→ 瞬目率は増加、かつ一回が長くなる
+            #     ⇒ sleepy 不是"眨得少"，是"眨得慢而久"，所以给 closed_scale
+            "mood_rate": {
+                "angry":    {"rate": 1.70},
+                "surprise": {"rate": 1.50},
+                "shy":      {"rate": 1.40},
+                "think":    {"rate": 1.30},
+                "sad":      {"rate": 1.20},
+                "sleepy":   {"rate": 1.15, "closed_scale": 3.0},
+                # 亲近感那一侧反过来压：少眨眼 = 从容、可信（大森ら 1997）
+                "affection": {"rate": 0.80},
+                "smile":    {"rate": 0.90},
+                "happy":    {"rate": 1.00},
+                "cute":     {"rate": 1.00},
+                "neutral":  {"rate": 1.00},
+            },
             "note": "参数与 Live2D CubismEyeBlink 的五态机一致：等待 → 闭合 → 保持 → 睁开",
         },
         "parts": parts_list,

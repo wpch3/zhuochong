@@ -149,6 +149,42 @@
     "interval_min_s": 2.0,
     "interval_max_s": 8.0,
     "interval_exponential": false,
+    "mood_rate": {
+      "angry": {
+        "rate": 1.7
+      },
+      "surprise": {
+        "rate": 1.5
+      },
+      "shy": {
+        "rate": 1.4
+      },
+      "think": {
+        "rate": 1.3
+      },
+      "sad": {
+        "rate": 1.2
+      },
+      "sleepy": {
+        "rate": 1.15,
+        "closed_scale": 3.0
+      },
+      "affection": {
+        "rate": 0.8
+      },
+      "smile": {
+        "rate": 0.9
+      },
+      "happy": {
+        "rate": 1.0
+      },
+      "cute": {
+        "rate": 1.0
+      },
+      "neutral": {
+        "rate": 1.0
+      }
+    },
     "note": "参数与 Live2D CubismEyeBlink 的五态机一致：等待 → 闭合 → 保持 → 睁开"
   },
   "parts": [
@@ -4469,6 +4505,46 @@
           "offset": -1.0
         }
       ]
+    },
+    {
+      "id": "ParamMouthX",
+      "label": "嘴 左右（单边嘴角）",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "mouth_mask",
+          "param": "dx",
+          "scale": 1.5
+        },
+        {
+          "part": "mouth_mask",
+          "param": "rot_deg",
+          "scale": 8.0
+        },
+        {
+          "part": "mouth_open",
+          "param": "dx",
+          "scale": 1.5
+        },
+        {
+          "part": "mouth_open",
+          "param": "rot_deg",
+          "scale": 8.0
+        },
+        {
+          "part": "blush_r",
+          "param": "dy",
+          "scale": -1.6
+        },
+        {
+          "part": "blush_l",
+          "param": "dy",
+          "scale": 1.6
+        }
+      ],
+      "note": "单边嘴角：Animaze 扩展参数表 ParamMouthX。mouth_cavity 靠 motion_from=mouth_mask 自动跟随，不用单列。不要用 ParamMouthForm 代替 —— 那条被口型同步占着"
     },
     {
       "id": "ParamBrowLY",

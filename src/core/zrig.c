@@ -24,6 +24,7 @@
 #define ZRIG_MAX_ACTIONS  32
 #define ZRIG_MAX_PHYS     24
 #define ZRIG_MAX_PARAMS  160   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
+#define ZRIG_MAX_BLINK_MOOD 16    /* 眨眼情绪表上限：情绪词表现在 11 个，留一倍余量 */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
 #define ZRIG_MAX_BANDS     8     /* 分块渲染最多切几条行带（= 最多用几个线程） */
 
@@ -404,6 +405,14 @@ struct zrig {
 
     /* 眨眼配置 */
     int    blink_enabled, blink_expo;
+    /* 眨眼随情绪漂移（T44.2）。表来自 rig.json 的 blink.mood_rate，
+       zrig_blink_set_mood() 查表后把 rate / closed_scale 填进来。
+       rate>1 = 眨得更勤（怒、紧张），closed_scale>1 = 闭得更久（困）。
+       依据见 docs/REFERENCE_NOTES.md 第二十九批。 */
+    int    nblink_mood;
+    struct { char mood[24]; double rate, closed_scale; } blink_mood[ZRIG_MAX_BLINK_MOOD];
+    char   blink_mood_cur[24];
+    double blink_rate, blink_closed_scale;
     int    phys_enabled;      /* 0 = 关掉物理摆（排查接缝时用，见 zrig_phys_set_enabled） */
     double blink_closing, blink_closed, blink_opening;
     double blink_imin, blink_imax;
@@ -2251,6 +2260,8 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     r->blink_manual_r = -1.0;
     r->blink_imin = 2.0;
     r->blink_imax = 8.0;
+    r->blink_rate = 1.0;
+    r->blink_closed_scale = 1.0;
 
     z_strlcpy(r->id, zjson_str(zjson_obj_get(root, "id"), z_basename(base_dir ? base_dir : "rig")),
               sizeof(r->id));
@@ -2390,6 +2401,32 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
             r->blink_imin = zjson_num(zjson_obj_get(bj, "interval_min_s"), 2.0);
             r->blink_imax = zjson_num(zjson_obj_get(bj, "interval_max_s"), 8.0);
             r->blink_expo = zjson_bool(zjson_obj_get(bj, "interval_exponential"), 0);
+            {   /* blink.mood_rate: { "angry": {"rate":1.7}, "sleepy": {"rate":1.15,"closed_scale":3.0} } */
+                const zjson *mr = zjson_obj_get(bj, "mood_rate");
+                if (mr && mr->type == ZJSON_OBJ) {
+                    size_t mi, mn = zjson_count(mr);
+                    for (mi = 0; mi < mn && r->nblink_mood < ZRIG_MAX_BLINK_MOOD; ++mi) {
+                        const char *k = zjson_key_at(mr, mi);
+                        const zjson *v = zjson_at(mr, mi);
+                        double rate, cs;
+                        if (!k || !k[0] || !v || v->type != ZJSON_OBJ) continue;
+                        rate = zjson_num(zjson_obj_get(v, "rate"), 1.0);
+                        cs   = zjson_num(zjson_obj_get(v, "closed_scale"), 1.0);
+                        /* 钳死范围：rate 失控会变成痉挛，closed_scale 失控会变成装死。
+                           0.2 = 每 25 秒才眨一次（专注盯着看的上限），
+                           3.0 = 每 1.7 秒一次（已经是"非常に多い"那一档）。 */
+                        if (rate < 0.2) rate = 0.2;
+                        if (rate > 3.0) rate = 3.0;
+                        if (cs < 1.0) cs = 1.0;
+                        if (cs > 8.0) cs = 8.0;
+                        z_strlcpy(r->blink_mood[r->nblink_mood].mood, k,
+                                  sizeof(r->blink_mood[0].mood));
+                        r->blink_mood[r->nblink_mood].rate = rate;
+                        r->blink_mood[r->nblink_mood].closed_scale = cs;
+                        r->nblink_mood++;
+                    }
+                }
+            }
         } else {
             r->blink_enabled = 0;   /* 没有配置就不眨眼（避免素材未拆件时出错） */
         }
@@ -3196,7 +3233,10 @@ static double blink_update(zrig *r, double now)
             case BL_FIRST:
             case BL_INTERVAL:
                 r->blink_value = 0.0;
-                if (dt >= r->blink_gap) {
+                /* ⚠ 这里用 gap/rate 现算，而不是抽签时就把 rate 乘进去：
+                   情绪是会中途变的，抽签时乘死的话，刚被惹毛还要等上一轮
+                   最长 8 秒的间隔走完才看得出来。现算 = 换情绪立刻生效。 */
+                if (dt >= r->blink_gap / ZC_MAX(r->blink_rate, 1e-3)) {
                     r->blink_state = BL_CLOSING;
                     r->blink_t0 = now;
                 }
@@ -3208,7 +3248,9 @@ static double blink_update(zrig *r, double now)
                 break;
             case BL_CLOSED:
                 r->blink_value = 1.0;
-                if (dt >= r->blink_closed) { r->blink_state = BL_OPENING; r->blink_t0 = now; }
+                if (dt >= r->blink_closed * ZC_MAX(r->blink_closed_scale, 1.0)) {
+                    r->blink_state = BL_OPENING; r->blink_t0 = now;
+                }
                 break;
             case BL_OPENING:
                 r->blink_value = 1.0 - z_blink_shape(
@@ -3300,6 +3342,31 @@ double zrig_blink_manual(const zrig *r) { return r ? r->blink_manual : -1.0; }
    调用方照字段语义写 zrig_blink_force(r, -1) 想表达"取消"，结果被当成真 ——
    醒来之后眼睛永远闭着（2026-10-13 用户在测试台看到的就是这个）。
    现在 0 和 -1 都表示取消，两种写法都对。 */
+void zrig_blink_set_mood(zrig *r, const char *mood)
+{
+    int i;
+    if (!r) return;
+    r->blink_rate = 1.0;
+    r->blink_closed_scale = 1.0;
+    r->blink_mood_cur[0] = 0;
+    if (!mood || !mood[0]) return;
+    z_strlcpy(r->blink_mood_cur, mood, sizeof(r->blink_mood_cur));
+    for (i = 0; i < r->nblink_mood; ++i) {
+        if (z_streq(r->blink_mood[i].mood, mood)) {
+            r->blink_rate = r->blink_mood[i].rate;
+            r->blink_closed_scale = r->blink_mood[i].closed_scale;
+            return;
+        }
+    }
+    /* 表里没有这个情绪 = 维持常态，不是错误：情绪词表归平台层管，
+       rig 只给它关心的几个写条目。 */
+}
+
+double zrig_blink_rate(const zrig *r) { return r ? r->blink_rate : 1.0; }
+double zrig_blink_closed_scale(const zrig *r) { return r ? r->blink_closed_scale : 1.0; }
+const char *zrig_blink_mood(const zrig *r) { return r ? r->blink_mood_cur : ""; }
+int zrig_blink_mood_count(const zrig *r) { return r ? r->nblink_mood : 0; }
+
 void zrig_blink_force(zrig *r, int mode)
 {
     if (!r) return;

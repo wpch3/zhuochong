@@ -851,6 +851,10 @@ int zpet_express(zpet *p, const char *mood, double now)
     const zi_rule *r;
     if (!p || !p->rig || !mood || !mood[0]) return 0;
     z_strlcpy(p->last_mood, mood, sizeof(p->last_mood));
+    /* 眨眼频率跟着情绪走（T44.2）。注意这一步在 match_rule 之前，
+       而且和"有没有对应动作规则"无关 —— 情绪表里没写动作的情绪
+       （比如 think）照样该改眨眼节奏，否则一半情绪是哑的。 */
+    zrig_blink_set_mood(p->rig, mood);
     r = match_rule(p, "mood", "", mood, 0);
     if (!r) return 0;   /* 没有对应规则：只记录情绪，不改动作 */
     return run_rule(p, r, NULL, NULL, 0, now);

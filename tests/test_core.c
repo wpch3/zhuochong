@@ -5667,6 +5667,156 @@ static void test_mask_multi(void)
     }
 }
 
+
+/* 眨眼随情绪漂移 + 单边嘴角通道（T44.2）。
+   这两件事是一起做的：都来自 T44.1 的盘点结论，都属于"微表情"。 */
+static void test_micro_expression(void)
+{
+    SECTION("微表情通道：眨眼随情绪漂移 + 单边嘴角 ParamMouthX（T44.2）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        double dx_n, dx_p, rot_n, rot_p, bl_n, bl_p, br_n, br_p;
+        int n_angry, n_calm, n_base;
+        double hold_sleepy, hold_base;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+
+        /* ---------- 一、眨眼情绪表 ---------- */
+        CHECK(zrig_blink_mood_count(r) >= 6,
+              "blink.mood_rate 至少要覆盖 6 种情绪（实际 %d）—— 只写一两条等于没做",
+              zrig_blink_mood_count(r));
+
+        zrig_blink_set_mood(r, "angry");
+        CHECK(zrig_blink_rate(r) > 1.3,
+              "angry 必须眨得更勤（rate=%.2f）—— Ponder & Kennedy 1927："
+              "怒り/興奮で瞬目が増える", zrig_blink_rate(r));
+        zrig_blink_set_mood(r, "affection");
+        CHECK(zrig_blink_rate(r) < 1.0,
+              "affection 必须眨得更少（rate=%.2f）—— 大森ら 1997：眨眼多的人"
+              "被评价为缺乏亲近感与诚实性，亲昵那一侧要反过来压",
+              zrig_blink_rate(r));
+        zrig_blink_set_mood(r, "sleepy");
+        CHECK(zrig_blink_closed_scale(r) > 1.5,
+              "sleepy 的每次闭眼要更久（closed_scale=%.2f）—— 困倦是"
+              "「眨得慢而久」，不是「眨得少」", zrig_blink_closed_scale(r));
+
+        /* 负控①：表里没有的情绪必须回落常态，不许沿用上一个情绪的倍率。
+           这条很重要 —— 情绪词表归平台层管，rig 只写它关心的几个。 */
+        zrig_blink_set_mood(r, "angry");
+        zrig_blink_set_mood(r, "this_mood_does_not_exist");
+        CHECK(zrig_blink_rate(r) == 1.0 && zrig_blink_closed_scale(r) == 1.0,
+              "未登记的情绪必须回落 1.0/1.0（实际 %.2f/%.2f）—— 否则一旦"
+              "上游传来个新情绪词，角色就卡在上一个情绪的节奏里",
+              zrig_blink_rate(r), zrig_blink_closed_scale(r));
+        /* 负控②：空字符串 = 清除情绪 */
+        zrig_blink_set_mood(r, "angry");
+        zrig_blink_set_mood(r, "");
+        CHECK(zrig_blink_rate(r) == 1.0, "传空串必须清回常态（实际 %.2f）",
+              zrig_blink_rate(r));
+
+        /* ---------- 二、情绪真的改变了眨眼次数（行为，不是读数） ---------- */
+        {
+            struct { const char *mood; int *out; } run[3];
+            int k;
+            run[0].mood = "";        run[0].out = &n_base;
+            run[1].mood = "angry";   run[1].out = &n_angry;
+            run[2].mood = "affection"; run[2].out = &n_calm;
+            for (k = 0; k < 3; ++k) {
+                zrig *r2 = zrig_load(rig_path, dir, &d);
+                double t = 0.0, step = 1.0 / 60.0, hold = 0.0;
+                int n = 0, prev = 0;
+                if (!r2) { *run[k].out = -1; continue; }
+                zrig_blink_set_mood(r2, run[k].mood);
+                while (t < 180.0) {
+                    double v;
+                    t += step; zrig_tick(r2, t);
+                    v = zrig_blink_value(r2);
+                    if (v > 0.5 && !prev) n++;
+                    if (v >= 0.999) hold += step;
+                    prev = v > 0.5;
+                }
+                *run[k].out = n;
+                if (k == 0) hold_base = n ? hold / n : 0.0;
+                zrig_free(r2);
+            }
+        }
+        CHECK(n_angry > n_base && n_base > n_calm,
+              "180 秒实测眨眼次数必须 angry(%d) > 常态(%d) > affection(%d) —— "
+              "读数对但行为不对 = 倍率没接进状态机", n_angry, n_base, n_calm);
+
+        {   /* sleepy：次数差别不大，但每次闭合保持时间必须明显拉长 */
+            zrig *r2 = zrig_load(rig_path, dir, &d);
+            double t = 0.0, step = 1.0 / 60.0, hold = 0.0;
+            int n = 0, prev = 0;
+            hold_sleepy = 0.0;
+            if (r2) {
+                zrig_blink_set_mood(r2, "sleepy");
+                while (t < 180.0) {
+                    double v;
+                    t += step; zrig_tick(r2, t);
+                    v = zrig_blink_value(r2);
+                    if (v > 0.5 && !prev) n++;
+                    if (v >= 0.999) hold += step;
+                    prev = v > 0.5;
+                }
+                hold_sleepy = n ? hold / n : 0.0;
+                zrig_free(r2);
+            }
+        }
+        CHECK(hold_sleepy > hold_base * 1.5,
+              "sleepy 每次闭眼保持 %.3fs 必须明显长于常态 %.3fs（>1.5 倍）",
+              hold_sleepy, hold_base);
+
+        /* ---------- 三、单边嘴角 ParamMouthX ---------- */
+        zrig_param_set(r, "ParamMouthX", -1.0);
+        zrig_tick(r, 400.0);
+        dx_n  = zrig_part_channel(r, "mouth_open", "dx");
+        rot_n = zrig_part_channel(r, "mouth_open", "rot_deg");
+        bl_n  = zrig_part_channel(r, "blush_l", "dy");
+        br_n  = zrig_part_channel(r, "blush_r", "dy");
+        zrig_param_set(r, "ParamMouthX", 1.0);
+        zrig_tick(r, 401.0);
+        dx_p  = zrig_part_channel(r, "mouth_open", "dx");
+        rot_p = zrig_part_channel(r, "mouth_open", "rot_deg");
+        bl_p  = zrig_part_channel(r, "blush_l", "dy");
+        br_p  = zrig_part_channel(r, "blush_r", "dy");
+
+        CHECK(dx_p > 0.5 && dx_n < -0.5 && rot_p > 3.0 && rot_n < -3.0,
+              "ParamMouthX 必须同时驱动平移与旋转（dx %.2f/%.2f  rot %.2f/%.2f）",
+              dx_n, dx_p, rot_n, rot_p);
+        /* 抬一侧嘴角靠的是旋转，不是平移 —— 实测扫描结论（logs/asset_qa/mouthx_sweep.png）：
+           平移一大就变成"嘴整个滑到一边"，那是缺陷不是表情。这条把配比钉死。 */
+        CHECK(fabs(rot_p) > fabs(dx_p) * 2.0,
+              "旋转幅度(%.2f°)必须明显大于平移(%.2fpx)——"
+              "单边嘴角靠转不靠挪，平移一大就成了歪嘴缺陷", rot_p, dx_p);
+        /* 脸颊反号：整块颊部随嘴倾斜（真人坏笑就是这样），不是两边一起抬（那是咧嘴笑）。 */
+        CHECK(bl_p * br_p < 0.0 && bl_n * br_n < 0.0,
+              "两侧脸颊必须反号（+1 时 L %.2f / R %.2f）—— 同号 = 两边一起抬 = "
+              "咧嘴笑，那是 ParamMouthForm 的活", bl_p, br_p);
+        /* 负控：ParamMouthX 不许碰口型同步的两个参数，否则一说话就互相打架。 */
+        {
+            double form_before, form_after;
+            zrig_param_set(r, "ParamMouthX", 0.0);
+            zrig_tick(r, 402.0);
+            form_before = zrig_part_channel(r, "mouth_open", "sx");
+            zrig_param_set(r, "ParamMouthX", 1.0);
+            zrig_tick(r, 403.0);
+            form_after = zrig_part_channel(r, "mouth_open", "sx");
+            CHECK(fabs(form_after - form_before) < 1e-9,
+                  "ParamMouthX 不许动 sx（%.6f→%.6f）—— sx 是 ParamMouthForm "
+                  "也就是口型同步的通道，两边抢同一个 sx 会在说话时打架",
+                  form_before, form_after);
+        }
+        zrig_free(r);
+    }
+}
+
 int main(int argc, char **argv)
 {
     zlog_set_level(ZLOG_ERROR);
@@ -5680,6 +5830,7 @@ int main(int argc, char **argv)
     test_eye_saccade();
     test_sparkle_trigger();
     test_eye_variants();
+    test_micro_expression();
     test_eye_aperture();
     test_image();
     test_deflate();
