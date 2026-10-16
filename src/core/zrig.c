@@ -491,6 +491,25 @@ struct zrig {
     int    look_blink_init;
     double look_last;           /* 上次平滑的时刻 */
 
+    /* 眼球微动（マイクロサッカード）。人的眼球从来不会真的静止 ——
+       cgbox「目の動きのクオリティアップ」原话：「人の眼球は静止していることはありません」，
+       给瞳孔加上常驻的微小游移能明显提升"活着"的感觉。
+       同一篇也给了反面警告：「やりすぎると違和感がでますし、常に慌てている印象になる」
+       —— 幅度必须是**亚像素到 1 像素**级别，大了就成了眼神乱飘的慌张人。 */
+    double sacc_amp;            /* 幅度（归一化视线单位，0 = 关掉） */
+    double sacc_gap_min, sacc_gap_max;  /* 两次微跳之间的间隔范围（秒） */
+    double sacc_speed;          /* 趋近速度（1/s）。眼跳是"跳"不是"飘"，这个要大 */
+    double sacc_x, sacc_y;      /* 当前偏移 */
+    double sacc_tx, sacc_ty;    /* 本次微跳的目标偏移 */
+    double sacc_next;           /* 下次微跳的时刻 */
+    int    sacc_init;
+    /* ⚠ 微动**必须用自己的随机流**，不能蹭 r->rng。
+       r->rng 同时在喂眨眼间隔（zrand_expo/zrand_range）和"转视线是否眨眼"的 55% 掷骰；
+       微动每秒要抽 3 个数，混进去会把眨眼的整条随机序列往后挪 ——
+       既有的眨眼时序测试会以"看起来无关的改动"为由莫名其妙地红，
+       而且以后每加一个用随机的小功能就再挪一次，谁都别想复现谁。 */
+    zrand  sacc_rng;
+
     zrand  rng;
 };
 
@@ -2179,6 +2198,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     r = (zrig *)z_calloc(1, sizeof(zrig));
     z_strlcpy(r->dir, base_dir ? base_dir : "", sizeof(r->dir));
     zrand_seed(&r->rng, 0x5EED1234ull);
+    zrand_seed(&r->sacc_rng, 0x5ACCAD3Dull);   /* 微动自己的流，见 sacc_rng 的注释 */
     zsm_init(&r->sm);
     r->blink_state = BL_FIRST;
     r->phys_enabled = 1;
@@ -2343,6 +2363,16 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         read_pair(zjson_obj_get(gj, "max_offset"), 0.0, 0.0, pair);
         r->gaze_max_dx = pair[0];
         r->gaze_max_dy = pair[1];
+        {
+            const zjson *mo = zjson_obj_get(gj, "micro");
+            r->sacc_amp     = zjson_num(zjson_obj_get(mo, "amp"), 0.0);
+            r->sacc_gap_min = zjson_num(zjson_obj_get(mo, "gap_min"), 0.45);
+            r->sacc_gap_max = zjson_num(zjson_obj_get(mo, "gap_max"), 1.60);
+            r->sacc_speed   = zjson_num(zjson_obj_get(mo, "speed"), 16.0);
+            if (r->sacc_gap_min < 0.05) r->sacc_gap_min = 0.05;
+            if (r->sacc_gap_max < r->sacc_gap_min) r->sacc_gap_max = r->sacc_gap_min;
+            if (r->sacc_speed < 1.0) r->sacc_speed = 1.0;
+        }
     }
 
     /* 指针跟随：
@@ -2696,8 +2726,11 @@ static void compute_group_transforms(zrig *r)
         double blink_off_l = 0.0, blink_off_r = 0.0;
         double smile_v_l = 0.0, smile_v_r = 0.0;
         r->blink_now = r->blink_value;
-        r->gaze_nx = r->gaze_x;
-        r->gaze_ny = r->gaze_y;
+        /* 微动叠在"用户/动作设定的视线"之上，但**不回写 gaze_x** ——
+           gaze_x 是读数（测试台滑条、/api/param 读它），
+           把底噪混进读数会让"我设了 0.5 怎么读出来 0.53"这种鬼问题冒出来。 */
+        r->gaze_nx = ZC_CLAMP(r->gaze_x + r->sacc_x, -1.0, 1.0);
+        r->gaze_ny = ZC_CLAMP(r->gaze_y + r->sacc_y, -1.0, 1.0);
         for (i = 0; i < r->nparams; ++i) {
             const zparam *q = &r->params[i];
             /* 叠加序：动作通道（≈ .motion3 曲线）→ 表情 → 口型音素（官方 LipSync 排在表情之后） */
@@ -3263,6 +3296,25 @@ void zrig_tick(zrig *r, double now)
                和猛地转过去都该眨，判据应该是位移不是速度。
              · 只有 55% 概率真眨。每次都眨同样像机器人，官方那句说的是"经常"
                不是"总是"。 */
+        /* 眼球微动：每隔 gap 换一个新的微小目标，然后快速趋近过去。
+           刻意**不走 look_cx** —— 微动是眼球自己的事，不该带着脑袋一起晃。 */
+        if (r->sacc_amp > 0.0) {
+            if (!r->sacc_init) { r->sacc_next = now; r->sacc_init = 1; }
+            if (now >= r->sacc_next) {
+                r->sacc_tx = zrand_range(&r->sacc_rng, -r->sacc_amp, r->sacc_amp);
+                r->sacc_ty = zrand_range(&r->sacc_rng, -r->sacc_amp, r->sacc_amp);
+                r->sacc_next = now + zrand_range(&r->sacc_rng,
+                                                 r->sacc_gap_min, r->sacc_gap_max);
+            }
+            {
+                double ks = 1.0 - exp(-r->sacc_speed * dt);
+                r->sacc_x += (r->sacc_tx - r->sacc_x) * ks;
+                r->sacc_y += (r->sacc_ty - r->sacc_y) * ks;
+            }
+        } else {
+            r->sacc_x = r->sacc_y = 0.0;
+        }
+
         if (!r->look_blink_init) {
             r->look_blink_x = r->look_cx;
             r->look_blink_y = r->look_cy;
@@ -4025,6 +4077,10 @@ void zrig_look(zrig *r, double nx, double ny)
 int zrig_action_geom_channels(const zrig *r) { return r ? r->legacy_geom_chans : 0; }
 
 double zrig_look_x(const zrig *r) { return r ? r->look_cx : 0.0; }
+double zrig_gaze_eff_x(const zrig *r) { return r ? r->gaze_nx : 0.0; }
+double zrig_gaze_x(const zrig *r) { return r ? r->gaze_x : 0.0; }
+double zrig_gaze_max_dx(const zrig *r) { return r ? r->gaze_max_dx : 0.0; }
+double zrig_gaze_eff_y(const zrig *r) { return r ? r->gaze_ny : 0.0; }
 double zrig_look_y(const zrig *r) { return r ? r->look_cy : 0.0; }
 
 /* ------------------------------------------------------------- 表情层 */

@@ -137,6 +137,12 @@ void  zrig_gaze_reset(zrig *r);
    zrig_gaze 内部已经会调它，单独调用用于只转头不转眼的场合。 */
 void   zrig_look(zrig *r, double nx, double ny);
 double zrig_look_x(const zrig *r);     /* 平滑后的当前值，测试/调试用 */
+/* 有效视线 = 设定视线 + 眼球微动（マイクロサッカード）。
+   和 zrig_gaze_x 的区别：后者是"读数"（用户/动作设的值），不含微动底噪。 */
+double zrig_gaze_eff_x(const zrig *r);
+double zrig_gaze_eff_y(const zrig *r);
+double zrig_gaze_x(const zrig *r);        /* 读数：用户/动作设的视线，不含微动 */
+double zrig_gaze_max_dx(const zrig *r);   /* 视线满量程（画布像素），换算微动幅度用 */
 double zrig_look_y(const zrig *r);
 /* --------------------------------------------- 命名参数层（≈ Live2D ParamXxx）
    一张"参数表"：内建参数路由到视线/眨眼/头部跟随，其余由 rig.json 的 params 段

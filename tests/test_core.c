@@ -196,6 +196,107 @@ static void test_state_machine(void)
 }
 
 /* ---------------------------------------------------------- 眨眼 */
+/* 眼球微动（マイクロサッカード，T39.3 / T44）。
+   依据：cgbox「目の動きのクオリティアップ」——「人の眼球は静止していることはありません」，
+   同篇反面警告「やりすぎると…常に慌てている印象になる」，所以幅度必须卡在一个窄带里，
+   上下限**都是闸**：太小等于没做，太大就是眼神乱飘。 */
+static void test_eye_saccade(void)
+{
+    SECTION("眼球微动（micro-saccade）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        double t;
+        double peak = 0.0, sum2 = 0.0;
+        double peak_look = 0.0, peak_read = 0.0;
+        int n = 0, nsteps = 0;
+        double mx;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        mx = zrig_gaze_max_dx(r);
+        CHECK(mx > 0.0, "视线满量程 max_offset.x 应为正（实际 %.2f px）", mx);
+        /* 不设任何视线、不播任何动作，纯待机 30 秒 */
+        for (t = 0.0; t <= 30.0; t += 1.0 / 30.0) {
+            double gx, lx, rd;
+            zrig_tick(r, t);
+            gx = zrig_gaze_eff_x(r) * mx;     /* 换算成画布像素 */
+            lx = zrig_look_x(r);
+            rd = zrig_gaze_x(r);
+            if (fabs(gx) > peak) peak = fabs(gx);
+            if (fabs(lx) > peak_look) peak_look = fabs(lx);
+            if (fabs(rd) > peak_read) peak_read = fabs(rd);
+            sum2 += gx * gx;
+            ++n;
+            if (n > 1 && fabs(gx) > 1e-9) ++nsteps;
+        }
+        /* ① 幅度落在标定带内。标定工具：tools/calib_saccade.py */
+        CHECK(peak >= 0.80 && peak <= 1.20,
+              "微动峰值应在 0.80~1.20 画布像素之间（实际 %.2f px）—— "
+              "低于 0.8 肉眼看不出来等于没做，高于 1.2 就是 cgbox 警告的\"一直很慌\"", peak);
+        CHECK(sqrt(sum2 / (n ? n : 1)) >= 0.25,
+              "微动 RMS 应 >= 0.25 px（实际 %.2f）—— 只有峰值达标但常年贴着 0 "
+              "说明它只是偶尔抽一下，不是持续在动", sqrt(sum2 / (n ? n : 1)));
+        /* ② 微动是眼球自己的事，不许带着脑袋晃 */
+        CHECK(peak_look < 1e-9,
+              "没有指针输入时头部朝向必须纹丝不动（实际峰值 %.6f）—— "
+              "微动若混进 look_cx，整个脑袋会跟着一起飘", peak_look);
+        /* ③ 微动是底噪，不许污染\"读数\" —— 否则测试台滑条和 /api/param 会自己乱跳 */
+        CHECK(peak_read < 1e-9,
+              "zrig_gaze_x（读数）必须保持 0（实际峰值 %.6f）—— "
+              "把底噪混进读数，\"我设了 0.5 怎么读出来 0.53\"就会变成常驻 bug", peak_read);
+        zrig_free(r);
+    }
+    /* ④ 负控：把 gaze.micro 摘掉，必须退回"完全不动"。
+       没有这条的话，"默认就开着"和"按配置开着"分不出来 ——
+       而默认开启等于偷偷改掉所有既有模型的行为。 */
+    {
+        char dir[1024], src_p[1024], dst_p[1024];
+        char *buf;
+        long sz;
+        FILE *f;
+        zdiag d;
+        zrig *r;
+        double t, peak = 0.0;
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(src_p, sizeof(src_p), "%s/rig.json", dir);
+        z_snprintf(dst_p, sizeof(dst_p), "%s/rig_nomicro.json", dir);
+        f = fopen(src_p, "rb");
+        CHECK(f != NULL, "负控：应能读到 rig.json");
+        if (!f) return;
+        fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET);
+        buf = (char *)malloc((size_t)sz + 1);
+        if (!buf) { fclose(f); return; }
+        if (fread(buf, 1, (size_t)sz, f) != (size_t)sz) { fclose(f); free(buf); return; }
+        buf[sz] = 0;
+        fclose(f);
+        {   /* 把 "micro" 这个键名改掉就等于摘掉它（JSON 仍然合法） */
+            char *q = strstr(buf, "\"micro\"");
+            CHECK(q != NULL, "负控：rig.json 里应当有 gaze.micro（没有说明这功能根本没接上）");
+            if (q) memcpy(q, "\"_off_\"", 7);
+        }
+        f = fopen(dst_p, "wb");
+        if (f) { fwrite(buf, 1, (size_t)sz, f); fclose(f); }
+        free(buf);
+        zdiag_init(&d);
+        r = zrig_load(dst_p, dir, &d);
+        if (r) {
+            for (t = 0.0; t <= 10.0; t += 1.0 / 30.0) {
+                zrig_tick(r, t);
+                if (fabs(zrig_gaze_eff_x(r)) > peak) peak = fabs(zrig_gaze_eff_x(r));
+            }
+            CHECK(peak < 1e-12,
+                  "摘掉 gaze.micro 后必须完全没有微动（实际峰值 %.9f）", peak);
+            zrig_free(r);
+        }
+        remove(dst_p);
+    }
+}
+
 static void test_blink(void)
 {
     SECTION("眨眼状态机（对齐 Live2D CubismEyeBlink 五态）");
@@ -5435,6 +5536,7 @@ int main(int argc, char **argv)
     test_schema();
     test_state_machine();
     test_blink();
+    test_eye_saccade();
     test_eye_aperture();
     test_image();
     test_deflate();

@@ -41,6 +41,9 @@ def png_size(path):
 #   · socket 是遮罩，必须最小（引擎要求遮罩件先画）；
 #   · lash 压住 hl（睫毛本来就该盖住高光），closed/smile 压住 lash；
 #   · 眉毛被挤到 236/237（make_brow_parts.py 同步改了），刘海仍是 240。
+# 眼球微动幅度（归一化视线单位）。标定见 tools/calib_saccade.py。
+SACC_AMP = 0.26
+
 _EYE_ORDER = ("socket", "base", "ball", "ball_star", "lid",
               "hl", "lash", "closed", "hl_star", "smile")
 FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
@@ -2076,7 +2079,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "ground_line": ch - 8,
         "groups": groups,
         # 眼球左右 ±4px / 上下 ±2.5px：满格 ParamEyeBallX/Y = look_around 动作的幅度。
-        "gaze": {"max_offset": [4.0, 2.5]},
+        # micro = 眼球微动（マイクロサッカード）。cgbox「目の動きのクオリティアップ」：
+        #   「人の眼球は静止していることはありません」—— 瞳孔常驻微游移能明显提升"活着"的感觉；
+        #   同篇反面警告「やりすぎると…常に慌てている印象になる」。
+        # amp 的单位是归一化视线（±1 = max_offset 的 4.0px），所以 amp 0.25 ≈ ±1.0px。
+        # 具体取值是**实测标定**出来的，不是拍的：见 tools/calib_saccade.py 的输出。
+        "gaze": {"max_offset": [4.0, 2.5],
+                 "micro": {"amp": SACC_AMP, "gap_min": 0.45,
+                           "gap_max": 1.60, "speed": 16.0}},
         # 指针跟随：眼睛看过去的同时，头和上身也跟着转一点
         # （Live2D 的 ParamAngleX/Y + ParamBodyAngleX）。
         # 幅度刻意保守：头 5° + 4px，上身 1.2° + 1.5px —— 再大就"摇头晃脑"了。

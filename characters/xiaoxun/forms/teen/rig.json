@@ -118,7 +118,13 @@
     "max_offset": [
       4.0,
       2.5
-    ]
+    ],
+    "micro": {
+      "amp": 0.26,
+      "gap_min": 0.45,
+      "gap_max": 1.6,
+      "speed": 16.0
+    }
   },
   "look": {
     "speed": 9.0,
