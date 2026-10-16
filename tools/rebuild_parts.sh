@@ -96,6 +96,7 @@ step "18/19 星星眼差分件（星形虹膜 + ✨ 素材，AI 源图抠像；�
 "$PY" tools/make_star_eye_parts.py --character "$CH" --form "$FM"
 "$PY" tools/make_manpu_parts.py --character "$CH" --form "$FM"
 "$PY" tools/make_attach_parts.py --character "$CH" --form "$FM"
+"$PY" tools/make_wardrobe.py --character "$CH" --form "$FM"
 
 step "19/19 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"

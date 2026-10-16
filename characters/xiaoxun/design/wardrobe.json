@@ -1,0 +1,345 @@
+{
+  "schema_version": "1.0",
+  "_note": "衣柜（A49 / T45.5~T45.7）。引擎的换装机制早就有（zrig_apply_outfit 按部件覆盖 file/pos/scale/layer，/api/outfit?id= + 调试台按钮都在），这里只管生成素材和包。对应官方 Cubism 2《モデルの切り替え方式の検討》的「テクスチャ方式」—— 官方原话「モデル読み込み後、テクスチャ設定命令でテクスチャを切り替えます・色変更などが簡単にできる」。",
+  "_fields": {
+    "iou_min": "重绘件的剪影 IoU 下限。对不齐的贴图换上去就是身体错位，这条是硬闸",
+    "shift_tol": "程序化换色的色距容差（L1）。要够大以覆盖阴影/高光，又不能大到吃掉邻近衣物",
+    "outfits[].parts[].mode": "shift = 程序化保明暗平移（这一件只有一种衣物且不撞皮肤时用）；repaint = AI 改色，剪影该一动不动，卡 IoU；restyle = AI 换件，**剪影本来就会变**（开衫比夹克厚），改卡外长/内缩上限",
+    "_为什么躯干只能重绘": "实测 seg_torso 里外套白被最近邻判成「袜 #F6F2F0」(22.5%)、「外套主体 #F0F0F0」连前六都没进；seg_leg_l 的腿部皮肤被判成「衬衫 #FCE8D8」(34.4%)。按颜色分不开衣物，程序化换色会把皮肤一起染了",
+    "_为什么袖子可以程序化": "实测 arm_l_upper = 80.2% 袖青 #6CB4C0 + 11.1% 袖口青 #6CB4B4 + 0 个皮肤像素 ⇒ 安全",
+    "outfits[].parts[].tol": "可选，覆盖全局 shift_tol。件里有皮肤时必须收紧"
+  },
+  "iou_min": 0.97,
+  "shift_tol": 90,
+  "outfits": [
+    {
+      "id": "midnight",
+      "name": "夜航（深蓝 × 米）",
+      "note": "T45.5 换色档的第一套。躯干 AI 重绘（外套白→深蓝、滚边青→米、衬衫→浅粉、裙→酒红），四段袖子程序化换色跟上（青→米）。剪影与姿势全部沿用原件。 袜条纹与鞋改成藕紫以配酒红裙；腿部容差收到 40 以免染到皮肤。",
+      "parts": {
+        "seg_torso": {
+          "mode": "repaint",
+          "source": "outfit_midnight_torso.png"
+        },
+        "arm_l_upper": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#EFE2C6"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#D9C9A6"
+            }
+          ]
+        },
+        "arm_r_upper": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#EFE2C6"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#D9C9A6"
+            }
+          ]
+        },
+        "arm_l_fore": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#EFE2C6"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#D9C9A6"
+            }
+          ]
+        },
+        "arm_r_fore": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#EFE2C6"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#D9C9A6"
+            }
+          ]
+        },
+        "arm_l_root": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#EFE2C6"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#D9C9A6"
+            }
+          ]
+        },
+        "arm_r_root": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#EFE2C6"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#D9C9A6"
+            }
+          ]
+        },
+        "seg_leg_l": {
+          "mode": "shift",
+          "tol": 58,
+          "map": [
+            {
+              "from": "#6CB4B4",
+              "to": "#B08098"
+            }
+          ],
+          "_note": "容差 40（默认 90）—— 腿部有皮肤，宽容差会把皮肤一起染了"
+        },
+        "seg_leg_r": {
+          "mode": "shift",
+          "tol": 58,
+          "map": [
+            {
+              "from": "#6CB4B4",
+              "to": "#B08098"
+            }
+          ],
+          "_note": "容差 40（默认 90）—— 腿部有皮肤，宽容差会把皮肤一起染了"
+        },
+        "seg_foot_l": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#B08098"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#9C6E84"
+            }
+          ]
+        },
+        "seg_foot_r": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#B08098"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#9C6E84"
+            }
+          ]
+        },
+        "seg_foot_l_tip": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#B08098"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#9C6E84"
+            }
+          ]
+        },
+        "seg_foot_r_tip": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#B08098"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#9C6E84"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cocoa",
+      "name": "可可（针织开衫）",
+      "note": "T45.6/T45.7 档的样板：这一套**不是改色，是换衣服** —— 棒球外套换成奶油粗针织开衫、衬衫换成焦糖高领、百褶裙换成棕灯芯绒。证明第 2/3 档和第 1 档**走的是同一条流水线**，差别只在提示词写什么、包里列几个部件。",
+      "parts": {
+        "seg_torso": {
+          "mode": "restyle",
+          "source": "outfit_cocoa_torso.png",
+          "grow_max": 0.2,
+          "shrink_max": 0.05,
+          "_note": "外长上限放到 20%：粗针织开衫本来就比棒球夹克厚，实测外长 12.0%。真正会露洞的是**内缩**（上限 5%，实测 0.1%）—— 官方也说换装要给「比现在更大的衣服」留余地"
+        },
+        "arm_l_upper": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "arm_r_upper": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "arm_l_fore": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "arm_r_fore": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "arm_l_root": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "arm_r_root": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "seg_leg_l": {
+          "mode": "shift",
+          "tol": 58,
+          "map": [
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ],
+          "_note": "容差 40（默认 90）—— 腿部有皮肤，宽容差会把皮肤一起染了"
+        },
+        "seg_leg_r": {
+          "mode": "shift",
+          "tol": 58,
+          "map": [
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ],
+          "_note": "容差 40（默认 90）—— 腿部有皮肤，宽容差会把皮肤一起染了"
+        },
+        "seg_foot_l": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "seg_foot_r": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "seg_foot_l_tip": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        },
+        "seg_foot_r_tip": {
+          "mode": "shift",
+          "map": [
+            {
+              "from": "#6CB4C0",
+              "to": "#E8D8BC"
+            },
+            {
+              "from": "#6CB4B4",
+              "to": "#CDB894"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
