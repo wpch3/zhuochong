@@ -913,6 +913,79 @@ function slotOf(id) {
     CHECK(/\$\("p-fps"\)\.textContent\s*=/.test(tjs), "p-fps 仍要被刷新（别把问题修成不更新）");
   }
 
+  /* ---------------------------------------------------------- 帧刷新节流器 */
+  {
+    SECTION("测试台画面刷新：在途保护 / 丢弃迟到帧 / 按显示尺寸要图（2026-10-16 抽搐）");
+    const sandbox = { window: {}, console };
+    sandbox.globalThis = sandbox;
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(WEB, "frameloop.js"), "utf8"), sandbox);
+    const FL = sandbox.window.ZFrameLoop;
+    CHECK(!!FL && typeof FL.makeFrameLoop === "function", "frameloop.js 应导出 ZFrameLoop");
+    const html = fs.readFileSync(path.join(WEB, "test.html"), "utf8");
+    CHECK(html.indexOf("frameloop.js") < html.indexOf("test.js"),
+          "test.html 要先引 frameloop.js 再引 test.js（后者启动时就会用它）");
+
+    if (FL) {
+      /* ① 按显示尺寸要图：别拿 466px 的图去填 320px 的框 */
+      CHECK(FL.frameScale(320, 466, 1) === 69,
+            "320px 显示 / 466px 帧 / dpr1 应要 69%（实际 " + FL.frameScale(320, 466, 1) + "）");
+      CHECK(FL.frameScale(320, 466, 2) === 100,
+            "HiDPI（dpr2）要封顶 100 而不是糊图（实际 " + FL.frameScale(320, 466, 2) + "）");
+      CHECK(FL.frameScale(50, 466, 1) === 25,
+            "极小显示要卡在下限 25（实际 " + FL.frameScale(50, 466, 1) + "）");
+      CHECK(FL.frameScale(320, 0, 1) === 100,
+            "还没拿到 info（frame_w=0）时要退回 100，不能乱猜");
+
+      /* ② 在途保护：上一帧没回来，连发多少次都只出一发 */
+      let t = 0, loads = [], shown = [];
+      const lp = FL.makeFrameLoop({
+        now: () => t,
+        url: (s) => "F" + s,
+        load: (url, ok, fail) => loads.push({ url, ok, fail }),
+        show: (url) => shown.push(url),
+      });
+      lp.tick(50); lp.tick(50); lp.tick(50); lp.tick(50);
+      CHECK(loads.length === 1,
+            "上一帧没回来时后续 tick 必须不发请求（实际发了 " + loads.length + " 发）—— " +
+            "原来的 setInterval(100) 不管这个，链路一慢就把请求堆进队列");
+      CHECK(lp.stats().skipped === 3, "被跳过的 tick 要计数（实际 " + lp.stats().skipped + "）");
+
+      /* ③ 回来之后能继续发 */
+      loads[0].ok();
+      CHECK(shown.length === 1 && shown[0] === "F50", "第一帧回来后要上屏");
+      lp.tick(50);
+      CHECK(loads.length === 2, "上一帧回来后应能发下一帧（实际 " + loads.length + "）");
+
+      /* ④ 迟到的旧帧要丢掉 —— 画面只许往前走 */
+      t += 5000;                       /* 第 2 发超时，放行第 3 发 */
+      lp.tick(60);
+      CHECK(loads.length === 3, "在途超时后要放行，不能永久卡死停更");
+      loads[2].ok();                   /* 第 3 发（新）先回来 */
+      CHECK(shown.length === 2 && shown[1] === "F60", "新帧应上屏");
+      loads[1].ok();                   /* 第 2 发（旧）后到 */
+      CHECK(shown.length === 2,
+            "迟到的旧帧必须丢掉（实际上屏 " + shown.length + " 次）—— " +
+            "上屏会让画面倒退一帧再跳回来，这正是肉眼看到的\"抽一下\"");
+      CHECK(lp.stats().dropped === 1, "丢弃的迟到帧要计数（实际 " + lp.stats().dropped + "）");
+
+      /* ⑤ 加载失败也要放行，否则一次 404 就永久停更 */
+      const lp2 = FL.makeFrameLoop({
+        now: () => 0, url: () => "X",
+        load: (u, ok, fail) => { lp2._f = fail; },
+        show: () => {},
+      });
+      lp2.tick(100); lp2._f();
+      CHECK(lp2.tick(100) === true, "上一发失败后要能继续发（否则一次网络错误就黑屏）");
+    }
+
+    /* 源码层面兜一道：别哪天又改回写死的 100ms 轮询 */
+    const tjs2 = fs.readFileSync(path.join(WEB, "test.js"), "utf8");
+    CHECK(/ZFrameLoop\.makeFrameLoop/.test(tjs2), "test.js 要走 frameLoop，不许自己再写一套");
+    CHECK(!/setInterval\(\(\) => \{ if \(!suiteRunning\) refresh\(\); \}, 100\)/.test(tjs2),
+          "不许退回 setInterval(refresh, 100) 那版无保护的刷新");
+  }
+
   console.log("");
   console.log(fail === 0
     ? "通过 " + pass + " 项，失败 0 项"

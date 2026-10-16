@@ -56,12 +56,26 @@ async function frameHash() {
   return { hash: h >>> 0, bytes: buf.length };
 }
 
-/* ---------- 画面刷新 ---------- */
+/* ---------- 画面刷新：在途保护 + 丢弃迟到帧 + 按显示尺寸要图 ----------
+   逻辑在 web/frameloop.js（纯函数，tests/test_web.js 里有单测）。
+   动机见那个文件的文件头：满尺寸一帧 190 KB，10fps 要 1.86 MB/s，
+   云端预览撑不住就会"一卡一跳"。 */
+const frameLoop = ZFrameLoop.makeFrameLoop({
+  now: () => performance.now(),
+  url: (s) => `/api/frame.png?s=${s}&t=${Date.now()}`,
+  load: (url, ok, fail) => {
+    const im = new Image();
+    im.onload = ok; im.onerror = fail; im.src = url;
+  },
+  show: (url) => { $("pet").src = url; framesShown++; },
+});
+
 function refresh() {
   const img = $("pet");
-  const next = new Image();
-  next.onload = () => { img.src = next.src; framesShown++; };
-  next.src = "/api/frame.png?t=" + Date.now();
+  const w = img && img.clientWidth ? img.clientWidth : 0;
+  const dpr = (typeof devicePixelRatio === "number" && devicePixelRatio > 0)
+            ? devicePixelRatio : 1;
+  frameLoop.tick(ZFrameLoop.frameScale(w, info ? info.frame_w : 0, dpr));
 }
 
 /* ---------- 状态条 ---------- */
@@ -417,15 +431,20 @@ function resetAllParams() { api("/api/param?all=1").then(loadParams); }
 /* ---------- 画面上的鼠标：悬停＝视线，点击＝摸头 ---------- */
 function bindStage() {
   const img = $("pet");
-  let last = 0;
+  let last = 0, lastRegion = 0;
   img.addEventListener("mousemove", (e) => {
     const now = performance.now();
-    if (now - last < 90) return;           /* 别把引擎打爆 */
+    /* hover 驱动视线跟随，要跟手 → 60ms；
+       region 只刷新"鼠标下：xxx"那行字，250ms 足够，省下的带宽留给帧。
+       （两条原来都是 90ms，等于每秒 22 个请求在和帧抢链路） */
+    if (now - last < 60) return;
     last = now;
     const b = img.getBoundingClientRect();
     const x = Math.round((e.clientX - b.left) / b.width * (info ? info.frame_w : b.width));
     const y = Math.round((e.clientY - b.top) / b.height * (info ? info.frame_h : b.height));
     fetch(`/api/hover?x=${x}&y=${y}&in=1`, { cache: "no-store" });
+    if (now - lastRegion < 250) return;
+    lastRegion = now;
     fetch(`/api/region?x=${x}&y=${y}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((q) => {
@@ -685,7 +704,10 @@ async function runSuite() {
   await loadLipsync();
   await loadVisemes();
   await loadMixPanel();
-  setInterval(() => { if (!suiteRunning) refresh(); }, 100);
+  /* 33ms = 最高 30fps 的试探节奏。真正的节流靠 frameLoop 的在途保护：
+     链路快就接近 30fps，链路慢就自动退到链路能给的速度，而不是照着
+     固定间隔往队列里堆请求（那才是"一拥而上然后卡一下"的来源）。 */
+  setInterval(() => { if (!suiteRunning) refresh(); }, 33);
   setInterval(loadInfo, 1000);
   setInterval(() => {
     const now = performance.now();
