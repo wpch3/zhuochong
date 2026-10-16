@@ -1614,6 +1614,36 @@ def check_live2d(root):
                         capture_output=True, text=True)
     check("平台契约自检通过（tools/check_platform.py）", rc.returncode == 0,
           (rc.stdout.strip().splitlines() or ["?"])[-1])
+    # ⑲ 挂件表的形态可移植性（T2.2.0）：角色级挂件表一旦写死画布绝对像素，
+    #    就只对量它的那个形态成立。实测过账：照少女 teen 量的 7 个挂件套到
+    #    chibi（1:2.5）上平均偏 92 画布像素，而画布总高才 1360。
+    #    细目在 tools/check_form_portable.py，那里拿四种头身比各算一遍。
+    for _cd in sorted(glob.glob(os.path.join(root, "characters/*/design/attachments.json"))):
+        _c = _cd.split(os.sep)[-3]
+        _rc = subprocess.run([sys.executable,
+                              os.path.join(root, "tools/check_form_portable.py"),
+                              "--root", root, "--character", _c],
+                             capture_output=True, text=True)
+        check("挂件表对四个形态都可移植（%s）" % _c, _rc.returncode == 0,
+              (_rc.stdout.strip().splitlines() or ["?"])[-1])
+    # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
+    # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。
+    for _fp in sorted(glob.glob(os.path.join(root, "characters/*/forms.json"))):
+        _cd2 = os.path.dirname(_fp)
+        with io.open(_fp, encoding="utf-8") as _f:
+            _forms = json.load(_f)["forms"]
+        for _fm in _forms:
+            if _fm.get("status") != "ready":
+                continue
+            _ap = os.path.join(_cd2, "forms", _fm["id"], "design", "anchors.json")
+            if not os.path.exists(_ap):
+                continue
+            with io.open(_ap, encoding="utf-8") as _f:
+                _ht = float(json.load(_f)["meta"]["heads_tall"])
+            _decl = str(_fm.get("head_body_ratio", "")).split(":")
+            _ok = len(_decl) == 2 and abs(float(_decl[1]) - _ht) < 0.15
+            check("%s/%s 声明的头身比和实测一致" % (os.path.basename(_cd2), _fm["id"]), _ok,
+                  "声明 %s，实测 1:%.2f" % (_fm.get("head_body_ratio"), _ht))
     pf_p = os.path.join(root, "web/platform.json")
     if os.path.exists(pf_p):
         pf = json.load(io.open(pf_p, encoding="utf-8"))

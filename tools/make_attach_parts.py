@@ -28,6 +28,7 @@ import os
 import numpy as np
 from PIL import Image
 
+import attach_geom
 from make_manpu_parts import (SOLID_A, bg_color, key_alpha, left_magenta,
                               relay_colors, CROP_MARGIN)
 
@@ -56,7 +57,7 @@ def key_alpha_soft(rgb: np.ndarray, bg: np.ndarray) -> np.ndarray:
     return np.clip(1.0 - np.maximum(excess, 0.0) / denom, 0.0, 1.0)
 
 
-def build_one(att, slot, redraw_dir, sprites_dir):
+def build_one(att, slot, redraw_dir, sprites_dir, anchors):
     src = os.path.join(redraw_dir, att["source"])
     if not os.path.exists(src):
         raise SystemExit("[attach] 缺原图 %s" % src)
@@ -127,7 +128,10 @@ def build_one(att, slot, redraw_dir, sprites_dir):
         crgb = ra[..., :3].astype(np.float64)
         ca = ra[..., 3].astype(np.float64) / 255.0
 
-    h1 = int(att["sprite_h"])
+    # 高度来自**形态级** anchors.json（相对几何，T2.2.0）：
+    # 同一张挂件表要能套在 teen/loli/adult/chibi 四个形态上，
+    # 写绝对像素的话 chibi 那个 517px 的头上会扣一对 104px 的耳朵。
+    _pos, h1 = attach_geom.resolve(att, anchors)
     # width_ratio：横向压扁/拉宽系数，1.0 = 保持原图宽高比。
     # ★ 猫耳要用到：素材画出来的宽高比是 1.09（扁三角），但真猫耳从正面看
     #   底宽约为高的 0.8，1.09 会让两只耳朵横着铺满整个头顶 —— 用户原话「过宽」。
@@ -166,6 +170,13 @@ def main() -> int:
     with io.open(tp, encoding="utf-8") as f:
         table = json.load(f)
 
+    # 形态级锚点：挂件几何是**相对**这个形态的头高/身高表达的（T2.2.0）。
+    # 同一张挂件表要能套在 teen/loli/adult/chibi 上，不能写绝对像素。
+    anchors = attach_geom.load_anchors(os.path.join(base, "forms", a.form, "design"))
+    _ovr = attach_geom.load_overrides(
+        os.path.join(base, "forms", a.form, "design"))
+    if anchors is None:
+        anchors = attach_geom.load_anchors(os.path.join(base, "forms", a.form))
     slots = {s["id"]: s for s in table["slots"]}
     out = {"schema_version": "1.0", "slots": table["slots"], "attachments": []}
     for att in table["attachments"]:
@@ -173,7 +184,8 @@ def main() -> int:
         if slot is None:
             raise SystemExit("[attach] %s 落在不存在的插槽 %r"
                              % (att["id"], att["slot"]))
-        w, h, made, cover = build_one(att, slot, redraw, sprites)
+        w, h, made, cover = build_one(
+            attach_geom.apply_overrides(att, _ovr), slot, redraw, sprites, anchors)
         out["attachments"].append({
             "id": att["id"], "slot": att["slot"],
             "file": "sprites/" + att["sprite"],

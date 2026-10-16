@@ -13,6 +13,8 @@
 from __future__ import annotations
 import argparse, json, os, sys
 
+import attach_geom
+
 
 AP_MIN = 0.06   # 眼眶开口闭到底时纵向还剩几成（引擎 aperture_min 的默认值也是它）
 # 上眼线在闭合度到这个值之前不下滑（引擎 lash_hold）。0.5 = 后半程才滑。
@@ -632,6 +634,19 @@ def attach_emit(rig, base, base_root):
         cut = json.load(f)
     with open(tp, encoding="utf-8") as f:
         table = json.load(f)
+    # 形态级锚点 + 画布居中偏移：挂件几何是**相对这个形态的头高/身高**表达的
+    # （T2.2.0）。同一张角色级挂件表要能套在 teen/loli/adult/chibi 四个形态上 ——
+    # 写绝对像素的话，照少女量的 [364,178] 放到 chibi（头身比 1:2.5）上平均偏
+    # 92 画布像素，而画布总高才 1360，也就是「完全不在身上」。
+    anchors = attach_geom.load_anchors(os.path.join(base, "design"))
+    _ovr = attach_geom.load_overrides(os.path.join(base, "design"))
+    _bp = os.path.join(base, "sprites", "body_parts.json")
+    _ox = _oy = 0
+    if os.path.exists(_bp):
+        with open(_bp, encoding="utf-8") as f:
+            _sz = json.load(f)["image_size"]
+        _ox, _oy = attach_geom.canvas_offset(
+            (rig["canvas"]["w"], rig["canvas"]["h"]), _sz)
     slots = {x["id"]: x for x in table["slots"]}
     geom = {x["id"]: x for x in cut["attachments"]}
 
@@ -655,7 +670,8 @@ def attach_emit(rig, base, base_root):
             "file": hi if use_hi else g["file"],
             "group": slot["group"],
             "layer": int(att.get("layer", slot["layer"])),
-            "pos": list(att["pos"]),
+            "pos": attach_geom.resolve(
+                attach_geom.apply_overrides(att, _ovr), anchors, _ox, _oy)[0],
             # 锚点与曲线可以被**挂件自己**覆盖：同一个槽里，垂下的尾巴尾根在顶边、
             # 竖起的尾巴尾根在底边，曲线也必须跟着反过来（tip ↔ root）。
             "anchor": list(att.get("anchor", slot["anchor"])),
