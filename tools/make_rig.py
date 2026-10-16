@@ -60,6 +60,9 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
     所以 scale 就是"参数开到最大时这条通道动多少"（像素或度）。
     """
+    # ✨ 的颗数：ParamMouthForm 的「笑门」要给每颗各写一条绑定，所以得先知道有几颗。
+    n_sparkle = (len(star_eyes["sparkle"]["instances"])
+                 if star_eyes and star_eyes.get("sparkle") else 0)
     out = []
     if head_is_part:
         out.append({"id": "ParamAngleZ", "label": "头 歪头", "min": -30.0, "max": 30.0,
@@ -149,7 +152,15 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                     "binds": [{"part": "mouth_open", "param": "sx", "scale": 0.22},
                               {"part": "mouth_mask", "param": "sx", "scale": 0.26},
                               # 撅圆时开口要略高一点（う/お 是小而圆，不是小而扁）
-                              {"part": "mouth_mask", "param": "sy", "scale": -0.045}]})
+                              {"part": "mouth_mask", "param": "sy", "scale": -0.045}]
+                              # ✨ 的「笑门」：T39.5 的另一半。商业成品的口径是
+                              # 「笑顔で目を見開いたときに」才显示（BOOTH 5711516），
+                              # 不是开了星星眼就一直闪。scale 2.0 / offset -1.0 =
+                              # 嘴角 0 完全不出、0.25 出一半、>=0.5 满亮（之后夹紧），
+                              # 正好覆盖表情的 0.6 与动作 pulse 的 0.8 两条入口。
+                              + ([{"part": f"fx_sparkle_{i}", "param": "alpha",
+                                   "scale": 2.0, "offset": -1.0}
+                                  for i in range(1, n_sparkle + 1)] if n_sparkle else [])})
     if has_brows:
         out += [
             # scale 定在 -5：满格 = 眉毛上下 5px = surprised 那下挑眉的幅度。
@@ -947,7 +958,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 # 画在**透明背景**上等于没画。✨ 恰恰飘在人物剪影外面，
                 # 第一版写 add 的结果是八颗全看不见（实测）。普通混合即可 ——
                 # 素材本身就是白芯蓝尖的发光图，不靠混合模式发光。
-                "opacity": 1.0, "blend": "normal", "tags": [],
+                # fx_eye_open：跟着眨眼变淡但**不会全灭**（引擎 FX_EYE_OPEN_FLOOR=0.45）。
+                # 这是 T39.5「目を見開いたときに」的一半 —— 眼睛闭上时 ✨ 不该还在满亮。
+                # 刻意不用 eye_open（那条会归零）：眨一次眼 0.3s，硬门会让一圈 ✨
+                # 整体熄掉再亮起来，看着像渲染故障。
+                "opacity": 1.0, "blend": "normal", "tags": ["fx_eye_open"],
                 "note": f"闪光 {inst['size_class']}（加算）：默认全透明，"
                         f"ParamStarEye 开门、ParamSparkle{i + 1} 管这一颗的生命周期",
             })

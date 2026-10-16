@@ -191,6 +191,10 @@ void   zrig_blink_set_manual(zrig *r, double v);
 double zrig_blink_manual(const zrig *r);
 /* 部件级通道当前值（调试/测试用），param 为 dx/dy/sx/sy/rot_deg/alpha */
 double zrig_part_channel(const zrig *r, const char *part_id, const char *param);
+/* 部件**最终**的绘制透明度：不只是 alpha 绑定的累乘，还包含标签类的调制
+   （eye_open / eye_closed / eye_smile / fx_eye_open）与 Pose 组权重。
+   测"特效跟着眨眼变淡"这类行为必须用它 —— zrig_part_channel 只看得到绑定那一半。 */
+double zrig_part_draw_opacity(const zrig *r, const char *part_id);
 
 /* 参数分组（≈ model3.json 的 "Groups"）：
    LipSync 组的第一个参数 / EyeBlink 组覆盖的眼（位 0 左、位 1 右）。 */

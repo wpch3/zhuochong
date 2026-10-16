@@ -297,6 +297,71 @@ static void test_eye_saccade(void)
     }
 }
 
+/* ✨ 的触发条件（T39.5）。商业成品的口径是「笑顔で目を見開いたときに」才显示
+   （BOOTH 5711516），不是开了星星眼就永远在闪。拆成两道门分别守：
+     · 笑门：ParamMouthForm 走 alpha 绑定（嘴不笑 → ✨ 全灭）
+     · 眼门：fx_eye_open 标签（眼睛闭上 → ✨ 变暗，但留 FX_EYE_OPEN_FLOOR 不全灭）
+   眼门**故意不做成硬门**：一次眨眼 0.3 秒，硬门会让一圈 ✨ 整体熄掉再亮起来，
+   看着像渲染故障而不是表情。 */
+static void test_sparkle_trigger(void)
+{
+    SECTION("✨ 触发条件：笑 + 睁眼（T39.5）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        double off, half, full, shut, mid;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);
+        zrig_blink_set_manual(r, 0.0);          /* 眼睛睁着 */
+        zrig_param_set(r, "ParamStarEye", 1.0); /* 星星眼开 */
+
+        zrig_param_set(r, "ParamMouthForm", 0.0);
+        zrig_tick(r, 0.10);
+        off = zrig_part_draw_opacity(r, "fx_sparkle_1");
+        zrig_param_set(r, "ParamMouthForm", 0.25);
+        zrig_tick(r, 0.20);
+        half = zrig_part_draw_opacity(r, "fx_sparkle_1");
+        zrig_param_set(r, "ParamMouthForm", 0.6);
+        zrig_tick(r, 0.30);
+        full = zrig_part_draw_opacity(r, "fx_sparkle_1");
+
+        /* ① 不笑就一颗都不许亮 —— 这是 T39.5 的核心要求 */
+        CHECK(off < 1e-6,
+              "嘴不笑（ParamMouthForm=0）时 ✨ 必须完全不可见（实际 alpha %.4f）—— "
+              "\"开了星星眼就永远在闪\"正是参考里点名的廉价做法", off);
+        /* ② 笑到一半给一半，不是开关式跳变（中间态要能用于淡入淡出） */
+        CHECK(half > 0.25 * full && half < 0.75 * full,
+              "半笑（0.25）时 ✨ 应在满亮的 25%%~75%% 之间（实际 %.4f / %.4f）",
+              half, full);
+        /* ③ 笑够了就满亮。门限 0.5 覆盖了表情的 0.6 与动作 pulse 的 0.8 两条入口 */
+        CHECK(full > 0.95,
+              "笑到 0.6 时 ✨ 应基本满亮（实际 %.4f）—— 两条入口（表情 0.6 / "
+              "动作 pulse 0.8）都必须落在满亮区，否则会出现\"笑了但不怎么闪\"", full);
+
+        /* ④ 眼门：闭眼变暗但**不归零** */
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 0.40);
+        shut = zrig_part_draw_opacity(r, "fx_sparkle_1");
+        CHECK(shut > 0.20 && shut < 0.75 * full,
+              "完全闭眼时 ✨ 应明显变暗但不归零（实际 %.4f，满亮 %.4f）—— "
+              "归零会让眨一次眼闪一下，看着像渲染故障", shut, full);
+        /* ⑤ 半闭眼不许比全闭还暗（曲线方向不能反） */
+        zrig_blink_set_manual(r, 0.5);
+        zrig_tick(r, 0.50);
+        mid = zrig_part_draw_opacity(r, "fx_sparkle_1");
+        CHECK(mid >= shut - 1e-9 && mid <= full + 1e-9,
+              "半闭眼的 ✨ 亮度应落在[全闭, 睁眼]之间（实际 %.4f，全闭 %.4f，睁眼 %.4f）",
+              mid, shut, full);
+        zrig_free(r);
+    }
+}
+
 static void test_blink(void)
 {
     SECTION("眨眼状态机（对齐 Live2D CubismEyeBlink 五态）");
@@ -5537,6 +5602,7 @@ int main(int argc, char **argv)
     test_state_machine();
     test_blink();
     test_eye_saccade();
+    test_sparkle_trigger();
     test_eye_aperture();
     test_image();
     test_deflate();

@@ -61,8 +61,16 @@ enum {
     TAG_GAZE = 1u << 8,     /* 会被视线偏移影响的部件（虹膜/眼球） */
     TAG_EYELID = 1u << 9,   /* 眼睑：随眨眼参数往下滑（配 eyelid_travel 用） */
     TAG_EYE_APERTURE = 1u << 10, /* 眼眶开口：随眨眼参数按下沿压扁（配 aperture_min 用） */
-    TAG_EYE_SMILE = 1u << 11 /* 笑眼（山型 ∩ 的闭眼）：ParamEyeL/RSmile 淡入，顶替谷型闭眼件 */
+    TAG_EYE_SMILE = 1u << 11, /* 笑眼（山型 ∩ 的闭眼）：ParamEyeL/RSmile 淡入，顶替谷型闭眼件 */
+    TAG_FX_EYE_OPEN = 1u << 12 /* 画面特效跟着眼睛开合变淡，但**不会全灭**（见 FX_EYE_OPEN_FLOOR） */
 };
+
+/* 特效件跟随眨眼时的亮度下限。
+   为什么不直接用 eye_open（那条是 opacity *= (1-blink)/0.45，会归零）：
+   ✨ 是画在脸周围的画面特效，不是眼睛的零件。眨一次眼 0.3 秒，其中有约 0.12 秒
+   blink >= 0.45，硬门会让一圈 ✨ 整体熄掉再亮起来 —— 看着像渲染故障而不是表情。
+   真实的动画里特效在眨眼时是**跟着暗一下**，不是消失。所以留一个地板。 */
+#define FX_EYE_OPEN_FLOOR 0.45
 
 /* 通道参数 */
 enum { P_DX = 0, P_DY, P_SX, P_SY, P_ROT, P_ALPHA, P_BEND_X, P_BEND_Y,
@@ -557,6 +565,7 @@ static unsigned parse_tags(const zjson *arr)
         else if (z_streq(s, "gaze")) t |= TAG_GAZE;
         else if (z_streq(s, "eyelid")) t |= TAG_EYELID;
         else if (z_streq(s, "eye_aperture")) t |= TAG_EYE_APERTURE;
+        else if (z_streq(s, "fx_eye_open")) t |= TAG_FX_EYE_OPEN;
     }
     return t;
 }
@@ -3470,6 +3479,9 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
             opacity *= ZC_CLAMP((1.0 - blink) / 0.45, 0.0, 1.0);
         if (p->tags & TAG_EYE_CLOSED)
             opacity *= ZC_CLAMP((blink - 0.55) / 0.45, 0.0, 1.0);
+        if (p->tags & TAG_FX_EYE_OPEN)
+            opacity *= FX_EYE_OPEN_FLOOR + (1.0 - FX_EYE_OPEN_FLOOR)
+                       * ZC_CLAMP((1.0 - blink) / 0.45, 0.0, 1.0);
     }
     /* 笑眼和闭眼是同一条睫毛线的两种形状（山型 / 谷型），两张一起画会叠成一团黑：
        笑眼涨多少，谷型闭眼就让多少。笑眼件本身也走"最后 25% 才淡入"那条斜坡，
@@ -4077,6 +4089,18 @@ void zrig_look(zrig *r, double nx, double ny)
 int zrig_action_geom_channels(const zrig *r) { return r ? r->legacy_geom_chans : 0; }
 
 double zrig_look_x(const zrig *r) { return r ? r->look_cx : 0.0; }
+double zrig_part_draw_opacity(const zrig *r, const char *part_id)
+{
+    int pi;
+    zdrawst st;
+    if (!r || !part_id) return 0.0;
+    pi = find_part(r, part_id);
+    if (pi < 0) return 0.0;
+    if (!compute_draw_state((zrig *)r, pi, 1.0, r->blink_now,
+                            current_action((zrig *)r), &st)) return 0.0;
+    return st.opacity;
+}
+
 double zrig_gaze_eff_x(const zrig *r) { return r ? r->gaze_nx : 0.0; }
 double zrig_gaze_x(const zrig *r) { return r ? r->gaze_x : 0.0; }
 double zrig_gaze_max_dx(const zrig *r) { return r ? r->gaze_max_dx : 0.0; }
