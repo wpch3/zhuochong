@@ -22,9 +22,10 @@
     "motion": "动法。挂在哪个动作上、什么波形、振幅与偏置。每片的 freq/phase 在 instances 里各自给",
     "tags": "引擎标签。fx_eye_open = 跟着眨眼变淡但不全灭（FX_EYE_OPEN_FLOOR=0.45）",
     "blend": "混合模式。⚠ 剪影外的特效件只能 normal（DC57）—— ADD 保留目标 alpha，画在透明背景上等于没画",
-    "instances": "每一片：u/v 是挂点包围盒的归一化坐标（可越界 = 飘到框外），size 取 size_class 的键"
+    "instances": "每一片：u/v 是挂点包围盒的归一化坐标（可越界 = 飘到框外），size 取 size_class 的键",
+    "source": "（漫符专用）洋红底 AI 原图，相对 design/redraw/。有这个字段 = 由 make_manpu_parts.py 切；没有 = 散布型，由 make_star_eye_parts.py 切",
+    "recolor": "（漫符专用）按亮度重铺颜色的梯度，每一站的 hex 必须是 palette.json 里的颜色。AI 只负责形状，颜色一律不信（D19 / DC55）"
   },
-
   "effects": [
     {
       "id": "sparkle",
@@ -32,18 +33,28 @@
       "sprite_px": 72,
       "layer0": 300,
       "blend": "normal",
-      "tags": ["fx_eye_open"],
-      "anchor": { "group": "head", "box": "seg_head" },
-      "size_class": { "lg": 1.0, "md": 0.68, "sm": 0.45 },
-
+      "tags": [
+        "fx_eye_open"
+      ],
+      "anchor": {
+        "group": "head",
+        "box": "seg_head"
+      },
+      "size_class": {
+        "lg": 1.0,
+        "md": 0.68,
+        "sm": 0.45
+      },
       "param": {
         "prefix": "ParamSparkle",
         "label": "闪光{i} 生命周期",
         "min_scale": 0.45,
-        "default_from_phase": [0.25, 0.5],
+        "default_from_phase": [
+          0.25,
+          0.5
+        ],
         "note": "参数 0 = 缩到 min_scale 且全透明，1 = 原尺寸全亮。默认值按相位错开，否则别的动作接管时八颗会一样大"
       },
-
       "gates": [
         {
           "param": "ParamStarEye",
@@ -58,7 +69,6 @@
           "note": "笑门（T39.5）。商业成品的触发口径是「笑顔で目を見開いたときに」（BOOTH 5711516），不是开了星星眼就一直闪。嘴角 0 不出、0.25 出一半、>=0.5 满亮"
         }
       ],
-
       "motion": {
         "action": "idle",
         "wave": "sine",
@@ -66,21 +76,344 @@
         "bias": 0.38,
         "note": "取值范围 [-0.24, 1.0]，负的那段被 alpha 的 clamp 压成全透明 —— 每颗约四分之一周期完全不在，才像『闪一下又没了』，不是八个灯一起呼吸。不用 pulse 是因为 pulse 一次性，idle 要循环"
       },
-
       "instances": [
-        { "u": -0.24, "v":  0.08, "size": "lg", "rot_deg": -12.0, "freq": 0.37, "phase": 0.00 },
-        { "u":  1.24, "v":  0.13, "size": "lg", "rot_deg":  14.0, "freq": 0.29, "phase": 0.42 },
-        { "u": -0.12, "v":  0.44, "size": "md", "rot_deg":  22.0, "freq": 0.53, "phase": 0.17 },
-        { "u":  1.12, "v":  0.39, "size": "md", "rot_deg": -18.0, "freq": 0.43, "phase": 0.63 },
-        { "u":  0.13, "v": -0.03, "size": "md", "rot_deg":   8.0, "freq": 0.61, "phase": 0.85 },
-        { "u":  0.87, "v": -0.05, "size": "md", "rot_deg": -26.0, "freq": 0.47, "phase": 0.31 },
-        { "u": -0.28, "v":  0.68, "size": "sm", "rot_deg":  31.0, "freq": 0.71, "phase": 0.54 },
-        { "u":  1.28, "v":  0.64, "size": "sm", "rot_deg": -34.0, "freq": 0.67, "phase": 0.09 }
+        {
+          "u": -0.24,
+          "v": 0.08,
+          "size": "lg",
+          "rot_deg": -12.0,
+          "freq": 0.37,
+          "phase": 0.0
+        },
+        {
+          "u": 1.24,
+          "v": 0.13,
+          "size": "lg",
+          "rot_deg": 14.0,
+          "freq": 0.29,
+          "phase": 0.42
+        },
+        {
+          "u": -0.12,
+          "v": 0.44,
+          "size": "md",
+          "rot_deg": 22.0,
+          "freq": 0.53,
+          "phase": 0.17
+        },
+        {
+          "u": 1.12,
+          "v": 0.39,
+          "size": "md",
+          "rot_deg": -18.0,
+          "freq": 0.43,
+          "phase": 0.63
+        },
+        {
+          "u": 0.13,
+          "v": -0.03,
+          "size": "md",
+          "rot_deg": 8.0,
+          "freq": 0.61,
+          "phase": 0.85
+        },
+        {
+          "u": 0.87,
+          "v": -0.05,
+          "size": "md",
+          "rot_deg": -26.0,
+          "freq": 0.47,
+          "phase": 0.31
+        },
+        {
+          "u": -0.28,
+          "v": 0.68,
+          "size": "sm",
+          "rot_deg": 31.0,
+          "freq": 0.71,
+          "phase": 0.54
+        },
+        {
+          "u": 1.28,
+          "v": 0.64,
+          "size": "sm",
+          "rot_deg": -34.0,
+          "freq": 0.67,
+          "phase": 0.09
+        }
       ],
       "_instances_note": [
         "坐标是头部切片包围盒的归一化坐标（u 横 0=左 1=右，v 纵 0=顶 1=底），允许越界 = 飘到头外面。",
         "freq 必须两两不同，否则跑久了会重新对齐，又变成『整齐划一地闪』",
         "（カワナミ 用 28 颗 28 个参数就是为了避开这个，见 REFERENCE_NOTES 第二十五批）。"
+      ]
+    },
+    {
+      "id": "sweat",
+      "source": "fx_sweat.png",
+      "sprite": "fx_sweat.png",
+      "sprite_px": 92,
+      "layer0": 320,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "anchor": {
+        "group": "head",
+        "box": "seg_head"
+      },
+      "size_class": {
+        "lg": 1.0,
+        "md": 0.78
+      },
+      "recolor": [
+        {
+          "at": 0.0,
+          "hex": "#2C2939"
+        },
+        {
+          "at": 0.55,
+          "hex": "#9FC4E8"
+        },
+        {
+          "at": 1.0,
+          "hex": "#FFFFFF"
+        }
+      ],
+      "param": {
+        "prefix": "ParamSweat",
+        "label": "汗{i} 生命周期",
+        "min_scale": 0.55,
+        "default_from_phase": [
+          0.25,
+          0.5
+        ]
+      },
+      "gates": [
+        {
+          "param": "ParamFxSweat",
+          "scale": 1.0,
+          "offset": -1.0,
+          "note": "这一种漫符的总闸。互斥的共用参数、能并发的各给各的（kawase 口径）"
+        }
+      ],
+      "motion": {
+        "action": "idle",
+        "wave": "sine",
+        "amp": 0.62,
+        "bias": 0.38,
+        "note": "第一批先沿用 ✨ 的呼吸动法；各自的专属动法（汗下滑 / ZZZ 上飘）归 T43.4"
+      },
+      "instances": [
+        {
+          "u": -0.14,
+          "v": 0.33,
+          "size": "lg",
+          "rot_deg": 6.0,
+          "freq": 0.41,
+          "phase": 0.0
+        }
+      ]
+    },
+    {
+      "id": "anger",
+      "source": "fx_anger.png",
+      "sprite": "fx_anger.png",
+      "sprite_px": 76,
+      "layer0": 330,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "anchor": {
+        "group": "head",
+        "box": "seg_head"
+      },
+      "size_class": {
+        "lg": 1.0,
+        "md": 0.78
+      },
+      "recolor": [
+        {
+          "at": 0.0,
+          "hex": "#2C2939"
+        },
+        {
+          "at": 0.62,
+          "hex": "#E0484A"
+        },
+        {
+          "at": 1.0,
+          "hex": "#FFFFFF"
+        }
+      ],
+      "param": {
+        "prefix": "ParamAnger",
+        "label": "怒{i} 生命周期",
+        "min_scale": 0.55,
+        "default_from_phase": [
+          0.25,
+          0.5
+        ]
+      },
+      "gates": [
+        {
+          "param": "ParamFxAnger",
+          "scale": 1.0,
+          "offset": -1.0,
+          "note": "这一种漫符的总闸。互斥的共用参数、能并发的各给各的（kawase 口径）"
+        }
+      ],
+      "motion": {
+        "action": "idle",
+        "wave": "sine",
+        "amp": 0.62,
+        "bias": 0.38,
+        "note": "第一批先沿用 ✨ 的呼吸动法；各自的专属动法（汗下滑 / ZZZ 上飘）归 T43.4"
+      },
+      "instances": [
+        {
+          "u": 1.11,
+          "v": 0.26,
+          "size": "lg",
+          "rot_deg": -8.0,
+          "freq": 0.83,
+          "phase": 0.0
+        }
+      ]
+    },
+    {
+      "id": "gloom",
+      "source": "fx_gloom.png",
+      "sprite": "fx_gloom.png",
+      "sprite_px": 108,
+      "layer0": 340,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "anchor": {
+        "group": "head",
+        "box": "seg_head"
+      },
+      "size_class": {
+        "lg": 1.0,
+        "md": 0.78
+      },
+      "recolor": [
+        {
+          "at": 0.0,
+          "hex": "#2C2939"
+        },
+        {
+          "at": 0.55,
+          "hex": "#3C4860"
+        },
+        {
+          "at": 1.0,
+          "hex": "#685870"
+        }
+      ],
+      "param": {
+        "prefix": "ParamGloom",
+        "label": "暗云{i} 生命周期",
+        "min_scale": 0.55,
+        "default_from_phase": [
+          0.25,
+          0.5
+        ]
+      },
+      "gates": [
+        {
+          "param": "ParamFxGloom",
+          "scale": 1.0,
+          "offset": -1.0,
+          "note": "这一种漫符的总闸。互斥的共用参数、能并发的各给各的（kawase 口径）"
+        }
+      ],
+      "motion": {
+        "action": "idle",
+        "wave": "sine",
+        "amp": 0.62,
+        "bias": 0.38,
+        "note": "第一批先沿用 ✨ 的呼吸动法；各自的专属动法（汗下滑 / ZZZ 上飘）归 T43.4"
+      },
+      "instances": [
+        {
+          "u": -0.2,
+          "v": -0.02,
+          "size": "lg",
+          "rot_deg": 0.0,
+          "freq": 0.23,
+          "phase": 0.0
+        }
+      ]
+    },
+    {
+      "id": "zzz",
+      "source": "fx_zzz.png",
+      "sprite": "fx_zzz.png",
+      "sprite_px": 96,
+      "layer0": 350,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "anchor": {
+        "group": "head",
+        "box": "seg_head"
+      },
+      "size_class": {
+        "lg": 1.0,
+        "md": 0.78
+      },
+      "recolor": [
+        {
+          "at": 0.0,
+          "hex": "#2C2939"
+        },
+        {
+          "at": 0.6,
+          "hex": "#9FC4E8"
+        },
+        {
+          "at": 1.0,
+          "hex": "#FFFFFF"
+        }
+      ],
+      "param": {
+        "prefix": "ParamZzz",
+        "label": "ZZZ{i} 生命周期",
+        "min_scale": 0.55,
+        "default_from_phase": [
+          0.25,
+          0.5
+        ]
+      },
+      "gates": [
+        {
+          "param": "ParamFxZzz",
+          "scale": 1.0,
+          "offset": -1.0,
+          "note": "这一种漫符的总闸。互斥的共用参数、能并发的各给各的（kawase 口径）"
+        }
+      ],
+      "motion": {
+        "action": "idle",
+        "wave": "sine",
+        "amp": 0.62,
+        "bias": 0.38,
+        "note": "第一批先沿用 ✨ 的呼吸动法；各自的专属动法（汗下滑 / ZZZ 上飘）归 T43.4"
+      },
+      "instances": [
+        {
+          "u": 1.22,
+          "v": -0.04,
+          "size": "lg",
+          "rot_deg": 4.0,
+          "freq": 0.31,
+          "phase": 0.0
+        }
       ]
     }
   ]

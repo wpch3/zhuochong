@@ -17,7 +17,7 @@
 用法：python3 tools/selfcheck_repo.py [--root .] [--quiet]
 """
 from __future__ import annotations
-import argparse, datetime, glob, io, json, math, os, re, struct, subprocess, sys
+import argparse, ast, datetime, glob, io, json, math, os, re, struct, subprocess, sys
 
 OK, BAD = "通过", "不通过"
 _fail = 0
@@ -2288,6 +2288,42 @@ def check_contract(root):
 
 
 # ------------------------------------------------------------------ 7 工具链
+def strip_prose(src):
+    """把源码里的注释和 docstring 都剥掉，只留会真正执行的部分。
+
+    反向闸要查的是「源码里还有没有写死的字面量」。**讲解这条禁令的文字
+    本身一定会提到那个字面量** —— 注释说明 ≠ 影子配置，两者必须分开。
+
+    顺序很要命：**先 parse 再剥**。第一版反过来，先按行 split("#") 剥注释，
+    结果 docstring 里的 `#2C2939` 把那段字符串截断成了语法错误，ast.parse
+    抛 SyntaxError 走了回退分支，等于一点没剥 —— 闸照样误报。
+    剥注释也不能按行 split，要用 tokenize，不然字符串里的 # 会被当注释。
+    """
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return src
+    lines = src.splitlines()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.FunctionDef,
+                                 ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        body = getattr(node, "body", None)
+        if (body and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)):
+            for i in range(body[0].lineno - 1, min(body[0].end_lineno, len(lines))):
+                lines[i] = ""
+    import tokenize as _tk
+    out = "\n".join(lines)
+    try:
+        toks = [t for t in _tk.generate_tokens(io.StringIO(out).readline)
+                if t.type != _tk.COMMENT]
+        return _tk.untokenize(toks)
+    except Exception:
+        return out
+
+
 def check_effects_table(root):
     """声明式特效表（T43.2 / G117）。
 
@@ -2327,14 +2363,40 @@ def check_effects_table(root):
             bad = sorted(used - set(sc))
             check("%s#%s：每片的 size 都在 size_class 表里" % (tag, eid), not bad,
                   "都在" if not bad else "表外的档位 %s" % bad)
-            check("%s#%s：尺寸档位混用（官方讲座：一个大小会假）" % (tag, eid),
-                  len(used) >= 2, "用了 %s" % sorted(used))
+            # 只有**散布型**（一张素材铺很多片，像 ✨）才要求混用档位 ——
+            # 一个大小的散布会假。漫符是「一个符号一张图」，就该只有一个大小，
+            # 硬要它混档位等于逼着人把 💢 画成大小两个叠在一起。
+            if len(inst) >= 3:
+                check("%s#%s：尺寸档位混用（官方讲座：一个大小会假）" % (tag, eid),
+                      len(used) >= 2, "用了 %s" % sorted(used))
+
+            # ---- 漫符组（有 source = 一个符号一张图，由 make_manpu_parts.py 切）----
+            if e.get("source"):
+                src = os.path.join(os.path.dirname(tp), "redraw", e["source"])
+                check("%s#%s：原图在 design/redraw/ 里" % (tag, eid),
+                      os.path.exists(src), e["source"] if os.path.exists(src)
+                      else "找不到 %s" % e["source"])
+                ramp = e.get("recolor", [])
+                check("%s#%s：声明了 recolor 梯度" % (tag, eid), len(ramp) >= 2,
+                      "%d 站" % len(ramp))
+                ats = [x.get("at") for x in ramp]
+                check("%s#%s：recolor 的 at 严格递增" % (tag, eid),
+                      all(b > a for a, b in zip(ats, ats[1:])), "at=%s" % ats)
+                # D19 / DC55：AI 只出形状，颜色一律按色卡重铺。
+                # 梯度上随便混进一个「差不多的」颜色，这条约束就漏了。
+                pal = os.path.join(os.path.dirname(tp), "palette.json")
+                hexes = set()
+                if os.path.exists(pal):
+                    hexes = set(c["hex"].upper() for c in jsonc(pal)["colors"])
+                off = sorted(set(x["hex"].upper() for x in ramp) - hexes)
+                check("%s#%s：recolor 每一站都是色卡上的颜色（D19/DC55）" % (tag, eid),
+                      not off, "都在色卡里" if not off else "色卡外的颜色 %s" % off)
 
     # ★ 反向闸：生成器里不许再出现特效的几何/层号/动法字面量。
     #   这一条比上面所有条都重要 —— 表在不在不要紧，源码里有没有影子配置才要紧。
     gen = os.path.join(root, "tools/make_rig.py")
     gtxt = io.open(gen, encoding="utf-8").read() if os.path.exists(gen) else ""
-    code = "\n".join(ln.split("#")[0] for ln in gtxt.splitlines())   # 去掉注释再查
+    code = strip_prose(gtxt)        # 注释和 docstring 都剥掉再查
     banned = [
         ("SPARKLE_LAYER0", "✨ 的起始层号，该在 effects.json 的 layer0"),
         ('f"fx_sparkle_{i}"', "✨ 的部件 id，该由 effects.json 的 id 派生"),
@@ -2346,11 +2408,26 @@ def check_effects_table(root):
 
     cut = os.path.join(root, "tools/make_star_eye_parts.py")
     ctxt = io.open(cut, encoding="utf-8").read() if os.path.exists(cut) else ""
-    ccode = "\n".join(ln.split("#")[0] for ln in ctxt.splitlines())
+    ccode = strip_prose(ctxt)
     m = re.search(r"(?m)^SPARKLES\s*=\s*(.+)$", ccode)
     check("make_star_eye_parts.py 的 SPARKLES 是空壳（几何来自表）",
           bool(m) and m.group(1).strip() == "[]",
           "SPARKLES = %s" % (m.group(1).strip() if m else "（找不到）"))
+    man = os.path.join(root, "tools/make_manpu_parts.py")
+    if os.path.exists(man):
+        mtxt = io.open(man, encoding="utf-8").read()
+        mcode = strip_prose(mtxt)
+        # 漫符切件器唯一该知道的是「怎么键色、怎么重铺」，不该知道任何一种
+        # 漫符叫什么、摆哪儿、什么颜色 —— 那些全在 effects.json 里。
+        mbad = [k for k in ("fx_sweat", "fx_anger", "fx_gloom", "fx_zzz",
+                            "#E0484A", "#9FC4E8", "seg_head\"")
+                if k in mcode]
+        check("make_manpu_parts.py 里不写死任何一种漫符的名字/颜色",
+              not mbad, "干净" if not mbad else "影子配置：%s" % mbad)
+        reads = "effects.json" in mtxt and "recolor" in mtxt and "sprite_px" in mtxt
+        check("漫符切件器真的会去读 effects.json",
+              reads, "会" if reads else "没读表，等于白写")
+
     check("切件器有 load_effect（真的会去读表）",
           "def load_effect(" in ctxt and "effects.json" in ctxt,
           "有" if "def load_effect(" in ctxt else "没有，等于表白写")
