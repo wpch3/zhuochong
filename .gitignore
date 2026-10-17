@@ -26,3 +26,6 @@ __pycache__/
 voices/*/model.onnx
 voices/*/model.onnx.json
 .cache/
+
+# 网络检索来的参考图（许可不明，只作查证用，不入库）
+image-search/

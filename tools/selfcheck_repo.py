@@ -1626,6 +1626,26 @@ def check_live2d(root):
                              capture_output=True, text=True)
         check("挂件表对四个形态都可移植（%s）" % _c, _rc.returncode == 0,
               (_rc.stdout.strip().splitlines() or ["?"])[-1])
+    # ⑳ 猫耳朝向（T45.3，用户第五次打回才定位到的错）：左右两张贴图装反时，
+    #    渲染出来是「耳尖对着中间、耳廓躲在内侧」—— 位置、大小、动画全都是对的，
+    #    任何现有闸门都发现不了，人眼也容易误读成「角度不对」。
+    #    判据（三家日文教程 + 真猫正面照 + 二次元参考图互相印证，见 REFERENCE_NOTES 第三十七批）：
+    #      正面视角下 **耳尖朝外倒**、**耳廓（暖色内耳）落在耳宽的外侧半边**。
+    #    细目在 tools/qa_ear_orient.py（故意只用标准库，闸门才跑得起来）。
+    for _cd in sorted(glob.glob(os.path.join(root, "characters/*/design/attachments.json"))):
+        _c = _cd.split(os.sep)[-3]
+        for _fd in sorted(glob.glob(os.path.join(root, "characters", _c, "forms/*/sprites"))):
+            _f = _fd.split(os.sep)[-2]
+            _rc = subprocess.run([sys.executable,
+                                  os.path.join(root, "tools/qa_ear_orient.py"),
+                                  "--root", root, "--character", _c, "--form", _f],
+                                 capture_output=True, text=True)
+            if "没有找到带 ear 标签的挂件" in _rc.stdout:
+                continue
+            _bad = [l.strip() for l in _rc.stdout.splitlines() if "不通过" in l]
+            check("猫耳朝向：耳尖朝外 + 耳廓在外侧（%s/%s）" % (_c, _f),
+                  _rc.returncode == 0 and not _bad,
+                  "; ".join(_bad) if _bad else (_rc.stderr.strip().splitlines() or ["两只耳朵都对"])[-1])
     # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
     # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。
     for _fp in sorted(glob.glob(os.path.join(root, "characters/*/forms.json"))):
@@ -2241,13 +2261,21 @@ def check_character(root):
     for od in glob.glob(os.path.join(root, "characters/*/outfits/*.json")):
         o = jsonc(od)
         cdir = os.path.dirname(os.path.dirname(od))
+        # 服装件是**按形态的像素**重绘/换色出来的，不可能跨形态通用：
+        # 每套服装用 forms[] 声明自己支持哪些形态，这里只查它声明的那些。
+        # （2026-10-17：chibi 变成 ready 之后这条闸开始查它，才发现白名单一直没人读。）
+        on_disk = {os.path.basename(f) for f in glob.glob(os.path.join(cdir, "forms/*"))}
+        only = [f for f in (o.get("forms") or [])] or sorted(on_disk)
         miss = []
-        for form in glob.glob(os.path.join(cdir, "forms/*")):
+        for fid in only:
             for pid, v in (o.get("parts") or {}).items():
                 f = v.get("file") if isinstance(v, dict) else v
-                if f and not os.path.exists(os.path.join(form, f)):
-                    miss.append(f"{os.path.basename(form)}:{f}")
+                if f and not os.path.exists(os.path.join(cdir, "forms", fid, f)):
+                    miss.append(f"{fid}:{f}")
         check(f"服装 {os.path.basename(od)} 贴图在", not miss, f"缺 {miss[:2]}" if miss else "")
+        # 白名单不能变成后门：声明的形态必须真的存在，否则这条闸会悄悄空转
+        check(f"服装 {os.path.basename(od)} 声明的形态都在磁盘上",
+              set(only) <= on_disk, f"声明了不存在的形态 {sorted(set(only) - on_disk)}")
 
     ip = os.path.join(root, "config", "interactions.json")
     if os.path.exists(ip):

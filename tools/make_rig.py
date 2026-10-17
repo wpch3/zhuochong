@@ -281,6 +281,14 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
          "note": "手臂只有形变没有肘关节（G4c 未做），上限按 ±40px 给"},
         {"id": "ParamArmRA", "label": "右臂 摆动", "min": -10.0, "max": 10.0, "default": 0.0,
          "binds": [{"part": "seg_arm_r", "param": "bend_x", "scale": 4.0, "curve": "tip"}]},
+        # 纵向那一路也要有参数：挥手（wave）这类动作用 bend_y 把手抬起来。
+        # 拆了件的形态走肘关节（ParamArmLB/RB = 前臂旋转），没拆件的就只能整条弯。
+        {"id": "ParamArmLB", "label": "左臂 抬起（未拆件：整条弯）", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"part": "seg_arm_l", "param": "bend_y", "scale": 4.0, "curve": "tip"}]},
+        {"id": "ParamArmRB", "label": "右臂 抬起（未拆件：整条弯）", "min": -10.0, "max": 10.0,
+         "default": 0.0,
+         "binds": [{"part": "seg_arm_r", "param": "bend_y", "scale": 4.0, "curve": "tip"}]},
         ]
     if has_legs:
         # G4c2 裙下大腿：腿**不绕髋旋转**，用 bend（顶边=裙子里的大腿根钉死，越往下摆幅越大）。
@@ -2223,6 +2231,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         ("arm_r", "dy"):            ("ParamShoulderY", -0.8),
         ("arm_l", "rot_deg"):       ("ParamArmLA", 6.0),
         ("arm_r", "rot_deg"):       ("ParamArmRA", -6.0),
+        # ★ 没做手臂拆件的形态（新形态刚起步时就是这样）：整条手臂只有 bend，
+        #   param_list() 那边已经有对应的退路参数（ParamArmLA/RA 绑 seg_arm_*.bend_x），
+        #   这里必须跟着给一条，否则动作表里的 seg_arm_*.bend_x 找不到参数，
+        #   make_rig 直接退出 —— Q 版第一次跑就卡在这（2026-10-17）。
+        **({} if armp else {("seg_arm_l", "bend_x"): ("ParamArmLA", -4.0),
+                            ("seg_arm_r", "bend_x"): ("ParamArmRA", 4.0),
+                            ("seg_arm_l", "bend_y"): ("ParamArmLB", 4.0),
+                            ("seg_arm_r", "bend_y"): ("ParamArmRB", 4.0)}),
         ("forearm_l", "rot_deg"):   ("ParamArmLB", 10.0),
         ("forearm_r", "rot_deg"):   ("ParamArmRB", -10.0),
         ("hand_l", "rot_deg"):      ("ParamHandL", 22.0),
@@ -2310,6 +2326,21 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     }
     WRITABLE_PARAM_IDS = PARAM_IDS | BUILTIN_PARAM_IDS
 
+    # ★ 2026-10-17（T2.2.5 新形态压力测试）：下面这些参数是**跟着素材走**的 ——
+    #   素材（侧发/前发/眉毛/笑眼/星星眼/漫符…）没切出来，param_list() 就不会生成它们。
+    #   但动作表是全角色共用的，照样会往这些参数上打通道。
+    #   少女（素材齐）一条都不会命中这张表；新形态素材还没补齐时，
+    #   命中的通道**丢掉并打印清单**，而不是让整个 rig 生不出来。
+    #   不在这张表里的目标仍然按老规矩硬报错（防手滑写错参数名）。
+    OPTIONAL_PARAM_IDS = {
+        "ParamHairSide", "ParamHairFront", "ParamHairAhoge",
+        "ParamBrowLY", "ParamBrowRY", "ParamBrowLAngle", "ParamBrowRAngle",
+        "ParamBrowLForm", "ParamBrowRForm",
+        "ParamEyeLSmile", "ParamEyeRSmile", "ParamEyeStar", "ParamEyePain",
+        "ParamEyeWide", "ParamCheek", "ParamTear",
+    }
+    dropped_ch = {}
+
     def to_param_channels(acts):
         n_in = n_out = 0
         for a in acts:
@@ -2329,7 +2360,16 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     n_out += 1
                     continue
 
+                # 本形态没有这件素材 → 参数不存在 → 丢掉这条通道（见 OPTIONAL_PARAM_IDS）
+                if prop is None and tgt in OPTIONAL_PARAM_IDS:
+                    dropped_ch.setdefault(tgt, []).append(a["id"])
+                    continue
+
                 key = (tgt, prop)
+                if key in GEO2PARAM and GEO2PARAM[key][0] not in WRITABLE_PARAM_IDS \
+                        and GEO2PARAM[key][0] in OPTIONAL_PARAM_IDS:
+                    dropped_ch.setdefault(GEO2PARAM[key][0], []).append(a["id"])
+                    continue
                 if key not in GEO2PARAM:
                     raise SystemExit(
                         f"[make_rig] 动作 {a['id']} 的通道 {tgt}.{prop} 没有对应的参数；"
@@ -2449,6 +2489,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     _n_in, _n_out = to_param_channels(actions)
     print(f"  动作通道：{_n_in} 条几何通道 → {_n_out} 条参数通道"
           f"（≈ Live2D .motion3 的 Parameter 曲线）")
+    if dropped_ch:
+        # 素材没齐的形态会走到这里。清单必须打出来，否则「动作变少了」会变成哑故障。
+        print("  ⚠ 本形态缺素材，丢掉了这些动作通道（补齐素材后自动恢复）：")
+        for pid in sorted(dropped_ch):
+            print(f"      {pid:<18} ← {len(dropped_ch[pid])} 条（{','.join(sorted(set(dropped_ch[pid])))}）")
 
     # —— 高清切件（T30.1）：有 @2x 就改用它，scale 乘 0.5 ——
     #
@@ -2876,6 +2921,115 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     return rig
 
 
+def prune_dangling(rig):
+    """把指向「本形态不存在的部件/组」的绑定清掉，连带清掉因此空掉的参数。
+
+    ★ 2026-10-17（T2.2.5 新形态压力测试）：引擎 zrig.c 装载时会逐条校验 bind 的
+      part/group 指得到指不到，指不到就**整份 rig 拒绝加载**（Q 版第一次进引擎：
+      `params[ParamHairFront] part 'hair_front' 不存在` → 预览直接退回少女）。
+      param_list() 是按「素材齐了」写的，新形态素材是一件一件补上来的，
+      中间状态必然有悬空绑定。这里统一收口：
+        · 绑定指不到 → 删这条绑定
+        · 一个参数的绑定被删光（原来有） → 删这个参数，并把动作/ambient/表情/姿态里
+          引用它的通道一并删掉，免得留下指向空气的曲线
+      素材齐全的形态（少女）一条都删不掉 —— rig.json 逐字段不变，已实测。
+    """
+    part_ids = {q["id"] for q in rig.get("parts", [])}
+    grp = rig.get("groups", {})
+    grp_ids = set(grp) if isinstance(grp, dict) else {g["id"] for g in grp}
+
+    def ok(b):
+        if "part" in b and b["part"] not in part_ids:
+            return False
+        if "group" in b and b["group"] not in grp_ids:
+            return False
+        return True
+
+    # 先扫一遍全树：任何「带 part/group 字段、但指不到」的条目整条删掉
+    #（physics / deformers / xfades / poses.entries.parts / regions … 都走这条，
+    #  不用一处处点名 —— 点名的写法上一轮就漏了 physics，引擎照样拒载）。
+    dropped_items = []
+
+    def sweep(node, path):
+        if isinstance(node, dict):
+            for k, v in list(node.items()):
+                if k == "parts" and isinstance(v, list) and all(isinstance(x, str) for x in v):
+                    node[k] = [x for x in v if x in part_ids]
+                elif k in ("from", "to") and isinstance(v, str) and v not in part_ids \
+                        and path.endswith("xfades"):
+                    pass        # 整条 xfade 由下面的列表删除处理
+                elif isinstance(v, (dict, list)):
+                    sweep(v, f"{path}.{k}")
+        elif isinstance(node, list):
+            keep = []
+            for it in node:
+                bad = isinstance(it, dict) and (
+                    (isinstance(it.get("part"), str) and it["part"] not in part_ids)
+                    or (isinstance(it.get("group"), str) and it["group"] not in grp_ids)
+                    or (path.endswith("xfades") and (it.get("from") not in part_ids
+                                                     or it.get("to") not in part_ids)))
+                if bad:
+                    dropped_items.append(f"{path}:{it.get('id', it.get('part', '?'))}")
+                    continue
+                sweep(it, path)
+                keep.append(it)
+            node[:] = keep
+
+    for key in ("physics", "deformers", "xfades", "poses", "regions", "actions",
+                "visemes", "expressions", "ambient", "param_groups"):
+        if key in rig:
+            sweep(rig[key], key)
+
+    dropped_params, dropped_binds = [], 0
+    keep_params = []
+    for pm in rig.get("params", []):
+        binds = pm.get("binds")
+        if binds:
+            good = [b for b in binds if ok(b)]
+            dropped_binds += len(binds) - len(good)
+            if not good:
+                dropped_params.append(pm["id"])
+                continue
+            pm["binds"] = good
+        keep_params.append(pm)
+    if not dropped_params and not dropped_binds and not dropped_items:
+        return
+    if dropped_items:
+        print(f"  ⚠ 本形态缺素材：删掉 {len(dropped_items)} 条指向空部件的条目"
+              f"（{', '.join(dropped_items[:6])}{' …' if len(dropped_items) > 6 else ''}）")
+    if not dropped_params and not dropped_binds:
+        rig["params"] = keep_params
+        return
+    rig["params"] = keep_params
+    dead = set(dropped_params)
+
+    for a in rig.get("actions", []):
+        a["channels"] = [c for c in a.get("channels", []) if c.get("target") not in dead]
+    if isinstance(rig.get("ambient"), list):
+        rig["ambient"] = [c for c in rig["ambient"] if c.get("target") not in dead]
+    for e in rig.get("expressions", []):
+        e["params"] = [q for q in e.get("params", []) if q.get("id") not in dead]
+    for ps in rig.get("poses", []):
+        for st in ps.get("states", []):
+            if isinstance(st.get("params"), list):
+                st["params"] = [q for q in st["params"] if q.get("id") not in dead]
+    if isinstance(rig.get("param_groups"), list):
+        for pg in rig["param_groups"]:
+            if isinstance(pg.get("params"), list):
+                pg["params"] = [q for q in pg["params"] if q not in dead]
+    for key in ("mood_params", "mood_swing"):
+        v = rig.get(key)
+        if isinstance(v, dict):
+            for mk in list(v):
+                if isinstance(v[mk], list):
+                    v[mk] = [q for q in v[mk]
+                             if (q.get("id") if isinstance(q, dict) else q) not in dead]
+
+    print(f"  ⚠ 本形态缺素材：删掉 {dropped_binds} 条悬空绑定"
+          + (f"、{len(dropped_params)} 个因此空掉的参数（{','.join(dropped_params)}）"
+             if dropped_params else ""))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
@@ -3060,6 +3214,7 @@ def main() -> int:
                 fx_table=fx_table,
                 footp=footp)
     attach_emit(rig, base, base_root)   # 挂件（A49 / T45）：表在就挂，不在就当没有
+    prune_dangling(rig)                 # 素材没齐的形态：清掉指向不存在部件的绑定
 
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:

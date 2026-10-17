@@ -25,10 +25,17 @@ import numpy as np
 from PIL import Image
 
 
-def find_mouth_line(body_px, alpha, cx_hint, y_hint, skin):
-    """在嘴部附近找出那条笑线：比肤色明显暗、且是暖色（排除蓝色发丝）的像素。"""
-    y0, y1 = max(0, y_hint - 18), y_hint + 2
-    x0, x1 = max(0, cx_hint - 22), cx_hint + 22
+def find_mouth_line(body_px, alpha, cx_hint, y_hint, skin, head_px=278.0):
+    """在嘴部附近找出那条笑线：比肤色明显暗、且是暖色（排除蓝色发丝）的像素。
+
+    ★ 2026-10-17（T2.2.5）：搜索窗从写死的 ±18/±22 像素改成**按头高定标**。
+    原来的 18/22 是在少女（头高 278px）身上量的，等于把少女的脸尺寸写进了工具：
+    Q 版头高 605px、嘴线比锚点的比例估算高了 32px，窗口 ±18 根本罩不住，
+    当场「找不到嘴线」退出（实测）。
+    系数 = 老值 ÷ 278，所以少女代入 head_px=278 时窗口**逐像素不变**。
+    """
+    y0, y1 = max(0, y_hint - round(head_px * 0.064748)), y_hint + round(head_px * 0.007194)
+    x0, x1 = max(0, cx_hint - round(head_px * 0.079137)), cx_hint + round(head_px * 0.079137)
     sub = body_px[y0:y1, x0:x1]
     sa = alpha[y0:y1, x0:x1]
     dist = np.abs(sub - np.array(skin)).sum(2)
@@ -38,7 +45,7 @@ def find_mouth_line(body_px, alpha, cx_hint, y_hint, skin):
         raise SystemExit("找不到嘴线：请检查 anchors.json 的 mouth_line")
     # 只保留离脸中线最近的那一簇（笑线左右两段算同一簇：按 x 聚合）
     ys, xs = np.nonzero(m)
-    keep = np.abs((x0 + xs) - cx_hint) <= 20
+    keep = np.abs((x0 + xs) - cx_hint) <= round(head_px * 0.071942)   # 老值 20px ÷ 少女头高
     ys, xs = ys[keep], xs[keep]
     return {
         "x0": int(x0 + xs.min()), "x1": int(x0 + xs.max()),
@@ -146,7 +153,10 @@ def main():
     skin = next((c["hex"] for c in palette["colors"] if "肤" in c["name"]), "#FCE4D8").lstrip("#")
     skin = tuple(int(skin[i:i + 2], 16) for i in (0, 2, 4))
 
-    line = find_mouth_line(a[..., :3], a[..., 3], int(round(mx)), int(round(my)), skin)
+    _m = anchors.get("meta", {})
+    _head_px = float(_m.get("head_ratio", 0.2152)) * float(_m.get("height_px", 1292))
+    line = find_mouth_line(a[..., :3], a[..., 3], int(round(mx)), int(round(my)), skin,
+                           head_px=_head_px)
     out = build_mouth(line)
     out["mask"].save(os.path.join(sp, "mouth_mask.png"))
     out["cavity"].save(os.path.join(sp, "mouth_cavity.png"))

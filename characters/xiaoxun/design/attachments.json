@@ -592,7 +592,8 @@
       "slot": "head_in_hair",
       "source": "acc_ear_cat.png",
       "sprite": "acc_ear_l.png",
-      "mirror": false,
+      "mirror": true,
+      "_mirror_note": "★ 2026-10-17 第五次返工：左右装反了。用户「耳廓那边跑到内边了，是角度不对吗」—— 一半对。\n量过的事实（tools/qa_ear_orient.py）：原来左耳的耳尖往**内**倒 19.4°，内耳（暖色耳廓）落在\n耳宽的 0.68（1=内侧），也就是**耳尖和耳廓双双朝内**。\n参考资料三家口径一致，都说正面要朝**外**：\n  · palmie.jp/lessons/43「正面向きは少し耳を**外側**に向けた状態で描きました。猫が力を入れていない時は、耳はこの辺を向いています」\n  · atam-academy.com/blog/50779「耳の正面は真正面ではなく、**少し外側を向く**イメージで描きましょう」\n  · adobe.com/jp …how-to-draw-ears「猫の耳であればやや斜めに**少し外向き**に生える」\n真猫照片与二次元参考图各自量过：**耳廓（内耳）偏外侧、厚毛边在内侧**（耳朵开口朝前且朝外，\n靠内那条边才是转向镜头的那条，所以露出的是耳背的毛）。\n⇒ 两处错误（倾角朝内 + 耳廓朝内）其实是同一个错：**左右两张贴图装反了**。镜像一次两个都对。\n本修复只改 mirror 开关，不动素材、不动位置与大小。闸门：check_ear_orientation（selfcheck 第⑳段）。",
       "tags": [
         "accessory",
         "ear"
@@ -654,7 +655,8 @@
       "slot": "head_in_hair",
       "source": "acc_ear_cat.png",
       "sprite": "acc_ear_r.png",
-      "mirror": true,
+      "mirror": false,
+      "_mirror_note": "★ 2026-10-17 第五次返工：与 ear_cat_l 同一处修复（左右贴图装反）。详见 ear_cat_l 的 _mirror_note。",
       "tags": [
         "accessory",
         "ear"

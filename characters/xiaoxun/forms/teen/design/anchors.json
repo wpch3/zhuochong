@@ -8,7 +8,9 @@
     "top": 0,
     "bottom": 1291,
     "head_ratio": 0.2152,
-    "heads_tall": 4.65
+    "heads_tall": 4.65,
+    "solid_top": 61,
+    "heads_tall_solid": 5.95
   },
   "points": {
     "head_top": [

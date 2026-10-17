@@ -77,6 +77,80 @@ def mask_mouth(im: Image.Image, keep_alpha: float = 0.9) -> Image.Image:
     return Image.fromarray(out.astype(np.uint8), "RGBA")
 
 
+def auto_boxes(root, character, form, body):
+    """从 anchors.json + 色卡**自动量出**眼框与嘴框（T2.2.5，2026-10-17）。
+
+    为什么要加这个：原来这三个框只能命令行手填，所以 `rebuild_parts.sh` 里
+    根本没有这一步 —— 少女的 parts_report.json 是当初手动跑出来的历史产物。
+    结果是「照着流水线跑一遍做不出一个新形态」：Q 版跑到第 4 步就因为
+    缺 parts_report.json 炸了。眼睛和嘴的位置本来就能从素材量出来，不该手填。
+
+    量法（都不含任何形态常数）：
+      · 眼 = 色卡「眼睛」色的像素，在头部范围内按中线分左右两簇，各取外接框，
+            再按**虹膜自身的尺寸**外扩（上 0.9 倍含睫毛、下 0.5 倍、左右 0.35 倍）。
+      · 嘴 = 眼线与颈之间、靠中线的窄带里，比肤色暗的暖色像素（嘴线是褐的，
+            头发是蓝紫的），取最集中那一行附近；框宽按头宽的 12% 取。
+    """
+    import json as _json
+    base = os.path.join(root, "characters", character, "forms", form)
+    with open(os.path.join(base, "design", "anchors.json"), encoding="utf-8") as f:
+        anc = _json.load(f)
+    pts = anc["points"]
+    eye_y = int(pts["eye_line"][1]); neck_y = int(pts["neck"][1])
+    top_y = int(pts["head_top"][1]); cx = int(pts["eye_line"][0])
+    head = max(neck_y - top_y, 1)
+
+    pal_path = os.path.join(root, "characters", character, "design", "palette.json")
+    eye_rgb, skin_rgb = (74, 143, 212), (252, 228, 216)
+    if os.path.exists(pal_path):
+        with open(pal_path, encoding="utf-8") as f:
+            for c in _json.load(f).get("colors", []):
+                h = c["hex"].lstrip("#")
+                rgb = (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+                # ★ 必须精确匹配：色卡里既有「肤色」也有「肤色暗部（嘴/阴影）」，
+                #   用 in 匹配会被后者覆盖，嘴线当场读错（少女实测 249 → 219）。
+                nm = c.get("name", "").strip()
+                if nm == "眼睛":
+                    eye_rgb = rgb
+                if nm == "肤色":
+                    skin_rgb = rgb
+
+    a = np.asarray(body)
+    rgb, al = a[..., :3].astype(int), a[..., 3]
+
+    # 眼框：几何法。系数是在少女**已有的手填框**上对出来的（逐项差 ≤ 2px）：
+    #   x 半宽 = 眼线那一行的剪影宽 × 0.50（含头发，脸的可见宽度就是它）
+    #   y 上 0.10 头高（睫毛/眼睑）、下 0.15 头高（下睫毛/卧蚕）
+    # 框只要**框住眼睛**就行，具体哪里是眼白/虹膜/眼线由 make_eye_parts.split_eye 自己找。
+    row = np.flatnonzero(al[min(eye_y, a.shape[0] - 1)] > 24)
+    hw = float(row[-1] - row[0] + 1) if row.size else float(head)
+    y0 = max(0, int(eye_y - head * 0.10))
+    y1 = min(a.shape[0], int(eye_y + head * 0.15))
+    eyes = {
+        "left": (max(0, int(cx - hw * 0.50)), y0, max(1, int(cx - hw * 0.03)), y1),
+        "right": (min(a.shape[1] - 1, int(cx + hw * 0.03)), y0,
+                  min(a.shape[1], int(cx + hw * 0.50)), y1),
+    }
+
+    # 嘴：眼线与颈之间 20%~80% 的带（排除下巴线），**只看中线附近 ±0.05 头高的窄柱**
+    #   —— 柱子放宽到 0.12 就会把眼角的睫毛数进来，少女实测把嘴线读到 y=219（真值 249）。
+    lo = eye_y + int((neck_y - eye_y) * 0.20)
+    hi = eye_y + int((neck_y - eye_y) * 0.80)
+    half = max(5, int(head * 0.05))
+    sub = rgb[lo:hi, max(0, cx - half):cx + half]
+    sa = al[lo:hi, max(0, cx - half):cx + half]
+    warm_dark = ((sa > 128)
+                 & (np.abs(sub - np.array(skin_rgb)).sum(2) > 90)
+                 & (sub[..., 0] > sub[..., 2] + 8))
+    rows = warm_dark.sum(axis=1)
+    if rows.sum() < 8:
+        raise SystemExit("自动量嘴框失败：找不到嘴线")
+    my = lo + int(np.argmax(rows))
+    mouth = (max(0, cx - half), max(0, my - int(head * 0.035)),
+             min(a.shape[1], cx + half), min(a.shape[0], my + int(head * 0.035)))
+    return eyes, mouth, my
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
@@ -84,6 +158,9 @@ def main() -> int:
     ap.add_argument("--eyes", default="", help="left=x0,y0,x1,y1;right=...")
     ap.add_argument("--mouth", default="", help="x0,y0,x1,y1")
     ap.add_argument("--head", default="", help="x0,y0,x1,y1（头部裁剪范围）")
+    ap.add_argument("--auto", action="store_true",
+                    help="从 anchors.json + 色卡自动量眼框与嘴框（新形态用这个）")
+    ap.add_argument("--dry-run", action="store_true", help="只打印量到的框，不写文件")
     ap.add_argument("--root", default=".")
     args = ap.parse_args()
 
@@ -94,6 +171,15 @@ def main() -> int:
         return 2
     body = Image.open(body_path).convert("RGBA")
     report = {"source": body_path, "parts": []}
+
+    if args.auto:
+        eyes, mouth, my = auto_boxes(args.root, args.character, args.form, body)
+        args.eyes = ";".join(f"{s}={b[0]},{b[1]},{b[2]},{b[3]}" for s, b in eyes.items())
+        args.mouth = ",".join(str(v) for v in mouth)
+        print(f"[auto] 眼框 {args.eyes}")
+        print(f"[auto] 嘴框 {args.mouth}（嘴线 y={my}）")
+        if args.dry_run:
+            return 0
 
     def save(img: Image.Image, name: str, origin=(0, 0)):
         """origin 为该图在 body_full.png 中的左上坐标，用于 rig.json 定位。"""

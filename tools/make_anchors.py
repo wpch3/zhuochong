@@ -106,6 +106,49 @@ def runs_width(mask: "np.ndarray"):
     return w, c
 
 
+def head_and_neck(w, top, bottom, wmax):
+    """找「头团」和「颈」，**不用任何头身比常数**（T2.2.5，2026-10-17）。
+
+    原来这里写的是 `neck = 宽度在 [身高15%, 身高40%] 区间里的最小值`。
+    这对少女(1:4.65)成立，对 Q 版(1:2.5)当场失效：
+      · Q 版的颈在身高 46% 处，**根本不在窗口里**；
+      · 窗口开头正好是呆毛那根细尖，argmin 直接落在呆毛上 ——
+        实测把 1292px 高的 Q 版读成「6.69 头身」（真值约 2.2），
+        颈、肩、腰、胯、肘、腕跟着全错（左右肘甚至量成同一个点）。
+
+    剖面的形状本身是和头身比无关的：
+        细尖（呆毛）→ 头团（宽）→ 颈（窄）→ 肩（宽）
+    所以改成按**形状**找，不按比例找：
+      ① 跳过宽度不到最大宽度 1/4 的行 —— 呆毛、发丝这类细尖不算头团；
+      ② 从那里开始，第一个「之后掉下去 ≥ prom」的峰 = 头团最宽处；
+      ③ 峰之后第一个「之后涨回来 ≥ prom」的谷 = 颈。
+    prom（突出度）取最大宽度的 7%，是相对量，同样与头身比无关。
+
+    返回 (solid_top, head_peak, neck)。
+    """
+    prom = max(6.0, wmax * 0.07)
+    y = top
+    while y < bottom and w[y] < wmax * 0.25:
+        y += 1
+    solid_top = min(y, bottom)
+    peak = solid_top
+    y = solid_top
+    while y < bottom:
+        if w[y] > w[peak]:
+            peak = y
+        elif w[peak] - w[y] >= prom:
+            break
+        y += 1
+    valley = min(y, bottom)
+    while y < bottom:
+        if w[y] < w[valley]:
+            valley = y
+        elif w[y] - w[valley] >= prom:
+            break
+        y += 1
+    return solid_top, peak, valley
+
+
 def measure(img: "Image.Image", eye_rgb=None):
     a = np.asarray(img.convert("RGBA"))[..., 3]
     prof = width_profile(a)
@@ -125,20 +168,38 @@ def measure(img: "Image.Image", eye_rgb=None):
     tw = smooth(tw_raw, 11)
     tmax = max(tw) if tw else 1
 
-    # 颈：头与肩之间最细处（头顶往下 15%~40% 的范围）
-    neck = local_min(w, top + int(h * 0.15), top + int(h * 0.40))
-    # 肩：颈往下躯干宽度首次达到最大宽度 60%
-    shoulder = neck + int(h * 0.04)
-    for y in range(neck, min(top + int(h * 0.50), len(tw))):
+    # 颈：按剖面形状找（见 head_and_neck），不按身高比例开窗
+    wmax_all = max(w) if w else 1.0
+    solid_top, head_peak, neck = head_and_neck(w, top, bottom, wmax_all)
+    # 防呆：颈必须落在「头占全身 8%~60%」这个极宽的生理区间里（1:1.7 ~ 1:12 都容得下）。
+    # 越界说明剖面不是人形（或素材坏了），退回老式窗口，至少不产出离谱的数。
+    if not (top + h * 0.08 <= neck <= top + h * 0.60):
+        neck = local_min(w, top + int(h * 0.15), top + int(h * 0.40))
+
+    # ★ 颈以下的点一律按**身子那一段**定标（body = 脚底 − 颈），不按总身高。
+    #   总身高里含着头，而头正是形态之间差别最大的部分：
+    #   用总身高开窗 = 把少女的头身比写死进了工具。
+    body = max(bottom - neck, 1)
+    # ★ 下面这些系数不是重新调的，是把老系数**换了个单位**：
+    #   老代码写的是「总身高 h 的百分之几」，而 h 里含着头 —— 等于把少女的头身比
+    #   写死进了工具。换算关系：少女 body/h = 1014/1292 = 0.7849，
+    #   所以 0.10h ≡ 0.1272·body，0.02h ≡ 0.0247·body，以此类推。
+    #   换完少女的锚点**逐字段不变**（有回归比对），其它头身比则不再被头拖偏。
+    #   腿那一段同理，用 leg = 脚底 − 胯 定标（少女 leg/h = 587/1292 = 0.4543）。
+    #   这些系数当初是在少女身上调出来的，换单位只是让它们可移植，
+    #   不代表对 Q 版就是最优 —— 其它形态要看渲染图复核。
+    shoulder = neck + round(body * 0.050296)
+    for y in range(neck, min(neck + round(body * 0.362919), len(tw))):
         if tw[y] >= tmax * 0.60:
             shoulder = y
             break
-    # 腰：肩往下到 55% 身高之间，躯干最细处
-    waist = local_min(tw, shoulder + int(h * 0.10), top + int(h * 0.55))
+    # 腰：肩往下，躯干最细处
+    waist = local_min(tw, shoulder + round(body * 0.127219), neck + round(body * 0.426036))
     # 髋：腰往下躯干最宽处（裙摆/胯）
-    hip = local_max(tw, waist + int(h * 0.02), top + int(h * 0.70))
-    # 踝：脚底往上 3%~12% 区间里最细处（鞋口）
-    ankle = local_min(w, bottom - int(h * 0.12), bottom - int(h * 0.03))
+    hip = local_max(tw, waist + round(body * 0.024655), neck + round(body * 0.617357))
+    # 踝：脚底往上，窗口按**腿那一段**取（腿长在形态之间差别也很大）
+    leg = max(bottom - hip, 1)
+    ankle = local_min(w, bottom - round(leg * 0.264055), bottom - round(leg * 0.064736))
     # 膝：用"逐行不透明像素数"（面积）找，膝盖处比大腿细。
     #     用宽度（左右边界之差）会被两腿之间的空隙骗到，所以这里必须用面积。
     area = smooth(list(mask.sum(axis=1).astype(float)), 11)
@@ -180,7 +241,7 @@ def measure(img: "Image.Image", eye_rgb=None):
     #        否则鞋子和腿的轮廓也会被当成手）。
     body_cx = float(np.mean([c for c in tc if c >= 0])) if any(c >= 0 for c in tc) else img.width / 2.0
     arms = np.zeros_like(mask)
-    arm_band = list(range(shoulder, min(bottom, hip + int(h * 0.10))))
+    arm_band = list(range(shoulder, min(bottom, hip + round(body * 0.127219))))
     # 躯干的左右边界取整段的中位数：某一行腐蚀失败（比如只剩一条腿）不会带偏判断，
     # 否则两条腿会被当成"躯干外侧的手"，腕就掉到膝盖去了。
     tls = [int(np.flatnonzero(torso[y])[0]) for y in arm_band if torso[y].any()]
@@ -193,7 +254,7 @@ def measure(img: "Image.Image", eye_rgb=None):
         arms[y] = row
     arm_rows = [y for y in arm_band if arms[y].sum() >= 3]
     hand_bottom = max(arm_rows) if arm_rows else hip
-    wrist = int(hand_bottom - h * 0.02)                      # 腕≈手底往上一点
+    wrist = int(hand_bottom - body * 0.025483)                      # 腕≈手底往上一点
     elbow = int(shoulder + (wrist - shoulder) * 0.55)        # 肘取肩腕之间 55%
 
     def arm_x(y, side):
@@ -235,7 +296,13 @@ def measure(img: "Image.Image", eye_rgb=None):
         "top": top,
         "bottom": bottom,
         "head_ratio": round((neck - top) / float(h), 4),      # 头身比的倒数：头占全身的比例
-        "heads_tall": round(h / float(max(neck - top, 1)), 2),  # 几头身
+        "heads_tall": round(h / float(max(neck - top, 1)), 2),  # 几头身（剪影口径：含呆毛）
+        # 「头」有两种口径，两个都记下来，谁用谁说清楚：
+        #   heads_tall      = 剪影顶（呆毛尖）→ 颈。挂件的 unit=head 用的是它。
+        #   heads_tall_solid= 发团顶（跳过细尖）→ 颈。描述"这个角色看上去几头身"更准。
+        # Q 版的呆毛占了身高 10%，两个口径能差 0.5 头身，混用必错。
+        "solid_top": int(solid_top),
+        "heads_tall_solid": round(h / float(max(neck - solid_top, 1)), 2),
     }
     return pts, meta
 
