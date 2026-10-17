@@ -358,7 +358,8 @@ async def main() -> int:
         print(f"[A/B] 语感关 vs 语感开，共 {len(ab_list)} 组")
         for i, ab in enumerate(ab_list, 1):
             txt = ab["text"]
-            sheet = vp.sheet_for(ab.get("id", ""), txt, pcfg, profile_id)
+            sheet = vp.sheet_for(ab.get("id", ""), txt, pcfg, profile_id,
+                                 emotion=ab.get("emotion"))
             rec = {"index": i, "id": ab.get("id", ""), "text": txt, "note": ab.get("note", ""),
                    "emotion": sheet["emotion"], "voice": girl_voice,
                    "segments": [{"text": x["text"], "rate_pct": x["rate_pct"],

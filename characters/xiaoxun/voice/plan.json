@@ -24,7 +24,19 @@
   "prosody": {
     "profile": "moe_shoujo",
     "demo_text": "今天也一起加油吧，我就在这儿，一直陪着你。",
-    "demo_emotions": ["neutral", "happy", "shy", "angry", "sad", "sleepy"]
+    "demo_emotions": ["neutral", "happy", "shy", "angry", "sad", "sleepy"],
+
+    // A/B：同一句话渲两版（语感关 / 语感开）。emotion 省略时按台词 id 与文本线索自动判。
+    "ab": [
+      { "id": "", "emotion": "neutral", "note": "日常长句 · 中性",
+        "text": "今天也一起加油吧，我就在这儿，一直陪着你。" },
+      { "id": "", "emotion": "happy", "note": "日常长句 · 开心（同一句，只换情绪）",
+        "text": "今天也一起加油吧，我就在这儿，一直陪着你。" },
+      { "id": "hammer_1", "note": "被敲 · 惊讶", "text": "咚——！好痛呀，你是想把我敲成扁扁的吗？" },
+      { "id": "pat_combo", "note": "摸头太多次 · 害羞", "text": "摸这么多次…我、我会害羞的啦！" },
+      { "id": "mood_joy_1", "note": "短句 · 开心（短句只剩音高差，属实情）", "text": "今天好开心呀！" },
+      { "id": "wake_1", "note": "刚醒 · 迷糊", "text": "唔…我没有睡着哦。" }
+    ]
   },
 
   // 挑音色用的采样句（只用于 samples/，不是台词）。

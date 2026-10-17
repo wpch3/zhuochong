@@ -74,6 +74,7 @@
     "_note": "刻意克制（第四十二批的共识）：真人对话里大部分句子接近中性，只带一点底色；每句都拔高＝另一种不像人（用力过猛的配音腔）。所以给强情绪设上限，并要求整批台词里强情绪占比不超过阈值。",
     "max_abs_rate_pct": 26,
     "max_abs_pitch_hz": 46,
+    "max_pause_ms": 700,
     "strong_emotions": ["angry", "surprised", "sad"],
     "max_strong_ratio": 0.45
   },

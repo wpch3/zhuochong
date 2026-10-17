@@ -151,6 +151,7 @@ def plan_line(text: str, emotion: str, cfg: dict, profile_id: str = "moe_shoujo"
     max_rate = lim.get("max_abs_rate_pct", 30)
     max_pitch = lim.get("max_abs_pitch_hz", 45)
     pauses = cfg.get("pauses_ms", {})
+    max_pause = int(cfg.get("_restraint", {}).get("max_pause_ms", 700))
 
     segs = split_segments(text, prof.get("breath_every_chars", 11), prof.get("max_segments", 8))
     n = len(segs)
@@ -195,8 +196,9 @@ def plan_line(text: str, emotion: str, cfg: dict, profile_id: str = "moe_shoujo"
         elif punct:
             gap = int(round(pauses.get(punct, pauses.get(punct[:1], pauses.get("_default", 160)))
                             * emo.get("pause_scale", 1.0)))
+            gap = min(gap, max_pause)   # 戏剧停顿的公开区间是 400~700ms，再长就是卡顿不是表演
         else:
-            gap = int(round(prof.get("breath_ms", 160) * emo.get("pause_scale", 1.0)))
+            gap = min(int(round(prof.get("breath_ms", 160) * emo.get("pause_scale", 1.0))), max_pause)
 
         out.append({
             "text": body + (punct if punct not in ("", None) else ""),
@@ -323,10 +325,13 @@ def selftest(root: str = ".") -> int:
     for emo in cfg["emotions"]:
         for t in cases:
             for s in plan_line(t, emo, cfg)["segments"]:
-                if abs(s["rate_pct"]) > lim["max_abs_rate_pct"] or abs(s["pitch_hz"]) > lim["max_abs_pitch_hz"]:
-                    bad.append((emo, s["rate_pct"], s["pitch_hz"]))
+                if (abs(s["rate_pct"]) > lim["max_abs_rate_pct"]
+                        or abs(s["pitch_hz"]) > lim["max_abs_pitch_hz"]
+                        or s["gap_ms"] > lim.get("max_pause_ms", 700)):
+                    bad.append((emo, s["rate_pct"], s["pitch_hz"], s["gap_ms"]))
     ck("参数都在克制上限内", not bad, f"越界：{bad[:2]}" if bad else
-       f"rate≤{lim['max_abs_rate_pct']}% pitch≤{lim['max_abs_pitch_hz']}Hz")
+       f"rate≤{lim['max_abs_rate_pct']}% pitch≤{lim['max_abs_pitch_hz']}Hz "
+       f"停顿≤{lim.get('max_pause_ms', 700)}ms")
 
     # ⑤ 情绪判定：几条已知台词必须判对
     expect = [("hammer_1", "哇！别敲啦，会痛的！", "surprised"),

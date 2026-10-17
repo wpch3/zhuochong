@@ -3149,6 +3149,57 @@ def check_tools(root):
     check("Shell 脚本语法都正确", not badsh, f"{len(shs)} 个" + (f"，坏：{badsh}" if badsh else ""))
 
 
+# ------------------------------------------------------------------ 7.9 语音语感（A52 / T57）
+def check_prosody(root):
+    """语感表必须真的有高低差，角色必须真的接上，演出引擎自检必须全过。
+
+    用户 2026-10-17：「情绪变化、语气等我听测试台词都没有变化」——
+    这三道闸就是防止它再退回"一条直线"。
+    """
+    section("语音语感：情绪表不平 + 角色接上了 + 演出引擎自检全过（A52/T57）")
+    cfg_p = os.path.join(root, "config", "prosody.json")
+    if not check("语感表在（config/prosody.json）", os.path.exists(cfg_p), "T57.1 的落点"):
+        return
+    cfg = jsonc(cfg_p)
+
+    # ① 情绪表不能是平的 —— 平了就等于没有情绪（这正是本轮要修的毛病）
+    emos = cfg.get("emotions", {})
+    base = emos.get("neutral", {})
+    keys = ("rate_pct", "pitch_hz", "volume_pct", "pause_scale")
+    diff = [e for e, v in emos.items()
+            if e != "neutral" and any(v.get(k) != base.get(k) for k in keys)]
+    check("情绪表不是平的", len(emos) >= 8 and len(diff) >= 7,
+          f"{len(emos)} 种情绪，{len(diff)} 种与中性不同")
+
+    # ② 克制上限必须在，且数值落在查到的公开区间内（防"为了听出区别而演过头"）
+    lim = cfg.get("_restraint", {})
+    check("克制上限写了且合理",
+          0 < lim.get("max_abs_rate_pct", 0) <= 40
+          and 0 < lim.get("max_abs_pitch_hz", 0) <= 60
+          and 300 <= lim.get("max_pause_ms", 0) <= 900
+          and 0 < lim.get("max_strong_ratio", 0) <= 0.6,
+          f"rate≤{lim.get('max_abs_rate_pct')}% pitch≤{lim.get('max_abs_pitch_hz')}Hz "
+          f"停顿≤{lim.get('max_pause_ms')}ms 强情绪≤{lim.get('max_strong_ratio')}")
+
+    # ③ 每个角色的 plan.json 若接了语感，profile 必须真的存在
+    bad = []
+    for plan_p in sorted(glob.glob("characters/*/voice/plan.json", root_dir=root)):
+        plan = jsonc(os.path.join(root, plan_p))
+        prof = (plan.get("prosody") or {}).get("profile")
+        if prof and prof not in cfg.get("profiles", {}):
+            bad.append(f"{plan_p}:{prof}")
+    check("角色接的语感档都存在", not bad, f"指向不存在的档：{bad[:2]}" if bad else
+          "profiles=" + "/".join(cfg.get("profiles", {}).keys()))
+
+    # ④ 演出引擎自检（纯逻辑、不联网）必须全过 —— 含它自己的负向对照
+    eng = os.path.join(root, "tools", "voice_prosody.py")
+    if check("演出引擎在（tools/voice_prosody.py）", os.path.exists(eng), "T57.2 的落点"):
+        r = subprocess.run([sys.executable, eng, "--selftest", "--root", root],
+                           capture_output=True, text=True)
+        tail = (r.stdout or "").strip().splitlines()[-1:] or [""]
+        check("演出引擎自检全过", r.returncode == 0, tail[0].strip())
+
+
 # ------------------------------------------------------------------ 8 仓库卫生
 def check_hygiene(root):
     section("仓库卫生：素材没漏提交 + 没有巨型文件 + 日志没进库")
@@ -3205,6 +3256,7 @@ def main():
                check_no_dead_tables, check_swing_headroom,
                check_ambient_sway,
                check_effects_table,
+               check_prosody,
                check_tools, check_hygiene):
         try:
             fn(root)
