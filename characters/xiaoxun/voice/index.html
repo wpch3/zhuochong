@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小寻 · 语感与音色试听</title>
+<style>
+  :root{ --pink:#ff9ec2; --pink2:#e0679a; --ink:#4a4a5a; --card:#fffafc; --mute:#9a9ab0; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; padding:24px 14px 70px; color:var(--ink);
+        font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+        background:linear-gradient(160deg,#fdf3f8 0%,#eef7fd 100%); }
+  .wrap{ max-width:900px; margin:0 auto; }
+  h1{ font-size:23px; text-align:center; margin:0 0 6px; }
+  .sub{ text-align:center; font-size:13px; color:var(--mute); line-height:1.8; margin-bottom:6px; }
+  .quote{ max-width:680px; margin:14px auto 0; padding:10px 14px; border-left:4px solid var(--pink);
+          background:#fff6fa; border-radius:0 10px 10px 0; font-size:12.5px; line-height:1.9; color:#7c7c92; }
+  .sec{ font-size:15px; font-weight:800; color:var(--pink2); margin:30px 0 4px; }
+  .secsub{ font-size:12.5px; color:var(--mute); margin-bottom:12px; line-height:1.8; }
+  .card{ background:var(--card); border:2px solid #ffe1ee; border-radius:16px;
+         box-shadow:0 6px 18px rgba(255,158,194,.14); padding:13px 16px; margin-bottom:11px; }
+  .row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .col{ flex:1 1 300px; min-width:270px; }
+  h2{ font-size:14.5px; margin:0 0 3px; font-weight:700; }
+  .txt{ font-size:13px; color:#6f6f86; margin:4px 0 9px; line-height:1.7; }
+  audio{ width:100%; height:34px; }
+  .tag{ display:inline-block; font-size:11px; padding:2px 9px; border-radius:10px; margin-left:6px;
+        background:#eaf6ff; color:#4b93c4; vertical-align:2px; }
+  .tag.on{ background:#ffe9f3; color:var(--pink2); }
+  .tag.off{ background:#eee; color:#888; }
+  .tag.emo{ background:#f1ecff; color:#7a63c4; }
+  .dur{ font-size:11px; color:var(--mute); margin-left:6px; }
+  table.seg{ width:100%; border-collapse:collapse; font-size:11.5px; margin-top:8px; }
+  table.seg th{ color:var(--mute); font-weight:600; text-align:left; padding:3px 6px; border-bottom:1px solid #f0e4ea; }
+  table.seg td{ padding:3px 6px; border-bottom:1px solid #f7eef3; }
+  table.seg td.num{ font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .bar{ height:7px; border-radius:4px; background:linear-gradient(90deg,var(--pink),#9ecfff); }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:11px; }
+  .lines{ max-height:430px; overflow:auto; }
+  .lines .li{ display:flex; align-items:center; gap:9px; padding:6px 2px; border-bottom:1px solid #f6edf2; }
+  .lines .li .t{ flex:1 1 auto; font-size:12.5px; }
+  .lines .li audio{ width:210px; flex:0 0 auto; }
+  .pillbar{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .pill{ font-size:12px; padding:4px 11px; border-radius:12px; border:1px solid #ffd9e8;
+         background:#fff; color:#8a7a84; cursor:pointer; }
+  .pill.sel{ background:var(--pink); color:#fff; border-color:var(--pink); }
+  .note{ font-size:12px; color:var(--mute); line-height:1.9; margin-top:6px; }
+  .warn{ background:#fff8e8; border:1px solid #ffe2a8; border-radius:12px; padding:10px 14px;
+         font-size:12.5px; line-height:1.9; color:#8a7334; margin-top:10px; }
+  code{ background:#f4f0f6; padding:1px 5px; border-radius:4px; font-size:11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>小寻 · 语感与音色试听</h1>
+  <div class="sub">
+    同一个合成通道（<b>edge-tts · 晓伊</b>），变的是<b>怎么演</b>，不是换了个人<br>
+    <span id="meta"></span>
+  </div>
+  <div class="quote">
+    你说：「语音的情绪变化、语气等我听测试台词都<b>没有变化</b>」「音色<b>更像青年</b>」
+    「要<b>动漫二次元美少女</b>」「截图里你自己做的，只不过声音要<b>更萌更有情感</b>」。<br>
+    这一页就是答案：<b>①</b> 先证明"有没有变化"，<b>②</b> 听六种情绪，
+    <b>③</b> 挑一个音高档（年龄感），<b>④</b> 全部台词都已按情绪重渲。
+  </div>
+
+  <div class="sec">① 关 vs 开：同一句话，同一个音色，只差一个"演出单"</div>
+  <div class="secsub">左边是你之前听到的（整句一个参数，一条直线）；右边是现在的（分段、停顿、重音、句尾上扬）。<b>先听左再听右。</b></div>
+  <div id="ab"></div>
+
+  <div class="sec">② 六种情绪 · 同一句话</div>
+  <div class="secsub">「今天也一起加油吧，我就在这儿，一直陪着你。」<b>盲听判据</b>：不看标签随机播，能对上 4 种以上就算过。</div>
+  <div class="grid" id="demo"></div>
+
+  <div class="sec">③ 音色阶梯 · 挑一个年龄点</div>
+  <div class="secsub">同一句采样、<b>只变音高</b>（故意不加语感，免得干扰判断）。告诉我编号，我把它定成小寻的正式音色。</div>
+  <div class="grid" id="samples"></div>
+  <div class="warn" id="missing"></div>
+
+  <div class="sec">④ 全部台词（已按情绪重渲）</div>
+  <div class="secsub">点标签筛选。每条都标了判成什么情绪、依据是什么。</div>
+  <div class="pillbar" id="filter"></div>
+  <div class="card lines" id="lines"></div>
+
+  <div class="sec">⑤ 这一页之后还缺什么（不藏账）</div>
+  <div class="card note" id="todo"></div>
+</div>
+
+<script>
+const rel = p => String(p || '').replace(/^.*\/voice\//, '');
+const fmt = s => (s || s === 0) ? s.toFixed(2) + 's' : '…';
+const EMO = { neutral:'平静', happy:'开心', smile:'微笑', shy:'害羞', angry:'生气', pout:'鼓腮',
+              sad:'难过', surprised:'惊讶', gentle:'温柔', sleepy:'迷糊', proud:'得意' };
+
+function audio(file, auto) {
+  const a = document.createElement('audio');
+  a.controls = true; a.preload = auto ? 'metadata' : 'none'; a.src = rel(file);
+  return a;
+}
+function withDur(file) {                       // 播放器 + 自动显示时长
+  const box = document.createElement('div');
+  const a = audio(file, true), d = document.createElement('span');
+  d.className = 'dur'; d.textContent = '…';
+  a.addEventListener('loadedmetadata', () => { d.textContent = fmt(a.duration); });
+  box.appendChild(a); box.appendChild(d);
+  return { box, a, d };
+}
+function segTable(segs) {
+  if (!segs || segs.length < 2) return null;
+  const t = document.createElement('table'); t.className = 'seg';
+  t.innerHTML = '<tr><th>段</th><th>语速</th><th>音高</th><th>音量</th><th>停顿</th><th>文本 / 标注</th></tr>';
+  segs.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    const sign = n => (n > 0 ? '+' : '') + n;
+    tr.innerHTML = `<td class="num">${i + 1}</td><td class="num">${sign(s.rate_pct)}%</td>` +
+      `<td class="num">${sign(s.pitch_hz)}Hz</td><td class="num">${sign(s.volume_pct)}%</td>` +
+      `<td class="num">${s.gap_ms}ms</td><td>${s.text}` +
+      (s.marks && s.marks.length ? ` <span class="tag">${s.marks.join(' / ')}</span>` : '') + '</td>';
+    t.appendChild(tr);
+  });
+  return t;
+}
+
+fetch('catalog.json?' + Date.now()).then(r => r.json()).then(c => {
+  document.getElementById('meta').textContent =
+    `音色 ${(c.form_voices && c.form_voices.teen) || c.provider || 'edge-tts'}` +
+    ` ｜ 语感档 ${(c.prosody && c.prosody.profile) || '—'}` +
+    ` ｜ 台词 ${(c.lines || []).length} 条 ｜ 情绪对照 ${(c.demo || []).length} 条` +
+    ` ｜ A/B ${(c.ab || []).length} 组 ｜ 音色候选 ${(c.samples || []).length} 个`;
+
+  // ① A/B
+  const ab = document.getElementById('ab');
+  (c.ab || []).forEach(r => {
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h2>${r.index}. ${r.note || ''}<span class="tag emo">${EMO[r.emotion] || r.emotion}</span></h2>
+                      <div class="txt">「${r.text}」</div>`;
+    const row = document.createElement('div'); row.className = 'row';
+    const mk = (label, cls, file) => {
+      const col = document.createElement('div'); col.className = 'col';
+      const h = document.createElement('div');
+      h.innerHTML = `<span class="tag ${cls}">${label}</span>`;
+      const w = withDur(file);
+      h.appendChild(w.d); col.appendChild(h); col.appendChild(w.box.firstChild);
+      return { col, a: w.a };
+    };
+    const off = mk('语感关 · 之前那版', 'off', r.file_off);
+    const on  = mk('语感开 · 现在这版', 'on',  r.file_on);
+    off.a.addEventListener('ended', () => { setTimeout(() => on.a.play(), 420); });  // 顺播
+    row.appendChild(off.col); row.appendChild(on.col);
+    card.appendChild(row);
+    const t = segTable(r.segments); if (t) card.appendChild(t);
+    ab.appendChild(card);
+  });
+
+  // ② 情绪
+  const dm = document.getElementById('demo');
+  const maxd = Math.max(...(c.demo || []).map(d => d.bytes || 1), 1);
+  (c.demo || []).forEach(d => {
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h2>${EMO[d.emotion] || d.emotion}<span class="tag emo">${d.emotion}</span></h2>`;
+    const w = withDur(d.file);
+    card.appendChild(w.box);
+    const bar = document.createElement('div');
+    bar.className = 'bar'; bar.style.width = Math.round(100 * (d.bytes || 1) / maxd) + '%';
+    bar.style.marginTop = '7px'; card.appendChild(bar);
+    const n = document.createElement('div'); n.className = 'note';
+    n.textContent = (d.segments || []).map(s => `${s.rate_pct > 0 ? '+' : ''}${s.rate_pct}% / ${s.pitch_hz > 0 ? '+' : ''}${s.pitch_hz}Hz`).join('　→　');
+    card.appendChild(n);
+    dm.appendChild(card);
+  });
+
+  // ③ 音色
+  const sm = document.getElementById('samples');
+  (c.samples || []).forEach(s => {
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h2>${s.index}. ${s.label || s.voice}</h2>
+                      <div class="txt">${s.voice} ｜ 音高 ${s.pitch} ｜ 语速 ${s.rate}</div>`;
+    card.appendChild(audio(s.file, false));
+    sm.appendChild(card);
+  });
+  const miss = (c.failed || []).filter(f => f.kind === 'sample');
+  document.getElementById('missing').innerHTML = miss.length
+    ? `⚠️ 这 ${miss.length} 个童声音色在 <b>edge-tts 免费通道上不存在</b>（渲染返回 0 字节，已自动剔除）：` +
+      miss.map(f => `<code>${f.voice}</code>`).join(' ') +
+      `<br>所以免费通道能做到的上限就是"晓伊 + 升调 + 语感"。真正的二次元萌音（cute / shy 音色）
+       需要 <b>Azure Dragon HD</b> 或 <b>MiniMax</b> 的密钥，或者本地跑 IndexTTS2 —— 见 <code>docs/VOICE_EXPRESSION_PLAN.md §4</code>。`
+    : '';
+
+  // ④ 台词
+  const lines = c.lines || [];
+  const hist = c.emotion_histogram || {};
+  const fbar = document.getElementById('filter'), box = document.getElementById('lines');
+  let sel = '*';
+  const draw = () => {
+    box.innerHTML = '';
+    lines.filter(l => sel === '*' || l.emotion === sel).forEach(l => {
+      const li = document.createElement('div'); li.className = 'li';
+      li.innerHTML = `<span class="tag emo">${EMO[l.emotion] || l.emotion || '—'}</span>
+                      <span class="t">${l.text}<br><span class="dur">${l.id} · ${l.variant} · ${l.emotion_why || ''}</span></span>`;
+      li.appendChild(audio(l.file, false));
+      box.appendChild(li);
+    });
+  };
+  const mkPill = (key, label) => {
+    const b = document.createElement('div');
+    b.className = 'pill' + (key === sel ? ' sel' : ''); b.textContent = label;
+    b.onclick = () => { sel = key; [...fbar.children].forEach(x => x.classList.remove('sel')); b.classList.add('sel'); draw(); };
+    fbar.appendChild(b);
+  };
+  mkPill('*', `全部 ${lines.length}`);
+  Object.keys(hist).sort((a, b) => hist[b] - hist[a]).forEach(k => mkPill(k, `${EMO[k] || k} ${hist[k]}`));
+  draw();
+
+  // ⑤ 还缺什么
+  document.getElementById('todo').innerHTML = `
+    <b>1. 音色定档要你的耳朵</b>：第 ③ 节挑一个编号告诉我，我写进 <code>config/voice_cast.json</code>（T58.1）。<br>
+    <b>2. 真·二次元萌音要密钥</b>：Azure Dragon HD 的 <code>cute</code> / <code>shy</code> 风格，
+       或 MiniMax 少女音。适配器（<code>to_ssml()</code> / <code>to_minimax()</code>）已经写好，<b>填密钥即生效</b>（T58.2）。<br>
+    <b>3. 完全离线的终局</b>：本地 IndexTTS2（Apache-2.0，音色与情感解耦）或 CosyVoice2（T58.3）。<br>
+    <b>4. 口型还是假的</b>：现在是"播完统一张合"，要跟真实音量走得等 T36 的音频特征流（T57.8）。<br>
+    <b>5. 情绪现在靠"猜"</b>：按台词 id 与文本线索推断；接上对话系统的真实 mood 之后会更准（T57.7）。`;
+}).catch(e => {
+  document.getElementById('meta').textContent = '读不到 catalog.json：' + e;
+});
+</script>
+</body>
+</html>
