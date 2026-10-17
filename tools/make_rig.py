@@ -821,8 +821,16 @@ def attach_emit(rig, base, base_root):
         # —— 网格形变器 ——
         # 表里只给每一行的振幅 amp[]，逐点展开在这里做：整条一起平移会像根棍子，
         # 分行反向才有鞭感（和呆毛 ahoge_s / 侧发 side_l_s 同一套写法）。
-        dfm = ph.get("deformer")
-        if dfm:
+        # 单张网格写 deformer，多张写 deformers（长发是 3 段：根走部件 bend、
+        # 中段和发梢各一张网格）。★ 同一部件上的多张网格**必须同尺寸** ——
+        # 引擎是逐点相加后再采样的，尺寸不符直接拒载整份 rig（教训 191）。
+        dfms = ph.get("deformers") or ([ph["deformer"]] if ph.get("deformer") else [])
+        if len({(d["cols"], d["rows"]) for d in dfms}) > 1:
+            raise SystemExit(
+                f"[make_rig] 挂件 {att['id']} 的多张网格尺寸不一样："
+                f"{[(d['id'], d['cols'], d['rows']) for d in dfms]} —— "
+                f"同一部件上的网格要逐点相加，必须同尺寸")
+        for dfm in dfms:
             amp = dfm["amp"]
             if len(amp) != dfm["rows"] + 1:
                 raise SystemExit(

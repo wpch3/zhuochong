@@ -68,7 +68,17 @@ def unit_px(anchors, unit):
         return float(meta["height_px"])
     if unit == "head":
         return float(meta["head_ratio"]) * float(meta["height_px"])
-    raise SystemExit("[attach_geom] unit 只能是 head 或 body，写了 %r" % unit)
+    if unit == "torso":
+        # 头顶到腰的距离（T46.2 加的第三种单位）。
+        # 为什么头发不能用 head 也不能用 body：
+        #   · body —— 四个形态共用同一块画布，身高都是 1292，等于**没缩放**
+        #     （长发在 teen 上到大腿，在 chibi 上也到大腿，但 chibi 的腿只有那么点长）；
+        #   · head —— 长发有近 3 个头高，chibi 的头高是 teen 的 2.2 倍，
+        #     照头高缩放会得到 1786px 的头发，比整块画布还长。
+        # 「头发垂到腰」这句话里的尺度本来就是**上半身长**，所以直接用它。
+        pts = anchors["points"]
+        return float(pts["waist"][1]) - float(pts["head_top"][1])
+    raise SystemExit("[attach_geom] unit 只能是 head / body / torso，写了 %r" % unit)
 
 
 def resolve(att, anchors, ox=0, oy=0):

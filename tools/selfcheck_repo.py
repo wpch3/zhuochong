@@ -578,6 +578,9 @@ L2D_EXTENSIONS = {
     "ParamSkirtSway": "裙摆自主摆动（T45.9）。标准表只有身体角度，没有"
                       "「布自己在动」这一层。两级形变器：裙身 skirt_sway_x + "
                       "下摆 skirt_hem_x，下摆带 0.11 秒行波延迟",
+    "ParamHairLong": "长发开关（T46.2）。0=短发（bob）、1=长发。走 DC59「差分件做加法」："
+                     "长发不替换后发短壳，而是加在**身体之后**（层 58，组却是 head）"
+                     "垂下来的那一截。发型是同一形态里可换的部件，不是新形态",
     "ParamHairBackS": "后发第二段·发梢甩动（T46.1）。标准表只有 ParamHairBack 一条，"
                       "但教程一致认为「揺れが1段しかない＝髪が棒のように見える」，"
                       "後ろ髪は2~3段が普通。和 ParamHairAhogeS/ParamHairSideS 同族",
@@ -1821,6 +1824,30 @@ def check_live2d(root):
                       float(_btip["stiffness"]) < float(_side["stiffness"]),
                       "后发梢 stiffness %.0f vs 侧发梢 %.0f（重的头发摆得慢）"
                       % (_btip["stiffness"], _side["stiffness"]))
+
+    # ㉕ 长发（T46.2）：三件事必须成立 —— ① 层在**所有身体件之后**（后ろ髪的标准层位），
+    #    ② 组挂 head（层管遮挡、组管跟谁动，后发必须跟着头转），
+    #    ③ 摆动是 **3 段**且逐段变软（長い後ろ髪は3段振り子；軽い/先ほど柔らかく）。
+    for _rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        _tag = "%s/%s" % (_rp.split(os.sep)[-4], _rp.split(os.sep)[-2])
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        _lh = next((p for p in _rig.get("parts", []) if p.get("id") == "acc_hair_long"), None)
+        if not _lh:
+            continue
+        _body = [p for p in _rig["parts"]
+                 if p["id"].startswith("seg_") or p["id"].startswith("arm_")]
+        _minb = min(int(p["layer"]) for p in _body)
+        check("长发在整个身体之后（%s）" % _tag, int(_lh["layer"]) < _minb,
+              "长发 layer %d vs 最低的身体件 %d" % (_lh["layer"], _minb))
+        check("长发跟着头转（组是 head）（%s）" % _tag, _lh.get("group") == "head",
+              "group=%r —— 层号管遮挡、组管跟谁动，后发必须挂 head" % _lh.get("group"))
+        _seg = [x for x in _rig.get("physics", []) if x.get("part") == "acc_hair_long"]
+        _stiff = [float(x["stiffness"]) for x in _seg]
+        check("长发是 3 段摆、而且逐段变软（%s）" % _tag,
+              len(_seg) >= 3 and all(a > b for a, b in zip(_stiff, _stiff[1:])),
+              "%d 段，刚度 %s（長い後ろ髪は3段振り子）"
+              % (len(_seg), "/".join("%.0f" % v for v in _stiff)))
 
     # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
     # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。

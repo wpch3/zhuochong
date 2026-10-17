@@ -854,6 +854,21 @@ def run(base, root):
                   .get("skirt_sway_x") or 0.0)
         check("表布和里布由同一条参数一起驱动", skx > 0.5 and d1 > 0.5,
               "表布 %.4f / 里布 %.4f" % (skx, d1))
+    # 长发（T46.2）：① 能开关；② 开着的时候，转头会把第三段（发梢）带起来。
+    if "longhair_tip" in dfm:
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=120&dt=0.016")
+        a.hit("/api/param?id=ParamHairLong&v=1")
+        a.hit("/api/param?id=ParamAngleX&v=28"); a.hit("/api/step?n=24&dt=0.016")
+        _d = (a.json("/api/info.json") or {}).get("deformers") or {}
+        mid, tip = abs(_d.get("longhair_mid") or 0.0), abs(_d.get("longhair_tip") or 0.0)
+        check("转头会把长发的中段和发梢都带起来（3 段摆）",
+              mid > 0.15 and tip > 0.05, "mid=%.3f tip=%.3f" % (mid, tip))
+        pj = {q["id"]: q for q in (a.json("/api/params.json") or {}).get("params", [])}
+        check("长发开关是个 0/1 的差分件参数",
+              (pj.get("ParamHairLong", {}).get("effective") or 0) > 0.5,
+              "ParamHairLong=%s" % pj.get("ParamHairLong", {}).get("effective"))
+        a.hit("/api/param?all=1&reset=1")
+
     # 后发第二段（T46.1）：转头之后，第二段（发梢）必须被第一段带起来。
     # 这验的是**物理链接上了**（back_x → back_tip → back_s），
     # 形状上的约束（头顶剪影不许动、比侧发软）是静态性质，由 selfcheck 第㉔段守。
