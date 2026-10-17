@@ -203,7 +203,7 @@ async def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
     ap.add_argument("--root", default=".")
-    ap.add_argument("--only", choices=["all", "samples", "lines", "demo"], default="all")
+    ap.add_argument("--only", choices=["all", "samples", "lines", "demo", "ab"], default="all")
     ap.add_argument("--prosody", choices=["on", "off"], default="on",
                     help="on=按 config/prosody.json 排演出单分段合成（默认）；off=老的整句一次合成")
     ap.add_argument("--profile", default="", help="语感档，默认取 plan.json 的 prosody.profile")
@@ -344,6 +344,41 @@ async def main() -> int:
                                "pitch_hz": x["pitch_hz"], "gap_ms": x["gap_ms"]}
                               for x in sheet["segments"]]})
             print(f"[对照] {emo} → {size} 字节")
+
+    # 4) A/B 对照：同一句话，语感关 vs 语感开。用户说"听不出变化"，这组就是用来回答这句的。
+    if args.only in ("all", "ab") and pcfg:
+        ab_list = plan.get("prosody", {}).get("ab") or [
+            {"id": "", "text": plan.get("prosody", {}).get(
+                "demo_text", "今天也一起加油吧，我就在这儿，一直陪着你。"), "note": "中性长句"},
+            {"id": "hammer_1", "text": "咚——！好痛呀，你是想把我敲成扁扁的吗？", "note": "惊讶"},
+            {"id": "pat_combo", "text": "摸这么多次…我、我会害羞的啦！", "note": "害羞"},
+            {"id": "mood_joy_1", "text": "今天好开心呀！", "note": "开心"},
+            {"id": "wake_1", "text": "唔…我没有睡着哦。", "note": "迷糊"},
+        ]
+        print(f"[A/B] 语感关 vs 语感开，共 {len(ab_list)} 组")
+        for i, ab in enumerate(ab_list, 1):
+            txt = ab["text"]
+            sheet = vp.sheet_for(ab.get("id", ""), txt, pcfg, profile_id)
+            rec = {"index": i, "id": ab.get("id", ""), "text": txt, "note": ab.get("note", ""),
+                   "emotion": sheet["emotion"], "voice": girl_voice,
+                   "segments": [{"text": x["text"], "rate_pct": x["rate_pct"],
+                                 "pitch_hz": x["pitch_hz"], "volume_pct": x["volume_pct"],
+                                 "gap_ms": x["gap_ms"], "marks": x["marks"]}
+                                for x in sheet["segments"]]}
+            try:    # 关：老路子，整句一次合成，参数就是 plan.json 里的 +0/+0/+0
+                off = os.path.join(vdir, "ab", f"{i:02d}_off.mp3")
+                rec["bytes_off"] = await synth(txt, girl_voice, off, rate, pitch, volume)
+                rec["file_off"] = os.path.relpath(off, root).replace(os.sep, "/")
+                on = os.path.join(vdir, "ab", f"{i:02d}_on.mp3")
+                rec["bytes_on"] = await synth_sheet(sheet, girl_voice, on)
+                rec["file_on"] = os.path.relpath(on, root).replace(os.sep, "/")
+            except Exception as exc:  # noqa: BLE001
+                print(f"[跳过] ab/{i:02d}：{exc}", file=sys.stderr)
+                failed.append({"kind": "ab", "index": i, "error": str(exc)[:200]})
+                continue
+            catalog.setdefault("ab", []).append(rec)
+            print(f"[A/B] {i:02d} {ab.get('note','')} {sheet['emotion']} "
+                  f"关 {rec['bytes_off']} / 开 {rec['bytes_on']} 字节")
 
     catalog["failed"] = failed
     os.makedirs(vdir, exist_ok=True)

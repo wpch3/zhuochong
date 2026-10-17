@@ -12,7 +12,7 @@ on:
         required: true
         default: xiaoxun
       only:
-        description: "all | samples | lines | demo（demo=同一句×六种情绪的语气对照）"
+        description: "all | samples | lines | demo | ab（demo=同句×六情绪；ab=语感关/开对照）"
         required: true
         default: all
       prosody:
@@ -97,6 +97,12 @@ jobs:
         if: steps.render.outcome == 'failure'
         run: exit 1
 
+      # 空文件 = 该音色在免费通道上不存在（供应商音色表会变动）。必须在提交之前删，
+      # 否则 0 字节的壳会被 commit 回仓库（2026-10-17 踩过）。
+      - name: 清掉失效音色留下的空文件
+        if: steps.render.outcome == 'success'
+        run: find "characters/$CHARACTER/voice" -name '*.mp3' -size -2k -delete
+
       - name: 提交合成结果到分支（沙箱可直接读取，无需下载 artifact）
         if: steps.render.outcome == 'success'
         run: |
@@ -104,7 +110,7 @@ jobs:
           git config user.email "actions@github.com"
           git config user.name "voice-render bot"
           git add -f "characters/$CHARACTER/voice/samples" "characters/$CHARACTER/voice/lines" \
-                     "characters/$CHARACTER/voice/demo" \
+                     "characters/$CHARACTER/voice/demo" "characters/$CHARACTER/voice/ab" \
                      "characters/$CHARACTER/voice/catalog.json" 2>/dev/null
           git commit -q -m "voice-render: 合成结果 [skip ci]"
           git fetch -q origin "$GITHUB_REF_NAME"
@@ -118,6 +124,7 @@ jobs:
           D="characters/$CHARACTER/voice"
           echo "--- 采样 ---"; ls -la "$D/samples" || true
           echo "--- 语气对照 ---"; ls -la "$D/demo" || true
+          echo "--- A/B ---"; ls -la "$D/ab" || true
           echo "--- 台词数 ---"; ls "$D/lines" | wc -l
           # 空文件=该音色失效（供应商音色表会变动），删掉即可，不算失败
           find "$D" -name '*.mp3' -size -2k -delete
