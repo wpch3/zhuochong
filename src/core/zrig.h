@@ -110,6 +110,7 @@ void   zrig_tail_flick_enable(zrig *r, int on);
    自主摆动一直在跑，不关的话「摇头有没有把裙子带起来」这类断言
    会把它算进去，分不出位移是谁推的。 */
 void   zrig_ambient_enable(zrig *r, int on);
+int    zrig_ambient_enabled(const zrig *r);
 int    zrig_pose_count(const zrig *r);
 const char *zrig_pose_id(const zrig *r, int i);
 int    zrig_pose_entry_count(const zrig *r, const char *group);

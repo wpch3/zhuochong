@@ -589,6 +589,28 @@
       "hires": 2
     },
     {
+      "id": "skirt_lining",
+      "file": "sprites/skirt_lining@2x.png",
+      "group": "chest",
+      "layer": 50,
+      "pos": [
+        285,
+        728
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body",
+        "skirt"
+      ],
+      "note": "层 50 = 腿（60/61）之后、尾巴（30~33）之前",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "seg_foot_l",
       "file": "sprites/seg_foot_l@2x.png",
       "group": "foot_l",
@@ -4261,6 +4283,90 @@
       ]
     },
     {
+      "id": "lining_sway_x",
+      "part": "skirt_lining",
+      "cols": 2,
+      "rows": 4,
+      "note": "里布横摆：只跟到表布同高度位移的 35%，差额就是露出来的那条里子（表布 10px 时露 6.5px）",
+      "points": [
+        {
+          "c": 0,
+          "r": 0,
+          "dx": 2.23
+        },
+        {
+          "c": 1,
+          "r": 0,
+          "dx": 2.364
+        },
+        {
+          "c": 2,
+          "r": 0,
+          "dx": 2.23
+        },
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 2.796
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 2.964
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 2.796
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 3.385
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 3.588
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 3.385
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": 4.006
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 4.246
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": 4.006
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": 4.627
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 4.905
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": 4.627
+        }
+      ]
+    },
+    {
       "id": "tail_relaxed_s",
       "part": "acc_tail_cat_relaxed",
       "cols": 2,
@@ -4724,6 +4830,26 @@
       "damping": 8.0,
       "max": 3.5,
       "note": "后发：整团壳只慢半拍地晃一点点（幅度大了会从脸边上露出来）"
+    },
+    {
+      "id": "lining_x",
+      "part": "skirt_lining",
+      "deformer": "lining_sway_x",
+      "input": [
+        {
+          "param": "ParamBodyAngleX",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBodyAngleZ",
+          "weight": 1.0
+        }
+      ],
+      "ratio": 0.05,
+      "stiffness": 18,
+      "damping": 7.2,
+      "max": 1.0,
+      "note": "里布的身体带动：比表布(skirt_x 0.12/24/6.5)更钝 —— 它夹在腿和表布中间，受的风小、摩擦大"
     },
     {
       "id": "tail_relaxed_x",
@@ -6164,9 +6290,14 @@
           "deformer": "skirt_hem_x",
           "scale": 1.0,
           "lag": 0.11
+        },
+        {
+          "deformer": "lining_sway_x",
+          "scale": 1.0,
+          "lag": 0.2
         }
       ],
-      "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 ⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D 「複数階層デフォーマ・親→子」的等价写法）。物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**再叠身体带动的滞后。幅度刻意压小——教程口径是「意外と揺れを控えめにした方が自然に見える」"
+      "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 ⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D 「複数階層デフォーマ・親→子」的等价写法）。物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**再叠身体带动的滞后。幅度刻意压小——教程口径是「意外と揺れを控えめにした方が自然に見える」；里布（skirt_lining）同参数驱动，跟随系数 0.35、延迟 0.2s —— 甩出去时露出里子，收回来又藏回去"
     },
     {
       "id": "ParamAccTailRelaxedSwing",

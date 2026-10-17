@@ -13,7 +13,9 @@
  *   GET /api/action?id=        触发动作
  *   GET /api/hover?x=&y=&in=   上报鼠标位置（视线/专注/唤醒）
  *   GET /api/scale?s=          设置缩放
- *   GET /api/pause?on=         冻结/恢复引擎时钟（冻结后连续两帧完全相同，便于抓图比对）
+ *   GET /api/pause?on=&t=      冻结/恢复引擎时钟（冻结后连续两帧完全相同，便于抓图比对；t 指定冻结到哪一秒）
+ *   GET /api/step?n=&dt=       冻结状态下按固定步长空跑 n 帧，让物理与 lag 走到位（A/B 对照必备）
+ *   GET /api/ambient?on=       环境摆动总开关（关掉参数才真的等于你设的值，A/B 对照必备）
  *   GET /api/pose?group=&id=   互斥部件组切档（≈ pose3.json；id=none 整组关掉）
  *   GET /api/params.json       命名参数表（≈ Live2D ParamXxx）与当前值
  *   GET /api/param?id=&v=      直接写一个参数（reset=1 回默认；all=1 全部复位）
@@ -1022,18 +1024,85 @@ static void handle_request(zsock fd, const http_req *r)
         send_text(fd, 200, "application/json", body);
         return;
     }
+    if (strcmp(r->path, "/api/ambient") == 0) {
+        /* 环境摆动（ambient）总开关。on=0 关、on=1 开。
+
+           为什么要能关：ambient 是**往参数上加偏移**的（裙摆那条 drift 幅度就有 0.72）。
+           开着的时候 `/api/param?id=ParamSkirtSway&v=0` 得到的并不是"裙子不动"，
+           而是 0 叠上一个随时刻变化的底噪；推到 1.15 又会被上限夹住。
+           做"改了这一处到底影响了哪些像素"的对照图时，必须先把底噪关掉。 */
+        char s[32];
+        char body[96];
+        if (!qstr(r, "on", s, sizeof(s))) {
+            send_text(fd, 400, "application/json",
+                      "{\"ok\":false,\"error\":\"要给 on=0 或 on=1\"}");
+            return;
+        }
+        LOCK();
+        zpet_set_ambient_enabled(g_pet, atoi(s) != 0);
+        zpet_tick(g_pet, pet_now());
+        UNLOCK();
+        z_snprintf(body, sizeof(body), "{\"ok\":true,\"ambient\":%s}",
+                   atoi(s) != 0 ? "true" : "false");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
     if (strcmp(r->path, "/api/pause") == 0) {
         /* 冻结/恢复引擎时钟。on=1 冻结（默认），on=0 恢复。
            冻结期间 /api/frame.png 反复取是同一帧，参数一改就只有参数的影响。 */
+        /* t=<秒>（可选）：冻结到**指定**时间戳而不是"此刻"。
+           做 A/B 对照图时两个进程各自的"此刻"不同 ⇒ 环境摆动（ambient 是绝对时间的函数）
+           相位对不上，整张图都在动，根本比不出改了什么。给定同一个 t，
+           再让它空跑一会（物理是固定步长，输入恒定就会收敛到同一个平衡点），
+           两次运行就能逐像素比较。T45.11 做里布 A/B 时踩到的。 */
         char body[128];
         int on = 1;
-        if (r->query[0]) on = qint(r, "on", 1);
+        double tq = 0.0;
+        int has_t = 0;
+        if (r->query[0]) {
+            char tb[64];
+            on = qint(r, "on", 1);
+            if (qstr(r, "t", tb, sizeof(tb)) && tb[0]) { tq = atof(tb); has_t = 1; }
+        }
         LOCK();
-        if (on && !g_frozen) { g_freeze_t = z_now_seconds(); g_frozen = 1; }
+        if (on && (!g_frozen || has_t)) {
+            g_freeze_t = has_t ? tq : z_now_seconds();
+            g_frozen = 1;
+        }
         else if (!on) { g_frozen = 0; }
         zpet_tick(g_pet, pet_now());
         UNLOCK();
         z_snprintf(body, sizeof(body), "{\"ok\":true,\"paused\":%s}", on ? "true" : "false");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/step") == 0) {
+        /* 冻结状态下**按固定步长空跑** n 帧（dt 默认 1/60 秒）。
+
+           为什么需要它：冻结时钟后 dt 恒为 0，物理、摆动延迟（bind 的 lag）
+           这些"需要时间才能走到位"的东西**一步都不会走**——改了参数只有直连的
+           绑定会动，经过物理/lag 的部件原地不动。T45.11 做裙子里布时就是栽在这：
+           里布挂的是 lag 0.2 的绑定，暂停下无论等多久都跟不上，看起来像"没接上"。
+
+           有了固定步长空跑，"同一个起始时刻 + 同一串参数 + 同样多的步数"就必然
+           得到同一帧，A/B 对照图才真的可比（物理固定步长是 DC53 的既定前提）。 */
+        char body[160];
+        int    n  = qint(r, "n", 1);
+        char   tb[64];
+        double dt = 1.0 / 60.0;
+        if (qstr(r, "dt", tb, sizeof(tb)) && tb[0]) dt = atof(tb);
+        if (n < 0) n = 0;
+        if (n > 6000) n = 6000;            /* 100 秒封顶，别让一个请求把服务卡死 */
+        if (!(dt > 0.0) || dt > 1.0) dt = 1.0 / 60.0;
+        LOCK();
+        if (!g_frozen) { g_freeze_t = z_now_seconds(); g_frozen = 1; }
+        for (int i = 0; i < n; i++) {
+            g_freeze_t += dt;
+            zpet_tick(g_pet, g_freeze_t);
+        }
+        UNLOCK();
+        z_snprintf(body, sizeof(body),
+                   "{\"ok\":true,\"steps\":%d,\"dt\":%.6f,\"t\":%.3f}", n, dt, g_freeze_t);
         send_text(fd, 200, "application/json", body);
         return;
     }

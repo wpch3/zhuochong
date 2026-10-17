@@ -944,7 +944,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
           closed=None, blendp=None, eyeline=None, smile_eyes=None,
           pain_eyes=None, wide_eyes=None, footp=None,
-          star_eyes=None, base=None, fx_table=None):
+          star_eyes=None, base=None, fx_table=None, skirtp=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -1039,6 +1039,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             seg_src = [sp for sp in seg_src if sp["id"] not in ("seg_arm_l", "seg_arm_r")]
             seg_src += [dict(sp, note="手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）")
                         for sp in armp["parts"]]
+        if skirtp:
+            # T45.11：裙子里布。官方手册「スカートなどは手前の面と奥の面で
+            # **足を挟むように**画像を分けておく」⇒ 里布层 50 < 腿 60/61 < 躯干 100。
+            # 组跟躯干同一个（chest）：里布本来就是裙子的一部分，
+            # 身体平移/旋转时必须和表布**完全同步**，只有形变器那一层才差开。
+            seg_src += [dict(sp, group=sp.get("group", "chest")) for sp in skirtp["parts"]]
+            tag_of.update({sp["id"]: ["body", "skirt"] for sp in skirtp["parts"]})
         if footp:
             # T24.5：鞋从腿件上拆下来，常态/踮脚两张姿态图各一件（交叉淡化切换）
             seg_src += list(footp["parts"])
@@ -2902,6 +2909,62 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     "再叠身体带动的滞后。幅度刻意压小——教程口径是"
                     "「意外と揺れを控えめにした方が自然に見える」",
         })
+        # —— 裙子里布（T45.11）——
+        # 里布不是"再摆一次"，而是**比表布摆得少**：差出来的那一条就是露出来的里子。
+        # 幅度口径：里布跟到表布的 LIN_FOLLOW，再加一段延迟 ⇒ 甩出去的瞬间露得最多，
+        # 停下来又收回去（布料的回り込み）。note.com/morris_343 的做法是把
+        # 「スカート裏の全面の曲面」挂在主裙摆曲面的子级，这里是同一条参数两条形变器。
+        if skirtp and seg:
+            LIN_FOLLOW = 0.35
+            LIN_ROWS = 4
+            _lin = skirtp["parts"][0]
+            # 两个盒子都取**身体图坐标**（*_parts.json 里的 pos/size），
+            # 这样才能把里布的行号换算成表布形变器的行号。
+            _tp = next(q for q in seg["parts"] if q["id"] == "seg_torso")
+            _ty, _th = _tp["pos"][1], _tp["size"][1]
+            _ly, _lh = _lin["pos"][1], _lin["size"][1]
+
+            def _skirt_dx(r_float):
+                """表布在躯干第 r 行（浮点）处的横向位移 = 第一段 + 下摆第二段。"""
+                def _interp(tbl):
+                    ks = sorted(tbl)
+                    if r_float <= ks[0]:
+                        return 0.0 if r_float < ks[0] else tbl[ks[0]]
+                    if r_float >= ks[-1]:
+                        return tbl[ks[-1]]
+                    for a_, b_ in zip(ks, ks[1:]):
+                        if a_ <= r_float <= b_:
+                            t = (r_float - a_) / (b_ - a_)
+                            return tbl[a_] * (1 - t) + tbl[b_] * t
+                    return 0.0
+                return _interp(_SKX) + _interp(_SKHEM)
+
+            _pts = []
+            for r in range(LIN_ROWS + 1):
+                y_abs = _ly + _lh * r / LIN_ROWS
+                r_torso = (y_abs - _ty) / _th * 10.0
+                dx = round(_skirt_dx(r_torso) * LIN_FOLLOW, 3)
+                for c in range(3):
+                    _pts.append({"c": c, "r": r,
+                                 "dx": round(dx * (1.06 if c == 1 else 1.0), 3)})
+            rig["deformers"].append(
+                {"id": "lining_sway_x", "part": _lin["id"], "cols": 2, "rows": LIN_ROWS,
+                 "note": f"里布横摆：只跟到表布同高度位移的 {LIN_FOLLOW:.0%}，"
+                         f"差额就是露出来的那条里子（表布 10px 时露 {10 * (1 - LIN_FOLLOW):.1f}px）",
+                 "points": _pts})
+            rig["params"][-1]["binds"].append(
+                {"deformer": "lining_sway_x", "scale": 1.0, "lag": 0.2})
+            rig["params"][-1]["note"] += (
+                "；里布（skirt_lining）同参数驱动，跟随系数 "
+                f"{LIN_FOLLOW}、延迟 0.2s —— 甩出去时露出里子，收回来又藏回去")
+            rig["physics"].append(
+                {"id": "lining_x", "part": _lin["id"], "deformer": "lining_sway_x",
+                 "input": [{"param": "ParamBodyAngleX", "weight": 1.0},
+                           {"param": "ParamBodyAngleZ", "weight": 1.0}],
+                 "ratio": 0.05, "stiffness": 18, "damping": 7.2, "max": 1.0,
+                 "note": "里布的身体带动：比表布(skirt_x 0.12/24/6.5)更钝 —— "
+                         "它夹在腿和表布中间，受的风小、摩擦大"})
+
         # 进 ambient 而不是 idle：见上面挂件摆动处的说明（T45.9）。
         rig.setdefault("ambient", []).append(
             {"target": "ParamSkirtSway", "wave": "drift",
@@ -3072,6 +3135,18 @@ def main() -> int:
             print(f"警告：手臂拆件缺图 {miss}，退回整条手臂 bend", file=sys.stderr)
             armp = None
     # 脚拆件（tools/make_foot_parts.py 的产物：常态鞋 + 踮脚鞋各两件）
+    # 裙子里布（tools/make_skirt_parts.py 的产物：表布复制 + 乘法压暗）
+    skirtp = None
+    skirt_path = os.path.join(base, "sprites", "skirt_parts.json")
+    if os.path.exists(skirt_path):
+        with open(skirt_path, encoding="utf-8") as f:
+            skirtp = json.load(f)
+        miss = [a["id"] for a in skirtp["parts"]
+                if not os.path.exists(os.path.join(base, a["file"]))]
+        if miss:
+            print(f"警告：裙子里布缺图 {miss}，跳过里布", file=sys.stderr)
+            skirtp = None
+
     footp = None
     foot_path = os.path.join(base, "sprites", "foot_parts.json")
     if seg and os.path.exists(foot_path):
@@ -3212,7 +3287,7 @@ def main() -> int:
                 pain_eyes=pain_eyes, wide_eyes=wide_eyes,
                 star_eyes=star_eyes,
                 fx_table=fx_table,
-                footp=footp)
+                footp=footp, skirtp=skirtp)
     attach_emit(rig, base, base_root)   # 挂件（A49 / T45）：表在就挂，不在就当没有
     prune_dangling(rig)                 # 素材没齐的形态：清掉指向不存在部件的绑定
 

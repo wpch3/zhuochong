@@ -1646,6 +1646,72 @@ def check_live2d(root):
             check("猫耳朝向：耳尖朝外 + 耳廓在外侧（%s/%s）" % (_c, _f),
                   _rc.returncode == 0 and not _bad,
                   "; ".join(_bad) if _bad else (_rc.stderr.strip().splitlines() or ["两只耳朵都对"])[-1])
+    # ㉑ 裙子里布（T45.11）：Cubism 官方教程的原话是「スカートなどは**手前の面と奥の面で
+    #    足を挟むように**画像を分けておく」—— 里布要夹在腿**后面**，表布在腿前面。
+    #    层号一旦被挪到腿前面，静止时就会糊在大腿上，而所有现有闸门都看不出来
+    #    （部件在、形变器在、参数也动）。另外里布必须跟表布同一条参数驱动且带延迟，
+    #    否则它会和表布齐步走，甩出去时根本露不出里子，等于白做。
+    for _sp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/sprites/skirt_parts.json"))):
+        _form_dir = os.path.dirname(os.path.dirname(_sp))
+        _tag = "%s/%s" % (_form_dir.split(os.sep)[-3], os.path.basename(_form_dir))
+        with io.open(_sp, encoding="utf-8") as _f:
+            _sk = json.load(_f)
+        _lin_ids = [x["id"] for x in _sk.get("parts", [])]
+        _rp = os.path.join(_form_dir, "rig.json")
+        if not os.path.exists(_rp):
+            continue
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        _by_id = {x["id"]: x for x in _rig.get("parts", [])}
+        for _lid in _lin_ids:
+            _part = _by_id.get(_lid)
+            check("裙子里布 %s 进了 rig（%s）" % (_lid, _tag), _part is not None,
+                  "rig.json 里没有这个部件 —— 生成器没接上" if _part is None else "layer %s" % _part.get("layer"))
+            if not _part:
+                continue
+            # 腿、脚、表布都得在里布**前面**（层号更大）
+            _front = [x for x in _rig["parts"]
+                      if (x["id"].startswith("seg_leg") or x["id"].startswith("seg_foot")
+                          or x["id"] == "seg_torso")]
+            _bad = [x["id"] for x in _front if int(x.get("layer", 0)) <= int(_part.get("layer", 0))]
+            check("裙子里布夹在腿后面（%s）" % _tag, not _bad,
+                  "这些部件没排在里布前面：%s" % _bad if _bad
+                  else "里布 layer %d < 腿/脚/表布" % int(_part.get("layer", 0)))
+            # 和表布同一条参数驱动，而且要带延迟（齐步走就露不出里子）
+            _defs = [d["id"] for d in _rig.get("deformers", []) if d.get("part") == _lid]
+            _drv = []
+            for _pm in _rig.get("params", []):
+                for _b in _pm.get("binds", []) or []:
+                    if _b.get("deformer") in _defs:
+                        _drv.append((_pm["id"], float(_b.get("lag", 0.0) or 0.0)))
+            _skirt_params = set()
+            for _pm in _rig.get("params", []):
+                for _b in _pm.get("binds", []) or []:
+                    _d = next((d for d in _rig.get("deformers", [])
+                               if d.get("id") == _b.get("deformer")), None)
+                    if _d and _d.get("part") == "seg_torso" and "skirt" in _d.get("id", ""):
+                        _skirt_params.add(_pm["id"])
+            check("裙子里布跟表布同一条参数、且有延迟（%s）" % _tag,
+                  bool(_drv) and any(pid in _skirt_params and lag > 0 for pid, lag in _drv),
+                  "里布形变器 %s 被 %s 驱动；表布参数 %s"
+                  % (_defs, [(p_, l_) for p_, l_ in _drv], sorted(_skirt_params)))
+            # 里布必须**跟得比表布少**：两边位移一样大就等于齐步走，甩出去也露不出里子。
+            # 形变器的驱动量两边都会收到 ≈ 参数值，差距写在各自的 dx 表里，
+            # 所以这是静态性质（冒烟那边只验"确实被同一条参数驱动"）。
+            def _maxdx(_ids):
+                _v = 0.0
+                for _d in _rig.get("deformers", []):
+                    if _d.get("id") in _ids:
+                        for _pt in _d.get("points", []):
+                            _v = max(_v, abs(float(_pt.get("dx", 0.0) or 0.0)))
+                return _v
+            _front_defs = {d["id"] for d in _rig.get("deformers", [])
+                           if d.get("part") == "seg_torso" and "skirt" in d.get("id", "")}
+            _lin_dx, _front_dx = _maxdx(set(_defs)), _maxdx(_front_defs)
+            check("裙子里布跟得比表布少（%s）" % _tag,
+                  _front_dx > 0 and 0 < _lin_dx < _front_dx,
+                  "里布最大位移 %.2f vs 表布 %.2f（里布 / 表布 = %.2f）"
+                  % (_lin_dx, _front_dx, (_lin_dx / _front_dx) if _front_dx else 0))
     # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
     # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。
     for _fp in sorted(glob.glob(os.path.join(root, "characters/*/forms.json"))):

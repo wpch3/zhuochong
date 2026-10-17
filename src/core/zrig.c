@@ -54,7 +54,11 @@
    参数 × alpha/sx/sy 三条），96 条当场撞上限。和 ZRIG_MAX_PHYS 那次一样 ——
    上限撞了就改大，绝不能让它静默截断。现在用到 140 条。 */
 #define ZRIG_MAX_BINDS   512   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
-#define ZRIG_MAX_DEFORMS  12
+/* 2026-10-17：裙子里布（T45.11）给里布单独挂了一张网格，12 张当场撞顶
+   —— 和 ZRIG_MAX_PHYS / ZRIG_MAX_EXPR_SET 那两次一样：**上限撞了就改大，
+   绝不能静默截断**。一张 zdeform 约 4.8 KB（289 控制点 × 2 double），
+   12 → 24 给 zrig 增重约 58 KB。现在用到 13 张。 */
+#define ZRIG_MAX_DEFORMS  24
 #define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
 #define ZRIG_MAX_VISEME    8     /* 口型音素表的行数（SIL/A/I/U/E/O/N…） */
 #define ZRIG_MAX_VISEME_P  4     /* 一个音素最多同时写几个参数 */
@@ -4989,6 +4993,11 @@ void zrig_tail_flick_enable(zrig *r, int on)
 void zrig_ambient_enable(zrig *r, int on)
 {
     if (r) r->ambient_off = on ? 0 : 1;
+}
+
+int zrig_ambient_enabled(const zrig *r)
+{
+    return (r && !r->ambient_off) ? 1 : 0;
 }
 
 void zrig_pose_apply_mood(zrig *r, const char *mood)

@@ -955,6 +955,18 @@ int zpet_phys_enabled(const zpet *p)
     return (p && p->rig) ? zrig_phys_enabled(p->rig) : 0;
 }
 
+/* 开/关环境摆动（ambient）。关掉之后参数值就是你设的那个值，没有底噪叠加。 */
+void zpet_set_ambient_enabled(zpet *p, int on)
+{
+    if (!p || !p->rig) return;
+    zrig_ambient_enable(p->rig, on ? 1 : 0);
+}
+
+int zpet_ambient_enabled(const zpet *p)
+{
+    return (p && p->rig) ? zrig_ambient_enabled(p->rig) : 0;
+}
+
 void zpet_set_blink_enabled(zpet *p, int on)
 {
     if (!p || !p->rig) return;

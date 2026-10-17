@@ -795,6 +795,68 @@ def run(base, root):
           "刚推时 %.3f → 静止后 %.4f" % (peak, rest))
     a.hit("/api/param?id=ParamBodyAngleX&reset=1"); time.sleep(0.5)
 
+    # ── 固定步长空跑 /api/step + 环境摆动开关 /api/ambient（T45.11）──
+    #   冻结时钟后 dt 恒为 0：物理和**带 lag 的绑定**一步都不会走，于是
+    #   「参数设上去了却看不出变化」。而 ambient 是往参数上**加**偏移的，
+    #   开着的时候设 0 并不是静止。做任何像素对照都要先把这两件事摆平。
+    check("缺 on 的 /api/ambient 要报 400", a.code("/api/ambient") == 400,
+          "实际 %s" % a.code("/api/ambient"))
+    a.hit("/api/pause?on=1&t=1000"); time.sleep(0.1)
+    amb = a.json("/api/ambient?on=0") or {}
+    check("/api/ambient?on=0 能关掉环境摆动",
+          amb.get("ok") is True and amb.get("ambient") is False,
+          json.dumps(amb, ensure_ascii=False))
+    a.hit("/api/param?all=1&reset=1")
+    st = a.json("/api/step?n=120&dt=0.016") or {}
+    check("/api/step 报了步数与步长", st.get("steps") == 120
+          and abs(float(st.get("dt") or 0) - 0.016) < 1e-9,
+          json.dumps(st, ensure_ascii=False))
+    t_a = float(st.get("t") or 0.0)
+    t_b = float((a.json("/api/step?n=60&dt=0.016") or {}).get("t") or 0.0)
+    check("/api/step 按固定步长推进冻结时钟", abs((t_b - t_a) - 0.96) < 1e-6,
+          "%.3f → %.3f" % (t_a, t_b))
+    check("/api/step?n=0 不推进（幂等）",
+          abs(float((a.json("/api/step?n=0") or {}).get("t") or 0.0) - t_b) < 1e-9, "")
+    def _eff(pid):
+        for q in (a.json("/api/params.json") or {}).get("params", []):
+            if q["id"] == pid:
+                return float(q.get("effective") or 0.0)
+        return None
+    sway = _eff("ParamSkirtSway")
+    if sway is not None:
+        check("关掉环境摆动后参数就等于设进去的值（0 就是 0）",
+              abs(sway) < 1e-6, "ParamSkirtSway 实际 %.4f" % sway)
+        a.hit("/api/ambient?on=1"); a.hit("/api/step?n=120&dt=0.016")
+        drift = max(abs(_eff("ParamSkirtSway") or 0.0) for _ in range(1))
+        for _ in range(6):
+            a.hit("/api/step?n=30&dt=0.016")
+            drift = max(drift, abs(_eff("ParamSkirtSway") or 0.0))
+        check("环境摆动开着的时候参数带底噪（所以对照图必须先关）",
+              drift > 0.05, "峰值 %.3f" % drift)
+        a.hit("/api/ambient?on=0"); a.hit("/api/param?all=1&reset=1")
+        a.hit("/api/step?n=240&dt=0.016")
+    dfm = (a.json("/api/info.json") or {}).get("deformers") or {}
+    if "lining_sway_x" in dfm:
+        # 里布挂的是 lag 0.2 的绑定：不空跑就还停在原地，空跑完才跟到位。
+        a.hit("/api/param?id=ParamSkirtSway&v=1.0")
+        d0 = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
+                 .get("lining_sway_x") or 0.0)
+        a.hit("/api/step?n=240&dt=0.016")
+        d1 = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
+                 .get("lining_sway_x") or 0.0)
+        check("冻结状态下 /api/step 能让带延迟的绑定走到位（裙子里布）",
+              d1 > max(0.05, d0 * 3.0), "设上去 %.4f → 空跑 3.84s 后 %.4f" % (d0, d1))
+        # ⚠ info.json 给的是形变器的**驱动量**（≈ 参数值），不是位移像素 ——
+        #   里布跟得少是写在它自己的 dx 表里的（跟随系数 0.35），
+        #   驱动量两边都会收到 ≈1.0。"跟得比表布少"因此是**静态**性质，
+        #   由 selfcheck 的第㉑段比两张 dx 表来把关，这里只验它确实被驱动。
+        skx = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
+                  .get("skirt_sway_x") or 0.0)
+        check("表布和里布由同一条参数一起驱动", skx > 0.5 and d1 > 0.5,
+              "表布 %.4f / 里布 %.4f" % (skx, d1))
+    a.hit("/api/param?all=1&reset=1")
+    a.hit("/api/ambient?on=1"); a.hit("/api/pause?on=0"); time.sleep(0.2)
+
     check("非循环动作结束前要淡出（FadeOutTime）",
           tail_min < max(mid_peak * 0.5, 0.9),
           "中段峰 %.2f → 尾窗最小 %.2f" % (mid_peak, tail_min))

@@ -209,7 +209,10 @@ def main() -> int:
 
     # 有些件的 @2x 由它们**自己的工具**原生产出（2048px 源图直出，比超分清楚得多），
     # 本工具既不重做也不清理：重做 = 把原生 2× 换成超分版；清理 = 直接删掉人家的成果。
-    # 目前只有星星眼那一组（tools/make_star_eye_parts.py，排在本工具之后跑）。
+    # 目前有两组：星星眼（tools/make_star_eye_parts.py）和裙子里布
+    # （tools/make_skirt_parts.py）—— 后者的 @2x 是**用 1× 的掩码放大两倍**后
+    # 从 seg_torso@2x 上原样切下来的，和表布逐像素对齐；换成超分就会错开一两像素，
+    # 静止时裙边上会多出一条暗线（T45.11 实测）。两组都排在本工具之后跑。
     owned = set()
     sj = os.path.join(sp_dir, "star_eye_parts.json")
     if os.path.exists(sj):
@@ -218,6 +221,11 @@ def main() -> int:
         owned = {os.path.basename(e["file"]) for e in sjd.get("eyes", [])}
         if sjd.get("sparkle", {}).get("file"):
             owned.add(os.path.basename(sjd["sparkle"]["file"]))
+    kj = os.path.join(sp_dir, "skirt_parts.json")
+    if os.path.exists(kj):
+        with open(kj, encoding="utf-8") as f:
+            kjd = json.load(f)
+        owned |= {os.path.basename(e["file"]) for e in kjd.get("parts", []) if e.get("file")}
 
     srcs = sorted(f for f in glob.glob(os.path.join(sp_dir, "*.png"))
                   if not f.endswith(SUFFIX)

@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "source": "sprites/seg_torso.png 的裙摆段复制 + 乘法压暗（原画没有里布，教程口径的通行做法）",
+  "note": "裏地：排在腿的后面（官方手册「手前の面と奥の面で足を挟むように」），静止时被表布完全盖住，裙摆甩开才露出来。",
+  "parts": [
+    {
+      "id": "skirt_lining",
+      "file": "sprites/skirt_lining.png",
+      "pos": [
+        85,
+        660
+      ],
+      "size": [
+        265,
+        79
+      ],
+      "layer": 50,
+      "note": "层 50 = 腿（60/61）之后、尾巴（30~33）之前"
+    }
+  ],
+  "checks": {
+    "px": 18142,
+    "dark": 0.58,
+    "bounce": 0.16,
+    "leak": 0,
+    "px_2x": 71110
+  }
+}

@@ -90,6 +90,11 @@ int    zpet_blink_enabled(const zpet *p);
 /* 物理摆总开关（排查接缝用：冻结时钟时物理会虚报滞后，见 zrig_phys_set_enabled） */
 void   zpet_set_phys_enabled(zpet *p, int on);
 int    zpet_phys_enabled(const zpet *p);
+/* 环境摆动（ambient）总开关：关掉 = 参数就老老实实等于你设的值。
+   做 A/B 对照必须关 —— ambient 是往参数上**加**偏移的（p_action），
+   开着的时候「设成 0」其实是 0±0.72，根本不是静止态（T45.11 实测）。 */
+void   zpet_set_ambient_enabled(zpet *p, int on);
+int    zpet_ambient_enabled(const zpet *p);
 double zpet_blink_manual(const zpet *p);
 /* 形变器（网格形变）当前量：摆链输出多半落在这儿，便于观测与端到端自检 */
 int         zpet_phys_count(const zpet *p);

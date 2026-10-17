@@ -98,6 +98,11 @@ step "18/19 星星眼差分件（星形虹膜 + ✨ 素材，AI 源图抠像；�
 "$PY" tools/make_attach_parts.py --character "$CH" --form "$FM"
 "$PY" tools/make_wardrobe.py --character "$CH" --form "$FM"
 
+step "18b/19 裙子里布（从躯干件上复制裙摆 → 压暗当裏地；@2x 同掩码原样切）"
+# ⚠ 必须排在高清化（17 步）**之后**：里布的 @2x 不走超分，而是把 1× 的掩码放大两倍
+# 再从 seg_torso@2x.png 上切 —— 那张图是上一步的产物。顺序反了就只有 1× 没有 @2x。
+"$PY" tools/make_skirt_parts.py --character "$CH" --form "$FM"
+
 step "19/19 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
