@@ -1,0 +1,292 @@
+{
+  "_note": "由 tools/check_platform.py 生成，不要手改。源文件在 config/capabilities 与 config/providers。",
+  "capabilities": [
+    {
+      "id": "chat.completion",
+      "name": "对话",
+      "kind": "generate",
+      "unit": "token",
+      "ui": {
+        "panel": "chat"
+      },
+      "providers": [
+        "deepseek",
+        "ollama",
+        "openai",
+        "relay_test"
+      ]
+    },
+    {
+      "id": "chat.stream",
+      "name": "流式对话",
+      "kind": "stream",
+      "unit": "token",
+      "ui": {
+        "panel": "chat"
+      },
+      "providers": [
+        "deepseek",
+        "ollama",
+        "openai",
+        "relay_test"
+      ]
+    },
+    {
+      "id": "code.execute",
+      "name": "执行代码",
+      "kind": "transform",
+      "unit": "call",
+      "ui": {
+        "panel": "code"
+      },
+      "providers": []
+    },
+    {
+      "id": "code.generate",
+      "name": "生成代码",
+      "kind": "generate",
+      "unit": "token",
+      "ui": {
+        "panel": "code"
+      },
+      "providers": [
+        "deepseek"
+      ]
+    },
+    {
+      "id": "embed.text",
+      "name": "文本向量",
+      "kind": "analyze",
+      "unit": "token",
+      "ui": {},
+      "providers": [
+        "ollama",
+        "openai"
+      ]
+    },
+    {
+      "id": "file.read",
+      "name": "读文件",
+      "kind": "analyze",
+      "unit": "call",
+      "ui": {},
+      "providers": [
+        "mcp_filesystem"
+      ]
+    },
+    {
+      "id": "image.edit",
+      "name": "编辑图片",
+      "kind": "transform",
+      "unit": "image",
+      "ui": {
+        "panel": "gallery"
+      },
+      "providers": [
+        "comfyui"
+      ]
+    },
+    {
+      "id": "image.generate",
+      "name": "生成图片",
+      "kind": "generate",
+      "unit": "image",
+      "ui": {
+        "panel": "gallery"
+      },
+      "providers": [
+        "comfyui",
+        "openai"
+      ]
+    },
+    {
+      "id": "memory.recall",
+      "name": "回忆",
+      "kind": "analyze",
+      "unit": "call",
+      "ui": {
+        "panel": "list"
+      },
+      "providers": []
+    },
+    {
+      "id": "model3d.generate",
+      "name": "生成三维模型",
+      "kind": "generate",
+      "unit": "call",
+      "ui": {
+        "panel": "viewer3d"
+      },
+      "providers": []
+    },
+    {
+      "id": "stt.listen",
+      "name": "语音识别",
+      "kind": "analyze",
+      "unit": "second",
+      "ui": {
+        "panel": "text"
+      },
+      "providers": []
+    },
+    {
+      "id": "tts.speak",
+      "name": "语音合成",
+      "kind": "generate",
+      "unit": "char",
+      "ui": {
+        "panel": "audio"
+      },
+      "providers": [
+        "azure_speech",
+        "edge_tts",
+        "minimax"
+      ]
+    },
+    {
+      "id": "video.generate",
+      "name": "生成视频",
+      "kind": "generate",
+      "unit": "second",
+      "ui": {
+        "panel": "gallery"
+      },
+      "providers": []
+    },
+    {
+      "id": "vision.describe",
+      "name": "看图",
+      "kind": "analyze",
+      "unit": "token",
+      "ui": {
+        "panel": "text"
+      },
+      "providers": [
+        "openai"
+      ]
+    },
+    {
+      "id": "web.search",
+      "name": "联网搜索",
+      "kind": "analyze",
+      "unit": "call",
+      "ui": {
+        "panel": "list"
+      },
+      "providers": []
+    }
+  ],
+  "providers": [
+    {
+      "id": "azure_speech",
+      "name": "Azure 语音服务",
+      "kind": "tts",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "tts.speak"
+      ]
+    },
+    {
+      "id": "comfyui",
+      "name": "ComfyUI（本机）",
+      "kind": "comfyui",
+      "local": true,
+      "enabled": true,
+      "balance_mode": "none",
+      "caps": [
+        "image.generate",
+        "image.edit"
+      ]
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "api",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "code.generate"
+      ]
+    },
+    {
+      "id": "edge_tts",
+      "name": "Edge TTS（免费通道）",
+      "kind": "tts",
+      "local": false,
+      "enabled": true,
+      "balance_mode": "none",
+      "caps": [
+        "tts.speak"
+      ]
+    },
+    {
+      "id": "mcp_filesystem",
+      "name": "MCP · 文件系统",
+      "kind": "mcp",
+      "local": true,
+      "enabled": true,
+      "balance_mode": "none",
+      "caps": [
+        "file.read"
+      ]
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax 语音",
+      "kind": "tts",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "tts.speak"
+      ]
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama（本机）",
+      "kind": "openai_compatible",
+      "local": true,
+      "enabled": true,
+      "balance_mode": "none",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "embed.text"
+      ]
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "api",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "image.generate",
+        "embed.text",
+        "vision.describe"
+      ]
+    },
+    {
+      "id": "relay_test",
+      "name": "测试中转站",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "api",
+      "caps": [
+        "chat.completion",
+        "chat.stream"
+      ]
+    }
+  ],
+  "routing": "prefer_local",
+  "proxy_enabled": false
+}

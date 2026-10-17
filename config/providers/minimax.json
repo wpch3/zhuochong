@@ -1,0 +1,29 @@
+{
+  "id": "minimax",
+  "name": "MiniMax 语音",
+  "kind": "tts",
+  "protocol": "minimax_json",
+  "local": false,
+  "enabled": false,
+  "priority": 70,
+  "base_url": "https://api.minimaxi.com/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://minimax"
+  },
+  "capabilities": [
+    {
+      "cap": "tts.speak",
+      "model": "speech-2.8-hd",
+      "price": {
+        "unit": 3.5,
+        "per": 10000,
+        "currency": "CNY"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "二次元音色最全的一家（少女/萌妹/学妹/女童/御姐都是官方内置 voice_id）。情绪走请求里的 emotion 字段。没有公开余额接口，用本地账本。★ 2026-10-17 核对：旧域名 api.minimax.chat 已废弃；国内站 https://api.minimaxi.com/v1（平台 platform.minimaxi.com），海外站把 minimaxi.com 换成 minimax.io，两边账号与 Key 不互通。合成端点是 base_url + /t2a_v2，turbo 档 speech-2.8-turbo 为 ¥2.0/万字符。⚠ 返回体里的 data.audio 是 **hex 字符串**不是 base64，解码别用错。取 Key 步骤见 docs/ops/VOICE_KEYS.md。"
+}

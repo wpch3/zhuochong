@@ -1,0 +1,51 @@
+{
+  "source": "eye_?_closed.png（AI 重绘闭眼脸补片，抹掉闭眼线后当眼窝皮肤）",
+  "eyes": [
+    {
+      "side": "l",
+      "patch_pos": [
+        98,
+        178
+      ],
+      "aperture_box": [
+        60,
+        1,
+        106,
+        42
+      ],
+      "socket_size": [
+        117,
+        68
+      ],
+      "lash_travel": 21.5,
+      "lash_file": "eye_l_lash_up.png",
+      "lash_cut_px": 52,
+      "carved_px": 1313,
+      "filled_px": 1,
+      "line_px": 1019
+    },
+    {
+      "side": "r",
+      "patch_pos": [
+        228,
+        178
+      ],
+      "aperture_box": [
+        11,
+        0,
+        54,
+        37
+      ],
+      "socket_size": [
+        119,
+        68
+      ],
+      "lash_travel": 17.0,
+      "lash_file": "eye_r_lash_up.png",
+      "lash_cut_px": 56,
+      "carved_px": 1290,
+      "filled_px": 3,
+      "line_px": 1079
+    }
+  ]
+}

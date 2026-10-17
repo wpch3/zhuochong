@@ -1,0 +1,61 @@
+{
+  "source": "./characters/xiaoxun/forms/chibi/sprites/body_full.png",
+  "parts": [
+    {
+      "name": "eye_open_left.png",
+      "size": [
+        264,
+        151
+      ],
+      "pos": [
+        1,
+        399
+      ]
+    },
+    {
+      "name": "eye_closed_left.png",
+      "size": [
+        264,
+        27
+      ],
+      "pos": [
+        1,
+        466
+      ]
+    },
+    {
+      "name": "eye_open_right.png",
+      "size": [
+        265,
+        151
+      ],
+      "pos": [
+        298,
+        399
+      ]
+    },
+    {
+      "name": "eye_closed_right.png",
+      "size": [
+        259,
+        27
+      ],
+      "pos": [
+        298,
+        466
+      ]
+    },
+    {
+      "name": "mouth_open.png",
+      "size": [
+        51,
+        16
+      ],
+      "pos": [
+        257,
+        527
+      ],
+      "note": "由 make_mouth_line_cut.py 从 body_full 精确剪下（不是 make_parts.py 的旧复制件）"
+    }
+  ]
+}

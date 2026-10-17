@@ -1,0 +1,72 @@
+{
+  "id": "openai",
+  "name": "OpenAI",
+  "kind": "openai_compatible",
+  "local": false,
+  "base_url": "https://api.openai.com/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://openai"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "gpt-4o-mini",
+      "price": {
+        "in": 0.15,
+        "out": 0.6,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "gpt-4o-mini",
+      "price": {
+        "in": 0.15,
+        "out": 0.6,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "image.generate",
+      "model": "gpt-image-1",
+      "price": {
+        "unit": 0.04,
+        "per": 1,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "embed.text",
+      "model": "text-embedding-3-small",
+      "price": {
+        "in": 0.02,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "gpt-4o-mini",
+      "price": {
+        "in": 0.15,
+        "out": 0.6,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "api",
+    "endpoint": "/dashboard/billing/credit_grants",
+    "pick": "total_granted",
+    "minus": "total_used",
+    "currency": "USD",
+    "note": "减法式口径。注意 OpenAI 新账号这个端点可能 404，那时只能退回 ledger（本地累计）——网关要能接受查不到。"
+  },
+  "note": "OpenAI 兼容协议是事实标准，大多数第三方中转（one-api / new-api 之类）只要换 base_url 就能用同一份契约。 官方直连默认关闭（交接文件第六节），由用户在设置里开。",
+  "enabled": false,
+  "priority": 40
+}

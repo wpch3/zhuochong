@@ -1,0 +1,105 @@
+{
+  "_note": "由 tools/check_platform.py 从 config/providers/*.json 生成，不要手改。新增供应商请在 config/providers/ 下加契约文件。",
+  "schema_version": "1.0",
+  "providers": [
+    {
+      "id": "azure_speech",
+      "name": "Azure 语音服务",
+      "kind": "local",
+      "kind_ext": "tts",
+      "base_url": "https://{region}.tts.speech.microsoft.com/cognitiveservices/v1",
+      "model": "neural",
+      "enabled": false,
+      "official": false,
+      "local": false
+    },
+    {
+      "id": "comfyui",
+      "name": "ComfyUI（本机）",
+      "kind": "local",
+      "kind_ext": "comfyui",
+      "base_url": "http://127.0.0.1:8188",
+      "model": "workflow:txt2img",
+      "enabled": true,
+      "official": false,
+      "local": true
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "kind": "openai_compatible",
+      "kind_ext": "openai_compatible",
+      "base_url": "https://api.deepseek.com/v1",
+      "model": "deepseek-chat",
+      "enabled": false,
+      "official": false,
+      "local": false
+    },
+    {
+      "id": "edge_tts",
+      "name": "Edge TTS（免费通道）",
+      "kind": "local",
+      "kind_ext": "tts",
+      "base_url": "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1",
+      "model": "edge-neural",
+      "enabled": true,
+      "official": false,
+      "local": false
+    },
+    {
+      "id": "mcp_filesystem",
+      "name": "MCP · 文件系统",
+      "kind": "local",
+      "kind_ext": "mcp",
+      "base_url": "stdio://npx -y @modelcontextprotocol/server-filesystem",
+      "model": "tool:read_file",
+      "enabled": true,
+      "official": false,
+      "local": true
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax 语音",
+      "kind": "local",
+      "kind_ext": "tts",
+      "base_url": "https://api.minimaxi.com/v1",
+      "model": "speech-2.8-hd",
+      "enabled": false,
+      "official": false,
+      "local": false
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama（本机）",
+      "kind": "openai_compatible",
+      "kind_ext": "openai_compatible",
+      "base_url": "http://127.0.0.1:11434/v1",
+      "model": "qwen2.5:7b",
+      "enabled": true,
+      "official": false,
+      "local": true
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "kind": "openai_compatible",
+      "kind_ext": "openai_compatible",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "enabled": false,
+      "official": false,
+      "local": false
+    },
+    {
+      "id": "relay_test",
+      "name": "测试中转站",
+      "kind": "openai_compatible",
+      "kind_ext": "openai_compatible",
+      "base_url": "https://example-relay.invalid/v1",
+      "model": "gemini-flash",
+      "enabled": false,
+      "official": false,
+      "local": false
+    }
+  ]
+}

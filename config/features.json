@@ -1,0 +1,26 @@
+{
+  // 功能模块开关与 token 上限。默认全部关闭（交接文件 2.4 / 第六节）。
+  "schema_version": "1.0",
+  "modules": [
+    { "id": "chat",       "name": "对话",       "enabled": false, "token_limit": 0, "daily_token_limit": 0 },
+    { "id": "workspace",  "name": "工作区",     "enabled": false, "token_limit": 0 },
+    { "id": "profile",    "name": "资料",       "enabled": false },
+    { "id": "agent",      "name": "Agent",      "enabled": false, "token_limit": 0 },
+    { "id": "voice",      "name": "语音通话",   "enabled": false, "token_limit": 0 },
+    { "id": "realtime_voice", "name": "实时配音", "enabled": false },
+    { "id": "gen_image",  "name": "生图",       "enabled": false, "token_limit": 0 },
+    { "id": "gen_text",   "name": "生文",       "enabled": false, "token_limit": 0 },
+    { "id": "gen_video",  "name": "生视频",     "enabled": false, "token_limit": 0 },
+    { "id": "gen_audio",  "name": "生音频",     "enabled": false, "token_limit": 0 },
+    { "id": "gen_code",   "name": "生代码",     "enabled": false, "token_limit": 0 },
+    { "id": "token_meter","name": "Token 记录", "enabled": false },
+    { "id": "links",      "name": "链接区",     "enabled": false },
+    { "id": "items",      "name": "道具",       "enabled": false },
+    { "id": "topics",     "name": "话题选项",   "enabled": false },
+    { "id": "social_group_chat",  "name": "群聊",         "enabled": false, "token_limit": 0 },
+    { "id": "social_loop_reply",  "name": "循环回答",     "enabled": false, "token_limit": 0 },
+    { "id": "social_moments",     "name": "朋友圈",       "enabled": false, "token_limit": 0 },
+    { "id": "social_duo_chat",    "name": "双角色召唤",   "enabled": false, "token_limit": 0 },
+    { "id": "social_call_request","name": "请求打电话",   "enabled": false }
+  ]
+}

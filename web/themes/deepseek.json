@@ -1,0 +1,19 @@
+{
+  "name": "DeepSeek · 深海蓝鲸",
+  "note": "品牌色 #4D6BFE（Brandfetch / Wikidata 核实）。官方设计体系明确写了「不要把 #4d6bfe 大面积填充，它只作强调和 chip 文字」，所以这里底色走 #f9f8f8 纸白、品牌蓝只出现在描边与强调上；文字 #1e232c、占位 #8691a1、链接 #234792 都照它的 token。圆角 8px 也是官方值。DeepSeek 的 logo 本身就是一头蓝鲸 —— 和小寻头上的鲸鱼发卡正好是同一个意象。",
+  "vars": {
+    "--pink": "#4d6bfe",
+    "--pink-deep": "#234792",
+    "--blue": "#4176e6",
+    "--mint": "#73a3d2",
+    "--cream": "#f9f8f8",
+    "--card": "#ffffff",
+    "--ink": "#1e232c",
+    "--ink-soft": "#8691a1",
+    "--line": "#e3e6ef",
+    "--radius": "8px",
+    "--shadow": "0 6px 18px rgba(77, 107, 254, .14)",
+    "--bg-1": "#eef1fe",
+    "--bg-2": "#f9f8f8"
+  }
+}

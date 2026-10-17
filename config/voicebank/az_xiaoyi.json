@@ -1,0 +1,45 @@
+{
+  "id": "az_xiaoyi",
+  "name": "晓伊（Azure，活泼少女）",
+  "provider": "azure_speech",
+  "voice_id": "zh-CN-XiaoyiNeural",
+  "persona": "shoujo",
+  "anime": true,
+  "langs": [
+    "zh-CN"
+  ],
+  "emotion_mode": "style",
+  "emotions": [
+    "affectionate",
+    "angry",
+    "cheerful",
+    "disgruntled",
+    "embarrassed",
+    "fearful",
+    "gentle",
+    "sad",
+    "serious"
+  ],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ],
+    "style_degree": [
+      0.01,
+      2.0
+    ]
+  },
+  "recommend": "当前 39 条台词就是这个音色（走的免费 edge 通道，没有情绪）。换到 Azure 正规 API 后同一音色能带 9 种情绪",
+  "source": "Azure voice styles 表：zh-CN-XiaoyiNeural",
+  "roles": [],
+  "enabled": true
+}

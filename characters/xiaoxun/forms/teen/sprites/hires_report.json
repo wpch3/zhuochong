@@ -1,0 +1,639 @@
+{
+ "schema_version": "1.0",
+ "factor": 2,
+ "suffix": "@2x.png",
+ "model": "RealESR-AnimeVideo-v3_x4.onnx",
+ "count": 48,
+ "realesrgan": 41,
+ "lanczos": 7,
+ "native": 0,
+ "keycolor_fixed": 14,
+ "seconds": 9.3,
+ "parts": [
+  {
+   "name": "arm_l_fore.png",
+   "src": [
+    85,
+    131
+   ],
+   "dst": [
+    170,
+    262
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "arm_l_root.png",
+   "src": [
+    49,
+    218
+   ],
+   "dst": [
+    98,
+    436
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "arm_l_upper.png",
+   "src": [
+    88,
+    239
+   ],
+   "dst": [
+    176,
+    478
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "arm_r_fore.png",
+   "src": [
+    91,
+    131
+   ],
+   "dst": [
+    182,
+    262
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "arm_r_root.png",
+   "src": [
+    49,
+    167
+   ],
+   "dst": [
+    98,
+    334
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "arm_r_upper.png",
+   "src": [
+    90,
+    239
+   ],
+   "dst": [
+    180,
+    478
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "blush_l.png",
+   "src": [
+    40,
+    22
+   ],
+   "dst": [
+    80,
+    44
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "blush_r.png",
+   "src": [
+    40,
+    22
+   ],
+   "dst": [
+    80,
+    44
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "brow_l.png",
+   "src": [
+    51,
+    18
+   ],
+   "dst": [
+    102,
+    36
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "brow_r.png",
+   "src": [
+    48,
+    15
+   ],
+   "dst": [
+    96,
+    30
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_hl_l.png",
+   "src": [
+    13,
+    13
+   ],
+   "dst": [
+    26,
+    26
+   ],
+   "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_hl_r.png",
+   "src": [
+    13,
+    13
+   ],
+   "dst": [
+    26,
+    26
+   ],
+   "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_hl_star_l.png",
+   "src": [
+    20,
+    20
+   ],
+   "dst": [
+    40,
+    40
+   ],
+   "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_hl_star_r.png",
+   "src": [
+    20,
+    20
+   ],
+   "dst": [
+    40,
+    40
+   ],
+   "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_l_ball.png",
+   "src": [
+    31,
+    30
+   ],
+   "dst": [
+    62,
+    60
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_l_base.png",
+   "src": [
+    117,
+    68
+   ],
+   "dst": [
+    234,
+    136
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 1
+  },
+  {
+   "name": "eye_l_closed.png",
+   "src": [
+    57,
+    56
+   ],
+   "dst": [
+    114,
+    112
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_l_lash_up.png",
+   "src": [
+    117,
+    68
+   ],
+   "dst": [
+    234,
+    136
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_l_pain.png",
+   "src": [
+    65,
+    60
+   ],
+   "dst": [
+    130,
+    120
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_l_smile.png",
+   "src": [
+    57,
+    56
+   ],
+   "dst": [
+    114,
+    112
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_l_socket.png",
+   "src": [
+    117,
+    68
+   ],
+   "dst": [
+    234,
+    136
+   ],
+   "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_l_wide.png",
+   "src": [
+    83,
+    78
+   ],
+   "dst": [
+    166,
+    156
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 3
+  },
+  {
+   "name": "eye_r_ball.png",
+   "src": [
+    31,
+    32
+   ],
+   "dst": [
+    62,
+    64
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_r_base.png",
+   "src": [
+    119,
+    68
+   ],
+   "dst": [
+    238,
+    136
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_r_closed.png",
+   "src": [
+    57,
+    58
+   ],
+   "dst": [
+    114,
+    116
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_r_lash_up.png",
+   "src": [
+    119,
+    68
+   ],
+   "dst": [
+    238,
+    136
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_r_pain.png",
+   "src": [
+    65,
+    62
+   ],
+   "dst": [
+    130,
+    124
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_r_smile.png",
+   "src": [
+    57,
+    58
+   ],
+   "dst": [
+    114,
+    116
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_r_socket.png",
+   "src": [
+    119,
+    68
+   ],
+   "dst": [
+    238,
+    136
+   ],
+   "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "eye_r_wide.png",
+   "src": [
+    83,
+    80
+   ],
+   "dst": [
+    166,
+    160
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_ahoge.png",
+   "src": [
+    63,
+    60
+   ],
+   "dst": [
+    126,
+    120
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_back.png",
+   "src": [
+    241,
+    143
+   ],
+   "dst": [
+    482,
+    286
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_front.png",
+   "src": [
+    133,
+    111
+   ],
+   "dst": [
+    266,
+    222
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_side_l.png",
+   "src": [
+    106,
+    132
+   ],
+   "dst": [
+    212,
+    264
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 3
+  },
+  {
+   "name": "hair_side_r.png",
+   "src": [
+    105,
+    132
+   ],
+   "dst": [
+    210,
+    264
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hand_l.png",
+   "src": [
+    81,
+    82
+   ],
+   "dst": [
+    162,
+    164
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 2
+  },
+  {
+   "name": "hand_r.png",
+   "src": [
+    81,
+    82
+   ],
+   "dst": [
+    162,
+    164
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "mouth_cavity.png",
+   "src": [
+    24,
+    22
+   ],
+   "dst": [
+    48,
+    44
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "mouth_mask.png",
+   "src": [
+    24,
+    22
+   ],
+   "dst": [
+    48,
+    44
+   ],
+   "method": "lanczos",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "mouth_open.png",
+   "src": [
+    28,
+    9
+   ],
+   "dst": [
+    56,
+    18
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "seg_foot_l.png",
+   "src": [
+    72,
+    180
+   ],
+   "dst": [
+    144,
+    360
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "seg_foot_l_tip.png",
+   "src": [
+    72,
+    210
+   ],
+   "dst": [
+    144,
+    420
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "seg_foot_r.png",
+   "src": [
+    74,
+    180
+   ],
+   "dst": [
+    148,
+    360
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "seg_foot_r_tip.png",
+   "src": [
+    74,
+    210
+   ],
+   "dst": [
+    148,
+    420
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "seg_head.png",
+   "src": [
+    248,
+    317
+   ],
+   "dst": [
+    496,
+    634
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "seg_leg_l.png",
+   "src": [
+    136,
+    487
+   ],
+   "dst": [
+    272,
+    974
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 3
+  },
+  {
+   "name": "seg_leg_r.png",
+   "src": [
+    136,
+    486
+   ],
+   "dst": [
+    272,
+    972
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "seg_torso.png",
+   "src": [
+    273,
+    501
+   ],
+   "dst": [
+    546,
+    1002
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 2
+  }
+ ],
+ "note": "切件链不改坐标，这一步只换像素密度；make_rig 发现 @2x 就把 scale 乘 0.5"
+}

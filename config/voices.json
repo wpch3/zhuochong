@@ -1,0 +1,33 @@
+{
+  "_note": "由 tools/check_platform.py 从 config/voicebank/ 与 config/voice_cast.json 生成，不要手改。这里写的是**当前真能用**的音色：首选供应商没开就落到兜底。",
+  "schema_version": "1.0",
+  "voices": [
+    {
+      "id": "xiaoxun_teen",
+      "character": "xiaoxun",
+      "form": "teen",
+      "provider": "edge_tts",
+      "voice": "zh-CN-XiaoyiNeural",
+      "style": "晓伊（edge-tts 免费通道） ｜ 首选 mm_shaonv 没开，先用兜底",
+      "note": "不要密钥就能用，现有 39 条台词就是它生成的。但官方 README 明说 SSML style 被移除，所以它永远做不到情绪变化——只能靠语速/音调模拟"
+    },
+    {
+      "id": "xiaoxun_loli",
+      "character": "xiaoxun",
+      "form": "loli",
+      "provider": "edge_tts",
+      "voice": "zh-CN-XiaoyiNeural",
+      "style": "晓伊（edge-tts 免费通道） ｜ 首选 mm_lovely_girl 没开，先用兜底",
+      "note": "不要密钥就能用，现有 39 条台词就是它生成的。但官方 README 明说 SSML style 被移除，所以它永远做不到情绪变化——只能靠语速/音调模拟"
+    },
+    {
+      "id": "xiaoxun_adult",
+      "character": "xiaoxun",
+      "form": "adult",
+      "provider": "edge_tts",
+      "voice": "zh-CN-XiaoxiaoNeural",
+      "style": "晓晓（edge-tts 免费通道） ｜ 首选 mm_yujie 没开，先用兜底",
+      "note": "成年女声免费保底"
+    }
+  ]
+}

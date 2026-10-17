@@ -1,0 +1,164 @@
+/* web/app.css —— 基础软件界面样式（二次元风格：大圆角、柔和阴影、渐变、贴纸感）
+   规则：颜色/圆角/阴影集中在这里，改主题只改这份文件或换成主题包（后续 themes/）。 */
+:root {
+  --pink: #ff9ec2;
+  --pink-deep: #e0679a;
+  --blue: #7fc4e8;
+  --mint: #a8e6cf;
+  --cream: #fffaf6;
+  --card: #fffdfd;
+  --ink: #4a4a5a;
+  --ink-soft: #8a8aa0;
+  --line: #ffe1ee;
+  --radius: 8px;              /* Fluent：顶层容器 8px（DC20） */
+  --shadow: 0 6px 18px rgba(255, 158, 194, .18);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 12% -10%, #ffeef6 0%, transparent 60%),
+    radial-gradient(1000px 500px at 100% 0%, #e8f4ff 0%, transparent 55%),
+    linear-gradient(160deg, #fdf5f9 0%, #eef7fd 100%);
+  min-height: 100%;
+}
+
+/* ---------------------------------------------------------------- 顶栏 */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 22px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo {
+  width: 44px; height: 44px; border-radius: 8px;
+  background: linear-gradient(140deg, var(--pink) 0%, var(--blue) 100%);
+  box-shadow: inset 0 -6px 12px rgba(255,255,255,.5), var(--shadow);
+}
+.brand h1 { font-size: 20px; margin: 0; letter-spacing: 1px; }
+.brand .sub { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-size: 12px; padding: 6px 12px; border-radius: 999px;
+  background: #fff; border: 2px solid var(--line); box-shadow: var(--shadow);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- 布局 */
+main {
+  display: grid; grid-template-columns: minmax(320px, 1fr) minmax(320px, 420px);
+  gap: 16px; padding: 0 22px 20px; align-items: start;
+}
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--card); border: 2px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 14px 16px;
+}
+.card h2 { font-size: 14px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+
+/* ---------------------------------------------------------------- 舞台 */
+.stage { display: flex; flex-direction: column; gap: 10px; position: relative; padding: 16px; }
+.pet-wrap {
+  position: relative; display: flex; align-items: flex-end; justify-content: center;
+  min-height: 520px; border-radius: 8px;
+  background:
+    radial-gradient(60% 40% at 50% 100%, rgba(255,158,194,.18) 0%, transparent 70%),
+    repeating-linear-gradient(45deg, #fdfcff 0 12px, #fbf7fb 12px 24px);
+  overflow: hidden;
+}
+#pet { max-height: 680px; max-width: 100%; image-rendering: auto; user-select: none; cursor: pointer; }
+.bubble {
+  position: absolute; z-index: 3; top: 18px; left: 50%; transform: translateX(-50%);
+  max-width: 86%; background: #fff; border: 2px solid var(--pink);
+  border-radius: 8px; padding: 10px 14px; font-size: 14px; line-height: 1.6;
+  box-shadow: 0 8px 20px rgba(224,103,154,.22);
+}
+.bubble::after {
+  content: ""; position: absolute; bottom: -10px; left: 26px;
+  border: 6px solid transparent; border-top-color: var(--pink);
+}
+.bubble[hidden] { display: none; }
+.hit-hint {
+  position: absolute; z-index: 2; pointer-events: none; font-size: 12px;
+  padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,.9);
+  border: 1px solid var(--line); transform: translate(-50%, -50%); opacity: 0;
+  transition: opacity .12s;
+}
+.hit-hint.show { opacity: 1; }
+
+.quick { display: flex; gap: 8px; flex-wrap: wrap; }
+.hint { font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.6; }
+
+/* ---------------------------------------------------------------- 按钮 */
+.btn {
+  font: inherit; font-size: 13px; color: var(--ink);
+  padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  background: #fff; border: 2px solid var(--line);
+  box-shadow: 0 3px 0 rgba(255, 158, 194, .25);
+  transition: transform .08s ease, box-shadow .12s ease, background .12s ease;
+}
+.btn:hover { background: #fff7fb; transform: translateY(-1px); }
+.btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(255,158,194,.25); }
+.btn.primary {
+  background: linear-gradient(140deg, var(--pink), #ffb6d3); color: #fff; border-color: #ffb6d3;
+}
+.btn.warn { background: linear-gradient(140deg, #ffc48a, #ffd9a8); border-color: #ffd0a0; }
+.btn.small { padding: 5px 10px; font-size: 12px; }
+.btn.active { outline: 3px solid rgba(127,196,232,.5); }
+
+.grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.row > label { font-size: 12px; color: var(--ink-soft); min-width: 46px; }
+.row > select, .row > input[type=range] { flex: 1; }
+select {
+  font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 4px;
+  border: 2px solid var(--line); background: #fff; color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- 语音 */
+.voice-list { max-height: 220px; overflow: auto; padding-right: 4px; }
+.voice-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid transparent; cursor: pointer;
+}
+.voice-item:hover { background: #fff5fa; border-color: var(--line); }
+.voice-item .id { font-size: 11px; color: var(--ink-soft); min-width: 84px; }
+.voice-item .text { font-size: 12px; line-height: 1.5; }
+
+/* ---------------------------------------------------------------- 用量 */
+.meter { height: 14px; border-radius: 999px; background: #fff0f6; border: 2px solid var(--line); overflow: hidden; }
+.meter-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--mint), var(--pink)); transition: width .3s; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  background: #eaf6ff; color: #4b93c4; font-weight: 400;
+}
+.log {
+  max-height: 180px; overflow: auto; font-size: 11px; background: #fff9fc;
+  border: 1px dashed var(--line); border-radius: 6px; padding: 8px; white-space: pre-wrap;
+}
+
+/* ---------------------------------------------------------------- 页脚 */
+.footer {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 22px 22px; font-size: 12px; color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------- G1 组件骨架 */
+/* 区域容器与组件插槽对布局**完全透明**：用 display:contents 让组件自己的根节点
+   直接成为原来那个父容器的子项，这样加这两层包装不会改变任何既有排版规则。
+   （#region-side 例外 —— 它本身就是右栏那一列，带着 .panels 类。） */
+.region-topbar, .region-stage, .region-footer, .footer-inner, .slot { display: contents; }
+/* 右栏：卡片之间留空。重构前这一列没有任何规则，卡片是紧贴的。 */
+.panels { display: flex; flex-direction: column; gap: 16px; }
+
+/* 组件挂载失败时就地显示，不让整页白屏 */
+.err {
+  background: #fff0f4; border: 1px dashed var(--pink-deep); color: var(--pink-deep);
+  border-radius: 6px; padding: 10px 12px; font-size: 12px; margin: 6px 0;
+}

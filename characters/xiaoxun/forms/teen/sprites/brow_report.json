@@ -1,0 +1,42 @@
+{
+  "redraw": "characters/xiaoxun/design/redraw/head_nobrows.png",
+  "align": {
+    "scale": 0.8136,
+    "dx": 0.7,
+    "dy": 1.0
+  },
+  "skin_gain": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "skin_offset": [
+    1.0,
+    10.0,
+    11.0
+  ],
+  "brows": [
+    {
+      "side": "l",
+      "box": [
+        50,
+        159,
+        51,
+        18
+      ],
+      "px": 464,
+      "max_alpha": 255
+    },
+    {
+      "side": "r",
+      "box": [
+        138,
+        155,
+        48,
+        15
+      ],
+      "px": 378,
+      "max_alpha": 255
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "redraw": "characters/xiaoxun/design/redraw/head_nobangs.png",
+  "align": {
+    "scale": 0.813,
+    "dx": 0.9,
+    "dy": 1.4,
+    "src_iris": [
+      [
+        252,
+        604
+      ],
+      [
+        479,
+        593
+      ]
+    ],
+    "gen_iris": [
+      [
+        309,
+        742
+      ],
+      [
+        588,
+        727
+      ]
+    ]
+  },
+  "filled_px": 9759,
+  "skin_gain": [
+    0.9987,
+    0.9777,
+    0.977
+  ],
+  "skin_offset": [
+    0.8,
+    9.33,
+    10.28
+  ],
+  "part": {
+    "id": "hair_front",
+    "file": "sprites/hair_front.png",
+    "pos": [
+      152,
+      95
+    ],
+    "size": [
+      133,
+      111
+    ],
+    "group": "head",
+    "layer": 240,
+    "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动"
+  }
+}

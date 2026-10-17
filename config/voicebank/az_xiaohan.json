@@ -1,0 +1,46 @@
+{
+  "id": "az_xiaohan",
+  "name": "晓涵（Azure，10 种情绪）",
+  "provider": "azure_speech",
+  "voice_id": "zh-CN-XiaohanNeural",
+  "persona": "young_woman",
+  "anime": false,
+  "langs": [
+    "zh-CN"
+  ],
+  "emotion_mode": "style",
+  "emotions": [
+    "affectionate",
+    "angry",
+    "calm",
+    "cheerful",
+    "disgruntled",
+    "embarrassed",
+    "fearful",
+    "gentle",
+    "sad",
+    "serious"
+  ],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ],
+    "style_degree": [
+      0.01,
+      2.0
+    ]
+  },
+  "recommend": "情绪谱最全的中文女声之一，偏写实不算二次元",
+  "source": "Azure voice styles 表：zh-CN-XiaohanNeural",
+  "roles": [],
+  "enabled": true
+}

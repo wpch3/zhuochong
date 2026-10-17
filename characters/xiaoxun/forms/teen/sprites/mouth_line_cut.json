@@ -1,0 +1,44 @@
+{
+  "tool": "make_mouth_line_cut.py",
+  "source": "sprites/body_full.png",
+  "line": {
+    "x0": 210,
+    "x1": 233,
+    "y0": 246,
+    "y1": 250,
+    "color": [
+      100,
+      68,
+      60
+    ]
+  },
+  "pad": 3,
+  "cut_box": {
+    "x0": 207,
+    "x1": 236,
+    "y0": 243,
+    "y1": 253
+  },
+  "mouth_open": {
+    "pos": [
+      208,
+      244
+    ],
+    "size": [
+      28,
+      9
+    ]
+  },
+  "seg_head_origin": [
+    99,
+    0
+  ],
+  "erased_max_delta": 172.5,
+  "alpha": {
+    "lo": 3.0,
+    "hi": 16.0,
+    "gamma": 0.85,
+    "unmix_min": 0.12
+  },
+  "note": "笑线已从 seg_head 擦除并剪成 mouth_open.png；张嘴时淡出的就是原件本身"
+}

@@ -1,0 +1,64 @@
+{
+  "title": "小寻 · 桌面伴侣工作台",
+  "theme": "sakura",
+  "poll": {
+    "info_ms": 600,
+    "speech_ms": 400
+  },
+  "_note": "改这份文件就能换布局：调顺序、删组件、把卡片挪到别的区域，都不用动 JS。新增组件 = 放一个 components/<id>.js 再把 id 写进来。",
+  "regions": {
+    "topbar": [
+      "statuschips"
+    ],
+    "stage": [
+      "stage"
+    ],
+    "side": [
+      "actions",
+      "moods",
+      "appearance",
+      "rig",
+      "interact",
+      "voice",
+      "voicebank",
+      "platform",
+      "route",
+      {
+        "id": "usage",
+        "options": {
+          "budget_tokens": 2000
+        }
+      },
+      "settings"
+    ],
+    "footer": [
+      "statusbar"
+    ]
+  },
+  "themes": [
+    {
+      "id": "sakura",
+      "name": "樱色（默认）"
+    },
+    {
+      "id": "dusk",
+      "name": "暮色（深色）"
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek · 深海蓝鲸"
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini · 四色流光"
+    },
+    {
+      "id": "grok",
+      "name": "Grok · 黑白极简"
+    },
+    {
+      "id": "gpt",
+      "name": "GPT · 黑与青绿"
+    }
+  ]
+}

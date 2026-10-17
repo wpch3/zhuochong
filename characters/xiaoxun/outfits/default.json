@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "id": "default",
+  "name": "常服（棒球外套）",
+  "forms": [
+    "teen"
+  ],
+  "note": "★ 由 tools/make_wardrobe.py 自动生成，不要手改。只列「别的服装会动到的部件」的原始贴图，用来换回原装。",
+  "parts": {
+    "arm_l_fore": {
+      "file": "sprites/arm_l_fore@2x.png"
+    },
+    "arm_l_root": {
+      "file": "sprites/arm_l_root@2x.png"
+    },
+    "arm_l_upper": {
+      "file": "sprites/arm_l_upper@2x.png"
+    },
+    "arm_r_fore": {
+      "file": "sprites/arm_r_fore@2x.png"
+    },
+    "arm_r_root": {
+      "file": "sprites/arm_r_root@2x.png"
+    },
+    "arm_r_upper": {
+      "file": "sprites/arm_r_upper@2x.png"
+    },
+    "seg_foot_l": {
+      "file": "sprites/seg_foot_l@2x.png"
+    },
+    "seg_foot_l_tip": {
+      "file": "sprites/seg_foot_l_tip@2x.png"
+    },
+    "seg_foot_r": {
+      "file": "sprites/seg_foot_r@2x.png"
+    },
+    "seg_foot_r_tip": {
+      "file": "sprites/seg_foot_r_tip@2x.png"
+    },
+    "seg_leg_l": {
+      "file": "sprites/seg_leg_l@2x.png"
+    },
+    "seg_leg_r": {
+      "file": "sprites/seg_leg_r@2x.png"
+    },
+    "seg_torso": {
+      "file": "sprites/seg_torso@2x.png"
+    }
+  }
+}

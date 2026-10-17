@@ -1,0 +1,139 @@
+{
+  "schema_version": "1.0",
+  "slots": [
+    {
+      "id": "hip_back",
+      "label": "胯后（整个身体之后）",
+      "layer": 30,
+      "group": "chest",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）"
+    },
+    {
+      "id": "head_in_hair",
+      "label": "插进头发里（耳根被发丝盖住）",
+      "layer": 165,
+      "group": "head",
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "curve": "root",
+      "note": "兽耳专用。层 144~169 整段空着，夹在手臂(143) 和 hair_back(170) 之间。★ 关键：必须在 hair_back 之下。头顶那片头发就是 hair_back，hair_front(240) 从 y=163 才开始、只盖刘海，指望它压耳根是压不住的（旧版就栽在这）。教程口径：「髪の上に耳を『乗せる』のではなく、頭のラインに沿って『差し込む』イメージで描く」—— 耳が浮いて見える原因就是画在髪の上。kiri-hana.com"
+    },
+    {
+      "id": "head_under_bangs",
+      "label": "头上、刘海之下",
+      "layer": 185,
+      "group": "head",
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "curve": "root",
+      "note": "兽耳。层 181~189 夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住一截，接缝不用自己藏。锚点在底边 = 耳根，所以和呆毛同曲线"
+    },
+    {
+      "id": "head_over_hair",
+      "label": "压在所有头发之上",
+      "layer": 250,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "curve": "root",
+      "note": "发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量"
+    },
+    {
+      "id": "body_back_hair",
+      "label": "身体之后（长发垂下来的那一层）",
+      "layer": 58,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "长发/披肩发专用。★ 层 58 = **整个身体之后**（最低的身体件是腿 60），所以长发从脖子后面垂下来、被躯干和腿挡住，只在身体轮廓两侧露出来 —— 这是 Live2D 里後ろ髪的标准层位。★ 组却是 **head**：层号管遮挡、组管跟谁动，两件事互不相干。後ろ髪必须跟着头转，所以挂 head 组；官方教程的デフォーマ结构也是「頭の回転デフォーマ → 後ろ髪の物理デフォーマ」。锚点在顶边中点（发旋/后脑）= 物理支点，曲线 tip（顶固定、越往下甩得越远）"
+    }
+  ],
+  "attachments": [
+    {
+      "id": "tail_cat_relaxed",
+      "slot": "hip_back",
+      "file": "sprites/acc_tail_relaxed.png",
+      "size": [
+        126,
+        410
+      ]
+    },
+    {
+      "id": "tail_cat_up",
+      "slot": "hip_back",
+      "file": "sprites/acc_tail_up.png",
+      "size": [
+        114,
+        480
+      ]
+    },
+    {
+      "id": "tail_cat_puff",
+      "slot": "hip_back",
+      "file": "sprites/acc_tail_puff.png",
+      "size": [
+        181,
+        430
+      ]
+    },
+    {
+      "id": "tail_cat_tuck",
+      "slot": "hip_back",
+      "file": "sprites/acc_tail_tuck.png",
+      "size": [
+        127,
+        404
+      ]
+    },
+    {
+      "id": "ear_cat_l",
+      "slot": "head_in_hair",
+      "file": "sprites/acc_ear_l.png",
+      "size": [
+        88,
+        104
+      ]
+    },
+    {
+      "id": "ear_cat_r",
+      "slot": "head_in_hair",
+      "file": "sprites/acc_ear_r.png",
+      "size": [
+        88,
+        104
+      ]
+    },
+    {
+      "id": "hood_up",
+      "slot": "head_over_hair",
+      "file": "sprites/acc_hood_up.png",
+      "size": [
+        360,
+        400
+      ]
+    },
+    {
+      "id": "hair_long",
+      "slot": "body_back_hair",
+      "file": "sprites/hair_long_back.png",
+      "size": [
+        330,
+        822
+      ]
+    }
+  ]
+}

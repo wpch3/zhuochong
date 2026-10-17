@@ -1,0 +1,39 @@
+{
+  "_note": "网关：所有外部调用的唯一出口。密钥不写在这里，只写 secret:// 引用；真实值放本机 .env（不入库）。",
+  "proxy": {
+    "enabled": false,
+    "url": "",
+    "no_proxy": [
+      "127.0.0.1",
+      "localhost"
+    ]
+  },
+  "routing": {
+    "strategy": "prefer_local",
+    "fallback": true,
+    "_strategy_values": [
+      "prefer_local",
+      "prefer_cheap",
+      "prefer_quality",
+      "fixed"
+    ],
+    "fixed": {},
+    "rules": {
+      "_note": "本地↔云端双路由的阈值（DC18 三支柱）。这三个数是抄来的（REFERENCE_NOTES 第二十批），必须用 data/usage.jsonl 的真实记账重标；本地分流长期偏离 0.70~0.85 就说明阈值不对。",
+      "tokens_cloud": 512,
+      "local_busy_pct": 85,
+      "sensitive_local_only": true
+    }
+  },
+  "limits": {
+    "max_concurrency": 4,
+    "timeout_s": 120,
+    "retry": 2
+  },
+  "accounting": {
+    "enabled": true,
+    "ledger": "data/usage.jsonl",
+    "currency_display": "CNY",
+    "usd_to_cny": 7.1
+  }
+}

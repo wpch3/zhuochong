@@ -1,0 +1,17 @@
+{
+  "id": "model3d.generate",
+  "name": "生成三维模型",
+  "kind": "generate",
+  "unit": "call",
+  "input": {
+    "prompt": "text",
+    "ref_images": "file[]?",
+    "format": "enum?"
+  },
+  "output": {
+    "models": "file[]"
+  },
+  "ui": {
+    "panel": "viewer3d"
+  }
+}
