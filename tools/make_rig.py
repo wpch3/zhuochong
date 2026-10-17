@@ -944,7 +944,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
           closed=None, blendp=None, eyeline=None, smile_eyes=None,
           pain_eyes=None, wide_eyes=None, footp=None,
-          star_eyes=None, base=None, fx_table=None, skirtp=None):
+          star_eyes=None, base=None, fx_table=None, skirtp=None, jacketp=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -2965,6 +2965,94 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  "note": "里布的身体带动：比表布(skirt_x 0.12/24/6.5)更钝 —— "
                          "它夹在腿和表布中间，受的风小、摩擦大"})
 
+        # —— 外套前襟下摆（T45.12）——
+        # 做法和裙摆同源但**刻意更小**：note.com/majohope 的原话是
+        # 「上着の揺れ。少し重い素材のイメージなので、**あまり揺らさないようにした**」。
+        # 不切件：nnwarks「腕より後ろの服パーツを個別に揺らすのは非推奨、
+        # 境目が飛び出しがち」—— 我们的原画又是烘焙的，切出来必然留洞。
+        # 所以摆动做在躯干的网格上，**只推下摆那几行、只推前襟那两片的列**，
+        # 中间开襟露出来的衬衫和裙腰一个像素都不动。
+        # 几何（哪几行是下摆、哪几列是前襟）由 make_jacket_parts.py 量出来写进
+        # jacket_parts.json —— 共用层里不许写死形态专属的数字（教训 128）。
+        if jacketp and seg:
+            JAC_AMP = 8.0          # 下摆最大横移（形变器单位）。裙摆同处是 10.0+3.4
+            # ★ 网格尺寸不能自己挑：**同一部件上的多张网格要逐点相加，引擎要求同尺寸**
+            #   （zrig 加载期会直接判错「6x34 vs 2x10」并拒载整份 rig）。
+            #   所以这里照抄躯干上已有的那几张（裙摆用的 2x10）。
+            _tdef = next((d for d in rig["deformers"] if d.get("part") == "seg_torso"), None)
+            JAC_COLS = int(_tdef["cols"]) if _tdef else 2
+            JAC_ROWS = int(_tdef["rows"]) if _tdef else 10
+            _hem = jacketp["hem"]
+            _tw, _th2 = _hem["torso_size"]
+            _top, _bot2 = float(_hem["band_top"]), float(_hem["band_bottom"])
+            _pan = [(float(q["x0"]), float(q["x1"])) for q in _hem["panels"]]
+            # 过渡宽度要按**两片前襟之间的空当**来定，不能按列距 ——
+            # 列只有 2 列时列距是半个躯干宽，照它取过渡会把中间的衬衫/裙腰
+            # 一起推走（第一版实测中列权重 0.6，开襟处的扣子跟着平移）。
+            _gap = min((b[0] - a[1]) for a, b in zip(_pan, _pan[1:])) if len(_pan) > 1 else _tw
+            _edge = max(2.0, _gap * 0.3)
+
+            def _wx(x):
+                """这一列推不推：落在前襟上（或紧挨着）就推满，开襟中间不推。
+
+                ★ 不做线性过渡：列只有 3 条，整条前襟都夹在「躯干外沿」和
+                  「正中」之间，一做过渡，网格点上的值被打折，前襟内部
+                  插值出来只剩两三成（第一版实测外沿只推到 3.4 而不是 8.0）。
+                  改成二值之后，位移场就是「外沿最大 → 正中为 0」的线性梯度 ——
+                  这恰好也是布的样子：靠外的襟摆甩得远，靠门襟的那侧被扣住。
+                """
+                for x0_, x1_ in _pan:
+                    if x0_ - _edge <= x <= x1_ + _edge:
+                        return 1.0
+                return 0.0
+
+            # 峰值行取**下摆底边之上最近的那条网格线**（teen: y=400.8，下摆底边 423）。
+            # 于是 y 400~423 那段 —— 正好是棒球外套的**罗纹下摆**（teal 条纹那条）——
+            # 位移从峰值衰减回 0：橡筋罗纹本来就贴着身体不该甩，鼓起来的是它上面的布。
+            # 再往下（裙子那段）衰减量已经很小，不会把裙子拖着走。
+            _row_h = _th2 / JAC_ROWS
+            _peak_r = max(1, int(_bot2 // _row_h))
+            _jpts = []
+            for r in range(JAC_ROWS + 1):
+                y = _row_h * r
+                if y <= _top or r > _peak_r:
+                    continue
+                wy = (y - _top) / max(1.0, _row_h * _peak_r - _top)
+                for c in range(JAC_COLS + 1):
+                    dx = JAC_AMP * _wx(_tw * c / JAC_COLS) * wy
+                    if abs(dx) > 1e-6:
+                        _jpts.append({"c": c, "r": r, "dx": round(dx, 3)})
+            rig["deformers"].append(
+                {"id": "jacket_hem_x", "part": "seg_torso",
+                 "cols": JAC_COLS, "rows": JAC_ROWS,
+                 "note": f"外套前襟下摆横摆：腰线(y={_top:.0f})钉住、罗纹上沿"
+                         f"(r={_peak_r}) 推到最大 {JAC_AMP}，再往下回零 —— "
+                         f"罗纹和裙子不跟着走。中间开襟那一列恒为 0。"
+                         f"幅度约为裙摆的六成：上着は重い素材",
+                 "points": _jpts})
+            rig["params"].append({
+                "id": "ParamJacketSway", "label": "外套下摆摆动",
+                "min": -1.0, "max": 1.0, "default": 0.0,
+                "binds": [{"deformer": "jacket_hem_x", "scale": 1.0, "lag": 0.16}],
+                "note": "外套下摆自己摆。比裙摆慢、比裙摆小：教程口径「上着は少し重い素材"
+                        "なのであまり揺らさない」。lag 0.16 让它比裙摆（0.11）更迟钝，"
+                        "两件衣服就不会同拍子动。摆动做在躯干的网格上而不是切件上："
+                        "原画是烘焙的，切出来会留洞，教程也不建议把腕より後ろ的衣服"
+                        "单独切开摆（境目が飛び出しがち）",
+            })
+            rig["physics"].append(
+                {"id": "jacket_x", "part": "seg_torso", "deformer": "jacket_hem_x",
+                 "input": [{"param": "ParamBodyAngleX", "weight": 1.0},
+                           {"param": "ParamBodyAngleZ", "weight": 1.0}],
+                 "ratio": 0.06, "stiffness": 30, "damping": 7.0, "max": 1.0,
+                 "note": "外套下摆的身体带动：比裙摆(0.12/24/6.5)**幅度更小、刚度更高** —— "
+                         "厚实的棒球外套，甩不远也停得快"})
+            # 频率同样要和别人错开：猫耳 0.085 / **外套 0.105** / 裙摆 0.13 / 尾巴 0.21。
+            # 幅度也最小（0.5，裙摆 0.72）—— 重的布摆得又小又慢。
+            rig.setdefault("ambient", []).append(
+                {"target": "ParamJacketSway", "wave": "drift",
+                 "amp": 0.5, "bias": 0.0, "freq": 0.105})
+
         # 进 ambient 而不是 idle：见上面挂件摆动处的说明（T45.9）。
         rig.setdefault("ambient", []).append(
             {"target": "ParamSkirtSway", "wave": "drift",
@@ -3147,6 +3235,16 @@ def main() -> int:
             print(f"警告：裙子里布缺图 {miss}，跳过里布", file=sys.stderr)
             skirtp = None
 
+    # 外套前襟下摆（tools/make_jacket_parts.py 的产物：下摆带复制 + 压暗 = 裾断面の影）
+    jacketp = None
+    jacket_path = os.path.join(base, "sprites", "jacket_parts.json")
+    if os.path.exists(jacket_path):
+        with open(jacket_path, encoding="utf-8") as f:
+            jacketp = json.load(f)
+        if "hem" not in jacketp:
+            print("警告：jacket_parts.json 里没有 hem 几何，跳过外套下摆摆动", file=sys.stderr)
+            jacketp = None
+
     footp = None
     foot_path = os.path.join(base, "sprites", "foot_parts.json")
     if seg and os.path.exists(foot_path):
@@ -3287,7 +3385,7 @@ def main() -> int:
                 pain_eyes=pain_eyes, wide_eyes=wide_eyes,
                 star_eyes=star_eyes,
                 fx_table=fx_table,
-                footp=footp, skirtp=skirtp)
+                footp=footp, skirtp=skirtp, jacketp=jacketp)
     attach_emit(rig, base, base_root)   # 挂件（A49 / T45）：表在就挂，不在就当没有
     prune_dangling(rig)                 # 素材没齐的形态：清掉指向不存在部件的绑定
 

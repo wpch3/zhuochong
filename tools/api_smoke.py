@@ -854,6 +854,18 @@ def run(base, root):
                   .get("skirt_sway_x") or 0.0)
         check("表布和里布由同一条参数一起驱动", skx > 0.5 and d1 > 0.5,
               "表布 %.4f / 里布 %.4f" % (skx, d1))
+    # 外套前襟下摆（T45.12）：和裙摆同一条路子，但**更钝** —— 这里验的是
+    # 「它确实被自己的参数推得动」，幅度大小是静态性质（selfcheck 第㉓段比 dx 表）。
+    if "jacket_hem_x" in dfm:
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=240&dt=0.016")
+        a.hit("/api/param?id=ParamJacketSway&v=1.0")
+        j0 = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
+                 .get("jacket_hem_x") or 0.0)
+        a.hit("/api/step?n=240&dt=0.016")
+        j1 = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
+                 .get("jacket_hem_x") or 0.0)
+        check("外套下摆被 ParamJacketSway 推得动（lag 0.16 要空跑才到位）",
+              j1 > max(0.5, j0 * 2.0), "设上去 %.4f → 空跑 3.84s 后 %.4f" % (j0, j1))
     a.hit("/api/param?all=1&reset=1")
     a.hit("/api/ambient?on=1"); a.hit("/api/pause?on=0"); time.sleep(0.2)
 

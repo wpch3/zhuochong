@@ -4367,6 +4367,45 @@
       ]
     },
     {
+      "id": "jacket_hem_x",
+      "part": "seg_torso",
+      "cols": 2,
+      "rows": 10,
+      "note": "外套前襟下摆横摆：腰线(y=295)钉住、罗纹上沿(r=8) 推到最大 8.0，再往下回零 —— 罗纹和裙子不跟着走。中间开襟那一列恒为 0。幅度约为裙摆的六成：上着は重い素材",
+      "points": [
+        {
+          "c": 0,
+          "r": 6,
+          "dx": 0.423
+        },
+        {
+          "c": 2,
+          "r": 6,
+          "dx": 0.423
+        },
+        {
+          "c": 0,
+          "r": 7,
+          "dx": 4.212
+        },
+        {
+          "c": 2,
+          "r": 7,
+          "dx": 4.212
+        },
+        {
+          "c": 0,
+          "r": 8,
+          "dx": 8.0
+        },
+        {
+          "c": 2,
+          "r": 8,
+          "dx": 8.0
+        }
+      ]
+    },
+    {
       "id": "tail_relaxed_s",
       "part": "acc_tail_cat_relaxed",
       "cols": 2,
@@ -4850,6 +4889,26 @@
       "damping": 7.2,
       "max": 1.0,
       "note": "里布的身体带动：比表布(skirt_x 0.12/24/6.5)更钝 —— 它夹在腿和表布中间，受的风小、摩擦大"
+    },
+    {
+      "id": "jacket_x",
+      "part": "seg_torso",
+      "deformer": "jacket_hem_x",
+      "input": [
+        {
+          "param": "ParamBodyAngleX",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBodyAngleZ",
+          "weight": 1.0
+        }
+      ],
+      "ratio": 0.06,
+      "stiffness": 30,
+      "damping": 7.0,
+      "max": 1.0,
+      "note": "外套下摆的身体带动：比裙摆(0.12/24/6.5)**幅度更小、刚度更高** —— 厚实的棒球外套，甩不远也停得快"
     },
     {
       "id": "tail_relaxed_x",
@@ -6300,6 +6359,21 @@
       "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 ⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D 「複数階層デフォーマ・親→子」的等价写法）。物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**再叠身体带动的滞后。幅度刻意压小——教程口径是「意外と揺れを控えめにした方が自然に見える」；里布（skirt_lining）同参数驱动，跟随系数 0.35、延迟 0.2s —— 甩出去时露出里子，收回来又藏回去"
     },
     {
+      "id": "ParamJacketSway",
+      "label": "外套下摆摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "jacket_hem_x",
+          "scale": 1.0,
+          "lag": 0.16
+        }
+      ],
+      "note": "外套下摆自己摆。比裙摆慢、比裙摆小：教程口径「上着は少し重い素材なのであまり揺らさない」。lag 0.16 让它比裙摆（0.11）更迟钝，两件衣服就不会同拍子动。摆动做在躯干的网格上而不是切件上：原画是烘焙的，切出来会留洞，教程也不建议把腕より後ろ的衣服单独切开摆（境目が飛び出しがち）"
+    },
+    {
       "id": "ParamAccTailRelaxedSwing",
       "label": "猫尾摆动（垂下·放松）",
       "min": -4.41,
@@ -7061,6 +7135,13 @@
     }
   ],
   "ambient": [
+    {
+      "target": "ParamJacketSway",
+      "wave": "drift",
+      "amp": 0.5,
+      "bias": 0.0,
+      "freq": 0.105
+    },
     {
       "target": "ParamSkirtSway",
       "wave": "drift",

@@ -578,6 +578,9 @@ L2D_EXTENSIONS = {
     "ParamSkirtSway": "裙摆自主摆动（T45.9）。标准表只有身体角度，没有"
                       "「布自己在动」这一层。两级形变器：裙身 skirt_sway_x + "
                       "下摆 skirt_hem_x，下摆带 0.11 秒行波延迟",
+    "ParamJacketSway": "外套前襟下摆自主摆动（T45.12）。和 ParamSkirtSway 同类，"
+                       "但幅度小、频率低、延迟大 —— 教程口径「上着は少し重い素材"
+                       "なのであまり揺らさない」。形变器 jacket_hem_x 只推前襟两片的列",
     "ParamLegL": "裙下大腿 bend（标准表没有腿参数）",
     "ParamLegR": "同上",
     "ParamHairAhoge": "呆毛整体摆（标准表只有 Front/Side/Back/Fluffy）",
@@ -1712,6 +1715,78 @@ def check_live2d(root):
                   _front_dx > 0 and 0 < _lin_dx < _front_dx,
                   "里布最大位移 %.2f vs 表布 %.2f（里布 / 表布 = %.2f）"
                   % (_lin_dx, _front_dx, (_lin_dx / _front_dx) if _front_dx else 0))
+    # ㉒ 同一部件上的多张网格形变器**必须同尺寸**（引擎硬约束）。
+    #    zrig 是把同部件的几张网格**逐点相加**之后再去采样的，尺寸不一样直接拒载
+    #    整份 rig（T45.12 第一版给躯干加了张 6x34，撞上裙摆的 2x10 ⇒ 启动期 ERROR、
+    #    画面停在上一帧）。这条闸让它在生成器这一侧就红，而不是等引擎拒载。
+    for _rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        _tag = "%s/%s" % (_rp.split(os.sep)[-4], _rp.split(os.sep)[-2])
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        _bypart = {}
+        for _d in _rig.get("deformers", []):
+            _bypart.setdefault(_d.get("part"), []).append(
+                (_d.get("id"), int(_d.get("cols", 0)), int(_d.get("rows", 0))))
+        _bad = {k: v for k, v in _bypart.items()
+                if len({(c, r) for _, c, r in v}) > 1}
+        check("同部件的网格形变器尺寸一致（%s）" % _tag, not _bad,
+              "; ".join(f"{k}: {v}" for k, v in _bad.items()) if _bad
+              else "%d 个部件带网格" % len(_bypart))
+
+    # ㉓ 外套前襟下摆（T45.12）：摆动做在躯干的网格上，所以三件事必须成立 ——
+    #    ① 中间开襟那几列不许被推（推了会把衬衫扣子和裙腰一起平移）；
+    #    ② 幅度要小于裙摆（「上着は少し重い素材なのであまり揺らさない」）；
+    #    ③ 由自己的参数驱动、且延迟比裙摆大（两件衣服不许同拍子动）。
+    for _jp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/sprites/jacket_parts.json"))):
+        _form_dir = os.path.dirname(os.path.dirname(_jp))
+        _tag = "%s/%s" % (_form_dir.split(os.sep)[-3], os.path.basename(_form_dir))
+        _rp = os.path.join(_form_dir, "rig.json")
+        if not os.path.exists(_rp):
+            continue
+        with io.open(_jp, encoding="utf-8") as _f:
+            _hem = json.load(_f)["hem"]
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        _jd = next((d for d in _rig.get("deformers", []) if d.get("id") == "jacket_hem_x"), None)
+        check("外套下摆形变器进了 rig（%s）" % _tag, _jd is not None,
+              "没有 jacket_hem_x —— 生成器没接上" if _jd is None
+              else "%dx%d，%d 个点" % (_jd["cols"], _jd["rows"], len(_jd["points"])))
+        if not _jd:
+            continue
+        _tw = float(_hem["torso_size"][0])
+        _pan = [(float(q["x0"]), float(q["x1"])) for q in _hem["panels"]]
+        _gapped = []
+        for _pt in _jd["points"]:
+            _x = _tw * int(_pt["c"]) / int(_jd["cols"])
+            _inside = any(x0 - 0.3 * (_pan[1][0] - _pan[0][1]) <= _x <= x1 + 0.3 * (_pan[1][0] - _pan[0][1])
+                          for x0, x1 in _pan)
+            if not _inside and abs(float(_pt.get("dx", 0.0))) > 1e-6:
+                _gapped.append((_pt["c"], _pt["r"], _pt["dx"]))
+        check("外套下摆不推中间开襟那几列（%s）" % _tag, not _gapped,
+              "这些点落在两片前襟之间却有位移：%s" % _gapped[:4] if _gapped
+              else "开襟列位移恒为 0，衬衫/裙腰不跟着走")
+        _amax = lambda ids: max([abs(float(p.get("dx", 0.0)))
+                                 for d in _rig["deformers"] if d["id"] in ids
+                                 for p in d["points"]] or [0.0])
+        _skirt_ids = {d["id"] for d in _rig["deformers"]
+                      if d.get("part") == "seg_torso" and d["id"].startswith("skirt_")
+                      and d["id"].endswith("_x")}
+        _ja, _sk = _amax({"jacket_hem_x"}), _amax(_skirt_ids)
+        check("外套下摆摆得比裙摆小（%s）" % _tag, 0 < _ja < _sk,
+              "外套 %.1f vs 裙摆 %.1f（上着は重い素材）" % (_ja, _sk))
+        _lag = {}
+        for _pm in _rig.get("params", []):
+            for _b in _pm.get("binds", []) or []:
+                if _b.get("deformer") == "jacket_hem_x":
+                    _lag[_pm["id"]] = float(_b.get("lag", 0.0) or 0.0)
+                if _b.get("deformer") in _skirt_ids and _b.get("deformer") != "jacket_hem_x":
+                    _lag.setdefault("__skirt__", 0.0)
+                    _lag["__skirt__"] = max(_lag["__skirt__"], float(_b.get("lag", 0.0) or 0.0))
+        _jlag = _lag.get("ParamJacketSway", -1.0)
+        check("外套下摆由 ParamJacketSway 驱动、比裙摆更迟钝（%s）" % _tag,
+              _jlag > _lag.get("__skirt__", 0.0),
+              "外套 lag %.2fs vs 裙摆 lag %.2fs" % (_jlag, _lag.get("__skirt__", 0.0)))
+
     # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
     # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。
     for _fp in sorted(glob.glob(os.path.join(root, "characters/*/forms.json"))):
