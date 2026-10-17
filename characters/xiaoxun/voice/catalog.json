@@ -26,7 +26,7 @@
       "text": "哇！别敲啦，会痛的！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/hammer_1_base0.mp3",
-      "bytes": 34509,
+      "bytes": 36525,
       "emotion": "surprised",
       "emotion_why": "id 精确命中 hammer_1",
       "segments": [
@@ -647,7 +647,7 @@
       "text": "你每次叫我，我都超开心的！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/click_1_tier3_0.mp3",
-      "bytes": 23277,
+      "bytes": 24285,
       "emotion": "happy",
       "emotion_why": "文本线索「开心」",
       "segments": [
@@ -1425,6 +1425,196 @@
           "gap_ms": 0
         }
       ]
+    }
+  ],
+  "ab": [
+    {
+      "index": 1,
+      "id": "",
+      "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
+      "note": "中性长句",
+      "emotion": "happy",
+      "voice": "zh-CN-XiaoyiNeural",
+      "segments": [
+        {
+          "text": "今天也一起加油吧，",
+          "rate_pct": 4,
+          "pitch_hz": 32,
+          "volume_pct": 6,
+          "gap_ms": 187,
+          "marks": [
+            "语气词「吧」拖长"
+          ]
+        },
+        {
+          "text": "我就在这儿，",
+          "rate_pct": 16,
+          "pitch_hz": 32,
+          "volume_pct": 6,
+          "gap_ms": 187,
+          "marks": []
+        },
+        {
+          "text": "一直陪着你。",
+          "rate_pct": 6,
+          "pitch_hz": 46,
+          "volume_pct": 14,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "重音：一直"
+          ]
+        }
+      ],
+      "bytes_off": 27216,
+      "file_off": "characters/xiaoxun/voice/ab/01_off.mp3",
+      "bytes_on": 39549,
+      "file_on": "characters/xiaoxun/voice/ab/01_on.mp3"
+    },
+    {
+      "index": 2,
+      "id": "hammer_1",
+      "text": "咚——！好痛呀，你是想把我敲成扁扁的吗？",
+      "note": "惊讶",
+      "emotion": "surprised",
+      "voice": "zh-CN-XiaoyiNeural",
+      "segments": [
+        {
+          "text": "咚——！",
+          "rate_pct": 22,
+          "pitch_hz": 36,
+          "volume_pct": 8,
+          "gap_ms": 240,
+          "marks": []
+        },
+        {
+          "text": "好痛呀，",
+          "rate_pct": 4,
+          "pitch_hz": 36,
+          "volume_pct": 16,
+          "gap_ms": 176,
+          "marks": [
+            "语气词「呀」拖长",
+            "重音：好痛"
+          ]
+        },
+        {
+          "text": "你是想把我敲成扁扁的吗？",
+          "rate_pct": 18,
+          "pitch_hz": 46,
+          "volume_pct": 8,
+          "gap_ms": 0,
+          "marks": [
+            "疑问上扬",
+            "句尾"
+          ]
+        }
+      ],
+      "bytes_off": 27360,
+      "file_off": "characters/xiaoxun/voice/ab/02_off.mp3",
+      "bytes_on": 40125,
+      "file_on": "characters/xiaoxun/voice/ab/02_on.mp3"
+    },
+    {
+      "index": 3,
+      "id": "pat_combo",
+      "text": "摸这么多次…我、我会害羞的啦！",
+      "note": "害羞",
+      "emotion": "shy",
+      "voice": "zh-CN-XiaoyiNeural",
+      "segments": [
+        {
+          "text": "摸这么多次…",
+          "rate_pct": 0,
+          "pitch_hz": 24,
+          "volume_pct": -8,
+          "gap_ms": 567,
+          "marks": []
+        },
+        {
+          "text": "我、",
+          "rate_pct": 0,
+          "pitch_hz": 24,
+          "volume_pct": -8,
+          "gap_ms": 216,
+          "marks": []
+        },
+        {
+          "text": "我会害羞的啦！",
+          "rate_pct": -16,
+          "pitch_hz": 32,
+          "volume_pct": -8,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「啦」拖长"
+          ]
+        }
+      ],
+      "bytes_off": 21888,
+      "file_off": "characters/xiaoxun/voice/ab/03_off.mp3",
+      "bytes_on": 42141,
+      "file_on": "characters/xiaoxun/voice/ab/03_on.mp3"
+    },
+    {
+      "index": 4,
+      "id": "mood_joy_1",
+      "text": "今天好开心呀！",
+      "note": "开心",
+      "emotion": "happy",
+      "voice": "zh-CN-XiaoyiNeural",
+      "segments": [
+        {
+          "text": "今天好开心呀！",
+          "rate_pct": 0,
+          "pitch_hz": 46,
+          "volume_pct": 6,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「呀」拖长"
+          ]
+        }
+      ],
+      "bytes_off": 13104,
+      "file_off": "characters/xiaoxun/voice/ab/04_off.mp3",
+      "bytes_on": 13104,
+      "file_on": "characters/xiaoxun/voice/ab/04_on.mp3"
+    },
+    {
+      "index": 5,
+      "id": "wake_1",
+      "text": "唔…我没有睡着哦。",
+      "note": "迷糊",
+      "emotion": "sleepy",
+      "voice": "zh-CN-XiaoyiNeural",
+      "segments": [
+        {
+          "text": "唔…",
+          "rate_pct": -24,
+          "pitch_hz": 12,
+          "volume_pct": -12,
+          "gap_ms": 756,
+          "marks": [
+            "语气词「唔」拖长"
+          ]
+        },
+        {
+          "text": "我没有睡着哦。",
+          "rate_pct": -26,
+          "pitch_hz": 14,
+          "volume_pct": -12,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「哦」拖长"
+          ]
+        }
+      ],
+      "bytes_off": 14400,
+      "file_off": "characters/xiaoxun/voice/ab/05_off.mp3",
+      "bytes_on": 32205,
+      "file_on": "characters/xiaoxun/voice/ab/05_on.mp3"
     }
   ],
   "failed": [
