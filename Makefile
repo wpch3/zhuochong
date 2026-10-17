@@ -80,12 +80,14 @@ web-test:
 check: selfcheck warncheck test asan smoke web-test
 	@echo "== 全部保险都过了 =="
 
-# 零告警闸：CI 是 `make clean` 后从零编的，本地增量编译会把告警藏起来
+# 零告警闸：CI 是 `make clean` 后从零编的，本地增量编译会把告警藏起来。
+# 额外带 -Wformat-security：**Ubuntu 的 gcc 默认开它、Debian 的不开**，
+# CI 跑在 ubuntu-latest 上，本地是 Debian —— 不显式加就会出现"本地绿 CI 红"。
 # （2026-10-17 实测：本地 make -s check 全绿，CI 却红了 20 多次，就是因为
 #  tests/test_core.c 的告警从来没被重新触发过）。这里不碰 build/ 与 dist/，
 #  直接编到临时目录，和 CI 同一套参数、同一条判据。
 warncheck:
-	@$(CC) $(CFLAGS) $(INC) -o /tmp/zc_warncheck_bin tests/test_core.c $(CORE_SRC) $(LDLIBS) 2>/tmp/zc_warncheck.log; \
+	@$(CC) $(CFLAGS) -Wformat-security $(INC) -o /tmp/zc_warncheck_bin tests/test_core.c $(CORE_SRC) $(LDLIBS) 2>/tmp/zc_warncheck.log; \
 	  rc=$$?; n=`grep -c "warning:" /tmp/zc_warncheck.log || true`; \
 	  if [ $$rc -ne 0 ] || [ $$n -ne 0 ]; then \
 	    echo "== 从零重编出现 $$n 条告警（CI 会因此失败）=="; cat /tmp/zc_warncheck.log; exit 1; \

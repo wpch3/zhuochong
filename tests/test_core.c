@@ -216,7 +216,7 @@ static void test_eye_saccade(void)
         double t;
         double peak = 0.0, sum2 = 0.0;
         double peak_look = 0.0, peak_read = 0.0;
-        int n = 0, nsteps = 0;
+        int n = 0;
         double mx;
         zdiag_init(&d);
         z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
@@ -238,7 +238,7 @@ static void test_eye_saccade(void)
             if (fabs(rd) > peak_read) peak_read = fabs(rd);
             sum2 += gx * gx;
             ++n;
-            if (n > 1 && fabs(gx) > 1e-9) ++nsteps;
+
         }
         /* ① 幅度落在标定带内。标定工具：tools/calib_saccade.py */
         CHECK(peak >= 0.80 && peak <= 1.20,
@@ -4570,7 +4570,7 @@ static void test_render_bands_identical(void)
             z_snprintf(msg, sizeof(msg),
                        "%s @scale %.2f：4 线程与单线程逐字节相同（实差 %lu 字节，最大 %d）",
                        acts[ai], scales[si], (unsigned long)diff, maxd);
-            CHECK(diff == 0, msg);
+            CHECK(diff == 0, "%s", msg);
             free(one); free(many);
         }
     }
