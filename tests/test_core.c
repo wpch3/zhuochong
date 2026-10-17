@@ -1,3 +1,9 @@
+/* putenv/setenv 是 POSIX 不是 C11；-std=c11 下不显式要就没有声明
+ * （GCC 14 起隐式声明直接是 error）。和 src/core/zc.c 用同一招。 */
+#ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+#endif
+
 /*
  * test_core.c - 单元测试（[测试锁]：不通过就不许交付）
  *
@@ -3141,11 +3147,11 @@ static void test_gateway(void)
         rq.local_load_pct = 92;
         r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && !r->local && rs == ZGW_R_LOCAL_BUSY,
-              "本地忙到 92% 要溢出到云端");
+              "本地忙到 92%% 要溢出到云端");
         rq.local_load_pct = 84;
         r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
         CHECK(r && r->local,
-              "84% 还没到 85% 的阈值，不该溢出（阈值要真的是阈值）");
+              "84%% 还没到 85%% 的阈值，不该溢出（阈值要真的是阈值）");
 
         rq.local_load_pct = -1;
         rq.tokens_est = 4000;
@@ -3424,7 +3430,7 @@ static void test_gateway(void)
         CHECK(buf[0] == '\0', "没配时输出必须是空的，不能让空密钥流出去");
 
         /* 配上了就要能取到，且名字映射规则固定：secret://foo-bar → ZHUOCHONG_SECRET_FOO_BAR */
-        putenv((char *)"ZHUOCHONG_SECRET_FOO_BAR=sk-test-12345");
+        setenv("ZHUOCHONG_SECRET_FOO_BAR", "sk-test-12345", 1);
         CHECK(zgw_secret_resolve("secret://foo-bar", buf, sizeof(buf), &err) == 0,
               "配好的密钥应能取到");
         CHECK(strcmp(buf, "sk-test-12345") == 0, "取到的值要对，实际 %s", buf);
@@ -3432,7 +3438,7 @@ static void test_gateway(void)
               "名字大小写不该影响解析");
 
         /* 空值等于没配 */
-        putenv((char *)"ZHUOCHONG_SECRET_EMPTY_ONE=");
+        setenv("ZHUOCHONG_SECRET_EMPTY_ONE", "", 1);
         CHECK(zgw_secret_resolve("secret://empty_one", buf, sizeof(buf), &err) != 0,
               "空字符串的环境变量等于没配");
 
@@ -5730,7 +5736,7 @@ static void test_micro_expression(void)
         zrig *r;
         double dx_n, dx_p, rot_n, rot_p, bl_n, bl_p, br_n, br_p;
         int n_angry, n_calm, n_base;
-        double hold_sleepy, hold_base;
+        double hold_sleepy = 0.0, hold_base = 0.0;
         zdiag_init(&d);
         z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
         z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);

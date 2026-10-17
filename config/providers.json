@@ -62,8 +62,8 @@
       "name": "MiniMax 语音",
       "kind": "local",
       "kind_ext": "tts",
-      "base_url": "https://api.minimax.chat/v1",
-      "model": "speech-02-hd",
+      "base_url": "https://api.minimaxi.com/v1",
+      "model": "speech-2.8-hd",
       "enabled": false,
       "official": false,
       "local": false

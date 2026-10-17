@@ -192,14 +192,14 @@
     {
       "cap": "tts.speak",
       "provider": "minimax",
-      "model": "speech-02-hd",
+      "model": "speech-2.8-hd",
       "priority": 70,
       "local": false,
       "enabled": false,
       "free": false,
       "price_in": 0.0,
       "price_out": 0.0,
-      "price_per": 1.0
+      "price_per": 10000.0
     },
     {
       "cap": "tts.speak",
