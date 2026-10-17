@@ -47,15 +47,13 @@
   // 候选音色：重点是年龄感。晓伊（少女音色）升调后更接近 16 岁；
   // 晓双/晓萌为更小的音色（供应商音色表变动时会自动跳过，不影响其他音色）。
   "candidates": [
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+0Hz",  "label": "晓伊-标准（现在用的，用户判为偏青年）" },
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+15Hz", "label": "晓伊-升15Hz" },
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+25Hz", "label": "晓伊-升25Hz（语感档默认的年龄点）" },
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+35Hz", "label": "晓伊-升35Hz（更萌）" },
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+45Hz", "label": "晓伊-升45Hz（接近童声，可能失真）" },
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+25Hz", "rate": "+8%", "label": "晓伊-升25Hz-快8%（活泼）" },
-    { "voice": "zh-CN-XiaomengNeural",   "pitch": "+0Hz",  "label": "晓萌-标准（免费通道可能没有，会自动跳过）" },
-    { "voice": "zh-CN-XiaoshuangNeural", "pitch": "+0Hz",  "label": "晓双-童声（同上，可能跳过）" },
-    { "voice": "zh-CN-XiaoyouNeural",    "pitch": "+0Hz",  "label": "晓悠-童声（同上，可能跳过）" },
-    { "voice": "zh-CN-XiaoxiaoNeural",   "pitch": "+25Hz", "label": "晓晓-升25Hz（对照组：成年女声抬上去是什么味道）" }
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+0Hz",  "label": "晓伊-原调（★ 语感档现在的默认，不变调）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+6Hz",  "label": "晓伊-微升6Hz（年龄感略降，仍自然）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+12Hz", "label": "晓伊-升12Hz（能听出变亮，边界附近）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+18Hz", "label": "晓伊-升18Hz（⚠ 开始发尖）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+30Hz", "label": "晓伊-升30Hz（⚠⚠ 小黄人/鼠来宝，留作反例对照）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+0Hz", "rate": "+8%", "label": "晓伊-原调-快8%（靠语速求活泼，不动音高）" },
+    { "voice": "zh-CN-XiaoxiaoNeural", "pitch": "+0Hz", "label": "晓晓-原调（对照：另一个女声底子）" },
+    { "voice": "zh-CN-XiaoyouNeural", "pitch": "+0Hz", "label": "晓悠-童声（edge 免费通道没有，会自动跳过；Azure Dragon HD 上有）" }
   ]
 }

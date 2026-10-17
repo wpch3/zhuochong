@@ -7,11 +7,11 @@
   "profiles": {
     "moe_shoujo": {
       "name": "二次元萌系少女（小寻 teen 默认）",
-      "_note": "年龄感优先用引擎自带的 pitch 参数（模型内部重新合成，共振峰自洽），不要用后处理重采样——那个会变花栗鼠。见 DC74。",
+      "_note": "★ 2026-10-17 用户实听判定：「语感开了之后像小黄人和鼠来宝」= 典型花栗鼠效应。原因是 edge/Azure 的 prosody pitch **只搬 F0、不搬共振峰**，抬高到 +20Hz 以上音色就开始发尖。⇒ 本档**不再靠移调求萌**：base_pitch 归零，情绪的音高起伏压到个位数，萌感改由「语速 + 停顿 + 句尾上扬 + 重音」承担；真要换音色，走 Azure Dragon HD 的 cute/shy 或 MiniMax 少女音（见 docs/ops/VOICE_KEYS.md）。推翻 DC74，见 DC76。",
       "base_rate_pct": 6,
-      "base_pitch_hz": 18,
+      "base_pitch_hz": 0,
       "base_volume_pct": 0,
-      "end_rise_hz": 6,
+      "end_rise_hz": 4,
       "end_rise_rate_pct": -4,
       "particle_rate_pct": -12,
       "particles": ["呀", "啦", "哦", "呐", "嘛", "诶", "唔", "喵", "嗯", "呢", "吧", "哟"],
@@ -25,7 +25,7 @@
     "shoujo_calm": {
       "name": "少女·收敛版（旁白/长句）",
       "base_rate_pct": 0,
-      "base_pitch_hz": 12,
+      "base_pitch_hz": 0,
       "base_volume_pct": 0,
       "end_rise_hz": 2,
       "end_rise_rate_pct": -2,
@@ -57,23 +57,23 @@
 
   "emotions": {
     "neutral":   { "name": "平静",     "rate_pct": 0,   "pitch_hz": 0,   "volume_pct": 0,   "pause_scale": 1.0,  "style_degree": 1.0, "end_rise_bonus_hz": 0 },
-    "happy":     { "name": "开心",     "rate_pct": 10,  "pitch_hz": 14,  "volume_pct": 6,   "pause_scale": 0.85, "style_degree": 1.3, "end_rise_bonus_hz": 8 },
-    "smile":     { "name": "微笑",     "rate_pct": 4,   "pitch_hz": 6,   "volume_pct": 2,   "pause_scale": 0.95, "style_degree": 1.1, "end_rise_bonus_hz": 4 },
-    "shy":       { "name": "害羞",     "rate_pct": -6,  "pitch_hz": 6,   "volume_pct": -8,  "pause_scale": 1.35, "style_degree": 1.2, "end_rise_bonus_hz": 2 },
-    "angry":     { "name": "生气",     "rate_pct": 14,  "pitch_hz": 10,  "volume_pct": 10,  "pause_scale": 0.7,  "style_degree": 1.4, "end_rise_bonus_hz": 0,
+    "happy":     { "name": "开心",     "rate_pct": 10,  "pitch_hz": 5,  "volume_pct": 6,   "pause_scale": 0.85, "style_degree": 1.3, "end_rise_bonus_hz": 3 },
+    "smile":     { "name": "微笑",     "rate_pct": 4,   "pitch_hz": 2,   "volume_pct": 2,   "pause_scale": 0.95, "style_degree": 1.1, "end_rise_bonus_hz": 4 },
+    "shy":       { "name": "害羞",     "rate_pct": -6,  "pitch_hz": 2,   "volume_pct": -8,  "pause_scale": 1.35, "style_degree": 1.2, "end_rise_bonus_hz": 2 },
+    "angry":     { "name": "生气",     "rate_pct": 14,  "pitch_hz": 4,  "volume_pct": 10,  "pause_scale": 0.7,  "style_degree": 1.4, "end_rise_bonus_hz": 0,
                    "_note": "萌系的生气是「气鼓鼓」：音高**上扬**、语速变快、停顿变短；不是成年人那种压低嗓子的怒。压低会变凶，不是我们要的。" },
-    "pout":      { "name": "鼓腮不满", "rate_pct": 6,   "pitch_hz": 12,  "volume_pct": 2,   "pause_scale": 1.1,  "style_degree": 1.2, "end_rise_bonus_hz": 6 },
-    "sad":       { "name": "难过",     "rate_pct": -10, "pitch_hz": -4,  "volume_pct": -10, "pause_scale": 1.45, "style_degree": 1.2, "end_rise_bonus_hz": -6 },
-    "surprised": { "name": "惊讶",     "rate_pct": 16,  "pitch_hz": 18,  "volume_pct": 8,   "pause_scale": 0.8,  "style_degree": 1.6, "end_rise_bonus_hz": 10 },
-    "gentle":    { "name": "温柔",     "rate_pct": -6,  "pitch_hz": 2,   "volume_pct": -4,  "pause_scale": 1.2,  "style_degree": 1.1, "end_rise_bonus_hz": 2 },
-    "sleepy":    { "name": "困倦",     "rate_pct": -18, "pitch_hz": -6,  "volume_pct": -12, "pause_scale": 1.8,  "style_degree": 1.0, "end_rise_bonus_hz": -4 },
-    "proud":     { "name": "得意",     "rate_pct": 6,   "pitch_hz": 10,  "volume_pct": 6,   "pause_scale": 0.95, "style_degree": 1.3, "end_rise_bonus_hz": 6 }
+    "pout":      { "name": "鼓腮不满", "rate_pct": 6,   "pitch_hz": 4,  "volume_pct": 2,   "pause_scale": 1.1,  "style_degree": 1.2, "end_rise_bonus_hz": 6 },
+    "sad":       { "name": "难过",     "rate_pct": -10, "pitch_hz": -3,  "volume_pct": -10, "pause_scale": 1.45, "style_degree": 1.2, "end_rise_bonus_hz": -6 },
+    "surprised": { "name": "惊讶",     "rate_pct": 16,  "pitch_hz": 6,  "volume_pct": 8,   "pause_scale": 0.8,  "style_degree": 1.6, "end_rise_bonus_hz": 4 },
+    "gentle":    { "name": "温柔",     "rate_pct": -6,  "pitch_hz": 1,   "volume_pct": -4,  "pause_scale": 1.2,  "style_degree": 1.1, "end_rise_bonus_hz": 2 },
+    "sleepy":    { "name": "困倦",     "rate_pct": -18, "pitch_hz": -4,  "volume_pct": -12, "pause_scale": 1.8,  "style_degree": 1.0, "end_rise_bonus_hz": -4 },
+    "proud":     { "name": "得意",     "rate_pct": 6,   "pitch_hz": 4,  "volume_pct": 6,   "pause_scale": 0.95, "style_degree": 1.3, "end_rise_bonus_hz": 6 }
   },
 
   "_restraint": {
-    "_note": "刻意克制（第四十二批的共识）：真人对话里大部分句子接近中性，只带一点底色；每句都拔高＝另一种不像人（用力过猛的配音腔）。所以给强情绪设上限，并要求整批台词里强情绪占比不超过阈值。",
+    "_note": "刻意克制（第四十二批的共识 + 2026-10-17 用户实听\"像小黄人\"的教训：音高是最容易翻车的一维，上限必须压死）：真人对话里大部分句子接近中性，只带一点底色；每句都拔高＝另一种不像人（用力过猛的配音腔）。所以给强情绪设上限，并要求整批台词里强情绪占比不超过阈值。",
     "max_abs_rate_pct": 26,
-    "max_abs_pitch_hz": 46,
+    "max_abs_pitch_hz": 14,
     "max_pause_ms": 700,
     "edge_pad_ms": 150,
     "_edge_pad_note": "分段合成时每段自带的首尾留白（实测约 150ms/段）。to_edge() 会把排好的停顿减去它，否则停顿被计算两次，整句听着拖沓。只影响 edge-tts 这条分段路线，SSML/MiniMax 不减。",
