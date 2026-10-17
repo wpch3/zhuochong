@@ -2889,3 +2889,67 @@ ph->out_cur = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
   **真要借鉴实现前必须自己到仓库核对 LICENSE**，不以二手文章为准。
 - ⇒ 我们的增量：**触发的是"她"** —— 早报要用角色语气说出来、配表情动作，而不是弹一个通知框。
 
+
+## 第四十二批 · 语音的"语感"与"二次元萌系音色"（2026-10-17，为 T57/T58 查）
+
+> 起因：用户说「情绪变化、语气等我听测试台词都**没有变化**，要做出**真人的语感**」、
+> 「小寻的声音**更像青年**，要**动漫二次元美少女**」、「记得**查教程和资料**」。
+
+### 42.1 Azure 的情感标签到底怎么写（官方文档）
+
+- `https://learn.microsoft.com/azure/ai-services/speech-service/speech-synthesis-markup-voice`
+- `<mstts:express-as style="cheerful" styledegree="1.5" role="Girl">`。
+  - **`style` 写错、或该音色不支持这个 style ⇒ 整个元素被忽略，直接退回中性朗读。**
+    （很多人"加了标签没反应"就是踩这个，不会报错。）
+  - `styledegree` 取值 **0.01~2**，常用 1.5；
+  - **`role` 只有 `zh-CN-XiaomoNeural` / `zh-CN-XiaoxuanNeural` 支持**，
+    `zh-CN-XiaoyiNeural` **没有** —— 想靠 `role="Girl"` 把晓伊变小女孩，这条路堵死。
+- `zh-CN-XiaoyiNeural` 支持的 9 个 style：affectionate / angry / cheerful / disgruntled /
+  embarrassed / fearful / gentle / sad / serious。
+- `https://learn.microsoft.com/azure/ai-services/speech-service/high-definition-voices`：
+  **Dragon HD** 的 `zh-CN-Xiaoyi:DragonHDFlashLatestNeural` 支持
+  **cute / shy** / gentle / nervous / complaining / angry / sad / strict，
+  并支持副语言标记 `laughter / coughing / throat_clearing / breathing / sighing / yawning`。
+  ⇒ **cute 与 shy 就是"二次元萌系"最需要的两个**，中期换通道的首选。
+
+### 42.2 edge-tts（免费通道）到底有没有情感
+
+- `https://zenn.dev/xei/articles/edge-tts-vs-azure`（2026-03）对照表：
+  **Edge TTS = 没有情感风格，只有 prosody（rate/pitch/volume）**；Azure = 10+ style。
+- 多个公开音色表把 `zh-CN-XiaoyiNeural` 标为「女 / **青年** / 活泼」
+  ⇒ **用户说"听着像青年"和官方标注完全一致，不是错觉。**
+- ⇒ 结论：**不换通道的话，唯一出路是把 prosody 用到极致**（分段、停顿、重音、句尾上扬）。
+
+### 42.3 "念稿感"的病因与药方
+
+- `https://realtime-ai.chat/posts/emotion-prosody-tts`：
+  韵律四要素 = **节奏 / 停顿 / 重音 / 语调**；
+  念稿感的病根是「语速恒定 + 停顿只认标点 + 不分轻重 + 语调套模板」。
+  **先修韵律基本盘，再谈情绪。**
+- ★ **反面警告（同一篇，必须一起抄）**：过度表演是**另一种不像人**；
+  大部分句子应该接近中性只带一点底色；**情绪与语义错位比平淡更糟**。
+- 停顿量化（`offlinetts.com` 的 SSML break 指南 + dev.to 的 prosody 实践）：
+  `break` 档位 none 0 / x-weak 250 / weak 500 / medium 750 / strong 1000 / x-strong 1500 ms；
+  **短语停顿 120~300ms、戏剧停顿 400~700ms、模拟吸气 150~250ms，每 8~12 个词换一次气**；
+  全局 `rate` 维持 0.9~1.1，**强调靠局部降速到 80~90%**，不要整句加速。
+
+### 42.4 少女音的声学（为什么"只升调"会变花栗鼠）
+
+- `phonalab` / `voicescience` / PLOS ONE `journal.pone.0081022`：
+  **F0 与共振峰必须一起移**，只动一个改不了"年龄感"。
+  成年女性 F0 约 **165~255Hz**；10.5~14.5 岁女孩约 **213Hz**。
+  共振峰间距 ΔF 由声道长度决定（成年女 ~14.5cm / 成年男 ~17cm）。
+- Praat 的 `Change gender`（PSOLA）可以**独立**操纵 F0 中位数、共振峰偏移、时长
+  —— 这正是 `tools/voice_pitch.py::youthify()` 已经在做的事。
+- 音色上的配方：**削 200~500Hz 的胸腔共鸣、提 3k~8kHz 的空气感、尾音带甜**。
+
+### 42.5 2026 年开源情感 TTS 现状（终局方案的候选）
+
+- **IndexTTS2**（B 站，`github.com/index-tts/index-tts`）：**Apache-2.0**、1.5B、约 8GB 显存，
+  **音色与情感解耦**（可以拿 A 的音色 + B 的情绪），8 维情感向量 + `emo_alpha` 强度旋钮，
+  情感相似度 0.887 / EMOS 4.22。
+  ⚠️ **IndexTTS-2.5（2026-08）改成了 Bilibili Model License，不再是 Apache** ⇒ 要用钉死 2.0。
+- **CosyVoice2-0.5B**（阿里，Apache-2.0）：约 4GB，**自然语言指令控语气**
+  （"用很开心的语气说"），首包延迟约 1.5s，适合实时。
+- GPT-SoVITS：音色克隆强，但**情感一致性弱**，且零样本克隆有合规风险（I6）。
+- ⇒ 选型纪律：**优先"官方音色 + 情感控制"，不做任何真人零样本克隆**。
