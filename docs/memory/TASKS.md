@@ -812,7 +812,7 @@ T44 是**幅度很小但自成语义**的面部变化（走神 / 怀疑 / 忍笑
 |---|---|---|---|
 | T57.1 | **声明式语感表** `config/prosody.json` | [x] | 2026-10-17 完成。语感档 `moe_shoujo`（rate +6% / pitch +18Hz / 句尾上扬 +6Hz / 语气词拖长 −12% / 重音 +8% 音量 / 每 11 字换气 180ms / 最多 8 段）+ `shoujo_calm`；标点停顿表（，220 。320 ？280 ！240 …420 ——300 ms，取自"短语停顿 120~300ms"的公开量化）；**11 种情绪**各给 rate/pitch/volume/pause_scale/style_degree/end_rise_bonus；`style_map`→Azure 9 style、`minimax_map`→MiniMax 7 emotion |
 | T57.2 | **演出引擎** `tools/voice_prosody.py`：判情绪 → 切段 → 排逐段参数 | [x] | 2026-10-17 完成。判情绪三级：**台词 id 精确 > id 前缀 > 文本线索**（语气词/标点/关键词）；一份演出单出三种格式 `to_edge()` / `to_ssml()`（`mstts:express-as` + `prosody` + `break`）/ `to_minimax()` —— **换引擎不用重写演出逻辑** |
-| T57.3 | **分段渲染**：逐段合成 + 段间插静音 + 拼回一条 mp3 | [x] | 2026-10-17 完成。有 ffmpeg 走 `concat` 重编码、没有就二进制兜底；**任一段失败整句退回老的一次合成**（宁可平不可缺）；`catalog.json` 记录每条台词的 `emotion` / `emotion_why` / 逐段参数 |
+| T57.3 | **分段渲染**：逐段合成 + 段间插静音 + 拼回一条 mp3 | [x] | 2026-10-17 完成。有 ffmpeg 走 `concat` 重编码、没有就二进制兜底；**任一段失败整句退回老的一次合成**（宁可平不可缺）；`catalog.json` 记录每条台词的 `emotion` / `emotion_why` / 逐段参数。★ 两个坑：① **停顿会被算两次**（每段自带约 150ms 首尾留白）⇒ `to_edge()` 减去 `edge_pad_ms`；② ffmpeg `silenceremove` 削留白会**把真声也削掉**（实测 4.54s→2.78s），已撤回，见 LESSONS 199 |
 | T57.4 | **自检 7 项 + 负向对照** | [x] | 2026-10-17 完成。① 切段拼回与原文一字不差 ② 五种情绪都和中性不同 ③ 多段句至少两种参数 ④ 全部在克制上限内 ⑤ 已知台词判对情绪 ⑥ **把情绪表调平后必须报"分不出来"** ⑦ SSML 含 express-as 与 break。接进 CI（`voice-render.yml` 渲染前先跑） |
 | T57.5 | **A/B 与情绪对照样本**（回答用户"听不出变化"） | [x] | 2026-10-17 完成。`--only demo` = 同一句 × 六种情绪；`--only ab` = 同一句的"语感关/开"两版。实测时长：sleepy 比 neutral **长 21.0%**、sad +10.3%、shy +6.6%、happy −5.5%、angry **短 7.6%** |
 | T57.6 | **接进 selfcheck 与试听页** | [ ] | ① `selfcheck_repo.py` 加三道闸（语感表存在且情绪表不平 / plan 的 profile 必须存在 / 自检必须全过）；② 试听页把 A/B、情绪对照、音色阶梯并排放，用户能一次听完 |
