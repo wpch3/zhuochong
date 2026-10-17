@@ -2643,3 +2643,131 @@ ph->out_cur = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
 我们的身体是分段的（腿 60 起步），长发必须走 **58** 才会被躯干和腿挡住、
 只从肩侧和裙下露出来 —— 这就是教训 192「照搬层结构前先量它露不露」的正面用法。
 
+## 第四十批 · 物理底座的官方口径 / 外设桌宠 / 桌宠与 AI 伴侣生态 / 兽耳情绪（2026-10-17）
+
+起因：用户问「头发、衣服的真实摇晃，兽耳兽尾的物理，加计划了没有？物理底层做好没有？」
+并点名参考 VTuber **MinikoMew**、**bongocat** 的键盘/手柄模式，以及"还有什么优质项目能做进来"。
+结论全部落进 `docs/PHYSICS_PLAN.md` 与 `docs/PRESENCE_PLAN.md`，这里只记来源与要点。
+
+### 40.1 Live2D 官方物理模型（这批最关键的一组）
+
+- <https://docs.live2d.com/en/cubism-sdk-manual/physics/>：`.physics3.json` 由 `CubismPhysics` 消费；
+  **`Meta.EffectiveForces` 里的 Gravity / Wind 可以被 SDK 的 `Options` 在运行时覆盖**，
+  默认 `Gravity=(0,-1)`、`Wind=(0,0)`。⇒ 我们要做的"风"和"惯性"在官方架构里是**合法扩展点**，不是魔改。
+- <https://note.com/ganeesya/n/nc6d2ce92642b> + <https://note.com/ganeesya/n/ncc7ce2a3aa99>
+  （公式 GitHub のコードから見る物理演算，含 Unity SDK 源码片段）：
+  **输出角 `outputValue = DirectionToRadian(parentGravity, translation)`**，
+  开角度修正时 `parentGravity = particles[i-1].Position - particles[i-2].Position`。
+  ⇒ **官方输出的是"摆相对重力/父段方向的角度"**，我们现在输出的是"滞后像素"，这是最根本的差别。
+  另一条很实用：**输入的影响度合计要凑 100%；输出的倍率是"各自向演算器靠多少"**，
+  三个输出要等权就得写 100% / 50% / 33%。
+- <https://docs.live2d.com/en/cubism-editor-manual/physics-operation/> 与
+  <https://cg-method.com/vtuber/live2d-physics-settings/>：物理设置 = **グループ / 入力 / 出力 / 物理モデル（振り子）**；
+  计算 FPS 默认 **60**（Cubism 5.0 beta1 起从 30 改成 60）；
+  入力の正規化默认 **-10 / 0 / 10**；预设输入 = 角度X・角度Z・体の回転X・体の回転Z。
+- 四个旋钮的口径（多家一致：cgbox / vtsuku / saraemi / ugoiraman / otimusya24）：
+  **長さ**＝振り子长度（小→快、大→慢且久）、**揺れやすさ**＝0.7~0.99、
+  **反応速度**＝开始摆动的快慢（硬头发大、ボブや長い後ろ髪小）、**収束の速さ**＝停下来的快慢（1 标准）。
+- <https://note.com/asasinstudio/n/n7c9a2fbbcbc8>（黒猫のLive2D研究レポート）：
+  **位置X 输入 ⇒ 最终回到初始位置；角度输入 ⇒ 停在输入对应的角度**；
+  链式时第 1 段会保持，第 2 段之后输出回 0。⇒ "歪头时头发保持倾斜"必须用角度输入。
+- <https://creatorsforum.live2d.com/t/topic/3734>：**官方规格坑 ——「入力が小さいと振り子が 0 に吸着する」**，
+  现象是慢慢移动时一顿一顿。回避：加大输入 / 把长度调长 / 混入 5~10% 的角度输入。
+- <https://note.com/ku_shi/n/n6c99cfcb3c4a>：**用物理做"延迟"而不是"摇晃"** ——
+  揺れやすさ中等、**反応速度调低**、**収束の速さ拉满**，得到一根几乎不回弹、只慢半拍的摆；
+  倍率直接取目标参数的量程（-1/0/1 就 1 倍，-30/0/30 就 30 倍）。⇒ **三级视线跟随直接用这个配方**。
+- <https://qiita.com/aoneko_aoneko/items/798bab14b759d67b2a6c>：编辑器侧没有"风"，
+  社区用**ダミーパラメータ**伪造风；但注意振幅中途变化时不自然。⇒ 我们在引擎侧做真风更干净。
+- <https://github.com/VonPro/Live2D/blob/master/assets/asuna/08/physics.json>：
+  一份真实的（Cubism 2 时代）physics 文件，`setup{length,regist,mass}` + `src[{id,ptype,scale,weight}]`
+  + `targets[{id,ptype,scale,weight}]`。⇒ 做 `physics3.json` 导入/导出时的现成对拍样本。
+
+### 40.2 让"只有脸在动"变自然（三级跟随的依据）
+
+- <https://docs.live2d.com/en/cubism-editor-tutorials/motion-hint/>（官方 Motion Quality Improvement Tips）：
+  「只让脸转会像机器人，要让**身体的 X 和 Z 跟着脸一起动**」；
+  还有两条：**顔と体のタイミングをずらす（慣性）**、**反動・ブレーキを付ける**、
+  以及**「視線を変えるときはまず瞬きすることが多い」**。⇒ 用户"脑袋也跟着鼠标动一点点"的直觉＝官方口径。
+- <https://x.com/hu_yuse/status/1308378406652837889>：头和体**不会同时同量**地动；
+  把角度 X/Y 直接绑体的倾斜会很单调；**让体延迟追随头**，身上的小物再以"体 X/Y"为输入 ⇒ 输出更复杂＝更自然。
+- <https://cgbox.jp/2019/07/25/live2d-memoto/>：**人的眼球不会静止**，给瞳孔加极小的常驻微动；
+  但过量会显得"一直在慌"。
+- <https://shiroikarasu.net/live2d-blink-lipsync-setting-guide-2026>：自动眨眼**间隔要随机**；
+  左右眼**错开一点点**闭合更像人。
+
+### 40.3 兽耳 / 兽尾：会表情的耳朵
+
+- <https://www.itmedia.co.jp/news/articles/2212/07/news041.html> ＋
+  <https://www.jstage.jst.go.jp/article/his/23/4/23_419/_pdf/-char/ja>
+  （電通大・四條ほか《獣耳の感情表現能力を用いた感情表現インターフェースの検討》）：
+  ① 耳を**前に倒す**／低速で外向き回転 ⇒ 悲しみ・恐れ（快感低）；
+  ② **後ろに傾ける・両耳を寄せる** ⇒ 覚醒の高い感情（驚き）；
+  ③ **動きの速さが覚醒度**に対応（速い＝高覚醒）；
+  ④ 素早い反復＋外旋 ⇒ 興奮。**这是我们做"情绪→耳朵姿态"映射表的学术依据。**
+- <https://atam-academy.com/blog/30576/> / <https://ichi-up.net/2017/103>：
+  怒り＝**イカ耳**（後ろに引いて頭に押し付け、シルエットを平らに）、毛を逆立てる；
+  悲しみ＝力が抜けて垂れる。
+- <https://note.com/itodaneko/n/n3b5e2ada3f4b>（猫耳と尻尾・物理演算、实操）：
+  **耳ピコ**＝单独做一个"耳Z"ブレンドシェイプ，物理**输入接眨眼与眉毛**（不是接头部），反応速度调快；
+  尻尾は**体の回転X を反転**して入力（身体右→尾根左）；尻尾揺れは多段＋**呼吸を入力に混ぜて常時ゆらゆら**；
+  尻尾を膨らませる（炸毛）用「両目を見開いたときだけ有効」的重み制限来触发。
+- <https://juku.live2dcs.jp/en/course/course-64/>（Live2D JUKU 官方课《ケモ耳の魅力的な作り方》三步）：
+  step1 頭 XY の立体感＋揺れ＋**まばたき連動の揺れ**；step2 **眉の上下で耳が立つ／伏せる**；
+  step3 パーフェクトシンクの口の動きに合わせて耳が口の方へ寄る。
+- <https://vtuberkaibougaku.site/2021/09/27/live2d-nekomimi/>：猫耳も**根元は動かさない**
+  （動かすと耳が浮いて見える）；1 段目＝大きい動き、2 段目＝先っぽ。
+- <https://note.com/hakamorisan/n/ncf45d0d9986f>：为什么 VTuber 普遍有兽耳 ——
+  **アバターは表情が乏しくなりがちで、それを揺れもの（耳・アホ毛・尻尾・リボン）で補っている**。
+  ⇒ 对我们是战略级的一句：**摇物不是装饰，是表情带宽**。
+
+### 40.4 MinikoMew（用户点名的参考）
+
+- <https://virtualyoutuber.fandom.com/wiki/MinikoMew> / <https://hololist.net/minikomew/> /
+  <https://www.twitch.tv/minikomew/about>：独立英文圈 VTuber，**2024-05-06 以新 Live2D 模型出道**；
+  **Model（原画）ShouuKyun / shouu-kun，Rig（Live2D 绑定）BriAtCookieBox**；Mythic Talent。
+  设计：**猫耳・猫尾・長いアホ毛**、短发＋两个黑蝴蝶结＋五个发夹（含手柄造型）、圆眼镜、
+  **带猫耳的兜帽**、超大外套＋猫铃铛、大号项圈。
+  ⇒ 部件构成和小寻**高度重合**（猫耳/猫尾/呆毛/兜帽/外套都有），可以当"目标形态"参照。
+  ★ 注意：**我没有视频能力，没看过她的直播剪辑**；这里只采信公开的模型来历与设计信息，
+  "头发和耳朵物理好在哪"是用上面 40.1/40.3 的 rigger 教程口径拆出来的，不是看片得出的。
+
+### 40.5 bongocat 一脉（半身键盘 / 手柄模式）
+
+- <https://github.com/ayangweb/BongoCat>：Tauri v2 + Rust + Vue，Apache-2.0，macOS/Windows/Linux(x11)；
+  **按键盘、鼠标、手柄都有对应动作**；内置 **standard / keyboard / gamepad 三套模型**，可导入自定义 Live2D 模型；
+  离线运行、不收集用户数据。模型里的参数是 `CatParamLeftHandDown` / `CatParamRightHandDown`，
+  每个键位映射一个 motion（`key_A` → `live2d_motion1.motion3.json` + 音效）。
+- <https://github.com/wonkyooh/Bongobs-Cat-Standalone>（Live2D + OpenGL 的独立窗口版）：
+  输入后端写得最清楚 —— **`hook` = Windows 低级键盘/鼠标钩子，系统级、游戏前台时也收得到、
+  不注入 DLL ⇒ 反作弊一般容忍**；配置项里有 `cat.breath / eyeblink / track`（呼吸、眨眼、跟随）。
+  窗口是固定尺寸的纯色（chroma key）窗口，供 OBS Window Capture 抠像。
+- <https://github.com/norta92/wayland-bongocat----catkey>：Linux/Wayland 侧走 `/dev/input/eventN`，
+  要支持**多键盘设备与蓝牙热插拔**、热重载配置、按键动画时长 `keypress_duration`（默认 100 ms）。
+- 源头：MMmmmoko 的 Bongo-Cat-Mver（Windows 首版）、kuroni/bongocat-osu、
+  OBS 插件 Bongobs Cat Plugin（<https://obsproject.com/forum/resources/bongobs-cat-plugin.992/>）。
+
+### 40.6 桌宠 / AI 伴侣生态（"还有什么能做进来"）
+
+- <https://github.com/Open-LLM-VTuber/Open-LLM-VTuber>（MIT，Python+Electron，1.3 万星）：
+  目标就是**用开源方案复刻 neuro-sama**。值得抄的四件：**① 语音可打断（VAD，AI 不会听到自己的声音）**；
+  **② 流式 TTS，首句到达即发声**；③ **LLM 用标签控制 Live2D 表情**（emotion mapping）；
+  ④ **Pet Mode**：透明背景 + 全局置顶 + **鼠标穿透**，Window/Pet 模式间共享上下文。
+  还有 group chat（多角色同屏）与 MemGPT 长期记忆。
+- <https://github.com/moeru-ai/airi>（AIRI）：自托管的"AI 灵魂容器"，Web/桌面，
+  WebGPU 浏览器内推理、能玩 Minecraft/Factorio。⇒ 对应我们"游戏三档 + 陪玩"。
+- <https://github.com/LorisYounger/VPet>（Apache-2.0，WPF，7k 星）：**养成四维（饱食/心情/体力/健康）**、
+  创意工坊 MOD、**可作为 NuGet 嵌进任意 WPF 程序**。⇒ 羁绊/养成数值与插件生态的参照。
+- 小伊桌宠 <https://github.com/2272486456mhs-source/xiaoyi-live2d-pet>：
+  **WASAPI 回环判断你在听歌还是看视频；前台窗口判断你在写代码还是逛网页；全屏自动躲起来**；
+  60 秒没动静打瞌睡；本地 HTTP 接口让 AI Agent 给你冒气泡。⇒ "情境感知"这条抄它。
+- Agent 桌宠 <https://github.com/shicheng5589-oss/Agent-desktop-pet>：
+  **跟着 12 个 agent 的本地会话状态换 9 种表情**（思考中/执行中/等你/出错…）+ 进度卡片 + 用量统计；
+  设置里有**渲染帧率上限 30/60/90/120/144/165/240**。⇒ 我们自己就跑在 agent 里，这是免费的"实时接信息"。
+- CodePet <https://github.com/jnMetaCode/codepet>：读本机 git 提交与 Claude Code 用量做养成，
+  **只读聚合元数据、从不读对话正文**。⇒ 隐私口径的好模板。
+- BANDORI-PET-REV <https://github.com/HELPMEEADICE/BANDORI-PET-REV>：自研 LuaJIT 渲染核心，
+  **30fps → 180fps+（6 倍）**。⇒ 提醒：高分辨率（T30）必须同时做帧率上限与性能分级。
+- 其它清单：<https://github.com/proj-airi/awesome-ai-vtubers>、
+  <https://github.com/DasterProkio/awesome-ai-companion>（含 amica / AITuber OnAir 的 kizuna 羁绊系统 /
+  super-agent-party / LingChat 等）。
+
