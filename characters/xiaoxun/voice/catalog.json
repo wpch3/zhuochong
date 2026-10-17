@@ -33,7 +33,7 @@
         {
           "text": "哇！",
           "rate_pct": 22,
-          "pitch_hz": 42,
+          "pitch_hz": 12,
           "volume_pct": 12,
           "gap_ms": 192,
           "marks": [
@@ -43,7 +43,7 @@
         {
           "text": "别敲啦，",
           "rate_pct": 4,
-          "pitch_hz": 36,
+          "pitch_hz": 6,
           "volume_pct": 16,
           "gap_ms": 176,
           "marks": [
@@ -54,7 +54,7 @@
         {
           "text": "会痛的！",
           "rate_pct": 18,
-          "pitch_hz": 46,
+          "pitch_hz": 14,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -77,7 +77,7 @@
         {
           "text": "咚——！",
           "rate_pct": 22,
-          "pitch_hz": 36,
+          "pitch_hz": 6,
           "volume_pct": 8,
           "gap_ms": 240,
           "marks": []
@@ -85,7 +85,7 @@
         {
           "text": "好痛呀，",
           "rate_pct": 4,
-          "pitch_hz": 36,
+          "pitch_hz": 6,
           "volume_pct": 16,
           "gap_ms": 176,
           "marks": [
@@ -96,7 +96,7 @@
         {
           "text": "你是想把我敲成扁扁的吗？",
           "rate_pct": 18,
-          "pitch_hz": 46,
+          "pitch_hz": 14,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -120,7 +120,7 @@
         {
           "text": "又敲我？",
           "rate_pct": 22,
-          "pitch_hz": 36,
+          "pitch_hz": 6,
           "volume_pct": 8,
           "gap_ms": 224,
           "marks": []
@@ -128,7 +128,7 @@
         {
           "text": "我记住你了哦！",
           "rate_pct": 6,
-          "pitch_hz": 46,
+          "pitch_hz": 14,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -152,7 +152,7 @@
         {
           "text": "你敲我，",
           "rate_pct": 22,
-          "pitch_hz": 36,
+          "pitch_hz": 6,
           "volume_pct": 8,
           "gap_ms": 176,
           "marks": []
@@ -160,7 +160,7 @@
         {
           "text": "我也会有点委屈…",
           "rate_pct": 22,
-          "pitch_hz": 36,
+          "pitch_hz": 6,
           "volume_pct": 8,
           "gap_ms": 336,
           "marks": []
@@ -168,7 +168,7 @@
         {
           "text": "不过你是故意的吧？",
           "rate_pct": 6,
-          "pitch_hz": 46,
+          "pitch_hz": 14,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -193,7 +193,7 @@
         {
           "text": "再这样我要生气了哦！",
           "rate_pct": -2,
-          "pitch_hz": 34,
+          "pitch_hz": 8,
           "volume_pct": 18,
           "gap_ms": 0,
           "marks": [
@@ -218,7 +218,7 @@
         {
           "text": "摸这么多次…",
           "rate_pct": 0,
-          "pitch_hz": 24,
+          "pitch_hz": 2,
           "volume_pct": -8,
           "gap_ms": 567,
           "marks": []
@@ -226,7 +226,7 @@
         {
           "text": "我、",
           "rate_pct": 0,
-          "pitch_hz": 24,
+          "pitch_hz": 2,
           "volume_pct": -8,
           "gap_ms": 216,
           "marks": []
@@ -234,7 +234,7 @@
         {
           "text": "我会害羞的啦！",
           "rate_pct": -16,
-          "pitch_hz": 32,
+          "pitch_hz": 8,
           "volume_pct": -8,
           "gap_ms": 0,
           "marks": [
@@ -258,7 +258,7 @@
         {
           "text": "再这样摸下去，",
           "rate_pct": -6,
-          "pitch_hz": 24,
+          "pitch_hz": 2,
           "volume_pct": 0,
           "gap_ms": 297,
           "marks": [
@@ -268,7 +268,7 @@
         {
           "text": "我的脸要烧起来了…",
           "rate_pct": -4,
-          "pitch_hz": 32,
+          "pitch_hz": 8,
           "volume_pct": -8,
           "gap_ms": 0,
           "marks": [
@@ -291,7 +291,7 @@
         {
           "text": "嘿嘿，",
           "rate_pct": 16,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "volume_pct": 6,
           "gap_ms": 187,
           "marks": []
@@ -299,7 +299,7 @@
         {
           "text": "好舒服～",
           "rate_pct": 12,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -322,7 +322,7 @@
         {
           "text": "头发会被你摸乱啦。",
           "rate_pct": 0,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -346,7 +346,7 @@
         {
           "text": "嗯…",
           "rate_pct": 4,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "volume_pct": 6,
           "gap_ms": 357,
           "marks": [
@@ -356,7 +356,7 @@
         {
           "text": "你摸得还挺轻的嘛。",
           "rate_pct": 0,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -380,7 +380,7 @@
         {
           "text": "每次被你摸，",
           "rate_pct": 16,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "volume_pct": 6,
           "gap_ms": 187,
           "marks": []
@@ -388,7 +388,7 @@
         {
           "text": "我都会乖乖不动哦。",
           "rate_pct": 0,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -412,7 +412,7 @@
         {
           "text": "有你在身边，",
           "rate_pct": 16,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "volume_pct": 6,
           "gap_ms": 187,
           "marks": []
@@ -420,7 +420,7 @@
         {
           "text": "摸头都变得好安心呀。",
           "rate_pct": 0,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -444,7 +444,7 @@
         {
           "text": "再摸一下下就好～",
           "rate_pct": 6,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 14,
           "gap_ms": 0,
           "marks": [
@@ -468,7 +468,7 @@
         {
           "text": "呀，",
           "rate_pct": -6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 220,
           "marks": [
@@ -478,7 +478,7 @@
         {
           "text": "别碰那里啦！",
           "rate_pct": -16,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -503,7 +503,7 @@
         {
           "text": "痒、",
           "rate_pct": 6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 160,
           "marks": []
@@ -511,7 +511,7 @@
         {
           "text": "痒痒的…",
           "rate_pct": 2,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -534,7 +534,7 @@
         {
           "text": "你还要继续吗？",
           "rate_pct": 2,
-          "pitch_hz": 30,
+          "pitch_hz": 10,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -558,7 +558,7 @@
         {
           "text": "脚脚是很敏感的！",
           "rate_pct": 2,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -581,7 +581,7 @@
         {
           "text": "我在这里哦～",
           "rate_pct": 2,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -604,7 +604,7 @@
         {
           "text": "怎么啦？",
           "rate_pct": -10,
-          "pitch_hz": 30,
+          "pitch_hz": 10,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -629,7 +629,7 @@
         {
           "text": "又找我呀？",
           "rate_pct": -10,
-          "pitch_hz": 30,
+          "pitch_hz": 10,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -654,7 +654,7 @@
         {
           "text": "你每次叫我，",
           "rate_pct": 16,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "volume_pct": 6,
           "gap_ms": 187,
           "marks": []
@@ -662,7 +662,7 @@
         {
           "text": "我都超开心的！",
           "rate_pct": 12,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -685,7 +685,7 @@
         {
           "text": "找我有事吗？",
           "rate_pct": 2,
-          "pitch_hz": 30,
+          "pitch_hz": 10,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -709,7 +709,7 @@
         {
           "text": "啊啊啊，",
           "rate_pct": 6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 220,
           "marks": []
@@ -717,7 +717,7 @@
         {
           "text": "带我去哪里呀？",
           "rate_pct": -10,
-          "pitch_hz": 30,
+          "pitch_hz": 10,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -742,7 +742,7 @@
         {
           "text": "呼…",
           "rate_pct": 6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 420,
           "marks": []
@@ -750,7 +750,7 @@
         {
           "text": "落地成功！",
           "rate_pct": 2,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -773,7 +773,7 @@
         {
           "text": "唔…",
           "rate_pct": -24,
-          "pitch_hz": 12,
+          "pitch_hz": -4,
           "volume_pct": -12,
           "gap_ms": 700,
           "marks": [
@@ -783,7 +783,7 @@
         {
           "text": "我没有睡着哦。",
           "rate_pct": -26,
-          "pitch_hz": 14,
+          "pitch_hz": -4,
           "volume_pct": -12,
           "gap_ms": 0,
           "marks": [
@@ -807,7 +807,7 @@
         {
           "text": "今天好开心呀！",
           "rate_pct": 0,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -831,7 +831,7 @@
         {
           "text": "和你在一起，",
           "rate_pct": 16,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "volume_pct": 6,
           "gap_ms": 187,
           "marks": []
@@ -839,7 +839,7 @@
         {
           "text": "每天都好开心。",
           "rate_pct": 12,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -862,7 +862,7 @@
         {
           "text": "有点难过…",
           "rate_pct": -8,
-          "pitch_hz": 14,
+          "pitch_hz": -5,
           "volume_pct": -10,
           "gap_ms": 0,
           "marks": [
@@ -885,7 +885,7 @@
         {
           "text": "诶？",
           "rate_pct": 10,
-          "pitch_hz": 42,
+          "pitch_hz": 12,
           "volume_pct": 12,
           "gap_ms": 224,
           "marks": [
@@ -896,7 +896,7 @@
         {
           "text": "真的吗！",
           "rate_pct": 12,
-          "pitch_hz": 46,
+          "pitch_hz": 14,
           "volume_pct": 16,
           "gap_ms": 0,
           "marks": [
@@ -920,7 +920,7 @@
         {
           "text": "让我想想…",
           "rate_pct": 2,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -943,7 +943,7 @@
         {
           "text": "好困…",
           "rate_pct": -12,
-          "pitch_hz": 12,
+          "pitch_hz": -4,
           "volume_pct": -12,
           "gap_ms": 700,
           "marks": []
@@ -951,7 +951,7 @@
         {
           "text": "晚安。",
           "rate_pct": -16,
-          "pitch_hz": 14,
+          "pitch_hz": -4,
           "volume_pct": -12,
           "gap_ms": 0,
           "marks": [
@@ -974,7 +974,7 @@
         {
           "text": "电话接通啦，",
           "rate_pct": -6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 220,
           "marks": [
@@ -984,7 +984,7 @@
         {
           "text": "我在听哦。",
           "rate_pct": -10,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -1008,7 +1008,7 @@
         {
           "text": "终于等到你的电话啦，",
           "rate_pct": -6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 220,
           "marks": [
@@ -1018,7 +1018,7 @@
         {
           "text": "我一直在等你呢。",
           "rate_pct": -16,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -1043,7 +1043,7 @@
         {
           "text": "下次再聊呀。",
           "rate_pct": -16,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -1068,7 +1068,7 @@
         {
           "text": "我们更熟了一点呢。",
           "rate_pct": -10,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -1092,7 +1092,7 @@
         {
           "text": "我们熟起来啦，",
           "rate_pct": -6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 220,
           "marks": [
@@ -1102,7 +1102,7 @@
         {
           "text": "以后多找我玩吧！",
           "rate_pct": -10,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -1126,7 +1126,7 @@
         {
           "text": "好像离你越来越近了呢，",
           "rate_pct": -6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 220,
           "marks": [
@@ -1136,7 +1136,7 @@
         {
           "text": "我会一直在。",
           "rate_pct": -4,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -1160,7 +1160,7 @@
         {
           "text": "我们是最好的朋友啦，",
           "rate_pct": -12,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 8,
           "gap_ms": 220,
           "marks": [
@@ -1171,7 +1171,7 @@
         {
           "text": "说好了哦！",
           "rate_pct": -10,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 0,
           "gap_ms": 0,
           "marks": [
@@ -1185,7 +1185,7 @@
   "samples": [
     {
       "index": 1,
-      "label": "晓伊-标准（现在用的，用户判为偏青年）",
+      "label": "晓伊-原调（★ 语感档现在的默认，不变调）",
       "voice": "zh-CN-XiaoyiNeural",
       "pitch": "+0Hz",
       "rate": "+0%",
@@ -1195,61 +1195,61 @@
     },
     {
       "index": 2,
-      "label": "晓伊-升15Hz",
+      "label": "晓伊-微升6Hz（年龄感略降，仍自然）",
       "voice": "zh-CN-XiaoyiNeural",
-      "pitch": "+15Hz",
+      "pitch": "+6Hz",
       "rate": "+0%",
-      "file": "characters/xiaoxun/voice/samples/02_Xiaoyi_up15Hz_up0pct.mp3",
+      "file": "characters/xiaoxun/voice/samples/02_Xiaoyi_up6Hz_up0pct.mp3",
       "text": "你好呀，我是小寻！今天也一起加油吧，累了就靠过来休息一会儿，我陪着你哦。",
       "bytes": 44928
     },
     {
       "index": 3,
-      "label": "晓伊-升25Hz（语感档默认的年龄点）",
+      "label": "晓伊-升12Hz（能听出变亮，边界附近）",
       "voice": "zh-CN-XiaoyiNeural",
-      "pitch": "+25Hz",
+      "pitch": "+12Hz",
       "rate": "+0%",
-      "file": "characters/xiaoxun/voice/samples/03_Xiaoyi_up25Hz_up0pct.mp3",
+      "file": "characters/xiaoxun/voice/samples/03_Xiaoyi_up12Hz_up0pct.mp3",
       "text": "你好呀，我是小寻！今天也一起加油吧，累了就靠过来休息一会儿，我陪着你哦。",
       "bytes": 44928
     },
     {
       "index": 4,
-      "label": "晓伊-升35Hz（更萌）",
+      "label": "晓伊-升18Hz（⚠ 开始发尖）",
       "voice": "zh-CN-XiaoyiNeural",
-      "pitch": "+35Hz",
+      "pitch": "+18Hz",
       "rate": "+0%",
-      "file": "characters/xiaoxun/voice/samples/04_Xiaoyi_up35Hz_up0pct.mp3",
+      "file": "characters/xiaoxun/voice/samples/04_Xiaoyi_up18Hz_up0pct.mp3",
       "text": "你好呀，我是小寻！今天也一起加油吧，累了就靠过来休息一会儿，我陪着你哦。",
       "bytes": 44928
     },
     {
       "index": 5,
-      "label": "晓伊-升45Hz（接近童声，可能失真）",
+      "label": "晓伊-升30Hz（⚠⚠ 小黄人/鼠来宝，留作反例对照）",
       "voice": "zh-CN-XiaoyiNeural",
-      "pitch": "+45Hz",
+      "pitch": "+30Hz",
       "rate": "+0%",
-      "file": "characters/xiaoxun/voice/samples/05_Xiaoyi_up45Hz_up0pct.mp3",
+      "file": "characters/xiaoxun/voice/samples/05_Xiaoyi_up30Hz_up0pct.mp3",
       "text": "你好呀，我是小寻！今天也一起加油吧，累了就靠过来休息一会儿，我陪着你哦。",
       "bytes": 44928
     },
     {
       "index": 6,
-      "label": "晓伊-升25Hz-快8%（活泼）",
+      "label": "晓伊-原调-快8%（靠语速求活泼，不动音高）",
       "voice": "zh-CN-XiaoyiNeural",
-      "pitch": "+25Hz",
+      "pitch": "+0Hz",
       "rate": "+8%",
-      "file": "characters/xiaoxun/voice/samples/06_Xiaoyi_up25Hz_up8pct.mp3",
+      "file": "characters/xiaoxun/voice/samples/06_Xiaoyi_up0Hz_up8pct.mp3",
       "text": "你好呀，我是小寻！今天也一起加油吧，累了就靠过来休息一会儿，我陪着你哦。",
       "bytes": 41616
     },
     {
-      "index": 10,
-      "label": "晓晓-升25Hz（对照组：成年女声抬上去是什么味道）",
+      "index": 7,
+      "label": "晓晓-原调（对照：另一个女声底子）",
       "voice": "zh-CN-XiaoxiaoNeural",
-      "pitch": "+25Hz",
+      "pitch": "+0Hz",
       "rate": "+0%",
-      "file": "characters/xiaoxun/voice/samples/10_Xiaoxiao_up25Hz_up0pct.mp3",
+      "file": "characters/xiaoxun/voice/samples/07_Xiaoxiao_up0Hz_up0pct.mp3",
       "text": "你好呀，我是小寻！今天也一起加油吧，累了就靠过来休息一会儿，我陪着你哦。",
       "bytes": 44928
     }
@@ -1274,19 +1274,19 @@
         {
           "text": "今天也一起加油吧，",
           "rate_pct": -6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "gap_ms": 220
         },
         {
           "text": "我就在这儿，",
           "rate_pct": 6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "gap_ms": 220
         },
         {
           "text": "一直陪着你。",
           "rate_pct": -4,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "gap_ms": 0
         }
       ]
@@ -1301,19 +1301,19 @@
         {
           "text": "今天也一起加油吧，",
           "rate_pct": 4,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "gap_ms": 187
         },
         {
           "text": "我就在这儿，",
           "rate_pct": 16,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "gap_ms": 187
         },
         {
           "text": "一直陪着你。",
           "rate_pct": 6,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "gap_ms": 0
         }
       ]
@@ -1328,19 +1328,19 @@
         {
           "text": "今天也一起加油吧，",
           "rate_pct": -12,
-          "pitch_hz": 24,
+          "pitch_hz": 2,
           "gap_ms": 297
         },
         {
           "text": "我就在这儿，",
           "rate_pct": 0,
-          "pitch_hz": 24,
+          "pitch_hz": 2,
           "gap_ms": 297
         },
         {
           "text": "一直陪着你。",
           "rate_pct": -10,
-          "pitch_hz": 32,
+          "pitch_hz": 8,
           "gap_ms": 0
         }
       ]
@@ -1350,24 +1350,24 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/angry.mp3",
-      "bytes": 36957,
+      "bytes": 35949,
       "segments": [
         {
           "text": "今天也一起加油吧，",
           "rate_pct": 8,
-          "pitch_hz": 28,
+          "pitch_hz": 4,
           "gap_ms": 154
         },
         {
           "text": "我就在这儿，",
           "rate_pct": 20,
-          "pitch_hz": 28,
+          "pitch_hz": 4,
           "gap_ms": 154
         },
         {
           "text": "一直陪着你。",
           "rate_pct": 10,
-          "pitch_hz": 34,
+          "pitch_hz": 8,
           "gap_ms": 0
         }
       ]
@@ -1382,19 +1382,19 @@
         {
           "text": "今天也一起加油吧，",
           "rate_pct": -16,
-          "pitch_hz": 14,
+          "pitch_hz": -3,
           "gap_ms": 319
         },
         {
           "text": "我就在这儿，",
           "rate_pct": -4,
-          "pitch_hz": 14,
+          "pitch_hz": -3,
           "gap_ms": 319
         },
         {
           "text": "一直陪着你。",
           "rate_pct": -14,
-          "pitch_hz": 14,
+          "pitch_hz": -5,
           "gap_ms": 0
         }
       ]
@@ -1409,19 +1409,19 @@
         {
           "text": "今天也一起加油吧，",
           "rate_pct": -24,
-          "pitch_hz": 12,
+          "pitch_hz": -4,
           "gap_ms": 396
         },
         {
           "text": "我就在这儿，",
           "rate_pct": -12,
-          "pitch_hz": 12,
+          "pitch_hz": -4,
           "gap_ms": 396
         },
         {
           "text": "一直陪着你。",
           "rate_pct": -22,
-          "pitch_hz": 14,
+          "pitch_hz": -4,
           "gap_ms": 0
         }
       ]
@@ -1439,7 +1439,7 @@
         {
           "text": "今天也一起加油吧，",
           "rate_pct": -6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 220,
           "marks": [
@@ -1449,7 +1449,7 @@
         {
           "text": "我就在这儿，",
           "rate_pct": 6,
-          "pitch_hz": 18,
+          "pitch_hz": 0,
           "volume_pct": 0,
           "gap_ms": 220,
           "marks": []
@@ -1457,7 +1457,7 @@
         {
           "text": "一直陪着你。",
           "rate_pct": -4,
-          "pitch_hz": 24,
+          "pitch_hz": 4,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -1482,7 +1482,7 @@
         {
           "text": "今天也一起加油吧，",
           "rate_pct": 4,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "volume_pct": 6,
           "gap_ms": 187,
           "marks": [
@@ -1492,7 +1492,7 @@
         {
           "text": "我就在这儿，",
           "rate_pct": 16,
-          "pitch_hz": 32,
+          "pitch_hz": 5,
           "volume_pct": 6,
           "gap_ms": 187,
           "marks": []
@@ -1500,7 +1500,7 @@
         {
           "text": "一直陪着你。",
           "rate_pct": 6,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 14,
           "gap_ms": 0,
           "marks": [
@@ -1525,7 +1525,7 @@
         {
           "text": "咚——！",
           "rate_pct": 22,
-          "pitch_hz": 36,
+          "pitch_hz": 6,
           "volume_pct": 8,
           "gap_ms": 240,
           "marks": []
@@ -1533,7 +1533,7 @@
         {
           "text": "好痛呀，",
           "rate_pct": 4,
-          "pitch_hz": 36,
+          "pitch_hz": 6,
           "volume_pct": 16,
           "gap_ms": 176,
           "marks": [
@@ -1544,7 +1544,7 @@
         {
           "text": "你是想把我敲成扁扁的吗？",
           "rate_pct": 18,
-          "pitch_hz": 46,
+          "pitch_hz": 14,
           "volume_pct": 8,
           "gap_ms": 0,
           "marks": [
@@ -1569,7 +1569,7 @@
         {
           "text": "摸这么多次…",
           "rate_pct": 0,
-          "pitch_hz": 24,
+          "pitch_hz": 2,
           "volume_pct": -8,
           "gap_ms": 567,
           "marks": []
@@ -1577,7 +1577,7 @@
         {
           "text": "我、",
           "rate_pct": 0,
-          "pitch_hz": 24,
+          "pitch_hz": 2,
           "volume_pct": -8,
           "gap_ms": 216,
           "marks": []
@@ -1585,7 +1585,7 @@
         {
           "text": "我会害羞的啦！",
           "rate_pct": -16,
-          "pitch_hz": 32,
+          "pitch_hz": 8,
           "volume_pct": -8,
           "gap_ms": 0,
           "marks": [
@@ -1610,7 +1610,7 @@
         {
           "text": "今天好开心呀！",
           "rate_pct": 0,
-          "pitch_hz": 46,
+          "pitch_hz": 12,
           "volume_pct": 6,
           "gap_ms": 0,
           "marks": [
@@ -1635,7 +1635,7 @@
         {
           "text": "唔…",
           "rate_pct": -24,
-          "pitch_hz": 12,
+          "pitch_hz": -4,
           "volume_pct": -12,
           "gap_ms": 700,
           "marks": [
@@ -1645,7 +1645,7 @@
         {
           "text": "我没有睡着哦。",
           "rate_pct": -26,
-          "pitch_hz": 14,
+          "pitch_hz": -4,
           "volume_pct": -12,
           "gap_ms": 0,
           "marks": [
@@ -1663,19 +1663,7 @@
   "failed": [
     {
       "kind": "sample",
-      "label": "晓萌-标准（免费通道可能没有，会自动跳过）",
-      "voice": "zh-CN-XiaomengNeural",
-      "error": "合成失败（zh-CN-XiaomengNeural / 你好呀，我是小寻！今天也一起加油…）：NoAudioReceived: No audio was received. Please verify that your parameters are correct."
-    },
-    {
-      "kind": "sample",
-      "label": "晓双-童声（同上，可能跳过）",
-      "voice": "zh-CN-XiaoshuangNeural",
-      "error": "合成失败（zh-CN-XiaoshuangNeural / 你好呀，我是小寻！今天也一起加油…）：NoAudioReceived: No audio was received. Please verify that your parameters are correct."
-    },
-    {
-      "kind": "sample",
-      "label": "晓悠-童声（同上，可能跳过）",
+      "label": "晓悠-童声（edge 免费通道没有，会自动跳过；Azure Dragon HD 上有）",
       "voice": "zh-CN-XiaoyouNeural",
       "error": "合成失败（zh-CN-XiaoyouNeural / 你好呀，我是小寻！今天也一起加油…）：NoAudioReceived: No audio was received. Please verify that your parameters are correct."
     }
