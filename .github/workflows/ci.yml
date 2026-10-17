@@ -22,10 +22,24 @@ jobs:
         run: python3 tools/selfcheck_repo.py --root . --strict
 
       - name: 编译（核心代码零告警）
+        shell: bash
         run: |
+          # set -o pipefail：原来没有这行，编译**报错**会被 tee 吞掉（退出码变成 tee 的 0），
+          # 只有 warning 才拦得住。顺便把失败内容用 ::error:: 打成注解 ——
+          # 日志要下载才看得到，注解在网页和 `gh run view` 里直接能读。
+          set -o pipefail
           make clean
-          make build/test_core 2>&1 | tee /tmp/build.log
-          ! grep -q "warning:" /tmp/build.log
+          if ! make build/test_core 2>&1 | tee /tmp/build.log; then
+            echo "::error::编译失败（下面是日志末尾）"
+            tail -30 /tmp/build.log | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          fi
+          if grep -q "warning:" /tmp/build.log; then
+            echo "::error::编译有告警（CI 口径是零告警）"
+            grep -B1 -A3 "warning:" /tmp/build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          fi
+          echo "零告警通过：$(grep -c . /tmp/build.log) 行输出"
 
       - name: 单元测试
         run: make test
