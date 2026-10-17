@@ -17,6 +17,10 @@ LDLIBS     = -lm -pthread   # 渲染分块用线程（T30.2）
 BUILD      = build
 
 CORE_SRC   = $(wildcard src/core/*.c)
+# ★ 头文件也要当依赖：原来只写了 .c，**改 .h 不会触发重编** ——
+#   2026-10-17 做 T47.1 的负向对照时踩到：把 zphys2.h 里的常量改坏，
+#   测试照样全绿（根本没重编），差点把一条没牙的闸当成有牙的。
+CORE_HDR   = $(wildcard src/core/*.h)
 CORE_OBJ   = $(patsubst src/%.c,$(BUILD)/%.o,$(CORE_SRC))
 
 ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/ziglang/zig 2>/dev/null | head -1)
@@ -32,7 +36,7 @@ $(BUILD)/%.o: src/%.c
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 
 # ---------------------------------------------------------------- 单元测试
-$(BUILD)/test_core: tests/test_core.c $(CORE_SRC)
+$(BUILD)/test_core: tests/test_core.c $(CORE_SRC) $(CORE_HDR)
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) $(INC) -o $@ tests/test_core.c $(CORE_SRC) $(LDLIBS)
 
@@ -41,7 +45,7 @@ test: $(BUILD)/test_core
 	@./$(BUILD)/test_core .
 
 # ---------------------------------------------------------------- 预览服务
-$(BUILD)/zhuochong_preview: src/headless/main_headless.c $(CORE_SRC)
+$(BUILD)/zhuochong_preview: src/headless/main_headless.c $(CORE_SRC) $(CORE_HDR)
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) $(INC) -o $@ src/headless/main_headless.c $(CORE_SRC) $(LDLIBS)
 
@@ -59,7 +63,7 @@ selfcheck:
 	@python3 tools/selfcheck_repo.py --root .
 
 # 带地址消毒器跑一遍单测：越界读写、释放后使用、内存泄漏都会当场炸出来
-$(BUILD)/test_core_asan: tests/test_core.c $(CORE_SRC)
+$(BUILD)/test_core_asan: tests/test_core.c $(CORE_SRC) $(CORE_HDR)
 	@mkdir -p $(BUILD)
 	$(CC) -std=c11 -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer \
 		-Wall -Wextra -Wno-unused-parameter -pthread $(INC) -o $@ tests/test_core.c $(CORE_SRC) $(LDLIBS)

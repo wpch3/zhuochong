@@ -3200,6 +3200,77 @@ def check_prosody(root):
         check("演出引擎自检全过", r.returncode == 0, tail[0].strip())
 
 
+# --------------------------------------------------- 7c 物理内核 2.0（T47.1）
+def check_phys2(root):
+    """粒子摆链：参考实现和金标准对得上、两边常量一致、链条参数在官方区间内。
+
+    为什么要这道闸：物理这种东西"看着像在动"根本不算对。差一个系数只是
+    "摆得小一点"，眼睛分不出来，但以后导入别人的 physics3.json 就全错。
+    所以把 Python 参考实现 + 600 步金标准钉成常设闸（C 侧对拍在 test_core 里）。
+    """
+    section("物理 2.0：粒子摆链的参考实现与金标准对得上（T47.1）")
+    ref = os.path.join(root, "tools", "physics_ref.py")
+    gold = os.path.join(root, "tests", "data", "phys2_golden.json")
+    hdr = os.path.join(root, "src", "core", "zphys2.h")
+    if not check("参考实现在（tools/physics_ref.py）", os.path.exists(ref), "T47.1 的对拍基准"):
+        return
+    if not check("金标准在（tests/data/phys2_golden.json）", os.path.exists(gold),
+                 "C 单测 test_phys2 逐步对拍用的就是它"):
+        return
+    g = jsonc(gold)
+    steps = g.get("steps", [])
+    check("金标准够长（≥600 步）", len(steps) >= 600, f"{len(steps)} 步")
+
+    # ① 参考实现重算一遍必须和金标准一致（防"改了算法忘了重生成"）
+    r = subprocess.run([sys.executable, ref, "--verify"], capture_output=True, text=True,
+                       cwd=root)
+    tail = (r.stdout or "").strip().splitlines()[-1:] or [""]
+    check("参考实现与金标准一致", r.returncode == 0, tail[0].strip())
+
+    # ② C 与 Python 的常量必须一字不差，否则两边算的不是同一个模型
+    hs = io.open(hdr, encoding="utf-8").read() if os.path.exists(hdr) else ""
+    rs = io.open(ref, encoding="utf-8").read()
+    pairs = []
+    for name, c_macro, py_name in (("FPS", "ZPHYS2_FPS", "FPS"),
+                                   ("空气阻力", "ZPHYS2_AIR_RESISTANCE", "AIR_RESISTANCE"),
+                                   ("吸附阈值", "ZPHYS2_THRESHOLD", "THRESHOLD")):
+        mc = re.search(r"#define\s+%s\s+([0-9.]+)" % c_macro, hs)
+        mp = re.search(r"(?m)^%s\s*=\s*([0-9.]+)" % py_name, rs)
+        cv = float(mc.group(1)) if mc else None
+        pv = float(mp.group(1)) if mp else None
+        if cv is None or pv is None or abs(cv - pv) > 1e-12:
+            pairs.append(f"{name} C={cv} py={pv}")
+    check("C 与 Python 的物理常量一致", not pairs,
+          "；".join(pairs) if pairs else "FPS / 空气阻力 / 吸附阈值 三项都对得上")
+
+    # ③ 链条参数要落在官方区间：Mobility 0.7~0.99、Radius 沿链递减或持平。
+    #    金标准自己先受约束，rig 里将来写的 physics2 段也一起查（T47.2 之后会有）。
+    chains = [("tests/data/phys2_golden.json", g.get("particles", []))]
+    for rig_p in sorted(glob.glob("characters/*/forms/*/rig.json", root_dir=root)):
+        rig = jsonc(os.path.join(root, rig_p))
+        for ch in (rig.get("physics2") or []):
+            chains.append((f"{rig_p}:{ch.get('id', '?')}",
+                           [[v.get("radius", 0), v.get("mobility", 0),
+                             v.get("delay", 1), v.get("acceleration", 1)]
+                            for v in (ch.get("vertices") or [])]))
+    bad_mob, bad_rad = [], []
+    for name, verts in chains:
+        prev = None
+        for i, v in enumerate(verts):
+            if i == 0:
+                continue          # 根粒子没有摆长，也不参与积分
+            rad, mob = float(v[0]), float(v[1])
+            if not (0.7 <= mob <= 0.99):
+                bad_mob.append(f"{name}#{i} mobility={mob}")
+            if prev is not None and rad > prev + 1e-9:
+                bad_rad.append(f"{name}#{i} radius {prev}→{rad} 变长了")
+            prev = rad
+    check("Mobility 都在 0.7~0.99（官方编辑器的区间）", not bad_mob,
+          "；".join(bad_mob[:3]) if bad_mob else f"{len(chains)} 条链")
+    check("Radius 沿链递减或持平（根硬梢软）", not bad_rad,
+          "；".join(bad_rad[:3]) if bad_rad else "没有越往梢越长的链")
+
+
 # ------------------------------------------------------------------ 8 仓库卫生
 def check_hygiene(root):
     section("仓库卫生：素材没漏提交 + 没有巨型文件 + 日志没进库")
@@ -3257,6 +3328,7 @@ def main():
                check_ambient_sway,
                check_effects_table,
                check_prosody,
+               check_phys2,
                check_tools, check_hygiene):
         try:
             fn(root)

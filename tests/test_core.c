@@ -23,6 +23,7 @@
 #include "../src/core/zpet.h"
 #include "../src/core/zconfig.h"
 #include "../src/core/zrig.h"
+#include "../src/core/zphys2.h"
 #include "../src/core/zinteract.h"
 #include "../src/core/zgateway.h"
 
@@ -5727,6 +5728,176 @@ static void test_mask_multi(void)
 
 /* 眨眼随情绪漂移 + 单边嘴角通道（T44.2）。
    这两件事是一起做的：都来自 T44.1 的盘点结论，都属于"微表情"。 */
+/* ─────────────────────── 物理内核 2.0：2D 粒子摆链（T47.1） ───────────────────────
+   三块：① 和 Python 参考实现逐步对拍（金标准 600 步，容差 1e-6）；
+         ② 行为判据 —— 输入停了还在摆、只有呼吸也在摆（旧内核这两处都是 0）；
+         ③ 固定步长的不变性 —— 同样的总时长，拆成大小不同的帧，结果必须一致。 */
+static void test_phys2(void)
+{
+    SECTION("物理 2.0：2D 粒子摆链（T47.1，和 Python 参考实现对拍）");
+    {
+        char path[1024];
+        zerr e;
+        zjson *g, *steps, *parts, *grav;
+        zphys2 ch;
+        int i, k, np, ns;
+        double gx, gy, worst_pos = 0.0, worst_ang = 0.0;
+
+        z_snprintf(path, sizeof(path), "%s/tests/data/phys2_golden.json", g_root);
+        zerr_clear(&e);
+        g = zjson_parse_file(path, &e);
+        CHECK(g != NULL, "金标准 phys2_golden.json 应能读到（%s）", e.msg[0] ? e.msg : path);
+        if (!g) return;
+
+        parts = zjson_get(g, "particles");
+        steps = zjson_get(g, "steps");
+        grav  = zjson_get(g, "gravity");
+        np = parts ? (int)zjson_count(parts) : 0;
+        ns = steps ? (int)zjson_count(steps) : 0;
+        gx = zjson_num(zjson_at(grav, 0), 0.0);
+        gy = zjson_num(zjson_at(grav, 1), 1.0);
+        CHECK(np >= 2 && ns >= 600, "金标准要有 >=2 个粒子、>=600 步（实际 %d / %d）", np, ns);
+        /* 常量必须和 C 侧一致，否则两边算的根本不是同一个模型 */
+        CHECK(zjson_num(zjson_get(g, "air_resistance"), 0.0) == ZPHYS2_AIR_RESISTANCE,
+              "空气阻力常量两边要一致");
+        CHECK(zjson_num(zjson_get(g, "fps"), 0.0) == ZPHYS2_FPS, "固定步长 FPS 两边要一致");
+        if (np < 2 || ns < 600) { zjson_free(g); return; }
+
+        zphys2_init(&ch, np);
+        for (i = 1; i < np; ++i) {
+            zjson *q = zjson_at(parts, (size_t)i);
+            zphys2_set(&ch, i, zjson_num(zjson_at(q, 0), 0.0), zjson_num(zjson_at(q, 1), 0.0),
+                       zjson_num(zjson_at(q, 2), 0.0), zjson_num(zjson_at(q, 3), 0.0));
+        }
+        zphys2_reset(&ch, gx, gy);
+
+        for (k = 0; k < ns; ++k) {
+            zjson *row = zjson_at(steps, (size_t)k);
+            zjson *in = zjson_get(row, "in"), *pos = zjson_get(row, "pos"), *ang = zjson_get(row, "ang");
+            zphys2_step(&ch, zjson_num(zjson_at(in, 0), 0.0), zjson_num(zjson_at(in, 1), 0.0),
+                        zjson_num(zjson_at(in, 2), 0.0), gx, gy, 0.0, 0.0, ZPHYS2_STEP);
+            for (i = 0; i < np; ++i) {
+                zjson *pp = zjson_at(pos, (size_t)i);
+                double ex = zjson_num(zjson_at(pp, 0), 0.0), ey = zjson_num(zjson_at(pp, 1), 0.0);
+                double d1 = fabs(ch.p[i].x - ex), d2 = fabs(ch.p[i].y - ey);
+                if (d1 > worst_pos) worst_pos = d1;
+                if (d2 > worst_pos) worst_pos = d2;
+            }
+            for (i = 1; i < np; ++i) {
+                double d = fabs(zphys2_angle(&ch, i, gx, gy, 0) -
+                                zjson_num(zjson_at(ang, (size_t)(i - 1)), 0.0));
+                if (d > worst_ang) worst_ang = d;
+            }
+        }
+        /* 1e-6 是规划里写死的验收口径：差一个系数、少一次归一化，这里立刻就红。 */
+        CHECK(worst_pos < 1e-6, "600 步逐步对拍：位置最大偏差 %.3e 应 < 1e-6", worst_pos);
+        CHECK(worst_ang < 1e-6, "600 步逐步对拍：摆角最大偏差 %.3e 应 < 1e-6", worst_ang);
+        zjson_free(g);
+    }
+
+    /* ② 行为判据：这才是用户说的"真实的物理效果" */
+    {
+        zphys2 ch;
+        int k;
+        double peak_stop = 0.0, peak_breath = 0.0, peak_settle = 0.0, t;
+        zphys2_init(&ch, 4);
+        zphys2_set(&ch, 1, 24.0, 0.95, 1.0, 1.0);
+        zphys2_set(&ch, 2, 18.0, 0.92, 1.1, 1.0);
+        zphys2_set(&ch, 3, 12.0, 0.88, 1.2, 0.9);
+        zphys2_reset(&ch, 0.0, 1.0);
+
+        for (k = 0; k < 200; ++k) {              /* 转头 3.3 秒 */
+            t = k * ZPHYS2_STEP;
+            zphys2_step(&ch, 8.0 * sin(2.0 * 3.14159265358979 * 0.8 * t), 0.0,
+                        6.0 * sin(2.0 * 3.14159265358979 * 0.8 * t), 0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+        }
+        for (k = 200; k < 300; ++k) {            /* 输入彻底归零：必须还在摆 */
+            double a;
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+            a = fabs(zphys2_angle(&ch, 3, 0.0, 1.0, 0));
+            if (a > peak_stop) peak_stop = a;
+        }
+        CHECK(peak_stop > 1.0,
+              "输入归零后发梢仍要摆（峰值 %.3f° 应 > 1°）—— 旧内核输出的是滞后量，这里恒为 0", peak_stop);
+
+        for (k = 300; k < 400; ++k) {            /* 再等 1.7 秒：必须收敛，不能自激 */
+            double a;
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+            a = fabs(zphys2_angle(&ch, 3, 0.0, 1.0, 0));
+            if (a > peak_settle) peak_settle = a;
+        }
+        CHECK(peak_settle < peak_stop * 0.5,
+              "没有输入时必须衰减（后一秒峰值 %.3f° 要小于前一秒 %.3f° 的一半）—— 不许自激",
+              peak_settle, peak_stop);
+
+        for (k = 400; k < 600; ++k) {            /* 只剩呼吸：0.28Hz、±1.2px */
+            double a;
+            t = k * ZPHYS2_STEP;
+            zphys2_step(&ch, 1.2 * sin(2.0 * 3.14159265358979 * 0.28 * t), 0.0, 0.0,
+                        0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+            if (k >= 480) {
+                a = fabs(zphys2_angle(&ch, 3, 0.0, 1.0, 0));
+                if (a > peak_breath) peak_breath = a;
+            }
+        }
+        CHECK(peak_breath > 0.3,
+              "只有呼吸（0.28Hz ±1.2px）时发梢仍要有摆角（峰值 %.3f° 应 > 0.3°）—— "
+              "旧内核在这里实测只有 0.3px 的滞后量，等于不动", peak_breath);
+    }
+
+    /* ③ 重力方向：没有输入时摆必须停在重力那一侧，而不是回到初始方向 */
+    {
+        zphys2 ch;
+        int k;
+        double ex, ey;
+        zphys2_init(&ch, 3);
+        zphys2_set(&ch, 1, 20.0, 0.9, 1.0, 1.0);
+        zphys2_set(&ch, 2, 20.0, 0.9, 1.0, 1.0);
+        zphys2_reset(&ch, 0.0, 1.0);
+        for (k = 0; k < 600; ++k)                /* 重力改成"向右下 45°" */
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.7071067811865476, 0.7071067811865476,
+                        0.0, 0.0, ZPHYS2_STEP);
+        ex = ch.p[2].x - ch.p[1].x;
+        ey = ch.p[2].y - ch.p[1].y;
+        CHECK(ex > 8.0 && ey > 8.0,
+              "重力指向右下时，摆也要垂向右下（末端相对父粒子 dx=%.2f dy=%.2f 都该是正的）", ex, ey);
+        CHECK(fabs(zphys2_angle(&ch, 2, 0.7071067811865476, 0.7071067811865476, 0)) < 2.0,
+              "稳定之后摆角相对重力方向应接近 0（实际 %.3f°）",
+              zphys2_angle(&ch, 2, 0.7071067811865476, 0.7071067811865476, 0));
+    }
+
+    /* ④ 固定步长不变性：同样 2 秒，一边 60fps 一边 15fps，结果必须几乎一样。
+          这条是 G113 的回归 —— 一帧积一大步会把惯性放大好几倍（用户报过的抽搐）。 */
+    {
+        zphys2 a, b;
+        int k;
+        double t, da;
+        zphys2_init(&a, 3); zphys2_init(&b, 3);
+        for (k = 1; k <= 2; ++k) {
+            zphys2_set(&a, k, 20.0, 0.93, 1.0, 1.0);
+            zphys2_set(&b, k, 20.0, 0.93, 1.0, 1.0);
+        }
+        zphys2_reset(&a, 0.0, 1.0);
+        zphys2_reset(&b, 0.0, 1.0);
+        for (k = 0; k < 120; ++k) {              /* 60fps：120 帧 = 2 秒 */
+            t = k / 60.0;
+            zphys2_advance(&a, 10.0 * sin(2.0 * 3.14159265358979 * 0.7 * t), 0.0, 0.0,
+                           0.0, 1.0, 0.0, 0.0, 1.0 / 60.0);
+        }
+        for (k = 0; k < 30; ++k) {               /* 15fps：30 帧 = 2 秒（每帧 4 个子步） */
+            t = k / 15.0;
+            zphys2_advance(&b, 10.0 * sin(2.0 * 3.14159265358979 * 0.7 * t), 0.0, 0.0,
+                           0.0, 1.0, 0.0, 0.0, 1.0 / 15.0);
+        }
+        da = fabs(zphys2_out(&a, 2) - zphys2_out(&b, 2));
+        CHECK(da < 12.0,
+              "60fps 与 15fps 跑同样 2 秒，末端摆角差 %.2f° 应在同一量级（<12°）—— "
+              "固定步长在兜底；写成\"整帧 dt 单步积分\"的话这里会炸开", da);
+        CHECK(fabs(zphys2_out(&a, 2)) < 90.0 && fabs(zphys2_out(&b, 2)) < 90.0,
+              "两边都不许发散（%.2f° / %.2f°）", zphys2_out(&a, 2), zphys2_out(&b, 2));
+    }
+}
+
 static void test_micro_expression(void)
 {
     SECTION("微表情通道：眨眼随情绪漂移 + 单边嘴角 ParamMouthX（T44.2）");
@@ -5888,6 +6059,7 @@ int main(int argc, char **argv)
     test_sparkle_trigger();
     test_eye_variants();
     test_micro_expression();
+    test_phys2();
     test_eye_aperture();
     test_image();
     test_deflate();

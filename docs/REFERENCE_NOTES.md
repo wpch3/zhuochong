@@ -3004,3 +3004,53 @@ ph->out_cur = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
 MiniMax HD ≈ **¥0.21**，Azure HD ≈ **$0.013**。
 ⇒ **选型不该被渲染成本左右**，真正要算钱的是以后"每句话实时合成"那一步。
 
+---
+
+## 第四十四批（2026-10-17 查）—— 直接读官方物理源码，核对 T47.1 的实现
+
+> 前三批关于物理的资料都是**教程与社区文章**（第四十批）。做内核不能只靠转述，
+> 所以这一批是直接把官方实现拉下来逐行比对的。
+> 取法：`https://api.github.com/repos/Live2D/CubismNativeFramework/contents/src/Physics/CubismPhysics.cpp`
+> （`raw.githubusercontent.com` 不在沙箱白名单里，但 api.github.com 的 contents 接口返回 base64，能读）。
+
+### 44.1 `UpdateParticles()` 的真实步骤（照抄顺序）
+
+```
+strand[0].Position = totalTranslation                     ← 根粒子被输入直接拖走，不积分
+currentGravity     = RadianToDirection(DegreesToRadian(totalAngle)).Normalize()
+for i in 1..n-1:
+    Force        = currentGravity * Acceleration + windDirection
+    LastPosition = Position
+    delay        = Delay * dt * 30.0                      ← 那个 30 是硬编码的
+    direction    = Position − strand[i-1].Position
+    radian       = DirectionToRadian(LastGravity, currentGravity) / airResistance
+    direction    = rotate(direction, radian)
+    Position     = strand[i-1].Position + direction
+    Position    += Velocity*delay + Force*delay*delay
+    Position     = strand[i-1].Position + normalize(Position − strand[i-1].Position) * Radius
+    if |Position.X| < thresholdValue: Position.X = 0      ← 官方承认的"小输入会被吸附"
+    if delay != 0: Velocity = (Position − LastPosition)/delay * Mobility
+    LastGravity  = currentGravity
+```
+
+要点三条：
+1. **输出是角度不是位移**：`GetOutputAngle()` = `DirectionToRadian(parentGravity, translation)`。
+2. `thresholdValue` 实际传进去的是 `MovementThreshold × NormalizationPosition.Maximum`
+   —— 它是**模型单位**；我们的位置直接用像素，所以 T47.5 导入时要按归一化最大值换算。
+3. `RadianToDirection(a) = (sin a, cos a)` ⇒ 角度为 0 时"重力"指向 **+Y**，
+   而 `Meta.EffectiveForces.Gravity` 写的是 `(0,−1)` —— **SDK 在粒子更新里并不读那个值**，
+   方向完全由 `totalAngle` 决定。我们的内核把重力显式做成参数（为了后面的风与惯性），
+   但**旋向对齐官方**（见 DC77）。
+
+### 44.2 官方源码里的一处变量覆盖（我们不抄，DC77）
+
+```cpp
+direction.X = ((CosF(radian) * direction.X) - (direction.Y * SinF(radian)));
+direction.Y = ((SinF(radian) * direction.X) + (direction.Y * CosF(radian)));   // ← 用了新的 X
+```
+
+第二行用的是**上一行刚写回去的** `direction.X`。重力方向不变时 `radian = 0`
+（cos=1、sin=0）两种写法一样，所以这个 bug 在官方模型上基本看不出来；
+但一旦做风 / 拖动惯性（重力方向持续变化）就会偏。我们实现成正确的旋转，
+并在 `tools/physics_ref.py` 用同样写法对拍。
+
