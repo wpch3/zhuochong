@@ -3220,6 +3220,11 @@ def check_phys2(root):
     g = jsonc(gold)
     steps = g.get("steps", [])
     check("金标准够长（≥600 步）", len(steps) >= 600, f"{len(steps)} 步")
+    # "在本地存在"不等于"进了库"：.gitignore 的 data/ 曾经把 tests/data/ 一起吞掉，
+    # 结果本地全绿、CI 一 checkout 就红。存在性检查必须配一条"真的被 git 跟踪"。
+    tracked = set(l for l in git(root, "ls-files", "tests/data").splitlines() if l)
+    check("金标准进了库（不是只躺在本地）", "tests/data/phys2_golden.json" in tracked,
+          f"tests/data 下被跟踪 {len(tracked)} 个文件")
 
     # ① 参考实现重算一遍必须和金标准一致（防"改了算法忘了重生成"）
     r = subprocess.run([sys.executable, ref, "--verify"], capture_output=True, text=True,

@@ -2868,3 +2868,20 @@ $(BUILD)/test_core: tests/test_core.c $(CORE_SRC)      # 只有 .c，没有 .h
       **构建系统的依赖不全 = 所有闸门的可信度打折**。这次顺手把
       `test_core` / `test_core_asan` / `zhuochong_preview` 三个目标的头文件依赖都补了。
 
+### 203 `.gitignore` 写 `data/` 会连 `tests/data/` 一起吞掉（2026-10-17）
+
+T47.1 的 600 步金标准放在 `tests/data/phys2_golden.json`，本地一切全绿 ——
+`make check` 498 项、单测 840 项，连新加的闸都报"金标准在"。
+推上去 CI 第一步就红：**那个文件根本没进库**。
+`.gitignore` 第 9 行写的是 `data/`（本意是忽略预览进程写的 `./data/usage.jsonl`），
+而 gitignore 的目录模式**匹配任意层级** ⇒ `tests/data/` 一起被吞。
+`git add -A` 不报错、`git status` 干干净净，所以本地完全看不出来。
+
+⇒ 三条：
+   1. **忽略规则要锚定**：只想忽略仓库根的那个目录就写 `/data/`，不要写 `data/`。
+   2. **"文件存在"不等于"文件进了库"**：新增夹具/金标准之后，
+      闸里要加一条 `git ls-files` 的检查（已加进 `check_phys2`）。
+      这和 LESSONS 199 那条"存在性检查不等于内容检查"是同一类。
+   3. 这次是 CI 救的场 —— 而 CI 几个小时前才刚修绿（LESSONS 201）。
+      **红着的 CI 不只是难看，它是会漏掉真事故的。**
+

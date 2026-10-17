@@ -6,7 +6,10 @@ build/
 
 # 运行期数据（只存本机，不入库）
 logs/
-data/
+# ★ 只忽略仓库根的 data/（预览进程写的 usage.jsonl 之类）。
+#   原来写成 data/ 会**连 tests/data/ 一起吞掉** —— 2026-10-17 做 T47.1 时，
+#   600 步金标准就这么被悄悄忽略了：本地全绿、CI 一 checkout 就红（文件根本没提交）。
+/data/
 config/settings.json
 
 # 工具缓存
