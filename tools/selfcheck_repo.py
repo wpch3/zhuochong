@@ -1842,12 +1842,23 @@ def check_live2d(root):
               "长发 layer %d vs 最低的身体件 %d" % (_lh["layer"], _minb))
         check("长发跟着头转（组是 head）（%s）" % _tag, _lh.get("group") == "head",
               "group=%r —— 层号管遮挡、组管跟谁动，后发必须挂 head" % _lh.get("group"))
-        _seg = [x for x in _rig.get("physics", []) if x.get("part") == "acc_hair_long"]
-        _stiff = [float(x["stiffness"]) for x in _seg]
-        check("长发是 3 段摆、而且逐段变软（%s）" % _tag,
-              len(_seg) >= 3 and all(a > b for a, b in zip(_stiff, _stiff[1:])),
-              "%d 段，刚度 %s（長い後ろ髪は3段振り子）"
-              % (len(_seg), "/".join("%.0f" % v for v in _stiff)))
+        # 2026-10-17（T47.2）：长发已经从旧弹簧摆迁到物理 2.0 的粒子链上。
+        # "逐段变软"的口径也跟着换 —— 旧的看 stiffness 递减，
+        # 新的看官方那两个旋钮：摆长 Radius 递减（根长梢短）+ 反応速度 Delay 递减。
+        _ch = next((c for c in _rig.get("physics2", [])
+                    if c.get("part") == "acc_hair_long"), None)
+        if check("长发挂的是物理 2.0 的摆链（%s）" % _tag, _ch is not None,
+                 "没有 → 要么没迁，要么迁错了部件"):
+            _pt = _ch["particles"][1:]
+            _rad = [float(x["radius"]) for x in _pt]
+            _dly = [float(x.get("delay", 1.0)) for x in _pt]
+            check("长发是 3 段摆、而且逐段变软（%s）" % _tag,
+                  len(_pt) >= 3
+                  and all(a > b for a, b in zip(_rad, _rad[1:]))
+                  and all(a >= b for a, b in zip(_dly, _dly[1:])),
+                  "%d 段，摆长 %s，反応速度 %s（長い後ろ髪は3段振り子）"
+                  % (len(_pt), "/".join("%.0f" % v for v in _rad),
+                     "/".join("%.2f" % v for v in _dly)))
 
     # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
     # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。
@@ -3257,7 +3268,7 @@ def check_phys2(root):
             chains.append((f"{rig_p}:{ch.get('id', '?')}",
                            [[v.get("radius", 0), v.get("mobility", 0),
                              v.get("delay", 1), v.get("acceleration", 1)]
-                            for v in (ch.get("vertices") or [])]))
+                            for v in (ch.get("particles") or [])]))
     bad_mob, bad_rad = [], []
     for name, verts in chains:
         prev = None
@@ -3274,6 +3285,88 @@ def check_phys2(root):
           "；".join(bad_mob[:3]) if bad_mob else f"{len(chains)} 条链")
     check("Radius 沿链递减或持平（根硬梢软）", not bad_rad,
           "；".join(bad_rad[:3]) if bad_rad else "没有越往梢越长的链")
+
+
+def check_phys2_rig(root):
+    """物理 2.0 的**接线**：摆角到底写没写到部件上（T47.2）。
+
+    §7c 守的是"内核算得对"，这一段守的是"接对了地方"：
+    算得再准，输出倍率写错、旧摆没删干净、两套内核打在同一个通道上，
+    画面照样是错的 —— 而这种错**眼睛看不出来**，只会觉得"怪怪的"。
+    """
+    section("物理 2.0：摆链接到部件上（T47.2 输出适配层）")
+    hdr = os.path.join(root, "src", "core", "zrig.c")
+    if not os.path.isfile(hdr):
+        return
+    src = io.open(hdr, encoding="utf-8").read()
+    m = re.search(r"#define\s+ZRIG_MAX_PHYS2\s+(\d+)", src)
+    m2 = re.search(r"#define\s+ZRIG_MAX_P2_OUT\s+(\d+)", src)
+    cap_ch = int(m.group(1)) if m else 0
+    cap_out = int(m2.group(1)) if m2 else 0
+    check("引擎声明了摆链上限（超了要报错，不能静默截断）", cap_ch > 0 and cap_out > 0,
+          f"ZRIG_MAX_PHYS2={cap_ch} ZRIG_MAX_P2_OUT={cap_out}")
+
+    rigs = sorted(glob.glob("characters/*/forms/*/rig.json", root_dir=root))
+    n_chain = 0
+    bad_cap, bad_out, bad_root, bad_scale, no_breath, dup = [], [], [], [], [], []
+    for rig_p in rigs:
+        rig = jsonc(os.path.join(root, rig_p))
+        pids = {p["id"] for p in rig.get("parts", [])}
+        dids = {d["id"] for d in rig.get("deformers", [])}
+        chains = rig.get("physics2") or []
+        if len(chains) > cap_ch:
+            bad_cap.append(f"{rig_p} {len(chains)}>{cap_ch}")
+        # 同一个部件同一个通道被两套内核一起写 = 叠加，画面会多摆一倍
+        old_ch = {(x.get("part"), x.get("deformer") or x.get("param", "bend_x"))
+                  for x in rig.get("physics", [])}
+        for ch in chains:
+            n_chain += 1
+            parts = ch.get("particles") or []
+            if not parts or float(parts[0].get("radius", 1)) != 0.0:
+                bad_root.append(f"{rig_p}:{ch.get('id')}")
+            outs = ch.get("outputs") or []
+            if not outs or len(outs) > cap_out:
+                bad_cap.append(f"{rig_p}:{ch.get('id')} outputs={len(outs)}")
+            for o in outs:
+                tgt = o.get("part", ch.get("part"))
+                if o.get("deformer"):
+                    if o["deformer"] not in dids:
+                        bad_out.append(f"{rig_p}:{ch.get('id')}→{o['deformer']}")
+                elif tgt not in pids:
+                    bad_out.append(f"{rig_p}:{ch.get('id')}→{tgt}")
+                if not float(o.get("scale", 1)) or float(o.get("max", 0)) <= 0:
+                    bad_scale.append(f"{rig_p}:{ch.get('id')} scale={o.get('scale')} "
+                                     f"max={o.get('max')}")
+                key = (o.get("deformer") and (tgt, o["deformer"])) or \
+                      (tgt, o.get("param", "bend_x"))
+                if key in old_ch:
+                    dup.append(f"{rig_p}:{ch.get('id')} 和旧摆抢 {key}")
+            # ★ T47.2 的那句承诺：呼吸要混进物理输入，静止时才有东西推着它晃。
+            srcs = [i.get("param") for i in (ch.get("input") or [])]
+            if "ParamBreath" not in srcs:
+                no_breath.append(f"{rig_p}:{ch.get('id')}")
+    check("摆链条数/输出条数都没超引擎上限", not bad_cap, "；".join(bad_cap[:3]) or
+          f"{n_chain} 条链")
+    check("每条输出都指得到真实的部件或形变器", not bad_out,
+          "；".join(bad_out[:3]) or "全部能解析")
+    check("每条链的 particles[0] 是根（radius=0，不积分）", not bad_root,
+          "；".join(bad_root[:3]) or f"{n_chain} 条链")
+    check("倍率非零、限幅为正（倍率 0 = 这条输出白接）", not bad_scale,
+          "；".join(bad_scale[:3]) or "全部有效")
+    check("没有和旧摆抢同一个通道（两套内核叠加 = 摆双倍）", not dup,
+          "；".join(dup[:3]) or "新旧内核各写各的")
+    check("每条链都把呼吸混进了物理输入（静止时也活着的唯一来源）", not no_breath,
+          "；".join(no_breath[:3]) or f"{n_chain} 条链都接了 ParamBreath")
+
+    # 迁过去的旧条目必须删干净，不能两份都留着
+    teen = os.path.join(root, "characters/xiaoxun/forms/teen/rig.json")
+    if os.path.isfile(teen):
+        rig = jsonc(teen)
+        olds = {x.get("id") for x in rig.get("physics", [])}
+        gone = {"ahoge_x", "ahoge_tip", "longhair_x", "longhair_mid_p", "longhair_tip_p"}
+        check("迁到物理 2.0 的那几条旧弹簧摆已经删干净", not (olds & gone),
+              "还留着：%s" % "、".join(sorted(olds & gone)) if (olds & gone)
+              else "呆毛 2 条 + 长发 3 条已换成 2 条粒子链")
 
 
 # ------------------------------------------------------------------ 8 仓库卫生
@@ -3334,6 +3427,7 @@ def main():
                check_effects_table,
                check_prosody,
                check_phys2,
+               check_phys2_rig,
                check_tools, check_hygiene):
         try:
             fn(root)

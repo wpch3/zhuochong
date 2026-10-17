@@ -4979,30 +4979,6 @@
       "note": "上身追赶头部的惯性滞后；输出是 pos-target，静止归零"
     },
     {
-      "id": "ahoge_x",
-      "part": "hair_ahoge",
-      "driver": "head",
-      "axis": "x",
-      "param": "bend_x",
-      "curve": "root",
-      "ratio": 0.5,
-      "stiffness": 42,
-      "damping": 5.0,
-      "max": 8,
-      "note": "呆毛左右甩：根在底边，所以曲线用 root"
-    },
-    {
-      "id": "ahoge_tip",
-      "part": "hair_ahoge",
-      "driver": "ahoge_x",
-      "deformer": "ahoge_s",
-      "ratio": 0.9,
-      "stiffness": 26,
-      "damping": 3.4,
-      "max": 1.0,
-      "note": "呆毛第二段（梢）：串在 ahoge_x 后面，驱动 S 形形变器"
-    },
-    {
       "id": "ahoge_y",
       "part": "hair_ahoge",
       "driver": "head",
@@ -5473,41 +5449,6 @@
       "damping": 8.4,
       "max": 3,
       "note": "兜帽戴在头上，是**跟着头走**的硬件，不是吊着的软件 —— 所以刚度给到 74（猫耳 52、尾巴 18）、行程只有 3px。教程口径「軽いものほど揺れやすく、早く収まる」，布越厚越贴头越不该晃；而且它和脸挨着，晃大了会穿帮。没有自主摆动通道（ambient）—— 兜帽不会自己动，它只跟随。"
-    },
-    {
-      "id": "longhair_x",
-      "part": "acc_hair_long",
-      "driver": "head",
-      "axis": "x",
-      "param": "bend_x",
-      "curve": "tip",
-      "ratio": 0.55,
-      "stiffness": 26,
-      "damping": 5.6,
-      "max": 16,
-      "note": "第一段（根）：整条头发跟着头甩。刚度 26 远低于兜帽 74、猫耳 52 —— 教程：「固い髪は反応速度を大きく、ボブや**長い後ろ髪などゆったりした揺れは小さく**」。行程 16px 也是四件挂件里最大的（头发最长最软）"
-    },
-    {
-      "id": "longhair_mid_p",
-      "part": "acc_hair_long",
-      "driver": "longhair_x",
-      "deformer": "longhair_mid",
-      "ratio": 0.85,
-      "stiffness": 18,
-      "damping": 3.8,
-      "max": 1.0,
-      "note": "第二段（中段）：串在第一段后面，再慢一拍"
-    },
-    {
-      "id": "longhair_tip_p",
-      "part": "acc_hair_long",
-      "driver": "longhair_mid_p",
-      "deformer": "longhair_tip",
-      "ratio": 0.9,
-      "stiffness": 11,
-      "damping": 2.9,
-      "max": 1.0,
-      "note": "第三段（发梢）：串在第二段后面，最慢最软（ζ=2.9/(2√11)=0.44，落在社区推荐的「収束の速さ 0.4 前後」）。長い後ろ髪は**3段振り子** —— ugoiraman / itodaneko 两家都是这么做的"
     }
   ],
   "params": [
@@ -6982,6 +6923,133 @@
       "from": "seg_foot_r",
       "to": "seg_foot_r_tip",
       "note": "常态鞋 → 踮脚鞋（鞋身拉长 30px、鞋底带压扁）"
+    }
+  ],
+  "physics2": [
+    {
+      "id": "ahoge2",
+      "part": "hair_ahoge",
+      "driver": "head",
+      "angle_input": [
+        {
+          "param": "ParamAngleZ",
+          "weight": 0.3
+        }
+      ],
+      "input": [
+        {
+          "param": "ParamBreath",
+          "wx": 1.4,
+          "wy": -0.8
+        }
+      ],
+      "input_max": 20,
+      "input_rate": 300,
+      "particles": [
+        {
+          "radius": 0,
+          "note": "根：钉在发根，被头带着走"
+        },
+        {
+          "radius": 30,
+          "mobility": 0.95,
+          "delay": 1.2,
+          "acceleration": 1.0
+        },
+        {
+          "radius": 20,
+          "mobility": 0.92,
+          "delay": 1.08,
+          "acceleration": 1.2
+        }
+      ],
+      "outputs": [
+        {
+          "particle": 1,
+          "param": "bend_x",
+          "curve": "root",
+          "scale": 1.1,
+          "max": 8,
+          "note": "整根呆毛左右甩。max 8 和旧的 ahoge_x 一样，所以同一个转头动作下的像素行程是同量级的"
+        },
+        {
+          "particle": 2,
+          "deformer": "ahoge_s",
+          "scale": 0.06,
+          "max": 1.0,
+          "note": "梢再慢半拍，甩出 S 形（旧的 ahoge_tip 干的活）"
+        }
+      ],
+      "note": "呆毛（T47.2 第一条迁过来的链）。短、硬、反应快 —— 教程口径「固い髪は反応速度を大きく」"
+    },
+    {
+      "id": "longhair2",
+      "part": "acc_hair_long",
+      "driver": "head",
+      "input": [
+        {
+          "param": "ParamBreath",
+          "wx": 1.8,
+          "wy": -0.8
+        }
+      ],
+      "angle_input": [
+        {
+          "param": "ParamAngleZ",
+          "weight": 0.3
+        }
+      ],
+      "input_max": 30,
+      "input_rate": 300,
+      "particles": [
+        {
+          "radius": 0,
+          "note": "根：发旋。被 head 组带着走，不积分"
+        },
+        {
+          "radius": 48,
+          "mobility": 0.95,
+          "delay": 1.0,
+          "acceleration": 1.0
+        },
+        {
+          "radius": 36,
+          "mobility": 0.93,
+          "delay": 0.88,
+          "acceleration": 1.1
+        },
+        {
+          "radius": 26,
+          "mobility": 0.9,
+          "delay": 0.76,
+          "acceleration": 1.2
+        }
+      ],
+      "outputs": [
+        {
+          "particle": 1,
+          "param": "bend_x",
+          "scale": 1.7,
+          "max": 16,
+          "note": "第一段（根）：整条头发跟着头甩。max 16 沿用旧的 longhair_x，所以同一个转头动作下像素行程同量级",
+          "curve": "tip"
+        },
+        {
+          "particle": 2,
+          "deformer": "longhair_mid",
+          "scale": 0.1,
+          "max": 1.0,
+          "note": "第二段（中段）：再慢一拍"
+        },
+        {
+          "particle": 3,
+          "deformer": "longhair_tip",
+          "scale": 0.075,
+          "max": 1.0,
+          "note": "第三段（发梢）：最慢最软"
+        }
+      ],
+      "note": "长发 3 段摆链（T47.2 从旧内核迁过来）。旧的三条弹簧摆 longhair_x/mid_p/tip_p 输出的是滞后量，人一静止就恒等于 0；换成 2D 粒子链之后输出是摆角，呼吸那点 0.28Hz 的微动也能一直把它推着晃。四个旋钮照抄官方编辑器：長さ=radius（48/36/26，根硬梢软）、揺れやすさ=mobility（0.95/0.93/0.90）、反応速度=delay、収束の速さ=acceleration。長い後ろ髪は**3段振り子** —— ugoiraman / itodaneko 两家都是这么做的；刚度最低（頭發最長最软）这条原则现在体现为 delay 最小"
     }
   ],
   "param_groups": [

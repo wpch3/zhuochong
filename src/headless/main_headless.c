@@ -613,6 +613,32 @@ static void handle_request(zsock fd, const http_req *r)
                             i ? "," : "", xid ? xid : "?",
                             zpet_phys_output(g_pet, xid));
         }
+        /* 物理 2.0 的摆链（T47.2）。两组数：
+             "<链>.<粒子>" = 这一节的**摆角（度）**，输入不动它也不为零 —— 这就是"活着"；
+             "<链>#<第几条输出>" = 翻译成通道之后**真正写出去的值**（像素或形变量）。
+           冒烟判据（静置 10 秒发梢仍有 ≥2px 自主摆动）量的就是后者。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "},\"physics2\":{");
+        {
+            int first = 1, k, np, no;
+            for (i = 0; i < zpet_phys2_count(g_pet); ++i) {
+                const char *cid = zpet_phys2_id_at(g_pet, i);
+                if (!cid) continue;
+                np = zpet_phys2_particles(g_pet, cid);
+                for (k = 1; k < np; ++k) {
+                    p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s.%d\":%.5f",
+                                    first ? "" : ",", cid, k,
+                                    zpet_phys2_angle(g_pet, cid, k));
+                    first = 0;
+                }
+                no = zpet_phys2_out_count(g_pet, cid);
+                for (k = 0; k < no; ++k) {
+                    p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s#%d\":%.5f",
+                                    first ? "" : ",", cid, k,
+                                    zpet_phys2_applied(g_pet, cid, k));
+                    first = 0;
+                }
+            }
+        }
         z_snprintf(p, cap - (size_t)(p - body), "}}");
         UNLOCK();
         send_text(fd, 200, "application/json", body);

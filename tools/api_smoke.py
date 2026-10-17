@@ -869,6 +869,41 @@ def run(base, root):
               "ParamHairLong=%s" % pj.get("ParamHairLong", {}).get("effective"))
         a.hit("/api/param?all=1&reset=1")
 
+    # ★★ 物理 2.0（T47.2）：摆角接到部件上之后，最关键的那条判据 ——
+    #    **不碰任何输入，静置 10 秒，发梢还在自己摆**。
+    #    旧内核在这里是死的：输出是"滞后量 pos−target"，输入不动就恒等于 0，
+    #    画面上那点晃全是 motion 动作在演（用户 2026-10-17：「目前还没有真实的物理效果」）。
+    p2 = (a.json("/api/info.json") or {}).get("physics2") or {}
+    check("info.json 暴露物理 2.0 的摆链（摆角 + 真正写出去的值）",
+          any(k.startswith("longhair2") for k in p2), " ".join(sorted(p2)[:4]))
+    if any(k.startswith("longhair2") for k in p2):
+        a.hit("/api/param?all=1&reset=1")
+        a.hit("/api/ambient?on=0")                 # 环境摆动关掉，免得它替物理背书
+        a.hit("/api/param?id=ParamHairLong&v=1")
+        a.hit("/api/step?n=180&dt=0.0167")         # 先让摆链落定
+        # 发梢在画面上走了多远 = 整片头发的 bend(px) + 两张网格的 amount × 各自振幅
+        #（振幅取自 attachments.json：中段 6.2px、发梢 15.0px）
+        def _tip():
+            q = (a.json("/api/info.json") or {}).get("physics2") or {}
+            return ((q.get("longhair2#0") or 0.0)
+                    + (q.get("longhair2#1") or 0.0) * 6.2
+                    + (q.get("longhair2#2") or 0.0) * 15.0)
+        lo = hi = _tip()
+        for _ in range(60):                        # 60 × 10 帧 ≈ 10 秒
+            a.hit("/api/step?n=10&dt=0.0167")
+            v = _tip()
+            lo, hi = min(lo, v), max(hi, v)
+        check("静置 10 秒，长发发梢仍有 >=2px 的自主摆动（旧内核这里恒为 0）",
+              hi - lo >= 2.0, "行程 %.2fpx（%.2f ~ %.2f）" % (hi - lo, lo, hi))
+        # 关掉物理总开关之后必须立刻归零 —— 排查接缝时两套内核要一起静音
+        a.hit("/api/physics?on=0"); a.hit("/api/step?n=6&dt=0.0167")
+        q = (a.json("/api/info.json") or {}).get("physics2") or {}
+        check("关掉物理后摆链输出归零",
+              abs(q.get("longhair2#0") or 0.0) < 1e-6,
+              "longhair2#0=%.6f" % (q.get("longhair2#0") or 0.0))
+        a.hit("/api/physics?on=1"); a.hit("/api/ambient?on=1")
+        a.hit("/api/param?all=1&reset=1")
+
     # 后发第二段（T46.1）：转头之后，第二段（发梢）必须被第一段带起来。
     # 这验的是**物理链接上了**（back_x → back_tip → back_s），
     # 形状上的约束（头顶剪影不许动、比侧发软）是静态性质，由 selfcheck 第㉔段守。
@@ -997,10 +1032,16 @@ def run(base, root):
         check("info.json 带互斥组表", len(g.get("entries", [])) >= 2,
               "%s: %s" % (g["id"], ",".join(g.get("entries", []))))
         a.hit("/api/pause?on=1")
+        # 眼睛必须先按住睁开再比画面：这一组档位比的是**眼高光**，
+        # 要是刚好冻在一次眨眼上（闭眼 0.3 秒，每 2~8 秒一次），三个档位
+        # 渲出来一模一样，闸就红一次 —— 2026-10-17 在 `make check` 里真红过，
+        # 单跑 smoke 又是绿的。这种"按概率红"的闸比没有闸还糟。
+        a.hit("/api/blink?v=0")
         shots = {}
         for ent in g["entries"] + ["none"]:
             a.hit("/api/pose?group=%s&id=%s" % (g["id"], ent))
             shots[ent], _ = a.frame_hash()
+        a.hit("/api/blink?v=auto")
         check("每个档位画面都不一样", len(set(shots.values())) == len(shots),
               " ".join("%s=%s" % (k, v[:6]) for k, v in shots.items()))
         cur = [x for x in a.json("/api/info.json")["poses"] if x["id"] == g["id"]][0]

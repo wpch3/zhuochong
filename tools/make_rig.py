@@ -850,7 +850,30 @@ def attach_emit(rig, base, base_root):
         # 第一段的 driver 是父组；后面每段的 driver 是上一段的 id
         # （zrig.c:210 多段摆 G16：driver 写另一条 physics 的 id 时，
         #   输入就是上一段的输出，而且下标必须比自己小，所以顺序不能乱）。
-        for seg_ in ph["segments"]:
+        # —— 物理 2.0 的摆链（T47.2）——
+        # 挂件表里写 "chain" 就走新内核（输出摆角），写 "segments" 走旧的弹簧摆。
+        # 两边可以并存一阵子（DC67），但同一个部件别同时挂两套，会叠加。
+        ch_ = ph.get("chain")
+        if ch_:
+            ent = {"id": ch_["id"], "part": pid}
+            if "driver" in ch_:
+                ent["driver"] = ch_["driver"]
+            for k in ("input", "angle_input", "input_max", "input_rate"):
+                if k in ch_:
+                    ent[k] = ch_[k]
+            ent["particles"] = ch_["particles"]
+            outs = []
+            for o_ in ch_["outputs"]:
+                e = dict(o_)
+                # 部件通道要带形变曲线：和旧摆一样，取挂件/插槽声明的那条
+                if "param" in e and "curve" not in e:
+                    e["curve"] = att.get("curve", slot["curve"])
+                outs.append(e)
+            ent["outputs"] = outs
+            ent["note"] = ch_["note"]
+            rig.setdefault("physics2", []).append(ent)
+
+        for seg_ in ph.get("segments", []):
             e = {"id": seg_["id"], "part": pid}
             # input（参数直驱）优先于 driver（跟某个组）—— 引擎也是这个优先级
             # （zrig.c:1050「有它就不看 driver」）。悬垂挂件靠它混入呼吸，
@@ -2692,16 +2715,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "input": [{"param": "ParamAngleZ", "weight": 1.0}],
              "ratio": 0.10, "stiffness": 22, "damping": 5.5, "max": 3.0,
              "note": "上身追赶头部的惯性滞后；输出是 pos-target，静止归零"},
-            {"id": "ahoge_x", "part": "hair_ahoge", "driver": "head", "axis": "x",
-             "param": "bend_x", "curve": "root",
-             "ratio": 0.5, "stiffness": 42, "damping": 5.0, "max": 8,
-             "note": "呆毛左右甩：根在底边，所以曲线用 root"},
-            # G16 多段摆：第二段的输入是第一段的输出（不是头的位移），
-            # 输出写进 S 形网格形变器 → 发根先动、发梢再慢半拍地甩出 S 形。
-            {"id": "ahoge_tip", "part": "hair_ahoge", "driver": "ahoge_x",
-             "deformer": "ahoge_s",
-             "ratio": 0.9, "stiffness": 26, "damping": 3.4, "max": 1.0,
-             "note": "呆毛第二段（梢）：串在 ahoge_x 后面，驱动 S 形形变器"},
+            # ★ 呆毛的左右甩**已经迁到物理 2.0**（T47.2），见下面的 rig["physics2"]。
+            #   旧的 ahoge_x / ahoge_tip 两条弹簧摆删掉了：它们输出的是"滞后量"，
+            #   人一停下就恒等于 0。上下点头（ahoge_y）还留在旧内核上 ——
+            #   那是纵向弹跳，2D 摆链沿重力方向本来就不产生摆角，换过去没有意义。
             {"id": "ahoge_y", "part": "hair_ahoge", "driver": "head", "axis": "y",
              "param": "bend_y", "curve": "root",
              "ratio": 0.45, "stiffness": 55, "damping": 6.0, "max": 5,
@@ -2749,6 +2766,43 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "from": f"seg_foot_{side}", "to": f"seg_foot_{side}_tip",
             "note": "常态鞋 → 踮脚鞋（鞋身拉长 %.0fpx、鞋底带压扁）" % footp["lift_px"],
         } for side in ("l", "r")] if footp else []),
+        # ★★ 物理 2.0 的摆链（T47.2）：官方那种 2D 粒子链，输出是**摆角**。
+        # 和上面那张 physics 表的区别，一句话：
+        #   physics  输出 = pos − target（滞后量）⇒ 输入不动，输出必然是 0 ⇒ 人一静止就死了；
+        #   physics2 输出 = 摆相对重力的角度      ⇒ 重力常在，呼吸那点微动也能一直推着它晃。
+        # 四个旋钮的名字照抄官方编辑器（DC70）：
+        #   radius=長さ  mobility=揺れやすさ(0.7~0.99)  delay=反応速度  acceleration=収束の速さ
+        "physics2": [
+            {
+                "id": "ahoge2", "part": "hair_ahoge", "driver": "head",
+                # 歪头时呆毛要往反方向倒一点（官方 Input Type=Angle 的用法）。
+                # 权重只给 0.3：头本身已经转了 ParamAngleZ×0.5，这里只补"头发没跟上"的那份。
+                "angle_input": [{"param": "ParamAngleZ", "weight": 0.3}],
+                # 呼吸混进物理输入 —— 社区那条著名配方。它在官方引擎成立、在旧内核不成立
+                # （旧的输出是滞后量，0.28Hz 的呼吸摆锤完全跟得上，差值≈0，实测只摆 0.3px）。
+                # 换成摆角之后它才真的有用：这是"静止时也活着"的唯一来源（T47.3 的风是第二个）。
+                "input": [{"param": "ParamBreath", "wx": 1.4, "wy": -0.8}],
+                # 输入限幅 = 官方 Normalization 在像素空间的等价物。
+                # 没有它的话，参数一瞬跳（比如调试端点把 ParamAngleX 从 −30 打到 +30）
+                # 发根单帧瞬移上百像素，摆会被甩过头顶转圈（实测单帧 179°）。
+                "input_max": 20, "input_rate": 300,
+                "particles": [
+                    {"radius": 0, "note": "根：钉在发根，被头带着走"},
+                    {"radius": 30, "mobility": 0.95, "delay": 1.2, "acceleration": 1.0},
+                    {"radius": 20, "mobility": 0.92, "delay": 1.08, "acceleration": 1.2},
+                ],
+                "outputs": [
+                    {"particle": 1, "param": "bend_x", "curve": "root",
+                     "scale": 1.1, "max": 8,
+                     "note": "整根呆毛左右甩。max 8 和旧的 ahoge_x 一样，"
+                             "所以同一个转头动作下的像素行程是同量级的"},
+                    {"particle": 2, "deformer": "ahoge_s", "scale": 0.06, "max": 1.0,
+                     "note": "梢再慢半拍，甩出 S 形（旧的 ahoge_tip 干的活）"},
+                ],
+                "note": "呆毛（T47.2 第一条迁过来的链）。短、硬、反应快 —— "
+                        "教程口径「固い髪は反応速度を大きく」",
+            },
+        ],
         # 参数分组（= model3.json 的 "Groups"）：告诉外部驱动"哪些参数归自动眨眼/口型管"。
         # Live2D SDK 就是靠这张表决定 CubismEyeBlink / CubismLipSync 去写哪几个参数的。
         "param_groups": [
@@ -3186,8 +3240,8 @@ def prune_dangling(rig):
                 keep.append(it)
             node[:] = keep
 
-    for key in ("physics", "deformers", "xfades", "poses", "regions", "actions",
-                "visemes", "expressions", "ambient", "param_groups"):
+    for key in ("physics", "physics2", "deformers", "xfades", "poses", "regions",
+                "actions", "visemes", "expressions", "ambient", "param_groups"):
         if key in rig:
             sweep(rig[key], key)
 

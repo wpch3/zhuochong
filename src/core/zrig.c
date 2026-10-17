@@ -2,6 +2,7 @@
 #include "zrig.h"
 #include "zjson.h"
 #include "zsm.h"
+#include "zphys2.h"
 
 #include <math.h>
 
@@ -29,6 +30,12 @@
 #define ZRIG_MAX_BLINK_MOOD 16    /* 眨眼情绪表上限：情绪词表现在 11 个，留一倍余量 */
 #define ZRIG_LAG_SLOTS   128     /* 行波延迟环的深度：60fps 够 2.1 秒，240fps 够 0.53 秒 */
 #define ZRIG_LAG_MAX     0.5     /* bind.lag 的上限（秒），超了报错不夹 */
+/* 物理 2.0（T47.2）：rig.json 的 "physics2" 段，一条 = 一根 2D 粒子摆链。
+   8 条的来历：现在接了呆毛 1 + 长发 1，后面排队的是尾巴 4 姿态（T50.4）、
+   侧发 2、裙子 3~5（T47.6）—— 到那时再抬，抬之前这个上限会**报错不静默截断**
+   （旧 physics 的 ZRIG_MAX_PHYS 静默丢过第 13 条，坑见 load_physics 的注释）。 */
+#define ZRIG_MAX_PHYS2     8
+#define ZRIG_MAX_P2_OUT    6     /* 一条链最多挂几个输出（粒子最多 8 个，够了） */
 #define ZRIG_MAX_XFADE     8     /* 参数驱动的交叉淡化对（踮脚鞋这类"同一部位两张姿态图"） */
 #define ZRIG_MAX_BANDS     8     /* 分块渲染最多切几条行带（= 最多用几个线程） */
 
@@ -237,6 +244,53 @@ typedef struct {
     double in_weight[4];      /* 对应权重（官方的 Input[].Weight，那边是 0..100） */
 } zphys;
 
+/* ───────── 物理 2.0：粒子摆链在 rig 里的挂法（T47.2）─────────
+   内核（`zphys2.c`）只会算"摆歪了多少度"，它不认识部件也不认识形变器。
+   这一层做的就是那句翻译：
+
+       摆角(度) ×scale → 限幅 ±max → 加到切件的 bend_x / rot_deg / 形变器 amount
+
+   `scale` 和 `max` 的名字取自官方 Output[] 的 **Scale（倍率）** 与
+   SDK 的"最大输出"，将来 T47.5 导 `physics3.json` 时一一对得上。
+
+   和旧 `zphys` 的关键差别（也就是用户说的"没有真实的物理效果"的根）：
+     旧的输出是 `pos − target`（滞后量）⇒ **输入不动，输出必然是 0**，人一停下头发就死了；
+     新的输出是**摆相对重力的角度** ⇒ 重力常在，摆有平衡位置，任何扰动都会绕着它
+     衰减振荡 —— 呼吸这种 0.28Hz ±1.2px 的微动也能一直把它推着晃。 */
+typedef struct {
+    int    particle;          /* 读第几个粒子的摆角（1 = 根下面第一节） */
+    int    part;              /* >=0 写部件通道 */
+    int    deform;            /* >=0 写形变器 amount（优先于 part） */
+    int    param;             /* P_DX … P_BEND_Y */
+    int    curve;             /* bend_* 用的形变曲线 */
+    int    inverted;          /* 官方 Output[].Reflect：参考方向取反 */
+    double scale;             /* 每度换算成多少像素 / 多少 amount */
+    double max;               /* 限幅（像素或 amount），和旧摆的 max 同口径 */
+    double applied;           /* 这一帧真正写出去的值（调试与单测读它） */
+} zp2out;
+
+typedef struct {
+    char   id[32];
+    int    part;              /* 链挂在哪个部件上（取根点；也是默认输出目标） */
+    int    driver;            /* 驱动组：根点被这个组带着走了多少像素 */
+    /* 像素输入（叠加在 driver 之上）：参数值 × 权重 → 根点位移 */
+    int    n_in;
+    int    in_param[4];
+    double in_wx[4], in_wy[4];
+    /* 角度输入（官方 Input[].Type = Angle）：参数值 × 权重 → 整条链的额外倾角（度） */
+    int    n_ain;
+    int    ain_param[4];
+    double ain_w[4];
+    /* 输入限幅（官方 Normalization 的像素空间等价物，见 p2_input 的注释） */
+    double in_max;            /* 根点位移的模长上限（像素） */
+    double in_rate;           /* 根点位移的变化速度上限（像素/秒） */
+    double in_last_x, in_last_y;
+    int    in_seen;
+    zphys2 ch;                /* 内核状态 */
+    int    nout;
+    zp2out out[ZRIG_MAX_P2_OUT];
+} zp2chain;
+
 /* 指针跟随（Live2D 的 ParamAngleX/Y/Z + ParamBodyAngleX 那一套）：
    一个 [-1,1] 的方向输入，按组配置成旋转/位移。注意它**不是动作**，
    是叠加在动作之上的姿态偏置，所以任何动作期间都能跟着指针转头。 */
@@ -404,6 +458,14 @@ struct zrig {
     int     nphys;
     double  phys_last;           /* 上一次积分的时刻，<0 = 还没开始 */
     double  phys_remain;         /* 还没消化掉的真实时间（固定步长积分的累加器） */
+
+    zp2chain p2[ZRIG_MAX_PHYS2];
+    int      np2;
+    double   p2_last;            /* 物理 2.0 上一次积分的时刻，<0 = 还没开始 */
+    /* 引擎级力场（官方 Meta.EffectiveForces，SDK 的 Options 可运行时改）。
+       像素空间 Y 向下 ⇒ 向下的重力是 (0,+1)，不是官方那个 Y 向上的 (0,−1)。
+       风默认 0；T47.3 会给它接上环境微风 / 情绪阵风 / 场景事件。 */
+    double   p2_gx, p2_gy, p2_wx, p2_wy;
     double  pose_last;           /* Pose 淡化上一次推进的时刻，<0 = 还没开始 */
 
     zsm     sm;
@@ -1203,6 +1265,221 @@ static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
         if (ph->damping < 0.0) ph->damping = 0.0;
         if (ph->max <= 0.0) ph->max = 10.0;
         r->nphys++;
+    }
+    return 0;
+}
+
+/* physics2：物理 2.0 的摆链（T47.2）。可选，没写就一条都没有。
+
+   rig.json 的样子（四个旋钮的名字**照抄官方编辑器**，DC70）：
+     "physics2": [{
+       "id": "longhair2", "part": "acc_hair_long", "driver": "head",
+       "angle_input": [{"param":"ParamAngleZ","weight":0.5}],
+       "input":       [{"param":"ParamBreath","wy":-0.8}],
+       "particles": [{"radius":0},                                   // [0] 是根，不积分
+                     {"radius":72,"mobility":0.95,"delay":0.9,"acceleration":1.0}, ...],
+       "outputs":   [{"particle":1,"param":"bend_x","curve":"root","scale":2.6,"max":16},
+                     {"particle":3,"deformer":"longhair_tip","scale":0.05,"max":1.0}]
+     }]
+
+   注意 driver 和 input 是**叠加**关系，不像旧 physics 那样二选一：
+   driver 把"这个组这一帧把根点带着走了多少像素"喂进来（动作、视线跟随、呼吸
+   全都自动算在内，不用一条条列参数），input 再补那些**只改形状不改组矩阵**的
+   参数（典型是躯干弯曲，弯曲是非仿射的，根本不在组矩阵里）。 */
+static int load_physics2(zrig *r, const zjson *jp, zdiag *d, const char *file)
+{
+    size_t i, n = zjson_count(jp);
+    if (!jp) return 0;
+    if (jp->type != ZJSON_ARR) {
+        zdiag_error(d, file, jp->line, 0, "physics2", "期望 array");
+        return -1;
+    }
+    if (n > ZRIG_MAX_PHYS2) {
+        zdiag_error(d, file, jp->line, 0, "physics2",
+                    "摆链条数 %d 超过上限 %d（必须改大 ZRIG_MAX_PHYS2，"
+                    "不能让它静默截断）", (int)n, ZRIG_MAX_PHYS2);
+        return -1;
+    }
+    for (i = 0; i < n; ++i) {
+        const zjson *cj = zjson_at(jp, i);
+        zp2chain *c = &r->p2[r->np2];
+        const char *pid = zjson_str(zjson_obj_get(cj, "part"), NULL);
+        const char *drv = zjson_str(zjson_obj_get(cj, "driver"), NULL);
+        const zjson *parts_j = zjson_obj_get(cj, "particles");
+        const zjson *outs_j  = zjson_obj_get(cj, "outputs");
+        char path[128];
+        int k, np;
+        memset(c, 0, sizeof(*c));
+        z_strlcpy(c->id, zjson_str(zjson_obj_get(cj, "id"), pid ? pid : "chain"),
+                  sizeof(c->id));
+        z_snprintf(path, sizeof(path), "physics2[%s]", c->id);
+        c->part = pid ? find_part(r, pid) : -1;
+        if (pid && c->part < 0) {
+            zdiag_error(d, file, cj ? cj->line : 0, 0, path, "part '%s' 不存在", pid);
+            return -1;
+        }
+        c->driver = drv ? find_group(r, drv) : -1;
+        if (drv && c->driver < 0) {
+            zdiag_error(d, file, cj ? cj->line : 0, 0, path, "driver '%s' 不是组", drv);
+            return -1;
+        }
+        /* 像素输入：{"param":..,"wx":..,"wy":..}；只写 weight 就等同 wx=wy=weight */
+        {
+            const zjson *ij = zjson_obj_get(cj, "input");
+            int m = ij ? (int)zjson_count((zjson *)ij) : 0;
+            if (m > 4) {
+                zdiag_error(d, file, cj ? cj->line : 0, 0, path,
+                            "input 最多 4 项（给了 %d 项）", m);
+                return -1;
+            }
+            for (k = 0; k < m; ++k) {
+                const zjson *one = zjson_at(ij, k);
+                const char *pnm = zjson_str(zjson_obj_get(one, "param"), NULL);
+                int idx = pnm ? param_find(r, pnm) : -1;
+                double w = zjson_num(zjson_obj_get(one, "weight"), 0.0);
+                if (idx < 0) {
+                    zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                "input[%d] 的参数 '%s' 不存在", k, pnm ? pnm : "(缺)");
+                    return -1;
+                }
+                c->in_param[c->n_in] = idx;
+                c->in_wx[c->n_in] = zjson_num(zjson_obj_get(one, "wx"), w);
+                c->in_wy[c->n_in] = zjson_num(zjson_obj_get(one, "wy"), w);
+                c->n_in++;
+            }
+        }
+        /* 角度输入（官方 Input[].Type = Angle），单位是度 */
+        {
+            const zjson *ij = zjson_obj_get(cj, "angle_input");
+            int m = ij ? (int)zjson_count((zjson *)ij) : 0;
+            if (m > 4) {
+                zdiag_error(d, file, cj ? cj->line : 0, 0, path,
+                            "angle_input 最多 4 项（给了 %d 项）", m);
+                return -1;
+            }
+            for (k = 0; k < m; ++k) {
+                const zjson *one = zjson_at(ij, k);
+                const char *pnm = zjson_str(zjson_obj_get(one, "param"), NULL);
+                int idx = pnm ? param_find(r, pnm) : -1;
+                if (idx < 0) {
+                    zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                "angle_input[%d] 的参数 '%s' 不存在", k, pnm ? pnm : "(缺)");
+                    return -1;
+                }
+                c->ain_param[c->n_ain] = idx;
+                c->ain_w[c->n_ain] = zjson_num(zjson_obj_get(one, "weight"), 1.0);
+                c->n_ain++;
+            }
+        }
+        /* 粒子：[0] 是根（不积分），后面每个都要有正的 radius */
+        np = parts_j ? (int)zjson_count((zjson *)parts_j) : 0;
+        if (np < 2) {
+            zdiag_error(d, file, cj ? cj->line : 0, 0, path,
+                        "particles 至少要 2 个（[0] 是根点），给了 %d 个", np);
+            return -1;
+        }
+        if (np > ZPHYS2_MAX_PARTICLES) {
+            zdiag_error(d, file, cj ? cj->line : 0, 0, path,
+                        "particles %d 个超过上限 %d", np, ZPHYS2_MAX_PARTICLES);
+            return -1;
+        }
+        zphys2_init(&c->ch, np);
+        for (k = 1; k < np; ++k) {
+            const zjson *one = zjson_at(parts_j, (size_t)k);
+            double rad = zjson_num(zjson_obj_get(one, "radius"), 0.0);
+            double mob = zjson_num(zjson_obj_get(one, "mobility"), 0.95);
+            double dly = zjson_num(zjson_obj_get(one, "delay"), 1.0);
+            double acc = zjson_num(zjson_obj_get(one, "acceleration"), 1.0);
+            if (rad <= 0.0) {
+                zdiag_error(d, file, one ? one->line : 0, 0, path,
+                            "particles[%d].radius 必须 > 0（摆长 0 = 这一节不会动）", k);
+                return -1;
+            }
+            /* 官方编辑器把「揺れやすさ」限在 0.7~0.99：低于 0.7 几乎不晃，
+               到 1.0 就不衰减了（永动机）。越界直接报错，不要悄悄夹。 */
+            if (mob < 0.7 || mob > 0.99) {
+                zdiag_error(d, file, one ? one->line : 0, 0, path,
+                            "particles[%d].mobility=%.3f 越界（官方编辑器的区间是 0.7~0.99）",
+                            k, mob);
+                return -1;
+            }
+            zphys2_set(&c->ch, k, rad, mob, dly, acc);
+        }
+        /* 输出 */
+        c->nout = 0;
+        {
+            int m = outs_j ? (int)zjson_count((zjson *)outs_j) : 0;
+            if (m < 1) {
+                zdiag_error(d, file, cj ? cj->line : 0, 0, path,
+                            "outputs 不能为空（没有输出 = 这条链白算）");
+                return -1;
+            }
+            if (m > ZRIG_MAX_P2_OUT) {
+                zdiag_error(d, file, cj ? cj->line : 0, 0, path,
+                            "outputs %d 条超过上限 %d", m, ZRIG_MAX_P2_OUT);
+                return -1;
+            }
+            for (k = 0; k < m; ++k) {
+                const zjson *one = zjson_at(outs_j, (size_t)k);
+                const char *opid = zjson_str(zjson_obj_get(one, "part"), NULL);
+                const char *dfm  = zjson_str(zjson_obj_get(one, "deformer"), NULL);
+                const char *pn   = zjson_str(zjson_obj_get(one, "param"), "bend_x");
+                const char *cv   = zjson_str(zjson_obj_get(one, "curve"), "root");
+                zp2out *o = &c->out[c->nout];
+                memset(o, 0, sizeof(*o));
+                o->particle = (int)zjson_num(zjson_obj_get(one, "particle"), (double)(np - 1));
+                if (o->particle < 1 || o->particle >= np) {
+                    zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                "outputs[%d].particle=%d 越界（这条链是 1..%d）",
+                                k, o->particle, np - 1);
+                    return -1;
+                }
+                o->part = opid ? find_part(r, opid) : c->part;
+                if (opid && o->part < 0) {
+                    zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                "outputs[%d].part '%s' 不存在", k, opid);
+                    return -1;
+                }
+                o->deform = dfm ? find_deform(r, dfm) : -1;
+                if (dfm && o->deform < 0) {
+                    zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                "outputs[%d].deformer '%s' 不存在", k, dfm);
+                    return -1;
+                }
+                if (o->deform >= 0) o->param = P_AMOUNT;
+                else if (parse_param(pn, &o->param) != 0) {
+                    zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                "outputs[%d].param 非法：%s", k, pn);
+                    return -1;
+                }
+                if (o->deform < 0 && o->part < 0) {
+                    zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                "outputs[%d] 既没有 part 也没有 deformer，没地方写", k);
+                    return -1;
+                }
+                o->curve = BEND_ROOT;
+                if (z_streq(cv, "tip")) o->curve = BEND_TIP;
+                else if (z_streq(cv, "sine")) o->curve = BEND_SINE;
+                else if (z_streq(cv, "linear")) o->curve = BEND_LINEAR;
+                o->inverted = (int)zjson_num(zjson_obj_get(one, "inverted"), 0.0) != 0;
+                o->scale = zjson_num(zjson_obj_get(one, "scale"), 1.0);
+                o->max   = zjson_num(zjson_obj_get(one, "max"), 10.0);
+                if (o->max <= 0.0) o->max = 10.0;
+                c->nout++;
+            }
+        }
+        /* 输入限幅的默认值：模长上限 = 半条链长、速度上限 300px/s。
+           为什么要有它，见 p2_input 的注释（官方靠 Normalization 天然有上限）。 */
+        {
+            double total = 0.0;
+            for (k = 1; k < np; ++k) total += c->ch.p[k].radius;
+            c->in_max  = zjson_num(zjson_obj_get(cj, "input_max"), total * 0.5);
+            c->in_rate = zjson_num(zjson_obj_get(cj, "input_rate"), 300.0);
+            if (c->in_max <= 0.0) c->in_max = total * 0.5;
+            if (c->in_rate <= 0.0) c->in_rate = 300.0;
+        }
+        zphys2_reset(&c->ch, r->p2_gx, r->p2_gy);
+        r->np2++;
     }
     return 0;
 }
@@ -2553,6 +2830,17 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
+    /* 力场要在摆链之前定好：建链时就按重力把链摆直（不然第一帧会从原点"掉"下来） */
+    {
+        const zjson *fj = zjson_obj_get(root, "forces");
+        const zjson *gj = fj ? zjson_obj_get(fj, "gravity") : NULL;
+        const zjson *wj = fj ? zjson_obj_get(fj, "wind") : NULL;
+        r->p2_gx = gj ? zjson_num(zjson_at(gj, 0), 0.0) : 0.0;
+        r->p2_gy = gj ? zjson_num(zjson_at(gj, 1), 1.0) : 1.0;
+        r->p2_wx = wj ? zjson_num(zjson_at(wj, 0), 0.0) : 0.0;
+        r->p2_wy = wj ? zjson_num(zjson_at(wj, 1), 0.0) : 0.0;
+    }
+    if (load_physics2(r, zjson_obj_get(root, "physics2"), diag, file) != 0) goto fail;
     if (load_param_groups(r, zjson_obj_get(root, "param_groups"), diag, file) != 0) goto fail;
     {   /* 口型压过表情的权重：官方 SDK 对 LipSync 用 0.8，缺省就取它 */
         const zjson *jw = zjson_obj_get(root, "viseme_weight");
@@ -2878,6 +3166,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     r->expr_cur = r->expr_prev = -1;
     r->phys_last = -1.0;
     r->phys_remain = 0.0;
+    r->p2_last = -1.0;
     r->pose_last = -1.0;
     r->look_last = -1.0;
     r->cur_id[0] = 0;
@@ -3572,6 +3861,115 @@ static void physics_update(zrig *r, double now)
     }
 }
 
+/* 摆链这一帧的输入：根点被驱动组带着走了多少像素 + 参数补的位移 + 额外倾角。
+   和旧摆的 physics_input 是同一招（拿部件锚点过一遍组矩阵），
+   差别只在**旧的二选一、这里是叠加**：组矩阵带不动的那些纯形变参数用 input 补。 */
+/* ★ 输入限幅：官方 physics3 的输入经过 Normalization 夹在 ±10「模型单位」里，
+   而摆长 Radius 也在同一套单位里（常见 5~15）—— 所以"根点一帧能跑多远"
+   天然就有上限。我们的输入是**像素**，没有这个天然上限：实测把
+   ParamAngleX 从 −30 一帧跳到 +30，发根瞬移 123px，而第一节摆长才 48px，
+   摆直接被甩过头顶 —— 单帧 179° 的翻转，那是在转圈不是在摆。
+   所以这一层补两道闸（这是 T47.2 的适配层做的，内核 zphys2 保持纯净）：
+     in_max  位移模长上限（相当于官方的 NormalizationPosition.Maximum）
+     in_rate 位移变化速度上限（像素/秒）—— 真人转头 0.25s 走 61px ≈ 244px/s，
+             300px/s 不影响正常动作，只拦住"参数瞬跳"这种非物理输入。
+   实测效果：同样的瞬跳，峰值从 179° 降到 47°，1 秒后残抖 <1°。 */
+static void p2_input(const zrig *r, zp2chain *c,
+                     double *tx, double *ty, double *ang, double dt)
+{
+    int k;
+    double len;
+    *tx = *ty = *ang = 0.0;
+    if (c->driver >= 0 && c->part >= 0) {
+        double m[6], x0 = r->parts[c->part].pos[0], y0 = r->parts[c->part].pos[1];
+        group_matrix(r, c->driver, 1.0, m);
+        *tx = (m[0] * x0 + m[2] * y0 + m[4]) - x0;
+        *ty = (m[1] * x0 + m[3] * y0 + m[5]) - y0;
+    }
+    for (k = 0; k < c->n_in; ++k) {
+        double v = param_effective(r, c->in_param[k]);
+        *tx += v * c->in_wx[k];
+        *ty += v * c->in_wy[k];
+    }
+    for (k = 0; k < c->n_ain; ++k)
+        *ang += param_effective(r, c->ain_param[k]) * c->ain_w[k];
+
+    len = sqrt((*tx) * (*tx) + (*ty) * (*ty));
+    if (c->in_max > 0.0 && len > c->in_max) {
+        *tx *= c->in_max / len;
+        *ty *= c->in_max / len;
+    }
+    if (c->in_seen && c->in_rate > 0.0 && dt > 0.0) {
+        double dx = *tx - c->in_last_x, dy = *ty - c->in_last_y;
+        double d = sqrt(dx * dx + dy * dy), cap = c->in_rate * dt;
+        if (d > cap && d > 1e-12) {
+            *tx = c->in_last_x + dx * cap / d;
+            *ty = c->in_last_y + dy * cap / d;
+        }
+    }
+    c->in_last_x = *tx;
+    c->in_last_y = *ty;
+    c->in_seen = 1;
+}
+
+/* 物理 2.0 的每帧推进 + 输出适配（T47.2）。
+   顺序上必须排在 compute_group_transforms 之后、渲染之前，和旧摆一样。
+
+   ⚠ 写通道这一段**每帧都要跑**，即使这一帧一个固定步都没走：
+     p_dx / p_rot / deform.amount 每帧清零重算，漏一帧头发就会"啪"地归位。 */
+static void physics2_update(zrig *r, double now)
+{
+    double dt;
+    int i, k;
+    if (r->np2 <= 0) return;
+    if (!r->phys_enabled) {
+        /* 关物理：链按重力摆直、输出清零。和旧摆同一个开关，排查接缝时一起关。 */
+        for (i = 0; i < r->np2; ++i) {
+            zphys2_reset(&r->p2[i].ch, r->p2_gx, r->p2_gy);
+            r->p2[i].in_seen = 0;      /* 再打开时别从旧位置猛拉一下 */
+            for (k = 0; k < r->p2[i].nout; ++k) r->p2[i].out[k].applied = 0.0;
+        }
+        r->p2_last = now;
+        return;
+    }
+    if (r->p2_last < 0.0) { r->p2_last = now; return; }
+    dt = now - r->p2_last;
+    r->p2_last = now;
+    if (dt < 0.0) dt = 0.0;
+
+    for (i = 0; i < r->np2; ++i) {
+        zp2chain *c = &r->p2[i];
+        double tx, ty, ang;
+        p2_input(r, c, &tx, &ty, &ang, dt);
+        /* 固定步长、输入插值、帧间插值都在内核里（zphys2_advance），这里只喂输入 */
+        zphys2_advance(&c->ch, tx, ty, ang,
+                       r->p2_gx, r->p2_gy, r->p2_wx, r->p2_wy, dt);
+        for (k = 0; k < c->nout; ++k) {
+            zp2out *o = &c->out[k];
+            /* 这就是 T47.2 的那句翻译：摆角(度) × 倍率 → 限幅 → 写进通道 */
+            double v = zphys2_out(&c->ch, o->particle) * o->scale;
+            if (o->inverted) v = -v;
+            v = ZC_CLAMP(v, -o->max, o->max);
+            o->applied = v;
+            if (o->deform >= 0 && o->deform < r->ndeforms) {
+                r->deforms[o->deform].amount += v;
+                continue;
+            }
+            if (o->part < 0) continue;
+            switch (o->param) {
+                case P_DX:  r->p_dx[o->part]  += v; break;
+                case P_DY:  r->p_dy[o->part]  += v; break;
+                case P_ROT: r->p_rot[o->part] += v; break;
+                case P_BEND_Y:
+                    r->p_bendy[o->part] += v; r->p_bendcy[o->part] = o->curve; break;
+                case P_BEND_X:
+                default:
+                    r->p_bendx[o->part] += v; r->p_bendcx[o->part] = o->curve; break;
+            }
+        }
+    }
+}
+
 /* 求组的完整矩阵（含父链） */
 /* 子组跟随父部件的形变：把组的枢轴换算到被跟随部件的源图纵坐标，取同一条曲线的权重，
    得到"这一高度上部件被推了多远"，组就跟着推多远。
@@ -3818,6 +4216,65 @@ const char *zrig_phys_id(const zrig *r, int i)
     return (r && i >= 0 && i < r->nphys) ? r->phys[i].id : NULL;
 }
 
+/* ---- 物理 2.0 的读数口（调试端点与单测用）---- */
+int zrig_phys2_count(const zrig *r) { return r ? r->np2 : 0; }
+
+const char *zrig_phys2_id(const zrig *r, int i)
+{
+    return (r && i >= 0 && i < r->np2) ? r->p2[i].id : NULL;
+}
+
+static const zp2chain *p2_find(const zrig *r, const char *id)
+{
+    int i;
+    if (!r || !id) return NULL;
+    for (i = 0; i < r->np2; ++i)
+        if (strcmp(r->p2[i].id, id) == 0) return &r->p2[i];
+    return NULL;
+}
+
+int zrig_phys2_particles(const zrig *r, const char *id)
+{
+    const zp2chain *c = p2_find(r, id);
+    return c ? c->ch.n : 0;
+}
+
+double zrig_phys2_angle(const zrig *r, const char *id, int particle)
+{
+    const zp2chain *c = p2_find(r, id);
+    return c ? zphys2_out(&c->ch, particle) : 0.0;
+}
+
+int zrig_phys2_out_count(const zrig *r, const char *id)
+{
+    const zp2chain *c = p2_find(r, id);
+    return c ? c->nout : 0;
+}
+
+double zrig_phys2_applied(const zrig *r, const char *id, int out_index)
+{
+    const zp2chain *c = p2_find(r, id);
+    if (!c || out_index < 0 || out_index >= c->nout) return 0.0;
+    return c->out[out_index].applied;
+}
+
+void zrig_phys2_force(zrig *r, double gx, double gy, double wx, double wy)
+{
+    if (!r) return;
+    if (gx == 0.0 && gy == 0.0) gy = 1.0;   /* 重力不许是零向量 */
+    r->p2_gx = gx; r->p2_gy = gy;
+    r->p2_wx = wx; r->p2_wy = wy;
+}
+
+void zrig_phys2_force_get(const zrig *r, double *gx, double *gy, double *wx, double *wy)
+{
+    if (!r) return;
+    if (gx) *gx = r->p2_gx;
+    if (gy) *gy = r->p2_gy;
+    if (wx) *wx = r->p2_wx;
+    if (wy) *wy = r->p2_wy;
+}
+
 int zrig_deform_count(const zrig *r) { return r ? r->ndeforms : 0; }
 
 const char *zrig_deform_id(const zrig *r, int i)
@@ -4009,6 +4466,7 @@ void zrig_tick(zrig *r, double now)
     params_refresh_builtin(r);
     compute_group_transforms(r);
     physics_update(r, now);
+    physics2_update(r, now);
 }
 
 static int ensure_scaled(zrig *r, double scale)

@@ -100,6 +100,15 @@ double zpet_blink_manual(const zpet *p);
 int         zpet_phys_count(const zpet *p);
 const char *zpet_phys_id_at(const zpet *p, int i);
 double      zpet_phys_output(const zpet *p, const char *id);
+
+/* 物理 2.0 的摆链（T47.2）。输出是**摆角**，所以"输入不动它也在摆" ——
+   调试页/冒烟要验的就是这一点，和上面那组旧摆分开读。 */
+int         zpet_phys2_count(const zpet *p);
+const char *zpet_phys2_id_at(const zpet *p, int i);
+int         zpet_phys2_particles(const zpet *p, const char *id);
+double      zpet_phys2_angle(const zpet *p, const char *id, int particle);
+int         zpet_phys2_out_count(const zpet *p, const char *id);
+double      zpet_phys2_applied(const zpet *p, const char *id, int out_index);
 int         zpet_deform_count(const zpet *p);
 const char *zpet_deform_id_at(const zpet *p, int i);
 double      zpet_deform_amount(const zpet *p, const char *id);

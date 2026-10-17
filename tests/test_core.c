@@ -5732,6 +5732,231 @@ static void test_mask_multi(void)
    三块：① 和 Python 参考实现逐步对拍（金标准 600 步，容差 1e-6）；
          ② 行为判据 —— 输入停了还在摆、只有呼吸也在摆（旧内核这两处都是 0）；
          ③ 固定步长的不变性 —— 同样的总时长，拆成大小不同的帧，结果必须一致。 */
+/* ───────── T47.2：摆角怎么接到部件上（输出适配层）─────────
+   T47.1 证明了内核算得对；这一条验的是**接线对不对**，以及那句最关键的承诺：
+
+       "人停下来之后，头发还在自己摆。"
+
+   夹具是一份最小 rig：没有任何动作（所以没有 motion 在替物理演戏），
+   只有一个呼吸参数 ParamBreath。两条摆同时挂在它上面：
+     · 新内核 physics2（2D 粒子链，输出摆角）
+     · 旧内核 physics （1D 弹簧，输出 pos−target）  ← 同一份输入的负向对照
+   旧的那条就是用户说的"没有真实物理效果"的现场：呼吸只有 0.28Hz，
+   弹簧完全跟得上目标，差值≈0 ⇒ 输出几乎是平的。 */
+static void test_phys2_rig(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    SECTION("物理 2.0 接线：摆角 → 切件通道，而且人停下来之后头发还在摆（T47.2）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_phys2_rig");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"p2r\",\"name\":\"摆链接线测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"hair\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":10,"
+        "  \"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"old\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":11,"
+        "  \"pos\":[60,40],\"anchor\":[0,0]}],"
+        /* 呼吸照真角色的接法：ParamBreath → 胸腔（这里是 head 组）dy −0.8px。
+           摆链因此有两份输入 —— 组矩阵带着发根走的那 0.8px，加上 input 里
+           直接混的横向分量（社区那条"把呼吸混进物理输入"的配方）。 */
+        "\"params\":[{\"id\":\"ParamBreath\",\"label\":\"呼吸\",\"min\":0,\"max\":1,"
+        "  \"default\":0,\"binds\":[{\"group\":\"head\",\"param\":\"dy\",\"scale\":-0.8}]}],"
+        /* idle 是必需的，但**一条通道都不给** —— 有 motion 在演，
+           "静止时头发还在摆"这条断言就变成了在验动作，不是在验物理。 */
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"fade\":0,\"channels\":[]}],"
+        /* 旧内核：同一份呼吸输入，输出滞后量 */
+        "\"physics\":[{\"id\":\"old_spring\",\"part\":\"old\",\"param\":\"bend_x\","
+        "  \"input\":[{\"param\":\"ParamBreath\",\"weight\":1.8}],"
+        "  \"ratio\":1.0,\"stiffness\":42,\"damping\":5.0,\"max\":16}],"
+        /* 新内核：2D 粒子链，输出摆角 */
+        "\"physics2\":[{\"id\":\"c1\",\"part\":\"hair\",\"driver\":\"head\","
+        "  \"input\":[{\"param\":\"ParamBreath\",\"wx\":1.8,\"wy\":-0.8}],"
+        "  \"input_max\":30,\"input_rate\":300,"
+        "  \"particles\":[{\"radius\":0},"
+        "    {\"radius\":48,\"mobility\":0.95,\"delay\":1.0,\"acceleration\":1.0},"
+        "    {\"radius\":36,\"mobility\":0.93,\"delay\":0.88,\"acceleration\":1.1},"
+        "    {\"radius\":26,\"mobility\":0.90,\"delay\":0.76,\"acceleration\":1.2}],"
+        /* 两条输出照真角色长发那条链的口径：
+             out0 = 第一节 → 整片头发的 bend_x（倍率 1.7px/度，上限 16px）
+             out1 = 第三节 → 发梢位移（真角色那边是网格形变器，amount 1.0 = 15px，
+                    驱动倍率 0.075/度 ⇒ 等价于 1.1px/度，这里直接写成 dx 省掉网格） */
+        "  \"outputs\":[{\"particle\":1,\"param\":\"bend_x\",\"scale\":1.7,\"max\":16},"
+        "    {\"particle\":3,\"param\":\"dx\",\"scale\":1.1,\"max\":15}]}]}");
+    zdiag_init(&d);
+    {
+        zrig *r = zrig_load(rigp, dir, &d);
+        double t = 0.0, step = 1.0 / 60.0;
+        CHECK(r != NULL, "带 physics2 的 rig 应加载成功");
+        if (!r) return;
+        zrig_blink_set_enabled(r, 0);
+
+        CHECK(zrig_phys2_count(r) == 1 && zrig_phys2_particles(r, "c1") == 4,
+              "摆链应解析出 1 条、4 个粒子，实测 %d 条 / %d 个",
+              zrig_phys2_count(r), zrig_phys2_particles(r, "c1"));
+        CHECK(zrig_phys2_out_count(r, "c1") == 2,
+              "这条链应有 2 条输出，实测 %d", zrig_phys2_out_count(r, "c1"));
+
+        /* ① 死寂：输入一动不动（呼吸=0）时，摆要安安静静停在重力方向上。
+              它必须**不自激** —— 否则"活着"就只是数值发散的好听说法。 */
+        for (t = 0.0; t < 6.0; t += step) zrig_tick(r, t);
+        {
+            double a0 = zrig_phys2_applied(r, "c1", 0), amax = 0.0;
+            double tt;
+            for (tt = t; tt < t + 2.0; tt += step) {
+                double v;
+                zrig_tick(r, tt);
+                v = fabs(zrig_phys2_applied(r, "c1", 0));
+                if (v > amax) amax = v;
+            }
+            t = tt;
+            CHECK(amax < 0.05, "输入恒定时摆要静止（不自激），实测稳态后 2 秒内最大 %.4fpx"
+                               "（起点 %.4f）", amax, a0);
+        }
+
+        /* ② 只有呼吸：0.28Hz、幅度 1（rig 里的 BREATH_CH 就是 sine amp .5 bias .5）。
+              新内核要摆得出来；旧内核在同一份输入下几乎是平的 —— 这就是
+              用户那句"目前还没有真实的物理效果"在代码里的样子。 */
+        {
+            double lo2 = 1e9, hi2 = -1e9, loo = 1e9, hio = -1e9;
+            double t0 = t, tt;
+            for (tt = t0; tt < t0 + 20.0; tt += step) {
+                double b = 0.5 + 0.5 * sin(2.0 * 3.14159265358979323846 * 0.28 * (tt - t0));
+                double vn, vo;
+                zrig_param_set(r, "ParamBreath", b);
+                zrig_tick(r, tt);
+                if (tt - t0 < 10.0) continue;      /* 前 10 秒让它进入稳态 */
+                /* 发梢在画面上走了多远 = 整片的 bend + 发梢自己的位移 */
+                vn = zrig_phys2_applied(r, "c1", 0) + zrig_phys2_applied(r, "c1", 1);
+                vo = zrig_phys_output(r, "old_spring");
+                if (vn < lo2) lo2 = vn;
+                if (vn > hi2) hi2 = vn;
+                if (vo < loo) loo = vo;
+                if (vo > hio) hio = vo;
+            }
+            t = t0 + 20.0;
+            CHECK(hi2 - lo2 >= 2.0,
+                  "只有呼吸（0.28Hz）时，新内核的发梢要有 >=2px 的自主摆动，实测 %.2fpx",
+                  hi2 - lo2);
+            CHECK((hio - loo) < 0.5,
+                  "同一份呼吸输入下，旧内核（输出滞后量）应当几乎是平的 —— "
+                  "这正是\"人一静止头发就死了\"的根，实测 %.3fpx（新内核 %.2fpx）",
+                  hio - loo, hi2 - lo2);
+            CHECK((hi2 - lo2) > (hio - loo) * 4.0,
+                  "新内核在同一输入下至少要比旧内核活跃 4 倍，实测 %.2f 倍",
+                  (hio - loo) > 1e-6 ? (hi2 - lo2) / (hio - loo) : 999.0);
+        }
+
+        /* ③ 停了还摆：把头甩过去再**冻住输入**，摆要继续晃一阵再收敛。
+              旧内核在这里恒等于 0（输入不动 ⇒ pos==target ⇒ 输出 0）。 */
+        {
+            double t0 = t, tt, after = 0.0, late = 0.0;
+            zrig_param_set(r, "ParamBreath", 0.0);
+            for (tt = t0; tt < t0 + 0.25; tt += step) {       /* 0.25s 把头转过去 */
+                zrig_gaze(r, 1.0, 0.0);
+                zrig_tick(r, tt);
+            }
+            for (tt = t0 + 0.25; tt < t0 + 1.25; tt += step) { /* 之后输入完全冻住 */
+                double v;
+                zrig_tick(r, tt);
+                v = fabs(zrig_phys2_applied(r, "c1", 1));
+                if (v > after) after = v;
+            }
+            for (tt = t0 + 1.25; tt < t0 + 6.0; tt += step) {
+                double v;
+                zrig_tick(r, tt);
+                v = fabs(zrig_phys2_applied(r, "c1", 1));
+                if (tt > t0 + 5.0 && v > late) late = v;
+            }
+            t = t0 + 6.0;
+            CHECK(after > 0.5,
+                  "输入冻住之后的 1 秒里发梢要还在动（>0.5px），实测峰值 %.3fpx", after);
+            CHECK(late < after * 0.5,
+                  "再过几秒要衰减下去（不是永动机）：1 秒内峰值 %.3fpx → 5 秒后 %.3fpx",
+                  after, late);
+        }
+
+        /* ④ 限幅：输出不许越过 max —— 翻译层算错倍率时这条会先红 */
+        {
+            double tt, worst0 = 0.0, worst1 = 0.0;
+            for (tt = t; tt < t + 3.0; tt += step) {
+                double v0, v1;
+                zrig_gaze(r, (fmod(tt * 4.0, 2.0) < 1.0) ? -1.0 : 1.0, 0.0);
+                zrig_param_set(r, "ParamBreath", 1.0);
+                zrig_tick(r, tt);
+                v0 = fabs(zrig_phys2_applied(r, "c1", 0));
+                v1 = fabs(zrig_phys2_applied(r, "c1", 1));
+                if (v0 > worst0) worst0 = v0;
+                if (v1 > worst1) worst1 = v1;
+            }
+            t += 3.0;
+            CHECK(worst0 <= 16.0 + 1e-9 && worst1 <= 15.0 + 1e-9,
+                  "输出要被 max 钳住（16px / 15px），实测 %.3f / %.3f", worst0, worst1);
+        }
+
+        /* ⑤ 输入瞬跳不许让摆转圈：官方靠 Normalization 天然夹住输入，
+              我们是像素空间，所以适配层补了 input_max / input_rate 两道闸。
+              没有它们的时候实测单帧 179°（摆被甩过头顶，那是在转圈）。 */
+        {
+            double tt, worst = 0.0;
+            for (tt = t; tt < t + 2.0; tt += step) {
+                zrig_gaze(r, (tt - t < 1.0) ? -1.0 : 1.0, 0.0);   /* 一帧之内左右对调 */
+                zrig_param_set(r, "ParamBreath", (tt - t < 1.0) ? 0.0 : 1.0);
+                zrig_tick(r, tt);
+                {
+                    double v = fabs(zrig_phys2_angle(r, "c1", 3));
+                    if (v > worst) worst = v;
+                }
+            }
+            t += 2.0;
+            CHECK(worst < 120.0,
+                  "输入瞬跳时摆角要被输入限幅拦住（<120°，不许转圈），实测峰值 %.1f°", worst);
+        }
+
+        /* ⑥ 关掉物理：输出立刻归零（排查接缝时和旧摆同一个开关） */
+        {
+            double tt;
+            zrig_phys_set_enabled(r, 0);
+            for (tt = t; tt < t + 0.2; tt += step) zrig_tick(r, tt);
+            CHECK(fabs(zrig_phys2_applied(r, "c1", 0)) < 1e-9
+                  && fabs(zrig_phys2_applied(r, "c1", 1)) < 1e-9,
+                  "关掉物理后摆链输出要归零，实测 %.6f / %.6f",
+                  zrig_phys2_applied(r, "c1", 0), zrig_phys2_applied(r, "c1", 1));
+            zrig_phys_set_enabled(r, 1);
+        }
+        zrig_free(r);
+    }
+
+    /* ⑦ 真角色的 rig：两条链都在，而且输出指得到真实的形变器/部件。
+          （参数是不是合理由 selfcheck 的第 7d 段守，这里只验"接上了"） */
+    {
+        char rp[1024], rd[1024];
+        zrig *r;
+        z_snprintf(rd, sizeof(rd), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rp, sizeof(rp), "%s/rig.json", rd);
+        zdiag_init(&d);
+        r = zrig_load(rp, rd, &d);
+        CHECK(r != NULL, "真角色的 rig 应加载成功（带 physics2）");
+        if (r) {
+            CHECK(zrig_phys2_count(r) >= 2,
+                  "teen 形态应至少有 2 条摆链（呆毛 + 长发），实测 %d",
+                  zrig_phys2_count(r));
+            CHECK(zrig_phys2_particles(r, "longhair2") == 4,
+                  "长发是 3 段摆（4 个粒子），实测 %d",
+                  zrig_phys2_particles(r, "longhair2"));
+            zrig_free(r);
+        }
+    }
+}
+
 static void test_phys2(void)
 {
     SECTION("物理 2.0：2D 粒子摆链（T47.1，和 Python 参考实现对拍）");
@@ -6060,6 +6285,7 @@ int main(int argc, char **argv)
     test_eye_variants();
     test_micro_expression();
     test_phys2();
+    test_phys2_rig();
     test_eye_aperture();
     test_image();
     test_deflate();

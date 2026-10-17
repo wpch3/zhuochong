@@ -999,6 +999,36 @@ double zpet_phys_output(const zpet *p, const char *id)
     return (p && p->rig) ? zrig_phys_output(p->rig, id) : 0.0;
 }
 
+int zpet_phys2_count(const zpet *p)
+{
+    return (p && p->rig) ? zrig_phys2_count(p->rig) : 0;
+}
+
+const char *zpet_phys2_id_at(const zpet *p, int i)
+{
+    return (p && p->rig) ? zrig_phys2_id(p->rig, i) : NULL;
+}
+
+int zpet_phys2_particles(const zpet *p, const char *id)
+{
+    return (p && p->rig) ? zrig_phys2_particles(p->rig, id) : 0;
+}
+
+double zpet_phys2_angle(const zpet *p, const char *id, int particle)
+{
+    return (p && p->rig) ? zrig_phys2_angle(p->rig, id, particle) : 0.0;
+}
+
+int zpet_phys2_out_count(const zpet *p, const char *id)
+{
+    return (p && p->rig) ? zrig_phys2_out_count(p->rig, id) : 0;
+}
+
+double zpet_phys2_applied(const zpet *p, const char *id, int out_index)
+{
+    return (p && p->rig) ? zrig_phys2_applied(p->rig, id, out_index) : 0.0;
+}
+
 int zpet_deform_count(const zpet *p)
 {
     return (p && p->rig) ? zrig_deform_count(p->rig) : 0;

@@ -142,6 +142,26 @@ double zrig_phys_output(const zrig *r, const char *id);
 int    zrig_phys_count(const zrig *r);
 const char *zrig_phys_id(const zrig *r, int i);
 
+/* ---- 物理 2.0：2D 粒子摆链（T47.1 内核 / T47.2 接到部件上）----
+   和旧摆的本质差别：输出是**摆相对重力方向的角度（度）**，不是"落后了几个像素"。
+   所以输入不动的时候它也还在摆 —— 呼吸那点 0.28Hz ±1.2px 的微动就够把它推着晃，
+   这正是用户说的"真实的物理效果"的来源。 */
+int    zrig_phys2_count(const zrig *r);
+const char *zrig_phys2_id(const zrig *r, int i);
+int    zrig_phys2_particles(const zrig *r, const char *id);
+/* 第 particle 个粒子这一帧的摆角（度，已做帧间插值）。1 = 根下面第一节。 */
+double zrig_phys2_angle(const zrig *r, const char *id, int particle);
+int    zrig_phys2_out_count(const zrig *r, const char *id);
+/* 第 out_index 条输出这一帧**真正写进通道的值**（像素或形变量）。
+   ★ 单测要断言"接线对不对"就读它：读形变器的当前量是不够的 ——
+   那是物理 + 环境摆动之和，环境摆动一直在跑（T45.9 踩过这个坑）。 */
+double zrig_phys2_applied(const zrig *r, const char *id, int out_index);
+/* 引擎级力场（官方 Meta.EffectiveForces）。像素空间 Y 向下 ⇒ 向下 = (0,+1)。
+   T47.3 的风、T47.4 的拖动惯性都从这里进来。 */
+void   zrig_phys2_force(zrig *r, double gx, double gy, double wx, double wy);
+void   zrig_phys2_force_get(const zrig *r, double *gx, double *gy,
+                            double *wx, double *wy);
+
 int    zrig_deform_count(const zrig *r);
 const char *zrig_deform_id(const zrig *r, int i);
 double zrig_deform_amount(const zrig *r, const char *id);
