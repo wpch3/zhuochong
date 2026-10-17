@@ -3445,11 +3445,22 @@ A/B 六组峰值音高 4/12/14/8/12/4Hz，时长分层**逐项与改前相同**
 
 查 CI 时才发现 **163 红 / 37 绿**，而我每轮 `make -s check` 全绿。
 原因：CI 先 `make clean` 从零编，本地是增量编译，`tests/test_core.c` 的老告警
-**从来没机会被重新触发**。三条全是真问题：格式串里的裸 `%`（真失败那天就是 UB）、
-`putenv` 在 `-std=c11` 下没声明（GCC 14 起直接是 error）、未初始化的 `hold_base`。
-修完加了 `make warncheck`（挂进 `make check`，做过负向对照）——
-**本地从此能复现 CI 的判据**。教训写进 LESSONS 201：
-我只盯着自己关心的那条工作流绿不绿，等于把保险丝拔了还以为有电。
+**从来没机会被重新触发**。挖出来五条，全是真问题：格式串里的裸 `%`（真失败那天就是 UB）、
+`putenv` 在 `-std=c11` 下没声明（GCC 14 起直接是 error）、未初始化的 `hold_base`、
+**把变量当格式串**、只写不读的 `nsteps`。
+
+**最后卡住 CI 的那条，本地怎么编都看不见**：`-Wformat-security`
+**Ubuntu 的 gcc 默认开、Debian 的不开**，而 CI 是 ubuntu-latest、沙箱是 Debian 12。
+CI 日志的下载域名又不在出网白名单里 —— 绕法是**把失败内容用 `::error::` 打成注解**
+（注解走 `api.github.com`，`gh run view` 读得到），一次命中
+`test_core.c:4573:30: format not a string literal`。
+另外两条是拿 `zig cc`（clang）当第二套编译器交叉验证出来的。
+
+收尾：`make warncheck`（挂进 `make check`，显式带 `-Wformat-security` 对齐 Ubuntu，
+做过负向对照）+ 给编译步骤补 `set -o pipefail`（原先 `make … | tee` 会把**编译报错**
+的退出码吞掉，只有 warning 拦得住）。
+**结果：run `39043200767` 六步全绿、3m17s —— 10 月 16 日以来第一次。**
+教训写进 LESSONS 201：我只盯着自己关心的那条工作流，等于把保险丝拔了还以为有电。
 
 ### 6. 账
 
