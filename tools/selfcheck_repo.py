@@ -578,6 +578,9 @@ L2D_EXTENSIONS = {
     "ParamSkirtSway": "裙摆自主摆动（T45.9）。标准表只有身体角度，没有"
                       "「布自己在动」这一层。两级形变器：裙身 skirt_sway_x + "
                       "下摆 skirt_hem_x，下摆带 0.11 秒行波延迟",
+    "ParamHairBackS": "后发第二段·发梢甩动（T46.1）。标准表只有 ParamHairBack 一条，"
+                      "但教程一致认为「揺れが1段しかない＝髪が棒のように見える」，"
+                      "後ろ髪は2~3段が普通。和 ParamHairAhogeS/ParamHairSideS 同族",
     "ParamJacketSway": "外套前襟下摆自主摆动（T45.12）。和 ParamSkirtSway 同类，"
                        "但幅度小、频率低、延迟大 —— 教程口径「上着は少し重い素材"
                        "なのであまり揺らさない」。形变器 jacket_hem_x 只推前襟两片的列",
@@ -1786,6 +1789,38 @@ def check_live2d(root):
         check("外套下摆由 ParamJacketSway 驱动、比裙摆更迟钝（%s）" % _tag,
               _jlag > _lag.get("__skirt__", 0.0),
               "外套 lag %.2fs vs 裙摆 lag %.2fs" % (_jlag, _lag.get("__skirt__", 0.0)))
+
+    # ㉔ 头发的摇物必须是**多段**，而且后发不许动到头顶剪影（T46.1）。
+    #    教程口径：前髪・横髪は1段で十分、**後ろ髪は2~3段**（長いほど段数を増やす）。
+    #    「1段しかない＝髪全体が棒のように一体で動いて硬く見える」。
+    #    本项目的后发是一顶短发壳，露在外面的上半截就是**头部剪影**——
+    #    所以第二段的位移必须全部压在下沿，上面几行一个像素都不许动。
+    for _rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        _tag = "%s/%s" % (_rp.split(os.sep)[-4], _rp.split(os.sep)[-2])
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        if not any(p.get("id") == "hair_back" for p in _rig.get("parts", [])):
+            continue
+        _ph = [x for x in _rig.get("physics", []) if x.get("part") == "hair_back"]
+        _chain = [x for x in _ph if x.get("driver") in {y["id"] for y in _ph}]
+        check("后发是多段摆（%s）" % _tag, len(_ph) >= 2 and len(_chain) >= 1,
+              "hair_back 上 %d 条物理、其中 %d 条串在前一段后面"
+              % (len(_ph), len(_chain)))
+        _bs = next((d for d in _rig.get("deformers", []) if d.get("id") == "back_s"), None)
+        if _bs:
+            _rows = int(_bs["rows"])
+            _top = [(p["r"], p.get("dx", 0)) for p in _bs["points"]
+                    if p["r"] <= _rows // 2 and abs(float(p.get("dx", 0.0))) > 1e-9]
+            check("后发第二段不动头顶剪影（%s）" % _tag, not _top,
+                  "上半截这些行有位移：%s" % _top[:4] if _top
+                  else "位移全在下沿（r>%d）" % (_rows // 2))
+            _side = next((x for x in _rig["physics"] if x.get("id") == "side_l_tip"), None)
+            _btip = next((x for x in _rig["physics"] if x.get("deformer") == "back_s"), None)
+            if _side and _btip:
+                check("后发比侧发更软更慢（%s）" % _tag,
+                      float(_btip["stiffness"]) < float(_side["stiffness"]),
+                      "后发梢 stiffness %.0f vs 侧发梢 %.0f（重的头发摆得慢）"
+                      % (_btip["stiffness"], _side["stiffness"]))
 
     # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
     # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。

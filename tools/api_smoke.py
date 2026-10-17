@@ -854,6 +854,17 @@ def run(base, root):
                   .get("skirt_sway_x") or 0.0)
         check("表布和里布由同一条参数一起驱动", skx > 0.5 and d1 > 0.5,
               "表布 %.4f / 里布 %.4f" % (skx, d1))
+    # 后发第二段（T46.1）：转头之后，第二段（发梢）必须被第一段带起来。
+    # 这验的是**物理链接上了**（back_x → back_tip → back_s），
+    # 形状上的约束（头顶剪影不许动、比侧发软）是静态性质，由 selfcheck 第㉔段守。
+    if "back_s" in dfm:
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=120&dt=0.016")
+        a.hit("/api/param?id=ParamAngleX&v=28"); a.hit("/api/step?n=18&dt=0.016")
+        bs = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
+                 .get("back_s") or 0.0)
+        check("转头会把后发的第二段（发梢）带起来",
+              bs > 0.15, "转头 0.3s 后 back_s=%.3f" % bs)
+
     # 外套前襟下摆（T45.12）：和裙摆同一条路子，但**更钝** —— 这里验的是
     # 「它确实被自己的参数推得动」，幅度大小是静态性质（selfcheck 第㉓段比 dx 表）。
     if "jacket_hem_x" in dfm:
@@ -1256,7 +1267,17 @@ def run(base, root):
     a.hit("/api/idle?s=0")
     time.sleep(0.6)
     fin = a.json("/api/info.json") or {}
-    pend = {q["id"]: q for q in (a.json("/api/params.json") or {}).get("params", [])}
+    # 眨眼是自动的，采样时刻可能正好落在那 0.1~0.3 秒的闭眼里 —— 这不是故障。
+    # 所以这里**最多等 2 秒**让它睁回来；要是真卡住了（表情锁死、参数被写死），
+    # 2 秒也等不回来，闸照样红。（2026-10-17：T46.1 的空跑把时钟往前推了 2.2 秒，
+    # 眨眼相位跟着挪，这条闸就随机红了一次。）
+    pend = {}
+    for _ in range(10):
+        pend = {q["id"]: q for q in (a.json("/api/params.json") or {}).get("params", [])}
+        if (pend.get("ParamEyeLOpen", {}).get("effective", 0) > 0.5
+                and pend.get("ParamEyeROpen", {}).get("effective", 0) > 0.5):
+            break
+        time.sleep(0.2)
     check("收尾：眨眼回到自动", fin.get("blink_manual", 0) < 0, str(fin.get("blink_manual")))
     check("收尾：眼睛是睁开的（别给用户留个闭眼的小寻）",
           pend.get("ParamEyeLOpen", {}).get("effective", 0) > 0.5
