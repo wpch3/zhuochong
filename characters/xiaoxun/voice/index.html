@@ -64,6 +64,17 @@
     <b>③</b> 挑一个音高档（年龄感），<b>④</b> 全部台词都已按情绪重渲。
   </div>
 
+  <div class="quote" style="border-left-color:#e7a33e">
+    <b>2026-10-17 晚 · 二修</b>：你说「语感开了之后像<b>小黄人和鼠来宝</b>」—— 这是<b>花栗鼠效应</b>，
+    我认。原因是合成引擎的 <code>pitch</code> 参数<b>只搬基频、不搬共振峰</b>，
+    而我把 base 设到了 +18Hz，叠上情绪和句尾上扬能顶到 +46Hz，正好踩在最难听的区间。<br>
+    已改：<b>基准音高归零</b>、情绪音高压进 ±6Hz、<b>上限从 46Hz 收到 14Hz</b>，
+    "萌"改由语速 / 停顿 / 重音 / 句尾语调承担。重渲后<b>情绪分层一点没塌</b>
+    （困倦仍比平静长 22%，害羞那句仍 +38%）—— 说明情绪本来就不靠音高。<br>
+    第 ③ 节特意留了 <b>+18Hz（开始发尖）</b> 和 <b>+30Hz（小黄人，反例）</b> 两档，
+    你可以直接听到"过头"长什么样。
+  </div>
+
   <div class="sec">① 关 vs 开：同一句话，同一个音色，只差一个"演出单"</div>
   <div class="secsub">左边是你之前听到的（整句一个参数，一条直线）；右边是现在的（分段、停顿、重音、句尾上扬）。<b>先听左再听右。</b></div>
   <div id="ab"></div>
@@ -73,7 +84,9 @@
   <div class="grid" id="demo"></div>
 
   <div class="sec">③ 音色阶梯 · 挑一个年龄点</div>
-  <div class="secsub">同一句采样、<b>只变音高</b>（故意不加语感，免得干扰判断）。告诉我编号，我把它定成小寻的正式音色。</div>
+  <div class="secsub">同一句采样、<b>只变音高</b>（故意不加语感，免得干扰判断）。告诉我编号，我把它定成小寻的正式音色。<br>
+    <b>01~03 是可用区间</b>（+0 / +6 / +12Hz）；<b>04 标⚠ 开始发尖、05 标⚠⚠ 就是小黄人</b>，放在这里当反例；
+    <b>06 不动音高、只快 8%</b> —— 想知道"靠语速求活泼"够不够的话，重点听它。</div>
   <div class="grid" id="samples"></div>
   <div class="warn" id="missing"></div>
 
@@ -182,8 +195,10 @@ fetch('catalog.json?' + Date.now()).then(r => r.json()).then(c => {
   document.getElementById('missing').innerHTML = miss.length
     ? `⚠️ 这 ${miss.length} 个童声音色在 <b>edge-tts 免费通道上不存在</b>（渲染返回 0 字节，已自动剔除）：` +
       miss.map(f => `<code>${f.voice}</code>`).join(' ') +
-      `<br>所以免费通道能做到的上限就是"晓伊 + 升调 + 语感"。真正的二次元萌音（cute / shy 音色）
-       需要 <b>Azure Dragon HD</b> 或 <b>MiniMax</b> 的密钥，或者本地跑 IndexTTS2 —— 见 <code>docs/VOICE_EXPRESSION_PLAN.md §4</code>。`
+      `<br>所以免费通道能做到的上限就是"晓伊 + 语感"（<b>升调这条路已经被证伪了，升多了就是小黄人</b>）。
+       真正的二次元萌音（cute / shy 音色）需要 <b>Azure Dragon HD</b> 或 <b>MiniMax</b> 的密钥 ——
+       <b>怎么拿密钥我写成手册了：<code>docs/ops/VOICE_KEYS.md</code></b>；
+       顺带一提，这三个童声里的<b>晓双、晓悠在 Azure Dragon HD 上是有的</b>。`
     : '';
 
   // ④ 台词
@@ -216,6 +231,11 @@ fetch('catalog.json?' + Date.now()).then(r => r.json()).then(c => {
     <b>1. 音色定档要你的耳朵</b>：第 ③ 节挑一个编号告诉我，我写进 <code>config/voice_cast.json</code>（T58.1）。<br>
     <b>2. 真·二次元萌音要密钥</b>：Azure Dragon HD 的 <code>cute</code> / <code>shy</code> 风格，
        或 MiniMax 少女音。适配器（<code>to_ssml()</code> / <code>to_minimax()</code>）已经写好，<b>填密钥即生效</b>（T58.2）。<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;→ <b>取 Key 的完整步骤看 <code>docs/ops/VOICE_KEYS.md</code></b>：
+       Azure 要绑卡、区域选 <code>southeastasia</code>、F0 每月 50 万字符；
+       MiniMax 手机号就能注册、<code>¥3.5/万字符</code>、密钥只显示一次。
+       全量 38 条台词 ≈ 600 字符，一次重渲约 <b>¥0.21</b>。
+       <b>密钥放你本机的环境变量，别发给我。</b><br>
     <b>3. 完全离线的终局</b>：本地 IndexTTS2（Apache-2.0，音色与情感解耦）或 CosyVoice2（T58.3）。<br>
     <b>4. 口型还是假的</b>：现在是"播完统一张合"，要跟真实音量走得等 T36 的音频特征流（T57.8）。<br>
     <b>5. 情绪现在靠"猜"</b>：按台词 id 与文本线索推断；接上对话系统的真实 mood 之后会更准（T57.7）。`;

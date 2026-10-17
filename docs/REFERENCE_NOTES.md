@@ -2953,3 +2953,54 @@ ph->out_cur = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
   （"用很开心的语气说"），首包延迟约 1.5s，适合实时。
 - GPT-SoVITS：音色克隆强，但**情感一致性弱**，且零样本克隆有合规风险（I6）。
 - ⇒ 选型纪律：**优先"官方音色 + 情感控制"，不做任何真人零样本克隆**。
+
+---
+
+## 第四十三批（2026-10-17 查）—— 两家 TTS 的密钥怎么拿、多少钱、端点在哪
+
+> 起因：用户问「Azure Dragon HD / MiniMax 密钥去哪里获取？」。
+> 操作步骤整理成了 **`docs/ops/VOICE_KEYS.md`**（给人照着点的版本），这里只留事实与 URL。
+
+### 43.1 Azure 语音服务
+
+- 开通与取 Key：`https://learn.microsoft.com/azure/ai-services/speech-service/get-started-text-to-speech`
+  —— 门户 `portal.azure.com` → 创建资源 → Speech → 选区域与定价层 →
+  资源页左侧「**密钥和终结点**」里拿 **Key + Region**。注册要**绑 Visa/Mastercard**（F0 不扣费）。
+- **F0 免费层：每月 50 万字符**（标准 neural）。注意 **HD 音色是另一档计费**，不要默认它免费。
+  配额页：`https://learn.microsoft.com/azure/ai-services/speech-service/speech-services-quotas-and-limits`
+  （F0 并发/每分钟请求数都很低，批量渲染要退避重试）。
+- 价格页 `https://azure.microsoft.com/pricing/details/ai-services/speech-services/`：
+  标准 neural **$16 / 100 万字符**；**Neural HD $22 / 100 万字符**（2026-03 由 $30 下调）。
+- **Dragon HD Flash 的可用区域**：`eastus` / `westeurope` / `southeastasia`（+ 中国区 `chinanorth3`）；
+  2026-03 起扩到 `westus2` / `eastus2` / `centralindia` / `canadacentral` / `francecentral` / `swedencentral`。
+  **香港用户选 `southeastasia` 最近。**
+- 音色与风格（`https://learn.microsoft.com/azure/ai-services/speech-service/high-definition-voices`）：
+  - `zh-CN-Xiaoyi:DragonHDFlashLatestNeural` → **cute / shy** / gentle / nervous / complaining / angry / sad / strict
+  - `zh-CN-Xiaoyou:DragonHDFlashLatestNeural` → **cute** / chat / cheerful / story / poetry-reading / angry / sad
+  - `zh-CN-Xiaoshuang:DragonHDFlashLatestNeural` → chat（童声）
+  ★ **晓双、晓悠在 edge 免费通道上不存在（实测 0 字节），在 Azure Dragon HD 上有** —— 这是换通道的实在好处。
+- TTS 端点形状：`https://<region>.tts.speech.microsoft.com/cognitiveservices/v1`，
+  头 `Ocp-Apim-Subscription-Key`。**资源页上那个 `*.api.cognitive.*` 终结点不是 TTS 端点**，别填错。
+
+### 43.2 MiniMax（海螺）
+
+- **两个站点账号/Key/余额都不互通**：
+  国内 `https://platform.minimaxi.com`（API `https://api.minimaxi.com/v1`）；
+  海外 `https://platform.minimax.io`（API `https://api.minimax.io/v1`）。
+  **旧域名 `api.minimax.chat` 已废弃** —— 我们 `config/providers/minimax.json` 里原先写的就是它，本轮已改。
+- 取 Key：登录后 **账户管理 → 接口密钥 → 创建新的密钥**
+  （`user-center/basic-information/interface-key`）。**只显示一次**，关掉就得重建。
+- 同步合成端点：`POST {base}/t2a_v2`（`https://platform.minimaxi.com/docs/api-reference/speech-t2a-http`）。
+  ⚠️ **返回体里的 `data.audio` 是 hex 字符串，不是 base64** —— 写解码时最容易踩的一脚。
+- 价格（`https://platform.minimaxi.com/docs/guides/pricing-paygo`）：
+  `speech-2.8-hd` **¥3.5 / 万字符**；`speech-2.8-turbo` **¥2.0 / 万字符**。
+- 音色：系统音色表 `https://platform.minimaxi.com/docs/faq/system-voice-id`，
+  少女 / 萌妹 / 学妹 / 女童都是官方内置 `voice_id`（我们用的是 `female-shaonv`）。
+  **声音复刻需要个人实名认证**；普通 TTS 不需要。实名认证常附赠代金券（约 ¥15 / 2 个月，活动会变）。
+
+### 43.3 自家的量级换算（免得被"每百万字符"唬住）
+
+小寻现在全量 38 条台词 ≈ **600 字符**。一次全量重渲：
+MiniMax HD ≈ **¥0.21**，Azure HD ≈ **$0.013**。
+⇒ **选型不该被渲染成本左右**，真正要算钱的是以后"每句话实时合成"那一步。
+
