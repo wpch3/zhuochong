@@ -121,32 +121,6 @@ def _silence_mp3(path: str, ms: int) -> bool:
     return subprocess.run(cmd, capture_output=True).returncode == 0
 
 
-def _trim_silence(path: str) -> bool:
-    """把每段自带的首尾静音削到 ~20ms。
-
-    为什么必须削：分段合成时，每一段都是一次独立的"说话"，引擎会在头尾各垫一小截静音
-    （而且段末还有句末拖长）。三段拼起来就白白多出近一秒，听感从"有停顿"变成"拖沓"。
-    削掉之后，句子里**只剩我们排进演出单的那些停顿**，长短才由我们说了算。
-    """
-    ff = _ffmpeg()
-    if not ff:
-        return False
-    tmp = path + ".trim.mp3"
-    f = ("silenceremove=start_periods=1:start_silence=0.02:start_threshold=-50dB:detection=peak,"
-         "areverse,"
-         "silenceremove=start_periods=1:start_silence=0.02:start_threshold=-50dB:detection=peak,"
-         "areverse")
-    rc = subprocess.run([ff, "-v", "error", "-i", path, "-af", f,
-                         "-c:a", "libmp3lame", "-b:a", "48k", "-y", tmp],
-                        capture_output=True).returncode
-    if rc == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 512:
-        os.replace(tmp, path)
-        return True
-    if os.path.exists(tmp):
-        os.remove(tmp)
-    return False
-
-
 def _concat_mp3(parts: list[str], out: str) -> bool:
     """优先用 ffmpeg 的 concat demuxer（统一重编码，接缝最干净）；没有 ffmpeg 就二进制拼。
 
@@ -191,7 +165,6 @@ async def synth_sheet(sheet: dict, voice: str, path: str) -> int:
         for i, sg in enumerate(segs):
             fp = os.path.join(tmp, "%02d.mp3" % i)
             await synth(sg["text"], voice, fp, sg["rate"], sg["pitch"], sg["volume"])
-            _trim_silence(fp)          # 段自带的首尾静音会让整句拖沓，见函数注释
             parts.append(fp)
             if sg["gap_ms"]:
                 gp = os.path.join(tmp, "%02d_gap.mp3" % i)

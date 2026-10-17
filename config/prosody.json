@@ -75,6 +75,8 @@
     "max_abs_rate_pct": 26,
     "max_abs_pitch_hz": 46,
     "max_pause_ms": 700,
+    "edge_pad_ms": 150,
+    "_edge_pad_note": "分段合成时每段自带的首尾留白（实测约 150ms/段）。to_edge() 会把排好的停顿减去它，否则停顿被计算两次，整句听着拖沓。只影响 edge-tts 这条分段路线，SSML/MiniMax 不减。",
     "strong_emotions": ["angry", "surprised", "sad"],
     "max_strong_ratio": 0.45
   },

@@ -152,6 +152,7 @@ def plan_line(text: str, emotion: str, cfg: dict, profile_id: str = "moe_shoujo"
     max_pitch = lim.get("max_abs_pitch_hz", 45)
     pauses = cfg.get("pauses_ms", {})
     max_pause = int(cfg.get("_restraint", {}).get("max_pause_ms", 700))
+    edge_pad = int(cfg.get("_restraint", {}).get("edge_pad_ms", 150))
 
     segs = split_segments(text, prof.get("breath_every_chars", 11), prof.get("max_segments", 8))
     n = len(segs)
@@ -210,19 +211,27 @@ def plan_line(text: str, emotion: str, cfg: dict, profile_id: str = "moe_shoujo"
             "gap_ms": gap,
             "marks": marks,
         })
-    return {"emotion": emotion, "profile": profile_id, "text": text, "segments": out}
+    return {"emotion": emotion, "profile": profile_id, "text": text,
+            "edge_pad_ms": edge_pad, "segments": out}
 
 
 # ---------------------------------------------------------------- 各家 payload
 
 def to_edge(sheet: dict) -> list[dict]:
-    """edge-tts：每段一次调用（它没有 style，只能这么做），gap_ms 用静音补。"""
+    """edge-tts：每段一次调用（它没有 style，只能这么做），gap_ms 用静音补。
+
+    ★ 关键修正：分段合成时，**每段自己就带着一小截首尾静音**（引擎给每次"说话"
+    加的起停留白，实测两段之间凭空多出 0.3~0.5s）。那截留白听感上已经等于一次换气，
+    所以这里把排好的停顿**减去它**再输出，否则停顿会被计算两次，整句听着拖沓。
+    减完不足 0 的按 0 算（靠引擎自带的留白撑着就够了）。
+    """
+    pad = int(sheet.get("edge_pad_ms", 150))
     return [{
         "text": s["speak"] + (s["punct"] if s["punct"] else ""),
         "rate": f"{s['rate_pct']:+d}%",
         "pitch": f"{s['pitch_hz']:+d}Hz",
         "volume": f"{s['volume_pct']:+d}%",
-        "gap_ms": s["gap_ms"],
+        "gap_ms": max(0, s["gap_ms"] - pad),
     } for s in sheet["segments"]]
 
 
