@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0",
+  "_note": "语感表（用户 2026-10-17：「语音的情绪变化、语气，我听测试台词都没有变化，要做出真人的语感」「小寻的声音要更像少女一点」）。这张表只写**怎么说**，不写说什么。tools/voice_prosody.py 只读这张表，加一种语感 = 加一条配置，不改 .py。依据见 docs/REFERENCE_NOTES.md 第四十二批：念稿感的根源是韵律四要素（节奏/停顿/重音/语调）都被做成了默认值。",
+
+  "_why_segments": "edge-tts 免费通道**没有 SSML style**（官方 README 明说移除了），一次调用只能给整句一组 rate/pitch/volume ⇒ 一句话从头到尾一个调子，这就是「听不出情绪」的真因。解法：把一句话按意群切段，每段用不同参数分别合成再拼起来，段间按标点插静音。Azure 正规通道则直接走 mstts:express-as。",
+
+  "profiles": {
+    "moe_shoujo": {
+      "name": "二次元萌系少女（小寻 teen 默认）",
+      "_note": "年龄感优先用引擎自带的 pitch 参数（模型内部重新合成，共振峰自洽），不要用后处理重采样——那个会变花栗鼠。见 DC74。",
+      "base_rate_pct": 6,
+      "base_pitch_hz": 18,
+      "base_volume_pct": 0,
+      "end_rise_hz": 6,
+      "end_rise_rate_pct": -4,
+      "particle_rate_pct": -12,
+      "particles": ["呀", "啦", "哦", "呐", "嘛", "诶", "唔", "喵", "嗯", "呢", "吧", "哟"],
+      "emphasis_volume_pct": 8,
+      "emphasis_rate_pct": -6,
+      "emphasis_words": ["别", "不要", "真的", "最", "好痛", "再", "一直", "答应", "绝对", "超级", "好想", "快"],
+      "breath_every_chars": 11,
+      "breath_ms": 180,
+      "max_segments": 8
+    },
+    "shoujo_calm": {
+      "name": "少女·收敛版（旁白/长句）",
+      "base_rate_pct": 0,
+      "base_pitch_hz": 12,
+      "base_volume_pct": 0,
+      "end_rise_hz": 2,
+      "end_rise_rate_pct": -2,
+      "particle_rate_pct": -6,
+      "particles": ["呀", "啦", "哦", "呢"],
+      "emphasis_volume_pct": 5,
+      "emphasis_rate_pct": -4,
+      "emphasis_words": ["别", "不要", "真的", "最"],
+      "breath_every_chars": 14,
+      "breath_ms": 150,
+      "max_segments": 8
+    }
+  },
+
+  "pauses_ms": {
+    "，": 220,
+    "、": 160,
+    "。": 320,
+    "？": 280,
+    "！": 240,
+    "…": 420,
+    "……": 420,
+    "—": 300,
+    "——": 300,
+    "：": 200,
+    "；": 260,
+    "_default": 160
+  },
+
+  "emotions": {
+    "neutral":   { "name": "平静",     "rate_pct": 0,   "pitch_hz": 0,   "volume_pct": 0,   "pause_scale": 1.0,  "style_degree": 1.0, "end_rise_bonus_hz": 0 },
+    "happy":     { "name": "开心",     "rate_pct": 10,  "pitch_hz": 14,  "volume_pct": 6,   "pause_scale": 0.85, "style_degree": 1.3, "end_rise_bonus_hz": 8 },
+    "smile":     { "name": "微笑",     "rate_pct": 4,   "pitch_hz": 6,   "volume_pct": 2,   "pause_scale": 0.95, "style_degree": 1.1, "end_rise_bonus_hz": 4 },
+    "shy":       { "name": "害羞",     "rate_pct": -6,  "pitch_hz": 6,   "volume_pct": -8,  "pause_scale": 1.35, "style_degree": 1.2, "end_rise_bonus_hz": 2 },
+    "angry":     { "name": "生气",     "rate_pct": 14,  "pitch_hz": 10,  "volume_pct": 10,  "pause_scale": 0.7,  "style_degree": 1.4, "end_rise_bonus_hz": 0,
+                   "_note": "萌系的生气是「气鼓鼓」：音高**上扬**、语速变快、停顿变短；不是成年人那种压低嗓子的怒。压低会变凶，不是我们要的。" },
+    "pout":      { "name": "鼓腮不满", "rate_pct": 6,   "pitch_hz": 12,  "volume_pct": 2,   "pause_scale": 1.1,  "style_degree": 1.2, "end_rise_bonus_hz": 6 },
+    "sad":       { "name": "难过",     "rate_pct": -10, "pitch_hz": -4,  "volume_pct": -10, "pause_scale": 1.45, "style_degree": 1.2, "end_rise_bonus_hz": -6 },
+    "surprised": { "name": "惊讶",     "rate_pct": 16,  "pitch_hz": 18,  "volume_pct": 8,   "pause_scale": 0.8,  "style_degree": 1.6, "end_rise_bonus_hz": 10 },
+    "gentle":    { "name": "温柔",     "rate_pct": -6,  "pitch_hz": 2,   "volume_pct": -4,  "pause_scale": 1.2,  "style_degree": 1.1, "end_rise_bonus_hz": 2 },
+    "sleepy":    { "name": "困倦",     "rate_pct": -18, "pitch_hz": -6,  "volume_pct": -12, "pause_scale": 1.8,  "style_degree": 1.0, "end_rise_bonus_hz": -4 },
+    "proud":     { "name": "得意",     "rate_pct": 6,   "pitch_hz": 10,  "volume_pct": 6,   "pause_scale": 0.95, "style_degree": 1.3, "end_rise_bonus_hz": 6 }
+  },
+
+  "_restraint": {
+    "_note": "刻意克制（第四十二批的共识）：真人对话里大部分句子接近中性，只带一点底色；每句都拔高＝另一种不像人（用力过猛的配音腔）。所以给强情绪设上限，并要求整批台词里强情绪占比不超过阈值。",
+    "max_abs_rate_pct": 26,
+    "max_abs_pitch_hz": 46,
+    "strong_emotions": ["angry", "surprised", "sad"],
+    "max_strong_ratio": 0.45
+  },
+
+  "line_id_hints": {
+    "hammer_1": "surprised",
+    "hammer_2": "angry",
+    "hammer": "angry",
+    "pat_combo": "shy",
+    "pat": "happy",
+    "head_pat": "happy",
+    "touch_face": "shy",
+    "sleep": "sleepy",
+    "wake": "sleepy",
+    "idle": "neutral",
+    "greet": "happy",
+    "praise": "happy",
+    "thanks": "smile",
+    "sad": "sad",
+    "cry": "sad",
+    "angry": "angry",
+    "think": "neutral",
+    "talk": "neutral"
+  },
+
+  "text_cues": [
+    { "emotion": "shy",       "any": ["害羞", "脸红", "脸要烧", "不要看", "讨厌啦", "我、我", "羞"] },
+    { "emotion": "angry",     "any": ["生气", "哼", "别敲", "再这样", "过分", "不许"] },
+    { "emotion": "sleepy",    "any": ["困", "睡", "晚安", "呼啊", "打哈欠", "眼皮"] },
+    { "emotion": "sad",       "any": ["委屈", "难过", "呜", "眼泪", "对不起", "失落"] },
+    { "emotion": "surprised", "any": ["哇", "诶", "咦", "欸", "！？", "居然", "突然"] },
+    { "emotion": "happy",     "any": ["太好了", "谢谢", "喜欢", "开心", "一起", "加油"] },
+    { "emotion": "gentle",    "any": ["慢慢来", "没关系", "陪着你", "休息", "别急"] }
+  ],
+
+  "provider_routes": {
+    "edge_tts": {
+      "mode": "segments",
+      "_note": "无 style，只能靠分段 + 参数差 + 静音；这是现在就能听到变化的路线"
+    },
+    "azure_speech": {
+      "mode": "ssml_express_as",
+      "_note": "mstts:express-as style + styledegree(0.01~2) + break + prosody；晓伊支持 9 种 style（affectionate/angry/cheerful/disgruntled/embarrassed/fearful/gentle/sad/serious）。注意 role（Girl/YoungAdultFemale）只有晓墨、晓萱支持，晓伊用不了。"
+    },
+    "minimax": {
+      "mode": "emotion_param",
+      "_note": "emotion 七选一 + speed/pitch/vol"
+    }
+  },
+
+  "style_map": {
+    "_note": "我们的情绪 → Azure 晓伊支持的 9 种 style。没有对应的就退到最近的一个，并靠 styledegree 拉强度。",
+    "neutral": "",
+    "happy": "cheerful",
+    "smile": "cheerful",
+    "shy": "embarrassed",
+    "angry": "angry",
+    "pout": "disgruntled",
+    "sad": "sad",
+    "surprised": "cheerful",
+    "gentle": "gentle",
+    "sleepy": "gentle",
+    "proud": "cheerful"
+  },
+
+  "minimax_map": {
+    "neutral": "neutral", "happy": "happy", "smile": "happy", "shy": "fearful",
+    "angry": "angry", "pout": "angry", "sad": "sad", "surprised": "surprised",
+    "gentle": "neutral", "sleepy": "neutral", "proud": "happy"
+  }
+}

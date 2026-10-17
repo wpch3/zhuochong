@@ -12,9 +12,13 @@ on:
         required: true
         default: xiaoxun
       only:
-        description: "all | samples | lines"
+        description: "all | samples | lines | demo（demo=同一句×六种情绪的语气对照）"
         required: true
         default: all
+      prosody:
+        description: "语感引擎 on | off（on=按 config/prosody.json 分段演出）"
+        required: false
+        default: "on"
       voice:
         description: "可选：覆盖少女音色（如 zh-CN-XiaoyiNeural）"
         required: false
@@ -22,6 +26,8 @@ on:
   push:
     paths:
       - "characters/*/voice/plan.json"
+      - "config/prosody.json"
+      - "tools/voice_prosody.py"
       - "characters/*/voice/triggers/**"
       - "tools/voice_render.py"
       - ".github/workflows/voice-render.yml"
@@ -36,6 +42,7 @@ jobs:
       CHARACTER: ${{ inputs.character || 'xiaoxun' }}
       ONLY: ${{ inputs.only || 'all' }}
       VOICE: ${{ inputs.voice || '' }}
+      PROSODY: ${{ inputs.prosody || 'on' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,6 +55,15 @@ jobs:
       - name: 安装 edge-tts
         run: python -m pip install --quiet edge-tts
 
+      # 分段演出需要在段间插静音并把片段拼回一条 mp3；没有 ffmpeg 时脚本会退化成
+      # 二进制拼接（无静音），所以这步失败也不致命。
+      - name: 确保 ffmpeg（段间静音与拼接）
+        continue-on-error: true
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+
+      - name: 语感引擎自检（纯逻辑，不联网）
+        run: python tools/voice_prosody.py --selftest
+
       - name: 合成语音
         id: render
         continue-on-error: true
@@ -55,7 +71,8 @@ jobs:
           set -uo pipefail
           ARGS=""
           if [ -n "$VOICE" ]; then ARGS="--voice $VOICE"; fi
-          python tools/voice_render.py --character "$CHARACTER" --root . --only "$ONLY" $ARGS 2>&1 | tee /tmp/render.log
+          python tools/voice_render.py --character "$CHARACTER" --root . --only "$ONLY" \
+                 --prosody "$PROSODY" $ARGS 2>&1 | tee /tmp/render.log
           exit ${PIPESTATUS[0]}
 
       - name: 失败日志回传（提交到仓库，便于沙箱读取）
@@ -87,6 +104,7 @@ jobs:
           git config user.email "actions@github.com"
           git config user.name "voice-render bot"
           git add -f "characters/$CHARACTER/voice/samples" "characters/$CHARACTER/voice/lines" \
+                     "characters/$CHARACTER/voice/demo" \
                      "characters/$CHARACTER/voice/catalog.json" 2>/dev/null
           git commit -q -m "voice-render: 合成结果 [skip ci]"
           git fetch -q origin "$GITHUB_REF_NAME"
@@ -99,6 +117,7 @@ jobs:
           set -e
           D="characters/$CHARACTER/voice"
           echo "--- 采样 ---"; ls -la "$D/samples" || true
+          echo "--- 语气对照 ---"; ls -la "$D/demo" || true
           echo "--- 台词数 ---"; ls "$D/lines" | wc -l
           # 空文件=该音色失效（供应商音色表会变动），删掉即可，不算失败
           find "$D" -name '*.mp3' -size -2k -delete
@@ -108,7 +127,7 @@ jobs:
       - name: 打包
         run: |
           cd "characters/$CHARACTER/voice"
-          zip -q -r "$GITHUB_WORKSPACE/voice_$CHARACTER.zip" samples lines catalog.json plan.json
+          zip -q -r "$GITHUB_WORKSPACE/voice_$CHARACTER.zip" . -x 'triggers/*' 
 
       - uses: actions/upload-artifact@v4
         with:

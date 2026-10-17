@@ -15,21 +15,35 @@
     "adult": "zh-CN-XiaoxiaoNeural"
   },
 
-  // 统一风格参数
+  // 统一风格参数（只有 --prosody off 时才用；开着语感时参数由 config/prosody.json 逐段给）
   "style": { "rate": "+0%", "pitch": "+0Hz", "volume": "+0%" },
 
-  // 挑音色用的采样句（只用于 samples/，不是台词）
-  "sample_text": "你好呀，我是小寻。今天也一起加油吧，累了就靠过来休息一会儿，我陪着你。",
+  // 语感（用户 2026-10-17：「情绪变化、语气我听测试台词都没有变化，要做出真人的语感」
+  //       「小寻的声音要更像少女一点，现在更像青年」）
+  // profile 指向 config/prosody.json 的语感档；demo_* 是用来一耳朵对比语气的同一句话。
+  "prosody": {
+    "profile": "moe_shoujo",
+    "demo_text": "今天也一起加油吧，我就在这儿，一直陪着你。",
+    "demo_emotions": ["neutral", "happy", "shy", "angry", "sad", "sleepy"]
+  },
+
+  // 挑音色用的采样句（只用于 samples/，不是台词）。
+  // 注意：samples/ 故意**不加语感**——它是用来比「音色年龄感」的，多一层语气反而干扰判断；
+  //       语气变化请听 demo/（同一句 × 六种情绪）。
+  "sample_text": "你好呀，我是小寻！今天也一起加油吧，累了就靠过来休息一会儿，我陪着你哦。",
 
   // 候选音色：重点是年龄感。晓伊（少女音色）升调后更接近 16 岁；
   // 晓双/晓萌为更小的音色（供应商音色表变动时会自动跳过，不影响其他音色）。
   "candidates": [
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+0Hz",  "label": "晓伊-标准" },
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+0Hz",  "label": "晓伊-标准（现在用的，用户判为偏青年）" },
     { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+15Hz", "label": "晓伊-升15Hz" },
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+30Hz", "label": "晓伊-升30Hz" },
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+45Hz", "label": "晓伊-升45Hz" },
-    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+30Hz", "rate": "-5%", "label": "晓伊-升30Hz-慢5%" },
-    { "voice": "zh-CN-XiaomengNeural",   "pitch": "+0Hz",  "label": "晓萌-标准" },
-    { "voice": "zh-CN-XiaoshuangNeural", "pitch": "+0Hz",  "label": "晓双-童声" }
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+25Hz", "label": "晓伊-升25Hz（语感档默认的年龄点）" },
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+35Hz", "label": "晓伊-升35Hz（更萌）" },
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+45Hz", "label": "晓伊-升45Hz（接近童声，可能失真）" },
+    { "voice": "zh-CN-XiaoyiNeural",     "pitch": "+25Hz", "rate": "+8%", "label": "晓伊-升25Hz-快8%（活泼）" },
+    { "voice": "zh-CN-XiaomengNeural",   "pitch": "+0Hz",  "label": "晓萌-标准（免费通道可能没有，会自动跳过）" },
+    { "voice": "zh-CN-XiaoshuangNeural", "pitch": "+0Hz",  "label": "晓双-童声（同上，可能跳过）" },
+    { "voice": "zh-CN-XiaoyouNeural",    "pitch": "+0Hz",  "label": "晓悠-童声（同上，可能跳过）" },
+    { "voice": "zh-CN-XiaoxiaoNeural",   "pitch": "+25Hz", "label": "晓晓-升25Hz（对照组：成年女声抬上去是什么味道）" }
   ]
 }
