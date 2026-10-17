@@ -47,6 +47,8 @@ Windows 运行方式见 `docs/PROJECT_SPEC.md` 第一节表格。
 | --- | --- | --- |
 | `docs/PHYSICS_PLAN.md` | **物理底座 2.0（T47）**：现状盘点（35 条摆的全参数表）、与官方算法的九行差距表、T47.1~T47.8 的做法与验收 | 碰 `src/core/zrig.c` 的 `zphys` / `physics_update()` 之前 |
 | `docs/PRESENCE_PLAN.md` | **生命感（T48~T51）**：三级视线跟随、兽耳娘模式、外设四模式（bongocat 类）、表情五档、12 条可吸收能力排序 | 做跟随 / 外设 / 耳尾 / 表情之前 |
+| `docs/AGENT_PLAN.md` | **AI 工作能力（T52~T56）**：MCP 工具层与网关策略、四层记忆与上下文工程、沙箱与长时任务、trace/eval/预算、调度与屏幕感知分级 | 做工具 / 记忆 / 任务机 / 屏幕感知之前 |
+| `docs/memory/REQUEST_LEDGER.md` | **需求接收台账**：用户说过的每件事 → 落点 → 状态，含"还欠着的六项" | 每轮开工前扫一眼；用户问"记住了吗"直接给它 |
 | `docs/INTERACTION_PLAN.md` | 交互与输入的既有口径（§2.6 键盘与全局输入） | 做 T48 之前先看它，不要另起炉灶 |
 | `docs/FORM_MATRIX.md` | 形象矩阵三轴（年龄 / 取景 / 姿态）—— 用户已封板 | 加新形态 / 新取景之前 |
 

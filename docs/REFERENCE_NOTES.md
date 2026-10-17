@@ -2771,3 +2771,121 @@ ph->out_cur = ZC_CLAMP(ph->pos - target, -ph->max, ph->max);
   <https://github.com/DasterProkio/awesome-ai-companion>（含 amica / AITuber OnAir 的 kizuna 羁绊系统 /
   super-agent-party / LingChat 等）。
 
+---
+
+## 第四十一批 · AI 工作能力：MCP / 记忆 / 沙箱 / 可观测 / 计算机操作（2026-10-17，为 T52~T56 查）
+
+用户第二问：「高智能 AI，提升 AI 的工作能力的项目，除了代理和 skills 等还有什么需要加进去功能的吗？」
+下面全部是**查证过的口径**，结论落在 `docs/AGENT_PLAN.md`。
+
+### 41.1 MCP 规范本体（工具层的地基）
+
+- `https://modelcontextprotocol.io/specification/2025-11-25/index`
+  —— **服务端给客户端三样**：`Resources`（上下文数据）/ `Prompts`（模板化流程）/ `Tools`（可执行函数）；
+  **客户端给服务端三样**：`Sampling`（服务端反过来请求客户端的 LLM 生成，含递归 agentic 行为）/
+  `Roots`（文件系统边界）/ `Elicitation`（服务端向用户追问缺失信息）。
+- `https://modelcontextprotocol.io/specification/2025-11-25/client/sampling`
+  —— Sampling 可带 `tools` 与 `toolChoice`，**客户端必须先声明 `sampling.tools` 能力**，
+  服务端不得对未声明的客户端发工具型采样请求。规范明确要求**客户端必须把请求内容展示给用户、允许编辑或拒绝**，
+  不许静默补全。
+- `https://blog.modelcontextprotocol.io/posts/2026-07-28/` 与
+  `https://modelcontextprotocol.io/docs/2026-07-28/learn/client-concepts`
+  —— **2026-07-28 修订是个大改**：协议转为**无状态**（去掉 initialize 握手与协议级会话）、
+  新增 `server/discover`、方法名走 `Mcp-Method` / `Mcp-Name` HTTP 头以便网关路由与鉴权、
+  并把服务端→客户端的请求通道改成 **MRTR（多轮往返，返回 `inputRequired` 再由客户端重试）**，
+  Roots / Sampling / Logging 标记弃用。
+  ⇒ **我们的工程结论**：把"服务端向客户端提问"抽象成内部接口，两代协议都能接。
+- 传输：`2025-03-26` 起 **Streamable HTTP 取代 HTTP+SSE**（SSE 已弃用）；本地仍以 **stdio** 为主。
+  版本时间线见 `https://hidekazu-konishi.com/entry/mcp_specification_version_timeline.html`。
+- 现成可挂的服务端：`https://github.com/microsoft/playwright-mcp`（浏览器自动化，**走 DOM 不走像素**，
+  `npx @playwright/mcp@latest`）、`@modelcontextprotocol/server-filesystem`（目录白名单内读写搜索）。
+
+### 41.2 记忆层：四家开源方案与一条重要的警告
+
+- 四层记忆模型（工作 / 情景 / 语义 / 程序）与"短期靠上下文工程、长期靠记忆层"的分工：
+  `https://pengjiyuan.github.io/articles/agent-memory-persistence-2026/`
+- **Mem0** `https://github.com/mem0ai/mem0`（Apache-2.0，~48~65k★）：向量 + 图 + KV 混合，
+  **被动抽取**，新事实与旧记忆比对后四选一 `ADD / UPDATE / DELETE / NOOP`（自编辑，防重复与过期）。
+- **Letta（原 MemGPT）**（Apache-2.0，~21~24k★）：**把 LLM 当操作系统**，
+  三层 `Core（RAM）/ Recall（近期）/ Archival（磁盘）`，由模型自己用 function call 决定换页。
+- **Zep / Graphiti**（Apache-2.0）：**时序知识图谱**，支持"这个偏好是什么时候变的"这类时间感知查询，
+  带自动事实抽取、去重与记忆合并。
+- **LangMem**：和 LangGraph 绑定；第三方对比里 **p95 检索延迟 59.82 秒**，对实时交互不可用。
+- ★★★ **最重要的一条警告**：这些 benchmark **几乎全是厂商自测且互相打架**。
+  同一个 LongMemEval：Mem0 自己的研究页写 **94.4**，第三方（Vectorize）独立评测 **49.0**，
+  相差 45.4 分（`https://www.digitalapplied.com/blog/open-source-agent-memory-mem0-letta-zep-compared`、
+  `https://vectorize.io/articles/best-ai-agent-memory-systems`）。
+  ⇒ **选型只信自己跑的那一份**（对应 A33「下结论之前必须先查」与 T55 的 eval 集）。
+
+### 41.3 上下文工程：Manus 式"反记忆"与子代理隔离
+
+`https://blog.csdn.net/qq_51605551/article/details/163759631`、
+`https://juejin.cn/post/7677562804154531890`
+
+- **KV-Cache 命中率是生命线** ⇒ 上下文 **append-only**；想"忘记"要用**掩码遮蔽而不是删除**
+  （删除会破坏前缀稳定性、击穿缓存）。
+- **状态外置到文件系统**（`todo.md` 这类），靠反复复读改写把模型注意力拉回来；
+  短周期高强度任务里这比向量检索更好用。
+- **保留错误**：失败的工具调用不删 —— 既是情景记忆，也是模型自我纠错的素材。
+- **子代理隔离优于压缩**：压缩是有损的事后补救且要额外 LLM 调用；
+  隔离让噪声一开始就进不了主上下文，主代理 KV 前缀不受影响。代价是子任务描述必须自包含。
+
+### 41.4 可靠性与安全：网关、审批、预算、灰度
+
+- `https://www.apframework.com/blog/essay/2026-05-23-agent-security-2026`
+  —— 推荐架构：**工具调用不直达工具，先过 Tool Gateway → Policy Engine
+  （"这个用户 / 会话 / agent / 工具 / 资源，允许吗？"→ 允许 / 拒绝 / **需审批**）→ 执行 → 写 Audit Trace**。
+  引 Microsoft 2026-05 Defense in Depth：**每次工具调用都应来自显式授权，而不是隐式继承**。
+- `https://github.com/VILA-Lab/Dive-into-Claude-Code`（agent-design-space 源注）
+  —— 论文《When Consent Outlives Context》实测：**跨任务保留的批准**在 AgentDojo 上
+  最多让提示注入成功率 **+35.1 个百分点** ⇒ **审批不许跨任务续用**。
+- `https://quant67.com/post/llm-infra/19-agent-framework/19-agent-framework.html`
+  —— 工程检查清单：工具按用户身份授权；工具输出过提示注入过滤；
+  **不可撤销动作（支付/删除/发邮件）强制人工审批**；**代码执行在沙箱中且默认无出网权限**；敏感字段出入站脱敏。
+- `https://qubittool.com/zh/blog/ai-agent-poc-to-production-pitfalls`
+  —— 灰度六阶段 `sandbox → shadow（抽样生产请求但隐藏输出、无外部副作用）→ internal → canary → expanded → production`；
+  故障注入对照表：工具结果格式错 ⇒ **schema 拒绝，不许推断成功**；重复投递 ⇒ **幂等键，只产生一次副作用**；
+  派发后超时 ⇒ `outcome_unknown` 先对账；**Step / Time / Spend 三种预算**用来终止 retry 风暴。
+- `https://developer.volcengine.com/articles/7647092173612433444`
+  —— Gartner 2026 年初：**超过 68% 的企业在 Agent 生产化时最大的障碍不是模型能力，而是可观测性与可靠性工程**。
+- `https://www.datalearner.com/blog/ai-agent-engineer-report-2026-05`
+  —— 当前最高优先级四项：**长时运行与状态耐久化（sessions / checkpoints / background / compaction）**、
+  Grounding 与 Agentic RAG、**评测与可观测闭环**、安全权限与执行隔离。
+  并明确"试点期**不要**过早做 swarm 与多模型大杂烩"。
+- Eval 方法（`https://www.cnblogs.com/informatics/p/20294772`、
+  `https://securaize.substack.com/p/agent-agent`）：
+  **从真实 trace 里挑 30~50 条人工 open coding → 聚成 5~10 类失败 → 全量标注 → 失败率 × 业务影响排序**；
+  CI 门槛示例 `pass@8 ≥ 80%`；人工审查队列覆盖自动评测的盲区（语气、情绪处理、微妙事实错误）。
+
+### 41.5 计算机操作（看屏幕 / 代操作）：能力与**许可证雷区**
+
+- **OmniParser V2**（Microsoft Research）`https://www.microsoft.com/en-us/research/articles/omniparser-v2-turning-any-llm-into-a-computer-use-agent/`
+  —— 纯视觉把截图解析成结构化可交互元素，图标描述模型缩小后**延迟降 60%**，ScreenSpot Pro 约 39.5%。
+  ★★★ **许可证雷**：第三方复现项目明确记载其 `icon_detect`（微调 YOLOv8）**权重是 AGPL-3.0**
+  （`https://github.com/CaydenAuyang/screen-parsing-gui-agent`）⇒ 按 I5 / DC14，**不能打进我们的分发包**。
+- **UI-TARS / UI-TARS Desktop**（ByteDance + 清华，**Apache-2.0**，~29~38k★）
+  `https://seed-tars.com/1/`、`https://github.com/bytedance/UI-TARS-desktop`
+  —— 专训 GUI 的视觉语言模型（2B/7B/72B），Agent TARS 走 **GUI 像素 + DOM 混合**；
+  UI-TARS-2（2025-09）OSWorld 从 27.5% 提到 **47.5%**。
+  ★ 注意：模型权重 Apache-2.0 可评估，**但不走字节的云服务**（DC13 绝对不接豆包）。
+- 生态盘点：`https://github.com/mbicecode-ctrl/awesome-computer-use`（139 个项目）、
+  `https://github.com/opendilab/awesome-ui-agents`；
+  其它可比项目：Cua（MIT，沙箱 VM）、Agent S（Apache-2.0）、self-operating-computer（MIT）。
+- ⇒ **我们的结论**：屏幕感知分三级（L1 只知前台上下文 / L2 看得懂截图 / L3 代操作），
+  L2 起必须显式授权且默认关，L3 必须走审批门。见 `AGENT_PLAN.md §6.2`。
+
+### 41.6 自主性：OpenClaw 的 cron + 心跳 + hooks
+
+`https://docs.openclaw.ai/`、`https://www.runoob.com/ai-agent/openclaw-clawdbot-tutorial.html`、
+`https://zhuanlan.zhihu.com/p/2019696779189339940`
+
+- 本地优先的自托管 Agent，**60 天拿到约 35.5 万 GitHub star**（2026 年初现象级）。
+  能力面：本地文件读写、浏览器自动化（CDP，带已登录态）、沙箱里跑脚本、
+  **cron 定时 + 每 30 分钟 heartbeat + hooks/webhooks**、子代理、Skills、多平台消息。
+- 三种调度写法：`at`（一次性）/ `every`（周期）/ `cron`（表达式），**触发的不是脚本而是"让 AI 完成一个任务"**。
+- 典型自动化工作日：07:55 读日历与邮件生成早报 → 09:45 会前提醒 → 12:00 午间心跳 →
+  周五 17:00 起草周报 → 21:00 把当天工作写进 memory 文件。
+- ★ 许可证说法不一（有 MIT 与 Apache-2.0 两种记载，且项目 2026-02 移交基金会），
+  **真要借鉴实现前必须自己到仓库核对 LICENSE**，不以二手文章为准。
+- ⇒ 我们的增量：**触发的是"她"** —— 早报要用角色语气说出来、配表情动作，而不是弹一个通知框。
+
