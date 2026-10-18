@@ -993,6 +993,29 @@ def check(character, form, root=".", strict=False, out_json=None):
                 f"纯绿/洋红残留 {junk_total} 像素（上限 {th['junk_px']}）"
                 + ("，" + "、".join(junk_where[:4]) if junk_where else ""))
 
+    # ——（T46.8）头部几何：藏件不许露底、头饰按实测头宽定标 ——
+    #   2026-10-18 第九问打回的四个缺陷（人耳裸露在脸颊、后发壳平切口横在颧骨、
+    #   发丝碎片、剪影缺一块）在既有闸门里**一项都查不出来**，因为它们查的是
+    #   单个零件自己的像素，而这里坏掉的是**零件之间的遮挡关系**。
+    #   量法、实测值和阈值余量写在 tools/head_silhouette.py 的文档串里。
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import head_silhouette as _hs
+        _hs.ROOT = os.path.abspath(root)
+        for r in _hs.hide_backing(character, form):
+            add("头部几何",
+                f"藏{r['part']}有件接管", r["ok"],
+                f"{r['group']}:{r['entry']} 档自带的差分件盖住了它的 "
+                f"{r['cover'] * 100:.1f}%（下限 {r['need'] * 100:.0f}%；"
+                f"接管者只能是这一档自己的件，不算碰巧垫在底下的本体）")
+        for r in _hs.headwear_fit(character, form):
+            add("头部几何", f"{r['part']}按头宽定标", r["ok"],
+                f"外宽 {r['width_px']} / 头部剪影宽 {r['head_width_px']} = "
+                f"{r['ratio']:.2f} 倍（许可 1.10~1.40）；帽顶 y={r['top_y']}、"
+                f"头顶 y={r['head_top_y']}（不许比头顶低 12 像素以上）")
+    except Exception as _e:                                  # pragma: no cover
+        add("头部几何", "头部几何闸可运行", False, "跑挂了：%s" % _e)
+
     report = {
         "character": character, "form": form,
         "thresholds": th,

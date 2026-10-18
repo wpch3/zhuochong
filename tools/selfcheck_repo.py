@@ -1916,18 +1916,25 @@ def check_live2d(root):
                   and _slot.get("group") == "head",
                   "层 %d/%d（手臂 143 < x < 后发壳 170），组 %r"
                   % (_tl["layer"], _tr["layer"], _slot.get("group")))
-        # ⑤ 扎起来的发型必须**把被取代的原生发件收走**（2026-10-18 用户打回：
-        #    「短发甚至都没去除」）。差分件做加法说的是"不用重画本体"，
-        #    不等于"只许加不许减"：twin/pony 要是不收侧发，画面上就是
-        #    短发 + 两条贴上去的辫子。长发不收（侧发在长发里照样露）。
+        # ⑤ 2026-10-18 第九问**推翻了第八问的做法**，这一条是反过来写的。
+        #    第八问按用户的「短发甚至都没去除」给 twin/pony 加了
+        #    hide_parts:[hair_side_l, hair_side_r]，结果用户拿截图又打回四条：
+        #    人耳裸露在脸颊上、后发壳的平切口横在颧骨、发丝碎片、剪影缺一块。
+        #    根因是**鬓发是承重件**：它底下的 seg_head 是一张光头侧脸（人耳完整
+        #    画着、没有发际线）、hair_back 的下沿是一条本来就指望被盖住的平切口。
+        #    藏掉承重件 = 在头上开洞。A/B 四格抓帧（logs/asset_qa/）判定保留胜出。
+        #    所以规矩改成：**承重件一律不许裸隐**，想隐必须先过
+        #    check_assets 的「藏件露底」几何闸（tools/head_silhouette.py）。
         _hide = (_hg or {}).get("hide_parts") or {}
-        _need = {"hair_side_l", "hair_side_r"}
-        _miss = [k for k in ("twin", "pony") if not _need <= set(_hide.get(k) or [])]
-        check("扎起来的发型会把脸侧的短发收走（twin/pony 隐藏 hair_side_l/r）",
-              not _miss,
-              ("这些档位没收侧发：%s" % _miss) if _miss else
-              "twin/pony 各自 hide %s；long 不收（披着的时候侧发照样露）"
-              % sorted(_need))
+        _load_bearing = {"hair_side_l", "hair_side_r", "hair_back", "seg_head"}
+        _bad = sorted({p for v in _hide.values() for p in (v or [])}
+                      & _load_bearing)
+        check("承重件没有被裸隐（鬓发/后发壳/头底图藏掉就是在头上开洞）",
+              not _bad,
+              ("这些档位把承重件藏了：%s —— 底下 seg_head 是光头侧脸、"
+               "hair_back 下沿是平切口，藏了必露馅" % _bad) if _bad else
+              "hide_parts=%s（空=谁都不藏，鬓发在四个发型里都留着）"
+              % (dict(_hide) or {}))
         # ⑥ 收侧发这件事要**一路通到引擎**：表里写了 hide，生成器要搬进 rig.json，
         #    引擎的 pose_opacity 要认。少任何一环都是"在 JSON 里写日记"（G117 那类病）。
         _rigp = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
@@ -1936,13 +1943,16 @@ def check_live2d(root):
             _rg = jsonc(_rigp)
             _grp = next((g for g in _rg.get("poses", []) if g["id"] == "hairstyle"), {})
             _ents = {e["id"]: e for e in _grp.get("entries", [])}
-            _rig_ok = all(_need <= set(_ents.get(k, {}).get("hide") or [])
-                          for k in ("twin", "pony"))
+            # 表里写什么，rig.json 就要有什么 —— 包括"什么都不藏"。
+            _rig_ok = all(set(_hide.get(k) or []) ==
+                          set(_ents.get(k, {}).get("hide") or [])
+                          for k in _ents)
         _eng_ok = ("e->nhid" in _zrig_src and "posehide" in _zrig_src
                    and "op *= 1.0 - e->opacity" in _zrig_src)
-        check("收侧发是真能生效的：表 → rig.json → 引擎 pose_opacity 三处都有",
+        check("藏件这条链路是通的：表 → rig.json → 引擎 pose_opacity 三处一致",
               _rig_ok and _eng_ok,
-              "rig.json 里 twin/pony 带 hide：%s；zrig.c 认 hide（nhid/posehide/乘 1-w）：%s"
+              "rig.json 的 hide 和表一致：%s；zrig.c 认 hide（nhid/posehide/乘 1-w）：%s"
+              "（引擎这一侧要留着：T46.7 换 hair_back 本体时还要用）"
               % (_rig_ok, _eng_ok))
         # ⑦ 发型这类**带渐变**的件不许再走色卡三色重铺。
         #    k-means 平色重铺是给漫符用的；按亮度压成 3 色会把柔和明暗和蓝发梢
@@ -2002,17 +2012,42 @@ def check_live2d(root):
             _oy = float(_rig_h["canvas"]["h"]) - float(_anc["meta"]["height_px"])
             _head_top = _oy + float(_anc["points"]["head_top"][1])
             _sh_y = _oy + float(_anc["points"]["shoulder_l"][1])
-            check("兜帽顶盖过头顶（不是顶在脑门上）", _top <= _head_top,
-                  "兜帽顶 y=%.0f　头顶 y=%.0f（画布像素，越小越高）" % (_top, _head_top))
+            # ±3px 容差：这里的 _top 是从**带补边的成品框**倒推的，不是真像素；
+            # 像素级真值由 check_assets 的「头饰按头宽定标」闸量（帽顶 vs 实测剪影顶）。
+            check("兜帽顶盖过头顶（不是顶在脑门上）", _top <= _head_top + 3,
+                  "兜帽顶 y=%.0f　头顶 y=%.0f（画布像素，越小越高；容差 3px）"
+                  % (_top, _head_top))
             check("兜帽下摆不越过肩线太多（越过就变披肩，用户退回过）",
                   _bot <= _sh_y + 0.15 * _unit,
                   "下摆 y=%.0f　肩线 y=%.0f　上限 y=%.0f" % (_bot, _sh_y, _sh_y + 0.15 * _unit))
-            check("兜帽宽度按头宽定标（1.10~1.60 个头单位）",
-                  1.10 <= _cw / _unit <= 1.60,
-                  "宽 %.0f px = %.2f 个头单位（头单位 %.0f px）" % (_cw, _cw / _unit, _unit))
+            # 2026-10-18 第九问收紧：1.10~1.60 这条带子**太松，放过了 v3**
+            #（v3 实测 1.33 头单位，画面上是顶在头上的一口锅，用户原话"大小完全错误"）。
+            # 根子在"头单位"是 anchors 里的**比例常数 278px**，不是头的实际宽度 ——
+            # 头部剪影实测只有 244px 宽（1 头单位 ≈ 1.14 倍实测头宽）。
+            # 按剪影算，兜帽该是 1.10~1.40 倍，换算回头单位就是 0.97~1.23；
+            # 取 0.95~1.25。像素级真值由 check_assets 的头部几何闸兜底。
+            check("兜帽宽度按头宽定标（0.95~1.25 个头单位 = 1.08~1.43 倍实测头宽）",
+                  0.95 <= _cw / _unit <= 1.25,
+                  "宽 %.0f px = %.2f 个头单位（头单位 %.0f px；实测头部剪影宽 244px）"
+                  % (_cw, _cw / _unit, _unit))
             check("兜帽高宽比 ≤ 1.35（再瘦长就是连帽斗篷不是兜帽）",
                   _ch / _cw <= 1.35,
                   "高 %.0f / 宽 %.0f = %.2f" % (_ch, _cw, _ch / _cw))
+
+    # ㉑ 头部几何闸不许是死工具（T46.8）。tools/head_silhouette.py 要被
+    #    check_assets 真的调起来，否则就又是"在仓库里写日记"。
+    _hs_p = os.path.join(root, "tools", "head_silhouette.py")
+    _ca_p = os.path.join(root, "tools", "check_assets.py")
+    _hs_src = io.open(_hs_p, encoding="utf-8").read() if os.path.exists(_hs_p) else ""
+    _ca_src = io.open(_ca_p, encoding="utf-8").read() if os.path.exists(_ca_p) else ""
+    check("头部几何闸装好了并且真被调起来（藏件露底 + 头饰按实测头宽定标）",
+          "def hide_backing" in _hs_src and "def headwear_fit" in _hs_src
+          and "import head_silhouette" in _ca_src
+          and "hide_backing(character, form)" in _ca_src
+          and "headwear_fit(character, form)" in _ca_src,
+          "head_silhouette.py 有两个量法：%s/%s；check_assets 调了：%s"
+          % ("def hide_backing" in _hs_src, "def headwear_fit" in _hs_src,
+             "import head_silhouette" in _ca_src))
 
     # 遮挡别人的差分件必须有**用户点得到**的开关（2026-10-18 用户原话「做个开关」）。
     # 调试台那块把英文 id 原样铺出来，不算数 —— 它是给我自己验引擎的。

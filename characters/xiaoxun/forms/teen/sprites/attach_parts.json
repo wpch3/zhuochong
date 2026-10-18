@@ -146,8 +146,8 @@
       "slot": "head_over_hair",
       "file": "sprites/acc_hood_up.png",
       "size": [
-        400,
-        434
+        340,
+        432
       ]
     },
     {
@@ -155,7 +155,7 @@
       "slot": "body_back_hair",
       "file": "sprites/hair_long_back.png",
       "size": [
-        330,
+        331,
         822
       ]
     },
@@ -182,7 +182,7 @@
       "slot": "body_back_pony",
       "file": "sprites/hair_pony_back.png",
       "size": [
-        280,
+        284,
         640
       ]
     }
