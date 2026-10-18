@@ -1935,6 +1935,28 @@ def check_live2d(root):
     check("退还不记花费",
           "zgw_hold_release" in gw_c and gw_c.count("g->spent_total +=") == 1,
           "失败的请求不该扣钱，全文件只应有一处 spent_total 累加")
+    # ---- 云端 TTS 客户端的密钥纪律（T58，2026-10-18）----
+    # 两条都踩得起：密钥进日志 = 泄露，而日志是会被提交回仓库的（voice-render 的失败回传）。
+    vcp = os.path.join(root, "tools", "voice_cloud.py")
+    if os.path.isfile(vcp):
+        vcs = io.open(vcp, encoding="utf-8").read()
+        # (?<![A-Za-z_]) 是必须的：没有它，`def fingerprint(key: str)` 会被当成 print(key) 误报
+        leak = re.findall(r"(?<![A-Za-z_])print\([^)]*\bkey\b(?![_a-zA-Z])[^)]*\)", vcs)
+        leak = [x for x in leak if "fingerprint(" not in x and "key_ref" not in x
+                and "env" not in x]
+        check("云端 TTS 客户端不会把密钥打印出来（只许打指纹）", not leak,
+              "可疑：%s" % leak[:2] if leak else "所有输出走 fingerprint()")
+        check("密钥指纹反推不出原文（长度 + 首尾两字 + sha256 前 8 位）",
+              "hashlib.sha256" in vcs and "def fingerprint" in vcs,
+              "fingerprint() 用的是 sha256 截断")
+    wf = os.path.join(root, ".github", "workflows", "voice-render.yml")
+    if os.path.isfile(wf):
+        wl = io.open(wf, encoding="utf-8").read().splitlines()
+        # secrets 只许出现在 env: 映射里；写进 run: 的命令行会原样进日志
+        bad = [l.strip() for l in wl if "secrets." in l and ("run:" in l or "$(" in l)]
+        check("workflow 里的密钥只经 env 注入，没写进命令行", not bad,
+              "；".join(bad[:2]) or "3 个 secret 都在 env 段")
+
     check("密钥只认 secret:// 引用",
           'strncmp(ref, "secret://", 9)' in gw_c,
           "src/core/zgateway.c:zgw_secret_resolve —— 允许裸值就等于允许密钥进仓库")

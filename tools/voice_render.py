@@ -33,12 +33,22 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import voice_prosody as vp       # noqa: E402 —— 同目录的演出引擎（纯逻辑，无网络依赖）
+import voice_cloud as vc         # noqa: E402 —— 云端 TTS 客户端（Azure / MiniMax，只用标准库）
+
+# 当前这一轮用哪家合成。edge-tts 是默认；azure / minimax 要密钥（环境变量，见 voice_cloud.py）。
+# ★ 为什么用模块级变量而不是层层传参：合成的调用点有 6 处，
+#   加一个参数要改 6 处签名，而这个值在一次运行里是不变的。
+PROVIDER = "edge-tts"
+CLOUD_VOICE = ""      # azure 的音色名 / minimax 的 voice_id（留空用各家默认）
+CLOUD_STYLE = ""      # azure 的 express-as style；minimax 用 emotion
 
 try:
     import edge_tts  # 神经网络 TTS（微软 Edge 音色），pip install edge-tts
 except ImportError:  # pragma: no cover
-    print("缺少 edge-tts：pip install edge-tts", file=sys.stderr)
-    raise SystemExit(2)
+    # ★ 不在这里退出：走 --provider azure/minimax 时根本用不到 edge-tts
+    #   （那两家是纯标准库的 HTTP 调用）。以前这里直接 SystemExit(2)，
+    #   结果"只想用云端供应商"的人被一个装不上的依赖挡在门外。
+    edge_tts = None
 
 MAX_RETRY = 3
 SAMPLE_TEXT = "你好呀，我是小寻。今天也一起加油吧！"
@@ -88,12 +98,44 @@ def short_name(voice: str) -> str:
     return m.group(1) if m else re.sub(r"[^A-Za-z0-9]+", "_", voice)
 
 
+def _cloud_once(text: str, path: str, rate: str, pitch: str, volume: str) -> None:
+    """走云端供应商合成一段（同步，给 asyncio.to_thread 用）。
+
+    ★ 情绪在这里才真的有：Azure 走 mstts:express-as 的 style，
+      MiniMax 走请求里的 emotion 字段 —— 这两样 edge-tts 都没有，
+      所以同一份演出单（voice_prosody 排的）在 edge 上只能靠语速音高"演"，
+      在这两家上是真的换了一种说法。
+    """
+    if PROVIDER == "minimax":
+        emo = vc.load_emotions().get(CLOUD_STYLE, {})
+        audio = vc.synth_minimax(text, CLOUD_VOICE or "female-shaonv",
+                                 emotion=emo.get("minimax", CLOUD_STYLE))
+    else:
+        emo = vc.load_emotions().get(CLOUD_STYLE, {})
+        audio = vc.synth_azure(text, CLOUD_VOICE or "zh-CN-XiaoyiNeural",
+                               style=emo.get("style", CLOUD_STYLE),
+                               rate=rate, pitch=pitch, volume=volume)
+    with open(path, "wb") as f:
+        f.write(audio)
+
+
 async def synth(text: str, voice: str, path: str, rate: str, pitch: str, volume: str) -> int:
     """合成一句到 mp3，返回字节数；失败重试 MAX_RETRY 次。"""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     last = None
     for attempt in range(1, MAX_RETRY + 1):
         try:
+            if PROVIDER != "edge-tts":
+                await asyncio.to_thread(_cloud_once, text, path, rate, pitch, volume)
+                size = os.path.getsize(path)
+                if size > 1024:
+                    return size
+                last = f"输出过小（{size} 字节）"
+                await asyncio.sleep(1.5 * attempt)
+                continue
+            if edge_tts is None:
+                raise RuntimeError("没装 edge-tts（pip install edge-tts），"
+                                   "或者改用 --provider azure / minimax")
             com = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch, volume=volume)
             await com.save(path)
             size = os.path.getsize(path)
@@ -208,7 +250,17 @@ async def main() -> int:
                     help="on=按 config/prosody.json 排演出单分段合成（默认）；off=老的整句一次合成")
     ap.add_argument("--profile", default="", help="语感档，默认取 plan.json 的 prosody.profile")
     ap.add_argument("--voice", default="", help="覆盖 plan.json 里的少女音色（用于换音色重渲）")
+    ap.add_argument("--provider", choices=["edge-tts", "azure", "minimax"], default="",
+                    help="用哪家合成；默认取 plan.json 的 provider。azure/minimax 要密钥（环境变量）")
+    ap.add_argument("--cloud-voice", default="",
+                    help="云端音色：azure 写音色名（如 zh-CN-Xiaoyi:DragonHDFlashLatestNeural），"
+                         "minimax 写 voice_id（如 female-shaonv）")
+    ap.add_argument("--cloud-style", default="",
+                    help="云端情绪：写桌宠情绪名（happy/shy/…，查 config/emotion_map.json 换算），"
+                         "或直接写供应商的 style/emotion")
     args = ap.parse_args()
+
+    global PROVIDER, CLOUD_VOICE, CLOUD_STYLE
 
     root = args.root
     cdir = os.path.join(root, "characters", args.character)
@@ -219,7 +271,18 @@ async def main() -> int:
     plan = load_json(plan_path)
     dialogue = load_json(dlg_path)
 
-    provider = plan.get("provider", "edge-tts")
+    provider = args.provider or plan.get("provider", "edge-tts")
+    PROVIDER, CLOUD_VOICE, CLOUD_STYLE = provider, args.cloud_voice, args.cloud_style
+    if provider != "edge-tts":
+        # 启动就把密钥体检一遍：缺密钥要在第一句之前失败，
+        # 而不是渲到第 37 条台词才报错（那时候前面 36 条已经花了钱）
+        pid = "azure_speech" if provider == "azure" else "minimax"
+        env = vc.key_ref_to_env((vc.load_provider(pid).get("auth") or {}).get("key_ref", ""))
+        if not vc.get_key(env):
+            print(f"[致命] 选了 {provider} 但没有 {env}；"
+                  f"本机 export 或在仓库 Secrets 里加（见 docs/ops/VOICE_KEYS.md）", file=sys.stderr)
+            return 2
+        print(f"[供应商] {provider}  密钥 {vc.fingerprint(vc.get_key(env))}")
     style = plan.get("style", {})
     rate = style.get("rate", "+0%")
     pitch = style.get("pitch", "+0Hz")

@@ -94,10 +94,33 @@
 我们的网关只认**环境变量**，规则是 `secret://xxx` → `ZHUOCHONG_SECRET_XXX`
 （`src/core/zgateway.c::zgw_secret_resolve`，取不到就明确报错，**绝不会拿空串硬发请求**）。
 
-| 供应商 | 配置里的引用 | 你要设的环境变量 |
-|---|---|---|
-| Azure 语音 | `secret://azure_speech` | **`ZHUOCHONG_SECRET_AZURE_SPEECH`** |
-| MiniMax | `secret://minimax` | **`ZHUOCHONG_SECRET_MINIMAX`** |
+| 供应商 | 配置里的引用 | 你要设的环境变量 | 必填？ |
+|---|---|---|---|
+| Azure 语音 | `secret://azure_speech` | **`ZHUOCHONG_SECRET_AZURE_SPEECH`** | 是 |
+| Azure 区域 | — | `ZHUOCHONG_AZURE_REGION`（默认 `southeastasia`） | 否（不是秘密） |
+| MiniMax | `secret://minimax` | **`ZHUOCHONG_SECRET_MINIMAX`** | 是 |
+| MiniMax GroupId | — | `ZHUOCHONG_SECRET_MINIMAX_GROUP` | **多数账号必填**，不带会 401 |
+
+### 3.0 ★ 推荐这条：放进 GitHub 仓库 Secrets（渲染在 Actions 上跑）
+
+**为什么**：合成必须联网，而 Arena 沙箱的出网白名单只放 github / npm / pypi
+—— 我这边**打不到任何 TTS 端点**。这仓库的语音一直是在 GitHub Actions 上渲的
+（`.github/workflows/voice-render.yml`，渲完直接把 mp3 提交回分支，我就能读到、你也能直接听）。
+所以密钥放仓库 Secrets 是最顺的一条路：**你不用把密钥给任何人，我也不经手。**
+
+1. 打开 `https://github.com/wpch3/zhuochong/settings/secrets/actions`
+2. 点 **New repository secret**，按上表的名字**逐个**加：
+   - `ZHUOCHONG_SECRET_AZURE_SPEECH`
+   - `ZHUOCHONG_SECRET_MINIMAX`
+   - `ZHUOCHONG_SECRET_MINIMAX_GROUP`（MiniMax 控制台里和 Key 同一页）
+3. 加完告诉我一声，我去 Actions 手动触发 `voice-render`，选 `provider = azure`（或 `minimax`），
+   它会**先体检密钥再开渲**，渲完把样音提交回分支。
+
+GitHub 的 Secrets 是单向的：存进去之后**连你自己都看不到原文**，
+日志里出现也会被自动打成 `***`。我们的 workflow 还多做了一层 ——
+密钥只经 `env:` 注入，**绝不出现在 `run:` 的命令行里**（命令行会原样进日志）。
+
+### 3.1 或者只在你本机用
 
 **Windows（你的目标平台）**：
 ```powershell
@@ -112,9 +135,30 @@ export ZHUOCHONG_SECRET_AZURE_SPEECH="..."
 export ZHUOCHONG_SECRET_MINIMAX="..."
 ```
 
-**Azure 还要一个区域**（不是秘密，可以直接写配置）：
-`config/providers/azure_speech.json` 的 `base_url` 里有 `{region}` 占位，
-告诉我你选的区域（建议 `southeastasia`），我填进去；或者你自己把 `{region}` 替换掉。
+**Azure 还要一个区域**（不是秘密）：默认吃 `southeastasia`（香港离它最近），
+要改就设 `ZHUOCHONG_AZURE_REGION`。注意门户页面上那个 `*.api.cognitive.microsoft.com`
+**不是 TTS 端点**，真正的端点是 `https://<区域>.tts.speech.microsoft.com/cognitiveservices/v1`。
+
+### 3.2 填完先体检（不打印密钥，只打印指纹）
+
+```bash
+python3 tools/voice_cloud.py --check            # 看两家密钥在不在、形状对不对
+python3 tools/voice_cloud.py --check --net      # 再真发一次合成请求（本机要能联网）
+python3 tools/voice_cloud.py --say "你回来啦，我等你好久了" --provider azure --style cute --out /tmp/t.mp3
+```
+
+体检输出长这样 —— **只有指纹，没有密钥**：
+
+```
+── Azure 语音服务（azure_speech）
+   密钥环境变量：ZHUOCHONG_SECRET_AZURE_SPEECH
+   ✓ 读到了：32 位 / 9f…c1 / sha256:7907c793
+   区域：southeastasia
+```
+
+指纹的用处：你一眼能核对"它用的是不是我给的那把"，而这串东西反推不出密钥。
+它还会做形状体检 —— Azure 密钥是 32 位十六进制、MiniMax 是三段点分的 JWT，
+**把「终结点 URL」当密钥贴进去**这种最常见的错，体检这一步就拦住了。
 
 ### 安全红线（已经是仓库纪律，不是建议）
 1. **Key 只存本机**（环境变量或被忽略的 `.env`）。历史上这仓库被误提交过一次 `.env`，教训记在
@@ -129,9 +173,11 @@ export ZHUOCHONG_SECRET_MINIMAX="..."
 
 1. `config/providers/azure_speech.json` / `minimax.json` 的 `enabled` 改 `true`，跑
    `python3 tools/check_platform.py` 重新物化路由表（`config/voices.json` 是生成物，不手改）。
-2. 渲染器加一条 provider 分支：Azure 走 `to_ssml()`（`mstts:express-as` + `styledegree` + `break`），
-   MiniMax 走 `to_minimax()`（emotion + speed/pitch/vol）—— **这两个适配器本轮已经写完并自检通过**，
-   不是现写。
+2. 渲染器的 provider 分支**已经写完了**（2026-10-18）：客户端在 `tools/voice_cloud.py`
+   （纯标准库，Azure 走 `mstts:express-as` + `styledegree`，MiniMax 走 `emotion` 字段，
+   注意它返回的 `data.audio` 是 **hex 不是 base64**），
+   渲染器用 `--provider azure|minimax --cloud-voice … --cloud-style …` 切过去，
+   输出格式和 edge-tts 对齐（24kHz/mono/mp3），所以分段拼接不会在接缝处咔哒。
 3. 用**同一份语感表**重渲一次，和现在的 edge 版并排放进试听页，你直接 A/B。
 4. 按你选的音色写进 `config/voice_cast.json`（T58.1），每个角色各自记一档。
 
