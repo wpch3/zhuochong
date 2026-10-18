@@ -1746,7 +1746,7 @@
       "layer": 58,
       "pos": [
         416,
-        110
+        79
       ],
       "anchor": [
         0.5,
@@ -1828,59 +1828,13 @@
       "hires": 2
     },
     {
-      "id": "acc_hood_neck",
-      "file": "sprites/acc_hood_neck@2x.png",
-      "group": "chest",
-      "layer": 97,
-      "pos": [
-        423,
-        265
-      ],
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "tags": [
-        "accessory",
-        "outfit",
-        "hood"
-      ],
-      "note": "兜帽根（领后）（挂件，槽 neck_back）：领后（T46.9）。层 95 = **躯干 100 之下** —— 兜帽的根要被夹克领子压住才读成\"缝在领子后面\"。用户原话「兜帽是连接在衣领后面的，你做到前面了」。画法口径：パーカーのフードは**胸側より背中側に重みがある**（atam-academy）、「横や後ろから見ると首の後ろにたまりシワができる」（CLIP STUDIO）。组 chest = 跟躯干走，不跟头走：兜帽根缝在衣服上。",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
-      "id": "acc_hood_down",
-      "file": "sprites/acc_hood_down@2x.png",
-      "group": "chest",
-      "layer": 98,
-      "pos": [
-        423,
-        250
-      ],
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "tags": [
-        "accessory",
-        "outfit",
-        "hood"
-      ],
-      "note": "兜帽·摘下（堆在背后）（挂件，槽 neck_back）：领后（T46.9）。层 95 = **躯干 100 之下** —— 兜帽的根要被夹克领子压住才读成\"缝在领子后面\"。用户原话「兜帽是连接在衣领后面的，你做到前面了」。画法口径：パーカーのフードは**胸側より背中側に重みがある**（atam-academy）、「横や後ろから見ると首の後ろにたまりシワができる」（CLIP STUDIO）。组 chest = 跟躯干走，不跟头走：兜帽根缝在衣服上。",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
       "id": "acc_hair_sweep_twin_l",
       "file": "sprites/acc_hair_sweep_twin_l@2x.png",
       "group": "head",
       "layer": 243,
       "pos": [
-        340,
-        222
+        329,
+        221
       ],
       "anchor": [
         0.5,
@@ -1901,8 +1855,8 @@
       "group": "head",
       "layer": 244,
       "pos": [
-        492,
-        222
+        517,
+        221
       ],
       "anchor": [
         0.5,
@@ -1923,8 +1877,8 @@
       "group": "head",
       "layer": 247,
       "pos": [
-        340,
-        222
+        329,
+        221
       ],
       "anchor": [
         0.5,
@@ -1945,8 +1899,8 @@
       "group": "head",
       "layer": 248,
       "pos": [
-        492,
-        222
+        517,
+        221
       ],
       "anchor": [
         0.5,
@@ -7451,7 +7405,6 @@
         {
           "id": "down",
           "parts": [
-            "acc_hood_down",
             "hair_ahoge",
             "acc_ear_cat_l",
             "acc_ear_cat_r"

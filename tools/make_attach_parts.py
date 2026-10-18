@@ -161,7 +161,8 @@ def bleed_edge(rgb: np.ndarray, a: np.ndarray, rounds: int = 3) -> np.ndarray:
 
 
 def match_colors(rgb: np.ndarray, a: np.ndarray, ref: np.ndarray,
-                 keep: float = 1.0) -> np.ndarray:
+                 keep: float = 1.0, l_sigma_max: float = 2.5,
+                 l_offset: float = 0.0) -> np.ndarray:
     """Reinhard 色彩迁移（Lab 的 mean/std 对齐）：让挂件**长得像本体的头发**。
 
     为什么不用 relay_colors（按亮度 k-means 重铺到 3 色）：那套是给**漫符**设计的 ——
@@ -189,9 +190,20 @@ def match_colors(rgb: np.ndarray, a: np.ndarray, ref: np.ndarray,
         mu_r, sd_r = ref_lab[:, ch].mean(), ref_lab[:, ch].std()
         # σ 比值限幅：参考分布比源窄很多时，不要把源图压成一张平色；
         # 明度(L)留得宽一点（阴影层次是头发的立体感），彩度(a/b)收得紧一点。
-        lo, hi = (0.35, 2.5) if ch == 0 else (0.15, 1.6)
+        # ★ l_sigma_max（2026-10-18 第十一问）：L 的 σ 放大系数要能按件收。
+        #   新画的长发刘海是一张**又亮又平**的图（L mean 95.7、sd 6.6），而本体
+        #   头发 sd 12.65 ⇒ k=1.92。L 的均值虽然对齐到了参考值 80.9，但 σ 放大
+        #   是**绕均值双向拉开**的：亮端顶到 L=100 被削平，暗端一路压下去，
+        #   再经 sRGB 的非线性转回来，**RGB 均值从 ~(205,200,210) 掉到 (164,157,177)**
+        #   —— 肉眼就是"灰了一个号"，用户第十一问说长发那版前髪不对，有这一半原因。
+        #   默认仍是 2.5（现有件一个都不动），需要的件单独收到 1.0。
+        lo, hi = (0.35, float(l_sigma_max)) if ch == 0 else (0.15, 1.6)
         k = float(np.clip(sd_r / sd_s, lo, hi))
-        out[..., ch] = (src_lab[..., ch] - mu_s) * k + mu_r
+        # l_offset：把明度整体再抬/压一点。参考池是**全部头发**的分布（含后发壳
+        #   的大片暗部），而刘海在原画里本来就比平均亮 —— 统计对齐到池均值会让
+        #   新刘海看着"灰一号"。这个偏移就是补这一截，默认 0。
+        out[..., ch] = (src_lab[..., ch] - mu_s) * k + mu_r \
+            + (float(l_offset) if ch == 0 else 0.0)
     # ★ 彩度封顶：输出的 a/b 不许超出**本体头发自己的彩度范围**。
     #   没有这一道时，源图里的深色线稿（蓝紫，RGB≈(60,17,123)）被统计迁移抬亮之后
     #   会落成粉紫 (209,106,175) —— 肉眼就是"洋红残留"，切件器的键色闸当场报警。
@@ -262,7 +274,9 @@ def build_one(att, slot, redraw_dir, sprites_dir, anchors):
         crgb = match_colors(unpre, ca,
                             ref_hair_pixels(sprites_dir, rm["ref_sprites"],
                                             rm.get("palette_hex")),
-                            float(rm.get("keep", 1.0)))
+                            float(rm.get("keep", 1.0)),
+                            float(rm.get("l_sigma_max", 2.5)),
+                            float(rm.get("l_offset", 0.0)))
     elif att.get("recolor"):
         ca = key_alpha(canvas, bg)
         crgb = relay_colors(canvas, ca, att["recolor"])

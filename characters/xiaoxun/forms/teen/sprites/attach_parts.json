@@ -179,8 +179,8 @@
       "slot": "body_back_hair",
       "file": "sprites/hair_long_back.png",
       "size": [
-        331,
-        822
+        259,
+        740
       ]
     },
     {
@@ -211,30 +211,12 @@
       ]
     },
     {
-      "id": "hood_neck",
-      "slot": "neck_back",
-      "file": "sprites/acc_hood_neck.png",
-      "size": [
-        183,
-        90
-      ]
-    },
-    {
-      "id": "hood_down",
-      "slot": "neck_back",
-      "file": "sprites/acc_hood_down.png",
-      "size": [
-        282,
-        125
-      ]
-    },
-    {
       "id": "hair_sweep_twin_l",
       "slot": "head_side_sweep",
       "file": "sprites/acc_hair_sweep_twin_l.png",
       "size": [
-        75,
-        130
+        66,
+        132
       ]
     },
     {
@@ -242,8 +224,8 @@
       "slot": "head_side_sweep",
       "file": "sprites/acc_hair_sweep_twin_r.png",
       "size": [
-        75,
-        130
+        66,
+        132
       ]
     },
     {
@@ -251,8 +233,8 @@
       "slot": "head_side_sweep",
       "file": "sprites/acc_hair_sweep_pony_l.png",
       "size": [
-        75,
-        130
+        66,
+        132
       ]
     },
     {
@@ -260,8 +242,8 @@
       "slot": "head_side_sweep",
       "file": "sprites/acc_hair_sweep_pony_r.png",
       "size": [
-        75,
-        130
+        66,
+        132
       ]
     },
     {
