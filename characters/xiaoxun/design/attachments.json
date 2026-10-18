@@ -754,9 +754,9 @@
       "id": "hood_up",
       "label": "兜帽·戴上",
       "slot": "head_over_hair",
-      "source": "acc_hood_up.png",
+      "source": "acc_hood_up_v3.png",
       "sprite": "acc_hood_up.png",
-      "width_ratio": 1.0,
+      "width_ratio": 1.32,
       "anchor": [
         0.5,
         0.0
@@ -793,10 +793,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.06834,
-        0.04316
+        0.0216,
+        -0.1259
       ],
-      "sprite_h_rel": 1.43865
+      "sprite_h_rel": 1.561
     },
     {
       "id": "hair_long",

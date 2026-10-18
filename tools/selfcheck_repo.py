@@ -1968,6 +1968,80 @@ def check_live2d(root):
                   % (len(_tp), float(_tp[0]["radius"]),
                      len(_lp), float(_lp[0]["radius"])))
 
+    # ⑳ 兜帽的几何闸（T46.6）。用户 2026-10-18 第三次退回这件衣服，三条意见是
+    #    「没链接衣服 / 大小和头型不匹配 / 把新头发全遮住了」。前两条都是**几何**问题，
+    #    靠眼睛看一轮过一轮，所以这里按实测锚点焊死四条线：
+    #      ① 兜帽顶必须真的盖过头顶 —— 比头顶还矮就是顶在脑门上，一眼假；
+    #      ② 兜帽下摆不许越过肩线太多 —— 越过就变成披肩/斗篷，那正是"没链接衣服"的来源；
+    #      ③ 宽度要按头宽定标（1.1~1.6 个头单位）—— 窄了夹头，宽了变灯罩；
+    #      ④ 高宽比 ≤ 1.35 —— 比这更瘦长的就不是兜帽，是连帽斗篷。
+    #    尺寸直接读 PNG 文件头（8~24 字节），不依赖 PIL，闸子在没装图像库的机器上也能跑。
+    _hood = _by.get("hood_up") if os.path.exists(_att_p) else None
+    if _hood:
+        _fm_dir = os.path.join(root, "characters", "xiaoxun", "forms", "teen")
+        _anc = jsonc(os.path.join(_fm_dir, "design", "anchors.json"))
+        _rig_h = jsonc(os.path.join(_fm_dir, "rig.json"))
+        _unit = float(_anc["meta"]["head_ratio"]) * float(_anc["meta"]["height_px"])
+        _pt = next((p for p in _rig_h["parts"] if p["id"] == "acc_hood_up"), None)
+        _png = os.path.join(_fm_dir, (_pt or {}).get("file", ""))
+
+        def _png_wh(path):
+            with io.open(path, "rb") as _f:
+                _b = _f.read(24)
+            return (int.from_bytes(_b[16:20], "big"), int.from_bytes(_b[20:24], "big"))
+
+        if _pt and os.path.exists(_png):
+            _sw, _sh = _png_wh(_png)
+            _sc = float(_pt.get("scale", 1.0))
+            _sw, _sh = _sw * _sc, _sh * _sc          # @2x 贴图 → 画布像素
+            _pad = 0.04 / 1.08                        # CROP_MARGIN 补边占成品的比例
+            _cw, _ch = _sw * (1 - 2 * _pad), _sh * (1 - 2 * _pad)
+            _top = _pt["pos"][1] + _sh * _pad
+            _bot = _top + _ch
+            # 原画在画布里的纵向偏移：画布比原画高出来的那一截（make_rig 的 oy）
+            _oy = float(_rig_h["canvas"]["h"]) - float(_anc["meta"]["height_px"])
+            _head_top = _oy + float(_anc["points"]["head_top"][1])
+            _sh_y = _oy + float(_anc["points"]["shoulder_l"][1])
+            check("兜帽顶盖过头顶（不是顶在脑门上）", _top <= _head_top,
+                  "兜帽顶 y=%.0f　头顶 y=%.0f（画布像素，越小越高）" % (_top, _head_top))
+            check("兜帽下摆不越过肩线太多（越过就变披肩，用户退回过）",
+                  _bot <= _sh_y + 0.15 * _unit,
+                  "下摆 y=%.0f　肩线 y=%.0f　上限 y=%.0f" % (_bot, _sh_y, _sh_y + 0.15 * _unit))
+            check("兜帽宽度按头宽定标（1.10~1.60 个头单位）",
+                  1.10 <= _cw / _unit <= 1.60,
+                  "宽 %.0f px = %.2f 个头单位（头单位 %.0f px）" % (_cw, _cw / _unit, _unit))
+            check("兜帽高宽比 ≤ 1.35（再瘦长就是连帽斗篷不是兜帽）",
+                  _ch / _cw <= 1.35,
+                  "高 %.0f / 宽 %.0f = %.2f" % (_ch, _cw, _ch / _cw))
+
+    # 遮挡别人的差分件必须有**用户点得到**的开关（2026-10-18 用户原话「做个开关」）。
+    # 调试台那块把英文 id 原样铺出来，不算数 —— 它是给我自己验引擎的。
+    # 这里核的是装扮面板：layout.json 里挂着、而且每个互斥组都登记了中文名。
+    _du_p = os.path.join(root, "web", "components", "dressup.js")
+    if os.path.exists(_att_p) and os.path.exists(_du_p):
+        _du = io.open(_du_p, encoding="utf-8").read()
+        _lay_ids = []
+        for _items in jsonc(os.path.join(root, "web", "layout.json"))["regions"].values():
+            _lay_ids += [x if isinstance(x, str) else x.get("id") for x in _items]
+        check("装扮面板挂在界面上（用户点得到，不是只有调试台）", "dressup" in _lay_ids,
+              "layout.json 的组件：%s" % " ".join(x for x in _lay_ids if x))
+        _grp_ids = [g["id"] for g in _att.get("pose_groups", [])]
+        _nong = [g for g in _grp_ids if ("%s:" % g) not in _du]
+        check("每个互斥差分组在装扮面板里都有中文名（没登记就只能看见英文 id）",
+              not _nong, "缺 %s" % _nong if _nong else "%d 个组：%s"
+              % (len(_grp_ids), " ".join(_grp_ids)))
+        _hood_g = next((g for g in _att.get("pose_groups", []) if g["id"] == "hood_pose"), None)
+        _hood_r = next((g for g in jsonc(os.path.join(root, "characters", "xiaoxun", "forms",
+                                                      "teen", "rig.json")).get("poses", [])
+                        if g["id"] == "hood_pose"), None)
+        _back = (_hood_g or {}).get("extra_parts", {}).get("down", [])
+        check("兜帽是两档开关，摘下那档把呆毛和猫耳放回来",
+              bool(_hood_r) and sorted(e["id"] for e in _hood_r["entries"]) == ["down", "up"]
+              and len(_back) >= 3,
+              "档位 %s；摘下档放回 %d 个部件（%s）"
+              % ([e["id"] for e in (_hood_r or {}).get("entries", [])], len(_back),
+                 " ".join(_back)))
+
     # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
     # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。
     for _fp in sorted(glob.glob(os.path.join(root, "characters/*/forms.json"))):

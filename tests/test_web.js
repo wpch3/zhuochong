@@ -160,7 +160,10 @@ const INFO = {
      一上真服务就空白 —— api_smoke 有一条闸专门比对这两边的字段集。 */
   expression: "",
   viseme: "", viseme_weight: 0.0, visemes: ["SIL", "A", "I", "U", "E", "O", "N"],
-  poses: [{ id: "eye_hl_style", current: "round", entries: ["round", "star"] }],
+  poses: [{ id: "eye_hl_style", current: "round", entries: ["round", "star"] },
+           { id: "tail_pose", current: "relaxed", entries: ["relaxed", "up", "puff", "tuck"] },
+           { id: "hood_pose", current: "down", entries: ["up", "down"] },
+           { id: "hairstyle", current: "none", entries: ["long", "twin", "pony"] }],
   /* 区域表 + 画布尺寸：UI 要靠它发现区域、做画布↔帧坐标换算，不能硬编码 */
   canvas_w: 848, canvas_h: 1360, frame_w: 466, frame_h: 748,
   /* 形态路线图：ready 的能切，planned 的只在界面上灰显 */
@@ -284,6 +287,15 @@ Object.assign(ctx, {
 });
 ctx.window = ctx;
 ctx.globalThis = ctx;
+/* localStorage：浏览器有、node 没有。装扮面板的"选了就记住"靠它，
+   所以这里给个最小实现（并留了 _fail 开关，用来验"隐私模式下抛异常也不许崩"）。 */
+const LS = {
+  _d: {}, _fail: false,
+  getItem(k) { if (this._fail) throw new Error("denied"); return k in this._d ? this._d[k] : null; },
+  setItem(k, v) { if (this._fail) throw new Error("denied"); this._d[k] = String(v); },
+  removeItem(k) { delete this._d[k]; },
+};
+ctx.localStorage = LS;
 vm.createContext(ctx);
 
 /* 页面上的区域容器（和 index.html 保持一致） */
@@ -633,6 +645,69 @@ function slotOf(id) {
     const browGroup = groups.find((g) => g.includes("眉毛"));
     CHECK(browGroup && browGroup.includes("(1)"),
           "眉毛组应有 1 个参数（stub 里只放了 ParamBrowLY），实际 " + browGroup);
+  }
+
+  SECTION("装扮面板（T46.4/T46.6）：用户点得到的外观开关 + 选了就记住");
+  {
+    const el = slotOf("dressup");
+    for (let i = 0; i < 6; i++) await new Promise((r) => setImmediate(r));
+    const btns = () => walk(el).filter((n) => n.tagName === "BUTTON");
+    const btxt = () => btns().map((b) => b._text);
+    const txt = walk(el).map((n) => n._text).join(" ");
+
+    /* ① 中文名：用户面板和调试台的分界线就在这儿。英文 id 直接出现在按钮上 = 没登记 */
+    ["发型", "兜帽", "猫尾", "眼高光"].forEach((n) => {
+      CHECK(txt.indexOf(n) >= 0, "装扮面板要有「" + n + "」这一行");
+    });
+    ["短发（原装）", "长发", "双马尾", "马尾", "戴上", "摘下"].forEach((n) => {
+      CHECK(btxt().indexOf(n) >= 0, "要有「" + n + "」按钮");
+    });
+    CHECK(btxt().indexOf("hairstyle") < 0 && btxt().indexOf("twin") < 0,
+          "按钮上不许直接露英文 id（那是调试台的做法）");
+
+    /* ② 短发这一档 /api/info.json 的 entries 里没有（entries 只列有部件的档），
+          靠组件的 extra 补出来。少了它用户就没法切回原装短发。 */
+    CHECK(btxt().filter((t) => t === "短发（原装）").length === 1,
+          "原装短发要补出按钮，而且只补一颗");
+
+    /* ③ 兜帽只给两档，不给「关掉」—— none 会把呆毛和猫耳一起吞掉 */
+    CHECK(txt.indexOf("关掉") < 0, "装扮面板不给「关掉」（兜帽那档会连呆毛猫耳一起吞）");
+
+    /* ④ 点下去要发对请求 */
+    callsFull.length = 0;
+    btns().find((b) => b._text === "双马尾").onclick();
+    for (let i = 0; i < 6; i++) await new Promise((r) => setImmediate(r));
+    const pose = callsFull.find((u) => u.includes("/api/pose"));
+    CHECK(!!pose && pose.includes("group=hairstyle") && pose.includes("id=twin"),
+          "点「双马尾」应调 /api/pose?group=hairstyle&id=twin（实际 " + pose + "）");
+
+    /* ⑤ 选了要记住：写进 localStorage，而且下次挂载时重新打给引擎 */
+    const saved = JSON.parse(LS._d["zc.dressup.v1"] || "{}");
+    CHECK(saved.hairstyle === "twin", "选过的档要落进 localStorage（实际 " + JSON.stringify(saved) + "）");
+    {
+      const host2 = { card: (t) => { const b = makeEl("div"); const body = makeEl("div");
+                        b.appendChild(body); return { box: b, body: body }; },
+                      el: (t, c, x) => { const n = makeEl(t); if (x) n._text = x; return n; },
+                      api: async (u) => { callsFull.push(String(u)); return ctx.fetch(u).then((r) => r.json()); },
+                      refresh() {} };
+      const def = ZC.registry.get("dressup");
+      const fresh = Object.create(def || {});
+      if (def) {
+        callsFull.length = 0;
+        await fresh.mount(host2, makeEl("div"), {});
+        for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r));
+        const re = callsFull.find((u) => u.includes("group=hairstyle") && u.includes("id=twin"));
+        CHECK(!!re, "重新挂载时要把存档档位重新打一遍（实际 " + callsFull.join(",") + "）");
+      }
+    }
+
+    /* ⑥ 隐私模式：localStorage 抛异常也不许把面板打黑 */
+    LS._fail = true;
+    let boom = false;
+    try { btns().find((b) => b._text === "摘下").onclick(); } catch (e) { boom = true; }
+    for (let i = 0; i < 4; i++) await new Promise((r) => setImmediate(r));
+    LS._fail = false;
+    CHECK(!boom, "localStorage 不可用时（隐私模式）面板也要能点");
   }
 
   SECTION("形态路线图（G68）：没做的形态要看得见但点不了");
