@@ -1936,8 +1936,12 @@ def check_live2d(root):
         #    接管必须是**同一个部位**的：藏鬓发就得给鬓发位的件，拿脑后的马尾
         #    顶名额不算（第一版就是这么漏过去的——马尾本体 body_back_pony 占着
         #    pony 档的名额，抽掉掠发也照样绿）。
-        _ROLE = {"hair_side_l": {"head_side_hair", "head_side_sweep"},
-                 "hair_side_r": {"head_side_hair", "head_side_sweep"},
+        #   横髪位的替代件有三种：原生槽、扎发用的细缕、长发用的长鬓发。
+        #   第十二问加 head_side_long —— 用户贴的长发参考图里，长发的**横髪也是
+        #   长的**（从太阳穴一路垂到胸口），齐腮短鬓配过腰长发本来就不成立。
+        _SIDE = {"head_side_hair", "head_side_sweep", "head_side_long"}
+        _ROLE = {"hair_side_l": _SIDE,
+                 "hair_side_r": _SIDE,
                  "hair_back": {"body_back_hair", "body_back_pony"},
                  "seg_head": {"head_under_bangs", "head_in_hair"}}
         _extra = {}

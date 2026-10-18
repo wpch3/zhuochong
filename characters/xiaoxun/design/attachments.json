@@ -132,6 +132,30 @@
       ],
       "curve": "tip",
       "note": "扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。"
+    },
+    {
+      "id": "head_side_long",
+      "label": "长鬓发位（长发档的横髪）",
+      "layer": 249,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "★ 参考实拍：长发的**横髪也是长的** —— 从太阳穴一路垂到胸口，不是齐腮的短鬓。这是第十二问用户贴的长发参考图里最明显的一条结构，也是之前长发\"不契合\"的真因：留着齐腮短鬓 + 背后挂一片长发 = 短发女孩背后挂了片头发。层 249 > torso 100，所以它垂在衣服前面（参考图里也是垂在身前）。"
+    },
+    {
+      "id": "head_crown_tied",
+      "label": "收拢的头顶（扎发档）",
+      "layer": 239,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "★ 扎起来的发型，**头顶必须跟着变** —— 发丝向后收拢到扎点，轮廓是平滑的，不是蓬松的鲍勃头顶。只加一条尾巴而不改头顶，读出来就是\"短发 + 挂件\"，用户原话\"一坨头发缠在一起\"。层 230：压在 seg_head(180) 之上、刘海(240) 之下。"
     }
   ],
   "attachments": [
@@ -1552,6 +1576,132 @@
       ],
       "note": "兜帽的**下半截**，和上半截 hood_up 是同一张源图切出来的两段（source_crop 上 0~0.726 / 下 0.726~1）。上半截层 250 在头发之上，下半截层 95 **在夹克之下** —— 于是帽子的下沿是\"钻进领子里\"而不是\"糊在胸口上\"。这是用户第十问「兜帽是连接在衣领后面的，你做到前面了」的几何解：一个部件只能有一个层号，想同时\"罩住头\"和\"钻进领子\"就必须切成两段。Live2D 官方学院《フードの作り方》把「素材の分け方」单列一节，说的就是这件事。",
       "layer": 99
+    },
+    {
+      "id": "hair_sidelong_l",
+      "label": "长鬓发（左·垂到胸口）",
+      "slot": "head_side_long",
+      "source": "hair_side_long.png",
+      "sprite": "acc_hair_sidelong_l.png",
+      "mirror": false,
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "long",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "width_ratio": 1.58,
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        -0.3094,
+        0.5468
+      ],
+      "sprite_h_rel": 1.223,
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "l_sigma_max": 1.4,
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      },
+      "note": "长发档的横髪。参考图：长发两侧从太阳穴直垂过肩到胸口。",
+      "layer": 249
+    },
+    {
+      "id": "hair_sidelong_r",
+      "label": "长鬓发（右·垂到胸口）",
+      "slot": "head_side_long",
+      "source": "hair_side_long.png",
+      "sprite": "acc_hair_sidelong_r.png",
+      "mirror": true,
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "long",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "width_ratio": 1.58,
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        0.3597,
+        0.5468
+      ],
+      "sprite_h_rel": 1.223,
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "l_sigma_max": 1.4,
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      },
+      "note": "长发档的横髪（右，镜像同源）。",
+      "layer": 251
+    },
+    {
+      "id": "hair_crown_pony",
+      "label": "收拢的头顶（马尾档）",
+      "slot": "head_crown_tied",
+      "source": "hair_crown_tied.png",
+      "sprite": "acc_hair_crown_pony.png",
+      "mirror": false,
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "pony",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "width_ratio": 0.9,
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        0.0324,
+        0.1511
+      ],
+      "sprite_h_rel": 0.4676,
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "l_sigma_max": 1.4,
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      },
+      "note": "马尾档的头顶：发丝向后收拢到扎点。不加这件，头顶还是蓬松鲍勃，读出来就是\"短发挂了条尾巴\"。",
+      "layer": 239
     }
   ],
   "pose_groups": [
@@ -1585,6 +1735,10 @@
           "hair_side_r"
         ],
         "pony": [
+          "hair_side_l",
+          "hair_side_r"
+        ],
+        "long": [
           "hair_side_l",
           "hair_side_r"
         ]

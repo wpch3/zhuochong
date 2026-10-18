@@ -57,6 +57,34 @@ def key_alpha_soft(rgb: np.ndarray, bg: np.ndarray) -> np.ndarray:
     return np.clip(1.0 - np.maximum(excess, 0.0) / denom, 0.0, 1.0)
 
 
+def harden_interior(a: np.ndarray, thr: float = 0.35, band: int = 2) -> np.ndarray:
+    """把洋红键出来的 alpha，在**件的内部**补成不透明。
+
+    ★ 2026-10-18 第十二问查出来的系统性缺陷。key_alpha_soft 的推导有一个前提，
+    它自己的文档串里也写着：「前景本身不能是洋红系」。而本项目的**头发就是淡紫**
+    —— R 和 B 都比 G 高，正好部分满足洋红的判据：
+
+        excess = (R+B)/2 − G
+        淡紫 (200,190,225) → excess = 22.5 → a = 0.91
+        再紫一点 (180,150,220) → excess = 50 → a = 0.80
+
+    于是**整件头发被系统性地抠成半透明**，而不是只有边缘。实测：
+      acc_hair_crown_pony   alpha>240 的像素只占 **1.9%**
+      acc_hair_sidelong_l                        **18.8%**
+      acc_hair_sweep_pony_l                      **26.8%**
+    画面上就是"能看穿的头发"——发丝底下透出衣领和发卡。用户第十二问说长发
+    "一坨"、看着脏，有这一份原因。
+
+    修法是形态学的：alpha 超过 thr 的区域先腐蚀掉 band 像素得到**内芯**，
+    内芯一律补成 1；只有外圈那条 band 宽的带子保留原来的软过渡（抗锯齿还在）。
+    不改 key_alpha_soft 本身 —— 它算边缘覆盖度是对的，错的是把它用在内部。
+    """
+    from PIL import Image as _I, ImageFilter as _F
+    m = (a > thr).astype(np.uint8) * 255
+    core = np.asarray(_I.fromarray(m, "L").filter(_F.MinFilter(2 * band + 1)))
+    return np.where(core > 127, 1.0, a)
+
+
 def _srgb_to_lab(rgb: np.ndarray) -> np.ndarray:
     """sRGB(0~255) → CIE Lab(D65)。只用 numpy，不拉 scikit-image 进依赖。"""
     c = np.clip(rgb.astype(np.float64) / 255.0, 0.0, 1.0)
@@ -286,6 +314,11 @@ def build_one(att, slot, redraw_dir, sprites_dir, anchors):
         aa = ca[..., None]
         crgb = canvas.astype(np.float64) - (1.0 - aa) * bg.astype(np.float64)
         crgb = np.clip(crgb / np.maximum(aa, 1e-3), 0, 255)
+
+    # ★ 内部补实（默认开）：见 harden_interior 的文档串 —— 淡紫头发会被洋红键
+    #   系统性抠成半透明。个别确实要半透明的件可以写 "solid_fill": false 关掉。
+    if att.get("solid_fill", True):
+        ca = harden_interior(ca)
 
     if att.get("mirror"):
         # 左右耳用同一张原图镜像出来：AI 画两只一定不对称，而头上的东西

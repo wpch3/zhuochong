@@ -108,6 +108,30 @@
       ],
       "curve": "tip",
       "note": "扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。"
+    },
+    {
+      "id": "head_side_long",
+      "label": "长鬓发位（长发档的横髪）",
+      "layer": 249,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "★ 参考实拍：长发的**横髪也是长的** —— 从太阳穴一路垂到胸口，不是齐腮的短鬓。这是第十二问用户贴的长发参考图里最明显的一条结构，也是之前长发\"不契合\"的真因：留着齐腮短鬓 + 背后挂一片长发 = 短发女孩背后挂了片头发。层 249 > torso 100，所以它垂在衣服前面（参考图里也是垂在身前）。"
+    },
+    {
+      "id": "head_crown_tied",
+      "label": "收拢的头顶（扎发档）",
+      "layer": 239,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "★ 扎起来的发型，**头顶必须跟着变** —— 发丝向后收拢到扎点，轮廓是平滑的，不是蓬松的鲍勃头顶。只加一条尾巴而不改头顶，读出来就是\"短发 + 挂件\"，用户原话\"一坨头发缠在一起\"。层 230：压在 seg_head(180) 之上、刘海(240) 之下。"
     }
   ],
   "attachments": [
@@ -253,6 +277,33 @@
       "size": [
         338,
         118
+      ]
+    },
+    {
+      "id": "hair_sidelong_l",
+      "slot": "head_side_long",
+      "file": "sprites/acc_hair_sidelong_l.png",
+      "size": [
+        61,
+        340
+      ]
+    },
+    {
+      "id": "hair_sidelong_r",
+      "slot": "head_side_long",
+      "file": "sprites/acc_hair_sidelong_r.png",
+      "size": [
+        61,
+        340
+      ]
+    },
+    {
+      "id": "hair_crown_pony",
+      "slot": "head_crown_tied",
+      "file": "sprites/acc_hair_crown_pony.png",
+      "size": [
+        260,
+        130
       ]
     }
   ]
