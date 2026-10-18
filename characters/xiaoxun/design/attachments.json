@@ -958,9 +958,9 @@
       "unit": "head",
       "pos_rel": [
         0.024652,
-        -0.129587
+        -0.132529
       ],
-      "sprite_h_rel": 3.415955,
+      "sprite_h_rel": 3.495396,
       "pose_group": "hairstyle",
       "pose_id": "long",
       "recolor_match": {
@@ -1076,9 +1076,9 @@
       "unit": "head",
       "pos_rel": [
         -0.55567,
-        0.310344
+        0.304459
       ],
-      "sprite_h_rel": 1.640626,
+      "sprite_h_rel": 1.799507,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1192,9 +1192,9 @@
       "unit": "head",
       "pos_rel": [
         0.55567,
-        0.310344
+        0.304459
       ],
-      "sprite_h_rel": 1.640626,
+      "sprite_h_rel": 1.799507,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1337,9 +1337,9 @@
       "unit": "head",
       "pos_rel": [
         0.502768,
-        -0.066904
+        -0.067416
       ],
-      "sprite_h_rel": 2.587008,
+      "sprite_h_rel": 2.600823,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1356,138 +1356,6 @@
       },
       "width_ratio": 1.0,
       "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。"
-    },
-    {
-      "id": "hair_sweep_twin_l",
-      "label": "脸侧细缕（twin·l）",
-      "slot": "head_side_sweep",
-      "sprite": "acc_hair_sweep_twin_l.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "width_ratio": 0.6,
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        -0.231655,
-        0.55036
-      ],
-      "sprite_h_rel": 0.47482,
-      "note": "扎起来的发型配套的横髪。★ 同一张源图切成 twin / pony 两份，是**官方语义逼出来的**：一个部件只能归一个档位（pose3.json），要在两个档位里都露就得复制资源 —— Live2D 官方 PSD 教程原话「髪が左右に分かれている場合は左右別レイヤー」，差分同理。比起让两个档位共用一个件（引擎会拒），复制一份是标准解。",
-      "layer": 243,
-      "derive": {
-        "sprite": "hair_side_l.png",
-        "taper": 0.75,
-        "curve_px": -3.0
-      },
-      "_derive_note": "★ 2026-10-18 第十三问：同样改成从本体侧发派生。扎发时脸侧留的是**本来那缕鬓发的细版**（横向压到 55%%、往下再收 25%%），所以和刘海、和后发的颜色笔触天然一致；用户说的「前发不自然」就是因为之前这里挂的是另一张风格不同的 AI 图。",
-      "_note": "★ 2026-10-18 复核：pos_rel 定的是**中心**（attach_geom 里 anchor=0.5），不是左上角。老值 ∓0.3165/0.3705 既没对准 hair_side_l/r（实测中心 351.5 / 495），两边也不关于头心 423.25 对称 —— 左缕只盖住被藏件的 34%，右缕 80%，一边一个样。改成实测中心后两边都在 80% 以上。"
-    },
-    {
-      "id": "hair_sweep_twin_r",
-      "label": "脸侧细缕（twin·r）",
-      "slot": "head_side_sweep",
-      "sprite": "acc_hair_sweep_twin_r.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "width_ratio": 0.6,
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.284173,
-        0.55036
-      ],
-      "sprite_h_rel": 0.47482,
-      "note": "扎起来的发型配套的横髪。★ 同一张源图切成 twin / pony 两份，是**官方语义逼出来的**：一个部件只能归一个档位（pose3.json），要在两个档位里都露就得复制资源 —— Live2D 官方 PSD 教程原话「髪が左右に分かれている場合は左右別レイヤー」，差分同理。比起让两个档位共用一个件（引擎会拒），复制一份是标准解。",
-      "layer": 244,
-      "derive": {
-        "sprite": "hair_side_r.png",
-        "taper": 0.75,
-        "curve_px": 3.0
-      },
-      "_derive_note": "★ 2026-10-18 第十三问：同样改成从本体侧发派生。扎发时脸侧留的是**本来那缕鬓发的细版**（横向压到 55%%、往下再收 25%%），所以和刘海、和后发的颜色笔触天然一致；用户说的「前发不自然」就是因为之前这里挂的是另一张风格不同的 AI 图。",
-      "_note": "★ 2026-10-18 复核：pos_rel 定的是**中心**（attach_geom 里 anchor=0.5），不是左上角。老值 ∓0.3165/0.3705 既没对准 hair_side_l/r（实测中心 351.5 / 495），两边也不关于头心 423.25 对称 —— 左缕只盖住被藏件的 34%，右缕 80%，一边一个样。改成实测中心后两边都在 80% 以上。"
-    },
-    {
-      "id": "hair_sweep_pony_l",
-      "label": "脸侧细缕（pony·l）",
-      "slot": "head_side_sweep",
-      "sprite": "acc_hair_sweep_pony_l.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "pony",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "width_ratio": 0.75,
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        -0.231655,
-        0.55036
-      ],
-      "sprite_h_rel": 0.47482,
-      "note": "扎起来的发型配套的横髪。★ 同一张源图切成 twin / pony 两份，是**官方语义逼出来的**：一个部件只能归一个档位（pose3.json），要在两个档位里都露就得复制资源 —— Live2D 官方 PSD 教程原话「髪が左右に分かれている場合は左右別レイヤー」，差分同理。比起让两个档位共用一个件（引擎会拒），复制一份是标准解。",
-      "layer": 247,
-      "derive": {
-        "sprite": "hair_side_l.png",
-        "taper": 0.75,
-        "curve_px": -3.0
-      },
-      "_derive_note": "★ 2026-10-18 第十三问：同样改成从本体侧发派生。扎发时脸侧留的是**本来那缕鬓发的细版**（横向压到 55%%、往下再收 25%%），所以和刘海、和后发的颜色笔触天然一致；用户说的「前发不自然」就是因为之前这里挂的是另一张风格不同的 AI 图。",
-      "_note": "★ 2026-10-18 复核：pos_rel 定的是**中心**（attach_geom 里 anchor=0.5），不是左上角。老值 ∓0.3165/0.3705 既没对准 hair_side_l/r（实测中心 351.5 / 495），两边也不关于头心 423.25 对称 —— 左缕只盖住被藏件的 34%，右缕 80%，一边一个样。改成实测中心后两边都在 80% 以上。"
-    },
-    {
-      "id": "hair_sweep_pony_r",
-      "label": "脸侧细缕（pony·r）",
-      "slot": "head_side_sweep",
-      "sprite": "acc_hair_sweep_pony_r.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "pony",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "width_ratio": 0.75,
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.284173,
-        0.55036
-      ],
-      "sprite_h_rel": 0.47482,
-      "note": "扎起来的发型配套的横髪。★ 同一张源图切成 twin / pony 两份，是**官方语义逼出来的**：一个部件只能归一个档位（pose3.json），要在两个档位里都露就得复制资源 —— Live2D 官方 PSD 教程原话「髪が左右に分かれている場合は左右別レイヤー」，差分同理。比起让两个档位共用一个件（引擎会拒），复制一份是标准解。",
-      "layer": 248,
-      "derive": {
-        "sprite": "hair_side_r.png",
-        "taper": 0.75,
-        "curve_px": 3.0
-      },
-      "_derive_note": "★ 2026-10-18 第十三问：同样改成从本体侧发派生。扎发时脸侧留的是**本来那缕鬓发的细版**（横向压到 55%%、往下再收 25%%），所以和刘海、和后发的颜色笔触天然一致；用户说的「前发不自然」就是因为之前这里挂的是另一张风格不同的 AI 图。",
-      "_note": "★ 2026-10-18 复核：pos_rel 定的是**中心**（attach_geom 里 anchor=0.5），不是左上角。老值 ∓0.3165/0.3705 既没对准 hair_side_l/r（实测中心 351.5 / 495），两边也不关于头心 423.25 对称 —— 左缕只盖住被藏件的 34%，右缕 80%，一边一个样。改成实测中心后两边都在 80% 以上。"
     },
     {
       "id": "hair_sidelong_l",
@@ -1507,24 +1375,29 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        -0.230216,
-        0.55036
+        -0.235993,
+        0.905319
       ],
-      "sprite_h_rel": 1.079137,
+      "sprite_h_rel": 1.378126,
       "note": "长发档的横髪。参考图：长发两侧从太阳穴直垂过肩到胸口。",
       "layer": 249,
-      "derive": {
-        "sprite": "hair_side_l.png",
-        "stretch": {
-          "top": 0.34,
-          "bottom": 0.16,
-          "to_height": 300
-        },
-        "taper": 0.86,
-        "curve_px": -7.0
-      },
       "width_ratio": 1.0,
-      "_derive_note": "★ 2026-10-18 第十三问：从**本体那张原画**派生，不再外挂 AI 碎片。此前长鬓发是单独生成的一张图，色相/笔触/轮廓都和本体对不上，用户两轮都判「接发痕迹太明显」。现在这件逐像素就是 hair_side_* 本身（只把中段纵向拉长、底部略收窄），发根那 34%% 一行没动 —— 它和本体的侧发**在同一位置叠的是同一批像素**，接缝从定义上不存在。"
+      "source": "sheetcut_hair_long_side_l.png",
+      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      }
     },
     {
       "id": "hair_sidelong_r",
@@ -1544,24 +1417,29 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.285971,
-        0.55036
+        0.2805,
+        0.904935
       ],
-      "sprite_h_rel": 1.079137,
+      "sprite_h_rel": 1.388487,
       "note": "长发档的横髪（右，镜像同源）。",
       "layer": 251,
-      "derive": {
-        "sprite": "hair_side_r.png",
-        "stretch": {
-          "top": 0.34,
-          "bottom": 0.16,
-          "to_height": 300
-        },
-        "taper": 0.86,
-        "curve_px": 7.0
-      },
       "width_ratio": 1.0,
-      "_derive_note": "★ 2026-10-18 第十三问：从**本体那张原画**派生，不再外挂 AI 碎片。此前长鬓发是单独生成的一张图，色相/笔触/轮廓都和本体对不上，用户两轮都判「接发痕迹太明显」。现在这件逐像素就是 hair_side_* 本身（只把中段纵向拉长、底部略收窄），发根那 34%% 一行没动 —— 它和本体的侧发**在同一位置叠的是同一批像素**，接缝从定义上不存在。"
+      "source": "sheetcut_hair_long_side_r.png",
+      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      }
     },
     {
       "id": "hair_crown_twin",
@@ -1582,10 +1460,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.018256,
-        0.166173
+        0.029449,
+        0.145961
       ],
-      "sprite_h_rel": 0.265954,
+      "sprite_h_rel": 1.157073,
       "width_ratio": 1.0,
       "layer": 187,
       "note": "双马尾 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
@@ -1624,10 +1502,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.035845,
-        0.166173
+        0.072623,
+        0.139309
       ],
-      "sprite_h_rel": 0.265954,
+      "sprite_h_rel": 1.163981,
       "width_ratio": 1.0,
       "layer": 188,
       "note": "高马尾 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
@@ -1666,10 +1544,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.021454,
-        0.162847
+        0.02785,
+        0.139309
       ],
-      "sprite_h_rel": 0.269408,
+      "sprite_h_rel": 1.163981,
       "width_ratio": 1.0,
       "layer": 189,
       "note": "长发 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
@@ -1718,11 +1596,18 @@
       "hide_parts": {
         "twin": [
           "hair_side_l",
-          "hair_side_r"
+          "hair_side_r",
+          "hair_back"
         ],
         "pony": [
           "hair_side_l",
-          "hair_side_r"
+          "hair_side_r",
+          "hair_back"
+        ],
+        "long": [
+          "hair_side_l",
+          "hair_side_r",
+          "hair_back"
         ]
       }
     }

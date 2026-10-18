@@ -64,14 +64,10 @@ PLAN = {
         ("hair_twin_back_l", "head_side_hair", "back_l"),
         ("hair_twin_back_r", "head_side_hair", "back_r"),
         ("hair_twin_crown", "head_crown_tied", "scalp"),
-        ("hair_twin_side_l", "head_side_sweep", "side_l"),
-        ("hair_twin_side_r", "head_side_sweep", "side_r"),
     ],
     "pony": [
         ("hair_pony_back", "body_back_pony", "back"),
         ("hair_pony_crown", "head_crown_tied", "scalp"),
-        ("hair_pony_side_l", "head_side_sweep", "side_l"),
-        ("hair_pony_side_r", "head_side_sweep", "side_r"),
     ],
     "long": [
         ("hair_long_back", "body_back_hair", "back"),
@@ -101,6 +97,58 @@ def dilate(b, k):
 
 def erode(b, k):
     return _a(_m(b).filter(ImageFilter.MinFilter(k)))
+
+
+def teal_like(a):
+    """夹克的薄荷青 —— 哪怕落在阴影里也要认得出来。
+
+    这是切鬓发时唯一真正难缠的干扰物。为什么不能只看"是不是青色"：
+
+      · 平光处的袖子 (91,191,181)：绿压红 +100、蓝比绿低 10，一眼就是青的；
+      · **阴影处**的袖子 (108,170,174)：绿压红还有 +62，但**蓝已经反超绿 4**。
+        `hair_like` 的 `b > g - 6` 放它过去了，于是整条袖子被当成头发切下来
+        （实测长发鬓发件 227x802，下半截全是袖子）。
+
+    头发无论淡紫 (216,216,232) 还是蓝梢 (159,196,232)，**蓝都比绿高 16 以上**；
+    青色无论明暗，蓝比绿最多高几点。所以判据是个二维楔形：
+    **绿明显压过红（偏绿），而蓝没能明显压过绿** —— 那就是青布，不是头发。
+    中性的高光（R≈G≈B）绿不压红，不会被误伤。
+    """
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    return (g - r > 30) & (b - g < 12)
+
+
+def keep_big(m, min_px=1500, max_parts=12):
+    """只留下**够大的**连通块，碎渣一律丢掉。
+
+    和 `keep_rooted` 的分工：`keep_rooted` 要求和发根相连，适合后发/马尾
+    那种一定从头上垂下来的件；但鬓发在**肩膀处会被衣服切断**
+    （头发从夹克后面钻出来，中间隔着一段青布，去青色之后就断了），
+    此时按"连不连得到发根"筛会把整条发缕当孤儿丢掉。
+    所以这里改按**面积**筛：是不是一撮头发，看的是它有多大，不是它挂在哪。
+
+    没有 scipy，自己做连通域：每次挑一个剩余像素当种子，在块内反复膨胀到收敛。
+    为了不在 1536x1024 的整幅上跑 MaxFilter，每次先裁到剩余掩膜的 bbox。
+    """
+    out = np.zeros_like(m)
+    rem = m.copy()
+    for _ in range(max_parts):
+        ys, xs = np.nonzero(rem)
+        if not len(ys):
+            break
+        y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+        sub = rem[y0:y1, x0:x1]
+        seed = np.zeros_like(sub)
+        seed[ys[0] - y0, xs[0] - x0] = True
+        while True:
+            grown = dilate(seed, 31) & sub
+            if grown.sum() == seed.sum():
+                break
+            seed = grown
+        if seed.sum() >= min_px:
+            out[y0:y1, x0:x1] |= seed
+        rem[y0:y1, x0:x1] &= ~seed
+    return out
 
 
 def skin_like(a):
@@ -259,19 +307,48 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     yy = np.arange(SHEET_CANVAS[1])[:, None] * np.ones((1, SHEET_CANVAS[0]), np.int32)
     xx = np.ones((SHEET_CANVAS[1], 1), np.int32) * np.arange(SHEET_CANVAS[0])[None, :]
 
+    #   整张**脸**（含五官）。头壳要减它，后发件在头部那一段也要减它。
+    #   先按下巴线截断再闭运算 —— 肤色遍布全身，不截的话会一路长到脚踝。
+    face = solidify(skin & (yy0 <= chinline), 61) & (yy0 <= chinline)
+
     out = {}
     # ① 剪影之外的新头发 —— 后发 / 尾巴。
     #    ★ 这里**不加颜色判据**：短发剪影之外本来就是空的，模板在那里画了东西，
     #      就只可能是头发。加 sh_all 反而会被高光带打出洞。
     #    套准残留会在身体轮廓外留一圈 1~3px 的描边，必须用 despeckle 滤掉，
     #    否则整条身体边缘都会被当成"剪影外的新头发"（实测件高涨到全身 1453px）。
-    back = despeckle(sop & ~dilate(base_op, 5) & (yy <= kneeline), 9, 11)
+    #    ★ 剪影外也要硬排**薄荷青**和**肤色**。套准做到亚像素级了，但模板和底图
+    #      在肩头、手背这些地方仍有几像素的差，于是夹克领子和手指会沿着剪影
+    #      外缘漏出一小条 —— 它们随后被 `nearest_fill` 的塗り足し当作颜色源
+    #      往里扩散 40px，在件里画出一圈青色衣领和肉色手指（件在层 57/58
+    #      被身体挡着，静止时看不见，**一摆动就露馅**）。
+    outside = despeckle(sop & ~dilate(base_op, 5) & (yy <= kneeline)
+                        & ~teal_like(sa) & ~skin_like(sa), 9, 11)
+    #    ★★ 只取"剪影之外"是**错的**，这是「拼接痕迹」的头号来源。
+    #       底图剪影是**短发**的身体轮廓。双马尾/马尾垂下来的时候会压在肩膀和
+    #       手臂上 —— 那一段落在剪影**之内**，于是被 `~dilate(base_op,5)` 剜掉，
+    #       件上出现一串大洞；紧接着 `nearest_fill` 去补这些洞，从几十像素外
+    #       抓颜色，补出一条条横向拖影。实测源切片 `sheetcut_hair_pony_back.png`
+    #       整条尾巴中段都是这种拖影（见 2026-10-19 的 /tmp/src.png）。
+    #       这些件在层 57/58/160，本来就画在身体**后面**，多画的部分会被身体盖住，
+    #       所以"剪影内的那一段"直接补进来即可，没有任何副作用。
+    #       ★ 补进来的这一段**只取下巴以下**。头部那一圈不能补：那里要减掉
+    #         底图自己的头发(`~dilate(bh_all,5)`)，减完会在发际线附近留下一串
+    #         孤立碎片，而 `keep_rooted` 的种子取的是掩膜最上面 40 行 ——
+    #         种子正好落在这些碎片上，于是下面整条头发被当成"没生根"丢光
+    #         （实测长发后发件从 594x989 缩成 301x451）。
+    inside_new = (hair_like(sa) & ~teal_like(sa) & sop & region
+                  & (yy > chinline) & (yy <= kneeline))
+    back = solidify(despeckle(outside | inside_new, 3, 7), 17) & sop
     # ★ 碎片过滤要在**并上头皮之前**做。顺序反了的话，长发的头皮和它外侧的
     #   发丝之间只要有一两像素的缝，keep_rooted 就会把下面整条头发全丢掉
     #   （实测件从 594x1005 缩成 155x137，只剩一个头盖骨）。
-    out["back_l"] = keep_rooted(back & (xx < head_cx))
-    out["back_r"] = keep_rooted(back & (xx >= head_cx))
-    back = keep_rooted(back)
+    #    ★ 改按**面积**筛而不是按"连不连得到发根"筛。补进剪影内的那一段之后，
+    #      件在肩膀处可能被衣服分成两段（上面是从头垂下的、下面是压在手臂上的），
+    #      按发根筛会把下半段整条丢掉。
+    out["back_l"] = keep_big(back & (xx < head_cx), 3000)
+    out["back_r"] = keep_big(back & (xx >= head_cx), 3000)
+    back = keep_big(back, 3000)
     if style == "long":
         # ★ 披发这一档还要带上**后脑那片头皮**。只取"剪影之外"的话，
         #   件是从耳朵高度才开始的，上面空着一截 —— 藏掉本体的齐腮鬓发之后
@@ -280,7 +357,10 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
         #   而且这才是 Live2D 里「後ろ髪」该有的样子 —— 它是从发旋开始的一整片，
         #   不是半路接上去的一截。扎发那两档不能这么做：它们是左右两件，
         #   各自带一片头皮会在脑后重叠。
-        back = back | (sh_all & dilate(base_op, 9) & (yy <= shoulder))
+        #   ★ 要减掉脸：`sh_all` 是闭运算过的发掩膜，蓝眼睛和鲸鱼发夹都过得了
+        #     发色判据，不减的话件里会躺着一张脸（层 58 看不见，但一样是脏的）。
+        back = back | (sh_all & dilate(base_op, 9) & (yy <= shoulder)
+                       & ~dilate(face, 11))
     out["back"] = back
     out["_base_hair"] = bh_all
 
@@ -310,10 +390,32 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #    ★ 下界收到下巴线（不再 +40），否则会吃到衣领的薄荷青。
     #      （先按下巴线截断再闭运算 —— 肤色遍布全身，手和腿也是肤色，
     #        不截的话"脸区"会一路长到脚踝，把整条鬓发都减掉。）
-    face = solidify(skin & (yy <= chinline), 61) & (yy <= chinline)
-    scalp = (sh_all & dilate(base_op, 9) & (yy <= chinline)
-             & ~dilate(face, 11))
-    out["scalp"] = despeckle(scalp, 3, 7)
+    #    ★ 头壳**不用发色判据**，改用「头部剪影减去脸」。
+    #      理由：滞后阈值出来的掩膜天生是带孔的（高光是近中性色，`weak` 够不着），
+    #      `despeckle` 只去小岛、不补大孔，直接落盘就是一张斑驳的白板
+    #      —— 这正是上一刀渲染出来头顶一块白补丁的原因。
+    #      而在"下巴以上 + 身体剪影以内"这个框里，画面上除了脸就只有头发：
+    #      耳朵是皮肤（已并进 face），脖子在下巴以下，衣领更在下面。
+    #      所以直接取剪影即可，**实心、无孔、一次成型**。
+    #      `erode(sop, 5)` 是为了啃掉套准后留在剪影外缘的 2~3px 洋红毛边。
+    scalp = erode(sop, 5) & dilate(base_op, 9) & (yy <= chinline) & ~dilate(face, 11)
+    scalp = despeckle(scalp, 5, 9)
+    #    ★ 顶部要避开呆毛 —— 它在层 190 有自己的物理摆链，件里再带一根静止的，
+    #      一甩头就会露出两根。取**首个宽度 ≥60px 的扫描行**当颅顶，
+    #      上面那根独苗就是呆毛。
+    widths = scalp.sum(axis=1)
+    rows = np.nonzero(widths >= 60)[0]
+    if len(rows):
+        scalp = scalp & (yy >= rows[0])
+    #    ★ 下巴**稍下**那一截也要带上：底图的齐腮鬓发(hair_side_l/r)下沿在下巴
+    #      以下，三档都把它藏了，件只切到下巴线的话那一小段没人接管
+    #      （闸门实测 pony 左侧接管率只有 27%，下限 45%）。
+    #      这一段不能再用"剪影减脸"的实心法（下面是脖子和衣领，会被整片切进来），
+    #      所以改用发色判据 + 硬排薄荷青。
+    jaw = (dilate(base_op, 9) & (yy > chinline) & (yy <= chinline + 80)
+           & hair_like(sa) & ~teal_like(sa))
+    scalp = scalp | despeckle(jaw, 3, 7)
+    out["scalp"] = scalp
 
     # ④ 鬓发：剪影**之内**、脸两侧垂下来的那两缕（长发档一路垂到胸口）。
     #    上界取发际线下方一点（底图的 hair_side_* 从那里开始，要能接上，
@@ -323,7 +425,12 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #    ★ 避开刘海只在**眼线以上**做。原来按"离中线 0.22 个头宽"一刀切，
     #      结果把鬓发本身切断了 —— 模板里鬓发是贴着太阳穴往下走的，
     #      上半截离中线很近（实测长发右侧只剩 23x47）。
-    bangs_zone = (yy <= eyeline) & (np.abs(xx - head_cx) < 0.30 * headw)
+    #    ★ 上界改成**下巴线**（原来是发际线 +40）。下巴以上已经由上面那块
+    #      实心头壳整片接管了，再切一遍只会制造一条横缝；而且头壳在层 187~189、
+    #      鬓发在 247~251，同一片像素画两遍、还跨着眼睛层，接缝必然看得见。
+    #      所以这一件现在只管**下巴以下**：长发垂到胸口的那两缕。
+    #      留 15px 和头壳叠一叠，免得中间漏出一条背景。
+    side_top = chinline - 15
     #    ★ 下界按档位分：扎起来的发型，脸侧只剩到下巴的短鬓；
     #      披着的长发才一路垂到胸口。
     side_bottom = kneeline if style == "long" else chinline + 60
@@ -334,16 +441,33 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #      发压发的 diff 近乎 0，一交就把鬓发上半截切没了（LESSONS 232）。
     #      下巴**以下**底图是衣服，模板只要画了头发，diff 必然显著
     #      （淡紫发 216,216,232 vs 白夹克 250,245,235，最大通道差 34）。
-    side = despeckle(sh_all & ~bangs_zone
-                     & (yy >= hairline + 40) & (yy <= side_bottom), 3, 7)
-    side = side & ((yy <= chinline) | region)
+    #    ★ 不能用 `sh_all`（它是 solidify 过的）：闭运算会把发缕**之间**那几道
+    #      青色缝一起糊死，整条袖子当场变成头发。这里用未闭运算的原始发色掩膜，
+    #      只在最后补一次小孔。
+    side = hair_like(sa) & sop & region & (yy > side_top) & (yy <= side_bottom)
+    side = solidify(despeckle(side, 3, 7), 9) & sop
+    #    ★ 开运算 k=7：抹掉袖口、手指那些 3~4px 的描边线。它们不是青色
+    #      （深灰），躲得过 teal_like，但闭运算把它们并进了大块里。
+    side = dilate(erode(side, 7), 7)
     #    ★ 求连通要在**不受剪影限制**的掩膜上做，最后再与剪影相交。
     #      反过来的话，发缕只要有一段跑到底图剪影之外（模板的头发比底图的头宽，
     #      一定会有），keep_rooted 就在那里断掉、下面整条丢光。
     #      顺带白捡一条好处：白夹克那些被误判成发色的冷灰阴影和头发不连通，
     #      这一步自动把它们剔掉了，不用再去调颜色阈值。
-    out["side_l"] = keep_rooted(side & (xx < head_cx)) & base_op
-    out["side_r"] = keep_rooted(side & (xx >= head_cx)) & base_op
+    #    ★ 三步的**顺序**是踩出来的，不能换：
+    #      ① 先在**还带着青色**的掩膜上求连通 —— 发缕是从夹克后面钻出来的，
+    #         中间隔着一段肩部青布，先去青色再求连通，整条发缕会被当孤儿丢掉；
+    #      ② 再去青色；
+    #      ③ 最后按**面积**筛，不是按"连不连得到发根"筛 —— 去完青色，
+    #         发缕和头之间本来就断开了（那一段确实被衣服挡着）。
+    for key, half in (("side_l", xx < head_cx), ("side_r", xx >= head_cx)):
+        m = keep_rooted(side & half) & dilate(base_op, 7)
+        m = m & ~teal_like(sa)
+        m = dilate(erode(m, 9), 9)
+        m = keep_big(m, min_px=1500)
+        #    件太小就干脆不要：扎发那两档下巴以下压根没有前发，
+        #    勉强切出来的那点东西全是衣领碎渣。
+        out[key] = m if m.sum() >= 3000 else np.zeros_like(m)
 
     # ⑤ 头顶：**用几何圈区域、区域内全取**，同样不加颜色判据。
     #    颜色判据在这里必败 —— 头顶高光是成片的近中性色带（不是细缝），

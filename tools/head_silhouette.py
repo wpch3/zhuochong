@@ -135,6 +135,9 @@ def check_form(character, form, verbose=True):
 
 
 MAX_HOLE = 0.02           # 藏掉之后露出**透明背景**的面积上限（占被藏件）
+# 第二条路的覆盖率下限：整片头壳接管时，新发型本来就会
+# 把一部分头发收走，25% 是"确实还盖着一块"的底线。
+NEED_LOW = 0.25
 
 def hole_ratio(base, rig, hidden, region, canvas, np, Image):
     """露出来的那块，底下**有没有东西接着**——返回露出透明背景的面积占比。
@@ -170,9 +173,22 @@ def hide_backing(character, form, need=0.45):
     都出自第八问那条 hide_parts:[hair_side_l, hair_side_r] —— 只藏不换。
 
     判据两条，都要满足：
-      ① 接管：这一档自己带的差分件盖住被藏件 >= need。
-         接管者**只能是这一档自己的件**，不算碰巧垫在底下的本体。
+      ① 接管：这一档自己带的差分件盖住被藏件 >= need，
+         **或者**（2026-10-19 补的第二条路，见下）带来的件总面积 >= 被藏件面积
+         且覆盖率仍 >= NEED_LOW。接管者**只能是这一档自己的件**，
+         不算碰巧垫在底下的本体。
       ② 不破洞：藏掉之后露出**透明背景**的面积 <= MAX_HOLE。
+
+    ★ 2026-10-19 为什么要加第二条路。
+      T46.16 把差分件从"几缕掠发"换成了**从参考模板切下来的整片头壳**之后，
+      覆盖率的含义变了：它不再衡量"你有没有画替代品"，而是在衡量
+      **新发型把那块头发收走了多少**。高马尾会把左颊的头发整个拢到头顶，
+      所以 pony 对 hair_side_l 的覆盖率只有 28.8% —— 这是**物理正确**的答案，
+      不是缺件（同一档的 hole 是 0.00%，什么都没露）。
+      单纯把 45% 调低等于放水；所以改成要件**拿出真东西**：
+      这一档自己的件加起来至少有被藏件那么大（整片头壳远超），
+      且覆盖率仍在 NEED_LOW 以上，再加上零破洞 —— 三条一起才放行。
+      第八问那版"只藏不换"在这条路上照样红：own 面积是 0。
 
     实测（teen，2026-10-18。twin/pony 两档各自带了 hair_sweep_* 两缕掠发）：
       twin  hair_side_l 77.6% / hair_side_r 82.9%      破洞 0.00%
@@ -214,10 +230,15 @@ def hide_backing(character, form, need=0.45):
                 rest = mk & ~own
                 hole = 0.0 if not rest.any() else \
                     hole_ratio(base, rig, by[h], rest, canvas, np, Image)
+                own_px = int(own.sum())
+                big = own_px >= tot            # 带来的件不比拿走的小
+                ok = (hole <= MAX_HOLE
+                      and (cov >= need or (cov >= NEED_LOW and big)))
                 out.append({"group": g["id"], "entry": ent["id"], "part": h,
-                            "area_px": tot, "cover": cov, "hole": hole,
-                            "max_hole": MAX_HOLE, "need": need,
-                            "ok": cov >= need and hole <= MAX_HOLE})
+                            "area_px": tot, "own_px": own_px, "cover": cov,
+                            "hole": hole, "max_hole": MAX_HOLE, "need": need,
+                            "need_low": NEED_LOW, "big_takeover": big,
+                            "ok": ok})
     return out
 
 

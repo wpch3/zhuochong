@@ -8,19 +8,19 @@
       "ref": "head_top",
       "pos_rel": [
         -0.531818,
-        1.130529
+        1.204085
       ],
-      "sprite_h_rel": 1.640626,
+      "sprite_h_rel": 1.799507,
       "width_ratio": 1.0,
       "px": [
         237,
         143,
         427,
-        617
+        663
       ],
       "content_px": [
         191,
-        475
+        521
       ],
       "slot": "head_side_hair"
     },
@@ -29,19 +29,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.579522,
-        1.12893
+        1.216877
       ],
-      "sprite_h_rel": 1.64408,
+      "sprite_h_rel": 1.834047,
       "width_ratio": 1.0,
       "px": [
         585,
         142,
         774,
-        617
+        672
       ],
       "content_px": [
         190,
-        476
+        531
       ],
       "slot": "head_side_hair"
     },
@@ -49,20 +49,20 @@
       "sprite_file": "sheetcut_hair_twin_crown.png",
       "ref": "head_top",
       "pos_rel": [
-        0.019854,
-        0.299022
+        0.031048,
+        0.72437
       ],
-      "sprite_h_rel": 0.265954,
+      "sprite_h_rel": 1.157073,
       "width_ratio": 1.0,
       "px": [
-        393,
-        82,
-        616,
-        158
+        365,
+        86,
+        651,
+        420
       ],
       "content_px": [
-        224,
-        77
+        287,
+        335
       ],
       "slot": "head_crown_tied"
     },
@@ -71,19 +71,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.504367,
-        1.226472
+        1.232868
       ],
-      "sprite_h_rel": 2.587008,
+      "sprite_h_rel": 2.600823,
       "width_ratio": 1.0,
       "px": [
         495,
         36,
         817,
-        784
+        788
       ],
       "content_px": [
         323,
-        749
+        753
       ],
       "slot": "body_back_pony"
     },
@@ -91,20 +91,20 @@
       "sprite_file": "sheetcut_hair_pony_crown.png",
       "ref": "head_top",
       "pos_rel": [
-        0.037444,
-        0.299022
+        0.074222,
+        0.721172
       ],
-      "sprite_h_rel": 0.265954,
+      "sprite_h_rel": 1.163981,
       "width_ratio": 1.0,
       "px": [
-        397,
-        82,
-        623,
-        158
+        392,
+        84,
+        651,
+        420
       ],
       "content_px": [
-        227,
-        77
+        260,
+        337
       ],
       "slot": "head_crown_tied"
     },
@@ -113,19 +113,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.026251,
-        1.578263
+        1.615041
       ],
-      "sprite_h_rel": 3.415955,
+      "sprite_h_rel": 3.495396,
       "width_ratio": 1.0,
       "px": [
         210,
         26,
         803,
-        1014
+        1037
       ],
       "content_px": [
         594,
-        989
+        1012
       ],
       "slot": "body_back_hair"
     },
@@ -133,22 +133,64 @@
       "sprite_file": "sheetcut_hair_long_crown.png",
       "ref": "head_top",
       "pos_rel": [
-        0.023053,
-        0.297423
+        0.029449,
+        0.721172
       ],
-      "sprite_h_rel": 0.269408,
+      "sprite_h_rel": 1.163981,
       "width_ratio": 1.0,
       "px": [
-        398,
-        81,
-        613,
-        158
+        368,
+        84,
+        647,
+        420
       ],
       "content_px": [
-        216,
-        78
+        280,
+        337
       ],
       "slot": "head_crown_tied"
+    },
+    "hair_long_side_l": {
+      "sprite_file": "sheetcut_hair_long_side_l.png",
+      "ref": "head_top",
+      "pos_rel": [
+        -0.234395,
+        1.594253
+      ],
+      "sprite_h_rel": 1.378126,
+      "width_ratio": 1.0,
+      "px": [
+        367,
+        326,
+        483,
+        724
+      ],
+      "content_px": [
+        117,
+        399
+      ],
+      "slot": "head_side_long"
+    },
+    "hair_long_side_r": {
+      "sprite_file": "sheetcut_hair_long_side_r.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.282099,
+        1.59905
+      ],
+      "sprite_h_rel": 1.388487,
+      "width_ratio": 1.0,
+      "px": [
+        535,
+        326,
+        638,
+        727
+      ],
+      "content_px": [
+        104,
+        402
+      ],
+      "slot": "head_side_long"
     }
   }
 }

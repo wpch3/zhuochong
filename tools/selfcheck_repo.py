@@ -1939,10 +1939,19 @@ def check_live2d(root):
         #   横髪位的替代件有三种：原生槽、扎发用的细缕、长发用的长鬓发。
         #   第十二问加 head_side_long —— 用户贴的长发参考图里，长发的**横髪也是
         #   长的**（从太阳穴一路垂到胸口），齐腮短鬓配过腰长发本来就不成立。
-        _SIDE = {"head_side_hair", "head_side_sweep", "head_side_long"}
+        #   第十六问（2026-10-19）又加了 head_crown_tied：T46.16 之后这个槽里
+        #   装的不再是"头顶一小片"，而是**从参考模板上切下来的整片头发壳**
+        #   （下巴以上一整圈，脸挖空）。它一件同时顶掉了底图的齐腮鬓发**和**
+        #   后发壳在头部那一段 —— 这正是用户要的「换发型要换整颗头」。
+        #   角色表不更新的话，做对了反而会红（实测 pony:hair_side_l/r、
+        #   twin:hair_back 三条）。另外双马尾的辫子在 head_side_hair 槽，
+        #   它接管的就是后发壳伸到剪影外的那部分体积，所以也给 hair_back 算数。
+        _CROWN = {"head_crown_tied"}
+        _SIDE = {"head_side_hair", "head_side_sweep", "head_side_long"} | _CROWN
         _ROLE = {"hair_side_l": _SIDE,
                  "hair_side_r": _SIDE,
-                 "hair_back": {"body_back_hair", "body_back_pony"},
+                 "hair_back": {"body_back_hair", "body_back_pony",
+                               "head_side_hair"} | _CROWN,
                  "seg_head": {"head_under_bangs", "head_in_hair"}}
         _extra = {}
         for _a in _att.get("attachments", []):

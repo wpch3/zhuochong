@@ -117,14 +117,24 @@ ref_match_side = by_id['hair_long'].get('recolor_match')
 #   「短发的造型和双马尾合在一起了」。根因是只加不减：底图那颗短发的
 #   后脑壳(hair_back 170) 和齐腮鬓发(hair_side_l/r 245/246) 原样留着。
 #   现在三档都把它们藏掉，换成从模板上切的**同源**头壳 + 鬓发。
+#   ★ 只剩长发还需要独立的鬓发件。扎发那两档的脸侧碎发已经整个包含在
+#     头壳件里了（头壳 = 下巴以上的整片头发），再单切一遍只会多一条横缝。
 SIDE_REWIRE = {
-    'hair_sweep_twin_l': 'hair_twin_side_l',
-    'hair_sweep_twin_r': 'hair_twin_side_r',
-    'hair_sweep_pony_l': 'hair_pony_side_l',
-    'hair_sweep_pony_r': 'hair_pony_side_r',
     'hair_sidelong_l':   'hair_long_side_l',
     'hair_sidelong_r':   'hair_long_side_r',
 }
+
+#   ★ 这四件是「AI 碎片」时代的产物：从本体侧发拉长派生、再手调几何。
+#     它们和模板不同源，正是用户说的「很多拼接的痕迹」的来源之一。
+#     头壳件接管之后它们完全多余 —— 删掉，而不是留着藏起来。
+DROP = ['hair_sweep_twin_l', 'hair_sweep_twin_r',
+        'hair_sweep_pony_l', 'hair_sweep_pony_r']
+_before = len(d['attachments'])
+d['attachments'] = [a for a in d['attachments'] if a.get('id') not in DROP]
+by_id = {a['id']: a for a in d['attachments']}
+if len(d['attachments']) != _before:
+    print('- 删掉 %d 件 AI 碎片时代的脸侧件：%s'
+          % (_before - len(d['attachments']), ', '.join(DROP)))
 for aid, piece in SIDE_REWIRE.items():
     if aid not in by_id or piece not in GEO['pieces']:
         continue
@@ -158,9 +168,23 @@ CROWN = [('twin', 'hair_twin_crown', '双马尾'),
 ref_match = by_id['hair_long'].get('recolor_match')
 for pose, piece, label in CROWN:
     cid = 'hair_crown_' + pose
-    if cid in by_id:
-        continue
     g = GEO['pieces'][piece]
+    # ★ 已经在库里的，**要把几何重新刷一遍**，不能 `continue` 跳过。
+    #   栽过一次：上一轮这里写的是「存在就跳过」，于是重切之后件还挂着
+    #   上一版的 sprite_h_rel 0.266（=74px），而新切片是 287x255 —— 引擎把
+    #   74px 的图拉到 245px 高，渲染出来是一团半透明的糊状方块盖在脸上。
+    #   接线脚本的幂等指的是「重跑结果一致」，不是「重跑什么都不做」。
+    if cid in by_id:
+        a = by_id[cid]
+        a['source'] = g['sprite_file']
+        a['pos_rel'] = place(g['px'])
+        a['sprite_h_rel'] = g['sprite_h_rel']
+        a['width_ratio'] = 1.0
+        a['layer'] = CROWN_LAYER[pose]
+        a['_cut_note'] = CUT_NOTE
+        print('~ %-16s <- %-24s pos_rel %s  h_rel %.4f'
+              % (cid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
+        continue
     att = collections.OrderedDict([
         ('id', cid),
         ('label', '头顶·%s' % label),
@@ -199,8 +223,8 @@ for g in d['pose_groups']:
         # ★ 三档都要把**底图短发的头壳和鬓发**一起藏掉。
         #   只藏鬓发不藏头壳 = 「一颗短发脑袋 + 挂了两根辫子」，
         #   这正是用户 2026-10-19 判的「短发的造型和双马尾合在一起了」。
-        #   接管者是同一张模板上切下来的 hair_crown_* （头壳）与
-        #   hair_sweep_* / hair_sidelong_*（鬓发），同源所以不会有拼接痕。
+        #   接管者是同一张模板上切下来的 hair_crown_*（头壳，下巴以上整片）
+        #   与 hair_sidelong_*（长发垂到胸口的那两缕），同源所以不会有拼接痕。
         for k in ('twin', 'pony', 'long'):
             g['hide_parts'][k] = ['hair_side_l', 'hair_side_r', 'hair_back']
 io.open(P, 'w', encoding='utf-8').write(json.dumps(d, ensure_ascii=False, indent=2) + '\n')
