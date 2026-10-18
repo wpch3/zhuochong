@@ -1,0 +1,37 @@
+{
+  "name": "speaches（本机 语音双通道）",
+  "kind": "tts",
+  "protocol": "openai_audio",
+  "local": true,
+  "enabled": false,
+  "priority": 85,
+  "base_url": "http://127.0.0.1:8000/v1",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "tts.speak",
+      "model": "speaches-ai/Kokoro-82M-v1.0-ONNX",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "stt.listen",
+      "model": "Systran/faster-whisper-large-v3",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 0,
+    "note": "CPU int8 可跑（faster-whisper + Kokoro ONNX）；有 6GB 显存就能上 large-v3 实时转写。"
+  },
+  "note": "★ 本地语音的首选：一个服务同时提供 OpenAI 形状的 /v1/audio/speech 与 /v1/audio/transcriptions（MIT，自称\"TTS/STT 界的 Ollama\"）。意义在于**适配层零改动** —— 云端 OpenAI 语音、本地 speaches 共用同一套请求代码，只换 base_url。中文音色 Kokoro 一般，想要萌系二次元还是 GPT-SoVITS / IndexTTS2（见 tts_webui）。",
+  "id": "speaches"
+}

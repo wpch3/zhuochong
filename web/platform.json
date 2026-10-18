@@ -10,10 +10,23 @@
         "panel": "chat"
       },
       "providers": [
+        "anthropic",
+        "dashscope",
         "deepseek",
+        "gemini",
+        "groq",
+        "llama_cpp",
+        "lmstudio",
+        "minimax_chat",
+        "moonshot",
         "ollama",
         "openai",
-        "relay_test"
+        "openrouter",
+        "relay_test",
+        "siliconflow",
+        "vllm",
+        "xai",
+        "zhipu"
       ]
     },
     {
@@ -25,10 +38,23 @@
         "panel": "chat"
       },
       "providers": [
+        "anthropic",
+        "dashscope",
         "deepseek",
+        "gemini",
+        "groq",
+        "llama_cpp",
+        "lmstudio",
+        "minimax_chat",
+        "moonshot",
         "ollama",
         "openai",
-        "relay_test"
+        "openrouter",
+        "relay_test",
+        "siliconflow",
+        "vllm",
+        "xai",
+        "zhipu"
       ]
     },
     {
@@ -50,7 +76,10 @@
         "panel": "code"
       },
       "providers": [
-        "deepseek"
+        "deepseek",
+        "llama_cpp",
+        "moonshot",
+        "ollama"
       ]
     },
     {
@@ -60,8 +89,13 @@
       "unit": "token",
       "ui": {},
       "providers": [
+        "dashscope",
+        "gemini",
+        "llama_cpp",
+        "lmstudio",
         "ollama",
-        "openai"
+        "openai",
+        "siliconflow"
       ]
     },
     {
@@ -83,7 +117,8 @@
         "panel": "gallery"
       },
       "providers": [
-        "comfyui"
+        "comfyui",
+        "openai"
       ]
     },
     {
@@ -96,7 +131,9 @@
       },
       "providers": [
         "comfyui",
-        "openai"
+        "dashscope",
+        "openai",
+        "siliconflow"
       ]
     },
     {
@@ -117,7 +154,11 @@
       "ui": {
         "panel": "viewer3d"
       },
-      "providers": []
+      "providers": [
+        "hunyuan3d",
+        "tripo3d",
+        "triposr"
+      ]
     },
     {
       "id": "stt.listen",
@@ -127,7 +168,12 @@
       "ui": {
         "panel": "text"
       },
-      "providers": []
+      "providers": [
+        "groq",
+        "siliconflow",
+        "speaches",
+        "whisper_cpp"
+      ]
     },
     {
       "id": "tts.speak",
@@ -140,7 +186,10 @@
       "providers": [
         "azure_speech",
         "edge_tts",
-        "minimax"
+        "minimax",
+        "siliconflow",
+        "speaches",
+        "tts_webui"
       ]
     },
     {
@@ -151,7 +200,10 @@
       "ui": {
         "panel": "gallery"
       },
-      "providers": []
+      "providers": [
+        "comfyui_video",
+        "dashscope"
+      ]
     },
     {
       "id": "vision.describe",
@@ -162,7 +214,15 @@
         "panel": "text"
       },
       "providers": [
-        "openai"
+        "anthropic",
+        "dashscope",
+        "gemini",
+        "moonshot",
+        "ollama",
+        "openai",
+        "openrouter",
+        "xai",
+        "zhipu"
       ]
     },
     {
@@ -177,6 +237,19 @@
     }
   ],
   "providers": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic Claude",
+      "kind": "official",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "vision.describe"
+      ]
+    },
     {
       "id": "azure_speech",
       "name": "Azure 语音服务",
@@ -198,6 +271,33 @@
       "caps": [
         "image.generate",
         "image.edit"
+      ]
+    },
+    {
+      "id": "comfyui_video",
+      "name": "ComfyUI · 视频（本机）",
+      "kind": "comfyui",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "video.generate"
+      ]
+    },
+    {
+      "id": "dashscope",
+      "name": "阿里百炼 / 通义千问",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "vision.describe",
+        "embed.text",
+        "image.generate",
+        "video.generate"
       ]
     },
     {
@@ -225,6 +325,71 @@
       ]
     },
     {
+      "id": "gemini",
+      "name": "Google Gemini（OpenAI 兼容端点）",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "vision.describe",
+        "embed.text"
+      ]
+    },
+    {
+      "id": "groq",
+      "name": "Groq（超低延迟）",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "stt.listen"
+      ]
+    },
+    {
+      "id": "hunyuan3d",
+      "name": "Hunyuan3D 2.1（本机建模）",
+      "kind": "local_script",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "model3d.generate"
+      ]
+    },
+    {
+      "id": "llama_cpp",
+      "name": "llama.cpp（本机 llama-server）",
+      "kind": "openai_compatible",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "embed.text",
+        "code.generate"
+      ]
+    },
+    {
+      "id": "lmstudio",
+      "name": "LM Studio（本机）",
+      "kind": "openai_compatible",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "embed.text"
+      ]
+    },
+    {
       "id": "mcp_filesystem",
       "name": "MCP · 文件系统",
       "kind": "mcp",
@@ -247,6 +412,32 @@
       ]
     },
     {
+      "id": "minimax_chat",
+      "name": "MiniMax 文本",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "chat.completion",
+        "chat.stream"
+      ]
+    },
+    {
+      "id": "moonshot",
+      "name": "Moonshot / Kimi",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "api",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "code.generate",
+        "vision.describe"
+      ]
+    },
+    {
       "id": "ollama",
       "name": "Ollama（本机）",
       "kind": "openai_compatible",
@@ -256,7 +447,9 @@
       "caps": [
         "chat.completion",
         "chat.stream",
-        "embed.text"
+        "embed.text",
+        "vision.describe",
+        "code.generate"
       ]
     },
     {
@@ -271,6 +464,20 @@
         "chat.stream",
         "image.generate",
         "embed.text",
+        "vision.describe",
+        "image.edit"
+      ]
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter（多家聚合）",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "api",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
         "vision.describe"
       ]
     },
@@ -284,6 +491,116 @@
       "caps": [
         "chat.completion",
         "chat.stream"
+      ]
+    },
+    {
+      "id": "siliconflow",
+      "name": "硅基流动 SiliconFlow",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "api",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "embed.text",
+        "image.generate",
+        "stt.listen",
+        "tts.speak"
+      ]
+    },
+    {
+      "id": "speaches",
+      "name": "speaches（本机 语音双通道）",
+      "kind": "tts",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "tts.speak",
+        "stt.listen"
+      ]
+    },
+    {
+      "id": "tripo3d",
+      "name": "Tripo3D（云端建模）",
+      "kind": "official",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "model3d.generate"
+      ]
+    },
+    {
+      "id": "triposr",
+      "name": "TripoSR（本机建模·轻量）",
+      "kind": "local_script",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "model3d.generate"
+      ]
+    },
+    {
+      "id": "tts_webui",
+      "name": "TTS-WebUI（本机 萌系音色）",
+      "kind": "tts",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "tts.speak"
+      ]
+    },
+    {
+      "id": "vllm",
+      "name": "vLLM（本机高吞吐）",
+      "kind": "openai_compatible",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "chat.completion",
+        "chat.stream"
+      ]
+    },
+    {
+      "id": "whisper_cpp",
+      "name": "whisper.cpp（本机转写）",
+      "kind": "local_script",
+      "local": true,
+      "enabled": false,
+      "balance_mode": "none",
+      "caps": [
+        "stt.listen"
+      ]
+    },
+    {
+      "id": "xai",
+      "name": "xAI Grok",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "vision.describe"
+      ]
+    },
+    {
+      "id": "zhipu",
+      "name": "智谱 GLM",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "balance_mode": "ledger",
+      "caps": [
+        "chat.completion",
+        "chat.stream",
+        "vision.describe"
       ]
     }
   ],

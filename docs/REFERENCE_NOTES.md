@@ -3054,3 +3054,94 @@ direction.Y = ((SinF(radian) * direction.X) + (direction.Y * CosF(radian)));   /
 但一旦做风 / 拖动惯性（重力方向持续变化）就会偏。我们实现成正确的旋转，
 并在 `tools/physics_ref.py` 用同样写法对拍。
 
+
+---
+
+## 第四十五批（2026-10-18 查）—— ①追加的头发怎么和本体"同源配色" ②多供应商/本地双栈的实况
+
+### A. 色彩迁移：为什么把"按色卡重铺"换成"统计匹配"
+
+起因是用户看截图第一句：「色彩和形态完全不一样非常的违和」。查了两路资料，结论同向。
+
+**A1. Reinhard 色彩迁移（算法侧）**
+- 原始论文：Reinhard et al., *Color Transfer between Images*, IEEE CG&A 2001
+  （[论文 PDF](https://www.cs.tau.ac.il/~turkel/imagepapers/ColorTransfer.pdf)）。
+- 步骤（三篇实现口径一致：[PyImageSearch 教程](https://pyimagesearch.com/2014/06/30/super-fast-color-transfer-images/)、
+  [HistomicsTK `reinhard`](https://digitalslidearchive.github.io/HistomicsTK/)）：
+  源图与参考图都转到 **Lab**（原论文用 lαβ，实践中 Lab 等效）→ 逐通道
+  `p' = (p − μ_src)·(σ_ref/σ_src) + μ_ref` → 转回 RGB 并裁剪。
+- 关键性质：**保留图像内部的相对结构**（哪里亮、哪缕偏蓝），只把整体色相/明度/对比
+  搬到参考分布上。这正是"同一个角色的另一绺头发"需要的效果；
+  而 k-means 按亮度重铺到 3 个色卡色会把渐变**碾平**（硬边灰带 + 蓝梢消失）。
+- 本仓实现：`tools/make_attach_parts.py` 的 `match_colors()`（自己写 sRGB→XYZ→Lab，
+  不引 scikit-image）。两处工程化改动：
+  ① σ 比值限幅 L 取 `[0.35, 2.5]`、a/b 取 `[0.15, 1.6]`（明度留层次、彩度收紧）；
+  ② **彩度封顶**：输出的 a/b 不许超出参考分布的 0.5~99.5 百分位 ——
+  没有这道时，源图里的深色线稿（RGB≈60,17,123）被抬亮后会落成粉紫(209,106,175)，
+  肉眼就是"洋红残留"，键色闸当场报警。
+
+**A2. 绘师口径（美术侧，和 A1 同向）**
+- CLIP STUDIO 官方 making（森倉円）与「カラーリファレンス」说明：追加画的发丝要用
+  **[スポイト]ツールで髪色の明るいところや暗いところからスポイトして描くと なじみやすい**
+  —— 取的是本体发色的**明暗两端**，不是一个平均色。统计匹配（取整条分布）正是它的自动化版本。
+
+**A3. 闸门怎么量（负向对照必做）**
+- `tools/check_assets.py` 新增「差分发型 × 本体头发」两项：
+  Lab 平均色差 **ΔE ≤ 5.0**、明度标准差差 **ΔσL ≤ 6.0**。
+- 实测：被用户打回的那版（色卡三色重铺）**ΔE=9.7 / ΔσL=8.4 两项都红**；
+  统计匹配版 **ΔE=0.1~0.6 / ΔσL=1.3~3.5**，两项都有一倍以上余量。
+- 色卡闸同时放宽成"**本体头发里存在这个颜色吗**"（池子里 ≥0.3% 的像素离它 L1≤70）——
+  因为色卡只有 3 格头发色，保留渐变必然产生落在两格之间的中间调，
+  硬要每个主色贴着色卡，等于逼着切件器把渐变压成平色（就是被打回的那条路）。
+
+### B. 多供应商：OpenAI 形状已经是事实标准
+
+- 换一家 = 换 **base_url + api_key + model** 三个值，SDK 不用动
+  （[OpenAI 兼容说明](https://www.cometapi.com/openai-compatible-apis-explained/)、
+  [Solo.io agentgateway 内置兼容表](https://docs.solo.io/agentgateway/2.2.x/llm/providers/openai-compatible/)）。
+- **不只对话**：Open WebUI 的接入文档把一整套 OpenAI 端点列成了能力面
+  —— `/v1/models`、`/v1/chat/completions`、`/v1/embeddings`、**`/v1/audio/speech`**、
+  **`/v1/audio/transcriptions`**、**`/v1/images/generations`**
+  （[Open WebUI 文档](https://docs.openwebui.com/getting-started/quick-start/connect-a-provider/starting-with-openai-compatible/)）。
+  这就是本仓 15 种能力能用同一套适配器覆盖大半的依据。
+- 各家 base_url（写进了 `config/providers/*.json`，坑也记在各自 note 里）：
+  DeepSeek `api.deepseek.com(/v1)`、Kimi `api.moonshot.cn/v1`（海外 `.ai`，**两站不互通**）、
+  智谱 `open.bigmodel.cn/api/paas/v4`（**结尾不是 /v1**）、
+  通义 `dashscope.aliyuncs.com/compatible-mode/v1`（海外 `dashscope-intl`）、
+  硅基 `api.siliconflow.cn/v1`、OpenRouter `openrouter.ai/api/v1`、
+  Groq `api.groq.com/openai/v1`（**路径带 /openai**）、xAI `api.x.ai/v1`、
+  Gemini `generativelanguage.googleapis.com/v1beta/openai`、
+  MiniMax 国内 `api.minimaxi.com/v1` / 海外 `api.minimax.io/v1`。
+  Anthropic **不是**这个形状（`/v1/messages` + `x-api-key` + `anthropic-version`）。
+
+### C. 本地双栈：各条线的软件与显存实况
+
+- **LLM**：Ollama(MIT, `:11434/v1`) / llama-server(MIT, `:8080`) / LM Studio(`:1234`, 不能 headless)
+  / vLLM(Apache-2.0, 吃 safetensors 不吃 GGUF、预占显存)。
+  显存经验值：**Q4_K_M ≈ 0.55~0.7GB / 1B 参数** ⇒ 7~8B≈5GB、14B≈9GB、32B≈19GB，
+  再留 1~2GB 给 KV cache；纯 CPU 7B 约 3 tok/s
+  （[d-central 对比](https://d-central.tech/ollama-vs-vllm-vs-llama-cpp/)、
+  [llama.cpp 教程](https://tech-insider.org/llama-cpp-tutorial-2026/)）。
+  同一个 14B，llama.cpp 12GB 能跑的 **vLLM 可能要 16GB**（PagedAttention 预分配）。
+- **STT/TTS**：`speaches`（MIT，一个服务同时给 `/v1/audio/speech` 与 `/v1/audio/transcriptions`，
+  自称 "Ollama for TTS/STT"，[speaches.ai](https://speaches.ai/)）；
+  `whisper.cpp` 的 whisper-server **默认不挂在 OpenAI 路径**，要
+  `--inference-path /v1/audio/transcriptions`（社区反复踩，
+  [r/LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/comments/1iilhul/)）；
+  萌系音色走 `TTS-WebUI`（同一壳里挂 GPT-SoVITS / IndexTTS2 / CosyVoice2 / Kokoro，
+  对外暴露 `:7778/v1/audio/speech`，[rsxdalv/TTS-WebUI](https://github.com/rsxdalv/TTS-WebUI)）。
+- **生图/生视频**：ComfyUI 的 HTTP API（`POST /prompt` + `/history` 轮询）。
+  显存：SDXL 8GB / Flux dev FP8 约 12GB、BF16 约 24GB；
+  **Wan2.2 TI2V-5B** 官方说 24GB，但 ComfyUI 原生 offload 下社区实测 **8GB 可跑 480p**；
+  14B 档 GGUF Q4/Q5 + 文本编码器卸载约 16GB 起；LTX-2 FP8 约 16GB、Q4 约 10~12GB
+  （[ComfyUI 指南](https://localaimaster.com/blog/comfyui-complete-guide)、
+  [Wan2.2 显存表](https://www.thundercompute.com/blog/wan-2-2-comfyui-ai-video-model)、
+  [LTX-2 本地安装](https://localaimaster.com/blog/ltx-2-local-setup-guide)）。
+  许可：**Wan2.1/2.2 = Apache-2.0**（可商用），LTX-2.x = 自家社区协议。
+- **建模**：TripoSR **MIT**（代码+权重），README 说默认约 **6GB 显存**，可回落 CPU
+  （[VAST-AI-Research/TripoSR](https://github.com/VAST-AI-Research/TripoSR)）；
+  Hunyuan3D 2.1 官方 README：**形状 10GB / 贴图 21GB / 全流程 29GB**，`--low_vram_mode` 约 15GB
+  （[deepwiki Hunyuan3D-2.1](https://deepwiki.com/Tencent-Hunyuan/Hunyuan3D-2.1/1-overview)）。
+  ⚠ **许可要先读**：Tencent Hunyuan 3D Community License **不适用欧盟/英国/韩国**、
+  月活 >100 万需单独授权、输出不得用于训练其他模型
+  （[条款解读](https://builderai.tools/blog/single-image-to-3d-model-pipeline-2026)）。

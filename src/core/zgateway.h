@@ -19,7 +19,12 @@
 #include <stddef.h>
 #include "zc.h"
 
-#define ZGW_MAX_ROUTES 64
+/* 路由表容量。2026-10-18 从 64 提到 192：用户要求"兼容更多/全部可用的供应商"，
+   云端 + 本地两栈铺开之后，光 config/providers 目录下就是 29 家、76 条路由 ——
+   64 这个旧上限会**静默丢掉**后 12 条（zgateway.c:51 的 while 条件），
+   而被丢掉的恰好是排在后面的本地建模/视频那几条。
+   闸：selfcheck 的「路由表没顶到上限」会在用量超过 80% 时就报红，不等它真溢出。 */
+#define ZGW_MAX_ROUTES 192
 #define ZGW_MAX_HOLDS  16
 
 /* 一条路由 = 某个供应商能提供某种能力 */

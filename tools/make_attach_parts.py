@@ -57,6 +57,155 @@ def key_alpha_soft(rgb: np.ndarray, bg: np.ndarray) -> np.ndarray:
     return np.clip(1.0 - np.maximum(excess, 0.0) / denom, 0.0, 1.0)
 
 
+def _srgb_to_lab(rgb: np.ndarray) -> np.ndarray:
+    """sRGB(0~255) → CIE Lab(D65)。只用 numpy，不拉 scikit-image 进依赖。"""
+    c = np.clip(rgb.astype(np.float64) / 255.0, 0.0, 1.0)
+    c = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    m = np.array([[0.4124564, 0.3575761, 0.1804375],
+                  [0.2126729, 0.7151522, 0.0721750],
+                  [0.0193339, 0.1191920, 0.9503041]])
+    xyz = c @ m.T
+    wp = np.array([0.95047, 1.0, 1.08883])
+    t = xyz / wp
+    d = 6.0 / 29.0
+    f = np.where(t > d ** 3, np.cbrt(np.maximum(t, 1e-12)),
+                 t / (3 * d * d) + 4.0 / 29.0)
+    return np.dstack([116.0 * f[..., 1] - 16.0,
+                      500.0 * (f[..., 0] - f[..., 1]),
+                      200.0 * (f[..., 1] - f[..., 2])])
+
+
+def _lab_to_srgb(lab: np.ndarray) -> np.ndarray:
+    fy = (lab[..., 0] + 16.0) / 116.0
+    fx = fy + lab[..., 1] / 500.0
+    fz = fy - lab[..., 2] / 200.0
+    d = 6.0 / 29.0
+    def finv(u):
+        return np.where(u > d, u ** 3, 3 * d * d * (u - 4.0 / 29.0))
+    wp = np.array([0.95047, 1.0, 1.08883])
+    xyz = np.dstack([finv(fx) * wp[0], finv(fy) * wp[1], finv(fz) * wp[2]])
+    m = np.array([[3.2404542, -1.5371385, -0.4985314],
+                  [-0.9692660, 1.8760108, 0.0415560],
+                  [0.0556434, -0.2040259, 1.0572252]])
+    c = xyz @ m.T
+    c = np.where(c <= 0.0031308, 12.92 * c,
+                 1.055 * np.power(np.maximum(c, 0.0), 1.0 / 2.4) - 0.055)
+    return np.clip(c, 0.0, 1.0) * 255.0
+
+
+def ref_hair_pixels(sprites_dir: str, names, palette_hex=None,
+                    tol: float = 25.0) -> np.ndarray:
+    """从**本体已有的头发贴图**里取样，作为配色基准。
+
+    画师的做法就是这个（CLIP STUDIO 官方 making，森倉円）：追加画的发丝
+    「[スポイト]ツールで髪色の**明るいところや暗いところから**スポイトして描くと
+    なじみやすい」—— 取的是本体发色的明暗**两端**，不是一个平均色。
+    我们这里干脆把整条分布都取来（alpha 可信的像素），交给 Lab 统计匹配。
+    """
+    acc = []
+    for n in names:
+        fp = os.path.join(sprites_dir, n)
+        if not os.path.exists(fp):
+            continue                      # 这个形态没拆这件，换下一个候选
+        im = np.asarray(Image.open(fp).convert("RGBA"), dtype=np.float64)
+        sel = im[..., 3] > 0.85 * 255.0
+        if sel.sum() < 64:
+            continue
+        acc.append(im[..., :3][sel])
+    if acc:
+        return np.concatenate(acc, axis=0)
+    # —— 退路：这个形态根本没有单独的头发贴图（chibi 的头发是画在 body_full 里的）——
+    # 用色卡当**选择器**（不是当目标分布）：从本形态自己的整图里挑出
+    # 「离任一发色足够近」的像素，拿它们的真实分布做基准。
+    # 这样基准永远来自**这个形态自己的成品**，不会跨形态串色。
+    if not palette_hex:
+        raise SystemExit("[attach] 没有可用的配色基准贴图，也没给色卡")
+    fp = os.path.join(sprites_dir, "body_full.png")
+    if not os.path.exists(fp):
+        raise SystemExit("[attach] 配色基准：%s 不存在" % fp)
+    im = np.asarray(Image.open(fp).convert("RGBA"), dtype=np.float64)
+    solid = im[..., 3] > 0.85 * 255.0
+    px = im[..., :3][solid]
+    pal = np.array([[int(h[i:i + 2], 16) for i in (1, 3, 5)] for h in palette_hex],
+                   dtype=np.float64)
+    dist = np.sqrt(((px[:, None, :] - pal[None, :, :]) ** 2).sum(axis=2)).min(axis=1)
+    hit = px[dist < tol]
+    if len(hit) < 256:
+        raise SystemExit("[attach] 按色卡从 body_full 里只挑出 %d 个发色像素，"
+                         "太少（tol=%.0f）" % (len(hit), tol))
+    return hit
+
+
+def bleed_edge(rgb: np.ndarray, a: np.ndarray, rounds: int = 3) -> np.ndarray:
+    """把**实心区**的颜色往半透明边缘推（alpha-weighted color bleed）。
+
+    为什么需要：反预乘只能在 alpha 估得准的地方还原颜色，最外圈一两个像素的
+    覆盖度估计误差会留下一点底色（我们的底是洋红，于是 `left_magenta` 当场报红）。
+    通用做法是把边缘像素的颜色换成邻域里**更实**的像素的加权平均 ——
+    反正那些像素的 alpha 很低，颜色换掉肉眼看不出来，但键色残留没了。
+    """
+    w = np.clip(a, 0.0, 1.0) ** 2.0           # 越实的像素话语权越大
+    acc_c = rgb.astype(np.float64) * w[..., None]
+    acc_w = w.copy()
+    for _ in range(rounds):
+        c = acc_c.copy()
+        ww = acc_w.copy()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            c += np.roll(acc_c, (dy, dx), axis=(0, 1)) * 0.5
+            ww += np.roll(acc_w, (dy, dx), axis=(0, 1)) * 0.5
+        acc_c, acc_w = c, ww
+    out = acc_c / np.maximum(acc_w, 1e-6)[..., None]
+    # 实心区保持原样，只把边缘换成扩散来的颜色
+    t = np.clip((a - 0.15) / 0.55, 0.0, 1.0)[..., None]
+    return np.clip(rgb.astype(np.float64) * t + out * (1.0 - t), 0, 255)
+
+
+def match_colors(rgb: np.ndarray, a: np.ndarray, ref: np.ndarray,
+                 keep: float = 1.0) -> np.ndarray:
+    """Reinhard 色彩迁移（Lab 的 mean/std 对齐）：让挂件**长得像本体的头发**。
+
+    为什么不用 relay_colors（按亮度 k-means 重铺到 3 色）：那套是给**漫符**设计的 ——
+    卡通符号本来就是大片平色，聚成纯色既对画风也好过色卡闸。但头发不是平色：
+    它有柔和的明暗过渡和**梢部的蓝色渐变**，k-means 一压就变成三条硬边灰带，
+    蓝梢直接被归进阴影簇消失。2026-10-18 用户看截图第一句话就是
+    「色彩和形态完全不一样非常的违和」，病因就在这里。
+
+    Reinhard(2001)《Color transfer between images》：把源图和参考图都转进 Lab，
+    逐通道做 `(x−μ_src)·σ_ref/σ_src + μ_ref`，统计对齐后"看起来就是同一套配色"。
+    它**保留图像内部的相对结构**（哪里亮哪里暗、哪缕偏蓝），只把整体的
+    色相/明度/对比挪到参考分布上 —— 正好是"同一个角色的另一绺头发"要的效果。
+
+    keep<1 时把结果往原色方向回拉一点（给需要保留本来颜色的挂件留口子）。
+    """
+    solid = a > SOLID_A
+    if solid.sum() < 64:
+        raise SystemExit("[attach] 可信像素太少，没法做配色匹配")
+    src_lab = _srgb_to_lab(rgb)
+    ref_lab = _srgb_to_lab(ref.reshape(-1, 1, 3))[:, 0, :]
+    out = np.empty_like(src_lab)
+    for ch in range(3):
+        sv = src_lab[..., ch][solid]
+        mu_s, sd_s = sv.mean(), max(sv.std(), 1e-6)
+        mu_r, sd_r = ref_lab[:, ch].mean(), ref_lab[:, ch].std()
+        # σ 比值限幅：参考分布比源窄很多时，不要把源图压成一张平色；
+        # 明度(L)留得宽一点（阴影层次是头发的立体感），彩度(a/b)收得紧一点。
+        lo, hi = (0.35, 2.5) if ch == 0 else (0.15, 1.6)
+        k = float(np.clip(sd_r / sd_s, lo, hi))
+        out[..., ch] = (src_lab[..., ch] - mu_s) * k + mu_r
+    # ★ 彩度封顶：输出的 a/b 不许超出**本体头发自己的彩度范围**。
+    #   没有这一道时，源图里的深色线稿（蓝紫，RGB≈(60,17,123)）被统计迁移抬亮之后
+    #   会落成粉紫 (209,106,175) —— 肉眼就是"洋红残留"，切件器的键色闸当场报警。
+    #   道理也站得住：所谓"同源配色"，本来就包含"不许比本体更艳"。
+    for ch in (1, 2):
+        lo = float(np.percentile(ref_lab[:, ch], 0.5)) - 2.0
+        hi = float(np.percentile(ref_lab[:, ch], 99.5)) + 2.0
+        out[..., ch] = np.clip(out[..., ch], lo, hi)
+    res = _lab_to_srgb(out)
+    if keep < 1.0:
+        res = res * keep + rgb.astype(np.float64) * (1.0 - keep)
+    return np.clip(res, 0, 255)
+
+
 def build_one(att, slot, redraw_dir, sprites_dir, anchors):
     src = os.path.join(redraw_dir, att["source"])
     if not os.path.exists(src):
@@ -101,7 +250,20 @@ def build_one(att, slot, redraw_dir, sprites_dir, anchors):
     sx1, sy1 = min(bx0 + bw, rgb.shape[1]), min(by0 + bh, rgb.shape[0])
     canvas[sy0 - by0:sy1 - by0, sx0 - bx0:sx1 - bx0] = rgb[sy0:sy1, sx0:sx1]
 
-    if att.get("recolor"):
+    if att.get("recolor_match"):
+        # 保留渐变的 alpha（和 else 分支同一套），颜色走 Lab 统计匹配。
+        rm = att["recolor_match"]
+        ca = key_alpha_soft(canvas, bg)
+        aa = ca[..., None]
+        unpre = np.clip((canvas.astype(np.float64)
+                         - (1.0 - aa) * bg.astype(np.float64))
+                        / np.maximum(aa, 1e-3), 0, 255)
+        unpre = bleed_edge(unpre, ca)
+        crgb = match_colors(unpre, ca,
+                            ref_hair_pixels(sprites_dir, rm["ref_sprites"],
+                                            rm.get("palette_hex")),
+                            float(rm.get("keep", 1.0)))
+    elif att.get("recolor"):
         ca = key_alpha(canvas, bg)
         crgb = relay_colors(canvas, ca, att["recolor"])
     else:
@@ -140,6 +302,10 @@ def build_one(att, slot, redraw_dir, sprites_dir, anchors):
     made = []
     for mul, name in ((1, att["sprite"]),
                       (2, att["sprite"].replace(".png", "@2x.png"))):
+        # ★ 缩放走 straight RGBA（不是预乘）。试过预乘缩放再除回来，
+        #   边缘低 alpha 处的除法会把颜色放大成近白，白边像素从 ~200 暴涨到 5870，
+        #   check_assets 的白边闸当场红 —— 对这套素材来说，
+        #   "先把边缘颜色抹成相邻实心色（bleed_edge）再直缩"更稳。
         rgba = np.dstack([crgb, ca * 255.0]).astype(np.uint8)
         out = Image.fromarray(rgba, "RGBA").resize((w1 * mul, h1 * mul),
                                                    Image.LANCZOS)

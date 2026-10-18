@@ -750,8 +750,11 @@ static void test_config_and_pet(void)
     CHECK(cfg.nmodules >= 20, "功能模块应至少 20 个，实际 %d", cfg.nmodules);
     /* 供应商数 = config/providers/ 下的契约文件数（G50 起 config/providers.json 是
        由 tools/check_platform.py 生成的兼容投影，不再手写）。加供应商要同步改这个数，
-       这是故意的——数字对不上就说明投影没重新生成。 */
-    CHECK(cfg.nproviders == 9, "供应商 9 个（实际 %d）", cfg.nproviders);
+       这是故意的——数字对不上就说明投影没重新生成。
+       ★ 这里写死数字和 LESSONS 209「阈值不许写死」不冲突：那条说的是*阈值*
+       （要跟着被测对象走），这里是*绊线*（故意要求人来确认投影重生成过）。
+       2026-10-18 T59.1：9 → 29（云端 16 + 本地 9，另加 Tripo3D 等；路由 19 → 76）。 */
+    CHECK(cfg.nproviders == 29, "供应商 29 个（实际 %d）", cfg.nproviders);
     CHECK(zconfig_module_enabled(&cfg, "chat") == 0, "功能默认必须全部关闭");
     CHECK(cfg.pet.idle_sleep_seconds == 90, "默认空闲入睡 90 秒");
 
@@ -3046,6 +3049,26 @@ static void test_gateway(void)
     z_snprintf(rpath, sizeof(rpath), "%s/config/gateway_routes.json", g_root);
     CHECK(zgw_load(&g, rpath, &d) == 0, "路由表应能加载（错误 %d）", d.error_count);
     CHECK(g.nroutes > 0, "路由表不应为空，实际 %d 条", g.nroutes);
+    /* ★ 2026-10-18：装载不许静默截断。zgw_load 的循环条件是
+       while (nroutes < ZGW_MAX_ROUTES)，超出的部分**不报错直接丢**。
+       旧上限 64 撞上本轮铺满后的 76 条路由，丢掉的正好是排在最后的
+       本地建模/视频 —— 配置里有、运行时没有，还全程绿灯。
+       所以这里不能只查 >0，要查"文件里有几条就装进来几条"。 */
+    {
+        zerr re;
+        size_t rlen = 0;
+        char *raw = z_read_file(rpath, &rlen, &re);
+        int infile = 0;
+        const char *p2 = raw;
+        while (p2 && (p2 = strstr(p2, "\"cap\"")) != NULL) { ++infile; p2 += 5; }
+        CHECK(raw != NULL && infile > 0, "应能读出路由表原文");
+        CHECK(g.nroutes == infile,
+              "路由表不许被静默截断：文件里 %d 条，装进来 %d 条（上限 %d）",
+              infile, g.nroutes, ZGW_MAX_ROUTES);
+        CHECK(infile <= (int)(ZGW_MAX_ROUTES * 0.8),
+              "路由数应留 20%% 余量：%d 条 / 上限 %d", infile, ZGW_MAX_ROUTES);
+        free(raw);
+    }
     CHECK(strcmp(g.strategy, "prefer_local") == 0, "策略应是 prefer_local，实际 %s", g.strategy);
 
     /* 首选必须是本机的 ollama：prefer_local 的全部意义就在这一条上。
@@ -5478,6 +5501,77 @@ static void test_pose(void)
         zdiag_init(&d);
         CHECK(zrig_load(rigp, dir, &d) == NULL,
               "default 的特殊值只有小写 none，NONE 必须照样拦住");
+    }
+
+    /* T46.3 第二版：entries[].hide = 这一档生效时要**藏起来**的既有部件。
+       来历：2026-10-18 用户看截图说「短发甚至都没去除」—— 装上双马尾却没把
+       披在脸侧的侧发收走，画面上就是短发 + 两条贴上去的辫子。
+       官方 pose3.json 的语义下一个部件只能归一个档位，而侧发在"短发"和"长发"
+       两档里都要露，照官方做就得把同一绺侧发复制成两份美术资源。
+       所以加了"藏"这一侧：被点名的部件，透明度按 (1 - 这一档的权重) 走，
+       淡入淡出自然跟着档位切换。偏离登记在 docs/LIVE2D_CONFORMANCE.md。 */
+    SECTION("Pose 档位可以\"藏\"既有部件（扎起来的发型要收掉侧发）");
+    {
+        char buf[2600];
+        double t;
+        /* 这一节要三个部件：a/b 是两个档位各自的差分件（= 双马尾、长发），
+           c 是**不属于任何档位的既有部件**（= 脸侧的短发），由档位去藏它。 */
+        const char *head3 =
+            "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"互斥\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"a\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+            " {\"id\":\"b\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":11,\"pos\":[60,40],\"anchor\":[0,0]},"
+            " {\"id\":\"c\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":12,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],";
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"fade\":0.4,"
+                   "\"default\":\"none\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"],\"hide\":[\"c\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head3);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 hide 的 rig 应加载成功（%d 条诊断）", d.error_count);
+        if (r) {
+            zrig_tick(r, 0.0);
+            CHECK(fabs(zrig_part_draw_opacity(r, "c") - 1.0) < 1e-6,
+                  "整组关着时，被 A 点名的 c 照常显示，实为 %.3f",
+                  zrig_part_draw_opacity(r, "c"));
+            zrig_pose_set(r, "g", "A");
+            for (t = 0.05; t < 1.2; t += 0.05) zrig_tick(r, t);
+            CHECK(zrig_part_draw_opacity(r, "c") < 1e-6,
+                  "切到 A 之后 c 必须被藏干净，实为 %.3f",
+                  zrig_part_draw_opacity(r, "c"));
+            CHECK(fabs(zrig_part_draw_opacity(r, "a") - 1.0) < 1e-6,
+                  "A 自己的部件 a 要全显，实为 %.3f", zrig_part_draw_opacity(r, "a"));
+            /* 切到不藏它的那一档，b 要自己回来 —— 藏是**可逆**的，不是删 */
+            zrig_pose_set(r, "g", "B");
+            for (t = 1.25; t < 2.6; t += 0.05) zrig_tick(r, t);
+            CHECK(fabs(zrig_part_draw_opacity(r, "c") - 1.0) < 1e-6,
+                  "切到不藏 c 的档位，c 要回来，实为 %.3f",
+                  zrig_part_draw_opacity(r, "c"));
+            zrig_free(r);
+        }
+        /* 负向对照 ①：hide 写了不存在的部件，必须当场拦住（不能悄悄忽略，
+           否则改个部件名就会让"收侧发"静默失效 —— 死表那一类病）。 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\","
+                   "\"entries\":[{\"id\":\"A\",\"parts\":[\"a\"],\"hide\":[\"zz\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head3);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL,
+              "hide 引用不存在的部件必须拦住");
+        /* 负向对照 ②：既没有 parts 也没有 hide 的档位是空壳，切过去画面毫无变化 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\","
+                   "\"entries\":[{\"id\":\"A\",\"parts\":[]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head3);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL,
+              "既没 parts 也没 hide 的空档位必须拦住");
     }
 }
 

@@ -1,0 +1,28 @@
+{
+  "id": "tripo3d",
+  "name": "Tripo3D（云端建模）",
+  "kind": "official",
+  "local": false,
+  "enabled": false,
+  "priority": 42,
+  "base_url": "https://api.tripo3d.ai/v2/openapi",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://tripo3d"
+  },
+  "capabilities": [
+    {
+      "cap": "model3d.generate",
+      "model": "image_to_model",
+      "price": {
+        "unit": 0.1,
+        "per": 1,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "云端出三维：提交任务拿 task_id，再轮询 /task/{id} 取结果（异步，不是一问一答）⇒ kind=official，要专门适配器。和本机 TripoSR 同门（VAST AI），作用是给没有 6GB 显卡的用户留一条路 —— 本地出不了的时候，云端出同一类结果。"
+}

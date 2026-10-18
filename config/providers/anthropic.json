@@ -1,0 +1,50 @@
+{
+  "name": "Anthropic Claude",
+  "kind": "official",
+  "local": false,
+  "enabled": false,
+  "priority": 45,
+  "base_url": "https://api.anthropic.com/v1",
+  "auth": {
+    "type": "header",
+    "key_ref": "secret://anthropic",
+    "header": "x-api-key"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "claude-3-5-haiku-latest",
+      "price": {
+        "in": 0.8,
+        "out": 4.0,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "claude-3-5-haiku-latest",
+      "price": {
+        "in": 0.8,
+        "out": 4.0,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "claude-3-5-haiku-latest",
+      "price": {
+        "in": 0.8,
+        "out": 4.0,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "★ 不是 OpenAI 形状：端点 /v1/messages、鉴权头 x-api-key、还要 anthropic-version 头，system 提示是顶层字段而不是一条 message ⇒ kind=official，要走专门的适配器。登记在册是为了让\"能力矩阵\"诚实（界面上看得到它、知道它要单独适配），不是假装已经接好了。",
+  "id": "anthropic"
+}

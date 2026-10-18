@@ -28,12 +28,30 @@
       "price": {
         "free": true
       }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "qwen2.5vl:7b",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "code.generate",
+      "model": "qwen2.5-coder:7b",
+      "price": {
+        "free": true
+      }
     }
   ],
   "balance": {
     "mode": "none"
   },
-  "note": "本地模型：不花钱、不出网。用户没装也不影响框架——网关按可用性路由。",
+  "note": "本地模型：不花钱、不出网。用户没装也不影响框架——网关按可用性路由。 2026-10-18 补：看图（qwen2.5vl）与写码（qwen2.5-coder）两条本地腿 —— 不补的话这两种能力就只有云端，断网即哑。",
   "enabled": true,
-  "priority": 90
+  "priority": 90,
+  "hardware": {
+    "min_vram_gb": 0,
+    "note": "Q4_K_M 每 1B 参数约 0.55~0.7GB：7B≈5GB / 14B≈9GB / 32B≈19GB。纯 CPU 也能跑 7B（约 3 tok/s，够发短句，不够长篇）。"
+  }
 }

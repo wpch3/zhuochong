@@ -931,6 +931,43 @@ def attach_emit(rig, base, base_root):
                 _grp["entries"].append(_ent)
             _ent["parts"] += [p for p in _parts if p not in _ent["parts"]]
 
+    # pose_groups[].hide_parts（T46.3 第二版）：这一档生效时要**藏起来**的既有部件。
+    # extra_parts 是"这一档多显示谁"，hide_parts 是"这一档要收走谁"。
+    # 为什么两者都要：侧发（hair_side_l/r）在 bob 和 long 两档里都得露，
+    # 而官方 pose3.json 的语义下**一个部件只能归一个档位** —— 照官方做就得把
+    # 同一绺侧发复制成两份美术资源。藏的写法避免了复制，引擎侧见 pose_opacity。
+    for _pg in table.get("pose_groups", []):
+        _hd = _pg.get("hide_parts")
+        if not _hd:
+            continue
+        _grp = next((x for x in rig.get("poses", []) if x["id"] == _pg["id"]), None)
+        if _grp is None:
+            raise SystemExit(f"[make_rig] pose_group {_pg['id']!r} 写了 hide_parts，"
+                             f"但这个组里一个挂件都没有（组不会被建出来）")
+        for _eid, _parts in _hd.items():
+            # ★ 和 extra_parts 不同，这里**允许本形态没有这个部件**：
+            #   hide 说的是"这一档要把谁收走"，而 chibi 这类简化形态本来就没有侧发，
+            #   没有的东西不用收。硬报错会逼着每个形态维护一份自己的 hide 名单
+            #   （那就是 G117 要消灭的"第二份会长歪的表"）。
+            _have = [p for p in _parts if any(x["id"] == p for x in rig["parts"])]
+            _miss = [p for p in _parts if p not in _have]
+            if _miss:
+                print(f"  ⚠ 本形态没有 {_miss} —— 档位 {_eid!r} 的 hide 名单跳过它们")
+            if not _have:
+                continue
+            _parts = _have
+            _ent = next((e for e in _grp["entries"] if e["id"] == _eid), None)
+            if _ent is None:
+                _ent = {"id": _eid, "parts": []}
+                _grp["entries"].append(_ent)
+            _ent.setdefault("hide", [])
+            _ent["hide"] += [p for p in _parts if p not in _ent["hide"]]
+            # 同一档位不许既显示又藏同一个部件（自相矛盾，引擎会乘出 w(1-w)）
+            _bad = sorted(set(_ent["hide"]) & set(_ent.get("parts", [])))
+            if _bad:
+                raise SystemExit(f"[make_rig] pose_group {_pg['id']!r} 的档位 "
+                                 f"{_eid!r} 既显示又隐藏同一个部件：{_bad}")
+
     # 情绪 → 摆动倍率（T45.2f）。**第四张情绪表**。
     # ★ 这张表以前写在 design/attachments.json 里但**这里没有搬运代码** ——
     #   生成器不读、rig 里没有、引擎不认识。它是一张死表：看着像配置，

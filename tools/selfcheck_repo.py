@@ -1916,6 +1916,47 @@ def check_live2d(root):
                   and _slot.get("group") == "head",
                   "层 %d/%d（手臂 143 < x < 后发壳 170），组 %r"
                   % (_tl["layer"], _tr["layer"], _slot.get("group")))
+        # ⑤ 扎起来的发型必须**把被取代的原生发件收走**（2026-10-18 用户打回：
+        #    「短发甚至都没去除」）。差分件做加法说的是"不用重画本体"，
+        #    不等于"只许加不许减"：twin/pony 要是不收侧发，画面上就是
+        #    短发 + 两条贴上去的辫子。长发不收（侧发在长发里照样露）。
+        _hide = (_hg or {}).get("hide_parts") or {}
+        _need = {"hair_side_l", "hair_side_r"}
+        _miss = [k for k in ("twin", "pony") if not _need <= set(_hide.get(k) or [])]
+        check("扎起来的发型会把脸侧的短发收走（twin/pony 隐藏 hair_side_l/r）",
+              not _miss,
+              ("这些档位没收侧发：%s" % _miss) if _miss else
+              "twin/pony 各自 hide %s；long 不收（披着的时候侧发照样露）"
+              % sorted(_need))
+        # ⑥ 收侧发这件事要**一路通到引擎**：表里写了 hide，生成器要搬进 rig.json，
+        #    引擎的 pose_opacity 要认。少任何一环都是"在 JSON 里写日记"（G117 那类病）。
+        _rigp = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+        _rig_ok = False
+        if os.path.exists(_rigp):
+            _rg = jsonc(_rigp)
+            _grp = next((g for g in _rg.get("poses", []) if g["id"] == "hairstyle"), {})
+            _ents = {e["id"]: e for e in _grp.get("entries", [])}
+            _rig_ok = all(_need <= set(_ents.get(k, {}).get("hide") or [])
+                          for k in ("twin", "pony"))
+        _eng_ok = ("e->nhid" in _zrig_src and "posehide" in _zrig_src
+                   and "op *= 1.0 - e->opacity" in _zrig_src)
+        check("收侧发是真能生效的：表 → rig.json → 引擎 pose_opacity 三处都有",
+              _rig_ok and _eng_ok,
+              "rig.json 里 twin/pony 带 hide：%s；zrig.c 认 hide（nhid/posehide/乘 1-w）：%s"
+              % (_rig_ok, _eng_ok))
+        # ⑦ 发型这类**带渐变**的件不许再走色卡三色重铺。
+        #    k-means 平色重铺是给漫符用的；按亮度压成 3 色会把柔和明暗和蓝发梢
+        #    一起碾平 —— 那正是用户说"色彩完全不一样非常的违和"的原因。
+        _wrong = [x["id"] for x in _hair if x.get("recolor")]
+        _nomatch = [x["id"] for x in _hair if not x.get("recolor_match")]
+        check("发型挂件走 Lab 统计匹配（recolor_match），不走色卡平色重铺",
+              not _wrong and not _nomatch,
+              ("还在用 recolor 重铺：%s；没写 recolor_match：%s" % (_wrong, _nomatch))
+              if (_wrong or _nomatch) else
+              "%d 件发型全部按本体头发做 Lab mean/std 对齐（参考系 %s）"
+              % (len(_hair),
+                 "/".join((_hair[0].get("recolor_match") or {}).get("ref_sprites", []))))
+
         _lch = (_by.get("hair_long") or {}).get("physics", {}).get("chain", {})
         _tch = (_tl or {}).get("physics", {}).get("chain", {})
         if _lch and _tch:
@@ -2088,6 +2129,37 @@ def check_live2d(root):
         unsorted_caps = [c for c, ps in bycap.items() if ps != sorted(ps, reverse=True)]
         check("路由表内每种能力按优先级降序排好", not unsorted_caps,
               "运行时取第一个就是首选，顺序错了等于路由错 " + str(unsorted_caps))
+
+        # ★ 2026-10-18：路由表**不许顶到引擎上限**。
+        #   zgateway.c 读表时是 `while (nroutes < ZGW_MAX_ROUTES)` —— 超出的部分
+        #   被**静默丢弃**（只在诊断里留一行），而被丢掉的永远是排在后面的那几条，
+        #   也就是优先级最低的本地建模/视频。供应商一多就会踩，所以用到 80% 就报红。
+        _gh = io.open(os.path.join(root, "src/core/zgateway.h"), encoding="utf-8").read()
+        _m = re.search(r"#define\s+ZGW_MAX_ROUTES\s+(\d+)", _gh)
+        _cap_n = int(_m.group(1)) if _m else 0
+        check("路由表没顶到引擎上限（留 20% 余量）",
+              _cap_n > 0 and len(rts) <= _cap_n * 0.8,
+              "%d 条路由 / 上限 %d（%.0f%%）—— 超了会被 zgateway.c 静默截断"
+              % (len(rts), _cap_n, 100.0 * len(rts) / max(_cap_n, 1)))
+
+        # ★ 云端/本地**双栈**：用户 2026-10-18 的要求是"都要做云端和本地的适配"。
+        #   逐条能力检查两边都有候选 —— 只有云端 = 断网就哑；只有本地 = 配置不够就废。
+        #   允许留白的能力写在 _solo 里，每条都要说清为什么。
+        _solo = {
+            "web.search": "联网搜索天然只有云端（本地没有索引）",
+            "code.execute": "沙箱执行只在本地（云端执行等于把代码交出去）",
+            "file.read": "读本机文件只能在本机",
+            "memory.recall": "记忆库在本机",
+        }
+        _sides = {}
+        for r in rts:
+            _sides.setdefault(r["cap"], set()).add(bool(r.get("local")))
+        _half = sorted(c for c, sd in _sides.items()
+                       if len(sd) < 2 and c not in _solo)
+        check("每种能力都有云端和本地两条腿（双栈）", not _half,
+              ("这些能力只有一侧：%s" % _half) if _half else
+              "%d 种能力双栈齐备，另有 %d 种按设计单边（%s）"
+              % (len(_sides) - len(_solo), len(_solo), "、".join(sorted(_solo))))
     else:
         check("config/gateway_routes.json 已生成", False, "跑 python3 tools/check_platform.py")
 

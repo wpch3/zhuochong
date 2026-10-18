@@ -1,0 +1,70 @@
+{
+  "name": "硅基流动 SiliconFlow",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 45,
+  "base_url": "https://api.siliconflow.cn/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://siliconflow"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "Qwen/Qwen2.5-7B-Instruct",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "Qwen/Qwen2.5-7B-Instruct",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "embed.text",
+      "model": "BAAI/bge-m3",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "image.generate",
+      "model": "Kwai-Kolors/Kolors",
+      "price": {
+        "unit": 0.1,
+        "per": 1,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "stt.listen",
+      "model": "FunAudioLLM/SenseVoiceSmall",
+      "price": {
+        "unit": 0.0,
+        "per": 1,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "tts.speak",
+      "model": "FunAudioLLM/CosyVoice2-0.5B",
+      "price": {
+        "unit": 105.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "api",
+    "endpoint": "/user/info",
+    "pick": "data.totalBalance",
+    "currency": "CNY"
+  },
+  "note": "★ 一个 Key 覆盖**四类能力**（对话/向量/出图/语音），而且全走 OpenAI 形状 —— 对\"只想配一把钥匙\"的用户是性价比最高的一家。它也是本地 CosyVoice2 的云端等价物：同一个模型，本地跑不动时切云端，音色一致（这正是\"云端本地对齐\"的样板）。",
+  "id": "siliconflow"
+}

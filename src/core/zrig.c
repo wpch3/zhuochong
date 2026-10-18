@@ -375,6 +375,7 @@ typedef struct {
 typedef struct {
     char id[48];
     int  mem0, nmem;          /* 在 r->posemem 里的区间 */
+    int  hid0, nhid;          /* 在 r->posehide 里的区间：这一档**生效时要藏起来**的部件 */
     double opacity;           /* 当前显隐权重 0..1（淡入淡出用） */
 } zposeent;
 
@@ -639,6 +640,8 @@ struct zrig {
     zpose   poses[ZRIG_MAX_POSE];
     int     nposes;
     zposeent poseents[ZRIG_MAX_POSE_ENT];
+    int      posehide[ZRIG_MAX_POSE_MEM];   /* 各档位的 hide 名单，按 hid0/nhid 切片 */
+    int      nposehide;
     int     nposeents;
     int     posemem[ZRIG_MAX_POSE_MEM];     /* 档位成员的部件下标（连续分配） */
     int     nposemem;
@@ -2169,9 +2172,17 @@ static int load_poses(zrig *r, const zjson *jp, zdiag *d, const char *file)
             }
             z_strlcpy(e->id, eid, sizeof(e->id));
             e->mem0 = r->nposemem;
-            if (!ps || !zjson_is(ps, ZJSON_ARR) || qn < 1) {
+            if (ps && !zjson_is(ps, ZJSON_ARR)) {
                 zdiag_error(d, file, ej ? ej->line : 0, 0, path,
-                            "档位 '%s' 的 parts 至少写一个部件", eid);
+                            "档位 '%s' 的 parts 要写成数组", eid);
+                return -1;
+            }
+            if (qn < 1 && !zjson_obj_get((zjson *)ej, "hide")) {
+                /* 空 parts 只在"这一档靠藏别人成立"时才合法（例如 bob：
+                   不加任何一束头发，但要把 twin/pony 藏掉的侧发留着）。
+                   两者都没有的档位是个空壳，切过去画面不会有任何变化。 */
+                zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                            "档位 '%s' 既没有 parts 也没有 hide（空档位）", eid);
                 return -1;
             }
             for (q = 0; q < qn; ++q) {
@@ -2197,6 +2208,35 @@ static int load_poses(zrig *r, const zjson *jp, zdiag *d, const char *file)
                 }
                 r->posemem[r->nposemem++] = pi;
                 e->nmem++;
+            }
+            /* hide：这一档生效时要藏起来的既有部件（本引擎扩展，见 pose_opacity）。
+               可选；允许多个档位藏同一个部件（侧发被 twin 和 pony 同时点名）。 */
+            {
+                const zjson *hs = zjson_obj_get((zjson *)ej, "hide");
+                size_t hq, hn = zjson_count((zjson *)hs);
+                e->hid0 = r->nposehide;
+                if (hs && !zjson_is(hs, ZJSON_ARR)) {
+                    zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                                "档位 '%s' 的 hide 要写成数组", eid);
+                    return -1;
+                }
+                for (hq = 0; hs && hq < hn; ++hq) {
+                    const char *hid = zjson_str(zjson_at((zjson *)hs, hq), NULL);
+                    int hpi = hid ? find_part(r, hid) : -1;
+                    if (hpi < 0) {
+                        zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                                    "档位 '%s' 的 hide 引用了不存在的部件 '%s'",
+                                    eid, hid ? hid : "(空)");
+                        return -1;
+                    }
+                    if (r->nposehide >= ZRIG_MAX_POSE_MEM) {
+                        zdiag_error(d, file, ej ? ej->line : 0, 0, path,
+                                    "hide 名单过长（上限 %d）", ZRIG_MAX_POSE_MEM);
+                        return -1;
+                    }
+                    r->posehide[r->nposehide++] = hpi;
+                    e->nhid++;
+                }
             }
             r->nposeents++;
             g->nent++;
@@ -4580,16 +4620,27 @@ static int ensure_scaled(zrig *r, double scale)
 /* 这个部件属于某个互斥组时的显隐权重；不属于任何组就是 1。 */
 static double pose_opacity(const zrig *r, int part)
 {
+    /* 一个部件的显隐可能被两件事决定：
+         ① 它**属于**某个档位 ⇒ 跟着那个档位的权重走（官方 pose3.json 的本来语义）；
+         ② 它被某个档位**点名藏起来**（entries[].hide）⇒ 那个档位越显，它越透明。
+       ② 是本引擎的扩展，为了「扎起来的发型要把披着的侧发收上去」这类需求：
+       侧发在 bob / long 两档里都要露，而官方语义下一个部件只能归一个档位，
+       真要照官方做就得把同一绺侧发复制成两份美术资源。
+       登记在 docs/LIVE2D_CONFORMANCE.md。 */
+    double op = 1.0;
     int gi, t, q;
     for (gi = 0; gi < r->nposes; ++gi) {
         const zpose *g = &r->poses[gi];
         for (t = 0; t < g->nent; ++t) {
             const zposeent *e = &r->poseents[g->ent0 + t];
             for (q = 0; q < e->nmem; ++q)
-                if (r->posemem[e->mem0 + q] == part) return e->opacity;
+                if (r->posemem[e->mem0 + q] == part) op *= e->opacity;
+            for (q = 0; q < e->nhid; ++q)
+                if (r->posehide[e->hid0 + q] == part) op *= 1.0 - e->opacity;
         }
     }
-    return 1.0;
+    if (op < 0.0) op = 0.0;
+    return op;
 }
 
 /* 一个部件这一帧要怎么画：贴图、矩阵、透明度、弯曲、网格形变。

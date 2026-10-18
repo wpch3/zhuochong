@@ -56,6 +56,15 @@
         "per": 1000000,
         "currency": "USD"
       }
+    },
+    {
+      "cap": "image.edit",
+      "model": "gpt-image-1",
+      "price": {
+        "unit": 0.04,
+        "per": 1,
+        "currency": "USD"
+      }
     }
   ],
   "balance": {

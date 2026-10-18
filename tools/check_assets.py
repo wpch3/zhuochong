@@ -43,6 +43,12 @@ TH = {
     "sway_hole": 20,           # 头发摆到最大幅度时允许新增的空洞像素（背后没补画就会炸）
     "junk_px": 0,              # 键色垃圾像素（纯绿/洋红）上限：一个都不许有
     "eye_residue": 24,         # 脸上眼眶区残留的"眼睛像素"（深眼线/蓝虹膜/纯白眼白）上限
+    # 差分发型 vs 本体头发：Lab 平均色差 ΔE 与明度对比差 ΔσL 的上限。
+    # 数是**量出来的**，不是拍的：被用户打回的那版双马尾（色卡三色重铺）
+    # ΔE=9.7 / ΔσL=8.4，现在这版（Lab 统计匹配）ΔE=0.1~0.6 / ΔσL=1.3~3.5。
+    # 取 5.0 / 6.0 ⇒ 坏版两项都红、好版两项都有一倍以上余量。
+    "hair_dE": 5.0,
+    "hair_dSD": 6.0,
 }
 
 # min_side 的逐件例外：写在这里的部件允许比 TH["min_side"] 更细，每条都要写清为什么。
@@ -94,6 +100,29 @@ def dominant_colors(rgb, mask, k=6):
         v = int(vals[i])
         out.append(((v >> 16) & 255, (v >> 8) & 255, v & 255, float(counts[i]) / len(px)))
     return out
+
+
+def to_lab(rgb):
+    """sRGB(0~255) → CIE Lab(D65)。和 tools/make_attach_parts.py 里是同一套公式。"""
+    c = np.clip(np.asarray(rgb, dtype=np.float64) / 255.0, 0.0, 1.0)
+    c = np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    m = np.array([[0.4124564, 0.3575761, 0.1804375],
+                  [0.2126729, 0.7151522, 0.0721750],
+                  [0.0193339, 0.1191920, 0.9503041]])
+    xyz = c @ m.T / np.array([0.95047, 1.0, 1.08883])
+    d = 6.0 / 29.0
+    f = np.where(xyz > d ** 3, np.cbrt(np.maximum(xyz, 1e-12)),
+                 xyz / (3 * d * d) + 4.0 / 29.0)
+    return np.stack([116.0 * f[..., 1] - 16.0,
+                     500.0 * (f[..., 0] - f[..., 1]),
+                     200.0 * (f[..., 1] - f[..., 2])], axis=-1)
+
+
+def solid_pixels(path, thr=0.85):
+    """一张 sprite 里 alpha 足够实的像素（N×3）。半透明边缘不参与配色统计。"""
+    im = load_rgba(path).astype(np.float64)
+    sel = im[..., 3] > thr * 255.0
+    return im[..., :3][sel]
 
 
 def iou(m1, m2):
@@ -170,12 +199,43 @@ def check(character, form, root=".", strict=False, out_json=None):
         add(pid, "白边", white <= th["white_edge"], f"{white} 像素（上限 {th['white_edge']}）")
 
         if palette:
+            # ★ 差分发型（recolor_match 切出来的）的配色权威**另加一份：本体头发自己**。
+            #   原因：色卡闸比的是"主色离色卡某一格有多远"，而色卡只有 3 格头发色
+            #   （主色/暗部/蓝梢）。一件保留了柔和渐变的头发，必然有大量落在两格之间的
+            #   中间调 —— 把它压到"每个主色都贴着某一格"才算过，等于逼着切件器把
+            #   渐变重铺成平色，那正是 2026-10-18 被用户打回的那版双马尾的做法。
+            #   本体头发贴图是已入库、已过验收的成品，拿它当第二份权威是说得通的：
+            #   "挂件的颜色得能在角色自己的头发里找得到"。真正判"同不同源"的是
+            #   下面的 ΔE 闸（整条分布比），色卡闸在这里只负责拦"画成另一个色系"。
+            auth = palette
+            pool = None
+            if pid.split("@")[0] in ("hair_twin_l", "hair_twin_r",
+                                     "hair_pony_back", "hair_long_back"):
+                acc_ = []
+                for hn in ("hair_back.png", "hair_side_l.png", "hair_side_r.png",
+                           "hair_front.png"):
+                    hp = os.path.join(sprites, hn)
+                    if not os.path.exists(hp):
+                        continue
+                    ha = load_rgba(hp)
+                    acc_.append(ha[..., :3][alpha_mask(ha)].astype(np.int32))
+                if acc_:
+                    pool = np.concatenate(acc_)[::3]      # 抽样，够用且快
             doms = dominant_colors(rgb, m)
             worst, worst_c = 0, None
             for (r, g, b, share) in doms:
                 if share < 0.06:          # 占比太低的颜色（抗锯齿过渡色）不参与判定
                     continue
-                dist = min(abs(r - pr) + abs(g - pg) + abs(b - pb) for pr, pg, pb, _ in palette)
+                dist = min(abs(r - pr) + abs(g - pg) + abs(b - pb) for pr, pg, pb, _ in auth)
+                if pool is not None and dist > th["palette_dist"]:
+                    # 色卡只有 3 格头发色，而保留渐变的发束必然有一堆**落在两格之间**
+                    # 的中间调。这里改问一句更实在的话："这个颜色在角色**自己的头发**
+                    # 里存在吗？"存在（池子里有 ≥0.3% 的像素离它 ≤70）就算过。
+                    # 这不是放水：把判据从"贴着色卡某一格"换成"本体头发里真有这个颜色"，
+                    # 恰恰是 2026-10-18 那次返修的核心 —— 要的是同源，不是平色。
+                    dd = np.abs(pool - np.array([r, g, b])).sum(axis=1)
+                    if float((dd <= th["palette_dist"]).mean()) >= 0.003:
+                        dist = 0
                 if dist > worst:
                     worst, worst_c = dist, (r, g, b, share)
             add(pid, "色卡", worst <= th["palette_dist"],
@@ -896,6 +956,38 @@ def check(character, form, root=".", strict=False, out_json=None):
                     add("混合零件", f"腮红_{side} 压在实心脸上", cover >= 0.80,
                         f"{cover * 100:.0f}% 的不透明像素落在 seg_head 的实心区上"
                         f"（要求 ≥80%；multiply 画在透明处等于没画）")
+
+            # —— 差分发型必须和本体头发**同源配色**（2026-10-18 用户打回）——
+            # 用户看第一眼就说「色彩和形态完全不一样非常的违和」，而当时
+            # 519 项自检 + 878 项单测全绿 —— 因为**没有一项在比颜色**。
+            # 这条就是补那一刀：把挂件和本体头发都转进 CIE Lab，比两件事
+            #   ① 平均色差 ΔE（Lab 欧氏距离）——"是不是同一个发色"；
+            #   ② 明度标准差之差 ΔσL ——"发质/对比度像不像"（一件被压成平色的
+            #      头发，平均色可能还对，σ 一定塌下去）。
+            # 负向对照（必做）：把 git 里那版坏双马尾拿来跑，ΔE=9.7、ΔσL=8.4，
+            # 两项都越线；现在这版 ΔE=0.1、ΔσL=2.1。闸门设在 5.0 / 6.0。
+            hair_ref = [n for n in ("hair_back.png", "hair_side_l.png",
+                                    "hair_side_r.png", "hair_front.png")
+                        if os.path.exists(os.path.join(sprites, n))]
+            hair_add = [n for n in ("hair_twin_l.png", "hair_twin_r.png",
+                                    "hair_pony_back.png", "hair_long_back.png")
+                        if os.path.exists(os.path.join(sprites, n))]
+            if hair_ref and hair_add:
+                ref_px = np.concatenate(
+                    [solid_pixels(os.path.join(sprites, n)) for n in hair_ref])
+                ref_lab = to_lab(ref_px)
+                for n in hair_add:
+                    got = solid_pixels(os.path.join(sprites, n))
+                    if len(got) < 256:
+                        continue
+                    lab = to_lab(got)
+                    dE = float(np.linalg.norm(lab.mean(axis=0) - ref_lab.mean(axis=0)))
+                    dSD = abs(float(lab[:, 0].std() - ref_lab[:, 0].std()))
+                    add("差分发型", f"{n[:-4]} 与本体头发同源配色",
+                        dE <= th["hair_dE"] and dSD <= th["hair_dSD"],
+                        f"平均色差 ΔE={dE:.1f}（上限 {th['hair_dE']}）、"
+                        f"明度对比差 ΔσL={dSD:.1f}（上限 {th['hair_dSD']}）"
+                        f"；基准 = {'/'.join(x[:-4] for x in hair_ref)}")
 
             add("素材", "无键色垃圾像素", junk_total <= th["junk_px"],
                 f"纯绿/洋红残留 {junk_total} 像素（上限 {th['junk_px']}）"

@@ -825,3 +825,23 @@ T44 是**幅度很小但自成语义**的面部变化（走神 / 怀疑 / 忍笑
 | T58.6 | **花栗鼠修正**：音高整条压下来 | [x] | 2026-10-17 晚完成（用户：「语感开了后像**小黄人和鼠来宝**」）。`base_pitch_hz` 18→**0**、句尾上扬 6→4、11 种情绪音高压进 ±6Hz、`_restraint.max_abs_pitch_hz` 46→**14**。CI 重渲复测：A/B 六组峰值音高 4/12/14/8/12/4Hz，**时长分层一点没塌**（sleepy +60.8% / shy +38.3%）⇒ 情绪靠节奏不靠音高。见 DC76 / LESSONS 200 |
 | T58.7 | **密钥接入手册**（回答用户"密钥去哪里获取"） | [x] | 2026-10-17 晚完成 `docs/ops/VOICE_KEYS.md`：Azure（建资源→选区域 southeastasia→「密钥和终结点」取 Key+Region，F0 每月 50 万字符，HD $22/1M，Dragon HD Flash 区域与音色风格表）、MiniMax（platform.minimaxi.com→账户管理→接口密钥，**只显示一次**，¥3.5/万字符，`audio` 是 hex 不是 base64）、环境变量名 `ZHUOCHONG_SECRET_AZURE_SPEECH` / `ZHUOCHONG_SECRET_MINIMAX`、安全红线、填完怎么验。顺带把 `config/providers/minimax.json` 的**过期域名** api.minimax.chat 改成 api.minimaxi.com |
 | T58.5 | **音色持久化 + 每角色独立**（挂起队列里的老账） | [ ] | 用户选定的音色/音高要落进 `config/voice_cast.json` 并随角色走；7 个角色各自的档位互不影响。顺带把 `--voice` 覆盖参数接进试听页 |
+
+---
+
+## T59 族 · 供应商大兼容与云端/本地双栈（2026-10-18 第七问）
+
+> 用户原话：「兼容更多的 api 密钥或者兼容全部的可用的。甚至本地的适配……llm，tts，stt，
+> 生图，生视频，建模 都要做云端和本地的适配，配置够的话可以和云端差不多」。
+> 完整规划见 **`docs/PROVIDER_PLAN.md`**（含能力矩阵、各家 base_url 与坑、硬件档位表、许可风险）。
+> 验收口径：① `check_platform.py --check` 全绿且生成物与契约一致；
+> ② selfcheck 的「路由表没顶到引擎上限」「每种能力都有云端和本地两条腿」为绿；
+> ③ 新接一家 OpenAI 兼容供应商 = 新建一个 json + 跑一次生成器，**不改 C 代码**。
+
+| 编号 | 做什么 | 状态 | 备注 |
+|---|---|---|---|
+| T59.1 | **契约铺满 + 两道新闸** | [x] | 2026-10-18 完成。供应商 9→**29 家**（云端 16：OpenAI/DeepSeek/Kimi/智谱/通义/硅基/OpenRouter/Groq/xAI/Gemini/Claude/MiniMax 文本+语音/Azure/edge/Tripo3D/中转模板；本地 9：Ollama/llama.cpp/LM Studio/vLLM/speaches/whisper.cpp/TTS-WebUI/ComfyUI 视频/TripoSR+Hunyuan3D），路由 19→**76 条**。每家都写了 `hardware.min_vram_gb` 与踩坑 note。★ 顺手修了一个**真 bug**：`ZGW_MAX_ROUTES` 还是 64，而路由已 76 条 —— `zgateway.c:51` 会**静默丢掉**超出的部分，丢的正好是优先级最低的本地建模/视频。提到 192 并加闸（用量 >80% 就红）。另一道闸「每种能力都有云端和本地两条腿」上线即抓到 5 种能力缺腿（本地看图/本地写码/云端改图/云端视频/云端建模），已补齐 |
+| T59.2 | `tools/provider_probe.py` | [ ] | `--check` 离线体检（端点形状、端口冲突、能力缺腿、密钥引用）；`--net` 探活（`GET /v1/models` 或各家健康检查）；`--hw` 读显存给出"你这台机器现在能开哪几家、该用哪个量化档" |
+| T59.3 | 设置界面「钥匙串」 | [ ] | 按**钥匙**而不是按能力组织（MiniMax 一把钥匙亮文本+语音两条能力）；本地服务一键探活绿灯/灰灯；每种能力显示"现在会走谁、为什么" |
+| T59.4 | 非 OpenAI 形状的四个适配器 | [ ] | `anthropic`(/v1/messages + x-api-key) / `tripo3d`(异步 task 轮询) / `comfyui`(POST /prompt + /history) / `dashscope` 万相出图出视频 |
+| T59.5 | 本地引擎托管与降档 | [ ] | 进程起不来要说清楚原因；显存不足自动降档 14B→7B→云端；模型常驻与按需卸载策略 |
+| T59.6 | 离线演练 | [ ] | 拔网线跑完整链路（对话→TTS→口型→立绘），产出"断网后各功能退化成什么样"的验收表 |
