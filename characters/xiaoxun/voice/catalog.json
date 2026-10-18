@@ -1296,7 +1296,7 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/happy.mp3",
-      "bytes": 37821,
+      "bytes": 35517,
       "segments": [
         {
           "text": "今天也一起加油吧，",
@@ -1350,7 +1350,7 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/angry.mp3",
-      "bytes": 35949,
+      "bytes": 36957,
       "segments": [
         {
           "text": "今天也一起加油吧，",
@@ -1511,7 +1511,7 @@
       ],
       "bytes_off": 27216,
       "file_off": "characters/xiaoxun/voice/ab/02_off.mp3",
-      "bytes_on": 37821,
+      "bytes_on": 35517,
       "file_on": "characters/xiaoxun/voice/ab/02_on.mp3"
     },
     {
