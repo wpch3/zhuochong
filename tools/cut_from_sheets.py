@@ -162,7 +162,15 @@ def solidify(b, k=17):
 
 
 def nearest_fill(rgb, src, steps):
-    """把 src 为真处的颜色向外扩散（最近邻补色），用于塗り足し。"""
+    """把 src 为真处的颜色向外扩散（最近邻补色），用于塗り足し。
+
+    返回 `(out, have)` —— **第二个返回值是真正被填到的集合**，必须拿它去定
+    塗り足し的范围，不能另外用 `dilate(src, 2*steps+1)` 圈。两者不是一回事：
+    这里的颜色只沿 4 邻域传播（曼哈顿距离），而 dilate 是 3x3（切比雪夫距离），
+    于是**对角方向上有一圈像素被圈成了实心、却从来没被填过色**，
+    保留着原图在那个位置的内容（线稿、眼睛、藏青裙子）——
+    画面上就是发束根部那几块突兀的黑色楔形。（2026-10-19 实测）
+    """
     out = rgb.copy()
     have = src.copy()
     for _ in range(steps):
@@ -180,7 +188,31 @@ def nearest_fill(rgb, src, steps):
             break
         out[ok] = acc[ok] / np.maximum(cnt[ok], 1.0)[:, None]
         have = have | ok
-    return out
+    return out, have
+
+
+def keep_rooted(m, root_rows=40):
+    """只保留从**发根**连通出去的那一块，丢掉游离碎片。
+
+    切件难免留下几块和主体不相连的碎屑（套准残留、模板上别处的同色物件）。
+    它们本身像素不多，despeckle 也滤不掉（够厚），但**会把件的 bbox 撑大**，
+    于是在画面上变成一块浮在身体旁边的灰方块（实测马尾右肩外侧那块）。
+
+    发根一定在件的最上面几行（后发/马尾/双马尾都是从头上垂下来的），
+    所以拿最上面 root_rows 行当种子，在掩膜内部反复膨胀到收敛。
+    没有 scipy，这是最省事的连通域。
+    """
+    ys = np.nonzero(m.any(axis=1))[0]
+    if not len(ys):
+        return m
+    seed = m & (np.arange(m.shape[0])[:, None] <= ys[0] + root_rows)
+    if not seed.any():
+        return m
+    while True:
+        grown = dilate(seed, 9) & m
+        if grown.sum() == seed.sum():
+            return grown
+        seed = grown
 
 
 # ------------------------------------------------------------ 切掩膜
@@ -217,9 +249,23 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #    套准残留会在身体轮廓外留一圈 1~3px 的描边，必须用 despeckle 滤掉，
     #    否则整条身体边缘都会被当成"剪影外的新头发"（实测件高涨到全身 1453px）。
     back = despeckle(sop & ~dilate(base_op, 5) & (yy <= kneeline), 9, 11)
+    # ★ 碎片过滤要在**并上头皮之前**做。顺序反了的话，长发的头皮和它外侧的
+    #   发丝之间只要有一两像素的缝，keep_rooted 就会把下面整条头发全丢掉
+    #   （实测件从 594x1005 缩成 155x137，只剩一个头盖骨）。
+    out["back_l"] = keep_rooted(back & (xx < head_cx))
+    out["back_r"] = keep_rooted(back & (xx >= head_cx))
+    back = keep_rooted(back)
+    if style == "long":
+        # ★ 披发这一档还要带上**后脑那片头皮**。只取"剪影之外"的话，
+        #   件是从耳朵高度才开始的，上面空着一截 —— 藏掉本体的齐腮鬓发之后
+        #   那里背后没东西垫，露出透明背景（闸门实测 3.04%，上限 2%）。
+        #   件在层 58（整个身体之后），头皮这块本来就被脑袋挡着，多画无害；
+        #   而且这才是 Live2D 里「後ろ髪」该有的样子 —— 它是从发旋开始的一整片，
+        #   不是半路接上去的一截。扎发那两档不能这么做：它们是左右两件，
+        #   各自带一片头皮会在脑后重叠。
+        back = back | (sh_all & dilate(base_op, 9) & (yy <= shoulder))
     out["back"] = back
-    out["back_l"] = back & (xx < head_cx)
-    out["back_r"] = back & (xx >= head_cx)
+    out["_base_hair"] = bh_all
 
     # ② 剪影之内、底图那里没发、模板这里有发 —— 画在身体和脸上的新头发
     front = despeckle(sop & base_op & sh_all & ~dilate(bh_all, 5), 3, 7)
@@ -238,6 +284,14 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #      211~234、刘海在 240 —— 切到眼线会把眼睛整个盖住（硬伤，见第十一问）。
     #      发际线以下交给底图原有的刘海件，塗り足し再向下延 40px 藏在刘海后面。
     crown = sop & dilate(base_op, 9) & (yy <= hairline + 24) & (np.abs(xx - head_cx) <= 170)
+    #    ★ 上界要切在**颅顶**，把呆毛让出去：呆毛是独立部件（层 190）、挂着自己的
+    #      摆动物理，被层 239 的头顶件盖住就不动了，而且两根呆毛画得稍有出入
+    #      就会露出双影。判据用"第一条宽度 ≥60px 的扫描行" —— 呆毛是一根
+    #      ~25px 的细尖，颅顶是 220px 的圆顶，这条线把两者分得干干净净。
+    rows = crown.sum(axis=1)
+    wide = np.nonzero(rows >= 60)[0]
+    if len(wide):
+        crown = crown & (yy >= int(wide[0]))
     out["crown"] = crown
     return sa, sop, out
 
@@ -252,9 +306,13 @@ def emit_piece(pid, mask, sa, redraw, bbox, scale, unit, anchors, bleed_into=Non
     if bleed_into is not None:
         # 塗り足し：往身体内侧长 BLEED px，补上最近邻颜色。
         # Live2D 官方：被遮住的部分必须补画，否则一动起来就 disconnected。
-        grown = dilate(m, BLEED * 2 + 1) & bleed_into & ~m
-        rgb = nearest_fill(sa, m, BLEED)
-        m = m | grown
+        #
+        # ★ 颜色的**源**要先往里收 1px。掩膜最外面那一圈像素是头发和白夹克
+        #   在原图上的**混色**（抗锯齿），拿它当源会把一圈白边扩散出去
+        #   （实测 hair_long_back@2x 白边 1369px，闸门上限 900）。
+        #   收 1px 之后那一圈自己也变成"待填"，会被里面干净的发色盖掉。
+        rgb, filled = nearest_fill(sa, erode(m, 3), BLEED + 1)
+        m = m | (filled & bleed_into)
 
     ys, xs = np.nonzero(m)
     x0, x1, y0, y1 = int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
@@ -316,6 +374,8 @@ def main() -> int:
     log("head unit %.1fpx  发际线 y=%d  眼线 y=%d  头心 x=%.1f（模板坐标）\n"
         % (unit, hairline, eyeline, head_cx))
 
+    yy_all = (np.arange(SHEET_CANVAS[1])[:, None]
+              * np.ones((1, SHEET_CANVAS[0]), np.int32))
     geom = collections.OrderedDict()
     dbg = {}
     for style in [s.strip() for s in a.styles.split(",") if s.strip()]:
@@ -324,7 +384,26 @@ def main() -> int:
         dbg[style] = masks
         for pid, slot, key in PLAN[style]:
             mk = masks[key]
-            bleed = dilate(base_op, 3) if key.startswith("back") else None
+            # 塗り足し往哪里长，取决于这件**在不在身体前面**。
+            #   · body_back_* (层 57/58) 在整个身体之后 ⇒ 补到哪儿都被挡住，
+            #     可以沿着整个人物剪影补，接缝藏得最干净。
+            #   · head_side_hair (层 160/161) 在手臂(143)和躯干(100)**之上** ⇒
+            #     补到肩膀上就直接画在夹克上了。实测双马尾两束根部的肩头
+            #     各糊着一块灰方块，就是这么来的。这一档只许补到**肩线以上**
+            #     （那里有后发壳 170 和头壳 180 压在上面，藏得住）。
+            if not key.startswith("back"):
+                bleed = None
+            elif slot == "head_side_hair":
+                # 这一档在手臂(143)/躯干(100)**之上**，补到衣服上就直接看见了。
+                # 「肩线以上」还不够紧 —— 下巴到肩膀之间是裸露的脖子和衣领，
+                # 实测两束发根的肩头各糊着一块横向涂抹的深灰（线稿颜色被
+                # nearest_fill 推出去 40px 的结果）。
+                # 收紧成「只补到**底图自己的头发**底下」：那块区域必定被
+                # hair_back(170) / seg_head(180) / hair_side(245,246) 压住，
+                # 一个像素都露不出来，而塗り足し要的"动起来别断开"照样满足。
+                bleed = dilate(masks["_base_hair"], 5)
+            else:
+                bleed = dilate(base_op, 3)
             info = emit_piece(pid, mk, sa, redraw, bbox, scale, unit, anchors, bleed)
             if info is None:
                 log("  %-20s %-18s 掩膜太小(%d px)，跳过" % (pid, slot, mk.sum()))

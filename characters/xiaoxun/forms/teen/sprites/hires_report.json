@@ -3,12 +3,12 @@
  "factor": 2,
  "suffix": "@2x.png",
  "model": "RealESR-AnimeVideo-v3_x4.onnx",
- "count": 65,
- "realesrgan": 58,
+ "count": 68,
+ "realesrgan": 61,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 24,
- "seconds": 21.9,
+ "keycolor_fixed": 29,
+ "seconds": 21.3,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -596,6 +596,45 @@
    "keycolor_fixed": 0
   },
   {
+   "name": "hair_crown_long.png",
+   "src": [
+    209,
+    75
+   ],
+   "dst": [
+    418,
+    150
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_crown_pony.png",
+   "src": [
+    218,
+    74
+   ],
+   "dst": [
+    436,
+    148
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_crown_twin.png",
+   "src": [
+    216,
+    74
+   ],
+   "dst": [
+    432,
+    148
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
    "name": "hair_front.png",
    "src": [
     133,
@@ -611,28 +650,28 @@
   {
    "name": "hair_long_back.png",
    "src": [
-    259,
-    740
+    150,
+    132
    ],
    "dst": [
-    518,
-    1480
+    300,
+    264
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 3
+   "keycolor_fixed": 0
   },
   {
    "name": "hair_pony_back.png",
    "src": [
-    284,
-    640
+    310,
+    719
    ],
    "dst": [
-    568,
-    1280
+    620,
+    1438
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 3
   },
   {
    "name": "hair_side_l.png",
@@ -663,28 +702,28 @@
   {
    "name": "hair_twin_l.png",
    "src": [
-    116,
-    510
+    184,
+    456
    ],
    "dst": [
-    232,
-    1020
+    368,
+    912
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 2
   },
   {
    "name": "hair_twin_r.png",
    "src": [
-    116,
-    510
+    184,
+    456
    ],
    "dst": [
-    232,
-    1020
+    368,
+    912
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 3
   },
   {
    "name": "hand_l.png",

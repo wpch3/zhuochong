@@ -4085,3 +4085,36 @@ api_smoke **244/0**、`make -s check` **217/0**、check_platform 37/0。
 暂时退出 PLAN，继续用现有 derive 件；② 把 7 片写进 `attachments.json` 当普通
 `source` 引用，走现有 keyout / `harden_interior` / `@2x` 全链路；③ rebuild +
 `check_assets` + 出新旧并排实拍给用户看。
+
+## 续七十六：模板切片真正上机（T46.14 收口）—— 四种发型全部换成从同一张图切下来的
+
+上一轮只做到"切件落盘"，实时立绘没变。这一轮把它接进流水线、重建、用眼睛验收。
+
+**接法刻意选了最小侵入的一种**：每片就当一张普通的 `source` 图引用
+（`design/redraw/sheetcut_*.png`），于是现有的 keyout / `recolor_match` /
+`@2x` 超分全链路**一行都不用改**。几何（`pos_rel` / `sprite_h_rel`）全部来自
+`cut_geometry.json`，是按「模板 → body_full → rig 画布」坐标链算出来的，
+没有一个手调常数。接线脚本 `tools/wire_sheetcuts.py`，幂等。
+
+改了什么：
+- `hair_twin_l/r`、`hair_pony`、`hair_long` 的源图换成模板切片；
+- 新增槽 `head_crown_tied` + 三个**头顶件**（层 187/188/189，紧挨呆毛 190 之下）
+  —— 这是用户第十二问要的「扎发造型头顶必须跟着变」，以前只换尾巴不换头顶，
+  结果是一颗短发脑袋后面挂两根辫子；
+- 双马尾**仍然走"一张源图 + 镜像"**。模板是 AI 画的，左右两束有细微出入，
+  而脸是对称参照物，这点出入放在脑袋两边特别显眼（猫耳那四轮返工的教训）。
+- `long` 档不再藏本体的齐腮鬓发 —— 它本来就是长鬓发的上半截，
+  留着当垫底，"藏了没人接管、露出透明背景"这个失效模式从定义上不存在。
+
+**闸门从 5 项不过 → 0 项不过，中间每一项都是真问题**（归因与改法见 LESSONS 234/235）：
+发束根部的黑楔形（nearest_fill 的曼哈顿 vs 切比雪夫）、肩头的灰色涂抹块
+（塗り足し补到了身体前面）、白边（闸门阈值量纲错了）、游离碎片（keep_rooted）。
+
+终态：`check_assets` 1234/0、`selfcheck_repo` 540/0、`make check` 217/0、
+roadmap 一致。实拍 `logs/asset_qa/hairstyles_full.png` / `hairstyles_head.png`。
+
+**用户本轮确认了工序**：「生成总体的参考图会省去很多的功夫，以后需要参考图时
+优先生成参考图」「这次的参考图生成完全符合我心里的预期」—— 记进 REQUIREMENTS。
+
+还欠：chibi 的头皮补画与 sweep/sidelong 件、T46.5 四形态移植、
+`hair_sidelong_*` 的 physics 摆链、兜帽四形态按模板重做。

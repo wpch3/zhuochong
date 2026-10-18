@@ -108,6 +108,18 @@
       ],
       "curve": "tip",
       "note": "★ 参考实拍：长发的**横髪也是长的** —— 从太阳穴一路垂到胸口，不是齐腮的短鬓。这是第十二问用户贴的长发参考图里最明显的一条结构，也是之前长发\"不契合\"的真因：留着齐腮短鬓 + 背后挂一片长发 = 短发女孩背后挂了片头发。层 249 > torso 100，所以它垂在衣服前面（参考图里也是垂在身前）。"
+    },
+    {
+      "id": "head_crown_tied",
+      "label": "扎发的头顶（刘海之下、后发之上）",
+      "layer": 189,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "扎起来的发型专用：头顶被收拢的那一片。★ 层 187~189 卡在 呆毛(190) 之下、头壳 seg_head(180) 之上 —— 呆毛压在它上面，刘海(240) 也压在它上面，所以件的下沿切在发际线就够了、不会露边；而它压在头壳和后发壳上面，于是颅顶看起来真的被扎起来了。用户第十二问原话「扎发造型头顶必须跟着变」，缺的就是这一层：以前只换尾巴不换头顶，结果是一颗短发脑袋后面挂两根辫子。★ 下沿绝对不能切到眼线 —— 眼睛在 211~234，比 239 低，切过头会把眼睛盖住（第十一问）。"
     }
   ],
   "attachments": [
@@ -179,8 +191,8 @@
       "slot": "body_back_hair",
       "file": "sprites/hair_long_back.png",
       "size": [
-        259,
-        740
+        571,
+        950
       ]
     },
     {
@@ -188,8 +200,8 @@
       "slot": "head_side_hair",
       "file": "sprites/hair_twin_l.png",
       "size": [
-        116,
-        510
+        184,
+        456
       ]
     },
     {
@@ -197,8 +209,8 @@
       "slot": "head_side_hair",
       "file": "sprites/hair_twin_r.png",
       "size": [
-        116,
-        510
+        184,
+        456
       ]
     },
     {
@@ -206,8 +218,8 @@
       "slot": "body_back_pony",
       "file": "sprites/hair_pony_back.png",
       "size": [
-        284,
-        640
+        310,
+        719
       ]
     },
     {
@@ -262,6 +274,33 @@
       "size": [
         105,
         300
+      ]
+    },
+    {
+      "id": "hair_crown_twin",
+      "slot": "head_crown_tied",
+      "file": "sprites/hair_crown_twin.png",
+      "size": [
+        216,
+        74
+      ]
+    },
+    {
+      "id": "hair_crown_pony",
+      "slot": "head_crown_tied",
+      "file": "sprites/hair_crown_pony.png",
+      "size": [
+        218,
+        74
+      ]
+    },
+    {
+      "id": "hair_crown_long",
+      "slot": "head_crown_tied",
+      "file": "sprites/hair_crown_long.png",
+      "size": [
+        209,
+        75
       ]
     }
   ]

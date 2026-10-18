@@ -35,6 +35,18 @@ TH = {
     "body_min_w": 300,         # 全身图宽度下限（统一画布 848 的 35%）
     "key_residue": 200,        # 键色残留像素上限（抠图没抠干净）
     "white_edge": 900,         # 白边像素上限（边缘一圈的近白像素）
+    # ★ 2026-10-19：白边必须**同时**超过绝对值和占比才算不过。
+    #   原来只有绝对值，而「边缘一圈里有多少近白像素」是个**随件的轮廓长度
+    #   线性增长**的量 —— 同一张图切大一点、或者轮廓从光边变成多发丝，
+    #   计数自然翻几倍，和画得好不好无关。实测（teen，2px 环）：
+    #     hair_front  591 环 / 1.86%     hair_twin_l    2095 环 / 3.63%
+    #     hair_side_l 762 环 / 7.09%     hair_pony_back 4939 环 / 5.81%
+    #     hair_ahoge  267 环 /13.11%     hair_long_back 9624 环 /11.37%
+    #     hair_back   947 环 /21.44%  ← **本体自己的后发壳就是 21%**
+    #   淡紫发的高光本来就压到近白，这个占比是素材固有的。
+    #   而真正要拦的「抠图留白晕」是**整圈发白**（60~90%），两者差一个数量级。
+    #   所以：小件继续看绝对值 900（够敏感），大件再加一道 30% 的占比闸。
+    "white_edge_ratio": 0.30,
     "iou": 0.80,               # 形状重合度下限（与设计图同区域比）
 
     "palette_dist": 70,        # 主色到色卡的 RGB 距离上限（超过就是配色画歪了）
@@ -196,7 +208,13 @@ def check(character, form, root=".", strict=False, out_json=None):
         add(pid, "键色残留", key <= th["key_residue"], f"{key} 像素（上限 {th['key_residue']}）")
         ring = edge_ring(m)
         white = count_near(rgb, ring, (255, 255, 255), 24)
-        add(pid, "白边", white <= th["white_edge"], f"{white} 像素（上限 {th['white_edge']}）")
+        rlen = int(ring.sum())
+        wratio = white / max(rlen, 1)
+        add(pid, "白边",
+            white <= th["white_edge"] or wratio <= th["white_edge_ratio"],
+            f"{white} 像素（上限 {th['white_edge']}）、"
+            f"占边缘一圈 {wratio * 100:.1f}%（上限 {th['white_edge_ratio'] * 100:.0f}%，"
+            f"环长 {rlen}）")
 
         if palette:
             # ★ 差分发型（recolor_match 切出来的）的配色权威**另加一份：本体头发自己**。

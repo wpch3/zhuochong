@@ -278,3 +278,11 @@
 | 5 | 「你自己看看你制作的马尾还有双马尾，完全不行，兜帽完全和衣服合不上」 | 认。根因不是画工是工序：挖成品贴碎片，碎片之间没有共同的几何光照约束。这一层就是来解决它的 | `POSTMORTEM_ART.md` 第一层 + `SHEET_PIPELINE.md` §1 |
 | 6 | 「一共七张，不能马虎」 | 7 张 + 逐张机器核对 + 两张留证图（8 张全身对照、逐张剪影差异标红） | `logs/asset_qa/reference_sheets_8.png`、`reference_sheets_align.png` |
 
+
+### 0n — 2026-10-19「继续下一步吧，是部件的生成还是什么」+ 工序确认
+
+| # | 用户原话 | 这轮怎么落的 | 证据 |
+|---|---|---|---|
+| 1 | 「生成总体的参考图会省去很多的功夫，**以后需要参考图时优先生成参考图**」 | 作为长期工序写进 REQUIREMENTS A53 与 `SHEET_PIPELINE.md`：做任何造型件之前，先出**完整的全身参考图**，再从同一张图拆件 | `docs/SHEET_PIPELINE.md`、REQUIREMENTS A53 |
+| 2 | 「这次的参考图生成完全符合我心里的预期，看到非常顺眼」 | 模板层封板不动，本轮只做下游的切件与上机 | `design/sheets/`（7 张 + manifest） |
+| 3 | 「继续下一步吧，是部件的生成还是什么」 | 是。把 7 片接进 `attachments.json` → rebuild → 四档实拍验收。四种发型（短发/双马尾/马尾/长发）**全部换成同源切片**，并补上以前缺的**头顶件** | `tools/wire_sheetcuts.py`、`logs/asset_qa/hairstyles_full.png` |

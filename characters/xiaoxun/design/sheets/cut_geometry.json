@@ -7,20 +7,20 @@
       "sprite_file": "sheetcut_hair_twin_back_l.png",
       "ref": "head_top",
       "pos_rel": [
-        -0.530219,
-        1.164109
+        -0.531818,
+        1.130529
       ],
-      "sprite_h_rel": 1.844409,
+      "sprite_h_rel": 1.640626,
       "width_ratio": 1.0,
       "px": [
         237,
-        124,
-        428,
-        657
+        143,
+        427,
+        617
       ],
       "content_px": [
-        192,
-        534
+        191,
+        475
       ],
       "slot": "head_side_hair"
     },
@@ -29,19 +29,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.579522,
-        1.164109
+        1.12893
       ],
-      "sprite_h_rel": 1.844409,
+      "sprite_h_rel": 1.64408,
       "width_ratio": 1.0,
       "px": [
         585,
-        124,
+        142,
         774,
-        657
+        617
       ],
       "content_px": [
         190,
-        534
+        476
       ],
       "slot": "head_side_hair"
     },
@@ -50,19 +50,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.019854,
-        0.212674
+        0.299022
       ],
-      "sprite_h_rel": 0.452467,
+      "sprite_h_rel": 0.265954,
       "width_ratio": 1.0,
       "px": [
         393,
-        28,
+        82,
         616,
         158
       ],
       "content_px": [
         224,
-        131
+        77
       ],
       "slot": "head_crown_tied"
     },
@@ -70,20 +70,20 @@
       "sprite_file": "sheetcut_hair_pony_back.png",
       "ref": "head_top",
       "pos_rel": [
-        0.49957,
-        1.439145
+        0.504367,
+        1.226472
       ],
-      "sprite_h_rel": 3.115462,
+      "sprite_h_rel": 2.587008,
       "width_ratio": 1.0,
       "px": [
-        492,
-        26,
+        495,
+        36,
         817,
-        927
+        784
       ],
       "content_px": [
-        326,
-        902
+        323,
+        749
       ],
       "slot": "body_back_pony"
     },
@@ -92,19 +92,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.037444,
-        0.212674
+        0.299022
       ],
-      "sprite_h_rel": 0.452467,
+      "sprite_h_rel": 0.265954,
       "width_ratio": 1.0,
       "px": [
         397,
-        28,
+        82,
         623,
         158
       ],
       "content_px": [
         227,
-        131
+        77
       ],
       "slot": "head_crown_tied"
     },
@@ -113,19 +113,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.026251,
-        2.008407
+        1.578263
       ],
-      "sprite_h_rel": 2.638817,
+      "sprite_h_rel": 3.415955,
       "width_ratio": 1.0,
       "px": [
         210,
-        273,
+        26,
         803,
-        1036
+        1014
       ],
       "content_px": [
         594,
-        764
+        989
       ],
       "slot": "body_back_hair"
     },
@@ -134,19 +134,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.023053,
-        0.212674
+        0.297423
       ],
-      "sprite_h_rel": 0.452467,
+      "sprite_h_rel": 0.269408,
       "width_ratio": 1.0,
       "px": [
         398,
-        28,
+        81,
         613,
         158
       ],
       "content_px": [
         216,
-        131
+        78
       ],
       "slot": "head_crown_tied"
     }
