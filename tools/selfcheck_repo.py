@@ -3256,6 +3256,92 @@ def check_effects_table(root):
           "有" if "def load_effect(" in ctxt else "没有，等于表白写")
 
 
+def check_design_sheets(root):
+    """参考模板必须成套、而且套准在同一套身体坐标上（2026-10-18 用户第十五问）。
+
+    用户原话：「你先生成参考模板，像短发一样……没有目的的制作你做的太乱了」
+    「全身上下都必须和短发一致，除了发型」。
+
+    这是把工序掰回 Live2D 官方那条路：**画师先画完整差分立绘、再拆图层**。
+    之前几轮一直在反着做（拿短发成品挖开、贴 AI 单独生成的碎片），
+    碎片之间没有共同的几何和光照约束，拼起来必然是一坨（POSTMORTEM_ART 第一层）。
+
+    为什么要设这道闸：
+      参考模板的用途是**按同一套坐标切件**，靠的是"同一个像素位置对应同一个
+      身体部位"。AI 一张张编辑出来的图，就算提示词里反复写"身体不变"，
+      实测仍有 0.4% 的尺度漂移（鞋底差 5px）—— 整图看不出来，切件全错位。
+      所以 tools/register_sheets.py 解相似变换把每张套准到短发底图，
+      并写 manifest.json 记账；这里静态核对那份台账。
+      **sha16 绑死图片内容**：换了图不重跑套准，这项就会红。
+
+    这是静态检查（不依赖 PIL），只读 manifest + 文件哈希。
+    """
+    section("参考模板成套 + 套准到同一套身体坐标（用户第十五问）")
+    import hashlib
+
+    sheet_dirs = sorted(glob.glob(os.path.join(root, "characters/*/design/sheets")))
+    check("至少有一个角色有参考模板目录 design/sheets/", bool(sheet_dirs),
+          "没有就说明还在用\"挖成品贴碎片\"的老工艺")
+    if not sheet_dirs:
+        return
+
+    for sd in sheet_dirs:
+        who = sd.split(os.sep)[-3]
+        mp = os.path.join(sd, "manifest.json")
+        if not check(f"{who}：有套准台账 sheets/manifest.json", os.path.exists(mp),
+                     "跑 tools/register_sheets.py 生成"):
+            continue
+        with io.open(mp, encoding="utf-8") as fh:
+            man = json.load(fh)
+
+        base = os.path.join(root, man.get("base", ""))
+        check(f"{who}：台账指向的短发底图存在", os.path.exists(base), man.get("base", ""))
+
+        ents = man.get("sheets", [])
+        by_file = {e["file"]: e for e in ents}
+        # 发型 × 兜帽收/戴 必须铺满。短发+兜帽放下 = 底图本身，不单独出图。
+        want = []
+        for hs in ("twin", "pony", "long"):
+            want += [f"sheet_{hs}.png", f"sheet_{hs}_hood.png"]
+        want.append("sheet_short_hood.png")
+        miss = [w for w in want if w not in by_file]
+        check(f"{who}：四种发型 × 兜帽收/戴 的参考模板铺满（7 张 + 底图）",
+              not miss, "缺：" + "、".join(miss) if miss else
+              f"{len(want)} 张齐（短发+兜帽放下 = 底图本身）")
+
+        lim = float(man.get("leg_diff_max_pct", 3.0))
+        canvas = tuple(man.get("canvas", [0, 0]))
+        sole = man.get("base_sole_y")
+        bad_hash, bad_leg, bad_sole = [], [], []
+        for e in ents:
+            p = os.path.join(sd, e["file"])
+            if not os.path.exists(p):
+                bad_hash.append(e["file"] + "(文件没了)")
+                continue
+            h = hashlib.sha256()
+            with open(p, "rb") as fh:
+                for blk in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(blk)
+            if h.hexdigest()[:16] != e.get("sha16"):
+                bad_hash.append(e["file"])
+            if float(e.get("leg_diff_pct", 99)) > lim:
+                bad_leg.append("%s %.2f%%" % (e["file"], e["leg_diff_pct"]))
+            if sole is not None and int(e.get("sole_y", -1)) != int(sole):
+                bad_sole.append("%s y=%s" % (e["file"], e.get("sole_y")))
+
+        check(f"{who}：台账哈希与磁盘上的图一致（改了图必须重跑套准）",
+              not bad_hash, "对不上：" + "、".join(bad_hash) if bad_hash else
+              f"{len(ents)} 张全部对上")
+        check(f"{who}：每张模板膝盖以下与短发底图的差异 ≤ {lim:.1f}%",
+              not bad_leg, "超标：" + "、".join(bad_leg) if bad_leg else
+              "最差 %.2f%%" % max([float(e.get("leg_diff_pct", 0)) for e in ents] or [0]))
+        check(f"{who}：每张模板的鞋底都落在同一行 y={sole}",
+              not bad_sole, "对不齐：" + "、".join(bad_sole) if bad_sole else
+              "套准后全部一致，切件可以共用一套坐标")
+        check(f"{who}：参考模板画布统一 {canvas[0]}x{canvas[1]}",
+              len(canvas) == 2 and canvas[0] > 0 and canvas[1] > 0, str(canvas))
+
+
 def check_tools(root):
     section("工具链：重建脚本引用的工具都在 + 全部能编译")
     rb = os.path.join(root, "tools", "rebuild_parts.sh")
@@ -3781,6 +3867,7 @@ def main():
                check_prosody,
                check_phys2,
                check_phys2_rig,
+               check_design_sheets,
                check_tools, check_hygiene):
         try:
             fn(root)
