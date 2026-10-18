@@ -63,15 +63,21 @@ PLAN = {
     "twin": [
         ("hair_twin_back_l", "head_side_hair", "back_l"),
         ("hair_twin_back_r", "head_side_hair", "back_r"),
-        ("hair_twin_crown", "head_crown_tied", "crown"),
+        ("hair_twin_crown", "head_crown_tied", "scalp"),
+        ("hair_twin_side_l", "head_side_sweep", "side_l"),
+        ("hair_twin_side_r", "head_side_sweep", "side_r"),
     ],
     "pony": [
         ("hair_pony_back", "body_back_pony", "back"),
-        ("hair_pony_crown", "head_crown_tied", "crown"),
+        ("hair_pony_crown", "head_crown_tied", "scalp"),
+        ("hair_pony_side_l", "head_side_sweep", "side_l"),
+        ("hair_pony_side_r", "head_side_sweep", "side_r"),
     ],
     "long": [
         ("hair_long_back", "body_back_hair", "back"),
-        ("hair_long_crown", "head_crown_tied", "crown"),
+        ("hair_long_crown", "head_crown_tied", "scalp"),
+        ("hair_long_side_l", "head_side_long", "side_l"),
+        ("hair_long_side_r", "head_side_long", "side_r"),
     ],
 }
 
@@ -95,6 +101,17 @@ def dilate(b, k):
 
 def erode(b, k):
     return _a(_m(b).filter(ImageFilter.MinFilter(k)))
+
+
+def skin_like(a):
+    """底图的**皮肤**。用来把「脸前面的头发」和「脸后面的头发」分开。
+
+    动漫肤色 (250,220,205)：R 明显最高、G 次之、B 最低，R−B 在 20~90 之间。
+    米白衬衫 (250,245,235) 的 R−B 只有 15，挡在外面；
+    夹克的薄荷青 G≳B，也挡在外面。
+    """
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    return (r > 195) & (r > g + 8) & (g >= b) & (r - b > 20) & (r - b < 95)
 
 
 def despeckle(b, k=5, grow=7):
@@ -217,7 +234,7 @@ def keep_rooted(m, root_rows=40):
 
 # ------------------------------------------------------------ 切掩膜
 def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
-              kneeline, shoulder):
+              kneeline, shoulder, chinline, headw, skin):
     sp = os.path.join(design, "sheets", "sheet_%s.png" % style)
     sa, sop = key_rgba(sp)
     yy0 = np.arange(SHEET_CANVAS[1])[:, None] * np.ones((1, SHEET_CANVAS[0]), np.int32)
@@ -275,7 +292,60 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     # ③ 眼线以上、改动区内的整片头顶 —— 扎起来之后变了形的头顶。
     #    用户说过四轮「扎发造型头顶必须跟着变」，只加尾巴 = 短发挂挂件。
     #    取实心（sh_all）而不是 diff，范围由 region 限定，所以不会把没改的刘海也换掉。
-    # ③ 头顶：**用几何圈区域、区域内全取**，同样不加颜色判据。
+    # ③ 头壳：模板里**整颗头上的头发**，去掉盖在脸上的那部分。
+    #    ★ 这一件是这轮的重点。上一版只切了「发际线以上一小块」，
+    #      底图那颗短发的后脑壳（hair_back，层 170）和齐腮鬓发原封不动留着，
+    #      于是画面上是「一颗短发脑袋 + 挂了两根辫子」——
+    #      用户原话「短发的造型和双马尾合在一起了，非常不对劲」。
+    #      用户已经重复五轮的「**发型是整体**」说的就是这个：
+    #      前髪 / 横髪 / 後ろ髪要一起换，不能只加不减。
+    #    ★ 为什么减掉 `skin`：脸前面的头发要放在**眼睛之上**的层（245/246），
+    #      脸后面的头发放在**眼睛之下**的层（187~189）。同一件横跨两边的话，
+    #      要么盖住眼睛（第十一问判过死），要么鬓发被脸压住。
+    #      所以这里按"盖没盖住皮肤"把它劈成两件，各走各的层。
+    #    ★ 要减掉的是整张**脸**，不是"皮肤"。只减皮肤的话，眼睛（蓝虹膜）、
+    #      眉毛、嘴都留在里面 —— 蓝虹膜 B 远大于 R，**过得了发色判据**，
+    #      于是头壳件里赫然躺着两只眼睛（实测，见 /tmp/chk.png 那一版）。
+    #      `solidify(skin, 61)` 用大核闭运算把五官的洞填回脸里，得到整张脸。
+    #    ★ 下界收到下巴线（不再 +40），否则会吃到衣领的薄荷青。
+    #      （先按下巴线截断再闭运算 —— 肤色遍布全身，手和腿也是肤色，
+    #        不截的话"脸区"会一路长到脚踝，把整条鬓发都减掉。）
+    face = solidify(skin & (yy <= chinline), 61) & (yy <= chinline)
+    scalp = (sh_all & dilate(base_op, 9) & (yy <= chinline)
+             & ~dilate(face, 11))
+    out["scalp"] = despeckle(scalp, 3, 7)
+
+    # ④ 鬓发：剪影**之内**、脸两侧垂下来的那两缕（长发档一路垂到胸口）。
+    #    上界取发际线下方一点（底图的 hair_side_* 从那里开始，要能接上，
+    #    不然藏掉本体鬓发之后那一段会空出来）；
+    #    横向留出 0.22 个头宽的中心带，把刘海本体让给原件（它在层 240 没变过）。
+    #    不需要防眼睛：眼睛那里 sh_all 本来就是 false（眼睛不是头发）。
+    #    ★ 避开刘海只在**眼线以上**做。原来按"离中线 0.22 个头宽"一刀切，
+    #      结果把鬓发本身切断了 —— 模板里鬓发是贴着太阳穴往下走的，
+    #      上半截离中线很近（实测长发右侧只剩 23x47）。
+    bangs_zone = (yy <= eyeline) & (np.abs(xx - head_cx) < 0.30 * headw)
+    #    ★ 下界按档位分：扎起来的发型，脸侧只剩到下巴的短鬓；
+    #      披着的长发才一路垂到胸口。
+    side_bottom = kneeline if style == "long" else chinline + 60
+    #    ★ 下巴以下必须再过一道「这里到底改没改」的闸。原因：白夹克的冷灰阴影
+    #      在色相上就是发色，而它和发缕**是连着的**，keep_rooted 拦不住 ——
+    #      上一版切出来的长鬓发，下半截是一整块夹克（实测 218x770 里有一半是
+    #      青灰色的袖子）。下巴**以上**不能用这道闸：那里底图本来就有头发，
+    #      发压发的 diff 近乎 0，一交就把鬓发上半截切没了（LESSONS 232）。
+    #      下巴**以下**底图是衣服，模板只要画了头发，diff 必然显著
+    #      （淡紫发 216,216,232 vs 白夹克 250,245,235，最大通道差 34）。
+    side = despeckle(sh_all & ~bangs_zone
+                     & (yy >= hairline + 40) & (yy <= side_bottom), 3, 7)
+    side = side & ((yy <= chinline) | region)
+    #    ★ 求连通要在**不受剪影限制**的掩膜上做，最后再与剪影相交。
+    #      反过来的话，发缕只要有一段跑到底图剪影之外（模板的头发比底图的头宽，
+    #      一定会有），keep_rooted 就在那里断掉、下面整条丢光。
+    #      顺带白捡一条好处：白夹克那些被误判成发色的冷灰阴影和头发不连通，
+    #      这一步自动把它们剔掉了，不用再去调颜色阈值。
+    out["side_l"] = keep_rooted(side & (xx < head_cx)) & base_op
+    out["side_r"] = keep_rooted(side & (xx >= head_cx)) & base_op
+
+    # ⑤ 头顶：**用几何圈区域、区域内全取**，同样不加颜色判据。
     #    颜色判据在这里必败 —— 头顶高光是成片的近中性色带（不是细缝），
     #    闭运算填不上，切出来一张麻脸（实测 crown 件全是大块空洞）。
     #    而眼线以上、头部横向范围内，画面上除了头发没有别的东西；
@@ -369,6 +439,15 @@ def main() -> int:
     head_cx = (bbox[0] + bbox[2] + 1) / 2.0
     kneeline = int(round(bbox[1] + anchors["points"]["knee"][1] / scale))
     shoulder = int(round(bbox[1] + anchors["points"]["shoulder"][1] / scale))
+    chinline = int(round(bbox[1] + anchors["points"]["neck"][1] / scale))
+    skin = skin_like(base_a) & base_op
+    # 头宽 = 发际线~眼线之间最宽的那一行（底图剪影）
+    _rows = base_op[hairline:eyeline + 1]
+    headw = 1
+    for r in _rows:
+        ix = np.nonzero(r)[0]
+        if len(ix):
+            headw = max(headw, int(ix[-1] - ix[0]))
 
     log("底图人物 bbox %s 高 %d → body_full 缩放 %.6f" % (str(bbox), char_h, scale))
     log("head unit %.1fpx  发际线 y=%d  眼线 y=%d  头心 x=%.1f（模板坐标）\n"
@@ -380,7 +459,8 @@ def main() -> int:
     dbg = {}
     for style in [s.strip() for s in a.styles.split(",") if s.strip()]:
         sa, sop, masks = cut_masks(style, design, base_a, base_op,
-                                   hairline, eyeline, head_cx, kneeline, shoulder)
+                                   hairline, eyeline, head_cx, kneeline,
+                                   shoulder, chinline, headw, skin)
         dbg[style] = masks
         for pid, slot, key in PLAN[style]:
             mk = masks[key]

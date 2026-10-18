@@ -670,8 +670,28 @@ function slotOf(id) {
     CHECK(btxt().filter((t) => t === "短发（原装）").length === 1,
           "原装短发要补出按钮，而且只补一颗");
 
-    /* ③ 兜帽只给两档，不给「关掉」—— none 会把呆毛和猫耳一起吞掉 */
-    CHECK(txt.indexOf("关掉") < 0, "装扮面板不给「关掉」（兜帽那档会连呆毛猫耳一起吞）");
+    /* ③ 兜帽只给两档，不给「关掉」—— none 会把呆毛和猫耳一起吞掉。
+          查的是**按钮文案**而不是整面板文本：提示语里出现「关」字是正常的
+          （2026-10-19 加兽耳娘开关时被这条宽断言误伤过一次）。 */
+    CHECK(btxt().indexOf("关掉") < 0, "装扮面板不给「关掉」按钮（兜帽那档会连呆毛猫耳一起吞）");
+
+    /* ③b 兽耳娘模式要能关（用户 2026-10-19：「猫耳和猫尾的动物娘模式不能关闭吗？」）。
+           猫耳是两个 0/1 参数、猫尾是一个 pose 组，对用户必须是**一个**开关。 */
+    CHECK(txt.indexOf("兽耳娘") >= 0, "装扮面板要有「兽耳娘」这一行");
+    CHECK(btxt().indexOf("关（纯人类）") >= 0, "兽耳娘要给得出「关」这一档");
+    {
+      callsFull.length = 0;
+      btns().find((b) => b._text === "关（纯人类）").onclick();
+      for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r));
+      const j = callsFull.join(" ");
+      CHECK(j.includes("id=ParamAccEarL&v=0") && j.includes("id=ParamAccEarR&v=0"),
+            "关兽耳娘要把两只猫耳参数打到 0（实际 " + j + "）");
+      CHECK(/group=tail_pose&id=(&|$|\s)/.test(j + " "),
+            "关兽耳娘要把猫尾档位打成空（= 四条尾巴全收）（实际 " + j + "）");
+      const sv = JSON.parse(LS._d["zc.dressup.v1"] || "{}");
+      CHECK(sv["sw.kemonomimi"] === 0, "关掉要记进 localStorage，刷新后不许自己长回来（实际 "
+            + JSON.stringify(sv) + "）");
+    }
 
     /* ④ 点下去要发对请求 */
     callsFull.length = 0;

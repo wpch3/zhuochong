@@ -31,6 +31,9 @@ ZC.register({
     },
     tail_pose: {
       name: "猫尾", order: 2,
+      /* 空串 = 四条尾巴全隐藏，和 hairstyle 的空档 = 短发同一套机制。
+         「兽耳娘 关」会把它打到这一档。 */
+      extra: [""], "": "收起",
       relaxed: "自然", up: "竖起", puff: "炸毛", tuck: "夹起",
     },
     eye_hl_style: {
@@ -38,6 +41,25 @@ ZC.register({
       round: "圆形", star: "星形",
     },
   },
+
+  /* 参数开关：不是互斥档位，而是直接把若干个 0/1 参数一起推给引擎。
+     兽耳娘模式就是这种形状 —— 猫耳(左/右)和猫尾分属三个参数、
+     又分别挂在不同的层和物理链上，但对用户来说是**一个**选择。
+     用户 2026-10-19 原话：「猫耳和猫尾的动物娘模式不能关闭吗？」
+     —— 开关引擎里一直有（ParamAccEarL/R、ParamAccTailCat，默认都是 1），
+     只是这块面板只铺 poses，没有铺 params，所以界面上够不着。 */
+  SWITCHES: [{
+    id: "kemonomimi",
+    name: "兽耳娘",
+    /* 猫耳是两个 0/1 参数；猫尾不是参数而是一个 pose 组（自然/竖起/炸毛/夹起），
+       它的"收起"就是把档位设成空串 —— 和 hairstyle 的空档 = 短发同一套机制。
+       所以这个开关要同时走 /api/param 和 /api/pose 两条路。 */
+    params: ["ParamAccEarL", "ParamAccEarR"],
+    poses: { tail_pose: "relaxed" },
+    on: "开（猫耳+猫尾）",
+    off: "关（纯人类）",
+    hint: "关掉之后猫耳和猫尾一起收起来；两者是同一个\u201c设定\u201d，不拆开给两个开关。再打开时猫尾回到\u201c自然\u201d。",
+  }],
 
   async mount(host, root, opts) {
     this.host = host;
@@ -68,8 +90,51 @@ ZC.register({
       this.body.appendChild(host.el("p", "hint", "取不到立绘数据：" + e.message));
       return;
     }
+    try {
+      const pj = await host.api("/api/params.json");
+      this.params = pj.params || pj;
+    } catch (e) { this.params = []; }
     if (restore) await this.restore();
     this.render();
+  },
+
+  /* 开关当前是开还是关：取这组参数里**任意一个**的值。
+     三个参数理论上同进同退；真要不一致（比如有人在调试台单独拉过），
+     以"只要还有一个是开的就算开"为准，这样再点一次「关」能把它们拉齐。 */
+  swOn(sw) {
+    const m = {};
+    (this.params || []).forEach((p) => { m[p.id] = p.value; });
+    if ((sw.params || []).some((id) => m[id] !== undefined && Number(m[id]) > 0.5)) return true;
+    const cur = {};
+    (this.info.poses || []).forEach((g) => { cur[g.id] = g.current; });
+    if (Object.keys(sw.poses || {}).some((g) => cur[g])) return true;
+    /* 参数和档位都查不到（形态里压根没这些件）就按"开"显示，免得空面板 */
+    return (sw.params || []).some((id) => m[id] === undefined);
+  },
+
+  async toggle(sw, on) {
+    if (this.pending) return;
+    this.pending = true;
+    try {
+      for (const id of (sw.params || [])) {
+        await this.host.api("/api/param?id=" + encodeURIComponent(id) + "&v=" + (on ? 1 : 0));
+      }
+      for (const g of Object.keys(sw.poses || {})) {
+        await this.host.api("/api/pose?group=" + g + "&id=" + (on ? sw.poses[g] : ""));
+      }
+      this.saveSw(sw.id, on);
+      const pj = await this.host.api("/api/params.json");
+      this.params = pj.params || pj;
+      this.info = await this.host.api("/api/info.json");
+      this.render();
+    } catch (e) { /* 失败在状态栏体现 */ }
+    this.pending = false;
+  },
+
+  saveSw(id, on) {
+    const st = this.load();
+    st["sw." + id] = on ? 1 : 0;
+    try { localStorage.setItem(this.KEY, JSON.stringify(st)); } catch (e) { /* 隐私模式 */ }
   },
 
   /* 把上次选的档重新打给引擎。只打和当前档不一样的，省得刷屏。 */
@@ -79,8 +144,26 @@ ZC.register({
     (this.info.poses || []).forEach((g) => { cur[g.id] = g.current; });
     let n = 0;
     for (const g of Object.keys(saved)) {
+      if (g.indexOf("sw.") === 0) continue;
       if (!(g in cur) || cur[g] === saved[g]) continue;
       try { await this.host.api("/api/pose?group=" + g + "&id=" + saved[g]); n++; } catch (e) { /* 档没了就跳过 */ }
+    }
+    /* 参数开关也要还原。引擎每次开进程都回默认值（猫耳猫尾默认都是开），
+       用户上次关掉了就得替他关回去，否则"关了又自己长出来"。 */
+    for (const sw of this.SWITCHES) {
+      const want = saved["sw." + sw.id];
+      if (want === undefined || this.swOn(sw) === (want === 1)) continue;
+      for (const id of (sw.params || [])) {
+        try { await this.host.api("/api/param?id=" + encodeURIComponent(id) + "&v=" + want); } catch (e) { /* 参数没了就跳过 */ }
+      }
+      for (const g of Object.keys(sw.poses || {})) {
+        try { await this.host.api("/api/pose?group=" + g + "&id=" + (want ? sw.poses[g] : "")); } catch (e) { /* 组没了就跳过 */ }
+      }
+      try {
+        const pj = await this.host.api("/api/params.json");
+        this.params = pj.params || pj;
+        this.info = await this.host.api("/api/info.json");
+      } catch (e) { /* 保持旧的 */ }
     }
     if (n) {
       try { this.info = await this.host.api("/api/info.json"); } catch (e) { /* 保持旧的 */ }
@@ -132,8 +215,24 @@ ZC.register({
       const items = ids.map((id) => ({ id: id, label: nm[id] || id }));
       this.body.appendChild(this.btnRow(nm.name || g.id, items, g.id, g.current));
     });
+    /* 参数开关铺在档位后面 */
+    this.SWITCHES.forEach((sw) => {
+      const on = this.swOn(sw);
+      const wrap = host.el("div", "voice-item");
+      wrap.appendChild(host.el("span", "id", sw.name));
+      const box = host.el("span", "grid");
+      [[true, sw.on], [false, sw.off]].forEach((it) => {
+        const b = host.el("button", (it[0] === on) ? "btn small active" : "btn small", it[1]);
+        b.onclick = () => this.toggle(sw, it[0]);
+        box.appendChild(b);
+      });
+      wrap.appendChild(box);
+      this.body.appendChild(wrap);
+    });
     const h = host.el("p", "hint",
-      "兜帽戴上时会盖住呆毛和猫耳 —— 想看猫耳就点「摘下」。选择记在本机浏览器里，刷新后自动还原。");
+      "兜帽戴上时会盖住呆毛和猫耳 —— 想看猫耳就点「摘下」。"
+      + this.SWITCHES.map((s) => s.hint).join(" ")
+      + " 选择记在本机浏览器里，刷新后自动还原。");
     this.body.appendChild(h);
   },
 

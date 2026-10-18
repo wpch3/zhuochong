@@ -110,6 +110,41 @@ for aid, piece in REWIRE.items():
     print('~ %-14s <- %-22s pos_rel %s  h_rel %.4f'
           % (aid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
 
+ref_match_side = by_id['hair_long'].get('recolor_match')
+
+# ---- 2b) 脸侧鬓发也换成模板切片（原来是从本体侧发拉长派生的）----
+#   用户看 2026-10-19 的截图说「长发没有跟模板一致，而且有很多拼接的痕迹」
+#   「短发的造型和双马尾合在一起了」。根因是只加不减：底图那颗短发的
+#   后脑壳(hair_back 170) 和齐腮鬓发(hair_side_l/r 245/246) 原样留着。
+#   现在三档都把它们藏掉，换成从模板上切的**同源**头壳 + 鬓发。
+SIDE_REWIRE = {
+    'hair_sweep_twin_l': 'hair_twin_side_l',
+    'hair_sweep_twin_r': 'hair_twin_side_r',
+    'hair_sweep_pony_l': 'hair_pony_side_l',
+    'hair_sweep_pony_r': 'hair_pony_side_r',
+    'hair_sidelong_l':   'hair_long_side_l',
+    'hair_sidelong_r':   'hair_long_side_r',
+}
+for aid, piece in SIDE_REWIRE.items():
+    if aid not in by_id or piece not in GEO['pieces']:
+        continue
+    a = by_id[aid]; g = GEO['pieces'][piece]
+    a.pop('derive', None)            # 不再从本体侧发拉长派生
+    a.pop('_derive_note', None)
+    a['source'] = g['sprite_file']
+    a['ref'] = 'head_top'
+    a['unit'] = 'head'
+    a.pop('pos_unit', None)
+    a['anchor'] = [0.5, 0.0]
+    a['pos_rel'] = place(g['px'])
+    a['sprite_h_rel'] = g['sprite_h_rel']
+    a['width_ratio'] = 1.0
+    a['_cut_note'] = CUT_NOTE
+    if ref_match_side:
+        a['recolor_match'] = ref_match_side
+    print('~ %-18s <- %-26s pos_rel %s  h_rel %.4f'
+          % (aid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
+
 # ---- 3) 新增三个头顶件 --------------------------------------------------------
 # ★ 三件互斥，但层号仍要各不相同（沿用 sweep_twin/sweep_pony 的既有约定；
 #   rig 的「层号不重复」闸门是一刀切的）。选 187~189 的理由：
@@ -161,5 +196,11 @@ print('\nattachments.json 已更新')
 # long 档不藏本体鬓发（理由见 pose_groups.hairstyle 的 note）
 for g in d['pose_groups']:
     if g['id'] == 'hairstyle':
-        g['hide_parts'].pop('long', None)
+        # ★ 三档都要把**底图短发的头壳和鬓发**一起藏掉。
+        #   只藏鬓发不藏头壳 = 「一颗短发脑袋 + 挂了两根辫子」，
+        #   这正是用户 2026-10-19 判的「短发的造型和双马尾合在一起了」。
+        #   接管者是同一张模板上切下来的 hair_crown_* （头壳）与
+        #   hair_sweep_* / hair_sidelong_*（鬓发），同源所以不会有拼接痕。
+        for k in ('twin', 'pony', 'long'):
+            g['hide_parts'][k] = ['hair_side_l', 'hair_side_r', 'hair_back']
 io.open(P, 'w', encoding='utf-8').write(json.dumps(d, ensure_ascii=False, indent=2) + '\n')
