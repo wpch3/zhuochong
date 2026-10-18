@@ -492,7 +492,13 @@ static void handle_request(zsock fd, const http_req *r)
     }
 
     if (strcmp(r->path, "/api/info.json") == 0) {
-        char body[4096];
+        /* ★ 缓冲区 2026-10-18 从 4096 扩到 16384（T46.3 当场撞上）：
+             这份 JSON 的长度跟着 rig 的部件 / 形变器 / 摆链条数线性涨。
+             加三个发型（+3 部件 +4 形变器 +3 摆链）之后就超了 4096，
+             而 z_snprintf 是**静默截断**的 —— 返回的是一串缺尾括号的烂 JSON，
+             前端和探针都只会报「JSON 解析失败」，不会告诉你是谁写满了。
+             所以除了扩容，下面收尾处还加了一条\"写满了就明着报错\"的守卫。 */
+        char body[16384];
         char *p = body;
         int i, fw = 0, fh = 0;
         size_t cap = sizeof(body);
@@ -651,8 +657,17 @@ static void handle_request(zsock fd, const http_req *r)
                             "\"breeze\":%.4f,\"wind_x\":%.4f,\"wind_y\":%.4f",
                             gx, gy, wx, wy, zpet_breeze_amp(g_pet), ex, ey);
         }
-        z_snprintf(p, cap - (size_t)(p - body), "}}");
+        p += z_snprintf(p, cap - (size_t)(p - body), "}}");
         UNLOCK();
+        /* 写满 = 这份 JSON 已经被截断了。宁可返回 500 也不要送一份烂 JSON 出去：
+           截断过的 body 照样以 200 发出去的话，症状会伪装成「前端解析失败」，
+           而真正的原因（缓冲区小了）藏在 C 这一侧，没人会往这里看。 */
+        if ((size_t)(p - body) >= cap - 1) {
+            send_text(fd, 500, "application/json",
+                      "{\"ok\":false,\"error\":\"info.json 超出缓冲区被截断了，"
+                      "去 main_headless.c 把 body[] 调大\"}");
+            return;
+        }
         send_text(fd, 200, "application/json", body);
         return;
     }

@@ -2201,9 +2201,15 @@ static int load_poses(zrig *r, const zjson *jp, zdiag *d, const char *file)
             r->nposeents++;
             g->nent++;
         }
-        /* 默认档位：没写就取第一个。切换前所有非当前档都是全透明。 */
+        /* 默认档位：没写就取第一个。切换前所有非当前档都是全透明。
+           ★ default:"none" = 一上来整组都不显示（T46.3 发型组要的就是这个：
+             默认短发 = 不额外挂任何一束头发，长发/双马尾/马尾才是档位）。
+             运行期本来就有 cur=-1 这个状态（zrig_pose_set 的 id=none），
+             这里只是让它**可以当初始值**，不必硬造一个空档位。 */
         g->cur = 0;
-        if (defid) {
+        if (defid && z_streq(defid, "none")) {
+            g->cur = -1;
+        } else if (defid) {
             int t, found = -1;
             for (t = 0; t < g->nent; ++t)
                 if (z_streq(r->poseents[g->ent0 + t].id, defid)) { found = t; break; }

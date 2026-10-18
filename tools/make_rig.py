@@ -702,7 +702,8 @@ def attach_emit(rig, base, base_root):
         # ★ 进了 pose 互斥组的挂件**不发**这条参数：显隐归姿态组管
         #   （`/api/pose?group=X&id=none` 整组关掉），再发一条就是两套开关打架，
         #   而且三个姿态 deepcopy 出来会撞同一个参数 id。
-        pr = att["param"]
+        # 进了互斥组的挂件没有开关参数（显隐归姿态组管），表里也就不必写 param。
+        pr = att.get("param")
         if att.get("pose_group"):
             pr = None
         if pr:
@@ -2806,8 +2807,12 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                      "scale": 1.1, "max": 8,
                      "note": "整根呆毛左右甩。max 8 和旧的 ahoge_x 一样，"
                              "所以同一个转头动作下的像素行程是同量级的"},
-                    {"particle": 2, "deformer": "ahoge_s", "scale": 0.06, "max": 1.0,
-                     "note": "梢再慢半拍，甩出 S 形（旧的 ahoge_tip 干的活）"},
+                    {"particle": 2, "deformer": "ahoge_s", "scale": 0.06, "max": 2.6,
+                     "note": "梢再慢半拍，甩出 S 形（旧的 ahoge_tip 干的活）。"
+                             "★ 上限 2.6 = 实测满量程摇头峰值 1.98 的 1.3 倍，"
+                             "不是 1.0 —— 1.0 时一次满量程摇头会让呆毛梢"
+                             "贴顶 0.40 秒，那 0.40 秒里它在画面上是静止的"
+                             "（2026-10-18 T46.3 顺手查出来的，和长发/双马尾/马尾同病）"},
                 ],
                 "note": "呆毛（T47.2 第一条迁过来的链）。短、硬、反应快 —— "
                         "教程口径「固い髪は反応速度を大きく」",

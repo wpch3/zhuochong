@@ -29,6 +29,13 @@ chibi 那个 517px 高的头上会扣一对 104px 的耳朵，小一半。
     "sprite_h_rel": 成品高度，单位见 unit
     "unit":         "head" = 这个形态自己的头高（默认，头上的件用）
                     "body" = 这个形态自己的身高（挂在躯干上的长件用）
+                    "torso" = 头顶到腰（长发那类"垂到腰"的件用）
+    "pos_unit":     **位置**单独用另一种单位（可选，默认跟 unit 走）。
+                    T46.3 双马尾逼出来的：扎头的位置是**头**上的量
+                    （"耳朵上方、头侧边"），而辫子的长度是**上半身**的量
+                    （"垂到腰"）。chibi 的头占身高 0.47、teen 只占 0.22，
+                    两者同用一个单位必然有一头错：用 head 量长度 ⇒ chibi 的
+                    辫子长到脚踝；用 torso 量位置 ⇒ chibi 的发根跑到脸中间。
 
 于是「猫耳在头顶下 0.396 个头高处、高 0.374 个头高」这句话对**任何**头身比
 都成立 —— 换形态只要换 anchors.json，挂件表一个字都不用改。
@@ -104,10 +111,12 @@ def resolve(att, anchors, ox=0, oy=0):
             "[attach_geom] 挂件 %r 的 ref=%r 在这个形态的 anchors.json 里没有"
             % (att.get("id"), ref))
     u = unit_px(anchors, att.get("unit", "head"))
+    # 位置可以用和尺寸不同的单位（见上面 pos_unit 的说明），默认两者相同。
+    pu = unit_px(anchors, att["pos_unit"]) if att.get("pos_unit") else u
     rx, ry = pts[ref][0], pts[ref][1]
     dx, dy = att["pos_rel"]
-    pos = [int(round(rx + float(dx) * u + ox)),
-           int(round(ry + float(dy) * u + oy))]
+    pos = [int(round(rx + float(dx) * pu + ox)),
+           int(round(ry + float(dy) * pu + oy))]
     sh = int(round(float(att["sprite_h_rel"]) * u))
     return pos, sh
 

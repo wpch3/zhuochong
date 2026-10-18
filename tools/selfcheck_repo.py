@@ -523,7 +523,11 @@ def check_rig(root):
             if len(ents) < 2:
                 badpose.append(f"{g.get('id')}:档位不足 2 个")
             eids = [e.get("id") for e in ents]
-            if g.get("default") and g["default"] not in eids:
+            # default 可以是 "none" = 一上来整组都不显示（T46.3 发型组：短发那一档
+            # 恰恰是\"一束都不加\"）。引擎侧 zrig.c load_poses 认这个值并置 cur=-1，
+            # 两边必须同时认 —— 下面那条闸就是盯着\"两边同时认\"的。
+            if (g.get("default") and g["default"] != "none"
+                    and g["default"] not in eids):
                 badpose.append(f"{g['id']}:default={g['default']} 不在档位里")
             for e in ents:
                 for q in e.get("parts", []):
@@ -578,9 +582,11 @@ L2D_EXTENSIONS = {
     "ParamSkirtSway": "裙摆自主摆动（T45.9）。标准表只有身体角度，没有"
                       "「布自己在动」这一层。两级形变器：裙身 skirt_sway_x + "
                       "下摆 skirt_hem_x，下摆带 0.11 秒行波延迟",
-    "ParamHairLong": "长发开关（T46.2）。0=短发（bob）、1=长发。走 DC59「差分件做加法」："
-                     "长发不替换后发短壳，而是加在**身体之后**（层 58，组却是 head）"
-                     "垂下来的那一截。发型是同一形态里可换的部件，不是新形态",
+    # ★ ParamHairLong（T46.2 的长发开关）已于 T46.3 退场：发型的显隐改由互斥组
+    #   hairstyle（none/long/twin/pony）统管。两套开关并存时「长发+双马尾同时开」
+    #   是个合法状态，画面上就是三坨头发打架。双马尾/马尾的摆动形变器直接由物理
+    #   2.0 的摆链驱动（twin_l2 / twin_r2 / pony2），**不再新增参数** ——
+    #   所以这张表里没有 ParamHairTwin*/ParamHairPony*，是对的，不是漏登记。
     "ParamHairBackS": "后发第二段·发梢甩动（T46.1）。标准表只有 ParamHairBack 一条，"
                       "但教程一致认为「揺れが1段しかない＝髪が棒のように見える」，"
                       "後ろ髪は2~3段が普通。和 ParamHairAhogeS/ParamHairSideS 同族",
@@ -1859,6 +1865,67 @@ def check_live2d(root):
                   "%d 段，摆长 %s，反応速度 %s（長い後ろ髪は3段振り子）"
                   % (len(_pt), "/".join("%.0f" % v for v in _rad),
                      "/".join("%.2f" % v for v in _dly)))
+
+    # ㉖ 发型互斥组（T46.3 双马尾 / 马尾）。四条，每条都对着一个具体的坑：
+    #    ① 一个发型 = 一个档位，**不许再有自己的开关参数**（两套开关并存 ⇒
+    #       "长发+双马尾同时开"是个合法状态，画面上就是三坨头发打架）；
+    #    ② default:"none" 这个写法必须**两边同时认**（表里写了、引擎 load_poses 也要认），
+    #       只改一边的话：表这边以为默认短发，引擎那边会退回第一个档位 = 一开机就戴着长发；
+    #    ③ 双马尾是同一张原图镜像出来的，左右必须**真对称**（锚点互补、位置关于中线对称、
+    #       层号不重复）—— 猫耳那四轮返工全栽在"镜像件没单独验"上；
+    #    ④ 扎起来的发束要比披着的头发**硬**（段数更少、摆长更短），
+    #       这是教程口径「ツインテールは束ねられている分硬い」，也是手感的来源。
+    _att_p = os.path.join(root, "characters", "xiaoxun", "design", "attachments.json")
+    if os.path.exists(_att_p):
+        _att = jsonc(_att_p)
+        _by = {x["id"]: x for x in _att["attachments"]}
+        _hair = [x for x in _att["attachments"] if "hairstyle" in (x.get("tags") or [])]
+        _nogrp = [x["id"] for x in _hair if x.get("pose_group") != "hairstyle"]
+        _dblsw = [x["id"] for x in _hair if x.get("param")]
+        check("发型都归在同一个互斥组里，而且没有一个还留着自己的开关参数",
+              not _nogrp and not _dblsw,
+              ("不在组里：%s；还留着 param：%s" % (_nogrp, _dblsw))
+              if (_nogrp or _dblsw) else
+              "%d 个发型挂件（%s）全在 hairstyle 组里，显隐只有一套开关"
+              % (len(_hair), "/".join(sorted(x.get("pose_id", "?") for x in _hair))))
+        _hg = next((g for g in _att.get("pose_groups", []) if g["id"] == "hairstyle"), None)
+        _zrig_src = io.open(os.path.join(root, "src", "core", "zrig.c"),
+                            encoding="utf-8").read()
+        check("default:\"none\"（= 默认短发）表里写了，引擎也认",
+              _hg is not None and _hg.get("default") == "none"
+              and 'z_streq(defid, "none")' in _zrig_src,
+              "表 default=%r / zrig.c load_poses 认不认 none：%s"
+              % (_hg and _hg.get("default"),
+                 'z_streq(defid, "none")' in _zrig_src))
+        _tl, _tr = _by.get("hair_twin_l"), _by.get("hair_twin_r")
+        if _tl and _tr:
+            _ax = float(_tl["anchor"][0]) + float(_tr["anchor"][0])
+            _dx = float(_tl["pos_rel"][0]) + float(_tr["pos_rel"][0])
+            _dy = abs(float(_tl["pos_rel"][1]) - float(_tr["pos_rel"][1]))
+            _mir = bool(_tl.get("mirror")) != bool(_tr.get("mirror"))
+            check("双马尾左右真对称（锚点互补 / 位置关于中线对称 / 只镜像一侧 / 层号不重复）",
+                  abs(_ax - 1.0) < 0.02 and abs(_dx) < 0.06 and _dy < 1e-6 and _mir
+                  and int(_tl["layer"]) != int(_tr["layer"]),
+                  "锚点和 %.3f（要 1.0）、左右偏移和 %+.3f 个头高（要 ~0）、"
+                  "高度差 %.4f、镜像只有一侧 %s、层 %d/%d"
+                  % (_ax, _dx, _dy, _mir, _tl["layer"], _tr["layer"]))
+            # 层位：必须夹在手臂之上、后发壳之下 —— 高了会盖住脸，低了会被身体吃掉
+            _slot = next((x for x in _att["slots"] if x["id"] == "head_side_hair"), {})
+            check("双马尾的层夹在手臂之上、后发壳之下（发根藏得住、辫子遮不住脸）",
+                  143 < int(_tl["layer"]) < 170 and 143 < int(_tr["layer"]) < 170
+                  and _slot.get("group") == "head",
+                  "层 %d/%d（手臂 143 < x < 后发壳 170），组 %r"
+                  % (_tl["layer"], _tr["layer"], _slot.get("group")))
+        _lch = (_by.get("hair_long") or {}).get("physics", {}).get("chain", {})
+        _tch = (_tl or {}).get("physics", {}).get("chain", {})
+        if _lch and _tch:
+            _lp, _tp = _lch["particles"][1:], _tch["particles"][1:]
+            check("扎起来的发束比披着的头发硬（段数更少、摆长更短）",
+                  len(_tp) < len(_lp)
+                  and float(_tp[0]["radius"]) < float(_lp[0]["radius"]),
+                  "双马尾 %d 段 / 根半径 %.0f　vs　长发 %d 段 / 根半径 %.0f"
+                  % (len(_tp), float(_tp[0]["radius"]),
+                     len(_lp), float(_lp[0]["radius"])))
 
     # 形态元数据必须描述**成品**：forms.json 声明的头身比要和 anchors.json 实测的对上。
     # 挂件的相对几何就是按实测值定标的，声明值写错会让别的形态跟着一起偏。

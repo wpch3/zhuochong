@@ -857,16 +857,17 @@ def run(base, root):
     # 长发（T46.2）：① 能开关；② 开着的时候，转头会把第三段（发梢）带起来。
     if "longhair_tip" in dfm:
         a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=120&dt=0.016")
-        a.hit("/api/param?id=ParamHairLong&v=1")
+        a.hit("/api/pose?group=hairstyle&id=long")      # T46.3：发型改走互斥组
         a.hit("/api/param?id=ParamAngleX&v=28"); a.hit("/api/step?n=24&dt=0.016")
         _d = (a.json("/api/info.json") or {}).get("deformers") or {}
         mid, tip = abs(_d.get("longhair_mid") or 0.0), abs(_d.get("longhair_tip") or 0.0)
         check("转头会把长发的中段和发梢都带起来（3 段摆）",
               mid > 0.15 and tip > 0.05, "mid=%.3f tip=%.3f" % (mid, tip))
         pj = {q["id"]: q for q in (a.json("/api/params.json") or {}).get("params", [])}
-        check("长发开关是个 0/1 的差分件参数",
-              (pj.get("ParamHairLong", {}).get("effective") or 0) > 0.5,
-              "ParamHairLong=%s" % pj.get("ParamHairLong", {}).get("effective"))
+        check("长发不再有自己的开关参数（显隐归发型互斥组管，不许两套开关并存）",
+              "ParamHairLong" not in pj,
+              "params 里还剩 %d 条 ParamHair*" %
+              len([k for k in pj if k.startswith("ParamHair")]))
         a.hit("/api/param?all=1&reset=1")
 
     # ★★ 物理 2.0（T47.2）：摆角接到部件上之后，最关键的那条判据 ——
@@ -879,7 +880,7 @@ def run(base, root):
     if any(k.startswith("longhair2") for k in p2):
         a.hit("/api/param?all=1&reset=1")
         a.hit("/api/ambient?on=0")                 # 环境摆动关掉，免得它替物理背书
-        a.hit("/api/param?id=ParamHairLong&v=1")
+        a.hit("/api/pose?group=hairstyle&id=long")
         a.hit("/api/step?n=180&dt=0.0167")         # 先让摆链落定
         # 发梢在画面上走了多远 = 整片头发的 bend(px) + 两张网格的 amount × 各自振幅
         #（振幅取自 attachments.json：中段 6.2px、发梢 15.0px）
@@ -945,6 +946,93 @@ def run(base, root):
               "longhair2#0=%.6f" % (q.get("longhair2#0") or 0.0))
         a.hit("/api/physics?on=1"); a.hit("/api/ambient?on=1")
         a.hit("/api/param?all=1&reset=1")
+
+    # ---- T46.3 发型互斥组：双马尾 / 马尾 ----
+    # 这一段验的是**运行期**的四件事：切得动、左右一起动、马尾三段都动、整组关得掉。
+    # 几何（发髻在不在剪影上、左右对不对称、段数硬不硬）是静态性质，由 selfcheck 第㉖段守。
+    def _hairgrp():
+        return next((g for g in ((a.json("/api/info.json") or {}).get("poses") or [])
+                     if g.get("id") == "hairstyle"), {})
+    if "twintail_l_tip" in dfm:
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/ambient?on=0")
+        check("发型是一个互斥组，短发/长发/双马尾/马尾都在里面",
+              sorted(_hairgrp().get("entries") or []) == ["long", "pony", "twin"],
+              "entries=%s（短发 = 整组关掉，不占档位）" % (_hairgrp().get("entries"),))
+        a.hit("/api/pose?group=hairstyle&id=twin"); a.hit("/api/step?n=90&dt=0.016")
+        check("发型互斥组切得到双马尾", _hairgrp().get("current") == "twin",
+              "current=%r" % _hairgrp().get("current"))
+        # 左右两束要一起被头带起来，而且**量级相当** —— 差太多就是哪边的锚点或镜像写错了。
+        # ★ 这里**故意只转 10°**：角度大了两边会一起顶到削顶上限，
+        #   两个被钳平的数当然相等，对称性就验成了废话。要在线性区里比。
+        a.hit("/api/param?id=ParamAngleX&v=10"); a.hit("/api/step?n=24&dt=0.016")
+        _d = (a.json("/api/info.json") or {}).get("deformers") or {}
+        tl, tr = _d.get("twintail_l_tip") or 0.0, _d.get("twintail_r_tip") or 0.0
+        check("转头会把双马尾左右两束的发梢一起带起来",
+              abs(tl) > 0.15 and abs(tr) > 0.15 and tl * tr > 0,
+              "左 %.3f / 右 %.3f" % (tl, tr))
+        check("左右两束响应量级相当（差 <25%，差多了就是锚点或镜像写错）",
+              abs(abs(tl) - abs(tr)) <= 0.25 * max(abs(tl), abs(tr), 1e-9),
+              "左 %.3f / 右 %.3f" % (tl, tr))
+        # 削顶回归闸（2026-10-18）：满量程摇头（30° = ParamAngleX 的上限）之下，
+        # 发梢的网格输出不许贴在自己的 max 上 —— 贴顶的那几帧画面上是**完全静止**的，
+        # 而它恰好发生在动作最大、最招眼的一瞬。
+        # ★ 上限从 rig.json **读**出来，不写死：写死的话有人把 max 调回 1.0，
+        #   峰值被钳在 1.0 反而"远低于写死的 2.8"，闸门会亮绿灯放它过去。
+        with open(os.path.join(root, "characters", info["character"], "forms",
+                               info["form"], "rig.json"), encoding="utf-8") as _f:
+            _rigj = json.load(_f)
+        _LIM = {o["deformer"]: float(o.get("max", 1.0))
+                for c in _rigj.get("physics2", [])
+                for o in c.get("outputs", [])
+                if o.get("deformer") in ("twintail_l_tip", "twintail_r_tip")}
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=120&dt=0.016")
+        for _i in range(16):
+            a.hit("/api/param?id=ParamAngleX&v=%.1f" % (30.0 * (_i + 1) / 16.0))
+            a.hit("/api/step?n=1&dt=0.016")
+        _pk = {k: 0.0 for k in _LIM}
+        for _i in range(70):
+            a.hit("/api/step?n=1&dt=0.016")
+            _d2 = (a.json("/api/info.json") or {}).get("deformers") or {}
+            for _k in _LIM:
+                _pk[_k] = max(_pk[_k], abs(_d2.get(_k) or 0.0))
+        check("满量程摇头也不许削顶（峰值要留在 rig 里那个 max 的 90%% 以内）",
+              bool(_LIM) and all(_pk[k] < _LIM[k] * 0.9 for k in _LIM),
+              " / ".join("%s 峰值 %.2f（上限 %.1f）" % (k, _pk[k], _LIM[k])
+                         for k in sorted(_LIM)))
+        # ★ 收拾干净再走：刚才把头摇到了满量程，头发还在大幅摆。
+        #   不归零 + 不等它停，后面任何比画面的用例都会被这股余波带红
+        #   （第一版就把下游的"眼高光改变画面"撞红了，症状完全不知所云）。
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=300&dt=0.016")
+        # 马尾：3 段，中段和发梢都要动
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/pose?group=hairstyle&id=pony")
+        a.hit("/api/step?n=240&dt=0.016")          # 等上一段的余波彻底停掉
+        a.hit("/api/param?id=ParamAngleX&v=28")
+        # 取 1.1 秒窗口内的**峰值**，不要只采一个瞬时点：
+        # 两段的相位是错开的（这正是"柔软"的来源），单点采样碰上零穿越就假红。
+        _pm = _pt = 0.0
+        for _i in range(70):
+            a.hit("/api/step?n=1&dt=0.016")
+            _d = (a.json("/api/info.json") or {}).get("deformers") or {}
+            _pm = max(_pm, abs(_d.get("pony_mid") or 0.0))
+            _pt = max(_pt, abs(_d.get("pony_tip") or 0.0))
+        check("转头会把马尾的中段和发梢都带起来（3 段摆）",
+              _pm > 0.15 and _pt > 0.05,
+              "1.1s 内峰值 mid=%.3f tip=%.3f" % (_pm, _pt))
+        # 整组关掉 = 回到短发 bob（这是默认档，default:"none"）
+        a.hit("/api/pose?group=hairstyle&id=none"); a.hit("/api/step?n=90&dt=0.016")
+        check("发型组能整组关掉（= 短发 bob，也是它的默认档）",
+              _hairgrp().get("current") in ("", "none"),
+              "current=%r" % _hairgrp().get("current"))
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/ambient?on=1")
+
+    # info.json 是整个调试台和所有探针的唯一数据源，而它是拿一个**定长 char[]**
+    # 拼出来的 —— 2026-10-18 加三个发型时就把它写爆了，返回的是一串缺尾括号的烂 JSON。
+    # 症状极具误导性（看起来像前端解析 bug），所以在这里钉一条：必须是完整 JSON。
+    _, _raw = a.get("/api/info.json")
+    _txt = _raw.decode("utf-8", "replace").strip()
+    check("info.json 没被缓冲区截断（完整 JSON，以 } 收尾）",
+          _txt.endswith("}") and len(_txt) > 200,
+          "%d 字节，结尾 %r" % (len(_txt), _txt[-12:]))
 
     # 后发第二段（T46.1）：转头之后，第二段（发梢）必须被第一段带起来。
     # 这验的是**物理链接上了**（back_x → back_tip → back_s），

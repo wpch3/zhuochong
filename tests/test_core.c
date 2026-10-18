@@ -5439,6 +5439,46 @@ static void test_pose(void)
         zdiag_init(&d);
         CHECK(zrig_load(rigp, dir, &d) == NULL, "只有一个档位不叫互斥，必须加载失败");
     }
+
+    /* T46.3：default:"none" = 一上来整组都不显示。发型组要用它 ——
+       "短发 bob"这一档是*一束都不加*（原生短壳自己就是短发），
+       为它硬造一个空档位或塞一个看不见的部件都是脏做法。
+       没有这条，引擎会退回第一个档位 = 一开机就戴着长发。 */
+    SECTION("Pose 的 default 可以写 none（= 一上来整组都不显示）");
+    {
+        char buf[2048];
+        double tt;
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"default\":\"none\","
+                   "\"fade\":0.4,\"entries\":[{\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "default:none 必须能加载（%d 条诊断）", d.error_count);
+        if (r) {
+            CHECK(z_streq(zrig_pose_current(r, "g"), ""),
+                  "default:none ⇒ 一开始没有当前档位，实为 %s", zrig_pose_current(r, "g"));
+            CHECK(fabs(zrig_pose_weight(r, "g", "A")) < 1e-9 &&
+                  fabs(zrig_pose_weight(r, "g", "B")) < 1e-9,
+                  "default:none ⇒ 两档一开始都该是 0（A=%.3f B=%.3f）",
+                  zrig_pose_weight(r, "g", "A"), zrig_pose_weight(r, "g", "B"));
+            /* 关掉不等于锁死：还得切得回来 */
+            CHECK(zrig_pose_set(r, "g", "B") == 0, "从 none 起步仍应能切到 B");
+            for (tt = 0.05; tt < 1.2; tt += 0.05) zrig_tick(r, tt);
+            CHECK(fabs(zrig_pose_weight(r, "g", "B") - 1.0) < 1e-6,
+                  "切过去淡化走完 B 应全显，实为 %.3f", zrig_pose_weight(r, "g", "B"));
+            zrig_free(r);
+        }
+        /* 负向对照：none 只在 default 这一处是特殊值，不是"什么字符串都放行"。
+           写一个别的不存在的档位，照样必须拦住（上面 ③ 已验 X，这里验大小写） */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"default\":\"NONE\","
+                   "\"entries\":[{\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL,
+              "default 的特殊值只有小写 none，NONE 必须照样拦住");
+    }
 }
 
 
