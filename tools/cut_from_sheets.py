@@ -115,7 +115,20 @@ def teal_like(a):
     中性的高光（R≈G≈B）绿不压红，不会被误伤。
     """
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
-    return (g - r > 30) & (b - g < 12)
+    #  ★ 2026-10-19 二修：原判据 `b - g < 12` 只认得**袖子**，认不出
+    #    **兜帽内衬和衣领**。实测长发后发件里按 `g-r>25` 分桶：
+    #        b-g ∈ [0,12)  6061 px  典型色 (129,181,188)  ← 旧判据只抓到这桶
+    #        b-g ∈ [12,25) 8138 px  典型色 (111,161,179)  ← **更大的一桶，全漏了**
+    #    漏掉的这 8138 px 就是渲染图上脖子和衣领那一片深青色脏块。
+    #    放宽到 25 会不会误伤蓝发梢？不会，但**必须配一条亮度闸**：
+    #        蓝发梢 (159,196,232)：b-g=36，本来就在 25 以外；
+    #        但阴影里的蓝发梢会往下掉，所以再加 b<210 兜底 ——
+    #        衣领青 b=179 < 210 判为青布；蓝发梢 b=232 > 210 保住。
+    #  ★ 再补一条 r < 150：放宽到 b-g<25 之后，**被夹克反光染绿的头发**
+    #    （像 (150,185,195)）会被误伤 —— 实测 pony 鬓发覆盖率从 28.8% 掉到 17%，
+    #    长发前侧两片被削掉六成。衣领青是**暗**的（r=111），反光的头发是**亮**的，
+    #    用 r<150 把两者分开；旧的 b-g<12 那一支不加亮度闸（那是确凿的青布）。
+    return (g - r > 30) & ((b - g < 12) | ((b - g < 25) & (b < 210) & (r < 150)))
 
 
 def keep_big(m, min_px=1500, max_parts=12):
@@ -224,6 +237,47 @@ def solidify(b, k=17):
     头发高光造成的缝隙本来就只有十几像素宽，用不着全图洪水。
     """
     return erode(dilate(b, k), k)
+
+
+def fill_holes(m):
+    """补上被件**完全包住**的洞，外轮廓一个像素都不动。
+
+    为什么需要它：收尾硬排把衣领/袖口/手从掩膜里剔掉之后，它们原来占的位置
+    就成了洞。件落盘时 `where(m, rgb, MAGENTA)` 会把洞写成洋红 ⇒ 透明窟窿，
+    闸门实测「露出透明背景 19.11%」。而 Live2D 官方的说法是被遮住的部分
+    **必须补画**，所以这里要把洞填回去、再让 `nearest_fill` 用**周围的发色**
+    给它上色（颜色源会特意排除洞本身，否则又把衣领的颜色抹回去了）。
+
+    为什么不用 `solidify`（闭运算）补：闭运算是先膨胀再腐蚀，**会把外轮廓
+    一起改圆、改方**，正是用户说的「块状、没有柔顺流线的感觉」的来源之一。
+    这里改用「从画布外缘灌水」——灌不到的自由像素就是洞，外轮廓完全不受影响。
+    """
+    ys, xs = np.nonzero(m)
+    if len(xs) == 0:
+        return m
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+    # 只在件的 bbox + 1px 边框里灌水，省掉整张画布的迭代
+    sub = m[y0:y1 + 1, x0:x1 + 1]
+    pad = np.zeros((sub.shape[0] + 2, sub.shape[1] + 2), bool)
+    pad[1:-1, 1:-1] = sub
+    free = ~pad
+    seed = np.zeros_like(pad)
+    seed[0, :] = True
+    seed[-1, :] = True
+    seed[:, 0] = True
+    seed[:, -1] = True
+    seed &= free
+    prev = -1
+    guard = 4 * (pad.shape[0] + pad.shape[1])
+    while int(seed.sum()) != prev and guard > 0:
+        prev = int(seed.sum())
+        seed = dilate(seed, 3) & free
+        guard -= 1
+    filled = ~seed                      # 灌不到的 = 件本体 + 洞
+    out = m.copy()
+    out[y0:y1 + 1, x0:x1 + 1] = filled[1:-1, 1:-1]
+    return out
 
 
 def nearest_fill(rgb, src, steps):
@@ -487,16 +541,85 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     if len(wide):
         crown = crown & (yy >= int(wide[0]))
     out["crown"] = crown
+
+    # ------------------------------------------------------------------
+    # ⑥ ★ 收尾：统一硬排杂物 + 连通筛（2026-10-19 加）
+    #
+    #    依据是 ClipStudio 官方那篇「把一张合并图层的成品图切成 Live2D 部件」
+    #    和 castcraft 的检查清单，两处都写了同一件事：
+    #        「すべてのパーツを結合したあとは、**ゴミが残っていないかチェック**
+    #          してから書き出しましょう」
+    #    —— 切完**必须**再查一遍有没有残渣，这一步是工序的一部分，不是可选项。
+    #
+    #    为什么非要放在最后、而不是在各自的掩膜里排：
+    #      · 上面每一片都各自排过青色了，但排的是**输入**掩膜；
+    #        之后还要走 solidify / dilate-erode / despeckle，
+    #        闭运算会把排掉的像素**重新圈回来**（它只看形状不看颜色）。
+    #      · 而 `emit_piece` 取塗り足し的颜色源是 `erode(m, 3)` ——
+    #        只要掩膜里混进一个衣领像素，它就会被当成颜色源往外扩散 40px，
+    #        在件里画出一整片衣领形状。实测长发后发件里混进了
+    #        衣领 + 兜帽 + 两只袖口 + 两只手，外加满屏横向涂抹带。
+    #    所以硬排必须是**形态学之后、落盘之前**的最后一道。
+    #
+    #    排完会打碎出一堆孤儿碎片（原来靠衣领连在一起的发缕），
+    #    再过一遍 `keep_big` 收掉 —— 这些碎片正是渲染图上那些「杂毛」。
+    #    ★ 2026-10-19 二修：杂物分**两类**处理，不能一律删。
+    #      · 离主体远的独立碎片（衣领色块、半只手）⇒ **删掉**，那是真垃圾；
+    #      · 紧贴着头发、嵌在件**内部或边缘**的杂物（压在发丝下的衣领）⇒
+    #        **保住形状、只换颜色**。
+    #      为什么不能也删：删了之后件的边缘会被啃出一个**开口的缺口**
+    #      （不是封闭的洞，所以 `fill_holes` 的灌水法抓不到），落盘就是
+    #      透明窟窿 —— 闸门实测「露出透明背景 19.11%」，上限才 2%。
+    #      而这正是 Live2D 官方 PSD 教程反复强调的那件事：
+    #      被别的东西遮住的部分**要补画**，不是留空。
+    #      所以这里只把远碎片剔掉，贴身杂物留在掩膜里，
+    #      由 `emit_piece` 拿**干净发色**把它重画一遍（见那边的 `bad` 参数）。
+    bad = teal_like(sa) | skin_like(sa)
+    for key in list(out.keys()):
+        m = out[key]
+        if m is None or not m.any():
+            continue
+        before = int(m.sum())
+        core = keep_big(m & ~bad, min_px=800)      # 干净头发的主体
+        if not core.any():
+            continue
+        m2 = m & dilate(core, 3)                   # 保形：贴着主体的杂物留下
+        after = int(m2.sum())
+        #    安全阀：万一判据误伤导致件几乎没了，就保留原件并报警，
+        #    宁可留点脏东西，也不要交一个空件上去（空件 = 发型直接消失）。
+        if after < before * 0.35:
+            log("    [警告] %s 硬排后只剩 %d/%d(%.0f%%)，判据可能误伤，保留原件"
+                % (key, after, before, 100.0 * after / max(before, 1)))
+        else:
+            if after != before:
+                log("    %s 去掉远碎片 %d → %d (剔 %d px)；贴身杂物 %d px 保形重画"
+                    % (key, before, after, before - after, int((m2 & bad).sum())))
+            out[key] = m2
+    out["_bad"] = bad
     return sa, sop, out
 
 
 # ------------------------------------------------------------ 落盘
-def emit_piece(pid, mask, sa, redraw, bbox, scale, unit, anchors, bleed_into=None):
+def emit_piece(pid, mask, sa, redraw, bbox, scale, unit, anchors, bleed_into=None, bad=None):
     """把一片掩膜裁成洋红底 PNG，并算出 pos_rel / sprite_h_rel。"""
     if mask.sum() < 400:
         return None
     rgb = sa
     m = mask
+    #  ★ 先把嵌在件里的杂物（衣领/袖口/手）用**周围的干净发色**重画掉。
+    #    形状一个像素都不改 —— 改形状会啃出透明缺口，见 cut_masks 收尾那段注释。
+    #    颜色源特意排除杂物本身，否则等于把衣领的颜色又抹回去。
+    if bad is not None and (m & bad).any():
+        dirty = m & bad
+        src = erode(m & ~bad, 3)
+        if src.any():
+            probe = dirty.copy()
+            rad = 0
+            while probe.any() and rad < 200:
+                probe = erode(probe, 3)
+                rad += 1
+            rgb, _ = nearest_fill(sa, src, rad + 8)
+            log("    %s 杂物重画 %d px（最深 %d px）" % (pid, int(dirty.sum()), rad))
     if bleed_into is not None:
         # 塗り足し：往身体内侧长 BLEED px，补上最近邻颜色。
         # Live2D 官方：被遮住的部分必须补画，否则一动起来就 disconnected。
@@ -505,8 +628,24 @@ def emit_piece(pid, mask, sa, redraw, bbox, scale, unit, anchors, bleed_into=Non
         #   在原图上的**混色**（抗锯齿），拿它当源会把一圈白边扩散出去
         #   （实测 hair_long_back@2x 白边 1369px，闸门上限 900）。
         #   收 1px 之后那一圈自己也变成"待填"，会被里面干净的发色盖掉。
-        rgb, filled = nearest_fill(sa, erode(m, 3), BLEED + 1)
-        m = m | (filled & bleed_into)
+        # ★ 先补洞：硬排杂物留下的窟窿要用**周围的发色**填回来。
+        #   颜色源 `erode(m, 3)` 取的是**补洞之前**的掩膜 —— 洞里原本是
+        #   衣领/袖口/手，拿它当源就等于把杂物的颜色又抹回去了。
+        holed = fill_holes(m)
+        holes = holed & ~m
+        src = erode(m, 3)
+        steps = BLEED + 1
+        if holes.any():
+            # 洞要靠最近邻一圈圈爬进去，步数不够的话洞心会留洋红。
+            # 按洞的最大半径估步数：反复腐蚀直到洞消失，次数即半径。
+            probe = holes.copy()
+            rad = 0
+            while probe.any() and rad < 200:
+                probe = erode(probe, 3)
+                rad += 1
+            steps = max(steps, rad + 8)
+        rgb, filled = nearest_fill(rgb, src, steps)
+        m = holed | (filled & bleed_into)
 
     ys, xs = np.nonzero(m)
     x0, x1, y0, y1 = int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
@@ -608,7 +747,8 @@ def main() -> int:
                 bleed = dilate(masks["_base_hair"], 5)
             else:
                 bleed = dilate(base_op, 3)
-            info = emit_piece(pid, mk, sa, redraw, bbox, scale, unit, anchors, bleed)
+            info = emit_piece(pid, mk, sa, redraw, bbox, scale, unit, anchors, bleed,
+                              bad=masks.get("_bad"))
             if info is None:
                 log("  %-20s %-18s 掩膜太小(%d px)，跳过" % (pid, slot, mk.sum()))
                 continue
