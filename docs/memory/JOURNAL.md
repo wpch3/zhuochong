@@ -4058,3 +4058,30 @@ api_smoke **244/0**、`make -s check` **217/0**、check_platform 37/0。
 **自己给自己记一句**：用户这次给的是工序，不是需求。
 这种输入比"这里不对"值钱得多，因为它一次性解释了过去七轮的所有返修。
 
+
+## 续七十五：切件层打通（T46.14）—— 四次失败换来的判据换维度
+
+把第十五问的 7 张参考模板真正切成部件。本轮**只做切件器本身**，还没接进
+`attachments.json` / 没 rebuild，所以用户看到的实时立绘**暂时没有变化**，这点先说清楚。
+
+`tools/cut_from_sheets.py` 现在能从 3 张发型模板稳定切出 **7 片**（洋红底 PNG，
+写到 `design/redraw/sheetcut_*.png`，几何写 `design/sheets/cut_geometry.json`）：
+
+| 件 | 槽位 | 内容框 |
+|---|---|---|
+| `hair_twin_back_l` / `_r` | `head_side_hair` | 192×534 / 190×534 |
+| `hair_twin_crown` | `head_crown_tied` | 224×131 |
+| `hair_pony_back` | `body_back_pony` | 326×902 |
+| `hair_pony_crown` | `head_crown_tied` | 227×131 |
+| `hair_long_back` | `body_back_hair` | 594×764 |
+| `hair_long_crown` | `head_crown_tied` | 216×131 |
+
+关键是**判据换了维度**（详见 LESSONS 233）：后发用「剪影差」、头顶用「几何框」，
+都不再靠颜色分头发。中间踩的坑全部记档：PIL 13.0.0 的 `ImageDraw.floodfill`
+在 "L" 模式上**一个像素都不填**；自写边界传播正确但要 125 秒，最后用
+`erode(dilate(b,17),17)` 替掉（1.2 秒，对这批素材零漏检、只多 2.7% 圆角）。
+
+**下一步**（没做完，照实记）：① 长发的胸前鬓发 `front_l/front_r` 还切不干净，
+暂时退出 PLAN，继续用现有 derive 件；② 把 7 片写进 `attachments.json` 当普通
+`source` 引用，走现有 keyout / `harden_interior` / `@2x` 全链路；③ rebuild +
+`check_assets` + 出新旧并排实拍给用户看。
