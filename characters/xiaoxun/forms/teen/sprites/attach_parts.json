@@ -84,6 +84,30 @@
       ],
       "curve": "tip",
       "note": "高马尾专用，和长发的 body_back_hair(58) 同一区段（整个身体之后，最低的身体件是腿 60）。★ 马尾和双马尾的层位必须反着来：马尾扎在**后脑**，正面视角下它本来就该被身体挡住，只在轮廓外侧露出来 —— 这正是\"它在身后\"的视觉证据。所以素材画成**往一侧甩**的弧线，露出来的是甩出轮廓的那半边。锚点在顶边 = 发绳，曲线 tip。"
+    },
+    {
+      "id": "neck_back",
+      "label": "领后（夹克之下）",
+      "layer": 95,
+      "group": "chest",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "领后（T46.9）。层 95 = **躯干 100 之下** —— 兜帽的根要被夹克领子压住才读成\"缝在领子后面\"。用户原话「兜帽是连接在衣领后面的，你做到前面了」。画法口径：パーカーのフードは**胸側より背中側に重みがある**（atam-academy）、「横や後ろから見ると首の後ろにたまりシワができる」（CLIP STUDIO）。组 chest = 跟躯干走，不跟头走：兜帽根缝在衣服上。"
+    },
+    {
+      "id": "head_side_sweep",
+      "label": "脸侧细缕（刘海与鬓发之上）",
+      "layer": 247,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。"
     }
   ],
   "attachments": [
@@ -147,7 +171,7 @@
       "file": "sprites/acc_hood_up.png",
       "size": [
         340,
-        432
+        314
       ]
     },
     {
@@ -184,6 +208,69 @@
       "size": [
         284,
         640
+      ]
+    },
+    {
+      "id": "hood_neck",
+      "slot": "neck_back",
+      "file": "sprites/acc_hood_neck.png",
+      "size": [
+        183,
+        90
+      ]
+    },
+    {
+      "id": "hood_down",
+      "slot": "neck_back",
+      "file": "sprites/acc_hood_down.png",
+      "size": [
+        282,
+        125
+      ]
+    },
+    {
+      "id": "hair_sweep_twin_l",
+      "slot": "head_side_sweep",
+      "file": "sprites/acc_hair_sweep_twin_l.png",
+      "size": [
+        75,
+        130
+      ]
+    },
+    {
+      "id": "hair_sweep_twin_r",
+      "slot": "head_side_sweep",
+      "file": "sprites/acc_hair_sweep_twin_r.png",
+      "size": [
+        75,
+        130
+      ]
+    },
+    {
+      "id": "hair_sweep_pony_l",
+      "slot": "head_side_sweep",
+      "file": "sprites/acc_hair_sweep_pony_l.png",
+      "size": [
+        75,
+        130
+      ]
+    },
+    {
+      "id": "hair_sweep_pony_r",
+      "slot": "head_side_sweep",
+      "file": "sprites/acc_hair_sweep_pony_r.png",
+      "size": [
+        75,
+        130
+      ]
+    },
+    {
+      "id": "hood_up_hem",
+      "slot": "neck_back",
+      "file": "sprites/acc_hood_up_hem.png",
+      "size": [
+        338,
+        118
       ]
     }
   ]

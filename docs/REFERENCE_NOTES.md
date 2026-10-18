@@ -3145,3 +3145,87 @@ direction.Y = ((SinF(radian) * direction.X) + (direction.Y * CosF(radian)));   /
   ⚠ **许可要先读**：Tencent Hunyuan 3D Community License **不适用欧盟/英国/韩国**、
   月活 >100 万需单独授权、输出不得用于训练其他模型
   （[条款解读](https://builderai.tools/blog/single-image-to-3d-model-pipeline-2026)）。
+
+---
+
+## 第四十六批：塗り足し／发型是套装／兜帽接在衣领后面（2026-10-18 第十问）
+
+用户第十问一次打回三件事，并要求"实在不行去看教程"。三件事在教程里都有明确做法，
+抄录如下，**每条都带 URL**。
+
+### A. 塗り足し（被遮住的部分也要画全）—— 这是硬性工序，不是加分项
+
+- Live2D 官方 PSD 教程：[docs.live2d.com/en/cubism-editor-tutorials/psd/](https://docs.live2d.com/en/cubism-editor-tutorials/psd/)
+  > "do not forget to add the parts that were hidden in the source image.
+  >  If there are no additions, the part will appear disconnected when it moves."
+
+  —— 原画里被挡住的部分必须补画，不补的话**一动起来就会露馅**。
+- 官方手册「素材を分ける」：[docs.live2d.com/en/cubism-editor-manual/divide-the-material/](https://docs.live2d.com/en/cubism-editor-manual/divide-the-material/)
+  补画要**新建图层**画，不要在原图层上涂。
+- [blog.copainter.ai/vtuber-standing-character-guide/](https://blog.copainter.ai/vtuber-standing-character-guide/)：
+  「隠れている部分を描き足す」—— **この工程だけは省略できません**。
+- ★ 直接对症本项目的一条
+  [daigonozin.com](https://daigonozin.com/)（髪の毛を簡単に動かす！素材の分け方）：
+  > 後ろの髪は空いているところを全部塗って、**それプラス頭部のレイヤーに直接髪の色を
+  > 描いてしまいます**
+
+  —— 头部那张底图（本项目的 `seg_head`）上**直接把头发颜色画上去**。
+  本项目 `tools/make_scalp_patch.py` 就是照这条做的：抹掉人耳、把鬓发底下那圈
+  "只在被盖住时才成立"的肤色翼换成发色、颅顶按垂直渐变铺发基色 `#D8D8E8`。
+- [shiroikarasu.net](https://shiroikarasu.net/live2d-part-separation-illustrator-guide/)：
+  **のりしろ**（糊代）—— 轮廓要往相邻件底下多伸一截，留出重叠余量。
+
+### B. 发型差分 = 整套替换，不是挂件
+
+- [redeyerui.work/8215](https://redeyerui.work/8215)：头发分四类 —— **前髪 / 後ろ髪 /
+  サイドヘア（もみあげ）/ くくった髪**。做差分要按这四类成套换。
+- [booth.pm/ja/items/5980683](https://booth.pm/ja/items/5980683)（髪型差分付き素材商品）：
+  一份差分 = **前髪差分 2 種 + 後ろ髪差分 2 種 + ツインテール用マスク**。
+  —— 商业素材的做法就是"整套给"，没有"加一条马尾"这种卖法。
+- [twitter.com/kawase1234567/status/1809068996479889593](https://twitter.com/kawase1234567/status/1809068996479889593)：
+  > ショートヘアはロングヘアから髪の毛を削除するだけだと、あまり印象が変わらない
+
+  —— 只做"减法"换不出发型，**印象不会变**。本项目第九问被打回正是这个毛病。
+- [x.com/kawase1234567/status/1800863566624661510](https://x.com/kawase1234567/status/1800863566624661510)：
+  描画順 **前髪 → 横髪 → 後ろ髪**；**横髪 ＝ 輪郭の後ろ ～ 両肩の前**（本项目
+  `head_side_hair` 245/246、新增的 `head_side_sweep` 247 就卡在这个层带）。
+- [creatorsforum.live2d.com/t/topic/2921](https://creatorsforum.live2d.com/t/topic/2921)：
+  髪型差分 ≥3 种时，用**一个参数打多个 key**，不要开多个参数。
+- 最低限拆法（三处口径一致）：
+  [note.com/himono_vtuber/n/ne6f7c0fdfdaa](https://note.com/himono_vtuber/n/ne6f7c0fdfdaa)、
+  [surume1ka.com/archives/2215](https://surume1ka.com/archives/2215)、
+  [palmie.jp/lessons/331](https://www.palmie.jp/lessons/331)
+  —— 前髪・**左右分开的**両サイド・後ろ髪；後ろ髪另需侧面件。
+
+### C. 兜帽：根部压在衣领之下，衣服要跟着改
+
+- ★ [juku.live2dcs.jp/en/course/course-55/](https://juku.live2dcs.jp/en/course/course-55/)
+  —— Live2D 官方学园有**「フードの作り方」专门课**：自然に着脱できるモデル／
+  素材の分け方／違和感のない切り替え。（本轮只读到课程大纲）
+- ★ 重なり順模板 [nnwarks.com/live2d_page2/](https://nnwarks.com/live2d_page2/)：
+  ①前髪+眉 ②顔 ③横髪 ④肩回り ⑤**首** ⑥**服や襟裏** … ⑨後ろ髪最奥。
+  —— **兜帽根部和「襟裏」同一层带：躯干之下、後ろ髪之上**。
+  本项目据此新开槽 `neck_back`（层 **95**，torso 是 100）。
+- [atam-academy.com/blog/42725/](https://atam-academy.com/blog/42725/)：
+  先在脖子周围画个"圈"再沿着它画褶；**胸側より背中側に重みがある**（重量在背面）。
+- [clipstudio.net/oekaki/archives/151991](https://www.clipstudio.net/oekaki/archives/151991)：
+  首周りに**たまりシワ 2 段**；**顔が出る部分と後頭部を覆う部分は形状が違う**
+  —— 这条是本项目把 `hood_up` 切成上下两段（`source_crop`）的依据。
+- [9-piece.com/column/2026/05/07/20260507/](https://9-piece.com/column/2026/05/07/20260507/)：
+  侧面看，布料在**脖子后面堆起来**；**髪をフードの上に少し出すと自然**。
+- 差分与遮罩：[game.deaf-ray.com/live2d-model-expression-clothing/](https://game.deaf-ray.com/live2d-model-expression-clothing/)、
+  [twiman.net/user/1554022262030073856/1707235392003645704](https://twiman.net/user/1554022262030073856/1707235392003645704)
+  —— フード差分要配 mask，裏地可以兼当 mask 用。
+- [creatorsforum.live2d.com/t/topic/2550](https://creatorsforum.live2d.com/t/topic/2550)：
+  戴上帽子时，头发物理要**抑制摆幅**（否则头发会穿出帽子）。
+- [vtuberkaibougaku.site/2019/01/31/post-3424/](https://vtuberkaibougaku.site/2019/01/31/post-3424/)：
+  襟这类左右对称件要**左右分开**切。
+
+### 落到本仓库的改动
+
+| 教程结论 | 本仓库对应 |
+|---|---|
+| 塗り足し / 头部图层直接画发色 | `tools/make_scalp_patch.py`（rebuild 第 **14b** 步，排在挖鬓发之后、改 seg_head 的 15/16 步之前；1× 与 **@2x 都要补**） |
+| 发型＝前髪+横髪+後ろ髪+束ね髪 成套换 | `hairstyle` 档 twin/pony **收起** `hair_side_l/r`，**换上** `hair_sweep_{twin,pony}_{l,r}`（新槽 `head_side_sweep` 层 247） |
+| 兜帽根 = 襟裏层带，躯干之下 | 新槽 `neck_back`（层 **95** < torso 100）；常驻件 `hood_neck` + down 档 `hood_down` |
+| 顔が出る部分と後頭部で形状が違う | `hood_up` 切成上段（`source_crop [0,0,1,0.726]`）+ 下摆 `hood_up_hem`（`[0,0.726,1,1]`，钻进领口） |

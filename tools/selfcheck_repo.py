@@ -1916,25 +1916,49 @@ def check_live2d(root):
                   and _slot.get("group") == "head",
                   "层 %d/%d（手臂 143 < x < 后发壳 170），组 %r"
                   % (_tl["layer"], _tr["layer"], _slot.get("group")))
-        # ⑤ 2026-10-18 第九问**推翻了第八问的做法**，这一条是反过来写的。
-        #    第八问按用户的「短发甚至都没去除」给 twin/pony 加了
-        #    hide_parts:[hair_side_l, hair_side_r]，结果用户拿截图又打回四条：
-        #    人耳裸露在脸颊上、后发壳的平切口横在颧骨、发丝碎片、剪影缺一块。
-        #    根因是**鬓发是承重件**：它底下的 seg_head 是一张光头侧脸（人耳完整
-        #    画着、没有发际线）、hair_back 的下沿是一条本来就指望被盖住的平切口。
-        #    藏掉承重件 = 在头上开洞。A/B 四格抓帧（logs/asset_qa/）判定保留胜出。
-        #    所以规矩改成：**承重件一律不许裸隐**，想隐必须先过
-        #    check_assets 的「藏件露底」几何闸（tools/head_silhouette.py）。
+        # ⑤ 这一条被改过两次，两次都是用户打回，前因后果都留着：
+        #    第八问按「短发甚至都没去除」给 twin/pony 加了
+        #    hide_parts:[hair_side_l, hair_side_r] —— 用户拿截图打回四条：
+        #    人耳裸露在脸颊、后发壳平切口横在颧骨、发丝碎片、剪影缺一块。
+        #    第九问据此写成「承重件一律不许裸隐」，并撤销了 hide_parts。
+        #    第十问用户再次打回：「马尾不是加个马尾，而是**整个发型都要配合着
+        #    做出改变**」—— 不藏鬓发就永远做不出"换了一套发型"。教程口径一致
+        #    （kawase：ショートヘアはロングヘアから削除するだけだと印象が変わらない）。
+        #    所以规矩第三版：**藏可以，但必须自带接管件**。
+        #      · 藏之前先把底图补画了（tools/make_scalp_patch.py，塗り足し，
+        #        Live2D 官方 PSD 教程的硬性工序）——这解决"底下见不得人"。
+        #      · 这一档必须同时 extra_parts 里给出替代件——这解决"只减不加"。
+        #    覆盖率的量化门槛在 check_assets 的几何闸（head_silhouette.hide_backing，
+        #    接管 >=45% 且不露透明背景 <=2%）；这里只查结构：藏了就得有东西顶上。
         _hide = (_hg or {}).get("hide_parts") or {}
         _load_bearing = {"hair_side_l", "hair_side_r", "hair_back", "seg_head"}
-        _bad = sorted({p for v in _hide.values() for p in (v or [])}
-                      & _load_bearing)
-        check("承重件没有被裸隐（鬓发/后发壳/头底图藏掉就是在头上开洞）",
-              not _bad,
-              ("这些档位把承重件藏了：%s —— 底下 seg_head 是光头侧脸、"
-               "hair_back 下沿是平切口，藏了必露馅" % _bad) if _bad else
-              "hide_parts=%s（空=谁都不藏，鬓发在四个发型里都留着）"
-              % (dict(_hide) or {}))
+        # 接管件 = 表里**自己声明属于这一档**的挂件（pose_group/pose_id）
+        #    接管必须是**同一个部位**的：藏鬓发就得给鬓发位的件，拿脑后的马尾
+        #    顶名额不算（第一版就是这么漏过去的——马尾本体 body_back_pony 占着
+        #    pony 档的名额，抽掉掠发也照样绿）。
+        _ROLE = {"hair_side_l": {"head_side_hair", "head_side_sweep"},
+                 "hair_side_r": {"head_side_hair", "head_side_sweep"},
+                 "hair_back": {"body_back_hair", "body_back_pony"},
+                 "seg_head": {"head_under_bangs", "head_in_hair"}}
+        _extra = {}
+        for _a in _att.get("attachments", []):
+            if _a.get("pose_group") == "hairstyle" and _a.get("pose_id"):
+                _extra.setdefault(_a["pose_id"], []).append(_a.get("slot"))
+        _bad = sorted({
+            "%s:%s" % (_k, _p)
+            for _k, _v in _hide.items() for _p in (_v or [])
+            if _p in _load_bearing
+            and not (set(_extra.get(_k) or []) & _ROLE.get(_p, set()))})
+        _scalp = os.path.exists(os.path.join(root, "tools", "make_scalp_patch.py"))
+        _who = sorted({_k for _k, _v in _hide.items()
+                       if set(_v or []) & _load_bearing})
+        check("藏承重件的档位都自带了接管件（只减不加 = 在头上开洞）",
+              not _bad and _scalp,
+              ("这些档位藏了承重件却没给替代件：%s" % _bad) if _bad else
+              ("缺 tools/make_scalp_patch.py（藏之前要先把底图补画了）"
+               if not _scalp else
+               "藏承重件的档位 %s，每档都带了**同部位**的替代件；底图补画工具在位"
+               % (_who or "（无）")))
         # ⑥ 收侧发这件事要**一路通到引擎**：表里写了 hide，生成器要搬进 rig.json，
         #    引擎的 pose_opacity 要认。少任何一环都是"在 JSON 里写日记"（G117 那类病）。
         _rigp = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")

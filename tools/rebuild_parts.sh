@@ -75,6 +75,13 @@ step "14/19 侧发两缕 + 后发（AI 重绘无侧发的脸 → 虹膜配准 �
 "$PY" tools/make_sidehair_parts.py --character "$CH" --form "$FM" \
       --redraw characters/xiaoxun/design/redraw/head_nosidehair.png
 
+step "14b/19 头皮塗り足し（seg_head 是张光头：抹掉人耳 / 鬓发翼换发色 / 颅顶铺发基色）"
+# ⚠ 必须排在 14 步**之后**：那一步挖走鬓发才会在 seg_head 上留下「只在被盖住时
+#   才成立」的肤色翼。也必须排在 15/16 步**之前**（它们同样改 seg_head）。
+#   Live2D 官方 PSD 教程：元画で隠れていた部分の描き足しを忘れずに。
+#   不补画就收鬓发 = 第九问被打回的「人耳裸露在脸颊」。
+"$PY" tools/make_scalp_patch.py --character "$CH" --form "$FM"
+
 step "15/19 眼线二次拆件（最后跑：脸上那只睁眼挖成眼窝皮肤，必须排在所有改 seg_head 的工具之后）"
 "$PY" tools/make_eyeline_parts.py --character "$CH" --form "$FM"
 

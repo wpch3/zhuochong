@@ -134,23 +134,62 @@ def check_form(character, form, verbose=True):
     return results
 
 
-def hide_backing(character, form, need=0.95):
+MAX_HOLE = 0.02           # 藏掉之后露出**透明背景**的面积上限（占被藏件）
+
+def hole_ratio(base, rig, hidden, region, canvas, np, Image):
+    """露出来的那块，底下**有没有东西接着**——返回露出透明背景的面积占比。
+
+    只合成层序低于 hidden 的那些件（压在上面的不算接管）。
+    """
+    lay = float(hidden.get("layer", 0))
+    base_im = Image.new("RGBA", canvas, (0, 0, 0, 0))
+    for p in sorted(rig["parts"], key=lambda q: float(q.get("layer", 0))):
+        if float(p.get("layer", 0)) >= lay:
+            continue
+        im = Image.open(os.path.join(base, p["file"])).convert("RGBA")
+        sc = p.get("scale", 1.0)
+        sx, sy = (float(sc[0]), float(sc[1])) if isinstance(sc, (list, tuple)) \
+            else (float(sc), float(sc))
+        if (sx, sy) != (1.0, 1.0):
+            im = im.resize((max(1, int(im.width * sx)), max(1, int(im.height * sy))),
+                           Image.LANCZOS)
+        ax, ay = p.get("anchor", [0, 0])
+        lyr = Image.new("RGBA", canvas, (0, 0, 0, 0))
+        lyr.paste(im, (int(round(p["pos"][0] - ax * im.width)),
+                       int(round(p["pos"][1] - ay * im.height))))
+        base_im = Image.alpha_composite(base_im, lyr)
+    a = np.asarray(base_im)
+    opaque = np.asarray(a[..., 3]) > 110
+    return float((region & ~opaque).sum()) / float(max(1, int(region.sum())))
+
+
+def hide_backing(character, form, need=0.45):
     """『这一档藏掉的件，必须由**这一档自己带的件**接管』闸。
 
     第九问的四个缺陷（人耳裸露在脸颊、后发壳平切口横在颧骨、发丝碎片、剪影缺块）
-    都出自第八问那条 hide_parts:[hair_side_l, hair_side_r]。
+    都出自第八问那条 hide_parts:[hair_side_l, hair_side_r] —— 只藏不换。
 
-    走过一次弯路，记在这里省得下次再走：最早写的判据是"藏掉之后会不会露出背景"，
-    **量出来是 0，一条都抓不到** —— 因为鬓发底下确实有东西，是 seg_head 那张
-    **光头侧脸**（人耳完整画着、没有发际线）。露出来的不是背景，是一张没打算给人
-    看的底图。所以判据必须换成"谁来接管"，而且接管者只能是**这一档自己带的差分
-    件**，不能是碰巧垫在底下的本体。
+    判据两条，都要满足：
+      ① 接管：这一档自己带的差分件盖住被藏件 >= need。
+         接管者**只能是这一档自己的件**，不算碰巧垫在底下的本体。
+      ② 不破洞：藏掉之后露出**透明背景**的面积 <= MAX_HOLE。
 
-    实测覆盖率（teen，对 hair_side_l / hair_side_r）：
-      · long 档（acc_hair_long 整片垂下来）   100.0% / 99.0%   ← 这种才准藏
-      · twin 档（两条辫子挂在耳侧）            72.0% / 67.9%   ← 第八问干的，脸颊必漏
-      · pony 档（马尾全在脑后）                 0.0% / 79.9%   ← 左脸整片漏
-    阈值取 95%，对好例留 4 个点余量，对坏例有 15~95 个点的距离。
+    实测（teen，2026-10-18。twin/pony 两档各自带了 hair_sweep_* 两缕掠发）：
+      twin  hair_side_l 77.6% / hair_side_r 82.9%      破洞 0.00%
+      pony  hair_side_l 52.0% / hair_side_r 83.1%      破洞 0.00%   <- 最紧
+      第八问那版（只藏不换）                0% / 0%
+    阈值取 45%：对最紧的 pony 左侧留 7 个点余量，对第八问那版有 45 个点。
+    为什么不取更高 —— 向后掠的细缕本来就比齐腮鬓发窄，覆盖率天生到不了 90%，
+    硬抬阈值只会逼出"为过闸而画的假件"。第九问那版定的 95% 有个隐含前提
+    （被藏件底下是见不得人的光头底图），第十问用 tools/make_scalp_patch.py
+    把 seg_head 的头皮补画之后（Live2D 官方 PSD 教程：元画で隠れていた部分の
+    描き足しを忘れずに / docs.live2d.com/en/cubism-editor-tutorials/psd/），
+    那个前提没了，数也就跟着改。
+
+    走过的弯路，省得下次再走：中间试过"露出来的是不是头发色"和"假边最长横向
+    连段"两种像素判据，**负向对照都抓不到**——把补画前的光头底图塞回去，两个
+    数几乎不动（18.28% -> 18.26%）。因为被藏件露出来的那块早被差分件和前髪盖掉
+    了，补画的像素根本不在量程里。判据必须落在"谁来接管"这种结构事实上。
     """
     from PIL import Image
     import numpy as np
@@ -172,9 +211,13 @@ def hide_backing(character, form, need=0.95):
                 mk = part_mask(base, by[h], canvas, np, Image)
                 tot = max(1, int(mk.sum()))
                 cov = int((mk & own).sum()) / float(tot)
+                rest = mk & ~own
+                hole = 0.0 if not rest.any() else \
+                    hole_ratio(base, rig, by[h], rest, canvas, np, Image)
                 out.append({"group": g["id"], "entry": ent["id"], "part": h,
-                            "area_px": tot, "cover": cov, "need": need,
-                            "ok": cov >= need})
+                            "area_px": tot, "cover": cov, "hole": hole,
+                            "max_hole": MAX_HOLE, "need": need,
+                            "ok": cov >= need and hole <= MAX_HOLE})
     return out
 
 

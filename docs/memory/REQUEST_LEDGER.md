@@ -224,3 +224,13 @@
 | 提示注入防护 | 她要读网页、读文件、看屏幕 | AGENT_PLAN §7.2 |
 | 人格与能力解耦 | 人设不许污染工具选择与事实判断 | AGENT_PLAN §7.5 |
 | 离线降级而非失能 | 桌宠相对云端助手的核心优势 | AGENT_PLAN §7.6 |
+
+
+## 0i：2026-10-18 第十问（三条打回 + 一条"去查教程"）
+
+| # | 用户原话（摘） | 做了什么 | 落点 |
+|---|---|---|---|
+| 1 | 「不要再出现这种半成品了，必须要每个部件都完整拆卸下来也都是单独的部件，live2d 的教程里没写吗」 | 教程里写了，而且是硬性工序：**塗り足し**。新工具把 `seg_head` 这张光头底图补成画了头发的头（抹人耳 / 鬓发翼换发色 / 颅顶铺发基色），接进 rebuild 14b 步 | `tools/make_scalp_patch.py`、`tools/rebuild_parts.sh` 14b、REFERENCE_NOTES 第四十六批 A |
+| 2 | 「马尾不是加个马尾，而是整个发型都要配合着做出改变……做完整的发型，而不是加个东西」 | twin/pony 两档**收起原生鬓发、换上向后掠的侧发**（新槽 `head_side_sweep` 层 247 + 新源图 `hair_side_tied.png`），不再是"在原发型上叠挂件" | `attachments.json`、`characters/xiaoxun/design/redraw/hair_side_tied.png`、REFERENCE_NOTES 第四十六批 B |
+| 3 | 「兜帽是连接在衣领后面的，你做到前面了……衣服也要配合兜帽做出改变」 | 按官方口径的重なり順（…⑤首 ⑥**服や襟裏**…），新开 `neck_back` 槽（层 **95 < torso 100**）放兜帽根与下摆；`hood_up` 按"顔が出る部分と後頭部で形状が違う"切成上段 + 下摆两件，下摆钻进领口 | `attachments.json`（槽 `neck_back`、件 `hood_neck`/`hood_down`/`hood_up_hem`）、REFERENCE_NOTES 第四十六批 C |
+| 4 | 「实在不行去看教程，live2d 的官方教程没有，就去看其他的教程，去搜索，去查找资料」 | 动手前先查，16 条结论**连 URL** 誊进文档，并在表格里一条条对上本仓库的改动 | `docs/REFERENCE_NOTES.md` 第四十六批 |

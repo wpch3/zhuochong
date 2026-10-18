@@ -1826,6 +1826,163 @@
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
+    },
+    {
+      "id": "acc_hood_neck",
+      "file": "sprites/acc_hood_neck@2x.png",
+      "group": "chest",
+      "layer": 97,
+      "pos": [
+        423,
+        265
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "note": "兜帽根（领后）（挂件，槽 neck_back）：领后（T46.9）。层 95 = **躯干 100 之下** —— 兜帽的根要被夹克领子压住才读成\"缝在领子后面\"。用户原话「兜帽是连接在衣领后面的，你做到前面了」。画法口径：パーカーのフードは**胸側より背中側に重みがある**（atam-academy）、「横や後ろから見ると首の後ろにたまりシワができる」（CLIP STUDIO）。组 chest = 跟躯干走，不跟头走：兜帽根缝在衣服上。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hood_down",
+      "file": "sprites/acc_hood_down@2x.png",
+      "group": "chest",
+      "layer": 98,
+      "pos": [
+        423,
+        250
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "note": "兜帽·摘下（堆在背后）（挂件，槽 neck_back）：领后（T46.9）。层 95 = **躯干 100 之下** —— 兜帽的根要被夹克领子压住才读成\"缝在领子后面\"。用户原话「兜帽是连接在衣领后面的，你做到前面了」。画法口径：パーカーのフードは**胸側より背中側に重みがある**（atam-academy）、「横や後ろから見ると首の後ろにたまりシワができる」（CLIP STUDIO）。组 chest = 跟躯干走，不跟头走：兜帽根缝在衣服上。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_sweep_twin_l",
+      "file": "sprites/acc_hair_sweep_twin_l@2x.png",
+      "group": "head",
+      "layer": 243,
+      "pos": [
+        340,
+        222
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "note": "脸侧细缕（twin·l）（挂件，槽 head_side_sweep）：扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_sweep_twin_r",
+      "file": "sprites/acc_hair_sweep_twin_r@2x.png",
+      "group": "head",
+      "layer": 244,
+      "pos": [
+        492,
+        222
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "note": "脸侧细缕（twin·r）（挂件，槽 head_side_sweep）：扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_sweep_pony_l",
+      "file": "sprites/acc_hair_sweep_pony_l@2x.png",
+      "group": "head",
+      "layer": 247,
+      "pos": [
+        340,
+        222
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "note": "脸侧细缕（pony·l）（挂件，槽 head_side_sweep）：扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_sweep_pony_r",
+      "file": "sprites/acc_hair_sweep_pony_r@2x.png",
+      "group": "head",
+      "layer": 248,
+      "pos": [
+        492,
+        222
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "note": "脸侧细缕（pony·r）（挂件，槽 head_side_sweep）：扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hood_up_hem",
+      "file": "sprites/acc_hood_up_hem@2x.png",
+      "group": "chest",
+      "layer": 99,
+      "pos": [
+        422,
+        351
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "note": "兜帽下沿（钻进领子里）（挂件，槽 neck_back）：领后（T46.9）。层 95 = **躯干 100 之下** —— 兜帽的根要被夹克领子压住才读成\"缝在领子后面\"。用户原话「兜帽是连接在衣领后面的，你做到前面了」。画法口径：パーカーのフードは**胸側より背中側に重みがある**（atam-academy）、「横や後ろから見ると首の後ろにたまりシワができる」（CLIP STUDIO）。组 chest = 跟躯干走，不跟头走：兜帽根缝在衣服上。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     }
   ],
   "regions": [
@@ -7287,12 +7444,14 @@
         {
           "id": "up",
           "parts": [
-            "acc_hood_up"
+            "acc_hood_up",
+            "acc_hood_up_hem"
           ]
         },
         {
           "id": "down",
           "parts": [
+            "acc_hood_down",
             "hair_ahoge",
             "acc_ear_cat_l",
             "acc_ear_cat_r"
@@ -7316,17 +7475,29 @@
           "id": "twin",
           "parts": [
             "acc_hair_twin_l",
-            "acc_hair_twin_r"
+            "acc_hair_twin_r",
+            "acc_hair_sweep_twin_l",
+            "acc_hair_sweep_twin_r"
+          ],
+          "hide": [
+            "hair_side_l",
+            "hair_side_r"
           ]
         },
         {
           "id": "pony",
           "parts": [
-            "acc_hair_pony"
+            "acc_hair_pony",
+            "acc_hair_sweep_pony_l",
+            "acc_hair_sweep_pony_r"
+          ],
+          "hide": [
+            "hair_side_l",
+            "hair_side_r"
           ]
         }
       ],
-      "note": "发型互斥组（T46.3）。档位：none=短发 bob（原生短壳 + 两缕侧发，什么都不额外挂）、long=长发过腰、twin=双马尾、pony=高马尾。★ default 写 none 是这组的关键：发型是**加法差分件**（DC59），短发这一档恰恰是\"一束都不加\"，不该为它硬造一个空档位或者塞一个看不见的部件 —— 引擎本来就有 cur=-1 这个状态（/api/pose?id=none），这一版只是让它能当初始值（zrig.c load_poses）。★ hide_parts 被**撤销**（2026-10-18 第九问，用户看截图退回）：第一版为了回应「短发甚至都没去除」，给 twin/pony 加了 hide_parts=[hair_side_l, hair_side_r]。实测这是错的 —— 鬓发是**承重件**：它底下的 seg_head 是一张**光头侧脸**（人耳裸露、无发际线），而 hair_back 的下沿是一条**平切口**（本来就指望鬓发盖住）。两缕一藏，画面上立刻出现①人耳直接长在脸颊上 ②后发壳平切口横在颧骨 ③切件残留的发丝碎片像孔雀毛 ④头部剪影缺一块。用户四条抱怨其实是同一个因。A/B 两版抓帧对比后改回保留 —— 扎起来的发型留面颊两缕是动漫常规画法，剪影也因此完整。真正的「去除短发」是把**后发团**换掉，那由 hair_back 自己的差分件承担（记在 T46.7）。★ 结论上闸：selfcheck 新增「隐藏件不许在头部剪影上开洞」（第㉘段），任何 hide_parts 都要先过这道几何闸。"
+      "note": "发型互斥组（T46.3 → T46.9 重做）。档位 none=短发 bob / long=长发过腰 / twin=双马尾 / pony=高马尾。★★ 第十问用户定调：「马尾不是加个马尾，而是**整个发型都要配合着做出改变**」。教程口径完全一致 —— 发型拆件是 **前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束** 五类（Live2D 官方 PSD 教程 / redeyerui），髪型差分 PSD 卖的也是「前髪差分2種 + 後ろ髪差分2種」（booth 5980683），kawase 更直说「ショートヘアはロングヘアから髪の毛削除するだけだとあまり印象が変わらない」。所以 twin/pony 这两档**换掉横髪**：收起原生的 hair_side_l/r（齐腮短鬓），换上向后掠的细缕 hair_sweep_*。long 这一档不换 —— 披着的长发本来就该有齐腮鬓发。★ 这次敢收鬓发，前提是**底图先补画了**（tools/make_scalp_patch.py）：第九问之所以一收就露人耳和平切口，是因为 seg_head 是张光头。Live2D 官方：「元画で隠れていた部分の描き足しを忘れずに」，daigonozin 更进一步「頭部のレイヤーに直接髪の色を描いてしまいます」。"
     }
   ],
   "xfades": [

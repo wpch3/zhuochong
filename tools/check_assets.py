@@ -1007,7 +1007,9 @@ def check(character, form, root=".", strict=False, out_json=None):
                 f"藏{r['part']}有件接管", r["ok"],
                 f"{r['group']}:{r['entry']} 档自带的差分件盖住了它的 "
                 f"{r['cover'] * 100:.1f}%（下限 {r['need'] * 100:.0f}%；"
-                f"接管者只能是这一档自己的件，不算碰巧垫在底下的本体）")
+                f"接管者只能是这一档自己的件，不算碰巧垫在底下的本体），"
+                f"露出透明背景 {r['hole'] * 100:.2f}%"
+                f"（上限 {r['max_hole'] * 100:.0f}%）")
         for r in _hs.headwear_fit(character, form):
             add("头部几何", f"{r['part']}按头宽定标", r["ok"],
                 f"外宽 {r['width_px']} / 头部剪影宽 {r['head_width_px']} = "
