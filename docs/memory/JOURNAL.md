@@ -3631,3 +3631,52 @@ DC79 加入、DC48 归档为第十四批；LESSONS 206；`ART_PARTS.md` 补 `/ap
 selfcheck 511 项（新增力场量纲 / 上限同源 / 镜像补偿三道）、冒烟 236 项（新增 6 条）。
 两组负向对照（去掉镜像补偿、风不喂进内核）都见红并还原。
 
+## 续六十五（2026-10-18）—— 「两个密钥都有了」，而正确答复是"别给我"
+
+用户说两家的密钥都拿到了，问我是做个接口，还是他直接发过来。
+
+说实话，"直接发过来"那条路在当下是更快的：我把字符串填进 `config/providers/*.json`，
+改个 `enabled: true`，当场就能渲一版带 cute style 的试听。
+但这条路有个硬障碍，跟小心不小心无关 —— **我这个沙箱的出网白名单只有
+github / npm / pypi 三家**，Azure 和 MiniMax 的端点我根本连不上。
+密钥发过来，我除了把它暴露在对话记录里之外什么都做不了。
+
+那真正会发请求的是谁？是 **GitHub Actions**。
+这个仓库里 `voice-render.yml` 本来就在那儿跑：渲完 38 条台词，
+把 mp3 直接 commit 回分支（当初这么设计是因为 Actions 的 artifact 下载域我也不可达）。
+Actions 取密钥的正规入口就是仓库 Secrets。所以答案是定下来的：
+**我交接口，密钥走 Secrets，从头到尾不经我手。**
+
+接口这边花的力气大多在细节上，列几个踩过的：
+
+- **MiniMax 的 `data.audio` 是 hex，不是 base64。** 按 base64 解会得到一堆垃圾字节，
+  而且不会报错 —— 文件能写出来，只是播不响。
+- **输出格式必须和 edge-tts 对齐成 24kHz / mono / 48kbps mp3。**
+  因为长句是分段合成再二进制拼接的（没有 ffmpeg 的环境下），
+  采样率不一致的两段 mp3 拼在一起，接缝处会咔哒一声。
+- **Azure 门户页上那个 `*.api.cognitive.microsoft.com` 不是 TTS 端点**，
+  真正要打的是 `https://<region>.tts.speech.microsoft.com/cognitiveservices/v1`。
+- **缺密钥要在第一句之前就失败。** 原来的写法会渲到某一条才炸，
+  前面几十秒全白跑；现在选了云端供应商就先体检，缺了直接打印
+  「见 docs/ops/VOICE_KEYS.md」然后退出。
+- 顺手把 `import edge_tts` 从硬依赖改成软依赖 —— 只想用云端的人，
+  不该被一个用不上的包挡在门外。
+
+然后是密钥纪律。这个 workflow 有个特点让我格外小心：**它失败时会把日志 commit 回分支。**
+那么任何进了命令行的东西都会进日志，进了日志就进了仓库历史，
+而仓库历史里的密钥是删不掉的（只能作废重发）。所以三道闸：
+客户端里不许出现 `print(... key ...)`（只许打指纹）、指纹必须是 sha256 截断、
+workflow 的 `secrets.` 不许出现在 `run:` 行。
+
+最后这道闸还给我上了一课。第一次跑，**干净代码自己就红了**，
+报的"可疑行"是 `print(key: str)` —— 那是 `def fingerprint(key: str)`
+被正则从中间切开的。`fingerprint` 结尾正好是 `print`。
+如果我只做了负向对照（注入一行明文打印，看闸红不红），这条误报会原样进仓库。
+正向对照和负向对照是两件事：一个验闸有没有牙，一个验牙咬的是不是坏人。
+写进 LESSONS 207。
+
+现在球在用户那边：把三个 secret 放进仓库设置，告诉我一声，
+我去 Actions 手动触发 `voice-render`，选 `provider=azure`、
+`cloud_voice=zh-CN-Xiaoyi:DragonHDFlashLatestNeural`，渲完 mp3 直接提交回分支，
+他能听，我也能看波形。那才是 T58.1 真正该听的那一版 —— 带 **cute / shy** 风格的晓伊，
+而不是 edge 免费通道上那个只能靠 prosody 硬凹的青年音。

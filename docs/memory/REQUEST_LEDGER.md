@@ -66,6 +66,20 @@
 
 ---
 
+## 0d. 2026-10-18 第五问 —— 「两个密钥都有了，你是做个接口还是我直接发给你」
+
+| 用户这轮说的 | 收到没有 | 在哪 | 状态 |
+| --- | --- | --- | --- |
+| **「Azure 和 MiniMax 两个密钥我都有了」** | ✅ | 下一步不是等我，是把它们放到**仓库 Secrets**（`Settings → Secrets and variables → Actions`），三个名字：`ZHUOCHONG_SECRET_AZURE_SPEECH` / `ZHUOCHONG_SECRET_MINIMAX` / `ZHUOCHONG_SECRET_MINIMAX_GROUP`。路径与截图式步骤写在 `docs/ops/VOICE_KEYS.md` **§3.0** | ✅ 已答（**球在用户这边**，放完告诉我就能渲） |
+| **「是你做个接口还是我直接发给你」** | ✅ | **做接口，别发给我** —— 理由不是客套：沙箱出网白名单只有 github/npm/pypi，**两家 TTS 端点我这边根本不可达**，密钥发过来我也调不通，白泄露一次。接口 = `tools/voice_cloud.py`（Azure `mstts:express-as` + MiniMax `t2a_v2`）+ `voice_render.py --provider` + `voice-render.yml` 的三个输入；**T58.2** | ✅ 本轮交付（`019e480`） |
+| 顺带：密钥会不会被我写进日志 | ➕ 我自己盯的 | 全流程只打印**指纹**（长度 + 首尾两字 + sha256 前 8 位）；workflow 里 secret **只经 `env:` 注入**，不进 `run:` 命令行（这个 workflow 失败时会把日志 commit 回分支，命令行进日志＝密钥进仓库）。3 道 selfcheck 闸 + 负向对照；**DC80** | ✅ 已加闸 |
+| 顺带：只想用云端却被 edge-tts 的安装挡住 | ➕ 我自己发现的 | `voice_render.py` 的 `import edge_tts` 原来失败就 `SystemExit(2)` ⇒ 改成软依赖，真用到才报错 | ✅ 已修 |
+
+**这一问我做对的地方**：用户给出了"直接发给你"这个选项，而**最省事的答案恰好是最该拒绝的那个**。
+密钥这类东西，正确的工程答复是把它从聊天里挪出去，而不是"我小心一点"。
+
+---
+
 ## 1. 2026-10-11 ~ 10-13：立项期
 
 | # | 用户要的 | 落点 | 状态 |
