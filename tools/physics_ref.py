@@ -130,7 +130,10 @@ class Chain(object):
         dy = self.y[i] - self.y[i - 1]
         if abs(dx) < 1e-12 and abs(dy) < 1e-12:
             return 0.0
-        return math.degrees(dir_to_radian(gx, gy, dx, dy))
+        # ★ 取负的理由见 zphys2.c::zphys2_angle：像素空间 Y 轴向下，
+        #   atan2 求出来的有号角相对官方（Y 轴向上）是镜像的。
+        #   约定：正 = 摆往 +x（画面右）偏。
+        return -math.degrees(dir_to_radian(gx, gy, dx, dy))
 
 
 # ───────────────────────── 对拍场景（C 单测会原样复现）

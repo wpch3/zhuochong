@@ -3368,6 +3368,56 @@ def check_phys2_rig(root):
               "还留着：%s" % "、".join(sorted(olds & gone)) if (olds & gone)
               else "呆毛 2 条 + 长发 3 条已换成 2 条粒子链")
 
+    # ---- T47.3 力场 ----
+    # 这里盯的两件事都踩过：
+    #   ① 重力写成 (0,−1)：官方模型空间 Y 轴向上，我们的像素空间 Y 轴向下。
+    #      照抄官方默认值 = 头发朝天上飘，而且是"静态看截图看不出来"的那种错。
+    #   ② 风的量纲：内核里 力 = 重力单位向量 × Acceleration + 风，所以风是"几个 g"。
+    #      误当成像素写个 30 进去，一帧就把摆吹到输出上限钉死。
+    bad_force = []
+    for form in ("teen", "chibi"):
+        rp = os.path.join(root, "characters/xiaoxun/forms/%s/rig.json" % form)
+        if not os.path.isfile(rp):
+            continue
+        rig = jsonc(rp)
+        if not rig.get("physics2"):
+            continue
+        f = rig.get("forces")
+        if not f:
+            bad_force.append("%s 没有 forces 段" % form)
+            continue
+        g = f.get("gravity") or []
+        if len(g) != 2 or abs(float(g[0])) > 1e-9 or float(g[1]) <= 0:
+            bad_force.append("%s 重力 %s（像素空间 Y 向下，应是 [0, 正数]）" % (form, g))
+        bz = f.get("breeze") or {}
+        amp = float(bz.get("amp", 0) or 0)
+        hz = float(bz.get("hz", 0) or 0)
+        if not (0.0 < amp <= 1.5):
+            bad_force.append("%s 微风 amp=%s（应在 0~1.5 这个「几个 g」的量纲里，0 = 站着不动就彻底死了）"
+                             % (form, amp))
+        if not (0.0 < hz <= 2.0):
+            bad_force.append("%s 微风 hz=%s（应在 0~2Hz；再高就不是风是抖动）" % (form, hz))
+    check("力场段齐全且量纲对（重力向下为正、微风在 0~1.5g）", not bad_force,
+          "；".join(bad_force[:3]) or "teen / chibi 两形态的 forces 都对")
+
+    # 引擎上限和闸里的数字必须同源，否则改了引擎闸还在守旧值
+    mb = re.search(r"#define\s+ZRIG_BREEZE_MAX\s+([0-9.]+)", src)
+    check("引擎声明的微风上限和闸里用的一致", bool(mb) and abs(float(mb.group(1)) - 1.5) < 1e-9,
+          "zrig.c 写 %s，闸按 1.5 判" % (mb.group(1) if mb else "没找到"))
+
+    # 符号约定：像素空间 Y 向下，角度读数必须补一次取负，否则风往右吹头发往左飘。
+    # 这条是 2026-10-18 的回归 —— 当时 855 条断言全套了 fabs()，一条都没拦住。
+    kp = os.path.join(root, "src", "core", "zphys2.c")
+    ref = os.path.join(root, "tools", "physics_ref.py")
+    if os.path.isfile(kp) and os.path.isfile(ref):
+        ks = io.open(kp, encoding="utf-8").read()
+        rs = io.open(ref, encoding="utf-8").read()
+        check("摆角读数补了坐标系镜像（C 与 Python 参考实现同时补）",
+              "return -rad * 180.0 / ZP2_PI;" in ks
+              and "-math.degrees(dir_to_radian(" in rs,
+              "两边都取负了" if "return -rad * 180.0 / ZP2_PI;" in ks
+              else "zphys2_angle 没取负 ⇒ 风往右吹头发会往左飘")
+
 
 # ------------------------------------------------------------------ 8 仓库卫生
 def check_hygiene(root):

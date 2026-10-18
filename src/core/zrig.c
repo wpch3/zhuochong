@@ -432,6 +432,13 @@ enum { BL_FIRST = 0, BL_INTERVAL, BL_CLOSING, BL_CLOSED, BL_OPENING };
 #define ZRIG_PHYS_FPS        60.0
 #define ZRIG_PHYS_STEP       (1.0 / ZRIG_PHYS_FPS)
 #define ZRIG_PHYS_MAX_REMAIN 5.0
+/* T47.3 风的上限。★量纲要说清楚：内核里力 = 重力方向(单位向量) × Acceleration + 风，
+   所以**风是以"几个 g"为单位的**，不是像素。实测 wx=0.3 就能把长发整体吹偏 9px，
+   wx=1.0 已经顶到输出上限 —— 这类"看着像小数、其实已经很大"的量最容易写错，
+   所以上限按 g 取，而不是按像素取。 */
+#define ZRIG_BREEZE_MAX       1.5
+#define ZRIG_GUST_MAX         6.0
+#define ZRIG_GUST_MAX_SEC     3.0
 
 struct zrig {
     char  id[96];
@@ -466,6 +473,17 @@ struct zrig {
        像素空间 Y 向下 ⇒ 向下的重力是 (0,+1)，不是官方那个 Y 向上的 (0,−1)。
        风默认 0；T47.3 会给它接上环境微风 / 情绪阵风 / 场景事件。 */
     double   p2_gx, p2_gy, p2_wx, p2_wy;
+    /* T47.3 风有三路，相加后喂给内核：
+       ① 定常风 p2_wx/wy（rig 里的 forces.wind，或外部用 /api/force 设）
+       ② 常驻微风 breeze（低频噪声，角色站着不动也有的那一点点飘）
+       ③ 阵风 gust（一次性冲击，情绪/事件用：生气＝一股风把头发掀一下）
+       官方 Meta.EffectiveForces 只有两个常量，但 SDK 的 Options 允许运行时覆盖，
+       所以"风会变"是官方架构里的合法扩展点（REFERENCE_NOTES 第四十批）。 */
+    double   p2_breeze_amp;          /* 常驻微风幅度（0 = 关） */
+    double   p2_breeze_hz;           /* 主频 */
+    double   p2_gust_x, p2_gust_y;   /* 阵风强度向量 */
+    double   p2_gust_left, p2_gust_dur;  /* 阵风剩余 / 总时长（秒） */
+    double   p2_wind_ex, p2_wind_ey; /* 本帧实际合成出来的风（给 /api/force 读回） */
     double  pose_last;           /* Pose 淡化上一次推进的时刻，<0 = 还没开始 */
 
     zsm     sm;
@@ -2839,6 +2857,19 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         r->p2_gy = gj ? zjson_num(zjson_at(gj, 1), 1.0) : 1.0;
         r->p2_wx = wj ? zjson_num(zjson_at(wj, 0), 0.0) : 0.0;
         r->p2_wy = wj ? zjson_num(zjson_at(wj, 1), 0.0) : 0.0;
+        {   /* breeze 写在 rig 里而不是写死在引擎里：室内的角色和站天台上的角色，
+               这个值本来就该不一样；将来换形态/换场景也只改数据。 */
+            const zjson *bz = fj ? zjson_obj_get(fj, "breeze") : NULL;
+            r->p2_breeze_amp = bz ? zjson_num(zjson_obj_get(bz, "amp"), 0.0) : 0.0;
+            r->p2_breeze_hz  = bz ? zjson_num(zjson_obj_get(bz, "hz"), 0.11) : 0.11;
+            if (r->p2_breeze_amp < 0.0) r->p2_breeze_amp = 0.0;
+            if (r->p2_breeze_amp > ZRIG_BREEZE_MAX) {
+                zdiag_warn(diag, file, bz ? bz->line : 0, 0, "forces.breeze.amp",
+                           "超过上限，已夹回（微风不是台风）");
+                r->p2_breeze_amp = ZRIG_BREEZE_MAX;
+            }
+            if (!(r->p2_breeze_hz > 0.0) || r->p2_breeze_hz > 2.0) r->p2_breeze_hz = 0.11;
+        }
     }
     if (load_physics2(r, zjson_obj_get(root, "physics2"), diag, file) != 0) goto fail;
     if (load_param_groups(r, zjson_obj_get(root, "param_groups"), diag, file) != 0) goto fail;
@@ -3930,6 +3961,7 @@ static void physics2_update(zrig *r, double now)
             for (k = 0; k < r->p2[i].nout; ++k) r->p2[i].out[k].applied = 0.0;
         }
         r->p2_last = now;
+        r->p2_wind_ex = r->p2_wind_ey = 0.0;
         return;
     }
     if (r->p2_last < 0.0) { r->p2_last = now; return; }
@@ -3937,13 +3969,34 @@ static void physics2_update(zrig *r, double now)
     r->p2_last = now;
     if (dt < 0.0) dt = 0.0;
 
+    {   /* 本帧的合成风。微风用两路**不可公度**的正弦相加（0.11Hz 与它的 2.71 倍），
+           听不出周期，又不用随机数 —— 随机数会让"同一时刻"两次渲染结果不同，
+           A/B 对照图和固定步长回放就全废了（DC53 的同一个理由）。 */
+        double bz = 0.0, gk = 0.0;
+        if (r->p2_breeze_amp > 0.0) {
+            const double TAU = 2.0 * 3.14159265358979323846;
+            bz = r->p2_breeze_amp *
+                 (0.62 * sin(TAU * r->p2_breeze_hz * now) +
+                  0.38 * sin(TAU * r->p2_breeze_hz * 2.71 * now + 1.3));
+        }
+        if (r->p2_gust_left > 0.0 && r->p2_gust_dur > 0.0) {
+            /* 阵风包络：瞬间起、指数落（真实的一阵风就是这样，不是方波） */
+            double u = 1.0 - r->p2_gust_left / r->p2_gust_dur;   /* 0→1 */
+            gk = exp(-3.2 * u);
+            r->p2_gust_left -= dt;
+            if (r->p2_gust_left < 0.0) r->p2_gust_left = 0.0;
+        }
+        r->p2_wind_ex = r->p2_wx + bz + r->p2_gust_x * gk;
+        r->p2_wind_ey = r->p2_wy + r->p2_gust_y * gk;
+    }
+
     for (i = 0; i < r->np2; ++i) {
         zp2chain *c = &r->p2[i];
         double tx, ty, ang;
         p2_input(r, c, &tx, &ty, &ang, dt);
         /* 固定步长、输入插值、帧间插值都在内核里（zphys2_advance），这里只喂输入 */
         zphys2_advance(&c->ch, tx, ty, ang,
-                       r->p2_gx, r->p2_gy, r->p2_wx, r->p2_wy, dt);
+                       r->p2_gx, r->p2_gy, r->p2_wind_ex, r->p2_wind_ey, dt);
         for (k = 0; k < c->nout; ++k) {
             zp2out *o = &c->out[k];
             /* 这就是 T47.2 的那句翻译：摆角(度) × 倍率 → 限幅 → 写进通道 */
@@ -4273,6 +4326,39 @@ void zrig_phys2_force_get(const zrig *r, double *gx, double *gy, double *wx, dou
     if (gy) *gy = r->p2_gy;
     if (wx) *wx = r->p2_wx;
     if (wy) *wy = r->p2_wy;
+}
+
+void zrig_phys2_breeze(zrig *r, double amp, double hz)
+{
+    if (!r) return;
+    if (amp < 0.0) amp = 0.0;
+    if (amp > ZRIG_BREEZE_MAX) amp = ZRIG_BREEZE_MAX;
+    r->p2_breeze_amp = amp;
+    if (hz > 0.0 && hz <= 2.0) r->p2_breeze_hz = hz;
+}
+
+double zrig_phys2_breeze_amp(const zrig *r) { return r ? r->p2_breeze_amp : 0.0; }
+
+void zrig_phys2_gust(zrig *r, double wx, double wy, double sec)
+{
+    if (!r) return;
+    wx = ZC_CLAMP(wx, -ZRIG_GUST_MAX, ZRIG_GUST_MAX);
+    wy = ZC_CLAMP(wy, -ZRIG_GUST_MAX, ZRIG_GUST_MAX);
+    if (!(sec > 0.0)) sec = 0.6;
+    if (sec > ZRIG_GUST_MAX_SEC) sec = ZRIG_GUST_MAX_SEC;
+    r->p2_gust_x = wx;
+    r->p2_gust_y = wy;
+    r->p2_gust_dur = sec;
+    r->p2_gust_left = sec;
+}
+
+/* 本帧真正喂进内核的风（定常 + 微风 + 阵风）。调试端点读它，
+   否则"我设了风"和"风真的吹到头发上了"是两件事，又会变成看不见的失效。 */
+void zrig_phys2_wind_now(const zrig *r, double *wx, double *wy)
+{
+    if (!r) return;
+    if (wx) *wx = r->p2_wind_ex;
+    if (wy) *wy = r->p2_wind_ey;
 }
 
 int zrig_deform_count(const zrig *r) { return r ? r->ndeforms : 0; }

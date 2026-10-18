@@ -895,6 +895,48 @@ def run(base, root):
             lo, hi = min(lo, v), max(hi, v)
         check("静置 10 秒，长发发梢仍有 >=2px 的自主摆动（旧内核这里恒为 0）",
               hi - lo >= 2.0, "行程 %.2fpx（%.2f ~ %.2f）" % (hi - lo, lo, hi))
+        # ---- T47.3 力场：风真的要吹得动头发，而且方向不能反 ----
+        # "方向不能反"这条是 2026-10-18 的回归：当时读数相对真实偏向是镜像的
+        # （像素空间 Y 轴向下），画面上就是"风往右吹、头发往左飘"。
+        info0 = a.json("/api/info.json") or {}
+        fr = info0.get("forces") or {}
+        check("info.json 暴露力场（重力/定常风/微风/本帧实际风）",
+              all(k in fr for k in ("gx", "gy", "wx", "wy", "breeze", "wind_x")),
+              "forces=%s" % sorted(fr.keys()))
+        check("重力在像素空间是向下为正（写成 -1 头发会朝天飘）",
+              (fr.get("gy") or 0) > 0 and abs(fr.get("gx") or 0) < 1e-9,
+              "gravity=(%.2f, %.2f)" % (fr.get("gx") or 0, fr.get("gy") or 0))
+        a.hit("/api/force?breeze=0")               # 先把微风关掉，读数才干净
+        a.hit("/api/step?n=120&dt=0.0167")
+        calm = _tip()
+        a.hit("/api/force?wx=0.3&wy=0"); a.hit("/api/step?n=300&dt=0.0167")
+        right = _tip()
+        check("风往右吹，长发要被吹开 >=8px",
+              right - calm >= 8.0, "静置 %.2f → 有风 %.2f（偏移 %+.2fpx）"
+              % (calm, right, right - calm))
+        check("吹开的方向要和风一致（+ = 画面右）", right > 0,
+              "longhair2 合成位移 %+.2fpx" % right)
+        a.hit("/api/force?wx=-0.3&wy=0"); a.hit("/api/step?n=360&dt=0.0167")
+        left = _tip()
+        check("风反过来吹，头发也要反过来飘", left < 0,
+              "右风 %+.2fpx / 左风 %+.2fpx" % (right, left))
+        a.hit("/api/force?wx=0&wy=0"); a.hit("/api/step?n=150&dt=0.0167")
+        back = _tip()
+        check("风停 2.5 秒后要收敛回静置位附近",
+              abs(back - calm) < abs(left - calm) * 0.5,
+              "静置 %.2f → 风停后 %.2f（刮风时 %.2f）" % (calm, back, left))
+        # 阵风：一股风掀一下再自己落下去（生气/事件会用它，T51.1）
+        a.hit("/api/force?gust_x=2.0&gust_t=0.6")
+        peak = 0.0
+        for _ in range(45):
+            a.hit("/api/step?n=2&dt=0.0167")
+            peak = max(peak, abs(_tip()))
+        a.hit("/api/step?n=180&dt=0.0167")
+        check("一阵风能掀起头发，而且会自己衰减下去",
+              peak >= 6.0 and abs(_tip()) < peak * 0.6,
+              "峰值 %.2fpx → 3 秒后 %.2fpx" % (peak, abs(_tip())))
+        a.hit("/api/force?breeze=0.03&hz=0.11")    # 还回角色默认的常驻微风
+
         # 关掉物理总开关之后必须立刻归零 —— 排查接缝时两套内核要一起静音
         a.hit("/api/physics?on=0"); a.hit("/api/step?n=6&dt=0.0167")
         q = (a.json("/api/info.json") or {}).get("physics2") or {}

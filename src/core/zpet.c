@@ -1029,6 +1029,37 @@ double zpet_phys2_applied(const zpet *p, const char *id, int out_index)
     return (p && p->rig) ? zrig_phys2_applied(p->rig, id, out_index) : 0.0;
 }
 
+/* T47.3 力场：重力/定常风/常驻微风/阵风，外加"本帧实际吹的风"读回 */
+void zpet_force_set(zpet *p, double gx, double gy, double wx, double wy)
+{
+    if (p && p->rig) zrig_phys2_force(p->rig, gx, gy, wx, wy);
+}
+
+void zpet_force_get(const zpet *p, double *gx, double *gy, double *wx, double *wy)
+{
+    if (p && p->rig) zrig_phys2_force_get(p->rig, gx, gy, wx, wy);
+}
+
+void zpet_breeze_set(zpet *p, double amp, double hz)
+{
+    if (p && p->rig) zrig_phys2_breeze(p->rig, amp, hz);
+}
+
+double zpet_breeze_amp(const zpet *p)
+{
+    return (p && p->rig) ? zrig_phys2_breeze_amp(p->rig) : 0.0;
+}
+
+void zpet_gust(zpet *p, double wx, double wy, double sec)
+{
+    if (p && p->rig) zrig_phys2_gust(p->rig, wx, wy, sec);
+}
+
+void zpet_wind_now(const zpet *p, double *wx, double *wy)
+{
+    if (p && p->rig) zrig_phys2_wind_now(p->rig, wx, wy);
+}
+
 int zpet_deform_count(const zpet *p)
 {
     return (p && p->rig) ? zrig_deform_count(p->rig) : 0;

@@ -159,6 +159,11 @@ double zrig_phys2_applied(const zrig *r, const char *id, int out_index);
 /* 引擎级力场（官方 Meta.EffectiveForces）。像素空间 Y 向下 ⇒ 向下 = (0,+1)。
    T47.3 的风、T47.4 的拖动惯性都从这里进来。 */
 void   zrig_phys2_force(zrig *r, double gx, double gy, double wx, double wy);
+/* T47.3：常驻微风（amp=0 关）/ 一次性阵风 / 读回本帧实际合成的风 */
+void   zrig_phys2_breeze(zrig *r, double amp, double hz);
+double zrig_phys2_breeze_amp(const zrig *r);
+void   zrig_phys2_gust(zrig *r, double wx, double wy, double sec);
+void   zrig_phys2_wind_now(const zrig *r, double *wx, double *wy);
 void   zrig_phys2_force_get(const zrig *r, double *gx, double *gy,
                             double *wx, double *wy);
 

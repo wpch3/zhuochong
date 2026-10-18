@@ -5946,14 +5946,108 @@ static void test_phys2_rig(void)
         r = zrig_load(rp, rd, &d);
         CHECK(r != NULL, "真角色的 rig 应加载成功（带 physics2）");
         if (r) {
+            double gx = 0, gy = 0, wx = 0, wy = 0;
             CHECK(zrig_phys2_count(r) >= 2,
                   "teen 形态应至少有 2 条摆链（呆毛 + 长发），实测 %d",
                   zrig_phys2_count(r));
             CHECK(zrig_phys2_particles(r, "longhair2") == 4,
                   "长发是 3 段摆（4 个粒子），实测 %d",
                   zrig_phys2_particles(r, "longhair2"));
+            /* T47.3：力场要从 rig 的 forces 段读进来。Y 轴向下 ⇒ 重力是 (0,+1)。 */
+            zrig_phys2_force_get(r, &gx, &gy, &wx, &wy);
+            CHECK(gy > 0.5 && fabs(gx) < 1e-9,
+                  "重力默认向下，像素空间是 (0,+1)，实测 (%.2f, %.2f)", gx, gy);
+            CHECK(zrig_phys2_breeze_amp(r) > 0.0,
+                  "真角色应该带常驻微风（forces.breeze.amp），实测 %.3f",
+                  zrig_phys2_breeze_amp(r));
             zrig_free(r);
         }
+    }
+
+    /* ⑧ T47.3 力场：风能吹动头发、方向要对、停了要收敛、阵风要衰减。
+          ★ 这一段是"风往右吹头发往左飘"那个 bug 的回归：方向错过一次，
+          而当时 855 条断言全是 fabs()，一条都没拦住。 */
+    {
+        /* 复用本函数开头那套夹具（零通道 idle + 一条 4 粒子链），重新装一次，
+           这样力场这一段的起点是干净的。 */
+        zrig *r;
+        double t, step = 1.0 / 60.0;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "力场夹具应加载成功（错误 %d 条）", d.error_count);
+        if (!r) return;
+        zrig_blink_set_enabled(r, 0);
+
+        /* 先静置到稳态（风为 0） */
+        zrig_phys2_force(r, 0.0, 1.0, 0.0, 0.0);
+        zrig_phys2_breeze(r, 0.0, 0.11);
+        for (t = 0.0; t < 6.0; t += step) zrig_tick(r, t);
+
+        {   /* ① 风往 +x 吹 ⇒ 输出必须是正的（往右），而且吹得动 */
+            double right, left, calm = zrig_phys2_applied(r, "c1", 0);
+            zrig_phys2_force(r, 0.0, 1.0, 0.3, 0.0);
+            for (; t < 12.0; t += step) zrig_tick(r, t);
+            right = zrig_phys2_applied(r, "c1", 0);
+            CHECK(right - calm > 4.0,
+                  "风往右吹要把发梢吹开 >4px（静置 %.2f → 有风 %.2f）", calm, right);
+            CHECK(right > 0.0,
+                  "风往右吹，输出就得是正的（+ = 往画面右），实测 %+.2f", right);
+
+            /* ② 对称：风往 −x 吹，结果要镜像过来 */
+            zrig_phys2_force(r, 0.0, 1.0, -0.3, 0.0);
+            for (; t < 18.0; t += step) zrig_tick(r, t);
+            left = zrig_phys2_applied(r, "c1", 0);
+            CHECK(left < 0.0 && fabs(left + right) < fabs(right) * 0.35,
+                  "风反过来吹，输出要大致镜像（右 %+.2f / 左 %+.2f）", right, left);
+
+            /* ③ 风停了要收敛回静置位（2 秒内回到静置值附近） */
+            zrig_phys2_force(r, 0.0, 1.0, 0.0, 0.0);
+            for (; t < 20.0; t += step) zrig_tick(r, t);
+            CHECK(fabs(zrig_phys2_applied(r, "c1", 0) - calm) < fabs(left - calm) * 0.4,
+                  "风停 2 秒后要收敛回静置位附近（静置 %.2f，现在 %.2f）",
+                  calm, zrig_phys2_applied(r, "c1", 0));
+        }
+
+        {   /* ④ 阵风：一股风掀一下，然后自己衰减下去（不是方波） */
+            double peak = 0.0, after, tt;
+            zrig_phys2_gust(r, 2.0, 0.0, 0.6);
+            for (tt = t; tt < t + 0.8; tt += step) {
+                double v;
+                zrig_tick(r, tt);
+                v = fabs(zrig_phys2_applied(r, "c1", 0));
+                if (v > peak) peak = v;
+            }
+            t = tt;
+            for (; t < tt + 2.5; t += step) zrig_tick(r, t);
+            after = fabs(zrig_phys2_applied(r, "c1", 0));
+            CHECK(peak > 6.0, "一阵风要真能掀起来（峰值 %.2fpx）", peak);
+            CHECK(after < peak * 0.5,
+                  "阵风要衰减掉，不能一直吹（峰值 %.2f → 2.5 秒后 %.2f）", peak, after);
+        }
+
+        {   /* ⑤ 常驻微风：输入一动不动，发梢也要一直在飘 */
+            double lo = 1e9, hi = -1e9, w0 = 0, w1 = 0, tt;
+            zrig_phys2_breeze(r, 0.03, 0.11);
+            for (tt = t; tt < t + 4.0; tt += step) zrig_tick(r, tt);   /* 先过渡 */
+            for (t = tt; t < tt + 12.0; t += step) {
+                double v;
+                zrig_tick(r, t);
+                v = zrig_phys2_applied(r, "c1", 0);
+                if (v < lo) lo = v;
+                if (v > hi) hi = v;
+            }
+            CHECK(hi - lo > 1.5,
+                  "常驻微风下，发梢 12 秒里的行程要 >1.5px（实测 %.2f）", hi - lo);
+            /* 微风是确定性的（两路正弦，不是随机数）—— 不然 A/B 对照图就不可比了 */
+            zrig_phys2_wind_now(r, &w0, &w1);
+            CHECK(fabs(w0) > 1e-6,
+                  "风读回来不能是 0（本帧实际风 %.4f）", w0);
+            zrig_phys2_breeze(r, 99.0, 0.11);
+            CHECK(zrig_phys2_breeze_amp(r) <= 1.5 + 1e-9,
+                  "微风幅度要被夹住（设 99 实测 %.3f）", zrig_phys2_breeze_amp(r));
+            zrig_phys2_breeze(r, 0.0, 0.11);
+        }
+        zrig_free(r);
     }
 }
 
@@ -6089,6 +6183,47 @@ static void test_phys2(void)
         CHECK(fabs(zphys2_angle(&ch, 2, 0.7071067811865476, 0.7071067811865476, 0)) < 2.0,
               "稳定之后摆角相对重力方向应接近 0（实际 %.3f°）",
               zphys2_angle(&ch, 2, 0.7071067811865476, 0.7071067811865476, 0));
+    }
+
+    /* ③b 读数的**符号**（2026-10-18 补）。
+          这条以前是空的：上面每一处 zphys2_angle 都套了 fabs()，
+          所以"读数和真实偏向反号"这种错 855 条断言一条都拦不住 ——
+          直到 T47.3 接上风，才在画面上看见"风往右吹、头发往左飘"。
+          判据只有一句：**读数的正负必须和发梢真实往哪边偏一致**。 */
+    {
+        zphys2 ch;
+        int k;
+        double dx, ang;
+        zphys2_init(&ch, 3);
+        zphys2_set(&ch, 1, 48.0, 0.95, 1.0, 1.0);
+        zphys2_set(&ch, 2, 36.0, 0.93, 0.88, 1.1);
+
+        zphys2_reset(&ch, 0.0, 1.0);
+        for (k = 0; k < 900; ++k)                /* 风往 +x（画面右）吹 */
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3, 0.0, ZPHYS2_STEP);
+        dx  = ch.p[2].x - ch.p[0].x;
+        ang = zphys2_angle(&ch, 2, 0.0, 1.0, 0);
+        CHECK(dx > 5.0, "风往右吹，发梢就该在根的右边（dx=%.2fpx）", dx);
+        CHECK(ang > 0.0, "发梢在右边时读数必须为正（dx=%+.2fpx 读数 %+.3f° —— 异号就是坐标系镜像没补）",
+              dx, ang);
+
+        zphys2_reset(&ch, 0.0, 1.0);
+        for (k = 0; k < 900; ++k)                /* 风往 −x 吹，整组对称翻过来 */
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.0, 1.0, -0.3, 0.0, ZPHYS2_STEP);
+        dx  = ch.p[2].x - ch.p[0].x;
+        ang = zphys2_angle(&ch, 2, 0.0, 1.0, 0);
+        CHECK(dx < -5.0, "风往左吹，发梢就该在根的左边（dx=%.2fpx）", dx);
+        CHECK(ang < 0.0, "发梢在左边时读数必须为负（dx=%+.2fpx 读数 %+.3f°）", dx, ang);
+
+        /* Angle 输入：官方约定是"输入停在哪，摆就停在哪" ——
+           输入 +10° 的稳态读数就该是 +10° 左右，而不是 −10°（旧的镜像约定）。
+           T47.5 导入 physics3.json 时，Output.Scale 的符号能不能照搬，全看这一条。 */
+        zphys2_reset(&ch, 0.0, 1.0);
+        for (k = 0; k < 900; ++k)
+            zphys2_step(&ch, 0.0, 0.0, 10.0, 0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+        ang = zphys2_angle(&ch, 1, 0.0, 1.0, 0);
+        CHECK(ang > 8.0 && ang < 12.0,
+              "Angle 输入 +10° 的稳态读数应是 +10° 附近（实际 %+.3f°）", ang);
     }
 
     /* ④ 固定步长不变性：同样 2 秒，一边 60fps 一边 15fps，结果必须几乎一样。

@@ -109,6 +109,13 @@ int         zpet_phys2_particles(const zpet *p, const char *id);
 double      zpet_phys2_angle(const zpet *p, const char *id, int particle);
 int         zpet_phys2_out_count(const zpet *p, const char *id);
 double      zpet_phys2_applied(const zpet *p, const char *id, int out_index);
+/* T47.3 力场 */
+void        zpet_force_set(zpet *p, double gx, double gy, double wx, double wy);
+void        zpet_force_get(const zpet *p, double *gx, double *gy, double *wx, double *wy);
+void        zpet_breeze_set(zpet *p, double amp, double hz);
+double      zpet_breeze_amp(const zpet *p);
+void        zpet_gust(zpet *p, double wx, double wy, double sec);
+void        zpet_wind_now(const zpet *p, double *wx, double *wy);
 int         zpet_deform_count(const zpet *p);
 const char *zpet_deform_id_at(const zpet *p, int i);
 double      zpet_deform_amount(const zpet *p, const char *id);

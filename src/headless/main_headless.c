@@ -16,6 +16,8 @@
  *   GET /api/pause?on=&t=      冻结/恢复引擎时钟（冻结后连续两帧完全相同，便于抓图比对；t 指定冻结到哪一秒）
  *   GET /api/step?n=&dt=       冻结状态下按固定步长空跑 n 帧，让物理与 lag 走到位（A/B 对照必备）
  *   GET /api/ambient?on=       环境摆动总开关（关掉参数才真的等于你设的值，A/B 对照必备）
+ *   GET /api/force?gx=&gy=&wx=&wy=&breeze=&hz=&gust_x=&gust_y=&gust_t=
+ *                              力场（T47.3）：重力方向 / 定常风 / 常驻微风 / 一阵风；不给参数 = 只读
  *   GET /api/pose?group=&id=   互斥部件组切档（≈ pose3.json；id=none 整组关掉）
  *   GET /api/params.json       命名参数表（≈ Live2D ParamXxx）与当前值
  *   GET /api/param?id=&v=      直接写一个参数（reset=1 回默认；all=1 全部复位）
@@ -639,7 +641,60 @@ static void handle_request(zsock fd, const http_req *r)
                 }
             }
         }
+        {   /* T47.3 力场：gravity / 定常 wind / 常驻微风 amp / **本帧实际吹的风**。
+               最后那一对是关键 —— "我设了风"和"风真吹到头发上了"是两件事。 */
+            double gx = 0, gy = 0, wx = 0, wy = 0, ex = 0, ey = 0;
+            zpet_force_get(g_pet, &gx, &gy, &wx, &wy);
+            zpet_wind_now(g_pet, &ex, &ey);
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                            "},\"forces\":{\"gx\":%.4f,\"gy\":%.4f,\"wx\":%.4f,\"wy\":%.4f,"
+                            "\"breeze\":%.4f,\"wind_x\":%.4f,\"wind_y\":%.4f",
+                            gx, gy, wx, wy, zpet_breeze_amp(g_pet), ex, ey);
+        }
         z_snprintf(p, cap - (size_t)(p - body), "}}");
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/force") == 0) {
+        /* T47.3 调试端点：重力方向、定常风、常驻微风、阵风，全在这一个口子上。
+             ?gx=&gy=        重力方向（不必归一化；两个都给才算改）
+             ?wx=&wy=        定常风
+             ?breeze=&hz=    常驻微风幅度与主频（breeze=0 关）
+             ?gust_x=&gust_y=&gust_t=  来一阵风（情绪/事件用，生气就是一股风）
+           一个参数都不给 = 只读当前值。 */
+        char tb[64], body[320];
+        double gx = 0, gy = 0, wx = 0, wy = 0, ex = 0, ey = 0;
+        int got = 0;
+        LOCK();
+        zpet_force_get(g_pet, &gx, &gy, &wx, &wy);
+        if (qstr(r, "gx", tb, sizeof(tb))) { gx = atof(tb); got = 1; }
+        if (qstr(r, "gy", tb, sizeof(tb))) { gy = atof(tb); got = 1; }
+        if (qstr(r, "wx", tb, sizeof(tb))) { wx = atof(tb); got = 1; }
+        if (qstr(r, "wy", tb, sizeof(tb))) { wy = atof(tb); got = 1; }
+        if (got) zpet_force_set(g_pet, gx, gy, wx, wy);
+        if (qstr(r, "breeze", tb, sizeof(tb))) {
+            char hb[64];
+            double hz = qstr(r, "hz", hb, sizeof(hb)) ? atof(hb) : 0.0;
+            zpet_breeze_set(g_pet, atof(tb), hz);
+            got = 1;
+        }
+        if (qstr(r, "gust_x", tb, sizeof(tb)) || qstr(r, "gust_y", tb, sizeof(tb))) {
+            char xb[64], yb[64], sb[64];
+            double sx = qstr(r, "gust_x", xb, sizeof(xb)) ? atof(xb) : 0.0;
+            double sy = qstr(r, "gust_y", yb, sizeof(yb)) ? atof(yb) : 0.0;
+            double sc = qstr(r, "gust_t", sb, sizeof(sb)) ? atof(sb) : 0.6;
+            zpet_gust(g_pet, sx, sy, sc);
+            got = 1;
+        }
+        zpet_force_get(g_pet, &gx, &gy, &wx, &wy);
+        zpet_wind_now(g_pet, &ex, &ey);
+        z_snprintf(body, sizeof(body),
+                   "{\"ok\":true,\"changed\":%s,\"gx\":%.4f,\"gy\":%.4f,"
+                   "\"wx\":%.4f,\"wy\":%.4f,\"breeze\":%.4f,"
+                   "\"wind_x\":%.4f,\"wind_y\":%.4f}",
+                   got ? "true" : "false", gx, gy, wx, wy,
+                   zpet_breeze_amp(g_pet), ex, ey);
         UNLOCK();
         send_text(fd, 200, "application/json", body);
         return;

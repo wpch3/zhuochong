@@ -2766,6 +2766,16 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "from": f"seg_foot_{side}", "to": f"seg_foot_{side}_tip",
             "note": "常态鞋 → 踮脚鞋（鞋身拉长 %.0fpx、鞋底带压扁）" % footp["lift_px"],
         } for side in ("l", "r")] if footp else []),
+        # ★ 力场（T47.3）。官方叫 Meta.EffectiveForces，只有 gravity/wind 两个常量；
+        # breeze 是我们加的"常驻微风"——角色站着不动也有的那一点点空气流动。
+        # ★ 量纲说清楚：风以"几个 g"计（内核里 力 = 重力单位向量 × Acceleration + 风），
+        #   所以 0.03 看着小，其实已经是重力的 3%，发梢 10 秒能走 15px（无风时 8.9px）。
+        # ★ Y 轴向下：重力是 (0, +1) 不是 (0, −1)。
+        "forces": {
+            "gravity": [0, 1],
+            "wind": [0, 0],
+            "breeze": {"amp": 0.03, "hz": 0.11},
+        },
         # ★★ 物理 2.0 的摆链（T47.2）：官方那种 2D 粒子链，输出是**摆角**。
         # 和上面那张 physics 表的区别，一句话：
         #   physics  输出 = pos − target（滞后量）⇒ 输入不动，输出必然是 0 ⇒ 人一静止就死了；

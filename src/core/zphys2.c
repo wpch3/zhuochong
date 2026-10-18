@@ -163,7 +163,18 @@ double zphys2_angle(const zphys2 *c, int i, double gx, double gy, int inverted)
     dy = c->p[i].y - c->p[i - 1].y;
     if (fabs(dx) < 1e-12 && fabs(dy) < 1e-12) return 0.0;
     rad = dir_to_radian(gx, gy, dx, dy);
-    return rad * 180.0 / ZP2_PI;
+    /* ★ 取负：这一步是**坐标系镜像的补偿**，不是"调符号调到好看为止"。
+       dir_to_radian 用 atan2 求有号夹角，在官方那个 **Y 轴向上** 的模型空间里
+       "正 = 逆时针 = 画面上往右偏"；我们的像素空间 **Y 轴向下**，同一个公式
+       算出来的号正好相反（镜像一次，手性就翻一次）。
+       不补这一下的后果是实打实的：风往 +x 吹，头发往左飘（T47.3 实测，
+       风 +0.30 → bend −16px、发缘整体左移；取负之后才对得上）。
+       补在这里（输出读数）而不是补在 dir_to_radian 里，是因为 step() 内部
+       那次"重力方向转了多少"的用法在镜像空间里本来就是自洽的，动它反而会把
+       动力学改坏 —— 和官方逐步对拍的 1e-6 就是靠它。
+       约定由此变成：**正 = 摆往 +x（画面右）偏**，和官方参数的正方向一致，
+       将来 T47.5 导入 physics3.json 时 Output 的 Scale 符号可以照搬不用翻。 */
+    return -rad * 180.0 / ZP2_PI;
 }
 
 void zphys2_advance(zphys2 *c, double tx, double ty, double angle_deg,
