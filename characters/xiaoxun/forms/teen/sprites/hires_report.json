@@ -3,13 +3,182 @@
  "factor": 2,
  "suffix": "@2x.png",
  "model": "RealESR-AnimeVideo-v3_x4.onnx",
- "count": 48,
- "realesrgan": 41,
+ "count": 65,
+ "realesrgan": 58,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 14,
- "seconds": 9.3,
+ "keycolor_fixed": 24,
+ "seconds": 21.9,
  "parts": [
+  {
+   "name": "acc_ear_l.png",
+   "src": [
+    88,
+    104
+   ],
+   "dst": [
+    176,
+    208
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_ear_r.png",
+   "src": [
+    88,
+    104
+   ],
+   "dst": [
+    176,
+    208
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_hair_sidelong_l.png",
+   "src": [
+    106,
+    300
+   ],
+   "dst": [
+    212,
+    600
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 8
+  },
+  {
+   "name": "acc_hair_sidelong_r.png",
+   "src": [
+    105,
+    300
+   ],
+   "dst": [
+    210,
+    600
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_hair_sweep_pony_l.png",
+   "src": [
+    80,
+    132
+   ],
+   "dst": [
+    160,
+    264
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_hair_sweep_pony_r.png",
+   "src": [
+    79,
+    132
+   ],
+   "dst": [
+    158,
+    264
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_hair_sweep_twin_l.png",
+   "src": [
+    64,
+    132
+   ],
+   "dst": [
+    128,
+    264
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_hair_sweep_twin_r.png",
+   "src": [
+    63,
+    132
+   ],
+   "dst": [
+    126,
+    264
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 1
+  },
+  {
+   "name": "acc_hood_up.png",
+   "src": [
+    340,
+    369
+   ],
+   "dst": [
+    680,
+    738
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_tail_puff.png",
+   "src": [
+    181,
+    430
+   ],
+   "dst": [
+    362,
+    860
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_tail_relaxed.png",
+   "src": [
+    126,
+    410
+   ],
+   "dst": [
+    252,
+    820
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_tail_tuck.png",
+   "src": [
+    127,
+    404
+   ],
+   "dst": [
+    254,
+    808
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "acc_tail_up.png",
+   "src": [
+    114,
+    480
+   ],
+   "dst": [
+    228,
+    960
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
   {
    "name": "arm_l_fore.png",
    "src": [
@@ -216,7 +385,7 @@
     136
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 0
   },
   {
    "name": "eye_l_closed.png",
@@ -440,6 +609,32 @@
    "keycolor_fixed": 0
   },
   {
+   "name": "hair_long_back.png",
+   "src": [
+    259,
+    740
+   ],
+   "dst": [
+    518,
+    1480
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 3
+  },
+  {
+   "name": "hair_pony_back.png",
+   "src": [
+    284,
+    640
+   ],
+   "dst": [
+    568,
+    1280
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
    "name": "hair_side_l.png",
    "src": [
     106,
@@ -461,6 +656,32 @@
    "dst": [
     210,
     264
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_twin_l.png",
+   "src": [
+    116,
+    510
+   ],
+   "dst": [
+    232,
+    1020
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_twin_r.png",
+   "src": [
+    116,
+    510
+   ],
+   "dst": [
+    232,
+    1020
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -632,7 +853,7 @@
     1002
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 2
+   "keycolor_fixed": 1
   }
  ],
  "note": "切件链不改坐标，这一步只换像素密度；make_rig 发现 @2x 就把 scale 乘 0.5"

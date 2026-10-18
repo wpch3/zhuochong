@@ -1985,8 +1985,13 @@ def check_live2d(root):
         # ⑦ 发型这类**带渐变**的件不许再走色卡三色重铺。
         #    k-means 平色重铺是给漫符用的；按亮度压成 3 色会把柔和明暗和蓝发梢
         #    一起碾平 —— 那正是用户说"色彩完全不一样非常的违和"的原因。
+        #    ★ 2026-10-18 增补：走 derive 的件**天然豁免**。derive 是直接拿
+        #    本体那张贴图（hair_side_l.png 等）拉伸/收窄出来的，逐像素就是
+        #    原画的颜色和笔触，同源性比"统计上对齐"更强 —— 再套一层 Lab 匹配
+        #    是拿自己匹配自己。要求它写 recolor_match 只会逼出一行空配置。
         _wrong = [x["id"] for x in _hair if x.get("recolor")]
-        _nomatch = [x["id"] for x in _hair if not x.get("recolor_match")]
+        _nomatch = [x["id"] for x in _hair
+                    if not x.get("recolor_match") and not x.get("derive")]
         check("发型挂件走 Lab 统计匹配（recolor_match），不走色卡平色重铺",
               not _wrong and not _nomatch,
               ("还在用 recolor 重铺：%s；没写 recolor_match：%s" % (_wrong, _nomatch))

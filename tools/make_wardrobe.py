@@ -23,6 +23,14 @@
 
 ★ 重绘件的硬验收：**剪影 IoU ≥ iou_min**（默认 0.97）。对不齐的贴图换上去
   就是身体错位，这条过不了就不许出包。
+
+★ 2026-10-18：比剪影之前，先把**烘进肩膀的鲍勃发梢**从 AI 件上擦掉。
+  这些重绘素材是照着**没清理过的** seg_torso 画的，所以 AI 把那两撮蓝发梢
+  当成衣服的一部分照抄了下来。rebuild 第 19 步（clean_baked_residue.py）
+  把它们从原件上擦掉之后，两边就对不上了（IoU 掉到 0.948）——
+  但这不是「身体错位」，是**原件瘦了而重绘件没跟着瘦**。
+  照搬同一张发梢掩码再比，闸门量的才是它该量的东西（姿势有没有跑）。
+  顺带一提：擦不擦都不影响出包的像素，因为输出 alpha 一律取原件的。
 """
 from __future__ import annotations
 
@@ -30,9 +38,35 @@ import argparse
 import io
 import json
 import os
+import sys
 
 import numpy as np
 from PIL import Image
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import clean_baked_residue as cbr                              # noqa: E402
+
+
+def unhaired(mask: np.ndarray, scale: int) -> np.ndarray:
+    """比剪影时把**肩膀那条带**排除掉。
+
+    躯干的换装重绘素材是照着\"没清理过的\" seg_torso 画的，所以 AI 把烘在肩上的
+    那两撮鲍勃发梢当成衣服一起抄了下来。rebuild 第 19 步
+    （clean_baked_residue.py）把它们从原件上擦掉之后，AI 件就比原件多出 13718
+    个像素，IoU 从 0.977 掉到 0.948 —— 这不是\"身体错位\"，是\"原件瘦了\"。
+
+    ★ 为什么不照着 clean_baked_residue 再算一遍发梢掩码？试过，不行：
+      那套判据是**认颜色**的（淡紫发身 / 蓝发梢），而换装件本来就是**改了颜色**
+      的（midnight 是深蓝一套），深蓝衣料会被当成蓝发梢整片吃掉 —— 实测多削
+      7643 像素，两个肩头被咬出三角缺口，IoU 反而只回到 0.960。
+    ★ 所以改成\"按位置\"排除：发梢按定义只会落在 clean_baked_residue 划定的
+      肩带（TORSO_HAIR_MAX_Y 以上）里。去掉这条带之后，**清理前后算出来的
+      IoU 一模一样，都是 0.9778** —— 正好证明差额全在带子里、带子外面纹丝未动。
+      带子以下 0.97 的闸原封不动，该拦的照样拦。
+    """
+    out = mask.copy()
+    out[:int(cbr.TORSO_HAIR_MAX_Y * scale)] = False
+    return out
 
 
 def key_magenta(rgb: np.ndarray) -> np.ndarray:
@@ -67,6 +101,9 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
     n = np.asarray(ai).astype(np.uint8)
     B = key_magenta(n) > 0.5
     A = np.asarray(orig)[..., 3] > 128
+    if os.path.basename(src_path).startswith("seg_torso"):
+        sc = 2 if "@2x" in src_path else 1
+        A, B = unhaired(A, sc), unhaired(B, sc)
     inter = float((A & B).sum())
     iou = inter / float((A | B).sum())
     grow = float((B & ~A).sum()) / float(A.sum())

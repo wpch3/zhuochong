@@ -254,3 +254,16 @@
 | 3 | 「截图1是马尾……你做的就是一坨头发缠在一起」 | 加 `hair_crown_tied`（向后收拢的头顶，层 239）。只加尾巴不改头顶，读出来永远是\"短发挂条尾巴\" | `attachments.json` |
 | 4 | 「长发也是，前发你一直没做好。都说了是发型是整体」 | long 档**收起齐腮短鬓、换上垂到胸口的长鬓发**（新槽 `head_side_long` 层 249/251）。接管率 96.1%/85.4% | `attachments.json` |
 | 5 | 「不要再想着敷衍我了，我不是瞎子」 | 复盘里把"仍然欠的"也写了：当前是\"成套替换关键件\"，还不是教程里\"整张重画再拆\"的标准流程 | `POSTMORTEM_ART.md` 第一层末尾 |
+
+## 0l：2026-10-18 第十三问（四项返修）+ 第十四问（兜帽风格判错）
+
+| # | 用户原话（摘） | 做了什么 | 落点 |
+|---|---|---|---|
+| 1 | 「长发的衔接处还是有痕迹」 | 色相对齐 + `harden_interior` 之后重切；3× 放大逐件 A/B 复核，接缝处无异色、无半透 | `tools/make_attach_parts.py`、`logs/asset_qa/` |
+| 2 | 「脸部还有残留」 | 先做**部件归因**（`only=` 逐件渲染）再动代码：image-2 里的"下巴发白"是缩略图缩放错觉，3× 下不存在；真·残留在躯干/头件接缝，新写 `tools/clean_baked_residue.py` 清掉（torso 擦 1103px、head 擦 3444px） | `tools/clean_baked_residue.py`、LESSONS 229 |
+| 3 | 「马尾（pony）这一档整套推翻重做」 | 头顶换 `hair_crown_tied`、侧发换 `hair_sweep_pony_{l,r}`（`width_ratio 0.75`），接管率 65.2%/87.9% | `attachments.json` |
+| 4 | 「双马尾的尾巴要细，前发要自然分缕」 | `hair_sweep_twin_{l,r}` 瘦身到 `width_ratio 0.60`，接管率 83.0%/79.1%，破洞 0.00% | `attachments.json` |
+| 5 | 「兜帽要小、要贴头、要可爱，**不要兔耳**」 | 重画无耳小兜帽；外壳 `width_ratio 1.3603`（比头宽约 +17px/侧），下摆落在衣领线 y=408 | `design/redraw/acc_hood_cute_v6.png` |
+| 6 | 「好好做不要再做坏了」 | 四道闸复跑全绿之外，**逐发型出近景特写**再交付 | `logs/asset_qa/hairstyle_hood_matrix_teen.png` |
+| 7 | ★「**运动衫的兜帽，你怎么生成小红帽的兜帽样式了？**」 | 风格判错，v5 作废。按角色身上的白色运动连帽夹克重做：米白外布＋薄荷青内衬＋帽口厚折边＋白抽绳金属头；蕾丝/扇贝边/荷叶边/短披肩全删。查了一批パーカー作画资料带 URL 落档 | `acc_hood_cute_v6.png`、`tools/make_hood_part.py`、REFERENCE_NOTES **第四十七批**、LESSONS 227 |
+

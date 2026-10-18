@@ -246,7 +246,173 @@ def match_colors(rgb: np.ndarray, a: np.ndarray, ref: np.ndarray,
     return np.clip(res, 0, 255)
 
 
-def build_one(att, slot, redraw_dir, sprites_dir, anchors):
+def scrub_key(arr):
+    """把缩放后边缘上残留的键色（洋红 / 纯绿）像素换成最近的真实颜色。
+
+    ★ 为什么不能只 assert：make_manpu_parts.left_magenta 判\"可见\"用的是
+      alpha > 127，而 check_assets 的键色垃圾闸用的是 alpha > 40。中间这段
+      半透明边像素里混进来的洋红，切件器一声不吭，验收闸直接判红
+      （2026-10-18 实测 acc_hair_sidelong_l@2x 等 4 个件共 13 个像素）。
+      两边阈值不统一就会一直来回踩，所以这里按**更严**的那个（>24）直接擦干净。
+    ★ 根因是 LANCZOS 缩放会把洋红底的颜色吸进边缘的半透明像素里；
+      alpha 本身是对的（边就该是半透明），错的只是 RGB。所以只改 RGB、不动 alpha。
+    """
+    a = arr.astype(np.int32)
+    R, G, B, A = a[..., 0], a[..., 1], a[..., 2], a[..., 3]
+    vis = A > 24
+    bad = vis & (((R - G > 60) & (B - G > 60) & (R > 150) & (B > 150))
+                 | (G - np.maximum(R, B) > 60))
+    if not bad.any():
+        return arr
+    good = vis & (~bad)
+    rgb = arr[..., :3].astype(np.float64).copy()
+    todo = bad.copy()
+    src = good.copy()
+    for _ in range(8):
+        if not todo.any():
+            break
+        acc = np.zeros(rgb.shape, np.float64)
+        cnt = np.zeros(rgb.shape[:2], np.float64)
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1),
+                       (-1, -1), (-1, 1), (1, -1), (1, 1)):
+            sh = np.roll(np.roll(rgb * src[..., None], dy, 0), dx, 1)
+            sc = np.roll(np.roll(src.astype(np.float64), dy, 0), dx, 1)
+            acc += sh
+            cnt += sc
+        hit = todo & (cnt > 0)
+        rgb[hit] = acc[hit] / cnt[hit][:, None]
+        src = src | hit
+        todo = todo & (~hit)
+    out = arr.copy()
+    out[..., :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return out
+
+
+def _emit(att, crgb, ca, bw, bh, sprites_dir, anchors):
+    """公用收尾：镜像 / 旋转 / 按锚点几何定尺寸 / 出 1× 和 @2x。"""
+    if att.get("mirror"):
+        # 左右耳用同一张原图镜像出来：AI 画两只一定不对称，而头上的东西
+        # 一不对称就特别显眼（脸是对称参照物）。镜像还省一次出图。
+        crgb = crgb[:, ::-1, :]
+        ca = ca[:, ::-1]
+
+    if att.get("rotate_deg"):
+        # 静态外倾：真猫耳是向外斜的，不是笔直向上。
+        # 在**切件期**转而不是用参数转，是因为参数那条通道已经被
+        # mood_params（情绪→耳角）占着了，再叠一个静态量两边会打架。
+        rot = Image.fromarray(
+            np.dstack([crgb, ca * 255.0]).astype(np.uint8), "RGBA").rotate(
+                float(att["rotate_deg"]), resample=Image.BICUBIC, expand=True)
+        ra = np.asarray(rot)
+        crgb = ra[..., :3].astype(np.float64)
+        ca = ra[..., 3].astype(np.float64) / 255.0
+
+    # 高度来自**形态级** anchors.json（相对几何，T2.2.0）：
+    # 同一张挂件表要能套在 teen/loli/adult/chibi 四个形态上，
+    # 写绝对像素的话 chibi 那个 517px 的头上会扣一对 104px 的耳朵。
+    _pos, h1 = attach_geom.resolve(att, anchors)
+    # width_ratio：横向压扁/拉宽系数，1.0 = 保持原图宽高比。
+    # ★ 猫耳要用到：素材画出来的宽高比是 1.09（扁三角），但真猫耳从正面看
+    #   底宽约为高的 0.8，1.09 会让两只耳朵横着铺满整个头顶 —— 用户原话「过宽」。
+    #   不在原图上改，是因为原图还要留给别的槽复用；压扁放在切件期做。
+    w1 = max(1, int(round(h1 * bw / float(bh) * float(att.get("width_ratio", 1.0)))))
+    made = []
+    for mul, name in ((1, att["sprite"]),
+                      (2, att["sprite"].replace(".png", "@2x.png"))):
+        # ★ 缩放走 straight RGBA（不是预乘）。试过预乘缩放再除回来，
+        #   边缘低 alpha 处的除法会把颜色放大成近白，白边像素从 ~200 暴涨到 5870，
+        #   check_assets 的白边闸当场红 —— 对这套素材来说，
+        #   "先把边缘颜色抹成相邻实心色（bleed_edge）再直缩"更稳。
+        rgba = np.dstack([crgb, ca * 255.0]).astype(np.uint8)
+        out = Image.fromarray(rgba, "RGBA").resize((w1 * mul, h1 * mul),
+                                                   Image.LANCZOS)
+        arr = scrub_key(np.asarray(out))
+        out = Image.fromarray(arr, "RGBA")
+        leftover = left_magenta(arr[..., :3], arr[..., 3] / 255.0)
+        if leftover:
+            raise SystemExit("[attach] %s %s 还剩 %d 个洋红像素"
+                             % (att["id"], name, leftover))
+        out.save(os.path.join(sprites_dir, name))
+        made.append(name)
+    return w1, h1, made, float((ca > 0.5).sum()) / float(ca.size)
+
+
+def derive_source(spec, sprites_dir, design_dir):
+    """从**本体已有的那张贴图**派生一个挂件素材（而不是外挂一张 AI 碎片）。
+
+    ★ 这是 2026-10-18 第十三问之后改的产线口径。此前每个发型件都是**单独**生成
+      的一张 AI 图，彼此之间没有共同的几何/光照/轮廓约束，于是：
+        · 长发的长鬓发是粉的，本体的头发是淡紫的 —— 用户说「接发痕迹太明显」；
+        · 扎发的脸侧细缕和本体的鬓发不是一回事 —— 用户说「前发也不自然」。
+      按着原画拉长 / 压窄出来的件，**逐像素都是本体那张图的颜色和笔触**，
+      接缝从定义上就不存在。Live2D 的髪型差分本来也是在同一张原画上改的。
+
+    spec 字段：
+      sprite      从 sprites/ 里取（本体贴图，已经是干净 RGBA）
+      design      从 design/ 里取（程序化画的件，比如兜帽）
+      stretch     {top, bottom, to_height}：上下各留多少比例不动，
+                  中段纵向拉伸到总高 to_height。只拉中段是因为**发根的走向和
+                  发梢的收口**都不能变形，能拉的只有中间那段发丝。
+      taper       底部横向收窄系数（1.0 = 不收）
+      curve_px    底部横向偏移像素（让发缕自然地往外/往内飘一点）
+    """
+    if spec.get("design"):
+        p = os.path.join(design_dir, spec["design"])
+    else:
+        p = os.path.join(sprites_dir, spec["sprite"])
+    if not os.path.exists(p):
+        raise SystemExit("[attach] derive 缺源图 %s" % p)
+    arr = np.asarray(Image.open(p).convert("RGBA")).astype(np.float64)
+    rgb, al = arr[..., :3], arr[..., 3] / 255.0
+
+    st = spec.get("stretch")
+    if st:
+        h = rgb.shape[0]
+        t = max(1, int(round(h * float(st.get("top", 0.3)))))
+        b = max(1, int(round(h * float(st.get("bottom", 0.15)))))
+        mid = h - t - b
+        if mid < 4:
+            raise SystemExit("[attach] derive stretch：中段只剩 %d 行" % mid)
+        want = int(st["to_height"])
+        new_mid = max(4, want - t - b)
+        band = Image.fromarray(
+            np.dstack([rgb, al * 255.0]).astype(np.uint8)[t:t + mid], "RGBA")
+        band = band.resize((rgb.shape[1], new_mid), Image.LANCZOS)
+        ba = np.asarray(band).astype(np.float64)
+        rgb = np.vstack([rgb[:t], ba[..., :3], rgb[t + mid:]])
+        al = np.vstack([al[:t], ba[..., 3] / 255.0, al[t + mid:]])
+
+    taper = float(spec.get("taper", 1.0))
+    curve = float(spec.get("curve_px", 0.0))
+    if taper != 1.0 or curve != 0.0:
+        h, w = al.shape
+        cx = (w - 1) / 2.0
+        # 从"开始拉伸的那一行"起才收窄 —— 发根那一截要和本体严丝合缝
+        y0 = int(round(h * float((st or {}).get("top", 0.25)))) if st else 0
+        out_rgb = np.empty_like(rgb)
+        out_a = np.empty_like(al)
+        xs = np.arange(w, dtype=np.float64)
+        for y in range(h):
+            u = 0.0 if y <= y0 else (y - y0) / max(1.0, (h - 1 - y0))
+            s = 1.0 + (taper - 1.0) * (u ** 1.3)
+            off = curve * (u ** 1.8)
+            src = cx + (xs - cx - off) / max(1e-3, s)
+            i0 = np.clip(np.floor(src).astype(int), 0, w - 1)
+            i1 = np.clip(i0 + 1, 0, w - 1)
+            f = np.clip(src - np.floor(src), 0, 1)[:, None]
+            out_rgb[y] = rgb[y][i0] * (1 - f) + rgb[y][i1] * f
+            out_a[y] = (al[y][i0] * (1 - f[:, 0]) + al[y][i1] * f[:, 0]) * \
+                np.where((src < -0.5) | (src > w - 0.5), 0.0, 1.0)
+        rgb, al = out_rgb, out_a
+    return rgb, al
+
+
+def build_one(att, slot, redraw_dir, sprites_dir, anchors, design_dir=None):
+    if att.get("derive"):
+        crgb, ca = derive_source(att["derive"], sprites_dir, design_dir or redraw_dir)
+        bh, bw = ca.shape
+        return _emit(att, crgb, ca, bw, bh, sprites_dir, anchors)
+
     src = os.path.join(redraw_dir, att["source"])
     if not os.path.exists(src):
         raise SystemExit("[attach] 缺原图 %s" % src)
@@ -320,50 +486,7 @@ def build_one(att, slot, redraw_dir, sprites_dir, anchors):
     if att.get("solid_fill", True):
         ca = harden_interior(ca)
 
-    if att.get("mirror"):
-        # 左右耳用同一张原图镜像出来：AI 画两只一定不对称，而头上的东西
-        # 一不对称就特别显眼（脸是对称参照物）。镜像还省一次出图。
-        crgb = crgb[:, ::-1, :]
-        ca = ca[:, ::-1]
-
-    if att.get("rotate_deg"):
-        # 静态外倾：真猫耳是向外斜的，不是笔直向上。
-        # 在**切件期**转而不是用参数转，是因为参数那条通道已经被
-        # mood_params（情绪→耳角）占着了，再叠一个静态量两边会打架。
-        rot = Image.fromarray(
-            np.dstack([crgb, ca * 255.0]).astype(np.uint8), "RGBA").rotate(
-                float(att["rotate_deg"]), resample=Image.BICUBIC, expand=True)
-        ra = np.asarray(rot)
-        crgb = ra[..., :3].astype(np.float64)
-        ca = ra[..., 3].astype(np.float64) / 255.0
-
-    # 高度来自**形态级** anchors.json（相对几何，T2.2.0）：
-    # 同一张挂件表要能套在 teen/loli/adult/chibi 四个形态上，
-    # 写绝对像素的话 chibi 那个 517px 的头上会扣一对 104px 的耳朵。
-    _pos, h1 = attach_geom.resolve(att, anchors)
-    # width_ratio：横向压扁/拉宽系数，1.0 = 保持原图宽高比。
-    # ★ 猫耳要用到：素材画出来的宽高比是 1.09（扁三角），但真猫耳从正面看
-    #   底宽约为高的 0.8，1.09 会让两只耳朵横着铺满整个头顶 —— 用户原话「过宽」。
-    #   不在原图上改，是因为原图还要留给别的槽复用；压扁放在切件期做。
-    w1 = max(1, int(round(h1 * bw / float(bh) * float(att.get("width_ratio", 1.0)))))
-    made = []
-    for mul, name in ((1, att["sprite"]),
-                      (2, att["sprite"].replace(".png", "@2x.png"))):
-        # ★ 缩放走 straight RGBA（不是预乘）。试过预乘缩放再除回来，
-        #   边缘低 alpha 处的除法会把颜色放大成近白，白边像素从 ~200 暴涨到 5870，
-        #   check_assets 的白边闸当场红 —— 对这套素材来说，
-        #   "先把边缘颜色抹成相邻实心色（bleed_edge）再直缩"更稳。
-        rgba = np.dstack([crgb, ca * 255.0]).astype(np.uint8)
-        out = Image.fromarray(rgba, "RGBA").resize((w1 * mul, h1 * mul),
-                                                   Image.LANCZOS)
-        arr = np.asarray(out)
-        leftover = left_magenta(arr[..., :3], arr[..., 3] / 255.0)
-        if leftover:
-            raise SystemExit("[attach] %s %s 还剩 %d 个洋红像素"
-                             % (att["id"], name, leftover))
-        out.save(os.path.join(sprites_dir, name))
-        made.append(name)
-    return w1, h1, made, float((ca > 0.5).sum()) / float(ca.size)
+    return _emit(att, crgb, ca, bw, bh, sprites_dir, anchors)
 
 
 def main() -> int:
@@ -398,7 +521,8 @@ def main() -> int:
             raise SystemExit("[attach] %s 落在不存在的插槽 %r"
                              % (att["id"], att["slot"]))
         w, h, made, cover = build_one(
-            attach_geom.apply_overrides(att, _ovr), slot, redraw, sprites, anchors)
+            attach_geom.apply_overrides(att, _ovr), slot, redraw, sprites, anchors,
+            design_dir=os.path.join(base, "design"))
         out["attachments"].append({
             "id": att["id"], "slot": att["slot"],
             "file": "sprites/" + att["sprite"],

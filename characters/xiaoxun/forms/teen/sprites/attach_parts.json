@@ -86,18 +86,6 @@
       "note": "高马尾专用，和长发的 body_back_hair(58) 同一区段（整个身体之后，最低的身体件是腿 60）。★ 马尾和双马尾的层位必须反着来：马尾扎在**后脑**，正面视角下它本来就该被身体挡住，只在轮廓外侧露出来 —— 这正是\"它在身后\"的视觉证据。所以素材画成**往一侧甩**的弧线，露出来的是甩出轮廓的那半边。锚点在顶边 = 发绳，曲线 tip。"
     },
     {
-      "id": "neck_back",
-      "label": "领后（夹克之下）",
-      "layer": 95,
-      "group": "chest",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "root",
-      "note": "领后（T46.9）。层 95 = **躯干 100 之下** —— 兜帽的根要被夹克领子压住才读成\"缝在领子后面\"。用户原话「兜帽是连接在衣领后面的，你做到前面了」。画法口径：パーカーのフードは**胸側より背中側に重みがある**（atam-academy）、「横や後ろから見ると首の後ろにたまりシワができる」（CLIP STUDIO）。组 chest = 跟躯干走，不跟头走：兜帽根缝在衣服上。"
-    },
-    {
       "id": "head_side_sweep",
       "label": "脸侧细缕（刘海与鬓发之上）",
       "layer": 247,
@@ -120,18 +108,6 @@
       ],
       "curve": "tip",
       "note": "★ 参考实拍：长发的**横髪也是长的** —— 从太阳穴一路垂到胸口，不是齐腮的短鬓。这是第十二问用户贴的长发参考图里最明显的一条结构，也是之前长发\"不契合\"的真因：留着齐腮短鬓 + 背后挂一片长发 = 短发女孩背后挂了片头发。层 249 > torso 100，所以它垂在衣服前面（参考图里也是垂在身前）。"
-    },
-    {
-      "id": "head_crown_tied",
-      "label": "收拢的头顶（扎发档）",
-      "layer": 239,
-      "group": "head",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "root",
-      "note": "★ 扎起来的发型，**头顶必须跟着变** —— 发丝向后收拢到扎点，轮廓是平滑的，不是蓬松的鲍勃头顶。只加一条尾巴而不改头顶，读出来就是\"短发 + 挂件\"，用户原话\"一坨头发缠在一起\"。层 230：压在 seg_head(180) 之上、刘海(240) 之下。"
     }
   ],
   "attachments": [
@@ -195,7 +171,7 @@
       "file": "sprites/acc_hood_up.png",
       "size": [
         340,
-        314
+        369
       ]
     },
     {
@@ -212,7 +188,7 @@
       "slot": "head_side_hair",
       "file": "sprites/hair_twin_l.png",
       "size": [
-        166,
+        116,
         510
       ]
     },
@@ -221,7 +197,7 @@
       "slot": "head_side_hair",
       "file": "sprites/hair_twin_r.png",
       "size": [
-        166,
+        116,
         510
       ]
     },
@@ -239,7 +215,7 @@
       "slot": "head_side_sweep",
       "file": "sprites/acc_hair_sweep_twin_l.png",
       "size": [
-        66,
+        64,
         132
       ]
     },
@@ -248,7 +224,7 @@
       "slot": "head_side_sweep",
       "file": "sprites/acc_hair_sweep_twin_r.png",
       "size": [
-        66,
+        63,
         132
       ]
     },
@@ -257,7 +233,7 @@
       "slot": "head_side_sweep",
       "file": "sprites/acc_hair_sweep_pony_l.png",
       "size": [
-        66,
+        80,
         132
       ]
     },
@@ -266,17 +242,8 @@
       "slot": "head_side_sweep",
       "file": "sprites/acc_hair_sweep_pony_r.png",
       "size": [
-        66,
+        79,
         132
-      ]
-    },
-    {
-      "id": "hood_up_hem",
-      "slot": "neck_back",
-      "file": "sprites/acc_hood_up_hem.png",
-      "size": [
-        338,
-        118
       ]
     },
     {
@@ -284,8 +251,8 @@
       "slot": "head_side_long",
       "file": "sprites/acc_hair_sidelong_l.png",
       "size": [
-        61,
-        340
+        106,
+        300
       ]
     },
     {
@@ -293,17 +260,8 @@
       "slot": "head_side_long",
       "file": "sprites/acc_hair_sidelong_r.png",
       "size": [
-        61,
-        340
-      ]
-    },
-    {
-      "id": "hair_crown_pony",
-      "slot": "head_crown_tied",
-      "file": "sprites/acc_hair_crown_pony.png",
-      "size": [
-        260,
-        130
+        105,
+        300
       ]
     }
   ]

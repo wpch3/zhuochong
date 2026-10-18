@@ -1720,10 +1720,10 @@
       "id": "acc_hood_up",
       "file": "sprites/acc_hood_up@2x.png",
       "group": "head",
-      "layer": 250,
+      "layer": 252,
       "pos": [
-        422,
-        53
+        423,
+        52
       ],
       "anchor": [
         0.5,
@@ -1833,7 +1833,7 @@
       "group": "head",
       "layer": 243,
       "pos": [
-        329,
+        352,
         221
       ],
       "anchor": [
@@ -1855,7 +1855,7 @@
       "group": "head",
       "layer": 244,
       "pos": [
-        517,
+        495,
         221
       ],
       "anchor": [
@@ -1877,7 +1877,7 @@
       "group": "head",
       "layer": 247,
       "pos": [
-        329,
+        352,
         221
       ],
       "anchor": [
@@ -1899,7 +1899,7 @@
       "group": "head",
       "layer": 248,
       "pos": [
-        517,
+        495,
         221
       ],
       "anchor": [
@@ -1916,36 +1916,13 @@
       "hires": 2
     },
     {
-      "id": "acc_hood_up_hem",
-      "file": "sprites/acc_hood_up_hem@2x.png",
-      "group": "chest",
-      "layer": 99,
-      "pos": [
-        422,
-        351
-      ],
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "tags": [
-        "accessory",
-        "outfit",
-        "hood"
-      ],
-      "note": "兜帽下沿（钻进领子里）（挂件，槽 neck_back）：领后（T46.9）。层 95 = **躯干 100 之下** —— 兜帽的根要被夹克领子压住才读成\"缝在领子后面\"。用户原话「兜帽是连接在衣领后面的，你做到前面了」。画法口径：パーカーのフードは**胸側より背中側に重みがある**（atam-academy）、「横や後ろから見ると首の後ろにたまりシワができる」（CLIP STUDIO）。组 chest = 跟躯干走，不跟头走：兜帽根缝在衣服上。",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
       "id": "acc_hair_sidelong_l",
       "file": "sprites/acc_hair_sidelong_l@2x.png",
       "group": "head",
       "layer": 249,
       "pos": [
-        330,
-        220
+        352,
+        221
       ],
       "anchor": [
         0.5,
@@ -1966,8 +1943,8 @@
       "group": "head",
       "layer": 251,
       "pos": [
-        516,
-        220
+        496,
+        221
       ],
       "anchor": [
         0.5,
@@ -1978,28 +1955,6 @@
         "hairstyle"
       ],
       "note": "长鬓发（右·垂到胸口）（挂件，槽 head_side_long）：★ 参考实拍：长发的**横髪也是长的** —— 从太阳穴一路垂到胸口，不是齐腮的短鬓。这是第十二问用户贴的长发参考图里最明显的一条结构，也是之前长发\"不契合\"的真因：留着齐腮短鬓 + 背后挂一片长发 = 短发女孩背后挂了片头发。层 249 > torso 100，所以它垂在衣服前面（参考图里也是垂在身前）。",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
-      "id": "acc_hair_crown_pony",
-      "file": "sprites/acc_hair_crown_pony@2x.png",
-      "group": "head",
-      "layer": 239,
-      "pos": [
-        425,
-        110
-      ],
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "note": "收拢的头顶（马尾档）（挂件，槽 head_crown_tied）：★ 扎起来的发型，**头顶必须跟着变** —— 发丝向后收拢到扎点，轮廓是平滑的，不是蓬松的鲍勃头顶。只加一条尾巴而不改头顶，读出来就是\"短发 + 挂件\"，用户原话\"一坨头发缠在一起\"。层 230：压在 seg_head(180) 之上、刘海(240) 之下。",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -7464,8 +7419,7 @@
         {
           "id": "up",
           "parts": [
-            "acc_hood_up",
-            "acc_hood_up_hem"
+            "acc_hood_up"
           ]
         },
         {
@@ -7514,8 +7468,7 @@
           "parts": [
             "acc_hair_pony",
             "acc_hair_sweep_pony_l",
-            "acc_hair_sweep_pony_r",
-            "acc_hair_crown_pony"
+            "acc_hair_sweep_pony_r"
           ],
           "hide": [
             "hair_side_l",
