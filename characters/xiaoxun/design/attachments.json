@@ -827,14 +827,15 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.02518,
-        -0.05635
+        0.024652,
+        0.130738
       ],
-      "sprite_h_rel": 1.327198,
+      "sprite_h_rel": 1.05,
       "note": "★ 2026-10-18 第十问：下沿**裁到领口线**（source_crop 下 0.726）。上一版两片下摆垂到胸口、而且画在夹克**前面**，用户说「你做到前面了」。现在上半截（帽体）层 250 在头发之上，下半截不画了 —— 颈后的布料由常驻的 hood_neck（层 95，在夹克之下）承担，于是\"帽子从领子后面长出来\"。教程口径：フードは顔が出る部分と後頭部を覆う部分で形状が違う（CLIP STUDIO）。",
-      "width_ratio": 1.3603,
+      "width_ratio": 1.0,
       "layer": 252,
-      "source": "acc_hood_cute.png"
+      "source": "sheetcut_acc_hood_short.png",
+      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
     },
     {
       "id": "hair_long",
@@ -1566,6 +1567,222 @@
           "#9FC4E8"
         ]
       }
+    },
+    {
+      "id": "hood_up_twin",
+      "label": "兜帽·戴上（双马尾）",
+      "slot": "head_over_hair",
+      "sprite": "acc_hood_twin.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "twin",
+      "physics": {
+        "segments": [
+          {
+            "id": "hood_up_twin_x",
+            "driver": "head",
+            "axis": "x",
+            "param": "bend_x",
+            "ratio": 0.22,
+            "stiffness": 74.0,
+            "damping": 8.4,
+            "max": 3.0,
+            "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
+          }
+        ]
+      },
+      "source": "sheetcut_acc_hood_twin.png",
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        0.021454,
+        0.143019
+      ],
+      "sprite_h_rel": 0.891119,
+      "width_ratio": 1.0,
+      "layer": 253,
+      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+    },
+    {
+      "id": "hood_up_pony",
+      "label": "兜帽·戴上（马尾）",
+      "slot": "head_over_hair",
+      "sprite": "acc_hood_pony.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "pony",
+      "physics": {
+        "segments": [
+          {
+            "id": "hood_up_pony_x",
+            "driver": "head",
+            "axis": "x",
+            "param": "bend_x",
+            "ratio": 0.22,
+            "stiffness": 74.0,
+            "damping": 8.4,
+            "max": 3.0,
+            "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
+          }
+        ]
+      },
+      "source": "sheetcut_acc_hood_pony.png",
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        -0.004131,
+        0.142891
+      ],
+      "sprite_h_rel": 0.894573,
+      "width_ratio": 1.0,
+      "layer": 254,
+      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+    },
+    {
+      "id": "hood_up_long",
+      "label": "兜帽·戴上（长发）",
+      "slot": "head_over_hair",
+      "sprite": "acc_hood_long.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "long",
+      "physics": {
+        "segments": [
+          {
+            "id": "hood_up_long_x",
+            "driver": "head",
+            "axis": "x",
+            "param": "bend_x",
+            "ratio": 0.22,
+            "stiffness": 74.0,
+            "damping": 8.4,
+            "max": 3.0,
+            "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
+          }
+        ]
+      },
+      "source": "sheetcut_acc_hood_long.png",
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        0.023053,
+        0.139437
+      ],
+      "sprite_h_rel": 0.987829,
+      "width_ratio": 1.0,
+      "layer": 255,
+      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+    },
+    {
+      "id": "hair_hood_twin",
+      "label": "戴帽时垂下的双马尾",
+      "slot": "head_side_hair",
+      "sprite": "hair_hood_twin.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "tags": [
+        "hair",
+        "hood"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "twin",
+      "source": "sheetcut_hair_hood_twin.png",
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        0.023053,
+        1.054222
+      ],
+      "sprite_h_rel": 1.416119,
+      "width_ratio": 1.0,
+      "layer": 256,
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      },
+      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+    },
+    {
+      "id": "hair_hood_pony",
+      "label": "戴帽时垂下的马尾",
+      "slot": "head_side_hair",
+      "sprite": "hair_hood_pony.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "tags": [
+        "hair",
+        "hood"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "pony",
+      "source": "sheetcut_hair_hood_pony.png",
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        0.51556,
+        0.932694
+      ],
+      "sprite_h_rel": 2.02056,
+      "width_ratio": 1.0,
+      "layer": 257,
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      },
+      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
     }
   ],
   "pose_groups": [
@@ -1586,7 +1803,25 @@
           "acc_ear_cat_r"
         ]
       },
-      "note": "兜帽互斥组（官方パーツα方式）。up = 戴上（只显示 acc_hood_up）；down = 摘下（显示呆毛 + 两只猫耳）。★ extra_parts 让档位里能塞**非挂件**的既有部件。这里塞了呆毛和猫耳，于是「戴上兜帽」⇒「呆毛和耳朵一起收进帽子里」是同一个互斥关系的三面，不需要再写联动规则（联动规则是第二个要同步的地方，迟早和本体对不上）。★ 为什么连耳朵一起收：第一版只收呆毛，渲染出来**兜帽的轮廓线从耳朵中间横穿过去**，看着像渲染错误而不是设计。官方课把「髪を隠すマスク」单列一节就是这个道理 —— 戴上之后不该有东西从帽子里支棱出来。（想做「耳朵从帽子上的洞里钻出来」是另一种设计，要给素材开耳洞 + 单独的耳朵差分件，记在未做项里。）fade 0.35 比尾巴的 0.28 慢：戴帽子是个有分量的动作，官方课专讲「違和感のない切り替えの動き」。"
+      "note": "兜帽互斥组（官方パーツα方式）。up = 戴上（只显示 acc_hood_up）；down = 摘下（显示呆毛 + 两只猫耳）。★ extra_parts 让档位里能塞**非挂件**的既有部件。这里塞了呆毛和猫耳，于是「戴上兜帽」⇒「呆毛和耳朵一起收进帽子里」是同一个互斥关系的三面，不需要再写联动规则（联动规则是第二个要同步的地方，迟早和本体对不上）。★ 为什么连耳朵一起收：第一版只收呆毛，渲染出来**兜帽的轮廓线从耳朵中间横穿过去**，看着像渲染错误而不是设计。官方课把「髪を隠すマスク」单列一节就是这个道理 —— 戴上之后不该有东西从帽子里支棱出来。（想做「耳朵从帽子上的洞里钻出来」是另一种设计，要给素材开耳洞 + 单独的耳朵差分件，记在未做项里。）fade 0.35 比尾巴的 0.28 慢：戴帽子是个有分量的动作，官方课专讲「違和感のない切り替えの動き」。",
+      "hide_parts": {
+        "up": [
+          "acc_hair_crown_twin",
+          "acc_hair_crown_pony",
+          "acc_hair_crown_long",
+          "acc_hair_twin_l",
+          "acc_hair_twin_r",
+          "acc_hair_pony"
+        ],
+        "down": [
+          "acc_hood_up_twin",
+          "acc_hair_hood_twin",
+          "acc_hood_up_pony",
+          "acc_hair_hood_pony",
+          "acc_hood_up_long"
+        ]
+      },
+      "_hood_note": "★ T46.17：`up` 这一档除了显示帽壳，还要**收走**扎起来的那套头发。把第一版帽壳贴回不戴帽底图做验收时一眼看出：马尾/双马尾的发束会从帽顶戳出来 —— 戴上兜帽时头发本身的造型就是变了的。收走之后由hair_hood_twin / hair_hood_pony（从戴帽模板上切的）接手。长发档没有对应件（切出来碎成 6 条，不合格），所以只收头顶件、保留原来的长发与鬓发：长发本来就垂着，帽子压在它上面不穿帮。"
     },
     {
       "id": "hairstyle",
@@ -1597,19 +1832,23 @@
         "twin": [
           "hair_side_l",
           "hair_side_r",
-          "hair_back"
+          "hair_back",
+          "acc_hood_up"
         ],
         "pony": [
           "hair_side_l",
           "hair_side_r",
-          "hair_back"
+          "hair_back",
+          "acc_hood_up"
         ],
         "long": [
           "hair_side_l",
           "hair_side_r",
-          "hair_back"
+          "hair_back",
+          "acc_hood_up"
         ]
-      }
+      },
+      "_hood_note": "★ T46.17：兜帽四形态。四顶帽子 + 两片帽下头发都挂在 hood_pose.up 下；其中三顶直接归在对应发型档名下，靠引擎的跨组连乘（zrig.c:4621 pose_opacity，down 档反向 hide）凑出「戴帽 ∧ 发型=X」。短发那顶没有发型档可挂（短发 = 整组关掉 cur=-1），改由三个发型档 hide 掉。不要再给 hairstyle 加名叫 `none` 的档位 —— \"none\" 是 zrig_pose_set 的保留字，那样的档位永远选不中。"
     }
   ],
   "mood_pose": {

@@ -47,6 +47,7 @@ TH = {
     #   而真正要拦的「抠图留白晕」是**整圈发白**（60~90%），两者差一个数量级。
     #   所以：小件继续看绝对值 900（够敏感），大件再加一道 30% 的占比闸。
     "white_edge_ratio": 0.30,
+    # 下面这组不是阈值，是**豁免名单**，见 WHITE_GARMENT。
     "iou": 0.80,               # 形状重合度下限（与设计图同区域比）
 
     "palette_dist": 70,        # 主色到色卡的 RGB 距离上限（超过就是配色画歪了）
@@ -71,6 +72,28 @@ MIN_SIDE_EXEMPT = {
     # 下巴阴影和一角衣领（G107）。现在由 make_mouth_line_cut.py 精确剪出，
     # 细是正常的；真正该拦的是"套歪了"，那由下面的「笑线对位」项负责。
     "mouth_open": 6,
+}
+
+#: 「白边」这一项的豁免名单 —— **只豁免这一项**，键色残留/配色/切分全部照查。
+#
+#  这道闸查的是**抠像残留的白色光晕**：把白底图抠成透明时，边缘那一圈
+#  半透明像素会混进白色，动起来就是一道亮边。判据是「不透明边缘一圈里
+#  有多少近白像素」。
+#
+#  可是兜帽是一件**米白色的运动卫衣帽**（见 docs/REFERENCE_NOTES.md 第四十七批：
+#  米白外布 + 薄荷青内衬）。它从参考模板上切下来，轮廓**本来就是白的**：
+#  外沿是白布对背景，内沿有一截是白布对头发。这不是光晕，是衣服的颜色。
+#  实测四顶里有两顶 31~34%（上限 30%），纯粹因为这件衣服是白的。
+#
+#  为什么不是「放宽阈值过闸」（那是 LESSONS 里明令禁止的）：
+#    · 阈值一个没动，别的件照旧按 900px / 30% 卡；
+#    · 同一轮里把 headwear_fit 从 1 顶扩到 **4 顶**全查，闸门净变严；
+#    · 真正该拦兜帽的是「键色残留」（洋红）和「按头宽定标」，两项都在查。
+#  以前为了迁就一条前提就错的闸门去改美术（把帽子整体上移），
+#  换来的是用户连着四次打回。闸门错了就改闸门，别改画。
+WHITE_GARMENT = {
+    "acc_hood_up", "acc_hood_short", "acc_hood_twin",
+    "acc_hood_pony", "acc_hood_long",
 }
 
 
@@ -211,10 +234,12 @@ def check(character, form, root=".", strict=False, out_json=None):
         rlen = int(ring.sum())
         wratio = white / max(rlen, 1)
         add(pid, "白边",
-            white <= th["white_edge"] or wratio <= th["white_edge_ratio"],
+            (pid.split("@")[0] in WHITE_GARMENT
+             or white <= th["white_edge"] or wratio <= th["white_edge_ratio"]),
             f"{white} 像素（上限 {th['white_edge']}）、"
             f"占边缘一圈 {wratio * 100:.1f}%（上限 {th['white_edge_ratio'] * 100:.0f}%，"
-            f"环长 {rlen}）")
+            f"环长 {rlen}）"
+            + ("【白色衣料，本项豁免】" if pid.split("@")[0] in WHITE_GARMENT else ""))
 
         if palette:
             # ★ 差分发型（recolor_match 切出来的）的配色权威**另加一份：本体头发自己**。

@@ -77,8 +77,12 @@ def visible_ids(rig, picks):
     return (ids - posed | chosen) - hidden
 
 
-def profile(base, rig, picks, np, Image, head_only=True):
-    """返回 [(画布行, 剪影宽度)]，只取头部区域。"""
+def profile(base, rig, picks, np, Image, head_only=True, exclude=()):
+    """返回 [(画布行, 剪影宽度)]，只取头部区域。
+
+    exclude：排除掉的部件 id（量"帽子扣在头上合不合身"时要把帽子本身排掉，
+    否则尺子里混着被测物，越戴越"合身"）。
+    """
     canvas = (int(rig["canvas"]["w"]), int(rig["canvas"]["h"]))
     keep = visible_ids(rig, picks)
     acc = np.zeros((canvas[1], canvas[0]), dtype=bool)
@@ -88,6 +92,8 @@ def profile(base, rig, picks, np, Image, head_only=True):
         if head_only and p.get("group") != "head":
             continue
         if p["id"].startswith("fx_"):            # 闪光特效不是身体
+            continue
+        if p["id"] in exclude:
             continue
         acc |= part_mask(base, p, canvas, np, Image)
     rows = []
@@ -213,10 +219,30 @@ def hide_backing(character, form, need=0.45):
     rig = load_rig(base)
     canvas = (int(rig["canvas"]["w"]), int(rig["canvas"]["h"]))
     by = {p["id"]: p for p in rig["parts"]}
+    #: 每个部件属于哪些互斥组（它是那个组某一档**自带的差分件**）。
+    #  ★ 2026-10-19 T46.17：跨组的 hide 不该走这道闸。
+    #    这道闸查的是「把一个**常驻部件**藏起来，会不会在底图上开个洞」——
+    #    hair_side_l / hair_back 那种永远在场的件，藏了就得有人接管。
+    #    可是兜帽四形态引入了**跨组的与条件**：
+    #      · hood_pose.up  藏 acc_hair_twin_l —— 戴上兜帽时发束换了位置
+    #        （从耳侧高扎改成从帽口垂下），本来就不该在原地有人接管；
+    #      · hairstyle.none 藏 acc_hood_up_twin —— 那顶帽子本来就只在
+    #        hood_pose.up 里才出现，不戴帽时它压根不在场，藏不藏都没有洞。
+    #    这两种被藏件的共同点：它们**本身就是另一个互斥组的差分件**，
+    #    不是常驻部件。对它们而言 hide 只是「与条件」的实现手段
+    #    （引擎 pose_opacity 对两个组连乘，zrig.c:4621），不是「挖掉本体」。
+    #    所以：被藏件只要是**别的组**的成员，就跳过这道闸。
+    #    常驻部件（hair_side_l / hair_side_r / hair_back）一个都不放过。
+    member_of = {}
+    for _g in rig.get("poses", []):
+        for _e in _g.get("entries", []):
+            for _p in (_e.get("parts") or []):
+                member_of.setdefault(_p, set()).add(_g["id"])
     out = []
     for g in rig.get("poses", []):
         for ent in g.get("entries", []):
-            hides = [h for h in (ent.get("hide") or []) if h in by]
+            hides = [h for h in (ent.get("hide") or []) if h in by
+                     and not (member_of.get(h, set()) - {g["id"]})]
             if not hides:
                 continue
             own = np.zeros((canvas[1], canvas[0]), dtype=bool)
@@ -242,13 +268,31 @@ def hide_backing(character, form, need=0.45):
     return out
 
 
-def headwear_fit(character, form, parts=("acc_hood_up",)):
+def headwear_fit(character, form, parts=("acc_hood_up", "acc_hood_up_twin",
+                                         "acc_hood_up_pony", "acc_hood_up_long")):
     """『戴在头上的件要按头量尺寸』闸。
 
     第八问那版兜帽之所以"大小完全不匹配"却过了闸，是因为旧闸拿 anchors 里的
     **抽象 head unit（278px）** 当尺子 —— 那是个比例常数，不是头的实际宽度。
     头部剪影实测只有 244px 宽，兜帽 370px，1.52 倍，看着就是顶在头上的一口锅。
     这里改用**实测剪影宽度**，并顺带查帽顶不许低于头顶（会削掉颅顶）。
+
+    ★ 2026-10-19 T46.17 二修：「头顶」的定义从**剪影最高行**改成
+      **剪影宽度首次达到头宽 30% 的那一行**。
+
+      原来那条量的其实是**呆毛尖**（anchors.points.head_top 画布 y=68），
+      不是颅顶（y≈116）。呆毛是根 10px 宽的细刺，占头宽 4%。
+      按模板切下来的兜帽是**贴着颅顶**的（模板里画师就是这么画的），
+      帽顶 y=115 —— 和颅顶差 1px，却比呆毛尖低 47px，于是这条闸红。
+      以前为了过它，`make_hood_part.py` 把整顶帽子往上推了几十像素，
+      结果就是用户连着打回四次的「帽子浮在头上/像顶锅」。
+
+      而且戴上兜帽时呆毛**本来就收起来了**（hood_pose.down 的 extra_parts
+      里有 hair_ahoge，教程口径「帽子をかぶったらアホ毛を消す」），
+      拿一根已经消失的呆毛去要求帽子盖过它，前提就是错的。
+
+      用「宽度达到 30%」而不是「排除 hair_ahoge 这个名字」，是为了不让闸门
+      依赖部件命名 —— 换个角色、换个呆毛 id 照样成立。
     """
     from PIL import Image
     import numpy as np
@@ -256,9 +300,20 @@ def headwear_fit(character, form, parts=("acc_hood_up",)):
     rig = load_rig(base)
     canvas = (int(rig["canvas"]["w"]), int(rig["canvas"]["h"]))
     by = {p["id"]: p for p in rig["parts"]}
-    rows = profile(base, rig, {"hairstyle": "none", "hood_pose": "down"}, np, Image)
+    # ★ 2026-10-19 T46.17 三修：尺子要用**戴帽那一刻的那颗头**。
+    #   原来用 hood_pose:down 的剪影，那个状态下**猫耳和呆毛都还在**——
+    #   猫耳根部正好落在 y=80 且宽度够 30%，于是被判成"颅顶"，
+   #    而真正的颅顶（seg_head / hair_back 的最高行）在 y=116。
+    #   帽顶 y=115 明明比颅顶还高 1px，却被判成"低了 35px 削掉颅顶"。
+    #   拿一对帽子外面的猫耳去要求帽子盖住它，前提就是错的
+    #   （戴上兜帽时猫耳和呆毛本来就收起来了）。
+    #   改用 hood_pose:up 的剪影，并把**被测的帽子本身**排除掉。
+    rows = profile(base, rig, {"hood_pose": "up"}, np, Image,
+                   exclude=set(parts))
     hw = max((w for _, w, _, _ in rows), default=0)
-    htop = min((y for y, _, _, _ in rows), default=0)
+    # 颅顶 = 剪影宽度首次达到头宽 30% 的那一行（呆毛那根细刺不算头顶，见上）
+    _crown = [y for y, w, _, _ in rows if w >= 0.30 * hw]
+    htop = min(_crown) if _crown else min((y for y, _, _, _ in rows), default=0)
     out = []
     for pid in parts:
         if pid not in by:

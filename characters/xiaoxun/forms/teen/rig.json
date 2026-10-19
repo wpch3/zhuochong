@@ -1723,7 +1723,7 @@
       "layer": 252,
       "pos": [
         423,
-        52
+        104
       ],
       "anchor": [
         0.5,
@@ -1933,6 +1933,119 @@
         "hairstyle"
       ],
       "note": "头顶·长发（挂件，槽 head_crown_tied）：扎起来的发型专用：头顶被收拢的那一片。★ 层 187~189 卡在 呆毛(190) 之下、头壳 seg_head(180) 之上 —— 呆毛压在它上面，刘海(240) 也压在它上面，所以件的下沿切在发际线就够了、不会露边；而它压在头壳和后发壳上面，于是颅顶看起来真的被扎起来了。用户第十二问原话「扎发造型头顶必须跟着变」，缺的就是这一层：以前只换尾巴不换头顶，结果是一颗短发脑袋后面挂两根辫子。★ 下沿绝对不能切到眼线 —— 眼睛在 211~234，比 239 低，切过头会把眼睛盖住（第十一问）。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hood_up_twin",
+      "file": "sprites/acc_hood_twin@2x.png",
+      "group": "head",
+      "layer": 253,
+      "pos": [
+        422,
+        108
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "note": "兜帽·戴上（双马尾）（挂件，槽 head_over_hair）：发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hood_up_pony",
+      "file": "sprites/acc_hood_pony@2x.png",
+      "group": "head",
+      "layer": 254,
+      "pos": [
+        415,
+        108
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "note": "兜帽·戴上（马尾）（挂件，槽 head_over_hair）：发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hood_up_long",
+      "file": "sprites/acc_hood_long@2x.png",
+      "group": "head",
+      "layer": 255,
+      "pos": [
+        422,
+        107
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "note": "兜帽·戴上（长发）（挂件，槽 head_over_hair）：发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_hood_twin",
+      "file": "sprites/hair_hood_twin@2x.png",
+      "group": "head",
+      "layer": 256,
+      "pos": [
+        422,
+        361
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hood"
+      ],
+      "note": "戴帽时垂下的双马尾（挂件，槽 head_side_hair）：双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_hood_pony",
+      "file": "sprites/hair_hood_pony@2x.png",
+      "group": "head",
+      "layer": 257,
+      "pos": [
+        559,
+        327
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hood"
+      ],
+      "note": "戴帽时垂下的马尾（挂件，槽 head_side_hair）：双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -5976,6 +6089,45 @@
       "damping": 8.4,
       "max": 3,
       "note": "兜帽戴在头上，是**跟着头走**的硬件，不是吊着的软件 —— 所以刚度给到 74（猫耳 52、尾巴 18）、行程只有 3px。教程口径「軽いものほど揺れやすく、早く収まる」，布越厚越贴头越不该晃；而且它和脸挨着，晃大了会穿帮。没有自主摆动通道（ambient）—— 兜帽不会自己动，它只跟随。"
+    },
+    {
+      "id": "hood_up_twin_x",
+      "part": "acc_hood_up_twin",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.22,
+      "stiffness": 74.0,
+      "damping": 8.4,
+      "max": 3.0,
+      "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
+    },
+    {
+      "id": "hood_up_pony_x",
+      "part": "acc_hood_up_pony",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.22,
+      "stiffness": 74.0,
+      "damping": 8.4,
+      "max": 3.0,
+      "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
+    },
+    {
+      "id": "hood_up_long_x",
+      "part": "acc_hood_up_long",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.22,
+      "stiffness": 74.0,
+      "damping": 8.4,
+      "max": 3.0,
+      "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
     }
   ],
   "params": [
@@ -7398,6 +7550,14 @@
           "id": "up",
           "parts": [
             "acc_hood_up"
+          ],
+          "hide": [
+            "acc_hair_crown_twin",
+            "acc_hair_crown_pony",
+            "acc_hair_crown_long",
+            "acc_hair_twin_l",
+            "acc_hair_twin_r",
+            "acc_hair_pony"
           ]
         },
         {
@@ -7406,6 +7566,13 @@
             "hair_ahoge",
             "acc_ear_cat_l",
             "acc_ear_cat_r"
+          ],
+          "hide": [
+            "acc_hood_up_twin",
+            "acc_hair_hood_twin",
+            "acc_hood_up_pony",
+            "acc_hair_hood_pony",
+            "acc_hood_up_long"
           ]
         }
       ],
@@ -7422,12 +7589,14 @@
             "acc_hair_long",
             "acc_hair_sidelong_l",
             "acc_hair_sidelong_r",
-            "acc_hair_crown_long"
+            "acc_hair_crown_long",
+            "acc_hood_up_long"
           ],
           "hide": [
             "hair_side_l",
             "hair_side_r",
-            "hair_back"
+            "hair_back",
+            "acc_hood_up"
           ]
         },
         {
@@ -7435,24 +7604,30 @@
           "parts": [
             "acc_hair_twin_l",
             "acc_hair_twin_r",
-            "acc_hair_crown_twin"
+            "acc_hair_crown_twin",
+            "acc_hood_up_twin",
+            "acc_hair_hood_twin"
           ],
           "hide": [
             "hair_side_l",
             "hair_side_r",
-            "hair_back"
+            "hair_back",
+            "acc_hood_up"
           ]
         },
         {
           "id": "pony",
           "parts": [
             "acc_hair_pony",
-            "acc_hair_crown_pony"
+            "acc_hair_crown_pony",
+            "acc_hood_up_pony",
+            "acc_hair_hood_pony"
           ],
           "hide": [
             "hair_side_l",
             "hair_side_r",
-            "hair_back"
+            "hair_back",
+            "acc_hood_up"
           ]
         }
       ],

@@ -182,8 +182,8 @@
       "slot": "head_over_hair",
       "file": "sprites/acc_hood_up.png",
       "size": [
-        340,
-        369
+        296,
+        292
       ]
     },
     {
@@ -265,6 +265,51 @@
       "size": [
         270,
         324
+      ]
+    },
+    {
+      "id": "hood_up_twin",
+      "slot": "head_over_hair",
+      "file": "sprites/acc_hood_twin.png",
+      "size": [
+        257,
+        248
+      ]
+    },
+    {
+      "id": "hood_up_pony",
+      "slot": "head_over_hair",
+      "file": "sprites/acc_hood_pony.png",
+      "size": [
+        280,
+        249
+      ]
+    },
+    {
+      "id": "hood_up_long",
+      "slot": "head_over_hair",
+      "file": "sprites/acc_hood_long.png",
+      "size": [
+        296,
+        275
+      ]
+    },
+    {
+      "id": "hair_hood_twin",
+      "slot": "head_side_hair",
+      "file": "sprites/hair_hood_twin.png",
+      "size": [
+        529,
+        394
+      ]
+    },
+    {
+      "id": "hair_hood_pony",
+      "slot": "head_side_hair",
+      "file": "sprites/hair_hood_pony.png",
+      "size": [
+        241,
+        562
       ]
     }
   ]
