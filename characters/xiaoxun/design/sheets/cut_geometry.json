@@ -154,20 +154,20 @@
       "sprite_file": "sheetcut_hair_long_side_l.png",
       "ref": "head_top",
       "pos_rel": [
-        -0.234395,
-        1.594253
+        -0.35912,
+        1.685399
       ],
-      "sprite_h_rel": 1.378126,
+      "sprite_h_rel": 1.575001,
       "width_ratio": 1.0,
       "px": [
-        367,
+        289,
         326,
         483,
-        724
+        781
       ],
       "content_px": [
-        117,
-        399
+        195,
+        456
       ],
       "slot": "head_side_long"
     },
@@ -175,20 +175,20 @@
       "sprite_file": "sheetcut_hair_long_side_r.png",
       "ref": "head_top",
       "pos_rel": [
-        0.282099,
-        1.59905
+        0.422815,
+        1.685399
       ],
-      "sprite_h_rel": 1.388487,
+      "sprite_h_rel": 1.575001,
       "width_ratio": 1.0,
       "px": [
         535,
         326,
-        638,
-        727
+        726,
+        781
       ],
       "content_px": [
-        104,
-        402
+        192,
+        456
       ],
       "slot": "head_side_long"
     }

@@ -227,8 +227,8 @@
       "slot": "head_side_long",
       "file": "sprites/acc_hair_sidelong_l.png",
       "size": [
-        113,
-        383
+        188,
+        438
       ]
     },
     {
@@ -236,8 +236,8 @@
       "slot": "head_side_long",
       "file": "sprites/acc_hair_sidelong_r.png",
       "size": [
-        100,
-        386
+        185,
+        438
       ]
     },
     {

@@ -7,8 +7,8 @@
  "realesrgan": 57,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 38,
- "seconds": 36.9,
+ "keycolor_fixed": 39,
+ "seconds": 33.4,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -39,25 +39,25 @@
   {
    "name": "acc_hair_sidelong_l.png",
    "src": [
-    113,
-    383
+    188,
+    438
    ],
    "dst": [
-    226,
-    766
+    376,
+    876
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 1
   },
   {
    "name": "acc_hair_sidelong_r.png",
    "src": [
-    100,
-    386
+    185,
+    438
    ],
    "dst": [
-    200,
-    772
+    370,
+    876
    ],
    "method": "realesrgan",
    "keycolor_fixed": 4
@@ -567,7 +567,7 @@
     648
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 1
   },
   {
    "name": "hair_crown_twin.png",
@@ -599,14 +599,14 @@
    "name": "hair_long_back.png",
    "src": [
     571,
-    972
+    943
    ],
    "dst": [
     1142,
-    1944
+    1886
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 17
+   "keycolor_fixed": 15
   },
   {
    "name": "hair_pony_back.png",
@@ -619,7 +619,7 @@
     1446
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 3
+   "keycolor_fixed": 5
   },
   {
    "name": "hair_side_l.png",
@@ -671,7 +671,7 @@
     1000
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 2
+   "keycolor_fixed": 1
   },
   {
    "name": "hand_l.png",
