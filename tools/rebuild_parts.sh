@@ -135,6 +135,11 @@ step "24/25 裙子里布（从躯干件上复制裙摆 → 压暗当裏地；@2x
 
 step "25/25 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"
+
+# 25b 接缝塗り足し（のりしろ）。必须排在 make_rig **之后** —— 它要按 rig 的
+# 层序和放置参数把件合成起来，才知道哪两件对接处漏了。只改像素不改几何，
+# 所以不用回头重跑 make_rig。
+"$PY" tools/fill_seam_holes.py --character "$CH" --form "$FM" --quiet
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__
 echo
