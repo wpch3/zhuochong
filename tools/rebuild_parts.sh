@@ -140,6 +140,16 @@ python3 tools/make_rig.py --character "$CH" --form "$FM"
 # 层序和放置参数把件合成起来，才知道哪两件对接处漏了。只改像素不改几何，
 # 所以不用回头重跑 make_rig。
 "$PY" tools/fill_seam_holes.py --character "$CH" --form "$FM" --quiet
+
+# 25c 擦掉塗り足し带里烤进来、换发型后会悬空露出来的异色残渣。
+#     ★★★ 必须在流水线里，不能只当一次性修补跑完就提交贴图 ——
+#     2026-10-19 的教训：第二十一问用它删掉的 274 px 在 commit b0858f3 里，
+#     但工具没接进来，第二十二问重建一次就被**原样还原**了，
+#     用户截图里那条深褐横条于是又回来了（pony 270 px / twin 138 px）。
+#     凡是"改贴图"的工具都必须挂在重建链上，否则下一次 rebuild 就是回滚。
+#     排在 fill_seam_holes 之后：先补缝、再擦残渣，顺序反了补缝会把残渣摊开。
+"$PY" tools/trim_exposed_residue.py --character "$CH" --form "$FM" | tail -2
+
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__
 echo
