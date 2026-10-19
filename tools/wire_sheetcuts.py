@@ -155,6 +155,60 @@ for aid, piece in SIDE_REWIRE.items():
     print('~ %-18s <- %-26s pos_rel %s  h_rel %.4f'
           % (aid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
 
+# ---- 2c) twin / pony 的脸侧细缕（2026-10-20 第二十四问）----------------------
+#   背景：用户看 pony 的截图说「马尾的前发还是短发原件没变」。
+#   把四张模板并排放大一比就看出来了（/tmp/z_bangs_cmp.png）——
+#   前髪（额前那一片）四档几乎一样，真正不同的是**横髪**：
+#       短发底图 = 齐腮、粗、**蓝梢**
+#       twin / pony / long = 细、长、淡紫
+#   之前三档一直沿用底图那对 hair_side_l/r(245/246)，所以不管换哪个发型，
+#   脸两边永远挂着短发那对蓝梢粗鬓 —— 这就是"前发没变"的真身。
+#   头壳件现在自己切到**下巴 +80**，扎发那两档的脸侧基本够用；
+#   万一某档的细缕真的垂到胸口（掩膜 ≥8000px 才会被切件器保留），
+#   就在这里补一件，接到 head_side_sweep 槽。**没切出来就跳过**，
+#   不会凭空造一个空件。
+SWEEP_LAYER = {('pony', 'l'): 241, ('pony', 'r'): 242,
+               ('twin', 'l'): 243, ('twin', 'r'): 244}
+for pose, label in (('twin', '双马尾'), ('pony', '高马尾')):
+    for side in ('l', 'r'):
+        piece = 'hair_%s_side_%s' % (pose, side)
+        if piece not in GEO['pieces']:
+            continue
+        cid = 'hair_sweep_%s_%s' % (pose, side)
+        g = GEO['pieces'][piece]
+        if cid in by_id:
+            a = by_id[cid]
+        else:
+            a = collections.OrderedDict([
+                ('id', cid),
+                ('label', '脸侧细缕·%s（%s）' % (label, '左' if side == 'l' else '右')),
+                ('slot', 'head_side_sweep'),
+                ('sprite', '%s.png' % cid),
+                ('tags', ['hair', 'hairstyle']),
+                ('pose_group', 'hairstyle'),
+                ('pose_id', pose),
+                ('ref', 'head_top'),
+                ('unit', 'head'),
+                ('note', '和同档的头壳/后发**切自同一张参考模板**，'
+                         '所以发缕走向与色相天然连续。'
+                         '层号排在刘海(240)与眉毛(236/237)之上、'
+                         '本体鬓发(245/246，本档已藏)之下。'),
+            ])
+            d['attachments'].append(a)
+            by_id[cid] = a
+            print('+ %-18s <- %s' % (cid, g['sprite_file']))
+        a['source'] = g['sprite_file']
+        a['anchor'] = [0.5, 0.0]
+        a['pos_rel'] = place(g['px'])
+        a['sprite_h_rel'] = g['sprite_h_rel']
+        a['width_ratio'] = 1.0
+        a['layer'] = SWEEP_LAYER[(pose, side)]
+        a['_cut_note'] = CUT_NOTE
+        if ref_match_side:
+            a['recolor_match'] = ref_match_side
+        print('~ %-18s <- %-26s pos_rel %s  h_rel %.4f'
+              % (cid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
+
 # ---- 3) 新增三个头顶件 --------------------------------------------------------
 # ★ 三件互斥，但层号仍要各不相同（沿用 sweep_twin/sweep_pony 的既有约定；
 #   rig 的「层号不重复」闸门是一刀切的）。选 187~189 的理由：
@@ -235,6 +289,19 @@ for g in d['pose_groups']:
         #   这一段的头发形状本来就几乎一样，留着不会变回「短发头」：
         #   换头壳、换后发、换发尾这三件事都照做。
         #   真正的长远解法是从每张发型模板上单独切一对横髪，记在欠账里。
+        #
+        # ★★★ 2026-10-20 第二十四问：**鬓发重新藏回去**，欠账同时还掉。
+        #   上面那段"四张模板脸颊这一段形状几乎一样"是我没放大看图就下的结论，
+        #   错了。把四张模板并排放大（/tmp/z_bangs_cmp.png）一眼就能看见：
+        #       短发底图 = 齐腮 / 粗 / **蓝梢**
+        #       twin / pony / long = 细 / 长 / 淡紫、无蓝梢
+        #   所以留着底图那对鬓发，换了发型脸前面还是短发 ——
+        #   用户原话「马尾的前发是短发原件未改变」。
+        #   现在敢藏的理由是**下颌那块地有人接管了**：头壳件的下界从"下巴线"
+        #   推到"下巴 +80"，而且脸的开口改用**模板自己的皮肤**来挖
+        #   （底图两腮被短鬓发盖着，拿它挖会在下巴上方横切一刀 = 断链），
+        #   所以头壳现在一路连到下颌以下，第二十三问那个透明楔形不会回来。
+        #   —— 这条必须配实拍验收，不能只看闸门（第二十三问已经吃过两次亏）。
         for k in ('twin', 'pony', 'long'):
-            g['hide_parts'][k] = ['hair_back']
+            g['hide_parts'][k] = ['hair_back', 'hair_side_l', 'hair_side_r']
 io.open(P, 'w', encoding='utf-8').write(json.dumps(d, ensure_ascii=False, indent=2) + '\n')

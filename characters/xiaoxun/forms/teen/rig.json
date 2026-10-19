@@ -1746,7 +1746,7 @@
       "layer": 58,
       "pos": [
         423,
-        31
+        63
       ],
       "anchor": [
         0.5,
@@ -1767,8 +1767,8 @@
       "group": "head",
       "layer": 160,
       "pos": [
-        262,
-        153
+        261,
+        155
       ],
       "anchor": [
         0.5,
@@ -1789,8 +1789,8 @@
       "group": "head",
       "layer": 161,
       "pos": [
-        570,
-        153
+        571,
+        155
       ],
       "anchor": [
         0.5,
@@ -1877,8 +1877,8 @@
       "group": "head",
       "layer": 187,
       "pos": [
-        424,
-        109
+        422,
+        72
       ],
       "anchor": [
         0.5,
@@ -1899,8 +1899,8 @@
       "group": "head",
       "layer": 188,
       "pos": [
-        436,
-        107
+        458,
+        70
       ],
       "anchor": [
         0.5,
@@ -1921,8 +1921,8 @@
       "group": "head",
       "layer": 189,
       "pos": [
-        424,
-        107
+        422,
+        69
       ],
       "anchor": [
         0.5,
@@ -7594,6 +7594,8 @@
           ],
           "hide": [
             "hair_back",
+            "hair_side_l",
+            "hair_side_r",
             "acc_hood_up"
           ]
         },
@@ -7608,6 +7610,8 @@
           ],
           "hide": [
             "hair_back",
+            "hair_side_l",
+            "hair_side_r",
             "acc_hood_up"
           ]
         },
@@ -7621,6 +7625,8 @@
           ],
           "hide": [
             "hair_back",
+            "hair_side_l",
+            "hair_side_r",
             "acc_hood_up"
           ]
         }

@@ -192,7 +192,7 @@
       "file": "sprites/hair_long_back.png",
       "size": [
         571,
-        972
+        936
       ]
     },
     {
@@ -201,7 +201,7 @@
       "file": "sprites/hair_twin_l.png",
       "size": [
         184,
-        500
+        460
       ]
     },
     {
@@ -210,7 +210,7 @@
       "file": "sprites/hair_twin_r.png",
       "size": [
         184,
-        500
+        460
       ]
     },
     {
@@ -245,8 +245,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_twin.png",
       "size": [
-        276,
-        322
+        375,
+        360
       ]
     },
     {
@@ -254,8 +254,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_pony.png",
       "size": [
-        250,
-        324
+        340,
+        362
       ]
     },
     {
@@ -263,8 +263,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_long.png",
       "size": [
-        270,
-        324
+        286,
+        378
       ]
     },
     {

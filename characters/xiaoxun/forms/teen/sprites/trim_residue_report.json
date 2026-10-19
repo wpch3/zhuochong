@@ -1,10 +1,10 @@
 {
-  "total_px": 550,
+  "total_px": 530,
   "parts": {
     "seg_torso": {
-      "junk_px": 550,
-      "hair_like": 64,
-      "dark_line": 626
+      "junk_px": 530,
+      "hair_like": 45,
+      "dark_line": 606
     }
   }
 }

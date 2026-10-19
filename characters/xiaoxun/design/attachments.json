@@ -959,9 +959,9 @@
       "unit": "head",
       "pos_rel": [
         0.024652,
-        -0.132529
+        -0.019061
       ],
-      "sprite_h_rel": 3.495396,
+      "sprite_h_rel": 3.3676,
       "pose_group": "hairstyle",
       "pose_id": "long",
       "recolor_match": {
@@ -1076,10 +1076,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        -0.55567,
-        0.304459
+        -0.556469,
+        0.31303
       ],
-      "sprite_h_rel": 1.799507,
+      "sprite_h_rel": 1.654441,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1192,10 +1192,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.55567,
-        0.304459
+        0.556469,
+        0.31303
       ],
-      "sprite_h_rel": 1.799507,
+      "sprite_h_rel": 1.654441,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1337,7 +1337,7 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.502768,
+        0.504367,
         -0.085197
       ],
       "sprite_h_rel": 3.080922,
@@ -1461,10 +1461,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.029449,
-        0.145961
+        0.021454,
+        0.01292
       ],
-      "sprite_h_rel": 1.157073,
+      "sprite_h_rel": 1.295231,
       "width_ratio": 1.0,
       "layer": 187,
       "note": "双马尾 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
@@ -1503,10 +1503,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.072623,
-        0.139309
+        0.152576,
+        0.006268
       ],
-      "sprite_h_rel": 1.163981,
+      "sprite_h_rel": 1.302139,
       "width_ratio": 1.0,
       "layer": 188,
       "note": "高马尾 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
@@ -1545,10 +1545,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.02785,
-        0.139309
+        0.021454,
+        0.004094
       ],
-      "sprite_h_rel": 1.163981,
+      "sprite_h_rel": 1.360856,
       "width_ratio": 1.0,
       "layer": 189,
       "note": "长发 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
@@ -1831,14 +1831,20 @@
       "hide_parts": {
         "twin": [
           "hair_back",
+          "hair_side_l",
+          "hair_side_r",
           "acc_hood_up"
         ],
         "pony": [
           "hair_back",
+          "hair_side_l",
+          "hair_side_r",
           "acc_hood_up"
         ],
         "long": [
           "hair_back",
+          "hair_side_l",
+          "hair_side_r",
           "acc_hood_up"
         ]
       },
