@@ -99,6 +99,38 @@ def erode(b, k):
     return _a(_m(b).filter(ImageFilter.MinFilter(k)))
 
 
+def dark_junk_like(a):
+    """**暗到不可能是头发**的那些像素 —— 藏青裙子、鞋底、深色线稿块。
+
+    ★ 2026-10-19 第二十二问新增。马尾那条卷尾垂在裙子前面，切件时
+      裙子的藏青 (55,64,93) 顺着发缕边缘混进了后发件；它躲得过
+      `teal_like`（绿不压红）也躲得过 `skin_like`，于是原样落盘，
+      渲染出来就是淡紫发缕上趴着三块**纯黑**（用户九轮里反复点名的"碎块"）。
+
+    判据是量出来的，不是拍的：三张模板里**头发自身**像素的 max 通道
+    最小值都是 **151**（p0.1 也是 151）——头发在这套配色里永远是亮的。
+    取 130 当上限，离头发的下界还有 21 的余量。
+
+    ★ 光有亮度不够，还要区分「**线稿**」和「**色块**」：
+      头发自己的分缕线、发梢的描边也是暗的（紫褐 (111,76,119) 那一类），
+      把它们一起重画掉，发缕之间的分界会糊成一坨。
+      两者的差别是**粗细**不是颜色 —— 线稿是 1~3px 的细线，色块是实心片。
+      所以先 `erode(dark, 5)` 再 `dilate` 回去：细线被腐蚀干净，
+      只有**至少 5px 粗**的暗区留下来。
+      实测三张模板：误伤头发**本体 0 像素**，发缘 2px 圈只碰到 0.9~2.2%。
+
+    第一版用的是 `max<100 且 g>=r`（想用"绿压红"认藏青裙子），
+    漏掉了真正的元凶 —— 马尾压在袖口上那一片的暗紫 **(75,59,103)**
+    （r>g，躲过了 g>=r；max=103，躲过了 100）。改成粗细判据之后一网打尽。
+
+    而且 `bad` 这条链路是**用邻近发色重画、不删像素**，
+    最坏结果只是边缘软一点，不会挖洞。
+    """
+    mx = np.maximum(np.maximum(a[..., 0], a[..., 1]), a[..., 2])
+    dark = mx < 130
+    return dilate(erode(dark, 5), 5) & dark
+
+
 def teal_like(a):
     """夹克的薄荷青 —— 哪怕落在阴影里也要认得出来。
 
@@ -131,7 +163,7 @@ def teal_like(a):
     return (g - r > 30) & ((b - g < 12) | ((b - g < 25) & (b < 210) & (r < 150)))
 
 
-def keep_big(m, min_px=1500, max_parts=12):
+def keep_big(m, min_px=1500, max_parts=400):
     """只留下**够大的**连通块，碎渣一律丢掉。
 
     和 `keep_rooted` 的分工：`keep_rooted` 要求和发根相连，适合后发/马尾
@@ -142,12 +174,27 @@ def keep_big(m, min_px=1500, max_parts=12):
 
     没有 scipy，自己做连通域：每次挑一个剩余像素当种子，在块内反复膨胀到收敛。
     为了不在 1536x1024 的整幅上跑 MaxFilter，每次先裁到剩余掩膜的 bbox。
+
+    ★★★ 2026-10-19 第二十二问：`max_parts` 原来是 **12**，这是一条
+        **静默丢件**的 bug，不是性能旋钮。种子按 `np.nonzero` 的第一个像素挑，
+        也就是**从上往下**扫；只要上方先凑够 12 个连通块，循环就退出了，
+        **下方剩下的块一个都不再检查，无论多大**。
+        实测 sheet_pony：马尾末端那个内卷（y790~927，7415px，远超 min_px=3000）
+        就是这样没的 —— 它在图上最靠下，名额早被上面的碎块用完。
+        病征特别迷惑人：同一份 `back` 掩膜，按左右半边切出来的 `back_r`
+        **保住了**卷尾（右半边碎块少，12 个名额够用），整片切的 `back` 丢了。
+        于是双马尾（用 back_l/back_r）看着正常、马尾（用 back）尾巴少一截，
+        看起来像"某个发型特有的问题"，其实是计数上限。
+        现在改成**跑到 rem 为空为止**，上限抬到 400 纯粹当死循环保险，
+        真顶到了就打警告 —— 宁可慢，不可无声无息地少画一块头发。
     """
     out = np.zeros_like(m)
     rem = m.copy()
+    hit_cap = True
     for _ in range(max_parts):
         ys, xs = np.nonzero(rem)
         if not len(ys):
+            hit_cap = False
             break
         y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
         sub = rem[y0:y1, x0:x1]
@@ -161,6 +208,9 @@ def keep_big(m, min_px=1500, max_parts=12):
         if seed.sum() >= min_px:
             out[y0:y1, x0:x1] |= seed
         rem[y0:y1, x0:x1] &= ~seed
+    if hit_cap and rem.any():
+        log("    [警告] keep_big 连通块数顶到上限 %d，仍剩 %d px 未检查 —— "
+            "可能又在静默丢件，把 max_parts 调大" % (max_parts, int(rem.sum())))
     return out
 
 
@@ -587,7 +637,7 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #      被别的东西遮住的部分**要补画**，不是留空。
     #      所以这里只把远碎片剔掉，贴身杂物留在掩膜里，
     #      由 `emit_piece` 拿**干净发色**把它重画一遍（见那边的 `bad` 参数）。
-    bad = teal_like(sa) | skin_like(sa)
+    bad = teal_like(sa) | skin_like(sa) | dark_junk_like(sa)
     for key in list(out.keys()):
         m = out[key]
         if m is None or not m.any():
@@ -622,9 +672,29 @@ def emit_piece(pid, mask, sa, redraw, bbox, scale, unit, anchors, bleed_into=Non
     #  ★ 先把嵌在件里的杂物（衣领/袖口/手）用**周围的干净发色**重画掉。
     #    形状一个像素都不改 —— 改形状会啃出透明缺口，见 cut_masks 收尾那段注释。
     #    颜色源特意排除杂物本身，否则等于把衣领的颜色又抹回去。
+    #    ★ 2026-10-19 第二十二问：取色源还要再排掉**线稿**。
+    #      原来只排 `bad`（青布/皮肤/暗色块），剩下的"干净头发"里混着
+    #      发缕之间那些暗紫分缕线 (75,59,103)。`nearest_fill` 是**最近邻**，
+    #      一块被重画的区域只要最近的干净像素恰好是条线稿，整片就被刷成
+    #      那个暗紫 —— 实测马尾压在袖口上那一片（源切片局部 x150 y690 一带）
+    #      被刷出 100px/格 的实心暗块，渲染出来就是卷尾上趴着的几粒"黑渣"。
+    #      画师口径同源（CLIP STUDIO 官方 making，森倉円）：补画发丝要
+    #      「髪色の**明るいところや暗いところから**スポイトして描く」——
+    #      取的是**发色**的明暗两端，不是描线的颜色。
+    #      阈值取 **150**：三张模板里头发本体像素的 max 通道最小值都是 **151**，
+    #      `< 150` 的发身像素实测 **0 个** —— 所以这条等价于
+    #      「取色源必须是**真正的发色像素**」，而不是"躲开很暗的东西"。
+    #      （第一版设 130，漏掉了 (102,82,147) 这种**实心紫**块：max=147 刚好
+    #        卡在 130 和 151 之间，被当成合法发色拿去当源，往外抹了一大片；
+    #        再经 `recolor_match` 的 Lab 统计匹配拉伸对比，落到画面上就是
+    #        (60,59,85) 的**纯黑渣**。查的时候要盯**补色的源**，不是模板那一点的颜色。）
+    #      留了兜底：排完要是没源了，就退回只排 bad。
+    line_art = np.maximum(np.maximum(sa[..., 0], sa[..., 1]), sa[..., 2]) < 150
     if bad is not None and (m & bad).any():
         dirty = m & bad
-        src = erode(m & ~bad, 3)
+        src = erode(m & ~bad & ~line_art, 3)
+        if not src.any():
+            src = erode(m & ~bad, 3)
         if src.any():
             probe = dirty.copy()
             rad = 0
@@ -646,7 +716,11 @@ def emit_piece(pid, mask, sa, redraw, bbox, scale, unit, anchors, bleed_into=Non
         #   衣领/袖口/手，拿它当源就等于把杂物的颜色又抹回去了。
         holed = fill_holes(m)
         holes = holed & ~m
-        src = erode(m, 3)
+        # ★ 同上：塗り足し往外长的颜色也不许从线稿上取，否则件的外沿
+        #   会拖出一圈暗紫。排完没源了就退回原来的口径。
+        src = erode(m & ~line_art, 3)
+        if not src.any():
+            src = erode(m, 3)
         steps = BLEED + 1
         if holes.any():
             # 洞要靠最近邻一圈圈爬进去，步数不够的话洞心会留洋红。

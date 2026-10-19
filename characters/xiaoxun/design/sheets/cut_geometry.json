@@ -71,19 +71,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.504367,
-        1.232868
+        1.455136
       ],
-      "sprite_h_rel": 2.600823,
+      "sprite_h_rel": 3.080922,
       "width_ratio": 1.0,
       "px": [
         495,
         36,
         817,
-        788
+        927
       ],
       "content_px": [
         323,
-        753
+        892
       ],
       "slot": "body_back_pony"
     },

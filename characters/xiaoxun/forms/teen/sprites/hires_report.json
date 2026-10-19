@@ -7,8 +7,8 @@
  "realesrgan": 57,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 39,
- "seconds": 33.4,
+ "keycolor_fixed": 44,
+ "seconds": 32.9,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -599,27 +599,27 @@
    "name": "hair_long_back.png",
    "src": [
     571,
-    943
+    972
    ],
    "dst": [
     1142,
-    1886
+    1944
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 15
+   "keycolor_fixed": 19
   },
   {
    "name": "hair_pony_back.png",
    "src": [
-    310,
-    723
+    309,
+    857
    ],
    "dst": [
-    620,
-    1446
+    618,
+    1714
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 5
+   "keycolor_fixed": 6
   },
   {
    "name": "hair_side_l.png",

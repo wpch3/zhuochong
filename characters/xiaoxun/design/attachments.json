@@ -1337,9 +1337,9 @@
       "unit": "head",
       "pos_rel": [
         0.502768,
-        -0.067416
+        -0.085197
       ],
-      "sprite_h_rel": 2.600823,
+      "sprite_h_rel": 3.080922,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
