@@ -13,13 +13,13 @@
     }
   ],
   "keep_ellipse": [
-    40.0,
-    35.0
+    20.0,
+    17.0
   ],
-  "feather": 9.0,
+  "feather": 6.0,
   "hair_threshold_b_minus_r": [
-    4.0,
-    14.0
+    2.0,
+    7.0
   ],
   "iris_centers": {
     "l": [
@@ -38,9 +38,9 @@
         298,
         246
       ],
-      "removed_px": 1232,
-      "total_px": 6191,
-      "removed_pct": 19.9
+      "removed_px": 2704,
+      "total_px": 4719,
+      "removed_pct": 57.3
     },
     {
       "file": "eye_r_base.png",
@@ -48,9 +48,9 @@
         428,
         246
       ],
-      "removed_px": 1562,
-      "total_px": 5974,
-      "removed_pct": 26.15
+      "removed_px": 2970,
+      "total_px": 4566,
+      "removed_pct": 65.05
     },
     {
       "file": "eye_l_wide.png",
@@ -58,9 +58,9 @@
         343,
         234
       ],
-      "removed_px": 47,
-      "total_px": 5203,
-      "removed_pct": 0.9
+      "removed_px": 717,
+      "total_px": 4533,
+      "removed_pct": 15.82
     },
     {
       "file": "eye_r_wide.png",
@@ -68,9 +68,9 @@
         416,
         229
       ],
-      "removed_px": 59,
-      "total_px": 5325,
-      "removed_pct": 1.11
+      "removed_px": 905,
+      "total_px": 4479,
+      "removed_pct": 20.21
     },
     {
       "file": "eye_l_closed.png",
@@ -78,9 +78,9 @@
         356,
         245
       ],
-      "removed_px": 0,
-      "total_px": 2688,
-      "removed_pct": 0.0
+      "removed_px": 11,
+      "total_px": 2677,
+      "removed_pct": 0.41
     },
     {
       "file": "eye_r_closed.png",
@@ -88,9 +88,9 @@
         429,
         240
       ],
-      "removed_px": 0,
-      "total_px": 2846,
-      "removed_pct": 0.0
+      "removed_px": 41,
+      "total_px": 2805,
+      "removed_pct": 1.46
     },
     {
       "file": "eye_l_smile.png",
@@ -98,9 +98,9 @@
         356,
         245
       ],
-      "removed_px": 0,
-      "total_px": 2688,
-      "removed_pct": 0.0
+      "removed_px": 15,
+      "total_px": 2673,
+      "removed_pct": 0.56
     },
     {
       "file": "eye_r_smile.png",
@@ -108,9 +108,9 @@
         429,
         240
       ],
-      "removed_px": 0,
-      "total_px": 2846,
-      "removed_pct": 0.0
+      "removed_px": 74,
+      "total_px": 2772,
+      "removed_pct": 2.67
     },
     {
       "file": "eye_l_pain.png",
@@ -118,9 +118,9 @@
         352,
         243
       ],
-      "removed_px": 0,
-      "total_px": 3180,
-      "removed_pct": 0.0
+      "removed_px": 77,
+      "total_px": 3103,
+      "removed_pct": 2.48
     },
     {
       "file": "eye_r_pain.png",
@@ -128,9 +128,9 @@
         425,
         238
       ],
-      "removed_px": 0,
-      "total_px": 3378,
-      "removed_pct": 0.0
+      "removed_px": 187,
+      "total_px": 3191,
+      "removed_pct": 5.86
     }
   ]
 }
