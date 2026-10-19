@@ -35,26 +35,28 @@
 引擎 `pose_opacity` 对两个组是**相乘**的（zrig.c:4621），
 于是「戴帽 ∧ 发型=X」这个与条件不用改一行 C 代码。
 
-掩膜怎么来
-----------
-1. `diff`   = 戴帽图与同发型不戴帽图的逐像素差 > 45。身体、夹克、裙子在两张图里
-             一模一样 ⇒ 差分天然把帽子的下沿截在领口，不用手调。
-2. `材质`   = 暖白布 ∪ 薄荷青 ∪ 线稿。三者都排掉**紫调**
-             （`r-g>12 & b-g>12`）—— 头发不管被照亮还是落在阴影里，
-             G 都是三通道里明显最低的那个，布料不会。
-             实测不排的话，马尾被照亮那一侧 (223,202,224) 会整块混进「白布」。
-3. `种子`   = 戴帽图有、不戴帽图没有的那圈**外凸轮廓**（`opA & ~dilate(opB,3)`）。
-             这是确凿无疑的兜帽，拿它当测地重建的起点。
-4. 生长     = 在材质区内从种子测地生长。生长走**腐蚀核**，断掉重采样噪点连出来的
-             1~2px 细桥；不这么做会顺着夹克一路漏到鞋底（实测 bbox y 到 1479）。
-5. 下巴以下只留**外沿带**：兜帽在下半截就是左右两条下垂的布带，
-   而夹克的青色领子正好也在差分区里，会在帽口内侧挂出两撮「爪子」。
+掩膜怎么来（2026-10-20 第二十三问整段换掉，详见 `cut_one` 的注释）
+------------------------------------------------------------------
+**兜帽是一块区域，不是一种颜色。** 旧版逐像素分类「布 vs 头发」再叠九层
+补丁滤镜，把帽子削成 9732px 的铁丝圈、下颌留一道平切痕。现在只用几何：
 
-★ 两个踩过的坑，别再踩：
+  下颌以上  轮廓里只有「帽子」和「脸口」两样东西（四张模板逐张看过，
+            外露的头发一律在下颌以下才从帽口垂出来）
+            ⇒ **帽壳 = 剪影 − 脸口**，白布和头发根本不用分。
+  脸口      从脸（下颌以上最大的皮肤连通块）在「非薄荷青」里漫延出来的块。
+            内衬是一道闭合的拱，天生就是脸口的边界。
+            这是全套算法**唯一**的颜色判据。
+  下颌以下  从帽口垂下来的两片内衬（连通块，必须接得上帽壳）
+            ＋ 外侧白外布（每行从剪影外缘填到内衬为止，左右独立、下沿渐缩）。
+
+★ 三个踩过的坑，别再踩：
+  · 收尾只能 `fill_small`，**不能全局 `fill_holes`** —— 帽口下缘一被白外布
+    封住，脸口就从「开口」变成「内部空洞」被填实，整张脸切进帽子里
+    （pony/long 实测 54697 → 90431 px）。
+  · 行填必须左右**分开判断**，否则只有一侧有内衬的行会横贯拉出白色大横条。
   · `hair_like()` 不能拿来排头发 —— 它用「离真发 15px 内的弱判据」召回高光，
-    而帽口紧挨着头发，于是**白布的冷灰阴影整片被判成头发**，帽体只剩 9732px。
-  · 「真发色」判据必须 `& ~teal_like` —— 阴影里的薄荷青内衬 (101,159,162)
-    蓝会反超绿，正好落进 `b > g-6`。`teal_like` 的文档里写过这件事，我又踩了一遍。
+    而帽口紧挨着头发，于是**白布的冷灰阴影整片被判成头发**。
+    新算法根本不需要排头发，这个坑自动消失了。
 """
 from __future__ import annotations
 
@@ -90,12 +92,17 @@ PLAN = {
              ("hair_hood_long", "head_side_hair", "hair")],
 }
 
-#: 差分阈值。45 是实测下限：再低，重采样噪点会把整件夹克拉进来。
-DIFF_T = 45
 #: 兜帽下沿的硬限位（模板坐标）。肩线 436 + 124，留足帽子搭在肩上的部分。
 YLIM = 560
-#: 下巴以下只保留外沿这么宽的一条带（像素）。帽体在这一段就是两条下垂的布带。
-RIM_BAND = 55
+#: 闭合薄荷青内衬用的膨胀核。9 = 罗纹之间最宽的缝（实测 6px）再加余量；
+#: 多出来的 4px 同时就是帽口内沿的**塗り足し**，正好压住一点头发。
+TEAL_CLOSE = 9
+#: 线稿判据。max(r,g,b) < 170。150 太松：long 档的白外布会从线稿的
+#: 淡处漏进夹克（实测生长 2404 -> 16754 px）；185 又会把布料的冷灰阴影
+#: 当线稿，白外布长不出来。
+LINE_T = 170
+#: 白外布生长的防漏闸。四档实测 1789~2772 px，给 8000 还漏就是线稿破了口。
+WHITE_LEAK = 8000
 
 
 def comps(m):
@@ -153,16 +160,6 @@ def fill_small(m, maxa=900):
     return out
 
 
-def erode_n(m, px):
-    """腐蚀 px 像素（用 k=17 的 MinFilter 迭代，每次 8px）。"""
-    cur = m
-    done = 0
-    while done < px:
-        step = min(8, px - done)
-        cur = C.erode(cur, 2 * step + 1)
-        done += step
-    return cur
-
 
 def row_runs(row):
     """一行里的连续段，返回 [(x0, x1), ...]。"""
@@ -179,22 +176,6 @@ def row_runs(row):
     return out
 
 
-def only_outer_runs(m, from_row):
-    """from_row 以下，每行只留**最左和最右**那一段。
-
-    兜帽在下巴以下就是左右两条下垂的布带，中间是脖子和衣领。
-    夹克的青色领子也落在差分区里，不剔掉就会在帽口内侧挂出两撮「爪子」
-    —— 实测 v5 四档全都有，肉眼一看就是脏东西。
-    """
-    out = m.copy()
-    for y in range(from_row, m.shape[0]):
-        runs = row_runs(m[y])
-        if len(runs) <= 2:
-            continue
-        for x0, x1 in runs[1:-1]:
-            out[y, x0:x1 + 1] = False
-    return out
-
 
 def row_fill(m):
     """逐行把最左到最右之间填满 —— 得到兜帽的**整个剪影**（含脸的开口）。
@@ -210,94 +191,139 @@ def row_fill(m):
     return out
 
 
-def grow(seed, allowed, k=9, maxit=250):
-    """测地重建：在 allowed 里从 seed 长到不动点。"""
+
+def flood(seed, allowed):
+    """在 allowed 里从 seed 漫延到不动点（4/8 连通，k=3 膨胀迭代）。"""
     cur = seed & allowed
-    for i in range(maxit):
-        nxt = C.dilate(cur, k) & allowed
+    while True:
+        nxt = C.dilate(cur, 3) & allowed
         if nxt.sum() == cur.sum():
-            return nxt, i
+            return nxt
         cur = nxt
-    return cur, maxit
 
 
-def cut_one(style, design, chin, head_cx):
-    """切一档，返回 {'hood': mask, 'hair': mask, 'A': rgba}。"""
+def cut_one(style, design, chin, eyeline, head_cx):
+    """切一档，返回 {'hood': mask, 'hair': mask, 'A': rgba}。
+
+    ★★★ 2026-10-20 第二十三问整段重写。旧版的做法和它的下场
+    ------------------------------------------------------------------
+    旧版把兜帽当成「一种颜色」来找：先拿「暖白布 ∪ 薄荷青 ∪ 线稿 且 非紫调」
+    当材质区，再从外凸轮廓测地生长，最后叠了**九层补丁滤镜**去毛刺
+    （keep_parts 三遍 + only_outer_runs + 外沿带 + 下颌以下去青 + 开运算
+    + 分区再筛）。每一层都是上一轮为了挡一个毛刺加的，叠完的结果是：
+
+      · 帽壳只剩 9732 px 的**铁丝圈**，中间镂空，头发从帽顶透出来；
+      · `hood & ~(teal & (yy > chin))` 这一句把下颌以下的**薄荷青内衬整片删掉**，
+        而那两片内衬正是帽口敞开的内里、一直垂到肩线 —— 删掉它，
+        切口就正好落在下颌那条水平线上，渲染出来是一道横贯脸颊的**平切痕**。
+        用户第十一次打回发型/兜帽，指的就是这道痕。
+
+    教训（LESSONS 251）：**兜帽是一块区域，不是一种颜色。**
+    颜色判据只配用来找「区域的边界」，不配用来逐像素判定归属。
+
+    新算法：两条几何事实，零颜色分类
+    ------------------------------------------------------------------
+    1. **下颌以上**，轮廓里只有「帽子」和「脸口」两样东西 —— 四张戴帽模板
+       逐张看过，外露的头发一律在下颌以下才从帽口垂出来。
+       所以  **帽壳 = 剪影 − 脸口**。白布和头发根本不用分，
+       因为头发全在脸口里，而脸口是整块减掉的。
+
+    2. **脸口** = 从脸出发、在「非内衬」区域里漫延出来的连通块。
+       薄荷青内衬是一道**闭合的拱**（从左下颌绕过头顶到右下颌），
+       天然就是脸口的边界。这是全套算法唯一的颜色判据，
+       而薄荷青和画面里任何东西都不像，不会误判。
+       种子取「下颌以上最大的皮肤连通块」= 脸，不用手填坐标。
+       `dilate(teal, 9)` 既闭合罗纹之间的缝，又顺带给了 4px のりしろ
+       —— 帽口内沿多盖 4px 头发，正是教程要的「塗り足し」。
+
+    3. **下颌以下**：帽子 = 从帽口垂下来的两片薄荷青内衬
+       （取连通块、必须接得上帽壳）＋ 外侧那条白外布
+       （每行从剪影外缘往里填到内衬为止，左右两侧各自独立）。
+       白外布**沿线稿生长**：帽子的白和夹克的白是一个颜色、分不开，
+       但它们之间有一道线稿，那就是边界（教程「線画のやや外側を選択」）。
+       这段白布压在底图**同一件白夹克**上，就算填宽了也看不出来；
+       真正要紧的是它的外缘必须**和剪影重合**，不能在背景上留直边。
+
+    ★ 两个必须记住的坑
+      · 收尾只能 `fill_small`（填小洞），**绝不能全局 `fill_holes`**：
+        白外布一填，帽口下缘就被封住，脸口从「开口」变成「内部空洞」
+        被整个填实 —— pony/long 两档实测直接把整张脸切进帽子里
+        （件 54697 → 90431 px）。
+      · 白外布**不能按行填**。「每行从剪影外缘填到内衬为止」收口是硬生生
+        一刀，肩膀上留两个白方块；而且某一行只有一侧有内衬时，
+        `trow[0]` / `trow[-1]` 会落在同一侧，横贯整行拉出白色大横条。
+    """
     down_p, hood_p = SHEETS[style]
     A, op_a = C.key_rgba(os.path.join(design, hood_p))
-    B, op_b = C.key_rgba(os.path.join(design, down_p))
     h, w = op_a.shape
     yy = np.arange(h)[:, None] * np.ones((1, w), np.int32)
 
     r, g, b = A[..., 0], A[..., 1], A[..., 2]
-    diff = np.abs(A[:, :, :3].astype(np.int16)
-                  - B[:, :, :3].astype(np.int16)).sum(2) > DIFF_T
-
-    # ★ 紫调 = 头发（含被照亮的、落阴影的）和洋红反锯齿边；布料不会这样
-    purple = (r - g > 12) & (b - g > 12)
-    white = (np.minimum(np.minimum(r, g), b) > 150) & (r >= b - 4) & (~purple)
+    sil = C.fill_holes(op_a)
     teal = C.teal_like(A)
-    dark = (np.maximum(np.maximum(r, g), b) < 150) & (~purple)
     skin = C.skin_like(A)
-    # ★ 必须 & ~teal：阴影里的内衬 b 会反超 g，否则整圈内衬被当头发排掉
-    hairc = (b > r + 6) & (b > 120) & (b > g - 6) & (~teal)
 
-    allowed = (op_a & diff & (white | teal | dark)
-               & (~skin) & (~hairc) & (yy <= YLIM))
-    core = C.dilate(C.erode(allowed, 3), 3) & allowed       # 断 1~2px 噪点桥
-    seed = op_a & (~C.dilate(op_b, 3)) & (yy <= YLIM)
-    hood, _it = grow(seed, core)
-    hood = C.dilate(hood, 5) & allowed
-    hood, sizes = keep_parts(hood, 1200, box=(280, 40, 760, YLIM))
-    hood = fill_small(hood, 900)
+    # --- 1) 脸口 ------------------------------------------------------
+    allowed = sil & (~C.dilate(teal, TEAL_CLOSE)) & (yy <= chin)
+    faces = sorted([c for c in comps(skin & (yy <= chin) & sil) if len(c) > 2000],
+                   key=len, reverse=True)
+    if not faces:
+        raise SystemExit("%s：下颌以上找不到脸（皮肤连通块全部 < 2000px）" % style)
+    seed = np.zeros_like(op_a)
+    for y, x in faces[0]:
+        seed[y, x] = True
+    hole = C.fill_holes(flood(seed & allowed, allowed))
 
-    # 下巴以下只留外沿带 + 每行只留最左最右那段：
-    # 帽子在这一段只有两条下垂的布带，中间那两撮「爪子」是夹克的青领子。
-    outer = row_fill(hood)
-    rim = outer & ~erode_n(outer, RIM_BAND)
-    hood = hood & (rim | (yy <= chin))
-    hood = only_outer_runs(hood, chin)
-    # ★★★ 下颌线以下**只留外布，内衬一律不要**（2026-10-19 补）。
-    #   上面那条「只留外沿带」在帽子下半截失效：那里帽壳本来就窄，
-    #   erode_n(outer, 55) 把整段吃光 ⇒ 全部算外沿 ⇒ 帽口内侧的薄荷青
-    #   跟着留下来，渲染出来是下巴两边几片青色三角碎片 + 一道平切口
-    #   （第一次实拍 logs/asset_qa/hood_zoom.png 一眼可见）。
-    #   判据不靠阈值靠物理：下颌以下只看得见兜帽**搭在肩上的外面**，
-    #   内衬被脸和脖子挡住，本来就不该出现。
-    hood = hood & ~(teal & (yy > chin))
-    # 去掉上一步切出来的零碎（孤立 1~2px 牙口），再按连通块筛
-    hood = C.dilate(C.erode(hood, 3), 3) & hood
-    # ★ 阈值只能给到 200：清掉「爪子」之后，下巴以下那两条下垂的布带
-    #   就和主体断开了（原来它们是靠爪子连着的）。给 600 会把两条布带一起滤掉，
-    #   帽子只剩一个光环，不像搭在肩上的兜帽 —— 实测内容框从 308x410 缩到 308x305。
-    hood, _ = keep_parts(hood, 200, box=(280, 40, 760, YLIM))
-    # ★★★ 下颌以下再单独筛一次连通块（2026-10-19 补）。
-    #   上面那个 200 的阈值是为了保住「搭在肩上的两条下垂布带」，
-    #   但它同时放行了一堆几百像素的碎渣 —— 渲染出来是下巴两侧的
-    #   白/青三角片（twin/pony/long 三顶都有，short 那顶碰巧没有）。
-    #   分区筛：下颌以上照旧（帽壳是一整块，不会误伤），
-    #   下颌以下只留成规模的布带，碎渣一律丢。
-    _above = hood & (yy <= chin)
-    _below, _bs = keep_parts(hood & (yy > chin), 300,
-                             box=(280, chin, 760, YLIM))
-    hood = _above | _below
-    # ★★★ 最后整体按连通块收口（2026-10-19 补）。
-    #   成品兜帽是**一整块**：白外布 + 薄荷青罗纹内衬在帽口处本来就相连。
-    #   上一版留下的残渣全是**和主体断开**的小块 —— 帽口内侧几片青三角、
-    #   帽顶外面几粒白渣（见 logs/asset_qa/hood_sprites.png 第一版）。
-    #   所以判据不是"多大算渣"而是"连不连得上主体"：只留最大的那一块。
-    #   阈值给 3000 作下限兜底（真·主体两万多像素，差着一个量级）。
-    #   ★ 只能"丢小块"不能"只留最大块"：pony / long 两顶的帽壳本来就被
-    #     帽口开口分成两三大块，只留最大的会掉一半（实测 26541 -> 12906）。
-    hood, _fs = keep_parts(hood, 1200, box=(280, 40, 760, YLIM))
+    # --- 2) 下颌以上：剪影 − 脸口 --------------------------------------
+    hood = sil & (yy <= chin) & (~hole)
 
-    # 戴帽时露在帽子外面的头发 = **帽子整个剪影之外**的发色像素。
-    # 剪影要用 row_fill 不能用 fill_holes（马蹄形不闭合，见函数注释）。
-    # ★ row_fill 会把**帽口的开口**也算进剪影，所以只在下巴以上生效：
-    #   上半截要挡住的是帽口里的刘海（底图本来就有，不该重复切）；
-    #   下半截必须放行，不然从帽口垂下来的发尾会被整条腰斩
-    #   —— 实测双马尾件高度从 1149 掉到 378。
-    hood_sil = C.dilate(row_fill(hood) & (yy <= chin + 30), 5)
+    # --- 3) 下颌以下：垂下来的内衬 + 外侧白布 ---------------------------
+    anchor = C.dilate(hood, 5)
+    lining = np.zeros_like(op_a)
+    for c in comps(teal & (yy > chin) & (yy <= YLIM) & op_a):
+        if len(c) >= 300 and any(anchor[y, x] for y, x in c):
+            for y, x in c:
+                lining[y, x] = True
+    lining = C.dilate(lining, 5) & op_a          # 连线稿一起带上
+    hood = hood | lining
+
+    # 白外布：**沿线稿测地生长**，不是按行填。
+    # 教程原话「線画のやや外側を選択してくりぬく」—— 兜帽的白和夹克的白
+    # 是同一个颜色，分不开；但它们之间有一道线稿，那就是边界。
+    # 从帽壳下沿的白出发，在「白 ∧ 离线稿 3px 以外」里长到不动点，
+    # 线稿自然把它挡在夹克外面，收口是布料本来的形状，没有直角、没有平切。
+    # ★ 曾经用「每行从剪影外缘填到内衬为止」，收口是硬生生一刀，
+    #   渲染出来是肩膀上两个白方块（logs/asset_qa 早期 hood_pieces.png 可见）。
+    mx = np.maximum(np.maximum(r, g), b)
+    mn = np.minimum(np.minimum(r, g), b)
+    line = mx < LINE_T
+    allow_w = (op_a & (mn > 140) & (~teal) & (~C.dilate(line, 3))
+               & (yy > chin - 6) & (yy <= YLIM))
+    sd = C.erode(hood, 3) & allow_w & (yy < chin + 14)
+    gw = flood(sd, allow_w)
+    if gw.sum() > WHITE_LEAK:
+        # 线稿有缺口，白布一路漏进夹克。宁可少一块也不要糊一片。
+        C.log("    %s：白外布生长 %d px 超过 %d，判定漏进夹克，放弃这一段"
+              % (style, int(gw.sum()), WHITE_LEAK))
+    else:
+        hood = hood | (C.dilate(gw, 7) & op_a & (yy <= YLIM))   # 把线稿边吃回来
+    hood = hood & sil
+    hood = fill_small(hood, 1500)                 # ★ 只填小洞，脸口必须留着
+    hood, sizes = keep_parts(hood, 1200)
+
+
+    # 戴帽时帽子**没盖住**的那段头发。上边界卡在**眼线**，不是整个帽子剪影。
+    #
+    # ★★★ 2026-10-20 第二十三问改（原来卡在 `chin + 30`）。
+    #   卡在下巴，等于把**帽口里**的头发整片排掉。可戴帽时发型档已经把
+    #   `hair_side_l/r` 藏了（发型要换整颗头），它自己的鬓发件也被
+    #   `hood_pose.up` 藏了 —— 脸颊两侧于是**什么都没有**，渲染出来是
+    #   两个黑色三角洞（实拍 /tmp/z_twin_up.png，twin / pony / long 三档都有）。
+    #   教程原话：のりしろ要伸到相邻部件**之下**。所以帽外头发必须一路
+    #   补到帽口里、压在兜帽内沿底下，而不是在帽口处齐齐切断。
+    #   上边界取眼线：眼线以上是刘海，底图 `hair_front` 本来就有，
+    #   再切一份会和底图的刘海重影；眼线以下才是需要补的鬓发。
+    hood_sil = C.dilate(row_fill(hood) & (yy <= eyeline), 5)
     # ★ 要一条**饱和度闸**：夹克胸口那对白抽绳、夹克前襟的冷白边，
     #   都落在 `hair_like` 的弱判据里（b 比 r 高一两点）且紧挨着长发，
     #   会被召回成「头发」。头发哪怕高光处也有 10 以上的色差，白绳只有 2~4。
@@ -333,13 +359,15 @@ def main() -> int:
         anchors = json.load(fh)
     unit = anchors["meta"]["head_ratio"] * anchors["meta"]["height_px"]
     chin = int(round(bbox[1] + anchors["points"]["neck"][1] / scale))
+    eyeline = int(round(bbox[1] + anchors["points"]["eye_line"][1] / scale))
     head_cx = (bbox[0] + bbox[2] + 1) / 2.0
-    C.log("底图 bbox %s  缩放 %.6f  下巴 y=%d（模板坐标）" % (str(bbox), scale, chin))
+    C.log("底图 bbox %s  缩放 %.6f  下巴 y=%d  眼线 y=%d（模板坐标）"
+          % (str(bbox), scale, chin, eyeline))
 
     geom = collections.OrderedDict()
     dbg = {}
     for style in [s.strip() for s in a.styles.split(",") if s.strip()]:
-        cut = cut_one(style, design, chin, head_cx)
+        cut = cut_one(style, design, chin, eyeline, head_cx)
         dbg[style] = cut
         C.log("  %-6s 帽壳 %6d px %s   帽外头发 %6d px %s"
               % (style, int(cut["hood"].sum()), cut["sizes"],

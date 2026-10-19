@@ -7,8 +7,8 @@
  "realesrgan": 62,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 51,
- "seconds": 40.9,
+ "keycolor_fixed": 47,
+ "seconds": 44.4,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -65,12 +65,12 @@
   {
    "name": "acc_hood_long.png",
    "src": [
-    296,
-    275
+    302,
+    314
    ],
    "dst": [
-    592,
-    550
+    604,
+    628
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -78,12 +78,12 @@
   {
    "name": "acc_hood_pony.png",
    "src": [
-    280,
-    249
+    302,
+    347
    ],
    "dst": [
-    560,
-    498
+    604,
+    694
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -91,28 +91,28 @@
   {
    "name": "acc_hood_twin.png",
    "src": [
-    257,
-    248
+    302,
+    345
    ],
    "dst": [
-    514,
-    496
+    604,
+    690
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 1
   },
   {
    "name": "acc_hood_up.png",
    "src": [
-    296,
-    292
+    303,
+    348
    ],
    "dst": [
-    592,
-    584
+    606,
+    696
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 1
   },
   {
    "name": "acc_tail_puff.png",
@@ -637,15 +637,15 @@
   {
    "name": "hair_hood_pony.png",
    "src": [
-    241,
-    562
+    234,
+    532
    ],
    "dst": [
-    482,
-    1124
+    468,
+    1064
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 8
+   "keycolor_fixed": 1
   },
   {
    "name": "hair_hood_twin.png",
@@ -671,7 +671,7 @@
     1944
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 19
+   "keycolor_fixed": 20
   },
   {
    "name": "hair_pony_back.png",

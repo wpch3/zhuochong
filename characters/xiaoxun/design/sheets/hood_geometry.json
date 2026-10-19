@@ -8,19 +8,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.026251,
-        0.655611
+        0.741959
       ],
-      "sprite_h_rel": 1.05,
+      "sprite_h_rel": 1.250329,
       "width_ratio": 1.0,
       "px": [
-        353,
-        80,
-        660,
-        383
+        350,
+        78,
+        663,
+        439
       ],
       "content_px": [
-        308,
-        304
+        314,
+        362
       ],
       "slot": "head_over_hair",
       "style": "short"
@@ -29,20 +29,20 @@
       "sprite_file": "sheetcut_acc_hood_twin.png",
       "ref": "head_top",
       "pos_rel": [
-        0.023053,
-        0.588451
+        0.02785,
+        0.74036
       ],
-      "sprite_h_rel": 0.891119,
+      "sprite_h_rel": 1.239968,
       "width_ratio": 1.0,
       "px": [
-        373,
-        82,
-        638,
-        339
+        351,
+        79,
+        663,
+        437
       ],
       "content_px": [
-        266,
-        258
+        313,
+        359
       ],
       "slot": "head_over_hair",
       "style": "twin"
@@ -52,19 +52,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.024652,
-        1.762153
+        1.58306
       ],
-      "sprite_h_rel": 1.416119,
+      "sprite_h_rel": 1.802961,
       "width_ratio": 1.0,
       "px": [
         232,
-        373,
+        261,
         780,
         782
       ],
       "content_px": [
         549,
-        410
+        522
       ],
       "slot": "head_side_hair",
       "style": "twin"
@@ -73,20 +73,20 @@
       "sprite_file": "sheetcut_acc_hood_pony.png",
       "ref": "head_top",
       "pos_rel": [
-        -0.002532,
-        0.59005
+        0.02785,
+        0.743558
       ],
-      "sprite_h_rel": 0.894573,
+      "sprite_h_rel": 1.246875,
       "width_ratio": 1.0,
       "px": [
-        353,
-        82,
-        642,
-        340
+        351,
+        79,
+        663,
+        439
       ],
       "content_px": [
-        290,
-        259
+        313,
+        361
       ],
       "slot": "head_over_hair",
       "style": "pony"
@@ -95,20 +95,20 @@
       "sprite_file": "sheetcut_hair_hood_pony.png",
       "ref": "head_top",
       "pos_rel": [
-        0.517159,
-        1.942846
+        0.310882,
+        1.813323
       ],
-      "sprite_h_rel": 2.02056,
+      "sprite_h_rel": 2.30033,
       "width_ratio": 1.0,
       "px": [
-        535,
-        342,
+        406,
+        261,
         785,
         926
       ],
       "content_px": [
-        251,
-        585
+        380,
+        666
       ],
       "slot": "head_side_hair",
       "style": "pony"
@@ -117,20 +117,20 @@
       "sprite_file": "sheetcut_acc_hood_long.png",
       "ref": "head_top",
       "pos_rel": [
-        0.024652,
-        0.633224
+        0.026251,
+        0.689191
       ],
-      "sprite_h_rel": 0.987829,
+      "sprite_h_rel": 1.129441,
       "width_ratio": 1.0,
       "px": [
-        353,
-        82,
-        659,
-        367
+        350,
+        79,
+        663,
+        405
       ],
       "content_px": [
-        307,
-        286
+        314,
+        327
       ],
       "slot": "head_over_hair",
       "style": "long"
@@ -140,19 +140,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.023053,
-        2.371392
+        1.97003
       ],
-      "sprite_h_rel": 1.771876,
+      "sprite_h_rel": 2.638817,
       "width_ratio": 1.0,
       "px": [
         210,
-        512,
+        261,
         801,
         1024
       ],
       "content_px": [
         592,
-        513
+        764
       ],
       "slot": "head_side_hair",
       "style": "long"

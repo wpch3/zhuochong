@@ -3,7 +3,7 @@
   "parts": {
     "seg_torso": {
       "junk_px": 550,
-      "hair_like": 68,
+      "hair_like": 64,
       "dark_line": 626
     }
   }
