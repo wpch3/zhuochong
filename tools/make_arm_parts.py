@@ -47,6 +47,7 @@ ROOT_EXT_MAX = 46                   # 单行最多往身体里补多少像素
 ROOT_TOP_RAMP = 40                  # 顶端这么多行内把补绘量从 0 渐渐加满（不留水平直边）
 ROOT_SHADE = 0.90                   # 补到最里侧时的明度系数（内侧背光，略压暗）
 ROOT_CLEAR_SEAM = 0                 # 0 = **不要**抹上臂贴图里那条袖缝线（试过，静止帧会坏）
+ROOT_DISC_K = 0.52                  # 袖根塗り足し只留**以肩关节为圆心**这么多倍上臂长的圆盘内（G121）
 ROOT_LAYER = {"l": 95, "r": 96}     # **画在躯干(100)底下**：静止时被夹克完全盖住
 
 SEAM_KEEP = 2       # 袖片内缘：最内侧青色之外再留几像素（袖缝线本身要留）
@@ -237,8 +238,31 @@ def bleed(rgb, have, into, rounds=5):
     return out_rgb, grown, dist
 
 
-def root_fill(body, up, side, hidden):
+def root_fill(body, up, side, hidden, pivot=None, arm_len=None):
     """袖根塗り足し（G108）：把上臂的袖子往身体里多画一截，**画在躯干底下**。
+
+    ★★★ 2026-10-20 第二十七问（G121）：补出来的这块必须**收进以肩关节为
+        圆心的圆盘里**，这是这一版唯一的、也是最要紧的改动。
+
+        用户第二十七问截图 1/2（放大件 /tmp/u1_arm.png）：一挥手，肩膀底下
+        多出**第二条袖子** —— 一大块青色楔形斜指右下、顶边是一条硬直线，
+        和真正抬起来的那条袖子叠在一起，肘部还有一道线稿横穿过去。
+        把 arm_r_root + arm_r_upper 单独合成放大（/tmp/a_upper.png）坐实：
+        重影就是这件袖根塗り足し。
+
+        它为什么会露出来：上一版是**逐行**把袖子往身体里补，一路补到肘部
+        （实测件 98x334，也就是整条上臂那么长）。整件挂在 `arm_*` 组上，
+        绕**肩关节**转；离枢轴越远的行，转动时扫过的弧越长。
+        肩那头几乎不动（藏得住），肘那头转 58° 直接从夹克边上甩出来 ——
+        它的层号 96 比躯干 100 低，可躯干只盖得住自己剪影里的那部分。
+
+        正解是几何上的：**绕一个点转，以这个点为圆心的圆盘是不变量**。
+        把塗り足し限制在肩关节周围半径 R = 0.52×上臂长 的圆盘里，
+        无论转多少度，这块都还在同一个圆盘里 —— 既不可能扫出躯干，
+        又正好把转开后露出来的肩窝填满。教程说的
+        「腕の付け根は肩のパーツの下に十分な範囲を描いておく（回転させても
+        隙間ができない）」（shiroikarasu.net/live2d-part-separation-
+        illustrator-guide/）讲的就是**付け根**——肩关节那一圈，不是整条上臂。
 
     为什么要补：袖子是沿袖缝切的，上臂露出来的只有夹克身**没盖住**的那一条，
     逐行宽度从肩头的 23px 长到肘部的 68px。手臂一抬，这条楔形整个转出来，
@@ -270,31 +294,58 @@ def root_fill(body, up, side, hidden):
         edges[int(y)] = (a, b)
         widths.append(b - a + 1)
     target = float(np.percentile(widths, ROOT_TARGET_Q * 100.0))
-    ext = np.zeros((H, W), bool)
     rgb = body[..., :3].copy()
-    for y, (a, b) in edges.items():
-        d = min(ROOT_EXT_MAX, int(round(target - (b - a + 1))))
-        if d <= 0:
-            continue
-        t = min(1.0, (y - y0) / float(ROOT_TOP_RAMP))
-        d = int(round(d * (t * t * (3.0 - 2.0 * t))))      # smoothstep
-        if d <= 0:
-            continue
-        if side == "r":                                     # 右臂往左（身体里）补
-            src = body[y, a + 1:a + 7, :3]
-            x0, x1 = max(0, a - d), a
-            ramp = np.linspace(1.0, ROOT_SHADE, x1 - x0)[::-1]
-        else:                                               # 左臂往右补
-            src = body[y, max(0, b - 6):b, :3]
-            x0, x1 = b + 1, min(W, b + 1 + d)
-            ramp = np.linspace(1.0, ROOT_SHADE, x1 - x0)
-        if src.size == 0 or x1 <= x0:
+    yy_d = np.arange(H)[:, None] - float(pivot[1] if pivot is not None else 0)
+    xx_d = np.arange(W)[None, :] - float(pivot[0] if pivot is not None else 0)
+    if pivot is not None and arm_len:
+        # ★ G121：补绘区 = **以肩关节为圆心的整个圆盘**（减去袖子自己），
+        #   而不是上一版「逐行往身体里加 d 像素」。
+        #   为什么要填满整个圆盘：转动时露出来的是肩窝，补一条竖带只能填住
+        #   竖直那一截，斜着抬手就在左下角留个硬角（/tmp/arm_sh6.png 第 3、4 格）。
+        #   圆盘填实以后，关节处的剪影本身就是个圆 —— 这正是教程里
+        #   「袖根画成圆帽」的做法，转任何角度都是同一个圆。
+        R = float(arm_len) * ROOT_DISC_K
+        #   ★ 这里必须 `& ~up` 而不是 `& ~dilate(up, 1)`：留 1px 缝的话，
+        #     下面描线稿的 `full = ext | up` 会沿着这条缝也算出一圈"剪影边"，
+        #     在青袖**正中间**糊出一道深色线，看上去就是两条袖子叠着
+        #     （/tmp/arm_sh6.png 第二版 2~4 格）。贴齐了才只有外沿一条线。
+        ext = ((xx_d * xx_d + yy_d * yy_d) <= R * R) & erode(hidden, 2) & ~up
+    else:
+        ext = np.zeros((H, W), bool)
+        for y, (a, b) in edges.items():
+            d = min(ROOT_EXT_MAX, int(round(target - (b - a + 1))))
+            if d <= 0:
+                continue
+            t = min(1.0, (y - y0) / float(ROOT_TOP_RAMP))
+            d = int(round(d * (t * t * (3.0 - 2.0 * t))))
+            if d <= 0:
+                continue
+            x0, x1 = (max(0, a - d), a) if side == "r" else (b + 1, min(W, b + 1 + d))
+            ext[y, x0:x1] = True
+    # 上色：每一行取**同一行袖缝内侧 6px**的中位色（避开 2px 线稿）；
+    # 圆盘顶端那几行在袖子之上没有袖缝可取，就沿用袖子最上面一行的颜色。
+    ys_sorted = sorted(edges)
+    for y in np.nonzero(ext.any(axis=1))[0]:
+        y = int(y)
+        ref = y if y in edges else (ys_sorted[0] if y < ys_sorted[0] else ys_sorted[-1])
+        a, b = edges[ref]
+        src = body[ref, a + 1:a + 7, :3] if side == "r" else body[ref, max(0, b - 6):b, :3]
+        if src.size == 0:
             continue
         col = np.median(src.astype(np.float32), axis=0)
-        rgb[y, x0:x1] = np.clip(col[None, :] * ramp[:, None], 0, 255).astype(rgb.dtype)
-        ext[y, x0:x1] = True
-    ext &= erode(hidden, 2)              # 软边也要藏住：先把遮挡区往里收 2px
+        xs = np.nonzero(ext[y])[0]
+        if not xs.size:
+            continue
+        x0, x1 = int(xs.min()), int(xs.max()) + 1
+        ramp = np.linspace(1.0, ROOT_SHADE, x1 - x0)
+        if side == "r":
+            ramp = ramp[::-1]                     # 右臂越往身体里越暗
+        line = np.clip(col[None, :] * ramp[:, None], 0, 255).astype(rgb.dtype)
+        sel = ext[y, x0:x1]
+        rgb[y, x0:x1][sel] = line[sel]
     # 新内缘描线稿：转出来之后这条就是袖子的剪影边，没有线会像一块色块
+    #   只在**圆盘外沿**描线：靠身体里侧那一段将来可能转成剪影边，要线；
+    #   贴着袖子的那一侧已经有原画的袖缝线了，再描一道就是双线。
     full = ext | up
     rim = (full & ~erode(full, LINE_W)) & ext
     rim_s = (full & ~erode(full, LINE_W + 1)) & ext
@@ -432,12 +483,10 @@ def main():
     newbody[..., 3][paste] = 255
     lost = occ & ~have                      # 重绘也没有的（袖子外侧本来就是背景）
     newbody[..., 3][lost] = 0
-    # 剩下的空洞边缘往外长 5 圈颜色，保证手臂转开时切口不是硬透明边
     keep = newbody[..., 3] > 16
     newbody[..., :3], grown, dist = bleed(newbody[..., :3], keep, lost, rounds=BLEED)
     # 边缘往外长的这几圈做渐隐，手臂转开时看着像衣片自然收边
     newbody[..., 3][grown] = np.clip(255.0 * (1.0 - (dist[grown] - 1.0) / BLEED), 0, 255).astype(np.uint8)
-
     # ---- 给补出来的衣片描线稿 ----
     # 原画每一条剪影边上都有一条深紫灰的线；补画区如果只有平涂白，
     # 手臂一抬，露出来的就是"纸片剪开"的感觉（用户反馈的"这个分割"）。
@@ -479,7 +528,11 @@ def main():
         # G108 袖根：先补，再和上臂一起切（补出来的那块是独立一件，层 95/96）
         up_mask = m & (np.arange(H)[:, None] <= elbow_y + half)
         hidden = torso_solid | dilate(m, 2)
-        ext, ext_rgb, ext_target = root_fill(body, up_mask, side, hidden)
+        sh_pt = (float(pts[f"shoulder_{side}"][0]), float(pts[f"shoulder_{side}"][1]))
+        arm_len = float(np.hypot(pts[f"elbow_{side}"][0] - sh_pt[0],
+                                 pts[f"elbow_{side}"][1] - sh_pt[1]))
+        ext, ext_rgb, ext_target = root_fill(body, up_mask, side, hidden,
+                                             pivot=sh_pt, arm_len=arm_len)
         if ext.any():
             ea = soft(ext)
             ea[erode(ext, 1)] = 1.0

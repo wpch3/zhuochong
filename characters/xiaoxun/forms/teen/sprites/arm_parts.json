@@ -8,12 +8,12 @@
       "id": "arm_l_root",
       "file": "sprites/arm_l_root.png",
       "pos": [
-        103,
-        339
+        107,
+        286
       ],
       "size": [
-        49,
-        218
+        90,
+        176
       ],
       "group": "arm_l",
       "layer": 95,
@@ -84,12 +84,12 @@
       "id": "arm_r_root",
       "file": "sprites/arm_r_root.png",
       "pos": [
-        287,
-        340
+        247,
+        286
       ],
       "size": [
-        49,
-        167
+        90,
+        174
       ],
       "group": "arm_r",
       "layer": 96,
@@ -163,8 +163,8 @@
     "torso_filled_px": 73,
     "torso_cleared_px": 40713,
     "root_ext_px": {
-      "l": 2220,
-      "r": 2698
+      "l": 10265,
+      "r": 10205
     },
     "root_target_w": {
       "l": 57.0,

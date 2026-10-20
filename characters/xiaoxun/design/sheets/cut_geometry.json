@@ -71,19 +71,19 @@
       "ref": "head_top",
       "pos_rel": [
         -0.603775,
-        1.424754
+        1.429551
       ],
-      "sprite_h_rel": 1.012007,
+      "sprite_h_rel": 1.022369,
       "width_ratio": 1.0,
       "px": [
         237,
         326,
         382,
-        618
+        621
       ],
       "content_px": [
         146,
-        293
+        296
       ],
       "slot": "head_side_sweep"
     },
@@ -92,19 +92,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.64988,
-        1.424754
+        1.427952
       ],
-      "sprite_h_rel": 1.012007,
+      "sprite_h_rel": 1.018915,
       "width_ratio": 1.0,
       "px": [
         629,
         326,
         774,
-        618
+        620
       ],
       "content_px": [
         146,
-        293
+        295
       ],
       "slot": "head_side_sweep"
     },
@@ -155,19 +155,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.688257,
-        1.626234
+        1.917261
       ],
-      "sprite_h_rel": 1.447204,
+      "sprite_h_rel": 2.075823,
       "width_ratio": 1.0,
       "px": [
         610,
         326,
         817,
-        744
+        926
       ],
       "content_px": [
         208,
-        419
+        601
       ],
       "slot": "head_side_sweep"
     },
@@ -217,20 +217,20 @@
       "sprite_file": "sheetcut_hair_long_side_l.png",
       "ref": "head_top",
       "pos_rel": [
-        -0.547808,
-        2.056379
+        -0.447068,
+        2.062775
       ],
-      "sprite_h_rel": 2.376317,
+      "sprite_h_rel": 2.390132,
       "width_ratio": 1.0,
       "px": [
         210,
         326,
-        444,
-        1013
+        507,
+        1017
       ],
       "content_px": [
-        235,
-        688
+        298,
+        692
       ],
       "slot": "head_side_long"
     },
@@ -238,20 +238,20 @@
       "sprite_file": "sheetcut_hair_long_side_r.png",
       "ref": "head_top",
       "pos_rel": [
-        0.593914,
-        2.059577
+        0.502768,
+        2.062775
       ],
-      "sprite_h_rel": 2.383225,
+      "sprite_h_rel": 2.390132,
       "width_ratio": 1.0,
       "px": [
-        565,
+        508,
         326,
         803,
-        1015
+        1017
       ],
       "content_px": [
-        239,
-        690
+        296,
+        692
       ],
       "slot": "head_side_long"
     }

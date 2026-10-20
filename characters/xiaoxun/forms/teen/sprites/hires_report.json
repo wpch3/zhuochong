@@ -7,8 +7,8 @@
  "realesrgan": 66,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 34,
- "seconds": 58.0,
+ "keycolor_fixed": 37,
+ "seconds": 60.8,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -39,12 +39,12 @@
   {
    "name": "acc_hair_sidelong_l.png",
    "src": [
-    225,
-    661
+    286,
+    665
    ],
    "dst": [
-    450,
-    1322
+    572,
+    1330
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -52,12 +52,12 @@
   {
    "name": "acc_hair_sidelong_r.png",
    "src": [
-    230,
-    663
+    284,
+    665
    ],
    "dst": [
-    460,
-    1326
+    568,
+    1330
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -182,12 +182,12 @@
   {
    "name": "arm_l_root.png",
    "src": [
-    49,
-    218
+    90,
+    176
    ],
    "dst": [
-    98,
-    436
+    180,
+    352
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -221,12 +221,12 @@
   {
    "name": "arm_r_root.png",
    "src": [
-    49,
-    167
+    90,
+    174
    ],
    "dst": [
-    98,
-    334
+    180,
+    348
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -619,7 +619,7 @@
     544
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 1
   },
   {
    "name": "hair_front.png",
@@ -645,7 +645,7 @@
     1474
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 5
+   "keycolor_fixed": 3
   },
   {
    "name": "hair_hood_pony.png",
@@ -684,7 +684,7 @@
     1872
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 2
+   "keycolor_fixed": 1
   },
   {
    "name": "hair_pony_back.png",
@@ -729,24 +729,24 @@
    "name": "hair_sweep_pony_r.png",
    "src": [
     199,
-    402
+    577
    ],
    "dst": [
     398,
-    804
+    1154
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 3
   },
   {
    "name": "hair_sweep_twin_l.png",
    "src": [
     140,
-    281
+    284
    ],
    "dst": [
     280,
-    562
+    568
    ],
    "method": "realesrgan",
    "keycolor_fixed": 2
@@ -755,14 +755,14 @@
    "name": "hair_sweep_twin_r.png",
    "src": [
     140,
-    281
+    283
    ],
    "dst": [
     280,
-    562
+    566
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 4
+   "keycolor_fixed": 6
   },
   {
    "name": "hair_twin_l.png",

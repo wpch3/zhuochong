@@ -5,39 +5,39 @@
     "opaque": 18005
   },
   "hair_back@2x.png": {
-    "repaint": 104,
+    "repaint": 15,
     "erase": 81,
     "opaque": 72406
   },
   "hair_crown_long.png": {
-    "repaint": 142,
-    "erase": 81,
-    "opaque": 41975
+    "repaint": 0,
+    "erase": 30,
+    "opaque": 40353
   },
   "hair_crown_long@2x.png": {
-    "repaint": 579,
-    "erase": 148,
-    "opaque": 168071
+    "repaint": 4,
+    "erase": 160,
+    "opaque": 161492
   },
   "hair_crown_pony.png": {
-    "repaint": 1,
-    "erase": 32,
-    "opaque": 42776
+    "repaint": 0,
+    "erase": 28,
+    "opaque": 41326
   },
   "hair_crown_pony@2x.png": {
-    "repaint": 46,
-    "erase": 47,
-    "opaque": 171048
+    "repaint": 0,
+    "erase": 51,
+    "opaque": 165269
   },
   "hair_crown_twin.png": {
-    "repaint": 19,
-    "erase": 93,
-    "opaque": 46094
+    "repaint": 0,
+    "erase": 35,
+    "opaque": 44604
   },
   "hair_crown_twin@2x.png": {
-    "repaint": 155,
-    "erase": 145,
-    "opaque": 184419
+    "repaint": 6,
+    "erase": 176,
+    "opaque": 178492
   },
   "hair_front.png": {
     "repaint": 773,
@@ -45,17 +45,17 @@
     "opaque": 10301
   },
   "hair_front@2x.png": {
-    "repaint": 155,
-    "erase": 2677,
+    "repaint": 16,
+    "erase": 2661,
     "opaque": 39800
   },
   "hair_hood_long.png": {
-    "repaint": 1114,
-    "erase": 15,
+    "repaint": 0,
+    "erase": 6,
     "opaque": 89431
   },
   "hair_hood_long@2x.png": {
-    "repaint": 4192,
+    "repaint": 1,
     "erase": 19,
     "opaque": 356341
   },
@@ -71,8 +71,8 @@
   },
   "hair_hood_twin.png": {
     "repaint": 0,
-    "erase": 171,
-    "opaque": 25018
+    "erase": 119,
+    "opaque": 24998
   },
   "hair_hood_twin@2x.png": {
     "repaint": 14,
@@ -80,24 +80,24 @@
     "opaque": 99491
   },
   "hair_long_back.png": {
-    "repaint": 316,
+    "repaint": 30,
     "erase": 0,
     "opaque": 226948
   },
   "hair_long_back@2x.png": {
-    "repaint": 1100,
+    "repaint": 55,
     "erase": 0,
     "opaque": 906688
   },
   "hair_pony_back.png": {
-    "repaint": 1,
+    "repaint": 0,
     "erase": 121,
     "opaque": 63929
   },
   "hair_pony_back@2x.png": {
-    "repaint": 94,
-    "erase": 522,
-    "opaque": 254745
+    "repaint": 13,
+    "erase": 301,
+    "opaque": 254524
   },
   "hair_side_l.png": {
     "repaint": 100,
@@ -105,7 +105,7 @@
     "opaque": 6668
   },
   "hair_side_l@2x.png": {
-    "repaint": 95,
+    "repaint": 3,
     "erase": 1241,
     "opaque": 26216
   },
@@ -115,57 +115,57 @@
     "opaque": 7061
   },
   "hair_side_r@2x.png": {
-    "repaint": 92,
+    "repaint": 3,
     "erase": 983,
     "opaque": 27886
   },
   "hair_sweep_pony_r.png": {
     "repaint": 0,
-    "erase": 1,
-    "opaque": 23994
+    "erase": 35,
+    "opaque": 30380
   },
   "hair_sweep_pony_r@2x.png": {
-    "repaint": 2,
-    "erase": 4,
-    "opaque": 95847
+    "repaint": 0,
+    "erase": 96,
+    "opaque": 121287
   },
   "hair_sweep_twin_l.png": {
     "repaint": 0,
-    "erase": 2,
-    "opaque": 10230
+    "erase": 12,
+    "opaque": 10740
   },
   "hair_sweep_twin_l@2x.png": {
-    "repaint": 8,
-    "erase": 10,
-    "opaque": 40712
+    "repaint": 0,
+    "erase": 28,
+    "opaque": 42694
   },
   "hair_sweep_twin_r.png": {
     "repaint": 0,
-    "erase": 7,
-    "opaque": 10155
+    "erase": 6,
+    "opaque": 10552
   },
   "hair_sweep_twin_r@2x.png": {
-    "repaint": 10,
-    "erase": 39,
-    "opaque": 40478
+    "repaint": 0,
+    "erase": 36,
+    "opaque": 42036
   },
   "hair_twin_l.png": {
-    "repaint": 4,
+    "repaint": 0,
     "erase": 2,
     "opaque": 21646
   },
   "hair_twin_l@2x.png": {
-    "repaint": 23,
+    "repaint": 0,
     "erase": 3,
     "opaque": 86291
   },
   "hair_twin_r.png": {
-    "repaint": 4,
+    "repaint": 0,
     "erase": 2,
     "opaque": 21646
   },
   "hair_twin_r@2x.png": {
-    "repaint": 23,
+    "repaint": 0,
     "erase": 3,
     "opaque": 86291
   }
