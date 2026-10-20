@@ -11,28 +11,23 @@
   },
   "hair_crown_long.png": {
     "repaint": 72,
-    "erase": 68,
-    "opaque": 50266
+    "erase": 26,
+    "opaque": 42719
   },
   "hair_crown_long@2x.png": {
-    "repaint": 282,
-    "erase": 137,
-    "opaque": 200556
+    "repaint": 245,
+    "erase": 34,
+    "opaque": 170729
   },
   "hair_crown_pony@2x.png": {
-    "repaint": 8,
+    "repaint": 1,
     "erase": 0,
-    "opaque": 182278
-  },
-  "hair_crown_twin.png": {
-    "repaint": 0,
-    "erase": 62,
-    "opaque": 51950
+    "opaque": 161769
   },
   "hair_crown_twin@2x.png": {
-    "repaint": 10,
-    "erase": 283,
-    "opaque": 207107
+    "repaint": 2,
+    "erase": 0,
+    "opaque": 182891
   },
   "hair_front.png": {
     "repaint": 773,
@@ -45,34 +40,34 @@
     "opaque": 39800
   },
   "hair_hood_long.png": {
-    "repaint": 91,
-    "erase": 435,
-    "opaque": 88426
+    "repaint": 1114,
+    "erase": 15,
+    "opaque": 89431
   },
   "hair_hood_long@2x.png": {
-    "repaint": 388,
-    "erase": 1294,
-    "opaque": 352470
+    "repaint": 4192,
+    "erase": 19,
+    "opaque": 356341
   },
   "hair_hood_pony.png": {
     "repaint": 0,
-    "erase": 1,
-    "opaque": 38794
+    "erase": 11,
+    "opaque": 35941
   },
   "hair_hood_pony@2x.png": {
     "repaint": 0,
-    "erase": 26,
-    "opaque": 154753
+    "erase": 31,
+    "opaque": 143500
   },
   "hair_hood_twin.png": {
     "repaint": 0,
-    "erase": 4,
-    "opaque": 27647
+    "erase": 171,
+    "opaque": 25018
   },
   "hair_hood_twin@2x.png": {
-    "repaint": 0,
-    "erase": 4,
-    "opaque": 110084
+    "repaint": 14,
+    "erase": 379,
+    "opaque": 99491
   },
   "hair_long_back.png": {
     "repaint": 316,
@@ -113,6 +108,36 @@
     "repaint": 92,
     "erase": 983,
     "opaque": 27886
+  },
+  "hair_sweep_pony_r.png": {
+    "repaint": 0,
+    "erase": 45,
+    "opaque": 29336
+  },
+  "hair_sweep_pony_r@2x.png": {
+    "repaint": 59,
+    "erase": 97,
+    "opaque": 117157
+  },
+  "hair_sweep_twin_l.png": {
+    "repaint": 0,
+    "erase": 2,
+    "opaque": 10233
+  },
+  "hair_sweep_twin_l@2x.png": {
+    "repaint": 9,
+    "erase": 9,
+    "opaque": 40727
+  },
+  "hair_sweep_twin_r.png": {
+    "repaint": 0,
+    "erase": 6,
+    "opaque": 10157
+  },
+  "hair_sweep_twin_r@2x.png": {
+    "repaint": 10,
+    "erase": 36,
+    "opaque": 40483
   },
   "hair_twin_l.png": {
     "repaint": 4,

@@ -1833,8 +1833,8 @@
       "group": "head",
       "layer": 249,
       "pos": [
-        316,
-        318
+        291,
+        309
       ],
       "anchor": [
         0.5,
@@ -1855,8 +1855,8 @@
       "group": "head",
       "layer": 251,
       "pos": [
-        533,
-        318
+        584,
+        309
       ],
       "anchor": [
         0.5,
@@ -1877,7 +1877,7 @@
       "group": "head",
       "layer": 187,
       "pos": [
-        430,
+        422,
         105
       ],
       "anchor": [
@@ -2068,6 +2068,72 @@
         "hood"
       ],
       "note": "戴帽时垂下的长发（挂件，槽 head_side_hair）：双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_sweep_twin_l",
+      "file": "sprites/hair_sweep_twin_l@2x.png",
+      "group": "head",
+      "layer": 247,
+      "pos": [
+        248,
+        323
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "note": "脸侧细缕·双马尾（左）（挂件，槽 head_side_sweep）：扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_sweep_twin_r",
+      "file": "sprites/hair_sweep_twin_r@2x.png",
+      "group": "head",
+      "layer": 248,
+      "pos": [
+        596,
+        323
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "note": "脸侧细缕·双马尾（右）（挂件，槽 head_side_sweep）：扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_sweep_pony_r",
+      "file": "sprites/hair_sweep_pony_r@2x.png",
+      "group": "head",
+      "layer": 244,
+      "pos": [
+        613,
+        313
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "note": "脸侧细缕·高马尾（右）（挂件，槽 head_side_sweep）：扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -7633,7 +7699,9 @@
             "acc_hair_twin_r",
             "acc_hair_crown_twin",
             "acc_hood_up_twin",
-            "acc_hair_hood_twin"
+            "acc_hair_hood_twin",
+            "acc_hair_sweep_twin_l",
+            "acc_hair_sweep_twin_r"
           ],
           "hide": [
             "hair_back",
@@ -7648,7 +7716,8 @@
             "acc_hair_pony",
             "acc_hair_crown_pony",
             "acc_hood_up_pony",
-            "acc_hair_hood_pony"
+            "acc_hair_hood_pony",
+            "acc_hair_sweep_pony_r"
           ],
           "hide": [
             "hair_back",

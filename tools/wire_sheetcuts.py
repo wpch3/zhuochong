@@ -167,8 +167,14 @@ for aid, piece in SIDE_REWIRE.items():
 #   万一某档的细缕真的垂到胸口（掩膜 ≥8000px 才会被切件器保留），
 #   就在这里补一件，接到 head_side_sweep 槽。**没切出来就跳过**，
 #   不会凭空造一个空件。
-SWEEP_LAYER = {('pony', 'l'): 241, ('pony', 'r'): 242,
-               ('twin', 'l'): 243, ('twin', 'r'): 244}
+# ★ 2026-10-20 第二十五问：原来写的 241/242 **撞了眉毛的 ghost 件**
+#   （brow_l_ghost=241、brow_r_ghost=242），selfcheck 的「层号不重复」闸直接红。
+#   240~251 这一段实际占用情况：240 hair_front、241/242 brow_*_ghost、
+#   245/246 hair_side_l/r（本档已藏）、249/251 acc_hair_sidelong_*。
+#   空着的是 243/244/247/248/250 —— 这四件挑 243/244/247/248。
+#   四件两两互斥（twin 和 pony 不会同时在），但闸门是一刀切的，仍要各不相同。
+SWEEP_LAYER = {('pony', 'l'): 243, ('pony', 'r'): 244,
+               ('twin', 'l'): 247, ('twin', 'r'): 248}
 for pose, label in (('twin', '双马尾'), ('pony', '高马尾')):
     for side in ('l', 'r'):
         piece = 'hair_%s_side_%s' % (pose, side)

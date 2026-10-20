@@ -3,12 +3,12 @@
  "factor": 2,
  "suffix": "@2x.png",
  "model": "RealESR-AnimeVideo-v3_x4.onnx",
- "count": 70,
- "realesrgan": 63,
+ "count": 73,
+ "realesrgan": 66,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 36,
- "seconds": 51.8,
+ "keycolor_fixed": 47,
+ "seconds": 55.2,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -39,28 +39,28 @@
   {
    "name": "acc_hair_sidelong_l.png",
    "src": [
-    188,
-    438
+    286,
+    661
    ],
    "dst": [
-    376,
-    876
+    572,
+    1322
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 3
+   "keycolor_fixed": 7
   },
   {
    "name": "acc_hair_sidelong_r.png",
    "src": [
-    185,
-    438
+    221,
+    663
    ],
    "dst": [
-    370,
-    876
+    442,
+    1326
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 2
   },
   {
    "name": "acc_hood_long.png",
@@ -593,7 +593,7 @@
     662
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 1
   },
   {
    "name": "hair_crown_pony.png",
@@ -606,20 +606,20 @@
     662
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 2
+   "keycolor_fixed": 1
   },
   {
    "name": "hair_crown_twin.png",
    "src": [
-    402,
+    382,
     329
    ],
    "dst": [
-    804,
+    764,
     658
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 2
   },
   {
    "name": "hair_front.png",
@@ -637,15 +637,15 @@
   {
    "name": "hair_hood_long.png",
    "src": [
-    569,
+    567,
     737
    ],
    "dst": [
-    1138,
+    1134,
     1474
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 6
+   "keycolor_fixed": 5
   },
   {
    "name": "hair_hood_pony.png",
@@ -658,17 +658,17 @@
     1284
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 5
+   "keycolor_fixed": 3
   },
   {
    "name": "hair_hood_twin.png",
    "src": [
     527,
-    504
+    484
    ],
    "dst": [
     1054,
-    1008
+    968
    ],
    "method": "realesrgan",
    "keycolor_fixed": 1
@@ -724,6 +724,45 @@
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
+  },
+  {
+   "name": "hair_sweep_pony_r.png",
+   "src": [
+    187,
+    577
+   ],
+   "dst": [
+    374,
+    1154
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 2
+  },
+  {
+   "name": "hair_sweep_twin_l.png",
+   "src": [
+    140,
+    281
+   ],
+   "dst": [
+    280,
+    562
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 1
+  },
+  {
+   "name": "hair_sweep_twin_r.png",
+   "src": [
+    140,
+    281
+   ],
+   "dst": [
+    280,
+    562
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 4
   },
   {
    "name": "hair_twin_l.png",

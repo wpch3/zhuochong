@@ -1376,10 +1376,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        -0.360719,
-        0.898027
+        -0.448667,
+        0.868348
       ],
-      "sprite_h_rel": 1.575001,
+      "sprite_h_rel": 2.376317,
       "note": "长发档的横髪。参考图：长发两侧从太阳穴直垂过肩到胸口。",
       "layer": 249,
       "width_ratio": 1.0,
@@ -1418,10 +1418,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.421216,
-        0.898027
+        0.605107,
+        0.868093
       ],
-      "sprite_h_rel": 1.575001,
+      "sprite_h_rel": 2.383225,
       "note": "长发档的横髪（右，镜像同源）。",
       "layer": 251,
       "width_ratio": 1.0,
@@ -1461,7 +1461,7 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.051836,
+        0.019855,
         0.132146
       ],
       "sprite_h_rel": 1.184704,
@@ -1545,7 +1545,7 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.021454,
+        0.023053,
         0.125493
       ],
       "sprite_h_rel": 1.191612,
@@ -1825,6 +1825,132 @@
         ]
       },
       "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+    },
+    {
+      "id": "hair_sweep_twin_l",
+      "label": "脸侧细缕·双马尾（左）",
+      "slot": "head_side_sweep",
+      "sprite": "hair_sweep_twin_l.png",
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "twin",
+      "ref": "head_top",
+      "unit": "head",
+      "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
+      "source": "sheetcut_hair_twin_side_l.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "pos_rel": [
+        -0.605374,
+        0.918878
+      ],
+      "sprite_h_rel": 1.012007,
+      "width_ratio": 1.0,
+      "layer": 247,
+      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      }
+    },
+    {
+      "id": "hair_sweep_twin_r",
+      "label": "脸侧细缕·双马尾（右）",
+      "slot": "head_side_sweep",
+      "sprite": "hair_sweep_twin_r.png",
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "twin",
+      "ref": "head_top",
+      "unit": "head",
+      "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
+      "source": "sheetcut_hair_twin_side_r.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "pos_rel": [
+        0.648282,
+        0.918878
+      ],
+      "sprite_h_rel": 1.012007,
+      "width_ratio": 1.0,
+      "layer": 248,
+      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      }
+    },
+    {
+      "id": "hair_sweep_pony_r",
+      "label": "脸侧细缕·高马尾（右）",
+      "slot": "head_side_sweep",
+      "sprite": "hair_sweep_pony_r.png",
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "pony",
+      "ref": "head_top",
+      "unit": "head",
+      "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
+      "source": "sheetcut_hair_pony_side_r.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "pos_rel": [
+        0.709046,
+        0.879478
+      ],
+      "sprite_h_rel": 2.075823,
+      "width_ratio": 1.0,
+      "layer": 244,
+      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      }
     }
   ],
   "pose_groups": [
