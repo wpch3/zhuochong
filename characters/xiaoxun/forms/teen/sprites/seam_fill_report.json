@@ -28,40 +28,40 @@
       "seam": 1962
     },
     "long/down/+0": {
-      "holes": 3783,
-      "seam": 3783
+      "holes": 3726,
+      "seam": 3726
     },
     "long/down/-12": {
-      "holes": 4020,
-      "seam": 4020
+      "holes": 3970,
+      "seam": 3970
     },
     "long/down/+12": {
-      "holes": 3721,
-      "seam": 3721
+      "holes": 3753,
+      "seam": 3753
     },
     "long/up/+0": {
-      "holes": 3450,
-      "seam": 3450
+      "holes": 3398,
+      "seam": 3398
     },
     "long/up/-12": {
-      "holes": 3740,
-      "seam": 3740
+      "holes": 3685,
+      "seam": 3685
     },
     "long/up/+12": {
-      "holes": 3258,
-      "seam": 3258
+      "holes": 3203,
+      "seam": 3203
     },
     "twin/down/+0": {
-      "holes": 3554,
-      "seam": 3554
+      "holes": 3606,
+      "seam": 3606
     },
     "twin/down/-12": {
-      "holes": 3795,
-      "seam": 3795
+      "holes": 4629,
+      "seam": 4102
     },
     "twin/down/+12": {
-      "holes": 3599,
-      "seam": 3107
+      "holes": 3651,
+      "seam": 3165
     },
     "twin/up/+0": {
       "holes": 3270,
@@ -76,16 +76,16 @@
       "seam": 3270
     },
     "pony/down/+0": {
-      "holes": 2808,
-      "seam": 2808
+      "holes": 3060,
+      "seam": 3060
     },
     "pony/down/-12": {
-      "holes": 2987,
-      "seam": 2987
+      "holes": 3276,
+      "seam": 3276
     },
     "pony/down/+12": {
-      "holes": 3579,
-      "seam": 3579
+      "holes": 3701,
+      "seam": 3701
     },
     "pony/up/+0": {
       "holes": 2505,
@@ -108,19 +108,19 @@
       "seam": 3194
     },
     "long/down/+0/-hair_back+hair_side_l+hair_side_r+acc_hood_up": {
-      "holes": 3783,
-      "seam": 3783
+      "holes": 3726,
+      "seam": 3726
     },
     "twin/down/+0/-hair_back+hair_side_l+hair_side_r+acc_hood_up": {
-      "holes": 3554,
-      "seam": 3554
+      "holes": 3606,
+      "seam": 3606
     },
     "pony/down/+0/-hair_back+hair_side_l+hair_side_r+acc_hood_up": {
-      "holes": 2808,
-      "seam": 2808
+      "holes": 3060,
+      "seam": 3060
     }
   },
-  "filled_px": 10706,
+  "filled_px": 10786,
   "parts": {
     "acc_tail_cat_relaxed": 1036,
     "seg_leg_l": 814,
@@ -129,10 +129,10 @@
     "seg_foot_r": 571,
     "seg_foot_l_tip": 30,
     "seg_foot_r_tip": 44,
-    "acc_ear_cat_l": 345,
-    "acc_ear_cat_r": 6,
-    "acc_hair_long": 6168,
-    "hair_ahoge": 72,
-    "arm_r_upper": 23
+    "acc_ear_cat_l": 325,
+    "hair_ahoge": 171,
+    "acc_hair_long": 6172,
+    "arm_r_upper": 23,
+    "acc_ear_cat_r": 3
   }
 }

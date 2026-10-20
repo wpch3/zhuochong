@@ -450,7 +450,14 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #         （实测长发后发件从 594x989 缩成 301x451）。
     inside_new = (hair_like(sa) & ~teal_like(sa) & sop & region
                   & (yy > chinline) & (yy <= kneeline))
-    back = solidify(despeckle(outside | inside_new, 3, 7), 17) & sop
+    # ★ 2026-10-20 第二十四问二轮：原来这里是 `solidify(..., 17)`。
+    #   17 的方核闭运算 = 外轮廓按 8px 一格改方，正是 `fill_holes` 的
+    #   注释里写的那句「闭运算会把外轮廓一起改圆、改方，正是用户说的
+    #   『块状、没有柔顺流线』的来源」—— 当初写了 fill_holes 却漏改这一处。
+    #   改成「2px 小闭运算搭桥 + fill_holes 补内部洞」：搭桥保留
+    #   （去掉的话长发后发会碎成几块，被 keep_big 丢掉），
+    #   而补洞换成从外缘灌水的算法，一个外轮廓像素都不动。
+    back = fill_holes(solidify(despeckle(outside | inside_new, 3, 7), 5)) & sop
     # ★ 碎片过滤要在**并上头皮之前**做。顺序反了的话，长发的头皮和它外侧的
     #   发丝之间只要有一两像素的缝，keep_rooted 就会把下面整条头发全丢掉
     #   （实测件从 594x1005 缩成 155x137，只剩一个头盖骨）。
@@ -543,9 +550,34 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #      在交接线那里齐刷刷切一刀；只把交接线从"下巴"抬到"眼线+20"，
     #      断口也只是跟着往上搬了家（实测 /tmp/z_crowns_v3.png 仍然断）。
     #      正确的口径是：**只挖"脸上不是头发的那部分"**。
-    #      `face & ~hair_like(sa)` —— 皮肤、眼睛、眉毛、嘴都不是发色，照样挖干净；
-    #      两腮上那几缕淡紫发丝是发色，留下来，于是和下半段无缝接上。
-    face_excl = dilate(face & ~hair_like(sa), 5)
+    #
+    #    ★ 2026-10-20 二修：「不是头发」不许再用**颜色**问（`~hair_like`）。
+    #      发丝上的高光带是近白色（R≈G≈B），`hair_like` 收不住，于是
+    #      `face & ~hair_like` 把一条条高光判成"脸"，`dilate(...,5)` 的方核
+    #      再把它们涨成**矩形**，整片从头壳上挖掉 —— 切件原件
+    #      `/tmp/z_cut_vs_sprite.png` 里那缕被啃成三截的侧发就是这么来的，
+    #      渲染出来就是用户说的"块状、阶梯硬边"。
+    #      改成问**区域**：「模板自己的脸在哪」。
+    #        `face_t = fill_holes(solidify(skin_like(sa), 11))`
+    #          —— 正着取肤色，闭一个小运算把睫毛压住的眼眶接上，
+    #             再把包在脸里的眼/眉/嘴当"洞"填掉。
+    #             压在脸上的发缕是**开口**的（连到外面的头发），填不进去，
+    #             所以发缕不会被当成脸挖走。
+    #          （k=11 是上限：之前试过 `solidify(skin_t,41)`，大核闭运算
+    #            会把 10~20px 宽的细发当"脸里的洞"填掉，crown 反而变矮。）
+    #        `eyes` 单独补一道 —— 长发档的刘海压着睫毛，眼眶和外面连通，
+    #             k=11 闭不上，眼睛会被整个圈进头壳件里。
+    #             眼睛从**底图**量（四张模板都套准到同一坐标系）。
+    #   （下界取 chinline+170 而不是 +40：下半段要用它排掉**脖子**，
+    #     脖子在下巴线以下；上半段和 `face` 取交集，`face` 本身就卡在
+    #     下巴线，所以放宽下界不影响上半段。）
+    face_t = fill_holes(solidify(skin_like(sa) & sop & (yy <= chinline + 170), 11))
+    _b = base_a[..., 2].astype(np.int32)
+    _r = base_a[..., 0].astype(np.int32)
+    eyes = face & (np.abs(yy - eyeline) <= 70) & (
+        (((_b - _r) > 35) & (_b > 140)) | (base_a.max(axis=2) < 110))
+    eyes = fill_holes(solidify(eyes, 15))
+    face_excl = dilate((face & face_t) | eyes, 5)
     scalp = (erode(sop, 5) & dilate(base_op, 9) & (yy <= eyeline + 20)
              & ~face_excl)
     #    下半段（眼线+20 → 下巴+80）的三条讲究，全是实拍逼出来的：
@@ -556,12 +588,43 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #      ② 横向收到 **0.78 个头宽**。不收的话 `dilate(base_op,9)` 会一路摊到
     #         肩膀，把白夹克的冷灰阴影（色相上就是发色）和衣领一起卷进来 ——
     #         实拍是脖子两侧各糊一块青灰脏斑。
-    #      ③ 去噪之后再 `solidify(...,9)` 闭一次孔：发丝内部的高光是近中性色，
-    #         `hair_like` 够不着，不闭孔件里就是一张麻脸。
-    scalp_low = ((yy > eyeline + 20) & (yy <= chinline + 80) & sop
-                 & (np.abs(xx - head_cx) <= headw * 0.78)
-                 & hair_like(sa) & ~teal_like(sa))
-    scalp_low = solidify(despeckle(scalp_low, 3, 7), 9) & sop & ~teal_like(sa)
+    #      ③ ~~去噪之后再 `solidify(...,9)` 闭一次孔~~ ——
+    #         ★ 2026-10-20 三修：这一条作废，`hair_like` 也一起作废。
+    #
+    #         症状：脸侧那缕发在 4 倍放大下是**阶梯状的硬边色块**，
+    #         不是模板里那缕柔顺的长发（并排图 /tmp/z_same_zoom.png，
+    #         左=切件原件、右=最终 sprite，两边一样块状 ⇒ 不是 rebuild 弄的）。
+    #         机理：`hair_like` 收不住发丝上那几条近白的高光带，掩膜内部被
+    #         打成竖条；`solidify(...,9)` 是**方核**闭运算，把竖条补成
+    #         一格一格的 4px 方块，于是外轮廓也跟着变成阶梯。
+    #
+    #         换成**区域判据**：「这块像素跟短发底图不一样」⇒ 它是这张模板
+    #         新画上去的头发。白夹克、衬衫、裙子在两张图里是同一套衣服，
+    #         差分接近 0，自然排除；而高光带再白也在差分区里，一个不丢。
+    #         `region` 就是 cut_masks 开头算好的那张"改动区"
+    #         （diff 去噪后 dilate 21，稀疏差分先涨成实心块）。
+    #         实测掩膜从 13263→22030 px（pony），放大看是一整缕连续的发，
+    #         高光完整、边缘跟着模板的轮廓走（原型 /tmp/z_p10.png 蓝色）。
+    #         ★ 但差分区**单独**拿来当掩膜会翻车：模板是重画的，耳朵、
+    #           脖子、白衬衫、衣领在两张图里也有细微差别，差分区照样为真，
+    #           于是件里混进了半只耳朵和一截脖子（实测切件涨到 70~78k 像素，
+    #           棋盘格 /tmp/z_ck11.png 里那几块肉色就是）。
+    #           所以用**有界生长**：拿可靠的发色核心当种子，在差分区里
+    #           每轮长 1px、只长 6 轮。高光带两侧都挨着实色发丝，6 轮之内
+    #           一定接上；耳朵和衬衫离发丝核心远，够不着。
+    _band = ((yy > eyeline + 20) & (yy <= chinline + 80) & sop
+             & (np.abs(xx - head_cx) <= headw * 0.78))
+    scalp_core = despeckle(_band & hair_like(sa) & ~teal_like(sa), 3, 7)
+    scalp_grow = _band & region & ~erode(face_t, 7) & ~teal_like(sa)
+    scalp_low = scalp_core
+    for _ in range(6):
+        scalp_low = dilate(scalp_low, 3) & scalp_grow
+    scalp_low = despeckle(scalp_low | scalp_core, 3, 7) & sop & ~teal_like(sa)
+    #    生长会顺着下颌摸到**耳垂**（模板那里是肉色、又恰好在差分区里），
+    #    件的下缘因此各挂一小块肉色（实拍 /tmp/z_v13_temple.png 下颌处）。
+    #    只删「离发色核心 2px 以外的肤色」：核心边上那一圈
+    #    『发色×肤色』抗锯齿混色留着（删了就是第四版那种白麻点）。
+    scalp_low = scalp_low & ~(skin_like(sa) & ~dilate(scalp_core, 5))
     #    上段是实心头壳，k=5 的开运算够狠；下段已经单独处理过了。
     scalp = despeckle(scalp, 5, 9) | scalp_low
     #    ★ 顶部要避开呆毛 —— 它在层 190 有自己的物理摆链，件里再带一根静止的，
@@ -886,18 +949,25 @@ def main() -> int:
             #     各糊着一块灰方块，就是这么来的。这一档只许补到**肩线以上**
             #     （那里有后发壳 170 和头壳 180 压在上面，藏得住）。
             if key == "scalp":
-                # ★ 2026-10-20 第二十四问：头壳件也要**塗り足し**，范围 =
-                #   底图那颗短发自己的头发区（含那对又粗又厚的齐腮鬓发）。
-                #   为什么非补不可：三档现在把底图鬓发 hair_side_l/r 藏掉了，
-                #   而 `seg_head` 当初是「挖发补脸」切出来的 —— 鬓发占过的那块
-                #   地在头壳件上**本来就是透明的**。模板的发缕比底图那对粗鬓细，
-                #   盖不满旧地盘，于是太阳穴到腮边露出一条锯齿状的透明缝
-                #   （实拍 /tmp/z_hole_pony.png 里标红那条，pony 2440px）。
-                #   Live2D 官方 PSD 教程反复讲的就是这件事：被别的东西遮住过的
-                #   地方**必须补画**，不能留空；塗り足し要伸到相邻部件之下。
-                #   补的范围刻意限定在"底图的头发区"：那里原本就是头发，
-                #   补成发色不会越界到脸上或衣服上。
-                bleed = dilate(masks["_base_hair"], 7)
+                # ★ 2026-10-20 第二十四问二修：头壳件的塗り足し只许**沿自己的
+                #   轮廓外扩 4px**，不许按"底图的头发区"去摊。
+                #
+                #   一修时写的是 `dilate(masks["_base_hair"], 7)`，想法是
+                #   「藏掉了底图那对粗鬓发，就把它的地盘补上」。闸门确实绿了
+                #   （透明缺口 pony 2440→97px），**画面却变难看了**：
+                #   `emit_piece` 的塗り足し是 nearest_fill，拿最近的颜色往外推，
+                #   推 4px 是柔和的接边，推满一整块粗鬓发的地盘（60~90px 宽）
+                #   就是**横向拖影 + 阶梯硬边的色块**。4 倍放大实拍
+                #   `/tmp/z_temple.png` 里三档脸侧那缕全是块状的，
+                #   而棋盘格 `/tmp/z_crownpony.png` 显示顶上没摊到的部分
+                #   （发丝、分缕、高光）一点问题都没有。
+                #
+                #   ——这正是我自己记在 LESSONS 里的那条「为过闸而牺牲画面」。
+                #   透明那块其实不是洞：马尾/长发的头在太阳穴处本来就比
+                #   短发那颗窄（短发那缕又粗又厚），窄下去露出的是**背景**，
+                #   不是**破洞**。该改的是闸门的度量，不是贴图。见
+                #   `head_silhouette.hole_ratio` 的「只算封闭的透明」。
+                bleed = dilate(mk, 9)
             elif not key.startswith("back"):
                 bleed = None
             elif slot == "head_side_hair":

@@ -49,20 +49,20 @@
       "sprite_file": "sheetcut_hair_twin_crown.png",
       "ref": "head_top",
       "pos_rel": [
-        0.023053,
-        0.660408
+        0.053435,
+        0.72437
       ],
-      "sprite_h_rel": 1.295231,
+      "sprite_h_rel": 1.184704,
       "width_ratio": 1.0,
       "px": [
-        311,
-        46,
-        700,
-        420
+        306,
+        82,
+        724,
+        424
       ],
       "content_px": [
-        390,
-        375
+        419,
+        343
       ],
       "slot": "head_crown_tied"
     },
@@ -91,20 +91,20 @@
       "sprite_file": "sheetcut_hair_pony_crown.png",
       "ref": "head_top",
       "pos_rel": [
-        0.154175,
-        0.65721
+        0.189354,
+        0.721172
       ],
-      "sprite_h_rel": 1.302139,
+      "sprite_h_rel": 1.191612,
       "width_ratio": 1.0,
       "px": [
-        370,
-        44,
-        723,
-        420
+        388,
+        80,
+        727,
+        424
       ],
       "content_px": [
-        354,
-        377
+        340,
+        345
       ],
       "slot": "head_crown_tied"
     },
@@ -134,19 +134,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.023053,
-        0.684394
+        0.721172
       ],
-      "sprite_h_rel": 1.360856,
+      "sprite_h_rel": 1.191612,
       "width_ratio": 1.0,
       "px": [
-        357,
-        44,
-        654,
-        437
+        348,
+        80,
+        663,
+        424
       ],
       "content_px": [
-        298,
-        394
+        316,
+        345
       ],
       "slot": "head_crown_tied"
     },

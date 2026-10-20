@@ -9,25 +9,30 @@
     "erase": 81,
     "opaque": 72406
   },
-  "hair_crown_pony.png": {
-    "repaint": 3,
-    "erase": 1,
-    "opaque": 36332
+  "hair_crown_long.png": {
+    "repaint": 77,
+    "erase": 63,
+    "opaque": 50372
+  },
+  "hair_crown_long@2x.png": {
+    "repaint": 325,
+    "erase": 181,
+    "opaque": 200980
   },
   "hair_crown_pony@2x.png": {
-    "repaint": 4,
-    "erase": 261,
-    "opaque": 144619
+    "repaint": 7,
+    "erase": 0,
+    "opaque": 182355
   },
   "hair_crown_twin.png": {
     "repaint": 0,
-    "erase": 1,
-    "opaque": 38415
+    "erase": 80,
+    "opaque": 52082
   },
   "hair_crown_twin@2x.png": {
-    "repaint": 11,
-    "erase": 146,
-    "opaque": 153019
+    "repaint": 52,
+    "erase": 246,
+    "opaque": 207596
   },
   "hair_front.png": {
     "repaint": 773,

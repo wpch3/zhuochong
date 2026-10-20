@@ -245,8 +245,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_twin.png",
       "size": [
-        375,
-        360
+        402,
+        329
       ]
     },
     {
@@ -254,8 +254,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_pony.png",
       "size": [
-        340,
-        362
+        327,
+        331
       ]
     },
     {
@@ -263,8 +263,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_long.png",
       "size": [
-        286,
-        378
+        303,
+        331
       ]
     },
     {
