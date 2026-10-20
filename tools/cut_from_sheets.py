@@ -221,6 +221,46 @@ def keep_big(m, min_px=1500, max_parts=400):
     return out
 
 
+def keep_largest(m):
+    """只留**最大**的那一个连通块，其余全丢。
+
+    ★ 不能用 `keep_big(m, max_parts=1)` 代替：那个函数的种子是
+      `np.nonzero` 的第一个像素，也就是**从上往下**扫到的第一块，
+      `max_parts=1` 返回的是\"最靠上的那块\"而不是\"最大的那块\"。
+
+    用在鬓发/发帘上：2026-10-20 第二十六问实测，`keep_big(min_px=2500)`
+    会把**夹克翻领的两小块 + 裙子上的一条**（各 3~6k px，都过了下限）
+    当成发缕一起留下。它们在层 249/251 压在所有件最上面，渲染出来就是
+    用户截图里那些「断发 / 悬空白块」。发帘本身是**一整条**，
+    只留最大块即可，连通性由上游的 `newpaint` 保证。
+    """
+    out = np.zeros_like(m)
+    rem = m.copy()
+    best = None
+    best_n = 0
+    while True:
+        ys, xs = np.nonzero(rem)
+        if not len(ys):
+            break
+        y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+        sub = rem[y0:y1, x0:x1]
+        seed = np.zeros_like(sub)
+        seed[ys[0] - y0, xs[0] - x0] = True
+        while True:
+            grown = dilate(seed, 31) & sub
+            if grown.sum() == seed.sum():
+                break
+            seed = grown
+        n = int(seed.sum())
+        if n > best_n:
+            best_n, best = n, (y0, y1, x0, x1, seed.copy())
+        rem[y0:y1, x0:x1] &= ~seed
+    if best is not None:
+        y0, y1, x0, x1, seed = best
+        out[y0:y1, x0:x1] |= seed
+    return out
+
+
 def skin_like(a):
     """底图的**皮肤**。用来把「脸前面的头发」和「脸后面的头发」分开。
 
@@ -650,19 +690,47 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #         chin+110 时 827 px、chin+160 时 1243 px。件在层 189 压着脖子，
     #         这里只能保守。下巴以下的发缕交给 side_l/side_r（它从 chin-15
     #         起切，两边叠得上）。
-    _band = ((yy > eyeline + 20) & (yy <= chinline + 80) & sop
-             & (np.abs(xx - head_cx) <= headw * 0.78) & newpaint)
-    scalp_core = despeckle(_band & hair_like(sa) & ~teal_like(sa), 3, 7)
-    scalp_grow = _band & region & ~erode(face_t, 7) & ~teal_like(sa)
-    scalp_low = scalp_core
-    for _ in range(6):
-        scalp_low = dilate(scalp_low, 3) & scalp_grow
-    scalp_low = despeckle(scalp_low | scalp_core, 3, 7) & sop & ~teal_like(sa)
-    #    生长会顺着下颌摸到**耳垂**（模板那里是肉色、又恰好在差分区里），
-    #    件的下缘因此各挂一小块肉色（实拍 /tmp/z_v13_temple.png 下颌处）。
-    #    只删「离发色核心 2px 以外的肤色」：核心边上那一圈
-    #    『发色×肤色』抗锯齿混色留着（删了就是第四版那种白麻点）。
-    scalp_low = scalp_low & ~(skin_like(sa) & ~dilate(scalp_core, 5))
+    #    ★★★ 2026-10-20 第二十六问：下半段**整段重写**，和兜帽那一轮同一个打法。
+    #
+    #      病：把 `hair_crown_long@2x.png` 铺棋盘格放大看（/tmp/z_longparts.png
+    #          中格），件的下半截是**一片片撕碎的破布**，中间大洞、下缘还挂着
+    #          两块藏青。渲染出来（/tmp/z_jawzoom.png 5 倍）下巴两侧各一道
+    #          **硬 V 形直边**，边外是一块平涂米色板 —— 用户第二十六问第 ①②
+    #          条说的「两边脸消失了很多 / 还有断发」就是它。
+    #
+    #      根因：上一版是「发色核心 `hair_like` + 在差分区里有界生长 6 轮」。
+    #          两个判据都是**颜色**派生的：
+    #            · `hair_like` 收不住发丝上成片的近白高光 ⇒ 核心本身就是碎的；
+    #            · 生长 6 轮只能接上 6px 以内的缺口，宽高光带接不上 ⇒ 留洞；
+    #            · `& newpaint` 又把「和短发底图一样的那部分头发」整块剔掉
+    #              （淡紫发压在白夹克上通道差只有 29，阈值 42 判不出来，
+    #               实测该区 lavender 像素的 diff 中位数只有 **11**）。
+    #          三条叠在一起 = 一件破布。
+    #
+    #      新口径只问**区域**，一个颜色阈值都不用：
+    #        「眼线+20 到下巴线之间、头宽 0.78 以内、剪影之内，
+    #          **凡是不属于模板自己那张脸的，就是头发**。」
+    #        这一带画面上只有脸、耳朵、脖子、头发四样东西，
+    #        脸和耳朵和脖子全在 `face_t` 里（它是正取肤色再 fill_holes，
+    #        连眼眶嘴巴一起填实），剩下的必然是头发 —— 不需要问它什么颜色，
+    #        高光再白也一个不丢。这正是 ClipStudio 官方那句
+    #        「線画のやや外側を選択してくりぬく」的做法：按**轮廓**切，
+    #        不按颜色挑。
+    #      挖脸用 `erode(face_t, 5)` 而不是 `face_t` 本身 —— 留 2px 给
+    #      「发色×肤色」的抗锯齿混色跟着头发走。整条削掉就是第四版那种
+    #      沿着每根发丝镶一串白麻点（LESSONS 已记）。
+    #      下巴线**以下**那 20px 仍然要 `& newpaint` 把脖子/衣领挡在外面，
+    #      这一段只是和 side_l/side_r 搭个边，不承重。
+    face_cut = erode(face_t, 5) & (yy <= chinline + 20)
+    _geom = ((yy > eyeline + 20) & sop
+             & (np.abs(xx - head_cx) <= headw * 0.78))
+    scalp_low = ((_geom & (yy <= chinline))
+                 | (_geom & (yy > chinline) & (yy <= chinline + 20) & newpaint))
+    scalp_low = scalp_low & ~face_cut & ~teal_like(sa)
+    #    （原来这里还有一句 `& ~(skin_like & ~dilate(scalp_core,5))`
+    #      ——「只删离发色核心 2px 以外的肤色」。第二十六问删掉：
+    #      `face_cut` 已经按**区域**把整张脸连耳朵带脖子一起让出去了，
+    #      再用颜色问一遍只会把发丝边缘的抗锯齿混色挖成白麻点。）
     #    ★ 2026-10-20 第二十五问：**下巴以下的暗影不要**。
     #      模板里下颌拐角那一带画着「头发压到脖子」的深蓝灰阴影
     #      （实测 sheet_long (612,357) = (83,98,136)）。在模板上它四周都是
@@ -672,8 +740,13 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #      5 倍放大一眼可见，逐像素比对确认帧上 (515,352)=(83,99,138)
     #      就是这个件画的。三档各剔 314~706 px，发缕一根没少
     #      （原型 /tmp/z25_dark3.png 红绿两版并排）。
+    #    ★ 2026-10-20 第二十六问：暗影的下界从 `chinline` 提到 `chinline-25`。
+    #      件现在只到下巴 +20，而那团藏青阴影骑在下巴线**上下**各一段，
+    #      只切下巴以下的话，下巴以上那半截还留在件里 —— 实拍
+    #      /tmp/z_jawzoom.png 里 (355,335) 和 (480,330) 两块深蓝就是它。
     scalp_low = despeckle(
-        scalp_low & ~((yy > chinline) & (sa.max(axis=2) < 150)), 3, 7)
+        scalp_low & ~((yy > chinline - 25) & (sa.max(axis=2) < 150)), 3, 7)
+    scalp_low = fill_holes(scalp_low)
     #    上段是实心头壳，k=5 的开运算够狠；下段已经单独处理过了。
     scalp = despeckle(scalp, 5, 9) | scalp_low
     #    ★ 顶部要避开呆毛 —— 它在层 190 有自己的物理摆链，件里再带一根静止的，
@@ -745,13 +818,28 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     side = despeckle(side, 3, 7)
     side = dilate(erode(side, 5), 5)
     side = fill_holes(side) & sop
-    #    ★ 件在层 249/251，压在脸上面——下颌以上**绝对不许**往脸里挤。
-    #      头宽 0.42 以内（下颌实际宽度）在 chin+60 以上一律切掉。
-    side = side & ((yy > chinline + 60) | (np.abs(xx - head_cx) > headw * 0.42))
+    #    ★ 件在层 249/251，压在脸上面——**绝对不许**往脸里挤。
+    #      2026-10-20 第二十六问：原来这一刀是个**方框**
+    #      （`(yy > chinline+60) | (|x-cx| > headw*0.42)`）：
+    #      下巴线到下巴+60 之间，离中线 116px 以内的东西一律砍掉。
+    #      可下颌两侧垂着的正是这一段发缕 —— 砍完发缕在下巴高度**齐根断**，
+    #      下面那截还在，中间空一条，就是用户第 ② 条说的「还有断发」。
+    #      换成和头壳同一张 `face_cut`（模板自己的脸，erode 5 留抗锯齿边）：
+    #      脸让得干干净净，脸**外面**的发缕一根不动，上下自然连成一条。
+    side = side & ~face_cut
     for key, half in (("side_l", xx < head_cx), ("side_r", xx >= head_cx)):
-        #    按面积筛，不是按「连不连得到发根」筛 —— 发缕穿过肩部那一段
-        #    确实被衣服挡着，跟头是断开的。
-        m = keep_big(side & half, min_px=2500)
+        #    ★★★ 2026-10-20 第二十六问：`keep_big(min_px=2500)` → `keep_largest`。
+        #      把 `acc_hair_sidelong_l@2x.png` 铺棋盘格放大看
+        #      （/tmp/z_longparts.png 左格），件里是**四块互不相连的东西**：
+        #      一条完整的长发帘 + 夹克翻领两小块 + 裙子上一条。
+        #      逐级拆流水线（/tmp/z_stage.png 六格）确认那三块各有
+        #      3~6k px，全都过了 2500 的下限，于是被当成发缕留了下来。
+        #      它们在层 249/251 压在**所有**件上面 ⇒ 悬空白块 / 断发。
+        #      发帘本来就是**一整条**（`newpaint` 已经保证了连通性，
+        #      见 /tmp/z_sheetdiff.png 第三格），所以只留最大的那一块。
+        m = keep_largest(side & half)
+        if m.sum() < 2500:
+            m = np.zeros_like(m)
         #    ★ 2026-10-20 第二十五问：**削掉最外面那一圈近白像素**。
         #      这一支 bleed=None（不往外补），掩膜的最外圈就是件的边，
         #      而那一圈在原图上是**头发和洋红背景/白夹克的抗锯齿混色**，
@@ -842,6 +930,9 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
                     % (key, before, after, before - after, int((m2 & bad).sum())))
             out[key] = m2
     out["_bad"] = bad
+    #    ★ 2026-10-20 第二十六问：把**模板自己的脸**也带出去，
+    #      `main` 里要用它把头壳件的塗り足し挡在脸外面（理由见那边）。
+    out["_face"] = face_t
     return sa, sop, out
 
 
@@ -1023,7 +1114,20 @@ def main() -> int:
                 #   短发那颗窄（短发那缕又粗又厚），窄下去露出的是**背景**，
                 #   不是**破洞**。该改的是闸门的度量，不是贴图。见
                 #   `head_silhouette.hole_ratio` 的「只算封闭的透明」。
-                bleed = dilate(mk, 9)
+                #
+                # ★★★ 2026-10-20 第二十六问：**不许往脸里补**。
+                #   把「件里有、掩膜里没有」的像素标红画在模板上
+                #   （/tmp/z_emitextra.png），8470 px 的塗り足し是一圈
+                #   严丝合缝贴着掩膜轮廓的 4px 环 —— 包括**沿着脸的开口
+                #   往脸里长的那一圈**。头壳在层 189、`seg_head` 在 180，
+                #   件压在脸**上面**，往脸里补的每一个像素都直接盖在脸上，
+                #   渲染出来就是两腮各一片半透明青灰楔形（实拍
+                #   /tmp/z_jawzoom_after.png，canvas (356..400,296..344)
+                #   与 (440..482,292..344)，逐件归因点名 acc_hair_crown_long
+                #   各 1171 / 1073 px）。
+                #   塗り足し的用途是「被别的东西盖住的地方要画满」，
+                #   而脸**没有**盖住头壳 —— 所以这一侧一个像素都不该补。
+                bleed = dilate(mk, 9) & ~masks["_face"]
             elif not key.startswith("back"):
                 bleed = None
             elif slot == "head_side_hair":

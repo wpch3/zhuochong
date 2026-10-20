@@ -1833,7 +1833,7 @@
       "group": "head",
       "layer": 249,
       "pos": [
-        291,
+        263,
         309
       ],
       "anchor": [
@@ -1855,7 +1855,7 @@
       "group": "head",
       "layer": 251,
       "pos": [
-        584,
+        581,
         309
       ],
       "anchor": [
@@ -1878,7 +1878,7 @@
       "layer": 187,
       "pos": [
         422,
-        105
+        107
       ],
       "anchor": [
         0.5,
@@ -1900,7 +1900,7 @@
       "layer": 188,
       "pos": [
         468,
-        103
+        105
       ],
       "anchor": [
         0.5,
@@ -1922,7 +1922,7 @@
       "layer": 189,
       "pos": [
         422,
-        103
+        105
       ],
       "anchor": [
         0.5,
@@ -2122,8 +2122,8 @@
       "group": "head",
       "layer": 244,
       "pos": [
-        613,
-        313
+        607,
+        319
       ],
       "anchor": [
         0.5,
@@ -7689,6 +7689,7 @@
             "hair_back",
             "hair_side_l",
             "hair_side_r",
+            "hair_front",
             "acc_hood_up"
           ]
         },
@@ -7707,6 +7708,7 @@
             "hair_back",
             "hair_side_l",
             "hair_side_r",
+            "hair_front",
             "acc_hood_up"
           ]
         },
@@ -7723,6 +7725,7 @@
             "hair_back",
             "hair_side_l",
             "hair_side_r",
+            "hair_front",
             "acc_hood_up"
           ]
         }

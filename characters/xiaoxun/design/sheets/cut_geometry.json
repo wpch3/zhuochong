@@ -49,20 +49,20 @@
       "sprite_file": "sheetcut_hair_twin_crown.png",
       "ref": "head_top",
       "pos_rel": [
-        0.021454,
-        0.72437
+        0.023053,
+        0.628427
       ],
-      "sprite_h_rel": 1.184704,
+      "sprite_h_rel": 0.977467,
       "width_ratio": 1.0,
       "px": [
-        306,
+        311,
         82,
-        704,
-        424
+        700,
+        364
       ],
       "content_px": [
-        399,
-        343
+        390,
+        283
       ],
       "slot": "head_crown_tied"
     },
@@ -134,19 +134,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.189354,
-        0.721172
+        0.625229
       ],
-      "sprite_h_rel": 1.191612,
+      "sprite_h_rel": 0.984375,
       "width_ratio": 1.0,
       "px": [
         388,
         80,
         727,
-        424
+        364
       ],
       "content_px": [
         340,
-        345
+        285
       ],
       "slot": "head_crown_tied"
     },
@@ -154,20 +154,20 @@
       "sprite_file": "sheetcut_hair_pony_side_r.png",
       "ref": "head_top",
       "pos_rel": [
-        0.710644,
-        1.917261
+        0.688257,
+        1.626234
       ],
-      "sprite_h_rel": 2.075823,
+      "sprite_h_rel": 1.447204,
       "width_ratio": 1.0,
       "px": [
-        624,
+        610,
         326,
         817,
-        926
+        744
       ],
       "content_px": [
-        194,
-        601
+        208,
+        419
       ],
       "slot": "head_side_sweep"
     },
@@ -196,20 +196,20 @@
       "sprite_file": "sheetcut_hair_long_crown.png",
       "ref": "head_top",
       "pos_rel": [
-        0.024652,
-        0.721172
+        0.023053,
+        0.625229
       ],
-      "sprite_h_rel": 1.191612,
+      "sprite_h_rel": 0.984375,
       "width_ratio": 1.0,
       "px": [
-        349,
+        367,
         80,
-        663,
-        424
+        644,
+        364
       ],
       "content_px": [
-        315,
-        345
+        278,
+        285
       ],
       "slot": "head_crown_tied"
     },
@@ -217,7 +217,7 @@
       "sprite_file": "sheetcut_hair_long_side_l.png",
       "ref": "head_top",
       "pos_rel": [
-        -0.447068,
+        -0.547808,
         2.056379
       ],
       "sprite_h_rel": 2.376317,
@@ -225,11 +225,11 @@
       "px": [
         210,
         326,
-        507,
+        444,
         1013
       ],
       "content_px": [
-        298,
+        235,
         688
       ],
       "slot": "head_side_long"
@@ -238,19 +238,19 @@
       "sprite_file": "sheetcut_hair_long_side_r.png",
       "ref": "head_top",
       "pos_rel": [
-        0.606706,
+        0.593914,
         2.059577
       ],
       "sprite_h_rel": 2.383225,
       "width_ratio": 1.0,
       "px": [
-        573,
+        565,
         326,
         803,
         1015
       ],
       "content_px": [
-        231,
+        239,
         690
       ],
       "slot": "head_side_long"

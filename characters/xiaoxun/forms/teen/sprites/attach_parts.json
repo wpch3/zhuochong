@@ -227,7 +227,7 @@
       "slot": "head_side_long",
       "file": "sprites/acc_hair_sidelong_l.png",
       "size": [
-        286,
+        225,
         661
       ]
     },
@@ -236,7 +236,7 @@
       "slot": "head_side_long",
       "file": "sprites/acc_hair_sidelong_r.png",
       "size": [
-        221,
+        230,
         663
       ]
     },
@@ -245,8 +245,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_twin.png",
       "size": [
-        382,
-        329
+        376,
+        272
       ]
     },
     {
@@ -254,8 +254,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_pony.png",
       "size": [
-        327,
-        331
+        328,
+        274
       ]
     },
     {
@@ -263,8 +263,8 @@
       "slot": "head_crown_tied",
       "file": "sprites/hair_crown_long.png",
       "size": [
-        303,
-        331
+        268,
+        274
       ]
     },
     {
@@ -344,8 +344,8 @@
       "slot": "head_side_sweep",
       "file": "sprites/hair_sweep_pony_r.png",
       "size": [
-        187,
-        577
+        199,
+        402
       ]
     }
   ]

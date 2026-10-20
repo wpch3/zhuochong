@@ -28,16 +28,16 @@
       "seam": 1962
     },
     "long/down/+0": {
-      "holes": 3532,
-      "seam": 3532
+      "holes": 3430,
+      "seam": 3430
     },
     "long/down/-12": {
-      "holes": 3771,
-      "seam": 3771
+      "holes": 3695,
+      "seam": 3695
     },
     "long/down/+12": {
-      "holes": 3625,
-      "seam": 3625
+      "holes": 3473,
+      "seam": 3473
     },
     "long/up/+0": {
       "holes": 3929,
@@ -52,16 +52,16 @@
       "seam": 3929
     },
     "twin/down/+0": {
-      "holes": 4384,
-      "seam": 3838
+      "holes": 4210,
+      "seam": 4210
     },
     "twin/down/-12": {
-      "holes": 4451,
-      "seam": 4046
+      "holes": 4365,
+      "seam": 4365
     },
     "twin/down/+12": {
-      "holes": 4405,
-      "seam": 3983
+      "holes": 4389,
+      "seam": 4389
     },
     "twin/up/+0": {
       "holes": 4984,
@@ -76,28 +76,28 @@
       "seam": 4984
     },
     "pony/down/+0": {
-      "holes": 3301,
-      "seam": 3301
+      "holes": 3146,
+      "seam": 3146
     },
     "pony/down/-12": {
-      "holes": 3772,
-      "seam": 3772
+      "holes": 3514,
+      "seam": 3514
     },
     "pony/down/+12": {
-      "holes": 4095,
-      "seam": 4095
+      "holes": 4075,
+      "seam": 4075
     },
     "pony/up/+0": {
-      "holes": 3890,
-      "seam": 3890
+      "holes": 3862,
+      "seam": 3438
     },
     "pony/up/-12": {
-      "holes": 3890,
-      "seam": 3890
+      "holes": 3862,
+      "seam": 3438
     },
     "pony/up/+12": {
-      "holes": 3890,
-      "seam": 3890
+      "holes": 3862,
+      "seam": 3438
     },
     "none/down/+0/-acc_hair_crown_twin+acc_hair_crown_pony+acc_hair_crown_long+acc_hair_twin_l+acc_hair_twin_r+acc_hair_pony+acc_hair_long+acc_hair_sidelong_l+acc_hair_sidelong_r": {
       "holes": 3194,
@@ -107,20 +107,20 @@
       "holes": 3194,
       "seam": 3194
     },
-    "long/down/+0/-hair_back+hair_side_l+hair_side_r+acc_hood_up": {
-      "holes": 3532,
-      "seam": 3532
+    "long/down/+0/-hair_back+hair_side_l+hair_side_r+hair_front+acc_hood_up": {
+      "holes": 3430,
+      "seam": 3430
     },
-    "twin/down/+0/-hair_back+hair_side_l+hair_side_r+acc_hood_up": {
-      "holes": 4384,
-      "seam": 3838
+    "twin/down/+0/-hair_back+hair_side_l+hair_side_r+hair_front+acc_hood_up": {
+      "holes": 4210,
+      "seam": 4210
     },
-    "pony/down/+0/-hair_back+hair_side_l+hair_side_r+acc_hood_up": {
-      "holes": 3301,
-      "seam": 3301
+    "pony/down/+0/-hair_back+hair_side_l+hair_side_r+hair_front+acc_hood_up": {
+      "holes": 3146,
+      "seam": 3146
     }
   },
-  "filled_px": 3261,
+  "filled_px": 3243,
   "parts": {
     "acc_tail_cat_relaxed": 405,
     "seg_leg_l": 499,
@@ -129,10 +129,10 @@
     "seg_foot_r": 571,
     "seg_foot_l_tip": 30,
     "seg_foot_r_tip": 44,
-    "acc_ear_cat_l": 334,
+    "acc_ear_cat_l": 324,
     "hair_ahoge": 84,
     "acc_hair_sweep_twin_l": 14,
-    "acc_hair_sweep_pony_r": 11,
+    "acc_hair_sweep_pony_r": 3,
     "acc_ear_cat_r": 3
   }
 }
