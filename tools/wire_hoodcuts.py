@@ -36,10 +36,16 @@
    三片头顶扎发件（hair_crown_*）+ 双马尾两束 + 高马尾，
    换成从戴帽模板上切下来的 hair_hood_twin / hair_hood_pony。
 
-★ 长发档为什么没有 hair_hood_long
-   切出来碎成 6 条不连续的发片（用户明令「头发不许有断缺」），不合格，
-   所以这一档退回「只收走头顶扎发件、保留原来的长发与鬓发」——
-   长发本来就是垂下来的，帽子压在它上面不穿帮。欠账记在 TASKS T46.17b。
+★ 长发档的 hair_hood_long（2026-10-20 补齐，原欠账 T46.17b）
+   第一版切出来碎成 9 段不连续的发片（用户明令「头发不许有断缺」），
+   当时不合格就退回「只收走头顶扎发件、保留原来的长发与鬓发」。
+   现在 cut_hood_from_sheets.py 加了沿线稿的测地生长（种子 = 旧发片，
+   闸 = 线稿 ∧ b>=r ∧ 远离薄荷罗纹），9 段 → 5 段，剩下的 5 段是
+   **原画本来的遮挡**（手臂压住发帘、裙子压住腿间那一缕），所以接上了。
+   接上之后 hood_pose.up 要同时收走长发档原来那三件
+   （acc_hair_long / acc_hair_sidelong_l / acc_hair_sidelong_r）——
+   戴帽模板上的发帘是从帽口垂到胸前的，和不戴帽时披在背后的形状不是一个，
+   两套叠在一起会错位重影。
 """
 import collections
 import io
@@ -84,6 +90,7 @@ HOODS = [
 HOODHAIR = [
     ('hair_hood_twin', 'twin', 'hair_hood_twin', 256, '戴帽时垂下的双马尾'),
     ('hair_hood_pony', 'pony', 'hair_hood_pony', 257, '戴帽时垂下的马尾'),
+    ('hair_hood_long', 'long', 'hair_hood_long', 258, '戴帽时垂下的长发'),
 ]
 
 by_id = {a['id']: a for a in d['attachments']}
@@ -204,7 +211,8 @@ OWNER = {'hood_up': ('hood_pose', 'up'),
          'hair_hood_twin': ('hairstyle', 'twin'),
          'hood_up_pony': ('hairstyle', 'pony'),
          'hair_hood_pony': ('hairstyle', 'pony'),
-         'hood_up_long': ('hairstyle', 'long')}
+         'hood_up_long': ('hairstyle', 'long'),
+         'hair_hood_long': ('hairstyle', 'long')}
 for _a in d['attachments']:
     if _a['id'] in OWNER:
         _a['pose_group'], _a['pose_id'] = OWNER[_a['id']]
@@ -220,19 +228,25 @@ hp = pg['hood_pose']
 #   （hair_side_l / hair_back 那几个没有前缀，是因为它们是身体分段件不是挂件。）
 hp['hide_parts'] = collections.OrderedDict([
     ('up', ['acc_hair_crown_twin', 'acc_hair_crown_pony', 'acc_hair_crown_long',
-            'acc_hair_twin_l', 'acc_hair_twin_r', 'acc_hair_pony']),
+            'acc_hair_twin_l', 'acc_hair_twin_r', 'acc_hair_pony',
+            # ★ 2026-10-20：长发档也换整套了。戴帽模板上的长发是从帽口
+            #   垂到胸前的，和不戴帽时披在背后的 acc_hair_long 形状不同，
+            #   两套叠着会错位重影；鬓发同理。由 acc_hair_hood_long 接手。
+            'acc_hair_long', 'acc_hair_sidelong_l', 'acc_hair_sidelong_r']),
     # 不戴帽时，把归在发型档下的那三套帽件按住（见上面 OWNER 的说明）
     ('down', ['acc_hood_up_twin', 'acc_hair_hood_twin',
               'acc_hood_up_pony', 'acc_hair_hood_pony',
-              'acc_hood_up_long']),
+              'acc_hood_up_long', 'acc_hair_hood_long']),
 ])
 hp['_hood_note'] = (
     '★ T46.17：`up` 这一档除了显示帽壳，还要**收走**扎起来的那套头发。'
     '把第一版帽壳贴回不戴帽底图做验收时一眼看出：马尾/双马尾的发束会'
     '从帽顶戳出来 —— 戴上兜帽时头发本身的造型就是变了的。收走之后由'
     'hair_hood_twin / hair_hood_pony（从戴帽模板上切的）接手。'
-    '长发档没有对应件（切出来碎成 6 条，不合格），所以只收头顶件、'
-    '保留原来的长发与鬓发：长发本来就垂着，帽子压在它上面不穿帮。')
+    '★ 2026-10-20 补齐长发档：hair_hood_long 原来碎成 9 段不合格，'
+    '切件器加了沿线稿的测地生长之后只剩原画本来的遮挡（手臂、裙子），'
+    '于是一并接上；同时把 acc_hair_long 与两片鬓发也收走，'
+    '避免「垂到胸前的发帘」和「披在背后的长发」两套错位重影。')
 
 # 每种发型认领自己那顶帽子 —— 用 extra_parts 把帽件**登记成这一档自己的件**
 #

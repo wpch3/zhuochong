@@ -977,8 +977,21 @@ def main() -> int:
                 # nearest_fill 推出去 40px 的结果）。
                 # 收紧成「只补到**底图自己的头发**底下」：那块区域必定被
                 # hair_back(170) / seg_head(180) / hair_side(245,246) 压住，
-                # 一个像素都露不出来，而塗り足し要的"动起来别断开"照样满足。
-                bleed = dilate(masks["_base_hair"], 5)
+                # 一个像素都露不出来 …… ——
+                #
+                # ★ 2026-10-20 第二十四问三轮：**这个前提已经不成立了**。
+                #   第二十四问为了把脸侧换成模板自己的发缕，三档的 hide 名单
+                #   现在是 ['hair_back','hair_side_l','hair_side_r',...] ——
+                #   当初说"必定压住"的那三件，**正好全被藏掉了**。
+                #   于是这块 60~90px 宽的 nearest_fill 塗り足し整个露在外面：
+                #   棋盘格 /tmp/z_twinback.png 里尾巴件右侧那一大块平涂阶梯色块，
+                #   渲染出来就是实拍 /tmp/z_twin.png 中段的横向条带。
+                #   （掩膜本身是干净的，/tmp/z_back.png 四联图里 back_old 一路顺滑，
+                #     所以这一条不是切错了，是补过头了。）
+                #   改成和头壳件同一个口径：只沿**自己的轮廓**外扩 4px。
+                #   "动起来别断开"用 4px 够了；要更宽的塗り足し，前提是
+                #   上面真有东西压着 —— 现在没有。
+                bleed = dilate(mk, 9)
             else:
                 bleed = dilate(base_op, 3)
             info = emit_piece(pid, mk, sa, redraw, bbox, scale, unit, anchors, bleed,

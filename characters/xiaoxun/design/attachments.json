@@ -1076,10 +1076,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        -0.556469,
-        0.31303
+        -0.618833,
+        0.365735
       ],
-      "sprite_h_rel": 1.654441,
+      "sprite_h_rel": 1.612994,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1192,10 +1192,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.556469,
-        0.31303
+        0.618833,
+        0.365735
       ],
-      "sprite_h_rel": 1.654441,
+      "sprite_h_rel": 1.612994,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1720,10 +1720,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.023053,
-        0.681707
+        0.024652,
+        0.674416
       ],
-      "sprite_h_rel": 1.802961,
+      "sprite_h_rel": 1.74079,
       "width_ratio": 1.0,
       "layer": 256,
       "recolor_match": {
@@ -1762,12 +1762,54 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.309283,
-        0.663286
+        0.310882,
+        0.653436
       ],
-      "sprite_h_rel": 2.30033,
+      "sprite_h_rel": 2.307238,
       "width_ratio": 1.0,
       "layer": 257,
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ]
+      },
+      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+    },
+    {
+      "id": "hair_hood_long",
+      "label": "戴帽时垂下的长发",
+      "slot": "head_side_hair",
+      "sprite": "hair_hood_long.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "tags": [
+        "hair",
+        "hood"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "long",
+      "source": "sheetcut_hair_hood_long.png",
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        0.021454,
+        0.640772
+      ],
+      "sprite_h_rel": 2.649179,
+      "width_ratio": 1.0,
+      "layer": 258,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1811,17 +1853,21 @@
           "acc_hair_crown_long",
           "acc_hair_twin_l",
           "acc_hair_twin_r",
-          "acc_hair_pony"
+          "acc_hair_pony",
+          "acc_hair_long",
+          "acc_hair_sidelong_l",
+          "acc_hair_sidelong_r"
         ],
         "down": [
           "acc_hood_up_twin",
           "acc_hair_hood_twin",
           "acc_hood_up_pony",
           "acc_hair_hood_pony",
-          "acc_hood_up_long"
+          "acc_hood_up_long",
+          "acc_hair_hood_long"
         ]
       },
-      "_hood_note": "★ T46.17：`up` 这一档除了显示帽壳，还要**收走**扎起来的那套头发。把第一版帽壳贴回不戴帽底图做验收时一眼看出：马尾/双马尾的发束会从帽顶戳出来 —— 戴上兜帽时头发本身的造型就是变了的。收走之后由hair_hood_twin / hair_hood_pony（从戴帽模板上切的）接手。长发档没有对应件（切出来碎成 6 条，不合格），所以只收头顶件、保留原来的长发与鬓发：长发本来就垂着，帽子压在它上面不穿帮。"
+      "_hood_note": "★ T46.17：`up` 这一档除了显示帽壳，还要**收走**扎起来的那套头发。把第一版帽壳贴回不戴帽底图做验收时一眼看出：马尾/双马尾的发束会从帽顶戳出来 —— 戴上兜帽时头发本身的造型就是变了的。收走之后由hair_hood_twin / hair_hood_pony（从戴帽模板上切的）接手。★ 2026-10-20 补齐长发档：hair_hood_long 原来碎成 9 段不合格，切件器加了沿线稿的测地生长之后只剩原画本来的遮挡（手臂、裙子），于是一并接上；同时把 acc_hair_long 与两片鬓发也收走，避免「垂到胸前的发帘」和「披在背后的长发」两套错位重影。"
     },
     {
       "id": "hairstyle",

@@ -7,20 +7,20 @@
       "sprite_file": "sheetcut_hair_twin_back_l.png",
       "ref": "head_top",
       "pos_rel": [
-        -0.531818,
-        1.140123
+        -0.594181,
+        1.172104
       ],
-      "sprite_h_rel": 1.654441,
+      "sprite_h_rel": 1.612994,
       "width_ratio": 1.0,
       "px": [
-        237,
-        144,
-        427,
-        622
+        233,
+        160,
+        392,
+        626
       ],
       "content_px": [
-        191,
-        479
+        160,
+        467
       ],
       "slot": "head_side_hair"
     },
@@ -28,20 +28,20 @@
       "sprite_file": "sheetcut_hair_twin_back_r.png",
       "ref": "head_top",
       "pos_rel": [
-        0.581121,
-        1.141722
+        0.643484,
+        1.176901
       ],
-      "sprite_h_rel": 1.671711,
+      "sprite_h_rel": 1.623356,
       "width_ratio": 1.0,
       "px": [
-        586,
-        142,
-        774,
-        625
+        621,
+        160,
+        778,
+        629
       ],
       "content_px": [
-        189,
-        484
+        158,
+        470
       ],
       "slot": "head_side_hair"
     },

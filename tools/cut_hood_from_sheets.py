@@ -332,6 +332,60 @@ def cut_one(style, design, chin, eyeline, head_cx):
              & (sat >= 6) & (~hood_sil))
     hairm = C.despeckle(hairm, 5, 9)
     hairm, hsizes = keep_parts(hairm, 1500)
+
+    # ★★★ 2026-10-20 第二十四问续：**沿线稿把发帘补成整条**。
+    #   上面那条 `sat >= 6` 的闸是为了挡住胸口白抽绳，代价是把发缕上
+    #   **近白的高光带**一并挡掉 —— 长发档实测被切成 9 段
+    #   （/tmp/z_longparts.png：鬓发一段、胸前一段、外侧帘子又一段，
+    #   中间整块亮面是空的）。用户明令「头发不许有断缺」。
+    #
+    #   解法和白外布同一套：**测地生长**，不是放宽颜色阈值。
+    #   以上面切出来的发片作种子，在「线稿以内 ∧ 冷色 ∧ 非肤非青」里
+    #   长到不动点。三条闸各有分工：
+    #     · `~dilate(line, 3)` —— 教程「線画のやや外側を選択」，
+    #       线稿就是发缕和夹克的边界；
+    #     · `b >= r` —— 淡紫发哪怕最亮的高光也还是冷的（b−r 中位 +26~+46），
+    #       而白衬衫 −31、白抽绳 −33、米白前襟 −3，一条就分开了。
+    #       单靠线稿挡不住：发帘压在白前襟上，两者之间没有线。
+    #       （实测不加这条，整片前襟被吃进来，件 97k → 136k，
+    #        见 /tmp/z_longgrow.png。）
+    #     · 下半身 `~dilate(teal, 13)` —— 袖口罗纹、下摆白条紧挨薄荷色，
+    #       和发帘只隔一条很淡的线，会被顺着吃掉一长条；离薄荷 6px 以外
+    #       就安全。只在 YLIM 以下生效，免得把帽口内衬边上的鬓发削掉。
+    #   长发 9 段 → 5 段，剩下的 5 段是**原画本来的遮挡**
+    #   （手臂压住发帘、裙子压住腿间那一缕），不是切漏。
+    allow = (op_a & (~teal) & (~skin) & (~C.dilate(line, 3)) & (~hood)
+             & (yy > eyeline) & (b >= r)
+             & (~(C.dilate(teal, 13) & (yy > YLIM))))
+    grown = flood(hairm & allow, allow) | hairm
+
+    #   ★ 光靠生长还不够：生长的边界是**颜色阈值划出来的**，发缕背光那一侧
+    #     会被撕出锯齿毛边（实拍 /tmp/z_hlsprite.png：发帘内侧像撕开的纸，
+    #     而模板里它是一条光滑的缕）。贴回身上就是夹克前襟上两摊粉色碎斑。
+    #     所以第二步换个层面问：**线稿把画面切成一个个格子，这个格子整体
+    #     算不算头发**。判归属用颜色（格内 45% 以上是发色，或 50% 以上被
+    #     上一步的生长覆盖），但**边界只由线稿决定** —— 于是边缘天然光滑，
+    #     和原画完全重合。教程原话「線画のやや外側を選択してくりぬく」。
+    hairish = C.hair_like(A) | ((b >= r + 4) & (sat >= 5))
+    cellmask = (op_a & (~C.dilate(line, 3)) & (~hood) & (~teal) & (~skin)
+                & (yy > eyeline))
+    sel = np.zeros_like(op_a)
+    for c in comps(cellmask):
+        if len(c) < 40:
+            continue
+        cy = np.array([q[0] for q in c])
+        cx = np.array([q[1] for q in c])
+        if hairish[cy, cx].mean() >= 0.45 or grown[cy, cx].mean() >= 0.5:
+            sel[cy, cx] = True
+    #   `dilate(line, 3)` 把发缕之间的分隔线连同两侧各 1px 一起挖掉了，
+    #   不补回来，件里就是一条条白沟。3px 闭运算刚好把这条沟填上，
+    #   外轮廓只圆 3px（不是以前那个把轮廓改方的 17 方核）。
+    hairm = C.solidify(sel, 7)
+    hairm = C.dilate(hairm, 3) & op_a & (~teal) & (~hood)
+    hairm = hairm | (C.fill_holes(hairm) & (~hairm) & op_a)
+    #   ★ 门槛别降到 300：300px 的碎屑会落在膝盖那么远的地方，
+    #     内容框被它一撑就从 549x525 变成 548x1090，件白大一倍。
+    hairm, hsizes = keep_parts(hairm, 1200)
     # 填洞**只填不透明的洞**：发缕之间的缝隙是洋红背景，填了会在件里糊出紫红块。
     hairm = hairm | (C.fill_holes(hairm) & (~hairm) & op_a)
 
