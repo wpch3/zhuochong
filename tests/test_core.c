@@ -21,6 +21,7 @@
 #include "../src/core/zimg.h"
 #include "../src/core/zdeflate.h"
 #include "../src/core/zpet.h"
+#include "../src/core/zpersona.h"
 #include "../src/core/zconfig.h"
 #include "../src/core/zrig.h"
 #include "../src/core/zphys2.h"
@@ -2904,6 +2905,97 @@ static int diag_has(const zdiag *d, const char *needle)
     for (i = 0; i < d->count; ++i)
         if (strstr(d->items[i].msg, needle)) return 1;
     return 0;
+}
+
+
+/* ---------------------------------------------------------------- 人设与剧情 */
+static void test_persona(void)
+{
+    zdiag diag;
+    zpersona zp;
+    char p0[4096], p2[4096], p3[4096];
+    char backup[4096];
+    FILE *f;
+    size_t n;
+    int i;
+
+    SECTION("人设：三层合成、好感剧情、白名单写入");
+    zdiag_init(&diag);
+
+    CHECK(zpersona_load(&zp, g_root, "xiaoxun", &diag) == 1,
+          "小寻的人设应加载成功（错误 %d 条）", diag.error_count);
+    CHECK(zp.lib.ntraits == 8, "可调维度应为 8 个，实际 %d", zp.lib.ntraits);
+    CHECK(zp.lib.npresets >= 6, "预设应不少于 6 个，实际 %d", zp.lib.npresets);
+    CHECK(zp.nstory == 4, "好感剧情应有 4 档，实际 %d", zp.nstory);
+
+    /* 合成：名字必须是中文名，不能漏出目录 id */
+    n = zpersona_compose(&zp, 0, p0, sizeof(p0));
+    CHECK(n > 0 && strstr(p0, "小寻") != NULL, "合成结果应出现中文名「小寻」");
+    CHECK(strstr(p0, "xiaoxun") == NULL, "合成结果不应出现目录 id「xiaoxun」");
+
+    /* 剧情只带当前档：第 0 档里绝不能出现第 3 档的文案（剧透） */
+    CHECK(strstr(p0, zp.story[0]) != NULL, "第 0 档应带本档剧情");
+    CHECK(zp.story[3][0] == 0 || strstr(p0, zp.story[3]) == NULL,
+          "第 0 档不应剧透第 3 档的剧情");
+    zpersona_compose(&zp, 2, p2, sizeof(p2));
+    CHECK(strstr(p2, zp.story[2]) != NULL, "第 2 档应带本档剧情");
+    CHECK(strcmp(p0, p2) != 0, "不同好感档合成的提示词应当不同");
+
+    /* 中间值 3 不进提示词（避免「中等」这种无约束力的废话） */
+    for (i = 0; i < zp.lib.ntraits; ++i) zp.tv[i] = 3;
+    zpersona_compose(&zp, 0, p3, sizeof(p3));
+    CHECK(strstr(p3, "说话风格") == NULL, "8 个维度全取中间值时不应输出「说话风格」段");
+
+    /* 白名单：允许的键 */
+    CHECK(zpersona_set(&zp, "nickname", "笨蛋") == 1, "nickname 应可改");
+    CHECK(zpersona_set(&zp, "trait.tsundere", "5") == 1, "trait.tsundere 应可改");
+    CHECK(zpersona_set(&zp, "meeting.where", "便利店") == 1, "meeting.where 应可改");
+    /* 白名单：拒绝的键与非法值 */
+    CHECK(zpersona_set(&zp, "schema_version", "x") == 0, "schema_version 不可改");
+    CHECK(zpersona_set(&zp, "character", "shenyu") == 0, "character 不可改（防换角色）");
+    CHECK(zpersona_set(&zp, "story.0", "随便写") == 0, "剧情不可由对话直接改写");
+    CHECK(zpersona_set(&zp, "trait.tsundere", "9") == 0, "trait 超出 1..5 应拒绝");
+    CHECK(zpersona_set(&zp, "trait.nonexist", "3") == 0, "不存在的维度应拒绝");
+
+    /* 预设：换一次应当把整组滑杆铺好 */
+    CHECK(zpersona_apply_preset(&zp, "cool") == 1, "应能套用 cool 预设");
+    CHECK(zpersona_apply_preset(&zp, "no_such_preset") == 0, "不存在的预设应拒绝");
+
+    /* 存盘 → 重载 往返。先把原文件备份，测完原样放回。 */
+    backup[0] = 0;
+    {
+        char path[1024];
+        z_snprintf(path, sizeof(path), "%s/characters/xiaoxun/persona.json", g_root);
+        f = fopen(path, "rb");
+        if (f) { n = fread(backup, 1, sizeof(backup) - 1, f); backup[n] = 0; fclose(f); }
+        CHECK(backup[0] != 0, "应能读到 persona.json 备份");
+
+        CHECK(zpersona_save(&zp, g_root) == 1, "人设应能写回");
+        {
+            zpersona re;
+            CHECK(zpersona_load(&re, g_root, "xiaoxun", &diag) == 1, "写回后应能重新加载");
+            CHECK(strcmp(re.nickname, "笨蛋") == 0, "称呼应往返一致，实际「%s」", re.nickname);
+            CHECK(strcmp(re.preset, "cool") == 0, "预设应往返一致，实际「%s」", re.preset);
+            CHECK(strcmp(re.m_where, "便利店") == 0, "相遇地点应往返一致");
+            CHECK(re.nstory == 4, "剧情档数应往返一致，实际 %d", re.nstory);
+        }
+        /* 还原，别把测试数据留在仓库里 */
+        f = fopen(path, "wb");
+        if (f) { fwrite(backup, 1, strlen(backup), f); fclose(f); }
+    }
+
+    /* 8 个角色都得能加载（persona.json 缺失是合法的，走全默认） */
+    {
+        const char *ids[8] = {"xiaoxun","shenyu","xiaochen","xingxuan",
+                              "shuangxi","tonglin","yuejian","shandian"};
+        for (i = 0; i < 8; ++i) {
+            zpersona one;
+            CHECK(zpersona_load(&one, g_root, ids[i], &diag) == 1,
+                  "角色 %s 的人设应能加载", ids[i]);
+            CHECK(zpersona_compose(&one, 0, p3, sizeof(p3)) > 0,
+                  "角色 %s 应能合成出非空提示词", ids[i]);
+        }
+    }
 }
 
 static void test_interactions(void)
@@ -6596,6 +6688,7 @@ int main(int argc, char **argv)
     test_longrun();
     test_expression();
     test_motion_from();
+    test_persona();
     test_interactions();
     test_affection();
     test_gateway();

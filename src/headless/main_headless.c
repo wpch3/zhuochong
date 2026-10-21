@@ -38,6 +38,8 @@
 #include "../core/zpet.h"
 #include "../core/zgateway.h"
 #include "../core/zconfig.h"
+#include "../core/zpersona.h"
+#include "../core/zjson.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -787,6 +789,85 @@ static void handle_request(zsock fd, const http_req *r)
                    zpet_lipsync_remain(g_pet));
         UNLOCK();
         send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/persona.json") == 0) {
+        /* 把三层人设合成的系统提示词原样吐出来。
+           这是"所见即所得"那条线的关键：面板上显示的就是真的会喂给模型的那段文本，
+           不做任何隐藏拼接 —— 用户改一个滑杆，马上能看见提示词哪一行变了。 */
+        static char body[8192];
+        char prompt[4096], esc[6144];
+        zpersona zp;
+        zdiag d;
+        size_t n;
+        int tier, k, off;
+
+        zdiag_init(&d);
+        LOCK();
+        tier = zpet_affection_tier(g_pet);
+        UNLOCK();
+        if (!zpersona_load(&zp, g_root, zpet_character(g_pet), &d)) {
+            send_text(fd, 500, "application/json",
+                      "{\"ok\":false,\"error\":\"人设加载失败，看 logs/preview.log\"}");
+            return;
+        }
+        n = zpersona_compose(&zp, tier, prompt, sizeof(prompt));
+        zjson_escape(prompt, esc, sizeof(esc));
+        {
+            char en[128], ec[1536];
+            zjson_escape(zp.nickname, en, sizeof(en));
+            zjson_escape(zp.custom, ec, sizeof(ec));
+            off = (int)z_snprintf(body, sizeof(body),
+                   "{\"ok\":true,\"character\":\"%s\",\"name\":\"%s\",\"preset\":\"%s\","
+                   "\"tier\":%d,\"meeting_todo\":%d,\"nickname\":\"%s\",\"custom\":\"%s\","
+                   "\"prompt_bytes\":%u,\"prompt\":\"%s\",\"traits\":[",
+                   zp.character, zp.name, zp.preset, tier, zpersona_meeting_todo(&zp),
+                   en, ec, (unsigned)n, esc);
+        }
+        for (k = 0; k < zp.lib.ntraits && off < (int)sizeof(body) - 256; ++k)
+            off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                       "%s{\"id\":\"%s\",\"name\":\"%s\",\"low\":\"%s\",\"high\":\"%s\",\"v\":%d}",
+                       k ? "," : "", zp.lib.traits[k].id, zp.lib.traits[k].name,
+                       zp.lib.traits[k].low, zp.lib.traits[k].high, zp.tv[k]);
+        off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off, "],\"presets\":[");
+        for (k = 0; k < zp.lib.npresets && off < (int)sizeof(body) - 256; ++k)
+            off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                       "%s{\"id\":\"%s\",\"name\":\"%s\"}",
+                       k ? "," : "", zp.lib.presets[k].id, zp.lib.presets[k].name);
+        z_snprintf(body + off, sizeof(body) - (size_t)off, "]}");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/persona/set") == 0) {
+        /* 白名单写入：k=<键> v=<值>。键不在 zpersona_set 的名单里一律 400。
+           对话侧要改人设也只能走这里 —— 不开"模型直接写 json"的口子。 */
+        char key[64], val[512];
+        zpersona zp;
+        zdiag d;
+        char body2[256];
+
+        if (!qstr(r, "k", key, sizeof(key))) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 k\"}");
+            return;
+        }
+        if (!qstr(r, "v", val, sizeof(val))) val[0] = '\0';
+        zdiag_init(&d);
+        if (!zpersona_load(&zp, g_root, zpet_character(g_pet), &d)) {
+            send_text(fd, 500, "application/json", "{\"ok\":false,\"error\":\"人设加载失败\"}");
+            return;
+        }
+        if (!zpersona_set(&zp, key, val)) {
+            z_snprintf(body2, sizeof(body2),
+                       "{\"ok\":false,\"error\":\"这个键不可改或值非法\",\"k\":\"%s\"}", key);
+            send_text(fd, 400, "application/json", body2);
+            return;
+        }
+        if (!zpersona_save(&zp, g_root)) {
+            send_text(fd, 500, "application/json", "{\"ok\":false,\"error\":\"写回失败\"}");
+            return;
+        }
+        z_snprintf(body2, sizeof(body2), "{\"ok\":true,\"k\":\"%s\",\"v\":\"%s\"}", key, val);
+        send_text(fd, 200, "application/json", body2);
         return;
     }
     if (strcmp(r->path, "/api/express") == 0) {

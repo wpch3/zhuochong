@@ -188,6 +188,8 @@
 | `GET /api/quit` | 关掉预览进程 |
 | `GET /api/speak?id=X` | 播一条口型包络（`voice/lipsync/<X>.json`）；`stop=1` 立刻收嘴；未知 id 404 |
 | `GET /api/speech.json` | 台词 + 好感，外加 `lipsync:{active,id,level,remain}` |
+| `GET /api/persona.json` | 三层人设合成后的**系统提示词原文** + 预设表 + 八个维度的当前值 + `meeting_todo`（相遇引导还剩几步）。面板上灰框里显示的就是这个 `prompt` 字段，不做二次加工 |
+| `GET /api/persona/set?k=&v=` | 按**白名单**改人设并写回 `characters/<id>/persona.json`。只认 `preset` / `trait.<id>`(1~5) / `nickname` / `selfname` / `custom` / `taboo.add` / `taboo.clear` / `meeting.{enabled,user,where,when,how,relation}`，其余键一律 400。"用对话改人设"走的也是这条，面板改不了的模型同样改不了 |
 
 ### 3.2 网格形变（A5）怎么写
 
