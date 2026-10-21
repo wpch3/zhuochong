@@ -1967,9 +1967,21 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     "bend_follow_at": fcut,
                 }
         if armp:
-            # 前臂挂在上臂下面：枢轴 = 肘关节（anchors 实测），父组旋转自动继承
+            # 前臂挂在上臂下面：枢轴 = 肘关节，父组旋转自动继承
+            # ★★★ 2026-10-21 第三十三问：优先用 make_arm_parts 量出来的
+            #   elbow_joint（= 肘线上袖子横截面的中点，也就是肘关节正圆的**圆心**）。
+            #   anchors 里的 elbow_* 是按身高比例估的，右侧实测偏外 3px；
+            #   枢轴和圆心只要不重合，那个圆就不再是旋转不变量，
+            #   前臂一弯肘外侧就会啃进去一牙（用户说的「割裂」）。
             el_l = apt("elbow_l", 0.428, 0.172)
             el_r = apt("elbow_r", 0.428, 0.825)
+            _ej = armp.get("elbow_joint") or {}
+            if _ej.get("l"):
+                el_l = [ox + float(_ej["l"][0]), oy + float(_ej["l"][1])]
+            if _ej.get("r"):
+                el_r = [ox + float(_ej["r"][0]), oy + float(_ej["r"][1])]
+            if _ej:
+                print("[rig] 肘枢轴用 arm_parts.elbow_joint: l=%s r=%s" % (el_l, el_r))
             groups["forearm_l"] = {"pivot": el_l, "parent": "arm_l"}
             groups["forearm_r"] = {"pivot": el_r, "parent": "arm_r"}
             # G4c2：手挂在前臂下面，枢轴 = 袖口下沿那条实测的腕线（make_arm_parts 量的）

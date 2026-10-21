@@ -58,7 +58,12 @@ ROOT_CLEAR_SEAM = 0                 # 0 = **不要**抹上臂贴图里那条袖�
 #   「躯干 ∪ 袖子」一起盖住；一抬手袖子让开，**原来被袖子盖住的那半块就
 #   永久暴露**，于是腋下多出一牙青色半月（用户截图 1，放大图 /tmp/u1_arm4.png）。
 #   半径收到半个袖宽以后，圆盘整个藏在「袖子 ∪ 躯干」的交集里，转到哪都不露。
-ROOT_SMOOTH_K = 5       # 袖根塗り足し的磨圆核（开运算），见 root_fill
+ROOT_SMOOTH_K = 5
+# 袖根塗り足し的上色/收边（2026-10-21 第三十三问）
+ROOT_BLEED_ROUNDS = 56     # 颜色从袖子往里扩散的圈数（补绘最远 ~46px）
+ROOT_SHADE_DIST = 24.0     # 往身体里走多远衰减到 ROOT_SHADE
+ROOT_BLUR_K = 3            # ぼかし半径（note.com:「肩の付け根はぼかし処理」）
+ROOT_FADE_END = 34.0       # 靠肘那一端的渐隐长度，避免一条垂直臂轴的硬切       # 袖根塗り足し的磨圆核（开运算），见 root_fill
 ROOT_DISC_W = 0.58                  # R = 袖宽 × 这个系数（0.5 = 正好半宽，留一点のりしろ）
 ROOT_DISC_K = 0.52                  # 上限：R 不许超过这么多倍上臂长（保险，正常用不到）
 ROOT_LAYER = {"l": 95, "r": 96}     # **画在躯干(100)底下**：静止时被夹克完全盖住
@@ -261,8 +266,8 @@ def bleed(rgb, have, into, rounds=5):
     return out_rgb, grown, dist
 
 
-def shoulder_joint(up, sh_anchor):
-    """真·肩关节中心（画布坐标）。
+def shoulder_joint(up, sh_anchor, side):
+    """真·肩关节中心（画布坐标）+ 关节圆半径。
 
     ★★★ 2026-10-21 第三十一问：这是挥手一直做不对的**根因**。
         `make_anchors.py` 里 shoulder_l/r 写的是
@@ -290,14 +295,36 @@ def shoulder_joint(up, sh_anchor):
     所以关节中心必须是「那个正圆的圆心」。这里按解剖学口径反求：
       ① R = 上臂逐行宽度的 80 分位 ÷ 2（= 教程说的「腕の幅」的一半）；
       ② 关节行 = 肩峰（旧 anchor 的那一行）往下**一个臂半径**；
-      ③ 关节 x = 该行袖子横截面的中点（和 elbow_* 完全同一个口径）。
-    和另一条独立口径（上臂上 1/3 的**最大内切圆圆心**）交叉验证：
-      右 (535,465) vs (535,472)、左 (308,462) vs (306,475) —— x 几乎重合。
-    换上以后，关节圆落在「躯干∪袖子」里的比例 51%→89%（右）、50%→90%（左）。
+      ③ 关节 x = **让圆与袖子外轮廓相切** ⇒ x = 外缘 ∓ R。
+
+    ★★★ 2026-10-21 第三十三问：③ 本来写的是「该行袖子横截面的**中点**」，
+        这条是错的，而且错得隐蔽 —— 它就是这一轮「手臂断裂/割裂」的根因。
+
+        这件衣服是**插肩袖**，肩头那一截袖子**大半压在白夹克身底下**。
+        实测右臂逐行跨度：
+            y=360 宽 18 ／ y=400 宽 41 ／ y=480 宽 58 ／ y=553（肘）宽 65
+        肩头「看得见的袖子」只有 18px，而真实上臂有 65px 宽。
+        拿**可见跨度的中点**当圆心，圆心就被推到身体外侧，
+        以真实臂宽为直径的那个圆**有 14% 落在背景的空气里**
+        （实测：左 86.6% / 右 86.0% 在 body 剪影内，其余是白底）。
+
+        后果正是用户说的三件事：
+          · 那 14% 没有任何件能盖 ⇒ 胳膊一抬，肩窝**破一个缺口**（断裂）；
+          · 上臂顶端只能切直边（圆盘填不满）⇒ 一个平角戳出夹克（割裂）；
+          · 枢轴偏外 ⇒ 同角度下远端扫过的弧更长（错位）。
+
+        改成**与外轮廓相切**后，圆盘 **100.0% 落在 body 剪影内**（两侧都是）：
+          · 圆盘可整个填实成袖色，藏在夹克底下（层 95/96 < 躯干 100），
+            静止合成一个像素都不变；
+          · 上臂顶端收成以该圆心为心的**半圆帽**，转任何角度剪影不变。
+        即 saraemi「関節パーツは正円で、腕の幅と同じ直径」+
+        coconala「関節を回転軸の中心にあわせて綺麗な円形に描く」的做法。
+
+    返回 (jx, jy, R)：R 一并返回，免得调用方各算各的再对不上。
     """
     rows = np.nonzero(up.any(axis=1))[0]
     if rows.size == 0:
-        return (float(sh_anchor[0]), float(sh_anchor[1]))
+        return (float(sh_anchor[0]), float(sh_anchor[1]), 1.0)
     widths, span = [], {}
     for y in rows:
         xs = np.nonzero(up[y])[0]
@@ -309,18 +336,19 @@ def shoulder_joint(up, sh_anchor):
     if jy not in span:
         cand = [y for y in span if y >= jy]
         if not cand:
-            return (float(sh_anchor[0]), float(sh_anchor[1]))
+            return (float(sh_anchor[0]), float(sh_anchor[1]), R)
         jy = min(cand)
     lo, hi = span[jy]
-    jx = (lo + hi) / 2.0
-    print("  肩关节 %s: 肩峰y=%d + 臂半径%.1f → 关节(%.0f,%d)  旧anchor(%.0f,%.0f)"
-          % ("?", float(sh_anchor[1]), R, jx, jy,
-             float(sh_anchor[0]), float(sh_anchor[1])))
-    return (jx, float(jy))
+    jx = (hi - R) if side == "r" else (lo + R)
+    print("  肩关节 %s: 肩峰y=%d + 臂半径%.1f → 关节(%.0f,%d)"
+          "  [与外轮廓 x=%d 相切；旧口径取可见中点 %.0f ⇒ 圆盘 14%% 戳到空气里]"
+          % (side, float(sh_anchor[1]), R, jx, jy,
+             hi if side == "r" else lo, (lo + hi) / 2.0))
+    return (jx, float(jy), R)
 
 
 def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
-              elbow=None):
+              elbow=None, joint_r=None):
     """袖根塗り足し（G108）：把上臂的袖子往身体里多画一截，**画在躯干底下**。
 
     ★★★ 2026-10-20 第二十七问（G121）：补出来的这块必须**收进以肩关节为
@@ -389,8 +417,16 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
         # ★ 2026-10-21：R = 袖宽/2（教程口径），再用「上臂长 × K」兜个上限。
         #   `target` 就是袖子逐行宽度的 80 分位，正是教程说的「上腕の幅」。
         R = min(float(target) * ROOT_DISC_W, float(arm_len) * ROOT_DISC_K)
-        print("  袖根胶囊 %s: 袖宽 %.1f → R=%.1f（旧口径 R=%.1f）"
-              % (side, target, R, float(arm_len) * ROOT_DISC_K))
+        # ★★★ 2026-10-21 第三十三问：圆盘半径必须**和关节那个圆严格同一个数**。
+        #   以前这里自己算一遍（target×0.58），主流程里 yoke 又算一遍
+        #   （80 分位÷2），两个数差 1~2px —— 上臂被裁成半圆帽的那条弧
+        #   和袖根补出来的那条弧**对不齐**，中间留一道 1~2px 的透明月牙。
+        #   转起来就是用户说的「割裂」里那条亮缝。统一成同一个 R，再加 2px
+        #   のりしろ（shiroikarasu：「多少描きすぎるくらいでちょうど良い」）。
+        if joint_r:
+            R = float(joint_r) + 2.0
+        print("  袖根圆盘 %s: 关节R=%.1f → 补绘R=%.1f（袖宽80分位 %.1f）"
+              % (side, float(joint_r or 0.0), R, target))
         #   ★ 这里必须 `& ~up` 而不是 `& ~dilate(up, 1)`：留 1px 缝的话，
         #     下面描线稿的 `full = ext | up` 会沿着这条缝也算出一圈"剪影边"，
         #     在青袖**正中间**糊出一道深色线，看上去就是两条袖子叠着
@@ -444,8 +480,8 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
                 rowfill[y, max(0, ea - d):ea] = True
             else:
                 rowfill[y, eb + 1:min(W, eb + 1 + d)] = True
-        ext = (((xx_d * xx_d + yy_d * yy_d) <= R * R) | band | rowfill) \
-            & erode(hidden, 2) & ~up
+        disc = (xx_d * xx_d + yy_d * yy_d) <= R * R
+        ext = (disc | band | rowfill) & erode(hidden, 2) & ~up
         # ★★★ 2026-10-21 第二十九问（自查发现，用户没点名）：把补出来这块的
         #   **内侧轮廓磨圆**。抬手实拍（/tmp/armpit.png，wave 第 100 帧放大 2×）
         #   能看见肩头是一条**直的斜切边**，中间还有一个折角 —— 那是
@@ -457,7 +493,14 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
         #   关节附近的轮廓要是圆的，不能有角。
         #   开运算（先腐蚀后膨胀）只会**去掉**像素，不会新增 ⇒ 「袖根静止
         #   露出 0」那道闸不可能被它弄红；它专门削掉凸角和毛刺。
-        ext = dilate(erode(ext, ROOT_SMOOTH_K), ROOT_SMOOTH_K) | (ext & band)
+        #   ★★★ 2026-10-21 第三十三问：开运算**必须把关节圆盘豁免掉**。
+        #   实测旧版 arm_r_root 成品只有 2582px，是一道**细月牙**，根本不是圆盘：
+        #   圆心取错 ⇒ 圆盘 14% 在背景上 ⇒ `& erode(hidden,2)` 先切掉一大片，
+        #   剩下的窄条再被 K=5 的开运算整段抹平。于是「转出来的肩窝」没人填，
+        #   就是用户说的**断裂**。圆心修正之后圆盘 100% 在身体内，这里再把
+        #   `disc` 和 `band` 一起列进豁免，保证圆盘**整个**留下来。
+        ext = dilate(erode(ext, ROOT_SMOOTH_K), ROOT_SMOOTH_K) \
+            | (ext & (band | disc))
     else:
         ext = np.zeros((H, W), bool)
         for y, (a, b) in edges.items():
@@ -470,27 +513,44 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
                 continue
             x0, x1 = (max(0, a - d), a) if side == "r" else (b + 1, min(W, b + 1 + d))
             ext[y, x0:x1] = True
-    # 上色：每一行取**同一行袖缝内侧 6px**的中位色（避开 2px 线稿）；
-    # 圆盘顶端那几行在袖子之上没有袖缝可取，就沿用袖子最上面一行的颜色。
-    ys_sorted = sorted(edges)
-    for y in np.nonzero(ext.any(axis=1))[0]:
-        y = int(y)
-        ref = y if y in edges else (ys_sorted[0] if y < ys_sorted[0] else ys_sorted[-1])
-        a, b = edges[ref]
-        src = body[ref, a + 1:a + 7, :3] if side == "r" else body[ref, max(0, b - 6):b, :3]
-        if src.size == 0:
-            continue
-        col = np.median(src.astype(np.float32), axis=0)
-        xs = np.nonzero(ext[y])[0]
-        if not xs.size:
-            continue
-        x0, x1 = int(xs.min()), int(xs.max()) + 1
-        ramp = np.linspace(1.0, ROOT_SHADE, x1 - x0)
-        if side == "r":
-            ramp = ramp[::-1]                     # 右臂越往身体里越暗
-        line = np.clip(col[None, :] * ramp[:, None], 0, 255).astype(rgb.dtype)
-        sel = ext[y, x0:x1]
-        rgb[y, x0:x1][sel] = line[sel]
+    # ---- 上色：从袖子**自己**往里扩散 + ぼかし（2026-10-21 第三十三问）-------
+    # 旧做法是「逐行取袖缝内侧 6px 的中位色，再按列做线性 ramp」。
+    # 肉眼看成品件（logs/asset_qa/q33_uppers.png 第三格 arm_l_root）：
+    # 整块补绘是一条条**横向色带**，每一行一个平色 —— 原画袖子的明暗是斜的，
+    # 逐行取色把它切成了阶梯。手臂一抬，这块从夹克底下转出来，
+    # 就是用户说的「像另一片布贴在袖子下面」（割裂）。
+    #
+    # 正解：把袖子自己的像素往补绘区里**扩散**（bleed 是四邻域平均，
+    # 天然带平滑），再按「离袖子多远」统一压暗 —— 明暗走向就跟着原画走，
+    # 不会出现横档。最后在补绘区内做一次小半径模糊，
+    # 即 note.com/shumi_log/n/n8172d73024aa 说的「**肩の付け根はぼかし処理**」。
+    # 取样源要**避开袖缝那条 2px 深线**：直接拿 up 当源，bleed 会把线稿色
+    # 一路摊进整片补绘，出来就是一块明显发暗发绿的布（第一版实测如此）。
+    # 往里腐蚀 3px 取「干净的袖子内部」，扩散出来的才是袖子本色。
+    src_ok = erode(up & (body[..., 3] > 200), 3)
+    if not src_ok.any():
+        src_ok = up & (body[..., 3] > 200)
+    if ext.any() and src_ok.any():
+        filled, _grown, bdist = bleed(rgb, src_ok, ext, rounds=ROOT_BLEED_ROUNDS)
+        f = np.clip(bdist / ROOT_SHADE_DIST, 0.0, 1.0)[..., None]
+        shaded = np.clip(filled.astype(np.float32) * (1.0 - (1.0 - ROOT_SHADE) * f),
+                         0, 255)
+        rgb[ext] = shaded[ext].astype(rgb.dtype)
+        # ぼかし：只在补绘区内部平均，边界不动（边界要留给下面描线稿）
+        k = ROOT_BLUR_K
+        inner = erode(ext, 2)
+        if inner.any():
+            acc = np.zeros(rgb.shape, np.float32)
+            cnt = np.zeros(ext.shape, np.float32)
+            base_f = rgb.astype(np.float32)
+            for dy in range(-k, k + 1):
+                for dx in range(-k, k + 1):
+                    sm = shift(ext | src_ok, dy, dx)
+                    sv = np.dstack([shift(base_f[..., c], dy, dx) for c in range(3)])
+                    acc[sm] += sv[sm]
+                    cnt[sm] += 1.0
+            ok = inner & (cnt > 0)
+            rgb[ok] = (acc[ok] / cnt[ok][:, None]).astype(rgb.dtype)
     # 新内缘描线稿：转出来之后这条就是袖子的剪影边，没有线会像一块色块
     #   只在**圆盘外沿**描线：靠身体里侧那一段将来可能转成剪影边，要线；
     #   贴着袖子的那一侧已经有原画的袖缝线了，再描一道就是双线。
@@ -502,7 +562,20 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
         if mask.any():
             cur = rgb[mask].astype(np.float32)
             rgb[mask] = (cur * (1 - k) + ln * k).astype(rgb.dtype)
-    return ext, rgb, target
+    # ---- 靠肘那一端渐隐（2026-10-21 第三十三问）----------------------------
+    # 胶囊是「圆盘 ∪ 沿臂轴的等宽带」，带子在肘那头是**一刀切平**的：
+    # 抬到 -100° 时那条垂直臂轴的直边整条转出来，在袖子底下拉出一条硬边
+    # （logs/asset_qa/q33_sh2_new.png 第三格）。
+    # 这一端在静止时本来就被夹克和前臂压着，渐隐掉不会少东西。
+    fade = np.ones((H, W), np.float32)
+    if pivot is not None and elbow is not None and arm_len:
+        _ax = float(elbow[0]) - float(pivot[0])
+        _ay = float(elbow[1]) - float(pivot[1])
+        _al = max(1e-6, float(np.hypot(_ax, _ay)))
+        _along = (xx_d * (_ax / _al) + yy_d * (_ay / _al))
+        fade = np.clip((_al - _along) / ROOT_FADE_END, 0.0, 1.0).astype(np.float32)
+        fade = fade * fade * (3.0 - 2.0 * fade)        # smoothstep
+    return ext, rgb, target, fade
 
 
 def seam_trim(a, rgb, side, y_max=None, keep=SEAM_KEEP, cap=SEAM_TRIM_MAX):
@@ -621,12 +694,8 @@ def main():
     for side in ("l", "r"):
         ey = int(pts[f"elbow_{side}"][1])
         up_only = arms[side] & (yy_all <= ey + half_ov)
-        sj = shoulder_joint(up_only, pts[f"shoulder_{side}"])
-        ws = []
-        for y in np.nonzero(up_only.any(axis=1))[0]:
-            xs = np.nonzero(up_only[y])[0]
-            ws.append(xs.max() - xs.min() + 1)
-        R = float(np.percentile(ws, ROOT_TARGET_Q * 100.0)) / 2.0 if ws else 1.0
+        jx, jy, R = shoulder_joint(up_only, pts[f"shoulder_{side}"], side)
+        sj = (jx, jy)
         SJ[side], JOINT_R[side] = sj, R
         ax = float(pts[f"elbow_{side}"][0]) - sj[0]
         ay = float(pts[f"elbow_{side}"][1]) - sj[1]
@@ -636,7 +705,24 @@ def main():
         dy = yy_all - sj[1]
         along = dx * ax + dy * ay
         disc = (dx * dx + dy * dy) <= R * R
-        yoke = arms[side] & (along < 0.0) & ~disc
+        # ★★★ 2026-10-21 第三十三问：育克只取**靠脖子那一侧**。
+        #   插肩袖的袖片顶点在脖子根，会甩出去的是**内侧**那条长楔子
+        #   （离枢轴远）；外侧那顶肩帽紧贴枢轴，转起来几乎不动，
+        #   本来就该跟着胳膊走。
+        #   更要命的是几何后果：把外侧肩帽也留给躯干，它会**从上方把
+        #   被清空的袖子区封成一个闭合洞** —— 于是
+        #   `clean_baked_residue` 的「四面围死的洞一律补实」把它拿最近邻
+        #   （就是这块育克的青色）填成 alpha=255，躯干上凭空多出
+        #   139(l)/195(r) 个不跟手臂转的青像素；不让它填，又变成
+        #   check_assets「袖下躯干无新窟窿」的 390 px。两条闸互相顶死，
+        #   根子就在"外侧肩帽不该留给躯干"。
+        #   只留内侧之后，清空区朝外侧一直通到剪影边缘，不再是闭合洞。
+        inboard = (xx_all < sj[0]) if side == "r" else (xx_all > sj[0])
+        if os.environ.get("ZC_ARM_OLD_YOKE"):
+            inboard = np.ones_like(inboard)
+        yoke = arms[side] & (along < 0.0) & ~disc & inboard
+        if os.environ.get("ZC_ARM_NO_YOKE"):
+            yoke = np.zeros_like(yoke)
         arms[side] = arms[side] & ~yoke
         print("  插肩育克 %s: 关节(%.0f,%.0f) R=%.1f → %d px 留给躯干（不跟着胳膊转）"
               % (side, sj[0], sj[1], R, int(yoke.sum())))
@@ -718,12 +804,13 @@ def main():
         arm_len = float(np.hypot(pts[f"elbow_{side}"][0] - sh_pt[0],
                                  pts[f"elbow_{side}"][1] - sh_pt[1]))
         el_pt = (float(pts[f"elbow_{side}"][0]), float(pts[f"elbow_{side}"][1]))
-        ext, ext_rgb, ext_target = root_fill(body, up_mask, side, hidden,
-                                             pivot=sh_pt, arm_len=arm_len,
-                                             elbow=el_pt)
+        ext, ext_rgb, ext_target, ext_fade = root_fill(
+            body, up_mask, side, hidden, pivot=sh_pt, arm_len=arm_len,
+            elbow=el_pt, joint_r=JOINT_R[side])
         if ext.any():
             ea = soft(ext)
             ea[erode(ext, 1)] = 1.0
+            ea = ea * ext_fade
             ys, xs = np.nonzero(ea > 0.004)
             ebox = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
             name = f"arm_{side}_root"
@@ -733,7 +820,7 @@ def main():
                 "pos": [ebox[0], ebox[1]],
                 "size": [ebox[2] - ebox[0], ebox[3] - ebox[1]],
                 "group": f"arm_{side}", "layer": ROOT_LAYER[side],
-                "pivot": [float(pts[f"shoulder_{side}"][0]), float(pts[f"shoulder_{side}"][1])],
+                "pivot": [float(sh_pt[0]), float(sh_pt[1])],
                 "note": "袖根塗り足し（G108）：袖子在夹克身底下的那一截，层 95/96 画在躯干下面，"
                         "静止时完全被夹克盖住，手臂转开后补上肩关节、让上臂不再细得像棍子",
             })
@@ -770,13 +857,41 @@ def main():
         # logs/asset_qa/g108_seam_ab.png 第三格，对照第一格原画）。
         # 静止帧必须逐像素忠实于原画，这条优先级更高 —— 保留袖缝线，
         # 手臂转开后它读作袖子上的一道折痕（原画袖子本来就有折线）。
+        # ---- 肘关节正圆（2026-10-21 第三十三问）----------------------------
+        # 教程口径（kw-nmnm.hatenablog.com/entry/2018/11/06/203151）：
+        #   「上腕の肘部分は**半円状**に、前腕の切れ目は**半円の真ん中を突っ切る形**に」
+        # 也就是说：肘这里**两件都要盖满同一个正圆**，切口从圆心穿过去。
+        # 旧版是拿 `elbow_y ± 12` 一条**水平直线**切的，前臂只盖到肘圆的 63.9%
+        # （左 64.7%）—— 前臂一弯，圆的下半圈有三分之一没人画，就是缺口。
+        #
+        # ★ 圆心必须和 rig 的旋转枢轴是**同一个点**，否则圆不是旋转不变量。
+        #   所以这里把量出来的圆心写进 arm_parts.json 的 elbow_joint，
+        #   make_rig.py 优先读它（和 shoulder_joint 一个待遇），
+        #   不再用 anchors 里那个按比例估的 elbow_*（右侧实测偏外 3px）。
+        exs = np.nonzero(m[elbow_y])[0]
+        if exs.size:
+            ejx = float(exs.min() + exs.max()) / 2.0
+            ejr = float(exs.max() - exs.min() + 1) / 2.0
+        else:
+            ejx, ejr = float(pts[f"elbow_{side}"][0]), 20.0
+        el_joint = (ejx, float(elbow_y))
+        eldx = np.arange(W)[None, :] - ejx
+        eldy = np.arange(H)[:, None] - float(elbow_y)
+        elbow_disc = ((eldx * eldx + eldy * eldy) <= ejr * ejr) & m
+        report.setdefault("elbow_joint", {})[side] = [round(ejx, 1), float(elbow_y)]
+        print("  肘关节 %s: 圆心(%.0f,%d) R=%.1f  [anchors 给的是 (%.0f,%d)]"
+              % (side, ejx, elbow_y, ejr,
+                 float(pts[f"elbow_{side}"][0]), int(pts[f"elbow_{side}"][1])))
+
         up_rgb = body[..., :3].copy()
         if ext.any() and ROOT_CLEAR_SEAM:
             seam = ext & dilate(up_mask, LINE_W + 2) & ~up_mask
             up_rgb[seam] = ext_rgb[seam]
             report["checks"].setdefault("seam_cleared_px", {})[side] = int(seam.sum())
         for seg, keep in (("upper", m & (yy_col <= elbow_y + half)),
-                          ("fore",  m & (yy_col >= elbow_y - half) & (yy_col <= wrist_y + 1)),
+                          # 前臂 = 肘线以下 **∪ 整个肘关节圆**（半円の真ん中を突っ切る）
+                          ("fore",  (m & (yy_col >= elbow_y - half) | elbow_disc)
+                                    & (yy_col <= wrist_y + 1)),
                           ("hand",  (m & (yy_col >= wrist_y)) | stub)):
             # 把原画自己的抗锯齿边一起抓进来，掩码内严格保留原 alpha，
             # 只在往外多扩的 2px 上做软边 —— 这样静止合成能逐像素还原
@@ -793,6 +908,12 @@ def main():
             if seg == "fore":
                 yy = np.arange(H)[:, None].astype(np.float32)
                 a = a * np.clip((yy - (elbow_y - half)) / ELBOW_OVERLAP, 0.0, 1.0)
+                # ★ 肘圆**整圈满值**：淡入带是给"直线切口"用的，而肘这里的切口
+                #   是圆，圆内要是半透明，前臂一弯就在肘上糊出一块浅色月牙
+                #   （两件各 0.5，over 起来 0.75，底下躯干透出来）。
+                #   静止时它正压在上臂同样的像素上（层 142/143 > 140/141），
+                #   颜色一模一样 ⇒ 合成差不变。
+                a[elbow_disc] = orig_a[elbow_disc]
             if seg in ("upper", "fore"):
                 _ymax = (wrist_y - SEAM_CUFF_SKIP) if seg == "fore" else None
                 a, _trim = seam_trim(a, body[..., :3], side, y_max=_ymax)
@@ -804,10 +925,11 @@ def main():
             name = f"arm_{side}_{seg}" if seg != "hand" else f"hand_{side}"
             img.save(os.path.join(sp, name + ".png"))
             if seg == "upper":
-                joint, grp, lay = pts[f"shoulder_{side}"], f"arm_{side}", layer[side]
+                # 枢轴 = 真·肩关节（不是 anchors 那个肩峰轮廓点）
+                joint, grp, lay = sh_pt, f"arm_{side}", layer[side]
                 note = "上臂：绕肩旋转"
             elif seg == "fore":
-                joint, grp, lay = pts[f"elbow_{side}"], f"forearm_{side}", layer[side] + 2
+                joint, grp, lay = el_joint, f"forearm_{side}", layer[side] + 2
                 note = "前臂：绕肘旋转（父组＝上臂）"
             else:
                 wx = np.nonzero(m[wrist_y])[0]
@@ -866,7 +988,18 @@ def main():
     orig_a = (body[..., 3] / 255.0).astype(np.float32)
     # comp[...,:3] 累加出来已经是预乘 alpha 的值，原图要乘一次 alpha 才同口径
     diff = np.abs(comp[..., :3] - body[..., :3].astype(np.float32) * orig_a[..., None])
-    bad = int((diff.max(axis=2) > 12).sum())
+    _bm = diff.max(axis=2) > 12
+    if os.environ.get("ZC_ARM_DIFF_DUMP"):
+        _v = (body[..., :3].astype(np.float32) * orig_a[..., None] * 0.35).astype(np.uint8)
+        _v[_bm] = (255, 0, 0)
+        Image.fromarray(_v).save(os.environ["ZC_ARM_DIFF_DUMP"])
+        _ys, _xs = np.nonzero(_bm)
+        if _ys.size:
+            print("  [dump] bbox x %d..%d y %d..%d" % (_xs.min(), _xs.max(), _ys.min(), _ys.max()))
+            import collections
+            _c = collections.Counter((int(y) // 50 * 50) for y in _ys)
+            print("  [dump] 按 y 段:", sorted(_c.items())[:40])
+    bad = int(_bm.sum())
     report["checks"]["static_diff_px"] = bad
     if os.environ.get("ARM_DEBUG"):
         Image.fromarray(newbody).save("/tmp/g4c_newbody.png")

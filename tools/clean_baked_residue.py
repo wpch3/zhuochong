@@ -359,7 +359,7 @@ def _save_with_2x(path1, before, after, changed):
     return int(((before2 > 60) & (out2[..., 3] <= 60)).sum()), int((before2 > 60).sum())
 
 
-def torso_masks(ta, scale, deep=None):
+def torso_masks(ta, scale, deep=None, arm_void=None):
     """躯干件要擦掉 / 要补回的两张掩码（连同补色后的 RGB）。
 
     单独拆成函数，是因为 **tools/make_wardrobe.py 要用同一套判据**：换装重绘
@@ -425,6 +425,17 @@ def torso_masks(ta, scale, deep=None):
     #   （实测 176 个里命中 0 个）。全躯干统共只有 307 个这样的像素，
     #   全在肩颈带和裙摆上，离腋下、袖口那些**该透明**的地方十万八千里。
     #   判据用 alpha>24，和 check_assets 数窟窿时用的阈值一致。
+    # ★★★ 2026-10-21 第三十三问：**手臂件底下那片是故意挖空的，不许当洞补**。
+    #   make_arm_parts 会把整条袖子从躯干上清掉（occ），因为袖子归 arm_*_upper /
+    #   arm_*_fore（层 140~143，画在躯干 100 之上）。那片透明是设计，不是缺陷。
+    #   本轮把肩关节圆心修正之后，插肩育克留给躯干的那一小块青色和清空区贴到了
+    #   一起，于是「四向封闭」判据在肩头圈出一个新的闭合区，拿最近邻的**青色**
+    #   填实成 alpha=255 —— 躯干上凭空多出 139(l)/195(r) 个不跟手臂转的青像素，
+    #   正是 check_assets「躯干上没留袖子」那条闸要抓的「抬手就悬空的青色」。
+    #   （实测：make_arm_parts 刚写出时 l=0 r=0，跑完这个工具变成 139/195。）
+    #   所以补洞一律避开手臂芯区。
+    if arm_void is not None:
+        filled = np.where(arm_void, 0.0, filled)
     gap = np.zeros(t_hair.shape, bool)
     for _ in range(3):
         cur = ((ta[..., 3] > 24) & (~t_hair)) | hole | gap
@@ -455,6 +466,55 @@ def torso_masks(ta, scale, deep=None):
             break
         hole = hole | pit
     return t_hair, hole, gap, trgb, rgbf
+
+
+def _arm_void(sprites_dir, ta, scale):
+    """手臂件（上臂/前臂/手）在躯干件坐标系里的芯区。
+
+    这片是 make_arm_parts 故意从躯干上清掉的 —— 袖子由 arm_*（层 140~143）
+    画在躯干之上。补洞类规则必须绕开它，否则补出来的像素不跟手臂转。
+    往里腐蚀 3px：部件最外一圈是软边，留给接缝补画，别一刀切太狠。
+    """
+    ap = os.path.join(sprites_dir, "arm_parts.json")
+    if not os.path.exists(ap):
+        return None
+    try:
+        with open(ap, encoding="utf-8") as fh:
+            d = json.load(fh)
+    except Exception:
+        return None
+    void = np.zeros(ta.shape[:2], bool)
+    # arm_parts.json 的 pos 和 body_parts.json 一样是 **body_full 坐标**，
+    # 而 TORSO_ORIGIN 是**画布坐标** —— 差一个 PATCH_TO_CANVAS=(200,68)。
+    oy = int(round((TORSO_ORIGIN[1] - PATCH_TO_CANVAS[1]) * scale))
+    ox = int(round((TORSO_ORIGIN[0] - PATCH_TO_CANVAS[0]) * scale))
+    hgt, wid = ta.shape[:2]
+    for q in d.get("parts", []):
+        if not (q["id"].endswith("_upper") or q["id"].endswith("_fore")
+                or q["id"].startswith("hand_")):
+            continue
+        fp = os.path.join(sprites_dir,
+                          os.path.basename(q["file"]).replace(
+                              ".png", ".png" if scale == 1 else "@2x.png"))
+        if not os.path.exists(fp):
+            continue
+        a = np.asarray(Image.open(fp).convert("RGBA"))[..., 3] > 200
+        if not a.any():
+            continue
+        for _ in range(3 * scale):          # 腐蚀，别把软边也圈进来
+            # 不能用 np.roll：它会绕回，hand_l 的 pos 是 x=0，贴着边
+            pa = np.pad(a, 1, constant_values=False)
+            a = (pa[1:-1, 1:-1] & pa[:-2, 1:-1] & pa[2:, 1:-1]
+                 & pa[1:-1, :-2] & pa[1:-1, 2:])
+        y0 = int(round(q["pos"][1] * scale)) - oy
+        x0 = int(round(q["pos"][0] * scale)) - ox
+        ys0, xs0 = max(0, y0), max(0, x0)
+        ys1 = min(hgt, y0 + a.shape[0])
+        xs1 = min(wid, x0 + a.shape[1])
+        if ys1 <= ys0 or xs1 <= xs0:
+            continue
+        void[ys0:ys1, xs0:xs1] |= a[ys0 - y0:ys1 - y0, xs0 - x0:xs1 - x0]
+    return void
 
 
 def clean_body_seam(sprites_dir, scale=1):
@@ -506,7 +566,8 @@ def clean_body_seam(sprites_dir, scale=1):
         hgt, wid = ta.shape[:2]
         sub = er[oy:oy + hgt, ox:ox + wid]
         deep[:sub.shape[0], :sub.shape[1]] = sub
-    t_hair, hole, gap, trgb, rgbf = torso_masks(ta, scale, deep)
+    t_hair, hole, gap, trgb, rgbf = torso_masks(ta, scale, deep,
+                                                arm_void=_arm_void(sprites_dir, ta, scale))
     newTA = np.where(t_hair, 0.0, ta[..., 3])
     # gap 是**原本就透明**的洞，alpha 得现给（hole 那些是擦掉又补回，取原值）
     newTA = np.where(gap, 255.0, newTA)
