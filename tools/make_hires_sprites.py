@@ -268,7 +268,16 @@ def main() -> int:
                 big = big4.resize((w * FACTOR, h * FACTOR), Image.LANCZOS)
                 method = "realesrgan"
                 n_sr += 1
-        big.putalpha(im.split()[3].resize((w * FACTOR, h * FACTOR), Image.LANCZOS))
+        # ★★★ 2026-10-21 第二十八问：alpha 的放大滤镜 LANCZOS → BILINEAR。
+        #   LANCZOS 的核有负瓣，碰到 0→255 的硬 alpha 边会**振铃**：边外甩出一条
+        #   3~5px 宽、alpha 在 1~60 之间的"雾"。它在浅色背景上看不见，可一放到
+        #   深色背景（或深色衣服）上就是一圈**白毛边** —— 用户第 ② 条「黑边」
+        #   和脸周那层白雾里有它一份。
+        #   实测同一张 seg_torso 的 alpha 放大到 2×，弱 alpha(1~60) 像素数：
+        #       NEAREST 556 / BILINEAR 2685 / BICUBIC 3498 / **LANCZOS 7548**
+        #   BILINEAR 是单调插值，不会过冲，边仍然是平滑的 2px 过渡。
+        #   （RGB 仍然走超分模型或 LANCZOS —— 那边要的是锐度，没有过冲问题。）
+        big.putalpha(im.split()[3].resize((w * FACTOR, h * FACTOR), Image.BILINEAR))
         cleaned, n_junk = kill_keycolor(np.asarray(big.convert("RGBA")))
         if n_junk:
             big = Image.fromarray(cleaned, "RGBA")

@@ -561,6 +561,87 @@ def clean_body_seam(sprites_dir, scale=1):
             [int(((hA0 > 60) & (ha[..., 3] <= 60)).sum()), int((hA0 > 60).sum())])
 
 
+def drop_detached_islands(sdir, min_keep=300):
+    """把分段身体件上**和本体断开的小碎岛**整块删掉。
+
+    ★★★ 2026-10-21 第二十八问。用户第 ②③ 条（黑边 / 消失的区块）里，
+      换发型之后脸两侧那层"白毛边"，有一半出在这儿：
+
+      `seg_head.png` 一共 6 个连通块 —— 本体 22348px，另外 5 块合起来才 128px，
+      分别趴在 **x1..5（80px）** 和 **x242..247（45px）**，也就是贴着图幅
+      最左和最右的边，y 都在 174~190（耳朵高度）。它们是底图鲍勃发最外侧
+      的发梢，第 15 步 `make_sidehair_parts.py` 挖鬓发时没挖干净剩下的。
+      短发档有 `hair_side_l/r` 压在上面看不见；一换发型那两件被隐藏，
+      这两撮 2~4px 宽、离脸 200px 远的碎毛就**孤零零浮在脸旁边**。
+      `seg_torso.png` 同样有一块 248px 的竖条浮在顶边 (x69..76, y0..41)。
+
+      为什么这里可以用"连通块 + 大小"一刀切（台账里明明记着
+      「碎块不许用最大连通块/大小阈值」）：那条教训是对**头发件**说的 ——
+      一缕头发完全可以被身体剪影切成几段，断开不等于垃圾。
+      但 `seg_*` 是**分段身体件**，按定义就是一整块连续的皮肉/布料，
+      不存在"合法的飞地"。判据和对象是配套的，不能跨着用。
+    """
+    import collections
+    hits = []
+    for fname in sorted(os.listdir(sdir)):
+        if not fname.startswith("seg_") or not fname.endswith(".png"):
+            continue
+        if "@2x" in fname:
+            continue
+        p1 = os.path.join(sdir, fname)
+        a = np.asarray(Image.open(p1).convert("RGBA")).copy()
+        m = a[..., 3] > 8
+        if not m.any():
+            continue
+        H, W = m.shape
+        lab = np.zeros((H, W), np.int32)
+        sizes = [0]
+        cur = 0
+        for y0, x0 in np.argwhere(m):
+            if lab[y0, x0]:
+                continue
+            cur += 1
+            n = 0
+            dq = collections.deque([(y0, x0)])
+            lab[y0, x0] = cur
+            while dq:
+                y, x = dq.popleft()
+                n += 1
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    ny, nx = y + dy, x + dx
+                    if 0 <= ny < H and 0 <= nx < W and m[ny, nx] and not lab[ny, nx]:
+                        lab[ny, nx] = cur
+                        dq.append((ny, nx))
+            sizes.append(n)
+        if cur <= 1:
+            continue
+        big = int(np.argmax(sizes))
+        limit = max(min_keep, 0.01 * sizes[big])
+        kill = np.zeros((H, W), bool)
+        killed = 0
+        for i in range(1, cur + 1):
+            if i != big and sizes[i] < limit:
+                kill |= (lab == i)
+                killed += sizes[i]
+        if not killed:
+            continue
+        a[..., 3][kill] = 0
+        Image.fromarray(a, "RGBA").save(p1)
+        p2 = os.path.join(sdir, fname.replace(".png", "@2x.png"))
+        if os.path.exists(p2):
+            b = np.asarray(Image.open(p2).convert("RGBA")).copy()
+            k2 = np.asarray(Image.fromarray((kill * 255).astype(np.uint8))
+                            .resize((b.shape[1], b.shape[0]), Image.NEAREST)) > 127
+            b[..., 3][k2] = 0
+            Image.fromarray(b, "RGBA").save(p2)
+        hits.append((fname, cur - 1, killed, sizes[big]))
+        print("  %-16s 删掉 %d 个断开的小碎岛共 %5d px（本体 %d px）"
+              % (fname, cur - 1, killed, sizes[big]))
+    if not hits:
+        print("  分段件上没有断开的碎岛")
+    return hits
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", default="xiaoxun")
@@ -589,6 +670,8 @@ def main():
             if scale == 1:
                 report.append({"file": fname, "origin": list(origin),
                                "removed_px": removed, "total_px": total, "removed_pct": round(pct, 2)})
+
+    islands = drop_detached_islands(sdir)
 
     body = []
     if os.path.exists(os.path.join(sdir, "seg_torso.png")):

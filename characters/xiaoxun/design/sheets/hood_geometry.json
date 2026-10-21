@@ -1,26 +1,26 @@
 {
   "_note": "由 tools/cut_hood_from_sheets.py 量出来的兜帽件几何。全部来自套准后的参考模板，没有一个数是手调的。",
-  "scale_sheet_to_bodyfull": 0.889195,
+  "scale_sheet_to_bodyfull": 0.89042,
   "head_unit_px": 278.0384,
   "pieces": {
     "acc_hood_short": {
       "sprite_file": "sheetcut_acc_hood_short.png",
       "ref": "head_top",
       "pos_rel": [
-        0.026251,
-        0.741959
+        0.02415,
+        0.742982
       ],
-      "sprite_h_rel": 1.250329,
+      "sprite_h_rel": 1.245135,
       "width_ratio": 1.0,
       "px": [
-        350,
-        78,
-        663,
+        352,
+        80,
+        661,
         439
       ],
       "content_px": [
-        314,
-        362
+        310,
+        360
       ],
       "slot": "head_over_hair",
       "style": "short"
@@ -29,20 +29,20 @@
       "sprite_file": "sheetcut_acc_hood_twin.png",
       "ref": "head_top",
       "pos_rel": [
-        0.02785,
-        0.74036
+        0.02415,
+        0.741381
       ],
-      "sprite_h_rel": 1.239968,
+      "sprite_h_rel": 1.234759,
       "width_ratio": 1.0,
       "px": [
-        351,
-        79,
-        663,
+        353,
+        81,
+        660,
         437
       ],
       "content_px": [
-        313,
-        359
+        308,
+        357
       ],
       "slot": "head_over_hair",
       "style": "twin"
@@ -51,19 +51,19 @@
       "sprite_file": "sheetcut_hair_hood_twin.png",
       "ref": "head_top",
       "pos_rel": [
-        0.026251,
-        1.544683
+        0.022549,
+        1.543609
       ],
-      "sprite_h_rel": 1.74079,
+      "sprite_h_rel": 1.74319,
       "width_ratio": 1.0,
       "px": [
-        233,
+        234,
         258,
-        780,
+        778,
         761
       ],
       "content_px": [
-        548,
+        545,
         504
       ],
       "slot": "head_side_hair",
@@ -73,20 +73,20 @@
       "sprite_file": "sheetcut_acc_hood_pony.png",
       "ref": "head_top",
       "pos_rel": [
-        0.02785,
-        0.743558
+        0.02415,
+        0.744583
       ],
-      "sprite_h_rel": 1.246875,
+      "sprite_h_rel": 1.241677,
       "width_ratio": 1.0,
       "px": [
-        351,
-        79,
-        663,
+        353,
+        81,
+        660,
         439
       ],
       "content_px": [
-        313,
-        361
+        308,
+        359
       ],
       "slot": "head_over_hair",
       "style": "pony"
@@ -95,20 +95,20 @@
       "sprite_file": "sheetcut_hair_hood_pony.png",
       "ref": "head_top",
       "pos_rel": [
-        0.312481,
-        1.806927
+        0.309173,
+        1.804614
       ],
-      "sprite_h_rel": 2.307238,
+      "sprite_h_rel": 2.306959,
       "width_ratio": 1.0,
       "px": [
         408,
         258,
-        784,
-        925
+        783,
+        924
       ],
       "content_px": [
-        377,
-        668
+        376,
+        667
       ],
       "slot": "head_side_hair",
       "style": "pony"
@@ -117,20 +117,20 @@
       "sprite_file": "sheetcut_acc_hood_long.png",
       "ref": "head_top",
       "pos_rel": [
-        0.026251,
-        0.689191
+        0.022549,
+        0.690141
       ],
-      "sprite_h_rel": 1.129441,
+      "sprite_h_rel": 1.124081,
       "width_ratio": 1.0,
       "px": [
-        350,
-        79,
-        663,
+        352,
+        81,
+        660,
         405
       ],
       "content_px": [
-        314,
-        327
+        309,
+        325
       ],
       "slot": "head_over_hair",
       "style": "long"
@@ -139,20 +139,20 @@
       "sprite_file": "sheetcut_hair_hood_long.png",
       "ref": "head_top",
       "pos_rel": [
-        0.023053,
-        1.965233
+        0.020948,
+        1.958334
       ],
-      "sprite_h_rel": 2.649179,
+      "sprite_h_rel": 2.638995,
       "width_ratio": 1.0,
       "px": [
-        211,
+        212,
         258,
-        800,
-        1024
+        799,
+        1020
       ],
       "content_px": [
-        590,
-        767
+        588,
+        763
       ],
       "slot": "head_side_hair",
       "style": "long"
