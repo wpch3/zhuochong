@@ -392,10 +392,15 @@ def check(character, form, root=".", strict=False, out_json=None):
                 if not os.path.exists(os.path.join(base, sp["file"]))]
         add("分段", "部件齐全", not miss, f"{len(seg_parts)} 个部件" + (f"，缺 {miss}" if miss else ""))
 
-        piv = {"head": AP["neck"], "arm_l": AP["shoulder_l"], "arm_r": AP["shoulder_r"],
+        # ★ 第三十一问：肩枢轴以 arm_parts.shoulder_joint（真关节）为准，
+        #   anchors 的 shoulder_l/r 只是剪影外缘，不能当枢轴。
+        _SJ = (armp or {}).get("shoulder_joint") or {}
+        _shl = _SJ.get("l", AP["shoulder_l"])
+        _shr = _SJ.get("r", AP["shoulder_r"])
+        piv = {"head": AP["neck"], "arm_l": _shl, "arm_r": _shr,
                "chest": AP["hip"], "leg_l": AP["hip"], "leg_r": AP["hip"],
-               "forearm_l": AP.get("elbow_l", AP["shoulder_l"]),
-               "forearm_r": AP.get("elbow_r", AP["shoulder_r"])}
+               "forearm_l": AP.get("elbow_l", _shl),
+               "forearm_r": AP.get("elbow_r", _shr)}
         parent = {"forearm_l": "arm_l", "forearm_r": "arm_r"}   # 前臂挂在上臂下面
         if footp:
             # 脚挂在腿下面，枢轴取脚踝（静止合成用不到角度，但组链必须完整）

@@ -251,6 +251,64 @@ def bleed(rgb, have, into, rounds=5):
     return out_rgb, grown, dist
 
 
+def shoulder_joint(up, sh_anchor):
+    """真·肩关节中心（画布坐标）。
+
+    ★★★ 2026-10-21 第三十一问：这是挥手一直做不对的**根因**。
+        `make_anchors.py` 里 shoulder_l/r 写的是
+            prof[shoulder][0] / prof[shoulder][1]
+        也就是**剪影在肩线那一行的最外侧边缘像素** —— 那是轮廓线上的点，
+        根本不是关节。而隔壁 elbow_l/r 用的是 arm_x()（手臂横截面中心），
+        所以肘一直是对的、肩一直是错的。
+        实测：旧枢轴 (546,432) 画出来**半个圆在身体外面的空气里**，
+        以袖宽为直径的关节圆只有 51% 落在「躯干∪袖子」里，
+        剩下 1649px 全在背景上 —— 绕这么个点转袖子，
+        转出来必然是一条直切边加一个楔子（用户第三十一问附图 4）。
+
+    教程口径（五个独立来源一致）：
+      · saraemi.com/vtuber/2022/02/09/live2d_arm/
+        「関節パーツは**正円**で、上腕・前腕の**幅と同じ直径**サイズ」
+      · kw-nmnm.hatenablog.com/entry/2018/11/06/203151
+        「上腕の肘部分は**半円状**に」「肩の回転や手首の回転にも応用が効く」
+      · note.com/shumi_log/n/n8172d73024aa
+        「肘部分は"ほぼ"**半円状**に変形…**回転時に輪郭が自然につながる**ため」
+      · coconala.com/blogs/2995247/413880
+        「**関節を回転軸の中心にあわせて綺麗な円形に描く**…回転させてもズレず」
+      · blog.adglobe.co.jp/entry/2024/07/26/100000
+        「腕を上げた時の**円形の回り込み**をできるだけきれいに作る」
+
+    所以关节中心必须是「那个正圆的圆心」。这里按解剖学口径反求：
+      ① R = 上臂逐行宽度的 80 分位 ÷ 2（= 教程说的「腕の幅」的一半）；
+      ② 关节行 = 肩峰（旧 anchor 的那一行）往下**一个臂半径**；
+      ③ 关节 x = 该行袖子横截面的中点（和 elbow_* 完全同一个口径）。
+    和另一条独立口径（上臂上 1/3 的**最大内切圆圆心**）交叉验证：
+      右 (535,465) vs (535,472)、左 (308,462) vs (306,475) —— x 几乎重合。
+    换上以后，关节圆落在「躯干∪袖子」里的比例 51%→89%（右）、50%→90%（左）。
+    """
+    rows = np.nonzero(up.any(axis=1))[0]
+    if rows.size == 0:
+        return (float(sh_anchor[0]), float(sh_anchor[1]))
+    widths, span = [], {}
+    for y in rows:
+        xs = np.nonzero(up[y])[0]
+        span[int(y)] = (int(xs.min()), int(xs.max()))
+        widths.append(xs.max() - xs.min() + 1)
+    R = float(np.percentile(widths, ROOT_TARGET_Q * 100.0)) / 2.0
+    jy = int(round(float(sh_anchor[1]) + R))
+    # 该行要是空的（极端体型），就往下找最近的有内容的一行
+    if jy not in span:
+        cand = [y for y in span if y >= jy]
+        if not cand:
+            return (float(sh_anchor[0]), float(sh_anchor[1]))
+        jy = min(cand)
+    lo, hi = span[jy]
+    jx = (lo + hi) / 2.0
+    print("  肩关节 %s: 肩峰y=%d + 臂半径%.1f → 关节(%.0f,%d)  旧anchor(%.0f,%.0f)"
+          % ("?", float(sh_anchor[1]), R, jx, jy,
+             float(sh_anchor[0]), float(sh_anchor[1])))
+    return (jx, float(jy))
+
+
 def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
               elbow=None):
     """袖根塗り足し（G108）：把上臂的袖子往身体里多画一截，**画在躯干底下**。
@@ -537,6 +595,42 @@ def main():
         close = erode(dilate(m, 6), 6) & (alpha > 0) & (yy_all > int(pts[f"elbow_{side}"][1]))
         arms[side] = fill_outward(m | close, alpha, side)
 
+    # ---- 肩关节圆 + 插肩育克归位（2026-10-21 第三十一问）----
+    # ★★★ 这件青袖是**插肩袖(raglan)**：袖片的"顶点"其实在脖子根，不在肩关节。
+    #   以前整片袖子（连育克）都挂在 arm_* 组上绕肩转，于是一抬手，
+    #   那条笔直的插肩缝整个甩到空中 —— 就是用户附图 4 里肩上那道
+    #   **刀切直边加一个楔子**。
+    #   教程口径（kw-nmnm / しゅみ / saraemi / しららぎ / adglobe 五家一致）：
+    #     「上腕の肩側は**半円状**に」「関節パーツは**正円**で腕幅と同じ直径」
+    #     「**関節を回転軸の中心にあわせて綺麗な円形に描く**」
+    #   所以：关节圆**以上**的育克不属于胳膊，留给躯干当静止件；
+    #   胳膊那半边的顶端收成**以关节为圆心的半圆帽**，转任何角度剪影都是圆的。
+    SJ, JOINT_R = {}, {}
+    half_ov = ELBOW_OVERLAP // 2
+    xx_all = np.arange(W)[None, :]
+    for side in ("l", "r"):
+        ey = int(pts[f"elbow_{side}"][1])
+        up_only = arms[side] & (yy_all <= ey + half_ov)
+        sj = shoulder_joint(up_only, pts[f"shoulder_{side}"])
+        ws = []
+        for y in np.nonzero(up_only.any(axis=1))[0]:
+            xs = np.nonzero(up_only[y])[0]
+            ws.append(xs.max() - xs.min() + 1)
+        R = float(np.percentile(ws, ROOT_TARGET_Q * 100.0)) / 2.0 if ws else 1.0
+        SJ[side], JOINT_R[side] = sj, R
+        ax = float(pts[f"elbow_{side}"][0]) - sj[0]
+        ay = float(pts[f"elbow_{side}"][1]) - sj[1]
+        al_ = max(1e-6, float(np.hypot(ax, ay)))
+        ax, ay = ax / al_, ay / al_
+        dx = xx_all - sj[0]
+        dy = yy_all - sj[1]
+        along = dx * ax + dy * ay
+        disc = (dx * dx + dy * dy) <= R * R
+        yoke = arms[side] & (along < 0.0) & ~disc
+        arms[side] = arms[side] & ~yoke
+        print("  插肩育克 %s: 关节(%.0f,%.0f) R=%.1f → %d px 留给躯干（不跟着胳膊转）"
+              % (side, sj[0], sj[1], R, int(yoke.sum())))
+
     # ---- 躯干：袖子那块换成 AI 重绘的夹克侧片 ----
     # G102/DC36：这里**整条袖子都要拿走，一个像素都不留给躯干**。
     #
@@ -608,7 +702,9 @@ def main():
         # G108 袖根：先补，再和上臂一起切（补出来的那块是独立一件，层 95/96）
         up_mask = m & (np.arange(H)[:, None] <= elbow_y + half)
         hidden = torso_solid | dilate(m, 2)
-        sh_pt = (float(pts[f"shoulder_{side}"][0]), float(pts[f"shoulder_{side}"][1]))
+        sh_pt = SJ[side]
+        report.setdefault("shoulder_joint", {})[side] = [round(sh_pt[0], 1),
+                                                         round(sh_pt[1], 1)]
         arm_len = float(np.hypot(pts[f"elbow_{side}"][0] - sh_pt[0],
                                  pts[f"elbow_{side}"][1] - sh_pt[1]))
         el_pt = (float(pts[f"elbow_{side}"][0]), float(pts[f"elbow_{side}"][1]))

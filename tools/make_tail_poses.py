@@ -312,25 +312,119 @@ def th_tuck(u):
 
 
 def puff_scale(u):
-    """炸毛的半宽膨胀：根部不变（要接得上身体）→ 中段 2.0 倍 → 梢 1.6 倍。
+    """炸毛的半宽膨胀：**只轻微加宽**，1.0 → 1.25（中段）→ 1.15（梢）。
 
-    末项那个小涟漪是给**剪影**用的：单纯等比放大出来是一根「胖香肠」，
-    加 ±5% 的高频起伏，边缘就有一圈炸开的毛簇感（原画本来就带毛刺，
-    放大之后毛刺也跟着放大，再叠起伏就够了）。
+    ★★★ 2026-10-21 第三十一问：上一版是 1.0→2.0→1.6，用户说「炸毛也错误了，
+        **没有毛的感觉了**」。放大一看就明白：毛丝是沿尾巴轴向的细线，
+        把剖面**垂直于轴**拉 2 倍，等于把每根毛丝横向拉成 2 倍宽，
+        双线性插值再一抹 —— 毛就糊成了一根蓝棒槌。
+        实测横向梯度（毛丝清晰度）relaxed 3.298 / up 3.369 / **puff 2.815**，
+        低了 15%，和肉眼看到的"糊"完全对得上。
+
+        真实的炸毛（piloerection）不是「尾巴变粗」，是「**毛立起来**」：
+        芯几乎不变，毛梢向外支棱出去，剪影变成一圈**毛刺**。
+        所以这一版把拉伸压回 1.25 以内（纹理基本不糊），
+        体积改由 fur_fringe() 沿剪影**长出真正的毛**来给。
     """
     if u < 0.12:
-        base = _blend(1.0, 1.4, u, 0.0, 0.12)
+        base = _blend(1.0, 1.12, u, 0.0, 0.12)
     elif u < 0.5:
-        base = _blend(1.4, 2.0, u, 0.12, 0.5)
+        base = _blend(1.12, 1.25, u, 0.12, 0.5)
     else:
-        base = _blend(2.0, 1.6, u, 0.5, 1.0)
-    return base * (1.0 + 0.05 * math.sin(u * 47.0) + 0.03 * math.sin(u * 113.0))
+        base = _blend(1.25, 1.15, u, 0.5, 1.0)
+    return base * (1.0 + 0.03 * math.sin(u * 47.0) + 0.02 * math.sin(u * 113.0))
 
 
+# 炸毛毛刺的长度包络（像素）：根部短（要接得住身体）、中段最长、梢部次之。
+FUR_LEN = (6.0, 30.0, 20.0)
+FUR_MAX = 36.0          # 画布留边用的上限
+FUR_STEP = 0.62         # 每根毛沿长度方向的步距
+FUR_SEED = 20261021
+
+
+def fur_fringe(out, hit, u_of, seed=FUR_SEED):
+    """沿剪影往外「长毛」—— 炸毛的体积感由这一步给，不靠拉伸贴图。
+
+    为什么是这个做法：参考 cgbox / miracle-usausa 两篇尻尾教程的共同口径 ——
+    尻尾是「くねくね曲がっている」的细长物，形变要沿**骨架**做；
+    而炸毛属于**剪影层面**的变化（毛立起来），不是骨架层面的。
+    把两件事分开，纹理就不会被形变糊掉。
+
+    做法：
+      ① 取剪影外缘一圈像素；
+      ② 每个外缘点求**向外法线**（用模糊后掩膜的梯度，天然垂直于轮廓）；
+      ③ 沿法线往外画一根**由粗到细、由实到虚**的毛，长度带噪声；
+      ④ 毛色从该点往内 3px 处取，梢部稍微提亮（真毛的梢会透光）。
+    """
+    H, W = hit.shape
+    rng = np.random.RandomState(seed)
+
+    # ① 外缘一圈
+    mi = Image.fromarray((hit.astype(np.uint8)) * 255, "L")
+    inner = np.asarray(mi.filter(ImageFilter.MinFilter(5))) > 127
+    edge = hit & ~inner
+    ey, ex = np.nonzero(edge)
+    if len(ey) == 0:
+        return out, hit
+
+    # ② 向外法线 = 模糊掩膜梯度的反向（梯度指向内部）
+    blur = np.asarray(mi.filter(ImageFilter.GaussianBlur(3.0))).astype(np.float64)
+    gy, gx = np.gradient(blur)
+    nx, ny = -gx[ey, ex], -gy[ey, ex]
+    ln = np.hypot(nx, ny)
+    ok = ln > 1e-3
+    ey, ex, nx, ny, ln = ey[ok], ex[ok], nx[ok], ny[ok], ln[ok]
+    nx, ny = nx / ln, ny / ln
+
+    # 稀疏化：每 2 个外缘点长 1 根，再加角度抖动，免得毛像梳子一样齐
+    pick = rng.rand(len(ey)) < 0.55
+    ey, ex, nx, ny = ey[pick], ex[pick], nx[pick], ny[pick]
+    jit = (rng.rand(len(ey)) - 0.5) * 0.85           # ±24°
+    cj, sj = np.cos(jit), np.sin(jit)
+    nx, ny = nx * cj - ny * sj, nx * sj + ny * cj
+
+    acc = out.copy()
+    m2 = hit.copy()
+    l0, l1, l2 = FUR_LEN
+    for k in range(len(ey)):
+        y0, x0 = int(ey[k]), int(ex[k])
+        u = u_of[y0, x0]
+        # 长度包络：根 l0 → 中 l1 → 梢 l2
+        base = l0 + (l1 - l0) * min(1.0, u / 0.45) if u < 0.45 else \
+            l1 + (l2 - l1) * ((u - 0.45) / 0.55)
+        ln_k = base * (0.35 + 0.95 * rng.rand())
+        if ln_k < 2.0:
+            continue
+        # 毛色：从外缘往内 3px 取，避开抗锯齿边
+        sy = int(round(y0 - ny[k] * 3.0)); sx = int(round(x0 - nx[k] * 3.0))
+        if not (0 <= sy < H and 0 <= sx < W and hit[sy, sx]):
+            sy, sx = y0, x0
+        c = acc[sy, sx].copy()
+        steps = int(ln_k / FUR_STEP)
+        for i in range(steps):
+            t = (i + 1) / float(steps)
+            px = x0 + nx[k] * (i + 1) * FUR_STEP
+            py = y0 + ny[k] * (i + 1) * FUR_STEP
+            xi, yi = int(round(px)), int(round(py))
+            if not (0 <= xi < W and 0 <= yi < H):
+                break
+            # 由粗到细：t<0.45 画 2px 宽，之后 1px
+            cc = c * (1.0 - 0.10 * t) + 255.0 * (0.10 * t)   # 梢部提亮
+            rr = 1 if t < 0.45 else 0
+            for dy in range(-rr, rr + 1):
+                for dx in range(-rr, rr + 1):
+                    yy, xx = yi + dy, xi + dx
+                    if 0 <= yy < H and 0 <= xx < W and not m2[yy, xx]:
+                        acc[yy, xx] = cc
+                        m2[yy, xx] = True
+    return acc, m2
+
+
+# 第四列 = 要不要沿剪影长毛刺（只有炸毛要）
 POSES = [
-    ("tail_cat_up", "acc_tail_cat_up.png", th_up, None),
-    ("tail_cat_puff", "acc_tail_cat_puff.png", th_puff, puff_scale),
-    ("tail_cat_tuck", "acc_tail_cat_tuck.png", th_tuck, None),
+    ("tail_cat_up", "acc_tail_cat_up.png", th_up, None, False),
+    ("tail_cat_puff", "acc_tail_cat_puff.png", th_puff, puff_scale, True),
+    ("tail_cat_tuck", "acc_tail_cat_tuck.png", th_tuck, None, False),
 ]
 
 
@@ -409,12 +503,14 @@ def main():
     # 每档按自己的脊线包络开画布（共用一个大画布会被切掉，而且白耗内存）。
     # 根部像素位置逐档记下来，后面反解几何时用，四档照样对得齐。
     geo = {}
-    for pid, fname, thf, tsf in POSES:
+    for pid, fname, thf, tsf, fur in POSES:
         n0 = len(pts)
         us0 = np.linspace(0.0, 1.0, n0)
         sc = None if tsf is None else np.array([tsf(u) for u in us0])
         probe = build_spine(thf, L, (0.0, 0.0), ds=0.35)
         pad = tmax * (1.0 if sc is None else float(sc.max())) + 10.0
+        if fur:
+            pad += FUR_MAX                     # 毛刺要伸到剪影外面，画布得留够
         mnx, mny = probe[:, 0].min() - pad, probe[:, 1].min() - pad
         mxx, mxy = probe[:, 0].max() + pad, probe[:, 1].max() + pad
         CW = int(math.ceil(mxx - mnx)) + 2
@@ -429,6 +525,26 @@ def main():
         out, hit = lay_along(col[:n], val[:n], ts, tp[:n], tt[:n], (CH, CW),
                              tscale=sc)
         out, hit = close_pinholes(out, hit)
+        if fur:
+            # 每个像素的弧长参数 u（0=根 1=梢），给毛长包络用。
+            # 用「离哪个脊线点最近」来算：脊线点本来就是等弧长重采样的，
+            # 所以下标 / 总数 就是 u，不用再算测地距离。
+            uof = np.zeros((CH, CW), np.float64)
+            yy = np.arange(CH)[:, None]
+            xx = np.arange(CW)[None, :]
+            bestd = np.full((CH, CW), 1e18)
+            stride = max(1, n // 240)
+            for i in range(0, n, stride):
+                dx = xx - tp[i, 0]
+                dy = yy - tp[i, 1]
+                dd = dx * dx + dy * dy
+                upd = dd < bestd
+                bestd[upd] = dd[upd]
+                uof[upd] = i / float(max(1, n - 1))
+            before = int(hit.sum())
+            out, hit = fur_fringe(out, hit, uof)
+            print("[tail]   炸毛毛刺：%d → %d px（+%d）"
+                  % (before, int(hit.sum()), int(hit.sum()) - before))
         img = np.where(hit[..., None], out, np.array(MAGENTA, np.float64))
         Image.fromarray(img.astype(np.uint8), "RGB").save(
             os.path.join(redraw, fname))
@@ -473,7 +589,7 @@ def main():
     ry0 = ((root[1] - by) / bhei - bay) * (kk * bhei)
     print("[tail] 基准 relaxed: emit框=(%d,%d,%d,%d) kk=%.8f 根偏移=(%.5f,%.5f)"
           % (bx, by, bwid, bhei, kk, rx0, ry0))
-    for pid, fname, _, _ in POSES:
+    for pid, fname, _, _, _ in POSES:
         cr = geo[pid][4]
         gx, gy, gw, gh = emit_box(os.path.join(redraw, fname))
         att = by_id[pid]

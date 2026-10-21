@@ -523,10 +523,10 @@
       "ref": "hip",
       "unit": "body",
       "pos_rel": [
-        -0.135662,
-        -0.05507
+        -0.131149,
+        -0.055629
       ],
-      "sprite_h_rel": 0.337274,
+      "sprite_h_rel": 0.338342,
       "_tail_note": "★ 2026-10-21 第二十九问：这张图是 tools/make_tail_poses.py 从 acc_tail_cat_relaxed.png **重铺**出来的，不是单独出的 AI 图。逐像素都是 relaxed 那条尾巴的颜色和毛流，只是沿另一条脊线铺。pos_rel / sprite_h_rel 是按 _emit 的几何口径反解的，保证四档**根部落在同一个模型坐标点**。"
     },
     {

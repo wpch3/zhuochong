@@ -37,21 +37,21 @@
     },
     "arm_l": {
       "pivot": [
-        297,
-        432
+        306,
+        460
       ],
       "parent": "chest",
       "bend_follow": "seg_torso",
-      "bend_follow_at": 432
+      "bend_follow_at": 460
     },
     "arm_r": {
       "pivot": [
-        546,
-        432
+        536,
+        464
       ],
       "parent": "chest",
       "bend_follow": "seg_torso",
-      "bend_follow_at": 432
+      "bend_follow_at": 464
     },
     "leg_l": {
       "pivot": [
@@ -426,8 +426,8 @@
       "group": "arm_l",
       "layer": 95,
       "pos": [
-        303,
-        404
+        302,
+        431
       ],
       "anchor": [
         0,
@@ -448,7 +448,7 @@
       "layer": 140,
       "pos": [
         241,
-        400
+        427
       ],
       "anchor": [
         0,
@@ -510,8 +510,8 @@
       "group": "arm_r",
       "layer": 96,
       "pos": [
-        487,
-        399
+        492,
+        430
       ],
       "anchor": [
         0,
@@ -532,7 +532,7 @@
       "layer": 141,
       "pos": [
         514,
-        400
+        428
       ],
       "anchor": [
         0,
@@ -1634,8 +1634,8 @@
       "group": "chest",
       "layer": 32,
       "pos": [
-        244,
-        701
+        249,
+        700
       ],
       "anchor": [
         0.5,

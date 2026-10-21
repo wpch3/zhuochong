@@ -1086,6 +1086,17 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     waist_pt = apt("waist", 0.51)
     sh_l = apt("shoulder_l", 0.28, 0.22)
     sh_r = apt("shoulder_r", 0.28, 0.78)
+    # ★★★ 2026-10-21 第三十一问：anchors 里的 shoulder_l/r 是**剪影外缘**不是关节
+    #   （make_anchors.py 写的是 prof[shoulder][0]/[1]）。make_arm_parts.py 会按
+    #   教程口径「関節は腕幅と同じ直径の正円、その中心」反求真关节并写进
+    #   arm_parts.json，有就用它 —— 肩枢轴落在关节上，挥手才不会甩出直切边。
+    if armp and armp.get("shoulder_joint"):
+        _sj = armp["shoulder_joint"]
+        if "l" in _sj:
+            sh_l = [ox + int(round(_sj["l"][0])), oy + int(round(_sj["l"][1]))]
+        if "r" in _sj:
+            sh_r = [ox + int(round(_sj["r"][0])), oy + int(round(_sj["r"][1]))]
+        print("[rig] 肩枢轴用 arm_parts.shoulder_joint: l=%s r=%s" % (sh_l, sh_r))
     neck_y = neck_pt[1]
     chest_y = waist_pt[1]
     body_part = {
