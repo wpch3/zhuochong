@@ -7,8 +7,8 @@
  "realesrgan": 66,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 57,
- "seconds": 56.4,
+ "keycolor_fixed": 49,
+ "seconds": 56.1,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -34,7 +34,7 @@
     208
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 0
   },
   {
    "name": "acc_hair_sidelong_l.png",
@@ -60,7 +60,7 @@
     1322
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 7
+   "keycolor_fixed": 1
   },
   {
    "name": "acc_hood_long.png",
@@ -117,12 +117,12 @@
   {
    "name": "acc_tail_puff.png",
    "src": [
-    181,
-    430
+    190,
+    436
    ],
    "dst": [
-    362,
-    860
+    380,
+    872
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -138,17 +138,17 @@
     820
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 0
   },
   {
    "name": "acc_tail_tuck.png",
    "src": [
-    127,
-    404
+    349,
+    249
    ],
    "dst": [
-    254,
-    808
+    698,
+    498
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -156,12 +156,12 @@
   {
    "name": "acc_tail_up.png",
    "src": [
-    114,
-    480
+    135,
+    435
    ],
    "dst": [
-    228,
-    960
+    270,
+    870
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -183,11 +183,11 @@
    "name": "arm_l_root.png",
    "src": [
     49,
-    224
+    222
    ],
    "dst": [
     98,
-    448
+    444
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -221,11 +221,11 @@
   {
    "name": "arm_r_root.png",
    "src": [
-    50,
+    49,
     228
    ],
    "dst": [
-    100,
+    98,
     456
    ],
    "method": "realesrgan",
@@ -606,7 +606,7 @@
     548
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 2
+   "keycolor_fixed": 3
   },
   {
    "name": "hair_crown_twin.png",
@@ -619,7 +619,7 @@
     544
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 3
+   "keycolor_fixed": 4
   },
   {
    "name": "hair_front.png",
@@ -645,7 +645,7 @@
     1468
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 4
+   "keycolor_fixed": 5
   },
   {
    "name": "hair_hood_pony.png",
@@ -684,7 +684,7 @@
     1836
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 4
+   "keycolor_fixed": 2
   },
   {
    "name": "hair_pony_back.png",
@@ -697,7 +697,7 @@
     1686
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 3
+   "keycolor_fixed": 0
   },
   {
    "name": "hair_side_l.png",
@@ -749,7 +749,7 @@
     562
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 0
   },
   {
    "name": "hair_sweep_twin_r.png",
@@ -762,7 +762,7 @@
     564
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 2
+   "keycolor_fixed": 0
   },
   {
    "name": "hair_twin_l.png",
@@ -775,7 +775,7 @@
     880
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 0
   },
   {
    "name": "hair_twin_r.png",
@@ -788,7 +788,7 @@
     880
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 1
   },
   {
    "name": "hand_l.png",
@@ -866,7 +866,7 @@
     360
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 1
   },
   {
    "name": "seg_foot_l_tip.png",
@@ -931,7 +931,7 @@
     974
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 3
+   "keycolor_fixed": 4
   },
   {
    "name": "seg_leg_r.png",
@@ -944,7 +944,7 @@
     972
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 2
   },
   {
    "name": "seg_torso.png",
@@ -957,7 +957,7 @@
     1002
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 2
   }
  ],
  "note": "切件链不改坐标，这一步只换像素密度；make_rig 发现 @2x 就把 scale 乘 0.5"
