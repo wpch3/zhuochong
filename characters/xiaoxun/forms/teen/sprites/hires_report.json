@@ -8,7 +8,7 @@
  "lanczos": 7,
  "native": 0,
  "keycolor_fixed": 36,
- "seconds": 55.4,
+ "seconds": 57.9,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -182,12 +182,12 @@
   {
    "name": "arm_l_root.png",
    "src": [
-    100,
-    215
+    124,
+    224
    ],
    "dst": [
-    200,
-    430
+    248,
+    448
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -221,12 +221,12 @@
   {
    "name": "arm_r_root.png",
    "src": [
-    109,
-    213
+    133,
+    225
    ],
    "dst": [
-    218,
-    426
+    266,
+    450
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0

@@ -47,6 +47,7 @@ ROOT_EXT_MAX = 46                   # 单行最多往身体里补多少像素
 ROOT_TOP_RAMP = 40                  # 顶端这么多行内把补绘量从 0 渐渐加满（不留水平直边）
 ROOT_SHADE = 0.90                   # 补到最里侧时的明度系数（内侧背光，略压暗）
 ROOT_CLEAR_SEAM = 0                 # 0 = **不要**抹上臂贴图里那条袖缝线（试过，静止帧会坏）
+ROOT_CAP_EXT = 26                   # 肩帽向上多画这么多像素（见下方「第五刀」注释）
 # ---- 袖根关节圆盘 ----
 # ★★★ 2026-10-21 第二十八问：半径改成按**袖子宽度**算，不再按上臂长度算。
 #   教程（さらえみ／Live2D モデラー, https://saraemi.com/vtuber/2022/02/09/live2d_arm/）：
@@ -455,8 +456,25 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
             along = xx_d * ax + yy_d * ay            # 沿臂轴
             perp = np.abs(xx_d * (-ay) + yy_d * ax)  # 离臂轴的距离
             band = (along >= 0.0) & (along <= alen) & (perp <= R)
+            # ★★★ 2026-10-21 第三十三问·第五刀：**肩帽向上扩圈**。
+            #   症状：闸门「关节不露底(颈)」压力姿势多出 70px 新洞；
+            #   渲染 sh+25° 贴脸看（logs/asset_qa/q33_hole_AB.png 下排右格），
+            #   肩头靠脖子那侧露出一块约 10x9 的**真窟窿**（红色标出）。
+            #   根因：袖子的肩帽最高点离肩枢轴 **53px**，而关节圆盘按教程口径
+            #   只有 R=34（= 袖宽/2）。圆盘之外的那 19px 一旦转起来就没人垫底 ——
+            #   躯干在那儿只有 alpha=101 的抗锯齿边，手臂自己又整块转走了。
+            #   修法（shiroikarasu.net/live2d-part-separation-illustrator-guide/：
+            #   「**腕の付け根は肩のパーツの下に十分な範囲を描いておく**
+            #     （回転させても隙間ができない）」「多少描きすぎるくらいでちょうど良い」）：
+            #   把袖根件在**肩侧半边**（along<0）补成一个半径 R+ROOT_CAP_EXT 的半圆盘。
+            #   为什么转到哪都有效：它和关节同圆心，**圆绕自己的圆心转形状不变**，
+            #   任意角度覆盖的区域完全一样（saraemi 那条「関節パーツは正円」是同一个道理）。
+            #   为什么静止看不见：整块仍然 `& erode(hidden, 2)`（躯干∪袖子盖得住），
+            #   而且这件层号 95/96 在躯干 100 之下。
+            cap = ((xx_d * xx_d + yy_d * yy_d) <= (R + ROOT_CAP_EXT) ** 2) & (along < 0.0)
         else:
             band = np.zeros((H, W), bool)
+            cap = np.zeros((H, W), bool)
         # ★ 再叠一层「逐行补到目标宽」：胶囊的半宽是从**臂轴**量的，而臂轴
         #   （肩→肘锚点连线）偏在袖子内侧，于是胶囊的内边界刚好停在夹克外沿上
         #   —— 实测 l 侧 row408：袖子 x85..127、躯干自 x125 起、胶囊止于 x125，
@@ -481,7 +499,7 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
             else:
                 rowfill[y, eb + 1:min(W, eb + 1 + d)] = True
         disc = (xx_d * xx_d + yy_d * yy_d) <= R * R
-        ext = (disc | band | rowfill) & erode(hidden, 2) & ~up
+        ext = (disc | cap | band | rowfill) & erode(hidden, 2) & ~up
         # ★★★ 2026-10-21 第二十九问（自查发现，用户没点名）：把补出来这块的
         #   **内侧轮廓磨圆**。抬手实拍（/tmp/armpit.png，wave 第 100 帧放大 2×）
         #   能看见肩头是一条**直的斜切边**，中间还有一个折角 —— 那是
@@ -500,7 +518,7 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
         #   就是用户说的**断裂**。圆心修正之后圆盘 100% 在身体内，这里再把
         #   `disc` 和 `band` 一起列进豁免，保证圆盘**整个**留下来。
         ext = dilate(erode(ext, ROOT_SMOOTH_K), ROOT_SMOOTH_K) \
-            | (ext & (band | disc))
+            | (ext & (band | disc | cap))
     else:
         ext = np.zeros((H, W), bool)
         for y, (a, b) in edges.items():
@@ -719,10 +737,12 @@ def main():
         #   只留内侧之后，清空区朝外侧一直通到剪影边缘，不再是闭合洞。
         inboard = (xx_all < sj[0]) if side == "r" else (xx_all > sj[0])
         if os.environ.get("ZC_ARM_OLD_YOKE"):
+            # A/B 回退开关：恢复旧的「整片育克都留给躯干」。
+            # 判决证据 logs/asset_qa/q33_yoke_ab2.png（11x 贴脸）与
+            # q33_hole_AB.png（洋红底 + 红色标窟窿）—— 旧行为在 sh+25° 下
+            # 肩头裂成两块、中间一道白缝，已判负。留着只为将来复现对照。
             inboard = np.ones_like(inboard)
         yoke = arms[side] & (along < 0.0) & ~disc & inboard
-        if os.environ.get("ZC_ARM_NO_YOKE"):
-            yoke = np.zeros_like(yoke)
         arms[side] = arms[side] & ~yoke
         print("  插肩育克 %s: 关节(%.0f,%.0f) R=%.1f → %d px 留给躯干（不跟着胳膊转）"
               % (side, sj[0], sj[1], R, int(yoke.sum())))
