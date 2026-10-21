@@ -6,7 +6,12 @@
   // 说话：lines 引用 characters/<角色>/dialogue.json 里的 id；cooldown_s 只限制“说话”，不限制动作。
   // 好感：affection_gain 为本次互动增加（可为负）的好感值；增加受 affection.daily_cap 每日上限约束。
   // kind 可选值：poke、hammer、drag_start、drag_end、wake、mood、call_start、call_end、
-  //              call_user_speaking、call_reply、tier_up（好感升档时触发）
+  //              call_user_speaking、call_reply、tier_up（好感升档时触发）、
+  //              dress（换装/切差分：互斥组换档时触发）
+  // ★ dress 的 region 写成 "<互斥组>:<档位>"，例如 "hairstyle:long"；
+  //   只写组名（"hairstyle"）的规则是该组的兜底；整组关掉时档位是 "none"
+  //   （所以短发 = "hairstyle:none"，它是底图，不是一个差分件）。
+  // ★ action 写空串 = 只说话、不做动作。换装不该打断正在播的动作。
   "schema_version": "1.0",
   "speech": {
     "enabled": true,        // 总开关：关闭后只做动作，不出台词
@@ -40,6 +45,19 @@
     { "id": "call_user",      "kind": "call_user_speaking", "action": "focus", "force": true, "priority": 10, "cooldown_s": 0, "lines": [] },
     { "id": "call_reply",     "kind": "call_reply",         "action": "talk",  "force": true, "priority": 10, "cooldown_s": 0, "lines": [] },
     { "id": "call_end",       "kind": "call_end",           "action": "idle",  "affection_gain": 1, "priority": 10, "cooldown_s": 0, "lines": ["call_end_1"] },
+    { "id": "dress_hair_long",  "kind": "dress", "region": "hairstyle:long", "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hair_long"] },
+    { "id": "dress_hair_twin",  "kind": "dress", "region": "hairstyle:twin", "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hair_twin"] },
+    { "id": "dress_hair_pony",  "kind": "dress", "region": "hairstyle:pony", "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hair_pony"] },
+    { "id": "dress_hair_short", "kind": "dress", "region": "hairstyle:none", "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hair_short"] },
+    { "id": "dress_hood_up",    "kind": "dress", "region": "hood_pose:up",   "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hood_up"] },
+    { "id": "dress_hood_down",  "kind": "dress", "region": "hood_pose:down", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_hood_down"] },
+    { "id": "dress_tail_up",    "kind": "dress", "region": "tail_pose:up",   "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_tail_up"] },
+    { "id": "dress_tail_puff",  "kind": "dress", "region": "tail_pose:puff", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_tail_puff"] },
+    { "id": "dress_tail_tuck",  "kind": "dress", "region": "tail_pose:tuck", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_tail_tuck"] },
+    { "id": "dress_tail_relax", "kind": "dress", "region": "tail_pose:relaxed", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_tail_relaxed"] },
+    { "id": "dress_eye_star",   "kind": "dress", "region": "eye_hl_style:star",  "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_eye_star"] },
+    { "id": "dress_eye_round",  "kind": "dress", "region": "eye_hl_style:round", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_eye_round"] },
+    { "id": "dress_any",        "kind": "dress", "action": "", "priority": 0, "cooldown_s": 6, "lines": ["dress_any"] },
     { "id": "tier_up",        "kind": "tier_up",            "action": "happy", "priority": 10, "cooldown_s": 0, "lines": ["tier_up"] }
   ]
 }

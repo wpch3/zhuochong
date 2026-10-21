@@ -7,8 +7,8 @@
     1103,
     1103
   ],
-  "star_area_ratio": 0.2854,
-  "star_points": 5,
+  "star_area_ratio": 0.1948,
+  "star_points": 4,
   "source_sparkle": "characters/xiaoxun/design/redraw/fx_sparkle.png",
   "eyes": [
     {
@@ -26,10 +26,10 @@
       ],
       "checks": {
         "keycolor_px": 0,
-        "star_contrast": 64.6,
-        "edge_contrast": 36.2,
+        "star_contrast": 77.5,
+        "edge_contrast": 34.3,
         "ground_kept": 1.0,
-        "star_px": 105
+        "star_px": 62
       }
     },
     {
@@ -47,10 +47,10 @@
       ],
       "checks": {
         "keycolor_px": 0,
-        "star_contrast": 59.8,
-        "edge_contrast": 45.5,
+        "star_contrast": 67.5,
+        "edge_contrast": 43.1,
         "ground_kept": 1.0,
-        "star_px": 116
+        "star_px": 74
       }
     }
   ],

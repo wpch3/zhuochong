@@ -2,30 +2,56 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "interactions.json - 互动规则、台词调度与好感分级",
   "type": "object",
-  "required": ["schema_version", "rules"],
+  "required": [
+    "schema_version",
+    "rules"
+  ],
   "properties": {
-    "schema_version": { "type": "string" },
+    "schema_version": {
+      "type": "string"
+    },
     "speech": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "min_gap_s": { "type": "number", "minimum": 0, "maximum": 600 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "min_gap_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600
+        }
       }
     },
     "affection": {
       "type": "object",
       "properties": {
-        "daily_cap": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "daily_cap": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
         "tiers": {
           "type": "array",
           "minItems": 1,
           "maxItems": 4,
           "items": {
             "type": "object",
-            "required": ["name", "min"],
+            "required": [
+              "name",
+              "min"
+            ],
             "properties": {
-              "name": { "type": "string", "minLength": 1, "maxLength": 23 },
-              "min": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 23
+              },
+              "min": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              }
             }
           }
         }
@@ -36,30 +62,114 @@
       "maxItems": 64,
       "items": {
         "type": "object",
-        "required": ["id", "kind", "action"],
+        "required": [
+          "id",
+          "kind",
+          "action"
+        ],
         "properties": {
-          "id": { "type": "string", "minLength": 1, "maxLength": 47 },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 47
+          },
           "kind": {
             "type": "string",
-            "enum": ["poke", "hammer", "drag_start", "drag_end", "wake", "mood",
-                     "call_start", "call_end", "call_user_speaking", "call_reply", "tier_up"]
+            "enum": [
+              "poke",
+              "hammer",
+              "drag_start",
+              "drag_end",
+              "wake",
+              "mood",
+              "call_start",
+              "call_end",
+              "call_user_speaking",
+              "call_reply",
+              "tier_up",
+              "dress"
+            ],
+            "description": "dress = 换装/切差分（互斥组换档）。它的 region 写成 \"<组>:<档>\"，只写组名的规则是该组兜底；整组关掉时档位是 none。"
           },
-          "region": { "type": "string", "enum": ["", "head", "body", "feet"] },
+          "region": {
+            "type": "string",
+            "enum": [
+              "",
+              "head",
+              "body",
+              "feet",
+              "hairstyle",
+              "hairstyle:none",
+              "hairstyle:long",
+              "hairstyle:twin",
+              "hairstyle:pony",
+              "hood_pose",
+              "hood_pose:up",
+              "hood_pose:down",
+              "tail_pose",
+              "tail_pose:relaxed",
+              "tail_pose:up",
+              "tail_pose:puff",
+              "tail_pose:tuck",
+              "eye_hl_style",
+              "eye_hl_style:round",
+              "eye_hl_style:star"
+            ],
+            "description": "poke 用 head/body/feet；dress 用 \"<互斥组>:<档位>\"。★ 故意写成枚举而不是自由字符串：新增一个互斥组时必须来这里登记一笔，免得 region 拼错了却静默匹配不上（这种错不会报任何声音，只会表现为\"换装不说话\"，极难查）。"
+          },
           "mood": {
             "type": "string",
-            "enum": ["", "joy", "sad", "surprise", "think", "sleepy", "shy", "angry", "calm"]
+            "enum": [
+              "",
+              "joy",
+              "sad",
+              "surprise",
+              "think",
+              "sleepy",
+              "shy",
+              "angry",
+              "calm"
+            ]
           },
-          "action": { "type": "string", "minLength": 1, "maxLength": 47 },
-          "force": { "type": "boolean" },
-          "reset_count": { "type": "boolean" },
-          "priority": { "type": "integer", "minimum": -100, "maximum": 100 },
-          "min_count": { "type": "integer", "minimum": 0, "maximum": 100 },
-          "affection_gain": { "type": "integer", "minimum": -50, "maximum": 50 },
-          "cooldown_s": { "type": "number", "minimum": 0, "maximum": 3600 },
+          "action": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 47,
+            "description": "要触发的 rig 动作名；**写空串 = 只说话不做动作**（换装台词用这条路，换个发型不该打断正在播的动作）。"
+          },
+          "force": {
+            "type": "boolean"
+          },
+          "reset_count": {
+            "type": "boolean"
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "min_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "affection_gain": {
+            "type": "integer",
+            "minimum": -50,
+            "maximum": 50
+          },
+          "cooldown_s": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3600
+          },
           "lines": {
             "type": "array",
             "maxItems": 8,
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       }

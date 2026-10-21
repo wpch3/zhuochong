@@ -7,7 +7,11 @@
 
 static const char *const k_kinds[] = {
     "poke", "hammer", "drag_start", "drag_end", "wake", "mood",
-    "call_start", "call_end", "call_user_speaking", "call_reply", "tier_up", NULL
+    "call_start", "call_end", "call_user_speaking", "call_reply", "tier_up",
+    /* dress：换装/切差分（互斥组切档）时触发。region 写成 "<组>:<档>"，
+       例如 "hairstyle:long"；只写组名 "hairstyle" 的规则当该组的兜底。
+       这样不用给 zinteract_match 加参数 —— 组和档合成一个键就够了。 */
+    "dress", NULL
 };
 
 static int kind_ok(const char *k)

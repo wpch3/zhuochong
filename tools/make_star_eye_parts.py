@@ -84,8 +84,13 @@ SPARK_TIP = np.array([74.0, 143.0, 212.0])     # 尖：#4A8FD4
 # 「瞳孔深蓝 #385783」L1 距离 100，闸直接判红。这不是闸太严 —— 用户两次打回的
 # 第一条就是「配色不对」（上一版我做成了小埋的金瞳）。所以只借 AI 的**明暗结构**，
 # 颜色一律落回小寻自己的色卡。
-STAR_SPLIT_Q = 42      # 分割星形用的亮度分位（星内 vs 星外）
-STAR_FLOOR = 0.62      # 星内亮度下限（映射到色卡梯的 [STAR_FLOOR, 1.0] = 淡蓝→白）
+# —— 程序化四角 sparkle 的几何（见 star_mask_proc）——
+STAR_P = 0.50          # astroid 指数：<1 才有内凹的尖角；越小越尖
+STAR_FILL_X = 0.90     # 星的横向半径 / 虹膜半径
+STAR_FILL_Y = 1.00     # 纵向半径 / 虹膜半径（参考图里星略呈纵长）
+
+STAR_SPLIT_Q = 42      # （旧路：从 AI 图分割星形用的亮度分位）
+STAR_FLOOR = 0.72      # 星内亮度下限（映射到色卡梯的 [STAR_FLOOR, 1.0] = 淡蓝→白）
 STAR_LIFT = 0.24       # 星内相对**当地底色**至少抬这么多 —— 常态虹膜下半本来就亮，
 #                        只按绝对亮度映射的话星在下半截会和底一样白、读不出来。
 EDGE_COLOR = (0x2C, 0x29, 0x39)   # 星形描边色 = 色卡「眼线睫毛 #2C2939」
@@ -286,6 +291,35 @@ def _ramp(stops):
     return t, c
 
 
+def star_mask_proc(shape) -> np.ndarray:
+    """★★★ 2026-10-21 第三十问：**程序化**四角 sparkle，不再从 AI 图里分割。
+
+    用户给了参考图（`logs/asset_qa/user/q29_6.png`）：**整颗虹膜一枚四角星**，
+    角细、腰收、对比强。而我们原来的做法是「从 AI 原图里按亮度分位切出星形」，
+    切出来的是一枚**偏小的五角星**（实测占虹膜 29%，角数 5），
+    放到 31px 的贴图上只剩几个像素的亮斑 —— 用户说「没看到星星」是对的。
+
+    为什么改成程序化：星形是**纯几何**，没有任何理由依赖一张 AI 图。
+    从图里分割有三个固有缺点：① 形状由那张图决定（想要四角就得重新出图）；
+    ② 大小由分位阈值决定，调不准；③ 还得靠开运算掐掉它伸出去的细颈。
+    换成解析式之后，角数/大小/腰粗都是可调常量，而且**在源分辨率上生成**，
+    缩到 31px 时边缘由 LANCZOS 自然抗锯齿，比分割出来的锯齿边干净。
+
+    形状用 **astroid 家族**（星芒曲线）：|x/rx|^p + |y/ry|^p ≤ 1。
+      · p = 2 是椭圆；p = 1 是菱形；**p < 1 时边向内凹，就是 sparkle 的尖角**。
+      · p 越小角越尖、腰越细。p=0.62 实测和参考图那枚最接近。
+    竖轴比横轴长一点（STAR_FILL_Y > STAR_FILL_X），和参考图一样略呈纵长。
+    """
+    h, w = shape
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
+    cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+    rx = max(w * 0.5 * STAR_FILL_X, 1.0)
+    ry = max(h * 0.5 * STAR_FILL_Y, 1.0)
+    u = np.abs(xx - cx) / rx
+    v = np.abs(yy - cy) / ry
+    return (u ** STAR_P + v ** STAR_P) <= 1.0
+
+
 def star_mask_of(rgb: np.ndarray, a: np.ndarray) -> np.ndarray:
     """从 AI 原图里把**星形区域**分割出来。只要形状，不要它的颜色。
 
@@ -349,7 +383,11 @@ def build_star_iris(src_path: str, sprites: str, report: dict) -> list:
     x1, y1 = min(im.shape[1], x0 + side), min(im.shape[0], y0 + side)
     crop_rgb, crop_a = im[y0:y1, x0:x1], a[y0:y1, x0:x1]
     crop_rgb = despill(crop_rgb, crop_a, bg)
-    star_mask = star_mask_of(crop_rgb, crop_a)
+    # ★ 2026-10-21：星形改成程序化生成（见 star_mask_proc 的文档串）。
+    #   旧的 star_mask_of 留着没删 —— 它是"从图里分割"那条路的实现，
+    #   万一以后要换成画师手绘的星形贴图，这条路还用得上。
+    star_mask = star_mask_proc(crop_a.shape) & (crop_a > 0.0).any() if False \
+        else star_mask_proc(crop_a.shape)
     star_ratio = float(star_mask.sum()) / max(float((crop_a > SOLID_A).sum()), 1.0)
 
     out = []

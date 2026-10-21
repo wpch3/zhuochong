@@ -776,7 +776,10 @@ static int run_rule(zpet *p, const zi_rule *r, const char *fb_action,
     int ok, up = 0;
     if (!p->rig) return 0;
     if (!r) return zrig_action_request(p->rig, fb_action, fb_reason, fb_force);
-    ok = zrig_action_request(p->rig, r->action, r->id, r->force);
+    /* ★ 2026-10-21 第三十问：action 写空串 = **只说话、不做动作**。
+       换装台词用的就是这条路 —— 换个发型不该把正在播的动作打断，
+       更不该让截图比对类的测试看到一个意外的姿势。 */
+    ok = r->action[0] ? zrig_action_request(p->rig, r->action, r->id, r->force) : 0;
     if (p->inter && r->affection_gain)
         up = zinteract_add_affection(p->inter, r->affection_gain, local_day());
     if (up) {
@@ -1126,9 +1129,46 @@ const char *zpet_pose_current(const zpet *p, const char *group)
     return (p && p->rig) ? zrig_pose_current(p->rig, group) : "";
 }
 
+/* 换装台词（第三十问）：互斥组**真的换了档**才说话。
+ *
+ * 为什么挂在 zpet_pose_set 里而不是 HTTP 层：换装会说话是**宠物的行为**，
+ * 不是某一个前端的行为。挂在这里，预览的 /api/pose、Windows 托盘的换装菜单、
+ * 以后的语音指令走的是同一条路，不会出现"某个入口换装不说话"。
+ *
+ * 用 region="<组>:<档>" 当匹配键（见 zinteract.c 的 k_kinds 注释）：
+ *   hairstyle:long / hood_pose:up / tail_pose:puff / eye_hl_style:star …
+ * 先找精确档位的规则，没有再退回只写组名的兜底规则。
+ * 整组关掉（entry 为空）时档位写 "none" —— 短发就是 hairstyle:none。
+ */
+static void dress_event(zpet *p, const char *group, const char *entry)
+{
+    char key[24];
+    const zi_rule *r;
+    if (!p || !p->inter || !group || !group[0]) return;
+    z_snprintf(key, sizeof(key), "%s:%s", group,
+               (entry && entry[0]) ? entry : "none");
+    r = match_rule(p, "dress", key, NULL, 0);
+    if (!r) r = match_rule(p, "dress", group, NULL, 0);
+    if (!r) return;
+    run_rule(p, r, NULL, NULL, 0, p->now);
+}
+
 int zpet_pose_set(zpet *p, const char *group, const char *entry)
 {
-    return (p && p->rig) ? zrig_pose_set(p->rig, group, entry) : -1;
+    char before[32];
+    const char *cur;
+    int rc;
+    if (!p || !p->rig) return -1;
+    cur = zrig_pose_current(p->rig, group);
+    z_strlcpy(before, cur ? cur : "", sizeof(before));
+    rc = zrig_pose_set(p->rig, group, entry);
+    if (rc == 0) {
+        cur = zrig_pose_current(p->rig, group);
+        /* 只有**档位真的变了**才说话：前端有可能重复下发同一档
+           （例如面板初始化时把当前档再点一次），那不该触发台词。 */
+        if (!z_streq(before, cur ? cur : "")) dress_event(p, group, cur ? cur : "");
+    }
+    return rc;
 }
 
 void zpet_pose_snap(zpet *p) { if (p && p->rig) zrig_pose_snap(p->rig); }
