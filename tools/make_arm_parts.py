@@ -149,15 +149,25 @@ def grow_down(mask, alpha, max_run=150, slack=6):
     y += 1
     miss = 0
     while y < h and miss < 6:
-        runs = [r for r in row_runs(alpha[y])
+        near = [r for r in row_runs(alpha[y])
                 if r[1] >= lo - slack and r[0] <= hi + slack]
+        # ★★★ 2026-10-21 第三十二问：slack 只许用来跟\"同一段横移\"，
+        #   绝不能用来把**另一段**拉进来。
+        #   左袖下沿 y=640 这一行有两段：手臂 (36,87) 和躯干 (96,339)。
+        #   躯干那段的起点 96 正好 == hi+slack(90+6)，擦着边被收进来，
+        #   span 变成 36..339 触发 max_run 夹紧 → 窗口被写回 [lo-6, hi+6]，
+        #   **每行加宽 12px**；60 行之后窗口已有 300 宽，整条裙子和腿
+        #   都被当成"手臂"切走（实测 hand_l 从 81×82 涨到 206×567，
+        #   arm_l_fore 从 85×131 涨到 354×203，check_assets 连爆 3 条）。
+        #   所以先只要**真重叠**的段；真·横移（没有任何真重叠）时才回退用 slack。
+        runs = [r for r in near if r[1] >= lo and r[0] <= hi] or near
         if not runs:
             miss += 1
             y += 1
             continue
         nlo, nhi = min(r[0] for r in runs), max(r[1] for r in runs)
-        if nhi - nlo > max_run:          # 和躯干连上了：裁回上一行的范围，别一路吃进去
-            nlo, nhi = max(nlo, lo - slack), min(nhi, hi + slack)
+        if nhi - nlo > max_run:          # 和躯干连上了：沿用上一行的窗口，别借机变宽
+            nlo, nhi = lo, hi
         for a, b in runs:
             a, b = max(a, nlo), min(b, nhi)
             if a <= b:

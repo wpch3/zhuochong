@@ -9,15 +9,15 @@
     ],
     "torso_size": [
       273,
-      501
+      500
     ],
-    "band_top": 295,
+    "band_top": 298,
     "band_bottom": 423,
     "hem_h": 38,
     "panels": [
       {
         "x0": 13,
-        "x1": 95
+        "x1": 94
       },
       {
         "x0": 171,

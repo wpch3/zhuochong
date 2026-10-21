@@ -20,8 +20,8 @@
     "formula": "d'=d_sole*ks+(d-d_sole)*ku（离地距离分段线性），lift=总增量"
   },
   "legs_erased_px": {
-    "seg_leg_l": 7934,
-    "seg_leg_r": 7904
+    "seg_leg_l": 8076,
+    "seg_leg_r": 8060
   },
   "legs_cropped_h": {
     "seg_leg_l": 487,
@@ -32,11 +32,11 @@
       "id": "seg_foot_l",
       "file": "sprites/seg_foot_l.png",
       "pos": [
-        146,
+        145,
         1112
       ],
       "size": [
-        72,
+        73,
         180
       ],
       "group": "foot_l",
@@ -47,11 +47,11 @@
       "id": "seg_foot_l_tip",
       "file": "sprites/seg_foot_l_tip.png",
       "pos": [
-        146,
+        145,
         1082
       ],
       "size": [
-        72,
+        73,
         210
       ],
       "group": "foot_l",
@@ -92,7 +92,7 @@
   "checks": {
     "foot_l": {
       "x": [
-        146,
+        145,
         218
       ],
       "shoe_top": 1156,
@@ -102,8 +102,8 @@
       "flat_shoe_top": 1156,
       "tip_shoe_top": 1126,
       "collar_rise": 30,
-      "flat_px": 9304,
-      "tip_px": 11128
+      "flat_px": 9480,
+      "tip_px": 11307
     },
     "foot_r": {
       "x": [
@@ -117,8 +117,8 @@
       "flat_shoe_top": 1156,
       "tip_shoe_top": 1126,
       "collar_rise": 30,
-      "flat_px": 9269,
-      "tip_px": 11098
+      "flat_px": 9476,
+      "tip_px": 11300
     }
   }
 }

@@ -1,9 +1,9 @@
 {
   "redraw": "characters/xiaoxun/design/redraw/head_nobangs.png",
   "align": {
-    "scale": 0.813,
-    "dx": 0.9,
-    "dy": 1.4,
+    "scale": 0.8126,
+    "dx": 1.0,
+    "dy": 1.7,
     "src_iris": [
       [
         252,
@@ -25,16 +25,16 @@
       ]
     ]
   },
-  "filled_px": 9759,
+  "filled_px": 9733,
   "skin_gain": [
-    0.9987,
-    0.9777,
-    0.977
+    0.8992,
+    0.9051,
+    0.936
   ],
   "skin_offset": [
-    0.8,
-    9.33,
-    10.28
+    26.04,
+    26.52,
+    19.6
   ],
   "part": {
     "id": "hair_front",

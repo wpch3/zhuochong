@@ -212,7 +212,20 @@ def main() -> int:
                 break
     # 两腿之间那几列（裆下的空档）一路扫到膝盖才碰到肤色 —— 不能照它切，
     # 否则躯干在两腿中间拖下来一根 4px 宽的静止尖刺。按最近的正常列取值。
-    good = (thigh_top <= legs_top + 30)
+    #
+    # ★ 2026-10-21：判「哪一列正常」不能用固定窗口 `legs_top + 30`。
+    #   重写抠像、把大腿**外轮廓线**救回来之后，轮廓线所在的那一列（x=230）
+    #   在 28 行里都读不到肤色，thigh_top 落在 768 —— 正好 == legs_top+30，
+    #   卡着闸进了"正常列"，于是裆下那几列全部按它取值，躯干在两腿中间
+    #   拖出一根 4px×26 的尖刺，件高 501 → 528，衣柜换色件的剪影 IoU
+    #   直接掉到 0.8967（第三十二问实测，重建在 22 步整条断掉）。
+    #   裙摆下沿本来就是条平滑曲线，**比中位数低 10px 以上的列就是离群值**，
+    #   拿中位数做稳健判据，不依赖"低多少算远"这个拍脑袋的常数。
+    span_cols = np.arange(TL, TR + 1)
+    seen = thigh_top[span_cols]
+    seen = seen[seen < H]
+    hem_med = int(np.median(seen)) if len(seen) else legs_top
+    good = (thigh_top <= min(legs_top + 30, hem_med + 10))
     if good.sum() < 20:
         raise SystemExit("[make_body_parts] 找不到裙摆下沿（肤色列太少），别往下切了")
     gi = np.flatnonzero(good)
@@ -368,7 +381,7 @@ def main() -> int:
 
     print(f"手臂离身行 {split_y}（此行以下按真实轮廓抠，以上竖切）")
     tt = thigh_top[has_thigh]
-    print(f"裙摆下沿（逐列）y {tt.min()}..{tt.max()}（中位 {int(np.median(tt))}），"
+    print(f"裙摆下沿（逐列）y {tt.min()}..{tt.max()}（中位 {int(np.median(tt))}，离群列 {int((~good[TL:TR+1]).sum())} 条按最近正常列取值），"
           f"大腿补了 {int(thigh_fill.sum())} 像素")
     print(f"切线：颈 {neck_y} 肩 {shoulder_y} 髋 {hip_y} 裙摆底 {legs_top} 腕 {wrist_y}；"
           f"躯干 x [{TL},{TR}]；重叠 {ov}px")

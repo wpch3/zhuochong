@@ -8,11 +8,11 @@
       "id": "arm_l_root",
       "file": "sprites/arm_l_root.png",
       "pos": [
-        102,
+        52,
         363
       ],
       "size": [
-        43,
+        93,
         198
       ],
       "group": "arm_l",
@@ -69,8 +69,8 @@
         653
       ],
       "size": [
-        81,
-        82
+        82,
+        83
       ],
       "group": "hand_l",
       "layer": 138,
@@ -84,11 +84,11 @@
       "id": "arm_r_root",
       "file": "sprites/arm_r_root.png",
       "pos": [
-        292,
+        293,
         362
       ],
       "size": [
-        44,
+        102,
         200
       ],
       "group": "arm_r",
@@ -104,11 +104,11 @@
       "file": "sprites/arm_r_upper.png",
       "pos": [
         314,
-        360
+        359
       ],
       "size": [
-        90,
-        211
+        89,
+        212
       ],
       "group": "arm_r",
       "layer": 141,
@@ -141,12 +141,12 @@
       "id": "hand_r",
       "file": "sprites/hand_r.png",
       "pos": [
-        364,
+        363,
         653
       ],
       "size": [
-        81,
-        82
+        82,
+        83
       ],
       "group": "hand_r",
       "layer": 139,
@@ -158,13 +158,13 @@
     }
   ],
   "checks": {
-    "outline_px": 1212,
-    "torso_thigh_trim_px": 148375,
-    "torso_filled_px": 36,
-    "torso_cleared_px": 39920,
+    "outline_px": 1217,
+    "torso_thigh_trim_px": 148391,
+    "torso_filled_px": 42,
+    "torso_cleared_px": 40474,
     "root_ext_px": {
-      "l": 1819,
-      "r": 2163
+      "l": 1813,
+      "r": 2183
     },
     "root_target_w": {
       "l": 57.0,
@@ -172,12 +172,12 @@
     },
     "seam_trim_px": {
       "l": {
-        "upper": 711,
-        "fore": 235
+        "upper": 725,
+        "fore": 233
       },
       "r": {
-        "upper": 665,
-        "fore": 226
+        "upper": 659,
+        "fore": 231
       }
     },
     "wrist_y": {
@@ -185,13 +185,13 @@
       "r": 666
     },
     "hand_stub_px": {
-      "l": 338,
-      "r": 346
+      "l": 355,
+      "r": 358
     },
-    "static_diff_px": 386,
+    "static_diff_px": 406,
     "arm_px": {
-      "l": 17508,
-      "r": 18800
+      "l": 17808,
+      "r": 19052
     }
   },
   "shoulder_joint": {

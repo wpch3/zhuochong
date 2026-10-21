@@ -1,132 +1,132 @@
 {
   "hair_back.png": {
-    "repaint": 80,
-    "erase": 20,
-    "opaque": 18005
+    "repaint": 7,
+    "erase": 16,
+    "opaque": 18213
   },
   "hair_back@2x.png": {
-    "repaint": 104,
-    "erase": 85,
-    "opaque": 72779
+    "repaint": 16,
+    "erase": 64,
+    "opaque": 73603
   },
   "hair_crown_long.png": {
-    "repaint": 21,
-    "erase": 8,
-    "opaque": 37972
+    "repaint": 1,
+    "erase": 47,
+    "opaque": 37731
   },
   "hair_crown_long@2x.png": {
-    "repaint": 110,
-    "erase": 52,
-    "opaque": 151919
+    "repaint": 11,
+    "erase": 120,
+    "opaque": 150665
   },
   "hair_crown_pony.png": {
-    "repaint": 48,
+    "repaint": 1,
     "erase": 5,
     "opaque": 37101
   },
   "hair_crown_pony@2x.png": {
-    "repaint": 183,
-    "erase": 1483,
-    "opaque": 148043
+    "repaint": 59,
+    "erase": 21,
+    "opaque": 146581
   },
   "hair_crown_twin.png": {
-    "repaint": 18,
-    "erase": 26,
-    "opaque": 39119
+    "repaint": 3,
+    "erase": 17,
+    "opaque": 39114
   },
   "hair_crown_twin@2x.png": {
-    "repaint": 58,
-    "erase": 77,
+    "repaint": 11,
+    "erase": 118,
     "opaque": 155856
   },
   "hair_front.png": {
-    "repaint": 773,
-    "erase": 1300,
-    "opaque": 10301
+    "repaint": 46,
+    "erase": 1317,
+    "opaque": 10268
   },
   "hair_front@2x.png": {
-    "repaint": 1233,
-    "erase": 2385,
-    "opaque": 40601
+    "repaint": 272,
+    "erase": 2393,
+    "opaque": 40471
   },
   "hair_hood_long.png": {
-    "repaint": 1123,
-    "erase": 20,
+    "repaint": 2,
+    "erase": 17,
     "opaque": 87602
   },
   "hair_hood_long@2x.png": {
-    "repaint": 4174,
-    "erase": 13,
+    "repaint": 1,
+    "erase": 25,
     "opaque": 349662
   },
   "hair_hood_pony.png": {
     "repaint": 0,
-    "erase": 21,
+    "erase": 42,
     "opaque": 34743
   },
   "hair_hood_pony@2x.png": {
     "repaint": 0,
-    "erase": 28,
+    "erase": 87,
     "opaque": 138642
   },
   "hair_hood_twin.png": {
     "repaint": 0,
-    "erase": 125,
-    "opaque": 23492
+    "erase": 116,
+    "opaque": 23448
   },
   "hair_hood_twin@2x.png": {
-    "repaint": 6,
-    "erase": 422,
-    "opaque": 93448
+    "repaint": 10,
+    "erase": 561,
+    "opaque": 93441
   },
   "hair_long_back.png": {
-    "repaint": 145,
+    "repaint": 17,
     "erase": 118,
-    "opaque": 207807
+    "opaque": 207806
   },
   "hair_long_back@2x.png": {
-    "repaint": 582,
-    "erase": 335,
+    "repaint": 77,
+    "erase": 357,
     "opaque": 829657
   },
   "hair_pony_back.png": {
-    "repaint": 9,
-    "erase": 92,
+    "repaint": 0,
+    "erase": 91,
     "opaque": 49940
   },
   "hair_pony_back@2x.png": {
-    "repaint": 126,
-    "erase": 314,
+    "repaint": 2,
+    "erase": 371,
     "opaque": 199350
   },
   "hair_side_l.png": {
-    "repaint": 100,
-    "erase": 546,
-    "opaque": 6668
+    "repaint": 4,
+    "erase": 540,
+    "opaque": 7123
   },
   "hair_side_l@2x.png": {
-    "repaint": 210,
-    "erase": 1315,
-    "opaque": 26587
+    "repaint": 20,
+    "erase": 1193,
+    "opaque": 28404
   },
   "hair_side_r.png": {
-    "repaint": 172,
-    "erase": 425,
-    "opaque": 7061
+    "repaint": 1,
+    "erase": 423,
+    "opaque": 7496
   },
   "hair_side_r@2x.png": {
-    "repaint": 164,
-    "erase": 1042,
-    "opaque": 28207
+    "repaint": 32,
+    "erase": 1048,
+    "opaque": 29952
   },
   "hair_sweep_pony_r.png": {
     "repaint": 0,
-    "erase": 22,
+    "erase": 13,
     "opaque": 28228
   },
   "hair_sweep_pony_r@2x.png": {
-    "repaint": 5,
-    "erase": 82,
+    "repaint": 0,
+    "erase": 70,
     "opaque": 112448
   },
   "hair_sweep_twin_l.png": {
@@ -136,7 +136,7 @@
   },
   "hair_sweep_twin_l@2x.png": {
     "repaint": 0,
-    "erase": 10,
+    "erase": 7,
     "opaque": 36756
   },
   "hair_sweep_twin_r.png": {
@@ -151,7 +151,7 @@
   },
   "hair_twin_l.png": {
     "repaint": 0,
-    "erase": 32,
+    "erase": 33,
     "opaque": 15380
   },
   "hair_twin_l@2x.png": {
@@ -161,7 +161,7 @@
   },
   "hair_twin_r.png": {
     "repaint": 0,
-    "erase": 32,
+    "erase": 33,
     "opaque": 15380
   },
   "hair_twin_r@2x.png": {

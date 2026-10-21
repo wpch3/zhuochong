@@ -3967,7 +3967,33 @@ static void test_mesh_bend_coexist(void)
     zrig *r;
     FILE *f;
     SECTION("形变器 × 平滑形变：能共存，且同部件多张网格要累加");
-    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    /* ★ 2026-10-21：这个用例以前直接拿 `characters/xiaoxun/.../seg_torso.png`
+       当素材。那是**美术资产**，剪影会随切件流水线变动 —— 第三十二问重做抠像后
+       躯干件 501→500 高、顶边形状也变了，"bend 单独要能改变画面"的指纹差
+       从 >50 掉到 31.1，于是一条**引擎**测试被一张图改红了。
+       引擎行为不该依赖画了什么，这里改成现画一张合成矩形，结果完全确定。 */
+    {
+        zerr e;
+        zimg *box;
+        int bx, by;
+        char png[1024];
+        z_mkdir_p("/tmp/zc_meshbend");
+        z_mkdir_p("/tmp/zc_meshbend/sprites");
+        box = zimg_new(240, 500);
+        CHECK(box != NULL, "应能建合成素材");
+        if (!box) return;
+        for (by = 0; by < 500; ++by)
+            for (bx = 0; bx < 240; ++bx) {
+                size_t o = ((size_t)by * 240 + bx) * 4;
+                box->px[o] = 200; box->px[o + 1] = 160;
+                box->px[o + 2] = 140; box->px[o + 3] = 255;
+            }
+        zerr_clear(&e);
+        z_snprintf(png, sizeof(png), "/tmp/zc_meshbend/sprites/seg_torso.png");
+        CHECK(zimg_save_png(box, png, &e) == 0, "合成素材应能写出：%s", e.msg);
+        zimg_free(box);
+    }
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_meshbend");
     z_snprintf(tmp_rig, sizeof(tmp_rig), "/tmp/zc_meshbend_rig.json");
     f = fopen(tmp_rig, "wb");
     CHECK(f != NULL, "应能写出合成 rig");

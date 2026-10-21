@@ -20,9 +20,9 @@
       "lash_travel": 21.5,
       "lash_file": "eye_l_lash_up.png",
       "lash_cut_px": 52,
-      "carved_px": 1313,
-      "filled_px": 1,
-      "line_px": 1019
+      "carved_px": 1307,
+      "filled_px": 7,
+      "line_px": 880
     },
     {
       "side": "r",
@@ -45,7 +45,7 @@
       "lash_cut_px": 56,
       "carved_px": 1290,
       "filled_px": 3,
-      "line_px": 1079
+      "line_px": 970
     }
   ]
 }

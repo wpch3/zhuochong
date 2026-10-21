@@ -242,6 +242,27 @@ def main() -> int:
             tmp[..., 3] = keep_a
             head = tmp
 
+        # 3b) 收口：眼眶开口核心区（sock>96）里**一粒**原画的眼线/虹膜都不许剩。
+        # 上面是按"位置"挖（socket 的 alpha 斜坡），这里再按"颜色"兜一道 ——
+        # 闭眼补片自己就带着几粒没擦净的睫毛根，grow_colors 还可能把它们摊开；
+        # 眼眶一收，这几粒就从眼皮底下浮出来成了"脸上画着一只睁眼"。
+        # 判据故意比 check_assets 的闸**更严**（亮度 135 vs 闸的 120、
+        # 蓝差 20/100 vs 闸的 25/110），留出余量，不是为了刚好过闸。
+        core = np.zeros((H, W), bool)
+        core[dreg] = ap_m[sreg]
+        core &= head[..., 3] > 0
+        _lum = 0.299 * head[..., 0] + 0.587 * head[..., 1] + 0.114 * head[..., 2]
+        bad = core & ((_lum < 135)
+                      | ((head[..., 2] - head[..., 0] > 20) & (head[..., 2] > 100)))
+        if bad.any():
+            tmp = head.copy()
+            keep_a = tmp[..., 3].copy()
+            tmp[..., 3] = np.where(bad, 0, tmp[..., 3])
+            tmp = grow_colors(tmp, bad, 10)
+            tmp[..., 3] = keep_a
+            head = tmp
+            print(f"  {side} 眼眶收口：洗掉残留的眼线/虹膜 {int(bad.sum())} 像素")
+
         ys, xs = np.nonzero(ap_m)
         abox = [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1]
         travel = measure_lash_travel(ap_m, lash_rgba, abox)
