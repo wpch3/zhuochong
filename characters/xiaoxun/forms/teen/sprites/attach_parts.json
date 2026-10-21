@@ -137,8 +137,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_up.png",
       "size": [
-        114,
-        480
+        135,
+        435
       ]
     },
     {
@@ -146,8 +146,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_puff.png",
       "size": [
-        181,
-        430
+        190,
+        436
       ]
     },
     {
@@ -155,8 +155,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_tuck.png",
       "size": [
-        127,
-        404
+        349,
+        249
       ]
     },
     {

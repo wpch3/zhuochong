@@ -58,6 +58,7 @@ ROOT_CLEAR_SEAM = 0                 # 0 = **不要**抹上臂贴图里那条袖�
 #   「躯干 ∪ 袖子」一起盖住；一抬手袖子让开，**原来被袖子盖住的那半块就
 #   永久暴露**，于是腋下多出一牙青色半月（用户截图 1，放大图 /tmp/u1_arm4.png）。
 #   半径收到半个袖宽以后，圆盘整个藏在「袖子 ∪ 躯干」的交集里，转到哪都不露。
+ROOT_SMOOTH_K = 5       # 袖根塗り足し的磨圆核（开运算），见 root_fill
 ROOT_DISC_W = 0.58                  # R = 袖宽 × 这个系数（0.5 = 正好半宽，留一点のりしろ）
 ROOT_DISC_K = 0.52                  # 上限：R 不许超过这么多倍上臂长（保险，正常用不到）
 ROOT_LAYER = {"l": 95, "r": 96}     # **画在躯干(100)底下**：静止时被夹克完全盖住
@@ -250,7 +251,8 @@ def bleed(rgb, have, into, rounds=5):
     return out_rgb, grown, dist
 
 
-def root_fill(body, up, side, hidden, pivot=None, arm_len=None):
+def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
+              elbow=None):
     """袖根塗り足し（G108）：把上臂的袖子往身体里多画一截，**画在躯干底下**。
 
     ★★★ 2026-10-20 第二十七问（G121）：补出来的这块必须**收进以肩关节为
@@ -319,13 +321,75 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None):
         # ★ 2026-10-21：R = 袖宽/2（教程口径），再用「上臂长 × K」兜个上限。
         #   `target` 就是袖子逐行宽度的 80 分位，正是教程说的「上腕の幅」。
         R = min(float(target) * ROOT_DISC_W, float(arm_len) * ROOT_DISC_K)
-        print("  袖根圆盘 %s: 袖宽 %.1f → R=%.1f（旧口径 R=%.1f）"
+        print("  袖根胶囊 %s: 袖宽 %.1f → R=%.1f（旧口径 R=%.1f）"
               % (side, target, R, float(arm_len) * ROOT_DISC_K))
         #   ★ 这里必须 `& ~up` 而不是 `& ~dilate(up, 1)`：留 1px 缝的话，
         #     下面描线稿的 `full = ext | up` 会沿着这条缝也算出一圈"剪影边"，
         #     在青袖**正中间**糊出一道深色线，看上去就是两条袖子叠着
         #     （/tmp/arm_sh6.png 第二版 2~4 格）。贴齐了才只有外沿一条线。
-        ext = ((xx_d * xx_d + yy_d * yy_d) <= R * R) & erode(hidden, 2) & ~up
+        # ★★★ 2026-10-21 第二十九问：圆盘 → **胶囊**（圆盘 ∪ 沿臂轴的等宽带）。
+        #   实测上臂逐行宽度从肩头 **2px** 一路长到肘部 58px —— 是个尖楔子，
+        #   而真实上臂是肩最宽、向肘微收。闸门 w_top/w_fore 只有 0.57~0.59，
+        #   用户连着两轮说「上臂比前臂细」。
+        #   上一版只补了肩关节那一个圆盘（R≈33px，实测只加宽 15~20px），
+        #   补的位置对、量差得远：从肩到肘整条上臂在夹克身底下都还有半截袖子，
+        #   那半截才是 shiroikarasu 教程说的「**袖の中の腕の続き**」：
+        #     「腕を上げたときに見える**脇の下**と、**袖の中の腕の続き**は
+        #       あらかじめ描いておく」
+        #     （https://shiroikarasu.net/live2d-part-separation-illustrator-guide/）
+        #   所以补绘区 = 以肩为圆心的圆盘 **∪** 沿「肩→肘」轴线、半宽 R 的带子，
+        #   也就是一条胶囊。它仍然整条落在 `erode(hidden,2)` 里（夹克身盖得住），
+        #   层 95/96 还在躯干 100 之下 ⇒ 静止时一个像素都看不见。
+        #   ★ 为什么不会重现第二十七问那块「第二条袖子」：那一版 R=99px，比袖子
+        #     胖三倍，胶囊的半宽现在 = 袖宽×0.58，**横向不超过袖子自己的剪影**，
+        #     抬手时露出来的只是把细楔子补成了等宽，不会多出一牙。
+        if elbow is not None:
+            ax = float(elbow[0]) - float(pivot[0])
+            ay = float(elbow[1]) - float(pivot[1])
+            alen = max(1e-6, float(np.hypot(ax, ay)))
+            ax, ay = ax / alen, ay / alen
+            along = xx_d * ax + yy_d * ay            # 沿臂轴
+            perp = np.abs(xx_d * (-ay) + yy_d * ax)  # 离臂轴的距离
+            band = (along >= 0.0) & (along <= alen) & (perp <= R)
+        else:
+            band = np.zeros((H, W), bool)
+        # ★ 再叠一层「逐行补到目标宽」：胶囊的半宽是从**臂轴**量的，而臂轴
+        #   （肩→肘锚点连线）偏在袖子内侧，于是胶囊的内边界刚好停在夹克外沿上
+        #   —— 实测 l 侧 row408：袖子 x85..127、躯干自 x125 起、胶囊止于 x125，
+        #   **一个像素都没伸进夹克底下**，比值只从 0.59 爬到 0.61。
+        #   原画里袖子被白夹克前襟挡住的那一截压根没画（画师只画可见部分），
+        #   这正是 shiroikarasu 说的要预先补出来的「袖の中の腕の続き」。
+        #   所以逐行往身体内侧补到 `target`（袖宽 80 分位 ≈ 肘部宽），
+        #   补出来的还是只落在 `erode(hidden,2)` 里 ⇒ 静止时依旧全藏住。
+        #   顶端 ROOT_TOP_RAMP 行 smoothstep 渐入，不留水平硬边（第二十七问的坑）。
+        rowfill = np.zeros((H, W), bool)
+        for y, (ea, eb) in edges.items():
+            d = int(round(float(target) - (eb - ea + 1)))
+            if d <= 0:
+                continue
+            d = min(ROOT_EXT_MAX, d)
+            t = min(1.0, max(0.0, (y - y0) / float(ROOT_TOP_RAMP)))
+            d = int(round(d * (t * t * (3.0 - 2.0 * t))))
+            if d <= 0:
+                continue
+            if side == "r":
+                rowfill[y, max(0, ea - d):ea] = True
+            else:
+                rowfill[y, eb + 1:min(W, eb + 1 + d)] = True
+        ext = (((xx_d * xx_d + yy_d * yy_d) <= R * R) | band | rowfill) \
+            & erode(hidden, 2) & ~up
+        # ★★★ 2026-10-21 第二十九问（自查发现，用户没点名）：把补出来这块的
+        #   **内侧轮廓磨圆**。抬手实拍（/tmp/armpit.png，wave 第 100 帧放大 2×）
+        #   能看见肩头是一条**直的斜切边**，中间还有一个折角 —— 那是
+        #   `rowfill` 按「补到 target 宽」留下的、平行于臂轴的直边，
+        #   和圆盘边界撞出来的拐点。静止时它藏在夹克身底下看不见，
+        #   手一抬整条转出来，就成了肩上一道生硬的折线。
+        #   参考 saraemi.com/vtuber/2022/02/09/live2d_arm/：
+        #   「関節パーツは正円で」「線がズレていると失敗しやすい」——
+        #   关节附近的轮廓要是圆的，不能有角。
+        #   开运算（先腐蚀后膨胀）只会**去掉**像素，不会新增 ⇒ 「袖根静止
+        #   露出 0」那道闸不可能被它弄红；它专门削掉凸角和毛刺。
+        ext = dilate(erode(ext, ROOT_SMOOTH_K), ROOT_SMOOTH_K) | (ext & band)
     else:
         ext = np.zeros((H, W), bool)
         for y, (a, b) in edges.items():
@@ -547,8 +611,10 @@ def main():
         sh_pt = (float(pts[f"shoulder_{side}"][0]), float(pts[f"shoulder_{side}"][1]))
         arm_len = float(np.hypot(pts[f"elbow_{side}"][0] - sh_pt[0],
                                  pts[f"elbow_{side}"][1] - sh_pt[1]))
+        el_pt = (float(pts[f"elbow_{side}"][0]), float(pts[f"elbow_{side}"][1]))
         ext, ext_rgb, ext_target = root_fill(body, up_mask, side, hidden,
-                                             pivot=sh_pt, arm_len=arm_len)
+                                             pivot=sh_pt, arm_len=arm_len,
+                                             elbow=el_pt)
         if ext.any():
             ea = soft(ext)
             ea[erode(ext, 1)] = 1.0

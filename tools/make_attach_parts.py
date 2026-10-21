@@ -190,7 +190,7 @@ def bleed_edge(rgb: np.ndarray, a: np.ndarray, rounds: int = 3) -> np.ndarray:
 
 def match_colors(rgb: np.ndarray, a: np.ndarray, ref: np.ndarray,
                  keep: float = 1.0, l_sigma_max: float = 2.5,
-                 l_offset: float = 0.0) -> np.ndarray:
+                 l_offset: float = 0.0, src_lab_pool=None) -> np.ndarray:
     """Reinhard 色彩迁移（Lab 的 mean/std 对齐）：让挂件**长得像本体的头发**。
 
     为什么不用 relay_colors（按亮度 k-means 重铺到 3 色）：那套是给**漫符**设计的 ——
@@ -210,10 +210,20 @@ def match_colors(rgb: np.ndarray, a: np.ndarray, ref: np.ndarray,
     if solid.sum() < 64:
         raise SystemExit("[attach] 可信像素太少，没法做配色匹配")
     src_lab = _srgb_to_lab(rgb)
+    # ★★★ 2026-10-21 第二十九问：src_lab_pool = **整组共用的源统计**。
+    #   不给的话，μ_src/σ_src 就按**这一件自己的像素**算 —— 于是同一张模板切下来的
+    #   每一片各自得到一套不同的仿射系数：刘海片算出一套、横髪片算出另一套，
+    #   两片在脸侧相接的地方颜色对不上，就是用户看到的「头发突然截断变色」。
+    #   更糟的是长发帘这种**自带蓝梢渐变**的大片，它自己的 σ(a/b) 很大，
+    #   被 σ_ref/σ_src 一除就把渐变压平，蓝梢褪成粉灰。
+    #   给了 pool（= 同一张套准模板上所有发片的像素合在一起）之后，整组共用
+    #   一个仿射变换：组内的相对关系（哪片亮、哪段偏蓝）**原样保留**，
+    #   只把整组的色相/明度平移到本体头发的分布上。
     ref_lab = _srgb_to_lab(ref.reshape(-1, 1, 3))[:, 0, :]
     out = np.empty_like(src_lab)
     for ch in range(3):
-        sv = src_lab[..., ch][solid]
+        sv = (src_lab[..., ch][solid] if src_lab_pool is None
+              else src_lab_pool[:, ch])
         mu_s, sd_s = sv.mean(), max(sv.std(), 1e-6)
         mu_r, sd_r = ref_lab[:, ch].mean(), ref_lab[:, ch].std()
         # σ 比值限幅：参考分布比源窄很多时，不要把源图压成一张平色；
@@ -407,7 +417,53 @@ def derive_source(spec, sprites_dir, design_dir):
     return rgb, al
 
 
-def build_one(att, slot, redraw_dir, sprites_dir, anchors, design_dir=None):
+_GRP_CACHE = {}
+
+
+def group_src_lab(group, table, redraw_dir):
+    """把**同一组**（= 同一张套准模板）所有发片的实心像素合成一个 Lab 池。
+
+    为什么要整组一起算：见 match_colors 里 src_lab_pool 的注释 —— 逐片各算
+    一套系数必然在片与片的接缝上留色差。组的粒度取「一张模板」而不是
+    「全部发型」，是因为七张模板是分别出图的，整体明度本来就有差；
+    按模板分组，组内接缝严丝合缝，组间差异由各自的均值对齐抹平。
+    """
+    if group in _GRP_CACHE:
+        return _GRP_CACHE[group]
+    pool = []
+    for a2 in (table or {}).get("attachments", []):
+        rm2 = a2.get("recolor_match") or {}
+        if rm2.get("stats_group") != group or not a2.get("source"):
+            continue
+        sp = os.path.join(redraw_dir, a2["source"])
+        if not os.path.exists(sp):
+            continue
+        arr = np.asarray(Image.open(sp).convert("RGB"), dtype=np.uint8)
+        bg2 = bg_color(arr)
+        ca2 = key_alpha_soft(arr, bg2)
+        aa2 = ca2[..., None]
+        up2 = np.clip((arr.astype(np.float64) - (1.0 - aa2) * bg2.astype(np.float64))
+                      / np.maximum(aa2, 1e-3), 0, 255)
+        sel = ca2 > SOLID_A
+        if sel.sum() < 64:
+            continue
+        px = up2[sel]
+        if len(px) > 120000:                 # 抽稀，统计量足够且省内存
+            px = px[::max(1, len(px) // 120000)]
+        pool.append(px)
+    if not pool:
+        _GRP_CACHE[group] = None
+        return None
+    allpx = np.concatenate(pool, 0)
+    lab = _srgb_to_lab(allpx.reshape(-1, 1, 3))[:, 0, :]
+    print("[attach] 组 %-10s 源统计池 %d 像素（%d 片共用一套系数）"
+          % (group, len(lab), len(pool)))
+    _GRP_CACHE[group] = lab
+    return lab
+
+
+def build_one(att, slot, redraw_dir, sprites_dir, anchors, design_dir=None,
+              table=None):
     if att.get("derive"):
         crgb, ca = derive_source(att["derive"], sprites_dir, design_dir or redraw_dir)
         bh, bw = ca.shape
@@ -470,16 +526,28 @@ def build_one(att, slot, redraw_dir, sprites_dir, anchors, design_dir=None):
                                             rm.get("palette_hex")),
                             float(rm.get("keep", 1.0)),
                             float(rm.get("l_sigma_max", 2.5)),
-                            float(rm.get("l_offset", 0.0)))
+                            float(rm.get("l_offset", 0.0)),
+                            src_lab_pool=(group_src_lab(rm["stats_group"],
+                                                        table, redraw_dir)
+                                          if rm.get("stats_group") else None))
     elif att.get("recolor"):
         ca = key_alpha(canvas, bg)
-        crgb = relay_colors(canvas, ca, att["recolor"])
+        crgb = bleed_edge(relay_colors(canvas, ca, att["recolor"]), ca)
     else:
         # 保留渐变的路径：精确 alpha + 反预乘去边。
         ca = key_alpha_soft(canvas, bg)
         aa = ca[..., None]
         crgb = canvas.astype(np.float64) - (1.0 - aa) * bg.astype(np.float64)
         crgb = np.clip(crgb / np.maximum(aa, 1e-3), 0, 255)
+        # ★★★ 2026-10-21 第二十九问：这里**必须**也抹一遍边。
+        #   以前只有 recolor_match 分支调 bleed_edge，这条「原色直通」分支没调。
+        #   反预乘在 a→0 的地方是 (观测−底色)/a，分母 0.02 就把噪声放大 40 倍，
+        #   实测长发件里躺着 rgba=(255,212,255,6) 这种像素 —— **alpha 快到 0 了，
+        #   RGB 通道却还是洋红**。它自己看不见，可是 @2x 放大（LANCZOS）和
+        #   GPU 采样都按直通 RGB 插值，洋红就被混进旁边的实心发丝里。
+        #   长发整片都是细缕、边缘占比极高 ⇒ 整条发帘泛粉。
+        #   bleed_edge 把 a<0.15 的像素颜色换成邻域实心色，alpha 一个都不动。
+        crgb = bleed_edge(crgb, ca)
 
     # ★ 内部补实（默认开）：见 harden_interior 的文档串 —— 淡紫头发会被洋红键
     #   系统性抠成半透明。个别确实要半透明的件可以写 "solid_fill": false 关掉。
@@ -522,7 +590,7 @@ def main() -> int:
                              % (att["id"], att["slot"]))
         w, h, made, cover = build_one(
             attach_geom.apply_overrides(att, _ovr), slot, redraw, sprites, anchors,
-            design_dir=os.path.join(base, "design"))
+            design_dir=os.path.join(base, "design"), table=table)
         out["attachments"].append({
             "id": att["id"], "slot": att["slot"],
             "file": "sprites/" + att["sprite"],

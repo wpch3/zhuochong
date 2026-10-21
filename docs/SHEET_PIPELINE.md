@@ -180,3 +180,22 @@ ZC_PYTHON=/tmp/imgenv/bin/python python3 tools/register_sheets.py --character xi
 
 > 腐蚀 2px（`erode(face_t,5)`）是关键：那 2px 是「发色×肤色」的抗锯齿混色，
 > 整条削掉就是沿着每根发丝镶一串白麻点。
+
+## 附：挂件姿态重铺（`tools/make_tail_poses.py`，**手动步，不在 rebuild 链里**）
+
+猫尾四档不是四张画，是**一条原画 + 三次几何重铺**（依据见 REFERENCE_NOTES 第五十一批：
+「揺らす前提ならば、尻尾はまっすぐ描いておく」）。这一步**不在** `rebuild_parts.sh` 里，
+因为它要写 `design/redraw/*.png` 和 `design/attachments.json` 这两份**入库源文件**。
+
+跑的顺序（它读写 `attachments.json`，必须排在两个 wire 之后、`make_attach_parts` 之前）：
+
+```
+python tools/wire_sheetcuts.py          # 先，会重写 hair_* 的 recolor_match
+python tools/wire_hoodcuts.py           # 次
+python tools/make_tail_poses.py         # 再，重铺三档 + 反解 pos_rel/sprite_h_rel（≈17s）
+python tools/make_attach_parts.py --character xiaoxun --form teen
+python tools/make_rig.py --character xiaoxun --form teen
+```
+
+改了姿态曲线（`th_up` / `th_puff` / `th_tuck` / `puff_scale`）之后**必须实拍四档对照**，
+别只看闸门：根部坐标全对、画面上照样可能整条藏在躯干后面（层 `hip_back`=30 在身体之后）。

@@ -80,6 +80,13 @@ by_id = {a['id']: a for a in d['attachments']}
 #   位置取两侧实测值的均值 ±，保证关于中线严格对称。
 _xl = abs(place(GEO['pieces']['hair_twin_back_l']['px'])[0])
 _xr = abs(place(GEO['pieces']['hair_twin_back_r']['px'])[0])
+BASE_MATCH = None     # 下面从 hair_long 上取一份当模板
+GRPNOTE = ('★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。')
+
+BASE_MATCH = {k: v for k, v in (by_id['hair_long'].get('recolor_match') or {}).items()
+              if k in ('ref_sprites', 'palette_hex', 'keep', 'l_sigma_max', 'l_offset')}
+assert BASE_MATCH.get('ref_sprites'), '取不到本体头发的配色参照'
+
 TWIN_X = round((_xl + _xr) / 2.0, 6)
 
 for aid, piece in REWIRE.items():
@@ -106,6 +113,11 @@ for aid, piece in REWIRE.items():
     a.pop('_slim_note', None)
     a.pop('_size_note', None)
     a.pop('_hl_note', None)
+    a.pop('_nomatch_note', None)
+    rm = dict(a.get('recolor_match') or BASE_MATCH)
+    rm['stats_group'] = 'sheet_' + piece.split('_')[1]
+    rm['grp_note'] = GRPNOTE
+    a['recolor_match'] = rm
     a['_cut_note'] = CUT_NOTE
     print('~ %-14s <- %-22s pos_rel %s  h_rel %.4f'
           % (aid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
@@ -150,8 +162,11 @@ for aid, piece in SIDE_REWIRE.items():
     a['sprite_h_rel'] = g['sprite_h_rel']
     a['width_ratio'] = 1.0
     a['_cut_note'] = CUT_NOTE
-    if ref_match_side:
-        a['recolor_match'] = ref_match_side
+    a.pop('_nomatch_note', None)
+    rm = dict(a.get('recolor_match') or BASE_MATCH)
+    rm['stats_group'] = 'sheet_long'
+    rm['grp_note'] = GRPNOTE
+    a['recolor_match'] = rm
     print('~ %-18s <- %-26s pos_rel %s  h_rel %.4f'
           % (aid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
 
@@ -210,8 +225,11 @@ for pose, label in (('twin', '双马尾'), ('pony', '高马尾')):
         a['width_ratio'] = 1.0
         a['layer'] = SWEEP_LAYER[(pose, side)]
         a['_cut_note'] = CUT_NOTE
-        if ref_match_side:
-            a['recolor_match'] = ref_match_side
+        a.pop('_nomatch_note', None)
+        rm = dict(a.get('recolor_match') or BASE_MATCH)
+        rm['stats_group'] = 'sheet_' + pose
+        rm['grp_note'] = GRPNOTE
+        a['recolor_match'] = rm
         print('~ %-18s <- %-26s pos_rel %s  h_rel %.4f'
               % (cid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
 
@@ -241,6 +259,11 @@ for pose, piece, label in CROWN:
         a['sprite_h_rel'] = g['sprite_h_rel']
         a['width_ratio'] = 1.0
         a['layer'] = CROWN_LAYER[pose]
+        a.pop('_nomatch_note', None)
+        rm = dict(a.get('recolor_match') or BASE_MATCH)
+        rm['stats_group'] = 'sheet_' + pose
+        rm['grp_note'] = GRPNOTE
+        a['recolor_match'] = rm
         a['_cut_note'] = CUT_NOTE
         print('~ %-16s <- %-24s pos_rel %s  h_rel %.4f'
               % (cid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel']))
@@ -267,8 +290,11 @@ for pose, piece, label in CROWN:
                  % label),
         ('_cut_note', CUT_NOTE),
     ])
-    if ref_match:
-        att['recolor_match'] = ref_match
+    att.pop('_nomatch_note', None)
+    _rm = dict(att.get('recolor_match') or BASE_MATCH)
+    _rm['stats_group'] = 'sheet_' + pose
+    _rm['grp_note'] = GRPNOTE
+    att['recolor_match'] = _rm
     d['attachments'].append(att)
     print('+ %-16s <- %-24s pos_rel %s  h_rel %.4f'
           % (cid, g['sprite_file'], att['pos_rel'], att['sprite_h_rel']))

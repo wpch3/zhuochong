@@ -149,7 +149,9 @@ for aid, style, piece, layer, label in HOODS:
           % (aid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel'], layer))
 
 # ---- 2) 戴帽时垂下来的头发 ----------------------------------------------------
-ref_match = by_id['hair_long'].get('recolor_match')
+BASE_MATCH = {k: v for k, v in (by_id['hair_long'].get('recolor_match') or {}).items()
+              if k in ('ref_sprites', 'palette_hex', 'keep', 'l_sigma_max', 'l_offset')}
+GRPNOTE = ('★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。')
 for aid, style, piece, layer, label in HOODHAIR:
     g = GEO['pieces'].get(piece)
     if g is None:
@@ -180,8 +182,13 @@ for aid, style, piece, layer, label in HOODHAIR:
     a['sprite_h_rel'] = g['sprite_h_rel']
     a['width_ratio'] = 1.0
     a['layer'] = layer               # ★ 压在帽壳之上：发缕是从帽口里**穿出来**的
-    if ref_match:
-        a['recolor_match'] = ref_match
+    # ★ 别写 `if ref_match:` 守卫 —— wire_sheetcuts 先跑，那边会重写
+    #   hair_long 的 recolor_match，取快照的时机对不上。栽过一次。
+    a.pop('_nomatch_note', None)
+    rm = dict(a.get('recolor_match') or BASE_MATCH)
+    rm['stats_group'] = 'sheet_' + style + '_hood'
+    rm['grp_note'] = GRPNOTE
+    a['recolor_match'] = rm
     a['_cut_note'] = NOTE
     print('~ %-14s <- %-28s pos_rel %s  h_rel %.4f  layer %d'
           % (aid, g['sprite_file'], a['pos_rel'], a['sprite_h_rel'], layer))
