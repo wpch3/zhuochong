@@ -406,8 +406,18 @@ def fill_holes(m):
     return out
 
 
-def nearest_fill(rgb, src, steps):
+def nearest_fill(rgb, src, steps, limit=None):
     """把 src 为真处的颜色向外扩散（最近邻补色），用于塗り足し。
+
+    ★★★ 2026-10-21 第二十八问新增 `limit` —— **只许往这些像素里写**。
+      没有它的时候，这个函数会把「掩膜里所有不在 `src` 的像素」统统重画一遍。
+      `src = erode(m & ~line_art, 3)`，于是**发丝之间的每一条分缕线**
+      （以及线两侧 1px 的抗锯齿）都不在 src 里 —— 实测 twin 后发件
+      **内部 10.6%（1764px，其中 304px 是线稿）被最近邻颜色糊掉了**。
+      画面上就是用户反复说的「糊」「块状」「没有流线」：原画那些干净的
+      发丝线被溶成一片平涂，边上再留一道梯级拖影。
+      塗り足し的定义本来就是「在原画**之外**补画」，不是「把原画重画一遍」，
+      所以这里改成显式给出可写区域（洞 + 件外的补边环 + 最外 1px 抗锯齿圈）。
 
     返回 `(out, have)` —— **第二个返回值是真正被填到的集合**，必须拿它去定
     塗り足し的范围，不能另外用 `dilate(src, 2*steps+1)` 圈。两者不是一回事：
@@ -421,6 +431,8 @@ def nearest_fill(rgb, src, steps):
     for _ in range(steps):
         grown = dilate(have, 3)
         new = grown & ~have
+        if limit is not None:
+            new = new & limit
         if not new.any():
             break
         acc = np.zeros_like(out)
@@ -526,8 +538,24 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #      外缘漏出一小条 —— 它们随后被 `nearest_fill` 的塗り足し当作颜色源
     #      往里扩散 40px，在件里画出一圈青色衣领和肉色手指（件在层 57/58
     #      被身体挡着，静止时看不见，**一摆动就露馅**）。
+    #    ★★★ 2026-10-21 第二十八问：核**从 9 改成 5**。
+    #       用户截图 3 里双马尾右尾整条是「横向梳齿 + 撕裂边」。把掩膜和
+    #       切片叠在模板上逐级放大看（/tmp/d_desp.png 四联图）才看明白：
+    #       `despeckle(b,k,grow)` = `dilate(开运算(b,k), grow) & b`，
+    #       k=9 的开运算会把**所有比 9px 细的东西整条抹掉**，然后只把
+    #       离幸存核心 5px 以内的那几段召回来 —— 双马尾外侧那缕**细发梢**
+    #       正好是 4~8px 宽，于是「靠近主体的几段留下、离得远的几段删掉」，
+    #       留下来的就是一排**横向齿**。实测这一条判据在 twin 上吃掉
+    #       4204px（raw 38220 → 34016），k=5 只吃 1365px，k=3 吃 71px。
+    #       这一步的本意只是滤掉套准残留 —— 那是 1~3px 的描边细带，
+    #       k=5（开运算删掉 ≤4px 细的）仍然吃掉发梢 1365px，齿还在；
+    #       **k=3 只吃 71px**，细缕完整（/tmp/d_desp_zoom.png 四联图）。
+    #       顺手复核了这一步当初的理由「不滤就整条身体边缘被当成新头发」：
+    #       把四个档位叠在模板全身图上看（/tmp/d_desp_full.png），
+    #       k=3 下**身体轮廓一条绿边都没有** —— 那条套准残留早就被
+    #       前面的 `~dilate(base_op, 5)` 挡掉了，这一步已经不承担它。
     outside = despeckle(sop & ~dilate(base_op, 5) & (yy <= kneeline)
-                        & ~teal_like(sa) & ~skin_like(sa), 9, 11)
+                        & ~teal_like(sa) & ~skin_like(sa), 3, 11)
     #    ★★ 只取"剪影之外"是**错的**，这是「拼接痕迹」的头号来源。
     #       底图剪影是**短发**的身体轮廓。双马尾/马尾垂下来的时候会压在肩膀和
     #       手臂上 —— 那一段落在剪影**之内**，于是被 `~dilate(base_op,5)` 剜掉，
@@ -864,9 +892,34 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
               | violet_like(sa)) & sop
     side = ((newpaint | hairpx) & (yy > side_top) & (yy <= side_bottom)
             & sop & ~teal_like(sa))
+    #    ★★★ 2026-10-21 第二十八问：补一条「**画在脸颊上**的发缕」。
+    #      马尾档左脸那缕横髪从鬓角 y≈167 一直垂到下颌 y≈340，**整条都在
+    #      下巴线以上**；而这里的取件窗口从 `chinline-15 = 325` 才开始，
+    #      上面的头壳件 `scalp_low` 又有一刀 `& ~face_cut` 把整张脸让了出去 ——
+    #      于是这缕头发**两头都不要**，只剩 354px 的尾巴尖，被 1200px 下限清成 0。
+    #      日志证据：`side_l 半边 354 → keep_hairy 0`；
+    #      模板证据：`/tmp/tpl_pony_head.png` 左脸颊那缕带蓝梢的发 + 鲸鱼发卡。
+    #
+    #      这一条只收「脸的地盘**里面**、而且是发色」的像素：
+    #        · 头壳件按定义不含这块（它 `& ~face_cut`），所以不会重复画；
+    #        · 眼睛/睫毛/皮肤都过不了 `hairpx`（眼蓝 r=74 过不了 r>130/110，
+    #          肤色是暖色），脸该让的照样让；
+    #        · 碎渣由后面的 `keep_hairy(min_px=1200, frac=0.50)` 收掉。
+    #      件在槽 head_side_sweep（层 247/248），正是教程说的横髪位置
+    #      「輪郭の後ろ〜両肩の前」，压在脸上本来就对。
+    cheek = (hairpx & face_cut & (yy > eyeline + 10) & (yy <= chinline + 20)
+             & sop & ~teal_like(sa))
+    log("    脸颊发缕 %d px" % int(cheek.sum()))
+    side = side | cheek
+    # ★ 2026-10-21：每一级都把像素数打出来。上一轮排查「发帘为什么只剩
+    #   四五条细带」时，只能靠猜是哪一级吃的 —— 以后直接看日志。
+    log("    side 原始 %d" % int(side.sum()))
     side = despeckle(side, 3, 7)
+    log("    side 去噪 %d" % int(side.sum()))
     side = dilate(erode(side, 5), 5)
+    log("    side 开运算 %d" % int(side.sum()))
     side = fill_holes(side) & sop
+    log("    side 补洞 %d" % int(side.sum()))
     #    ★ 件在层 249/251，压在脸上面——**绝对不许**往脸里挤。
     #      2026-10-20 第二十六问：原来这一刀是个**方框**
     #      （`(yy > chinline+60) | (|x-cx| > headw*0.42)`）：
@@ -875,7 +928,18 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     #      下面那截还在，中间空一条，就是用户第 ② 条说的「还有断发」。
     #      换成和头壳同一张 `face_cut`（模板自己的脸，erode 5 留抗锯齿边）：
     #      脸让得干干净净，脸**外面**的发缕一根不动，上下自然连成一条。
-    side = side & ~face_cut
+    #    ★★★ 2026-10-21 第二十八问：`& ~face_cut` 是**区域判据当成"包含"用**了，
+    #      而区域判据只能"排除"（LESSONS 第 268 条自己写过，这里又犯一次）。
+    #      马尾档左脸那缕横髪是画**在脸颊上**的（twin 那两缕挂在脸轮廓**外面**，
+    #      所以一直没暴露这个坑）。整张脸一刀切下去，它就只剩 **354px**，
+    #      再被 keep_hairy 的 1200px 下限清成 0 —— 用户第 4 张图「两鬓缺失」。
+    #      （证据：`/tmp/tpl_pony_head.png` 模板左脸颊明明有一缕带蓝梢的发，
+    #        上面还别着鲸鱼发卡；日志 `side_l 半边 354 → keep_hairy 0`。）
+    #      改成：**脸的地盘里只排掉"不像头发"的那些像素**。
+    #      眼睛 (74,143,212) r=74 过不了 `r>130`/`r>110`，睫毛线稿更不可能，
+    #      肤色是暖色 —— 三者都不是 `hairpx`，照样让得干干净净；
+    #      而压在脸颊上的发缕是 `hairpx`，一根不少。
+    side = side & ~(face_cut & ~hairpx)
     for key, half in (("side_l", xx < head_cx), ("side_r", xx >= head_cx)):
         #    ★★★ 2026-10-20 第二十七问：`keep_largest` → `keep_hairy`。
         #      上一版「只留最大连通块」确实清掉了夹克翻领碎片，可**顺手把
@@ -895,6 +959,8 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
         #      发帘本来就是**一整条**（`newpaint` 已经保证了连通性，
         #      见 /tmp/z_sheetdiff.png 第三格），所以只留最大的那一块。
         m = keep_hairy(side & half, hairpx, min_px=1200, frac=0.50)
+        log("      %s 半边 %d → keep_hairy %d"
+            % (key, int((side & half).sum()), int(m.sum())))
         #    ★ 2026-10-20 第二十五问：**削掉最外面那一圈近白像素**。
         #      这一支 bleed=None（不往外补），掩膜的最外圈就是件的边，
         #      而那一圈在原图上是**头发和洋红背景/白夹克的抗锯齿混色**，
@@ -909,9 +975,24 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
         #      改成**剥三圈、阈值 215**：夹克白 (248,248,245) min=245、
         #      混色 (241,230,239) min=230 都在线上；而发帘自己最淡的
         #      粉紫 (234,211,233) min=211 在线下，一根发丝都不会少。
+        #    ★★★ 2026-10-21 第二十八问：这条「剥边」在**啃真头发**。
+        #      判据是纯亮度 `min(rgb) > 215`，可头发本体的淡紫是
+        #      **(216,216,232)，min=216 —— 正好在线上面**，于是三轮下来
+        #      每条发缕四周各被剥掉 3px；细发缕直接被剥断。
+        #      把源切片铺棋盘格看（/tmp/cut_long_side_l.png）：长发那条
+        #      本该是**一整片厚发帘**（模板 /tmp/tpl_long_side.png），
+        #      实际只剩 28.2% 实体、散成四五条细带，中间全是洞 ——
+        #      这就是用户第 2 张图说的「缝隙」。
+        #      改判**色相**而不是亮度：要剥的是「头发↔白夹克/洋红」的抗锯齿
+        #      混色，那些像素是**中性**的（夹克白 248,248,245 → b−r=−3；
+        #      混色 241,230,239 → b−r=−2）；真头发是**偏蓝**的
+        #      （216,216,232 → b−r=+16；蓝梢 159,196,232 → +73）。
+        #      所以只剥「又白又中性」的那一圈，头发一根不少。
+        rr, gg, bb = sa[..., 0], sa[..., 1], sa[..., 2]
+        neutral = np.abs(bb - rr) < 10
         for _ in range(3):
             rim = m & ~erode(m, 3)
-            m = m & ~(rim & (sa.min(axis=2) > 215))
+            m = m & ~(rim & (sa.min(axis=2) > 215) & neutral)
         #    件太小就干脆不要：扎发那两档某一侧压根没有前发，
         #    勉强切出来的那点东西全是衣领碎渣。
         #    ★ 2026-10-20 下限 8000 → 6000：新口径下这一件是**干净的纯头发**，
@@ -919,7 +1000,25 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
         #      （long 实测 16769/17209 全过）。现在实测
         #      twin 13666/13432、pony 0/37358、long 47076/47408，
         #      pony 左侧为 0 是对的——马尾只垂在一边。
-        out[key] = m if m.sum() >= 6000 else np.zeros_like(m)
+        #
+        #    ★★★ 2026-10-21 第二十八问：**上面最后那句话是错的，而且是我自己
+        #      拍脑袋写进注释、再也没去核对过的。** 用户第 4 张图说马尾档
+        #      「两鬓缺失」，我把 `sheet_pony.png` 的头部放大看了
+        #      （/tmp/tpl_pony_head.png）：左脸颊**明明垂着一缕横髪**，
+        #      从鬓角到下颌、梢上还带蓝，上面还别着那枚鲸鱼发卡。
+        #      它只是**比右边那条短**（右边连着马尾本体 208x601），
+        #      于是被 6000px 这条"大小闸"整条丢掉 —— 画面上就是左脸光秃秃。
+        #
+        #      6000 这个数当初是用来拦夹克碎渣的，可拦碎渣的活**已经由
+        #      `keep_hairy`（逐块量发色占比 0.94~0.98 vs 0.0~0.3）接管了**，
+        #      再用面积一刀切就只剩误伤。所以这里只留一条和 keep_hairy
+        #      同量级的兜底（1200px = 一小撮头发的量），并且**把真实面积打出来**，
+        #      下次再有人想改这个数，先看日志里的数，别猜。
+        n = int(m.sum())
+        log("      %s 剥边后 %d（keep_hairy 之后、剥边之前见上一行）" % (key, n))
+        keep = n >= 1200
+        log("    %-9s 发缕面积 %6d px → %s" % (key, n, "留" if keep else "太小，丢"))
+        out[key] = m if keep else np.zeros_like(m)
 
     # ⑤ 头顶：**用几何圈区域、区域内全取**，同样不加颜色判据。
     #    颜色判据在这里必败 —— 头顶高光是成片的近中性色带（不是细缝），
@@ -1039,7 +1138,9 @@ def emit_piece(pid, mask, sa, redraw, bbox, scale, unit, anchors, bleed_into=Non
             while probe.any() and rad < 200:
                 probe = erode(probe, 3)
                 rad += 1
-            rgb, _ = nearest_fill(sa, src, rad + 8)
+            # ★ 2026-10-21：`limit=dirty` —— 只重画**杂物本身**那几个像素。
+            #   原来不带 limit，等于顺手把件里所有发丝线也一起糊掉了。
+            rgb, _ = nearest_fill(sa, src, rad + 8, limit=dirty)
             log("    %s 杂物重画 %d px（最深 %d px）" % (pid, int(dirty.sum()), rad))
     if bleed_into is not None:
         # 塗り足し：往身体内侧长 BLEED px，补上最近邻颜色。
@@ -1069,8 +1170,15 @@ def emit_piece(pid, mask, sa, redraw, bbox, scale, unit, anchors, bleed_into=Non
                 probe = erode(probe, 3)
                 rad += 1
             steps = max(steps, rad + 8)
-        rgb, filled = nearest_fill(rgb, src, steps)
-        m = holed | (filled & bleed_into)
+        # ★★★ 2026-10-21 第二十八问：可写区域 = 洞 + 件**外**的补边环
+        #   + 件最外 1px 的抗锯齿圈。件的**内部一个像素都不许动** ——
+        #   那是画师画好的发丝线，糊掉它就等于把原画改坏。
+        rim = m & ~erode(m, 3)
+        paint = holes | (bleed_into & ~m) | rim
+        rgb, filled = nearest_fill(rgb, src, steps, limit=paint)
+        # `filled` 现在只含被真正填过色的像素，所以并上原掩膜再跟补边环相交，
+        # 既保证补边环长满，又不会把没填到色（还留着原图背景）的角落算进来。
+        m = holed | ((filled | m) & bleed_into)
 
     ys, xs = np.nonzero(m)
     x0, x1, y0, y1 = int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
@@ -1218,6 +1326,21 @@ def main() -> int:
                 bleed = dilate(mk, 9)
             else:
                 bleed = dilate(base_op, 3)
+            if bleed is not None:
+                # ★★★ 2026-10-21 第二十八问：塗り足し**只许长在模板上画了东西
+                #   的那一侧**（`sop`），朝背景的那一侧一个像素都不许加。
+                #
+                #   のりしろ的定义（shiroikarasu 2026 版、technoart part21）是
+                #   「パーツの輪郭を隣のパーツの**下へ**少し潜り込ませる」——
+                #   它补的是**会被别的件盖住**的那一截。朝着背景的自由轮廓
+                #   后面什么都没有，往那边长 4px 不但没用，还有两个副作用：
+                #     ① `dilate` 用的是**方核**，一条斜边膨胀出来就是 4px 一格的
+                #        **硬台阶** —— 用户截图 3 里双马尾那排「横向梳齿」，
+                #        三分之二来自这里（/tmp/d_ring.png 三联图：
+                #        模板 / 全向补边 / 只补被盖住的一侧，第三张边缘干净）；
+                #     ② 原画的描线被推到里面去，轮廓线和剪影错开，发缕看着肿。
+                #   实测 twin 后发件 26860px → 20994px，少掉的全是这圈虚胖。
+                bleed = bleed & sop
             info = emit_piece(pid, mk, sa, redraw, bbox, scale, unit, anchors, bleed,
                               bad=masks.get("_bad"))
             if info is None:

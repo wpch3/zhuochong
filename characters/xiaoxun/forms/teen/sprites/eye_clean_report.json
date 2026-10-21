@@ -3,13 +3,13 @@
   "body": [
     {
       "file": "seg_torso.png",
-      "removed_px": 1103,
+      "removed_px": 1165,
       "total_px": 108363
     },
     {
       "file": "seg_head.png",
-      "removed_px": 3444,
-      "total_px": 28942
+      "removed_px": 2039,
+      "total_px": 29038
     }
   ],
   "keep_ellipse": [

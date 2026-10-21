@@ -959,9 +959,9 @@
       "unit": "head",
       "pos_rel": [
         0.024652,
-        -0.019061
+        -0.008699
       ],
-      "sprite_h_rel": 3.3676,
+      "sprite_h_rel": 3.346876,
       "pose_group": "hairstyle",
       "pose_id": "long",
       "recolor_match": {
@@ -1076,10 +1076,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        -0.618833,
-        0.365735
+        -0.612437,
+        0.379551
       ],
-      "sprite_h_rel": 1.612994,
+      "sprite_h_rel": 1.585362,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1192,10 +1192,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.618833,
-        0.365735
+        0.612437,
+        0.379551
       ],
-      "sprite_h_rel": 1.612994,
+      "sprite_h_rel": 1.585362,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1337,10 +1337,10 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.504367,
-        -0.085197
+        0.561933,
+        -0.048611
       ],
-      "sprite_h_rel": 3.080922,
+      "sprite_h_rel": 3.042929,
       "recolor_match": {
         "ref_sprites": [
           "hair_back.png",
@@ -1461,7 +1461,7 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.021454,
+        0.019855,
         0.139821
       ],
       "sprite_h_rel": 0.977467,
@@ -1503,7 +1503,7 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.187755,
+        0.190953,
         0.133169
       ],
       "sprite_h_rel": 0.984375,
@@ -1545,7 +1545,7 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.021454,
+        0.024652,
         0.133169
       ],
       "sprite_h_rel": 0.984375,
