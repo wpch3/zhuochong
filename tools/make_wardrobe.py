@@ -197,6 +197,34 @@ def shift(src_path, out_path, pairs, tol):
     return int(hit.sum()), int((al > 0).sum())
 
 
+def cap_from_torso(src_path, out_path, pairs, tol, torso_path, off):
+    """肩の関節パーツ（arm_*_cap）的换装：它一件里有两种布。
+
+    肩帽是从原画整片切下来的，**71% 是外套（白）、25% 是袖子（青）**。
+    袖子那部分按和 arm_*_upper 一样的映射换色就行；外套那部分不能留着白 ——
+    midnight 套装的外套在肩部是 (60,78,122) 深藏青，白帽子会变成一块肩章。
+    外套那部分的几何和 `seg_torso` **完全重合**（同一张原画切的），
+    所以直接去**这一套自己的躯干**同位置取色，颜色、明暗、褶皱全都跟着换装走。
+    """
+    hit, tot = shift(src_path, out_path, pairs, tol)
+    cap = np.asarray(Image.open(out_path).convert("RGBA")).astype(int)
+    rgb, al = cap[..., :3].copy(), cap[..., 3]
+    tor = np.asarray(Image.open(torso_path).convert("RGBA")).astype(int)
+    H, W = al.shape
+    oy, ox = int(off[1]), int(off[0])
+    sub = np.zeros((H, W, 4), int)
+    sy0, sx0 = max(0, oy), max(0, ox)
+    sy1, sx1 = min(tor.shape[0], oy + H), min(tor.shape[1], ox + W)
+    if sy1 > sy0 and sx1 > sx0:
+        sub[sy0 - oy:sy1 - oy, sx0 - ox:sx1 - ox] = tor[sy0:sy1, sx0:sx1]
+    # 「外套那部分」= 原件里接近白的像素（默认套装的外套就是白的）
+    src0 = np.asarray(Image.open(src_path).convert("RGBA")).astype(int)
+    jacket = (al > 0) & (src0[..., :3].min(axis=2) > 170) & (sub[..., 3] > 128)
+    rgb[jacket] = sub[..., :3][jacket]
+    Image.fromarray(np.dstack([rgb, al]).astype(np.uint8), "RGBA").save(out_path)
+    return hit, tot, int(jacket.sum())
+
+
 def hexrgb(h):
     return [int(h[i:i + 2], 16) for i in (1, 3, 5)]
 
@@ -267,6 +295,21 @@ def main() -> int:
                     float(spec.get("shrink_max", 0.06)))
                 print(f"[衣柜] {ot['id']}/{pid:<14} {spec['mode']:<7} "
                       f"IoU={iou:.4f} 外长={grow:.1%} 内缩={shrink:.1%}")
+            elif spec["mode"] == "cap":
+                pairs = [(hexrgb(x["from"]), hexrgb(x["to"])) for x in spec["map"]]
+                tor = os.path.join(sub, "seg_torso@2x.png")
+                if not os.path.exists(tor):
+                    raise SystemExit(f"[衣柜] {pid} 要先有本套的 seg_torso@2x.png"
+                                     f"（把 seg_torso 排在 {pid} 前面）")
+                bp = byid[pid]["pos"] if pid in byid else None
+                tp2 = byid["seg_torso"]["pos"]
+                if bp is None:
+                    raise SystemExit(f"[衣柜] rig 里没有 {pid}")
+                off = ((bp[0] - tp2[0]) * 2, (bp[1] - tp2[1]) * 2)
+                hit, tot, jk = cap_from_torso(src, dst, pairs, float(spec.get("tol", tol)),
+                                              tor, off)
+                print(f"[衣柜] {ot['id']}/{pid:<14} 关节帽 袖色命中 {hit}/{tot}"
+                      f" = {hit / tot * 100:.0f}%，外套 {jk} px 取自本套躯干")
             elif spec["mode"] == "shift":
                 pairs = [(hexrgb(x["from"]), hexrgb(x["to"])) for x in spec["map"]]
                 hit, tot = shift(src, dst, pairs, float(spec.get("tol", tol)))

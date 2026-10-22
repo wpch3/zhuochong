@@ -32,8 +32,8 @@
       "seam": 3600
     },
     "long/down/-12": {
-      "holes": 3612,
-      "seam": 3612
+      "holes": 3611,
+      "seam": 3611
     },
     "long/down/+12": {
       "holes": 3481,
@@ -52,52 +52,52 @@
       "seam": 3472
     },
     "twin/down/+0": {
-      "holes": 3866,
-      "seam": 3866
+      "holes": 3853,
+      "seam": 3853
     },
     "twin/down/-12": {
-      "holes": 4517,
-      "seam": 4517
+      "holes": 4500,
+      "seam": 4500
     },
     "twin/down/+12": {
-      "holes": 3815,
-      "seam": 3815
+      "holes": 3793,
+      "seam": 3793
     },
     "twin/up/+0": {
-      "holes": 4423,
-      "seam": 4423
+      "holes": 4402,
+      "seam": 4402
     },
     "twin/up/-12": {
-      "holes": 4423,
-      "seam": 4423
+      "holes": 4402,
+      "seam": 4402
     },
     "twin/up/+12": {
-      "holes": 4423,
-      "seam": 4423
+      "holes": 4402,
+      "seam": 4402
     },
     "pony/down/+0": {
-      "holes": 2822,
-      "seam": 2822
+      "holes": 2828,
+      "seam": 2828
     },
     "pony/down/-12": {
-      "holes": 3638,
-      "seam": 3638
+      "holes": 3626,
+      "seam": 3626
     },
     "pony/down/+12": {
-      "holes": 4904,
-      "seam": 3598
+      "holes": 4897,
+      "seam": 3591
     },
     "pony/up/+0": {
-      "holes": 3556,
-      "seam": 3556
+      "holes": 3529,
+      "seam": 3529
     },
     "pony/up/-12": {
-      "holes": 3556,
-      "seam": 3556
+      "holes": 3529,
+      "seam": 3529
     },
     "pony/up/+12": {
-      "holes": 3556,
-      "seam": 3556
+      "holes": 3529,
+      "seam": 3529
     },
     "none/down/+0/-acc_hair_crown_twin+acc_hair_crown_pony+acc_hair_crown_long+acc_hair_twin_l+acc_hair_twin_r+acc_hair_pony+acc_hair_long+acc_hair_sidelong_l+acc_hair_sidelong_r": {
       "holes": 2833,
@@ -112,12 +112,12 @@
       "seam": 3600
     },
     "twin/down/+0/-hair_back+hair_side_l+hair_side_r+hair_front+acc_hood_up": {
-      "holes": 3866,
-      "seam": 3866
+      "holes": 3853,
+      "seam": 3853
     },
     "pony/down/+0/-hair_back+hair_side_l+hair_side_r+hair_front+acc_hood_up": {
-      "holes": 2822,
-      "seam": 2822
+      "holes": 2828,
+      "seam": 2828
     }
   },
   "filled_px": 2378,

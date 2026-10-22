@@ -7,8 +7,8 @@
  "realesrgan": 68,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 50,
- "seconds": 57.2,
+ "keycolor_fixed": 36,
+ "seconds": 57.4,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -710,7 +710,7 @@
     1836
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 6
+   "keycolor_fixed": 5
   },
   {
    "name": "hair_pony_back.png",
@@ -723,7 +723,7 @@
     1686
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 3
+   "keycolor_fixed": 1
   },
   {
    "name": "hair_side_l.png",
@@ -983,7 +983,7 @@
     1000
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 12
+   "keycolor_fixed": 1
   }
  ],
  "note": "切件链不改坐标，这一步只换像素密度；make_rig 发现 @2x 就把 scale 乘 0.5"

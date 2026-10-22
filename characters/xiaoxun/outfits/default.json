@@ -7,6 +7,9 @@
   ],
   "note": "★ 由 tools/make_wardrobe.py 自动生成，不要手改。只列「别的服装会动到的部件」的原始贴图，用来换回原装。",
   "parts": {
+    "arm_l_cap": {
+      "file": "sprites/arm_l_cap@2x.png"
+    },
     "arm_l_fore": {
       "file": "sprites/arm_l_fore@2x.png"
     },
@@ -15,6 +18,9 @@
     },
     "arm_l_upper": {
       "file": "sprites/arm_l_upper@2x.png"
+    },
+    "arm_r_cap": {
+      "file": "sprites/arm_r_cap@2x.png"
     },
     "arm_r_fore": {
       "file": "sprites/arm_r_fore@2x.png"

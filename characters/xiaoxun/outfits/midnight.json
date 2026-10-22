@@ -45,6 +45,12 @@
     },
     "seg_foot_r_tip": {
       "file": "sprites/outfit_midnight/seg_foot_r_tip@2x.png"
+    },
+    "arm_l_cap": {
+      "file": "sprites/outfit_midnight/arm_l_cap@2x.png"
+    },
+    "arm_r_cap": {
+      "file": "sprites/outfit_midnight/arm_r_cap@2x.png"
     }
   }
 }
