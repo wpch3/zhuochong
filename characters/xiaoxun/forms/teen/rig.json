@@ -3821,22 +3821,22 @@
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 5.2778,
-          "dur": 0.5,
+          "amp": 3.0556,
+          "dur": 0.45,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 3.8889,
-          "dur": 0.75,
+          "amp": 7.7222,
+          "dur": 0.7,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "sine",
-          "amp": -0.6111,
-          "freq": 2.0,
+          "amp": -0.2778,
+          "freq": 1.6,
           "dur": 2.4
         },
         {
@@ -3863,8 +3863,8 @@
         {
           "target": "ParamHandR",
           "wave": "pulse",
-          "amp": 0.3636,
-          "dur": 1.6,
+          "amp": -0.9545,
+          "dur": 0.9,
           "ease": "out"
         },
         {
