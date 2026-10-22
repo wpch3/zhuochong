@@ -66,7 +66,7 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                has_blend=False, has_side=False, has_legs=False,
                body_id="seg_torso", has_eyeballs=False, foot_lift=None,
                star_eyes=None, fx_table=None, hand_forms=None,
-               crease_parts=()):
+               crease_parts=(), slim_parts=()):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -387,6 +387,19 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
             return [{"part": part_id, "param": "alpha",
                      "scale": 0.25, "offset": -1.0}]
 
+        # ★★★ Q45：前臂「折起时收窄」的网格形变器（ワープデフォーマ）。
+        #   用户第四十五问放大图：挥手时前臂是「吊在袖口下面的一只大拳套」。
+        #   分件染色实拍（logs/asset_qa/q45_tint.png，前臂染红/上臂染蓝）坐实：
+        #     前臂件 116 长 × 75 宽（1.55:1，参考图是 150×55 = 2.7:1），
+        #     肘内角 32° 时两根管子的轴线间距只有 34px，而两件半宽加起来 80px
+        #     ⇒ **前臂整条盖在上臂上**（上臂只剩 1151px 可见），必然糊成一坨。
+        #   几何病要用几何治：折肘时把前臂按轴线**横向收窄**（肘端 0%、袖口 17%），
+        #   肘关节那一行一个像素都不动（要和上臂末端的正圆严丝合缝）。
+        def fore_slim(part_id):
+            if part_id not in (slim_parts or ()):
+                return []
+            return [{"deformer": part_id + "_slim", "scale": 1.0}]
+
         out += [
             {"id": "ParamArmLA", "label": "左臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 18.0}]
@@ -421,6 +434,28 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                      "**任何角度都缩在袖口里**，所以大角度也不会露腕"},
             {"id": "ParamHandR", "label": "右手腕", "min": -3.2, "max": 3.2, "default": 0.0,
              "binds": [{"group": "hand_r", "param": "rot_deg", "scale": -22.0}]},
+            # ★★★ Q45：单侧抬肩。ParamShoulderY 是**双肩共用**（binds 里 arm_l/arm_r/chest
+            #   各一条）而且量程只够 ±8px，挥手要抬的是**举手那一侧**、幅度 26px，
+            #   所以单开一个。为什么需要它：我们这张原画是「大头短臂」——
+            #   整条臂只有 1.0 个头高（参考图 1.6 个），肘贴着身子时手最高只能到肩高。
+            #   真人举手打招呼时同侧肩本来就会上提（waterarena「抬手侧肩要略上抬」），
+            #   抬 26px（0.1 头高）就把手送到了下巴—锁骨之间，肘还留在身侧。
+            #   肩帽 arm_*_cap 挂在 chest 组上、不跟着抬 ⇒ 肩窝不会露（实拍 q45_lift.png）。
+            {"id": "ParamShoulderRY", "label": "右肩 上提", "min": -10.0, "max": 10.0,
+             "default": 0.0,
+             "binds": [{"group": "arm_r", "param": "dy", "scale": -3.0}],
+             "note": "只抬右肩，±10 → ±30px；双肩一起抬仍然走 ParamShoulderY"},
+            {"id": "ParamShoulderLY", "label": "左肩 上提", "min": -10.0, "max": 10.0,
+             "default": 0.0,
+             "binds": [{"group": "arm_l", "param": "dy", "scale": -3.0}]},
+            # ★★★ Q45：前臂收窄（见上面 fore_slim 的注释）。0 = 原件，1 = 收窄到位。
+            #   为什么**不**直接绑肘角 ParamArmRB：heart_hands 的肘角是**负的**
+            #   （−7.28），绑上去会让它反过来变胖。折肘的动作自己点名要收窄最稳妥。
+            {"id": "ParamForeSlimR", "label": "右前臂 收窄", "min": 0.0, "max": 1.5,
+             "default": 0.0, "binds": fore_slim("arm_r_fore"),
+             "note": "折肘时前臂横向收窄（肘端不动、袖口收 17%），避免前臂压在上臂上糊成一坨"},
+            {"id": "ParamForeSlimL", "label": "左前臂 收窄", "min": 0.0, "max": 1.5,
+             "default": 0.0, "binds": fore_slim("arm_l_fore")},
         ]
     else:
         out += [
@@ -2269,15 +2304,45 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 #   取 **38°**：上臂基本贴着身体垂下、肘只探出 36px（袖子自身就有
                 #   半个身宽的厚度，视觉上就是"肘贴着腰"），手指仍能抬到下巴旁边。
                 #   （再往下压到 30° 肘是进去了，但前臂整条压在上臂上成了"双筒袖"。）
-                # 肩：抬到 A_u=38°（命令 15−38 = −23）。近端先动、行程短 ⇒ dur 最短。
+                # ★★★ Q45（第四十五问）又被打回：用户放大图里挥手的右臂是
+                #   「吊在袖口下面的一只大拳套，外加一根像断了的杆」。
+                #
+                #   这次是**分件染色实拍**查出来的（前臂红 / 上臂蓝 / 肩帽黄，
+                #   logs/asset_qa/q45_tint.png、q45_pieces.png）：
+                #     · 前臂件本身是「胖袖筒 + 条纹袖口」，116 长 × 75 宽 = 1.55:1
+                #       （参考图的前臂是 150 × 55 = 2.7:1）
+                #     · Q44 的肘内角 32° ⇒ 两根管子的轴线间距只有 34px，
+                #       而两件半宽加起来 80px ⇒ 前臂整条盖在上臂上，
+                #       上臂只剩 1151px 可见 —— 那根"断了的杆"就是被压剩的上臂
+                #     · 肘端的正圆（r=34.8）连着袖口一起吊在下面 = "拳套"
+                #   ⇒ 结论：**这张原画的袖子太粗，32° 的窄 V 物理上读不出来**。
+                #
+                #   三处一起改（张开 + 收窄 + 抬肩，logs/asset_qa/q45_grid.png 实拍选型）：
+                #     ① 肘内角 32° → **48°**（A_u=34 / A_f=166）：扫描实测上臂可见
+                #        像素 1151 → 1656，前臂不再压在上臂上
+                #     ② 前臂沿轴线收窄 17%（ParamForeSlimR + arm_r_fore_slim 形变器）
+                #     ③ 同侧肩上提 26px（ParamShoulderRY）把手送到下巴—锁骨之间
+                #   选型实测（lift=−26、内角 48°）：
+                #       A_u=28 → 肘出躯干 +10px / 腕 y=472
+                #       A_u=34 → 肘出躯干 **+28px（0.12 头宽）** / 腕 y=460  ← 取这档
+                #       A_u=40 → 肘出躯干 +45px / 腕 y=448
+                #   参考图自己的肘也离身 0.29 头宽，我们这档比参考还贴身，
+                #   既满足「肘不许甩出躯干外」，又把手抬到了脸下方。
+                # 肩：抬到 A_u=34°（命令 15−34 = −19）。近端先动、行程短 ⇒ dur 最短。
                 {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -23.0, "dur": 0.45, "ease": "out"},
-                # 肘：折到 A_f=186°（命令 38−186 = −148）= 内角 32°，前臂竖起来。
+                 "amp": -19.0, "dur": 0.45, "ease": "out"},
+                # 同侧肩上提 26px（8.67 × 3.0），和上臂同时起步。
+                {"target": "ParamShoulderRY", "wave": "pulse",
+                 "amp": 8.67, "dur": 0.45, "ease": "out"},
+                # 前臂收窄：和折肘同一条时间曲线（dur 0.70），折到位就窄到位。
+                {"target": "ParamForeSlimR", "wave": "pulse",
+                 "amp": 1.0, "dur": 0.70, "ease": "out"},
+                # 肘：折到 A_f=166°（命令 34−166 = −132）= 内角 48°，前臂斜竖起来。
                 # 参考图 wave_up.png 量出来的肘内角就是 26°（肩(500,310)-肘(566,470)-
                 # 腕(576,320)）—— 教科书式挥手本来就是"把前臂几乎折回来贴着上臂"。
                 # dur 比肩长 = 慢半拍（saraemi「末端は遅れる」）。
                 {"target": "forearm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -148.0, "dur": 0.70, "ease": "out"},
+                 "amp": -132.0, "dur": 0.70, "ease": "out"},
                 # 前臂只做很小的摆（±5°）：近距离打招呼主行程在**手腕**，
                 # 前臂大摆会把手甩离脸侧，又变回"大幅挥"。
                 {"target": "forearm_r", "param": "rot_deg", "wave": "sine",
@@ -3019,7 +3084,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         hand_forms=hand_forms,
                         crease_parts=tuple(
                             p["id"] for p in (armp or {}).get("parts", [])
-                            if p["id"].endswith("_crease")))
+                            if p["id"].endswith("_crease")),
+                        # Q45：有前臂件才有收窄形变器（上面 rig["deformers"] 那段
+                        # 和这里用的是同一个判据：arm_?_fore + hand_? 都在）
+                        slim_parts=tuple(
+                            "arm_%s_fore" % s for s in ("l", "r")
+                            if any(p["id"] == "arm_%s_fore" % s
+                                   for p in (armp or {}).get("parts", []))
+                            and any(p["id"] == "hand_%s" % s
+                                    for p in (armp or {}).get("parts", []))))
     PARAM_IDS = {q["id"] for q in PARAMS}
     # ★ Q36：裙摆/外套下摆这两个参数是在**本函数后半段**（里布、下摆模块）才
     #   append 进去的，可动作表在这里就要校验。素材在 = 参数一定会生成，
@@ -3519,6 +3592,51 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                                        has_star=bool(star_eyes)),
     }
 
+
+    # —— 前臂「折起时收窄」网格形变器（Q45，A5 = ワープデフォーマ）——
+    # 为什么要收窄：见 param_list() 里 fore_slim() 的注释（前臂 1.55:1 太粗，
+    # 折起来整条压在上臂上）。做法是沿**前臂自己的轴线**（肘→腕这条线，不是图片
+    # 中心线）按行横向压缩：
+    #     r=0 肘关节     0%   —— 必须和上臂末端的正圆严丝合缝，一个像素都不能动
+    #     r=1           10%
+    #     r=2           15%   —— 最窄处在前臂中段（真人的前臂也是这里最细）
+    #     r=3           12%
+    #     r=4 袖口       6%   —— **袖口几乎不缩**：手件往袖子里续的腕柄半对角 20.6px
+    #                            只比袖口半宽 22.5px 小 2px，缩多了腕柄就从袖口左边
+    #                            探出来变成一条白边（10× 实拍 q45_cuff.png 验过）。
+    #   压缩中心取**该行的肘→腕轴线**（不是图片中心线）：手是另一组、不跟着缩，
+    #   轴心对不齐的话袖口会横着甩开，手看上去就和袖子错位。
+    # 控制点位移写的是**源素材（@2x）像素**，引擎按 src->w/img->w 自动折算。
+    if armp:
+        _fore_f = (0.0, 0.10, 0.15, 0.12, 0.06)
+        _apart = {q["id"]: q for q in armp.get("parts", [])}
+        for _side in ("l", "r"):
+            _fp = _apart.get("arm_%s_fore" % _side)
+            _hp = _apart.get("hand_%s" % _side)
+            if not _fp or not _hp:
+                continue
+            _px, _py = _fp["pos"]
+            _w1, _h1 = _fp["size"]
+            _ex, _ey = _fp["pivot"][0] - _px, _fp["pivot"][1] - _py   # 肘（局部 1x）
+            _wx, _wy = _hp["pivot"][0] - _px, _hp["pivot"][1] - _py   # 腕（局部 1x）
+            if abs(_wy - _ey) < 1e-6:
+                continue
+            _slope = (_wx - _ex) / (_wy - _ey)
+            _pts = []
+            for _r, _f in enumerate(_fore_f):
+                if _f <= 0.0:
+                    continue
+                _cx2 = 2.0 * (_ex + (_h1 * _r / 4.0 - _ey) * _slope)  # 该行轴线 x（@2x）
+                for _c in range(3):
+                    _dx = (_cx2 - (2.0 * _w1) * _c / 2.0) * _f
+                    if abs(_dx) > 0.05:
+                        _pts.append({"c": _c, "r": _r, "dx": round(_dx, 2)})
+            rig["deformers"].append(
+                {"id": "arm_%s_fore_slim" % _side, "part": "arm_%s_fore" % _side,
+                 "cols": 2, "rows": 4,
+                 "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；"
+                         "0 = 原件，静止画面零改动",
+                 "points": _pts})
 
     # —— 侧发/后发的网格形变器与摆链（A5 + G16）——
     # 侧发是两条“根在上、梢在下”的长条：r=0 是素材顶边（发根，固定），

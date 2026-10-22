@@ -96,6 +96,8 @@ I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉
 | `ParamHandLHeart` / `ParamHandRHeart` | 手的「比心」差分，同上。手指围出的心形是**负空间**，只能换贴图 |
 | `ParamHipL` / `ParamHipR` | 髋关节绕骨盆的**真旋转**（`leg_*` 组 `rot_deg`）。标准表的 `ParamLegL/R` 在本项目是"裙下大腿 bend"，两者不是一回事：没有这条，腿永远只能弯不能抬 |
 | `ParamAnkleL` / `ParamAnkleR` | 踝关节跖屈 / 背屈（`foot_*` 组 `rot_deg`）。跳跃的蹬地绷脚尖、落地勾脚吃冲击都靠它 |
+| `ParamShoulderRY` / `ParamShoulderLY` | **单侧**抬肩（`arm_?` 组 `dy`，±10 → ±30px）。标准表的 `ParamShoulderY` 是双肩共用的（三条 bind：两臂 + 胸），量程也只够 ±8px；举手打招呼抬的是举手那一侧、26px。为什么需要：这张原画是「大头短臂」——整条臂只有 1.0 个头高（参考图 1.6 个），肘贴着身子时手最高只能到肩高，抬肩才把手送到下巴旁 |
+| `ParamForeSlimR` / `ParamForeSlimL` | 前臂「折肘时收窄」（ワープデフォーマ `arm_?_fore_slim`，2×4 网格）。袖子原画是 116×75 = 1.55:1 的胖筒（参考图的前臂是 2.7:1），肘内角小于 ~45° 时两根管子的轴线间距小于两件半宽之和 ⇒ 前臂整条盖住上臂。沿**肘→腕轴线**逐行横向压缩（肘端 0%、中段 15%、袖口 6%），肘关节那一行一个像素不动（要和上臂末端的正圆严丝合缝），袖口几乎不缩（腕柄半对角 20.6px 只比袖口半宽小 2px）|
 | `ParamTiptoe` | 踮脚。`root.dy` 上提 7px + 两腿 `curve:"tip"`（顶固定、底最大，作用在脚踝）收 5px。裙摆下沿不动所以不露底 |
 | `ParamHairAhoge` / `ParamHairAhogeS` | 标准只有 Front/Side/Back/Fluffy，呆毛是这个角色的招牌 |
 | `ParamHairSideS` | 侧发的 S 形（FFD），和整体摆动分开 |

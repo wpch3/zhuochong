@@ -619,6 +619,17 @@ L2D_EXTENSIONS = {
     "ParamHipR": "同上，右髋",
     "ParamAnkleL": "左踝跖屈/背屈（绷脚尖 / 勾脚）。跳跃的蹬地和落地缓冲靠它",
     "ParamAnkleR": "同上，右踝",
+    # ---- Q45 手臂姿势（第四十五问：挥手被判「袖口下吊着一只大拳套」）----
+    "ParamShoulderRY": "右肩单侧上提。标准表的 ParamShoulderY 是**双肩共用**"
+                       "（binds 里 arm_l/arm_r/chest 各一条）且量程只够 ±8px，"
+                       "而举手打招呼抬的是举手那一侧、幅度 26px。"
+                       "真人抬手时同侧肩本来就上提（waterarena 挥手作画口径）",
+    "ParamShoulderLY": "同上，左肩",
+    "ParamForeSlimR": "右前臂『折肘时收窄』（网格形变器 arm_r_fore_slim）。"
+                      "这张原画的袖子是 1.55:1 的胖筒，肘一折前臂就整条压在上臂上"
+                      "糊成一坨；沿肘→腕轴线横向收窄 15%（肘端 0%、袖口 6%）"
+                      "就能把两根管子分开。0 = 原件，静止画面零改动",
+    "ParamForeSlimL": "同上，左前臂",
     "ParamStarEye": "星星眼总闸（常态虹膜淡出↔星形虹膜淡入 + 放行画面上的 ✨）",
     "ParamMouthX": "嘴左右（单边嘴角）。不是 Live2D 标准表的名字，是 Animaze《复杂口角"
                    "形状的模型制作方法》扩展表里的 ID，口径=嘴整体左右偏 + 顺带抬起那侧嘴角。"

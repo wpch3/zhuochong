@@ -3863,14 +3863,28 @@
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 1.2778,
+          "amp": 1.0556,
           "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamShoulderRY",
+          "wave": "pulse",
+          "amp": 8.67,
+          "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamForeSlimR",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.7,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 8.2222,
+          "amp": 7.3333,
           "dur": 0.7,
           "ease": "out"
         },
@@ -4916,6 +4930,144 @@
           "c": 2,
           "r": 3,
           "dx": -1.5
+        }
+      ]
+    },
+    {
+      "id": "arm_l_fore_slim",
+      "part": "arm_l_fore",
+      "cols": 2,
+      "rows": 4,
+      "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；0 = 原件，静止画面零改动",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 9.14
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 1.14
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": -6.86
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 11.66
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": -0.34
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": -12.34
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": 7.69
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": -1.91
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": -11.51
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": 3.02
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": -1.78
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": -6.58
+        }
+      ]
+    },
+    {
+      "id": "arm_r_fore_slim",
+      "part": "arm_r_fore",
+      "cols": 2,
+      "rows": 4,
+      "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；0 = 原件，静止画面零改动",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 7.4
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": -1.4
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": -10.2
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 13.66
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 0.46
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": -12.74
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": 12.97
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 2.41
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": -8.15
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": 7.51
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 2.23
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": -3.05
         }
       ]
     },
@@ -7510,6 +7662,62 @@
           "group": "hand_r",
           "param": "rot_deg",
           "scale": -22.0
+        }
+      ]
+    },
+    {
+      "id": "ParamShoulderRY",
+      "label": "右肩 上提",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "arm_r",
+          "param": "dy",
+          "scale": -3.0
+        }
+      ],
+      "note": "只抬右肩，±10 → ±30px；双肩一起抬仍然走 ParamShoulderY"
+    },
+    {
+      "id": "ParamShoulderLY",
+      "label": "左肩 上提",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "arm_l",
+          "param": "dy",
+          "scale": -3.0
+        }
+      ]
+    },
+    {
+      "id": "ParamForeSlimR",
+      "label": "右前臂 收窄",
+      "min": 0.0,
+      "max": 1.5,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "arm_r_fore_slim",
+          "scale": 1.0
+        }
+      ],
+      "note": "折肘时前臂横向收窄（肘端不动、袖口收 17%），避免前臂压在上臂上糊成一坨"
+    },
+    {
+      "id": "ParamForeSlimL",
+      "label": "左前臂 收窄",
+      "min": 0.0,
+      "max": 1.5,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "arm_l_fore_slim",
+          "scale": 1.0
         }
       ]
     },
