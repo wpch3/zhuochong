@@ -705,13 +705,17 @@ def run(base, root):
     a.hit("/api/action?id=wave&force=1")
     peak_a = peak_b = 0.0
     low_b = 9.9
-    for _ in range(14):                     # 窗口内轮询取极值（动作淡入要时间）
+    peak_b2, low_b2 = -9.9, 9.9             # 后半段（稳态）的肘极值
+    for _i in range(14):                    # 窗口内轮询取极值（动作淡入要时间）
         time.sleep(0.12)
         eff = {q["id"]: (q.get("effective") or 0)
                for q in (a.json("/api/params.json") or {}).get("params", [])}
         peak_a = max(peak_a, eff.get("ParamArmRA") or 0)
         peak_b = max(peak_b, eff.get("ParamArmRB") or 0)
         low_b = min(low_b, eff.get("ParamArmRB") or 0)
+        if _i >= 6:
+            peak_b2 = max(peak_b2, eff.get("ParamArmRB") or 0)
+            low_b2 = min(low_b2, eff.get("ParamArmRB") or 0)
     # ★ 阈值按**角度**写，不按参数值写（Q35/Q37）。
     #   ParamArmRA 的 bind scale 从 6 改成 18（±10 的官方量程 × 18 = ±180°，
     #   这样"参数满量程 = 手臂能转的极限"才对得上 Live2D 的契约）。
@@ -729,9 +733,15 @@ def run(base, root):
     #   （连通域切袖 → 横截面中线 → 靠手 60% 拟合）证明 wave_out.png 的手臂
     #   是**伸直的**（直线残差 0.5%）。挥手的判据本来就该是"手在摆"，
     #   不是"肘折着" ⇒ 换成摆幅，删掉 sine 通道会立刻红，比旧判据更严。
-    check("挥手动作要让 ParamArmRB（肘）摆起来（摆幅≥20°）",
-          (peak_b - low_b) * 18.0 > 20.0,
-          "%.0f°（%.2f..%.2f）" % ((peak_b - low_b) * 18.0, low_b, peak_b))
+    # ★ Q42：和 test_core 一起反过来 —— 肘必须**折住**。第四十问拿错了参考图
+    #   （wave_out.png 是远距离大幅挥手），近距离打招呼的真值源是 wave_up.png：
+    #   肘屈曲约 165°、手停在脸颊边。pixiv 百科「手を振る」同口径。
+    #   这里只看后半段样本（前 6 次采样是起手斜坡，会污染极值）。
+    check("挥手的肘要真的折起来（近距离打招呼，稳态≥50°）",
+          low_b2 * 18.0 > 50.0, "稳态最小 %.0f°" % (low_b2 * 18.0))
+    check("挥手时肘要一直在摆（稳态摆幅≥12°）",
+          (peak_b2 - low_b2) * 18.0 > 12.0,
+          "%.0f°（%.2f..%.2f）" % ((peak_b2 - low_b2) * 18.0, low_b2, peak_b2))
 
     # 非循环动作的收尾：surprised 的手臂通道是 pulse+out、长度跟动作一样，
     # 没有动作级 FadeOutTime 的话最后一帧会停在满值（≈2.67）再硬切回 idle。

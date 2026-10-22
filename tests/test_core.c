@@ -4324,6 +4324,7 @@ static void test_action_param_channels(void)
         const zimg *fb;
         int i, idle_px, wave_px = 0, peak = 0;
         double arm_a = 0.0, arm_b = 0.0, arm_b_lo = 9.9, clock = 300.0;
+        double arm_b_hi2 = -9.9, arm_b_lo2 = 9.9;   /* 后半段（稳态）的肘极值 */
         zrig_blink_set_enabled(r, 0);
         zrig_action_request(r, "idle", "t", 1);
         for (i = 0; i < 120; ++i) { clock += 1.0 / 60.0; zrig_tick(r, clock); }
@@ -4334,14 +4335,20 @@ static void test_action_param_channels(void)
         /* 必须逐帧推进：动作切换的淡入权重是在 tick 里发现"动作变了"那一刻起算的，
            一次跳 1.4 秒的话权重还是 0，看到的永远是"还没动"。 */
         for (i = 0; i < 84; ++i) {
+            double eb;
             clock += 1.0 / 60.0;
             zrig_tick(r, clock);
             if (zrig_param_effective(r, "ParamArmRA") > arm_a)
                 arm_a = zrig_param_effective(r, "ParamArmRA");
-            if (zrig_param_effective(r, "ParamArmRB") > arm_b)
-                arm_b = zrig_param_effective(r, "ParamArmRB");
-            if (zrig_param_effective(r, "ParamArmRB") < arm_b_lo)
-                arm_b_lo = zrig_param_effective(r, "ParamArmRB");
+            eb = zrig_param_effective(r, "ParamArmRB");
+            if (eb > arm_b) arm_b = eb;
+            if (eb < arm_b_lo) arm_b_lo = eb;
+            /* ★ Q42：起手那 0.75s 肘还在折的路上，极值会被斜坡污染。
+               判"折住了没有 / 在不在摆"只看**后半段**（i≥50 ≈ 0.83s 之后）。 */
+            if (i >= 50) {
+                if (eb > arm_b_hi2) arm_b_hi2 = eb;
+                if (eb < arm_b_lo2) arm_b_lo2 = eb;
+            }
             fb = zrig_frame(r, 1.0, NULL, NULL);
             wave_px = frame_opaque_box(fb, 640, 180, 848, 470);
             if (wave_px > peak) peak = wave_px;
@@ -4362,22 +4369,28 @@ static void test_action_param_channels(void)
            肩那条阈值反而从 36° 提到 90°，整体比旧版更严。 */
         CHECK(arm_a > 5.0, "挥手要把 ParamArmRA 推上去（大臂≥90°，实际峰值 %.2f，=%.0f°）",
               arm_a, arm_a * 18.0);
-        /* ★★★ 2026-10-22 第四十问：这条从\"肘要折 ≥25°\"改成\"肘要摆动 ≥20°
-           且不许驻留在弯曲位 ≤15°\"。同样**不是为过闸调阈值**（那条铁律仍有效），
-           而是旧阈值编码了一个**这一轮被实测证伪的模型**：它假设参考图里的挥手
-           是\"肘折着\"的。重量的结果是反过来的 ——
-           连通域切出袖子 → 横截面中线 → 取靠手 60% 拟合，参考 wave_out.png 的手臂
-           **直线残差均 1.3px / 最大 2.9px（袖长 255px，0.5%）= 伸直的**。
-           所以\"肘折得够深\"根本不是挥手的判据，**\"肘在摆\"才是**（手在动，不是
-           整条胳膊举着不动）。新判据比旧的更严也更贴题：
-             · 摆幅 max−min ≥ 20°：把 sine 通道删掉就会红（旧判据删了也能绿）；
-             · 中位弯角 ≤ 15°：驻留在 −22° 那种\"斜伸出去还带折角\"会红。 */
-        CHECK((arm_b - arm_b_lo) * 18.0 > 20.0,
-              "挥手时肘要真的摆动（摆幅≥20°，实际 %.0f°：%.2f..%.2f）",
-              (arm_b - arm_b_lo) * 18.0, arm_b_lo, arm_b);
-        CHECK((arm_b + arm_b_lo) * 0.5 * 18.0 < 15.0,
-              "挥手的肘不许驻留在弯曲位（参考图实测是伸直的，中位≤15°，实际 %.0f°）",
-              (arm_b + arm_b_lo) * 0.5 * 18.0);
+        /* ★★★ 2026-10-22 第四十二问：肘这条**反过来**了 —— 从"不许驻留在弯曲位"
+           改成"必须折住（稳态 ≥50°）且还在摆（≥12°）"。
+
+           这不是为过闸调阈值（铁律 2 仍有效），是**第四十问选错了参考图**：
+           那一轮拿 `pose_ref/wave_out.png` 量，量得手臂是直的 —— 但那张是
+           **远距离**大幅挥手。桌宠是**近距离**打招呼，真值源是另一张
+           `pose_ref/wave_up.png`：上臂几乎垂着（相对竖直 12°）、前臂几乎竖直
+           向上（175°）、肘屈曲约 165°、手停在脸颊边。pixiv 百科「手を振る」
+           原文也是这么分的：「遠距離では肘を伸ばして大きく、**近距離では肘を
+           曲げて手首をひらひら**」。用户第四十二问原话：「哪里有你这样的手臂
+           动作，这不是人做的出来的？？？」—— 说的就是那根直棍。
+
+           所以判据跟着真值源一起改：
+             · 稳态最小弯角 ≥50°：肘要是被拉直了（回到旧的 −4°）立刻红；
+             · 稳态摆幅 ≥12°：把 sine 通道删掉立刻红（手举着不动也不叫挥手）。
+           两条都只看**后半段**，起手斜坡不参与。 */
+        CHECK(arm_b_lo2 * 18.0 > 50.0,
+              "挥手的肘要真的折起来（近距离打招呼，稳态≥50°，实际最小 %.0f°）",
+              arm_b_lo2 * 18.0);
+        CHECK((arm_b_hi2 - arm_b_lo2) * 18.0 > 12.0,
+              "挥手时肘要一直在摆（稳态摆幅≥12°，实际 %.0f°：%.2f..%.2f）",
+              (arm_b_hi2 - arm_b_lo2) * 18.0, arm_b_lo2, arm_b_hi2);
         /* 取景框跟着姿势走：新姿势的手举到肩**上方**（腕≈(745,310)、手心≈(720,270)），
            旧框 y∈[380,700] 只扫得到肘，所以把框抬到 y∈[180,470]。
            框内静止时是空的（手臂垂着在 y>600），有像素就证明手臂真的举上去了。 */

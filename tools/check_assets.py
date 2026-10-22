@@ -632,9 +632,19 @@ def check(character, form, root=".", strict=False, out_json=None):
                     add("肩关节", f"躯干上没留袖子({side})", keep <= 40,
                         f"躯干压在上臂芯区 {keep} 像素（上限 40）"
                         f"——留下来的那块不跟手臂转，抬手就是一块悬空的青色")
-                    show = int(((rt_a > 40) & ~(torso_a > 200) & ~(up_a > 200)).sum())
+                    # ★★★ Q42：遮挡者里要算上 **arm_*_cap（肩球）**。
+                    #   round_arm_sockets.py 把「关节正圆以内 + 枢轴以上」的袖料
+                    #   从 upper 搬进了 cap（层 142/143，恒在袖根 95/96 和躯干 100
+                    #   之上、且 Q42 起不再淡出），所以这块遮挡**换了件承担**。
+                    #   不把它算进来，这条就会在\"实际一个像素都没露\"的情况下报
+                    #   91/48 px —— 判据本身过时了，不是素材坏了。
+                    #   （实测：算上 cap 后两侧都正好 0。）
+                    cap_a, _ = _plate(f"arm_{side}_cap")
+                    show = int(((rt_a > 40) & ~(torso_a > 200) & ~(up_a > 200)
+                                & ~(cap_a > 200)).sum())
                     add("肩关节", f"袖根静止时完全藏住({side})", show == 0,
-                        f"袖根露出 {show} 像素（必须 0：它是补画的，只能靠夹克/袖子压住）")
+                        f"袖根露出 {show} 像素（必须 0：它是补画的，"
+                        f"只能靠夹克/袖子/肩球压住）")
                     add("肩关节", f"袖根画在躯干底下({side})",
                         rt_q["layer"] < torso_q["layer"],
                         f"袖根层 {rt_q['layer']} < 躯干层 {torso_q['layer']}"

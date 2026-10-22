@@ -445,7 +445,7 @@
       "id": "arm_l_upper",
       "file": "sprites/arm_l_upper@2x.png",
       "group": "arm_l",
-      "layer": 97,
+      "layer": 140,
       "pos": [
         244,
         399
@@ -529,7 +529,7 @@
       "id": "arm_r_upper",
       "file": "sprites/arm_r_upper@2x.png",
       "group": "arm_r",
-      "layer": 98,
+      "layer": 141,
       "pos": [
         514,
         400
@@ -594,7 +594,7 @@
       "group": "chest",
       "layer": 142,
       "pos": [
-        289,
+        287,
         399
       ],
       "anchor": [
@@ -3821,21 +3821,21 @@
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 7.2222,
-          "dur": 0.85,
+          "amp": 5.2778,
+          "dur": 0.5,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 0.2222,
-          "dur": 0.7,
+          "amp": 3.8889,
+          "dur": 0.75,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "sine",
-          "amp": -0.7222,
+          "amp": -0.6111,
           "freq": 2.0,
           "dur": 2.4
         },
@@ -3863,14 +3863,14 @@
         {
           "target": "ParamHandR",
           "wave": "pulse",
-          "amp": 0.7273,
+          "amp": 0.3636,
           "dur": 1.6,
           "ease": "out"
         },
         {
           "target": "ParamHandR",
           "wave": "sine",
-          "amp": -0.9091,
+          "amp": -0.7273,
           "freq": 2.2,
           "phase": 0.18,
           "dur": 2.4
@@ -7389,12 +7389,6 @@
           "param": "alpha",
           "scale": -1.29,
           "offset": 0.57
-        },
-        {
-          "part": "arm_l_cap",
-          "param": "alpha",
-          "scale": -0.6,
-          "offset": 2.667
         }
       ],
       "note": "绕肩旋转，±10 → ±180°（人的肩就是 180°：手能举到头顶正上方）。肩关节靠两件东西兜住：① 躯干不留任何袖子像素（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子；③ arm_*_cap 肩帽盖住肩窝（Q35）"
@@ -7416,12 +7410,6 @@
           "param": "alpha",
           "scale": -1.29,
           "offset": 0.57
-        },
-        {
-          "part": "arm_r_cap",
-          "param": "alpha",
-          "scale": -0.6,
-          "offset": 2.667
         }
       ]
     },
