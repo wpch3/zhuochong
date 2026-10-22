@@ -1,281 +1,353 @@
 {
- "schema_version": "1.0",
- "source": "sprites/body_full.png",
- "redraw": "design/redraw/torso_noarms.png",
- "elbow_overlap_px": 24,
- "parts": [
-  {
-   "id": "arm_l_root",
-   "file": "sprites/arm_l_root.png",
-   "pos": [
-    109,
-    335
-   ],
-   "size": [
-    67,
-    105
-   ],
-   "group": "arm_l",
-   "layer": 95,
-   "pivot": [
-    117.5,
-    392.0
-   ],
-   "note": "袖根塗り足し（G108）：袖子在夹克身底下的那一截，层 95/96 画在躯干下面，静止时完全被夹克盖住，手臂转开后补上肩关节、让上臂不再细得像棍子"
-  },
-  {
-   "id": "arm_l_upper",
-   "file": "sprites/arm_l_upper.png",
-   "pos": [
-    44,
-    331
-   ],
-   "size": [
-    85,
-    255
-   ],
-   "group": "arm_l",
-   "layer": 140,
-   "pivot": [
-    117.5,
-    392.0
-   ],
-   "note": "上臂：绕肩旋转"
-  },
-  {
-   "id": "arm_l_fore",
-   "file": "sprites/arm_l_fore.png",
-   "pos": [
-    28,
-    526
-   ],
-   "size": [
-    80,
-    147
-   ],
-   "group": "forearm_l",
-   "layer": 144,
-   "pivot": [
-    75.5,
-    553.0
-   ],
-   "note": "前臂：绕肘旋转（父组＝上臂）"
-  },
-  {
-   "id": "hand_l",
-   "file": "sprites/hand_l.png",
-   "pos": [
-    0,
-    653
-   ],
-   "size": [
-    82,
-    83
-   ],
-   "group": "hand_l",
-   "layer": 138,
-   "pivot": [
-    54.5,
-    666.0
-   ],
-   "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住"
-  },
-  {
-   "id": "arm_r_root",
-   "file": "sprites/arm_r_root.png",
-   "pos": [
-    262,
-    335
-   ],
-   "size": [
-    99,
-    112
-   ],
-   "group": "arm_r",
-   "layer": 96,
-   "pivot": [
-    323.0,
-    396.0
-   ],
-   "note": "袖根塗り足し（G108）：袖子在夹克身底下的那一截，层 95/96 画在躯干下面，静止时完全被夹克盖住，手臂转开后补上肩关节、让上臂不再细得像棍子"
-  },
-  {
-   "id": "arm_r_upper",
-   "file": "sprites/arm_r_upper.png",
-   "pos": [
-    314,
-    332
-   ],
-   "size": [
-    87,
-    258
-   ],
-   "group": "arm_r",
-   "layer": 141,
-   "pivot": [
-    323.0,
-    396.0
-   ],
-   "note": "上臂：绕肩旋转"
-  },
-  {
-   "id": "arm_r_fore",
-   "file": "sprites/arm_r_fore.png",
-   "pos": [
-    329,
-    522
-   ],
-   "size": [
-    88,
-    151
-   ],
-   "group": "forearm_r",
-   "layer": 145,
-   "pivot": [
-    364.5,
-    553.0
-   ],
-   "note": "前臂：绕肘旋转（父组＝上臂）"
-  },
-  {
-   "id": "hand_r",
-   "file": "sprites/hand_r.png",
-   "pos": [
-    363,
-    653
-   ],
-   "size": [
-    82,
-    83
-   ],
-   "group": "hand_r",
-   "layer": 139,
-   "pivot": [
-    390.0,
-    666.0
-   ],
-   "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住"
-  },
-  {
-   "id": "arm_l_cap",
-   "file": "sprites/arm_l_cap.png",
-   "pos": [
-    87,
-    331
-   ],
-   "size": [
-    94,
-    93
-   ],
-   "group": "chest",
-   "layer": 142,
-   "pivot": [
-    117.5,
-    392.0
-   ],
-   "note": "静止的「肩球」：关节正圆以内 + 枢轴以上的袖料都归它（第四十二问）。不跟着手臂转 ⇒ 抬手时肩头既不会塌、也不会被甩成布片"
-  },
-  {
-   "id": "arm_r_cap",
-   "file": "sprites/arm_r_cap.png",
-   "pos": [
-    259,
-    332
-   ],
-   "size": [
-    100,
-    100
-   ],
-   "group": "chest",
-   "layer": 143,
-   "pivot": [
-    323.0,
-    396.0
-   ],
-   "note": "静止的「肩球」：关节正圆以内 + 枢轴以上的袖料都归它（第四十二问）。不跟着手臂转 ⇒ 抬手时肩头既不会塌、也不会被甩成布片"
-  }
- ],
- "checks": {
-  "outline_px": 1251,
-  "torso_thigh_trim_px": 148391,
-  "torso_filled_px": 79,
-  "torso_cleared_px": 41281,
-  "root_ext_px": {
-   "l": 3685,
-   "r": 4443
-  },
-  "root_target_w": {
-   "l": 57.0,
-   "r": 64.0
-  },
-  "seam_trim_px": {
-   "l": {
-    "upper": 828,
-    "fore": 252
-   },
-   "r": {
-    "upper": 779,
-    "fore": 253
-   }
-  },
-  "wrist_y": {
-   "l": 666,
-   "r": 666
-  },
-  "hand_stub_px": {
-   "l": 355,
-   "r": 358
-  },
-  "shoulder_cap": {
-   "l": {
-    "radius": 62.0,
-    "px": 5010,
-    "layer": 142
-   },
-   "r": {
-    "radius": 64.6,
-    "px": 5747,
-    "layer": 143
-   }
-  },
-  "static_diff_px": 476,
-  "arm_px": {
-   "l": 18137,
-   "r": 19386
-  }
- },
- "shoulder_joint": {
-  "l": [
-   117.5,
-   392.0
+  "schema_version": "1.0",
+  "source": "sprites/body_full.png",
+  "redraw": "design/redraw/torso_noarms.png",
+  "elbow_overlap_px": 24,
+  "parts": [
+    {
+      "id": "arm_l_root",
+      "file": "sprites/arm_l_root.png",
+      "pos": [
+        99,
+        362
+      ],
+      "size": [
+        49,
+        200
+      ],
+      "group": "arm_l",
+      "layer": 95,
+      "pivot": [
+        117.5,
+        392.0
+      ],
+      "note": "袖根塗り足し（G108 + Q44 全长补料）：原画里袖子被白色夹克身盖掉的那一半在图上根本不存在，这里按横截面把内缘推到全宽补回来；层 95/96 在躯干之下 ⇒ 静止时一个像素都看不见，抬手才露出来。几何上只含『肩圆盘内 + 上臂管内』两块，怎么转都不会甩出剪影外，所以 Q44 起**不再做 alpha 淡出**"
+    },
+    {
+      "id": "arm_l_upper",
+      "file": "sprites/arm_l_upper.png",
+      "pos": [
+        44,
+        331
+      ],
+      "size": [
+        85,
+        255
+      ],
+      "group": "arm_l",
+      "layer": 140,
+      "pivot": [
+        117.5,
+        392.0
+      ],
+      "note": "上臂：绕肩旋转"
+    },
+    {
+      "id": "arm_l_fore",
+      "file": "sprites/arm_l_fore.png",
+      "pos": [
+        28,
+        526
+      ],
+      "size": [
+        80,
+        147
+      ],
+      "group": "forearm_l",
+      "layer": 144,
+      "pivot": [
+        75.5,
+        553.0
+      ],
+      "note": "前臂：绕肘旋转（父组＝上臂）"
+    },
+    {
+      "id": "hand_l",
+      "file": "sprites/hand_l.png",
+      "pos": [
+        0,
+        653
+      ],
+      "size": [
+        82,
+        83
+      ],
+      "group": "hand_l",
+      "layer": 138,
+      "pivot": [
+        54.5,
+        666.0
+      ],
+      "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住"
+    },
+    {
+      "id": "arm_r_root",
+      "file": "sprites/arm_r_root.png",
+      "pos": [
+        289,
+        362
+      ],
+      "size": [
+        65,
+        201
+      ],
+      "group": "arm_r",
+      "layer": 96,
+      "pivot": [
+        323.0,
+        396.0
+      ],
+      "note": "袖根塗り足し（G108 + Q44 全长补料）：原画里袖子被白色夹克身盖掉的那一半在图上根本不存在，这里按横截面把内缘推到全宽补回来；层 95/96 在躯干之下 ⇒ 静止时一个像素都看不见，抬手才露出来。几何上只含『肩圆盘内 + 上臂管内』两块，怎么转都不会甩出剪影外，所以 Q44 起**不再做 alpha 淡出**"
+    },
+    {
+      "id": "arm_r_upper",
+      "file": "sprites/arm_r_upper.png",
+      "pos": [
+        314,
+        332
+      ],
+      "size": [
+        87,
+        258
+      ],
+      "group": "arm_r",
+      "layer": 141,
+      "pivot": [
+        323.0,
+        396.0
+      ],
+      "note": "上臂：绕肩旋转"
+    },
+    {
+      "id": "arm_r_fore",
+      "file": "sprites/arm_r_fore.png",
+      "pos": [
+        329,
+        522
+      ],
+      "size": [
+        88,
+        151
+      ],
+      "group": "forearm_r",
+      "layer": 145,
+      "pivot": [
+        364.5,
+        553.0
+      ],
+      "note": "前臂：绕肘旋转（父组＝上臂）"
+    },
+    {
+      "id": "hand_r",
+      "file": "sprites/hand_r.png",
+      "pos": [
+        363,
+        653
+      ],
+      "size": [
+        82,
+        83
+      ],
+      "group": "hand_r",
+      "layer": 139,
+      "pivot": [
+        390.0,
+        666.0
+      ],
+      "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住"
+    },
+    {
+      "id": "arm_l_cap",
+      "file": "sprites/arm_l_cap.png",
+      "pos": [
+        87,
+        331
+      ],
+      "size": [
+        94,
+        93
+      ],
+      "group": "chest",
+      "layer": 142,
+      "pivot": [
+        117.5,
+        392.0
+      ],
+      "note": "静止的「肩球」：关节正圆以内 + 枢轴以上的袖料都归它（第四十二问）。不跟着手臂转 ⇒ 抬手时肩头既不会塌、也不会被甩成布片"
+    },
+    {
+      "id": "arm_r_cap",
+      "file": "sprites/arm_r_cap.png",
+      "pos": [
+        259,
+        332
+      ],
+      "size": [
+        100,
+        100
+      ],
+      "group": "chest",
+      "layer": 143,
+      "pivot": [
+        323.0,
+        396.0
+      ],
+      "note": "静止的「肩球」：关节正圆以内 + 枢轴以上的袖料都归它（第四十二问）。不跟着手臂转 ⇒ 抬手时肩头既不会塌、也不会被甩成布片"
+    }
   ],
-  "r": [
-   323.0,
-   396.0
-  ]
- },
- "elbow_joint": {
-  "l": [
-   75.5,
-   553.0
-  ],
-  "r": [
-   364.5,
-   553.0
-  ]
- },
- "round_socket": {
-  "l": {
-   "r_shoulder": 30.4,
-   "r_elbow": 31.4,
-   "overlap": 4.0,
-   "moved_px_1x": 2261
+  "checks": {
+    "outline_px": 1251,
+    "torso_thigh_trim_px": 148391,
+    "torso_filled_px": 79,
+    "torso_cleared_px": 41281,
+    "root_ext_px": {
+      "l": 3685,
+      "r": 4443
+    },
+    "root_target_w": {
+      "l": 57.0,
+      "r": 64.0
+    },
+    "seam_trim_px": {
+      "l": {
+        "upper": 828,
+        "fore": 252
+      },
+      "r": {
+        "upper": 779,
+        "fore": 253
+      }
+    },
+    "wrist_y": {
+      "l": 666,
+      "r": 666
+    },
+    "hand_stub_px": {
+      "l": 355,
+      "r": 358
+    },
+    "shoulder_cap": {
+      "l": {
+        "radius": 62.0,
+        "px": 5010,
+        "layer": 142
+      },
+      "r": {
+        "radius": 64.6,
+        "px": 5747,
+        "layer": 143
+      }
+    },
+    "static_diff_px": 476,
+    "arm_px": {
+      "l": 18137,
+      "r": 19386
+    }
   },
-  "r": {
-   "r_shoulder": 34.3,
-   "r_elbow": 34.8,
-   "overlap": 4.0,
-   "moved_px_1x": 2620
+  "shoulder_joint": {
+    "l": [
+      117.5,
+      392.0
+    ],
+    "r": [
+      323.0,
+      396.0
+    ]
+  },
+  "elbow_joint": {
+    "l": [
+      75.5,
+      553.0
+    ],
+    "r": [
+      364.5,
+      553.0
+    ]
+  },
+  "round_socket": {
+    "l": {
+      "r_shoulder": 30.4,
+      "r_elbow": 31.4,
+      "overlap": 4.0,
+      "moved_px_1x": 2261
+    },
+    "r": {
+      "r_shoulder": 34.3,
+      "r_elbow": 34.8,
+      "overlap": 4.0,
+      "moved_px_1x": 2620
+    }
+  },
+  "sleeve_underlay": {
+    "sig": {
+      "target_w_r": 33.5,
+      "target_w_l": 30.5,
+      "overlap": 4.0,
+      "v": 1
+    },
+    "orig_pos": {
+      "arm_l_root": [
+        109,
+        335
+      ],
+      "arm_r_root": [
+        262,
+        335
+      ]
+    },
+    "sides": {
+      "l": {
+        "1x": {
+          "painted_px": 1894,
+          "kept_px": 1236,
+          "size": [
+            49,
+            200
+          ],
+          "pos": [
+            99,
+            362
+          ]
+        },
+        "2x": {
+          "painted_px": 6369,
+          "kept_px": 5030,
+          "size": [
+            95,
+            399
+          ],
+          "pos": [
+            201,
+            724
+          ]
+        }
+      },
+      "r": {
+        "1x": {
+          "painted_px": 1951,
+          "kept_px": 1711,
+          "size": [
+            65,
+            201
+          ],
+          "pos": [
+            289,
+            362
+          ]
+        },
+        "2x": {
+          "painted_px": 6949,
+          "kept_px": 7107,
+          "size": [
+            131,
+            401
+          ],
+          "pos": [
+            578,
+            724
+          ]
+        }
+      }
+    }
   }
- }
 }

@@ -426,8 +426,8 @@
       "group": "arm_l",
       "layer": 95,
       "pos": [
-        309,
-        403
+        299,
+        430
       ],
       "anchor": [
         0,
@@ -510,8 +510,8 @@
       "group": "arm_r",
       "layer": 96,
       "pos": [
-        462,
-        403
+        489,
+        430
       ],
       "anchor": [
         0,
@@ -636,7 +636,7 @@
       "group": "forearm_l",
       "layer": 128,
       "pos": [
-        232,
+        231,
         699
       ],
       "anchor": [
@@ -646,7 +646,7 @@
       "tags": [
         "body"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -699,7 +699,7 @@
       "group": "forearm_r",
       "layer": 129,
       "pos": [
-        567,
+        566,
         699
       ],
       "anchor": [
@@ -709,7 +709,7 @@
       "tags": [
         "body"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -3821,14 +3821,14 @@
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 3.0556,
+          "amp": 1.2778,
           "dur": 0.45,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 7.7222,
+          "amp": 8.2222,
           "dur": 0.7,
           "ease": "out"
         },
@@ -7383,12 +7383,6 @@
           "group": "arm_l",
           "param": "rot_deg",
           "scale": 18.0
-        },
-        {
-          "part": "arm_l_root",
-          "param": "alpha",
-          "scale": -1.29,
-          "offset": 0.57
         }
       ],
       "note": "绕肩旋转，±10 → ±180°（人的肩就是 180°：手能举到头顶正上方）。肩关节靠两件东西兜住：① 躯干不留任何袖子像素（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子；③ arm_*_cap 肩帽盖住肩窝（Q35）"
@@ -7404,12 +7398,6 @@
           "group": "arm_r",
           "param": "rot_deg",
           "scale": -18.0
-        },
-        {
-          "part": "arm_r_root",
-          "param": "alpha",
-          "scale": -1.29,
-          "offset": 0.57
         }
       ]
     },

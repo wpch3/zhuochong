@@ -1,143 +1,179 @@
 {
-  "schema_version": "2.0",
-  "parts": [
-    {
-      "id": "hand_l_pad",
-      "file": "sprites/hand_l_pad.png",
-      "group": "forearm_l",
-      "layer": 128,
-      "pos": [
-        32,
-        631
-      ],
-      "size": [
-        46,
-        52
-      ],
-      "pivot": [
-        54.5,
-        666.0
-      ],
-      "wrist_w": 43
-    },
-    {
-      "id": "hand_l_open",
-      "file": "sprites/hand_l_open.png",
-      "group": "hand_l",
-      "layer": 130,
-      "pos": [
-        11,
-        656
-      ],
-      "size": [
-        83,
-        105
-      ],
-      "pivot": [
-        54.5,
-        666.0
-      ],
-      "wrist_w": 24
-    },
-    {
-      "id": "hand_l_heart",
-      "file": "sprites/hand_l_heart.png",
-      "group": "hand_l",
-      "layer": 131,
-      "pos": [
-        18,
-        656
-      ],
-      "size": [
-        67,
-        105
-      ],
-      "pivot": [
-        54.5,
-        666.0
-      ],
-      "wrist_w": 29
-    },
-    {
-      "id": "hand_r_pad",
-      "file": "sprites/hand_r_pad.png",
-      "group": "forearm_r",
-      "layer": 129,
-      "pos": [
-        367,
-        631
-      ],
-      "size": [
-        46,
-        52
-      ],
-      "pivot": [
-        390.0,
-        666.0
-      ],
-      "wrist_w": 43
-    },
-    {
-      "id": "hand_r_open",
-      "file": "sprites/hand_r_open.png",
-      "group": "hand_r",
-      "layer": 132,
-      "pos": [
-        351,
-        656
-      ],
-      "size": [
-        83,
-        105
-      ],
-      "pivot": [
-        390.0,
-        666.0
-      ],
-      "wrist_w": 24
-    },
-    {
-      "id": "hand_r_heart",
-      "file": "sprites/hand_r_heart.png",
-      "group": "hand_r",
-      "layer": 133,
-      "pos": [
-        361,
-        656
-      ],
-      "size": [
-        67,
-        105
-      ],
-      "pivot": [
-        390.0,
-        666.0
-      ],
-      "wrist_w": 30
-    }
-  ],
-  "checks": {
-    "cuff_cleaned": [
-      "hand_l",
-      "hand_r"
-    ],
-    "wrist_w": {
-      "hand_l_pad": 43,
-      "hand_l_open": 24,
-      "hand_l_heart": 29,
-      "hand_r_pad": 43,
-      "hand_r_open": 24,
-      "hand_r_heart": 30
-    }
+ "schema_version": "2.0",
+ "parts": [
+  {
+   "id": "hand_l_pad",
+   "file": "sprites/hand_l_pad.png",
+   "group": "forearm_l",
+   "layer": 128,
+   "pos": [
+    31,
+    631
+   ],
+   "size": [
+    48,
+    45
+   ],
+   "pivot": [
+    54.5,
+    666.0
+   ],
+   "wrist_w": 43,
+   "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩"
   },
-  "note": "tools/make_hand_parts.py 产物。放松档=原画切件（只加腕部塗り足し），张开/比心档=按原画风格生的图（design/hands/*_raw.png）键出配准而来。Q36 那版程序化画的手已废弃——用户原话「完全成怪物了」",
-  "poses": {
-    "": "",
-    "open": "open",
-    "heart": "heart"
+  {
+   "id": "hand_l_open",
+   "file": "sprites/hand_l_open.png",
+   "group": "hand_l",
+   "layer": 130,
+   "pos": [
+    11,
+    656
+   ],
+   "size": [
+    83,
+    105
+   ],
+   "pivot": [
+    54.5,
+    666.0
+   ],
+   "wrist_w": 24
   },
-  "art_base": {
-    "l": "hand_l",
-    "r": "hand_r"
+  {
+   "id": "hand_l_heart",
+   "file": "sprites/hand_l_heart.png",
+   "group": "hand_l",
+   "layer": 131,
+   "pos": [
+    18,
+    656
+   ],
+   "size": [
+    67,
+    105
+   ],
+   "pivot": [
+    54.5,
+    666.0
+   ],
+   "wrist_w": 29
+  },
+  {
+   "id": "hand_r_pad",
+   "file": "sprites/hand_r_pad.png",
+   "group": "forearm_r",
+   "layer": 129,
+   "pos": [
+    366,
+    631
+   ],
+   "size": [
+    49,
+    45
+   ],
+   "pivot": [
+    390.0,
+    666.0
+   ],
+   "wrist_w": 43,
+   "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩"
+  },
+  {
+   "id": "hand_r_open",
+   "file": "sprites/hand_r_open.png",
+   "group": "hand_r",
+   "layer": 132,
+   "pos": [
+    351,
+    656
+   ],
+   "size": [
+    83,
+    105
+   ],
+   "pivot": [
+    390.0,
+    666.0
+   ],
+   "wrist_w": 24
+  },
+  {
+   "id": "hand_r_heart",
+   "file": "sprites/hand_r_heart.png",
+   "group": "hand_r",
+   "layer": 133,
+   "pos": [
+    361,
+    656
+   ],
+   "size": [
+    67,
+    105
+   ],
+   "pivot": [
+    390.0,
+    666.0
+   ],
+   "wrist_w": 30
   }
+ ],
+ "checks": {
+  "cuff_cleaned": [
+   "hand_l",
+   "hand_r"
+  ],
+  "wrist_w": {
+   "hand_l_pad": 43,
+   "hand_l_open": 24,
+   "hand_l_heart": 29,
+   "hand_r_pad": 43,
+   "hand_r_open": 24,
+   "hand_r_heart": 30
+  }
+ },
+ "note": "tools/make_hand_parts.py 产物。放松档=原画切件（只加腕部塗り足し），张开/比心档=按原画风格生的图（design/hands/*_raw.png）键出配准而来。Q36 那版程序化画的手已废弃——用户原话「完全成怪物了」",
+ "poses": {
+  "": "",
+  "open": "open",
+  "heart": "heart"
+ },
+ "art_base": {
+  "l": "hand_l",
+  "r": "hand_r"
+ },
+ "round_wrist": {
+  "sig": {
+   "margin": 3.0,
+   "v": 1
+  },
+  "sides": {
+   "l": {
+    "R": 23.5,
+    "size_1x": [
+     48,
+     45,
+     2005
+    ],
+    "size_2x": [
+     96,
+     90,
+     8083
+    ]
+   },
+   "r": {
+    "R": 24.0,
+    "size_1x": [
+     49,
+     45,
+     2027
+    ],
+    "size_2x": [
+     98,
+     90,
+     8162
+    ]
+   }
+  }
+ }
 }

@@ -42,18 +42,31 @@ step "2/26 身体分段（头/躯干/双臂/双腿）"
 step "3/26 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
 "$PY" tools/make_arm_parts.py --character "$CH" --form "$FM"
 
-step "3a/26 正圆关节（肩球 + 肘圆：把关节那一圈做成绕枢轴旋转不变的圆）"
+step "3a/26 袖子塗り足し（把被白夹克盖掉的那半条上臂补回袖根件）"
+# 必须排在 make_arm_parts 之后、正圆关节之前（它要按"幸存料"算内缘）。
+# 第四十四问：用户「手臂为什么会挥手就变细」。原画里手臂垂着、白夹克身压在青袖子上，
+# 被盖住的那半条袖子**在图上根本不存在**，切件照"看得见的青色"切 ⇒ 上臂中段只有
+# 51~58px，比前臂（64~80px）还细。Live2D 的标准答案是塗り足し + 放在遮挡者下面的图层。
+"$PY" tools/sleeve_underlay.py --character "$CH" --form "$FM"
+
+step "3b/26 正圆关节（肩球 + 肘圆：把关节那一圈做成绕枢轴旋转不变的圆）"
 # 必须排在 make_arm_parts 之后、make_rig 之前。第四十一/四十二问连着栽在这：
 # 上臂顶端是一刀平切、还高出肩枢轴 63px，一转就扫到胸口；肩帽是不转的扇形，
 # 一转就被落在剪影外面；压到躯干底下躲开 ⇒ 肩头直接塌进去。
 # 正解是 Live2D 官方那条「関節パーツは腕幅と同じ直径の正円、枢轴＝その中心」。
 "$PY" tools/round_arm_sockets.py --character "$CH" --form "$FM"
 
-step "3b/26 手差分件（放松/张开/比心 × 左右，程序化重画）"
+step "3c/26 手差分件（放松/张开/比心 × 左右，程序化重画）"
 # 必须排在 make_arm_parts 之后：腕线、袖口内宽都是从它的产物上实测的。
 # 原画那只手是\"摊平的蹼\"（五指等长、没有掌骨），掰是掰不出来的，只能重画；
 # 官方口径也是手的差分**换贴图**而不是靠变形器（animator_arms_mtn）。
 "$PY" tools/make_hand_parts.py --character "$CH" --form "$FM"
+
+step "3d/26 腕正圆关节（把袖口里的垫片做成以腕枢轴为心的正圆）"
+# 必须排在 make_hand_parts 之后：它要读 hand_*_pad 和袖口的实际几何。
+# 第四十四问第二处：垫片在袖口以下还留着一截非圆形的料，手一摆就从袖口下面
+# 探出一块肉色疙瘩（logs/asset_qa/q44_wrist_before.png）。官方口径「関節パーツは正円」。
+"$PY" tools/round_wrist_socket.py --character "$CH" --form "$FM"
 
 step "4/26 鞋拆件（常态鞋 + 踮脚鞋，顺带把腿件切线以下擦干净）"
 "$PY" tools/make_foot_parts.py --character "$CH" --form "$FM"
