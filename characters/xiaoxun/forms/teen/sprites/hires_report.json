@@ -3,12 +3,12 @@
  "factor": 2,
  "suffix": "@2x.png",
  "model": "RealESR-AnimeVideo-v3_x4.onnx",
- "count": 73,
- "realesrgan": 66,
+ "count": 75,
+ "realesrgan": 68,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 36,
- "seconds": 57.9,
+ "keycolor_fixed": 39,
+ "seconds": 56.9,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -167,6 +167,19 @@
    "keycolor_fixed": 0
   },
   {
+   "name": "arm_l_cap.png",
+   "src": [
+    91,
+    85
+   ],
+   "dst": [
+    182,
+    170
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
    "name": "arm_l_fore.png",
    "src": [
     85,
@@ -201,6 +214,19 @@
    "dst": [
     176,
     480
+   ],
+   "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "arm_r_cap.png",
+   "src": [
+    97,
+    91
+   ],
+   "dst": [
+    194,
+    182
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -684,7 +710,7 @@
     1836
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 5
+   "keycolor_fixed": 6
   },
   {
    "name": "hair_pony_back.png",
@@ -697,7 +723,7 @@
     1686
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 3
   },
   {
    "name": "hair_side_l.png",

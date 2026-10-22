@@ -466,7 +466,7 @@
       "id": "arm_l_fore",
       "file": "sprites/arm_l_fore@2x.png",
       "group": "forearm_l",
-      "layer": 142,
+      "layer": 144,
       "pos": [
         228,
         594
@@ -550,7 +550,7 @@
       "id": "arm_r_fore",
       "file": "sprites/arm_r_fore@2x.png",
       "group": "forearm_r",
-      "layer": 143,
+      "layer": 145,
       "pos": [
         526,
         590
@@ -579,6 +579,48 @@
       "anchor": [
         0.3293,
         0.1566
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_cap",
+      "file": "sprites/arm_l_cap@2x.png",
+      "group": "chest",
+      "layer": 142,
+      "pos": [
+        289,
+        399
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_cap",
+      "file": "sprites/arm_r_cap@2x.png",
+      "group": "chest",
+      "layer": 143,
+      "pos": [
+        459,
+        400
+      ],
+      "anchor": [
+        0,
+        0
       ],
       "tags": [
         "body"

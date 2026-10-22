@@ -69,6 +69,21 @@ ROOT_DISC_W = 0.58                  # R = 袖宽 × 这个系数（0.5 = 正好�
 ROOT_DISC_K = 0.52                  # 上限：R 不许超过这么多倍上臂长（保险，正常用不到）
 ROOT_LAYER = {"l": 95, "r": 96}     # **画在躯干(100)底下**：静止时被夹克完全盖住
 
+# ---- 肩の関節パーツ（shoulder cap）----
+# 第三十五问：用户指出「肩部和肘关节等连接处没做」。查过的资料口径一致
+# （REFERENCE_NOTES 第五十四/五十五批）：
+#   · 「関節パーツは**正円**で、直径＝腕幅」（saraemi / kw-nmnm）
+#   · 「腕の付け根は**肩のパーツの下に**、多少描きすぎるくらい描く」（shiroikarasu）
+#   · 「肩の付け根は**ぼかし**処理」（同上）
+# 也就是说：肩这里**必须有一个属于身体、不跟着胳膊转的件**压在胳膊上面，
+# 胳膊的切口藏在它下面。以前没有这个件，胳膊（层 140/141）直接画在夹克上，
+# 一转就露出那条笔直的切口 + 一个纸片三角（用户附图 q35_1.png）。
+CAP_SCALE = 1.45                    # 肩キャップ半径下限 = 1.45 × 関節R
+CAP_MARGIN = 4.0                    # 实际半径按「袖子在枢轴上方那截（塔）」自测 + 这个余量
+CAP_PAST = 0.30                     # 关节线往**远端**多盖 0.30R，免得切口正好压在边界上
+CAP_FEATHER = 3.5                   # 边缘羽化（「肩の付け根はぼかし」）
+CAP_LAYER = {"l": 142, "r": 143}    # 在上臂(140/141)之上、前臂(144/145)之下
+
 SEAM_KEEP = 2       # 袖片内缘：最内侧青色之外再留几像素（袖缝线本身要留）
 SEAM_TRIM_MAX = 4   # 单行最多裁几个**实心**像素；超了这一行就不裁（误伤保险）
 SEAM_SOLID = 0.35   # 判"实心"的 alpha 阈值：羽化尾巴不算进上限，但会跟着一起裁
@@ -706,7 +721,7 @@ def main():
     #     「**関節を回転軸の中心にあわせて綺麗な円形に描く**」
     #   所以：关节圆**以上**的育克不属于胳膊，留给躯干当静止件；
     #   胳膊那半边的顶端收成**以关节为圆心的半圆帽**，转任何角度剪影都是圆的。
-    SJ, JOINT_R = {}, {}
+    SJ, JOINT_R, CAP, CAP_R = {}, {}, {}, {}
     half_ov = ELBOW_OVERLAP // 2
     xx_all = np.arange(W)[None, :]
     for side in ("l", "r"):
@@ -746,6 +761,27 @@ def main():
         arms[side] = arms[side] & ~yoke
         print("  插肩育克 %s: 关节(%.0f,%.0f) R=%.1f → %d px 留给躯干（不跟着胳膊转）"
               % (side, sj[0], sj[1], R, int(yoke.sum())))
+
+        # ---- 肩の関節パーツ：以关节为圆心的半圆帽，归躯干（静止），压在上臂之上 ----
+        #   形状必须是**圆**：圆绕自己的圆心转形状不变 ⇒ 帽子底下的胳膊
+        #   转到任何角度，交界处都是同一条弧，不会裂、不会露直边。
+        #   只取关节线**以上**那半边（along <= +CAP_PAST·R）：下半边是胳膊
+        #   自己的肉，留给它转；上半边是肩膀，本来就不该跟着胳膊甩。
+        dist_j = np.sqrt(dx * dx + dy * dy)
+        #   半径不能拍脑袋：袖子在关节线**上方**还有一截（肩头那座"塔"）。
+        #   帽子要是比它矮，一转塔尖就从帽沿戳出来，变成一根青色尖刺（实拍见
+        #   logs/asset_qa/q35_cap_after_mag.png 的 ArmRA 3/6/10）。
+        #   所以半径 = 塔的最远点 + 余量，按左右各自量。
+        _prox = arms[side] & (along <= CAP_PAST * R)
+        _tower = float(dist_j[_prox].max()) if _prox.any() else 0.0
+        cap_r = max(CAP_SCALE * R, _tower + CAP_MARGIN)
+        cap_a = np.clip((cap_r - dist_j) / CAP_FEATHER, 0.0, 1.0)
+        cap_a = cap_a * np.clip((CAP_PAST * R - along) / CAP_FEATHER, 0.0, 1.0)
+        CAP[side] = np.where(alpha, cap_a, 0.0).astype(np.float32)
+        CAP_R[side] = cap_r
+        print("  肩キャップ %s: 塔高 %.1f → 半径 %.1f（=%.2f×R）→ %d px 归躯干、层 %d"
+              % (side, _tower, cap_r, cap_r / R, int((CAP[side] > 0.5).sum()),
+                 CAP_LAYER[side]))
 
     # ---- 躯干：袖子那块换成 AI 重绘的夹克侧片 ----
     # G102/DC36：这里**整条袖子都要拿走，一个像素都不留给躯干**。
@@ -949,7 +985,7 @@ def main():
                 joint, grp, lay = sh_pt, f"arm_{side}", layer[side]
                 note = "上臂：绕肩旋转"
             elif seg == "fore":
-                joint, grp, lay = el_joint, f"forearm_{side}", layer[side] + 2
+                joint, grp, lay = el_joint, f"forearm_{side}", layer[side] + 4
                 note = "前臂：绕肘旋转（父组＝上臂）"
             else:
                 wx = np.nonzero(m[wrist_y])[0]
@@ -968,6 +1004,33 @@ def main():
             if seg == "hand":
                 report["checks"].setdefault("wrist_y", {})[side] = int(wrist_y)
                 report["checks"].setdefault("hand_stub_px", {})[side] = int(stub.sum())
+
+    # ---- 落盘：肩の関節パーツ ----
+    # 它用的是**原画自己的像素**，静止时正压在上臂同样的位置上 ⇒ 合成差为 0；
+    # 一旦胳膊转起来，它留在原地，胳膊的根部切口就永远藏在它下面。
+    for side in ("l", "r"):
+        ca = CAP.get(side)
+        if ca is None or not (ca > 0.004).any():
+            continue
+        ys, xs = np.nonzero(ca > 0.004)
+        box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
+        name = f"arm_{side}_cap"
+        cut(body[..., :3], ca, box).save(os.path.join(sp, name + ".png"))
+        sj = SJ[side]
+        report["parts"].append({
+            "id": name, "file": f"sprites/{name}.png",
+            "pos": [box[0], box[1]], "size": [box[2] - box[0], box[3] - box[1]],
+            "group": "chest", "layer": CAP_LAYER[side],
+            "pivot": [float(sj[0]), float(sj[1])],
+            "note": ("肩の関節パーツ：以肩关节为圆心、半径 %.2f×R 的半圆帽，"
+                     "属于身体（不跟手臂转），画在上臂之上。"
+                     "胳膊的根部切口藏在它下面 ⇒ 转到任何角度都看不到直切边"
+                     % (CAP_R[side] / JOINT_R[side])),
+        })
+        report["checks"].setdefault("shoulder_cap", {})[side] = {
+            "radius": round(CAP_R[side], 1),
+            "px": int((ca > 0.5).sum()), "layer": CAP_LAYER[side],
+        }
 
     # ---- 验收：四件叠回去 + 新躯干，和原画静止帧必须一样 ----
     comp = np.zeros((H, W, 4), np.float32)
