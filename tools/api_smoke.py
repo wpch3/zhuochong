@@ -704,12 +704,14 @@ def run(base, root):
         a.hit("/api/param?id=ParamEyeBallForm&reset=1")
     a.hit("/api/action?id=wave&force=1")
     peak_a = peak_b = 0.0
+    low_b = 9.9
     for _ in range(14):                     # 窗口内轮询取极值（动作淡入要时间）
         time.sleep(0.12)
         eff = {q["id"]: (q.get("effective") or 0)
                for q in (a.json("/api/params.json") or {}).get("params", [])}
         peak_a = max(peak_a, eff.get("ParamArmRA") or 0)
         peak_b = max(peak_b, eff.get("ParamArmRB") or 0)
+        low_b = min(low_b, eff.get("ParamArmRB") or 0)
     # ★ 阈值按**角度**写，不按参数值写（Q35/Q37）。
     #   ParamArmRA 的 bind scale 从 6 改成 18（±10 的官方量程 × 18 = ±180°，
     #   这样"参数满量程 = 手臂能转的极限"才对得上 Live2D 的契约）。
@@ -722,8 +724,14 @@ def run(base, root):
     #   （那个旧姿势被用户判"完全不符合一个人能做出的动作"）。
     check("挥手动作要驱动 ParamArmRA（大臂≥90°）", peak_a > 90.0 / 18.0,
           "峰值 %.2f（＝%.0f°）" % (peak_a, peak_a * 18.0))
-    check("挥手动作要驱动 ParamArmRB（肘≥25°）", peak_b > 25.0 / 18.0,
-          "峰值 %.2f（＝%.0f°）" % (peak_b, peak_b * 18.0))
+    # ★ Q40：肘这条从"折得够深（≥25°）"改成"摆得够开（摆幅≥20°）"。
+    #   不是为过闸放水 —— 旧阈值编码的是"参考图里肘是弯的"，而这一轮重量
+    #   （连通域切袖 → 横截面中线 → 靠手 60% 拟合）证明 wave_out.png 的手臂
+    #   是**伸直的**（直线残差 0.5%）。挥手的判据本来就该是"手在摆"，
+    #   不是"肘折着" ⇒ 换成摆幅，删掉 sine 通道会立刻红，比旧判据更严。
+    check("挥手动作要让 ParamArmRB（肘）摆起来（摆幅≥20°）",
+          (peak_b - low_b) * 18.0 > 20.0,
+          "%.0f°（%.2f..%.2f）" % ((peak_b - low_b) * 18.0, low_b, peak_b))
 
     # 非循环动作的收尾：surprised 的手臂通道是 pulse+out、长度跟动作一样，
     # 没有动作级 FadeOutTime 的话最后一帧会停在满值（≈2.67）再硬切回 idle。

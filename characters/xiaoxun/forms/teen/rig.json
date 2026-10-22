@@ -3821,14 +3821,14 @@
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 6.3889,
+          "amp": 7.2222,
           "dur": 0.85,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 1.2222,
+          "amp": 0.2222,
           "dur": 0.7,
           "ease": "out"
         },

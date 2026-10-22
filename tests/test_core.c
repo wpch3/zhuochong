@@ -4323,7 +4323,7 @@ static void test_action_param_channels(void)
     {
         const zimg *fb;
         int i, idle_px, wave_px = 0, peak = 0;
-        double arm_a = 0.0, arm_b = 0.0, clock = 300.0;
+        double arm_a = 0.0, arm_b = 0.0, arm_b_lo = 9.9, clock = 300.0;
         zrig_blink_set_enabled(r, 0);
         zrig_action_request(r, "idle", "t", 1);
         for (i = 0; i < 120; ++i) { clock += 1.0 / 60.0; zrig_tick(r, clock); }
@@ -4340,6 +4340,8 @@ static void test_action_param_channels(void)
                 arm_a = zrig_param_effective(r, "ParamArmRA");
             if (zrig_param_effective(r, "ParamArmRB") > arm_b)
                 arm_b = zrig_param_effective(r, "ParamArmRB");
+            if (zrig_param_effective(r, "ParamArmRB") < arm_b_lo)
+                arm_b_lo = zrig_param_effective(r, "ParamArmRB");
             fb = zrig_frame(r, 1.0, NULL, NULL);
             wave_px = frame_opaque_box(fb, 640, 180, 848, 470);
             if (wave_px > peak) peak = wave_px;
@@ -4360,8 +4362,22 @@ static void test_action_param_channels(void)
            肩那条阈值反而从 36° 提到 90°，整体比旧版更严。 */
         CHECK(arm_a > 5.0, "挥手要把 ParamArmRA 推上去（大臂≥90°，实际峰值 %.2f，=%.0f°）",
               arm_a, arm_a * 18.0);
-        CHECK(arm_b > 1.39, "挥手要把 ParamArmRB（肘）推上去（≥25°，实际峰值 %.2f，=%.0f°）",
-              arm_b, arm_b * 18.0);
+        /* ★★★ 2026-10-22 第四十问：这条从\"肘要折 ≥25°\"改成\"肘要摆动 ≥20°
+           且不许驻留在弯曲位 ≤15°\"。同样**不是为过闸调阈值**（那条铁律仍有效），
+           而是旧阈值编码了一个**这一轮被实测证伪的模型**：它假设参考图里的挥手
+           是\"肘折着\"的。重量的结果是反过来的 ——
+           连通域切出袖子 → 横截面中线 → 取靠手 60% 拟合，参考 wave_out.png 的手臂
+           **直线残差均 1.3px / 最大 2.9px（袖长 255px，0.5%）= 伸直的**。
+           所以\"肘折得够深\"根本不是挥手的判据，**\"肘在摆\"才是**（手在动，不是
+           整条胳膊举着不动）。新判据比旧的更严也更贴题：
+             · 摆幅 max−min ≥ 20°：把 sine 通道删掉就会红（旧判据删了也能绿）；
+             · 中位弯角 ≤ 15°：驻留在 −22° 那种\"斜伸出去还带折角\"会红。 */
+        CHECK((arm_b - arm_b_lo) * 18.0 > 20.0,
+              "挥手时肘要真的摆动（摆幅≥20°，实际 %.0f°：%.2f..%.2f）",
+              (arm_b - arm_b_lo) * 18.0, arm_b_lo, arm_b);
+        CHECK((arm_b + arm_b_lo) * 0.5 * 18.0 < 15.0,
+              "挥手的肘不许驻留在弯曲位（参考图实测是伸直的，中位≤15°，实际 %.0f°）",
+              (arm_b + arm_b_lo) * 0.5 * 18.0);
         /* 取景框跟着姿势走：新姿势的手举到肩**上方**（腕≈(745,310)、手心≈(720,270)），
            旧框 y∈[380,700] 只扫得到肘，所以把框抬到 y∈[180,470]。
            框内静止时是空的（手臂垂着在 y>600），有像素就证明手臂真的举上去了。 */
