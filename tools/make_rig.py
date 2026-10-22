@@ -65,7 +65,8 @@ FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
                has_blend=False, has_side=False, has_legs=False,
                body_id="seg_torso", has_eyeballs=False, foot_lift=None,
-               star_eyes=None, fx_table=None, hand_forms=None):
+               star_eyes=None, fx_table=None, hand_forms=None,
+               crease_parts=()):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -371,6 +372,21 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         def cap_fade(part_id):
             return []
 
+        # ★★★ Q44：肘折线 arm_*_crease 的 alpha 绑肘角。
+        #   前臂近端是从袖子内部切开的新边，原画在那儿**没有描边**；伸直时被上臂
+        #   盖住看不见，一折起来（挥手肘内角 32°）前臂就和上臂糊成一团没有边界
+        #   （logs/asset_qa/q44_final_zoom.png）。
+        #   tools/elbow_crease.py 把这条线单独做成薄件（层 146/147，压在前臂之上），
+        #   这里让它跟着肘角显形：alpha = clamp(1 + 0.25·v − 1)
+        #       v=0（伸直）→ 0      一个像素都不变，静止画面零影响
+        #       v=4（72°） → 1      折起来就有一条干净的前臂轮廓压在上臂上
+        #   —— 这就是官方的「差分パーツ＋パラメータでフェード」，不动原件、不改引擎。
+        def crease_fade(part_id):
+            if part_id not in (crease_parts or ()):
+                return []
+            return [{"part": part_id, "param": "alpha",
+                     "scale": 0.25, "offset": -1.0}]
+
         out += [
             {"id": "ParamArmLA", "label": "左臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 18.0}]
@@ -384,7 +400,8 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "binds": [{"group": "arm_r", "param": "rot_deg", "scale": -18.0}]
                       + root_fade("arm_r_root") + cap_fade("arm_r_cap")},
             {"id": "ParamArmLB", "label": "左小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
-             "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 18.0}],
+             "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 18.0}]
+                      + crease_fade("arm_l_crease"),
              "note": "绕肘旋转，±10 → ±180°。"
                      "**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**："
                      "人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，"
@@ -394,7 +411,8 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                      "倍率 14.5（±145°）封顶时这个姿势根本摆不出来，所以提到 18.0；"
                      "动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变"},
             {"id": "ParamArmRB", "label": "右小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
-             "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -18.0}]},
+             "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -18.0}]
+                      + crease_fade("arm_r_crease")},
             # G4c2：手是第三节（绕腕转）。Live2D 标准参数表里就叫 ParamHandL/R。
             {"id": "ParamHandL", "label": "左手腕", "min": -3.2, "max": 3.2, "default": 0.0,
              "binds": [{"group": "hand_l", "param": "rot_deg", "scale": 22.0}],
@@ -2998,7 +3016,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list),
                         foot_lift=(footp["lift_px"] if footp else None),
                         star_eyes=star_eyes, fx_table=fx_table,
-                        hand_forms=hand_forms)
+                        hand_forms=hand_forms,
+                        crease_parts=tuple(
+                            p["id"] for p in (armp or {}).get("parts", [])
+                            if p["id"].endswith("_crease")))
     PARAM_IDS = {q["id"] for q in PARAMS}
     # ★ Q36：裙摆/外套下摆这两个参数是在**本函数后半段**（里布、下摆模块）才
     #   append 进去的，可动作表在这里就要校验。素材在 = 参数一定会生成，

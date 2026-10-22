@@ -631,6 +631,48 @@
       "hires": 2
     },
     {
+      "id": "arm_l_crease",
+      "file": "sprites/arm_l_crease@2x.png",
+      "group": "forearm_l",
+      "layer": 146,
+      "pos": [
+        249,
+        594
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_crease",
+      "file": "sprites/arm_r_crease@2x.png",
+      "group": "forearm_r",
+      "layer": 147,
+      "pos": [
+        531,
+        590
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "hand_l_pad",
       "file": "sprites/hand_l_pad@2x.png",
       "group": "forearm_l",
@@ -7412,6 +7454,12 @@
           "group": "forearm_l",
           "param": "rot_deg",
           "scale": 18.0
+        },
+        {
+          "part": "arm_l_crease",
+          "param": "alpha",
+          "scale": 0.25,
+          "offset": -1.0
         }
       ],
       "note": "绕肘旋转，±10 → ±180°。**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**：人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，正面看见的夹角会超过 145° —— Q38 在参考图 characters/xiaoxun/design/pose_ref/wave_up.png 上实测：肩(455,315)→肘(495,475)→腕(487,352)，投影夹角 170°。倍率 14.5（±145°）封顶时这个姿势根本摆不出来，所以提到 18.0；动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变"
@@ -7427,6 +7475,12 @@
           "group": "forearm_r",
           "param": "rot_deg",
           "scale": -18.0
+        },
+        {
+          "part": "arm_r_crease",
+          "param": "alpha",
+          "scale": 0.25,
+          "offset": -1.0
         }
       ]
     },
