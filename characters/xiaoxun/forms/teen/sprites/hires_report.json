@@ -7,8 +7,8 @@
  "realesrgan": 68,
  "lanczos": 7,
  "native": 0,
- "keycolor_fixed": 39,
- "seconds": 56.9,
+ "keycolor_fixed": 50,
+ "seconds": 57.2,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -182,11 +182,11 @@
   {
    "name": "arm_l_fore.png",
    "src": [
-    85,
+    80,
     147
    ],
    "dst": [
-    170,
+    160,
     294
    ],
    "method": "realesrgan",
@@ -208,12 +208,12 @@
   {
    "name": "arm_l_upper.png",
    "src": [
-    88,
-    240
+    85,
+    255
    ],
    "dst": [
-    176,
-    480
+    170,
+    510
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -234,11 +234,11 @@
   {
    "name": "arm_r_fore.png",
    "src": [
-    91,
+    88,
     151
    ],
    "dst": [
-    182,
+    176,
     302
    ],
    "method": "realesrgan",
@@ -260,12 +260,12 @@
   {
    "name": "arm_r_upper.png",
    "src": [
-    89,
-    239
+    87,
+    258
    ],
    "dst": [
-    178,
-    478
+    174,
+    516
    ],
    "method": "realesrgan",
    "keycolor_fixed": 0
@@ -983,7 +983,7 @@
     1000
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 12
   }
  ],
  "note": "切件链不改坐标，这一步只换像素密度；make_rig 发现 @2x 就把 scale 乘 0.5"

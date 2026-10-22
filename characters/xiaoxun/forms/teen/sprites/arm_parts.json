@@ -27,12 +27,12 @@
       "id": "arm_l_upper",
       "file": "sprites/arm_l_upper.png",
       "pos": [
-        41,
+        44,
         331
       ],
       "size": [
-        88,
-        240
+        85,
+        255
       ],
       "group": "arm_l",
       "layer": 140,
@@ -50,7 +50,7 @@
         526
       ],
       "size": [
-        85,
+        80,
         147
       ],
       "group": "forearm_l",
@@ -107,8 +107,8 @@
         332
       ],
       "size": [
-        89,
-        239
+        87,
+        258
       ],
       "group": "arm_r",
       "layer": 141,
@@ -122,11 +122,11 @@
       "id": "arm_r_fore",
       "file": "sprites/arm_r_fore.png",
       "pos": [
-        326,
+        329,
         522
       ],
       "size": [
-        91,
+        88,
         151
       ],
       "group": "forearm_r",
@@ -210,12 +210,12 @@
     },
     "seam_trim_px": {
       "l": {
-        "upper": 818,
-        "fore": 291
+        "upper": 828,
+        "fore": 252
       },
       "r": {
-        "upper": 763,
-        "fore": 274
+        "upper": 779,
+        "fore": 253
       }
     },
     "wrist_y": {
@@ -238,7 +238,7 @@
         "layer": 143
       }
     },
-    "static_diff_px": 16793,
+    "static_diff_px": 16779,
     "arm_px": {
       "l": 18137,
       "r": 19386

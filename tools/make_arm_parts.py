@@ -564,7 +564,16 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
     if not src_ok.any():
         src_ok = up & (body[..., 3] > 200)
     if ext.any() and src_ok.any():
-        filled, _grown, bdist = bleed(rgb, src_ok, ext, rounds=ROOT_BLEED_ROUNDS)
+        # ★★★ 2026-10-22 第三十五问：into 必须**连带袖子那 3px 边缘环**。
+        #   bleed 是逐圈往 `into` 里长的；src_ok 已经往里腐蚀了 3px，它和补绘区
+        #   之间隔着一圈「袖子边缘」——那圈不在 into 里，第一轮 ring 就是空集、
+        #   直接 break，于是整块补绘**原封不动保留原画的夹克白**。
+        #   实测件 arm_r_root 中位色 (250,248,244) ＝ 纯白，而袖子是 (114,188,192)：
+        #   抬手时腋下露出来的就是一块白板（logs/asset_qa/q35_attr_root.png 红色那块）。
+        #   把边缘环放进 into，让颜色能"走过去"；rgb 仍然只在 ext 里被改写，
+        #   袖子本身一个像素不动。
+        _into = ext | (up & ~src_ok)
+        filled, _grown, bdist = bleed(rgb, src_ok, _into, rounds=ROOT_BLEED_ROUNDS)
         f = np.clip(bdist / ROOT_SHADE_DIST, 0.0, 1.0)[..., None]
         shaded = np.clip(filled.astype(np.float32) * (1.0 - (1.0 - ROOT_SHADE) * f),
                          0, 255)
@@ -944,9 +953,19 @@ def main():
             seam = ext & dilate(up_mask, LINE_W + 2) & ~up_mask
             up_rgb[seam] = ext_rgb[seam]
             report["checks"].setdefault("seam_cleared_px", {})[side] = int(seam.sum())
-        for seg, keep in (("upper", m & (yy_col <= elbow_y + half)),
-                          # 前臂 = 肘线以下 **∪ 整个肘关节圆**（半円の真ん中を突っ切る）
-                          ("fore",  (m & (yy_col >= elbow_y - half) | elbow_disc)
+        # ★ 第三十五问：上腕の肘は**半円状**に描く（REFERENCE_NOTES 第五十四批）。
+        #   原来是一刀直横切（yy <= elbow_y + half），前臂一弯，上臂末端那条
+        #   直边就从肘圆底下探出来，肘看着像两段水管平口对接（实拍 q35_joints.png）。
+        #   改成：关节线以上照旧 + 关节线以下**只留肘圆内**的部分 ⇒ 末端收成半圆。
+        #   像素依旧是重叠复制（前臂也有这一圈），静止合成不变。
+        upper_keep = m & ((yy_col <= elbow_y) | elbow_disc)
+        for seg, keep in (("upper", upper_keep),
+                          # 前臂 = 肘线**以下** ∪ 整个肘关节圆 ⇒ 近端同样收成半圆。
+                          #   上臂留下半圆、前臂留上半圆，两片合起来永远是**整圆**，
+                          #   前臂转到任何角度，肘这里的轮廓都还是那个圆（圆绕自己
+                          #   的圆心转形状不变）。原来多留的 12px 直带会在大角度
+                          #   （ArmRB−8/−10）甩出一条直边，见 q35_elbow_neg.png。
+                          ("fore",  (m & (yy_col >= elbow_y) | elbow_disc)
                                     & (yy_col <= wrist_y + 1)),
                           ("hand",  (m & (yy_col >= wrist_y)) | stub)):
             # 把原画自己的抗锯齿边一起抓进来，掩码内严格保留原 alpha，
