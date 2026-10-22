@@ -1032,11 +1032,20 @@ static void test_rig_channels(void)
                 double follow, body, gap, rigid;
                 zrig_tick(r, 200.0 + i / 60.0);
                 zrig_frame(r, 1.0, &fw, &fh);
-                follow = zrig_part_offset_x(r, eye_id);   /* 眼睛实际被推了多远 */
+                /* ★ 2026-10-22（Q37）：sway 现在**也会轻轻转头**（ParamAngleX ±5°），
+                   于是整颗头会刚体平移一点点。那是对的表演，不是"五官在脸上滑"，
+                   所以这里要先把**组的刚体位移**扣掉，剩下的才是"跟随身体形变"那一份。
+                   不扣的话偏差正好等于头的 dx（实测 0.917px ＝ 5×4/30 + idle 2.2×4/30）。
+                   ★ 不是放宽阈值：扣完之后判据仍然是 < 0.01px。 */
+                follow = zrig_part_offset_x(r, eye_id)       /* 眼睛实际被推了多远 */
+                         - zrig_group_offset_x(r, "head");   /* 减去整颗头的平移 */
                 body   = zrig_bend_at(r, src, zrig_part_follow_y(r, eye_id));
                 gap = fabs(follow - body);
                 /* 同一个头上的部件必须刚性同步，差一点点都会看成"五官在脸上滑" */
-                rigid = fabs(follow - zrig_part_offset_x(r, "mouth_open"));
+                /* 刚性同步这条比的是**原始位移**（两件在同一组里就该走得一模一样），
+                   所以不扣组位移 —— 扣了反而把两边都减掉同一个数，等于没测。 */
+                rigid = fabs(zrig_part_offset_x(r, eye_id)
+                             - zrig_part_offset_x(r, "mouth_open"));
                 if (fabs(body) > fabs(peak_body)) peak_body = body;
                 if (gap > worst) worst = gap;
                 if (rigid > worst_rigid) worst_rigid = rigid;
