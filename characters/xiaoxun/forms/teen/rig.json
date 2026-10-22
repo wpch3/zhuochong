@@ -699,8 +699,8 @@
       "group": "hand_l",
       "layer": 130,
       "pos": [
-        211,
-        724
+        216,
+        714
       ],
       "anchor": [
         0,
@@ -709,7 +709,7 @@
       "tags": [
         "body"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "腕半圆塗り足し（Q46）：以腕枢轴为心、半径=袖口半宽−1.5 的近端半圆。正圆关于旋转不变 ⇒ 手腕摆到任何角度，袖口那道缝都有肉填着。",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -720,8 +720,8 @@
       "group": "hand_l",
       "layer": 131,
       "pos": [
-        218,
-        724
+        223,
+        714
       ],
       "anchor": [
         0,
@@ -730,7 +730,7 @@
       "tags": [
         "body"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "腕半圆塗り足し（Q46）：以腕枢轴为心、半径=袖口半宽−1.5 的近端半圆。正圆关于旋转不变 ⇒ 手腕摆到任何角度，袖口那道缝都有肉填着。",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -762,8 +762,8 @@
       "group": "hand_r",
       "layer": 132,
       "pos": [
-        551,
-        724
+        556,
+        713
       ],
       "anchor": [
         0,
@@ -772,7 +772,7 @@
       "tags": [
         "body"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "腕半圆塗り足し（Q46）：以腕枢轴为心、半径=袖口半宽−1.5 的近端半圆。正圆关于旋转不变 ⇒ 手腕摆到任何角度，袖口那道缝都有肉填着。",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -783,8 +783,8 @@
       "group": "hand_r",
       "layer": 133,
       "pos": [
-        561,
-        724
+        566,
+        713
       ],
       "anchor": [
         0,
@@ -793,7 +793,7 @@
       "tags": [
         "body"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "腕半圆塗り足し（Q46）：以腕枢轴为心、半径=袖口半宽−1.5 的近端半圆。正圆关于旋转不变 ⇒ 手腕摆到任何角度，袖口那道缝都有肉填着。",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -2044,7 +2044,7 @@
       "layer": 249,
       "pos": [
         292,
-        310
+        244
       ],
       "anchor": [
         0.5,
@@ -2066,7 +2066,7 @@
       "layer": 251,
       "pos": [
         555,
-        310
+        244
       ],
       "anchor": [
         0.5,
@@ -2223,7 +2223,7 @@
       "layer": 256,
       "pos": [
         423,
-        256
+        161
       ],
       "anchor": [
         0.5,
@@ -2245,7 +2245,7 @@
       "layer": 257,
       "pos": [
         502,
-        250
+        156
       ],
       "anchor": [
         0.5,
@@ -2267,7 +2267,7 @@
       "layer": 258,
       "pos": [
         422,
-        247
+        152
       ],
       "anchor": [
         0.5,
@@ -2288,8 +2288,8 @@
       "group": "head",
       "layer": 247,
       "pos": [
-        248,
-        324
+        277,
+        258
       ],
       "anchor": [
         0.5,
@@ -2310,8 +2310,8 @@
       "group": "head",
       "layer": 248,
       "pos": [
-        597,
-        324
+        567,
+        258
       ],
       "anchor": [
         0.5,
@@ -2327,13 +2327,35 @@
       "hires": 2
     },
     {
+      "id": "acc_hair_sweep_pony_l",
+      "file": "sprites/hair_sweep_pony_l@2x.png",
+      "group": "head",
+      "layer": 243,
+      "pos": [
+        352,
+        268
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "note": "脸侧细缕·高马尾（左）（挂件，槽 head_side_sweep）：扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "acc_hair_sweep_pony_r",
       "file": "sprites/hair_sweep_pony_r@2x.png",
       "group": "head",
       "layer": 244,
       "pos": [
-        607,
-        313
+        586,
+        247
       ],
       "anchor": [
         0.5,
@@ -3988,6 +4010,181 @@
           "wave": "sine",
           "amp": 0.1,
           "freq": 0.42
+        }
+      ],
+      "part_overrides": {
+        "mouth_open": {
+          "opacity": 0.8
+        }
+      }
+    },
+    {
+      "id": "wave_both",
+      "priority": 6,
+      "duration": 2.4,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "ParamArmRA",
+          "wave": "pulse",
+          "amp": 1.0556,
+          "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamShoulderRY",
+          "wave": "pulse",
+          "amp": 8.67,
+          "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamForeSlimR",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.7,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "pulse",
+          "amp": 7.3333,
+          "dur": 0.7,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "sine",
+          "amp": -0.2778,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamArmLA",
+          "wave": "pulse",
+          "amp": 1.0556,
+          "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamShoulderLY",
+          "wave": "pulse",
+          "amp": 8.67,
+          "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamForeSlimL",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.7,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmLB",
+          "wave": "pulse",
+          "amp": 7.3333,
+          "dur": 0.7,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmLB",
+          "wave": "sine",
+          "amp": -0.2778,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamHandROpen",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.1,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandLOpen",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.1,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "pulse",
+          "amp": -0.9545,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "sine",
+          "amp": -0.7273,
+          "freq": 2.2,
+          "phase": 0.18,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "pulse",
+          "amp": -0.9545,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "sine",
+          "amp": -0.7273,
+          "freq": 2.2,
+          "phase": 0.3,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamAngleZ",
+          "wave": "sine",
+          "amp": 3.2,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamAngleY",
+          "wave": "sine",
+          "amp": -3.6,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamHipDrop",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamEyeLSmile",
+          "wave": "pulse",
+          "amp": 0.55,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRSmile",
+          "wave": "pulse",
+          "amp": 0.55,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairAhoge",
+          "wave": "sine",
+          "amp": 0.3,
+          "freq": 1.2
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.2857,
+          "freq": 1.2
         }
       ],
       "part_overrides": {
@@ -8864,6 +9061,7 @@
             "acc_hair_crown_pony",
             "acc_hood_up_pony",
             "acc_hair_hood_pony",
+            "acc_hair_sweep_pony_l",
             "acc_hair_sweep_pony_r"
           ],
           "hide": [

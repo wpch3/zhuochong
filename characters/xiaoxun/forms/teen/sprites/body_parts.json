@@ -665,5 +665,17 @@
       "group": "head",
       "layer": 170
     }
-  ]
+  ],
+  "armpit_patch": {
+    "sig": {
+      "radius": 118.0,
+      "darken": 0.9,
+      "v": 1
+    },
+    "filled_px": {
+      "1x": 9944,
+      "@2x": 39978
+    },
+    "note": "tools/armpit_patch.py：把休止姿势下被手臂盖住、抬臂后会露出背景的腋窝区域用躯干侧缘挤出补满（脇の下の描き足し）"
+  }
 }

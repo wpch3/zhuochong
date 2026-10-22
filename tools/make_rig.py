@@ -2395,6 +2395,87 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "part_overrides": {"mouth_open": {"opacity": 0.8}},
         })
 
+        # ======== 双手挥手（第四十六问用户点名新增）========
+        #
+        # 口径：**把单手挥手的那套定案值整体镜像到左臂**，一个数都不重新拍脑袋。
+        #   单手那套（Q43~Q45 四轮实拍定下来的）：
+        #     上臂 A_u=34°（命令 −19，dur 0.45）、肩上提 26px（ParamShoulderRY 8.67）
+        #     肘 A_f=166°（命令 −132，dur 0.70）、前臂收窄 1.0（ParamForeSlimR）
+        #     腕 +21° 回正 + ±16° ひらひら（dur 0.9 / freq 2.2）
+        #   左臂是镜像的：旋转角取反（rot_deg 正负相反），而**抬肩/收窄/张开手
+        #   这三个是标量幅度，左右同号**。
+        #
+        # 两处**故意不做成完全镜像**：
+        #   ① 手腕的相位差 0.18 vs 0.30 —— 两只手严丝合缝同相是机械感的来源，
+        #      真人两手挥的节奏总差半拍（saraemi「左右で差をつける」）。
+        #   ② 躯干不做 ParamBodyAngleZ 侧倾：单手挥是往抬手那侧让，
+        #      双手挥两侧都抬，侧倾就成了多余的扭动。换成 ParamHipDrop 的
+        #      上下起伏（和单手挥同一条曲线）+ 头部小幅点头。
+        #
+        # 为什么不复用 wave 的 part_overrides：mouth_open 0.8 照抄（打招呼要出声），
+        # 另外两眼加 Smile 0.55 —— 双手挥是更兴奋的打招呼，眯眼笑是标配表情。
+        if armp:
+            wave_both_channels = [
+                # —— 右臂：和单手挥手逐字一致 ——
+                {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
+                 "amp": -19.0, "dur": 0.45, "ease": "out"},
+                {"target": "ParamShoulderRY", "wave": "pulse",
+                 "amp": 8.67, "dur": 0.45, "ease": "out"},
+                {"target": "ParamForeSlimR", "wave": "pulse",
+                 "amp": 1.0, "dur": 0.70, "ease": "out"},
+                {"target": "forearm_r", "param": "rot_deg", "wave": "pulse",
+                 "amp": -132.0, "dur": 0.70, "ease": "out"},
+                {"target": "forearm_r", "param": "rot_deg", "wave": "sine",
+                 "amp": 5.0, "freq": 1.6, "dur": 2.4},
+                # —— 左臂：角度镜像取反，幅度类同号 ——
+                {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
+                 "amp": 19.0, "dur": 0.45, "ease": "out"},
+                {"target": "ParamShoulderLY", "wave": "pulse",
+                 "amp": 8.67, "dur": 0.45, "ease": "out"},
+                {"target": "ParamForeSlimL", "wave": "pulse",
+                 "amp": 1.0, "dur": 0.70, "ease": "out"},
+                {"target": "forearm_l", "param": "rot_deg", "wave": "pulse",
+                 "amp": 132.0, "dur": 0.70, "ease": "out"},
+                {"target": "forearm_l", "param": "rot_deg", "wave": "sine",
+                 "amp": -5.0, "freq": 1.6, "dur": 2.4},
+            ]
+            if has_hands:
+                wave_both_channels += [
+                    {"target": "ParamHandROpen", "wave": "pulse",
+                     "amp": 1.0, "dur": 0.10, "ease": "out"},
+                    {"target": "ParamHandLOpen", "wave": "pulse",
+                     "amp": 1.0, "dur": 0.10, "ease": "out"},
+                    {"target": "hand_r", "param": "rot_deg", "wave": "pulse",
+                     "amp": 21.0, "dur": 0.9, "ease": "out"},
+                    {"target": "hand_r", "param": "rot_deg", "wave": "sine",
+                     "amp": 16.0, "freq": 2.2, "phase": 0.18, "dur": 2.4},
+                    {"target": "hand_l", "param": "rot_deg", "wave": "pulse",
+                     "amp": -21.0, "dur": 0.9, "ease": "out"},
+                    {"target": "hand_l", "param": "rot_deg", "wave": "sine",
+                     "amp": -16.0, "freq": 2.2, "phase": 0.30, "dur": 2.4},
+                ]
+            actions.append({
+                "id": "wave_both", "priority": 6, "duration": 2.4,
+                "return_state": "idle", "interruptible": False,
+                "channels": wave_both_channels + [
+                    {"target": "head", "param": "rot_deg", "wave": "sine",
+                     "amp": 1.6, "freq": 1.6, "dur": 2.4},
+                    {"target": "head", "param": "dy", "wave": "sine",
+                     "amp": 1.2, "freq": 1.6, "dur": 2.4},
+                    {"target": "ParamHipDrop", "wave": "sine",
+                     "amp": 1.2, "freq": 1.6, "dur": 2.4},
+                    {"target": "ParamEyeLSmile", "wave": "pulse",
+                     "amp": 0.55, "dur": 0.5, "ease": "out"},
+                    {"target": "ParamEyeRSmile", "wave": "pulse",
+                     "amp": 0.55, "dur": 0.5, "ease": "out"},
+                    {"target": "ParamHairAhoge", "wave": "sine",
+                     "amp": 0.3, "freq": 1.2},
+                    {"target": "ParamHairSide", "wave": "sine",
+                     "amp": 0.2857, "freq": 1.2},
+                ],
+                "part_overrides": {"mouth_open": {"opacity": 0.8}},
+            })
+
         if armp and has_hands:
             # ======== 比心（Q36 用户点名）========
             # 手腕落点是按两节连杆反算的，不是拍脑袋：

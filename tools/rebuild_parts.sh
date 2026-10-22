@@ -38,6 +38,11 @@ step "1/26 从设计图抠像出 body_full.png（整条流水线的源头）"
 
 step "2/26 身体分段（头/躯干/双臂/双腿）"
 "$PY" tools/make_body_parts.py --character "$CH" --form "$FM"
+# ★ 这一步刚把 seg_torso 重新生成了一遍，sprites/_orig/ 里那几张「原件备份」
+#   就过期了。后面 20c/20d 两步是**原地覆盖 seg_torso** 的工具，它们的约定是
+#   「永远从 _orig/ 的备份重算」—— 备份不作废，这一轮上游的改动会被整张旧图盖掉
+#   （2026-10-22 第四十六问踩到：补腋下时差点把上游重切的躯干还原回去）。
+rm -f "characters/$CH/forms/$FM/sprites/_orig/seg_torso"*.png
 
 step "3/26 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
 "$PY" tools/make_arm_parts.py --character "$CH" --form "$FM"
@@ -67,6 +72,12 @@ step "3d/26 腕正圆关节（把袖口里的垫片做成以腕枢轴为心的�
 # 第四十四问第二处：垫片在袖口以下还留着一截非圆形的料，手一摆就从袖口下面
 # 探出一块肉色疙瘩（logs/asset_qa/q44_wrist_before.png）。官方口径「関節パーツは正円」。
 "$PY" tools/round_wrist_socket.py --character "$CH" --form "$FM"
+
+step "3e/26 腕半圆塗り足し（手件在腕口补一枚以枢轴为心的正圆）"
+# 必须排在 round_wrist_socket 之后：R 取的是同一条「袖口半宽」。
+# 第四十六问：张开手的腕桩只有 24px 宽，袖口洞 43px —— 手腕一摆就漏背景
+# （logs/asset_qa/q46_tint_junction.png 黄绿之间的洋红）。
+"$PY" tools/wrist_bridge.py --character "$CH" --form "$FM"
 
 step "4/26 鞋拆件（常态鞋 + 踮脚鞋，顺带把腿件切线以下擦干净）"
 "$PY" tools/make_foot_parts.py --character "$CH" --form "$FM"
@@ -149,6 +160,15 @@ step "20c/26 脸的轮廓线（按模板把下颌/脸颊的主線补回 seg_head
 # Live2D 官方：のりしろ要留，但「主線が無いパーツの分かれ目」才该模糊 ——
 # 有主線的地方必须是实的，所以这里是"塗り足し保持 + 其上另画线"，不是裁掉塗り足し。
 "$PY" tools/draw_face_contour.py --character "$CH" --form "$FM"
+
+step "20c/26 腋下描き足し（把抬臂后会露底的腋窝补进躯干）"
+# 必须排在 clean_baked_residue / trim_exposed_residue 之后：那两步会把
+# 「只在被盖住时才成立」的料当残渣清掉，补在它们前面等于白补。
+# 也必须排在高清化之前：这一步同时写 1× 和 @2x，之后高清化会重算 @2x，
+# 两条路都带着补料，不冲突。
+# 第四十六问 kirara_jump 全身巡检：手臂抬起时白夹克侧缘与青袖子之间
+# 裂开楔形背景（logs/asset_qa/q46_armpit_cmp.png 上下对照）。
+"$PY" tools/armpit_patch.py --character "$CH" --form "$FM"
 
 step "21/26 切件高清化（每个件生成 2× 的 @2x，make_rig 会自动改用并把 scale 乘 0.5）"
 # 先空跑一遍 make_rig 刷新「rig 引用了哪些件」这张表：高清化只给引用到的件做 @2x，

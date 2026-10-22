@@ -1,179 +1,244 @@
 {
- "schema_version": "2.0",
- "parts": [
-  {
-   "id": "hand_l_pad",
-   "file": "sprites/hand_l_pad.png",
-   "group": "forearm_l",
-   "layer": 128,
-   "pos": [
-    31,
-    631
-   ],
-   "size": [
-    48,
-    45
-   ],
-   "pivot": [
-    54.5,
-    666.0
-   ],
-   "wrist_w": 43,
-   "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩"
-  },
-  {
-   "id": "hand_l_open",
-   "file": "sprites/hand_l_open.png",
-   "group": "hand_l",
-   "layer": 130,
-   "pos": [
-    11,
-    656
-   ],
-   "size": [
-    83,
-    105
-   ],
-   "pivot": [
-    54.5,
-    666.0
-   ],
-   "wrist_w": 24
-  },
-  {
-   "id": "hand_l_heart",
-   "file": "sprites/hand_l_heart.png",
-   "group": "hand_l",
-   "layer": 131,
-   "pos": [
-    18,
-    656
-   ],
-   "size": [
-    67,
-    105
-   ],
-   "pivot": [
-    54.5,
-    666.0
-   ],
-   "wrist_w": 29
-  },
-  {
-   "id": "hand_r_pad",
-   "file": "sprites/hand_r_pad.png",
-   "group": "forearm_r",
-   "layer": 129,
-   "pos": [
-    366,
-    631
-   ],
-   "size": [
-    49,
-    45
-   ],
-   "pivot": [
-    390.0,
-    666.0
-   ],
-   "wrist_w": 43,
-   "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩"
-  },
-  {
-   "id": "hand_r_open",
-   "file": "sprites/hand_r_open.png",
-   "group": "hand_r",
-   "layer": 132,
-   "pos": [
-    351,
-    656
-   ],
-   "size": [
-    83,
-    105
-   ],
-   "pivot": [
-    390.0,
-    666.0
-   ],
-   "wrist_w": 24
-  },
-  {
-   "id": "hand_r_heart",
-   "file": "sprites/hand_r_heart.png",
-   "group": "hand_r",
-   "layer": 133,
-   "pos": [
-    361,
-    656
-   ],
-   "size": [
-    67,
-    105
-   ],
-   "pivot": [
-    390.0,
-    666.0
-   ],
-   "wrist_w": 30
-  }
- ],
- "checks": {
-  "cuff_cleaned": [
-   "hand_l",
-   "hand_r"
+  "schema_version": "2.0",
+  "parts": [
+    {
+      "id": "hand_l_pad",
+      "file": "sprites/hand_l_pad.png",
+      "group": "forearm_l",
+      "layer": 128,
+      "pos": [
+        31,
+        631
+      ],
+      "size": [
+        46,
+        40
+      ],
+      "pivot": [
+        54.5,
+        666.0
+      ],
+      "wrist_w": 43,
+      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩"
+    },
+    {
+      "id": "hand_l_open",
+      "file": "sprites/hand_l_open.png",
+      "group": "hand_l",
+      "layer": 130,
+      "pos": [
+        16,
+        646
+      ],
+      "size": [
+        73,
+        110
+      ],
+      "pivot": [
+        54.5,
+        666.0
+      ],
+      "wrist_w": 41,
+      "note": "腕半圆塗り足し（Q46）：以腕枢轴为心、半径=袖口半宽−1.5 的近端半圆。正圆关于旋转不变 ⇒ 手腕摆到任何角度，袖口那道缝都有肉填着。"
+    },
+    {
+      "id": "hand_l_heart",
+      "file": "sprites/hand_l_heart.png",
+      "group": "hand_l",
+      "layer": 131,
+      "pos": [
+        23,
+        646
+      ],
+      "size": [
+        56,
+        110
+      ],
+      "pivot": [
+        54.5,
+        666.0
+      ],
+      "wrist_w": 41,
+      "note": "腕半圆塗り足し（Q46）：以腕枢轴为心、半径=袖口半宽−1.5 的近端半圆。正圆关于旋转不变 ⇒ 手腕摆到任何角度，袖口那道缝都有肉填着。"
+    },
+    {
+      "id": "hand_r_pad",
+      "file": "sprites/hand_r_pad.png",
+      "group": "forearm_r",
+      "layer": 129,
+      "pos": [
+        366,
+        631
+      ],
+      "size": [
+        46,
+        40
+      ],
+      "pivot": [
+        390.0,
+        666.0
+      ],
+      "wrist_w": 43,
+      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩"
+    },
+    {
+      "id": "hand_r_open",
+      "file": "sprites/hand_r_open.png",
+      "group": "hand_r",
+      "layer": 132,
+      "pos": [
+        356,
+        645
+      ],
+      "size": [
+        73,
+        111
+      ],
+      "pivot": [
+        390.0,
+        666.0
+      ],
+      "wrist_w": 42,
+      "note": "腕半圆塗り足し（Q46）：以腕枢轴为心、半径=袖口半宽−1.5 的近端半圆。正圆关于旋转不变 ⇒ 手腕摆到任何角度，袖口那道缝都有肉填着。"
+    },
+    {
+      "id": "hand_r_heart",
+      "file": "sprites/hand_r_heart.png",
+      "group": "hand_r",
+      "layer": 133,
+      "pos": [
+        366,
+        645
+      ],
+      "size": [
+        56,
+        111
+      ],
+      "pivot": [
+        390.0,
+        666.0
+      ],
+      "wrist_w": 42,
+      "note": "腕半圆塗り足し（Q46）：以腕枢轴为心、半径=袖口半宽−1.5 的近端半圆。正圆关于旋转不变 ⇒ 手腕摆到任何角度，袖口那道缝都有肉填着。"
+    }
   ],
-  "wrist_w": {
-   "hand_l_pad": 43,
-   "hand_l_open": 24,
-   "hand_l_heart": 29,
-   "hand_r_pad": 43,
-   "hand_r_open": 24,
-   "hand_r_heart": 30
-  }
- },
- "note": "tools/make_hand_parts.py 产物。放松档=原画切件（只加腕部塗り足し），张开/比心档=按原画风格生的图（design/hands/*_raw.png）键出配准而来。Q36 那版程序化画的手已废弃——用户原话「完全成怪物了」",
- "poses": {
-  "": "",
-  "open": "open",
-  "heart": "heart"
- },
- "art_base": {
-  "l": "hand_l",
-  "r": "hand_r"
- },
- "round_wrist": {
-  "sig": {
-   "margin": 3.0,
-   "v": 1
+  "checks": {
+    "cuff_cleaned": [
+      "hand_l",
+      "hand_r"
+    ],
+    "wrist_w": {
+      "hand_l_pad": 43,
+      "hand_l_open": 24,
+      "hand_l_heart": 29,
+      "hand_r_pad": 43,
+      "hand_r_open": 24,
+      "hand_r_heart": 30
+    }
   },
-  "sides": {
-   "l": {
-    "R": 23.5,
-    "size_1x": [
-     48,
-     45,
-     2005
-    ],
-    "size_2x": [
-     96,
-     90,
-     8083
-    ]
-   },
-   "r": {
-    "R": 24.0,
-    "size_1x": [
-     49,
-     45,
-     2027
-    ],
-    "size_2x": [
-     98,
-     90,
-     8162
-    ]
-   }
+  "note": "tools/make_hand_parts.py 产物。放松档=原画切件（只加腕部塗り足し），张开/比心档=按原画风格生的图（design/hands/*_raw.png）键出配准而来。Q36 那版程序化画的手已废弃——用户原话「完全成怪物了」",
+  "poses": {
+    "": "",
+    "open": "open",
+    "heart": "heart"
+  },
+  "art_base": {
+    "l": "hand_l",
+    "r": "hand_r"
+  },
+  "round_wrist": {
+    "sig": {
+      "margin": -2.0,
+      "v": 2
+    },
+    "sides": {
+      "l": {
+        "R": 20.5,
+        "size_1x": [
+          46,
+          40,
+          1568
+        ],
+        "size_2x": [
+          92,
+          80,
+          6350
+        ]
+      },
+      "r": {
+        "R": 21.0,
+        "size_1x": [
+          46,
+          40,
+          1650
+        ],
+        "size_2x": [
+          92,
+          80,
+          6673
+        ]
+      }
+    }
+  },
+  "wrist_bridge": {
+    "sig": {
+      "inset": 1.5,
+      "v": 1
+    },
+    "done": {
+      "hand_l_open": {
+        "R": 20.5,
+        "size_1x": [
+          73,
+          110,
+          570
+        ],
+        "size_2x": [
+          146,
+          220,
+          2201
+        ]
+      },
+      "hand_l_heart": {
+        "R": 20.5,
+        "size_1x": [
+          56,
+          110,
+          530
+        ],
+        "size_2x": [
+          112,
+          220,
+          2050
+        ]
+      },
+      "hand_r_open": {
+        "R": 21.0,
+        "size_1x": [
+          73,
+          111,
+          597
+        ],
+        "size_2x": [
+          146,
+          222,
+          2340
+        ]
+      },
+      "hand_r_heart": {
+        "R": 21.0,
+        "size_1x": [
+          56,
+          111,
+          558
+        ],
+        "size_2x": [
+          112,
+          222,
+          2184
+        ]
+      }
+    },
+    "note": "tools/wrist_bridge.py：手件腕口补正圆塗り足し"
   }
- }
 }

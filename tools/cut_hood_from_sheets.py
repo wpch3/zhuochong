@@ -324,12 +324,22 @@ def cut_one(style, design, chin, eyeline, head_cx):
     #   上边界取眼线：眼线以上是刘海，底图 `hair_front` 本来就有，
     #   再切一份会和底图的刘海重影；眼线以下才是需要补的鬓发。
     hood_sil = C.dilate(row_fill(hood) & (yy <= eyeline), 5)
+    # ★★★ 2026-10-22 第四十六问：帽口**里面**那段刘海要切进来。
+    #   上面那条注释（第二十三问）说「眼线以上是刘海，底图 hair_front 本来就有，
+    #   再切一份会和底图的刘海重影」—— 这个前提**已经不成立了**：
+    #   第二十四问起，三档发型的 hide 名单里就有 `hair_front`（发型要换整颗头），
+    #   而帽子立起来时自己的头壳件 `acc_hair_crown_*` 又被 `hood_pose.up` 藏掉，
+    #   于是额头上**一根头发都没有** —— 实拍 logs/asset_qa/q46_hoodbangs.png：
+    #   none+hood_up 有刘海，twin+hood_up 是个光额头。
+    #   帽口内沿以内、不是帽布也不是皮肤的那块冷色，就是刘海，切给发片。
+    inner = hood_sil & (~C.dilate(hood, 3))
+    above = (yy > eyeline) | inner
     # ★ 要一条**饱和度闸**：夹克胸口那对白抽绳、夹克前襟的冷白边，
     #   都落在 `hair_like` 的弱判据里（b 比 r 高一两点）且紧挨着长发，
     #   会被召回成「头发」。头发哪怕高光处也有 10 以上的色差，白绳只有 2~4。
     sat = (np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b))
     hairm = (op_a & C.hair_like(A) & (~teal) & (~skin)
-             & (sat >= 6) & (~hood_sil))
+             & (sat >= 6) & ((~hood_sil) | inner))
     hairm = C.despeckle(hairm, 5, 9)
     hairm, hsizes = keep_parts(hairm, 1500)
 
@@ -355,7 +365,7 @@ def cut_one(style, design, chin, eyeline, head_cx):
     #   长发 9 段 → 5 段，剩下的 5 段是**原画本来的遮挡**
     #   （手臂压住发帘、裙子压住腿间那一缕），不是切漏。
     allow = (op_a & (~teal) & (~skin) & (~C.dilate(line, 3)) & (~hood)
-             & (yy > eyeline) & (b >= r)
+             & above & (b >= r)
              & (~(C.dilate(teal, 13) & (yy > YLIM))))
     grown = flood(hairm & allow, allow) | hairm
 
@@ -368,7 +378,7 @@ def cut_one(style, design, chin, eyeline, head_cx):
     #     和原画完全重合。教程原话「線画のやや外側を選択してくりぬく」。
     hairish = C.hair_like(A) | ((b >= r + 4) & (sat >= 5))
     cellmask = (op_a & (~C.dilate(line, 3)) & (~hood) & (~teal) & (~skin)
-                & (yy > eyeline))
+                & above)
     sel = np.zeros_like(op_a)
     for c in comps(cellmask):
         if len(c) < 40:

@@ -70,20 +70,20 @@
       "sprite_file": "sheetcut_hair_twin_side_l.png",
       "ref": "head_top",
       "pos_rel": [
-        -0.606744,
-        1.421914
+        -0.502662,
+        1.308225
       ],
-      "sprite_h_rel": 1.009943,
+      "sprite_h_rel": 1.255512,
       "width_ratio": 1.0,
       "px": [
         238,
-        326,
-        381,
+        255,
+        446,
         617
       ],
       "content_px": [
-        144,
-        292
+        209,
+        363
       ],
       "slot": "head_side_sweep"
     },
@@ -91,20 +91,20 @@
       "sprite_file": "sheetcut_hair_twin_side_r.png",
       "ref": "head_top",
       "pos_rel": [
-        0.648639,
-        1.423515
+        0.542957,
+        1.309826
       ],
-      "sprite_h_rel": 1.013402,
+      "sprite_h_rel": 1.25897,
       "width_ratio": 1.0,
       "px": [
-        630,
-        326,
+        564,
+        255,
         773,
         618
       ],
       "content_px": [
-        144,
-        293
+        210,
+        364
       ],
       "slot": "head_side_sweep"
     },
@@ -150,24 +150,45 @@
       ],
       "slot": "head_crown_tied"
     },
+    "hair_pony_side_l": {
+      "sprite_file": "sheetcut_hair_pony_side_l.png",
+      "ref": "head_top",
+      "pos_rel": [
+        -0.232051,
+        0.86788
+      ],
+      "sprite_h_rel": 0.304366,
+      "width_ratio": 1.0,
+      "px": [
+        407,
+        255,
+        446,
+        342
+      ],
+      "content_px": [
+        40,
+        88
+      ],
+      "slot": "head_side_sweep"
+    },
     "hair_pony_side_r": {
       "sprite_file": "sheetcut_hair_pony_side_r.png",
       "ref": "head_top",
       "pos_rel": [
-        0.685468,
-        1.9151
+        0.610209,
+        1.801411
       ],
-      "sprite_h_rel": 2.075226,
+      "sprite_h_rel": 2.320794,
       "width_ratio": 1.0,
       "px": [
-        611,
-        326,
+        564,
+        255,
         815,
         925
       ],
       "content_px": [
-        205,
-        600
+        252,
+        671
       ],
       "slot": "head_side_sweep"
     },
@@ -218,19 +239,19 @@
       "ref": "head_top",
       "pos_rel": [
         -0.44822,
-        2.056011
+        1.942322
       ],
-      "sprite_h_rel": 2.379592,
+      "sprite_h_rel": 2.62516,
       "width_ratio": 1.0,
       "px": [
         211,
-        326,
+        255,
         507,
         1013
       ],
       "content_px": [
         297,
-        688
+        759
       ],
       "slot": "head_side_long"
     },
@@ -239,19 +260,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.498121,
-        2.054409
+        1.94072
       ],
-      "sprite_h_rel": 2.376133,
+      "sprite_h_rel": 2.621702,
       "width_ratio": 1.0,
       "px": [
         508,
-        326,
+        255,
         801,
         1012
       ],
       "content_px": [
         294,
-        687
+        758
       ],
       "slot": "head_side_long"
     }

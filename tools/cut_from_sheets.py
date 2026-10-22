@@ -914,8 +914,39 @@ def cut_masks(style, design, base_a, base_op, hairline, eyeline, head_cx,
     hairpx = (((sb - sr >= 6) & (sb - sg >= 4) & (sr > 130) & (sb > 160))
               | ((sb - sr >= 25) & (sb - sg >= 8) & (sb > 160) & (sr > 110))
               | violet_like(sa)) & sop
-    side = ((newpaint | hairpx) & (yy > side_top) & (yy <= side_bottom)
-            & sop & ~teal_like(sa))
+    #    ★★★ 2026-10-22 第四十六问：取件窗口的**上界在脸两侧必须抬到眼线**。
+    #      用户三张截图：long/twin/pony 三档「下巴两侧的脸消失了，还有青色残留」。
+    #      逐件归因（把每个件单独贴进空画布、数下颌框 x311-365/480-534 y285-350
+    #      里的覆盖像素，rig 坐标）：
+    #        短发档  hair_side_l 2794px + hair_side_r 2653px  ← 下颌带是**鬓发**盖的
+    #        twin 档 只有 acc_hair_crown_twin 1511px，sweep 件一个像素都没有
+    #      而 hairstyle 三档的 hide 名单把 hair_side_l/r 收了起来，替换件
+    #      acc_hair_sweep_twin_l/r、acc_hair_sidelong_l/r **全部从 rig y=334 才开始**
+    #      （= 这里的 side_top = chinline-15）。于是 rig y 221..334 这条
+    #      「太阳穴→下颌」的脸颊带三档都没人管，露出 seg_torso 上烤着的
+    #      兜帽里布青色 (169,200,205) —— 就是用户说的"青色残留"，
+    #      而下颌轮廓线本身画在 seg_head 上、被背景截断 ⇒ 看着像"脸被吃了一块"。
+    #      证据图：logs/asset_qa/q46_faces.png（四档实拍）、q46_hoodmatrix.png。
+    #
+    #      参考模板自己给了标准答案（design/sheets/sheet_{twin,long,pony}.png，
+    #      放大图 logs/asset_qa/q46_sheets.png）：三档的脸都是被**一对从太阳穴
+    #      垂到胸口的横髪**框住的，和短发档一个位置，只是更细。
+    #      所以上界不是"下巴线"，是"眼线"。
+    #
+    #      为什么不能整条抬：中央那片是**刘海**，归头壳件（crown，层 187~189）管，
+    #      两边都切一遍 = 同一片像素画两遍、还跨着眼睛层，接缝必然看得见
+    #      （这正是 2026-10-20 把上界压到下巴线的原因，那条顾虑**仍然成立**）。
+    #      所以只在**脸两侧**抬：离中线 0.26~0.58 个头宽的那条竖带。
+    #        · 0.26 头宽 = 刘海本体的边，中央让出去；
+    #        · 0.58 头宽 ≈ 头剪影外沿再多一点，twin 的两条辫子（挂在
+    #          0.43~1.0 头宽）绝大部分留给它们自己的件，不被这里吞掉。
+    #      脸照样让得干干净净：下面那刀 `side & ~(face_cut & ~hairpx)` 还在，
+    #      眼睛/睫毛/皮肤都过不了 hairpx。
+    cheek_band = ((np.abs(xx - head_cx) > headw * 0.26)
+                  & (np.abs(xx - head_cx) < headw * 0.58))
+    side = ((newpaint | hairpx)
+            & ((yy > side_top) | ((yy > eyeline - 4) & cheek_band))
+            & (yy <= side_bottom) & sop & ~teal_like(sa))
     #    ★★★ 2026-10-21 第二十八问：补一条「**画在脸颊上**的发缕」。
     #      马尾档左脸那缕横髪从鬓角 y≈167 一直垂到下颌 y≈340，**整条都在
     #      下巴线以上**；而这里的取件窗口从 `chinline-15 = 325` 才开始，

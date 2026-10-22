@@ -70,12 +70,24 @@ def dilate(mask, r):
     return out
 
 
+def erode(mask, r):
+    """方形腐蚀 r 像素（dilate 的对偶，同样用圆形结构元）。"""
+    out = mask.copy()
+    for dy in range(-int(r), int(r) + 1):
+        for dx in range(-int(r), int(r) + 1):
+            if dx * dx + dy * dy > r * r:
+                continue
+            out &= np.roll(np.roll(mask, dy, axis=0), dx, axis=1)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
     ap.add_argument("--form", required=True)
-    ap.add_argument("--margin", type=float, default=3.0,
-                    help="允许垫片探出袖口的余量（防发丝缝）")
+    ap.add_argument("--margin", type=float, default=-2.0,
+                    help="垫片相对袖口掩膜的余量：正数=外探（防发丝缝），"
+                         "负数=内缩（防收窄形变器把袖子缩进垫片里，Q46）")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
 
@@ -93,7 +105,7 @@ def main():
     HP = {p["id"]: p for p in HJ["parts"]}
     AP = {p["id"]: p for p in AJ["parts"]}
 
-    sig = {"margin": a.margin, "v": 1}
+    sig = {"margin": a.margin, "v": 2}
     if HJ.get("round_wrist", {}).get("sig") == sig and not a.force:
         print("[wrist] 已做过腕正圆，跳过（--force 强制）")
         return 0
@@ -121,7 +133,16 @@ def main():
             xs = np.nonzero(fa[row, :, 3] > 128)[0]
             if len(xs):
                 half = (xs.max() - xs.min() + 1) / 2.0
-        R = half + 1.5
+        #    ★★★ 2026-10-22 第四十六问：R 从 half+1.5 改成 half-1.5，裁剪从
+        #      dilate 改成 erode。用户第 5 张截图「右手与手肘关节处完全错位」，
+        #      染色实拍（logs/asset_qa/q46_tint_junction.png，红=垫片）看到
+        #      垫片沿袖口外缘露出一整条月牙，每帧 112~119px。
+        #      两笔账叠在一起：① 这里主动放了 margin=+3 让它外探；
+        #      ② 挥手时 ParamForeSlimR=1 把袖管横向收窄（袖口处 6%，
+        #         43.5px → 40.9px，每边缩 1.3px），而垫片**没有挂这个形变器**。
+        #      垫片在层 128/129、袖管在 145，本来应该整片藏在袖子里。
+        #      官方口径「関節パーツは正円、直径＝腕の幅」说的是**不超过**腕宽。
+        R = half - 1.5
 
         stat = {}
         for s in (1, 2):
@@ -170,7 +191,9 @@ def main():
             add = disc & ~have
             big[add] = fill
 
-            keep = (have | disc) & dilate(sleeve, a.margin * s)
+            clip = (dilate(sleeve, a.margin * s) if a.margin >= 0
+                    else erode(sleeve, -a.margin * s))
+            keep = (have | disc) & clip
             big[~keep] = 0
 
             ys, xs = np.nonzero(big[:, :, 3] > 0)

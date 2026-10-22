@@ -52,19 +52,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.022549,
-        1.543609
+        1.380281
       ],
-      "sprite_h_rel": 1.74319,
+      "sprite_h_rel": 2.095978,
       "width_ratio": 1.0,
       "px": [
         234,
-        258,
+        156,
         778,
         761
       ],
       "content_px": [
         545,
-        504
+        606
       ],
       "slot": "head_side_hair",
       "style": "twin"
@@ -96,19 +96,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.309173,
-        1.804614
+        1.641286
       ],
-      "sprite_h_rel": 2.306959,
+      "sprite_h_rel": 2.659748,
       "width_ratio": 1.0,
       "px": [
         408,
-        258,
+        156,
         783,
         924
       ],
       "content_px": [
         376,
-        667
+        769
       ],
       "slot": "head_side_hair",
       "style": "pony"
@@ -140,19 +140,19 @@
       "ref": "head_top",
       "pos_rel": [
         0.020948,
-        1.958334
+        1.795006
       ],
-      "sprite_h_rel": 2.638995,
+      "sprite_h_rel": 2.991784,
       "width_ratio": 1.0,
       "px": [
         212,
-        258,
+        156,
         799,
         1020
       ],
       "content_px": [
         588,
-        763
+        865
       ],
       "slot": "head_side_hair",
       "style": "long"
