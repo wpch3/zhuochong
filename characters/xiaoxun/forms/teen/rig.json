@@ -445,7 +445,7 @@
       "id": "arm_l_upper",
       "file": "sprites/arm_l_upper@2x.png",
       "group": "arm_l",
-      "layer": 140,
+      "layer": 97,
       "pos": [
         244,
         399
@@ -529,7 +529,7 @@
       "id": "arm_r_upper",
       "file": "sprites/arm_r_upper@2x.png",
       "group": "arm_r",
-      "layer": 141,
+      "layer": 98,
       "pos": [
         514,
         400
@@ -7389,6 +7389,12 @@
           "param": "alpha",
           "scale": -1.29,
           "offset": 0.57
+        },
+        {
+          "part": "arm_l_cap",
+          "param": "alpha",
+          "scale": -0.6,
+          "offset": 2.667
         }
       ],
       "note": "绕肩旋转，±10 → ±180°（人的肩就是 180°：手能举到头顶正上方）。肩关节靠两件东西兜住：① 躯干不留任何袖子像素（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子；③ arm_*_cap 肩帽盖住肩窝（Q35）"
@@ -7410,6 +7416,12 @@
           "param": "alpha",
           "scale": -1.29,
           "offset": 0.57
+        },
+        {
+          "part": "arm_r_cap",
+          "param": "alpha",
+          "scale": -0.6,
+          "offset": 2.667
         }
       ]
     },

@@ -322,10 +322,39 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         def root_fade(part_id):
             return [{"part": part_id, "param": "alpha", "scale": -1.29, "offset": 0.57}]
 
+        # ★★★ Q41（2026-10-22）肩帽 arm_*_cap 也要随抬手角度淡出 —— 和袖根同病同治。
+        #
+        #   病象：Q40 把挥手从 −115° 抬到 −130° 之后，用户截图一眼看出右腋下挂着
+        #   **一块带尖角的薄荷色布片**（logs/asset_qa/q41_user_zoom.png A 格）。
+        #   我上一轮只裁了上半身的框去验收，没看全身，漏了。
+        #
+        #   分件染色实拍坐实元凶（logs/asset_qa/q41_tint_zoom.png，
+        #   红=seg_torso 绿=arm_r_root 蓝=arm_r_upper **黄=arm_r_cap**）：
+        #   黄色那块整个甩到了夹克剪影外面 —— 肩帽是绕肩转的圆盘，抬手角度一大，
+        #   圆盘朝下那半边就转到腋下空档里，和袖根 arm_*_root 是**同一个几何病**
+        #   （肩枢轴坐在躯干剪影边界上，见上面 Q38 那段）。
+        #
+        #   为什么敢淡掉：逐角度做了「有帽 / 无帽」对照（q41_capsweep.png 两行六格）
+        #   并量了**无帽时的封闭空洞**（洪水填充判连不到画面边缘的背景像素）：
+        #       角度    20°  40°  60°  90° 115° 130°
+        #       空洞     9px  7px  7px  8px  6px  7px   ← 全是抗锯齿噪点，没有真洞
+        #       帽子探出 78   95   82   47   51   88
+        #   —— 20~130° 这一段**肩窝根本不靠它兜**（袖子自己的根部已经盖住了），
+        #   它只是在往外贴面积；到 90° 以上就贴成了那块尖角布片。
+        #   和袖根一样保留小角度的兜底（Q35 加它是为了小角度转开时别露肩窝），
+        #   只把大角度关掉：
+        #       角 ≤  80°（参数 4.444）→ 1+v ≥ 1 → clamp 回 1.0，整段不变
+        #       角 = 110°（参数 6.111）→ 1+v = 0   → 全透明
+        #   解出 scale = −1/(6.111−4.444) = **−0.60**、offset = −4.444×(−0.6) = **+2.667**。
+        #   斜坡放在 80~110°：这一段帽子还被袖子压着（露出面积小），半透明看不出来；
+        #   往身后摆（参数为负）时 v 更小、clamp 后仍是 1.0，缺口最大的那个方向照常留着。
+        def cap_fade(part_id):
+            return [{"part": part_id, "param": "alpha", "scale": -0.60, "offset": 2.667}]
+
         out += [
             {"id": "ParamArmLA", "label": "左臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 18.0}]
-                      + root_fade("arm_l_root"),
+                      + root_fade("arm_l_root") + cap_fade("arm_l_cap"),
              "note": "绕肩旋转，±10 → ±180°（人的肩就是 180°：手能举到头顶正上方）。"
                      "肩关节靠两件东西兜住：① 躯干不留任何袖子像素"
                      "（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し"
@@ -333,7 +362,7 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                      "③ arm_*_cap 肩帽盖住肩窝（Q35）"},
             {"id": "ParamArmRA", "label": "右臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_r", "param": "rot_deg", "scale": -18.0}]
-                      + root_fade("arm_r_root")},
+                      + root_fade("arm_r_root") + cap_fade("arm_r_cap")},
             {"id": "ParamArmLB", "label": "左小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 18.0}],
              "note": "绕肘旋转，±10 → ±180°。"
@@ -1270,11 +1299,30 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             tag_of.update({"seg_foot_l": ["leg", "foot"], "seg_foot_r": ["leg", "foot"],
                            "seg_foot_l_tip": ["leg", "foot"],
                            "seg_foot_r_tip": ["leg", "foot"]})
+        # ★★★ Q41（2026-10-22）上臂要画在**躯干底下**。
+        #
+        #   病象：Q40 把挥手抬到 −130° 后，用户截图里右胸口压着**一块带尖的青色楔形**
+        #   （logs/asset_qa/q41_chest.png 右格：从肩一路斜插到夹克抽绳那里）。
+        #
+        #   根因不是切件脏，是**层序**：`arm_*_upper` 原本 layer 140/141，在
+        #   `seg_torso` 100 **之上**。而每个手臂件都按 G108 画了「塗り足し」——
+        #   往躯干里多画一截，本意是\"转开之后别露出关节缝\"，前提是**它被躯干压着**。
+        #   层序反了，这截塗り足し就不是兜底而是穿帮：手臂绕肩一转，枢轴**以上**
+        #   那截（袖子的肩头）就扫到胸口，直接盖在白夹克上。
+        #   几何上对得起来：枢轴 rig(523,464)、肩头在枢轴上方约 70px，转 −130° 后
+        #   落到枢轴左下 (−54,+45)px ≈ 帧坐标 (261,295)，正是楔形尖端的位置。
+        #
+        #   改成 97/98（躯干 100 之下、袖根 95/96 之上）。实拍对照 q41_zfix.png：
+        #   挥手那格楔形消失，**待机那格逐像素没变化**（静止时那截本来就该被压着）。
+        #   安全性：全部 23 个动作里上臂转角 >16° 的**只有挥手**（其余 ≤6°），
+        #   手臂从不横过胸前；真要横过胸前的是前臂和手，它们仍在 144/145、138/139
+        #   —— 都在躯干之上，比心 heart_hands 照常挡在身前。
+        UPPER_UNDER_TORSO = {"arm_l_upper": 97, "arm_r_upper": 98}
         body_parts_list = [{
             "id": sp["id"],
             "file": sp["file"],
             "group": sp["group"],
-            "layer": sp["layer"],
+            "layer": UPPER_UNDER_TORSO.get(sp["id"], sp["layer"]),
             "pos": [ox + sp["pos"][0], oy + sp["pos"][1]],
             "anchor": [0, 0],
             "tags": tag_of.get(sp["id"], ["body"]),
