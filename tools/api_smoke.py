@@ -710,8 +710,16 @@ def run(base, root):
                for q in (a.json("/api/params.json") or {}).get("params", [])}
         peak_a = max(peak_a, eff.get("ParamArmRA") or 0)
         peak_b = max(peak_b, eff.get("ParamArmRB") or 0)
-    check("挥手动作要驱动 ParamArmRA（大臂）", peak_a > 4.0, "峰值 %.2f" % peak_a)
-    check("挥手动作要驱动 ParamArmRB（肘）", peak_b > 3.0, "峰值 %.2f" % peak_b)
+    # ★ 阈值按**角度**写，不按参数值写（Q35/Q37）。
+    #   ParamArmRA 的 bind scale 从 6 改成 18（±10 的官方量程 × 18 = ±180°，
+    #   这样"参数满量程 = 手臂能转的极限"才对得上 Live2D 的契约）。
+    #   参数值 = 角度 / scale，所以同一个动作的参数读数变成了原来的 1/3。
+    #   旧阈 4.0（当时 scale=6）＝ 24°；换算到今天就是 24/18 = 1.33。
+    #   肘同理：旧阈 3.0 × scale 10 = 30° → 30/14.5 = 2.07。
+    check("挥手动作要驱动 ParamArmRA（大臂≥24°）", peak_a > 24.0 / 18.0,
+          "峰值 %.2f（＝%.0f°）" % (peak_a, peak_a * 18.0))
+    check("挥手动作要驱动 ParamArmRB（肘≥30°）", peak_b > 30.0 / 14.5,
+          "峰值 %.2f（＝%.0f°）" % (peak_b, peak_b * 14.5))
 
     # 非循环动作的收尾：surprised 的手臂通道是 pulse+out、长度跟动作一样，
     # 没有动作级 FadeOutTime 的话最后一帧会停在满值（≈2.67）再硬切回 idle。
@@ -726,7 +734,9 @@ def run(base, root):
         if dt < 0.60: mid_peak = max(mid_peak, v)
         elif dt > 0.78: tail_min = min(tail_min, v)
         time.sleep(0.03)
-    check("surprised 中段手臂要摆出去", mid_peak > 1.2, "峰值 %.2f" % mid_peak)
+    # 同上：旧阈 1.2 是 scale=6 年代的参数值 ＝ 7.2°，今天写成 7.2/18。
+    check("surprised 中段手臂要摆出去（≥7°）", mid_peak > 7.2 / 18.0,
+          "峰值 %.2f（＝%.0f°）" % (mid_peak, mid_peak * 18.0))
     # 平台契约清单（G50）：界面靠它画"能力与供应商"面板
     pf = a.json("/platform.json")
     check("/platform.json 能取到", bool(pf and pf.get("capabilities")),

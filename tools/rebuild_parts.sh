@@ -42,6 +42,12 @@ step "2/26 身体分段（头/躯干/双臂/双腿）"
 step "3/26 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
 "$PY" tools/make_arm_parts.py --character "$CH" --form "$FM"
 
+step "3b/26 手差分件（放松/张开/比心 × 左右，程序化重画）"
+# 必须排在 make_arm_parts 之后：腕线、袖口内宽都是从它的产物上实测的。
+# 原画那只手是\"摊平的蹼\"（五指等长、没有掌骨），掰是掰不出来的，只能重画；
+# 官方口径也是手的差分**换贴图**而不是靠变形器（animator_arms_mtn）。
+"$PY" tools/make_hand_parts.py --character "$CH" --form "$FM"
+
 step "4/26 鞋拆件（常态鞋 + 踮脚鞋，顺带把腿件切线以下擦干净）"
 "$PY" tools/make_foot_parts.py --character "$CH" --form "$FM"
 

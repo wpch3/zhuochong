@@ -65,7 +65,7 @@ FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
                has_blend=False, has_side=False, has_legs=False,
                body_id="seg_torso", has_eyeballs=False, foot_lift=None,
-               star_eyes=None, fx_table=None):
+               star_eyes=None, fx_table=None, hand_forms=None):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -140,8 +140,14 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
          "note": "满格 = 整个人横移 20px（被敲飞那下用到 14px）"},
         {"id": "ParamBaseY", "label": "全身 上下", "min": -10.0, "max": 10.0,
          "default": 0.0,
-         "binds": [{"group": "root", "param": "dy", "scale": -4.0}],
-         "note": "满格 = 跳起 40px；happy 两段弹跳叠起来是 8.5"},
+         "binds": [{"group": "root", "param": "dy", "scale": -7.0}],
+         "note": "满格 = 跳起 70px；happy 两段弹跳叠起来是 4.86。"
+                 "倍率原来是 −4（满格才 40px），芳文跳写了 −120px 却被**悄悄削成 40px** ——"
+                 "实拍鞋底只离地 22px(预览)，和声明的 120 对不上。"
+                 "★ 修法是改**倍率**不是改行程：Live2D 标准参数的值域是对外契约"
+                 "（外部 .motion3/.exp3 推进来的幅度按 ±10 算），放宽行程等于毁约；"
+                 "−4→−7 后满格 70px，动作里写的是像素、换算后自动落在 ±10 内。"
+                 "另在 selfcheck 加了「动作幅度不许超出参数行程」拦同类静默削平"},
         # 全身旋转。Live2D 标准表里没有这一项（整体倾斜通常靠 ParamBodyAngleZ），
         # 我们的\"被摸头 / 被拖拽\"要整个人晃，所以登记为扩展参数（见合规表第二节）。
         {"id": "ParamBaseRot", "label": "全身 倾斜", "min": -10.0, "max": 10.0,
@@ -254,24 +260,42 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
     if jointed_arms:
         # G4c 拆件后手臂是真关节：上臂绕肩、前臂绕肘。正值 = 往身体外侧抬。
         # 画面 y 轴朝下，所以顺时针为正 → 左臂（画面左）抬手是正、右臂是负。
+        #
+        # ★ Q36「手臂要能做到所有人类能做到的动作」⇒ 行程按**人体关节活动度**给满，
+        #   不是按"现有动作够用"给。旧表 ±10 只到 ±60°，手举不过肩，
+        #   芳文跳那种双臂上举成 V 根本做不出来（参数被 clamp 在 10）。
+        #   ★ Q36 二改：放宽 min/max 是**错的**，要改的是 scale。
+        #   Live2D 标准参数的值域是**对外契约** —— 外部 .motion3/.exp3 把
+        #   ParamArmLA 推到 10 就是"举满"。我们把行程改成 ±30，等于告诉外部文件
+        #   "推到 10 只有三分之一"，外来动作全部变成半身不遂；selfcheck 的
+        #   「标准参数取值范围符合官方惯例」拦的就是这个。
+        #   所以：行程回到 ±10，把倍率从 6 提到 18（±10 × 18 = ±180°，同样做得到
+        #   芳文跳的双臂上举）。动作源码里写的仍然是"多少度"，GEO2PARAM 自动换算；
+        #   只有 test_core 里几条按**参数值**写死的阈值要跟着改单位（已同步）。
+        #   医学活动度：肩屈曲/外展 180°、伸展 60°；肘屈曲 145°；腕掌屈 80°/背屈 70°。
         out += [
             {"id": "ParamArmLA", "label": "左臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
-             "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 6.0}],
-             "note": "绕肩旋转，±10 → ±60°。肩关节靠两件东西兜住：① 躯干不留任何袖子像素"
+             "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 18.0}],
+             "note": "绕肩旋转，±10 → ±180°（人的肩就是 180°：手能举到头顶正上方）。"
+                     "肩关节靠两件东西兜住：① 躯干不留任何袖子像素"
                      "（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し"
-                     "画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子"},
+                     "画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子；"
+                     "③ arm_*_cap 肩帽盖住肩窝（Q35）"},
             {"id": "ParamArmRA", "label": "右臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
-             "binds": [{"group": "arm_r", "param": "rot_deg", "scale": -6.0}]},
+             "binds": [{"group": "arm_r", "param": "rot_deg", "scale": -18.0}]},
             {"id": "ParamArmLB", "label": "左小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
-             "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 10.0}],
-             "note": "绕肘旋转，±10 → ±100°；挥手那下肘要折 80° 再叠 14° 的摆"},
+             "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 14.5}],
+             "note": "绕肘旋转，±10 → ±145°（人的肘屈曲极限就是 145°，摸到肩膀）；"
+                     "挥手那下肘要折 98° 再叠 14° 的摆"},
             {"id": "ParamArmRB", "label": "右小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
-             "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -10.0}]},
+             "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -14.5}]},
             # G4c2：手是第三节（绕腕转）。Live2D 标准参数表里就叫 ParamHandL/R。
-            {"id": "ParamHandL", "label": "左手腕", "min": -1.0, "max": 1.0, "default": 0.0,
+            {"id": "ParamHandL", "label": "左手腕", "min": -3.2, "max": 3.2, "default": 0.0,
              "binds": [{"group": "hand_l", "param": "rot_deg", "scale": 22.0}],
-             "note": "绕腕旋转 ±22°；手往袖子里续了 14px 皮肤，转开不露腕"},
-            {"id": "ParamHandR", "label": "右手腕", "min": -1.0, "max": 1.0, "default": 0.0,
+             "note": "绕腕旋转 ±70°（掌屈 80°/背屈 70°，取小的那头）。"
+                     "手件往袖子里续了 16px 的腕柄，柄的半对角 20.6px < 袖口半宽 22.5px，"
+                     "**任何角度都缩在袖口里**，所以大角度也不会露腕"},
+            {"id": "ParamHandR", "label": "右手腕", "min": -3.2, "max": 3.2, "default": 0.0,
              "binds": [{"group": "hand_r", "param": "rot_deg", "scale": -22.0}]},
         ]
     else:
@@ -319,13 +343,15 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
             # 这条参数走人真实的做法：胯往下沉 → 腿顶跟着下来 → 脚踝那一行不动。
             # 用 root 曲线（底边固定、顶端最大）：脚件是刚性跟随腿在切线处的形变的，
             # 而 root 曲线在切线（=腿件底边）处正好是 0，所以鞋底净位移是 0。
-            {"id": "ParamHipDrop", "label": "胯 下沉（屈膝承重）", "min": -1.0, "max": 1.0,
+            {"id": "ParamHipDrop", "label": "胯 下沉（屈膝承重）", "min": -6.0, "max": 6.0,
              "default": 0.0,
              "binds": [{"group": "chest", "param": "dy", "scale": 2.0},
                        {"part": "seg_leg_l", "param": "bend_y", "scale": 2.0, "curve": "root"},
                        {"part": "seg_leg_r", "param": "bend_y", "scale": 2.0, "curve": "root"}],
              "note": "+1 胯下沉 2px、腿顶跟着下来 2px、脚踝 0 —— 和 ParamBaseY 的区别是"
-                     "它**不动脚**。上下起伏一律用这条，别用 ParamBaseY"},
+                     "它**不动脚**。上下起伏一律用这条，别用 ParamBaseY。"
+                     "行程 Q36 从 ±1 开到 ±6：满格才 2px 的话跳跃的预蹲根本看不出来，"
+                     "实拍 ±6（胯沉 12px）腰没撕、裙子跟着沉，是安全的"},
             {"id": "ParamWeightShift", "label": "重心 左右", "min": -1.0, "max": 1.0,
              "default": 0.0,
              "binds": [{"group": "root", "param": "dx", "scale": 5.0},
@@ -482,6 +508,45 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                               {"part": "eye_l_ball", "param": "sy", "scale": 0.22},
                               {"part": "eye_r_ball", "param": "sy", "scale": 0.22}],
                     "note": "surprised 动作把它推到 1.0"})
+    if hand_forms:
+        # ★ Q36 手の差分。官方口径（sites.google.com/cybernoids.jp … animator_arms_mtn）：
+        #   「腕や手の差分は**パーツ表示切替**で」—— 手不是靠扭变形器掰出来的，
+        #   是**另画一只手换上去**。castcraft.live/blog/464 的做法是切换参数 0→1、
+        #   每档不透明度 0%/100%。
+        #   引擎的 alpha 通道是**相乘**的（apply_chan 的 P_ALPHA：p_alpha *= 1+v）：
+        #   差分件基础 opacity=1，先用 offset −1 压成全透明，参数开到 1 才浮出来；
+        #   同一个参数再给常态手挂一条 scale −1，于是任何时刻**只有一只手可见**。
+        LBL = {"open": "张开（挥手/打招呼）", "heart": "比心", "fist": "握拳"}
+        for form in hand_forms:
+            for side in ("l", "r"):
+                out.append({
+                    "id": f"ParamHand{side.upper()}{form.capitalize()}",
+                    "label": ("左手 " if side == "l" else "右手 ") + LBL.get(form, form),
+                    "min": 0.0, "max": 1.0, "default": 0.0,
+                    "binds": [{"part": f"hand_{side}_{form}", "param": "alpha",
+                               "scale": 1.0, "offset": -1.0},
+                              {"part": f"hand_{side}", "param": "alpha", "scale": -1.0}],
+                    "note": "0=常态手，1=这一档；动作里用 pulse 整段拉满（官方：不要在动作中途切手）",
+                })
+    if has_legs:
+        # ★ Q36 腿脚**真关节**。在这之前 leg_*/foot_* 四个组虽然在骨骼树里，
+        #   却没有任何参数绑它们的 rot_deg —— 腿只会「网格弯曲」（bend_x/bend_y），
+        #   髋和踝是死的。人的腿是「髋→膝→踝」三节，少了髋的回转，
+        #   抬腿、踢腿、跳跃收腿全做不出来。
+        for side in ("l", "r"):
+            sidecn = "左" if side == "l" else "右"
+            out.append({
+                "id": f"ParamHip{side.upper()}", "label": f"{sidecn}髋 前后摆",
+                "min": -10.0, "max": 10.0, "default": 0.0,
+                "binds": [{"group": f"leg_{side}", "param": "rot_deg", "scale": 0.9}],
+                "note": "整条腿绕髋回转 ±9°；正=往画面右摆。裙子盖着髋，角度再大会露接缝",
+            })
+            out.append({
+                "id": f"ParamAnkle{side.upper()}", "label": f"{sidecn}踝 回转",
+                "min": -10.0, "max": 10.0, "default": 0.0,
+                "binds": [{"group": f"foot_{side}", "param": "rot_deg", "scale": 1.2}],
+                "note": "脚掌绕踝 ±12°：跳跃绷脚尖、落地勾脚",
+            })
     return out
 
 
@@ -1021,7 +1086,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           seg=None, anchors=None, eyes=None, mouth=None, lids=None, armp=None,
           closed=None, blendp=None, eyeline=None, smile_eyes=None,
           pain_eyes=None, wide_eyes=None, footp=None,
-          star_eyes=None, base=None, fx_table=None, skirtp=None, jacketp=None):
+          star_eyes=None, base=None, fx_table=None, skirtp=None, jacketp=None,
+          handp=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -1125,8 +1191,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         if armp:
             # G4c：整条手臂（seg_arm_l/r）作废，换成上臂 + 前臂四件真关节零件
             seg_src = [sp for sp in seg_src if sp["id"] not in ("seg_arm_l", "seg_arm_r")]
+            arm_src = armp["parts"]
+            # ★ Q37：**原画那两只手留着**（放松档就是它）。
+            #   Q36 把它们换成程序化画的手是错的 —— 用户原话"完全成怪物了"。
+            #   make_hand_parts.py 现在只出 ① 腕部塗り足し圆盘 ② 张开/比心两档生图件，
+            #   三者和原画手同组、同枢轴，靠 alpha 互斥。
             seg_src += [dict(sp, note="手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）")
-                        for sp in armp["parts"]]
+                        for sp in arm_src]
+            if handp:
+                seg_src += [dict(sp) for sp in handp["parts"]]
         if skirtp:
             # T45.11：裙子里布。官方手册「スカートなどは手前の面と奥の面で
             # **足を挟むように**画像を分けておく」⇒ 里布层 50 < 腿 60/61 < 躯干 100。
@@ -1549,6 +1622,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": body_id, "param": "bend_y", "wave": "sine", "amp": -4, "freq": 0.36,
               "curve": "sine"},
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 1.2, "freq": 0.18},
+             # ★ Q37：待机也要有"头在慢慢转"这件事，否则头发物理（输入=头的位移）
+             #   一整天都是零输入。频率 0.11Hz 刻意和身体的 0.18Hz **不成整数比**，
+             #   两条正弦慢慢错相位 ⇒ 看不出循环（这是待机动画不显得机械的老办法）。
+             {"target": "ParamAngleX", "wave": "sine", "amp": 5.0, "freq": 0.11,
+              "phase": 0.4},
          ]},
         {"id": "idle", "priority": 0, "loop": True, "interruptible": True,
          "channels": [
@@ -1559,6 +1637,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": body_id, "param": "bend_x", "wave": "sine", "amp": 2.6, "freq": 0.06,
               "curve": "root"},
              {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 0.7, "freq": 0.13, "phase": 0.3},
+             # idle 的头部微转（Q37）。比 sway 更小更慢 —— 它是"没人理我"时的底噪，
+             # 只要够把发梢推动 2~3px 就行，多了会像在摇头晃脑。
+             {"target": "ParamAngleX", "wave": "sine", "amp": 2.2, "freq": 0.075,
+              "phase": 0.15},
              {"target": "eye_open_left", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
              {"target": "eye_open_right", "param": "dy", "wave": "sine", "amp": 0.5, "freq": 0.2},
          ] + sparkle_cycle(star_eyes)},
@@ -1886,12 +1968,27 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             # 画面 y 轴朝下 → 正角=顺时针；右臂往外抬是负角。
             # 第一版把前臂也写成 -28°，等于顺着大臂继续外展，整条手臂还是一根直筒
             # （用户："挥手的肘关节呢？"）。手要举到头侧，前臂相对大臂要再转 ~80°，
-            # 大臂 -58° + 前臂 -80° = 手腕总转 138°，正好是"举手挥"的姿势。
+            # 大臂 -58° + 前臂 -98° = 手腕总转 156°。
+            # Q36 复核：总角 138° 时前臂离竖直还差 42°，整条胳膊像个"<"；
+            # 人挥手时前臂基本是竖的（用户附图 q36_wave.png 量出来约 20°），
+            # 所以前臂从 -80 加到 -98（肘内角 98°，人的肘屈曲极限 145°，够用）。
+            # Q36 复核（对照用户附图 logs/asset_qa/user/q36_wave.png）：
+            #   真人挥手是"**肘抬到肩高**、前臂竖起来"，上臂 −58° 时肘还在腰侧，
+            #   整条胳膊像个趴着的 7。改 −72° 后肘落在 (679,506) ≈ 肩高，
+            #   手落在 (719,397) ≈ 头侧，和照片一致。
+            # 时序（Q36 二次复核后改）：**肘先折、肩后抬、腕最慢**。
+            #   第一版写成肩 0.9 / 肘 1.3（肩先抬），实拍 logs/asset_qa/q36_final_wave.png
+            #   第 1 帧整条胳膊甩成一条横杠，手指戳到 x=464（画布只有 466 宽）——
+            #   肩(523)+上臂162+前臂116+手70 = 871 > 画布 848，**伸直的横臂本来就装不下**。
+            #   人挥手也不是先把胳膊甩平：肘几乎同时就折起来，手走的是贴着身体的内弧。
+            #   所以把前臂提到 dur 0.7（领先）、上臂 1.0、手腕 1.6 ——
+            #   "手首は肘より半拍遅れる"（官方《手を振るモーション》）说的是腕对肘，
+            #   这条仍然成立（1.6 > 0.7），只是肩不再领跑。
             wave_channels = [
                 {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -58.0, "dur": 2.4, "ease": "out"},
+                 "amp": -72.0, "dur": 1.0, "ease": "out"},
                 {"target": "forearm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -80.0, "dur": 2.4, "ease": "out"},
+                 "amp": -88.0, "dur": 0.7, "ease": "out"},
                 {"target": "forearm_r", "param": "rot_deg", "wave": "sine",
                  "amp": 14.0, "freq": 2.2, "dur": 2.4},
                 {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
@@ -1901,8 +1998,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 # G4c2：手腕是第三节。挥手时手掌比小臂再晚一点、摆得更大，
                 # 这就是"鞭梢"的最后一节 —— 没有它，举起来的手是一块硬板。
                 wave_channels += [
+                    # ★ Q36：挥手要摊开手掌。官方做法是**换一张手的贴图**
+                    #   （不是把握着的手掰开）：dur 0.1 = 几乎瞬切，然后整段保持，
+                    #   动作收尾随 fade_out 一起退 —— 符合「不要在动作中途切手」。
+                    {"target": "ParamHandROpen", "wave": "pulse",
+                     "amp": 1.0, "dur": 0.10, "ease": "out"},
                     {"target": "hand_r", "param": "rot_deg", "wave": "pulse",
-                     "amp": -16.0, "dur": 2.4, "ease": "out"},
+                     "amp": -16.0, "dur": 1.6, "ease": "out"},
                     {"target": "hand_r", "param": "rot_deg", "wave": "sine",
                      "amp": 20.0, "freq": 2.2, "phase": 0.18, "dur": 2.4},
                 ]
@@ -1928,6 +2030,169 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             ],
             "part_overrides": {"mouth_open": {"opacity": 0.8}},
         })
+
+        if armp and has_hands:
+            # ======== 比心（Q36 用户点名）========
+            # 手腕落点是按两节连杆反算的，不是拍脑袋：
+            #   肩 (523,464)、上臂 162px、前臂 116px，要把手送到胸口 (470,600)
+            #   ⇒ 目标距离 146 ⇒ 余弦定理 肩夹角 43.9°、方向角 +21.3°
+            #   ⇒ 上臂 −22.6°、前臂相对 +119.6°（肘内角 120°，人能做）。
+            #   前臂横过胸口后手是"指向左上"的，心会倒过来，所以腕再回折 −52°
+            #   （人的腕掌屈 80°，52° 在范围内），心便立起来、略带倾斜 —— 和真人比心一样。
+            actions.append({
+                "id": "heart_hands", "priority": 6, "duration": 2.8,
+                "return_state": "idle", "interruptible": False,
+                "channels": [
+                    # ↓ 角度不是估的：正向运动学搜 (上臂,前臂,腕) 使
+                    #   ①心形中心落在胸口 ②手世界角≈180°（指尖朝上，心才立得正）。
+                    #   右：目标 (470,552) → 实际 (473,549)，离正立 0°
+                    #   左：目标 (378,552) → 实际 (374,549)
+                    #   肘 131° < 人的极限 145°、腕 55° < 70°，都做得到。
+                    {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
+                     "amp": -6.0, "dur": 0.45, "ease": "out"},
+                    {"target": "forearm_r", "param": "rot_deg", "wave": "pulse",
+                     "amp": 131.0, "dur": 0.50, "ease": "out"},
+                    {"target": "hand_r", "param": "rot_deg", "wave": "pulse",
+                     "amp": 55.0, "dur": 0.55, "ease": "out"},
+                    {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
+                     "amp": 2.0, "dur": 0.50, "ease": "out"},
+                    {"target": "forearm_l", "param": "rot_deg", "wave": "pulse",
+                     "amp": -127.0, "dur": 0.55, "ease": "out"},
+                    {"target": "hand_l", "param": "rot_deg", "wave": "pulse",
+                     "amp": -55.0, "dur": 0.6, "ease": "out"},
+                    # 手型换成"心"
+                    {"target": "ParamHandRHeart", "wave": "pulse",
+                     "amp": 1.0, "dur": 0.12, "ease": "out"},
+                    {"target": "ParamHandLHeart", "wave": "pulse",
+                     "amp": 1.0, "dur": 0.12, "ease": "out"},
+                    # 心跳：手往前送两下 + 上身跟着轻轻一顿
+                    {"target": "hand_r", "param": "rot_deg", "wave": "sine",
+                     "amp": 4.0, "freq": 1.1, "phase": 0.25},
+                    # 上身：ParamBodyAngleZ ±10 → chest.rot_deg ×0.25，
+                    # 5.6 = 1.4° 的轻微侧顿（chest.rot_deg 没进 GEO2PARAM，直接写参数）
+                    {"target": "ParamBodyAngleZ", "wave": "sine",
+                     "amp": 5.6, "freq": 1.1},
+                    # 表情：歪头 + 笑眼 + 脸红
+                    {"target": "head", "param": "rot_deg", "wave": "pulse",
+                     "amp": 6.0, "dur": 0.6, "ease": "out"},
+                    {"target": "ParamEyeLSmile", "wave": "pulse", "amp": 1.0,
+                     "dur": 0.35, "ease": "out"},
+                    {"target": "ParamEyeRSmile", "wave": "pulse", "amp": 1.0,
+                     "dur": 0.35, "ease": "out"},
+                    {"target": "ParamCheek", "wave": "pulse", "amp": 0.9,
+                     "dur": 0.5, "ease": "out"},
+                    {"target": "ParamHairSide", "wave": "sine", "amp": 0.22, "freq": 0.9},
+                ],
+                "part_overrides": {"mouth_open": {"opacity": 0.45}},
+            })
+
+            # ======== 芳文跳（きららジャンプ）========
+            # 用户要它来"体检"全身骨骼：一个动作同时动到 根/胸/头/双肩/双肘/双腕/
+            # 双髋/双膝/双踝/头发/裙子 —— 哪一节是死的立刻看得出来。
+            # 资料（dic.pixiv.net「きららジャンプ」）：主角团一排同时起跳、镜头偏下、
+            # 姿势各异、常有人高举双手；jstage 的两脚跳跃研究：起跳相
+            # 髋/膝/踝先屈后伸，落地反过来。时间线（总 2.0s）：
+            #   0.00~0.30 预蹲（髋沉、膝屈、手臂后摆）
+            #   0.30~1.10 腾空（root 抬 80px、双臂上举成 V、绷脚尖）
+            #   1.10~2.00 落地回弹
+            actions.append({
+                "id": "kirara_jump", "priority": 7, "duration": 2.0,
+                "return_state": "idle", "interruptible": False,
+                # airborne：鞋底纵向净位移 px —— 这个动作就是要离地。
+                # 数值由 selfcheck_repo 按通道幅度×绑定复算，对不上就红。
+                "airborne": 60,
+                "channels": [
+                    # ======== 起跳的相位（Q36 二次复核重写）========
+                    # 第一版是两条 bounce 波叠出来的：实拍（12 帧 ×0.12s 测鞋底）
+                    #   0.12s 就到顶、0.48s 已经落地，而双臂 1.6s 才举到位 ——
+                    #   **等于先落地再举手**，而且只离地 40px(整身 1360)，根本看不出在跳。
+                    # 波形天生是对称的单拱，做不出"蹲-蹬-飘-落-缓冲"这种不对称节奏，
+                    # 所以这几条改成**关键帧通道**（引擎已支持，≈ Live2D 的 .motion3）。
+                    # 相位表按两脚跳跃的生物力学分段（股関節・膝・足関節 屈曲→伸展）。
+                    # 高度卡着**画布上边**定，这是硬约束：静止时头顶（呆毛尖）离画布
+                    # 上边只有 40px(预览)＝73px(rig)，腾空 120px 时实拍头顶 y=0 ——
+                    # 被切平的其实不是手而是**呆毛**。所以腾空封顶 60px、留 13px 余量。
+                    # 想跳得更高只能把整张画布加高重切，不是调这里能解决的（记在待办）。
+                    #   0.00–0.26 预蹲（胯沉、膝屈、脚不离地）
+                    #   0.26–0.52 蹬伸（踝跖屈、髋膝伸直）
+                    #   0.52–0.86 滞空（最高点 −120px，约一个头的高度）
+                    #   0.86–1.06 落地
+                    #   1.06–1.40 缓冲蹲 → 站直
+                    {"target": "root", "param": "dy", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.26, 0.0], [0.52, -47.0], [0.69, -60.0],
+                              [0.86, -47.0], [1.04, 0.0], [2.0, 0.0]],
+                     "note": "滞空弧线：上行 0.43s、下行 0.35s（下落比上抛略快，像有重力）"},
+                    # 预蹲 + 落地缓冲。ParamHipDrop 的行程是 ±1，顶格就是最深的蹲。
+                    {"target": "ParamHipDrop", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.22, 4.5], [0.42, -1.2], [0.65, 1.5],
+                              [0.88, 0.3], [1.08, 3.6], [1.35, 0.6], [1.75, 0.0]],
+                     "note": "预蹲 4.5（=胯沉 9px）→ 蹬伸 −1.2（腿绷直拉长，squash&stretch 的 stretch）"
+                             "→ 滞空 1.5（空中膝盖是收着的）"
+                             "→ 落地缓冲 3.6 → 站直"},
+                    # —— 双臂上举成 V（芳文跳的标志）。举臂要和腾空同相：
+                    #    预蹲时先往后下摆一点（反蓄力），0.72s 举到顶、落地后才放下。
+                    #    上臂 150°＝举过头顶往外张 30°，人的肩屈曲极限 180°，做得到。
+                    {"target": "arm_l", "param": "rot_deg", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.22, -14.0], [0.58, 104.0], [0.72, 134.0],
+                              [1.25, 132.0], [1.75, 30.0], [2.0, 0.0]]},
+                    {"target": "arm_r", "param": "rot_deg", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.22, 14.0], [0.58, -104.0], [0.72, -134.0],
+                              [1.25, -132.0], [1.75, -30.0], [2.0, 0.0]]},
+                    # 肘略带一点弯（完全笔直像木偶），落地时再甩一下
+                    {"target": "forearm_l", "param": "rot_deg", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.3, -8.0], [0.75, 18.0], [1.25, 15.0],
+                              [1.8, 4.0], [2.0, 0.0]]},
+                    {"target": "forearm_r", "param": "rot_deg", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.3, 8.0], [0.75, -18.0], [1.25, -15.0],
+                              [1.8, -4.0], [2.0, 0.0]]},
+                    # 手摊开（欢呼的手不能是握着的）
+                    {"target": "ParamHandLOpen", "wave": "pulse",
+                     "amp": 1.0, "dur": 0.12, "ease": "out"},
+                    {"target": "ParamHandROpen", "wave": "pulse",
+                     "amp": 1.0, "dur": 0.12, "ease": "out"},
+                    {"target": "hand_l", "param": "rot_deg", "wave": "sine",
+                     "amp": 16.0, "freq": 1.1, "phase": 0.25},
+                    {"target": "hand_r", "param": "rot_deg", "wave": "sine",
+                     "amp": 16.0, "freq": 1.1, "phase": 0.25},
+                    # —— 腿：预蹲时微内收 → 滞空外张并收起 → 落地回正
+                    {"target": "leg_l", "param": "rot_deg", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.24, 1.4], [0.69, -3.2], [1.04, 0.8],
+                              [1.4, 0.0]]},
+                    {"target": "leg_r", "param": "rot_deg", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.24, -1.4], [0.69, 3.2], [1.04, -0.8],
+                              [1.4, 0.0]]},
+                    # —— 踝：蹬地跖屈（绷脚尖）→ 落地背屈吃冲击
+                    {"target": "foot_l", "param": "rot_deg", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.26, 3.5], [0.60, -11.0], [0.86, -9.0],
+                              [1.04, 3.0], [1.35, 0.0]]},
+                    {"target": "foot_r", "param": "rot_deg", "interp": "smooth",
+                     "keys": [[0.0, 0.0], [0.26, -3.5], [0.60, 11.0], [0.86, 9.0],
+                              [1.04, -3.0], [1.35, 0.0]]},
+                    # —— 头/脸：抬头 + 笑眼 + 张嘴欢呼
+                    {"target": "head", "param": "rot_deg", "wave": "sine",
+                     "amp": -3.0, "freq": 0.5},
+                    {"target": "ParamEyeLSmile", "wave": "pulse", "amp": 1.0,
+                     "dur": 0.35, "ease": "out"},
+                    {"target": "ParamEyeRSmile", "wave": "pulse", "amp": 1.0,
+                     "dur": 0.35, "ease": "out"},
+                    {"target": "ParamCheek", "wave": "pulse", "amp": 0.7,
+                     "dur": 0.4, "ease": "out"},
+                    # —— 头发/裙子：腾空时整个人往上走，发梢和裙摆要慢半拍再跟上
+                    {"target": "ParamHairFluffy", "wave": "bounce",
+                     "amp": 0.85, "dur": 1.5, "ease": "out"},
+                    {"target": "ParamHairBack", "wave": "bounce",
+                     "amp": -0.7, "dur": 1.3, "ease": "out"},
+                    {"target": "ParamHairBackS", "wave": "sine",
+                     "amp": 0.45, "freq": 0.75, "phase": 0.3},
+                    {"target": "ParamHairFront", "wave": "bounce",
+                     "amp": -0.5, "dur": 1.2, "ease": "out"},
+                    # 裙摆/外套**不在这里写**：摆动参数由物理 2.0 的摆链驱动，
+                    # 挂到动作上的话一切走别的待机动作就僵住（selfcheck
+                    # 「摆动参数没有被挂进动作里」拦的就是这个）。腾空时裙子
+                    # 自己会被 root 的位移甩起来。
+                ],
+                "part_overrides": {"mouth_open": {"opacity": 0.9}},
+            })
 
     # ---- 组（骨架）。枢轴=真关节点；bend_follow=跟着谁的网格形变走 ----
     # bend_follow 的取样高度有两种语义，别搞混：
@@ -1986,7 +2251,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             groups["forearm_r"] = {"pivot": el_r, "parent": "arm_r"}
             # G4c2：手挂在前臂下面，枢轴 = 袖口下沿那条实测的腕线（make_arm_parts 量的）
             for hp in armp["parts"]:
-                if hp["id"].startswith("hand_"):
+                if hp["id"] in ("hand_l", "hand_r"):
                     side = hp["id"].split("_")[1]
                     groups[f"hand_{side}"] = {
                         "pivot": [ox + float(hp["pivot"][0]), oy + float(hp["pivot"][1])],
@@ -2051,6 +2316,17 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             ]
         look["channels"] += [
             {"target": "head", "param": "rot_deg", "wave": "sine", "amp": 1.5, "freq": 0.45},
+            # ★ Q37：原来「左顾右盼」只动眼球 + 歪头 1.5° —— 头**根本不转**。
+            #   后果有两层：① 光转眼珠不转头，本身就不像人；
+            #   ② 头发的物理输入是"头这一帧被带着走了多少像素"，头不动 ⇒
+            #      输入恒为 0 ⇒ 头发永远是死的（用户："动一下头头发顺着头飘"）。
+            #   补一条真正的摇头：±17°，**比眼球晚 0.13 个周期**——
+            #   官方/教程口径都是「視線が先、頭が後」（眼睛先锁定目标，头再跟上去）。
+            {"target": "ParamAngleX", "wave": "sine", "amp": 17.0, "freq": 0.45,
+             "phase": 0.13},
+            # 头转过去的时候下巴也略抬一点，转头才有体积感（不是平面旋转）
+            {"target": "ParamAngleY", "wave": "sine", "amp": 4.0, "freq": 0.9,
+             "phase": 0.3},
         ]
         actions.append(look)
 
@@ -2330,14 +2606,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         ("head", "dy"):             ("ParamAngleY", -10.0 / 30.0),
         ("chest", "dy"):            ("ParamBodyAngleY", 0.25),
         ("root", "dx"):             ("ParamBaseX", 2.0),
-        ("root", "dy"):             ("ParamBaseY", -4.0),
+        ("root", "dy"):             ("ParamBaseY", -7.0),
         ("root", "rot_deg"):        ("ParamBaseRot", 0.5),
         (body_id, "bend_x"):        ("ParamBodyAngleX", 1.0),
         (body_id, "bend_y"):        ("ParamBodyAngleY", 0.4),
         ("arm_l", "dy"):            ("ParamShoulderY", -0.8),
         ("arm_r", "dy"):            ("ParamShoulderY", -0.8),
-        ("arm_l", "rot_deg"):       ("ParamArmLA", 6.0),
-        ("arm_r", "rot_deg"):       ("ParamArmRA", -6.0),
+        ("arm_l", "rot_deg"):       ("ParamArmLA", 18.0),
+        ("arm_r", "rot_deg"):       ("ParamArmRA", -18.0),
         # ★ 没做手臂拆件的形态（新形态刚起步时就是这样）：整条手臂只有 bend，
         #   param_list() 那边已经有对应的退路参数（ParamArmLA/RA 绑 seg_arm_*.bend_x），
         #   这里必须跟着给一条，否则动作表里的 seg_arm_*.bend_x 找不到参数，
@@ -2346,10 +2622,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                             ("seg_arm_r", "bend_x"): ("ParamArmRA", 4.0),
                             ("seg_arm_l", "bend_y"): ("ParamArmLB", 4.0),
                             ("seg_arm_r", "bend_y"): ("ParamArmRB", 4.0)}),
-        ("forearm_l", "rot_deg"):   ("ParamArmLB", 10.0),
-        ("forearm_r", "rot_deg"):   ("ParamArmRB", -10.0),
+        ("forearm_l", "rot_deg"):   ("ParamArmLB", 14.5),
+        ("forearm_r", "rot_deg"):   ("ParamArmRB", -14.5),
         ("hand_l", "rot_deg"):      ("ParamHandL", 22.0),
         ("hand_r", "rot_deg"):      ("ParamHandR", -22.0),
+        # ★ Q36 腿脚真关节（髋回转 / 踝回转）
+        ("leg_l", "rot_deg"):       ("ParamHipL", 0.9),
+        ("leg_r", "rot_deg"):       ("ParamHipR", 0.9),
+        ("foot_l", "rot_deg"):      ("ParamAnkleL", 1.2),
+        ("foot_r", "rot_deg"):      ("ParamAnkleR", 1.2),
         ("seg_leg_l", "bend_x"):    ("ParamLegL", 20.0),
         ("seg_leg_r", "bend_x"):    ("ParamLegR", 20.0),
         ("brow_l", "dy"):           ("ParamBrowLY", -5.0),
@@ -2409,6 +2690,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
 
     # 参数表提前算一次：下面的通道转换要用它判断"这个 target 是不是参数名"，
     # 返回字典里也要用。param_list 是纯函数，提前调用没有副作用。
+    hand_forms = [f for f, suf in (handp or {}).get("poses", {}).items() if suf]
     PARAMS = param_list(mouth=mouth,
                         has_brows=any(p["id"] == "brow_l" for p in parts_list),
                         head_is_part=head_is_part,
@@ -2419,8 +2701,16 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         body_id=body_id,
                         has_eyeballs=any(p["id"] == "eye_l_ball" for p in parts_list),
                         foot_lift=(footp["lift_px"] if footp else None),
-                        star_eyes=star_eyes, fx_table=fx_table)
+                        star_eyes=star_eyes, fx_table=fx_table,
+                        hand_forms=hand_forms)
     PARAM_IDS = {q["id"] for q in PARAMS}
+    # ★ Q36：裙摆/外套下摆这两个参数是在**本函数后半段**（里布、下摆模块）才
+    #   append 进去的，可动作表在这里就要校验。素材在 = 参数一定会生成，
+    #   所以提前登记，否则芳文跳里让裙子飘的那条通道会被当"缺素材"丢掉。
+    if skirtp:
+        PARAM_IDS.add("ParamSkirtSway")
+    if jacketp:
+        PARAM_IDS.add("ParamJacketSway")
 
     # 引擎自己注册的内建参数（zrig.c 的 param_add_builtin 那一串）。
     # 它们不写进 rig.json 的 params 里，但动作通道可以直接打 —— 引擎解析
@@ -2445,6 +2735,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "ParamBrowLForm", "ParamBrowRForm",
         "ParamEyeLSmile", "ParamEyeRSmile", "ParamEyeStar", "ParamEyePain",
         "ParamEyeWide", "ParamCheek", "ParamTear",
+        # ★ Q36：裙摆/外套下摆/后发第二段也是"素材在才有"的参数
+        #   （裙子里布、夹克下摆、后发分段各由各自的 make_*_parts.py 产出）。
+        #   芳文跳要让它们一起飘，所以动作表里写了；素材没齐的形态丢掉即可。
+        "ParamSkirtSway", "ParamJacketSway", "ParamHairBack", "ParamHairBackS",
+        "ParamHairFluffy",
     }
     dropped_ch = {}
 
@@ -2782,8 +3077,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             #   那是纵向弹跳，2D 摆链沿重力方向本来就不产生摆角，换过去没有意义。
             {"id": "ahoge_y", "part": "hair_ahoge", "driver": "head", "axis": "y",
              "param": "bend_y", "curve": "root",
-             "ratio": 0.45, "stiffness": 55, "damping": 6.0, "max": 5,
-             "note": "呆毛上下点头"},
+             "ratio": 0.62, "stiffness": 40, "damping": 5.1, "max": 9,
+             "note": "呆毛上下点头（Q37 调强：.45/55/6.0/5 → .62/40/4.6/9，"
+                     "点头时呆毛要能甩出来）"},
             # G4c2：手腕滞后（物理输入 = 腕点被前臂组带着走了多少像素）。
             # 这是"鞭梢"的最后一节：大臂带小臂、小臂带手，手永远慢半拍。
             {"id": "hand_l_lag", "part": "hand_l", "driver": "forearm_l", "axis": "x",
@@ -2795,8 +3091,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "ratio": 0.22, "stiffness": 34, "damping": 4.4, "max": 9},
             {"id": "bangs_x", "part": "hair_front", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
-             "ratio": 0.3, "stiffness": 65, "damping": 7.5, "max": 4,
-             "note": "刘海吊在额头上，发梢在下 → 曲线 tip，幅度要小"},
+             "ratio": 0.5, "stiffness": 44, "damping": 5.6, "max": 9,
+             "note": "刘海吊在额头上，发梢在下 → 曲线 tip，幅度要小。"
+                     "Q37 从 .3/65/7.5/4 调强：前髪は1段で十分但不能是死的"},
         ],
         # 命名参数层（对齐 Live2D 的 ParamXxx）：外部（脚本 / LLM / 口型 / 测试台滑条）
         # 只认参数名，不用知道角色内部拆了几件。内建的 ParamAngleX/Y、ParamEyeOpen、
@@ -3018,21 +3315,34 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              ]},
         ]
         rig["physics"] += [
+            # ★ Q37 调强（用户："动一下头，头发就顺着头飘着的那种自然效果"）。
+            #   原来是 ratio .55 / stiff 46 / damp 5.4 / max 7 —— 实测一次满量程
+            #   转头，发色重心单调地跟到位、**没有过冲也没有回摆**，等于头发是粘死的。
+            #   三个数一起改才有"飘"：
+            #     ratio↑  跟随量更大（头走 10px，发梢目标走 8.5px）
+            #     stiff↓  ω=√26≈5.1rad/s（周期 1.2s）＝慢半拍才追上
+            #     damp↓   ζ=3.6/(2√26)=0.35 ＜1 ⇒ **欠阻尼**，会过冲再荡回来，
+            #             这正是"飘"的物理定义；教程口径「収束の速さ 0.4 前後でなめらか」
+            #   max 7→16：7px 在 246px 宽的脑袋上肉眼基本看不见。
             {"id": "side_l_x", "part": "hair_side_l", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
-             "ratio": 0.55, "stiffness": 46, "damping": 5.4, "max": 7,
+             "ratio": 0.85, "stiffness": 26, "damping": 4.1, "max": 16,
              "note": "左侧发第一段：整缕跟着头甩，根固定所以曲线用 tip"},
             {"id": "side_l_tip", "part": "hair_side_l", "driver": "side_l_x",
              "deformer": "side_l_s",
-             "ratio": 0.85, "stiffness": 22, "damping": 3.0, "max": 1.0,
+             # ★ ratio 0.12 不是 1.0：第一段的输出是**像素**，第二段写进的是
+             # **形变器量**（side_l_s 的满量程 1.0 ≈ 发梢甩出一个身位）。旧值 0.85
+             # 等于拿 8px 去喂一个量程 1 的通道 ⇒ 永远贴在限幅上＝方波＝看着是
+             # "硬生生跳一下"。物理 2.0 的链早就是这么标定的（outputs.scale 0.05~0.06）。
+             "ratio": 0.12, "stiffness": 14, "damping": 3.0, "max": 1.6,
              "note": "左侧发第二段（梢）：串在第一段后面，比发根再慢半拍"},
             {"id": "side_r_x", "part": "hair_side_r", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
-             "ratio": 0.55, "stiffness": 46, "damping": 5.4, "max": 7,
-             "note": "右侧发第一段"},
+             "ratio": 0.85, "stiffness": 26, "damping": 4.1, "max": 16,
+             "note": "右侧发第一段（数值同左侧，Q37 调强）"},
             {"id": "side_r_tip", "part": "hair_side_r", "driver": "side_r_x",
              "deformer": "side_r_s",
-             "ratio": 0.85, "stiffness": 22, "damping": 3.0, "max": 1.0,
+             "ratio": 0.12, "stiffness": 14, "damping": 3.0, "max": 1.6,
              "note": "右侧发第二段（梢）"},
             # —— 裙摆（G43）——
             # 照官方 Hiyori 的 physics3：裙子不是"串成多段"，而是**横摆和纵摆两条
@@ -3056,9 +3366,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更钝"},
             {"id": "back_x", "part": "hair_back", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
-             "ratio": 0.22, "stiffness": 72, "damping": 8.0, "max": 3.5,
-             "note": "后发第一段（根）：整团壳只慢半拍地晃一点点"
-                     "（幅度大了会从脸边上露出来）"},
+             "ratio": 0.5, "stiffness": 34, "damping": 4.9, "max": 10,
+             "note": "后发第一段（根）：整团壳慢半拍地晃（Q37 从 .22/72/8.0/3.5 调强；"
+                     "幅度大了会从脸边上露出来，所以 max 只给到 10px＝头宽的 4%）"},
             # T46.1 后发第二段（梢）。串在 back_x 后面，和呆毛/侧发同一套写法。
             # 数值刻意**比侧发更钝**：教程口径「固い髪＝反応速度を大きく、
             # ボブや長い後ろ髪などゆったりした揺れ＝反応速度を小さく」，
@@ -3068,7 +3378,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             #     正好落在社区推荐的「収束の速さ 0.4 前後でなめらか」）
             {"id": "back_tip", "part": "hair_back", "driver": "back_x",
              "deformer": "back_s",
-             "ratio": 0.8, "stiffness": 15, "damping": 3.4, "max": 1.0,
+             "ratio": 0.10, "stiffness": 11, "damping": 2.8, "max": 1.4,
              "note": "后发第二段（梢）：串在 back_x 后面，比发根再慢一拍；"
                      "比侧发更软更慢（头发越重越慢）"},
         ]
@@ -3411,6 +3721,17 @@ def main() -> int:
         if miss:
             print(f"警告：手臂拆件缺图 {miss}，退回整条手臂 bend", file=sys.stderr)
             armp = None
+    # ★ Q36 手差分件（tools/make_hand_parts.py：放松/张开/比心 × 左右，程序化重画）
+    handp = None
+    hand_path = os.path.join(base, "sprites", "hand_parts.json")
+    if armp and os.path.exists(hand_path):
+        with open(hand_path, encoding="utf-8") as f:
+            handp = json.load(f)
+        miss = [a["id"] for a in handp["parts"]
+                if not os.path.exists(os.path.join(base, a["file"]))]
+        if miss:
+            print(f"警告：手差分缺图 {miss}，退回底图切出来的手", file=sys.stderr)
+            handp = None
     # 脚拆件（tools/make_foot_parts.py 的产物：常态鞋 + 踮脚鞋各两件）
     # 裙子里布（tools/make_skirt_parts.py 的产物：表布复制 + 乘法压暗）
     skirtp = None
@@ -3574,7 +3895,7 @@ def main() -> int:
                 pain_eyes=pain_eyes, wide_eyes=wide_eyes,
                 star_eyes=star_eyes,
                 fx_table=fx_table,
-                footp=footp, skirtp=skirtp, jacketp=jacketp)
+                footp=footp, skirtp=skirtp, jacketp=jacketp, handp=handp)
     attach_emit(rig, base, base_root)   # 挂件（A49 / T45）：表在就挂，不在就当没有
     prune_dangling(rig)                 # 素材没齐的形态：清掉指向不存在部件的绑定
 

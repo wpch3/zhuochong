@@ -92,6 +92,10 @@ I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉
 | `ParamKneeL` / `ParamKneeR` | 膝盖屈伸。不用拆件 —— `bend_y` 配 `curve:"sine"`（两端固定、中段最大），峰值正好落在膝盖高度，±9px |
 | `ParamWeightShift` | 重心左右。一个参数三条 bind：骨盆 `root.dx` ±5px + 两腿中段 `sine` 反向补偿 ∓4px。真人站着重心一直在挪 |
 | `ParamHipDrop` | 胯下沉 / 屈膝承重。`chest.dy` +2px + 两腿 `curve:"root"`（底固定、顶最大）+2px → 上身起伏、**脚踝那一行纹丝不动**。官方《4.添加身体动作》要求"身体上下运动时脚不能离开地面"，上下起伏一律用它，别用 `ParamBaseY`（那条会把整个人平移） |
+| `ParamHandLOpen` / `ParamHandROpen` | 手的「摊开」差分。官方《腕と手のモーション》写明**腕・手の差分はパーツの表示切替**（`VISIBLE:PARTS_..._ARM_L_A_001=1`），不是靠旋转把手掰开。实现：一条参数绑两条 `alpha`（张开件 `scale:+1`、放松件 `scale:-1`），同一时刻只有一张不透明 |
+| `ParamHandLHeart` / `ParamHandRHeart` | 手的「比心」差分，同上。手指围出的心形是**负空间**，只能换贴图 |
+| `ParamHipL` / `ParamHipR` | 髋关节绕骨盆的**真旋转**（`leg_*` 组 `rot_deg`）。标准表的 `ParamLegL/R` 在本项目是"裙下大腿 bend"，两者不是一回事：没有这条，腿永远只能弯不能抬 |
+| `ParamAnkleL` / `ParamAnkleR` | 踝关节跖屈 / 背屈（`foot_*` 组 `rot_deg`）。跳跃的蹬地绷脚尖、落地勾脚吃冲击都靠它 |
 | `ParamTiptoe` | 踮脚。`root.dy` 上提 7px + 两腿 `curve:"tip"`（顶固定、底最大，作用在脚踝）收 5px。裙摆下沿不动所以不露底 |
 | `ParamHairAhoge` / `ParamHairAhogeS` | 标准只有 Front/Side/Back/Fluffy，呆毛是这个角色的招牌 |
 | `ParamHairSideS` | 侧发的 S 形（FFD），和整体摆动分开 |

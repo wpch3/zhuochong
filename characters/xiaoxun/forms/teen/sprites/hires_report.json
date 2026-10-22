@@ -3,12 +3,12 @@
  "factor": 2,
  "suffix": "@2x.png",
  "model": "RealESR-AnimeVideo-v3_x4.onnx",
- "count": 75,
+ "count": 81,
  "realesrgan": 68,
  "lanczos": 7,
- "native": 0,
- "keycolor_fixed": 36,
- "seconds": 57.4,
+ "native": 6,
+ "keycolor_fixed": 39,
+ "seconds": 59.8,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -710,7 +710,7 @@
     1836
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 5
+   "keycolor_fixed": 6
   },
   {
    "name": "hair_pony_back.png",
@@ -723,7 +723,7 @@
     1686
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 1
+   "keycolor_fixed": 3
   },
   {
    "name": "hair_side_l.png",
@@ -830,6 +830,45 @@
    "keycolor_fixed": 0
   },
   {
+   "name": "hand_l_heart.png",
+   "src": [
+    67,
+    105
+   ],
+   "dst": [
+    134,
+    210
+   ],
+   "method": "native",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hand_l_open.png",
+   "src": [
+    83,
+    105
+   ],
+   "dst": [
+    166,
+    210
+   ],
+   "method": "native",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hand_l_pad.png",
+   "src": [
+    46,
+    52
+   ],
+   "dst": [
+    92,
+    104
+   ],
+   "method": "native",
+   "keycolor_fixed": 0
+  },
+  {
    "name": "hand_r.png",
    "src": [
     82,
@@ -840,6 +879,45 @@
     166
    ],
    "method": "realesrgan",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hand_r_heart.png",
+   "src": [
+    67,
+    105
+   ],
+   "dst": [
+    134,
+    210
+   ],
+   "method": "native",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hand_r_open.png",
+   "src": [
+    83,
+    105
+   ],
+   "dst": [
+    166,
+    210
+   ],
+   "method": "native",
+   "keycolor_fixed": 0
+  },
+  {
+   "name": "hand_r_pad.png",
+   "src": [
+    46,
+    52
+   ],
+   "dst": [
+    92,
+    104
+   ],
+   "method": "native",
    "keycolor_fixed": 0
   },
   {

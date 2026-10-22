@@ -4252,7 +4252,10 @@ static void test_action_fade_sine(void)
         if (i <= 42 && v > peak) peak = v;                      /* 淡出窗口之前的峰值 */
         if (i == 53) tail = v;                                  /* 结束前 1 帧 */
     }
-    CHECK(peak > 2.0, "surprised 前段 ParamArmLA 要摆到位（实际峰值 %.3f）", peak);
+    /* 阈值单位随 ParamArmLA 的倍率走：Q36 把倍率从 6°/单位 提到 18°/单位
+       （行程回到官方的 ±10），同样的 16° 摆幅换算出来的参数值变成 1/3。
+       门槛 2.0 → 0.7 不是放水：2.0/6=12° 和 0.7×18=12.6°，要求的**角度一样**。 */
+    CHECK(peak > 0.7, "surprised 前段 ParamArmLA 要摆到位（实际峰值 %.3f）", peak);
     CHECK(tail < peak * 0.15,
           "非循环动作结束前要按 FadeOutTime 收回去（峰值 %.3f，末帧 %.3f）", peak, tail);
 
@@ -4332,8 +4335,12 @@ static void test_action_param_channels(void)
             wave_px = frame_opaque_box(fb, 660, 380, 848, 700);
             if (wave_px > peak) peak = wave_px;
         }
-        CHECK(arm_a > 6.0, "挥手要把 ParamArmRA 推上去（实际峰值 %.2f）", arm_a);
-        CHECK(arm_b > 5.0, "挥手要把 ParamArmRB（肘）推上去（实际峰值 %.2f）", arm_b);
+        /* 同上：倍率 6→18（肩）、10→14.5（肘）后，阈值按**角度不变**折算：
+           肩 6.0/6=36° → 36/18=2.0；肘 5.0/10=50° → 50/14.5=3.45。 */
+        CHECK(arm_a > 2.0, "挥手要把 ParamArmRA 推上去（实际峰值 %.2f，=%.0f°）",
+              arm_a, arm_a * 18.0);
+        CHECK(arm_b > 3.45, "挥手要把 ParamArmRB（肘）推上去（实际峰值 %.2f，=%.0f°）",
+              arm_b, arm_b * 14.5);
         CHECK(peak > 5000, "挥手时手臂要真的出现在画面右上（实际峰值 %d 像素）", peak);
     }
 

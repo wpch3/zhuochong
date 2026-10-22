@@ -378,6 +378,20 @@ def check(character, form, root=".", strict=False, out_json=None):
                 armp = json.load(f)
             seg_parts = [sp for sp in seg_parts
                          if sp["id"] not in ("seg_arm_l", "seg_arm_r")] + armp["parts"]
+        # ★ Q36 手差分件（make_hand_parts.py）：手已经是**重绘件**，不再是 body_full
+        #   的切片。静止合成要用常态手（hand_l/hand_r），张开/比心两档是另一套姿态，
+        #   静止时透明度为 0，不叠。
+        hand_path = os.path.join(base, "sprites", "hand_parts.json")
+        handp = None
+        if os.path.exists(hand_path):
+            with open(hand_path, encoding="utf-8") as f:
+                handp = json.load(f)
+            # ⚠ 必须**原位替换**，不能追加到末尾：compose() 是按列表顺序叠的，
+            #   追加 = 手画在袖子上面，和 rig 里的层序（手 138/139 < 袖 144/145）相反。
+            #   那样一转腕，袖子里那截腕柄会反过来盖住袖子，判据就在袖子内部
+            #   数出一片根本不存在的"洞"（实测 109px，坐标全在袖子里 y=649~675）。
+            hnew = {q["id"]: q for q in handp["parts"]}
+            seg_parts = [hnew.get(sp["id"], sp) for sp in seg_parts]
         # 鞋拆件（make_foot_parts.py）在场时，腿件切线以下已经被擦空，
         # 静止合成必须把**常态鞋**叠回去，否则"无损切分"会凭空少掉两只鞋。
         # 踮脚鞋（*_tip）不叠：它是同一个部位的另一套姿态，静止时 xfade 权重为 0。
@@ -457,9 +471,81 @@ def check(character, form, root=".", strict=False, out_json=None):
         if not miss:
             body_m = alpha_mask(load_rgba(os.path.join(base, "sprites", "body_full.png")))
             flat = compose({})
-            lost = int((body_m & ~flat).sum())
+            lost_m = body_m & ~flat
+            # ★ Q37：手的放松档**换回原画件**了（用户："之前那个参考图的手无法做成
+            #   部件吗？"）。Q36 那版程序化重画的手被判"完全成怪物"，整个作废。
+            #   所以这条"无损切分"对手**重新适用** —— 不再扣除任何重绘区，
+            #   手腕那一块和身上别处一个标准：切丢一个像素就是红。
+            lost = int(lost_m.sum())
             # 静止时把部件叠回去，必须和原图一模一样：少一块就是切丢了东西
-            add("分段", "无损切分", lost == 0, f"静止合成比原图少 {lost} 像素")
+            add("分段", "无损切分", lost == 0,
+                f"静止合成比原图少 {lost} 像素")
+
+        # ★ Q37 手部件的四条不变量。方案变了，判据跟着变：
+        #     放松档 = 原画件（上面"无损切分"已经在守它）
+        #     塗り足し = 独立部件 hand_{side}_pad，挂**前臂**组（袖の中の腕の続き）
+        #     差分档 = hand_{side}_{open,heart}（生图，腕口按原画手对齐）
+        #   所以这里守的是"差分件接得上袖口"+"塗り足し真的在袖子里"。
+        if not miss and handp:
+            hand_imgs = {q["id"]: load_rgba(os.path.join(base, q["file"]))
+                         for q in handp["parts"]}
+            armp_parts = (armp or {}).get("parts", [])
+            for side in ("l", "r"):
+                art_id = handp["art_base"][side]
+                art_q = next((z for z in armp_parts if z["id"] == art_id), None)
+                art_m = (alpha_mask(load_rgba(os.path.join(base, art_q["file"])))
+                         if art_q else None)
+                art_area = int(art_m.sum()) if art_m is not None else 0
+                # 腕线 = 原画手件里**最窄**的那一行（＝袖口位置），现量不写死
+                wline = None
+                if art_m is not None:
+                    rows = art_m.sum(axis=1)
+                    top = art_q["pos"][1]
+                    cand = [(int(rows[y]), y) for y in range(min(14, art_m.shape[0]))
+                            if rows[y] > 0]
+                    if cand:
+                        wline = top + min(cand)[1]
+                pad_q = next(z for z in handp["parts"] if z["id"] == f"hand_{side}_pad")
+                pad_m = alpha_mask(hand_imgs[pad_q["id"]])
+                # ① 塗り足し必须挂在**前臂**组上。Q37 实拍教训：挂在 hand 组上
+                #    它会跟着手转，手一摆就甩出袖口变成一颗肉球
+                #    （logs/asset_qa/q37_hand_check.png 改型前第 3 格）。
+                add("手", f"hand_{side}_pad 挂前臂组", pad_q["group"] == f"forearm_{side}",
+                    f"组={pad_q['group']}（官方口径：袖の中の腕の続き属前臂，"
+                    f"挂手上会跟着手转甩出袖口）")
+                # ② 塗り足し不许比袖口内宽还宽：宽了就会从袖子边上冒出来
+                fore = [z for z in armp_parts if z["id"] == f"arm_{side}_fore"]
+                cuff_w = 0.0
+                if fore and wline:
+                    fm = alpha_mask(load_rgba(os.path.join(base, fore[0]["file"])))
+                    fy = wline - fore[0]["pos"][1] - 2     # 腕线往上 2px＝袖口里
+                    if 0 <= fy < fm.shape[0]:
+                        cuff_w = float(fm[fy].sum())
+                add("手", f"hand_{side}_pad 不超袖口", pad_q["size"][0] <= cuff_w + 2,
+                    f"塗り足し宽 {pad_q['size'][0]}px，袖口内宽 {cuff_w:.0f}px"
+                    f"（宽了转腕时会从袖子边上露出来）")
+                # ③ 塗り足し要真的塞进袖子：顶边高过腕线 ≥10px
+                if wline:
+                    add("手", f"hand_{side}_pad 塞进袖子", pad_q["pos"][1] <= wline - 10,
+                        f"顶边 y={pad_q['pos'][1]}，腕线 y={wline}"
+                        f"（至少塞 10px，转腕时才不露断面）")
+                # ④ 差分档：面积不许缩水成一根棍，且腕口要和原画手对得上
+                for pose in sorted(k for k in handp["poses"] if k):
+                    pid = f"hand_{side}_{pose}"
+                    q = next(z for z in handp["parts"] if z["id"] == pid)
+                    m = alpha_mask(hand_imgs[pid])
+                    area = int(m.sum())
+                    add("手", f"{pid} 面积够", art_area and area >= art_area * 0.55,
+                        f"差分件 {area}px / 原画手 {art_area}px = "
+                        f"{area / max(art_area, 1) * 100:.0f}%（下限 55%）")
+                    # 腕口宽度要落在原画腕宽的 ±45% 内：
+                    # 生图件会连着画一小截小臂，定标搞错就会整只手放大 1.8 倍（Q37 踩过）
+                    ww = handp["checks"]["wrist_w"][pid]
+                    base_w = handp["checks"]["wrist_w"][f"hand_{side}_pad"]
+                    add("手", f"{pid} 腕口对得上",
+                        0.45 * base_w <= ww <= 1.45 * base_w,
+                        f"腕口宽 {ww}px vs 原画腕宽 {base_w}px"
+                        f"（差太多＝定标时把小臂断面当腕口量了）")
 
             # —— 鞋拆件（T24.5）：踮脚这件事全靠三条不变量撑着，机器来校 ——
             #   ① 两张姿态图都必须**触地**（鞋底在同一行）——否则踮脚变浮空；
@@ -748,11 +834,20 @@ def check(character, form, root=".", strict=False, out_json=None):
                 # 压力姿势要**只转这只手**：整条手臂一起转的话，手早就转出这个框了，
                 # 框里一片空白，数出来当然是 0（第一版就是这么假过的）。
                 dw = 0
+                where = ""
                 for sgn in (20.0, -20.0):
                     hp = compose({q["group"]: sgn})
-                    dw = max(dw, int((vhole(hp) & ~vhole(flat) & colm[sl]).sum()))
+                    dm = vhole(hp) & ~vhole(flat) & colm[sl]
+                    n = int(dm.sum())
+                    if n > dw:
+                        dw = n
+                        yy, xx = np.where(dm)
+                        # 把洞的位置一起报出来：没有坐标就只能靠猜，
+                        # 第三十六问在这条上白跑过一轮（G4c2）
+                        where = (f"；转 {sgn:+.0f}° 时洞在 y={int(yy.min()) + y0w}"
+                                 f"~{int(yy.max()) + y0w}、x={int(xx.min())}~{int(xx.max())}")
                 add("分段", f"关节不露底(腕 {q['id'][-1]})", dw <= th["joint_hole"],
-                    f"手单独转 ±20° 后腕部新增空洞 {dw} 像素（上限 {th['joint_hole']}）")
+                    f"手单独转 ±20° 后腕部新增空洞 {dw} 像素（上限 {th['joint_hole']}）{where}")
 
             # —— 裙摆接缝（G4c2）：腿一摆，裙摆下沿那条缝不能漏背景 ——
             # 腿是 bend（顶边=裙子里的大腿根钉死、越往下摆幅越大），所以这里用

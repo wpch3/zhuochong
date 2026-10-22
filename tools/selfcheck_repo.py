@@ -606,6 +606,19 @@ L2D_EXTENSIONS = {
     "ParamWeightShift": "重心左右（一个参数同时驱动骨盆横移与两腿补偿，站立微动）",
     "ParamTiptoe": "踮脚（整体上提 + 脚踝收，裙摆下沿仍不动）",
     "ParamHipDrop": "胯下沉／屈膝承重（上身起伏但脚不离地；和 ParamBaseY 的区别就是它不动脚）",
+    # ---- Q36 手差分（官方口径：手の差分は**パーツ切替**，不是把手掰开）----
+    "ParamHandLOpen": "左手·张开差分（0=放松 1=摊掌）。绑两条 alpha：张开件 +1、"
+                      "放松件 −1，所以同一时刻只有一张不透明。"
+                      "官方《腕と手のモーション》：腕/手の差分は VISIBLE で切替",
+    "ParamHandROpen": "同上，右手",
+    "ParamHandLHeart": "左手·比心差分（指尖围出心形的负空间）。同样是切贴图，"
+                       "靠旋转掰不出手指造型",
+    "ParamHandRHeart": "同上，右手",
+    # ---- Q36 腿脚真关节（标准表只到 ParamLegL/R 的整条弯）----
+    "ParamHipL": "左髋绕骨盆旋转（真关节，不是 bend）。有了它腿才能像手臂一样抬起来",
+    "ParamHipR": "同上，右髋",
+    "ParamAnkleL": "左踝跖屈/背屈（绷脚尖 / 勾脚）。跳跃的蹬地和落地缓冲靠它",
+    "ParamAnkleR": "同上，右踝",
     "ParamStarEye": "星星眼总闸（常态虹膜淡出↔星形虹膜淡入 + 放行画面上的 ✨）",
     "ParamMouthX": "嘴左右（单边嘴角）。不是 Live2D 标准表的名字，是 Animaze《复杂口角"
                    "形状的模型制作方法》扩展表里的 ID，口径=嘴整体左右偏 + 顺带抬起那侧嘴角。"
@@ -1230,12 +1243,40 @@ def check_feet_on_ground(root):
     check("找得到会动到鞋底的参数", bool(dsole),
           "、".join("%s=%+.1f" % kv for kv in sorted(dsole.items())))
 
+    # ---- 动作幅度不许超出参数行程（超出的部分会被引擎 clamp 掉，而且一声不吭）----
+    # Q36 实例：kirara_jump 的腾空关键帧写 −120px，换算成 ParamBaseY = 30，
+    # 可那时候 ParamBaseY 的行程只有 ±10 —— 画面上只跳了 40px，声明却是 120px，
+    # 两边都"自洽"，只有拿尺子量实拍帧才发现。这条闸就是替人去量。
+    prange = {p["id"]: max(abs(float(p.get("min", 0))), abs(float(p.get("max", 0))))
+              for p in rig.get("params", [])}
+    over = []
+    for act in rig.get("actions", []):
+        for c in act.get("channels", []):
+            tgt = str(c.get("target", ""))
+            lim = prange.get(tgt)
+            if lim is None:
+                continue                      # 直接打部件的通道没有行程概念
+            if c.get("keys"):
+                peak = max((abs(float(v)) for _t, v in c["keys"]), default=0.0)
+            else:
+                peak = abs(float(c.get("amp", 0) or 0)) + abs(float(c.get("bias", 0) or 0))
+            if peak > lim + 1e-6:
+                over.append("%s/%s %.2f>%.2f" % (act.get("id"), tgt, peak, lim))
+    check("动作幅度都在参数行程内（超出会被悄悄削平）", not over,
+          "、".join(over[:6]) + ("…" if len(over) > 6 else ""))
+
     for act in rig.get("actions", []):
         worst = 0.0
         terms = []
         for c in act.get("channels", []):
             tgt = str(c.get("target", ""))
-            amp = abs(float(c.get("amp", 0) or 0))
+            # 关键帧通道没有 amp，幅度要从 keys 里取最大绝对值 —— 不补这一手，
+            # 一条 "keys":[[0,0],[0.69,-120]] 的腾空通道在这里是**完全看不见**的，
+            # 闸门会以为这个动作根本没动过脚（Q36 把 kirara_jump 改成关键帧时发现）。
+            if c.get("keys"):
+                amp = max((abs(float(v)) for _t, v in c["keys"]), default=0.0)
+            else:
+                amp = abs(float(c.get("amp", 0) or 0))
             k = dsole.get(tgt)
             if k is None and tgt == "root" and c.get("param") == "dy":
                 k = 1.0                     # 直接写部件通道的老写法
