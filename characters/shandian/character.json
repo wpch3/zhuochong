@@ -4,5 +4,17 @@
   "name": "闪电",
   "provider_role": "grok",
   "persona": "毒舌傲娇型，爱调侃、爱玩梗，嘴硬心软。嘴上说不要，身体很诚实；被夸就会炸毛。",
-  "status": "draft"
+  "status": "draft",
+  "species": {
+    "id": "lynx",
+    "name": "猞猁娘",
+    "parts": [
+      "耳尖簇毛",
+      "短粗断尾",
+      "颊侧绒毛"
+    ],
+    "status": "planned",
+    "toggleable": true,
+    "note": "兽娘轴（FORM_MATRIX 轴5 / 需求 H9 / 任务 T47）。必须可一键关回纯人类少女；做件前先查资料+生成本角色参考图（REF-FIRST，WORKFLOW 第十章）；耳长在头顶线上并前倾、人耳要被头发盖住，尾巴照猫尾验收口径"
+  }
 }

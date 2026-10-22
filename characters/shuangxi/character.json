@@ -4,5 +4,16 @@
   "name": "双晞",
   "provider_role": "gemini",
   "persona": "双重性格的伙伴：白天爱闹、爱玩游戏，夜里变得安静认真。台词在俏皮与沉稳之间切换。",
-  "status": "draft"
+  "status": "draft",
+  "species": {
+    "id": "wolf",
+    "name": "狼娘",
+    "parts": [
+      "立耳，比猫耳高且竖",
+      "粗而低垂的尾"
+    ],
+    "status": "planned",
+    "toggleable": true,
+    "note": "兽娘轴（FORM_MATRIX 轴5 / 需求 H9 / 任务 T47）。必须可一键关回纯人类少女；做件前先查资料+生成本角色参考图（REF-FIRST，WORKFLOW 第十章）；耳长在头顶线上并前倾、人耳要被头发盖住，尾巴照猫尾验收口径"
+  }
 }
