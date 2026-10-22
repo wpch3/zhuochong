@@ -426,7 +426,7 @@
       "group": "arm_l",
       "layer": 95,
       "pos": [
-        252,
+        309,
         403
       ],
       "anchor": [
@@ -2487,14 +2487,14 @@
         {
           "target": "ParamArmLB",
           "wave": "sine",
-          "amp": 0.1655,
+          "amp": 0.1333,
           "freq": 0.18,
           "phase": 0.22
         },
         {
           "target": "ParamArmRB",
           "wave": "sine",
-          "amp": 0.1655,
+          "amp": 0.1333,
           "freq": 0.18,
           "phase": 0.22
         },
@@ -2678,14 +2678,14 @@
         {
           "target": "ParamArmLB",
           "wave": "sine",
-          "amp": 0.0552,
+          "amp": 0.0444,
           "freq": 0.06,
           "phase": 0.28
         },
         {
           "target": "ParamArmRB",
           "wave": "sine",
-          "amp": 0.0552,
+          "amp": 0.0444,
           "freq": 0.06,
           "phase": 0.28
         },
@@ -3063,14 +3063,14 @@
         {
           "target": "ParamArmLB",
           "wave": "bounce",
-          "amp": 0.9655,
+          "amp": 0.7778,
           "freq": 0.0,
           "dur": 0.5
         },
         {
           "target": "ParamArmRB",
           "wave": "bounce",
-          "amp": 0.9655,
+          "amp": 0.7778,
           "freq": 0.0,
           "dur": 0.5
         },
@@ -3265,7 +3265,7 @@
         {
           "target": "ParamArmLB",
           "wave": "pulse",
-          "amp": 1.5172,
+          "amp": 1.2222,
           "freq": 0.0,
           "dur": 0.9,
           "ease": "out"
@@ -3273,7 +3273,7 @@
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 1.5172,
+          "amp": 1.2222,
           "freq": 0.0,
           "dur": 0.9,
           "ease": "out"
@@ -3430,14 +3430,14 @@
         {
           "target": "ParamArmLB",
           "wave": "decay",
-          "amp": 0.6207,
+          "amp": 0.5,
           "freq": 2.6,
           "dur": 0.7
         },
         {
           "target": "ParamArmRB",
           "wave": "decay",
-          "amp": 0.6207,
+          "amp": 0.5,
           "freq": 2.6,
           "dur": 0.7
         },
@@ -3821,28 +3821,35 @@
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 4.0,
-          "dur": 1.0,
+          "amp": 6.3889,
+          "dur": 0.85,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 6.069,
+          "amp": 1.2222,
           "dur": 0.7,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "sine",
-          "amp": -0.9655,
-          "freq": 2.2,
+          "amp": -0.7222,
+          "freq": 2.0,
           "dur": 2.4
+        },
+        {
+          "target": "ParamBodyAngleZ",
+          "wave": "pulse",
+          "amp": -6.4,
+          "dur": 0.9,
+          "ease": "out"
         },
         {
           "target": "ParamArmLA",
           "wave": "pulse",
-          "amp": 0.3333,
+          "amp": 0.2222,
           "dur": 2.4,
           "ease": "out"
         },
@@ -3950,7 +3957,7 @@
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": -9.0345,
+          "amp": -7.2778,
           "dur": 0.5,
           "ease": "out"
         },
@@ -3971,7 +3978,7 @@
         {
           "target": "ParamArmLB",
           "wave": "pulse",
-          "amp": -8.7586,
+          "amp": -7.0556,
           "dur": 0.55,
           "ease": "out"
         },
@@ -4210,19 +4217,19 @@
             ],
             [
               0.3,
-              -0.5517
+              -0.4444
             ],
             [
               0.75,
-              1.2414
+              1.0
             ],
             [
               1.25,
-              1.0345
+              0.8333
             ],
             [
               1.8,
-              0.2759
+              0.2222
             ],
             [
               2.0,
@@ -4240,19 +4247,19 @@
             ],
             [
               0.3,
-              -0.5517
+              -0.4444
             ],
             [
               0.75,
-              1.2414
+              1.0
             ],
             [
               1.25,
-              1.0345
+              0.8333
             ],
             [
               1.8,
-              0.2759
+              0.2222
             ],
             [
               2.0,
@@ -4492,7 +4499,7 @@
         {
           "target": "ParamAngleX",
           "wave": "sine",
-          "amp": 17.0,
+          "amp": 22.0,
           "freq": 0.45,
           "phase": 0.13
         },
@@ -7376,6 +7383,12 @@
           "group": "arm_l",
           "param": "rot_deg",
           "scale": 18.0
+        },
+        {
+          "part": "arm_l_root",
+          "param": "alpha",
+          "scale": -1.29,
+          "offset": 0.57
         }
       ],
       "note": "绕肩旋转，±10 → ±180°（人的肩就是 180°：手能举到头顶正上方）。肩关节靠两件东西兜住：① 躯干不留任何袖子像素（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子；③ arm_*_cap 肩帽盖住肩窝（Q35）"
@@ -7391,6 +7404,12 @@
           "group": "arm_r",
           "param": "rot_deg",
           "scale": -18.0
+        },
+        {
+          "part": "arm_r_root",
+          "param": "alpha",
+          "scale": -1.29,
+          "offset": 0.57
         }
       ]
     },
@@ -7404,10 +7423,10 @@
         {
           "group": "forearm_l",
           "param": "rot_deg",
-          "scale": 14.5
+          "scale": 18.0
         }
       ],
-      "note": "绕肘旋转，±10 → ±145°（人的肘屈曲极限就是 145°，摸到肩膀）；挥手那下肘要折 98° 再叠 14° 的摆"
+      "note": "绕肘旋转，±10 → ±180°。**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**：人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，正面看见的夹角会超过 145° —— Q38 在参考图 characters/xiaoxun/design/pose_ref/wave_up.png 上实测：肩(455,315)→肘(495,475)→腕(487,352)，投影夹角 170°。倍率 14.5（±145°）封顶时这个姿势根本摆不出来，所以提到 18.0；动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变"
     },
     {
       "id": "ParamArmRB",
@@ -7419,7 +7438,7 @@
         {
           "group": "forearm_r",
           "param": "rot_deg",
-          "scale": -14.5
+          "scale": -18.0
         }
       ]
     },

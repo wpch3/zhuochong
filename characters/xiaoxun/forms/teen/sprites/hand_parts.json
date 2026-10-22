@@ -117,6 +117,10 @@
     }
   ],
   "checks": {
+    "cuff_cleaned": [
+      "hand_l",
+      "hand_r"
+    ],
     "wrist_w": {
       "hand_l_pad": 43,
       "hand_l_open": 24,

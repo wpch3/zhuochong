@@ -8,12 +8,12 @@
       "id": "arm_l_root",
       "file": "sprites/arm_l_root.png",
       "pos": [
-        52,
+        109,
         335
       ],
       "size": [
-        124,
-        224
+        67,
+        105
       ],
       "group": "arm_l",
       "layer": 95,
@@ -88,8 +88,8 @@
         335
       ],
       "size": [
-        133,
-        225
+        99,
+        112
       ],
       "group": "arm_r",
       "layer": 96,
@@ -201,8 +201,8 @@
     "torso_filled_px": 79,
     "torso_cleared_px": 41281,
     "root_ext_px": {
-      "l": 4676,
-      "r": 5302
+      "l": 3685,
+      "r": 4443
     },
     "root_target_w": {
       "l": 57.0,

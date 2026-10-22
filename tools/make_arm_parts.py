@@ -48,6 +48,7 @@ ROOT_TOP_RAMP = 40                  # 顶端这么多行内把补绘量从 0 渐
 ROOT_SHADE = 0.90                   # 补到最里侧时的明度系数（内侧背光，略压暗）
 ROOT_CLEAR_SEAM = 0                 # 0 = **不要**抹上臂贴图里那条袖缝线（试过，静止帧会坏）
 ROOT_CAP_EXT = 26                   # 肩帽向上多画这么多像素（见下方「第五刀」注释）
+ROOT_FAR_EXT = 16                   # Q38：袖根在**远端/侧向**只许伸出关节圆这么多（再远一转就露在夹克外）
 # ---- 袖根关节圆盘 ----
 # ★★★ 2026-10-21 第二十八问：半径改成按**袖子宽度**算，不再按上臂长度算。
 #   教程（さらえみ／Live2D モデラー, https://saraemi.com/vtuber/2022/02/09/live2d_arm/）：
@@ -534,6 +535,28 @@ def root_fill(body, up, side, hidden, pivot=None, arm_len=None,
         #   `disc` 和 `band` 一起列进豁免，保证圆盘**整个**留下来。
         ext = dilate(erode(ext, ROOT_SMOOTH_K), ROOT_SMOOTH_K) \
             | (ext & (band | disc | cap))
+        # ★★★ 2026-10-22 第三十八问：袖根件整块**收进以肩枢轴为圆心的圆盘**。
+        #   病状：照参考图 pose_ref/wave_out.png 把大臂抬到 −115° 之后，夹克
+        #   右缘下方挂出一块青色布片，底边笔直还带倒钩（实拍
+        #   logs/asset_qa/q38_armpit_zoom.png 右格）。给每个部件上色定位
+        #   （logs/asset_qa/q38_flap_tint.png：红=袖根 蓝=上臂 黄=肩帽 灰=躯干）
+        #   确认那块红的就是这件袖根塗り足し。
+        #   为什么以前没发现：旧挥手峰值只有 −72°，这块还压在夹克剪影里；
+        #   抬到 100° 以上才扫出来 —— 也就是说**底层一直是坏的，只是没人抬那么高**。
+        #   几何病因：`band`/`rowfill` 的半宽是按**袖宽**给的（2R≈68px），
+        #   而上臂原画在肩那头只有 ~23px 宽；多出来那一圈的外边界是
+        #   `& erode(hidden,2)` 切出来的**夹克剪影曲线**，和袖子本身的轮廓无关。
+        #   静止时它在夹克底下（层 95/96 < 躯干 100）看不见，一转就整块露出来。
+        #   修法仍是那条老规矩：**绕一点旋转，只有以该点为圆心的圆盘是不变量**。
+        #     · 远端/侧向 → 收到 R + ROOT_FAR_EXT；
+        #     · 近端（along<0，朝脖子那半边）→ 仍留 R + ROOT_CAP_EXT，
+        #       那是第三十三问为盖住「袖子在枢轴上方 53px 的塔」加的，裁了洞就回来。
+        #   验证：−40/−60/−90/−120 四档离线合成对照
+        #   （logs/asset_qa/q38_root_angles.png）：中等角度与旧版逐像素几乎一致，
+        #   −120° 的布片基本消失。
+        _d2 = xx_d * xx_d + yy_d * yy_d
+        ext = ext & ((_d2 <= (R + ROOT_FAR_EXT) ** 2)
+                     | ((_d2 <= (R + ROOT_CAP_EXT) ** 2) & (along < 0.0)))
     else:
         ext = np.zeros((H, W), bool)
         for y, (a, b) in edges.items():
