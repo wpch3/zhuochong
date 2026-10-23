@@ -96,6 +96,34 @@ WHITE_GARMENT = {
     "acc_hood_pony", "acc_hood_long",
 }
 
+#  ─────────────────────────────────────────────────────────────────────
+#  「素材必须是真原画」闸（2026-10-24，第六十问）
+#
+#  要拦的事故：**程序去画素材**，产出大片平涂色块冒充原画。
+#  用户上一个项目就是这么废掉的，所以第三十七问定了「手必须用原画件做
+#  部件，禁程序化画手」。但在今天之前，这条规矩只活在文档里、靠我自觉 ——
+#  没有任何一道机器拦着。文档管不住下一个代理，也管不住健忘的我。
+#
+#  判据：不透明像素里的**不同颜色数**。真原画有描线、网点、渐变和抗锯齿，
+#  色数以千计；程序平涂只有几种。实测（teen 96 件 ≥2000px）：
+#    hair_long_back 67320 色 / skirt_lining 4010 / fx_gloom 1198 /
+#    torso_top_patch 597  ← 真原画里最低的一档都还有近 600 色
+#    ──────── 128 条判据线 ────────
+#    eye_*_socket 51~64 色 / hand_*_pad 1 色  ← 下面四件，结构性平涂
+#  真原画最低 597 vs 判据 128 vs 平涂件最高 64 ⇒ 两边各留了 4~5 倍余量。
+#
+#  **默认拒绝**：不在豁免名单里的件一律要过线。新加的平涂件会直接判红，
+#  必须有人来这里写一行理由才放行 —— 这正是我要的摩擦。
+#  豁免的四件都不是"画"，是结构件，理由见各行：
+FLAT_BY_DESIGN = {
+    "hand_l_pad":   "塗り足し补片，不是一档手势，整片纯肤色垫在腕下",
+    "hand_r_pad":   "同上（右手）",
+    "eye_l_socket": "眼眶遮罩件，引擎按 alpha 取形，颜色本就无意义",
+    "eye_r_socket": "同上（右眼）",
+}
+FLAT_MIN_AREA = 2000      # 小件色数天然少，不参与（blush 1732px 就在线下）
+FLAT_MIN_COLORS = 128
+
 
 def load_rgba(path):
     return np.asarray(Image.open(path).convert("RGBA"))
@@ -1196,6 +1224,33 @@ def check(character, form, root=".", strict=False, out_json=None):
                 f"头顶 y={r['head_top_y']}（不许比头顶低 12 像素以上）")
     except Exception as _e:                                  # pragma: no cover
         add("头部几何", "头部几何闸可运行", False, "跑挂了：%s" % _e)
+
+    # ---------------------------------------- 素材必须是真原画（见 FLAT_BY_DESIGN）
+    try:
+        import glob as _glob
+        flat_n = 0
+        for _p in sorted(_glob.glob(os.path.join(sprites, "*@2x.png"))):
+            _pid = os.path.basename(_p)[:-len("@2x.png")]
+            _im = load_rgba(_p)
+            _m = alpha_mask(_im)
+            _area = int(_m.sum())
+            if _area < FLAT_MIN_AREA:
+                continue
+            _rgb = _im[:, :, :3][_m].astype(np.uint32)
+            _c = int(len(np.unique((_rgb[:, 0] << 16) | (_rgb[:, 1] << 8) | _rgb[:, 2])))
+            if _pid in FLAT_BY_DESIGN:
+                # 豁免件也要查：万一哪天它**变花**了，说明有人拿它当画布画了东西
+                add("素材真伪", f"{_pid} 仍是结构性平涂", _c < FLAT_MIN_COLORS,
+                    f"{_c} 色 / {_area}px —— 豁免理由：{FLAT_BY_DESIGN[_pid]}")
+                continue
+            flat_n += 1
+            add("素材真伪", f"{_pid} 是真原画不是平涂色块", _c >= FLAT_MIN_COLORS,
+                f"不透明区 {_area}px 里只有 {_c} 种颜色（真原画最低一档 ~597 色，"
+                f"判据 {FLAT_MIN_COLORS}）；若确属结构件请到 FLAT_BY_DESIGN 写明理由")
+        add("素材真伪", "受检件数不为零", flat_n > 0,
+            f"查了 {flat_n} 件（≥{FLAT_MIN_AREA}px，不含 {len(FLAT_BY_DESIGN)} 件豁免）")
+    except Exception as _e:                                  # pragma: no cover
+        add("素材真伪", "素材真伪闸可运行", False, "跑挂了：%s" % _e)
 
     report = {
         "character": character, "form": form,
