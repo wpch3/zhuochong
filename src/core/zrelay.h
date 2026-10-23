@@ -33,10 +33,20 @@
 
 #include "zgateway.h"
 
+/* 历史里的一轮。role：0 = 用户说的，1 = 她说的。
+   这些会作为独立的 message 进 messages 数组 —— **不许塞进 system 提示词里**：
+   模型靠 role 区分"谁说的"，糊成一段之后它分不清哪句是自己说过的。 */
+typedef struct {
+    int         role;
+    const char *text;
+} zrelay_turn;
+
 typedef struct {
     const char *cap;            /* NULL = "chat.completion" */
     const char *system_prompt;  /* 可为 NULL；一般是 zpersona_compose 的产物 */
     const char *user_text;      /* 用户说的话，必填 */
+    const zrelay_turn *history; /* 之前几轮，按时间顺序；可为 NULL */
+    int         nhistory;
     double      temperature;    /* <0 = 不带这个字段，用服务端默认 */
     int         max_tokens;     /* <=0 = 不带 */
     int         timeout_ms;     /* <=0 = 30000 */
@@ -82,6 +92,12 @@ void zrelay_result_free(zrelay_result *r);
 char *zrelay_build_chat_body(const char *model, const char *system_prompt,
                              const char *user_text, double temperature,
                              int max_tokens);
+
+/* 带历史的版本。上面那个等价于 nhistory=0，留着是为了不动既有调用方。 */
+char *zrelay_build_chat_body_multi(const char *model, const char *system_prompt,
+                                   const zrelay_turn *history, int nhistory,
+                                   const char *user_text, double temperature,
+                                   int max_tokens);
 
 /* 单独导出给单测：从 openai_compatible 的响应体里取回复正文和 usage。
  * 返回 0 = 成功。失败时把人话原因写进 err。

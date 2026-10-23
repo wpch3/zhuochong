@@ -376,7 +376,31 @@ def check_rig(root):
         dup = sorted({i for i in pids if pids.count(i) > 1})
         check(f"部件 id 唯一", not dup, f"{tag}：{len(pids)} 件" + (f"，重复 {dup}" if dup else ""))
 
-        # 动作要有给人看的名字，而且得真是中文 —— 不是把 id 抄一遍。
+        # ---- 上下文管理器（T60.1 / T61.11）的红线 ----
+    # 这几条守的是隐私，不是风格。
+    ctxc = read(os.path.join(root, "src/core/zctx.c"))
+    if ctxc:
+        check("zctx 要按目的地挡下敏感轮次（不许跟着上云）",
+              "t->sensitive && !local" in ctxc,
+              "zctx_build 里要有按 local 过滤 sensitive 的分支")
+        check("取历史时也要独立再挡一次（两道防线）",
+              "t->sensitive && !c->last_local" in ctxc,
+              "kept_turn_index 里要有独立的过滤")
+        check("被裁掉的块不许无声消失（要写原因）", "drop_reason" in ctxc)
+        check("清单要报告被挡下的轮数", "没上云" in ctxc)
+    mh = read(os.path.join(root, "src/headless/main_headless.c"))
+    if mh:
+        # 2026-10-24 实测：模型想 6 秒，整个预览卡死 6 秒、立绘变雕塑。
+        # 两层都修了，两层都要盯住。
+        check("慢请求不许攥着渲染用的那把锁",
+              "AILOCK" in mh and "g_ai_lock" in mh,
+              "网关/上下文要用 g_ai_lock，别和 g_lock 混用")
+        check("慢端点要交给工作线程（否则 zpet_tick 被一起拖住）",
+              "dispatch_slow" in mh)
+        check("回复可能引用敏感内容，要跟着算敏感（污染传播）",
+              "tainted" in mh)
+
+    # 动作要有给人看的名字，而且得真是中文 —— 不是把 id 抄一遍。
         # 2026-10-24 用户截图里 nod / wave_both / kirara_jump 等 8 个按钮露了英文 id，
         # 根因是名字写在界面的硬编码表里、漏了新动作。名字搬到 rig.json 之后，
         # 这条盯住"数据层有没有漏"，正式软件 UI 重做时也不用重写一遍文案。

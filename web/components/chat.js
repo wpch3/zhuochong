@@ -58,6 +58,14 @@ ZC.register({
     const send = host.el("button", "btn", "发送");
     send.id = "chat-send";
     send.onclick = () => this.send();
+    const reset = host.el("button", "", "重新开始聊");
+    reset.id = "chat-reset";
+    reset.title = "忘掉前面说过的话，从头开始（人设不受影响）";
+    reset.onclick = async () => {
+      try { await this.host.api("/api/context.json", { reset: 1 }); } catch (e) { /* 无妨 */ }
+      this.log.innerHTML = "";
+      this.say("sys", "好，忘干净了。从头开始吧。");
+    };
     const dry = host.el("button", "", "看看将要发什么");
     dry.id = "chat-dry";
     dry.title = "只准备不发送：把真会出网的地址和请求体原样给你看，一个字节都不出网";
@@ -65,6 +73,7 @@ ZC.register({
     row.appendChild(this.input);
     row.appendChild(send);
     row.appendChild(dry);
+    row.appendChild(reset);
     this.body.appendChild(row);
 
     this.note = host.el("div", "hint", "");
@@ -162,6 +171,11 @@ ZC.register({
     if (d.cost > 0) bits.push("￥" + Number(d.cost).toFixed(6));
     else if (d.ok) bits.push("不花钱");
     if (d.attempts > 1) bits.push("换了 " + d.attempts + " 家");
+    /* 多轮（T61.11）：带了几轮历史要说出来 —— 用户得知道她"记着多少" */
+    if (d.history_sent > 0) bits.push("记着前 " + d.history_sent + " 条");
+    /* 这一条最要紧：有几轮因为带隐私标记没敢上云。
+       不写出来的话，用户只会觉得"她怎么突然失忆了"，而那其实是保护生效了。 */
+    if (d.turns_held > 0) bits.push("⚠ " + d.turns_held + " 条带隐私标记，没让它上云");
     return bits.join(" · ");
   },
 

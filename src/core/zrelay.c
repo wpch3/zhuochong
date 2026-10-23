@@ -22,9 +22,28 @@ static long est_tokens(const char *s)
     return (long)(n / 4 + 1);
 }
 
+/* 历史那几轮也是要花钱的 token。漏算的后果不是"显示不准"，
+   是**预扣款比实际少**，三段记账的第一段就失真了。 */
+static long est_history_tokens(const zrelay_turn *h, int n)
+{
+    long t = 0;
+    int i;
+    for (i = 0; h && i < n; ++i) t += est_tokens(h[i].text);
+    return t;
+}
+
 char *zrelay_build_chat_body(const char *model, const char *system_prompt,
                              const char *user_text, double temperature,
                              int max_tokens)
+{
+    return zrelay_build_chat_body_multi(model, system_prompt, NULL, 0,
+                                        user_text, temperature, max_tokens);
+}
+
+char *zrelay_build_chat_body_multi(const char *model, const char *system_prompt,
+                                   const zrelay_turn *history, int nhistory,
+                                   const char *user_text, double temperature,
+                                   int max_tokens)
 {
     zjson_w *w = zjson_w_new(0);
     char *out;
@@ -41,6 +60,20 @@ char *zrelay_build_chat_body(const char *model, const char *system_prompt,
         zjson_w_key(w, "role");    zjson_w_str(w, "system");
         zjson_w_key(w, "content"); zjson_w_str(w, system_prompt);
         zjson_w_obj_end(w);
+    }
+    /* 历史按时间顺序插在 system 之后、这一句之前。
+       role 要如实写 assistant —— 把她说过的话标成 user，
+       模型会以为那是用户说的，人格当场错乱。 */
+    {
+        int i;
+        for (i = 0; history && i < nhistory; ++i) {
+            if (!history[i].text || !history[i].text[0]) continue;
+            zjson_w_obj_begin(w);
+            zjson_w_key(w, "role");
+            zjson_w_str(w, history[i].role ? "assistant" : "user");
+            zjson_w_key(w, "content"); zjson_w_str(w, history[i].text);
+            zjson_w_obj_end(w);
+        }
     }
     zjson_w_obj_begin(w);
     zjson_w_key(w, "role");    zjson_w_str(w, "user");
@@ -220,8 +253,9 @@ static int prepare_one(zgateway *g, const zgw_route *rt, const zrelay_chat_req *
     }
 
     join_url(ep->base_url, ep->chat_path, url, url_cap);
-    *body_out = zrelay_build_chat_body(rt->model, in->system_prompt, in->user_text,
-                                       in->temperature, in->max_tokens);
+    *body_out = zrelay_build_chat_body_multi(rt->model, in->system_prompt,
+                                             in->history, in->nhistory, in->user_text,
+                                             in->temperature, in->max_tokens);
     if (!*body_out) {
         snprintf(out->err, sizeof(out->err), "请求体拼不出来（内存不够）");
         return -1;
@@ -248,7 +282,8 @@ static int try_one(zgateway *g, const zgw_route *rt, const zrelay_chat_req *in,
         return -1;
 
     /* 预扣：发之前占住额度。估不准没关系，结算时按实际值入账。 */
-    est = zgw_estimate(rt, est_tokens(in->system_prompt) + est_tokens(in->user_text),
+    est = zgw_estimate(rt, est_tokens(in->system_prompt) + est_tokens(in->user_text)
+                           + est_history_tokens(in->history, in->nhistory),
                        in->max_tokens > 0 ? in->max_tokens : 512);
     hold = zgw_hold_open(g, cap, rt->provider, est);
 
@@ -301,7 +336,8 @@ static int try_one(zgateway *g, const zgw_route *rt, const zrelay_chat_req *in,
         return -1;
     }
 
-    if (tin <= 0)  tin = est_tokens(in->system_prompt) + est_tokens(in->user_text);
+    if (tin <= 0)  tin = est_tokens(in->system_prompt) + est_tokens(in->user_text)
+                         + est_history_tokens(in->history, in->nhistory);
     if (tout <= 0) tout = est_tokens(out->text);
     out->tokens_in = tin;
     out->tokens_out = tout;

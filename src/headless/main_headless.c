@@ -39,6 +39,7 @@
 #include "../core/zpet.h"
 #include "../core/zgateway.h"
 #include "../core/zrelay.h"
+#include "../core/zctx.h"
 #include "../core/zconfig.h"
 #include "../core/zpersona.h"
 #include "../core/zjson.h"
@@ -82,6 +83,11 @@ static zpet *g_pet = NULL;
    只是 /api/gateway.json 会如实说"没加载"。 */
 static zgateway g_gw;
 static int      g_gw_ok = 0;
+
+/* 统一上下文（T60.1）。会话历史存在这儿 —— 进程内存，重启就忘。
+   持久化是另一件事（得先想清楚"她该记多久"要不要用户说了算），
+   现在先把"这一次运行里记得住"做对。 */
+static zctx g_ctx;
 /* UI 与静态资源目录：界面文件放 web/，媒体（配音/素材）走 /media/，
  * 这样改界面完全不用动 C 代码（对应“全部可自定义”的原则）。 */
 static char g_root[1024] = ".";
@@ -90,14 +96,34 @@ static zconfig g_cfg;
 static double g_start_time = 0.0;
 static volatile int g_quit = 0;
 
+/* 两把锁，分管两件事 —— 这不是优化，是**功能要求**。
+ *
+ * 2026-10-24 实测：模型想 6 秒，整个预览服务卡死 6 秒 ——
+ * /api/info.json 直接超时，立绘停成一张照片。本地大模型想 10~30 秒是常事，
+ * 也就是说"每说一句话她就变雕塑"。对一个桌宠来说这是致命的。
+ *
+ * 根因有两层，两层都得修：
+ *   ① g_lock 被 /api/chat 攥着跨越整个网络往返 → 渲染线程拿不到锁；
+ *   ② HTTP 是单线程 accept 循环，而那个循环同时负责 zpet_tick → 请求一慢全停。
+ *
+ * 所以：g_lock 只管宠物自己（状态机/动作/表情），
+ *       g_ai_lock 管网关账本和上下文。慢请求攥着 g_ai_lock 不要紧，
+ *       渲染线程要的是 g_lock，两边不打架。
+ */
 #ifndef _WIN32
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_ai_lock = PTHREAD_MUTEX_INITIALIZER;
 #  define LOCK()   pthread_mutex_lock(&g_lock)
 #  define UNLOCK() pthread_mutex_unlock(&g_lock)
+#  define AILOCK()   pthread_mutex_lock(&g_ai_lock)
+#  define AIUNLOCK() pthread_mutex_unlock(&g_ai_lock)
 #else
 static CRITICAL_SECTION g_lock;
+static CRITICAL_SECTION g_ai_lock;
 #  define LOCK()   EnterCriticalSection(&g_lock)
 #  define UNLOCK() LeaveCriticalSection(&g_lock)
+#  define AILOCK()   EnterCriticalSection(&g_ai_lock)
+#  define AIUNLOCK() LeaveCriticalSection(&g_ai_lock)
 #endif
 
 /* ------------------------------------------------------------ HTTP 工具 */
@@ -368,6 +394,69 @@ static const char *PAGE =
 "</script></body></html>";
 
 /* ------------------------------------------------------------ 请求处理 */
+/* 慢端点（/api/chat）的工作线程。
+ *
+ * 为什么非要开线程：accept 循环和 zpet_tick 在同一个 while 里 ——
+ * 请求处理一慢，立绘就停。实测模型想 6 秒 ⇒ 她当场变雕塑 6 秒。
+ * 桌宠最不能接受的就是"你跟她说话，她僵住"。
+ *
+ * 只有真发的 chat 走这条路：dry-run 和其它端点都是微秒级，
+ * 开线程的开销反而更大。 */
+typedef struct {
+    zsock    fd;
+    http_req req;
+} slow_job;
+
+static void handle_request(zsock fd, const http_req *r);
+
+#ifndef _WIN32
+static void *slow_worker(void *arg)
+{
+    slow_job *j = (slow_job *)arg;
+    handle_request(j->fd, &j->req);
+    zsock_close(j->fd);
+    free(j);
+    return NULL;
+}
+#else
+static DWORD WINAPI slow_worker(LPVOID arg)
+{
+    slow_job *j = (slow_job *)arg;
+    handle_request(j->fd, &j->req);
+    zsock_close(j->fd);
+    free(j);
+    return 0;
+}
+#endif
+
+/* 返回 1 = 已经交给工作线程（调用方不要再 close fd） */
+static int dispatch_slow(zsock fd, const http_req *r)
+{
+    slow_job *j;
+    if (strcmp(r->path, "/api/chat") != 0) return 0;
+    /* dry-run 不出网，几微秒就回来，不值得开线程 */
+    if (strstr(r->query, "dry=1")) return 0;
+
+    j = (slow_job *)malloc(sizeof(*j));
+    if (!j) return 0;                      /* 开不出来就退回同步，功能不受影响 */
+    j->fd = fd;
+    j->req = *r;
+#ifndef _WIN32
+    {
+        pthread_t th;
+        if (pthread_create(&th, NULL, slow_worker, j) != 0) { free(j); return 0; }
+        pthread_detach(th);
+    }
+#else
+    {
+        HANDLE th = CreateThread(NULL, 0, slow_worker, j, 0, NULL);
+        if (!th) { free(j); return 0; }
+        CloseHandle(th);
+    }
+#endif
+    return 1;
+}
+
 static void handle_request(zsock fd, const http_req *r)
 {
     char buf[2048];
@@ -909,6 +998,526 @@ static void handle_request(zsock fd, const http_req *r)
         send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;
     }
+    if (strcmp(r->path, "/api/gateway.json") == 0) {
+        /* 界面要回答用户三个问题：这功能能不能用？会用谁？花了多少钱？
+           所以这里导出的是"路由的结果"，不是路由表原样——原样在 platform.json 里有。 */
+        char body[8192];
+        char *p = body;
+        size_t cap = sizeof(body);
+        int i, shown = 0;
+        static const char *const WATCH[] = {
+            "chat.completion", "chat.stream", "image.generate", "video.generate",
+            "code.generate", "model3d.generate", "tts.speak", "stt.listen",
+            "embed.text", "vision.describe", "web.search", "memory.recall", NULL
+        };
+        LOCK();
+        p += z_snprintf(p, cap - (size_t)(p - body),
+            "{\"loaded\":%s,\"strategy\":\"%s\",\"fallback\":%s,\"routes\":%d,"
+            "\"ledger\":{\"spent\":%.6f,\"held\":%.6f,\"tokens_in\":%ld,\"tokens_out\":%ld,"
+            "\"calls\":%ld,\"failed\":%ld},\"caps\":[",
+            g_gw_ok ? "true" : "false", g_gw_ok ? g_gw.strategy : "",
+            (g_gw_ok && g_gw.fallback) ? "true" : "false", g_gw_ok ? g_gw.nroutes : 0,
+            g_gw.spent_total, zgw_held_amount(&g_gw), g_gw.tokens_in_total,
+            g_gw.tokens_out_total, g_gw.calls_total, g_gw.failed_total);
+        for (i = 0; WATCH[i]; ++i) {
+            zgw_status why = ZGW_NO_SUCH_CAP;
+            const zgw_route *rt = g_gw_ok ? zgw_pick(&g_gw, WATCH[i], 0, &why) : NULL;
+            const char *state = rt ? "ready"
+                              : (why == ZGW_ALL_DISABLED ? "disabled" : "missing");
+            /* 失败原因要分开报：disabled 是"去设置里打开"，missing 是"还没接入"。
+               混成一个 false 的话界面只能说"不可用"，用户不知道该干什么。 */
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                "%s{\"cap\":\"%s\",\"state\":\"%s\",\"provider\":\"%s\",\"model\":\"%s\","
+                "\"local\":%s,\"free\":%s,\"candidates\":%d}",
+                shown++ ? "," : "", WATCH[i], state,
+                rt ? rt->provider : "", rt ? rt->model : "",
+                (rt && rt->local) ? "true" : "false",
+                (rt && (rt->local || rt->is_free)) ? "true" : "false",
+                g_gw_ok ? zgw_candidate_count(&g_gw, WATCH[i]) : 0);
+        }
+        p += z_snprintf(p, cap - (size_t)(p - body), "]}");
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+
+    if (strcmp(r->path, "/api/info.json") == 0) {
+        /* ★ 缓冲区 2026-10-18 从 4096 扩到 16384（T46.3 当场撞上）：
+             这份 JSON 的长度跟着 rig 的部件 / 形变器 / 摆链条数线性涨。
+             加三个发型（+3 部件 +4 形变器 +3 摆链）之后就超了 4096，
+             而 z_snprintf 是**静默截断**的 —— 返回的是一串缺尾括号的烂 JSON，
+             前端和探针都只会报「JSON 解析失败」，不会告诉你是谁写满了。
+             所以除了扩容，下面收尾处还加了一条\"写满了就明着报错\"的守卫。 */
+        char body[16384];
+        char *p = body;
+        int i, fw = 0, fh = 0;
+        size_t cap = sizeof(body);
+        const char *mood;
+        LOCK();
+        zpet_frame(g_pet, &fw, &fh);
+        /* 界面的状态片要显示真实情绪与好感，所以这里把 zpet 的内部状态一并导出；
+           mood 可能为空（还没表达过情绪），统一给 "calm" 以免界面显示破折号。 */
+        mood = zpet_last_mood(g_pet);
+        if (!mood || !*mood) mood = "calm";
+        p += z_snprintf(p, cap - (size_t)(p - body),
+            "{\"engine\":\"%s\",\"action\":\"%s\",\"reason\":\"%s\",\"blink\":%.3f,"
+            "\"scale\":%.3f,\"form\":\"%s\",\"form_name\":\"%s\",\"outfit\":\"%s\","
+            "\"mood\":\"%s\",\"affection\":%d,\"tier\":%d,\"tier_name\":\"%s\","
+            "\"sleeping\":%s,\"idle\":%.1f,\"frame_w\":%d,\"frame_h\":%d,"
+            "\"canvas_w\":%d,\"canvas_h\":%d,\"character\":\"%s\","
+            "\"root\":\"%s\",\"blink_manual\":%.3f,\"actions\":[",
+            ZC_VERSION, zpet_action(g_pet), zpet_last_reason(g_pet), zpet_blink(g_pet),
+            zpet_scale(g_pet), zpet_form(g_pet), zpet_form_name(g_pet), zpet_outfit(g_pet),
+            mood, zpet_affection(g_pet), zpet_affection_tier(g_pet), zpet_affection_tier_name(g_pet),
+            zpet_sleeping(g_pet) ? "true" : "false", zpet_idle_seconds(g_pet), fw, fh,
+            zpet_canvas_w(g_pet), zpet_canvas_h(g_pet),
+            zpet_character(g_pet), g_cfg.root_dir, zpet_blink_manual(g_pet));
+        for (i = 0; i < zpet_action_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_action_id_at(g_pet, i));
+        /* action_names 和 actions 一一对应（照 forms / form_names 的老写法）。
+           名字来自 rig.json，不是界面里的硬编码表 —— 正式软件的 UI 要整个重做，
+           界面层存的任何文案都得重写一遍，数据层存的不用。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"action_names\":[");
+        for (i = 0; i < zpet_action_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_action_title_at(g_pet, i));
+        /* forms / form_names 的语义是**能切过去的形态**，所以只报 ready 的。
+           规划中但还没做的形态走下面的 form_roadmap，界面上灰显。
+           两者分开是为了不破坏既有调用方：谁拿 forms 去渲染切换按钮都不会切到空形态。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"forms\":[");
+        {
+            int shown = 0;
+            for (i = 0; i < zpet_form_count(g_pet); ++i) {
+                if (!z_streq(zpet_form_status_at(g_pet, i), "ready")) continue;
+                p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
+                                shown++ ? "," : "", zpet_form_id_at(g_pet, i));
+            }
+            /* 界面按钮要显示中文名（"少女"）而不是形态 id（"teen"），所以 id 与名字成对导出。 */
+            p += z_snprintf(p, cap - (size_t)(p - body), "],\"form_names\":[");
+            shown = 0;
+            for (i = 0; i < zpet_form_count(g_pet); ++i) {
+                if (!z_streq(zpet_form_status_at(g_pet, i), "ready")) continue;
+                p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
+                                shown++ ? "," : "", zpet_form_name_at(g_pet, i));
+            }
+            /* 形态路线图：ready + planned 全报，界面据此画出「做好的」和「还没做的」。
+               没有这张表，用户看不出这个角色将来还会有萝莉/御姐/Q 版。 */
+            p += z_snprintf(p, cap - (size_t)(p - body), "],\"form_roadmap\":[");
+            for (i = 0; i < zpet_form_count(g_pet); ++i)
+                p += z_snprintf(p, cap - (size_t)(p - body),
+                                "%s{\"id\":\"%s\",\"name\":\"%s\",\"status\":\"%s\",\"note\":\"%s\"}",
+                                i ? "," : "", zpet_form_id_at(g_pet, i),
+                                zpet_form_name_at(g_pet, i), zpet_form_status_at(g_pet, i),
+                                zpet_form_note_at(g_pet, i));
+        }
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"outfits\":[");
+        for (i = 0; i < zpet_outfit_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_outfit_id_at(g_pet, i));
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"outfit_names\":[");
+        for (i = 0; i < zpet_outfit_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_outfit_name_at(g_pet, i));
+        /* 表情层：当前表情 + 可选表情表（测试台的表情按钮按它生成） */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"expression\":\"%s\",\"expressions\":[",
+                        zpet_expression(g_pet) ? zpet_expression(g_pet) : "");
+        for (i = 0; i < zpet_expression_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s{\"id\":\"%s\",\"name\":\"%s\"}",
+                            i ? "," : "", zpet_expression_id_at(g_pet, i),
+                            zpet_expression_name_at(g_pet, i));
+        /* Pose：互斥部件组 + 每组当前档位（测试台的差分按钮按它生成） */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"poses\":[");
+        for (i = 0; i < zpet_pose_count(g_pet); ++i) {
+            const char *gid = zpet_pose_id_at(g_pet, i);
+            int k;
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                            "%s{\"id\":\"%s\",\"current\":\"%s\",\"entries\":[",
+                            i ? "," : "", gid, zpet_pose_current(g_pet, gid));
+            for (k = 0; k < zpet_pose_entry_count(g_pet, gid); ++k)
+                p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
+                                k ? "," : "", zpet_pose_entry_id_at(g_pet, gid, k));
+            p += z_snprintf(p, cap - (size_t)(p - body), "]}");
+        }
+        /* 交互区域表：UI 要知道有哪些区域、点下去触发什么、用什么光标。
+           不报这张表前端就只能把 head/body/feet 写死，rig.json 一改区域就对不上。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"regions\":[");
+        for (i = 0; i < zpet_region_count(g_pet); ++i) {
+            int rc[4];
+            if (!zpet_region_rect_at(g_pet, i, rc)) continue;
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                            "%s{\"id\":\"%s\",\"action\":\"%s\",\"cursor\":\"%s\","
+                            "\"rect\":[%d,%d,%d,%d]}",
+                            i ? "," : "", zpet_region_id_at(g_pet, i),
+                            zpet_region_action_at(g_pet, i),
+                            zpet_region_cursor_at(g_pet, i),
+                            rc[0], rc[1], rc[2], rc[3]);
+        }
+        /* 口型音素表 + 当前接管状态（测试台的口型按钮按它生成）。
+           没有这张表，调试台只能把 A/I/U/E/O 硬编码进前端，rig 改了前端就对不上。 */
+        p += z_snprintf(p, cap - (size_t)(p - body),
+                        "],\"viseme\":\"%s\",\"viseme_weight\":%.3f,\"visemes\":[",
+                        zpet_viseme_current(g_pet), zpet_viseme_weight(g_pet));
+        for (i = 0; i < zpet_viseme_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"",
+                            i ? "," : "", zpet_viseme_id(g_pet, i));
+        /* 形变器当前量：摆链（头发/裙摆）的输出就落在这里。
+           光看截图没法判断"裙摆是不是真的在荡"，这组数能直接读。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"deformers\":{");
+        for (i = 0; i < zpet_deform_count(g_pet); ++i) {
+            const char *did = zpet_deform_id_at(g_pet, i);
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\":%.5f",
+                            i ? "," : "", did ? did : "?",
+                            zpet_deform_amount(g_pet, did));
+        }
+        /* 物理摆链各节点的输出。★ 和 deformers 分开给，是因为形变器的当前量
+           是**物理 + 环境摆动（ambient）之和** —— 环境摆动不管身体动不动都一直
+           在跑，拿形变器去断言"身体停住后摆链要收敛回零"永远不成立。
+           要验摆链收敛，看的是这一组。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "},\"physics\":{");
+        for (i = 0; i < zpet_phys_count(g_pet); ++i) {
+            const char *xid = zpet_phys_id_at(g_pet, i);
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\":%.5f",
+                            i ? "," : "", xid ? xid : "?",
+                            zpet_phys_output(g_pet, xid));
+        }
+        /* 物理 2.0 的摆链（T47.2）。两组数：
+             "<链>.<粒子>" = 这一节的**摆角（度）**，输入不动它也不为零 —— 这就是"活着"；
+             "<链>#<第几条输出>" = 翻译成通道之后**真正写出去的值**（像素或形变量）。
+           冒烟判据（静置 10 秒发梢仍有 ≥2px 自主摆动）量的就是后者。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "},\"physics2\":{");
+        {
+            int first = 1, k, np, no;
+            for (i = 0; i < zpet_phys2_count(g_pet); ++i) {
+                const char *cid = zpet_phys2_id_at(g_pet, i);
+                if (!cid) continue;
+                np = zpet_phys2_particles(g_pet, cid);
+                for (k = 1; k < np; ++k) {
+                    p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s.%d\":%.5f",
+                                    first ? "" : ",", cid, k,
+                                    zpet_phys2_angle(g_pet, cid, k));
+                    first = 0;
+                }
+                no = zpet_phys2_out_count(g_pet, cid);
+                for (k = 0; k < no; ++k) {
+                    p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s#%d\":%.5f",
+                                    first ? "" : ",", cid, k,
+                                    zpet_phys2_applied(g_pet, cid, k));
+                    first = 0;
+                }
+            }
+        }
+        {   /* T47.3 力场：gravity / 定常 wind / 常驻微风 amp / **本帧实际吹的风**。
+               最后那一对是关键 —— "我设了风"和"风真吹到头发上了"是两件事。 */
+            double gx = 0, gy = 0, wx = 0, wy = 0, ex = 0, ey = 0;
+            zpet_force_get(g_pet, &gx, &gy, &wx, &wy);
+            zpet_wind_now(g_pet, &ex, &ey);
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                            "},\"forces\":{\"gx\":%.4f,\"gy\":%.4f,\"wx\":%.4f,\"wy\":%.4f,"
+                            "\"breeze\":%.4f,\"wind_x\":%.4f,\"wind_y\":%.4f",
+                            gx, gy, wx, wy, zpet_breeze_amp(g_pet), ex, ey);
+        }
+        p += z_snprintf(p, cap - (size_t)(p - body), "}}");
+        UNLOCK();
+        /* 写满 = 这份 JSON 已经被截断了。宁可返回 500 也不要送一份烂 JSON 出去：
+           截断过的 body 照样以 200 发出去的话，症状会伪装成「前端解析失败」，
+           而真正的原因（缓冲区小了）藏在 C 这一侧，没人会往这里看。 */
+        if ((size_t)(p - body) >= cap - 1) {
+            send_text(fd, 500, "application/json",
+                      "{\"ok\":false,\"error\":\"info.json 超出缓冲区被截断了，"
+                      "去 main_headless.c 把 body[] 调大\"}");
+            return;
+        }
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/force") == 0) {
+        /* T47.3 调试端点：重力方向、定常风、常驻微风、阵风，全在这一个口子上。
+             ?gx=&gy=        重力方向（不必归一化；两个都给才算改）
+             ?wx=&wy=        定常风
+             ?breeze=&hz=    常驻微风幅度与主频（breeze=0 关）
+             ?gust_x=&gust_y=&gust_t=  来一阵风（情绪/事件用，生气就是一股风）
+           一个参数都不给 = 只读当前值。 */
+        char tb[64], body[320];
+        double gx = 0, gy = 0, wx = 0, wy = 0, ex = 0, ey = 0;
+        int got = 0;
+        LOCK();
+        zpet_force_get(g_pet, &gx, &gy, &wx, &wy);
+        if (qstr(r, "gx", tb, sizeof(tb))) { gx = atof(tb); got = 1; }
+        if (qstr(r, "gy", tb, sizeof(tb))) { gy = atof(tb); got = 1; }
+        if (qstr(r, "wx", tb, sizeof(tb))) { wx = atof(tb); got = 1; }
+        if (qstr(r, "wy", tb, sizeof(tb))) { wy = atof(tb); got = 1; }
+        if (got) zpet_force_set(g_pet, gx, gy, wx, wy);
+        if (qstr(r, "breeze", tb, sizeof(tb))) {
+            char hb[64];
+            double hz = qstr(r, "hz", hb, sizeof(hb)) ? atof(hb) : 0.0;
+            zpet_breeze_set(g_pet, atof(tb), hz);
+            got = 1;
+        }
+        if (qstr(r, "gust_x", tb, sizeof(tb)) || qstr(r, "gust_y", tb, sizeof(tb))) {
+            char xb[64], yb[64], sb[64];
+            double sx = qstr(r, "gust_x", xb, sizeof(xb)) ? atof(xb) : 0.0;
+            double sy = qstr(r, "gust_y", yb, sizeof(yb)) ? atof(yb) : 0.0;
+            double sc = qstr(r, "gust_t", sb, sizeof(sb)) ? atof(sb) : 0.6;
+            zpet_gust(g_pet, sx, sy, sc);
+            got = 1;
+        }
+        zpet_force_get(g_pet, &gx, &gy, &wx, &wy);
+        zpet_wind_now(g_pet, &ex, &ey);
+        z_snprintf(body, sizeof(body),
+                   "{\"ok\":true,\"changed\":%s,\"gx\":%.4f,\"gy\":%.4f,"
+                   "\"wx\":%.4f,\"wy\":%.4f,\"breeze\":%.4f,"
+                   "\"wind_x\":%.4f,\"wind_y\":%.4f}",
+                   got ? "true" : "false", gx, gy, wx, wy,
+                   zpet_breeze_amp(g_pet), ex, ey);
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/pose") == 0) {
+        /* 互斥部件组切档：group=组 id，id=档位 id（none / 省略 = 整组关掉）。
+           组或档位不存在返回 404 —— 差分写错名字必须当场看见。 */
+        char group[64], id[64];
+        int rc;
+        if (!qstr(r, "group", group, sizeof(group))) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 group\"}");
+            return;
+        }
+        if (!qstr(r, "id", id, sizeof(id))) z_strlcpy(id, "none", sizeof(id));
+        LOCK();
+        rc = zpet_pose_set(g_pet, group, id);
+        /* 冻结时钟时淡化走不动（dt 恒为 0），直接到位，否则切档像没反应 */
+        if (g_frozen) zpet_pose_snap(g_pet);
+        zpet_tick(g_pet, pet_now());
+        UNLOCK();
+        if (rc != 0) {
+            char body2[192];
+            z_snprintf(body2, sizeof(body2),
+                       "{\"ok\":false,\"error\":\"没有这个互斥组或档位\","
+                       "\"group\":\"%s\",\"id\":\"%s\"}", group, id);
+            send_text(fd, 404, "application/json", body2);
+        } else {
+            char body2[192];
+            z_snprintf(body2, sizeof(body2), "{\"ok\":true,\"group\":\"%s\",\"id\":\"%s\"}",
+                       group, id);
+            send_text(fd, 200, "application/json", body2);
+        }
+        return;
+    }
+    if (strcmp(r->path, "/api/frame.png") == 0) {
+        const zimg *fr;
+        zimg *copy = NULL;
+        int fw = 0, fh = 0;
+        /* ?s=50..100：按百分比缩小后再编码。浏览器会拉回原尺寸显示，
+           画面略软但码率降到 1/4，远程预览能不能流畅全看这个。 */
+        int spct = qint(r, "s", 100);
+        if (spct < 25) spct = 25;
+        if (spct > 100) spct = 100;
+        LOCK();
+        fr = zpet_frame(g_pet, &fw, &fh);
+        if (fr) copy = zimg_clone(fr);
+        UNLOCK();
+        if (copy && spct < 100) {
+            zimg *small = zimg_downscale(copy, copy->w * spct / 100, copy->h * spct / 100);
+            if (small) { zimg_free(copy); copy = small; }
+        }
+        if (copy) {
+            send_png(fd, copy);
+            zimg_free(copy);
+        } else {
+            send_text(fd, 500, "text/plain", "无帧");
+        }
+        return;
+    }
+    if (strcmp(r->path, "/api/speech.json") == 0) {
+        /* 832 而不是 640：seq/age 两个字段是 2026-10-15 补的（G105）。
+           line 本身最长 256 字节，加上 mood/tier/lipsync 一圈，640 已经贴边了。 */
+        char body[832];
+        double now_s = pet_now();
+        LOCK();
+        z_snprintf(body, sizeof(body),
+                   "{\"line\":\"%s\",\"mood\":\"%s\",\"affection\":%d,\"tier\":\"%s\","
+                   "\"seq\":%u,\"age\":%.2f,"
+                   "\"lipsync\":{\"active\":%s,\"id\":\"%s\",\"level\":%.3f,\"remain\":%.3f}}",
+                   zpet_last_line(g_pet), zpet_last_mood(g_pet),
+                   zpet_affection(g_pet), zpet_affection_tier_name(g_pet),
+                   zpet_last_line_seq(g_pet), zpet_last_line_age(g_pet, now_s),
+                   zpet_lipsync_active(g_pet) ? "true" : "false",
+                   zpet_lipsync_id(g_pet), zpet_lipsync_level(g_pet),
+                   zpet_lipsync_remain(g_pet));
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/persona.json") == 0) {
+        /* 把三层人设合成的系统提示词原样吐出来。
+           这是"所见即所得"那条线的关键：面板上显示的就是真的会喂给模型的那段文本，
+           不做任何隐藏拼接 —— 用户改一个滑杆，马上能看见提示词哪一行变了。 */
+        static char body[8192];
+        char prompt[4096], esc[6144];
+        zpersona zp;
+        zdiag d;
+        size_t n;
+        int tier, k, off;
+
+        zdiag_init(&d);
+        LOCK();
+        tier = zpet_affection_tier(g_pet);
+        UNLOCK();
+        if (!zpersona_load(&zp, g_root, zpet_character(g_pet), &d)) {
+            send_text(fd, 500, "application/json",
+                      "{\"ok\":false,\"error\":\"人设加载失败，看 logs/preview.log\"}");
+            return;
+        }
+        n = zpersona_compose(&zp, tier, prompt, sizeof(prompt));
+        zjson_escape(prompt, esc, sizeof(esc));
+        {
+            char en[128], ec[1536];
+            zjson_escape(zp.nickname, en, sizeof(en));
+            zjson_escape(zp.custom, ec, sizeof(ec));
+            off = (int)z_snprintf(body, sizeof(body),
+                   "{\"ok\":true,\"character\":\"%s\",\"name\":\"%s\",\"preset\":\"%s\","
+                   "\"tier\":%d,\"meeting_todo\":%d,\"nickname\":\"%s\",\"custom\":\"%s\","
+                   "\"prompt_bytes\":%u,\"prompt\":\"%s\",\"traits\":[",
+                   zp.character, zp.name, zp.preset, tier, zpersona_meeting_todo(&zp),
+                   en, ec, (unsigned)n, esc);
+        }
+        for (k = 0; k < zp.lib.ntraits && off < (int)sizeof(body) - 256; ++k)
+            off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                       "%s{\"id\":\"%s\",\"name\":\"%s\",\"low\":\"%s\",\"high\":\"%s\",\"v\":%d}",
+                       k ? "," : "", zp.lib.traits[k].id, zp.lib.traits[k].name,
+                       zp.lib.traits[k].low, zp.lib.traits[k].high, zp.tv[k]);
+        off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off, "],\"presets\":[");
+        for (k = 0; k < zp.lib.npresets && off < (int)sizeof(body) - 256; ++k)
+            off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                       "%s{\"id\":\"%s\",\"name\":\"%s\"}",
+                       k ? "," : "", zp.lib.presets[k].id, zp.lib.presets[k].name);
+        z_snprintf(body + off, sizeof(body) - (size_t)off, "]}");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/persona/set") == 0) {
+        /* 白名单写入：k=<键> v=<值>。键不在 zpersona_set 的名单里一律 400。
+           对话侧要改人设也只能走这里 —— 不开"模型直接写 json"的口子。 */
+        char key[64], val[512];
+        zpersona zp;
+        zdiag d;
+        char body2[256];
+
+        if (!qstr(r, "k", key, sizeof(key))) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 k\"}");
+            return;
+        }
+        if (!qstr(r, "v", val, sizeof(val))) val[0] = '\0';
+        zdiag_init(&d);
+        if (!zpersona_load(&zp, g_root, zpet_character(g_pet), &d)) {
+            send_text(fd, 500, "application/json", "{\"ok\":false,\"error\":\"人设加载失败\"}");
+            return;
+        }
+        if (!zpersona_set(&zp, key, val)) {
+            z_snprintf(body2, sizeof(body2),
+                       "{\"ok\":false,\"error\":\"这个键不可改或值非法\",\"k\":\"%s\"}", key);
+            send_text(fd, 400, "application/json", body2);
+            return;
+        }
+        if (!zpersona_save(&zp, g_root)) {
+            send_text(fd, 500, "application/json", "{\"ok\":false,\"error\":\"写回失败\"}");
+            return;
+        }
+        z_snprintf(body2, sizeof(body2), "{\"ok\":true,\"k\":\"%s\",\"v\":\"%s\"}", key, val);
+        send_text(fd, 200, "application/json", body2);
+        return;
+    }
+    if (strcmp(r->path, "/api/express") == 0) {
+        char mood[32];
+        if (qstr(r, "mood", mood, sizeof(mood))) {
+            LOCK();
+            zpet_express(g_pet, mood, pet_now());
+            zpet_tick(g_pet, pet_now());
+            UNLOCK();
+        }
+        send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/call") == 0) {
+        /* 沙箱模拟语音通话事件：kind=call_start|call_end|call_user_speaking|call_reply&text=&mood= */
+        char kind[32], text[512], mood[32];
+        if (qstr(r, "kind", kind, sizeof(kind))) {
+            if (!qstr(r, "text", text, sizeof(text))) text[0] = 0;
+            if (!qstr(r, "mood", mood, sizeof(mood))) mood[0] = 0;
+            LOCK();
+            zpet_call_event(g_pet, kind, text, mood, pet_now());
+            zpet_tick(g_pet, pet_now());
+            UNLOCK();
+        }
+        send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/context.json") == 0) {
+        /* T60.1 的验收物：**把上一次组装的上下文清单原样打印出来**。
+         *
+         * 为什么非要有这个端点：在它之前，"这次请求到底带了什么上去"
+         * 没有任何人能回答 —— 人设拼一段、历史拼几轮，拼完就扔。
+         * 出了问题（她为什么忘了刚才说的 / 她为什么突然不像她了）只能靠猜。
+         *
+         * 清单是纯文本、字段定长，所以**可以 diff** ——
+         * 同一个问题在聊天区问和在工作区问，两张清单一比就知道差在哪。
+         *
+         *   reset=1   清空会话历史（"重新开始聊"）
+         */
+        static char body[8192];
+        char manifest[4096], esc[6144];
+        int i, n;
+        int off;
+
+        if (qint(r, "reset", 0)) {
+            LOCK(); zctx_clear_turns(&g_ctx); UNLOCK();
+        }
+        LOCK();
+        zctx_manifest(&g_ctx, manifest, sizeof(manifest));
+        n = zctx_turn_count(&g_ctx);
+        UNLOCK();
+
+        zjson_escape(manifest, esc, sizeof(esc));
+        off = (int)z_snprintf(body, sizeof(body),
+            "{\"ok\":true,\"turns\":%d,\"budget\":%ld,\"tokens\":%ld,"
+            "\"turns_sent\":%d,\"turns_dropped\":%d,\"turns_held\":%d,"
+            "\"local\":%s,\"manifest\":\"%s\",\"blocks\":[",
+            n, g_ctx.last_budget, g_ctx.last_tokens,
+            g_ctx.last_turns_used, g_ctx.last_turns_dropped, g_ctx.last_turns_held,
+            g_ctx.last_local ? "true" : "false", esc);
+        LOCK();
+        for (i = 0; i < zctx_block_count(&g_ctx); ++i) {
+            const zctx_block *b = zctx_block_at(&g_ctx, i);
+            char eb[256], et[128], es[256];
+            if (!b) continue;
+            zjson_escape(b->title, et, sizeof(et));
+            zjson_escape(b->source, es, sizeof(es));
+            zjson_escape(b->drop_reason, eb, sizeof(eb));
+            off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                "%s{\"id\":\"%s\",\"title\":\"%s\",\"source\":\"%s\","
+                "\"bytes\":%lu,\"tokens\":%ld,\"pinned\":%s,\"kept\":%s,"
+                "\"drop_reason\":\"%s\"}",
+                i ? "," : "", b->id, et, es, (unsigned long)b->len, b->tokens,
+                b->pinned ? "true" : "false", b->kept ? "true" : "false", eb);
+        }
+        /* 会话历史也要能逐条看到 —— 只给个轮数等于没给。
+           带隐私标记的轮次照样列出来，但标明它没上云：
+           **藏起来和不告诉他没区别。** */
+        off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                               "],\"history\":[");
+        for (i = 0; i < n && off < (int)sizeof(body) - 512; ++i) {
+            const zctx_turn *t = zctx_turn_at(&g_ctx, i);
+            char etx[1024];
+            if (!t) continue;
+            zjson_escape(t->text, etx, sizeof(etx));
+            off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                "%s{\"role\":\"%s\",\"sensitive\":%s,\"text\":\"%s\"}",
+                i ? "," : "", t->role ? "assistant" : "user",
+                t->sensitive ? "true" : "false", etx);
+        }
+        UNLOCK();
+        z_snprintf(body + off, sizeof(body) - (size_t)off, "]}");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+
     if (strcmp(r->path, "/api/chat") == 0) {
         /* G54：真的把话发给模型。
          *
@@ -926,12 +1535,16 @@ static void handle_request(zsock fd, const http_req *r)
          * 返回里总带 provider/model/local/reason —— 用户有权知道这句话是谁答的、
          * 为什么挑的它、有没有离开过这台机器。
          */
-        static char body[16384];
+        /* 不能是 static：这个端点会在工作线程上跑，两个请求同时进来
+           会把同一块缓冲区写花。16KB 放栈上没问题。 */
+        char body[16384];
         char text[4096], cap_s[64], prompt[4096];
         char url[320] = "";
         char *reqbody = NULL;
         zrelay_chat_req q;
         zrelay_result res;
+        zrelay_turn hist[ZCTX_MAX_TURNS];
+        int nhist = 0;
         int dry = qint(r, "dry", 0);
         int want_persona = qint(r, "persona", 1);
         int rc, off;
@@ -964,10 +1577,66 @@ static void handle_request(zsock fd, const http_req *r)
                 zpersona_compose(&zp, tier, prompt, sizeof(prompt));
         }
 
+        /* ---- 组装上下文（T60.1）----
+           人设是 pinned 的（永不裁），会话历史按预算从最新往回收。
+           组装结果既决定真正发什么，也决定 /api/context.json 打印什么 ——
+           **同一次组装，两处共用**，否则清单会和实际出网的内容对不上。 */
+        {
+            int keep   = qint(r, "history", 1);        /* history=0 关掉多轮 */
+            long budget = (long)qint(r, "budget", 2000);
+            int tries  = qint(r, "tries", 1);
+            int sens   = qint(r, "sensitive", 0) ? 1 : 0;
+            int dest_local;
+
+            /* 组装前要先知道目的地，否则没法判断"敏感的那几轮能不能跟着走"。
+               选路本身是纯决策（不出网、不花钱），所以这里先问一遍网关。
+
+               什么情况下才算**确定**留在本机：
+                 ① 这次带了敏感标记 —— zrelay 保证它只会走本地（T61.7）；或
+                 ② 首选就是本地，而且 tries=1（没有降级余地，目的地唯一）。
+               只要存在"可能换一家"的空间，就按云端算、把敏感轮挡下。
+               这不是保守过头：请求发出去就收不回来了。 */
+            if (sens) {
+                dest_local = 1;
+            } else {
+                zgw_status why;
+                const zgw_route *first;
+                AILOCK();
+                first = zgw_pick(&g_gw, cap_s, 0, &why);
+                AIUNLOCK();
+                dest_local = (first && first->local && tries <= 1) ? 1 : 0;
+            }
+
+            AILOCK();
+            zctx_set_block(&g_ctx, "persona", "角色设定",
+                           prompt[0] ? "characters/<角色>/persona.json" : "(没带)",
+                           prompt, 100, 1);
+            if (!keep) zctx_clear_turns(&g_ctx);
+            zctx_build(&g_ctx, cap_s, budget, dest_local);
+            AIUNLOCK();
+        }
+
         memset(&q, 0, sizeof(q));
         q.cap = cap_s;
         q.system_prompt = prompt[0] ? prompt : NULL;
         q.user_text = text;
+        /* 把组装结果摊成 zrelay 要的数组。注意只取 zctx 判定"要带上"的那几轮 ——
+           清单上写带了几轮，这里就必须是几轮，两边同源。 */
+        AILOCK();
+        {
+            int i;
+            nhist = zctx_kept_turn_count(&g_ctx);
+            if (nhist > (int)(sizeof(hist) / sizeof(hist[0])))
+                nhist = (int)(sizeof(hist) / sizeof(hist[0]));
+            for (i = 0; i < nhist; ++i) {
+                const zctx_turn *t = zctx_kept_turn_at(&g_ctx, i);
+                hist[i].role = t ? t->role : 0;
+                hist[i].text = t ? t->text : "";
+            }
+            q.history = nhist > 0 ? hist : NULL;
+            q.nhistory = nhist;
+        }
+        AIUNLOCK();
         q.temperature = -1.0;                 /* 没填就不往请求体里塞，别覆盖服务端配置 */
         q.max_tokens = qint(r, "max_tokens", 0);
         q.timeout_ms = qint(r, "timeout", 30000);
@@ -978,12 +1647,34 @@ static void handle_request(zsock fd, const http_req *r)
         q.route.cloud_down = qint(r, "cloud_down", 0) ? 1 : 0;
         q.route.task = zgw_classify(text, NULL);
 
-        LOCK();
+        /* 这一段会卡住整个网络往返（本地大模型想 10~30 秒是常事）。
+           攥的是 g_ai_lock 不是 g_lock —— 渲染线程要的是后者，
+           所以她在等回复的时候照样会呼吸、会眨眼、会摇尾巴。 */
+        AILOCK();
         if (dry)
             rc = zrelay_dry_run(&g_gw, &q, url, sizeof(url), &reqbody, &res);
         else
             rc = zrelay_chat(&g_gw, &q, &res);
-        UNLOCK();
+
+        /* 只有真发且真拿到回复，才把这一来一回记进历史。
+           dry-run 不记（它什么都没发生）；失败也不记 ——
+           把一句没人回答的话留在历史里，下一轮模型会以为自己当时没理人。 */
+        if (!dry && rc == 0 && res.ok) {
+            /* 这一轮算不算敏感，不只看用户有没有勾选。
+               实测发现的洞：上一轮是敏感的、这一轮把它当上下文发了过去，
+               模型的回复里就可能**原样引用**那段敏感内容 ——
+               如果把回复记成"不敏感"，它下次就能大摇大摆跟着上云。
+               所以：只要这次请求带上了任何一条敏感历史，回复就一起算敏感。 */
+            int tainted = q.route.sensitive;
+            int k;
+            for (k = 0; !tainted && k < nhist; ++k) {
+                const zctx_turn *kt = zctx_kept_turn_at(&g_ctx, k);
+                if (kt && kt->sensitive) tainted = 1;
+            }
+            zctx_push_turn(&g_ctx, 0, text, q.route.sensitive);
+            zctx_push_turn(&g_ctx, 1, res.text ? res.text : "", tainted);
+        }
+        AIUNLOCK();
 
         {
             char esc_err[768], esc_txt[8192];
@@ -993,12 +1684,14 @@ static void handle_request(zsock fd, const http_req *r)
                 "{\"ok\":%s,\"dry\":%s,\"cap\":\"%s\",\"provider\":\"%s\",\"model\":\"%s\","
                 "\"local\":%s,\"reason\":\"%s\",\"http_status\":%d,\"attempts\":%d,"
                 "\"tokens_in\":%ld,\"tokens_out\":%ld,\"cost\":%.6f,"
-                "\"persona_bytes\":%u,\"text\":\"%s\",\"error\":\"%s\"",
+                "\"persona_bytes\":%u,\"history_sent\":%d,\"turns_total\":%d,"
+                "\"turns_held\":%d,\"text\":\"%s\",\"error\":\"%s\"",
                 (rc == 0 && res.ok) ? "true" : "false", dry ? "true" : "false",
                 cap_s, res.provider, res.model, res.local ? "true" : "false",
                 res.reason, res.http_status, res.attempts,
                 res.tokens_in, res.tokens_out, res.cost,
-                (unsigned)strlen(prompt), esc_txt, esc_err);
+                (unsigned)strlen(prompt), nhist, zctx_turn_count(&g_ctx),
+                g_ctx.last_turns_held, esc_txt, esc_err);
             if (dry) {
                 /* 把真会发出去的那段原样摆出来。密钥不在里面（zrelay_dry_run 保证）。 */
                 char esc_url[640], esc_body[6144];
@@ -1549,6 +2242,7 @@ int main(int argc, char **argv)
     }
 #else
     InitializeCriticalSection(&g_lock);
+    InitializeCriticalSection(&g_ai_lock);
     {
         WSADATA wsa;
         WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -1607,11 +2301,17 @@ int main(int argc, char **argv)
                                 *q = 0;
                                 z_strlcpy(req.query, q + 1, sizeof(req.query));
                             }
-                            handle_request(cfd, &req);
+                            /* 慢端点交给工作线程，别把 accept 循环和
+                               zpet_tick 一起拖住 —— 她得继续动。 */
+                            if (dispatch_slow(cfd, &req)) {
+                                cfd = ZSOCK_INVALID;   /* 线程接管了，这儿不许再 close */
+                            } else {
+                                handle_request(cfd, &req);
+                            }
                         }
                     }
                 }
-                zsock_close(cfd);
+                if (cfd != ZSOCK_INVALID) zsock_close(cfd);
             }
         }
         /* 每轮推进一次引擎：状态机、眨眼、空闲 */

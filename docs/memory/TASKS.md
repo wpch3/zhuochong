@@ -1132,7 +1132,7 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 
 | 编号 | 任务 | 状态 | 备注 |
 |------|------|------|------|
-| T60.1 | 统一上下文管理器 `Context Manager` | [ ] | 评审里唯一一条"我们真缺且现在建最便宜"的。否则工作区知道的事聊天区不知道、语音模式和文字模式演出两种性格。挂在 `zpersona_compose` 之上：按当前请求动态组装（当前会话 + 角色设定 + 用户长期记忆 + 当前项目状态 + 当前系统状态 + 正在执行的任务 + 可用工具）。**验收：同一个问题在聊天区问和在工作区问，拿到的上下文清单必须可打印、可 diff** |
+| T60.1 | 统一上下文管理器 `Context Manager` | [x] | 评审里唯一一条"我们真缺且现在建最便宜"的。否则工作区知道的事聊天区不知道、语音模式和文字模式演出两种性格。挂在 `zpersona_compose` 之上：按当前请求动态组装（当前会话 + 角色设定 + 用户长期记忆 + 当前项目状态 + 当前系统状态 + 正在执行的任务 + 可用工具）。**验收：同一个问题在聊天区问和在工作区问，拿到的上下文清单必须可打印、可 diff**。**2026-10-24 done**：`src/core/zctx.{h,c}` —— 上下文 = 一张有名字的清单（id/人话标题/来源/字节/token/pinned/kept/裁掉原因）。新端点 `/api/context.json` 把清单原样打印出来，定长字段**可 diff**。预算不够时 pinned（人设）永不裁、会话从最新往回收。**带隐私标记的轮次按目的地挡下**（两道独立防线，负控拆一道仍绿、两道全拆才 4 红）；回复继承污染。顺带修掉"模型一慢立绘变雕塑"：拆两把锁 + 慢端点上工作线程 |
 | T60.2 | 事件总线 `Event Bus` | [ ] | `EVENT_USER_MESSAGE / USER_AWAY / USER_RETURN / TASK_COMPLETED / TASK_FAILED / SCHEDULE_TRIGGER / PERMISSION_REQUIRED`。**排在 G53 任务机之前**，否则主动陪伴 / 任务恢复 / 屏幕感知会各长一套回调 |
 | T60.3 | 任务级预算 + 熔断 | [ ] | `zgateway` 已有三段记账（预扣/结算/退还）和 `data/usage.jsonl`，缺的是"这一个任务最多花多少、超了就停"。多 Agent 群聊会把这个洞放大成烧钱 |
 | T60.4 | `persona.json` schema 版本 + 导出/导入 | [ ] | 「语言模型可以更换，但用户长期培养的角色应当能够延续」。现在人设层已经和蓝本分离了，只差版本号和导出导入 |
@@ -1162,7 +1162,7 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | T61.8 | `make win` 加 `-lws2_32` | [x] | `CORE_SRC` 是 wildcard，`zhttp.c` 自动进交叉编译。实测不加会炸 8 个未定义符号（`WSAStartup`/`getaddrinfo`/`socket`…），加上后 exe 正常 import `WS2_32.dll` |
 | T61.9 | **TLS** | [x] | **云端线的唯一卡点**——没它云端 16 家一家都连不上，现在只能连本地明文栈。本机无 OpenSSL 开发头。**2026-10-23 查完，选 (a) 运行期 `dlopen` libssl**：缺的只是开发头，`libssl.so.3`/`libcrypto.so.3` 本身就在机器上，这条路在当前沙箱里就能完整验证。证书校验三样缺一不可（`set_default_verify_paths` + `set1_host` + `get_verify_result`），不验证书的 https 和明文没区别。详见 `docs/PROVIDER_PLAN.md` 6.5。**绝不降级成明文**——功能没打通是进度问题，密钥泄露是事故。优先级高于 T61.10。**2026-10-23 done**：`src/core/ztls.{h,c}` 运行期 dlopen（18 符号，少一个就整体判不可用）。闸门 `make tls` = `tests/tls_probe.c` 24 条 + `tools/check_tls.py`（现生成自签名证书起 python TLS 服务再跑探针）。**负控**：只关 `SSL_CTX_set_verify` 仍 24/0（`SSL_get_verify_result` 独自守住），两道都拆才 16/8 见红。CA 覆盖只认 `ZHUOCHONG_CA_FILE`，**没有任何跳过校验的开关**。selfcheck 加五条源码级红线 + CI 加 `make tls` 步骤 |
 | T61.10 | 聊天框 UI | [x] | **2026-10-23 done**：`web/components/chat.js`，挂在 `web/layout.json` 的 `side` 首位。不只是能打字——每条回复都标**谁答的**（供应商/型号/本地还是云端/理由/token/花费），「看看将要发什么」按钮走 `dry=1` 把真会出网的地址和请求体原样摆出来（和真发共用 `prepare_one()`，出参不带密钥）；上游 502 显示服务端原话，不伪装成回复；发出去时触发 `think`、回复到了触发 `talk`，立绘跟着对话动。`tests/test_web.js` +25 条（负控：拿掉徽章立刻 3 红） |
-| T61.11 | 多轮上下文 | [ ] | 每次都是单轮 system+user。依赖 T60.1 上下文管理器 |
+| T61.11 | 多轮上下文 | [x] | **2026-10-24 done**：历史作为独立 message 进 `messages` 数组（**不许塞进 system 里** —— 模型靠 role 分辨谁说的）。她说过的话 role 记 `assistant`。`zrelay_chat_req` 加 `history`/`nhistory`，`zrelay_build_chat_body_multi()`；token 估算含历史（漏算会让**预扣款比实际少**）。`/api/chat` 加 `history=0`/`budget=`，回包加 `history_sent`/`turns_total`/`turns_held`。聊天框显示"记着前 N 条"和"⚠N 条带隐私标记没让它上云"，另加「重新开始聊」 |
 | T61.12 | 非 OpenAI 形状适配 | [ ] | anthropic `/messages`、google `generateContent`。并入 T59.4 一起做 |
 | T61.13 | 提示注入防护 | [ ] | 第五十二问②要求的「文档/网页/工具返回内容里的指令不得提权」，要在 `zrelay` 这层把工具结果和用户指令分隔开 |
 

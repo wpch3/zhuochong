@@ -29,6 +29,7 @@
 #include "../src/core/zgateway.h"
 #include "../src/core/zhttp.h"
 #include "../src/core/zrelay.h"
+#include "../src/core/zctx.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -3298,6 +3299,166 @@ static void test_http_url(void)
         /* ★ 这条是安全闸：本版没有 TLS，如果哪天有人"顺手"把 https 降级成
            明文发出去，API key 就裸奔到网上了。宁可功能缺失，不能静默降级。 */
         CHECK(zhttp_send(&q, &r) == ZHTTP_E_TLS, "https 要返回 E_TLS，绝不能改用明文发");
+    }
+}
+
+
+static void test_ctx(void)
+{
+    SECTION("zctx（T60.1）：上下文清单可打印、可 diff");
+    {
+        zctx c;
+        char m1[4096], m2[4096];
+        zctx_init(&c);
+        zctx_set_block(&c, "persona", "角色设定", "persona.json", "你是小寻", 100, 1);
+        zctx_build(&c, "chat.completion", 2000, 1);
+        zctx_manifest(&c, m1, sizeof(m1));
+        CHECK(strstr(m1, "persona") && strstr(m1, "角色设定"), "清单要列出每一块的 id 和人话标题");
+        CHECK(strstr(m1, "persona.json"), "清单要写明这块是哪来的");
+        CHECK(strstr(m1, "[带上]"), "清单要标明这次带没带上");
+
+        /* 可 diff：同样的输入出同样的清单，变了一处只差一处 */
+        zctx_build(&c, "chat.completion", 2000, 1);
+        zctx_manifest(&c, m2, sizeof(m2));
+        CHECK(strcmp(m1, m2) == 0, "同样的上下文必须打出一模一样的清单（否则没法 diff）");
+        zctx_push_turn(&c, 0, "你好", 0);
+        zctx_build(&c, "chat.completion", 2000, 1);
+        zctx_manifest(&c, m2, sizeof(m2));
+        CHECK(strcmp(m1, m2) != 0, "多了一轮对话，清单必须跟着变");
+        zctx_free(&c);
+    }
+
+    SECTION("zctx：预算不够时裁谁是明写的");
+    {
+        zctx c;
+        char m[4096];
+        const zctx_block *b;
+        zctx_init(&c);
+        /* 人设 pinned，工具表不 pinned 且优先级低 */
+        zctx_set_block(&c, "persona", "角色设定", "persona.json",
+                       "这是一段很长的人设这是一段很长的人设这是一段很长的人设", 100, 1);
+        zctx_set_block(&c, "tools", "可用工具", "内存",
+                       "工具一工具二工具三工具四工具五工具六工具七工具八", 10, 0);
+        zctx_build(&c, "chat.completion", 20, 1);   /* 预算小得放不下第二块 */
+        b = zctx_block_find(&c, "persona");
+        CHECK(b && b->kept, "pinned 的块（人设）永远不许被裁");
+        b = zctx_block_find(&c, "tools");
+        CHECK(b && !b->kept, "预算不够时低优先级的块要被裁掉");
+        CHECK(b && b->drop_reason[0], "被裁掉必须写明原因，不许无声消失");
+        zctx_manifest(&c, m, sizeof(m));
+        CHECK(strstr(m, "[裁掉]") && strstr(m, "预算不够"),
+              "裁掉的块仍要出现在清单上并标明原因");
+        zctx_free(&c);
+    }
+
+    SECTION("zctx：会话历史从最新往回收");
+    {
+        zctx c;
+        int i;
+        zctx_init(&c);
+        for (i = 0; i < 10; ++i) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "第%d句话这句话有点长占掉一些预算", i);
+            zctx_push_turn(&c, i % 2, buf, 0);
+        }
+        CHECK(zctx_turn_count(&c) == 10, "十轮都存下来了");
+        zctx_build(&c, "chat.completion", 40, 1);
+        CHECK(c.last_turns_used > 0 && c.last_turns_used < 10,
+              "预算有限时只带一部分（实际 %d 轮）", c.last_turns_used);
+        CHECK(c.last_turns_dropped > 0, "丢掉的轮数要记下来");
+        {
+            /* 关键：留下的必须是**最后**那几轮，不是最前面那几轮 */
+            const zctx_turn *first_kept = zctx_kept_turn_at(&c, 0);
+            const zctx_turn *last_kept =
+                zctx_kept_turn_at(&c, zctx_kept_turn_count(&c) - 1);
+            CHECK(last_kept && strstr(last_kept->text, "第9句"),
+                  "最后一轮必须留下 —— 丢掉刚说的那句是用户最能察觉的失忆");
+            CHECK(first_kept && !strstr(first_kept->text, "第0句"),
+                  "预算不够时该丢的是最旧的那几轮");
+        }
+        zctx_free(&c);
+    }
+
+    SECTION("zctx：环形缓冲满了之后盖最旧的");
+    {
+        zctx c;
+        int i;
+        zctx_init(&c);
+        for (i = 0; i < ZCTX_MAX_TURNS + 5; ++i) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "t%d", i);
+            zctx_push_turn(&c, 0, buf, 0);
+        }
+        CHECK(zctx_turn_count(&c) == ZCTX_MAX_TURNS, "轮数不会超过上限");
+        CHECK(strcmp(zctx_turn_at(&c, 0)->text, "t5") == 0,
+              "最旧的被盖掉了（第 0 条应是 t5，实际 %s）", zctx_turn_at(&c, 0)->text);
+        CHECK(strcmp(zctx_turn_at(&c, ZCTX_MAX_TURNS - 1)->text, "t68") == 0,
+              "最新的在末尾");
+        zctx_free(&c);
+    }
+
+    SECTION("★ zctx：带隐私标记的轮次不许跟着上云");
+    {
+        zctx c;
+        char m[4096];
+        zctx_init(&c);
+        zctx_push_turn(&c, 0, "我的身份证号是110", 1);   /* 敏感 */
+        zctx_push_turn(&c, 1, "记住了", 1);
+        zctx_push_turn(&c, 0, "今天天气真好", 0);        /* 不敏感 */
+
+        /* 发往本地：三轮都能带 */
+        zctx_build(&c, "chat.completion", 2000, 1);
+        CHECK(c.last_turns_used == 3 && c.last_turns_held == 0,
+              "发往本地模型时敏感轮次可以带（实际带 %d 挡 %d）",
+              c.last_turns_used, c.last_turns_held);
+
+        /* 发往云端：两条敏感的必须被挡下 */
+        zctx_build(&c, "chat.completion", 2000, 0);
+        CHECK(c.last_turns_used == 1, "发往云端时只剩不敏感的那一轮（实际 %d）",
+              c.last_turns_used);
+        CHECK(c.last_turns_held == 2, "两条敏感轮次要被挡下（实际 %d）", c.last_turns_held);
+        {
+            int i, leaked = 0;
+            for (i = 0; i < zctx_kept_turn_count(&c); ++i) {
+                const zctx_turn *t = zctx_kept_turn_at(&c, i);
+                if (t && t->sensitive) leaked = 1;
+            }
+            CHECK(!leaked, "★ 要带上云的那几轮里，一条敏感的都不许有");
+        }
+        zctx_manifest(&c, m, sizeof(m));
+        CHECK(strstr(m, "没上云"),
+              "清单上要写明有几轮被挡下了 —— 不然用户以为她失忆了");
+        zctx_free(&c);
+    }
+
+    SECTION("zrelay（T61.11）：多轮历史进 messages 数组");
+    {
+        zrelay_turn h[2];
+        char *b;
+        const char *pu, *pa, *pu2;
+        h[0].role = 0; h[0].text = "我叫阿伟";
+        h[1].role = 1; h[1].text = "你好阿伟";
+        b = zrelay_build_chat_body_multi("m1", "你是小寻", h, 2, "我叫什么", -1.0, 0);
+        CHECK(b && strstr(b, "我叫阿伟"), "历史里用户说的话要进请求体");
+        CHECK(b && strstr(b, "\"role\":\"assistant\"") && strstr(b, "你好阿伟"),
+              "★ 她说过的话 role 必须是 assistant（标成 user 会让模型人格错乱）");
+        /* 顺序：system → 历史 → 这一句 */
+        pu  = b ? strstr(b, "我叫阿伟") : NULL;
+        pa  = b ? strstr(b, "你好阿伟") : NULL;
+        pu2 = b ? strstr(b, "我叫什么") : NULL;
+        CHECK(pu && pa && pu2 && pu < pa && pa < pu2,
+              "顺序必须是 历史用户 → 历史回复 → 这一句");
+        free(b);
+
+        /* 不给历史时，行为要和老接口完全一致 */
+        b = zrelay_build_chat_body_multi("m1", "s", NULL, 0, "u", -1.0, 0);
+        {
+            char *b2 = zrelay_build_chat_body("m1", "s", "u", -1.0, 0);
+            CHECK(b && b2 && strcmp(b, b2) == 0,
+                  "没有历史时，新老两个拼法必须出一模一样的字节");
+            free(b2);
+        }
+        free(b);
     }
 }
 
@@ -7296,6 +7457,7 @@ int main(int argc, char **argv)
     test_gateway();
     test_http_url();
     test_relay();
+    test_ctx();
 
     printf("\n通过 %d 项，失败 %d 项\n", g_pass, g_fail);
     if (g_fail) {

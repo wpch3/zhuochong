@@ -543,11 +543,60 @@ def run(base, root):
         check("本地模型没开时要回 502、不许伪装成 200", st == 502, "实际 %s" % st)
         check("没发出去时 http_status 要是 0", dr.get("http_status") == 0,
               str(dr.get("http_status")))
+        # 失败的样子不止一种：没开是"连不上"，开着但慢是"等太久"。
+        # 这条要守的是**意图**——说人话 + 带上地址，而不是某一句特定措辞。
+        # （2026-10-24 踩到：挂个慢模型跑这条就红，其实软件没毛病。）
+        _err = dr.get("error") or ""
         check("失败要说人话、带上地址（不是裸 errno）",
-              "连不上" in (dr.get("error") or "") and "11434" in (dr.get("error") or ""),
-              dr.get("error"))
+              "11434" in _err and any("\u4e00" <= ch <= "\u9fff" for ch in _err),
+              _err)
         check("失败不许留悬空预扣",
               ((a.json("/api/gateway.json") or {}).get("ledger") or {}).get("held") == 0)
+
+    # ---- /api/context.json：上下文清单（T60.1）----
+    # 这个端点存在的理由：在它之前，"这次请求到底带了什么上去"没人答得上来。
+    # 清单必须可打印、可 diff —— 这是 T60.1 的验收条件本身。
+    print("== 上下文清单（T60.1）：这次带了什么上去，必须说得清 ==")
+    a.get("/api/context.json?reset=1")
+    cx = a.json("/api/context.json")
+    check("context.json 能读", isinstance(cx, dict) and cx.get("ok") is True)
+    check("清空后历史为 0 轮", cx.get("turns") == 0, str(cx.get("turns")))
+    man = cx.get("manifest") or ""
+    check("清单是给人看的纯文本", "上下文清单" in man and "合计" in man, man[:60])
+    check("清单要列出人设那一块", any(b.get("id") == "persona" for b in cx.get("blocks", [])),
+          str([b.get("id") for b in cx.get("blocks", [])]))
+    check("人设必须是 pinned（永不被裁）",
+          all(b.get("pinned") for b in cx.get("blocks", []) if b.get("id") == "persona"))
+
+    # 可 diff：同样状态下连读两次，清单必须逐字节一样
+    man2 = (a.json("/api/context.json") or {}).get("manifest") or ""
+    check("同样状态读两次，清单必须一模一样（否则没法 diff）", man == man2)
+
+    # ---- 多轮（T61.11）：她要记得住上一句 ----
+    print("== 多轮上下文（T61.11）：她得记住刚才说了什么 ==")
+    a.get("/api/context.json?reset=1")
+    _st1, r1 = chat("/api/chat?timeout=2500&text=%E6%88%91%E5%8F%AB%E9%98%BF%E4%BC%9F&persona=0")
+    if r1.get("ok"):
+        # 本机有模型在跑才验得了多轮
+        check("第一句没有历史可带", r1.get("history_sent") == 0, str(r1.get("history_sent")))
+        _st2, r2 = chat("/api/chat?timeout=2500&text=%E6%88%91%E5%8F%AB%E4%BB%80%E4%B9%88&persona=0")
+        check("第二句要把前一轮带上", r2.get("history_sent", 0) >= 2,
+              "带了 %s 条" % r2.get("history_sent"))
+        cx2 = a.json("/api/context.json")
+        check("历史要能逐条看到，不是只给个数字",
+              len(cx2.get("history", [])) >= 2, str(len(cx2.get("history", []))))
+        roles = [h.get("role") for h in cx2.get("history", [])]
+        check("她说过的话 role 要记成 assistant", "assistant" in roles, str(roles))
+        _st3, r3 = chat("/api/chat?timeout=2500&text=hi&persona=0&history=0")
+        check("history=0 要能关掉多轮", r3.get("history_sent") == 0)
+    else:
+        # 没有本地模型时真发验不了 —— 说清楚是"没验"，不是"通过"
+        print("     （本机没有模型在跑，多轮的真发用例跳过——跳过≠通过）")
+        check("没有模型时也要如实报失败，不许伪装成 200", r1.get("ok") is False)
+        # 但 dry-run 不需要模型，多轮的拼装照样能验
+        _std, rd = chat("/api/chat?dry=1&text=hi&persona=0")
+        check("dry-run 不需要模型也能看到多轮字段", "history_sent" in rd, str(sorted(rd)[:6]))
+    a.get("/api/context.json?reset=1")   # 把历史清掉，别影响后面的用例
 
     h0, n0 = a.frame_hash()
     check("frame.png 是张真图", n0 > 2000, "%d 字节 %dx%d" % (n0, info["frame_w"], info["frame_h"]))
