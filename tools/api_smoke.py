@@ -704,6 +704,7 @@ def run(base, root):
         a.hit("/api/param?id=ParamEyeBallForm&reset=1")
     a.hit("/api/action?id=wave&force=1")
     peak_a = peak_b = 0.0
+    peak_fl = 0.0                           # Q48：前臂伸长（ParamForeLongR）峰值
     low_b = 9.9
     peak_b2, low_b2 = -9.9, 9.9             # 后半段（稳态）的肘极值
     peak_h2, low_h2 = -99.0, 99.0           # 后半段的腕极值（Q43：主行程在腕）
@@ -712,6 +713,7 @@ def run(base, root):
         eff = {q["id"]: (q.get("effective") or 0)
                for q in (a.json("/api/params.json") or {}).get("params", [])}
         peak_a = max(peak_a, eff.get("ParamArmRA") or 0)
+        peak_fl = max(peak_fl, eff.get("ParamForeLongR") or 0)
         peak_b = max(peak_b, eff.get("ParamArmRB") or 0)
         low_b = min(low_b, eff.get("ParamArmRB") or 0)
         if _i >= 6:
@@ -743,9 +745,23 @@ def run(base, root):
     #   1151px 可见），用户看到的是"袖口下吊着一只大拳套"。Q45 把肘内角
     #   张到 48°（A_u=34 / A_f=166）、前臂沿轴线收窄 15%、同侧肩上提 26px，
     #   肘反而更贴身了（出躯干 36px → 28px = 0.12 头宽，参考图是 0.29）。
-    check("挥手上臂要抬起、但不许甩成横棍（ParamArmRA 0.95~1.25）",
-          0.95 < peak_a < 1.25,
-          "峰值 %.2f ⇒ 上臂离竖直 %.0f°（目标 34°）" % (peak_a, 15.0 + peak_a * 18.0))
+    # ★ Q48（第四十八问 b）：区间 0.95~1.25 → **0.28~0.52**（A_u 目标 21.7°）。
+    #   同样不是放水，是姿势被几何解算推翻了：用户说「小臂有一些偏短」，
+    #   对参考模板 wave_up.png 量得 前臂/上臂 参考 0.87 / 我们 0.71 ⇒ 前臂
+    #   沿轴加长 26px（新参数 ParamForeLongR）。而用户点名「手不要再动」，
+    #   所以解肩-肘-腕三角形（162.4/141.8/125.1）反推上臂必须收回到 21.7°，
+    #   肘顺带从切件 (413,531) 收到 (383,547)＝往身上收 30px。
+    #   证据：logs/asset_qa/q48_arm_ab2.png（与参考同比例并排）、q48_elbow_tint.png。
+    #   「手够不够得到脸」这条不变式改由下面的 ParamForeLongR 闸把守，比旧的单条更严。
+    check("挥手上臂要抬起、但不许甩成横棍（ParamArmRA 0.28~0.52）",
+          0.28 < peak_a < 0.52,
+          "峰值 %.2f ⇒ 上臂离竖直 %.0f°（目标 21.7°）" % (peak_a, 15.0 + peak_a * 18.0))
+    # ★ Q48 配套闸：上臂敢收回到 21.7°，全靠前臂那 26px 真的伸出去了。
+    #   这条断了手就够不到脸，挥手退化成"抬了抬胳膊"。
+    check("挥手时前臂要伸长到位（ParamForeLongR 峰值 >0.90）",
+          peak_fl > 0.90,
+          "峰值 %.2f ⇒ 前臂/上臂 %.2f（参考模板 0.87）"
+          % (peak_fl, (116.0 + 26.0 * peak_fl) / 162.0))
     # ★ Q40：肘这条从"折得够深（≥25°）"改成"摆得够开（摆幅≥20°）"。
     #   不是为过闸放水 —— 旧阈值编码的是"参考图里肘是弯的"，而这一轮重量
     #   （连通域切袖 → 横截面中线 → 靠手 60% 拟合）证明 wave_out.png 的手臂

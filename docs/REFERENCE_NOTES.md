@@ -3923,3 +3923,56 @@ direction.Y = ((SinF(radian) * direction.X) + (direction.Y * CosF(radian)));   /
 这个动作的结构 = **上臂贴体侧垂 → 肘留在腰侧 → 前臂贴身竖起 → 窄 V → 掌心朝前**。
 在这套结构约束下，我们骨架能把手送到的最高位置 ≈ 嘴鼻高度（A_u=70°/A_f=209°）；
 再高就要牺牲"肘贴身"，那就不是打招呼了。
+
+
+## 第六十一批（2026-10-23 第四十八问 a）帧率：画多少帧 / 算多少帧
+
+- <https://docs.live2d.com/en/cubism-editor-manual/physics-operation/> ——
+  物理演算的 **Calculate FPS 默认 60**；把它调低会让摆动"粘滞"。
+- nizima LIVE 手册 —— **Drawing FPS 与 Physics FPS 是两件事**，可以分别设。
+- <https://sites.google.com/cybernoids.jp/cubism2/faq/animator> ——
+  官方动作按 **30fps 定义**，跑 60fps 靠插值；腕切替的 fade 建议 500~1000ms。
+- <https://docs.live2d.com/en/cubism-sdk-manual/motion/> ——
+  `UpdateMotion(model, deltaTime)`：60FPS 传 0.016、30FPS 传 0.03。
+  **低于 30FPS 肉眼就开始"顿"**。
+- ⇒ 落地：`web/components/stage.js` 取帧下限 1000/30，`main_headless.c:353`
+  内置页刷新 200ms → 33ms（commit `06ccc4c`）。
+
+## 第六十二批（2026-10-23 第四十九问 ②）AI 怎么自己操作模型
+
+- <https://github.com/DenchiSoft/VTubeStudio> ／ <https://github.com/DenchiSoft/VTubeStudio/wiki/Plugins>
+  插件经 **WebSocket（8001）** 接入；`HotkeyTriggerRequest`（触发动作）、
+  `InjectParameterDataRequest`（灌参数）、`ExpressionActivationRequest`（表情）。
+  自定义参数名 4~32 字符、要先注册；`mode:"set"` 同参数同时只许一个插件、
+  `mode:"add"` 可叠加；`weight` 0~1 与面捕混合防跳变；
+  **注入值必须 ≥1 次/秒重发，否则自动回落**。
+- <https://github.com/DenchiSoft/VTubeStudio/wiki/Interaction-between-Animations,-Tracking,-Physics,-etc.>
+  **6 级优先级**：P0 默认 < P1 待机 < P2 面捕 < P3 一次性动画 < P4 表情 < P5 物理；
+  交接一律淡入淡出；表情只能驱动已经做出来的参数。
+- 参照实现：<https://github.com/menglimi/astrbot_plugin_vtube_studio>
+  （LLM 工具 `vts_trigger_hotkey`/`vts_set_expression`/`vts_inject_parameter`/`vts_move_model`，
+  **每条回复最多 1 个自主 L2D 标签**）；<https://github.com/Genteki/pyvts>；
+  <https://deepwiki.com/hkopenai/vtube-studio-plugin-mcp-server>（MCP 封 40+ 工具）。
+- ⇒ 对我们：`/api/{action,param,pose}` 已经等价于 hotkey + inject + 表情，
+  缺 **weight/TTL 回落**、**优先级淡入淡出仲裁**、**LLM 侧工具协议**。详见
+  `docs/VTUBER_REALISM.md` 第二章。
+
+## 第六十三批（2026-10-23 第四十九问 ①）顺滑与"真人感"
+
+- <https://sites.google.com/cybernoids.jp/cubism2/editor/animator/technic/quality-up>
+  只动脸 = 机器人；脸 XYZ 与体 XYZ 要**同动且错开时序**；要有**反动与刹车**。
+- <https://tech.sumzap.co.jp/entry/live2d_case_study>
+  呼吸/眨眼用 Sin 波，但**每个周期随机更新周期与振幅**。
+- <https://note.com/ryodist/n/nd15bac2226d3> ／ <https://mayonaka-blog.com/live2d-motion-howto/>
+  待机动作**准备多条随机播放**，同一模式重复 3~4 次就被看穿。
+- <https://d-gear.biz/column/8573>
+  呼吸/眨眼/视线/口/发/体倾**分层**，各层周期互错；循环首尾接平；缓入缓出。
+- <https://bloomeria.jp/blog/live2d-parameter-optimization>
+  眨眼 0.15~0.25s、**闭快开慢（60/40）**、间隔 2~5s 随机；
+  `MouthOpenY>0.5` 时 `MouthForm` 连动 +0.1~0.2。
+- <https://shiroikarasu.net/live2d-physics-settings-guide/> ／
+  <https://saraemi.com/vtuber/2021/10/30/live2d_buturi/>
+  头发 2~3 段摆锤串联、**越往发梢越轻**；配饰慢一拍；停下要收得住。
+- ⇒ 我们已有：眨眼闭快开慢（0.10/0.05/0.15）+ 指数分布间隔、微扫视、发梢抖动随机、
+  33 条摆 + 5 条二阶。**缺**：待机周期随机化 / 多条 idle 随机选 / 头体错时 /
+  反动刹车 / 嘴形连动（五项清单见 `docs/VTUBER_REALISM.md` 1.6）。
