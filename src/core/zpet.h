@@ -221,6 +221,7 @@ int   zpet_set_outfit(zpet *p, const char *outfit_id, zdiag *diag);
 /* 可触发动作列表（托盘菜单用，排除 idle） */
 int   zpet_action_count(const zpet *p);
 const char *zpet_action_id_at(const zpet *p, int i);
+const char *zpet_action_title_at(const zpet *p, int i);  /* 给人看的名字；没写就是 id */
 
 /* --------------------------------------------------------------- 缩放 */
 void  zpet_set_scale(zpet *p, double scale);

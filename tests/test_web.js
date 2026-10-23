@@ -149,6 +149,8 @@ const INFO = {
   form_name: "少女", forms: ["teen"], form_names: ["少女"],
   outfit: "default", outfits: ["default"], outfit_names: ["常服"],
   scale: 0.75, actions: ["idle", "happy", "wave", "sleep"],
+  /* 引擎（/api/info.json）和 actions 一一对应地给出中文名，名字来自 rig.json */
+  action_names: ["待机", "开心", "挥手", "睡觉"],
   expressions: [{ id: "smile", name: "微笑" }],
   deformers: { skirt_sway_x: 0.0, skirt_hem_x: 0.0 },
   // 物理摆链输出和形变器分开给：形变器 = 物理 + 环境摆动之和（T45.9）
@@ -442,6 +444,19 @@ function slotOf(id) {
     CHECK(btns.length === INFO.actions.length,
           "动作按钮数应等于引擎给的动作数（要 " + INFO.actions.length + "，实际 " + btns.length + "）");
     CHECK(btns.some((b) => b._text === "挥手"), "已知 id 应显示中文名（wave → 挥手）");
+
+    /* ★ 名字必须来自引擎的 action_names（数据层），不是界面里的硬编码表。
+       正式软件的 UI 要整个重做，界面层存的文案到时候得重写一遍；
+       数据层存的，换几个界面都还在。 */
+    CHECK(!!(INFO.action_names && INFO.action_names.length === INFO.actions.length),
+          "引擎要给出和 actions 一一对应的 action_names");
+
+    /* ★ 2026-10-24 截图里 nod / wave_both / heart_hands / kirara_jump /
+       look_around / star_eyes / shift_weight / tiptoe 八个按钮露了英文 id。
+       根因是名字写在界面的硬编码表里、漏了新动作。这条断言盯住它不许再犯。 */
+    const leaked = btns.filter((b) => /^[a-z][a-z0-9_]*$/.test(b._text || ""));
+    CHECK(leaked.length === 0,
+          "★ 按钮上不许出现英文 id（漏了：" + leaked.map((b) => b._text).join(" ") + "）");
     /* 引擎新增的未知动作也要能出现（名字回落成 id） */
     ZC.bus.emit("info", Object.assign({}, INFO, { actions: INFO.actions.concat(["brand_new"]) }));
     const again = walk(el).filter((n) => n.tagName === "BUTTON");

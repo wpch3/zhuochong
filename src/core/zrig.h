@@ -37,6 +37,7 @@ int   zrig_part_count(const zrig *r);
 const char *zrig_part_id(const zrig *r, int i);
 int   zrig_action_count(const zrig *r);
 const char *zrig_action_id_at(const zrig *r, int i);
+const char *zrig_action_title_at(const zrig *r, int i);   /* 给人看的名字；没写就是 id */
 int   zrig_region_count(const zrig *r);
 
 /* --------------------------------------------------------------- 每帧 */

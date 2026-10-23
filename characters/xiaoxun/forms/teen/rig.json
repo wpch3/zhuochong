@@ -2612,7 +2612,8 @@
           "amp": 0.06,
           "freq": 0.24
         }
-      ]
+      ],
+      "title": "呼吸"
     },
     {
       "id": "sway",
@@ -2726,7 +2727,8 @@
           "amp": 0.32,
           "freq": 0.3
         }
-      ]
+      ],
+      "title": "摇摆"
     },
     {
       "id": "idle",
@@ -2929,7 +2931,8 @@
           "amp": 0.08,
           "freq": 0.18
         }
-      ]
+      ],
+      "title": "待机"
     },
     {
       "id": "focus",
@@ -2962,7 +2965,8 @@
           "amp": -0.18,
           "freq": 0.4
         }
-      ]
+      ],
+      "title": "专注"
     },
     {
       "id": "nod",
@@ -3069,7 +3073,8 @@
           ],
           "interp": "smooth"
         }
-      ]
+      ],
+      "title": "点头"
     },
     {
       "id": "head_pat",
@@ -3178,7 +3183,8 @@
           "ease": "out_back"
         }
       ],
-      "part_overrides": {}
+      "part_overrides": {},
+      "title": "摸头"
     },
     {
       "id": "happy",
@@ -3332,7 +3338,8 @@
         "mouth_open": {
           "opacity": 0.85
         }
-      }
+      },
+      "title": "开心"
     },
     {
       "id": "sad",
@@ -3407,7 +3414,8 @@
         }
       ],
       "blink_hold": 0.32,
-      "part_overrides": {}
+      "part_overrides": {},
+      "title": "难过"
     },
     {
       "id": "surprised",
@@ -3558,7 +3566,8 @@
           "amp": -0.24,
           "dur": 0.55
         }
-      ]
+      ],
+      "title": "惊讶"
     },
     {
       "id": "hammered",
@@ -3699,7 +3708,8 @@
         "mouth_open": {
           "opacity": 0.7
         }
-      }
+      },
+      "title": "被锤"
     },
     {
       "id": "stroke",
@@ -3739,7 +3749,8 @@
         "mouth_open": {
           "opacity": 0.35
         }
-      }
+      },
+      "title": "抚摸"
     },
     {
       "id": "clicked",
@@ -3762,7 +3773,8 @@
           "freq": 3.0,
           "dur": 0.4
         }
-      ]
+      ],
+      "title": "被点"
     },
     {
       "id": "dragged",
@@ -3788,7 +3800,8 @@
         "mouth_open": {
           "opacity": 0.6
         }
-      }
+      },
+      "title": "被拖"
     },
     {
       "id": "talk",
@@ -3841,7 +3854,8 @@
           "freq": 0.33,
           "phase": 0.5
         }
-      ]
+      ],
+      "title": "说话"
     },
     {
       "id": "think",
@@ -3913,7 +3927,8 @@
           "amp": 0.12,
           "freq": 0.13
         }
-      ]
+      ],
+      "title": "思考"
     },
     {
       "id": "sleep",
@@ -4013,7 +4028,8 @@
         }
       ],
       "blink_hold": 1.0,
-      "part_overrides": {}
+      "part_overrides": {},
+      "title": "睡觉"
     },
     {
       "id": "wave",
@@ -4301,7 +4317,8 @@
         "mouth_open": {
           "opacity": 0.8
         }
-      }
+      },
+      "title": "挥手"
     },
     {
       "id": "wave_both",
@@ -4766,7 +4783,8 @@
         "mouth_open": {
           "opacity": 0.8
         }
-      }
+      },
+      "title": "双手挥"
     },
     {
       "id": "heart_hands",
@@ -4883,7 +4901,8 @@
         "mouth_open": {
           "opacity": 0.45
         }
-      }
+      },
+      "title": "比心"
     },
     {
       "id": "kirara_jump",
@@ -5295,7 +5314,8 @@
         "mouth_open": {
           "opacity": 0.9
         }
-      }
+      },
+      "title": "蹦一下"
     },
     {
       "id": "look_around",
@@ -5359,7 +5379,8 @@
           "freq": 0.45,
           "phase": 0.18
         }
-      ]
+      ],
+      "title": "张望"
     },
     {
       "id": "star_eyes",
@@ -5511,7 +5532,8 @@
           "freq": 1.1,
           "dur": 3.4
         }
-      ]
+      ],
+      "title": "星星眼"
     },
     {
       "id": "shift_weight",
@@ -5567,7 +5589,8 @@
           "freq": 0.11,
           "phase": 0.3
         }
-      ]
+      ],
+      "title": "换重心"
     },
     {
       "id": "tiptoe",
@@ -5629,7 +5652,8 @@
           "amp": 0.4,
           "dur": 1.0
         }
-      ]
+      ],
+      "title": "踮脚"
     }
   ],
   "deformers": [

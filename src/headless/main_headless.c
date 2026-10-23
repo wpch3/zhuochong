@@ -534,6 +534,12 @@ static void handle_request(zsock fd, const http_req *r)
             zpet_character(g_pet), g_cfg.root_dir, zpet_blink_manual(g_pet));
         for (i = 0; i < zpet_action_count(g_pet); ++i)
             p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_action_id_at(g_pet, i));
+        /* action_names 和 actions 一一对应（照 forms / form_names 的老写法）。
+           名字来自 rig.json，不是界面里的硬编码表 —— 正式软件的 UI 要整个重做，
+           界面层存的任何文案都得重写一遍，数据层存的不用。 */
+        p += z_snprintf(p, cap - (size_t)(p - body), "],\"action_names\":[");
+        for (i = 0; i < zpet_action_count(g_pet); ++i)
+            p += z_snprintf(p, cap - (size_t)(p - body), "%s\"%s\"", i ? "," : "", zpet_action_title_at(g_pet, i));
         /* forms / form_names 的语义是**能切过去的形态**，所以只报 ready 的。
            规划中但还没做的形态走下面的 form_roadmap，界面上灰显。
            两者分开是为了不破坏既有调用方：谁拿 forms 去渲染切换按钮都不会切到空形态。 */

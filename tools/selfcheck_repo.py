@@ -376,6 +376,17 @@ def check_rig(root):
         dup = sorted({i for i in pids if pids.count(i) > 1})
         check(f"部件 id 唯一", not dup, f"{tag}：{len(pids)} 件" + (f"，重复 {dup}" if dup else ""))
 
+        # 动作要有给人看的名字，而且得真是中文 —— 不是把 id 抄一遍。
+        # 2026-10-24 用户截图里 nod / wave_both / kirara_jump 等 8 个按钮露了英文 id，
+        # 根因是名字写在界面的硬编码表里、漏了新动作。名字搬到 rig.json 之后，
+        # 这条盯住"数据层有没有漏"，正式软件 UI 重做时也不用重写一遍文案。
+        # 名字加在 tools/make_rig.py 的 ACTION_TITLES 里。
+        noname = [a.get("id") for a in r.get("actions", [])
+                  if not a.get("title") or a.get("title") == a.get("id")
+                  or all(ord(ch) < 128 for ch in str(a.get("title", "")))]
+        check("每个动作都有中文名（露英文 id 的界面是半成品）", not noname,
+              f"{tag}：{len(r.get('actions', []))} 个动作" + (f"，没名字的 {noname}" if noname else ""))
+
         layers = [p["layer"] for p in parts]
         dupl = sorted({l for l in layers if layers.count(l) > 1})
         check("层号不重复", not dupl, f"重复层 {dupl}" if dupl else f"{len(layers)} 层")

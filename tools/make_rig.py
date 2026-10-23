@@ -21,6 +21,30 @@ AP_MIN = 0.06   # 眼眶开口闭到底时纵向还剩几成（引擎 aperture_m
 LASH_HOLD = 0.5
 
 
+
+# 动作 id → 给人看的名字。少一条不会炸，界面上就显示英文 id。
+ACTION_TITLES = {
+    "idle": "待机", "breath": "呼吸", "sway": "摇摆", "focus": "专注",
+    "nod": "点头", "head_pat": "摸头", "happy": "开心", "sad": "难过",
+    "surprised": "惊讶", "hammered": "被锤", "stroke": "抚摸",
+    "clicked": "被点", "dragged": "被拖", "talk": "说话", "think": "思考",
+    "sleep": "睡觉", "wake": "叫醒",
+    "wave": "挥手", "wave_both": "双手挥", "heart_hands": "比心",
+    "kirara_jump": "蹦一下", "look_around": "张望", "star_eyes": "星星眼",
+    "shift_weight": "换重心", "tiptoe": "踮脚",
+}
+
+
+def _name_actions(actions):
+    """给每个动作补上 title。已经自带 title 的不动。"""
+    for a in actions:
+        if not a.get("title"):
+            t = ACTION_TITLES.get(a.get("id", ""))
+            if t:
+                a["title"] = t
+    return actions
+
+
 def png_size(path):
     """只读 PNG 头部拿宽高（make_rig 跑在系统 python3 上，没有 PIL）。"""
     with open(path, "rb") as f:
@@ -1881,6 +1905,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  "freq": inst["freq"], "phase": inst["phase"]}
                 for i, inst in enumerate(se["sparkle"]["instances"], 1)]
 
+    # ---- 动作的中文名 ----
+    # 为什么名字写在这里而不是界面里：测试台是脚手架，正式软件的 UI 要整个重做
+    # （用户 2026-10-24 明确要求）。界面层存的文案换一次 UI 就得重写一遍，
+    # 数据层存的不用。引擎把它经 info.json 的 action_names 原样送出去，
+    # 谁来画界面都拿得到同一套名字。
+    # 漏了名字不会报错，只是界面上显示英文 id —— 这就是 2026-10-24
+    # 截图里 nod / wave_both / kirara_jump 等 8 个按钮露出英文的原因。
     actions = [
         {"id": "breath", "priority": 1, "duration": 0, "loop": True, "return_state": "idle",
          "channels": [
@@ -3721,7 +3752,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         },
         "parts": parts_list,
         "regions": regions,
-        "actions": actions,
+        "actions": _name_actions(actions),
         # 物理摆动（引擎的 physics 段）：头一动，头发自己甩。
         # 输入 = 部件锚点经过 head 组完整矩阵（含旋转和父链）之后的位移，
         # 输出 = 摆尖落后/过冲的那点距离，静止时收敛回 0。

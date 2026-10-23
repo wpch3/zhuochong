@@ -42,6 +42,7 @@ struct zpet {
 
     /* 手动整理的可触发动作顺序 */
     char    action_ids[32][48];
+    char    action_titles[32][64];
     int     nactions;
 
     int     hover_inside;
@@ -284,6 +285,8 @@ static void collect_actions(zpet *p)
         if (!id || !*id) continue;
         if (z_streq(id, "idle") || z_streq(id, "sleep")) continue;   /* 睡眠加到菜单末尾单独处理 */
         z_strlcpy(p->action_ids[p->nactions], id, sizeof(p->action_ids[0]));
+        z_strlcpy(p->action_titles[p->nactions], zrig_action_title_at(p->rig, i),
+                  sizeof(p->action_titles[0]));
         p->nactions++;
     }
 }
@@ -497,6 +500,12 @@ const char *zpet_action_id_at(const zpet *p, int i)
 {
     if (!p || i < 0 || i >= p->nactions) return "";
     return p->action_ids[i];
+}
+
+const char *zpet_action_title_at(const zpet *p, int i)
+{
+    if (!p || i < 0 || i >= p->nactions) return "";
+    return p->action_titles[i][0] ? p->action_titles[i] : p->action_ids[i];
 }
 
 int zpet_set_form(zpet *p, const char *form_id, zdiag *diag)

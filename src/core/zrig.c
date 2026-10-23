@@ -194,6 +194,10 @@ typedef struct { char part[64]; double opacity; int has_dx, has_dy; double dx, d
 
 typedef struct {
     char   id[48];
+    /* 给人看的名字。放在数据层而不是界面层，是因为界面是要换的
+       （测试台只是脚手架，正式软件的 UI 会整个重做），
+       而"挥手"这个词两边都要用 —— 写在界面里就得写两遍、改两处。 */
+    char   title[64];
     int    priority;
     double duration;          /* 秒；<0 循环 */
     int    loop;
@@ -2618,6 +2622,8 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
             return -1;
         }
         z_strlcpy(a->id, id, sizeof(a->id));
+        /* 没写 title 就退回 id：新动作不写名字也能用，只是界面上显示英文 */
+        z_strlcpy(a->title, zjson_str(zjson_obj_get(aj, "title"), id), sizeof(a->title));
         z_snprintf(buf, sizeof(buf), "actions[%s]", id);
 
         a->priority = (int)zjson_int(zjson_obj_get(aj, "priority"), 0);
@@ -3329,6 +3335,12 @@ const char *zrig_action_id_at(const zrig *r, int i)
 {
     if (!r || i < 0 || i >= r->nactions) return "";
     return r->actions[i].id;
+}
+
+const char *zrig_action_title_at(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nactions) return "";
+    return r->actions[i].title[0] ? r->actions[i].title : r->actions[i].id;
 }
 
 void zrig_describe(const zrig *r, char *out, size_t cap)

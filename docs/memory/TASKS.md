@@ -1160,8 +1160,28 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | T61.6 | 预览端点 `/api/chat`（含 `dry=1` 只看不发） | [x] | dry-run 与真发**共用 `prepare_one()`**，否则显示的和实际出网的迟早对不上。`api_smoke` 246 → 266 |
 | T61.7 | **修隐私洞**：降级重试会绕过 `sensitive` | [x] | `zgw_pick` 只认优先级不认敏感标记 ⇒ 本地挂 + 允许降级 = 悄悄上云。没炸只因云端默认 `enabled=false`，而那是配置不是保证。负控：把云端做成**会成功的诱饵**，拆掉护栏 4 项判红 |
 | T61.8 | `make win` 加 `-lws2_32` | [x] | `CORE_SRC` 是 wildcard，`zhttp.c` 自动进交叉编译。实测不加会炸 8 个未定义符号（`WSAStartup`/`getaddrinfo`/`socket`…），加上后 exe 正常 import `WS2_32.dll` |
-| T61.9 | **TLS** | [x] | **云端线的唯一卡点**——没它云端 16 家一家都连不上，现在只能连本地明文栈。本机无 OpenSSL 开发头。**2026-10-23 查完，选 (a) 运行期 `dlopen` libssl**：缺的只是开发头，`libssl.so.3`/`libcrypto.so.3` 本身就在机器上，这条路在当前沙箱里就能完整验证。证书校验三样缺一不可（`set_default_verify_paths` + `set1_host` + `get_verify_result`），不验证书的 https 和明文没区别。详见 `docs/PROVIDER_PLAN.md` 6.5。**绝不降级成明文**——功能没打通是进度问题，密钥泄露是事故。优先级高于 T61.10 | | **2026-10-23 done**：`src/core/ztls.{h,c}` 运行期 dlopen（18 符号，少一个就整体判不可用）。闸门 `make tls` = `tests/tls_probe.c` 24 条 + `tools/check_tls.py`（现生成自签名证书起 python TLS 服务再跑探针）。**负控**：只关 `SSL_CTX_set_verify` 仍 24/0（`SSL_get_verify_result` 独自守住），两道都拆才 16/8 见红。CA 覆盖只认 `ZHUOCHONG_CA_FILE`，**没有任何跳过校验的开关**。selfcheck 加五条源码级红线 + CI 加 `make tls` 步骤
+| T61.9 | **TLS** | [x] | **云端线的唯一卡点**——没它云端 16 家一家都连不上，现在只能连本地明文栈。本机无 OpenSSL 开发头。**2026-10-23 查完，选 (a) 运行期 `dlopen` libssl**：缺的只是开发头，`libssl.so.3`/`libcrypto.so.3` 本身就在机器上，这条路在当前沙箱里就能完整验证。证书校验三样缺一不可（`set_default_verify_paths` + `set1_host` + `get_verify_result`），不验证书的 https 和明文没区别。详见 `docs/PROVIDER_PLAN.md` 6.5。**绝不降级成明文**——功能没打通是进度问题，密钥泄露是事故。优先级高于 T61.10。**2026-10-23 done**：`src/core/ztls.{h,c}` 运行期 dlopen（18 符号，少一个就整体判不可用）。闸门 `make tls` = `tests/tls_probe.c` 24 条 + `tools/check_tls.py`（现生成自签名证书起 python TLS 服务再跑探针）。**负控**：只关 `SSL_CTX_set_verify` 仍 24/0（`SSL_get_verify_result` 独自守住），两道都拆才 16/8 见红。CA 覆盖只认 `ZHUOCHONG_CA_FILE`，**没有任何跳过校验的开关**。selfcheck 加五条源码级红线 + CI 加 `make tls` 步骤 |
 | T61.10 | 聊天框 UI | [x] | **2026-10-23 done**：`web/components/chat.js`，挂在 `web/layout.json` 的 `side` 首位。不只是能打字——每条回复都标**谁答的**（供应商/型号/本地还是云端/理由/token/花费），「看看将要发什么」按钮走 `dry=1` 把真会出网的地址和请求体原样摆出来（和真发共用 `prepare_one()`，出参不带密钥）；上游 502 显示服务端原话，不伪装成回复；发出去时触发 `think`、回复到了触发 `talk`，立绘跟着对话动。`tests/test_web.js` +25 条（负控：拿掉徽章立刻 3 红） |
 | T61.11 | 多轮上下文 | [ ] | 每次都是单轮 system+user。依赖 T60.1 上下文管理器 |
 | T61.12 | 非 OpenAI 形状适配 | [ ] | anthropic `/messages`、google `generateContent`。并入 T59.4 一起做 |
 | T61.13 | 提示注入防护 | [ ] | 第五十二问②要求的「文档/网页/工具返回内容里的指令不得提权」，要在 `zrelay` 这层把工具结果和用户指令分隔开 |
+
+---
+
+### T62 正式软件的界面：测试台是脚手架，不是产品（2026-10-24，第五十六问）
+
+**用户原话**：「截图的这个 UI 只能存在于测试网页，进入正式软件的时候必须完全优化和更改。」
+
+这条是**长期约束**，不是一次性任务：从今天起，凡是给人看的文案和判断，
+都要按"界面将来要整个换掉"来摆位置 —— 放在界面层的东西，换一次 UI 就得重写一遍。
+完整设计见 `docs/PRODUCT_UI.md`。
+
+| 编号 | 事 | 状态 | 说明 |
+|---|---|---|---|
+| T62.0 | **文案下沉到数据层** | [x] | **2026-10-24 done**。动作中文名原本硬编码在 `web/components/actions.js`，漏了 8 个新动作 ⇒ 截图里 `nod`/`wave_both`/`heart_hands`/`kirara_jump`/`look_around`/`star_eyes`/`shift_weight`/`tiptoe` 露英文 id。改成：`tools/make_rig.py` 的 `ACTION_TITLES` → `rig.json` 的 `title` → 引擎 `zrig_action_title_at`/`zpet_action_title_at` → `/api/info.json` 的 `action_names`。selfcheck 加红线「每个动作都有中文名」，负控删一条名字立刻判红并点名 |
+| T62.1 | 气泡 + 贴身输入条 | [ ] | 替掉侧栏聊天卡片。前置：T61.11 多轮上下文 |
+| T62.2 | **透明无边框置顶窗口 + 点击穿透** | [ ] | **关键路径**，桌宠的立身之本。只能在 Windows 真机验，沙箱验不了 |
+| T62.3 | 右键菜单 + 托盘 | [ ] | 一层、最多七项，全用户语言。`动作`/`情绪`/`缩放`/`rig 调试`一个都不进 |
+| T62.4 | 设置窗口 | [ ] | 五页：外观/说话/模型与隐私/声音/高级 |
+| T62.5 | 测试台降级进 `--dev` | [ ] | 正式 UI 能用之后再做 |
+| T62.6 | 决策理由的人话版下沉 | [ ] | `default_local` 这类枚举的中文翻译现在只活在路由沙盘里，该和 `action_names` 一样进数据层 |
