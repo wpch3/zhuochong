@@ -602,6 +602,13 @@ L2D_EXTENSIONS = {
     "ParamJacketSway": "外套前襟下摆自主摆动（T45.12）。和 ParamSkirtSway 同类，"
                        "但幅度小、频率低、延迟大 —— 教程口径「上着は少し重い素材"
                        "なのであまり揺らさない」。形变器 jacket_hem_x 只推前襟两片的列",
+    "ParamForeLongR": "右前臂折肘时沿轴加长（第四十八问 / T46.59）。和 "
+                      "ParamForeSlimR 同族：一个管粗细、一个管长短。原画是一条"
+                      "垂着的胳膊，肘的切点由原画决定，前/上臂 = 0.71，而参考图 "
+                      "wave_up.png 是 0.87 ⇒ 折起来就是「吊在袖口下的拳套」。"
+                      "折肘时沿肘→腕轴线拉长 26px（116→142 = 0.87），"
+                      "hand_? 组 dx/dy 同步外移；静止时为 0，画面一个像素不动",
+    "ParamForeLongL": "同上，左前臂",
     "ParamLegL": "裙下大腿 bend（标准表没有腿参数）",
     "ParamLegR": "同上",
     "ParamHairAhoge": "呆毛整体摆（标准表只有 Front/Side/Back/Fluffy）",

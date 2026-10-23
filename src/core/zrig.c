@@ -64,8 +64,11 @@
 /* 2026-10-17：裙子里布（T45.11）给里布单独挂了一张网格，12 张当场撞顶
    —— 和 ZRIG_MAX_PHYS / ZRIG_MAX_EXPR_SET 那两次一样：**上限撞了就改大，
    绝不能静默截断**。一张 zdeform 约 4.8 KB（289 控制点 × 2 double），
-   12 → 24 给 zrig 增重约 58 KB。现在用到 13 张。 */
-#define ZRIG_MAX_DEFORMS  24
+   12 → 24 给 zrig 增重约 58 KB。现在用到 13 张。
+   2026-10-23（第四十八问）：前臂「沿轴加长」又给左右各加一张（arm_?_fore_long，
+   和 arm_?_fore_slim 挂在同一件上逐点相加），25 张当场撞顶 —— 同样的处理：
+   **上限撞了就改大**。24 → 32 再增重约 38 KB，现在用到 25 张。 */
+#define ZRIG_MAX_DEFORMS  32
 #define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
 #define ZRIG_MAX_VISEME    8     /* 口型音素表的行数（SIL/A/I/U/E/O/N…） */
 #define ZRIG_MAX_VISEME_P  4     /* 一个音素最多同时写几个参数 */

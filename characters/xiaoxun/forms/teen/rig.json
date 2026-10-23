@@ -673,6 +673,48 @@
       "hires": 2
     },
     {
+      "id": "arm_l_elbow",
+      "file": "sprites/arm_l_elbow@2x.png",
+      "group": "forearm_l",
+      "layer": 148,
+      "pos": [
+        243,
+        606
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_elbow",
+      "file": "sprites/arm_r_elbow@2x.png",
+      "group": "forearm_r",
+      "layer": 149,
+      "pos": [
+        537,
+        602
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "hand_l_pad",
       "file": "sprites/hand_l_pad@2x.png",
       "group": "forearm_l",
@@ -3885,8 +3927,15 @@
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 1.0556,
+          "amp": 0.3828,
           "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamForeLongR",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.7,
           "ease": "out"
         },
         {
@@ -3906,7 +3955,7 @@
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 7.3333,
+          "amp": 7.4511,
           "dur": 0.7,
           "ease": "out"
         },
@@ -4028,7 +4077,7 @@
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 1.0556,
+          "amp": 0.3828,
           "dur": 0.45,
           "ease": "out"
         },
@@ -4047,9 +4096,16 @@
           "ease": "out"
         },
         {
+          "target": "ParamForeLongR",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.7,
+          "ease": "out"
+        },
+        {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 7.3333,
+          "amp": 7.4511,
           "dur": 0.7,
           "ease": "out"
         },
@@ -4063,7 +4119,7 @@
         {
           "target": "ParamArmLA",
           "wave": "pulse",
-          "amp": 1.0556,
+          "amp": 0.4161,
           "dur": 0.45,
           "ease": "out"
         },
@@ -4082,9 +4138,16 @@
           "ease": "out"
         },
         {
+          "target": "ParamForeLongL",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.7,
+          "ease": "out"
+        },
+        {
           "target": "ParamArmLB",
           "wave": "pulse",
-          "amp": 7.3333,
+          "amp": 7.4528,
           "dur": 0.7,
           "ease": "out"
         },
@@ -5200,6 +5263,87 @@
       ]
     },
     {
+      "id": "arm_l_fore_long",
+      "part": "arm_l_fore",
+      "cols": 2,
+      "rows": 4,
+      "note": "前臂折起时沿肘→腕轴线加长 26px（肘端 0、袖口满额，袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": -1.43,
+          "dy": 7.67
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": -1.43,
+          "dy": 7.67
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": -1.43,
+          "dy": 7.67
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": -5.23,
+          "dy": 28.12
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": -5.23,
+          "dy": 28.12
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": -5.23,
+          "dy": 28.12
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": -9.5,
+          "dy": 51.12
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": -9.5,
+          "dy": 51.12
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": -9.5,
+          "dy": 51.12
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": -9.5,
+          "dy": 51.12
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": -9.5,
+          "dy": 51.12
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": -9.5,
+          "dy": 51.12
+        }
+      ]
+    },
+    {
       "id": "arm_r_fore_slim",
       "part": "arm_r_fore",
       "cols": 2,
@@ -5265,6 +5409,87 @@
           "c": 2,
           "r": 4,
           "dx": -3.05
+        }
+      ]
+    },
+    {
+      "id": "arm_r_fore_long",
+      "part": "arm_r_fore",
+      "cols": 2,
+      "rows": 4,
+      "note": "前臂折起时沿肘→腕轴线加长 26px（肘端 0、袖口满额，袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 1.72,
+          "dy": 7.61
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 1.72,
+          "dy": 7.61
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 1.72,
+          "dy": 7.61
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 6.3,
+          "dy": 27.9
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 6.3,
+          "dy": 27.9
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 6.3,
+          "dy": 27.9
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": 11.45,
+          "dy": 50.72
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 11.45,
+          "dy": 50.72
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": 11.45,
+          "dy": 50.72
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": 11.45,
+          "dy": 50.72
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 11.45,
+          "dy": 50.72
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": 11.45,
+          "dy": 50.72
         }
       ]
     },
@@ -7810,6 +8035,12 @@
           "param": "alpha",
           "scale": 0.25,
           "offset": -1.0
+        },
+        {
+          "part": "arm_l_elbow",
+          "param": "alpha",
+          "scale": 0.3333,
+          "offset": -1.8333
         }
       ],
       "note": "绕肘旋转，±10 → ±180°。**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**：人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，正面看见的夹角会超过 145° —— Q38 在参考图 characters/xiaoxun/design/pose_ref/wave_up.png 上实测：肩(455,315)→肘(495,475)→腕(487,352)，投影夹角 170°。倍率 14.5（±145°）封顶时这个姿势根本摆不出来，所以提到 18.0；动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变"
@@ -7831,6 +8062,12 @@
           "param": "alpha",
           "scale": 0.25,
           "offset": -1.0
+        },
+        {
+          "part": "arm_r_elbow",
+          "param": "alpha",
+          "scale": 0.3333,
+          "offset": -1.8333
         }
       ]
     },
@@ -7916,6 +8153,53 @@
         {
           "deformer": "arm_l_fore_slim",
           "scale": 1.0
+        }
+      ]
+    },
+    {
+      "id": "ParamForeLongR",
+      "label": "右前臂 加长",
+      "min": 0.0,
+      "max": 1.2,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "arm_r_fore_long",
+          "scale": 1.0
+        },
+        {
+          "group": "hand_r",
+          "param": "dx",
+          "scale": 5.723
+        },
+        {
+          "group": "hand_r",
+          "param": "dy",
+          "scale": 25.362
+        }
+      ],
+      "note": "折肘时前臂沿肘→腕轴线拉长 26px（+22%），手件同步外移；0 = 原件，静止画面零改动"
+    },
+    {
+      "id": "ParamForeLongL",
+      "label": "左前臂 加长",
+      "min": 0.0,
+      "max": 1.2,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "arm_l_fore_long",
+          "scale": 1.0
+        },
+        {
+          "group": "hand_l",
+          "param": "dx",
+          "scale": -4.751
+        },
+        {
+          "group": "hand_l",
+          "param": "dy",
+          "scale": 25.562
         }
       ]
     },

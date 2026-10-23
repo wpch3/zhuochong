@@ -11,7 +11,7 @@
 这样拆件与骨架永远对齐：坐标由脚本从实际素材量取，不手写魔法数字。
 """
 from __future__ import annotations
-import argparse, json, os, sys
+import argparse, json, math, os, sys
 
 import attach_geom
 
@@ -62,11 +62,40 @@ FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
 # 改表改不动它，下一个人照着它加漫符就又回到 G117。
 
 
+# ★★★ Q48：折肘时前臂沿轴线加长多少（1x 画布像素）。
+#   参考 wave_up.png 的前/上臂 = 0.87，我们原件是 0.71；前臂 115.8 × 0.22 ≈ 26px
+#   补上去正好 141.8/162.4 = 0.873。改这一个数就能整体收放，别在别处再写死。
+FORE_LONG_PX = 26.0
+# 沿轴加长的行分布（r=0 素材顶边 … r=4 底边）：肘端 0、袖口满额，
+# **r=3→r=4 两行同值** ⇒ 袖口那段条纹是刚性平移，不会被拉成椭圆。
+FORE_LONG_F = (0.0, 0.15, 0.55, 1.0, 1.0)
+
+
+def _fore_long_axes(armp):
+    """每侧「肘→腕」的单位向量 + 加长量，给 fore_long() 的 hand 组位移用。"""
+    out = {}
+    if not armp:
+        return out
+    apart = {q["id"]: q for q in armp.get("parts", [])}
+    for side in ("l", "r"):
+        fp, hp = apart.get("arm_%s_fore" % side), apart.get("hand_%s" % side)
+        if not fp or not hp:
+            continue
+        ex, ey = fp["pivot"]
+        wx, wy = hp["pivot"]
+        ln = math.hypot(wx - ex, wy - ey)
+        if ln < 1e-6:
+            continue
+        out[side] = ((wx - ex) / ln, (wy - ey) / ln, FORE_LONG_PX)
+    return out
+
+
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
                has_blend=False, has_side=False, has_legs=False,
                body_id="seg_torso", has_eyeballs=False, foot_lift=None,
                star_eyes=None, fx_table=None, hand_forms=None,
-               crease_parts=(), slim_parts=()):
+               crease_parts=(), slim_parts=(), long_axes=None,
+               elbow_parts=()):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -400,6 +429,34 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                 return []
             return [{"deformer": part_id + "_slim", "scale": 1.0}]
 
+        # ★★★ Q48：前臂沿轴**加长**（和 fore_slim 同族，一个管粗细一个管长短）。
+        #   两条绑定一起走，缺一不可：
+        #     ① 形变器 arm_?_fore_long —— 袖管沿肘→腕轴线拉长（肘端 0、袖口满额）
+        #     ② hand_? 组 dx/dy      —— 手跟着袖口往外挪同样的距离
+        #   手件是前臂组的子组，dx/dy 写在前臂的局部系里（group_matrix 先乘父矩阵），
+        #   所以这里填的是**静止姿势下**肘→腕的单位向量 × 位移，折肘后自动跟着转。
+        def fore_long(part_id, hand_group, side):
+            axis = (long_axes or {}).get(side)
+            if not axis or part_id not in (slim_parts or ()):
+                return []
+            ux, uy, dpx = axis
+            return [{"deformer": part_id + "_long", "scale": 1.0},
+                    {"group": hand_group, "param": "dx", "scale": round(ux * dpx, 3)},
+                    {"group": hand_group, "param": "dy", "scale": round(uy * dpx, 3)}]
+
+        # ★★★ Q48：肘关节补件 arm_*_elbow 的 alpha，也绑肘角。
+        #   病根（分件染色 + 离线摆位实测，见 tools/elbow_cover.py 开头）：
+        #   round_arm_sockets 把两件在肘处都切成了「以枢轴为心、r≈34.7 的同心半圆」，
+        #   **外轮廓没问题**，问题是前臂一转 141°，圆内一半是上臂的料、一半是前臂的料，
+        #   内侧两条袖管边线还交成一个尖角 —— 这就是用户说的「折叠一样的痕迹」。
+        #   斜坡放在肘角 45°~99°（v 2.5~5.5）：伸直/小角度 0，折到挥手那档 1。
+        #   heart_hands 的肘角是负的（−7.3）⇒ 恒为 0，反向折肘时不会冒出来。
+        def elbow_fade(part_id):
+            if part_id not in (elbow_parts or ()):
+                return []
+            return [{"part": part_id, "param": "alpha",
+                     "scale": 0.3333, "offset": -1.8333}]
+
         out += [
             {"id": "ParamArmLA", "label": "左臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 18.0}]
@@ -414,7 +471,7 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                       + root_fade("arm_r_root") + cap_fade("arm_r_cap")},
             {"id": "ParamArmLB", "label": "左小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 18.0}]
-                      + crease_fade("arm_l_crease"),
+                      + crease_fade("arm_l_crease") + elbow_fade("arm_l_elbow"),
              "note": "绕肘旋转，±10 → ±180°。"
                      "**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**："
                      "人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，"
@@ -425,7 +482,7 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                      "动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变"},
             {"id": "ParamArmRB", "label": "右小臂 弯曲", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -18.0}]
-                      + crease_fade("arm_r_crease")},
+                      + crease_fade("arm_r_crease") + elbow_fade("arm_r_elbow")},
             # G4c2：手是第三节（绕腕转）。Live2D 标准参数表里就叫 ParamHandL/R。
             {"id": "ParamHandL", "label": "左手腕", "min": -3.2, "max": 3.2, "default": 0.0,
              "binds": [{"group": "hand_l", "param": "rot_deg", "scale": 22.0}],
@@ -456,6 +513,24 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "note": "折肘时前臂横向收窄（肘端不动、袖口收 17%），避免前臂压在上臂上糊成一坨"},
             {"id": "ParamForeSlimL", "label": "左前臂 收窄", "min": 0.0, "max": 1.5,
              "default": 0.0, "binds": fore_slim("arm_l_fore")},
+            # ★★★ 2026-10-23 第四十八问：前臂**沿轴加长**。
+            #   用户原话：「肘关节的位置有一些折叠一样的痕迹，看起来不是很自然，
+            #   而且小臂有一些偏短」。先按要求对着参考模板目视比对
+            #   （logs/asset_qa/q48_arm_ab2.png：参考图按头宽 213→109 缩到我们的
+            #   尺度，与挥手峰值帧同比例并排）：
+            #       参考 wave_up.png  上臂 173 / 前臂 150 ⇒ 前/上 = **0.87**
+            #       我们            上臂 162 / 前臂 116 ⇒ 前/上 = **0.71**
+            #   —— 前臂相对短 18%，折起来就是「吊在袖口下的一只拳套」。
+            #   原画是一条垂着的胳膊，肘的切点由原画决定、改不了；能改的是
+            #   **折肘时把前臂沿自己的轴线拉长 26px（+22%）**：116→142 ⇒ 0.87。
+            #   这不是歪招：Live2D 的ワープデフォーマ本来就干这个，而且只在折肘
+            #   那一刻生效，静止画面一个像素都不动。
+            {"id": "ParamForeLongR", "label": "右前臂 加长", "min": 0.0, "max": 1.2,
+             "default": 0.0, "binds": fore_long("arm_r_fore", "hand_r", "r"),
+             "note": "折肘时前臂沿肘→腕轴线拉长 26px（+22%），手件同步外移；"
+                     "0 = 原件，静止画面零改动"},
+            {"id": "ParamForeLongL", "label": "左前臂 加长", "min": 0.0, "max": 1.2,
+             "default": 0.0, "binds": fore_long("arm_l_fore", "hand_l", "l")},
         ]
     else:
         out += [
@@ -2328,21 +2403,45 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 #       A_u=40 → 肘出躯干 +45px / 腕 y=448
                 #   参考图自己的肘也离身 0.29 头宽，我们这档比参考还贴身，
                 #   既满足「肘不许甩出躯干外」，又把手抬到了脸下方。
-                # 肩：抬到 A_u=34°（命令 15−34 = −19）。近端先动、行程短 ⇒ dur 最短。
+                # ★★★ Q48（第四十八问）：**前臂加长 26px + 上臂收回 12.1°**。
+                #   用户：「肘关节的位置有一些折叠一样的痕迹，看起来不是很自然，
+                #   而且小臂有一些偏短。」先对着参考模板目视比对
+                #   （logs/asset_qa/q48_arm_ab2.png 同比例并排 / q48_elbow_tint.png
+                #    分件染色实拍：红=上臂 蓝=前臂 绿=肩帽）：
+                #     · 参考＝**闭合的发卡**：上臂几乎垂着、小臂折上来贴着它，
+                #       外轮廓一条连续的 U，肘在最下方是个圆转弯。
+                #     · 我们＝**大开口的勾**：上臂斜甩出去 34°、小臂又短又胖，
+                #       两件在肘处交成尖角。
+                #   几何差（同一把尺子）：参考 前/上 = 150/173 = 0.87，
+                #   我们 116/162 = 0.71 —— 小臂相对短 18%，这才是「偏短」的根。
+                #   改法（**手的落点一点不动**，用户点名「手不要再动」）：
+                #     ① 前臂沿轴加长 26px（ParamForeLongR）⇒ 116→142 = 0.87
+                #     ② 手要留在原地，解三角形（肩-肘-腕 162.4 / 141.8 / 125.1
+                #        ⇒ 肩夹角 57.4°、SW 方向 79.1°）得 **A_u = 21.7°**
+                #        ⇒ 肘从切件 (413,531) 收到 (383,547)：**往身上收 30px**，
+                #          正是第四十三问要的「肘贴着身子、不许甩出躯干外」。
+                #     ③ 肘内角 180 − (153.7 − 21.7) = **48.0°**，和 Q45 实拍
+                #        选型定下来的安全值一致，不会回到「双筒袖」那档。
+                # 肩：抬到 A_u=21.7°（静止 14.8° ⇒ 命令 −6.89）。近端先动 ⇒ dur 最短。
                 {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -19.0, "dur": 0.45, "ease": "out"},
+                 "amp": -6.89, "dur": 0.45, "ease": "out"},
+                # 前臂加长：和折肘同一条时间曲线，折到位就伸到位。
+                {"target": "ParamForeLongR", "wave": "pulse",
+                 "amp": 1.0, "dur": 0.70, "ease": "out"},
                 # 同侧肩上提 26px（8.67 × 3.0），和上臂同时起步。
                 {"target": "ParamShoulderRY", "wave": "pulse",
                  "amp": 8.67, "dur": 0.45, "ease": "out"},
                 # 前臂收窄：和折肘同一条时间曲线（dur 0.70），折到位就窄到位。
                 {"target": "ParamForeSlimR", "wave": "pulse",
                  "amp": 1.0, "dur": 0.70, "ease": "out"},
-                # 肘：折到 A_f=166°（命令 34−166 = −132）= 内角 48°，前臂斜竖起来。
+                # 肘：折到 A_f=153.7°（命令 −134.12）= 内角 48°，前臂斜竖起来。
+                #   （Q48 前是 A_f=166°/命令 −132；上臂收回 12.1° 之后前臂要跟着
+                #     多折 2.1°，手才落在同一个点上。）
                 # 参考图 wave_up.png 量出来的肘内角就是 26°（肩(500,310)-肘(566,470)-
                 # 腕(576,320)）—— 教科书式挥手本来就是"把前臂几乎折回来贴着上臂"。
                 # dur 比肩长 = 慢半拍（saraemi「末端は遅れる」）。
                 {"target": "forearm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -132.0, "dur": 0.70, "ease": "out"},
+                 "amp": -134.12, "dur": 0.70, "ease": "out"},
                 # 前臂只做很小的摆（±5°）：近距离打招呼主行程在**手腕**，
                 # 前臂大摆会把手甩离脸侧，又变回"大幅挥"。
                 {"target": "forearm_r", "param": "rot_deg", "wave": "sine",
@@ -2424,27 +2523,37 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # 为什么不复用 wave 的 part_overrides：mouth_open 0.8 照抄（打招呼要出声），
         # 另外两眼加 Smile 0.55 —— 双手挥是更兴奋的打招呼，眯眼笑是标配表情。
         if armp:
+            # ★★★ Q48：两侧一起吃「前臂加长 + 上臂收回」。
+            #   左臂**不能抄右臂的数**：原画里两条垂着的胳膊角度本来就不一样
+            #   （右 上臂 162.4 / 前臂 115.8；左 上臂 166.4 / 前臂 114.9）。
+            #   各自按「手不动、前臂 +26px」解三角形：
+            #     右 A_u 33.8°→21.7°（−19 → −6.89）、A_f→153.7°（−134.12），内角 48.0°
+            #     左 A_u 33.6°→22.1°（+19 → +7.49）、A_f→−152.2°（+134.15），内角 50.0°
             wave_both_channels = [
                 # —— 右臂：和单手挥手逐字一致 ——
                 {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -19.0, "dur": 0.45, "ease": "out"},
+                 "amp": -6.89, "dur": 0.45, "ease": "out"},
                 {"target": "ParamShoulderRY", "wave": "pulse",
                  "amp": 8.67, "dur": 0.45, "ease": "out"},
                 {"target": "ParamForeSlimR", "wave": "pulse",
                  "amp": 1.0, "dur": 0.70, "ease": "out"},
+                {"target": "ParamForeLongR", "wave": "pulse",
+                 "amp": 1.0, "dur": 0.70, "ease": "out"},
                 {"target": "forearm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -132.0, "dur": 0.70, "ease": "out"},
+                 "amp": -134.12, "dur": 0.70, "ease": "out"},
                 {"target": "forearm_r", "param": "rot_deg", "wave": "sine",
                  "amp": 5.0, "freq": 1.6, "dur": 2.4},
                 # —— 左臂：角度镜像取反，幅度类同号 ——
                 {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
-                 "amp": 19.0, "dur": 0.45, "ease": "out"},
+                 "amp": 7.49, "dur": 0.45, "ease": "out"},
                 {"target": "ParamShoulderLY", "wave": "pulse",
                  "amp": 8.67, "dur": 0.45, "ease": "out"},
                 {"target": "ParamForeSlimL", "wave": "pulse",
                  "amp": 1.0, "dur": 0.70, "ease": "out"},
+                {"target": "ParamForeLongL", "wave": "pulse",
+                 "amp": 1.0, "dur": 0.70, "ease": "out"},
                 {"target": "forearm_l", "param": "rot_deg", "wave": "pulse",
-                 "amp": 132.0, "dur": 0.70, "ease": "out"},
+                 "amp": 134.15, "dur": 0.70, "ease": "out"},
                 {"target": "forearm_l", "param": "rot_deg", "wave": "sine",
                  "amp": -5.0, "freq": 1.6, "dur": 2.4},
             ]
@@ -3187,7 +3296,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                             if any(p["id"] == "arm_%s_fore" % s
                                    for p in (armp or {}).get("parts", []))
                             and any(p["id"] == "hand_%s" % s
-                                    for p in (armp or {}).get("parts", []))))
+                                    for p in (armp or {}).get("parts", []))),
+                        # Q48：前臂加长要知道「肘→腕」这条轴的方向（静止姿势）
+                        long_axes=_fore_long_axes(armp),
+                        # Q48：肘关节补件（tools/elbow_cover.py 出的件）
+                        elbow_parts=tuple(
+                            p["id"] for p in (armp or {}).get("parts", [])
+                            if p["id"].endswith("_elbow")))
     PARAM_IDS = {q["id"] for q in PARAMS}
     # ★ Q36：裙摆/外套下摆这两个参数是在**本函数后半段**（里布、下摆模块）才
     #   append 进去的，可动作表在这里就要校验。素材在 = 参数一定会生成，
@@ -3734,6 +3849,30 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；"
                          "0 = 原件，静止画面零改动",
                  "points": _pts})
+
+            # —— Q48：同一件上再挂一张「沿轴加长」网格 ——
+            #   收窄管粗细、加长管长短；一个部件的多张 deformer 在引擎里是
+            #   **逐点累加**的（zrig.c draw 那段不是择一）。
+            #   r=0 是素材顶边（在肘枢轴**之上**、与上臂重叠的那一截）：权重 0
+            #   ⇒ 肘关节那一圈正圆一个像素都不动，折起来才不会裂缝。
+            _ln = math.hypot(_wx - _ex, _wy - _ey)
+            _ux, _uy = (_wx - _ex) / _ln, (_wy - _ey) / _ln
+            _lpts = []
+            for _r, _f in enumerate(FORE_LONG_F):
+                if _f <= 0.0:
+                    continue
+                _dx = 2.0 * _ux * FORE_LONG_PX * _f
+                _dy = 2.0 * _uy * FORE_LONG_PX * _f
+                for _c in range(3):
+                    _lpts.append({"c": _c, "r": _r,
+                                  "dx": round(_dx, 2), "dy": round(_dy, 2)})
+            rig["deformers"].append(
+                {"id": "arm_%s_fore_long" % _side, "part": "arm_%s_fore" % _side,
+                 "cols": 2, "rows": 4,
+                 "note": "前臂折起时沿肘→腕轴线加长 %.0fpx（肘端 0、袖口满额，"
+                         "袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动"
+                         % FORE_LONG_PX,
+                 "points": _lpts})
 
     # —— 侧发/后发的网格形变器与摆链（A5 + G16）——
     # 侧发是两条“根在上、梢在下”的长条：r=0 是素材顶边（发根，固定），
