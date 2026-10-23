@@ -142,6 +142,7 @@
   },
   "look": {
     "speed": 9.0,
+    "overshoot": 0.3,
     "groups": {
       "head": {
         "rot_deg": 5.0,
@@ -151,7 +152,8 @@
       "chest": {
         "rot_deg": 1.2,
         "dx": 1.5,
-        "dy": 1.0
+        "dy": 1.0,
+        "lag_s": 0.1
       }
     }
   },

@@ -304,6 +304,13 @@ typedef struct {
 typedef struct {
     int    group;
     double rot, dx, dy;
+    /* 这一组比头**晚多少秒**跟上来。Live2D 官方《クオリティアップのヒント》
+       原话：「顔XYZと体XYZを慣性を意識してタイミングをずらす ——
+       顔と体がまったく同じタイミングで動くと、やはりロボットのように見えます」
+       （sites.google.com/cybernoids.jp/cubism2 → editor/animator/technic/quality-up）。
+       我们原先头和胸读的是**同一瞬间**的 look 值，正是那句话说的机器人。
+       0 = 不延迟，与改这段之前逐字节一致。 */
+    double lag;
 } zlook;
 
 /* ---------------- 命名参数层（对齐 Live2D 的 ParamXxx） ----------------
@@ -703,6 +710,24 @@ struct zrig {
     double look_blink_last;             /* 上次因转视线而眨眼的时刻（冷却用） */
     int    look_blink_init;
     double look_last;           /* 上次平滑的时刻 */
+
+    /* ── 反动/刹车（look_overshoot）──
+       同一篇官方技巧的另一条：「反動、ブレーキを付ける ——
+       人間はピタッと瞬時に動きをとめることができません」。
+       原来的 look_cx += (目标-当前)*k 是纯指数趋近：永远从一侧慢慢贴上去，
+       **到不了也冲不过**，所以停得过于干净，像机械臂落位。
+       改成阻尼弹簧后阻尼比 <1 会冲过一点再荡回来，就是"反动"。
+       overshoot=0 时走原来那条指数路径，逐字节一致。 */
+    double look_overshoot;      /* 0=不冲（纯指数，旧行为）；0.35 左右是自然的一点点 */
+    double look_vx, look_vy;    /* 弹簧速度 */
+    double look_acc;            /* 固定步长累加器（照 G113 物理那套，低帧率也不变形） */
+
+    /* ── 跟随历史环（给 zlook.lag 回读用）──
+       只存 x/y 两条，深度复用 ZRIG_LAG_SLOTS。和参数行波环**分开**：
+       那个环按 params_compose 的节奏写，这个要在 look 平滑之后立刻写。 */
+    int    lookh_used, lookh_fill, lookh_head;
+    double lookh_t[ZRIG_LAG_SLOTS];
+    double lookh_x[ZRIG_LAG_SLOTS], lookh_y[ZRIG_LAG_SLOTS];
 
     /* 眼球微动（マイクロサッカード）。人的眼球从来不会真的静止 ——
        cgbox「目の動きのクオリティアップ」原话：「人の眼球は静止していることはありません」，
@@ -2784,6 +2809,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         }
     }
     r->lag_head = -1;
+    r->lookh_head = -1;
     r->blink_imin = 2.0;
     r->blink_imax = 8.0;
     r->blink_rate = 1.0;
@@ -3229,6 +3255,7 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
             const zjson *gs = zjson_obj_get(lj, "groups");
             size_t i, n = zjson_count(gs);
             r->look_speed = zjson_num(zjson_obj_get(lj, "speed"), 9.0);
+            r->look_overshoot = zjson_num(zjson_obj_get(lj, "overshoot"), 0.0);
             if (r->look_speed <= 0.0) r->look_speed = 9.0;
             for (i = 0; i < n && r->nlooks < ZRIG_MAX_GROUPS; ++i) {
                 const char *gid = zjson_key_at(gs, i);
@@ -3243,6 +3270,8 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
                 r->looks[r->nlooks].rot = zjson_num(zjson_obj_get(ej, "rot_deg"), 0.0);
                 r->looks[r->nlooks].dx  = zjson_num(zjson_obj_get(ej, "dx"), 0.0);
                 r->looks[r->nlooks].dy  = zjson_num(zjson_obj_get(ej, "dy"), 0.0);
+                r->looks[r->nlooks].lag = zjson_num(zjson_obj_get(ej, "lag_s"), 0.0);
+                if (r->looks[r->nlooks].lag > 0.0) r->lookh_used = 1;
                 r->nlooks++;
             }
         }
@@ -3549,6 +3578,37 @@ static double lag_sample(const zrig *r, int pi, double want)
     return r->lag_v[pi][(h - (n - 1) + ZRIG_LAG_SLOTS * 2) % ZRIG_LAG_SLOTS];
 }
 
+/* 回读 want 时刻的跟随方向（zlook.lag 用）。体例照抄上面的 lag_sample：
+   线性插值、历史不够长时取最老一帧**不外推**（外推会在刚加载的头几帧甩出假峰）。 */
+static void lookh_sample(const zrig *r, double want, double *ox, double *oy)
+{
+    int n = r->lookh_fill, h = r->lookh_head, k;
+    if (h < 0) { *ox = r->look_cx; *oy = r->look_cy; return; }
+    if (n <= 1) { *ox = r->lookh_x[h]; *oy = r->lookh_y[h]; return; }
+    for (k = 0; k < n; ++k) {
+        int idx = (h - k + ZRIG_LAG_SLOTS * 2) % ZRIG_LAG_SLOTS;
+        if (r->lookh_t[idx] <= want) {
+            int nxt;
+            double t0, t1, u;
+            if (k == 0) { *ox = r->lookh_x[idx]; *oy = r->lookh_y[idx]; return; }
+            nxt = (idx + 1) % ZRIG_LAG_SLOTS;
+            t0 = r->lookh_t[idx];
+            t1 = r->lookh_t[nxt];
+            u = (t1 - t0 > 1e-9) ? (want - t0) / (t1 - t0) : 0.0;
+            if (u < 0.0) u = 0.0;
+            if (u > 1.0) u = 1.0;
+            *ox = r->lookh_x[idx] + (r->lookh_x[nxt] - r->lookh_x[idx]) * u;
+            *oy = r->lookh_y[idx] + (r->lookh_y[nxt] - r->lookh_y[idx]) * u;
+            return;
+        }
+    }
+    {
+        int old = (h - (n - 1) + ZRIG_LAG_SLOTS * 2) % ZRIG_LAG_SLOTS;
+        *ox = r->lookh_x[old];
+        *oy = r->lookh_y[old];
+    }
+}
+
 /* 自发抽动（tail_flick）：在动作通道之外，往摆动参数上叠一个**非周期**的脉冲。
    这是「桌宠自己操控尾巴」的那一半 —— 慢摆只是底噪，抽动才是它自己的决定。
    结构和自动眨眼同构：排一个将来的时刻，到点起一次，起完再排下一个。 */
@@ -3796,10 +3856,13 @@ static void compute_group_transforms(zrig *r)
            放在动作之后、物理之前：所以转头也会把头发甩起来。 */
         for (i = 0; i < r->nlooks; ++i) {
             const zlook *lk = &r->looks[i];
+            double glx = lx, gly = ly;
             if (lk->group < 0 || lk->group >= r->ngroups) continue;
-            r->g_rot[lk->group] += lk->rot * lx;
-            r->g_dx[lk->group]  += lk->dx  * lx;
-            r->g_dy[lk->group]  += lk->dy  * ly;
+            /* 带 lag 的组读**过去**的方向：头先转，身子后到。 */
+            if (lk->lag > 0.0) lookh_sample(r, r->now - lk->lag, &glx, &gly);
+            r->g_rot[lk->group] += lk->rot * glx;
+            r->g_dx[lk->group]  += lk->dx  * glx;
+            r->g_dy[lk->group]  += lk->dy  * gly;
         }
     }
 }
@@ -4555,9 +4618,52 @@ void zrig_tick(zrig *r, double now)
         r->look_last = now;
         if (dt < 0.0) dt = 0.0;
         if (dt > 0.25) dt = 0.25;
-        k = 1.0 - exp(-r->look_speed * dt);
-        r->look_cx += (r->look_x - r->look_cx) * k;
-        r->look_cy += (r->look_y - r->look_cy) * k;
+        if (r->look_overshoot <= 0.0) {
+            k = 1.0 - exp(-r->look_speed * dt);
+            r->look_cx += (r->look_x - r->look_cx) * k;
+            r->look_cy += (r->look_y - r->look_cy) * k;
+        } else {
+            /* 阻尼弹簧：ζ<1 ⇒ 冲过去一点再荡回来 = 官方说的"反动/刹车"。
+               固定 1/60 步长 + 累加器，理由同 G113 的物理积分：
+               整帧 dt 单步积分在低帧率下会过冲到失真，而我们恰恰可能跑在 10fps 的
+               预览里。步长固定后，10fps 和 60fps 出来的曲线一致。 */
+            const double H = 1.0 / 60.0;
+            double zeta = 1.0 - ZC_CLAMP(r->look_overshoot, 0.0, 0.95);
+            double w = r->look_speed;       /* 固有角频率沿用原来的"跟手速度" */
+            int guard = 0;
+            r->look_acc += dt;
+            if (r->look_acc > 0.5) r->look_acc = 0.5;   /* 卡顿后不追补几百步 */
+            while (r->look_acc >= H && guard++ < 64) {
+                double ax = w * w * (r->look_x - r->look_cx) - 2.0 * zeta * w * r->look_vx;
+                double ay = w * w * (r->look_y - r->look_cy) - 2.0 * zeta * w * r->look_vy;
+                r->look_vx += ax * H;
+                r->look_vy += ay * H;
+                r->look_cx += r->look_vx * H;
+                r->look_cy += r->look_vy * H;
+                r->look_acc -= H;
+            }
+        }
+
+        /* 写跟随历史环。★ 只在时钟真往前走了才占新槽 —— /api/pause 的契约要求
+           「同一时间戳重复 tick 必须逐字节相同」，每 tick 都推进会让暂停期间
+           历史被同一个值灌满，lag 组于是慢慢"追上"头，画面在暂停中偷偷变化。 */
+        if (r->lookh_used) {
+            int fresh = 1;
+            if (r->lookh_fill > 0 && r->lookh_head >= 0) {
+                if (now < r->lookh_t[r->lookh_head]) r->lookh_fill = 0;       /* 时钟倒流：丢历史 */
+                else if (now <= r->lookh_t[r->lookh_head]) fresh = 0;
+            }
+            if (fresh) {
+                r->lookh_head = (r->lookh_head + 1) % ZRIG_LAG_SLOTS;
+                r->lookh_t[r->lookh_head] = now;
+                r->lookh_x[r->lookh_head] = r->look_cx;
+                r->lookh_y[r->lookh_head] = r->look_cy;
+                if (r->lookh_fill < ZRIG_LAG_SLOTS) r->lookh_fill++;
+            } else {
+                r->lookh_x[r->lookh_head] = r->look_cx;
+                r->lookh_y[r->lookh_head] = r->look_cy;
+            }
+        }
 
         /* 转脸 / 换视线时带一次眨眼。
            Live2D 官方《提高动态质量的技巧》第 4 条原话：

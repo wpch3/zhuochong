@@ -7247,6 +7247,74 @@ static void test_phys2(void)
     }
 }
 
+/* T63.1：头身错时 + 反动刹车。
+   判据直接抄 Live2D 官方《クオリティアップのヒント》两条：
+     ①「顔XYZと体XYZを慣性を意識してタイミングをずらす
+         —— 顔と体がまったく同じタイミングで動くと、やはりロボットのように見えます」
+     ②「反動、ブレーキを付ける —— 人間はピタッと瞬時に動きをとめることができません」
+   在这之前头和胸读的是同一瞬间的跟随值，纯指数趋近也永远冲不过目标。 */
+static void test_look_follow_lag(void)
+{
+    SECTION("T63.1：身子比头晚到（慣性）+ 跟随会冲过再回弹（反動）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        int i;
+        double t = 1000.0;
+        double hx[200], cx[200], lk[200];
+        double hf, cf, ht = -1.0, ct = -1.0, ovr = 0.0;
+        const int N = 90;
+
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "rig 能加载");
+        if (!r) return;
+
+        zrig_look(r, 0.0, 0.0);
+        for (i = 0; i < 120; ++i) { t += 1.0 / 60.0; zrig_tick(r, t); }
+        zrig_look(r, 1.0, 0.0);
+        for (i = 0; i < N; ++i) {
+            t += 1.0 / 60.0;
+            zrig_tick(r, t);
+            hx[i] = zrig_group_offset_x(r, "head");
+            cx[i] = zrig_group_offset_x(r, "chest");
+            lk[i] = zrig_look_x(r);
+        }
+        hf = hx[N - 1];
+        cf = cx[N - 1];
+        /* 用半高时刻比先后，不用峰值时刻：head 是 chest 的子组，它的位移里
+           **含着 chest 那一份**，而那一份是延迟的，会把 head 的峰值一起往后拖，
+           两个峰于是撞在同一帧，看上去像"没有延迟"。探针第一版就这么误报过。 */
+        for (i = 0; i < N; ++i) {
+            if (ht < 0.0 && fabs(hx[i]) >= fabs(hf) * 0.5) ht = i * 1000.0 / 60.0;
+            if (ct < 0.0 && fabs(cx[i]) >= fabs(cf) * 0.5) ct = i * 1000.0 / 60.0;
+            if (fabs(lk[i]) > ovr) ovr = fabs(lk[i]);
+        }
+        CHECK(ht > 0.0 && ct > 0.0, "头和胸都动起来了");
+        CHECK(ct - ht > 20.0,
+              "★ 身子比头晚到 20ms 以上（同时动 = 官方说的机器人）");
+        CHECK(ovr > 1.005,
+              "★ 跟随量冲过稳态（纯指数趋近永远冲不过 = 停得太干净）");
+        /* 冲过头也不行：果冻感。官方说的是"反動"不是"弹簧玩具"。 */
+        CHECK(ovr < 1.25, "冲过的幅度有节制，不是果冻");
+
+        /* 暂停契约：同一时间戳重复 tick 必须幂等。历史环每 tick 都推进的话，
+           暂停期间 lag 组会偷偷"追上"头，画面在暂停中继续变化。 */
+        {
+            double a = zrig_group_offset_x(r, "chest");
+            double b;
+            zrig_tick(r, t);
+            zrig_tick(r, t);
+            b = zrig_group_offset_x(r, "chest");
+            CHECK(fabs(a - b) < 1e-9, "★ 同一时刻重复 tick，延迟组不动（暂停契约）");
+        }
+        zrig_free(r);
+    }
+}
+
 static void test_micro_expression(void)
 {
     SECTION("微表情通道：眨眼随情绪漂移 + 单边嘴角 ParamMouthX（T44.2）");
@@ -7408,6 +7476,7 @@ int main(int argc, char **argv)
     test_sparkle_trigger();
     test_eye_variants();
     test_micro_expression();
+    test_look_follow_lag();
     test_phys2();
     test_phys2_rig();
     test_eye_aperture();
