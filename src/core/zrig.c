@@ -211,6 +211,12 @@ typedef struct {
     double blink_hold;        /* 0..1：这个动作期间眼睛闭合到几成（<0 = 不管） */
     double fade;              /* 秒：淡入这个动作要多久（Live2D 的 FadeInTime） */
     double fade_out;          /* 秒：非循环动作在**结束前**自己淡出的时长（Live2D 的 FadeOutTime） */
+    /* 切到这个动作时顺手点一次自发抽动，值 = 参数名前缀（"ParamEar"/"ParamAccTail"）。
+       为什么不直接在动作通道里写摆动参数：那会违反 T45.9 的红线
+       「摆动参数只能挂 ambient，挂进动作后一换待机动作就停」，而且会把
+       抽动的幅度叠在摆动值域之外被 clamp 削平（T45.2f 栽过的坑）。
+       让动作去**触发既有机制**，比让动作自己画一遍要稳得多。 */
+    char   flick_pre[32];
 } zaction;
 
 /* 物理摆动（Live2D physics 的最小可用版）：
@@ -2662,6 +2668,8 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
         /* fade：从上一个动作淡入到这个动作要多久。0 = 立刻切（锤子这种打击感要的就是硬切）。
            默认 0.22s —— 比 Live2D 默认的 0.5s 短，桌宠的反馈要更跟手。 */
         a->fade = zjson_num(zjson_obj_get(aj, "fade"), 0.22);
+        z_strlcpy(a->flick_pre, zjson_str(zjson_obj_get(aj, "flick_trigger"), ""),
+                  sizeof(a->flick_pre));
         /* FadeOutTime：官方每个 motion 自带，非循环动作快演完时按
            getEasingSine((结束时刻 − 现在) / FadeOutTime) 自己收尾。
            以前我们是在 W_PULSE 波形里硬写"结束前 0.15 秒乘个衰减"，
@@ -4597,6 +4605,27 @@ void zrig_blink_force(zrig *r, int mode)
     r->blink_forced = (mode > 0) ? 1 : -1;
 }
 
+/* 手动点一次抽动（「抖耳朵」「甩尾巴」这类点播动作用）。
+   ★ 刻意**不另开一套播放逻辑**：只是把排班表上的 next_t 拨到当下，
+     剩下的交给 accumulate_tail_flick 原样处理。好处是点出来的那一下
+     和它自己抖的那一下**走的是同一段代码** —— 力度/时长/方向照样每次都抖，
+     不会出现"手动的很整齐、自发的很随机"这种一眼假。
+   prefix = 参数名前缀（"ParamEar" / "ParamAccTail"）；NULL = 全部。 */
+void zrig_flick_trigger(zrig *r, const char *prefix)
+{
+    int k;
+    if (!r || r->flick_off || r->flick_amp <= 0.0) return;
+    for (k = 0; k < r->nflick_param; ++k) {
+        int pi = r->flick_param[k];
+        if (pi < 0 || pi >= r->nparams) continue;
+        if (prefix && *prefix && strncmp(r->params[pi].id, prefix, strlen(prefix)) != 0)
+            continue;
+        /* 正在抖的那条不要打断 —— 连点两下不该让它卡在半路重来。 */
+        if (r->flick_st[k].t0 >= 0.0) continue;
+        r->flick_st[k].next_t = r->now;
+    }
+}
+
 void zrig_blink_trigger(zrig *r)
 {
     if (!r) return;
@@ -4631,6 +4660,8 @@ void zrig_tick(zrig *r, double now)
             }
         }
         z_strlcpy(r->cur_id, cur, sizeof(r->cur_id));
+        if (newi >= 0 && newi < r->nactions && r->actions[newi].flick_pre[0])
+            zrig_flick_trigger(r, r->actions[newi].flick_pre);
     }
     r->cur_t0 = entered;
 

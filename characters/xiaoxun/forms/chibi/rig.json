@@ -2204,6 +2204,44 @@
         }
       ],
       "title": "踮脚"
+    },
+    {
+      "id": "ear_twitch",
+      "priority": 6,
+      "duration": 0.6,
+      "fade": 0.05,
+      "return_state": "idle",
+      "flick_trigger": "ParamEar",
+      "note": "抖耳朵。decay = 急出缓回的阻尼振荡，和 tail_flick 自发抽动同一个形（exp 包络 × 正弦），所以点出来的和自己抖的看着是**同一只猫**。左右**故意错开**：真猫一只一只地抖，两只同时等幅抖是机械玩具。右耳 dur 短一点、幅度小一点，freq 也差一档，叠在一起不会出现对称的节拍。",
+      "channels": [
+        {
+          "target": "ParamAngleZ",
+          "wave": "decay",
+          "amp": 1.4,
+          "freq": 2.2,
+          "dur": 0.7
+        }
+      ],
+      "title": "抖耳朵"
+    },
+    {
+      "id": "tail_swish",
+      "priority": 6,
+      "duration": 0.9,
+      "fade": 0.08,
+      "return_state": "idle",
+      "flick_trigger": "ParamAccTail",
+      "note": "甩尾巴。四种尾巴姿态只有挂着的那个可见，所以四条都写上；幅度系数照抄 tail_flick 的 flick_scale —— 四种姿态的 root_rot_deg 差 14 倍，同一个 amp 会让竖起的尾巴甩出半个屏幕。",
+      "channels": [
+        {
+          "target": "ParamAngleZ",
+          "wave": "decay",
+          "amp": 0.8,
+          "freq": 1.5,
+          "dur": 1.2
+        }
+      ],
+      "title": "甩尾巴"
     }
   ],
   "deformers": [

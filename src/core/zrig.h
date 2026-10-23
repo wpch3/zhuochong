@@ -308,6 +308,9 @@ int    zrig_blink_mood_count(const zrig *r);
 void  zrig_blink_force(zrig *r, int mode);   /* >0 强制闭眼；<=0 交回自动 */
 /* 立即触发一次眨眼（用于交互反馈，如被锤击） */
 void  zrig_blink_trigger(zrig *r);
+/* 手动点一次自发抽动（抖耳朵/甩尾巴这类点播动作用）。prefix = 参数名前缀，NULL = 全部。
+   走的是和自发抽动**同一段代码**，所以点出来的和它自己抖的是同一只猫。 */
+void  zrig_flick_trigger(zrig *r, const char *prefix);
 
 /* --------------------------------------------------------------- 诊断 */
 /* 把当前 rig 摘要写成一行（日志用） */

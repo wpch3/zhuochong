@@ -32,6 +32,7 @@ ACTION_TITLES = {
     "wave": "挥手", "wave_both": "双手挥", "heart_hands": "比心",
     "kirara_jump": "蹦一下", "look_around": "张望", "star_eyes": "星星眼",
     "shift_weight": "换重心", "tiptoe": "踮脚",
+    "ear_twitch": "抖耳朵", "tail_swish": "甩尾巴",
 }
 
 
@@ -1382,6 +1383,15 @@ def attach_emit(rig, base, base_root):
                      "没有两下是一样的。查不到的情绪不动，和另外四张情绪表同口径。"
                      "scale 和 params 同序，是每条参数自己的力度系数。",
         }
+
+    # 「抖耳朵 / 甩尾巴」不在这里注入通道 —— 它们靠 action.flick_trigger
+    # 去点既有的自发抽动机制（见动作定义处的说明）。
+    # 但要确认：角色真有这些挂件时按钮才该存在，否则点了没反应比没按钮更糟。
+    _fl = set(rig.get("tail_flick", {}).get("params", []))
+    _need = {"ear_twitch": "ParamEar", "tail_swish": "ParamAccTail"}
+    rig["actions"] = [a for a in rig.get("actions", [])
+                      if a.get("id") not in _need
+                      or any(x.startswith(_need[a["id"]]) for x in _fl)]
 
 
 def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
@@ -3141,6 +3151,45 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                   "dur": 0.8},
                  {"target": "ParamHairAhoge", "wave": "bounce", "amp": 0.6, "dur": 1.0},
                  {"target": "ParamHairSide", "wave": "bounce", "amp": 0.4, "dur": 1.0},
+             ]},
+
+            # ── 兽耳 / 尾巴的「点播」动作（T63.2，用户 2026-10-24 点名）──
+            # 为什么要有：耳朵抖和尾巴甩平时都是**自发**的（tail_flick 排班，
+            # neutral 情绪下 5~14 秒才一次）。想确认"到底会不会动"，盯着屏幕
+            # 等十几秒还不一定撞上 —— 修好了也看不出来，坏了也发现不了。
+            # 给一个能主动点的按钮，就从"等它发生"变成"让它发生"。
+            # 这不只是测试工具：命令她抖抖耳朵本来就该是产品里的一个动作。
+            # fade 0.05：抽动的峰值落在**第 72 毫秒**，而默认淡入是 220 毫秒 ——
+            # 等淡入走完，这一下早抖完了，实测峰值被削掉 3.2 倍（0.528 → 0.167）。
+            # 这跟 tiptoe 那条注释是同一个坑：**短促动作的峰值不能比淡入还早**。
+            # 抽动本来就该是"啪"的一下，淡入给 0.05 秒就够接住，不会有突变感。
+            {"id": "ear_twitch", "priority": 6, "duration": 0.6, "fade": 0.05,
+             "return_state": "idle", "flick_trigger": "ParamEar",
+             "note": "抖耳朵。decay = 急出缓回的阻尼振荡，和 tail_flick 自发抽动"
+                     "同一个形（exp 包络 × 正弦），所以点出来的和自己抖的看着是"
+                     "**同一只猫**。左右**故意错开**：真猫一只一只地抖，"
+                     "两只同时等幅抖是机械玩具。右耳 dur 短一点、幅度小一点，"
+                     "freq 也差一档，叠在一起不会出现对称的节拍。",
+             # ★ 耳朵**不由这个动作的通道去画**，而是 flick_trigger 点一下
+             #   既有的自发抽动机制。三个理由：
+             #   ① 兽耳是可选挂件（"每种可一键关"），没挂猫耳时参数根本不存在；
+             #   ② 摆动参数写进动作通道会违反 T45.9 红线（一换待机动作就停）；
+             #   ③ 点出来的那一下和它自己抖的**走同一段代码**，不会一眼假。
+             "channels": [
+                 # 抖耳朵时头会跟着微微一动 —— 官方《クオリティアップのヒント》：
+                 # 局部动而身体完全不动，看着就是贴图在动，不是生物在动。
+                 {"target": "ParamAngleZ", "wave": "decay", "amp": 1.4,
+                  "freq": 2.2, "dur": 0.7},
+             ]},
+            {"id": "tail_swish", "priority": 6, "duration": 0.9, "fade": 0.08,
+             "return_state": "idle", "flick_trigger": "ParamAccTail",
+             "note": "甩尾巴。四种尾巴姿态只有挂着的那个可见，所以四条都写上；"
+                     "幅度系数照抄 tail_flick 的 flick_scale —— 四种姿态的 "
+                     "root_rot_deg 差 14 倍，同一个 amp 会让竖起的尾巴甩出半个屏幕。",
+             # 同上：尾巴交给 flick_trigger，不在动作通道里写摆动参数。
+             "channels": [
+                 {"target": "ParamAngleZ", "wave": "decay", "amp": 0.8,
+                  "freq": 1.5, "dur": 1.2},
              ]},
         ]
 

@@ -7305,6 +7305,112 @@ static void test_ear_twitch(void)
     }
 }
 
+/* T63.2：「抖耳朵 / 甩尾巴」两个点播动作必须真的让对应参数动起来。
+   这两个动作是用户点名要的 —— 自发抽动 5~14 秒才一次，盯着屏幕等不到，
+   修好了也看不出来、坏了也发现不了。所以必须有个能主动点的。
+
+   ★ 实现上它们**不自己画**，而是用 action.flick_trigger 去点既有的自发抽动。
+     第一版是在动作通道里直接写摆动参数，被三道闸同时判红，每一条都成立：
+       ① T45.9「摆动参数只能挂 ambient」—— 挂进动作后一换待机动作就停；
+       ② 幅度叠出参数值域被 clamp 悄悄削平（T45.2f 栽过的坑）；
+       ③ 动作声明时长比通道长，结尾空转。
+     让动作去**触发既有机制**，三条一起消失，而且点出来的和它自己抖的
+     走同一段代码 —— 不会出现"手动的很整齐、自发的很随机"这种一眼假。 */
+static void test_point_play_beast_actions(void)
+{
+    SECTION("T63.2：抖耳朵 / 甩尾巴 两个点播动作真的能把参数带起来");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        int k;
+        /* jump = 按下后 3 帧内至少要跳这么多才算"是按钮干的"。
+           耳朵静止时恒等于 0（它只有抽动，没有 ambient），所以等到静止后阈值可以贴着 0；
+           尾巴**一直在 ambient 里慢摆**，根本没有"静止"可言，阈值必须高过底噪。
+           底噪是量出来的，不是拍的：十分钟一次不按，36000 个 3 帧窗口里，
+           尾巴跳过 0.30 的占 1.38%、耳朵跳过 0.002 的占 17.1%（且多半是抽到一半）。
+           要求 5 次按压**次次**都在 3 帧内响应，自发撞上的概率 ~5e-10 / ~1e-4。 */
+        struct { const char *act, *pa, *pb; double jump; int quiet; } cases[] = {
+            { "ear_twitch", "ParamEarLAngle", "ParamEarRAngle", 0.002, 1 },
+            { "tail_swish", "ParamAccTailRelaxedSwing", "ParamAccTailTuckSwing", 0.30, 0 },
+        };
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "rig 能加载");
+        if (!r) return;
+
+        /* ★★ 判据必须是「**按下后多快有反应**」，不能是「有没有动过」。
+           第一版写的是"连点 5 次，跨度 > 阈值"—— 负控把 flick_trigger 整个拆掉，
+           测试**依然全绿**：因为自发抽动 5~14 秒就会自己来一次，而测试在
+           5 次按压之间总共跑了十几秒，量到的全是它自己抖的，跟按钮毫无关系。
+           （又一次印证：拆掉防线还绿 = 断言没牙。）
+           真正只有"按下去"才能解释的现象是**延迟**：触发把排班表拨到当下，
+           下一帧就起；自发的那一下落在哪一帧是随机的。
+           所以改成：先等到完全静止，再按，然后要求 3 帧内必须有反应。 */
+        for (k = 0; k < 2; ++k) {
+            double t = 2000.0 + k * 500.0;
+            int rep, ok_fast = 0;
+            for (rep = 0; rep < 5; ++rep) {
+                int i, quiet = 0;
+                double ba, bb, peak = 0.0;
+                /* 等一个真正安静的时刻：连续 20 帧都贴着 0 */
+                for (i = 0; i < 3000 && quiet < 20; ++i) {
+                    t += 1.0 / 60.0;
+                    zrig_tick(r, t);
+                    if (!cases[k].quiet) { if (i >= 110) break; continue; }
+                    if (fabs(zrig_param_effective(r, cases[k].pa)) < 1e-4 &&
+                        fabs(zrig_param_effective(r, cases[k].pb)) < 1e-4) quiet++;
+                    else quiet = 0;
+                }
+                /* ★ 必须**先相减再取绝对值**。写成 |a|+|b| 再减基线，
+                   两条参数一正一反就会互相抵消，明明动了却量成 0。 */
+                ba = zrig_param_effective(r, cases[k].pa);
+                bb = zrig_param_effective(r, cases[k].pb);
+                zrig_action_request(r, cases[k].act, "test", 1);
+                for (i = 0; i < 3; ++i) {         /* 只给 3 帧 = 50 毫秒 */
+                    double v;
+                    t += 1.0 / 60.0;
+                    zrig_tick(r, t);
+                    v = fabs(zrig_param_effective(r, cases[k].pa) - ba)
+                      + fabs(zrig_param_effective(r, cases[k].pb) - bb);
+                    if (v > peak) peak = v;
+                }
+                if (peak > cases[k].jump) ok_fast++;
+            }
+            CHECK(ok_fast == 5,
+                  "★ %s：静止时按下去，5 次都在 3 帧内有反应（实到 %d/5）",
+                  cases[k].act, ok_fast);
+        }
+
+        /* 每一下的力度都不该一样 —— 等幅重复就是节拍器，不是动物。
+           这条正是 tail_flick 当初立项的理由（定频定幅正弦 60 秒 12 个峰，
+           幅度标准差 0.000015°）。 */
+        {
+            double t = 6000.0, pk[6];
+            int rep, i, differ = 0;
+            for (rep = 0; rep < 6; ++rep) {
+                double mx = 0.0;
+                for (i = 0; i < 120; ++i) { t += 1.0 / 60.0; zrig_tick(r, t); }
+                zrig_action_request(r, "ear_twitch", "test", 1);
+                for (i = 0; i < 90; ++i) {
+                    double v;
+                    t += 1.0 / 60.0;
+                    zrig_tick(r, t);
+                    v = fabs(zrig_param_effective(r, "ParamEarLAngle"));
+                    if (v > mx) mx = v;
+                }
+                pk[rep] = mx;
+            }
+            for (i = 1; i < 6; ++i)
+                if (fabs(pk[i] - pk[0]) > 0.01) differ = 1;
+            CHECK(differ, "★ 每次抖的力度不一样（等幅重复 = 节拍器不是猫）");
+        }
+        zrig_free(r);
+    }
+}
+
 /* ambient 是无限循环，塞一次性波形进去必然卡住。这条验的是**引擎会不会拦**。 */
 static void test_ambient_rejects_oneshot(void)
 {
@@ -7562,6 +7668,7 @@ int main(int argc, char **argv)
     test_look_follow_lag();
     test_ear_twitch();
     test_ambient_rejects_oneshot();
+    test_point_play_beast_actions();
     test_phys2();
     test_phys2_rig();
     test_eye_aperture();
