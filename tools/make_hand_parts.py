@@ -109,7 +109,7 @@ def wrist_line(al):
     return (x0 + x1) * 0.5, float(by), float(best)
 
 
-def load_pose(path, target_len):
+def load_pose(path, target_len, line_gain=0.58, line_inner=0.16, width_fac=1.0):
     """生图 → 键出 → 按**手长**定标 → 压回描边 → 旋 180°（腕口朝上）→ 裁掉腕线
     以下的小臂 → 返回 (RGBA, 腕中心在图中的 (x, y))。
 
@@ -137,23 +137,42 @@ def load_pose(path, target_len):
     ys, xs = np.nonzero(al > 40)
     reach = float(np.hypot(xs - cx, ys - cy).max())
     s = target_len / max(1.0, reach)
-    nw, nh = max(1, int(round(im.width * s))), max(1, int(round(im.height * s)))
+    # ★★★ width_fac：只压**横向**，用来把生图那只「方墩墩的大手掌」收窄。
+    #   第五十三问量的：参考模板 wave_up.png 里那只挥手的手是 101×80 rig px，
+    #   长宽比 1.27（修长）；我们的生图手 90×86，长宽比只有 1.05 —— 掌面又宽
+    #   又方、手指又短又粗。用户原话「这次手掌有些难看了」说的就是这个。
+    #   横向 0.9 左右 + 纵向拉到参考的手长，手指会同时变细变长。
+    sx, sy = s * width_fac, s
+    nw, nh = max(1, int(round(im.width * sx))), max(1, int(round(im.height * sy)))
 
     # 线掩膜：先在原分辨率上按最大值膨胀到「约 1 个目标像素宽」，再降采样。
     # 不膨胀直接 resize 等于把线平均掉；膨胀后再 LANCZOS 仍是抗锯齿的软边。
+    # ★★★ 膨胀**只做一轮**。第五十二问第一版做了两轮，线粗了一倍，实测
+    #   lum<140 的暗像素占到 18.4% —— 原画手只有 7.2%，参考模板的挥手手
+    #   更是只有 0.2%。用户原话「这次手掌有些难看了」。
     k = max(1, min(9, int(round(1.0 / max(s, 1e-6))) | 1))
     tm = Image.fromarray((tline * 255.0).astype(np.uint8), "L")
-    for _ in range(2):
-        tm = tm.filter(ImageFilter.MaxFilter(k))
+    tm = tm.filter(ImageFilter.MaxFilter(k))
     tm = np.asarray(tm.resize((nw, nh), Image.LANCZOS)).astype(np.float32) / 255.0
 
     im = im.resize((nw, nh), Image.LANCZOS)
     b = np.asarray(im).astype(np.float32)
-    t2 = np.clip(tm, 0.0, 1.0)[:, :, None]
+
+    # ★★★ 轮廓线和掌纹要分开给权重。
+    #   参考模板 characters/xiaoxun/design/pose_ref/wave_up.png 里那只挥手的手：
+    #   外轮廓是一条**很浅的暖褐细线**，掌心**一条褶子都没有**。
+    #   我们的生图自带掌纹、指节线、拇指内侧线，等比压暗之后掌心就成了一团
+    #   深色乱画 —— 这正是「手掌难看」的来源，不是手的形状问题。
+    #   所以：贴着剪影的那一圈按 line_gain 给，里面的线按 line_inner 给（更淡）。
+    solid = (b[:, :, 3] > 100).astype(np.uint8) * 255
+    inner = np.asarray(Image.fromarray(solid, "L").filter(ImageFilter.MinFilter(5)))
+    band = (solid > 0) & (inner == 0)          # 剪影内缘 2px 的一圈
+    wgt = np.where(band, line_gain, line_inner).astype(np.float32)
+    t2 = np.clip(tm * wgt, 0.0, 1.0)[:, :, None]
     line = np.array(LINE, dtype=np.float32).reshape(1, 1, 3)
     im = Image.fromarray(np.dstack([b[:, :, :3] * (1.0 - t2) + line * t2,
                                     b[:, :, 3]]).astype(np.uint8), "RGBA")
-    cx, cy = cx * s, cy * s
+    cx, cy = cx * sx, cy * sy
     # 腕线以下的小臂不要（袖子自己会画），留 6px 塞进袖口里当塗り足し
     keep = int(min(nh, cy + 6))
     im = im.crop((0, 0, nw, keep))
@@ -298,6 +317,20 @@ def main():
                          "实测只有 75.2）改成 90：原画切出来的放松手量得 81.6，"
                          "而放松手本身还比原画小 10%%（IoU 配准 1.12 倍）⇒ 四档手"
                          "统一做到 ~90。改之前先读 load_pose 的注释")
+    ap.add_argument("--hand-width", type=float, default=1.00, dest="hand_width",
+                    help="手的**横向**压缩系数（只压宽、不压长）。默认 1.0＝不压。"
+                         "量过了：参考模板 wave_up 那只挥手的手 腕→指尖 101 x 墨迹宽 85 rig px "
+                         "（长宽比 1.19），我们的手 90 x 70（1.29）—— 我们本来就比参考更修长，"
+                         "不需要收窄。留这个旋钮是因为换角色/换生图时可能要用。"
+                         "**量长宽比必须用墨迹 bbox，不能用文件尺寸**：文件带 PAD=8 的透明边，"
+                         "第五十三问一开始就是拿 86x109 的文件尺寸去比，比出个假的「1.05 方手掌」")
+    ap.add_argument("--line-gain", type=float, default=0.58, dest="line_gain",
+                    help="**外轮廓**描边压回去的强度。判据是暗像素占比（lum<140）："
+                         "原画 design_sheet 的手 7.2%%，参考模板 wave_up 的挥手手 0.2%%。"
+                         "调之前先读 load_pose 里那段注释")
+    ap.add_argument("--line-inner", type=float, default=0.16, dest="line_inner",
+                    help="**掌纹/指节线**（剪影内部的线）的强度，必须明显低于 --line-gain。"
+                         "两者一样大 = 掌心糊成一团深色乱画（第五十二问第一版就是这样）")
     ap.add_argument("--relax-scale", type=float, default=1.10, dest="relax_scale",
                     help="原画切件（放松手）放大倍数。1.10 = 量出来的：切件 ÷ 原画 "
                          "= 1/1.12，再折算 rig/sheet 的 1.7%% 全局尺度差")
@@ -373,7 +406,10 @@ def main():
         # ---- ② 生图差分档 ----
         for pose in POSES:
             raw = os.path.join(design, f"hand_{pose}_raw.png")
-            im, (wx, wy) = load_pose(raw, target_len=args.hand_len * 2)  # 2× 画布上量
+            im, (wx, wy) = load_pose(raw, target_len=args.hand_len * 2,          # 2× 画布上量
+                                      line_gain=args.line_gain,
+                                      line_inner=args.line_inner,
+                                      width_fac=args.hand_width)
             if side == "l":
                 im = im.transpose(Image.FLIP_LEFT_RIGHT)
                 wx = (im.width - 1) - wx

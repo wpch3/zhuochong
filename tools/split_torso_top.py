@@ -91,7 +91,7 @@ PATCH_ID = "torso_top_patch"    # ②重画的衣领顶边：只补"真会破洞
 SRC_ID = "seg_torso"
 LAYER = 99                      # seg_torso 是 100，压在它正下方
 PATCH_LAYER = 98                # 再低一层，两件同时在场时不互相抢
-SIG_V = 10
+SIG_V = 11
 
 
 def _flood_outside(op, np):
@@ -235,6 +235,9 @@ def main():
                          "（1.35 在下巴两侧留了一片看得见的青雾，q48_gamma_ab.png）")
     ap.add_argument("--need-pad", type=int, default=6, dest="need_pad",
                     help="need 掩膜向外扩张的像素（1x），0 = 不限制（整条重画）")
+    ap.add_argument("--seam-overlap", type=int, default=3, dest="seam_overlap",
+                    help="顶条往下**多延**多少行（1x）压在 seg_torso 底下当のりしろ。"
+                         "0 = 和躯干对切（第五十三问之前就是 0，脖子上会裂 1px 白缝）")
     ap.add_argument("--rows", type=int, default=0,
                     help="顶部多少行（1x）搬走；0 = 用 body_parts.json 的 overlap_px")
     ap.add_argument("--force", action="store_true")
@@ -252,7 +255,7 @@ def main():
         return 0
 
     sig = {"v": SIG_V, "rows": a.rows, "src": a.src, "gamma": a.gamma,
-           "smooth": a.smooth, "need_pad": a.need_pad}
+           "smooth": a.smooth, "need_pad": a.need_pad, "seam": a.seam_overlap}
     if not a.force and meta.get("torso_top_split", {}).get("sig") == sig:
         if not a.quiet:
             print("[顶条拆件] 签名未变，跳过（--force 强制重做）")
@@ -277,6 +280,7 @@ def main():
         print("[顶条拆件] body_parts.json 没有 overlap_px，又没给 --rows，跳过")
         return 0
     band = rows * K
+    seam = max(0, a.seam_overlap) * K
     strip = A.copy()
     strip[band:] = False
 
@@ -357,9 +361,40 @@ def main():
                   Image.LANCZOS).save(os.path.join(sprites, pid + ".png"))
         return (x0 // K, y0 // K), (cr.width // K, cr.height // K), int(m.sum())
 
+    def with_seam(band_rgba, nm_ext=None):
+        """把一条 band 往下**多延 seam 行**，内容照抄躯干原件。
+
+        ★★★ 第五十三问：这两件和 seg_torso 原来是**对切**的 ——
+            torso_top_fill/patch = 第 [0, band) 行，seg_torso = 第 [band, H) 行，
+            一行不重、一行不漏。看起来很干净，实际是个 bug：
+            两件各自带着自己的变换去采样，接缝那一行两边都只拿到**部分 alpha**，
+            合成起来 1-(1-a)(1-b) < 1 —— 于是脖子上裂开一条 1px 的透明缝。
+            实拍：kirara_jump@60 帧 y=192 整行 alpha 掉到 66（上下两行 250），
+            白底上就是一条横贯脖子和鬓发梢的白线，像被砍了一刀。
+            idle / nod / happy / wave_both / surprised 也都在 y=188~194 复现过，
+            因为呼吸让 chest 带着亚像素偏移来回飘。
+
+            修法就是美术上最老实的那条：**别对切，给のりしろ**。
+            这几行层序 98/99 < seg_torso 100，平时整条压在躯干底下看不见，
+            只有缝裂开的那一行才顶上来补位。
+
+            只在躯干**完全不透明**（alpha≥250）的像素上留这几行：
+            剪影边缘的半透明像素如果也叠一层，轮廓会被加粗一点点
+            （composite 0.5 → 0.75），那属于「为了修缝把图改胖」，不干。
+        """
+        if seam <= 0 or band + seam > H:
+            return band_rgba
+        ext = arr[band:band + seam].copy()
+        ext[..., 3] = np.where(ext[..., 3] >= 250, 255, 0)
+        if nm_ext is not None:
+            ext[..., 3] = np.where(nm_ext, ext[..., 3], 0)
+        return np.concatenate([band_rgba, ext], axis=0)
+
     orig_band = np.array(im)[:band].copy()            # ①原封不动的塗り足し
-    got_fill = save_piece(orig_band, NEW_ID)
-    got_patch = save_piece(patch, PATCH_ID)
+    got_fill = save_piece(with_seam(orig_band), NEW_ID)
+    got_patch = save_piece(
+        with_seam(patch, nm[band:band + seam] if nm is not None else None),
+        PATCH_ID)
     if got_fill is None:
         print("[顶条拆件] 顶条几乎没有料，跳过")
         return 0
