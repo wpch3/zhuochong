@@ -57,6 +57,19 @@
    躯干下面那几行早被 20/20b/25c 三步清过残渣，是干净的衣领。
    重画之后这条件在任何发型下都能**一直显示**，不需要 hide，也就没有洞。
 
+★★★ 第四轮（SIG_V=10）：重画还要**限制在"真的会破洞"的那几列**。
+   第三版（SIG_V=9）把整条 133px 宽的顶条都重画了，8× 实拍
+   （logs/asset_qa/q48_neck_zoom8.png 第 2/3 格）看到下巴两侧**一片青色雾扇**：
+   那是衣领的青色被竖着拉到了"本来就该是背景"的地方 —— 鬓发撤走之后，
+   下巴外侧就是空气，不是衣服。往背景该在的地方糊东西，正是自己写在
+   LESSONS 里禁止的那种"把图做丑"的修法。
+   真正需要补的只有**被剪影围住的那一小片**（下巴底 ↔ 衣领顶之间）。
+   所以这一版先算一张 need 掩膜：拿当前 rig.json 把每个发型档**在没有
+   torso_top_fill 的情况下**合成一遍，从画布四边洪泛，取"被围住的透明像素"
+   并集，再向外扩 --need-pad 像素当のりしろ，最后只在这张掩膜内重画。
+   掩膜外一律保持原件的 alpha（短发档那条塗り足し一点没少）。
+   没有 rig.json 时（第一次全量重建）退回整条重画并打印提醒。
+
 幂等：原件备份在 sprites/_orig/split_torso_top/，每次从备份重切。
 
 用法：
@@ -73,10 +86,139 @@ import numpy as np
 
 from PIL import Image
 
-NEW_ID = "torso_top_fill"
+NEW_ID = "torso_top_fill"       # ①原封不动的那条塗り足し：短发档显示、扎起来就藏
+PATCH_ID = "torso_top_patch"    # ②重画的衣领顶边：只补"真会破洞"的地方，四档常显
 SRC_ID = "seg_torso"
 LAYER = 99                      # seg_torso 是 100，压在它正下方
-SIG_V = 9
+PATCH_LAYER = 98                # 再低一层，两件同时在场时不互相抢
+SIG_V = 10
+
+
+def _flood_outside(op, np):
+    """从画布四边灌水，返回"能从画布外走到"的透明像素掩膜。"""
+    from collections import deque
+    H, W = op.shape
+    seen = np.zeros_like(op)
+    q = deque()
+    for x in range(W):
+        for y in (0, H - 1):
+            if not op[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                q.append((y, x))
+    for y in range(H):
+        for x in (0, W - 1):
+            if not op[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                q.append((y, x))
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < H and 0 <= nx < W and not op[ny, nx] and not seen[ny, nx]:
+                seen[ny, nx] = True
+                q.append((ny, nx))
+    return seen
+
+
+def need_mask(base, body_1x, np, Image, pad, quiet=False):
+    """算出"去掉 torso_top_fill 之后、各发型档真的会破洞"的像素（seg_torso@2x 坐标系）。
+
+    做法：拿**当前** rig.json 把每个发型档合成一遍（跳过 torso_top_fill，
+    并把 seg_torso 换成已经掏掉顶条的 body），从画布四边洪泛，
+    取"被剪影围住的透明像素"的并集，再向外扩 pad 像素当のりしろ。
+    返回 None = 没法算（没有 rig.json / 结构对不上），调用方退回整条重画。
+    """
+    rig_path = os.path.join(base, "rig.json")
+    if not os.path.exists(rig_path):
+        return None
+    with io.open(rig_path, encoding="utf-8") as f:
+        rig = json.load(f)
+    cw = int(rig.get("canvas", {}).get("w", 0))
+    ch = int(rig.get("canvas", {}).get("h", 0))
+    if cw <= 0 or ch <= 0:
+        return None
+    by = {p["id"]: p for p in rig.get("parts", [])}
+    if SRC_ID not in by:
+        return None
+    groups = rig.get("poses", []) or []
+    member, dflt = {}, {}
+    for g in groups:
+        for e in g.get("entries", []) or []:
+            for pid in (e.get("parts") or []):
+                member.setdefault(pid, set()).add(g["id"])
+            if e.get("id") == g.get("default"):
+                dflt[g["id"]] = set(e.get("parts") or [])
+    hs = next((g for g in groups if g["id"] == "hairstyle"), None)
+    if hs is None:
+        return None
+
+    cache = {}
+    def layer_of(p):
+        """把一个部件画到画布上，返回 (alpha 数组, 放置左上角)。"""
+        pid = p["id"]
+        if pid in cache:
+            return cache[pid]
+        if pid == SRC_ID:
+            im = Image.fromarray(body_1x)
+        else:
+            im = Image.open(os.path.join(base, p["file"])).convert("RGBA")
+            sc = p.get("scale", 1.0)
+            sx, sy = ((float(sc[0]), float(sc[1])) if isinstance(sc, (list, tuple))
+                      else (float(sc), float(sc)))
+            if (sx, sy) != (1.0, 1.0):
+                im = im.resize((max(1, int(im.width * sx)), max(1, int(im.height * sy))),
+                               Image.LANCZOS)
+        ax, ay = p.get("anchor", [0, 0])
+        ox = int(round(p["pos"][0] - ax * im.width))
+        oy = int(round(p["pos"][1] - ay * im.height))
+        cache[pid] = (np.array(im)[..., 3], ox, oy)
+        return cache[pid]
+
+    need = np.zeros((ch, cw), bool)
+    for e in hs.get("entries", []) or []:
+        hide = set(e.get("hide") or [])
+        own = set(e.get("parts") or [])
+        op = np.zeros((ch, cw), bool)
+        for p in rig.get("parts", []):
+            pid = p["id"]
+            if pid in (NEW_ID, PATCH_ID) or pid in hide:
+                continue
+            gs = member.get(pid, set())
+            if gs and not all((pid in own) if gid == hs["id"] else (pid in dflt.get(gid, set()))
+                              for gid in gs):
+                continue
+            al, ox, oy = layer_of(p)
+            h, w = al.shape
+            x0, y0 = max(0, ox), max(0, oy)
+            x1, y1 = min(cw, ox + w), min(ch, oy + h)
+            if x1 <= x0 or y1 <= y0:
+                continue
+            op[y0:y1, x0:x1] |= al[y0 - oy:y1 - oy, x0 - ox:x1 - ox] > 110
+        enc = (~op) & (~_flood_outside(op, np))
+        need |= enc
+    if not need.any():
+        return None
+    for _ in range(max(0, int(pad))):
+        g2 = need.copy()
+        g2[1:] |= need[:-1]; g2[:-1] |= need[1:]
+        g2[:, 1:] |= need[:, :-1]; g2[:, :-1] |= need[:, 1:]
+        need = g2
+    # 换算到 seg_torso@2x 的像素坐标：画布 1x → 减去 seg_torso 的落点 → ×2
+    sp = by[SRC_ID]
+    ax, ay = sp.get("anchor", [0, 0])
+    sw, sh = body_1x.shape[1], body_1x.shape[0]
+    ox = int(round(sp["pos"][0] - ax * sw))
+    oy = int(round(sp["pos"][1] - ay * sh))
+    sub = np.zeros((sh, sw), bool)
+    x0, y0 = max(0, ox), max(0, oy)
+    x1, y1 = min(cw, ox + sw), min(ch, oy + sh)
+    if x1 > x0 and y1 > y0:
+        sub[y0 - oy:y1 - oy, x0 - ox:x1 - ox] = need[y0:y1, x0:x1]
+    out = np.repeat(np.repeat(sub, 2, axis=0), 2, axis=1)
+    if not quiet:
+        print("[顶条拆件] need 掩膜：%d px(1x) 真会破洞（扩 %d px 后）"
+              % (int(sub.sum()), pad))
+    return out
 
 
 def main():
@@ -91,6 +233,8 @@ def main():
     ap.add_argument("--gamma", type=float, default=2.4,
                     help="alpha 淡出曲线；>1 = 顶部消失得更快。2.4 是实拍选型定的"
                          "（1.35 在下巴两侧留了一片看得见的青雾，q48_gamma_ab.png）")
+    ap.add_argument("--need-pad", type=int, default=6, dest="need_pad",
+                    help="need 掩膜向外扩张的像素（1x），0 = 不限制（整条重画）")
     ap.add_argument("--rows", type=int, default=0,
                     help="顶部多少行（1x）搬走；0 = 用 body_parts.json 的 overlap_px")
     ap.add_argument("--force", action="store_true")
@@ -108,7 +252,7 @@ def main():
         return 0
 
     sig = {"v": SIG_V, "rows": a.rows, "src": a.src, "gamma": a.gamma,
-           "smooth": a.smooth}
+           "smooth": a.smooth, "need_pad": a.need_pad}
     if not a.force and meta.get("torso_top_split", {}).get("sig") == sig:
         if not a.quiet:
             print("[顶条拆件] 签名未变，跳过（--force 强制重做）")
@@ -167,63 +311,108 @@ def main():
     ramp = (np.arange(band, dtype=np.float32) / max(1.0, band - 1.0))  # 0(顶)→1(底)
     ramp = ramp ** a.gamma
     fill[..., 3] = arow[None, :] * ramp[:, None]
-    arr[:band] = np.clip(fill, 0, 255).astype(np.uint8)
-    A = arr[..., 3] > 30
-    strip = A.copy()
-    strip[band:] = False
 
-    if strip.sum() < 50:
-        print("[顶条拆件] 顶条几乎没有料（%d px），跳过" % strip.sum())
+    # —— 只在"真的会破洞"的地方重画（见文件头 SIG_V=10 那一段）——
+    #   下巴两侧在 twin/pony 档本来就该是空气；往那儿糊衣领的青色＝把图做丑。
+    #   所以顶条最终拆成**两件**：
+    #     ① torso_top_fill  = 原封不动的塗り足し，短发档显示、扎起头发就藏
+    #        （它在短发档不是垃圾：发梢甩动时露出来的就是它）
+    #     ② torso_top_patch = 重画的衣领顶边，只覆盖 need 掩膜那一小片，四档常显
+    #        （不藏 ⇒ 扎起头发也不会在下巴和衣领之间裂洞）
+    nm = None
+    if a.need_pad > 0:
+        body_probe = np.array(im).copy()
+        body_probe[:band, :, 3] = 0
+        body_1x = np.array(Image.fromarray(body_probe).resize(
+            (W // K, H // K), Image.LANCZOS))
+        try:
+            nm = need_mask(base, body_1x, np, Image, a.need_pad, a.quiet)
+        except Exception as exc:                      # noqa: BLE001
+            print("[顶条拆件] need 掩膜算不出来（%s），退回整条重画" % exc)
+            nm = None
+        if nm is None and not a.quiet:
+            print("[顶条拆件] 没有可用的 rig.json ⇒ 整条重画（首次全量重建时正常）")
+    patch = np.clip(fill, 0, 255).astype(np.uint8)
+    if nm is not None:
+        patch[..., 3] = np.where(nm[:band], patch[..., 3], 0)
+
+    # —— 写三张图：原顶条 / 重画补丁 / 掏掉顶条的躯干 ——
+    def save_piece(rgba_band, pid):
+        """把 band 区域里的一片内容存成独立部件，返回 (pos, size, px) 或 None。"""
+        m = rgba_band[..., 3] > 30
+        if m.sum() < 50:
+            return None
+        ys, xs = np.where(m)
+        x0, x1 = int(xs.min()), int(xs.max()) + 1
+        y0, y1 = int(ys.min()), int(ys.max()) + 1
+        x0 -= x0 % K
+        y0 -= y0 % K
+        x1 += (-x1) % K
+        y1 += (-y1) % K
+        cut = np.zeros_like(rgba_band)
+        cut[m] = rgba_band[m]
+        cr = Image.fromarray(cut[y0:y1, x0:x1])
+        cr.save(os.path.join(sprites, pid + "@2x.png"))
+        cr.resize((cr.width // K, cr.height // K),
+                  Image.LANCZOS).save(os.path.join(sprites, pid + ".png"))
+        return (x0 // K, y0 // K), (cr.width // K, cr.height // K), int(m.sum())
+
+    orig_band = np.array(im)[:band].copy()            # ①原封不动的塗り足し
+    got_fill = save_piece(orig_band, NEW_ID)
+    got_patch = save_piece(patch, PATCH_ID)
+    if got_fill is None:
+        print("[顶条拆件] 顶条几乎没有料，跳过")
         return 0
-
-    # —— 写两张图：顶条 / 掏掉顶条的躯干 ——
-    top = arr.copy()                      # arr[:band] 已经是重画过的内容
-    top[..., 3] = np.where(strip, arr[..., 3], 0)
     body = np.array(im).copy()            # 躯干本体：从**原件**掏掉顶部 band 行
     body[:band, :, 3] = 0
-
-    ys, xs = np.where(strip)
-    x0, x1 = int(xs.min()), int(xs.max()) + 1
-    y0, y1 = int(ys.min()), int(ys.max()) + 1
-    x0 -= x0 % K
-    y0 -= y0 % K
-    x1 += (-x1) % K
-    y1 += (-y1) % K
-    tcrop = Image.fromarray(top[y0:y1, x0:x1])
-    tcrop.save(os.path.join(sprites, NEW_ID + "@2x.png"))
-    tcrop.resize((tcrop.width // K, tcrop.height // K),
-                 Image.LANCZOS).save(os.path.join(sprites, NEW_ID + ".png"))
     Image.fromarray(body).save(src2)
     Image.fromarray(body).resize((W // K, H // K), Image.LANCZOS).save(
         os.path.join(sprites, SRC_ID + ".png"))
 
     sp = parts[SRC_ID]
-    entry = {"id": NEW_ID, "file": "sprites/%s.png" % NEW_ID,
-             "group": sp.get("group", "chest"), "layer": LAYER,
-             "pos": [sp["pos"][0] + x0 // K, sp["pos"][1] + y0 // K],
-             "size": [tcrop.width // K, tcrop.height // K],
-             "pivot": sp.get("pivot"),
-             "note": "seg_torso 顶部的塗り足し（下巴/脖子/衣领的描き足し）单独成件。"
-                     "两件都显示时与原图逐像素一致；长发/双马尾/高马尾三档 hide 掉它，"
-                     "内容已按切线下方的干净衣领重画（逐列竖直复制 + 向上淡出），"
-                     "所以它在任何发型下都能一直显示：不藏 ⇒ 没有洞，也没有残留"
-                     "（第四十八问 (c)）"}
-    meta["parts"] = [p for p in meta["parts"] if p["id"] != NEW_ID]
+    meta["parts"] = [p for p in meta["parts"] if p["id"] not in (NEW_ID, PATCH_ID)]
     i = next(i for i, p in enumerate(meta["parts"]) if p["id"] == SRC_ID)
-    meta["parts"].insert(i, entry)
+    entries = []
+    for pid, lay, got, note in (
+            (NEW_ID, LAYER, got_fill,
+             "seg_torso 顶部那条塗り足し（make_body_parts 复制颈线做出来的脖子桩）"
+             "单独成件。短发档它藏在鬓发后面、发梢甩动时正好顶住，所以**短发档必须显示**；"
+             "长发/双马尾/高马尾三档把鬓发撤走，它就露成脖子两侧的青绿碎渣 ⇒ 那三档 hide。"
+             "（第四十八问 (c)）"),
+            (PATCH_ID, PATCH_LAYER, got_patch,
+             "重画的衣领顶边：原画里衣领上沿一直被鬓发盖着、画师没画过，"
+             "所以上面那件一藏，下巴和衣领之间就裂洞。这件按切线下方的干净衣领重画"
+             "（轮廓借切线行、颜色借干净行 + 横向平滑 + 向上淡出），"
+             "**只覆盖各发型档真的会破洞的那一小片**（need 掩膜），四档常显。"
+             "（第四十八问 (c) 第四轮）")):
+        if got is None:
+            continue
+        (px, py), (pw, ph), _n = got
+        entries.append({"id": pid, "file": "sprites/%s.png" % pid,
+                        "group": sp.get("group", "chest"), "layer": lay,
+                        "pos": [sp["pos"][0] + px, sp["pos"][1] + py],
+                        "size": [pw, ph], "pivot": sp.get("pivot"), "note": note})
+    for e in reversed(entries):
+        meta["parts"].insert(i, e)
     meta["torso_top_split"] = {
-        "sig": sig, "px_2x": int(strip.sum()), "px_1x": int(strip.sum()) // 4,
-        "pos": entry["pos"], "size": entry["size"],
-        "rows_1x": rows, "overlap_px": ov,
+        "sig": sig, "rows_1x": rows, "overlap_px": ov,
+        "fill": {"pos": entries[0]["pos"], "size": entries[0]["size"],
+                 "px_1x": got_fill[2] // 4},
+        "patch": ({"pos": entries[-1]["pos"], "size": entries[-1]["size"],
+                   "px_1x": got_patch[2] // 4} if got_patch else None),
         "why": "seg_torso 顶部 overlap_px 行 = make_body_parts 复制颈线做出来的"
-               "脖子桩，不是原画；原画那一段衣领在 seg_head 里"}
+               "脖子桩，不是原画；原画那一段衣领在 seg_head 里。"
+               "拆成两件：原料（可藏）+ 重画补丁（常显，只补真会破洞的地方）"}
     with io.open(bpj, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
     if not a.quiet:
-        print("[顶条拆件] %s %dx%d @%s，搬走 %d px(1x)，切线 = 顶部 %d 行"
-              "（overlap_px=%d）"
-              % (NEW_ID, entry["size"][0], entry["size"][1], entry["pos"],
-                 strip.sum() // 4, rows, ov))
+        print("[顶条拆件] %s %dx%d @%s（%d px 1x）；%s"
+              % (NEW_ID, entries[0]["size"][0], entries[0]["size"][1],
+                 entries[0]["pos"], got_fill[2] // 4,
+                 ("%s %dx%d @%s（%d px 1x）"
+                  % (PATCH_ID, entries[-1]["size"][0], entries[-1]["size"][1],
+                     entries[-1]["pos"], got_patch[2] // 4))
+                 if got_patch else "没有补丁（need 掩膜为空）"))
     return 0
 
 
