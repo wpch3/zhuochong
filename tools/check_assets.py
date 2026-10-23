@@ -428,13 +428,39 @@ def check(character, form, root=".", strict=False, out_json=None):
                     piv[f"hand_{sd}"] = q["pivot"]
                     parent[f"hand_{sd}"] = f"forearm_{sd}"
 
+        # ★★★ Q50：**静止时引擎根本不画的差分件，离线合成也不许画。**
+        #   引擎口径（zrig.c:3463）：alpha = clamp(1 + Σ(scale·参数 + offset))。
+        #   肘折线 / 肘补件 / 肘内侧褶布这三件的 alpha 都绑在肘角上，参数取
+        #   默认值（0）时算出来 ≤0 ⇒ **一个像素都不显**。
+        #   离线合成器原先不认这条，照画不误：褶布是一块按折肘姿势量出来的
+        #   大楔形布，摊在伸直的手臂旁边，和袖子一起把背景围出一圈，
+        #   「关节不露底(肘)」直接报 882 px 假空洞。
+        #   这不是调阈值 —— 阈值还是 60 —— 是把**离线合成对齐引擎的真实行为**。
+        _zero_rest = set()
+        try:
+            _rigj = json.load(open(os.path.join(base, "rig.json"), encoding="utf-8"))
+            _pdef = {q["id"]: float(q.get("default", 0.0)) for q in _rigj.get("params", [])}
+            _acc = {}
+            for q in _rigj.get("params", []):
+                v = float(q.get("default", 0.0))
+                for b in q.get("binds", []):
+                    if b.get("part") and b.get("param") == "alpha":
+                        _acc.setdefault(b["part"], 0.0)
+                        _acc[b["part"]] += float(b.get("scale", 1.0)) * v + float(b.get("offset", 0.0))
+            _zero_rest = {k for k, v in _acc.items() if 1.0 + v <= 0.001}
+        except Exception:
+            _zero_rest = set()
+
         def compose(angles, offsets=None):
             """按层序叠出整个人；angles 按组给旋转角（度，绕锚点）。
                子组（前臂）要先绕自己的关节转，再跟着父组绕父关节转。
-               offsets 按**部件 id** 给像素平移（头发摆动压力测试用）。"""
+               offsets 按**部件 id** 给像素平移（头发摆动压力测试用）。
+               静止 alpha=0 的差分件（_zero_rest）跳过 —— 引擎也不画。"""
             offsets = offsets or {}
             c = Image.new("RGBA", (SW, SH), (0, 0, 0, 0))
             for sp in sorted(seg_parts, key=lambda q: q["layer"]):
+                if sp["id"] in _zero_rest:
+                    continue
                 im = Image.open(os.path.join(base, sp["file"])).convert("RGBA")
                 if sp["id"] in offsets:
                     # 按引擎的 bend 曲线 tip 来剪切：顶边（发根）不动，

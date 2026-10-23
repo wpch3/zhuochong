@@ -55,7 +55,11 @@ import numpy as np
 
 from PIL import Image
 
-LAYER = {"r": 149, "l": 148}      # 压在前臂(144/145) 与肘折线(146/147) 之上
+LAYER = {"r": 147, "l": 146}      # 压在前臂(144/145) 之上、肘折线(148/149) 之下
+#   ★ Q50：原来是 148/149（盖在折线上面）。把圆盘放大到 grow 1.45 之后，
+#   它会把 elbow_crease 那条「前臂压在上臂前面」的轮廓线整条吃掉，肘又
+#   变回 Q44 那个没有轮廓的圆疙瘩。两件分工：**补件只负责抹掉上臂那条
+#   扎进前臂肚子的残线**（在下），**折线负责画前臂的剪影边**（在上）。
 SIG_V = 3
 # —— 挥手定稿姿势（绝对角，离竖直向下；和 make_rig 的 wave 通道同源）——
 #   右：A_u=21.69° / A_f=153.73°   左：A_u=−22.12° / A_f=−152.17°
@@ -107,7 +111,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
     ap.add_argument("--form", required=True)
-    ap.add_argument("--grow", type=float, default=1.14,
+    ap.add_argument("--grow", type=float, default=1.45,
                     help="补件半径 = 关节 socket 半径 × 这个倍数")
     ap.add_argument("--feather", type=float, default=7.0,
                     help="圆周往里羽化多少像素（1x）")

@@ -170,7 +170,9 @@ def main():
                 "id": cid,
                 "file": "sprites/%s.png" % cid,
                 "group": "forearm_%s" % side,
-                "layer": 146 if side == "l" else 147,
+                # ★ Q50：由 146/147 上调到 148/149 —— 要压在肘补件(elbow_cover，
+                #   146/147)之上，否则放大后的补件圆盘会把这条线吃掉。
+                "layer": 148 if side == "l" else 149,
                 "pos": [int(bx0), int(by0)],
                 "size": [int(bx1 - bx0), int(by1 - by0)],
                 "pivot": list(fo["pivot"]),

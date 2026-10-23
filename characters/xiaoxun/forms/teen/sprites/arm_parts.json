@@ -198,7 +198,7 @@
       "id": "arm_l_crease",
       "file": "sprites/arm_l_crease.png",
       "group": "forearm_l",
-      "layer": 146,
+      "layer": 148,
       "pos": [
         49,
         526
@@ -217,7 +217,7 @@
       "id": "arm_r_crease",
       "file": "sprites/arm_r_crease.png",
       "group": "forearm_r",
-      "layer": 147,
+      "layer": 149,
       "pos": [
         331,
         522
@@ -236,14 +236,14 @@
       "id": "arm_l_elbow",
       "file": "sprites/arm_l_elbow.png",
       "group": "forearm_l",
-      "layer": 148,
+      "layer": 146,
       "pos": [
-        43,
+        38,
         538
       ],
       "size": [
-        58,
-        51
+        63,
+        61
       ],
       "pivot": [
         75.5,
@@ -255,20 +255,58 @@
       "id": "arm_r_elbow",
       "file": "sprites/arm_r_elbow.png",
       "group": "forearm_r",
-      "layer": 149,
+      "layer": 147,
       "pos": [
         337,
         534
       ],
       "size": [
-        65,
-        59
+        71,
+        70
       ],
       "pivot": [
         364.5,
         553.0
       ],
       "note": "肘关节补件（Q48）：折肘时上臂半圆与前臂半圆在**内侧**的拼缝 + 两条轮廓线交出来的尖角，用这块抹过线、羽化过的袖布盖住（官方「関節に正円を重ねる / 付け根はぼかす」）。外侧剪影轮廓一律不碰；伸直时 alpha=0，静止画面零改动"
+    },
+    {
+      "id": "arm_l_gusset",
+      "file": "sprites/arm_l_gusset.png",
+      "group": "elbow_fold_l",
+      "layer": 136,
+      "pos": [
+        -47,
+        495
+      ],
+      "size": [
+        56,
+        101
+      ],
+      "pivot": [
+        75.5,
+        553.0
+      ],
+      "note": "肘内侧褶布（Q50）：参考图 wave_up.png 的折臂是**一整块连续的布**，我们两根管子之间会漏出背景三角（logs/asset_qa/q50_notch_probe.png 红色 705px）。这块布按定稿姿势量出缺口、用两边袖子自己的像素填出来，挂在 elbow_fold_? 组（转角 = 前臂的一半 = 角平分线）、层 136/137 垫在两根管子**底下**，伸直时 alpha=0。"
+    },
+    {
+      "id": "arm_r_gusset",
+      "file": "sprites/arm_r_gusset.png",
+      "group": "elbow_fold_r",
+      "layer": 137,
+      "pos": [
+        437,
+        497
+      ],
+      "size": [
+        51,
+        95
+      ],
+      "pivot": [
+        364.5,
+        553.0
+      ],
+      "note": "肘内侧褶布（Q50）：参考图 wave_up.png 的折臂是**一整块连续的布**，我们两根管子之间会漏出背景三角（logs/asset_qa/q50_notch_probe.png 红色 705px）。这块布按定稿姿势量出缺口、用两边袖子自己的像素填出来，挂在 elbow_fold_? 组（转角 = 前臂的一半 = 角平分线）、层 136/137 垫在两根管子**底下**，伸直时 alpha=0。"
     }
   ],
   "checks": {
@@ -483,7 +521,7 @@
   "elbow_cover": {
     "sig": {
       "v": 3,
-      "grow": 1.14,
+      "grow": 1.45,
       "feather": 7.0,
       "dark": 14.0,
       "blur": 3,
@@ -503,38 +541,91 @@
     "sides": {
       "l": {
         "r_socket": 31.4,
-        "r_cover": 35.8,
+        "r_cover": 45.5,
         "inner_dir": [
           -0.581,
           0.814
         ],
-        "disc_px_2x": 6822,
-        "ink_px_2x": 995,
+        "disc_px_2x": 9394,
+        "ink_px_2x": 1345,
         "size": [
-          58,
-          51
+          63,
+          61
         ],
         "pos": [
-          43,
+          38,
           538
         ]
       },
       "r": {
         "r_socket": 34.8,
-        "r_cover": 39.7,
+        "r_cover": 50.5,
         "inner_dir": [
           0.598,
           0.802
         ],
-        "disc_px_2x": 8641,
-        "ink_px_2x": 1213,
+        "disc_px_2x": 11846,
+        "ink_px_2x": 1690,
         "size": [
-          65,
-          59
+          71,
+          70
         ],
         "pos": [
           337,
           534
+        ]
+      }
+    }
+  },
+  "elbow_gusset": {
+    "sig": {
+      "v": 1,
+      "pad": 9.0,
+      "feather": 4.0,
+      "reach": 1.06,
+      "blur": 2,
+      "pose": {
+        "r": [
+          21.69,
+          153.73
+        ],
+        "l": [
+          -22.12,
+          -152.17
+        ]
+      }
+    },
+    "sides": {
+      "l": {
+        "gap_px_2x": 6880,
+        "fill_px_2x": 10870,
+        "half_deg": 24.97,
+        "bis_deg": -102.57,
+        "theta_half": -67.07,
+        "net_deg": -74.57,
+        "size": [
+          56,
+          101
+        ],
+        "pos": [
+          -47,
+          495
+        ]
+      },
+      "r": {
+        "gap_px_2x": 5345,
+        "fill_px_2x": 8995,
+        "half_deg": 23.98,
+        "bis_deg": 103.76,
+        "theta_half": 67.06,
+        "net_deg": 73.95,
+        "size": [
+          51,
+          95
+        ],
+        "pos": [
+          437,
+          497
         ]
       }
     }

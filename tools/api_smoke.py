@@ -708,15 +708,20 @@ def run(base, root):
     low_b = 9.9
     peak_b2, low_b2 = -9.9, 9.9             # 后半段（稳态）的肘极值
     peak_h2, low_h2 = -99.0, 99.0           # 后半段的腕极值（Q43：主行程在腕）
-    for _i in range(14):                    # 窗口内轮询取极值（动作淡入要时间）
-        time.sleep(0.12)
+    # ★ Q50：采样周期 0.12s → **0.04s**（窗口总长不变，仍是 1.68s）。
+    #   手腕 ひらひら 是 2.2 Hz，0.12s 采样 ≈ 3.8 点/周期，奈奎斯特边缘：
+    #   真实摆幅 ±12°（24° 峰峰）采出来忽高忽低 19~21°，闸门会随机红。
+    #   这不是放宽阈值（仍是 20°），是**把尺子修准**：0.04s ≈ 11 点/周期，
+    #   采到的极值和真值差 <2%。顺带所有峰值（上臂/肘/前臂伸长）都更准。
+    for _i in range(42):                    # 窗口内轮询取极值（动作淡入要时间）
+        time.sleep(0.04)
         eff = {q["id"]: (q.get("effective") or 0)
                for q in (a.json("/api/params.json") or {}).get("params", [])}
         peak_a = max(peak_a, eff.get("ParamArmRA") or 0)
         peak_fl = max(peak_fl, eff.get("ParamForeLongR") or 0)
         peak_b = max(peak_b, eff.get("ParamArmRB") or 0)
         low_b = min(low_b, eff.get("ParamArmRB") or 0)
-        if _i >= 6:
+        if _i >= 21:                        # 后半段 = 稳态窗（t ≳ 0.84s）
             peak_b2 = max(peak_b2, eff.get("ParamArmRB") or 0)
             low_b2 = min(low_b2, eff.get("ParamArmRB") or 0)
             peak_h2 = max(peak_h2, eff.get("ParamHandR") or 0)

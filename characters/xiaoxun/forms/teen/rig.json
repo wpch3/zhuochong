@@ -99,6 +99,20 @@
       ],
       "parent": "arm_r"
     },
+    "elbow_fold_l": {
+      "pivot": [
+        275.5,
+        621.0
+      ],
+      "parent": "arm_l"
+    },
+    "elbow_fold_r": {
+      "pivot": [
+        564.5,
+        621.0
+      ],
+      "parent": "arm_r"
+    },
     "hand_l": {
       "pivot": [
         254.5,
@@ -676,7 +690,7 @@
       "id": "arm_l_crease",
       "file": "sprites/arm_l_crease@2x.png",
       "group": "forearm_l",
-      "layer": 146,
+      "layer": 148,
       "pos": [
         249,
         594
@@ -697,7 +711,7 @@
       "id": "arm_r_crease",
       "file": "sprites/arm_r_crease@2x.png",
       "group": "forearm_r",
-      "layer": 147,
+      "layer": 149,
       "pos": [
         531,
         590
@@ -718,9 +732,9 @@
       "id": "arm_l_elbow",
       "file": "sprites/arm_l_elbow@2x.png",
       "group": "forearm_l",
-      "layer": 148,
+      "layer": 146,
       "pos": [
-        243,
+        238,
         606
       ],
       "anchor": [
@@ -739,10 +753,52 @@
       "id": "arm_r_elbow",
       "file": "sprites/arm_r_elbow@2x.png",
       "group": "forearm_r",
-      "layer": 149,
+      "layer": 147,
       "pos": [
         537,
         602
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_gusset",
+      "file": "sprites/arm_l_gusset@2x.png",
+      "group": "elbow_fold_l",
+      "layer": 136,
+      "pos": [
+        153,
+        563
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_gusset",
+      "file": "sprites/arm_r_gusset@2x.png",
+      "group": "elbow_fold_r",
+      "layer": 137,
+      "pos": [
+        637,
+        565
       ],
       "anchor": [
         0,
@@ -3968,38 +4024,153 @@
       "channels": [
         {
           "target": "ParamArmRA",
-          "wave": "pulse",
-          "amp": 0.3828,
-          "dur": 0.45,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.08,
+              -0.0778
+            ],
+            [
+              0.3,
+              0.2889
+            ],
+            [
+              0.45,
+              0.4333
+            ],
+            [
+              0.64,
+              0.3611
+            ],
+            [
+              0.85,
+              0.3828
+            ]
+          ]
         },
         {
           "target": "ParamForeLongR",
-          "wave": "pulse",
-          "amp": 1.0,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.14,
+              -0.75
+            ],
+            [
+              0.34,
+              -1.0
+            ],
+            [
+              0.55,
+              -0.35
+            ],
+            [
+              0.72,
+              0.72
+            ],
+            [
+              0.88,
+              1.05
+            ],
+            [
+              1.05,
+              1.0
+            ]
+          ]
         },
         {
           "target": "ParamShoulderRY",
-          "wave": "pulse",
-          "amp": 8.67,
-          "dur": 0.45,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.06,
+              0.0
+            ],
+            [
+              0.42,
+              7.4
+            ],
+            [
+              0.58,
+              9.3
+            ],
+            [
+              0.78,
+              8.67
+            ]
+          ]
         },
         {
           "target": "ParamForeSlimR",
-          "wave": "pulse",
-          "amp": 1.0,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.1,
+              0.0
+            ],
+            [
+              0.5,
+              0.55
+            ],
+            [
+              0.8,
+              1.0
+            ]
+          ]
         },
         {
           "target": "ParamArmRB",
-          "wave": "pulse",
-          "amp": 7.4511,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.1,
+              0.1667
+            ],
+            [
+              0.26,
+              1.6667
+            ],
+            [
+              0.44,
+              4.7778
+            ],
+            [
+              0.62,
+              6.8889
+            ],
+            [
+              0.78,
+              7.8333
+            ],
+            [
+              0.95,
+              7.3333
+            ],
+            [
+              1.12,
+              7.4511
+            ]
+          ]
         },
         {
           "target": "ParamArmRB",
@@ -4031,10 +4202,33 @@
         },
         {
           "target": "ParamHandR",
-          "wave": "pulse",
-          "amp": 0.6818,
-          "dur": 0.9,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.18,
+              -0.0
+            ],
+            [
+              0.55,
+              0.3636
+            ],
+            [
+              0.88,
+              0.8636
+            ],
+            [
+              1.1,
+              0.6182
+            ],
+            [
+              1.3,
+              0.6818
+            ]
+          ]
         },
         {
           "target": "ParamHandR",
@@ -4118,38 +4312,153 @@
       "channels": [
         {
           "target": "ParamArmRA",
-          "wave": "pulse",
-          "amp": 0.3828,
-          "dur": 0.45,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.08,
+              -0.0778
+            ],
+            [
+              0.3,
+              0.2889
+            ],
+            [
+              0.45,
+              0.4333
+            ],
+            [
+              0.64,
+              0.3611
+            ],
+            [
+              0.85,
+              0.3828
+            ]
+          ]
         },
         {
           "target": "ParamShoulderRY",
-          "wave": "pulse",
-          "amp": 8.67,
-          "dur": 0.45,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.06,
+              0.0
+            ],
+            [
+              0.42,
+              7.4
+            ],
+            [
+              0.58,
+              9.3
+            ],
+            [
+              0.78,
+              8.67
+            ]
+          ]
         },
         {
           "target": "ParamForeSlimR",
-          "wave": "pulse",
-          "amp": 1.0,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.1,
+              0.0
+            ],
+            [
+              0.5,
+              0.55
+            ],
+            [
+              0.8,
+              1.0
+            ]
+          ]
         },
         {
           "target": "ParamForeLongR",
-          "wave": "pulse",
-          "amp": 1.0,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.14,
+              -0.75
+            ],
+            [
+              0.34,
+              -1.0
+            ],
+            [
+              0.55,
+              -0.35
+            ],
+            [
+              0.72,
+              0.72
+            ],
+            [
+              0.88,
+              1.05
+            ],
+            [
+              1.05,
+              1.0
+            ]
+          ]
         },
         {
           "target": "ParamArmRB",
-          "wave": "pulse",
-          "amp": 7.4511,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.1,
+              0.1667
+            ],
+            [
+              0.26,
+              1.6667
+            ],
+            [
+              0.44,
+              4.7778
+            ],
+            [
+              0.62,
+              6.8889
+            ],
+            [
+              0.78,
+              7.8333
+            ],
+            [
+              0.95,
+              7.3333
+            ],
+            [
+              1.12,
+              7.4511
+            ]
+          ]
         },
         {
           "target": "ParamArmRB",
@@ -4160,38 +4469,153 @@
         },
         {
           "target": "ParamArmLA",
-          "wave": "pulse",
-          "amp": 0.4161,
-          "dur": 0.45,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.13,
+              -0.0846
+            ],
+            [
+              0.35,
+              0.314
+            ],
+            [
+              0.5,
+              0.4711
+            ],
+            [
+              0.69,
+              0.3926
+            ],
+            [
+              0.9,
+              0.4161
+            ]
+          ]
         },
         {
           "target": "ParamShoulderLY",
-          "wave": "pulse",
-          "amp": 8.67,
-          "dur": 0.45,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.11,
+              0.0
+            ],
+            [
+              0.47,
+              7.4
+            ],
+            [
+              0.63,
+              9.3
+            ],
+            [
+              0.83,
+              8.67
+            ]
+          ]
         },
         {
           "target": "ParamForeSlimL",
-          "wave": "pulse",
-          "amp": 1.0,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.15,
+              0.0
+            ],
+            [
+              0.55,
+              0.55
+            ],
+            [
+              0.85,
+              1.0
+            ]
+          ]
         },
         {
           "target": "ParamForeLongL",
-          "wave": "pulse",
-          "amp": 1.0,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.19,
+              -0.75
+            ],
+            [
+              0.39,
+              -1.0
+            ],
+            [
+              0.6,
+              -0.35
+            ],
+            [
+              0.77,
+              0.72
+            ],
+            [
+              0.93,
+              1.05
+            ],
+            [
+              1.1,
+              1.0
+            ]
+          ]
         },
         {
           "target": "ParamArmLB",
-          "wave": "pulse",
-          "amp": 7.4528,
-          "dur": 0.7,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.15,
+              0.1667
+            ],
+            [
+              0.31,
+              1.667
+            ],
+            [
+              0.49,
+              4.7787
+            ],
+            [
+              0.67,
+              6.8903
+            ],
+            [
+              0.83,
+              7.8349
+            ],
+            [
+              1.0,
+              7.3348
+            ],
+            [
+              1.17,
+              7.4526
+            ]
+          ]
         },
         {
           "target": "ParamArmLB",
@@ -4216,10 +4640,33 @@
         },
         {
           "target": "ParamHandR",
-          "wave": "pulse",
-          "amp": 0.6818,
-          "dur": 0.9,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.18,
+              -0.0
+            ],
+            [
+              0.55,
+              0.3636
+            ],
+            [
+              0.88,
+              0.8636
+            ],
+            [
+              1.1,
+              0.6182
+            ],
+            [
+              1.3,
+              0.6818
+            ]
+          ]
         },
         {
           "target": "ParamHandR",
@@ -4231,10 +4678,33 @@
         },
         {
           "target": "ParamHandL",
-          "wave": "pulse",
-          "amp": 0.5455,
-          "dur": 0.9,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.23,
+              -0.0
+            ],
+            [
+              0.6,
+              0.2909
+            ],
+            [
+              0.93,
+              0.6909
+            ],
+            [
+              1.15,
+              0.4945
+            ],
+            [
+              1.35,
+              0.5455
+            ]
+          ]
         },
         {
           "target": "ParamHandL",
@@ -8073,6 +8543,11 @@
           "scale": 18.0
         },
         {
+          "group": "elbow_fold_l",
+          "param": "rot_deg",
+          "scale": 9.0
+        },
+        {
           "part": "arm_l_crease",
           "param": "alpha",
           "scale": 0.25,
@@ -8083,6 +8558,12 @@
           "param": "alpha",
           "scale": 0.3333,
           "offset": -1.8333
+        },
+        {
+          "part": "arm_l_gusset",
+          "param": "alpha",
+          "scale": 7.692,
+          "offset": -55.0
         }
       ],
       "note": "绕肘旋转，±10 → ±180°。**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**：人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，正面看见的夹角会超过 145° —— Q38 在参考图 characters/xiaoxun/design/pose_ref/wave_up.png 上实测：肩(455,315)→肘(495,475)→腕(487,352)，投影夹角 170°。倍率 14.5（±145°）封顶时这个姿势根本摆不出来，所以提到 18.0；动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变"
@@ -8100,6 +8581,11 @@
           "scale": -18.0
         },
         {
+          "group": "elbow_fold_r",
+          "param": "rot_deg",
+          "scale": -9.0
+        },
+        {
           "part": "arm_r_crease",
           "param": "alpha",
           "scale": 0.25,
@@ -8110,6 +8596,12 @@
           "param": "alpha",
           "scale": 0.3333,
           "offset": -1.8333
+        },
+        {
+          "part": "arm_r_gusset",
+          "param": "alpha",
+          "scale": 7.692,
+          "offset": -55.0
         }
       ]
     },
@@ -8200,8 +8692,8 @@
     },
     {
       "id": "ParamForeLongR",
-      "label": "右前臂 加长",
-      "min": 0.0,
+      "label": "右前臂 伸缩",
+      "min": -1.2,
       "max": 1.2,
       "default": 0.0,
       "binds": [
@@ -8220,12 +8712,12 @@
           "scale": 25.362
         }
       ],
-      "note": "折肘时前臂沿肘→腕轴线拉长 26px（+22%），手件同步外移；0 = 原件，静止画面零改动"
+      "note": "折肘时前臂沿肘→腕轴线拉长 26px（+22%），手件同步外移；0 = 原件，静止画面零改动。**负值 = 缩短**，用来做挥手甩过程中的透视收缩（marunaru「前腕を潰して回転軌道を小さくする」）"
     },
     {
       "id": "ParamForeLongL",
-      "label": "左前臂 加长",
-      "min": 0.0,
+      "label": "左前臂 伸缩",
+      "min": -1.2,
       "max": 1.2,
       "default": 0.0,
       "binds": [
