@@ -508,6 +508,22 @@
       "layer": 61
     },
     {
+      "id": "torso_top_fill",
+      "file": "sprites/torso_top_fill.png",
+      "group": "chest",
+      "layer": 99,
+      "pos": [
+        116,
+        240
+      ],
+      "size": [
+        212,
+        38
+      ],
+      "pivot": null,
+      "note": "seg_torso 顶部的塗り足し（下巴/脖子/衣领的描き足し）单独成件。两件都显示时与原图逐像素一致；长发/双马尾/高马尾三档 hide 掉它，否则鬓发一撤它就露在脖子两侧（第四十八问 (c) 的「头后错误残留」）"
+    },
+    {
       "id": "seg_torso",
       "file": "sprites/seg_torso.png",
       "pos": [
@@ -677,5 +693,24 @@
       "@2x": 39978
     },
     "note": "tools/armpit_patch.py：把休止姿势下被手臂盖住、抬臂后会露出背景的腋窝区域用躯干侧缘挤出补满（脇の下の描き足し）"
+  },
+  "torso_top_split": {
+    "sig": {
+      "v": 6,
+      "rows": 0
+    },
+    "px_2x": 24631,
+    "px_1x": 6157,
+    "pos": [
+      116,
+      240
+    ],
+    "size": [
+      212,
+      38
+    ],
+    "rows_1x": 38,
+    "overlap_px": 38,
+    "why": "seg_torso 顶部 overlap_px 行 = make_body_parts 复制颈线做出来的脖子桩，不是原画；原画那一段衣领在 seg_head 里"
   }
 }

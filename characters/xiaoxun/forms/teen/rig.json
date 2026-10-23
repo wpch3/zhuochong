@@ -231,6 +231,27 @@
       "hires": 2
     },
     {
+      "id": "torso_top_fill",
+      "file": "sprites/torso_top_fill@2x.png",
+      "group": "chest",
+      "layer": 99,
+      "pos": [
+        316,
+        308
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "seg_torso 顶部的塗り足し（下巴/脖子/衣领的描き足し）单独成件。两件都显示时与原图逐像素一致；长发/双马尾/高马尾三档 hide 掉它，否则鬓发一撤它就露在脖子两侧（第四十八问 (c) 的「头后错误残留」）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "seg_torso",
       "file": "sprites/seg_torso@2x.png",
       "group": "chest",
@@ -9367,10 +9388,8 @@
           ],
           "hide": [
             "hair_back",
-            "hair_side_l",
-            "hair_side_r",
-            "hair_front",
-            "acc_hood_up"
+            "acc_hood_up",
+            "torso_top_fill"
           ]
         },
         {
@@ -9388,8 +9407,8 @@
             "hair_back",
             "hair_side_l",
             "hair_side_r",
-            "hair_front",
-            "acc_hood_up"
+            "acc_hood_up",
+            "torso_top_fill"
           ]
         },
         {
@@ -9406,8 +9425,8 @@
             "hair_back",
             "hair_side_l",
             "hair_side_r",
-            "hair_front",
-            "acc_hood_up"
+            "acc_hood_up",
+            "torso_top_fill"
           ]
         }
       ],

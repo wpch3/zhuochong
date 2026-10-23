@@ -1,2273 +1,2273 @@
 {
-  "schema_version": "1.0",
-  "_note": "挂件插槽表（A49 / T45.1）。口径延续 effects.json（G117 / T43.2）：几何、层号、物理系数、开关参数全在这张表里，生成器只读表不写死。加一个挂件 = 这里加一条 + 往 design/redraw/ 放一张洋红底素材，不改任何 .py。★ 插槽是「位置」不是「某个具体挂件」—— 一个槽能换不同的件，这才叫可自定义（A49 硬要求 2）。",
-  "_fields": {
-    "slots[].id": "插槽名，挂件用 slot 引用它",
-    "slots[].layer": "该槽的绘制层号。★ 实测：rig 里最低层号是 60（腿），所以 0~59 整段空着 —— 那里才是「身体之后」。66~94 在腿之上，放尾巴会盖住腿",
-    "slots[].group": "父组，挂件跟着这个组一起动",
-    "slots[].anchor": "锚点（0..1，相对部件图像）。zrig.c:751 默认 (0.5,0.5)=中心；pos 指的就是这个锚点落在画布的哪里。悬垂件要把锚点放在根部，根部就是物理支点",
-    "slots[].curve": "形变曲线。zimg.h:93 原文：BEND_TIP『顶边固定，越往下位移越大 —— 后发、裙摆、尾巴这类吊在上面的部件』；BEND_ROOT 反过来（底边固定），呆毛用的是它",
-    "attachments[].slot": "落在哪个插槽",
-    "attachments[].source": "design/redraw/ 下的洋红底原图",
-    "attachments[].sprite_h": "成品高度（像素，1x）。宽度按原图长宽比自动算 —— 挂件不像漫符是方的",
-    "attachments[].pos": "锚点的画布坐标",
-    "attachments[].recolor": "按亮度聚类重铺的色卡梯度。AI 只出形状，颜色一律不信（D19 / DC55）。每一站必须是 palette.json 里的颜色",
-    "attachments[].param": "开关参数。走 DC59 差分件口径：min0 / default0 / max1，0=摘掉 1=戴上",
-    "attachments[].physics": "物理链。segments 按顺序串联：第一段 driver 是父组，后面每段 driver 是上一段的 id（zrig.c:210 多段摆 G16）。deformer 给网格 S 形变",
-    "attachments[].physics.segments[].input": "物理输入 [{param,weight}]，最多 4 项（zrig.c:1053）。有 input 就不看 driver。**悬垂挂件一定要混入 ParamBreath**，否则静止时完全不动",
-    "attachments[].pose_group": "同一个 pose_group 的挂件进 rig.poses 互斥组，同一时刻只露一个",
-    "attachments[].anchor": "覆盖插槽的锚点。竖起的尾巴尾根在**下**，所以 anchor=[0.5,1.0]",
-    "attachments[].curve": "覆盖插槽的曲线。锚点在底边就得用 root（底固定顶端甩），在顶边用 tip",
-    "attachments[].layer": "覆盖插槽层号。互斥姿态组里只有一个会露面，但层号仍得各不相同 —— 「层号不重复」那道闸不认识姿态组，而且让它认识也不划算：真有两件同层同时亮就是 bug",
-    "attachments[].mirror": "用同一张原图水平镜像。左右耳必须镜像而不是各画一张 —— 脸是对称参照物，一不对称特别显眼",
-    "mood_params": "情绪 → 参数值。和 blink.mood_rate / mood_pose 并列的第三张情绪表；查不到的情绪不动",
-    "attachments[].pos_unit": "位置单独用另一种单位（可选，默认跟 unit 走）。T46.3 双马尾逼出来的：**扎头的位置是头上的量**（\"耳朵上方、头侧边\"），**辫子的长度是上半身的量**（\"垂到胯\"）。chibi 的头占身高 0.47、teen 只占 0.22 —— 两者共用一个单位必然错一头：拿 head 量长度，chibi 的辫子会长到脚踝；拿 torso 量位置，chibi 的发根会跑到脸中间。",
-    "attachments[].pose_id": "在 pose_group 里的档位名。同组同 id 的挂件会被并进同一个档位（双马尾左右两束就是这么合成一档的）。"
+ "schema_version": "1.0",
+ "_note": "挂件插槽表（A49 / T45.1）。口径延续 effects.json（G117 / T43.2）：几何、层号、物理系数、开关参数全在这张表里，生成器只读表不写死。加一个挂件 = 这里加一条 + 往 design/redraw/ 放一张洋红底素材，不改任何 .py。★ 插槽是「位置」不是「某个具体挂件」—— 一个槽能换不同的件，这才叫可自定义（A49 硬要求 2）。",
+ "_fields": {
+  "slots[].id": "插槽名，挂件用 slot 引用它",
+  "slots[].layer": "该槽的绘制层号。★ 实测：rig 里最低层号是 60（腿），所以 0~59 整段空着 —— 那里才是「身体之后」。66~94 在腿之上，放尾巴会盖住腿",
+  "slots[].group": "父组，挂件跟着这个组一起动",
+  "slots[].anchor": "锚点（0..1，相对部件图像）。zrig.c:751 默认 (0.5,0.5)=中心；pos 指的就是这个锚点落在画布的哪里。悬垂件要把锚点放在根部，根部就是物理支点",
+  "slots[].curve": "形变曲线。zimg.h:93 原文：BEND_TIP『顶边固定，越往下位移越大 —— 后发、裙摆、尾巴这类吊在上面的部件』；BEND_ROOT 反过来（底边固定），呆毛用的是它",
+  "attachments[].slot": "落在哪个插槽",
+  "attachments[].source": "design/redraw/ 下的洋红底原图",
+  "attachments[].sprite_h": "成品高度（像素，1x）。宽度按原图长宽比自动算 —— 挂件不像漫符是方的",
+  "attachments[].pos": "锚点的画布坐标",
+  "attachments[].recolor": "按亮度聚类重铺的色卡梯度。AI 只出形状，颜色一律不信（D19 / DC55）。每一站必须是 palette.json 里的颜色",
+  "attachments[].param": "开关参数。走 DC59 差分件口径：min0 / default0 / max1，0=摘掉 1=戴上",
+  "attachments[].physics": "物理链。segments 按顺序串联：第一段 driver 是父组，后面每段 driver 是上一段的 id（zrig.c:210 多段摆 G16）。deformer 给网格 S 形变",
+  "attachments[].physics.segments[].input": "物理输入 [{param,weight}]，最多 4 项（zrig.c:1053）。有 input 就不看 driver。**悬垂挂件一定要混入 ParamBreath**，否则静止时完全不动",
+  "attachments[].pose_group": "同一个 pose_group 的挂件进 rig.poses 互斥组，同一时刻只露一个",
+  "attachments[].anchor": "覆盖插槽的锚点。竖起的尾巴尾根在**下**，所以 anchor=[0.5,1.0]",
+  "attachments[].curve": "覆盖插槽的曲线。锚点在底边就得用 root（底固定顶端甩），在顶边用 tip",
+  "attachments[].layer": "覆盖插槽层号。互斥姿态组里只有一个会露面，但层号仍得各不相同 —— 「层号不重复」那道闸不认识姿态组，而且让它认识也不划算：真有两件同层同时亮就是 bug",
+  "attachments[].mirror": "用同一张原图水平镜像。左右耳必须镜像而不是各画一张 —— 脸是对称参照物，一不对称特别显眼",
+  "mood_params": "情绪 → 参数值。和 blink.mood_rate / mood_pose 并列的第三张情绪表；查不到的情绪不动",
+  "attachments[].pos_unit": "位置单独用另一种单位（可选，默认跟 unit 走）。T46.3 双马尾逼出来的：**扎头的位置是头上的量**（\"耳朵上方、头侧边\"），**辫子的长度是上半身的量**（\"垂到胯\"）。chibi 的头占身高 0.47、teen 只占 0.22 —— 两者共用一个单位必然错一头：拿 head 量长度，chibi 的辫子会长到脚踝；拿 torso 量位置，chibi 的发根会跑到脸中间。",
+  "attachments[].pose_id": "在 pose_group 里的档位名。同组同 id 的挂件会被并进同一个档位（双马尾左右两束就是这么合成一档的）。"
+ },
+ "slots": [
+  {
+   "id": "hip_back",
+   "label": "胯后（整个身体之后）",
+   "layer": 30,
+   "group": "chest",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "note": "尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）"
   },
-  "slots": [
-    {
-      "id": "hip_back",
-      "label": "胯后（整个身体之后）",
-      "layer": 30,
-      "group": "chest",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "note": "尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）"
-    },
-    {
-      "id": "head_in_hair",
-      "label": "插进头发里（耳根被发丝盖住）",
-      "layer": 165,
-      "group": "head",
-      "anchor": [
-        0.5,
-        1.0
-      ],
-      "curve": "root",
-      "note": "兽耳专用。层 144~169 整段空着，夹在手臂(143) 和 hair_back(170) 之间。★ 关键：必须在 hair_back 之下。头顶那片头发就是 hair_back，hair_front(240) 从 y=163 才开始、只盖刘海，指望它压耳根是压不住的（旧版就栽在这）。教程口径：「髪の上に耳を『乗せる』のではなく、頭のラインに沿って『差し込む』イメージで描く」—— 耳が浮いて見える原因就是画在髪の上。kiri-hana.com"
-    },
-    {
-      "id": "head_under_bangs",
-      "label": "头上、刘海之下",
-      "layer": 185,
-      "group": "head",
-      "anchor": [
-        0.5,
-        1.0
-      ],
-      "curve": "root",
-      "note": "兽耳。层 181~189 夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住一截，接缝不用自己藏。锚点在底边 = 耳根，所以和呆毛同曲线"
-    },
-    {
-      "id": "head_over_hair",
-      "label": "压在所有头发之上",
-      "layer": 250,
-      "group": "head",
-      "anchor": [
-        0.5,
-        0.5
-      ],
-      "curve": "root",
-      "note": "发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量"
-    },
-    {
-      "id": "body_back_hair",
-      "label": "身体之后（长发垂下来的那一层）",
-      "layer": 58,
-      "group": "head",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "note": "长发/披肩发专用。★ 层 58 = **整个身体之后**（最低的身体件是腿 60），所以长发从脖子后面垂下来、被躯干和腿挡住，只在身体轮廓两侧露出来 —— 这是 Live2D 里後ろ髪的标准层位。★ 组却是 **head**：层号管遮挡、组管跟谁动，两件事互不相干。後ろ髪必须跟着头转，所以挂 head 组；官方教程的デフォーマ结构也是「頭の回転デフォーマ → 後ろ髪の物理デフォーマ」。锚点在顶边中点（发旋/后脑）= 物理支点，曲线 tip（顶固定、越往下甩得越远）"
-    },
-    {
-      "id": "head_side_hair",
-      "label": "头侧（扎起来的发束：双马尾）",
-      "layer": 160,
-      "group": "head",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "note": "双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。"
-    },
-    {
-      "id": "body_back_pony",
-      "label": "身体之后（马尾从后脑垂下来那一层）",
-      "layer": 57,
-      "group": "head",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "note": "高马尾专用，和长发的 body_back_hair(58) 同一区段（整个身体之后，最低的身体件是腿 60）。★ 马尾和双马尾的层位必须反着来：马尾扎在**后脑**，正面视角下它本来就该被身体挡住，只在轮廓外侧露出来 —— 这正是\"它在身后\"的视觉证据。所以素材画成**往一侧甩**的弧线，露出来的是甩出轮廓的那半边。锚点在顶边 = 发绳，曲线 tip。"
-    },
-    {
-      "id": "head_side_sweep",
-      "label": "脸侧细缕（刘海与鬓发之上）",
-      "layer": 247,
-      "group": "head",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "note": "扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。"
-    },
-    {
-      "id": "head_side_long",
-      "label": "长鬓发位（长发档的横髪）",
-      "layer": 249,
-      "group": "head",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "note": "★ 参考实拍：长发的**横髪也是长的** —— 从太阳穴一路垂到胸口，不是齐腮的短鬓。这是第十二问用户贴的长发参考图里最明显的一条结构，也是之前长发\"不契合\"的真因：留着齐腮短鬓 + 背后挂一片长发 = 短发女孩背后挂了片头发。层 249 > torso 100，所以它垂在衣服前面（参考图里也是垂在身前）。"
-    },
-    {
-      "id": "head_crown_tied",
-      "label": "扎发的头顶（刘海之下、后发之上）",
-      "layer": 189,
-      "group": "head",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "root",
-      "note": "扎起来的发型专用：头顶被收拢的那一片。★ 层 187~189 卡在 呆毛(190) 之下、头壳 seg_head(180) 之上 —— 呆毛压在它上面，刘海(240) 也压在它上面，所以件的下沿切在发际线就够了、不会露边；而它压在头壳和后发壳上面，于是颅顶看起来真的被扎起来了。用户第十二问原话「扎发造型头顶必须跟着变」，缺的就是这一层：以前只换尾巴不换头顶，结果是一颗短发脑袋后面挂两根辫子。★ 下沿绝对不能切到眼线 —— 眼睛在 211~234，比 239 低，切过头会把眼睛盖住（第十一问）。"
-    }
-  ],
-  "attachments": [
-    {
-      "id": "tail_cat_relaxed",
-      "label": "垂下·放松",
-      "slot": "hip_back",
-      "source": "acc_tail_cat_relaxed.png",
-      "sprite": "acc_tail_relaxed.png",
-      "tags": [
-        "accessory",
-        "tail"
-      ],
-      "param": {
-        "id": "ParamAccTailCat",
-        "label": "猫尾（0=摘 1=戴）",
-        "default": 1.0
-      },
-      "physics": {
-        "deformer": {
-          "id": "tail_relaxed_s",
-          "cols": 2,
-          "rows": 4,
-          "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
-          "amp": [
-            0.0,
-            6.0,
-            15.0,
-            -13.5,
-            -27.0
-          ]
-        },
-        "segments": [
-          {
-            "id": "tail_relaxed_x",
-            "driver": "chest",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 1.0,
-            "stiffness": 18,
-            "damping": 4.2,
-            "max": 24,
-            "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）",
-            "input": [
-              {
-                "param": "ParamBodyAngleX",
-                "weight": 1.0
-              },
-              {
-                "param": "ParamBodyAngleZ",
-                "weight": 0.6
-              },
-              {
-                "param": "ParamBreath",
-                "weight": 2.2
-              }
-            ]
-          },
-          {
-            "id": "tail_relaxed_tip",
-            "driver": "tail_relaxed_x",
-            "deformer": "tail_relaxed_s",
-            "ratio": 0.9,
-            "stiffness": 11,
-            "damping": 2.8,
-            "max": 1.0,
-            "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
-          },
-          {
-            "id": "tail_relaxed_y",
-            "driver": "chest",
-            "axis": "y",
-            "param": "bend_y",
-            "ratio": 0.7,
-            "stiffness": 24,
-            "damping": 5.0,
-            "max": 14,
-            "note": "第三段：上下垂荡，同样混入呼吸",
-            "input": [
-              {
-                "param": "ParamBodyAngleY",
-                "weight": 1.0
-              },
-              {
-                "param": "ParamBreath",
-                "weight": 1.6
-              }
-            ]
-          }
-        ]
-      },
-      "swing": {
-        "param": {
-          "id": "ParamAccTailRelaxedSwing",
-          "label": "猫尾摆动（垂下·放松）",
-          "min": -1.0,
-          "max": 1.0,
-          "default": 0.0
-        },
-        "tip_lag": 0.17,
-        "flick_scale": 1.0,
-        "deformer_scale": 1.0,
-        "root_rot_deg": 3.2,
-        "motion": {
-          "action": "idle",
-          "wave": "drift",
-          "amp": 1.0,
-          "bias": 0.0,
-          "freq": 0.21
-        },
-        "note": "尾巴自己摆：一条参数同时驱动网格形变器（S 形鞭动）和根部小幅旋转，由 idle 的慢正弦推（0.21Hz ≈ 4.8 秒一个来回，比呼吸 0.28Hz 还慢 —— 猫放松时就是这个节奏）。物理链照旧挂着，在这个自主摆动**之上**再叠一层滞后，所以梢比根慢半拍。★ 为什么不走物理输入：本引擎物理输出的是滞后量不是摆角，慢输入出不来位移（实测 0.3px）"
-      },
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "pose_group": "tail_pose",
-      "pose_id": "relaxed",
-      "_note": "默认姿态。猫放松时尾巴自然下垂轻摆 —— 慢(0.21Hz≈4.8s一个来回)、幅度小。锚点在顶边=挂接处，曲线 tip（顶边固定、底端甩得最大）",
-      "layer": 30,
-      "_size_note": "实测定的，不是估的：笔画粗细 = 前臂(62px)的 1.02 倍 —— 真猫尾粗细≈前肢粗细；长度 378 = 躯干+头(630px)的 0.60，真猫尾长也是体长的 0.6~0.7。上一版 sprite_h=560 时粗细 86px = 前臂 1.39 倍，用户一眼看出太大",
-      "ref": "hip",
-      "unit": "body",
-      "pos_rel": [
-        -0.07802,
-        -0.10217
-      ],
-      "sprite_h_rel": 0.31734
-    },
-    {
-      "id": "tail_cat_up",
-      "label": "竖起·开心",
-      "slot": "hip_back",
-      "source": "acc_tail_cat_up.png",
-      "sprite": "acc_tail_up.png",
-      "tags": [
-        "accessory",
-        "tail"
-      ],
-      "param": {
-        "id": "ParamAccTailCat",
-        "label": "猫尾（0=摘 1=戴）",
-        "default": 1.0
-      },
-      "physics": {
-        "deformer": {
-          "id": "tail_up_s",
-          "cols": 2,
-          "rows": 4,
-          "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
-          "amp": [
-            0.0,
-            6.0,
-            15.0,
-            -13.5,
-            -27.0
-          ]
-        },
-        "segments": [
-          {
-            "id": "tail_up_x",
-            "driver": "chest",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 1.0,
-            "stiffness": 18,
-            "damping": 4.2,
-            "max": 24,
-            "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）",
-            "input": [
-              {
-                "param": "ParamBodyAngleX",
-                "weight": 1.0
-              },
-              {
-                "param": "ParamBodyAngleZ",
-                "weight": 0.6
-              },
-              {
-                "param": "ParamBreath",
-                "weight": 2.2
-              }
-            ]
-          },
-          {
-            "id": "tail_up_tip",
-            "driver": "tail_up_x",
-            "deformer": "tail_up_s",
-            "ratio": 0.9,
-            "stiffness": 11,
-            "damping": 2.8,
-            "max": 1.0,
-            "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
-          },
-          {
-            "id": "tail_up_y",
-            "driver": "chest",
-            "axis": "y",
-            "param": "bend_y",
-            "ratio": 0.7,
-            "stiffness": 24,
-            "damping": 5.0,
-            "max": 14,
-            "note": "第三段：上下垂荡，同样混入呼吸",
-            "input": [
-              {
-                "param": "ParamBodyAngleY",
-                "weight": 1.0
-              },
-              {
-                "param": "ParamBreath",
-                "weight": 1.6
-              }
-            ]
-          }
-        ]
-      },
-      "swing": {
-        "param": {
-          "id": "ParamAccTailUpSwing",
-          "label": "猫尾摆动（竖起·开心）",
-          "min": -1.0,
-          "max": 1.0,
-          "default": 0.0
-        },
-        "tip_lag": 0.1,
-        "flick_scale": 0.22,
-        "deformer_scale": 1.0,
-        "root_rot_deg": 20.0,
-        "motion": {
-          "action": "idle",
-          "wave": "drift",
-          "amp": 0.16,
-          "bias": -0.78,
-          "freq": 0.55
-        },
-        "note": "竖起姿态：根部旋转同时承担两件事 —— **bias −0.78 × 20° = 静态外倾 −15.6°**（让尾巴斜着升、不被外套挡住；笔直向上会像从腋下长出来），**amp 0.16 × 20° = ±3.2° 的摆动**。兴奋时猫尾是尖端颤，不是大摆，所以幅度小频率高"
-      },
-      "anchor": [
-        0.5,
-        1.0
-      ],
-      "curve": "root",
-      "pose_group": "tail_pose",
-      "pose_id": "up",
-      "_note": "开心/自信/打招呼。行为学依据：尾巴高高竖起是『貓咪少數明確表達正面情緒的方式』，尖端问号钩 = 『该陪朕玩了』的友善邀请。★ 锚点在**底边**（尾根在下、往上长），所以曲线换成 root（底边固定、顶端甩得最大）—— 和垂下姿态正好相反。x 挪到 262 让它从身侧升起而不是被躯干挡住。摆动更快更小（兴奋时是颤，不是大摆）",
-      "layer": 31,
-      "ref": "hip",
-      "unit": "body",
-      "pos_rel": [
-        -0.11316,
-        -0.061753
-      ],
-      "sprite_h_rel": 0.33674,
-      "_tail_note": "★ 2026-10-21 第二十九问：这张图是 tools/make_tail_poses.py 从 acc_tail_cat_relaxed.png **重铺**出来的，不是单独出的 AI 图。逐像素都是 relaxed 那条尾巴的颜色和毛流，只是沿另一条脊线铺。pos_rel / sprite_h_rel 是按 _emit 的几何口径反解的，保证四档**根部落在同一个模型坐标点**。"
-    },
-    {
-      "id": "tail_cat_puff",
-      "label": "炸毛·受惊",
-      "slot": "hip_back",
-      "source": "acc_tail_cat_puff.png",
-      "sprite": "acc_tail_puff.png",
-      "tags": [
-        "accessory",
-        "tail"
-      ],
-      "param": {
-        "id": "ParamAccTailCat",
-        "label": "猫尾（0=摘 1=戴）",
-        "default": 1.0
-      },
-      "physics": {
-        "deformer": {
-          "id": "tail_puff_s",
-          "cols": 2,
-          "rows": 4,
-          "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
-          "amp": [
-            0.0,
-            6.0,
-            15.0,
-            -13.5,
-            -27.0
-          ]
-        },
-        "segments": [
-          {
-            "id": "tail_puff_x",
-            "driver": "chest",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 1.0,
-            "stiffness": 18,
-            "damping": 4.2,
-            "max": 24,
-            "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）",
-            "input": [
-              {
-                "param": "ParamBodyAngleX",
-                "weight": 1.0
-              },
-              {
-                "param": "ParamBodyAngleZ",
-                "weight": 0.6
-              },
-              {
-                "param": "ParamBreath",
-                "weight": 2.2
-              }
-            ]
-          },
-          {
-            "id": "tail_puff_tip",
-            "driver": "tail_puff_x",
-            "deformer": "tail_puff_s",
-            "ratio": 0.9,
-            "stiffness": 11,
-            "damping": 2.8,
-            "max": 1.0,
-            "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
-          },
-          {
-            "id": "tail_puff_y",
-            "driver": "chest",
-            "axis": "y",
-            "param": "bend_y",
-            "ratio": 0.7,
-            "stiffness": 24,
-            "damping": 5.0,
-            "max": 14,
-            "note": "第三段：上下垂荡，同样混入呼吸",
-            "input": [
-              {
-                "param": "ParamBodyAngleY",
-                "weight": 1.0
-              },
-              {
-                "param": "ParamBreath",
-                "weight": 1.6
-              }
-            ]
-          }
-        ]
-      },
-      "swing": {
-        "param": {
-          "id": "ParamAccTailPuffSwing",
-          "label": "猫尾摆动（炸毛·受惊）",
-          "min": -1.0,
-          "max": 1.0,
-          "default": 0.0
-        },
-        "tip_lag": 0.05,
-        "flick_scale": 0.13,
-        "deformer_scale": 1.0,
-        "root_rot_deg": 16.0,
-        "motion": {
-          "action": "idle",
-          "wave": "drift",
-          "amp": 0.08,
-          "bias": -0.86,
-          "freq": 1.35
-        },
-        "note": "炸毛姿态：静态外倾 −13.8°，摆动只有 ±1.3° 但频率 1.35Hz —— 受惊时是**僵直发抖**，不是摇摆"
-      },
-      "anchor": [
-        0.5,
-        1.0
-      ],
-      "curve": "root",
-      "pose_group": "tail_pose",
-      "pose_id": "puff",
-      "_note": "惊吓/极度紧张。行为学依据：炸毛是竖起全身毛发让自己看起来更庞大，常伴哈气、飞机耳、拱背。摆动最快最小 = 僵直发抖，不是摇摆",
-      "layer": 32,
-      "_size_note": "炸毛保持 430。瘦了默认那根之后，炸毛/常态 = 111/63 = **1.76 倍**，总算接近真猫『炸毛让自己看起来更庞大』的观感。真猫是 3 倍，动漫一般做 2 倍左右，再大就从『受惊』变成『鸡毛掸子』了",
-      "ref": "hip",
-      "unit": "body",
-      "pos_rel": [
-        -0.131149,
-        -0.055629
-      ],
-      "sprite_h_rel": 0.338342,
-      "_tail_note": "★ 2026-10-21 第二十九问：这张图是 tools/make_tail_poses.py 从 acc_tail_cat_relaxed.png **重铺**出来的，不是单独出的 AI 图。逐像素都是 relaxed 那条尾巴的颜色和毛流，只是沿另一条脊线铺。pos_rel / sprite_h_rel 是按 _emit 的几何口径反解的，保证四档**根部落在同一个模型坐标点**。"
-    },
-    {
-      "id": "tail_cat_tuck",
-      "label": "夹紧·示弱",
-      "slot": "hip_back",
-      "source": "acc_tail_cat_tuck.png",
-      "sprite": "acc_tail_tuck.png",
-      "tags": [
-        "accessory",
-        "tail"
-      ],
-      "param": {
-        "id": "ParamAccTailCat",
-        "label": "猫尾（0=摘 1=戴）",
-        "default": 1.0
-      },
-      "physics": {
-        "deformer": {
-          "id": "tail_tuck_s",
-          "cols": 2,
-          "rows": 4,
-          "note": "夹紧的 S 形甩动只有 relaxed 的 37% —— 尾巴被压在身上，摆不开。注意这个数**不能**照搬 relaxed 第一版那套（[0,2,5,-4.5,-9]）被否掉的理由：那次是整条 520px 的尾巴只摆 6.6px 等于没动；这里是**有意**让它几乎不动，形状本身已经表达了情绪。",
-          "amp": [
-            0.0,
-            2.2,
-            5.5,
-            -4.6,
-            -9.0
-          ]
-        },
-        "segments": [
-          {
-            "id": "tail_tuck_x",
-            "driver": "chest",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 1.0,
-            "stiffness": 34,
-            "damping": 6.0,
-            "max": 9,
-            "note": "刚度 34（relaxed 是 18）、行程 9px（relaxed 24）—— 夹紧的尾巴是**绷住**的，跟着身体甩的余量很小。",
-            "input": [
-              {
-                "param": "ParamBodyAngleX",
-                "weight": 1.0
-              },
-              {
-                "param": "ParamBodyAngleZ",
-                "weight": 0.6
-              },
-              {
-                "param": "ParamBreath",
-                "weight": 2.2
-              }
-            ]
-          },
-          {
-            "id": "tail_tuck_tip",
-            "driver": "tail_tuck_x",
-            "deformer": "tail_tuck_s",
-            "ratio": 0.9,
-            "stiffness": 22,
-            "damping": 4.0,
-            "max": 1.0,
-            "note": "梢段同样收紧，鞭感基本消掉。"
-          },
-          {
-            "id": "tail_tuck_y",
-            "driver": "chest",
-            "axis": "y",
-            "param": "bend_y",
-            "ratio": 0.7,
-            "stiffness": 44,
-            "damping": 6.8,
-            "max": 5,
-            "note": "上下垂荡也压到 5px。",
-            "input": [
-              {
-                "param": "ParamBodyAngleY",
-                "weight": 1.0
-              },
-              {
-                "param": "ParamBreath",
-                "weight": 1.6
-              }
-            ]
-          }
-        ]
-      },
-      "swing": {
-        "param": {
-          "id": "ParamAccTailTuckSwing",
-          "label": "猫尾摆动（夹紧·示弱）",
-          "min": -1.0,
-          "max": 1.0,
-          "default": 0.0
-        },
-        "tip_lag": 0.07,
-        "flick_scale": 1.3,
-        "deformer_scale": 0.34,
-        "root_rot_deg": 1.4,
-        "motion": {
-          "action": "idle",
-          "wave": "drift",
-          "amp": 1.0,
-          "bias": -0.55,
-          "freq": 0.16
-        },
-        "note": "夹紧时尾巴几乎不动 —— 这是**恐惧的冻结**，不是放松的慢摆。三个数都往下压：形变器只给 0.34 倍（鞭动基本没了）、根部旋转 1.4°（relaxed 是 3.2°）、0.16Hz（6.3 秒一个来回，比 relaxed 的 0.21Hz 还慢）。bias −0.55 是**静态内收**：把尾巴常态就压向身体一侧，而不是居中摆 —— 「夹紧」的形是姿态给的，「贴着」的感觉靠这个偏置。（一个参数两用：bias 给静态姿态、amp 给动态幅度，见 LESSONS 162）"
-      },
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "pose_group": "tail_pose",
-      "pose_id": "tuck",
-      "_note": "恐惧/示弱。猫行为学（第三十二批）：「藏進雙腿間…**極度沒有安全感**」。★ 这是词汇表里语义最独立的一条 —— 在它之前，11 种情绪有 6 种（angry·sad·shy·think·sleepy·neutral）全挤在 relaxed 一个姿态上，只靠摆速区分。sad/shy 本该是夹紧。",
-      "layer": 33,
-      "_size_note": "实测对齐，不是估的：按**笔画粗细**和 relaxed 对齐。\n  relaxed 源图内容框 495×1645、笔画 278 ⇒ sprite_h=410 时成品笔画 69px（=1.02×前臂62）。\n  tuck 源图内容框 307×1676、笔画 172 ⇒ 同样粗要 sprite_h=675，从胯部(y=648)一路垂到画布底 1323，太长。\n  ⇒ 用 source_crop 截掉上段直杆（尾根本来就被裙子挡着），剩下 60% 含钩的部分，sprite_h=404，和 relaxed 的 410 同量级。\n★ 为什么比 relaxed 略细是对的：害怕时毛贴身不炸开 —— 和 puff(1.76×) 正好两头。",
-      "ref": "hip",
-      "unit": "body",
-      "pos_rel": [
-        0.022266,
-        -0.099527
-      ],
-      "sprite_h_rel": 0.192397,
-      "_tail_note": "★ 2026-10-21 第二十九问：这张图是 tools/make_tail_poses.py 从 acc_tail_cat_relaxed.png **重铺**出来的，不是单独出的 AI 图。逐像素都是 relaxed 那条尾巴的颜色和毛流，只是沿另一条脊线铺。pos_rel / sprite_h_rel 是按 _emit 的几何口径反解的，保证四档**根部落在同一个模型坐标点**。"
-    },
-    {
-      "id": "ear_cat_l",
-      "label": "猫耳（左）",
-      "slot": "head_in_hair",
-      "source": "acc_ear_cat.png",
-      "sprite": "acc_ear_l.png",
-      "mirror": true,
-      "_mirror_note": "★ 2026-10-17 第五次返工：左右装反了。用户「耳廓那边跑到内边了，是角度不对吗」—— 一半对。\n量过的事实（tools/qa_ear_orient.py）：原来左耳的耳尖往**内**倒 19.4°，内耳（暖色耳廓）落在\n耳宽的 0.68（1=内侧），也就是**耳尖和耳廓双双朝内**。\n参考资料三家口径一致，都说正面要朝**外**：\n  · palmie.jp/lessons/43「正面向きは少し耳を**外側**に向けた状態で描きました。猫が力を入れていない時は、耳はこの辺を向いています」\n  · atam-academy.com/blog/50779「耳の正面は真正面ではなく、**少し外側を向く**イメージで描きましょう」\n  · adobe.com/jp …how-to-draw-ears「猫の耳であればやや斜めに**少し外向き**に生える」\n真猫照片与二次元参考图各自量过：**耳廓（内耳）偏外侧、厚毛边在内侧**（耳朵开口朝前且朝外，\n靠内那条边才是转向镜头的那条，所以露出的是耳背的毛）。\n⇒ 两处错误（倾角朝内 + 耳廓朝内）其实是同一个错：**左右两张贴图装反了**。镜像一次两个都对。\n本修复只改 mirror 开关，不动素材、不动位置与大小。闸门：check_ear_orientation（selfcheck 第⑳段）。",
-      "tags": [
-        "accessory",
-        "ear"
-      ],
-      "param": {
-        "id": "ParamAccEarL",
-        "label": "猫耳L（0=摘 1=戴）",
-        "default": 1.0
-      },
-      "_note": "槽 head_in_hair = 层 165/166，**在 hair_back(170) 之下** —— 耳根由头发盖住，而不是耳朵盖住头发。",
-      "swing": {
-        "param": {
-          "id": "ParamEarLAngle",
-          "label": "猫耳角度r（−1飞机耳 +1竖起）",
-          "min": -1.0,
-          "max": 1.0,
-          "default": 0.0
-        },
-        "root_rot_deg": -26.0,
-        "motion": {
-          "action": "idle",
-          "wave": "pulse",
-          "amp": 0.14,
-          "bias": 0.0,
-          "freq": 0.085
-        },
-        "note": "猫耳角度。★ 官方/社区做法是**一条连续参数**不是差分件：「耳揺れ」取 −30~30，「−30で耳が下がる、30ではピンと張る」（otimusya24.com）。我们取 ±26°，正负方向左右相反（镜像件要反号）。情绪映射见 mood_params：直立=快乐/警觉、**飞机耳**=害怕或生气、前倾=好奇。idle 用 pulse 波 0.085Hz（约 12 秒一次）做**偶发抖动** —— 耳朵不该像尾巴那样一直匀速晃，真猫是偶尔抖一下　★ 符号是**实测**翻过来的：第一版左 +26/右 −26，渲染出来 happy 摊平、angry 竖起，正好对调。旋转正负号不能推，必须拿两个极值渲染出来看。"
-      },
-      "physics": {
-        "segments": [
-          {
-            "id": "ear_l_x",
-            "driver": "head",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 0.42,
-            "stiffness": 52,
-            "damping": 5.6,
-            "max": 5,
-            "note": "耳朵跟着头甩的滞后。刚度比呆毛(42)还高、幅度比它(8)还小 —— ★「あまり**根本を動かしてしまうと猫耳自体が浮いて見えてしまう**」（vtuberkaibougaku.site）：耳朵是长在头上的，晃大了就像顶着两个帽子"
-          }
-        ]
-      },
-      "layer": 165,
-      "rotate_deg": 0.0,
-      "_size_note": "★ 第四版 v2。前三版全靠估，这版每个数字都在**带坐标网格的渲染图**上量过（logs/asset_qa/head_grid.png）。\n【踩过的测量坑】逐列取最高不透明像素来求「头发表面」是错的 —— **呆毛那根细尖会被当成发团**，\n  害我把发顶读成画布 y=55（真值 y≈120），一路错到耳根悬空。正确做法：先做水平腐蚀抹掉细尖，\n  或者直接画网格用眼睛核对。\n【量到的真值·画布坐标】发团顶 y≈120；耳位处发面 y≈128；下颌 y=342 ⇒ **脸高 222**；\n  头最宽 242（中心 x=419）；y=158 一线头宽≈210。\n【按教程定的三个数】\n  · 大小：猫耳长 = 脸高的 1/3（medibangpaint.com / note.com-kakaman 两家口径一致；兔 2/3、狐 1/2）\n          222/3 = 74 = **露出**高度。sprite_h 取 104 = 露出 74 + 埋进发里 30。\n  · 横宽：width_ratio 0.78 把素材的 1.09 宽高比压到 0.85 ⇒ 单耳 88px。\n          1.09 时两耳横跨 245px ≈ 整个头宽，就是用户说的「过宽」「像兔耳」。\n  · 左右：「頭の円を時計に見立てて 11 時と 1 時」（kiri-hana.com）⇒ 419 ± 242/2·sin30° = 356 / 482。\n          两耳合计横跨 198，/头宽 237 = 0.84，落在惯例 0.75~1.0 内。\n  · 埋深：耳根 y=178，比发面(≈140)低 38px。这个数是**迭代出来的**：\n          y=158 时实测耳根只有 25%/38% 压在头发下（外侧角悬在发团斜坡外），\n          往下沉 20px 后露出高也从 0.42 自动降到 0.33 —— 一个动作同时修两项。\n【层号】165/166 在 hair_back(170) 之下 —— 耳根由头发盖住。教程：「髪の上に耳を『乗せる』のでは\n  なく、頭のラインに沿って『差し込む』イメージ」，耳が浮いて見える原因就是画在髪の上（kiri-hana.com）。\n★ 画布顶部净空够用：耳尖 y=54，离画布顶还有 54px，旋转 ±26° 也不会被切。",
-      "width_ratio": 0.78,
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        -0.18702,
-        0.39563
-      ],
-      "sprite_h_rel": 0.37405
-    },
-    {
-      "id": "ear_cat_r",
-      "label": "猫耳（右）",
-      "slot": "head_in_hair",
-      "source": "acc_ear_cat.png",
-      "sprite": "acc_ear_r.png",
-      "mirror": false,
-      "_mirror_note": "★ 2026-10-17 第五次返工：与 ear_cat_l 同一处修复（左右贴图装反）。详见 ear_cat_l 的 _mirror_note。",
-      "tags": [
-        "accessory",
-        "ear"
-      ],
-      "param": {
-        "id": "ParamAccEarR",
-        "label": "猫耳R（0=摘 1=戴）",
-        "default": 1.0
-      },
-      "_note": "槽 head_in_hair = 层 165/166，**在 hair_back(170) 之下** —— 耳根由头发盖住，而不是耳朵盖住头发。",
-      "swing": {
-        "param": {
-          "id": "ParamEarRAngle",
-          "label": "猫耳角度r（−1飞机耳 +1竖起）",
-          "min": -1.0,
-          "max": 1.0,
-          "default": 0.0
-        },
-        "root_rot_deg": 26.0,
-        "motion": {
-          "action": "idle",
-          "wave": "pulse",
-          "amp": 0.14,
-          "bias": 0.0,
-          "freq": 0.085
-        },
-        "note": "猫耳角度。★ 官方/社区做法是**一条连续参数**不是差分件：「耳揺れ」取 −30~30，「−30で耳が下がる、30ではピンと張る」（otimusya24.com）。我们取 ±26°，正负方向左右相反（镜像件要反号）。情绪映射见 mood_params：直立=快乐/警觉、**飞机耳**=害怕或生气、前倾=好奇。idle 用 pulse 波 0.085Hz（约 12 秒一次）做**偶发抖动** —— 耳朵不该像尾巴那样一直匀速晃，真猫是偶尔抖一下　★ 符号是**实测**翻过来的：第一版左 +26/右 −26，渲染出来 happy 摊平、angry 竖起，正好对调。旋转正负号不能推，必须拿两个极值渲染出来看。"
-      },
-      "physics": {
-        "segments": [
-          {
-            "id": "ear_r_x",
-            "driver": "head",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 0.42,
-            "stiffness": 52,
-            "damping": 5.6,
-            "max": 5,
-            "note": "耳朵跟着头甩的滞后。刚度比呆毛(42)还高、幅度比它(8)还小 —— ★「あまり**根本を動かしてしまうと猫耳自体が浮いて見えてしまう**」（vtuberkaibougaku.site）：耳朵是长在头上的，晃大了就像顶着两个帽子"
-          }
-        ]
-      },
-      "layer": 166,
-      "rotate_deg": 0.0,
-      "_size_note": "★ 第四版 v2。前三版全靠估，这版每个数字都在**带坐标网格的渲染图**上量过（logs/asset_qa/head_grid.png）。\n【踩过的测量坑】逐列取最高不透明像素来求「头发表面」是错的 —— **呆毛那根细尖会被当成发团**，\n  害我把发顶读成画布 y=55（真值 y≈120），一路错到耳根悬空。正确做法：先做水平腐蚀抹掉细尖，\n  或者直接画网格用眼睛核对。\n【量到的真值·画布坐标】发团顶 y≈120；耳位处发面 y≈128；下颌 y=342 ⇒ **脸高 222**；\n  头最宽 242（中心 x=419）；y=158 一线头宽≈210。\n【按教程定的三个数】\n  · 大小：猫耳长 = 脸高的 1/3（medibangpaint.com / note.com-kakaman 两家口径一致；兔 2/3、狐 1/2）\n          222/3 = 74 = **露出**高度。sprite_h 取 104 = 露出 74 + 埋进发里 30。\n  · 横宽：width_ratio 0.78 把素材的 1.09 宽高比压到 0.85 ⇒ 单耳 88px。\n          1.09 时两耳横跨 245px ≈ 整个头宽，就是用户说的「过宽」「像兔耳」。\n  · 左右：「頭の円を時計に見立てて 11 時と 1 時」（kiri-hana.com）⇒ 419 ± 242/2·sin30° = 356 / 482。\n          两耳合计横跨 198，/头宽 237 = 0.84，落在惯例 0.75~1.0 内。\n  · 埋深：耳根 y=178，比发面(≈140)低 38px。这个数是**迭代出来的**：\n          y=158 时实测耳根只有 25%/38% 压在头发下（外侧角悬在发团斜坡外），\n          往下沉 20px 后露出高也从 0.42 自动降到 0.33 —— 一个动作同时修两项。\n【层号】165/166 在 hair_back(170) 之下 —— 耳根由头发盖住。教程：「髪の上に耳を『乗せる』のでは\n  なく、頭のラインに沿って『差し込む』イメージ」，耳が浮いて見える原因就是画在髪の上（kiri-hana.com）。\n★ 画布顶部净空够用：耳尖 y=54，离画布顶还有 54px，旋转 ±26° 也不会被切。",
-      "width_ratio": 0.78,
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.2086,
-        0.39563
-      ],
-      "sprite_h_rel": 0.37405
-    },
-    {
-      "id": "hood_up",
-      "label": "兜帽·戴上",
-      "slot": "head_over_hair",
-      "sprite": "acc_hood_up.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "tags": [
-        "accessory",
-        "outfit",
-        "hood"
-      ],
-      "pose_group": "hood_pose",
-      "pose_id": "up",
-      "physics": {
-        "segments": [
-          {
-            "id": "hood_x",
-            "driver": "head",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 0.22,
-            "stiffness": 74,
-            "damping": 8.4,
-            "max": 3,
-            "note": "兜帽戴在头上，是**跟着头走**的硬件，不是吊着的软件 —— 所以刚度给到 74（猫耳 52、尾巴 18）、行程只有 3px。教程口径「軽いものほど揺れやすく、早く収まる」，布越厚越贴头越不该晃；而且它和脸挨着，晃大了会穿帮。没有自主摆动通道（ambient）—— 兜帽不会自己动，它只跟随。"
-          }
-        ]
-      },
-      "_note": "★ 2026-10-18 第十三问第 6 版：形状交给画、**尺寸交给算**（tools/make_hood_part.py 按头部实测几何定标）。第 5 版画成了小红帽那种带蕾丝带披肩的头巾式，用户当场指出「运动衫的兜帽，你怎么生成小红帽的兜帽样式了？」—— 本体是件白色运动连帽夹克，帽子必须是**卫衣帽**：厚针织、米白外层 + 青色内衬（和夹克袖子同色）、帽口厚折边、带抽绳，不要蕾丝不要披肩。尺寸：开口 207x266 = 头宽的 0.84 倍，弧顶 y=129 在发际线 163 之上（整片刘海露在外面），下摆 y=408 收在衣领处，外轮廓 1.28 倍头宽。★ 纵横分开定标：模型画的帽口是 1.75:1 的长椭圆，等比缩放要么夹脸要么垂到胸口，竖着压 27% 才贴头。★ 没有兔耳/任何耳状凸起。★ 源图自带的抽绳按\"行宽掉到主体 35% 以下\"自动裁掉 —— 夹克胸口本来就画了一对，不能叠两套。 ★ 帽顶还要盖过呆毛尖（anchors head_top，画布 y=68）—— selfcheck 的「兜帽顶盖过头顶」量的是这个，不是颅顶；差几像素就整顶上移。",
-      "param": {
-        "id": "ParamAccHood",
-        "label": "兜帽（0=摘 1=戴）",
-        "default": 0.0
-      },
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.025751,
-        0.123745
-      ],
-      "sprite_h_rel": 1.245135,
-      "note": "★ 2026-10-18 第十问：下沿**裁到领口线**（source_crop 下 0.726）。上一版两片下摆垂到胸口、而且画在夹克**前面**，用户说「你做到前面了」。现在上半截（帽体）层 250 在头发之上，下半截不画了 —— 颈后的布料由常驻的 hood_neck（层 95，在夹克之下）承担，于是\"帽子从领子后面长出来\"。教程口径：フードは顔が出る部分と後頭部を覆う部分で形状が違う（CLIP STUDIO）。",
-      "width_ratio": 1.0,
-      "layer": 252,
-      "source": "sheetcut_acc_hood_short.png",
-      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
-    },
-    {
-      "id": "hair_long",
-      "label": "长发·过腰",
-      "slot": "body_back_hair",
-      "source": "sheetcut_hair_long_back.png",
-      "sprite": "hair_long_back.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "physics": {
-        "deformers": [
-          {
-            "id": "longhair_mid",
-            "cols": 2,
-            "rows": 6,
-            "note": "第二段（中段）：鼓在半腰上。多段振り子的形是「上面那段管根、下面那段管梢」，中段的峰值要落在整条头发的中间偏上",
-            "amp": [
-              0.0,
-              1.6,
-              4.4,
-              6.2,
-              4.6,
-              2.4,
-              1.0
-            ]
-          },
-          {
-            "id": "longhair_tip",
-            "cols": 2,
-            "rows": 6,
-            "note": "第三段（发梢）：越往下越大，最后一行最大。和中段**必须同尺寸**（同一部件上的多张网格是逐点相加的）",
-            "amp": [
-              0.0,
-              0.0,
-              0.6,
-              2.2,
-              5.4,
-              9.6,
-              15.0
-            ]
-          }
-        ],
-        "chain": {
-          "id": "longhair2",
-          "driver": "head",
-          "angle_input": [
-            {
-              "param": "ParamAngleZ",
-              "weight": 0.3
-            }
-          ],
-          "input": [
-            {
-              "param": "ParamBreath",
-              "wx": 1.8,
-              "wy": -0.8
-            },
-            {
-              "param": "ParamHairSway",
-              "wx": 3.2
-            }
-          ],
-          "input_max": 30,
-          "input_rate": 300,
-          "particles": [
-            {
-              "radius": 0,
-              "note": "根：发旋。被 head 组带着走，不积分"
-            },
-            {
-              "radius": 48,
-              "mobility": 0.95,
-              "delay": 1.0,
-              "acceleration": 1.0
-            },
-            {
-              "radius": 36,
-              "mobility": 0.93,
-              "delay": 0.88,
-              "acceleration": 1.1
-            },
-            {
-              "radius": 26,
-              "mobility": 0.9,
-              "delay": 0.76,
-              "acceleration": 1.2
-            }
-          ],
-          "outputs": [
-            {
-              "particle": 1,
-              "param": "bend_x",
-              "scale": 1.7,
-              "max": 16,
-              "note": "第一段（根）：整条头发跟着头甩。max 16 沿用旧的 longhair_x，所以同一个转头动作下像素行程同量级"
-            },
-            {
-              "particle": 2,
-              "deformer": "longhair_mid",
-              "scale": 0.1,
-              "max": 3.5,
-              "note": "第二段（中段）：再慢一拍 ★ 上限 3.5 = 实测满量程峰值 2.69 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
-            },
-            {
-              "particle": 3,
-              "deformer": "longhair_tip",
-              "scale": 0.075,
-              "max": 3.6,
-              "note": "第三段（发梢）：最慢最软 ★ 上限 3.6 = 实测满量程峰值 2.75 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
-            }
-          ],
-          "note": "长发 3 段摆链（T47.2 从旧内核迁过来）。旧的三条弹簧摆 longhair_x/mid_p/tip_p 输出的是滞后量，人一静止就恒等于 0；换成 2D 粒子链之后输出是摆角，呼吸那点 0.28Hz 的微动也能一直把它推着晃。四个旋钮照抄官方编辑器：長さ=radius（48/36/26，根硬梢软）、揺れやすさ=mobility（0.95/0.93/0.90）、反応速度=delay、収束の速さ=acceleration。長い後ろ髪は**3段振り子** —— ugoiraman / itodaneko 两家都是这么做的；刚度最低（頭發最長最软）这条原则现在体现为 delay 最小 ★ 第四十七问：input 里加了 ParamHairSway（全身统一的那股风，ambient drift 0.19Hz）。原来链上只有 ParamBreath 一个常驻输入，幅度小、频率又跟呼吸绑死 ⇒ 实测待机 9 秒长发发梢只摆 4.5px，比短发 7.4px 还小，最长最重的一缕反而最不飘。physics2 的 driver 和 input 是叠加关系（zrig.c:1306），这条只加一股风，摇头带动照旧。"
-        }
-      },
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "layer": 58,
-      "note": "**长发差分件（T46.2；T46.3 并入发型互斥组）**。走 DC59「差分件做加法」：它不替换现有的后发短壳，而是**加在身体后面**——短壳继续当头顶剪影，长发只负责垂下来的那一截，所以不需要重画头顶、也不会和刘海/侧发打架。★ 尺寸是量出来的不是估的：锚点落在 head_top 下方 42px（后脑发旋），宽 330 = 躯干(273) + 两侧各露 28px；高 822 ⇒ 下沿到 y932（裙摆 y820 之下），于是**肩侧露一条、裙下露发梢**，中段被身体挡住（身体在 y600~800 宽 340~420，比头发宽）—— 这正是正面视角下长发该有的样子。★ 颜色不信 AI（DC55）：recolor 按亮度聚类重铺到色卡的 线稿/发暗部/发主色 三档。 ★ 第十一问收窄：原来 307px 宽对 247px 的头 = 1.24 倍，用户说「后发太大了，不契合」；收到 0.87 倍宽（~267px，1.08 倍头宽）、高 0.90 倍，顶沿从 y140 提到 ~y115 与头顶齐 —— 原来它从半路冒出来，颅顶是本体短发、下半截是长发，接不上。",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.02415,
-        0.037918
-      ],
-      "sprite_h_rel": 3.303067,
-      "pose_group": "hairstyle",
-      "pose_id": "long",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_long",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      },
-      "width_ratio": 1.0,
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。"
-    },
-    {
-      "id": "hair_twin_l",
-      "label": "双马尾·左",
-      "slot": "head_side_hair",
-      "source": "sheetcut_hair_twin_back_l.png",
-      "sprite": "hair_twin_l.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "physics": {
-        "deformers": [
-          {
-            "id": "twintail_l_tip",
-            "cols": 2,
-            "rows": 6,
-            "note": "双马尾发梢：越往下位移越大，最后一行最大（amp 单位是像素，在 1× 坐标系下）",
-            "amp": [
-              0.0,
-              0.0,
-              0.8,
-              2.4,
-              5.2,
-              9.0,
-              13.0
-            ]
-          }
-        ],
-        "chain": {
-          "id": "twin_l2",
-          "driver": "head",
-          "angle_input": [
-            {
-              "param": "ParamAngleZ",
-              "weight": 0.3
-            }
-          ],
-          "input": [
-            {
-              "param": "ParamBreath",
-              "wx": 1.8,
-              "wy": -0.8
-            },
-            {
-              "param": "ParamHairSway",
-              "wx": 2.6
-            }
-          ],
-          "input_max": 30,
-          "input_rate": 300,
-          "particles": [
-            {
-              "radius": 0,
-              "note": "根：发绳。被 head 组带着走，不积分"
-            },
-            {
-              "radius": 38,
-              "mobility": 0.94,
-              "delay": 1.05,
-              "acceleration": 1.05
-            },
-            {
-              "radius": 28,
-              "mobility": 0.91,
-              "delay": 0.9,
-              "acceleration": 1.15
-            }
-          ],
-          "outputs": [
-            {
-              "particle": 1,
-              "param": "bend_x",
-              "scale": 1.6,
-              "max": 14,
-              "note": "第一段（发绳以下整束）：跟着头甩"
-            },
-            {
-              "particle": 2,
-              "deformer": "twintail_l_tip",
-              "scale": 0.06,
-              "max": 2.8,
-              "note": "第二段（发梢）：慢半拍，鞭出 C→S 形。scale 0.06 比长发的 0.075 小 —— 扎起来的发束本来就该比披发动得少；而且实测 0.09 时一个 28° 的转头就把 amount 顶到 1.0 并在那儿停一整秒（削顶 = 画面上那一秒是**静止**的，比幅度小更难看） ★ 上限 2.8 = 实测满量程峰值 2.11 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
-            }
-          ],
-          "note": "双马尾摆链（2 段）。★ 为什么比长发少一段：扎起来的发束整体更硬 —— 教程口径「ツインテールは束ねられている分、後ろ髪より硬く、2段振り子で十分」，段数多了反而会出现\"发绳以下像面条\"的软塌感。四个旋钮照抄官方编辑器：長さ=radius（38/28，比长发的 48/36/26 短，短半径=更硬）、揺れやすさ=mobility（0.94/0.91）、反応速度=delay、収束の速さ=acceleration。混入 ParamBreath 是为了静止时也一直在微晃（DC67 之后输出是摆角，呼吸推得动）。 ★ 第四十七问：input 里加了 ParamHairSway（全身统一的那股风，ambient drift 0.19Hz）。原来链上只有 ParamBreath 一个常驻输入，幅度小、频率又跟呼吸绑死 ⇒ 实测待机 9 秒长发发梢只摆 4.5px，比短发 7.4px 还小，最长最重的一缕反而最不飘。physics2 的 driver 和 input 是叠加关系（zrig.c:1306），这条只加一股风，摇头带动照旧。"
-        }
-      },
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "layer": 160,
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "note": "**双马尾·左（T46.3）**。和右束是**同一张原图**，右束靠 mirror 翻过去 —— 脸是对称参照物，AI 画两张一定不对称，一不对称特别显眼（猫耳那四轮返工的教训）。★ 第一版判废，病因值得记：原图把发束顶端画成**一刀平切**，而发根必须藏在头壳后面才像\"扎起来的\"，可头部剪影有 232px 宽、发束才 166px —— 想露出来就只能把它挪到剪影外，于是那条平切边直接暴露在太阳穴上，看着像两块贴上去的板子。第二版把顶端改成**圆鼓鼓的发髻**（AI 提示词里写死\"the top is a rounded gathered knot, not a flat cut\"），于是无论从哪里露出来都还是头发的轮廓。★ 几何是量出来的：发髻中心落在头顶下 0.460 个头高、中线外 0.306 个头高（teen = 画布 y128 / x130），正好卡在头部剪影边缘上 —— 发髻露出一小半（像真的扎了个揪揪），发束往外倒 18° 垂下来。★ 为什么不能把发髻整个塞进剪影里：发束是斜的，往下每 100px 就往外跑 32px，塞太深的话上半截全被头挡住、露出来的那截和脑袋之间**会裂一条缝**，头发看着是飘在空中的。长度 0.774 个上半身 = teen 510px，下沿到 y638 ≈ 腰线。★ **位置用 head 单位、长度用 torso 单位**（pos_unit），理由见 _fields。",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        -0.611679,
-        0.380202
-      ],
-      "sprite_h_rel": 1.584089,
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_twin",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      },
-      "width_ratio": 1.0,
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。"
-    },
-    {
-      "id": "hair_twin_r",
-      "label": "双马尾·右",
-      "slot": "head_side_hair",
-      "source": "sheetcut_hair_twin_back_l.png",
-      "sprite": "hair_twin_r.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "physics": {
-        "deformers": [
-          {
-            "id": "twintail_r_tip",
-            "cols": 2,
-            "rows": 6,
-            "note": "双马尾发梢：越往下位移越大，最后一行最大（amp 单位是像素，在 1× 坐标系下）",
-            "amp": [
-              0.0,
-              0.0,
-              0.8,
-              2.4,
-              5.2,
-              9.0,
-              13.0
-            ]
-          }
-        ],
-        "chain": {
-          "id": "twin_r2",
-          "driver": "head",
-          "angle_input": [
-            {
-              "param": "ParamAngleZ",
-              "weight": 0.3
-            }
-          ],
-          "input": [
-            {
-              "param": "ParamBreath",
-              "wx": 1.8,
-              "wy": -0.8
-            },
-            {
-              "param": "ParamHairSway",
-              "wx": 2.4
-            }
-          ],
-          "input_max": 30,
-          "input_rate": 300,
-          "particles": [
-            {
-              "radius": 0,
-              "note": "根：发绳。被 head 组带着走，不积分"
-            },
-            {
-              "radius": 38,
-              "mobility": 0.94,
-              "delay": 1.05,
-              "acceleration": 1.05
-            },
-            {
-              "radius": 28,
-              "mobility": 0.91,
-              "delay": 0.9,
-              "acceleration": 1.15
-            }
-          ],
-          "outputs": [
-            {
-              "particle": 1,
-              "param": "bend_x",
-              "scale": 1.6,
-              "max": 14,
-              "note": "第一段（发绳以下整束）：跟着头甩"
-            },
-            {
-              "particle": 2,
-              "deformer": "twintail_r_tip",
-              "scale": 0.06,
-              "max": 2.8,
-              "note": "第二段（发梢）：慢半拍，鞭出 C→S 形。scale 0.06 比长发的 0.075 小 —— 扎起来的发束本来就该比披发动得少；而且实测 0.09 时一个 28° 的转头就把 amount 顶到 1.0 并在那儿停一整秒（削顶 = 画面上那一秒是**静止**的，比幅度小更难看） ★ 上限 2.8 = 实测满量程峰值 2.18 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
-            }
-          ],
-          "note": "双马尾摆链（2 段）。★ 为什么比长发少一段：扎起来的发束整体更硬 —— 教程口径「ツインテールは束ねられている分、後ろ髪より硬く、2段振り子で十分」，段数多了反而会出现\"发绳以下像面条\"的软塌感。四个旋钮照抄官方编辑器：長さ=radius（38/28，比长发的 48/36/26 短，短半径=更硬）、揺れやすさ=mobility（0.94/0.91）、反応速度=delay、収束の速さ=acceleration。混入 ParamBreath 是为了静止时也一直在微晃（DC67 之后输出是摆角，呼吸推得动）。 ★ 第四十七问：input 里加了 ParamHairSway（全身统一的那股风，ambient drift 0.19Hz）。原来链上只有 ParamBreath 一个常驻输入，幅度小、频率又跟呼吸绑死 ⇒ 实测待机 9 秒长发发梢只摆 4.5px，比短发 7.4px 还小，最长最重的一缕反而最不飘。physics2 的 driver 和 input 是叠加关系（zrig.c:1306），这条只加一股风，摇头带动照旧。"
-        }
-      },
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "layer": 161,
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "note": "**双马尾·右（T46.3）**，= 左束水平镜像；锚点也跟着镜像（左束发髻在贴图 x=0.725 处，右束就在 1−0.725=0.269 处）—— 这一条忘了的话右束会整体横移一个发束宽。层号 161 ≠ 左束的 160：同一档位里两件同时显示，层号不许重复。",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.611679,
-        0.380202
-      ],
-      "sprite_h_rel": 1.584089,
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_twin",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      },
-      "width_ratio": 1.0,
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "mirror": true
-    },
-    {
-      "id": "hair_pony",
-      "label": "高马尾",
-      "slot": "body_back_pony",
-      "source": "sheetcut_hair_pony_back.png",
-      "sprite": "hair_pony_back.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "physics": {
-        "deformers": [
-          {
-            "id": "pony_mid",
-            "cols": 2,
-            "rows": 6,
-            "note": "马尾中段：峰值落在整条的中间偏上（多段振り子的形：上段管根、下段管梢）",
-            "amp": [
-              0.0,
-              1.4,
-              3.8,
-              5.4,
-              4.0,
-              2.0,
-              0.8
-            ]
-          },
-          {
-            "id": "pony_tip",
-            "cols": 2,
-            "rows": 6,
-            "note": "马尾发梢：最后一行最大。和中段**必须同尺寸**（同部件多张网格是逐点相加的）",
-            "amp": [
-              0.0,
-              0.0,
-              0.5,
-              2.0,
-              4.8,
-              8.6,
-              13.5
-            ]
-          }
-        ],
-        "chain": {
-          "id": "pony2",
-          "driver": "head",
-          "angle_input": [
-            {
-              "param": "ParamAngleZ",
-              "weight": 0.3
-            }
-          ],
-          "input": [
-            {
-              "param": "ParamBreath",
-              "wx": 1.8,
-              "wy": -0.8
-            },
-            {
-              "param": "ParamHairSway",
-              "wx": 2.8
-            }
-          ],
-          "input_max": 30,
-          "input_rate": 300,
-          "particles": [
-            {
-              "radius": 0,
-              "note": "根：后脑的发绳。被 head 组带着走，不积分"
-            },
-            {
-              "radius": 44,
-              "mobility": 0.95,
-              "delay": 1.0,
-              "acceleration": 1.0
-            },
-            {
-              "radius": 34,
-              "mobility": 0.93,
-              "delay": 0.88,
-              "acceleration": 1.1
-            },
-            {
-              "radius": 24,
-              "mobility": 0.9,
-              "delay": 0.76,
-              "acceleration": 1.2
-            }
-          ],
-          "outputs": [
-            {
-              "particle": 1,
-              "param": "bend_x",
-              "scale": 1.7,
-              "max": 16,
-              "note": "第一段（发绳以下整束）"
-            },
-            {
-              "particle": 2,
-              "deformer": "pony_mid",
-              "scale": 0.07,
-              "max": 2.8,
-              "note": "第二段（中段）：再慢一拍 ★ 上限 2.8 = 实测满量程峰值 2.12 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
-            },
-            {
-              "particle": 3,
-              "deformer": "pony_tip",
-              "scale": 0.055,
-              "max": 3.0,
-              "note": "第三段（发梢）：最慢最软。和中段一样按\"别削顶\"回调过（0.075→0.055） ★ 上限 3.0 = 实测满量程峰值 2.32 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
-            }
-          ],
-          "note": "高马尾摆链（3 段）。它是单束里最长最重的一条（≈0.97 个上半身长），所以沿用长发的「長い後ろ髪は3段振り子」（ugoiraman / itodaneko），而不是双马尾的 2 段。半径 44/34/24 介于长发(48/36/26)与双马尾(38/28)之间：扎起来比披发硬，但比双马尾长。 ★ 第四十七问：input 里加了 ParamHairSway（全身统一的那股风，ambient drift 0.19Hz）。原来链上只有 ParamBreath 一个常驻输入，幅度小、频率又跟呼吸绑死 ⇒ 实测待机 9 秒长发发梢只摆 4.5px，比短发 7.4px 还小，最长最重的一缕反而最不飘。physics2 的 driver 和 input 是叠加关系（zrig.c:1306），这条只加一股风，摇头带动照旧。"
-        }
-      },
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "layer": 57,
-      "pose_group": "hairstyle",
-      "pose_id": "pony",
-      "note": "**高马尾（T46.3）**。★ 正面视角下马尾的难点不是物理是**构图**：它扎在后脑，照实画就全被身体挡住。标准画法（也是这版的做法）是让发束**往一侧甩**：发绳落在头顶下 0.432 个头高、中线外 0.277 个头高（teen = 画布 y120 / x292，在后脑剪影里、离右边缘 30px），发束一路下垂并向右漂，于是从正面看是\"从脑后绕出来、顺着右肩外侧垂下\"。层 57 = 整个身体之后，所以盖在身上那半自然被吃掉，露出来的正好是甩出轮廓的那半边。长度 0.971 个上半身 = teen 640px，下沿 y735 ≈ 胯下一点。",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.563772,
-        -0.041761
-      ],
-      "sprite_h_rel": 3.033288,
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_pony",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      },
-      "width_ratio": 1.0,
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。"
-    },
-    {
-      "id": "hair_sidelong_l",
-      "label": "长鬓发（左·垂到胸口）",
-      "slot": "head_side_long",
-      "sprite": "acc_hair_sidelong_l.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "long",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        -0.446619,
-        0.633072
-      ],
-      "sprite_h_rel": 2.62516,
-      "note": "长发档的横髪。参考图：长发两侧从太阳穴直垂过肩到胸口。",
-      "layer": 249,
-      "width_ratio": 1.0,
-      "source": "sheetcut_hair_long_side_l.png",
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_long",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    },
-    {
-      "id": "hair_sidelong_r",
-      "label": "长鬓发（右·垂到胸口）",
-      "slot": "head_side_long",
-      "sprite": "acc_hair_sidelong_r.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "long",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.499722,
-        0.6332
-      ],
-      "sprite_h_rel": 2.621702,
-      "note": "长发档的横髪（右，镜像同源）。",
-      "layer": 251,
-      "width_ratio": 1.0,
-      "source": "sheetcut_hair_long_side_r.png",
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_long",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    },
-    {
-      "id": "hair_crown_twin",
-      "label": "头顶·双马尾",
-      "slot": "head_crown_tied",
-      "source": "sheetcut_hair_twin_crown.png",
-      "sprite": "hair_crown_twin.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.022549,
-        0.140014
-      ],
-      "sprite_h_rel": 0.978815,
-      "width_ratio": 1.0,
-      "layer": 187,
-      "note": "双马尾 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_twin",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    },
-    {
-      "id": "hair_crown_pony",
-      "label": "头顶·高马尾",
-      "slot": "head_crown_tied",
-      "source": "sheetcut_hair_pony_crown.png",
-      "sprite": "hair_crown_pony.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "pony",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.193883,
-        0.133352
-      ],
-      "sprite_h_rel": 0.985732,
-      "width_ratio": 1.0,
-      "layer": 188,
-      "note": "高马尾 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_pony",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    },
-    {
-      "id": "hair_crown_long",
-      "label": "头顶·长发",
-      "slot": "head_crown_tied",
-      "source": "sheetcut_hair_long_crown.png",
-      "sprite": "hair_crown_long.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "long",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.025751,
-        0.140014
-      ],
-      "sprite_h_rel": 0.978815,
-      "width_ratio": 1.0,
-      "layer": 189,
-      "note": "长发 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_long",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    },
-    {
-      "id": "hood_up_twin",
-      "label": "兜帽·戴上（双马尾）",
-      "slot": "head_over_hair",
-      "sprite": "acc_hood_twin.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "tags": [
-        "accessory",
-        "outfit",
-        "hood"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "physics": {
-        "segments": [
-          {
-            "id": "hood_up_twin_x",
-            "driver": "head",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 0.22,
-            "stiffness": 74.0,
-            "damping": 8.4,
-            "max": 3.0,
-            "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
-          }
-        ]
-      },
-      "source": "sheetcut_acc_hood_twin.png",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.025751,
-        0.127332
-      ],
-      "sprite_h_rel": 1.234759,
-      "width_ratio": 1.0,
-      "layer": 253,
-      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
-    },
-    {
-      "id": "hood_up_pony",
-      "label": "兜帽·戴上（马尾）",
-      "slot": "head_over_hair",
-      "sprite": "acc_hood_pony.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "tags": [
-        "accessory",
-        "outfit",
-        "hood"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "pony",
-      "physics": {
-        "segments": [
-          {
-            "id": "hood_up_pony_x",
-            "driver": "head",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 0.22,
-            "stiffness": 74.0,
-            "damping": 8.4,
-            "max": 3.0,
-            "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
-          }
-        ]
-      },
-      "source": "sheetcut_acc_hood_pony.png",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.025751,
-        0.127075
-      ],
-      "sprite_h_rel": 1.241677,
-      "width_ratio": 1.0,
-      "layer": 254,
-      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
-    },
-    {
-      "id": "hood_up_long",
-      "label": "兜帽·戴上（长发）",
-      "slot": "head_over_hair",
-      "sprite": "acc_hood_long.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "tags": [
-        "accessory",
-        "outfit",
-        "hood"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "long",
-      "physics": {
-        "segments": [
-          {
-            "id": "hood_up_long_x",
-            "driver": "head",
-            "axis": "x",
-            "param": "bend_x",
-            "ratio": 0.22,
-            "stiffness": 74.0,
-            "damping": 8.4,
-            "max": 3.0,
-            "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
-          }
-        ]
-      },
-      "source": "sheetcut_acc_hood_long.png",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.02415,
-        0.131431
-      ],
-      "sprite_h_rel": 1.124081,
-      "width_ratio": 1.0,
-      "layer": 255,
-      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
-    },
-    {
-      "id": "hair_hood_twin",
-      "label": "戴帽时垂下的双马尾",
-      "slot": "head_side_hair",
-      "sprite": "hair_hood_twin.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "tags": [
-        "hair",
-        "hood"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "source": "sheetcut_hair_hood_twin.png",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.02415,
-        0.335623
-      ],
-      "sprite_h_rel": 2.095978,
-      "width_ratio": 1.0,
-      "layer": 256,
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_twin_hood",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      },
-      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
-    },
-    {
-      "id": "hair_hood_pony",
-      "label": "戴帽时垂下的马尾",
-      "slot": "head_side_hair",
-      "sprite": "hair_hood_pony.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "tags": [
-        "hair",
-        "hood"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "pony",
-      "source": "sheetcut_hair_hood_pony.png",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.310774,
-        0.314742
-      ],
-      "sprite_h_rel": 2.659748,
-      "width_ratio": 1.0,
-      "layer": 257,
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_pony_hood",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      },
-      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
-    },
-    {
-      "id": "hair_hood_long",
-      "label": "戴帽时垂下的长发",
-      "slot": "head_side_hair",
-      "sprite": "hair_hood_long.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "curve": "tip",
-      "tags": [
-        "hair",
-        "hood"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "long",
-      "source": "sheetcut_hair_hood_long.png",
-      "ref": "head_top",
-      "unit": "head",
-      "pos_rel": [
-        0.022549,
-        0.302445
-      ],
-      "sprite_h_rel": 2.991784,
-      "width_ratio": 1.0,
-      "layer": 258,
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_long_hood",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      },
-      "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
-    },
-    {
-      "id": "hair_sweep_twin_l",
-      "label": "脸侧细缕·双马尾（左）",
-      "slot": "head_side_sweep",
-      "sprite": "hair_sweep_twin_l.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "ref": "head_top",
-      "unit": "head",
-      "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
-      "source": "sheetcut_hair_twin_side_l.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "pos_rel": [
-        -0.501061,
-        0.683799
-      ],
-      "sprite_h_rel": 1.255512,
-      "width_ratio": 1.0,
-      "layer": 247,
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_twin",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    },
-    {
-      "id": "hair_sweep_twin_r",
-      "label": "脸侧细缕·双马尾（右）",
-      "slot": "head_side_sweep",
-      "sprite": "hair_sweep_twin_r.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "twin",
-      "ref": "head_top",
-      "unit": "head",
-      "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
-      "source": "sheetcut_hair_twin_side_r.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "pos_rel": [
-        0.544557,
-        0.683671
-      ],
-      "sprite_h_rel": 1.25897,
-      "width_ratio": 1.0,
-      "layer": 248,
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_twin",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    },
-    {
-      "id": "hair_sweep_pony_l",
-      "label": "脸侧细缕·高马尾（左）",
-      "slot": "head_side_sweep",
-      "sprite": "hair_sweep_pony_l.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "pony",
-      "ref": "head_top",
-      "unit": "head",
-      "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
-      "source": "sheetcut_hair_pony_side_l.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "pos_rel": [
-        -0.230449,
-        0.719027
-      ],
-      "sprite_h_rel": 0.304366,
-      "width_ratio": 1.0,
-      "layer": 243,
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_pony",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    },
-    {
-      "id": "hair_sweep_pony_r",
-      "label": "脸侧细缕·高马尾（右）",
-      "slot": "head_side_sweep",
-      "sprite": "hair_sweep_pony_r.png",
-      "tags": [
-        "hair",
-        "hairstyle"
-      ],
-      "pose_group": "hairstyle",
-      "pose_id": "pony",
-      "ref": "head_top",
-      "unit": "head",
-      "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
-      "source": "sheetcut_hair_pony_side_r.png",
-      "anchor": [
-        0.5,
-        0.0
-      ],
-      "pos_rel": [
-        0.61181,
-        0.644344
-      ],
-      "sprite_h_rel": 2.320794,
-      "width_ratio": 1.0,
-      "layer": 244,
-      "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
-      "recolor_match": {
-        "ref_sprites": [
-          "hair_back.png",
-          "hair_side_l.png",
-          "hair_side_r.png",
-          "hair_front.png"
-        ],
-        "palette_hex": [
-          "#D8D8E8",
-          "#C9CBE0",
-          "#9FC4E8"
-        ],
-        "stats_group": "sheet_pony",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
-      }
-    }
-  ],
-  "pose_groups": [
-    {
-      "id": "tail_pose",
-      "fade": 0.28,
-      "default": "relaxed",
-      "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。四种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose"
-    },
-    {
-      "id": "hood_pose",
-      "fade": 0.35,
-      "default": "down",
-      "extra_parts": {
-        "down": [
-          "hair_ahoge",
-          "acc_ear_cat_l",
-          "acc_ear_cat_r"
-        ]
-      },
-      "note": "兜帽互斥组（官方パーツα方式）。up = 戴上（只显示 acc_hood_up）；down = 摘下（显示呆毛 + 两只猫耳）。★ extra_parts 让档位里能塞**非挂件**的既有部件。这里塞了呆毛和猫耳，于是「戴上兜帽」⇒「呆毛和耳朵一起收进帽子里」是同一个互斥关系的三面，不需要再写联动规则（联动规则是第二个要同步的地方，迟早和本体对不上）。★ 为什么连耳朵一起收：第一版只收呆毛，渲染出来**兜帽的轮廓线从耳朵中间横穿过去**，看着像渲染错误而不是设计。官方课把「髪を隠すマスク」单列一节就是这个道理 —— 戴上之后不该有东西从帽子里支棱出来。（想做「耳朵从帽子上的洞里钻出来」是另一种设计，要给素材开耳洞 + 单独的耳朵差分件，记在未做项里。）fade 0.35 比尾巴的 0.28 慢：戴帽子是个有分量的动作，官方课专讲「違和感のない切り替えの動き」。",
-      "hide_parts": {
-        "up": [
-          "acc_hair_crown_twin",
-          "acc_hair_crown_pony",
-          "acc_hair_crown_long",
-          "acc_hair_twin_l",
-          "acc_hair_twin_r",
-          "acc_hair_pony",
-          "acc_hair_long",
-          "acc_hair_sidelong_l",
-          "acc_hair_sidelong_r"
-        ],
-        "down": [
-          "acc_hood_up_twin",
-          "acc_hair_hood_twin",
-          "acc_hood_up_pony",
-          "acc_hair_hood_pony",
-          "acc_hood_up_long",
-          "acc_hair_hood_long"
-        ]
-      },
-      "_hood_note": "★ T46.17：`up` 这一档除了显示帽壳，还要**收走**扎起来的那套头发。把第一版帽壳贴回不戴帽底图做验收时一眼看出：马尾/双马尾的发束会从帽顶戳出来 —— 戴上兜帽时头发本身的造型就是变了的。收走之后由hair_hood_twin / hair_hood_pony（从戴帽模板上切的）接手。★ 2026-10-20 补齐长发档：hair_hood_long 原来碎成 9 段不合格，切件器加了沿线稿的测地生长之后只剩原画本来的遮挡（手臂、裙子），于是一并接上；同时把 acc_hair_long 与两片鬓发也收走，避免「垂到胸前的发帘」和「披在背后的长发」两套错位重影。"
-    },
-    {
-      "id": "hairstyle",
-      "fade": 0.32,
-      "default": "none",
-      "note": "发型互斥组（T46.3 → T46.9 重做）。档位 none=短发 bob / long=长发过腰 / twin=双马尾 / pony=高马尾。★★ 第十问用户定调：「马尾不是加个马尾，而是**整个发型都要配合着做出改变**」。教程口径完全一致 —— 发型拆件是 **前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束** 五类（Live2D 官方 PSD 教程 / redeyerui），髪型差分 PSD 卖的也是「前髪差分2種 + 後ろ髪差分2種」（booth 5980683），kawase 更直说「ショートヘアはロングヘアから髪の毛削除するだけだとあまり印象が変わらない」。所以 twin/pony 这两档**换掉横髪**：收起原生的 hair_side_l/r（齐腮短鬓），换上向后掠的细缕 hair_sweep_*。long 这一档不换 —— 披着的长发本来就该有齐腮鬓发。★ 这次敢收鬓发，前提是**底图先补画了**（tools/make_scalp_patch.py）：第九问之所以一收就露人耳和平切口，是因为 seg_head 是张光头。Live2D 官方：「元画で隠れていた部分の描き足しを忘れずに」，daigonozin 更进一步「頭部のレイヤーに直接髪の色を描いてしまいます」。",
-      "hide_parts": {
-        "twin": [
-          "hair_back",
-          "hair_side_l",
-          "hair_side_r",
-          "hair_front",
-          "acc_hood_up"
-        ],
-        "pony": [
-          "hair_back",
-          "hair_side_l",
-          "hair_side_r",
-          "hair_front",
-          "acc_hood_up"
-        ],
-        "long": [
-          "hair_back",
-          "hair_side_l",
-          "hair_side_r",
-          "hair_front",
-          "acc_hood_up"
-        ]
-      },
-      "_hood_note": "★ T46.17：兜帽四形态。四顶帽子 + 两片帽下头发都挂在 hood_pose.up 下；其中三顶直接归在对应发型档名下，靠引擎的跨组连乘（zrig.c:4621 pose_opacity，down 档反向 hide）凑出「戴帽 ∧ 发型=X」。短发那顶没有发型档可挂（短发 = 整组关掉 cur=-1），改由三个发型档 hide 掉。不要再给 hairstyle 加名叫 `none` 的档位 —— \"none\" 是 zrig_pose_set 的保留字，那样的档位永远选不中。"
-    }
-  ],
-  "mood_pose": {
-    "tail_pose": {
-      "happy": "up",
-      "affection": "up",
-      "cute": "up",
-      "smile": "up",
-      "surprise": "puff",
-      "angry": "relaxed",
-      "sad": "tuck",
-      "shy": "tuck",
-      "think": "relaxed",
-      "sleepy": "relaxed",
-      "neutral": "relaxed"
-    },
-    "_note": "情绪→尾巴姿态。正面情绪竖起、惊吓炸毛、**恐惧示弱夹紧**、其余垂下。angry 不另起姿态是因为生气时猫尾是**垂着快速甩/拍地**，形状不变只是摆得快 —— 走 mood_swing。★ 2026-10-16 补 tuck：在它之前 6/11 种情绪全映射到 relaxed，sad 和 shy 跟 neutral 长得一模一样。猫行为学里「夹紧贴腹=恐惧示弱」是和「竖起」「炸毛」并列的一级词汇，不该缺。"
+  {
+   "id": "head_in_hair",
+   "label": "插进头发里（耳根被发丝盖住）",
+   "layer": 165,
+   "group": "head",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "curve": "root",
+   "note": "兽耳专用。层 144~169 整段空着，夹在手臂(143) 和 hair_back(170) 之间。★ 关键：必须在 hair_back 之下。头顶那片头发就是 hair_back，hair_front(240) 从 y=163 才开始、只盖刘海，指望它压耳根是压不住的（旧版就栽在这）。教程口径：「髪の上に耳を『乗せる』のではなく、頭のラインに沿って『差し込む』イメージで描く」—— 耳が浮いて見える原因就是画在髪の上。kiri-hana.com"
   },
-  "mood_swing": {
-    "_note": "情绪→摆动倍率（freq×, amp×）。生气=快速大力甩；放松=慢而小",
-    "angry": [
-      3.2,
-      1.8
-    ],
-    "surprise": [
-      2.4,
-      0.5
-    ],
-    "think": [
-      0.55,
-      2.2
-    ],
-    "sleepy": [
-      0.45,
-      0.6
-    ],
-    "happy": [
-      1.6,
-      1.0
-    ],
-    "cute": [
-      1.6,
-      1.0
-    ],
-    "affection": [
-      1.3,
-      0.9
-    ],
-    "smile": [
-      1.2,
-      0.9
-    ],
-    "sad": [
-      0.8,
-      0.6
-    ],
-    "shy": [
-      1.0,
-      0.5
-    ],
-    "neutral": [
-      1.0,
-      1.0
-    ]
+  {
+   "id": "head_under_bangs",
+   "label": "头上、刘海之下",
+   "layer": 185,
+   "group": "head",
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "curve": "root",
+   "note": "兽耳。层 181~189 夹在 seg_head(180) 和 hair_ahoge(190) 之间，会被 hair_front(240) 自然压住一截，接缝不用自己藏。锚点在底边 = 耳根，所以和呆毛同曲线"
   },
-  "tail_flick": {
-    "_note": "情绪 → 自发抽动（第五张情绪表）。每行 = [间隔下限秒, 间隔上限秒, 幅度(参数单位), 单次时长秒]。★ 为什么要有它：摆尾在行为学上是**阵发事件**，不是待机时的匀速节拍。de Mouzon 2023（Université Paris Nanterre, Animals）实测，猫在被人忽视时平均摆尾 13.98 秒，被人搭理时只有 0.39 秒 —— 由事件触发，不是一直在摇。行为学的升级链是「尾尖抽动 → 整条摆 → 拍打」，频度和力度随唤醒度一起涨；「尾尖抽动」是最常见的那一档，意思是「注意力漏出来了」。在此之前尾巴只有一条定频定幅的正弦：60 秒 12 个峰，幅度标准差 0.000015°，变异系数 0.0005% —— 那是节拍器，不是动物。这张表补的是「它自己想动」那一半。★ 实际间隔在上下限之间均匀取，每一下的力度再抖 ±35%、时长 ±25%、方向随机，所以没有两下是一样的。查不到的情绪不动（和另外四张情绪表同口径）。★ 各档依据：angry=lash，又密又重，升级链顶端；surprise=交感神经的非自主反应，突发、重、不密；think=狩猎式专注，尾尖高频小幅；affection=竖尾颤抖的问候，密而小；sleepy=睡着的猫偶尔抽一下（做梦）；shy=紧张，少而短促。",
-    "angry": [
-      0.7,
-      2.0,
-      1.6,
-      0.5
-    ],
-    "surprise": [
-      1.8,
-      5.5,
-      1.25,
-      0.42
-    ],
-    "happy": [
-      2.2,
-      6.5,
-      0.95,
-      0.6
-    ],
-    "cute": [
-      2.2,
-      6.5,
-      0.95,
-      0.6
-    ],
-    "neutral": [
-      5.0,
-      14.0,
-      0.78,
-      0.95
-    ],
-    "affection": [
-      1.6,
-      4.5,
-      0.72,
-      0.45
-    ],
-    "smile": [
-      3.5,
-      9.0,
-      0.68,
-      0.8
-    ],
-    "think": [
-      1.1,
-      3.2,
-      0.52,
-      0.35
-    ],
-    "shy": [
-      5.0,
-      14.0,
-      0.45,
-      0.55
-    ],
-    "sad": [
-      9.0,
-      22.0,
-      0.38,
-      1.2
-    ],
-    "sleepy": [
-      12.0,
-      30.0,
-      0.25,
-      1.5
-    ]
+  {
+   "id": "head_over_hair",
+   "label": "压在所有头发之上",
+   "layer": 250,
+   "group": "head",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "curve": "root",
+   "note": "发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量"
   },
-  "mood_params": {
-    "_note": "情绪 → 参数值。第三张情绪表（前两张是 blink.mood_rate 和 mood_pose）。猫耳行为学依据（REFERENCE_NOTES 第三十二批）：「耳朵**直立**表示很快乐或很警觉；**向后或者低平**（飞机耳）表示被吓到或很生气」「當一隻貓**往前**豎起耳朵時…代表對眼前的人事物感到**相當好奇**」",
-    "ParamEarLAngle": {
-      "happy": 0.85,
-      "affection": 0.7,
-      "cute": 0.8,
-      "smile": 0.55,
-      "surprise": -0.75,
-      "angry": -0.9,
-      "sad": -0.55,
-      "shy": -0.4,
-      "think": 0.45,
-      "sleepy": -0.35,
-      "neutral": 0.0
-    },
-    "ParamEarRAngle": {
-      "happy": 0.85,
-      "affection": 0.7,
-      "cute": 0.8,
-      "smile": 0.55,
-      "surprise": -0.75,
-      "angry": -0.9,
-      "sad": -0.55,
-      "shy": -0.4,
-      "think": 0.45,
-      "sleepy": -0.35,
-      "neutral": 0.0
-    }
+  {
+   "id": "body_back_hair",
+   "label": "身体之后（长发垂下来的那一层）",
+   "layer": 58,
+   "group": "head",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "note": "长发/披肩发专用。★ 层 58 = **整个身体之后**（最低的身体件是腿 60），所以长发从脖子后面垂下来、被躯干和腿挡住，只在身体轮廓两侧露出来 —— 这是 Live2D 里後ろ髪的标准层位。★ 组却是 **head**：层号管遮挡、组管跟谁动，两件事互不相干。後ろ髪必须跟着头转，所以挂 head 组；官方教程的デフォーマ结构也是「頭の回転デフォーマ → 後ろ髪の物理デフォーマ」。锚点在顶边中点（发旋/后脑）= 物理支点，曲线 tip（顶固定、越往下甩得越远）"
+  },
+  {
+   "id": "head_side_hair",
+   "label": "头侧（扎起来的发束：双马尾）",
+   "layer": 160,
+   "group": "head",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "note": "双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。"
+  },
+  {
+   "id": "body_back_pony",
+   "label": "身体之后（马尾从后脑垂下来那一层）",
+   "layer": 57,
+   "group": "head",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "note": "高马尾专用，和长发的 body_back_hair(58) 同一区段（整个身体之后，最低的身体件是腿 60）。★ 马尾和双马尾的层位必须反着来：马尾扎在**后脑**，正面视角下它本来就该被身体挡住，只在轮廓外侧露出来 —— 这正是\"它在身后\"的视觉证据。所以素材画成**往一侧甩**的弧线，露出来的是甩出轮廓的那半边。锚点在顶边 = 发绳，曲线 tip。"
+  },
+  {
+   "id": "head_side_sweep",
+   "label": "脸侧细缕（刘海与鬓发之上）",
+   "layer": 247,
+   "group": "head",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "note": "扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。"
+  },
+  {
+   "id": "head_side_long",
+   "label": "长鬓发位（长发档的横髪）",
+   "layer": 249,
+   "group": "head",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "note": "★ 参考实拍：长发的**横髪也是长的** —— 从太阳穴一路垂到胸口，不是齐腮的短鬓。这是第十二问用户贴的长发参考图里最明显的一条结构，也是之前长发\"不契合\"的真因：留着齐腮短鬓 + 背后挂一片长发 = 短发女孩背后挂了片头发。层 249 > torso 100，所以它垂在衣服前面（参考图里也是垂在身前）。"
+  },
+  {
+   "id": "head_crown_tied",
+   "label": "扎发的头顶（刘海之下、后发之上）",
+   "layer": 189,
+   "group": "head",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "root",
+   "note": "扎起来的发型专用：头顶被收拢的那一片。★ 层 187~189 卡在 呆毛(190) 之下、头壳 seg_head(180) 之上 —— 呆毛压在它上面，刘海(240) 也压在它上面，所以件的下沿切在发际线就够了、不会露边；而它压在头壳和后发壳上面，于是颅顶看起来真的被扎起来了。用户第十二问原话「扎发造型头顶必须跟着变」，缺的就是这一层：以前只换尾巴不换头顶，结果是一颗短发脑袋后面挂两根辫子。★ 下沿绝对不能切到眼线 —— 眼睛在 211~234，比 239 低，切过头会把眼睛盖住（第十一问）。"
   }
+ ],
+ "attachments": [
+  {
+   "id": "tail_cat_relaxed",
+   "label": "垂下·放松",
+   "slot": "hip_back",
+   "source": "acc_tail_cat_relaxed.png",
+   "sprite": "acc_tail_relaxed.png",
+   "tags": [
+    "accessory",
+    "tail"
+   ],
+   "param": {
+    "id": "ParamAccTailCat",
+    "label": "猫尾（0=摘 1=戴）",
+    "default": 1.0
+   },
+   "physics": {
+    "deformer": {
+     "id": "tail_relaxed_s",
+     "cols": 2,
+     "rows": 4,
+     "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+     "amp": [
+      0.0,
+      6.0,
+      15.0,
+      -13.5,
+      -27.0
+     ]
+    },
+    "segments": [
+     {
+      "id": "tail_relaxed_x",
+      "driver": "chest",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 1.0,
+      "stiffness": 18,
+      "damping": 4.2,
+      "max": 24,
+      "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）",
+      "input": [
+       {
+        "param": "ParamBodyAngleX",
+        "weight": 1.0
+       },
+       {
+        "param": "ParamBodyAngleZ",
+        "weight": 0.6
+       },
+       {
+        "param": "ParamBreath",
+        "weight": 2.2
+       }
+      ]
+     },
+     {
+      "id": "tail_relaxed_tip",
+      "driver": "tail_relaxed_x",
+      "deformer": "tail_relaxed_s",
+      "ratio": 0.9,
+      "stiffness": 11,
+      "damping": 2.8,
+      "max": 1.0,
+      "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
+     },
+     {
+      "id": "tail_relaxed_y",
+      "driver": "chest",
+      "axis": "y",
+      "param": "bend_y",
+      "ratio": 0.7,
+      "stiffness": 24,
+      "damping": 5.0,
+      "max": 14,
+      "note": "第三段：上下垂荡，同样混入呼吸",
+      "input": [
+       {
+        "param": "ParamBodyAngleY",
+        "weight": 1.0
+       },
+       {
+        "param": "ParamBreath",
+        "weight": 1.6
+       }
+      ]
+     }
+    ]
+   },
+   "swing": {
+    "param": {
+     "id": "ParamAccTailRelaxedSwing",
+     "label": "猫尾摆动（垂下·放松）",
+     "min": -1.0,
+     "max": 1.0,
+     "default": 0.0
+    },
+    "tip_lag": 0.17,
+    "flick_scale": 1.0,
+    "deformer_scale": 1.0,
+    "root_rot_deg": 3.2,
+    "motion": {
+     "action": "idle",
+     "wave": "drift",
+     "amp": 1.0,
+     "bias": 0.0,
+     "freq": 0.21
+    },
+    "note": "尾巴自己摆：一条参数同时驱动网格形变器（S 形鞭动）和根部小幅旋转，由 idle 的慢正弦推（0.21Hz ≈ 4.8 秒一个来回，比呼吸 0.28Hz 还慢 —— 猫放松时就是这个节奏）。物理链照旧挂着，在这个自主摆动**之上**再叠一层滞后，所以梢比根慢半拍。★ 为什么不走物理输入：本引擎物理输出的是滞后量不是摆角，慢输入出不来位移（实测 0.3px）"
+   },
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "pose_group": "tail_pose",
+   "pose_id": "relaxed",
+   "_note": "默认姿态。猫放松时尾巴自然下垂轻摆 —— 慢(0.21Hz≈4.8s一个来回)、幅度小。锚点在顶边=挂接处，曲线 tip（顶边固定、底端甩得最大）",
+   "layer": 30,
+   "_size_note": "实测定的，不是估的：笔画粗细 = 前臂(62px)的 1.02 倍 —— 真猫尾粗细≈前肢粗细；长度 378 = 躯干+头(630px)的 0.60，真猫尾长也是体长的 0.6~0.7。上一版 sprite_h=560 时粗细 86px = 前臂 1.39 倍，用户一眼看出太大",
+   "ref": "hip",
+   "unit": "body",
+   "pos_rel": [
+    -0.07802,
+    -0.10217
+   ],
+   "sprite_h_rel": 0.31734
+  },
+  {
+   "id": "tail_cat_up",
+   "label": "竖起·开心",
+   "slot": "hip_back",
+   "source": "acc_tail_cat_up.png",
+   "sprite": "acc_tail_up.png",
+   "tags": [
+    "accessory",
+    "tail"
+   ],
+   "param": {
+    "id": "ParamAccTailCat",
+    "label": "猫尾（0=摘 1=戴）",
+    "default": 1.0
+   },
+   "physics": {
+    "deformer": {
+     "id": "tail_up_s",
+     "cols": 2,
+     "rows": 4,
+     "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+     "amp": [
+      0.0,
+      6.0,
+      15.0,
+      -13.5,
+      -27.0
+     ]
+    },
+    "segments": [
+     {
+      "id": "tail_up_x",
+      "driver": "chest",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 1.0,
+      "stiffness": 18,
+      "damping": 4.2,
+      "max": 24,
+      "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）",
+      "input": [
+       {
+        "param": "ParamBodyAngleX",
+        "weight": 1.0
+       },
+       {
+        "param": "ParamBodyAngleZ",
+        "weight": 0.6
+       },
+       {
+        "param": "ParamBreath",
+        "weight": 2.2
+       }
+      ]
+     },
+     {
+      "id": "tail_up_tip",
+      "driver": "tail_up_x",
+      "deformer": "tail_up_s",
+      "ratio": 0.9,
+      "stiffness": 11,
+      "damping": 2.8,
+      "max": 1.0,
+      "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
+     },
+     {
+      "id": "tail_up_y",
+      "driver": "chest",
+      "axis": "y",
+      "param": "bend_y",
+      "ratio": 0.7,
+      "stiffness": 24,
+      "damping": 5.0,
+      "max": 14,
+      "note": "第三段：上下垂荡，同样混入呼吸",
+      "input": [
+       {
+        "param": "ParamBodyAngleY",
+        "weight": 1.0
+       },
+       {
+        "param": "ParamBreath",
+        "weight": 1.6
+       }
+      ]
+     }
+    ]
+   },
+   "swing": {
+    "param": {
+     "id": "ParamAccTailUpSwing",
+     "label": "猫尾摆动（竖起·开心）",
+     "min": -1.0,
+     "max": 1.0,
+     "default": 0.0
+    },
+    "tip_lag": 0.1,
+    "flick_scale": 0.22,
+    "deformer_scale": 1.0,
+    "root_rot_deg": 20.0,
+    "motion": {
+     "action": "idle",
+     "wave": "drift",
+     "amp": 0.16,
+     "bias": -0.78,
+     "freq": 0.55
+    },
+    "note": "竖起姿态：根部旋转同时承担两件事 —— **bias −0.78 × 20° = 静态外倾 −15.6°**（让尾巴斜着升、不被外套挡住；笔直向上会像从腋下长出来），**amp 0.16 × 20° = ±3.2° 的摆动**。兴奋时猫尾是尖端颤，不是大摆，所以幅度小频率高"
+   },
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "curve": "root",
+   "pose_group": "tail_pose",
+   "pose_id": "up",
+   "_note": "开心/自信/打招呼。行为学依据：尾巴高高竖起是『貓咪少數明確表達正面情緒的方式』，尖端问号钩 = 『该陪朕玩了』的友善邀请。★ 锚点在**底边**（尾根在下、往上长），所以曲线换成 root（底边固定、顶端甩得最大）—— 和垂下姿态正好相反。x 挪到 262 让它从身侧升起而不是被躯干挡住。摆动更快更小（兴奋时是颤，不是大摆）",
+   "layer": 31,
+   "ref": "hip",
+   "unit": "body",
+   "pos_rel": [
+    -0.11316,
+    -0.061753
+   ],
+   "sprite_h_rel": 0.33674,
+   "_tail_note": "★ 2026-10-21 第二十九问：这张图是 tools/make_tail_poses.py 从 acc_tail_cat_relaxed.png **重铺**出来的，不是单独出的 AI 图。逐像素都是 relaxed 那条尾巴的颜色和毛流，只是沿另一条脊线铺。pos_rel / sprite_h_rel 是按 _emit 的几何口径反解的，保证四档**根部落在同一个模型坐标点**。"
+  },
+  {
+   "id": "tail_cat_puff",
+   "label": "炸毛·受惊",
+   "slot": "hip_back",
+   "source": "acc_tail_cat_puff.png",
+   "sprite": "acc_tail_puff.png",
+   "tags": [
+    "accessory",
+    "tail"
+   ],
+   "param": {
+    "id": "ParamAccTailCat",
+    "label": "猫尾（0=摘 1=戴）",
+    "default": 1.0
+   },
+   "physics": {
+    "deformer": {
+     "id": "tail_puff_s",
+     "cols": 2,
+     "rows": 4,
+     "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+     "amp": [
+      0.0,
+      6.0,
+      15.0,
+      -13.5,
+      -27.0
+     ]
+    },
+    "segments": [
+     {
+      "id": "tail_puff_x",
+      "driver": "chest",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 1.0,
+      "stiffness": 18,
+      "damping": 4.2,
+      "max": 24,
+      "note": "第一段：整条尾巴跟着身体甩。输入混了 ParamBreath，但⚠**本引擎的物理输出是「滞后量 pos−target」不是摆角**（zrig.c:3013），呼吸只有 0.28Hz，摆锤完全跟得上 ⇒ 差值≈0。实测只摆 0.3px。所以自主摆动**不能**靠物理输入，得靠下面的 motion 动作通道。（Live2D 社区那条「把呼吸加进物理输入」的配方在官方引擎成立，因为官方输出的是摆角。）",
+      "input": [
+       {
+        "param": "ParamBodyAngleX",
+        "weight": 1.0
+       },
+       {
+        "param": "ParamBodyAngleZ",
+        "weight": 0.6
+       },
+       {
+        "param": "ParamBreath",
+        "weight": 2.2
+       }
+      ]
+     },
+     {
+      "id": "tail_puff_tip",
+      "driver": "tail_puff_x",
+      "deformer": "tail_puff_s",
+      "ratio": 0.9,
+      "stiffness": 11,
+      "damping": 2.8,
+      "max": 1.0,
+      "note": "第二段（梢）：串在 tail_x 后面驱动 S 形变器。刚度再降一半 = 梢比根慢半拍，这就是鞭感的来源"
+     },
+     {
+      "id": "tail_puff_y",
+      "driver": "chest",
+      "axis": "y",
+      "param": "bend_y",
+      "ratio": 0.7,
+      "stiffness": 24,
+      "damping": 5.0,
+      "max": 14,
+      "note": "第三段：上下垂荡，同样混入呼吸",
+      "input": [
+       {
+        "param": "ParamBodyAngleY",
+        "weight": 1.0
+       },
+       {
+        "param": "ParamBreath",
+        "weight": 1.6
+       }
+      ]
+     }
+    ]
+   },
+   "swing": {
+    "param": {
+     "id": "ParamAccTailPuffSwing",
+     "label": "猫尾摆动（炸毛·受惊）",
+     "min": -1.0,
+     "max": 1.0,
+     "default": 0.0
+    },
+    "tip_lag": 0.05,
+    "flick_scale": 0.13,
+    "deformer_scale": 1.0,
+    "root_rot_deg": 16.0,
+    "motion": {
+     "action": "idle",
+     "wave": "drift",
+     "amp": 0.08,
+     "bias": -0.86,
+     "freq": 1.35
+    },
+    "note": "炸毛姿态：静态外倾 −13.8°，摆动只有 ±1.3° 但频率 1.35Hz —— 受惊时是**僵直发抖**，不是摇摆"
+   },
+   "anchor": [
+    0.5,
+    1.0
+   ],
+   "curve": "root",
+   "pose_group": "tail_pose",
+   "pose_id": "puff",
+   "_note": "惊吓/极度紧张。行为学依据：炸毛是竖起全身毛发让自己看起来更庞大，常伴哈气、飞机耳、拱背。摆动最快最小 = 僵直发抖，不是摇摆",
+   "layer": 32,
+   "_size_note": "炸毛保持 430。瘦了默认那根之后，炸毛/常态 = 111/63 = **1.76 倍**，总算接近真猫『炸毛让自己看起来更庞大』的观感。真猫是 3 倍，动漫一般做 2 倍左右，再大就从『受惊』变成『鸡毛掸子』了",
+   "ref": "hip",
+   "unit": "body",
+   "pos_rel": [
+    -0.131149,
+    -0.055629
+   ],
+   "sprite_h_rel": 0.338342,
+   "_tail_note": "★ 2026-10-21 第二十九问：这张图是 tools/make_tail_poses.py 从 acc_tail_cat_relaxed.png **重铺**出来的，不是单独出的 AI 图。逐像素都是 relaxed 那条尾巴的颜色和毛流，只是沿另一条脊线铺。pos_rel / sprite_h_rel 是按 _emit 的几何口径反解的，保证四档**根部落在同一个模型坐标点**。"
+  },
+  {
+   "id": "tail_cat_tuck",
+   "label": "夹紧·示弱",
+   "slot": "hip_back",
+   "source": "acc_tail_cat_tuck.png",
+   "sprite": "acc_tail_tuck.png",
+   "tags": [
+    "accessory",
+    "tail"
+   ],
+   "param": {
+    "id": "ParamAccTailCat",
+    "label": "猫尾（0=摘 1=戴）",
+    "default": 1.0
+   },
+   "physics": {
+    "deformer": {
+     "id": "tail_tuck_s",
+     "cols": 2,
+     "rows": 4,
+     "note": "夹紧的 S 形甩动只有 relaxed 的 37% —— 尾巴被压在身上，摆不开。注意这个数**不能**照搬 relaxed 第一版那套（[0,2,5,-4.5,-9]）被否掉的理由：那次是整条 520px 的尾巴只摆 6.6px 等于没动；这里是**有意**让它几乎不动，形状本身已经表达了情绪。",
+     "amp": [
+      0.0,
+      2.2,
+      5.5,
+      -4.6,
+      -9.0
+     ]
+    },
+    "segments": [
+     {
+      "id": "tail_tuck_x",
+      "driver": "chest",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 1.0,
+      "stiffness": 34,
+      "damping": 6.0,
+      "max": 9,
+      "note": "刚度 34（relaxed 是 18）、行程 9px（relaxed 24）—— 夹紧的尾巴是**绷住**的，跟着身体甩的余量很小。",
+      "input": [
+       {
+        "param": "ParamBodyAngleX",
+        "weight": 1.0
+       },
+       {
+        "param": "ParamBodyAngleZ",
+        "weight": 0.6
+       },
+       {
+        "param": "ParamBreath",
+        "weight": 2.2
+       }
+      ]
+     },
+     {
+      "id": "tail_tuck_tip",
+      "driver": "tail_tuck_x",
+      "deformer": "tail_tuck_s",
+      "ratio": 0.9,
+      "stiffness": 22,
+      "damping": 4.0,
+      "max": 1.0,
+      "note": "梢段同样收紧，鞭感基本消掉。"
+     },
+     {
+      "id": "tail_tuck_y",
+      "driver": "chest",
+      "axis": "y",
+      "param": "bend_y",
+      "ratio": 0.7,
+      "stiffness": 44,
+      "damping": 6.8,
+      "max": 5,
+      "note": "上下垂荡也压到 5px。",
+      "input": [
+       {
+        "param": "ParamBodyAngleY",
+        "weight": 1.0
+       },
+       {
+        "param": "ParamBreath",
+        "weight": 1.6
+       }
+      ]
+     }
+    ]
+   },
+   "swing": {
+    "param": {
+     "id": "ParamAccTailTuckSwing",
+     "label": "猫尾摆动（夹紧·示弱）",
+     "min": -1.0,
+     "max": 1.0,
+     "default": 0.0
+    },
+    "tip_lag": 0.07,
+    "flick_scale": 1.3,
+    "deformer_scale": 0.34,
+    "root_rot_deg": 1.4,
+    "motion": {
+     "action": "idle",
+     "wave": "drift",
+     "amp": 1.0,
+     "bias": -0.55,
+     "freq": 0.16
+    },
+    "note": "夹紧时尾巴几乎不动 —— 这是**恐惧的冻结**，不是放松的慢摆。三个数都往下压：形变器只给 0.34 倍（鞭动基本没了）、根部旋转 1.4°（relaxed 是 3.2°）、0.16Hz（6.3 秒一个来回，比 relaxed 的 0.21Hz 还慢）。bias −0.55 是**静态内收**：把尾巴常态就压向身体一侧，而不是居中摆 —— 「夹紧」的形是姿态给的，「贴着」的感觉靠这个偏置。（一个参数两用：bias 给静态姿态、amp 给动态幅度，见 LESSONS 162）"
+   },
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "pose_group": "tail_pose",
+   "pose_id": "tuck",
+   "_note": "恐惧/示弱。猫行为学（第三十二批）：「藏進雙腿間…**極度沒有安全感**」。★ 这是词汇表里语义最独立的一条 —— 在它之前，11 种情绪有 6 种（angry·sad·shy·think·sleepy·neutral）全挤在 relaxed 一个姿态上，只靠摆速区分。sad/shy 本该是夹紧。",
+   "layer": 33,
+   "_size_note": "实测对齐，不是估的：按**笔画粗细**和 relaxed 对齐。\n  relaxed 源图内容框 495×1645、笔画 278 ⇒ sprite_h=410 时成品笔画 69px（=1.02×前臂62）。\n  tuck 源图内容框 307×1676、笔画 172 ⇒ 同样粗要 sprite_h=675，从胯部(y=648)一路垂到画布底 1323，太长。\n  ⇒ 用 source_crop 截掉上段直杆（尾根本来就被裙子挡着），剩下 60% 含钩的部分，sprite_h=404，和 relaxed 的 410 同量级。\n★ 为什么比 relaxed 略细是对的：害怕时毛贴身不炸开 —— 和 puff(1.76×) 正好两头。",
+   "ref": "hip",
+   "unit": "body",
+   "pos_rel": [
+    0.022266,
+    -0.099527
+   ],
+   "sprite_h_rel": 0.192397,
+   "_tail_note": "★ 2026-10-21 第二十九问：这张图是 tools/make_tail_poses.py 从 acc_tail_cat_relaxed.png **重铺**出来的，不是单独出的 AI 图。逐像素都是 relaxed 那条尾巴的颜色和毛流，只是沿另一条脊线铺。pos_rel / sprite_h_rel 是按 _emit 的几何口径反解的，保证四档**根部落在同一个模型坐标点**。"
+  },
+  {
+   "id": "ear_cat_l",
+   "label": "猫耳（左）",
+   "slot": "head_in_hair",
+   "source": "acc_ear_cat.png",
+   "sprite": "acc_ear_l.png",
+   "mirror": true,
+   "_mirror_note": "★ 2026-10-17 第五次返工：左右装反了。用户「耳廓那边跑到内边了，是角度不对吗」—— 一半对。\n量过的事实（tools/qa_ear_orient.py）：原来左耳的耳尖往**内**倒 19.4°，内耳（暖色耳廓）落在\n耳宽的 0.68（1=内侧），也就是**耳尖和耳廓双双朝内**。\n参考资料三家口径一致，都说正面要朝**外**：\n  · palmie.jp/lessons/43「正面向きは少し耳を**外側**に向けた状態で描きました。猫が力を入れていない時は、耳はこの辺を向いています」\n  · atam-academy.com/blog/50779「耳の正面は真正面ではなく、**少し外側を向く**イメージで描きましょう」\n  · adobe.com/jp …how-to-draw-ears「猫の耳であればやや斜めに**少し外向き**に生える」\n真猫照片与二次元参考图各自量过：**耳廓（内耳）偏外侧、厚毛边在内侧**（耳朵开口朝前且朝外，\n靠内那条边才是转向镜头的那条，所以露出的是耳背的毛）。\n⇒ 两处错误（倾角朝内 + 耳廓朝内）其实是同一个错：**左右两张贴图装反了**。镜像一次两个都对。\n本修复只改 mirror 开关，不动素材、不动位置与大小。闸门：check_ear_orientation（selfcheck 第⑳段）。",
+   "tags": [
+    "accessory",
+    "ear"
+   ],
+   "param": {
+    "id": "ParamAccEarL",
+    "label": "猫耳L（0=摘 1=戴）",
+    "default": 1.0
+   },
+   "_note": "槽 head_in_hair = 层 165/166，**在 hair_back(170) 之下** —— 耳根由头发盖住，而不是耳朵盖住头发。",
+   "swing": {
+    "param": {
+     "id": "ParamEarLAngle",
+     "label": "猫耳角度r（−1飞机耳 +1竖起）",
+     "min": -1.0,
+     "max": 1.0,
+     "default": 0.0
+    },
+    "root_rot_deg": -26.0,
+    "motion": {
+     "action": "idle",
+     "wave": "pulse",
+     "amp": 0.14,
+     "bias": 0.0,
+     "freq": 0.085
+    },
+    "note": "猫耳角度。★ 官方/社区做法是**一条连续参数**不是差分件：「耳揺れ」取 −30~30，「−30で耳が下がる、30ではピンと張る」（otimusya24.com）。我们取 ±26°，正负方向左右相反（镜像件要反号）。情绪映射见 mood_params：直立=快乐/警觉、**飞机耳**=害怕或生气、前倾=好奇。idle 用 pulse 波 0.085Hz（约 12 秒一次）做**偶发抖动** —— 耳朵不该像尾巴那样一直匀速晃，真猫是偶尔抖一下　★ 符号是**实测**翻过来的：第一版左 +26/右 −26，渲染出来 happy 摊平、angry 竖起，正好对调。旋转正负号不能推，必须拿两个极值渲染出来看。"
+   },
+   "physics": {
+    "segments": [
+     {
+      "id": "ear_l_x",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 0.42,
+      "stiffness": 52,
+      "damping": 5.6,
+      "max": 5,
+      "note": "耳朵跟着头甩的滞后。刚度比呆毛(42)还高、幅度比它(8)还小 —— ★「あまり**根本を動かしてしまうと猫耳自体が浮いて見えてしまう**」（vtuberkaibougaku.site）：耳朵是长在头上的，晃大了就像顶着两个帽子"
+     }
+    ]
+   },
+   "layer": 165,
+   "rotate_deg": 0.0,
+   "_size_note": "★ 第四版 v2。前三版全靠估，这版每个数字都在**带坐标网格的渲染图**上量过（logs/asset_qa/head_grid.png）。\n【踩过的测量坑】逐列取最高不透明像素来求「头发表面」是错的 —— **呆毛那根细尖会被当成发团**，\n  害我把发顶读成画布 y=55（真值 y≈120），一路错到耳根悬空。正确做法：先做水平腐蚀抹掉细尖，\n  或者直接画网格用眼睛核对。\n【量到的真值·画布坐标】发团顶 y≈120；耳位处发面 y≈128；下颌 y=342 ⇒ **脸高 222**；\n  头最宽 242（中心 x=419）；y=158 一线头宽≈210。\n【按教程定的三个数】\n  · 大小：猫耳长 = 脸高的 1/3（medibangpaint.com / note.com-kakaman 两家口径一致；兔 2/3、狐 1/2）\n          222/3 = 74 = **露出**高度。sprite_h 取 104 = 露出 74 + 埋进发里 30。\n  · 横宽：width_ratio 0.78 把素材的 1.09 宽高比压到 0.85 ⇒ 单耳 88px。\n          1.09 时两耳横跨 245px ≈ 整个头宽，就是用户说的「过宽」「像兔耳」。\n  · 左右：「頭の円を時計に見立てて 11 時と 1 時」（kiri-hana.com）⇒ 419 ± 242/2·sin30° = 356 / 482。\n          两耳合计横跨 198，/头宽 237 = 0.84，落在惯例 0.75~1.0 内。\n  · 埋深：耳根 y=178，比发面(≈140)低 38px。这个数是**迭代出来的**：\n          y=158 时实测耳根只有 25%/38% 压在头发下（外侧角悬在发团斜坡外），\n          往下沉 20px 后露出高也从 0.42 自动降到 0.33 —— 一个动作同时修两项。\n【层号】165/166 在 hair_back(170) 之下 —— 耳根由头发盖住。教程：「髪の上に耳を『乗せる』のでは\n  なく、頭のラインに沿って『差し込む』イメージ」，耳が浮いて見える原因就是画在髪の上（kiri-hana.com）。\n★ 画布顶部净空够用：耳尖 y=54，离画布顶还有 54px，旋转 ±26° 也不会被切。",
+   "width_ratio": 0.78,
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    -0.18702,
+    0.39563
+   ],
+   "sprite_h_rel": 0.37405
+  },
+  {
+   "id": "ear_cat_r",
+   "label": "猫耳（右）",
+   "slot": "head_in_hair",
+   "source": "acc_ear_cat.png",
+   "sprite": "acc_ear_r.png",
+   "mirror": false,
+   "_mirror_note": "★ 2026-10-17 第五次返工：与 ear_cat_l 同一处修复（左右贴图装反）。详见 ear_cat_l 的 _mirror_note。",
+   "tags": [
+    "accessory",
+    "ear"
+   ],
+   "param": {
+    "id": "ParamAccEarR",
+    "label": "猫耳R（0=摘 1=戴）",
+    "default": 1.0
+   },
+   "_note": "槽 head_in_hair = 层 165/166，**在 hair_back(170) 之下** —— 耳根由头发盖住，而不是耳朵盖住头发。",
+   "swing": {
+    "param": {
+     "id": "ParamEarRAngle",
+     "label": "猫耳角度r（−1飞机耳 +1竖起）",
+     "min": -1.0,
+     "max": 1.0,
+     "default": 0.0
+    },
+    "root_rot_deg": 26.0,
+    "motion": {
+     "action": "idle",
+     "wave": "pulse",
+     "amp": 0.14,
+     "bias": 0.0,
+     "freq": 0.085
+    },
+    "note": "猫耳角度。★ 官方/社区做法是**一条连续参数**不是差分件：「耳揺れ」取 −30~30，「−30で耳が下がる、30ではピンと張る」（otimusya24.com）。我们取 ±26°，正负方向左右相反（镜像件要反号）。情绪映射见 mood_params：直立=快乐/警觉、**飞机耳**=害怕或生气、前倾=好奇。idle 用 pulse 波 0.085Hz（约 12 秒一次）做**偶发抖动** —— 耳朵不该像尾巴那样一直匀速晃，真猫是偶尔抖一下　★ 符号是**实测**翻过来的：第一版左 +26/右 −26，渲染出来 happy 摊平、angry 竖起，正好对调。旋转正负号不能推，必须拿两个极值渲染出来看。"
+   },
+   "physics": {
+    "segments": [
+     {
+      "id": "ear_r_x",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 0.42,
+      "stiffness": 52,
+      "damping": 5.6,
+      "max": 5,
+      "note": "耳朵跟着头甩的滞后。刚度比呆毛(42)还高、幅度比它(8)还小 —— ★「あまり**根本を動かしてしまうと猫耳自体が浮いて見えてしまう**」（vtuberkaibougaku.site）：耳朵是长在头上的，晃大了就像顶着两个帽子"
+     }
+    ]
+   },
+   "layer": 166,
+   "rotate_deg": 0.0,
+   "_size_note": "★ 第四版 v2。前三版全靠估，这版每个数字都在**带坐标网格的渲染图**上量过（logs/asset_qa/head_grid.png）。\n【踩过的测量坑】逐列取最高不透明像素来求「头发表面」是错的 —— **呆毛那根细尖会被当成发团**，\n  害我把发顶读成画布 y=55（真值 y≈120），一路错到耳根悬空。正确做法：先做水平腐蚀抹掉细尖，\n  或者直接画网格用眼睛核对。\n【量到的真值·画布坐标】发团顶 y≈120；耳位处发面 y≈128；下颌 y=342 ⇒ **脸高 222**；\n  头最宽 242（中心 x=419）；y=158 一线头宽≈210。\n【按教程定的三个数】\n  · 大小：猫耳长 = 脸高的 1/3（medibangpaint.com / note.com-kakaman 两家口径一致；兔 2/3、狐 1/2）\n          222/3 = 74 = **露出**高度。sprite_h 取 104 = 露出 74 + 埋进发里 30。\n  · 横宽：width_ratio 0.78 把素材的 1.09 宽高比压到 0.85 ⇒ 单耳 88px。\n          1.09 时两耳横跨 245px ≈ 整个头宽，就是用户说的「过宽」「像兔耳」。\n  · 左右：「頭の円を時計に見立てて 11 時と 1 時」（kiri-hana.com）⇒ 419 ± 242/2·sin30° = 356 / 482。\n          两耳合计横跨 198，/头宽 237 = 0.84，落在惯例 0.75~1.0 内。\n  · 埋深：耳根 y=178，比发面(≈140)低 38px。这个数是**迭代出来的**：\n          y=158 时实测耳根只有 25%/38% 压在头发下（外侧角悬在发团斜坡外），\n          往下沉 20px 后露出高也从 0.42 自动降到 0.33 —— 一个动作同时修两项。\n【层号】165/166 在 hair_back(170) 之下 —— 耳根由头发盖住。教程：「髪の上に耳を『乗せる』のでは\n  なく、頭のラインに沿って『差し込む』イメージ」，耳が浮いて見える原因就是画在髪の上（kiri-hana.com）。\n★ 画布顶部净空够用：耳尖 y=54，离画布顶还有 54px，旋转 ±26° 也不会被切。",
+   "width_ratio": 0.78,
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.2086,
+    0.39563
+   ],
+   "sprite_h_rel": 0.37405
+  },
+  {
+   "id": "hood_up",
+   "label": "兜帽·戴上",
+   "slot": "head_over_hair",
+   "sprite": "acc_hood_up.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "tags": [
+    "accessory",
+    "outfit",
+    "hood"
+   ],
+   "pose_group": "hood_pose",
+   "pose_id": "up",
+   "physics": {
+    "segments": [
+     {
+      "id": "hood_x",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 0.22,
+      "stiffness": 74,
+      "damping": 8.4,
+      "max": 3,
+      "note": "兜帽戴在头上，是**跟着头走**的硬件，不是吊着的软件 —— 所以刚度给到 74（猫耳 52、尾巴 18）、行程只有 3px。教程口径「軽いものほど揺れやすく、早く収まる」，布越厚越贴头越不该晃；而且它和脸挨着，晃大了会穿帮。没有自主摆动通道（ambient）—— 兜帽不会自己动，它只跟随。"
+     }
+    ]
+   },
+   "_note": "★ 2026-10-18 第十三问第 6 版：形状交给画、**尺寸交给算**（tools/make_hood_part.py 按头部实测几何定标）。第 5 版画成了小红帽那种带蕾丝带披肩的头巾式，用户当场指出「运动衫的兜帽，你怎么生成小红帽的兜帽样式了？」—— 本体是件白色运动连帽夹克，帽子必须是**卫衣帽**：厚针织、米白外层 + 青色内衬（和夹克袖子同色）、帽口厚折边、带抽绳，不要蕾丝不要披肩。尺寸：开口 207x266 = 头宽的 0.84 倍，弧顶 y=129 在发际线 163 之上（整片刘海露在外面），下摆 y=408 收在衣领处，外轮廓 1.28 倍头宽。★ 纵横分开定标：模型画的帽口是 1.75:1 的长椭圆，等比缩放要么夹脸要么垂到胸口，竖着压 27% 才贴头。★ 没有兔耳/任何耳状凸起。★ 源图自带的抽绳按\"行宽掉到主体 35% 以下\"自动裁掉 —— 夹克胸口本来就画了一对，不能叠两套。 ★ 帽顶还要盖过呆毛尖（anchors head_top，画布 y=68）—— selfcheck 的「兜帽顶盖过头顶」量的是这个，不是颅顶；差几像素就整顶上移。",
+   "param": {
+    "id": "ParamAccHood",
+    "label": "兜帽（0=摘 1=戴）",
+    "default": 0.0
+   },
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.025751,
+    0.123745
+   ],
+   "sprite_h_rel": 1.245135,
+   "note": "★ 2026-10-18 第十问：下沿**裁到领口线**（source_crop 下 0.726）。上一版两片下摆垂到胸口、而且画在夹克**前面**，用户说「你做到前面了」。现在上半截（帽体）层 250 在头发之上，下半截不画了 —— 颈后的布料由常驻的 hood_neck（层 95，在夹克之下）承担，于是\"帽子从领子后面长出来\"。教程口径：フードは顔が出る部分と後頭部を覆う部分で形状が違う（CLIP STUDIO）。",
+   "width_ratio": 1.0,
+   "layer": 252,
+   "source": "sheetcut_acc_hood_short.png",
+   "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+  },
+  {
+   "id": "hair_long",
+   "label": "长发·过腰",
+   "slot": "body_back_hair",
+   "source": "sheetcut_hair_long_back.png",
+   "sprite": "hair_long_back.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "physics": {
+    "deformers": [
+     {
+      "id": "longhair_mid",
+      "cols": 2,
+      "rows": 6,
+      "note": "第二段（中段）：鼓在半腰上。多段振り子的形是「上面那段管根、下面那段管梢」，中段的峰值要落在整条头发的中间偏上",
+      "amp": [
+       0.0,
+       1.6,
+       4.4,
+       6.2,
+       4.6,
+       2.4,
+       1.0
+      ]
+     },
+     {
+      "id": "longhair_tip",
+      "cols": 2,
+      "rows": 6,
+      "note": "第三段（发梢）：越往下越大，最后一行最大。和中段**必须同尺寸**（同一部件上的多张网格是逐点相加的）",
+      "amp": [
+       0.0,
+       0.0,
+       0.6,
+       2.2,
+       5.4,
+       9.6,
+       15.0
+      ]
+     }
+    ],
+    "chain": {
+     "id": "longhair2",
+     "driver": "head",
+     "angle_input": [
+      {
+       "param": "ParamAngleZ",
+       "weight": 0.3
+      }
+     ],
+     "input": [
+      {
+       "param": "ParamBreath",
+       "wx": 1.8,
+       "wy": -0.8
+      },
+      {
+       "param": "ParamHairSway",
+       "wx": 3.2
+      }
+     ],
+     "input_max": 30,
+     "input_rate": 300,
+     "particles": [
+      {
+       "radius": 0,
+       "note": "根：发旋。被 head 组带着走，不积分"
+      },
+      {
+       "radius": 48,
+       "mobility": 0.95,
+       "delay": 1.0,
+       "acceleration": 1.0
+      },
+      {
+       "radius": 36,
+       "mobility": 0.93,
+       "delay": 0.88,
+       "acceleration": 1.1
+      },
+      {
+       "radius": 26,
+       "mobility": 0.9,
+       "delay": 0.76,
+       "acceleration": 1.2
+      }
+     ],
+     "outputs": [
+      {
+       "particle": 1,
+       "param": "bend_x",
+       "scale": 1.7,
+       "max": 16,
+       "note": "第一段（根）：整条头发跟着头甩。max 16 沿用旧的 longhair_x，所以同一个转头动作下像素行程同量级"
+      },
+      {
+       "particle": 2,
+       "deformer": "longhair_mid",
+       "scale": 0.1,
+       "max": 3.5,
+       "note": "第二段（中段）：再慢一拍 ★ 上限 3.5 = 实测满量程峰值 2.69 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
+      },
+      {
+       "particle": 3,
+       "deformer": "longhair_tip",
+       "scale": 0.075,
+       "max": 3.6,
+       "note": "第三段（发梢）：最慢最软 ★ 上限 3.6 = 实测满量程峰值 2.75 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
+      }
+     ],
+     "note": "长发 3 段摆链（T47.2 从旧内核迁过来）。旧的三条弹簧摆 longhair_x/mid_p/tip_p 输出的是滞后量，人一静止就恒等于 0；换成 2D 粒子链之后输出是摆角，呼吸那点 0.28Hz 的微动也能一直把它推着晃。四个旋钮照抄官方编辑器：長さ=radius（48/36/26，根硬梢软）、揺れやすさ=mobility（0.95/0.93/0.90）、反応速度=delay、収束の速さ=acceleration。長い後ろ髪は**3段振り子** —— ugoiraman / itodaneko 两家都是这么做的；刚度最低（頭發最長最软）这条原则现在体现为 delay 最小 ★ 第四十七问：input 里加了 ParamHairSway（全身统一的那股风，ambient drift 0.19Hz）。原来链上只有 ParamBreath 一个常驻输入，幅度小、频率又跟呼吸绑死 ⇒ 实测待机 9 秒长发发梢只摆 4.5px，比短发 7.4px 还小，最长最重的一缕反而最不飘。physics2 的 driver 和 input 是叠加关系（zrig.c:1306），这条只加一股风，摇头带动照旧。"
+    }
+   },
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "layer": 58,
+   "note": "**长发差分件（T46.2；T46.3 并入发型互斥组）**。走 DC59「差分件做加法」：它不替换现有的后发短壳，而是**加在身体后面**——短壳继续当头顶剪影，长发只负责垂下来的那一截，所以不需要重画头顶、也不会和刘海/侧发打架。★ 尺寸是量出来的不是估的：锚点落在 head_top 下方 42px（后脑发旋），宽 330 = 躯干(273) + 两侧各露 28px；高 822 ⇒ 下沿到 y932（裙摆 y820 之下），于是**肩侧露一条、裙下露发梢**，中段被身体挡住（身体在 y600~800 宽 340~420，比头发宽）—— 这正是正面视角下长发该有的样子。★ 颜色不信 AI（DC55）：recolor 按亮度聚类重铺到色卡的 线稿/发暗部/发主色 三档。 ★ 第十一问收窄：原来 307px 宽对 247px 的头 = 1.24 倍，用户说「后发太大了，不契合」；收到 0.87 倍宽（~267px，1.08 倍头宽）、高 0.90 倍，顶沿从 y140 提到 ~y115 与头顶齐 —— 原来它从半路冒出来，颅顶是本体短发、下半截是长发，接不上。",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.02415,
+    0.037918
+   ],
+   "sprite_h_rel": 3.303067,
+   "pose_group": "hairstyle",
+   "pose_id": "long",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_long",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   },
+   "width_ratio": 1.0,
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。"
+  },
+  {
+   "id": "hair_twin_l",
+   "label": "双马尾·左",
+   "slot": "head_side_hair",
+   "source": "sheetcut_hair_twin_back_l.png",
+   "sprite": "hair_twin_l.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "physics": {
+    "deformers": [
+     {
+      "id": "twintail_l_tip",
+      "cols": 2,
+      "rows": 6,
+      "note": "双马尾发梢：越往下位移越大，最后一行最大（amp 单位是像素，在 1× 坐标系下）",
+      "amp": [
+       0.0,
+       0.0,
+       0.8,
+       2.4,
+       5.2,
+       9.0,
+       13.0
+      ]
+     }
+    ],
+    "chain": {
+     "id": "twin_l2",
+     "driver": "head",
+     "angle_input": [
+      {
+       "param": "ParamAngleZ",
+       "weight": 0.3
+      }
+     ],
+     "input": [
+      {
+       "param": "ParamBreath",
+       "wx": 1.8,
+       "wy": -0.8
+      },
+      {
+       "param": "ParamHairSway",
+       "wx": 2.6
+      }
+     ],
+     "input_max": 30,
+     "input_rate": 300,
+     "particles": [
+      {
+       "radius": 0,
+       "note": "根：发绳。被 head 组带着走，不积分"
+      },
+      {
+       "radius": 38,
+       "mobility": 0.94,
+       "delay": 1.05,
+       "acceleration": 1.05
+      },
+      {
+       "radius": 28,
+       "mobility": 0.91,
+       "delay": 0.9,
+       "acceleration": 1.15
+      }
+     ],
+     "outputs": [
+      {
+       "particle": 1,
+       "param": "bend_x",
+       "scale": 1.6,
+       "max": 14,
+       "note": "第一段（发绳以下整束）：跟着头甩"
+      },
+      {
+       "particle": 2,
+       "deformer": "twintail_l_tip",
+       "scale": 0.06,
+       "max": 2.8,
+       "note": "第二段（发梢）：慢半拍，鞭出 C→S 形。scale 0.06 比长发的 0.075 小 —— 扎起来的发束本来就该比披发动得少；而且实测 0.09 时一个 28° 的转头就把 amount 顶到 1.0 并在那儿停一整秒（削顶 = 画面上那一秒是**静止**的，比幅度小更难看） ★ 上限 2.8 = 实测满量程峰值 2.11 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
+      }
+     ],
+     "note": "双马尾摆链（2 段）。★ 为什么比长发少一段：扎起来的发束整体更硬 —— 教程口径「ツインテールは束ねられている分、後ろ髪より硬く、2段振り子で十分」，段数多了反而会出现\"发绳以下像面条\"的软塌感。四个旋钮照抄官方编辑器：長さ=radius（38/28，比长发的 48/36/26 短，短半径=更硬）、揺れやすさ=mobility（0.94/0.91）、反応速度=delay、収束の速さ=acceleration。混入 ParamBreath 是为了静止时也一直在微晃（DC67 之后输出是摆角，呼吸推得动）。 ★ 第四十七问：input 里加了 ParamHairSway（全身统一的那股风，ambient drift 0.19Hz）。原来链上只有 ParamBreath 一个常驻输入，幅度小、频率又跟呼吸绑死 ⇒ 实测待机 9 秒长发发梢只摆 4.5px，比短发 7.4px 还小，最长最重的一缕反而最不飘。physics2 的 driver 和 input 是叠加关系（zrig.c:1306），这条只加一股风，摇头带动照旧。"
+    }
+   },
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "layer": 160,
+   "pose_group": "hairstyle",
+   "pose_id": "twin",
+   "note": "**双马尾·左（T46.3）**。和右束是**同一张原图**，右束靠 mirror 翻过去 —— 脸是对称参照物，AI 画两张一定不对称，一不对称特别显眼（猫耳那四轮返工的教训）。★ 第一版判废，病因值得记：原图把发束顶端画成**一刀平切**，而发根必须藏在头壳后面才像\"扎起来的\"，可头部剪影有 232px 宽、发束才 166px —— 想露出来就只能把它挪到剪影外，于是那条平切边直接暴露在太阳穴上，看着像两块贴上去的板子。第二版把顶端改成**圆鼓鼓的发髻**（AI 提示词里写死\"the top is a rounded gathered knot, not a flat cut\"），于是无论从哪里露出来都还是头发的轮廓。★ 几何是量出来的：发髻中心落在头顶下 0.460 个头高、中线外 0.306 个头高（teen = 画布 y128 / x130），正好卡在头部剪影边缘上 —— 发髻露出一小半（像真的扎了个揪揪），发束往外倒 18° 垂下来。★ 为什么不能把发髻整个塞进剪影里：发束是斜的，往下每 100px 就往外跑 32px，塞太深的话上半截全被头挡住、露出来的那截和脑袋之间**会裂一条缝**，头发看着是飘在空中的。长度 0.774 个上半身 = teen 510px，下沿到 y638 ≈ 腰线。★ **位置用 head 单位、长度用 torso 单位**（pos_unit），理由见 _fields。",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    -0.611679,
+    0.380202
+   ],
+   "sprite_h_rel": 1.584089,
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_twin",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   },
+   "width_ratio": 1.0,
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。"
+  },
+  {
+   "id": "hair_twin_r",
+   "label": "双马尾·右",
+   "slot": "head_side_hair",
+   "source": "sheetcut_hair_twin_back_l.png",
+   "sprite": "hair_twin_r.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "physics": {
+    "deformers": [
+     {
+      "id": "twintail_r_tip",
+      "cols": 2,
+      "rows": 6,
+      "note": "双马尾发梢：越往下位移越大，最后一行最大（amp 单位是像素，在 1× 坐标系下）",
+      "amp": [
+       0.0,
+       0.0,
+       0.8,
+       2.4,
+       5.2,
+       9.0,
+       13.0
+      ]
+     }
+    ],
+    "chain": {
+     "id": "twin_r2",
+     "driver": "head",
+     "angle_input": [
+      {
+       "param": "ParamAngleZ",
+       "weight": 0.3
+      }
+     ],
+     "input": [
+      {
+       "param": "ParamBreath",
+       "wx": 1.8,
+       "wy": -0.8
+      },
+      {
+       "param": "ParamHairSway",
+       "wx": 2.4
+      }
+     ],
+     "input_max": 30,
+     "input_rate": 300,
+     "particles": [
+      {
+       "radius": 0,
+       "note": "根：发绳。被 head 组带着走，不积分"
+      },
+      {
+       "radius": 38,
+       "mobility": 0.94,
+       "delay": 1.05,
+       "acceleration": 1.05
+      },
+      {
+       "radius": 28,
+       "mobility": 0.91,
+       "delay": 0.9,
+       "acceleration": 1.15
+      }
+     ],
+     "outputs": [
+      {
+       "particle": 1,
+       "param": "bend_x",
+       "scale": 1.6,
+       "max": 14,
+       "note": "第一段（发绳以下整束）：跟着头甩"
+      },
+      {
+       "particle": 2,
+       "deformer": "twintail_r_tip",
+       "scale": 0.06,
+       "max": 2.8,
+       "note": "第二段（发梢）：慢半拍，鞭出 C→S 形。scale 0.06 比长发的 0.075 小 —— 扎起来的发束本来就该比披发动得少；而且实测 0.09 时一个 28° 的转头就把 amount 顶到 1.0 并在那儿停一整秒（削顶 = 画面上那一秒是**静止**的，比幅度小更难看） ★ 上限 2.8 = 实测满量程峰值 2.18 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
+      }
+     ],
+     "note": "双马尾摆链（2 段）。★ 为什么比长发少一段：扎起来的发束整体更硬 —— 教程口径「ツインテールは束ねられている分、後ろ髪より硬く、2段振り子で十分」，段数多了反而会出现\"发绳以下像面条\"的软塌感。四个旋钮照抄官方编辑器：長さ=radius（38/28，比长发的 48/36/26 短，短半径=更硬）、揺れやすさ=mobility（0.94/0.91）、反応速度=delay、収束の速さ=acceleration。混入 ParamBreath 是为了静止时也一直在微晃（DC67 之后输出是摆角，呼吸推得动）。 ★ 第四十七问：input 里加了 ParamHairSway（全身统一的那股风，ambient drift 0.19Hz）。原来链上只有 ParamBreath 一个常驻输入，幅度小、频率又跟呼吸绑死 ⇒ 实测待机 9 秒长发发梢只摆 4.5px，比短发 7.4px 还小，最长最重的一缕反而最不飘。physics2 的 driver 和 input 是叠加关系（zrig.c:1306），这条只加一股风，摇头带动照旧。"
+    }
+   },
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "layer": 161,
+   "pose_group": "hairstyle",
+   "pose_id": "twin",
+   "note": "**双马尾·右（T46.3）**，= 左束水平镜像；锚点也跟着镜像（左束发髻在贴图 x=0.725 处，右束就在 1−0.725=0.269 处）—— 这一条忘了的话右束会整体横移一个发束宽。层号 161 ≠ 左束的 160：同一档位里两件同时显示，层号不许重复。",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.611679,
+    0.380202
+   ],
+   "sprite_h_rel": 1.584089,
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_twin",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   },
+   "width_ratio": 1.0,
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "mirror": true
+  },
+  {
+   "id": "hair_pony",
+   "label": "高马尾",
+   "slot": "body_back_pony",
+   "source": "sheetcut_hair_pony_back.png",
+   "sprite": "hair_pony_back.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "physics": {
+    "deformers": [
+     {
+      "id": "pony_mid",
+      "cols": 2,
+      "rows": 6,
+      "note": "马尾中段：峰值落在整条的中间偏上（多段振り子的形：上段管根、下段管梢）",
+      "amp": [
+       0.0,
+       1.4,
+       3.8,
+       5.4,
+       4.0,
+       2.0,
+       0.8
+      ]
+     },
+     {
+      "id": "pony_tip",
+      "cols": 2,
+      "rows": 6,
+      "note": "马尾发梢：最后一行最大。和中段**必须同尺寸**（同部件多张网格是逐点相加的）",
+      "amp": [
+       0.0,
+       0.0,
+       0.5,
+       2.0,
+       4.8,
+       8.6,
+       13.5
+      ]
+     }
+    ],
+    "chain": {
+     "id": "pony2",
+     "driver": "head",
+     "angle_input": [
+      {
+       "param": "ParamAngleZ",
+       "weight": 0.3
+      }
+     ],
+     "input": [
+      {
+       "param": "ParamBreath",
+       "wx": 1.8,
+       "wy": -0.8
+      },
+      {
+       "param": "ParamHairSway",
+       "wx": 2.8
+      }
+     ],
+     "input_max": 30,
+     "input_rate": 300,
+     "particles": [
+      {
+       "radius": 0,
+       "note": "根：后脑的发绳。被 head 组带着走，不积分"
+      },
+      {
+       "radius": 44,
+       "mobility": 0.95,
+       "delay": 1.0,
+       "acceleration": 1.0
+      },
+      {
+       "radius": 34,
+       "mobility": 0.93,
+       "delay": 0.88,
+       "acceleration": 1.1
+      },
+      {
+       "radius": 24,
+       "mobility": 0.9,
+       "delay": 0.76,
+       "acceleration": 1.2
+      }
+     ],
+     "outputs": [
+      {
+       "particle": 1,
+       "param": "bend_x",
+       "scale": 1.7,
+       "max": 16,
+       "note": "第一段（发绳以下整束）"
+      },
+      {
+       "particle": 2,
+       "deformer": "pony_mid",
+       "scale": 0.07,
+       "max": 2.8,
+       "note": "第二段（中段）：再慢一拍 ★ 上限 2.8 = 实测满量程峰值 2.12 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
+      },
+      {
+       "particle": 3,
+       "deformer": "pony_tip",
+       "scale": 0.055,
+       "max": 3.0,
+       "note": "第三段（发梢）：最慢最软。和中段一样按\"别削顶\"回调过（0.075→0.055） ★ 上限 3.0 = 实测满量程峰值 2.32 的 1.3 倍，**不是 1.0**。这个 max 是\"削顶保险\"，不是物理极限：顶在上限上的那几帧，画面上的发梢是**完全静止**的，而它恰好发生在动作最大、眼睛最盯着看的一瞬（2026-10-18 实测：上限 1.0 时一次满量程摇头会让它贴顶 0.3~0.5 秒）。留 1.3 倍余量 ⇒ 正常输入永远走不满，只有风/阵风这类异常输入才兜底。"
+      }
+     ],
+     "note": "高马尾摆链（3 段）。它是单束里最长最重的一条（≈0.97 个上半身长），所以沿用长发的「長い後ろ髪は3段振り子」（ugoiraman / itodaneko），而不是双马尾的 2 段。半径 44/34/24 介于长发(48/36/26)与双马尾(38/28)之间：扎起来比披发硬，但比双马尾长。 ★ 第四十七问：input 里加了 ParamHairSway（全身统一的那股风，ambient drift 0.19Hz）。原来链上只有 ParamBreath 一个常驻输入，幅度小、频率又跟呼吸绑死 ⇒ 实测待机 9 秒长发发梢只摆 4.5px，比短发 7.4px 还小，最长最重的一缕反而最不飘。physics2 的 driver 和 input 是叠加关系（zrig.c:1306），这条只加一股风，摇头带动照旧。"
+    }
+   },
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "layer": 57,
+   "pose_group": "hairstyle",
+   "pose_id": "pony",
+   "note": "**高马尾（T46.3）**。★ 正面视角下马尾的难点不是物理是**构图**：它扎在后脑，照实画就全被身体挡住。标准画法（也是这版的做法）是让发束**往一侧甩**：发绳落在头顶下 0.432 个头高、中线外 0.277 个头高（teen = 画布 y120 / x292，在后脑剪影里、离右边缘 30px），发束一路下垂并向右漂，于是从正面看是\"从脑后绕出来、顺着右肩外侧垂下\"。层 57 = 整个身体之后，所以盖在身上那半自然被吃掉，露出来的正好是甩出轮廓的那半边。长度 0.971 个上半身 = teen 640px，下沿 y735 ≈ 胯下一点。",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.563772,
+    -0.041761
+   ],
+   "sprite_h_rel": 3.033288,
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_pony",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   },
+   "width_ratio": 1.0,
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。"
+  },
+  {
+   "id": "hair_sidelong_l",
+   "label": "长鬓发（左·垂到胸口）",
+   "slot": "head_side_long",
+   "sprite": "acc_hair_sidelong_l.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "long",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    -0.446619,
+    0.633072
+   ],
+   "sprite_h_rel": 2.62516,
+   "note": "长发档的横髪。参考图：长发两侧从太阳穴直垂过肩到胸口。",
+   "layer": 249,
+   "width_ratio": 1.0,
+   "source": "sheetcut_hair_long_side_l.png",
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_long",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  },
+  {
+   "id": "hair_sidelong_r",
+   "label": "长鬓发（右·垂到胸口）",
+   "slot": "head_side_long",
+   "sprite": "acc_hair_sidelong_r.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "long",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.499722,
+    0.6332
+   ],
+   "sprite_h_rel": 2.621702,
+   "note": "长发档的横髪（右，镜像同源）。",
+   "layer": 251,
+   "width_ratio": 1.0,
+   "source": "sheetcut_hair_long_side_r.png",
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_long",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  },
+  {
+   "id": "hair_crown_twin",
+   "label": "头顶·双马尾",
+   "slot": "head_crown_tied",
+   "source": "sheetcut_hair_twin_crown.png",
+   "sprite": "hair_crown_twin.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "twin",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.022549,
+    0.140014
+   ],
+   "sprite_h_rel": 0.978815,
+   "width_ratio": 1.0,
+   "layer": 187,
+   "note": "双马尾 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_twin",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  },
+  {
+   "id": "hair_crown_pony",
+   "label": "头顶·高马尾",
+   "slot": "head_crown_tied",
+   "source": "sheetcut_hair_pony_crown.png",
+   "sprite": "hair_crown_pony.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "pony",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.193883,
+    0.133352
+   ],
+   "sprite_h_rel": 0.985732,
+   "width_ratio": 1.0,
+   "layer": 188,
+   "note": "高马尾 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_pony",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  },
+  {
+   "id": "hair_crown_long",
+   "label": "头顶·长发",
+   "slot": "head_crown_tied",
+   "source": "sheetcut_hair_long_crown.png",
+   "sprite": "hair_crown_long.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "long",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.025751,
+    0.140014
+   ],
+   "sprite_h_rel": 0.978815,
+   "width_ratio": 1.0,
+   "layer": 189,
+   "note": "长发 档位的头顶。和同档的后发/尾巴**切自同一张参考模板**，所以发缕走向、高光位置、色相天然连续。件只覆盖发际线以上，发际线以下交给本体原有的刘海件(240)。",
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_long",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  },
+  {
+   "id": "hood_up_twin",
+   "label": "兜帽·戴上（双马尾）",
+   "slot": "head_over_hair",
+   "sprite": "acc_hood_twin.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "tags": [
+    "accessory",
+    "outfit",
+    "hood"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "twin",
+   "physics": {
+    "segments": [
+     {
+      "id": "hood_up_twin_x",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 0.22,
+      "stiffness": 74.0,
+      "damping": 8.4,
+      "max": 3.0,
+      "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
+     }
+    ]
+   },
+   "source": "sheetcut_acc_hood_twin.png",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.025751,
+    0.127332
+   ],
+   "sprite_h_rel": 1.234759,
+   "width_ratio": 1.0,
+   "layer": 253,
+   "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+  },
+  {
+   "id": "hood_up_pony",
+   "label": "兜帽·戴上（马尾）",
+   "slot": "head_over_hair",
+   "sprite": "acc_hood_pony.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "tags": [
+    "accessory",
+    "outfit",
+    "hood"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "pony",
+   "physics": {
+    "segments": [
+     {
+      "id": "hood_up_pony_x",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 0.22,
+      "stiffness": 74.0,
+      "damping": 8.4,
+      "max": 3.0,
+      "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
+     }
+    ]
+   },
+   "source": "sheetcut_acc_hood_pony.png",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.025751,
+    0.127075
+   ],
+   "sprite_h_rel": 1.241677,
+   "width_ratio": 1.0,
+   "layer": 254,
+   "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+  },
+  {
+   "id": "hood_up_long",
+   "label": "兜帽·戴上（长发）",
+   "slot": "head_over_hair",
+   "sprite": "acc_hood_long.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "tags": [
+    "accessory",
+    "outfit",
+    "hood"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "long",
+   "physics": {
+    "segments": [
+     {
+      "id": "hood_up_long_x",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "ratio": 0.22,
+      "stiffness": 74.0,
+      "damping": 8.4,
+      "max": 3.0,
+      "note": "和短发档那顶同参数：兜帽是**跟着头走**的硬件，不是吊着的软件。布越厚越贴头越不该晃，而且它和脸挨着，晃大了会穿帮。"
+     }
+    ]
+   },
+   "source": "sheetcut_acc_hood_long.png",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.02415,
+    0.131431
+   ],
+   "sprite_h_rel": 1.124081,
+   "width_ratio": 1.0,
+   "layer": 255,
+   "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+  },
+  {
+   "id": "hair_hood_twin",
+   "label": "戴帽时垂下的双马尾",
+   "slot": "head_side_hair",
+   "sprite": "hair_hood_twin.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "tags": [
+    "hair",
+    "hood"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "twin",
+   "source": "sheetcut_hair_hood_twin.png",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.02415,
+    0.335623
+   ],
+   "sprite_h_rel": 2.095978,
+   "width_ratio": 1.0,
+   "layer": 256,
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_twin_hood",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   },
+   "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+  },
+  {
+   "id": "hair_hood_pony",
+   "label": "戴帽时垂下的马尾",
+   "slot": "head_side_hair",
+   "sprite": "hair_hood_pony.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "tags": [
+    "hair",
+    "hood"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "pony",
+   "source": "sheetcut_hair_hood_pony.png",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.310774,
+    0.314742
+   ],
+   "sprite_h_rel": 2.659748,
+   "width_ratio": 1.0,
+   "layer": 257,
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_pony_hood",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   },
+   "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+  },
+  {
+   "id": "hair_hood_long",
+   "label": "戴帽时垂下的长发",
+   "slot": "head_side_hair",
+   "sprite": "hair_hood_long.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "curve": "tip",
+   "tags": [
+    "hair",
+    "hood"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "long",
+   "source": "sheetcut_hair_hood_long.png",
+   "ref": "head_top",
+   "unit": "head",
+   "pos_rel": [
+    0.022549,
+    0.302445
+   ],
+   "sprite_h_rel": 2.991784,
+   "width_ratio": 1.0,
+   "layer": 258,
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_long_hood",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   },
+   "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+  },
+  {
+   "id": "hair_sweep_twin_l",
+   "label": "脸侧细缕·双马尾（左）",
+   "slot": "head_side_sweep",
+   "sprite": "hair_sweep_twin_l.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "twin",
+   "ref": "head_top",
+   "unit": "head",
+   "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
+   "source": "sheetcut_hair_twin_side_l.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "pos_rel": [
+    -0.501061,
+    0.683799
+   ],
+   "sprite_h_rel": 1.255512,
+   "width_ratio": 1.0,
+   "layer": 247,
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_twin",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  },
+  {
+   "id": "hair_sweep_twin_r",
+   "label": "脸侧细缕·双马尾（右）",
+   "slot": "head_side_sweep",
+   "sprite": "hair_sweep_twin_r.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "twin",
+   "ref": "head_top",
+   "unit": "head",
+   "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
+   "source": "sheetcut_hair_twin_side_r.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "pos_rel": [
+    0.544557,
+    0.683671
+   ],
+   "sprite_h_rel": 1.25897,
+   "width_ratio": 1.0,
+   "layer": 248,
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_twin",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  },
+  {
+   "id": "hair_sweep_pony_l",
+   "label": "脸侧细缕·高马尾（左）",
+   "slot": "head_side_sweep",
+   "sprite": "hair_sweep_pony_l.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "pony",
+   "ref": "head_top",
+   "unit": "head",
+   "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
+   "source": "sheetcut_hair_pony_side_l.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "pos_rel": [
+    -0.230449,
+    0.719027
+   ],
+   "sprite_h_rel": 0.304366,
+   "width_ratio": 1.0,
+   "layer": 243,
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_pony",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  },
+  {
+   "id": "hair_sweep_pony_r",
+   "label": "脸侧细缕·高马尾（右）",
+   "slot": "head_side_sweep",
+   "sprite": "hair_sweep_pony_r.png",
+   "tags": [
+    "hair",
+    "hairstyle"
+   ],
+   "pose_group": "hairstyle",
+   "pose_id": "pony",
+   "ref": "head_top",
+   "unit": "head",
+   "note": "和同档的头壳/后发**切自同一张参考模板**，所以发缕走向与色相天然连续。层号排在刘海(240)与眉毛(236/237)之上、本体鬓发(245/246，本档已藏)之下。",
+   "source": "sheetcut_hair_pony_side_r.png",
+   "anchor": [
+    0.5,
+    0.0
+   ],
+   "pos_rel": [
+    0.61181,
+    0.644344
+   ],
+   "sprite_h_rel": 2.320794,
+   "width_ratio": 1.0,
+   "layer": 244,
+   "_cut_note": "★ 2026-10-19 T46.14：源图换成**从参考模板切下来的那一片**（tools/cut_from_sheets.py）。此前这里挂的是一张单独生成的 AI 图，和本体、和同发型的其它件之间没有任何共同约束 —— 用户说的「拼接痕迹很明显」就是这么来的。现在同一发型的后发与头顶**出自同一张全身图的同一次落笔**，接缝从定义上不存在。几何也不再是估的：pos_rel / sprite_h_rel 由切件器按模板→body_full→rig 的坐标链算出来。",
+   "recolor_match": {
+    "ref_sprites": [
+     "hair_back.png",
+     "hair_side_l.png",
+     "hair_side_r.png",
+     "hair_front.png"
+    ],
+    "palette_hex": [
+     "#D8D8E8",
+     "#C9CBE0",
+     "#9FC4E8"
+    ],
+    "stats_group": "sheet_pony",
+    "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+   }
+  }
+ ],
+ "pose_groups": [
+  {
+   "id": "tail_pose",
+   "fade": 0.28,
+   "default": "relaxed",
+   "note": "猫尾姿态互斥组（官方パーツα方式 / 我们的 rig.poses）。四种形状差太远，几何变形做不出来，只能差分件切换。mood→姿态的自动映射见 mood_pose"
+  },
+  {
+   "id": "hood_pose",
+   "fade": 0.35,
+   "default": "down",
+   "extra_parts": {
+    "down": [
+     "hair_ahoge",
+     "acc_ear_cat_l",
+     "acc_ear_cat_r"
+    ]
+   },
+   "note": "兜帽互斥组（官方パーツα方式）。up = 戴上（只显示 acc_hood_up）；down = 摘下（显示呆毛 + 两只猫耳）。★ extra_parts 让档位里能塞**非挂件**的既有部件。这里塞了呆毛和猫耳，于是「戴上兜帽」⇒「呆毛和耳朵一起收进帽子里」是同一个互斥关系的三面，不需要再写联动规则（联动规则是第二个要同步的地方，迟早和本体对不上）。★ 为什么连耳朵一起收：第一版只收呆毛，渲染出来**兜帽的轮廓线从耳朵中间横穿过去**，看着像渲染错误而不是设计。官方课把「髪を隠すマスク」单列一节就是这个道理 —— 戴上之后不该有东西从帽子里支棱出来。（想做「耳朵从帽子上的洞里钻出来」是另一种设计，要给素材开耳洞 + 单独的耳朵差分件，记在未做项里。）fade 0.35 比尾巴的 0.28 慢：戴帽子是个有分量的动作，官方课专讲「違和感のない切り替えの動き」。",
+   "hide_parts": {
+    "up": [
+     "acc_hair_crown_twin",
+     "acc_hair_crown_pony",
+     "acc_hair_crown_long",
+     "acc_hair_twin_l",
+     "acc_hair_twin_r",
+     "acc_hair_pony",
+     "acc_hair_long",
+     "acc_hair_sidelong_l",
+     "acc_hair_sidelong_r"
+    ],
+    "down": [
+     "acc_hood_up_twin",
+     "acc_hair_hood_twin",
+     "acc_hood_up_pony",
+     "acc_hair_hood_pony",
+     "acc_hood_up_long",
+     "acc_hair_hood_long"
+    ]
+   },
+   "_hood_note": "★ T46.17：`up` 这一档除了显示帽壳，还要**收走**扎起来的那套头发。把第一版帽壳贴回不戴帽底图做验收时一眼看出：马尾/双马尾的发束会从帽顶戳出来 —— 戴上兜帽时头发本身的造型就是变了的。收走之后由hair_hood_twin / hair_hood_pony（从戴帽模板上切的）接手。★ 2026-10-20 补齐长发档：hair_hood_long 原来碎成 9 段不合格，切件器加了沿线稿的测地生长之后只剩原画本来的遮挡（手臂、裙子），于是一并接上；同时把 acc_hair_long 与两片鬓发也收走，避免「垂到胸前的发帘」和「披在背后的长发」两套错位重影。"
+  },
+  {
+   "id": "hairstyle",
+   "fade": 0.32,
+   "default": "none",
+   "note": "发型互斥组（T46.3 → T46.9 重做）。档位 none=短发 bob / long=长发过腰 / twin=双马尾 / pony=高马尾。★★ 第十问用户定调：「马尾不是加个马尾，而是**整个发型都要配合着做出改变**」。教程口径完全一致 —— 发型拆件是 **前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束** 五类（Live2D 官方 PSD 教程 / redeyerui），髪型差分 PSD 卖的也是「前髪差分2種 + 後ろ髪差分2種」（booth 5980683），kawase 更直说「ショートヘアはロングヘアから髪の毛削除するだけだとあまり印象が変わらない」。所以 twin/pony 这两档**换掉横髪**：收起原生的 hair_side_l/r（齐腮短鬓），换上向后掠的细缕 hair_sweep_*。long 这一档不换 —— 披着的长发本来就该有齐腮鬓发。★ 这次敢收鬓发，前提是**底图先补画了**（tools/make_scalp_patch.py）：第九问之所以一收就露人耳和平切口，是因为 seg_head 是张光头。Live2D 官方：「元画で隠れていた部分の描き足しを忘れずに」，daigonozin 更进一步「頭部のレイヤーに直接髪の色を描いてしまいます」。",
+   "hide_parts": {
+    "twin": [
+     "hair_back",
+     "hair_side_l",
+     "hair_side_r",
+     "acc_hood_up",
+     "torso_top_fill"
+    ],
+    "pony": [
+     "hair_back",
+     "hair_side_l",
+     "hair_side_r",
+     "acc_hood_up",
+     "torso_top_fill"
+    ],
+    "long": [
+     "hair_back",
+     "acc_hood_up",
+     "torso_top_fill"
+    ]
+   },
+   "_hood_note": "★ T46.17：兜帽四形态。四顶帽子 + 两片帽下头发都挂在 hood_pose.up 下；其中三顶直接归在对应发型档名下，靠引擎的跨组连乘（zrig.c:4621 pose_opacity，down 档反向 hide）凑出「戴帽 ∧ 发型=X」。短发那顶没有发型档可挂（短发 = 整组关掉 cur=-1），改由三个发型档 hide 掉。不要再给 hairstyle 加名叫 `none` 的档位 —— \"none\" 是 zrig_pose_set 的保留字，那样的档位永远选不中。",
+   "_face_note": "★★★ 2026-10-23 第四十八问(d)：「长发的脸型做到和短发一样」。原来三档都 hide 掉 hair_front（前髪），脸的上框就换成了各档自己的 acc_hair_crown_*，刘海的形状、发梢的位置、额头露出的多少全变了 —— 脸看上去就「不是同一张」。改法：**三档一律保留 hair_front**，crown 件层号 187~189 本来就压在 hair_front(240) 之下，是补头顶的，不是替刘海的。long 这一档还要保留 hair_side_l/r（齐腮鬓发）——本组 note 里早就写了「long 这一档不换横髪」，是 hide 表没跟上。twin/pony 仍然换成 acc_hair_sweep_*（向后掠），那是发型本身的要求。",
+   "_residue_note": "★★★ 2026-10-23 第四十八问(c)：「头后面的错误残留」。torso_top_fill = seg_torso 顶部 38 行（= make_body_parts 的 overlap_px，拿颈线那一行向上复制出来的「脖子桩」，不是原画）。上游注释写「藏在头后面不会被看见」—— 那句话只在短发档成立：鬓发一撤，桩子就从头的剪影外面支出来，在脖子两侧变成青绿方块 + 褐色污渍。原画里那一段衣领的真料在 seg_head 里（层 180，压在躯干上），所以这三档把桩关掉不会少任何东西。"
+  }
+ ],
+ "mood_pose": {
+  "tail_pose": {
+   "happy": "up",
+   "affection": "up",
+   "cute": "up",
+   "smile": "up",
+   "surprise": "puff",
+   "angry": "relaxed",
+   "sad": "tuck",
+   "shy": "tuck",
+   "think": "relaxed",
+   "sleepy": "relaxed",
+   "neutral": "relaxed"
+  },
+  "_note": "情绪→尾巴姿态。正面情绪竖起、惊吓炸毛、**恐惧示弱夹紧**、其余垂下。angry 不另起姿态是因为生气时猫尾是**垂着快速甩/拍地**，形状不变只是摆得快 —— 走 mood_swing。★ 2026-10-16 补 tuck：在它之前 6/11 种情绪全映射到 relaxed，sad 和 shy 跟 neutral 长得一模一样。猫行为学里「夹紧贴腹=恐惧示弱」是和「竖起」「炸毛」并列的一级词汇，不该缺。"
+ },
+ "mood_swing": {
+  "_note": "情绪→摆动倍率（freq×, amp×）。生气=快速大力甩；放松=慢而小",
+  "angry": [
+   3.2,
+   1.8
+  ],
+  "surprise": [
+   2.4,
+   0.5
+  ],
+  "think": [
+   0.55,
+   2.2
+  ],
+  "sleepy": [
+   0.45,
+   0.6
+  ],
+  "happy": [
+   1.6,
+   1.0
+  ],
+  "cute": [
+   1.6,
+   1.0
+  ],
+  "affection": [
+   1.3,
+   0.9
+  ],
+  "smile": [
+   1.2,
+   0.9
+  ],
+  "sad": [
+   0.8,
+   0.6
+  ],
+  "shy": [
+   1.0,
+   0.5
+  ],
+  "neutral": [
+   1.0,
+   1.0
+  ]
+ },
+ "tail_flick": {
+  "_note": "情绪 → 自发抽动（第五张情绪表）。每行 = [间隔下限秒, 间隔上限秒, 幅度(参数单位), 单次时长秒]。★ 为什么要有它：摆尾在行为学上是**阵发事件**，不是待机时的匀速节拍。de Mouzon 2023（Université Paris Nanterre, Animals）实测，猫在被人忽视时平均摆尾 13.98 秒，被人搭理时只有 0.39 秒 —— 由事件触发，不是一直在摇。行为学的升级链是「尾尖抽动 → 整条摆 → 拍打」，频度和力度随唤醒度一起涨；「尾尖抽动」是最常见的那一档，意思是「注意力漏出来了」。在此之前尾巴只有一条定频定幅的正弦：60 秒 12 个峰，幅度标准差 0.000015°，变异系数 0.0005% —— 那是节拍器，不是动物。这张表补的是「它自己想动」那一半。★ 实际间隔在上下限之间均匀取，每一下的力度再抖 ±35%、时长 ±25%、方向随机，所以没有两下是一样的。查不到的情绪不动（和另外四张情绪表同口径）。★ 各档依据：angry=lash，又密又重，升级链顶端；surprise=交感神经的非自主反应，突发、重、不密；think=狩猎式专注，尾尖高频小幅；affection=竖尾颤抖的问候，密而小；sleepy=睡着的猫偶尔抽一下（做梦）；shy=紧张，少而短促。",
+  "angry": [
+   0.7,
+   2.0,
+   1.6,
+   0.5
+  ],
+  "surprise": [
+   1.8,
+   5.5,
+   1.25,
+   0.42
+  ],
+  "happy": [
+   2.2,
+   6.5,
+   0.95,
+   0.6
+  ],
+  "cute": [
+   2.2,
+   6.5,
+   0.95,
+   0.6
+  ],
+  "neutral": [
+   5.0,
+   14.0,
+   0.78,
+   0.95
+  ],
+  "affection": [
+   1.6,
+   4.5,
+   0.72,
+   0.45
+  ],
+  "smile": [
+   3.5,
+   9.0,
+   0.68,
+   0.8
+  ],
+  "think": [
+   1.1,
+   3.2,
+   0.52,
+   0.35
+  ],
+  "shy": [
+   5.0,
+   14.0,
+   0.45,
+   0.55
+  ],
+  "sad": [
+   9.0,
+   22.0,
+   0.38,
+   1.2
+  ],
+  "sleepy": [
+   12.0,
+   30.0,
+   0.25,
+   1.5
+  ]
+ },
+ "mood_params": {
+  "_note": "情绪 → 参数值。第三张情绪表（前两张是 blink.mood_rate 和 mood_pose）。猫耳行为学依据（REFERENCE_NOTES 第三十二批）：「耳朵**直立**表示很快乐或很警觉；**向后或者低平**（飞机耳）表示被吓到或很生气」「當一隻貓**往前**豎起耳朵時…代表對眼前的人事物感到**相當好奇**」",
+  "ParamEarLAngle": {
+   "happy": 0.85,
+   "affection": 0.7,
+   "cute": 0.8,
+   "smile": 0.55,
+   "surprise": -0.75,
+   "angry": -0.9,
+   "sad": -0.55,
+   "shy": -0.4,
+   "think": 0.45,
+   "sleepy": -0.35,
+   "neutral": 0.0
+  },
+  "ParamEarRAngle": {
+   "happy": 0.85,
+   "affection": 0.7,
+   "cute": 0.8,
+   "smile": 0.55,
+   "surprise": -0.75,
+   "angry": -0.9,
+   "sad": -0.55,
+   "shy": -0.4,
+   "think": 0.45,
+   "sleepy": -0.35,
+   "neutral": 0.0
+  }
+ }
 }
