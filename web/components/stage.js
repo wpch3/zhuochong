@@ -76,8 +76,21 @@ ZC.register({
     this.qualityIdx = this.QUALITY_SCALES.length - 1;  /* 自动档从"原生清晰"起步，卡了再降 */
     this.frameMs = 0;
     this.failures = 0;
-    /* 本地不设 12fps 的保守上限，直接按机器能力跑 */
-    this.minInterval = this.isLocal ? 1000 / 60 : 1000 / 12;
+    /* ★★★ 2026-10-23 第四十八问：远程上限从 12fps 提到 **30fps**。
+       用户问「Live2D 推荐多少帧、怎么提高」。查官方口径（全部落在
+       docs/REFERENCE_NOTES.md 第六十一批）：
+         · cybernoids FAQ「一个模型最低 **30FPS 以上**」是性能目标线；
+         · nizima LIVE 播放器把帧率拆成 Drawing FPS / Physics FPS 两档，
+           各 30/60；物理演算默认 60（Cubism 5.0 起）；
+         · 官方动作数据通常按 30fps 定义，60fps 环境靠插值补帧。
+       我们的物理侧已经是 60Hz 固定步长（zrig.c ZRIG_PHYS_FPS），
+       短板在**取帧侧**：这里写死了 12fps。
+       实测服务端单帧成本（直连 127.0.0.1:5176，每档 12 次取中位）：
+         s25 18.9ms/22.2KB   s40 22.3ms/48.9KB   s50 21.7ms/71.3KB
+         s65 26.1ms/111.9KB  s80 30.0ms/161.2KB  s100 32.8ms/240.4KB
+       ⇒ 即使原生分辨率也只要 32.8ms，30fps 服务端给得起；12fps 纯属
+       客户端保守。慢链路由 tuneQuality() 往下退（封底 10fps）。 */
+    this.minInterval = this.isLocal ? 1000 / 60 : 1000 / 30;
     this.interval = this.minInterval;
     this.alive = true;
     this.nativePct = 100;
@@ -135,19 +148,33 @@ ZC.register({
     return Math.max(25, Math.min(100, Math.round(this.nativePct * k)));
   },
 
-  /* 卡的时候先掉**帧率**，掉到 6fps 还不够才掉分辨率。
-     桌宠这种画面，"清晰的 8fps"比"糊的 12fps"好看得多；而且掉分辨率是用户
-     肉眼最先注意到的退化（2026-10-15 报的"模糊"就是老代码一上来就掉到 60%）。 */
+  /* 卡的时候怎么退、顺的时候怎么回。
+     ★★★ 2026-10-23 第四十八问重排了这条阶梯。
+     老版是「先把帧率一路掉到 6fps，还不够才掉分辨率」—— 那是 12fps 上限
+     时代的权衡（"清晰的 8fps 比糊的 12fps 好看"）。现在上限是 30fps，
+     同一句话就反过来了：**30fps 掉到 20fps 肉眼几乎无感，而分辨率一掉
+     立刻就看出来糊**，所以要先在 30fps 这一档上省带宽（掉一级分辨率），
+     再考虑动帧率；而且绝不掉到 10fps 以下 —— 官方的性能底线就是 30fps，
+     10fps 已经是"卡顿"区（note.com/chekiarisato：10~15 卡顿 / 24~30 自然）。
+     顺序（慢）：① 分辨率退一级 → ② 20fps → ③ 分辨率退到底 → ④ 10fps 封底
+     顺序（快）：① 先把帧率加回 30fps → ② 再把分辨率加回原生
+     本地永不降级（2026-10-15 用户明确要求）。 */
   tuneQuality() {
     if (this.qualityMode !== "auto") return;
     if (this.isLocal) return;                /* ★ 本地永不降级 */
-    const SLOW = 220, FAST = 90, FLOOR_MS = 1000 / 6;
+    const SLOW = 220, FAST = 90;
+    const CEIL_MS = 1000 / 30, KEEP_MS = 1000 / 20, FLOOR_MS = 1000 / 10;
     if (this.frameMs > SLOW) {
-      if (this.minInterval < FLOOR_MS) this.minInterval = Math.min(FLOOR_MS, this.minInterval * 1.35);
+      if (this.minInterval <= CEIL_MS && this.qualityIdx > 1) this.qualityIdx--;
+      else if (this.minInterval < KEEP_MS) this.minInterval = KEEP_MS;
       else if (this.qualityIdx > 0) this.qualityIdx--;
+      else if (this.minInterval < FLOOR_MS) this.minInterval = FLOOR_MS;
     } else if (this.frameMs < FAST) {
-      if (this.qualityIdx < this.QUALITY_SCALES.length - 1) this.qualityIdx++;
-      else if (this.minInterval > 1000 / 12) this.minInterval = Math.max(1000 / 12, this.minInterval / 1.35);
+      if (this.minInterval > CEIL_MS) {
+        this.minInterval = Math.max(CEIL_MS, this.minInterval / 1.35);
+      } else if (this.qualityIdx < this.QUALITY_SCALES.length - 1) {
+        this.qualityIdx++;
+      }
     }
   },
 

@@ -350,7 +350,13 @@ static const char *PAGE =
 "  const inside=(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom);\n"
 "  api('/api/hover?x='+Math.round(sx)+'&y='+Math.round(sy)+'&in='+(inside?1:0));\n"
 "});\n"
-"setInterval(refresh,200);\n"
+/* ★★★ 2026-10-23 第四十八问：内置调试页原来是 200ms = 5fps，翻页一样卡。
+   官方口径（docs/REFERENCE_NOTES.md 第六十一批）：cybernoids FAQ「一个模型
+   最低 30FPS 以上」；nizima LIVE 把帧率拆成 Drawing FPS / Physics FPS 两档
+   各 30/60。实测本机 /api/frame.png 单帧 s100 只要 32.8ms（直连 127.0.0.1，
+   12 次中位），30fps 够得着，所以改 33ms。主 UI 那条循环在
+   web/components/stage.js，同批从 12fps 提到 30fps。 */
+"setInterval(refresh,33);\n"
 "setInterval(loadInfo,700);\n"
 "loadInfo();\n"
 "function loadSpeech(){api('/api/speech.json').then(d=>{\n"

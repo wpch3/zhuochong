@@ -548,6 +548,29 @@ function slotOf(id) {
       stage.tuneQuality();
       CHECK(stage.minInterval > 1000 / 12 || stage.qualityIdx < 3,
             "远程模式下卡顿应该降级（帧率或分辨率）");
+      /* ★★★ 2026-10-23 第四十八问：远程帧率上限 12→30fps，降级阶梯重排。
+         官方口径是「一个模型最低 30FPS 以上」，10fps 已经进"卡顿"区，
+         所以这条阶梯有**封底**：无论多卡都不许掉到 10fps 以下。 */
+      stage.isLocal = false; stage.QUALITY_SCALES = [0.5, 0.65, 0.8, 1.0];
+      stage.qualityIdx = 3; stage.minInterval = 1000 / 30; stage.frameMs = 500;
+      for (let i = 0; i < 40; ++i) stage.tuneQuality();
+      CHECK(Math.abs(stage.minInterval - 1000 / 10) < 1e-6,
+            "一路卡下去帧率应封底在 10fps（实际 "
+            + (1000 / stage.minInterval).toFixed(1) + "fps）");
+      CHECK(stage.qualityIdx === 0,
+            "一路卡下去分辨率应退到最低档（实际 idx=" + stage.qualityIdx + "）");
+      /* 恢复顺畅：先把帧率加回 30fps，再把分辨率加回原生 */
+      stage.frameMs = 30;
+      stage.tuneQuality();
+      CHECK(stage.minInterval < 1000 / 10 && stage.qualityIdx === 0,
+            "恢复时应先提帧率、分辨率先不动（实际 "
+            + (1000 / stage.minInterval).toFixed(1) + "fps idx=" + stage.qualityIdx + "）");
+      for (let i = 0; i < 40; ++i) stage.tuneQuality();
+      CHECK(Math.abs(stage.minInterval - 1000 / 30) < 1e-6
+            && stage.qualityIdx === stage.QUALITY_SCALES.length - 1,
+            "恢复到底应是 30fps + 原生分辨率（实际 "
+            + (1000 / stage.minInterval).toFixed(1) + "fps idx=" + stage.qualityIdx + "）");
+
       /* 本地：同样卡住也绝不降级 */
       stage.isLocal = true; stage.qualityIdx = 3; stage.minInterval = 1000 / 60; stage.frameMs = 500;
       stage.tuneQuality();
