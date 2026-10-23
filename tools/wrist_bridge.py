@@ -46,6 +46,33 @@ from PIL import Image
 POSES = ("open", "heart")
 
 
+# 腕角工作区间（度，引擎口径 正=顺时针）：wave pulse −15 + sine ±12 + lag ±6，
+# heart pulse +55 + sine ±4 ⇒ 合起来 [−36, +62]，两端各留 3°。
+BRIDGE_ANGLES = (-36.0, 62.0)
+BRIDGE_STEP = 3.0
+
+
+def always_under_sleeve(fore_arr, fpos, piv, nx0, ny0, s, H2, W2):
+    """手件画布上「手转遍腕角区间后每一帧都还压在袖管剪影里」的掩膜。
+
+    手件绕腕枢轴转 θ ⇒ 在**手件自己的坐标系**里看，袖管相当于转了 −θ。
+    所以把袖管掩膜贴到手件画布上、绕枢轴转 −θ，对整个区间求交集即可。
+    """
+    sleeve = Image.fromarray((fore_arr[:, :, 3] > 40).astype(np.uint8) * 255, "L")
+    cv = Image.new("L", (W2, H2), 0)
+    cv.paste(sleeve, (int(round((fpos[0] - nx0) * s)),
+                      int(round((fpos[1] - ny0) * s))))
+    cx = (piv[0] - nx0) * s
+    cy = (piv[1] - ny0) * s
+    acc = None
+    t = BRIDGE_ANGLES[0]
+    while t <= BRIDGE_ANGLES[1] + 1e-6:
+        m = np.array(cv.rotate(t, resample=Image.NEAREST, center=(cx, cy))) > 40
+        acc = m if acc is None else (acc & m)
+        t += BRIDGE_STEP
+    return acc
+
+
 def load(path):
     return Image.open(path).convert("RGBA")
 
@@ -73,7 +100,7 @@ def main():
     HP = {p["id"]: p for p in HJ["parts"]}
     AP = {p["id"]: p for p in AJ["parts"]}
 
-    sig = {"inset": a.inset, "v": 1}
+    sig = {"inset": a.inset, "v": 2, "angles": BRIDGE_ANGLES}
     if HJ.get("wrist_bridge", {}).get("sig") == sig and not a.force:
         print("[wrist_bridge] 已补过腕半圆，跳过（--force 强制）")
         return 0
@@ -91,8 +118,13 @@ def main():
         piv = HP[pid_pad]["pivot"]
 
         # 袖口半宽：和 round_wrist_socket.py 同一口径 —— 枢轴那一行袖子的实宽
-        fo = np.array(load(os.path.join(base, AP[fid]["file"])))
         fpos = AP[fid]["pos"]
+        fo_by_s = {}
+        for _s in (1, 2):
+            _f = os.path.join(sprites, "%s%s.png" % (fid, "" if _s == 1 else "@2x"))
+            if os.path.exists(_f):
+                fo_by_s[_s] = np.array(load(_f))
+        fo = fo_by_s.get(1)
         row = int(round(piv[1] - fpos[1]))
         half = 22.5
         if 0 <= row < fo.shape[0]:
@@ -116,6 +148,7 @@ def main():
                     load(f_h).save(bak)
                 im = load(bak)
                 arr = np.array(im)
+                fo = fo_by_s.get(s, fo_by_s.get(1))
                 pos = HP[pid]["pos"]           # 1× 画布坐标
 
                 # 腕口在**上**边（make_hand_parts 把生图旋了 180°）。
@@ -149,6 +182,12 @@ def main():
                 disc = ((xx - cx) ** 2 + (yy - cy) ** 2) <= (R * s) ** 2
                 # 只补**近端**半圆（腕口那半边）：远端是手掌，不该多出肉
                 disc &= yy <= cy + 1.5 * s
+                # ★ 2026-10-23 第四十七问补判据：补料**只许待在袖管底下**。
+                #   半圆是跟着手转的，袖管不转 —— 手一摆，半圆的边就从袖口
+                #   侧面探出来一小块（logs/asset_qa/q47_tint2.png 里红色那块）。
+                #   所以把补料限制在「手转遍整个腕角工作区间后，**每一帧**都还
+                #   压在袖管剪影里」的那块区域：⋂(θ) 旋转(袖管掩膜, −θ)。
+                disc &= always_under_sleeve(fo, fpos, piv, nx0, ny0, s, H2, W2)
                 add = disc & (big[:, :, 3] == 0)
                 big[add] = fill
 

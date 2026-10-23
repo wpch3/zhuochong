@@ -2362,15 +2362,24 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     #   动作收尾随 fade_out 一起退 —— 符合「不要在动作中途切手」。
                     {"target": "ParamHandROpen", "wave": "pulse",
                      "amp": 1.0, "dur": 0.10, "ease": "out"},
-                    # 腕：① 先把掌心摆正 —— 前臂内倾 29°，手不跟着倾就得补
-                    #   +21°（A_h = A_f − 21 = 188° ≈ 竖直，掌心正对镜头，和参考一致）；
-                    # ② 再"ひらひら"摆 ±16°，比前臂慢半拍（phase 0.18）。
-                    #   Q43 起**挥的主行程在腕**（dic.pixiv.net/a/手を振る：近距離は
-                    #   肘を曲げて手首をひらひら），所以腕的摆幅要明显大于前臂。
+                    # 腕 ★★★ 2026-10-23 第四十七问重做（用户截图：手腕折断）。
+                    #   原来写的是 +21°「把掌心摆正到竖直」—— 这个目标本身就是错的：
+                    #   手是接在前臂末端的，**它该跟着前臂的方向走**，不是跟着画面竖直走。
+                    #   前臂一斜，手还强行摆竖直，腕口就是一道折角。
+                    #   静态几何量出来（切件坐标，不靠肉眼）：
+                    #     右前臂轴（肘 364.5,553 → 腕 390,666）= −77.3°
+                    #     hand_r_open 自带轴（腕枢轴 → 中指尖）   = −92.0°
+                    #   ⇒ 手件**天生就比前臂外偏 14.7°**，rot=0 时就已经歪了；
+                    #     再加 +21 脉冲 + 16 正弦 + 9 跟随滞后 = 峰值外折 **约 60°**，
+                    #     人的腕关节尺偏极限才 25~30°（online.xknowledge.co.jp/37415/）。
+                    #   所以脉冲改成 **−15°**：正好抵掉手件自带的 14.7°，让手严丝合缝
+                    #   接着前臂；摆幅 16 → 12，峰值偏角落在 ±12°（自然范围内）。
+                    #   证据：logs/asset_qa/q47_wrist_sweep.png 六档扫描，
+                    #   −40° 那一档（≈ 本次定稿）手才是"接着小臂往上"的。
                     {"target": "hand_r", "param": "rot_deg", "wave": "pulse",
-                     "amp": 21.0, "dur": 0.9, "ease": "out"},
+                     "amp": -15.0, "dur": 0.9, "ease": "out"},
                     {"target": "hand_r", "param": "rot_deg", "wave": "sine",
-                     "amp": 16.0, "freq": 2.2, "phase": 0.18, "dur": 2.4},
+                     "amp": 12.0, "freq": 2.2, "phase": 0.18, "dur": 2.4},
                 ]
         actions.append({
             "id": "wave", "priority": 6, "duration": 2.4, "return_state": "idle",
@@ -2445,14 +2454,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                      "amp": 1.0, "dur": 0.10, "ease": "out"},
                     {"target": "ParamHandLOpen", "wave": "pulse",
                      "amp": 1.0, "dur": 0.10, "ease": "out"},
+                    # ★ 腕角与单手版同一套口径（第四十七问）：脉冲 = 抵掉手件自带的
+                    #   轴向偏差，让手接着前臂。**左右不对称**是对的 ——
+                    #   右：前臂 −77.3° / hand_r_open −92.0° ⇒ 外偏 14.7° ⇒ 脉冲 −15；
+                    #   左：前臂 −100.5° / hand_l_open −88.3° ⇒ 内偏 12.2° ⇒ 脉冲 +12。
+                    #   （原画里两条胳膊垂下来的角度本来就不一样，镜像抄数会歪。）
                     {"target": "hand_r", "param": "rot_deg", "wave": "pulse",
-                     "amp": 21.0, "dur": 0.9, "ease": "out"},
+                     "amp": -15.0, "dur": 0.9, "ease": "out"},
                     {"target": "hand_r", "param": "rot_deg", "wave": "sine",
-                     "amp": 16.0, "freq": 2.2, "phase": 0.18, "dur": 2.4},
+                     "amp": 12.0, "freq": 2.2, "phase": 0.18, "dur": 2.4},
                     {"target": "hand_l", "param": "rot_deg", "wave": "pulse",
-                     "amp": -21.0, "dur": 0.9, "ease": "out"},
+                     "amp": 12.0, "dur": 0.9, "ease": "out"},
                     {"target": "hand_l", "param": "rot_deg", "wave": "sine",
-                     "amp": -16.0, "freq": 2.2, "phase": 0.30, "dur": 2.4},
+                     "amp": -12.0, "freq": 2.2, "phase": 0.30, "dur": 2.4},
                 ]
             actions.append({
                 "id": "wave_both", "priority": 6, "duration": 2.4,
@@ -3555,11 +3569,13 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             # 这是"鞭梢"的最后一节：大臂带小臂、小臂带手，手永远慢半拍。
             {"id": "hand_l_lag", "part": "hand_l", "driver": "forearm_l", "axis": "x",
              "param": "rot_deg",
-             "ratio": 0.22, "stiffness": 34, "damping": 4.4, "max": 9,
+             "ratio": 0.22, "stiffness": 34, "damping": 4.4, "max": 6,
              "note": "手腕跟随滞后：部件锚点就在腕上，所以 rot_deg 绕腕转"},
             {"id": "hand_r_lag", "part": "hand_r", "driver": "forearm_r", "axis": "x",
              "param": "rot_deg",
-             "ratio": 0.22, "stiffness": 34, "damping": 4.4, "max": 9},
+             "ratio": 0.22, "stiffness": 34, "damping": 4.4, "max": 6,
+             "note": "第四十七问：上限 9 → 6。滞后是叠在腕角上的，"
+                     "9° 会把峰值推出人的尺偏极限"},
             {"id": "bangs_x", "part": "hair_front", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
              "ratio": 0.5, "stiffness": 44, "damping": 5.6, "max": 9,
@@ -3924,6 +3940,58 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     "再叠身体带动的滞后。幅度刻意压小——教程口径是"
                     "「意外と揺れを控えめにした方が自然に見える」",
         })
+
+        # —— 头发的自主飘动（第四十七问 / T46.56）——
+        # ★ 病因和裙摆 T45.9 **一模一样**，当时只修了裙子，头发漏掉了：
+        #   短发四件（刘海 hair_front / 侧发 hair_side_l,r / 后发 hair_back）
+        #   的物理**只有 driver: head** 一个输入源，而本引擎物理输出的是
+        #   「滞后量 pos − target」。待机时头几乎不动 ⇒ 滞后量 ≈ 0 ⇒ 头发是死的。
+        #   实测（2026-10-23，idle 3 秒）：发团质心只晃 2.9px、左右边界各 2.0px，
+        #   那 2px 还是头自己在动带出来的 —— 头发**自身没有任何飘动**。
+        #   （挂件发型 long/twin/pony/ahoge 不受影响：它们走 physics2 摆链，
+        #     链上已经混了 ParamBreath 当常驻输入，所以一直在轻轻飘。）
+        # ★ 做法照搬裙摆那条成熟路子：一条自己的参数 + ambient drift 波，
+        #   物理链照旧挂着，在这个自主飘动**之上**再叠头部带动的滞后。
+        # ★ 波形用 drift 不用 sine：单条定频正弦是节拍器（T45.2g）。
+        #   drift = 0.62·sin(ωt) + 0.26·sin(0.618ωt) + 0.12·sin(1.618ωt)，
+        #   三条不可公度 ⇒ 肉眼看不出周期，像真的在被风吹。
+        # ★ 频率：教程口径「軽いものほど揺れやすく、早く収まる」。
+        #     尾巴（轻毛）0.21Hz ＞ **头发 0.19Hz** ＞ 裙子（厚百褶呢）0.13Hz
+        # ★ 四件给**不同的 lag**（行波延迟）而不是同一个数：全身揺れ物同拍子摆
+        #   是机械感的第二大来源。风从左脸扫到右脸、再到后发，所以
+        #     侧发左 0 → 刘海 0.04 → 侧发右 0.09 → 后发 0.13 秒
+        #   发梢那级（网格形变器）再各自多压半拍 ⇒ 发根先走、发梢后到。
+        _have = {q["id"] for q in rig["parts"]}
+        _dfms = {q["id"] for q in rig.get("deformers", [])}
+        _hair_sway = []
+        for _pid, _sc, _lg, _df, _dsc, _dlg in (
+                ("hair_side_l", 7.2, 0.00, "side_l_s", 0.25, 0.17),
+                ("hair_front",  3.0, 0.04, None,       0.0,  0.0),
+                ("hair_side_r", 6.8, 0.09, "side_r_s", 0.22, 0.26),
+                ("hair_back",   4.2, 0.13, "back_s",   0.17, 0.30)):
+            if _pid not in _have:
+                continue
+            _hair_sway.append({"part": _pid, "param": "bend_x",
+                               "scale": _sc, "curve": "tip", "lag": _lg})
+            if _df and _df in _dfms:
+                _hair_sway.append({"deformer": _df, "scale": _dsc, "lag": _dlg})
+        if _hair_sway:
+            rig["params"].append({
+                "id": "ParamHairSway", "label": "头发飘动",
+                "min": -1.0, "max": 1.0, "default": 0.0,
+                "binds": _hair_sway,
+                "note": "头发自己飘：一条参数推四件短发（刘海/左右侧发/后发），"
+                        "每件带不同的行波延迟 ⇒ 风从一侧扫到另一侧，"
+                        "发梢那级再慢半拍。物理链 bangs_x/side_?_x/back_x "
+                        "照旧挂着，在这个自主飘动之上再叠摇头带来的滞后。"
+                        "幅度（侧发满格 7.2px ≈ 头宽的 3%）：第一版给 5.4px，实拍发梢\n"
+                        "只摆 5.9px，肉眼要盯着才看得出来 ⇒ 提到 7.2px；\n"
+                        "再大就会从脸侧甩出去，参考 "
+                        "「意外と揺れを控えめにした方が自然に見える」",
+            })
+            rig.setdefault("ambient", []).append(
+                {"target": "ParamHairSway", "wave": "drift",
+                 "amp": 0.92, "bias": 0.0, "freq": 0.19})
         # —— 裙子里布（T45.11）——
         # 里布不是"再摆一次"，而是**比表布摆得少**：差出来的那一条就是露出来的里子。
         # 幅度口径：里布跟到表布的 LIN_FOLLOW，再加一段延迟 ⇒ 甩出去的瞬间露得最多，
@@ -3967,9 +4035,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  "note": f"里布横摆：只跟到表布同高度位移的 {LIN_FOLLOW:.0%}，"
                          f"差额就是露出来的那条里子（表布 10px 时露 {10 * (1 - LIN_FOLLOW):.1f}px）",
                  "points": _pts})
-            rig["params"][-1]["binds"].append(
+            # ★ 按**名字**取 ParamSkirtSway，不要写 rig["params"][-1] ——
+            #   「最后一个参数就是我刚 append 的那个」这种默认一旦在中间插进
+            #   别的参数就会静默跑偏（第四十七问加 ParamHairSway 时当场踩中：
+            #   里布的绑定被挂到头发飘动那条参数上去了）。
+            _sk = next(q for q in rig["params"] if q["id"] == "ParamSkirtSway")
+            _sk["binds"].append(
                 {"deformer": "lining_sway_x", "scale": 1.0, "lag": 0.2})
-            rig["params"][-1]["note"] += (
+            _sk["note"] += (
                 "；里布（skirt_lining）同参数驱动，跟随系数 "
                 f"{LIN_FOLLOW}、延迟 0.2s —— 甩出去时露出里子，收回来又藏回去")
             rig["physics"].append(

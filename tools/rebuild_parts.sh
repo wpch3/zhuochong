@@ -79,6 +79,16 @@ step "3e/26 腕半圆塗り足し（手件在腕口补一枚以枢轴为心的�
 # （logs/asset_qa/q46_tint_junction.png 黄绿之间的洋红）。
 "$PY" tools/wrist_bridge.py --character "$CH" --form "$FM"
 
+step "3f/26 裁袖口肉桩（袖管末端那块不跟手转的方料，手一摆就从剪影外探出来）"
+# 必须排在最后：它要读**最终**的手件剪影（已含 3e 补的腕半圆）算「手转遍
+# 工作区间后永远盖得住」的安全区，再拿它去裁袖管自带的肉色塗り足し。
+# 上游 3/26 刚重做过 arm_*_fore，旧备份作废，先删掉（同 seg_torso 的口径）。
+rm -f "characters/$CH/forms/$FM/sprites/_orig/arm_l_fore"*.png \
+      "characters/$CH/forms/$FM/sprites/_orig/tab_hand_l_pad"*.png \
+      "characters/$CH/forms/$FM/sprites/_orig/tab_hand_r_pad"*.png \
+      "characters/$CH/forms/$FM/sprites/_orig/arm_r_fore"*.png
+"$PY" tools/wrist_tab_trim.py --character "$CH" --form "$FM"
+
 step "4/26 鞋拆件（常态鞋 + 踮脚鞋，顺带把腿件切线以下擦干净）"
 "$PY" tools/make_foot_parts.py --character "$CH" --form "$FM"
 
