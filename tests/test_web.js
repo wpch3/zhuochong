@@ -86,6 +86,8 @@ function textOf(node) {
 /* 加载过的脚本：script 元素一进 head 就同步读文件执行，再回调 onload。
    这样内核的"按 layout 动态加载组件"这条路是真的走了一遍。 */
 const loadedScripts = [];
+  let chatFail = false;
+  const chatCalls = [];
 const ctx = {};
 function makeDocument() {
   const doc = {
@@ -217,6 +219,35 @@ function makeFetch() {
       const f = path.join(WEB, u.split("?")[0]);
       if (!fs.existsSync(f)) return { ok: false, status: 404, headers: { get: () => "" } };
       return json(JSON.parse(fs.readFileSync(f, "utf8")));
+    }
+    if (u.includes("/api/chat")) {
+      /* 三种局面都要能模拟：dry-run / 真发成功 / 上游拒绝（502）。
+         最后那种最重要 —— 界面不许把失败显示成一条正常回复。 */
+      const q = new URLSearchParams(u.split("?")[1] || "");
+      chatCalls.push(Object.fromEntries(q.entries()));
+      if (q.get("dry") === "1") {
+        return json({
+          ok: true, dry: true, provider: "ollama", model: "qwen2.5:7b", local: true,
+          reason: "default_local", http_status: 0, attempts: 0,
+          tokens_in: 0, tokens_out: 0, cost: 0, persona_bytes: 781, text: "", error: "",
+          url: "http://127.0.0.1:11434/v1/chat/completions",
+          request_body: "{\"model\":\"qwen2.5:7b\",\"messages\":[{\"role\":\"system\",\"content\":\"你现在扮演「小寻」\"},{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":false}",
+        });
+      }
+      if (chatFail) {
+        return { ok: false, status: 502,
+          headers: { get: () => "application/json" },
+          json: async () => ({ ok: false, provider: "ollama", model: "qwen2.5:7b",
+            local: true, reason: "default_local", http_status: 0, attempts: 1,
+            text: "", error: "http://127.0.0.1:11434/v1/chat/completions：连不上（服务没开，或者端口不对）" }),
+          text: async () => "" };
+      }
+      return json({
+        ok: true, dry: false, provider: "ollama", model: "qwen2.5:7b", local: true,
+        reason: "default_local", http_status: 200, attempts: 1,
+        tokens_in: 101, tokens_out: 19, cost: 0, persona_bytes: 781,
+        text: "当然开心啦！今天你终于能跟我说话了喵～", error: "",
+      });
     }
     if (u.includes("/api/route")) {
       /* 这个假端点必须和 C 侧 zgw_route_for 的口径一致，否则面板测绿了、
@@ -973,6 +1004,87 @@ function slotOf(id) {
     CHECK(txt().includes("4 条") || txt().includes("已存 4"),
           "要显示决策流水存了多少条（现在是 " + (txt().match(/已存[^，\n]*/) || ["没显示"])[0] + "）");
     CHECK(txt().includes("usage.jsonl"), "要写明流水存在哪，用户才找得到文件");
+  }
+
+  SECTION("聊天框（G54/T61.10）：能打字、能发出去、而且不许藏事");
+  {
+    const el = slotOf("chat");
+    const tick = async () => {
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+    };
+    const txt = () => walk(el).map((n) => n._text).join(" ");
+    const find = (id) => walk(el).find((n) => n.id === id);
+
+    CHECK(!!find("chat-input"), "要有能打字的输入框");
+    CHECK(!!find("chat-send"), "要有发送按钮");
+    CHECK(!!find("chat-dry"), "要有『看看将要发什么』——用户有权在发出去之前看一眼");
+
+    /* ---- 真发一条 ---- */
+    chatCalls.length = 0;
+    chatFail = false;
+    const input = find("chat-input");
+    input.value = "你今天开心吗";
+    find("chat-send").onclick();
+    await tick();
+
+    CHECK(chatCalls.length === 1, "点发送要真的打一次 /api/chat（实际 " + chatCalls.length + " 次）");
+    CHECK(chatCalls[0] && chatCalls[0].text === "你今天开心吗", "用户原话要原样送出，不许改写");
+    CHECK(chatCalls[0] && chatCalls[0].dry === undefined, "真发时不该带 dry");
+    CHECK(txt().includes("你今天开心吗"), "自己说的话要显示在对话里");
+    CHECK(txt().includes("当然开心啦"), "模型的回复要显示出来");
+
+    /* 这一段是这块面板和普通聊天界面最不一样的地方：
+       每条回复都必须标明是谁答的、走没走出这台机器。 */
+    CHECK(txt().includes("ollama"), "★ 要标明是谁答的");
+    CHECK(txt().includes("qwen2.5:7b"), "★ 要标明用的哪个型号");
+    CHECK(txt().includes("本地"), "★ 要标明这句话有没有离开这台机器");
+    CHECK(txt().includes("101") && txt().includes("19"), "要显示 token 用量");
+    CHECK(txt().includes("不花钱"), "免费的也要说清是免费的（别让用户以为在烧钱）");
+    CHECK(input.value === "", "发完要清空输入框");
+
+    /* ---- 上游失败：不许伪装成一条正常回复 ---- */
+    chatFail = true;
+    input.value = "再说一句";
+    find("chat-send").onclick();
+    await tick();
+    CHECK(txt().includes("连不上"), "★ 上游失败要把服务端原话显示出来");
+    CHECK(txt().includes("出错了"), "失败要标成出错，不能混在正常回复里");
+    CHECK(!txt().includes("当然开心啦！今天你终于能跟我说话了喵～ 当然开心啦"),
+          "失败时不该再冒出一条假回复");
+    chatFail = false;
+
+    /* ---- dry-run：把真会发出去的东西摆出来 ---- */
+    chatCalls.length = 0;
+    input.value = "看看会发什么";
+    find("chat-dry").onclick();
+    await tick();
+    CHECK(chatCalls.length === 1 && chatCalls[0].dry === "1", "『看看将要发什么』要带 dry=1");
+    CHECK(txt().includes("127.0.0.1:11434"), "要摆出真正的目标地址");
+    CHECK(txt().includes("\"stream\"") || txt().includes("stream"),
+          "要摆出真正的请求体");
+    CHECK(txt().includes("781"), "要说明人设占了多少字节");
+    CHECK(input.value === "看看会发什么", "dry-run 不该清空输入框（用户多半还要接着发）");
+
+    /* ---- 隐私标记要真的传下去 ---- */
+    chatCalls.length = 0;
+    const bsens = find("chat-sensitive");
+    CHECK(!!bsens, "要有『隐私标记』开关");
+    bsens.onclick();
+    input.value = "我的身份证号";
+    find("chat-send").onclick();
+    await tick();
+    CHECK(chatCalls[0] && chatCalls[0].sensitive === "1",
+          "★ 拨了隐私标记就必须传给后端（不传等于开关是假的）");
+
+    /* ---- 带人设开关 ---- */
+    chatCalls.length = 0;
+    find("chat-persona").onclick();
+    input.value = "不带人设试试";
+    find("chat-send").onclick();
+    await tick();
+    CHECK(chatCalls[0] && chatCalls[0].persona === "0", "关掉『带人设』要传 persona=0");
   }
 
   SECTION("容错：布局写错不该让整个界面白屏");

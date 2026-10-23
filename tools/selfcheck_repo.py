@@ -2267,6 +2267,38 @@ def check_live2d(root):
     check("退还不记花费",
           "zgw_hold_release" in gw_c and gw_c.count("g->spent_total +=") == 1,
           "失败的请求不该扣钱，全文件只应有一处 spent_total 累加")
+    # ---- TLS 的不可退让项（T61.9，2026-10-24）----
+    # 这几条不是风格问题，是安全底线。放源码级检查是因为：
+    # 行为级的闸（make tls）要起服务端、要造证书，跑得慢也容易被人"先跳过"；
+    # 而这几行一旦被改坏，后果是用户的 API key 明文上网或被中间人读走。
+    tls_c = ""
+    tp = os.path.join(root, "src", "core", "ztls.c")
+    if os.path.isfile(tp):
+        tls_c = io.open(tp, encoding="utf-8").read()
+    if tls_c:
+        check("TLS 必须要求对端证书（SSL_VERIFY_PEER）",
+              "ZSSL_VERIFY_PEER" in tls_c and "SSL_CTX_set_verify" in tls_c,
+              "src/core/ztls.c —— 少了它就是\"假 https\"")
+        check("TLS 必须校验主机名（SSL_set1_host）",
+              "SSL_set1_host" in tls_c,
+              "只验签名链不验名字，攻击者拿一张自己域名的合法证书就能冒充任何站")
+        check("握手后还要复查一次 verify_result",
+              "SSL_get_verify_result" in tls_c,
+              "白拿的第二道防线：实测把 set_verify 改坏时，就是它独自守住的")
+        # 绝不能出现"跳过校验"的开关。有开关就一定有人在某天打开它。
+        bad = [k for k in ("SSL_VERIFY_NONE", "ZSSL_VERIFY_NONE", "insecure",
+                           "skip_verify", "no_verify", "allow_invalid")
+               if k in tls_c]
+        check("源码里不许有\"跳过证书校验\"的开关", not bad,
+              "发现 %s —— 不验证书的 https 和明文没区别，而这条线上跑的是用户的密钥" % bad)
+    # 降级红线：https 失败时绝不能改用明文重试
+    hp = os.path.join(root, "src", "core", "zhttp.c")
+    if os.path.isfile(hp):
+        http_c = io.open(hp, encoding="utf-8").read()
+        check("https 失败后不许回退明文",
+              "u.tls = 0" not in http_c and "u.tls=0" not in http_c,
+              "src/core/zhttp.c —— 出现把 tls 标志清零的代码就是在偷偷降级")
+
     # ---- 云端 TTS 客户端的密钥纪律（T58，2026-10-18）----
     # 两条都踩得起：密钥进日志 = 泄露，而日志是会被提交回仓库的（voice-render 的失败回传）。
     vcp = os.path.join(root, "tools", "voice_cloud.py")

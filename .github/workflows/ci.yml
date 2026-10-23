@@ -47,6 +47,9 @@ jobs:
       - name: ASan + UBSan（越界/泄漏当场失败）
         run: make asan
 
+      - name: TLS 闸门（证书验不过必须拒，而且一个字节都不许发）
+        run: make tls
+
       - name: 素材机器验收
         run: python3 tools/check_assets.py --character xiaoxun --form teen
 

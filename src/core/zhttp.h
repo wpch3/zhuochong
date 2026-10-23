@@ -15,7 +15,8 @@
  * ★★★ 关于 https ——
  * 真实的云端供应商（OpenAI / DeepSeek / 月之暗面 …）**全是 https**，
  * 所以这一版还连不上它们。这件事必须明着说，不能让它悄悄失败：
- * 传 https 地址进来会立刻返回 ZHTTP_E_TLS，并给一句人话。
+ * https 走 ztls（运行期 dlopen OpenSSL）。机器上没有 OpenSSL 就返回 ZHTTP_E_TLS
+ * 并给一句人话 —— **任何情况下都不会降级成明文**。
  * **宁可拒绝，也不能偷偷降级成明文** —— 那是在用户不知情的情况下
  * 把 API key 用明文发到网上，属于安全事故，不是"先凑合用"。
  *
@@ -37,7 +38,8 @@
 typedef enum {
     ZHTTP_OK = 0,
     ZHTTP_E_URL,        /* URL 不合法 */
-    ZHTTP_E_TLS,        /* https —— 本版没有 TLS，明确拒绝 */
+    ZHTTP_E_TLS,        /* TLS 用不了（没装 OpenSSL / 握手失败），详情看 resp->err_detail */
+    ZHTTP_E_TLS_CERT,   /* ★ 证书验不过。和上一条分开，因为这是安全问题不是网络问题 */
     ZHTTP_E_DNS,        /* 域名解析不了 */
     ZHTTP_E_CONNECT,    /* 连不上（对面没开 / 被拒） */
     ZHTTP_E_TIMEOUT,    /* 连接或读写超时 */
@@ -83,6 +85,10 @@ typedef struct {
     char  *body;        /* 调用方 zhttp_resp_free；总是 '\0' 结尾 */
     size_t body_len;
     int    truncated;   /* 响应体被 max_body 截断过 */
+    /* 出错时的补充说明（目前只有 TLS 那条路会填）。
+       光一个错误码不够用：是"没装 OpenSSL"还是"证书是自签名的"还是
+       "域名对不上"，用户要做的事完全不同。 */
+    char   err_detail[224];
 } zhttp_resp;
 
 /* 发一次请求。返回 ZHTTP_OK 表示**网络层**成功（拿到了一个完整响应），

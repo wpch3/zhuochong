@@ -8,6 +8,7 @@
 #endif
 
 #include "zhttp.h"
+#include "ztls.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,7 +43,8 @@ const char *zhttp_err_text(zhttp_err e)
     switch (e) {
     case ZHTTP_OK:         return "成功";
     case ZHTTP_E_URL:      return "地址格式不对";
-    case ZHTTP_E_TLS:      return "这个地址是 https，本版还没有接 TLS —— 不会降级成明文发送";
+    case ZHTTP_E_TLS:      return "TLS 用不了（看 err_detail）—— 不会降级成明文发送";
+    case ZHTTP_E_TLS_CERT: return "对方的证书验不过 —— 已中止，一个字节都没发";
     case ZHTTP_E_DNS:      return "域名解析不了";
     case ZHTTP_E_CONNECT:  return "连不上（服务没开，或者端口不对）";
     case ZHTTP_E_TIMEOUT:  return "超时";
@@ -232,24 +234,73 @@ static zhttp_err sock_connect(const zhttp_url *u, int timeout_ms, zsock *out)
     return rc;
 }
 
-static zhttp_err sock_send_all(zsock s, const char *buf, size_t len)
+/* ---------------------------------------------------------------- 连接
+ *
+ * 明文和 TLS 只在"字节怎么过线"这一层不同，上面的 HTTP 处理完全一样。
+ * 所以把读写收进 zconn，**只在这两个函数里分叉** ——
+ * 要是让 TLS 分支把整个 zhttp_send 复制一份，两条路迟早会长歪
+ * （比如 chunked 解析只修了一边）。
+ */
+typedef struct {
+    zsock  s;
+    ztls  *tls;      /* NULL = 明文 */
+} zconn;
+
+static zhttp_err conn_send_all(zconn *c, const char *buf, size_t len)
 {
     size_t off = 0;
     while (off < len) {
+        int n;
+        if (c->tls) {
+            n = ztls_write(c->tls, buf + off, (int)(len - off));
+        } else {
 #ifdef _WIN32
-        int n = send(s, buf + off, (int)(len - off), 0);
+            n = send(c->s, buf + off, (int)(len - off), 0);
 #else
-        ssize_t n = send(s, buf + off, len - off, MSG_NOSIGNAL);
+            n = (int)send(c->s, buf + off, len - off, MSG_NOSIGNAL);
 #endif
+        }
         if (n <= 0) {
 #ifndef _WIN32
-            if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return ZHTTP_E_TIMEOUT;
+            if (!c->tls && n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+                return ZHTTP_E_TIMEOUT;
 #endif
             return ZHTTP_E_SEND;
         }
         off += (size_t)n;
     }
     return ZHTTP_OK;
+}
+
+/* 读一段。>0 = 字节数，0 = 对端关闭，-1 = 出错，-2 = 被打断（重试），
+   -3 = 超时。把超时单独分出来是因为它要报成 ZHTTP_E_TIMEOUT 而不是 E_RECV。 */
+static int conn_recv(zconn *c, char *buf, size_t len)
+{
+    if (c->tls) {
+        int to = 0;
+        int n = ztls_read(c->tls, buf, (int)len, &to);
+        if (n < 0 && to) return -3;
+        return n;
+    }
+    {
+#ifdef _WIN32
+        int n = recv(c->s, buf, (int)len, 0);
+#else
+        ssize_t n = recv(c->s, buf, len, 0);
+#endif
+        if (n >= 0) return (int)n;
+#ifndef _WIN32
+        if (errno == EINTR) return -2;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return -3;
+#endif
+        return -1;
+    }
+}
+
+static void conn_close(zconn *c)
+{
+    if (c->tls) { ztls_close(c->tls); c->tls = NULL; }
+    if (c->s != ZSOCK_BAD) { zclosesock(c->s); c->s = ZSOCK_BAD; }
 }
 
 /* ------------------------------------------------------------ 动态缓冲 */
@@ -359,6 +410,7 @@ zhttp_err zhttp_send(const zhttp_req *req, zhttp_resp *resp)
 {
     zhttp_url u;
     zsock s = ZSOCK_BAD;
+    zconn c = { ZSOCK_BAD, NULL };
     zbuf raw = {0}, out = {0};
     char head[128];
     zhttp_err rc;
@@ -373,8 +425,11 @@ zhttp_err zhttp_send(const zhttp_req *req, zhttp_resp *resp)
     memset(resp, 0, sizeof(*resp));
 
     if (zhttp_url_parse(req->url, &u) != 0) return ZHTTP_E_URL;
-    /* ★ 绝不降级：https 直接拒，不会偷偷用明文把密钥发出去 */
-    if (u.tls) return ZHTTP_E_TLS;
+    /* ★ https 走 TLS。机器上没有 OpenSSL 就在这儿失败并说清楚，
+         **绝不改用明文**把密钥发出去 —— 功能不可用是进度问题，密钥泄露是事故。
+         这个检查放在 connect 之前：连都不连，省得对面日志里多一条无用记录。 */
+    if (u.tls && !ztls_available(resp->err_detail, sizeof(resp->err_detail)))
+        return ZHTTP_E_TLS;
 
 #ifdef _WIN32
     zhttp_wsa_once();
@@ -387,6 +442,16 @@ zhttp_err zhttp_send(const zhttp_req *req, zhttp_resp *resp)
 
     rc = sock_connect(&u, timeout_ms, &s);
     if (rc != ZHTTP_OK) return rc;
+    c.s = s;
+    if (u.tls) {
+        int is_cert = 0;
+        c.tls = ztls_connect((int)s, u.host, &is_cert,
+                             resp->err_detail, sizeof(resp->err_detail));
+        if (!c.tls) {
+            conn_close(&c);
+            return is_cert ? ZHTTP_E_TLS_CERT : ZHTTP_E_TLS;
+        }
+    }
 
     /* ---- 拼请求头 ---- */
     reqcap = 512 + strlen(u.path) + strlen(u.host)
@@ -417,29 +482,21 @@ zhttp_err zhttp_send(const zhttp_req *req, zhttp_resp *resp)
                                   lenbuf);
         }
         n += (size_t)snprintf(reqbuf + n, reqcap - n, "\r\n");
-        rc = sock_send_all(s, reqbuf, n);
+        rc = conn_send_all(&c, reqbuf, n);
         if (rc == ZHTTP_OK && body_len)
-            rc = sock_send_all(s, req->body, body_len);
+            rc = conn_send_all(&c, req->body, body_len);
     }
     free(reqbuf);
-    if (rc != ZHTTP_OK) { zclosesock(s); return rc; }
+    if (rc != ZHTTP_OK) { conn_close(&c); return rc; }
 
     /* ---- 读到对面关闭（我们声明了 Connection: close）---- */
     for (;;) {
         char tmp[4096];
-#ifdef _WIN32
-        int n = recv(s, tmp, (int)sizeof(tmp), 0);
-#else
-        ssize_t n = recv(s, tmp, sizeof(tmp), 0);
-#endif
+        int n = conn_recv(&c, tmp, sizeof(tmp));
         if (n == 0) break;
-        if (n < 0) {
-#ifndef _WIN32
-            if (errno == EINTR) continue;
-            if (errno == EAGAIN || errno == EWOULDBLOCK) { rc = ZHTTP_E_TIMEOUT; goto fail; }
-#endif
-            rc = ZHTTP_E_RECV; goto fail;
-        }
+        if (n == -2) continue;                                   /* 被打断，重试 */
+        if (n == -3) { rc = ZHTTP_E_TIMEOUT; goto fail; }
+        if (n < 0)   { rc = ZHTTP_E_RECV;    goto fail; }
         if (zbuf_add(&raw, tmp, (size_t)n) != 0) { rc = ZHTTP_E_OOM; goto fail; }
         /* 头读全了就可以开始判断要不要继续读（Content-Length 够了就停） */
         if (!hdr_end) {
@@ -464,7 +521,7 @@ zhttp_err zhttp_send(const zhttp_req *req, zhttp_resp *resp)
         }
         if (raw.len > max_body + 65536u) { resp->truncated = 1; break; }
     }
-    zclosesock(s);
+    conn_close(&c);
     s = ZSOCK_BAD;
 
     if (!hdr_end) {
@@ -518,7 +575,10 @@ zhttp_err zhttp_send(const zhttp_req *req, zhttp_resp *resp)
     return ZHTTP_OK;
 
 fail:
-    if (s != ZSOCK_BAD) zclosesock(s);
+    /* 用 conn_close 而不是 zclosesock：出错路径上 TLS 对象也要释放，
+       否则每失败一次漏一个 SSL_CTX。 */
+    conn_close(&c);
+    s = ZSOCK_BAD;
     free(raw.p);
     free(out.p);
     memset(resp, 0, sizeof(*resp));

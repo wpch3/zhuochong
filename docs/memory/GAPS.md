@@ -154,7 +154,7 @@
 | ~~G51~~ | ✅ 2026-10-13 **网关骨架**：`src/core/zgateway.{c,h}` —— 路由（`zgw_pick`，按能力挑供应商，支持 attempt 降级重试；失败原因分 `NO_SUCH_CAP`/`ALL_DISABLED`/`EXHAUSTED` 三种，因为给用户的指引完全不同）+ 估价（`zgw_estimate`，按量/按次/免费三种口径）+ 三段记账（`zgw_hold_open`→`settle`/`release`，照 one-api `relay/billing` 的预扣-结算-退还；**入账的是实际花费不是预扣额**，失败的请求不扣钱但计失败次数）+ 密钥引用（`zgw_secret_resolve`：`secret://foo-bar` → 环境变量 `ZHUOCHONG_SECRET_FOO_BAR`，**取不到必须失败，绝不返回空串**，装不下要报错不许截断）。路由表不是运行时现算的，是 `tools/check_platform.py` 预先物化成 `config/gateway_routes.json`（照 one-api 的 `Ability` 表做法，**顺序即优先级**，运行时取第一个 enabled 的就是首选）。新端点 **`/api/gateway.json`** 报告每种能力实际路由到谁 + 账本 + 三态 `ready/disabled/missing`；平台面板显示"契约说谁能做"与"网关说现在走谁" | 闸门：test **627/0**（新增 63 项）、smoke **138/0**（新增 19 项）、selfcheck ⑲ 组 9 项、web-test **52/0** | 负控七道全判红：路由不看 enabled / 结算记预扣额 / 密钥失败返回空串 / 退还也扣钱 / 重复结算不拒 / 三态混成"不可用" / 账本不显示花费。**真实 HTTP 调用不在本件内**（那是 G54）——把"选谁/花多少/钥匙在哪"和"怎么发"分开，前者在无网无密钥的机器上就能完整验证 |
 | G52 | **资源区骨架**：`data/workspaces/` 工作区、`data/files/` 文件区（带索引与校验和）、`data/memory/` 记忆区三层（profile / episodic / working）。全部只存本机 | — | P0 |
 | G53 | **任务机**：队列 + 状态机（queued/running/waiting_user/done/failed/cancelled）+ 可中断 + 可回放 | — | P0 |
-| ~~G54~~ | ✅ 2026-10-23 **真链路打通（第一段）**：`src/core/zhttp.{c,h}` 自带 HTTP/1.1 客户端（零依赖，Linux/Windows 双平台，chunked + 超时 + 体积上限）+ `src/core/zrelay.{c,h}` 中继层（选路 → 取密钥 → 拼 openai 格式请求体 → 真发 → 解析 → 记账）+ 新端点 **`/api/chat`**。详见下方 G54 正文 | 闸门：test **936 → 992**、smoke **246 → 266**、check_platform 37/0 | **TLS 未做**（https 直接拒绝，绝不降级明文发密钥）；聊天框 UI 未做 |
+| ~~G54~~ | ✅ 2026-10-23 **真链路打通（第一段）**：`src/core/zhttp.{c,h}` 自带 HTTP/1.1 客户端（零依赖，Linux/Windows 双平台，chunked + 超时 + 体积上限）+ `src/core/zrelay.{c,h}` 中继层（选路 → 取密钥 → 拼 openai 格式请求体 → 真发 → 解析 → 记账）+ 新端点 **`/api/chat`**。详见下方 G54 正文 | 闸门：test **936 → 992**、smoke **246 → 266**、check_platform 37/0 | **2026-10-23 第二段补齐**：TLS（T61.9，`src/core/ztls.{h,c}` 运行期 dlopen，`make tls` 24/0）+ 聊天框 UI（T61.10，`web/components/chat.js`，test_web +25）。云端 16 家现在握得上手了 |
 | G55 | **余额与用量**：真实记账落 `data/usage.jsonl`，替掉工作台现在的占位用量卡 | — | P1 |
 | G56 | skills 装载（Agent Skills 规范）+ 技能面板 | — | P1 |
 | G57 | image / video / model3d 能力接入（含本地 ComfyUI） | — | P2 |
@@ -968,6 +968,22 @@ HTTP 码照实说：200 = 真答上了，502 = 上游没答上（原因在 `erro
 ③ 只接 `openai_compatible`；anthropic 的 `/messages` 和 google 的 `generateContent` 要各写一个适配。
 ④ 多轮上下文还没有（每次都是单轮 system+user），接上下文管理器是 T60.1。
 
+### 第二段（2026-10-23 同日）：TLS + 聊天框
+
+**TLS（T61.9）** —— 第一段结尾那句"https 直接拒绝"现在撤销了。
+`src/core/ztls.{h,c}` 运行期 `dlopen` libssl/libcrypto（机器上缺的只是开发头，运行库在），
+18 个符号**少一个就整体判 TLS 不可用**：少了 `SSL_set1_host` 就成了"验签名不验名字"的
+假校验，比不验更危险。校验三件套 `set_default_verify_paths` + `set1_host` +
+握手后 `get_verify_result` 全在；CA 覆盖只认 `ZHUOCHONG_CA_FILE`，
+**不提供任何跳过校验的开关**。闸门 `make tls` 24/0，含"换 IP 连同一张证书必须被拒"
+（证明主机名校验真在）和 zrelay 全链路云端（不可信时不发且**预扣为 0**）。
+
+**聊天框（T61.10）** —— `web/components/chat.js`。界面上第一次有了能打字的地方。
+每条回复标明**谁答的**（供应商 · 型号）、本地还是云端、判据、token、花费；
+「看看将要发什么」走 `dry=1`，和真发共用 `prepare_one()`，摆出来的是真货不是示意图；
+上游 502 显示服务端原话；发出去触发 `think`、回复到了触发 `talk`，立绘跟着动。
+
+
 ## G100 🟡 闭合度 0.2 附近的"灰幽灵眼"（交叉淡化区两张图各半透明）
 
 眨眼是"睁眼件淡出 + 闭眼件淡入"，区间写死在 `zrig.c`：
@@ -1093,7 +1109,7 @@ HTTP 码照实说：200 = 真答上了，502 = 上游没答上（原因在 `erro
 | 想法 | 记在哪 | 状态 |
 | --- | --- | --- |
 | 供应商层可插拔 + 云端/本地双栈 | PROVIDER_PLAN / T7 系列 | ✅ 路由表 76 条 |
-| ~~**网关只会"选谁"，还不会"发请求"**~~ | G54 | ✅ 2026-10-23 打通。人设提示词第一次真的发到了模型。剩 TLS（云端家还连不上）与聊天框 UI |
+| ~~**网关只会"选谁"，还不会"发请求"**~~ | G54 | ✅ 2026-10-23 **整条打通**。人设提示词真的发到了模型；TLS 做完（证书校验三件套齐全，无跳过开关）云端家连得上了；界面上有了能打字的聊天框，并且每条回复都标明谁答的、走没走出这台机器 |
 | UI 按 deepseek/gemini/grok/gpt 定制 + 模块化 | A22 已落地四套主题；T29.1/29.3/29.4 | 🟡 主题包扩展/跟随路由自动切换未做 |
 | 高分辨率（渲染提速 + 重切） | T30.1 / T30.2 | 🟡 提速已做，重切未完 |
 | 形态分区（界面按形态分区） | G68 | ✅ 修完 |

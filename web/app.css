@@ -162,3 +162,23 @@ select {
   background: #fff0f4; border: 1px dashed var(--pink-deep); color: var(--pink-deep);
   border-radius: 6px; padding: 10px 12px; font-size: 12px; margin: 6px 0;
 }
+
+/* ---- 聊天框（G54 / T61.10）---- */
+/* 只用主题里真有的变量（--line / --card / --pink / --ink-soft）。
+   原来随手写了 --card-alt 和 --accent-soft —— 那两个名字在六套主题里
+   一个都不存在，fallback 永远生效，换主题时聊天框纹丝不动。
+   自己发明变量名之前先查一遍主题文件。 */
+.chat-log{max-height:320px;overflow-y:auto;margin-bottom:10px;padding-right:4px}
+.chat-msg{margin:8px 0;padding:8px 10px;border-radius:8px;
+          background:var(--line);border:1px solid transparent}
+/* 自己说的话靠主题主色描边区分，不靠填充色 —— 填充色在六套主题里
+   深浅差太多，描边到哪套都看得清 */
+.chat-me{background:var(--card);border-color:var(--pink)}
+.chat-err{background:var(--line);border-color:#d9534f}
+.chat-who{font-size:12px;color:var(--ink-soft);margin-bottom:2px}
+.chat-text{white-space:pre-wrap;word-break:break-word;line-height:1.55}
+/* 这一行是"这句话是谁答的、有没有离开这台机器"——不许省，也不许缩成图标 */
+.chat-meta{font-size:11px;color:var(--ink-soft);margin-top:5px}
+.chat-dry{white-space:pre-wrap;word-break:break-all;font-size:11px;max-height:220px;
+          overflow:auto;margin-top:6px;padding:8px;border-radius:8px;
+          background:var(--card);border:1px solid var(--line);color:var(--ink)}

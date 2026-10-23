@@ -188,7 +188,7 @@ Tripo3D 的异步 task）才需要单写适配器，它们在契约里标 `kind:
 
 ---
 
-## 6.5 真链路（G54，2026-10-23 做完第一段）
+## 6.5 真链路（G54，2026-10-23 整条打通）
 
 前面六节讲的都是"选谁"。这一节是"怎么发"。
 在这之前，整条线到路由表就断了 —— **人设提示词一个字节都没出过门**。
@@ -211,9 +211,9 @@ Tripo3D 的异步 task）才需要单写适配器，它们在契约里标 `kind:
 vLLM `:8000/v1`，加 ComfyUI / speaches / whisper.cpp。
 这恰好也是「断网也能用」那条线的落点 —— 第一条真链路落在这儿是合适的。
 
-**云端 16 家一家都连不上，因为还没有 TLS。** 见下。
+~~**云端 16 家一家都连不上，因为还没有 TLS。**~~ **2026-10-23 当日做完（T61.9），走的是下面的后路 1。** 见下。
 
-### TLS：这一轮为什么没做，以及两条后路
+### TLS：当初为什么没做、两条后路、以及最后怎么做的
 
 本机没有 OpenSSL 开发头（`/usr/include/openssl/ssl.h` 不存在，
 `pkg-config openssl` 也查不到），`-lssl -lcrypto` 必然链接失败。
@@ -257,6 +257,30 @@ vLLM `:8000/v1`，加 ComfyUI / speaches / whisper.cpp。
 细节和那个"降级会绕过隐私标记"的洞，记在 `docs/memory/GAPS.md` 的 G54 正文。
 
 ---
+
+#### 实际落地（2026-10-23，选了后路 1）
+
+`src/core/ztls.{h,c}`，运行期 `dlopen` + `dlsym`，**18 个符号少任何一个就整体判 TLS 不可用**
+（退回原来的 `ZHTTP_E_TLS` 行为，绝不降级明文）。
+
+为什么是"少一个就整体不可用"而不是"能拿到几个算几个"：
+少了 `SSL_set1_host`，程序会变成**验了证书签名但不验证书是发给谁的** ——
+攻击者拿任意一张合法证书就能冒充任何站点。这种"看起来验了"的状态比干脆不验更危险。
+
+- 校验三件套：`SSL_CTX_set_default_verify_paths` + `SSL_set1_host` +
+  握手后 `SSL_get_verify_result() == X509_V_OK`（两道互相独立，拆一道另一道还能兜住）。
+- `SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL)`，最低版本 TLS 1.2。
+- CA 覆盖**只认**环境变量 `ZHUOCHONG_CA_FILE`。**没有任何跳过校验的开关** ——
+  不给这个开关，就没人能在赶进度的时候把它打开。
+- 新错误码 `ZHTTP_E_TLS_CERT` + `zhttp_resp.err_detail`，把 OpenSSL 的原话
+  （比如 `self-signed certificate`）透到界面上，而不是一句"连接失败"。
+
+闸门 `make tls`（`tests/tls_probe.c` 24 条 + `tools/check_tls.py` 现生成自签名证书起服务）：
+能力自报 / 自签名必须被拒 / 配了 CA 才放行 / **换成 IP 连同一张证书必须被拒**
+（证明主机名校验真在）/ Bearer 头确实经 TLS 送达 / zrelay 全链路云端
+（没密钥不发、证书不可信不发且**预扣款为 0**、信任后 200 且正确记账）。
+另有五条源码级红线进了 `tools/selfcheck_repo.py`，CI 里也加了 `make tls` 步骤。
+
 
 ## 7. 任务拆解（进 TASKS）
 

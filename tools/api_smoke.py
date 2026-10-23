@@ -429,6 +429,37 @@ def run(base, root):
                   rec.get("tokens") == 1234, str(rec.get("tokens")))
             check("流水要记下理由", bool(rec.get("reason")), str(rec))
 
+    gw = a.json("/api/gateway.json")
+    check("gateway.json 能读", isinstance(gw, dict) and "loaded" in gw)
+    check("路由表要真的加载上", gw.get("loaded") is True,
+          "%d 条路由，策略 %s" % (gw.get("routes", 0), gw.get("strategy")))
+    check("策略应是 prefer_local（本机优先）", gw.get("strategy") == "prefer_local")
+    caps = {c["cap"]: c for c in gw.get("caps", [])}
+    check("网关要报告能力状态", len(caps) >= 10, "%d 种" % len(caps))
+    # 用户点名的能力必须都在这张表里有交代，哪怕交代的是"还没接入"
+    for want in ("chat.completion", "image.generate", "video.generate",
+                 "code.generate", "model3d.generate"):
+        check("能力 %s 有状态交代" % want, want in caps,
+              caps.get(want, {}).get("state", "缺失"))
+    chat = caps.get("chat.completion", {})
+    check("对话应路由到本机 ollama", chat.get("state") == "ready"
+          and chat.get("provider") == "ollama" and chat.get("local") is True,
+          "%s → %s" % (chat.get("state"), chat.get("provider")))
+    # 状态值只有三种，不能冒出别的——界面是按这三种写话术的
+    bad_state = [c for c in gw.get("caps", []) if c.get("state") not in ("ready", "disabled", "missing")]
+    check("能力状态只能是 ready/disabled/missing", not bad_state,
+          str([c.get("state") for c in bad_state]))
+    # 没路由到供应商时不许留下残缺字段（界面会直接拼进字符串）
+    ghost = [c for c in gw.get("caps", []) if c.get("state") != "ready" and c.get("provider")]
+    check("没选中供应商时 provider 必须是空的", not ghost, str(ghost))
+    led = gw.get("ledger") or {}
+    for k in ("spent", "held", "tokens_in", "tokens_out", "calls", "failed"):
+        check("账本有 %s" % k, k in led)
+    check("新进程的账本应是干净的", led.get("spent") == 0 and led.get("calls") == 0)
+
+    # /api/chat 这一段必须排在「新进程的账本应是干净的」后面：真发一次就会记一笔账，
+    # 而用户自己机器上本地模型多半是开着的 —— 那样这段会真的成功、真的记账，
+    # 把上面那条干净账本的断言冲红。顺序本身就是测试的一部分。
     # ---- /api/chat：真的把话发出去那一段（G54）----
     # 在这之前，网关只会"选谁"，选完就没下文了 —— 人设提示词一个字节都没出过门。
     # 冒烟机上没有模型在跑，所以这里主要验两件事：
@@ -518,33 +549,6 @@ def run(base, root):
         check("失败不许留悬空预扣",
               ((a.json("/api/gateway.json") or {}).get("ledger") or {}).get("held") == 0)
 
-    gw = a.json("/api/gateway.json")
-    check("gateway.json 能读", isinstance(gw, dict) and "loaded" in gw)
-    check("路由表要真的加载上", gw.get("loaded") is True,
-          "%d 条路由，策略 %s" % (gw.get("routes", 0), gw.get("strategy")))
-    check("策略应是 prefer_local（本机优先）", gw.get("strategy") == "prefer_local")
-    caps = {c["cap"]: c for c in gw.get("caps", [])}
-    check("网关要报告能力状态", len(caps) >= 10, "%d 种" % len(caps))
-    # 用户点名的能力必须都在这张表里有交代，哪怕交代的是"还没接入"
-    for want in ("chat.completion", "image.generate", "video.generate",
-                 "code.generate", "model3d.generate"):
-        check("能力 %s 有状态交代" % want, want in caps,
-              caps.get(want, {}).get("state", "缺失"))
-    chat = caps.get("chat.completion", {})
-    check("对话应路由到本机 ollama", chat.get("state") == "ready"
-          and chat.get("provider") == "ollama" and chat.get("local") is True,
-          "%s → %s" % (chat.get("state"), chat.get("provider")))
-    # 状态值只有三种，不能冒出别的——界面是按这三种写话术的
-    bad_state = [c for c in gw.get("caps", []) if c.get("state") not in ("ready", "disabled", "missing")]
-    check("能力状态只能是 ready/disabled/missing", not bad_state,
-          str([c.get("state") for c in bad_state]))
-    # 没路由到供应商时不许留下残缺字段（界面会直接拼进字符串）
-    ghost = [c for c in gw.get("caps", []) if c.get("state") != "ready" and c.get("provider")]
-    check("没选中供应商时 provider 必须是空的", not ghost, str(ghost))
-    led = gw.get("ledger") or {}
-    for k in ("spent", "held", "tokens_in", "tokens_out", "calls", "failed"):
-        check("账本有 %s" % k, k in led)
-    check("新进程的账本应是干净的", led.get("spent") == 0 and led.get("calls") == 0)
     h0, n0 = a.frame_hash()
     check("frame.png 是张真图", n0 > 2000, "%d 字节 %dx%d" % (n0, info["frame_w"], info["frame_h"]))
 

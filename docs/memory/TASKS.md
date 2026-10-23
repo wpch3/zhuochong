@@ -1160,8 +1160,8 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | T61.6 | 预览端点 `/api/chat`（含 `dry=1` 只看不发） | [x] | dry-run 与真发**共用 `prepare_one()`**，否则显示的和实际出网的迟早对不上。`api_smoke` 246 → 266 |
 | T61.7 | **修隐私洞**：降级重试会绕过 `sensitive` | [x] | `zgw_pick` 只认优先级不认敏感标记 ⇒ 本地挂 + 允许降级 = 悄悄上云。没炸只因云端默认 `enabled=false`，而那是配置不是保证。负控：把云端做成**会成功的诱饵**，拆掉护栏 4 项判红 |
 | T61.8 | `make win` 加 `-lws2_32` | [x] | `CORE_SRC` 是 wildcard，`zhttp.c` 自动进交叉编译。实测不加会炸 8 个未定义符号（`WSAStartup`/`getaddrinfo`/`socket`…），加上后 exe 正常 import `WS2_32.dll` |
-| T61.9 | **TLS** | [ ] | **云端线的唯一卡点**——没它云端 16 家一家都连不上，现在只能连本地明文栈。本机无 OpenSSL 开发头。**2026-10-23 查完，选 (a) 运行期 `dlopen` libssl**：缺的只是开发头，`libssl.so.3`/`libcrypto.so.3` 本身就在机器上，这条路在当前沙箱里就能完整验证。证书校验三样缺一不可（`set_default_verify_paths` + `set1_host` + `get_verify_result`），不验证书的 https 和明文没区别。详见 `docs/PROVIDER_PLAN.md` 6.5。**绝不降级成明文**——功能没打通是进度问题，密钥泄露是事故。优先级高于 T61.10 |
-| T61.10 | 聊天框 UI | [ ] | 现在只有端点，界面上还没有能打字的地方 |
+| T61.9 | **TLS** | [x] | **云端线的唯一卡点**——没它云端 16 家一家都连不上，现在只能连本地明文栈。本机无 OpenSSL 开发头。**2026-10-23 查完，选 (a) 运行期 `dlopen` libssl**：缺的只是开发头，`libssl.so.3`/`libcrypto.so.3` 本身就在机器上，这条路在当前沙箱里就能完整验证。证书校验三样缺一不可（`set_default_verify_paths` + `set1_host` + `get_verify_result`），不验证书的 https 和明文没区别。详见 `docs/PROVIDER_PLAN.md` 6.5。**绝不降级成明文**——功能没打通是进度问题，密钥泄露是事故。优先级高于 T61.10 | | **2026-10-23 done**：`src/core/ztls.{h,c}` 运行期 dlopen（18 符号，少一个就整体判不可用）。闸门 `make tls` = `tests/tls_probe.c` 24 条 + `tools/check_tls.py`（现生成自签名证书起 python TLS 服务再跑探针）。**负控**：只关 `SSL_CTX_set_verify` 仍 24/0（`SSL_get_verify_result` 独自守住），两道都拆才 16/8 见红。CA 覆盖只认 `ZHUOCHONG_CA_FILE`，**没有任何跳过校验的开关**。selfcheck 加五条源码级红线 + CI 加 `make tls` 步骤
+| T61.10 | 聊天框 UI | [x] | **2026-10-23 done**：`web/components/chat.js`，挂在 `web/layout.json` 的 `side` 首位。不只是能打字——每条回复都标**谁答的**（供应商/型号/本地还是云端/理由/token/花费），「看看将要发什么」按钮走 `dry=1` 把真会出网的地址和请求体原样摆出来（和真发共用 `prepare_one()`，出参不带密钥）；上游 502 显示服务端原话，不伪装成回复；发出去时触发 `think`、回复到了触发 `talk`，立绘跟着对话动。`tests/test_web.js` +25 条（负控：拿掉徽章立刻 3 红） |
 | T61.11 | 多轮上下文 | [ ] | 每次都是单轮 system+user。依赖 T60.1 上下文管理器 |
 | T61.12 | 非 OpenAI 形状适配 | [ ] | anthropic `/messages`、google `generateContent`。并入 T59.4 一起做 |
 | T61.13 | 提示注入防护 | [ ] | 第五十二问②要求的「文档/网页/工具返回内容里的指令不得提权」，要在 `zrelay` 这层把工具结果和用户指令分隔开 |

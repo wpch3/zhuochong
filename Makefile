@@ -13,7 +13,9 @@
 CC        ?= gcc
 CFLAGS    ?= -std=c11 -O2 -Wall -Wextra -Wno-unused-parameter -pthread
 INC        = -Isrc
-LDLIBS     = -lm -pthread   # 渲染分块用线程（T30.2）
+LDLIBS     = -lm -pthread -ldl   # 线程：渲染分块（T30.2）；dl：ztls 运行期加载 OpenSSL（T61.9）
+#   注意 -ldl 只给原生目标。Windows 那条用 LoadLibrary，不需要也没有 libdl。
+#   glibc 2.34 起 dlopen 已并进 libc，-ldl 变成空壳；留着是为了兼容更老的系统。
 BUILD      = build
 
 CORE_SRC   = $(wildcard src/core/*.c)
@@ -27,7 +29,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck
+.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls
 
 all: test
 
@@ -43,6 +45,18 @@ $(BUILD)/test_core: tests/test_core.c $(CORE_SRC) $(CORE_HDR)
 test: $(BUILD)/test_core
 	@echo "== 运行单元测试 =="
 	@./$(BUILD)/test_core .
+
+# ---------------------------------------------------------- TLS 闸门（T61.9）
+# 它需要一个真的 TLS 服务端和一张证书，所以由 tools/check_tls.py 起好环境再调用。
+# 单独一个二进制而不是塞进 test_core：在 C 里起 TLS 服务端要再 dlopen 一批
+# 服务端符号、还要在测试里造证书，脚手架比被测的东西还重。
+$(BUILD)/tls_probe: tests/tls_probe.c $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) $(INC) -o $@ tests/tls_probe.c $(CORE_SRC) $(LDLIBS)
+
+.PHONY: tls
+tls: $(BUILD)/tls_probe
+	@python3 tools/check_tls.py
 
 # ---------------------------------------------------------------- 预览服务
 $(BUILD)/zhuochong_preview: src/headless/main_headless.c $(CORE_SRC) $(CORE_HDR)

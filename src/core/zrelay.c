@@ -265,7 +265,13 @@ static int try_one(zgateway *g, const zgw_route *rt, const zrelay_chat_req *in,
     free(body);
 
     if (he != ZHTTP_OK) {
-        snprintf(out->err, sizeof(out->err), "%.220s：%s", url, zhttp_err_text(he));
+        /* err_detail 只有 TLS 那条路会填，但它恰恰是最需要细说的一条：
+           "没装 OpenSSL" / "证书是自签名的" / "域名对不上" 三种情况
+           用户要做的事完全不同，只给一句"TLS 用不了"等于没说。 */
+        if (rp.err_detail[0])
+            snprintf(out->err, sizeof(out->err), "%.150s：%.160s", url, rp.err_detail);
+        else
+            snprintf(out->err, sizeof(out->err), "%.220s：%s", url, zhttp_err_text(he));
         if (hold) zgw_hold_release(g, hold);
         return -1;
     }
