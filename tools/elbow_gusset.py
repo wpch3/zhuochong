@@ -63,8 +63,15 @@ import numpy as np
 
 from PIL import Image
 
-LAYER = {"l": 136, "r": 137}      # 身体(≤100) 之上、手/上臂/前臂(138~145) 之下
-SIG_V = 1
+# ★★★ Q51：从 136/137（垫在两根袖管**底下**）提到 150/151（压在**最上面**）。
+#   垫在底下时，上臂自己的内侧描边和前臂近端的描边照样画在布的上面 ——
+#   用户第五十一问截图里那条「肘关节的深色线」就是这两条描边并排躺在袖子中间。
+#   官方做法本来就是把関節パーツ**压在上面**盖住接缝
+#   （https://saraemi.com/vtuber/2022/02/09/live2d_arm/ 「関節パーツで整形」、
+#    https://palkaloid.com/931/live2d-diary-2/ 「前腕と二の腕の切れ目が目立つ」）。
+LAYER_GUSSET = {"l": 136, "r": 137}   # 褶布：填洞，必须垫在两根管子**底下**
+LAYER_SEAM   = {"l": 150, "r": 151}   # 盖布：盖线，必须压在两根管子**之上**
+SIG_V = 2
 # —— 挥手定稿姿势（绝对角，离竖直向下）——和 elbow_cover.py / make_rig 同源 ——
 POSE = {"r": (21.69, 153.73), "l": (-22.12, -152.17)}
 
@@ -193,8 +200,19 @@ def main():
     ap.add_argument("--tip-fade", type=float, default=13.0, dest="tip_fade",
                     help="远端（袖口那头）往回羽化几像素（1x）—— 定稿角度以外"
                          "那一两帧就算探出头，也只是一层很淡的雾，不是硬边三角")
-    ap.add_argument("--shade", type=float, default=0.94,
-                    help="折缝里的布比外面暗一点（乘这个系数，靠近缝底最暗）")
+    ap.add_argument("--shade", type=float, default=1.0,
+                    help="折缝里的布比外面暗一点（乘这个系数，靠近缝底最暗）。"
+                         "★ Q51 改回 1.0：0.94 那 6% 让这块布在袖子中间读成"
+                         "「另一块绿色的东西」，用户第五十一问第一句就是冲它来的")
+    # ★★★ Q51 新增：接缝描边。缺口（漏背景）只是病的一半，另一半是
+    #   **两根管子各自的描边并排躺在袖子中间**，那才是用户指的「深色的线」。
+    ap.add_argument("--seam", type=float, default=4.0,
+                    help="接缝描边往外胀几像素（1x）—— 要比描边自己宽，"
+                         "还要留出肘角抖动时的余量")
+    ap.add_argument("--ink-lum", type=float, default=118.0, dest="ink_lum",
+                    help="亮度低于这个值算描边（袖身中调 ~165、阴影 ~138、描边 ~60）")
+    ap.add_argument("--seam-reach", type=float, default=2.0, dest="seam_reach",
+                    help="接缝带最远到肘→腕距离的几倍（要够到两管贴合段的顶端）")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--debug", action="store_true")
     ap.add_argument("--quiet", action="store_true")
@@ -211,7 +229,9 @@ def main():
     parts = {p["id"]: p for p in meta["parts"]}
 
     sig = {"v": SIG_V, "pad": a.pad, "feather": a.feather,
-           "reach": a.reach, "blur": a.blur, "pose": POSE}
+           "reach": a.reach, "blur": a.blur, "pose": POSE,
+           "seam": a.seam, "ink_lum": a.ink_lum, "seam_reach": a.seam_reach,
+           "shade": a.shade}
     if not a.force and meta.get("elbow_gusset", {}).get("sig") == sig:
         if not a.quiet:
             print("[褶布] 签名未变，跳过（--force 强制重做）")
@@ -313,10 +333,59 @@ def main():
             keep = (rs > idx.min()) & (rs < idx.max())
             trap2[rs[keep], c] = True
         gap = (trap | trap2) & sector
-        if gap.sum() < 60:
+
+        # ★★★ Q51：接缝描边 —— 用户真正指的那条「肘关节的深色线」。
+        #   病理：上臂件的内侧描边 + 前臂件近端的描边，折起来之后**并排躺在
+        #   袖子中间**。两条都是原画的外剪影线（2~3px 的深蓝），在伸直姿势里
+        #   它们是合法的轮廓，一折起来就成了横穿袖子的双实线。
+        #   参考图 characters/xiaoxun/design/pose_ref/wave_up.png 的折袖
+        #   （logs/asset_qa/q51_ref_fold.png）：整只折袖是**一整块连续的布**，
+        #   深色描边只在外剪影上，里面只有几笔很淡的褶皱影。
+        #   判据（几何，不猜颜色长相）：
+        #     ink      = 亮度 < ink_lum 的像素（描边）
+        #     interior = 四周 r 圈之内全是袖料 ⇒ 不是外剪影，是**内部**的线
+        #     seam     = ink & interior & 在两管夹角扇区内
+        lum_c = comp_rgb.mean(2)
+
+        def erode(m, r):
+            o = m.copy()
+            for _ in range(int(r)):
+                o &= (np.roll(o, 1, 0) & np.roll(o, -1, 0)
+                      & np.roll(o, 1, 1) & np.roll(o, -1, 1))
+            return o
+
+        # 「两根管子贴在一起的那一段」才算接缝。第一版只按角度扇区收口，
+        # 结果**袖口罗纹的深蓝条**也在扇区里（它沿前臂轴，正好 dang≈half），
+        # 被当成接缝盖掉了一半（logs/asset_qa/q51_seam_v1.png）。
+        # 正确判据是分层的：离上臂件和前臂件**都**只有几像素的地方＝贴合段；
+        # 袖口只挨着前臂，手件整个排除。
+        up_m = layers[0][1] > 0.6
+        fo_m = layers[1][1] > 0.6
+        hd_m = layers[2][1] > 0.6
+        # ★ 「布」= 袖料 + 缺口。缺口那片背景是**褶布件在底下填掉的**，
+        #   所以贴着缺口的那两条描边同样是「袖子中间的线」，一样要盖。
+        #   第二版只用 solid 当布，贴缺口的描边被 interior 判成外剪影放过了，
+        #   结果两管分开的那一段线还在（logs/asset_qa/q51_seam_v3.png 红点）。
+        cloth = solid | gap
+        c = int(round(4.0 * K))
+        contact = ((dilate(up_m, c) & dilate(fo_m, c))
+                   | dilate(gap, int(round(6.0 * K)))) & ~dilate(hd_m, 2 * K)
+        interior = erode(cloth, int(round(a.seam * K)) + 3)
+        seam = (solid & (lum_c <= a.ink_lum) & interior & contact
+                & (rad <= L * a.seam_reach * K) & (dang <= half + 22.0))
+        # 胀开之后仍然**不许碰外剪影**：永远给剪影留 3px 不动
+        seam_d = dilate(seam, int(round(a.seam * K))) & erode(cloth, 3)
+
+        if gap.sum() < 60 and seam.sum() < 40:
             if not a.quiet:
-                print("[褶布] %s 侧没量到缺口（%d px），跳过" % (side, gap.sum()))
+                print("[褶布] %s 侧既没缺口（%d px）也没接缝线（%d px），跳过"
+                      % (side, gap.sum(), seam.sum()))
             continue
+        if not a.quiet:
+            rs = rad[seam] / K if seam.any() else np.array([0.0])
+            print("[褶布] %s 侧：缺口 %d px，接缝描边 %d px（离肘 %.0f~%.0f px，"
+                  "胀开后 %d px）" % (side, gap.sum(), seam.sum(),
+                                      rs.min(), rs.max(), seam_d.sum()))
 
         # 垂直于角平分线的两侧各胀 pad px（塞到两根管子底下），
         # 沿平分线方向（远端/近端）只胀 1px 封边。
@@ -334,7 +403,7 @@ def main():
         #   深蓝补丁（logs/asset_qa/q50_gusset_on.png 第一版）。
         #   判据不猜「像不像袖子」，而是：先从前臂件内部取袖身中位色
         #   （掐掉最暗 18%＝描边、最亮 18%＝高光/白条），再按色距收口。
-        near = solid & (rad <= (L * a.reach + 20) * K)
+        near = solid & (rad <= (L * max(a.reach, a.seam_reach) + 20) * K)
         lum_all = comp_rgb.mean(2)
         if near.sum() > 200:
             lo, hi = np.percentile(lum_all[near], [18, 82])
@@ -345,7 +414,13 @@ def main():
         dist = np.sqrt(((comp_rgb - med[None, None, :]) ** 2).sum(2))
         # 描边(最暗)和袖口白条(最亮)**连同它们周围 3px** 一起剔除 —— 第二版只按
         # 色距收口，白条边上那圈过渡色还是被吸进来，补出来一片带横纹的浅色带。
-        bad = dilate(near & ((lum_all < lo) | (lum_all > hi)), 3)
+        # ★★★ Q51：暗的那头只掐**描边**（绝对阈值 ink_lum），不要连袖子自己的
+        #   阴影一起掐。第一版按 18 百分位掐，折缝周围全是阴影布、全被判成
+        #   「色源不可用」，于是补布只能拿中调/亮调填 —— 补出来比周边袖子
+        #   亮 5%（实测 ΔRGB=[9.9,9.5,7.4]，距离 15.6），在袖子中间就是
+        #   用户说的「那块绿色的东西」。shade 旋钮救不了：ramp 的 mean(t)=0.914，
+        #   拧到 0.84 也只把距离从 15.6 压到 8.0。
+        bad = dilate(near & ((lum_all < a.ink_lum) | (lum_all > hi)), 3)
         known = near & ~bad & (dist <= a.tol)
         if known.sum() < 200:
             known = near & (dist <= a.tol)
@@ -382,14 +457,41 @@ def main():
             marg = want & ~gap
             soft = np.where(marg, soft * (0.30 + 0.70 * ramp), soft)
 
+        # ★★★ Q51：**接缝盖布**是另一件，层不一样，不能和褶布混在一张图里。
+        #   褶布填的是「漏背景的洞」，只有从洞里才看得见 ⇒ 必须垫在两根管子
+        #   **底下**（层 136/137），放上面就会把袖口、剪影一起糊掉
+        #   （logs/asset_qa/q51_seam_v2.png 整片蓝雾）。
+        #   盖布盖的是「横躺在袖子中间的描边」，只有压在两根管子**上面**
+        #   才盖得住（层 150/151）。两件分工、各归各层。
+        fe2 = max(1, int(round(a.feather * K)))
+        soft2 = np.zeros((H, W), np.float32)
+        prev = seam.copy()
+        soft2[prev] = 1.0
+        for i in range(1, fe2 + 1):
+            nxt = dilate(prev, 1) & seam_d
+            ring = nxt & ~prev
+            soft2[ring] = 1.0 - i / float(fe2 + 1)
+            prev = nxt
+        want2 = seam_d & (soft2 > 0.004)
+        # 顶端渐隐，别让盖布戛然而止、露出半截线头
+        if a.tip_fade > 0.5 and seam.any():
+            r_far2 = float(rad[seam].max())
+            ramp2 = np.clip((r_far2 + 2 * K - rad) / max(1.0, a.tip_fade * K), 0.0, 1.0)
+            soft2 = soft2 * ramp2
+        flat2 = nearest_fill(comp_rgb, known & ~dilate(seam, 1), want2)
+        flat2 = box_blur(flat2, want2, max(1, a.blur))
+
         posed = np.zeros((H, W, 4), np.float32)
         posed[..., :3] = flat
         posed[..., 3] = soft * 255.0 * want
+        posed2 = np.zeros((H, W, 4), np.float32)
+        posed2[..., :3] = flat2
+        posed2[..., 3] = soft2 * 255.0 * want2
 
         # —— 反旋转回「角平分线」局部系：p_local = R⁻¹(p_posed − e2) + e_rest ——
         netdeg = dU + th
         er = (ex * K, ey * K)
-        Rl = L * a.reach + 24.0
+        Rl = L * max(a.reach, a.seam_reach) + 24.0
         lbox = (int((ex - Rl) * K), int((ey - Rl) * K),
                 int((ex + Rl) * K) + 1, int((ey + Rl) * K) + 1)
         LW, LH = lbox[2] - lbox[0], lbox[3] - lbox[1]
@@ -402,53 +504,72 @@ def main():
         ok = (px >= 0) & (px < W) & (py >= 0) & (py < H)
         px = np.clip(px, 0, W - 1)
         py = np.clip(py, 0, H - 1)
-        loc = posed[py, px]
-        loc[..., 3] *= ok
+        def emit(src, pid, layer, note):
+            """把摆位图反旋转回局部系、切件、写盘、登记到 arm_parts.json。"""
+            loc = src[py, px].copy()
+            loc[..., 3] *= ok
+            out = loc.clip(0, 255).astype(np.uint8)
+            ys, xs = np.where(out[..., 3] > 2)
+            if len(ys) == 0:
+                return None
+            x0, x1 = int(xs.min()), int(xs.max()) + 1
+            y0, y1 = int(ys.min()), int(ys.max()) + 1
+            x0 -= (x0 + lbox[0]) % K
+            y0 -= (y0 + lbox[1]) % K
+            x1 += (-(x1 + lbox[0])) % K
+            y1 += (-(y1 + lbox[1])) % K
+            crop = Image.fromarray(out).crop((x0, y0, x1, y1))
+            crop.save(os.path.join(sprites, pid + "@2x.png"))
+            crop.resize((crop.width // K, crop.height // K),
+                        Image.LANCZOS).save(os.path.join(sprites, pid + ".png"))
+            entry = {"id": pid, "file": "sprites/%s.png" % pid,
+                     "group": "elbow_fold_%s" % side, "layer": layer,
+                     "pos": [(x0 + lbox[0]) // K, (y0 + lbox[1]) // K],
+                     "size": [crop.width // K, crop.height // K],
+                     "pivot": [ex, ey], "note": note}
+            for i, p in enumerate(meta["parts"]):
+                if p["id"] == pid:
+                    meta["parts"][i] = entry
+                    break
+            else:
+                meta["parts"].append(entry)
+            return entry
 
-        out = loc.clip(0, 255).astype(np.uint8)
-        ys, xs = np.where(out[..., 3] > 2)
-        if len(ys) == 0:
+        crop = emit(posed, "arm_%s_gusset" % side, LAYER_GUSSET[side],
+                    "肘内侧褶布（Q50）：参考图 wave_up.png 的折臂是**一整块连续的布**，"
+                    "我们两根管子之间会漏出背景三角（logs/asset_qa/q50_notch_probe.png "
+                    "红色 705px）。这块布按定稿姿势量出缺口、用两边袖子自己的像素填出来，"
+                    "挂在 elbow_fold_? 组（转角 = 前臂的一半 = 角平分线）、"
+                    "层 136/137 垫在两根管子**底下**，伸直时 alpha=0。")
+        if crop is None:
             continue
-        x0, x1 = int(xs.min()), int(xs.max()) + 1
-        y0, y1 = int(ys.min()), int(ys.max()) + 1
-        x0 -= (x0 + lbox[0]) % K
-        y0 -= (y0 + lbox[1]) % K
-        x1 += (-(x1 + lbox[0])) % K
-        y1 += (-(y1 + lbox[1])) % K
-        crop = Image.fromarray(out).crop((x0, y0, x1, y1))
-        pid = "arm_%s_gusset" % side
-        crop.save(os.path.join(sprites, pid + "@2x.png"))
-        crop.resize((crop.width // K, crop.height // K),
-                    Image.LANCZOS).save(os.path.join(sprites, pid + ".png"))
-
-        entry = {"id": pid, "file": "sprites/%s.png" % pid,
-                 "group": "elbow_fold_%s" % side, "layer": LAYER[side],
-                 "pos": [(x0 + lbox[0]) // K, (y0 + lbox[1]) // K],
-                 "size": [crop.width // K, crop.height // K],
-                 "pivot": [ex, ey],
-                 "note": "肘内侧褶布（Q50）：参考图 wave_up.png 的折臂是**一整块连续的布**，"
-                         "我们两根管子之间会漏出背景三角（logs/asset_qa/q50_notch_probe.png "
-                         "红色 705px）。这块布按定稿姿势量出缺口、用两边袖子自己的像素填出来，"
-                         "挂在 elbow_fold_? 组（转角 = 前臂的一半 = 角平分线）、"
-                         "层 136/137 垫在两根管子**底下**，伸直时 alpha=0。"}
-        found = False
-        for i, p in enumerate(meta["parts"]):
-            if p["id"] == pid:
-                meta["parts"][i] = entry
-                found = True
-        if not found:
-            meta["parts"].append(entry)
+        seam_entry = emit(posed2, "arm_%s_seam" % side, LAYER_SEAM[side],
+                          "肘接缝盖布（Q51）：折起来之后，上臂件的内侧描边和前臂件"
+                          "近端的描边**并排躺在袖子中间**，读起来就是用户第五十一问"
+                          "截图里那条「肘关节的深色线」。参考图 wave_up.png 的折袖"
+                          "里面只有几笔淡褶皱、深色线只在外剪影上。这件按定稿姿势"
+                          "找出「被袖料包住的描边像素」（两管贴合段内，排除袖口罗纹"
+                          "和手），用两边袖子自己的颜色盖掉，层 150/151 压在"
+                          "两根管子**之上**，外剪影永远留 3px 不碰，伸直时 alpha=0。")
         done[side] = {"gap_px_2x": int(gap.sum()), "fill_px_2x": int(want.sum()),
+                      "seam_px_2x": int(seam.sum()),
+                      "seam_fill_px_2x": int(want2.sum()),
+                      "seam_r_px": [round(float(rad[seam].min()) / K, 1),
+                                    round(float(rad[seam].max()) / K, 1)]
+                      if seam.any() else [0, 0],
                       "half_deg": round(half, 2), "bis_deg": round(bis, 2),
                       "theta_half": round(th, 2), "net_deg": round(netdeg, 2),
-                      "size": [crop.width // K, crop.height // K],
-                      "pos": [(x0 + lbox[0]) // K, (y0 + lbox[1]) // K]}
+                      "size": crop["size"], "pos": crop["pos"],
+                      "seam_size": seam_entry["size"] if seam_entry else None,
+                      "seam_pos": seam_entry["pos"] if seam_entry else None}
         if not a.quiet:
-            print("[褶布] %s 侧：缺口 %d px → 补 %d px（@2x），半角 %.1f°，"
-                  "组转角 %.2f°，切件 %dx%d @[%d, %d]"
-                  % (side, gap.sum(), want.sum(), half, th,
-                     crop.width // K, crop.height // K,
-                     (x0 + lbox[0]) // K, (y0 + lbox[1]) // K))
+            print("[褶布] %s 侧：缺口 %d px → 褶布 %d px @%s%s；"
+                  "接缝描边 %d px（离肘 %.0f~%.0f px）→ 盖布 %d px @%s%s"
+                  % (side, gap.sum(), want.sum(), crop["size"], crop["pos"],
+                     seam.sum(), rad[seam].min() / K if seam.any() else 0,
+                     rad[seam].max() / K if seam.any() else 0, want2.sum(),
+                     seam_entry["size"] if seam_entry else "-",
+                     seam_entry["pos"] if seam_entry else ""))
 
         if a.debug:
             vis = np.zeros((H, W, 3), np.uint8)
@@ -457,6 +578,8 @@ def main():
                    + comp_rgb * comp_a[..., None]).astype(np.uint8)
             vis[want] = (0.45 * vis[want] + 0.55 * np.array([0, 200, 0])).astype(np.uint8)
             vis[gap] = [255, 0, 0]
+            vis[want2] = (0.35 * vis[want2] + 0.65 * np.array([255, 160, 0])).astype(np.uint8)
+            vis[seam] = [255, 0, 255]
             dbg_tiles.append(Image.fromarray(vis))
 
     if done:

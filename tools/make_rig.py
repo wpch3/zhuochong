@@ -94,7 +94,7 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                has_blend=False, has_side=False, has_legs=False,
                body_id="seg_torso", has_eyeballs=False, foot_lift=None,
                star_eyes=None, fx_table=None, hand_forms=None,
-               crease_parts=(), slim_parts=(), long_axes=None,
+               slim_parts=(), long_axes=None,
                elbow_parts=(), gusset_parts=()):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
@@ -401,21 +401,13 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         def cap_fade(part_id):
             return []
 
-        # ★★★ Q44：肘折线 arm_*_crease 的 alpha 绑肘角。
-        #   前臂近端是从袖子内部切开的新边，原画在那儿**没有描边**；伸直时被上臂
-        #   盖住看不见，一折起来（挥手肘内角 32°）前臂就和上臂糊成一团没有边界
-        #   （logs/asset_qa/q44_final_zoom.png）。
-        #   tools/elbow_crease.py 把这条线单独做成薄件（层 146/147，压在前臂之上），
-        #   这里让它跟着肘角显形：alpha = clamp(1 + 0.25·v − 1)
-        #       v=0（伸直）→ 0      一个像素都不变，静止画面零影响
-        #       v=4（72°） → 1      折起来就有一条干净的前臂轮廓压在上臂上
-        #   —— 这就是官方的「差分パーツ＋パラメータでフェード」，不动原件、不改引擎。
-        def crease_fade(part_id):
-            if part_id not in (crease_parts or ()):
-                return []
-            return [{"part": part_id, "param": "alpha",
-                     "scale": 0.25, "offset": -1.0}]
-
+        # ★★★ Q51：肘折线 arm_*_crease 整件删除。
+        #   Q44 做它的理由是「前臂近端是新切口、原画那儿没描边，折起来会和
+        #   上臂糊成一团」，于是**补了一条线**。第五十一问用户指着截图说这条线
+        #   「不应该存在」，REF-FIRST 复核参考图 wave_up.png 的折袖也确实没有：
+        #   折袖是一整块连续的布，深色线只在外剪影上。
+        #   现在的分工是反过来的 —— tools/elbow_gusset.py 出的褶布件压在
+        #   最上面（层 150/151），把折起来之后横躺在袖子中间的描边**盖掉**。
         # ★★★ Q45：前臂「折起时收窄」的网格形变器（ワープデフォーマ）。
         #   用户第四十五问放大图：挥手时前臂是「吊在袖口下面的一只大拳套」。
         #   分件染色实拍（logs/asset_qa/q45_tint.png，前臂染红/上臂染蓝）坐实：
@@ -500,8 +492,8 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "binds": [{"group": "forearm_l", "param": "rot_deg", "scale": 18.0}]
                       + ([{"group": "elbow_fold_l", "param": "rot_deg", "scale": 9.0}]
                          if "arm_l_gusset" in (gusset_parts or ()) else [])
-                      + crease_fade("arm_l_crease") + elbow_fade("arm_l_elbow")
-                      + gusset_fade("arm_l_gusset"),
+                      + elbow_fade("arm_l_elbow")
+                      + gusset_fade("arm_l_gusset") + gusset_fade("arm_l_seam"),
              "note": "绕肘旋转，±10 → ±180°。"
                      "**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**："
                      "人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，"
@@ -514,8 +506,8 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
              "binds": [{"group": "forearm_r", "param": "rot_deg", "scale": -18.0}]
                       + ([{"group": "elbow_fold_r", "param": "rot_deg", "scale": -9.0}]
                          if "arm_r_gusset" in (gusset_parts or ()) else [])
-                      + crease_fade("arm_r_crease") + elbow_fade("arm_r_elbow")
-                      + gusset_fade("arm_r_gusset")},
+                      + elbow_fade("arm_r_elbow")
+                      + gusset_fade("arm_r_gusset") + gusset_fade("arm_r_seam")},
             # G4c2：手是第三节（绕腕转）。Live2D 标准参数表里就叫 ParamHandL/R。
             {"id": "ParamHandL", "label": "左手腕", "min": -3.2, "max": 3.2, "default": 0.0,
              "binds": [{"group": "hand_l", "param": "rot_deg", "scale": 22.0}],
@@ -3383,9 +3375,6 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         foot_lift=(footp["lift_px"] if footp else None),
                         star_eyes=star_eyes, fx_table=fx_table,
                         hand_forms=hand_forms,
-                        crease_parts=tuple(
-                            p["id"] for p in (armp or {}).get("parts", [])
-                            if p["id"].endswith("_crease")),
                         # Q45：有前臂件才有收窄形变器（上面 rig["deformers"] 那段
                         # 和这里用的是同一个判据：arm_?_fore + hand_? 都在）
                         slim_parts=tuple(
@@ -3403,7 +3392,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         # Q50：肘内侧褶布（tools/elbow_gusset.py 出的件）
                         gusset_parts=tuple(
                             p["id"] for p in (armp or {}).get("parts", [])
-                            if p["id"].endswith("_gusset")))
+                            # Q51：盖线的 arm_?_seam 和填洞的 arm_?_gusset
+                            # 共用同一条 alpha 曲线（同一个「折到位了没有」判据）
+                            if p["id"].endswith(("_gusset", "_seam"))))
     PARAM_IDS = {q["id"] for q in PARAMS}
     # ★ Q36：裙摆/外套下摆这两个参数是在**本函数后半段**（里布、下摆模块）才
     #   append 进去的，可动作表在这里就要校验。素材在 = 参数一定会生成，

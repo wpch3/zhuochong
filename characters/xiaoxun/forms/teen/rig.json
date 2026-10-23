@@ -687,48 +687,6 @@
       "hires": 2
     },
     {
-      "id": "arm_l_crease",
-      "file": "sprites/arm_l_crease@2x.png",
-      "group": "forearm_l",
-      "layer": 148,
-      "pos": [
-        249,
-        594
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "body"
-      ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
-      "id": "arm_r_crease",
-      "file": "sprites/arm_r_crease@2x.png",
-      "group": "forearm_r",
-      "layer": 149,
-      "pos": [
-        531,
-        590
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "body"
-      ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
       "id": "arm_l_elbow",
       "file": "sprites/arm_l_elbow@2x.png",
       "group": "forearm_l",
@@ -799,6 +757,48 @@
       "pos": [
         637,
         565
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_seam",
+      "file": "sprites/arm_l_seam@2x.png",
+      "group": "elbow_fold_l",
+      "layer": 150,
+      "pos": [
+        162,
+        570
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_seam",
+      "file": "sprites/arm_r_seam@2x.png",
+      "group": "elbow_fold_r",
+      "layer": 151,
+      "pos": [
+        577,
+        572
       ],
       "anchor": [
         0,
@@ -8548,12 +8548,6 @@
           "scale": 9.0
         },
         {
-          "part": "arm_l_crease",
-          "param": "alpha",
-          "scale": 0.25,
-          "offset": -1.0
-        },
-        {
           "part": "arm_l_elbow",
           "param": "alpha",
           "scale": 0.3333,
@@ -8561,6 +8555,12 @@
         },
         {
           "part": "arm_l_gusset",
+          "param": "alpha",
+          "scale": 7.692,
+          "offset": -55.0
+        },
+        {
+          "part": "arm_l_seam",
           "param": "alpha",
           "scale": 7.692,
           "offset": -55.0
@@ -8586,12 +8586,6 @@
           "scale": -9.0
         },
         {
-          "part": "arm_r_crease",
-          "param": "alpha",
-          "scale": 0.25,
-          "offset": -1.0
-        },
-        {
           "part": "arm_r_elbow",
           "param": "alpha",
           "scale": 0.3333,
@@ -8599,6 +8593,12 @@
         },
         {
           "part": "arm_r_gusset",
+          "param": "alpha",
+          "scale": 7.692,
+          "offset": -55.0
+        },
+        {
+          "part": "arm_r_seam",
           "param": "alpha",
           "scale": 7.692,
           "offset": -55.0

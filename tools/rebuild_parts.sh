@@ -220,17 +220,24 @@ step "25d/26 颈部脖子桩拆件（seg_torso 顶部 overlap 行 → torso_top_
 # 换长发/双马尾/高马尾就从脖子两侧支出来（青绿方块 + 褐色污渍）。
 "$PY" tools/split_torso_top.py --character "$CH" --form "$FM"
 
-step "25e/26 肘折线（前臂近端切口的轮廓线，alpha 绑肘角）"
-# ★ Q50 补漏：T46.45 做出来的 tools/elbow_crease.py 一直**没进重建链**，
-#   全量重建一次这件就没了（arm_parts.json 是重新生成的）。
-#   必须排在高清化之后、肘补件之前：补件(146/147)在下抹残线，折线(148/149)在上画剪影边。
-"$PY" tools/elbow_crease.py --character "$CH" --form "$FM"
+# ★★★ 第五十一问：原来这里有一步 25e「肘折线」（工具 elbow_crease.py），
+#   专门在前臂近端画一条深色轮廓线。用户截图指着它说「肘关节那一条深色的线…
+#   他不应该存在」—— 对照参考图 wave_up.png 的折袖（logs/asset_qa/q51_ref_fold.png）
+#   也确实如此：整只折袖是一整块连续的布，深色线只在外剪影上。
+#   该步骤与那个工具已整个删除，不要再加回来。
 
-step "25f/26 肘关节补件（折肘时内侧两半料的拼缝 + 交叉尖角）"
-# ⚠ 同样必须排在高清化之后、make_rig 之前（读 @2x、写新部件进 arm_parts.json）。
+step "25e/26 肘关节补件（折肘时内侧两半料的拼缝 + 交叉尖角）"
+# ⚠ 必须排在高清化之后、make_rig 之前（读 @2x、写新部件进 arm_parts.json）。
 # 第四十八问(b)：外轮廓本来就是对的（两件在肘处是同心等半径半圆），
 # 病在圆内 —— 只盖内侧扇区，外侧剪影一个像素都不碰。
 "$PY" tools/elbow_cover.py --character "$CH" --form "$FM"
+
+step "25f/26 肘内侧褶布 + 接缝盖布（层 150/151，压在两根袖管之上）"
+# ★ Q51 补漏：tools/elbow_gusset.py 是第五十问新建的，一直**没进重建链**，
+#   全量重建一次这件就没了（arm_parts.json 是重新生成的）。
+# 它干两件事：①填两根管子之间漏背景的缺口；②盖掉折起来之后横躺在袖子
+#   中间的两条描边（上臂内侧 + 前臂近端）。必须排在 elbow_cover 之后。
+"$PY" tools/elbow_gusset.py --character "$CH" --form "$FM"
 
 step "26/26 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"
