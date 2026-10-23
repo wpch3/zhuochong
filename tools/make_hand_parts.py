@@ -36,6 +36,7 @@ import io
 import json
 import math
 import os
+import shutil
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -68,17 +69,17 @@ def key_magenta(im):
     return Image.fromarray(out, "RGBA")
 
 
-def recolor_lines(im):
-    """把生图的近黑描边换成工程线色。按亮度做软替换，保留抗锯齿灰阶 ——
-    硬替换（颜色距离阈值）会把线啃出锯齿，这是第十八问之后定下的规矩。"""
+def line_mask(im):
+    """生图里「哪儿是描边」的连续掩膜（0=纯皮，1=纯线）。
+
+    按亮度做软判据，保留抗锯齿灰阶 —— 硬替换（颜色距离阈值）会把线啃出锯齿，
+    这是第十八问之后定下的规矩。
+    """
     a = np.asarray(im).astype(np.float32)
-    rgb, al = a[:, :, :3], a[:, :, 3:4]
-    lum = rgb.mean(axis=2, keepdims=True) / 255.0
-    # t=1 纯线、t=0 纯皮；0.30~0.62 之间过渡
-    t = np.clip((0.62 - lum) / 0.32, 0.0, 1.0)
-    line = np.array(LINE, dtype=np.float32).reshape(1, 1, 3)
-    out = rgb * (1.0 - t) + line * t
-    return Image.fromarray(np.dstack([out, al]).astype(np.uint8), "RGBA")
+    lum = a[:, :, :3].mean(axis=2) / 255.0
+    # t=1 纯线、t=0 纯皮；0.30~0.62 之间过渡。乘 alpha 是为了不让键出的
+    # 半透明边缘（本身就偏暗）被当成描边。
+    return np.clip((0.62 - lum) / 0.32, 0.0, 1.0) * (a[:, :, 3] / 255.0)
 
 
 def wrist_line(al):
@@ -109,21 +110,49 @@ def wrist_line(al):
 
 
 def load_pose(path, target_len):
-    """生图 → 键出 → 换线色 → 按**手长**定标 → 旋 180°（腕口朝上）→ 裁掉腕线
+    """生图 → 键出 → 按**手长**定标 → 压回描边 → 旋 180°（腕口朝上）→ 裁掉腕线
     以下的小臂 → 返回 (RGBA, 腕中心在图中的 (x, y))。
 
-    定标基准是手长（腕折线 → 最长指尖）而不是腕宽：腕宽在生图里受小臂影响大，
-    手长才是和骨架对得上的量 —— 人体比例 手长 ≈ 0.74 × 前臂长，本角色前臂
-    116px ⇒ 手长 ≈ 86px。
+    定标基准是手长（腕折线 → 最远指尖）而不是腕宽：腕宽在生图里受小臂影响大，
+    手长才是和骨架对得上的量。
+
+    ★★★ 第五十二问在这个函数里改了两处，都踩过坑：
+
+    ① **定标用欧氏距离，不是垂直距离。** 原来是 `target/(腕线y − 图顶y)`，
+       那是垂直投影；手指斜着伸时真正的手长更长，所以「标称 86」的手实测
+       只有 75.2 —— 比原画切出来的放松手（81.6）还小了 8%。现在直接用
+       「腕中心 → 最远墨迹点」的欧氏距离，和验收那把尺是同一把。
+
+    ② **描边要先在原分辨率取掩膜、按最大值膨胀，再降采样压回去。**
+       生图是 896×1200，缩到 ~90px 是 13 倍降采样，LANCZOS 会把 7px 的
+       描边平均成 0.5px 的浅灰雾 —— 实测暗线占比 原画手 11.0% vs 生图手
+       5.4%（比心档只剩 3.0%）。手就变成「几根没有轮廓的淡色面条」，
+       用户第五十二问原话「手指也有点偏细」。
     """
-    im = recolor_lines(key_magenta(Image.open(path)))
+    im = key_magenta(Image.open(path))
     im = im.crop(im.getbbox())
     al = np.asarray(im)[:, :, 3]
+    tline = line_mask(im)
     cx, cy, _w = wrist_line(al)
-    top = float(np.nonzero(al.max(axis=1) > 40)[0].min())
-    s = target_len / max(1.0, cy - top)
+    ys, xs = np.nonzero(al > 40)
+    reach = float(np.hypot(xs - cx, ys - cy).max())
+    s = target_len / max(1.0, reach)
     nw, nh = max(1, int(round(im.width * s))), max(1, int(round(im.height * s)))
+
+    # 线掩膜：先在原分辨率上按最大值膨胀到「约 1 个目标像素宽」，再降采样。
+    # 不膨胀直接 resize 等于把线平均掉；膨胀后再 LANCZOS 仍是抗锯齿的软边。
+    k = max(1, min(9, int(round(1.0 / max(s, 1e-6))) | 1))
+    tm = Image.fromarray((tline * 255.0).astype(np.uint8), "L")
+    for _ in range(2):
+        tm = tm.filter(ImageFilter.MaxFilter(k))
+    tm = np.asarray(tm.resize((nw, nh), Image.LANCZOS)).astype(np.float32) / 255.0
+
     im = im.resize((nw, nh), Image.LANCZOS)
+    b = np.asarray(im).astype(np.float32)
+    t2 = np.clip(tm, 0.0, 1.0)[:, :, None]
+    line = np.array(LINE, dtype=np.float32).reshape(1, 1, 3)
+    im = Image.fromarray(np.dstack([b[:, :, :3] * (1.0 - t2) + line * t2,
+                                    b[:, :, 3]]).astype(np.uint8), "RGBA")
     cx, cy = cx * s, cy * s
     # 腕线以下的小臂不要（袖子自己会画），留 6px 塞进袖口里当塗り足し
     keep = int(min(nh, cy + 6))
@@ -131,6 +160,89 @@ def load_pose(path, target_len):
     im = im.rotate(180, expand=True)                 # 腕口翻到上边
     cx, cy = (im.width - 1) - cx, (im.height - 1) - cy
     return im, (cx, cy)
+
+
+def rescale_relaxed(sp, armp, factor, report):
+    """把**原画切出来的放松手**（hand_l / hand_r）按腕枢轴等比放大。
+
+    ★★★ 第五十二问：用户说「挥手时手掌有点偏小了」。这不是观感问题，是量出来的 ——
+    拿切件去和原画 design_sheet_short.png 里那只手做 IoU 配准，最佳落在
+    **1.12 倍（IoU 0.874）**；rig 与 sheet 的全局尺度差 1.7%（下巴→眉 113 vs 115），
+    折算下来手比身体小约 **10%**。独立佐证：另一位模型看图也判「手掌放大 10%~15%」。
+
+    为什么连放松手一起放：四档手（放松 / 张开 / 比心 / 塗り足し）必须同尺寸，
+    否则动作一切档手就会跳一下大小。
+
+    腕口随之涨一成（41 → 45 px），仍窄于袖口内宽 46 px ⇒ 不会从袖子两侧露出来。
+
+    幂等：原件第一次跑时备份进 `_orig/`，以后每次都从备份缩放 —— 单独重跑这个
+    工具不会越缩越大（`--force` 式幂等是本仓库工具的硬规矩）。
+    """
+    orig = os.path.join(sp, "_orig")
+    os.makedirs(orig, exist_ok=True)
+    AP = {p["id"]: p for p in armp["parts"]}
+    for side in ("l", "r"):
+        pid = "hand_%s" % side
+        p = AP.get(pid)
+        if p is None:
+            continue
+        piv = p.get("pivot")
+        if not piv:
+            continue
+        # 先定 1× 的尺寸，2× 严格取它的两倍 —— make_hires_sprites 以
+        # 「2× 必须是 1× 的整半」判定能不能当原生高清用，差 1 px 就整张作废。
+        # 备份什么时候该刷新？—— 看 arm_parts.json 里有没有 `hand_scale`。
+        # make_arm_parts 重切时会把这个键连同整条记录一起重写掉 ⇒ 没有这个键
+        # 就说明手件是**刚切出来的原件**，备份必须跟着换。否则重建链跑完以后，
+        # 这里还拿着上一轮的旧手去缩放，新切的手就白切了。
+        fresh = "hand_scale" not in p
+        bak1 = os.path.join(orig, "relaxed_%s.png" % pid)
+        if fresh or not os.path.exists(bak1):
+            for suffix in ("", "@2x"):
+                cur0 = os.path.join(sp, pid + suffix + ".png")
+                if os.path.exists(cur0):
+                    shutil.copyfile(cur0, os.path.join(
+                        orig, "relaxed_%s%s.png" % (pid, suffix)))
+        src1 = Image.open(bak1).convert("RGBA")
+        one_w = max(2, int(round(src1.width * factor)))
+        one_h = max(2, int(round(src1.height * factor)))
+        # ⚠ pos 只能取整，「枢轴 − 放大后的局部腕位」却不是整数，这不到 1 px 的
+        #   残差让 check_assets 的「无损切分」从 75 涨到 83 px。试过用 AFFINE
+        #   亚像素平移把残差还给图像内容 —— **更差（104 px）**：BICUBIC 重采样
+        #   把本来就软的键出边缘又糊了一道，丢的比补的多。就留整数对齐。
+        for suffix, mul in (("", 1), ("@2x", 2)):
+            cur = os.path.join(sp, pid + suffix + ".png")
+            if not os.path.exists(cur):
+                continue
+            bak = os.path.join(orig, "relaxed_%s%s.png" % (pid, suffix))
+            if not os.path.exists(bak):
+                shutil.copyfile(cur, bak)
+            im = Image.open(bak).convert("RGBA")
+            im = im.resize((one_w * mul, one_h * mul), Image.LANCZOS)
+            # LANCZOS 会在键出边缘过冲，把洋红背景振回来（实测 hand_r@2x 1 px，
+            # check_assets「纯绿/洋红残留」直接判红）。按键色规矩清掉。
+            # 判据和 check_assets「无键色垃圾像素」那条**逐字一致**，不是另立一套。
+            arr = np.asarray(im).astype(np.int16)
+            R, G, B, A = arr[..., 0], arr[..., 1], arr[..., 2], arr[..., 3]
+            vis = A > 40
+            mag = vis & (R - G > 60) & (B - G > 60) & (R > 150) & (B > 150)
+            grn = vis & (G - np.maximum(R, B) > 60)
+            # 去溢色而不是抠掉：抠掉会在手的轮廓上留针孔，去溢色只是把绿通道补回来
+            arr[..., 1] = np.where(mag, np.maximum(G, (R + B) // 2 - 10), G)
+            arr[..., 0] = np.where(grn, np.maximum(R, G - 70), R)
+            arr[..., 2] = np.where(grn, np.maximum(B, G - 70), B)
+            Image.fromarray(arr.astype(np.uint8), "RGBA").save(cur)
+        # 枢轴不动、整件绕枢轴放大 ⇒ 左上角 = 枢轴 − 放大后的局部腕位。
+        # ⚠ 必须从**原始 pos** 算：拿已经缩过的 pos 再缩一次，重跑一遍手就会往外跑
+        #   （实测第二次跑 pos 从 −5 漂到 −11）。和图一样，位置也要有"原件"。
+        src_pos = p.get("hand_scale_src_pos") or list(p["pos"])
+        p["hand_scale_src_pos"] = [int(src_pos[0]), int(src_pos[1])]
+        lx = (piv[0] - src_pos[0]) * factor
+        ly = (piv[1] - src_pos[1]) * factor
+        p["pos"] = [int(round(piv[0] - lx)), int(round(piv[1] - ly))]
+        p["size"] = [one_w, one_h]
+        p["hand_scale"] = round(factor, 4)
+        report["checks"].setdefault("relaxed_scale", {})[pid] = round(factor, 4)
 
 
 def wrist_stub(size, center, half_w, up, down):
@@ -181,6 +293,14 @@ def main():
     ap.add_argument("--character", default="xiaoxun")
     ap.add_argument("--form", default="teen")
     ap.add_argument("--root", default=".")
+    ap.add_argument("--hand-len", type=float, default=90.0, dest="hand_len",
+                    help="手长（腕中心 → 最远指尖，1x 像素）。★ Q52 从 86（标称，"
+                         "实测只有 75.2）改成 90：原画切出来的放松手量得 81.6，"
+                         "而放松手本身还比原画小 10%%（IoU 配准 1.12 倍）⇒ 四档手"
+                         "统一做到 ~90。改之前先读 load_pose 的注释")
+    ap.add_argument("--relax-scale", type=float, default=1.10, dest="relax_scale",
+                    help="原画切件（放松手）放大倍数。1.10 = 量出来的：切件 ÷ 原画 "
+                         "= 1/1.12，再折算 rig/sheet 的 1.7%% 全局尺度差")
     args = ap.parse_args()
 
     base = os.path.join(args.root, "characters", args.character, "forms", args.form)
@@ -194,6 +314,14 @@ def main():
               "note": "tools/make_hand_parts.py 产物。放松档=原画切件（只加腕部塗り足し），"
                       "张开/比心档=按原画风格生的图（design/hands/*_raw.png）键出配准而来。"
                       "Q36 那版程序化画的手已废弃——用户原话「完全成怪物了」"}
+
+    # ---- Q52：先把原画切出来的放松手放大到正确尺寸 ----
+    # 必须排在后面所有步骤**之前**：⓪ 擦袖口碎片、① 腕桩都要按放大后的手量。
+    if abs(args.relax_scale - 1.0) > 1e-6:
+        rescale_relaxed(sp, armp, args.relax_scale, report)
+        AP = {p["id"]: p for p in armp["parts"]}
+        with io.open(os.path.join(sp, "arm_parts.json"), "w", encoding="utf-8") as f:
+            json.dump(armp, f, ensure_ascii=False, indent=2)
 
     # 层号：全部压在上臂（140/141）之下，且**不许和任何部件重号**。
     #   128/129 塗り足し圆盘 → 138/139 原画手（层号由 arm_parts 给，这里不动）
@@ -245,7 +373,7 @@ def main():
         # ---- ② 生图差分档 ----
         for pose in POSES:
             raw = os.path.join(design, f"hand_{pose}_raw.png")
-            im, (wx, wy) = load_pose(raw, target_len=86.0 * 2)   # 2× 画布上量
+            im, (wx, wy) = load_pose(raw, target_len=args.hand_len * 2)  # 2× 画布上量
             if side == "l":
                 im = im.transpose(Image.FLIP_LEFT_RIGHT)
                 wx = (im.width - 1) - wx
