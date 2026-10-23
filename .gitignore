@@ -1,5 +1,8 @@
 # 构建产物
 build/
+# 打包目录会把 characters/ 里的贴图再拷一份（12MB），不入库。
+# exe 本身在 dist/windows/x86_64/ 下，那个是跟踪的（和 zhuochong.exe 同惯例）。
+dist/windows/帧率测试/
 *.o
 *.obj
 *.pdb

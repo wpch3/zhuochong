@@ -2976,6 +2976,29 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
             r->ambient.duration = -1.0;
             if (load_channels(r, &r->ambient, amb, diag, file, "ambient") != 0)
                 goto fail;
+            /* ★ ambient 是**无限循环**（duration = -1），所以它的通道只能用
+               「周期性」波形。pulse 是"冲上去然后保持"（收尾靠动作自己的 fade_out），
+               decay 是"抖两下然后归零" —— 这两个在无限循环里 t 一直涨，
+               结果就是**冲到顶之后永远卡在那**。
+               这不是假想：猫耳的 ParamEarLAngle/RAngle 曾经就写着
+               {"wave":"pulse","amp":0.14,"freq":0.085}，实测 30 秒里值恒等于
+               0.1400 纹丝不动 —— 一对永远不会抖的猫耳，而且 freq 根本没人读。
+               与其靠人记住，不如在这儿拦下来。 */
+            {
+                int ci;
+                for (ci = 0; ci < r->ambient.nchan; ++ci) {
+                    const zchan *c = &r->ambient.chans[ci];
+                    if (c->nkeys > 0) continue;          /* 关键帧自带循环语义，放行 */
+                    if (c->wave == W_PULSE || c->wave == W_DECAY) {
+                        zdiag_error(diag, file, amb->line, 0, "ambient",
+                                    "环境摆动是无限循环，通道不能用一次性波形 "
+                                    "pulse/decay（会冲到顶就卡住不动）；"
+                                    "要周期摆动用 sine/drift/flap/bounce，"
+                                    "要偶发抽动用 tail_flick");
+                        goto fail;
+                    }
+                }
+            }
             r->has_ambient = (r->ambient.nchan > 0);
         }
     }

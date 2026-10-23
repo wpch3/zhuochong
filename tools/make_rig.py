@@ -1013,6 +1013,7 @@ def attach_emit(rig, base, base_root):
             (rig["canvas"]["w"], rig["canvas"]["h"]), _sz)
     slots = {x["id"]: x for x in table["slots"]}
     geom = {x["id"]: x for x in cut["attachments"]}
+    flick_extra = []     # wave=flick 的挂件参数：只偶尔抽一下，不进 ambient
 
     for att in table["attachments"]:
         g = geom.get(att["id"])
@@ -1116,7 +1117,12 @@ def attach_emit(rig, base, base_root):
                                  if not k.startswith("_")
                                  and isinstance(v, (list, tuple)) and len(v) >= 4])
             _fa = _fmax * float(sw.get("flick_scale", 1.0)) * 1.35
-            _b, _a = float(mo["bias"]), abs(float(mo["amp"])) * _amax
+            # wave=flick 的件没有 ambient 周期波，自然也没有 bias/freq：
+            # 值域只需覆盖"抽一下"的峰值。
+            if mo["wave"] == "flick":
+                _b, _a = 0.0, 0.0
+            else:
+                _b, _a = float(mo["bias"]), abs(float(mo["amp"])) * _amax
             _lo = min(float(swp["min"]), _b - _a - _fa) - 0.05
             _hi = max(float(swp["max"]), _b + _a + _fa) + 0.05
             rig["params"].append({
@@ -1133,10 +1139,18 @@ def attach_emit(rig, base, base_root):
             if not any(x["id"] == mo["action"] for x in rig["actions"]):
                 raise SystemExit(f"[make_rig] 挂件 {att['id']} 的 swing.motion.action="
                                  f"{mo['action']!r} 在 actions 里不存在")
-            rig.setdefault("ambient", []).append({
-                "target": swp["id"], "wave": mo["wave"],
-                "amp": float(mo["amp"]), "bias": float(mo["bias"]),
-                "freq": float(mo["freq"])})
+            # wave=flick ⇒ 这条不是"一直在摆"，而是"偶尔抽一下"，
+            # 交给 tail_flick 那套机制（各参数独立排班、每下的力度/时长/方向都抖）。
+            # 为什么要分两条路：ambient 是无限循环的**周期**波，表达不了"偶发"；
+            # 猫耳曾经硬用 pulse 波去凑，结果 freq 没人读、值冲到 0.14 就永远卡住
+            # （实测 30 秒纹丝不动）。现在引擎在加载时会直接拒绝 ambient 里的 pulse/decay。
+            if mo["wave"] == "flick":
+                flick_extra.append(swp["id"])
+            else:
+                rig.setdefault("ambient", []).append({
+                    "target": swp["id"], "wave": mo["wave"],
+                    "amp": float(mo["amp"]), "bias": float(mo["bias"]),
+                    "freq": float(mo["freq"])})
 
         if att.get("pose_group"):
             pg = next((x for x in table.get("pose_groups", [])
@@ -1352,13 +1366,18 @@ def attach_emit(rig, base, base_root):
     # 同一个 amp 直接套会让竖起的尾巴抽出去半屏。
     fsc = {a["swing"]["param"]["id"]: float(a["swing"].get("flick_scale", 1.0))
            for a in table.get("attachments", []) if a.get("swing")}
-    if swing_ids and flick_moods:
-        _ids = sorted(swing_ids)
+    # 只会抽动、不会周期摆的参数（猫耳）也要进 flick 名单。
+    _ids_all = sorted(set(swing_ids) | set(flick_extra))
+    if _ids_all and flick_moods:
+        _ids = _ids_all
         rig["tail_flick"] = {
             "params": _ids,
             "scale": [round(fsc.get(i, 1.0), 3) for i in _ids],
             "moods": flick_moods,
             "_note": "情绪 → [间隔下限秒, 间隔上限秒, 幅度, 单次时长秒]。"
+                     "名单里既有会周期摆的（尾巴四姿态），也有**只会偶尔抽一下**的"
+                     "（猫耳 L/R，它们不进 ambient）。两者共用同一套排班器，"
+                     "但每条参数各排各的班，所以左右耳不会一起抖。"
                      "引擎每起一下还会再抖力度 ±35%、时长 ±25%、方向随机 —— "
                      "没有两下是一样的。查不到的情绪不动，和另外四张情绪表同口径。"
                      "scale 和 params 同序，是每条参数自己的力度系数。",

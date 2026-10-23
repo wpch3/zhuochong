@@ -7253,6 +7253,89 @@ static void test_phys2(void)
          —— 顔と体がまったく同じタイミングで動くと、やはりロボットのように見えます」
      ②「反動、ブレーキを付ける —— 人間はピタッと瞬時に動きをとめることができません」
    在这之前头和胸读的是同一瞬间的跟随值，纯指数趋近也永远冲不过目标。 */
+/* T63.2：猫耳得真的会抖。
+   这条是**行为测试**不是配置测试 —— 旧的那道闸只检查「*Swing/*Sway 参数有没有
+   ambient 在推」，耳朵叫 ParamEarLAngle，压根不在它的管辖范围，于是
+   {"wave":"pulse","amp":0.14,"freq":0.085} 这条坏配置躺了很久没人发现：
+   pulse 是一次性波形（冲上去就保持，freq 根本没人读），在无限循环的 ambient 里
+   实测 30 秒恒等于 0.1400 —— 一对永远不会抖的猫耳，而所有闸门都是绿的。
+   所以这里不看配置长什么样，只看**值到底动没动**。 */
+static void test_ear_twitch(void)
+{
+    SECTION("T63.2：猫耳会自己抖，而且左右不同步");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        int i;
+        double t = 1000.0;
+        double lmin = 1e9, lmax = -1e9, rmin = 1e9, rmax = -1e9;
+        double la = 0, ra = 0, both = 0;
+        const int N = 3600;        /* 60 秒：neutral 情绪下间隔 5~14 秒，够抖好几次 */
+
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "rig 能加载");
+        if (!r) return;
+
+        for (i = 0; i < N; ++i) {
+            double lv, rv;
+            t += 1.0 / 60.0;
+            zrig_tick(r, t);
+            lv = zrig_param_effective(r, "ParamEarLAngle");
+            rv = zrig_param_effective(r, "ParamEarRAngle");
+            if (lv < lmin) lmin = lv;
+            if (lv > lmax) lmax = lv;
+            if (rv < rmin) rmin = rv;
+            if (rv > rmax) rmax = rv;
+            /* 统计"谁在动"：两只同时动的帧数占比高 = 像机械玩具 */
+            if (fabs(lv) > 0.05) la += 1.0;
+            if (fabs(rv) > 0.05) ra += 1.0;
+            if (fabs(lv) > 0.05 && fabs(rv) > 0.05) both += 1.0;
+        }
+        CHECK(lmax - lmin > 0.30, "★ 左耳 60 秒里真的动过（冻住不动 = 坏了）");
+        CHECK(rmax - rmin > 0.30, "★ 右耳 60 秒里真的动过");
+        /* 真猫是一只一只地抖。两只耳朵各排各的班，同时在动的帧应该是少数。 */
+        if (la > 0.0 && ra > 0.0)
+            CHECK(both < (la < ra ? la : ra) * 0.85,
+                  "★ 左右耳不是绑在一起抖的（各排各的班）");
+        zrig_free(r);
+    }
+}
+
+/* ambient 是无限循环，塞一次性波形进去必然卡住。这条验的是**引擎会不会拦**。 */
+static void test_ambient_rejects_oneshot(void)
+{
+    SECTION("T63.2：ambient 里写 pulse/decay 要在加载时就被拒绝");
+    {
+        char path[1024];
+        zdiag d;
+        zrig *r;
+        FILE *f;
+        z_mkdir_p("/tmp/zc_amb");
+        z_snprintf(path, sizeof(path), "/tmp/zc_amb/pulse.json");
+        f = fopen(path, "wb");
+        CHECK(f != NULL, "能写临时 rig");
+        if (!f) return;
+        fputs("{\"schema_version\":1,\"id\":\"t\",\"name\":\"t\","
+              "\"canvas\":[100,100],\"groups\":[{\"id\":\"root\",\"pivot\":[0,0]}],"
+              "\"parts\":[],"
+              "\"params\":[{\"id\":\"ParamX\",\"min\":-1,\"max\":1,\"default\":0,"
+              "\"binds\":[{\"group\":\"root\",\"param\":\"rot_deg\",\"scale\":1}]}],"
+              "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+              "\"ambient\":[{\"target\":\"ParamX\",\"wave\":\"pulse\","
+              "\"amp\":0.14,\"freq\":0.085}]}", f);
+        fclose(f);
+        zdiag_init(&d);
+        r = zrig_load(path, "/tmp/zc_amb", &d);
+        CHECK(r == NULL, "★ ambient 用一次性波形 pulse ⇒ 加载必须失败");
+        if (r) zrig_free(r);
+        remove(path);
+    }
+}
+
 static void test_look_follow_lag(void)
 {
     SECTION("T63.1：身子比头晚到（慣性）+ 跟随会冲过再回弹（反動）");
@@ -7477,6 +7560,8 @@ int main(int argc, char **argv)
     test_eye_variants();
     test_micro_expression();
     test_look_follow_lag();
+    test_ear_twitch();
+    test_ambient_rejects_oneshot();
     test_phys2();
     test_phys2_rig();
     test_eye_aperture();

@@ -29,7 +29,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls
+.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench
 
 all: test
 
@@ -124,6 +124,37 @@ win: $(CORE_OBJ)
 	@rm -f $(DIST_WIN)/zhuochong.pdb
 	@echo "已生成 $(DIST_WIN)/zhuochong.exe"
 	@ls -la $(DIST_WIN)/zhuochong.exe
+
+# 真机帧率测试（T63.5）。和 win 的区别：**控制台程序**，不加 /subsystem:windows ——
+# 双击要能看见输出。素材靠 zrig_load 直接读，不需要 config/schemas。
+win-bench: $(CORE_OBJ)
+	@mkdir -p $(DIST_WIN)
+	@if [ -z "$(ZIG)" ]; then echo "未找到 zig（python3 -m venv + pip install ziglang）"; exit 1; fi
+	$(ZIG) cc -target $(WINTARGET) -std=c11 -O2 -Wall -Wextra \
+	    -Isrc -Isrc/core \
+	    -o $(DIST_WIN)/帧率测试.exe \
+	    tools/bench/bench_frame.c $(CORE_SRC) \
+	    -lws2_32
+	@rm -f $(DIST_WIN)/*.pdb
+	@echo "已生成 $(DIST_WIN)/帧率测试.exe"
+
+# 打包成可以直接发给用户的一个目录：exe + 素材，别的都不要。
+pack-bench: win-bench
+	@rm -rf dist/windows/帧率测试
+	@mkdir -p dist/windows/帧率测试/characters/xiaoxun/forms/teen
+	cp $(DIST_WIN)/帧率测试.exe dist/windows/帧率测试/
+	cp characters/xiaoxun/forms/teen/rig.json dist/windows/帧率测试/characters/xiaoxun/forms/teen/
+	@# 只拷 rig 真正引用的那 94 张（都是 @2x）；整个 sprites 目录有 21MB，一半是用不到的 1x。
+	@python3 -c "import json,os,shutil; \
+	  b='characters/xiaoxun/forms/teen'; \
+	  d=json.load(open(b+'/rig.json')); \
+	  fs=sorted({p['file'] for p in d['parts'] if p.get('file')}); \
+	  [ (os.makedirs(os.path.dirname('dist/windows/帧率测试/'+b+'/'+f),exist_ok=True), \
+	     shutil.copy(b+'/'+f,'dist/windows/帧率测试/'+b+'/'+f)) for f in fs ]; \
+	  print('拷了',len(fs),'张贴图')"
+	cp docs/BENCH_README.txt dist/windows/帧率测试/怎么跑.txt
+	@du -sh dist/windows/帧率测试
+	@echo "已打包 dist/windows/帧率测试 —— 整个目录拷到 Windows，双击 exe"
 
 pack-win: win
 	@rm -rf dist/windows/zhuochong
