@@ -581,7 +581,7 @@
       "seam": 4.0,
       "ink_lum": 118.0,
       "seam_reach": 2.0,
-      "shade": 1.0
+      "shade": 0.957
     },
     "sides": {
       "l": {
