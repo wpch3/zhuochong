@@ -3976,3 +3976,62 @@ direction.Y = ((SinF(radian) * direction.X) + (direction.Y * CosF(radian)));   /
 - ⇒ 我们已有：眨眼闭快开慢（0.10/0.05/0.15）+ 指数分布间隔、微扫视、发梢抖动随机、
   33 条摆 + 5 条二阶。**缺**：待机周期随机化 / 多条 idle 随机选 / 头体错时 /
   反动刹车 / 嘴形连动（五项清单见 `docs/VTUBER_REALISM.md` 1.6）。
+
+## 第六十四批（2026-10-23 第五十问）开源对标项目 + 肘部机械感对策
+
+### A. AI × VTuber × 桌宠 开源项目（"像 Neuro-sama 那样"的现成实现）
+
+- <https://github.com/Open-LLM-VTuber/Open-LLM-VTuber>（**最接近的对标**，14.2k★）
+  Python FastAPI + Electron；语音打断、视觉感知、Live2D 表情映射、
+  **桌宠模式＝透明背景 / 全局置顶 / 鼠标穿透**；ASR/TTS/LLM 全可换、可全离线；
+  v1.2.0 起前端改用官方 Live2D Web SDK（支 Cubism 5、弃 2.1）；后端 MIT。
+  配套 <https://github.com/Open-LLM-VTuber/Open-LLM-VTuber-Web>。
+- <https://github.com/topics/ai-vtuber>（清单入口）
+- <https://github.com/jofizcd/Soul-of-Waifu>（Live2D/VRM + 本地 LLM）
+- <https://github.com/ylxmf2005/LLM-Live2D-Desktop-Assitant>（读屏/剪贴板/唤醒词）
+- 中文桌宠同类：<https://github.com/qiyueblues/zhuomianling>（Electron+React，本地优先）、
+  <https://github.com/x380kkm/Live2DPet>、<https://github.com/MARS-HX/Live2DPet-modern>、
+  <https://github.com/git2968/Desktop-pet>（MCP + Vosk 离线语音）、
+  **<https://github.com/xkk6663/Mao>**（统一 12-phase 状态总线 + 可插拔 Agent 适配器，
+  桌宠无状态只认 phase —— 和我们"网关决策 → 表现层"的分层同构）、
+  **<https://github.com/suntianc/ViviPet>**（Agent Adapter :18765 语义事件控宠）、
+  <https://github.com/lmy375/ai-pet>（Tauri2+Rust+PIXI，多 agent 群聊 + 心跳自发）。
+- 决策矩阵：<https://discuss.huggingface.co/t/an-ai-streaming-buddy-like-neuro-sama/172830>
+  ⇒ Open-LLM-VTuber（最开箱）＞ AIRI ＞ ChatdollKit（Unity/3D）＞ Pipecat（纯语音管线）。
+
+### B. 开源 2D 骨骼/木偶引擎（`src/core/zrig.c` 的同类）
+
+- <https://github.com/Inochi2D/inochi2d>（1.8k★，**BSD-2**，D 语言，开放 puppet 标准；
+  `inochi-creator` / `inochi-session` / `inox2d`(Rust)；**不兼容 .moc3**）；
+  文档 <https://docs.inochi2d.com/>。
+- <https://github.com/zeikar/iki>（**MIT**，TS + WebGL2，**纯 JSON 模型格式 + schema 校验**；
+  warp-mesh / stencil 遮罩 / **spring-chain 物理**；`@ikijs/{format,engine,editor,mcp}`，
+  **自带 MCP server 让 AI 直接从按图层命名的 PNG 自动绑定** —— 与"让 AI 自己造模型"
+  高度重合，是我们 T46.61 的现成参照）。
+- <https://github.com/jaisurya-dev-art/rigby2d>（开源 Spine 格式编辑器，IK/path/physics 约束 + MCP server）
+- <https://github.com/turtlegameworks/Anim2D>
+
+### C. 肘部"机械感 / 折叠痕迹"对策（第五十问直接依据）
+
+- <https://coconala.com/blogs/2995247/413880>
+  关节画正圆虽顺滑，但「**このままだとロボット感**」—— 必须随旋转
+  **让関節パーツ自身变形**；バイバイ的前腕要转到 ~270°。
+- <https://saraemi.com/vtuber/2022/02/09/live2d_arm/>
+  回転デフォーマ中心 = 上腕上关节件圆心；沿参数打键**把关节件整形成肘形**；上臂也要微动。
+- <https://cg-method.com/vtuber/live2d-glue/>
+  グルー**只固定外侧**；弯曲内侧不固定，并**手动把内侧折线调短** ——
+  折叠痕迹的正解是"内侧压缩/堆布"，不是留一道硬折痕。（⇒ `tools/elbow_gusset.py`）
+- <https://note.com/marunaru82/n/n03aea05f41d0>
+  备**前腕を潰す伸縮パラメータ**缩小旋转轨迹，「軌道が小さいほど滑らかに見える」。
+  （⇒ `ParamForeLong?` 下限放到 −1.2，甩程中缩 26px）
+- <https://miracle-usausa-nurse.com/paint/499/>
+  挥手时**手首を肘より少し遅らせる**＝のこし／後追い（动画 12 原则）。（⇒ 腕晚肘 0.18s）
+- <https://note.com/candyyamada/n/na004e9fdd742>
+  ぎこちない的根因常是**曲线太直线**；变化大处要加密キーフォーム、强弱不等间隔。
+  （⇒ 单 `pulse`+`ease:out` 全改 `interp:"smooth"` + `keys`）
+- <https://kw-nmnm.hatenablog.com/entry/2018/11/06/203151>
+  デフォーマ放在上腕肘端半圆圆心；先做到纯旋转不破绽再整形；键 ~5 点。
+- <https://forum.live2d.com/discussion/550/>
+  手揺れ用回転デフォーマ叠同圆心 + 物理 `PARAM_ARM_?_SWING` / `PARAM_HAND_?_SWING`。
+- <https://blog.adglobe.co.jp/entry/2024/07/26/100000>（前方に動く腕）、
+  <https://note.com/makotok1/n/n66c575df14c9>（肩-肘 / 肘-腕 / 手 三层 ワープ 做立体）。

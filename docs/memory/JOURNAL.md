@@ -5757,3 +5757,54 @@ T46.55 那块灰绿碎渣的料拆出来容易（`overlap_px=38` 平切），难
 ②AI 自己操作模型（VTube Studio 插件协议 + 6 级优先级 + 三个参照实现，T46.61）；
 ③真骨骼进度量化（100 件 / 13 组 / 4 级链 / 78 参数 / 25 形变器 / 24 动作 /
 33 摆 + 5 二阶 / 9 表情；**IK 与蒙皮是真缺口**，T46.62）。
+
+## 续一百一十六（2026-10-23·第四十八问(c) 终稿 + 第五十问挥手去机械感）
+
+### 一、第四十八问 (c) 收口：脖子桩改"两件制"
+
+第四轮把 `tools/split_torso_top.py` 升到 **SIG_V=10**：原料件 `torso_top_fill`
+（层 99，三档可藏）+ 重画件 `torso_top_patch`（层 98，四档常显、只覆盖 need 掩膜）。
+四档并集掩膜 8284px 再胀 6px。实拍 `q48_neck_zoom8_after.png` 青绿雾扇消除；
+残留的左领粉褐碎点经分层探针证明是 `seg_torso` **真料**里烤进去的发梢暗部（T46.63）。
+commit `4558481`，台账 `393430a`。
+
+### 二、第 22 次回滚恢复（口诀已入 LESSONS）
+
+分支 ref 与 origin 同时被重置到基点、本地 reflog 只剩 clone ⇒ 旧 commit 全 MISSING。
+正解：`gh pr list --state all` 找 PR 号 → `git fetch origin '+refs/pull/*/head:refs/remotes/origin/pr/*'`
+→ `git merge --ff-only <sha>` → 普通 `git push` 快进。禁 `--hard` / `make clean`。
+
+### 三、第五十问①：挥手的机械感 = 单脉冲 `ease:out`
+
+先实拍再动手（`q50_wave_elbow_before.png` 六格 3×）：f12（0.20s）前臂已转过 49%，
+**整根小臂横着伸到画面右侧** —— 这就是用户说的"直角直接翻过来"。
+肩/肘/腕/前臂伸缩四条通道全部改 `interp:"smooth"` + `keys`：
+反動 → 过冲 → 刹车，近端先动远端依次延后（肩 0 / 肘 +0.10s / 腕 +0.18s），
+甩程中 `ParamForeLongR` **缩到 −1.0（−26px）**（参数下限 0 → −1.2）。
+`wave_both` 同套镜像 + 左臂整体 +0.05s。A/B 见 `q50_AB_wave.png`。
+
+### 四、第五十问②：折叠痕迹 = 两管之间漏背景，补一块"肘内侧褶布"
+
+REF-FIRST 放大参考模板（`q50_ref_arm.png`）：参考的折臂是**一整块连续的布**。
+我们染红实测漏背景 705px（`q50_notch_probe.png`）。
+新工具 `tools/elbow_gusset.py`：离线摆位量缺口 → 袖身像素填色（剔描边/白条及 3px 邻域）
+→ 反旋转回**角平分线**局部系 → 新组 `elbow_fold_?`（转角＝前臂的一半）、
+层 136/137 垫底、alpha v=7.02→7.15 淡入、远端 13px 软收。
+迭代四轮都是**看图**逼出来的：①深蓝条纹补丁 ②浅色横纹带 ③f30 飘在背景里的三角
+④f72 袖口下发白的雾边。肘补件/肘折线分工重排（146/147 抹线、148/149 画线），
+`elbow_crease.py` 补进重建链（原先漏了，全量重建会丢件）。
+
+### 五、闸门修准两处（都没动阈值）
+
+- `check_assets.compose()` 现在按引擎口径跳过"静止 alpha=0 的差分件"
+  （假空洞 882 → 0）；
+- `api_smoke` 轮询 0.12s → 0.04s（腕 2.2Hz 原本奈奎斯特边缘，真实 24° 采成 19~21°）。
+
+实测：`test_core` 936/0、`api_smoke` 246/0、`test_web` 226/0、`selfcheck` 544/0、
+`check_assets` **1558 项 / 3 不通过**（全是既有欠账 T46.57 / T46.59×2）。
+
+### 六、第五十问③④：头发动态与开源调研落档
+
+`docs/VTUBER_REALISM.md` 新增第四章（关节折叠 + 头发动态现状与四项缺口 T46.64）；
+新建 `docs/OPEN_SOURCE_LANDSCAPE.md`（应用层 9 个 + 引擎层 4 个，逐条写能抄什么）；
+`docs/REFERENCE_NOTES.md` 第六十四批（开源项目 + 肘部机械感 12 篇教程）。

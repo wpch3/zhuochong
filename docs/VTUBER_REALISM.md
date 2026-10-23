@@ -191,6 +191,100 @@ VTube Studio 里，AI 侧作为**插件**通过 WebSocket 往模型里灌参数 
 
 ---
 
+## 四、动起来要自然：关节折叠与头发动态（第五十问）
+
+### 4.1 为什么挥手"有机械感"——两条可量化的病根
+
+**病根一：单脉冲 + `ease:out` 做大角度关节旋转。**
+`ease:out` 是前重曲线，0.2s 就走完一半行程。实拍
+`logs/asset_qa/q50_wave_elbow_before.png`（6 格 3×）：f12（0.20s）前臂已经转过
+49%，**整根小臂横着伸到画面右侧、手在最远端** —— 眼睛读到的就是"一根杆扫过
+一个直角"。业界口径完全一致：
+
+- 官方クオリティアップ：动作要有**反動（先往反方向一点）**和**刹车（过冲后回落）**，
+  各部位**错开时序（ずらし）**，不能同时起同时停。
+- <https://note.com/candyyamada/n/na004e9fdd742>：ぎこちない的根因通常是
+  **曲线太直线**，变化剧烈处要加密关键帧、强弱不等间隔。
+- <https://miracle-usausa-nurse.com/paint/499/>：挥手时
+  **手首は肘より少し遅らせる**（のこし／後追い，动画 12 原则）。
+- <https://note.com/marunaru82/n/n03aea05f41d0>：备一个
+  **前腕を潰す伸縮パラメータ**，甩的过程中把前臂缩短，
+  「軌道が小さいほど滑らかに上がって見える」。
+
+**我们的改法（已实装，`tools/make_rig.py` 的 `wave` / `wave_both`）：**
+
+| 通道 | 起步 | 曲线要点 |
+|---|---|---|
+| 肩 `arm_r.rot_deg` | 0.00s | 反動 +1.4° → 过冲 −7.8° → 落 −6.89° |
+| 肘 `forearm_r.rot_deg` | **+0.10s** | 过冲 −141° → 回弹 −134.12°（刹车） |
+| 前臂伸缩 `ParamForeLongR` | 0.14s | 甩程中**缩到 −1.0（−26px）**，到位后伸到 +1.05 |
+| 同侧抬肩 `ParamShoulderRY` | **+0.06s** | 过冲 9.3 → 落 8.67 |
+| 腕 `hand_r.rot_deg` | **+0.18s** | 鞭梢最末节，过冲 −19° → 落 −15° |
+
+四条通道全部由 `wave:"pulse"` 改成 `interp:"smooth"` + `keys`（引擎
+`zrig.c::eval_channel_keys` 原生支持）。`wave_both` 同套曲线镜像到左臂，
+并**整体晚 0.05s** —— 两只手严丝合缝同相本身就是机械感的来源。
+
+### 4.2 "折叠痕迹"＝折肘时两根管子之间漏背景
+
+REF-FIRST：把唯一姿势参考 `characters/xiaoxun/design/pose_ref/wave_up.png`
+的右臂放大 3×（`logs/asset_qa/q50_ref_arm.png`）——
+**折起来的袖子是一整块连续的布**，两根管子之间没有任何背景，只有两三条柔和布褶。
+我们则是两根互不相干的管子，实拍 `logs/asset_qa/q50_notch_probe.png`
+把"夹在两管之间的背景像素"染红：**705 px 的一整个三角缺口**。
+
+业界正解不是"把线画好看一点"，而是**补布**：
+
+- <https://cg-method.com/vtuber/live2d-glue/>：グルー只固定外侧，
+  **内侧要手动把折线调短**（＝堆布、压缩），全周绑定一定崩。
+- <https://saraemi.com/vtuber/2022/02/09/live2d_arm/>：沿参数打键
+  **把关节件整形成肘形**，关节不是一个静态圆。
+- <https://coconala.com/blogs/2995247/413880>：关节只画正圆
+  「このままだとロボット感」。
+
+**我们的实现：`tools/elbow_gusset.py`（肘内侧褶布）**
+
+1. 离线按定稿姿势摆好上臂/前臂/手，**量出真实缺口**（不是拿圆柱模型估）；
+2. 颜色用 `nearest_fill` 从袖身自己的像素推进来，
+   并剔除描边与袖口白条**及其 3px 邻域**（否则补出一块带条纹的深蓝补丁）；
+3. 反旋转回**角平分线**局部系，挂在新组 `elbow_fold_?`
+   （父组＝上臂、枢轴＝肘、**转角 = 前臂局部转角的一半**）——
+   布夹在两根骨头中间，角度天然取平分线，这是 2D 骨骼做膝/肘内侧料的标准做法；
+4. 层 136/137 垫在两根管子**底下**：多出来的余量全被管子自己盖住，
+   只有真正缺布的那条缝会显出来；
+5. alpha 绑肘角，**v=7.02（肘 126°）才开始淡入、7.15 满**。
+   上沿必须低于手摆正弦的谷值 7.17，否则举着手那两秒补布会跟着正弦一闪一闪。
+
+配套：肘补件（`elbow_cover.py`，抹掉上臂扎进前臂肚子的残线）下移到 146/147、
+半径 ×1.14→×1.45；肘折线（`elbow_crease.py`，画前臂剪影边）升到 148/149，
+**两件分工明确**：下面那件抹线，上面那件画线。
+
+### 4.3 头发动态：我们已经有什么、还差什么
+
+**已有（`characters/xiaoxun/forms/teen/rig.json`，实测）：**
+
+| 机制 | 条数 | 覆盖 |
+|---|---|---|
+| 一阶摆（`physics`） | 33 条，其中**头发 8 条** | 呆毛 / 刘海 / 左右侧发 / 后发，侧发与后发各做了**发根+发梢两段串联** |
+| 二阶粒子摆（`physics2`，Live2D 式 4 粒子链） | 5 条 | 呆毛、长发、双马尾 ×2、高马尾；每粒子有 `radius/mobility/delay/acceleration` |
+| 自主飘动（`ambient` + `ParamHairSway`） | 1 条 drift（amp 0.92、0.19Hz）→ **7 条绑定** | 刘海/左右侧发/后发 + 3 个发梢形变器，**每件不同延迟（0→0.30s）⇒ 风从一侧扫到另一侧** |
+| 场力（`forces`） | gravity (0,1)、breeze amp 0.03 / 0.11Hz | 重力与微风常驻 |
+
+也就是说"头发会动、会滞后、会行波、发梢更软"这几条**已经做到了**，
+符合 <https://shiroikarasu.net/live2d-physics-settings-guide/> 与
+<https://saraemi.com/vtuber/2021/10/30/live2d_buturi/> 的 2~3 段串联口径。
+
+**还差四项（已登记为任务，按性价比排序）：**
+
+1. **短发四件还停在一阶两段**，长发/马尾已经升级成 4 粒子链 —— 把
+   `hair_front/side_l/side_r/back` 也迁到 `physics2`，发梢能做出"甩过去再回弹"。
+2. **`forces.wind` 恒为 (0,0)**：引擎有风场但从没吹过。缺一个**阵风发生器**
+   （随机脉冲 + 衰减），这是户外感/生气的主要来源。
+3. **头发只认头**（`driver: head`）：跳跃、转身、弯腰时身体带动的那一下没有传过去；
+   应让 `chest`/`root` 的加速度也参与输入。
+4. **没有碰撞**：大幅摇头时侧发会穿过肩膀和兜帽。Live2D 的常规做法是给
+   发梢件加一条"不许越过肩线"的夹限（按角度 clamp），不需要真碰撞。
+
 ## 参考链接汇总（本文引用，均已实访）
 
 1. <https://sites.google.com/cybernoids.jp/cubism2/editor/animator/technic/quality-up>
@@ -208,3 +302,15 @@ VTube Studio 里，AI 侧作为**插件**通过 WebSocket 往模型里灌参数 
 13. <https://deepwiki.com/hkopenai/vtube-studio-plugin-mcp-server>
 14. <https://docs.live2d.com/en/cubism-editor-manual/physics-operation/>
 15. <https://docs.live2d.com/en/cubism-sdk-manual/motion/>
+16. <https://coconala.com/blogs/2995247/413880>（关节只画正圆＝ロボット感）
+17. <https://saraemi.com/vtuber/2022/02/09/live2d_arm/>（把关节件整形成肘形）
+18. <https://cg-method.com/vtuber/live2d-glue/>（グルー只固定外侧、内侧折线调短）
+19. <https://note.com/marunaru82/n/n03aea05f41d0>（前腕を潰す伸縮パラメータ）
+20. <https://miracle-usausa-nurse.com/paint/499/>（手首は肘より遅らせる＝のこし）
+21. <https://note.com/candyyamada/n/na004e9fdd742>（ぎこちない＝カーブが直線的すぎる）
+22. <https://kw-nmnm.hatenablog.com/entry/2018/11/06/203151>（肘デフォーマ的放置与键数）
+23. <https://shiroikarasu.net/live2d-physics-settings-guide/>（头发 2~3 段串联）
+24. <https://saraemi.com/vtuber/2021/10/30/live2d_buturi/>（越往发梢越轻）
+25. <https://github.com/Open-LLM-VTuber/Open-LLM-VTuber>（最接近的开源对标）
+26. <https://github.com/zeikar/iki>（MIT 的 JSON 2D 骨骼格式 + MCP 自动绑定）
+27. <https://github.com/Inochi2D/inochi2d>（BSD-2 开放 puppet 标准）
