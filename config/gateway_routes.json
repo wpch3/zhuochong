@@ -921,5 +921,326 @@
       "price_out": 0.3,
       "price_per": 1000000.0
     }
+  ],
+  "endpoints": [
+    {
+      "id": "anthropic",
+      "kind": "official",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.anthropic.com/v1",
+      "auth_type": "header",
+      "key_ref": "secret://anthropic",
+      "auth_header": "x-api-key",
+      "chat_path": "/messages"
+    },
+    {
+      "id": "azure_speech",
+      "kind": "tts",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://{region}.tts.speech.microsoft.com/cognitiveservices/v1",
+      "auth_type": "header",
+      "key_ref": "secret://azure_speech",
+      "auth_header": "Ocp-Apim-Subscription-Key",
+      "chat_path": ""
+    },
+    {
+      "id": "comfyui",
+      "kind": "comfyui",
+      "local": true,
+      "enabled": true,
+      "base_url": "http://127.0.0.1:8188",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "comfyui_video",
+      "kind": "comfyui",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:8188",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "dashscope",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://dashscope",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "deepseek",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.deepseek.com/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://deepseek",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "edge_tts",
+      "kind": "tts",
+      "local": false,
+      "enabled": true,
+      "base_url": "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "gemini",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "auth_type": "bearer",
+      "key_ref": "secret://gemini",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "groq",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.groq.com/openai/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://groq",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "hunyuan3d",
+      "kind": "local_script",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:8084",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "llama_cpp",
+      "kind": "openai_compatible",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:8080/v1",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "lmstudio",
+      "kind": "openai_compatible",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:1234/v1",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "mcp_filesystem",
+      "kind": "mcp",
+      "local": true,
+      "enabled": true,
+      "base_url": "stdio://npx -y @modelcontextprotocol/server-filesystem",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "minimax",
+      "kind": "tts",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.minimaxi.com/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://minimax",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "minimax_chat",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.minimaxi.com/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://minimax",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "moonshot",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.moonshot.cn/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://moonshot",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "ollama",
+      "kind": "openai_compatible",
+      "local": true,
+      "enabled": true,
+      "base_url": "http://127.0.0.1:11434/v1",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "openai",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.openai.com/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://openai",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "openrouter",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://openrouter.ai/api/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://openrouter",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "relay_test",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://example-relay.invalid/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://relay_test",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "siliconflow",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.siliconflow.cn/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://siliconflow",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "speaches",
+      "kind": "tts",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:8000/v1",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "tripo3d",
+      "kind": "official",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.tripo3d.ai/v2/openapi",
+      "auth_type": "bearer",
+      "key_ref": "secret://tripo3d",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "triposr",
+      "kind": "local_script",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:8085",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "tts_webui",
+      "kind": "tts",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:7778/v1",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "vllm",
+      "kind": "openai_compatible",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:8002/v1",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "whisper_cpp",
+      "kind": "local_script",
+      "local": true,
+      "enabled": false,
+      "base_url": "http://127.0.0.1:8081",
+      "auth_type": "none",
+      "key_ref": "",
+      "auth_header": "",
+      "chat_path": ""
+    },
+    {
+      "id": "xai",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://api.x.ai/v1",
+      "auth_type": "bearer",
+      "key_ref": "secret://xai",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    },
+    {
+      "id": "zhipu",
+      "kind": "openai_compatible",
+      "local": false,
+      "enabled": false,
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "auth_type": "bearer",
+      "key_ref": "secret://zhipu",
+      "auth_header": "",
+      "chat_path": "/chat/completions"
+    }
   ]
 }

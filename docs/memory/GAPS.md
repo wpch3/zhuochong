@@ -154,7 +154,7 @@
 | ~~G51~~ | ✅ 2026-10-13 **网关骨架**：`src/core/zgateway.{c,h}` —— 路由（`zgw_pick`，按能力挑供应商，支持 attempt 降级重试；失败原因分 `NO_SUCH_CAP`/`ALL_DISABLED`/`EXHAUSTED` 三种，因为给用户的指引完全不同）+ 估价（`zgw_estimate`，按量/按次/免费三种口径）+ 三段记账（`zgw_hold_open`→`settle`/`release`，照 one-api `relay/billing` 的预扣-结算-退还；**入账的是实际花费不是预扣额**，失败的请求不扣钱但计失败次数）+ 密钥引用（`zgw_secret_resolve`：`secret://foo-bar` → 环境变量 `ZHUOCHONG_SECRET_FOO_BAR`，**取不到必须失败，绝不返回空串**，装不下要报错不许截断）。路由表不是运行时现算的，是 `tools/check_platform.py` 预先物化成 `config/gateway_routes.json`（照 one-api 的 `Ability` 表做法，**顺序即优先级**，运行时取第一个 enabled 的就是首选）。新端点 **`/api/gateway.json`** 报告每种能力实际路由到谁 + 账本 + 三态 `ready/disabled/missing`；平台面板显示"契约说谁能做"与"网关说现在走谁" | 闸门：test **627/0**（新增 63 项）、smoke **138/0**（新增 19 项）、selfcheck ⑲ 组 9 项、web-test **52/0** | 负控七道全判红：路由不看 enabled / 结算记预扣额 / 密钥失败返回空串 / 退还也扣钱 / 重复结算不拒 / 三态混成"不可用" / 账本不显示花费。**真实 HTTP 调用不在本件内**（那是 G54）——把"选谁/花多少/钥匙在哪"和"怎么发"分开，前者在无网无密钥的机器上就能完整验证 |
 | G52 | **资源区骨架**：`data/workspaces/` 工作区、`data/files/` 文件区（带索引与校验和）、`data/memory/` 记忆区三层（profile / episodic / working）。全部只存本机 | — | P0 |
 | G53 | **任务机**：队列 + 状态机（queued/running/waiting_user/done/failed/cancelled）+ 可中断 + 可回放 | — | P0 |
-| G54 | chat.completion 打通（OpenAI 兼容协议 + 本地 ollama）+ 聊天框 UI | — | P1 |
+| ~~G54~~ | ✅ 2026-10-23 **真链路打通（第一段）**：`src/core/zhttp.{c,h}` 自带 HTTP/1.1 客户端（零依赖，Linux/Windows 双平台，chunked + 超时 + 体积上限）+ `src/core/zrelay.{c,h}` 中继层（选路 → 取密钥 → 拼 openai 格式请求体 → 真发 → 解析 → 记账）+ 新端点 **`/api/chat`**。详见下方 G54 正文 | 闸门：test **936 → 992**、smoke **246 → 266**、check_platform 37/0 | **TLS 未做**（https 直接拒绝，绝不降级明文发密钥）；聊天框 UI 未做 |
 | G55 | **余额与用量**：真实记账落 `data/usage.jsonl`，替掉工作台现在的占位用量卡 | — | P1 |
 | G56 | skills 装载（Agent Skills 规范）+ 技能面板 | — | P1 |
 | G57 | image / video / model3d 能力接入（含本地 ComfyUI） | — | P2 |
@@ -844,6 +844,130 @@ seg_leg_*.bend_y +2.0 root  腿顶跟着胯下来、脚踝那一行不动
    见 DC27；端点加 `?q=`，面板上可以直接打字试）；
 ③ 路由决策没写进账本文件，只在内存里计数。
 
+## G54 · 网关从"只会选谁"到"真的发出去"（2026-10-23，第一段做完）
+
+G51 把"选谁 / 花多少 / 钥匙在哪"做完了，但那条线到此为止 —— **选完就没有下文**。
+人设、对白、路由、角色性格这些上层能力全部堆在它后面干等，
+因为它们最后都要落到同一个动作上：**把那段提示词真的发给一个模型**。
+这一轮把这最后一段接上了。
+
+### 两个新模块
+
+**`src/core/zhttp.{c,h}` —— 自带的 HTTP/1.1 客户端**
+项目的硬规矩是零第三方依赖，所以不能用 libcurl。自己写，约 440 行：
+
+- `zhttp_url_parse()` 拆 `scheme://host:port/path`，缺省端口按 scheme 补
+- `zhttp_send()`：DNS → connect → 发 → 收，全程带超时（默认 30s）和体积上限（默认 1 MB）
+- 响应体支持 `Content-Length` 和 **`Transfer-Encoding: chunked`** 两种（后者本地栈很常见）
+- Linux 用 `getaddrinfo`/`MSG_NOSIGNAL`，Windows 用 winsock2（`make win` 要 `-lws2_32`，
+  这条漏了会在交叉编译时炸出 8 个未定义符号）
+- 错误码 11 种，每种配一句人话（`zhttp_err_text()`）：
+  "连不上（服务没开，或者端口不对）" 比 `errno=111` 有用得多
+
+**`ZHTTP_OK` 只表示网络层成功。404 也是 OK。** 好坏要看 `resp->status` ——
+这两件事混在一个返回值里是经典错误源。
+
+**`src/core/zrelay.{c,h}` —— 中继层**
+`zrelay_chat()` 一次完整调用：选路（复用 G99 三支柱）→ 查接入点 → 校接口族 →
+取密钥 → 拼请求体 → 真发 → 解析 → 记账（`hold_open` → `settle`/`release`）。
+失败可按优先级降级换家，`tried[]` 去重，`fallback=0` 时不换。
+
+### 四条"发之前必须拦住"的红线
+
+发请求这件事的特殊性在于：**错误是不可撤销的**。
+请求一旦出网，用户说的话就已经到别人服务器上了，再返回错误也收不回来。
+所以这四条全部放在 `zhttp_send()` 之前：
+
+1. **密钥取不到就不发。** 空密钥发出去只会换回 401 —— 但那一下已经把
+   用户说的话送到对面了。换不来任何东西，只赔上一次泄露。
+2. **接口族对不上就不发。** anthropic 的 `/messages` 是另一套请求体，
+   拿 openai 格式硬发只会换回 400，还白扣一次额度。本版只接
+   `openai_compatible`（29 家里 16 家，含全部本地栈），其余明确报错。
+3. **`https://` 直接拒绝，绝不降级成明文。** 本机没有 OpenSSL 开发头，
+   TLS 这轮做不了。做不了就老实说做不了 —— "降级成 http 先把功能跑通"
+   等于把 API key 和用户的话明文发到公网上。`ZHTTP_E_TLS` 带的话是
+   "还不支持 https（本版只连本地明文服务），**不会把密钥明文发出去**"。
+4. **请求体必须显式写 `stream:false`。** 不写的话有的中转站默认开流，
+   回来是 SSE，解析器当场看不懂。反过来，**没填的 `temperature`/`max_tokens`
+   一个字都不许自己编默认值塞进去** —— 那是在覆盖服务端的配置。
+
+还有一条在收到响应之后：**HTTP 200 不等于成功**。OpenAI 系的错误体
+`{"error":{"message":…}}` 可能带着 200 回来（中转站尤其常见），
+所以 `zrelay_parse_chat_resp()` 先验 `error` 字段，再去取 content。
+
+### 修掉一个真漏过的隐私洞
+
+第一次选路走 `zgw_route_for()`，它认 `sensitive`，敏感件强制本地、本地不可用宁可失败。
+**但失败后降级走的是 `zgw_pick()` —— 那个函数只认优先级，压根不知道 sensitive 是什么。**
+于是：带隐私标记的话 + 本地模型挂了 + 允许降级 ⇒ 沿优先级往下走，下一家很可能是云端。
+用户的身份证号就这么出去了。
+
+这个洞一直没炸，**只是因为配置里云端那些家默认 `enabled=false`**。
+而"默认关着"是配置，不是保证 —— 用户一打开就漏，而且打开云端恰恰是这个产品的卖点。
+
+修法是在降级分支里再守一遍：`!rt->local && sensitive && rules.sensitive_local_only`
+⇒ 直接停，不换家，并说明白为什么。
+
+对应的测试故意把"云端"那家设成 `enabled=true`，而且让它的地址指向一个
+**真的会成功应答**的 mock：守住了就整件事失败（对），守不住就会拿到 200 和
+`provider=cloudy`（测试当场红）。**用"能成功的云端"当诱饵，比用一个连不上的
+地址有力得多** —— 后者就算护栏没了也不会出事，测了等于没测。
+还配了反证：同一张表、同样的本地故障，去掉隐私标记就**应该**换家成功 ——
+否则上面那条可能只是因为降级整个坏掉了，根本不是守住了。
+实测：拆掉护栏 → 4 项立刻判红。
+
+### 新端点 `/api/chat`
+
+```
+GET /api/chat?text=<要说的话>
+             &cap=chat.completion   能力名
+             &persona=0             不带人设（默认带）
+             &dry=1                 只看不发
+             &tries=N               失败后最多换几家（默认 1，不降级）
+             &sensitive=1           带隐私标记（强制本地）
+             &timeout=<毫秒>
+```
+
+返回里总带 `provider` / `model` / `local` / `reason` / `http_status` /
+`tokens_in` / `tokens_out` / `cost` / `attempts`。
+**用户有权知道这句话是谁答的、为什么挑的它、有没有离开过这台机器。**
+
+HTTP 码照实说：200 = 真答上了，502 = 上游没答上（原因在 `error` 里），
+400 = 没给 text，503 = 路由表没加载。不把上游的失败伪装成 200。
+
+**`dry=1` 是只看不发**：选路、取密钥、拼 URL 和请求体全做一遍，**一个字节都不出网**，
+然后把目标地址和请求体原样给出来。它和真发**共用同一个 `prepare_one()`** ——
+要是分两处写，面板上显示的和实际出网的字节迟早对不上，
+而那种不一致恰恰是最难查的：用户看着没问题，线上却不是那么回事。
+密钥不会出现在任何出参里（`zrelay_dry_run()` 里显式 `memset` 抹掉栈上的副本）。
+
+### 实测（全链路，不是桩）
+
+| 场景 | 结果 |
+|---|---|
+| 真发一次（本地 mock 扮 ollama） | `200` `provider=ollama` `reason=default_local`，模型回显 `[人设字数=303][你说=你今天开心吗][stream=False]`，`tokens 321/54` 入账 |
+| `dry=1` | `url=http://127.0.0.1:11434/v1/chat/completions`，请求体 434 字节，system 里是真人设（781 B） |
+| `sensitive=1` | `reason=sensitive_local`，落本地 |
+| 本地没开 | `502`，`http_status=0`，`连不上（服务没开，或者端口不对）`，无悬空预扣 |
+| 隐私件 + 本地挂 + `tries=5` | 不换家，整件事失败 |
+
+单测里的 socket 测试**不许把 `zhttp` 换成桩**：这一层最容易错的全在"字节长什么样"
+（请求行 / Content-Length / chunked / Authorization），桩掉 socket 等于把要测的东西测没了。
+解法是进程内 pthread mock server + `127.0.0.1:0` 让系统分配端口 ——
+不依赖外部进程、不撞端口、CI 里能跑。
+
+闸门：`test_core` **936 → 992**、`api_smoke` **246 → 266**、
+`check_platform` 37/0、`test_web` 226/0、`selfcheck` 544/0。
+
+### 还欠
+
+① **TLS** —— 没它就只能连本地明文栈（ollama / llama.cpp / LM Studio / vLLM），
+   云端 16 家一家都连不上。两条后路：(a) 运行期 `dlopen` libssl，有就用、没有就说明白；
+   (b) 塞一份单文件 TLS 实现进 `src/third_party/`。**在 TLS 做完之前，云端那条线是哑的。**
+② **聊天框 UI** —— 现在只有端点，界面上还没有能打字的地方。
+③ 只接 `openai_compatible`；anthropic 的 `/messages` 和 google 的 `generateContent` 要各写一个适配。
+④ 多轮上下文还没有（每次都是单轮 system+user），接上下文管理器是 T60.1。
+
 ## G100 🟡 闭合度 0.2 附近的"灰幽灵眼"（交叉淡化区两张图各半透明）
 
 眨眼是"睁眼件淡出 + 闭眼件淡入"，区间写死在 `zrig.c`：
@@ -969,7 +1093,7 @@ seg_leg_*.bend_y +2.0 root  腿顶跟着胯下来、脚踝那一行不动
 | 想法 | 记在哪 | 状态 |
 | --- | --- | --- |
 | 供应商层可插拔 + 云端/本地双栈 | PROVIDER_PLAN / T7 系列 | ✅ 路由表 76 条 |
-| **网关只会"选谁"，还不会"发请求"** | G54 | 🟡 **关键路径**，上层人设/对白都卡在它后面 |
+| ~~**网关只会"选谁"，还不会"发请求"**~~ | G54 | ✅ 2026-10-23 打通。人设提示词第一次真的发到了模型。剩 TLS（云端家还连不上）与聊天框 UI |
 | UI 按 deepseek/gemini/grok/gpt 定制 + 模块化 | A22 已落地四套主题；T29.1/29.3/29.4 | 🟡 主题包扩展/跟随路由自动切换未做 |
 | 高分辨率（渲染提速 + 重切） | T30.1 / T30.2 | 🟡 提速已做，重切未完 |
 | 形态分区（界面按形态分区） | G68 | ✅ 修完 |

@@ -26,6 +26,9 @@
    闸：selfcheck 的「路由表没顶到上限」会在用量超过 80% 时就报红，不等它真溢出。 */
 #define ZGW_MAX_ROUTES 192
 #define ZGW_MAX_HOLDS  16
+/* 接入点＝供应商家数。现在 29 家，留一倍余量。
+   和路由条数不是一回事：一家供应商会出现在多条路由里。 */
+#define ZGW_MAX_ENDPOINTS 64
 
 /* 一条路由 = 某个供应商能提供某种能力 */
 typedef struct {
@@ -40,6 +43,23 @@ typedef struct {
     double price_out;     /* 输出单价 */
     double price_per;     /* 单价对应的计量单位数，如 1000000 token */
 } zgw_route;
+
+/* 一个供应商的**接入点**：往哪发、怎么带密钥（G54）。
+ *
+ * 路由表只回答"选谁"，这张表回答"怎么发"。两张表分开是因为
+ * 前者每次请求都要扫，后者只在真要发请求时查一次。
+ * 同样由 tools/check_platform.py 从契约物化，运行时不读 config/providers/。 */
+typedef struct {
+    char id[48];
+    char kind[24];          /* openai_compatible / official / tts / ... */
+    char base_url[192];
+    char auth_type[12];     /* none / bearer / header */
+    char key_ref[64];       /* secret://xxx */
+    char auth_header[40];   /* auth_type=header 时的头名，如 x-api-key */
+    char chat_path[64];     /* 聊天端点相对路径；空 = 这家还没接聊天 */
+    int  local;
+    int  enabled;
+} zgw_endpoint;
 
 /* 路由失败的原因要分得清，因为给用户的提示完全不同 */
 typedef enum {
@@ -112,6 +132,9 @@ typedef struct {
     long      picks_local;    /* 决策落到本地几次 */
     long      picks_cloud;    /* 决策落到云端几次 */
 
+    zgw_endpoint endpoints[ZGW_MAX_ENDPOINTS];
+    int          nendpoints;
+
     zgw_hold  holds[ZGW_MAX_HOLDS];
     int       nholds;
     long      next_hold_id;
@@ -165,6 +188,10 @@ int zgw_load(zgateway *g, const char *routes_path, zdiag *d);
  * 挑不到返回 NULL，并把原因写进 why（why 可为 NULL）。
  * 只会挑 enabled 的；fallback 关掉时 attempt>0 一律返回 NULL。 */
 const zgw_route *zgw_pick(const zgateway *g, const char *cap, int attempt, zgw_status *why);
+
+/* 按供应商 id 找接入点。找不到返回 NULL —— 调用方必须当成"发不出去"，
+   不许自己拼一个默认地址（猜地址 = 把请求发到不知道哪里去）。 */
+const zgw_endpoint *zgw_endpoint_find(const zgateway *g, const char *provider);
 
 /* 某个能力一共有几个可用候选（enabled 的） */
 int zgw_candidate_count(const zgateway *g, const char *cap);

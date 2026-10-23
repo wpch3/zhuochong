@@ -27,12 +27,19 @@
 #include "../src/core/zphys2.h"
 #include "../src/core/zinteract.h"
 #include "../src/core/zgateway.h"
+#include "../src/core/zhttp.h"
+#include "../src/core/zrelay.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #ifndef _WIN32
 #  include <unistd.h>
+#  include <arpa/inet.h>
+#  include <netinet/in.h>
+#  include <pthread.h>
+#  include <sys/socket.h>
+#  include <sys/time.h>
 #endif
 
 static int g_pass = 0, g_fail = 0;
@@ -3131,6 +3138,423 @@ static void gw_write(const char *path, const char *body)
     z_mkdir_p("/tmp/zc_gw");
     if (z_write_file(path, body, strlen(body), &e) != 0)
         printf("  [警告] 写不了 %s\n", path);
+}
+
+
+/* ------------------------------------------------------------------ G54
+ * 真链路的测试必须**真的过一遍 socket**，不能把 zhttp 换成桩。
+ * 理由很实在：这一层最容易错的地方全在"字节到底长什么样" ——
+ * 请求行拼没拼对、Content-Length 算没算准、chunked 会不会解、
+ * Authorization 有没有真的发出去。桩掉 socket 就等于把要测的东西测没了。
+ *
+ * 所以这里在进程内起一个**真的** HTTP 服务（127.0.0.1 + 系统分配端口），
+ * 让 zhttp/zrelay 真的连上去。不依赖网络、不依赖外部进程，CI 里也能跑。
+ */
+#ifndef _WIN32
+typedef struct {
+    int fd;
+    int nserve;        /* 服务几个连接后退出 */
+    int seen_auth;     /* 收到过 Authorization: Bearer */
+    char last_body[4096];
+} mock_srv;
+
+static void mock_send_json(int c, int code, const char *json)
+{
+    char head[256];
+    size_t n = strlen(json);
+    int hn = snprintf(head, sizeof(head),
+                      "HTTP/1.1 %d X\r\nContent-Type: application/json\r\n"
+                      "Content-Length: %lu\r\nConnection: close\r\n\r\n",
+                      code, (unsigned long)n);
+    (void)!write(c, head, (size_t)hn);
+    (void)!write(c, json, n);
+}
+
+static void *mock_thread(void *arg)
+{
+    mock_srv *m = (mock_srv *)arg;
+    int i;
+    for (i = 0; i < m->nserve; ++i) {
+        char req[8192];
+        size_t n = 0, cl = 0;
+        char *he = NULL;
+        char path[256] = "";
+        int c = accept(m->fd, NULL, NULL);
+        if (c < 0) break;
+        for (;;) {
+            ssize_t k;
+            if (n + 1 >= sizeof(req)) break;
+            k = recv(c, req + n, sizeof(req) - 1 - n, 0);
+            if (k <= 0) break;
+            n += (size_t)k;
+            req[n] = 0;
+            if (!he) he = strstr(req, "\r\n\r\n");
+            if (he) {
+                const char *p = strstr(req, "Content-Length:");
+                cl = p ? (size_t)strtoul(p + 15, NULL, 10) : 0;
+                if (n >= (size_t)(he - req) + 4 + cl) break;
+            }
+        }
+        if (!he) { close(c); continue; }
+        {   /* 取请求行里的路径 */
+            const char *sp = strchr(req, ' ');
+            if (sp) {
+                const char *sp2 = strchr(sp + 1, ' ');
+                size_t pl = sp2 ? (size_t)(sp2 - sp - 1) : 0;
+                if (pl && pl < sizeof(path)) { memcpy(path, sp + 1, pl); path[pl] = 0; }
+            }
+        }
+        if (strstr(req, "Authorization: Bearer ")) m->seen_auth = 1;
+        z_strlcpy(m->last_body, he + 4, sizeof(m->last_body));
+
+        if (strstr(path, "/unauth"))
+            mock_send_json(c, 401, "{\"error\":{\"message\":\"Incorrect API key provided\"}}");
+        else if (strstr(path, "/oops"))
+            /* 状态码 200 但体里是错误 —— 中转站真有这么干的 */
+            mock_send_json(c, 200, "{\"error\":{\"message\":\"额度不足\"}}");
+        else if (strstr(path, "/chunked")) {
+            const char *r = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
+                            "Connection: close\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n";
+            (void)!write(c, r, strlen(r));
+        } else if (strstr(path, "/echohdr")) {
+            char body[4096];
+            char esc[3072];
+            zjson_escape(req, esc, sizeof(esc));
+            snprintf(body, sizeof(body), "{\"raw\":\"%s\"}", esc);
+            mock_send_json(c, 200, body);
+        } else {
+            /* 正常：把收到的 system / user 原样回显进正文，好断言它们真的送到了 */
+            char body[6000], esc[4096];
+            zjson_escape(m->last_body, esc, sizeof(esc));
+            snprintf(body, sizeof(body),
+                     "{\"choices\":[{\"message\":{\"role\":\"assistant\","
+                     "\"content\":\"ECHO %s\"}}],"
+                     "\"usage\":{\"prompt_tokens\":123,\"completion_tokens\":45}}", esc);
+            mock_send_json(c, 200, body);
+        }
+        close(c);
+    }
+    return NULL;
+}
+
+static int mock_start(mock_srv *m, int nserve, pthread_t *th)
+{
+    struct sockaddr_in a;
+    socklen_t al = sizeof(a);
+    int on = 1;
+    memset(m, 0, sizeof(*m));
+    m->nserve = nserve;
+    m->fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (m->fd < 0) return -1;
+    setsockopt(m->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    memset(&a, 0, sizeof(a));
+    a.sin_family = AF_INET;
+    a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    a.sin_port = 0;                     /* 让系统分配端口，避免和别的测试撞 */
+    if (bind(m->fd, (struct sockaddr *)&a, sizeof(a)) != 0) { close(m->fd); return -1; }
+    if (listen(m->fd, 8) != 0) { close(m->fd); return -1; }
+    {   /* ★ accept 必须有超时兜底。第一版没加、又把 nserve 写多了一个
+           （"连不上"那条压根不会连到这儿），pthread_join 当场把整条 test_core
+           挂死五分钟。测试里任何无限期等待都得有兜底，否则一次手滑＝整条 CI 卡住。 */
+        struct timeval tv;
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+        setsockopt(m->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    }
+    if (getsockname(m->fd, (struct sockaddr *)&a, &al) != 0) { close(m->fd); return -1; }
+    if (pthread_create(th, NULL, mock_thread, m) != 0) { close(m->fd); return -1; }
+    return (int)ntohs(a.sin_port);
+}
+#endif /* !_WIN32 */
+
+static void test_http_url(void)
+{
+    zhttp_url u;
+    SECTION("zhttp（G54）：URL 拆解");
+    CHECK(zhttp_url_parse("http://127.0.0.1:11434/v1/chat", &u) == 0
+          && u.port == 11434 && !u.tls
+          && strcmp(u.host, "127.0.0.1") == 0
+          && strcmp(u.path, "/v1/chat") == 0, "带端口带路径");
+    CHECK(zhttp_url_parse("http://example.com", &u) == 0
+          && u.port == 80 && strcmp(u.path, "/") == 0, "缺省端口 80，空路径补成 /");
+    CHECK(zhttp_url_parse("https://api.openai.com/v1", &u) == 0
+          && u.port == 443 && u.tls == 1, "https 缺省端口 443 且标记 tls");
+    CHECK(zhttp_url_parse("http://[::1]:8080/x", &u) == 0
+          && strcmp(u.host, "::1") == 0 && u.port == 8080, "IPv6 方括号里的冒号不是端口");
+    CHECK(zhttp_url_parse("http://h?q=1", &u) == 0
+          && strcmp(u.path, "/?q=1") == 0, "没有路径只有查询串，路径要补成 /?…");
+    CHECK(zhttp_url_parse("ftp://a/b", &u) != 0, "非 http(s) 协议要拒绝");
+    CHECK(zhttp_url_parse("127.0.0.1:8080", &u) != 0, "没有协议头要拒绝");
+    CHECK(zhttp_url_parse("http://", &u) != 0, "空主机要拒绝");
+
+    SECTION("zhttp（G54）：https 必须拒绝而不是降级");
+    {
+        zhttp_req q;
+        zhttp_resp r;
+        memset(&q, 0, sizeof(q));
+        q.url = "https://api.openai.com/v1/chat/completions";
+        q.method = "POST";
+        q.body = "{}";
+        /* ★ 这条是安全闸：本版没有 TLS，如果哪天有人"顺手"把 https 降级成
+           明文发出去，API key 就裸奔到网上了。宁可功能缺失，不能静默降级。 */
+        CHECK(zhttp_send(&q, &r) == ZHTTP_E_TLS, "https 要返回 E_TLS，绝不能改用明文发");
+    }
+}
+
+static void test_relay(void)
+{
+    SECTION("zrelay（G54）：请求体拼装");
+    {
+        char *b = zrelay_build_chat_body("m1", "你是小寻", "你好", 0.7, 256);
+        CHECK(b && strstr(b, "\"model\":\"m1\""), "带 model");
+        CHECK(b && strstr(b, "\"role\":\"system\"") && strstr(b, "你是小寻"),
+              "system 提示词进了 messages");
+        CHECK(b && strstr(b, "\"role\":\"user\"") && strstr(b, "你好"), "用户的话进了 messages");
+        CHECK(b && strstr(b, "\"stream\":false"),
+              "必须显式写 stream:false（不写的话有的中转站默认开流，回来是 SSE）");
+        CHECK(b && strstr(b, "\"max_tokens\":256"), "max_tokens 写进去了");
+        free(b);
+        b = zrelay_build_chat_body("m1", NULL, "hi", -1.0, 0);
+        CHECK(b && !strstr(b, "system"), "没有 system 提示词就不写 system 段");
+        CHECK(b && !strstr(b, "temperature") && !strstr(b, "max_tokens"),
+              "没填的参数不许自己编一个默认值塞进去（那是在覆盖服务端配置）");
+        free(b);
+    }
+
+    SECTION("zrelay（G54）：响应解析");
+    {
+        char *t = NULL;
+        long ti = 0, to = 0;
+        char e[200];
+        CHECK(zrelay_parse_chat_resp(
+                  "{\"choices\":[{\"message\":{\"content\":\"喵\"}}],"
+                  "\"usage\":{\"prompt_tokens\":7,\"completion_tokens\":3}}",
+                  &t, &ti, &to, e, sizeof(e)) == 0
+              && t && strcmp(t, "喵") == 0 && ti == 7 && to == 3,
+              "取出正文和 usage");
+        free(t); t = NULL;
+        CHECK(zrelay_parse_chat_resp("{\"error\":{\"message\":\"额度不足\"}}",
+                                     &t, &ti, &to, e, sizeof(e)) != 0
+              && strstr(e, "额度不足"),
+              "体里带 error 就算失败（哪怕 HTTP 是 200），并把原话带出来");
+        CHECK(zrelay_parse_chat_resp("not json", &t, &ti, &to, e, sizeof(e)) != 0,
+              "不是 JSON 要报错而不是崩");
+        CHECK(zrelay_parse_chat_resp("{\"choices\":[]}", &t, &ti, &to, e, sizeof(e)) != 0,
+              "没有正文要报错");
+        CHECK(zrelay_parse_chat_resp(NULL, &t, &ti, &to, e, sizeof(e)) != 0,
+              "空指针要报错");
+    }
+
+#ifndef _WIN32
+    SECTION("zrelay（G54）：真的过一遍 socket");
+    {
+        mock_srv m;
+        pthread_t th;
+        /* 正常 / 401 / 200+error 三次会连进来；"连不上"那次打的是 127.0.0.1:1，
+           根本到不了这儿 —— 数字写多一个，pthread_join 就会死等。 */
+        int port = mock_start(&m, 3, &th);
+        CHECK(port > 0, "进程内 mock 服务起得来");
+        if (port > 0) {
+            char rpath[512], json[2048];
+            FILE *f;
+            zgateway g;
+            zdiag d;
+            zrelay_chat_req q;
+            zrelay_result r;
+
+            z_snprintf(rpath, sizeof(rpath), "%s/build/test_relay_routes.json", g_root);
+            z_snprintf(json, sizeof(json),
+                "{\"schema_version\":\"1.0\",\"strategy\":\"prefer_local\",\"fallback\":true,"
+                "\"routes\":[{\"cap\":\"chat.completion\",\"provider\":\"mockai\","
+                "\"model\":\"test-model\",\"priority\":99,\"local\":true,\"enabled\":true,"
+                "\"free\":true,\"price_in\":0,\"price_out\":0,\"price_per\":0}],"
+                "\"endpoints\":[{\"id\":\"mockai\",\"kind\":\"openai_compatible\","
+                "\"local\":true,\"enabled\":true,"
+                "\"base_url\":\"http://127.0.0.1:%d/v1\",\"auth_type\":\"none\","
+                "\"key_ref\":\"\",\"auth_header\":\"\",\"chat_path\":\"/chat/completions\"}]}",
+                port);
+            f = fopen(rpath, "wb");
+            if (f) { fputs(json, f); fclose(f); }
+
+            zdiag_init(&d);
+            CHECK(zgw_load(&g, rpath, &d) == 0, "带 endpoints 的路由表能加载");
+            CHECK(g.nendpoints == 1, "接入点读到 1 家，实际 %d", g.nendpoints);
+            CHECK(zgw_endpoint_find(&g, "mockai") != NULL, "按 id 能查到接入点");
+            CHECK(zgw_endpoint_find(&g, "不存在的家") == NULL,
+                  "查不到的供应商要返回 NULL（不许自己猜一个地址）");
+
+            memset(&q, 0, sizeof(q));
+            q.system_prompt = "你是小寻，一只猫娘。";
+            q.user_text = "你好呀";
+            q.temperature = 0.7;
+            q.max_tokens = 128;
+            q.timeout_ms = 5000;
+            q.route.local_load_pct = -1;
+            CHECK(zrelay_chat(&g, &q, &r) == 0 && r.ok, "真发一次 chat.completion：%s", r.err);
+            CHECK(r.http_status == 200, "HTTP 200，实际 %d", r.http_status);
+            CHECK(r.text && strstr(r.text, "你是小寻"),
+                  "**人设提示词真的送到了服务端**（这是 G54 之前整条断掉的那一段）");
+            CHECK(r.text && strstr(r.text, "你好呀"), "用户的话真的送到了服务端");
+            CHECK(r.text && strstr(r.text, "stream"), "请求体里确实带了 stream 字段");
+            CHECK(r.tokens_in == 123 && r.tokens_out == 45,
+                  "记账用服务端回的实际 usage，不是估算值（实际 %ld/%ld）",
+                  r.tokens_in, r.tokens_out);
+            CHECK(g.calls_total == 1 && g.failed_total == 0, "网关记了一次成功调用");
+            CHECK(zgw_held_amount(&g) == 0.0, "预扣已结清，没有悬空的 hold");
+            zrelay_result_free(&r);
+
+            /* 401：要当失败、要退还预扣、要把对面的原话带出来 */
+            z_strlcpy(g.endpoints[0].chat_path, "/unauth/chat/completions",
+                      sizeof(g.endpoints[0].chat_path));
+            CHECK(zrelay_chat(&g, &q, &r) != 0 && !r.ok, "401 要当失败");
+            CHECK(r.http_status == 401, "状态码带出来了，实际 %d", r.http_status);
+            CHECK(strstr(r.err, "Incorrect API key") != NULL,
+                  "把服务端的原话带给用户（401/429/404 的处理建议完全不同）：%s", r.err);
+            CHECK(g.failed_total == 1, "失败计数 +1");
+            CHECK(zgw_held_amount(&g) == 0.0, "失败要退还预扣，不能留悬空额度");
+            zrelay_result_free(&r);
+
+            /* 200 但体里是 error：必须也当失败 */
+            z_strlcpy(g.endpoints[0].chat_path, "/oops/chat/completions",
+                      sizeof(g.endpoints[0].chat_path));
+            CHECK(zrelay_chat(&g, &q, &r) != 0 && !r.ok,
+                  "HTTP 200 但体里是 error，也必须当失败");
+            CHECK(strstr(r.err, "额度不足") != NULL, "错误原话带出来了：%s", r.err);
+            zrelay_result_free(&r);
+
+            /* 连不上：要给人话，不能卡住 */
+            z_strlcpy(g.endpoints[0].base_url, "http://127.0.0.1:1/v1",
+                      sizeof(g.endpoints[0].base_url));
+            z_strlcpy(g.endpoints[0].chat_path, "/chat/completions",
+                      sizeof(g.endpoints[0].chat_path));
+            CHECK(zrelay_chat(&g, &q, &r) != 0 && r.http_status == 0,
+                  "连不上时 http_status 应为 0（表示根本没发出去）");
+            CHECK(strstr(r.err, "连不上") != NULL, "连不上要给人话：%s", r.err);
+            zrelay_result_free(&r);
+
+            pthread_join(th, NULL);
+            close(m.fd);
+            remove(rpath);
+        }
+    }
+
+#ifndef _WIN32
+    SECTION("zrelay（G54）：本地挂了也不许把隐私件改发云端");
+    {
+        /* 这条测的是一个真漏过的洞：第一次选路用 zgw_route_for（它认 sensitive），
+           可失败后降级走的是 zgw_pick —— 那个函数只认优先级。本地一挂，
+           带隐私标记的话就会被"自动换一家"送到云端去。
+           之所以一直没炸，只是因为配置里云端默认 enabled=false。
+
+           所以这里故意把"云端"那家设成 enabled=true，而且让它的地址指向一个
+           **真的会成功应答**的 mock：
+             - 守住了 → 整件事失败（这是对的）
+             - 守不住 → 会拿到 200 和 provider=cloudy（测试当场红）
+           用"能成功的云端"当诱饵，比用一个连不上的地址有力得多。 */
+        mock_srv m;
+        pthread_t th;
+        int port = mock_start(&m, 1, &th);
+        if (port > 0) {
+            char rpath[512], json[2048];
+            FILE *f;
+            zgateway g;
+            zdiag d;
+            zrelay_chat_req q;
+            zrelay_result r;
+
+            z_snprintf(rpath, sizeof(rpath), "%s/build/test_relay_priv.json", g_root);
+            z_snprintf(json, sizeof(json),
+                "{\"schema_version\":\"1.0\",\"strategy\":\"prefer_local\",\"fallback\":true,"
+                "\"rules\":{\"sensitive_local_only\":true},"
+                "\"routes\":["
+                 "{\"cap\":\"chat.completion\",\"provider\":\"deadlocal\",\"model\":\"m\","
+                  "\"priority\":99,\"local\":true,\"enabled\":true,\"free\":true},"
+                 "{\"cap\":\"chat.completion\",\"provider\":\"cloudy\",\"model\":\"m\","
+                  "\"priority\":50,\"local\":false,\"enabled\":true}],"
+                "\"endpoints\":["
+                 "{\"id\":\"deadlocal\",\"kind\":\"openai_compatible\",\"local\":true,"
+                  "\"enabled\":true,\"base_url\":\"http://127.0.0.1:1/v1\","
+                  "\"auth_type\":\"none\",\"chat_path\":\"/chat/completions\"},"
+                 "{\"id\":\"cloudy\",\"kind\":\"openai_compatible\",\"local\":false,"
+                  "\"enabled\":true,\"base_url\":\"http://127.0.0.1:%d/v1\","
+                  "\"auth_type\":\"none\",\"chat_path\":\"/chat/completions\"}]}",
+                port);
+            f = fopen(rpath, "wb");
+            if (f) { fputs(json, f); fclose(f); }
+
+            zdiag_init(&d);
+            CHECK(zgw_load(&g, rpath, &d) == 0, "隐私测试用的路由表能加载");
+
+            memset(&q, 0, sizeof(q));
+            q.user_text = "我的身份证号是 110101…";
+            q.timeout_ms = 3000;
+            q.max_attempts = 5;             /* 明确允许降级换家 */
+            q.route.sensitive = 1;          /* 但这条带隐私标记 */
+            q.route.local_load_pct = -1;
+
+            CHECK(zrelay_chat(&g, &q, &r) != 0 && !r.ok,
+                  "本地答不上 + 带隐私标记 ⇒ 整件事就该失败");
+            CHECK(strcmp(r.provider, "cloudy") != 0,
+                  "★ 绝不能换成云端那家（实际落到了 %s）", r.provider);
+            CHECK(g.picks_cloud == 0, "一次都不该选过云端，实际 %ld", g.picks_cloud);
+            CHECK(zgw_held_amount(&g) == 0.0, "没有悬空预扣");
+            CHECK(strstr(r.err, "隐私") != NULL,
+                  "要讲清为什么不换家，而不是只说一句失败：%s", r.err);
+            zrelay_result_free(&r);
+
+            /* 反证：同样的表、同样的本地故障，去掉隐私标记就**应该**换家成功。
+               否则上面那条可能只是因为降级整个坏掉了，根本不是守住了。 */
+            q.route.sensitive = 0;
+            CHECK(zrelay_chat(&g, &q, &r) == 0 && r.ok,
+                  "去掉隐私标记后，降级换家应该能成功：%s", r.err);
+            CHECK(strcmp(r.provider, "cloudy") == 0,
+                  "这次就该落到云端那家（实际 %s）", r.provider);
+            CHECK(r.attempts == 2, "第一家失败、第二家成功 ⇒ 两次，实际 %d", r.attempts);
+            zrelay_result_free(&r);
+
+            pthread_join(th, NULL);
+            close(m.fd);
+            remove(rpath);
+        }
+    }
+#endif /* !_WIN32 */
+
+    SECTION("zrelay（G54）：不认识的接口不许硬发");
+    {
+        /* anthropic 的 /messages 是另一套请求体。拿 openai 的格式发过去
+           只会换回 400，还白扣一次额度 —— 所以要在发之前就拦住。 */
+        zgateway g;
+        zdiag d;
+        char rpath[512];
+        zrelay_chat_req q;
+        zrelay_result r;
+        FILE *f;
+        z_snprintf(rpath, sizeof(rpath), "%s/build/test_relay_kind.json", g_root);
+        f = fopen(rpath, "wb");
+        if (f) {
+            fputs("{\"schema_version\":\"1.0\",\"fallback\":false,"
+                  "\"routes\":[{\"cap\":\"chat.completion\",\"provider\":\"anth\","
+                  "\"model\":\"m\",\"priority\":9,\"local\":false,\"enabled\":true}],"
+                  "\"endpoints\":[{\"id\":\"anth\",\"kind\":\"official\",\"local\":false,"
+                  "\"enabled\":true,\"base_url\":\"http://127.0.0.1:9/v1\","
+                  "\"auth_type\":\"header\",\"key_ref\":\"secret://nope\","
+                  "\"auth_header\":\"x-api-key\",\"chat_path\":\"/messages\"}]}", f);
+            fclose(f);
+        }
+        zdiag_init(&d);
+        CHECK(zgw_load(&g, rpath, &d) == 0, "能加载");
+        memset(&q, 0, sizeof(q));
+        q.user_text = "hi";
+        q.timeout_ms = 2000;
+        q.route.local_load_pct = -1;
+        CHECK(zrelay_chat(&g, &q, &r) != 0, "kind 对不上要失败");
+        CHECK(strstr(r.err, "openai_compatible") != NULL,
+              "错误里要说清是接口族对不上：%s", r.err);
+        CHECK(r.http_status == 0, "一个字节都不该发出去");
+        zrelay_result_free(&r);
+        remove(rpath);
+    }
+#endif /* !_WIN32 */
 }
 
 static void test_gateway(void)
@@ -6870,6 +7294,8 @@ int main(int argc, char **argv)
     test_interactions();
     test_affection();
     test_gateway();
+    test_http_url();
+    test_relay();
 
     printf("\n通过 %d 项，失败 %d 项\n", g_pass, g_fail);
     if (g_fail) {

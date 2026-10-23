@@ -26,6 +26,7 @@
  *   GET /api/outfit?id=        换装
  *   GET /api/idle?s=           上报系统空闲秒数（沙箱里由浏览器上报）
  *   GET /api/gateway.json      网关：每种能力实际会路由到谁、账本、密钥是否就位
+ *   GET /api/chat              真的发一次 chat（G54）。dry=1 则只给出"将要发什么"，一个字节都不发
  *
  * 多线程：渲染在主线程，HTTP 在另一个线程，请求经互斥锁串行化。
  */
@@ -37,6 +38,7 @@
 
 #include "../core/zpet.h"
 #include "../core/zgateway.h"
+#include "../core/zrelay.h"
 #include "../core/zconfig.h"
 #include "../core/zpersona.h"
 #include "../core/zjson.h"
@@ -899,6 +901,118 @@ static void handle_request(zsock fd, const http_req *r)
             UNLOCK();
         }
         send_text(fd, 200, "application/json", "{\"ok\":true}");
+        return;
+    }
+    if (strcmp(r->path, "/api/chat") == 0) {
+        /* G54：真的把话发给模型。
+         *
+         * 在这之前，网关只会"选谁"——选完就没了下文，人设提示词一个字节都没出过门。
+         * 这个端点把最后那一段接上：选路 → 取密钥 → 拼请求体 → 真发 HTTP → 记账。
+         *
+         *   text=      要说的话（必填）
+         *   cap=       能力名，默认 chat.completion
+         *   persona=0  不带人设（默认带：按当前角色和好感档合成的那段系统提示词，
+         *              和 /api/persona.json 显示的完全是同一段）
+         *   dry=1      只看不发：把目标地址和请求体原样给出来，一个字节都不出网
+         *   tries=     失败后最多换几家（默认 1，即不降级）
+         *   timeout=   毫秒，默认 30000
+         *
+         * 返回里总带 provider/model/local/reason —— 用户有权知道这句话是谁答的、
+         * 为什么挑的它、有没有离开过这台机器。
+         */
+        static char body[16384];
+        char text[4096], cap_s[64], prompt[4096];
+        char url[320] = "";
+        char *reqbody = NULL;
+        zrelay_chat_req q;
+        zrelay_result res;
+        int dry = qint(r, "dry", 0);
+        int want_persona = qint(r, "persona", 1);
+        int rc, off;
+
+        if (!qstr(r, "text", text, sizeof(text)) || !text[0]) {
+            send_text(fd, 400, "application/json",
+                      "{\"ok\":false,\"error\":\"缺少 text（要说的话）\"}");
+            return;
+        }
+        if (!g_gw_ok) {
+            send_text(fd, 503, "application/json",
+                      "{\"ok\":false,\"error\":\"路由表没加载成功，看 /api/gateway.json\"}");
+            return;
+        }
+        if (!qstr(r, "cap", cap_s, sizeof(cap_s)) || !cap_s[0])
+            z_strlcpy(cap_s, "chat.completion", sizeof(cap_s));
+
+        prompt[0] = 0;
+        if (want_persona) {
+            zpersona zp;
+            zdiag d;
+            int tier;
+            zdiag_init(&d);
+            LOCK();
+            tier = zpet_affection_tier(g_pet);
+            UNLOCK();
+            /* 人设加载不上不是致命错：没有人设也能聊，只是少了性格。
+               但要让用户看见"这次没带人设"，所以下面照实报 persona_bytes=0。 */
+            if (zpersona_load(&zp, g_root, zpet_character(g_pet), &d))
+                zpersona_compose(&zp, tier, prompt, sizeof(prompt));
+        }
+
+        memset(&q, 0, sizeof(q));
+        q.cap = cap_s;
+        q.system_prompt = prompt[0] ? prompt : NULL;
+        q.user_text = text;
+        q.temperature = -1.0;                 /* 没填就不往请求体里塞，别覆盖服务端配置 */
+        q.max_tokens = qint(r, "max_tokens", 0);
+        q.timeout_ms = qint(r, "timeout", 30000);
+        q.max_attempts = qint(r, "tries", 1);
+        q.route.sensitive = qint(r, "sensitive", 0) ? 1 : 0;
+        q.route.tokens_est = (long)(strlen(text) / 4 + strlen(prompt) / 4);
+        q.route.local_load_pct = qint(r, "load", -1);
+        q.route.cloud_down = qint(r, "cloud_down", 0) ? 1 : 0;
+        q.route.task = zgw_classify(text, NULL);
+
+        LOCK();
+        if (dry)
+            rc = zrelay_dry_run(&g_gw, &q, url, sizeof(url), &reqbody, &res);
+        else
+            rc = zrelay_chat(&g_gw, &q, &res);
+        UNLOCK();
+
+        {
+            char esc_err[768], esc_txt[8192];
+            zjson_escape(res.err, esc_err, sizeof(esc_err));
+            zjson_escape(res.text ? res.text : "", esc_txt, sizeof(esc_txt));
+            off = (int)z_snprintf(body, sizeof(body),
+                "{\"ok\":%s,\"dry\":%s,\"cap\":\"%s\",\"provider\":\"%s\",\"model\":\"%s\","
+                "\"local\":%s,\"reason\":\"%s\",\"http_status\":%d,\"attempts\":%d,"
+                "\"tokens_in\":%ld,\"tokens_out\":%ld,\"cost\":%.6f,"
+                "\"persona_bytes\":%u,\"text\":\"%s\",\"error\":\"%s\"",
+                (rc == 0 && res.ok) ? "true" : "false", dry ? "true" : "false",
+                cap_s, res.provider, res.model, res.local ? "true" : "false",
+                res.reason, res.http_status, res.attempts,
+                res.tokens_in, res.tokens_out, res.cost,
+                (unsigned)strlen(prompt), esc_txt, esc_err);
+            if (dry) {
+                /* 把真会发出去的那段原样摆出来。密钥不在里面（zrelay_dry_run 保证）。 */
+                char esc_url[640], esc_body[6144];
+                zjson_escape(url, esc_url, sizeof(esc_url));
+                zjson_escape(reqbody ? reqbody : "", esc_body, sizeof(esc_body));
+                off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                           ",\"url\":\"%s\",\"request_body\":\"%s\"", esc_url, esc_body);
+            }
+            z_snprintf(body + off, sizeof(body) - (size_t)off, "}");
+        }
+        {
+            /* 成败在释放之前先存下来，别在 free 之后还去读 res —— 今天的
+               zrelay_result_free 只动 text，但靠"它现在只动 text"写代码是埋雷。 */
+            int good = (rc == 0 && res.ok);
+            free(reqbody);
+            if (!dry) zrelay_result_free(&res);
+            /* HTTP 码照实说：200 = 真答上了；502 = 上游没答上（原因在 error 里）。
+               不把上游的失败伪装成 200，否则前端只能靠猜。 */
+            send_text(fd, good ? 200 : 502, "application/json", body);
+        }
         return;
     }
     if (strcmp(r->path, "/api/poke") == 0) {

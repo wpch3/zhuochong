@@ -429,6 +429,95 @@ def run(base, root):
                   rec.get("tokens") == 1234, str(rec.get("tokens")))
             check("流水要记下理由", bool(rec.get("reason")), str(rec))
 
+    # ---- /api/chat：真的把话发出去那一段（G54）----
+    # 在这之前，网关只会"选谁"，选完就没下文了 —— 人设提示词一个字节都没出过门。
+    # 冒烟机上没有模型在跑，所以这里主要验两件事：
+    #   ① dry-run（只看不发）给出的"将要发什么"是不是真的对；
+    #   ② 真发失败时，说的是不是人话、有没有谎报成功。
+    def chat(path):
+        """/api/chat 失败时会回 502，a.json 会抛 —— 这里要连状态码一起拿。"""
+        try:
+            st, b = a.get(path, timeout=10.0)
+        except urllib.error.HTTPError as e:
+            st, b = e.code, e.read()
+        try:
+            return st, json.loads(b.decode("utf-8"))
+        except Exception:                            # noqa: BLE001
+            return st, {}
+
+    HI = urllib.parse.quote("你今天过得怎么样")
+    st, _ = chat("/api/chat")
+    check("chat 不给 text 要回 400", st == 400, "实际 %s" % st)
+
+    st, d = chat("/api/chat?dry=1&text=" + HI)
+    check("chat dry-run 能用", st == 200 and d.get("ok") is True, "%s %s" % (st, d.get("error")))
+    check("dry-run 要说清会发给谁", d.get("provider") == "ollama" and d.get("local") is True,
+          "%s local=%s" % (d.get("provider"), d.get("local")))
+    check("dry-run 一个字节都没发（http_status 必须是 0）", d.get("http_status") == 0,
+          str(d.get("http_status")))
+    check("dry-run 要给出目标地址", "127.0.0.1:11434" in (d.get("url") or ""), str(d.get("url")))
+    try:
+        rb = json.loads(d.get("request_body") or "{}")
+    except Exception as e:                           # noqa: BLE001
+        rb = {}
+        check("dry-run 给的请求体得是合法 JSON", False, str(e))
+    msgs = rb.get("messages") or []
+    roles = [m.get("role") for m in msgs]
+    check("请求体带 model", rb.get("model") == "qwen2.5:7b", str(rb.get("model")))
+    check("请求体必须显式写 stream:false（不写有的中转站会回 SSE）",
+          rb.get("stream") is False, str(rb.get("stream")))
+    check("请求体要有 system + user 两条消息", roles == ["system", "user"], str(roles))
+    if len(msgs) == 2:
+        check("★ 人设真的进了 system（这是 G54 之前整条断掉的那一段）",
+              "小寻" in msgs[0].get("content", ""),
+              msgs[0].get("content", "")[:40])
+        check("用户原话要原样送达、不许被改写",
+              msgs[1].get("content") == "你今天过得怎么样", msgs[1].get("content"))
+    check("人设字数要如实报出来", (d.get("persona_bytes") or 0) > 100, str(d.get("persona_bytes")))
+    # 密钥绝不许出现在给界面看的东西里
+    blob = (d.get("url") or "") + (d.get("request_body") or "")
+    check("★ dry-run 的输出里不许夹带密钥",
+          "Authorization" not in blob and "Bearer" not in blob and "sk-" not in blob)
+
+    st, d0 = chat("/api/chat?dry=1&persona=0&text=" + HI)
+    try:
+        rb0 = json.loads(d0.get("request_body") or "{}")
+    except Exception:                                # noqa: BLE001
+        rb0 = {}
+    check("persona=0 要真的不带人设", d0.get("persona_bytes") == 0
+          and [m.get("role") for m in (rb0.get("messages") or [])] == ["user"],
+          "persona_bytes=%s" % d0.get("persona_bytes"))
+
+    st, ds = chat("/api/chat?dry=1&sensitive=1&text=" + HI)
+    check("带隐私标记时落点必须是本地", ds.get("local") is True
+          and ds.get("reason") == "sensitive_local",
+          "%s / %s" % (ds.get("provider"), ds.get("reason")))
+
+    # dry-run 不许动账本：它根本没发请求，记一笔调用就是在骗人
+    led0 = (a.json("/api/gateway.json") or {}).get("ledger") or {}
+    chat("/api/chat?dry=1&text=" + HI)
+    led1 = (a.json("/api/gateway.json") or {}).get("ledger") or {}
+    check("dry-run 不许记调用数", led1.get("calls") == led0.get("calls"),
+          "%s → %s" % (led0.get("calls"), led1.get("calls")))
+    check("dry-run 不许留悬空预扣", (led1.get("held") or 0) == 0, str(led1.get("held")))
+
+    # 真发一次。冒烟机上没有本地模型 ⇒ 必须老实失败。
+    # 这里不假设一定失败：万一机器上真跑着 ollama，成功也算对，但不许"假成功"。
+    st, dr = chat("/api/chat?timeout=2500&text=" + HI)
+    if dr.get("ok") is True:
+        check("真发成功时必须带回正文", bool(dr.get("text")) and st == 200, str(st))
+        check("真发成功时 http_status 要是 2xx", 200 <= (dr.get("http_status") or 0) < 300,
+              str(dr.get("http_status")))
+    else:
+        check("本地模型没开时要回 502、不许伪装成 200", st == 502, "实际 %s" % st)
+        check("没发出去时 http_status 要是 0", dr.get("http_status") == 0,
+              str(dr.get("http_status")))
+        check("失败要说人话、带上地址（不是裸 errno）",
+              "连不上" in (dr.get("error") or "") and "11434" in (dr.get("error") or ""),
+              dr.get("error"))
+        check("失败不许留悬空预扣",
+              ((a.json("/api/gateway.json") or {}).get("ledger") or {}).get("held") == 0)
+
     gw = a.json("/api/gateway.json")
     check("gateway.json 能读", isinstance(gw, dict) and "loaded" in gw)
     check("路由表要真的加载上", gw.get("loaded") is True,

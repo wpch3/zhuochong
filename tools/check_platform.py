@@ -508,6 +508,35 @@ def main():
         # 排序即优先级：先按能力分组，组内高优先级在前，同级按 id 稳定排序。
         # 网关取"第一个可用的"就是正确路由，重试则顺序往下走。
         routes.sort(key=lambda r: (r["cap"], -r["priority"], r["provider"]))
+
+        # 接入点表（G54）：路由表只回答"选谁"，真要把请求发出去还缺
+        # "往哪个地址发、怎么带密钥"。这两件事都在契约里，一起物化出来，
+        # C 侧就不用在运行时再去读 config/providers/ 那 29 个文件。
+        #
+        # chat_path 为什么由 kind 推导而不是写在契约里：openai_compatible
+        # 这一族（16 家）的聊天端点一律是 base_url + /chat/completions，
+        # 写 16 遍等于 16 次抄错的机会。真有特例再在契约里加 chat_path 覆盖。
+        endpoints = []
+        for pv in sorted(provs.values(), key=lambda x: x["id"]):
+            au = pv.get("auth") or {}
+            kind = pv.get("kind", "")
+            if kind == "openai_compatible":
+                cpath = "/chat/completions"
+            elif kind == "official" and pv["id"] == "anthropic":
+                cpath = "/messages"
+            else:
+                cpath = ""           # 这一族还没接聊天，留空 = 不可用
+            endpoints.append({
+                "id": pv["id"],
+                "kind": kind,
+                "local": bool(pv.get("local")),
+                "enabled": bool(pv.get("enabled", True)),
+                "base_url": pv.get("base_url", ""),
+                "auth_type": au.get("type", "none"),
+                "key_ref": au.get("key_ref", ""),
+                "auth_header": au.get("header", ""),
+                "chat_path": pv.get("chat_path", cpath),
+            })
         # 音色：界面用的全量清单 + C 侧读的老格式投影。
         # 和 providers 一样的套路——契约是真相，老文件是生成物。
         def emotion_distinct(v, emo):
@@ -591,7 +620,8 @@ def main():
             "rules": {k: v for k, v in ((gw.get("routing") or {}).get("rules") or {}).items()
                       if not k.startswith("_")},
             "routes": routes,
-        }, "路由表，%d 条" % len(routes))
+            "endpoints": endpoints,
+        }, "路由表 %d 条 + 接入点 %d 条" % (len(routes), len(endpoints)))
 
     print("")
     print("合计 %d 项，%d 项不通过 → %s"

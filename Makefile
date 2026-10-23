@@ -106,7 +106,7 @@ win: $(CORE_OBJ)
 	    -Isrc -Wl,/subsystem:windows \
 	    -o $(DIST_WIN)/zhuochong.exe \
 	    src/win32/main_win.c src/win32/zw32.c $(CORE_SRC) \
-	    -luser32 -lgdi32 -lshell32 -lole32 -lcomctl32
+	    -luser32 -lgdi32 -lshell32 -lole32 -lcomctl32 -lws2_32
 	@rm -f $(DIST_WIN)/zhuochong.pdb
 	@echo "已生成 $(DIST_WIN)/zhuochong.exe"
 	@ls -la $(DIST_WIN)/zhuochong.exe

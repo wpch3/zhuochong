@@ -13,7 +13,7 @@ int zgw_load(zgateway *g, const char *routes_path, zdiag *d)
 {
     zerr err;
     zjson *root, *arr;
-    size_t i, n;
+    size_t i, n, nroutes_decl = 0;
 
     if (!g || !routes_path) return -1;
     memset(g, 0, sizeof(*g));
@@ -48,6 +48,7 @@ int zgw_load(zgateway *g, const char *routes_path, zdiag *d)
 
     arr = zjson_get(root, "routes");
     n = zjson_count(arr);
+    nroutes_decl = n;
     for (i = 0; i < n && g->nroutes < ZGW_MAX_ROUTES; ++i) {
         zjson *r = zjson_at(arr, i);
         zgw_route *o = &g->routes[g->nroutes];
@@ -71,13 +72,52 @@ int zgw_load(zgateway *g, const char *routes_path, zdiag *d)
         g->nroutes++;
     }
 
-    if (n > (size_t)ZGW_MAX_ROUTES && d)
+    /* 接入点表（G54）。没有这一段也能跑 —— 老的 gateway_routes.json
+       只有路由没有接入点，那时候网关本来就只做决策不发请求。 */
+    arr = zjson_get(root, "endpoints");
+    n = zjson_count(arr);
+    for (i = 0; i < n && g->nendpoints < ZGW_MAX_ENDPOINTS; ++i) {
+        zjson *r = zjson_at(arr, i);
+        zgw_endpoint *o = &g->endpoints[g->nendpoints];
+        const char *pid = zjson_str(zjson_obj_get(r, "id"), NULL);
+        if (!pid || !*pid) continue;
+        z_strlcpy(o->id, pid, sizeof(o->id));
+        z_strlcpy(o->kind, zjson_str(zjson_obj_get(r, "kind"), ""), sizeof(o->kind));
+        z_strlcpy(o->base_url, zjson_str(zjson_obj_get(r, "base_url"), ""), sizeof(o->base_url));
+        z_strlcpy(o->auth_type, zjson_str(zjson_obj_get(r, "auth_type"), "none"), sizeof(o->auth_type));
+        z_strlcpy(o->key_ref, zjson_str(zjson_obj_get(r, "key_ref"), ""), sizeof(o->key_ref));
+        z_strlcpy(o->auth_header, zjson_str(zjson_obj_get(r, "auth_header"), ""), sizeof(o->auth_header));
+        z_strlcpy(o->chat_path, zjson_str(zjson_obj_get(r, "chat_path"), ""), sizeof(o->chat_path));
+        o->local   = zjson_bool(zjson_obj_get(r, "local"), 0);
+        o->enabled = zjson_bool(zjson_obj_get(r, "enabled"), 1);
+        g->nendpoints++;
+    }
+    if (n > (size_t)ZGW_MAX_ENDPOINTS && d)
+        zdiag_warn(d, routes_path, 0, 0, "endpoints",
+                   "接入点有 %d 家，超过上限 %d，多出来的被忽略",
+                   (int)n, ZGW_MAX_ENDPOINTS);
+
+    if (g->nroutes > (int)0 && n == 0 && d)
+        zdiag_warn(d, routes_path, 0, 0, "endpoints",
+                   "路由表里没有 endpoints 段 —— 只能做决策，发不出请求"
+                   "（重跑 tools/check_platform.py 生成）");
+
+    if (nroutes_decl > (size_t)ZGW_MAX_ROUTES && d)
         zdiag_warn(d, routes_path, 0, 0, "routes",
                    "路由表有 %d 条，超过上限 %d，多出来的被忽略",
-                   (int)n, ZGW_MAX_ROUTES);
+                   (int)nroutes_decl, ZGW_MAX_ROUTES);
 
     zjson_free(root);
     return 0;
+}
+
+const zgw_endpoint *zgw_endpoint_find(const zgateway *g, const char *provider)
+{
+    int i;
+    if (!g || !provider || !*provider) return NULL;
+    for (i = 0; i < g->nendpoints; ++i)
+        if (strcmp(g->endpoints[i].id, provider) == 0) return &g->endpoints[i];
+    return NULL;
 }
 
 /* --------------------------------------------------------------- 路由 */

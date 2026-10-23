@@ -1143,3 +1143,25 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 - **G54** 验收加「文档/网页/工具返回内容里的指令不得提权」（提示注入）；
 - **`zsm`** 补 `listening / working / confused` 三个状态 —— 补动作，不补机制；
 - **mood→表情 / mood→TTS** 的设计前提写死：模型输出的是**表演标签**，不是它的真实感受。
+
+### T61 G54 真链路第一段：网关终于会发请求了（2026-10-23，第五十四问）
+
+**背景**：G51 做完"选谁 / 花多少 / 钥匙在哪"之后那条线就断了 —— 选完没有下文。
+人设、对白、路由、八个角色的性格全堆在后面等，因为它们最后都要落到同一个动作上：
+**把那段提示词真的发给一个模型**。这一轮把最后一段接上。
+
+| 编号 | 事 | 状态 | 说明 |
+|---|---|---|---|
+| T61.1 | 路由表产出 `endpoints` 段 | [x] | 29 条（`base_url`/`auth_type`/`key_ref`/`auth_header`/`chat_path`/`kind`），`tools/check_platform.py` 生成，37/0。无此段时只警告不报错，向后兼容旧表 |
+| T61.2 | `src/core/zhttp.{c,h}` 自带 HTTP/1.1 客户端 | [x] | 零依赖约 440 行。URL 拆解、超时、体积上限、`Content-Length` + `chunked`、Linux(`getaddrinfo`/`MSG_NOSIGNAL`)/Windows(winsock2) 双实现、11 种错误码各配一句人话。**`ZHTTP_OK` 只表示网络层成功，404 也是 OK** |
+| T61.3 | `zgateway` 加 `zgw_endpoint` + `zgw_endpoint_find()` | [x] | 查不到返回 NULL，**调用方不许自己拼默认地址**。顺手修了 `zgw_load()` 里 `n` 跨段落复用导致超限警告报错数字的隐患（改用 `nroutes_decl`） |
+| T61.4 | `src/core/zrelay.{c,h}` 中继层 | [x] | 选路 → 查接入点 → 校接口族 → 取密钥 → 拼体 → 真发 → 解析 → 三段记账。只接 `openai_compatible`（29 家里 16 家，含全部本地栈） |
+| T61.5 | 单测常驻化：真的过一遍 socket | [x] | 进程内 pthread mock HTTP 服务 + `127.0.0.1:0` 系统分配端口。**不许把 zhttp 换成桩**——这层最容易错的全在"字节长什么样"。936 → 992 |
+| T61.6 | 预览端点 `/api/chat`（含 `dry=1` 只看不发） | [x] | dry-run 与真发**共用 `prepare_one()`**，否则显示的和实际出网的迟早对不上。`api_smoke` 246 → 266 |
+| T61.7 | **修隐私洞**：降级重试会绕过 `sensitive` | [x] | `zgw_pick` 只认优先级不认敏感标记 ⇒ 本地挂 + 允许降级 = 悄悄上云。没炸只因云端默认 `enabled=false`，而那是配置不是保证。负控：把云端做成**会成功的诱饵**，拆掉护栏 4 项判红 |
+| T61.8 | `make win` 加 `-lws2_32` | [x] | `CORE_SRC` 是 wildcard，`zhttp.c` 自动进交叉编译。实测不加会炸 8 个未定义符号（`WSAStartup`/`getaddrinfo`/`socket`…），加上后 exe 正常 import `WS2_32.dll` |
+| T61.9 | **TLS** | [ ] | **云端线的唯一卡点**——没它云端 16 家一家都连不上，现在只能连本地明文栈。本机无 OpenSSL 开发头。两条后路见 `docs/PROVIDER_PLAN.md` 6.5：(a) 运行期 `dlopen` libssl；(b) 单文件实现进 `src/third_party/`。**绝不降级成明文**——功能没打通是进度问题，密钥泄露是事故。优先级高于 T61.10 |
+| T61.10 | 聊天框 UI | [ ] | 现在只有端点，界面上还没有能打字的地方 |
+| T61.11 | 多轮上下文 | [ ] | 每次都是单轮 system+user。依赖 T60.1 上下文管理器 |
+| T61.12 | 非 OpenAI 形状适配 | [ ] | anthropic `/messages`、google `generateContent`。并入 T59.4 一起做 |
+| T61.13 | 提示注入防护 | [ ] | 第五十二问②要求的「文档/网页/工具返回内容里的指令不得提权」，要在 `zrelay` 这层把工具结果和用户指令分隔开 |
