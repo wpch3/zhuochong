@@ -1238,6 +1238,22 @@ function slotOf(id) {
           "不许退回 setInterval(refresh, 100) 那版无保护的刷新");
   }
 
+  SECTION("T62.1 产品视图：气泡与贴身输入条独立于测试台");
+  {
+    const html = fs.readFileSync(path.join(WEB, "product.html"), "utf8");
+    const js = fs.readFileSync(path.join(WEB, "product.js"), "utf8");
+    const css = fs.readFileSync(path.join(WEB, "product.css"), "utf8");
+    const cp = JSON.parse(fs.readFileSync(path.join(WEB, "product_copy.json"), "utf8"));
+    CHECK(/product\.css/.test(html) && /product\.js/.test(html), "产品视图应有独立样式与逻辑");
+    CHECK(!/app\.js|components\/chat\.js|layout\.json/.test(html), "产品视图不能复用测试台内核/聊天卡片");
+    CHECK(/id=\"conversation\"/.test(html) && /class=\"dock\"/.test(html), "页面必须有气泡区域和贴身输入条");
+    CHECK(/\/api\/chat\?/.test(js) && /\/api\/context\.json\?reset=1/.test(js), "真聊和清空上下文两条链路必须保留");
+    CHECK(/history_sent/.test(js) && /turns_held/.test(js) && /route_reasons/.test(js), "展开详情必须保留多轮、隐私与人话路由理由");
+    CHECK(/\/api\/action\?id=think/.test(js) && /\/api\/action\?id=talk/.test(js), "发送/回复要联动立绘动作");
+    CHECK(!!cp.sensitive && !!cp.dry && !!cp.route_reasons.default_local, "用户文案与路由理由翻译必须在数据文件");
+    CHECK(/\.dock/.test(css) && /\.bubble/.test(css), "产品视图样式必须形成输入条与对话气泡，而非侧栏卡片");
+  }
+
   console.log("");
   console.log(fail === 0
     ? "通过 " + pass + " 项，失败 0 项"
