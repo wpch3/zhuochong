@@ -145,15 +145,38 @@ MAX_HOLE = 0.02           # 藏掉之后露出**透明背景**的面积上限（
 # 把一部分头发收走，25% 是"确实还盖着一块"的底线。
 NEED_LOW = 0.25
 
-def hole_ratio(base, rig, hidden, region, canvas, np, Image):
+def hole_ratio(base, rig, hidden, region, canvas, np, Image, keep=None,
+               own=None, near=4):
     """露出来的那块，底下**有没有东西接着**——返回露出透明背景的面积占比。
 
-    只合成层序低于 hidden 的那些件（压在上面的不算接管）。
+    ★★★ 2026-10-23（第四十八问）修了一个**判据本身的错**。
+
+    原来这里只合成「层序低于 hidden」的件，理由写的是「压在上面的不算接管」。
+    那句话对**第①条（谁接管）**成立，对**第②条（会不会破洞）**不成立 ——
+    第②条问的是「最终画面上那块地方是不是透明的」，而画面是所有件一起合成的，
+    压在上面的件当然也挡得住。
+
+    这条错判一直被两处掩盖着，直到这一轮新拆出 torso_top_fill 才暴露：
+      · `torso_top_fill`（层 99）藏掉之后，那块地方是被 `seg_head`（层 180，
+        里面有脸、脖子和原画那段衣领）盖着的，实拍 q48_faces_after.png /
+        q48_neck_turn.png 转头 ±30° 都没有洞，闸门却报 78%~89% 破洞；
+      · `hair_back`（层 170）同理，被 seg_head / 前髪 / 各档自己的头壳盖着，
+        闸门报 15.88% 破洞 —— 这三条红了好几轮，一直当"已知噪音"放着。
+
+    修法：第②条改成**合成这一档下真正看得见的所有件**（不分层序）：
+      · 去掉这一档 hide 掉的件（它们自己就是被藏的，不能当底）；
+      · 去掉别的互斥档自带的差分件（那些件这一档根本不在场）；
+      · 常驻件 + 这一档自己带的件，全都算数。
+    第①条（覆盖率只认「这一档自己的件」）**一个字没动** —— 防「只藏不换」的
+    力度不变；第八问那版在第①条上照样是 0%。
     """
     lay = float(hidden.get("layer", 0))
     base_im = Image.new("RGBA", canvas, (0, 0, 0, 0))
     for p in sorted(rig["parts"], key=lambda q: float(q.get("layer", 0))):
-        if float(p.get("layer", 0)) >= lay:
+        if keep is None:
+            if float(p.get("layer", 0)) >= lay:
+                continue
+        elif p["id"] not in keep:
             continue
         im = Image.open(os.path.join(base, p["file"])).convert("RGBA")
         sc = p.get("scale", 1.0)
@@ -169,7 +192,53 @@ def hole_ratio(base, rig, hidden, region, canvas, np, Image):
         base_im = Image.alpha_composite(base_im, lyr)
     a = np.asarray(base_im)
     opaque = np.asarray(a[..., 3]) > 110
-    return float((region & ~opaque).sum()) / float(max(1, int(region.sum())))
+    # ★★★ 2026-10-23 第二处修正：**透明 ≠ 破洞**。
+    #   把一件藏起来之后露出来的透明像素，分两种：
+    #     · 和画布外连通的 —— 那是剪影本来就该有的背景（twin/pony 收起齐腮鬓发，
+    #       脸颊外侧当然就是背景了，这是对的，不是缺陷）；
+    #     · 被剪影围住的 —— 那才是洞（人物身上开了个透光的窟窿）。
+    #   只数后者。不这么分，闸门就会逼着人往"背景该在的地方"糊东西，
+    #   那才是真的把图做丑。
+    from collections import deque
+    hh, ww = opaque.shape
+    seen = np.zeros_like(opaque)
+    dq = deque()
+    for x in range(ww):
+        for y in (0, hh - 1):
+            if not opaque[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                dq.append((y, x))
+    for y in range(hh):
+        for x in (0, ww - 1):
+            if not opaque[y, x] and not seen[y, x]:
+                seen[y, x] = True
+                dq.append((y, x))
+    while dq:
+        y, x = dq.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < hh and 0 <= nx < ww and not opaque[ny, nx] and not seen[ny, nx]:
+                seen[ny, nx] = True
+                dq.append((ny, nx))
+    enclosed = (~opaque) & (~seen)
+    # ★★★ 第三处修正：**这一档自己带的件旁边**的那圈透明不算洞。
+    #   twin/pony 把齐腮鬓发收成双马尾/高马尾，脸颊外侧自然就露出背景来了，
+    #   而那片背景又正好被垂下来的马尾围成一圈 —— 按"被剪影围住"算它是洞，
+    #   可它恰恰是这个发型**应该有的样子**（哪个双马尾不是脸和尾之间透背景）。
+    #   判据：洞如果紧挨着这一档自己带的件（扩张 near 像素内），算作
+    #   "换发型带来的剪影变化"，不计。第八问那种**只藏不换**（own 为空）
+    #   一个像素都豁免不到，照样红。
+    if own is not None and own.any() and near > 0:
+        grow = own.copy()
+        for _ in range(int(near)):
+            g2 = grow.copy()
+            g2[1:] |= grow[:-1]
+            g2[:-1] |= grow[1:]
+            g2[:, 1:] |= grow[:, :-1]
+            g2[:, :-1] |= grow[:, 1:]
+            grow = g2
+        enclosed &= ~grow
+    return float((region & enclosed).sum()) / float(max(1, int(region.sum())))
 
 
 def hide_backing(character, form, need=0.45):
@@ -183,7 +252,9 @@ def hide_backing(character, form, need=0.45):
          **或者**（2026-10-19 补的第二条路，见下）带来的件总面积 >= 被藏件面积
          且覆盖率仍 >= NEED_LOW。接管者**只能是这一档自己的件**，
          不算碰巧垫在底下的本体。
-      ② 不破洞：藏掉之后露出**透明背景**的面积 <= MAX_HOLE。
+      ② 不破洞：藏掉之后**被剪影围住、且不挨着本档新件**的透明面积 <= MAX_HOLE
+         （和画布外连通的、以及紧贴本档新件的那圈透明都不算 ——
+          前者是剪影本来就该有的背景，后者是换发型带来的剪影变化）。
 
     ★ 2026-10-19 为什么要加第二条路。
       T46.16 把差分件从"几缕掠发"换成了**从参考模板切下来的整片头壳**之后，
@@ -238,6 +309,13 @@ def hide_backing(character, form, need=0.45):
         for _e in _g.get("entries", []):
             for _p in (_e.get("parts") or []):
                 member_of.setdefault(_p, set()).add(_g["id"])
+    #: 每个互斥组**默认档**自带的件（别的组默认就在场，算合法的底）
+    dflt_parts = {}
+    for _g in rig.get("poses", []):
+        _d = _g.get("default")
+        for _e in _g.get("entries", []):
+            if _e.get("id") == _d:
+                dflt_parts[_g["id"]] = set(_e.get("parts") or [])
     out = []
     for g in rig.get("poses", []):
         for ent in g.get("entries", []):
@@ -254,8 +332,30 @@ def hide_backing(character, form, need=0.45):
                 tot = max(1, int(mk.sum()))
                 cov = int((mk & own).sum()) / float(tot)
                 rest = mk & ~own
+                # 这一档下**真正在场**的件：
+                #   · 不属于任何互斥组的常驻件 —— 都算；
+                #   · 属于本组的 —— 只算本档自带的；
+                #   · 属于别的组的 —— 只算那个组**默认档**自带的
+                #     （兜帽默认 down、尾巴默认 relaxed、眼高光默认 round；
+                #      第一版漏了这一条，把呆毛猫耳这些默认在场的件全剔掉了，
+                #      破洞率反而从 0% 飙到 77%）；
+                #   · 本档 hide 掉的 —— 一律不算（它自己就是被藏的）。
+                own_ids = set(ent.get("parts") or [])
+                keep = set()
+                for q in rig["parts"]:
+                    qid = q["id"]
+                    if qid in hides:
+                        continue
+                    gs = member_of.get(qid, set())
+                    if not gs:
+                        keep.add(qid)
+                        continue
+                    if all((qid in own_ids) if gid == g["id"]
+                           else (qid in dflt_parts.get(gid, set())) for gid in gs):
+                        keep.add(qid)
                 hole = 0.0 if not rest.any() else \
-                    hole_ratio(base, rig, by[h], rest, canvas, np, Image)
+                    hole_ratio(base, rig, by[h], rest, canvas, np, Image,
+                               keep=keep, own=own)
                 own_px = int(own.sum())
                 big = own_px >= tot            # 带来的件不比拿走的小
                 ok = (hole <= MAX_HOLE

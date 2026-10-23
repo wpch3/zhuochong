@@ -2088,25 +2088,22 @@
      "hair_back",
      "hair_side_l",
      "hair_side_r",
-     "acc_hood_up",
-     "torso_top_fill"
+     "acc_hood_up"
     ],
     "pony": [
      "hair_back",
      "hair_side_l",
      "hair_side_r",
-     "acc_hood_up",
-     "torso_top_fill"
+     "acc_hood_up"
     ],
     "long": [
      "hair_back",
-     "acc_hood_up",
-     "torso_top_fill"
+     "acc_hood_up"
     ]
    },
    "_hood_note": "★ T46.17：兜帽四形态。四顶帽子 + 两片帽下头发都挂在 hood_pose.up 下；其中三顶直接归在对应发型档名下，靠引擎的跨组连乘（zrig.c:4621 pose_opacity，down 档反向 hide）凑出「戴帽 ∧ 发型=X」。短发那顶没有发型档可挂（短发 = 整组关掉 cur=-1），改由三个发型档 hide 掉。不要再给 hairstyle 加名叫 `none` 的档位 —— \"none\" 是 zrig_pose_set 的保留字，那样的档位永远选不中。",
    "_face_note": "★★★ 2026-10-23 第四十八问(d)：「长发的脸型做到和短发一样」。原来三档都 hide 掉 hair_front（前髪），脸的上框就换成了各档自己的 acc_hair_crown_*，刘海的形状、发梢的位置、额头露出的多少全变了 —— 脸看上去就「不是同一张」。改法：**三档一律保留 hair_front**，crown 件层号 187~189 本来就压在 hair_front(240) 之下，是补头顶的，不是替刘海的。long 这一档还要保留 hair_side_l/r（齐腮鬓发）——本组 note 里早就写了「long 这一档不换横髪」，是 hide 表没跟上。twin/pony 仍然换成 acc_hair_sweep_*（向后掠），那是发型本身的要求。",
-   "_residue_note": "★★★ 2026-10-23 第四十八问(c)：「头后面的错误残留」。torso_top_fill = seg_torso 顶部 38 行（= make_body_parts 的 overlap_px，拿颈线那一行向上复制出来的「脖子桩」，不是原画）。上游注释写「藏在头后面不会被看见」—— 那句话只在短发档成立：鬓发一撤，桩子就从头的剪影外面支出来，在脖子两侧变成青绿方块 + 褐色污渍。原画里那一段衣领的真料在 seg_head 里（层 180，压在躯干上），所以这三档把桩关掉不会少任何东西。"
+   "_residue_note": "★★★ 2026-10-23 第四十八问(c)：「头后面的错误残留」。残留 = seg_torso 顶部 38 行（overlap_px）那条「脖子桩」：make_body_parts 拿颈线那一行向上复制出来的，而颈线那一行在原画里正压着鬓发 ⇒ 桩子里烤进了褐色发块、蓝发梢、阶梯状白缺口。短发档它整条藏在鬓发后面；换 twin/pony 鬓发向后掠，它就露在脖子两侧。★ 注意它**不是纯垃圾**：它同时兼着「衣领往上的延伸」（原画里衣领上沿被鬓发盖着，画师没画过）。所以不能 hide —— 实拍 q48_chin_mag.png 证明一藏就在下巴和衣领之间裂开两个大洞。正解是 tools/split_torso_top.py 把它拆成独立部件 torso_top_fill(chest/99) 并**按切线下方的干净衣领重画**（逐列竖直复制 + 向上淡出），四档一律常显。"
   }
  ],
  "mood_pose": {

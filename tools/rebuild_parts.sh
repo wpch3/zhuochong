@@ -43,6 +43,9 @@ step "2/26 身体分段（头/躯干/双臂/双腿）"
 #   「永远从 _orig/ 的备份重算」—— 备份不作废，这一轮上游的改动会被整张旧图盖掉
 #   （2026-10-22 第四十六问踩到：补腋下时差点把上游重切的躯干还原回去）。
 rm -f "characters/$CH/forms/$FM/sprites/_orig/seg_torso"*.png
+# 同理：split_torso_top.py 有**自己**的备份目录（覆盖型工具不许共用别人的 _orig/，
+# 2026-10-20 的教训），这一轮躯干重切了，它那份备份也必须作废。
+rm -rf "characters/$CH/forms/$FM/sprites/_orig/split_torso_top"
 
 step "3/26 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐）"
 "$PY" tools/make_arm_parts.py --character "$CH" --form "$FM"
@@ -208,6 +211,20 @@ step "25/26 裙子里布（从躯干件上复制裙摆 → 压暗当裏地；@2x
 # ⚠ 必须排在高清化（20 步）**之后**：里布的 @2x 不走超分，而是把 1× 的掩码放大两倍
 # 再从 seg_torso@2x.png 上切 —— 那张图是上一步的产物。顺序反了就只有 1× 没有 @2x。
 "$PY" tools/make_skirt_parts.py --character "$CH" --form "$FM"
+
+step "25d/26 颈部脖子桩拆件（seg_torso 顶部 overlap 行 → torso_top_fill）"
+# ⚠ 必须排在高清化（21 步）**之后**：它直接从 seg_torso@2x 上切，自己写 1× 和 @2x，
+#   排在前面会被高清化用 1× 重算的 @2x 盖掉，无损切分就不成立了。
+# ⚠ 必须排在 make_rig **之前**：它往 body_parts.json 里加了一个新部件。
+# 第四十八问(c)：这 38 行是 make_body_parts 拿颈线复制出来的桩，短发档藏在头后面，
+# 换长发/双马尾/高马尾就从脖子两侧支出来（青绿方块 + 褐色污渍）。
+"$PY" tools/split_torso_top.py --character "$CH" --form "$FM"
+
+step "25e/26 肘关节补件（折肘时内侧两半料的拼缝 + 交叉尖角）"
+# ⚠ 同样必须排在高清化之后、make_rig 之前（读 @2x、写新部件进 arm_parts.json）。
+# 第四十八问(b)：外轮廓本来就是对的（两件在肘处是同心等半径半圆），
+# 病在圆内 —— 只盖内侧扇区，外侧剪影一个像素都不碰。
+"$PY" tools/elbow_cover.py --character "$CH" --form "$FM"
 
 step "26/26 生成 rig 并验收"
 python3 tools/make_rig.py --character "$CH" --form "$FM"

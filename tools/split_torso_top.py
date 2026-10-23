@@ -31,7 +31,7 @@
 不多不少：上面全是桩，下面全是原画。
 
 ================================ 做法 ================================
-**不是删除，是搬家**（LESSONS：擦掉 = 短发档失去塗り足し，是第二次犯的错）：
+**不是删除，是搬家 + 重画**（LESSONS：擦掉 = 短发档失去塗り足し，是第二次犯的错）：
 把这条料整条搬进新部件 `torso_top_fill`（group=chest，layer=99，
 压在 seg_torso(100) 正下方），两件同时显示时与原图**逐像素一致**；
 只在 hairstyle = long/twin/pony 三档里 hide 掉它。
@@ -41,6 +41,21 @@
 褐色头发实心块本身就是暗的，被当成线稿，左半边一个像素都没搬走
 （logs/asset_qa/q48_split_mask.png 第一版留档）。上游既然已经把这条线写在
 元数据里了，就不该去图像上重新猜 —— TRUTH-FIRST。
+
+★★★ 为什么还要「重画」，不能只是搬走然后藏起来 ——
+   第一版就是「搬走 + 三档 hide」，实拍（logs/asset_qa/q48_chin_mag.png，
+   洋红底＝透明）当场打脸：下巴和衣领之间**裂开两个大洞**，衣领顶边还变成
+   一条平切线。原因是这条桩**不是纯垃圾**，它同时兼着「衣领往上的延伸」：
+   原画里衣领的上沿被鬓发盖着，画师根本没画过，分段工具拿颈线一смear 就当它有了。
+   所以正解是把这条桩**按干净的那一行重画**：
+
+     torso_top_fill[r] = seg_torso[切线下 --src 行]   （逐列竖直复制）
+     alpha 自下而上线性淡出到 0                        （官方：付け根はぼかす）
+
+   为什么源行要取切线**下面** --src 行而不是切线那一行：切线那一行（= 颈线）
+   在原画里正压着鬓发，brown/蓝发梢全在上面 —— 分段工具当年就是栽在这。
+   躯干下面那几行早被 20/20b/25c 三步清过残渣，是干净的衣领。
+   重画之后这条件在任何发型下都能**一直显示**，不需要 hide，也就没有洞。
 
 幂等：原件备份在 sprites/_orig/split_torso_top/，每次从备份重切。
 
@@ -61,13 +76,21 @@ from PIL import Image
 NEW_ID = "torso_top_fill"
 SRC_ID = "seg_torso"
 LAYER = 99                      # seg_torso 是 100，压在它正下方
-SIG_V = 6
+SIG_V = 9
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
     ap.add_argument("--form", required=True)
+    ap.add_argument("--src", type=int, default=14,
+                    help="重画的源行取切线下方多少行（1x）—— 切线那一行在原画里"
+                         "压着鬓发，是脏的")
+    ap.add_argument("--smooth", type=int, default=10,
+                    help="源行横向平滑半径（1x）—— 不平滑会拉出竖条纹")
+    ap.add_argument("--gamma", type=float, default=2.4,
+                    help="alpha 淡出曲线；>1 = 顶部消失得更快。2.4 是实拍选型定的"
+                         "（1.35 在下巴两侧留了一片看得见的青雾，q48_gamma_ab.png）")
     ap.add_argument("--rows", type=int, default=0,
                     help="顶部多少行（1x）搬走；0 = 用 body_parts.json 的 overlap_px")
     ap.add_argument("--force", action="store_true")
@@ -84,7 +107,8 @@ def main():
         print("[顶条拆件] 没有 %s，跳过" % SRC_ID)
         return 0
 
-    sig = {"v": SIG_V, "rows": a.rows}
+    sig = {"v": SIG_V, "rows": a.rows, "src": a.src, "gamma": a.gamma,
+           "smooth": a.smooth}
     if not a.force and meta.get("torso_top_split", {}).get("sig") == sig:
         if not a.quiet:
             print("[顶条拆件] 签名未变，跳过（--force 强制重做）")
@@ -112,15 +136,51 @@ def main():
     strip = A.copy()
     strip[band:] = False
 
+    # —— 重画：逐列把「切线下 src 行」那一行竖直复制上去，alpha 往上淡出 ——
+    #   · **轮廓**取切线那一行（= 躯干留下来的第一行）：顶条和本体严丝合缝，
+    #     不会在肩头鼓出一条横带（第二版栽在这：源行比切线宽十几个像素，
+    #     下巴底下多出一条带竖条纹的浅色横带，见 q48_faces_final 第一版）。
+    #   · **颜色**取切线下方 src 行（干净衣领）；那一行在某列是空的就横向
+    #     取最近的有色列补上。
+    src = min(H - 1, band + a.src * K)
+    crow = arr[src, :, :3].astype(np.float32)
+    chas = arr[src, :, 3] > 30
+    if chas.any():
+        idx = np.arange(W)
+        good = idx[chas]
+        nearest = good[np.abs(idx[:, None] - good[None, :]).argmin(1)]
+        crow = crow[nearest]
+    # 源行里带着线稿和衣领的明暗，直接竖着拉会变成一片**竖条纹**
+    #   （第三版就是这样，q48_band_3way.png 第 3 列那片条纹雾）。
+    #   横向做一次箱式平滑，拉上去就是一片柔和的底色 —— 它只是"藏在头和头发
+    #   后面的底"，不需要细节，官方对塗り足し的要求也只是"别露底"。
+    if a.smooth > 0:
+        k = int(a.smooth) * K
+        pad = np.pad(crow, ((k, k), (0, 0)), mode="edge")
+        acc = np.zeros_like(crow)
+        for o in range(2 * k + 1):
+            acc += pad[o:o + W]
+        crow = acc / float(2 * k + 1)
+    arow = arr[band, :, 3].astype(np.float32) if band < H else np.zeros(W, np.float32)
+    fill = np.zeros((band, W, 4), np.float32)
+    fill[..., :3] = crow[None, :, :]
+    ramp = (np.arange(band, dtype=np.float32) / max(1.0, band - 1.0))  # 0(顶)→1(底)
+    ramp = ramp ** a.gamma
+    fill[..., 3] = arow[None, :] * ramp[:, None]
+    arr[:band] = np.clip(fill, 0, 255).astype(np.uint8)
+    A = arr[..., 3] > 30
+    strip = A.copy()
+    strip[band:] = False
+
     if strip.sum() < 50:
         print("[顶条拆件] 顶条几乎没有料（%d px），跳过" % strip.sum())
         return 0
 
     # —— 写两张图：顶条 / 掏掉顶条的躯干 ——
-    top = arr.copy()
+    top = arr.copy()                      # arr[:band] 已经是重画过的内容
     top[..., 3] = np.where(strip, arr[..., 3], 0)
-    body = arr.copy()
-    body[..., 3] = np.where(strip, 0, arr[..., 3])
+    body = np.array(im).copy()            # 躯干本体：从**原件**掏掉顶部 band 行
+    body[:band, :, 3] = 0
 
     ys, xs = np.where(strip)
     x0, x1 = int(xs.min()), int(xs.max()) + 1
@@ -145,7 +205,9 @@ def main():
              "pivot": sp.get("pivot"),
              "note": "seg_torso 顶部的塗り足し（下巴/脖子/衣领的描き足し）单独成件。"
                      "两件都显示时与原图逐像素一致；长发/双马尾/高马尾三档 hide 掉它，"
-                     "否则鬓发一撤它就露在脖子两侧（第四十八问 (c) 的「头后错误残留」）"}
+                     "内容已按切线下方的干净衣领重画（逐列竖直复制 + 向上淡出），"
+                     "所以它在任何发型下都能一直显示：不藏 ⇒ 没有洞，也没有残留"
+                     "（第四十八问 (c)）"}
     meta["parts"] = [p for p in meta["parts"] if p["id"] != NEW_ID]
     i = next(i for i, p in enumerate(meta["parts"]) if p["id"] == SRC_ID)
     meta["parts"].insert(i, entry)
