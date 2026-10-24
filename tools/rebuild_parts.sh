@@ -26,6 +26,22 @@ done
 
 step() { printf "\n=== %s ===\n" "$1"; }
 
+# ── 美术来源（形态级）────────────────────────────────────────────────
+# 直到 2026-10-24，这条链的第 1 步写死少女那张设计图、9/10/16 步写死少女那些
+# 重绘底图。于是「给另一个形态跑一遍」只能手工敲命令，而三个工具
+# （make_eye_closed_parts / make_mouth_open_parts / make_arm_parts）里
+# 重绘路径是硬编码的 ⇒ 必然读到少女的脸。
+# 现在统一走 tools/form_art.py：有 forms/<形态>/design/form_art.json 就按它，
+# 没有就退回少女那套（teen 产物逐字段不变，已实测）。
+SHEET_REL="$("$PY" tools/form_art.py --root . --character "$CH" --form "$FM" --sheet)"
+echo "美术来源：$SHEET_REL"
+rd() {  # rd <逻辑名> [回退值]：解析重绘底图，找不到就用回退（保持旧脚本行为）
+  local got
+  got="$("$PY" tools/form_art.py --root . --character "$CH" --form "$FM" --redraw "$1" 2>/dev/null)" || got=""
+  [ -n "$got" ] || got="${2:-}"
+  echo "$got"
+}
+
 step "1/26 从设计图抠像出 body_full.png（整条流水线的源头）"
 # ⚠ 2026-10-21 之前这一步**不在**脚本里，body_full.png 只在最早手跑过一次，
 #   于是抠像本身的缺陷（剪影上的描边被吃掉、边缘一圈近白 matte）在仓库里
@@ -34,7 +50,7 @@ step "1/26 从设计图抠像出 body_full.png（整条流水线的源头）"
 # 几何锁：裁框/缩放写死在 design/body_fit.json，不让 bbox 自然漂移 ——
 #   漂一个像素，下游 17 个 JSON 上百个手调坐标全废。
 "$PY" tools/prepare_sprites.py --character "$CH" --form "$FM" \
-  --sheet "characters/$CH/design/design_sheet_short.png"
+  --sheet "$SHEET_REL"
 
 step "2/26 身体分段（头/躯干/双臂/双腿）"
 "$PY" tools/make_body_parts.py --character "$CH" --form "$FM"
@@ -109,11 +125,11 @@ step "8/26 呆毛（无损切出）"
 
 step "9/26 刘海 + 额头（AI 重绘回贴）"
 "$PY" tools/make_bangs_parts.py --character "$CH" --form "$FM" \
-      --redraw characters/xiaoxun/design/redraw/head_nobangs.png
+      --redraw "$(rd head_nobangs characters/xiaoxun/design/redraw/head_nobangs.png)"
 
 step "10/26 眉毛（AI 重绘 + alpha 抠像）"
 "$PY" tools/make_brow_parts.py --character "$CH" --form "$FM" \
-      --redraw characters/xiaoxun/design/redraw/head_nobrows.png
+      --redraw "$(rd head_nobrows characters/xiaoxun/design/redraw/head_nobrows.png)"
 
 step "11/26 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切补片）"
 "$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM"
@@ -133,7 +149,7 @@ step "15/26 混合模式零件（腮红·乘算 / 眼高光·加算，程序化�
 
 step "16/26 侧发两缕 + 后发（AI 重绘无侧发的脸 → 虹膜配准 → 挖发补脸）"
 "$PY" tools/make_sidehair_parts.py --character "$CH" --form "$FM" \
-      --redraw characters/xiaoxun/design/redraw/head_nosidehair.png
+      --redraw "$(rd head_nosidehair characters/xiaoxun/design/redraw/head_nosidehair.png)"
 
 step "17/26 头皮塗り足し（seg_head 是张光头：抹掉人耳 / 鬓发翼换发色 / 颅顶铺发基色）"
 # ⚠ 必须排在 14 步**之后**：那一步挖走鬓发才会在 seg_head 上留下「只在被盖住时

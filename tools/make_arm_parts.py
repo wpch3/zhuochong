@@ -718,10 +718,11 @@ def main():
 
     anchors = json.load(open(os.path.join(base, "design", "anchors.json"), encoding="utf-8"))
     pts = anchors["points"]
-    redraw_path = os.path.join(args.root, "characters", args.character,
-                               "design", "redraw", "torso_noarms.png")
-    if not os.path.exists(redraw_path):
-        raise SystemExit(f"[make_arm_parts] 缺少 AI 重绘底图：{redraw_path}（D19：被遮挡像素必须重绘）")
+    # 形态级优先（见 tools/form_art.py）。Q 版要按自己的头身比要一张无臂躯干，
+    # 拿少女那张会把袖根补成成人的肩宽。
+    import form_art
+    redraw_path = os.path.join(args.root, form_art.redraw_for(
+        args.root, args.character, args.form, "torso_noarms"))
     fill = np.array(Image.open(redraw_path).convert("RGBA"))
     if fill.shape[:2] != (H, W):
         raise SystemExit("[make_arm_parts] 重绘底图尺寸必须与 body_full.png 一致")

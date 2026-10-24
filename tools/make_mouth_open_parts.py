@@ -136,10 +136,10 @@ def main():
     args = ap.parse_args()
     base = os.path.join(args.root, "characters", args.character, "forms", args.form)
     sp = os.path.join(base, "sprites")
-    redraw = os.path.join(args.root, "characters", args.character,
-                          "design", "redraw", "face_mouthopen.png")
-    if not os.path.exists(redraw):
-        raise SystemExit(f"[mouth_open] 缺少 AI 重绘底图：{redraw}（D19：原画没有口腔，必须重绘）")
+    # 形态级优先（见 tools/form_art.py）：Q 版的嘴是另一张嘴，不能拿少女的重绘去配准。
+    import form_art
+    redraw = os.path.join(args.root, form_art.redraw_for(
+        args.root, args.character, args.form, "face_mouthopen"))
 
     body = np.array(Image.open(os.path.join(sp, "body_full.png")).convert("RGBA"))
     H, W = body.shape[:2]
@@ -151,52 +151,68 @@ def main():
     magenta = (np.minimum(r_, b_) - g_ > 60) & (r_ > 140) & (b_ > 140)
     keep = (rd[..., 3] > 128) & ~magenta
 
-    # ---- 1. 配准：两只虹膜定缩放+平移 ----
-    eyes = json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]
-    be = {}
-    for e in eyes:
-        be[e["side"]] = (e["patch_pos"][0] + e["iris_center"][0],
-                         e["patch_pos"][1] + e["iris_center"][1])
-    bl, br = be["l"], be["r"]
-    rl, rr = iris_centers_redraw(rrgb, keep)
-    d_body = ((br[0] - bl[0]) ** 2 + (br[1] - bl[1]) ** 2) ** 0.5
-    d_rd = ((rr[0] - rl[0]) ** 2 + (rr[1] - rl[1]) ** 2) ** 0.5
-    s = d_body / d_rd
-    mb = ((bl[0] + br[0]) / 2.0, (bl[1] + br[1]) / 2.0)
-    mr = ((rl[0] + rr[0]) / 2.0, (rl[1] + rr[1]) / 2.0)
-    tx, ty = mr[0] - mb[0] / s, mr[1] - mb[1] / s
+    # ---- 1. 配准 ----
+    # 底图若已被 align_redraw.py 预配准（同目录有 .align.json），画布 = body_full、
+    # 人物已在正确位置 ⇒ 恒等映射，**不许再套一次缩放平移**（会把脸推走）。
+    pre = form_art.aligned_info(redraw)
+    if pre is not None:
+        if "broken" in pre:
+            raise SystemExit(f"[张嘴] 侧车文件坏了：{pre['broken']}")
+        s, tx, ty, ncc = 1.0, 0.0, 0.0, float("nan")
+        print(f"[张嘴] 底图已预配准（尺度 {pre.get('scale')} 平移 {pre.get('translate')}）"
+              f"→ 跳过虹膜配准与 NCC 微调")
+    else:
+        eyes = json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]
+        be = {}
+        for e in eyes:
+            be[e["side"]] = (e["patch_pos"][0] + e["iris_center"][0],
+                             e["patch_pos"][1] + e["iris_center"][1])
+        bl, br = be["l"], be["r"]
+        rl, rr = iris_centers_redraw(rrgb, keep)
+        d_body = ((br[0] - bl[0]) ** 2 + (br[1] - bl[1]) ** 2) ** 0.5
+        d_rd = ((rr[0] - rl[0]) ** 2 + (rr[1] - rl[1]) ** 2) ** 0.5
+        s = d_body / d_rd
+        mb = ((bl[0] + br[0]) / 2.0, (bl[1] + br[1]) / 2.0)
+        mr = ((rl[0] + rr[0]) / 2.0, (rl[1] + rr[1]) / 2.0)
+        tx, ty = mr[0] - mb[0] / s, mr[1] - mb[1] / s
 
-    # ---- 2. 脸部 NCC 微调（排除嘴那一块，因为那里本来就该不一样）----
+        # ---- 2. 脸部 NCC 微调（排除嘴那一块，因为那里本来就该不一样）----
+        mouthp_old = json.load(open(os.path.join(sp, "mouth_parts.json"), encoding="utf-8"))
+        line = mouthp_old["line"]
+        mcx = (line["x0"] + line["x1"]) / 2.0
+        mtop = line["y0"] + (line["y1"] - line["y0"]) * 0.5
+        fx0, fx1 = int(mcx - 70), int(mcx + 70)
+        fy0, fy1 = int(mtop - 110), int(mtop + 35)
+        face_box = (slice(max(0, fy0), fy1), slice(max(0, fx0), fx1))
+        ref = brgb[face_box].mean(axis=2)
+        refm = (body[..., 3][face_box] > 128)
+        refm[int(mtop - 12 - max(0, fy0)):int(mtop + 30 - max(0, fy0)),
+             int(mcx - 26 - max(0, fx0)):int(mcx + 26 - max(0, fx0))] = False   # 挖掉嘴
+
+        best = None
+        for ds in (-0.03, -0.015, 0.0, 0.015, 0.03):
+            ss = s * (1 + ds)
+            for dy in range(-5, 6):
+                for dx in range(-5, 6):
+                    ttx = mr[0] - (mb[0] + dx) / ss
+                    tty = mr[1] - (mb[1] + dy) / ss
+                    wr, wa = warp(rrgb, (keep * 255).astype(np.uint8), (H, W), ss, ttx, tty)
+                    cur = wr[face_box].mean(axis=2)
+                    m = refm & (wa[face_box] > 128)
+                    if m.sum() < 500:
+                        continue
+                    a = ref[m] - ref[m].mean(); bq = cur[m] - cur[m].mean()
+                    ncc = float((a * bq).sum() / (np.sqrt((a * a).sum() * (bq * bq).sum()) + 1e-6))
+                    if best is None or ncc > best[0]:
+                        best = (ncc, ss, ttx, tty)
+        ncc, s, tx, ty = best
+
+    # 嘴中线（预配准与否都要用）
     mouthp_old = json.load(open(os.path.join(sp, "mouth_parts.json"), encoding="utf-8"))
     line = mouthp_old["line"]
     mcx = (line["x0"] + line["x1"]) / 2.0
     mtop = line["y0"] + (line["y1"] - line["y0"]) * 0.5
     mw = line["x1"] - line["x0"] + 1
-    fx0, fx1 = int(mcx - 70), int(mcx + 70)
-    fy0, fy1 = int(mtop - 110), int(mtop + 35)
-    face_box = (slice(max(0, fy0), fy1), slice(max(0, fx0), fx1))
-    ref = brgb[face_box].mean(axis=2)
-    refm = (body[..., 3][face_box] > 128)
-    refm[int(mtop - 12 - max(0, fy0)):int(mtop + 30 - max(0, fy0)),
-         int(mcx - 26 - max(0, fx0)):int(mcx + 26 - max(0, fx0))] = False   # 挖掉嘴
-
-    best = None
-    for ds in (-0.03, -0.015, 0.0, 0.015, 0.03):
-        ss = s * (1 + ds)
-        for dy in range(-5, 6):
-            for dx in range(-5, 6):
-                ttx = mr[0] - (mb[0] + dx) / ss
-                tty = mr[1] - (mb[1] + dy) / ss
-                wr, wa = warp(rrgb, (keep * 255).astype(np.uint8), (H, W), ss, ttx, tty)
-                cur = wr[face_box].mean(axis=2)
-                m = refm & (wa[face_box] > 128)
-                if m.sum() < 500:
-                    continue
-                a = ref[m] - ref[m].mean(); bq = cur[m] - cur[m].mean()
-                ncc = float((a * bq).sum() / (np.sqrt((a * a).sum() * (bq * bq).sum()) + 1e-6))
-                if best is None or ncc > best[0]:
-                    best = (ncc, ss, ttx, tty)
-    ncc, s, tx, ty = best
     wrgb, walpha = warp(rrgb, (keep * 255).astype(np.uint8), (H, W), s, tx, ty)
 
     # ---- 3. 取嘴洞：在**原始分辨率**上取（牙只有十几像素，先缩小再找会被糊掉）----
@@ -252,14 +268,18 @@ def main():
     teeth = int(((lum2 > 190) & top).sum())
     tongue = int((((ca[..., 0].astype(int) - ca[..., 2]) > 25) & (lum2 > 90) & bot).sum())
     rep = {
-        "source": "design/redraw/face_mouthopen.png（AI 重绘张嘴脸）+ 虹膜配准",
+        "source": ("design/redraw/face_mouthopen.png（AI 重绘张嘴脸）+ "
+                   + ("align_redraw 预配准" if pre is not None else "虹膜配准")),
         "line": line,
         "mask": "mouth_mask.png", "cavity": "mouth_cavity.png",
         "pos": pos, "anchor_pos": [mcx, float(mtop)],
         "size": [tw, th], "open_h": th, "closed_sy": round(1.2 / th, 4),
         "colors": mouthp_old.get("colors", {}),
-        "register": {"scale": round(s, 4), "ncc": round(ncc, 4),
-                     "iris_body": [list(bl), list(br)], "iris_redraw": [list(rl), list(rr)]},
+        "register": ({"scale": 1.0, "ncc": None, "pre_aligned": True}
+                     if pre is not None else
+                     {"scale": round(s, 4), "ncc": round(ncc, 4),
+                      "iris_body": [list(bl), list(br)],
+                      "iris_redraw": [list(rl), list(rr)]}),
         "native_px": list(native), "checks": {"cavity_px": int(op.sum()), "teeth_px": teeth, "tongue_px": tongue,
                    "width_px": tw, "height_px": th},
         "note": "口内是 AI 重绘的真素材（含上颚/牙/舌/嘴角），不是几何色块；"
@@ -268,7 +288,8 @@ def main():
     }
     json.dump(rep, open(os.path.join(sp, "mouth_parts.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
-    print(f"张嘴零件完成：配准 scale={s:.4f} NCC={ncc:.3f}；"
+    print(f"张嘴零件完成：配准 scale={s:.4f} "
+          f"NCC={'跳过(预配准)' if pre is not None else format(ncc, '.3f')}；"
           f"口内 {tw}x{th}（{op.sum()}px，牙 {teeth}px、舌 {tongue}px）→ pos={pos}")
 
 
