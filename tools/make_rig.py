@@ -4313,7 +4313,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                                "scale": _sc, "curve": "tip", "lag": _lg})
             if _df and _df in _dfms:
                 _hair_sway.append({"deformer": _df, "scale": _dsc, "lag": _dlg})
-        if _hair_sway:
+        # ★ 2026-10-24：**没有独立短发件的形态（Q 版）也要有这个参数**。
+        #   Q 版头发整块烘焙在 seg_head 上（T2.2.5），四件短发一个都不存在 ⇒
+        #   旧写法 `if _hair_sway:` 会把参数整个跳过，而四条挂件发型的 physics2
+        #   摆链 input 里还写着 ParamHairSway ⇒ 引擎逐条校验失败、**整份 rig 拒载**，
+        #   `/api/form?id=chibi` 静默退回少女（用户在界面上看到的就是"切不过去"）。
+        #   这个参数的职责本来就有两半：①推短发件 ②当摆链的"风"输入。
+        #   形态没有第一半时，第二半照旧要有 —— 所以 binds 允许为空。
+        #   ★ 不能拿挂件发型件顶上第一半：那几件的 bend_x 是 physics2 的输出通道，
+        #     同一通道再挂一条参数绑定就是两套内核叠加（selfcheck 有专门一条红线）。
+        _hair_acc = ("acc_hair_long", "acc_hair_twin_l", "acc_hair_twin_r",
+                     "acc_hair_pony", "acc_hair_pony_back")
+        _need_wind = _hair_sway or any(q in _have for q in _hair_acc)
+        if _need_wind:
             rig["params"].append({
                 "id": "ParamHairSway", "label": "头发飘动",
                 "min": -1.0, "max": 1.0, "default": 0.0,
@@ -4325,7 +4337,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                         "幅度（侧发满格 7.2px ≈ 头宽的 3%）：第一版给 5.4px，实拍发梢\n"
                         "只摆 5.9px，肉眼要盯着才看得出来 ⇒ 提到 7.2px；\n"
                         "再大就会从脸侧甩出去，参考 "
-                        "「意外と揺れを控えめにした方が自然に見える」",
+                        "「意外と揺れを控えめにした方が自然に見える」"
+                        + ("" if _hair_sway else
+                           "。★ 本形态没有独立短发件（头发烘焙在 seg_head 上），"                           "所以这条参数的 binds 是空的：它只作为挂件发型四条摆链的"                           "风输入存在（ambient 照旧在推它），画面靠 physics2 输出。"),
             })
             rig.setdefault("ambient", []).append(
                 {"target": "ParamHairSway", "wave": "drift",
@@ -4498,6 +4512,53 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     return rig
 
 
+def prune_dead_param_refs(rig):
+    """删掉物理输入里指向「本形态根本没有声明过的参数」的引用。
+
+    ★ 2026-10-24（第六十一问）Q 版整份 rig 装不进引擎的真因：
+      `prune_dangling` 只清理**部件/组**层面的悬空引用，参数层面漏了。
+      Q 版缺 `hair_side_*` / `hair_front` / `hair_back`（头发整块烘焙在 seg_head 上，
+      见 T2.2.5），于是 `ParamHairSway` 的四条绑定全被删、参数本身也被删 ——
+      但**四条 physics2 摆链的 input 里还写着 ParamHairSway**。
+      引擎在 zrig.c:1278 逐条校验 `physics2[].input[].param`，指不到就**整份拒绝加载**：
+        `chibi/rig.json:4462 physics2[longhair2] input[1] 的参数 'ParamHairSway' 不存在`
+      ⇒ `/api/form?id=chibi` 静默失败，画面退回少女。这类悬空引用只在
+      「素材缺一半」的形态里出现，而新建形态永远从缺一半开始。
+
+    ★ 为什么只扫物理、不扫表情/口型/情绪表：
+      表情和眨眼/视线用的一批参数（ParamEyeOpen / ParamEyeBallY / ParamEyeLWide /
+      ParamEyeLSmile / ParamEyeRPain …）是**引擎内置的虚拟参数**，不在 rig.params 里
+      声明也是合法的（teen 的表情表就整片引用它们，而那些表情真的能挂上）。
+      拿"在不在 params 里"去筛表情，会把 teen 13 条表情值当场删光 —— 实测过。
+      物理链没有这种例外：input 只能是真实声明的参数（引擎逐条校验）。
+      参数真的被删掉时（dead 集合），其余各处的引用由 prune_dangling 原本那段收拾。
+    """
+    defined = {q["id"] for q in rig.get("params", [])}
+    dropped = []
+
+    def _keep(lst, where):
+        out = []
+        for it in lst or []:
+            nm = it.get("param") if isinstance(it, dict) else None
+            if isinstance(nm, str) and nm not in defined:
+                dropped.append(f"{where}→{nm}")
+                continue
+            out.append(it)
+        return out
+
+    for f in rig.get("physics", []) or []:
+        if isinstance(f.get("input"), list):
+            f["input"] = _keep(f["input"], f"physics:{f.get('id')}")
+    for ch in rig.get("physics2", []) or []:
+        for k in ("input", "angle_input"):
+            if isinstance(ch.get(k), list):
+                ch[k] = _keep(ch[k], f"physics2:{ch.get('id')}.{k}")
+
+    if dropped:
+        print(f"  ⚠ 本形态缺素材：删掉 {len(dropped)} 条悬空参数引用"
+              f"（{', '.join(dropped[:6])}{' …' if len(dropped) > 6 else ''}）")
+
+
 def prune_dangling(rig):
     """把指向「本形态不存在的部件/组」的绑定清掉，连带清掉因此空掉的参数。
 
@@ -4570,12 +4631,16 @@ def prune_dangling(rig):
             pm["binds"] = good
         keep_params.append(pm)
     if not dropped_params and not dropped_binds and not dropped_items:
+        # ★ 部件/组全都在，不代表参数引用是对的（Q 版就是这么坏的）——
+        #   参数这一层的清理无条件跑一遍。
+        prune_dead_param_refs(rig)
         return
     if dropped_items:
         print(f"  ⚠ 本形态缺素材：删掉 {len(dropped_items)} 条指向空部件的条目"
               f"（{', '.join(dropped_items[:6])}{' …' if len(dropped_items) > 6 else ''}）")
     if not dropped_params and not dropped_binds:
         rig["params"] = keep_params
+        prune_dead_param_refs(rig)
         return
     rig["params"] = keep_params
     dead = set(dropped_params)
@@ -4605,6 +4670,8 @@ def prune_dangling(rig):
     print(f"  ⚠ 本形态缺素材：删掉 {dropped_binds} 条悬空绑定"
           + (f"、{len(dropped_params)} 个因此空掉的参数（{','.join(dropped_params)}）"
              if dropped_params else ""))
+    # 参数删完之后，物理/ambient/动作里可能还点名指着它们 —— 最后一并清掉。
+    prune_dead_param_refs(rig)
 
 
 def main() -> int:

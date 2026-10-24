@@ -207,6 +207,33 @@ static void send_text(zsock fd, int code, const char *ctype, const char *body)
     send_all(fd, body, len);
 }
 
+/* 把一次加载失败的诊断原样回给界面（文件 + 行 + 字段 + 原因）。
+   ★ 2026-10-24（第六十一问）：换形态/换装失败原来静默回 {"ok":true}，
+     用户只看到"点了没反应"。项目对配置错误的老口径是"能定位、不崩溃、
+     不静默忽略"，接口这一层也必须守同一条。 */
+static void send_diag_json(zsock fd, const char *what, const char *req,
+                           const char *current, const zdiag *d)
+{
+    char ef[ZERR_FILE_MAX], efd[160], em[ZERR_MSG_MAX], eb[ZERR_MSG_MAX];
+    char body[2048];
+    const zerr *e = NULL;
+    for (int i = 0; i < d->count; i++)
+        if (d->items[i].msg[0]) { e = &d->items[i]; break; }   /* 第一条就是根因 */
+    zjson_escape(e ? e->file : "", ef, sizeof(ef));
+    zjson_escape(e ? e->field : "", efd, sizeof(efd));
+    zjson_escape(e ? e->msg : "未知错误", em, sizeof(em));
+    zjson_escape(req, eb, sizeof(eb));
+    current = current ? current : "";
+    char cur[ZERR_MSG_MAX];
+    zjson_escape(current, cur, sizeof(cur));
+    z_snprintf(body, sizeof(body),
+               "{\"ok\":false,\"error\":\"%s\",\"requested\":\"%s\","
+               "\"current\":\"%s\",\"diag\":{\"file\":\"%s\",\"line\":%d,"
+               "\"field\":\"%s\",\"message\":\"%s\"},\"count\":%d}",
+               what, eb, cur, ef, e ? e->line : 0, efd, em, d->count);
+    send_text(fd, 409, "application/json", body);
+}
+
 static void send_png(zsock fd, const zimg *im)
 {
     char head[512];
@@ -2112,28 +2139,56 @@ static void handle_request(zsock fd, const http_req *r)
         send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;
     }
+    /* ★ 2026-10-24（第六十一问）：换形态 / 换装失败**不许再回 {"ok":true}**。
+       原来无论 zpet_set_form 成功还是失败都回同一个 200，于是"Q 版整个 rig 被
+       引擎拒载"这件事在接口层面完全看不见 —— 点一下按钮，界面刷新，还是原来
+       那张脸，没有任何提示。用户看到的现象是"切不过去"，日志里才有真因。
+       失败时必须把**文件 + 字段 + 原因**原样交给界面（这是项目一贯的配置错误口径：
+       能定位、不崩溃、不静默）。成功时把最终形态一并回过去，前端不用再猜。 */
     if (strcmp(r->path, "/api/form") == 0) {
         char id[64];
-        if (qstr(r, "id", id, sizeof(id))) {
-            zdiag d;
-            zdiag_init(&d);
-            LOCK();
-            if (zpet_set_form(g_pet, id, &d) != 0) zdiag_print(&d, stderr);
-            UNLOCK();
+        if (!qstr(r, "id", id, sizeof(id)))
+            { send_text(fd, 400, "application/json",
+                        "{\"ok\":false,\"error\":\"缺少 id\"}"); return; }
+        zdiag d;
+        zdiag_init(&d);
+        int rc;
+        LOCK();
+        rc = zpet_set_form(g_pet, id, &d);
+        UNLOCK();
+        if (rc != 0) {
+            zdiag_print(&d, stderr);
+            send_diag_json(fd, "换形态失败", id, zpet_form(g_pet), &d);
+            return;
         }
-        send_text(fd, 200, "application/json", "{\"ok\":true}");
+        char body[256];
+        z_snprintf(body, sizeof(body),
+                   "{\"ok\":true,\"form\":\"%s\",\"warnings\":%d}",
+                   zpet_form(g_pet) ? zpet_form(g_pet) : id, d.count);
+        send_text(fd, 200, "application/json", body);
         return;
     }
     if (strcmp(r->path, "/api/outfit") == 0) {
         char id[64];
-        if (qstr(r, "id", id, sizeof(id))) {
-            zdiag d;
-            zdiag_init(&d);
-            LOCK();
-            if (zpet_set_outfit(g_pet, id, &d) != 0) zdiag_print(&d, stderr);
-            UNLOCK();
+        if (!qstr(r, "id", id, sizeof(id)))
+            { send_text(fd, 400, "application/json",
+                        "{\"ok\":false,\"error\":\"缺少 id\"}"); return; }
+        zdiag d;
+        zdiag_init(&d);
+        int rc;
+        LOCK();
+        rc = zpet_set_outfit(g_pet, id, &d);
+        UNLOCK();
+        if (rc != 0) {
+            zdiag_print(&d, stderr);
+            send_diag_json(fd, "换装失败", id, zpet_outfit(g_pet), &d);
+            return;
         }
-        send_text(fd, 200, "application/json", "{\"ok\":true}");
+        char body[256];
+        z_snprintf(body, sizeof(body),
+                   "{\"ok\":true,\"outfit\":\"%s\"}",
+                   zpet_outfit(g_pet) ? zpet_outfit(g_pet) : id);
+        send_text(fd, 200, "application/json", body);
         return;
     }
     if (strcmp(r->path, "/api/idle") == 0) {

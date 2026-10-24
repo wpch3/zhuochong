@@ -4458,10 +4458,6 @@
           "param": "ParamBreath",
           "wx": 1.8,
           "wy": -0.8
-        },
-        {
-          "param": "ParamHairSway",
-          "wx": 3.2
         }
       ],
       "angle_input": [
@@ -4531,10 +4527,6 @@
           "param": "ParamBreath",
           "wx": 1.8,
           "wy": -0.8
-        },
-        {
-          "param": "ParamHairSway",
-          "wx": 2.6
         }
       ],
       "angle_input": [
@@ -4591,10 +4583,6 @@
           "param": "ParamBreath",
           "wx": 1.8,
           "wy": -0.8
-        },
-        {
-          "param": "ParamHairSway",
-          "wx": 2.4
         }
       ],
       "angle_input": [
@@ -4651,10 +4639,6 @@
           "param": "ParamBreath",
           "wx": 1.8,
           "wy": -0.8
-        },
-        {
-          "param": "ParamHairSway",
-          "wx": 2.8
         }
       ],
       "angle_input": [

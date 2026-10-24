@@ -3847,6 +3847,7 @@ def check_phys2_rig(root):
     rigs = sorted(glob.glob("characters/*/forms/*/rig.json", root_dir=root))
     n_chain = 0
     bad_cap, bad_out, bad_root, bad_scale, no_breath, dup = [], [], [], [], [], []
+    bad_input = []
     for rig_p in rigs:
         rig = jsonc(os.path.join(root, rig_p))
         pids = {p["id"] for p in rig.get("parts", [])}
@@ -3883,6 +3884,17 @@ def check_phys2_rig(root):
             srcs = [i.get("param") for i in (ch.get("input") or [])]
             if "ParamBreath" not in srcs:
                 no_breath.append(f"{rig_p}:{ch.get('id')}")
+            # ★ 2026-10-24（第六十一问）Q 版整份 rig 装不进去的真因：
+            #   physics2 的 input/angle_input 点名了一个**本形态没有声明**的参数。
+            #   引擎在 zrig.c:1278 逐条校验、指不到就拒绝加载整份 rig，
+            #   而 /api/form 照样回 {"ok":true} —— 表现是"切形态没反应"。
+            #   新形态永远从"素材缺一半"开始，所以这条必须常设。
+            pd = {q["id"] for q in rig.get("params", [])}
+            for k in ("input", "angle_input"):
+                for one in (ch.get(k) or []):
+                    nm = one.get("param")
+                    if isinstance(nm, str) and nm not in pd:
+                        bad_input.append(f"{rig_p}:{ch.get('id')}.{k}→{nm}")
     check("摆链条数/输出条数都没超引擎上限", not bad_cap, "；".join(bad_cap[:3]) or
           f"{n_chain} 条链")
     check("每条输出都指得到真实的部件或形变器", not bad_out,
@@ -3895,6 +3907,8 @@ def check_phys2_rig(root):
           "；".join(dup[:3]) or "新旧内核各写各的")
     check("每条链都把呼吸混进了物理输入（静止时也活着的唯一来源）", not no_breath,
           "；".join(no_breath[:3]) or f"{n_chain} 条链都接了 ParamBreath")
+    check("摆链的输入参数都真的声明过（否则引擎拒载整份 rig、切形态静默失败）",
+          not bad_input, "；".join(bad_input[:4]) or f"{n_chain} 条链的输入全部能解析")
 
     # 迁过去的旧条目必须删干净，不能两份都留着
     teen = os.path.join(root, "characters/xiaoxun/forms/teen/rig.json")
