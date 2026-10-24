@@ -129,15 +129,33 @@ def flood(mask, seed):
     return out
 
 
-def sleeve_mask(rgb, alpha, x0, x1):
-    """在 [x0,x1) 这一侧找袖子：先按青色取候选，再从中段 flood。"""
+def sleeve_mask(rgb, alpha, x0, x1, bands=((400, 520),)):
+    """在 [x0,x1) 这一侧找袖子：先按青色取候选，再从各候选带的中位点 flood。
+
+    为什么要有 `bands`（2026-10-25）：这里原来写死 y=400..520 取种子，那是**少女**的比例
+    （头只占 1292 的 34%，400~520 正好落在肩袖上）。Q 版头占 46.8%，同一个 y 区间
+    落在**脸上**，左半边唯一的青色块是**鲸鱼发夹**（实测 4806px）—— 种子种在发夹上，
+    袖子就只剩那块发夹，往下走到肘以下一行都找不到，直接报
+    「找不到袖口下沿（手腕）」。
+    改法：允许多给几条候选带，**取 flood 出来最大的那块**当袖子。
+    少女那条带本来就是最大块，所以 teen 的产物逐像素不变（多条带 flood 到同一个连通域）。
+    """
     cand = (np.abs(rgb - TEAL).sum(axis=2) < TEAL_TOL) & alpha
-    sub = cand[400:520, x0:x1]
-    ys, xs = np.nonzero(sub)
-    if len(ys) == 0:
+    best, seeds = None, []
+    for (ya, yb) in bands:
+        ya, yb = int(max(0, ya)), int(min(rgb.shape[0], yb))
+        sub = cand[ya:yb, x0:x1]
+        ys, xs = np.nonzero(sub)
+        if len(ys) == 0:
+            continue
+        seeds.append((ya + int(np.median(ys)), x0 + int(np.median(xs))))
+    if not seeds:
         raise SystemExit(f"[make_arm_parts] x[{x0},{x1}) 里找不到袖子（青色）像素")
-    seed = (400 + int(np.median(ys)), x0 + int(np.median(xs)))
-    return flood(cand, seed)
+    for seed in seeds:
+        m = flood(cand, seed)
+        if best is None or int(m.sum()) > int(best.sum()):
+            best = m
+    return best
 
 
 def row_runs(row):
@@ -737,7 +755,12 @@ def main():
     arms = {}
     yy_all = np.arange(H)[:, None]
     for side, (x0, x1) in (("l", (0, 150)), ("r", (300, W))):
-        m = grow_down(sleeve_mask(rgb, alpha, x0, x1), alpha)
+        # 候选带：①少女的比例（400..520，保持 teen 逐像素不变）
+        #         ②绕**肩关节**一条（任何头身比都落在肩袖上，供其它形态兜底）
+        sh_y = float(pts[f"shoulder_{side}"][1]) if f"shoulder_{side}" in pts \
+            else float(pts["shoulder"][1])
+        m = grow_down(sleeve_mask(rgb, alpha, x0, x1,
+                                  bands=((400, 520), (sh_y - 150, sh_y + 40))), alpha)
         # 袖口的白条不是青色，flood 吃不到；它贴着轮廓所以也不算"内部孔洞"。
         # 肘部以下做一次形态学闭运算（只在前景里补），把这种开口缺块补回来。
         # 只在肘以下做：上臂内侧紧挨着夹克，闭运算会把夹克的凹处也吃进来。
@@ -1134,6 +1157,12 @@ def main():
         print("  [debug] 差异分布：", {f"y{y0}-{y1}": int(dm[y0:y1].sum())
               for y0, y1 in ((0, 330), (330, 560), (560, 760), (760, 1292))})
     report["checks"]["arm_px"] = {s: int(arms[s].sum()) for s in arms}
+    # 肩关节半径**落盘**：sleeve_underlay（下一步 3a）要给袖根补料、需要这个半径，
+    # 而它跑在 round_arm_sockets（3b，才写 round_socket）**之前** ——
+    # 以前 3a 直接读 J["round_socket"]，全新形态第一次跑必然 KeyError
+    # （Q 版 2026-10-25 实撞）。少女那套之所以没炸，是因为它的 arm_parts.json
+    # 里早就有上一轮留下的 round_socket，3a 走"参数相同 → 跳过"那条路。
+    report["joint_r"] = {s: round(float(JOINT_R[s]), 2) for s in JOINT_R}
     json.dump(report, open(os.path.join(sp, "arm_parts.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
     print(f"手臂拆件完成：4 件；躯干补了 {report['checks']['torso_filled_px']} 像素、"

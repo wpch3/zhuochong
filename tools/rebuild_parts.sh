@@ -42,6 +42,26 @@ rd() {  # rd <逻辑名> [回退值]：解析重绘底图，找不到就用回�
   echo "$got"
 }
 
+# rd_opt <逻辑名>：**形态级表说了算**的写法。
+#   形态有 design/form_art.json 却没写这个键 → 返回空（调用方跳过这一步）；
+#   形态根本没有表（teen）→ 退回角色级旧路径，行为不变。
+#   为什么需要：Q 版没有 head_nobrows 的重绘底图，rd() 的回退会拿**少女那张**去抠眉毛，
+#   结果是"少女的眉毛长在 Q 版脸上"—— 这正是 T2.2.5 那类跨形态污染。
+#   Q 版原画里眉毛是烘在 seg_head 上的（rig 里没有 brow 件），跳过这一步是对的。
+rd_opt() {
+  local table got
+  table="$ROOT/characters/$CH/forms/$FM/design/form_art.json"
+  got="$("$PY" tools/form_art.py --root . --character "$CH" --form "$FM" --redraw "$1" 2>/dev/null)" || got=""
+  if [ -f "$table" ]; then
+    "$PY" - "$table" "$1" <<'PYEOF' || got=""
+import json,sys
+t=json.load(open(sys.argv[1],encoding='utf-8'))
+sys.exit(0 if sys.argv[2] in (t.get("redraw") or {}) else 1)
+PYEOF
+  fi
+  echo "$got"
+}
+
 step "1/26 从设计图抠像出 body_full.png（整条流水线的源头）"
 # ⚠ 2026-10-21 之前这一步**不在**脚本里，body_full.png 只在最早手跑过一次，
 #   于是抠像本身的缺陷（剪影上的描边被吃掉、边缘一圈近白 matte）在仓库里
@@ -128,8 +148,12 @@ step "9/26 刘海 + 额头（AI 重绘回贴）"
       --redraw "$(rd head_nobangs characters/xiaoxun/design/redraw/head_nobangs.png)"
 
 step "10/26 眉毛（AI 重绘 + alpha 抠像）"
-"$PY" tools/make_brow_parts.py --character "$CH" --form "$FM" \
-      --redraw "$(rd head_nobrows characters/xiaoxun/design/redraw/head_nobrows.png)"
+BROW_RD="$(rd_opt head_nobrows)"
+if [ -n "$BROW_RD" ]; then
+  "$PY" tools/make_brow_parts.py --character "$CH" --form "$FM" --redraw "$BROW_RD"
+else
+  echo "跳过：本形态没有 head_nobrows 重绘底图（眉毛烘在原画里，rig 不拆眉件）"
+fi
 
 step "11/26 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切补片）"
 "$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM"

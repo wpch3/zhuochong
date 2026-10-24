@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "_note": [
+    "Q 版的重绘底图来源表。**故意不写 sheet**：",
+    "sheet 一改，prepare_sprites 会按新的抠像参数重出 body_full，整张图换坐标系，",
+    "17 个切件 JSON 里上百个像素手调常数集体作废。",
+    "2026-10-25 试过一次（569x1292，发丝更平滑），整链重跑后有回归（眼 socket 落点漂、",
+    "6 个件 @2x 变旧、闭眼态渲染不对），已回滚，改成独立任务（见 docs/memory/JOURNAL 续一百三十二）。",
+    "在没有 design/body_fit.json 的 Q 版条目之前，sheet 一律沿用旧路径。"
+  ],
+  "redraw": {
+    "torso_noarms": "forms/chibi/design/redraw/torso_noarms.png",
+    "head_nobangs": "forms/chibi/design/redraw/head_nobangs.png",
+    "head_nosidehair": "forms/chibi/design/redraw/head_nosidehair.png",
+    "face_eyesclosed": "forms/chibi/design/redraw/face_eyesclosed.png",
+    "face_eyesmile": "forms/chibi/design/redraw/face_eyesmile.png",
+    "face_eyespain": "forms/chibi/design/redraw/face_eyespain.png",
+    "face_eyeswide": "forms/chibi/design/redraw/face_eyeswide.png",
+    "face_mouthopen": "forms/chibi/design/redraw/face_mouthopen.png"
+  }
+}

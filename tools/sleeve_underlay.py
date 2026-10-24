@@ -294,19 +294,42 @@ def main():
         print("[sleeve_underlay] 已经做过且参数相同，跳过（--force 强制重做）")
         return 0
 
-    rs = {"l": J["round_socket"]["l"]["r_shoulder"],
-          "r": J["round_socket"]["r"]["r_shoulder"]}
+    # 肩关节半径：优先用 round_arm_sockets 量出来的（3b 在 3a 之后跑，第二次起才有）；
+    # 全新形态第一次跑时还没有 round_socket —— 退回 make_arm_parts 落盘的 joint_r。
+    # 以前这里直接 J["round_socket"]，新形态第一轮必然 KeyError。
+    if J.get("round_socket"):
+        rs = {"l": J["round_socket"]["l"]["r_shoulder"],
+              "r": J["round_socket"]["r"]["r_shoulder"]}
+        rs_src = "round_socket"
+    elif J.get("joint_r"):
+        rs = {"l": float(J["joint_r"]["l"]), "r": float(J["joint_r"]["r"])}
+        rs_src = "joint_r(make_arm_parts)"
+    else:
+        raise SystemExit("[sleeve_underlay] arm_parts.json 里既没有 round_socket 也没有 joint_r")
+    print("[sleeve_underlay] 肩关节半径 %.1f/%.1f（来源 %s）"
+          % (rs["l"], rs["r"], rs_src))
     # 原件（_orig/）对应的 pos：第一次跑就是当前 pos；之后从 sleeve_underlay.orig_pos 取
     orig_pos = J.get("sleeve_underlay", {}).get("orig_pos") or {
         "arm_l_root": list(parts["arm_l_root"]["pos"]),
         "arm_r_root": list(parts["arm_r_root"]["pos"]),
     }
     report = {"sig": sig, "orig_pos": orig_pos, "sides": {}}
+    # ★ @2x 源件可能还不存在：高清化是第 21 步，本步是第 3a 步。
+    #   全新形态第一次跑必然没有 arm_*_upper@2x.png（2026-10-25 Q 版实撞）。
+    #   那种情况只做 1× 这一遍 —— 高清版留给第 21 步从 1× 统一超分，
+    #   绝不在这一步拿 1× 冒充 2×（那会把"高清"变成假的）。
+    have2x = all(os.path.exists(os.path.join(sprites, "%s@2x.png" % pid))
+                 for side in ("l", "r")
+                 for pid in ("arm_%s_upper" % side, "arm_%s_root" % side))
     for side in ("l", "r"):
         print("[sleeve_underlay] %s 臂" % side)
         tw = a.target_w_r if side == "r" else a.target_w_l
         res1 = build_side(sprites, parts, J, side, 1, tw, a.overlap, rs[side], orig_pos)
-        res2 = build_side(sprites, parts, J, side, 2, tw, a.overlap, rs[side], orig_pos)
+        if not have2x:
+            print("  @2x 源件不存在 → 只做 1×（第 21 步高清化会统一生成 @2x）")
+            res2 = (None, res1[1], {})
+        else:
+            res2 = build_side(sprites, parts, J, side, 2, tw, a.overlap, rs[side], orig_pos)
         img1, pos1, st1 = res1
         img2, pos2, st2 = res2
         if img1 is None:
@@ -314,7 +337,9 @@ def main():
             continue
         # @2x 的左上角必须是 1x 的两倍：取两者并集后统一对齐
         want2 = (pos1[0] * 2, pos1[1] * 2)
-        if pos2 != want2 or (img2.size[0], img2.size[1]) != (img1.size[0] * 2, img1.size[1] * 2):
+        if img2 is None:
+            pass
+        elif pos2 != want2 or (img2.size[0], img2.size[1]) != (img1.size[0] * 2, img1.size[1] * 2):
             # 把 @2x 贴进"严格 2 倍"的画布，保证 rig 的 scale=0.5 对得上
             canvas = Image.new("RGBA", (img1.size[0] * 2, img1.size[1] * 2), (0, 0, 0, 0))
             canvas.alpha_composite(img2, (pos2[0] - want2[0], pos2[1] - want2[1]))
@@ -322,7 +347,8 @@ def main():
             print("    @2x 对齐到严格 2 倍画布 %dx%d" % img2.size)
         rid = "arm_%s_root" % side
         img1.save(os.path.join(sprites, rid + ".png"))
-        img2.save(os.path.join(sprites, rid + "@2x.png"))
+        if img2 is not None:
+            img2.save(os.path.join(sprites, rid + "@2x.png"))
         parts[rid]["pos"] = [pos1[0], pos1[1]]
         parts[rid]["size"] = [img1.size[0], img1.size[1]]
         parts[rid]["note"] = ("袖根塗り足し（G108 + Q44 全长补料）：原画里袖子被白色夹克身"

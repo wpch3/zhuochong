@@ -436,13 +436,26 @@ def main() -> int:
         fit = allfit.get(os.path.basename(args.sheet)) or allfit.get(args.form)
 
     if fit:
-        fx, fy = fit["box"]
-        fs = float(fit["scale"])
         new_w, new_h = fit["size"]
-        scale = fs
-        sprite = resize_premultiplied(
-            rgba_im, (new_w, new_h),
-            box=(fx, fy, fx + new_w / fs, fy + new_h / fs))
+        if len(fit["box"]) >= 4:
+            # ★ 四点裁框模式（推荐）：直接给出模板上的 (x0,y0,x1,y1)，不靠 scale 反推。
+            #   两数 + scale 的写法有个**固有误差**：输出宽 = new_w/fs、高 = new_h/fs，
+            #   同一个标量 fs 不可能同时精确命中自动裁出来的整数宽高。
+            #   Q 版实测：自动裁 788x1790，fs=0.721788 时窗口变成 788.31x1790 ——
+            #   0.31px 的相位差让整图 ~10% 像素偏移 1~2 个色阶，
+            #   几何锁就"锁不死"，每次重跑都不完全一样。
+            fx, fy, fx1, fy1 = (float(v) for v in fit["box"][:4])
+            fs = new_w / (fx1 - fx)
+            scale = fs
+            sprite = resize_premultiplied(
+                rgba_im, (new_w, new_h), box=(fx, fy, fx1, fy1))
+        else:
+            fx, fy = fit["box"]
+            fs = float(fit["scale"])
+            scale = fs
+            sprite = resize_premultiplied(
+                rgba_im, (new_w, new_h),
+                box=(fx, fy, fx + new_w / fs, fy + new_h / fs))
         print(f"[几何锁] {os.path.basename(fit_path) if not args.fit else '--fit'}："
               f"模板裁框 ({fx:.2f},{fy:.2f}) 缩放 {fs:.6f} → {new_w}x{new_h}")
     else:

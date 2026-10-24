@@ -238,7 +238,12 @@ def main() -> int:
 
     base = os.path.join(a.root, "characters", a.character)
     sprites = os.path.join(base, "forms", a.form, "sprites")
-    redraw = os.path.join(base, "design", "redraw")
+    # 重绘素材：**形态级优先**，没有才退回角色级（同 tools/form_art.py 的口径）。
+    # 以前只认角色级 —— 给 Q 版跑一遍会拿少女那张重绘躯干去贴，剪影 IoU 0.898，
+    # 而更糟的是它还会把 teen 已经生成的换装包覆写掉。
+    redraw = os.path.join(base, "forms", a.form, "design", "redraw")
+    if not os.path.isdir(redraw):
+        redraw = os.path.join(base, "design", "redraw")
     tp = os.path.join(base, "design", "wardrobe.json")
     if not os.path.exists(tp):
         print("[衣柜] 没有 %s，跳过" % tp)
@@ -256,7 +261,9 @@ def main() -> int:
     #   body_full.png / eye_open_left.png，换装换不回原装（引擎报「部件不在本形态中」）。
     #   手写的清单一定会和生成物脱节，让它跟着 rig 走就再也不会过期。
     rig_path = os.path.join(base, "forms", a.form, "rig.json")
-    touched = sorted({pid for ot in table["outfits"] for pid in ot["parts"]})
+    touched = sorted({pid for ot in table["outfits"]
+                      if (ot.get("forms") is None or a.form in ot["forms"])
+                      for pid in ot["parts"]})
     if os.path.exists(rig_path) and touched:
         with io.open(rig_path, encoding="utf-8") as f:
             rig = json.load(f)
@@ -275,10 +282,17 @@ def main() -> int:
         print(f"[衣柜] default.json 自动重建：{len(touched)} 个部件")
 
     for ot in table["outfits"]:
+        # 这套衣服的**重绘素材**属于哪个形态：不在列表里就整套跳过。
+        # 换装包的 parts 里存的是**另一个形态的**贴图坐标，硬上就是身体错位。
+        of = ot.get("forms")
+        if of is not None and a.form not in of:
+            print(f"[衣柜] {ot['id']}：素材属于 {of}，本形态 {a.form} 跳过")
+            continue
         sub = os.path.join(sprites, "outfit_" + ot["id"])
         os.makedirs(sub, exist_ok=True)
         pack = {"schema_version": "1.0", "id": ot["id"], "name": ot["name"],
-                "forms": [a.form], "note": ot["note"], "parts": {}}
+                "forms": list(ot.get("forms") or [a.form]), "note": ot["note"],
+                "parts": {}}
         for pid, spec in ot["parts"].items():
             src = os.path.join(sprites, pid + "@2x.png")
             if not os.path.exists(src):
