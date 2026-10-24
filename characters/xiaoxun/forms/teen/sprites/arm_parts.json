@@ -1,0 +1,659 @@
+{
+  "schema_version": "1.0",
+  "source": "sprites/body_full.png",
+  "redraw": "design/redraw/torso_noarms.png",
+  "elbow_overlap_px": 24,
+  "parts": [
+    {
+      "id": "arm_l_root",
+      "file": "sprites/arm_l_root.png",
+      "pos": [
+        99,
+        362
+      ],
+      "size": [
+        49,
+        200
+      ],
+      "group": "arm_l",
+      "layer": 95,
+      "pivot": [
+        117.5,
+        392.0
+      ],
+      "note": "袖根塗り足し（G108 + Q44 全长补料）：原画里袖子被白色夹克身盖掉的那一半在图上根本不存在，这里按横截面把内缘推到全宽补回来；层 95/96 在躯干之下 ⇒ 静止时一个像素都看不见，抬手才露出来。几何上只含『肩圆盘内 + 上臂管内』两块，怎么转都不会甩出剪影外，所以 Q44 起**不再做 alpha 淡出**"
+    },
+    {
+      "id": "arm_l_upper",
+      "file": "sprites/arm_l_upper.png",
+      "pos": [
+        44,
+        331
+      ],
+      "size": [
+        85,
+        255
+      ],
+      "group": "arm_l",
+      "layer": 140,
+      "pivot": [
+        117.5,
+        392.0
+      ],
+      "note": "上臂：绕肩旋转"
+    },
+    {
+      "id": "arm_l_fore",
+      "file": "sprites/arm_l_fore.png",
+      "pos": [
+        28,
+        526
+      ],
+      "size": [
+        80,
+        147
+      ],
+      "group": "forearm_l",
+      "layer": 144,
+      "pivot": [
+        75.5,
+        553.0
+      ],
+      "note": "前臂：绕肘旋转（父组＝上臂）"
+    },
+    {
+      "id": "hand_l",
+      "file": "sprites/hand_l.png",
+      "pos": [
+        -5,
+        652
+      ],
+      "size": [
+        90,
+        91
+      ],
+      "group": "hand_l",
+      "layer": 138,
+      "pivot": [
+        54.5,
+        666.0
+      ],
+      "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住",
+      "hand_scale_src_pos": [
+        0,
+        653
+      ],
+      "hand_scale": 1.1
+    },
+    {
+      "id": "arm_r_root",
+      "file": "sprites/arm_r_root.png",
+      "pos": [
+        289,
+        362
+      ],
+      "size": [
+        65,
+        201
+      ],
+      "group": "arm_r",
+      "layer": 96,
+      "pivot": [
+        323.0,
+        396.0
+      ],
+      "note": "袖根塗り足し（G108 + Q44 全长补料）：原画里袖子被白色夹克身盖掉的那一半在图上根本不存在，这里按横截面把内缘推到全宽补回来；层 95/96 在躯干之下 ⇒ 静止时一个像素都看不见，抬手才露出来。几何上只含『肩圆盘内 + 上臂管内』两块，怎么转都不会甩出剪影外，所以 Q44 起**不再做 alpha 淡出**"
+    },
+    {
+      "id": "arm_r_upper",
+      "file": "sprites/arm_r_upper.png",
+      "pos": [
+        314,
+        332
+      ],
+      "size": [
+        87,
+        258
+      ],
+      "group": "arm_r",
+      "layer": 141,
+      "pivot": [
+        323.0,
+        396.0
+      ],
+      "note": "上臂：绕肩旋转"
+    },
+    {
+      "id": "arm_r_fore",
+      "file": "sprites/arm_r_fore.png",
+      "pos": [
+        329,
+        522
+      ],
+      "size": [
+        88,
+        151
+      ],
+      "group": "forearm_r",
+      "layer": 145,
+      "pivot": [
+        364.5,
+        553.0
+      ],
+      "note": "前臂：绕肘旋转（父组＝上臂）"
+    },
+    {
+      "id": "hand_r",
+      "file": "sprites/hand_r.png",
+      "pos": [
+        360,
+        652
+      ],
+      "size": [
+        90,
+        91
+      ],
+      "group": "hand_r",
+      "layer": 139,
+      "pivot": [
+        390.0,
+        666.0
+      ],
+      "note": "手：绕腕旋转（父组＝前臂）；往袖子里续了 10px 皮肤，画在前臂底下，静止时被袖口压住",
+      "hand_scale_src_pos": [
+        363,
+        653
+      ],
+      "hand_scale": 1.1
+    },
+    {
+      "id": "arm_l_cap",
+      "file": "sprites/arm_l_cap.png",
+      "pos": [
+        87,
+        331
+      ],
+      "size": [
+        94,
+        93
+      ],
+      "group": "chest",
+      "layer": 142,
+      "pivot": [
+        117.5,
+        392.0
+      ],
+      "note": "静止的「肩球」：关节正圆以内 + 枢轴以上的袖料都归它（第四十二问）。不跟着手臂转 ⇒ 抬手时肩头既不会塌、也不会被甩成布片"
+    },
+    {
+      "id": "arm_r_cap",
+      "file": "sprites/arm_r_cap.png",
+      "pos": [
+        259,
+        332
+      ],
+      "size": [
+        100,
+        100
+      ],
+      "group": "chest",
+      "layer": 143,
+      "pivot": [
+        323.0,
+        396.0
+      ],
+      "note": "静止的「肩球」：关节正圆以内 + 枢轴以上的袖料都归它（第四十二问）。不跟着手臂转 ⇒ 抬手时肩头既不会塌、也不会被甩成布片"
+    },
+    {
+      "id": "arm_l_elbow",
+      "file": "sprites/arm_l_elbow.png",
+      "group": "forearm_l",
+      "layer": 146,
+      "pos": [
+        38,
+        538
+      ],
+      "size": [
+        63,
+        61
+      ],
+      "pivot": [
+        75.5,
+        553.0
+      ],
+      "note": "肘关节补件（Q48）：折肘时上臂半圆与前臂半圆在**内侧**的拼缝 + 两条轮廓线交出来的尖角，用这块抹过线、羽化过的袖布盖住（官方「関節に正円を重ねる / 付け根はぼかす」）。外侧剪影轮廓一律不碰；伸直时 alpha=0，静止画面零改动"
+    },
+    {
+      "id": "arm_r_elbow",
+      "file": "sprites/arm_r_elbow.png",
+      "group": "forearm_r",
+      "layer": 147,
+      "pos": [
+        337,
+        534
+      ],
+      "size": [
+        71,
+        70
+      ],
+      "pivot": [
+        364.5,
+        553.0
+      ],
+      "note": "肘关节补件（Q48）：折肘时上臂半圆与前臂半圆在**内侧**的拼缝 + 两条轮廓线交出来的尖角，用这块抹过线、羽化过的袖布盖住（官方「関節に正円を重ねる / 付け根はぼかす」）。外侧剪影轮廓一律不碰；伸直时 alpha=0，静止画面零改动"
+    },
+    {
+      "id": "arm_l_gusset",
+      "file": "sprites/arm_l_gusset.png",
+      "group": "elbow_fold_l",
+      "layer": 136,
+      "pos": [
+        -47,
+        495
+      ],
+      "size": [
+        56,
+        101
+      ],
+      "pivot": [
+        75.5,
+        553.0
+      ],
+      "note": "肘内侧褶布（Q50）：参考图 wave_up.png 的折臂是**一整块连续的布**，我们两根管子之间会漏出背景三角（logs/asset_qa/q50_notch_probe.png 红色 705px）。这块布按定稿姿势量出缺口、用两边袖子自己的像素填出来，挂在 elbow_fold_? 组（转角 = 前臂的一半 = 角平分线）、层 136/137 垫在两根管子**底下**，伸直时 alpha=0。"
+    },
+    {
+      "id": "arm_r_gusset",
+      "file": "sprites/arm_r_gusset.png",
+      "group": "elbow_fold_r",
+      "layer": 137,
+      "pos": [
+        437,
+        497
+      ],
+      "size": [
+        51,
+        95
+      ],
+      "pivot": [
+        364.5,
+        553.0
+      ],
+      "note": "肘内侧褶布（Q50）：参考图 wave_up.png 的折臂是**一整块连续的布**，我们两根管子之间会漏出背景三角（logs/asset_qa/q50_notch_probe.png 红色 705px）。这块布按定稿姿势量出缺口、用两边袖子自己的像素填出来，挂在 elbow_fold_? 组（转角 = 前臂的一半 = 角平分线）、层 136/137 垫在两根管子**底下**，伸直时 alpha=0。"
+    },
+    {
+      "id": "arm_l_seam",
+      "file": "sprites/arm_l_seam.png",
+      "group": "elbow_fold_l",
+      "layer": 150,
+      "pos": [
+        -38,
+        502
+      ],
+      "size": [
+        103,
+        62
+      ],
+      "pivot": [
+        75.5,
+        553.0
+      ],
+      "note": "肘接缝盖布（Q51）：折起来之后，上臂件的内侧描边和前臂件近端的描边**并排躺在袖子中间**，读起来就是用户第五十一问截图里那条「肘关节的深色线」。参考图 wave_up.png 的折袖里面只有几笔淡褶皱、深色线只在外剪影上。这件按定稿姿势找出「被袖料包住的描边像素」（两管贴合段内，排除袖口罗纹和手），用两边袖子自己的颜色盖掉，层 150/151 压在两根管子**之上**，外剪影永远留 3px 不碰，伸直时 alpha=0。"
+    },
+    {
+      "id": "arm_r_seam",
+      "file": "sprites/arm_r_seam.png",
+      "group": "elbow_fold_r",
+      "layer": 151,
+      "pos": [
+        377,
+        504
+      ],
+      "size": [
+        104,
+        56
+      ],
+      "pivot": [
+        364.5,
+        553.0
+      ],
+      "note": "肘接缝盖布（Q51）：折起来之后，上臂件的内侧描边和前臂件近端的描边**并排躺在袖子中间**，读起来就是用户第五十一问截图里那条「肘关节的深色线」。参考图 wave_up.png 的折袖里面只有几笔淡褶皱、深色线只在外剪影上。这件按定稿姿势找出「被袖料包住的描边像素」（两管贴合段内，排除袖口罗纹和手），用两边袖子自己的颜色盖掉，层 150/151 压在两根管子**之上**，外剪影永远留 3px 不碰，伸直时 alpha=0。"
+    }
+  ],
+  "checks": {
+    "outline_px": 1251,
+    "torso_thigh_trim_px": 148391,
+    "torso_filled_px": 79,
+    "torso_cleared_px": 41281,
+    "root_ext_px": {
+      "l": 3685,
+      "r": 4443
+    },
+    "root_target_w": {
+      "l": 57.0,
+      "r": 64.0
+    },
+    "seam_trim_px": {
+      "l": {
+        "upper": 828,
+        "fore": 252
+      },
+      "r": {
+        "upper": 779,
+        "fore": 253
+      }
+    },
+    "wrist_y": {
+      "l": 666,
+      "r": 666
+    },
+    "hand_stub_px": {
+      "l": 355,
+      "r": 358
+    },
+    "shoulder_cap": {
+      "l": {
+        "radius": 62.0,
+        "px": 5010,
+        "layer": 142
+      },
+      "r": {
+        "radius": 64.6,
+        "px": 5747,
+        "layer": 143
+      }
+    },
+    "static_diff_px": 476,
+    "arm_px": {
+      "l": 18137,
+      "r": 19386
+    }
+  },
+  "shoulder_joint": {
+    "l": [
+      117.5,
+      392.0
+    ],
+    "r": [
+      323.0,
+      396.0
+    ]
+  },
+  "elbow_joint": {
+    "l": [
+      75.5,
+      553.0
+    ],
+    "r": [
+      364.5,
+      553.0
+    ]
+  },
+  "round_socket": {
+    "l": {
+      "r_shoulder": 30.4,
+      "r_elbow": 31.4,
+      "overlap": 4.0,
+      "moved_px_1x": 2261
+    },
+    "r": {
+      "r_shoulder": 34.3,
+      "r_elbow": 34.8,
+      "overlap": 4.0,
+      "moved_px_1x": 2620
+    }
+  },
+  "sleeve_underlay": {
+    "sig": {
+      "target_w_r": 33.5,
+      "target_w_l": 30.5,
+      "overlap": 4.0,
+      "v": 1
+    },
+    "orig_pos": {
+      "arm_l_root": [
+        109,
+        335
+      ],
+      "arm_r_root": [
+        262,
+        335
+      ]
+    },
+    "sides": {
+      "l": {
+        "1x": {
+          "painted_px": 1894,
+          "kept_px": 1236,
+          "size": [
+            49,
+            200
+          ],
+          "pos": [
+            99,
+            362
+          ]
+        },
+        "2x": {
+          "painted_px": 6369,
+          "kept_px": 5030,
+          "size": [
+            95,
+            399
+          ],
+          "pos": [
+            201,
+            724
+          ]
+        }
+      },
+      "r": {
+        "1x": {
+          "painted_px": 1951,
+          "kept_px": 1711,
+          "size": [
+            65,
+            201
+          ],
+          "pos": [
+            289,
+            362
+          ]
+        },
+        "2x": {
+          "painted_px": 6949,
+          "kept_px": 7107,
+          "size": [
+            131,
+            401
+          ],
+          "pos": [
+            578,
+            724
+          ]
+        }
+      }
+    }
+  },
+  "wrist_tab": {
+    "sig": {
+      "v": 3,
+      "angles": {
+        "open": [
+          -36.0,
+          6.0
+        ],
+        "heart": [
+          -6.0,
+          62.0
+        ]
+      },
+      "step": 3.0,
+      "backoff": 2.0
+    },
+    "done": {
+      "arm_l_fore": {
+        "distal": 344,
+        "keep": 163,
+        "drop": 181,
+        "poses": [
+          "open",
+          "heart"
+        ]
+      },
+      "arm_r_fore": {
+        "distal": 350,
+        "keep": 216,
+        "drop": 134,
+        "poses": [
+          "open",
+          "heart"
+        ]
+      }
+    },
+    "note": "tools/wrist_tab_trim.py：裁掉袖管末端不跟手转的肉色方桩（Q47）"
+  },
+  "elbow_cover": {
+    "sig": {
+      "v": 3,
+      "grow": 1.45,
+      "feather": 7.0,
+      "dark": 14.0,
+      "blur": 3,
+      "half": 62.0,
+      "soft": 26.0,
+      "pose": {
+        "r": [
+          21.69,
+          153.73
+        ],
+        "l": [
+          -22.12,
+          -152.17
+        ]
+      }
+    },
+    "sides": {
+      "l": {
+        "r_socket": 31.4,
+        "r_cover": 45.5,
+        "inner_dir": [
+          -0.581,
+          0.814
+        ],
+        "disc_px_2x": 9394,
+        "ink_px_2x": 1345,
+        "size": [
+          63,
+          61
+        ],
+        "pos": [
+          38,
+          538
+        ]
+      },
+      "r": {
+        "r_socket": 34.8,
+        "r_cover": 50.5,
+        "inner_dir": [
+          0.598,
+          0.802
+        ],
+        "disc_px_2x": 11846,
+        "ink_px_2x": 1690,
+        "size": [
+          71,
+          70
+        ],
+        "pos": [
+          337,
+          534
+        ]
+      }
+    }
+  },
+  "elbow_gusset": {
+    "sig": {
+      "v": 2,
+      "pad": 9.0,
+      "feather": 4.0,
+      "reach": 1.06,
+      "blur": 2,
+      "pose": {
+        "r": [
+          21.69,
+          153.73
+        ],
+        "l": [
+          -22.12,
+          -152.17
+        ]
+      },
+      "seam": 4.0,
+      "ink_lum": 118.0,
+      "seam_reach": 2.0,
+      "shade": 0.957
+    },
+    "sides": {
+      "l": {
+        "gap_px_2x": 6880,
+        "fill_px_2x": 10870,
+        "seam_px_2x": 494,
+        "seam_fill_px_2x": 5230,
+        "seam_r_px": [
+          28.9,
+          116.0
+        ],
+        "half_deg": 24.97,
+        "bis_deg": -102.57,
+        "theta_half": -67.07,
+        "net_deg": -74.57,
+        "size": [
+          56,
+          101
+        ],
+        "pos": [
+          -47,
+          495
+        ],
+        "seam_size": [
+          103,
+          62
+        ],
+        "seam_pos": [
+          -38,
+          502
+        ]
+      },
+      "r": {
+        "gap_px_2x": 5345,
+        "fill_px_2x": 8995,
+        "seam_px_2x": 463,
+        "seam_fill_px_2x": 4938,
+        "seam_r_px": [
+          32.8,
+          117.2
+        ],
+        "half_deg": 23.98,
+        "bis_deg": 103.76,
+        "theta_half": 67.06,
+        "net_deg": 73.95,
+        "size": [
+          51,
+          95
+        ],
+        "pos": [
+          437,
+          497
+        ],
+        "seam_size": [
+          104,
+          56
+        ],
+        "seam_pos": [
+          377,
+          504
+        ]
+      }
+    }
+  }
+}

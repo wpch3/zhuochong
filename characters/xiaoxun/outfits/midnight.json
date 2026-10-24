@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "id": "midnight",
+  "name": "夜航（深蓝 × 米）",
+  "forms": [
+    "teen"
+  ],
+  "note": "T45.5 换色档的第一套。躯干 AI 重绘（外套白→深蓝、滚边青→米、衬衫→浅粉、裙→酒红），四段袖子程序化换色跟上（青→米）。剪影与姿势全部沿用原件。 袜条纹与鞋改成藕紫以配酒红裙；腿部容差收到 40 以免染到皮肤。",
+  "parts": {
+    "seg_torso": {
+      "file": "sprites/outfit_midnight/seg_torso@2x.png"
+    },
+    "arm_l_upper": {
+      "file": "sprites/outfit_midnight/arm_l_upper@2x.png"
+    },
+    "arm_r_upper": {
+      "file": "sprites/outfit_midnight/arm_r_upper@2x.png"
+    },
+    "arm_l_fore": {
+      "file": "sprites/outfit_midnight/arm_l_fore@2x.png"
+    },
+    "arm_r_fore": {
+      "file": "sprites/outfit_midnight/arm_r_fore@2x.png"
+    },
+    "arm_l_root": {
+      "file": "sprites/outfit_midnight/arm_l_root@2x.png"
+    },
+    "arm_r_root": {
+      "file": "sprites/outfit_midnight/arm_r_root@2x.png"
+    },
+    "seg_leg_l": {
+      "file": "sprites/outfit_midnight/seg_leg_l@2x.png"
+    },
+    "seg_leg_r": {
+      "file": "sprites/outfit_midnight/seg_leg_r@2x.png"
+    },
+    "seg_foot_l": {
+      "file": "sprites/outfit_midnight/seg_foot_l@2x.png"
+    },
+    "seg_foot_r": {
+      "file": "sprites/outfit_midnight/seg_foot_r@2x.png"
+    },
+    "seg_foot_l_tip": {
+      "file": "sprites/outfit_midnight/seg_foot_l_tip@2x.png"
+    },
+    "seg_foot_r_tip": {
+      "file": "sprites/outfit_midnight/seg_foot_r_tip@2x.png"
+    },
+    "arm_l_cap": {
+      "file": "sprites/outfit_midnight/arm_l_cap@2x.png"
+    },
+    "arm_r_cap": {
+      "file": "sprites/outfit_midnight/arm_r_cap@2x.png"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "name": "Moonshot / Kimi",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 50,
+  "base_url": "https://api.moonshot.cn/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://moonshot"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "kimi-k2-turbo-preview",
+      "price": {
+        "in": 4.0,
+        "out": 16.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "kimi-k2-turbo-preview",
+      "price": {
+        "in": 4.0,
+        "out": 16.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "code.generate",
+      "model": "kimi-k2-turbo-preview",
+      "price": {
+        "in": 4.0,
+        "out": 16.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "moonshot-v1-8k-vision-preview",
+      "price": {
+        "in": 12.0,
+        "out": 12.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "api",
+    "endpoint": "/users/me/balance",
+    "pick": "data.available_balance",
+    "currency": "CNY"
+  },
+  "note": "长上下文见长。国内站 api.moonshot.cn，海外站 api.moonshot.ai —— 两边账号与余额不互通（和 MiniMax 一个套路）。价格随版本变动很快，这里的数字只用于**路由排序**，真实扣费以账单为准（DC80 口径：钱的事只信账单，不信配置）。",
+  "id": "moonshot"
+}

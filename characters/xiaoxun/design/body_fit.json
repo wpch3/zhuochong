@@ -1,0 +1,25 @@
+{
+  "_note": [
+    "body_full.png 的几何锁：模板(design_sheet_*.png) → body_full 像素系 的裁框与缩放。",
+    "为什么要锁死：prepare_sprites.py 原来按「抠完的 alpha bbox」裁剪，",
+    "抠图判据一改 bbox 就变，整张 body_full 平移，design/anchors.json 和 17 个",
+    "切件 JSON 里上百个像素常数全部错位 —— 而且错得很小、不报错、只是哪儿都对不齐。",
+    "2026-10-21 重写抠像时实测，新判据多留 1724 个不透明像素，直接按 bbox 裁横向差 2px。",
+    "",
+    "标定方法：拿候选产物与**已定版**的 body_full 在内部（八邻域腐蚀 4 次）逐像素比色差，",
+    "在 (x0, y0, scale) 三维上搜最小值。小寻 teen 收敛到平均色差 0.21，",
+    "而 ±1px 的邻居是 6.6~11.2 —— 亚像素级唯一解，不是局部极小。",
+    "",
+    "box   = 模板上裁框的左上角（模板像素，可带小数）",
+    "scale = 模板像素 → body_full 像素 的比例",
+    "size  = 输出尺寸，必须与现有 body_full.png 一致"
+  ],
+  "design_sheet_short.png": {
+    "box": [257.95, 28.00],
+    "scale": 0.889795,
+    "size": [445, 1292],
+    "form": "teen",
+    "fitted": "2026-10-21",
+    "residual_mean_abs_color_diff": 0.21
+  }
+}

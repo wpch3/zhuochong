@@ -1,0 +1,174 @@
+name: voice-render
+
+# 云端渲染语音（GitHub Actions）。用途：
+#   - edge-tts（微软神经网络语音）：晓伊=少女、晓双=小女孩，即网上“AI 少女音”的主流做法
+#   - 需要联网与密钥的供应商也可在这里加步骤（沙箱内出网受限，见 docs/HANDOFF_VOICE.md）
+# 触发：手动 workflow_dispatch，或改动 voice 配置/台词/脚本时自动跑。
+on:
+  workflow_dispatch:
+    inputs:
+      character:
+        description: "角色 id（characters/<id>/）"
+        required: true
+        default: xiaoxun
+      only:
+        description: "all | samples | lines | demo | ab（demo=同句×六情绪；ab=语感关/开对照）"
+        required: true
+        default: all
+      prosody:
+        description: "语感引擎 on | off（on=按 config/prosody.json 分段演出）"
+        required: false
+        default: "on"
+      voice:
+        description: "可选：覆盖少女音色（如 zh-CN-XiaoyiNeural）"
+        required: false
+        default: ""
+      provider:
+        description: "用哪家合成：edge-tts（免费，无情绪）| azure（情绪最全）| minimax（二次元音色最全）"
+        required: false
+        default: "edge-tts"
+      cloud_voice:
+        description: "云端音色：azure 写音色名（zh-CN-Xiaoyi:DragonHDFlashLatestNeural），minimax 写 voice_id（female-shaonv）"
+        required: false
+        default: ""
+      cloud_style:
+        description: "云端情绪：写桌宠情绪名（happy/shy/angry…）或供应商自己的 style"
+        required: false
+        default: ""
+  push:
+    paths:
+      - "characters/*/voice/plan.json"
+      - "config/prosody.json"
+      - "tools/voice_prosody.py"
+      - "characters/*/voice/triggers/**"
+      - "tools/voice_render.py"
+      - ".github/workflows/voice-render.yml"
+
+permissions:
+  contents: write      # 失败时把日志提交回仓库（沙箱读不到 Actions 日志域名，只能这样回传）
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    env:
+      CHARACTER: ${{ inputs.character || 'xiaoxun' }}
+      ONLY: ${{ inputs.only || 'all' }}
+      VOICE: ${{ inputs.voice || '' }}
+      PROSODY: ${{ inputs.prosody || 'on' }}
+      PROVIDER: ${{ inputs.provider || 'edge-tts' }}
+      CLOUD_VOICE: ${{ inputs.cloud_voice || '' }}
+      CLOUD_STYLE: ${{ inputs.cloud_style || '' }}
+      # ★ 密钥只经 env 注入，绝不出现在 run: 的命令行里 ——
+      #   命令行会原样打进 Actions 日志，而 env 的值 GitHub 会自动打码。
+      #   没配这两个 secret 时它们就是空字符串，edge-tts 那条路照常跑。
+      ZHUOCHONG_SECRET_AZURE_SPEECH: ${{ secrets.ZHUOCHONG_SECRET_AZURE_SPEECH }}
+      ZHUOCHONG_SECRET_MINIMAX: ${{ secrets.ZHUOCHONG_SECRET_MINIMAX }}
+      ZHUOCHONG_SECRET_MINIMAX_GROUP: ${{ secrets.ZHUOCHONG_SECRET_MINIMAX_GROUP }}
+      ZHUOCHONG_AZURE_REGION: ${{ vars.ZHUOCHONG_AZURE_REGION || 'southeastasia' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装 edge-tts
+        run: python -m pip install --quiet edge-tts
+
+      # 分段演出需要在段间插静音并把片段拼回一条 mp3；没有 ffmpeg 时脚本会退化成
+      # 二进制拼接（无静音），所以这步失败也不致命。
+      - name: 确保 ffmpeg（段间静音与拼接）
+        continue-on-error: true
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+
+      - name: 语感引擎自检（纯逻辑，不联网）
+        run: python tools/voice_prosody.py --selftest
+
+      # 密钥体检：只打印指纹（长度 + 首尾两字 + sha256 前 8 位），不打印密钥本身。
+      # 选了云端供应商却没配 secret 的话，这里就要看出来，而不是渲到一半才炸。
+      - name: 密钥体检（选了云端供应商才做）
+        if: ${{ inputs.provider && inputs.provider != 'edge-tts' }}
+        run: python tools/voice_cloud.py --check --provider "${PROVIDER}" --net
+
+      - name: 合成语音
+        id: render
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          ARGS=""
+          if [ -n "$VOICE" ]; then ARGS="$ARGS --voice $VOICE"; fi
+          if [ -n "$PROVIDER" ]; then ARGS="$ARGS --provider $PROVIDER"; fi
+          if [ -n "$CLOUD_VOICE" ]; then ARGS="$ARGS --cloud-voice $CLOUD_VOICE"; fi
+          if [ -n "$CLOUD_STYLE" ]; then ARGS="$ARGS --cloud-style $CLOUD_STYLE"; fi
+          python tools/voice_render.py --character "$CHARACTER" --root . --only "$ONLY" \
+                 --prosody "$PROSODY" $ARGS 2>&1 | tee /tmp/render.log
+          exit ${PIPESTATUS[0]}
+
+      - name: 失败日志回传（提交到仓库，便于沙箱读取）
+        if: steps.render.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p ci-logs
+          { echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"; \
+            echo "time: $(date -u +%FT%TZ)"; \
+            echo "---- 输出（结尾 5000 字符）----"; \
+            tail -c 5000 /tmp/render.log 2>/dev/null; } > ci-logs/voice-render.log
+          git config user.email "actions@github.com"
+          git config user.name "voice-render bot"
+          git add ci-logs/voice-render.log
+          git commit -q -m "ci: voice-render 日志 [skip ci]"
+          git fetch -q origin "$GITHUB_REF_NAME"
+          git rebase "origin/$GITHUB_REF_NAME" || git rebase --abort
+          git push -q origin "HEAD:$GITHUB_REF_NAME"
+
+      - name: 合成失败则终止（保持红叉）
+        if: steps.render.outcome == 'failure'
+        run: exit 1
+
+      # 空文件 = 该音色在免费通道上不存在（供应商音色表会变动）。必须在提交之前删，
+      # 否则 0 字节的壳会被 commit 回仓库（2026-10-17 踩过）。
+      - name: 清掉失效音色留下的空文件
+        if: steps.render.outcome == 'success'
+        run: find "characters/$CHARACTER/voice" -name '*.mp3' -size -2k -delete
+
+      - name: 提交合成结果到分支（沙箱可直接读取，无需下载 artifact）
+        if: steps.render.outcome == 'success'
+        run: |
+          set +e
+          git config user.email "actions@github.com"
+          git config user.name "voice-render bot"
+          git add -f "characters/$CHARACTER/voice/samples" "characters/$CHARACTER/voice/lines" \
+                     "characters/$CHARACTER/voice/demo" "characters/$CHARACTER/voice/ab" \
+                     "characters/$CHARACTER/voice/catalog.json" 2>/dev/null
+          git commit -q -m "voice-render: 合成结果 [skip ci]"
+          git fetch -q origin "$GITHUB_REF_NAME"
+          git rebase "origin/$GITHUB_REF_NAME" || git rebase --abort
+          git push -q origin "HEAD:$GITHUB_REF_NAME"
+          echo "已提交合成结果"
+
+      - name: 校验产物（数量与非空）
+        run: |
+          set -e
+          D="characters/$CHARACTER/voice"
+          echo "--- 采样 ---"; ls -la "$D/samples" || true
+          echo "--- 语气对照 ---"; ls -la "$D/demo" || true
+          echo "--- A/B ---"; ls -la "$D/ab" || true
+          echo "--- 台词数 ---"; ls "$D/lines" | wc -l
+          # 空文件=该音色失效（供应商音色表会变动），删掉即可，不算失败
+          find "$D" -name '*.mp3' -size -2k -delete
+          echo "有效文件：$(find "$D" -name '*.mp3' | wc -l)"
+          test "$(find "$D" -name '*.mp3' | wc -l)" -gt 0
+
+      - name: 打包
+        run: |
+          cd "characters/$CHARACTER/voice"
+          zip -q -r "$GITHUB_WORKSPACE/voice_$CHARACTER.zip" . -x 'triggers/*' 
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voice-${{ env.CHARACTER }}
+          path: voice_${{ env.CHARACTER }}.zip
+          retention-days: 30

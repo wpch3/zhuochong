@@ -1,0 +1,18 @@
+{
+  "name": "樱色（默认）",
+  "vars": {
+    "--pink": "#ff9ec2",
+    "--pink-deep": "#e0679a",
+    "--blue": "#7fc4e8",
+    "--mint": "#a8e6cf",
+    "--cream": "#fffaf6",
+    "--card": "#fffdfd",
+    "--ink": "#4a4a5a",
+    "--ink-soft": "#8a8aa0",
+    "--line": "#ffe1ee",
+    "--radius": "18px",
+    "--shadow": "0 6px 18px rgba(255, 158, 194, .18)",
+    "--bg-1": "#ffeef6",
+    "--bg-2": "#eef7ff"
+  }
+}

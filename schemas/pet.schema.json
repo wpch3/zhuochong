@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pet.json - 桌宠窗口与交互",
+  "type": "object",
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "window": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "scale": { "type": "number", "exclusiveMinimum": 0.05, "maximum": 4 },
+        "scale_min": { "type": "number", "exclusiveMinimum": 0.05, "maximum": 4 },
+        "scale_max": { "type": "number", "exclusiveMinimum": 0.05, "maximum": 4 },
+        "fps": { "type": "integer", "minimum": 5, "maximum": 120 },
+        "always_on_top": { "type": "boolean" },
+        "click_through": { "type": "boolean" }
+      }
+    },
+    "interaction": {
+      "type": "object",
+      "properties": {
+        "hit_alpha_threshold": { "type": "integer", "minimum": 0, "maximum": 254 },
+        "head_ratio": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+        "idle_sleep_seconds": { "type": "integer", "minimum": 5, "maximum": 36000 },
+        "tool": { "type": "integer", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "tray": {
+      "type": "object",
+      "properties": { "enabled": { "type": "boolean" } }
+    },
+    "character": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "form": { "type": "string" },
+        "outfit": { "type": "string" }
+      }
+    },
+    "log": {
+      "type": "object",
+      "properties": {
+        "file": { "type": "string" },
+        "level": { "type": "integer", "minimum": 0, "maximum": 3 }
+      }
+    }
+  }
+}

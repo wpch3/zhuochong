@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "voices.json - 角色音色映射",
+  "type": "object",
+  "required": ["schema_version", "voices"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "voices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["character"],
+        "properties": {
+          "id": { "type": "string" },
+          "character": { "type": "string", "minLength": 1 },
+          "form": { "type": "string" },
+          "provider": { "type": "string" },
+          "voice": { "type": "string" },
+          "style": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}

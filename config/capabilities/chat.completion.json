@@ -1,0 +1,17 @@
+{
+  "id": "chat.completion",
+  "name": "对话",
+  "kind": "generate",
+  "unit": "token",
+  "input": {
+    "messages": "message[]",
+    "tools": "tool[]?"
+  },
+  "output": {
+    "text": "text",
+    "tool_calls": "tool_call[]?"
+  },
+  "ui": {
+    "panel": "chat"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  // 互动规则表（schema_version 1.0）。改这里即可增删互动，不改代码。
+  // 匹配：kind 必须相同；region（可选）与事件区域相同；mood（可选）与情绪相同；
+  //       min_count 为连续摸头次数下限。同时命中多条时取 priority 最大的（同分取先写的）。
+  // 动作：action 必须是角色 rig.json 里存在的动作名（测试会检查）。
+  // 说话：lines 引用 characters/<角色>/dialogue.json 里的 id；cooldown_s 只限制“说话”，不限制动作。
+  // 好感：affection_gain 为本次互动增加（可为负）的好感值；增加受 affection.daily_cap 每日上限约束。
+  // kind 可选值：poke、hammer、drag_start、drag_end、wake、mood、call_start、call_end、
+  //              call_user_speaking、call_reply、tier_up（好感升档时触发）、
+  //              dress（换装/切差分：互斥组换档时触发）
+  // ★ dress 的 region 写成 "<互斥组>:<档位>"，例如 "hairstyle:long"；
+  //   只写组名（"hairstyle"）的规则是该组的兜底；整组关掉时档位是 "none"
+  //   （所以短发 = "hairstyle:none"，它是底图，不是一个差分件）。
+  // ★ action 写空串 = 只说话、不做动作。换装不该打断正在播的动作。
+  "schema_version": "1.0",
+  "speech": {
+    "enabled": true,        // 总开关：关闭后只做动作，不出台词
+    "min_gap_s": 2.0        // 任意两句台词之间的最短间隔（秒）
+  },
+  "affection": {
+    "daily_cap": 30,        // 每天最多增加的好感值（减少不受限）
+    "tiers": [              // 好感分级：第一档 min 必须为 0，逐档递增
+      { "name": "初识", "min": 0 },
+      { "name": "熟络", "min": 30 },
+      { "name": "亲近", "min": 100 },
+      { "name": "挚友", "min": 250 }
+    ]
+  },
+  "rules": [
+    { "id": "hammer_any",     "kind": "hammer",     "action": "hammered",  "force": true,  "affection_gain": -3, "priority": 10, "cooldown_s": 3,  "lines": ["hammer_1", "hammer_2"] },
+    { "id": "pat_head_combo", "kind": "poke", "region": "head", "min_count": 3, "action": "happy", "reset_count": true, "affection_gain": 3, "priority": 20, "cooldown_s": 6, "lines": ["pat_combo"] },
+    { "id": "pat_head",       "kind": "poke", "region": "head",   "action": "head_pat",  "affection_gain": 2, "priority": 10, "cooldown_s": 8,  "lines": ["pat_head_1", "pat_head_2"] },
+    { "id": "stroke_body",    "kind": "poke", "region": "body",   "action": "stroke",    "affection_gain": 1, "priority": 10, "cooldown_s": 8,  "lines": ["stroke_1", "stroke_2"] },
+    { "id": "poke_feet",      "kind": "poke", "region": "feet",   "action": "surprised", "priority": 10, "cooldown_s": 6,  "lines": ["feet_1"] },
+    { "id": "poke_other",     "kind": "poke",                    "action": "clicked",   "priority": 0,  "cooldown_s": 5,  "lines": ["click_1", "click_2"] },
+    { "id": "drag_start",     "kind": "drag_start", "action": "dragged",   "priority": 10, "cooldown_s": 10, "lines": ["drag_1"] },
+    { "id": "drag_end",       "kind": "drag_end",   "action": "surprised", "affection_gain": 1, "priority": 10, "cooldown_s": 10, "lines": ["drop_1"] },
+    { "id": "wake_up",        "kind": "wake",       "action": "idle",      "force": true, "affection_gain": 1, "priority": 10, "cooldown_s": 30, "lines": ["wake_1"] },
+    { "id": "mood_joy",       "kind": "mood", "mood": "joy",      "action": "happy",    "affection_gain": 1, "priority": 5, "cooldown_s": 20, "lines": ["mood_joy_1"] },
+    { "id": "mood_sad",       "kind": "mood", "mood": "sad",      "action": "sad",      "priority": 5, "cooldown_s": 20, "lines": ["mood_sad_1"] },
+    { "id": "mood_surprise",  "kind": "mood", "mood": "surprise", "action": "surprised","priority": 5, "cooldown_s": 20, "lines": ["mood_surprise_1"] },
+    { "id": "mood_think",     "kind": "mood", "mood": "think",    "action": "think",    "priority": 5, "cooldown_s": 20, "lines": ["mood_think_1"] },
+    { "id": "mood_sleepy",    "kind": "mood", "mood": "sleepy",   "action": "sleep",    "priority": 5, "cooldown_s": 60, "lines": ["mood_sleepy_1"] },
+    { "id": "call_start",     "kind": "call_start",         "action": "talk",  "affection_gain": 1, "priority": 10, "cooldown_s": 0, "lines": ["call_start_1"] },
+    { "id": "call_user",      "kind": "call_user_speaking", "action": "focus", "force": true, "priority": 10, "cooldown_s": 0, "lines": [] },
+    { "id": "call_reply",     "kind": "call_reply",         "action": "talk",  "force": true, "priority": 10, "cooldown_s": 0, "lines": [] },
+    { "id": "call_end",       "kind": "call_end",           "action": "idle",  "affection_gain": 1, "priority": 10, "cooldown_s": 0, "lines": ["call_end_1"] },
+    { "id": "dress_hair_long",  "kind": "dress", "region": "hairstyle:long", "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hair_long"] },
+    { "id": "dress_hair_twin",  "kind": "dress", "region": "hairstyle:twin", "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hair_twin"] },
+    { "id": "dress_hair_pony",  "kind": "dress", "region": "hairstyle:pony", "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hair_pony"] },
+    { "id": "dress_hair_short", "kind": "dress", "region": "hairstyle:none", "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hair_short"] },
+    { "id": "dress_hood_up",    "kind": "dress", "region": "hood_pose:up",   "action": "", "affection_gain": 1, "priority": 10, "cooldown_s": 4, "lines": ["dress_hood_up"] },
+    { "id": "dress_hood_down",  "kind": "dress", "region": "hood_pose:down", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_hood_down"] },
+    { "id": "dress_tail_up",    "kind": "dress", "region": "tail_pose:up",   "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_tail_up"] },
+    { "id": "dress_tail_puff",  "kind": "dress", "region": "tail_pose:puff", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_tail_puff"] },
+    { "id": "dress_tail_tuck",  "kind": "dress", "region": "tail_pose:tuck", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_tail_tuck"] },
+    { "id": "dress_tail_relax", "kind": "dress", "region": "tail_pose:relaxed", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_tail_relaxed"] },
+    { "id": "dress_eye_star",   "kind": "dress", "region": "eye_hl_style:star",  "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_eye_star"] },
+    { "id": "dress_eye_round",  "kind": "dress", "region": "eye_hl_style:round", "action": "", "priority": 10, "cooldown_s": 4, "lines": ["dress_eye_round"] },
+    { "id": "dress_any",        "kind": "dress", "action": "", "priority": 0, "cooldown_s": 6, "lines": ["dress_any"] },
+    { "id": "tier_up",        "kind": "tier_up",            "action": "happy", "priority": 10, "cooldown_s": 0, "lines": ["tier_up"] }
+  ]
+}

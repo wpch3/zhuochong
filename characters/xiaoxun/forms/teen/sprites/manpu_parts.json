@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0",
+  "effects": [
+    {
+      "id": "sweat",
+      "file": "sprites/fx_sweat.png",
+      "size": [
+        92,
+        92
+      ],
+      "instances": [
+        {
+          "id": "fx_sweat_1",
+          "pos": [
+            64,
+            105
+          ],
+          "scale": 1.0,
+          "size_class": "lg",
+          "rot_deg": 6.0,
+          "freq": 0.41,
+          "phase": 0.0
+        }
+      ]
+    },
+    {
+      "id": "anger",
+      "file": "sprites/fx_anger.png",
+      "size": [
+        76,
+        76
+      ],
+      "instances": [
+        {
+          "id": "fx_anger_1",
+          "pos": [
+            375,
+            82
+          ],
+          "scale": 1.0,
+          "size_class": "lg",
+          "rot_deg": -8.0,
+          "freq": 0.83,
+          "phase": 0.0
+        }
+      ]
+    },
+    {
+      "id": "gloom",
+      "file": "sprites/fx_gloom.png",
+      "size": [
+        108,
+        108
+      ],
+      "instances": [
+        {
+          "id": "fx_gloom_1",
+          "pos": [
+            49,
+            -6
+          ],
+          "scale": 1.0,
+          "size_class": "lg",
+          "rot_deg": 0.0,
+          "freq": 0.23,
+          "phase": 0.0
+        }
+      ]
+    },
+    {
+      "id": "zzz",
+      "file": "sprites/fx_zzz.png",
+      "size": [
+        96,
+        96
+      ],
+      "instances": [
+        {
+          "id": "fx_zzz_1",
+          "pos": [
+            403,
+            -13
+          ],
+          "scale": 1.0,
+          "size_class": "lg",
+          "rot_deg": 4.0,
+          "freq": 0.31,
+          "phase": 0.0
+        }
+      ]
+    }
+  ],
+  "sources": {
+    "sweat": {
+      "src": "characters/xiaoxun/design/redraw/fx_sweat.png",
+      "src_size": [
+        1254,
+        1254
+      ],
+      "crop_side": 1276,
+      "cover": 0.2985,
+      "files": [
+        "fx_sweat.png",
+        "fx_sweat@2x.png"
+      ]
+    },
+    "anger": {
+      "src": "characters/xiaoxun/design/redraw/fx_anger.png",
+      "src_size": [
+        1254,
+        1254
+      ],
+      "crop_side": 1211,
+      "cover": 0.438,
+      "files": [
+        "fx_anger.png",
+        "fx_anger@2x.png"
+      ]
+    },
+    "gloom": {
+      "src": "characters/xiaoxun/design/redraw/fx_gloom.png",
+      "src_size": [
+        1254,
+        1254
+      ],
+      "crop_side": 1265,
+      "cover": 0.3899,
+      "files": [
+        "fx_gloom.png",
+        "fx_gloom@2x.png"
+      ]
+    },
+    "zzz": {
+      "src": "characters/xiaoxun/design/redraw/fx_zzz.png",
+      "src_size": [
+        1254,
+        1254
+      ],
+      "crop_side": 1167,
+      "cover": 0.244,
+      "files": [
+        "fx_zzz.png",
+        "fx_zzz@2x.png"
+      ]
+    }
+  }
+}

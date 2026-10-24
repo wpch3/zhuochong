@@ -1,0 +1,31 @@
+{
+  "id": "edge_xiaoyi",
+  "name": "晓伊（edge-tts 免费通道）",
+  "provider": "edge_tts",
+  "voice_id": "zh-CN-XiaoyiNeural",
+  "persona": "shoujo",
+  "anime": true,
+  "langs": [
+    "zh-CN"
+  ],
+  "emotion_mode": "prosody",
+  "emotions": [],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ]
+  },
+  "recommend": "不要密钥就能用，现有 39 条台词就是它生成的。但官方 README 明说 SSML style 被移除，所以它永远做不到情绪变化——只能靠语速/音调模拟",
+  "source": "rany2/edge-tts README：Custom SSML support was removed",
+  "roles": [],
+  "enabled": true
+}

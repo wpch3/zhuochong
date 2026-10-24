@@ -1,0 +1,16 @@
+{
+  "id": "image.edit",
+  "name": "编辑图片",
+  "kind": "transform",
+  "unit": "image",
+  "input": {
+    "images": "file[]",
+    "prompt": "text"
+  },
+  "output": {
+    "images": "file[]"
+  },
+  "ui": {
+    "panel": "gallery"
+  }
+}

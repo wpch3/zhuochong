@@ -1,0 +1,164 @@
+{
+  "schema_version": "1.0",
+  "source_iris": "characters/xiaoxun/design/redraw/eye_star_iris.png",
+  "iris_crop": [
+    473,
+    471,
+    1103,
+    1103
+  ],
+  "star_area_ratio": 0.1948,
+  "star_points": 4,
+  "source_sparkle": "characters/xiaoxun/design/redraw/fx_sparkle.png",
+  "eyes": [
+    {
+      "side": "l",
+      "file": "sprites/eye_l_ball_star.png",
+      "size": [
+        31,
+        30
+      ],
+      "disc_box": [
+        2,
+        2,
+        29,
+        28
+      ],
+      "checks": {
+        "keycolor_px": 0,
+        "star_contrast": 77.5,
+        "edge_contrast": 34.3,
+        "ground_kept": 1.0,
+        "star_px": 62
+      }
+    },
+    {
+      "side": "r",
+      "file": "sprites/eye_r_ball_star.png",
+      "size": [
+        31,
+        32
+      ],
+      "disc_box": [
+        2,
+        2,
+        29,
+        30
+      ],
+      "checks": {
+        "keycolor_px": 0,
+        "star_contrast": 67.5,
+        "edge_contrast": 43.1,
+        "ground_kept": 1.0,
+        "star_px": 74
+      }
+    }
+  ],
+  "sparkle": {
+    "file": "sprites/fx_sparkle.png",
+    "size": [
+      72,
+      72
+    ],
+    "blend": "add",
+    "keycolor_px": 0,
+    "instances": [
+      {
+        "id": "fx_sparkle_1",
+        "pos": [
+          39,
+          25
+        ],
+        "scale": 1.0,
+        "size_class": "lg",
+        "rot_deg": -12.0,
+        "freq": 0.37,
+        "phase": 0.0
+      },
+      {
+        "id": "fx_sparkle_2",
+        "pos": [
+          408,
+          41
+        ],
+        "scale": 1.0,
+        "size_class": "lg",
+        "rot_deg": 14.0,
+        "freq": 0.29,
+        "phase": 0.42
+      },
+      {
+        "id": "fx_sparkle_3",
+        "pos": [
+          69,
+          139
+        ],
+        "scale": 0.68,
+        "size_class": "md",
+        "rot_deg": 22.0,
+        "freq": 0.53,
+        "phase": 0.17
+      },
+      {
+        "id": "fx_sparkle_4",
+        "pos": [
+          378,
+          124
+        ],
+        "scale": 0.68,
+        "size_class": "md",
+        "rot_deg": -18.0,
+        "freq": 0.43,
+        "phase": 0.63
+      },
+      {
+        "id": "fx_sparkle_5",
+        "pos": [
+          131,
+          -10
+        ],
+        "scale": 0.68,
+        "size_class": "md",
+        "rot_deg": 8.0,
+        "freq": 0.61,
+        "phase": 0.85
+      },
+      {
+        "id": "fx_sparkle_6",
+        "pos": [
+          316,
+          -16
+        ],
+        "scale": 0.68,
+        "size_class": "md",
+        "rot_deg": -26.0,
+        "freq": 0.47,
+        "phase": 0.31
+      },
+      {
+        "id": "fx_sparkle_7",
+        "pos": [
+          29,
+          216
+        ],
+        "scale": 0.45,
+        "size_class": "sm",
+        "rot_deg": 31.0,
+        "freq": 0.71,
+        "phase": 0.54
+      },
+      {
+        "id": "fx_sparkle_8",
+        "pos": [
+          418,
+          203
+        ],
+        "scale": 0.45,
+        "size_class": "sm",
+        "rot_deg": -34.0,
+        "freq": 0.67,
+        "phase": 0.09
+      }
+    ]
+  }
+}

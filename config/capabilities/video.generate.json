@@ -1,0 +1,17 @@
+{
+  "id": "video.generate",
+  "name": "生成视频",
+  "kind": "generate",
+  "unit": "second",
+  "input": {
+    "prompt": "text",
+    "seconds": "int?",
+    "ref_image": "file?"
+  },
+  "output": {
+    "videos": "file[]"
+  },
+  "ui": {
+    "panel": "gallery"
+  }
+}
