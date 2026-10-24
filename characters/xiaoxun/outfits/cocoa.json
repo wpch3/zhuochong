@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "id": "cocoa",
+  "name": "可可（针织开衫）",
+  "forms": [
+    "teen"
+  ],
+  "note": "T45.6/T45.7 档的样板：这一套**不是改色，是换衣服** —— 棒球外套换成奶油粗针织开衫、衬衫换成焦糖高领、百褶裙换成棕灯芯绒。证明第 2/3 档和第 1 档**走的是同一条流水线**，差别只在提示词写什么、包里列几个部件。",
+  "parts": {
+    "seg_torso": {
+      "file": "sprites/outfit_cocoa/seg_torso@2x.png"
+    },
+    "arm_l_upper": {
+      "file": "sprites/outfit_cocoa/arm_l_upper@2x.png"
+    },
+    "arm_r_upper": {
+      "file": "sprites/outfit_cocoa/arm_r_upper@2x.png"
+    },
+    "arm_l_fore": {
+      "file": "sprites/outfit_cocoa/arm_l_fore@2x.png"
+    },
+    "arm_r_fore": {
+      "file": "sprites/outfit_cocoa/arm_r_fore@2x.png"
+    },
+    "arm_l_root": {
+      "file": "sprites/outfit_cocoa/arm_l_root@2x.png"
+    },
+    "arm_r_root": {
+      "file": "sprites/outfit_cocoa/arm_r_root@2x.png"
+    },
+    "seg_leg_l": {
+      "file": "sprites/outfit_cocoa/seg_leg_l@2x.png"
+    },
+    "seg_leg_r": {
+      "file": "sprites/outfit_cocoa/seg_leg_r@2x.png"
+    },
+    "seg_foot_l": {
+      "file": "sprites/outfit_cocoa/seg_foot_l@2x.png"
+    },
+    "seg_foot_r": {
+      "file": "sprites/outfit_cocoa/seg_foot_r@2x.png"
+    },
+    "seg_foot_l_tip": {
+      "file": "sprites/outfit_cocoa/seg_foot_l_tip@2x.png"
+    },
+    "seg_foot_r_tip": {
+      "file": "sprites/outfit_cocoa/seg_foot_r_tip@2x.png"
+    },
+    "arm_l_cap": {
+      "file": "sprites/outfit_cocoa/arm_l_cap@2x.png"
+    },
+    "arm_r_cap": {
+      "file": "sprites/outfit_cocoa/arm_r_cap@2x.png"
+    }
+  }
+}

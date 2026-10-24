@@ -1,0 +1,280 @@
+{
+  "_note": "由 tools/cut_from_sheets.py 量出来的发型件几何。全部来自参考模板，没有一个数是手调的 —— 手调常数本来就是在替\"碎片之间没有共同约束\"擦屁股。",
+  "scale_sheet_to_bodyfull": 0.89042,
+  "head_unit_px": 278.0384,
+  "pieces": {
+    "hair_twin_back_l": {
+      "sprite_file": "sheetcut_hair_twin_back_l.png",
+      "ref": "head_top",
+      "pos_rel": [
+        -0.58913,
+        1.168916
+      ],
+      "sprite_h_rel": 1.584089,
+      "width_ratio": 1.0,
+      "px": [
+        238,
+        164,
+        392,
+        621
+      ],
+      "content_px": [
+        155,
+        458
+      ],
+      "slot": "head_side_hair"
+    },
+    "hair_twin_back_r": {
+      "sprite_file": "sheetcut_hair_twin_back_r.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.634228,
+        1.168916
+      ],
+      "sprite_h_rel": 1.584089,
+      "width_ratio": 1.0,
+      "px": [
+        621,
+        164,
+        773,
+        621
+      ],
+      "content_px": [
+        153,
+        458
+      ],
+      "slot": "head_side_hair"
+    },
+    "hair_twin_crown": {
+      "sprite_file": "sheetcut_hair_twin_crown.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.020948,
+        0.62609
+      ],
+      "sprite_h_rel": 0.978815,
+      "width_ratio": 1.0,
+      "px": [
+        323,
+        82,
+        688,
+        364
+      ],
+      "content_px": [
+        366,
+        283
+      ],
+      "slot": "head_crown_tied"
+    },
+    "hair_twin_side_l": {
+      "sprite_file": "sheetcut_hair_twin_side_l.png",
+      "ref": "head_top",
+      "pos_rel": [
+        -0.502662,
+        1.308225
+      ],
+      "sprite_h_rel": 1.255512,
+      "width_ratio": 1.0,
+      "px": [
+        238,
+        255,
+        446,
+        617
+      ],
+      "content_px": [
+        209,
+        363
+      ],
+      "slot": "head_side_sweep"
+    },
+    "hair_twin_side_r": {
+      "sprite_file": "sheetcut_hair_twin_side_r.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.542957,
+        1.309826
+      ],
+      "sprite_h_rel": 1.25897,
+      "width_ratio": 1.0,
+      "px": [
+        564,
+        255,
+        773,
+        618
+      ],
+      "content_px": [
+        210,
+        364
+      ],
+      "slot": "head_side_sweep"
+    },
+    "hair_pony_back": {
+      "sprite_file": "sheetcut_hair_pony_back.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.562172,
+        1.471553
+      ],
+      "sprite_h_rel": 3.033288,
+      "width_ratio": 1.0,
+      "px": [
+        534,
+        49,
+        815,
+        925
+      ],
+      "content_px": [
+        282,
+        877
+      ],
+      "slot": "body_back_pony"
+    },
+    "hair_pony_crown": {
+      "sprite_file": "sheetcut_hair_pony_crown.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.192282,
+        0.622888
+      ],
+      "sprite_h_rel": 0.985732,
+      "width_ratio": 1.0,
+      "px": [
+        391,
+        80,
+        727,
+        364
+      ],
+      "content_px": [
+        337,
+        285
+      ],
+      "slot": "head_crown_tied"
+    },
+    "hair_pony_side_l": {
+      "sprite_file": "sheetcut_hair_pony_side_l.png",
+      "ref": "head_top",
+      "pos_rel": [
+        -0.232051,
+        0.86788
+      ],
+      "sprite_h_rel": 0.304366,
+      "width_ratio": 1.0,
+      "px": [
+        407,
+        255,
+        446,
+        342
+      ],
+      "content_px": [
+        40,
+        88
+      ],
+      "slot": "head_side_sweep"
+    },
+    "hair_pony_side_r": {
+      "sprite_file": "sheetcut_hair_pony_side_r.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.610209,
+        1.801411
+      ],
+      "sprite_h_rel": 2.320794,
+      "width_ratio": 1.0,
+      "px": [
+        564,
+        255,
+        815,
+        925
+      ],
+      "content_px": [
+        252,
+        671
+      ],
+      "slot": "head_side_sweep"
+    },
+    "hair_long_back": {
+      "sprite_file": "sheetcut_hair_long_back.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.022549,
+        1.686121
+      ],
+      "sprite_h_rel": 3.303067,
+      "width_ratio": 1.0,
+      "px": [
+        211,
+        77,
+        801,
+        1031
+      ],
+      "content_px": [
+        591,
+        955
+      ],
+      "slot": "body_back_hair"
+    },
+    "hair_long_crown": {
+      "sprite_file": "sheetcut_hair_long_crown.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.02415,
+        0.62609
+      ],
+      "sprite_h_rel": 0.978815,
+      "width_ratio": 1.0,
+      "px": [
+        372,
+        82,
+        641,
+        364
+      ],
+      "content_px": [
+        270,
+        283
+      ],
+      "slot": "head_crown_tied"
+    },
+    "hair_long_side_l": {
+      "sprite_file": "sheetcut_hair_long_side_l.png",
+      "ref": "head_top",
+      "pos_rel": [
+        -0.44822,
+        1.942322
+      ],
+      "sprite_h_rel": 2.62516,
+      "width_ratio": 1.0,
+      "px": [
+        211,
+        255,
+        507,
+        1013
+      ],
+      "content_px": [
+        297,
+        759
+      ],
+      "slot": "head_side_long"
+    },
+    "hair_long_side_r": {
+      "sprite_file": "sheetcut_hair_long_side_r.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.498121,
+        1.94072
+      ],
+      "sprite_h_rel": 2.621702,
+      "width_ratio": 1.0,
+      "px": [
+        508,
+        255,
+        801,
+        1012
+      ],
+      "content_px": [
+        294,
+        758
+      ],
+      "slot": "head_side_long"
+    }
+  }
+}

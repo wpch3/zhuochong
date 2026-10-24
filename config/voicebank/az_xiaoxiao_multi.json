@@ -1,0 +1,46 @@
+{
+  "id": "az_xiaoxiao_multi",
+  "name": "晓晓 多语言（91 种语言）",
+  "provider": "azure_speech",
+  "voice_id": "zh-CN-XiaoxiaoMultilingualNeural",
+  "persona": "young_woman",
+  "anime": false,
+  "langs": [
+    "zh-CN",
+    "ja-JP",
+    "en-US",
+    "ko-KR"
+  ],
+  "emotion_mode": "style",
+  "emotions": [
+    "affectionate",
+    "cheerful",
+    "empathetic",
+    "excited",
+    "poetry-reading",
+    "sorry",
+    "story"
+  ],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ],
+    "style_degree": [
+      0.01,
+      2.0
+    ]
+  },
+  "recommend": "同一把嗓子说中/日/英，音色不跳——跨语言对话用它",
+  "source": "Azure Voice Gallery：Xiaoxiao Multilingual，+91 语言",
+  "roles": [],
+  "enabled": true
+}

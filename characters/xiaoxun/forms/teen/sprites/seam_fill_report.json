@@ -1,0 +1,139 @@
+{
+  "grow_px": 3,
+  "close_k": 9,
+  "max_blob": 400,
+  "per_pose": {
+    "none/down/+0": {
+      "holes": 2833,
+      "seam": 2833
+    },
+    "none/down/-12": {
+      "holes": 2651,
+      "seam": 2651
+    },
+    "none/down/+12": {
+      "holes": 2873,
+      "seam": 2873
+    },
+    "none/up/+0": {
+      "holes": 1236,
+      "seam": 1236
+    },
+    "none/up/-12": {
+      "holes": 1553,
+      "seam": 1553
+    },
+    "none/up/+12": {
+      "holes": 1644,
+      "seam": 1644
+    },
+    "long/down/+0": {
+      "holes": 3600,
+      "seam": 3600
+    },
+    "long/down/-12": {
+      "holes": 3611,
+      "seam": 3611
+    },
+    "long/down/+12": {
+      "holes": 3481,
+      "seam": 3481
+    },
+    "long/up/+0": {
+      "holes": 3962,
+      "seam": 3472
+    },
+    "long/up/-12": {
+      "holes": 3962,
+      "seam": 3472
+    },
+    "long/up/+12": {
+      "holes": 3962,
+      "seam": 3472
+    },
+    "twin/down/+0": {
+      "holes": 3853,
+      "seam": 3853
+    },
+    "twin/down/-12": {
+      "holes": 4500,
+      "seam": 4500
+    },
+    "twin/down/+12": {
+      "holes": 3793,
+      "seam": 3793
+    },
+    "twin/up/+0": {
+      "holes": 4402,
+      "seam": 4402
+    },
+    "twin/up/-12": {
+      "holes": 4402,
+      "seam": 4402
+    },
+    "twin/up/+12": {
+      "holes": 4402,
+      "seam": 4402
+    },
+    "pony/down/+0": {
+      "holes": 2828,
+      "seam": 2828
+    },
+    "pony/down/-12": {
+      "holes": 3626,
+      "seam": 3626
+    },
+    "pony/down/+12": {
+      "holes": 4897,
+      "seam": 3591
+    },
+    "pony/up/+0": {
+      "holes": 3529,
+      "seam": 3529
+    },
+    "pony/up/-12": {
+      "holes": 3529,
+      "seam": 3529
+    },
+    "pony/up/+12": {
+      "holes": 3529,
+      "seam": 3529
+    },
+    "none/down/+0/-acc_hair_crown_twin+acc_hair_crown_pony+acc_hair_crown_long+acc_hair_twin_l+acc_hair_twin_r+acc_hair_pony+acc_hair_long+acc_hair_sidelong_l+acc_hair_sidelong_r": {
+      "holes": 2833,
+      "seam": 2833
+    },
+    "none/down/+0/-acc_hood_up_twin+acc_hair_hood_twin+acc_hood_up_pony+acc_hair_hood_pony+acc_hood_up_long+acc_hair_hood_long": {
+      "holes": 2833,
+      "seam": 2833
+    },
+    "long/down/+0/-hair_back+hair_side_l+hair_side_r+hair_front+acc_hood_up": {
+      "holes": 3600,
+      "seam": 3600
+    },
+    "twin/down/+0/-hair_back+hair_side_l+hair_side_r+hair_front+acc_hood_up": {
+      "holes": 3853,
+      "seam": 3853
+    },
+    "pony/down/+0/-hair_back+hair_side_l+hair_side_r+hair_front+acc_hood_up": {
+      "holes": 2828,
+      "seam": 2828
+    }
+  },
+  "filled_px": 2378,
+  "parts": {
+    "acc_tail_cat_relaxed": 435,
+    "seg_leg_l": 86,
+    "seg_leg_r": 103,
+    "seg_foot_l": 554,
+    "seg_foot_r": 409,
+    "seg_foot_l_tip": 25,
+    "seg_foot_r_tip": 12,
+    "acc_ear_cat_l": 335,
+    "hair_ahoge": 231,
+    "acc_hair_sweep_twin_l": 170,
+    "acc_hair_sweep_twin_r": 2,
+    "acc_hair_sweep_pony_r": 10,
+    "acc_ear_cat_r": 6
+  }
+}

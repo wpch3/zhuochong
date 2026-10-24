@@ -1,0 +1,40 @@
+{
+  "id": "azure_speech",
+  "name": "Azure 语音服务",
+  "kind": "tts",
+  "protocol": "azure_ssml",
+  "local": false,
+  "enabled": false,
+  "priority": 60,
+  "base_url": "https://{region}.tts.speech.microsoft.com/cognitiveservices/v1",
+  "auth": {
+    "type": "header",
+    "key_ref": "secret://azure_speech",
+    "header": "Ocp-Apim-Subscription-Key"
+  },
+  "capabilities": [
+    {
+      "cap": "tts.speak",
+      "model": "neural",
+      "price": {
+        "unit": 16.0,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "hd": {
+    "model": "DragonHDFlashLatest",
+    "price": { "unit": 22.0, "per": 1000000, "currency": "USD" },
+    "regions": ["eastus", "westeurope", "southeastasia", "chinanorth3"],
+    "voices": {
+      "zh-CN-Xiaoyi:DragonHDFlashLatestNeural": ["cute", "shy", "gentle", "nervous", "complaining", "angry", "sad", "strict"],
+      "zh-CN-Xiaoyou:DragonHDFlashLatestNeural": ["cute", "chat", "cheerful", "story", "poetry-reading", "angry", "sad"],
+      "zh-CN-Xiaoshuang:DragonHDFlashLatestNeural": ["chat"]
+    }
+  },
+  "note": "情绪最全的一家：SSML 的 mstts:express-as style + styledegree + role。F0 免费层每月 50 万字符（标准 neural；HD 是另一档计费，别当免费）。region 要用户在设置里填（base_url 里的 {region} 占位），香港用户建议 southeastasia。★ 2026-10-17 核对价格：标准 neural $16/100万字符，**Neural HD $22/100万字符**（2026-03 从 $30 降下来）。hd 段里是 Dragon HD Flash 的可用区域与音色风格表 —— 晓伊的 cute/shy 正是我们要的二次元萌系，且晓双/晓悠（edge 免费通道上不存在）在这里有。取 Key 步骤见 docs/ops/VOICE_KEYS.md。"
+}

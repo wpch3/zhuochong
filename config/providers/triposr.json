@@ -1,0 +1,29 @@
+{
+  "name": "TripoSR（本机建模·轻量）",
+  "kind": "local_script",
+  "local": true,
+  "enabled": false,
+  "priority": 72,
+  "base_url": "http://127.0.0.1:8085",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "model3d.generate",
+      "model": "TripoSR",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 6,
+    "note": "官方 README：默认参数约 6GB 显存，可回落 CPU；A100 上单图 <0.5 秒。"
+  },
+  "note": "★ **MIT**（代码 + 权重），没有地域/月活限制 —— 这是\"先用起来\"的那一档：单图前馈出网格，质量不如 Hunyuan3D，但 6GB 卡就能跑、许可干净。路线：想看立体小寻/手办预览走 TripoSR，要 PBR 贴图的成品再上 Hunyuan3D。",
+  "id": "triposr"
+}

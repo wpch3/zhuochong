@@ -1,0 +1,89 @@
+{
+  "source": "eye_open_left.png / eye_open_right.png",
+  "eyes": [
+    {
+      "side": "l",
+      "iris_center": [
+        85.9,
+        26.4
+      ],
+      "iris_radius": 13.4,
+      "aperture_px": 588,
+      "ball_offset": [
+        71,
+        12
+      ],
+      "ball_size": [
+        31,
+        30
+      ],
+      "travel": [
+        5,
+        4
+      ],
+      "aperture_size": [
+        27,
+        30
+      ],
+      "sclera": "#FAFAFB",
+      "patch_pos": [
+        98,
+        178
+      ],
+      "patch_size": [
+        117,
+        68
+      ],
+      "socket": "eye_l_socket.png",
+      "base": "eye_l_base.png",
+      "ball": "eye_l_ball.png",
+      "lash": "eye_l_lash.png",
+      "ball_pos": [
+        169,
+        190
+      ]
+    },
+    {
+      "side": "r",
+      "iris_center": [
+        29.1,
+        22.5
+      ],
+      "iris_radius": 13.6,
+      "aperture_px": 643,
+      "ball_offset": [
+        14,
+        7
+      ],
+      "ball_size": [
+        31,
+        32
+      ],
+      "travel": [
+        4,
+        4
+      ],
+      "aperture_size": [
+        25,
+        31
+      ],
+      "sclera": "#FAF9FA",
+      "patch_pos": [
+        228,
+        178
+      ],
+      "patch_size": [
+        119,
+        68
+      ],
+      "socket": "eye_r_socket.png",
+      "base": "eye_r_base.png",
+      "ball": "eye_r_ball.png",
+      "lash": "eye_r_lash.png",
+      "ball_pos": [
+        242,
+        185
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "edge_tts",
+  "name": "Edge TTS（免费通道）",
+  "kind": "tts",
+  "protocol": "edge_ws",
+  "local": false,
+  "enabled": true,
+  "priority": 20,
+  "base_url": "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "tts.speak",
+      "model": "edge-neural",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "note": "不要密钥就能用，现有 39 条台词就是它生成的。两条硬限制：① 官方 README 明说 custom SSML 被移除，所以**做不了情绪**，只能调 rate/pitch/volume；② 它是逆向接口，2025-12 曾大规模断供，不能当主力。所以只做免费保底。"
+}

@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "persona.json - 角色人设（三层：蓝本 / 预设+微调 / 自由文本）",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "character"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "character": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 47
+    },
+    "preset": {
+      "type": "string",
+      "maxLength": 23,
+      "description": "config/persona_presets.json 里的预设 id；blueprint=沿用角色原设"
+    },
+    "traits": {
+      "type": "object",
+      "description": "每个维度 1~5，键必须是预设库 traits 里的 id"
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "nickname": {
+          "type": "string",
+          "maxLength": 31,
+          "description": "它怎么称呼你；空 = 不特别称呼"
+        },
+        "self": {
+          "type": "string",
+          "maxLength": 31,
+          "description": "它怎么自称"
+        }
+      }
+    },
+    "custom": {
+      "type": "string",
+      "maxLength": 511,
+      "description": "自由追加的一段设定，拼在最后，优先级最高"
+    },
+    "taboo": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "maxLength": 31
+      }
+    },
+    "meeting": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "user_name": {
+          "type": "string",
+          "maxLength": 31
+        },
+        "where": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "when": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "how": {
+          "type": "string",
+          "maxLength": 127
+        },
+        "relation": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "_note": {
+          "type": "string"
+        }
+      }
+    },
+    "story": {
+      "type": "object",
+      "properties": {
+        "_note": {
+          "type": "string"
+        },
+        "tiers": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": [
+              "tier",
+              "brief"
+            ],
+            "properties": {
+              "tier": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 23
+              },
+              "brief": {
+                "type": "string",
+                "maxLength": 159
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

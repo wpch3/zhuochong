@@ -1,0 +1,136 @@
+{
+  "note": "烘进别的部件里的头发/衣领残留已擦除（tools/clean_baked_residue.py）",
+  "body": [
+    {
+      "file": "seg_torso.png",
+      "removed_px": 971,
+      "total_px": 109056
+    },
+    {
+      "file": "seg_head.png",
+      "removed_px": 3691,
+      "total_px": 29144
+    }
+  ],
+  "keep_ellipse": [
+    20.0,
+    17.0
+  ],
+  "feather": 6.0,
+  "hair_threshold_b_minus_r": [
+    2.0,
+    7.0
+  ],
+  "iris_centers": {
+    "l": [
+      383.9,
+      272.4
+    ],
+    "r": [
+      457.1,
+      268.5
+    ]
+  },
+  "parts": [
+    {
+      "file": "eye_l_base.png",
+      "origin": [
+        298,
+        246
+      ],
+      "removed_px": 2704,
+      "total_px": 4719,
+      "removed_pct": 57.3
+    },
+    {
+      "file": "eye_r_base.png",
+      "origin": [
+        428,
+        246
+      ],
+      "removed_px": 2970,
+      "total_px": 4566,
+      "removed_pct": 65.05
+    },
+    {
+      "file": "eye_l_wide.png",
+      "origin": [
+        343,
+        234
+      ],
+      "removed_px": 816,
+      "total_px": 4434,
+      "removed_pct": 18.4
+    },
+    {
+      "file": "eye_r_wide.png",
+      "origin": [
+        416,
+        229
+      ],
+      "removed_px": 1015,
+      "total_px": 4369,
+      "removed_pct": 23.23
+    },
+    {
+      "file": "eye_l_closed.png",
+      "origin": [
+        356,
+        245
+      ],
+      "removed_px": 8,
+      "total_px": 2680,
+      "removed_pct": 0.3
+    },
+    {
+      "file": "eye_r_closed.png",
+      "origin": [
+        429,
+        240
+      ],
+      "removed_px": 10,
+      "total_px": 2836,
+      "removed_pct": 0.35
+    },
+    {
+      "file": "eye_l_smile.png",
+      "origin": [
+        356,
+        245
+      ],
+      "removed_px": 6,
+      "total_px": 2682,
+      "removed_pct": 0.22
+    },
+    {
+      "file": "eye_r_smile.png",
+      "origin": [
+        429,
+        240
+      ],
+      "removed_px": 28,
+      "total_px": 2818,
+      "removed_pct": 0.99
+    },
+    {
+      "file": "eye_l_pain.png",
+      "origin": [
+        352,
+        243
+      ],
+      "removed_px": 106,
+      "total_px": 3074,
+      "removed_pct": 3.45
+    },
+    {
+      "file": "eye_r_pain.png",
+      "origin": [
+        425,
+        238
+      ],
+      "removed_px": 227,
+      "total_px": 3151,
+      "removed_pct": 7.2
+    }
+  ]
+}

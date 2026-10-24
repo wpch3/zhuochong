@@ -1,0 +1,72 @@
+{
+  "redraw": "characters/xiaoxun/design/redraw/head_nosidehair.png",
+  "align": {
+    "scale": 0.7696,
+    "dx": 15.2,
+    "dy": 35.6
+  },
+  "root_y": 174,
+  "bleed_root": 16,
+  "bleed_in": 14,
+  "grow_px": 8,
+  "px": {
+    "side_l": 6271,
+    "side_r": 6538,
+    "back": 13564,
+    "torso_band_cut": 5001
+  },
+  "skin_gain": [
+    0.8,
+    0.8,
+    0.8
+  ],
+  "skin_offset": [
+    71.1,
+    58.71,
+    53.91
+  ],
+  "parts": [
+    {
+      "id": "hair_side_l",
+      "file": "sprites/hair_side_l.png",
+      "pos": [
+        98,
+        153
+      ],
+      "size": [
+        107,
+        132
+      ],
+      "group": "head",
+      "layer": 245
+    },
+    {
+      "id": "hair_side_r",
+      "file": "sprites/hair_side_r.png",
+      "pos": [
+        243,
+        153
+      ],
+      "size": [
+        105,
+        132
+      ],
+      "group": "head",
+      "layer": 246
+    },
+    {
+      "id": "hair_back",
+      "file": "sprites/hair_back.png",
+      "pos": [
+        101,
+        49
+      ],
+      "size": [
+        243,
+        142
+      ],
+      "group": "head",
+      "layer": 170
+    }
+  ]
+}

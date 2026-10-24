@@ -1,0 +1,49 @@
+{
+  "name": "xAI Grok",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 45,
+  "base_url": "https://api.x.ai/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://xai"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "grok-3-mini",
+      "price": {
+        "in": 0.3,
+        "out": 0.5,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "grok-3-mini",
+      "price": {
+        "in": 0.3,
+        "out": 0.5,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "grok-2-vision",
+      "price": {
+        "in": 2.0,
+        "out": 10.0,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "UI 主题里已经有 grok 皮肤（A22），供应商这边补齐，省得\"界面像 grok 但接不了 grok\"。",
+  "id": "xai"
+}

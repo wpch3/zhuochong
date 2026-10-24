@@ -1,0 +1,13 @@
+{
+  "id": "file.read",
+  "name": "读文件",
+  "kind": "analyze",
+  "unit": "call",
+  "input": {
+    "path": "text",
+    "range": "text?"
+  },
+  "output": {
+    "text": "text"
+  }
+}

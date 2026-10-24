@@ -1,0 +1,29 @@
+{
+  "name": "ComfyUI · 视频（本机）",
+  "kind": "comfyui",
+  "local": true,
+  "enabled": false,
+  "priority": 80,
+  "base_url": "http://127.0.0.1:8188",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "video.generate",
+      "model": "workflow:wan22_ti2v_5b",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 8,
+    "note": "Wan2.2 TI2V-5B：官方 README 要 24GB，但 ComfyUI 的原生 offload 下社区实测 8GB 可跑 480p；14B 档要 16~24GB（GGUF Q4/Q5 + 文本编码器卸载到内存）。LTX-2 系 FP8 约 16GB、Q4 约 10~12GB。"
+  },
+  "note": "走 ComfyUI 的 HTTP API（POST /prompt 提交工作流 + /history 取结果），工作流 JSON 放 config/workflows/。Wan2.1/2.2 是 Apache-2.0，可商用；LTX-2.x 是自家社区协议，要读条款。桌宠用它做什么：待机小动画、情绪短片、\"今天的心情\"动态壁纸 —— 不是实时渲染（一段 5 秒 480p 在 4090 上也要几分钟），所以定位是**离线预生成**。",
+  "id": "comfyui_video"
+}

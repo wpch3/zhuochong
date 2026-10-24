@@ -1,0 +1,65 @@
+{
+  "source": "design/redraw/face_eyesclosed.png（AI 重绘闭眼脸）",
+  "register": {
+    "scale": 0.2113,
+    "ncc": 0.6948
+  },
+  "eyes": [
+    {
+      "side": "l",
+      "file": "eye_l_closed.png",
+      "pos": [
+        156,
+        177
+      ],
+      "size": [
+        57,
+        56
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        -0.6,
+        1.23,
+        2.4
+      ],
+      "checks": {
+        "cover_ratio": 0.9952,
+        "seam_mean_abs": 4.69,
+        "opaque_px": 2240,
+        "iris_erased_px": 0
+      }
+    },
+    {
+      "side": "r",
+      "file": "eye_r_closed.png",
+      "pos": [
+        229,
+        172
+      ],
+      "size": [
+        57,
+        58
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        -0.71,
+        1.29,
+        2.08
+      ],
+      "checks": {
+        "cover_ratio": 0.997,
+        "seam_mean_abs": 1.48,
+        "opaque_px": 2726,
+        "iris_erased_px": 0
+      }
+    }
+  ]
+}

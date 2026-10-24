@@ -1,0 +1,51 @@
+{
+  "name": "llama.cpp（本机 llama-server）",
+  "kind": "openai_compatible",
+  "local": true,
+  "enabled": false,
+  "priority": 88,
+  "base_url": "http://127.0.0.1:8080/v1",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "local-gguf",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "local-gguf",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "embed.text",
+      "model": "local-gguf-embed",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "code.generate",
+      "model": "local-gguf-coder",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 0,
+    "note": "CPU 也能跑（慢）。Q4_K_M 下每 1B 参数约 0.55~0.7GB：7~8B≈5GB、14B≈9GB、32B≈19GB，再留 1~2GB 给 KV cache。"
+  },
+  "launch": "llama-server -m model.Q4_K_M.gguf -c 8192 -ngl 99 --host 127.0.0.1 --port 8080",
+  "note": "MIT，CPU/CUDA/Metal/ROCm/Vulkan 全支持，单文件 GGUF。和 Ollama 的关系：Ollama 是它的包装（模型管理更省事），llama-server 是控制面（量化、KV cache 量化、并发槽位 -np 都能手调）。两条都登记，用户装哪个都能用。",
+  "id": "llama_cpp"
+}

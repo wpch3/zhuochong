@@ -1,0 +1,37 @@
+{
+  "id": "az_xiaoshuang",
+  "name": "晓双（Azure，儿童）",
+  "provider": "azure_speech",
+  "voice_id": "zh-CN-XiaoshuangNeural",
+  "persona": "loli",
+  "anime": true,
+  "langs": [
+    "zh-CN"
+  ],
+  "emotion_mode": "style",
+  "emotions": [
+    "chat"
+  ],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ],
+    "style_degree": [
+      0.01,
+      2.0
+    ]
+  },
+  "recommend": "官方描述 cute and lovely，儿童场景；但只有 chat 一种 style",
+  "source": "Azure Voice Gallery：Xiaoshuang",
+  "roles": [],
+  "enabled": true
+}

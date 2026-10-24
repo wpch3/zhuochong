@@ -1,0 +1,38 @@
+{
+  "id": "mm_lovely_girl",
+  "name": "萌萌女童（MiniMax）",
+  "provider": "minimax",
+  "voice_id": "lovely_girl",
+  "persona": "loli",
+  "anime": true,
+  "langs": [
+    "zh-CN"
+  ],
+  "emotion_mode": "emotion",
+  "emotions": [
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "surprised",
+    "neutral"
+  ],
+  "tunable": {
+    "speed": [
+      0.5,
+      2.0
+    ],
+    "pitch": [
+      -12,
+      12
+    ],
+    "volume": [
+      0,
+      10
+    ]
+  },
+  "recommend": "小寻 loli 形态首选",
+  "source": "MiniMax v2 音色表",
+  "roles": [],
+  "enabled": true
+}
