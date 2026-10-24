@@ -171,6 +171,23 @@ void   zrig_phys2_force_get(const zrig *r, double *gx, double *gy,
 int    zrig_deform_count(const zrig *r);
 const char *zrig_deform_id(const zrig *r, int i);
 double zrig_deform_amount(const zrig *r, const char *id);
+/* ---- 变形器树（第六十三问 P0，≈ Live2D 的 変形子/親子付け）----
+   rig.json 的 deformers 现在是一棵节点树：part → warp → rotate → root。
+   · parent   父节点 id（必须先声明）；没写 = 挂在 root 下
+   · pivot    节点变换中心（画布坐标）
+   · param+keys  逐顶点参数驱动（keyform）：按参数值在几组控制点位移之间插值
+   下面四个接口是给测试台/单测看"树接没接上"的。 */
+int    zrig_deform_parent(const zrig *r, const char *id);      /* 父节点下标，-1 = 无 */
+const char *zrig_deform_parent_id(const zrig *r, const char *id);  /* 父节点 id，无则 NULL */
+/* 节点本帧的局部变换量：param = dx / dy / rot_deg / sx / sy / amount */
+double zrig_deform_transform(const zrig *r, const char *id, const char *param);
+/* 这张网格本帧的控制点位移（源图像素）：写进 dx/dy（各 cap 个），返回控制点数。
+   和渲染走同一个求值函数（amount 通路 / keyform 通路都在里面）。 */
+int    zrig_deform_mesh(const zrig *r, const char *id,
+                        int *cols, int *rows, double *dx, double *dy, int cap);
+/* 部件锚点这一帧落在哪里（帧缓冲坐标，含组/自身旋转/变形器树）。
+   scale 与 zrig_frame 同口径。返回 0 = 这帧不出现（透明度 0 / 查不到）。 */
+int    zrig_part_anchor_pos(const zrig *r, const char *part_id, double scale, double out[2]);
 
 void  zrig_set_mouth_mute(zrig *r, int on);
 int   zrig_mouth_mute(const zrig *r);

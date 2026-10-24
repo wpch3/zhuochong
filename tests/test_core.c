@@ -6093,6 +6093,386 @@ static void test_mesh(void)
 }
 
 
+/* ---- 第六十三问 P0：变形器树 + 逐顶点参数驱动（keyform）+ 上限不许静默截断 ---- */
+static void test_deform_tree(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+
+    SECTION("变形器树：part → warp → rotate → root，每根骨头独立驱动");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_deform_tree");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"tree\",\"name\":\"树测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{\"head\":{\"pivot\":[200,200],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"sq\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":10,"
+        "  \"pos\":[300,200],\"anchor\":[0,0]},"
+        " {\"id\":\"sq2\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":11,"
+        "  \"pos\":[100,200],\"anchor\":[0,0]},"
+        " {\"id\":\"sq3\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":12,"
+        "  \"pos\":[300,100],\"anchor\":[0,0],\"deformer\":\"arm_rot\"}],"
+        "\"deformers\":["
+        " {\"id\":\"arm_rot\",\"pivot\":[200,200]},"
+        " {\"id\":\"arm_rot2\",\"pivot\":[200,200],\"parent\":\"arm_rot\"},"
+        " {\"id\":\"sq_wave\",\"part\":\"sq\",\"parent\":\"arm_rot2\",\"cols\":1,\"rows\":1,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamRot\",\"min\":-180,\"max\":180,\"default\":0,"
+        "  \"binds\":[{\"deformer\":\"arm_rot\",\"param\":\"rot_deg\"}]},"
+        " {\"id\":\"ParamRot2\",\"min\":-180,\"max\":180,\"default\":0,"
+        "  \"binds\":[{\"deformer\":\"arm_rot2\",\"param\":\"rot_deg\"}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带变形器树的 rig 应加载成功");
+    if (r) {
+        double p[2];
+        int w = 0, h = 0, i;
+        CHECK(zrig_deform_count(r) == 3, "应解析出 3 个节点，实为 %d", zrig_deform_count(r));
+        CHECK(z_streq(zrig_deform_parent_id(r, "arm_rot2"), "arm_rot"),
+              "arm_rot2 的父节点应是 arm_rot");
+        CHECK(zrig_deform_parent(r, "arm_rot") < 0, "arm_rot 是根节点");
+        /* ① 没推参数时三件都在原位 */
+        zrig_tick(r, 0.0);
+        zrig_tick(r, 0.1);
+        CHECK(zrig_part_anchor_pos(r, "sq", 1.0, p) && fabs(p[0] - 300.0) < 0.01 &&
+              fabs(p[1] - 200.0) < 0.01, "sq 应在 (300,200)，实为 (%.2f,%.2f)", p[0], p[1]);
+        /* ② 父节点转 90°：挂在链上的两件绕 (200,200) 转，没挂链的那件一动不动。
+              (x,y) 绕 (px,py) 转 90° = (px−(y−py), py+(x−px))。 */
+        zrig_param_set(r, "ParamRot", 90.0);
+        for (i = 0; i < 4; ++i) zrig_tick(r, 0.2 + i * 0.02);
+        CHECK(fabs(zrig_deform_transform(r, "arm_rot", "rot_deg") - 90.0) < 1e-6,
+              "arm_rot 应转到 90°（实为 %.3f）", zrig_deform_transform(r, "arm_rot", "rot_deg"));
+        zrig_part_anchor_pos(r, "sq", 1.0, p);
+        CHECK(fabs(p[0] - 200.0) < 0.01 && fabs(p[1] - 300.0) < 0.01,
+              "sq 应绕关节转到 (200,300)，实为 (%.2f,%.2f)", p[0], p[1]);
+        zrig_part_anchor_pos(r, "sq3", 1.0, p);
+        CHECK(fabs(p[0] - 300.0) < 0.01 && fabs(p[1] - 300.0) < 0.01,
+              "sq3（用 part.deformer 挂到同一根骨头）应转到 (300,300)，实为 (%.2f,%.2f)",
+              p[0], p[1]);
+        zrig_part_anchor_pos(r, "sq2", 1.0, p);
+        CHECK(fabs(p[0] - 100.0) < 0.01 && fabs(p[1] - 200.0) < 0.01,
+              "sq2 没挂链，必须一点都不动（实为 %.2f,%.2f）", p[0], p[1]);
+        /* ③ 子节点再转 90° = 180°：两根骨头的变换是**相乘**的，不是后者覆盖前者 */
+        zrig_param_set(r, "ParamRot2", 90.0);
+        for (i = 0; i < 4; ++i) zrig_tick(r, 0.4 + i * 0.02);
+        zrig_part_anchor_pos(r, "sq", 1.0, p);
+        CHECK(fabs(p[0] - 100.0) < 0.01 && fabs(p[1] - 200.0) < 0.01,
+              "父子各转 90° 应合成 180°，sq 到 (100,200)，实为 (%.2f,%.2f)", p[0], p[1]);
+        /* ④ 只转子节点：sq3 只挂在父节点上，不该跟着子节点动 */
+        zrig_param_set(r, "ParamRot", 0.0);
+        for (i = 0; i < 4; ++i) zrig_tick(r, 0.6 + i * 0.02);
+        zrig_part_anchor_pos(r, "sq3", 1.0, p);
+        CHECK(fabs(p[0] - 300.0) < 0.01 && fabs(p[1] - 100.0) < 0.01,
+              "只转子节点时 sq3 不动（实为 %.2f,%.2f）", p[0], p[1]);
+        /* ⑤ 树真的接到了渲染上：转 90° 前后画面必须变（矩阵算了却没拿去画，是另一种假实现） */
+        {
+            const zimg *f0, *f1;
+            zimg *keep;
+            int diff = 0, x, y;
+            zrig_param_set(r, "ParamRot2", 0.0);
+            for (i = 0; i < 4; ++i) zrig_tick(r, 1.0 + i * 0.02);
+            f0 = zrig_frame(r, 1.0, &w, &h);
+            keep = zimg_clone(f0);
+            zrig_param_set(r, "ParamRot", 120.0);
+            for (i = 0; i < 4; ++i) zrig_tick(r, 2.0 + i * 0.02);
+            f1 = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; y += 3)
+                for (x = 0; x < w; x += 3)
+                    if (abs(apx(keep, x, y) - apx(f1, x, y)) > 24) diff++;
+            CHECK(diff > 50, "节点旋转必须真的改变画面（实际 %d 个采样点不同）", diff);
+            zimg_free(keep);
+        }
+        zrig_free(r);
+    }
+
+    SECTION("keyform：一张网格按参数值在几组控制点之间插值（逐顶点参数驱动）");
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kf\",\"name\":\"keyform测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{\"head\":{\"pivot\":[200,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"sq\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[300,200],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"kf\",\"part\":\"sq\",\"param\":\"ParamK\","
+        " \"cols\":1,\"rows\":1,\"keys\":["
+        "  {\"v\":-1},"
+        "  {\"v\":0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":-4},"
+        "                     {\"c\":1,\"r\":0,\"dx\":10,\"dy\":-4},"
+        "                     {\"c\":0,\"r\":1,\"dx\":10,\"dy\":-4},"
+        "                     {\"c\":1,\"r\":1,\"dx\":10,\"dy\":-4}]},"
+        "  {\"v\":1}]}],"
+        "\"params\":[{\"id\":\"ParamK\",\"min\":-1,\"max\":1,\"default\":0}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 keyform 的 rig 应加载成功");
+    if (r) {
+        double dx[16], dy[16];
+        int cols = 0, rows = 0, np, i;
+        np = zrig_deform_mesh(r, "kf", &cols, &rows, dx, dy, 16);
+        CHECK(np == 4 && cols == 1 && rows == 1, "1×1 网格应有 4 个控制点（实为 %d）", np);
+        /* -1 → 第 0 组（全 0）；0 → 第 1 组（+10,-4）；1 → 第 2 组（回 0） */
+        zrig_param_set(r, "ParamK", -1.0);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.1 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        CHECK(fabs(dx[0]) < 1e-6 && fabs(dy[0]) < 1e-6,
+              "参数 -1 时应是第 0 组（0,0），实为 (%.3f,%.3f)", dx[0], dy[0]);
+        zrig_param_set(r, "ParamK", 0.0);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.2 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        CHECK(fabs(dx[0] - 10.0) < 1e-6 && fabs(dy[0] + 4.0) < 1e-6,
+              "参数 0 时应是第 1 组（10,-4），实为 (%.3f,%.3f)", dx[0], dy[0]);
+        zrig_param_set(r, "ParamK", 0.5);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.3 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        CHECK(fabs(dx[0] - 5.0) < 1e-6, "0 与 1 之间应插值到一半（10→5），实为 %.3f", dx[0]);
+        zrig_param_set(r, "ParamK", 1.0);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.4 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        /* ★ 这一条是"逐顶点参数驱动"和老的"单标量 amount"的**本质**差别：
+           老写法只能线性放大，参数到 +1 时一定有位移；这里参数到 +1 位移归零。 */
+        CHECK(fabs(dx[0]) < 1e-6 && fabs(dy[0]) < 1e-6,
+              "参数 1 时应回到第 2 组（0,0）——单标量 amount 做不到这种回中，实为 (%.3f,%.3f)",
+              dx[0], dy[0]);
+        /* 动作曲线推参数也要能带动网格（读的是合成后的参数值，不是滑条） */
+        zrig_param_set(r, "ParamK", 0.0);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.5 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        CHECK(fabs(dx[0] - 10.0) < 1e-6, "回到 0 应重新是 +10（实为 %.3f）", dx[0]);
+        zrig_free(r);
+    }
+}
+
+static void test_deform_tree_rejects(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    char *buf;
+
+    SECTION("变形器树与 keyform：写错必须报错，不许静默失效");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_deform_bad");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    buf = (char *)malloc(256 * 1024);
+    if (!buf) { CHECK(0, "内存不足"); return; }
+
+    /* ① keys 少了 param：插值没有驱动源 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏keyform\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"kf\",\"part\":\"h\",\"cols\":1,\"rows\":1,"
+        " \"keys\":[{\"v\":-1},{\"v\":1}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "keys 没有 param 必须加载失败");
+    CHECK(diag_has(&d, "必须写 param"), "诊断应指出 keys 缺 param");
+
+    /* ② key 的参数值不递增 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏keyform\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"kf\",\"part\":\"h\",\"param\":\"ParamK\","
+        " \"cols\":1,\"rows\":1,\"keys\":[{\"v\":0},{\"v\":0}]}],"
+        "\"params\":[{\"id\":\"ParamK\",\"min\":-1,\"max\":1}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "key 的参数值不递增必须加载失败");
+    CHECK(diag_has(&d, "严格递增"), "诊断应指出要严格递增");
+
+    /* ③ keyform 指向不存在的参数 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏keyform\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"kf\",\"part\":\"h\",\"param\":\"ParamNoSuch\","
+        " \"cols\":1,\"rows\":1,\"keys\":[{\"v\":-1},{\"v\":1}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "keyform 指向不存在的参数必须加载失败");
+    CHECK(diag_has(&d, "不在参数表里"), "诊断应指出参数不存在");
+
+    /* ④ parent 未定义 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏树\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"w\",\"part\":\"h\",\"parent\":\"NoSuchNode\","
+        " \"cols\":1,\"rows\":1,\"points\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "parent 未定义必须加载失败");
+    CHECK(diag_has(&d, "未定义"), "诊断应指出父节点未定义");
+
+    /* ⑤ 纯变换节点谁都不影响 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"孤儿节点\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"orphan\",\"pivot\":[100,100]}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "影响不到任何部件的纯变换节点必须加载失败");
+    CHECK(diag_has(&d, "影响不到任何部件"), "诊断应指出这个节点是哑的");
+
+    /* ⑥ 部件的 deformer 指向不存在的节点 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏引用\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],\"deformer\":\"NoSuch\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "part.deformer 指向不存在的节点必须加载失败");
+    CHECK(diag_has(&d, "不存在"), "诊断应指出 deformer 不存在");
+
+    /* ⑦ 往形变器上写 bend：节点没有形变曲线，必须拦住 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏通道\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"w\",\"part\":\"h\",\"cols\":1,\"rows\":1,\"points\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        " {\"target\":\"w\",\"param\":\"bend_x\",\"wave\":\"sine\",\"amp\":1}]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "形变器通道写 bend_x 必须加载失败");
+    CHECK(diag_has(&d, "形变器"), "诊断应指出目标是形变器");
+
+    free(buf);
+}
+
+/* 上限：超了必须**报错**，不许静默丢掉后面的组/部件/动作。
+   三个负数用例都用"刚好比上限多"的规模造（不是造个天文数字），
+   这样将来抬上限时这条测试会自然变绿，而不是永远红着。 */
+static void test_rig_limits(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    char *buf;
+    size_t cap = 512 * 1024;
+    int i;
+
+    SECTION("上限：组/部件/动作超限必须报错，刚好到上限仍能加载");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_limits");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    buf = (char *)malloc(cap);
+    if (!buf) { CHECK(0, "内存不足"); return; }
+
+    /* 组：上限 64（含自动补的 root）。64 组 + root = 65 → 必须报错；
+       63 组 + root = 64 → 刚好装满，必须能加载。 */
+    {
+        size_t n = 0;
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "{\"schema_version\":\"1.0\",\"id\":\"lim\",\"name\":\"上限\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],\"groups\":{");
+        for (i = 0; i < 63; ++i)
+            n += (size_t)z_snprintf(buf + n, cap - n,
+                "%s\"g%d\":{\"pivot\":[100,100]}", i ? "," : "", i);
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "},\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\","
+            "\"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        {
+            zrig *ok = zrig_load(rigp, dir, &d);
+            CHECK(ok != NULL, "63 组 + root = 64 应能装下（上限本身合法）");
+            zrig_free(ok);       /* ASan 会抓不释放的 rig（2.4 MB 一块） */
+        }
+
+        n = 0;
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "{\"schema_version\":\"1.0\",\"id\":\"lim\",\"name\":\"上限\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],\"groups\":{");
+        for (i = 0; i < 64; ++i)
+            n += (size_t)z_snprintf(buf + n, cap - n,
+                "%s\"g%d\":{\"pivot\":[100,100]}", i ? "," : "", i);
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "},\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\","
+            "\"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "64 组 + root = 65 必须加载失败");
+        CHECK(diag_has(&d, "上限"), "诊断应指出撞了上限");
+    }
+
+    /* 部件：上限 512 */
+    {
+        size_t n = 0;
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "{\"schema_version\":\"1.0\",\"id\":\"lim\",\"name\":\"上限\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100]}},\"parts\":[");
+        for (i = 0; i < 513; ++i)
+            n += (size_t)z_snprintf(buf + n, cap - n,
+                "%s{\"id\":\"p%d\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+                "\"layer\":%d,\"pos\":[10,10],\"anchor\":[0,0]}",
+                i ? "," : "", i, i);
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "],\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "513 个部件必须加载失败");
+        CHECK(diag_has(&d, "上限"), "诊断应指出部件数撞了上限");
+    }
+
+    /* 动作：上限 96 */
+    {
+        size_t n = 0;
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "{\"schema_version\":\"1.0\",\"id\":\"lim\",\"name\":\"上限\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100]}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "\"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],\"actions\":[");
+        for (i = 0; i < 97; ++i)
+            n += (size_t)z_snprintf(buf + n, cap - n,
+                "%s{\"id\":\"a%d\",\"channels\":[]}", i ? "," : "", i);
+        n += (size_t)z_snprintf(buf + n, cap - n, "]}");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "97 个动作必须加载失败");
+        CHECK(diag_has(&d, "上限"), "诊断应指出动作数撞了上限");
+    }
+
+    free(buf);
+}
+
 /* ---- 关键帧曲线（≈ .motion3）与多段物理摆链（G16） ---- */
 static void test_keys_and_chain(void)
 {
@@ -7800,6 +8180,9 @@ int main(int argc, char **argv)
     test_params();
     test_lipsync();
     test_mesh();
+    test_deform_tree();
+    test_deform_tree_rejects();
+    test_rig_limits();
     test_keys_and_chain();
     test_blend();
     test_pose();

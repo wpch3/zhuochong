@@ -18,11 +18,22 @@
      加载一个角色的常驻内存 12800 → 12876 KB（+76 KB，涨 0.6%）
    结构体涨得比 RSS 多，是因为新加的那片数组 calloc 出来就没被碰过、页不驻留。
    换来的是部件/参数/绑定各 2 倍余量。 */
-#define ZRIG_MAX_PARTS   192
-#define ZRIG_MAX_GROUPS   16
+/* 2026-10-25（第六十三问 P0）：192/16/32 → 512/64/96。
+   为什么必须现在抬：少女形态实测 103 件 / 15 组 / 26 动作，组只剩 1 格余量——
+   换一套服装（多 3~4 组）就当场撞墙，而撞墙的表现是 **zrig_load 返回 NULL**
+   （既定口径：不降级、不静默截断）。用户要「一角色四形态 × 多套服装 × 多配件」，
+   组/部件/动作都会成倍长，不能每加一套衣服就改一次 C。
+   代价（实测，不是估的）：sizeof(zrig) 1113992 → 2415xxx 字节（见下方 zrig 结构体
+   末尾的实测注释），一只角色常驻 1.1 MB → 2.4 MB。进程里同时只有一份 rig
+   （zpet.c 一次 zrig_load 一份），2.4 MB 对桌面程序是零头。
+   同批加的还有「超限必须报错」：以前 load_groups/load_parts/load_actions 的循环
+   写成 `for (... && n < MAX)`，超了**静默丢掉**后面的组/部件/动作 —— 一个部件的
+   group 指向被丢掉的组，加载失败报的却是"父组未定义"，查半天。 */
+#define ZRIG_MAX_PARTS   512
+#define ZRIG_MAX_GROUPS   64
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
-#define ZRIG_MAX_ACTIONS  32
+#define ZRIG_MAX_ACTIONS  96
 #define ZRIG_MAX_PHYS     48
 #define ZRIG_MAX_POSE_MOOD 16
 #define ZRIG_MAX_MOOD_PARAM 12   /* mood_params 能登记多少条参数（耳朵 2 条，留余量） */   /* 每个姿态组能登记多少种情绪（情绪词表现有 11 个） */   /* 2026-10-16 抬：24 → 48。猫尾三姿态差分件各带 3 段摆链 = 9 条，直接把 24 顶到 23/24=96%。每多一种动物形象还要再加 */
@@ -60,7 +71,10 @@
 /* 2026-10-16：星星眼（T39）一口气加了 1 + 8 个参数、36 条绑定（八颗 ✨ 各一个
    参数 × alpha/sx/sy 三条），96 条当场撞上限。和 ZRIG_MAX_PHYS 那次一样 ——
    上限撞了就改大，绝不能让它静默截断。现在用到 140 条。 */
-#define ZRIG_MAX_BINDS   512   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
+/* 2026-10-25（第六十三问 P0）：512 → 1024。抬的理由不是"现在不够用"（实测 140 条），
+   而是 P0 的变形器树会把绑定当连线用：每个 rotate 节点的 dx/dy/rot/sx/sy 都是一条
+   绑定，一条 3 节的头发链就是 15 条。四形态 × 多服装要吃满 512 只是时间问题。 */
+#define ZRIG_MAX_BINDS  1024   /* 见上面 ZRIG_MAX_PARTS 处的说明 */
 /* 2026-10-17：裙子里布（T45.11）给里布单独挂了一张网格，12 张当场撞顶
    —— 和 ZRIG_MAX_PHYS / ZRIG_MAX_EXPR_SET 那两次一样：**上限撞了就改大，
    绝不能静默截断**。一张 zdeform 约 4.8 KB（289 控制点 × 2 double），
@@ -68,8 +82,14 @@
    2026-10-23（第四十八问）：前臂「沿轴加长」又给左右各加一张（arm_?_fore_long，
    和 arm_?_fore_slim 挂在同一件上逐点相加），25 张当场撞顶 —— 同样的处理：
    **上限撞了就改大**。24 → 32 再增重约 38 KB，现在用到 25 张。 */
-#define ZRIG_MAX_DEFORMS  32
+/* 2026-10-25（第六十三问 P0）：32 → 64。变形器从"每件一张网格"升级成
+   "部件 → warp → rotate → root 的节点树"之后，一个部件的链就有 2~4 个节点，
+   32 张立刻不够。一张 zdeform 现在约 4.8 KB（289 控制点 × 2 double + 树字段），
+   多出来的 32 张约 152 KB。
+   注意：**同一个部件上的多张网格仍必须同尺寸**（要逐点相加），这条校验没变。 */
+#define ZRIG_MAX_DEFORMS  64
 #define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
+#define ZRIG_MAX_DEFKF     6    /* 一个形变器最多几组 keyform（≈ Live2D 的 3 键形变） */
 #define ZRIG_MAX_VISEME    8     /* 口型音素表的行数（SIL/A/I/U/E/O/N…） */
 #define ZRIG_MAX_VISEME_P  4     /* 一个音素最多同时写几个参数 */
 #define ZRIG_VIS_ATTACK   50.0   /* 口型张开的速度（1/s） */
@@ -148,6 +168,8 @@ typedef struct {
     int    is_mask_src;       /* 1 = 有别的部件拿我当遮罩 */
     char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
     int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
+    char   deform_id[48];     /* "deformer"：这件挂在哪根变形器链上（≈ Live2D 的父子付け） */
+    int    deformer;          /* 解析后的形变器下标，-1 = 没有（只靠挂在自己身上的网格） */
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
     double lash_hold;         /* 眼睑延迟：闭合度小于它之前睫毛不动（0.5 = 后半程才滑） */
     double aperture_min;      /* 眼眶开口：眨眼参数 1 时纵向还剩几成（0.06 = 基本闭死） */
@@ -157,16 +179,48 @@ typedef struct {
     int    eye_side;          /* 0=与左右无关 1=左眼 2=右眼（ParamEyeLOpen/ROpen 分开驱动） */
 } zpart;
 
-/* 网格形变器（≈ Live2D 的 ワープデフォーマ）：
-   给某个部件铺 cols×rows 的控制网格，points 是"amount = 1 时每个控制点挪多少源图像素"。
-   amount 由动作通道（target = 形变器 id，param = amount）或参数绑定写入，每帧清零重算。 */
+/* 网格形变器（≈ Live2D 的 ワープデフォーマ）与变形器树（第六十三问 P0）。
+   两种用法写在同一个结构里，因为它们在 Live2D 里本来就是同一种节点的两面：
+
+   ① 网格（art mesh warp，老用法不变）
+      { "id":"ahoge_wave", "part":"hair_ahoge", "cols":2, "rows":3,
+        "points":[{"c":1,"r":0,"dx":6,"dy":-2}, ...] }
+      points 写的是 amount=1 时该控制点挪多少源图像素，amount 由动作通道/绑定写入。
+
+   ② 逐顶点参数驱动（keyform，≈ Live2D 的 3 键形变）
+      { "id":"skirt_kf", "part":"skirt_seg0", "param":"ParamSkirtSwing",
+        "cols":2, "rows":2,
+        "keys":[ {"v":-1,"points":[...]}, {"v":0,"points":[...]}, {"v":1,"points":[...]} ] }
+      第 0 组 key 是**绝对**位移，其余是相对第 0 组的增量；按参数值在相邻两组之间线性插值。
+      ★ 这才是与 Live2D 对等的那一层：老的单标量 amount 只能表达"参数越大摆得越多"（一条直线），
+        而真实立绘要的是"中间鼓、两边收"或"左摆→竖直→右摆"这种**非线性**形变。
+
+   ③ 节点树（≈ Live2D 的 回転デフォーマ / 親子付け）
+      每个节点都有 pivot（画布坐标）和自己的局部变换 dx/dy/rot/sx/sy，
+      {"id":"arm_rot","pivot":[360,520],"parent":"shoulder_rot"} —— 不写 part 就是纯变换节点；
+      写了 parent 就挂到父节点下。部件这一帧的最终矩阵 = A_chain · 组矩阵 · 部件矩阵，
+      链上每个节点的变换按"父包住子"的顺序相乘（与 Live2D 的 deformer 树一致）。
+      部件也可以直接用 "deformer":"<id>" 指定自己挂在哪根链上。 */
 typedef struct {
     char   id[48];
     char   part_id[64];
-    int    part;
+    int    part;                                        /* -1 = 纯变换节点（没有自己的网格） */
     int    cols, rows;
-    double ox[ZRIG_MAX_DEFPTS], oy[ZRIG_MAX_DEFPTS];   /* 单位位移 */
-    double amount;                                      /* 本帧累加值 */
+    double ox[ZRIG_MAX_DEFPTS], oy[ZRIG_MAX_DEFPTS];   /* 单位位移（keyform 模式下 = 第 0 组 key） */
+    double amount;
+    /* —— 树 —— */
+    char   parent_id[48];
+    int    parent;            /* 父形变器下标，-1 = 无（挂在 root 下） */
+    double pivot[2];          /* 变换中心（画布坐标） */
+    double dx, dy, rot, sx, sy;   /* 本帧局部变换（动作通道 / 绑定写入，每帧清零重算） */
+    /* —— keyform —— */
+    char   kf_param_id[64];   /* rig 里写的参数 id（参数表在形变器之后才加载，先存着） */
+    int    param;             /* 解析后的驱动参数下标，-1 = 没有 keyform */
+    int    nkf;               /* key 组数，0 = 没有 keyform */
+    int    kf_np;             /* (cols+1)*(rows+1) */
+    double kf_v[ZRIG_MAX_DEFKF];
+    double *kf_d;             /* 动态：nkf 组增量，每组 kf_np*2 个 double（末组也分配，省下标判断） */
+    double kf_w[ZRIG_MAX_DEFKF];  /* 本帧插值权重（不含"第 0 组恒为 1"那一项） */
 } zdeform;
 
 typedef struct {
@@ -863,7 +917,18 @@ static int load_groups(zrig *r, const zjson *jgroups, zdiag *d, const char *file
         zdiag_error(d, file, jgroups ? jgroups->line : 0, 0, "groups", "期望 object");
         return -1;
     }
-    for (i = 0; i < n && r->ngroups < ZRIG_MAX_GROUPS; ++i) {
+    /* 超限必须报错。老写法是 `i < n && ngroups < MAX` —— 超出的组被静默丢掉，
+       而被丢掉的组名还被后面的部件/父组引用，于是报出来的是"父组 'xxx' 未定义"，
+       查错方向完全被带偏（第六十三问 P0 修的就是这类静默截断）。
+       ★ 判据要写在**循环里**看真实槽位：装载前可能已经自动补了一个 root 组，
+         只比"声明条数 vs 上限"会放过"声明 64 组 + root = 65"这一格。 */
+    for (i = 0; i < n; ++i) {
+        if (r->ngroups >= ZRIG_MAX_GROUPS) {
+            zdiag_error(d, file, jgroups->line, 0, "groups",
+                        "组数超过上限 %d（含自动补的 root；超出的会被丢掉，"
+                        "必须改大 ZRIG_MAX_GROUPS）", ZRIG_MAX_GROUPS);
+            return -1;
+        }
         const char *gid = zjson_key_at(jgroups, i);
         const zjson *gj = zjson_at(jgroups, i);
         zgroup *g = &r->groups[r->ngroups];
@@ -930,7 +995,13 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
         zdiag_error(d, file, jparts->line, 0, "parts", "至少需要一个部件");
         return -1;
     }
-    for (i = 0; i < n && r->nparts < ZRIG_MAX_PARTS; ++i) {
+    for (i = 0; i < n; ++i) {
+        if (r->nparts >= ZRIG_MAX_PARTS) {
+            zdiag_error(d, file, jparts->line, 0, "parts",
+                        "部件数超过上限 %d（超出的会被丢掉，必须改大 ZRIG_MAX_PARTS）",
+                        ZRIG_MAX_PARTS);
+            return -1;
+        }
         const zjson *pj = zjson_at(jparts, i);
         zpart *p = &r->parts[r->nparts];
         char buf[512];
@@ -1017,6 +1088,16 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
                 p->motion_from = -1;
                 p->motion_id[0] = 0;
                 if (mf && *mf) z_strlcpy(p->motion_id, mf, sizeof(p->motion_id));
+            }
+            /* deformer：这件挂在哪个变形器节点下（≈ Live2D 的 親子付け）。
+               形变器段在部件之后加载，所以这里只存 id，装载末尾再解析。
+               自己的网格形变器不需要写这个 —— 它会自动成为本部件的链头；
+               只有"整件挂在一个 rotate 节点下、自己没有任何网格"时才必须写。 */
+            {
+                const char *df = zjson_str(zjson_obj_get(pj, "deformer"), NULL);
+                p->deformer = -1;
+                p->deform_id[0] = 0;
+                if (df && *df) z_strlcpy(p->deform_id, df, sizeof(p->deform_id));
             }
         p->tags = parse_tags(zjson_obj_get(pj, "tags"));
         /* 眼睑行程：带 eyelid 标签的部件按 blink 参数下滑这么多像素。
@@ -1124,11 +1205,55 @@ static void sort_parts(zrig *r)
    { "id":"ahoge", "part":"hair_ahoge", "driver":"head", "axis":"x",
      "param":"bend_x", "curve":"root", "ratio":0.6,
      "stiffness":55, "damping":7, "max":9 } */
-/* 网格形变器（A5，≈ Live2D 的 ワープデフォーマ）：
+/* 网格形变器（A5，≈ Live2D 的 ワープデフォーマ）+ 变形器树（第六十三问 P0）：
    "deformers":[{ "id":"ahoge_wave", "part":"hair_ahoge", "cols":2, "rows":3,
                   "points":[{"c":1,"r":0,"dx":6,"dy":-2}, ...] }]
    points 里写的是 **amount=1 时该控制点挪多少源图像素**；没写到的控制点不动。
-   amount 由动作通道（target 写形变器 id，param 写 amount）或参数 binds 写入。 */
+   amount 由动作通道（target 写形变器 id，param 写 amount）或参数 binds 写入。
+
+   第六十三问新增三种字段（全部可选，老 rig 逐字节不变）：
+     "parent"  父形变器 id（必须先声明）→ 组成 part → warp → rotate → root 的链
+     "pivot"   节点的变换中心（画布坐标）；dx/dy/rot_deg/sx/sy 由通道/绑定写入
+     "param" + "keys"  逐顶点参数驱动（keyform）：按参数值在几组控制点位移之间插值
+   三者互不冲突：一个节点可以既是网格、又有父节点、又由参数驱动。 */
+
+/* 把一组 points 解析进 ox/oy（长度 npts）。idx 越界、点重复都报错。 */
+static int parse_deform_points(const zjson *pts, int cols, int rows, double *ox, double *oy,
+                               const char *id, zdiag *d, const char *file, const char *what)
+{
+    size_t k, np = pts ? zjson_count((zjson *)pts) : 0;
+    int seen[ZRIG_MAX_DEFPTS];
+    int npts = (cols + 1) * (rows + 1);
+    memset(seen, 0, sizeof(seen));
+    for (k = 0; k < np; ++k) {
+        const zjson *pj = zjson_at((zjson *)pts, k);
+        int cc = (int)zjson_int(zjson_obj_get((zjson *)pj, "c"), -1);
+        int rr = (int)zjson_int(zjson_obj_get((zjson *)pj, "r"), -1);
+        int idx;
+        if (cc < 0 || cc > cols || rr < 0 || rr > rows) {
+            zdiag_error(d, file, pj ? pj->line : 0, 0, "deformers",
+                        "形变器 '%s'%s的控制点 (c=%d,r=%d) 越界（网格是 %d×%d，"
+                        "控制点下标 0..%d / 0..%d）",
+                        id, what, cc, rr, cols, rows, cols, rows);
+            return -1;
+        }
+        idx = rr * (cols + 1) + cc;
+        /* 同一个控制点写两次 = 作者以为会叠加，实际后一条悄悄盖掉前一条。报错。 */
+        if (seen[idx]) {
+            zdiag_error(d, file, pj ? pj->line : 0, 0, "deformers",
+                        "形变器 '%s'%s的控制点 (c=%d,r=%d) 写了两次（同一控制点只能写一次）",
+                        id, what, cc, rr);
+            return -1;
+        }
+        seen[idx] = 1;
+        if (idx >= 0 && idx < npts) {
+            ox[idx] = zjson_num(zjson_obj_get((zjson *)pj, "dx"), 0.0);
+            oy[idx] = zjson_num(zjson_obj_get((zjson *)pj, "dy"), 0.0);
+        }
+    }
+    return 0;
+}
+
 static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
 {
     size_t i, n;
@@ -1138,20 +1263,27 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
         return -1;
     }
     n = zjson_count(jd);
+    /* 超了报错，不静默截断（老代码是 `i < n && ndeforms < MAX` —— 第 33 张网格会
+       静默消失，画面只是"少了一点摆动"，没人查得出来）。 */
     for (i = 0; i < n; ++i) {
+        if (r->ndeforms >= ZRIG_MAX_DEFORMS) {
+            zdiag_error(d, file, jd->line, 0, "deformers",
+                        "网格/变形器超过上限 %d（超出的会被丢掉，必须改大 "
+                        "ZRIG_MAX_DEFORMS 而不是让它静默截断）", ZRIG_MAX_DEFORMS);
+            return -1;
+        }
         const zjson *dj = zjson_at((zjson *)jd, i);
-        const zjson *pts;
+        const zjson *pts, *keys;
         zdeform *g;
         const char *id = zjson_str(zjson_obj_get((zjson *)dj, "id"), NULL);
         const char *part = zjson_str(zjson_obj_get((zjson *)dj, "part"), NULL);
-        size_t k, np;
-        if (r->ndeforms >= ZRIG_MAX_DEFORMS) {
-            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
-                        "网格形变器过多（上限 %d）", ZRIG_MAX_DEFORMS);
-            return -1;
-        }
+        const char *parent = zjson_str(zjson_obj_get((zjson *)dj, "parent"), NULL);
+        const char *kparam = zjson_str(zjson_obj_get((zjson *)dj, "param"), NULL);
         g = &r->deforms[r->ndeforms];
         memset(g, 0, sizeof(*g));
+        g->part = -1;
+        g->parent = -1;
+        g->param = -1;
         if (!id || !*id) {
             zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers", "形变器缺 id");
             return -1;
@@ -1163,15 +1295,63 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
         }
         z_strlcpy(g->id, id, sizeof(g->id));
         g->part = part ? find_part(r, part) : -1;
-        if (g->part < 0) {
+        if (part && g->part < 0) {
             zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
-                        "形变器 '%s' 的 part '%s' 不存在", id, part ? part : "(缺)");
+                        "形变器 '%s' 的 part '%s' 不存在", id, part);
             return -1;
         }
-        z_strlcpy(g->part_id, part, sizeof(g->part_id));
+        if (part) z_strlcpy(g->part_id, part, sizeof(g->part_id));
+        /* —— 树：parent 必须先声明（和 groups.parent 同口径）—— */
+        g->parent = -1;
+        if (parent && *parent) {
+            int pi = find_deform(r, parent);
+            if (pi < 0) {
+                zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                            "形变器 '%s' 的 parent '%s' 未定义（父节点必须先声明）",
+                            id, parent);
+                return -1;
+            }
+            g->parent = pi;
+            z_strlcpy(g->parent_id, parent, sizeof(g->parent_id));
+        }
+        /* 纯变换节点（没有 part、没有网格）要么做别人的 parent，要么被部件的
+           "deformer" 点名；两样都没有 = 写了但谁也影响不到，必须当场报错。
+           （部件在形变器之前加载，所以这里能直接查到 deform_id。） */
+        if (!part && !parent) {
+            int referenced = 0, k;
+            for (k = 0; k < r->nparts; ++k) {
+                if (r->parts[k].deform_id[0] && z_streq(r->parts[k].deform_id, id)) {
+                    referenced = 1;
+                    break;
+                }
+            }
+            if (!referenced) {
+                zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                            "形变器 '%s' 既没有 part 也没有 parent：它影响不到任何部件"
+                            "（纯变换节点要么做别人的 parent，要么被部件的 \"deformer\" 点名）",
+                            id);
+                return -1;
+            }
+        }
+        read_pair(zjson_obj_get((zjson *)dj, "pivot"), r->origin[0], r->origin[1], g->pivot);
+        g->sx = 1.0;
+        g->sy = 1.0;
         g->cols = (int)zjson_int(zjson_obj_get((zjson *)dj, "cols"), 2);
         g->rows = (int)zjson_int(zjson_obj_get((zjson *)dj, "rows"), 2);
-        {
+        if (g->cols < 1 || g->rows < 1 || g->cols > 16 || g->rows > 16) {
+            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                        "形变器 '%s' 的 cols/rows 要在 1~16（实为 %d×%d）",
+                        id, g->cols, g->rows);
+            return -1;
+        }
+        g->kf_np = (g->cols + 1) * (g->rows + 1);
+        if (g->kf_np > ZRIG_MAX_DEFPTS) {
+            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                        "形变器 '%s' 的控制点 %d 个，超过上限 %d",
+                        id, g->kf_np, ZRIG_MAX_DEFPTS);
+            return -1;
+        }
+        if (g->part >= 0) {
             /* 同一个部件上的多张网格要逐点相加（裙摆 = 横摆 + 纵摆两张），
                尺寸不一样就加不起来。与其在渲染里静默丢掉一张，不如这里就拦住。 */
             int q;
@@ -1186,36 +1366,84 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
                 return -1;
             }
         }
-        if (g->cols < 1 || g->rows < 1 || g->cols > 16 || g->rows > 16) {
-            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
-                        "形变器 '%s' 的 cols/rows 要在 1~16（实为 %d×%d）",
-                        id, g->cols, g->rows);
-            return -1;
-        }
-        pts = zjson_obj_get((zjson *)dj, "points");
-        np = pts ? zjson_count((zjson *)pts) : 0;
-        for (k = 0; k < np; ++k) {
-            const zjson *pj = zjson_at((zjson *)pts, k);
-            int cc = (int)zjson_int(zjson_obj_get((zjson *)pj, "c"), -1);
-            int rr = (int)zjson_int(zjson_obj_get((zjson *)pj, "r"), -1);
-            int idx;
-            if (cc < 0 || cc > g->cols || rr < 0 || rr > g->rows) {
-                zdiag_error(d, file, pj ? pj->line : 0, 0, "deformers",
-                            "形变器 '%s' 的控制点 (c=%d,r=%d) 越界（网格是 %d×%d，"
-                            "控制点下标 0..%d / 0..%d）",
-                            id, cc, rr, g->cols, g->rows, g->cols, g->rows);
+        keys = zjson_obj_get((zjson *)dj, "keys");
+        if (keys) {
+            /* —— keyform：逐顶点参数驱动 —— */
+            size_t nk, q;
+            if (!kparam || !*kparam) {
+                zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                            "形变器 '%s' 写了 keys 就必须写 param（keys 要用某个参数来插值）", id);
                 return -1;
             }
-            idx = rr * (g->cols + 1) + cc;
-            g->ox[idx] = zjson_num(zjson_obj_get((zjson *)pj, "dx"), 0.0);
-            g->oy[idx] = zjson_num(zjson_obj_get((zjson *)pj, "dy"), 0.0);
+            z_strlcpy(g->kf_param_id, kparam, sizeof(g->kf_param_id));
+            if (!zjson_is(keys, ZJSON_ARR) || zjson_count((zjson *)keys) < 2) {
+                zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                            "形变器 '%s' 的 keys 至少要 2 组（一组定不了插值）", id);
+                return -1;
+            }
+            nk = zjson_count((zjson *)keys);
+            if (nk > ZRIG_MAX_DEFKF) {
+                zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                            "形变器 '%s' 的 keys %d 组超过上限 %d",
+                            id, (int)nk, ZRIG_MAX_DEFKF);
+                return -1;
+            }
+            g->kf_d = (double *)calloc(nk * (size_t)g->kf_np * 2, sizeof(double));
+            if (!g->kf_d) {
+                zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                            "形变器 '%s' 的 keyform 内存分配失败（%d 组 × %d 点）",
+                            id, (int)nk, g->kf_np);
+                return -1;
+            }
+            for (q = 0; q < nk; ++q) {
+                const zjson *kj = zjson_at((zjson *)keys, q);
+                double tx[ZRIG_MAX_DEFPTS], ty[ZRIG_MAX_DEFPTS];
+                int t;
+                char what[64];
+                double v = zjson_num(zjson_obj_get((zjson *)kj, "v"), 0.0);
+                if (q > 0 && v <= g->kf_v[q - 1]) {
+                    zdiag_error(d, file, kj ? kj->line : 0, 0, "deformers",
+                                "形变器 '%s' 的 keys 参数值必须严格递增（第 %d 组 %.3f 不大于上一组 %.3f）",
+                                id, (int)q + 1, v, g->kf_v[q - 1]);
+                    free(g->kf_d);          /* 这个形变器还没计入 ndeforms，zrig_free 看不到它 */
+                    g->kf_d = NULL;
+                    return -1;
+                }
+                g->kf_v[q] = v;
+                memset(tx, 0, sizeof(tx));
+                memset(ty, 0, sizeof(ty));
+                z_snprintf(what, sizeof(what), " 的第 %d 组 key", (int)q + 1);
+                if (parse_deform_points(zjson_obj_get((zjson *)kj, "points"),
+                                        g->cols, g->rows, tx, ty, id, d, file, what) != 0) {
+                    free(g->kf_d);
+                    g->kf_d = NULL;
+                    return -1;
+                }
+                for (t = 0; t < g->kf_np; ++t) {
+                    if (q == 0) {
+                        /* 第 0 组是**绝对**位移：直接写进 ox/oy（和老的 amount 通道同址） */
+                        g->ox[t] = tx[t];
+                        g->oy[t] = ty[t];
+                    } else {
+                        /* 其余是相对第 0 组的增量，按 [组][点][xy] 排 */
+                        size_t base = ((size_t)q * (size_t)g->kf_np + (size_t)t) * 2;
+                        g->kf_d[base]     = tx[t] - g->ox[t];
+                        g->kf_d[base + 1] = ty[t] - g->oy[t];
+                    }
+                }
+            }
+            g->nkf = (int)nk;
+        } else {
+            pts = zjson_obj_get((zjson *)dj, "points");
+            if (parse_deform_points(pts, g->cols, g->rows, g->ox, g->oy,
+                                    id, d, file, "") != 0) return -1;
         }
         r->ndeforms++;
     }
     return 0;
 }
 
-/* param_find 的函数体在下面（参数层那一节），physics 的 input 要先用到它 */
+/* param_find 的函数体在下面（参数层那一节），physics 的 input 要先用到它 *//* param_find 的函数体在下面（参数层那一节），physics 的 input 要先用到它 */
 static int param_find(const zrig *r, const char *id);
 
 static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
@@ -1239,7 +1467,13 @@ static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
                     (int)n, ZRIG_MAX_PHYS);
         return -1;
     }
-    for (i = 0; i < n && r->nphys < ZRIG_MAX_PHYS; ++i) {
+    for (i = 0; i < n; ++i) {
+        if (r->nphys >= ZRIG_MAX_PHYS) {
+            zdiag_error(d, file, jp->line, 0, "physics",
+                        "物理条数超过上限 %d（超出的会被丢掉，必须改大 ZRIG_MAX_PHYS）",
+                        ZRIG_MAX_PHYS);
+            return -1;
+        }
         const zjson *pj = zjson_at(jp, i);
         zphys *ph = &r->phys[r->nphys];
         const char *pid = zjson_str(zjson_obj_get(pj, "part"), NULL);
@@ -1697,7 +1931,23 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
                             "binds 要写 part、group 或 deformer");
                 return -1;
             }
-            if (b->deform >= 0) { b->param = P_AMOUNT; b->curve = BEND_ROOT; b->strips = 0; }
+            if (b->deform >= 0) {
+                /* 绑到变形器节点：param 不写就是 amount（老行为，一张网格一个标量），
+                   写了就写节点的哪个变换量（第六十三问 P0 的"每根骨头单独驱动"）。 */
+                b->curve = BEND_ROOT;
+                b->strips = 0;
+                if (pn && *pn) {
+                    if (parse_param(pn, &b->param) != 0 ||
+                        b->param == P_BEND_X || b->param == P_BEND_Y) {
+                        zdiag_error(d, file, bj ? bj->line : 0, 0, path,
+                                    "绑到形变器的 param 只能是 dx/dy/sx/sy/rot_deg/amount"
+                                    "（写了 '%s'）", pn);
+                        return -1;
+                    }
+                } else {
+                    b->param = P_AMOUNT;
+                }
+            }
             else if (!pn || parse_param(pn, &b->param) != 0) {
                 zdiag_error(d, file, bj ? bj->line : 0, 0, path,
                             "param 非法：%s", pn ? pn : "(缺)");
@@ -2584,7 +2834,13 @@ static int load_channels(zrig *r, zaction *a, const zjson *chs,
        恰好看不出来 —— 又一次"一半对一半错"。 */
     size_t k, kn = zjson_count((zjson *)chs);
     {
-        for (k = 0; k < kn && a->nchan < ZRIG_MAX_CHANNELS; ++k) {
+        for (k = 0; k < kn; ++k) {
+            if (a->nchan >= ZRIG_MAX_CHANNELS) {
+                zdiag_error(d, file, chs ? chs->line : 0, 0, buf,
+                            "动作 '%s' 的通道超过上限 %d（超出的会被丢掉，必须改大 "
+                            "ZRIG_MAX_CHANNELS）", a->id, ZRIG_MAX_CHANNELS);
+                return -1;
+            }
             const zjson *cj = zjson_at(chs, k);
             zchan *c = &a->chans[a->nchan];
             const char *tgt = zjson_str(zjson_obj_get(cj, "target"), "root");
@@ -2631,7 +2887,13 @@ static int load_channels(zrig *r, zaction *a, const zjson *chs,
                 c->param = P_DX;      /* 占位，不会被用到 */
             } else if (!pname || parse_param(pname, &c->param) != 0) {
                 zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
-                            "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha/bend_x/bend_y）");
+                            "通道 param 非法（允许 dx/dy/sx/sy/rot_deg/alpha/bend_x/bend_y/amount）");
+                return -1;
+            }
+            /* 往形变器节点上写 bend 没有意义（节点没有网格形变曲线），当场拦住。 */
+            if (c->deform >= 0 && (c->param == P_BEND_X || c->param == P_BEND_Y)) {
+                zdiag_error(d, file, cj ? cj->line : 0, 0, buf,
+                            "通道 target '%s' 是形变器，param 只能是 amount/dx/dy/sx/sy/rot_deg", tgt);
                 return -1;
             }
             /* 官方 .motion3 的曲线目标只有三种：Model / Parameter / PartOpacity
@@ -2708,7 +2970,13 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
         zdiag_error(d, file, jacts ? jacts->line : 0, 0, "actions", "期望 array");
         return -1;
     }
-    for (i = 0; i < n && r->nactions < ZRIG_MAX_ACTIONS; ++i) {
+    for (i = 0; i < n; ++i) {
+        if (r->nactions >= ZRIG_MAX_ACTIONS) {
+            zdiag_error(d, file, jacts->line, 0, "actions",
+                        "动作数超过上限 %d（超出的会被丢掉，必须改大 ZRIG_MAX_ACTIONS）",
+                        ZRIG_MAX_ACTIONS);
+            return -1;
+        }
         const zjson *aj = zjson_at(jacts, i);
         zaction *a = &r->actions[r->nactions];
         char buf[256];
@@ -2790,8 +3058,17 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
         def.interruptible = a->interruptible;
         def.loop = a->loop;
         z_strlcpy(def.return_state, a->return_state, sizeof(def.return_state));
+        /* 两种失败原因要分开报：以前合成一句"动作 id 重复或状态数超限"，
+           撞上限时人会一直去查重名（第六十三问 P0 顺手分开）。 */
+        if (zsm_index(&r->sm, a->id) >= 0) {
+            zdiag_error(d, file, aj ? aj->line : 0, 0, buf,
+                        "动作 id '%s' 重复", a->id);
+            return -1;
+        }
         if (zsm_add_state(&r->sm, &def) < 0) {
-            zdiag_error(d, file, aj ? aj->line : 0, 0, buf, "动作 id 重复或状态数超限");
+            zdiag_error(d, file, aj ? aj->line : 0, 0, buf,
+                        "状态数超过上限 %d（ZSM_MAX_STATES 要和 ZRIG_MAX_ACTIONS 同步）",
+                        ZSM_MAX_STATES);
             return -1;
         }
     }
@@ -2805,7 +3082,13 @@ static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
 static int load_regions(zrig *r, const zjson *jreg, zdiag *d, const char *file)
 {
     size_t i, n = zjson_count(jreg);
-    for (i = 0; i < n && r->nregions < ZRIG_MAX_REGIONS; ++i) {
+    for (i = 0; i < n; ++i) {
+        if (r->nregions >= ZRIG_MAX_REGIONS) {
+            zdiag_error(d, file, jreg ? jreg->line : 0, 0, "regions",
+                        "交互区域超过上限 %d（超出的会被丢掉，必须改大 ZRIG_MAX_REGIONS）",
+                        ZRIG_MAX_REGIONS);
+            return -1;
+        }
         const zjson *rj = zjson_at(jreg, i);
         zregion *g = &r->regions[r->nregions];
         const char *id = zjson_str(zjson_obj_get(rj, "id"), NULL);
@@ -3005,6 +3288,37 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
        解析通道时要查得到参数表。参数自己的 binds 只引用组/部件/形变器，都在上面了。 */
     load_builtin_params(r);
     if (load_params(r, zjson_obj_get(root, "params"), diag, file) != 0) goto fail;
+    /* 变形器树的两处延迟解析（都必须等参数表/形变器两者都到位）：
+       ① 形变器的 keyform 驱动参数名 → 参数下标；
+       ② 部件的 "deformer" → 形变器下标。
+       这两条以前不存在（形变器只有"挂在自己身上的那张网格"），所以没有对应报错路径；
+       现在写错了名字必须当场红，而不是让整个节点静默不起作用。 */
+    {
+        int i;
+        for (i = 0; i < r->ndeforms; ++i) {
+            zdeform *g = &r->deforms[i];
+            if (!g->kf_param_id[0]) continue;
+            g->param = param_find(r, g->kf_param_id);
+            if (g->param < 0) {
+                zdiag_error(diag, file, 0, 0, "deformers",
+                            "形变器 '%s' 的 param '%s' 不在参数表里（params 段要声明它）",
+                            g->id, g->kf_param_id);
+                goto fail;
+            }
+        }
+        for (i = 0; i < r->nparts; ++i) {
+            zpart *p = &r->parts[i];
+            if (!p->deform_id[0]) continue;
+            p->deformer = find_deform(r, p->deform_id);
+            if (p->deformer < 0) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.deformer", p->id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "deformer '%s' 不存在（形变器段要先声明它）", p->deform_id);
+                goto fail;
+            }
+        }
+    }
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
@@ -3359,7 +3673,12 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
             r->look_speed = zjson_num(zjson_obj_get(lj, "speed"), 9.0);
             r->look_overshoot = zjson_num(zjson_obj_get(lj, "overshoot"), 0.0);
             if (r->look_speed <= 0.0) r->look_speed = 9.0;
-            for (i = 0; i < n && r->nlooks < ZRIG_MAX_GROUPS; ++i) {
+            for (i = 0; i < n; ++i) {
+                if (r->nlooks >= ZRIG_MAX_GROUPS) {
+                    zdiag_error(diag, file, gs ? gs->line : 0, 0, "look.groups",
+                                "look.groups 超过上限 %d", ZRIG_MAX_GROUPS);
+                    goto fail;
+                }
                 const char *gid = zjson_key_at(gs, i);
                 const zjson *ej = zjson_at(gs, i);
                 int gi = gid ? find_group(r, gid) : -1;
@@ -3404,6 +3723,11 @@ void zrig_free(zrig *r)
     for (i = 0; i < r->nparts; ++i) {
         zimg_free(r->parts[i].img);
         zimg_free(r->parts[i].img_scaled);
+    }
+    /* keyform 的增量表是动态分配的（只有写了 keys 的形变器才有），必须显式释放。 */
+    for (i = 0; i < r->ndeforms; ++i) {
+        free(r->deforms[i].kf_d);
+        r->deforms[i].kf_d = NULL;
     }
     zimg_free(r->fb);
     zimg_free(r->maskbuf);
@@ -3593,6 +3917,25 @@ static double eval_channel(const zrig *r, const zchan *c, double t, double total
    w < 1 时就是"淡入淡出"里的那一份权重，两个动作各累加一次即可。 */
 /* 把一个数值写进「部件或组的某条通道」。动作、物理、参数层共用同一套语义：
    位移/旋转/形变是累加，alpha 是相乘（0.5 两次 = 0.25），缩放累加在基准 1.0 上。 */
+/* 把一个通道/绑定值写进**变形器节点**。这就是"每根骨头都能被单独驱动"的落点：
+   amount 走网格位移（老语义），dx/dy/rot/sx/sy 走节点自己的变换（新语义，第六十三问 P0）。 */
+static void apply_deform_chan(zrig *r, int di, int param, double v)
+{
+    zdeform *g;
+    if (di < 0 || di >= r->ndeforms) return;
+    g = &r->deforms[di];
+    switch (param) {
+        case P_DX:    g->dx += v; break;
+        case P_DY:    g->dy += v; break;
+        case P_SX:    g->sx += v; break;    /* 1.0 基准的加法，和部件通道同口径 */
+        case P_SY:    g->sy += v; break;
+        case P_ROT:   g->rot += v; break;
+        case P_AMOUNT: g->amount += v; break;
+        case P_ALPHA: break;                /* 节点没有自己的透明度，静默忽略 */
+        default: break;
+    }
+}
+
 static void apply_chan(zrig *r, int part, int group, int param,
                        double v, int curve, int strips)
 {
@@ -3647,7 +3990,9 @@ static void accumulate_action(zrig *r, const zaction *a, double t, double w, dou
             continue;
         }
         if (c->deform >= 0 && c->deform < r->ndeforms) {
-            r->deforms[c->deform].amount += v;    /* 网格形变器只有一个标量 amount */
+            /* 目标写形变器 id：param 决定写它的哪个量（amount = 网格位移，
+               dx/dy/rot_deg/sx/sy = 节点变换）。不写 param 时 load_channels 已默认成 amount。 */
+            apply_deform_chan(r, c->deform, c->param, v);
             continue;
         }
         apply_chan(r, c->part, c->group, c->param, v, c->curve, c->strips);
@@ -3756,6 +4101,36 @@ static void accumulate_tail_flick(zrig *r)
     }
 }
 
+/* keyform 求值（第六十三问 P0）：参数值 → 相邻两组 key 的插值权重。
+   每帧只算一次，结果存 kf_w[]，渲染时每个顶点按权重线性组合增量表。
+   为什么不能并进渲染：一张网格可能被 3~4 个部件引用（同部件多网格累加），
+   放进渲染就是每帧重算几十遍同一个插值。 */
+static void deform_update_keys(zrig *r)
+{
+    int i;
+    for (i = 0; i < r->ndeforms; ++i) {
+        zdeform *g = &r->deforms[i];
+        double v;
+        int k;
+        if (g->nkf <= 0 || g->param < 0) continue;
+        for (k = 0; k < g->nkf; ++k) g->kf_w[k] = 0.0;
+        /* 读**合成后**的参数值（动作 → 表情 → 口型），和 bind 走同一个口径：
+           否则动作曲线推 ParamXxx 时网格不动，只有滑条动 —— 那是最难查的一类 bug。 */
+        v = param_effective(r, g->param);
+        if (v <= g->kf_v[0]) continue;                        /* 低于第一组：第 0 组 */
+        if (v >= g->kf_v[g->nkf - 1]) { g->kf_w[g->nkf - 1] = 1.0; continue; }
+        for (k = 1; k < g->nkf; ++k) {
+            if (v <= g->kf_v[k]) {
+                double span = g->kf_v[k] - g->kf_v[k - 1];
+                double t = (span > 1e-12) ? (v - g->kf_v[k - 1]) / span : 0.0;
+                g->kf_w[k - 1] += 1.0 - t;
+                g->kf_w[k]     += t;
+                break;
+            }
+        }
+    }
+}
+
 static void compute_group_transforms(zrig *r)
 {
     const zaction *a = current_action(r);
@@ -3777,7 +4152,13 @@ static void compute_group_transforms(zrig *r)
         r->p_rot[i] = 0.0;
         r->p_alpha[i] = 1.0;
     }
-    for (i = 0; i < r->ndeforms; ++i) r->deforms[i].amount = 0.0;
+    for (i = 0; i < r->ndeforms; ++i) {
+        zdeform *dg = &r->deforms[i];
+        dg->amount = 0.0;
+        /* 节点的局部变换也每帧清零重算：漏清一次，一根被"拧"过的骨头会永远歪着。 */
+        dg->dx = dg->dy = dg->rot = 0.0;
+        dg->sx = dg->sy = 1.0;
+    }
     for (i = 0; i < r->nparams; ++i) r->p_action[i] = 0.0;
     if (!a) { r->dim_now = 0.0; return; }
     if (prev && r->fade_dur > 1e-6) {
@@ -3919,7 +4300,7 @@ static void compute_group_transforms(zrig *r)
                 double bv = src * b->scale + b->offset;
                 if (fabs(bv) < 1e-12) continue;
                 if (b->deform >= 0 && b->deform < r->ndeforms) {
-                    r->deforms[b->deform].amount += bv;
+                    apply_deform_chan(r, b->deform, b->param, bv);
                     continue;
                 }
                 apply_chan(r, b->part, b->group, b->param, bv, b->curve, b->strips);
@@ -4310,6 +4691,82 @@ static void group_matrix(const zrig *r, int gi, double scale, double m[6])
     }
 }
 
+/* ── 变形器树（第六十三问 P0）：A_chain ────────────────────────────────
+   一个部件这一帧的最终矩阵 = A_chain · 组矩阵 · 部件矩阵。
+   A_chain 是"从本部件往上直到 root"所有节点变换的连乘（父包住子），
+   与 Live2D 的 deformer 树同序：点先过子节点、再过父节点。
+
+   哪些节点进链：① 挂在本部件上的所有网格形变器（含它们各自的父链）；
+                ② 部件自己用 "deformer" 点名的那根链。
+   为什么按**下标升序**连乘就行：加载时强制 parent 必须先声明（parent 下标 < 子下标），
+   升序即"父→子"，配合 out = out · local 就是父包住子。                    */
+static void deform_local_matrix(const zrig *r, int di, double scale, double m[6])
+{
+    const zdeform *g = &r->deforms[di];
+    double px = g->pivot[0] * scale, py = g->pivot[1] * scale;
+    zimg_make_matrix(m, px + g->dx * scale, py + g->dy * scale,
+                     g->sx, g->sy, g->rot, px, py);
+}
+
+static void deform_chain_matrix(const zrig *r, int pi, double scale, double out[6])
+{
+    int mark[ZRIG_MAX_DEFORMS];
+    int i, x;
+    memset(mark, 0, sizeof(mark));
+    for (i = 0; i < r->ndeforms; ++i) {
+        if (r->deforms[i].part != pi) continue;
+        for (x = i; x >= 0 && x < ZRIG_MAX_DEFORMS && !mark[x]; ) {
+            mark[x] = 1;
+            x = r->deforms[x].parent;
+        }
+    }
+    if (pi >= 0 && pi < r->nparts && r->parts[pi].deformer >= 0) {
+        for (x = r->parts[pi].deformer; x >= 0 && x < ZRIG_MAX_DEFORMS && !mark[x]; ) {
+            mark[x] = 1;
+            x = r->deforms[x].parent;
+        }
+    }
+    /* 单位矩阵。⚠ 这个项目的 6 元素矩阵是 [a,b,c,d,e,f]（e/f 是平移），
+       单位阵是 [1,0,0,1,0,0] —— 第一版写成 [1,0,0,0,1,0]，把纵向缩放抹成 0，
+       整张立绘被压成一条线（画面只剩 29 个不透明像素）。矩阵初始化错了不会有任何
+       报错，只会"什么都画不出来"，所以这里必须写清楚。 */
+    out[0] = 1.0; out[1] = 0.0; out[2] = 0.0;
+    out[3] = 1.0; out[4] = 0.0; out[5] = 0.0;
+    for (i = 0; i < r->ndeforms; ++i) {
+        double loc[6], acc[6];
+        if (!mark[i]) continue;
+        /* 恒等变换的节点直接跳过：绝大多数 rig 没有树，这条让老机型零开销 */
+        if (r->deforms[i].dx == 0.0 && r->deforms[i].dy == 0.0 &&
+            r->deforms[i].rot == 0.0 &&
+            r->deforms[i].sx == 1.0 && r->deforms[i].sy == 1.0) continue;
+        deform_local_matrix(r, i, scale, loc);
+        zimg_matrix_mul(acc, out, loc);      /* acc = A_父 · A_子 */
+        memcpy(out, acc, sizeof(acc));
+    }
+}
+
+/* 一张网格第 q 个控制点这一帧挪多少（源图像素）。
+   amount 通路与 keyform 通路的**唯一**求值点：渲染和 zrig_deform_mesh 都走这里，
+   免得探针量到的数和画出来的数不是一回事（这类"探针自证"以前吃过亏）。 */
+static void deform_vertex_at(const zdeform *g, int q, double *dx, double *dy)
+{
+    if (g->nkf > 0 && g->kf_d) {
+        /* 第 0 组是绝对位移，其余组是增量：顶点 = P0 + Σ w_k · D_k */
+        int kk;
+        double x = g->ox[q], y = g->oy[q];
+        for (kk = 1; kk < g->nkf; ++kk) {
+            size_t bse = ((size_t)kk * (size_t)g->kf_np + (size_t)q) * 2;
+            x += g->kf_w[kk] * g->kf_d[bse];
+            y += g->kf_w[kk] * g->kf_d[bse + 1];
+        }
+        *dx = x;
+        *dy = y;
+        return;
+    }
+    *dx = g->ox[q] * g->amount;
+    *dy = g->oy[q] * g->amount;
+}
+
 /* 只读查询：组的实际位移（通道 + 自动跟随），画布像素 */
 static double group_offset(const zrig *r, const char *group_id, int want_y)
 {
@@ -4600,6 +5057,60 @@ double zrig_deform_amount(const zrig *r, const char *id)
     return i >= 0 ? r->deforms[i].amount : 0.0;
 }
 
+/* 变形器树的读取接口（第六十三问 P0）。测试台与单测靠它们看"树接没接上"——
+   只看画面是分不清"节点旋转生效"和"部件自己转了一下"的。 */
+int zrig_deform_parent(const zrig *r, const char *id)
+{
+    int i = r ? find_deform(r, id) : -1;
+    return i >= 0 ? r->deforms[i].parent : -1;
+}
+
+const char *zrig_deform_parent_id(const zrig *r, const char *id)
+{
+    int i = r ? find_deform(r, id) : -1;
+    if (i < 0 || r->deforms[i].parent < 0) return NULL;
+    return r->deforms[r->deforms[i].parent].id;
+}
+
+/* 节点的局部变换量：param 取 dx / dy / rot_deg / sx / sy。查不到返回 0（sx/sy 返回 1）。 */
+double zrig_deform_transform(const zrig *r, const char *id, const char *param)
+{
+    int i = r ? find_deform(r, id) : -1;
+    const zdeform *g;
+    if (i < 0) return 0.0;
+    g = &r->deforms[i];
+    if (z_streq(param, "dx")) return g->dx;
+    if (z_streq(param, "dy")) return g->dy;
+    if (z_streq(param, "rot_deg")) return g->rot;
+    if (z_streq(param, "sx")) return g->sx;
+    if (z_streq(param, "sy")) return g->sy;
+    if (z_streq(param, "amount")) return g->amount;
+    return 0.0;
+}
+
+/* 这张网格这一帧的控制点位移（源图像素）：写进 dx/dy（各 cap 个），返回控制点数。
+   0 = 没有这个形变器 / 不是网格节点。它和渲染走同一个 deform_vertex_at。 */
+int zrig_deform_mesh(const zrig *r, const char *id,
+                     int *cols, int *rows, double *dx, double *dy, int cap)
+{
+    int i = r ? find_deform(r, id) : -1;
+    const zdeform *g;
+    int np, q;
+    if (i < 0) return 0;
+    g = &r->deforms[i];
+    if (g->cols < 1 || g->rows < 1) return 0;
+    np = (g->cols + 1) * (g->rows + 1);
+    if (cols) *cols = g->cols;
+    if (rows) *rows = g->rows;
+    for (q = 0; q < np && q < cap; ++q) {
+        double vx, vy;
+        deform_vertex_at(g, q, &vx, &vy);
+        if (dx) dx[q] = vx;
+        if (dy) dy[q] = vy;
+    }
+    return np;
+}
+
 void zrig_set_mouth_mute(zrig *r, int on) { if (r) r->mouth_mute = on ? 1 : 0; }
 int  zrig_mouth_mute(const zrig *r) { return r ? r->mouth_mute : 0; }
 
@@ -4843,6 +5354,9 @@ void zrig_tick(zrig *r, double now)
     viseme_update(r, now);
     params_refresh_builtin(r);
     compute_group_transforms(r);
+    /* keyform 必须在动作/表情/口型都定稿之后算 —— 它读的是 param_effective。
+       放在物理之前：物理写的是 amount（另一条通路），两边互不覆盖。 */
+    deform_update_keys(r);
     physics_update(r, now);
     physics2_update(r, now);
 }
@@ -5042,11 +5556,23 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         zimg_make_matrix(lm, pos_x, pos_y, p->scale * part_sx, p->scale * part_sy,
                          p->rot_deg + part_rot, anchor_px, anchor_py);
     }
-    if (p->group >= 0) {
-        group_matrix(r, p->group, scale, gm);
-        zimg_matrix_mul(st->m, gm, lm);
-    } else {
-        memcpy(st->m, lm, sizeof(lm));
+    {
+        double base[6];
+        if (p->group >= 0) {
+            group_matrix(r, p->group, scale, gm);
+            zimg_matrix_mul(base, gm, lm);
+        } else {
+            memcpy(base, lm, sizeof(lm));
+        }
+        /* 变形器链在**最外层**：A_chain 的 pivot 是画布坐标，所以它绕的是画布上的
+           关节（肩、肘、腕），不是素材里的锚点。128~136 行那段注释讲的就是这条链。 */
+        if (r->ndeforms > 0) {
+            double am[6];
+            deform_chain_matrix(r, pi, scale, am);
+            zimg_matrix_mul(st->m, am, base);
+        } else {
+            memcpy(st->m, base, sizeof(base));
+        }
     }
     st->src = src;
     st->opacity = opacity;
@@ -5084,9 +5610,12 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         double k = (p->img && p->img->w > 0) ? (double)src->w / (double)p->img->w : 1.0;
         for (di = 0; di < r->ndeforms; ++di) {
             const zdeform *cand = &r->deforms[di];
-            int np, q;
+            int np, q, has_kf;
             if (cand->part != mi && cand->part != pi) continue;
-            if (fabs(cand->amount) < 1e-6) continue;
+            has_kf = (cand->nkf > 0 && cand->kf_d != NULL);
+            /* keyform 网格不看 amount（它由参数插值驱动），所以别拿 amount 的
+               早退把它挡掉 —— 那会让"参数驱动"静默失效，只剩动作通道还活着。 */
+            if (!has_kf && fabs(cand->amount) < 1e-6) continue;
             if (!st->dg) {
                 st->dg = cand;
                 np = (cand->cols + 1) * (cand->rows + 1);
@@ -5096,8 +5625,13 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
             }
             np = (cand->cols + 1) * (cand->rows + 1);
             for (q = 0; q < np; ++q) {
-                st->mesh[q * 2]     += cand->ox[q] * cand->amount * k;
-                st->mesh[q * 2 + 1] += cand->oy[q] * cand->amount * k;
+                double dx, dy;
+                /* 位移怎么算统一在 deform_vertex_at 里（amount 通路 / keyform 通路），
+                   这里只负责按画布缩放折算并累加。kf_w 由 deform_update_keys
+                   每帧算一次，读的是合成后的参数值。 */
+                deform_vertex_at(cand, q, &dx, &dy);
+                st->mesh[q * 2]     += dx * k;
+                st->mesh[q * 2 + 1] += dy * k;
             }
         }
     }
@@ -5626,6 +6160,33 @@ double zrig_part_draw_opacity(const zrig *r, const char *part_id)
     if (!compute_draw_state((zrig *)r, pi, 1.0, r->blink_now,
                             current_action((zrig *)r), &st)) return 0.0;
     return st.opacity;
+}
+
+/* 这一帧部件的锚点落在帧缓冲的哪个坐标（画布坐标 × 窗口缩放）。
+   ★ 它算的是**真正用来画的那个矩阵**（含组、部件自身旋转、变形器树）。
+   为什么测试需要它：只看"画面变了"分不清"节点绕 pivot 转了 90°"还是"部件自己平移了一下"；
+   有了它就能直接断言几何：绕 (px,py) 转 90° 后 (x,y) → (px−(y−py), py+(x−px))。
+   查不到返回 0（pos 不动）。 */
+int zrig_part_anchor_pos(const zrig *r, const char *part_id, double scale, double out[2])
+{
+    int pi;
+    zdrawst st;
+    const zimg *src;
+    double ax, ay;
+    if (!r || !part_id || scale <= 0.0) return 0;
+    pi = find_part(r, part_id);
+    if (pi < 0) return 0;
+    if (!compute_draw_state((zrig *)r, pi, scale, r->blink_now,
+                            current_action((zrig *)r), &st)) return 0;
+    src = st.src;
+    if (!src) return 0;
+    ax = src->w * r->parts[pi].anchor[0];
+    ay = src->h * r->parts[pi].anchor[1];
+    /* ⚠ 本项目的 6 元素矩阵是 [a,b,c,d,e,f]：x' = a·x + c·y + e，y' = b·x + d·y + f。
+       第一版按数学课本的 [a b c; d e f] 写，把 y 当成了平移，量出来的 x 恒为 0。 */
+    out[0] = st.m[0] * ax + st.m[2] * ay + st.m[4];
+    out[1] = st.m[1] * ax + st.m[3] * ay + st.m[5];
+    return 1;
 }
 
 double zrig_gaze_eff_x(const zrig *r) { return r ? r->gaze_nx : 0.0; }

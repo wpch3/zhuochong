@@ -1015,13 +1015,23 @@ def check_engine_caps(root):
         csrc = fh.read()
     with io.open(rig_path, encoding="utf-8") as fh:
         rig = json.load(fh)
+    # 2026-10-25（第六十三问 P0）：补上 groups / actions / deformers ——
+    # 用户要的是"一角色四形态 × 多套服装 × 多配件"，这三样都会成倍长，
+    # 而它们撞上限的表现是 zrig_load 失败（新口径）或静默丢件（旧口径）。
     caps = [("ZRIG_MAX_PHYS", "physics"), ("ZRIG_MAX_PARAMS", "params"),
-            ("ZRIG_MAX_PARTS", "parts"), ("ZRIG_MAX_XFADE", "xfades")]
+            ("ZRIG_MAX_PARTS", "parts"), ("ZRIG_MAX_XFADE", "xfades"),
+            ("ZRIG_MAX_GROUPS", "groups"), ("ZRIG_MAX_ACTIONS", "actions"),
+            ("ZRIG_MAX_DEFORMS", "deformers"), ("ZRIG_MAX_CHANNELS", None)]
     for macro, key in caps:
         m = re.search(r"#define\s+%s\s+(\d+)" % macro, csrc)
         if not check("zrig.c 里找得到 %s" % macro, m is not None):
             continue
         cap = int(m.group(1))
+        if key is None:
+            # 通道数嵌在每个动作里：只看**最多那个动作**（每条动作各自过 loader）
+            used = max([len(a.get("channels", [])) for a in rig.get("actions", [])] or [0])
+            check("%s 没超（最多的动作用了 %d / 上限 %d）" % (macro, used, cap), used <= cap)
+            continue
         used = len(rig.get(key, []))
         check("%s 没超（%s 用了 %d / 上限 %d）" % (macro, key, used, cap), used <= cap,
               "超出的会被静默丢掉 —— back_x 就这么哑了很久")
@@ -1038,6 +1048,36 @@ def check_engine_caps(root):
         check("ZRIG_MAX_BINDS 没超（binds 用了 %d / 上限 %d）" % (used, cap), used <= cap)
         check("ZRIG_MAX_BINDS 还有余量（用量不超过上限的 85%)", used <= cap * 0.85,
               "用了 %d / %d = %.0f%%" % (used, cap, used * 100.0 / cap))
+
+    # ⑰ 变形器树 / keyform / 「撞上限必须报错」——第六十三问 P0 的四根柱子。
+    #    这几样都是"错了不报错、只是画面悄悄不对"的高危区，所以从源码这头钉住。
+    for needle, label in [
+        ("deform_chain_matrix", "部件 → warp → rotate → root 的链矩阵"),
+        ("deform_local_matrix", "每个节点自己的 pivot / rot / sx / sy"),
+        ("zimg_matrix_mul(acc, out, loc)", "父包住子的连乘顺序"),
+        ("kf_w", "keyform 插值权重"),
+        ("deform_vertex_at", "渲染与探针共用同一个逐顶点求值"),
+        ("zrig_deform_mesh", "逐顶点位移的读取接口"),
+    ]:
+        check("引擎里有%s" % label, needle in csrc,
+              "找到了" if needle in csrc else "第六十三问 P0 的元件被删了")
+    check("组/部件/动作撞上限都报错而不是静默截断",
+          all(k in csrc for k in ("组数超过上限", "部件数超过上限", "动作数超过上限")),
+          "三处都有" if all(k in csrc for k in ("组数超过上限", "部件数超过上限", "动作数超过上限"))
+          else "又有 loader 退回 `i < n && n < MAX` 的静默丢件写法了")
+    check("没有残留的静默截断循环",
+          re.search(r"for \(i = 0; i < n && r->n\w+ < ZRIG_MAX", csrc) is None,
+          "干净" if re.search(r"for \(i = 0; i < n && r->n\w+ < ZRIG_MAX", csrc) is None
+          else "还有 loader 用循环条件静默丢弃超限条目")
+    # 状态机与动作表的上限必须同步，否则"动作能装 96 条、第 33 条先炸"
+    m_act = re.search(r"#define\s+ZRIG_MAX_ACTIONS\s+(\d+)", csrc)
+    zsm_h = os.path.join(root, "src", "core", "zsm.h")
+    zsm_src = io.open(zsm_h, encoding="utf-8").read() if os.path.isfile(zsm_h) else ""
+    m_zsm = re.search(r"#define\s+ZSM_MAX_STATES\s+(\d+)", zsm_src)
+    if check("找得到 ZSM_MAX_STATES", m_zsm is not None, zsm_h):
+        check("状态机容量不小于动作表上限",
+              m_act is not None and int(m_zsm.group(1)) >= int(m_act.group(1)),
+              "ZSM %s / ACTIONS %s" % (m_zsm.group(1), m_act.group(1) if m_act else "?"))
 
 
 def check_torso_inertia(root):

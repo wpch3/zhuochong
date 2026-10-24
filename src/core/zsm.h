@@ -18,7 +18,11 @@
 extern "C" {
 #endif
 
-#define ZSM_MAX_STATES 32
+/* 2026-10-25（第六十三问 P0）：32 → 96，与 zrig.c 的 ZRIG_MAX_ACTIONS 同步。
+   为什么必须一起抬：zrig 的每个动作都会登记成一个状态，两个上限不同步的结果是
+   "动作段能装 96 条，但装到第 33 条时状态机先炸"，报错还只说"动作 id 重复或状态数超限"。
+   这类"两个上限各说各话"的坑，本文件里已经不是第一次（见 zsm.c 的注释）。 */
+#define ZSM_MAX_STATES 96
 #define ZSM_ID_MAX 48
 
 typedef struct {
