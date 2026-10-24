@@ -1336,7 +1336,7 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 
 **当前顺序**：先按既定优先级继续 T62.1 气泡+贴身输入条；视觉线随后从 T45.13 参考板开工，参考板通过后才画新配件。不得在测试台上作审美投资，也不得用程序化绘图代替原画。
 
-**本轮落地**：T62.1 已开工，独立 `web/product.html` + `product.css` + `product.js` + `product_copy.json`；不复用测试台内核/聊天卡片，保留同源真实聊天、dry-run、路由理由本地化、多轮隐私提示、talk/think 动作。仅为产品界面原型，浏览器交互/外观真机验收与 T62.2 原生窗口接入尚未完成。
+**本轮落地**：T62.1 已开工，独立 `web/product.html` + `product.css` + `product.js` + `product_copy.json`；不复用测试台内核/聊天卡片，保留同源真实聊天、dry-run、路由理由本地化、多轮隐私提示、talk/think 动作。补独立 `tests/test_product.js` 20 项 DOM/fetch 行为测试并接进 `make web-test`；测试抓到并修复 dry-run 面板原先不触发预演请求的 bug。仅为产品界面原型，真实浏览器目视验收与 T62.2 原生窗口接入尚未完成。
 
 ### 第五十九问 续：「加个主动抖猫耳/晃猫尾的点播动作」（用户自己提的）
 

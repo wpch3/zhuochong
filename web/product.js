@@ -158,7 +158,13 @@
     } catch (_) { showToast(copy.offline); }
   });
   $("dry").addEventListener("toggle", () => {
-    if (!$("dry").open) $("dry-output").hidden = true;
+    if (!$("dry").open) {
+      $("dry-output").hidden = true;
+      return;
+    }
+    if (busy) return;
+    if (!input.value.trim()) { showToast(copy.empty); return; }
+    return send(true);
   });
   input.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) {

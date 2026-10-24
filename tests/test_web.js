@@ -1244,6 +1244,7 @@ function slotOf(id) {
     const js = fs.readFileSync(path.join(WEB, "product.js"), "utf8");
     const css = fs.readFileSync(path.join(WEB, "product.css"), "utf8");
     const cp = JSON.parse(fs.readFileSync(path.join(WEB, "product_copy.json"), "utf8"));
+    const mk = fs.readFileSync(path.join(WEB, "..", "Makefile"), "utf8");
     CHECK(/product\.css/.test(html) && /product\.js/.test(html), "产品视图应有独立样式与逻辑");
     CHECK(!/app\.js|components\/chat\.js|layout\.json/.test(html), "产品视图不能复用测试台内核/聊天卡片");
     CHECK(/id=\"conversation\"/.test(html) && /class=\"dock\"/.test(html), "页面必须有气泡区域和贴身输入条");
@@ -1252,6 +1253,7 @@ function slotOf(id) {
     CHECK(/\/api\/action\?id=think/.test(js) && /\/api\/action\?id=talk/.test(js), "发送/回复要联动立绘动作");
     CHECK(!!cp.sensitive && !!cp.dry && !!cp.route_reasons.default_local, "用户文案与路由理由翻译必须在数据文件");
     CHECK(/\.dock/.test(css) && /\.bubble/.test(css), "产品视图样式必须形成输入条与对话气泡，而非侧栏卡片");
+    CHECK(/node tests\/test_product\.js/.test(mk), "产品视图行为测试必须接进 make web-test，不能只留本地脚本");
   }
 
   console.log("");

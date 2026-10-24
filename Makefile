@@ -94,6 +94,7 @@ platform:
 # 界面内核与组件的单测（node + DOM stub，不需要浏览器）
 web-test:
 	@node tests/test_web.js
+	@node tests/test_product.js
 
 check: selfcheck warncheck test asan smoke web-test
 	@echo "== 全部保险都过了 =="

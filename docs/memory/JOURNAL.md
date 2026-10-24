@@ -6312,9 +6312,9 @@ check_platform 37/0。负控 1032/2。
 
 **正式记录**：`docs/FORM_MATRIX.md` 轴 7 + `docs/memory/TASKS.md` T45.13~T45.16 + `docs/ROADMAP.md` 排期行；`docs/memory/REQUEST_LEDGER.md` 第六十问索引。真实顺序先 T62.1，再 T45.13 参考板，不先凭空画腕带/耳环。
 
-**继续工作（T62.1）**：新建产品视图原型 `web/product.html` / `product.css` / `product.js` / `product_copy.json`，完全独立于测试台，不加载 `app.js` 或 `components/chat.js`；有短时气泡、脚边输入条、双击立绘聚焦、折叠路由/费用/上下文/隐私详情、dry-run 展示、think/talk 动作联动。补 8 条静态网页断言。已开 5181 预览，页面/API 文件均 HTTP 200，dry-run 返回真实本地候选及 `default_local`；未做真实聊天发送（避免触发用户模型/网络）。暂不能目视浏览器截图，因此 T62.1 仍 `[~]`，明确等浏览器交互与外观验收、T62.2 原生 Windows 接入；不宣称完工。
+**继续工作（T62.1）**：新建产品视图原型 `web/product.html` / `product.css` / `product.js` / `product_copy.json`，完全独立于测试台，不加载 `app.js` 或 `components/chat.js`；有短时气泡、脚边输入条、双击立绘聚焦、折叠路由/费用/上下文/隐私详情、dry-run 展示、think/talk 动作联动。原先只有 8 条静态网页断言，继续补上 `tests/test_product.js` 20 项 DOM/fetch 行为测试并接进 `make web-test`；测试确实抓到 dry-run 面板原来只有折叠 UI、没有真正发起预演请求，现已修成展开即 `/api/chat?dry=1`，并验证不误发真聊。已开 5181 预览，页面/API 文件均 HTTP 200，dry-run 返回真实本地候选及 `default_local`；未做真实聊天发送（避免触发用户模型/网络）。暂不能目视浏览器截图，因此 T62.1 仍 `[~]`，明确等浏览器交互与外观验收、T62.2 原生 Windows 接入；不宣称完工。
 
-**本轮验证**：`make -s test` 1034/0；`test_web.js` 261/0（+8）；selfcheck 544/0；platform 37/0；ROADMAP/TASKS 一致。
+**本轮验证**：`make -s test` 1034/0；`make web-test` = 原 `test_web.js` 262/0（+9） + 新 `test_product.js` 20/0；selfcheck 544/0；platform 37/0；ROADMAP/TASKS 一致。
 
 ## 续一百二十八（2026-10-24：DeepSeek 鲸鱼元素与角色全名提案，待用户定案）
 
