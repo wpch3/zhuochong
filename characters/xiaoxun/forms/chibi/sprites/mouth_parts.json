@@ -1,37 +1,53 @@
 {
-  "source": "body_full.png（嘴线实测）+ 程序绘制的口内",
+  "source": "design/redraw/face_mouthopen.png（AI 重绘张嘴脸）+ align_redraw 预配准",
   "line": {
-    "x0": 260,
-    "x1": 304,
-    "y0": 530,
-    "y1": 539,
+    "x0": 261,
+    "x1": 305,
+    "y0": 531,
+    "y1": 540,
     "color": [
-      45,
-      22,
-      17
+      67,
+      28,
+      28
     ]
   },
   "mask": "mouth_mask.png",
   "cavity": "mouth_cavity.png",
   "pos": [
-    262,
-    534
+    260,
+    536
   ],
   "anchor_pos": [
-    282.0,
-    534.5
+    283.0,
+    535.5
   ],
   "size": [
-    39,
-    32
+    45,
+    24
   ],
-  "open_h": 28,
-  "closed_sy": 0.037,
+  "open_h": 24,
+  "closed_sy": 0.0,
   "colors": {
-    "上颚": "#24120E",
-    "口腔": "#1C0E0B",
-    "舌": "#91393B",
-    "下唇": "#20100C"
+    "上颚": "#361616",
+    "口腔": "#2A1111",
+    "舌": "#9D3C41",
+    "下唇": "#301414"
   },
-  "note": "口内是画出来的（原画没有）；开口大小 = 压缩 mouth_mask 的 sy，锚点在上唇线，所以嘴是往下张开的。"
+  "register": {
+    "scale": 1.0,
+    "ncc": 1.0,
+    "seeded_by": "identity"
+  },
+  "native_px": [
+    66,
+    35
+  ],
+  "checks": {
+    "cavity_px": 940,
+    "teeth_px": 0,
+    "tongue_px": 341,
+    "width_px": 45,
+    "height_px": 24
+  },
+  "note": "口内是 AI 重绘的真素材（含上颚/牙/舌/嘴角），不是几何色块；开口大小 = 压缩 sy，口内跟着一起压（motion_from=mouth_mask），所以半开时是一张压扁的嘴而不是一条黑缝。"
 }

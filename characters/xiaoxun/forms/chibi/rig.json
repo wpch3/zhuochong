@@ -371,8 +371,8 @@
       "group": "head",
       "layer": 205,
       "pos": [
-        422,
-        602
+        423,
+        604
       ],
       "anchor": [
         0.5,
@@ -380,13 +380,13 @@
       ],
       "scale": [
         1.0,
-        0.037
+        0.0
       ],
       "tags": [
         "mouth"
       ],
       "mask_only": true,
-      "note": "开口形状：锚点在上唇线，sy=0.037 是闭嘴，sy≈0.95 是张到最大（28px）"
+      "note": "开口形状：锚点在上唇线，sy=0.0 是闭嘴，sy≈0.95 是张到最大（24px）"
     },
     {
       "id": "mouth_cavity",
@@ -394,8 +394,8 @@
       "group": "head",
       "layer": 206,
       "pos": [
-        422,
-        602
+        423,
+        604
       ],
       "anchor": [
         0.5,
@@ -403,7 +403,7 @@
       ],
       "scale": [
         1.0,
-        0.037
+        0.0
       ],
       "tags": [
         "mouth"
@@ -461,7 +461,10 @@
         0,
         0
       ],
-      "tags": [],
+      "tags": [
+        "eye_open",
+        "eye_not_wide"
+      ],
       "mask": "eye_l_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
       "eye_side": "l"
@@ -480,31 +483,11 @@
         0
       ],
       "tags": [
-        "gaze"
+        "gaze",
+        "eye_open"
       ],
       "mask": "eye_l_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±10px，由眼眶裁切",
-      "eye_side": "l"
-    },
-    {
-      "id": "eye_l_lid",
-      "file": "sprites/eye_l_lid.png",
-      "group": "head",
-      "layer": 216,
-      "pos": [
-        248,
-        358
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "eyelid"
-      ],
-      "mask": "eye_l_socket",
-      "eyelid_travel": 102,
-      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 102px 盖满眼眶",
       "eye_side": "l"
     },
     {
@@ -521,11 +504,87 @@
         0
       ],
       "tags": [
-        "eyelid"
+        "eye_open",
+        "eye_not_wide"
       ],
       "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线",
-      "eyelid_travel": 96,
-      "mask": "eye_l_socket",
+      "eye_side": "l"
+    },
+    {
+      "id": "eye_l_closed",
+      "file": "sprites/eye_l_closed.png",
+      "group": "head",
+      "layer": 219,
+      "pos": [
+        253,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_closed"
+      ],
+      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：blink=1 时完全显形",
+      "eye_side": "l"
+    },
+    {
+      "id": "eye_l_smile",
+      "file": "sprites/eye_l_smile.png",
+      "group": "head",
+      "layer": 221,
+      "pos": [
+        253,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_smile"
+      ],
+      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：ParamEyeL/RSmile=1 时显形",
+      "eye_side": "l"
+    },
+    {
+      "id": "eye_l_pain",
+      "file": "sprites/eye_l_pain.png",
+      "group": "head",
+      "layer": 222,
+      "pos": [
+        249,
+        446
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_pain"
+      ],
+      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：ParamEyeL/RPain=1 时显形",
+      "eye_side": "l"
+    },
+    {
+      "id": "eye_l_wide",
+      "file": "sprites/eye_l_wide.png",
+      "group": "head",
+      "layer": 213,
+      "pos": [
+        140,
+        455
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_wide",
+        "eye_open"
+      ],
+      "note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_l_ball",
       "eye_side": "l"
     },
     {
@@ -559,7 +618,10 @@
         0,
         0
       ],
-      "tags": [],
+      "tags": [
+        "eye_open",
+        "eye_not_wide"
+      ],
       "mask": "eye_r_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
       "eye_side": "r"
@@ -578,31 +640,11 @@
         0
       ],
       "tags": [
-        "gaze"
+        "gaze",
+        "eye_open"
       ],
       "mask": "eye_r_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±11px，由眼眶裁切",
-      "eye_side": "r"
-    },
-    {
-      "id": "eye_r_lid",
-      "file": "sprites/eye_r_lid.png",
-      "group": "head",
-      "layer": 228,
-      "pos": [
-        468,
-        360
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "eyelid"
-      ],
-      "mask": "eye_r_socket",
-      "eyelid_travel": 100,
-      "note": "上眼睑：静止时被眼眶遮罩挡住，blink=1 时下滑 100px 盖满眼眶",
       "eye_side": "r"
     },
     {
@@ -619,11 +661,87 @@
         0
       ],
       "tags": [
-        "eyelid"
+        "eye_open",
+        "eye_not_wide"
       ],
       "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线",
-      "eyelid_travel": 94,
-      "mask": "eye_r_socket",
+      "eye_side": "r"
+    },
+    {
+      "id": "eye_r_closed",
+      "file": "sprites/eye_r_closed.png",
+      "group": "head",
+      "layer": 231,
+      "pos": [
+        437,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_closed"
+      ],
+      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：blink=1 时完全显形",
+      "eye_side": "r"
+    },
+    {
+      "id": "eye_r_smile",
+      "file": "sprites/eye_r_smile.png",
+      "group": "head",
+      "layer": 233,
+      "pos": [
+        437,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_smile"
+      ],
+      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：ParamEyeL/RSmile=1 时显形",
+      "eye_side": "r"
+    },
+    {
+      "id": "eye_r_pain",
+      "file": "sprites/eye_r_pain.png",
+      "group": "head",
+      "layer": 234,
+      "pos": [
+        433,
+        446
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_pain"
+      ],
+      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：ParamEyeL/RPain=1 时显形",
+      "eye_side": "r"
+    },
+    {
+      "id": "eye_r_wide",
+      "file": "sprites/eye_r_wide.png",
+      "group": "head",
+      "layer": 225,
+      "pos": [
+        410,
+        455
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_wide",
+        "eye_open"
+      ],
+      "note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_r_ball",
       "eye_side": "r"
     },
     {
@@ -1496,7 +1614,7 @@
         {
           "target": "ParamMouthOpenY",
           "wave": "bounce",
-          "amp": 0.5619,
+          "amp": 0.5789,
           "dur": 1.2,
           "ease": "out"
         },
@@ -1684,7 +1802,7 @@
         {
           "target": "ParamMouthOpenY",
           "wave": "decay",
-          "amp": 0.7262,
+          "amp": 0.7368,
           "dur": 0.8,
           "freq": 2.0
         },
@@ -1916,7 +2034,7 @@
         {
           "target": "ParamMouthOpenY",
           "wave": "sine",
-          "amp": 0.2881,
+          "amp": 0.3158,
           "freq": 0.12
         },
         {
@@ -3610,7 +3728,7 @@
         {
           "part": "mouth_mask",
           "param": "sy",
-          "scale": 0.913
+          "scale": 0.95
         },
         {
           "part": "mouth_open",
@@ -4897,6 +5015,16 @@
           "value": -0.15
         },
         {
+          "id": "ParamEyeLWide",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeRWide",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
           "id": "ParamEyeSparkle",
           "value": 1.0,
           "mode": "set"
@@ -4932,6 +5060,74 @@
           "mode": "set"
         }
       ]
+    },
+    {
+      "id": "happy",
+      "name": "开心（笑眼）",
+      "fade": 0.28,
+      "params": [
+        {
+          "id": "ParamMouthForm",
+          "value": 1.0
+        },
+        {
+          "id": "ParamEyeLSmile",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeRSmile",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamCheek",
+          "value": 0.38,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeSparkle",
+          "value": 1.0,
+          "mode": "set"
+        }
+      ],
+      "note": "笑眼 = 山型闭眼（Live2D 标准做法），参考官方 Haru 的 F05"
+    },
+    {
+      "id": "pain",
+      "name": "痛（>_<）",
+      "fade": 0.14,
+      "params": [
+        {
+          "id": "ParamMouthForm",
+          "value": -0.8
+        },
+        {
+          "id": "ParamMouthOpenY",
+          "value": 0.25
+        },
+        {
+          "id": "ParamEyeLPain",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeRPain",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamCheek",
+          "value": 0.5,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeSparkle",
+          "value": 0.2,
+          "mode": "set"
+        }
+      ],
+      "note": "痛苦闭眼：闭眼线的第三种形状（∪ / ∩ / ∧），口径同笑眼"
     }
   ],
   "ambient": [

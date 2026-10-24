@@ -188,6 +188,247 @@ def _feature_mask(sp: str, W: int, H: int, pad: int = 22) -> np.ndarray | None:
     return m if got else None
 
 
+# ───────────────── ②'. 差分脸的**特征点**配准（region=face）─────────────────
+# 为什么脸不能走剪影 Dice：脸这一带的剪影是"一大团头发 + 肩膀"，几乎是平顶平台，
+# 五张同角色差分脸能解出彼此差 60px 的平移（实测 closed ty=30 / 其余 89~109），
+# 而且 Dice 只差 0.003 就能换一个答案 —— 目标函数不在看"眼睛在哪"。
+# 差分脸之间**唯一可靠、可复现的锚**是眼睛：
+#   · 睁眼图（瞪大 / 张嘴）：眼白是一大块近白 + 中间一圈饱和蓝虹膜，检测极稳；
+#   · 闭眼图（闭眼 / 笑眼 / 痛苦）：两撇睫毛是唯一"暗且偏暖"的粗笔画。
+# 拿到两只眼的中心，两点相似变换（尺度 + 平移）就是**精确解**，没有搜索、没有多起点。
+
+
+def _cc_blobs(mask: np.ndarray, minpx: int = 200, limit: int = 8):
+    """4 邻域连通块，按面积降序返回 dict(n, cx, cy, x0, x1, y0, y1)。"""
+    from collections import deque
+    h, w = mask.shape
+    seen = np.zeros((h, w), bool)
+    out = []
+    for y0, x0 in np.argwhere(mask):
+        if seen[y0, x0]:
+            continue
+        q = deque([(y0, x0)])
+        seen[y0, x0] = True
+        ys, xs = [], []
+        while q:
+            cy, cx = q.popleft()
+            ys.append(cy)
+            xs.append(cx)
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ny, nx = cy + dy, cx + dx
+                if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    q.append((ny, nx))
+        if len(ys) >= minpx:
+            ys = np.asarray(ys)
+            xs = np.asarray(xs)
+            out.append(dict(n=len(ys), cx=float(xs.mean()), cy=float(ys.mean()),
+                            x0=int(xs.min()), x1=int(xs.max()),
+                            y0=int(ys.min()), y1=int(ys.max())))
+    out.sort(key=lambda d: -d["n"])
+    return out[:limit]
+
+
+def _merge_row_blobs(bl, max_dy: float, max_gap: float):
+    """把**同一撇眼睛**被发丝/高光打断的碎块并回去。
+
+    实测 `face_eyesclosed` 的右眼睫毛被一缕头发横断成两截（56px + 59px），
+    不并回来的话"成对挑"会挑到同一只眼的两截（间距 121px < 真间距 298px），
+    尺度直接算成 1.52 —— 解出来整张脸被放大 3 倍。
+    """
+    items = [dict(d) for d in bl]
+    merged = True
+    while merged and len(items) > 1:
+        merged = False
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                a, b = items[i], items[j]
+                if abs(a["cy"] - b["cy"]) > max_dy:
+                    continue
+                gap = max(a["x0"], b["x0"]) - min(a["x1"], b["x1"])
+                if gap > max_gap:
+                    continue
+                n = a["n"] + b["n"]
+                out = dict(n=n,
+                           cx=(a["cx"] * a["n"] + b["cx"] * b["n"]) / n,
+                           cy=(a["cy"] * a["n"] + b["cy"] * b["n"]) / n,
+                           x0=min(a["x0"], b["x0"]), x1=max(a["x1"], b["x1"]),
+                           y0=min(a["y0"], b["y0"]), y1=max(a["y1"], b["y1"]))
+                items[i] = out
+                items.pop(j)
+                merged = True
+                break
+            if merged:
+                break
+    items.sort(key=lambda d: -d["n"])
+    return items
+
+
+def _pick_pair(bl, min_dx: float, max_dy_ratio: float = 0.30,
+               max_area_ratio: float = 3.0, min_aspect: float = 0.0):
+    """从候选块里挑"一对眼睛"：左右分开、基本同一水平线、大小相近。"""
+    best = None
+    for i in range(len(bl)):
+        for j in range(i + 1, len(bl)):
+            a, b = bl[i], bl[j]
+            dx = abs(a["cx"] - b["cx"])
+            dy = abs(a["cy"] - b["cy"])
+            if dx < min_dx or dy > max_dy_ratio * dx:
+                continue
+            if max(a["n"], b["n"]) > max_area_ratio * min(a["n"], b["n"]):
+                continue
+            if min_aspect > 0:
+                for q in (a, b):
+                    wq = max(1, q["x1"] - q["x0"])
+                    hq = max(1, q["y1"] - q["y0"])
+                    if wq / hq < min_aspect:
+                        break
+                else:
+                    pass
+                if any((q["x1"] - q["x0"]) / max(1, q["y1"] - q["y0"]) < min_aspect
+                       for q in (a, b)):
+                    continue
+            if best is None or a["n"] + b["n"] > best[0]:
+                best = (a["n"] + b["n"], a, b)
+    if best is None:
+        return None
+    a, b = best[1], best[2]
+    return sorted([a, b], key=lambda d: d["cx"])
+
+
+def face_pair(rgb: np.ndarray, alpha: np.ndarray, verbose: bool = True):
+    """在差分脸里找两只眼的中心。返回 (mode, [(x,y),(x,y)], 诊断字符串)。
+
+    睁眼优先用"虹膜中心"（和 sprites/eye_parts.json 的 iris_center 同一个量），
+    闭眼退回"睫毛质心"（同一只眼的同一高度，误差几个像素，下游还有逐眼锚定）。
+    """
+    h, w = alpha.shape
+    op = alpha > 0.70
+    ys, xs = np.nonzero(op)
+    if ys.size == 0:
+        raise SystemExit("[align] 差分脸是空的（洋红键出后没有内容）")
+    ytop, ybot = int(ys.min()), int(ys.max())
+    ch = ybot - ytop
+    band = np.arange(h)[:, None] < ytop + ch * 0.62
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    lum = (r + g + b) / 3.0
+
+    # ① 眼白：近白、大块（这只角色眼白 #FDF8F6，头发最亮处也带蓝紫，b−r 会把它们分开）
+    sclera = op & band & (r > 230) & (g > 224) & (b > 226) & (r - b > -8) & (r - b < 14)
+    bl = _merge_row_blobs(_cc_blobs(sclera, max(800, int(0.0006 * op.sum())), 8),
+                          max_dy=ch * 0.06, max_gap=w * 0.05)
+    pair = _pick_pair(bl, min_dx=w * 0.15, max_dy_ratio=0.35, max_area_ratio=3.0)
+    if pair is not None:
+        # 虹膜必须**先按严格的颜色找块、再配给眼白**，不能"在眼白框里取所有偏蓝像素的质心"：
+        # 这只角色瞪大眼时眼白上半有一层偏蓝灰的渐变（lum>200），
+        # 质心法会把锚点拉到眼白上方 ~40px、虹膜一点没盖住（实测挖完还剩一整圈蓝边）。
+        iris_m = op & (b - r > 35) & (lum > 40) & (lum < 190)
+        ibl = _cc_blobs(iris_m, max(300, int(0.0002 * op.sum())), 12)
+        pts = []
+        for q in pair:
+            best_ib, best_d = None, None
+            for ib in ibl:
+                if not (q["x0"] - 8 <= ib["cx"] <= q["x1"] + 8 and
+                        q["y0"] - 8 <= ib["cy"] <= q["y1"] + 8):
+                    continue
+                dd = (ib["cx"] - q["cx"]) ** 2 + (ib["cy"] - q["cy"]) ** 2
+                if best_d is None or dd < best_d:
+                    best_ib, best_d = ib, dd
+            if best_ib is not None and best_ib["n"] > 300:
+                pts.append((best_ib["cx"], best_ib["cy"]))
+            else:
+                pts.append((q["cx"], q["cy"]))
+        return "iris", pts, f"眼白 {len(bl)} 块，虹膜 {len(ibl)} 块"
+
+    # ② 闭眼：睫毛是"暗且偏暖"的粗笔画（头发暗部偏蓝，r−b 为负，天然被排除）
+    lash = op & band & (lum < 120) & (r - b > 4)
+    bl2 = _merge_row_blobs(_cc_blobs(lash, max(120, int(0.00003 * op.sum())), 10),
+                           max_dy=ch * 0.05, max_gap=w * 0.06)
+    pair2 = _pick_pair(bl2, min_dx=w * 0.15, max_dy_ratio=0.30,
+                       max_area_ratio=2.5, min_aspect=1.3)
+    if pair2 is None:
+        raise SystemExit("[align] 找不到成对的睫毛/眼白，无法按特征配准。候选：\n  "
+                         + "\n  ".join(f"{d['n']}px @ ({d['cx']:.0f},{d['cy']:.0f}) "
+                                        f"{d['x1']-d['x0']}x{d['y1']-d['y0']}" for d in bl2))
+    return "lash", [(q["cx"], q["cy"]) for q in pair2], f"睫毛 {len(bl2)} 块"
+
+
+def _align_face(B, gen_rgba, sp, W, H, color=True, verbose=True, exclude=None):
+    """region=face：两点相似变换 + 脸部色差细调。"""
+    G = np.asarray(gen_rgba, dtype=np.uint8)
+    rgb = G[..., :3].astype(np.float32)
+    mode, gpts, diag = face_pair(rgb, G[..., 3].astype(np.float32) / 255.0, verbose)
+
+    eyes = json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]
+    bpts = sorted([(float(e["patch_pos"][0] + e["iris_center"][0]),
+                    float(e["patch_pos"][1] + e["iris_center"][1])) for e in eyes])
+    if len(bpts) != 2 or len(gpts) != 2:
+        raise SystemExit("[align] 需要恰好两只眼")
+    bd = float(np.hypot(bpts[1][0] - bpts[0][0], bpts[1][1] - bpts[0][1]))
+    gd = float(np.hypot(gpts[1][0] - gpts[0][0], gpts[1][1] - gpts[0][1]))
+    if gd < 8:
+        raise SystemExit("[align] 检测到的两眼间距太小，判据失效")
+    s = bd / gd
+    tx = 0.5 * (bpts[0][0] + bpts[1][0]) - s * 0.5 * (gpts[0][0] + gpts[1][0])
+    ty = 0.5 * (bpts[0][1] + bpts[1][1]) - s * 0.5 * (gpts[0][1] + gpts[1][1])
+    if verbose:
+        print(f"[align] ① 特征点（{mode}）重绘 {[(round(x),round(y)) for x,y in gpts]} "
+              f"→ 画布 {[(round(x),round(y)) for x,y in bpts]}；"
+              f"尺度 {s:.4f} 平移 ({tx:.1f},{ty:.1f})  〔{diag}〕")
+
+    band = (0.22, 0.50)
+    Bopaque = (B[..., 3] > 200)
+    if exclude is not None:
+        Bopaque = Bopaque & ~exclude
+
+    def warp_at(sv, txv, tyv):
+        ts = (max(8, int(round(gen_rgba.size[0] * sv))),
+              max(8, int(round(gen_rgba.size[1] * sv))))
+        return _place(_premul_resize(gen_rgba, ts), (W, H), tyv, txv)
+
+    warped = warp_at(s, tx, ty)
+    cost0 = _color_cost(B, Bopaque, warped, band, keep=0.6)
+    # 细调：只在 ±4% / ±10px 内走（特征解已经精确，细调只为了吃掉 AI 出图的轻微走样）
+    best = (cost0, s, tx, ty)
+    step_s, step_t = 0.01, 3.0
+    for _ in range(10):
+        moved = False
+        for d in ((step_s, 0, 0), (-step_s, 0, 0), (0, step_t, 0), (0, -step_t, 0),
+                  (0, 0, step_t), (0, 0, -step_t)):
+            ns, ntx, nty = best[1] + d[0], best[2] + d[1], best[3] + d[2]
+            if not (0.96 * s <= ns <= 1.04 * s):
+                continue
+            if abs(ntx - tx) > 10 or abs(nty - ty) > 10:
+                continue
+            c = _color_cost(B, Bopaque, warp_at(ns, ntx, nty), band, keep=0.6)
+            if c < best[0] - 1e-6:
+                best = (c, ns, ntx, nty)
+                moved = True
+                break
+        if not moved:
+            step_s *= 0.5
+            step_t *= 0.5
+            if step_s < 0.002:
+                break
+    cost1, s, tx, ty = best
+    if verbose:
+        print(f"[align] ② 脸部色差细调 {cost0:.2f} → {cost1:.2f}")
+    warped = warp_at(s, tx, ty)
+    gains, offs = (np.ones(3), np.zeros(3))
+    if color:
+        gains, offs = _fit_color(B, warped, band)
+        m = warped[..., 3] > 0
+        warped[..., :3][m] = np.clip(warped[..., :3][m] * gains + offs, 0, 255)
+    info = {"scale": [round(s, 4), round(s, 4)], "translate": [round(tx, 2), round(ty, 2)],
+            "region": "face", "feature": mode, "gen_pair": [[round(x, 1), round(y, 1)] for x, y in gpts],
+            "body_pair": [[round(x, 1), round(y, 1)] for x, y in bpts],
+            "face_cost": round(cost1, 2), "size": [W, H],
+            "gen_size": list(gen_rgba.size),
+            "gain": [round(float(v), 3) for v in gains],
+            "offset": [round(float(v), 1) for v in offs]}
+    return np.clip(warped, 0, 255).astype(np.uint8), info
+
+
 def _fit_color(body: np.ndarray, warped: np.ndarray, band, keep=0.6):
     """逐通道最小二乘 gain/offset（两边都不透明的带内，截尾去外点）。"""
     H = body.shape[0]
@@ -221,6 +462,17 @@ def align(body: Image.Image, gen: Image.Image, region: str = "torso",
     Bopaque = B[..., 3] > 200
     if exclude is not None:
         Bopaque = Bopaque & ~exclude
+
+    if region == "face":
+        G0 = np.asarray(gen.convert("RGB"), dtype=np.float32)
+        ga0 = key_alpha(G0)
+        if float((ga0 < 0.5).mean()) < 0.15:
+            raise SystemExit(f"[align] 输入看起来不是洋红底（透明区只占 "
+                             f"{float((ga0 < 0.5).mean()):.1%}）—— 拒绝在它上面继续算")
+        rgba0 = Image.fromarray(
+            np.dstack([G0, (ga0 * 255).astype(np.uint8)]).astype(np.uint8), "RGBA")
+        return _align_face(B, rgba0, sp, W, H, color=color, verbose=verbose,
+                           exclude=exclude)
 
     G = np.asarray(gen.convert("RGB"), dtype=np.float32)
     ga = key_alpha(G)
@@ -313,10 +565,14 @@ def align(body: Image.Image, gen: Image.Image, region: str = "torso",
             for d in moves:
                 nsx, nsy = sx + d[0], sy + d[1]
                 ndx, ndy = dx + d[2], dy + d[3]
-                if not (0.60 * sx0 <= nsx <= 1.45 * sx0 and
-                        0.60 * sy0 <= nsy <= 1.45 * sy0):
+                # 护栏收紧到 ±8% 尺度 / ±24px 平移。
+                # ⚠️ 原来给到 ±45% / ±60px，实测同一张图两次跑能解出 sy 0.31 和 0.46
+                #   两个答案（色差目标在"平涂皮肤 + 平涂头发"上几乎是平台，梯度很弱，
+                #   大范围内它能一路滑）。尺度交给剪影 Dice 定，色差只做"细调"。
+                if not (0.92 * sx0 <= nsx <= 1.08 * sx0 and
+                        0.92 * sy0 <= nsy <= 1.08 * sy0):
                     continue
-                if abs(ndy - dy0) > 60 or abs(ndx - dx0) > 60:
+                if abs(ndy - dy0) > 24 or abs(ndx - dx0) > 24:
                     continue
                 c = cost(nsx, nsy, ndx, ndy)
                 if c < ccur - 1e-6:
@@ -361,7 +617,7 @@ def main() -> int:
     ap.add_argument("--form", required=True)
     ap.add_argument("--input", required=True, help="待配准的重绘底图（洋红底）")
     ap.add_argument("--root", default=".")
-    ap.add_argument("--region", default="torso", choices=tuple(BAND))
+    ap.add_argument("--region", default="torso", choices=tuple(BAND) + ("face",))
     ap.add_argument("--no-color", action="store_true", help="不做配色拟合")
     ap.add_argument("--out", default="", help="输出路径（必须另存，不覆盖源图）")
     ap.add_argument("--qa", default="", help="另存一张叠图供肉眼复核")

@@ -137,9 +137,12 @@ step "11/26 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切�
 step "12/26 笑眼真素材（同一条流水线，底图换成山型 ∩ 的笑眼脸）"
 "$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant smile
 
-step "13/26 痛苦闭眼 >_< 与真·瞪大眼（同一条流水线的第三、第四张重绘底图）"
+step "13/26 痛苦闭眼 >_< 与真·瞪大眼（痛苦=第三张重绘底图；瞪大=原画眼件仿射撑开）"
 "$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant pain
-"$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant wide
+# 瞪大眼**不走 AI 重绘**：那张图画成了"整只眼放大"（眼白 127x136 vs 本体眼眶 104x87），
+# 照抄=脸颊一块白圆角矩形，缩回去又变成重画一遍眼白。Live2D 的 ParamEyeLWide 本来
+# 就是"把同一张眼件的顶点往上拉"，所以这里用原画眼件各向异性放大 (1.12, 1.20)。
+"$PY" tools/make_eye_wide_parts.py --character "$CH" --form "$FM"
 
 step "14/26 上眼睑（没有闭眼真素材时的兜底方案）"
 "$PY" tools/make_eyelid_parts.py --character "$CH" --form "$FM"

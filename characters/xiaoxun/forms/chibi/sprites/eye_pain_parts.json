@@ -1,0 +1,68 @@
+{
+  "source": "design/redraw/face_eyespain.png（AI 重绘痛苦闭眼脸）",
+  "register": {
+    "scale": 1.0,
+    "ncc": 1.0,
+    "tx": 0.0,
+    "ty": 0.0,
+    "seeded_by": "identity"
+  },
+  "eyes": [
+    {
+      "side": "l",
+      "file": "eye_l_pain.png",
+      "pos": [
+        109,
+        378
+      ],
+      "size": [
+        163,
+        159
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        2.47,
+        1.08,
+        22.15
+      ],
+      "checks": {
+        "cover_ratio": 1.0,
+        "seam_mean_abs": 0.0,
+        "opaque_px": 11245,
+        "iris_erased_px": 0
+      }
+    },
+    {
+      "side": "r",
+      "file": "eye_r_pain.png",
+      "pos": [
+        293,
+        378
+      ],
+      "size": [
+        163,
+        159
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        2.3,
+        2.63,
+        22.87
+      ],
+      "checks": {
+        "cover_ratio": 1.0,
+        "seam_mean_abs": 0.0,
+        "opaque_px": 11235,
+        "iris_erased_px": 0
+      }
+    }
+  ]
+}

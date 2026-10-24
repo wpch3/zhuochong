@@ -100,6 +100,32 @@ def soften(mask, rounds=2):
     return f
 
 
+def find_mouth(rgb, keep, cx, cy, half_w, half_h):
+    """在窗口里找**张开的口内**（暗红）：返回 (cx, cy, n) 或 None。
+
+    为什么要单独找：张嘴脸的配准如果只看整脸（眼睛/头发/肤色），嘴这一小块
+    权重极低，解出来的平移对嘴并不敏感 —— 实测 Q 版张嘴脸按眼白配准后，
+    口的中心还在原画嘴线上方 ~50px，于是"取口内"的窗口整个落在衣领上，
+    mouth_cavity 切出来的是一块青色夹克（渲出来就是嘴上一个青方块）。
+    口的暗红（R−B 大、亮度 <195）在这张图上独一无二，腮红是浅粉（亮度 >210），
+    眼白/皮肤也不满足，一判一个准。
+    """
+    h, w = rgb.shape[:2]
+    x0, x1 = int(max(0, cx - half_w)), int(min(w, cx + half_w))
+    y0, y1 = int(max(0, cy - half_h)), int(min(h, cy + half_h))
+    if x1 - x0 < 6 or y1 - y0 < 6:
+        return None
+    sub = rgb[y0:y1, x0:x1]
+    kp = keep[y0:y1, x0:x1]
+    r, g, b = sub[..., 0], sub[..., 1], sub[..., 2]
+    lum = (r + g + b) / 3.0
+    m = kp & (r - b > 28) & (r - g > 8) & (lum < 196) & (r > 70)
+    if m.sum() < 60:
+        return None
+    ys, xs = np.nonzero(m)
+    return (float(xs.mean()) + x0, float(ys.mean()) + y0, int(m.sum()))
+
+
 def iris_centers_redraw(rgb, keep):
     """在重绘图里找两只虹膜：蓝得发深、成团、左右各一。"""
     r, g, b = rgb[..., 0].astype(int), rgb[..., 1].astype(int), rgb[..., 2].astype(int)
@@ -155,12 +181,66 @@ def main():
     # 底图若已被 align_redraw.py 预配准（同目录有 .align.json），画布 = body_full、
     # 人物已在正确位置 ⇒ 恒等映射，**不许再套一次缩放平移**（会把脸推走）。
     pre = form_art.aligned_info(redraw)
-    if pre is not None:
-        if "broken" in pre:
-            raise SystemExit(f"[张嘴] 侧车文件坏了：{pre['broken']}")
-        s, tx, ty, ncc = 1.0, 0.0, 0.0, float("nan")
-        print(f"[张嘴] 底图已预配准（尺度 {pre.get('scale')} 平移 {pre.get('translate')}）"
-              f"→ 跳过虹膜配准与 NCC 微调")
+    # 底图如果**本来就是画布尺寸**（align_redraw 的输出），那就是恒等映射，
+    # 不能再套任何配准：套一次就是把已经对齐的脸推走。
+    # 判据用尺寸 —— 比"有没有 sidecar"更可靠（sidecar 也可能配在原始尺寸上）。
+    ident = (pre is not None and Image.open(redraw).size == (W, H))
+    if pre is not None and "broken" in pre:
+        raise SystemExit(f"[张嘴] 侧车文件坏了：{pre['broken']}")
+    mouthp_old = json.load(open(os.path.join(sp, "mouth_parts.json"), encoding="utf-8"))
+    line = mouthp_old["line"]
+    mcx = (line["x0"] + line["x1"]) / 2.0
+    mtop = line["y0"] + (line["y1"] - line["y0"]) * 0.5
+    fx0, fx1 = int(mcx - 70), int(mcx + 70)
+    fy0, fy1 = int(mtop - 110), int(mtop + 35)
+    face_box = (slice(max(0, fy0), fy1), slice(max(0, fx0), fx1))
+    ref = brgb[face_box].mean(axis=2)
+    refm = (body[..., 3][face_box] > 128)
+    refm[int(mtop - 12 - max(0, fy0)):int(mtop + 30 - max(0, fy0)),
+         int(mcx - 26 - max(0, fx0)):int(mcx + 26 - max(0, fx0))] = False   # 挖掉嘴
+
+    def ncc_of(ss, ttx, tty):
+        wr, wa = warp(rrgb, (keep * 255).astype(np.uint8), (H, W), ss, ttx, tty)
+        cur = wr[face_box].mean(axis=2)
+        m = refm & (wa[face_box] > 128)
+        if m.sum() < 500:
+            return -1.0
+        a = ref[m] - ref[m].mean(); bq = cur[m] - cur[m].mean()
+        return float((a * bq).sum() / (np.sqrt((a * a).sum() * (bq * bq).sum()) + 1e-6))
+
+    if ident:
+        # 底图已经是画布尺寸（align_redraw 按**眼睛**解出来的），整体不动；
+        # 但"嘴"必须自己再对一次：同一张 AI 图里眼睛对上了不等于嘴对上了
+        # （实测张嘴脸的眼-嘴距离比原画短 40~60px）。
+        # 所以这里只做**嘴这一个特征**的平移校正，其余像素原封不动。
+        s, tx, ty, ncc = 1.0, 0.0, 0.0, 1.0
+        hit = find_mouth(rrgb, keep, mcx, mtop, 120, 150)
+        if hit is None:
+            raise SystemExit("[张嘴] 已配准的底图里找不到暗红口内（判据失效？）")
+        gx, gy, gn = hit
+        tx = gx - mcx
+        ty = gy - (mtop + 12)
+        print(f"[张嘴] 底图已是画布尺寸 → 整体恒等，"
+              f"口内实测 ({gx:.0f},{gy:.0f}) → 嘴部平移校正 ({tx:+.1f},{ty:+.1f})px（{gn}px）")
+    elif pre is not None:
+        # 有 align_redraw 的解就当种子（±6% 尺度 / ±10px 平移），再用本工具自己的
+        # NCC 收一遍。**不能直接用恒等映射**：那张四参数是整脸解的，
+        # 嘴这一圈本来就是差异区，解出来的平移未必对口腔足够准（实测张嘴脸
+        # 的 x 平移 21px 与闭眼脸 -12px 差 30px 以上，硬套会把口内取到下唇外）。
+        sc = pre.get("scale") or [1.0, 1.0]
+        tr = pre.get("translate") or [0.0, 0.0]
+        s0 = float(np.sqrt(max(sc[0], 1e-6) * max(sc[1], 1e-6)))
+        tx0, ty0 = -float(tr[0]) / s0, -float(tr[1]) / s0
+        ncc, s, tx, ty = ncc_of(s0, tx0, ty0), s0, tx0, ty0
+        for ds in np.linspace(-0.06, 0.06, 9):
+            ss = s0 * (1 + ds)
+            for ddy in range(-10, 11, 2):
+                for ddx in range(-10, 11, 2):
+                    v = ncc_of(ss, tx0 + ddx / ss, ty0 + ddy / ss)
+                    if v > ncc:
+                        ncc, s, tx, ty = v, ss, tx0 + ddx / ss, ty0 + ddy / ss
+        print(f"[张嘴] 用 align_redraw 的解当种子（尺度 {sc}、平移 {tr}），"
+              f"NCC 收到 {ncc:.3f}")
     else:
         eyes = json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]
         be = {}
@@ -177,18 +257,6 @@ def main():
         tx, ty = mr[0] - mb[0] / s, mr[1] - mb[1] / s
 
         # ---- 2. 脸部 NCC 微调（排除嘴那一块，因为那里本来就该不一样）----
-        mouthp_old = json.load(open(os.path.join(sp, "mouth_parts.json"), encoding="utf-8"))
-        line = mouthp_old["line"]
-        mcx = (line["x0"] + line["x1"]) / 2.0
-        mtop = line["y0"] + (line["y1"] - line["y0"]) * 0.5
-        fx0, fx1 = int(mcx - 70), int(mcx + 70)
-        fy0, fy1 = int(mtop - 110), int(mtop + 35)
-        face_box = (slice(max(0, fy0), fy1), slice(max(0, fx0), fx1))
-        ref = brgb[face_box].mean(axis=2)
-        refm = (body[..., 3][face_box] > 128)
-        refm[int(mtop - 12 - max(0, fy0)):int(mtop + 30 - max(0, fy0)),
-             int(mcx - 26 - max(0, fx0)):int(mcx + 26 - max(0, fx0))] = False   # 挖掉嘴
-
         best = None
         for ds in (-0.03, -0.015, 0.0, 0.015, 0.03):
             ss = s * (1 + ds)
@@ -196,22 +264,11 @@ def main():
                 for dx in range(-5, 6):
                     ttx = mr[0] - (mb[0] + dx) / ss
                     tty = mr[1] - (mb[1] + dy) / ss
-                    wr, wa = warp(rrgb, (keep * 255).astype(np.uint8), (H, W), ss, ttx, tty)
-                    cur = wr[face_box].mean(axis=2)
-                    m = refm & (wa[face_box] > 128)
-                    if m.sum() < 500:
-                        continue
-                    a = ref[m] - ref[m].mean(); bq = cur[m] - cur[m].mean()
-                    ncc = float((a * bq).sum() / (np.sqrt((a * a).sum() * (bq * bq).sum()) + 1e-6))
-                    if best is None or ncc > best[0]:
-                        best = (ncc, ss, ttx, tty)
+                    v = ncc_of(ss, ttx, tty)
+                    if best is None or v > best[0]:
+                        best = (v, ss, ttx, tty)
         ncc, s, tx, ty = best
 
-    # 嘴中线（预配准与否都要用）
-    mouthp_old = json.load(open(os.path.join(sp, "mouth_parts.json"), encoding="utf-8"))
-    line = mouthp_old["line"]
-    mcx = (line["x0"] + line["x1"]) / 2.0
-    mtop = line["y0"] + (line["y1"] - line["y0"]) * 0.5
     mw = line["x1"] - line["x0"] + 1
     wrgb, walpha = warp(rrgb, (keep * 255).astype(np.uint8), (H, W), s, tx, ty)
 
@@ -273,13 +330,15 @@ def main():
         "line": line,
         "mask": "mouth_mask.png", "cavity": "mouth_cavity.png",
         "pos": pos, "anchor_pos": [mcx, float(mtop)],
-        "size": [tw, th], "open_h": th, "closed_sy": round(1.2 / th, 4),
+        # closed_sy = 闭嘴时遮罩的纵向压缩比。**必须是 0**：
+        #   设成 1.2/th（≈0.04）时，闭嘴状态仍留 1px 高的缝，口内从那道缝里露出来，
+        #   最终帧里嘴角挂着一小点红色（沙箱实拍 /tmp/g_states.png 的闭眼/笑眼格）。
+        #   闭嘴的嘴线本来就烘在原画 body_full 上，遮罩压到 0 不会丢东西。
+        "size": [tw, th], "open_h": th, "closed_sy": 0.0,
         "colors": mouthp_old.get("colors", {}),
-        "register": ({"scale": 1.0, "ncc": None, "pre_aligned": True}
-                     if pre is not None else
-                     {"scale": round(s, 4), "ncc": round(ncc, 4),
-                      "iris_body": [list(bl), list(br)],
-                      "iris_redraw": [list(rl), list(rr)]}),
+        "register": {"scale": round(s, 4), "ncc": round(ncc, 4),
+                     "seeded_by": ("identity" if ident else
+                                   ("align_redraw" if pre is not None else "iris"))},
         "native_px": list(native), "checks": {"cavity_px": int(op.sum()), "teeth_px": teeth, "tongue_px": tongue,
                    "width_px": tw, "height_px": th},
         "note": "口内是 AI 重绘的真素材（含上颚/牙/舌/嘴角），不是几何色块；"
@@ -288,8 +347,7 @@ def main():
     }
     json.dump(rep, open(os.path.join(sp, "mouth_parts.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
-    print(f"张嘴零件完成：配准 scale={s:.4f} "
-          f"NCC={'跳过(预配准)' if pre is not None else format(ncc, '.3f')}；"
+    print(f"张嘴零件完成：配准 scale={s:.4f} NCC={ncc:.3f}；"
           f"口内 {tw}x{th}（{op.sum()}px，牙 {teeth}px、舌 {tongue}px）→ pos={pos}")
 
 

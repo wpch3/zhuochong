@@ -36,6 +36,11 @@ from PIL import Image
 
 SKIN = (252, 228, 216)
 MARGIN = 9          # 眼眶外扩多少像素（要盖住原画的上睫毛和眼角）
+LASH_EXT = 26       # 补片再往外让这么多像素给**重绘的闭眼睫毛**
+#   ★ 闭眼的睫毛比虹膜宽：只按眼球框外扩时，睫毛两端会被补片边界横着切一刀，
+#     最终帧里是一根"方块睫毛"（沙箱实拍 /tmp/rig_closed_left_zoom.png 第一张）。
+#     多让 14px，alpha 仍由"原画这里是皮肤或线稿"那条判据把关，
+#     所以多出来的面积不会把头发糊上来。
 FEATHER = 7         # 边缘羽化宽度（软椭圆）
 
 # 各档眼形的切法。闭眼/笑眼/痛苦眼都是「一条睫毛线 + 一片皮肤」，框按**眼球**外扩就够
@@ -122,6 +127,99 @@ def erase_iris(patch, alpha_ok, ball_size, sclera):
     return out, int(iris.sum())
 
 
+def _scale_rgba(rgb, a, kx: float, ky: float):
+    """按 (kx,ky) 各向异性重采样一张已预乘的补片（避免透明边渗色）。"""
+    pm = np.dstack([rgb * a[..., None], a * 255.0])
+    im = Image.fromarray(np.clip(pm, 0, 255).astype(np.uint8), "RGBA")
+    im = im.resize((max(4, int(round(rgb.shape[1] * kx))),
+                    max(4, int(round(rgb.shape[0] * ky)))), Image.LANCZOS)
+    arr = np.asarray(im).astype(np.float32)
+    a2 = arr[..., 3] / 255.0
+    rgb2 = np.clip(arr[..., :3] / np.maximum(a2[..., None], 1e-3), 0, 255)
+    return rgb2, a2
+
+
+def _dilate(mask, n):
+    """二值膨胀（不用 scipy）：n 圈 4 邻域。"""
+    m = mask.copy()
+    for _ in range(n):
+        g = m.copy()
+        g[1:, :] |= m[:-1, :]
+        g[:-1, :] |= m[1:, :]
+        g[:, 1:] |= m[:, :-1]
+        g[:, :-1] |= m[:, 1:]
+        m = g
+    return m
+
+
+def _isolate_eye(alpha, eye_zone, pad=10):
+    """只保留"与眼眶连通、且在眼眶外扩 pad 像素内"的那一块 alpha。
+
+    为什么用几何而不是颜色：这只角色的眼白、头发、虹膜都是紫调亮色
+    （实测 eye_l_base 231,213,227；重绘里"眼白"与"头发"采样几乎同色），
+    颜色判据全都会误伤。碎块在几何上和眼睛主体不连通，一判一个准。
+    """
+    from collections import deque
+    h, w = alpha.shape
+    allow = _dilate(eye_zone, pad)
+    solid = (alpha > 0.35) & allow
+    if not solid.any():
+        return alpha
+    # 从眼眶中心起 flood，只留连通的那块
+    ys, xs = np.nonzero(eye_zone)
+    seed = (int(np.clip(ys.mean(), 0, h - 1)), int(np.clip(xs.mean(), 0, w - 1)))
+    if not solid[seed]:
+        ys, xs = np.nonzero(solid)
+        seed = (int(ys[0]), int(xs[0]))
+    keep = np.zeros_like(solid)
+    q = deque([seed]); keep[seed] = True
+    while q:
+        cy, cx = q.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = cy + dy, cx + dx
+            if 0 <= ny < h and 0 <= nx < w and solid[ny, nx] and not keep[ny, nx]:
+                keep[ny, nx] = True
+                q.append((ny, nx))
+    # 软边（alpha 在 0.35 以下的那圈羽化）跟着连通块一起留
+    keep = _dilate(keep, 3)
+    out = np.where(keep & allow, alpha, 0.0).astype(np.float32)
+    return out
+
+
+def _dark_blob_centroid(rgb, mask, min_px=40):
+    """在 mask 里找最大的那块暗色连通块，返回其质心 (x,y) 与像素数；找不到返回 None。
+
+    暗色 = 睫毛/眼线（lum<155）。取**最大连通块**而不是全部暗像素：
+    窗口里还压着头发的外轮廓线，一起算会把质心拽到头发上。
+    """
+    from collections import deque
+    lum = rgb[..., :3].mean(axis=2) if rgb.shape[-1] >= 3 else rgb
+    m = (lum < 155) & mask
+    if m.sum() < min_px:
+        return None
+    h, w = m.shape
+    seen = np.zeros_like(m, bool)
+    best = None
+    ys, xs = np.nonzero(m)
+    for y0, x0 in zip(ys, xs):
+        if seen[y0, x0]:
+            continue
+        q = deque([(y0, x0)]); seen[y0, x0] = True
+        pts = []
+        while q:
+            cy, cx = q.popleft(); pts.append((cy, cx))
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ny, nx = cy + dy, cx + dx
+                if 0 <= ny < h and 0 <= nx < w and m[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True; q.append((ny, nx))
+        if best is None or len(pts) > len(best):
+            best = pts
+    if best is None or len(best) < min_px:
+        return None
+    a = np.array(best, np.float64)
+    return float(a[:, 1].mean()), float(a[:, 0].mean()), len(best)
+
+
 def warp_box(rd_rgba, s, tx, ty, box):
     """把重绘图按 (缩放 s, 平移 tx,ty) 采样到 body 空间的 box=(x0,y0,x1,y1)。
     只算这一块，所以可以在网格搜索里跑几千次。"""
@@ -160,6 +258,7 @@ def main():
     bkeep = body[..., 3] > 128
 
     rd = np.array(Image.open(redraw).convert("RGBA"))
+    rgb_h, rgb_w = rd.shape[:2]
     rrgb = rd[..., :3].astype(np.int32)
     r_, g_, b_ = rrgb[..., 0], rrgb[..., 1], rrgb[..., 2]
     magenta = (np.minimum(r_, b_) - g_ > 60) & (r_ > 140) & (b_ > 140)
@@ -176,6 +275,10 @@ def main():
     # 正确做法：把 align 的解当**种子**，再用本工具自己的 NCC（脸部、挖掉眼睛带）
     # 在 ±10% 尺度 / ±12px 平移里收一遍。既不会跑到别的架构上去，也不会各解各的。
     pre = form_art.aligned_info(redraw)
+    # 底图如果**本来就是画布尺寸**（align_redraw 的输出），那就是恒等映射，
+    # 不能再套任何配准：套一次就是把已经对齐的脸推走。
+    # 判据用尺寸 —— 比"有没有 sidecar"更可靠（sidecar 也可能配在原始尺寸上）。
+    ident = (pre is not None and Image.open(redraw).size == (W, H))
     if pre is not None and "broken" in pre:
         raise SystemExit(f"[{label}] 侧车文件坏了：{pre['broken']}")
 
@@ -200,7 +303,16 @@ def main():
         a = ref[m] - ref[m].mean(); bq = cm[m] - cm[m].mean()
         return float((a * bq).sum() / (np.sqrt((a * a).sum() * (bq * bq).sum()) + 1e-6))
 
-    if pre is not None:
+    if ident:
+        # 底图已经是画布尺寸（align_redraw 的输出）⇒ 恒等映射。
+        # ⚠️ 这条分支是**被实测逼出来的**：先试过"拿 align 的解当种子再 NCC 收一遍"，
+        #   结果 NCC 把 ty 又推了 43px，采样窗口下缘滑到青色衣领上
+        #   （把重绘图按最终映射裁出来看过，图里明明白白一块领子 + 一块洋红底），
+        #   最终帧里睫毛变成一根方块。已经对齐的图不许再动。
+        s, tx, ty, ncc = 1.0, 0.0, 0.0, 1.0
+        print(f"[{label}] 底图已是画布尺寸（align_redraw 输出，色差 "
+              f"{(pre.get('color_cost') or pre.get('face_cost') or '?')}）→ 恒等映射，不再配准")
+    elif pre is not None:
         sc = pre.get("scale") or [1.0, 1.0]
         tr = pre.get("translate") or [0.0, 0.0]
         s0 = float(np.sqrt(max(sc[0], 1e-6) * max(sc[1], 1e-6)))
@@ -223,7 +335,7 @@ def main():
         print(f"[{label}] 用 align_redraw 的解当种子（尺度 {sc}、平移 {tr}），"
               f"NCC 收到 {ncc:.3f}")
     else:
-        # ---- 1. 初值：两张图的"脸"（肤色块）外接框 ----
+        # ---- 初值：两张图的"脸"（肤色块）外接框 ----
         bk_head = bkeep.copy(); bk_head[300:, :] = False      # 只要头那一段（手和腿也是皮肤）
         bs = skin_mask(brgb.astype(np.int32), bk_head)
         rs = skin_mask(rrgb, rkeep)
@@ -259,7 +371,9 @@ def main():
 
     out = {"source": f"design/redraw/{src_name}（AI 重绘{label}脸）",
            "register": {"scale": round(s, 4), "ncc": round(ncc, 4),
-                        "seeded_by": ("align_redraw" if pre is not None else "skin_bbox")},
+                        "tx": round(float(tx), 3), "ty": round(float(ty), 3),
+                        "seeded_by": ("identity" if ident else
+                                      ("align_redraw" if pre is not None else "skin_bbox"))},
            "eyes": []}
 
     for side in ("l", "r"):
@@ -275,13 +389,72 @@ def main():
             ax0 = max(0, qx0 - ex_x); ax1 = min(W, qx0 + qw + ex_x)
             ay0 = max(0, qy0 - ex_y * 2); ay1 = min(H, qy0 + qh + ex_y)
         else:
-            ax0 = max(0, gx0 - MARGIN - 4 - ex_x); ax1 = min(W, gx0 + gw + MARGIN + 4 + ex_x)
-            ay0 = max(0, gy0 - MARGIN - 4 - ex_y); ay1 = min(H, gy0 + gh + MARGIN + 4 + ex_y)
+            ax0 = max(0, gx0 - MARGIN - 4 - LASH_EXT - ex_x)
+            ax1 = min(W, gx0 + gw + MARGIN + 4 + LASH_EXT + ex_x)
+            ay0 = max(0, gy0 - MARGIN - 4 - LASH_EXT - ex_y)
+            ay1 = min(H, gy0 + gh + MARGIN + 4 + LASH_EXT + ex_y)
+        if want_erase:
+            # 瞪大眼的补片要顶替**整只被撑开的眼**（眼白 + 抬高的上睫毛）。
+            # 只按眼球框外扩是不够的：AI 把这只眼画成"瞳孔偏下、睫毛高高抬起"，
+            # 实测睫毛在虹膜中心上方 87px、而框只有 ±76px ⇒ 睫毛被顶边横切，
+            # 渲出来的惊讶态是一圈白 + 一圈蓝残边。
+            # 这里在**重绘图里量出这只眼的真实范围**（近白眼白 ∪ 偏暖暗睫毛），
+            # 再按配准参数换算回画布坐标，把框撑到能整只装下。
+            cxb = (gx0 + gw * 0.5)
+            cyb = (gy0 + gh * 0.5)
+            sep = abs(eyes["r"]["ball_pos"][0] - eyes["l"]["ball_pos"][0]) or gw
+            half_rx = max(40.0, sep * 0.42) / s        # 重绘图像素
+            half_ry = max(60.0, gh * 1.45) / s
+            cxr, cyr = cxb / s + tx, cyb / s + ty
+            x0r, x1r = int(max(0, cxr - half_rx)), int(min(rgb_w, cxr + half_rx))
+            y0r, y1r = int(max(0, cyr - half_ry)), int(min(rgb_h, cyr + half_ry))
+            sub = rrgb[y0r:y1r, x0r:x1r]
+            if sub.size:
+                sr, sg, sb = sub[..., 0], sub[..., 1], sub[..., 2]
+                slum = (sr + sg + sb) / 3.0
+                eye_m = (((sr > 232) & (sg > 228) & (sb > 230) & (np.abs(sr - sb) < 16)) |
+                         ((slum < 125) & (sr - sb > 4)))
+                if eye_m.sum() > 200:
+                    yy, xx = np.nonzero(eye_m)
+                    bx0 = (x0r + xx.min() - tx) * s
+                    bx1 = (x0r + xx.max() + 1 - tx) * s
+                    by0 = (y0r + yy.min() - ty) * s
+                    by1 = (y0r + yy.max() + 1 - ty) * s
+                    ax0 = int(max(0, min(ax0, bx0 - 6)))
+                    ax1 = int(min(W, max(ax1, bx1 + 6)))
+                    ay0 = int(max(0, min(ay0, by0 - 6)))
+                    ay1 = int(min(H, max(ay1, by1 + 6)))
         box = (ax0, ay0, ax1, ay1)
         # 要盖住的"原画眼睛" = 眼球框再放一点（睫毛和眼角），不含眉毛/头发
         eye_zone = np.zeros((ay1 - ay0, ax1 - ax0), bool)
         eye_zone[max(0, gy0 - 6 - ay0):gy0 + gh + 6 - ay0,
                  max(0, gx0 - 6 - ax0):gx0 + gw + 6 - ax0] = True
+        # ---- 用"睫毛质心"把这个补片钉到这只眼睛上（逐眼校正）----
+        # 四张差分脸的全局配准只到"大概对"，实测采样窗口下缘会滑到衣领上
+        # （放大重绘图确认过：窗口里出现了青色领子和洋红底）。
+        # 逐眼锚定把"重绘里这块睫毛"和"原画里这块睫毛"的质心对到一起，
+        # 一像素一像素都是可核对的，不依赖任何全局猜测。
+        #   重绘那一侧：把补片框映射回重绘图，找其中最大的暗块（睫毛）
+        rx0, ry0 = box[0] / s + tx, box[1] / s + ty
+        rx1, ry1 = box[2] / s + tx, box[3] / s + ty
+        ix0, iy0 = max(0, int(rx0)), max(0, int(ry0))
+        rr = rrgb[iy0:max(iy0 + 1, int(ry1)), ix0:max(ix0 + 1, int(rx1))]
+        blob = _dark_blob_centroid(rr, np.ones(rr.shape[:2], bool)) if rr.size else None
+        if blob is not None:
+            gxr, gyr = blob[0] + ix0, blob[1] + iy0
+            #   原画那一侧：眼球框外扩一点，取那里的暗块（睫毛/眼线）
+            tgt_rgb = brgb[ay0:ay1, ax0:ax1]
+            tmask = np.zeros(tgt_rgb.shape[:2], bool)
+            m0y, m1y = max(0, gy0 - 6 - ay0), min(tgt_rgb.shape[0], gy0 + gh + 12 - ay0)
+            m0x, m1x = max(0, gx0 - 6 - ax0), min(tgt_rgb.shape[1], gx0 + gw + 6 - ax0)
+            tmask[m0y:m1y, m0x:m1x] = True
+            tb = _dark_blob_centroid(tgt_rgb, tmask)
+            if tb is not None:
+                bx_, by_ = tb[0] + ax0, tb[1] + ay0
+                ntx, nty = gxr - bx_ / s, gyr - by_ / s
+                # 只接受小修正（<20px 画布），否则说明暗块认错对象了
+                if abs(ntx - tx) * s < 20 and abs(nty - ty) * s < 20:
+                    tx, ty = ntx, nty
         patch, pa = warp_box(rd_rgba, s, tx, ty, box)
         if (pa > 128).mean() < 0.9:
             raise SystemExit(f"[eye_{variant}] {side} 眼补片在重绘图里没盖满（配准失败？）")
@@ -294,6 +467,37 @@ def main():
             if n_iris < 150:
                 raise SystemExit(f"[eye_{variant}] {side} 眼没找到虹膜（只 {n_iris} px）："
                                  "重绘图的眼白没围成一圈，或瞳色对不上色卡（DC55）")
+        if want_erase:
+            # 眼白**尺寸归一**：AI 把"瞪大"画成了整只眼放大（重绘眼白 114x118 画布像素，
+            # 本体眼眶只有 104x87），照抄就是脸颊上一块白圆角矩形（沙箱实拍
+            # /tmp/f_surprise.png、/tmp/surprise_zoom2.png）。
+            # 正确处理：把补片各向异性缩到「眼白 = 本体眼眶 x1.06」，并以**眼球中心**为锚。
+            # 虹膜早就在上一步挖掉了，缩放大小时虹膜由 eye_<side>_ball 负责，不受影响。
+            whites = ((patch[..., 0] > 232) & (patch[..., 1] > 228) & (patch[..., 2] > 230)
+                      & (pa > 0.5))
+            if whites.sum() > 400:
+                ys_, xs_ = np.nonzero(whites)
+                sw = xs_.max() - xs_.min() + 1
+                sh = ys_.max() - ys_.min() + 1
+                aw, ah = e.get("aperture_size") or (gw, gh)
+                kx = float(np.clip(aw * 1.06 / max(1, sw), 0.55, 1.15))
+                ky = float(np.clip(ah * 1.06 / max(1, sh), 0.55, 1.15))
+                if abs(kx - 1) > 0.02 or abs(ky - 1) > 0.02:
+                    scx = (xs_.min() + xs_.max()) / 2.0
+                    scy = (ys_.min() + ys_.max()) / 2.0
+                    patch, pa = _scale_rgba(patch, pa.astype(np.float32), kx, ky)
+                    hh, ww = patch.shape[:2]
+                    ax0 = int(round(gx0 + gw / 2.0 - scx * kx))
+                    ay0 = int(round(gy0 + gh / 2.0 - scy * ky))
+                    ax0 = max(0, min(W - ww, ax0))
+                    ay0 = max(0, min(H - hh, ay0))
+                    ax1, ay1 = ax0 + ww, ay0 + hh
+                    eye_zone = np.zeros((hh, ww), bool)
+                    eye_zone[max(0, gy0 - 6 - ay0):min(hh, gy0 + gh + 6 - ay0),
+                             max(0, gx0 - 6 - ax0):min(ww, gx0 + gw + 6 - ax0)] = True
+                    print(f"  眼白归一到本体眼眶：{sw}x{sh} → 缩放 ({kx:.3f},{ky:.3f}) "
+                          f"→ {ww}x{hh} @ ({ax0},{ay0})")
+
         tgt = brgb[ay0:ay1, ax0:ax1]
         bk_box = bkeep[ay0:ay1, ax0:ax1]
 
@@ -326,9 +530,72 @@ def main():
         alpha = np.clip((1.0 - rad) / max(k, 1e-3) + 0.35, 0, 1)
         alpha *= (pa > 128)
         alpha *= bk_box                       # 不要糊到脸外面去
+        # ⚠️ 曾经试过"按冷色判头发、把冷色像素的 alpha 清零"——**不行**：
+        #   这角色的眼白本身就带紫（实测 eye_l_base 中位色 231,213,227、
+        #   重绘脸的"眼白"和"头发"采样几乎同色），按色相判会把眼白一起挖掉
+        #   （闭眼左眼覆盖率当场从 97.3% 掉到 71.9%，瞪大眼左眼掉到 10.0%）。
+        #
+        # 现在的口径：**让原画当裁判** —— 补片只许盖在"原画这里是皮肤或线稿"的地方。
+        #   重绘里的头发位置和原画差几像素，补片椭圆就把一撮蓝紫发糊到脸颊上
+        #   （放大图里那道蓝楔子）。按原画分类：暖色亮 = 皮肤、暗 = 睫毛/线稿，
+        #   其余（原画这里是头发/背景）= 不许盖。判据用**原画**的像素，
+        #   所以完全不受"重绘的眼白也带紫"影响。
+        _t_r = tgt[..., 0]; _t_b = tgt[..., 2]; _t_lum = tgt.mean(axis=2)
+        body_skin = (_t_r > 200) & (_t_r > _t_b + 8)
+        body_line = _t_lum < 150
+        #   eye_zone 里一律放行：那只睁着的眼睛的虹膜是**紫调亮色**，
+        #   既不算暖皮肤也不算暗线稿，不放行就直接盖不住（覆盖率 97%→86%）。
+        alpha = np.where(body_skin | body_line | eye_zone, alpha, 0.0).astype(np.float32)
 
-        # 覆盖检查：原画的深色眼睛像素必须被 alpha≥0.9 的部分盖住
-        dark = (tgt.mean(axis=2) < 165) & bk_box & eye_zone
+        # ---- 清掉"孤岛"：只留和眼眶连通的那一块 ----
+        # 两个真实症状（放大图看过）：① 闭眼/痛苦档在左外眼角带出一撮重绘的
+        #   蓝发（它贴着原画头发那圈暗线，按肤色/线稿分类都拦不住）；
+        #   ② 瞪大眼那件四周散着一圈点状碎屑。
+        # 两者都是"和眼睛主体不连通的碎块"，几何上就能干净地去掉，
+        # 不用再猜颜色。
+        alpha = _isolate_eye(alpha, eye_zone, pad=10)
+
+        if want_erase:
+            # 瞪大眼还要**按眼眶形状裁一刀**：AI 把眼白画得比本体高一半
+            # （实测重绘眼白 114x118 画布像素，本体眼眶 104x87），
+            # 直接照抄会在脸颊上糊出一块白色圆角矩形（沙箱实拍 /tmp/f_surprise.png）。
+            # 裁剪形状用**本体自己的眼件**（eye_<side>_base 的 alpha = 眼眶墨迹），
+            # 膨胀 8px 当作"抬高的上眼线"，形状与本体同源，不用再猜。
+            #   ★ 不能用补片框那个椭圆：它是矩形适配，眼白一大就露白。
+            base_img = np.array(Image.open(os.path.join(sp, f"eye_{side}_base.png"))
+                                .convert("RGBA"))
+            bm_canvas = np.zeros((H, W), bool)
+            px, py = e["patch_pos"]
+            bh, bw = base_img.shape[:2]
+            x1c, y1c = min(W, px + bw), min(H, py + bh)
+            bm_canvas[py:y1c, px:x1c] = base_img[:y1c - py, :x1c - px, 3] > 40
+            bm_canvas = _dilate(bm_canvas, 8)
+            aperture = bm_canvas[ay0:ay1, ax0:ax1]
+            if aperture.sum() > 200:
+                alpha = alpha * aperture.astype(np.float32)
+
+        # 覆盖检查：原画的**整只眼睛**必须被 alpha≥0.9 的部分盖住。
+        #   ⚠️ 以前只查"深色像素（lum<165）"。虹膜下半是浅蓝（亮度 200+），
+        #   查不到 ⇒ 覆盖率照样报 97.3%，可最终帧里眼睛下缘还留着一牙蓝虹膜
+        #   （沙箱实拍 /tmp/rig_closed_left_zoom.png 一眼就看见）。
+        #   真值源改成**睁眼件自己的 alpha**（eye_<side>_ball.png）：那是"原画这块是不是眼睛"
+        #   的权威定义，不依赖颜色。
+        must = np.zeros(tgt.shape[:2], bool)
+        try:
+            _ball = np.asarray(Image.open(os.path.join(sp, f"eye_{side}_ball.png"))
+                               .convert("RGBA"))[..., 3]
+            bx0, by0 = e["ball_pos"]
+            bh, bw = _ball.shape
+            ox, oy = bx0 - ax0, by0 - ay0
+            sx0, sy0 = max(0, -ox), max(0, -oy)
+            dx0, dy0 = max(0, ox), max(0, oy)
+            cw = min(bw - sx0, ww - dx0); chh = min(bh - sy0, hh - dy0)
+            if cw > 0 and chh > 0:
+                must[dy0:dy0 + chh, dx0:dx0 + cw] |= _ball[sy0:sy0 + chh, sx0:sx0 + cw] > 128
+        except (OSError, KeyError):
+            pass
+        dark = ((tgt.mean(axis=2) < 165) & eye_zone) | must
+        dark &= bk_box
         for _ in range(6):
             cover = float((alpha[dark] > 0.9).mean()) if dark.sum() else 1.0
             if cover > 0.995:

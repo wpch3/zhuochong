@@ -1,0 +1,68 @@
+{
+  "source": "design/redraw/face_eyesmile.png（AI 重绘笑眼脸）",
+  "register": {
+    "scale": 1.0,
+    "ncc": 1.0,
+    "tx": 0.0,
+    "ty": 0.0,
+    "seeded_by": "identity"
+  },
+  "eyes": [
+    {
+      "side": "l",
+      "file": "eye_l_smile.png",
+      "pos": [
+        113,
+        380
+      ],
+      "size": [
+        155,
+        155
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        -0.68,
+        8.35,
+        15.35
+      ],
+      "checks": {
+        "cover_ratio": 1.0,
+        "seam_mean_abs": 0.0,
+        "opaque_px": 11245,
+        "iris_erased_px": 0
+      }
+    },
+    {
+      "side": "r",
+      "file": "eye_r_smile.png",
+      "pos": [
+        297,
+        380
+      ],
+      "size": [
+        155,
+        155
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        -1.02,
+        8.52,
+        16.11
+      ],
+      "checks": {
+        "cover_ratio": 1.0,
+        "seam_mean_abs": 0.0,
+        "opaque_px": 11235,
+        "iris_erased_px": 0
+      }
+    }
+  ]
+}
