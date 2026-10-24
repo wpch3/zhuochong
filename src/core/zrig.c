@@ -369,6 +369,8 @@ typedef struct {
     char   name[48];
     double fade;              /* 淡入淡出秒数 */
     int    p0, np;            /* 在 r->exprps 里的区间 */
+    zoverride ovr[ZRIG_MAX_OVERRIDES];
+    int    novr;               /* 表情级部件透明度/偏移覆盖 */
 } zexpr;
 
 typedef struct {
@@ -2352,8 +2354,9 @@ static int load_expressions(zrig *r, const zjson *je, zdiag *d, const char *file
     for (i = 0; i < n; ++i) {
         const zjson *ej = zjson_at(je, i);
         const zjson *ps = zjson_obj_get(ej, "params");
+        const zjson *ovs = zjson_obj_get(ej, "part_overrides");
         const char *id = zjson_str(zjson_obj_get(ej, "id"), NULL);
-        size_t k, np = zjson_count(ps);
+        size_t k, np = zjson_count(ps), no = zjson_count(ovs);
         char path[128];
         zexpr *e;
         if (!id || !*id) {
@@ -2403,6 +2406,38 @@ static int load_expressions(zrig *r, const zjson *je, zdiag *d, const char *file
             r->nexprps++;
             e->np++;
         }
+        if (ovs && ovs->type != ZJSON_OBJ) {
+            zdiag_error(d, file, ovs->line, 0, path, "part_overrides 期望 object");
+            return -1;
+        }
+        if (no > ZRIG_MAX_OVERRIDES) {
+            zdiag_error(d, file, ovs ? ovs->line : 0, 0, path,
+                        "表情部件覆盖过多（上限 %d）", ZRIG_MAX_OVERRIDES);
+            return -1;
+        }
+        for (k = 0; k < no; ++k) {
+            const char *pid = zjson_key_at(ovs, k);
+            const zjson *oj = zjson_at(ovs, k);
+            zoverride *o = &e->ovr[e->novr];
+            memset(o, 0, sizeof(*o));
+            z_strlcpy(o->part, pid ? pid : "", sizeof(o->part));
+            if (!pid || find_part(r, pid) < 0) {
+                zdiag_error(d, file, oj ? oj->line : 0, 0, path,
+                            "part_overrides 引用了不存在的部件 '%s'", pid ? pid : "(缺)");
+                return -1;
+            }
+            /* 表情 opacity 是渲染透明度的绝对目标（非乘数），所以 base opacity=0 的候选件也能淡入；dx/dy 仍为附加位移。 */
+            o->opacity = zjson_num(zjson_obj_get(oj, "opacity"), 1.0);
+            if (zjson_obj_get(oj, "dx")) {
+                o->has_dx = 1;
+                o->dx = zjson_num(zjson_obj_get(oj, "dx"), 0.0);
+            }
+            if (zjson_obj_get(oj, "dy")) {
+                o->has_dy = 1;
+                o->dy = zjson_num(zjson_obj_get(oj, "dy"), 0.0);
+            }
+            e->novr++;
+        }
     }
     return 0;
 }
@@ -2433,6 +2468,42 @@ static double expr_apply(const zrig *r, int pi, double base)
         }
     }
     return (base + ov + add) * mul;
+}
+
+/* 表情级部件覆盖：与表情参数共享同一淡入/淡出权重。
+   没写覆盖的表情按 opacity=1、dx/dy=0 参与混合，使切换到普通表情时旧覆盖自然退场。 */
+static void expr_part_override(const zrig *r, int part, double *opacity,
+                               double *dx, double *dy)
+{
+    double w = 1.0, base_opacity, blended_opacity = 0.0;
+    int pass;
+    if (!r || part < 0 || part >= r->nparts ||
+        (r->expr_cur < 0 && r->expr_prev < 0)) return;
+    base_opacity = *opacity;
+    if (r->expr_fade > 1e-6)
+        w = z_smoothstep(ZC_CLAMP((r->now - r->expr_t0) / r->expr_fade, 0.0, 1.0));
+    for (pass = 0; pass < 2; ++pass) {
+        int ei = pass ? r->expr_prev : r->expr_cur;
+        double ww = pass ? (1.0 - w) : w;
+        double target_opacity = base_opacity;
+        const zexpr *e;
+        int k;
+        if (ww <= 0.0) continue;
+        if (ei >= 0 && ei < r->nexprs) {
+            e = &r->exprs[ei];
+            for (k = 0; k < e->novr; ++k) {
+                const zoverride *o = &e->ovr[k];
+                if (strcmp(o->part, r->parts[part].id) != 0) continue;
+                /* expression opacity 是显式目标值，因而也能把 base opacity=0 的候选件淡入。 */
+                target_opacity = o->opacity;
+                if (o->has_dx) *dx += ww * o->dx;
+                if (o->has_dy) *dy += ww * o->dy;
+                break;
+            }
+        }
+        blended_opacity += ww * target_opacity;
+    }
+    *opacity = blended_opacity;
 }
 
 /* 这个参数是不是正由口型音素层接管？是就返回它在音素层里的槽位。 */
@@ -4901,12 +4972,11 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
             }
         }
     }
-    /* 眨眼：睁眼件淡出、闭眼件淡入。
-       ⚠ 不能用线性交叉淡化（opacity = 1-blink / blink）：blink=0.5 时两张图各一半，
-       叠出来是一只"灰色幽灵眼"（用户 7 倍放大一眼就看出来）。
-       改成**两头让开的斜坡**：睁眼件在 blink<0.75 前不掉透明度（这段由眼眶
-       压扁来表现闭合），闭眼件只在最后 25% 淡入——这时两张图都已经是
-       "下眼睑上的一条线"，几乎重合，看不出叠影。 */
+    /* 表情级部件覆盖：作为独立表情轨淡入淡出，覆盖几何值可与动作覆盖叠加。 */
+    expr_part_override(r, pi, &opacity, &extra_dx, &extra_dy);
+    /* 眨眼：睁眼件和闭眼件只在最后四分之一闭合行程交叉淡化。
+       0.85 之前不画闭眼补片；由原眼睑的下移表现半闭，避免中途双线/灰影。
+       全闭时闭眼补片仍满不透明，睁眼件归零。 */
     /* ⚠ 这里**不能**再看 r->blink_enabled：enabled 只管"自动眨眼定时器要不要跑"，
        不管"这一帧眼睛闭了多少"。曾经写成 (blink_enabled && blink>0.001)，结果关掉
        自动眨眼之后，任何把闭合度推离 0 的东西（表情的 ParamEyeOpen、手动按住、
@@ -4914,9 +4984,9 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
        突然全闭。判据只看 blink 本身。 */
     if (blink > 0.001) {
         if (p->tags & TAG_EYE_OPEN)
-            opacity *= ZC_CLAMP((1.0 - blink) / 0.45, 0.0, 1.0);
+            opacity *= ZC_CLAMP((1.0 - blink) / 0.15, 0.0, 1.0);
         if (p->tags & TAG_EYE_CLOSED)
-            opacity *= ZC_CLAMP((blink - 0.55) / 0.45, 0.0, 1.0);
+            opacity *= ZC_CLAMP((blink - 0.85) / 0.15, 0.0, 1.0);
         if (p->tags & TAG_FX_EYE_OPEN)
             opacity *= FX_EYE_OPEN_FLOOR + (1.0 - FX_EYE_OPEN_FLOOR)
                        * ZC_CLAMP((1.0 - blink) / 0.45, 0.0, 1.0);

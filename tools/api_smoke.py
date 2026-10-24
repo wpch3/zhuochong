@@ -653,6 +653,12 @@ def run(base, root):
     h_half, _ = a.frame_hash()
     check("眨眼 0.5 是第三种画面", h_half not in (h_open, h_shut), h_half)
     check("info 能读回手动眨眼值", abs(a.json("/api/info.json")["blink_manual"] - 0.5) < 0.01)
+    a.hit("/api/blink?v=0.75"); time.sleep(0.15)
+    h_half_lid, _ = a.frame_hash()
+    check("眨眼 0.75 半闭仍是独立画面", h_half_lid not in (h_open, h_half, h_shut), h_half_lid)
+    a.hit("/api/blink?v=0.925"); time.sleep(0.15)
+    h_late_blend, _ = a.frame_hash()
+    check("最后 15% 闭合过渡仍连续可见", h_late_blend not in (h_half_lid, h_shut), h_late_blend)
     a.hit("/api/blink?v=auto")
     check("切回自动眨眼", a.json("/api/info.json")["blink_manual"] < 0)
     r = a.json("/api/blink?on=0") or {}
@@ -1453,6 +1459,20 @@ def run(base, root):
     a.hit("/api/gaze?x=1&y=0"); time.sleep(0.3)
     gr, _ = a.frame_hash()
     check("视线左 / 右画面有变化", gl != gr, "%s → %s" % (gl, gr))
+    # T2.1.1：表达式候选眼件不能冻结 gaze / blink。
+    a.hit("/api/expression?id=angry"); a.hit("/api/blink?on=0"); a.hit("/api/blink?v=0")
+    time.sleep(0.35)
+    a.hit("/api/gaze?x=-1&y=0"); time.sleep(0.25); candidate_left, _ = a.frame_hash()
+    a.hit("/api/gaze?x=1&y=0"); time.sleep(0.25); candidate_right, _ = a.frame_hash()
+    check("表达式候选眼件仍响应左右视线", candidate_left != candidate_right,
+          "%s → %s" % (candidate_left, candidate_right))
+    a.hit("/api/gaze?off=1"); a.hit("/api/blink?v=0"); time.sleep(0.1)
+    candidate_open, _ = a.frame_hash()
+    a.hit("/api/blink?v=1"); time.sleep(0.1)
+    candidate_closed, _ = a.frame_hash()
+    check("表达式候选眼件仍响应手动眨眼", candidate_open != candidate_closed,
+          "%s → %s" % (candidate_open, candidate_closed))
+    a.hit("/api/blink?v=0"); a.hit("/api/blink?on=1"); a.hit("/api/expression?off=1")
     a.hit("/api/gaze?off=1"); a.hit("/api/blink?v=auto")
 
     print("== 动作 ==")
@@ -1629,14 +1649,18 @@ def run(base, root):
     # 带 gaze 的除了两颗眼球，还有跟着眼球走的加算高光（A7）
     gz = [p for p in rig["parts"] if "gaze" in p.get("tags", [])]
     gz_ids = {p["id"] for p in gz}
+    expr_gaze_ids = {p["id"] for p in gz if p["id"].startswith("expr_eye_")}
+    expr_open_ids = {p["id"] for p in rig["parts"]
+                     if p["id"].startswith("expr_eye_") and p["id"] not in
+                     {"expr_eye_l_happy", "expr_eye_r_happy"}}
     check("眼球部件带 gaze 标签",
-          {"eye_l_ball", "eye_r_ball"} <= gz_ids and gz_ids <= {
+          {"eye_l_ball", "eye_r_ball"} <= gz_ids and expr_open_ids <= expr_gaze_ids and gz_ids <= {
               "eye_l_ball", "eye_r_ball", "eye_hl_l", "eye_hl_r",
               "eye_hl_star_l", "eye_hl_star_r",
               # 星形虹膜（T39）：它是常态虹膜的差分件，眼珠往哪看它就得往哪看，
-              # 所以同样带 gaze。白名单是用来拦"不该跟着眼球跑的件误挂 gaze"的，
-              # 新的眼球类差分件要进来就得写在这里。
-              "eye_l_ball_star", "eye_r_ball_star"},
+              # 所以同样带 gaze。表情候选开眼件（T2.1.1）也随视线移动；happy 的
+              # 笑眼是静态闭眼，不标 gaze。
+              "eye_l_ball_star", "eye_r_ball_star"} | expr_gaze_ids,
           " ".join(sorted(gz_ids)))
     layers = [p["layer"] for p in rig["parts"]]
     check("层号不重复", len(set(layers)) == len(layers), "%d 层" % len(layers))

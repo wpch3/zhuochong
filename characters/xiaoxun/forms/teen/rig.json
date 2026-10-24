@@ -10503,6 +10503,14 @@
           "value": -0.3
         },
         {
+          "id": "ParamBrowLAngle",
+          "value": -0.6
+        },
+        {
+          "id": "ParamBrowRAngle",
+          "value": -0.6
+        },
+        {
           "id": "ParamBrowLForm",
           "value": -0.3
         },

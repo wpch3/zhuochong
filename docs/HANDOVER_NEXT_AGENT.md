@@ -62,7 +62,7 @@
 2. **语音同步文字**：句级同步先做。逐字高亮做成可选项，供应商无时间戳时禁用。
 3. **OhMyGPT 实测**：等用户的 `tts_probe.py` 输出。根据输出判断：是否支持 `/audio/speech`、返回音频格式、是否带时间戳字段。
 4. **角色台词二次元化**：按用户要求，给 7 个 AI 角色和小寻重写台词和性格（原创，标签级参考：傲娇、元气、温柔姐姐、三无、腹黑、天然呆等）。小寻性格：温柔、大方、贤惠、智慧，少女感。之后仍保持 `status: draft`，等用户确认。
-5. **表情方案 A**：`parts_src/expressions_a/` 有 8 张图，对齐数值通过。嘴部切割失败（含皮肤），需要用暗线掩膜切割（参考 `tools/make_parts.py` 的 mask_mouth），通过残留和边缘检查后，才能写入角色目录。之前的失败方法见 `docs/memory/LESSONS.md`，不要重试。
+5. **表情方案 A**：`parts_src/expressions_a/` 的 8 张图 + `parts_src/expressions/smile.png` 已由 `tools/make_face_parts.py` 重新对齐，输出在 `forms/teen/sprites/expression_parts_a/`。九个目标情绪（含 body 派生 calm 基准）+ 独立 closed 眨眼帧；报告 10 项（9 张生成图 + 1 body reference），9/9 对齐成功，眼件 75×52、洋红残留 0。已修复脸框连到身体造成的蓝发夹/衣服误检。静态预览可看同目录 `preview_contact_sheet.png`。这些尚未接入 rig/`part_overrides`；下一步应做运行时切换与真机/目视验收，而非再运行旧版抠图。
 6. **清理**：`~/.cache/zc-refs/`（约 3 GB 参考仓库）在不再需要时删除，并在 JOURNAL 记录。
 
 ## 7. 环境与工具

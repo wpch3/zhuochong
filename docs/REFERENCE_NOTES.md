@@ -54,7 +54,25 @@ C 版见 `src/win32/zw32.c` 主循环里的 `LASTINPUTINFO` 段：差值转秒�
   透明处返回 `HTTRANSPARENT`，让鼠标事件落到下面的窗口；这与用户在旧交接文件里的要求一致
   （"角色以外的区域不拦截鼠标"），同时保留"整窗穿透"作为托盘开关（BongoCat 的开关思路）。
 
-## 未决 / 待查（下一步做对应功能前先查这六个项目）
+## Neuro-sama 专项审视（2026-10-24）
+
+Neuro-sama 不是原六项参考项目之一；此前 `docs/VOICE_PLAN.md` 只记录了句级字幕同步建议。此次不把公开表现推断成其私有架构：聊天选取/优先级、提示上下文、记忆系统和内部安全过滤细节仍须视为未公开或二手资料，不作为事实实现说明。
+
+- 已核对公开的 [VedalAI/neuro-sdk](https://github.com/VedalAI/neuro-sdk)：它是游戏集成 API/SDK，不是聊天模型源码。文档公开说明使用 WebSocket；游戏侧注册动作/上下文与处理结果，并警告动作事件可能与 action force 竞态、重复或死锁。可参考的是**结构化动作协议、执行端校验、取消/去重/竞态处理**，不能据此声称 Neuro 的 Twitch 聊天内部也用同一实现。
+- 公开报道支持的高层能力包括：直播聊天互动、LLM 生成文本、TTS、字幕、游戏、反应内容与协作；其内部模块细节并不完整公开。
+- 本项目已经在 `docs/VOICE_PLAN.md` 记录句级同步；但尚未完成 Neuro 专项的实时输入/排队、动作授权、安全/人工接管、记忆和运行诊断逐项评估。
+- 详见 `docs/PRODUCT_PLAN.md` 第 10.4 节（3D/VRM/VRChat 范围）、第 13 节参考调研计划和第 3、9、12 节对应产品缺口。计划不等于已实现。
+
+### 3D / VRM / VRChat 兼容性初查（2026-10-24）
+
+- [vrm-c/UniVRM](https://github.com/vrm-c/UniVRM)：官方仓库说明其为 Unity 下的 VRM/glTF 实现，支持 VRM 0.x、VRM 1.0、glTF 2.0 及 VRMA，仓库为 MIT。适用于理解 Unity 侧导入导出；不是当前 C 原生渲染器的直接插件。
+- [pixiv/three-vrm](https://github.com/pixiv/three-vrm)：MIT 的 Three.js VRM 加载库，可用于浏览器/WebGL 原型。可快速验证本地 VRM 预览和基础表达控制，但引入它意味着 WebGL/JS 渲染层，不等于原生 C 桌宠已兼容。
+- [VRChat 官方创建 avatar 文档](https://creators.vrchat.com/avatars/creating-your-first-avatar/)指出常规工作流包含 Unity/VRChat SDK；VRoid 的 VRM 需要社区转换器。VRChat SDK 使用受其许可协议约束，需在实施时按当时最新版逐条复核，不能将 SDK 当作开放通用运行库打包。
+- [VRMConverterForVRChat](https://github.com/esperecyan/VRMConverterForVRChat) 是社区 Unity 编辑器扩展，公开仓库标 MPL-2.0，且依赖 VRChat SDK/UniVRM 相关包。能借鉴合法源文件的转换工作流，但不能据此承诺直接加载平台上传的 Avatar、Unity prefab、VRC PhysBones、Contacts、Animator 或平台材质均可工作。
+- **结论**：3D 模型展示可用开源库快速做可行性原型；“在当前 C/Win32 产品中完整兼容 VRM”仍需新增渲染后端；“兼容 VRChat 模型”不是同一功能，必须限定为用户有权使用的源文件与可转换子集。拆分任务见 `docs/memory/TASKS.md` P1.12、P2.5–P2.6；本仓库架构预审结果见 `docs/VRM_SPIKE_REPORT.md`。
+- **后续待查**：运行库对 VRM 1.0/0.x 的细项支持、MToon/shader差异、SpringBone/PhysBones映射、Unity/VRC SDK 当前版本和许可、模型元数据的再分发限制，以及 Windows WebGL/本地渲染性能。
+
+## 未决 / 待查（下一步做对应功能前先查参考项目）
 - 全局键鼠钩子：Windows 的 `WH_KEYBOARD_LL` / `RawInput` 取舍与权限流程 → 参考 #2。
 - 语音打断（barge-in）与端点检测 → 参考 #5。
 - 网格形变（mesh warp）做脸/身体平滑弯曲 → 参考 #6 的参数与形变管线（不用 Cubism Core）。

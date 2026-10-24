@@ -1434,8 +1434,8 @@ def check_eye_hold_zone(root):
           f"闭眼起点={m_shut.group(1) if m_shut else '?'}")
     if not (m_open and m_shut):
         return
-    lo = float(m_shut.group(1))          # 闭眼件开始淡入的闭合度（现在是 0.55）
-    hi = 0.90                            # 再往上睁眼件只剩 <0.25 不透明度，叠影看不出来
+    lo = float(m_shut.group(1))          # 闭眼件开始淡入的闭合度（现在是 0.85）
+    hi = 0.98                            # 过渡尾部：闭眼件已覆盖绝大部分，长时停留仍可能双线
     rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
     if not os.path.isfile(rig_path):
         return

@@ -390,6 +390,31 @@ static void test_eye_variants(void)
         CHECK(wide_blink < 1e-6,
               "完全闭眼时瞪大眼补片必须归零（实际 %.4f）—— 这张补片画的是睁着的眼",
               wide_blink);
+
+        /* T2.1.2：半闭由原眼睑下移表现；0.75 时不叠闭眼补片，交叉淡化仅在最后 15%。 */
+        zrig_param_set(r, "ParamEyeLWide", 0.0);
+        zrig_blink_set_manual(r, 0.75);
+        zrig_tick(r, 0.60);
+        CHECK(fabs(zrig_part_draw_opacity(r, "eye_l_base") - 1.0) < 0.02,
+              "闭合度 0.75 时睁眼底图应完整（实际 %.3f）",
+              zrig_part_draw_opacity(r, "eye_l_base"));
+        CHECK(zrig_part_draw_opacity(r, "eye_l_closed") < 0.02,
+              "闭合度 0.75 时不能提前叠闭眼补片（实际 %.3f）",
+              zrig_part_draw_opacity(r, "eye_l_closed"));
+        zrig_blink_set_manual(r, 0.925);
+        zrig_tick(r, 0.70);
+        CHECK(fabs(zrig_part_draw_opacity(r, "eye_l_base") - 0.5) < 0.03 &&
+              fabs(zrig_part_draw_opacity(r, "eye_l_closed") - 0.5) < 0.03,
+              "最后 15%% 平滑交叉（0.925: open %.3f / closed %.3f）",
+              zrig_part_draw_opacity(r, "eye_l_base"),
+              zrig_part_draw_opacity(r, "eye_l_closed"));
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 0.80);
+        CHECK(zrig_part_draw_opacity(r, "eye_l_base") < 0.02 &&
+              fabs(zrig_part_draw_opacity(r, "eye_l_closed") - 1.0) < 0.02,
+              "闭合度 1 时只画真闭眼补片（open %.3f / closed %.3f）",
+              zrig_part_draw_opacity(r, "eye_l_base"),
+              zrig_part_draw_opacity(r, "eye_l_closed"));
         zrig_free(r);
     }
 }
@@ -1446,14 +1471,16 @@ static void test_expression(void)
         "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
         "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
         "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
-        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"h2\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        "  \"layer\":11,\"pos\":[80,40],\"anchor\":[0,0],\"opacity\":0.0}],"
         "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
         "  {\"target\":\"h\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":2,\"freq\":1}]}],"
         "\"params\":[{\"id\":\"ParamBrowLY\",\"min\":-1,\"max\":1,\"default\":0,"
         " \"binds\":[{\"part\":\"h\",\"param\":\"dy\",\"scale\":10}]}],"
         "\"expressions\":[{\"id\":\"angry\",\"name\":\"生气\",\"fade\":0.4,"
         " \"params\":[{\"id\":\"ParamBrowLY\",\"value\":-0.5},"
-        "             {\"id\":\"ParamEyeOpen\",\"value\":0.5,\"mode\":\"set\"}]},"
+        "             {\"id\":\"ParamEyeOpen\",\"value\":0.5,\"mode\":\"set\"}],\"part_overrides\":{\"h\":{\"opacity\":0.25,\"dx\":4},\"h2\":{\"opacity\":1.0}}},"
         " {\"id\":\"snap\",\"fade\":0,"
         "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":1.0,\"mode\":\"set\"}]}]}");
     {
@@ -1477,10 +1504,16 @@ static void test_expression(void)
             zrig_tick(r, 0.04);
             mid = zrig_part_channel(r, "h", "dy");
             CHECK(mid > -1.0 && mid <= 0.0, "表情要淡入，20ms 时还很小（%.3f / 目标 -5）", mid);
+            CHECK(zrig_part_draw_opacity(r, "h") > 0.9,
+                  "部件覆盖也应随表情淡入（当前 %.3f）", zrig_part_draw_opacity(r, "h"));
             for (t = 0.06; t < 0.8; t += 0.02) zrig_tick(r, t);
             done = zrig_part_channel(r, "h", "dy");
             CHECK(fabs(done - (-5.0)) < 0.01, "淡入完成应到 -0.5×10（%.3f）", done);
             CHECK(z_streq(zrig_expression(r), "angry"), "当前表情应可读回");
+            CHECK(fabs(zrig_part_draw_opacity(r, "h") - 0.25) < 0.02,
+                  "表情部件透明度覆盖应生效（h=%.3f）", zrig_part_draw_opacity(r, "h"));
+            CHECK(fabs(zrig_part_draw_opacity(r, "h2") - 1.0) < 0.02,
+                  "表情可隐藏部件（h2=%.3f）", zrig_part_draw_opacity(r, "h2"));
             /* ② set 模式作用在内建参数上：眼睛半闭 */
             CHECK(fabs(zrig_blink_value(r) - 0.0) < 1e-6, "子系统自己的眨眼值不该被改写");
             /* ③ 动作还在跑（表情和动作是两条轨） */
@@ -1491,6 +1524,8 @@ static void test_expression(void)
             zrig_tick(r, t);
             CHECK(fabs(zrig_part_channel(r, "h", "dy") - 10.0) < 0.01,
                   "fade=0 应一帧到位（%.3f / 10）", zrig_part_channel(r, "h", "dy"));
+            CHECK(fabs(zrig_part_draw_opacity(r, "h") - 1.0) < 0.02, "切到无覆盖表情后恢复部件透明度");
+            CHECK(fabs(zrig_part_draw_opacity(r, "h2")) < 0.02, "base opacity 为 0 的候选部件退出表情后隐藏");
             /* ⑤ 取消：淡出回 0 */
             zrig_expression_clear(r);
             for (t += 0.02; t < 2.0; t += 0.02) zrig_tick(r, t);
@@ -1518,6 +1553,18 @@ static void test_expression(void)
         zdiag_init(&d);
         r = zrig_load(rigp, dir, &d);
         CHECK(r == NULL, "表情引用未声明的参数应加载失败");
+        if (r) zrig_free(r);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+            "\"expressions\":[{\"id\":\"x\",\"part_overrides\":{\"ghost\":{\"opacity\":0}}}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "表情部件覆盖引用不存在的部件应加载失败");
         if (r) zrig_free(r);
     }
 }
@@ -4497,13 +4544,26 @@ static void test_brow_form(void)
         if (!base) { zrig_free(r); return; }
         memcpy(base, im->px, n);
 
-        /* amount 必须跟着参数走（形变器是靠 bind 驱动的） */
+        /* 两侧必须真独立：只改左眉时右形变器仍为 0，反过来也一样。 */
         zrig_param_set(r, "ParamBrowLForm", 1.0);
+        zrig_param_set(r, "ParamBrowRForm", 0.0);
         zrig_tick(r, 500.0);
         CHECK(fabs(zrig_deform_amount(r, "brow_l_form") - 1.0) < 1e-6,
-              "ParamBrowLForm=1 时 brow_l_form 的量应为 1（实际 %.4f）",
+              "ParamBrowLForm=1 时 brow_l_form 应为 1（实际 %.4f）",
               zrig_deform_amount(r, "brow_l_form"));
+        CHECK(fabs(zrig_deform_amount(r, "brow_r_form")) < 1e-6,
+              "只改左眉时 brow_r_form 应保持 0（实际 %.4f）",
+              zrig_deform_amount(r, "brow_r_form"));
         zrig_param_set(r, "ParamBrowLForm", 0.0);
+        zrig_param_set(r, "ParamBrowRForm", 1.0);
+        zrig_tick(r, 500.0);
+        CHECK(fabs(zrig_deform_amount(r, "brow_l_form")) < 1e-6,
+              "只改右眉时 brow_l_form 应保持 0（实际 %.4f）",
+              zrig_deform_amount(r, "brow_l_form"));
+        CHECK(fabs(zrig_deform_amount(r, "brow_r_form") - 1.0) < 1e-6,
+              "ParamBrowRForm=1 时 brow_r_form 应为 1（实际 %.4f）",
+              zrig_deform_amount(r, "brow_r_form"));
+        zrig_param_set(r, "ParamBrowRForm", 0.0);
 
         for (k = 0; k < 2; ++k) {
             double v = k ? -1.0 : 1.0;
@@ -4537,7 +4597,7 @@ static void test_brow_form(void)
         }
         free(base);
     }
-    /* 表情要真的用上它（Haru 的 exp3 里六个表情都在用眉形） */
+    /* 表情要真的用上眉形；shy 还必须有左右镜像一致的八字倾角。 */
     {
         int used = 0, i2;
         const char *names[3] = { "angry", "surprise", "sad" };
@@ -4549,6 +4609,42 @@ static void test_brow_form(void)
             if (fabs(zrig_param_effective(r, "ParamBrowLForm")) > 0.2) ++used;
         }
         CHECK(used == 3, "angry/surprise/sad 都该用上眉形（实际 %d/3）", used);
+        zrig_param_reset_all(r);
+        zrig_expression_set(r, "shy");
+        zrig_expression_snap(r);
+        zrig_tick(r, 604.0);
+        CHECK(fabs(zrig_param_effective(r, "ParamBrowLAngle") + 0.6) < 1e-6,
+              "shy 应设置左眉倾角 -0.6（实际 %.3f）", zrig_param_effective(r, "ParamBrowLAngle"));
+        CHECK(fabs(zrig_param_effective(r, "ParamBrowRAngle") + 0.6) < 1e-6,
+              "shy 应设置右眉倾角 -0.6（实际 %.3f）", zrig_param_effective(r, "ParamBrowRAngle"));
+        CHECK(zrig_part_channel(r, "brow_l", "rot_deg") *
+              zrig_part_channel(r, "brow_r", "rot_deg") < 0.0,
+              "shy 两侧眉件应呈镜像倾斜（实际 L=%.2f R=%.2f）",
+              zrig_part_channel(r, "brow_l", "rot_deg"), zrig_part_channel(r, "brow_r", "rot_deg"));
+        {
+            const char *up[] = { "smile", "happy" };
+            const char *down[] = { "angry", "sad" };
+            for (i2 = 0; i2 < 2; ++i2) {
+                zrig_param_reset_all(r);
+                CHECK(zrig_expression_set(r, up[i2]) == 0, "%s 表情应可设置", up[i2]);
+                zrig_expression_snap(r);
+                zrig_tick(r, 605.0 + i2);
+                CHECK(zrig_param_effective(r, "ParamBrowLY") > 0.0 &&
+                      zrig_param_effective(r, "ParamBrowRY") > 0.0,
+                      "%s 应上扬两侧眉毛（L=%.3f R=%.3f）", up[i2],
+                      zrig_param_effective(r, "ParamBrowLY"), zrig_param_effective(r, "ParamBrowRY"));
+            }
+            for (i2 = 0; i2 < 2; ++i2) {
+                zrig_param_reset_all(r);
+                CHECK(zrig_expression_set(r, down[i2]) == 0, "%s 表情应可设置", down[i2]);
+                zrig_expression_snap(r);
+                zrig_tick(r, 607.0 + i2);
+                CHECK(zrig_param_effective(r, "ParamBrowLY") < 0.0 &&
+                      zrig_param_effective(r, "ParamBrowRY") < 0.0,
+                      "%s 应下压两侧眉毛（L=%.3f R=%.3f）", down[i2],
+                      zrig_param_effective(r, "ParamBrowLY"), zrig_param_effective(r, "ParamBrowRY"));
+            }
+        }
         zrig_expression_set(r, "");
     }
     zrig_free(r);
@@ -7254,7 +7350,7 @@ static void test_phys2(void)
      ②「反動、ブレーキを付ける —— 人間はピタッと瞬時に動きをとめることができません」
    在这之前头和胸读的是同一瞬间的跟随值，纯指数趋近也永远冲不过目标。 */
 /* T63.2：猫耳得真的会抖。
-   这条是**行为测试**不是配置测试 —— 旧的那道闸只检查「*Swing/*Sway 参数有没有
+    这条是**行为测试**不是配置测试 —— 旧的那道闸只检查「Swing / Sway 参数有没有
    ambient 在推」，耳朵叫 ParamEarLAngle，压根不在它的管辖范围，于是
    {"wave":"pulse","amp":0.14,"freq":0.085} 这条坏配置躺了很久没人发现：
    pulse 是一次性波形（冲上去就保持，freq 根本没人读），在无限循环的 ambient 里

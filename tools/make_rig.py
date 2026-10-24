@@ -908,7 +908,7 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
          "params": brows(0.25, 0.25, lf=0.3, rf=0.3) + mform(0.7) + [P("ParamEyeOpen", 0.85, "multiply")]
                    + blush(0.22) + sparkle(0.75)},
         {"id": "shy", "name": "害羞", "fade": 0.35,
-         "params": brows(-0.3, -0.3, lf=-0.3, rf=-0.3) + mform(0.35)
+         "params": brows(-0.3, -0.3, -0.6, -0.6, lf=-0.3, rf=-0.3) + mform(0.35)
                    + [P("ParamEyeOpen", 0.7, "multiply")]
                    + blush(0.95) + sparkle(0.8)
                    + ([P("ParamAngleZ", -4.0)] if head_is_part else [])},
