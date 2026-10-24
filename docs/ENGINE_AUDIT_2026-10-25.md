@@ -192,8 +192,8 @@ python3 -c "import json;d=json.load(open('characters/xiaoxun/forms/teen/rig.json
 | `check_assets --form chibi` | 471 / 0；`--form teen` 1644 / 3（**已知 3 项，本轮未触碰素材**） |
 | 回归（逐像素） | 少女 / Q 版两份 rig 在**没有用到新字段**时，帧 PNG 与改动前 **md5 完全一致** |
 | 性能 | 848×1360 单线程 42.3 ms/帧（改动前 46.6 ms/帧，同机，无退化） |
-| 真实素材 · 旋转骨 | `/tmp/real_tree`（少女 rig 副本）给 `hand_l` 组挂一根腕骨，0/25/40° 三段目视：绕腕转、袖口不动、无撕裂 |
-| 真实素材 · keyform | 同一副本给 `hair_side_l` 加 3 组 key（±6px），−1/0/+1 三段目视：一缕侧发左右摆，其余像素不动（差分 bbox 21×33px） |
+| 真实素材 · 旋转骨 | `/tmp/real_tree`（少女 rig 副本，**仓库里的 rig 一个字节没动**）给 `hand_l` 组挂一根腕骨，0/25/40° 三段目视：绕腕转、袖口不动、无撕裂。证据图 `logs/asset_qa/p0_deform_tree.png`（上排） |
+| 真实素材 · keyform | 同一副本给 `hair_side_l` 加 3 组 key（±6px），−1/0/+1 三段目视：一缕侧发左右摆，其余像素不动（差分 bbox 21×33px）。证据图 `logs/asset_qa/p0_deform_tree.png`（下排） |
 
 ### 6.5 还没做的（诚实清单）
 
