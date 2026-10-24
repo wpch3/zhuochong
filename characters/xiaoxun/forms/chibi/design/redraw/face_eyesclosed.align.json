@@ -1,0 +1,36 @@
+{
+  "scale": [
+    0.4675,
+    0.53
+  ],
+  "translate": [
+    6,
+    18
+  ],
+  "dice": 0.8757,
+  "color_cost": 20.13,
+  "region": "head",
+  "size": [
+    567,
+    1292
+  ],
+  "gen_size": [
+    1254,
+    1254
+  ],
+  "placed": [
+    586,
+    665
+  ],
+  "gain": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "offset": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "exclude_features": true
+}

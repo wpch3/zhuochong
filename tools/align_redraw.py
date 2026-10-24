@@ -45,7 +45,34 @@ import numpy as np
 from PIL import Image
 
 SEEDS = 6          # 多起点个数（单起点会卡在斜谷里，见 ② 的注释）
+# 不带 anchors.json 时的兜底条带（按身高比例）
 BAND = {"torso": (0.40, 0.80), "head": (0.00, 0.34), "full": (0.0, 1.0)}
+
+
+def band_from_anchors(sp: str, region: str, H: int):
+    """从 design/anchors.json 取真实条带（头 = 头顶..脖根，躯干 = 脖根..胯）。
+
+    ★ 写死 0.34H 当"头"是错的：Q 版头占身高 46.8%，写死 0.34 等于告诉配准器
+      "把脑袋压进上半截里"，实测直接把 sy 压到 0.31（叠图里脸比身体小一圈、
+      整张脸上浮）。条带必须跟着这个形态自己的比例走。
+    """
+    design = os.path.join(os.path.dirname(sp.rstrip(os.sep)), "design")   # forms/<形态>/design
+    p = os.path.join(design, "anchors.json")
+    if not os.path.exists(p):
+        return None
+    try:
+        d = json.load(open(p, encoding="utf-8"))
+        pts = d["points"]
+        hp = float(d.get("meta", {}).get("height_px") or H)
+        neck = float(pts["neck"][1]) / hp
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if region == "head":
+        return (0.0, neck)
+    if region == "torso":
+        hip = float(pts["hip"][1]) / hp
+        return (neck, hip)
+    return None
 EPS = 1e-6
 
 
@@ -132,6 +159,35 @@ def _color_cost(Brgb: np.ndarray, Bopaque: np.ndarray, warped: np.ndarray,
     return float(np.partition(d, k - 1)[:k].mean())
 
 
+def _feature_mask(sp: str, W: int, H: int, pad: int = 22) -> np.ndarray | None:
+    """把"本来就该不一样"的地方挖掉：两眼补片框 + 嘴线框（坐标来自 sprites 里的 json）。
+
+    为什么必须有：同一个角色的五张重绘脸（闭眼/笑眼/痛苦/瞪大/张嘴）**只有眼睛和嘴不同**，
+    剩下（头发、脸型、肤色）应当逐像素接近。不挖掉就会拿"眼睛不一样"去惩罚正确的配准 ——
+    实测四张脸解出来的平移从 (-24,75) 漂到 (30,126)，尺度从 0.47 漂到 0.54，
+    全是目标函数在追错误的东西。
+    """
+    m = np.zeros((H, W), bool)
+    got = False
+    try:
+        eyes = json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]
+        for e in eyes:
+            x, y = e["patch_pos"]; w, h = e["patch_size"]
+            m[max(0, y - pad):min(H, y + h + pad), max(0, x - pad):min(W, x + w + pad)] = True
+            got = True
+    except (OSError, ValueError, KeyError):
+        pass
+    try:
+        line = json.load(open(os.path.join(sp, "mouth_parts.json"), encoding="utf-8"))["line"]
+        x0, x1 = int(line["x0"]) - pad, int(line["x1"]) + pad
+        y0, y1 = int(line["y0"]) - pad, int(line["y1"]) + 2 * pad
+        m[max(0, y0):min(H, y1 + 30), max(0, x0):min(W, x1)] = True
+        got = True
+    except (OSError, ValueError, KeyError):
+        pass
+    return m if got else None
+
+
 def _fit_color(body: np.ndarray, warped: np.ndarray, band, keep=0.6):
     """逐通道最小二乘 gain/offset（两边都不透明的带内，截尾去外点）。"""
     H = body.shape[0]
@@ -154,15 +210,17 @@ def _fit_color(body: np.ndarray, warped: np.ndarray, band, keep=0.6):
 
 
 def align(body: Image.Image, gen: Image.Image, region: str = "torso",
-          color: bool = True, verbose: bool = True):
+          color: bool = True, verbose: bool = True, exclude=None, sp: str = ""):
     B = np.asarray(body.convert("RGBA")).astype(np.float32)
     H, W = B.shape[:2]
-    band = BAND.get(region, BAND["torso"])
+    band = band_from_anchors(sp, region, H) or BAND.get(region, BAND["torso"])
     Bm = (B[..., 3] > 128).astype(np.float32)
     Bm[: int(H * band[0]), :] = 0
     Bm[int(H * band[1]):, :] = 0
     B_total = float(Bm.sum())
     Bopaque = B[..., 3] > 200
+    if exclude is not None:
+        Bopaque = Bopaque & ~exclude
 
     G = np.asarray(gen.convert("RGB"), dtype=np.float32)
     ga = key_alpha(G)
@@ -307,6 +365,8 @@ def main() -> int:
     ap.add_argument("--no-color", action="store_true", help="不做配色拟合")
     ap.add_argument("--out", default="", help="输出路径（必须另存，不覆盖源图）")
     ap.add_argument("--qa", default="", help="另存一张叠图供肉眼复核")
+    ap.add_argument("--exclude-features", action="store_true",
+                    help="按 sprites 的 eye_parts/mouth_parts 框挖掉眼嘴（同一角色的多张差分脸专用）")
     a = ap.parse_args()
     if not a.out:
         raise SystemExit("[align] 必须给 --out：源图（洋红底）是唯一真本，不覆盖")
@@ -315,7 +375,13 @@ def main() -> int:
     sp = os.path.join(a.root, "characters", a.character, "forms", a.form, "sprites")
     body = Image.open(os.path.join(sp, "body_full.png"))
     gen = Image.open(a.input)
-    out, info = align(body, gen, a.region, color=not a.no_color)
+    exc = None
+    if a.exclude_features:
+        exc = _feature_mask(sp, body.size[0], body.size[1])
+        if exc is None:
+            raise SystemExit("[align] 要求挖掉眼嘴，但 sprites 里没有 eye_parts/mouth_parts")
+    out, info = align(body, gen, a.region, color=not a.no_color, exclude=exc, sp=sp)
+    info["exclude_features"] = bool(a.exclude_features)
     Image.fromarray(out, "RGBA").save(a.out)
     with open(a.out + ".align.json", "w", encoding="utf-8") as f:
         json.dump(info, f, ensure_ascii=False, indent=2)

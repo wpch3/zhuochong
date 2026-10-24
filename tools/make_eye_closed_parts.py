@@ -169,20 +169,60 @@ def main():
     eyes = {e["side"]: e for e in
             json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]}
 
-    # ---- 0. 预配准过的底图（align_redraw.py 出的）直接用恒等映射 ----
+    # ---- 0. 配准 ----
+    # 有 align_redraw 的 .align.json 时**不要**直接信恒等映射：那张图的四参数是拿
+    # 全脸（含头发/五官）解出来的，眼睛那一块本来就该不一样，泛函对它并不敏感 ——
+    # 实测同一套五张差分脸解出的 y 平移能差 60px，闭眼弧线就跑到眼睛上方去了。
+    # 正确做法：把 align 的解当**种子**，再用本工具自己的 NCC（脸部、挖掉眼睛带）
+    # 在 ±10% 尺度 / ±12px 平移里收一遍。既不会跑到别的架构上去，也不会各解各的。
     pre = form_art.aligned_info(redraw)
-    if pre is not None:
-        if "broken" in pre:
-            raise SystemExit(f"[{label}] 侧车文件坏了：{pre['broken']}")
-        s, tx, ty, ncc = 1.0, 0.0, 0.0, float("nan")
-        print(f"[{label}] 底图已预配准（尺度 {pre.get('scale')} 平移 "
-              f"{pre.get('translate')}，色差 {pre.get('color_cost')}）→ 跳过 NCC 搜索")
-        eyes = {e["side"]: e for e in
-                json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]}
-    else:
-        eyes = {e["side"]: e for e in
-                json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]}
+    if pre is not None and "broken" in pre:
+        raise SystemExit(f"[{label}] 侧车文件坏了：{pre['broken']}")
 
+    el, er = eyes["l"], eyes["r"]
+    eye_y = (el["patch_pos"][1] + er["patch_pos"][1]) / 2.0
+    fx0 = int(min(el["patch_pos"][0], er["patch_pos"][0]) - 20)
+    fx1 = int(max(el["patch_pos"][0] + el["patch_size"][0],
+                  er["patch_pos"][0] + er["patch_size"][0]) + 20)
+    fy0, fy1 = int(eye_y - 70), int(eye_y + 120)
+    fx0, fy0 = max(0, fx0), max(0, fy0)
+    fx1, fy1 = min(W, fx1), min(H, fy1)
+    ref = brgb[fy0:fy1, fx0:fx1].mean(axis=2)
+    refm = bkeep[fy0:fy1, fx0:fx1].copy()
+    refm[max(0, int(eye_y - 20) - fy0):int(eye_y + 75) - fy0, :] = False   # 挖掉眼睛带
+
+    def ncc_at(ss, txx, tyy):
+        cur, ca = warp_box(rd_rgba, ss, txx, tyy, (fx0, fy0, fx1, fy1))
+        m = refm & (ca > 128)
+        if m.sum() < 800:
+            return -1.0
+        cm = cur.mean(axis=2)
+        a = ref[m] - ref[m].mean(); bq = cm[m] - cm[m].mean()
+        return float((a * bq).sum() / (np.sqrt((a * a).sum() * (bq * bq).sum()) + 1e-6))
+
+    if pre is not None:
+        sc = pre.get("scale") or [1.0, 1.0]
+        tr = pre.get("translate") or [0.0, 0.0]
+        s0 = float(np.sqrt(max(sc[0], 1e-6) * max(sc[1], 1e-6)))
+        tx0, ty0 = -float(tr[0]) / s0, -float(tr[1]) / s0
+        ncc, s, tx, ty = ncc_at(s0, tx0, ty0), s0, tx0, ty0
+        for ds in np.linspace(-0.10, 0.10, 9):
+            ss = s0 * (1 + ds)
+            for ddy in range(-12, 13, 3):
+                for ddx in range(-12, 13, 3):
+                    v = ncc_at(ss, tx0 + ddx / ss, ty0 + ddy / ss)
+                    if v > ncc:
+                        ncc, s, tx, ty = v, ss, tx0 + ddx / ss, ty0 + ddy / ss
+        for ds in np.linspace(-0.01, 0.01, 5):
+            ss = s * (1 + ds)
+            for ddy in (-2, -1, 0, 1, 2):
+                for ddx in (-2, -1, 0, 1, 2):
+                    v = ncc_at(ss, tx + ddx / ss, ty + ddy / ss)
+                    if v > ncc:
+                        ncc, s, tx, ty = v, ss, tx + ddx / ss, ty + ddy / ss
+        print(f"[{label}] 用 align_redraw 的解当种子（尺度 {sc}、平移 {tr}），"
+              f"NCC 收到 {ncc:.3f}")
+    else:
         # ---- 1. 初值：两张图的"脸"（肤色块）外接框 ----
         bk_head = bkeep.copy(); bk_head[300:, :] = False      # 只要头那一段（手和腿也是皮肤）
         bs = skin_mask(brgb.astype(np.int32), bk_head)
@@ -193,41 +233,19 @@ def main():
         bx0, by0, bx1, by1 = bbox(bs)
         rx0, ry0, rx1, ry1 = bbox(rs)
         s0 = (bx1 - bx0) / float(rx1 - rx0)
-        # 对齐脸的中心
         bcx, bcy = (bx0 + bx1) / 2.0, (by0 + by1) / 2.0
         rcx, rcy = (rx0 + rx1) / 2.0, (ry0 + ry1) / 2.0
 
-        # ---- 2. NCC 网格微调（脸部，挖掉眼睛那条带）----
-        el, er = eyes["l"], eyes["r"]
-        eye_y = (el["patch_pos"][1] + er["patch_pos"][1]) / 2.0
-        fx0 = int(min(el["patch_pos"][0], er["patch_pos"][0]) - 20)
-        fx1 = int(max(el["patch_pos"][0] + el["patch_size"][0],
-                      er["patch_pos"][0] + er["patch_size"][0]) + 20)
-        fy0, fy1 = int(eye_y - 70), int(eye_y + 120)
-        fx0, fy0 = max(0, fx0), max(0, fy0)
-        fx1, fy1 = min(W, fx1), min(H, fy1)
-        ref = brgb[fy0:fy1, fx0:fx1].mean(axis=2)
-        refm = bkeep[fy0:fy1, fx0:fx1].copy()
-        refm[max(0, int(eye_y - 20) - fy0):int(eye_y + 75) - fy0, :] = False
-
-        # 初值只是个量级参考（两张图的脸框不完全等价），所以缩放要大范围扫
         best = None
         for s in np.linspace(s0 * 0.65, s0 * 1.30, 17):
             for dy in range(-24, 25, 3):
                 for dx in range(-24, 25, 3):
                     tx = rcx - (bcx + dx) / s
                     ty = rcy - (bcy + dy) / s
-                    cur, ca = warp_box(rd_rgba, s, tx, ty, (fx0, fy0, fx1, fy1))
-                    m = refm & (ca > 128)
-                    if m.sum() < 800:
-                        continue
-                    cm = cur.mean(axis=2)
-                    a = ref[m] - ref[m].mean(); bq = cm[m] - cm[m].mean()
-                    ncc = float((a * bq).sum() / (np.sqrt((a * a).sum() * (bq * bq).sum()) + 1e-6))
-                    if best is None or ncc > best[0]:
-                        best = (ncc, s, tx, ty)
+                    v = ncc_at(s, tx, ty)
+                    if best is None or v > best[0]:
+                        best = (v, s, tx, ty)
         ncc, s, tx, ty = best
-        # 再细一轮（步长 1px，缩放 ±1%）
         bs_, btx, bty = s, tx, ty
         for ds in np.linspace(-0.01, 0.01, 5):
             ss = bs_ * (1 + ds)
@@ -235,20 +253,14 @@ def main():
                 for dx in np.arange(-2, 2.01, 1.0):
                     txx = rcx - (bcx + dx) / ss
                     tyy = rcy - (bcy + dy) / ss
-                    cur, ca = warp_box(rd_rgba, ss, txx, tyy, (fx0, fy0, fx1, fy1))
-                    m = refm & (ca > 128)
-                    if m.sum() < 800:
-                        continue
-                    cm = cur.mean(axis=2)
-                    a = ref[m] - ref[m].mean(); bq = cm[m] - cm[m].mean()
-                    v = float((a * bq).sum() / (np.sqrt((a * a).sum() * (bq * bq).sum()) + 1e-6))
+                    v = ncc_at(ss, txx, tyy)
                     if v > ncc:
                         ncc, s, tx, ty = v, ss, txx, tyy
 
     out = {"source": f"design/redraw/{src_name}（AI 重绘{label}脸）",
-           "register": {"scale": round(s, 4),
-                        "ncc": (None if pre is not None else round(ncc, 4)),
-                        "pre_aligned": pre is not None}, "eyes": []}
+           "register": {"scale": round(s, 4), "ncc": round(ncc, 4),
+                        "seeded_by": ("align_redraw" if pre is not None else "skin_bbox")},
+           "eyes": []}
 
     for side in ("l", "r"):
         e = eyes[side]
@@ -344,7 +356,7 @@ def main():
 
     json.dump(out, open(os.path.join(sp, f"eye_{variant}_parts.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
-    print(f"配准 scale={s:.4f} NCC={'跳过(预配准)' if pre is not None else format(ncc, '.3f')} → sprites/eye_{variant}_parts.json")
+    print(f"配准 scale={s:.4f} NCC={ncc:.3f} → sprites/eye_{variant}_parts.json")
 
 
 if __name__ == "__main__":
