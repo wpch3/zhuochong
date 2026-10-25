@@ -1287,9 +1287,9 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 |---|---|---|---|
 | T66.3b | S2 落地记录（T66.3 的补记） | [x] | `make_rig.emit_bone_chains()` 生成 root→mid→mesh 链 + lag；teen 18/103、chibi 9/47；`test_bone_chains()` 5 条断言（恒等 / 系数×参数 / 2.0× 分层 / 父带子）；证据 `logs/asset_qa/s2_bone_chain.png`（左缘位移 5.0px） |
 | T66.16 | 裙摆/外套下摆拆成独立件，才能接骨链 | [ ] | 现在网格挂 `seg_torso`，A_chain 作用于整部件 ⇒ 接旋转骨会把上身带飞（G66.6） |
-| T66.17 | 小臂袖子网格骨（`arm_fore_l/r` 语义角色已有，链还没接） | [ ] | 现在靠 `arm_*_fore_slim/long` 两张平铺网格 |
+| T66.17 | 小臂袖子网格骨（`arm_fore_l/r` 语义角色已有，链还没接） | [x] | 骨链 `fore_?_root→mid` + 两张网格挂链尾 + `ParamForeSway` 摆动 + 肘角滞后跟随；C 单测 `test_fore_bone_chain` + selfcheck 闸 |
 | T66.18 | 骨链的「分层」判据进闸（梢/根 ≥2× 且中段必须有 lag） | [x] | `test_bone_chains()` + selfcheck 行波延迟闸（尾巴四条被它抓出来） |
 
 - [x] **T66.16b 换装包的裙件**（G66.9）：make_wardrobe.py 按同一张掩膜从换装躯干上切裙件 —— 已收（594 项自检全绿）
-- [ ] T66.17 小臂袖子骨（肘→腕两段链 + 袖子网格跟链尾）
+- [x] T66.17 小臂袖子骨（肘→腕两段链 + 袖子网格跟链尾）—— 已收（`make test` 1139/0、selfcheck 606/0）
 - [ ] G58.8 / T66.10 父级逐顶点位移传子

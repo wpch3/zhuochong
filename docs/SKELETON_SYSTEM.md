@@ -59,7 +59,7 @@ root
 | `hair_ahoge` | `ahoge_s` | `ahoge_s` |
 | `hair_tail` | `longhair_mid/tip`、`twintail_l/r_tip`、`pony_mid/tip` | 同左 |
 | `brow_l/r` | `brow_l_form` / `brow_r_form` | — |
-| `arm_fore_l/r` | `arm_l_fore_slim/long`、`arm_r_fore_slim/long` | — |
+| `arm_fore_l/r` | `arm_l_fore_slim/long`、`arm_r_fore_slim/long`（T66.17：两张网格都挂在骨链链尾 `fore_?_mid` 下，部件点名链根 `fore_?_root`，枢轴取**肘/腕两个 group 的 pivot** 反算 —— 袖管是斜的，绕矩形中心转袖口会横着甩开） | Q 版整条手臂一件素材：显式豁免 |
 | `skirt_sway` / `skirt_hem` / `skirt_lining` / `jacket_hem` | `skirt_sway_x/y`、`skirt_hem_x`、`lining_sway_x`、`jacket_hem_x` | — |
 | `tail` | `tail_relaxed_s/up_s/puff_s/tuck_s` | 同左 |
 

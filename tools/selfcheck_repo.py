@@ -649,6 +649,14 @@ L2D_EXTENSIONS = {
                       "折肘时沿肘→腕轴线拉长 26px（116→142 = 0.87），"
                       "hand_? 组 dx/dy 同步外移；静止时为 0，画面一个像素不动",
     "ParamForeLongL": "同上，左前臂",
+    "ParamForeSwayL": "左前臂袖管自己摆（T66.17 / 第六十六问 S3）。前面四条 Fore* 都是"
+                      "**网格**（逐顶点），只能表达『参数越大、那几行挪得越多』；袖管要的"
+                      "是 Live2D 那种『肘先动、袖口慢半拍追』的分层摆，那必须是**骨链**"
+                      "（回転デフォーマ fore_l_root→fore_l_mid）叠网格。袖管两张网格"
+                      "（slim/long）挂在链尾；中段骨带 0.09 秒行波延迟。同一条骨链的中段"
+                      "还挂一条肘角（ParamArmLB）的滞后跟随（0.15 系数 / 0.12 秒）——"
+                      "折肘时袖料比手臂晚一步到位，稳态零偏移",
+    "ParamForeSwayR": "同上，右前臂（ambient 频率与左侧不同频，避免两袖同拍）",
     "ParamLegL": "裙下大腿 bend（标准表没有腿参数）",
     "ParamLegR": "同上",
     "ParamHairAhoge": "呆毛整体摆（标准表只有 Front/Side/Back/Fluffy）",
@@ -2008,6 +2016,70 @@ def check_live2d(root):
               else "链尾 %s，入口 %s" % (sorted(set(_chain)), _bp[_sid]["deformer"]))
         check("裙子切件是无损的（%s）" % _tag, int(_sj.get("lossless", 1)) == 0,
               "切件时合成误差 %s 像素（必须 0）" % _sj.get("lossless"))
+
+    # ㉔ 小臂袖管的骨链（T66.17）：前臂拆件了的形态，袖管就必须接两级链。
+    #    为什么这条要进闸：袖管是"一个部件 + 两张网格 + 两根转骨"，任何一半接错
+    #    都照样能渲染出图 —— 少了链尾挂载，袖子退化成整件刚性转；少了 lag，
+    #    折肘时袖料和手臂同相位，看着是铁皮。两种错法在截图上都只是"好像有点硬"。
+    #    反向也查：**没拆前臂件**的形态（Q 版整条手臂一件素材）不许留下 fore_*
+    #    骨或 ParamForeSway —— 引擎会因为"纯变换节点没人引用"整份拒载。
+    for _rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        _tag = "%s/%s" % (_rp.split(os.sep)[-4], _rp.split(os.sep)[-2])
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        _bp = {x["id"]: x for x in _rig.get("parts", [])}
+        _dd = {d["id"]: d for d in _rig.get("deformers", [])}
+        _pp = {q["id"]: q for q in _rig.get("params", [])}
+        for _sd in ("l", "r"):
+            _pid = "arm_%s_fore" % _sd
+            _tag2 = "%s/%s" % (_tag, _sd)
+            _sway = "ParamForeSway" + _sd.upper()
+            if _pid not in _bp:
+                _left = [k for k in _dd if k.startswith("fore_%s_" % _sd)] + \
+                        ([_sway] if _sway in _pp else [])
+                check("没拆前臂件的形态不留袖管骨（%s）" % _tag2, not _left,
+                      "残留 %s —— 纯变换节点没人引用时引擎会整份拒载" % _left
+                      if _left else "干净")
+                continue
+            _root, _mid = "fore_%s_root" % _sd, "fore_%s_mid" % _sd
+            _ok_chain = _root in _dd and _mid in _dd and _dd[_mid].get("parent") == _root
+            check("袖管有两级骨链（%s）" % _tag2, _ok_chain,
+                  "缺 fore_%s_root/mid 或父子关系不对（前臂是独立部件，袖管必须能分层摆）"
+                  % _sd if not _ok_chain
+                  else "%s → %s 已接" % (_root, _mid))
+            if _root not in _dd or _mid not in _dd:
+                continue
+            _meshes = {_m: _dd[_m].get("parent") for _m in
+                       ("arm_%s_fore_slim" % _sd, "arm_%s_fore_long" % _sd) if _m in _dd}
+            _ok_hang = (_bp[_pid].get("deformer") == _root and bool(_meshes)
+                        and all(v == _mid for v in _meshes.values()))
+            check("袖管的网格挂在链尾（%s）" % _tag2, _ok_hang,
+                  "部件要点名链**根**、两张网格要挂在链**尾** %s"
+                  "（现在部件→%s，网格父→%s）"
+                  % (_mid, _bp[_pid].get("deformer"), _meshes) if not _ok_hang
+                  else "%d 张网格挂在 %s 下" % (len(_meshes), _mid))
+            _q = _pp.get(_sway) or {}
+            _binds = {b.get("deformer"): b for b in _q.get("binds", [])}
+            _ok_bind = (_root in _binds and _mid in _binds
+                        and abs(float(_binds[_mid].get("scale", 0))) >
+                            abs(float(_binds[_root].get("scale", 0)))
+                        and float(_binds[_mid].get("lag", 0)) >= 0.05)
+            check("袖摆参数驱动两级骨、中段带延迟（%s）" % _tag2, _ok_bind,
+                  "%s 的绑定：%s（中段要比根转得多、且带 >=0.05 秒延迟）"
+                  % (_sway, {k: (v.get("scale"), v.get("lag"))
+                             for k, v in _binds.items()}) if not _ok_bind
+                  else "根 %.1f° / 中段 %.1f°（延迟 %.2fs）"
+                       % (_binds[_root]["scale"], _binds[_mid]["scale"],
+                          _binds[_mid]["lag"]))
+            _elb = "ParamArm%sB" % _sd.upper()
+            _eb = [b for b in (_pp.get(_elb) or {}).get("binds", [])
+                   if b.get("deformer") == _mid]
+            _ok_elb = bool(_eb) and float(_eb[0].get("lag", 0)) >= 0.05
+            check("折肘时袖料滞后跟随（%s）" % _tag2, _ok_elb,
+                  "%s 没挂 %s 的滞后绑定（折肘时袖料会和手臂同相位 = 铁皮）"
+                  % (_mid, _elb) if not _ok_elb
+                  else "跟 %s、系数 %.2f、延迟 %.2fs"
+                       % (_elb, _eb[0]["scale"], _eb[0]["lag"]))
 
     # ㉒ 同一部件上的多张网格形变器**必须同尺寸**（引擎硬约束）。
     #    zrig 是把同部件的几张网格**逐点相加**之后再去采样的，尺寸不一样直接拒载

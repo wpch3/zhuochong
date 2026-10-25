@@ -1311,3 +1311,24 @@ teen 15 根刚体骨；chibi 只有 9 根（缺 forearm_l/r、elbow_fold_l/r、h
 > 躯干图上切裙件（のりしろ 按本套裙色重取）+ 用 `skirt_mask_base.png` 挖躯干 +
 > 里布沿用原件形状按本套裙色压暗。midnight / cocoa 两套都 0 误差；
 > 换回常服与初始态**逐像素相同**。新增闸：动了 seg_torso 的换装包必须带 skirt_main。
+
+## G66.10 袖管的"身体带动"还没有物理（物理写不了回転デフォーマ的角）
+
+T66.17 给小臂袖管接了两级骨链（`fore_?_root → fore_?_mid`），驱动有两条：
+① `ParamForeSway` 的 ambient drift（布自己的风）；② 肘角 `ParamArmLB/RB` 的
+**滞后跟随**（0.15 系数 / 0.12 秒）。缺的是第三条：**身体带动**（左右倾/转身时
+袖管跟着甩）。
+
+为什么缺 —— 本引擎旧的 `physics` 段写"滞后量"的三条通路里，`deformer` 那一条
+只写 `amount`（网格逐顶点位移），**没有写节点 `rot_deg` 的入口**
+（zrig.c:4488 `r->deforms[ph->deform].amount += out;`）；`part`/`group` 那两条
+写的是部件/组的通道，而骨链节点既不是部件也不是组。所以"用物理推骨链转角"
+现在做不到，只能靠参数绑定 + ambient。
+
+补法（按代价排）：
+1. `physics[].deformer` 允许 `param: rot_deg`（照 `binds` 的口径），把 `out` 写进
+   `deforms[].rot`；再给袖子各挂一条 `input: ParamBodyAngleX/Z` 的摆。
+2. 或者等 physics2 的摆链支持"输出到形变器节点"。两者都需要改内核 + 单测。
+
+影响可控：袖管现在**不是死的**（有 ambient + 折肘滞后），只是身体甩动时
+少了那一层"布被身体拖着走"的惯性。

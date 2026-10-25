@@ -582,6 +582,34 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
             {"id": "ParamForeLongL", "label": "左前臂 伸缩", "min": -1.2, "max": 1.2,
              "default": 0.0, "binds": fore_long("arm_l_fore", "hand_l", "l")},
         ]
+        # ★★★ T66.17（第六十六问 S3）：小臂袖管自己的摆动参数。
+        #
+        #   前面那些（Slim/Long）都是**网格**：网格只能表达"参数越大、那几行挪得越多"，
+        #   而且是**平铺**挂在部件上的。袖管要的是 Live2D 那种"肘先动、袖口慢半拍追"
+        #   的分层摆 —— 那必须是骨链（回転デフォーマ）叠网格，和头发 S2 一样。
+        #
+        #   为什么参数在这里建、绑定在 emit_bone_chains 里补：
+        #   骨链要读「肘」「腕」两个枢轴（本形态的 rig 里的 groups），而 param_list()
+        #   跑在 build() 之前，手上只有素材清单、没有量出来的坐标。所以这里只登记
+        #   参数（binds 先空着），emit_bone_chains() 建完 fore_?_root/mid 之后按
+        #   **参数名**把绑定插回去 —— 和裙子 ParamSkirtSway 同一条路子。
+        #   素材没齐（前臂没拆件）的形态一个参数都不建：凭空多一个没人用的旋钮，
+        #   接外部 .motion3 时会让人以为"推了会动"。
+        for _sd in ("l", "r"):
+            if "arm_%s_fore" % _sd not in (slim_parts or ()):
+                continue
+            out.append({
+                "id": "ParamForeSway%s" % _sd.upper(),
+                "label": "%s前臂 袖摆" % ("左" if _sd == "l" else "右"),
+                "min": -1.0, "max": 1.0, "default": 0.0,
+                "binds": [],
+                "note": "小臂袖管自己摆（T66.17）。骨链 fore_%s_root（绕肘）→ "
+                        "fore_%s_mid（绕肘→腕中点，带 0.09 秒行波延迟）两级驱动，"
+                        "袖管的两张网格（slim/long）挂在链尾 ⇒ 袖口比肘慢半拍。"
+                        "同一条骨链的中段还挂了一条**肘角（ParamArmLB/RB）的滞后跟随**"
+                        "（系数 0.15、延迟 0.12s）：折肘时袖料比手臂晚一步到位，"
+                        "稳态下与静止姿势**零偏移**（lag 读的是 0.12 秒前的参数值，"
+                        "参数不动时两者相等）。" % (_sd, _sd)})
     else:
         out += [
         {"id": "ParamArmLA", "label": "左臂 摆动", "min": -10.0, "max": 10.0, "default": 0.0,
@@ -3531,6 +3559,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         #   芳文跳要让它们一起飘，所以动作表里写了；素材没齐的形态丢掉即可。
         "ParamSkirtSway", "ParamJacketSway", "ParamHairBack", "ParamHairBackS",
         "ParamHairFluffy",
+        # ★ T66.17：袖摆也是"前臂拆件了才有"的参数（Q 版整条手臂一件素材）。
+        "ParamForeSwayL", "ParamForeSwayR",
     }
     dropped_ch = {}
 
@@ -4072,6 +4102,19 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                          "袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动"
                          % FORE_LONG_PX,
                  "points": _lpts})
+
+    # ★ T66.17：袖管的**自主摆动**（ambient drift）。
+    #   和裙子/头发同一条教训：本引擎的物理输出是"滞后量 pos−target"，待机时手臂
+    #   几乎不动 ⇒ 物理给的量≈0 ⇒ 袖管是死的。所以布自己要有风。
+    #   两只袖子**不同频不同相**（0.23Hz / 0.165Hz，避开头发那条 0.19Hz）：同频 = 两条袖子像被同一根线
+    #   牵着摆，是机械感的第二大来源（教程口径「軽いものほど揺れやすく、早く収まる」，
+    #   而左右手本来就不同重量、不同姿态）。
+    if armp:
+        for _sd, _amp, _fq in (("L", 0.55, 0.23), ("R", 0.50, 0.165)):
+            if "arm_%s_fore" % _sd.lower() in {q["id"] for q in armp.get("parts", [])}:
+                rig.setdefault("ambient", []).append(
+                    {"target": "ParamForeSway" + _sd, "wave": "drift",
+                     "amp": _amp, "bias": 0.0, "freq": _fq})
 
     # —— 侧发/后发的网格形变器与摆链（A5 + G16）——
     # 侧发是两条“根在上、梢在下”的长条：r=0 是素材顶边（发根，固定），
@@ -4655,8 +4698,15 @@ def emit_bone_chains(rig, base):
         return (x0, y0, w, h)
 
     def add_chain(pid, mesh_ids, name, fy=0.55, root_fy=0.03, bind_param=None,
-                  root_scale=0.0, mid_scale=0.0, mid_bind_param=None, mid_lag=0.08):
-        """给一个部件插「根 → 中段」两根旋转骨，并把它的网格挂到中段下面。"""
+                  root_scale=0.0, mid_scale=0.0, mid_bind_param=None, mid_lag=0.08,
+                  root_fx=0.5, mid_fx=0.5):
+        """给一个部件插「根 → 中段」两根旋转骨，并把它的网格挂到中段下面。
+
+        root_fx / mid_fx：枢轴在部件矩形里的**横向**位置（0~1）。头发/尾巴用默认的
+        0.5 正中就够，但 T66.17 的小臂袖管是**斜着的一条**：肘在图片宽度 59% 处、
+        腕在 33% 处，绕"部件正中"转等于绕一个身体外面的点转，袖口会横着甩开
+        （和 Q45 收窄网格同一个道理 —— 压缩/旋转中心必须取该部件的**轴线**）。
+        """
         rc = rect(pid)
         if rc is None:
             return 0
@@ -4669,11 +4719,15 @@ def emit_bone_chains(rig, base):
             return 0
         cx = x0 + w * 0.5
         rid, mid = name + "_root", name + "_mid"
+        rx = x0 + w * root_fx
+        mx = x0 + w * mid_fx
         # root_fy：发根在顶部（0.03），尾巴挂在髋部所以根在底部（0.97）——
         #   绕错一端的话，转起来是"尾巴尖钉住、整条尾甩身体"，看着像脱臼。
-        new_nodes.append({"id": rid, "pivot": [round(cx, 1), round(y0 + h * root_fy, 1)],
-                          "note": "%s 的根骨：绕发根/挂接点转，梢部才会被带起来" % name})
-        new_nodes.append({"id": mid, "pivot": [round(cx, 1), round(y0 + h * fy, 1)],
+        new_nodes.append({"id": rid, "pivot": [round(rx, 1), round(y0 + h * root_fy, 1)],
+                          "note": "%s 的根骨：绕%s转，梢部才会被带起来"
+                                  % (name, "发根/挂接点" if (root_fx == 0.5 and mid_fx == 0.5)
+                                     else "该件的轴线根部")})
+        new_nodes.append({"id": mid, "pivot": [round(mx, 1), round(y0 + h * fy, 1)],
                           "parent": rid,
                           "note": "%s 的中段骨：比根慢半拍，做出分层摆动" % name})
         n = 0
@@ -4743,6 +4797,55 @@ def emit_bone_chains(rig, base):
                           "skirt", fy=0.55, root_fy=0.04,
                           bind_param="ParamSkirtSway", root_scale=1.2,
                           mid_scale=2.6, mid_lag=0.11)
+    # —— 小臂袖管（T66.17 / S3）：肘 → 腕两段链，袖管网格挂链尾 ——
+    #   和裙子同一条铁律：骨链作用于**整个部件**，所以只有"前臂本来就是独立部件"
+    #   才接。Q 版整条手臂一件素材（chibi 的 forearm_l/r 在骨架契约里是显式豁免的）
+    #   ⇒ 这里自然跳过，不会造出没人引用的孤儿节点。
+    #
+    #   ★ 枢轴不能取部件正中。袖管是一条**斜着的**管子：肘在图片宽度 59% 处、
+    #     腕在 33% 处（左右镜像）。绕"矩形中心"转 = 绕身体外面一个点转，袖口
+    #     会横着甩开；和 Q45 收窄网格要把压缩中心取在**该件的轴线**上同一个道理。
+    #     所以两根骨的枢轴直接从前臂组/手组的 pivot 反算 —— 那两个数是拿素材量
+    #     出来的（而且和各形态的 rig 一致），换角色/换形态不用重调。
+    grp = rig.get("groups") or {}
+    for _side in ("l", "r"):
+        _pid = "arm_%s_fore" % _side
+        if _pid not in parts:
+            continue
+        _rc = rect(_pid)
+        _ep = (grp.get("forearm_%s" % _side) or {}).get("pivot")
+        _wp = (grp.get("hand_%s" % _side) or {}).get("pivot")
+        if _rc is None or not _ep or not _wp:
+            continue
+        _x0, _y0, _w, _h = _rc
+        _rfx = ((_ep[0] - _x0) / _w) if _w else 0.5
+        _rfy = ((_ep[1] - _y0) / _h) if _h else 0.18
+        _mfx = (((_ep[0] + _wp[0]) * 0.5 - _x0) / _w) if _w else 0.5
+        _mfy = (((_ep[1] + _wp[1]) * 0.5 - _y0) / _h) if _h else 0.55
+        _before = made
+        made += add_chain(_pid,
+                          ["arm_%s_fore_slim" % _side, "arm_%s_fore_long" % _side],
+                          "fore_" + _side, fy=_mfy, root_fy=_rfy,
+                          root_fx=_rfx, mid_fx=_mfx,
+                          bind_param="ParamForeSway" + _side.upper(),
+                          root_scale=(1.2 if _side == "l" else -1.2),
+                          mid_scale=(2.6 if _side == "l" else -2.6), mid_lag=0.09)
+        if made == _before:
+            continue          # 没有网格可挂（素材没出收窄/加长网格）⇒ 别留悬空绑定
+        # 折肘时袖料的**滞后跟随**：稳态零偏移，只有"正在折"的那零点几秒里
+        #   袖管落在手臂后面 —— 这就是布料和骨头的时间差。
+        #   系数 0.15 = 满折（参数 10）时多转 1.5°，袖口处约 1.5px：看得见"软"，
+        #   又不会让袖口和手错开（袖口半宽 22.5px，手件腕柄才 20.6px）。
+        _elb = "ParamArm%sB" % _side.upper()
+        for _q in rig.get("params", []):
+            if _q["id"] != _elb:
+                continue
+            _q.setdefault("binds", []).append(
+                {"deformer": "fore_%s_mid" % _side, "param": "rot_deg",
+                 "scale": (0.15 if _side == "l" else -0.15), "lag": 0.12})
+            _q["note"] = (_q.get("note", "") + "；袖管中段骨 fore_%s_mid 以 0.15 系数、"
+                          "0.12 秒延迟跟随本参数（T66.17：折肘时袖料比手臂晚一步到位）"
+                          % _side)
     if not made:
         return 0
 

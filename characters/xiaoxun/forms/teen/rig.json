@@ -562,10 +562,11 @@
       "tags": [
         "arm"
       ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）；骨链 fore_l_root→fore_l_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "fore_l_root"
     },
     {
       "id": "hand_l",
@@ -646,10 +647,11 @@
       "tags": [
         "arm"
       ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）；骨链 fore_r_root→fore_r_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "fore_r_root"
     },
     {
       "id": "hand_r",
@@ -5818,11 +5820,28 @@
       "parent": "hair_ahoge_mid"
     },
     {
+      "id": "fore_l_root",
+      "pivot": [
+        275.5,
+        621.0
+      ],
+      "note": "fore_l 的根骨：绕该件的轴线根部转，梢部才会被带起来"
+    },
+    {
+      "id": "fore_l_mid",
+      "pivot": [
+        265.0,
+        677.5
+      ],
+      "parent": "fore_l_root",
+      "note": "fore_l 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
       "id": "arm_l_fore_slim",
       "part": "arm_l_fore",
       "cols": 2,
       "rows": 4,
-      "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；0 = 原件，静止画面零改动",
+      "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；0 = 原件，静止画面零改动；挂在中段骨 fore_l_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -5884,14 +5903,15 @@
           "r": 4,
           "dx": -6.58
         }
-      ]
+      ],
+      "parent": "fore_l_mid"
     },
     {
       "id": "arm_l_fore_long",
       "part": "arm_l_fore",
       "cols": 2,
       "rows": 4,
-      "note": "前臂折起时沿肘→腕轴线加长 26px（肘端 0、袖口满额，袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动",
+      "note": "前臂折起时沿肘→腕轴线加长 26px（肘端 0、袖口满额，袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动；挂在中段骨 fore_l_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -5965,14 +5985,32 @@
           "dx": -9.5,
           "dy": 51.12
         }
-      ]
+      ],
+      "parent": "fore_l_mid"
+    },
+    {
+      "id": "fore_r_root",
+      "pivot": [
+        564.5,
+        621.0
+      ],
+      "note": "fore_r 的根骨：绕该件的轴线根部转，梢部才会被带起来"
+    },
+    {
+      "id": "fore_r_mid",
+      "pivot": [
+        577.2,
+        677.5
+      ],
+      "parent": "fore_r_root",
+      "note": "fore_r 的中段骨：比根慢半拍，做出分层摆动"
     },
     {
       "id": "arm_r_fore_slim",
       "part": "arm_r_fore",
       "cols": 2,
       "rows": 4,
-      "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；0 = 原件，静止画面零改动",
+      "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；0 = 原件，静止画面零改动；挂在中段骨 fore_r_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -6034,14 +6072,15 @@
           "r": 4,
           "dx": -3.05
         }
-      ]
+      ],
+      "parent": "fore_r_mid"
     },
     {
       "id": "arm_r_fore_long",
       "part": "arm_r_fore",
       "cols": 2,
       "rows": 4,
-      "note": "前臂折起时沿肘→腕轴线加长 26px（肘端 0、袖口满额，袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动",
+      "note": "前臂折起时沿肘→腕轴线加长 26px（肘端 0、袖口满额，袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动；挂在中段骨 fore_r_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -6115,7 +6154,8 @@
           "dx": 11.45,
           "dy": 50.72
         }
-      ]
+      ],
+      "parent": "fore_r_mid"
     },
     {
       "id": "hair_side_l_root",
@@ -8832,9 +8872,15 @@
           "param": "alpha",
           "scale": 7.692,
           "offset": -55.0
+        },
+        {
+          "deformer": "fore_l_mid",
+          "param": "rot_deg",
+          "scale": 0.15,
+          "lag": 0.12
         }
       ],
-      "note": "绕肘旋转，±10 → ±180°。**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**：人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，正面看见的夹角会超过 145° —— Q38 在参考图 characters/xiaoxun/design/pose_ref/wave_up.png 上实测：肩(455,315)→肘(495,475)→腕(487,352)，投影夹角 170°。倍率 14.5（±145°）封顶时这个姿势根本摆不出来，所以提到 18.0；动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变"
+      "note": "绕肘旋转，±10 → ±180°。**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**：人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，正面看见的夹角会超过 145° —— Q38 在参考图 characters/xiaoxun/design/pose_ref/wave_up.png 上实测：肩(455,315)→肘(495,475)→腕(487,352)，投影夹角 170°。倍率 14.5（±145°）封顶时这个姿势根本摆不出来，所以提到 18.0；动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变；袖管中段骨 fore_l_mid 以 0.15 系数、0.12 秒延迟跟随本参数（T66.17：折肘时袖料比手臂晚一步到位）"
     },
     {
       "id": "ParamArmRB",
@@ -8870,8 +8916,15 @@
           "param": "alpha",
           "scale": 7.692,
           "offset": -55.0
+        },
+        {
+          "deformer": "fore_r_mid",
+          "param": "rot_deg",
+          "scale": -0.15,
+          "lag": 0.12
         }
-      ]
+      ],
+      "note": "；袖管中段骨 fore_r_mid 以 0.15 系数、0.12 秒延迟跟随本参数（T66.17：折肘时袖料比手臂晚一步到位）"
     },
     {
       "id": "ParamHandL",
@@ -9004,6 +9057,48 @@
           "scale": 25.562
         }
       ]
+    },
+    {
+      "id": "ParamForeSwayL",
+      "label": "左前臂 袖摆",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "fore_l_root",
+          "param": "rot_deg",
+          "scale": 1.2
+        },
+        {
+          "deformer": "fore_l_mid",
+          "param": "rot_deg",
+          "scale": 2.6,
+          "lag": 0.09
+        }
+      ],
+      "note": "小臂袖管自己摆（T66.17）。骨链 fore_l_root（绕肘）→ fore_l_mid（绕肘→腕中点，带 0.09 秒行波延迟）两级驱动，袖管的两张网格（slim/long）挂在链尾 ⇒ 袖口比肘慢半拍。同一条骨链的中段还挂了一条**肘角（ParamArmLB/RB）的滞后跟随**（系数 0.15、延迟 0.12s）：折肘时袖料比手臂晚一步到位，稳态下与静止姿势**零偏移**（lag 读的是 0.12 秒前的参数值，参数不动时两者相等）。"
+    },
+    {
+      "id": "ParamForeSwayR",
+      "label": "右前臂 袖摆",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "fore_r_root",
+          "param": "rot_deg",
+          "scale": -1.2
+        },
+        {
+          "deformer": "fore_r_mid",
+          "param": "rot_deg",
+          "scale": -2.6,
+          "lag": 0.09
+        }
+      ],
+      "note": "小臂袖管自己摆（T66.17）。骨链 fore_r_root（绕肘）→ fore_r_mid（绕肘→腕中点，带 0.09 秒行波延迟）两级驱动，袖管的两张网格（slim/long）挂在链尾 ⇒ 袖口比肘慢半拍。同一条骨链的中段还挂了一条**肘角（ParamArmLB/RB）的滞后跟随**（系数 0.15、延迟 0.12s）：折肘时袖料比手臂晚一步到位，稳态下与静止姿势**零偏移**（lag 读的是 0.12 秒前的参数值，参数不动时两者相等）。"
     },
     {
       "id": "ParamLegL",
@@ -11187,6 +11282,20 @@
     }
   ],
   "ambient": [
+    {
+      "target": "ParamForeSwayL",
+      "wave": "drift",
+      "amp": 0.55,
+      "bias": 0.0,
+      "freq": 0.23
+    },
+    {
+      "target": "ParamForeSwayR",
+      "wave": "drift",
+      "amp": 0.5,
+      "bias": 0.0,
+      "freq": 0.165
+    },
     {
       "target": "ParamHairSway",
       "wave": "drift",

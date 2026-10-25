@@ -5045,6 +5045,136 @@ static void test_skirt_bone_chain(void)
            root_rot, mid_rot, sk0[0], sk0[1], sk1[0], sk1[1], moved, tor_moved);
 }
 
+/* T66.17：把 ParamForeSwayL 推到 v 之后读回袖管的骨、袖口锚点、手、躯干。 */
+static int fore_probe(const char *dir, const char *rig_path, double v,
+                      double fl[2], double fr[2], double hd[2], double tor[2],
+                      double *root_rot, double *mid_rot)
+{
+    zdiag d;
+    zrig *r;
+    int i;
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    if (!r) return 0;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 40; ++i) {
+        zrig_param_set(r, "ParamForeSwayL", v);
+        zrig_tick(r, 0.4 + i / 60.0);
+    }
+    if (!zrig_part_anchor_pos(r, "arm_l_fore", 1.0, fl) ||
+        !zrig_part_anchor_pos(r, "arm_r_fore", 1.0, fr) ||
+        !zrig_part_anchor_pos(r, "hand_l", 1.0, hd) ||
+        !zrig_part_anchor_pos(r, "seg_torso", 1.0, tor)) {
+        zrig_free(r);
+        return 0;
+    }
+    *root_rot = zrig_deform_transform(r, "fore_l_root", "rot_deg");
+    *mid_rot = zrig_deform_transform(r, "fore_l_mid", "rot_deg");
+    zrig_free(r);
+    return 1;
+}
+
+/* ---------------------------------------------------------------------------
+   T66.17（第六十六问 S3）：小臂袖管的骨链。
+
+   为什么这条单测非有不可：袖管的"两层"是**一个部件、两张网格、两根转骨**，
+   结构错一半照样能渲染出图 —— 少了链尾挂载，袖子就退化成"整件刚性转"；
+   少了 lag，折肘时袖料和手臂同相位，看着是铁皮。两种错法在截图上都只是
+   "好像有点硬"，所以必须让机器量出来：
+     ① 树：网格 → fore_?_mid → fore_?_root，且部件点名的是链**根**；
+     ② 静止严格恒等（骨链不能把静止画面挪一个像素）；
+     ③ 推参数：袖管动、手和躯干一动不动、另一只袖子也不动（隔离）；
+     ④ 折肘滞后：第一帧袖料落后，0.5 秒后收敛到 0.15×参数（稳态零偏移）。
+   --------------------------------------------------------------------------- */
+static void test_fore_bone_chain(void)
+{
+    char dir[1024], rig_path[1024];
+    zdiag d;
+    zrig *r;
+    int i;
+    double fl0[2] = {0, 0}, fl1[2] = {0, 0}, fr0[2] = {0, 0}, fr1[2] = {0, 0};
+    double hd0[2] = {0, 0}, hd1[2] = {0, 0}, tor0[2] = {0, 0}, tor1[2] = {0, 0};
+    double root_rot = 0, mid_rot = 0, moved, hand_moved, tor_moved, other_moved;
+    double early = 0, late = 0;
+    const char *par;
+    SECTION("T66.17 小臂袖管骨链：肘→腕两级 / 网格挂链尾 / 折肘滞后");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装了袖管骨链的 teen rig 应能加载");
+    if (!r) return;
+
+    /* ① 树 */
+    par = zrig_deform_parent_id(r, "fore_l_mid");
+    CHECK(par && strcmp(par, "fore_l_root") == 0,
+          "中段骨 fore_l_mid 的父节点应是 fore_l_root（实际 %s）", par ? par : "无");
+    par = zrig_deform_parent_id(r, "arm_l_fore_slim");
+    CHECK(par && strcmp(par, "fore_l_mid") == 0,
+          "袖管的收窄网格应挂在链尾 fore_l_mid（实际 %s）", par ? par : "无");
+    par = zrig_deform_parent_id(r, "arm_l_fore_long");
+    CHECK(par && strcmp(par, "fore_l_mid") == 0,
+          "袖管的加长网格应挂在链尾 fore_l_mid（实际 %s）", par ? par : "无");
+    par = zrig_deform_parent_id(r, "fore_r_mid");
+    CHECK(par && strcmp(par, "fore_r_root") == 0,
+          "右袖管同样要有两级链（实际 %s）", par ? par : "无");
+
+    /* ② 静止严格恒等 */
+    CHECK(fabs(zrig_deform_transform(r, "fore_l_root", "rot_deg")) < 1e-12 &&
+          fabs(zrig_deform_transform(r, "fore_l_mid", "rot_deg")) < 1e-12 &&
+          fabs(zrig_deform_transform(r, "fore_r_mid", "rot_deg")) < 1e-12,
+          "刚装载时袖管的两根骨必须严格恒等（否则静止画面被挪像素）");
+
+    /* ④ 折肘滞后：先让历史环填满静止值，再一步推到满折 */
+    zrig_param_reset_all(r);
+    zrig_ambient_enable(r, 0);
+    for (i = 0; i < 60; ++i) zrig_tick(r, 1.0 + i / 60.0);
+    zrig_param_set(r, "ParamArmLB", 7.45);
+    zrig_tick(r, 2.0);                      /* 跳变后的第一帧 */
+    early = fabs(zrig_deform_transform(r, "fore_l_mid", "rot_deg"));
+    for (i = 1; i <= 60; ++i) zrig_tick(r, 2.0 + i / 60.0);
+    late = fabs(zrig_deform_transform(r, "fore_l_mid", "rot_deg"));
+    CHECK(late > 0.5, "满折时袖管中段骨要真的转起来（实测 %.3f°）", late);
+    CHECK(early < 0.6 * late,
+          "折肘的第一帧袖料必须**落在手臂后面**（0.12 秒行波延迟）："
+          "第一帧 %.3f° vs 稳态 %.3f°", early, late);
+    CHECK(fabs(late - 0.15 * 7.45) < 0.05,
+          "收敛后应回到 0.15×参数 = 1.118°（实测 %.3f° —— 差太多说明 lag 没收敛，"
+          "稳态会永久偏一个角）", late);
+    zrig_free(r);
+
+    /* ③ 推参数：袖管动、手/躯干/另一只袖子不动 */
+    CHECK(fore_probe(dir, rig_path, 0.0, fl0, fr0, hd0, tor0, &root_rot, &mid_rot),
+          "参数 0 的取样应成功");
+    CHECK(fore_probe(dir, rig_path, 1.0, fl1, fr1, hd1, tor1, &root_rot, &mid_rot),
+          "参数 1 的取样应成功");
+    /* 中段的容差给 0.02 而不是 1e-6：同一根骨上还挂着一条**肘角滞后跟随**
+       （0.15 系数），而 idle 动作本来就在小幅推 ParamArmLB（±0.0444）
+       ⇒ 稳态会多出 0.15×0.0444 ≈ 0.007°。这不是误差，是设计的第二条绑定。 */
+    CHECK(fabs(root_rot - 1.2) < 1e-6 && fabs(mid_rot - 2.6) < 0.02,
+          "袖管根骨 = 1.2 × 参数、中段骨 = 2.6 × 参数（实测 %.3f / %.3f）",
+          root_rot, mid_rot);
+    moved = hypot(fl1[0] - fl0[0], fl1[1] - fl0[1]);
+    hand_moved = hypot(hd1[0] - hd0[0], hd1[1] - hd0[1]);
+    tor_moved = hypot(tor1[0] - tor0[0], tor1[1] - tor0[1]);
+    other_moved = hypot(fr1[0] - fr0[0], fr1[1] - fr0[1]);
+    CHECK(moved > 0.2, "推袖摆参数，袖管要真的动（实测 %.3f px）", moved);
+    CHECK(hand_moved < 0.01,
+          "袖管摆的时候手必须一动不动（实测 %.3f px —— 动了就是袖口跟手错位）",
+          hand_moved);
+    CHECK(tor_moved < 0.01,
+          "袖管摆的时候躯干必须一动不动（实测 %.3f px —— 动了就是骨链绑错部件）",
+          tor_moved);
+    CHECK(other_moved < 0.01,
+          "只推左袖，右袖不能跟着动（实测 %.3f px —— 动了就是两边挂了同一条参数）",
+          other_moved);
+    printf("    量到：袖管根骨 %.3f° / 中段 %.3f°，袖口锚点 (%.1f,%.1f) → (%.1f,%.1f) "
+           "走了 %.2f px；手挪 %.3f px、躯干 %.3f px；折肘第一帧 %.3f° → 稳态 %.3f°\n",
+           root_rot, mid_rot, fl0[0], fl0[1], fl1[0], fl1[1], moved,
+           hand_moved, tor_moved, early, late);
+}
+
 static void test_skirt_physics(void)
 {
     char rig_path[1024], dir[1024];
@@ -8537,6 +8667,7 @@ int main(int argc, char **argv)
     test_mesh_bend_coexist();
     test_bone_chains();
     test_skirt_bone_chain();
+    test_fore_bone_chain();
     test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();
