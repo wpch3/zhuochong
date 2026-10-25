@@ -312,6 +312,14 @@ python3 tools/make_rig.py --character "$CH" --form "$FM"
 #     排在 fill_seam_holes 之后：先补缝、再擦残渣，顺序反了补缝会把残渣摊开。
 "$PY" tools/trim_exposed_residue.py --character "$CH" --form "$FM" | tail -2
 
+# 27b 后发换成"髮だけ差分"（T67.25）。
+#     ★ 必须挂在链上、且排在所有写 hair_long_back 的步骤之后 —— 它是**覆盖写**。
+#     为什么非换不可：旧件是用低分辨率块状掩膜从**穿衣服的完整立绘**上抠的，
+#     轮廓内壁烤着衬衫/袖口/手，且与身体对齐；头发一形变就从轮廓边漏出 2~3px
+#     （用户看到的"灰紫腕带/粉指尖"）。清洗三条路都失败，只能换源头（GAPS G66.24）。
+#     旧件留在 sprites/_ghostbak/ 当几何真值，缺了它会报错而不是猜一个 pos。
+"$PY" tools/apply_hair_only.py --character "$CH" --form "$FM"
+
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__
 echo
