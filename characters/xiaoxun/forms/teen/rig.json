@@ -247,13 +247,13 @@
       "hires": 2
     },
     {
-      "id": "torso_top_fill",
-      "file": "sprites/torso_top_fill@2x.png",
+      "id": "skirt_main",
+      "file": "sprites/skirt_main@2x.png",
       "group": "chest",
-      "layer": 99,
+      "layer": 97,
       "pos": [
-        316,
-        308
+        282,
+        586
       ],
       "anchor": [
         0,
@@ -262,10 +262,11 @@
       "tags": [
         "body"
       ],
-      "note": "seg_torso 顶部那条塗り足し（make_body_parts 复制颈线做出来的脖子桩）单独成件。短发档它藏在鬓发后面、发梢甩动时正好顶住，所以**短发档必须显示**；长发/双马尾/高马尾三档把鬓发撤走，它就露成脖子两侧的青绿碎渣 ⇒ 那三档 hide。（第四十八问 (c)）",
+      "note": "裙子从 seg_torso 切出来的独立件（T66.16）：只有它自己能接旋转骨，否则一转就把上身带飞。层 97 = 腿(60/61)之上、躯干(100)之下；骨链 skirt_root→skirt_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "skirt_root"
     },
     {
       "id": "torso_top_patch",
@@ -284,6 +285,27 @@
         "body"
       ],
       "note": "重画的衣领顶边：原画里衣领上沿一直被鬓发盖着、画师没画过，所以上面那件一藏，下巴和衣领之间就裂洞。这件按切线下方的干净衣领重画（轮廓借切线行、颜色借干净行 + 横向平滑 + 向上淡出），**只覆盖各发型档真的会破洞的那一小片**（need 掩膜），四档常显。（第四十八问 (c) 第四轮）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "torso_top_fill",
+      "file": "sprites/torso_top_fill@2x.png",
+      "group": "chest",
+      "layer": 99,
+      "pos": [
+        316,
+        308
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "seg_torso 顶部那条塗り足し（make_body_parts 复制颈线做出来的脖子桩）单独成件。短发档它藏在鬓发后面、发梢甩动时正好顶住，所以**短发档必须显示**；长发/双马尾/高马尾三档把鬓发撤走，它就露成脖子两侧的青绿碎渣 ⇒ 那三档 hide。（第四十八问 (c)）",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -309,6 +331,28 @@
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
+    },
+    {
+      "id": "hair_back",
+      "file": "sprites/hair_back@2x.png",
+      "group": "head",
+      "layer": 170,
+      "pos": [
+        301,
+        117
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；骨链 hair_back_root→hair_back_mid（S2）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
+      "deformer": "hair_back_root"
     },
     {
       "id": "seg_head",
@@ -354,27 +398,6 @@
       "deformer": "hair_ahoge_root"
     },
     {
-      "id": "hair_front",
-      "file": "sprites/hair_front@2x.png",
-      "group": "head",
-      "layer": 240,
-      "pos": [
-        352,
-        163
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "hair"
-      ],
-      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
       "id": "brow_l",
       "file": "sprites/brow_l@2x.png",
       "group": "head",
@@ -412,6 +435,27 @@
         "brow"
       ],
       "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "hair_front",
+      "file": "sprites/hair_front@2x.png",
+      "group": "head",
+      "layer": 240,
+      "pos": [
+        352,
+        163
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -459,28 +503,6 @@
       "scale": 0.5,
       "hires": 2,
       "deformer": "hair_side_r_root"
-    },
-    {
-      "id": "hair_back",
-      "file": "sprites/hair_back@2x.png",
-      "group": "head",
-      "layer": 170,
-      "pos": [
-        301,
-        117
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "hair"
-      ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；骨链 hair_back_root→hair_back_mid（S2）",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2,
-      "deformer": "hair_back_root"
     },
     {
       "id": "arm_l_root",
@@ -951,7 +973,7 @@
       "layer": 50,
       "pos": [
         285,
-        728
+        710
       ],
       "anchor": [
         0,
@@ -6535,70 +6557,87 @@
       ]
     },
     {
+      "id": "skirt_root",
+      "pivot": [
+        418.0,
+        594.9
+      ],
+      "note": "skirt 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "skirt_mid",
+      "pivot": [
+        418.0,
+        708.1
+      ],
+      "parent": "skirt_root",
+      "note": "skirt 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
       "id": "skirt_sway_x",
-      "part": "seg_torso",
+      "part": "skirt_main",
       "cols": 2,
       "rows": 10,
-      "note": "裙摆横摆：裙腰(r=6)固定，越往下甩得越远，中列比两侧多一点",
+      "note": "裙摆横摆：裙腰(r=6)固定，越往下甩得越远，中列比两侧多一点；挂在中段骨 skirt_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
-          "r": 6,
+          "r": 1,
           "dx": 0.5
         },
         {
           "c": 1,
-          "r": 6,
+          "r": 1,
           "dx": 0.54
         },
         {
           "c": 2,
-          "r": 6,
+          "r": 1,
           "dx": 0.5
         },
         {
           "c": 0,
-          "r": 7,
+          "r": 3,
           "dx": 1.8
         },
         {
           "c": 1,
-          "r": 7,
+          "r": 3,
           "dx": 1.944
         },
         {
           "c": 2,
-          "r": 7,
+          "r": 3,
           "dx": 1.8
         },
         {
           "c": 0,
-          "r": 8,
+          "r": 5,
           "dx": 4.2
         },
         {
           "c": 1,
-          "r": 8,
+          "r": 5,
           "dx": 4.536
         },
         {
           "c": 2,
-          "r": 8,
+          "r": 5,
           "dx": 4.2
         },
         {
           "c": 0,
-          "r": 9,
+          "r": 8,
           "dx": 7.0
         },
         {
           "c": 1,
-          "r": 9,
+          "r": 8,
           "dx": 7.56
         },
         {
           "c": 2,
-          "r": 9,
+          "r": 8,
           "dx": 7.0
         },
         {
@@ -6619,43 +6658,44 @@
           "dx": 10.0,
           "dy": 0.9
         }
-      ]
+      ],
+      "parent": "skirt_mid"
     },
     {
       "id": "skirt_hem_x",
-      "part": "seg_torso",
+      "part": "skirt_main",
       "cols": 2,
       "rows": 10,
-      "note": "下摆第二段：只有最下两行再多甩一点，比裙身慢半拍（见参数 ParamSkirtSway 的 lag）。幅度只有第一段的三成——布越重越不该多摆，而且教程口径是「宁可摆小一点」",
+      "note": "下摆第二段：只有最下两行再多甩一点，比裙身慢半拍（见参数 ParamSkirtSway 的 lag）。幅度只有第一段的三成——布越重越不该多摆，而且教程口径是「宁可摆小一点」；挂在中段骨 skirt_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
-          "r": 8,
+          "r": 5,
           "dx": 0.6
         },
         {
           "c": 1,
-          "r": 8,
+          "r": 5,
           "dx": 0.636
         },
         {
           "c": 2,
-          "r": 8,
+          "r": 5,
           "dx": 0.6
         },
         {
           "c": 0,
-          "r": 9,
+          "r": 8,
           "dx": 1.9
         },
         {
           "c": 1,
-          "r": 9,
+          "r": 8,
           "dx": 2.014
         },
         {
           "c": 2,
-          "r": 9,
+          "r": 8,
           "dx": 1.9
         },
         {
@@ -6673,76 +6713,75 @@
           "r": 10,
           "dx": 3.4
         }
-      ]
+      ],
+      "parent": "skirt_mid"
     },
     {
       "id": "skirt_sway_y",
-      "part": "seg_torso",
+      "part": "skirt_main",
       "cols": 2,
       "rows": 10,
-      "note": "裙摆纵摆：上下滞后，裙底顺带略微张开/收拢（布料的伞效应）",
+      "note": "裙摆纵摆：上下滞后，裙底顺带略微张开/收拢（布料的伞效应）；挂在中段骨 skirt_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
-          "r": 6,
+          "r": 1,
           "dy": 0.2
         },
         {
           "c": 1,
-          "r": 6,
+          "r": 1,
           "dy": 0.22
         },
         {
           "c": 2,
-          "r": 6,
+          "r": 1,
           "dy": 0.2
         },
         {
           "c": 0,
-          "r": 7,
+          "r": 3,
           "dy": 0.7
         },
         {
           "c": 1,
-          "r": 7,
+          "r": 3,
           "dy": 0.77
         },
         {
           "c": 2,
-          "r": 7,
+          "r": 3,
           "dy": 0.7
         },
         {
           "c": 0,
-          "r": 8,
-          "dy": 1.6,
-          "dx": -0.512
+          "r": 5,
+          "dy": 1.6
         },
         {
           "c": 1,
-          "r": 8,
+          "r": 5,
           "dy": 1.76
         },
         {
           "c": 2,
-          "r": 8,
-          "dy": 1.6,
-          "dx": 0.512
+          "r": 5,
+          "dy": 1.6
         },
         {
           "c": 0,
-          "r": 9,
+          "r": 8,
           "dy": 2.6,
           "dx": -0.832
         },
         {
           "c": 1,
-          "r": 9,
+          "r": 8,
           "dy": 2.86
         },
         {
           "c": 2,
-          "r": 9,
+          "r": 8,
           "dy": 2.6,
           "dx": 0.832
         },
@@ -6763,7 +6802,8 @@
           "dy": 3.8,
           "dx": 1.216
         }
-      ]
+      ],
+      "parent": "skirt_mid"
     },
     {
       "id": "lining_sway_x",
@@ -6775,62 +6815,62 @@
         {
           "c": 0,
           "r": 0,
-          "dx": 2.254
+          "dx": 3.147
         },
         {
           "c": 1,
           "r": 0,
-          "dx": 2.389
+          "dx": 3.336
         },
         {
           "c": 2,
           "r": 0,
-          "dx": 2.254
+          "dx": 3.147
         },
         {
           "c": 0,
           "r": 1,
-          "dx": 2.828
+          "dx": 3.532
         },
         {
           "c": 1,
           "r": 1,
-          "dx": 2.998
+          "dx": 3.744
         },
         {
           "c": 2,
           "r": 1,
-          "dx": 2.828
+          "dx": 3.532
         },
         {
           "c": 0,
           "r": 2,
-          "dx": 3.43
+          "dx": 3.918
         },
         {
           "c": 1,
           "r": 2,
-          "dx": 3.636
+          "dx": 4.153
         },
         {
           "c": 2,
           "r": 2,
-          "dx": 3.43
+          "dx": 3.918
         },
         {
           "c": 0,
-          "r": 3,
-          "dx": 4.06
-        },
-        {
-          "c": 1,
           "r": 3,
           "dx": 4.304
         },
         {
+          "c": 1,
+          "r": 3,
+          "dx": 4.562
+        },
+        {
           "c": 2,
           "r": 3,
-          "dx": 4.06
+          "dx": 4.304
         },
         {
           "c": 0,
@@ -7888,42 +7928,6 @@
       "note": "右侧发第二段（梢）"
     },
     {
-      "id": "skirt_x",
-      "part": "seg_torso",
-      "deformer": "skirt_sway_x",
-      "input": [
-        {
-          "param": "ParamBodyAngleX",
-          "weight": 1.0
-        },
-        {
-          "param": "ParamBodyAngleZ",
-          "weight": 1.0
-        }
-      ],
-      "ratio": 0.12,
-      "stiffness": 24,
-      "damping": 6.5,
-      "max": 1.0,
-      "note": "裙摆横摆：上身左右倾/旋转带动，裙腰不动、裙底甩出去"
-    },
-    {
-      "id": "skirt_y",
-      "part": "seg_torso",
-      "deformer": "skirt_sway_y",
-      "input": [
-        {
-          "param": "ParamBodyAngleY",
-          "weight": 1.0
-        }
-      ],
-      "ratio": 0.055,
-      "stiffness": 19,
-      "damping": 6.8,
-      "max": 1.0,
-      "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更钝"
-    },
-    {
       "id": "back_x",
       "part": "hair_back",
       "driver": "head",
@@ -7946,6 +7950,42 @@
       "damping": 2.8,
       "max": 1.4,
       "note": "后发第二段（梢）：串在 back_x 后面，比发根再慢一拍；比侧发更软更慢（头发越重越慢）"
+    },
+    {
+      "id": "skirt_x",
+      "part": "skirt_main",
+      "deformer": "skirt_sway_x",
+      "input": [
+        {
+          "param": "ParamBodyAngleX",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBodyAngleZ",
+          "weight": 1.0
+        }
+      ],
+      "ratio": 0.12,
+      "stiffness": 24,
+      "damping": 6.5,
+      "max": 1.0,
+      "note": "裙摆横摆：上身左右倾/旋转带动，裙腰不动、裙底甩出去"
+    },
+    {
+      "id": "skirt_y",
+      "part": "skirt_main",
+      "deformer": "skirt_sway_y",
+      "input": [
+        {
+          "param": "ParamBodyAngleY",
+          "weight": 1.0
+        }
+      ],
+      "ratio": 0.055,
+      "stiffness": 19,
+      "damping": 6.8,
+      "max": 1.0,
+      "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更钝"
     },
     {
       "id": "lining_x",
@@ -8335,9 +8375,15 @@
           "param": "bend_x",
           "scale": 1.0,
           "curve": "root"
+        },
+        {
+          "part": "skirt_main",
+          "param": "bend_x",
+          "scale": 0.19,
+          "curve": "root"
         }
       ],
-      "note": "只驱动躯干网格弯曲（满格 = 腰以上最多偏 10px）。不再叠胸组的平移/旋转：bend 已经表达了同一件事，再叠一层会让五官相对身体形变多走一个固定量（单测的刚性跟随会红）"
+      "note": "只驱动躯干网格弯曲（满格 = 腰以上最多偏 10px）。不再叠胸组的平移/旋转：bend 已经表达了同一件事，再叠一层会让五官相对身体形变多走一个固定量（单测的刚性跟随会红）；裙件（skirt_main）按高度摊到 0.19 的同类形变"
     },
     {
       "id": "ParamBodyAngleZ",
@@ -8375,9 +8421,15 @@
           "group": "chest",
           "param": "sy",
           "scale": -0.001
+        },
+        {
+          "part": "skirt_main",
+          "param": "bend_y",
+          "scale": 0.35,
+          "curve": "sine"
         }
       ],
-      "note": "满格 10 = 躯干纵向弯 4px + 胸组下沉 2.5px + 压扁 1%"
+      "note": "满格 10 = 躯干纵向弯 4px + 胸组下沉 2.5px + 压扁 1%；裙件（skirt_main）按高度摊到 0.35 的同类形变"
     },
     {
       "id": "ParamShoulderY",
@@ -9801,30 +9853,6 @@
       "note": "脚掌绕踝 ±12°：跳跃绷脚尖、落地勾脚"
     },
     {
-      "id": "ParamSkirtSway",
-      "label": "裙摆摆动",
-      "min": -1.15,
-      "max": 1.15,
-      "default": 0.0,
-      "binds": [
-        {
-          "deformer": "skirt_sway_x",
-          "scale": 1.0
-        },
-        {
-          "deformer": "skirt_hem_x",
-          "scale": 1.0,
-          "lag": 0.11
-        },
-        {
-          "deformer": "lining_sway_x",
-          "scale": 1.0,
-          "lag": 0.2
-        }
-      ],
-      "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 ⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D 「複数階層デフォーマ・親→子」的等价写法）。物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**再叠身体带动的滞后。幅度刻意压小——教程口径是「意外と揺れを控えめにした方が自然に見える」；里布（skirt_lining）同参数驱动，跟随系数 0.35、延迟 0.2s —— 甩出去时露出里子，收回来又藏回去"
-    },
-    {
       "id": "ParamHairSway",
       "label": "头发飘动",
       "min": -1.0,
@@ -9876,6 +9904,41 @@
         }
       ],
       "note": "头发自己飘：一条参数推四件短发（刘海/左右侧发/后发），每件带不同的行波延迟 ⇒ 风从一侧扫到另一侧，发梢那级再慢半拍。物理链 bangs_x/side_?_x/back_x 照旧挂着，在这个自主飘动之上再叠摇头带来的滞后。幅度（侧发满格 7.2px ≈ 头宽的 3%）：第一版给 5.4px，实拍发梢\n只摆 5.9px，肉眼要盯着才看得出来 ⇒ 提到 7.2px；\n再大就会从脸侧甩出去，参考 「意外と揺れを控えめにした方が自然に見える」"
+    },
+    {
+      "id": "ParamSkirtSway",
+      "label": "裙摆摆动",
+      "min": -1.15,
+      "max": 1.15,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "skirt_root",
+          "param": "rot_deg",
+          "scale": 1.2
+        },
+        {
+          "deformer": "skirt_mid",
+          "param": "rot_deg",
+          "scale": 2.6,
+          "lag": 0.11
+        },
+        {
+          "deformer": "skirt_sway_x",
+          "scale": 1.0
+        },
+        {
+          "deformer": "skirt_hem_x",
+          "scale": 1.0,
+          "lag": 0.11
+        },
+        {
+          "deformer": "lining_sway_x",
+          "scale": 1.0,
+          "lag": 0.2
+        }
+      ],
+      "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 ⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D 「複数階層デフォーマ・親→子」的等价写法）。物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**再叠身体带动的滞后。幅度刻意压小——教程口径是「意外と揺れを控えめにした方が自然に見える」；里布（skirt_lining）同参数驱动，跟随系数 0.35、延迟 0.2s —— 甩出去时露出里子，收回来又藏回去"
     },
     {
       "id": "ParamJacketSway",

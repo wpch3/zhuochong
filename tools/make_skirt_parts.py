@@ -193,23 +193,35 @@ def main() -> int:
         raise SystemExit(f"[make_skirt_parts] 缺少 {bp_path}（先跑 make_body_parts.py）")
     with open(bp_path, encoding="utf-8") as f:
         bp = json.load(f)
-    torso = next(p for p in bp["parts"] if p["id"] == "seg_torso")
+    # ★ T66.16：裙子已经被 split_skirt.py 从 seg_torso 里整件切出去了（skirt_main）。
+    #   这时候「找裙子」必须去裙件上找 —— 躯干上已经一个裙像素都没有，
+    #   照老代码跑会直接报「躯干图里找不到裙色像素」把重建链打断。
+    #   坐标系跟着换：pos 的基准是**裙件**的 pos，不是躯干的。
+    _split = os.path.join(spr, "skirt_split.json")
+    if os.path.exists(_split):
+        with open(_split, encoding="utf-8") as f:
+            sid = json.load(f)["id"]
+        torso = next(p for p in bp["parts"] if p["id"] == sid)
+        src1, src2 = (os.path.join(spr, sid + ".png"), os.path.join(spr, sid + "@2x.png"))
+    else:
+        torso = next(p for p in bp["parts"] if p["id"] == "seg_torso")
+        src1, src2 = (os.path.join(spr, "seg_torso.png"), os.path.join(spr, "seg_torso@2x.png"))
     navy = skirt_color(args.root, args.character)
 
-    img, m1, off, size, npx, top = cut(os.path.join(spr, "seg_torso.png"), navy)
+    img, m1, off, size, npx, top = cut(src1, navy)
     img.save(os.path.join(spr, "skirt_lining.png"))
     pos = [torso["pos"][0] + off[0], torso["pos"][1] + off[1]]
     print(f"里布 {size[0]}x{size[1]} @ 身体({pos[0]},{pos[1]})  "
           f"满宽裙摆起始局部 y={top}  像素 {npx}")
 
     # 自检：里布必须整个压在表布的**实心**像素底下 —— 这就是"静止时看不见"的证明
-    _t = np.asarray(Image.open(os.path.join(spr, "seg_torso.png")).convert("RGBA"))
+    _t = np.asarray(Image.open(src1).convert("RGBA"))
     leak = int((m1 & (_t[..., 3] < 250)).sum())
     print(f"  压在表布半透明边上的里布像素 = {leak}（必须 0，否则静止时裙边会发暗）")
     if leak:
         raise SystemExit("[make_skirt_parts] 里布越过了表布的实心边界")
 
-    hi = os.path.join(spr, "seg_torso@2x.png")
+    hi = src2
     checks = {"px": npx, "dark": DARK, "bounce": BOUNCE_MAX, "leak": leak}
     if os.path.exists(hi):
         img2, npx2 = cut_hires(hi, m1, off, size)
@@ -223,7 +235,8 @@ def main() -> int:
 
     out = {
         "schema_version": "1.0",
-        "source": "sprites/seg_torso.png 的裙摆段复制 + 乘法压暗（原画没有里布，教程口径的通行做法）",
+        "source": "表布（seg_torso / 切出来的 skirt_main）的裙摆段复制 + 乘法压暗"
+                  "（原画没有里布，教程口径的通行做法）",
         "note": "裏地：排在腿的后面（官方手册「手前の面と奥の面で足を挟むように」），"
                 "静止时被表布完全盖住，裙摆甩开才露出来。",
         "parts": [{

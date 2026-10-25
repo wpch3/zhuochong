@@ -4960,6 +4960,91 @@ static void test_bone_chains(void)
     zrig_free(r);
 }
 
+/* S3 的取样器：装一份**全新**的 rig，把 ParamSkirtSway 固定成 v 连推 40 帧，
+   返回裙件/躯干的锚点和两根骨的角度。
+   ★ 为什么要"装两份 rig 各推一遍"而不是在同一份上先推 0 再推 1：
+     待机动作自己会推别的参数，时间一往前走躯干也会挪，分不清是谁带动的。
+     两份 rig 走**同一串时间戳**，除了 ParamSkirtSway 之外的所有状态逐帧相同，
+     所以"躯干位置一样"就是真的没被裙子带动。 */
+static int skirt_probe(const char *dir, const char *rig_path, double v,
+                       double sk[2], double tor[2], double *root_rot, double *mid_rot)
+{
+    zdiag d;
+    zrig *r;
+    int i;
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    if (!r) return 0;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 40; ++i) {
+        zrig_param_set(r, "ParamSkirtSway", v);
+        zrig_tick(r, 0.4 + i / 60.0);
+    }
+    if (!zrig_part_anchor_pos(r, "skirt_main", 1.0, sk) ||
+        !zrig_part_anchor_pos(r, "seg_torso", 1.0, tor)) {
+        zrig_free(r);
+        return 0;
+    }
+    *root_rot = zrig_deform_transform(r, "skirt_root", "rot_deg");
+    *mid_rot = zrig_deform_transform(r, "skirt_mid", "rot_deg");
+    zrig_free(r);
+    return 1;
+}
+
+static void test_skirt_bone_chain(void)
+{
+    char dir[1024], rig_path[1024];
+    zdiag d;
+    zrig *r;
+    double sk0[2] = {0, 0}, sk1[2] = {0, 0}, tor0[2] = {0, 0}, tor1[2] = {0, 0};
+    double root_rot = 0, mid_rot = 0, moved, tor_moved;
+    SECTION("S3 裙子切件 + 骨链：裙子甩、上身不动");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装了裙件骨链的 teen rig 应能加载");
+    if (!r) return;
+
+    /* ① 刚装载时链是严格恒等（rig 文件里没写死任何变换） */
+    CHECK(fabs(zrig_deform_transform(r, "skirt_root", "rot_deg")) < 1e-12 &&
+          fabs(zrig_deform_transform(r, "skirt_mid", "rot_deg")) < 1e-12 &&
+          fabs(zrig_deform_transform(r, "skirt_root", "dx")) < 1e-12,
+          "刚装载时裙子的两根骨必须严格恒等");
+    zrig_free(r);
+
+    /* ③ 同一串时间戳、只差 ParamSkirtSway：0 一份、1 一份 */
+    CHECK(skirt_probe(dir, rig_path, 0.0, sk0, tor0, &root_rot, &mid_rot),
+          "参数 0 的取样应成功");
+    CHECK(skirt_probe(dir, rig_path, 1.0, sk1, tor1, &root_rot, &mid_rot),
+          "参数 1 的取样应成功");
+    /* ② 裙子必须是**独立部件**。它长在 seg_torso 上的时候，A_chain 作用于整个部件
+       ⇒ 给裙子插一根转骨就是把整个上身一起转飞（G66.6）。anchor 查不到（取样函数
+       返回 0）就等于"裙件不在 rig 里"，上面的 CHECK 会先红。 */
+    CHECK(sk0[0] != 0.0 || sk0[1] != 0.0,
+          "裙子应该是独立部件 skirt_main（锚点 (%.1f,%.1f) = 还长在躯干上）",
+          sk0[0], sk0[1]);
+    CHECK(fabs(root_rot - 1.2) < 1e-6 && fabs(mid_rot - 2.6) < 1e-6,
+          "裙腰骨 = 1.2 × 参数、中段骨 = 2.6 × 参数（实测 %.3f / %.3f）",
+          root_rot, mid_rot);
+    CHECK(fabs(mid_rot) > 2.0 * fabs(root_rot) - 1e-6,
+          "裙摆中段要比裙腰转得多（根 %.3f° / 中段 %.3f°）", root_rot, mid_rot);
+
+    /* ④ ★ 切件的**全部意义**：裙子动、躯干不动。
+       这条如果红了，说明裙子其实还挂在躯干上（或者骨骼绑错了部件）——
+       那就等于回到"一转裙摆整个上身跟着歪"的老毛病。 */
+    moved = hypot(sk1[0] - sk0[0], sk1[1] - sk0[1]);
+    tor_moved = hypot(tor1[0] - tor0[0], tor1[1] - tor0[1]);
+    CHECK(moved > 0.5, "推裙摆参数，裙件要真的动（实测 %.2f px）", moved);
+    CHECK(tor_moved < 0.01,
+          "推裙摆参数，躯干必须一动不动（实测 %.3f px —— 动了就是骨链绑错部件）",
+          tor_moved);
+    printf("    量到：裙腰骨 %.3f° / 中段 %.3f°，裙件锚点 (%.1f,%.1f) → (%.1f,%.1f) 走了 %.1f px，"
+           "躯干挪了 %.3f px\n",
+           root_rot, mid_rot, sk0[0], sk0[1], sk1[0], sk1[1], moved, tor_moved);
+}
+
 static void test_skirt_physics(void)
 {
     char rig_path[1024], dir[1024];
@@ -8451,6 +8536,7 @@ int main(int argc, char **argv)
     test_brow_form();
     test_mesh_bend_coexist();
     test_bone_chains();
+    test_skirt_bone_chain();
     test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();

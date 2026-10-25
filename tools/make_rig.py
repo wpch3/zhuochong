@@ -1399,7 +1399,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           closed=None, blendp=None, eyeline=None, smile_eyes=None,
           pain_eyes=None, wide_eyes=None, footp=None,
           star_eyes=None, base=None, fx_table=None, skirtp=None, jacketp=None,
-          handp=None):
+          handp=None, skirtx=None):
     sp_w, sp_h = sprite["sprite_size"]
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
@@ -4123,67 +4123,6 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                   **({"dy": round(abs(v) * 0.10, 3)} if r == 6 else {})}
                  for r, v in _BKS.items() for c in (0, 1, 2, 3)
              ]})
-
-        # 裙摆的两张网格：seg_torso 是 273x501，裙子占下 42%（y>=290）。
-        # rows=5 → 控制点行落在 y = 0 / 100 / 200 / 301 / 401 / 501，
-        # r=0~2 是上身（一个点都不动），r=3 正好压在裙腰上（当"根"），
-        # r=4/5 是裙身和裙底 —— 所以**裙子不用拆成独立部件**，
-        # 一张挂在躯干上的网格就能只摆裙摆。裙底下的大腿早就拆出来并重绘过了，
-        # 裙摆荡开露出来的是真大腿，不是空洞。
-        # rows=10 不是为了裙摆本身的精度，是为了**上身的 bend**：
-        # 网格路径下 bend 曲线是在控制点上采样、格子内线性插值的，
-        # rows=5 时 u² 曲线被折成 6 段，上身轮廓会有 1000+ 像素的偏移；
-        # rows=10 把这个误差压到百位数。行 y = 501*r/10，裙腰(y≈300) 正好落在 r=6。
-        _SKX = {6: 0.5, 7: 1.8, 8: 4.2, 9: 7.0, 10: 10.0}       # 横摆：越往下甩得越远
-        _SKY = {6: 0.2, 7: 0.7, 8: 1.6, 9: 2.6, 10: 3.8}        # 纵摆：上下滞后
-        # 下摆第二段：只有最下两行。数值取第一段同行的 ~30%——
-        # 它是**叠加**在第一段之上的"再多甩一点"，不是替代。
-        _SKHEM = {8: 0.6, 9: 1.9, 10: 3.4}
-        # —— 眉形（ParamBrowL/RForm）——
-        # 合规表最后两个 ⬜。不需要新素材：眉毛本来就是一条横着的网格能表达的形状。
-        # brow_l 的眉头在右端（c=4，靠中线），brow_r 的眉头在左端（c=0）——
-        # 眉头那一侧给得比眉尾轻一点，+1 时才像"眉峰在中后段隆起"而不是整条拱桥。
-        for _pid, _inner in (("brow_l", 4), ("brow_r", 0)):
-            _amp = {0: 2.3, 1: -1.1, 2: -3.6, 3: -1.1, 4: 2.3}
-            _amp[_inner] = 1.8                      # 眉头端收一点
-            rig["deformers"].append(
-                {"id": f"{_pid}_form", "part": _pid, "cols": 4, "rows": 2,
-                 "note": "眉形：+1 中段隆起（山なり/惊讶），−1 中段下压（しかめ/困扰）；"
-                         "只改形状不挪位置，上下/左右/角度另有参数",
-                 "points": [{"c": c, "r": r, "dy": round(v, 3)}
-                            for c, v in _amp.items() for r in (0, 1, 2)]})
-        rig["deformers"] += [
-            {"id": "skirt_sway_x", "part": "seg_torso", "cols": 2, "rows": 10,
-             "note": "裙摆横摆：裙腰(r=6)固定，越往下甩得越远，中列比两侧多一点",
-             "points": [
-                 {"c": c, "r": r, "dx": round(v * (1.08 if c == 1 else 1.0), 3),
-                  **({"dy": round(v * 0.09, 3)} if r == 10 else {})}
-                 for r, v in _SKX.items() for c in (0, 1, 2)
-             ]},
-            # 第二段：**只有下摆**（最下两行）的额外横摆。
-            # 教程里「服/头发看着硬」的头号原因就是「揺れが1段しかない —— 髪全体が
-            # 棒のように一体で動いていると硬く見える」，解法是「根元と毛先で分けて
-            # 2段にする」。幅のある布（スカート・後ろ髪）官方也明确建议用
-            # **複数階層のワープデフォーマ**而不是单层变形路径（单层会把形状拧歪）。
-            # 这一段由同一条参数驱动，但绑定带 lag（T45.2g 的行波延迟）⇒ 下摆比
-            # 裙身慢半拍，这就是「親→子」的振り子顺序在本引擎里的等价写法。
-            {"id": "skirt_hem_x", "part": "seg_torso", "cols": 2, "rows": 10,
-             "note": "下摆第二段：只有最下两行再多甩一点，比裙身慢半拍（见参数 "
-                     "ParamSkirtSway 的 lag）。幅度只有第一段的三成——"
-                     "布越重越不该多摆，而且教程口径是「宁可摆小一点」",
-             "points": [
-                 {"c": c, "r": r, "dx": round(v * (1.06 if c == 1 else 1.0), 3)}
-                 for r, v in _SKHEM.items() for c in (0, 1, 2)
-             ]},
-            {"id": "skirt_sway_y", "part": "seg_torso", "cols": 2, "rows": 10,
-             "note": "裙摆纵摆：上下滞后，裙底顺带略微张开/收拢（布料的伞效应）",
-             "points": [
-                 {"c": c, "r": r, "dy": round(v * (1.1 if c == 1 else 1.0), 3),
-                  **({"dx": round(v * (-0.32 if c == 0 else 0.32), 3)}
-                     if (c != 1 and r >= 8) else {})}
-                 for r, v in _SKY.items() for c in (0, 1, 2)
-             ]},
-        ]
         rig["physics"] += [
             # ★ Q37 调强（用户："动一下头，头发就顺着头飘着的那种自然效果"）。
             #   原来是 ratio .55 / stiff 46 / damp 5.4 / max 7 —— 实测一次满量程
@@ -4214,26 +4153,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "deformer": "side_r_s",
              "ratio": 0.12, "stiffness": 14, "damping": 3.0, "max": 1.6,
              "note": "右侧发第二段（梢）"},
-            # —— 裙摆（G43）——
-            # 照官方 Hiyori 的 physics3：裙子不是"串成多段"，而是**横摆和纵摆两条
-            # 独立通道**（「スカート　横揺れ」/「スカート　縦揺れ」）。
-            #   横摆 IN = ParamBodyAngleX(X) + ParamBodyAngleZ(Angle)，各 weight 100
-            #   纵摆 IN = ParamBodyAngleY(X)，weight 100
-            #   两条都不吃头部参数 —— 裙子挂在身上，摇头不该让它动。
-            # 纵摆比横摆钝（官方 mobility 0.8/0.9、delay 0.9/0.6），这里体现为
-            # 更小的刚度 + 更大的阻尼比。
-            #
-            # 输入必须是**参数**而不是驱动组：ParamBodyAngleX 绑的是
-            # seg_torso.bend_x，弯曲是非仿射的、根本不进组矩阵，拿组位移读不到。
-            {"id": "skirt_x", "part": "seg_torso", "deformer": "skirt_sway_x",
-             "input": [{"param": "ParamBodyAngleX", "weight": 1.0},
-                       {"param": "ParamBodyAngleZ", "weight": 1.0}],
-             "ratio": 0.12, "stiffness": 24, "damping": 6.5, "max": 1.0,
-             "note": "裙摆横摆：上身左右倾/旋转带动，裙腰不动、裙底甩出去"},
-            {"id": "skirt_y", "part": "seg_torso", "deformer": "skirt_sway_y",
-             "input": [{"param": "ParamBodyAngleY", "weight": 1.0}],
-             "ratio": 0.055, "stiffness": 19, "damping": 6.8, "max": 1.0,
-             "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更钝"},
+            # —— 后发 ——
             {"id": "back_x", "part": "hair_back", "driver": "head", "axis": "x",
              "param": "bend_x", "curve": "tip",
              "ratio": 0.5, "stiffness": 34, "damping": 4.9, "max": 10,
@@ -4252,33 +4172,6 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "note": "后发第二段（梢）：串在 back_x 后面，比发根再慢一拍；"
                      "比侧发更软更慢（头发越重越慢）"},
         ]
-        # —— 裙摆的自主摆动（T45.9）——
-        # ★ 为什么非加这条参数不可：裙摆原本**只靠物理输入**（ParamBodyAngleX/Z）。
-        #   本引擎物理输出的是**滞后量 pos−target** 不是摆角，待机时身体几乎不动
-        #   ⇒ 滞后量≈0 ⇒ 裙子是死的。实测 idle 60 秒 skirt_sway_x 峰峰值 0.0599、
-        #   频率 0.058Hz（17 秒一个来回）。这正是尾巴 T45.2b 得出过的结论，
-        #   当时只修了尾巴，裙摆漏掉了。Live2D 社区把这个症状叫
-        #   「入力が小さいと振り子が 0 に吸着する」。
-        # ★ 波形用 drift 不用 sine：同 T45.2g —— 单条定频正弦是节拍器。
-        # ★ 参数差异化（教程：軽いものほど揺れやすく、早く収まる）：
-        #     尾巴（轻毛）0.21Hz / 梢延迟 0.17s
-        #     裙子（厚百褶呢）0.13Hz / 下摆延迟 0.11s —— 更慢、更小、延迟更短
-        #   全身的揺れ物用同一组数 = 所有东西同拍子摆，是机械感的第二大来源。
-        rig["params"].append({
-            "id": "ParamSkirtSway", "label": "裙摆摆动",
-            "min": -1.15, "max": 1.15, "default": 0.0,
-            "binds": [
-                {"deformer": "skirt_sway_x", "scale": 1.0},
-                {"deformer": "skirt_hem_x", "scale": 1.0, "lag": 0.11},
-            ],
-            "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 "
-                    "⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D "
-                    "「複数階層デフォーマ・親→子」的等价写法）。"
-                    "物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**"
-                    "再叠身体带动的滞后。幅度刻意压小——教程口径是"
-                    "「意外と揺れを控えめにした方が自然に見える」",
-        })
-
         # —— 头发的自主飘动（第四十七问 / T46.56）——
         # ★ 病因和裙摆 T45.9 **一模一样**，当时只修了裙子，头发漏掉了：
         #   短发四件（刘海 hair_front / 侧发 hair_side_l,r / 后发 hair_back）
@@ -4344,6 +4237,164 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             rig.setdefault("ambient", []).append(
                 {"target": "ParamHairSway", "wave": "drift",
                  "amp": 0.92, "bias": 0.0, "freq": 0.19})
+
+    # ★ T66.16b：下面这一段（眉形/裙摆网格/裙摆参数/里布/外套下摆）原来**嵌在
+    #   「有没有独立侧发件」那个 if 里面**。Q 版头发烘焙在 seg_head 上、没有
+    #   hair_side_l ⇒ 整段被跳过 ⇒ 裙子切出来了却没有 ParamSkirtSway、没有网格，
+    #   裙件成了孤儿部件（引擎当场拒载：deformers 里 skirt_root 既没 part 也没 parent）。
+    #   判据换成「裙件（或躯干）在不在」，和短发件彻底解耦。
+    if (skirtx or {}).get("id", "seg_torso") in {p["id"] for p in rig["parts"]}:
+        # 裙摆的两张网格：seg_torso 是 273x501，裙子占下 42%（y>=290）。
+        # rows=5 → 控制点行落在 y = 0 / 100 / 200 / 301 / 401 / 501，
+        # r=0~2 是上身（一个点都不动），r=3 正好压在裙腰上（当"根"），
+        # r=4/5 是裙身和裙底 —— 所以**裙子不用拆成独立部件**，
+        # 一张挂在躯干上的网格就能只摆裙摆。裙底下的大腿早就拆出来并重绘过了，
+        # 裙摆荡开露出来的是真大腿，不是空洞。
+        # rows=10 不是为了裙摆本身的精度，是为了**上身的 bend**：
+        # 网格路径下 bend 曲线是在控制点上采样、格子内线性插值的，
+        # rows=5 时 u² 曲线被折成 6 段，上身轮廓会有 1000+ 像素的偏移；
+        # rows=10 把这个误差压到百位数。行 y = 501*r/10，裙腰(y≈300) 正好落在 r=6。
+        # 数值表按**躯干**的行号写（躯干高 500、网格 10 行 ⇒ 行 r = y/50），
+        # 因为这几个数是按"裙腰在躯干第 6 行"调出来的。裙子切出去之后网格挂在
+        # 裙件上（裙件只有 222 行高），行号必须按几何重算 —— 否则同样一张表
+        # 落到裙件上就变成"裙子中段才开始摆、裙腰狂摆"（第一版忘了换算，
+        # 实拍裙腰整条横着滑出去）。
+        _SKX_T = {6: 0.5, 7: 1.8, 8: 4.2, 9: 7.0, 10: 10.0}     # 横摆：越往下甩得越远
+        _SKY_T = {6: 0.2, 7: 0.7, 8: 1.6, 9: 2.6, 10: 3.8}      # 纵摆：上下滞后
+        # 下摆第二段：只有最下两行。数值取第一段同行的 ~30%——
+        # 它是**叠加**在第一段之上的"再多甩一点"，不是替代。
+        _SKHEM_T = {8: 0.6, 9: 1.9, 10: 3.4}
+
+        def _remap(tbl, rows=10):
+            """躯干行号 → 网格挂的那个部件自己的行号（没拆件时就是原样）。"""
+            if not skirtx:
+                return dict(tbl)
+            top = float(skirtx["box_1x"][1])
+            h = float(skirtx["box_1x"][3])
+            thi = float(next(q for q in seg["parts"] if q["id"] == "seg_torso")["size"][1])
+            out = {}
+            for r, v in tbl.items():
+                y = thi * r / rows
+                nr = int(round((y - top) / max(1.0, h) * rows))
+                nr = max(0, min(rows, nr))
+                out[nr] = v if nr not in out else max(out[nr], v)
+            return out
+
+        _SKX, _SKY, _SKHEM = _remap(_SKX_T), _remap(_SKY_T), _remap(_SKHEM_T)
+        # —— 眉形（ParamBrowL/RForm）——
+        # 合规表最后两个 ⬜。不需要新素材：眉毛本来就是一条横着的网格能表达的形状。
+        # brow_l 的眉头在右端（c=4，靠中线），brow_r 的眉头在左端（c=0）——
+        # 眉头那一侧给得比眉尾轻一点，+1 时才像"眉峰在中后段隆起"而不是整条拱桥。
+        for _pid, _inner in (("brow_l", 4), ("brow_r", 0)):
+            _amp = {0: 2.3, 1: -1.1, 2: -3.6, 3: -1.1, 4: 2.3}
+            _amp[_inner] = 1.8                      # 眉头端收一点
+            rig["deformers"].append(
+                {"id": f"{_pid}_form", "part": _pid, "cols": 4, "rows": 2,
+                 "note": "眉形：+1 中段隆起（山なり/惊讶），−1 中段下压（しかめ/困扰）；"
+                         "只改形状不挪位置，上下/左右/角度另有参数",
+                 "points": [{"c": c, "r": r, "dy": round(v, 3)}
+                            for c, v in _amp.items() for r in (0, 1, 2)]})
+        # ★ T66.16（第六十六问 S3）：裙子已经从 seg_torso 里切出来了（tools/split_skirt.py）。
+        #   网格跟着裙件走 —— 这是能不能给裙子接旋转骨的前提：骨链作用于**整个部件**，
+        #   裙子还长在躯干上的时候给裙子插一根转骨，转起来会把整个上身带飞（G66.6）。
+        _SKP = (skirtx or {}).get("id", "seg_torso")
+        rig["deformers"] += [
+            {"id": "skirt_sway_x", "part": _SKP, "cols": 2, "rows": 10,
+             "note": "裙摆横摆：裙腰(r=6)固定，越往下甩得越远，中列比两侧多一点",
+             "points": [
+                 {"c": c, "r": r, "dx": round(v * (1.08 if c == 1 else 1.0), 3),
+                  **({"dy": round(v * 0.09, 3)} if r == 10 else {})}
+                 for r, v in _SKX.items() for c in (0, 1, 2)
+             ]},
+            # 第二段：**只有下摆**（最下两行）的额外横摆。
+            # 教程里「服/头发看着硬」的头号原因就是「揺れが1段しかない —— 髪全体が
+            # 棒のように一体で動いていると硬く見える」，解法是「根元と毛先で分けて
+            # 2段にする」。幅のある布（スカート・後ろ髪）官方也明确建议用
+            # **複数階層のワープデフォーマ**而不是单层变形路径（单层会把形状拧歪）。
+            # 这一段由同一条参数驱动，但绑定带 lag（T45.2g 的行波延迟）⇒ 下摆比
+            # 裙身慢半拍，这就是「親→子」的振り子顺序在本引擎里的等价写法。
+            {"id": "skirt_hem_x", "part": _SKP, "cols": 2, "rows": 10,
+             "note": "下摆第二段：只有最下两行再多甩一点，比裙身慢半拍（见参数 "
+                     "ParamSkirtSway 的 lag）。幅度只有第一段的三成——"
+                     "布越重越不该多摆，而且教程口径是「宁可摆小一点」",
+             "points": [
+                 {"c": c, "r": r, "dx": round(v * (1.06 if c == 1 else 1.0), 3)}
+                 for r, v in _SKHEM.items() for c in (0, 1, 2)
+             ]},
+            {"id": "skirt_sway_y", "part": _SKP, "cols": 2, "rows": 10,
+             "note": "裙摆纵摆：上下滞后，裙底顺带略微张开/收拢（布料的伞效应）",
+             "points": [
+                 {"c": c, "r": r, "dy": round(v * (1.1 if c == 1 else 1.0), 3),
+                  **({"dx": round(v * (-0.32 if c == 0 else 0.32), 3)}
+                     if (c != 1 and r >= 8) else {})}
+                 for r, v in _SKY.items() for c in (0, 1, 2)
+             ]},
+        ]
+        # ★ 裙件继承上身弯曲（T66.16）：切出去之后它不再吃 seg_torso 的 bend_x，
+        #   不动的话上身一歪，裙腰和躯干之间就裂开一道横向的缝。
+        #   系数不是 1.0 —— bend 曲线是 f(t)=(1−t)²，按**部件自己的高度**归一化。
+        #   躯干上裙腰在 t≈0.56 处（f≈0.19），裙件上裙腰在 t≈0（f=1），
+        #   所以裙件的 scale 取 0.19 才能让两边在裙腰处走出**同一个位移**。
+        #   （这就是"把父部件的形变按高度摊到子部件"的手算版本；引擎的
+        #     bend_follow 只能给刚性平移，做不出这个梯度。）
+        if skirtx and _SKP != "seg_torso":
+            for _pid, _geo, _sc, _cv in (("ParamBodyAngleX", "bend_x", 0.19, "root"),
+                                         ("ParamBodyAngleY", "bend_y", 0.35, "sine")):
+                for _q in rig["params"]:
+                    if _q["id"] == _pid:
+                        _q.setdefault("binds", []).append(
+                            {"part": _SKP, "param": _geo, "scale": _sc, "curve": _cv})
+                        _q["note"] = (_q.get("note", "") +
+                                      "；裙件（%s）按高度摊到 %.2f 的同类形变" % (_SKP, _sc))
+
+        rig["physics"] += [
+            # —— 裙摆（G43）——
+            # 照官方 Hiyori 的 physics3：裙子不是"串成多段"，而是**横摆和纵摆两条
+            # 独立通道**（「スカート　横揺れ」/「スカート　縦揺れ」）。
+            #   横摆 IN = ParamBodyAngleX(X) + ParamBodyAngleZ(Angle)，各 weight 100
+            #   纵摆 IN = ParamBodyAngleY(X)，weight 100
+            #   两条都不吃头部参数 —— 裙子挂在身上，摇头不该让它动。
+            # 纵摆比横摆钝（官方 mobility 0.8/0.9、delay 0.9/0.6），这里体现为
+            # 更小的刚度 + 更大的阻尼比。
+            #
+            # 输入必须是**参数**而不是驱动组：ParamBodyAngleX 绑的是
+            # seg_torso.bend_x，弯曲是非仿射的、根本不进组矩阵，拿组位移读不到。
+            {"id": "skirt_x", "part": _SKP, "deformer": "skirt_sway_x",
+             "input": [{"param": "ParamBodyAngleX", "weight": 1.0},
+                       {"param": "ParamBodyAngleZ", "weight": 1.0}],
+             "ratio": 0.12, "stiffness": 24, "damping": 6.5, "max": 1.0,
+             "note": "裙摆横摆：上身左右倾/旋转带动，裙腰不动、裙底甩出去"},
+            {"id": "skirt_y", "part": _SKP, "deformer": "skirt_sway_y",
+             "input": [{"param": "ParamBodyAngleY", "weight": 1.0}],
+             "ratio": 0.055, "stiffness": 19, "damping": 6.8, "max": 1.0,
+             "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更钝"},
+        ]
+        # —— 裙摆的自主摆动（T45.9）——
+        # ★ 为什么非加这条参数不可：裙摆原本**只靠物理输入**（ParamBodyAngleX/Z）。
+        #   本引擎物理输出的是**滞后量 pos−target** 不是摆角，待机时身体几乎不动
+        #   ⇒ 滞后量≈0 ⇒ 裙子是死的。实测 idle 60 秒 skirt_sway_x 峰峰值 0.0599、
+        #   频率 0.058Hz（17 秒一个来回）。这正是尾巴 T45.2b 得出过的结论，
+        #   当时只修了尾巴，裙摆漏掉了。Live2D 社区把这个症状叫
+        #   「入力が小さいと振り子が 0 に吸着する」。
+        # ★ 波形用 drift 不用 sine：同 T45.2g —— 单条定频正弦是节拍器。
+        # ★ 参数差异化（教程：軽いものほど揺れやすく、早く収まる）：
+        #     尾巴（轻毛）0.21Hz / 梢延迟 0.17s
+        #     裙子（厚百褶呢）0.13Hz / 下摆延迟 0.11s —— 更慢、更小、延迟更短
+        #   全身的揺れ物用同一组数 = 所有东西同拍子摆，是机械感的第二大来源。
+        rig["params"].append({
+            "id": "ParamSkirtSway", "label": "裙摆摆动",
+            "min": -1.15, "max": 1.15, "default": 0.0,
+            "binds": [
+                {"deformer": "skirt_sway_x", "scale": 1.0},
+                {"deformer": "skirt_hem_x", "scale": 1.0, "lag": 0.11},
+            ],
+            "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 "
+                    "⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D "
+                    "「複数階層デフォーマ・親→子」的等价写法）。"
+                    "物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**"
+                    "再叠身体带动的滞后。幅度刻意压小——教程口径是"
+                    "「意外と揺れを控えめにした方が自然に見える」",
+        })
         # —— 裙子里布（T45.11）——
         # 里布不是"再摆一次"，而是**比表布摆得少**：差出来的那一条就是露出来的里子。
         # 幅度口径：里布跟到表布的 LIN_FOLLOW，再加一段延迟 ⇒ 甩出去的瞬间露得最多，
@@ -4610,6 +4661,12 @@ def emit_bone_chains(rig, base):
         if rc is None:
             return 0
         x0, y0, w, h = rc
+        # ★ 先确认真有网格要挂，再建节点：没有任何网格的链是**非法结构** ——
+        #   纯变换节点既没有 part 也没有 parent 时，引擎会判「它影响不到任何部件」
+        #   并且**整份 rig 拒载**（Q 版第一次跑就撞上：skirt_main 切出来了，
+        #   但 Q 版没有裙摆网格，skirt_root 于是成了孤儿节点 → chibi 加载失败）。
+        if not any(d in defs and defs[d].get("part") == pid for d in mesh_ids):
+            return 0
         cx = x0 + w * 0.5
         rid, mid = name + "_root", name + "_mid"
         # root_fy：发根在顶部（0.03），尾巴挂在髋部所以根在底部（0.97）——
@@ -4674,6 +4731,18 @@ def emit_bone_chains(rig, base):
         made += add_chain("acc_tail_cat_" + pose, ["tail_%s_s" % pose], "tail_" + pose,
                           fy=0.5, root_fy=0.97, bind_param=param,
                           root_scale=1.4, mid_scale=3.0, mid_lag=0.1)
+    # —— 裙子（T66.16 / S3）：切出来之后才能接自己的转骨 ——
+    #   ★ 顺序不能反：骨链作用于**整个部件**，裙子还长在 seg_torso 上的时候给裙子
+    #     插一根转骨，转起来会把整个上身带飞（G66.6 记的就是这条）。
+    #   root 在**裙腰**（piece 顶边往下 4%）—— 绕错端的话裙腰会跟着甩、裙摆钉住，
+    #   看着像裙子从腰上撕下来。角度按像素反算：裙件高 ~222px，1° ≈ 3.9px，
+    #   1.2°+2.6° 在裙摆处约 14px，比网格那套（10+3.4px）略大一点，合起来是
+    #   "裙腰几乎不动、裙摆明显甩"。
+    if "skirt_main" in parts:
+        made += add_chain("skirt_main", ["skirt_sway_x", "skirt_hem_x", "skirt_sway_y"],
+                          "skirt", fy=0.55, root_fy=0.04,
+                          bind_param="ParamSkirtSway", root_scale=1.2,
+                          mid_scale=2.6, mid_lag=0.11)
     if not made:
         return 0
 
@@ -4903,6 +4972,16 @@ def main() -> int:
             print(f"警告：裙子里布缺图 {miss}，跳过里布", file=sys.stderr)
             skirtp = None
 
+    # 裙件拆件（tools/split_skirt.py 的产物：裙子从 seg_torso 里切出来 + のりしろ）
+    skirtx = None
+    skx_path = os.path.join(base, "sprites", "skirt_split.json")
+    if os.path.exists(skx_path):
+        with open(skx_path, encoding="utf-8") as f:
+            skirtx = json.load(f)
+        if not os.path.exists(os.path.join(base, "sprites", skirtx["id"] + ".png")):
+            print("警告：裙件贴图不在，退回「裙子长在躯干上」的老结构", file=sys.stderr)
+            skirtx = None
+
     # 外套前襟下摆（tools/make_jacket_parts.py 的产物：下摆带复制 + 压暗 = 裾断面の影）
     jacketp = None
     jacket_path = os.path.join(base, "sprites", "jacket_parts.json")
@@ -5053,7 +5132,8 @@ def main() -> int:
                 pain_eyes=pain_eyes, wide_eyes=wide_eyes,
                 star_eyes=star_eyes,
                 fx_table=fx_table,
-                footp=footp, skirtp=skirtp, jacketp=jacketp, handp=handp)
+                footp=footp, skirtp=skirtp, jacketp=jacketp, handp=handp,
+                skirtx=skirtx)
     attach_emit(rig, base, base_root)   # 挂件（A49 / T45）：表在就挂，不在就当没有
     nbone = emit_bone_chains(rig, base)  # S2（第六十六问）：头发/尾巴接成真正的骨链
     if nbone:

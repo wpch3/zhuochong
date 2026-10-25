@@ -1931,12 +1931,14 @@ def check_live2d(root):
                 for _b in _pm.get("binds", []) or []:
                     if _b.get("deformer") in _defs:
                         _drv.append((_pm["id"], float(_b.get("lag", 0.0) or 0.0)))
+            # 表布可能在 seg_torso 上，也可能已经被切件成 skirt_main（T66.16）——
+            # 判据是「部件 id 里带 skirt」，别再写死 seg_torso。
             _skirt_params = set()
             for _pm in _rig.get("params", []):
                 for _b in _pm.get("binds", []) or []:
                     _d = next((d for d in _rig.get("deformers", [])
                                if d.get("id") == _b.get("deformer")), None)
-                    if _d and _d.get("part") == "seg_torso" and "skirt" in _d.get("id", ""):
+                    if _d and "skirt" in str(_d.get("part", "")) and "skirt" in _d.get("id", ""):
                         _skirt_params.add(_pm["id"])
             check("裙子里布跟表布同一条参数、且有延迟（%s）" % _tag,
                   bool(_drv) and any(pid in _skirt_params and lag > 0 for pid, lag in _drv),
@@ -1953,12 +1955,60 @@ def check_live2d(root):
                             _v = max(_v, abs(float(_pt.get("dx", 0.0) or 0.0)))
                 return _v
             _front_defs = {d["id"] for d in _rig.get("deformers", [])
-                           if d.get("part") == "seg_torso" and "skirt" in d.get("id", "")}
+                           if "skirt" in str(d.get("part", "")) and "skirt" in d.get("id", "")
+                           and d.get("part") != _lid}
             _lin_dx, _front_dx = _maxdx(set(_defs)), _maxdx(_front_defs)
             check("裙子里布跟得比表布少（%s）" % _tag,
                   _front_dx > 0 and 0 < _lin_dx < _front_dx,
                   "里布最大位移 %.2f vs 表布 %.2f（里布 / 表布 = %.2f）"
                   % (_lin_dx, _front_dx, (_lin_dx / _front_dx) if _front_dx else 0))
+    # ㉓ 裙子切件（T66.16）：裙子必须从 seg_torso 里切出来、挂自己的骨链。
+    #    为什么这条必须存在：骨链（回転デフォーマ）作用于**整个部件**。裙子还长在
+    #    躯干上的时候给裙子插一根转骨，转起来会把整个上身带飞（G66.6）—— 而这个
+    #    错误在单测里看不出来、在截图上要看半天。反过来，切件之后如果**没把**网格
+    #    改挂到裙件上，裙子就成了死件（能摆但不摆），一样是"看起来做了"。
+    for _split in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/sprites/skirt_split.json"))):
+        _sp_dir = os.path.dirname(_split)
+        _fdir = os.path.dirname(_sp_dir)
+        _tag = "%s/%s" % (_fdir.split(os.sep)[-3], os.path.basename(_fdir))
+        with io.open(_split, encoding="utf-8") as _f:
+            _sj = json.load(_f)
+        _sid = _sj.get("id", "skirt_main")
+        _rp = os.path.join(_fdir, "rig.json")
+        if not os.path.exists(_rp):
+            continue
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        _bp = {x["id"]: x for x in _rig.get("parts", [])}
+        check("裙子切件 %s 进了 rig（%s）" % (_sid, _tag), _sid in _bp,
+              "rig.json 里没有 —— make_rig 没接上（%s）" % sorted(_bp)[:5])
+        if _sid not in _bp:
+            continue
+        # 只数**带网格**的裙摆形变器：skirt_root / skirt_mid 是纯变换节点（骨），
+        # 它们本来就没有 part（由 parent 串成链、由部件的 deformer 点名）。
+        _sd = [d for d in _rig.get("deformers", [])
+               if str(d.get("id", "")).startswith("skirt_")
+               and (d.get("points") or d.get("cols") or d.get("keys"))]
+        _wrong = [d["id"] for d in _sd if d.get("part") != _sid]
+        check("裙摆网格全部挂在裙件上（%s）" % _tag, bool(_sd) and not _wrong,
+              "这些网格还挂在别处：%s" % _wrong if _wrong
+              else "%d 张网格" % len(_sd))
+        # 躯干上**不许**再有任何裙摆网格：那等于裙子没切干净
+        _left = [d["id"] for d in _rig.get("deformers", [])
+                 if d.get("part") == "seg_torso" and "skirt" in str(d.get("id", ""))]
+        check("躯干上不再挂着裙摆网格（%s）" % _tag, not _left,
+              "躯干上还剩 %s —— 切件没切干净，裙子会被两套网格同时推" % _left
+              if _left else "干净")
+        # 裙件必须有自己的骨链（root→mid 两层，网格挂在中段下面）
+        _parent = {d["id"]: d.get("parent") for d in _rig.get("deformers", [])}
+        _chain = [_parent.get(d["id"]) for d in _sd if _parent.get(d["id"])]
+        check("裙件接了骨链（%s）" % _tag, bool(_chain) and bool(_bp[_sid].get("deformer")),
+              "网格没有 parent 骨、或部件没有 points deformer —— 裙子只能是死件"
+              if not _chain or not _bp[_sid].get("deformer")
+              else "链尾 %s，入口 %s" % (sorted(set(_chain)), _bp[_sid]["deformer"]))
+        check("裙子切件是无损的（%s）" % _tag, int(_sj.get("lossless", 1)) == 0,
+              "切件时合成误差 %s 像素（必须 0）" % _sj.get("lossless"))
+
     # ㉒ 同一部件上的多张网格形变器**必须同尺寸**（引擎硬约束）。
     #    zrig 是把同部件的几张网格**逐点相加**之后再去采样的，尺寸不一样直接拒载
     #    整份 rig（T45.12 第一版给躯干加了张 6x34，撞上裙摆的 2x10 ⇒ 启动期 ERROR、
@@ -2013,7 +2063,7 @@ def check_live2d(root):
                                  for d in _rig["deformers"] if d["id"] in ids
                                  for p in d["points"]] or [0.0])
         _skirt_ids = {d["id"] for d in _rig["deformers"]
-                      if d.get("part") == "seg_torso" and d["id"].startswith("skirt_")
+                      if "skirt" in str(d.get("part", "")) and d["id"].startswith("skirt_")
                       and d["id"].endswith("_x")}
         _ja, _sk = _amax({"jacket_hem_x"}), _amax(_skirt_ids)
         check("外套下摆摆得比裙摆小（%s）" % _tag, 0 < _ja < _sk,
@@ -3308,7 +3358,24 @@ def check_swing_headroom(root):
             # 一级形变器 = 整条一起动，允许（耳朵那种小件）；
             # 两级以上 = 根和梢，最后一级必须带 lag。
             need = dfm[1:] if len(dfm) > 1 else dfm
-            bad = [b["deformer"] for b in need if not b.get("lag")]
+            # 骨链（S2/S3）之后，"梢"有两种写法：
+            #   ① 直接挂一条带 lag 的绑定（老写法，网格自己延迟）；
+            #   ② 网格挂在中段骨下面，中段骨带 lag —— 网格跟着骨头的**已延迟**变换走，
+            #      再给它自己加一次 lag 就是延迟两次（尾巴会甩得像果冻）。
+            # 所以判据是「自己带 lag，或者任何一个祖先带着 lag 被这条参数驱动」。
+            _par = {d["id"]: d.get("parent") for d in rig.get("deformers", [])}
+            _lagged = {b["deformer"] for b in dfm if b.get("lag")}
+            def _inherits_lag(dfid):
+                seen = set()
+                cur = _par.get(dfid)
+                while cur and cur not in seen:
+                    if cur in _lagged:
+                        return True
+                    seen.add(cur)
+                    cur = _par.get(cur)
+                return False
+            bad = [b["deformer"] for b in need
+                   if not b.get("lag") and not _inherits_lag(b["deformer"])]
             check("%s：%s 的梢部形变带行波延迟" % (tag, pr["id"]), not bad,
                   "lag=%s" % ", ".join("%.2f" % b.get("lag", 0) for b in need)
                   if not bad else

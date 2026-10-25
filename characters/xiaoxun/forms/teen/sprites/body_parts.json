@@ -508,20 +508,19 @@
       "layer": 61
     },
     {
-      "id": "torso_top_fill",
-      "file": "sprites/torso_top_fill.png",
-      "group": "chest",
-      "layer": 99,
+      "id": "skirt_main",
+      "file": "sprites/skirt_main.png",
       "pos": [
-        116,
-        240
+        82,
+        518
       ],
       "size": [
-        212,
-        41
+        272,
+        222
       ],
-      "pivot": null,
-      "note": "seg_torso 顶部那条塗り足し（make_body_parts 复制颈线做出来的脖子桩）单独成件。短发档它藏在鬓发后面、发梢甩动时正好顶住，所以**短发档必须显示**；长发/双马尾/高马尾三档把鬓发撤走，它就露成脖子两侧的青绿碎渣 ⇒ 那三档 hide。（第四十八问 (c)）"
+      "group": "chest",
+      "layer": 97,
+      "note": "裙子从 seg_torso 切出来的独立件（T66.16）：只有它自己能接旋转骨，否则一转就把上身带飞。层 97 = 腿(60/61)之上、躯干(100)之下"
     },
     {
       "id": "torso_top_patch",
@@ -538,6 +537,22 @@
       ],
       "pivot": null,
       "note": "重画的衣领顶边：原画里衣领上沿一直被鬓发盖着、画师没画过，所以上面那件一藏，下巴和衣领之间就裂洞。这件按切线下方的干净衣领重画（轮廓借切线行、颜色借干净行 + 横向平滑 + 向上淡出），**只覆盖各发型档真的会破洞的那一小片**（need 掩膜），四档常显。（第四十八问 (c) 第四轮）"
+    },
+    {
+      "id": "torso_top_fill",
+      "file": "sprites/torso_top_fill.png",
+      "group": "chest",
+      "layer": 99,
+      "pos": [
+        116,
+        240
+      ],
+      "size": [
+        212,
+        41
+      ],
+      "pivot": null,
+      "note": "seg_torso 顶部那条塗り足し（make_body_parts 复制颈线做出来的脖子桩）单独成件。短发档它藏在鬓发后面、发梢甩动时正好顶住，所以**短发档必须显示**；长发/双马尾/高马尾三档把鬓发撤走，它就露成脖子两侧的青绿碎渣 ⇒ 那三档 hide。（第四十八问 (c)）"
     },
     {
       "id": "seg_torso",
@@ -582,6 +597,20 @@
       "layer": 141
     },
     {
+      "id": "hair_back",
+      "file": "sprites/hair_back.png",
+      "pos": [
+        101,
+        49
+      ],
+      "size": [
+        243,
+        142
+      ],
+      "group": "head",
+      "layer": 170
+    },
+    {
       "id": "seg_head",
       "file": "sprites/seg_head.png",
       "pos": [
@@ -609,21 +638,6 @@
       "group": "head",
       "layer": 190,
       "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动"
-    },
-    {
-      "id": "hair_front",
-      "file": "sprites/hair_front.png",
-      "pos": [
-        152,
-        95
-      ],
-      "size": [
-        133,
-        111
-      ],
-      "group": "head",
-      "layer": 240,
-      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动"
     },
     {
       "id": "brow_l",
@@ -656,6 +670,21 @@
       "note": "眉毛：alpha 抠像切出，底下的额头皮肤由 AI 重绘补全（挑眉时自动滑进刘海底下）"
     },
     {
+      "id": "hair_front",
+      "file": "sprites/hair_front.png",
+      "pos": [
+        152,
+        95
+      ],
+      "size": [
+        133,
+        111
+      ],
+      "group": "head",
+      "layer": 240,
+      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动"
+    },
+    {
       "id": "hair_side_l",
       "file": "sprites/hair_side_l.png",
       "pos": [
@@ -682,20 +711,6 @@
       ],
       "group": "head",
       "layer": 246
-    },
-    {
-      "id": "hair_back",
-      "file": "sprites/hair_back.png",
-      "pos": [
-        101,
-        49
-      ],
-      "size": [
-        243,
-        142
-      ],
-      "group": "head",
-      "layer": 170
     }
   ],
   "armpit_patch": {
@@ -745,5 +760,26 @@
       "px_1x": 2028
     },
     "why": "seg_torso 顶部 overlap_px 行 = make_body_parts 复制颈线做出来的脖子桩，不是原画；原画那一段衣领在 seg_head 里。拆成两件：原料（可藏）+ 重画补丁（常显，只补真会破洞的地方）"
+  },
+  "skirt_split": {
+    "sig": {
+      "v": 2
+    },
+    "id": "skirt_main",
+    "pad_px": 6575,
+    "box_1x": [
+      0,
+      278,
+      272,
+      222
+    ],
+    "px_1x": 35063,
+    "rows_1x": [
+      279,
+      499
+    ],
+    "center_x_1x": 135.5,
+    "lossless": 0,
+    "why": "骨链（回転デフォーマ）作用于整个部件，裙子必须独立才能接自己的转骨（G66.6）"
   }
 }
