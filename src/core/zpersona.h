@@ -31,6 +31,7 @@
 #define ZP_MAX_PRESETS  8
 #define ZP_MAX_TABOO    8
 #define ZP_MAX_STORY    4
+#define ZP_MAX_SELF     1200   /* 每个关系档一段「内心档案」提示词（实测最长 907 字节） */
 
 /* 一个可调维度（话量 / 亲密度 / 嘴硬 …） */
 typedef struct {
@@ -78,6 +79,13 @@ typedef struct {
 
     int  meeting_on;
     char m_user[32], m_where[64], m_when[64], m_how[128], m_relation[64];
+
+    /* ④ 内心档案（T67.44）：tools/persona_probe.py 生成的 4 档片段，原样拼进提示词。
+       为什么放独立文件、不塞进 persona.json：`zpersona_save()` 是**整份重写**
+       persona.json，新字段会被它抹掉；而且对话侧通过 zpersona_set 也改不到它 ——
+       这是"这个人自己的东西"，不该被一次对话改写。 */
+    char self_extra[ZP_MAX_STORY][ZP_MAX_SELF];
+    int  nself;
 
     char story_name[ZP_MAX_STORY][24];
     char story[ZP_MAX_STORY][160];

@@ -3040,6 +3040,33 @@ static void test_persona(void)
     CHECK(strstr(p2, zp.story[2]) != NULL, "第 2 档应带本档剧情");
     CHECK(strcmp(p0, p2) != 0, "不同好感档合成的提示词应当不同");
 
+    /* ④ 内心档案（T67.44）：同一个人不同档位答案不同，不同人答案不同。
+       ★ 这条测的是"她有没有自己的立场"，不是"提示词里有没有一段字"：
+         所以既检查档 0 与档 3 的答案不一样，也检查两个角色的答案不一样。 */
+    CHECK(zp.nself >= 4, "内心档案应有 4 档，实际 %d", zp.nself);
+    CHECK(strstr(p0, "你自己的答案") != NULL, "第 0 档应带内心档案段");
+    CHECK(strstr(p0, "「才」") != NULL,
+          "小寻第 0 档（刚认识）应答「才」—— 防守的那一面");
+    {
+        char q3[4096];
+        zpersona_compose(&zp, 3, q3, sizeof(q3));
+        CHECK(strstr(q3, "「等」") != NULL,
+              "小寻第 3 档（很熟）应改口成「等」");
+        CHECK(strstr(q3, "刚认识那会儿") != NULL,
+              "改口时必须给出「以前不这么想」的线索，否则只是换台词");
+        {
+            zpersona zs;
+            char ps[4096];
+            zdiag ds;
+            zdiag_init(&ds);
+            CHECK(zpersona_load(&zs, g_root, "shenyu", &ds) == 1,
+                  "深语的内心档案应加载成功（她没有 persona.json，走的是早退分支）");
+            zpersona_compose(&zs, 0, ps, sizeof(ps));
+            CHECK(strstr(ps, "「量」") != NULL, "深语第 0 档应答「量」");
+            CHECK(strstr(ps, "「才」") == NULL, "深语的提示词里不该出现小寻的答案");
+        }
+    }
+
     /* 中间值 3 不进提示词（避免「中等」这种无约束力的废话） */
     for (i = 0; i < zp.lib.ntraits; ++i) zp.tv[i] = 3;
     zpersona_compose(&zp, 0, p3, sizeof(p3));

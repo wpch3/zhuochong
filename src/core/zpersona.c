@@ -28,6 +28,43 @@ static void line_add(char *out, size_t cap, size_t *len, const char *fmt, ...)
     out[*len] = '\0';
 }
 
+/* 原样追加一段（不经过 line_add 的 768 字节缓冲，也不补换行 —— 片段自带） */
+static void text_add(char *out, size_t cap, size_t *len, const char *s)
+{
+    size_t n = strlen(s);
+    if (n == 0) return;
+    if (*len + n + 1 >= cap) return;      /* 放不下就整段不要，绝不切出半个 UTF-8 */
+    memcpy(out + *len, s, n);
+    *len += n;
+    if (s[n - 1] != '\n') out[(*len)++] = '\n';
+    out[*len] = '\0';
+}
+
+/* 读 characters/<id>/inner.prompt.<档>.txt（T67.44）。缺文件是合法状态。 */
+static void load_self_extra(zpersona *zp, const char *root_dir)
+{
+    int t;
+    zp->nself = 0;
+    for (t = 0; t < ZP_MAX_STORY; ++t) {
+        char path[1024];
+        FILE *f;
+        size_t n;
+        z_snprintf(path, sizeof(path), "%s/characters/%s/inner.prompt.%d.txt",
+                   root_dir, zp->character, t);
+        zp->self_extra[t][0] = '\0';
+        f = fopen(path, "rb");
+        if (!f) continue;
+        n = fread(zp->self_extra[t], 1, ZP_MAX_SELF - 1, f);
+        fclose(f);
+        zp->self_extra[t][n] = '\0';
+        if (n >= ZP_MAX_SELF - 1) {        /* 截断也按整行截，不切半个字 */
+            char *nl = strrchr(zp->self_extra[t], '\n');
+            if (nl) *nl = '\0';
+        }
+        if (zp->self_extra[t][0]) zp->nself = t + 1;
+    }
+}
+
 static int trait_index(const zp_lib *lib, const char *id)
 {
     int i;
@@ -154,6 +191,10 @@ int zpersona_load(zpersona *zp, const char *root_dir, const char *character, zdi
         }
     }
 
+    /* ④ 内心档案：放在 persona.json 之前读，因为下面"没有 persona.json 就返回"
+       的早退会跳过它 —— 八个角色里目前只有 xiaoxun 有 persona.json。 */
+    load_self_extra(zp, root_dir);
+
     /* ②③ persona.json。**不存在是合法状态**（= 全默认 = 沿用角色原设）。 */
     z_snprintf(path, sizeof(path), "%s/characters/%s/persona.json", root_dir, character);
     if (!z_file_exists(path)) return 1;
@@ -248,6 +289,11 @@ size_t zpersona_compose(const zpersona *zp, int tier, char *out, size_t cap)
              zp->name[0] ? zp->name : zp->character);
     line_add(out, cap, &len, "回答要口语、简短，像在说话而不是写文章；不要用 Markdown 排版。");
     if (zp->blueprint[0]) line_add(out, cap, &len, "角色原设：%s", zp->blueprint);
+
+    /* ④ 内心档案：这个人自己的立场和撑住它的记忆。
+       位置放在"角色原设"之后、"说话风格"之前 —— 先是谁，再是语气。 */
+    if (tier >= 0 && tier < ZP_MAX_STORY)
+        text_add(out, cap, &len, zp->self_extra[tier]);
 
     /* ② 预设风格 */
     p = preset_find(&zp->lib, zp->preset);

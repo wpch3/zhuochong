@@ -32,7 +32,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair
+.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments
 
 all: test
 
@@ -92,6 +92,16 @@ audit-sprites:
 	      && echo "头发布料纯度（$$f）：闸通过" || exit 1; \
 	done
 
+# 内心档案（T67.44）：八个人对"没有标准答案的问题"必须各答各的，
+# 而且同一个人同一档问两次必须一样。七道闸见 tools/persona_probe.py 头注释。
+# ★ 改了 characters/<id>/inner.json 之后要跑 `make persona-fragments` 重新生成片段，
+#   否则这一条会以 G7「片段过期」报红 —— 那是故意的，防止数据和提示词悄悄脱节。
+persona-fragments:
+	@$(PYTHON_IMG) tools/persona_probe.py --write-fragments
+
+audit-persona:
+	@$(PYTHON_IMG) tools/persona_probe.py --check
+
 # 头发层"只许是头发"的机检（T67.38）。单独一条，改任何头发件之后跑：
 # 头发里出现成块的皮肤/衣服（"假手臂"）或内部破洞，这里会当场报红。
 audit-hair:
@@ -101,6 +111,7 @@ audit-hair:
 # 仓库静态自检：引用完整性 / 唯一性 / 契约 / 卫生（1 秒，不编译不渲染）
 selfcheck:
 	@python3 tools/selfcheck_repo.py --root .
+	@$(PYTHON_IMG) tools/persona_probe.py --check-fresh
 
 # 带地址消毒器跑一遍单测：越界读写、释放后使用、内存泄漏都会当场炸出来
 $(BUILD)/test_core_asan: tests/test_core.c $(CORE_SRC) $(CORE_HDR)

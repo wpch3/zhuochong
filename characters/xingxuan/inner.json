@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "character": "xingxuan",
+  "_note": "T67.44 内心档案：这里存的是「这个人自己的立场」和「撑住这些立场的经历」，不是台词。答案由 tools/persona_probe.py 按权重 x 关系档推出来；任何一条 why 都必须指到本文件里一个 episode —— 指不到就是编的。",
+  "self": {
+    "core": "我需要有人看着，才确定自己是真的。",
+    "values": [
+      {
+        "id": "seen",
+        "word": "看",
+        "why": "台上的一切都是为了被看见——没有观众，光就只是光。",
+        "episode": "ep-one-seat",
+        "weight": 0.44,
+        "bond": [
+          0.93,
+          1.0,
+          1.06,
+          1.13
+        ]
+      },
+      {
+        "id": "light",
+        "word": "灯",
+        "why": "灯亮着我就不怕，灯灭了我才听见自己心跳。",
+        "episode": "ep-blackout",
+        "weight": 0.46,
+        "bond": [
+          1.05,
+          1.0,
+          0.93,
+          0.86
+        ]
+      },
+      {
+        "id": "again",
+        "word": "再",
+        "why": "「再来一次」是我唯一会的挽留。",
+        "episode": "ep-encore-three",
+        "weight": 0.1,
+        "bond": [
+          0.92,
+          1.0,
+          1.1,
+          1.3
+        ]
+      }
+    ]
+  },
+  "episodes": [
+    {
+      "id": "ep-one-seat",
+      "when": "第一次演出",
+      "where": "小剧场",
+      "what": "台下只坐了你一个人，我反而跳得最好。",
+      "felt": "比满场还紧张"
+    },
+    {
+      "id": "ep-blackout",
+      "when": "停电那晚",
+      "where": "走廊",
+      "what": "我抓着你的袖子，第一次没顾上摆姿势。",
+      "felt": "原来我也会怕"
+    },
+    {
+      "id": "ep-encore-three",
+      "when": "上个月那场",
+      "where": "后台",
+      "what": "散场后我返场了三次，其实只是想让你多留十分钟。",
+      "felt": "说不出口，就多跳一遍"
+    }
+  ]
+}
