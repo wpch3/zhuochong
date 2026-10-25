@@ -5797,6 +5797,12 @@
       "title": "甩尾巴"
     }
   ],
+  "motions": [
+    {
+      "id": "curious_tilt",
+      "file": "../../motions/curious_tilt.motion3.json"
+    }
+  ],
   "deformers": [
     {
       "id": "hair_ahoge_root",
@@ -12650,8 +12656,9 @@
   "generated_by": {
     "tool": "tools/make_rig.py",
     "sources": {
-      "tools/make_rig.py": "7fd92185c3b10a00755848a6baba5f196743ae35b7db230f3316b5054e86f1d8",
-      "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3"
+      "tools/make_rig.py": "1f62b6a0d12679354c5b2be2e564229d26e3fef17787c40d21c75058ce62e35f",
+      "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
+      "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3"
     }
   }
 }

@@ -3907,6 +3907,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "parts": parts_list,
         "regions": regions,
         "actions": _name_actions(actions),
+        # 外部动作文件（T66.21）：由 collect_motions() 在 main 里填，
+        # 这里先占位，免得顺序上要记住"哪一格才是最终值"。
+        "motions": [],
         # 物理摆动（引擎的 physics 段）：头一动，头发自己甩。
         # 输入 = 部件锚点经过 head 组完整矩阵（含旋转和父链）之后的位移，
         # 输出 = 摆尖落后/过冲的那点距离，静止时收敛回 0。
@@ -5269,18 +5272,55 @@ def prune_dangling(rig):
     prune_dead_param_refs(rig)
 
 
-def _generated_by():
-    """生成器指纹：本文件 + attach_geom.py 的 sha256。
+def _generated_by(extra_sources=None):
+    """生成器指纹：本文件 + attach_geom.py 的 sha256（+ 外部动作文件的 sha256）。
 
-    只记「谁生成、用哪两份源算」，不记时间戳 —— 记时间的话每次重跑都有 diff，
+    只记「谁生成、用哪几份源算」，不记时间戳 —— 记时间的话每次重跑都有 diff，
     人就习惯性忽略这个字段，闸也就废了。
+
+    extra_sources：`characters/<角色>/motions/*.motion3.json` 这类**内容也会进
+    rig.json** 的输入。它们不是生成器，但改了它们 rig 就旧了（T66.21）——
+    闸只认这张表，不认"我以为改了会重跑"。
     """
     here = os.path.dirname(os.path.abspath(__file__))
     out = {"tool": "tools/make_rig.py", "sources": {}}
     for name in ("make_rig.py", "attach_geom.py"):
         with open(os.path.join(here, name), "rb") as f:
             out["sources"]["tools/" + name] = hashlib.sha256(f.read()).hexdigest()
+    for rel, path in (extra_sources or {}).items():
+        with open(path, "rb") as f:
+            out["sources"][rel] = hashlib.sha256(f.read()).hexdigest()
     return out
+
+
+def collect_motions(base_root):
+    """角色级 `motions/*.motion3.json` → rig.json 的 "motions" 段（T66.21）。
+
+    为什么动作放**角色级**、而且是官方 .motion3 格式：
+      · 动作是"怎么动"，不是"长什么样"。四个形态共用同一段动作，
+        参数名由骨架契约（skeleton.json）定死，换形态不用重做动作；
+      · 用官方格式而不是我们自己的 channels 语法，是因为这样两边都能吃：
+        我们导入它，别的工具也能打开它。自己的 channels 语法只在我们这里成立。
+    文件里的 id 用文件名（去掉 .motion3.json），这样加一个文件就是一个动作，
+    不需要再去改代码 —— 模组只要往这个目录丢文件。
+
+    返回 (rig 里的 motions 列表, 供 generated_by 用的 {相对路径: 绝对路径})。
+    """
+    mdir = os.path.join(base_root, "motions")
+    if not os.path.isdir(mdir):
+        return [], {}
+    entries, sources = [], {}
+    for name in sorted(os.listdir(mdir)):
+        if not name.endswith(".motion3.json"):
+            continue
+        mid = name[: -len(".motion3.json")]
+        path = os.path.join(mdir, name)
+        entries.append({
+            "id": mid,
+            "file": os.path.relpath(path, base_root).replace(os.sep, "/"),
+        })
+        sources["characters/%s/motions/%s" % (os.path.basename(base_root), name)] = path
+    return entries, sources
 
 
 def main() -> int:
@@ -5523,7 +5563,15 @@ def main() -> int:
     # 生成物指纹（LESSONS 441）：rig.json 是**生成**出来的，闸读的却是磁盘上这一份 ——
     # 生成器改了而 rig 没重跑时，所有闸照样全绿（那天就是这么骗过自己的）。
     # 所以把「哪些源文件、各是什么内容」写进 rig，闸再算一遍对不上就红。
-    rig["generated_by"] = _generated_by()
+    # 外部动作文件（角色级 motions/）：相对路径从 rig 所在目录出发，
+    # 引擎用 z_resolve_path 解析，不需要知道仓库在哪。
+    motions, motion_sources = collect_motions(base_root)
+    if motions:
+        rig["motions"] = [{"id": m["id"],
+                           "file": os.path.relpath(os.path.join(base_root, m["file"]), base)
+                                   .replace(os.sep, "/")}
+                          for m in motions]
+    rig["generated_by"] = _generated_by(motion_sources)
 
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:

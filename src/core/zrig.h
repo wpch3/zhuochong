@@ -33,6 +33,11 @@ typedef struct zrig zrig;
 /* rig_path: rig.json 路径；base_dir: 资源相对路径的基准目录（通常是 rig.json 所在目录）。
  * 出错时把问题写进 diag（文件/行/字段/原因），返回 NULL。 */
 zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag);
+/* 外部动作文件（T66.21 / S3 后半）：把一条 Live2D `.motion3.json` 变成这个模型的动作。
+   只吃 Target=Parameter 的曲线（绝对参数值 → 减默认值变成我们的偏移）；
+   含贝塞尔的曲线按 20fps 烘焙成线性关键帧。返回用上的曲线条数，<0 = 失败。
+   rig.json 里的 "motions": [{"id","file"}] 就是走这个函数。 */
+int   zrig_motion3_add(zrig *r, const char *path, const char *id_override, zdiag *diag);
 void  zrig_free(zrig *r);
 
 /* --------------------------------------------------------------- 信息 */

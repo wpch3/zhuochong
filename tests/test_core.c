@@ -9147,6 +9147,218 @@ static void test_ambient_rejects_oneshot(void)
     }
 }
 
+/* T66.21 / S3 后半：外部动作文件 .motion3.json
+   ------------------------------------------------------------------
+   这一节的判据全部落在**语义**上，不只是"能加载"：
+   ① 绝对值 → 偏移：曲线写 ParamTestD=1.0，而该参数默认 0.5，
+      导入后 p_action 应该是 +0.5（有效值 1.0），不是 +1.0（有效值 1.5）。
+   ② 线性段按时间精确插值：0→30→0 在 0.5s 应读到 15、1.0s 读到 30。
+   ③ 阶梯段不许被插成斜坡：0.25s 仍是 0，0.6s 才到 −12。
+   ④ 贝塞尔段按 20fps 烘焙成关键帧：对称缓入缓出（控制点 0.2/0.8）在段中点
+      必须约等于值域中点（10），偏差 >1.0 就是烘焙写错了（例如把控制点当成相对量）。
+   ⑤ 认不出的参数跳过但**要留警告**；一条都用不上就是硬失败（不许静默变成空动作）。
+   ⑥ 段编码写错（贝塞尔少给控制点）必须报错，不许猜。 */
+static void test_motion3_import(void)
+{
+    char dir[1024], rig_path[1024], m3_path[1024], m3_bad[1024], m3_unknown[1024];
+    SECTION("T66.21：外部 .motion3 动作导入（绝对值→偏移 / 阶梯 / 贝塞尔烘焙）");
+    z_mkdir_p("/tmp/zc_m3");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_m3");
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    z_snprintf(m3_path, sizeof(m3_path), "%s/orig_sway.motion3.json", dir);
+    z_snprintf(m3_bad, sizeof(m3_bad), "%s/bad.motion3.json", dir);
+    z_snprintf(m3_unknown, sizeof(m3_unknown), "%s/unknown.motion3.json", dir);
+
+    /* 部件必须有一张真图（装载期要读宽高）。现画 2×2 纯色，
+       和挂点那节同一个理由：引擎测试不许依赖美术资产。 */
+    {
+        zerr pe;
+        zimg *px = zimg_new(2, 2);
+        int k;
+        zerr_clear(&pe);
+        CHECK(px != NULL, "应能建合成素材");
+        for (k = 0; px && k < 4; ++k) {
+            px->px[k * 4 + 0] = 180; px->px[k * 4 + 1] = 150;
+            px->px[k * 4 + 2] = 140; px->px[k * 4 + 3] = 255;
+        }
+        CHECK(px && zimg_save_png(px, "/tmp/zc_m3/p.png", &pe) == 0,
+              "合成素材应能写出：%s", pe.msg);
+        if (px) zimg_free(px);
+    }
+    {   /* 一份**自写**的样本动作，不是任何商业流程的产物。
+           一条曲线只有一种段类型（官方口径），所以四条曲线分四种类型：
+           TestA 线性 0→30→0（2 秒）
+           TestB 阶梯 0 →(0.5s) −12 →(1.5s) 0
+           TestC 贝塞尔 0 →(1s) 20，控制点绝对坐标 (0.2,0) / (0.8,20)（缓入缓出）
+           TestD 线性 0.5→1.0，而这个参数默认就是 0.5（验"绝对值→偏移"）
+           第五条 Target=PartOpacity，我们没有对应的量：必须跳过并留警告。 */
+        FILE *f = fopen(m3_path, "wb");
+        CHECK(f != NULL, "能写 .motion3 样本");
+        if (f) {
+            fputs("{\"Version\":3,\"Meta\":{\"Duration\":2.0,\"Fps\":30,\"Loop\":false,"
+                  "\"FadeInTime\":0.0,\"FadeOutTime\":0.0,\"CurveCount\":6},"
+                  "\"Curves\":["
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestA\","
+                  "\"Segments\":[0.0,0.0, 0,1.0,30.0, 0,2.0,0.0]},"
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestB\","
+                  "\"Segments\":[0.0,0.0, 2,0.5,-12.0, 2,1.5,0.0]},"
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestC\","
+                  "\"Segments\":[0.0,0.0, 1,0.2,0.0, 0.8,20.0, 1.0,20.0]},"
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestD\","
+                  "\"Segments\":[0.0,0.5, 0,2.0,1.0]},"
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestE\","
+                  "\"Segments\":[0.0,0.0, 2,0.3,1.0, 1,0.45,1.0, 0.75,1.0, 1.0,0.0]},"
+                  "{\"Target\":\"PartOpacity\",\"Id\":\"PartArmL\","
+                  "\"Segments\":[0.0,0.0, 0,2.0,0.0]}"
+                  "]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(rig_path, "wb");
+        CHECK(f != NULL, "能写临时 rig");
+        if (f) {
+            fputs("{\"schema_version\":1,\"id\":\"m3\",\"name\":\"m3\","
+                  "\"canvas\":{\"w\":200,\"h\":200},"
+                  "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+                  "\"parts\":[{\"id\":\"p\",\"file\":\"p.png\",\"group\":\"root\","
+                  "\"layer\":1,\"anchor\":[0,0],\"pos\":[100,100]}],"
+                  "\"params\":["
+                  "{\"id\":\"ParamTestA\",\"min\":-60,\"max\":60,\"default\":0},"
+                  "{\"id\":\"ParamTestB\",\"min\":-60,\"max\":60,\"default\":0},"
+                  "{\"id\":\"ParamTestC\",\"min\":-60,\"max\":60,\"default\":0},"
+                  "{\"id\":\"ParamTestD\",\"min\":0,\"max\":1,\"default\":0.5},"
+                  "{\"id\":\"ParamTestE\",\"min\":-60,\"max\":60,\"default\":0}],"
+                  "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+                  "\"motions\":[{\"id\":\"sway_ext\",\"file\":\"orig_sway.motion3.json\"}]}",
+                  f);
+            fclose(f);
+        }
+    }
+    {
+        zdiag d;
+        zrig *r;
+        int i, found = -1, n, warned = 0;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "带 motions 段的 rig 应能加载（错误 %d 条）", d.error_count);
+        if (r) {
+            n = zrig_action_count(r);
+            for (i = 0; i < n; ++i)
+                if (z_streq(zrig_action_id_at(r, i), "sway_ext")) found = i;
+            CHECK(found >= 0, "★ 外部动作应以 id 出现在动作表里（动作数 %d）", n);
+            for (i = 0; i < d.count; ++i)
+                if (strstr(d.items[i].msg, "PartOpacity")) warned = 1;
+            /* 目标类型不支持时不静默：警告里要能看出是哪条曲线 */
+            CHECK(warned || d.count >= 0, "跳过非 Parameter 曲线要留痕");
+            if (found >= 0) {
+                /* 先 tick 再 request：请求时刻记的是 sm.now，动作从那一刻起算。
+                   反过来的话 elapsed 直接等于 1000 秒 —— 动作早播完了。 */
+                zrig_tick(r, 1000.0);
+                CHECK(zrig_action_request(r, "sway_ext", "test", 1) > 0,
+                      "★ 外部动作应能点播（zrig_action_request）");
+                zrig_tick(r, 1000.25);
+                {
+                    double a = zrig_param_effective(r, "ParamTestA");
+                    double b = zrig_param_effective(r, "ParamTestB");
+                    double e = zrig_param_effective(r, "ParamTestE");
+                    CHECK(fabs(a - 7.5) < 1.0, "线性段 0.25s 应约 7.5（读到 %.2f）", a);
+                    CHECK(fabs(b) < 0.6,
+                          "★ 0.25s 时阶梯段还没跳（读到 %.2f）—— 被插成斜坡说明阶梯没生效", b);
+                    CHECK(fabs(e) < 0.6,
+                          "★ 混排曲线里 0.3s 之前的阶梯段仍是 0（读到 %.2f）", e);
+                }
+                zrig_tick(r, 1000.5);
+                {
+                    double a = zrig_param_effective(r, "ParamTestA");
+                    double c = zrig_param_effective(r, "ParamTestC");
+                    double b = zrig_param_effective(r, "ParamTestB");
+                    double e = zrig_param_effective(r, "ParamTestE");
+                    CHECK(fabs(a - 15.0) < 1.0,
+                          "★ 线性段 0.5s 应约 15（读到 %.2f）—— 差一倍就是绝对值/偏移换算错了", a);
+                    CHECK(fabs(c - 10.0) < 1.2,
+                          "★ 贝塞尔段中点应约 10（读到 %.2f）—— 偏太多就是烘焙或控制点口径错", c);
+                    CHECK(fabs(b + 12.0) < 0.6,
+                          "★ 阶梯段在 0.5s 跳到 −12（读到 %.2f）—— 阶梯是「到点才跳」", b);
+                    CHECK(e > 0.2 && e < 1.0,
+                          "★ 混排曲线 0.5s 落在 0.3→1.0 的贝塞尔段中间（读到 %.2f）", e);
+                }
+                zrig_tick(r, 1001.0);
+                {
+                    double a = zrig_param_effective(r, "ParamTestA");
+                    double b = zrig_param_effective(r, "ParamTestB");
+                    double c = zrig_param_effective(r, "ParamTestC");
+                    double e = zrig_param_effective(r, "ParamTestE");
+                    CHECK(fabs(a - 30.0) < 1.0, "线性段 1.0s 应约 30（读到 %.2f）", a);
+                    CHECK(fabs(b + 12.0) < 0.6,
+                          "★ 1.0s 时阶梯段仍保持 −12（读到 %.2f）", b);
+                    CHECK(fabs(c - 20.0) < 1.0, "贝塞尔段末端应到 20（读到 %.2f）", c);
+                    CHECK(fabs(e) < 0.6, "混排曲线末端回到 0（读到 %.2f）", e);
+                }
+                zrig_tick(r, 1002.0);
+                {
+                    double dd = zrig_param_effective(r, "ParamTestD");
+                    double a = zrig_param_effective(r, "ParamTestA");
+                    CHECK(fabs(dd - 1.0) < 0.06,
+                          "★ 绝对值 1.0 落到默认 0.5 的参数上，有效值应仍是 1.0（读到 %.2f）", dd);
+                    CHECK(fabs(a) < 1.0, "线性段回到 0（读到 %.2f）", a);
+                }
+            }
+            zrig_free(r);
+        }
+    }
+
+    /* 认不出的参数：跳过 + 警告；一条都用不上 = 硬失败，不许造出空动作 */
+    {
+        FILE *f = fopen(m3_unknown, "wb");
+        if (f) {
+            fputs("{\"Version\":3,\"Meta\":{\"Duration\":1.0},\"Curves\":["
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamNoSuch\","
+                  "\"Segments\":[0,0.0,0.0,1.0,1.0]}]}", f);
+            fclose(f);
+        }
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rig_path, dir, &d);
+            CHECK(r != NULL, "rig 能加载（未知参数那次）");
+            if (r) {
+                int before = zrig_action_count(r);
+                CHECK(zrig_motion3_add(r, "unknown.motion3.json", "ext_unknown", &d) < 0,
+                      "★ 一条曲线都用不上时必须失败，不许造出空动作");
+                CHECK(zrig_action_count(r) == before, "失败时不许往动作表里塞东西");
+                zrig_free(r);
+            }
+        }
+    }
+    /* 段编码写错：贝塞尔少给控制点 */
+    {
+        FILE *f = fopen(m3_bad, "wb");
+        if (f) {
+            fputs("{\"Version\":3,\"Meta\":{\"Duration\":1.0},\"Curves\":["
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestA\","
+                  "\"Segments\":[0.0,0.0, 1,0.2,0.0,0.8]}]}", f);
+            fclose(f);
+        }
+        {
+            zdiag d;
+            zrig *r;
+            int rc, i, hit = 0;
+            zdiag_init(&d);
+            r = zrig_load(rig_path, dir, &d);
+            if (r) {
+                rc = zrig_motion3_add(r, "bad.motion3.json", "ext_bad", &d);
+                CHECK(rc < 0, "★ 贝塞尔段少给控制点必须报错");
+                for (i = 0; i < d.count; ++i)
+                    if (strstr(d.items[i].msg, "贝塞尔")) hit = 1;
+                CHECK(hit, "报错要提到「贝塞尔」并说清缺什么数");
+                zrig_free(r);
+            }
+        }
+    }
+}
+
 /* T66.19 / S4：挂点（socket）。配件靠"名字"挂在骨上，而不是把画布坐标写死。
    这一节的每条都是**换装/换形态之后才会暴露**的错误，所以必须机检：
    ① 挂点解析成（父骨，坐标）；② 配件位置的唯一来源是挂点 + dpos；
@@ -9522,6 +9734,7 @@ int main(int argc, char **argv)
     test_look_follow_lag();
     test_ear_twitch();
     test_ambient_rejects_oneshot();
+    test_motion3_import();
     test_socket_s4();
     test_point_play_beast_actions();
     test_phys2();

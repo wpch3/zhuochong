@@ -99,7 +99,10 @@
 #define ZRIG_VIS_RELEASE  30.0   /* 收口的速度：比张开慢，否则收口像开关 */
 #define ZRIG_VIS_RELEASE_OFF  8.0 /* 整句说完的松口：比音素之间的回落再慢一档，
                                      否则嘴会"抽"一下弹回表情（2026-10-13 用户反馈） */
-#define ZRIG_MAX_KEYPOOL  1024  /* 所有关键帧共用一个池子，通道里只存 [起点,个数) */
+#define ZRIG_MAX_KEYPOOL  32768 /* 所有关键帧共用一个池子，通道里只存 [起点,个数)。
+                                   为什么是 32768：外部 .motion3 导入时贝塞尔曲线要
+                                   按 20fps 烘焙，一条 11 秒的官方动作整份约 1 万个键，
+                                   1024 连一条都装不下（T66.21 实测）。 */
 #define ZRIG_MAX_OVERRIDES 32
 
 /* 图层标签（tags）：用位标志，加载时解析 */
@@ -567,6 +570,7 @@ struct zrig {
 
     zaction actions[ZRIG_MAX_ACTIONS];
     int     nactions;
+    int     motion3_count;               /* 其中多少条来自外部 .motion3（T66.21） */
     int    legacy_geom_chans;  /* 动作里"直接写部件几何"的通道条数（合规闸：应为 0） */
 
     zregion regions[ZRIG_MAX_REGIONS];
@@ -3247,6 +3251,420 @@ static int load_channels(zrig *r, zaction *a, const zjson *chs,
     return 0;
 }
 
+/* ============================================================ 外部动作文件
+   .motion3.json（T66.21 / S3 后半）
+
+   ┌ 为什么底层必须能读它 ────────────────────────────────────────────────
+   │ "自制 Live2D 等价底层" 的等价面有两半：**能被同一套参数驱动**（我们早就
+   │ 用参数通道做到）和**能吃别人产出的动作文件**（这一节）。没有后者，
+   │ 生态里的动作资源一个也用不上，所谓"等价"只等价到自己的 JSON。
+   └────────────────────────────────────────────────────────────────────
+   官方格式（CubismWebFramework 的 motion3 定义）：
+     { Version, Meta:{Duration,Fps,Loop,FadeInTime,FadeOutTime,...},
+       Curves:[ {Target:"Parameter"|"PartOpacity"|"Model", Id:"...",
+                 Segments:[…]} ] }
+   段编码的准确口径见下面「官方段编码」那一段注释（是真文件核对出来的，
+   第一版按文档猜的写法是错的：首两个数是起点、段类型逐段重复）。
+
+   ★ 两个必须说清的换算：
+   ① **绝对值 → 偏移**：.motion3 的曲线写的是参数的**绝对值**，而我们的
+      p_action 是**加在参数当前值上的偏移**（zrig.c:3090 `q->value + p_action`）。
+      所以导入时把每个值都减掉该参数的默认值；不这么做的话，一条"把 ParamAngleX
+      摆到 30°"的动作在这边会变成"在当前基础上再加 30°"。
+   ② **贝塞尔 → 关键帧**：我们的通道插值只有 linear/smooth/step 三种（每通道一种），
+      没有逐段的贝塞尔。含贝塞尔（或类型混排）的曲线按 20fps 烘焙成线性关键帧，
+      段端点精确落键、阶梯段用"跳变前一刻"两个键保证不拖尾。 */
+#define M3_MAX_SEGS 64
+#define M3_BAKE_HZ  20.0        /* 烘焙采样率：20fps 足够，池子只有 1024 个键 */
+
+typedef struct {
+    int    type;                /* 每段自己的类型：0 线性 / 1 贝塞尔 / 2 阶梯 / 3 反阶梯 */
+    double pt, pv;              /* 段起点（时间, 值），继承上一段终点 */
+    double t, v;                /* 段终点 */
+    double c1t, c1v, c2t, c2v;  /* 贝塞尔控制点（绝对坐标，官方口径） */
+} m3seg;
+
+/* 三次贝塞尔求值：给时间轴参数 u 求 (x,y)。点 = (c1t,c1v) (c2t,c2v) 与两端。 */
+static double m3_bez(double p0, double p1, double p2, double p3, double u)
+{
+    double iu = 1.0 - u;
+    return iu * iu * iu * p0 + 3.0 * iu * iu * u * p1
+         + 3.0 * iu * u * u * p2 + u * u * u * p3;
+}
+
+/* 段内求值：time 落在 [pt, t] 里，返回该时刻的**绝对值**。 */
+static double m3_eval(const m3seg *sg, double time)
+{
+    double span = sg->t - sg->pt, u = 0.0;
+    if (span <= 1e-9) return sg->v;
+    u = (time - sg->pt) / span;
+    if (u < 0.0) u = 0.0;
+    if (u > 1.0) u = 1.0;
+    if (sg->type == 2 || sg->type == 3)
+        return (u >= 1.0) ? sg->v : sg->pv;      /* 阶梯：到点才跳 */
+    if (sg->type == 0)
+        return sg->pv + (sg->v - sg->pv) * u;
+    {   /* 贝塞尔：x(u) 是时间的单调函数 → 二分反解 */
+        double lo = 0.0, hi = 1.0, mid;
+        int k;
+        for (k = 0; k < 40; ++k) {
+            mid = 0.5 * (lo + hi);
+            if (m3_bez(sg->pt, sg->c1t, sg->c2t, sg->t, mid) < time) lo = mid;
+            else hi = mid;
+        }
+        return m3_bez(sg->pv, sg->c1v, sg->c2v, sg->v, 0.5 * (lo + hi));
+    }
+}
+
+/* ============================================================ 官方段编码
+   这一节的口径是拿**真文件**核对出来的（不是照文档猜的）：
+     Segments = [ t0, v0,  type, …段的数…,  type, …段的数…, … ]
+   ① 头两个数字是曲线起点，**不是段类型**；
+   ② 之后每一段是「类型 + 该段的数」，类型**逐段重复**，同一条曲线里可以混排；
+   ③ 线性 / 阶梯 / 反阶梯：类型 + (t, v) 三个数；
+      贝塞尔：类型 + (c1t,c1v, c2t,c2v, t,v) 七个数，控制点是**绝对坐标**，
+      且 (t,v) 是这个段的**终点**（起点继承上一段）。
+   核对手头：CubismWebFramework `cubismmotion.ts` 的 Segments 装载代码
+   （`segmentPosition == 0` 先读 t0/v0 再 +2；Linear/Stepped 每段 +3；
+   Bezier 每段 +7，并把 +1..+6 读成 points[1..3]，points[0] 是上一段终点）。
+   ★ 一开始我按"首数字是类型、整条曲线只有一种类型"写，测试样本照着我的错误
+     口径喂进去，居然"通过"了 —— 那正是自证。改用真实 motion3 文件核对后才发现：
+     段类型逐段重复、首两个数是起点。样本现在按真格式写。
+   ④ 阶梯取值 = 段起点的值（保持到段末才跳）；反阶梯 = 段终点的值（段首就跳）。 */
+
+/* 追加一个关键帧；时间与上一帧相同就**覆盖**（段首会和上一段末撞秒）。
+   调用方已按上限预留池子，这里只管写。 */
+static void m3_push_key(zrig *r, zchan *c, double t, double v)
+{
+    int last;
+    if (c->nkeys > 0) {
+        last = c->key0 + c->nkeys - 1;
+        if (fabs(r->key_t[last] - t) < 1e-6) {
+            r->key_v[last] = v;
+            return;
+        }
+    }
+    r->key_t[r->nkeypool] = t;
+    r->key_v[r->nkeypool] = v;
+    r->nkeypool++;
+    c->nkeys++;
+}
+
+/* 把一条曲线推进关键帧池。返回 0 成功；失败已写诊断（说清缺什么数）。 */
+static int m3_curve_to_keys(zrig *r, zchan *c, const zjson *segs, double vdef,
+                            const char *file, const char *cid, zdiag *d)
+{
+    double buf[600], t0, v0;
+    size_t n, i, pos;
+    m3seg sg[M3_MAX_SEGS];
+    int nseg = 0, k, need, all_lin = 1, all_step = 1, all_inv = 1;
+    char field[160];
+
+    z_snprintf(field, sizeof(field), "Curves[%s].Segments", cid ? cid : "?");
+    memset(buf, 0, sizeof(buf));
+    if (!segs || segs->type != ZJSON_ARR || zjson_count(segs) < 5) {
+        zdiag_error(d, file, segs ? segs->line : 0, 0, field,
+                    "Segments 至少 5 个数（起点 t,v + 一个「类型 + 端点」段），实际 %d 个",
+                    segs ? (int)zjson_count(segs) : 0);
+        return -1;
+    }
+    n = zjson_count(segs);
+    if (n > sizeof(buf) / sizeof(buf[0])) {
+        zdiag_error(d, file, segs->line, 0, field,
+                    "Segments 有 %d 个数，超过单条曲线上限 %d（真动作请拆文件）", (int)n,
+                    (int)(sizeof(buf) / sizeof(buf[0])));
+        return -1;
+    }
+    for (i = 0; i < n; ++i) buf[i] = zjson_num(zjson_at((zjson *)segs, i), 0.0);
+    t0 = buf[0];
+    v0 = buf[1];
+    pos = 2;
+    while (pos < n) {
+        int type = (int)buf[pos];
+        double pt = (nseg > 0) ? sg[nseg - 1].t : t0;
+        double pv = (nseg > 0) ? sg[nseg - 1].v : v0;
+        if (type < 0 || type > 3) {
+            zdiag_error(d, file, segs->line, 0, field,
+                        "第 %d 个数字是段类型，只能是 0/1/2/3（线性/贝塞尔/阶梯/反阶梯），"
+                        "读到 %d —— 位置错了通常意味着少写了一对数", (int)pos, type);
+            return -1;
+        }
+        if (nseg >= M3_MAX_SEGS) {
+            zdiag_error(d, file, segs->line, 0, field,
+                        "段数超过 %d（手写样本的余量；真动作请拆文件）", M3_MAX_SEGS);
+            return -1;
+        }
+        pos++;
+        memset(&sg[nseg], 0, sizeof(sg[nseg]));
+        sg[nseg].type = type;
+        sg[nseg].pt = pt;
+        sg[nseg].pv = pv;
+        if (type == 1) {
+            if (pos + 6 > n) {
+                zdiag_error(d, file, segs->line, 0, field,
+                            "贝塞尔段要 6 个数（c1t,c1v, c2t,c2v, t,v），只给了 %d 个",
+                            (int)(n - pos));
+                return -1;
+            }
+            sg[nseg].c1t = buf[pos];     sg[nseg].c1v = buf[pos + 1];
+            sg[nseg].c2t = buf[pos + 2]; sg[nseg].c2v = buf[pos + 3];
+            sg[nseg].t = buf[pos + 4];   sg[nseg].v = buf[pos + 5];
+            pos += 6;
+            /* 控制点时间跑出段外：官方工具不产出这种数，但我们不掀桌，只提醒 */
+            if (sg[nseg].c1t < pt - 1e-6 || sg[nseg].c1t > sg[nseg].t + 1e-6 ||
+                sg[nseg].c2t < pt - 1e-6 || sg[nseg].c2t > sg[nseg].t + 1e-6)
+                zdiag_warn(d, file, segs->line, 0, field,
+                           "贝塞尔控制点时间在段外（%.3f..%.3f），按内插裁剪处理",
+                           pt, sg[nseg].t);
+        } else {
+            if (pos + 2 > n) {
+                zdiag_error(d, file, segs->line, 0, field,
+                            "线性/阶梯段要（t, v）一对数，剩下的不够");
+                return -1;
+            }
+            sg[nseg].t = buf[pos]; sg[nseg].v = buf[pos + 1];
+            pos += 2;
+        }
+        if (sg[nseg].t < sg[nseg].pt) {
+            zdiag_error(d, file, segs->line, 0, field,
+                        "第 %d 段的终点时间 %.3f 比起点 %.3f 还早（时间必须单调）",
+                        nseg + 1, sg[nseg].t, sg[nseg].pt);
+            return -1;
+        }
+        if (type != 0) all_lin = 0;
+        if (type != 2) all_step = 0;
+        if (type != 3) all_inv = 0;
+        nseg++;
+    }
+    if (nseg == 0) {
+        zdiag_error(d, file, segs->line, 0, field, "曲线里一段都没有");
+        return -1;
+    }
+
+    /* 先算要几个键，再落池：宁可当场说"池子不够"，也不要写一半 */
+    need = 1;
+    if (all_lin || all_step || all_inv) need += nseg;
+    else {
+        for (k = 0; k < nseg; ++k) {
+            if (sg[k].type == 1) need += (int)((sg[k].t - sg[k].pt) * M3_BAKE_HZ) + 2;
+            else need += 2;
+        }
+    }
+    if (r->nkeypool + need > ZRIG_MAX_KEYPOOL) {
+        zdiag_error(d, file, segs->line, 0, field,
+                    "曲线 %s 要 %d 个关键帧，池子只剩 %d（全模型共用 %d；"
+                    "贝塞尔/混排按 %.0ffps 烘焙，纯线性/阶梯按端点存）",
+                    cid ? cid : "?", need, ZRIG_MAX_KEYPOOL - r->nkeypool,
+                    ZRIG_MAX_KEYPOOL, M3_BAKE_HZ);
+        return -1;
+    }
+
+    c->key0 = r->nkeypool;
+    c->nkeys = 0;
+    if (all_lin) c->interp = KI_LINEAR;
+    else if (all_step || all_inv) c->interp = KI_STEP;
+    else c->interp = KI_LINEAR;              /* 烘焙出来的密关键帧走线性 */
+    m3_push_key(r, c, t0, v0 - vdef);
+    for (k = 0; k < nseg; ++k) {
+        if (all_lin || all_step) {           /* 端点即全部信息 */
+            m3_push_key(r, c, sg[k].t, sg[k].v - vdef);
+            continue;
+        }
+        if (all_inv) {                        /* 反阶梯：段首就跳 */
+            m3_push_key(r, c, sg[k].pt, sg[k].v - vdef);
+            m3_push_key(r, c, sg[k].t, sg[k].v - vdef);
+            continue;
+        }
+        /* 混排（含贝塞尔）：按 20fps 烘焙成线性关键帧 */
+        if (sg[k].type == 0) {
+            m3_push_key(r, c, sg[k].t, sg[k].v - vdef);
+        } else if (sg[k].type == 2) {
+            m3_push_key(r, c, sg[k].t - 1e-3, sg[k].pv - vdef);
+            m3_push_key(r, c, sg[k].t, sg[k].v - vdef);
+        } else if (sg[k].type == 3) {
+            m3_push_key(r, c, sg[k].pt, sg[k].v - vdef);
+            m3_push_key(r, c, sg[k].t, sg[k].v - vdef);
+        } else {
+            double step = 1.0 / M3_BAKE_HZ, t;
+            for (t = sg[k].pt + step; t < sg[k].t - 1e-6; t += step)
+                m3_push_key(r, c, t, m3_eval(&sg[k], t) - vdef);
+            m3_push_key(r, c, sg[k].t, sg[k].v - vdef);
+        }
+    }
+    return 0;
+}
+
+int zrig_motion3_add(zrig *r, const char *path, const char *id_override, zdiag *d)
+{
+    zjson *root = NULL;
+    zerr err;
+    const zjson *meta, *curves;
+    const char *cid;
+    char full[1200];
+    double dur = 1.0;
+    int loop = 0, applied = 0, skipped = 0, i, n;
+    zaction *a;
+
+    if (!r || !path) return -1;
+    z_resolve_path(full, sizeof(full), r->dir, path);
+    if (!z_file_exists(full)) {
+        zdiag_error(d, full, 0, 0, "motion3", "动作文件不存在：%s", path);
+        return -1;
+    }
+    zerr_clear(&err);
+    root = zjson_parse_file(full, &err);
+    if (!root) {
+        zdiag_error(d, full, err.line, err.col, "motion3", "解析失败：%s", err.msg);
+        return -1;
+    }
+    if (r->nactions >= ZRIG_MAX_ACTIONS) {
+        zdiag_error(d, full, root->line, 0, "motion3",
+                    "动作数已到上限 %d（改大 ZRIG_MAX_ACTIONS）", ZRIG_MAX_ACTIONS);
+        zjson_free(root);
+        return -1;
+    }
+    curves = zjson_obj_get(root, "Curves");
+    if (!curves || curves->type != ZJSON_ARR || zjson_count(curves) == 0) {
+        zdiag_error(d, full, root->line, 0, "motion3", "缺少非空的 Curves 数组");
+        zjson_free(root);
+        return -1;
+    }
+
+    a = &r->actions[r->nactions];
+    memset(a, 0, sizeof(*a));
+    a->interruptible = 1;
+    a->priority = 1;                     /* idle 是 0：导入的动作默认能打断 idle */
+    a->blink_hold = -1.0;
+    cid = id_override;
+    if (!cid || !*cid) cid = zjson_str(zjson_obj_get(root, "Id"), NULL);
+    if (!cid || !*cid) cid = z_basename(full);
+    z_strlcpy(a->id, cid, sizeof(a->id));
+    z_strlcpy(a->title, zjson_str(zjson_obj_get(root, "Title"), a->id), sizeof(a->title));
+    z_strlcpy(a->return_state, "idle", sizeof(a->return_state));
+
+    meta = zjson_obj_get(root, "Meta");
+    dur = zjson_num(zjson_obj_get(meta, "Duration"), 1.0);
+    if (dur <= 0.0) {
+        zdiag_error(d, full, meta ? meta->line : 0, 0, "Meta.Duration",
+                    "Duration 必须 > 0（读到 %.3f）", dur);
+        zjson_free(root);
+        return -1;
+    }
+    loop = zjson_bool(zjson_obj_get(meta, "Loop"), 0);
+    /* 我们的约定：循环动作 duration < 0（见 load_actions 的注释） */
+    a->loop = loop;
+    a->duration = loop ? -1.0 : dur;
+    a->fade = zjson_num(zjson_obj_get(meta, "FadeInTime"), 0.22);
+    a->fade_out = zjson_num(zjson_obj_get(meta, "FadeOutTime"), 0.2);
+    if (a->fade < 0.0) a->fade = 0.0;
+    if (a->fade_out < 0.0) a->fade_out = 0.0;
+
+    n = (int)zjson_count(curves);
+    for (i = 0; i < n; ++i) {
+        const zjson *cj = zjson_at(curves, i);
+        const char *target = zjson_str(zjson_obj_get(cj, "Target"), "Parameter");
+        const char *pid = zjson_str(zjson_obj_get(cj, "Id"), NULL);
+        int pi;
+        zchan *c;
+        if (!z_streq(target, "Parameter")) {
+            /* PartOpacity / Model 我们没有对应的量：**数出来**并记警告，
+               不静默丢 —— 全丢光的时候要能一眼看出是"目标类型不支持"。 */
+            skipped++;
+            continue;
+        }
+        pi = param_find(r, param_alias(pid));
+        if (pi < 0) {
+            zdiag_warn(d, full, cj ? cj->line : 0, 0, pid ? pid : "Curves",
+                       "动作里的参数 %s 不在本模型里，这条曲线跳过", pid ? pid : "?");
+            skipped++;
+            continue;
+        }
+        if (a->nchan >= ZRIG_MAX_CHANNELS) {
+            zdiag_error(d, full, cj ? cj->line : 0, 0, "Curves",
+                        "通道数超过上限 %d（.motion3 最多 63 条曲线，先合并同类参数）",
+                        ZRIG_MAX_CHANNELS);
+            zjson_free(root);
+            return -1;
+        }
+        c = &a->chans[a->nchan];
+        memset(c, 0, sizeof(*c));
+        c->group = c->part = c->deform = -1;
+        c->pparam = pi;
+        c->param = P_DX;                    /* 占位：参数通道只看 pparam */
+        c->amp = 0.0; c->freq = 1.0; c->dur = dur;
+        if (m3_curve_to_keys(r, c, zjson_obj_get(cj, "Segments"),
+                             r->params[pi].vdef, full, pid, d) != 0) {
+            zjson_free(root);
+            return -1;
+        }
+        a->nchan++;
+        applied++;
+    }
+    zjson_free(root);
+    if (applied == 0) {
+        zdiag_error(d, full, 0, 0, "motion3",
+                    "一条曲线都没能用上（%d 条被跳过：目标类型不是 Parameter，"
+                    "或参数不在本模型里）", skipped);
+        return -1;
+    }
+    r->nactions++;
+    r->motion3_count++;                  /* 统计用：加载完要能说清"其中几条是外部文件" */
+    /* 动作表加了不等于**能点播**：状态机是另一张表（zsm），不登记的话
+       zrig_action_request("wave_ext") 会以"未知状态"被拒 —— 这正是第一次
+       自测时 8 条断言全读到 0.00 的原因。 */
+    {
+        zsm_state_def def;
+        memset(&def, 0, sizeof(def));
+        z_strlcpy(def.id, a->id, sizeof(def.id));
+        def.priority = a->priority;
+        def.duration_s = a->duration;
+        def.interruptible = a->interruptible;
+        def.loop = a->loop;
+        z_strlcpy(def.return_state, a->return_state, sizeof(def.return_state));
+        if (zsm_index(&r->sm, a->id) >= 0) {
+            zdiag_error(d, full, 0, 0, "motions",
+                        "外部动作 id '%s' 与既有动作重名（换一个 id，或删掉一条）", a->id);
+            r->nactions--;
+            return -1;
+        }
+        if (zsm_add_state(&r->sm, &def) < 0) {
+            zdiag_error(d, full, 0, 0, "motions",
+                        "状态数超过上限 %d（ZSM_MAX_STATES 要和 ZRIG_MAX_ACTIONS 同步）",
+                        ZSM_MAX_STATES);
+            r->nactions--;
+            return -1;
+        }
+    }
+    ZLOGI("rig", "导入动作 %s（%d 条曲线，跳过 %d，时长 %.2fs%s）",
+          a->id, applied, skipped, dur, loop ? "，循环" : "");
+    return applied;
+}
+
+/* rig.json 的 "motions" 段：把外部 .motion3 文件接进这个模型。
+   写法 [{"id":"wave_ext", "file":"motions/wave.motion3.json"}]，
+   id 不给就用文件里的 Id / 文件名。**缺文件是硬错误** —— 声明了却读不到，
+   等于这个动作永远播不出来，静默跳过只会让人以为是"动作写坏了"。 */
+static int load_motions(zrig *r, const zjson *jm, zdiag *d, const char *file)
+{
+    size_t i, n = zjson_count(jm);
+    if (!jm) return 0;
+    if (jm->type != ZJSON_ARR) {
+        zdiag_error(d, file, jm->line, 0, "motions", "期望 array");
+        return -1;
+    }
+    for (i = 0; i < n; ++i) {
+        const zjson *mj = zjson_at(jm, i);
+        const char *f = zjson_str(zjson_obj_get(mj, "file"), NULL);
+        const char *id = zjson_str(zjson_obj_get(mj, "id"), NULL);
+        if (!f || !*f) {
+            zdiag_error(d, file, mj ? mj->line : 0, 0, "motions", "缺 file");
+            return -1;
+        }
+        if (zrig_motion3_add(r, f, id, d) < 0) return -1;
+    }
+    return 0;
+}
+
 static int load_actions(zrig *r, const zjson *jacts, zdiag *d, const char *file)
 {
     size_t i, n = zjson_count(jacts);
@@ -3643,6 +4061,9 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         }
     }
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
+    /* 外部动作文件（T66.21）：排在 actions 之后，因为 id 不能和既有动作撞车时
+       要能看到完整清单（motion3 自己不带 id 冲突检查，撞了就以后来的为准不行） */
+    if (load_motions(r, zjson_obj_get(root, "motions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
     if (load_physics(r, zjson_obj_get(root, "physics"), diag, file) != 0) goto fail;
     /* 力场要在摆链之前定好：建链时就按重力把链摆直（不然第一帧会从原点"掉"下来） */

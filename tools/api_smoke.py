@@ -835,6 +835,34 @@ def run(base, root):
         a.hit("/api/expression?off=1")
         a.hit("/api/blink?on=1")
 
+    # ---- 外部动作文件（.motion3.json）：导入的动作也要真的把参数推起来 ----
+    # 这一段的判据是**参数读数**，不是像素：待机本身的呼吸/眨眼能把头部 67% 的
+    # 像素翻一遍（tools/measure_motion.py 实测），像素差在这件事上没有分辨力。
+    info = a.json("/api/info.json") or {}
+    acts = info.get("actions") or []
+    anames = info.get("action_names") or []
+    if "curious_tilt" in acts:
+        idx = acts.index("curious_tilt")
+        title = anames[idx] if idx < len(anames) else ""
+        check("外部 .motion3 动作挂进了动作表（curious_tilt）", True, title)
+        check("外部动作的中文名取自文件自己的 Title 字段", title == "好奇地歪头张望", title)
+        a.hit("/api/pause?on=0"); time.sleep(0.15)
+        r = a.json("/api/action?id=curious_tilt&force=1") or {}
+        time.sleep(0.2)
+        check("点播外部动作返回 ok", r.get("ok") is not False, str(r)[:60])
+        cur = (a.json("/api/info.json") or {}).get("action")
+        check("引擎当前动作切到外部动作", cur == "curious_tilt", str(cur))
+        lo, hi = 9e9, -9e9
+        for _i in range(64):                 # 3.2s ≈ 一个 4s 循环的前 80%
+            time.sleep(0.05)
+            eff = {q["id"]: (q.get("effective") or 0)
+                   for q in (a.json("/api/params.json") or {}).get("params", [])}
+            v = eff.get("ParamAngleZ") or 0
+            lo, hi = min(lo, v), max(hi, v)
+        check("★ 外部动作把 ParamAngleZ 推到文件写的两端（约 +22 / −18）",
+              hi > 19 and lo < -15, "实测 %.1f .. %.1f" % (lo, hi))
+        a.hit("/api/action?id=idle&force=1"); time.sleep(0.2)
+
     # ---- 动作通道全部打在参数上（≈ .motion3 的 Parameter 曲线）----
     # 端到端口径：请求一个动作，参数表里对应的参数就该自己动起来。
     # 以前动作直接写部件几何，外面读 params.json 是看不出动作在跑的。

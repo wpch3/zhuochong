@@ -251,12 +251,22 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 | `.model3.json` `FileReferences` | 把各文件串起来 | `rig.json` 一个文件全包 | 等价 |
 | `.model3.json` `Groups` | `EyeBlink` / `LipSync` 两组 | **本轮补** `rig.json` 的 `param_groups` | ✅ 而且**不是摆设**：自动眨眼只眨组里列的眼，口型只写组里声明的参数（改组名会改行为，有单测守着） |
 | `.model3.json` `HitAreas` | `Head` / `Body` 点击区 | `regions`（head / body / feet 三块，各自带动作与光标） | 等价且更强（我们多一层"点了触发哪个动作"） |
-| `.motion3.json` | 关键帧动作曲线，目标是**参数** | `actions[].channels[].target = "ParamXxx"`，**2026-10-13 起 18 个动作全部如此** | ✅ 协议打通（见下面「动作通道」）。差异：我们是 `linear/smooth/step`，官方是贝塞尔；可后加，属于纯增量 |
+| `.motion3.json` | 关键帧动作曲线，目标是**参数** | 两条路：① 自己的 `actions[].channels[].target = "ParamXxx"`（2026-10-13 起全部如此）；② **2026-10-25 起直接导入官方文件**（`characters/<角色>/motions/*.motion3.json`，`zrig_motion3_add()`） | ✅ 能读真文件（段编码是按真文件核对的：起点在前 + 类型逐段重复 + 贝塞尔控制点在前）。换算两处：**绝对值 → 偏移**（减默认值）、**贝塞尔 → 20fps 烘焙**成线性关键帧。不支持 `Target=PartOpacity/Model`（跳过并计数） |
 | `.exp3.json` | 表情（参数偏移，Add/Multiply/Overwrite） | `expressions[].params[].mode = add / set(=overwrite) / multiply` | ✅ 三种混合都有，求值照 `CubismExpressionMotion` 的三累加器 |
 | `.physics3.json` | 摆动：**参数 → 参数**，带 Vertices 摆链 | `physics[]`：**部件/形变器 → 位移**，driver 可串另一条 physics（多段摆链） | 功能等价，**语义不同**（见下） |
 | `.pose3.json` | 互斥部件组 + 淡入淡出 | `poses[]`（眼高光形状差分在用） | 等价 |
 | `.cdi3.json` | 编辑器显示信息（参数中文名/分组） | 参数的 `label` 字段 + `/api/params.json` | 等价（测试台的滑条就是它长出来的） |
 | `.userdata3.json` | 自定义元数据 | 暂无需求 | ➖ |
+
+### 动作文件导入的偏差登记（T66.21，2026-10-25）
+
+| 官方行为 | 我们 | 为什么可以接受 / 什么时候要改 |
+| --- | --- | --- |
+| 曲线值 = 参数**绝对值** | 导入时减默认值，落到 `p_action` 偏移层 | 我们的动作层是加算的（见 `param_effective`），不减会让动作叠加在待机值上漂走。**同一份文件在我们这里和 Cubism 里读到的最终值一致**（`qa_motion3.py` 逐点对过，最大偏差 1.09） |
+| 逐段贝塞尔，可混排 | 纯线性/阶梯按端点存，**含贝塞尔按 20fps 烘焙**成线性关键帧 | 通道插值只有一种（`KI_LINEAR/KI_SMOOTH/KI_STEP`）。20fps 对头部/身体这类低频动作足够；**高频细碎动作（眼部抖动的极值）会有 ~25ms 的误差** —— 真要还原就加一条 `KI_BEZIER` 通道，属于纯增量 |
+| `FadeInTime` / `FadeOutTime` / `Loop` / `Duration` 全部生效 | 全部生效（循环动作 `duration = -1`，与自家动作用同一套淡化） | 等价 |
+| `Target = PartOpacity` / `Model`（不透明度、模型级） | 跳过并计数，一条都不剩时**加载失败** | 我们的部件显隐走 `part_overrides`（动作里能表达），但没有"官方 PartOpacity 曲线"这条通道。目前生态里的动作主要是参数曲线 |
+| 曲线可以有几百个关键帧、几十条曲线 | 全模型共用 32768 个关键帧（2026-10-25 从 1024 放宽） | 一条 11 秒 47 曲线的官方动作烘焙后 ~1 万键；1024 装不下。池子是按模型分配的，用完会**明确报错**而不是静默截断 |
 
 ### 变形器树与 keyform：`.moc3` 里的那一层（2026-10-25 补完）
 

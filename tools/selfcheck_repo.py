@@ -3718,12 +3718,201 @@ def check_rig_freshness(root):
         if not gb:
             stale.append("%s（没有 generated_by）" % tag)
             continue
-        if gb.get("sources") != want:
-            stale.append(tag)
+        # 生成器本身两份是**必须有**的；此外每份 rig 还会记它吃到嘴里的外部
+        # 动作文件（T66.21）—— 那些也要重算，不然"改了动作文件没重跑 rig"
+        # 和"改了生成器没重跑"就是一回事，闸只拦一半。
+        srcs = gb.get("sources") or {}
+        got = {k: srcs.get(k) for k in want}
+        if got != want:
+            stale.append("%s（生成器指纹不对）" % tag)
+            continue
+        extra = {k: v for k, v in srcs.items() if k not in want}
+        bad = []
+        for rel, sha in sorted(extra.items()):
+            fp = os.path.join(root, rel)
+            if not os.path.isfile(fp):
+                bad.append("%s（源文件不见了）" % rel)
+                continue
+            with open(fp, "rb") as f:
+                if hashlib.sha256(f.read()).hexdigest() != sha:
+                    bad.append("%s（内容变了）" % rel)
+        if bad:
+            stale.append("%s：%s" % (tag, "、".join(bad[:3])))
     check("所有 rig.json 都是当前生成器的产物", not stale,
           "%d 个形态都是最新的" % len(rigs) if not stale
           else "这些是旧生成器的产物，重跑 tools/make_rig.py 并确认 diff 只有预期的那几行：%s"
                % "、".join(stale[:4]))
+    # 同一件事的另一半：motions 段里点名的文件必须真的存在（改了目录忘了重跑时会漏）
+    miss = []
+    for rp in rigs:
+        rig = jsonc(rp)
+        base = os.path.dirname(rp)
+        for m in (rig.get("motions") or []):
+            fp = os.path.normpath(os.path.join(base, m.get("file", "")))
+            if not os.path.isfile(fp):
+                miss.append("%s → %s" % (os.path.relpath(rp, root), m.get("file")))
+    check("rig.json 里挂的外部动作文件都在", not miss,
+          "外部动作文件齐全" if not miss
+          else "motions 段指向的文件不存在（先补文件，再重跑 make_rig）：%s" % "、".join(miss[:4]))
+
+
+def check_external_motions(root):
+    """外部动作文件（.motion3.json，T66.21）：格式、命名、和动作表不撞车。
+
+    为什么这类文件要单独设闸：引擎装载时才发现的错，代价是**整个角色起不来**
+    （`zrig_load` 失败 ⇒ 预览窗口一片空白）。三件事都能在静态阶段查出来：
+
+      ① 段编码写错（少一个控制点、类型不是 0..3、时间不单调）—— 手改 JSON 最容易犯；
+      ② 动作 id 和 rig 里已有动作撞名 —— `look_around` 就撞过一次，
+         当时引擎在装载期直接报错；
+      ③ 目录里有文件、rig 的 motions 段却没挂上（改了没重跑生成器），
+         或者反过来挂了文件却不在 —— 两种都会让人以为"这动作没生效"。
+    """
+    section("外部动作文件：段编码 / 命名 / 与动作表不撞车（T66.21）")
+    chars = sorted(glob.glob(os.path.join(root, "characters", "*")))
+    nfile = 0
+    bad_fmt, bad_name, bad_dup, bad_wire, bad_counts = [], [], [], [], []
+    for cdir in chars:
+        cname = os.path.basename(cdir)
+        mdir = os.path.join(cdir, "motions")
+        files = sorted(glob.glob(os.path.join(mdir, "*.motion3.json")))
+        if not files:
+            continue
+        # rig 里的动作 id（每个形态一份，id 撞车要逐形态看）
+        act_ids = {}
+        for rp in sorted(glob.glob(os.path.join(cdir, "forms", "*", "rig.json"))):
+            try:
+                rig = jsonc(rp)
+            except Exception:
+                continue
+            act_ids[os.path.relpath(rp, root)] = set(
+                a.get("id") for a in (rig.get("actions") or []))
+        mids = set()
+        for fp in files:
+            nfile += 1
+            rel = os.path.relpath(fp, root)
+            mid = os.path.basename(fp)[: -len(".motion3.json")]
+            mids.add(mid)
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", mid):
+                bad_name.append("%s（id 只许小写字母/数字/下划线）" % rel)
+            try:
+                with open(fp, encoding="utf-8") as f:
+                    doc = json.load(f)
+            except Exception as e:
+                bad_fmt.append("%s（不是合法 JSON：%s）" % (rel, e))
+                continue
+            if doc.get("Version") != 3:
+                bad_fmt.append("%s（Version 必须是 3）" % rel)
+                continue
+            meta = doc.get("Meta") or {}
+            curves = doc.get("Curves") or []
+            if not curves:
+                bad_fmt.append("%s（Curves 是空的）" % rel)
+                continue
+            if not isinstance(meta.get("Duration"), (int, float)) or meta.get("Duration", 0) <= 0:
+                bad_fmt.append("%s（Meta.Duration 必须 > 0）" % rel)
+            # 段编码逐曲线验一遍，顺便把三个计数核算出来
+            seg_total = pt_total = 0
+            for c in curves:
+                tag = "%s → %s" % (rel, c.get("Id", "?"))
+                if c.get("Target") != "Parameter":
+                    continue                    # PartOpacity / Model 我们不支持，允许存在
+                segs = c.get("Segments")
+                if not isinstance(segs, list) or len(segs) < 5:
+                    bad_fmt.append("%s（Segments 至少 5 个数）" % tag)
+                    continue
+                pt_total += 1                   # 曲线起点
+                i, prev_t, broken = 2, segs[0], False
+                while i < len(segs):
+                    typ = segs[i]
+                    if typ not in (0, 1, 2, 3):
+                        bad_fmt.append("%s（第 %d 个数是段类型，必须 0..3，读到 %r）"
+                                       % (tag, i, typ))
+                        broken = True
+                        break
+                    if typ == 1:
+                        if i + 7 > len(segs):
+                            bad_fmt.append("%s（贝塞尔段要 6 个数，只剩 %d 个）"
+                                           % (tag, len(segs) - i - 1))
+                            broken = True
+                            break
+                        c1t, c2t, end_t = segs[i + 1], segs[i + 3], segs[i + 5]
+                        if end_t < prev_t:
+                            bad_fmt.append("%s（时间不单调：%r → %r）" % (tag, prev_t, end_t))
+                            broken = True
+                            break
+                        if not (prev_t - 1e-6 <= c1t <= end_t + 1e-6) or \
+                           not (prev_t - 1e-6 <= c2t <= end_t + 1e-6):
+                            bad_fmt.append("%s（贝塞尔控制点时间在段外：段 %r..%r，控制点 %r/%r"
+                                           " —— 字段顺序是「控制点在前、终点在后」）"
+                                           % (tag, prev_t, end_t, c1t, c2t))
+                            broken = True
+                            break
+                        seg_total += 1
+                        pt_total += 3
+                        prev_t = end_t
+                        i += 7
+                    else:
+                        if i + 3 > len(segs):
+                            bad_fmt.append("%s（线性/阶梯段要 (t, v) 一对）" % tag)
+                            broken = True
+                            break
+                        end_t = segs[i + 1]
+                        if end_t < prev_t:
+                            bad_fmt.append("%s（时间不单调：%r → %r）" % (tag, prev_t, end_t))
+                            broken = True
+                            break
+                        seg_total += 1
+                        pt_total += 1
+                        prev_t = end_t
+                        i += 3
+                if broken:
+                    break
+            if meta.get("CurveCount") is not None and meta.get("CurveCount") != len(curves):
+                bad_counts.append("%s（Meta.CurveCount=%r，实际 %d 条）"
+                                  % (rel, meta.get("CurveCount"), len(curves)))
+            if meta.get("TotalSegmentCount") is not None and \
+               meta.get("TotalSegmentCount") != seg_total:
+                bad_counts.append("%s（Meta.TotalSegmentCount=%r，实际 %d）"
+                                  % (rel, meta.get("TotalSegmentCount"), seg_total))
+            if meta.get("TotalPointCount") is not None:
+                n_param = sum(1 for c in curves if c.get("Target") == "Parameter")
+                # 每条曲线 = 起点 + 各段新增的点；贝塞尔一段 3 点，线性/阶梯 1 点
+                want_pt = pt_total + sum(1 for c in curves if c.get("Target") != "Parameter")
+                if meta.get("TotalPointCount") != want_pt:
+                    bad_counts.append("%s（Meta.TotalPointCount=%r，实算 %d）"
+                                      % (rel, meta.get("TotalPointCount"), want_pt))
+                _ = n_param
+        # 撞名
+        for rtag, ids in act_ids.items():
+            for mid in sorted(mids):
+                if mid in ids:
+                    bad_dup.append("%s 里的动作 id '%s'" % (rtag, mid))
+        # 挂没挂上：rig 的 motions 段要和目录一一对应
+        forms = sorted(glob.glob(os.path.join(cdir, "forms", "*", "rig.json")))
+        for rp in forms:
+            try:
+                rig = jsonc(rp)
+            except Exception:
+                continue
+            wired = set(m.get("id") for m in (rig.get("motions") or []))
+            if wired != mids:
+                bad_wire.append("%s：motions=%s，目录里有 %s"
+                                % (os.path.relpath(rp, root), sorted(wired), sorted(mids)))
+
+    if nfile == 0:
+        check("有外部动作文件时按上面的口径查", True, "（本仓库还没有 motions/*.motion3.json）")
+        return
+    check("外部动作文件的段编码合法（含贝塞尔字段顺序）", not bad_fmt,
+          "%d 个文件全部合法" % nfile if not bad_fmt else "；".join(bad_fmt[:3]))
+    check("外部动作的 id 命名规范（文件名即 id）", not bad_name,
+          "%d 个 id 全部规范" % nfile if not bad_name else "；".join(bad_name[:3]))
+    check("外部动作的 Meta 计数和曲线对得上", not bad_counts,
+          "三个计数都如实" if not bad_counts else "；".join(bad_counts[:3]))
+    check("外部动作不和 rig 里的动作撞名", not bad_dup,
+          "没有撞车" if not bad_dup else "撞名：%s（引擎装载期会直接报错）" % "；".join(bad_dup[:3]))
+    check("每个形态的 rig.json 都挂上了 motions 里的全部文件", not bad_wire,
+          "挂载一致" if not bad_wire else "；".join(bad_wire[:3]))
 
 
 def check_outfit_binding(root):
@@ -4607,6 +4796,7 @@ def main():
                check_sockets,
                check_outfit_binding,
                check_rig_freshness,
+               check_external_motions,
                check_prosody,
                check_phys2,
                check_phys2_rig,
