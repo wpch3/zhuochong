@@ -223,6 +223,7 @@ typedef struct {
     double kf_w[ZRIG_MAX_DEFKF];  /* 本帧插值权重（不含"第 0 组恒为 1"那一项） */
     /* —— keyform 分段缓动（T66.11）：第 k 段 = 第 k-1 组 key → 第 k 组 key，
        写法挂在**右端点**那一组 key 上（"走到我这儿用什么速度"）。没写 = 线性。 */
+    double kf_lag;            /* keyform 也吃迟滞：读 lag 秒之前的参数值（同 bind.lag，T66.11b） */
     zease  kf_ease[ZRIG_MAX_DEFKF];
     unsigned char kf_step[ZRIG_MAX_DEFKF];    /* 1 = 阶梯：到本组 key 才跳过去（≈ Live2D 階段） */
     unsigned char kf_bez_on[ZRIG_MAX_DEFKF];  /* 1 = 用 kf_bez 的三次贝塞尔 */
@@ -1388,6 +1389,15 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
                 return -1;
             }
             z_strlcpy(g->kf_param_id, kparam, sizeof(g->kf_param_id));
+            /* keyform 的迟滞（可选）：和 bind.lag 同一个语义、同一个上限 */
+            g->kf_lag = zjson_num(zjson_obj_get((zjson *)dj, "lag"), 0.0);
+            if (g->kf_lag < 0.0 || g->kf_lag > ZRIG_LAG_MAX) {
+                zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                            "形变器 '%s' 的 lag 要在 0~%.2f 秒之间（写的是 %.3f）",
+                            id, (double)ZRIG_LAG_MAX, g->kf_lag);
+                return -1;
+            }
+            if (g->kf_lag > 0.0) r->lag_used = 1;
             if (!zjson_is(keys, ZJSON_ARR) || zjson_count((zjson *)keys) < 2) {
                 zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
                             "形变器 '%s' 的 keys 至少要 2 组（一组定不了插值）", id);
@@ -4246,7 +4256,12 @@ static void deform_update_keys(zrig *r)
         for (k = 0; k < g->nkf; ++k) g->kf_w[k] = 0.0;
         /* 读**合成后**的参数值（动作 → 表情 → 口型），和 bind 走同一个口径：
            否则动作曲线推 ParamXxx 时网格不动，只有滑条动 —— 那是最难查的一类 bug。 */
-        v = param_effective(r, g->param);
+        /* lag 走的是和 bind 同一口井（参数历史环）：keyform 自己不再另存一份历史。
+           为什么 keyform 也要 lag：网格从 amount 通路改成 keyform 之后，
+           bind 的迟滞就没了 —— 侧发/裙摆那种"根先动、梢后动"会整条一起动，
+           看着立刻变硬（G66.12）。 */
+        v = (g->kf_lag > 0.0) ? lag_sample(r, g->param, r->now - g->kf_lag)
+                              : param_effective(r, g->param);
         if (v <= g->kf_v[0]) continue;                        /* 低于第一组：第 0 组 */
         if (v >= g->kf_v[g->nkf - 1]) { g->kf_w[g->nkf - 1] = 1.0; continue; }
         for (k = 1; k < g->nkf; ++k) {

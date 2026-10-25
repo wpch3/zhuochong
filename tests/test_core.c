@@ -5355,6 +5355,43 @@ static void test_keyform_ease(void)
     r = zrig_load(rigp, dir, &d);
     CHECK(r == NULL, "keyform 网格再被 bind 写 amount 必须报错（写了也不会动）");
     zrig_free(r);
+
+    /* (e) keyform 也吃 lag：参数一步跳过去，网格要**落后** q 秒才走到位。
+           这条是 G66.12 的修复项 —— 网格从 amount 改成 keyform 之后，
+           bind 的迟滞不能跟着一起丢（丢了侧发就从"根先动梢后动"变成整条一起动）。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kflag\",\"name\":\"迟滞测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"lagA\"}],"
+        "\"deformers\":[{\"id\":\"lagA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,"
+        " \"param\":\"ParamA\",\"lag\":0.1,"
+        " \"keys\":[{\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 keyform lag 的 rig 应装载成功");
+    if (r) {
+        double lag_now = 0.0, lag_late = 0.0;
+        zrig_ambient_enable(r, 0);
+        for (i = 0; i <= 60; ++i) zrig_tick(r, i / 60.0);      /* 先攒够历史 */
+        zrig_param_set(r, "ParamA", 1.0);
+        zrig_tick(r, 61.0 / 60.0);                             /* 跳变后的第一帧 */
+        zrig_deform_mesh(r, "lagA", &cols, &rows, dx, dy, 8);
+        lag_now = dx[0];
+        for (i = 0; i < 12; ++i) zrig_tick(r, (61.0 + i + 1) / 60.0);
+        zrig_deform_mesh(r, "lagA", &cols, &rows, dx, dy, 8);
+        lag_late = dx[0];
+        CHECK(lag_now < 1.0,
+              "参数跳过去的第一帧网格还没动（lag 0.1s，实际 %.3f，走到 10 就是 lag 没生效）",
+              lag_now);
+        CHECK(fabs(lag_late - 10.0) < 0.5,
+              "过了 lag 之后要追到目标（期望 10，实际 %.3f）", lag_late);
+        printf("    量到：keyform lag 第一帧 %.3f → 0.2s 后 %.3f\n", lag_now, lag_late);
+        zrig_free(r);
+    }
     printf("    量到：ease'in' 段内半程 %.3f（线性会给 5.000）· key 上 %.4f · "
            "step 段中 %.3f → 到点 %.3f · 贝塞尔 x=0.5 → %.4f\n",
            m_in, m_key, m_step_mid, m_step_end, m_bez);
@@ -5490,6 +5527,67 @@ static void test_parent_warp_inherit(void)
            "无网格子件右下 (%.2f,%.2f) · 活跃网格子件底行 dy=%.2f\n",
            cx[0], cy[0], cx[6], cy[6], owx, owy, oy[12]);
     (void)q;
+    zrig_free(r);
+}
+
+/* ---------------------------------------------------------------------------
+   T66.11b：前臂「收窄」网格改成了 keyform（参数 + 四组 key + 段缓动 + lag）。
+
+   为什么改：amount 通路是"参数走多少、位移走多少"的直线，而厚袖管在肘**只弯一点**时
+   其实不该立刻收窄（布先顶住，折深了才塌下去）。线性写法只能二选一，三组 key 才能
+   两头都占。这条单测钉住三件事：
+     ① 静止（参数 0）位移必须是 0 —— 不然整套立绘的静帧都被这一件带歪；
+     ② 参数 0.35（轻折）时的收窄**明显小于**线性会给的值（0.35 × 满额）；
+     ③ 参数 1.0（wave 的峰值）时位移 = 满额 —— 折到底的姿势和改之前逐像素一致。
+   --------------------------------------------------------------------------- */
+static void test_fore_slim_keyform(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    double dx[64], dy[64];
+    double m0 = 0.0, mLight = 0.0, mFull = 0.0, mOver = 0.0;
+    int cols = 0, rows = 0, np = 0, q, i;
+
+    SECTION("T66.11b 前臂收窄改成 keyform：静止不动 / 轻折收得少 / 折满等同原值");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（前臂收窄）");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+
+#define SLIM_PEAK(at, into)                                                  \
+    do {                                                                     \
+        for (i = 0; i < 30; ++i) {                                           \
+            zrig_param_set(r, "ParamForeSlimL", (at));                       \
+            zrig_tick(r, 5.0 + i / 60.0);                                    \
+        }                                                                    \
+        np = zrig_deform_mesh(r, "arm_l_fore_slim", &cols, &rows, dx, dy, 64); \
+        (into) = 0.0;                                                        \
+        for (q = 0; q < np && q < 64; ++q)                                   \
+            if (fabs(dx[q]) > (into)) (into) = fabs(dx[q]);                  \
+    } while (0)
+
+    SLIM_PEAK(0.0, m0);
+    SLIM_PEAK(0.35, mLight);
+    SLIM_PEAK(1.0, mFull);
+    SLIM_PEAK(1.5, mOver);
+
+    CHECK(np == 15 && cols == 2 && rows == 4, "2×4 网格应有 15 个控制点（实际 %d）", np);
+    CHECK(m0 < 1e-9, "参数 0 时位移必须为 0（实际 %.4f）—— 静止画面靠它逐像素不变", m0);
+    CHECK(mLight < 0.5 * 0.35 * mFull / 1.0,
+          "轻折（0.35）时收窄要明显小于线性（线性会给 %.2f，实际 %.2f）",
+          0.35 * mFull, mLight);
+    CHECK(mFull > 5.0, "折满（1.0）时要有肉眼可见的收窄（实际峰值 %.2f）", mFull);
+    CHECK(fabs(mOver - 1.5 * mFull) < 0.05 * mFull,
+          "1.5 那组 key 只是量程余量，按老比例给 1.5×（期望 %.2f，实际 %.2f）",
+          1.5 * mFull, mOver);
+    printf("    量到：收窄峰值 静止 %.3f · 0.35 → %.2f（线性会给 %.2f）· 1.0 → %.2f · 1.5 → %.2f\n",
+           m0, mLight, 0.35 * mFull, mFull, mOver);
+#undef SLIM_PEAK
     zrig_free(r);
 }
 
@@ -8988,6 +9086,7 @@ int main(int argc, char **argv)
     test_fore_bone_chain();
     test_keyform_ease();
     test_parent_warp_inherit();
+    test_fore_slim_keyform();
     test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();

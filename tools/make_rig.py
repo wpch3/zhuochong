@@ -442,9 +442,12 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
         #   几何病要用几何治：折肘时把前臂按轴线**横向收窄**（肘端 0%、袖口 17%），
         #   肘关节那一行一个像素都不动（要和上臂末端的正圆严丝合缝）。
         def fore_slim(part_id):
+            # ★ T66.11b：这张网格改成 keyform（参数 + 多组 key + 分段缓动）之后，
+            #   amount 那条路就不参与了（引擎遇到 keys 只走 keyform，写 amount 的绑定
+            #   会直接加载失败）。参数本身留着 —— 动作和测试台照样推它。
             if part_id not in (slim_parts or ()):
                 return []
-            return [{"deformer": part_id + "_slim", "scale": 1.0}]
+            return []
 
         # ★★★ Q48：前臂沿轴**加长**（和 fore_slim 同族，一个管粗细一个管长短）。
         #   两条绑定一起走，缺一不可：
@@ -4072,12 +4075,37 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     _dx = (_cx2 - (2.0 * _w1) * _c / 2.0) * _f
                     if abs(_dx) > 0.05:
                         _pts.append({"c": _c, "r": _r, "dx": round(_dx, 2)})
+            # ★ T66.11b：这个形变器是**第一个真的用上 keyform 的地方**。
+            #   为什么非 keyform 不可：amount 通路是"参数走多少、位移走多少"的直线，
+            #   而厚袖管在肘**只弯一点**时其实不该立刻收窄（布先顶住，折深了才塌下去）。
+            #   线性写法只能二选一：早收 = 小角度就显得瘦；晚收 = 大角度收不够。
+            #   三组 key 才能两头都占：0 不收 → 0.5 只收 16% → 1.5 收满。
+            #   段缓动 "out" 让"真折起来"那一下收得快、尾巴收得慢（布的垮塌就是这个手感）。
+            #   lag 0.06s：袖料比手臂晚一拍 —— 和 T66.17 挂在骨链上的 0.12s 折肘跟随同向，
+            #   这里补的是**形状**的迟滞（骨链管位置，网格管粗细），两者不重复计。
+            def _scaled(f):
+                return [{"c": p["c"], "r": p["r"],
+                         "dx": round(p["dx"] * f, 2),
+                         **({"dy": round(p["dy"] * f, 2)} if "dy" in p else {})}
+                        for p in _pts]
+            _k1 = _scaled(0.16)
             rig["deformers"].append(
                 {"id": "arm_%s_fore_slim" % _side, "part": "arm_%s_fore" % _side,
                  "cols": 2, "rows": 4,
-                 "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）；"
+                 "param": "ParamForeSlim" + _side.upper(), "lag": 0.06,
+                 "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）。"
+                         "keyform 三组（T66.11b）：0 不动 → 0.5 只收 16% → 1.5 收满，"
+                         "段缓动 out + lag 0.06s（袖料晚手臂一拍塌下去）。"
                          "0 = 原件，静止画面零改动",
-                 "points": _pts})
+                 # 端点必须对上**老的 amount 线性**：参数 1.0 时位移正好 = _pts
+                 # （wave 的 _K_SLIM 峰值就是 1.0），1.5 那组是量程余量，按老比例给 1.5×。
+                 # 这样"折到底"的姿势逐像素不变，只有中间段变（这才是这轮要改的东西）。
+                 "keys": [
+                     {"v": 0.0, "points": []},
+                     {"v": 0.5, "points": _k1},
+                     {"v": 1.0, "ease": "out", "points": _pts},
+                     {"v": 1.5, "points": _scaled(1.5)},
+                 ]})
 
             # —— Q48：同一件上再挂一张「沿轴加长」网格 ——
             #   收窄管粗细、加长管长短；一个部件的多张 deformer 在引擎里是

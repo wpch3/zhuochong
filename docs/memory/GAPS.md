@@ -1284,6 +1284,26 @@ teen 15 根刚体骨；chibi 只有 9 根（缺 forearm_l/r、elbow_fold_l/r、h
 > **与官方的差异（刻意，不算缺口）**：官方贝塞尔是参数-位移平面上的绝对坐标曲线，
 > 我们用归一化 timing curve（同 CSS），见 `docs/LIVE2D_CONFORMANCE.md` 变形器树一节。
 
+## ~~G66.12 keyform 不吃 `bind.lag`~~ —— 2026-10-25 T66.11b 已关闭（方案 A）
+
+> 关闭记录：`zdeform` 加了 `kf_lag`，keyform 求值时改读**参数历史环**
+> （`lag_sample(r, g->param, r->now - kf_lag)`，和 bind.lag 同一口井、同一个上限
+> `ZRIG_LAG_MAX`），rig 里写 `"lag": 0.06` 即可。单测 `test_keyform_ease` 的 (e) 段：
+> 参数一步跳过去，第一帧位移 **0.000**（还没动），0.2 秒后 **10.000**（追到位）。
+> 方案 B（迟滞挪到参数层、物理写参数而不是写网格）仍然更接近 Live2D 的正解，
+> 但那要动物理输出模型（G66.13），这一轮先用 A 把内容侧解锁。
+
+## G66.13 物理输出只能写形变器的 amount，不能写命名参数（S3 参数层的前置）
+
+`physics2.outputs[]` 的 `deformer` 写的是"某张网格的 amount"，而 Live2D 的物理写的是
+**参数**（物理把 ParamHairSway 推起来，网格再去跟参数）。差别在于：一张网格一旦改成
+keyform（T66.11b 的袖料就是这么改的），物理就再也推不动它 —— outputs 写 amount 会被
+引擎按 T66.11 那条新闸拦住。
+
+影响：侧发/后发/裙摆这些**既有物理又有网格**的件，现在还改不成 keyform（改了会丢跟随）。
+修法：给 `outputs[]` 加 `"param": "ParamXXX"` 形态（写参数而不是写网格），再把这些网格
+改成 keyform。见 T66.11c。
+
 ## G66.12 keyform 不吃 `bind.lag`（迟滞只在 amount 通路上）
 
 `bind.lag` 是"读 lag 秒之前的参数值"，它发生在**绑定写入那一刻**（`lag_sample`），
