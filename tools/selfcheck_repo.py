@@ -1797,6 +1797,41 @@ def check_form_roadmap(root):
         check(f"{cid} 形态状态只用 ready/planned", not bad_status, f"{bad_status}")
 
 
+def _df_points(d):
+    """一张网格的**满额点表**（闸门判据都是判"参数推到 1 的时候动多少"）。
+
+    T66.11c 起网格有两种写法：老的 amount 网格有 points；keyform 网格有 keys，
+    点表藏在各组 key 里、而且带正负两半。判据要的是"最大那一组的形状"，
+    所以取 |v| 最大的那组 —— 不这么写的话，闸门遇到 keyform 会 KeyError('points')
+    （2026-10-25 改完裙摆 keyform 后当场撞上）。
+    """
+    if d.get("points"):
+        return d["points"]
+    keys = d.get("keys") or []
+    if not keys:
+        return []
+    best = max(keys, key=lambda k: abs(float(k.get("v", 0.0))))
+    return best.get("points") or []
+
+
+def _df_drivers(rig, df_id):
+    """哪些参数驱动这张网格 → [(参数 id, 延迟秒)]。
+
+    amount 网格：参数 binds 里写 {"deformer": id}；
+    keyform 网格：网格自己写 "param"（引擎不许它再有 amount 绑定）。
+    两种都要算，否则闸门会把"已经接好了"的件判成"没驱动"。
+    """
+    out = []
+    d = next((x for x in rig.get("deformers", []) if x.get("id") == df_id), None)
+    if d and d.get("keys") and d.get("param"):
+        out.append((d["param"], float(d.get("lag", 0.0) or 0.0)))
+    for pm in rig.get("params", []):
+        for b in pm.get("binds", []) or []:
+            if b.get("deformer") == df_id:
+                out.append((pm["id"], float(b.get("lag", 0.0) or 0.0)))
+    return out
+
+
 def check_live2d(root):
     section("Live2D 标准合规：参数命名 / 取值范围 / model3 分组（静态）")
 
@@ -1952,19 +1987,16 @@ def check_live2d(root):
             # 和表布同一条参数驱动，而且要带延迟（齐步走就露不出里子）
             _defs = [d["id"] for d in _rig.get("deformers", []) if d.get("part") == _lid]
             _drv = []
-            for _pm in _rig.get("params", []):
-                for _b in _pm.get("binds", []) or []:
-                    if _b.get("deformer") in _defs:
-                        _drv.append((_pm["id"], float(_b.get("lag", 0.0) or 0.0)))
+            for _d in _defs:
+                _drv += _df_drivers(_rig, _d)
             # 表布可能在 seg_torso 上，也可能已经被切件成 skirt_main（T66.16）——
             # 判据是「部件 id 里带 skirt」，别再写死 seg_torso。
             _skirt_params = set()
-            for _pm in _rig.get("params", []):
-                for _b in _pm.get("binds", []) or []:
-                    _d = next((d for d in _rig.get("deformers", [])
-                               if d.get("id") == _b.get("deformer")), None)
-                    if _d and "skirt" in str(_d.get("part", "")) and "skirt" in _d.get("id", ""):
-                        _skirt_params.add(_pm["id"])
+            for _d in _rig.get("deformers", []):
+                if not ("skirt" in str(_d.get("part", "")) and "skirt" in str(_d.get("id", ""))):
+                    continue
+                for _pid, _lg in _df_drivers(_rig, _d["id"]):
+                    _skirt_params.add(_pid)
             check("裙子里布跟表布同一条参数、且有延迟（%s）" % _tag,
                   bool(_drv) and any(pid in _skirt_params and lag > 0 for pid, lag in _drv),
                   "里布形变器 %s 被 %s 驱动；表布参数 %s"
@@ -1976,7 +2008,7 @@ def check_live2d(root):
                 _v = 0.0
                 for _d in _rig.get("deformers", []):
                     if _d.get("id") in _ids:
-                        for _pt in _d.get("points", []):
+                        for _pt in _df_points(_d):
                             _v = max(_v, abs(float(_pt.get("dx", 0.0) or 0.0)))
                 return _v
             _front_defs = {d["id"] for d in _rig.get("deformers", [])
@@ -2133,13 +2165,13 @@ def check_live2d(root):
         _jd = next((d for d in _rig.get("deformers", []) if d.get("id") == "jacket_hem_x"), None)
         check("外套下摆形变器进了 rig（%s）" % _tag, _jd is not None,
               "没有 jacket_hem_x —— 生成器没接上" if _jd is None
-              else "%dx%d，%d 个点" % (_jd["cols"], _jd["rows"], len(_jd["points"])))
+              else "%dx%d，%d 个点" % (_jd["cols"], _jd["rows"], len(_df_points(_jd))))
         if not _jd:
             continue
         _tw = float(_hem["torso_size"][0])
         _pan = [(float(q["x0"]), float(q["x1"])) for q in _hem["panels"]]
         _gapped = []
-        for _pt in _jd["points"]:
+        for _pt in _df_points(_jd):
             _x = _tw * int(_pt["c"]) / int(_jd["cols"])
             _inside = any(x0 - 0.3 * (_pan[1][0] - _pan[0][1]) <= _x <= x1 + 0.3 * (_pan[1][0] - _pan[0][1])
                           for x0, x1 in _pan)
@@ -2150,7 +2182,7 @@ def check_live2d(root):
               else "开襟列位移恒为 0，衬衫/裙腰不跟着走")
         _amax = lambda ids: max([abs(float(p.get("dx", 0.0)))
                                  for d in _rig["deformers"] if d["id"] in ids
-                                 for p in d["points"]] or [0.0])
+                                 for p in _df_points(d)] or [0.0])
         _skirt_ids = {d["id"] for d in _rig["deformers"]
                       if "skirt" in str(d.get("part", "")) and d["id"].startswith("skirt_")
                       and d["id"].endswith("_x")}
@@ -2158,17 +2190,61 @@ def check_live2d(root):
         check("外套下摆摆得比裙摆小（%s）" % _tag, 0 < _ja < _sk,
               "外套 %.1f vs 裙摆 %.1f（上着は重い素材）" % (_ja, _sk))
         _lag = {}
-        for _pm in _rig.get("params", []):
-            for _b in _pm.get("binds", []) or []:
-                if _b.get("deformer") == "jacket_hem_x":
-                    _lag[_pm["id"]] = float(_b.get("lag", 0.0) or 0.0)
-                if _b.get("deformer") in _skirt_ids and _b.get("deformer") != "jacket_hem_x":
-                    _lag.setdefault("__skirt__", 0.0)
-                    _lag["__skirt__"] = max(_lag["__skirt__"], float(_b.get("lag", 0.0) or 0.0))
+        for _pid, _lg in _df_drivers(_rig, "jacket_hem_x"):
+            _lag[_pid] = _lg
+        for _d in _skirt_ids - {"jacket_hem_x"}:
+            for _pid, _lg in _df_drivers(_rig, _d):
+                _lag["__skirt__"] = max(_lag.get("__skirt__", 0.0), _lg)
         _jlag = _lag.get("ParamJacketSway", -1.0)
         check("外套下摆由 ParamJacketSway 驱动、比裙摆更迟钝（%s）" % _tag,
               _jlag > _lag.get("__skirt__", 0.0),
               "外套 lag %.2fs vs 裙摆 lag %.2fs" % (_jlag, _lag.get("__skirt__", 0.0)))
+
+    # ㉓b keyform 网格不许是"死网格"，布料/头发那几件还必须**留着物理跟随**
+    #     （T66.11c / G66.13）。
+    #     为什么分两条判据：
+    #       ① 网格改 keyform 之后只能被**参数**推，而参数可能没人写 —— 那就是
+    #          "能摆但不摆"的死件（前臂收窄网格就是动作通道在写，不该要求物理）；
+    #       ② 但侧发/后发/裙身这类**本来跟着头/身晃**的件，改 keyform 时物理那一路
+    #          必须同步改成 outputs[].param = "ParamXxx"。漏了的话引擎会拒载或静默
+    #          摘掉摆链，画面上就是"头发突然不跟头动了"—— 单测量值看不出来。
+    _SWAY_MESH = ("side_l_s", "side_r_s", "back_s", "skirt_sway_x", "skirt_hem_x")
+    for _rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        _tag = "%s/%s" % (_rp.split(os.sep)[-4], _rp.split(os.sep)[-2])
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        _written = set()
+        for _x in _rig.get("physics", []):
+            _written.add(str(_x.get("param")))
+        for _o in _rig.get("physics2", []):
+            for _out in _o.get("outputs", []) or []:
+                _written.add(str(_out.get("param")))
+        for _a in _rig.get("actions", []):
+            for _c in _a.get("channels", []) or []:
+                _written.add(str(_c.get("target")))
+        for _am in _rig.get("ambient", []):
+            _written.add(str(_am.get("target")))
+        for _ex in _rig.get("expressions", []):
+            for _pp in _ex.get("params", []) or []:
+                _written.add(str(_pp.get("id")))
+        _phys = {str(_x.get("param")) for _x in _rig.get("physics", [])}
+        for _o in _rig.get("physics2", []):
+            _phys |= {str(_out.get("param")) for _out in _o.get("outputs", []) or []}
+        _dead, _nofollow = [], []
+        for _d in _rig.get("deformers", []):
+            if not (_d.get("keys") and _d.get("parent")):      # 只看挂在骨链上的 keyform 网格
+                continue
+            _pp = _d.get("param")
+            if _pp not in _written:
+                _dead.append("%s→%s" % (_d["id"], _pp))
+            if _d["id"] in _SWAY_MESH and _pp not in _phys:
+                _nofollow.append("%s→%s" % (_d["id"], _pp))
+        check("keyform 网格的参数都有人在写（%s）" % _tag, not _dead,
+              "这些 keyform 网格的参数没有任何来源（物理/动作/环境/表情都没写过）：%s" % _dead
+              if _dead else "全部有来源")
+        check("布料/头发 keyform 网格仍有物理跟随（%s）" % _tag, not _nofollow,
+              "这些件改 keyform 之后摆链没跟着改成写参数：%s（G66.13）" % _nofollow
+              if _nofollow else "侧发/后发/裙身的摆链都在写对应参数")
 
     # ㉔ 头发的摇物必须是**多段**，而且后发不许动到头顶剪影（T46.1）。
     #    教程口径：前髪・横髪は1段で十分、**後ろ髪は2~3段**（長いほど段数を増やす）。
@@ -2189,13 +2265,14 @@ def check_live2d(root):
         _bs = next((d for d in _rig.get("deformers", []) if d.get("id") == "back_s"), None)
         if _bs:
             _rows = int(_bs["rows"])
-            _top = [(p["r"], p.get("dx", 0)) for p in _bs["points"]
+            _top = [(p["r"], p.get("dx", 0)) for p in _df_points(_bs)
                     if p["r"] <= _rows // 2 and abs(float(p.get("dx", 0.0))) > 1e-9]
             check("后发第二段不动头顶剪影（%s）" % _tag, not _top,
                   "上半截这些行有位移：%s" % _top[:4] if _top
                   else "位移全在下沿（r>%d）" % (_rows // 2))
             _side = next((x for x in _rig["physics"] if x.get("id") == "side_l_tip"), None)
-            _btip = next((x for x in _rig["physics"] if x.get("deformer") == "back_s"), None)
+            _btip = next((x for x in _rig["physics"] if x.get("deformer") == "back_s"
+                          or x.get("param") == _bs.get("param")), None)
             if _side and _btip:
                 check("后发比侧发更软更慢（%s）" % _tag,
                       float(_btip["stiffness"]) < float(_side["stiffness"]),

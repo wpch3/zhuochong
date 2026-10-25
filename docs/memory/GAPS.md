@@ -1293,7 +1293,24 @@ teen 15 根刚体骨；chibi 只有 9 根（缺 forearm_l/r、elbow_fold_l/r、h
 > 方案 B（迟滞挪到参数层、物理写参数而不是写网格）仍然更接近 Live2D 的正解，
 > 但那要动物理输出模型（G66.13），这一轮先用 A 把内容侧解锁。
 
-## G66.13 物理输出只能写形变器的 amount，不能写命名参数（S3 参数层的前置）
+## ~~G66.13 物理输出只能写形变器的 amount，不能写命名参数（S3 参数层的前置）~~ —— 2026-10-25 T66.11c 已关闭
+
+> 关闭记录：**两套物理**都认 `"param": "ParamXxx"` 了（旧摆链 `physics[]` 与摆链
+> `physics2.outputs[]`）—— `param` 以 `Param` 开头且没有 `deformer` 就写**命名参数**，
+> 找不到参数当场加载失败（不许静默丢）。写进去的是 `p_action`，和动作通道同一个累加位，
+> 所以"物理 + 动作 + 表情"还是叠在一起。
+> **求值顺序**同时改了：`deform_update_keys()` 从物理**之前**挪到**之后** —— 以前早算是因为
+> "物理只写 amount、两边不重叠"，现在物理写参数，早一帧就等于网格永远慢一帧。单测
+> `test_physics_to_param()` 钉住"同一帧就要吃到"（ParamSway 0 → 0.908，网格 9.084px）。
+> 内容侧随之迁移：侧发/后发/裙身/下摆五张网格改 keyform，摆链改成写参数
+> （`side_?_tip → ParamHairSideS`、`back_tip → ParamHairBackS`、`skirt_x → ParamSkirtSway`），
+> `ParamHairSway` 那条"风"从推网格 amount 改成推**中段骨**转角（0.65°/0.55°，延迟不变）。
+> 旧 rig 与新 rig 在 `ParamHairSideS`/`ParamSkirtSway` = −1 / 0 / +1 六个姿势上
+> **逐像素 0 差异**（`/tmp/pose_ab.py`，同进程换 rig），说明这次迁移只换了通路、没换画面。
+> 闸门：`selfcheck_repo.py` 新增两条 —— "keyform 网格的参数都有人在写"（防死件）与
+> "布料/头发 keyform 网格仍有物理跟随"（防 G66.13 复发）。
+
+## 原 G66.13 记录（保留细节）
 
 `physics2.outputs[]` 的 `deformer` 写的是"某张网格的 amount"，而 Live2D 的物理写的是
 **参数**（物理把 ParamHairSway 推起来，网格再去跟参数）。差别在于：一张网格一旦改成
@@ -1318,7 +1335,17 @@ keyform（T66.11b 的袖料就是这么改的），物理就再也推不动它 �
   网格只做形状。这个更接近 Live2D 的正解（物理写参数、不写网格）。
 倾向 B（少一套机制、物理与形状解耦），但要在真机上验证"参数被物理拖着走"的手感。
 
-## G66.11 内容侧没有任何真 keyform（缓动能力至今无人用）
+## ~~G66.11 内容侧没有任何真 keyform（缓动能力至今无人用）~~ —— 2026-10-25 T66.11b/c 已关闭
+
+> 关闭记录：内容侧现在有 **5 张真 keyform 网格** —— `arm_l/r_fore_slim`（T66.11b，
+> 四组键 + 段缓动 `out` + lag 0.06）、`side_l_s`/`side_r_s`/`back_s`（T66.11c，
+> −1/−0.5/0/0.5/1 五组，中段 0.44 缓起步、镜像半段横向取反竖向不翻）、
+> `skirt_sway_x`/`skirt_hem_x`（T66.11c，±1 与旧 amount 点表逐点相同，下摆 lag 0.11
+> 接替原来的 `bind.lag`）。旧的 amount 写法保留给没迁移的件（外套下摆/里布）。
+> 判据：`zrig_deform_amount()` 对 keyform 恒为 0，所以单测的判据一律换成**几何**
+> （`zrig_deform_mesh` / `mesh_peak_dx()`），`test_skirt_physics` 就是这么改的。
+
+## 原 G66.11 记录（保留细节）
 
 两份 rig（teen / chibi）里**没有一个形变器写 `keys`** —— 全是 amount 通路。
 于是 T66.11 的缓动、乃至 G58.1 的 keyform 能力，在真实画面上一次都没被用过；

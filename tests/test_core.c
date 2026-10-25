@@ -5591,6 +5591,164 @@ static void test_fore_slim_keyform(void)
     zrig_free(r);
 }
 
+/* ---------------------------------------------------------------------------
+   T66.11c：物理 2.0 的输出可以写**命名参数**（≈ 官方 Output[].DestinationId）。
+
+   为什么非有不可：Live2D 的正解是"物理推参数、网格跟参数"。我们以前物理只能写网格的
+   amount，于是一张网格一旦改成 keyform（T66.11b 就是这么改的），物理就再也推不动它 ——
+   侧发/后发/裙摆这些"既有物理又有网格"的件全被卡住（G66.13）。
+
+   这条单测钉住：
+     ① 输出写命名参数之后，参数的本帧最终值会被推进去（不是只有动作能推）；
+     ② 吃到这个参数的 keyform 网格**同帧**就动（求值顺序不能晚一帧）；
+     ③ 写不存在的参数名要加载失败，不许静默丢。
+   --------------------------------------------------------------------------- */
+static void test_physics_to_param(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double dx[8], dy[8];
+    double v_base = 0.0, v_after = 0.0, mesh_move = 0.0;
+    int cols = 0, rows = 0, i;
+
+    SECTION("T66.11c 物理写命名参数（物理 → 参数 → keyform 网格，同帧生效）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_phys_param");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 一条最小摆链：根 + 一节，输入吃 ParamAngleZ；输出写 ParamSway（不是网格 amount）。
+       ParamSway 再驱动一张 1×1 网格的 keyform —— 这就是"物理 → 参数 → 网格"整条路。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"physparam\",\"name\":\"物理写参数\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"mt\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"sway_mesh\"}],"
+        "\"deformers\":[{\"id\":\"sway_mesh\",\"part\":\"mt\",\"cols\":1,\"rows\":1,"
+        " \"param\":\"ParamSway\",\"keys\":["
+        "  {\"v\":-1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":-10,\"dy\":0}]},"
+        "  {\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamSway\",\"min\":-1,\"max\":1,\"default\":0,\"binds\":[]},"
+        " {\"id\":\"ParamAngleZ\",\"min\":-30,\"max\":30,\"default\":0,\"binds\":[]}],"
+        "\"physics2\":[{\"id\":\"sw\",\"part\":\"mt\","
+        " \"angle_input\":[{\"param\":\"ParamAngleZ\",\"weight\":1.0}],"
+        " \"particles\":[{\"radius\":0},"
+        "  {\"radius\":20,\"mobility\":0.9,\"delay\":1.0,\"acceleration\":1.0}],"
+        " \"outputs\":[{\"particle\":1,\"param\":\"ParamSway\",\"scale\":0.05,\"max\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "outputs 写命名参数应装载成功");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+    for (i = 0; i < 30; ++i) zrig_tick(r, i / 60.0);
+    v_base = zrig_param_effective(r, "ParamSway");
+    /* 头一歪，摆链被推起来；输出写进 ParamSway */
+    for (i = 0; i < 90; ++i) {
+        zrig_param_set(r, "ParamAngleZ", 18.0);
+        zrig_tick(r, 0.5 + i / 60.0);
+    }
+    v_after = zrig_param_effective(r, "ParamSway");
+    zrig_deform_mesh(r, "sway_mesh", &cols, &rows, dx, dy, 8);
+    mesh_move = dx[0];
+    CHECK(fabs(v_base) < 1e-9, "一开始没有被推：ParamSway 应还是 0（实际 %.4f）", v_base);
+    CHECK(fabs(v_after) > 0.02,
+          "头歪 18° 之后物理要把 ParamSway 推起来（实际 %.4f）—— 推不动就是 outputs 没写到参数", v_after);
+    CHECK(fabs(mesh_move) > 0.2,
+          "吃到该参数的 keyform 网格**同帧**就该动（实际 %.3f px）—— 动不了说明求值顺序晚了一帧",
+          mesh_move);
+    printf("    量到：ParamSway 静止 %.4f → 歪头后 %.4f，网格位移 %.3f px\n",
+           v_base, v_after, mesh_move);
+    zrig_free(r);
+
+    /* ② 旧摆链（physics，不是 physics2）也要能写命名参数 ——
+       侧发/后发/裙摆的摆链全在这一套里，不补这条它们就改不成 keyform。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"oldphysparam\",\"name\":\"旧摆写参数\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"mt\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"sway_mesh\"}],"
+        "\"deformers\":[{\"id\":\"sway_mesh\",\"part\":\"mt\",\"cols\":1,\"rows\":1,"
+        " \"param\":\"ParamSway\",\"keys\":["
+        "  {\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10}]}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamSway\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]},"
+        " {\"id\":\"ParamAngleZ\",\"min\":-30,\"max\":30,\"default\":0,\"binds\":[]}],"
+        "\"physics\":[{\"id\":\"oldsw\",\"part\":\"mt\","
+        " \"input\":[{\"param\":\"ParamAngleZ\",\"weight\":1.0}],"
+        " \"ratio\":0.1,\"stiffness\":24,\"damping\":6.5,\"max\":2.0,"
+        " \"param\":\"ParamSway\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "旧摆链写命名参数应装载成功");
+    if (r) {
+        double moved = 0.0;
+        zrig_ambient_enable(r, 0);
+        for (i = 0; i < 30; ++i) zrig_tick(r, i / 60.0);
+        /* 旧摆链的输出是**滞后量**（pos − target），静止时归零 —— 所以要取
+           **过渡过程**里的峰值，稳态读数必然是 0（第一版就是在这儿读了个 0）。 */
+        for (i = 0; i < 90; ++i) {
+            zrig_param_set(r, "ParamAngleZ", 18.0);
+            zrig_tick(r, 0.5 + i / 60.0);
+            zrig_deform_mesh(r, "sway_mesh", &cols, &rows, dx, dy, 8);
+            if (fabs(dx[0]) > fabs(moved)) moved = dx[0];
+        }
+        CHECK(moved > 0.01, "旧摆链的输出要推到 ParamSway 上，并同帧带起 keyform 网格（实际 %.3f px）",
+              moved);
+        printf("    旧摆链量到：网格位移 %.3f px（ParamSway=%.4f AngleZ=%.4f）\n",
+               moved, zrig_param_effective(r, "ParamSway"), zrig_param_effective(r, "ParamAngleZ"));
+        zrig_free(r);
+    }
+
+    /* ③ 写不存在的参数名必须加载失败 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"physbad\",\"name\":\"物理写错参数\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"mt\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"params\":[{\"id\":\"ParamAngleZ\",\"min\":-30,\"max\":30,\"default\":0,\"binds\":[]}],"
+        "\"physics2\":[{\"id\":\"sw\",\"part\":\"mt\","
+        " \"angle_input\":[{\"param\":\"ParamAngleZ\",\"weight\":1.0}],"
+        " \"particles\":[{\"radius\":0},"
+        "  {\"radius\":20,\"mobility\":0.9,\"delay\":1.0,\"acceleration\":1.0}],"
+        " \"outputs\":[{\"particle\":1,\"param\":\"ParamNoSuch\",\"scale\":0.05,\"max\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL, "outputs 写不存在的参数名必须加载失败（静默丢 = 物理看着像没调好）");
+    zrig_free(r);
+}
+
+/* 一张网格这一帧**横向位移的峰值**（源图像素）。
+
+   ★ T66.11c 之后裙身/下摆是 keyform，`zrig_deform_amount` 对它们永远是 0
+     （keyform 没有 amount 这个量），所以判据必须改成量**几何**。
+     这个换算不是拍脑袋：keyform 在 v=1 时的点表峰值是固定的
+     （裙身 10.8px / 下摆 3.6px），旧阈值是 amount 口径，乘上这个峰值就是像素口径。 */
+static double mesh_peak_dx(const zrig *r, const char *id)
+{
+    double dx[64], dy[64];
+    int cols = 0, rows = 0, k, n, np;
+    double m = 0.0;
+    n = zrig_deform_mesh(r, id, &cols, &rows, dx, dy, 64);
+    if (n <= 0) return 0.0;
+    np = (cols + 1) * (rows + 1);
+    if (np > n) np = n;
+    for (k = 0; k < np; ++k)
+        if (fabs(dx[k]) > m) m = fabs(dx[k]);
+    return m;
+}
+
 static void test_skirt_physics(void)
 {
     char rig_path[1024], dir[1024];
@@ -5617,11 +5775,12 @@ static void test_skirt_physics(void)
     zrig_action_request(r, "sway", "test", 1);
     for (i = 1; i <= 240; ++i) {
         zrig_tick(r, 2.0 + i / 60.0);
-        if (fabs(zrig_deform_amount(r, "skirt_sway_x")) > sway_x)
-            sway_x = fabs(zrig_deform_amount(r, "skirt_sway_x"));
+        if (mesh_peak_dx(r, "skirt_sway_x") > sway_x)
+            sway_x = mesh_peak_dx(r, "skirt_sway_x");
     }
-    CHECK(sway_x > 0.15, "摇摆时裙摆要横着甩（实际峰值 %.3f）", sway_x);
-    CHECK(sway_x < 1.0, "裙摆横摆不该一路顶到限幅（实际峰值 %.3f）", sway_x);
+    /* 阈值换算：旧 amount 阈值 × 10.8px（keyform v=1 的点表峰值） */
+    CHECK(sway_x > 1.62, "摇摆时裙摆要横着甩（实际峰值 %.2f px）", sway_x);
+    CHECK(sway_x < 10.8, "裙摆横摆不该一路顶到限幅（实际峰值 %.2f px）", sway_x);
 
     /* ② 点头：纵摆要动（官方 スカート縦揺れ 吃 ParamBodyAngleY） */
     zrig_action_request(r, "nod", "test", 1);
@@ -5642,11 +5801,11 @@ static void test_skirt_physics(void)
         zrig_param_set(r, "ParamAngleX", 30.0 * ((i / 20) % 2 ? -1.0 : 1.0));
         zrig_param_set(r, "ParamAngleZ", 30.0 * ((i / 20) % 2 ? -1.0 : 1.0));
         zrig_tick(r, t);
-        if (fabs(zrig_deform_amount(r, "skirt_sway_x")) > head_x)
-            head_x = fabs(zrig_deform_amount(r, "skirt_sway_x"));
+        if (mesh_peak_dx(r, "skirt_sway_x") > head_x)
+            head_x = mesh_peak_dx(r, "skirt_sway_x");
     }
-    CHECK(head_x < 0.08,
-          "光摇头不该把裙子带起来（头摆满格时裙摆仍有 %.3f）", head_x);
+    CHECK(head_x < 0.86,
+          "光摇头不该把裙子带起来（头摆满格时裙摆仍有 %.2f px）", head_x);
 
     /* ④ 身体保持倾斜不动：摆链收敛，输出回零（只加惯性，不永久偏） */
     zrig_param_reset_all(r);
@@ -5654,9 +5813,9 @@ static void test_skirt_physics(void)
         zrig_param_set(r, "ParamBodyAngleX", 10.0);
         zrig_tick(r, 40.0 + i / 60.0);
     }
-    rest_x = fabs(zrig_deform_amount(r, "skirt_sway_x"));
-    CHECK(rest_x < 0.02,
-          "身体停住后裙摆要收敛回零，不能被永久吹偏（残留 %.4f）", rest_x);
+    rest_x = mesh_peak_dx(r, "skirt_sway_x");
+    CHECK(rest_x < 0.22,
+          "身体停住后裙摆要收敛回零，不能被永久吹偏（残留 %.3f px）", rest_x);
     zrig_param_reset_all(r);
 
     /* ⑤ 环境摆动（T45.9）：布必须**自己**在动，而且**换哪个待机动作都不停**。
@@ -5676,12 +5835,12 @@ static void test_skirt_physics(void)
             for (i = 1; i <= 900; ++i) {   /* 15 秒 ≈ 裙摆两个周期 */
                 double v;
                 zrig_tick(r, base + 2.0 + i / 60.0);
-                v = zrig_deform_amount(r, "skirt_sway_x");
+                v = mesh_peak_dx(r, "skirt_sway_x");
                 if (v < lo) lo = v;
                 if (v > hi) hi = v;
             }
-            CHECK(hi - lo > 0.30,
-                  "待机动作 %s 下裙摆也要自己摆（峰峰值 %.4f，挂在 idle 上时 "
+            CHECK(hi - lo > 3.24,
+                  "待机动作 %s 下裙摆也要自己摆（峰峰值 %.2f px，挂在 idle 上时 "
                   "breath 实测是 0.0000）", IDLE_FAMILY[ai], hi - lo);
         }
         /* 下摆是第二级，必须比裙身晚到（行波延迟 lag） */
@@ -5692,13 +5851,13 @@ static void test_skirt_physics(void)
             for (i = 1; i <= 600; ++i) {
                 double a0, b0;
                 zrig_tick(r, 305.0 + i / 60.0);
-                a0 = zrig_deform_amount(r, "skirt_sway_x");
-                b0 = zrig_deform_amount(r, "skirt_hem_x");
+                a0 = mesh_peak_dx(r, "skirt_sway_x");
+                b0 = mesh_peak_dx(r, "skirt_hem_x");
                 if (fabs(a0) > da) da = fabs(a0);
                 if (fabs(b0) > db) db = fabs(b0);
             }
-            CHECK(da > 0.1 && db > 0.1,
-                  "裙摆是两级的：裙身 %.3f + 下摆 %.3f 都要动（一段式看着像棍子）",
+            CHECK(da > 1.08 && db > 0.36,
+                  "裙摆是两级的：裙身 %.2f px + 下摆 %.2f px 都要动（一段式看着像棍子）",
                   da, db);
         }
     }
@@ -9087,6 +9246,7 @@ int main(int argc, char **argv)
     test_keyform_ease();
     test_parent_warp_inherit();
     test_fore_slim_keyform();
+    test_physics_to_param();
     test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();

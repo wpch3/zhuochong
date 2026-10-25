@@ -739,10 +739,12 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                         "curve": "tip"},
                        {"part": "hair_side_r", "param": "bend_x", "scale": 7.0,
                         "curve": "tip"}]},
+            # ★ T66.11c：这两张网格已改 keyform（见 deformers 里 side_?_s 的 keys），
+            #   所以这里**不能**再写 amount 绑定（引擎：有 keys 的网格不许再有 amount 绑定）。
+            #   本参数照旧驱动它们 —— 走的是 keyform 的 param 那条路；
+            #   物理摆链（side_?_tip）也从 T66.11c 起直接写这个参数。
             {"id": "ParamHairSideS", "label": "侧发 S 形甩动", "min": -1.0, "max": 1.0,
-             "default": 0.0,
-             "binds": [{"deformer": "side_l_s", "scale": 1.0},
-                       {"deformer": "side_r_s", "scale": 1.0}]},
+             "default": 0.0, "binds": []},
             {"id": "ParamHairBack", "label": "后发 摆动", "min": -1.0, "max": 1.0,
              "default": 0.0,
              "binds": [{"part": "hair_back", "param": "bend_x", "scale": 5.0,
@@ -752,9 +754,9 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
             #   2段にすると、毛先が遅れて動くようになり一気に自然になる」
             # （shiroikarasu 症状C 原因1）。后发**最该做多段** —— 多家教程一致：
             # 前髪・横髪は1段で十分、後ろ髪とツインテールは多段（2~3段、长的 4 段）。
+            # ★ T66.11c：back_s 改 keyform，绑定从这里撤掉（理由同 ParamHairSideS）
             {"id": "ParamHairBackS", "label": "后发 S 形甩动（第二段·发梢）",
-             "min": -1.0, "max": 1.0, "default": 0.0,
-             "binds": [{"deformer": "back_s", "scale": 1.0}]},
+             "min": -1.0, "max": 1.0, "default": 0.0, "binds": []},
         ]
     if has_blend:
         # A7 混合模式：腮红走乘算、眼高光走加算（见 make_blend_parts.py）
@@ -4148,12 +4150,48 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     # 侧发是两条“根在上、梢在下”的长条：r=0 是素材顶边（发根，固定），
     # r=4 是底边（发梢）。amount=1 时中段往左、梢往右 = 一条 S，和整体倾斜不一样。
     if any(p["id"] == "hair_side_l" for p in rig["parts"]):
+        def _kf(pts, pos_mid=0.44, neg=True):
+            """把一张 amount 网格的**正方向点表**翻成 keyform 的 keys（T66.11c）。
+
+            为什么翻：keyform 才能让「小幅度很软、大幅度才到位」这种曲线进得来，
+            而且物理 2.0/旧摆链现在都能直接写参数 —— 这才是 Live2D 的结构
+            （物理推参数、网格跟参数），旧的 amount 写法只有一条直线可用。
+
+            ★ 镜像那一半（v<0）是**新增**的自由度，不是顺手改形：旧写法下
+              amount 取负时点表原样乘 −1，横位移取反、**纵位移也跟着取反**；
+              keyform 这里按"横反、竖向不变"给（一个左右镜像的 S 才是同一个形状
+              的反向版，纵向下压不该跟着翻）。所以负半段在视觉上是**新**的，
+              正半段（v>0）与旧 amount 逐点相同 —— 静止画面和正向摆动零改动。
+            ★ v=0.5 那一组取 0.44 而不是 0.5：轻摆时袖子/发丝"先顶住、再甩开"，
+              布料起步总比人手慢（和 T66.11b 前臂收窄同一条曲线口径）。
+            """
+            def sc(m, flip_dy=False):
+                out = []
+                for q in pts:
+                    d = dict(q)
+                    d["dx"] = round(q.get("dx", 0.0) * m, 3)
+                    if q.get("dy"):
+                        d["dy"] = round(q["dy"] * (-m if flip_dy else m), 3)
+                    out.append(d)
+                return out
+            keys = [{"v": 0.0, "points": []},
+                    {"v": pos_mid, "points": sc(pos_mid)},
+                    {"v": 1.0, "ease": "out", "points": sc(1.0)}]
+            if neg:
+                # 缓动写在**右端点**那一组 key 上（写在第一组 = 前面没有段可管，引擎拒载）
+                keys = ([{"v": -1.0, "points": sc(-1.0)},
+                         {"v": -pos_mid, "ease": "out", "points": sc(-pos_mid)}] + keys)
+            return keys
+
         for pid in ("hair_side_l", "hair_side_r"):
             tag = pid[-1]
             rig["deformers"].append(
                 {"id": f"side_{tag}_s", "part": pid, "cols": 2, "rows": 4,
-                 "note": "侧发 S 形甩动：发根固定，中段与发梢反向",
-                 "points": [
+                 "param": "ParamHairSideS",
+                 "note": "侧发 S 形甩动：发根固定，中段与发梢反向。"
+                         "keyform（T66.11c）：v>0 段与旧 amount 逐点相同，"
+                         "v<0 段是镜像（横向取反、竖向不变），中段缓起步",
+                 "keys": _kf([
                      {"c": 0, "r": 1, "dx": -1.4}, {"c": 1, "r": 1, "dx": -1.6},
                      {"c": 2, "r": 1, "dx": -1.4},
                      {"c": 0, "r": 2, "dx": -3.2}, {"c": 1, "r": 2, "dx": -3.6},
@@ -4163,7 +4201,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                      {"c": 0, "r": 4, "dx": 5.4, "dy": 1.0},
                      {"c": 1, "r": 4, "dx": 5.8, "dy": 1.2},
                      {"c": 2, "r": 4, "dx": 5.4, "dy": 1.0},
-                 ]})
+                 ])})
         # —— 后发的第二段（T46.1）——
         # 为什么后发要单独一张网格、而且列数比侧发多：
         #   ① 后发是**有宽度的一整片**（量出来 x303..542 × y116..258，和脑袋同宽），
@@ -4185,15 +4223,16 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         _BKS = {4: 2.5, 5: 7.0, 6: 12.0}     # 行 → 横位移（只有下沿三行）
         rig["deformers"].append(
             {"id": "back_s", "part": "hair_back", "cols": 3, "rows": 6,
+             "param": "ParamHairBackS",
              "note": "后发第二段（下沿）：r0~r3（头顶到 y187）全固定——那一段是头部剪影；"
                      "只有脸侧露出来的下沿甩动。最外两列比中列多甩一点，"
-                     "中列整片藏在脑袋后面",
-             "points": [
+                     "中列整片藏在脑袋后面。keyform（T66.11c）",
+             "keys": _kf([
                  {"c": c, "r": r,
                   "dx": round(v * (1.0 if c in (0, 3) else 0.72), 3),
                   **({"dy": round(abs(v) * 0.10, 3)} if r == 6 else {})}
                  for r, v in _BKS.items() for c in (0, 1, 2, 3)
-             ]})
+             ])})
         rig["physics"] += [
             # ★ Q37 调强（用户："动一下头，头发就顺着头飘着的那种自然效果"）。
             #   原来是 ratio .55 / stiff 46 / damp 5.4 / max 7 —— 实测一次满量程
@@ -4208,8 +4247,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "param": "bend_x", "curve": "tip",
              "ratio": 0.85, "stiffness": 26, "damping": 4.1, "max": 16,
              "note": "左侧发第一段：整缕跟着头甩，根固定所以曲线用 tip"},
+            # ★ T66.11c：输出从 amount 改成**命名参数**（网格已是 keyform）。
+            #   数值口径不变：ratio 0.12 原来喂的就是 amount，现在喂同名参数的同一个数，
+            #   满额 1.0 对应的还是旧点表 —— 所以这一改画面零改动，只是通路换了。
             {"id": "side_l_tip", "part": "hair_side_l", "driver": "side_l_x",
-             "deformer": "side_l_s",
+             "param": "ParamHairSideS",
              # ★ ratio 0.12 不是 1.0：第一段的输出是**像素**，第二段写进的是
              # **形变器量**（side_l_s 的满量程 1.0 ≈ 发梢甩出一个身位）。旧值 0.85
              # 等于拿 8px 去喂一个量程 1 的通道 ⇒ 永远贴在限幅上＝方波＝看着是
@@ -4221,7 +4263,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              "ratio": 0.85, "stiffness": 26, "damping": 4.1, "max": 16,
              "note": "右侧发第一段（数值同左侧，Q37 调强）"},
             {"id": "side_r_tip", "part": "hair_side_r", "driver": "side_r_x",
-             "deformer": "side_r_s",
+             "param": "ParamHairSideS",
              "ratio": 0.12, "stiffness": 14, "damping": 3.0, "max": 1.6,
              "note": "右侧发第二段（梢）"},
             # —— 后发 ——
@@ -4238,7 +4280,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             #   （ω=√15≈3.9rad/s，周期 1.6s；ζ=3.4/(2×3.87)=0.44，
             #     正好落在社区推荐的「収束の速さ 0.4 前後でなめらか」）
             {"id": "back_tip", "part": "hair_back", "driver": "back_x",
-             "deformer": "back_s",
+             "param": "ParamHairBackS",
              "ratio": 0.10, "stiffness": 11, "damping": 2.8, "max": 1.4,
              "note": "后发第二段（梢）：串在 back_x 后面，比发根再慢一拍；"
                      "比侧发更软更慢（头发越重越慢）"},
@@ -4266,6 +4308,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         _have = {q["id"] for q in rig["parts"]}
         _dfms = {q["id"] for q in rig.get("deformers", [])}
         _hair_sway = []
+        # ★ T66.11c：第二级（发梢网格）的 amount 绑定撤掉了 —— 那三张网格已改
+        #   keyform。风的那一路改推**中段骨**的转角，绑在 emit_bone_chains() 里补
+        #   （那里才知道骨链建没建出来，写在这里会留悬空绑定）。系数见那里的注释。
         for _pid, _sc, _lg, _df, _dsc, _dlg in (
                 ("hair_side_l", 7.2, 0.00, "side_l_s", 0.25, 0.17),
                 ("hair_front",  3.0, 0.04, None,       0.0,  0.0),
@@ -4275,8 +4320,6 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 continue
             _hair_sway.append({"part": _pid, "param": "bend_x",
                                "scale": _sc, "curve": "tip", "lag": _lg})
-            if _df and _df in _dfms:
-                _hair_sway.append({"deformer": _df, "scale": _dsc, "lag": _dlg})
         # ★ 2026-10-24：**没有独立短发件的形态（Q 版）也要有这个参数**。
         #   Q 版头发整块烘焙在 seg_head 上（T2.2.5），四件短发一个都不存在 ⇒
         #   旧写法 `if _hair_sway:` 会把参数整个跳过，而四条挂件发型的 physics2
@@ -4369,14 +4412,35 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         #   网格跟着裙件走 —— 这是能不能给裙子接旋转骨的前提：骨链作用于**整个部件**，
         #   裙子还长在躯干上的时候给裙子插一根转骨，转起来会把整个上身带飞（G66.6）。
         _SKP = (skirtx or {}).get("id", "seg_torso")
+        # ★ T66.11c：裙身/下摆两张网格改 keyform，物理 skirt_x 改成写 ParamSkirtSway。
+        #   key 逐点等于旧 amount 点表 ⇒ 同一个参数值给出同一个形状（画面零改动），
+        #   但通路变成 Live2D 的正解：物理 → 参数 → 网格。
+        #   下摆那级原来的"行波延迟"是 bind.lag 0.11，现在换成 keyform 的 lag 0.11
+        #   （T66.11b 给 keyform 补的同一个滞后环），语义完全一致。
+        def _kf_lin(pts):
+            def sc(m):
+                out = []
+                for q in pts:
+                    d = dict(q)
+                    d["dx"] = round(q.get("dx", 0.0) * m, 3)
+                    if q.get("dy"):
+                        d["dy"] = round(q["dy"] * m, 3)
+                    out.append(d)
+                return out
+            return [{"v": -1.0, "points": sc(-1.0)},
+                    {"v": 0.0, "points": []},
+                    {"v": 1.0, "points": sc(1.0)}]
+
         rig["deformers"] += [
             {"id": "skirt_sway_x", "part": _SKP, "cols": 2, "rows": 10,
-             "note": "裙摆横摆：裙腰(r=6)固定，越往下甩得越远，中列比两侧多一点",
-             "points": [
+             "param": "ParamSkirtSway",
+             "note": "裙摆横摆：裙腰(r=6)固定，越往下甩得越远，中列比两侧多一点。"
+                     "keyform（T66.11c）：±1 逐点等于旧 amount 点表",
+             "keys": _kf_lin([
                  {"c": c, "r": r, "dx": round(v * (1.08 if c == 1 else 1.0), 3),
                   **({"dy": round(v * 0.09, 3)} if r == 10 else {})}
                  for r, v in _SKX.items() for c in (0, 1, 2)
-             ]},
+             ])},
             # 第二段：**只有下摆**（最下两行）的额外横摆。
             # 教程里「服/头发看着硬」的头号原因就是「揺れが1段しかない —— 髪全体が
             # 棒のように一体で動いていると硬く見える」，解法是「根元と毛先で分けて
@@ -4385,13 +4449,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             # 这一段由同一条参数驱动，但绑定带 lag（T45.2g 的行波延迟）⇒ 下摆比
             # 裙身慢半拍，这就是「親→子」的振り子顺序在本引擎里的等价写法。
             {"id": "skirt_hem_x", "part": _SKP, "cols": 2, "rows": 10,
-             "note": "下摆第二段：只有最下两行再多甩一点，比裙身慢半拍（见参数 "
-                     "ParamSkirtSway 的 lag）。幅度只有第一段的三成——"
-                     "布越重越不该多摆，而且教程口径是「宁可摆小一点」",
-             "points": [
+             "param": "ParamSkirtSway", "lag": 0.11,
+             "note": "下摆第二段：只有最下两行再多甩一点，比裙身慢半拍。"
+                     "幅度只有第一段的三成——布越重越不该多摆，"
+                     "而且教程口径是「宁可摆小一点」。keyform + lag 0.11（T66.11c）",
+             "keys": _kf_lin([
                  {"c": c, "r": r, "dx": round(v * (1.06 if c == 1 else 1.0), 3)}
                  for r, v in _SKHEM.items() for c in (0, 1, 2)
-             ]},
+             ])},
             {"id": "skirt_sway_y", "part": _SKP, "cols": 2, "rows": 10,
              "note": "裙摆纵摆：上下滞后，裙底顺带略微张开/收拢（布料的伞效应）",
              "points": [
@@ -4430,7 +4495,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             #
             # 输入必须是**参数**而不是驱动组：ParamBodyAngleX 绑的是
             # seg_torso.bend_x，弯曲是非仿射的、根本不进组矩阵，拿组位移读不到。
-            {"id": "skirt_x", "part": _SKP, "deformer": "skirt_sway_x",
+            {"id": "skirt_x", "part": _SKP, "param": "ParamSkirtSway",
              "input": [{"param": "ParamBodyAngleX", "weight": 1.0},
                        {"param": "ParamBodyAngleZ", "weight": 1.0}],
              "ratio": 0.12, "stiffness": 24, "damping": 6.5, "max": 1.0,
@@ -4455,10 +4520,10 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         rig["params"].append({
             "id": "ParamSkirtSway", "label": "裙摆摆动",
             "min": -1.15, "max": 1.15, "default": 0.0,
-            "binds": [
-                {"deformer": "skirt_sway_x", "scale": 1.0},
-                {"deformer": "skirt_hem_x", "scale": 1.0, "lag": 0.11},
-            ],
+            # ★ T66.11c：两张网格改 keyform 之后这里**必须留空**（有 keys 的网格
+            #   不许再挂 amount 绑定，引擎当场拒载）。参数照旧驱动它们 —— 走 keyform
+            #   的 param；物理 skirt_x 也从 T66.11c 起直接写这个参数。
+            "binds": [],
             "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 "
                     "⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D "
                     "「複数階層デフォーマ・親→子」的等价写法）。"
@@ -4802,6 +4867,18 @@ def emit_bone_chains(rig, base):
     made += add_chain("hair_back", ["back_s"], "hair_back", fy=0.5,
                       bind_param="ParamHairBack", root_scale=-2.0,
                       mid_bind_param="ParamHairBackS", mid_scale=-4.0)
+    # ★ T66.11c：皮肤的"风"（ParamHairSway）原来有一段是推发梢**网格**的 amount。
+    #   三张网格改 keyform 之后那条路断了（有 keys 的网格不许挂 amount 绑定），
+    #   改推**中段骨**的转角 —— 视觉上等价，而且骨带网格本来就是分层结构。
+    #   系数按像素反算：旧 amount ×0.25 在发梢约 1.4px，中段骨 1° ≈ 2.2px ⇒ 0.65。
+    #   三件各自的 lag 保持原样（0.17 / 0.26 / 0.30），风的方向才还是从一侧扫过去。
+    _wind = {"hair_side_l_mid": -0.65, "hair_side_r_mid": 0.65, "hair_back_mid": -0.55}
+    _wind_lag = {"hair_side_l_mid": 0.17, "hair_side_r_mid": 0.26, "hair_back_mid": 0.30}
+    _ids = {nd["id"] for nd in new_nodes}
+    if "ParamHairSway" in params:
+        for _nd, _sc in _wind.items():
+            if _nd in _ids:
+                binds.append(("ParamHairSway", _nd, _sc, _wind_lag[_nd]))
     # —— 呆毛：一根骨头从根甩到梢 ——
     made += add_chain("hair_ahoge", ["ahoge_s"], "hair_ahoge", fy=0.5,
                       bind_param="ParamHairAhoge", root_scale=5.0,

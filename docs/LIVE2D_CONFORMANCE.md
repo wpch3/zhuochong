@@ -337,15 +337,22 @@ x 限制在 [0,1] 以保证 x(t) 单调、二分可解。理由：rig 是人手�
 - **闸门**：`zrig_action_geom_channels()` 必须返回 0；单测还拿一个**故意写几何通道的合成 rig**
   反向验证这个计数器不是永远返回 0。
 
-### physics 的语义差异（唯一一处"做法不同"，已评估可后补）
+### physics 的语义差异 —— **2026-10-25 T66.11c 已对齐"输出写参数"这一半**
 
 - Live2D：`Input(参数) → 摆链顶点 → Output(参数)`，物理的产物是**参数值**，再由美术自己绑的形变器放大。
-- 我们：`driver(组/另一条 physics) → 弹簧 → 部件位移 / 形变器 amount`。
+- 我们：`driver(组/另一条 physics) → 弹簧 → 部件位移 / 形变器 amount / **命名参数**`。
+  `outputs[].param`（或旧摆链的 `physics[].param`）写成 `"ParamXxx"` 且没有 `deformer` 时，
+  物理写的就是**命名参数**，和官方 `Output[].DestinationId` 同一个口径；写进去的值进
+  `p_action`，与动作通道共用累加位，因此"物理 + 动作 + 表情"仍是叠加关系。
+  ★ 求值顺序随之调整：`deform_update_keys()`（keyform 求值）从物理**之前**挪到**之后** ——
+  官方也是"物理先把参数改掉、形变器再按参数取形状"，早一帧网格就永远慢一帧。
+  证据：单测 `test_physics_to_param()`（参数 0 → 0.908、网格同帧 9.084px），
+  以及五张网格改 keyform 之后**旧/新 rig 六个姿势逐像素 0 差异**（`/tmp/pose_ab.py`）。
 
-对最终画面是等价的（都能做"发根先甩、发梢慢半拍"），差别在**可移植性**：
-从 Cubism 搬一份 `.physics3.json` 过来需要一层转换。
-**风险评级：低** —— 这是引擎内部管线，改它不需要重做任何素材，也不影响参数命名。
-真要接，加一条 `"output": {"param": "ParamHairFront"}` 即可，属于纯增量。
+仍有差异的两点（都登记在案，不影响"能跑"）：
+- 输入侧官方用 `Normalization{Position,Angle}{Minimum,Maximum,Default}` 归一化到 ±10 模型单位；
+  我们用像素 + `in_max/in_rate` 两道限幅（`p2_input()`），靠换算表对齐，不是同一套单位。
+- 从 Cubism 搬 `.physics3.json` 仍需一层转换（字段名不同、摆链顶点写法不同）。
 
 ---
 

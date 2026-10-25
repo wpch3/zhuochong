@@ -1275,7 +1275,7 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | T66.10 | 引擎 P0-2：父级 warp 的**逐顶点位移场**传给子（G58.8） | [x] | `deform_inherit_parent_warp` + `zrig_part_mesh`；单测 `test_parent_warp_inherit` |
 | T66.11 | 引擎 P0-3：keyform 支持分段缓动（3 key 画 S 形） | [x] | 名字缓动 / step / 三次贝塞尔；`test_keyform_ease`，手算值对拍 0.8024 |
 | T66.11b | 内容侧真正用上 keyform + 缓动（先拿前臂收窄开刀） | [x] | `arm_?_fore_slim` 改 keyform：0/0.5/1.0/1.5 四组 + ease out + lag 0.06；`test_fore_slim_keyform` 0.35 → 1.38（线性 4.32）、1.0 → 12.34 |
-| T66.11c | 物理输出改成能写**命名参数**（outputs[].param），再把侧发/裙摆改 keyform | [ ] | 见 G66.13：不改这条，既有物理的网格一改 keyform 就丢跟随 |
+| T66.11c | 物理输出改成能写**命名参数**（outputs[].param），再把侧发/裙摆改 keyform | [x] | G66.13 已关。两套物理都认 `"param":"ParamXxx"`（旧 `physics[]` 与 `physics2.outputs[]`），写进 `p_action`；`deform_update_keys()` 挪到物理之后（同帧吃到）。内容侧：侧发/后发/裙身/下摆五张网格改 keyform，摆链改写参数，`ParamHairSway` 改推中段骨。旧/新 rig 六个姿势**逐像素 0 差异**；`mesh_peak_dx()` 换了裙子单测的判据（amount 对 keyform 恒 0） |
 | T66.12 | 引擎 P0-4：骨骼继承模式（全继承/只旋转/只缩放/固定） | [ ] | "头转帽子不转"这类件现在要额外加骨 |
 | T66.13 | 引擎 P1：软边遮罩（现在 mask 是二值，LESSONS 408） | [ ] | 二值遮罩会把羽化切掉 |
 | T66.14 | 工具：骨架可视化 + 点两下量 pivot 写回 skeleton.json | [ ] | 现在 pivot 靠人在图上读坐标，最容易量错 |

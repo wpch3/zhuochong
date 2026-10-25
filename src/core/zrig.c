@@ -300,6 +300,9 @@ typedef struct {
        这样两三段串起来就是一条有惯性传递的摆链（头发梢比发根再慢半拍）。 */
     int    driver_phys;       /* >=0 = 上一段的下标（必须比自己小，保证先算父段） */
     int    deform;            /* >=0 = 输出到网格形变器的 amount，而不是部件通道 */
+    int    pparam;            /* >=0 = 输出到**命名参数**（≈ 官方 Output[].DestinationId；T66.11c）。
+                                 和 physics2 的同名字段语义一致：param 写 "ParamXxx" 且没有
+                                 deformer 时走这条 —— 网格改 keyform 之后仍然推得动。 */
     double out_last;          /* 这一帧**插值后**的输出（渲染用的就是它） */
     /* 固定步长积分的三个状态（G113，照搬官方 CubismPhysics::Evaluate）：
        out_prev/out_cur = 相邻两个固定步的输出，渲染时按 alpha 在两者之间插值；
@@ -335,6 +338,7 @@ typedef struct {
     int    particle;          /* 读第几个粒子的摆角（1 = 根下面第一节） */
     int    part;              /* >=0 写部件通道 */
     int    deform;            /* >=0 写形变器 amount（优先于 part） */
+    int    pparam;            /* >=0 写**命名参数**（≈ 官方 Output[].DestinationId；T66.11c） */
     int    param;             /* P_DX … P_BEND_Y */
     int    curve;             /* bend_* 用的形变曲线 */
     int    inverted;          /* 官方 Output[].Reflect：参考方向取反 */
@@ -1528,6 +1532,7 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
 
 /* param_find 的函数体在下面（参数层那一节），physics 的 input 要先用到它 *//* param_find 的函数体在下面（参数层那一节），physics 的 input 要先用到它 */
 static int param_find(const zrig *r, const char *id);
+static const char *param_alias(const char *id);
 
 static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
 {
@@ -1626,7 +1631,20 @@ static int load_physics(zrig *r, const zjson *jp, zdiag *d, const char *file)
                 return -1;
             }
         }
+        /* T66.11c：和 physics2 一样，param 写 "ParamXxx" 且没有 deformer ⇒ 写**命名参数**。
+           旧摆链（侧发/后发/裙摆）就靠这条把"物理 → 参数 → keyform 网格"接起来；
+           没有它的话，这些网格一改 keyform 就丢掉物理跟随（G66.13）。 */
+        ph->pparam = -1;
+        if (ph->deform < 0 && pn && strncmp(pn, "Param", 5) == 0) {
+            ph->pparam = param_find(r, param_alias(pn));
+            if (ph->pparam < 0) {
+                zdiag_error(d, file, pj ? pj->line : 0, 0, path,
+                            "param '%s' 不在参数表里（params 段要先声明它）", pn);
+                return -1;
+            }
+        }
         if (ph->deform >= 0) ph->param = P_AMOUNT;
+        else if (ph->pparam >= 0) ph->param = P_AMOUNT;   /* 占位：写参数时不看通道 */
         else if (parse_param(pn, &ph->param) != 0) {
             zdiag_error(d, file, pj ? pj->line : 0, 0, path, "param 非法：%s", pn);
             return -1;
@@ -1824,6 +1842,20 @@ static int load_physics2(zrig *r, const zjson *jp, zdiag *d, const char *file)
                                 "outputs[%d].deformer '%s' 不存在", k, dfm);
                     return -1;
                 }
+                /* T66.11c：写出目标是**命名参数**（Live2D 的正解：物理推参数，网格跟参数）。
+                   认法：param 以 "Param" 开头就是参数 id，否则按老的通道名（dx/dy/bend_x…）解析。
+                   为什么必须区分开：同名位置以前只能写部件通道，而 keyform 只读参数 ——
+                   物理写不到参数，网格一改 keyform 就再也推不动（G66.13）。 */
+                o->pparam = -1;
+                if (!dfm && !opid && pn && strncmp(pn, "Param", 5) == 0) {
+                    o->pparam = param_find(r, param_alias(pn));
+                    if (o->pparam < 0) {
+                        zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                    "outputs[%d].param '%s' 不在参数表里（params 段要先声明它）",
+                                    k, pn);
+                        return -1;
+                    }
+                }
                 if (o->deform >= 0) {
                     o->param = P_AMOUNT;
                     if (r->deforms[o->deform].nkf > 0) {
@@ -1834,14 +1866,14 @@ static int load_physics2(zrig *r, const zjson *jp, zdiag *d, const char *file)
                         return -1;
                     }
                 }
-                else if (parse_param(pn, &o->param) != 0) {
+                else if (o->pparam < 0 && parse_param(pn, &o->param) != 0) {
                     zdiag_error(d, file, one ? one->line : 0, 0, path,
                                 "outputs[%d].param 非法：%s", k, pn);
                     return -1;
                 }
-                if (o->deform < 0 && o->part < 0) {
+                if (o->deform < 0 && o->part < 0 && o->pparam < 0) {
                     zdiag_error(d, file, one ? one->line : 0, 0, path,
-                                "outputs[%d] 既没有 part 也没有 deformer，没地方写", k);
+                                "outputs[%d] 既没有 part、deformer，也没有 Param 目标，没地方写", k);
                     return -1;
                 }
                 o->curve = BEND_ROOT;
@@ -4634,6 +4666,10 @@ static void physics_update(zrig *r, double now)
             r->deforms[ph->deform].amount += out;
             continue;
         }
+        if (ph->pparam >= 0 && ph->pparam < r->nparams) {
+            r->p_action[ph->pparam] += out;     /* 和动作通道挤同一个累加位 */
+            continue;
+        }
         switch (ph->param) {
             case P_DX: r->p_dx[ph->part] += out; break;
             case P_DY: r->p_dy[ph->part] += out; break;
@@ -4759,6 +4795,12 @@ static void physics2_update(zrig *r, double now)
             o->applied = v;
             if (o->deform >= 0 && o->deform < r->ndeforms) {
                 r->deforms[o->deform].amount += v;
+                continue;
+            }
+            /* 写命名参数：和动作通道挤同一个 p_action 累加位（官方也是"物理叠在参数上"）。
+               注意顺序：keyform 在这之后求值（见 rig_update 的注释），所以同帧就能吃到。 */
+            if (o->pparam >= 0 && o->pparam < r->nparams) {
+                r->p_action[o->pparam] += v;
                 continue;
             }
             if (o->part < 0) continue;
@@ -5605,11 +5647,12 @@ void zrig_tick(zrig *r, double now)
     viseme_update(r, now);
     params_refresh_builtin(r);
     compute_group_transforms(r);
-    /* keyform 必须在动作/表情/口型都定稿之后算 —— 它读的是 param_effective。
-       放在物理之前：物理写的是 amount（另一条通路），两边互不覆盖。 */
-    deform_update_keys(r);
     physics_update(r, now);
     physics2_update(r, now);
+    /* keyform 必须在**所有**参数来源都定稿之后算：动作 / 表情 / 口型 / 物理 2.0
+       （T66.11c 起物理也能写命名参数）。以前放在物理前面是因为"物理只写 amount，
+       两边不重叠"；现在物理写参数了，早算一帧就等于网格永远慢一帧。 */
+    deform_update_keys(r);
 }
 
 static int ensure_scaled(zrig *r, double scale)
