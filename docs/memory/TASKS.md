@@ -1391,3 +1391,20 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | T67.42 | **chibi 补齐 @2x（与 teen 同等完成度）** | [ ] | 实测 teen 115 件 100 件有 @2x、**chibi 58 件只有 11 件**（缺脸/身体/眼/嘴/裙）。规矩是"要么全量要么全不做"（遮罩成对绑定）。跑 `make_hires_sprites.py --character xiaoxun --form chibi`（RGB 走 Real-ESRGAN、alpha 走 LANCZOS、有 `hires_src/` 原生的直接用），跑完必须过超分度量闸（只比两边实心像素）+ 四形态定帧复验。注：本机没有 `.cache/models` 权重，需先确认模型可用 |
 | T67.43 | **体检从单形态扩到多形态** | [x] | `make audit-sprites` 原来只跑 `--form teen`；chibi 的 58 件**一件都没进过体检**（连 39,998px 洋红板那种也拦不住）。改成 `FORMS ?= teen chibi` 循环、每个形态各一份基线（`docs/qa/sprite_audit_teen.json` / `_chibi.json`），纯度闸同样按形态跑。实测：teen 170 件 0 越线、chibi 11 件 0 越线，四条闸全过。新增形态时在 `FORMS` 加一行即可 |
 | T67.44 | **内心档案：让"没有标准答案的问题"各有各的答案**（G66.44） | [x] | 新增 `characters/<id>/inner.json`（8 个角色 x 3 条立场 + 3 段经历，全部原创）与 `tools/persona_probe.py`：答案 = `weight x bond[关系档]`，只存立场与经历、**不存台词**。`character_probe --probe` 实测八人八字不重复（才/量/偏/吼/坐/扰/灯/圆 → 等/故/啧/又/饭/谢/看/还），八人全在档 2 改口。C 侧 `zpersona_compose()` 读 `inner.prompt.<档>.txt` 拼进提示词（`/api/persona.json` 已带该段）；`make persona-fragments` 生成、`make audit-persona` 七道闸（出处/不撞车/理由不重合/同状态同答案/会改口/片段/片段新鲜），后者接进 `make selfcheck`。`make test` 1285 项全过 |
+### T67 追加（2026-10-26 第六轮：长记忆线 T67.45 / G66.45）
+
+| 编号 | 事 | 状态 | 说明 |
+|---|---|---|---|
+| T67.45 | **长记忆落盘引擎**（`src/core/zmem.{h,c}`） | [x] | append-only `data/<角色>/memory/chronicle.zm`：32 字节头（magic `ZME1` / type / len / id / i64 t / FNV-1a 正文哈希 / aux / once-key），type 1~7（ADD/PIN/DEL/TOUCH/SALIENCE/STORY/UNPIN）。两种命运：日常事件只在检索端衰减（90 天半衰），锚点（≤12）永不淡、永远进上下文；**正文一次写成永不改写**；删除=墓碑。自述版本化三闸（≥30 天 / 重合 ≥55% / 必须引用真实未删 id）。实测：4 年 4384 条、单次回忆 0.59 ms、文件 480 003 字节、1325 项 0 失败 |
+| T67.46 | **分层召回 + K 6→8**（G66.45 的核心发现） | [x] | 长跑量出"自然提问 6/8"：K 名额被最近的事占满，最远的两件永远想不起来 ⇒ 候选按年龄桶分组、**每桶先保一条并从最老的桶保起**，剩余名额按分数补（每桶≤2），有空位再无视配额补满。`ZMEM_RECALL_K` 6→8。自然提问 6/8 → **8/8**，40 件同类小事横跨四年时最老那件仍在、块里横跨 4 个年份 |
+| T67.47 | **长跑闸 `tests/memory_soak.c`**（`make soak-memory`） | [x] | 1460 天 × 每天 4 条 + 8 个信物 + 2000 条干扰。打印「信物/距今/找回/排名/毫秒」表；红线=四年内信物全找回。另含：干扰后找回率、同题海量、锚点时长、正文不可变、重开一致性。`--character X` 可对真实角色做只读体检（会提示"有条目却零锚点"） |
+| T67.48 | **静态体检 `tools/memory_audit.py`**（`make audit-memory`） | [x] | 纯标准库：G1 结构/magic/FNV 正文哈希；G2 id 连续、锚点 ≤12；G3 自述三闸；G4 不许存秘密（sk-/api_key/token/bearer/银行卡/身份证）；G5 条数 >100 却零锚点报红；G6 单条 ≤240 字节。已接进 `make selfcheck` |
+| T67.49 | **历史导入 `tools/memory_seed.py`**（`make memory-seed-apply CH=x`） | [x] | 读 `characters/<id>/inner.json` 的 `episodes`，按序摊开时间（最近 3 天前 → 最远 240 天前），重要性由 `self.values[].weight` 换算，`once=inner:<cid>:<ep-id>` 幂等，正文不含 episode id。`--dry-run` / `--api` 可切 |
+| T67.50 | **首次启动写真实锚点** | [x] | 启动处 `zmem_add(..., ZMEM_ANCHOR, 9, "第一次见面：这一天，你把我放到了你的桌面上。", "first-launch")`，日期是真日期、once 键幂等（重启后仍 1 条） |
+| T67.51 | **`/api/memory/add` 支持 `t=`** | [x] | 导入历史必须能给过去的时间。只接受 `946684800 ≤ t ≤ now+86400`，越界回 400 + 中文错误（不许造出 1970 年的记忆） |
+| T67.52 | **把记忆真的发出去** | [x] | 原来 `q.system_prompt` 只塞人设，`zctx` 里其它块（含记忆）**根本没出网**。改成按块注册顺序拼所有 `kept=1` 的块（persona 在最前，其余带`【标题】`）。`/api/chat?dry=1` 实测 request_body 里已有「长期记忆·她一直记得」 |
+| T67.53 | **`persona=0` 不许带记忆** | [x] | 记忆块写在 `zctx` 上、上一轮的不会自己消 ⇒ 无条件重写成空。冒烟当场抓到（"裸跑"基线里混进了她的过去） |
+| T67.54 | **冒烟补长记忆 8 项** | [x] | `tools/api_smoke.py` 新增：文件打开 / 能写 / 能回忆 / 对账 / 降级要理由 / 删除落墓碑 / 删后不再召回 / 时间越界拒绝。合计 **307 项 0 不通过** |
+| T67.55 | 记忆管理界面（列表/编辑/导出） | [ ] | 只读 API 已有（`/api/memory.json`：items/anchors/deleted/stories/bytes/oldest/newest/block）；界面未做 |
+| T67.56 | 倒排索引（二元组 → id） | [ ] | 现在每次回忆线性扫全表，4 万条约几十毫秒；6000 条实测 ~1 ms，够用但会随规模退化 |
+| T67.57 | 同义词 / 别名表 | [ ] | `nimiko` 与 `miyune` 这类**专名变体**靠二元组对不上，需要别名表（写入时登记，检索时展开） |

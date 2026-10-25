@@ -32,7 +32,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments
+.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments audit-memory memory-seed soak-memory
 
 all: test
 
@@ -44,6 +44,17 @@ $(BUILD)/%.o: src/%.c
 $(BUILD)/test_core: tests/test_core.c $(CORE_SRC) $(CORE_HDR)
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) $(INC) -o $@ tests/test_core.c $(CORE_SRC) $(LDLIBS)
+
+# 长记忆"质量长跑"（T67.45 第二道闸）：5 年 x 每天 4 条 + 干扰项，
+# 打印「信物 / 距今 / 找回 / 排名 / 毫秒」的表。规则全绿 != 她记得住，
+# 这条闸量的就是**记得住**。--character 可对真实角色做只读体检。
+$(BUILD)/memory_soak: tests/memory_soak.c $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) $(INC) -o $@ tests/memory_soak.c $(CORE_SRC) $(LDLIBS)
+
+soak-memory: $(BUILD)/memory_soak
+	@echo "== 长记忆长跑 =="
+	@./$(BUILD)/memory_soak . --days 1460
 
 test: $(BUILD)/test_core
 	@echo "== 运行单元测试 =="
@@ -102,6 +113,21 @@ persona-fragments:
 audit-persona:
 	@$(PYTHON_IMG) tools/persona_probe.py --check
 
+# 长记忆体检（T67.45）：文件结构 / 正文不可变（哈希）/ 锚点上限 /
+# 自述引用与漂移 / 不许把密钥写进记忆。纯标准库，不需要 PIL，也不用手动起服务。
+# ★ 运行时的那一份在 C 侧（/api/memory.json?verify=1，冒烟里会打）；
+#   这一份是**仓库级**的：换机器、CI、提交前都能跑。data/ 不入库，没有文件也不算错。
+audit-memory:
+	@python3 tools/memory_audit.py --fail
+
+# 把角色的"遇见你之前"导入长记忆（默认只看不写）。
+# 真写：make memory-seed-apply CH=xiaoxun（需要预览正在跑）
+memory-seed:
+	@python3 tools/memory_seed.py --dry-run
+
+memory-seed-apply:
+	@python3 tools/memory_seed.py --character $(CH)
+
 # 头发层"只许是头发"的机检（T67.38）。单独一条，改任何头发件之后跑：
 # 头发里出现成块的皮肤/衣服（"假手臂"）或内部破洞，这里会当场报红。
 audit-hair:
@@ -112,6 +138,7 @@ audit-hair:
 selfcheck:
 	@python3 tools/selfcheck_repo.py --root .
 	@$(PYTHON_IMG) tools/persona_probe.py --check-fresh
+	@python3 tools/memory_audit.py --fail | tail -2
 
 # 带地址消毒器跑一遍单测：越界读写、释放后使用、内存泄漏都会当场炸出来
 $(BUILD)/test_core_asan: tests/test_core.c $(CORE_SRC) $(CORE_HDR)

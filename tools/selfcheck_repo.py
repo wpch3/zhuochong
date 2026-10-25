@@ -3389,7 +3389,9 @@ def check_contract(root):
     eps = sorted(set(re.findall(r'"(/api/[a-z_.]+)"', open(src, encoding="utf-8").read())))
     docs = ""
     for d in ("docs/ART_PARTS.md", "docs/memory/WORKFLOW.md", "docs/memory/GAPS.md",
-              "docs/memory/PROJECT_SPEC.md", "README.md", "docs/SKELETON_SYSTEM.md"):
+              "docs/memory/PROJECT_SPEC.md", "README.md", "docs/SKELETON_SYSTEM.md",
+              # 记忆相关端点写在 MEMORY_PLAN 第 8 节（那一节就是它的规格书）
+              "docs/MEMORY_PLAN.md"):
         p = os.path.join(root, d)
         if os.path.exists(p):
             docs += open(p, encoding="utf-8").read()

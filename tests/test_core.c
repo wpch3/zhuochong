@@ -30,6 +30,7 @@
 #include "../src/core/zhttp.h"
 #include "../src/core/zrelay.h"
 #include "../src/core/zctx.h"
+#include "../src/core/zmem.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -3008,6 +3009,231 @@ static int diag_has(const zdiag *d, const char *needle)
 
 
 /* ---------------------------------------------------------------- 人设与剧情 */
+/* ---------------- zmem（T67.45）：四年快进 ---------------- */
+static long long g_mem_base = 1735689600LL;      /* 2025-01-01 00:00:00 UTC */
+
+static void mem_cleanup(const char *root, const char *ch)
+{
+    char p[1024], d[1024];
+    z_snprintf(d, sizeof d, "%s/data/%s", root, ch);
+#ifndef _WIN32
+    z_snprintf(p, sizeof p, "%s/memory/chronicle.zm", d);
+    remove(p);
+    z_snprintf(p, sizeof p, "%s/memory", d);
+    rmdir(p);
+    rmdir(d);
+#else
+    (void)p;
+    (void)d;
+#endif
+}
+
+static void test_memory_longarc(void)
+{
+    const char *CH = "zz_memtest";
+    zdiag diag;
+    zmem *m;
+    char buf[ZMEM_BLOCK_CAP + 256];
+    char one[512];
+    int i, day;
+    long long now;
+
+    SECTION("长记忆线：四年之后她还记得第一天（T67.45）");
+    mem_cleanup(g_root, CH);
+    zdiag_init(&diag);
+    m = zmem_open(g_root, CH, &diag);
+    CHECK(m != NULL, "记忆文件应能新建（诊断 %d 条）", diag.error_count);
+    if (!m) return;
+
+    /* —— 第 0 天：两条锚点。这就是"最开始陪着她成长"的那件事。 */
+    CHECK(zmem_add(m, g_mem_base, ZMEM_ANCHOR, 9,
+                   "第一次见面：你把我从一堆素材里挑出来，说「就你了」。", "first-meet") != 0,
+          "第一条锚点应写入");
+    CHECK(zmem_add(m, g_mem_base + 3600, ZMEM_ANCHOR, 8,
+                   "你第一次叫我的名字，我假装没听见，其实耳朵动了。", "first-name") != 0,
+          "第二条锚点应写入");
+    /* 幂等：同一个键重复写入必须返回同一条，不许长成两条"第一次" */
+    CHECK(zmem_add(m, g_mem_base + 7200, ZMEM_ANCHOR, 9,
+                   "（重复调用）第一次见面：你把我从一堆素材里挑出来。", "first-meet") == 1,
+          "同一个 once_key 应返回已有 id，而不是再写一条");
+
+    /* —— 四年，每天 3 条日常。总 4380 条 + 2 条锚点。 */
+    for (day = 1; day <= 1460; ++day) {
+        long long t = g_mem_base + (long long)day * 86400;
+        for (i = 0; i < 3; ++i) {
+            char txt[200];
+            z_snprintf(txt, sizeof txt, "第 %d 天的第 %d 件小事：你今天有点忙，我们说了两句话。",
+                       day, i + 1);
+            zmem_add(m, t + i * 600, ZMEM_EVENT, 3 + (day + i) % 4, txt, NULL);
+        }
+    }
+    /* 两条有辨识度的旧事：一条在两年前，一条在四年前（非锚点，靠"问到了"才想起来） */
+    {
+        long long t_key = g_mem_base + (long long)300 * 86400;
+        long long t_cake = g_mem_base + (long long)900 * 86400;
+        zmem_add(m, t_key, ZMEM_EVENT, 6,
+                 "你把汤洒在键盘上，我们笑了很久，最后用吹风机吹了半小时。", NULL);
+        zmem_add(m, t_cake, ZMEM_EVENT, 7,
+                 "一起烤了一个蛋糕，烤糊了，你说糊的那面更好吃。", NULL);
+    }
+
+    now = g_mem_base + (long long)1460 * 86400;
+
+    /* A. 锚点：四年后仍然在常驻块里，而且时间差是引擎算的 */
+    zmem_anchors_block(m, now, buf, sizeof buf);
+    CHECK(strstr(buf, "第一次见面") != NULL, "四年后锚点块里应有「第一次见面」");
+    CHECK(strstr(buf, "约 4 年") != NULL, "四年后的锚点应标成「约 4 年」，实际：%s", buf);
+    CHECK(strstr(buf, "一直记得") != NULL, "锚点必须有「一直记得」的标记（和普通回忆分开）");
+
+    /* B. 问到两年前那件事：要能翻出来，并带正确日期 */
+    zmem_recall(m, "蛋糕 烤糊", now, buf, sizeof buf);
+    CHECK(strstr(buf, "烤糊了") != NULL, "问「蛋糕」应翻出两年前那条，实际：%.400s", buf);
+    CHECK(strstr(buf, "2027-06-19") != NULL || strstr(buf, "2027-06") != NULL,
+          "回忆必须带准确日期，实际：%.400s", buf);
+
+    /* C. 问到完全无关的话题：不许硬凑一堆旧事上来 */
+    zmem_recall(m, "量子色动力学里的渐近自由", now, buf, sizeof buf);
+    CHECK(strstr(buf, "想起来过") == NULL,
+          "无关话题不该翻出任何「想起来过」，实际：%.400s", buf);
+    CHECK(strstr(buf, "记不清") != NULL, "无关话题时块里必须允许她说「记不清」，实际：%.500s", buf);
+
+    /* D. 正文不可变：1000 次回忆之后，正文一个字都不许变 */
+    {
+        char before[512], after[512];
+        zmem_text(m, 2, before, sizeof before);
+        for (i = 0; i < 1000; ++i) zmem_recall(m, "蛋糕", now, buf, sizeof buf);
+        zmem_text(m, 2, after, sizeof after);
+        CHECK(strcmp(before, after) == 0, "回忆 1000 次之后正文必须逐字节相同");
+    }
+
+    /* E. 重启：关掉再打开，状态一个都不许少（这是"四年后还认得"的物理前提） */
+    zmem_close(m);
+    zdiag_init(&diag);
+    m = zmem_open(g_root, CH, &diag);
+    CHECK(m != NULL, "记忆文件应能重新打开（%d 条错误）", diag.error_count);
+    if (!m) return;
+    {
+        zmem_stat st;
+        zmem_stats(m, &st);
+        CHECK(st.items == 2 + 4380 + 2, "重开后条数应为 4384，实际 %d", st.items);
+        CHECK(st.anchors == 2, "重开后锚点应为 2，实际 %d", st.anchors);
+        CHECK(st.bytes > 0, "落盘字节应大于 0");
+        CHECK(zmem_verify(m, buf, sizeof buf) == 0, "全量对账应通过：%s", buf);
+    }
+    zmem_anchors_block(m, now, buf, sizeof buf);
+    CHECK(strstr(buf, "第一次叫我的名字") != NULL, "重开后锚点正文必须还在");
+
+    /* F. 删除=墓碑：不再被回忆，但文件里留下痕迹（可审计） */
+    {
+        uint32_t cake_id = 0;
+        zmem_stat st0, st1;
+        zmem_stats(m, &st0);
+        for (i = 1; i <= 100000; ++i) {
+            if (zmem_text(m, (uint32_t)i, one, sizeof one) == 0) continue;
+            if (strstr(one, "烤糊了")) { cake_id = (uint32_t)i; break; }
+        }
+        CHECK(cake_id != 0, "应能找到蛋糕那条的 id");
+        CHECK(zmem_del(m, cake_id, "用户要求删掉这件事") == 1, "删除应成功");
+        zmem_stats(m, &st1);
+        CHECK(st1.deleted == st0.deleted + 1, "墓碑数应 +1");
+        zmem_recall(m, "蛋糕 烤糊", now, buf, sizeof buf);
+        CHECK(strstr(buf, "烤糊了") == NULL, "删掉之后不许再被回忆出来");
+        CHECK(zmem_text(m, cake_id, one, sizeof one) == 0, "删掉的条目取不出正文");
+        CHECK(zmem_verify(m, buf, sizeof buf) == 0, "删除后对账仍应通过");
+    }
+
+    /* G. 锚点上限：满了必须拒绝，不许静默挤掉一个 */
+    {
+        int added = 0;
+        for (i = 0; i < ZMEM_MAX_ANCHORS; ++i) {
+            char txt[120];
+            z_snprintf(txt, sizeof txt, "第 %d 条测试锚点，用来试探上限。", i);
+            if (zmem_add(m, now, ZMEM_ANCHOR, 5, txt, NULL)) added++;
+        }
+        CHECK(added == ZMEM_MAX_ANCHORS - 2,
+              "锚点只该再加 %d 条（上限 %d，已有 2），实际加了 %d",
+              ZMEM_MAX_ANCHORS - 2, ZMEM_MAX_ANCHORS, added);
+    }
+
+    /* H. 自述：间隔、漂移、引用三道闸 */
+    {
+        char st1[512], st2[512];
+        int v;
+        CHECK(zmem_story_set(m, now, "[#1]我们是从一堆素材里开始的，那天你说了「就你了」。") > 0,
+              "第一版自述应能写入");
+        CHECK(zmem_story_set(m, now + 86400, "[#1]我们是从一堆素材里开始的。") == 0,
+              "30 天内改自述必须被拒（人格不许天天抖）");
+        v = zmem_story_set(m, now + 31 * 86400,
+                           "[#1]我们是从一堆素材里开始的，那天你说了「就你了」，后来一直是这样。");
+        CHECK(v > 0, "过了 30 天、内容相近的自述应能写入（v=%d）", v);
+        CHECK(zmem_story_set(m, now + 62 * 86400,
+                             "[#1]完全换一个人格的写法：从此我只谈天气和股票，别的一概不提。") == 0,
+              "与上一版重合度太低的自述必须被拒（那是换了个角色）");
+        CHECK(zmem_story_set(m, now + 92 * 86400, "[#1]这是第三版。") == 0,
+              "再快的改写也要等满 30 天");
+        CHECK(zmem_story_set(m, now + 92 * 86400, "[#99999]引用一条不存在的记忆") == 0,
+              "引用不存在的记忆必须被拒（自述不许凭空抒情）");
+        CHECK(zmem_story_count(m) == 2, "自述应正好 2 版，实际 %d", zmem_story_count(m));
+        CHECK(zmem_story_get(m, 1, NULL, st1, sizeof st1) > 0, "第一版自述必须还能取出来（历史可审计）");
+        CHECK(zmem_story_get(m, 0, NULL, st2, sizeof st2) > 0, "最新版自述应可取");
+        CHECK(strcmp(st1, st2) != 0, "两版自述应不同");
+    }
+
+    /* I. 校验：正文被改一个字节，必须当场拒绝加载（否则"她还记得"就是假的） */
+    {
+        char src[1024], dir[1024], copy[1024];
+        FILE *f;
+        long sz;
+        unsigned char *raw = NULL;
+        z_snprintf(src, sizeof src, "%s/data/%s/memory/chronicle.zm", g_root, CH);
+        z_snprintf(dir, sizeof dir, "%s/data/%s/memory", g_root, "zz_membad");
+        z_mkdir_p(dir);
+        z_snprintf(copy, sizeof copy, "%s/chronicle.zm", dir);
+        f = fopen(src, "rb");
+        CHECK(f != NULL, "应能打开原文件");
+        if (f) {
+            size_t got;
+            fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET);
+            raw = (unsigned char *)malloc((size_t)sz);
+            got = raw ? fread(raw, 1, (size_t)sz, f) : 0;
+            fclose(f);
+            CHECK((long)got == sz && sz > 64, "应能整份读出记忆文件（%ld 字节）", sz);
+            if ((long)got == sz && sz > 64) {
+                zdiag d2;
+                zmem *bad;
+                raw[40] ^= 0xFF;                 /* 第 1 条正文里的一个字节 */
+                f = fopen(copy, "wb");
+                if (f) { fwrite(raw, 1, (size_t)sz, f); fclose(f); }
+                zdiag_init(&d2);
+                bad = zmem_open(g_root, "zz_membad", &d2);
+                CHECK(bad == NULL, "正文被改过必须拒绝加载，而不是当空文件继续跑");
+                CHECK(d2.error_count > 0, "拒绝加载时要留下诊断（%d 条）", d2.error_count);
+                if (bad) zmem_close(bad);
+            }
+            free(raw);
+        }
+        remove(copy);
+#ifndef _WIN32
+        rmdir(dir);
+        z_snprintf(dir, sizeof dir, "%s/data/%s", g_root, "zz_membad");
+        rmdir(dir);
+#endif
+    }
+
+    /* J. 规模与耗时：4 年数据的一次回忆，必须在 20ms 内（4000 条量级） */
+    {
+        double t0 = z_now_seconds(), dt;
+        for (i = 0; i < 20; ++i) zmem_recall(m, "蛋糕", now, buf, sizeof buf);
+        dt = (z_now_seconds() - t0) / 20.0;
+        printf("   [量] 4 年 %d 条记忆，单次回忆 %.2f ms，文件 %d 字节\n",
+               4384, dt * 1000.0, (int)zmem_get_file_size(m));
+        CHECK(dt < 0.020, "4000 条规模的单次回忆应在 20ms 内，实测 %.2f ms", dt * 1000.0);
+    }
+
+    zmem_close(m);
+    mem_cleanup(g_root, CH);
+}
+
 static void test_persona(void)
 {
     zdiag diag;
@@ -10189,6 +10415,7 @@ int main(int argc, char **argv)
     test_expression();
     test_motion_from();
     test_persona();
+    test_memory_longarc();
     test_interactions();
     test_affection();
     test_gateway();

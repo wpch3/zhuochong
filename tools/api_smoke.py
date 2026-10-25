@@ -57,6 +57,17 @@ class Api:
             print("    （请求失败）", path, e)
             return False
 
+    def json_any(self, path):
+        """4xx 也要拿到响应体（有些端点用 400 表示"合法地拒绝"，见记忆写入的 t 越界）。"""
+        try:
+            st, b = self.get(path)
+            return st, json.loads(b.decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            try:
+                return e.code, json.loads(e.read().decode("utf-8"))
+            except Exception:                        # noqa: BLE001
+                return e.code, {}
+
     def code(self, path):
         """只要状态码（404 也算正常返回，不当异常）。"""
         try:
@@ -1948,6 +1959,40 @@ def run(base, root):
     check("测试台有「表情 × 口型」分层看板",
           b"mx-table" in page and b"mixRefresh" in js,
           "test.html %d 字节 / test.js %d 字节" % (len(page), len(js)))
+
+    print("== 长记忆（T67.45）==")
+    # 这一节守的是"四年后还记得"最容易被悄悄弄坏的三处：
+    #   ① 记忆文件没打开 → 她失忆但界面一切正常（必须在这里报出来）；
+    #   ② 写进去的东西回忆不到 → 记忆是个黑洞；
+    #   ③ 删掉之后还能被回忆到 → 删除是假的。
+    mem = a.json("/api/memory.json")
+    check("记忆文件是打开的", mem.get("open") is True, str(mem.get("error", "")))
+    key = "smoke:%d" % int(time.time())
+    text = "冒烟测试写进来的一条记忆，验证回忆链路（%s）" % key
+    add = a.json("/api/memory/add?kind=0&salience=6&once=%s&text=%s"
+                 % (urllib.parse.quote(key), urllib.parse.quote(text)))
+    check("能写进一条记忆", add.get("ok") is True, str(add))
+    mid = add.get("id")
+    rc = a.json("/api/memory.json?q=%s" % urllib.parse.quote("冒烟测试"))
+    check("问一句能把它回忆出来", "冒烟测试" in rc.get("block", ""),
+          "block=%s" % rc.get("block", "")[:80])
+    ver = a.json("/api/memory.json?verify=1")
+    check("全量对账通过（正文没被改过）", ver.get("verify") == 0, str(ver.get("why")))
+    st_bad, bad = a.json_any("/api/memory/pin?id=%s&unpin=1" % mid)
+    check("降级锚点不带理由要被拒（理由必须落盘）",
+          st_bad == 400 and bad.get("ok") is False, "HTTP %s %s" % (st_bad, bad))
+    dele = a.json("/api/memory/del?id=%s&reason=%s"
+                  % (mid, urllib.parse.quote("冒烟测试收尾")))
+    check("能删除（落墓碑）", dele.get("ok") is True, str(dele))
+    # ★ 按**这一轮的唯一键**判，不按"冒烟测试"这四个字判：
+    #   上一轮崩掉留下的同类条目还在文件里（墓碑不能自动清，那是用户的数据），
+    #   用泛词判会把这轮的删除判成失败（第一版就是这样误报的）。
+    rc2 = a.json("/api/memory.json?q=%s" % urllib.parse.quote("冒烟测试"))
+    check("删掉之后回忆里不许再有", key not in rc2.get("block", ""),
+          "block=%s" % rc2.get("block", "")[:80])
+    st_t, tbad = a.json_any("/api/memory/add?text=x&t=100")
+    check("时间越界要被拒（不许造出 1970 年的记忆）",
+          st_t == 400 and tbad.get("ok") is False, "HTTP %s %s" % (st_t, tbad))
 
 
 def main():

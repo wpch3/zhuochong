@@ -43,6 +43,7 @@
 #include "../core/zctx.h"
 #include "../core/zconfig.h"
 #include "../core/zpersona.h"
+#include "../core/zmem.h"
 #include "../core/zjson.h"
 
 #include <stdio.h>
@@ -88,6 +89,9 @@ static double pet_now(void)
 }
 
 static zpet *g_pet = NULL;
+/* 长记忆线（T67.45）。NULL = 没打开（data/ 不可写等）—— 这时她只是失忆，
+   不许因此起不来，但必须能在 /api/memory.json 里看见 open:false。 */
+static zmem *g_mem = NULL;
 /* 网关（G51）：进程启动时读一次路由表。读不到不影响桌宠本体跑，
    只是 /api/gateway.json 会如实说"没加载"。 */
 static zgateway g_gw;
@@ -496,6 +500,16 @@ static int dispatch_slow(zsock fd, const http_req *r)
 static void handle_request(zsock fd, const http_req *r)
 {
     char buf[2048];
+    /* 长记忆的两块上下文（T67.45）：锚点块 + 相关回忆块。
+       放函数作用域是因为聊天handler里有多层嵌套块，声明在里层用不到外层。 */
+    char mem_anchor[ZMEM_BLOCK_CAP + 64], mem_recall[ZMEM_BLOCK_CAP + 64];
+    /* 真正发出去的系统提示词（T67.45 顺手修的既有缺陷）。
+       ★ 原来 `q.system_prompt` 只塞了人设那段，zctx 里其它块**根本不上路** ——
+         清单上写着"带上了"，实际没发出去。人设之外最先需要它的是长期记忆：
+         记忆块只在清单里存在、不进请求，等于她压根想不起来。
+         现在按清单里 kept=1 的块顺序拼，和上面 history 那条规矩一致：
+         清单写带了几块，出网的就得是那几块。 */
+    char sysbuf[12288];
     if (strcmp(r->path, "/") == 0 || strcmp(r->path, "/index.html") == 0) {
         char p[1024];
         z_path_join(p, sizeof(p), g_frames_dir, "index.html");
@@ -1062,6 +1076,164 @@ static void handle_request(zsock fd, const http_req *r)
             off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
                        "%s{\"id\":\"%s\",\"name\":\"%s\"}",
                        k ? "," : "", zp.lib.presets[k].id, zp.lib.presets[k].name);
+        z_snprintf(body + off, sizeof(body) - (size_t)off, "]}");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/memory.json") == 0) {
+        /* 长记忆线的观察窗（T67.45）。三种问法：
+             ?verify=1        全量对账（正文被改一个字节就报出来）
+             ?q=<一句话>      她此刻会想起什么（原样打印给模型的那一段）
+             其它             统计 + 锚点 + 最近 n 条
+           ★ 这个端点只读。写入走 /api/memory/add|del|pin，删除必须带理由。 */
+        static char body[16384];
+        char q[512], blk[ZMEM_BLOCK_CAP + 256];
+        zmem_stat st;
+        int off = 0, n = qint(r, "n", 12);
+        qstr(r, "q", q, sizeof q);
+        if (!g_mem) {
+            send_text(fd, 200, "application/json",
+                      "{\"ok\":false,\"open\":false,\"error\":\"记忆文件没打开（data/ 不可写？见 logs/preview.log）\"}");
+            return;
+        }
+        if (qint(r, "verify", 0)) {
+            char why[192], escw[1024];
+            int rc;
+            why[0] = 0;
+            LOCK();
+            rc = zmem_verify(g_mem, why, sizeof why);
+            UNLOCK();
+            zjson_escape(why, escw, sizeof escw);
+            off = (int)z_snprintf(body, sizeof body,
+                     "{\"ok\":%s,\"open\":true,\"verify\":%d,\"why\":\"%s\"}",
+                     rc == 0 ? "true" : "false", rc, escw);
+            (void)off;
+            send_text(fd, 200, "application/json", body);
+            return;
+        }
+        LOCK();
+        zmem_stats(g_mem, &st);
+        blk[0] = 0;
+        if (q[0]) zmem_recall(g_mem, q, (int64_t)time(NULL), blk, sizeof blk);
+        else      zmem_anchors_block(g_mem, (int64_t)time(NULL), blk, sizeof blk);
+        UNLOCK();
+        {
+            char dates[24], datee[24], escq[1900];
+            zjson_escape(blk, escq, sizeof escq);
+            zmem_date_text(st.oldest, dates, sizeof dates);
+            zmem_date_text(st.newest, datee, sizeof datee);
+            off = (int)z_snprintf(body, sizeof body,
+                     "{\"ok\":true,\"open\":true,\"items\":%d,\"anchors\":%d,\"deleted\":%d,"
+                     "\"stories\":%d,\"bytes\":%ld,\"oldest\":\"%s\",\"newest\":\"%s\","
+                     "\"tz_offset_min\":%d,\"query\":\"%s\",\"block\":\"%s\",\"list\":",
+                     st.items, st.anchors, st.deleted, st.stories, st.bytes,
+                     st.items ? dates : "", st.items ? datee : "",
+                     zmem_tz_offset(), q, escq);
+        }
+        {
+            char items[8192];
+            LOCK();
+            zmem_export_json(g_mem, items, sizeof items, n, qint(r, "with_deleted", 0));
+            UNLOCK();
+            off += (int)z_snprintf(body + off, sizeof body - (size_t)off, "%s}", items);
+        }
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/memory/add") == 0) {
+        /* 写入一条。默认不自动记录任何对话（长期记忆默认关，见 MEMORY_PLAN）——
+           只有用户显式要她记住，才会走到这里。 */
+        char text[512], once[96], ts[32];
+        int kind = qint(r, "kind", 0), sal = qint(r, "salience", 5);
+        int64_t when = (int64_t)time(NULL);
+        uint32_t id;
+        if (!g_mem) { send_text(fd, 200, "application/json", "{\"ok\":false,\"open\":false}"); return; }
+        if (!qstr(r, "text", text, sizeof text) || !text[0]) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 text\"}");
+            return;
+        }
+        qstr(r, "once", once, sizeof once);
+        /* 可选 t（unix 秒）：导入历史经历时用。★ 只接受**过去**的时间，
+           而且不能早于 2000 年 —— 否则一个笔误就能造出"公元 1900 年我们见过"，
+           那种记忆一旦落盘就永远洗不掉（正文不可变）。 */
+        if (qstr(r, "t", ts, sizeof ts) && ts[0]) {
+            long long v = strtoll(ts, NULL, 10);
+            long long nowq = (long long)time(NULL);
+            if (v >= 946684800LL && v <= nowq + 86400LL) when = (int64_t)v;
+            else {
+                send_text(fd, 400, "application/json",
+                          "{\"ok\":false,\"error\":\"t 越界：只接受 2000 年之后、且不晚于明天的过去时间\"}");
+                return;
+            }
+        }
+        LOCK();
+        id = zmem_add(g_mem, when, kind, sal, text, once[0] ? once : NULL);
+        UNLOCK();
+        if (!id) {
+            send_text(fd, 200, "application/json",
+                      "{\"ok\":false,\"error\":\"没写进去：锚点已满（要先降级一条）或记忆条目到上限\"}");
+            return;
+        }
+        {
+            char body[160];
+            z_snprintf(body, sizeof body, "{\"ok\":true,\"id\":%u}", id);
+            send_text(fd, 200, "application/json", body);
+        }
+        return;
+    }
+    if (strcmp(r->path, "/api/memory/del") == 0 ||
+        strcmp(r->path, "/api/memory/pin") == 0) {
+        char reason[256];
+        int id = qint(r, "id", 0), rc;
+        int ispin = (strcmp(r->path, "/api/memory/pin") == 0);
+        int unpin = qint(r, "unpin", 0);
+        if (!g_mem) { send_text(fd, 200, "application/json", "{\"ok\":false,\"open\":false}"); return; }
+        if (id <= 0) { send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 id\"}"); return; }
+        qstr(r, "reason", reason, sizeof reason);
+        if (ispin && unpin && !reason[0]) {
+            /* 升锚点可以不写理由；降级必须写 —— 否则以后没人解释得清"她为什么不再提这件事" */
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"降级锚点必须写 reason\"}");
+            return;
+        }
+        LOCK();
+        if (!ispin)      rc = zmem_del(g_mem, (uint32_t)id, reason);
+        else if (unpin)  rc = zmem_unpin(g_mem, (uint32_t)id, reason);
+        else             rc = zmem_pin(g_mem, (uint32_t)id);
+        UNLOCK();
+        {
+            char body[160];
+            z_snprintf(body, sizeof body, "{\"ok\":%s}", rc ? "true" : "false");
+            send_text(fd, rc ? 200 : 400, "application/json", body);
+        }
+        return;
+    }
+    if (strcmp(r->path, "/api/memory/story") == 0) {
+        /* 她的自述：最新一版 + 历史版本（历史都在，能回答"她三个月前是怎么说的"） */
+        static char body[8192];
+        char cur[1024], esc[2048];
+        int64_t stv = 0;
+        int off = 0, k, cnt;
+        if (!g_mem) { send_text(fd, 200, "application/json", "{\"ok\":false,\"open\":false}"); return; }
+        LOCK();
+        cnt = zmem_story_count(g_mem);
+        cur[0] = 0;
+        zmem_story_get(g_mem, 0, &stv, cur, sizeof cur);
+        UNLOCK();
+        zjson_escape(cur, esc, sizeof esc);
+        off = (int)z_snprintf(body, sizeof body,
+                 "{\"ok\":true,\"versions\":%d,\"latest_t\":%lld,\"latest\":\"%s\",\"history\":[",
+                 cnt, (long long)stv, esc);
+        for (k = 1; k <= cnt && off < (int)sizeof(body) - 512; ++k) {
+            char v[1024], e2[2048];
+            int64_t vt = 0;
+            LOCK();
+            zmem_story_get(g_mem, k, &vt, v, sizeof v);
+            UNLOCK();
+            zjson_escape(v, e2, sizeof e2);
+            off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                       "%s{\"version\":%d,\"t\":%lld,\"text\":\"%s\"}",
+                       k > 1 ? "," : "", k, (long long)vt, e2);
+        }
         z_snprintf(body + off, sizeof(body) - (size_t)off, "]}");
         send_text(fd, 200, "application/json", body);
         return;
@@ -1732,18 +1904,68 @@ static void handle_request(zsock fd, const http_req *r)
                 dest_local = (first && first->local && tries <= 1) ? 1 : 0;
             }
 
+            /* 长记忆（T67.45）：在拿 AILOCK 之前算好，避免两把锁嵌套。
+               ★ 分成两块，去向不同：
+                 · memory_anchor —— 锚点，**pinned**：预算再紧也不许裁。
+                   裁掉它就等于「四年后忘了第一天」，那正是这条路要防的事。
+                 · memory_recall —— 这次想起来的相关旧事，可裁。
+                   裁掉的只是「这次没想起来」，不是「她这个人」。 */
+            mem_anchor[0] = mem_recall[0] = 0;
+            /* ★ persona=0 是"完全裸跑"的对照档（冒烟里用它验证不带人设），
+               那就连记忆也不许带 —— 否则"基线"里混进了她的过去，
+               对照就失去意义了。 */
+            if (g_mem && want_persona) {
+                int64_t mt = (int64_t)time(NULL);
+                LOCK();
+                zmem_anchors_block(g_mem, mt, mem_anchor, sizeof mem_anchor);
+                zmem_recall_related(g_mem, text, mt, mem_recall, sizeof mem_recall);
+                UNLOCK();
+            }
+
             AILOCK();
             zctx_set_block(&g_ctx, "persona", "角色设定",
                            prompt[0] ? "characters/<角色>/persona.json" : "(没带)",
                            prompt, 100, 1);
+            /* ★ 必须**无条件**重写这两块：块是存在 g_ctx 上的，上一轮写进去的
+               锚点不会自己消失。带 persona=0 跑基线时若沿用上一轮的块，
+               "裸跑"里就会混进她的过去（冒烟正是这样抓到过一次）。
+               空文本照样写，拼提示词那一步会跳过空块。 */
+            zctx_set_block(&g_ctx, "memory_anchor", "长期记忆·她一直记得",
+                           "data/<角色>/memory/chronicle.zm", mem_anchor, 95, 1);
+            zctx_set_block(&g_ctx, "memory_recall", "长期记忆·这次想起来的",
+                           "data/<角色>/memory/chronicle.zm", mem_recall, 60, 0);
             if (!keep) zctx_clear_turns(&g_ctx);
             zctx_build(&g_ctx, cap_s, budget, dest_local);
             AIUNLOCK();
         }
 
+        /* 系统提示词 = 清单判定"要带上"的那几块，按注册顺序拼。
+           人设块照旧放最前（它是身份），其余块各带一行标题。 */
+        sysbuf[0] = 0;
+        AILOCK();
+        {
+            size_t off = 0;
+            int bi;
+            for (bi = 0; bi < zctx_block_count(&g_ctx) && off + 8 < sizeof sysbuf; ++bi) {
+                const zctx_block *b = zctx_block_at(&g_ctx, bi);
+                size_t n;
+                if (!b || !b->kept || !b->text || !b->text[0]) continue;
+                if (strcmp(b->id, "persona") == 0) {
+                    n = (size_t)z_snprintf(sysbuf + off, sizeof sysbuf - off, "%s\n", b->text);
+                } else {
+                    n = (size_t)z_snprintf(sysbuf + off, sizeof sysbuf - off,
+                                           "【%s】\n%s\n", b->title, b->text);
+                }
+                if (off + n >= sizeof sysbuf) { sysbuf[off] = 0; break; }
+                off += n;
+            }
+        }
+        AIUNLOCK();
+
         memset(&q, 0, sizeof(q));
         q.cap = cap_s;
-        q.system_prompt = prompt[0] ? prompt : NULL;
+        q.system_prompt = sysbuf[0] ? sysbuf
+                        : (prompt[0] ? prompt : NULL);
         q.user_text = text;
         /* 把组装结果摊成 zrelay 要的数组。注意只取 zctx 判定"要带上"的那几轮 ——
            清单上写带了几轮，这里就必须是几轮，两边同源。 */
@@ -2429,6 +2651,36 @@ int main(int argc, char **argv)
         return 3;
     }
     g_start_time = pet_now();
+
+    /* 长记忆线：四年后还认得你的物理前提就是它。
+       ★ 打不开**不阻塞启动**（记忆只是失忆，不是死机），但一定要在
+         /api/memory.json 里如实报 open:false —— 悄悄失忆比崩溃更糟。 */
+    {
+        zdiag md;
+        zdiag_init(&md);
+        g_mem = zmem_open(g_cfg.root_dir, zpet_character(g_pet), &md);
+        if (!g_mem) {
+            ZLOGW("memory", "长记忆打不开，本次不记也不回忆（见 /api/memory.json）");
+            zdiag_print(&md, stderr);
+        } else {
+            zmem_stat st;
+            char a[24], b[24];
+            zmem_stats(g_mem, &st);
+            zmem_date_text(st.oldest, a, sizeof a);
+            zmem_date_text(st.newest, b, sizeof b);
+            /* ★ 首次启动写一条锚点。这是**真实发生的事**（引擎知道今天是什么日子），
+               不是编的剧情。once 键保证这辈子只写一次 —— 四年后她提起"那天你把我
+               放到桌面上"，日期是真的。 */
+            zmem_add(g_mem, (int64_t)time(NULL), ZMEM_ANCHOR, 9,
+                     "第一次见面：这一天，你把我放到了你的桌面上。", "first-launch");
+            zmem_stats(g_mem, &st);
+            zmem_date_text(st.oldest, a, sizeof a);
+            zmem_date_text(st.newest, b, sizeof b);
+            ZLOGI("memory", "长记忆 %d 条（锚点 %d、墓碑 %d、自述 %d 版），%s ~ %s，%ld 字节",
+                  st.items, st.anchors, st.deleted, st.stories,
+                  st.items ? a : "-", st.items ? b : "-", st.bytes);
+        }
+    }
 
     /* 网关路由表：读不到只是平台功能不可用，桌宠本体照常跑。
        所以这里不 return，只把失败如实记下来——/api/gateway.json 会报 loaded:false。 */
