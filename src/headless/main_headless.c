@@ -910,6 +910,63 @@ static void handle_request(zsock fd, const http_req *r)
         }
         return;
     }
+    if (strcmp(r->path, "/api/part") == 0) {
+        /* T67.1 分层隔离探针：关掉一件 / 只看一件。
+           ?id=<部件>&vis=0|1|2   （0 隐藏、1 正常、2 隔离只看它）
+           ?all=1                 全部恢复
+           ?list=1                列出全部部件与当前可见性
+           它只影响"画不画"，不碰遮罩缓冲、命中区和参数 —— 是一个观察窗。 */
+        char id[96];
+        int list = qint(r, "list", 0);
+        int all = qint(r, "all", 0);
+        LOCK();
+        if (list) {
+            char body[8192];
+            int n = 0, k, np = zpet_part_count(g_pet);
+            n += z_snprintf(body + n, sizeof body - n, "{\"ok\":true,\"isolating\":%d,\"parts\":[",
+                            zpet_vis_isolating(g_pet));
+            for (k = 0; k < np && n < (int)sizeof body - 80; ++k) {
+                n += z_snprintf(body + n, sizeof body - n, "%s{\"id\":\"%s\",\"vis\":%d}",
+                                k ? "," : "", zpet_part_id(g_pet, k), zpet_part_vis(g_pet, k));
+            }
+            n += z_snprintf(body + n, sizeof body - n, "]}");
+            UNLOCK();
+            send_text(fd, 200, "application/json", body);
+            return;
+        }
+        if (all) {
+            zpet_vis_clear(g_pet);
+            zpet_tick(g_pet, pet_now());
+            UNLOCK();
+            send_text(fd, 200, "application/json", "{\"ok\":true,\"cleared\":true}");
+            return;
+        }
+        if (!qstr(r, "id", id, sizeof id) || !id[0]) {
+            UNLOCK();
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 id\"}");
+            return;
+        }
+        {
+            int vis = qint(r, "vis", 0);
+            int rc = zpet_part_vis_set(g_pet, id, vis);
+            if (rc == 0) zpet_tick(g_pet, pet_now());
+            UNLOCK();
+            if (rc != 0) {
+                char body2[192];
+                z_snprintf(body2, sizeof body2,
+                           "{\"ok\":false,\"error\":\"没有这个部件（或 vis 越界）\",\"id\":\"%s\"}", id);
+                send_text(fd, 404, "application/json", body2);
+            } else {
+                char body2[224];
+                z_snprintf(body2, sizeof body2,
+                           "{\"ok\":true,\"id\":\"%s\",\"vis\":%d,\"isolating\":%d}",
+                           id, vis, zpet_vis_isolating(g_pet));
+                send_text(fd, 200, "application/json", body2);
+            }
+        }
+        return;
+    }
+
     if (strcmp(r->path, "/api/mask.png") == 0) {
         /* G66.13 调试图：把「某个被裁部件这一帧看到的遮罩」直接出一张 PNG。
            ?id= 必填（挂 mask 的部件，如 eye_l_base）；?s= 同 frame.png。 */

@@ -46,6 +46,14 @@ int   zpet_tick(zpet *p, double now);
 const zimg *zpet_frame(zpet *p, int *out_w, int *out_h);
 /* G66.13 调试图：某部件这一帧的裁切遮罩（白 = 可见），帧尺寸。 */
 const zimg *zpet_mask_frame(zpet *p, const char *part_id, int *out_w, int *out_h);
+/* 分层隔离探针（T67.1）：mode 0 = 隐藏、1 = 正常、2 = 只显示它；观察窗专用，
+   不影响遮罩缓冲/命中/参数求值。 */
+int         zpet_part_vis_set(zpet *p, const char *id, int mode);
+void        zpet_vis_clear(zpet *p);
+int         zpet_vis_isolating(const zpet *p);
+int         zpet_part_count(const zpet *p);
+const char *zpet_part_id(const zpet *p, int i);
+int         zpet_part_vis(const zpet *p, int i);
 
 /* --------------------------------------------------------------- 信息 */
 const char *zpet_character(const zpet *p);

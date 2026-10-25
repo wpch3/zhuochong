@@ -576,6 +576,15 @@ struct zrig {
     int     nparts;
     int     order[ZRIG_MAX_PARTS];   /* 按 layer 升序的绘制顺序 */
 
+    /* T67.1 分层隔离探针（QA 用，不属于美术管线）
+       vis_override[i]: 0 = 跟随 rig（默认）、1 = 强制隐藏、2 = 隔离显示（只看它）。
+       vis_isolate: 1 表示除了 vis_override==2 的件以外全部隐藏。
+       ★ 只影响**画面上画不画**，不影响遮罩缓冲（build_maskbuf 照常拿遮罩件），
+         也不影响命中区/参数求值 —— 目的是"关掉一件看它到底画在哪"，
+         所以它必须是一个**观察窗**，不能顺手改到状态机。 */
+    unsigned char vis_override[ZRIG_MAX_PARTS];
+    int           vis_isolate;
+
     zaction actions[ZRIG_MAX_ACTIONS];
     int     nactions;
     int     motion3_count;               /* 其中多少条来自外部 .motion3（T66.21） */
@@ -4782,6 +4791,59 @@ const char *zrig_part_id(const zrig *r, int i)
     return r->parts[i].id;
 }
 
+/* ------------------------------------------------- T67.1 分层隔离探针 */
+/* 为什么需要它：这一轮查"这块青色属于谁"只能靠反算精灵坐标绕过去（G66.24/25/26）。
+   有了这套开关，"关掉一件再看"就是一条命令的事，不用猜、不用改素材。 */
+
+static int vis_hidden(const zrig *r, int pi)
+{
+    if (!r || pi < 0 || pi >= r->nparts) return 0;
+    if (r->vis_override[pi] == 1) return 1;
+    if (r->vis_isolate && r->vis_override[pi] != 2) return 1;
+    return 0;
+}
+
+/* mode: 0 = 隐藏、1 = 正常、2 = 只显示它（隔离）；返回 0 成功、-1 没这个件 */
+int zrig_part_vis_set(zrig *r, const char *id, int mode)
+{
+    int pi;
+    if (!r || !id) return -1;
+    pi = find_part(r, id);
+    if (pi < 0) return -1;
+    if (mode < 0 || mode > 2) return -2;
+    if (mode == 2) {
+        memset(r->vis_override, 0, sizeof(r->vis_override));
+        r->vis_isolate = 1;
+        r->vis_override[pi] = 2;
+    } else if (mode == 1) {
+        /* 恢复这一件：如果当前处于隔离态，解除隔离（否则它仍然不会出现） */
+        r->vis_isolate = 0;
+        r->vis_override[pi] = 0;
+        memset(r->vis_override, 0, sizeof(r->vis_override));
+    } else {
+        r->vis_override[pi] = 1;
+    }
+    return 0;
+}
+
+/* 全部恢复默认（-1 清空所有覆盖与隔离） */
+void zrig_vis_clear(zrig *r)
+{
+    if (!r) return;
+    memset(r->vis_override, 0, sizeof(r->vis_override));
+    r->vis_isolate = 0;
+}
+
+int zrig_part_vis(const zrig *r, int pi)
+{
+    if (!r || pi < 0 || pi >= r->nparts) return -1;
+    if (r->vis_override[pi] == 2) return 2;
+    if (vis_hidden(r, pi)) return 0;
+    return 1;
+}
+
+int zrig_vis_isolating(const zrig *r) { return r ? r->vis_isolate : 0; }
+
 const char *zrig_action_id_at(const zrig *r, int i)
 {
     if (!r || i < 0 || i >= r->nactions) return "";
@@ -7013,6 +7075,7 @@ static void render_band(zband *b)
         zpart *p = &r->parts[pi];
         zdrawst st;
         zimg *target = &b->fb;
+        if (vis_hidden(r, pi)) continue;      /* T67.1 探针：被关掉的件不画 */
         if (!compute_draw_state(r, pi, b->scale, b->blink, b->a, &st)) continue;
         if (p->mask_only) continue;      /* 只当遮罩用的部件不出现在画面上 */
 

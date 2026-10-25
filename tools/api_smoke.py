@@ -1852,6 +1852,56 @@ def run(base, root):
     a.hit("/api/blink?on=1")
     a.hit("/api/blink?v=auto")
 
+    print("== 分层隔离探针 /api/part（T67.1：关掉一件再看它画在哪）==")
+    # 为什么这条要进冒烟：这一轮查"这块青色属于谁"只能靠反算精灵坐标绕（G66.24/25/26）。
+    # 有了探针，"关掉一件再看"就是一条命令；探针坏了就等于失去了唯一的观察窗，
+    # 而且它是**会改画面**的接口 —— 用完不恢复会污染后面所有用例，所以必须连恢复一起验。
+    a.hit("/api/ambient?on=0")
+    a.hit("/api/blink?on=0")
+    a.hit("/api/param?all=1")
+    a.hit("/api/pause?on=1&t=2")
+    a.hit("/api/part?all=1")
+    try:
+        st, body = a.get("/api/part?list=1")
+        listing = json.loads(body.decode("utf-8")) if st == 200 else {}
+    except Exception:                                # noqa: BLE001
+        listing = {}
+    ids = [p.get("id") for p in listing.get("parts", [])]
+    check("/api/part?list 列出全部部件", len(ids) > 50 and "seg_head" in ids, "%d 件" % len(ids))
+
+    def frame_alpha():
+        a.hit("/api/step?n=2")
+        _, png = a.get("/api/frame.png?t=5")
+        return Image.open(io.BytesIO(png)).convert("RGBA").split()[3]
+
+    try:
+        _, body = a.get("/api/part?id=acc_tail_cat_relaxed&vis=0")
+        st_ok = json.loads(body.decode("utf-8")).get("ok")
+    except Exception:                                # noqa: BLE001
+        st_ok = False
+    check("关掉尾巴的请求被接受", st_ok is True, "vis=0")
+    # 404 在 urllib 里是抛异常，不能当"返回了 ok=false"来判 —— 用 code() 只看状态码。
+    code_bad = a.code("/api/part?id=definitely_not_a_part&vis=0")
+    check("不存在的部件要报错而不是静默通过", code_bad == 404, "HTTP %s" % code_bad)
+    try:
+        _, body = a.get("/api/part?id=acc_hair_long&vis=2")
+        iso = json.loads(body.decode("utf-8")).get("isolating")
+    except Exception:                                # noqa: BLE001
+        iso = None
+    check("隔离模式把自己标成 isolating", iso == 1, "vis=2")
+    a.hit("/api/part?all=1")
+    try:
+        _, body = a.get("/api/part?list=1")
+        back = json.loads(body.decode("utf-8"))
+    except Exception:                                # noqa: BLE001
+        back = {}
+    check("恢复后没有件被藏起来",
+          back.get("isolating") == 0 and all(p.get("vis") == 1 for p in back.get("parts", [])),
+          "all=1")
+    a.hit("/api/pause?on=0")
+    a.hit("/api/ambient?on=1")
+    a.hit("/api/blink?on=1")
+
     print("== 测试台页面 ==")
     for path in ("/test.html", "/test.js", "/index.html"):
         try:

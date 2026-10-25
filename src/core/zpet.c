@@ -461,6 +461,28 @@ const zimg *zpet_mask_frame(zpet *p, const char *part_id, int *out_w, int *out_h
     return zrig_mask_frame(p->rig, part_id, p->scale, out_w, out_h);
 }
 
+/* T67.1 分层隔离探针的转发层：让预览 API 能"关掉一件再看"。
+   和 zpet_mask_frame 同一个理由 —— main_headless 只认 zpet，不直接摸 rig。 */
+int zpet_part_vis_set(zpet *p, const char *id, int mode)
+{
+    if (!p || !p->rig) return -1;
+    return zrig_part_vis_set(p->rig, id, mode);
+}
+void zpet_vis_clear(zpet *p)
+{
+    if (p && p->rig) zrig_vis_clear(p->rig);
+}
+int zpet_vis_isolating(const zpet *p) { return p && p->rig ? zrig_vis_isolating(p->rig) : 0; }
+int zpet_part_count(const zpet *p) { return p && p->rig ? zrig_part_count(p->rig) : 0; }
+const char *zpet_part_id(const zpet *p, int i)
+{
+    return p && p->rig ? zrig_part_id(p->rig, i) : "";
+}
+int zpet_part_vis(const zpet *p, int i)
+{
+    return p && p->rig ? zrig_part_vis(p->rig, i) : -1;
+}
+
 const char *zpet_character(const zpet *p) { return p ? p->cfg.pet.character : ""; }
 const char *zpet_form(const zpet *p) { return p ? p->cfg.pet.form : ""; }
 const char *zpet_outfit(const zpet *p) { return p && p->rig ? zrig_outfit(p->rig) : ""; }

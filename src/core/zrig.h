@@ -54,6 +54,12 @@ const char *zrig_socket_id(const zrig *r, int i);
 const char *zrig_socket_group(const zrig *r, int i);
 int   zrig_socket_pos(const zrig *r, int i, double out[2]);
 int   zrig_part_socket(const zrig *r, const char *part_id);   /* 下标，-1 = 没挂 */
+/* 分层隔离探针（T67.1）：只影响"画不画"，不影响遮罩缓冲/命中/参数 —— 观察窗专用。
+   放出来的理由：查一块颜色属于谁，靠反算精灵坐标太绕；关掉一件直接看是几十毫秒的事。 */
+int   zrig_part_vis_set(zrig *r, const char *id, int mode);   /* 0 隐藏 / 1 正常 / 2 隔离 */
+void  zrig_vis_clear(zrig *r);                                /* 全部恢复默认 */
+int   zrig_part_vis(const zrig *r, int i);                     /* 0 不可见 / 1 可见 / 2 隔离中 */
+int   zrig_vis_isolating(const zrig *r);
 /* 挂点**当前**画在哪（画布像素）：把挂点坐标过一遍父骨的矩阵。
    静态 pos 只是"骨架摆在哪"，这一步才是"骨转了多少度之后它在哪" ——
    运行时把模组件挂到手骨上，靠的就是这个。 */
