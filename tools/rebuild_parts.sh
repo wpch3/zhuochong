@@ -320,6 +320,13 @@ python3 tools/make_rig.py --character "$CH" --form "$FM"
 #     旧件留在 sprites/_ghostbak/ 当几何真值，缺了它会报错而不是猜一个 pos。
 "$PY" tools/apply_hair_only.py --character "$CH" --form "$FM"
 
+# 27c 把"画错层的碎发片"从前景侧发搬回后发层（T67.26）。
+#     病灶：`acc_hair_sidelong_l/r`（层 249/251，在腿**前面**）里混着一块**不连通**的碎岛，
+#     落在两腿之间 —— 于是那缕头发是画在大腿上的，用户截图里一眼就看见了。
+#     参考立绘里那缕头发是**后发**（在腿后面），所以搬回层 58 才是对的。
+#     必须排在 27b 之后：它是往 hair_long_back 里写像素。
+"$PY" tools/move_hair_islands.py --character "$CH" --form "$FM"
+
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__
 echo

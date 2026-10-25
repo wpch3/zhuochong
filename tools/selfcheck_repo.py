@@ -4431,7 +4431,10 @@ def check_sprite_audit(root):
     th = {"hair": 150, "limb": 150, "tail": 150,
           "face": None, "cloth": None, "fx": None, "body": None}
     hole_th = {"hair": 3.0, "tail": 3.0}      # 与 TH_KIND 同源：发绺之间的缝算正常
-    known = {"acc_hair_sidelong_r@2x.png"}
+    # 已知欠账表（与 tools/qa_sprite_audit.py 的 KNOWN 同源；**还清了就要删**，
+    # 否则它会变成永久豁免。2026-10-26 清空：sidelong_r 的 248px 直边是碎发岛的切边，
+    # T67.26 把岛搬回后发层后直边降到 101px）
+    known = set()
     viol = []
     for s in base.get("sprites", []):
         lim = th.get(s.get("kind"), None)
@@ -4445,7 +4448,7 @@ def check_sprite_audit(root):
              any(s["file"] == k and s.get("straight_run", 0) > 150
                  for s in base["sprites"])]
     check("已知欠账表没变成永久豁免", len(still) == len(known),
-          "%d 件待重画" % len(known))
+          "%d 件待重画" % len(known) if known else "0（无欠账）")
 
 
 def check_tools(root):
