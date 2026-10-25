@@ -76,10 +76,10 @@ smoke: $(BUILD)/zhuochong_preview
 
 # ---------------------------------------------------------------- 素材体检（T67.2）
 # 重算全部精灵的六项指标并写基线。重画任何一张 @2x 之后跑这个，
-# 然后 `git diff logs/asset_qa/sprite_audit_teen.json` —— 数字没降下来就是白画。
+# 然后 `git diff docs/qa/sprite_audit_teen.json` —— 数字没降下来就是白画。
 audit-sprites:
-	@$(PYTHON_IMG) tools/qa_sprite_audit.py --update-baseline logs/asset_qa/sprite_audit_teen.json
-	@$(PYTHON_IMG) tools/qa_sprite_audit.py --fail --baseline logs/asset_qa/sprite_audit_teen.json >/dev/null && echo "素材体检：闸通过"
+	@$(PYTHON_IMG) tools/qa_sprite_audit.py --update-baseline docs/qa/sprite_audit_teen.json
+	@$(PYTHON_IMG) tools/qa_sprite_audit.py --fail --baseline docs/qa/sprite_audit_teen.json >/dev/null && echo "素材体检：闸通过"
 
 # ---------------------------------------------------------------- 自检（保险）
 # 仓库静态自检：引用完整性 / 唯一性 / 契约 / 卫生（1 秒，不编译不渲染）

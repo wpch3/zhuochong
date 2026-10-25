@@ -4400,6 +4400,37 @@ def check_design_sheets(root):
               len(canvas) == 2 and canvas[0] > 0 and canvas[1] > 0, str(canvas))
 
 
+def check_audit_register(root):
+    """全量问题登记册（T67.27）不许悄悄失真。
+
+    它唯一的用处是"一眼看到所有已知问题"。三种失真会让它变成摆设：
+      1. 文件没了（新 agent 又要从零问一遍"到底有哪些毛病"）；
+      2. 编号断了（改文档时删行不删引用，索引指向不存在的小节）；
+      3. 写了"已修"却没有证据图 —— 那就是自我表扬，不是记录。
+    """
+    section("全量问题登记册（docs/AUDIT_2026-10-26.md）")
+    p = os.path.join(root, "docs", "AUDIT_2026-10-26.md")
+    if not os.path.exists(p):
+        check("登记册存在", False, "docs/AUDIT_2026-10-26.md")
+        return
+    txt = open(p, encoding="utf-8").read()
+    check("登记册存在", True, "%d 行" % txt.count("\n"))
+    # 编号必须连续（A1..An / B.. / C.. / D..）
+    bad = []
+    for pre in "ABCD":
+        nums = sorted(int(m) for m in re.findall(r"\| %s(\d+) \|" % pre, txt))
+        if nums and nums != list(range(1, len(nums) + 1)):
+            bad.append("%s: %s" % (pre, nums))
+    check("登记册编号连续", not bad, "；".join(bad) if bad else "A/B/C/D 四组")
+    # "已修" 行必须能指到证据（同一行里出现 logs/asset_qa 或 GAPS/ART_PARTS）
+    unfixed = []
+    for line in txt.splitlines():
+        if "**已修**" in line or "已修（" in line:
+            if "logs/asset_qa" not in line and "GAPS" not in line and "docs/" not in line:
+                unfixed.append(line[:40])
+    check("已修条目都带证据路径", not unfixed, str(unfixed[:2]) if unfixed else "全部可复核")
+
+
 def check_sprite_audit(root):
     """素材体检基线不许过期，也不许有人把越线的东西悄悄塞进来（T67.2）。
 
@@ -4409,9 +4440,9 @@ def check_sprite_audit(root):
       2. 基线里躺着一件越线的东西，又不在 KNOWN 欠账表里 → 闸被绕过去了。
     """
     section("素材体检基线（T67.2）")
-    base_p = os.path.join(root, "logs", "asset_qa", "sprite_audit_teen.json")
+    base_p = os.path.join(root, "docs", "qa", "sprite_audit_teen.json")
     if not os.path.exists(base_p):
-        check("素材体检基线存在", False, "跑 make audit-sprites")
+        check("素材体检基线存在", False, "跑 make audit-sprites（基线在 docs/qa/，入库）")
         return
     try:
         with open(base_p, encoding="utf-8") as fh:
@@ -4998,6 +5029,7 @@ def main():
                check_phys2_rig,
                check_design_sheets,
                check_sprite_audit,
+               check_audit_register,
                check_tools, check_hygiene):
         try:
             fn(root)

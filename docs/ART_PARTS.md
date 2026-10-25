@@ -1580,12 +1580,12 @@ face / cloth / fx / body   hole% > 1.5   straight_run 不判
 为什么分差这么大：`skirt_main` 的 72px 直边是**裙摆本来的直边**，
 `torso_top_fill` 的 332px 是**一条填充块的边** —— 都是正确的画法。
 而 `acc_hair_sidelong_r` 的 248px 是**一根切下来的细条**（目视确认，见
-`logs/asset_qa/t67_2_metric_check.png` 左上）。同一个数字，在不同类别里意义相反。
+`docs/qa/t67_2_metric_check.png` 左上）。同一个数字，在不同类别里意义相反。
 
 ### 7.3 两个必须记住的坑
 
 1. **空洞必须先做开运算**。`eye_r_base` 一度报 3.55% 空洞、触发闸红，
-   把掩膜画出来（`logs/asset_qa/t67_2_eye_hole_raw.png`）才发现那是
+   把掩膜画出来（`docs/qa/t67_2_eye_hole_raw.png`）才发现那是
    **发丝之间 1px 宽、100px 高的一条裂缝**。连通块过滤（681px）拦不住它 ——
    细长的东西面积可以很大。改成 5×5 腐蚀后掉到 0.17%，
    全库最高只剩 0.98%（`hair_side_l`）。3×3 不够：只削到 303px，仍误报。
@@ -1598,7 +1598,7 @@ face / cloth / fx / body   hole% > 1.5   straight_run 不判
 ```bash
 make audit-sprites          # 全量重算 + 写基线 + 过闸（约 40s）
 python3 tools/qa_sprite_audit.py --only hair_ --overlay /tmp/audit   # 只看头发，出标注图
-python3 tools/qa_sprite_audit.py --fail --baseline logs/asset_qa/sprite_audit_teen.json
+python3 tools/qa_sprite_audit.py --fail --baseline docs/qa/sprite_audit_teen.json
 ```
 
 **真正该接 CI 的不是绝对阈值，而是基线回归**：重画一张图之后，

@@ -52,8 +52,8 @@
 
 基线回归（真正该接进 CI 的那个）
 --------------------------------------------------------------------------
-    python3 tools/qa_sprite_audit.py --update-baseline logs/asset_qa/sprite_audit_teen.json
-    python3 tools/qa_sprite_audit.py --fail --baseline  logs/asset_qa/sprite_audit_teen.json
+    python3 tools/qa_sprite_audit.py --update-baseline docs/qa/sprite_audit_teen.json
+    python3 tools/qa_sprite_audit.py --fail --baseline  docs/qa/sprite_audit_teen.json
 
 重画一张图之后，`hole% / straight_run / edge_near_white% / seam% / residue%`
 **只许降不许升**（容差见 TOL）。升了就必须解释 —— 这比任何绝对阈值都可靠，
@@ -88,7 +88,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TH_KIND = {
     # 有机形：轮廓本该是曲线，出现长直边 = 切图
     # 发件松到 3.0：发绺之间天然会有 8~10px 厚的"缝"（新长发候选件 1.62% 全是这种，
-    # 目视核过 logs/asset_qa/t67_7_haironly_holes.png）—— 这不是"缺了一块"。
+    # 目视核过 docs/qa/t67_7_haironly_holes.png）—— 这不是"缺了一块"。
     # 真要缺一块会是整段没有，远大于 3%。
     "hair":  {"hole_pct": 3.0, "straight_run": 150},
     "limb":  {"hole_pct": 1.5, "straight_run": 150},
@@ -301,7 +301,7 @@ def audit_one(path):
     holes = _holes(op)
     # ★ 空洞必须先"开运算"再判，光过连通块不够：
     #   eye_r_base 有个 681px 的"大洞"，一画出来才知道是**发丝之间 1px 宽、100px 高的裂缝**
-    #   （红色细线贯穿鬓发，见 logs/asset_qa/t67_2_hole_crack.png）——连通块过滤拦不住它。
+    #   （红色细线贯穿鬓发，见 docs/qa/t67_2_hole_crack.png）——连通块过滤拦不住它。
     #   做法：先腐蚀 1px（1px 缝立刻消失，真缺块不会），再要求 >=30px。
     #   腐蚀用 5x5（不是 3x3）：实测 3x3 只把裂缝从 681px 削到 303px（宽 2~3px 的缝仍在），
     #   换成 5x5 后 eye_r_base 掉到 0.17%、全库最高只剩 0.98%（hair_side_l）——
