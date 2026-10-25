@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "_note": "形态路线图（由 tools/scaffold_character.py 生成）。四条都是 planned —— 这个角色的形态一个都还没做。做好一个 = 素材进 forms/<id>/ + 生成 rig.json，再把这里的 status 改成 ready；闸会自动开始管它。**不要为 planned 造假素材**。head_body_ratio 要等 anchors.json 量出来再填，不预先编。",
+  "character": "xingxuan",
+  "forms": [
+    {
+      "id": "teen",
+      "name": "少女",
+      "status": "planned",
+      "note": "星璇的少女形态，素材未开始（见 skeleton.json 的 todo）"
+    },
+    {
+      "id": "loli",
+      "name": "萝莉",
+      "status": "planned",
+      "note": "星璇的萝莉形态，素材未开始（见 skeleton.json 的 todo）"
+    },
+    {
+      "id": "adult",
+      "name": "青年女性",
+      "status": "planned",
+      "note": "星璇的青年女性形态，素材未开始（见 skeleton.json 的 todo）"
+    },
+    {
+      "id": "chibi",
+      "name": "Q 版",
+      "status": "planned",
+      "note": "星璇的Q 版形态，素材未开始（见 skeleton.json 的 todo）"
+    }
+  ]
+}

@@ -286,3 +286,47 @@ Q 版手臂是整件素材，所以 `forearm_l/r`、`elbow_fold_l/r`、`hand_l/r
 - chibi 没有 `hand_l/r` 骨（整条手臂一件素材），腕挂点在 Q 版上不存在 —— 要么补分段素材（T66.2），
   要么接受"Q 版没有腕饰"。
 - 单网格多骨加权（T66.9）没做：配件现在还只能整体跟一根骨，"袖子在手腕处随腕弯"仍做不到。
+
+## 9. 多角色：脚手架 + 「契约态」（2026-10-26，T66.23）
+
+### 9.1 问题：八个角色里只有一个是"看得见"的
+
+硬需求是**每个 AI 独立形象**（八个角色、四形态、多套服装、多种兽娘）。到这一轮为止的实况：
+
+| 角色 | skeleton.json | forms/*/rig.json | 美术 |
+|---|---|---|---|
+| xiaoxun | ✅ 39 根骨 | teen / chibi | 全套 |
+| 其余 7 个 | ❌ 没有 | 0 | 0（只有 `character.json` + `dialogue.json`） |
+
+这个状态有两个坑，性质完全不同：
+
+1. **手工抄骨架**：想给第二个角色做形象，得照着 xiaoxun 的 `skeleton.json` 抄 39 根骨。
+   抄漏一根的表现是「动作里那段不动」，肉眼几乎发现不了 —— 这正是骨架契约存在的理由。
+2. **"目录看着像做完了"**：手工建一个 `characters/xxx/` 再拷一份骨架进去，目录结构和做完的角色
+   一模一样。闸只查「骨架和 rig 对不对得上」，两边都空着就互相通过了 —— **空对空也是绿**。
+
+### 9.2 解法
+
+| 层 | 改动 |
+|---|---|
+| 新工具 | `tools/scaffold_character.py`：从 `humanoid_v1` 模板派生 `skeleton.json`（骨名/父子/kind/required/waivers/forms/chains 一字不差）+ `design/sockets.json`（8 个挂点）+ `forms.json`（四形态全 `planned`）+ 一份 `todo` 清单。`--list` 打印八个角色的真实进度 |
+| 契约态 | 生成的骨架带 `"status": "contract_only"`：**契约齐了、素材没有**。`todo` 非空，且**不许**已经有形态 rig（有了就该改成 `full`）。`status` 缺省 = `full`，老角色不受影响 |
+| 闸 | `check_skeleton` 新增第 ⑧ 条（status 合法 / contract_only 必须有非空 todo / contract_only 不许有 rig / full 必须有 rig），负控 20 例（新增 4 例）；`selfcheck::check_sockets` 对没有 rig 的角色改判「骨架必须标成契约态」，不再误报"至少一个形态落了挂点" |
+| 刻意不做 | **不生成任何美术**。没有素材就是没有素材 —— 占位图、程序画的形状都不许拿来充数（用户红线）。`forms.json` 也**不写** `head_body_ratio`：那是 `anchors.json` 量出来的实测值，没量就填等于编数据 |
+
+### 9.3 为什么 `sockets.json` 可以继承，`head_body_ratio` 不行
+
+挂点位置是 (`ref`, `pos_rel`, `unit`) 三元组：`ref` 指向形态锚点（头顶/眼线/腕/腰…），
+`pos_rel` 是相对该锚点的偏移，`unit` 说明用头高还是身高归一。**换角色后要重标**，但重标只影响
+"配饰挂在哪"，不影响骨、动作、换装 —— 所以继承一份当起点是可接受的，代价写在
+`inherited_from` 字段里（谁抄的谁）。头身比不一样：它是给人体比例定标的标量，
+`xiaoxun` 就因为"设计稿 1:6 / 实测 1:4.65"翻过一次车，凭空写一个数必然错。
+
+### 9.4 验收
+
+- [测试锁] `check_skeleton` **1740/0**（负控 20/20，新增 4 条：`status` 乱写 / `contract_only` 缺 todo / todo 混空串 / `contract_only` 却有 rig 全判红）。
+- [测试锁] `selfcheck_repo` **704/0**、`mod_lint --all-characters` **1834/0**、`check_form_portable` 31/0、`test_core` 1264/0。
+- [沙箱实测] `python3 tools/scaffold_character.py --list`：
+  `合同+素材 1（xiaoxun）、只有契约 7、还是草案 0` —— 八个角色全部有据可查，没有人是隐形的。
+- 还差的（诚实记账）：七个角色**一张素材都没有**，`forms.json` 四条全 `planned`；
+  见 `docs/memory/GAPS.md` 的 G66.21 / T66.23b。

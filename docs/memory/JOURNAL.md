@@ -7059,3 +7059,38 @@ FadeOutTime，互切时仍只能用同一个时长 —— 这条偏差登记进 
    已开 T66.22b，没有当场改（动眼睛是受保护基线，要先给用户看证据）。
 
 **验收**：`test_core` 1264/0（+24 条）、`api_smoke` 290/0（+5 条）、`selfcheck` 655/0（+4 条静态闸）。
+
+## 2026-10-26 八个角色，先给七个把契约立住（T66.23）
+
+**思考**：用户的硬需求是"每个 AI 独立形象 + 四形态 + 多套服装 + 多种兽娘"。可现状是
+`characters/` 下八个角色里**只有小寻有图**，另外七个（shandian / shenyu / shuangxi /
+tonglin / xiaochen / xingxuan / yuejian）连 `skeleton.json` 都没有 —— 只有人设和台词。
+按"先把前置做好"的施工序，这里的第一前置不是画图（画谁、什么比例都还没定），
+而是**把契约立住**：有了 39 根骨的骨架 + 8 个挂点 + 四形态的规划，任何一个角色开工时
+都不用再想"我该有哪些骨"，也不会出现"Q 版少六根骨"那种换形态才发现的漏。
+
+顺带发现一个更坏的东西：**空对空也是绿**。骨架和 rig 各自都空着的时候，闸互相验收
+就通过了 —— 目录结构和做完的角色一模一样。这类假绿比红难发现得多，所以给骨架加了
+`status: contract_only`，让"契约齐了、素材没有"成为一个**能被机器读到的状态**。
+
+**做了什么**：
+1. 新工具 `tools/scaffold_character.py`：从 `humanoid_v1` 模板派生骨架（骨名/父子/kind/
+   required/waivers/forms/chains 一字不差）、`design/sockets.json`（8 个挂点，带
+   `inherited_from` 标明是从小寻抄来的默认值）、`forms.json`（四形态全 `planned`）、
+   一份 `todo`。`--list` 直接打印八个角色的真实进度。
+2. 契约态闸：`check_skeleton` 第 ⑧ 条（status 合法 / contract_only 必须有非空 todo /
+   contract_only 不许已有 rig / full 必须有 rig），负控 20 例（+4）。
+   `selfcheck::check_sockets` 原来对没有 rig 的角色报"至少一个形态的 rig 落了挂点"——
+   那是把"还没开工"当成"做错了"，改成"必须标成契约态"。
+3. 七个角色真落盘：每个 39 根骨 + 8 挂点 + 四形态 planned。
+
+**故意不做的事**：一条美术都没生成。没有素材就写"没有素材"；`forms.json` 也**不写**
+`head_body_ratio` —— 那是 `anchors.json` 量出来的实测值，小寻就吃过"设计稿 1:6、
+实测 1:4.65"的亏，凭空填数必然错。占位图更不行：进了库要么闸全红、要么开后门。
+
+**验收**：`check_skeleton` 1740/0（负控 20/20）、`selfcheck` 704/0、`mod_lint
+--all-characters` 1834/0、`check_form_portable` 31/0、`test_core` 1264/0。
+`--list` 实测：合同+素材 1、只有契约 7、还是草案 0。
+
+**下一步**：G66.21 / T66.23b —— 从 `shenyu`（鹿娘）起手做**第一个**真形态，
+做完就把 status 改 full，让闸开始按四形态口径管它。

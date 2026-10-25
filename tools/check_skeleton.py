@@ -350,6 +350,34 @@ def check_form(root, char_id, sk, form, rig_path):
     return _fail - before
 
 
+def check_contract_status(sk, forms):
+    """⑧ 骨架的 status：「只写了契约」和「做完了」必须分得开（T66.23）。
+
+    为什么要这条：七个角色原来只有 character.json，看起来"有人设"，实际上一点美术
+    都没有；反过来，脚手架刚生成 skeleton.json 的时候，目录看上去也和做完的角色一样。
+    光看目录分不出来，就必须写在文件里、由闸来对账：
+      · status 缺省 = full（老角色不受影响）
+      · contract_only ⇒ todo 必须非空（说清还缺什么），且不能已经有形态 rig
+      · full          ⇒ 至少得有一个形态的 rig
+    """
+    st = sk.get("status", "full")
+    if not check("骨架 status 合法（%s）" % sk.get("character"),
+                 st in ("full", "contract_only"), str(st)):
+        return st
+    if st == "contract_only":
+        todo = sk.get("todo")
+        ok = (isinstance(todo, list) and len(todo) > 0 and
+              all(isinstance(t, str) and t.strip() for t in todo))
+        check("contract_only 的骨架有非空 todo（说清还缺什么素材）", ok,
+              "空 todo 等于「什么都没做，也没记下来」" if not ok else "")
+        check("contract_only 的骨架还没有形态 rig（有了就该改成 full）",
+              not forms, "已有 %s 的 rig；把 status 改成 full 再跑一次" % (forms,))
+    else:
+        check("full 的角色至少有一个形态 rig", bool(forms),
+              "骨架写完了但没有任何形态素材 —— 要么补素材，要么改成 contract_only 并写 todo")
+    return st
+
+
 def lint_character(root, char_id, logs):
     before = _fail
     base = os.path.join(root, "characters", char_id)
@@ -370,7 +398,9 @@ def lint_character(root, char_id, logs):
     forms = sorted(d for d in os.listdir(os.path.join(base, "forms"))
                    if os.path.isfile(os.path.join(base, "forms", d, "rig.json"))) \
         if os.path.isdir(os.path.join(base, "forms")) else []
-    check("至少有一个形态的 rig", bool(forms), str(forms))
+    contract_only = check_contract_status(sk, forms) == "contract_only"
+    if not contract_only:   # 契约态由上面那条管，不重复报「没有 rig」
+        check("至少有一个形态的 rig", bool(forms), str(forms))
     for f in forms:
         check_form(root, char_id, sk, f, os.path.join(base, "forms", f, "rig.json"))
     if not _quiet:
@@ -492,6 +522,14 @@ def self_test(_root):
             {"id": "head", "parent": "chest", "kind": "rigid", "required": True},
             {"id": "hair_side_l", "parent": "head", "kind": "mesh", "required": False},
             {"id": "socket_head_top", "parent": "nope", "kind": "socket", "required": False}]})
+    # ⑧ 契约态（T66.23）：脚手架生成的角色不能看起来像做完的角色
+    run("status 写了不认识的值", True, sk_over={"status": "done"})
+    run("contract_only 却没有 todo", True,
+        sk_over={"status": "contract_only", "todo": []})
+    run("contract_only 的 todo 里混了空串", True,
+        sk_over={"status": "contract_only", "todo": ["做素材", "  "]})
+    run("contract_only 但已经有形态 rig", True,
+        sk_over={"status": "contract_only", "todo": ["做素材"]})
 
     bad = [c[0] for c in cases if c[1] != c[2]]
     if bad:

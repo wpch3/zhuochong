@@ -4117,8 +4117,17 @@ def check_sockets(root):
             undeclared = sorted(set(rs) - set(pos_of))
             check("%s/%s：rig 里的挂点都来自位置表" % (tag, form), not undeclared,
                   "野生的 %s" % undeclared if undeclared else "%d 个" % len(rs))
-        check("%s：至少一个形态的 rig 落了挂点" % tag, got_any > 0,
-              "%d/%d 个形态有 sockets 段" % (got_any, len(rigs)))
+        if rigs:
+            check("%s：至少一个形态的 rig 落了挂点" % tag, got_any > 0,
+                  "%d/%d 个形态有 sockets 段" % (got_any, len(rigs)))
+        else:
+            # 契约态角色（T66.23）还没有素材，没有 rig 就没有 sockets 段可查；
+            # 但它必须在 skeleton.json 里把 status 写成 contract_only，否则
+            # 「目录看着像做完了」——这正是这一条要防的事。
+            check("%s：没有形态 rig，骨架标成契约态" % tag,
+                  sk.get("status") == "contract_only",
+                  "status=%r：要么补素材，要么写 contract_only + todo"
+                  % sk.get("status", "full"))
         # 配件：写了 socket 的件要能对上表；槽的组必须和挂点的父骨一致
         ap = os.path.join(cdir, "design", "attachments.json")
         if os.path.isfile(ap):

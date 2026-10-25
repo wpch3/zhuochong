@@ -1516,3 +1516,30 @@ T66.22 做外部表情时，`peek_blush` 用 `Multiply` 把 `ParamEyeLOpen/ROpen
 **验收口径（做好之后照这个看）**：`ParamEyeOpen` 从 1.0 到 0.0 每 0.1 一档，
 14 倍放大下面看：① 虹膜上沿不允许出现水平直线；② 开口上沿与眼线之间不允许有肤色缝；
 ③ 0.3~0.6 这一段不允许出现黑钩；④ 全闭时眼线仍落在闭眼线上。
+
+## G66.21 七个角色"只有契约、没有一张图"（2026-10-26 起可机检）
+
+**现象**：`characters/` 下八个角色，只有 `xiaoxun` 有形态素材。其余七个（shandian / shenyu /
+shuangxi / tonglin / xiaochen / xingxuan / yuejian）在此之前连 `skeleton.json` 都没有，
+只有 `character.json` + `dialogue.json`。
+
+**这一轮补了什么**：契约层。七个角色现在都有
+`skeleton.json`（39 根骨，`status: contract_only`，`todo` 列清要什么）、
+`design/sockets.json`（8 个挂点）、`forms.json`（四形态全 `planned`）。
+`tools/scaffold_character.py --list` 一眼能看出"谁有素材、谁只有契约"。
+
+**这一轮**没有**补什么**：任何美术。四形态的拆件、服装、兽娘件（鹿角/猫耳/尾巴…）、
+口型包，全都还是零。**这不是缺陷、是进度**，所以闸只做两件事：
+把状态写在文件里、并且不让"空骨架 + 空 forms/"互相通过（空对空也是绿是最难发现的一种假绿）。
+
+**为什么不能先拿占位图顶上**：占位图一旦进库就会被 `check_assets` 按 375 项逐条检查，
+要么全红、要么开个后门；后门一开就再也想不起来关。而且"目录看着像做完了"正是这条缺口
+要防的事 —— 与其让它看起来像完成了，不如让它明确写着 `contract_only`。
+
+**出口条件**（T66.23b）：某个角色做出**第一个**形态的 rig.json ⇒ `status` 改 `full`，
+`forms.json` 里那个形态改 `ready`，闸自动开始按四形态口径管它（缺骨必须走 waivers）。
+建议起手角色：`shenyu`（鹿娘，兽娘轴已有明确部件清单：叶片大耳 / 幼角 / 短尾，且要求可一键关回纯人类）。
+
+**顺带记一笔**：`design/sockets.json` 的 `pos_rel` 是从 xiaoxun 继承的默认值（字段
+`inherited_from` 标明出处）。换角色后必须按本角色的 `anchors.json` 重标 —— 只影响配饰落点，
+不影响骨与动作。
