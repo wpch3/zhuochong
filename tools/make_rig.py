@@ -1046,6 +1046,7 @@ def attach_emit(rig, base, base_root):
         _ox, _oy = attach_geom.canvas_offset(
             (rig["canvas"]["w"], rig["canvas"]["h"]), _sz)
     slots = {x["id"]: x for x in table["slots"]}
+    sockets = {k: v for k, v in (rig.get("sockets") or {}).items()}
     geom = {x["id"]: x for x in cut["attachments"]}
     flick_extra = []     # wave=flick 的挂件参数：只偶尔抽一下，不进 ambient
 
@@ -1064,13 +1065,38 @@ def attach_emit(rig, base, base_root):
         # —— 部件 ——（@2x 走 DC48 的末尾高清口径：文件指 @2x，scale 减半）
         hi = g["file"].replace(".png", "@2x.png")
         use_hi = os.path.exists(os.path.join(base, hi))
+        # —— 挂点（T66.19 / S4）——
+        # 写了 "socket" 的件不自己摆坐标：组和位置都归挂点。这样配件与画布像素脱钩，
+        # 换形态/换装/换角色时只改挂点表一处。
+        sock = att.get("socket")
+        if sock:
+            sp = (sockets or {}).get(sock)
+            if sp is None:
+                raise SystemExit(
+                    f"[make_rig] 挂件 {att['id']} 要挂在 {sock} 上，但本形态的 rig 里"
+                    f"没有这个挂点（skeleton.json 声明了吗？design/sockets.json 写了位置吗？）")
+            if sp["group"] != slot["group"]:
+                raise SystemExit(
+                    f"[make_rig] 挂件 {att['id']} 的槽 {att['slot']} 在组 {slot['group']}，"
+                    f"但它挂的 {sock} 在组 {sp['group']} —— 一个件只能有一个父组，"
+                    f"两处不一致说明表写错了")
+            part_pos = attach_geom.attach_pos(
+                attach_geom.apply_overrides(att, _ovr), sp, anchors, _ox, _oy)[0]
+            dpos_out = [part_pos[0] - sp["pos"][0], part_pos[1] - sp["pos"][1]]
+        else:
+            part_pos = attach_geom.resolve(
+                attach_geom.apply_overrides(att, _ovr), anchors, _ox, _oy)[0]
+
         rig["parts"].append({
             "id": pid,
             "file": hi if use_hi else g["file"],
             "group": slot["group"],
             "layer": int(att.get("layer", slot["layer"])),
-            "pos": attach_geom.resolve(
-                attach_geom.apply_overrides(att, _ovr), anchors, _ox, _oy)[0],
+            "pos": part_pos,
+            # socket 说"挂在哪个挂点上"，dpos 说"再挪几像素"（画布像素）。
+            # 引擎只认这两项算位置；pos 是算完的结果，给美术/QA 工具读的。
+            **(dict(socket=sock) if sock else {}),
+            **({"dpos": dpos_out} if sock and (dpos_out[0] or dpos_out[1]) else {}),
             # 锚点与曲线可以被**挂件自己**覆盖：同一个槽里，垂下的尾巴尾根在顶边、
             # 竖起的尾巴尾根在底边，曲线也必须跟着反过来（tip ↔ root）。
             "anchor": list(att.get("anchor", slot["anchor"])),
@@ -5045,6 +5071,85 @@ def emit_bone_chains(rig, base):
     return len(new_nodes)
 
 
+def emit_sockets(rig, base, base_root):
+    """把骨架里声明的挂点（kind:socket）落到 rig 上（T66.19 / S4）。
+
+    三段数据各管一件事，谁都不许替别人说话：
+      · characters/<角色>/skeleton.json  —— **有哪些**挂点、各自挂在谁的骨上（角色级契约）
+      · design/sockets.json             —— **在哪**（形态锚点 + 相对偏移，四个形态共用）
+      · forms/<形态>/design/anchors.json —— 这个形态的锚点实际在哪（像素尺度）
+
+    出到 rig.json 的 sockets 段是引擎唯一认的东西：`{id: {group, pos}}`。
+    引擎不认识"耳饰""腕带"这种语义，只认 id →（骨，画布坐标）。所以：
+      · 换形态 = 换 anchors.json，配件不用重摆；
+      · 加挂点 = skeleton.json 加一条 + 这里加一条位置，不改引擎；
+      · 配件挂上来 = 写 "socket": "<id>"，坐标由挂点给（见 attach_emit）。
+
+    ★ 为什么不像别的段那样"缺了就跳过"：挂点表是骨架的一部分，缺位置意味着
+      配件会静默掉到画布原点。所以挂了 socket 却没位置 = 当场 SystemExit。
+    """
+    skel_p = os.path.join(base_root, "skeleton.json")
+    tab_p = os.path.join(base_root, "design", "sockets.json")
+    if not os.path.exists(skel_p):
+        return 0
+    with open(skel_p, encoding="utf-8") as f:
+        skel = json.load(f)
+    declared = [b for b in skel.get("bones", []) if b.get("kind") == "socket"]
+    if not declared:
+        return 0
+    if not os.path.exists(tab_p):
+        raise SystemExit(f"[make_rig] skeleton.json 声明了 {len(declared)} 个挂点，"
+                         f"但 {tab_p} 不存在 —— 挂点的位置必须写在表里")
+    with open(tab_p, encoding="utf-8") as f:
+        table = json.load(f)
+    pos_of = {x["id"]: x for x in table["sockets"] if not x["id"].startswith("_")}
+    anchors = attach_geom.load_anchors(os.path.join(base, "design"))
+    if anchors is None:
+        raise SystemExit(f"[make_rig] {base}/design/anchors.json 不存在，挂点位置无从换算")
+    _bp = os.path.join(base, "sprites", "body_parts.json")
+    _ox = _oy = 0
+    if os.path.exists(_bp):
+        with open(_bp, encoding="utf-8") as f:
+            _sz = json.load(f)["image_size"]
+        _ox, _oy = attach_geom.canvas_offset(
+            (rig["canvas"]["w"], rig["canvas"]["h"]), _sz)
+    group_ids = set(rig["groups"].keys()) if isinstance(rig["groups"], dict) else \
+        {g["id"] for g in rig["groups"]}
+    out = {}
+    for b in declared:
+        sid = b["id"]
+        if sid not in pos_of:
+            raise SystemExit(f"[make_rig] 骨架声明了挂点 {sid}，sockets.json 里没有位置")
+        spec = pos_of[sid]
+        parent = b.get("parent")
+        if not parent:
+            raise SystemExit(f"[make_rig] 挂点 {sid} 没有父骨 —— 挂点必须挂在某根骨上")
+        if parent not in group_ids:
+            # 父骨不在 = 这个形态没有那根骨（chibi 还没拆手 ⇒ 没有 hand_l）。
+            # skeleton.json 里 required:false 的挂点因此允许缺席；required 的缺席就炸。
+            if not b.get("required"):
+                print(f"  挂点：跳过 {sid}（本形态没有父骨 {parent} 的组，"
+                      f"skeleton.json 标的是 required:false）", file=sys.stderr)
+                continue
+            raise SystemExit(f"[make_rig] 挂点 {sid} 的父骨 {parent} 在这个形态的 rig 里"
+                             f"没有对应的组，而 skeleton.json 标了 required:true "
+                             f"—— 骨架契约说必须有，形态却没做")
+        # 位置换算走 attach_geom.socket_pos —— 和挂件、和形态可移植性闸**同一份**算式
+        pos = attach_geom.socket_pos(spec, anchors, _ox, _oy)
+        out[sid] = {"group": parent, "pos": pos}
+    # 按 groups 后面插入，方便人读
+    ordered = {}
+    for k, v in rig.items():
+        ordered[k] = v
+        if k == "groups":
+            ordered["sockets"] = out
+    if "sockets" not in ordered:            # 没有 groups 段的怪 rig：兜底追加
+        ordered["sockets"] = out
+    rig.clear()
+    rig.update(ordered)
+    return len(out)
+
+
 def prune_dangling(rig):
     """把指向「本形态不存在的部件/组」的绑定清掉，连带清掉因此空掉的参数。
 
@@ -5387,6 +5492,10 @@ def main() -> int:
                 fx_table=fx_table,
                 footp=footp, skirtp=skirtp, jacketp=jacketp, handp=handp,
                 skirtx=skirtx)
+    # 挂点先落（T66.19 / S4）：挂件要靠名字挂上去，所以必须排在 attach_emit 之前
+    nsock = emit_sockets(rig, base, base_root)
+    if nsock:
+        print(f"  挂点：落地 {nsock} 个")
     attach_emit(rig, base, base_root)   # 挂件（A49 / T45）：表在就挂，不在就当没有
     nbone = emit_bone_chains(rig, base)  # S2（第六十六问）：头发/尾巴接成真正的骨链
     if nbone:

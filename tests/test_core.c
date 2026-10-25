@@ -9147,6 +9147,155 @@ static void test_ambient_rejects_oneshot(void)
     }
 }
 
+/* T66.19 / S4：挂点（socket）。配件靠"名字"挂在骨上，而不是把画布坐标写死。
+   这一节的每条都是**换装/换形态之后才会暴露**的错误，所以必须机检：
+   ① 挂点解析成（父骨，坐标）；② 配件位置的唯一来源是挂点 + dpos；
+   ③ 挂点会跟着父骨转；④ 四类写错要在装载期就打回去，不许静默。 */
+static void test_socket_s4(void)
+{
+    SECTION("T66.19：挂点（socket）—— 配件按名字挂在骨上");
+    /* 一份最小 rig：root + head 两根骨，一个挂点挂在 head 上，一件配件挂它 */
+    const char *body_fmt =
+        "{\"schema_version\":1,\"id\":\"t\",\"name\":\"t\",\"canvas\":[200,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,100]},"
+        "\"head\":{\"pivot\":[100,40],\"parent\":\"root\"}},";
+    char rig[4096];
+
+    /* ① 正例：挂点解析成 (head, [100,40])，配件 pos = 挂点 + dpos */
+    {
+        char path[1024];
+        zdiag d;
+        zrig *r;
+        double pos[2] = {0, 0};
+        FILE *f;
+        z_mkdir_p("/tmp/zc_socket");
+        /* 部件必须有一张真图 —— 引擎在装载期就要读到它的宽高。现画 2×2 纯色，
+           和上面"形变器 × 平滑形变"那一节同一个理由：引擎测试不许依赖美术资产。 */
+        {
+            zerr pe;
+            zimg *px = zimg_new(2, 2);
+            int k;
+            CHECK(px != NULL, "应能建合成素材");
+            zerr_clear(&pe);
+            for (k = 0; px && k < 4; ++k) {
+                px->px[k * 4 + 0] = 200; px->px[k * 4 + 1] = 160;
+                px->px[k * 4 + 2] = 140; px->px[k * 4 + 3] = 255;
+            }
+            CHECK(px && zimg_save_png(px, "/tmp/zc_socket/x.png", &pe) == 0,
+                  "合成素材应能写出：%s", pe.msg);
+            if (px) zimg_free(px);
+        }
+        z_snprintf(path, sizeof(path), "/tmp/zc_socket/ok.json");
+        f = fopen(path, "wb");
+        CHECK(f != NULL, "能写临时 rig");
+        if (f) {
+            z_snprintf(rig, sizeof(rig),
+                "%s\"sockets\":{\"s_hand\":{\"group\":\"head\",\"pos\":[120,60]}},"
+                "\"parts\":[{\"id\":\"p1\",\"file\":\"x.png\",\"socket\":\"s_hand\","
+                "\"dpos\":[3,-4],\"pos\":[123,56],\"layer\":1}],"
+                "\"params\":[{\"id\":\"ParamRot\",\"min\":-1,\"max\":1,\"default\":0,"
+                "\"binds\":[{\"group\":\"head\",\"param\":\"rot_deg\",\"scale\":30}]}],"
+                "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}",
+                body_fmt);
+            fputs(rig, f);
+            fclose(f);
+            zdiag_init(&d);
+            r = zrig_load(path, "/tmp/zc_socket", &d);
+            CHECK(r != NULL, "挂了 socket 的 rig 应能加载（错误 %d 条）", d.error_count);
+            if (r) {
+                CHECK(zrig_socket_count(r) == 1, "挂点数应为 1，实际 %d",
+                      zrig_socket_count(r));
+                CHECK(z_streq(zrig_socket_id(r, 0), "s_hand"), "挂点 id 应原样保留");
+                CHECK(z_streq(zrig_socket_group(r, 0), "head"), "挂点应解析到父骨 head");
+                CHECK(zrig_socket_pos(r, 0, pos) && pos[0] == 120 && pos[1] == 60,
+                      "挂点静态坐标应为 [120,60]，实际 [%g,%g]", pos[0], pos[1]);
+                CHECK(zrig_part_socket(r, "p1") == 0,
+                      "★ 配件应记得自己挂在哪个挂点上（换装时靠它重新对位）");
+                CHECK(zrig_part_socket(r, "root") == -1, "没挂 socket 的部件应返回 -1");
+                {
+                    double ap[2] = {0, 0};
+                    /* 先跑一帧：绘制状态（变换矩阵）是在 tick 里算的，没 tick 过读不到 */
+                    zrig_tick(r, 100.0);
+                    /* 部件 pos = 挂点 + dpos ⇒ [123,56]；锚点在正中 ⇒ 画出来就在那 */
+                    CHECK(zrig_part_anchor_pos(r, "p1", 1.0, ap)
+                          && fabs(ap[0] - 123) < 1.5 && fabs(ap[1] - 56) < 1.5,
+                          "配件落点应由「挂点 + dpos」决定：[123,56]，实际 [%.1f,%.1f]",
+                          ap[0], ap[1]);
+                }
+                /* ③ 父骨转过之后，挂点必须跟着走（"配件跟着手腕动"的机检形式） */
+                {
+                    double before[2] = {0, 0}, after[2] = {0, 0};
+                    double t = 100.0, dist = 0.0;
+                    int i;
+                    zrig_socket_screen_pos(r, 0, 1.0, before);
+                    zrig_param_set(r, "ParamRot", 1.0);
+                    for (i = 0; i < 3; ++i) { t += 1.0 / 60.0; zrig_tick(r, t); }
+                    zrig_socket_screen_pos(r, 0, 1.0, after);
+                    dist = fabs(after[0] - before[0]) + fabs(after[1] - before[1]);
+                    CHECK(dist > 5.0,
+                          "★ 父骨转 30° 后挂点应跟着移动 5px 以上（实到 %.2f）——"
+                          " 这是「配件跟着骨动」唯一能量出来的形式", dist);
+                }
+                zrig_free(r);
+            }
+            remove(path);
+        }
+    }
+
+    /* ② 四类写错都要在装载期打回去 */
+    {
+        struct { const char *name, *extra, *want; } bad[] = {
+            {"未知挂点", "\"sockets\":{\"s_a\":{\"group\":\"head\",\"pos\":[1,1]}},"
+                         "\"parts\":[{\"id\":\"p\",\"file\":\"x.png\",\"socket\":\"s_nope\"}]",
+             "未知的挂点"},
+            {"挂点指向不存在的骨",
+             "\"sockets\":{\"s_a\":{\"group\":\"ghost\",\"pos\":[1,1]}},\"parts\":[]",
+             "挂点指向的组"},
+            {"挂点没写 pos",
+             "\"sockets\":{\"s_a\":{\"group\":\"head\"}},\"parts\":[]",
+             "挂点必须写 pos"},
+            {"挂点没写 group",
+             "\"sockets\":{\"s_a\":{\"pos\":[1,1]}},\"parts\":[]",
+             "挂点必须写 group"},
+            {"socket 件的 pos 与挂点不一致",
+             "\"sockets\":{\"s_a\":{\"group\":\"head\",\"pos\":[10,10]}},"
+             "\"parts\":[{\"id\":\"p\",\"file\":\"x.png\",\"socket\":\"s_a\","
+             "\"pos\":[40,40]}]",
+             "不一致"},
+        };
+        size_t k;
+        for (k = 0; k < sizeof(bad) / sizeof(bad[0]); ++k) {
+            char path[1024], msg[1024];
+            zdiag d;
+            zrig *r;
+            FILE *f;
+            int i, hit = 0;
+            z_snprintf(path, sizeof(path), "/tmp/zc_socket/bad_%zu.json", k);
+            f = fopen(path, "wb");
+            if (!f) { CHECK(0, "能写临时 rig"); continue; }
+            z_snprintf(rig, sizeof(rig),
+                       "%s%s,\"params\":[],\"actions\":[{\"id\":\"i\",\"loop\":true,"
+                       "\"channels\":[]}]}", body_fmt, bad[k].extra);
+            fputs(rig, f);
+            fclose(f);
+            zdiag_init(&d);
+            r = zrig_load(path, "/tmp/zc_socket", &d);
+            CHECK(r == NULL, "★ %s ⇒ 装载必须失败", bad[k].name);
+            for (i = 0; i < d.count; ++i) {
+                if (strstr(d.items[i].msg, bad[k].want)) hit = 1;
+            }
+            msg[0] = '\0';
+            for (i = 0; i < d.count && i < 2; ++i)
+                z_snprintf(msg + strlen(msg), sizeof(msg) - strlen(msg),
+                           "(%d) %s ", i, d.items[i].msg);
+            CHECK(hit, "★ %s 的报错应提到「%s」，实际：%s",
+                  bad[k].name, bad[k].want, msg);
+            if (r) zrig_free(r);
+            remove(path);
+        }
+    }
+}
+
 static void test_look_follow_lag(void)
 {
     SECTION("T63.1：身子比头晚到（慣性）+ 跟随会冲过再回弹（反動）");
@@ -9373,6 +9522,7 @@ int main(int argc, char **argv)
     test_look_follow_lag();
     test_ear_twitch();
     test_ambient_rejects_oneshot();
+    test_socket_s4();
     test_point_play_beast_actions();
     test_phys2();
     test_phys2_rig();

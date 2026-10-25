@@ -3389,7 +3389,7 @@ def check_contract(root):
     eps = sorted(set(re.findall(r'"(/api/[a-z_.]+)"', open(src, encoding="utf-8").read())))
     docs = ""
     for d in ("docs/ART_PARTS.md", "docs/memory/WORKFLOW.md", "docs/memory/GAPS.md",
-              "docs/memory/PROJECT_SPEC.md", "README.md"):
+              "docs/memory/PROJECT_SPEC.md", "README.md", "docs/SKELETON_SYSTEM.md"):
         p = os.path.join(root, d)
         if os.path.exists(p):
             docs += open(p, encoding="utf-8").read()
@@ -3687,6 +3687,92 @@ def check_attach_switch(root):
         check("zrig.c 的 alpha 仍是乘性（上面那条闸的依据）",
               "r->p_alpha[part] *= ZC_CLAMP(1.0 + v" in src,
               "zrig.c:2764 一线；语义若改，offset=-1 这条闸要跟着重订")
+
+
+def check_sockets(root):
+    """挂点（socket，T66.19 / S4）：骨架声明 → 位置表 → rig → 配件，四条链要对上。
+
+    这一节防的是**"文档里有、引擎里没有"**：这一轮之前 skeleton.json 里那 8 个
+    kind:socket 的骨就是这么躺了三轮 —— 名字齐全、语义齐全，但没有任何一件配件
+    真的挂在上面，也没有任何 rig 段。闸的作用是让它不能悄悄退回去。
+    """
+    section("挂点（socket）：骨架 / 位置表 / rig / 配件 四段对账")
+    chars = sorted(glob.glob(os.path.join(root, "characters/*/skeleton.json")))
+    for skp in chars:
+        cdir = os.path.dirname(skp)
+        tag = os.path.relpath(cdir, root)
+        sk = jsonc(skp)
+        socks = [b for b in sk.get("bones", []) if b.get("kind") == "socket"]
+        check("%s：骨架声明了挂点" % tag, bool(socks), "%d 个" % len(socks))
+        if not socks:
+            continue
+        tp = os.path.join(cdir, "design", "sockets.json")
+        if not check("%s：有挂点位置表 design/sockets.json" % tag,
+                     os.path.isfile(tp),
+                     "骨架声明了挂点却没人写位置 —— 配件会静默掉到画布原点"):
+            continue
+        table = jsonc(tp)
+        pos_of = {x["id"]: x for x in table.get("sockets", [])}
+        miss = sorted(b["id"] for b in socks if b["id"] not in pos_of)
+        extra = sorted(set(pos_of) - set(b["id"] for b in socks))
+        check("%s：每个挂点都有位置" % tag, not miss,
+              "缺 %s" % miss if miss else "%d 个齐" % len(pos_of))
+        check("%s：位置表里没有骨架外的野生挂点" % tag, not extra,
+              "多出 %s" % extra if extra else "无")
+        valid_refs = ("head_top", "eye_line", "mouth_line", "neck", "shoulder",
+                      "shoulder_l", "shoulder_r", "elbow_l", "elbow_r",
+                      "wrist_l", "wrist_r", "waist", "hip", "knee", "ankle", "foot")
+        bad = []
+        for sid, sp in pos_of.items():
+            if sp.get("ref") not in valid_refs:
+                bad.append("%s.ref=%r" % (sid, sp.get("ref")))
+            if sp.get("unit") not in ("head", "body", "torso"):
+                bad.append("%s.unit=%r" % (sid, sp.get("unit")))
+            if not (isinstance(sp.get("pos_rel"), list) and len(sp["pos_rel"]) == 2):
+                bad.append("%s.pos_rel" % sid)
+        check("%s：挂点位置用的是形态锚点（ref/unit/pos_rel）" % tag, not bad,
+              "都在" if not bad else "、".join(bad[:6]))
+        # 挂点的父骨必须在骨架里先声明过（骨架检查也查，这里查名字对不对）
+        byid = {b.get("id"): b for b in sk.get("bones", [])}
+        bad = [sid for sid in pos_of
+               if not (byid.get(sid) or {}).get("parent")]
+        check("%s：挂点都有父骨" % tag, not bad, "缺 %s" % bad if bad else "齐")
+        # rig 段：ready 形态必须有这个键（哪怕某个形态缺父骨，其它形态也要有）
+        rigs = sorted(glob.glob(os.path.join(cdir, "forms/*/rig.json")))
+        got_any = 0
+        for rp in rigs:
+            rig = jsonc(rp)
+            rs = rig.get("sockets") or {}
+            if rs:
+                got_any += 1
+            form = os.path.basename(os.path.dirname(rp))
+            undeclared = sorted(set(rs) - set(pos_of))
+            check("%s/%s：rig 里的挂点都来自位置表" % (tag, form), not undeclared,
+                  "野生的 %s" % undeclared if undeclared else "%d 个" % len(rs))
+        check("%s：至少一个形态的 rig 落了挂点" % tag, got_any > 0,
+              "%d/%d 个形态有 sockets 段" % (got_any, len(rigs)))
+        # 配件：写了 socket 的件要能对上表；槽的组必须和挂点的父骨一致
+        ap = os.path.join(cdir, "design", "attachments.json")
+        if os.path.isfile(ap):
+            att = jsonc(ap)
+            slots = {x["id"]: x for x in att.get("slots", [])}
+            wired = [x for x in att.get("attachments", []) if x.get("socket")]
+            check("%s：有配件真的接在挂点上（不只是声明）" % tag, bool(wired),
+                  "%d 件：%s" % (len(wired), "、".join(x["id"] for x in wired[:6])))
+            bad = []
+            for x in wired:
+                sid = x["socket"]
+                if sid not in pos_of:
+                    bad.append("%s→未知挂点 %s" % (x["id"], sid))
+                    continue
+                parent = (byid.get(sid) or {}).get("parent")
+                grp = (slots.get(x.get("slot")) or {}).get("group")
+                if grp and parent and grp != parent:
+                    bad.append("%s 的槽在 %s、挂点在 %s" % (x["id"], grp, parent))
+                if "pos" in x or "pos_rel" in x:
+                    bad.append("%s 既挂 socket 又自己写 pos（两个来源）" % x["id"])
+            check("%s：接了挂点的配件几何只有一个来源" % tag, not bad,
+                  "都对" if not bad else "；".join(bad[:6]))
 
 
 def check_effects_table(root):
@@ -4420,6 +4506,7 @@ def main():
                check_no_dead_tables, check_swing_headroom,
                check_ambient_sway,
                check_effects_table,
+               check_sockets,
                check_prosody,
                check_phys2,
                check_phys2_rig,

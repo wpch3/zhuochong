@@ -42,6 +42,17 @@ int   zrig_canvas_w(const zrig *r);
 int   zrig_canvas_h(const zrig *r);
 int   zrig_part_count(const zrig *r);
 const char *zrig_part_id(const zrig *r, int i);
+/* 挂点（socket，T66.19 / S4）：rig 的 sockets 段 + 部件挂在哪一个上。
+   配件靠"名字"挂在骨上，而不是把画布坐标写死 —— 换装/换形态/换角色都不会漂。 */
+int   zrig_socket_count(const zrig *r);
+const char *zrig_socket_id(const zrig *r, int i);
+const char *zrig_socket_group(const zrig *r, int i);
+int   zrig_socket_pos(const zrig *r, int i, double out[2]);
+int   zrig_part_socket(const zrig *r, const char *part_id);   /* 下标，-1 = 没挂 */
+/* 挂点**当前**画在哪（画布像素）：把挂点坐标过一遍父骨的矩阵。
+   静态 pos 只是"骨架摆在哪"，这一步才是"骨转了多少度之后它在哪" ——
+   运行时把模组件挂到手骨上，靠的就是这个。 */
+int   zrig_socket_screen_pos(const zrig *r, int i, double scale, double out[2]);
 int   zrig_action_count(const zrig *r);
 const char *zrig_action_id_at(const zrig *r, int i);
 const char *zrig_action_title_at(const zrig *r, int i);   /* 给人看的名字；没写就是 id */

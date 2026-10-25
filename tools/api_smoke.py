@@ -1045,6 +1045,63 @@ def run(base, root):
               max(_top or [0]) < 0.5, "裙腰附近最大 %.3f px" % max(_top or [0]))
         a.hit("/api/param?all=1&reset=1")
         a.hit("/api/ambient?on=1"); a.hit("/api/physics?on=1")   # 还原，别影响后面的段落
+    # 挂点（T66.19 / S4）：骨架声明的命名位置。三件事必须真的成立：
+    #   ① 每个挂点都有 (父骨, 坐标)，而且父骨在这个形态里真的存在；
+    #   ② **screen 会跟着父骨走** —— 腕骨转 70°，腕挂点要跟着跑，别的挂点不许跟着跑；
+    #   ③ screen 与 pos 的关系只差"父骨当前变换"，静止时两者不能差出半张画布。
+    # ★ 为什么要 ②：挂点如果只是"存了一对坐标"，那和把 pos 写死在配件里没有区别。
+    #   这一条量的正是它值不值得存在。
+    if a.json("/api/sockets.json"):
+        _so = a.json("/api/sockets.json") or {}
+        _sl = {q["id"]: q for q in (_so.get("sockets") or [])}
+        check("挂点表不是一个空数组", len(_sl) >= 6, "%d 个：%s" % (len(_sl), "、".join(_sl)))
+        # 父骨是否真的存在：拿这一形态的 rig.json 当名册（info.json 不报骨表，
+        # 而"端点上没有"不等于"不存在" —— 别为了省一行去猜）
+        _rig = {}
+        try:
+            with open(os.path.join(root, "characters", info["character"], "forms",
+                                   info["form"], "rig.json"), encoding="utf-8") as _fh:
+                _rig = json.load(_fh)
+        except Exception:                      # noqa: BLE001
+            pass
+        _groups = set((_rig.get("groups") or {}).keys())
+        _bad = [k for k, q in _sl.items()
+                if not q.get("group") or (_groups and q["group"] not in _groups)]
+        check("挂点都挂在真实存在的骨上", not _bad,
+              "都在（骨表 %d 根）" % len(_groups) if not _bad
+              else "父骨不存在：%s" % _bad[:4])
+        if "socket_wrist_l" in _sl and "ParamHandL" in _pj:
+            a.hit("/api/ambient?on=0"); a.hit("/api/physics?on=0")
+            a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=60&dt=0.016")
+
+            def _screens():
+                _d = a.json("/api/sockets.json") or {}
+                return {q["id"]: tuple(q["screen"]) for q in (_d.get("sockets") or [])}
+
+            _s0 = _screens()
+            a.hit("/api/param?id=ParamHandL&v=3.2")     # 腕骨 22×3.2 = 70.4°
+            a.hit("/api/step?n=20&dt=0.016")
+            _s1 = _screens()
+
+            def _moved(sid):
+                if sid not in _s0 or sid not in _s1:
+                    return 0.0
+                return abs(_s1[sid][0] - _s0[sid][0]) + abs(_s1[sid][1] - _s0[sid][1])
+
+            check("腕转 70° 后腕挂点跟着走（>5px）", _moved("socket_wrist_l") > 5.0,
+                  "socket_wrist_l 走了 %.2f px" % _moved("socket_wrist_l"))
+            check("腕挂点跟着走，别的挂点不许跟着走",
+                  max([_moved(k) for k in _s0 if "wrist" not in k] or [0]) < 3.0,
+                  "其余最大 %.2f px（超了说明挂点没挂在各自的父骨上）"
+                  % max([_moved(k) for k in _s0 if "wrist" not in k] or [0]))
+            a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=30&dt=0.016")
+            a.hit("/api/ambient?on=1"); a.hit("/api/physics?on=1")
+        # 静止状态下 screen 与 pos 只差父骨变换：两者都必须在画布附近，不能飞到天外
+        _far = [k for k, q in _sl.items()
+                if not (-200 <= q["screen"][0] <= 1200 and -200 <= q["screen"][1] <= 1800)]
+        check("挂点画出来的位置都在画布附近", not _far,
+              "都在" if not _far else "跑飞：%s" % _far[:4])
+
     # 长发（T46.2）：① 能开关；② 开着的时候，转头会把第三段（发梢）带起来。
     if "longhair_tip" in dfm:
         a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=120&dt=0.016")

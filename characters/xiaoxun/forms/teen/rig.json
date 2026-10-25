@@ -128,6 +128,64 @@
       "parent": "forearm_r"
     }
   },
+  "sockets": {
+    "socket_head_top": {
+      "group": "head",
+      "pos": [
+        423,
+        107
+      ]
+    },
+    "socket_face": {
+      "group": "head",
+      "pos": [
+        423,
+        273
+      ]
+    },
+    "socket_ear_l": {
+      "group": "head",
+      "pos": [
+        364,
+        178
+      ]
+    },
+    "socket_ear_r": {
+      "group": "head",
+      "pos": [
+        474,
+        178
+      ]
+    },
+    "socket_neck": {
+      "group": "chest",
+      "pos": [
+        417,
+        354
+      ]
+    },
+    "socket_wrist_l": {
+      "group": "hand_l",
+      "pos": [
+        254,
+        776
+      ]
+    },
+    "socket_wrist_r": {
+      "group": "hand_r",
+      "pos": [
+        596,
+        776
+      ]
+    },
+    "socket_back": {
+      "group": "chest",
+      "pos": [
+        417,
+        429
+      ]
+    }
+  },
   "gaze": {
     "max_offset": [
       4.0,
@@ -2068,6 +2126,7 @@
         364,
         178
       ],
+      "socket": "socket_ear_l",
       "anchor": [
         0.5,
         1.0
@@ -2090,6 +2149,7 @@
         474,
         178
       ],
+      "socket": "socket_ear_r",
       "anchor": [
         0.5,
         1.0
@@ -2111,6 +2171,11 @@
       "pos": [
         423,
         102
+      ],
+      "socket": "socket_head_top",
+      "dpos": [
+        0,
+        -5
       ],
       "anchor": [
         0.5,
@@ -2311,6 +2376,7 @@
         423,
         107
       ],
+      "socket": "socket_head_top",
       "anchor": [
         0.5,
         0.0

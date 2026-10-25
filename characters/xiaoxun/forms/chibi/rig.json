@@ -86,6 +86,50 @@
       "bend_follow_at": 1258
     }
   },
+  "sockets": {
+    "socket_head_top": {
+      "group": "head",
+      "pos": [
+        439,
+        153
+      ]
+    },
+    "socket_face": {
+      "group": "head",
+      "pos": [
+        423,
+        528
+      ]
+    },
+    "socket_ear_l": {
+      "group": "head",
+      "pos": [
+        310,
+        307
+      ]
+    },
+    "socket_ear_r": {
+      "group": "head",
+      "pos": [
+        549,
+        307
+      ]
+    },
+    "socket_neck": {
+      "group": "chest",
+      "pos": [
+        422,
+        691
+      ]
+    },
+    "socket_back": {
+      "group": "chest",
+      "pos": [
+        422,
+        855
+      ]
+    }
+  },
   "gaze": {
     "max_offset": [
       4.0,
@@ -1015,6 +1059,7 @@
         310,
         307
       ],
+      "socket": "socket_ear_l",
       "anchor": [
         0.5,
         1.0
@@ -1037,6 +1082,7 @@
         549,
         307
       ],
+      "socket": "socket_ear_r",
       "anchor": [
         0.5,
         1.0
@@ -1058,6 +1104,11 @@
       "pos": [
         439,
         143
+      ],
+      "socket": "socket_head_top",
+      "dpos": [
+        0,
+        -10
       ],
       "anchor": [
         0.5,

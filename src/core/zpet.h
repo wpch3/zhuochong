@@ -132,6 +132,12 @@ double      zpet_deform_amount(const zpet *p, const char *id);
    返回控制点数；cols/rows 给网格分辨率。 */
 int         zpet_part_mesh(const zpet *p, const char *part_id,
                            int *cols, int *rows, double *dx, double *dy, int cap);
+/* 挂点探针（T66.19 / S4）：骨架声明的命名位置，配件按名字挂上来。
+   screen = 过完父骨矩阵之后的位置（画布像素，随当前动作/姿态变）——
+   "配件跟着手腕动"这句话能不能机检，就看这个值动没动。 */
+int         zpet_socket_count(const zpet *p);
+int         zpet_socket_get(const zpet *p, int i, const char **id, const char **group,
+                            double pos[2], double screen[2]);
 void   zpet_set_gaze(zpet *p, double nx, double ny, int on);
 /* 表情层（≈ Live2D expression）：叠在当前动作之上，和动作互不覆盖 */
 int    zpet_expression_count(const zpet *p);

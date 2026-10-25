@@ -31,6 +31,9 @@
    group 指向被丢掉的组，加载失败报的却是"父组未定义"，查半天。 */
 #define ZRIG_MAX_PARTS   512
 #define ZRIG_MAX_GROUPS   64
+/* 挂点（socket，T66.19 / S4）：配件"挂在哪根骨上"的命名位置。
+   每个角色包最多这么多条，够一整套饰品（头顶/脸/耳/颈/腕/背…）。 */
+#define ZRIG_MAX_SOCKETS  32
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
 #define ZRIG_MAX_ACTIONS  ZRIG_ACTION_CAP   /* 公开在 zrig.h：zpet 的动作清单要用同一个数 */
@@ -169,6 +172,12 @@ typedef struct {
     char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
     int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
     char   deform_id[48];     /* "deformer"：这件挂在哪根变形器链上（≈ Live2D 的父子付け） */
+    /* ── 挂点（T66.19 / S4）──
+       "socket": "socket_ear_l" 表示这件**不是自己摆好坐标**，而是挂在某个命名挂点上：
+       组 = 挂点所在的那根骨，坐标 = 挂点位置 + "dpos"。配件因此不会因为换装/换形态
+       而漂 —— 它跟的是名字，不是画布上的数字。 */
+    char   socket_id[48];
+    int    socket;            /* 解析后的挂点下标，-1 = 没挂 socket */
     /* ── 逐顶点位移场的继承（T66.10b：从"手调系数"改成"声明继承"）──
        "inherit_from" 写**另一个部件**的 id：这件就按那一件的逐顶点形变场跟着起伏
        （≈ Live2D 里把带子挂在布的变形器下面）。
@@ -549,6 +558,9 @@ struct zrig {
     zgroup  groups[ZRIG_MAX_GROUPS];
     int     ngroups;
 
+    struct { char id[48]; int group; double pos[2]; } sockets[ZRIG_MAX_SOCKETS];
+    int     nsockets;
+
     zpart   parts[ZRIG_MAX_PARTS];
     int     nparts;
     int     order[ZRIG_MAX_PARTS];   /* 按 layer 升序的绘制顺序 */
@@ -924,6 +936,15 @@ static int find_part(const zrig *r, const char *id)
     return -1;
 }
 
+static int find_socket(const zrig *r, const char *id)
+{
+    int i;
+    if (!id || !*id) return -1;
+    for (i = 0; i < r->nsockets; ++i)
+        if (strcmp(r->sockets[i].id, id) == 0) return i;
+    return -1;
+}
+
 static const zaction *current_action(const zrig *r)
 {
     int idx = zsm_index(&r->sm, zsm_current_id(&r->sm));
@@ -1196,12 +1217,56 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
                 return -1;
             }
         }
+        p->socket = -1;
         {
-            const char *gid = zjson_str(zjson_obj_get(pj, "group"), "root");
-            p->group = find_group(r, gid);
-            if (p->group < 0) {
-                zdiag_error(d, file, pj ? pj->line : 0, 0, buf, "未知的组 '%s'", gid);
-                return -1;
+            const char *sid = zjson_str(zjson_obj_get(pj, "socket"), NULL);
+            if (sid && *sid) {
+                /* 挂 socket 的件：组和坐标都由挂点给，自己只写 dpos。
+                   为什么不许同时写 pos：两套坐标并存时"谁赢"没有任何直觉答案，
+                   而这类歧义在换装/换形态后才会以"配件漂了"的形式暴露出来。 */
+                int si = find_socket(r, sid);
+                const zjson *dp = zjson_obj_get(pj, "dpos");
+                if (si < 0) {
+                    zdiag_error(d, file, pj ? pj->line : 0, 0, buf,
+                                "未知的挂点 '%s'（本 rig 声明了 %d 个：见 sockets 段；"
+                                "挂点要写在 skeleton.json 的 kind:socket 骨上，再由生成器落到 rig）",
+                                sid, r->nsockets);
+                    return -1;
+                }
+                z_strlcpy(p->socket_id, sid, sizeof(p->socket_id));
+                p->socket = si;
+                p->group = r->sockets[si].group;
+                p->pos[0] = r->sockets[si].pos[0];
+                p->pos[1] = r->sockets[si].pos[1];
+                if (dp && dp->type == ZJSON_ARR && zjson_count(dp) >= 2) {
+                    p->pos[0] += zjson_num(zjson_at(dp, 0), 0.0);
+                    p->pos[1] += zjson_num(zjson_at(dp, 1), 0.0);
+                }
+                /* 生成器会把算好的 pos 一起写进来（美术/QA 工具要读它），所以两处都在是常态。
+                   但**位置只有一个来源**：挂点 + dpos。pos 与它对不上就是有一处过时了，
+                   这种错不会在画面上立刻显形，只会在换装/换形态之后表现为"配件漂了"。 */
+                {
+                    const zjson *pp2 = zjson_obj_get(pj, "pos");
+                    if (pp2 && pp2->type == ZJSON_ARR && zjson_count(pp2) >= 2) {
+                        double px = zjson_num(zjson_at(pp2, 0), 0.0);
+                        double py = zjson_num(zjson_at(pp2, 1), 0.0);
+                        if (fabs(px - p->pos[0]) > 1.0 || fabs(py - p->pos[1]) > 1.0) {
+                            zdiag_error(d, file, pj ? pj->line : 0, 0, buf,
+                                "部件 '%s' 的 pos [%.1f,%.1f] 与挂点 '%s' 给出的 "
+                                "[%.1f,%.1f] 不一致：挂 socket 的件位置由挂点决定，"
+                                "pos 只能写同一个值（要偏移就写 dpos）",
+                                p->id, px, py, sid, p->pos[0], p->pos[1]);
+                            return -1;
+                        }
+                    }
+                }
+            } else {
+                const char *gid = zjson_str(zjson_obj_get(pj, "group"), "root");
+                p->group = find_group(r, gid);
+                if (p->group < 0) {
+                    zdiag_error(d, file, pj ? pj->line : 0, 0, buf, "未知的组 '%s'", gid);
+                    return -1;
+                }
             }
         }
         {
@@ -1222,6 +1287,63 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
             }
         }
         r->nparts++;
+    }
+    return 0;
+}
+
+/* 挂点表（T66.19 / S4）：sockets 是 rig 级的命名位置，配件按名字挂上来。
+   ┌ 为什么要有它 ────────────────────────────────────────────────
+   │ 配件的坐标现在只能写死画布数字。换装换了躯干、换形态换了画布，那个数字就过期，
+   │ 表现是"耳饰 / 腕带漂到脸外面"。挂点把坐标收进**骨架**（pivot 级别的东西），
+   │ 配件只写名字 + 偏移 ⇒ 换装/换形态/换角色都不用重摆。
+   │ 契约面：skeleton.json 里 kind:socket 的骨 + 一根父骨；生成器把父骨（组）的 pivot
+   │ 和算出来的位置落进 rig 的 sockets 段。引擎不认识"语义"，只认 id → (组, 坐标)。
+   └──────────────────────────────────────────────────────────── */
+static int load_sockets(zrig *r, const zjson *js, zdiag *d, const char *file)
+{
+    size_t i, n = zjson_count(js);
+    if (!js) return 0;                     /* 可选段：老 rig 没有 sockets 照跑 */
+    if (js->type != ZJSON_OBJ) {
+        zdiag_error(d, file, js->line, 0, "sockets", "期望 object");
+        return -1;
+    }
+    for (i = 0; i < n; ++i) {
+        const char *sid = zjson_key_at(js, i);
+        const zjson *sj = zjson_at(js, i);
+        const zjson *gp = zjson_obj_get(sj, "group");
+        const zjson *pp = zjson_obj_get(sj, "pos");
+        char path[256];
+        const char *gid;
+        int gi;
+        if (r->nsockets >= ZRIG_MAX_SOCKETS) {
+            zdiag_error(d, file, js->line, 0, "sockets",
+                        "挂点超过上限 %d（要更多就改大 ZRIG_MAX_SOCKETS，不许静默丢）",
+                        ZRIG_MAX_SOCKETS);
+            return -1;
+        }
+        z_snprintf(path, sizeof(path), "sockets.%s", sid);
+        gid = zjson_str(gp, NULL);
+        if (!gid || !*gid) {
+            zdiag_error(d, file, sj ? sj->line : 0, 0, path,
+                        "挂点必须写 group（挂在哪根骨上）");
+            return -1;
+        }
+        gi = find_group(r, gid);
+        if (gi < 0) {
+            zdiag_error(d, file, sj ? sj->line : 0, 0, path,
+                        "挂点指向的组 '%s' 不存在（挂点只能挂在已有的骨上）", gid);
+            return -1;
+        }
+        if (!pp || pp->type != ZJSON_ARR || zjson_count(pp) < 2) {
+            zdiag_error(d, file, sj ? sj->line : 0, 0, path,
+                        "挂点必须写 pos [x, y]（画布坐标）");
+            return -1;
+        }
+        z_strlcpy(r->sockets[r->nsockets].id, sid, sizeof(r->sockets[r->nsockets].id));
+        r->sockets[r->nsockets].group = gi;
+        r->sockets[r->nsockets].pos[0] = zjson_num(zjson_at(pp, 0), 0.0);
+        r->sockets[r->nsockets].pos[1] = zjson_num(zjson_at(pp, 1), 0.0);
+        r->nsockets++;
     }
     return 0;
 }
@@ -3367,6 +3489,8 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
         g->parent = -1;
     }
     if (load_groups(r, zjson_obj_get(root, "groups"), diag, file) != 0) goto fail;
+    /* 挂点必须在部件之前 —— 部件装载时就要按名字解析成 (组, 坐标) */
+    if (load_sockets(r, zjson_obj_get(root, "sockets"), diag, file) != 0) goto fail;
     if (load_parts(r, zjson_obj_get(root, "parts"), diag, file) != 0) goto fail;
     /* 解析 bend_follow（必须在部件加载之后） */
     {
@@ -3947,6 +4071,43 @@ const char *zrig_name(const zrig *r) { return r ? r->name : ""; }
 int zrig_canvas_w(const zrig *r) { return r ? r->cw : 0; }
 int zrig_canvas_h(const zrig *r) { return r ? r->ch : 0; }
 int zrig_part_count(const zrig *r) { return r ? r->nparts : 0; }
+int zrig_socket_count(const zrig *r) { return r ? r->nsockets : 0; }
+const char *zrig_socket_id(const zrig *r, int i)
+{
+    return (r && i >= 0 && i < r->nsockets) ? r->sockets[i].id : "";
+}
+const char *zrig_socket_group(const zrig *r, int i)
+{
+    if (!r || i < 0 || i >= r->nsockets) return "";
+    return r->groups[r->sockets[i].group].id;
+}
+int zrig_socket_pos(const zrig *r, int i, double out[2])
+{
+    if (!r || i < 0 || i >= r->nsockets || !out) return 0;
+    out[0] = r->sockets[i].pos[0];
+    out[1] = r->sockets[i].pos[1];
+    return 1;
+}
+int zrig_part_socket(const zrig *r, const char *part_id)
+{
+    int pi;
+    if (!r || !part_id) return -1;
+    pi = find_part(r, part_id);
+    return pi < 0 ? -1 : r->parts[pi].socket;
+}
+static void group_matrix(const zrig *r, int gi, double scale, double m[6]);
+
+int zrig_socket_screen_pos(const zrig *r, int i, double scale, double out[2])
+{
+    double m[6], x, y;
+    if (!r || i < 0 || i >= r->nsockets || !out || scale <= 0.0) return 0;
+    group_matrix(r, r->sockets[i].group, scale, m);
+    x = r->sockets[i].pos[0] * scale;
+    y = r->sockets[i].pos[1] * scale;
+    out[0] = m[0] * x + m[2] * y + m[4];
+    out[1] = m[1] * x + m[3] * y + m[5];
+    return 1;
+}
 int zrig_action_count(const zrig *r) { return r ? r->nactions : 0; }
 int zrig_region_count(const zrig *r) { return r ? r->nregions : 0; }
 

@@ -121,6 +121,67 @@ def resolve(att, anchors, ox=0, oy=0):
     return pos, sh
 
 
+def load_skeleton_sockets(char_root, character=None):
+    """读骨架里声明的挂点：{id: 父骨 id}（kind:socket 的那些骨）。
+
+    char_root 可以是角色目录，也可以是带 skeleton.json 的目录。没有骨架就返回 {}。
+    """
+    p = os.path.join(char_root, "skeleton.json")
+    if not os.path.exists(p) and character:
+        p = os.path.join(os.path.dirname(char_root), character, "skeleton.json")
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding="utf-8") as f:
+        skel = json.load(f)
+    return {b["id"]: b.get("parent") for b in skel.get("bones", [])
+            if b.get("kind") == "socket"}
+
+
+def load_sockets(char_root):
+    """读角色级 design/sockets.json：{id: 一条挂点定义}。没有这张表就返回 {}。"""
+    p = os.path.join(char_root, "design", "sockets.json")
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding="utf-8") as f:
+        table = json.load(f)
+    return {x["id"]: x for x in table.get("sockets", [])
+            if not x["id"].startswith("_")}
+
+
+def socket_pos(spec, anchors, ox=0, oy=0):
+    """挂点坐标（画布像素，锚点以外的部分）。
+
+    挂点表用「形态锚点 + 相对偏移」表达，和挂件同一套算式 —— 这不是巧合：
+    两套几何要是各写一份，早晚会有一处先改、另一处没改，而症状是“配件差几像素”，
+    没人会想到去查换算。所以这里复用 resolve()，只是明说挂点自己没有尺寸。
+    """
+    return resolve({**spec, "sprite_h_rel": 0.0}, anchors, ox, oy)[0]
+
+
+def attach_pos(att, socket_spec, anchors, ox=0, oy=0):
+    """挂件落点 + 成品高：挂了挂点就 = 挂点 + dpos_rel，否则走老口径。
+
+    dpos_rel 的单位由 socket_unit 给（默认 head），和挂点自己的单位可以不同：
+    同一个挂点上放“紧贴的帽檐”和“抬高一点的呆毛夹”，差值表达成头高比例才跨形态成立。
+    """
+    if socket_spec is None:
+        return resolve(att, anchors, ox, oy)
+    base = socket_pos(socket_spec, anchors, ox, oy)
+    du = unit_px(anchors, att.get("socket_unit") or socket_spec.get("unit", "head"))
+    dp = att.get("dpos_rel") or [0.0, 0.0]
+    pos = [int(round(base[0] + float(dp[0]) * du)),
+           int(round(base[1] + float(dp[1]) * du))]
+    # 尺寸与位置是两件事：位置归挂点，尺寸仍由挂件自己的 sprite_h_rel 给。
+    # 这里**不能**再走 resolve()：挂了挂点的件往往已经不写 ref 了（位置不需要它），
+    # 而 resolve() 会先去校验 ref —— 那是给"自己摆位置"的件用的入口。
+    if "sprite_h_rel" in att:
+        sh = int(round(float(att["sprite_h_rel"]) *
+                       unit_px(anchors, att.get("unit", "head"))))
+    else:
+        sh = int(att.get("sprite_h", 0))
+    return pos, sh
+
+
 def canvas_offset(canvas_wh, sprite_wh):
     """画布居中偏移。和 make_rig.build() 里那一行必须完全一致。"""
     cw, ch = canvas_wh

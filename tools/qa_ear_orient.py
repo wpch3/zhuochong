@@ -152,6 +152,24 @@ def measure_sprite(path: str) -> dict:
             "pinna_frac": (round(frac, 4) if frac is not None else None), "warm_px": warm_px}
 
 
+def ear_side(root: str, character: str, form: str, att: dict) -> str:
+    """这只耳朵挂在头的哪一边：left / right（按解算出的画布 x 与头中线比）。"""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import attach_geom
+        anc = attach_geom.load_anchors(
+            os.path.join(root, "characters", character, "forms", form, "design"))
+        if anc:
+            socks = attach_geom.load_sockets(os.path.join(root, "characters", character))
+            pos, _ = attach_geom.attach_pos(att, socks.get(att.get("socket")), anc)
+            cx = float(anc["points"]["head_top"][0])
+            return "left" if pos[0] < cx else "right"
+    except Exception:            # noqa: BLE001 —— 解不出来就退回老口径，别把闸弄崩
+        pass
+    px = (att.get("pos_rel") or [att.get("pos", [0, 0])[0]])[0]
+    return "left" if px < 0 else "right"
+
+
 def measure(root: str = ".", character: str = "xiaoxun", form: str = "teen") -> list[dict]:
     """按 attachments.json 里的实际摆放位置判定每只耳朵朝向对不对。
 
@@ -168,9 +186,13 @@ def measure(root: str = ".", character: str = "xiaoxun", form: str = "teen") -> 
         sp = os.path.join(sprites, att["sprite"])
         if not os.path.exists(sp):
             continue
-        # 摆在头的哪一边：pos_rel[0] < 0 是画面左边（相对锚点，见 tools/attach_geom.py）
-        px = att.get("pos_rel", [att.get("pos", [0, 0])[0], 0])[0]
-        side = "left" if px < 0 else "right"
+        # 摆在头的哪一边 —— 按**解算出来的画布坐标**和头中线比，而不是读 pos_rel 的符号。
+        # ★ 2026-10-25（T66.19）：猫耳改成挂在 socket_ear_l/r 上之后，表里就没有
+        #   pos_rel 了（位置归挂点）。第一版这里读 pos_rel、读不到就退回 0，
+        #   于是两只耳朵都被判成"在右边"，左耳当场变红 —— 闸的输入没了，
+        #   红的是闸不是画面。凡是"位置由别处决定"的件，闸都必须走同一份解算
+        #   （tools/attach_geom.attach_pos），否则它验的是表格式不是几何。
+        side = ear_side(root, character, form, att)
         m = measure_sprite(sp)
         m["id"] = att["id"]
         m["side"] = side

@@ -1463,3 +1463,27 @@ chibi 是 1x，同一份键表在一帧里的相对幅度差一倍。
 ② 报数值必须带单位（精灵px / 1x 素材px / 帧px），`/api/partmesh.json` 的返回值是
    **精灵像素**（scale=1.0 时 k 也恒为 1，换画布缩放不会变，这一点已实测）；
 ③ 换形态的幅度对照（teen vs chibi）必须先把这层折回去，否则会得出"Q 版更活泼"的假结论。
+
+## ~~G66.20 挂点只写在文档里，没有任何实现~~ —— 2026-10-25 T66.19 已关闭
+
+**当时的状况（2026-10-24 立骨架契约时留下的）**：`skeleton.json` 里 8 个 `kind:socket` 的骨，
+名字、父骨、`required:false` 全齐；`docs/SKELETON_SYSTEM.md` 还专门写了一节"挂点没有 pivot，
+位置永远由父骨算出来 —— 这就是配件不漂的机制保证"。**但那是空话**：
+`forms/*/rig.json` 里没有任何 `sockets` 段，20 多件 `acc_*` 全都只有 `group: head/chest`，
+没有一件引用挂点，`zpart` 结构体里连 `socket` 字段都没有。声明齐全、实现为零，而所有闸都是绿的
+（闸当时只查"挂点的父骨在不在"，不查"挂点有没有落地"）。
+
+**关掉时做了什么**：拿 `design/sockets.json` 写位置（形态锚点表达，四形态共用），
+`make_rig.emit_sockets()` 落到 rig，`attach_emit` 支持 `socket/dpos_rel`，
+4 件配件真接线（猫耳×2、兜帽、头顶长发，**位置逐像素不变**，只是换了出处），
+引擎装载期校验四类写错，探针 `GET /api/sockets.json`，四道闸同时上（`test_core` 22 条、
+`check_skeleton` ⑧b + 2 条负控、`check_form_portable`、`selfcheck` 四段对账）。
+
+**还没关的部分**（单列，不要以为关了 G66.20 就没事）：
+- **腕带没有任何素材**（T66.19b）：`socket_wrist_l/r` 能量、能挂、跟手走 26~37px，
+  但本体没有一件腕饰。要的是美术，不是代码。
+- **Q 版没有腕挂点**：chibi 整条手臂一件素材，`hand_l/r` 不存在，腕挂点按 `required:false` 跳过。
+- **换装包里的饰品没走挂点**（T66.20）：`outfits/*.json` 目前只换躯干/裙件。
+
+★ 教训（已进 LESSONS 439）：**"契约里写了"和"引擎里做了"之间必须有一道闸**。
+这一轮之前，`check_skeleton` ⑧ 只验父骨存在 —— 一条永远为真的检查，看起来像在验挂点。

@@ -63,10 +63,40 @@ root
 | `skirt_sway` / `skirt_hem` / `skirt_lining` / `jacket_hem` | `skirt_sway_x/y`、`skirt_hem_x`、`lining_sway_x`、`jacket_hem_x` | — |
 | `tail` | `tail_relaxed_s/up_s/puff_s/tuck_s` | 同左 |
 
-### 2.3 挂点（`kind: socket`）
+### 2.3 挂点（`kind: socket`）—— 2026-10-25 T66.19 落地
 
 `socket_head_top` / `socket_face` / `socket_ear_l/r` / `socket_neck` / `socket_wrist_l/r` / `socket_back`。
-挂点**没有 pivot**，它的位置永远由父骨算出来 —— 这就是"配件不漂"的机制保证。
+挂点**没有 pivot**：它的位置 = 父骨 pivot + 一根"形态锚点 + 相对偏移"的向量，所以骨一转挂点跟着转，
+而挂点的**名字**和所在骨由角色级契约固定。这就是"配件不漂"的机制保证。
+
+四段分工，谁都不许替别人说话：
+
+| 段 | 文件 | 回答什么 |
+|---|---|---|
+| 声明 | `characters/<角色>/skeleton.json`（`bones[]`，`kind: socket`） | **有哪些**挂点、各自挂在谁的骨上 |
+| 位置 | `characters/<角色>/design/sockets.json` | **在哪**（`ref` + `pos_rel` + `unit`，四形态共用一张表） |
+| 尺度 | `forms/<形态>/design/anchors.json` | 这个形态的锚点实际在哪（像素尺度） |
+| 落地 | `forms/<形态>/rig.json` 的 `sockets` 段：`{id: {group, pos}}` | 引擎唯一认的东西 |
+
+配件挂上来只要两行：
+
+```json
+{ "id": "acc_ear_cat_l", "socket": "socket_ear_l", "dpos": [0, 0] }
+```
+
+`pos` 由生成器算好一起写进 rig（美术/QA 工具要读它），但**位置只有一个来源**：挂点 + `dpos`。
+引擎装载时会核对两者，差 > 1px 就报错 —— 这种不一致不会立刻显形，只会在换装/换形态之后
+表现成"配件漂了"，那时候已经没人记得是哪一次改的。
+
+探针：`GET /api/sockets.json` 给每个挂点的 `pos`（骨架摆在哪）与 `screen`（过完父骨矩阵之后
+**这一刻**在哪，画布像素 × 当前缩放）。"配件跟着手腕动"能不能机检，就看 `screen` 动没动。
+
+★ 为什么位置不写进 `skeleton.json`：那是角色级契约，一份；形态的尺度在四份 `anchors.json` 里。
+把 teen 量出来的像素写进角色级文件，等于让 teen 的像素去将就 chibi（T2.2.0 量过：平均偏 92 画布像素）。
+
+★ 这一节的旧文（2026-10-24）只写了"挂点没有 pivot，位置永远由父骨算出来"——而当时
+**没有任何一件配件挂在上面，rig 里连 `sockets` 段都没有**。声明齐全、实现为零，闸也全是绿的。
+T66.19 才把它接到地（LESSONS 439）。
 
 ### 2.4 豁免（waivers）
 
@@ -76,7 +106,7 @@ Q 版手臂是整件素材，所以 `forearm_l/r`、`elbow_fold_l/r`、`hand_l/r
 
 ### 2.5 闸（`make check` 里，13 条负控）
 
-`tools/check_skeleton.py` 逐形态核对 8 类：骨架自身（id 唯一/父先声明/无环）、必需骨齐全、
+`tools/check_skeleton.py` 逐形态核对 8 类（2026-10-25 加 ⑧b 挂点落地，跑出 **597 项 0 红**、16 条负控）：骨架自身（id 唯一/父先声明/无环）、必需骨齐全、
 不许野生骨、父子两边一致、pivot 在画布内、每个部件都挂骨、`deformer` 与 `mesh_bones` 都存在、
 挂点父骨可用、每个网格骨都被语义角色收编。跑出来 **429 项 0 红**，并如实打印
 **「网格骨绑定覆盖率 0/103」** —— 这条数字就是下一轮要动的靶子。
@@ -219,3 +249,40 @@ Q 版手臂是整件素材，所以 `forearm_l/r`、`elbow_fold_l/r`、`hand_l/r
   `inherit_from: skirt_main` + `warp_inherit: 0.35`，自己不再有网格/形变器，逐顶点场
   从表布继承；探针 `GET /api/partmesh.json` 量得到 7.917 → 2.767 px。
   遗留（美术）：里布被表布压住 99.9%，观众看不见"跟得少"，要露内衬得改素材下缘。
+
+---
+
+## 8. S4 施工记录（2026-10-25）：挂点真的接上了（T66.19）
+
+### 8.1 改了什么
+
+| 层 | 改动 |
+|---|---|
+| 骨架位置表 | 新增 `characters/xiaoxun/design/sockets.json`：8 个挂点各自 `ref` + `pos_rel` + `unit`（`socket_head_top` / `socket_ear_l/r` 的数值就是原来挂件的落点，所以换过去位置一像素不动） |
+| 引擎 | `zrig.c`：`zrig` 加 `sockets[]`；`zpart` 加 `socket_id` / `socket`；新增 `load_sockets()`（排在 `load_groups` 之后、`load_parts` 之前）；装载期校验四类错误（未知挂点 / 父骨不存在 / 缺 pos / pos 与挂点不一致）。`zrig.h` 探针：`zrig_socket_count/id/group/pos`、`zrig_part_socket`、`zrig_socket_screen_pos`（过父骨矩阵） |
+| 生成器 | `make_rig.emit_sockets()` 把骨架声明的挂点按形态锚点换算成 rig 的 `sockets` 段；`attach_emit()` 支持 `socket` / `dpos_rel`；算式统一放在 `attach_geom.socket_pos()` / `attach_geom.attach_pos()`，生成器、可移植性闸、猫耳朝向闸**共用一份** |
+| 内容 | 4 件配件真接线：`acc_ear_cat_l→socket_ear_l`、`acc_ear_cat_r→socket_ear_r`、`acc_hood_up→socket_head_top`（`dpos [0,-5]`）、`acc_hair_crown_long→socket_head_top`；teen 落 8 个挂点，chibi 落 6 个（没有手骨，腕挂点按 `required:false` 跳过） |
+| 探针 | `GET /api/sockets.json`：`pos`（静态）+ `screen`（跟骨） |
+| 闸 | `check_skeleton` ⑧b（rig 挂点 ↔ 骨架 ↔ 位置表，597 项 / 16 条负控）；`check_form_portable`（挂点也跟着头身比缩放）；`selfcheck` 新增「挂点四段对账」16 项；`test_core` 新增 `test_socket_s4`（22 条断言） |
+
+### 8.2 验收
+
+- [测试锁] `test_core` **1214/0**（新增 22 条：解析成 (父骨, 坐标) / `dpos` 参与 / 父骨转 30° 挂点跟着走
+  > 5px / 五类写错在装载期被打回）。
+- [测试锁] `check_skeleton` **597/0**（负控 16/16：挂点没落到 rig、rig 挂点父骨与骨架不一致都要判红）。
+- [测试锁] 位置不变性：换装前后 teen 104 件、chibi 49 件**逐字段比对，只有 4 件多了 `socket`/`dpos`**，
+  `pos` 一个没动 —— 接线是"换出处"，不是"换位置"。
+- [沙箱实测] `python3 tools/qa_sockets.py probe`：腕骨转 70.4° 后 `socket_wrist_l` 走
+  **26.5~37.2px**（取决于抬手前的初始角），其余 7 个挂点 < 0.6px；`overlay` 出
+  `logs/asset_qa/t66_19_sockets.png`（8 个挂点的十字 + 引线 + 坐标画在角色帧上，
+  图里能确认 head_top 在呆毛根、ear 在两只耳根、face 在眼线、neck 在领口、
+  back 在躯干中线 —— **2D 里"在背后"靠层号表达，不靠坐标**）。
+- [需真机] 挂件在拖拽/高速抬手时的观感。
+
+### 8.3 还没做
+
+- **腕带/手链没有任何素材**：`socket_wrist_l/r` 落地了、能量、能挂，但没有一件美术挂在上面。
+  模组作者可以直接挂（一张 PNG + 一个挂点名），本体暂时是空挂点。
+- chibi 没有 `hand_l/r` 骨（整条手臂一件素材），腕挂点在 Q 版上不存在 —— 要么补分段素材（T66.2），
+  要么接受"Q 版没有腕饰"。
+- 单网格多骨加权（T66.9）没做：配件现在还只能整体跟一根骨，"袖子在手腕处随腕弯"仍做不到。

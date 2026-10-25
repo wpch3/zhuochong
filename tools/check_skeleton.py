@@ -323,6 +323,30 @@ def check_form(root, char_id, sk, form, rig_path):
         wv = waivers.get(par)
         check("挂点 %s 的父骨 %r 在该形态可用" % (b["id"], par), bool(wv),
               "父骨缺了，这个挂点在任何形态上都挂不上东西")
+
+    # ⑧b 挂点真的落到 rig 上了（T66.19 / S4）。
+    #     只写在文档里的挂点等于没有：配件挂上来会在装载期报"未知的挂点"。
+    #     反向也要查 —— rig 里冒出一个骨架没声明的挂点，说明有人手改过 rig。
+    rig_socks = rig.get("sockets") or {}
+    for sid, sd in rig_socks.items():
+        b = bones.get(sid) or {}
+        check("rig 里的挂点 %s 在骨架里声明过" % sid, b.get("kind") == "socket",
+              "骨架里没有这个 kind:socket 的骨")
+        check("挂点 %s 的父骨与骨架一致" % sid,
+              (b.get("parent") or "") == (sd.get("group") or ""),
+              "骨架写 %r，rig 写 %r" % (b.get("parent"), sd.get("group")))
+        pv = sd.get("pos")
+        if isinstance(pv, list) and len(pv) == 2:
+            check("挂点 %s 的坐标在画布内" % sid,
+                  -w * 0.2 <= float(pv[0]) <= w * 1.2 and
+                  -h * 0.2 <= float(pv[1]) <= h * 1.2, str(pv))
+        else:
+            check("挂点 %s 有坐标 pos" % sid, False, str(pv))
+    for b in sk.get("bones", []):
+        if b.get("kind") != "socket" or (b.get("parent") or "") not in groups:
+            continue                       # 该形态连父骨都没有，跳过（required:false 的情形）
+        check("挂点 %s 已落到该形态的 rig 上" % b["id"], b["id"] in rig_socks,
+              "父骨在、挂点却不在 rig 里 —— 生成器漏了一段")
     return _fail - before
 
 
@@ -383,6 +407,8 @@ def _mk(tmp, rig_over=None, sk_over=None, drop_bones=(), add_bones=()):
                       {"id": "hair_wave", "part": "h", "parent": "hair_mid",
                        "cols": 1, "rows": 1,
                        "points": [{"c": 0, "r": 0, "dx": 0}]}],
+        # 挂点（T66.19）：骨架声明了 socket_head_top，rig 就得把它落下来
+        "sockets": {"socket_head_top": {"group": "head", "pos": [100, 40]}},
         "actions": [{"id": "idle", "loop": True, "channels": []}]}
     for k, v in (rig_over or {}).items():
         rig[k] = v
@@ -455,6 +481,10 @@ def self_test(_root):
     run("网格全是平铺的（没有骨链）", True, rig_over={"deformers": [
         {"id": "hair_wave", "part": "h", "cols": 1, "rows": 1,
          "points": [{"c": 0, "r": 0, "dx": 0}]}]})
+    run("骨架声明的挂点没落到 rig 上", True,
+        rig_over={"sockets": {}})
+    run("rig 里的挂点父骨与骨架不一致", True,
+        rig_over={"sockets": {"socket_head_top": {"group": "chest", "pos": [100, 40]}}})
     run("挂点的父骨不存在", True,
         sk_over={"bones": [
             {"id": "root", "parent": None, "kind": "rigid", "required": True},

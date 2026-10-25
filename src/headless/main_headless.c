@@ -19,6 +19,7 @@
  *   GET /api/force?gx=&gy=&wx=&wy=&breeze=&hz=&gust_x=&gust_y=&gust_t=
  *                              力场（T47.3）：重力方向 / 定常风 / 常驻微风 / 一阵风；不给参数 = 只读
  *   GET /api/pose?group=&id=   互斥部件组切档（≈ pose3.json；id=none 整组关掉）
+ *   GET /api/sockets.json      挂点表（骨架命名位置）+ 它们这一刻画在哪
  *   GET /api/params.json       命名参数表（≈ Live2D ParamXxx）与当前值
  *   GET /api/param?id=&v=      直接写一个参数（reset=1 回默认；all=1 全部复位）
  *   GET /api/expression?id=    叠一个表情（off=1 取消），表情和动作是两条轨
@@ -2031,6 +2032,33 @@ static void handle_request(zsock fd, const http_req *r)
         for (i = 0; i < np && i < cap; ++i)
             off += (size_t)z_snprintf(body + off, sizeof(body) - off,
                                       "%s%.4f", i ? "," : "", dy[i]);
+        z_snprintf(body + off, sizeof(body) - off, "]}");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+    if (strcmp(r->path, "/api/sockets.json") == 0) {
+        /* 挂点探针（T66.19 / S4）。两个数各回答一个问题：
+             pos    —— 骨架把挂点摆在哪（画布像素）；
+             screen —— 过完父骨矩阵之后它**这一刻**在哪（画布像素 × 当前缩放）。
+           配件"跟着手腕动"能不能机检，就看 screen 在抬手之后有没有跟着走。
+           模组要做的事因此变成：一张 PNG + 一个挂点名，不需要知道画布多大。 */
+        char body[4096];
+        size_t off = 0;
+        int n, i;
+        LOCK();
+        n = zpet_socket_count(g_pet);
+        off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                                  "{\"ok\":true,\"n\":%d,\"sockets\":[", n);
+        for (i = 0; i < n; ++i) {
+            const char *sid = "", *sgrp = "";
+            double pos[2] = {0, 0}, scr[2] = {0, 0};
+            zpet_socket_get(g_pet, i, &sid, &sgrp, pos, scr);
+            off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                "%s{\"id\":\"%s\",\"group\":\"%s\",\"pos\":[%.1f,%.1f],"
+                "\"screen\":[%.2f,%.2f]}",
+                i ? "," : "", sid, sgrp, pos[0], pos[1], scr[0], scr[1]);
+        }
+        UNLOCK();
         z_snprintf(body + off, sizeof(body) - off, "]}");
         send_text(fd, 200, "application/json", body);
         return;

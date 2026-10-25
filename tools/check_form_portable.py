@@ -102,7 +102,21 @@ def main() -> int:
     print("== 挂件表的形态可移植性（%s，%d 个挂件 / %d 个规划形态）==＝"
           % (a.character, len(atts), len(ratios)))
 
-    # ① 不许有绝对像素
+    # 挂点表（T66.19 / S4）：挂了 socket 的件位置归挂点，也要在这里一起验 ——
+    # 否则"换形态会不会漂"这件事对它们完全没被验过，等于换了个地方藏绝对值。
+    sockets = attach_geom.load_sockets(cdir)
+    skeletons = attach_geom.load_skeleton_sockets(cdir)
+    sock_spec = {k: v for k, v in sockets.items()}
+    check("挂点表覆盖了骨架声明的每个挂点",
+          set(sock_spec) <= set(skeletons) if skeletons else True,
+          "骨架 %d 个 / 表 %d 个" % (len(skeletons), len(sock_spec)))
+    dangling = sorted(x["id"] for x in atts
+                      if x.get("socket") and x["socket"] not in sock_spec)
+    check("没有挂件挂在不存在的挂点上", not dangling,
+          "、".join(dangling) if dangling else
+          "%d 个挂件里有 %d 个接了挂点" % (len(atts), sum(1 for x in atts if x.get("socket"))))
+
+    # ① 不许有绝对像素（挂了 socket 的件天然没有绝对像素：它的位置归挂点）
     hard = sorted(x["id"] for x in atts if "pos" in x or "sprite_h" in x)
     check("没有挂件还写着画布绝对像素", not hard,
           "%d 个挂件全是相对几何" % len(atts) if not hard else
@@ -121,9 +135,13 @@ def main() -> int:
 
     # ② 换头身比，挂件必须跟着动（非恒真：写死绝对值的话这条会红）
     got = {}
+    got_sock = {}
     for fid, ht in ratios:
         syn = synth_anchors(anchors, ht)
-        got[fid] = {x["id"]: attach_geom.resolve(x, syn) for x in atts}
+        got[fid] = {x["id"]: attach_geom.attach_pos(
+            x, sock_spec.get(x.get("socket")), syn) for x in atts}
+        got_sock[fid] = {sid: attach_geom.socket_pos(sp, syn)
+                         for sid, sp in sock_spec.items()}
     if len(ratios) >= 2:
         (f1, _), (f2, _) = ratios[0], ratios[1]
         for x in atts:
@@ -133,6 +151,16 @@ def main() -> int:
             check("%s 会跟着形态走" % x["id"], moved,
                   "%s %s/%d → %s %s/%d" % (f1, p1, h1, f2, p2, h2) if moved else
                   "两个头身比下位置和尺寸完全一样 —— 它没有跟着形态缩放")
+
+    # ②b 挂点自己也要跟着形态缩放（非恒真：挂点写死画布像素的话这条会红）
+    if len(ratios) >= 2:
+        (f1, _), (f2, _) = ratios[0], ratios[1]
+        stuck = sorted(sid for sid in sock_spec
+                       if got_sock[f1].get(sid) == got_sock[f2].get(sid))
+        check("每个挂点都跟着形态缩放", not stuck,
+              "%d 个挂点：%s → %s" % (len(sock_spec), got_sock[f1].get(
+                  sorted(sock_spec)[0]), got_sock[f2].get(sorted(sock_spec)[0]))
+              if not stuck else "这些挂点两个头身比下完全一样：" + "、".join(stuck))
 
     # ③ 四种头身比下都要落在画布内（用 ready 形态的画布尺寸当量尺）
     rig = os.path.join(cdir, "forms", base_form, "rig.json")
