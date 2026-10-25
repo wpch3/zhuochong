@@ -1845,6 +1845,17 @@ def check_live2d(root):
               bool(_m1) and bool(_m2) and _m1.group(1) == _m2.group(1),
               "%s vs %s" % (_m2.group(1) if _m2 else "?", _m1.group(1) if _m1 else "?"))
 
+    # ㉑ 骨架契约（第六十五问）：四形态共用同一套骨名，是"换形态/换衣服/换 AI 角色"的前提。
+    #    纯标准库，所以直接跑。负控 13 例必须全红 —— 否则它只是一堆永远通过的 print。
+    _rc = subprocess.run([sys.executable, os.path.join(root, "tools/check_skeleton.py"),
+                          "--root", root, "--quiet"], capture_output=True, text=True)
+    check("骨架契约成立（tools/check_skeleton.py）", _rc.returncode == 0,
+          (([ln for ln in _rc.stdout.strip().splitlines() if ln.strip()] or ["?"])[-1]))
+    _rc = subprocess.run([sys.executable, os.path.join(root, "tools/check_skeleton.py"),
+                          "--self-test"], capture_output=True, text=True)
+    check("骨架闸的负控全部符合预期（13 例坏骨架）", _rc.returncode == 0,
+          (([ln for ln in _rc.stdout.strip().splitlines() if ln.strip()] or ["?"])[-1]))
+
     # ⑲ 挂件表的形态可移植性（T2.2.0）：角色级挂件表一旦写死画布绝对像素，
     #    就只对量它的那个形态成立。实测过账：照少女 teen 量的 7 个挂件套到
     #    chibi（1:2.5）上平均偏 92 画布像素，而画布总高才 1360。
