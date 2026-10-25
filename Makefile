@@ -77,10 +77,20 @@ smoke: $(BUILD)/zhuochong_preview
 # ---------------------------------------------------------------- 素材体检（T67.2）
 # 重算全部精灵的六项指标并写基线。重画任何一张 @2x 之后跑这个，
 # 然后 `git diff docs/qa/sprite_audit_teen.json` —— 数字没降下来就是白画。
+# ★ 每个形态各一份基线（T67.43）：原来只体检 teen —— chibi 的 58 件里
+#   42 件没进过体检，而"四形态"是这个项目的硬要求，体检只覆盖一个形态
+#   等于另外三个形态没有闸。新增形态时在这里加一行。
+FORMS ?= teen chibi
 audit-sprites:
-	@$(PYTHON_IMG) tools/qa_sprite_audit.py --update-baseline docs/qa/sprite_audit_teen.json
-	@$(PYTHON_IMG) tools/qa_sprite_audit.py --fail --baseline docs/qa/sprite_audit_teen.json >/dev/null && echo "素材体检：闸通过"
-	@$(PYTHON_IMG) tools/qa_hair_purity.py --fail >/dev/null && echo "头发布料纯度：闸通过"
+	@for f in $(FORMS); do \
+	  $(PYTHON_IMG) tools/qa_sprite_audit.py --form $$f \
+	      --update-baseline docs/qa/sprite_audit_$$f.json >/dev/null || exit 1; \
+	  $(PYTHON_IMG) tools/qa_sprite_audit.py --form $$f --fail \
+	      --baseline docs/qa/sprite_audit_$$f.json >/dev/null \
+	      && echo "素材体检（$$f）：闸通过" || exit 1; \
+	  $(PYTHON_IMG) tools/qa_hair_purity.py --form $$f --fail >/dev/null \
+	      && echo "头发布料纯度（$$f）：闸通过" || exit 1; \
+	done
 
 # 头发层"只许是头发"的机检（T67.38）。单独一条，改任何头发件之后跑：
 # 头发里出现成块的皮肤/衣服（"假手臂"）或内部破洞，这里会当场报红。
