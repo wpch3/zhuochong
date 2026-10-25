@@ -5336,6 +5336,25 @@ static void test_keyform_ease(void)
     r = zrig_load(rigp, dir, &d);
     CHECK(r == NULL, "贝塞尔 x 控制点出 [0,1] 必须报错（x 不单调 → 曲线解不出来）");
     zrig_free(r);
+
+    /* (d) 有 keyform 的网格又被 bind 写 amount：那条绑定**根本不会参与求值**
+           （amount 通路在 nkf>0 时直接 return），要么是写错了，要么是以为物理会带动它。
+           这种"写了不动还不报错"以前吃过太多次亏，必须当场失败。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfbad4\",\"name\":\"缓动错4\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"easeA\"}],"
+        "\"deformers\":[{\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\","
+        " \"keys\":[{\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"deformer\":\"easeA\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL, "keyform 网格再被 bind 写 amount 必须报错（写了也不会动）");
+    zrig_free(r);
     printf("    量到：ease'in' 段内半程 %.3f（线性会给 5.000）· key 上 %.4f · "
            "step 段中 %.3f → 到点 %.3f · 贝塞尔 x=0.5 → %.4f\n",
            m_in, m_key, m_step_mid, m_step_end, m_bez);

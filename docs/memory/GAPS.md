@@ -1284,6 +1284,20 @@ teen 15 根刚体骨；chibi 只有 9 根（缺 forearm_l/r、elbow_fold_l/r、h
 > **与官方的差异（刻意，不算缺口）**：官方贝塞尔是参数-位移平面上的绝对坐标曲线，
 > 我们用归一化 timing curve（同 CSS），见 `docs/LIVE2D_CONFORMANCE.md` 变形器树一节。
 
+## G66.12 keyform 不吃 `bind.lag`（迟滞只在 amount 通路上）
+
+`bind.lag` 是"读 lag 秒之前的参数值"，它发生在**绑定写入那一刻**（`lag_sample`），
+而 keyform 求值读的是 `param_effective()` 的当前值 —— 两条通路各读各的。
+所以一件网格从 amount 改成 keyform，**会连带丢掉它的迟滞**（侧发/裙摆都是靠 lag 做
+"根先动、梢后动"的）。这不是 bug，是没接线。
+
+后果与修法（T66.11b 前置决策）：
+- 方案 A：给 keyform 也加一个 `lag` 字段（每条 keyform 自己延迟读参数），
+  代价是每个 keyform 要多存一个延迟环（内存 = 参数数 × 环长）；
+- 方案 B：把迟滞挪到**参数层** —— 让 `ParamHairSide` 这类参数自己有"物理后追"，
+  网格只做形状。这个更接近 Live2D 的正解（物理写参数、不写网格）。
+倾向 B（少一套机制、物理与形状解耦），但要在真机上验证"参数被物理拖着走"的手感。
+
 ## G66.11 内容侧没有任何真 keyform（缓动能力至今无人用）
 
 两份 rig（teen / chibi）里**没有一个形变器写 `keys`** —— 全是 amount 通路。

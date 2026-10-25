@@ -1814,7 +1814,16 @@ static int load_physics2(zrig *r, const zjson *jp, zdiag *d, const char *file)
                                 "outputs[%d].deformer '%s' 不存在", k, dfm);
                     return -1;
                 }
-                if (o->deform >= 0) o->param = P_AMOUNT;
+                if (o->deform >= 0) {
+                    o->param = P_AMOUNT;
+                    if (r->deforms[o->deform].nkf > 0) {
+                        zdiag_error(d, file, one ? one->line : 0, 0, path,
+                                    "outputs[%d] 把物理写到形变器 '%s' 的 amount，"
+                                    "但这件有 keyform（keys）→ 写了也不动（同 bind 的规矩）",
+                                    k, r->deforms[o->deform].id);
+                        return -1;
+                    }
+                }
                 else if (parse_param(pn, &o->param) != 0) {
                     zdiag_error(d, file, one ? one->line : 0, 0, path,
                                 "outputs[%d].param 非法：%s", k, pn);
@@ -2019,6 +2028,16 @@ static int load_params(zrig *r, const zjson *jp, zdiag *d, const char *file)
                     }
                 } else {
                     b->param = P_AMOUNT;
+                }
+                /* keyform 那条路只读参数值，amount 根本不参与求值（deform_vertex_at 里
+                   nkf>0 就直接 return 了）。这条绑定写进去等于石沉大海 —— 画面"该动的不动"，
+                   锅还会甩给物理。宁可加载失败。 */
+                if (b->param == P_AMOUNT && r->deforms[b->deform].nkf > 0) {
+                    zdiag_error(d, file, bj ? bj->line : 0, 0, path,
+                                "形变器 '%s' 有 keyform（写了 keys），绑定又给它写 amount："
+                                "keyform 只由参数值驱动，这条绑定会被忽略（要跟物理走就把 keys 删掉）",
+                                r->deforms[b->deform].id);
+                    return -1;
                 }
             }
             else if (!pn || parse_param(pn, &b->param) != 0) {

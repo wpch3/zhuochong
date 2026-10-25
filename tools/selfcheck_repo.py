@@ -1109,6 +1109,8 @@ def check_engine_caps(root):
         ("kf_seg_ease", "keyform 的段内缓动入口"),
         ("bez_axis", "归一化三次贝塞尔的求值"),
         ("kf_bez_on", "每段贝塞尔的开关"),
+        ("keyform（写了 keys），绑定又给它写 amount",
+         "「keyform 网格再挂 amount 绑定」的加载期拦截"),
     ]:
         check("引擎里有%s" % label, needle in csrc,
               "找到了" if needle in csrc else "第六十三问 P0 的元件被删了")
