@@ -4164,3 +4164,54 @@ direction.Y = ((SinF(radian) * direction.X) + (direction.Y * CosF(radian)));   /
 导入必须减默认值 —— 不换算的话，动作在自家引擎里会叠在待机值上漂走，
 而且**测试照样能过**（只要样本和实现犯同一个错）。
 
+
+## 第六十八批（2026-10-26 第七问：遮罩/分层到底怎么做才"完整"）
+
+这一批是用户第七问第 2 条（"部件本身完整、可被局部覆盖、有层次，还有什么更好的办法"）
+的直接依据。落地成 `docs/PART_LAYERING.md`，此处只记**查证事实**。
+
+### A. Live2D 官方手册 *Clipping Mask*（Editor Manual，页面标 2026-07-30 更新）
+
+<https://docs.live2d.com/en/cubism-editor-manual/clipping-mask/>
+
+| 事实 | 原文要点 |
+| --- | --- |
+| 用法 | 在**被裁** ArtMesh 的 `Clipping ID` 里填**遮罩** ArtMesh 的 ID |
+| 多张 | ID 用逗号分隔（`ArtMesh1, ArtMesh2`），多张**取交集** |
+| 遮罩可不可见 | 遮罩件不透明度设 **0%** 仍可当遮罩（官方推荐的"参考用遮罩"） |
+| 上限 | Native **36/模型**、Web **36/模型**、Unity **64/场景**；Native 的 `_useHighPrecisionMask=true` 可去上限 |
+| 计数 | 按 **ID 排列组合**去重；`A,B` 与 `B,A` 在 Native/Web 算一张，在 Unity 算两张 |
+| 遮罩全隐藏时 | **裁切被解除**（被裁件完整显示）—— 与我方"遮罩隐藏⇒被裁件消失"**方向相反** |
+| 警告三型 | ①缺关键帧（参数区间没打 key）②遮罩件被设为隐藏/underdraw（导出时不出，SDK 会读到错值）③遮罩件已被删（Clipping 列为 null） |
+
+**白边（rim）的官方解释与解法**（这一条直接对上我们量到的 1.93% 亮缝）：
+
+> 遮罩轮廓上**半透明**的部分会把被裁 ArtMesh 底下的颜色透上来，于是边上出现一圈 rim。
+> 规避：①复制遮罩 ArtMesh ②Clipping ID 指向副本 ③把副本**放大**盖住原件轮廓
+> ④副本不透明度 **0%** ⑤副本与原件做**同样的变换**。
+
+### B. Inochi2D 的遮罩模型（`github.com/Inochi2D/inochi2d`）
+
+- `source/inochi2d/nodes/visual/mask.d`：`class Mask : Visual` 持
+  `vector!MaskSource sources_`；`MaskSource { maskSrc, MaskingMode mode }`；
+  绘制时 `drawList.pushMask(sources_[0].mode)` → 逐个 `src.maskSrc.drawMask(delta, drawList, src.mode)`
+  → `popMask()`。即：**遮罩是一段绘制区间 + 一个模式（可反向）**，不是某件上的字符串属性。
+- `nodes/visual/part.d`：`isMasking() => true`（任何视觉节点都能当遮罩源）、
+  `onDrawMask(delta, drawList, mode)`。
+- 同目录还有 `composite.d`（混合模式）、`solo.d`（互斥显示）、
+  `deformer/latticedeformer.d` + `deformer/meshdeformer.d`（网格形变）、
+  `visual/animatedpart.d`（逐帧部件）。
+- 0.8→0.9 的迁移会把每个视觉节点**包一层 Mask 节点**（`visual/package.d` 里 `doUpgrade08` 段）
+  —— 说明"遮罩"在那边是**结构**的一等公民。
+
+### C. `guansss/pixi-live2d-display`（社区 Web 运行时）
+
+README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲染管线的第一等公民；
+支持 Cubism 2.1/3/4 的模型。**只作对照，不引代码。**
+
+### D. 由此推出的三条"社区共识"（写进 `docs/PART_LAYERING.md`）
+
+1. 遮挡**靠顺序**解决，不靠把图切成互补形状；每件必须**画满 + 塗り足し**。
+2. 需要"局部覆盖"时用**裁切**，裁切边缘要配"放大 + 0% 的遮罩副本"来压白边。
+3. 长发这类必须与手臂**互相穿插**的件，拆成**束**（前/侧/后/胸）分别定层次，
+   而不是整块放上或放下。
