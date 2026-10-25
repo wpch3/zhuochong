@@ -314,10 +314,38 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
     # ★ 最后一道：连**偏**洋红都不许剩。严格判据放得过去的半洋红边
     #   会在肩膀上糊成紫斑，肉眼一看就穿帮，但严格闸测不出来。
     fr, fg, fb = (out[..., i].astype(int) for i in range(3))
-    tinted = int((((fr - fg > 25) & (fb - fg > 25) & (fr > 110) & (fb > 110)) & A_gate).sum())
-    if tinted > A_gate.sum() * 0.001:
+    tint_m = ((fr - fg > 25) & (fb - fg > 25) & (fr > 110) & (fb > 110)) & A_gate
+    tinted = int(tint_m.sum())
+    # ★ 2026-10-26 T67.36：这个闸原来只看**面积占比**（>0.1% 就拦），
+    #   结果 283px（0.084%）一路绿着，而真去看图（`/tmp/tinted_outfit_midnight.png`）
+    #   全是**沿肩膀/帽檐抗锯齿边缘的 1~2px 点**（163 个连通块，最大 16px），
+    #   一个紫斑都没有 —— 这正是 G66.39/G66.40 反复记的"比例不等于成块"。
+    #   要拦的是"肩膀糊成一块紫"，不是"边上有几粒紫"。
+    #   ⇒ 加一条**成块**判据；面积阈值放宽到 0.4% 只用来兜"满身碎点"的回归。
+    big = 0
+    if tinted:
+        m = tint_m.copy()
+        lab = np.zeros(m.shape, np.int32)
+        ys, xs = np.nonzero(m)
+        for y0, x0 in zip(ys, xs):
+            if not m[y0, x0] or lab[y0, x0]:
+                continue
+            n = 0
+            lab[y0, x0] = 1
+            st = [(y0, x0)]
+            while st:
+                y, x = st.pop()
+                n += 1
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    ny, nx = y + dy, x + dx
+                    if 0 <= ny < m.shape[0] and 0 <= nx < m.shape[1] and m[ny, nx] and not lab[ny, nx]:
+                        lab[ny, nx] = 1
+                        st.append((ny, nx))
+            big = max(big, n)
+    if big >= 40 or tinted > A_gate.sum() * 0.004:
         raise SystemExit(f"[衣柜] {os.path.basename(out_path)} 身上还有 {tinted} 个"
-                         f"偏洋红像素（上限 {int(A_gate.sum() * 0.001)}）—— 补色没补干净")
+                         f"偏洋红像素（最大连通 {big}px；判红线 = 单块≥40px 或 面积>0.4%）"
+                         f"—— 补色没补干净")
     Image.fromarray(out, "RGBA").save(out_path)
     return iou, grow, shrink
 
