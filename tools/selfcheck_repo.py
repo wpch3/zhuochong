@@ -4400,6 +4400,53 @@ def check_design_sheets(root):
               len(canvas) == 2 and canvas[0] > 0 and canvas[1] > 0, str(canvas))
 
 
+def check_sprite_audit(root):
+    """素材体检基线不许过期，也不许有人把越线的东西悄悄塞进来（T67.2）。
+
+    只读 JSON，不重算像素 —— 全量重算是 `make audit-sprites`（约 20s）。
+    这里要拦的是两种记账事故：
+      1. 新增/改名了精灵，但没重跑体检 → 基线里没有它，等于**没体过检就上架**；
+      2. 基线里躺着一件越线的东西，又不在 KNOWN 欠账表里 → 闸被绕过去了。
+    """
+    section("素材体检基线（T67.2）")
+    base_p = os.path.join(root, "logs", "asset_qa", "sprite_audit_teen.json")
+    if not os.path.exists(base_p):
+        check("素材体检基线存在", False, "跑 make audit-sprites")
+        return
+    try:
+        with open(base_p, encoding="utf-8") as fh:
+            base = json.load(fh)
+    except Exception as e:                                   # noqa: BLE001
+        check("素材体检基线可解析", False, repr(e))
+        return
+    check("素材体检基线可解析", True, f"{len(base.get('sprites', []))} 件")
+    seen = {s["file"] for s in base.get("sprites", [])}
+    spr_dir = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "sprites")
+    have = {os.path.basename(f) for f in glob.glob(os.path.join(spr_dir, "*@2x.png"))}
+    # 允许基线里多出已删掉的件（重画换名时会出现），但不许少
+    miss = sorted(have - seen)
+    check("每张 @2x 都体过检", not miss,
+          f"{len(have)} 张" + (f"，没体检 {miss[:4]}" if miss else ""))
+    # 基线自身不许带越线件（TH_KIND 只在工具里定义，这里按同一口径判一次）
+    th = {"hair": 150, "limb": 150, "tail": 150,
+          "face": None, "cloth": None, "fx": None, "body": None}
+    known = {"acc_hair_sidelong_r@2x.png"}
+    viol = []
+    for s in base.get("sprites", []):
+        lim = th.get(s.get("kind"), None)
+        if lim is not None and s.get("straight_run", 0) > lim and s["file"] not in known:
+            viol.append("%s 直边%d" % (s["file"], s["straight_run"]))
+        if s.get("hole_pct", 0) > 1.5:
+            viol.append("%s 空洞%.2f%%" % (s["file"], s["hole_pct"]))
+    check("基线里没有偷偷越线的件", not viol, str(viol[:3]) if viol else "0 件")
+    # 已知欠账必须还在（清掉了就该顺手从表里删，别留成永久豁免）
+    still = [k for k in sorted(known) if k in seen and
+             any(s["file"] == k and s.get("straight_run", 0) > 150
+                 for s in base["sprites"])]
+    check("已知欠账表没变成永久豁免", len(still) == len(known),
+          "%d 件待重画" % len(known))
+
+
 def check_tools(root):
     section("工具链：重建脚本引用的工具都在 + 全部能编译")
     rb = os.path.join(root, "tools", "rebuild_parts.sh")
@@ -4946,6 +4993,7 @@ def main():
                check_phys2,
                check_phys2_rig,
                check_design_sheets,
+               check_sprite_audit,
                check_tools, check_hygiene):
         try:
             fn(root)

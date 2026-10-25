@@ -25,11 +25,14 @@ CORE_SRC   = $(wildcard src/core/*.c)
 CORE_HDR   = $(wildcard src/core/*.h)
 CORE_OBJ   = $(patsubst src/%.c,$(BUILD)/%.o,$(CORE_SRC))
 
+# 带 PIL/numpy 的解释器：系统 python3 没有 PIL。
+# 现场探测一次，没有就让目标直接报错，别跑到一半 ImportError。
+PYTHON_IMG ?= $(shell for p in /home/user/.imgenv/bin/python python3; do $$p -c "import PIL,numpy" 2>/dev/null && { echo $$p; break; }; done)
 ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/ziglang/zig 2>/dev/null | head -1)
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench
+.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites
 
 all: test
 
@@ -70,6 +73,13 @@ preview: $(BUILD)/zhuochong_preview
 # 互动/动作端到端冒烟（自己起一个预览再打一圈端点，判据是"画面真的变了"）
 smoke: $(BUILD)/zhuochong_preview
 	@python3 tools/api_smoke.py --spawn --port 5200 --root .
+
+# ---------------------------------------------------------------- 素材体检（T67.2）
+# 重算全部精灵的六项指标并写基线。重画任何一张 @2x 之后跑这个，
+# 然后 `git diff logs/asset_qa/sprite_audit_teen.json` —— 数字没降下来就是白画。
+audit-sprites:
+	@$(PYTHON_IMG) tools/qa_sprite_audit.py --update-baseline logs/asset_qa/sprite_audit_teen.json
+	@$(PYTHON_IMG) tools/qa_sprite_audit.py --fail --baseline logs/asset_qa/sprite_audit_teen.json >/dev/null && echo "素材体检：闸通过"
 
 # ---------------------------------------------------------------- 自检（保险）
 # 仓库静态自检：引用完整性 / 唯一性 / 契约 / 卫生（1 秒，不编译不渲染）
