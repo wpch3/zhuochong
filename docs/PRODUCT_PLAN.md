@@ -243,3 +243,51 @@ docs/               规格、规划、手册、记忆
 24. **导入导出与迁移**：会话/角色/技能/音色的打包导出（可带走的格式），跨机器迁移（T16.4）
 25. **定时与自动化**：定时任务/触发规则（每天问候、定时发朋友圈）可视化编辑（T16.5）
 26. **多设备与远程访问（可选，默认关）**：局域网内手机访问工作区；需鉴权与加密（T16.6）
+
+## 九、模组化落地契约（第六十四问：用户点名的「完全可自定义 + 完全可模组」，可机检）
+
+> 用户原话（第四十四问起反复强调，第六十四问再次点名）：**角色、形态、服装、配件、
+> UI 主题/布局、道具、话题、模块、provider、声音，一切可定制/可加/模块化，不许动核。**
+> 这一节把这句话从口号变成**能在 `make check` 里跑红**的东西。
+
+### 9.1 三句话口径
+
+1. **内容 = 目录**。角色是 `characters/<id>/`，模组是 `mods/<id>/`，主题是 `themes/<id>/`，
+   技能是 `skills/<id>/`，音色是 `voices/<id>/`。装 = 拷目录，卸 = 删目录。
+2. **清单 = 身份证**。每个包必须有自己的清单（`character.json` / `mod.json` / `theme.json`），
+   `id` 与目录名一致，并声明 `schema_version` / `api_version`。
+3. **装之前先验**。`tools/mod_lint.py` 在**装载之前**把包查一遍 —— 包写错和引擎坏掉必须分得开。
+
+### 9.2 契约表（每一项都有闸）
+
+| 想加的东西 | 放哪里 | 引擎侧上限（唯一出处） | 闸 |
+| --- | --- | --- | --- |
+| 角色 | `characters/<id>/character.json` | —— | `mod_lint --all-characters` |
+| 形态 | `characters/<id>/forms/<form>/rig.json` | `ZRIG_FORM_CAP 64`（`zrig.h`） | 同上 + `test_zpet_content_scaling` |
+| 服装 | `characters/<id>/outfits/<id>.json` | `ZRIG_OUTFIT_CAP 128` | 同上（引用必须能在适用形态里找到） |
+| 动作 | `rig.json` 的 `actions` | `ZRIG_ACTION_CAP 96` | 同上 + `ZSM_MAX_STATES` 同步闸 |
+| 变形器 / 部件 / 组 | `rig.json` 的 `deformers/parts/groups` | `ZRIG_MAX_DEFORMS 64` / `512` / `64` | selfcheck「没有残留的静默截断循环」 |
+| 模组 | `mods/<id>/mod.json` | —— | `mod_lint --all-mods`（api_version / 权限 / 依赖 / 文件清单） |
+| 主题、技能、音色、provider | 各自的 `<id>/` 目录 | —— | 各自的 `*_packs.py verify` / `check_platform.py` |
+
+### 9.3 已经落地的四条（第六十四问本轮）
+
+1. **上限只允许有一个出处**：`ZRIG_ACTION_CAP / ZRIG_FORM_CAP / ZRIG_OUTFIT_CAP` 公开在
+   `src/core/zrig.h`，`zpet.h` 与 `tools/mod_lint.py` 全部引用它；`selfcheck` 会核对
+   「闸里的常量 == 引擎宏」，两处各写一个数字的情况一律判红（LESSONS 405 就是这么栽的）。
+2. **撞上限不许静默丢**：`zpet` 扫描 `forms/`、`outfits/` 与动作清单时，溢出会记
+   `zpet_forms_dropped / zpet_outfits_dropped / zpet_actions_dropped` 并打 `ZLOGW`，
+   不再出现「界面上少两套衣服但没人知道」。
+3. **包写错要指名道姓**：`tools/mod_lint.py` 报错带字段名与文件路径（贴图不存在 / 贴图是整张
+   不透明（白底烤进去了）/ group 指向不存在的组 / forms.json 声明 ready 却没目录 /
+   outfit 引用了不存在的部件 / 动作通道目标解析不了 / 缺 idle）。
+4. **闸本身要有负控**：`tools/mod_lint.py --self-test` 造 14 个坏包，每一条都必须判红；
+   它已经进 `make check`（`selfcheck_repo.py` ⑳）。
+
+### 9.4 还没做的（T65 队列）
+
+- 模组**装载器**（现在只有契约校验，`mods/` 还没有真实包）；
+- `api_version` 的兼容策略与迁移工具（当前只认主版本 1）；
+- 权限**真正生效**（`net` / `files.write` 走网关拦截，而不是只声明）；
+- 主题包 / 技能包的运行时注册。
+
