@@ -9359,6 +9359,201 @@ static void test_motion3_import(void)
     }
 }
 
+/* T66.22 / S3 后半：外部表情文件 .exp3.json
+   ------------------------------------------------------------------
+   判据全部落在**语义**上：
+   ① Blend 三值映射：Add → base+v，Multiply → base×v，Overwrite → 绝对值 v；
+   ② ★ **不减默认值**：Overwrite 到 5.0、参数默认是 20.0 时，有效值必须是 5.0
+      （若照 .motion3 那套减了默认值，会读到 −15 —— 两个导入器的差别就在这一条）；
+   ③ FadeInTime：半程约等于一半；FadeOutTime 在"切回无表情"那一步生效；
+   ④ 模型里没有的参数跳过并留警告，一条都用不上 = 硬失败且不留半个空表情；
+   ⑤ 不认识的 Blend 值必须报错（官方是静默按 Add 算，那样错了极难查）；
+   ⑥ id 撞车必须报错（表情按 id 点播）。 */
+static void test_expression3_import(void)
+{
+    char rig_path[1024], exp_path[1024], fade_path[1024], bad_path[1024];
+    char miss_path[1024], dup_path[1024];
+    SECTION("T66.22：外部 .exp3 表情导入（三种 Blend / 绝对值 / 淡入淡出 / 参数缺失）");
+    z_mkdir_p("/tmp/zc_exp3");
+    z_snprintf(rig_path, sizeof(rig_path), "/tmp/zc_exp3/rig.json");
+    z_snprintf(exp_path, sizeof(exp_path), "/tmp/zc_exp3/peek.exp3.json");
+    z_snprintf(fade_path, sizeof(fade_path), "/tmp/zc_exp3/fade.exp3.json");
+    z_snprintf(bad_path, sizeof(bad_path), "/tmp/zc_exp3/badblend.exp3.json");
+    z_snprintf(miss_path, sizeof(miss_path), "/tmp/zc_exp3/nowhere.exp3.json");
+    z_snprintf(dup_path, sizeof(dup_path), "/tmp/zc_exp3/dup.exp3.json");
+
+    {   /* 部件要一张真图（装载期读宽高）；2×2 合成，不碰美术资产 */
+        zerr pe;
+        zimg *px = zimg_new(2, 2);
+        int k;
+        zerr_clear(&pe);
+        for (k = 0; px && k < 4; ++k) {
+            px->px[k * 4 + 0] = 180; px->px[k * 4 + 1] = 150;
+            px->px[k * 4 + 2] = 140; px->px[k * 4 + 3] = 255;
+        }
+        CHECK(px && zimg_save_png(px, "/tmp/zc_exp3/p.png", &pe) == 0,
+              "合成素材应能写出：%s", pe.msg);
+        if (px) zimg_free(px);
+    }
+    {
+        FILE *f = fopen(exp_path, "wb");
+        CHECK(f != NULL, "能写 .exp3 样本");
+        if (f) {
+            /* 四种参数各验一件事：Add / Multiply / Overwrite / 不存在的参数 */
+            fputs("{\"Type\":\"Live2D Expression\",\"FadeInTime\":0.0,\"FadeOutTime\":0.0,"
+                  "\"Parameters\":["
+                  "{\"Id\":\"ParamTestA\",\"Value\":12.0,\"Blend\":\"Add\"},"
+                  "{\"Id\":\"ParamTestD\",\"Value\":0.5,\"Blend\":\"Multiply\"},"
+                  "{\"Id\":\"ParamTestE\",\"Value\":5.0,\"Blend\":\"Overwrite\"},"
+                  "{\"Id\":\"ParamNoSuch\",\"Value\":1.0,\"Blend\":\"Add\"}"
+                  "]}", f);
+            fclose(f);
+        }
+    }
+    {   /* 淡入 0.5s / 淡出 0.2s，Overwrite ParamTestA 到 20 */
+        FILE *f = fopen(fade_path, "wb");
+        if (f) {
+            fputs("{\"Type\":\"Live2D Expression\",\"FadeInTime\":0.5,\"FadeOutTime\":0.2,"
+                  "\"Parameters\":[{\"Id\":\"ParamTestA\",\"Value\":20.0,"
+                  "\"Blend\":\"Overwrite\"}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(bad_path, "wb");
+        if (f) {
+            fputs("{\"Type\":\"Live2D Expression\","
+                  "\"Parameters\":[{\"Id\":\"ParamTestA\",\"Value\":1.0,"
+                  "\"Blend\":\"multiplication\"}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(miss_path, "wb");
+        if (f) {
+            fputs("{\"Type\":\"Live2D Expression\","
+                  "\"Parameters\":[{\"Id\":\"ParamNotHere\",\"Value\":1.0}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(dup_path, "wb");
+        if (f) {
+            fputs("{\"Type\":\"Live2D Expression\","
+                  "\"Parameters\":[{\"Id\":\"ParamTestA\",\"Value\":1.0}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(rig_path, "wb");
+        CHECK(f != NULL, "能写临时 rig（exp3）");
+        if (f) {
+            fputs("{\"schema_version\":1,\"id\":\"e3\",\"name\":\"e3\","
+                  "\"canvas\":{\"w\":200,\"h\":200},"
+                  "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+                  "\"parts\":[{\"id\":\"p\",\"file\":\"p.png\",\"group\":\"root\","
+                  "\"layer\":1,\"anchor\":[0,0],\"pos\":[100,100]}],"
+                  "\"params\":["
+                  "{\"id\":\"ParamTestA\",\"min\":-60,\"max\":60,\"default\":0},"
+                  "{\"id\":\"ParamTestD\",\"min\":0,\"max\":1,\"default\":0.5},"
+                  "{\"id\":\"ParamTestE\",\"min\":-60,\"max\":60,\"default\":20}],"
+                  "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+                  "\"expressions\":[{\"id\":\"plain\",\"params\":[]}],"
+                  "\"expression_files\":[{\"file\":\"peek.exp3.json\"},"
+                  "{\"id\":\"fading\",\"file\":\"fade.exp3.json\"}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        zdiag d;
+        zrig *r;
+        int i, n, hit_peek = 0, hit_fading = 0, warned = 0;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, "/tmp/zc_exp3", &d);
+        CHECK(r != NULL, "带 expression_files 的 rig 应能加载（错误 %d 条）", d.error_count);
+        if (r) {
+            n = zrig_expression_count(r);
+            CHECK(n == 3, "表情数应为 3（自家 plain + 外部两条），实际 %d", n);
+            for (i = 0; i < n; ++i) {
+                if (z_streq(zrig_expression_id(r, i), "peek")) hit_peek = 1;
+                if (z_streq(zrig_expression_id(r, i), "fading")) hit_fading = 1;
+            }
+            CHECK(hit_peek, "★ 外部表情以**文件名**为 id 出现在表情表里（peek）");
+            CHECK(hit_fading, "★ rig 里给了 id 就用 id（fading 而不是 fade）");
+            for (i = 0; i < d.count; ++i)
+                if (strstr(d.items[i].msg, "ParamNoSuch")) warned = 1;
+            CHECK(warned, "模型里没有的参数要留警告（不静默）");
+
+            /* 三种 Blend 的语义 */
+            zrig_tick(r, 1000.0);
+            CHECK(zrig_expression_set(r, "peek") == 0, "表情 peek 能选中");
+            zrig_expression_snap(r);                    /* 跳过淡入，直接到位 */
+            zrig_tick(r, 1000.0);
+            {
+                double a = zrig_param_effective(r, "ParamTestA");
+                double dd = zrig_param_effective(r, "ParamTestD");
+                double e = zrig_param_effective(r, "ParamTestE");
+                CHECK(fabs(a - 12.0) < 0.05, "★ Add：0 + 12 = 12（读到 %.2f）", a);
+                CHECK(fabs(dd - 0.25) < 0.05,
+                      "★ Multiply：默认 0.5 × 0.5 = 0.25（读到 %.2f）—— 被当加法算会到 1.0", dd);
+                CHECK(fabs(e - 5.0) < 0.05,
+                      "★ Overwrite：绝对值 5 就是 5（读到 %.2f）—— 读到 25 说明照动作那套减了默认值",
+                      e);
+            }
+            zrig_expression_clear(r);
+            zrig_expression_snap(r);
+            zrig_tick(r, 1000.01);
+            CHECK(fabs(zrig_param_effective(r, "ParamTestE") - 20.0) < 0.05,
+                  "取消表情后参数回默认 20（读到 %.2f）",
+                  zrig_param_effective(r, "ParamTestE"));
+
+            /* 淡入：FadeInTime = 0.5s */
+            zrig_tick(r, 2000.0);
+            CHECK(zrig_expression_set(r, "fading") == 0, "表情 fading 能选中");
+            zrig_tick(r, 2000.25);
+            {
+                double half = zrig_param_effective(r, "ParamTestA");
+                CHECK(half > 6.0 && half < 14.0,
+                      "★ 淡入半程应约为 10（smoothstep(0.5)=0.5 × 20），读到 %.2f", half);
+            }
+            zrig_tick(r, 2000.6);
+            {
+                double full = zrig_param_effective(r, "ParamTestA");
+                CHECK(fabs(full - 20.0) < 0.05, "淡入结束后应到 20（读到 %.2f）", full);
+            }
+            /* 淡出：FadeOutTime = 0.2s —— 走"切回无表情"那一条 */
+            zrig_expression_clear(r);
+            zrig_tick(r, 2000.7);
+            {
+                double mid = zrig_param_effective(r, "ParamTestA");
+                CHECK(mid > 4.0 && mid < 16.0,
+                      "★ 淡出半程应在 0..20 之间（0.1s/0.2s），读到 %.2f", mid);
+            }
+            zrig_tick(r, 2000.85);
+            CHECK(fabs(zrig_param_effective(r, "ParamTestA")) < 1.0,
+                  "淡出结束后参数回 0（读到 %.2f）",
+                  zrig_param_effective(r, "ParamTestA"));
+            zrig_expression_clear(r);
+            zrig_expression_snap(r);
+
+            /* 失败路径：都用同一个已装载的 rig 直接调导入函数 */
+            {
+                int before = zrig_expression_count(r);
+                CHECK(zrig_expression3_add(r, "badblend.exp3.json", "blend_bad", &d) < 0,
+                      "★ 不认识的 Blend 必须报错（官方静默按 Add 算，那是最难查的一种错）");
+                CHECK(zrig_expression_count(r) == before, "失败时不许往表情表里塞东西");
+                CHECK(zrig_expression3_add(r, "nowhere.exp3.json", "no_param", &d) < 0,
+                      "★ 一条参数都用不上必须失败，不许造出空表情");
+                CHECK(zrig_expression_count(r) == before, "同上：失败不留残渣");
+                CHECK(zrig_expression3_add(r, "dup.exp3.json", "plain", &d) < 0,
+                      "★ 表情 id 撞车必须报错（表情是按 id 点播的）");
+                CHECK(zrig_expression_count(r) == before, "撞车也不许塞进去");
+            }
+            zrig_free(r);
+        }
+    }
+}
+
 /* T66.19 / S4：挂点（socket）。配件靠"名字"挂在骨上，而不是把画布坐标写死。
    这一节的每条都是**换装/换形态之后才会暴露**的错误，所以必须机检：
    ① 挂点解析成（父骨，坐标）；② 配件位置的唯一来源是挂点 + dpos；
@@ -9735,6 +9930,7 @@ int main(int argc, char **argv)
     test_ear_twitch();
     test_ambient_rejects_oneshot();
     test_motion3_import();
+    test_expression3_import();
     test_socket_s4();
     test_point_play_beast_actions();
     test_phys2();

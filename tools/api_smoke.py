@@ -863,6 +863,35 @@ def run(base, root):
               hi > 19 and lo < -15, "实测 %.1f .. %.1f" % (lo, hi))
         a.hit("/api/action?id=idle&force=1"); time.sleep(0.2)
 
+    # ---- 外部表情文件（.exp3.json）：三种 Blend 的语义要真的落到位 ----
+    # 判据用参数读数（/api/params.json 的 effective），不用像素：
+    # Multiply 是"乘"，算成加法时 0.5×0.5=0.25 会变成 0.5+0.5=1.0，直接能看出来。
+    exps = [e.get("id") for e in (a.json("/api/info.json") or {}).get("expressions", [])]
+    if "peek_blush" in exps:
+        a.hit("/api/pause?on=0"); time.sleep(0.15)
+        a.hit("/api/action?id=idle&force=1"); time.sleep(0.3)
+        r = a.json("/api/expression?id=peek_blush") or {}
+        check("外部 .exp3 表情能选中（peek_blush）", r.get("ok") is not False, str(r)[:60])
+        time.sleep(0.5)                      # FadeInTime = 0.35s
+        eff0 = {q["id"]: (q.get("effective") or 0)
+                for q in (a.json("/api/params.json") or {}).get("params", [])}
+        check("★ Multiply：眼睛睁度 1.0 × 0.45 = 0.45（算成加法会到 1.45 被夹成 1.0）",
+              abs((eff0.get("ParamEyeLOpen") or 0) - 0.45) < 0.08,
+              "ParamEyeLOpen=%.2f" % (eff0.get("ParamEyeLOpen") or 0))
+        check("★ Overwrite：腮红被拉到绝对值 1.0",
+              abs((eff0.get("ParamCheek") or 0) - 1.0) < 0.05,
+              "ParamCheek=%.2f" % (eff0.get("ParamCheek") or 0))
+        check("★ Add：嘴角在原值上 +0.3",
+              abs((eff0.get("ParamMouthForm") or 0) - 0.3) < 0.09,
+              "ParamMouthForm=%.2f" % (eff0.get("ParamMouthForm") or 0))
+        a.hit("/api/expression?off=1")
+        time.sleep(0.75)                     # FadeOutTime = 0.55s
+        eff1 = {q["id"]: (q.get("effective") or 0)
+                for q in (a.json("/api/params.json") or {}).get("params", [])}
+        check("取消外部表情后参数回到常态（腮红 0 / 睁眼 1）",
+              abs(eff1.get("ParamCheek") or 0) < 0.08 and abs((eff1.get("ParamEyeLOpen") or 1) - 1.0) < 0.08,
+              "Cheek=%.2f EyeLOpen=%.2f" % (eff1.get("ParamCheek") or 0, eff1.get("ParamEyeLOpen") or 1))
+
     # ---- 动作通道全部打在参数上（≈ .motion3 的 Parameter 曲线）----
     # 端到端口径：请求一个动作，参数表里对应的参数就该自己动起来。
     # 以前动作直接写部件几何，外面读 params.json 是看不出动作在跑的。

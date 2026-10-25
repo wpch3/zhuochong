@@ -1,0 +1,16 @@
+{
+ "Type": "Live2D Expression",
+ "_note": "小寻「偷看」（T66.22 外部表情样本）：自己写的官方 .exp3.json，不是任何商业表情资源的产物。三种 Blend 各用一次，方便一眼看出导入器有没有把语义搞对：Multiply 把眼睛眯到 45%、Add 给嘴角与眉梢各加一点、Overwrite 直接把腮红拉到满。id 取文件名（peek_blush），不能和 rig.json 里已有的表情重名。",
+ "FadeInTime": 0.35,
+ "FadeOutTime": 0.55,
+ "Parameters": [
+  { "Id": "ParamEyeLOpen", "Value": 0.45, "Blend": "Multiply" },
+  { "Id": "ParamEyeROpen", "Value": 0.45, "Blend": "Multiply" },
+  { "Id": "ParamEyeLSmile", "Value": 0.35, "Blend": "Add" },
+  { "Id": "ParamEyeRSmile", "Value": 0.35, "Blend": "Add" },
+  { "Id": "ParamBrowLY", "Value": 0.25, "Blend": "Add" },
+  { "Id": "ParamBrowRY", "Value": 0.25, "Blend": "Add" },
+  { "Id": "ParamMouthForm", "Value": 0.3, "Blend": "Add" },
+  { "Id": "ParamCheek", "Value": 1.0, "Blend": "Overwrite" }
+ ]
+}

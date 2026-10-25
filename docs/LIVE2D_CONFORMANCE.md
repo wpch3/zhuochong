@@ -252,7 +252,7 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 | `.model3.json` `Groups` | `EyeBlink` / `LipSync` 两组 | **本轮补** `rig.json` 的 `param_groups` | ✅ 而且**不是摆设**：自动眨眼只眨组里列的眼，口型只写组里声明的参数（改组名会改行为，有单测守着） |
 | `.model3.json` `HitAreas` | `Head` / `Body` 点击区 | `regions`（head / body / feet 三块，各自带动作与光标） | 等价且更强（我们多一层"点了触发哪个动作"） |
 | `.motion3.json` | 关键帧动作曲线，目标是**参数** | 两条路：① 自己的 `actions[].channels[].target = "ParamXxx"`（2026-10-13 起全部如此）；② **2026-10-25 起直接导入官方文件**（`characters/<角色>/motions/*.motion3.json`，`zrig_motion3_add()`） | ✅ 能读真文件（段编码是按真文件核对的：起点在前 + 类型逐段重复 + 贝塞尔控制点在前）。换算两处：**绝对值 → 偏移**（减默认值）、**贝塞尔 → 20fps 烘焙**成线性关键帧。不支持 `Target=PartOpacity/Model`（跳过并计数） |
-| `.exp3.json` | 表情（参数偏移，Add/Multiply/Overwrite） | `expressions[].params[].mode = add / set(=overwrite) / multiply` | ✅ 三种混合都有，求值照 `CubismExpressionMotion` 的三累加器 |
+| `.exp3.json` | 表情（参数偏移，Add/Multiply/Overwrite） | 两条路：① 自家 `expressions[].params[].mode = add / set / multiply`；② **2026-10-25 起直接导入官方文件**（`characters/<角色>/expressions/*.exp3.json`，`zrig_expression3_add()`）。求值照 `CubismExpressionMotion` 的三累加器 `(overwrite + additive) × multiply` | ✅ 三种混合都有且**能读真文件**（Blend 缺省 = Add、FadeIn/FadeOut 缺省 1.0s 都照官方）。偏差：单权重交叉淡化 ⇒ 两个表情互切时只能用新表情的 FadeIn，切回无表情时用旧表情的 FadeOut（官方是两条独立插值轨）|
 | `.physics3.json` | 摆动：**参数 → 参数**，带 Vertices 摆链 | `physics[]`：**部件/形变器 → 位移**，driver 可串另一条 physics（多段摆链） | 功能等价，**语义不同**（见下） |
 | `.pose3.json` | 互斥部件组 + 淡入淡出 | `poses[]`（眼高光形状差分在用） | 等价 |
 | `.cdi3.json` | 编辑器显示信息（参数中文名/分组） | 参数的 `label` 字段 + `/api/params.json` | 等价（测试台的滑条就是它长出来的） |

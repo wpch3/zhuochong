@@ -281,6 +281,12 @@ const char *zrig_expression_id(const zrig *r, int i);
 const char *zrig_expression_name(const zrig *r, int i);
 const char *zrig_expression(const zrig *r);        /* 当前表情 id，无则 NULL */
 int    zrig_expression_set(zrig *r, const char *id);  /* id 传 NULL/"" = 取消；未知 id 返回 -1 */
+/* 外部表情文件（T66.22 / S3 后半）：读一条 Live2D `.exp3.json`。
+   Blend → Add(缺省)/Multiply/Overwrite 直接映射到三累加器；值**不减默认值**
+   （Overwrite/Multiply 本来就是绝对语义）。模型里没有的参数跳过并计数，
+   一条都不剩则失败。返回用上的参数条数，<0 = 失败。
+   rig.json 的 "expression_files": [{"id","file"}] 走这个函数。 */
+int    zrig_expression3_add(zrig *r, const char *path, const char *id_override, zdiag *diag);
 void   zrig_expression_clear(zrig *r);
 void   zrig_expression_snap(zrig *r);   /* 跳过淡入淡出直接到位（冻结时钟时用） */
 double zrig_expression_weight(const zrig *r);      /* 淡化权重 0..1（测试用） */

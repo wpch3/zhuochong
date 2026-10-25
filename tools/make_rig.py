@@ -3907,9 +3907,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         "parts": parts_list,
         "regions": regions,
         "actions": _name_actions(actions),
-        # 外部动作文件（T66.21）：由 collect_motions() 在 main 里填，
-        # 这里先占位，免得顺序上要记住"哪一格才是最终值"。
+        # 外部动作/表情文件（T66.21 / T66.22）：由 collect_motions() /
+        # collect_expressions() 在 main 里填。这里先占位，免得顺序上要想
+        # "哪一格才是最终值"。
         "motions": [],
+        "expression_files": [],
         # 物理摆动（引擎的 physics 段）：头一动，头发自己甩。
         # 输入 = 部件锚点经过 head 组完整矩阵（含旋转和父链）之后的位移，
         # 输出 = 摆尖落后/过冲的那点距离，静止时收敛回 0。
@@ -5293,6 +5295,30 @@ def _generated_by(extra_sources=None):
     return out
 
 
+def collect_expressions(base_root):
+    """角色级 `expressions/*.exp3.json` → rig.json 的 "expression_files" 段（T66.22）。
+
+    道理和 motions 一样：表情是"怎么表达"，不是"长什么样"，所以放角色级、四形态共用；
+    格式用官方 .exp3.json，别人做的表情我们也能读，我们做的别人也能读。
+    id 取文件名（去掉 .exp3.json），文件名就是点播用的 id。
+
+    返回 (entries, sources)。
+    """
+    edir = os.path.join(base_root, "expressions")
+    if not os.path.isdir(edir):
+        return [], {}
+    entries, sources = [], {}
+    for name in sorted(os.listdir(edir)):
+        if not name.endswith(".exp3.json"):
+            continue
+        eid = name[: -len(".exp3.json")]
+        path = os.path.join(edir, name)
+        entries.append({"id": eid,
+                        "file": os.path.relpath(path, base_root).replace(os.sep, "/")})
+        sources["characters/%s/expressions/%s" % (os.path.basename(base_root), name)] = path
+    return entries, sources
+
+
 def collect_motions(base_root):
     """角色级 `motions/*.motion3.json` → rig.json 的 "motions" 段（T66.21）。
 
@@ -5571,7 +5597,18 @@ def main() -> int:
                            "file": os.path.relpath(os.path.join(base_root, m["file"]), base)
                                    .replace(os.sep, "/")}
                           for m in motions]
-    rig["generated_by"] = _generated_by(motion_sources)
+    exprs, expr_sources = collect_expressions(base_root)
+    if exprs:
+        rig["expression_files"] = [
+            {"id": e["id"],
+             "file": os.path.relpath(os.path.join(base_root, e["file"]), base)
+                     .replace(os.sep, "/")}
+            for e in exprs]
+    # 外部动作/表情文件的内容也会进 rig（路径），所以它们和生成器一起算指纹：
+    # 改了文件没重跑生成器，闸必须红。
+    ext_sources = dict(motion_sources)
+    ext_sources.update(expr_sources)
+    rig["generated_by"] = _generated_by(ext_sources)
 
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:

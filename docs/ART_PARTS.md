@@ -302,6 +302,42 @@ forms/<形态>/rig.json 的 "motions": [{"id":"curious_tilt","file":"../../motio
   报 `-18.2 .. 22.0`。证据图 `logs/asset_qa/t66_21_curve.png`（期望 vs 实测）、
   `logs/asset_qa/t66_21_strip.png`（六帧连拍）。
 
+### 3.3c 外部表情文件：直接吃官方 `.exp3.json`（T66.22）
+
+```
+characters/<角色>/expressions/*.exp3.json     ← 丢进这个目录就是一个表情
+forms/<形态>/rig.json 的 "expression_files": [{"id":"peek_blush","file":"../../expressions/peek_blush.exp3.json"}]
+```
+
+格式（真值照 CubismWebFramework `src/motion/cubismexpressionmotion.ts`）：
+
+```json
+{ "Type": "Live2D Expression", "FadeInTime": 0.35, "FadeOutTime": 0.55,
+  "Parameters": [ {"Id":"ParamEyeLOpen","Value":0.45,"Blend":"Multiply"},
+                  {"Id":"ParamMouthForm","Value":0.3,"Blend":"Add"},
+                  {"Id":"ParamCheek","Value":1.0,"Blend":"Overwrite"} ] }
+```
+
+- **Blend 只有三个合法值**：`Add`（缺省）/ `Multiply` / `Overwrite` →
+  我们的 `EXPR_ADD / EXPR_MUL / EXPR_SET` 三累加器（`(overwrite + additive) × multiply`，
+  这套求值早就在 `expr_apply()` 里，导入不需要改求值，只映射）。
+- **值不减默认值**（和 `.motion3` 相反！）：`Overwrite` 是"把参数拉到这个值"、
+  `Multiply` 是"乘这个系数"。动作那边减默认值是因为动作层是加算偏移，
+  表情这边三个累加器本身就是绝对值语义 —— 两个导入器挨着放，各写一句注释，
+  免得下次照着改错一个。
+- **FadeInTime / FadeOutTime 缺省 1.0 秒**（官方值），比自家内联表情的 0.25 长得多；
+  两个字段分别管"进"和"切回无表情时的出"。我们这里是单权重交叉淡化，
+  A→B 互切只能用同一个时长 —— 这条偏差登记在 `docs/LIVE2D_CONFORMANCE.md`。
+- 不认识的 `Blend` 值**直接报错**（官方是静默按 Add 算）。把 `multiply` 拼错被当成加法，
+  画面只是"不太对"，查起来比重建一个表情还难。
+- 模型里没有的参数跳过并计数；一条都用不上就失败（不许造出空表情）。
+- id = 文件名（去掉 `.exp3.json`），**不许**和 rig 里已有表情撞名（表情按 id 点播）。
+- 静态闸：`selfcheck::check_external_expressions`（Blend 合法性 / 命名 / 撞名 / 挂载一致 /
+  文件内容进 `generated_by` 指纹）。
+- 验收：`test_core` 里 6 类断言（三累加器语义、不减默认值、淡入半程、淡出、缺参数、坏 Blend），
+  `api_smoke` 三条参数读数（`ParamEyeLOpen=0.45`、`ParamCheek=1.00`、`ParamMouthForm=0.30`）。
+  目视 `logs/asset_qa/t66_22_peek.png`（1x 对比）、`t66_22_face4x.png`（4×）。
+
 ### 3.4 多段物理摆链（G16）怎么写
 
 一段弹簧只能做「整体晚一拍」。真实的头发/裙摆是**一节带一节**：

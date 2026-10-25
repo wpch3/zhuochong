@@ -455,7 +455,15 @@ typedef struct {
 typedef struct {
     char   id[32];
     char   name[48];
-    double fade;              /* 淡入淡出秒数 */
+    double fade;              /* 淡入秒数（离开这层时用 fade_out，见 fade_out 的注释） */
+    double fade_out;          /* 淡出秒数。
+                                 ★ 为什么要两个：官方 .exp3.json 有 FadeInTime 和
+                                 FadeOutTime 两个独立字段（缺省都是 1.0 秒）。我们这里
+                                 是**单权重的交叉淡化**（新表情按 w 进、旧表情按 1−w 出），
+                                 所以 A→B 这种互切只能用同一个时长 —— 但"切回无表情"
+                                 这一条天然只用得到旧表情的淡出时长，那就照实取
+                                 FadeOutTime。两个字段各自在自己管得着的地方生效，
+                                 管不着的地方（互切）在 CONFORMANCE 里登记。 */
     int    p0, np;            /* 在 r->exprps 里的区间 */
     zoverride ovr[ZRIG_MAX_OVERRIDES];
     int    novr;               /* 表情级部件透明度/偏移覆盖 */
@@ -2878,6 +2886,22 @@ static int load_poses(zrig *r, const zjson *jp, zdiag *d, const char *file)
     return 0;
 }
 
+/* 文件名 → 动作用 id：去掉 .motion3.json / .exp3.json / .json。
+   为什么不能直接用 z_basename：文件名带扩展名，id 就会变成 "peek.exp3.json" ——
+   点播要写 /api/expression?id=peek.exp3.json，谁也猜不到。 */
+static void m3_strip_ext(const char *base, char *out, size_t cap)
+{
+    size_t n;
+    z_strlcpy(out, base ? base : "", cap);
+    n = strlen(out);
+    if (n > 5 && z_streq(out + n - 5, ".json")) {       /* 去掉双层扩展名 */
+        out[n - 5] = 0;
+        n -= 5;
+        if (n > 7 && z_streq(out + n - 7, ".motion3")) out[n - 7] = 0;
+        else if (n > 5 && z_streq(out + n - 5, ".exp3")) out[n - 5] = 0;
+    }
+}
+
 /* expressions：一组参数偏移。
    { "id":"shy", "name":"害羞", "fade":0.3,
      "params":[ {"id":"ParamBrowLY","value":-0.5},
@@ -2913,8 +2937,12 @@ static int load_expressions(zrig *r, const zjson *je, zdiag *d, const char *file
         z_strlcpy(e->id, id, sizeof(e->id));
         z_strlcpy(e->name, zjson_str(zjson_obj_get(ej, "name"), id), sizeof(e->name));
         e->fade = zjson_num(zjson_obj_get(ej, "fade"), 0.25);
+        /* 自家 rig 只写一个 fade：进和出对称。要分开写就补 "fade_out"。 */
+        e->fade_out = zjson_num(zjson_obj_get(ej, "fade_out"), e->fade);
         if (e->fade < 0.0) e->fade = 0.0;
         if (e->fade > 2.0) e->fade = 2.0;
+        if (e->fade_out < 0.0) e->fade_out = 0.0;
+        if (e->fade_out > 2.0) e->fade_out = 2.0;
         e->p0 = r->nexprps;
         if (ps && ps->type != ZJSON_ARR) {
             zdiag_error(d, file, ps->line, 0, path, "params 期望 array");
@@ -2977,6 +3005,184 @@ static int load_expressions(zrig *r, const zjson *je, zdiag *d, const char *file
             }
             e->novr++;
         }
+    }
+    return 0;
+}
+
+/* ============================================================ 外部表情文件
+   .exp3.json（T66.22 / S3 后半的第二块）
+
+   格式真值（CubismWebFramework `src/motion/cubismexpressionmotion.ts`）：
+     { "Type":"Live2D Expression",
+       "FadeInTime":1.0, "FadeOutTime":1.0,
+       "Parameters":[ {"Id":"ParamEyeLOpen","Value":0.0,"Blend":"Multiply"}, … ] }
+   · Blend 只有三个合法值：**Add（缺省）/ Multiply / Overwrite**；
+   · Blend 缺省 = Add（不是"整体覆盖"）；
+   · FadeInTime / FadeOutTime 缺省都是 **1.0 秒**（比自家内联表情的 0.25 长得多）；
+   · 语义是三累加器：(overwrite + additive) × multiply —— 我们的 expr_apply 早就照这个写的，
+     所以导入只要把 Blend 映射到 EXPR_SET / EXPR_ADD / EXPR_MUL 即可，不需要改求值。
+
+   ★ 和 .motion3 最大的不同：**表情的值是绝对值，不要减默认值**。
+     Overwrite 是"把参数拉到这个值"，Multiply 是"乘这个系数"，Add 才是偏移量。
+     所以这里没有"减默认值"那一步 —— 但正因为动作那边有、这边没有，
+     两个导入器挨着放，写错一半的话很难看出来，注释里各写一句。 */
+int zrig_expression3_add(zrig *r, const char *path, const char *id_override, zdiag *d)
+{
+    zjson *root = NULL;
+    zerr err;
+    const zjson *ps;
+    char full[1200], idbuf[128];
+    const char *cid;
+    double fade = 1.0, fade_out = 1.0;
+    int applied = 0, skipped = 0, i, n, p0;
+    zexpr *e;
+
+    if (!r || !path) return -1;
+    z_resolve_path(full, sizeof(full), r->dir, path);
+    if (!z_file_exists(full)) {
+        zdiag_error(d, full, 0, 0, "expression3", "表情文件不存在：%s", path);
+        return -1;
+    }
+    zerr_clear(&err);
+    root = zjson_parse_file(full, &err);
+    if (!root) {
+        zdiag_error(d, full, err.line, err.col, "expression3", "解析失败：%s", err.msg);
+        return -1;
+    }
+    {
+        const char *ty = zjson_str(zjson_obj_get(root, "Type"), NULL);
+        if (ty && !z_streq(ty, "Live2D Expression")) {
+            zdiag_error(d, full, root->line, 0, "Type",
+                        "期望 \"Live2D Expression\"，读到 \"%s\"", ty);
+            zjson_free(root);
+            return -1;
+        }
+    }
+    ps = zjson_obj_get(root, "Parameters");
+    if (!ps || ps->type != ZJSON_ARR || zjson_count(ps) == 0) {
+        zdiag_error(d, full, root->line, 0, "expression3",
+                    "缺少非空的 Parameters 数组（表情 = 一组参数偏移/覆盖）");
+        zjson_free(root);
+        return -1;
+    }
+    if (r->nexprs >= ZRIG_MAX_EXPR) {
+        zdiag_error(d, full, root->line, 0, "expression3",
+                    "表情数已到上限 %d（改大 ZRIG_MAX_EXPR）", ZRIG_MAX_EXPR);
+        zjson_free(root);
+        return -1;
+    }
+    cid = id_override;
+    if (!cid || !*cid) {
+        m3_strip_ext(z_basename(full), idbuf, sizeof(idbuf));
+        cid = idbuf;
+    }
+    {   /* id 撞车：表情是按 id 点播的（/api/expression?id=），撞了就永远只能播到其中一个 */
+        int k;
+        for (k = 0; k < r->nexprs; ++k) {
+            if (z_streq(r->exprs[k].id, cid)) {
+                zdiag_error(d, full, root->line, 0, "expression3",
+                            "表情 id '%s' 与既有表情重名（换文件名，或删掉一条）", cid);
+                zjson_free(root);
+                return -1;
+            }
+        }
+    }
+    e = &r->exprs[r->nexprs];
+    memset(e, 0, sizeof(*e));
+    z_strlcpy(e->id, cid, sizeof(e->id));
+    z_strlcpy(e->name, zjson_str(zjson_obj_get(root, "Name"), cid), sizeof(e->name));
+    fade = zjson_num(zjson_obj_get(root, "FadeInTime"), 1.0);
+    fade_out = zjson_num(zjson_obj_get(root, "FadeOutTime"), fade);
+    if (fade < 0.0) fade = 0.0;
+    if (fade > 5.0) fade = 5.0;
+    if (fade_out < 0.0) fade_out = 0.0;
+    if (fade_out > 5.0) fade_out = 5.0;
+    e->fade = fade;
+    e->fade_out = fade_out;
+    e->p0 = r->nexprps;
+    p0 = r->nexprps;
+
+    n = (int)zjson_count(ps);
+    for (i = 0; i < n; ++i) {
+        const zjson *pj = zjson_at(ps, i);
+        const char *pid = zjson_str(zjson_obj_get(pj, "Id"), NULL);
+        const char *bl = zjson_str(zjson_obj_get(pj, "Blend"), "Add");
+        int pi, mode;
+        zexprp *x;
+        if (z_streq(bl, "Add") || z_streq(bl, "add")) mode = EXPR_ADD;
+        else if (z_streq(bl, "Multiply") || z_streq(bl, "multiply")) mode = EXPR_MUL;
+        else if (z_streq(bl, "Overwrite") || z_streq(bl, "overwrite")) mode = EXPR_SET;
+        else {
+            /* 官方遇到不认识的 Blend 会静默按 Add 处理。我们不这么干：
+               "Multiply 写成 multiplication" 被当成加法算，画面只是"不太对"，
+               查起来比重建一个动作还难。 */
+            zdiag_error(d, full, pj ? pj->line : 0, 0, pid ? pid : "Parameters",
+                        "Blend 只能是 Add / Multiply / Overwrite，读到 \"%s\"", bl);
+            zjson_free(root);
+            e->p0 = r->nexprps;   /* 没提交，nexprs 也没加，回滚靠下面统一处理 */
+            return -1;
+        }
+        if (!pid || !*pid) {
+            zdiag_error(d, full, pj ? pj->line : 0, 0, "Parameters", "缺 Id");
+            zjson_free(root);
+            return -1;
+        }
+        pi = param_find(r, param_alias(pid));
+        if (pi < 0) {
+            /* 别人做的表情会引用我们模型没有的参数（每个模型参数集不同）。
+               跳过并计数 —— 但**一条都用不上就失败**，不然会造出一个空表情。 */
+            zdiag_warn(d, full, pj ? pj->line : 0, 0, pid,
+                       "表情里的参数 %s 不在本模型里，这一条跳过", pid);
+            skipped++;
+            continue;
+        }
+        if (r->nexprps >= ZRIG_MAX_EXPR_SET) {
+            zdiag_error(d, full, pj ? pj->line : 0, 0, pid,
+                        "表情参数总数超过上限 %d（ZRIG_MAX_EXPR_SET）", ZRIG_MAX_EXPR_SET);
+            zjson_free(root);
+            return -1;
+        }
+        x = &r->exprps[r->nexprps];
+        memset(x, 0, sizeof(*x));
+        x->param = pi;
+        x->value = zjson_num(zjson_obj_get(pj, "Value"), 0.0);
+        x->mode = mode;
+        r->nexprps++;
+        e->np++;
+        applied++;
+    }
+    zjson_free(root);
+    if (applied == 0) {
+        r->nexprps = p0;
+        zdiag_error(d, full, 0, 0, "expression3",
+                    "一条参数都没能用上（%d 条被跳过：参数不在本模型里）", skipped);
+        return -1;
+    }
+    r->nexprs++;
+    ZLOGI("rig", "导入表情 %s（%d 条参数，跳过 %d，淡入 %.2fs / 淡出 %.2fs）",
+          e->id, applied, skipped, e->fade, e->fade_out);
+    return applied;
+}
+
+/* rig.json 的 "expression_files" 段：接外部 .exp3.json。
+   写法 [{"id":"peek", "file":"expressions/peek.exp3.json"}]；缺文件是硬错误。 */
+static int load_expression_files(zrig *r, const zjson *jf, zdiag *d, const char *file)
+{
+    size_t i, n = zjson_count(jf);
+    if (!jf) return 0;
+    if (jf->type != ZJSON_ARR) {
+        zdiag_error(d, file, jf->line, 0, "expression_files", "期望 array");
+        return -1;
+    }
+    for (i = 0; i < n; ++i) {
+        const zjson *mj = zjson_at(jf, i);
+        const char *f = zjson_str(zjson_obj_get(mj, "file"), NULL);
+        const char *id = zjson_str(zjson_obj_get(mj, "id"), NULL);
+        if (!f || !*f) {
+            zdiag_error(d, file, mj ? mj->line : 0, 0, "expression_files", "缺 file");
+            return -1;
+        }
+        if (zrig_expression3_add(r, f, id, d) < 0) return -1;
     }
     return 0;
 }
@@ -3500,7 +3706,7 @@ int zrig_motion3_add(zrig *r, const char *path, const char *id_override, zdiag *
     zerr err;
     const zjson *meta, *curves;
     const char *cid;
-    char full[1200];
+    char full[1200], idbuf[128];
     double dur = 1.0;
     int loop = 0, applied = 0, skipped = 0, i, n;
     zaction *a;
@@ -3537,7 +3743,10 @@ int zrig_motion3_add(zrig *r, const char *path, const char *id_override, zdiag *
     a->blink_hold = -1.0;
     cid = id_override;
     if (!cid || !*cid) cid = zjson_str(zjson_obj_get(root, "Id"), NULL);
-    if (!cid || !*cid) cid = z_basename(full);
+    if (!cid || !*cid) {
+        m3_strip_ext(z_basename(full), idbuf, sizeof(idbuf));
+        cid = idbuf;
+    }
     z_strlcpy(a->id, cid, sizeof(a->id));
     z_strlcpy(a->title, zjson_str(zjson_obj_get(root, "Title"), a->id), sizeof(a->title));
     z_strlcpy(a->return_state, "idle", sizeof(a->return_state));
@@ -4100,6 +4309,10 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
     /* 音素表要用参数下标，必须排在 params / param_groups 之后 */
     if (load_visemes(r, zjson_obj_get(root, "visemes"), diag, file) != 0) goto fail;
     if (load_expressions(r, zjson_obj_get(root, "expressions"), diag, file) != 0) goto fail;
+    /* 外部表情文件（T66.22）：排在自家 expressions 之后 —— 这样撞名时会先看到
+       "自家已经有这个 id"，而不是莫名其妙少一个表情。 */
+    if (load_expression_files(r, zjson_obj_get(root, "expression_files"), diag, file) != 0)
+        goto fail;
     if (load_poses(r, zjson_obj_get(root, "poses"), diag, file) != 0) goto fail;
     {   /* ambient（T45.9）：环境摆动通道。必须排在 actions / params 之后 ——
            通道的 target 要能查到参数、组、部件、形变器。
@@ -7306,9 +7519,9 @@ int zrig_expression_set(zrig *r, const char *id)
     r->expr_prev = r->expr_cur;
     r->expr_cur = next;
     r->expr_t0 = r->now;
-    /* 淡入用新表情的 fade；切回"无表情"时用旧表情的 fade 淡出 */
+    /* 淡入用新表情的 fade；切回"无表情"时用**旧表情的 fade_out**（官方 FadeOutTime） */
     r->expr_fade = (next >= 0) ? r->exprs[next].fade
-                 : (r->expr_prev >= 0 ? r->exprs[r->expr_prev].fade : 0.0);
+                 : (r->expr_prev >= 0 ? r->exprs[r->expr_prev].fade_out : 0.0);
     return 0;
 }
 

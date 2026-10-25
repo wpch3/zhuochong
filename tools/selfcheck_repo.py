@@ -3915,6 +3915,87 @@ def check_external_motions(root):
           "挂载一致" if not bad_wire else "；".join(bad_wire[:3]))
 
 
+def check_external_expressions(root):
+    """外部表情文件（.exp3.json，T66.22）：Blend 合法、命名规范、和自家表情不撞车、挂载一致。
+
+    和动作文件同样的三件事，只是换了格式。额外一条：**Blend 只许三种值**。
+    引擎遇到不认识的 Blend 会直接报错（官方是静默按 Add 算），静态闸要提前拦，
+    不然错误要等到装载期才炸。
+    """
+    section("外部表情文件：Blend / 命名 / 与自家表情不撞车（T66.22）")
+    chars = sorted(glob.glob(os.path.join(root, "characters", "*")))
+    nfile = 0
+    bad_fmt, bad_name, bad_dup, bad_wire = [], [], [], []
+    for cdir in chars:
+        cname = os.path.basename(cdir)
+        edir = os.path.join(cdir, "expressions")
+        files = sorted(glob.glob(os.path.join(edir, "*.exp3.json")))
+        if not files:
+            continue
+        eids = set()
+        for fp in files:
+            nfile += 1
+            rel = os.path.relpath(fp, root)
+            eid = os.path.basename(fp)[: -len(".exp3.json")]
+            eids.add(eid)
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", eid):
+                bad_name.append("%s（id 只许小写字母/数字/下划线）" % rel)
+            try:
+                with open(fp, encoding="utf-8") as f:
+                    doc = json.load(f)
+            except Exception as e:
+                bad_fmt.append("%s（不是合法 JSON：%s）" % (rel, e))
+                continue
+            ty = doc.get("Type")
+            if ty is not None and ty != "Live2D Expression":
+                bad_fmt.append('%s（Type 应是 "Live2D Expression"，读到 %r）' % (rel, ty))
+            for k in ("FadeInTime", "FadeOutTime"):
+                v = doc.get(k)
+                if v is not None and (not isinstance(v, (int, float)) or v < 0):
+                    bad_fmt.append("%s（%s 必须是非负数，读到 %r）" % (rel, k, v))
+            ps = doc.get("Parameters")
+            if not isinstance(ps, list) or not ps:
+                bad_fmt.append("%s（Parameters 必须是非空数组）" % rel)
+                continue
+            for item in ps:
+                pid = item.get("Id")
+                bl = item.get("Blend", "Add")
+                v = item.get("Value")
+                if not pid:
+                    bad_fmt.append("%s（有参数缺 Id）" % rel)
+                if bl not in ("Add", "Multiply", "Overwrite"):
+                    bad_fmt.append("%s → %s（Blend=%r 不合法，只许 Add/Multiply/Overwrite）"
+                                   % (rel, pid, bl))
+                if not isinstance(v, (int, float)):
+                    bad_fmt.append("%s → %s（Value 必须是数字，读到 %r）" % (rel, pid, v))
+                # Multiply 的语义是"乘一个系数"，写个 0 会把整个参数压死；
+                # 写个负数会让参数翻号。这两种几乎一定是笔误，提醒但不判红。
+        for rp in sorted(glob.glob(os.path.join(cdir, "forms", "*", "rig.json"))):
+            try:
+                rig = jsonc(rp)
+            except Exception:
+                continue
+            own = set(e.get("id") for e in (rig.get("expressions") or []))
+            for eid in sorted(eids):
+                if eid in own:
+                    bad_dup.append("%s 里已有表情 '%s'" % (os.path.relpath(rp, root), eid))
+            wired = set(m.get("id") for m in (rig.get("expression_files") or []))
+            if wired != eids:
+                bad_wire.append("%s：expression_files=%s，目录里有 %s"
+                                % (os.path.relpath(rp, root), sorted(wired), sorted(eids)))
+    if nfile == 0:
+        check("有外部表情文件时按上面的口径查", True, "（本仓库还没有 expressions/*.exp3.json）")
+        return
+    check("外部表情文件的 Blend 与取值合法", not bad_fmt,
+          "%d 个文件全部合法" % nfile if not bad_fmt else "；".join(bad_fmt[:3]))
+    check("外部表情的 id 命名规范（文件名即 id）", not bad_name,
+          "%d 个 id 全部规范" % nfile if not bad_name else "；".join(bad_name[:3]))
+    check("外部表情不和 rig 里已有的表情撞名", not bad_dup,
+          "没有撞车" if not bad_dup else "撞名：%s（引擎装载期会直接报错）" % "；".join(bad_dup[:3]))
+    check("每个形态的 rig.json 都挂上了 expressions 里的全部文件", not bad_wire,
+          "挂载一致" if not bad_wire else "；".join(bad_wire[:3]))
+
+
 def check_outfit_binding(root):
     """换装**只许换贴图**，不许换骨绑定（T66.20 / S4 后半）。
 
@@ -4797,6 +4878,7 @@ def main():
                check_outfit_binding,
                check_rig_freshness,
                check_external_motions,
+               check_external_expressions,
                check_prosody,
                check_phys2,
                check_phys2_rig,
