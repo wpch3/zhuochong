@@ -910,6 +910,38 @@ static void handle_request(zsock fd, const http_req *r)
         }
         return;
     }
+    if (strcmp(r->path, "/api/mask.png") == 0) {
+        /* G66.13 调试图：把「某个被裁部件这一帧看到的遮罩」直接出一张 PNG。
+           ?id= 必填（挂 mask 的部件，如 eye_l_base）；?s= 同 frame.png。 */
+        char mask_id[96];
+        const zimg *mi = NULL;
+        int mw = 0, mh = 0;
+        int spct = qint(r, "s", 100);
+        if (spct < 25) spct = 25;
+        if (spct > 100) spct = 100;
+        if (!qstr(r, "id", mask_id, sizeof mask_id) || !mask_id[0]) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 id\"}");
+            return;
+        }
+        LOCK();
+        mi = zpet_mask_frame(g_pet, mask_id, &mw, &mh);
+        if (mi && spct < 100) {
+            zimg *small = zimg_downscale(mi, mi->w * spct / 100, mi->h * spct / 100);
+            if (small) {
+                send_png(fd, small);
+                zimg_free(small);
+                UNLOCK();
+                return;
+            }
+        }
+        if (mi) send_png(fd, mi);
+        UNLOCK();
+        if (!mi) {
+            send_text(fd, 404, "application/json",
+                      "{\"ok\":false,\"error\":\"没有这个带遮罩的部件\"}");
+        }
+        return;
+    }
     if (strcmp(r->path, "/api/speech.json") == 0) {
         /* 832 而不是 640：seq/age 两个字段是 2026-10-15 补的（G105）。
            line 本身最长 256 字节，加上 mood/tier/lipsync 一圈，640 已经贴边了。 */

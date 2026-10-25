@@ -75,6 +75,10 @@ int zrig_render_threads(void);
 void zrig_set_render_threads(int n);
 
 const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h);
+/* G66.13 调试图：把"某部件这一帧的裁切遮罩"画成帧尺寸 RGBA（白 = 可见）。
+   id 要传挂 mask 的部件（如 eye_l_base）；没有遮罩或找不到返回 NULL。 */
+const zimg *zrig_mask_frame(zrig *r, const char *part_id, double scale,
+                            int *out_w, int *out_h);
 
 /* --------------------------------------------------------------- 交互 */
 /* 画布坐标（未乘 scale）命中测试。threshold 建议 24（alpha 0..255）。 */

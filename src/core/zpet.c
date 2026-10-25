@@ -454,6 +454,13 @@ const zimg *zpet_frame(zpet *p, int *out_w, int *out_h)
     return fr;
 }
 
+/* G66.13 调试图：转给 zrig（裁切遮罩单独出一张图），和 zpet_frame 用同一个 scale。 */
+const zimg *zpet_mask_frame(zpet *p, const char *part_id, int *out_w, int *out_h)
+{
+    if (!p || !p->rig) return NULL;
+    return zrig_mask_frame(p->rig, part_id, p->scale, out_w, out_h);
+}
+
 const char *zpet_character(const zpet *p) { return p ? p->cfg.pet.character : ""; }
 const char *zpet_form(const zpet *p) { return p ? p->cfg.pet.form : ""; }
 const char *zpet_outfit(const zpet *p) { return p && p->rig ? zrig_outfit(p->rig) : ""; }

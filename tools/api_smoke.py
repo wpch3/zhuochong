@@ -11,6 +11,7 @@
 """
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
@@ -23,6 +24,8 @@ import urllib.error
 import urllib.request
 import struct
 import zlib
+
+from PIL import Image
 
 PASS, FAIL = [], []
 
@@ -1402,6 +1405,9 @@ def run(base, root):
     # 外套前襟下摆（T45.12）：和裙摆同一条路子，但**更钝** —— 这里验的是
     # 「它确实被自己的参数推得动」，幅度大小是静态性质（selfcheck 第㉓段比 dx 表）。
     if "jacket_hem_x" in dfm:
+        # 环境微风也会推 ParamJacketSway —— 不关掉的话"设之前"的读数就不干净，
+        # 判据 j1 > j0*2 会随机红（2026-10-26 实测 j0=0.32、j1=0.58）。
+        a.hit("/api/ambient?on=0")
         a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=240&dt=0.016")
         a.hit("/api/param?id=ParamJacketSway&v=1.0")
         j0 = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
@@ -1410,7 +1416,9 @@ def run(base, root):
         j1 = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
                  .get("jacket_hem_x") or 0.0)
         check("外套下摆被 ParamJacketSway 推得动（lag 0.16 要空跑才到位）",
-              j1 > max(0.5, j0 * 2.0), "设上去 %.4f → 空跑 3.84s 后 %.4f" % (j0, j1))
+              j1 > max(0.5, j0 * 2.0),
+              "设上去 %.4f → 空跑 3.84s 后 %.4f（环境风已关）" % (j0, j1))
+        a.hit("/api/ambient?on=1")
     a.hit("/api/param?all=1&reset=1")
     a.hit("/api/ambient?on=1"); a.hit("/api/pause?on=0"); time.sleep(0.2)
 
@@ -1803,6 +1811,46 @@ def run(base, root):
               parts["hair_front"]["layer"] > parts["brow_l"]["layer"],
               "眼皮%d < 眉%d < 刘海%d" % (parts["eye_l_lid"]["layer"], parts["brow_l"]["layer"],
                                           parts["hair_front"]["layer"]))
+
+    print("== 眼眶遮罩探针 /api/mask.png（G66.13 的定位工具）==")
+    # 这一节验的是"看不见的东西"：眼眶遮罩这一帧到底被切成什么形状。
+    # 它是这一轮为定位 G66.13 新加的调试口，也是唯一能直接看见"裁切边界在哪"的手段，
+    # 所以必须留在冒烟里 —— 探针一旦坏了，下次再出眼睛的毛病又只能靠猜。
+    a.hit("/api/ambient?on=0")
+    a.hit("/api/blink?on=0")
+    a.hit("/api/pause?on=1&t=2")
+    try:
+        st, png = a.get("/api/mask.png?id=eye_l_base")
+        arr = Image.open(io.BytesIO(png)).convert("RGBA") if st == 200 else None
+    except Exception:                                # noqa: BLE001
+        arr = None
+    check("/api/mask.png 能取到眼眶遮罩", arr is not None, "eye_l_base")
+    if arr is not None:
+        def mask_top_h(img):
+            al = img.split()[3]
+            px = al.load()
+            ys = [y for y in range(img.height) if any(px[x, y] > 40 for x in range(img.width))]
+            return (min(ys), max(ys)) if ys else (None, None)
+        tops = {}
+        for v in (1.0, 0.5, 0.0):
+            a.hit("/api/param?id=ParamEyeLOpen&v=%.2f" % v)
+            a.hit("/api/param?id=ParamEyeROpen&v=%.2f" % v)
+            a.hit("/api/step?n=3")
+            _, png = a.get("/api/mask.png?id=eye_l_base")
+            tops[v] = mask_top_h(Image.open(io.BytesIO(png)).convert("RGBA"))
+        t1, t5, t0 = tops[1.0], tops[0.5], tops[0.0]
+        check("睁眼时遮罩是满的", t1[0] is not None and t1[1] > t1[0], "y %s..%s" % t1)
+        check("闭合到 0 时遮罩上沿真的下来了",
+              t0[0] is not None and t1[0] is not None and t0[0] > t1[0] + 3,
+              "Open=1 上沿 %s → Open=0 上沿 %s" % (t1[0], t0[0]))
+        check("半闭（0.5）时遮罩已经压下一截",
+              t5[0] is not None and t1[0] is not None and t5[0] >= t1[0],
+              "Open=1 上沿 %s → Open=0.5 上沿 %s" % (t1[0], t5[0]))
+    a.hit("/api/param?all=1")
+    a.hit("/api/pause?on=0")
+    a.hit("/api/ambient?on=1")
+    a.hit("/api/blink?on=1")
+    a.hit("/api/blink?v=auto")
 
     print("== 测试台页面 ==")
     for path in ("/test.html", "/test.js", "/index.html"):

@@ -1234,7 +1234,7 @@
         "eye_aperture"
       ],
       "mask_only": true,
-      "note": "眼眶开口（46×41px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
+      "note": "眼眶开口（46×41px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
       "aperture_min": 0.06,
       "eye_side": "l",
       "scale_1x": 1.0,
@@ -1445,7 +1445,7 @@
         "eye_aperture"
       ],
       "mask_only": true,
-      "note": "眼眶开口（43×37px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来",
+      "note": "眼眶开口（43×37px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
       "aperture_min": 0.06,
       "eye_side": "r",
       "scale_1x": 1.0,
@@ -12662,7 +12662,7 @@
   "generated_by": {
     "tool": "tools/make_rig.py",
     "sources": {
-      "tools/make_rig.py": "d1483771e04855b7de710300a0f69af1def9b700a9a8c685ead6329080793f3f",
+      "tools/make_rig.py": "85b51844642a212a34f7d74b46a6f75be210a0633125d162ebfea091c1490e51",
       "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
       "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3",
       "characters/xiaoxun/expressions/peek_blush.exp3.json": "d692dbda9205d8cf4451226e5d2adcbffff984246f1f2156723e005aa63ae59b"

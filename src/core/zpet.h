@@ -44,6 +44,8 @@ void  zpet_destroy(zpet *p);
 int   zpet_tick(zpet *p, double now);
 /* 当前帧（含窗口缩放）。返回只读帧缓冲。 */
 const zimg *zpet_frame(zpet *p, int *out_w, int *out_h);
+/* G66.13 调试图：某部件这一帧的裁切遮罩（白 = 可见），帧尺寸。 */
+const zimg *zpet_mask_frame(zpet *p, const char *part_id, int *out_w, int *out_h);
 
 /* --------------------------------------------------------------- 信息 */
 const char *zpet_character(const zpet *p);

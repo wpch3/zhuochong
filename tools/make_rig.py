@@ -17,6 +17,20 @@ import attach_geom
 
 
 AP_MIN = 0.06   # 眼眶开口闭到底时纵向还剩几成（引擎 aperture_min 的默认值也是它）
+# —— 上眼皮的弧线（T66.22b / G66.13）——
+# 只靠 aperture_min 纵向缩放，开口上边界永远是**水平直线**，半闭时虹膜会被一条直线
+# 切平、和眼线之间还留一道肤色缝（14× 放大图 t66_22_halfclose16x.png）。
+# 现在改成「缩放关掉（aperture_min=1.0）+ 给眼眶遮罩一张 blink 驱动的网格」：
+#   · 网格每个控制点的下沉量 ∝ 它离开口下沿的高度（下沿不动、上沿沉满）⇒ 遮罩整体压扁；
+#   · 再乘一条「中间晚合、两头早合」的系数（AP_ARC）⇒ 闭合过程中上边界是一条弧，
+#     不是一条直线；到 0 时整块压到开口下沿，弧的余量正好收干净。
+# 这两个数是**看出来的**：/tmp 里对 arc=0.0 / 0.45 / 0.8 各跑 11 档 10× 对比
+# （直线版一眼露馅；0.8 在 0.3~0.5 出现「眼白被挤成月牙 + 上下两条线」；0.45 最干净）。
+AP_ARC = 0.45   # 0 = 直边（等同缩放），1 = 中间完全不动（过头）。目视比 0/0.45/0.8 选出来的
+AP_COLS = 10    # 眼眶网格列数。为什么是 10 而不是 5：网格的列是**沿整张眼眶图**均分的，
+               # 而开口只占图宽的一半（左半留给眼线）。5 列时有 3 列落在空处，
+               # 开口里只剩 2 列 —— 那样"弧"根本表达不出来（实测上边界还是平的）。
+AP_ROWS = 4
 # 上眼线在闭合度到这个值之前不下滑（引擎 lash_hold）。0.5 = 后半程才滑。
 LASH_HOLD = 0.5
 
@@ -1681,6 +1695,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     # 眼睛：拆成 Live2D 式四件（眼眶遮罩 / 眼白底 / 眼球 / 眼线），
     # 眼球单独可动并被眼眶裁切；没有拆件产物时退回整块贴图。
     eye_parts = []
+    eye_lid_arcs = []          # T66.22b：上眼皮弧线网格（等所有件排完再挂到 deformers）
     eye_ball_ids = []
     if eyes:
         smiles = {e["side"]: e for e in (smile_eyes or {}).get("eyes", [])}
@@ -1713,9 +1728,24 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     sock["anchor"] = [round(acx / aw, 5), round(acy / ah, 5)]
                     sock["pos"] = [ox + px + acx, oy + py + acy]
                     sock["tags"] = ["eye_aperture"]
-                    sock["aperture_min"] = AP_MIN
+                    # ★ T66.22b：缩放关掉，改由网格下沉。两件事必须同时做 ——
+                    #   只挂网格不关缩放：两条通路各压一次，开口会提前合死（实测 0.4 就没了）；
+                    #   只关缩放不挂网格：眼睛几乎不闭合（同一份实测）。
+                    sock["aperture_min"] = 1.0
                     sock["note"] = (f"眼眶开口（{ax1-ax0}×{ap_h}px）：当遮罩用，"
-                                    f"锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来")
+                                    f"锚点在开口下沿；闭合由 {sid}_lid_arc 网格驱动"
+                                    f"（上边界是弧，不是直线，T66.22b）")
+                    # —— 上眼皮弧线（T66.22b）暂时**不生成** ——
+                    # 2026-10-26 试过两版（网格单独驱动 / 网格叠在缩放上），冻结时钟后
+                    # 逐档目视的结果都不如现状：0.5~0.6 段眼线与虹膜之间反而裂出更宽的
+                    # 肤色缝。根因是"遮罩上沿"和"眼线滑动"是两条独立通路，各按各的行程走，
+                    # 中间必然错开。要做对得让遮罩上沿**跟着眼线走**（或让眼线由遮罩裁切），
+                    # 那是下一轮的事。这里保留判据和工具（/api/mask.png、qa_eye_sweep.py、
+                    # test_eye_lid_arc），不留下一个"看起来改了其实更差"的生成结果。
+                    sock["aperture_min"] = AP_MIN
+                    sock["note"] = (f"眼眶开口（{ax1-ax0}×{ap_h}px）：当遮罩用，锚点在开口下沿，"
+                                    f"blink=1 时压到 {int(AP_MIN*100)}% = 上眼皮合下来"
+                                    f"（G66.13：闭合上边界是直线，待改成弧）")
             eye_parts += [
                 sock,
                 {"id": f"{sid}_base", "file": f"sprites/{e['base']}", "group": "head",
@@ -4086,6 +4116,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                                        has_star=bool(star_eyes)),
     }
 
+
+    # —— 上眼皮弧线网格（T66.22b / G66.13）——
+    # 放在这里是因为上面的眼睛件已经排完；这些网格挂在眼眶遮罩上，
+    # 由 ParamEyeL/ROpen 驱动，1.0（睁眼）时位移全 0 ⇒ 静止画面逐像素不变。
+    if eye_lid_arcs:
+        rig.setdefault("deformers", []).extend(eye_lid_arcs)
+        print(f"[rig] 上眼皮弧线：{len(eye_lid_arcs)} 张网格（{AP_COLS}×{AP_ROWS} 控制点，"
+              f"arc={AP_ARC}），眼眶缩放已关（aperture_min=1.0）")
 
     # —— 前臂「折起时收窄」网格形变器（Q45，A5 = ワープデフォーマ）——
     # 为什么要收窄：见 param_list() 里 fore_slim() 的注释（前臂 1.55:1 太粗，

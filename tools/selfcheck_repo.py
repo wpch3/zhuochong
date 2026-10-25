@@ -4057,6 +4057,59 @@ def check_outfit_binding(root):
                   else "default 缺 %s（换到第二套之后就换不回来）" % gone[:6])
 
 
+def check_eye_aperture(root):
+    """眼眶遮罩的闭合方式：**缩放和网格只能二选一**（T66.22b / G66.13）。
+
+    背景：眼睛闭合靠眼眶遮罩压扁。压扁有两条通路 ——
+      · 引擎内建的纵向缩放（`aperture_min`），永远把上边界压成一条**水平直线**；
+      · 参数驱动的网格（`*_lid_arc`，能画出弧）。
+    两条同时开着就是"压两次"：半闭区间会被压得几乎不存在，而画面只是"眼睛看起来
+    小了一点"，非常难发现。这一轮实测过（半闭全废、还以为是自己参数没调对）。
+    所以闸只守一件事：**每个眼眶遮罩最多只有一条通路在干活**。
+    现在生产 rig 用的是缩放（直边，G66.13 未解决）；哪天换成网格，这条闸会自动放行。
+    """
+    section("眼眶遮罩：闭合通路只能有一条（缩放 / 网格二选一）")
+    ready = 0
+    for rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        tag = os.path.relpath(rp, root)
+        rig = jsonc(rp)
+        ap = [p for p in rig.get("parts", []) if "eye_aperture" in (p.get("tags") or [])]
+        if not ap:
+            continue
+        ready += 1
+        arcs = [d for d in (rig.get("deformers") or [])
+                if str(d.get("id", "")).endswith("_lid_arc")]
+        doubled = [p["id"] for p in ap
+                   if any(d.get("part") == p["id"] for d in arcs)
+                   and float(p.get("aperture_min", 0.06)) < 0.999]
+        check("%s：眼眶不会同时缩放又吃网格位移" % tag, not doubled,
+              "两条通路都开着：%s（半闭会被压两次）" % doubled if doubled else "唯一")
+        idle = [p["id"] for p in ap
+                if float(p.get("aperture_min", 0.06)) >= 0.999
+                and not any(d.get("part") == p["id"] for d in arcs)]
+        check("%s：每个眼眶至少有一条闭合通路" % tag, not idle,
+              "这些眼眶既不缩放也没有网格：%s（眼睛永远不合）" % idle if idle else "齐")
+        bad = []
+        for d in arcs:
+            if d.get("param") not in ("ParamEyeLOpen", "ParamEyeROpen", "ParamEyeOpen"):
+                bad.append("%s.param=%r" % (d["id"], d.get("param")))
+            keys = d.get("keys") or []
+            vs = [k.get("v") for k in keys]
+            if len(keys) < 3:
+                bad.append("%s 只有 %d 组 key（要 ≥3 组才能既压扁又画弧）" % (d["id"], len(keys)))
+            if any(vs[i] >= vs[i + 1] for i in range(len(vs) - 1)):
+                bad.append("%s 的 keys 值不是严格递增" % d["id"])
+        if arcs:
+            check("%s：弧线网格绑定正确" % tag, not bad, "、".join(bad[:4]) if bad else "全对")
+        # 直边兜底：走缩放这条路的眼眶，aperture_min 必须留一点余量（不许 0）
+        zero = [p["id"] for p in ap
+                if float(p.get("aperture_min", 0.06)) < 0.005
+                and not any(d.get("part") == p["id"] for d in arcs)]
+        check("%s：缩放到 0 的眼眶要留余量" % tag, not zero,
+              "%s（留 0 会让遮罩彻底消失，眼白/虹膜整块不见）" % zero if zero else "合格")
+    check("至少有一个形态有眼眶遮罩", ready > 0, "%d 个形态" % ready)
+
+
 def check_sockets(root):
     """挂点（socket，T66.19 / S4）：骨架声明 → 位置表 → rig → 配件，四条链要对上。
 
@@ -4884,6 +4937,7 @@ def main():
                check_ambient_sway,
                check_effects_table,
                check_sockets,
+               check_eye_aperture,
                check_outfit_binding,
                check_rig_freshness,
                check_external_motions,

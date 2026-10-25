@@ -9558,6 +9558,178 @@ static void test_expression3_import(void)
    这一节的每条都是**换装/换形态之后才会暴露**的错误，所以必须机检：
    ① 挂点解析成（父骨，坐标）；② 配件位置的唯一来源是挂点 + dpos；
    ③ 挂点会跟着父骨转；④ 四类写错要在装载期就打回去，不许静默。 */
+/* T66.22b：上眼皮弧线（G66.13）。眼眶遮罩不再靠纵向缩放，而是由 ParamEyeLOpen 驱动的
+   网格整体下沉 —— 关键是**上边界从此不是一条水平直线**，半闭时虹膜被弧线切。
+
+   这一节守三件事（都是这一轮实际踩过的）：
+     ① 睁眼（Open=1）时位移必须是 0 —— 静止画面逐像素不变，这是不许退让的基线；
+     ② 闭到底（Open=0）时遮罩真的合上（高度剩不到两成），否则"半闭全废"看不出来；
+     ③ 中间档的上边界**中间比两头低**（弧），而不是齐平（直线）—— 这条是这一轮的目的。
+   判据全走 zrig_mask_frame()：那正是渲染时用的那份遮罩 alpha，不另算一份。 */
+static void test_eye_lid_arc(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    const zimg *m;
+    int w = 0, h = 0;
+
+    SECTION("T66.22b 上眼皮弧线：遮罩由网格下沉驱动（上边界是弧，不是直线）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_lid_arc");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    /* 合成素材：60×40 的整块不透明矩形。**不拿真实眼眶图**——那张图的 alpha 只占右半
+       （左半空着给眼线让位），bbox 取列会偏，量的东西就不是网格了。 */
+    z_snprintf(dst, sizeof(dst), "%s/sock.png", sprites);
+    {
+        zerr pe;
+        zimg *px = zimg_new(60, 40);
+        int k;
+        CHECK(px != NULL, "应能建合成遮罩素材");
+        zerr_clear(&pe);
+        for (k = 0; px && k < 60 * 40; ++k) {
+            px->px[k * 4 + 0] = 255; px->px[k * 4 + 1] = 255;
+            px->px[k * 4 + 2] = 255; px->px[k * 4 + 3] = 255;
+        }
+        CHECK(px && zimg_save_png(px, dst, &pe) == 0, "合成遮罩素材应能写出");
+        if (px) zimg_free(px);
+    }
+    (void)src;
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 遮罩件 id 用 eye_l 前缀 → 引擎按约定当成左眼（眼睑/闭眼交叉淡化都看它）。
+       网格 4 列 2 行，keyform 两档：Open=1 位移全 0；Open=0 整块下沉 40px。
+       注意"下沉"在数据里是**每一行都往下走**（下沿也走），这正是"整体压下去"，
+       和缩放的差别只在于：中间可以比两头走得少 —— 那就是弧。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"lidarc\",\"name\":\"眼皮弧线\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{},"
+        "\"params\":[{\"id\":\"ParamArc\",\"min\":0,\"max\":1,\"default\":1,\"binds\":[]}],"
+        "\"parts\":["
+        " {\"id\":\"eye_l_socket\",\"file\":\"sprites/sock.png\",\"layer\":10,"
+        "  \"pos\":[100,100],\"anchor\":[0,0],\"mask_only\":true,"
+        "  \"tags\":[\"eye_aperture\"],\"aperture_min\":1.0},"
+        " {\"id\":\"eye_l_base\",\"file\":\"sprites/sock.png\",\"layer\":20,"
+        "  \"pos\":[100,100],\"anchor\":[0,0],\"mask\":\"eye_l_socket\"}],"
+        "\"deformers\":["
+        " {\"id\":\"eye_l_lid_arc\",\"part\":\"eye_l_socket\",\"cols\":4,\"rows\":2,"
+        "  \"param\":\"ParamArc\",\"keys\":["
+        "   {\"v\":0.0,\"points\":["
+        "     {\"c\":0,\"r\":0,\"dy\":40},{\"c\":1,\"r\":0,\"dy\":32},"
+        "     {\"c\":2,\"r\":0,\"dy\":30},{\"c\":3,\"r\":0,\"dy\":32},"
+        "     {\"c\":4,\"r\":0,\"dy\":40}]},"
+        "   {\"v\":1.0,\"points\":[]}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带眼皮网格的 rig 应装载成功");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+
+    /* ① 睁眼：位移 0 ⇒ 遮罩 bbox 与"没有网格"时一致。这里用"网格位移必须全 0"
+          来守 —— 比 bbox 更直接，也不会被抗锯齿边缘骗到。 */
+    {
+        double dx[32], dy[32];
+        int cols = 0, rows = 0, np, q, all0 = 1;
+        zrig_param_set(r, "ParamArc", 1.0);
+        zrig_tick(r, 0.0);
+        np = zrig_deform_mesh(r, "eye_l_lid_arc", &cols, &rows, dx, dy, 32);
+        CHECK(np == 15 && cols == 4 && rows == 2, "4×2 网格应有 15 个控制点（实际 %d）", np);
+        for (q = 0; q < np && q < 32; ++q) {
+            if (dx[q] != 0.0 || dy[q] != 0.0) all0 = 0;
+        }
+        CHECK(all0, "Open=1 时眼皮网格位移必须全 0（静止画面零改动）");
+    }
+
+    /* ② 闭到 0：遮罩真的合上。量的是 zrig_mask_frame 里 alpha>40 的行范围。 */
+    {
+        int y0 = -1, y1 = -1, y;
+        zrig_param_set(r, "ParamArc", 0.0);
+        zrig_tick(r, 0.0);
+        m = zrig_mask_frame(r, "eye_l_base", 1.0, &w, &h);
+        CHECK(m != NULL && w > 0 && h > 0, "应能取到 eye_l_base 的遮罩图");
+        if (m) {
+            for (y = 0; y < h; ++y) {
+                int x, hit = 0;
+                for (x = 0; x < w; ++x) {
+                    if (m->px[((size_t)y * w + x) * 4 + 3] > 40) { hit = 1; break; }
+                }
+                if (hit) { if (y0 < 0) y0 = y; y1 = y; }
+            }
+            CHECK(y0 > 105, "闭到底时遮罩上沿必须真的往下走（实际 y0=%d，原始 100）", y0);
+            CHECK(y1 >= y0 && (y1 - y0 + 1) < 2 * 40 / 3,
+                  "闭到底时遮罩高度应剩不到一半（实际 %d / %d）", y1 - y0 + 1, h);
+        }
+    }
+
+    /* ③ 中间档：上边界中间比两头低（弧）。取 Open=0.5 那一帧，
+          先量遮罩自己的 bbox，再比较"左侧 15%""正中""右侧 15%"三列的最高不透明行。
+          （第一版拿帧宽当图宽算列号，三列全落在遮罩外面，读数 -1 —— 那是我算错，
+            不是遮罩坏了；bbox 里取列才是稳的。） */
+    {
+        int x0 = -1, x1 = -1, x, y, k, top[3] = {-1, -1, -1};
+        int qx[3];
+        zrig_param_set(r, "ParamArc", 0.5);
+        zrig_tick(r, 0.0);
+        m = zrig_mask_frame(r, "eye_l_base", 1.0, &w, &h);
+        CHECK(m != NULL, "半闭时也应能取到遮罩图");
+        if (m) {
+            for (y = 0; y < h; ++y) {
+                for (x = 0; x < w; ++x) {
+                    if (m->px[((size_t)y * w + x) * 4 + 3] > 40) {
+                        if (x0 < 0 || x < x0) x0 = x;
+                        if (x > x1) x1 = x;
+
+                    }
+                }
+            }
+            CHECK(x0 >= 0 && x1 > x0, "半闭时遮罩应还有宽度（bbox %d..%d）", x0, x1);
+            if (x0 >= 0 && x1 > x0) {
+                qx[0] = x0 + (x1 - x0) * 15 / 100;
+                qx[1] = (x0 + x1) / 2;
+                qx[2] = x1 - (x1 - x0) * 15 / 100;
+                for (k = 0; k < 3; ++k) {
+                    for (y = 0; y < h; ++y) {
+                        if (m->px[((size_t)y * w + qx[k]) * 4 + 3] > 40) { top[k] = y; break; }
+                    }
+                }
+                CHECK(top[0] > 0 && top[1] > 0 && top[2] > 0,
+                      "半闭时三列都应有遮罩（%d/%d/%d）", top[0], top[1], top[2]);
+                if (top[0] > 0 && top[1] > 0 && top[2] > 0) {
+                    /* 弧 = 中间的上沿比两侧**高**（y 更小）。上眼皮中间闭合得晚，
+                       所以开口中间更"鼓"。三者相等就是一条水平直线 —— 正是要消灭的东西。 */
+                    CHECK(top[1] < top[0] - 1 && top[1] < top[2] - 1,
+                          "半闭时上边界应是弧：中间 %d 应明显高于两侧 %d / %d",
+                          top[1], top[0], top[2]);
+                }
+            }
+        }
+    }
+
+    /* ④ 写错的地方要被打回：param 指向不存在的参数 */
+    {
+        char bad[1024];
+        z_snprintf(bad, sizeof(bad), "%s/bad.json", dir);
+        write_text(bad,
+            "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"b\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"groups\":{},"
+            "\"parts\":[{\"id\":\"eye_l_socket\",\"file\":\"sprites/sock.png\",\"layer\":1,"
+            " \"pos\":[10,10],\"anchor\":[0,0]}],"
+            "\"deformers\":[{\"id\":\"arc\",\"part\":\"eye_l_socket\",\"cols\":1,\"rows\":1,"
+            " \"param\":\"ParamNoSuch\",\"keys\":[{\"v\":0.0,\"points\":[]}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        {
+            zrig *bad_r = zrig_load(bad, dir, &d);
+            CHECK(bad_r == NULL, "网格绑到不存在的参数应当装载失败（否则就是静默不动）");
+            if (bad_r) zrig_free(bad_r);
+        }
+    }
+    zrig_free(r);
+}
+
 static void test_socket_s4(void)
 {
     SECTION("T66.19：挂点（socket）—— 配件按名字挂在骨上");
@@ -9932,6 +10104,7 @@ int main(int argc, char **argv)
     test_motion3_import();
     test_expression3_import();
     test_socket_s4();
+    test_eye_lid_arc();
     test_point_play_beast_actions();
     test_phys2();
     test_phys2_rig();

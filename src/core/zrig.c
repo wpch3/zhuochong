@@ -719,6 +719,7 @@ struct zrig {
     /* 帧缓冲 */
     zimg  *fb;
     zimg  *maskbuf;           /* 遮罩部件画在这里（只取它的 alpha） */
+    zimg  *mask_dbg;          /* G66.13 调试图：某一帧「这个部件被什么形状裁着」 */
     zimg  *scratch;           /* 被裁切的部件先画在这里，再按遮罩合成到 fb */
     /* 分块渲染每条带各一份（共享会被 zimg_clear 互相清掉） */
     zimg  *band_scratch[ZRIG_MAX_BANDS];
@@ -4688,6 +4689,7 @@ void zrig_free(zrig *r)
     }
     zimg_free(r->fb);
     zimg_free(r->maskbuf);
+    zimg_free(r->mask_dbg); r->mask_dbg = NULL;
     zimg_free(r->scratch);
     {
         int bi;
@@ -7077,6 +7079,55 @@ int zrig_render_threads(void)
         g_render_threads = n;
     }
     return g_render_threads;
+}
+
+/* G66.13 调试图：这一帧「某个被裁部件看到的遮罩长什么样」。
+   为什么需要它：眼眶遮罩的缩放与网格位移到底谁先谁后、裁切边界落在哪一行像素，
+   光看成品帧分不清（眼睛上还压着眼线、闭眼补片、交叉淡化）。把 build_maskbuf 的
+   alpha 直接存成图，边界就能用眼睛看 —— 这一条是用"猜参数"换来的教训。
+   返回的图是**帧尺寸**，白 = 可见、黑 = 被裁掉；id 必须是挂 mask 的部件
+   （例如 eye_l_base），传遮罩源自己（eye_l_socket）没有意义。 */
+const zimg *zrig_mask_frame(zrig *r, const char *part_id, double scale,
+                            int *out_w, int *out_h)
+{
+    int fw, fh, i, pi = -1;
+    if (out_w) *out_w = 0;
+    if (out_h) *out_h = 0;
+    if (!r || !part_id) return NULL;
+    if (scale < 0.1) scale = 0.1;
+    if (scale > 4.0) scale = 4.0;
+    for (i = 0; i < r->nparts; ++i) {
+        if (strcmp(r->parts[i].id, part_id) == 0) { pi = i; break; }
+    }
+    if (pi < 0 || r->parts[pi].nmask <= 0) return NULL;
+    fw = (int)(r->cw * scale + 0.5);
+    fh = (int)(r->ch * scale + 0.5);
+    if (fw < 1) fw = 1;
+    if (fh < 1) fh = 1;
+    if (!r->mask_dbg || r->mask_dbg->w != fw || r->mask_dbg->h != fh) {
+        zimg_free(r->mask_dbg);
+        r->mask_dbg = zimg_new(fw, fh);
+        if (!r->mask_dbg) return NULL;
+    }
+    /* 和渲染走同一套环境量：blink_now 是表情叠加后的最终闭合度，
+       当前动作决定 keyform / 骨链的相位，少一个都会和图对不上。 */
+    r->mask_dbg->clip_y0 = 0;
+    r->mask_dbg->clip_y1 = fh;
+    zimg_clear(r->mask_dbg);
+    build_maskbuf(r, r->mask_dbg, &r->parts[pi], scale, r->blink_now,
+                  current_action(r));
+    /* 遮罩是白 alpha；把它做成"白底看得见"的灰度图，浏览器直接看 */
+    {
+        size_t n = (size_t)fw * fh, q;
+        for (q = 0; q < n; ++q) {
+            uint8_t *px = r->mask_dbg->px + q * 4;
+            px[0] = px[1] = px[2] = 255;
+            /* alpha 保留原值：PNG 里就看得到遮罩的软边 */
+        }
+    }
+    if (out_w) *out_w = fw;
+    if (out_h) *out_h = fh;
+    return r->mask_dbg;
 }
 
 const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
