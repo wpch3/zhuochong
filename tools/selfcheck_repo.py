@@ -1984,41 +1984,25 @@ def check_live2d(root):
             check("裙子里布夹在腿后面（%s）" % _tag, not _bad,
                   "这些部件没排在里布前面：%s" % _bad if _bad
                   else "里布 layer %d < 腿/脚/表布" % int(_part.get("layer", 0)))
-            # 和表布同一条参数驱动，而且要带延迟（齐步走就露不出里子）
-            _defs = [d["id"] for d in _rig.get("deformers", []) if d.get("part") == _lid]
-            _drv = []
-            for _d in _defs:
-                _drv += _df_drivers(_rig, _d)
-            # 表布可能在 seg_torso 上，也可能已经被切件成 skirt_main（T66.16）——
-            # 判据是「部件 id 里带 skirt」，别再写死 seg_torso。
-            _skirt_params = set()
-            for _d in _rig.get("deformers", []):
-                if not ("skirt" in str(_d.get("part", "")) and "skirt" in str(_d.get("id", ""))):
-                    continue
-                for _pid, _lg in _df_drivers(_rig, _d["id"]):
-                    _skirt_params.add(_pid)
-            check("裙子里布跟表布同一条参数、且有延迟（%s）" % _tag,
-                  bool(_drv) and any(pid in _skirt_params and lag > 0 for pid, lag in _drv),
-                  "里布形变器 %s 被 %s 驱动；表布参数 %s"
-                  % (_defs, [(p_, l_) for p_, l_ in _drv], sorted(_skirt_params)))
-            # 里布必须**跟得比表布少**：两边位移一样大就等于齐步走，甩出去也露不出里子。
-            # 形变器的驱动量两边都会收到 ≈ 参数值，差距写在各自的 dx 表里，
-            # 所以这是静态性质（冒烟那边只验"确实被同一条参数驱动"）。
-            def _maxdx(_ids):
-                _v = 0.0
-                for _d in _rig.get("deformers", []):
-                    if _d.get("id") in _ids:
-                        for _pt in _df_points(_d):
-                            _v = max(_v, abs(float(_pt.get("dx", 0.0) or 0.0)))
-                return _v
-            _front_defs = {d["id"] for d in _rig.get("deformers", [])
-                           if "skirt" in str(d.get("part", "")) and "skirt" in d.get("id", "")
-                           and d.get("part") != _lid}
-            _lin_dx, _front_dx = _maxdx(set(_defs)), _maxdx(_front_defs)
-            check("裙子里布跟得比表布少（%s）" % _tag,
-                  _front_dx > 0 and 0 < _lin_dx < _front_dx,
-                  "里布最大位移 %.2f vs 表布 %.2f（里布 / 表布 = %.2f）"
-                  % (_lin_dx, _front_dx, (_lin_dx / _front_dx) if _front_dx else 0))
+            # ★ T66.10b：里布不再"抄一份表布点表 ×0.35"，改成**声明式继承**：
+            #   自己没有网格，逐顶点场按 warp_inherit 从表布借，并且挂裙子的中段骨。
+            #   这条闸守的是那个声明 —— 它一旦被删，里布就变成一块钉死的布，
+            #   而静态截图完全正常（只有裙摆甩开、里子该露出来时才看得出来）。
+            check("裙子里布声明了逐顶点场继承（%s）" % _tag,
+                  _part.get("inherit_from") == "skirt_main"
+                  and 0.0 < float(_part.get("warp_inherit", 1.0)) < 1.0,
+                  "rig 上是 inherit_from=%r / warp_inherit=%r（要 0 与 1 之间、源件 skirt_main）"
+                  % (_part.get("inherit_from"), _part.get("warp_inherit")))
+            _lin_defs = [d for d in _rig.get("deformers", []) if d.get("part") == _lid]
+            check("裙子里布不再自带手抄网格（%s）" % _tag, not _lin_defs,
+                  "还挂着：%s —— 继承和手抄表叠在一起会变成双份位移" % [d["id"] for d in _lin_defs])
+            _sk_defs = [d["id"] for d in _rig.get("deformers", [])
+                        if d.get("part") == "skirt_main" and d.get("cols")]
+            check("裙子里布挂在裙子的骨链上（%s）" % _tag,
+                  str(_part.get("deformer", "")).startswith("skirt_")
+                  or any(str(_part.get("deformer", "")) == d for d in _sk_defs),
+                  "里布的 deformer = %r（要挂 skirt_mid：裙子绕腰转时里布必须跟着转）"
+                  % _part.get("deformer"))
     # ㉓ 裙子切件（T66.16）：裙子必须从 seg_torso 里切出来、挂自己的骨链。
     #    为什么这条必须存在：骨链（回転デフォーマ）作用于**整个部件**。裙子还长在
     #    躯干上的时候给裙子插一根转骨，转起来会把整个上身带飞（G66.6）—— 而这个

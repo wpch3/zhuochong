@@ -364,8 +364,16 @@ int zinteract_speak(zinteract *z, const zi_rule *r, double now, char *out, size_
     int i, li;
     if (out && cap) out[0] = 0;
     if (!z || !r || !z->speech_enabled || r->nlines == 0) return 0;
-    if (now - z->last_any_speak_at < z->min_gap_s) return 0;
-    if (now - r->last_speak_at < r->cooldown_s) return 0;
+    /* 时钟倒流要当"早就凉透了"，不能当"刚说过"。
+       `now - last < gap` 在 now < last 时是负数、恒成立 —— 一旦某个调用方先拿
+       虚拟时间（预览台 /api/pause + /api/step 空跑）记了时间戳，再换回真实单调钟，
+       台词就会整整哑掉一段时间，而且**没有任何报错**（2026-10-25 实测：
+       摸头 → 空跑 30 秒 → 解冻 → 再摸头，气泡冻在上一句，seq 不动）。
+       宿主嵌入时 likewise：时钟源可以换，但"过去了多久"不能是负的。 */
+    if (now >= z->last_any_speak_at
+            && now - z->last_any_speak_at < z->min_gap_s) return 0;
+    if (now >= r->last_speak_at
+            && now - r->last_speak_at < r->cooldown_s) return 0;
 
     /* 规则由调用方以 const 传入：这里从 z->rules 里找回可写指针，用来记录冷却与轮换 */
     for (i = 0; i < z->nrules; ++i)

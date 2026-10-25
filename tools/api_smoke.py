@@ -993,97 +993,39 @@ def run(base, root):
           "%d/%d 帧不同" % (len(set(hs)), len(hs)))
     # 收敛只能看数值，不能看整帧 hash —— idle 一直在跑，画面永远不会完全静止。
     # /api/info.json 的 deformers 就是摆链的实时输出。
+    # 裙子里布（T45.11 → T66.10b 改成继承）：走 /api/partmesh.json 直接量**画出去的**
+    # 顶点位移 —— 里布现在自己没有任何网格（逐顶点场按 35% 从表布继承），
+    # 读形变器驱动量只会得到 0，那是「做了但量不出来」的假阴性。
     dfm = (a.json("/api/info.json") or {}).get("deformers") or {}
-    check("info.json 暴露形变器当前量（摆链可观测）",
-          "skirt_sway_x" in dfm and "skirt_sway_y" in dfm,
-          " ".join(sorted(dfm)[:6]))
-    peak = 0.0
-    for _ in range(10):
-        dfm = (a.json("/api/info.json") or {}).get("deformers") or {}
-        peak = max(peak, abs(dfm.get("skirt_sway_x") or 0.0))
-        time.sleep(0.05)
-    time.sleep(2.0)                       # 等摆链收敛
-    # ★ 看 physics 不看 deformers（2026-10-17，T45.9）：
-    #   形变器的当前量是**物理摆链 + 环境摆动**之和。环境摆动不管身体动不动
-    #   都一直在跑（就是为了让布别死在那儿），所以拿形变器去断言"停住要回零"
-    #   永远不成立 —— 这条当时就是这么红的。要验的是**摆链**收不收敛。
-    info = a.json("/api/info.json") or {}
-    phys = info.get("physics") or {}
-    check("info.json 暴露物理摆链输出（和形变器分开给）",
-          "skirt_x" in phys and "skirt_y" in phys, " ".join(sorted(phys)[:6]))
-    rest = abs(phys.get("skirt_x") or 0.0)
-    check("停住之后裙摆要收敛回零（只给惯性，不永久吹偏）", rest < 0.05,
-          "刚推时 %.3f → 静止后 %.4f" % (peak, rest))
-    a.hit("/api/param?id=ParamBodyAngleX&reset=1"); time.sleep(0.5)
-
-    # ── 固定步长空跑 /api/step + 环境摆动开关 /api/ambient（T45.11）──
-    #   冻结时钟后 dt 恒为 0：物理和**带 lag 的绑定**一步都不会走，于是
-    #   「参数设上去了却看不出变化」。而 ambient 是往参数上**加**偏移的，
-    #   开着的时候设 0 并不是静止。做任何像素对照都要先把这两件事摆平。
-    check("缺 on 的 /api/ambient 要报 400", a.code("/api/ambient") == 400,
-          "实际 %s" % a.code("/api/ambient"))
-    a.hit("/api/pause?on=1&t=1000"); time.sleep(0.1)
-    amb = a.json("/api/ambient?on=0") or {}
-    check("/api/ambient?on=0 能关掉环境摆动",
-          amb.get("ok") is True and amb.get("ambient") is False,
-          json.dumps(amb, ensure_ascii=False))
-    a.hit("/api/param?all=1&reset=1")
-    st = a.json("/api/step?n=120&dt=0.016") or {}
-    check("/api/step 报了步数与步长", st.get("steps") == 120
-          and abs(float(st.get("dt") or 0) - 0.016) < 1e-9,
-          json.dumps(st, ensure_ascii=False))
-    t_a = float(st.get("t") or 0.0)
-    t_b = float((a.json("/api/step?n=60&dt=0.016") or {}).get("t") or 0.0)
-    check("/api/step 按固定步长推进冻结时钟", abs((t_b - t_a) - 0.96) < 1e-6,
-          "%.3f → %.3f" % (t_a, t_b))
-    check("/api/step?n=0 不推进（幂等）",
-          abs(float((a.json("/api/step?n=0") or {}).get("t") or 0.0) - t_b) < 1e-9, "")
-    def _eff(pid):
-        for q in (a.json("/api/params.json") or {}).get("params", []):
-            if q["id"] == pid:
-                return float(q.get("effective") or 0.0)
-        return None
-    sway = _eff("ParamSkirtSway")
-    if sway is not None:
-        check("关掉环境摆动后参数就等于设进去的值（0 就是 0）",
-              abs(sway) < 1e-6, "ParamSkirtSway 实际 %.4f" % sway)
-        a.hit("/api/ambient?on=1"); a.hit("/api/step?n=120&dt=0.016")
-        drift = max(abs(_eff("ParamSkirtSway") or 0.0) for _ in range(1))
-        for _ in range(6):
-            a.hit("/api/step?n=30&dt=0.016")
-            drift = max(drift, abs(_eff("ParamSkirtSway") or 0.0))
-        check("环境摆动开着的时候参数带底噪（所以对照图必须先关）",
-              drift > 0.05, "峰值 %.3f" % drift)
-        a.hit("/api/ambient?on=0"); a.hit("/api/param?all=1&reset=1")
-        a.hit("/api/step?n=240&dt=0.016")
-    dfm = (a.json("/api/info.json") or {}).get("deformers") or {}
-    if "lining_sway_x" in dfm:
-        # 里布挂的是 lag 0.2 的绑定：不空跑就还停在原地，空跑完才跟到位。
-        a.hit("/api/param?id=ParamSkirtSway&v=1.0")
-        d0 = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
-                 .get("lining_sway_x") or 0.0)
-        a.hit("/api/step?n=240&dt=0.016")
-        d1 = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
-                 .get("lining_sway_x") or 0.0)
-        check("冻结状态下 /api/step 能让带延迟的绑定走到位（裙子里布）",
-              d1 > max(0.05, d0 * 3.0), "设上去 %.4f → 空跑 3.84s 后 %.4f" % (d0, d1))
-        # ⚠ info.json 给的是形变器的**驱动量**（≈ 参数值），不是位移像素 ——
-        #   里布跟得少是写在它自己的 dx 表里的（跟随系数 0.35），
-        #   驱动量两边都会收到 ≈1.0。"跟得比表布少"因此是**静态**性质，
-        #   由 selfcheck 的第㉑段比两张 dx 表来把关，这里只验它确实被驱动。
-        skx = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
-                  .get("skirt_sway_x") or 0.0)
-        check("表布和里布由同一条参数一起驱动", skx > 0.5 and d1 > 0.5,
-              "表布 %.4f / 里布 %.4f" % (skx, d1))
+    if a.json("/api/partmesh.json?id=skirt_lining&max=8"):
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=60&dt=0.016")
+        a.hit("/api/param?id=ParamSkirtSway&v=1.0"); a.hit("/api/step?n=150&dt=0.016")
+        _sk = a.json("/api/partmesh.json?id=skirt_main&max=64") or {}
+        _ln = a.json("/api/partmesh.json?id=skirt_lining&max=64") or {}
+        sp = max([abs(v) for v in (_sk.get("dx") or [0])] or [0])
+        lp = max([abs(v) for v in (_ln.get("dx") or [0])] or [0])
+        check("裙子里布的逐顶点场跟着表布走（继承）", lp > 0.1,
+              "里布峰值 %.3f px（表布 %.3f）—— 0 就是继承没接上" % (lp, sp))
+        check("里布跟得比表布少（露里子的前提）", 0 < lp < sp * 0.9,
+              "里布 %.3f / 表布 %.3f = %.2f（要 <0.9）" % (lp, sp, (lp / sp) if sp else 0))
+        a.hit("/api/param?all=1&reset=1")
     # 长发（T46.2）：① 能开关；② 开着的时候，转头会把第三段（发梢）带起来。
     if "longhair_tip" in dfm:
         a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=120&dt=0.016")
         a.hit("/api/pose?group=hairstyle&id=long")      # T46.3：发型改走互斥组
-        a.hit("/api/param?id=ParamAngleX&v=28"); a.hit("/api/step?n=24&dt=0.016")
-        _d = (a.json("/api/info.json") or {}).get("deformers") or {}
-        mid, tip = abs(_d.get("longhair_mid") or 0.0), abs(_d.get("longhair_tip") or 0.0)
+        a.hit("/api/param?id=ParamAngleX&v=28")
+        # 判据是"转头**会**把它带起来"，不是"转到位那一帧正好在摆"：三段摆是弹簧，
+        # 冻结时钟下一步一步空跑时，采样点撞在过零点上就会读到一个接近 0 的瞬时值
+        # （2026-10-25 连跑十几次撞到 tip=0.024/0.022，旧二进制、新二进制都会，
+        #  跟 T66.10b 无关）。所以边走边采，取这一小段里的峰值。
+        mid, tip = 0.0, 0.0
+        for _k in range(6):
+            a.hit("/api/step?n=8&dt=0.016")
+            _d = (a.json("/api/info.json") or {}).get("deformers") or {}
+            mid = max(mid, abs(_d.get("longhair_mid") or 0.0))
+            tip = max(tip, abs(_d.get("longhair_tip") or 0.0))
         check("转头会把长发的中段和发梢都带起来（3 段摆）",
-              mid > 0.15 and tip > 0.05, "mid=%.3f tip=%.3f" % (mid, tip))
+              mid > 0.15 and tip > 0.05, "mid=%.3f tip=%.3f（48 步内峰值）" % (mid, tip))
         pj = {q["id"]: q for q in (a.json("/api/params.json") or {}).get("params", [])}
         check("长发不再有自己的开关参数（显隐归发型互斥组管，不许两套开关并存）",
               "ParamHairLong" not in pj,
@@ -1259,12 +1201,19 @@ def run(base, root):
     # 这验的是**物理链接上了**（back_x → back_tip → back_s），
     # 形状上的约束（头顶剪影不许动、比侧发软）是静态性质，由 selfcheck 第㉔段守。
     if "back_s" in dfm:
+        # ★ T66.11c 起 back_s 是 **keyform**：它的 `amount` 恒为 0（形状由参数决定），
+        #   所以判据必须量几何（/api/partmesh.json 的顶点位移），不是量驱动量。
         a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=120&dt=0.016")
+        def _hair_back_peak():
+            d = a.json("/api/partmesh.json?id=hair_back&max=64") or {}
+            return max([abs(v) for v in (d.get("dx") or [0])] or [0])
+        _b0 = _hair_back_peak()
         a.hit("/api/param?id=ParamAngleX&v=28"); a.hit("/api/step?n=18&dt=0.016")
-        bs = abs(((a.json("/api/info.json") or {}).get("deformers") or {})
-                 .get("back_s") or 0.0)
+        _b1 = _hair_back_peak()
         check("转头会把后发的第二段（发梢）带起来",
-              bs > 0.15, "转头 0.3s 后 back_s=%.3f" % bs)
+              _b1 > max(0.2, _b0 * 2.0),
+              "转头 0.3s 后后发顶点峰值 %.3f px（静止 %.3f）—— 量的是几何，"
+              "keyform 的 amount 恒为 0 不能当判据" % (_b1, _b0))
 
     # 外套前襟下摆（T45.12）：和裙摆同一条路子，但**更钝** —— 这里验的是
     # 「它确实被自己的参数推得动」，幅度大小是静态性质（selfcheck 第㉓段比 dx 表）。

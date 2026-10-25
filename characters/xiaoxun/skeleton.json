@@ -382,9 +382,14 @@
      "arm_r_fore_slim",
      "arm_r_fore_long"
     ],
-    "skirt_lining": [
-     "lining_sway_x"
-    ]
+    "skirt_lining": []
+   },
+   "inherit_parts": {
+    "skirt_lining": {
+     "from": "skirt_main",
+     "strength": 0.35,
+     "note": "里布没有自己的网格：逐顶点形变场按 35% 继承表布（T66.10b），并挂裙子的中段骨 skirt_mid。以前是抄一份表布点表乘 0.35 —— 表布一改那份抄件就过时。"
+    }
    }
   },
   "chibi": {
@@ -413,9 +418,14 @@
     "skirt_hem": [
      "skirt_hem_x"
     ],
-    "skirt_lining": [
-     "lining_sway_x"
-    ]
+    "skirt_lining": []
+   },
+   "inherit_parts": {
+    "skirt_lining": {
+     "from": "skirt_main",
+     "strength": 0.35,
+     "note": "里布没有自己的网格：逐顶点形变场按 35% 继承表布（T66.10b），并挂裙子的中段骨 skirt_mid。以前是抄一份表布点表乘 0.35 —— 表布一改那份抄件就过时。"
+    }
    }
   }
  },

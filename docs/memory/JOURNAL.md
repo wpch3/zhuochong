@@ -6840,3 +6840,51 @@ teen **22 根**、chibi **12 根**骨全部有参数来源 —— 骨链（S2）
 左袖 1082 px、右袖 1294 px、裙摆 5025 px、头肩 11715 px 发生变化 —— 袖管在真实运行里
 是活的，不是只有"参数推满"的静态对比。三个由物理新写的参数同时在动：
 `ParamHairSideS` ±0.059、`ParamHairBackS` ±0.023、`ParamSkirtSway` ±0.36（峰峰值）。
+
+## 2026-10-25 T66.10b 收口：里布改逐顶点继承 + 一处"虚拟时钟把台词冻死"的老病
+
+**引擎**：`zpart` 早就有 `inherit_from` / `warp_inherit`，但此前只做"整件拿父件形变器输出"
+的粗继承；这轮补的是**逐顶点场地继承** —— `deform_inherit_parent_warp()` 显式源件走
+`smark`、只取 `part==src` 的网格、位移 `*= warp_inherit`，`compute_draw_state` 在网格循环
+末尾调用。里布因此不再有自己的一条形变器与网格（`deformers` 里 `lining_sway_x` 消失），
+驱动量恒 0 —— 这是设计，不是坏了：判据必须读**几何**。
+
+**探针**：新增 `GET /api/partmesh.json?id=<部件>&max=<点数>`（`zpet_part_mesh()` 薄包装），
+返回 `{ok,id,cols,rows,n,dx[],dy[]}`，走 `compute_draw_state` 同一条求值。实测 teen：
+`ParamSkirtSway=+1` → 表布峰值 **7.917 px / 里布 2.767 px = 0.35**（`cols=2 rows=10 n=33`）。
+存在理由：`deformers` 只给驱动量，继承件驱动量恒 0 = "做了但量不出来"的假阴性。
+
+**内容**：`skeleton.json` 里 `forms.{teen,chibi}.mesh_bones.skirt_lining = []`、
+`inherit_parts.skirt_lining = {from:"skirt_main", strength:0.35}`；`make_rig.py` 把两字段
+（`inherit_from` / `warp_inherit`）透传出去，`deformer` 挂 `skirt_mid`。chibi 同步重生成。
+
+**闸门**：`check_skeleton.py` 新增 ⑦c（契约↔rig 双向核：`inherit_from` 对得上、
+`warp_inherit` 与 `strength` 一致、继承件不得再自带网格）→ **541/0**；
+`selfcheck_repo.py` 原来是"里布跟表布同一条参数且有延迟"，改成三条**声明口径**的闸
+（源件必须是 `skirt_main`、`0<warp<1`、不得自带网格、`deformer` 必须 `skirt_` 前缀）→ **623/0**。
+
+**目视（这轮的诚实结论）**：同进程换 rig 抓 `ParamSkirtSway=±1`，全画布差 **129 / 145 px**，
+全部落在裙摆两侧轮廓的 1–2 像素反锯齿带上（`logs/asset_qa/t66_10b_lining_edge_18x.png`，
+18× 三连：旧 rig / 新 rig / 新 rig 去掉里布，肉眼看不出区别）。`+30°转头 +12°歪头 −16°上身`
+的强姿势下把里布整件拿掉再抓同一帧，全画布只有 **20 px** 不同
+（`t66_10b_lining_occluded_10x.png`）——**里布 99.9% 被表布压住**。
+所以要验的其实不是"跟得少不少"，而是"会不会探出轮廓"：旧 rig 探出 115 px（它自己那条
+形变器推的），新继承 20 px、全部贴在下缘内侧，**没有**出现"一动就探出浅灰白矩形"的老毛病。
+真要让用户看见里衬跟得少，得在素材层面让下缘露出一条内衬，那是 T66.10b 的美术遗留，
+已记进 GAPS，不属于引擎。
+
+**踩到的坑（这轮花时间最多的地方）**：`api_smoke.py` 里 3 条台词断言连续两轮红
+（`摸头应说出一句` / `换规则被冷吞噬时旧句清空` / `过了冷却再锤应说出新句`，都是
+`「」seq=N`），而同一份 HEAD 二进制换入口跑却全绿。查到最后**不是这轮的改动**：
+预览台的冻结时钟可被 `/api/step` 往前拨，冻结期间说的那句把时间戳记到未来，解冻后
+真实单调钟在后面 ⇒ `now - last < cooldown` 恒成立 ⇒ 台词整段哑掉且不报错。
+旧二进制上按同一序列（摸头 → 空跑 +180 秒 → 解冻 → 等 9.5 秒 → 摸头）实测 `seq` 冻住；
+修完 `seq` 照常前进（LESSONS 434）。修法两层：① `zinteract_speak` 容忍 `now < last`；
+② 预览台解冻时把虚拟超前的量记成 `g_time_off`，引擎时钟只前进不后退（显式 `pause?t=`
+不补偿，那是给 A/B 固定环境相位用的）。单测补 `时钟倒流 40 秒后不能把台词静音` →
+`./build/test_core` **1192/0**。
+
+**顺手稳掉一条假红**：`转头会把长发的中段和发梢都带起来` 偶发 `tip=0.024`
+（新旧二进制、新旧内容都会撞，连跑十几次撞到两次）。三段摆是弹簧，冻结时钟下只采
+转到位那一帧，撞在过零点上就读到接近 0；改成边走边采 48 步取峰值。判据没变松 ——
+它本来就是"转头**会**把它带起来"。**改完 `api_smoke.py` 连跑两轮 268/0 全绿。**

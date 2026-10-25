@@ -3145,6 +3145,14 @@ static void test_interactions(void)
         zinteract_speak(z, zinteract_match(z, "hammer", "", NULL, 0), 210.0, second, sizeof(second));
         CHECK(first[0] && second[0] && strcmp(first, second) != 0, "同一台词组的变体应轮换");
     }
+    /* 时钟倒流（T66.10b 收口时查出来的）：预览台 /api/pause + /api/step 空跑是拿
+       虚拟时间记时间戳的，解冻后真实单调钟落在后头，`now - last < 冷却` 就恒成立 ——
+       台词整段哑掉，而且不报错（实测摸头 → 空跑 30 秒 → 解冻 → 再摸头，seq 不动）。
+       时间戳是"最后一次说话的时刻"，未来时刻只可能是钟走歪了，一律当凉透。 */
+    r = zinteract_match(z, "poke", "head", NULL, 1);
+    CHECK(zinteract_speak(z, r, 300.0, buf, sizeof(buf)) == 1, "时钟正常前进时该说话");
+    CHECK(zinteract_speak(z, r, 260.0, buf, sizeof(buf)) == 1,
+          "时钟倒流 40 秒后不能把台词静音（应视作冷却已过）");
     z->speech_enabled = 0;
     CHECK(zinteract_speak(z, zinteract_match(z, "drag_start", "", NULL, 0), 500.0, buf, sizeof(buf)) == 0,
           "speech.enabled=false 时不说话");
@@ -5528,6 +5536,140 @@ static void test_parent_warp_inherit(void)
            cx[0], cy[0], cx[6], cy[6], owx, owy, oy[12]);
     (void)q;
     zrig_free(r);
+}
+
+/* ---------------------------------------------------------------------------
+   T66.10b：逐顶点形变场的**显式继承**（inherit_from + warp_inherit）。
+
+   为什么需要它：里布/布带/饰物这类"贴在布上的一层"，跟得比主体**少**才看得见层次
+   （裙子里子就是这么露出来的）。以前的做法是把主体的点表抄一份再乘系数
+   （裙子里布抄裙摆的表 ×0.35）—— 主体一改两边都得改，而且"0.35"这个数没有出处。
+   现在改成声明：`"inherit_from":"skirt_main", "warp_inherit":0.35`。
+
+   和 T66.10 自动继承的区别（两条路并存，别混）：
+     · 自动：子件挂在自己的链上，链里出现了**别的部件**的网格节点 ⇒ 全量继承；
+     · 显式：写 inherit_from 就**只**继承那一件的场，按 warp_inherit 打折，
+       而且两件不必在同一棵骨树上（里布和裙摆就是两棵树）。
+   --------------------------------------------------------------------------- */
+static void test_inherit_from_part(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double sx[32], sy[32], cx[32], cy[32], kx[32], ky[32], fx[32], fy[32];
+    int np, znp = 0, cols = 0, rows = 0, i;
+
+    SECTION("T66.10b 显式继承另一件的逐顶点形变场（inherit_from / warp_inherit）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_inherit_from");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* src = 源件（自己有一张带梯度的场：上边 10/0、下边 10/6）
+       kid = 继承件，**自己没有网格**（分辨率借源件的），强度 0.35 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"inhfrom\",\"name\":\"显式继承\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":["
+        " {\"id\":\"src\",\"file\":\"sprites/h.png\",\"layer\":10,\"pos\":[100,100],\"anchor\":[0,0]},"
+        " {\"id\":\"kid\",\"file\":\"sprites/h.png\",\"layer\":20,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"inherit_from\":\"src\",\"warp_inherit\":0.35},"
+        " {\"id\":\"full\",\"file\":\"sprites/h.png\",\"layer\":30,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"inherit_from\":\"src\"},"
+        " {\"id\":\"zero\",\"file\":\"sprites/h.png\",\"layer\":40,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"inherit_from\":\"src\",\"warp_inherit\":0.0}],"
+        "\"deformers\":[{\"id\":\"warpA\",\"part\":\"src\",\"cols\":2,\"rows\":2,\"points\":["
+        "  {\"c\":0,\"r\":0,\"dx\":10,\"dy\":0},{\"c\":1,\"r\":0,\"dx\":10,\"dy\":0},"
+        "  {\"c\":2,\"r\":0,\"dx\":10,\"dy\":0},"
+        "  {\"c\":0,\"r\":1,\"dx\":10,\"dy\":3},{\"c\":1,\"r\":1,\"dx\":10,\"dy\":3},"
+        "  {\"c\":2,\"r\":1,\"dx\":10,\"dy\":3},"
+        "  {\"c\":0,\"r\":2,\"dx\":10,\"dy\":6},{\"c\":1,\"r\":2,\"dx\":10,\"dy\":6},"
+        "  {\"c\":2,\"r\":2,\"dx\":10,\"dy\":6}]}],"
+        "\"params\":[{\"id\":\"ParamWarp\",\"min\":0,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"deformer\":\"warpA\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "写 inherit_from 的 rig 应加载成功");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+
+    /* ① 静止：三件都不动（继承不能把静止画面挪走） */
+    np = zrig_part_mesh(r, "kid", 1.0, &cols, &rows, cx, cy, 32);
+    CHECK(np > 0 && fabs(cx[0]) < 1e-9,
+          "参数 0 时继承件必须一动不动（实为 %d 个点，dx=%.3f）", np, np ? cx[0] : -1.0);
+
+    zrig_param_set(r, "ParamWarp", 1.0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, 0.2 + i / 60.0);
+    zrig_part_mesh(r, "src", 1.0, &cols, &rows, sx, sy, 32);
+    CHECK(fabs(sx[0] - 10.0) < 0.01 && fabs(sy[6] - 6.0) < 0.01,
+          "源件的场应是上边 (10,0)、左下 (10,6)（实测 %.2f / %.2f）", sx[0], sy[6]);
+
+    /* ② 0.35：继承件拿到三成半，梯度跟着一起打折 */
+    np = zrig_part_mesh(r, "kid", 1.0, &cols, &rows, cx, cy, 32);
+    for (i = 0; i < 32; ++i) { kx[i] = cx[i]; ky[i] = cy[i]; }
+    CHECK(np == 9 && cols == 2 && rows == 2,
+          "没网格的继承件应借源件的 2×2 分辨率（实为 %d 点 / %dx%d）", np, cols, rows);
+    CHECK(np == 9 && fabs(cx[0] - 3.5) < 0.05 && fabs(cx[6] - 3.5) < 0.05 &&
+          fabs(cy[0]) < 0.05 && fabs(cy[6] - 2.1) < 0.05,
+          "0.35 强度：左上应为 (3.5,0)、左下 (3.5,2.1)（实测 (%.2f,%.2f)/(%.2f,%.2f)）",
+          np > 6 ? cx[0] : -1.0, np > 6 ? cy[0] : -1.0,
+          np > 6 ? cx[6] : -1.0, np > 6 ? cy[6] : -1.0);
+
+    /* ③ 不写 warp_inherit = 1.0：与源件逐点相同（这是"全继承"的基线） */
+    np = zrig_part_mesh(r, "full", 1.0, &cols, &rows, cx, cy, 32);
+    for (i = 0; i < 32; ++i) { fx[i] = cx[i]; fy[i] = cy[i]; }
+    CHECK(np == 9 && fabs(cx[0] - 10.0) < 0.05 && fabs(cy[6] - 6.0) < 0.05,
+          "不写强度就该 1:1 跟随源件（实测 (%.2f,%.2f)）",
+          np > 6 ? cx[0] : -1.0, np > 6 ? cy[6] : -1.0);
+
+    /* ④ 0 = 明确写"不跟随"：一个点都不动 */
+    np = zrig_part_mesh(r, "zero", 1.0, &cols, &rows, cx, cy, 32);
+    znp = np;
+    CHECK(np == 0 || fabs(cx[0]) < 1e-9,
+          "warp_inherit=0 时继承件不该动（实为 %d 点 / dx=%.3f）", np, np ? cx[0] : 0.0);
+    printf("    量到：源件左下 (%.2f,%.2f) · 0.35 继承件左下 (%.2f,%.2f) · 全继承左下 (%.2f,%.2f)"
+           " · 0 强度 %s\n",
+           sx[6], sy[6], kx[6], ky[6], fx[6], fy[6],
+           znp == 0 ? "无网格（正确）" : "有网格但不动");
+    zrig_free(r);
+
+    /* ⑤ 四条负控：写错必须在装载期红，不许静默变成"继承到 0" */
+    {
+        static const char *BAD[4][2] = {
+            { "\"inherit_from\":\"nosuch\"", "源件不存在" },
+            { "\"inherit_from\":\"kid\"",    "继承自己" },
+            { "\"inherit_from\":\"src\",\"warp_inherit\":1.5", "强度越界" },
+            { "\"inherit_from\":\"nomash\"", "源件没有网格" },
+        };
+        int b;
+        for (b = 0; b < 4; ++b) {
+            char body[2048];
+            z_snprintf(body, sizeof(body),
+                "{\"schema_version\":\"1.0\",\"id\":\"badinh\",\"name\":\"坏继承\","
+                "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+                "\"parts\":["
+                " {\"id\":\"src\",\"file\":\"sprites/h.png\",\"layer\":10,\"pos\":[100,100],\"anchor\":[0,0]},"
+                " {\"id\":\"nomash\",\"file\":\"sprites/h.png\",\"layer\":15,\"pos\":[100,100],\"anchor\":[0,0]},"
+                " {\"id\":\"kid\",\"file\":\"sprites/h.png\",\"layer\":20,\"pos\":[100,100],\"anchor\":[0,0],"
+                "  %s}],"
+                "\"deformers\":[{\"id\":\"warpA\",\"part\":\"src\",\"cols\":1,\"rows\":1,"
+                " \"points\":[{\"c\":0,\"r\":0,\"dx\":4,\"dy\":0}]}],"
+                "\"params\":[],\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}",
+                BAD[b][0]);
+            write_text(rigp, body);
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL, "负控（%s）必须装载失败", BAD[b][1]);
+            zrig_free(r);
+        }
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -9245,6 +9387,7 @@ int main(int argc, char **argv)
     test_fore_bone_chain();
     test_keyform_ease();
     test_parent_warp_inherit();
+    test_inherit_from_part();
     test_fore_slim_keyform();
     test_physics_to_param();
     test_skirt_physics();

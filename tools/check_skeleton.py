@@ -282,6 +282,26 @@ def check_form(root, char_id, sk, form, rig_path):
     check("形态 %s 至少有一条骨链（deformers[].parent）" % form, bool(chains),
           "全是平铺网格 = 每件只能整体弯，没有分层；这是 S2 之前的状态")
 
+    # ⑦c 声明了"继承"的件（T66.10b）：自己没有网格，逐顶点场从另一件借。
+    #     为什么要在契约里写一份：它是**替代了一段手抄点表**的机制，
+    #     一旦 rig 上的 inherit_from 被谁顺手删了，里布就变成一块钉死的布 ——
+    #     画面上只在裙摆甩开时才看得出来，静态截图完全正常。
+    ip = ((sk.get("forms") or {}).get(form) or {}).get("inherit_parts") or {}
+    for pid, spec in ip.items():
+        part = next((x for x in parts if x.get("id") == pid), None)
+        if part is None:
+            continue                       # 该形态没有这件，跳过（Q 版就是这种情况）
+        check("继承件 %s 声明了 inherit_from" % pid,
+              part.get("inherit_from") == spec.get("from"),
+              "rig 上是 %r，契约写 %r" % (part.get("inherit_from"), spec.get("from")))
+        got = part.get("warp_inherit", 1.0)
+        want = float(spec.get("strength", 1.0))
+        check("继承件 %s 的继承强度对得上契约" % pid, abs(got - want) < 1e-6,
+              "rig 上 %.3f，契约写 %.3f —— 两边不一致说明有人只改了一边" % (got, want))
+        check("继承件 %s 自己没有网格（继承了就别再叠一份手抄表）" % pid,
+              not [d for d, v in defs.items() if v.get("part") == pid],
+              "还挂着网格：%s" % [d for d, v in defs.items() if v.get("part") == pid])
+
     # 反向：形态里每一个带 part 的形变器都该被某个角色收编（否则没人知道它归哪根骨）
     claimed = set()
     for ids in fb.values():

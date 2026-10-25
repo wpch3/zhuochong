@@ -1112,6 +1112,16 @@ double zpet_deform_amount(const zpet *p, const char *id)
     return (p && p->rig) ? zrig_deform_amount(p->rig, id) : 0.0;
 }
 
+/* 部件这一帧**实际画出去**的顶点位移（走 compute_draw_state，和渲染同一条求值）。
+   scale 传 1.0：位移本身是**源图像素**，和画布缩放无关；矩阵只用来把顶点映进
+   源件坐标，1.0 与帧缩放给出的场一致（单测 zrig_part_mesh 也是这么用的）。 */
+int zpet_part_mesh(const zpet *p, const char *part_id,
+                   int *cols, int *rows, double *dx, double *dy, int cap)
+{
+    if (!p || !p->rig || !part_id) return 0;
+    return zrig_part_mesh(p->rig, part_id, 1.0, cols, rows, dx, dy, cap);
+}
+
 double zpet_blink_manual(const zpet *p)
 {
     return (p && p->rig) ? zrig_blink_manual(p->rig) : -1.0;

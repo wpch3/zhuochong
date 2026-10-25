@@ -169,6 +169,17 @@ typedef struct {
     char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
     int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
     char   deform_id[48];     /* "deformer"：这件挂在哪根变形器链上（≈ Live2D 的父子付け） */
+    /* ── 逐顶点位移场的继承（T66.10b：从"手调系数"改成"声明继承"）──
+       "inherit_from" 写**另一个部件**的 id：这件就按那一件的逐顶点形变场跟着起伏
+       （≈ Live2D 里把带子挂在布的变形器下面）。
+       "warp_inherit" 是继承强度 0~1：0.35 = 只跟到源件的三成。
+       —— 为什么需要它：里布/布带/饰物这类"贴在布上的一层"，跟得比主体少才看得见
+          层次（里子就是这么露出来的）。以前的做法是**把主体的点表抄一份再乘个系数**
+          （裙子里布抄裙摆的表 ×0.35），主体一改就得两边一起改 —— 这就是 T66.10b。
+       显式写了 inherit_from 就**只**继承那一件（不再自动扫祖先链，避免双份）。 */
+    char   inherit_from_id[64];
+    int    inherit_from;      /* 解析后的部件下标，-1 = 不显式继承（走自动祖先链） */
+    double warp_inherit;      /* 继承强度（只在显式模式下用），默认 1.0 */
     int    deformer;          /* 解析后的形变器下标，-1 = 没有（只靠挂在自己身上的网格） */
     double eyelid_travel;     /* 眼睑行程：眨眼参数 1 时往下滑多少画布像素 */
     double lash_hold;         /* 眼睑延迟：闭合度小于它之前睫毛不动（0.5 = 后半程才滑） */
@@ -1109,6 +1120,24 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
                 p->deformer = -1;
                 p->deform_id[0] = 0;
                 if (df && *df) z_strlcpy(p->deform_id, df, sizeof(p->deform_id));
+            }
+            /* inherit_from / warp_inherit：逐顶点形变场的显式继承（T66.10b）。
+               id 在装载末尾解析（那时形变器已经加载完，能查源件有没有网格）；
+               强度先夹在这里，范围外当场报错 —— 静默夹会让"我明明写了 1.5"变成 1.0。 */
+            {
+                const char *ifo = zjson_str(zjson_obj_get(pj, "inherit_from"), NULL);
+                p->inherit_from = -1;
+                p->inherit_from_id[0] = 0;
+                p->warp_inherit = zjson_num(zjson_obj_get(pj, "warp_inherit"), 1.0);
+                if (ifo && *ifo) z_strlcpy(p->inherit_from_id, ifo, sizeof(p->inherit_from_id));
+                if (!(p->warp_inherit >= 0.0) || p->warp_inherit > 1.0) {
+                    char path[160];
+                    z_snprintf(path, sizeof(path), "parts.%s.warp_inherit", p->id);
+                    zdiag_error(d, file, pj ? pj->line : 0, 0, path,
+                                "warp_inherit 要在 0~1 之间（写的是 %.3f）："
+                                "0 = 完全不跟随源件，1 = 与源件同一个场", p->warp_inherit);
+                    return -1;
+                }
             }
         p->tags = parse_tags(zjson_obj_get(pj, "tags"));
         /* 眼睑行程：带 eyelid 标签的部件按 blink 参数下滑这么多像素。
@@ -3452,6 +3481,42 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
                 goto fail;
             }
         }
+        /* inherit_from → 部件下标（T66.10b）。三条必须在装载期就红：
+           ① 源件不存在；② 指到自己（等于自己套自己）；③ 源件没有任何网格
+           （那不是"继承到空"，而是写错了目标 —— 静默的 0 位移最难查）。 */
+        for (i = 0; i < r->nparts; ++i) {
+            zpart *p = &r->parts[i];
+            int k, has_mesh = 0;
+            if (!p->inherit_from_id[0]) continue;
+            p->inherit_from = find_part(r, p->inherit_from_id);
+            if (p->inherit_from < 0) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.inherit_from", p->id);
+                zdiag_error(diag, file, 0, 0, path, "部件 '%s' 不存在", p->inherit_from_id);
+                goto fail;
+            }
+            if (p->inherit_from == i) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.inherit_from", p->id);
+                zdiag_error(diag, file, 0, 0, path, "不能继承自己（'%s'）", p->id);
+                goto fail;
+            }
+            for (k = 0; k < r->ndeforms; ++k) {
+                const zdeform *g = &r->deforms[k];
+                if (g->part != p->inherit_from) continue;
+                if (g->cols < 1 || g->rows < 1) continue;
+                has_mesh = 1;
+                break;
+            }
+            if (!has_mesh) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "parts.%s.inherit_from", p->id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "源件 '%s' 没有任何网格（它自己没有可继承的形变场 —— "
+                            "要么写错目标，要么得先给它一张网格）", p->inherit_from_id);
+                goto fail;
+            }
+        }
     }
     if (load_actions(r, zjson_obj_get(root, "actions"), diag, file) != 0) goto fail;
     if (load_regions(r, zjson_obj_get(root, "regions"), diag, file) != 0) goto fail;
@@ -5725,20 +5790,37 @@ typedef struct {
 static void deform_inherit_parent_warp(zrig *r, int pi, int mi, double scale,
                                        zdrawst *st)
 {
-    int mark[ZRIG_MAX_DEFORMS];
+    int mark[ZRIG_MAX_DEFORMS], smark[ZRIG_MAX_DEFORMS];
     int i, c, rr, cols, rows, q, borrow = -1;
+    int src = -1;                 /* >=0 = 显式 inherit_from（T66.10b），用 smark 算链 */
+    int *use_mark = mark;
     const zpart *cp = &r->parts[pi];
     const zimg *csrc = cp->img_scaled ? cp->img_scaled : cp->img;
     double cm[6], cinv[4];
+    double wamp = cp->warp_inherit;   /* 继承强度（显式模式才有意义） */
 
     if (r->ndeforms <= 0 || !csrc || csrc->w <= 0 || csrc->h <= 0) return;
     deform_mark_chain(r, pi, mark);
-    /* 先扫一遍：链上有没有"挂在别的部件上的网格节点"。没有就立刻返回 ——
-       这是绝大多数部件每帧的常态，不能为它付矩阵求逆的钱。 */
+    if (cp->inherit_from >= 0) {
+        src = cp->inherit_from;
+        if (!(wamp > 0.0)) return;                  /* 0 = 明确写了"不跟随"，白跑一趟没意义 */
+        /* 源件的链单独算（两个部件不一定在同一棵树上；混用一张 mark 会把两棵树
+           的变换按节点顺序乘在一起，得到一个谁也没写过的矩阵）。 */
+        deform_mark_chain(r, src, smark);
+        use_mark = smark;
+    }
+    /* 先扫一遍：有没有"挂在别的部件上的网格节点"可继承。没有就立刻返回 ——
+       这是绝大多数部件每帧的常态，不能为它付矩阵求逆的钱。
+       显式模式只认**源件自己**的网格节点（写了 inherit_from 就只跟那一件，
+       不再叠加祖先链上的 —— 否则同一份位移会被算两次）。 */
     for (i = 0; i < r->ndeforms; ++i) {
         const zdeform *g = &r->deforms[i];
-        if (!mark[i] || g->cols < 1 || g->rows < 1 || g->part < 0) continue;
-        if (g->part == pi || g->part == mi) continue;
+        if (!use_mark[i] || g->cols < 1 || g->rows < 1 || g->part < 0) continue;
+        if (src >= 0) {
+            if (g->part != src) continue;
+        } else if (g->part == pi || g->part == mi) {
+            continue;
+        }
         borrow = i;
         break;
     }
@@ -5760,13 +5842,17 @@ static void deform_inherit_parent_warp(zrig *r, int pi, int mi, double scale,
         const zpart *ap;
         const zimg *asrc;
         double base[6], chain[6], am[6], ainv[4], k, np;
-        if (!mark[i] || g->cols < 1 || g->rows < 1 || g->part < 0) continue;
-        if (g->part == pi || g->part == mi) continue;
+        if (!use_mark[i] || g->cols < 1 || g->rows < 1 || g->part < 0) continue;
+        if (src >= 0) {
+            if (g->part != src) continue;
+        } else if (g->part == pi || g->part == mi) {
+            continue;
+        }
         ap = &r->parts[g->part];
         asrc = ap->img_scaled ? ap->img_scaled : ap->img;
         if (!asrc || asrc->w <= 0 || asrc->h <= 0) continue;
         part_base_matrix(r, g->part, scale, base);
-        deform_chain_matrix_upto(r, mark, i, scale, chain);
+        deform_chain_matrix_upto(r, use_mark, i, scale, chain);
         zimg_matrix_mul(am, chain, base);        /* 祖先件这一帧的绘制矩阵 */
         if (!mat_linear_inv(am, ainv)) continue;
         k = (ap->img && ap->img->w > 0) ? (double)asrc->w / (double)ap->img->w : 1.0;
@@ -5786,6 +5872,8 @@ static void deform_inherit_parent_warp(zrig *r, int pi, int mi, double scale,
                                 &fdx, &fdy);
                 if (fdx == 0.0 && fdy == 0.0) continue;
                 fdx *= k; fdy *= k;
+                /* 继承强度：里布/布带跟得比主体少，差出来的那一层才是"里子" */
+                fdx *= wamp; fdy *= wamp;
                 /* ③ 祖先素材位移 → 画布向量 → 子件素材像素 */
                 dcx = am[0] * fdx + am[2] * fdy;
                 dcy = am[1] * fdx + am[3] * fdy;

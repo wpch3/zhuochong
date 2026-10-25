@@ -73,9 +73,17 @@
    于是连续两帧**逐字节相同**——抓对照图、做哈希断言时不会被呼吸/眨眼/物理搅乱。 */
 static int    g_frozen = 0;
 static double g_freeze_t = 0.0;
+/* 虚拟时钟超前真实时钟的量。`/api/step` 是拿冻结时刻往后加的，物理/台词/冷却的判据
+   都记在**虚拟**时间上；一拍一拍空跑 30 秒之后解冻，真实单调钟还落在 30 秒前，
+   那些判据就全变成了"未来时间"：`now - last < cooldown` 恒成立 ⇒ 台词被静音，
+   要等墙上时钟追上来才恢复（60 秒级别的假死）。这里把超前的部分记成偏移量，
+   解冻时一次性补回，让引擎时钟**只前进不后退**。
+   注意：显式 `t=` 不参与补偿 —— 那是给 A/B 对照图固定环境相位的（t=0 之类），
+   它本来就该是"任意时间点"，钳到此刻反而会毁掉逐像素可比性。 */
+static double g_time_off = 0.0;
 static double pet_now(void)
 {
-    return g_frozen ? g_freeze_t : z_now_seconds();
+    return g_frozen ? g_freeze_t : z_now_seconds() + g_time_off;
 }
 
 static zpet *g_pet = NULL;
@@ -1992,6 +2000,41 @@ static void handle_request(zsock fd, const http_req *r)
         }
         return;
     }
+    if (strcmp(r->path, "/api/partmesh.json") == 0) {
+        /* 探针：一个部件这一帧**实际画出去**的网格顶点位移（源图像素）。
+           id=<部件 id>，可选 max=<取前几个点，默认 64>。
+           为什么非有不可：T66.10/T66.10b 的继承是**逐顶点**的，形变器的驱动量
+           （/api/info.json 的 deformers）根本看不出继承有没有生效 ——
+           里布现在自己一张网格都没有，全靠继承表布，只读驱动量会永远是 0。 */
+        char id[64];
+        /* 16×16 网格是引擎上限（zrig.c 里 cols/rows 都 <= 16）⇒ 17×17 个点 */
+        double dx[289], dy[289];
+        int cols = 0, rows = 0, np = 0, i, cap = 64;
+        char body[8192];
+        size_t off = 0;
+        if (!qstr(r, "id", id, sizeof(id))) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 id\"}");
+            return;
+        }
+        if (qint(r, "max", 0) > 0) cap = qint(r, "max", 0);
+        if (cap > 289) cap = 289;
+        LOCK();
+        np = zpet_part_mesh(g_pet, id, &cols, &rows, dx, dy, cap);
+        UNLOCK();
+        off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+            "{\"ok\":true,\"id\":\"%s\",\"cols\":%d,\"rows\":%d,\"n\":%d,\"dx\":[",
+            id, cols, rows, np);
+        for (i = 0; i < np && i < cap; ++i)
+            off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                                      "%s%.4f", i ? "," : "", dx[i]);
+        off += (size_t)z_snprintf(body + off, sizeof(body) - off, "],\"dy\":[");
+        for (i = 0; i < np && i < cap; ++i)
+            off += (size_t)z_snprintf(body + off, sizeof(body) - off,
+                                      "%s%.4f", i ? "," : "", dy[i]);
+        z_snprintf(body + off, sizeof(body) - off, "]}");
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
     if (strcmp(r->path, "/api/param") == 0) {
         char id[64], sv[32];
         int rc = 0;
@@ -2089,10 +2132,16 @@ static void handle_request(zsock fd, const http_req *r)
         }
         LOCK();
         if (on && (!g_frozen || has_t)) {
-            g_freeze_t = has_t ? tq : z_now_seconds();
+            g_freeze_t = has_t ? tq : pet_now();   /* 冻结在**引擎时钟**上，别用裸真实钟 */
             g_frozen = 1;
         }
-        else if (!on) { g_frozen = 0; }
+        else if (!on) {
+            /* 解冻：虚拟时间要是已经跑到真实时钟前面（/api/step 空跑的产物），
+               把超前的量记进偏移，引擎时钟接着往前走，绝不后退。 */
+            double real = z_now_seconds() + g_time_off;
+            if (g_frozen && g_freeze_t > real) g_time_off += g_freeze_t - real;
+            g_frozen = 0;
+        }
         zpet_tick(g_pet, pet_now());
         UNLOCK();
         z_snprintf(body, sizeof(body), "{\"ok\":true,\"paused\":%s}", on ? "true" : "false");

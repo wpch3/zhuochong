@@ -1550,7 +1550,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             # **足を挟むように**画像を分けておく」⇒ 里布层 50 < 腿 60/61 < 躯干 100。
             # 组跟躯干同一个（chest）：里布本来就是裙子的一部分，
             # 身体平移/旋转时必须和表布**完全同步**，只有形变器那一层才差开。
-            seg_src += [dict(sp, group=sp.get("group", "chest")) for sp in skirtp["parts"]]
+            # ★ T66.10b：里布逐顶点场继承表布（35%），自己不写网格。
+            #   声明放在**注册部件**这里 —— 后面 deformers 那一段改的是这份 dict 的
+            #   副本（副本在这一行就生成了），2026-10-25 第一次改就改在了副本上，
+            #   生成的 rig 里一个字段都没出现。
+            _skid = (skirtx or {}).get("id", "seg_torso")
+            seg_src += [dict(sp, group=sp.get("group", "chest"),
+                             **({"inherit_from": _skid, "warp_inherit": 0.35}
+                                if sp["id"] == "skirt_lining" else {}))
+                        for sp in skirtp["parts"]]
             tag_of.update({sp["id"]: ["body", "skirt"] for sp in skirtp["parts"]})
         if footp:
             # T24.5：鞋从腿件上拆下来，常态/踮脚两张姿态图各一件（交叉淡化切换）
@@ -1580,6 +1588,11 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             "anchor": [0, 0],
             "tags": tag_of.get(sp["id"], ["body"]),
             "note": sp.get("note", "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"),
+            # 逐顶点场的声明式继承（T66.10b）。这个列表是**白名单** —— 素材表里
+            # 多写的字段不会自动落到 rig 上（第一次改就撞在这儿：零件表里加了
+            # inherit_from，生成物里一个字段都没有）。
+            **({"inherit_from": sp["inherit_from"]} if sp.get("inherit_from") else {}),
+            **({"warp_inherit": sp["warp_inherit"]} if sp.get("inherit_from") else {}),
         } for sp in seg_src]
         # 躯干的形变平台：颈线以上不再继续加大形变。
         #
@@ -4533,64 +4546,21 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         })
         # —— 裙子里布（T45.11）——
         # 里布不是"再摆一次"，而是**比表布摆得少**：差出来的那一条就是露出来的里子。
-        # 幅度口径：里布跟到表布的 LIN_FOLLOW，再加一段延迟 ⇒ 甩出去的瞬间露得最多，
-        # 停下来又收回去（布料的回り込み）。note.com/morris_343 的做法是把
-        # 「スカート裏の全面の曲面」挂在主裙摆曲面的子级，这里是同一条参数两条形变器。
-        if skirtp and seg:
-            LIN_FOLLOW = 0.35
-            LIN_ROWS = 4
-            _lin = skirtp["parts"][0]
-            # 两个盒子都取**身体图坐标**（*_parts.json 里的 pos/size），
-            # 这样才能把里布的行号换算成表布形变器的行号。
-            _tp = next(q for q in seg["parts"] if q["id"] == "seg_torso")
-            _ty, _th = _tp["pos"][1], _tp["size"][1]
-            _ly, _lh = _lin["pos"][1], _lin["size"][1]
-
-            def _skirt_dx(r_float):
-                """表布在躯干第 r 行（浮点）处的横向位移 = 第一段 + 下摆第二段。"""
-                def _interp(tbl):
-                    ks = sorted(tbl)
-                    if r_float <= ks[0]:
-                        return 0.0 if r_float < ks[0] else tbl[ks[0]]
-                    if r_float >= ks[-1]:
-                        return tbl[ks[-1]]
-                    for a_, b_ in zip(ks, ks[1:]):
-                        if a_ <= r_float <= b_:
-                            t = (r_float - a_) / (b_ - a_)
-                            return tbl[a_] * (1 - t) + tbl[b_] * t
-                    return 0.0
-                return _interp(_SKX) + _interp(_SKHEM)
-
-            _pts = []
-            for r in range(LIN_ROWS + 1):
-                y_abs = _ly + _lh * r / LIN_ROWS
-                r_torso = (y_abs - _ty) / _th * 10.0
-                dx = round(_skirt_dx(r_torso) * LIN_FOLLOW, 3)
-                for c in range(3):
-                    _pts.append({"c": c, "r": r,
-                                 "dx": round(dx * (1.06 if c == 1 else 1.0), 3)})
-            rig["deformers"].append(
-                {"id": "lining_sway_x", "part": _lin["id"], "cols": 2, "rows": LIN_ROWS,
-                 "note": f"里布横摆：只跟到表布同高度位移的 {LIN_FOLLOW:.0%}，"
-                         f"差额就是露出来的那条里子（表布 10px 时露 {10 * (1 - LIN_FOLLOW):.1f}px）",
-                 "points": _pts})
-            # ★ 按**名字**取 ParamSkirtSway，不要写 rig["params"][-1] ——
-            #   「最后一个参数就是我刚 append 的那个」这种默认一旦在中间插进
-            #   别的参数就会静默跑偏（第四十七问加 ParamHairSway 时当场踩中：
-            #   里布的绑定被挂到头发飘动那条参数上去了）。
-            _sk = next(q for q in rig["params"] if q["id"] == "ParamSkirtSway")
-            _sk["binds"].append(
-                {"deformer": "lining_sway_x", "scale": 1.0, "lag": 0.2})
-            _sk["note"] += (
-                "；里布（skirt_lining）同参数驱动，跟随系数 "
-                f"{LIN_FOLLOW}、延迟 0.2s —— 甩出去时露出里子，收回来又藏回去")
-            rig["physics"].append(
-                {"id": "lining_x", "part": _lin["id"], "deformer": "lining_sway_x",
-                 "input": [{"param": "ParamBodyAngleX", "weight": 1.0},
-                           {"param": "ParamBodyAngleZ", "weight": 1.0}],
-                 "ratio": 0.05, "stiffness": 18, "damping": 7.2, "max": 1.0,
-                 "note": "里布的身体带动：比表布(skirt_x 0.12/24/6.5)更钝 —— "
-                         "它夹在腿和表布中间，受的风小、摩擦大"})
+        # 幅度口径（★ T66.10b 改成**声明式继承**）：里布跟到表布的三成半，
+        # 差额就是甩开时露出来的那条里子。
+        #   以前是把表布的点表**抄一份再乘 0.35**（`lining_sway_x`，还自带一条
+        #   物理 `lining_x` 和一条带 0.2s 延迟的绑定）。三条隐患：
+        #     ① 表布的点表一改，里布这份抄件就悄悄过时（两份表谁也不再等于谁）；
+        #     ② 0.35 这个数没有出处，换形态/换裙子就得重新手调；
+        #     ③ 里布不挂在裙子的骨链上，裙子绕腰转 2.6° 时里布一动不动 ——
+        #        裙腰那一圈其实是**错开**的（被表布挡着，看不见而已）。
+        #   现在改成引擎的显式继承（T66.10b）：里布挂在裙子的中段骨上、并声明
+        #   `inherit_from: skirt_main` + `warp_inherit: 0.35` —— 逐顶点场按 35% 跟着走，
+        #   分辨率也借表布的（比原来手写的 2×4 细），里布自己**一张网格都不用写**。
+        #   这在 Live2D 里的做法叫「裏地の曲面を主スカート曲面の子にする」，
+        #   这里把"子级"表达成"继承它的逐顶点场"，强度另外声明。
+        #   声明写在**注册部件**那一行（上面 seg_src 那里）—— 那是 part dict 的出处；
+        #   在这里改 skirtp["parts"][0] 是改不到的（副本已经生成），第一次就这么白改了。
 
         # —— 外套前襟下摆（T45.12）——
         # 做法和裙摆同源但**刻意更小**：note.com/majohope 的原话是
@@ -4898,10 +4868,20 @@ def emit_bone_chains(rig, base):
     #   1.2°+2.6° 在裙摆处约 14px，比网格那套（10+3.4px）略大一点，合起来是
     #   "裙腰几乎不动、裙摆明显甩"。
     if "skirt_main" in parts:
+        _b4 = made
         made += add_chain("skirt_main", ["skirt_sway_x", "skirt_hem_x", "skirt_sway_y"],
                           "skirt", fy=0.55, root_fy=0.04,
                           bind_param="ParamSkirtSway", root_scale=1.2,
                           mid_scale=2.6, mid_lag=0.11)
+        # ★ T66.10b：里布挂到裙子的**中段骨**上（跟着裙腰一起转），
+        #   逐顶点场按 warp_inherit 继承表布（在 skirt_lining 的部件字段里声明）。
+        #   以前里布谁都不挂 —— 裙子绕腰转 2.6° 时里布一动不动，裙腰那一圈是错开的。
+        #   为什么挂 mid 不挂 root：中段骨才是"裙身"的枢轴（root 在裙腰上），
+        #   里布跟着中段转，表里在腰部才不会互相撕开。
+        if made != _b4 and "skirt_lining" in parts:
+            parts["skirt_lining"]["deformer"] = "skirt_mid"
+            parts["skirt_lining"]["note"] = (parts["skirt_lining"].get("note", "") +
+                                             "；挂裙子的中段骨 skirt_mid（T66.10b）")
     # —— 小臂袖管（T66.17 / S3）：肘 → 腕两段链，袖管网格挂链尾 ——
     #   和裙子同一条铁律：骨链作用于**整个部件**，所以只有"前臂本来就是独立部件"
     #   才接。Q 版整条手臂一件素材（chibi 的 forearm_l/r 在骨架契约里是显式豁免的）

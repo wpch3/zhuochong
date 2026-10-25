@@ -126,6 +126,12 @@ void        zpet_wind_now(const zpet *p, double *wx, double *wy);
 int         zpet_deform_count(const zpet *p);
 const char *zpet_deform_id_at(const zpet *p, int i);
 double      zpet_deform_amount(const zpet *p, const char *id);
+/* 一个部件这一帧**实际会画出去**的网格顶点位移（源图像素，含父级场继承）。
+   ≈ 「渲染时到底长什么样」的探针：zpet_deform_amount 只能看到形变器的驱动量，
+   看不到继承（T66.10 / T66.10b 的继承是**逐顶点**的，量不出来就等于没做）。
+   返回控制点数；cols/rows 给网格分辨率。 */
+int         zpet_part_mesh(const zpet *p, const char *part_id,
+                           int *cols, int *rows, double *dx, double *dy, int cap);
 void   zpet_set_gaze(zpet *p, double nx, double ny, int on);
 /* 表情层（≈ Live2D expression）：叠在当前动作之上，和动作互不覆盖 */
 int    zpet_expression_count(const zpet *p);
