@@ -31,8 +31,10 @@
       ],
       "checks": {
         "cover_ratio": 1.0,
-        "seam_mean_abs": 0.0,
-        "opaque_px": 11245,
+        "seam_mean_abs": 4.51,
+        "semi_px": 2192,
+        "opaque_px_alpha": 9053,
+        "opaque_px": 9053,
         "iris_erased_px": 0
       }
     },
@@ -59,8 +61,10 @@
       ],
       "checks": {
         "cover_ratio": 1.0,
-        "seam_mean_abs": 0.0,
-        "opaque_px": 11235,
+        "seam_mean_abs": 5.73,
+        "semi_px": 2018,
+        "opaque_px_alpha": 9217,
+        "opaque_px": 9217,
         "iris_erased_px": 0
       }
     }

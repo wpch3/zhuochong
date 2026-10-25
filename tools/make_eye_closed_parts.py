@@ -152,6 +152,46 @@ def _dilate(mask, n):
     return m
 
 
+def _edge_ramp(alpha, width=5):
+    """把 alpha 的外轮廓重新做成**对称软边**（0→1 走 width 像素）。
+
+    为什么需要这一步：补片的 alpha 最终是"软椭圆 ∩ 原画皮肤/线稿判据 ∩ 眼眶外扩
+    ∩ 本体保留区"的乘积，那些判据全是**二值**的，而且都比软椭圆窄 ——
+    所以真正决定轮廓的是二值边界，渲出来就是硬切边（Q 版闭眼/笑眼/痛苦三档实测：
+    半透明像素 0 个，睫毛下方一块平肤色矩形）。光把连乘的 1.25 去掉不够，
+    得沿着最终轮廓重新铺一圈渐变。
+
+    算法：从"轮廓外"做一遍 BFS 得到每个不透明像素到边界的距离，
+    距离 ≤ width 的那圈按 dist/width 压暗 → 边缘自然过渡。纯几何，不改颜色。
+    """
+    from collections import deque
+    solid = alpha > 0.5
+    if not solid.any():
+        return alpha
+    h, w = solid.shape
+    dist = np.full((h, w), 1e9, np.float32)
+    q = deque()
+    # 种子 = 所有"紧贴外部"或贴画面边的实心像素
+    for y in range(h):
+        for x in range(w):
+            if not solid[y, x]:
+                dist[y, x] = 0.0
+                q.append((y, x))
+    if not q:                      # 整块都实心（补片盖满整张画布）
+        return alpha
+    while q:
+        y, x = q.popleft()
+        d = dist[y, x] + 1.0
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and dist[ny, nx] > d:
+                dist[ny, nx] = d
+                q.append((ny, nx))
+    ramp = np.clip(dist / float(max(width, 1)), 0.0, 1.0)
+    out = np.where(solid, np.minimum(alpha, ramp), alpha)
+    return out.astype(np.float32)
+
+
 def _isolate_eye(alpha, eye_zone, pad=10):
     """只保留"与眼眶连通、且在眼眶外扩 pad 像素内"的那一块 alpha。
 
@@ -596,12 +636,37 @@ def main():
             pass
         dark = ((tgt.mean(axis=2) < 165) & eye_zone) | must
         dark &= bk_box
-        for _ in range(6):
-            cover = float((alpha[dark] > 0.9).mean()) if dark.sum() else 1.0
+        # ⚠️ 2026-10-25（第六十四问，用户点名"不许有黑边/制作后缺陷"）：
+        #   旧写法是 `alpha = np.clip(alpha * 1.25, 0, 1)` 连乘最多 6 次（1.25^6≈3.8），
+        #   本意只是"把不透明区域撑大一点"，实际把**整圈羽化压成了 1.0** ——
+        #   渲染出来是一块硬切边补片（沙箱放大实拍 /tmp/chibi_eye_zoom2.png 第 2/3/4 格：
+        #   睫毛下面一块平肤色矩形，头发丝被横着切一刀）。
+        #   更坏的是它把度量一起废了：alpha 只有 0/255 两级 ⇒ 接缝带为空 ⇒
+        #   seam_mean_abs 恒等于 0.0，配件表里那条"接缝色差 0.0"是假绿。
+        #   现在的规矩：只钉住**被点名必须盖住**的那块像素，绝不碰羽化带；
+        #   钉完还不够覆盖就直接报错（说明是素材/掩码问题，不许用变硬来换绿）。
+        cover = float((alpha[dark] > 0.9).mean()) if dark.sum() else 1.0
+        for _ in range(3):
             if cover > 0.995:
                 break
-            alpha = np.clip(alpha * 1.25, 0, 1) * (pa > 128) * bk_box   # 把不透明区域撑大一点
-        cover = float((alpha[dark] > 0.9).mean()) if dark.sum() else 1.0
+            alpha = np.where(dark & (alpha <= 0.9), 0.96, alpha).astype(np.float32)
+            cover = float((alpha[dark] > 0.9).mean()) if dark.sum() else 1.0
+        if cover < 0.995:
+            raise SystemExit(
+                f"[eye_{variant}] {side} 眼：必须盖住的原画眼睛只盖到 {cover*100:.1f}% —— "
+                "先把补片放大/挪位（MARGIN/LASH_EXT）或检查 bk_box 判据，"
+                "不要用 alpha 连乘把它变硬来凑覆盖率（那会做出硬切边）")
+        # 沿最终轮廓重新铺软边（这一步之前，轮廓由二值判据决定 = 硬切边）
+        alpha = _edge_ramp(alpha, width=5)
+
+        # 软边自检：一件合法的闭眼件必须有连续的半透明过渡带。
+        # 出现过 0 就是又被写回二值了，届时接缝色差也是假的。
+        semi = int(((alpha > 0.02) & (alpha < 0.98)).sum())
+        opaque = int((alpha > 0.98).sum())
+        if opaque and semi < 0.04 * opaque:
+            raise SystemExit(
+                f"[eye_{variant}] {side} 眼：半透明过渡带只有 {semi} px（不透明 {opaque} px）—— "
+                "羽化被压平了，渲出来必然是硬切边/黑边")
 
         img = np.zeros((hh, ww, 4), np.uint8)
         img[..., :3] = patch.round().astype(np.uint8)
@@ -609,12 +674,20 @@ def main():
         fn = f"eye_{side}_{variant}.png"
         Image.fromarray(img, "RGBA").save(os.path.join(sp, fn))
 
-        edge = (alpha > 0.05) & (alpha < 0.95) & both_skin
+        # 接缝带用"原画本体保留区"当参照，不用"两边都是皮肤"：
+        # 瞪大眼的边缘正好压在眼白/上眼线上（不是皮肤），按皮肤筛会得到空集合，
+        # 旧写法就把色差记成 0.0 —— 又是一条假绿。
+        edge = (alpha > 0.05) & (alpha < 0.95) & bk_box
         seam = float(np.abs(patch - tgt)[edge].mean()) if edge.sum() else 0.0
+        if not edge.sum():
+            raise SystemExit(
+                f"[eye_{variant}] {side} 眼：接缝带是空的，量不出色差 —— "
+                "这种情况以前被记成 0.0（假绿），现在一律拦下")
         out["eyes"].append({
             "side": side, "file": fn, "pos": [ax0, ay0], "size": [ww, hh],
             "gain": [round(v, 4) for v in gain], "offset": [round(v, 2) for v in off],
             "checks": {"cover_ratio": round(cover, 4), "seam_mean_abs": round(seam, 2),
+                       "semi_px": semi, "opaque_px_alpha": opaque,
                        "opaque_px": int((alpha > 0.9).sum()),
                        "iris_erased_px": n_iris},
         })

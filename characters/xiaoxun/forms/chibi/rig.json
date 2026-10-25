@@ -526,7 +526,7 @@
       "tags": [
         "eye_closed"
       ],
-      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：blink=1 时完全显形",
+      "note": "闭眼（AI 重绘 Q 版脸·盖住原画眼睛 100.0%，接缝色差 3.8，半透明带 2192px）：blink=1 时完全显形",
       "eye_side": "l"
     },
     {
@@ -545,7 +545,7 @@
       "tags": [
         "eye_smile"
       ],
-      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：ParamEyeL/RSmile=1 时显形",
+      "note": "笑眼（AI 重绘 Q 版脸·盖住原画眼睛 100.0%，接缝色差 4.5）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "l"
     },
     {
@@ -564,7 +564,7 @@
       "tags": [
         "eye_pain"
       ],
-      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：ParamEyeL/RPain=1 时显形",
+      "note": "痛苦闭眼 >_<（AI 重绘 Q 版脸·盖住原画眼睛 100.0%，接缝色差 4.5）：ParamEyeL/RPain=1 时显形",
       "eye_side": "l"
     },
     {
@@ -584,7 +584,7 @@
         "eye_wide",
         "eye_open"
       ],
-      "note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_l_ball",
+      "note": "瞪大眼（**不是** AI 重绘：原画 eye_l_base ×(1.12,1.20) 以眼球中心为锚放大，虹膜由 eye_l_ball 负责，等价于 Cubism 的 ParamEyeLWide 网格撑开）—— 眼圈外仍有灰白晕，见 G65.1",
       "eye_side": "l"
     },
     {
@@ -683,7 +683,7 @@
       "tags": [
         "eye_closed"
       ],
-      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：blink=1 时完全显形",
+      "note": "闭眼（AI 重绘 Q 版脸·盖住原画眼睛 100.0%，接缝色差 4.7，半透明带 2018px）：blink=1 时完全显形",
       "eye_side": "r"
     },
     {
@@ -702,7 +702,7 @@
       "tags": [
         "eye_smile"
       ],
-      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：ParamEyeL/RSmile=1 时显形",
+      "note": "笑眼（AI 重绘 Q 版脸·盖住原画眼睛 100.0%，接缝色差 4.8）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "r"
     },
     {
@@ -721,7 +721,7 @@
       "tags": [
         "eye_pain"
       ],
-      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 0.0）：ParamEyeL/RPain=1 时显形",
+      "note": "痛苦闭眼 >_<（AI 重绘 Q 版脸·盖住原画眼睛 100.0%，接缝色差 5.7）：ParamEyeL/RPain=1 时显形",
       "eye_side": "r"
     },
     {
@@ -741,7 +741,7 @@
         "eye_wide",
         "eye_open"
       ],
-      "note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_r_ball",
+      "note": "瞪大眼（同左，原画 eye_r_base ×(1.12,1.20)）：眼圈外仍有灰白晕，见 G65.1",
       "eye_side": "r"
     },
     {
