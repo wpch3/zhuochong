@@ -1022,11 +1022,39 @@ def check_engine_caps(root):
             ("ZRIG_MAX_PARTS", "parts"), ("ZRIG_MAX_XFADE", "xfades"),
             ("ZRIG_MAX_GROUPS", "groups"), ("ZRIG_MAX_ACTIONS", "actions"),
             ("ZRIG_MAX_DEFORMS", "deformers"), ("ZRIG_MAX_CHANNELS", None)]
+    hsrc = ""
+    hpath = os.path.join(root, "src", "core", "zrig.h")
+    if os.path.isfile(hpath):
+        with io.open(hpath, encoding="utf-8") as fh:
+            hsrc = fh.read()
+
+    def cap_of(macro):
+        """取一个上限宏的数值；允许一层层别名（zrig.c 的 ZRIG_MAX_ACTIONS →
+        zrig.h 的 ZRIG_ACTION_CAP）。别名链断掉或成环都返回 None。"""
+        seen = set()
+        cur = macro
+        for _ in range(8):
+            if cur in seen:
+                return None
+            seen.add(cur)
+            m = None
+            for text in (csrc, hsrc):
+                m = re.search(r"#define\s+%s\s+(\w+)\b" % re.escape(cur), text)
+                if m:
+                    break
+            if not m:
+                return None
+            v = m.group(1)
+            if v.isdigit():
+                return int(v)
+            cur = v
+        return None
+
     for macro, key in caps:
-        m = re.search(r"#define\s+%s\s+(\d+)" % macro, csrc)
-        if not check("zrig.c 里找得到 %s" % macro, m is not None):
+        cap = cap_of(macro)
+        if not check("zrig.c 里找得到 %s" % macro, cap is not None,
+                     "解析不到数值（别名链断了？）" if cap is None else ""):
             continue
-        cap = int(m.group(1))
         if key is None:
             # 通道数嵌在每个动作里：只看**最多那个动作**（每条动作各自过 loader）
             used = max([len(a.get("channels", [])) for a in rig.get("actions", [])] or [0])
@@ -1070,14 +1098,14 @@ def check_engine_caps(root):
           "干净" if re.search(r"for \(i = 0; i < n && r->n\w+ < ZRIG_MAX", csrc) is None
           else "还有 loader 用循环条件静默丢弃超限条目")
     # 状态机与动作表的上限必须同步，否则"动作能装 96 条、第 33 条先炸"
-    m_act = re.search(r"#define\s+ZRIG_MAX_ACTIONS\s+(\d+)", csrc)
+    act_cap = cap_of("ZRIG_MAX_ACTIONS")
     zsm_h = os.path.join(root, "src", "core", "zsm.h")
     zsm_src = io.open(zsm_h, encoding="utf-8").read() if os.path.isfile(zsm_h) else ""
     m_zsm = re.search(r"#define\s+ZSM_MAX_STATES\s+(\d+)", zsm_src)
     if check("找得到 ZSM_MAX_STATES", m_zsm is not None, zsm_h):
         check("状态机容量不小于动作表上限",
-              m_act is not None and int(m_zsm.group(1)) >= int(m_act.group(1)),
-              "ZSM %s / ACTIONS %s" % (m_zsm.group(1), m_act.group(1) if m_act else "?"))
+              act_cap is not None and int(m_zsm.group(1)) >= act_cap,
+              "ZSM %s / ACTIONS %s" % (m_zsm.group(1), act_cap if act_cap is not None else "?"))
 
 
 def check_torso_inertia(root):
@@ -1772,6 +1800,51 @@ def check_live2d(root):
                         capture_output=True, text=True)
     check("平台契约自检通过（tools/check_platform.py）", rc.returncode == 0,
           (rc.stdout.strip().splitlines() or ["?"])[-1])
+    # ⑳ 内容包 / 模组契约（第六十四问：完全可自定义 + 完全可模组）。
+    #    这一条盯的是"新增内容不改核心代码"这句话有没有真的被检查：
+    #    包写错了（缺贴图、白底烤进去、group 指向不存在的组、forms.json 说能做却没目录）
+    #    以前要等装载时才炸，或者干脆静默少几件。细目在 tools/mod_lint.py。
+    # mod_lint 要 pillow（判"贴图是不是整张不透明"必须真解码像素）。
+    # selfcheck 自己只依赖标准库，所以这里**找一个能 import PIL 的解释器**：
+    # 依次试 $ZC_PY、当前解释器、~/.imgenv/bin/python（WORKFLOW 里的约定环境）。
+    # 找不到就直说"缺环境"，不要伪装成"包写错了"。
+    _pys = [os.environ.get("ZC_PY"), sys.executable,
+            os.path.expanduser("~/.imgenv/bin/python")]
+    _lint_py = None
+    for _c in [x for x in _pys if x and os.path.exists(x)]:
+        try:
+            _ok = subprocess.run([_c, "-c", "import PIL"], capture_output=True).returncode == 0
+        except OSError:
+            _ok = False
+        if _ok:
+            _lint_py = _c
+            break
+    if _lint_py is None:
+        check("找得到带 pillow 的 python（跑内容包契约闸）", False,
+              "试过 %s；装法：python3 -m venv ~/.imgenv && "
+              "~/.imgenv/bin/pip install pillow numpy" % [x for x in _pys if x])
+    _rc = subprocess.run([_lint_py or sys.executable, os.path.join(root, "tools/mod_lint.py"),
+                          "--root", root, "--all-characters", "--quiet"],
+                         capture_output=True, text=True)
+    check("内容包契约全部通过（tools/mod_lint.py --all-characters）", _rc.returncode == 0,
+          (([ln for ln in _rc.stdout.strip().splitlines() if ln.strip()] or ["?"])[-1]))
+    # 负控：闸本身要被打红过 14 次，否则它只是一堆永远通过的 print。
+    _rc = subprocess.run([_lint_py or sys.executable, os.path.join(root, "tools/mod_lint.py"),
+                          "--self-test"], capture_output=True, text=True)
+    check("mod_lint 的负控全部符合预期（14 例坏包）", _rc.returncode == 0,
+          (([ln for ln in _rc.stdout.strip().splitlines() if ln.strip()] or ["?"])[-1]))
+    # 闸里写的上限必须与引擎宏一致 —— 两处各说各话的坑这一轮已经踩过一次
+    # （ZRIG_MAX_ACTIONS 96 vs ZSM_MAX_STATES 32）。
+    _lint = read(os.path.join(root, "tools", "mod_lint.py"))
+    _zrigh = read(os.path.join(root, "src", "core", "zrig.h"))
+    for _macro, _var in (("ZRIG_FORM_CAP", "FORM_CAP"), ("ZRIG_OUTFIT_CAP", "OUTFIT_CAP"),
+                         ("ZRIG_ACTION_CAP", "ACTION_CAP")):
+        _m1 = re.search(r"#define\s+%s\s+(\d+)" % _macro, _zrigh)
+        _m2 = re.search(r"^%s\s*=\s*(\d+)" % _var, _lint, re.M)
+        check("mod_lint 的 %s 与引擎 %s 一致" % (_var, _macro),
+              bool(_m1) and bool(_m2) and _m1.group(1) == _m2.group(1),
+              "%s vs %s" % (_m2.group(1) if _m2 else "?", _m1.group(1) if _m1 else "?"))
+
     # ⑲ 挂件表的形态可移植性（T2.2.0）：角色级挂件表一旦写死画布绝对像素，
     #    就只对量它的那个形态成立。实测过账：照少女 teen 量的 7 个挂件套到
     #    chibi（1:2.5）上平均偏 92 画布像素，而画布总高才 1360。

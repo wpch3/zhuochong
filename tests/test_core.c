@@ -1103,6 +1103,41 @@ static void write_text(const char *path, const char *text)
     fclose(f);
 }
 
+/* 文本替换：读整份文件、把所有 from 换成 to、写回。测试里改配置用。
+   用固定的 to 长度会踩坑（"xiaoxun" → "modtest" 长度不同），所以走重新拼接。 */
+static int patch_text_file(const char *path, const char *from, const char *to)
+{
+    FILE *f = fopen(path, "rb");
+    long n;
+    char *buf;
+    size_t cap;
+    char *q;
+    if (!f) return -1;
+    fseek(f, 0, SEEK_END);
+    n = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (n < 0) { fclose(f); return -1; }
+    cap = (size_t)n * 4 + 4096;
+    buf = (char *)malloc(cap);
+    if (!buf) { fclose(f); return -1; }
+    if (fread(buf, 1, (size_t)n, f) != (size_t)n) { fclose(f); free(buf); return -1; }
+    fclose(f);
+    buf[n] = 0;
+    q = strstr(buf, from);
+    if (!q) { free(buf); return -1; }
+    {
+        char *out = (char *)malloc(cap);
+        size_t head = (size_t)(q - buf);
+        if (!out) { free(buf); return -1; }
+        memcpy(out, buf, head);
+        z_snprintf(out + head, cap - head, "%s%s", to, q + strlen(from));
+        write_text(path, out);
+        free(out);
+    }
+    free(buf);
+    return 0;
+}
+
 /* ------------------------------------------------- 遮罩（clipping mask） */
 static int diag_has(const zdiag *d, const char *needle);
 static int copy_file(const char *src, const char *dst)
@@ -6093,6 +6128,109 @@ static void test_mesh(void)
 }
 
 
+/* ---- 第六十四问：完全可自定义 / 完全可模组 —— 内容量能不能随包自由长 ---- */
+static void test_zpet_content_scaling(void)
+{
+    char root[1024], cfgdir[1024], chardir[1024], formdir[1024];
+    char path[1400], src[1400], cmd[1600];
+    zdiag d;
+    zconfig cfg;
+    zpet *p;
+    int i;
+
+    SECTION("可模组化：形态 / 服装 / 动作清单按目录自由增长，撞上限必须喊出来");
+    z_snprintf(root, sizeof(root), "/tmp/zc_modscale");
+    /* ★ 这个目录必须**先删干净**：本用例后半段会往同一个包里再加 10 个形态目录去撞上限，
+       不删的话第二次跑就从 70 个目录起步（实测：形态扫到 64、丢弃记 6，第一段断言当场红）。
+       单测目录一律"重建"而不是"追加"，这条写进 LESSONS 409。 */
+    z_snprintf(cmd, sizeof(cmd), "rm -rf %s", root);
+    if (system(cmd) != 0) { /* 删不掉也无所谓，下面 z_mkdir_p 会把该建的建回来 */ }
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", root);
+    z_snprintf(chardir, sizeof(chardir), "%s/characters/modtest", root);
+    z_mkdir_p(cfgdir);
+    z_mkdir_p(chardir);
+
+    /* 配置：整棵拷仓库的 config/（providers/ voicebank/ 等子目录也在里面），
+       再把 pet.json 的角色与形态改成测试值。这一步本身就是被验的东西：
+       **换角色包不该需要改任何 C 代码**，只改两个字符串。 */
+    z_snprintf(cmd, sizeof(cmd), "cp -r %s/config/. %s/ 2>/dev/null", g_root, cfgdir);
+    if (system(cmd) != 0) { CHECK(0, "复制 config 失败"); return; }
+    z_snprintf(path, sizeof(path), "%s/pet.json", cfgdir);
+    if (patch_text_file(path, "\"xiaoxun\"", "\"modtest\"") != 0 ||
+        patch_text_file(path, "\"teen\"", "\"f00\"") != 0) {
+        CHECK(0, "改写测试 pet.json 失败");
+        return;
+    }
+
+    /* 形态：60 个（低于上限 64）。只有当前形态会真正装载，其余只要有 rig.json 就算一个形态 */
+    for (i = 0; i < 60; ++i) {
+        z_snprintf(formdir, sizeof(formdir), "%s/forms/f%02d", chardir, i);
+        z_mkdir_p(formdir);
+        z_snprintf(path, sizeof(path), "%s/rig.json", formdir);
+        if (i != 0) {
+            write_text(path, "{\"name\":\"形态f\"}");
+            continue;
+        }
+        z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+        z_snprintf(path, sizeof(path), "%s/h.png", formdir);
+        if (copy_file(src, path) != 0) { CHECK(0, "复制贴图失败"); return; }
+        z_snprintf(path, sizeof(path), "%s/rig.json", formdir);
+        write_text(path,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"模组测试形态\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    }
+    /* 服装：100 套（低于上限 128） */
+    z_snprintf(formdir, sizeof(formdir), "%s/outfits", chardir);
+    z_mkdir_p(formdir);
+    for (i = 0; i < 100; ++i) {
+        z_snprintf(path, sizeof(path), "%s/o%03d.json", formdir, i);
+        write_text(path, "{\"id\":\"o\",\"parts\":{}}");
+    }
+
+    zdiag_init(&d);
+    if (zconfig_load(&cfg, cfgdir, &d) != 0) {
+        CHECK(0, "测试配置应能加载（%d 条诊断）", d.error_count);
+        return;
+    }
+    p = zpet_create(&cfg, &d);
+    CHECK(p != NULL, "60 形态 / 100 服装的角色包应加载成功");
+    if (p) {
+        CHECK(zpet_form_count(p) == 60, "形态应扫到 60 个，实为 %d", zpet_form_count(p));
+        CHECK(zpet_outfit_count(p) == 100, "服装应扫到 100 套，实为 %d", zpet_outfit_count(p));
+        CHECK(zpet_forms_dropped(p) == 0 && zpet_outfits_dropped(p) == 0,
+              "没超限时不许记「丢弃」（形态丢 %d / 服装丢 %d）",
+              zpet_forms_dropped(p), zpet_outfits_dropped(p));
+        CHECK(zpet_actions_dropped(p) == 0, "动作清单没超限时不许记丢弃");
+        /* 动作清单的容量必须跟引擎走：引擎能装 96，界面就得分得清 96 个 */
+        CHECK(zpet_action_count(p) + zpet_actions_dropped(p) <= ZRIG_ACTION_CAP,
+              "动作清单容量（%d + %d）不许超过引擎上限 %d",
+              zpet_action_count(p), zpet_actions_dropped(p), ZRIG_ACTION_CAP);
+        zpet_destroy(p);
+    }
+    /* 超过上限：再塞 10 个形态目录（70 > 64），必须记账而不是静默 */
+    for (i = 60; i < 70; ++i) {
+        z_snprintf(formdir, sizeof(formdir), "%s/forms/f%02d", chardir, i);
+        z_mkdir_p(formdir);
+        z_snprintf(path, sizeof(path), "%s/rig.json", formdir);
+        write_text(path, "{\"name\":\"形态f\"}");
+    }
+    zdiag_init(&d);
+    p = zpet_create(&cfg, &d);
+    CHECK(p != NULL, "超限时角色包仍要能加载（不能因为多了目录就整包失败）");
+    if (p) {
+        CHECK(zpet_form_count(p) == ZPET_MAX_FORMS,
+              "形态应收满上限 %d，实为 %d", ZPET_MAX_FORMS, zpet_form_count(p));
+        CHECK(zpet_forms_dropped(p) == 70 - ZPET_MAX_FORMS,
+              "多出来的 %d 个形态必须记进「丢弃」，实为 %d",
+              70 - ZPET_MAX_FORMS, zpet_forms_dropped(p));
+        zpet_destroy(p);
+    }
+}
+
 /* ---- 第六十三问 P0：变形器树 + 逐顶点参数驱动（keyform）+ 上限不许静默截断 ---- */
 static void test_deform_tree(void)
 {
@@ -8183,6 +8321,7 @@ int main(int argc, char **argv)
     test_deform_tree();
     test_deform_tree_rejects();
     test_rig_limits();
+    test_zpet_content_scaling();
     test_keys_and_chain();
     test_blend();
     test_pose();

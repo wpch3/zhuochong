@@ -17,8 +17,15 @@
 extern "C" {
 #endif
 
-#define ZPET_MAX_FORMS   16
-#define ZPET_MAX_OUTFITS 32
+/* 2026-10-25（第六十四问「完全可自定义 / 完全可模组」）：16 / 32 → 64 / 128。
+   原来的 16 是"四形态 × 几个角色"时代的数，而目标是"每个角色四形态 × 无限服装 ×
+   模组再往里加内容"；而且扫描是 `while (n < MAX && readdir)`，**超了静默丢** ——
+   用户会看到"我放了 20 个形态目录，界面只有 16 个"，没有任何报错。
+   现在：上限抬大 + 丢弃**计数**（zpet_forms_dropped 等）+ 日志告警。
+   动作清单直接跟引擎的 ZRIG_ACTION_CAP 走，不许再出现"引擎 96、界面 32"。 */
+#define ZPET_MAX_FORMS   ZRIG_FORM_CAP
+#define ZPET_MAX_OUTFITS ZRIG_OUTFIT_CAP
+#define ZPET_MAX_ACTIONS ZRIG_ACTION_CAP
 
 typedef enum {
     ZPET_TOOL_HAND = 0,   /* 抚摸 */
@@ -205,6 +212,11 @@ const char *zpet_affection_tier_name(const zpet *p);
 void        zpet_set_affection(zpet *p, int points);
 
 /* --------------------------------------------------------------- 形态/服装 */
+/* 扫描时被上限丢掉了几条（0 = 没丢）。界面/日志靠它说清"为什么少了"，
+   而不是让用户对着一份短清单猜。 */
+int   zpet_forms_dropped(const zpet *p);
+int   zpet_outfits_dropped(const zpet *p);
+int   zpet_actions_dropped(const zpet *p);
 int   zpet_form_count(const zpet *p);
 const char *zpet_form_id_at(const zpet *p, int i);
 const char *zpet_form_name_at(const zpet *p, int i);

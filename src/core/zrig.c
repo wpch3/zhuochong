@@ -33,7 +33,7 @@
 #define ZRIG_MAX_GROUPS   64
 #define ZRIG_MAX_CHANNELS 64
 #define ZRIG_MAX_REGIONS  32
-#define ZRIG_MAX_ACTIONS  96
+#define ZRIG_MAX_ACTIONS  ZRIG_ACTION_CAP   /* 公开在 zrig.h：zpet 的动作清单要用同一个数 */
 #define ZRIG_MAX_PHYS     48
 #define ZRIG_MAX_POSE_MOOD 16
 #define ZRIG_MAX_MOOD_PARAM 12   /* mood_params 能登记多少条参数（耳朵 2 条，留余量） */   /* 每个姿态组能登记多少种情绪（情绪词表现有 11 个） */   /* 2026-10-16 抬：24 → 48。猫尾三姿态差分件各带 3 段摆链 = 9 条，直接把 24 顶到 23/24=96%。每多一种动物形象还要再加 */

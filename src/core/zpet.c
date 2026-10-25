@@ -41,9 +41,17 @@ struct zpet {
     int     noutfits;
 
     /* 手动整理的可触发动作顺序 */
-    char    action_ids[32][48];
-    char    action_titles[32][64];
+    char    action_ids[ZPET_MAX_ACTIONS][48];
+    char    action_titles[ZPET_MAX_ACTIONS][64];
     int     nactions;
+
+    /* 扫描时撞上限被丢掉的条数（0 = 没丢）。
+       这几个计数存在的理由就是"不许静默丢"（第六十四问）：以前
+       `while (n < MAX && readdir(...))` 会把多余形态直接扔掉，
+       界面只显示前 16 个，用户以为自己的目录没被读到。 */
+    int     forms_dropped;      /* forms/ 下被丢掉多少个 */
+    int     outfits_dropped;    /* outfits/ 下被丢掉多少个 */
+    int     actions_dropped;    /* 动作清单被丢掉多少个 */
 
     int     hover_inside;
     double  hover_x, hover_y;
@@ -77,7 +85,6 @@ struct zpet {
 
 #define ZPET_LIPSYNC_MAX 4096
 
-#define ZPET_MAX_ACTIONS 32
 
 static const zi_rule *match_rule(zpet *p, const char *kind, const char *region,
                                  const char *mood, int count);
@@ -121,7 +128,7 @@ static void scan_forms(zpet *p)
             z_snprintf(p->form_names[p->nforms], sizeof(p->form_names[0]), "%s", fd.cFileName);
             z_strlcpy(p->form_status[p->nforms], "ready", sizeof(p->form_status[0]));
             p->form_notes[p->nforms][0] = 0;
-            if (++p->nforms >= ZPET_MAX_FORMS) break;
+            ++p->nforms;
         } while (FindNextFileA(h, &fd));
         FindClose(h);
     }
@@ -130,11 +137,12 @@ static void scan_forms(zpet *p)
         DIR *dp = opendir(dir);
         struct dirent *de;
         if (!dp) return;
-        while (p->nforms < ZPET_MAX_FORMS && (de = readdir(dp))) {
+        while ((de = readdir(dp))) {
             char rig_path[1400];
             if (de->d_name[0] == '.') continue;
             z_snprintf(rig_path, sizeof(rig_path), "%s/%s/rig.json", dir, de->d_name);
             if (!z_file_exists(rig_path)) continue;
+            if (p->nforms >= ZPET_MAX_FORMS) { p->forms_dropped++; continue; }
             z_strlcpy(p->forms[p->nforms], de->d_name, sizeof(p->forms[0]));
             z_strlcpy(p->form_names[p->nforms], de->d_name, sizeof(p->form_names[0]));
             z_strlcpy(p->form_status[p->nforms], "ready", sizeof(p->form_status[0]));
@@ -183,7 +191,7 @@ static void load_form_roadmap(zpet *p)
             /* 目录里真有 rig.json 就是 ready，清单写什么都不算数 —— 以磁盘为准 */
             continue;
         }
-        if (p->nforms >= ZPET_MAX_FORMS) break;
+        if (p->nforms >= ZPET_MAX_FORMS) { p->forms_dropped++; continue; }
         z_strlcpy(p->forms[p->nforms], id, sizeof(p->forms[0]));
         z_strlcpy(p->form_names[p->nforms], (nm && *nm) ? nm : id, sizeof(p->form_names[0]));
         z_strlcpy(p->form_status[p->nforms], z_streq(st, "ready") ? "planned" : st,
@@ -215,7 +223,7 @@ static void scan_outfits(zpet *p)
             if (dot) *dot = 0;
             z_strlcpy(p->outfit_names[p->noutfits], p->outfits[p->noutfits],
                       sizeof(p->outfit_names[0]));
-            if (++p->noutfits >= ZPET_MAX_OUTFITS) break;
+            ++p->noutfits;
         } while (FindNextFileA(h, &fd));
         FindClose(h);
     }
@@ -224,10 +232,11 @@ static void scan_outfits(zpet *p)
         DIR *dp = opendir(dir);
         struct dirent *de;
         if (!dp) return;
-        while (p->noutfits < ZPET_MAX_OUTFITS && (de = readdir(dp))) {
+        while ((de = readdir(dp))) {
             char name[256], *dot;
             if (de->d_name[0] == '.') continue;
             if (!z_endswith(de->d_name, ".json")) continue;
+            if (p->noutfits >= ZPET_MAX_OUTFITS) { p->outfits_dropped++; continue; }
             z_strlcpy(name, de->d_name, sizeof(name));
             dot = strrchr(name, '.');
             if (dot) *dot = 0;
@@ -280,15 +289,19 @@ static void collect_actions(zpet *p)
     p->nactions = 0;
     if (!p->rig) return;
     n = zrig_action_count(p->rig);
-    for (i = 0; i < n && p->nactions < ZPET_MAX_ACTIONS; ++i) {
+    for (i = 0; i < n; ++i) {
         const char *id = zrig_action_id_at(p->rig, i);
         if (!id || !*id) continue;
+        if (p->nactions >= ZPET_MAX_ACTIONS) { p->actions_dropped++; continue; }
         if (z_streq(id, "idle") || z_streq(id, "sleep")) continue;   /* 睡眠加到菜单末尾单独处理 */
         z_strlcpy(p->action_ids[p->nactions], id, sizeof(p->action_ids[0]));
         z_strlcpy(p->action_titles[p->nactions], zrig_action_title_at(p->rig, i),
                   sizeof(p->action_titles[0]));
         p->nactions++;
     }
+    if (p->actions_dropped > 0)
+        ZLOGW("pet", "动作清单超过上限 %d，丢掉 %d 个（ZPET_MAX_ACTIONS 应等于 ZRIG_ACTION_CAP）",
+              ZPET_MAX_ACTIONS, p->actions_dropped);
 }
 
 static int load_rig_for(zpet *p, const char *form, zdiag *diag)
@@ -344,6 +357,15 @@ zpet *zpet_create(const zconfig *cfg, zdiag *diag)
         load_form_roadmap(p);
         for (i = 0; i < p->noutfits; ++i) read_outfit_name(p, i);
     }
+    /* 撞上限要喊出来。这里只记一行 warn 就够（界面另有表单显示），
+       但绝不能什么都不说 —— "目录放了 20 个、界面只出现 16 个"这种哑巴行为
+       是最难查的一类问题（第六十四问）。 */
+    if (p->forms_dropped > 0)
+        ZLOGW("pet", "形态数超过上限 %d，丢掉 %d 个（改大 ZPET_MAX_FORMS 或减少目录）",
+              ZPET_MAX_FORMS, p->forms_dropped);
+    if (p->outfits_dropped > 0)
+        ZLOGW("pet", "服装数超过上限 %d，丢掉 %d 个（改大 ZPET_MAX_OUTFITS）",
+              ZPET_MAX_OUTFITS, p->outfits_dropped);
     if (p->nforms == 0) {
         zdiag_error(diag, p->char_dir, 0, 0, "forms", "角色包没有任何形态（forms/<形态>/rig.json）");
         free(p);
@@ -452,6 +474,9 @@ const char *zpet_form_name(const zpet *p)
 }
 
 int zpet_form_count(const zpet *p) { return p ? p->nforms : 0; }
+int zpet_forms_dropped(const zpet *p) { return p ? p->forms_dropped : 0; }
+int zpet_outfits_dropped(const zpet *p) { return p ? p->outfits_dropped : 0; }
+int zpet_actions_dropped(const zpet *p) { return p ? p->actions_dropped : 0; }
 
 const char *zpet_form_status_at(const zpet *p, int i)
 {

@@ -22,6 +22,13 @@ extern "C" {
 
 typedef struct zrig zrig;
 
+/* 动作表上限（第六十三问/第六十四问）。引擎与平台层必须用**同一个数**：
+   曾经 ZRIG_MAX_ACTIONS=96 而 zpet 的动作清单只有 32，界面就只列出前 32 个 ——
+   用户看到的是"我加了动作但菜单里没有"。这个宏对外公开就是为了不再各说各话。 */
+#define ZRIG_ACTION_CAP 96
+#define ZRIG_FORM_CAP   64   /* 一个角色最多几个形态（≈ forms/ 下的子目录数） */
+#define ZRIG_OUTFIT_CAP 128  /* 一个角色最多几套服装（≈ outfits 目录下 json 的个数） */
+
 /* --------------------------------------------------------------- 加载 */
 /* rig_path: rig.json 路径；base_dir: 资源相对路径的基准目录（通常是 rig.json 所在目录）。
  * 出错时把问题写进 diag（文件/行/字段/原因），返回 NULL。 */
