@@ -32,7 +32,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites
+.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair
 
 all: test
 
@@ -80,6 +80,12 @@ smoke: $(BUILD)/zhuochong_preview
 audit-sprites:
 	@$(PYTHON_IMG) tools/qa_sprite_audit.py --update-baseline docs/qa/sprite_audit_teen.json
 	@$(PYTHON_IMG) tools/qa_sprite_audit.py --fail --baseline docs/qa/sprite_audit_teen.json >/dev/null && echo "素材体检：闸通过"
+	@$(PYTHON_IMG) tools/qa_hair_purity.py --fail >/dev/null && echo "头发布料纯度：闸通过"
+
+# 头发层"只许是头发"的机检（T67.38）。单独一条，改任何头发件之后跑：
+# 头发里出现成块的皮肤/衣服（"假手臂"）或内部破洞，这里会当场报红。
+audit-hair:
+	@$(PYTHON_IMG) tools/qa_hair_purity.py --fail
 
 # ---------------------------------------------------------------- 自检（保险）
 # 仓库静态自检：引用完整性 / 唯一性 / 契约 / 卫生（1 秒，不编译不渲染）

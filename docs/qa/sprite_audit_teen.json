@@ -167,20 +167,20 @@
    "file": "acc_hair_sidelong_r@2x.png",
    "kind": "hair",
    "size": "566x1458",
-   "opaque": 184364,
-   "near_white_pct": 11.76,
+   "opaque": 183898,
+   "near_white_pct": 11.79,
    "edge_near_white_pct": 27.34,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 4.65,
-   "dark_pct": 2.76,
+   "seam_pct": 4.62,
+   "dark_pct": 2.7,
    "hole_pct": 0.0,
    "straight_run": 101,
-   "residue_pct": 17.79,
+   "residue_pct": 17.83,
    "residue": {
     "mint": 33988,
-    "warm": 3,
-    "shirt": 1468
+    "warm": 2,
+    "shirt": 1467
    },
    "residue_blocks": [
     {
@@ -3286,20 +3286,20 @@
    "file": "hair_crown_long@2x.png",
    "kind": "hair",
    "size": "520x544",
-   "opaque": 152268,
-   "near_white_pct": 27.68,
-   "edge_near_white_pct": 27.01,
+   "opaque": 150574,
+   "near_white_pct": 27.82,
+   "edge_near_white_pct": 26.69,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 4.8,
-   "dark_pct": 3.64,
+   "seam_pct": 4.71,
+   "dark_pct": 3.55,
    "hole_pct": 0.0,
    "straight_run": 51,
-   "residue_pct": 1.09,
+   "residue_pct": 1.1,
    "residue": {
     "mint": 1585,
     "warm": 0,
-    "shirt": 3099
+    "shirt": 3030
    },
    "residue_blocks": [
     {
@@ -3468,20 +3468,20 @@
    "file": "hair_hood_long@2x.png",
    "kind": "hair",
    "size": "1132x1664",
-   "opaque": 380189,
-   "near_white_pct": 24.44,
-   "edge_near_white_pct": 20.45,
+   "opaque": 368854,
+   "near_white_pct": 24.48,
+   "edge_near_white_pct": 20.81,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 4.0,
-   "dark_pct": 2.37,
-   "hole_pct": 0.0,
+   "seam_pct": 3.91,
+   "dark_pct": 2.17,
+   "hole_pct": 1.93,
    "straight_run": 90,
-   "residue_pct": 9.92,
+   "residue_pct": 9.9,
    "residue": {
-    "mint": 29172,
+    "mint": 29160,
     "warm": 1,
-    "shirt": 19002
+    "shirt": 17732
    },
    "residue_blocks": [
     {
@@ -3494,21 +3494,21 @@
      ]
     },
     {
-     "px": 2800,
-     "bbox": [
-      889,
-      1159,
-      1011,
-      1287
-     ]
-    },
-    {
      "px": 2258,
      "bbox": [
       883,
       1357,
       964,
       1513
+     ]
+    },
+    {
+     "px": 2166,
+     "bbox": [
+      893,
+      1159,
+      1011,
+      1287
      ]
     }
    ],
@@ -3518,20 +3518,20 @@
    "file": "hair_hood_pony@2x.png",
    "kind": "hair",
    "size": "724x1480",
-   "opaque": 170898,
-   "near_white_pct": 21.38,
-   "edge_near_white_pct": 16.44,
+   "opaque": 169826,
+   "near_white_pct": 21.28,
+   "edge_near_white_pct": 16.88,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 3.54,
-   "dark_pct": 2.14,
-   "hole_pct": 0.0,
+   "seam_pct": 3.49,
+   "dark_pct": 2.03,
+   "hole_pct": 0.38,
    "straight_run": 38,
-   "residue_pct": 17.92,
+   "residue_pct": 17.96,
    "residue": {
     "mint": 29112,
     "warm": 1,
-    "shirt": 6915
+    "shirt": 6718
    },
    "residue_blocks": [
     {
@@ -3544,21 +3544,21 @@
      ]
     },
     {
-     "px": 1076,
-     "bbox": [
-      201,
-      174,
-      285,
-      240
-     ]
-    },
-    {
      "px": 1027,
      "bbox": [
       335,
       1111,
       411,
       1136
+     ]
+    },
+    {
+     "px": 641,
+     "bbox": [
+      600,
+      1387,
+      660,
+      1419
      ]
     }
    ],

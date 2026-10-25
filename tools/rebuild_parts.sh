@@ -327,6 +327,18 @@ python3 tools/make_rig.py --character "$CH" --form "$FM"
 #     必须排在 27b 之后：它是往 hair_long_back 里写像素。
 "$PY" tools/move_hair_islands.py --character "$CH" --form "$FM"
 
+# 27d 挖掉烘进头发层的"别人的块"（T67.39）。
+#     ★ 病灶实测：`hair_hood_long@2x` 底部烘着**一整只手 + 一段棒球夹克下摆**
+#       （青布 587+495+461px、白条若干、皮肤成块），`hair_crown_long` 烘着一块
+#       耳朵/脸颊，`hair_hood_pony` 发缝里烘着一条皮肤。这正是用户说的
+#       "在头发上画个假手臂"。
+#     ★ 必须排在所有写头发件的步骤之后（27b/27c 都会写 hair_long_back）、
+#       且要在 27e 之前（挖完留下的透明区由 27e 统一清 RGB）。
+#     ★ 只挖「alpha≥200 且连通≥200px」的皮肤/青布块（判据与 qa_hair_purity 同一套），
+#       块外逐字节不动（脚本内置自检）。挖掉的地方由后面的手臂/躯干层接住。
+#       实测 6 件 / 12,872px，长发型定帧复验无破洞。
+"$PY" tools/purge_hair_foreign_blocks.py --character "$CH" --form "$FM"
+
 # 27e 透明区垃圾 RGB 清零 + 边缘色外扩（T67.30）。
 #     ★ 必须是**最后一步**（在 check_assets 之前、所有写像素的步骤之后）：
 #       任何一步「重存 PNG」都可能把透明区的垃圾色再带回来，而它肉眼看不见 ——
