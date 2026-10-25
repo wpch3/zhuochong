@@ -17,7 +17,7 @@
 用法：python3 tools/selfcheck_repo.py [--root .] [--quiet]
 """
 from __future__ import annotations
-import argparse, ast, datetime, glob, io, json, math, os, re, struct, subprocess, sys
+import argparse, ast, datetime, glob, hashlib, io, json, math, os, re, struct, subprocess, sys
 
 OK, BAD = "通过", "不通过"
 _fail = 0
@@ -3689,6 +3689,43 @@ def check_attach_switch(root):
               "zrig.c:2764 一线；语义若改，offset=-1 这条闸要跟着重订")
 
 
+def check_rig_freshness(root):
+    """rig.json 必须是**当前**生成器的产物（LESSONS 441）。
+
+    病根：`forms/*/rig.json` 是 `tools/make_rig.py` 生成出来的，而所有闸读的是磁盘上那一份。
+    生成器改坏了 / 改了没重跑，闸照样全绿，人还以为"已经生成过了" —— 2026-10-25 就撞到过：
+    `attach_emit` 把 rig 里已换算过的挂点当未换算的传进去，生成器从某次重构起一直在崩，
+    而屏幕上"写出 ... rig.json"是上一个分支打的日志，rig 文件根本没被重写。
+
+    做法：生成器把自己和 `attach_geom.py` 的 sha256 写进 `rig["generated_by"]`，
+    这里重算一遍对不上就红。**不记时间戳** —— 记时间的话每次重跑都有 diff，
+    人会习惯性忽略这个字段，闸就废了。
+    """
+    section("生成物新鲜度：rig.json 是当前生成器的产物（LESSONS 441）")
+    here = os.path.join(root, "tools")
+    want = {}
+    for name in ("make_rig.py", "attach_geom.py"):
+        fp = os.path.join(here, name)
+        if os.path.isfile(fp):
+            with open(fp, "rb") as f:
+                want["tools/" + name] = hashlib.sha256(f.read()).hexdigest()
+    rigs = sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json")))
+    stale = []
+    for rp in rigs:
+        rig = jsonc(rp)
+        gb = rig.get("generated_by")
+        tag = os.path.relpath(rp, root)
+        if not gb:
+            stale.append("%s（没有 generated_by）" % tag)
+            continue
+        if gb.get("sources") != want:
+            stale.append(tag)
+    check("所有 rig.json 都是当前生成器的产物", not stale,
+          "%d 个形态都是最新的" % len(rigs) if not stale
+          else "这些是旧生成器的产物，重跑 tools/make_rig.py 并确认 diff 只有预期的那几行：%s"
+               % "、".join(stale[:4]))
+
+
 def check_outfit_binding(root):
     """换装**只许换贴图**，不许换骨绑定（T66.20 / S4 后半）。
 
@@ -4569,6 +4606,7 @@ def main():
                check_effects_table,
                check_sockets,
                check_outfit_binding,
+               check_rig_freshness,
                check_prosody,
                check_phys2,
                check_phys2_rig,

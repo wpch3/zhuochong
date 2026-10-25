@@ -6996,3 +6996,14 @@ back 落在躯干中线（**2D 里"在背后"靠层号表达，不靠坐标**）
 
 **没做**：服饰上的饰品还不能按挂点表达（T66.20b）—— "这套衣服多一条腕带/一枚胸针"
 需要 outfits 支持 `attach: [{socket, file, dpos}]` 这类条目，那是下一轮。
+
+**收尾时抓到的一个真 bug（LESSONS 441）**：把挂点位置统一进 `attach_geom.attach_pos()` 之后，
+`attach_emit` 传进去的是 **rig 里已换算过偏移** 的挂点条目，而 `socket_pos()` 要的是
+`design/sockets.json` 的原始条目 —— 生成器从那次重构起一直在崩，而屏幕上"写出 ... rig.json"
+是别的分支打的日志，rig 文件根本没被重写。所有闸读的是磁盘上旧 rig，所以全绿。
+发现它的契机是：为了做负控把一件配件的 `socket` 名字改坏，想用生成器恢复，跑了两次都没变。
+
+修法两条：① `socket_pos` 明确拒绝"已换算过的条目"（报错写清"两处都加一次画布偏移会偏两倍"），
+`attach_emit` 改用未换算的 `design/sockets.json`；② 上闸 `check_rig_freshness`：
+`make_rig` 把两份源文件的 sha256 写进 `rig["generated_by"]`，selfcheck 每次重算对账
+（负控：往生成器加一行注释不重跑 ⇒ 两个形态的 rig 当场红）。

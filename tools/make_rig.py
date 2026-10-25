@@ -11,7 +11,7 @@
 这样拆件与骨架永远对齐：坐标由脚本从实际素材量取，不手写魔法数字。
 """
 from __future__ import annotations
-import argparse, json, math, os, sys
+import argparse, hashlib, json, math, os, sys
 
 import attach_geom
 
@@ -1046,7 +1046,8 @@ def attach_emit(rig, base, base_root):
         _ox, _oy = attach_geom.canvas_offset(
             (rig["canvas"]["w"], rig["canvas"]["h"]), _sz)
     slots = {x["id"]: x for x in table["slots"]}
-    sockets = {k: v for k, v in (rig.get("sockets") or {}).items()}
+    sockets = {k: v for k, v in (rig.get("sockets") or {}).items()}      # 已换算（查父骨用）
+    sock_tab = attach_geom.load_sockets(base_root)                        # 未换算（算位置用）
     geom = {x["id"]: x for x in cut["attachments"]}
     flick_extra = []     # wave=flick 的挂件参数：只偶尔抽一下，不进 ambient
 
@@ -1080,8 +1081,11 @@ def attach_emit(rig, base, base_root):
                     f"[make_rig] 挂件 {att['id']} 的槽 {att['slot']} 在组 {slot['group']}，"
                     f"但它挂的 {sock} 在组 {sp['group']} —— 一个件只能有一个父组，"
                     f"两处不一致说明表写错了")
+            # 位置用**未换算**的表条目算（画布偏移只许加一次），
+            # rig 里那份已经加过偏移，拿它再算一遍会偏两倍
             part_pos = attach_geom.attach_pos(
-                attach_geom.apply_overrides(att, _ovr), sp, anchors, _ox, _oy)[0]
+                attach_geom.apply_overrides(att, _ovr), sock_tab.get(sock),
+                anchors, _ox, _oy)[0]
             dpos_out = [part_pos[0] - sp["pos"][0], part_pos[1] - sp["pos"][1]]
         else:
             part_pos = attach_geom.resolve(
@@ -5265,6 +5269,20 @@ def prune_dangling(rig):
     prune_dead_param_refs(rig)
 
 
+def _generated_by():
+    """生成器指纹：本文件 + attach_geom.py 的 sha256。
+
+    只记「谁生成、用哪两份源算」，不记时间戳 —— 记时间的话每次重跑都有 diff，
+    人就习惯性忽略这个字段，闸也就废了。
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    out = {"tool": "tools/make_rig.py", "sources": {}}
+    for name in ("make_rig.py", "attach_geom.py"):
+        with open(os.path.join(here, name), "rb") as f:
+            out["sources"]["tools/" + name] = hashlib.sha256(f.read()).hexdigest()
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
@@ -5501,6 +5519,11 @@ def main() -> int:
     if nbone:
         print(f"  骨链：新增 {nbone} 个旋转节点，网格改为挂在链尾")
     prune_dangling(rig)                 # 素材没齐的形态：清掉指向不存在部件的绑定
+
+    # 生成物指纹（LESSONS 441）：rig.json 是**生成**出来的，闸读的却是磁盘上这一份 ——
+    # 生成器改了而 rig 没重跑时，所有闸照样全绿（那天就是这么骗过自己的）。
+    # 所以把「哪些源文件、各是什么内容」写进 rig，闸再算一遍对不上就红。
+    rig["generated_by"] = _generated_by()
 
     out = os.path.join(base, "rig.json")
     with open(out, "w", encoding="utf-8") as f:

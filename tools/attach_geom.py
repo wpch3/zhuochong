@@ -155,6 +155,10 @@ def socket_pos(spec, anchors, ox=0, oy=0):
     两套几何要是各写一份，早晚会有一处先改、另一处没改，而症状是“配件差几像素”，
     没人会想到去查换算。所以这里复用 resolve()，只是明说挂点自己没有尺寸。
     """
+    if "ref" not in spec:
+        raise SystemExit(
+            "[attach_geom] socket_pos 要的是 design/sockets.json 的条目（ref + pos_rel + unit），"
+            "传进来的是已经换算过的 rig sockets 条目（只有 pos）—— 两处都加一次画布偏移会偏两倍")
     return resolve({**spec, "sprite_h_rel": 0.0}, anchors, ox, oy)[0]
 
 

@@ -233,6 +233,27 @@ def lint_content_pack(root: str, char_id: str) -> int:
             df = p.get("deformer")
             if df:
                 check("形态 %s 部件 %s 的 deformer %r 存在" % (form, pid, df), df in dids, str(df))
+            # 挂点（T66.19 / S4）：模组件按**名字**挂在骨上，位置由挂点决定。
+            # 这条对模组尤其重要：模组作者不知道画布多大，也不该知道 ——
+            # 他只要写 socket + dpos，换形态换画布都不用动。所以这里要替他挡住
+            # 三件事：挂点存在、父骨对得上、pos 和挂点不打架（两个来源会静默取一个）。
+            sk = p.get("socket")
+            if sk:
+                socks = rig.get("sockets") or {}
+                sp = socks.get(sk)
+                if not check("形态 %s 部件 %s 的挂点 %r 存在" % (form, pid, sk), bool(sp),
+                             "本形态的 sockets 里没有；旧包没有 sockets 段就不能写 socket"):
+                    pass
+                else:
+                    check("形态 %s 部件 %s 的 group 与挂点父骨一致" % (form, pid),
+                          p.get("group") == sp.get("group"),
+                          "部件写 %r、挂点 %r 在 %r" % (p.get("group"), sk, sp.get("group")))
+                    if p.get("pos") is not None:
+                        dp = p.get("dpos") or [0, 0]
+                        want = [sp["pos"][0] + dp[0], sp["pos"][1] + dp[1]]
+                        check("形态 %s 部件 %s 的 pos 与「挂点+dpos」一致" % (form, pid),
+                              abs(want[0] - p["pos"][0]) <= 1 and abs(want[1] - p["pos"][1]) <= 1,
+                              "pos=%s，挂点+dpos=%s —— 位置只能有一个来源" % (p["pos"], want))
             for mk in ([p["mask"]] if isinstance(p.get("mask"), str) else (p.get("mask") or [])):
                 check("形态 %s 部件 %s 的 mask %r 指向别的部件" % (form, pid, mk),
                       mk in pids and mk != pid, str(mk))
