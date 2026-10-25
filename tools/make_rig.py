@@ -4444,6 +4444,36 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                     {"v": 0.0, "points": []},
                     {"v": 1.0, "points": sc(1.0)}]
 
+        def _kf_updown(rows):
+            """纵摆专用的键表：把旧 amount 行表放大成"被掀起 / 下坠"两套点表。
+
+            旧表 `_SKY` 是最下面几行 0.2~3.8px 的纵向滞后量（amount=1 时的极限），
+            换成 keyform 之后这个数值直接变成"参数满格时那几行挪多少"。放大系数
+            **按行值给而不是按行号**（行号是 remap 出来的，换个形态/换条裙子就变）：
+              掀起 = v × 1.84（3.8 → 7.0）  下坠 = v × 1.21（3.8 → 4.6）
+            掀得比坠得多是有意的：布挂在腰上，往下只能坠到腿，往上是被风顶起来的。
+            横摆满格 10.0，纵摆 7.0 低一档 —— 横向甩得开、纵向顶不高。
+            伞效应（dx）只给最下两行（r>=8，按值判断 v>=2.0）：掀起张开 0.32×dy，
+            下坠收拢 0.28×dy。中列（c=1）多给 10%：裙褶正中间先鼓，否则整条下摆
+            平移、看着像硬塑料片（T45.11 里布那次踩过）。
+            """
+            up, dn = [], []
+            for r, v in rows:
+                u, d = round(v * 1.84, 3), round(v * 1.21, 3)
+                if u <= 0 or d <= 0:
+                    continue
+                for c in (0, 1, 2):
+                    k = 1.1 if c == 1 else 1.0
+                    up.append({"c": c, "r": r, "dy": round(-u * k, 3),
+                               **({"dx": round(u * (+0.32 if c == 2 else -0.32), 3)}
+                                  if (c != 1 and v >= 2.0) else {})})
+                    dn.append({"c": c, "r": r, "dy": round(d * k, 3),
+                               **({"dx": round(d * (+0.28 if c == 0 else -0.28), 3)}
+                                  if (c != 1 and v >= 2.0) else {})})
+            return [{"v": -1.0, "points": dn},
+                    {"v": 0.0, "points": []},
+                    {"v": 1.0, "points": up}]
+
         rig["deformers"] += [
             {"id": "skirt_sway_x", "part": _SKP, "cols": 2, "rows": 10,
              "param": "ParamSkirtSway",
@@ -4470,14 +4500,22 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  {"c": c, "r": r, "dx": round(v * (1.06 if c == 1 else 1.0), 3)}
                  for r, v in _SKHEM.items() for c in (0, 1, 2)
              ])},
+            # 纵摆（T66.11c 遗留 → T66.12 补完）：以前是 amount 点表，物理写 0.055 的
+            # 比值，满打满算裙底只上下 0.2 帧px —— 等于没做。现在改成和横摆同一条路子：
+            # **命名参数 ParamSkirtSwayY 推 keyform**。
+            # ★ 方向口径：**v=+1 = 裙摆被掀起（画面上移，dy<0）**，v=−1 = 下坠。
+            #   两者幅度刻意不等（掀 7.0 / 坠 4.6）：布挂在那里，往下只能坠到腿，
+            #   往上是被风顶起来的，本来就该掀得比坠得多。
+            # ★ 伞效应：掀起时下摆向两侧张开（裾が開く），下坠时收拢 —— 这正是
+            #   Live2D 教程说的「布は上下するとき横にもわずかに開閉する」。
+            # ★ 中列（c=1）多给 10%：裙褶正中间比两侧先鼓起来，否则整条下摆
+            #   平移，看着像硬塑料片（T45.11 里布那次踩过同样的坑）。
             {"id": "skirt_sway_y", "part": _SKP, "cols": 2, "rows": 10,
-             "note": "裙摆纵摆：上下滞后，裙底顺带略微张开/收拢（布料的伞效应）",
-             "points": [
-                 {"c": c, "r": r, "dy": round(v * (1.1 if c == 1 else 1.0), 3),
-                  **({"dx": round(v * (-0.32 if c == 0 else 0.32), 3)}
-                     if (c != 1 and r >= 8) else {})}
-                 for r, v in _SKY.items() for c in (0, 1, 2)
-             ]},
+             "param": "ParamSkirtSwayY",
+             "note": "裙摆纵摆：+1 被掀起（dy 向上、下摆张开），−1 下坠（dy 向下、收拢）。"
+                     "keyform（T66.12）；旧 amount 点表 0.2~3.8px 太小，物理 0.055 比值"
+                     "下几乎不可见",
+             "keys": _kf_updown([(r, v) for r, v in _SKY.items()])},
         ]
         # ★ 裙件继承上身弯曲（T66.16）：切出去之后它不再吃 seg_torso 的 bend_x，
         #   不动的话上身一歪，裙腰和躯干之间就裂开一道横向的缝。
@@ -4513,10 +4551,21 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                        {"param": "ParamBodyAngleZ", "weight": 1.0}],
              "ratio": 0.12, "stiffness": 24, "damping": 6.5, "max": 1.0,
              "note": "裙摆横摆：上身左右倾/旋转带动，裙腰不动、裙底甩出去"},
-            {"id": "skirt_y", "part": _SKP, "deformer": "skirt_sway_y",
+            # ★ T66.12：纵摆从「写形变器 amount」改成「写命名参数」，和横摆同构。
+            #   旧写法 ratio 只有 0.055、形变器极限又只有 3.8px ⇒ 满打满算 0.2 帧px，
+            #   等于没做（T45.11 的"未做"和 T66.11c 的遗留都指这条）。现在参数满格
+            #   = 裙底掀 7.0px。ratio 这里踩的是**限幅**，而且要和 ambient 一起算：
+            #   输入是 ParamBodyAngleY，满格 ±10 ⇒ 物理输出 = ratio × 10 = 0.45；
+            #   同一参数上还叠着 ambient drift 0.55 ⇒ 最坏情况 0.45+0.55 = **1.0 整**，
+            #   刚好铺满 [−1,1]。再大一点就会顶限幅，顶了就是"啪一下停住"（布是不会
+            #   硬停的）。所以这两个数要成对改，改一个就得重新算另一个。
+            #   刚度 17 / 阻尼 7.4 比横摆（24 / 6.5）**更软更钝**：官方 Hiyori 的
+            #   縦揺れ本身就是 mobility 0.8/0.9、delay 0.9/0.6，比横揺れ迟钝。
+            {"id": "skirt_y", "part": _SKP, "param": "ParamSkirtSwayY",
              "input": [{"param": "ParamBodyAngleY", "weight": 1.0}],
-             "ratio": 0.055, "stiffness": 19, "damping": 6.8, "max": 1.0,
-             "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更钝"},
+             "ratio": 0.045, "stiffness": 16, "damping": 7.2, "max": 1.0,
+             "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更软更钝；"
+                     "T66.12 起写命名参数 ParamSkirtSwayY（以前写 amount，幅度小到看不见）"},
         ]
         # —— 裙摆的自主摆动（T45.9）——
         # ★ 为什么非加这条参数不可：裙摆原本**只靠物理输入**（ParamBodyAngleX/Z）。
@@ -4654,6 +4703,22 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         rig.setdefault("ambient", []).append(
             {"target": "ParamSkirtSway", "wave": "drift",
              "amp": 0.72, "bias": 0.0, "freq": 0.13})
+        # —— 裙摆纵摆（T66.12）——
+        # 和横摆同一套理由（只靠物理输入 ⇒ 待机时身体不动 ⇒ 布是死的），
+        # 但三项数都**更钝更慢**：幅度 0.55 对 0.72、频率 0.087 对 0.13。
+        # 频率再往下踩一档是有意的：横摆 0.13 / 纵摆 0.087 不同频，两者一叠加
+        # 就是"裙摆在八里画 ∞ 字"，同频则变成斜着来回抽的直线。
+        rig["params"].append({
+            "id": "ParamSkirtSwayY", "label": "裙摆纵摆",
+            "min": -1.0, "max": 1.0, "default": 0.0,
+            "binds": [],
+            "note": "裙摆上下：+1 被掀起（下摆张开）/ −1 下坠（收拢）。"
+                    "一条参数推一张 2x10 keyform 网格（skirt_sway_y），"
+                    "裙腰以上 r<=1 几乎不动。物理 skirt_y 与 ambient drift 都写这一条",
+        })
+        rig.setdefault("ambient", []).append(
+            {"target": "ParamSkirtSwayY", "wave": "drift",
+             "amp": 0.55, "bias": 0.0, "freq": 0.087})
 
 
     # 素材没有独立头部时，去掉所有作用在 head 组上的旋转通道（见 main 里的说明）

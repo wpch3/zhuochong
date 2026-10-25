@@ -1009,6 +1009,42 @@ def run(base, root):
         check("里布跟得比表布少（露里子的前提）", 0 < lp < sp * 0.9,
               "里布 %.3f / 表布 %.3f = %.2f（要 <0.9）" % (lp, sp, (lp / sp) if sp else 0))
         a.hit("/api/param?all=1&reset=1")
+    # 裙摆**纵**摆（T66.12，补 T66.11c 遗留）：以前物理写的是形变器 amount、ratio 0.055、
+    # 点表极限 3.8px ⇒ 满打满算 0.2 帧px，"做了但看不见"。现在是一条命名参数
+    # ParamSkirtSwayY 推一张 2x10 keyform。判据同 T66.10b：读**几何**
+    # （/api/partmesh.json），不读 deformers —— keyform 的 amount 恒为 0。
+    _pj = {q["id"]: q for q in (a.json("/api/params.json") or {}).get("params", [])}
+    if "ParamSkirtSwayY" in _pj and a.json("/api/partmesh.json?id=skirt_main&max=8"):
+        def _skirt_peak(axis):
+            _m = a.json("/api/partmesh.json?id=skirt_main&max=64") or {}
+            _v = _m.get(axis) or [0]
+            return max(_v, key=abs)
+        a.hit("/api/ambient?on=0"); a.hit("/api/physics?on=0")   # 只测参数→网格这一层
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=60&dt=0.016")
+        rest = max(abs(_skirt_peak("dx")), abs(_skirt_peak("dy")))
+        a.hit("/api/param?id=ParamSkirtSwayY&v=1.0"); a.hit("/api/step?n=90&dt=0.016")
+        lift_dy = _skirt_peak("dy"); lift_dx = _skirt_peak("dx")
+        a.hit("/api/param?id=ParamSkirtSwayY&v=-1.0"); a.hit("/api/step?n=90&dt=0.016")
+        drop_dy = _skirt_peak("dy")
+        check("静止时裙摆纵摆一个像素都不动", rest < 0.05, "峰值 %.3f px" % rest)
+        check("纵摆 +1 把裙摆**掀起**（画面上移 = dy<0）", lift_dy < -3.0,
+              "dy %.3f px（正数说明方向写反了）" % lift_dy)
+        check("纵摆 −1 让裙摆下坠（dy>0），且比掀起小", 0 < drop_dy < abs(lift_dy),
+              "坠 %.3f / 掀 %.3f px（布挂在腰上，坠不到掀那么多）" % (drop_dy, abs(lift_dy)))
+        check("纵摆会带出伞效应（下摆左右张开，dx 不至于为 0）",
+              abs(lift_dx) > 0.5, "dx %.3f px" % lift_dx)
+        # 上下和左右是两条独立通道：只推纵摆时不该把横向也甩出去（那就是两条通道串了）
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=90&dt=0.016")
+        a.hit("/api/param?id=ParamSkirtSwayY&v=1.0"); a.hit("/api/step?n=90&dt=0.016")
+        _m = a.json("/api/partmesh.json?id=skirt_main&max=64") or {}
+        _dy = _m.get("dy") or [0]
+        _cols, _rows = _m.get("cols") or 2, _m.get("rows") or 10
+        _top = [abs(_dy[r * (_cols + 1) + c]) for r in range(0, min(2, _rows))
+                for c in range(_cols + 1)]
+        check("纵摆只动下摆，裙腰那几行不许跟着走",
+              max(_top or [0]) < 0.5, "裙腰附近最大 %.3f px" % max(_top or [0]))
+        a.hit("/api/param?all=1&reset=1")
+        a.hit("/api/ambient?on=1"); a.hit("/api/physics?on=1")   # 还原，别影响后面的段落
     # 长发（T46.2）：① 能开关；② 开着的时候，转头会把第三段（发梢）带起来。
     if "longhair_tip" in dfm:
         a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=120&dt=0.016")

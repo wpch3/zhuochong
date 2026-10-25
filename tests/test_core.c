@@ -5877,7 +5877,7 @@ static void test_physics_to_param(void)
      （keyform 没有 amount 这个量），所以判据必须改成量**几何**。
      这个换算不是拍脑袋：keyform 在 v=1 时的点表峰值是固定的
      （裙身 10.8px / 下摆 3.6px），旧阈值是 amount 口径，乘上这个峰值就是像素口径。 */
-static double mesh_peak_dx(const zrig *r, const char *id)
+static double mesh_peak_axis(const zrig *r, const char *id, int axis)
 {
     double dx[64], dy[64];
     int cols = 0, rows = 0, k, n, np;
@@ -5886,9 +5886,20 @@ static double mesh_peak_dx(const zrig *r, const char *id)
     if (n <= 0) return 0.0;
     np = (cols + 1) * (rows + 1);
     if (np > n) np = n;
-    for (k = 0; k < np; ++k)
-        if (fabs(dx[k]) > m) m = fabs(dx[k]);
+    for (k = 0; k < np; ++k) {
+        double v = axis ? dy[k] : dx[k];
+        if (fabs(v) > m) m = fabs(v);
+    }
     return m;
+}
+static double mesh_peak_dx(const zrig *r, const char *id)
+{
+    return mesh_peak_axis(r, id, 0);
+}
+/* 纵摆同理：keyform 之后 `zrig_deform_amount("skirt_sway_y")` 恒为 0。 */
+static double mesh_peak_dy(const zrig *r, const char *id)
+{
+    return mesh_peak_axis(r, id, 1);
 }
 
 static void test_skirt_physics(void)
@@ -5924,15 +5935,22 @@ static void test_skirt_physics(void)
     CHECK(sway_x > 1.62, "摇摆时裙摆要横着甩（实际峰值 %.2f px）", sway_x);
     CHECK(sway_x < 10.8, "裙摆横摆不该一路顶到限幅（实际峰值 %.2f px）", sway_x);
 
-    /* ② 点头：纵摆要动（官方 スカート縦揺れ 吃 ParamBodyAngleY） */
+    /* ② 点头：纵摆要动（官方 スカート縦揺れ 吃 ParamBodyAngleY）。
+       ★ T66.12 纵摆也改成 keyform 了 ⇒ 判据必须量**几何**（LESSONS 433），
+         读 amount 会得到一个漂亮的 0.000。阈值按 v=1 的键表峰值换算：
+         裙底掀 6.99px / 坠 4.60px；nod 把 ParamBodyAngleY 推满 ±10、物理 ratio 0.045
+         ⇒ 参数约 0.45 ⇒ 最下一行约 3.5px。 */
     zrig_action_request(r, "nod", "test", 1);
     for (i = 1; i <= 180; ++i) {
         zrig_tick(r, 10.0 + i / 60.0);
-        if (fabs(zrig_deform_amount(r, "skirt_sway_y")) > nod_y)
-            nod_y = fabs(zrig_deform_amount(r, "skirt_sway_y"));
+        if (mesh_peak_dy(r, "skirt_sway_y") > nod_y)
+            nod_y = mesh_peak_dy(r, "skirt_sway_y");
     }
-    CHECK(nod_y > 0.15 && nod_y < 1.0,
-          "上身上下起伏要带起裙摆纵摆，且不顶限幅（实际峰值 %.3f）", nod_y);
+    /* 上限 6.8 = keyform 峰值 6.99 的 97%：act 满格输入 + ratio 0.045 时输出只到 0.45，
+       离限幅还有一半余量，撞到 6.8 就说明 ratio（或者 ambient 的幅度）被改大了、
+       两者加起来顶到了 [−1,1] 的边 —— 布是软的，顶边就是"啪一下停住"。 */
+    CHECK(nod_y > 0.35 && nod_y < 6.8,
+          "上身上下起伏要带起裙摆纵摆，且不顶限幅（实际峰值 %.2f px）", nod_y);
 
     /* ③ 只摇头：裙子挂在身上，不该跟着头动（官方的 Input 里没有 ParamAngle*） */
     zrig_action_request(r, "idle", "test", 1);

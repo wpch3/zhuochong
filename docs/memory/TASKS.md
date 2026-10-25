@@ -1297,4 +1297,8 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 - [x] G58.8 / T66.10 父级逐顶点位移传子 —— 已收（`make test` 1150/0）
 - [x] T66.10b 内容侧改挂：里布改逐顶点继承表布 0.35（`inherit_from` + `warp_inherit`），
       骨架契约 / 闸门 / 探针 `/api/partmesh.json` 全部跟上 —— 已收（`test_core` 1192/0、selfcheck 623/0、check_skeleton 541/0、api_smoke 268/0）
+- [x] T66.12 裙摆纵摆补完（T66.11c 遗留）：新参数 `ParamSkirtSwayY` 推 2x10 keyform，
+      物理 `skirt_y` 改写成命名参数（ratio 0.045，和 ambient 0.55 成对算到 1.0 不顶限幅）、
+      ambient 0.55@0.087Hz；单测/冒烟判据全改量几何 —— 已收
+      （`test_core` 1192/0、`api_smoke` 273/0、selfcheck 623/0、check_skeleton 541/0）
 - [ ] T66.10b-美术遗留：里布 99.9% 被表布压住（拿掉里布整帧只差 20 px），"里衬跟得少"目前**看不见**；要露内衬得在素材/层级上让下缘留一条 —— 等素材轮
