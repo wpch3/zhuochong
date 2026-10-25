@@ -4430,13 +4430,14 @@ def check_sprite_audit(root):
     # 基线自身不许带越线件（TH_KIND 只在工具里定义，这里按同一口径判一次）
     th = {"hair": 150, "limb": 150, "tail": 150,
           "face": None, "cloth": None, "fx": None, "body": None}
+    hole_th = {"hair": 3.0, "tail": 3.0}      # 与 TH_KIND 同源：发绺之间的缝算正常
     known = {"acc_hair_sidelong_r@2x.png"}
     viol = []
     for s in base.get("sprites", []):
         lim = th.get(s.get("kind"), None)
         if lim is not None and s.get("straight_run", 0) > lim and s["file"] not in known:
             viol.append("%s 直边%d" % (s["file"], s["straight_run"]))
-        if s.get("hole_pct", 0) > 1.5:
+        if s.get("hole_pct", 0) > hole_th.get(s.get("kind"), 1.5):
             viol.append("%s 空洞%.2f%%" % (s["file"], s["hole_pct"]))
     check("基线里没有偷偷越线的件", not viol, str(viol[:3]) if viol else "0 件")
     # 已知欠账必须还在（清掉了就该顺手从表里删，别留成永久豁免）

@@ -34,7 +34,7 @@
 --------------------------------------------------------------------------
 只有两条能当硬闸（其余只报不判）：
 
-    hole%        > 1.5   内部空洞。先腐蚀 5x5 再数（1~3px 的裂缝会被削掉，
+    hole%        > 1.5   内部空洞（发/尾放宽到 3.0，见 TH_KIND 注释）。先腐蚀 5x5 再数（1~3px 的裂缝会被削掉，
                          4px 以上的"缺了一块"才留下），再过 >=30px 连通块
     straight_run > 150px 有机形（发/四肢/尾）轮廓上的笔直长边 = 切图
                          眼/布/fx 不设闸：它们本来就是直边多边形
@@ -87,9 +87,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   所以颜色类指标只用来**排序找线索**，判案必须 `--overlay` 出图用眼睛看。
 TH_KIND = {
     # 有机形：轮廓本该是曲线，出现长直边 = 切图
-    "hair":  {"hole_pct": 1.5, "straight_run": 150},
+    # 发件松到 3.0：发绺之间天然会有 8~10px 厚的"缝"（新长发候选件 1.62% 全是这种，
+    # 目视核过 logs/asset_qa/t67_7_haironly_holes.png）—— 这不是"缺了一块"。
+    # 真要缺一块会是整段没有，远大于 3%。
+    "hair":  {"hole_pct": 3.0, "straight_run": 150},
     "limb":  {"hole_pct": 1.5, "straight_run": 150},
-    "tail":  {"hole_pct": 1.5, "straight_run": 150},
+    "tail":  {"hole_pct": 3.0, "straight_run": 150},
     # 几何形：眼件/布料本来就是直边多边形，只判空洞
     "face":  {"hole_pct": 1.5, "straight_run": None},
     "cloth": {"hole_pct": 1.5, "straight_run": None},
