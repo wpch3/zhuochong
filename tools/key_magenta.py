@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""key_hair_only.py —— 把"髮だけ差分"（洋红底的纯头发图）抠成带 alpha 的源件（T67.7）
+"""key_magenta.py —— 把"洋红底单件图"（髮だけ差分 / しっぽ差分）抠成带 alpha 的源件（T67.7 / T67.11）
 
 ★ 为什么需要它
 --------------------------------------------------------------------
@@ -33,8 +33,12 @@
 
 用法
 ----
-    python3 tools/key_hair_only.py in_raw.png out_rgba.png
-    python3 tools/key_hair_only.py in_raw.png out_rgba.png --check   # 只体检不写
+    python3 tools/key_magenta.py in_raw.png out_rgba.png
+    python3 tools/key_magenta.py in_raw.png out_rgba.png --check
+    python3 tools/key_magenta.py in_raw.png out_rgba.png \
+        --match-palette characters/xiaoxun/design/sheets/sheet_long.png
+
+（旧的 `key_hair_only.py` 名字已退休：它也用来抠尾巴。功能没变，改的只是名字。）
 
 输出体检：洋红彩边占比、内部孤点数、不透明面积。**彩边必须 0%**。
 """
