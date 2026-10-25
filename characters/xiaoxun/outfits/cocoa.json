@@ -51,6 +51,12 @@
     },
     "arm_r_cap": {
       "file": "sprites/outfit_cocoa/arm_r_cap@2x.png"
+    },
+    "skirt_main": {
+      "file": "sprites/outfit_cocoa/skirt_main@2x.png"
+    },
+    "skirt_lining": {
+      "file": "sprites/outfit_cocoa/skirt_lining@2x.png"
     }
   }
 }

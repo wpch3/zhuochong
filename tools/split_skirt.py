@@ -449,6 +449,11 @@ def main() -> int:
     # 不然 AI 重绘件的裙边会和原件的掩膜差一两像素，接缝处看得见。
     Image.fromarray((mask.astype(np.uint8) * 255), "L").save(
         os.path.join(sp, "skirt_mask.png"))
+    # ★ 再存一张**不含のりしろ**的（= 躯干该挖的面积）。两张都要存：
+    #   换装包要按同一张掩膜从**换装自己的躯干图**上切裙件（G66.9），
+    #   切件用 mask_full、挖躯干用 mask_base，只存一张就还原不出另一张。
+    Image.fromarray((mask_base.astype(np.uint8) * 255), "L").save(
+        os.path.join(sp, "skirt_mask_base.png"))
     meta["skirt_split"] = {
         "sig": sig, "id": NEW_ID,
         "pad_px": n_pad,

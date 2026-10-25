@@ -51,6 +51,12 @@
     },
     "seg_torso": {
       "file": "sprites/seg_torso@2x.png"
+    },
+    "skirt_lining": {
+      "file": "sprites/skirt_lining@2x.png"
+    },
+    "skirt_main": {
+      "file": "sprites/skirt_main@2x.png"
     }
   }
 }

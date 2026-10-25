@@ -39,12 +39,20 @@ import io
 import json
 import os
 import sys
+import sys
 
 import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import clean_baked_residue as cbr                              # noqa: E402
+
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import split_skirt as sp_skirt      # noqa: E402  （recolor_ring / DARK 共用一份实现）
+import make_skirt_parts as sp_skirt_parts  # noqa: E402
+
+DARK = sp_skirt_parts.DARK
 
 
 def unhaired(mask: np.ndarray, scale: int) -> np.ndarray:
@@ -76,6 +84,23 @@ def key_magenta(rgb: np.ndarray) -> np.ndarray:
     return (~mag).astype(np.float64)
 
 
+def skirt_alpha(src_path: str, sc: int):
+    """躯干原件的**完整剪影**：已挖空的躯干 alpha ∪ 裙子那块（T66.16 之后必须补回来）。
+
+    ★ 为什么 IoU 不能拿挖空后的躯干当参照：`split_skirt.py` 把裙子从 seg_torso 里
+      切走了，而 AI 重绘素材是照着**拆件前**那张画的 —— 它还带着裙子。不补回来
+      IoU 会掉到 0.68，闸门报"身体错位"，其实一个像素都没错位（midnight 实测 0.6823）。
+      这和 2026-10-18 擦发梢那次是同一类问题：**参照物和被测物必须描述同一个形状**。
+    ★ 补回来的那块用 `skirt_mask.png`（含のりしろ）而不是 base：换装躯干先按"完整剪影"
+      出包，紧接着 `cut_outfit_skirt()` 会用 base 掩膜挖干净并把裙子切成独立件。
+    """
+    m = os.path.join(os.path.dirname(src_path), "skirt_mask.png")
+    if not os.path.exists(m):
+        return None
+    mm = np.asarray(Image.open(m).convert("L")) > 0
+    return np.kron(mm, np.ones((sc, sc), bool)) if sc > 1 else mm
+
+
 def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
             grow_max=0.03, shrink_max=0.06):
     """AI 重绘件：键洋红 → 缩到原件的**精确尺寸** → 按模式核剪影。
@@ -104,6 +129,9 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
     if os.path.basename(src_path).startswith("seg_torso"):
         sc = 2 if "@2x" in src_path else 1
         A, B = unhaired(A, sc), unhaired(B, sc)
+        sf = skirt_alpha(src_path, sc)
+        if sf is not None and sf.shape == A.shape:
+            A = A | sf            # 参照物补回"已经切出去的那条裙子"（见 skirt_alpha 的说明）
     inter = float((A & B).sum())
     iou = inter / float((A | B).sum())
     grow = float((B & ~A).sum()) / float(A.sum())
@@ -156,7 +184,13 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
     rest = A & (key_magenta(np.clip(px, 0, 255).astype(np.uint8)) < 0.5)
     if rest.any():
         px[rest] = np.asarray(orig)[..., :3][rest]
-    out = np.dstack([np.clip(px, 0, 255), np.asarray(orig)[..., 3]]).astype(np.uint8)
+    # ★ alpha 要按**参照剪影 A** 出，不能只看原件的 alpha：原件（seg_torso）在
+    #   T66.16 之后已经把裙子那块挖空了，照抄它的 alpha 会把这套衣服画好的裙子
+    #   一起抹成透明 —— 换上去就是"裙子变成一个大洞、后面露出大腿"
+    #   （Q 版/少女都实测过：piece 只剩 26268 px，皮肤从洞里透出来）。
+    alpha_out = np.asarray(orig)[..., 3].copy()
+    alpha_out[A] = 255
+    out = np.dstack([np.clip(px, 0, 255), alpha_out]).astype(np.uint8)
     left = int((A & (key_magenta(out[..., :3]) < 0.5)).sum())
     if left:
         raise SystemExit(f"[衣柜] {os.path.basename(out_path)} 补色后身上还有 "
@@ -229,6 +263,143 @@ def hexrgb(h):
     return [int(h[i:i + 2], 16) for i in (1, 3, 5)]
 
 
+
+def cut_outfit_skirt(sprites: str, sub: str, part_file: str) -> dict:
+    """把**这一套换装自己的**裙件切出来，并把裙子的面积从换装躯干上挖掉（G66.9）。
+
+    为什么必须做
+    ------------
+    裙子在 T66.16 已经从 seg_torso 里独立成 `skirt_main`（层 97，躯干 100）。换装包的
+    `seg_torso@2x` 还是**拆件前**那张画 —— 裙子烘焙在躯干里。直接换上去：① 那层静态裙
+    （层 100）压在裙件（层 97）上面 ⇒ 裙摆骨链等于失效；② 裙件一摆就从静态裙的边上
+    探出来 ⇒ 两层裙子。
+
+    做法（不重画任何素材）
+    --------------------
+    用 `split_skirt.py` 存下的**同一张掩膜、同一个框**，从换装自己的躯干图上切：
+      · 切件用 `skirt_mask.png`（含のりしろ），のりしろ 那圈按**这套自己的**裙色重新取色
+        （换装的裙子可能是酒红/可可色，抄原件的深蓝会露一条蓝边）；
+      · 挖躯干用 `skirt_mask_base.png`（不含のりしろ）—— 躯干在这儿要**留着当遮挡物**。
+    里布不重算形状：形状取原件里布的 alpha（同一套几何，逐像素一样），颜色按同一套
+    `DARK` 压暗，从**这套的**裙件上取。
+
+    返回：{"skirt_main": {...}, "skirt_lining": {...}}（要塞进换装包的 parts 里）
+    """
+    sp = sprites
+    split_p = os.path.join(sp, "skirt_split.json")
+    if not os.path.exists(split_p):
+        return {}
+    with io.open(split_p, encoding="utf-8") as f:
+        split = json.load(f)
+    sid = split["id"]
+    box = split["box_1x"]
+    m_full_p = os.path.join(sp, "skirt_mask.png")
+    m_base_p = os.path.join(sp, "skirt_mask_base.png")
+    if not (os.path.exists(m_full_p) and os.path.exists(m_base_p)):
+        print("[衣柜] 缺 skirt_mask.png / skirt_mask_base.png，跳过裙件（先跑 split_skirt.py）")
+        return {}
+    m_full = np.asarray(Image.open(m_full_p).convert("L")) > 0
+    m_base = np.asarray(Image.open(m_base_p).convert("L")) > 0
+
+    torso_out = os.path.join(sub, "seg_torso@2x.png")
+    if not os.path.exists(torso_out):
+        print("[衣柜] 本套没有 seg_torso@2x.png，跳过裙件")
+        return {}
+    a2 = np.asarray(Image.open(torso_out).convert("RGBA")).copy()
+    H, W = a2.shape[:2]
+    if (H, W) != (m_full.shape[0] * 2, m_full.shape[1] * 2):
+        print(f"[衣柜] 换装躯干 {W}x{H} 和掩膜 {m_full.shape[1]}x{m_full.shape[0]} 不是两倍关系，跳过裙件")
+        return {}
+    m2f = np.kron(m_full, np.ones((2, 2), bool))
+    m2b = np.kron(m_base, np.ones((2, 2), bool))
+
+    # —— 裙件：按换装自己的画切，のりしろ 用换装自己的裙色重取 ——
+    # ⚠ 1× 里 alpha==255 的像素放大到 @2x 之后，四个孩子里可能有一个是半透明的
+    #   抗锯齿边（实测 17 个 alpha≈247）。那几个点算进裙件、再合成回去就会把 alpha
+    #   从 247 抬成 254 —— 和 split_skirt.carve_pair() 同一条判据：**只看 alpha==255**。
+    m2f = m2f & (m2b | (a2[..., 3] >= 255))
+    sk2 = np.zeros_like(a2)
+    sk2[m2f] = a2[m2f]
+    ring = m2f & ~m2b
+    if ring.any():
+        sk2, _ = sp_skirt.recolor_ring(sk2, m2b, ring)
+        sk2[~m2f] = 0
+    x0, y0, w, h = box
+    piece2 = sk2[y0 * 2:(y0 + h) * 2, x0 * 2:(x0 + w) * 2]
+    piece_p = os.path.join(sub, sid + "@2x.png")
+    Image.fromarray(piece2, "RGBA").save(piece_p)
+
+    # —— 躯干挖掉裙子（只挖 mask_base）——
+    body2 = a2.copy()
+    body2[m2b] = 0
+    Image.fromarray(body2, "RGBA").save(torso_out)
+
+    # —— 验收：挖完的躯干 + 裙件 必须还原成**换装原图**（逐像素）——
+    out = body2.astype(np.float64).copy()
+    b2 = body2[y0 * 2:(y0 + h) * 2, x0 * 2:(x0 + w) * 2].astype(np.float64)
+    s2 = piece2.astype(np.float64)
+    ba = b2[..., 3:4] / 255.0
+    sa = s2[..., 3:4] / 255.0
+    oa = ba + sa * (1.0 - ba)
+    rgb = (b2[..., :3] * ba + s2[..., :3] * sa * (1.0 - ba)) / np.maximum(oa, 1e-6)
+    out[y0 * 2:(y0 + h) * 2, x0 * 2:(x0 + w) * 2, :3] = np.where(oa > 1e-6, rgb, 0.0)
+    out[y0 * 2:(y0 + h) * 2, x0 * 2:(x0 + w) * 2, 3] = oa[..., 0] * 255.0
+    out = np.clip(out, 0, 255).astype(np.int32)
+    ref = a2.astype(np.int32)
+    vis = (ref[..., 3] > 1) | (out[..., 3] > 1)
+    bad = int((((np.abs(out[..., 3] - ref[..., 3]) > 1) |
+                (vis & (np.abs(out[..., :3] - ref[..., :3]).max(2) > 1)))).sum())
+    if bad:
+        raise SystemExit(f"[衣柜] {os.path.basename(sub)} 裙件切歪了：合成回去 {bad} 个像素对不上")
+    print(f"[衣柜] 裙件 {piece2.shape[1]}x{piece2.shape[0]} @2x，のりしろ {int(ring.sum())} px，"
+          f"无损 0 误差")
+
+    parts = {sid: {"file": "sprites/outfit_%s/%s@2x.png" % (os.path.basename(sub)[7:], sid)}}
+
+    # —— 里布：形状取原件里布的 alpha，颜色从这套的裙件上压暗 ——
+    lin1_p = os.path.join(sp, "skirt_lining.png")
+    lin2_p = os.path.join(sp, "skirt_lining@2x.png")
+    linj_p = os.path.join(sp, "skirt_parts.json")
+    bpj_p = os.path.join(sp, "body_parts.json")
+    if os.path.exists(lin1_p) and os.path.exists(linj_p) and os.path.exists(bpj_p):
+        with io.open(linj_p, encoding="utf-8") as f:
+            lin = json.load(f)["parts"][0]
+        with io.open(bpj_p, encoding="utf-8") as f:
+            bp = {p["id"]: p for p in json.load(f)["parts"]}
+        lpos, lsize = lin["pos"], lin["size"]
+        ppos = bp[sid]["pos"]
+        off = ((lpos[0] - ppos[0]) * 2, (lpos[1] - ppos[1]) * 2)
+        # 1× 的里布掩膜，放大两倍后与裙件对齐
+        lm = np.asarray(Image.open(lin1_p).convert("RGBA"))[..., 3] > 0
+        lm2 = np.kron(lm, np.ones((2, 2), bool))
+        h2, w2 = lsize[1] * 2, lsize[0] * 2
+        if lm2.shape != (h2, w2):
+            print(f"[衣柜] 里布掩膜 {lm2.shape[::-1]} 和尺寸 {(w2, h2)} 对不上，跳过里布")
+        elif off[1] + h2 > piece2.shape[0] or off[0] + w2 > piece2.shape[1]:
+            print("[衣柜] 里布框超出裙件，跳过里布")
+        else:
+            crop_src = piece2[off[1]:off[1] + h2, off[0]:off[0] + w2].copy()
+            canvas = np.zeros_like(crop_src)
+            canvas[lm2] = crop_src[lm2]
+            # 压暗（同一套 DARK / 反射光口径，见 make_skirt_parts.build）
+            ys = np.nonzero(lm2.any(axis=1))[0]
+            ylo, yhi = int(ys[0]), int(ys[-1])
+            kk = np.full(lm2.shape, DARK, np.float32)
+            band = max(1, int(round((yhi - ylo + 1) * sp_skirt_parts.BOUNCE_BAND)))
+            for i in range(band):
+                kk[yhi - i] = DARK + sp_skirt_parts.BOUNCE_MAX * (1.0 - i / band)
+            rgbc = np.clip(canvas[..., :3].astype(np.float32) * kk[..., None], 0, 255)
+            canvas[..., :3] = rgbc.astype(np.uint8)
+            canvas[..., 3] = np.where(lm2, canvas[..., 3], 0)
+            lin_name = "skirt_lining@2x.png"
+            Image.fromarray(canvas, "RGBA").save(os.path.join(sub, lin_name))
+            parts["skirt_lining"] = {
+                "file": "sprites/outfit_%s/%s" % (os.path.basename(sub)[7:], lin_name)}
+            print(f"[衣柜] 里布 {canvas.shape[1]}x{canvas.shape[0]} @2x"
+                  f"（形状沿用原件，颜色取自本套裙件）")
+    return parts
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=".")
@@ -261,9 +432,15 @@ def main() -> int:
     #   body_full.png / eye_open_left.png，换装换不回原装（引擎报「部件不在本形态中」）。
     #   手写的清单一定会和生成物脱节，让它跟着 rig 走就再也不会过期。
     rig_path = os.path.join(base, "forms", a.form, "rig.json")
-    touched = sorted({pid for ot in table["outfits"]
-                      if (ot.get("forms") is None or a.form in ot["forms"])
-                      for pid in ot["parts"]})
+    touched = {pid for ot in table["outfits"]
+               if (ot.get("forms") is None or a.form in ot["forms"])
+               for pid in ot["parts"]}
+    # ★ 裙子（T66.16b）：`wardrobe.json` 里写的是 `seg_torso`，但裙子切出去之后
+    #   换装包还会动到 `skirt_main` / `skirt_lining`（由 cut_outfit_skirt 自动切）。
+    #   default 包必须把它们也列上，否则「换成 midnight 再换回常服」会剩一条酒红裙子。
+    if os.path.exists(os.path.join(sprites, "skirt_split.json")):
+        touched |= {"skirt_main", "skirt_lining"}
+    touched = sorted(touched)
     if os.path.exists(rig_path) and touched:
         with io.open(rig_path, encoding="utf-8") as f:
             rig = json.load(f)
@@ -333,6 +510,12 @@ def main() -> int:
                 raise SystemExit(f"[衣柜] {pid} 的 mode={spec['mode']!r} 不认识"
                                  f"（只有 repaint / restyle / shift）")
             pack["parts"][pid] = {"file": f"sprites/outfit_{ot['id']}/{pid}@2x.png"}
+        # ★ T66.16b / G66.9：裙子已经独立成件（层 97）。换装躯干里还烘焙着那条裙子，
+        #   不切出来就是"静态裙压住裙件 + 摆开时两层裙子"。切件用同一张掩膜，
+        #   所以换装的裙色/花纹原样跟过去，不需要重画任何素材。
+        if "seg_torso" in pack["parts"]:
+            extra = cut_outfit_skirt(sprites, sub, pack["parts"]["seg_torso"]["file"])
+            pack["parts"].update(extra)
         with io.open(os.path.join(outdir, ot["id"] + ".json"), "w",
                      encoding="utf-8") as f:
             json.dump(pack, f, ensure_ascii=False, indent=2)

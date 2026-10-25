@@ -3121,6 +3121,21 @@ def check_character(root):
         # 白名单不能变成后门：声明的形态必须真的存在，否则这条闸会悄悄空转
         check(f"服装 {os.path.basename(od)} 声明的形态都在磁盘上",
               set(only) <= on_disk, f"声明了不存在的形态 {sorted(set(only) - on_disk)}")
+        # ★ G66.9 / T66.16b：裙子已经是独立部件（层 97）。换装包如果只换了
+        #   seg_torso 而不带 skirt_main，就等于**换上一张裙子烘焙在里面的躯干** ——
+        #   那层静态裙（层 100）压住裙件（层 97）⇒ 裙摆骨链失效，摆开还露两层裙子。
+        #   判据：本形态有 skirt_split.json 且这套包动了 seg_torso ⇒ 必须也有 skirt_main。
+        for fid in only:
+            form_dir = os.path.join(cdir, "forms", fid)
+            split_p = os.path.join(form_dir, "sprites", "skirt_split.json")
+            if not os.path.exists(split_p):
+                continue
+            parts = o.get("parts") or {}
+            if "seg_torso" not in parts:
+                continue
+            check(f"服装 {os.path.basename(od)}（{fid}）带了裙件 skirt_main",
+                  "skirt_main" in parts,
+                  "裙子已拆件（T66.16），换装躯干里还烘焙着裙子 ⇒ 裙摆骨链会失效")
 
     ip = os.path.join(root, "config", "interactions.json")
     if os.path.exists(ip):
