@@ -1099,6 +1099,11 @@ def check_engine_caps(root):
         ("kf_w", "keyform 插值权重"),
         ("deform_vertex_at", "渲染与探针共用同一个逐顶点求值"),
         ("zrig_deform_mesh", "逐顶点位移的读取接口"),
+        # T66.10 / G58.8：父级 warp 的位移场传给子部件。这三样是那条链的全部元件，
+        # 少一样就是静默退化（子件只跟刚体走，画面"只是有点硬"）。
+        ("deform_inherit_parent_warp", "父级 warp 位移场传给子的那一步"),
+        ("deform_field_at", "位移场的双线性取样"),
+        ("zrig_part_mesh", "「这一帧实际画出去什么」的读取接口"),
     ]:
         check("引擎里有%s" % label, needle in csrc,
               "找到了" if needle in csrc else "第六十三问 P0 的元件被删了")

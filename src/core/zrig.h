@@ -192,6 +192,10 @@ double zrig_deform_transform(const zrig *r, const char *id, const char *param);
    和渲染走同一个求值函数（amount 通路 / keyform 通路都在里面）。 */
 int    zrig_deform_mesh(const zrig *r, const char *id,
                         int *cols, int *rows, double *dx, double *dy, int cap);
+/* 一个部件这一帧**实际会画出去的**网格位移（含父级 warp 传下来的场，T66.10）。
+   和 zrig_deform_mesh 的区别：那个只看某个形变器自己的控制点，看不到继承。 */
+int    zrig_part_mesh(const zrig *r, const char *part_id, double scale,
+                      int *cols, int *rows, double *dx, double *dy, int cap);
 /* 部件锚点这一帧落在哪里（帧缓冲坐标，含组/自身旋转/变形器树）。
    scale 与 zrig_frame 同口径。返回 0 = 这帧不出现（透明度 0 / 查不到）。 */
 int    zrig_part_anchor_pos(const zrig *r, const char *part_id, double scale, double out[2]);

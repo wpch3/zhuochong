@@ -4708,11 +4708,10 @@ static void deform_local_matrix(const zrig *r, int di, double scale, double m[6]
                      g->sx, g->sy, g->rot, px, py);
 }
 
-static void deform_chain_matrix(const zrig *r, int pi, double scale, double out[6])
+static void deform_mark_chain(const zrig *r, int pi, int *mark)
 {
-    int mark[ZRIG_MAX_DEFORMS];
     int i, x;
-    memset(mark, 0, sizeof(mark));
+    memset(mark, 0, sizeof(int) * (size_t)ZRIG_MAX_DEFORMS);
     for (i = 0; i < r->ndeforms; ++i) {
         if (r->deforms[i].part != pi) continue;
         for (x = i; x >= 0 && x < ZRIG_MAX_DEFORMS && !mark[x]; ) {
@@ -4726,23 +4725,40 @@ static void deform_chain_matrix(const zrig *r, int pi, double scale, double out[
             x = r->deforms[x].parent;
         }
     }
-    /* 单位矩阵。⚠ 这个项目的 6 元素矩阵是 [a,b,c,d,e,f]（e/f 是平移），
-       单位阵是 [1,0,0,1,0,0] —— 第一版写成 [1,0,0,0,1,0]，把纵向缩放抹成 0，
-       整张立绘被压成一条线（画面只剩 29 个不透明像素）。矩阵初始化错了不会有任何
-       报错，只会"什么都画不出来"，所以这里必须写清楚。 */
+}
+
+/* 从链的根连乘到第 upto 个节点（含）。upto < 0 = 整条链。
+   T66.10 才需要"只连到某个祖先为止"的版本：取父级 warp 时，子件顶点要映进
+   **父件自己的**坐标系，而那个坐标系只包含到父件为止的变换（再往下就把子的
+   变换乘进去了，等于自己套自己）。 */
+static void deform_chain_matrix_upto(const zrig *r, const int *mark, int upto,
+                                     double scale, double out[6])
+{
+    int i;
     out[0] = 1.0; out[1] = 0.0; out[2] = 0.0;
     out[3] = 1.0; out[4] = 0.0; out[5] = 0.0;
     for (i = 0; i < r->ndeforms; ++i) {
         double loc[6], acc[6];
         if (!mark[i]) continue;
-        /* 恒等变换的节点直接跳过：绝大多数 rig 没有树，这条让老机型零开销 */
+        if (upto >= 0 && i > upto) break;
         if (r->deforms[i].dx == 0.0 && r->deforms[i].dy == 0.0 &&
             r->deforms[i].rot == 0.0 &&
             r->deforms[i].sx == 1.0 && r->deforms[i].sy == 1.0) continue;
         deform_local_matrix(r, i, scale, loc);
-        zimg_matrix_mul(acc, out, loc);      /* acc = A_父 · A_子 */
+        zimg_matrix_mul(acc, out, loc);
         memcpy(out, acc, sizeof(acc));
     }
+}
+
+static void deform_chain_matrix(const zrig *r, int pi, double scale, double out[6])
+{
+    int mark[ZRIG_MAX_DEFORMS];
+    deform_mark_chain(r, pi, mark);
+    /* 单位矩阵。⚠ 这个项目的 6 元素矩阵是 [a,b,c,d,e,f]（e/f 是平移），
+       单位阵是 [1,0,0,1,0,0] —— 第一版写成 [1,0,0,0,1,0]，把纵向缩放抹成 0，
+       整张立绘被压成一条线（画面只剩 29 个不透明像素）。矩阵初始化错了不会有任何
+       报错，只会"什么都画不出来"，所以这里必须写清楚。 */
+    deform_chain_matrix_upto(r, mark, -1, scale, out);
 }
 
 /* 一张网格第 q 个控制点这一帧挪多少（源图像素）。
@@ -4765,6 +4781,95 @@ static void deform_vertex_at(const zdeform *g, int q, double *dx, double *dy)
     }
     *dx = g->ox[q] * g->amount;
     *dy = g->oy[q] * g->amount;
+}
+
+/* ── 父级 warp 的位移场（T66.10 / G58.8）──────────────────────────────
+   为什么需要它：节点树现在只传**刚体**变换（位移/旋转/缩放）。父级网格把一片
+   区域揉弯之后，挂在它下面的**别的部件**只会跟着整体位移，逐顶点的弯一点都吃不到
+   —— 三节发链因此"看起来像链、断起来像两截"，裙摆也没法带起下面那条里布。
+
+   Live2D 的口径（官方 combinaton 页 + creatorsforum「メッシュがワープから
+   はみ出すと自動補間されて挙動がおかしくなる」）：
+     父 warp 的网格是**一张位移场**，子部件（アートメッシュ）的每个顶点都要在该
+     场里取值后一起挪；子件超出父 warp 范围的部分会被"自动补间"（我们取边界值，
+     也就是把场往外延），所以**warp 要盖住整个部件**。
+
+   这里做的是同一件事，分三步：
+     ① 子件顶点（画布坐标）→ 反解进祖先件的素材坐标（只包含到那个祖先为止的
+        链矩阵，再往下就把子自己的变换乘进去了）；
+     ② 在祖先件的 (cols×rows) 控制点网格上双线性取位移（deform_field_at）；
+     ③ 位移换成画布向量（乘祖先件的矩阵线性部分），再反解回**子件自己的素材像素**
+        （乘子件矩阵线性部分的逆）——因为 mesh[] 的口径是"子件素材像素"。
+   多个祖先时逐层相加；都按**未位移**的位置取值（链一般只有一层 warp，误差小于
+   一个像素，和 Live2D 的近似同量级）。 */
+
+/* 双线性取形变场在归一化坐标 (u,v) 处的位移（单位 = 该件的素材像素）。
+   u/v 会被夹到 [0,1]：超出 warp 的顶点按边界值走（"场往外延"），
+   既不突然归零也不外插出奇怪的摆幅。 */
+static void deform_field_at(const zdeform *g, double u, double v,
+                            double *dx, double *dy)
+{
+    int cols = g->cols, rows = g->rows, c0, r0, q00;
+    double fx, fy, tx, ty, d[4][2];
+    *dx = *dy = 0.0;
+    if (cols < 1 || rows < 1) return;
+    if (u < 0.0) u = 0.0; else if (u > 1.0) u = 1.0;
+    if (v < 0.0) v = 0.0; else if (v > 1.0) v = 1.0;
+    fx = u * cols; fy = v * rows;
+    c0 = (int)floor(fx); r0 = (int)floor(fy);
+    if (c0 < 0) c0 = 0; else if (c0 > cols - 1) c0 = cols - 1;
+    if (r0 < 0) r0 = 0; else if (r0 > rows - 1) r0 = rows - 1;
+    tx = fx - c0; if (tx < 0.0) tx = 0.0; else if (tx > 1.0) tx = 1.0;
+    ty = fy - r0; if (ty < 0.0) ty = 0.0; else if (ty > 1.0) ty = 1.0;
+    q00 = r0 * (cols + 1) + c0;
+    deform_vertex_at(g, q00, &d[0][0], &d[0][1]);
+    deform_vertex_at(g, q00 + 1, &d[1][0], &d[1][1]);
+    deform_vertex_at(g, q00 + (cols + 1), &d[2][0], &d[2][1]);
+    deform_vertex_at(g, q00 + (cols + 1) + 1, &d[3][0], &d[3][1]);
+    *dx = (d[0][0] * (1.0 - tx) + d[1][0] * tx) * (1.0 - ty)
+        + (d[2][0] * (1.0 - tx) + d[3][0] * tx) * ty;
+    *dy = (d[0][1] * (1.0 - tx) + d[1][1] * tx) * (1.0 - ty)
+        + (d[2][1] * (1.0 - tx) + d[3][1] * tx) * ty;
+}
+
+/* 一个部件自己的"组矩阵 · 部件矩阵"（画布坐标）。
+   给父级 warp 用：要把它自己的顶点映回素材坐标，就得知道它这一帧被摆在哪里。
+   刻意只取**素材自有**的量（位置/缩放/旋转/锚点 + 本件的 dx/dy/rot 通道），
+   不参与视线、眨眼、跟随父件形变那几条 —— 那几条只对脸有意义，而父级 warp
+   的典型使用者是头发/裙子/袖子这类件。 */
+static void part_base_matrix(const zrig *r, int pid, double scale, double out[6])
+{
+    const zpart *p = &r->parts[pid];
+    const zimg *src = p->img_scaled ? p->img_scaled : p->img;
+    double lm[6], gm[6];
+    double ax = 0.0, ay = 0.0;
+    if (src) { ax = src->w * p->anchor[0]; ay = src->h * p->anchor[1]; }
+    zimg_make_matrix(lm,
+                     (p->pos[0] + r->p_dx[pid]) * scale,
+                     (p->pos[1] + r->p_dy[pid]) * scale,
+                     p->scale * (p->scale_x + (r->p_sx[pid] - 1.0)),
+                     p->scale * (p->scale_y + (r->p_sy[pid] - 1.0)),
+                     p->rot_deg + r->p_rot[pid],
+                     ax, ay);
+    if (p->group >= 0) {
+        group_matrix(r, p->group, scale, gm);
+        zimg_matrix_mul(out, gm, lm);
+    } else {
+        memcpy(out, lm, sizeof(lm));
+    }
+}
+
+/* 2×2 线性部分求逆（6 元素仿射矩阵的左上角）。返回 0 = 退化（缩放 0），
+   这种情况直接放弃继承，别把 NaN 写进顶点。 */
+static int mat_linear_inv(const double m[6], double inv[4])
+{
+    double det = m[0] * m[3] - m[1] * m[2];
+    if (fabs(det) < 1e-12) return 0;
+    inv[0] =  m[3] / det;
+    inv[1] = -m[2] / det;
+    inv[2] = -m[1] / det;
+    inv[3] =  m[0] / det;
+    return 1;
 }
 
 /* 只读查询：组的实际位移（通道 + 自动跟随），画布像素 */
@@ -5419,6 +5524,90 @@ typedef struct {
     double mesh[ZRIG_MAX_DEFPTS * 2];
 } zdrawst;
 
+/* 把链上**别的部件**的 warp 位移场叠进 st->mesh（T66.10 / G58.8）。
+   调用点：compute_draw_state 里算完本部件自己的网格之后、返回之前。
+
+   两个入口口径：
+     · 子件自己有网格（st->dg 非空）→ 用子件的 cols/rows 采样祖先的场，
+       两者分辨率不同也无所谓（双线性）；
+     · 子件**没有网格**（st->dg 为空）→ 借祖先那张网格的分辨率给子件现搭一张。
+       这就是"三条带子不用各写一张网格，也能被同一片布带着起伏"的关键：
+       带子只要在链上，场就够用。 */
+static void deform_inherit_parent_warp(zrig *r, int pi, int mi, double scale,
+                                       zdrawst *st)
+{
+    int mark[ZRIG_MAX_DEFORMS];
+    int i, c, rr, cols, rows, q, borrow = -1;
+    const zpart *cp = &r->parts[pi];
+    const zimg *csrc = cp->img_scaled ? cp->img_scaled : cp->img;
+    double cm[6], cinv[4];
+
+    if (r->ndeforms <= 0 || !csrc || csrc->w <= 0 || csrc->h <= 0) return;
+    deform_mark_chain(r, pi, mark);
+    /* 先扫一遍：链上有没有"挂在别的部件上的网格节点"。没有就立刻返回 ——
+       这是绝大多数部件每帧的常态，不能为它付矩阵求逆的钱。 */
+    for (i = 0; i < r->ndeforms; ++i) {
+        const zdeform *g = &r->deforms[i];
+        if (!mark[i] || g->cols < 1 || g->rows < 1 || g->part < 0) continue;
+        if (g->part == pi || g->part == mi) continue;
+        borrow = i;
+        break;
+    }
+    if (borrow < 0) return;
+
+    if (st->dg) {
+        cols = st->dg->cols; rows = st->dg->rows;
+    } else {
+        /* 借分辨率：网格顶点数上限由引擎常量兜住（≤16×16），和正常网格同一口锅 */
+        cols = r->deforms[borrow].cols; rows = r->deforms[borrow].rows;
+        st->dg = &r->deforms[borrow];
+        for (q = 0; q < (cols + 1) * (rows + 1) * 2; ++q) st->mesh[q] = 0.0;
+    }
+    memcpy(cm, st->m, sizeof(cm));
+    if (!mat_linear_inv(cm, cinv)) return;      /* 子件被缩成 0，这一帧本来也看不见 */
+
+    for (i = 0; i < r->ndeforms; ++i) {
+        const zdeform *g = &r->deforms[i];
+        const zpart *ap;
+        const zimg *asrc;
+        double base[6], chain[6], am[6], ainv[4], k, np;
+        if (!mark[i] || g->cols < 1 || g->rows < 1 || g->part < 0) continue;
+        if (g->part == pi || g->part == mi) continue;
+        ap = &r->parts[g->part];
+        asrc = ap->img_scaled ? ap->img_scaled : ap->img;
+        if (!asrc || asrc->w <= 0 || asrc->h <= 0) continue;
+        part_base_matrix(r, g->part, scale, base);
+        deform_chain_matrix_upto(r, mark, i, scale, chain);
+        zimg_matrix_mul(am, chain, base);        /* 祖先件这一帧的绘制矩阵 */
+        if (!mat_linear_inv(am, ainv)) continue;
+        k = (ap->img && ap->img->w > 0) ? (double)asrc->w / (double)ap->img->w : 1.0;
+        for (rr = 0; rr <= rows; ++rr) {
+            for (c = 0; c <= cols; ++c) {
+                double u = (double)c / (double)cols;
+                double v = (double)rr / (double)rows;
+                double px = csrc->w * u, py = csrc->h * v;
+                double cx = cm[0] * px + cm[2] * py + cm[4];
+                double cy = cm[1] * px + cm[3] * py + cm[5];
+                double lx, ly, fdx, fdy, dcx, dcy;
+                /* ① 画布 → 祖先件的素材坐标 */
+                lx = ainv[0] * (cx - am[4]) + ainv[1] * (cy - am[5]);
+                ly = ainv[2] * (cx - am[4]) + ainv[3] * (cy - am[5]);
+                /* ② 在该件的控制点网格上取位移（素材像素） */
+                deform_field_at(g, lx / (double)asrc->w, ly / (double)asrc->h,
+                                &fdx, &fdy);
+                if (fdx == 0.0 && fdy == 0.0) continue;
+                fdx *= k; fdy *= k;
+                /* ③ 祖先素材位移 → 画布向量 → 子件素材像素 */
+                dcx = am[0] * fdx + am[2] * fdy;
+                dcy = am[1] * fdx + am[3] * fdy;
+                np = (double)(rr * (cols + 1) + c) * 2.0;
+                st->mesh[(int)np]     += cinv[0] * dcx + cinv[1] * dcy;
+                st->mesh[(int)np + 1] += cinv[2] * dcx + cinv[3] * dcy;
+            }
+        }
+    }
+}
+
 static int compute_draw_state(zrig *r, int pi, double scale, double blink,
                               const zaction *a, zdrawst *st)
 {
@@ -5635,7 +5824,36 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
             }
         }
     }
+    /* 父级 warp 的逐顶点位移场（T66.10 / G58.8）：本部件自己那几张网格算完之后
+       再叠祖先件的场。顺序不能反 —— 上面的循环会把 mesh[] 清零并定下网格尺寸。 */
+    deform_inherit_parent_warp(r, pi, mi, scale, st);
     return 1;
+}
+
+/* 一个部件这一帧**实际会画出去的网格位移**（源像素，和渲染同一份求值）。
+   和 zrig_deform_mesh 的区别：那个读的是某个形变器**自己**的控制点位移，
+   读不到"父级 warp 传下来的场"（T66.10）。测试台/单测要看"画出来是什么样"，
+   必须走这条 —— 否则继承写没写对，探针根本看不见。 */
+int zrig_part_mesh(const zrig *r, const char *part_id, double scale,
+                   int *cols, int *rows, double *dx, double *dy, int cap)
+{
+    int pi, np, q;
+    zdrawst st;
+    if (!r || !part_id) return 0;
+    pi = find_part(r, part_id);
+    if (pi < 0) return 0;
+    /* compute_draw_state 只读 r（不写），const 在这里是给调用方的承诺，
+       内部签名是历史原因保留了非 const。 */
+    if (!compute_draw_state((zrig *)r, pi, scale, 1.0, NULL, &st)) return 0;
+    if (!st.dg) return 0;
+    np = (st.dg->cols + 1) * (st.dg->rows + 1);
+    if (cols) *cols = st.dg->cols;
+    if (rows) *rows = st.dg->rows;
+    for (q = 0; q < np && q < cap; ++q) {
+        if (dx) dx[q] = st.mesh[q * 2];
+        if (dy) dy[q] = st.mesh[q * 2 + 1];
+    }
+    return np;
 }
 
 /* 按算好的状态画一笔 */

@@ -5175,6 +5175,138 @@ static void test_fore_bone_chain(void)
            hand_moved, tor_moved, early, late);
 }
 
+/* ---------------------------------------------------------------------------
+   T66.10（G58.8）：父级 warp 的逐顶点位移场传给子部件。
+
+   为什么非有不可：节点树以前只传**刚体**变换，父件的网格把一片区域揉弯之后，
+   挂在它下面的别的部件只会整体位移 —— 三节发链"看起来像链、断起来像两截"，
+   裙摆也带不起下面那条里布。
+
+   这条单测用一个手写的小 rig 把三种情形钉死：
+     ① 父件自己有网格 → 位移照常（对照组）；
+     ② 子件挂在父件的网格节点下 → **吃到同一份场**（同一方向、同一量级）；
+     ③ 子件没挂链 / 子件自己没网格 → 前者一动不动，后者借父件的分辨率也能吃到。
+   --------------------------------------------------------------------------- */
+static void test_parent_warp_inherit(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double px[32], py[32], cx[32], cy[32], nx[32], ny[32], ox[32], oy[32];
+    double owx = 0.0, owy = 0.0;
+    int np, cols = 0, rows = 0, i, q;
+
+    SECTION("T66.10 父级 warp 的位移场传给子部件（G58.8）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_warp_inherit");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    /* 三件同贴图同位置，只有挂链不同：
+       pw = 父件（网格挂在自己身上）· cw = 挂 pw 的网格节点的子件（有自己的 1×1 网格）
+       nw = 不挂链的对照件 · ow = 挂链但**自己没有网格**的子件 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"warpinh\",\"name\":\"继承测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{},"
+        "\"parts\":["
+        " {\"id\":\"pw\",\"file\":\"sprites/h.png\",\"layer\":10,\"pos\":[100,100],\"anchor\":[0,0]},"
+        " {\"id\":\"cw\",\"file\":\"sprites/h.png\",\"layer\":20,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"warpA\"},"
+        " {\"id\":\"nw\",\"file\":\"sprites/h.png\",\"layer\":30,\"pos\":[100,100],\"anchor\":[0,0]},"
+        " {\"id\":\"ow\",\"file\":\"sprites/h.png\",\"layer\":40,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"warpA\"},"
+        " {\"id\":\"kw\",\"file\":\"sprites/h.png\",\"layer\":50,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"warpA\"}],"
+        "\"deformers\":["
+        /* 父件那张场：2×2 控制点，整体右移 10px、下边再多下移 6px（有梯度才看得出
+           "逐顶点"，常数场等于整体平移，分不出继承写没写对） */
+        " {\"id\":\"warpA\",\"part\":\"pw\",\"cols\":2,\"rows\":2,\"points\":["
+        "  {\"c\":0,\"r\":0,\"dx\":10,\"dy\":0},{\"c\":1,\"r\":0,\"dx\":10,\"dy\":0},"
+        "  {\"c\":2,\"r\":0,\"dx\":10,\"dy\":0},"
+        "  {\"c\":0,\"r\":1,\"dx\":10,\"dy\":3},{\"c\":1,\"r\":1,\"dx\":10,\"dy\":3},"
+        "  {\"c\":2,\"r\":1,\"dx\":10,\"dy\":3},"
+        "  {\"c\":0,\"r\":2,\"dx\":10,\"dy\":6},{\"c\":1,\"r\":2,\"dx\":10,\"dy\":6},"
+        "  {\"c\":2,\"r\":2,\"dx\":10,\"dy\":6}]},"
+        /* 子件自己的网格（全 0）：它的存在只是给引擎一个分辨率，位移全靠继承 */
+        " {\"id\":\"cw_mesh\",\"part\":\"cw\",\"cols\":1,\"rows\":1,\"parent\":\"warpA\","
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        /* kw 自己有一张 2×4 的网格、并且**是活的**（amount 由参数推到 0.5）：
+           它的分辨率(2×4)和父场(2×2)不同，正好验证"按自己的顶点双线性取样" */
+        " {\"id\":\"kw_mesh\",\"part\":\"kw\",\"cols\":2,\"rows\":4,\"parent\":\"warpA\","
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamWarp\",\"min\":0,\"max\":1,\"default\":0,"
+        "  \"binds\":[{\"deformer\":\"warpA\",\"scale\":1.0}]},"
+        " {\"id\":\"ParamKW\",\"min\":0,\"max\":1,\"default\":0.5,"
+        "  \"binds\":[{\"deformer\":\"kw_mesh\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带父子 warp 的 rig 应加载成功");
+    if (!r) return;
+
+    /* ① 参数 0：谁都不动（静止必须严格恒等，是这一整套的地基）。
+       cw 自己那张 1×1 网格在 amount=0 时不参与（引擎的老早退），所以这里借父件的
+       2×2 分辨率 —— 借来的是格子，位移仍然是 0。 */
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+    np = zrig_part_mesh(r, "cw", 1.0, &cols, &rows, cx, cy, 32);
+    CHECK(np == 9 && fabs(cx[0]) < 1e-9 && fabs(cy[6]) < 1e-9,
+          "参数 0 时子件的顶点必须一动不动（实为 %d 个点，dx=%.3f dy=%.3f）",
+          np, np ? cx[0] : -1.0, np > 6 ? cy[6] : -1.0);
+
+    /* ② 推到 1：父件的场起来 */
+    zrig_param_set(r, "ParamWarp", 1.0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, 0.2 + i / 60.0);
+    zrig_part_mesh(r, "pw", 1.0, &cols, &rows, px, py, 32);
+    CHECK(fabs(px[4] - 10.0) < 0.01 && fabs(py[4] - 3.0) < 0.01,
+          "父件的场应右移 10px、中排下移 3px（实测 dx=%.2f dy=%.2f）", px[4], py[4]);
+
+    /* ③ 子件吃到同一份场。cw 借了父件的 2×2 格子 ⇒ 下标 6 = 左下(0,6)、8 = 右下(0,6) */
+    np = zrig_part_mesh(r, "cw", 1.0, &cols, &rows, cx, cy, 32);
+    CHECK(np == 9, "子件的网格应是借来的 2×2（9 个点），实为 %d", np);
+    CHECK(np == 9 && fabs(cx[0] - 10.0) < 0.05 && fabs(cy[0]) < 0.05,
+          "左上角应继承父场 (10,0)，实测 (%.2f,%.2f)", cx[0], cy[0]);
+    CHECK(np == 9 && fabs(cx[6] - 10.0) < 0.05 && fabs(cy[6] - 6.0) < 0.05,
+          "左下角应继承父场的梯度 (10,6)，实测 (%.2f,%.2f) —— 常数场是量不出"
+          "「逐顶点」的，所以父场故意带梯度", cx[6], cy[6]);
+
+    /* ④ 不挂链的对照件：一动不动（证明位移来自继承，不是全局副作用） */
+    np = zrig_part_mesh(r, "nw", 1.0, &cols, &rows, nx, ny, 32);
+    CHECK(np == 0, "没挂链、也没有网格的部件不该有网格位移（实为 %d 个点）", np);
+
+    /* ⑤ 自己**没有网格**的子件也要吃到：借父件的分辨率 */
+    np = zrig_part_mesh(r, "ow", 1.0, &cols, &rows, ox, oy, 32);
+    CHECK(np == 9 && cols == 2 && rows == 2,
+          "没网格的子件应借父件的 2×2 分辨率（实为 %d 个点 / %dx%d）", np, cols, rows);
+    CHECK(np == 9 && fabs(ox[8] - 10.0) < 0.05 && fabs(oy[8] - 6.0) < 0.05,
+          "没网格的子件右下角也应继承 (10,6)，实测 (%.2f,%.2f)",
+          np == 9 ? ox[8] : 0.0, np == 9 ? oy[8] : 0.0);
+    /* 下面 kw 会复用 ox/oy 这两块缓冲，先把 ow 的读数留一份给收尾打印 */
+    owx = np == 9 ? ox[8] : 0.0;
+    owy = np == 9 ? oy[8] : 0.0;
+
+    /* ⑥ 子件自己有**活的**网格时，按自己的分辨率取样（2×4 vs 父 2×2）：
+       行下标 r 对应的 v = r/4，父场在 v=0.5 处 dy=3 ⇒ r=2 那行应为 3，r=4 那行 6 */
+    np = zrig_part_mesh(r, "kw", 1.0, &cols, &rows, ox, oy, 32);
+    CHECK(np == 15 && cols == 2 && rows == 4,
+          "活跃网格的子件要按自己的 2×4 取（实为 %d 个点 / %dx%d）", np, cols, rows);
+    CHECK(np == 15 && fabs(oy[2 * 3 + 0] - 3.0) < 0.15 &&
+          fabs(oy[4 * 3 + 0] - 6.0) < 0.15,
+          "2×4 网格的中间行/底行应分别取到父场的 3/6（实测 %.2f / %.2f）",
+          np == 15 ? oy[6] : 0.0, np == 15 ? oy[12] : 0.0);
+    printf("    量到：父场下层 (10,6) · 子件左上 (%.2f,%.2f) 左下 (%.2f,%.2f) · "
+           "无网格子件右下 (%.2f,%.2f) · 活跃网格子件底行 dy=%.2f\n",
+           cx[0], cy[0], cx[6], cy[6], owx, owy, oy[12]);
+    (void)q;
+    zrig_free(r);
+}
+
 static void test_skirt_physics(void)
 {
     char rig_path[1024], dir[1024];
@@ -8668,6 +8800,7 @@ int main(int argc, char **argv)
     test_bone_chains();
     test_skirt_bone_chain();
     test_fore_bone_chain();
+    test_parent_warp_inherit();
     test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();
