@@ -5176,6 +5176,173 @@ static void test_fore_bone_chain(void)
 }
 
 /* ---------------------------------------------------------------------------
+   T66.11：keyform 的分段缓动（每段 ease / 三次贝塞尔 / 阶梯）。
+
+   为什么非有不可：真实立绘的中间形状很少是"两头匀速走"—— 发梢是"先慢后快"、
+   眼睑是"先快后慢"、裙摆收口是"中间鼓两边收"。只有线性插值时这些只能靠堆 key
+   逼近，key 一多就没人敢动，中间段还会出现速度突变（看着像卡了一下）。
+   官方 Cubism 给每段配贝塞尔曲线，我们至少要有同等的表达能力。
+
+   这条单测钉死四件事：
+     ① 名字缓动真的改了段内进度（"in" 在前半段走得比线性慢）；
+     ② 贝塞尔按 timing curve 解出来的值能对上手算（CSS ease 在 x=0.5 → y≈0.8024）；
+     ③ "step" 是阶梯：到不了下一组 key 就一直停在上一组；
+     ④ 端点/单调性：key 上取值精确，整条曲线不许回退（回退就是网格抖）；
+     ⑤ 写错了要**报错**而不是猜（不认识的 ease 名 / 第一组 key 写 ease / 贝塞尔 x 出界）。
+   --------------------------------------------------------------------------- */
+static void test_keyform_ease(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double dx[8], dy[8];
+    int cols = 0, rows = 0, np, ok, i;
+    double prev = -1e9, val, mono_ok = 1.0;
+    double m_in = 0.0, m_key = 0.0, m_step_mid = 0.0, m_step_end = 0.0, m_bez = 0.0;
+
+    SECTION("T66.11 keyform 分段缓动（ease / 贝塞尔 / 阶梯）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_kf_ease");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 两张 1×1 网格，各自三组/两组 key，全部只往右推（dx），形状好读。
+       easeA：0 → 10（"in"，慢起）→ 20（"step"，到点才跳）
+       easeB：0 → 10（贝塞尔 [0.25,0.1,0.25,1]，CSS 的 ease） */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfease\",\"name\":\"缓动测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{},"
+        "\"parts\":["
+        " {\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"easeA\"},"
+        " {\"id\":\"eb\",\"file\":\"sprites/h.png\",\"layer\":20,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"easeB\"}],"
+        "\"deformers\":["
+        " {\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\",\"keys\":["
+        "  {\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":0.5,\"ease\":\"in\",\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]},"
+        "  {\"v\":1.0,\"ease\":\"step\",\"points\":[{\"c\":0,\"r\":0,\"dx\":20,\"dy\":0}]}]},"
+        " {\"id\":\"easeB\",\"part\":\"eb\",\"cols\":1,\"rows\":1,\"param\":\"ParamB\",\"keys\":["
+        "  {\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"ease\":[0.25,0.1,0.25,1],\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]},"
+        " {\"id\":\"ParamB\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "手写 rig（带 ease）应装载成功");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+
+    np = zrig_deform_mesh(r, "easeA", &cols, &rows, dx, dy, 8);
+    CHECK(np == 4 && cols == 1 && rows == 1, "1×1 网格应有 4 个控制点（实际 %d）", np);
+
+#define KF_AT(param, value, deform)                                                   \
+    do {                                                                              \
+        zrig_param_set(r, (param), (value));                                          \
+        zrig_tick(r, 0.0);                                                            \
+        zrig_deform_mesh(r, (deform), &cols, &rows, dx, dy, 8);                       \
+    } while (0)
+
+    /* ① 名字缓动：段内半程（参数 0.25 = 段 [0,0.5] 的正中），"in" = t² = 0.25 权重 */
+    KF_AT("ParamA", 0.25, "easeA");
+    val = dx[0];
+    m_in = val;
+    CHECK(fabs(val - 2.5) < 0.05,
+          "ease 'in' 在段内半程应只走到 1/4（期望 2.50，实际 %.3f）—— 线性会给 5.0", val);
+    CHECK(val < 4.5, "ease 'in' 必须比线性慢，不能悄悄当线性用");
+
+    /* ② key 上的值必须精确（缓动只改段内，不动端点） */
+    KF_AT("ParamA", 0.5, "easeA");
+    m_key = dx[0];
+    CHECK(fabs(dx[0] - 10.0) < 1e-6, "参数落在 key 上应精确取到该组 key（期望 10，实际 %.4f）", dx[0]);
+
+    /* ③ 阶梯：到不了下一组 key 就停在上一组 */
+    KF_AT("ParamA", 0.75, "easeA");
+    m_step_mid = dx[0];
+    CHECK(fabs(dx[0] - 10.0) < 1e-6,
+          "ease 'step' 在段中间不该走（期望停在 10，实际 %.4f；走到 15 就是被当线性了）", dx[0]);
+    KF_AT("ParamA", 1.0, "easeA");
+    m_step_end = dx[0];
+    CHECK(fabs(dx[0] - 20.0) < 1e-6, "阶梯到点这一下要给足（期望 20，实际 %.4f）", dx[0]);
+
+    /* ④ 贝塞尔 timing curve：CSS ease 在 x=0.5 → y≈0.8024（手算值，见 JOURNAL） */
+    KF_AT("ParamB", 0.5, "easeB");
+    m_bez = dx[0];
+    CHECK(fabs(dx[0] - 8.024) < 0.02,
+          "贝塞尔 [0.25,0.1,0.25,1] 在 x=0.5 应给 8.024（实际 %.4f）—— 对不上就是解错曲线了", dx[0]);
+
+    /* ⑤ 单调：整条 0→1 扫一遍，位移不许回退（回退 = 网格抖） */
+    for (i = 0; i <= 40; ++i) {
+        KF_AT("ParamA", i / 40.0, "easeA");
+        if (dx[0] < prev - 1e-9) mono_ok = 0.0;
+        prev = dx[0];
+    }
+    CHECK(mono_ok > 0.5, "参数单调推进时位移必须单调（回退就是网格在抖）");
+    zrig_free(r);
+
+    /* ⑥ 写错要报错，不许猜。(a) 不认识的 ease 名 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfbad\",\"name\":\"缓动错\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"easeA\"}],"
+        "\"deformers\":[{\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\","
+        " \"keys\":[{\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"ease\":\"wobble\",\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    ok = (r == NULL);
+    CHECK(ok, "不认识的 ease 名必须报错（悄悄当线性 = 画面对不上还查不出）");
+    zrig_free(r);
+
+    /* (b) 第一组 key 写 ease：它前面没有段，属于写错位置 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfbad2\",\"name\":\"缓动错2\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"easeA\"}],"
+        "\"deformers\":[{\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\","
+        " \"keys\":[{\"v\":0.0,\"ease\":\"in\",\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL, "第一组 key 写 ease 必须报错（缓动挂在右端点那一组 key 上）");
+    zrig_free(r);
+
+    /* (c) 贝塞尔 x 出界：x(t) 就不单调了，二分没有唯一解 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfbad3\",\"name\":\"缓动错3\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"easeA\"}],"
+        "\"deformers\":[{\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\","
+        " \"keys\":[{\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"ease\":[1.4,0.0,0.2,1.0],\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL, "贝塞尔 x 控制点出 [0,1] 必须报错（x 不单调 → 曲线解不出来）");
+    zrig_free(r);
+    printf("    量到：ease'in' 段内半程 %.3f（线性会给 5.000）· key 上 %.4f · "
+           "step 段中 %.3f → 到点 %.3f · 贝塞尔 x=0.5 → %.4f\n",
+           m_in, m_key, m_step_mid, m_step_end, m_bez);
+#undef KF_AT
+}
+
+/* ---------------------------------------------------------------------------
    T66.10（G58.8）：父级 warp 的逐顶点位移场传给子部件。
 
    为什么非有不可：节点树以前只传**刚体**变换，父件的网格把一片区域揉弯之后，
@@ -8800,6 +8967,7 @@ int main(int argc, char **argv)
     test_bone_chains();
     test_skirt_bone_chain();
     test_fore_bone_chain();
+    test_keyform_ease();
     test_parent_warp_inherit();
     test_skirt_physics();
     test_action_drives_param();

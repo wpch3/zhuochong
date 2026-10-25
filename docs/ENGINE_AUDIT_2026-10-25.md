@@ -200,7 +200,8 @@ python3 -c "import json;d=json.load(open('characters/xiaoxun/forms/teen/rig.json
 - **父级 warp 网格对子部件的传递**：现在节点树传递的是**刚体变换**（平移/旋转/缩放）；
   Live2D 里"包住若干子部件"的ワープデフォーマ会按**逐顶点位移场**推动子部件。
   我们的做法是让子部件也能挂自己的网格（等价于把形变下放到每件），但不是同一件事。记 G58.8。
-- **keyform 插值只有线性**：官方支持贝塞尔。现在要曲线就在中间多加一组 key。
+- ~~**keyform 插值只有线性**~~：**2026-10-25 T66.11 已做** —— 每段可配名字缓动 / 阶梯 /
+  三次贝塞尔 timing curve，单测 `test_keyform_ease()`（含手算值对拍与三种写错的负控）。
 - **引擎有了能力，rig 里还没用起来**：`hand_l / forearm_l` 的三节骨、侧发三节链、
   裙摆局部鼓起都还没写进 `characters/xiaoxun/forms/*/rig.json` —— 这是下一步（P1），
   必须逐件目视，不能一次性套上去。

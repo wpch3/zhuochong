@@ -221,6 +221,12 @@ typedef struct {
     double kf_v[ZRIG_MAX_DEFKF];
     double *kf_d;             /* 动态：nkf 组增量，每组 kf_np*2 个 double（末组也分配，省下标判断） */
     double kf_w[ZRIG_MAX_DEFKF];  /* 本帧插值权重（不含"第 0 组恒为 1"那一项） */
+    /* —— keyform 分段缓动（T66.11）：第 k 段 = 第 k-1 组 key → 第 k 组 key，
+       写法挂在**右端点**那一组 key 上（"走到我这儿用什么速度"）。没写 = 线性。 */
+    zease  kf_ease[ZRIG_MAX_DEFKF];
+    unsigned char kf_step[ZRIG_MAX_DEFKF];    /* 1 = 阶梯：到本组 key 才跳过去（≈ Live2D 階段） */
+    unsigned char kf_bez_on[ZRIG_MAX_DEFKF];  /* 1 = 用 kf_bez 的三次贝塞尔 */
+    double kf_bez[ZRIG_MAX_DEFKF][4];         /* x1,y1,x2,y2（归一化 timing curve，x 必须 ∈[0,1]） */
 } zdeform;
 
 typedef struct {
@@ -1215,7 +1221,13 @@ static void sort_parts(zrig *r)
      "parent"  父形变器 id（必须先声明）→ 组成 part → warp → rotate → root 的链
      "pivot"   节点的变换中心（画布坐标）；dx/dy/rot_deg/sx/sy 由通道/绑定写入
      "param" + "keys"  逐顶点参数驱动（keyform）：按参数值在几组控制点位移之间插值
-   三者互不冲突：一个节点可以既是网格、又有父节点、又由参数驱动。 */
+   三者互不冲突：一个节点可以既是网格、又有父节点、又由参数驱动。
+
+   keyform 的分段缓动（T66.11，写在**右端点**那一组 key 上，管 [q-1, q] 这一段）：
+     "ease":"in" / "out" / "in_out" / "out_back" / "out_elastic" / "out_bounce"
+     "ease":"step"                 阶梯：到了这组 key 才跳过去（≈ Live2D 階段）
+     "ease":[x1,y1,x2,y2]          三次贝塞尔 timing curve（x 必须 ∈[0,1]）
+   不写 = 线性 = 老行为。*/
 
 /* 把一组 points 解析进 ox/oy（长度 npts）。idx 越界、点重复都报错。 */
 static int parse_deform_points(const zjson *pts, int cols, int rows, double *ox, double *oy,
@@ -1429,6 +1441,67 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
                         size_t base = ((size_t)q * (size_t)g->kf_np + (size_t)t) * 2;
                         g->kf_d[base]     = tx[t] - g->ox[t];
                         g->kf_d[base + 1] = ty[t] - g->oy[t];
+                    }
+                }
+                /* —— 分段缓动（T66.11）：写在**右端点**这组 key 上，管 [q-1, q] 这一段。
+                   三种写法：名字（linear/in/out/in_out/out_back/out_elastic/out_bounce）、
+                   名字 "step"（阶梯）、四个数（三次贝塞尔 x1,y1,x2,y2）。不写 = 线性。 */
+                {
+                    const zjson *ej = zjson_obj_get((zjson *)kj, "ease");
+                    if (ej) {
+                        if (q == 0) {
+                            zdiag_error(d, file, kj ? kj->line : 0, 0, "deformers",
+                                        "形变器 '%s' 的第 1 组 key 写了 ease：它前面没有段可管"
+                                        "（缓动写在**右端点**那一组 key 上）", id);
+                            free(g->kf_d); g->kf_d = NULL;
+                            return -1;
+                        }
+                        if (zjson_is(ej, ZJSON_STR)) {
+                            const char *en = zjson_str(ej, "");
+                            static const char *const ok_names[] = {
+                                "linear", "in", "out", "in_out",
+                                "out_back", "out_elastic", "out_bounce", NULL
+                            };
+                            int i2, hit = 0;
+                            if (z_streq(en, "step")) {
+                                g->kf_step[q] = 1;
+                            } else {
+                                for (i2 = 0; ok_names[i2]; ++i2)
+                                    if (z_streq(en, ok_names[i2])) { hit = 1; break; }
+                                if (!hit) {
+                                    zdiag_error(d, file, ej->line, 0, "deformers",
+                                                "形变器 '%s' 第 %d 组 key 的 ease '%s' 不认识"
+                                                "（可用：linear/in/out/in_out/out_back/"
+                                                "out_elastic/out_bounce/step，或四个数的贝塞尔）",
+                                                id, (int)q + 1, en);
+                                    free(g->kf_d); g->kf_d = NULL;
+                                    return -1;
+                                }
+                                g->kf_ease[q] = z_ease_from_name(en);
+                            }
+                        } else if (zjson_is(ej, ZJSON_ARR) && zjson_count(ej) == 4) {
+                            int i2;
+                            for (i2 = 0; i2 < 4; ++i2) g->kf_bez[q][i2] = zjson_num(zjson_at(ej, (size_t)i2), 0.0);
+                            /* x1/x2 出界会让 x(t) 不单调，二分就解不出唯一解 —— 必须当错，
+                               不许"悄悄夹一下"，否则画面只是在对不上的地方。 */
+                            if (g->kf_bez[q][0] < 0.0 || g->kf_bez[q][0] > 1.0 ||
+                                g->kf_bez[q][2] < 0.0 || g->kf_bez[q][2] > 1.0) {
+                                zdiag_error(d, file, ej->line, 0, "deformers",
+                                            "形变器 '%s' 第 %d 组 key 的贝塞尔 x 控制点 %.3f/%.3f"
+                                            " 必须在 [0,1]（否则 x(t) 不单调）",
+                                            id, (int)q + 1, g->kf_bez[q][0], g->kf_bez[q][2]);
+                                free(g->kf_d); g->kf_d = NULL;
+                                return -1;
+                            }
+                            g->kf_bez_on[q] = 1;
+                        } else {
+                            zdiag_error(d, file, ej->line, 0, "deformers",
+                                        "形变器 '%s' 第 %d 组 key 的 ease 要么是名字（字符串），"
+                                        "要么是四个数的数组 [x1,y1,x2,y2]，现在是 %s",
+                                        id, (int)q + 1, zjson_type_name(zjson_type_of(ej)));
+                            free(g->kf_d); g->kf_d = NULL;
+                            return -1;
+                        }
                     }
                 }
             }
@@ -4101,6 +4174,44 @@ static void accumulate_tail_flick(zrig *r)
     }
 }
 
+/* 归一化三次贝塞尔的单轴求值：端点固定在 0/1，只由两个控制点决定。
+   （Live2D 官方的参数曲线是"参数-位移平面上的贝塞尔"，四个绝对坐标；
+     这里刻意改成 CSS 那种"这一段怎么走"的归一化曲线 —— 见 kf_seg_ease 的注释。） */
+static double bez_axis(double p1, double p2, double t)
+{
+    double u = 1.0 - t;
+    return 3.0 * u * u * t * p1 + 3.0 * u * t * t * p2 + t * t * t;
+}
+
+/* timing curve：给 x（段内线性进度），返回 y（位移权重）。
+   x1/x2 被限制在 [0,1]（加载时校验），所以 x(t) 单调 —— 直接二分 40 次，
+   误差 2^-40；每帧每个形变器只调一次，不值得上牛顿法。 */
+static double bez_y(const double *b, double x)
+{
+    double lo = 0.0, hi = 1.0, m;
+    int it;
+    if (x <= 0.0) return 0.0;
+    if (x >= 1.0) return 1.0;
+    for (it = 0; it < 40; ++it) {
+        m = 0.5 * (lo + hi);
+        if (bez_axis(b[0], b[2], m) < x) lo = m; else hi = m;
+    }
+    return bez_axis(b[1], b[3], 0.5 * (lo + hi));
+}
+
+/* 第 k 段（第 k-1 组 key → 第 k 组 key）的段内缓动：线性进度 t → 位移权重。
+   三种写法共用这一个入口：名字缓动（z_ease_apply，含回弹/弹性）、三次贝塞尔、阶梯。
+   为什么要有它：只有线性插值时"中间鼓两边收"这类形状只能靠堆 key 逼近，
+   而 key 越多越难调、越容易在参数中间段抖一下（这是第六十五问 P0-3）。 */
+static double kf_seg_ease(const zdeform *g, int k, double t)
+{
+    if (t <= 0.0) return 0.0;
+    if (t >= 1.0) return 1.0;          /* 阶梯也在到点这一下给 1，否则永远走不到下一组 key */
+    if (g->kf_step[k]) return 0.0;
+    if (g->kf_bez_on[k]) return bez_y(g->kf_bez[k], t);
+    return z_ease_apply(g->kf_ease[k], t);
+}
+
 /* keyform 求值（第六十三问 P0）：参数值 → 相邻两组 key 的插值权重。
    每帧只算一次，结果存 kf_w[]，渲染时每个顶点按权重线性组合增量表。
    为什么不能并进渲染：一张网格可能被 3~4 个部件引用（同部件多网格累加），
@@ -4123,8 +4234,9 @@ static void deform_update_keys(zrig *r)
             if (v <= g->kf_v[k]) {
                 double span = g->kf_v[k] - g->kf_v[k - 1];
                 double t = (span > 1e-12) ? (v - g->kf_v[k - 1]) / span : 0.0;
-                g->kf_w[k - 1] += 1.0 - t;
-                g->kf_w[k]     += t;
+                double te = kf_seg_ease(g, k, t);   /* 线性进度 → 缓动后的权重（T66.11） */
+                g->kf_w[k - 1] += 1.0 - te;
+                g->kf_w[k]     += te;
                 break;
             }
         }

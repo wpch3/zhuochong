@@ -1104,6 +1104,11 @@ def check_engine_caps(root):
         ("deform_inherit_parent_warp", "父级 warp 位移场传给子的那一步"),
         ("deform_field_at", "位移场的双线性取样"),
         ("zrig_part_mesh", "「这一帧实际画出去什么」的读取接口"),
+        # T66.11 / G66.5：keyform 分段缓动。名字缓动、阶梯、三次贝塞尔三条支路，
+        # 少一条就是"某些段悄悄按线性走"——画面对不上还查不出来。
+        ("kf_seg_ease", "keyform 的段内缓动入口"),
+        ("bez_axis", "归一化三次贝塞尔的求值"),
+        ("kf_bez_on", "每段贝塞尔的开关"),
     ]:
         check("引擎里有%s" % label, needle in csrc,
               "找到了" if needle in csrc else "第六十三问 P0 的元件被删了")
@@ -1111,6 +1116,10 @@ def check_engine_caps(root):
           all(k in csrc for k in ("组数超过上限", "部件数超过上限", "动作数超过上限")),
           "三处都有" if all(k in csrc for k in ("组数超过上限", "部件数超过上限", "动作数超过上限"))
           else "又有 loader 退回 `i < n && n < MAX` 的静默丢件写法了")
+    check("keyform 权重走段缓动而不是裸 t",
+          "kf_seg_ease(g, k, t)" in csrc,
+          "找到了" if "kf_seg_ease(g, k, t)" in csrc
+          else "deform_update_keys 又改成 kf_w[k-1] = 1-t 了 —— 缓动会静默失效")
     check("没有残留的静默截断循环",
           re.search(r"for \(i = 0; i < n && r->n\w+ < ZRIG_MAX", csrc) is None,
           "干净" if re.search(r"for \(i = 0; i < n && r->n\w+ < ZRIG_MAX", csrc) is None
