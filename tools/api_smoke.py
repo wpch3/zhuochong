@@ -1045,6 +1045,40 @@ def run(base, root):
               max(_top or [0]) < 0.5, "裙腰附近最大 %.3f px" % max(_top or [0]))
         a.hit("/api/param?all=1&reset=1")
         a.hit("/api/ambient?on=1"); a.hit("/api/physics?on=1")   # 还原，别影响后面的段落
+
+    # 换装不许换骨绑定（T66.20 / S4 后半）：换装是"同一副骨架换一层皮"。
+    # 判据 = **同一个参数、同一套空跑**下，每套服装的裙子几何摆幅一致。
+    # ★ 单位：partmesh 是画布像素，所以每次都拿同一次 info.json 的 scale 归一化。
+    #   上一轮"cocoa 裙摆幅度减半"的假警报就是没归一化 + 隔次读缓存（G66.11）。
+    _outfits = info.get("outfits") or []
+    if len(_outfits) >= 2 and a.json("/api/partmesh.json?id=skirt_main&max=8"):
+        def _skirt_amp():
+            _i = a.json("/api/info.json") or {}
+            _m = a.json("/api/partmesh.json?id=skirt_main&max=64") or {}
+            _peak = max([abs(v) for v in (_m.get("dy") or [0])] or [0])
+            return _peak / max(float(_i.get("scale") or 1.0), 1e-6)
+
+        a.hit("/api/ambient?on=0"); a.hit("/api/physics?on=0")
+        _amps = {}
+        for _oid in _outfits:
+            a.hit("/api/outfit?id=%s" % _oid)
+            a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=60&dt=0.016")
+            a.hit("/api/param?id=ParamSkirtSwayY&v=1.0"); a.hit("/api/step?n=90&dt=0.016")
+            _amps[_oid] = _skirt_amp()
+            a.hit("/api/param?all=1&reset=1")
+        _vals = [v for v in _amps.values() if v > 0.01]
+        check("每套服装都真的驱动了裙子几何（不是死参数）",
+              len(_vals) == len(_amps),
+              "、".join("%s=%.2f" % (k, v) for k, v in _amps.items()))
+        _spread = (max(_vals) / min(_vals)) if _vals else 0.0
+        check("换装不改骨绑定：各套装裙子摆幅一致（比值 0.95~1.05）",
+              bool(_vals) and 0.95 <= _spread <= 1.05,
+              "最大/最小 = %.3f（%s）—— 差得多说明换装把骨绑定/网格动了"
+              % (_spread, "、".join("%s=%.2f" % (k, v) for k, v in _amps.items())))
+        a.hit("/api/outfit?id=default")
+        a.hit("/api/param?all=1&reset=1"); a.hit("/api/step?n=30&dt=0.016")
+        a.hit("/api/ambient?on=1"); a.hit("/api/physics?on=1")
+
     # 挂点（T66.19 / S4）：骨架声明的命名位置。三件事必须真的成立：
     #   ① 每个挂点都有 (父骨, 坐标)，而且父骨在这个形态里真的存在；
     #   ② **screen 会跟着父骨走** —— 腕骨转 70°，腕挂点要跟着跑，别的挂点不许跟着跑；

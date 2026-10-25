@@ -3689,6 +3689,67 @@ def check_attach_switch(root):
               "zrig.c:2764 一线；语义若改，offset=-1 这条闸要跟着重订")
 
 
+def check_outfit_binding(root):
+    """换装**只许换贴图**，不许换骨绑定（T66.20 / S4 后半）。
+
+    为什么这条值得单独设闸：换装是"同一副骨架换一层皮"，可一旦有人让服装包能改
+    `group` / `deformer` / `socket` / `inherit_from`，那副骨架就不再是同一个了 ——
+    表现是"这套衣服穿上之后裙摆不摆 / 配饰不跟手"，而画面在静态截图上完全正常。
+    引擎目前只认 `file / pos / scale / layer`（zrig.c 的 zrig_apply_outfit），
+    这个白名单就是这条闸的依据：**引擎哪天支持了新字段，这里要跟着改**，
+    而且必须是有意识地去改，不能靠"顺手加个字段"。
+
+    还查一件容易忘的事：`default.json` 必须覆盖所有被别的服装动过的部件 ——
+    否则换到第二套之后换不回来（缺的那件会保持上一套的贴图）。
+    """
+    section("换装：只换贴图，不换骨绑定（T66.20）")
+    allowed = {"file", "pos", "scale", "layer"}
+    for od in sorted(glob.glob(os.path.join(root, "characters/*/outfits"))):
+        char = od.split(os.sep)[-2]
+        base = os.path.dirname(od)
+        files = sorted(glob.glob(os.path.join(od, "*.json")))
+        if not files:
+            continue
+        touched = {}
+        for op in files:
+            oj = jsonc(op)
+            oid = oj.get("id") or os.path.basename(op)[:-5]
+            parts = oj.get("parts") or {}
+            forms = oj.get("forms") or []
+            extra = sorted({k for spec in parts.values() for k in spec} - allowed)
+            check("%s：服装包只覆盖贴图/位置/缩放/层号" % oid, not extra,
+                  "都在白名单里" if not extra
+                  else "出现了骨绑定字段 %s —— 换装一旦能改骨，这身衣服就不是同一副骨架了"
+                       % extra)
+            # 覆盖的部件必须真的在这个形态里（引擎会报错，这里提前拦）
+            miss, nofile = [], []
+            for form in forms:
+                rig_p = os.path.join(base, "forms", form, "rig.json")
+                if not os.path.isfile(rig_p):
+                    check("%s：形态 %s 有 rig" % (oid, form), False, rig_p)
+                    continue
+                ids = {q.get("id") for q in (jsonc(rig_p).get("parts") or [])}
+                miss += ["%s@%s" % (pid, form) for pid in parts if pid not in ids]
+                for pid, spec in parts.items():
+                    f = spec.get("file")
+                    if f and not os.path.isfile(os.path.join(base, "forms", form, f)):
+                        nofile.append("%s@%s" % (pid, form))
+            check("%s：覆盖的部件都在该形态的 rig 里" % oid, not miss,
+                  "都在（%d 件 × %d 形态）" % (len(parts), len(forms)) if not miss
+                  else "不在：%s" % miss[:4])
+            check("%s：覆盖的贴图都在" % oid, not nofile,
+                  "都在" if not nofile else "缺 %s" % nofile[:4])
+            if oid != "default":
+                touched.update(parts)
+        dp = os.path.join(od, "default.json")
+        if os.path.isfile(dp):
+            have = set((jsonc(dp).get("parts") or {}))
+            gone = sorted(set(touched) - have)
+            check("%s：default 服装能换回每一件被换过的部件" % char, not gone,
+                  "%d 件全在" % len(have) if not gone
+                  else "default 缺 %s（换到第二套之后就换不回来）" % gone[:6])
+
+
 def check_sockets(root):
     """挂点（socket，T66.19 / S4）：骨架声明 → 位置表 → rig → 配件，四条链要对上。
 
@@ -4507,6 +4568,7 @@ def main():
                check_ambient_sway,
                check_effects_table,
                check_sockets,
+               check_outfit_binding,
                check_prosody,
                check_phys2,
                check_phys2_rig,
