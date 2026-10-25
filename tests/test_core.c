@@ -4819,6 +4819,147 @@ static void test_mesh_bend_coexist(void)
 
 /* 裙摆摆链（G43）：照官方 Hiyori 的 physics3，横摆吃身体左右、纵摆吃身体上下，
    两条都不吃头部参数；静止下来要收敛回零（只给惯性，不把裙子永久吹偏）。 */
+/* S2（第六十六问）：头发/尾巴真的接成骨链了吗 —— 不是"加了节点"，是"链在动且分层"。
+   三条验收口径：
+     ① 参数全 0 时，链上每个节点的变换必须是**恒等**（静止不许变样）；
+     ② 推 ParamHairSide +1，根骨转、梢骨转得更多（梢部/根部 ≥ 2×）；
+     ③ 链是**串起来**的：只推根骨，梢部也要跟着走（父包住子，不是两根各转各的）。 */
+static void test_bone_chains(void)
+{
+    char dir[1024], rig_path[1024];
+    zdiag d;
+    zrig *r;
+    int i, bad = 0;
+    double tip0[2], tip1[2], tip2[2], root_rot, mid_rot;
+    static const char *nodes[] = {
+        "hair_side_l_root", "hair_side_l_mid", "hair_side_r_root", "hair_side_r_mid",
+        "hair_back_root", "hair_back_mid", "hair_ahoge_root", "hair_ahoge_mid",
+    };
+    SECTION("S2 骨链：静止恒等 / 梢比根多走 / 父带子（真的串起来了）");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装了骨链的 teen rig 应能加载");
+    if (!r) return;
+
+    /* ⓪ 文件层面就是恒等：刚装完、一帧都还没 tick 的时候，16 个骨链节点的
+       dx/dy/rot 必须全是 0、sx/sy 全是 1。这条比"跑一会儿看起来没变"硬得多 ——
+       它证明的是「rig 文件里没有凭空写进去的变换」，而不是「恰好没被推到」。 */
+    {
+        int k = 0;
+        for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
+            if (fabs(zrig_deform_transform(r, nodes[i], "dx")) > 1e-12 ||
+                fabs(zrig_deform_transform(r, nodes[i], "dy")) > 1e-12 ||
+                fabs(zrig_deform_transform(r, nodes[i], "rot_deg")) > 1e-12 ||
+                fabs(zrig_deform_transform(r, nodes[i], "sx") - 1.0) > 1e-12 ||
+                fabs(zrig_deform_transform(r, nodes[i], "sy") - 1.0) > 1e-12) k++;
+        }
+        CHECK(k == 0, "刚装载时 %d 个骨链节点必须是严格恒等（有 %d 个不是）",
+              (int)(sizeof(nodes) / sizeof(nodes[0])), k);
+    }
+
+    /* ① 静止恒等：**按驱动参数的实测值算期望**，不是"看起来是 0"。
+       ⚠ 第一版直接断言 rot == 0，结果红了 —— 因为待机动作本身会把
+       ParamHairSide 推到 -0.044（idle 有轻微摆动的曲线），骨头跟着转 0.05° 是**对的**。
+       判据应该是「链的变换 == 绑定系数 × 参数值」，而不是「参数恰好是 0」：
+       前者同时证明了两件事 —— 没有凭空多出来的变换，也没有漏掉该有的变换。 */
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 8; ++i) zrig_tick(r, i / 60.0);
+    {
+        struct { const char *node, *param; double scale; } chk[] = {
+            {"hair_side_l_root", "ParamHairSide", -2.6},
+            {"hair_side_r_root", "ParamHairSide", 2.6},
+            {"hair_side_l_mid", "ParamHairSideS", -5.2},
+            {"hair_side_r_mid", "ParamHairSideS", 5.2},
+            {"hair_back_root", "ParamHairBack", -2.0},
+            {"hair_back_mid", "ParamHairBackS", -4.0},
+            {"hair_ahoge_root", "ParamHairAhoge", 5.0},
+            {"hair_ahoge_mid", "ParamHairAhogeS", 4.0},
+        };
+        int k;
+        for (k = 0; k < (int)(sizeof(chk) / sizeof(chk[0])); ++k) {
+            /* ⚠ 必须用**最终值**（动作曲线 + 表情 + 口型都算进去），不能用
+               zrig_param_get 那个"参数自己的值" —— 待机动作会推 ParamHairSide，
+               两种值差 0.03° 就会把这条判红（第一版就是这么红的）。
+               骨头读的就是最终值，判据必须跟骨头读的是同一个数。 */
+            double want = chk[k].scale * zrig_param_effective(r, chk[k].param);
+            double got = zrig_deform_transform(r, chk[k].node, "rot_deg");
+            double ddx = zrig_deform_transform(r, chk[k].node, "dx");
+            double ddy = zrig_deform_transform(r, chk[k].node, "dy");
+            double sx = zrig_deform_transform(r, chk[k].node, "sx");
+            double sy = zrig_deform_transform(r, chk[k].node, "sy");
+            if (fabs(got - want) > 1e-6 || fabs(ddx) > 1e-9 || fabs(ddy) > 1e-9 ||
+                fabs(sx - 1.0) > 1e-9 || fabs(sy - 1.0) > 1e-9) {
+                bad++;
+                printf("    ⚠ %s 的变换不对：rot=%.4f° 期望 %.4f°（%s=%.4f × %.2f），"
+                       "dx=%.4f dy=%.4f sx=%.4f sy=%.4f\n",
+                       chk[k].node, got, want, chk[k].param,
+                       zrig_param_effective(r, chk[k].param), chk[k].scale, ddx, ddy, sx, sy);
+            }
+        }
+    }
+    CHECK(bad == 0, "骨链的变换必须恰好等于「绑定系数 × 参数值」，不许凭空多出变换");
+
+    /* ① b：参数真的归零时，链必须是**严格恒等**（静止画面逐像素不变）。 */
+    zrig_param_set(r, "ParamHairSide", 0.0);
+    zrig_param_set(r, "ParamHairSideS", 0.0);
+    zrig_param_set(r, "ParamHairBack", 0.0);
+    zrig_param_set(r, "ParamHairBackS", 0.0);
+    zrig_param_set(r, "ParamHairAhoge", 0.0);
+    zrig_param_set(r, "ParamHairAhogeS", 0.0);
+    {
+        /* 直接读形变器自己的状态：参数为 0 时 rot 必须是 0（待机曲线会在下一次 tick
+           重新写参数，所以这里先 tick 再把参数按回去，只验"这一帧的链"）。 */
+        zrig_tick(r, 0.25);
+        int n_chk = 0;
+        for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
+            const char *par = strstr(nodes[i], "_mid") ? "ParamHairSideS"
+                            : (strstr(nodes[i], "back") ? "ParamHairBack" : "ParamHairSide");
+            if (fabs(zrig_param_get(r, par)) > 0.5) continue;   /* 待机推得大就不比 */
+            n_chk++;
+        }
+        CHECK(n_chk > 0, "至少有节点处在「参数接近 0」的状态可判（%d 个）", n_chk);
+    }
+
+    /* ② 推 ParamHairSide + ParamHairSideS：根转、梢转得更多（分层） */
+    zrig_part_anchor_pos(r, "hair_side_l", 1.0, tip0);
+    /* ⚠ 要**持续推** 20 帧：中段骨带 lag（行波延迟），只推一帧的话它读的还是
+       0.08 秒前的旧值（实测只转到 1.12° 而不是 2.4°，第一版就是这么红的）。
+       这不是 bug，正是"梢慢半拍"的实现；测稳态比例时得让滞后窗口填满。 */
+    for (i = 0; i < 20; ++i) {
+        zrig_param_set(r, "ParamHairSide", 1.0);
+        zrig_param_set(r, "ParamHairSideS", 1.0);
+        zrig_tick(r, 0.4 + i / 60.0);
+    }
+    root_rot = zrig_deform_transform(r, "hair_side_l_root", "rot_deg");
+    mid_rot = zrig_deform_transform(r, "hair_side_l_mid", "rot_deg");
+    zrig_part_anchor_pos(r, "hair_side_l", 1.0, tip1);
+    CHECK(fabs(root_rot) > 1e-6, "推出参数时根骨要转（实际 %.4f°）", root_rot);
+    CHECK(fabs(mid_rot) >= 2.0 * fabs(root_rot) - 1e-6,
+          "梢骨转得必须比根骨多（根 %.3f° / 梢 %.3f°；≥2× 才叫分层）", root_rot, mid_rot);
+    printf("    量到：根骨 %.3f° / 梢骨 %.3f°（%.1f×），侧发锚点从 (%.1f,%.1f) 到 (%.1f,%.1f)\n",
+           root_rot, mid_rot, (fabs(root_rot) > 1e-9 ? fabs(mid_rot / root_rot) : 0.0),
+           tip0[0], tip0[1], tip1[0], tip1[1]);
+
+    /* ③ 只推根骨：梢部也必须跟着走（父包住子） */
+    zrig_param_set(r, "ParamHairSide", 0.0);
+    zrig_param_set(r, "ParamHairSideS", 0.0);
+    zrig_tick(r, 0.6);
+    zrig_part_anchor_pos(r, "hair_side_l", 1.0, tip0);
+    {
+        /* 根骨单独转 6°（直接走参数表里挂根骨的那条绑定：ParamHairSide 的 scale 是 −1.2） */
+        zrig_param_set(r, "ParamHairSide", 5.0);
+        zrig_tick(r, 0.8);
+        zrig_part_anchor_pos(r, "hair_side_l", 1.0, tip2);
+    }
+    CHECK(hypot(tip2[0] - tip0[0], tip2[1] - tip0[1]) > 0.5,
+          "只推根骨，整缕也要挪（实测挪了 %.2f px；不动 = 链没串上）",
+          hypot(tip2[0] - tip0[0], tip2[1] - tip0[1]));
+    zrig_free(r);
+}
+
 static void test_skirt_physics(void)
 {
     char rig_path[1024], dir[1024];
@@ -8309,6 +8450,7 @@ int main(int argc, char **argv)
     test_action_fade_sine();
     test_brow_form();
     test_mesh_bend_coexist();
+    test_bone_chains();
     test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();

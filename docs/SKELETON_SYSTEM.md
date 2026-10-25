@@ -163,3 +163,50 @@ Q 版手臂是整件素材，所以 `forearm_l/r`、`elbow_fold_l/r`、`hand_l/r
 - [测试锁] `python3 tools/selfcheck_repo.py` **576 项 0 红**（新增 ㉑ 两条）。
 - [测试锁] `make -s check` 打印「== 全部保险都过了 ==」。
 - [需真机] 摆骨观感（S1/S2）只能在真机看，沙箱只给数值与叠图。
+
+---
+
+## 7. S2 施工记录（2026-10-25 本轮）：骨链真的接上了
+
+### 7.1 改了什么
+
+`tools/make_rig.py` 新增 `emit_bone_chains()`（生成器里一处，rig.json 仍是生成物，符合 DC15）：
+
+| 部件 | 链条 | 驱动参数 | lag |
+|---|---|---|---|
+| `hair_side_l/r` | `hair_side_l_root`(−2.6°/单位) → `hair_side_l_mid`(−5.2°) → `side_l_s` | `ParamHairSide`（根）/ `ParamHairSideS`（中段） | 中段 0.08s |
+| `hair_back` | `hair_back_root`(−2.0°) → `hair_back_mid`(−4.0°) → `back_s` | `ParamHairBack` / `ParamHairBackS` | 中段 0.08s |
+| `hair_ahoge` | `hair_ahoge_root`(5.0°) → `hair_ahoge_mid`(4.0°) → `ahoge_s` | `ParamHairAhoge` / `ParamHairAhogeS` | 中段 0.08s |
+| `acc_tail_cat_*`（四种姿态各一条） | `tail_*_root`(1.4°) → `tail_*_mid`(3.0°) → `tail_*_s` | `ParamAccTail*Swing` | 中段 0.10s |
+
+结果（`check_skeleton` 实测）：teen 网格骨绑定 **18/103**，chibi **9/47**，骨链节点 teen 16 个 / chibi 10 个。
+
+### 7.2 三条踩出来的接线规矩（都写进生成器注释 + 测试）
+
+1. **`parts[].deformer` 要点链的「根」，不是中段。** 引擎有一条校验：纯变换节点（没有 part、没有 parent）
+   必须被某个部件点名，否则整份 rig 拒绝加载。第一版点的是中段 → `hair_ahoge_root` 没人引用 →
+   teen 加载失败、**静默退回 chibi**（预览 exit 3 才暴露）。
+2. **中段骨的绑定必须带 `lag`。** 没有 lag 时根和梢同相位被推，看着是一根刚性钟摆。
+   `selfcheck` 里早有这条闸（梢部形变带行波延迟），尾巴那四条就是被它抓出来补的。
+3. **绑定表必须按「根→中段→梢」排。** 逐条 `insert(0)` 会把中段排到根前面，闸照样报红；
+   现在同一参数的链式绑定整体倒序插入。
+
+### 7.3 验收
+
+- [测试锁] `test_bone_chains()`（新增 5 条断言）：刚装载时 16 个节点严格恒等；每根骨的变换
+  **恰好等于「绑定系数 × 参数最终值」**；推出参数时根 −2.6° / 中段 −5.2°（**2.0×**，分层成立）；
+  只推根骨整缕也会挪（父包住子）。
+- [测试锁] `check_skeleton.py` 新增「形态必须有骨链（`deformers[].parent`）」+ 负控 14 例。
+- [沙箱实测] `logs/asset_qa/s2_bone_chain.png`：−1 / 0 / +1 三档，侧发梢明显外甩、
+  根不动梢动；剪影量化左缘在 y=170..190 带位移 **5.0px**（−1→+1），骨链之外的老 `bend_x` 也在动。
+  「静止不透明 → 极限透明」的洞只有 100~165 个像素（碎边，不是裂缝）；发根处 0 位移 = 分层正确。
+- [需真机] 连续动起来的观感（是否够"飘"）只能真机判断。
+
+### 7.4 还没做（下一轮）
+
+- 裙摆没接链：它的网格挂在 `seg_torso` 上，而 A_chain 作用于**整个部件** —— 给裙子接旋转骨会把
+  整个上身带飞（G66.6）。得先把裙子/外套下摆拆成独立件（T66.16）。
+- 手臂三节骨（`arm_l → forearm_l → hand_l`）已有刚体链，但**没有网格骨**；袖子折叠目前靠
+  `arm_*_fore_slim/long` 两张平铺网格（T66.17）。
+- 网格骨之间**父级逐顶点位移不传子**（G58.8 / T66.10）—— 现在三层链传的是刚体变换，
+  网格的 S 形形变不会往下一层传。

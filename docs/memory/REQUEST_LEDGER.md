@@ -1401,3 +1401,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 落实：`docs/SKELETON_SYSTEM.md`（施工图 + 体检 + 缺口清单）+ `skeleton.json` + `check_skeleton.py`
   + T66.1~T66.15 + DC89 + G66.1~G66.5 + PRODUCT_PLAN 第十节（3D/三渲二）。
 - 直接回答：**先做骨**；3D 在计划里（预审阶段）、三渲二原来不在（本轮补上）。
+
+### 第六十五问 · 续（2026-10-25 S2 交付）
+
+- 用户：「继续吧」。
+- 交付：骨链接进 teen/chibi（侧发/后发/呆毛/尾，root→mid→mesh + lag）；`test_bone_chains()` 5 条断言；
+  `check_skeleton` 加"必须有骨链"闸与第 14 条负控；`selfcheck` 的形变器口径修正；
+  证据图 `logs/asset_qa/s2_bone_chain.png`。
+- 门禁：`make -s test` 1114/0、`make -s check`「== 全部保险都过了 ==」、骨架 496/0。

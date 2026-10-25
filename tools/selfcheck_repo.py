@@ -478,7 +478,12 @@ def check_rig(root):
 
         dfs = r.get("deformers", [])
         dids = [f["id"] for f in dfs]
-        badd = [f["id"] for f in dfs if f.get("part") not in pids]
+        # 纯变换节点（第六十三问 P0 的旋转骨）本来就没有 part：它靠 parent 串在链上、
+        # 由部件的 "deformer" 点名。只有**带网格**（cols/rows/points）的节点才必须挂部件。
+        # 2026-10-25（S2 骨链接线）第一次跑红就是这条口径没跟上引擎的新节点类型。
+        badd = [f["id"] for f in dfs
+                if (f.get("part") is not None or f.get("points") or f.get("cols"))
+                and f.get("part") not in pids]
         badd += [i for i in dids if dids.count(i) > 1 or i in pids or i in gids]
         badpt = [f"{f['id']}({q['c']},{q['r']})" for f in dfs for q in f.get("points", [])
                  if not (0 <= q["c"] <= f.get("cols", 2) and 0 <= q["r"] <= f.get("rows", 2))]
@@ -1853,7 +1858,7 @@ def check_live2d(root):
           (([ln for ln in _rc.stdout.strip().splitlines() if ln.strip()] or ["?"])[-1]))
     _rc = subprocess.run([sys.executable, os.path.join(root, "tools/check_skeleton.py"),
                           "--self-test"], capture_output=True, text=True)
-    check("骨架闸的负控全部符合预期（13 例坏骨架）", _rc.returncode == 0,
+    check("骨架闸的负控全部符合预期（14 例坏骨架）", _rc.returncode == 0,
           (([ln for ln in _rc.stdout.strip().splitlines() if ln.strip()] or ["?"])[-1]))
 
     # ⑲ 挂件表的形态可移植性（T2.2.0）：角色级挂件表一旦写死画布绝对像素，

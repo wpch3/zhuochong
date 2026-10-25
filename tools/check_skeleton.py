@@ -230,6 +230,13 @@ def check_form(root, char_id, sk, form, rig_path):
               "(%.1f,%.1f) 画布 %dx%d" % (x, y, w, h))
 
     # ⑥ 每个部件都挂到已声明的骨上
+    #    "网格骨绑定"有两种合法写法：① parts[].deformer 直接点名一根链；
+    #    ② 网格形变器自己写 deformers[].part（引擎按部件匹配）。两种都算挂上，
+    #    只数 ① 会把 S2 之前的老 rig 全判成"没骨"——这条口径 2026-10-25 修过一次。
+    mesh_on_part = {}
+    for did, d in defs.items():
+        if d.get("part"):
+            mesh_on_part.setdefault(d["part"], []).append(did)
     bound = 0
     for p in parts:
         pid = p.get("id", "?")
@@ -239,13 +246,25 @@ def check_form(root, char_id, sk, form, rig_path):
             check("部件 %s 声明了 group" % pid, False, "没 group 的件永远不会跟着动")
             continue
         check("部件 %s 的骨 %r 已声明" % (pid, gid), gid in groups, "解析不到的骨")
-        if p.get("deformer"):
+        if p.get("deformer") or mesh_on_part.get(pid):
             bound += 1
+        if p.get("deformer"):
             check("部件 %s 挂的网格骨 %r 存在" % (pid, p["deformer"]),
                   p["deformer"] in defs, "deformer 写了但没定义 → 加载会报错")
     if parts:
         info("网格骨绑定覆盖率 %d/%d" % (bound, len(parts)),
-             "（= 用了 parts[].deformer 的件数；0 就是「只有刚体骨在动」）")
+             "（= 有网格骨的件数；0 就是「只有刚体骨在动」）")
+    # ⑥b 骨链：写了 parent 的网格骨，父节点必须排在前面（引擎按顺序连乘，父在后就是错的）
+    order = {d: i for i, d in enumerate(defs)}
+    for did, d in defs.items():
+        par = d.get("parent")
+        if not par:
+            continue
+        if not check("网格骨 %s 的父节点 %r 存在" % (did, par), par in defs,
+                     "链断了：子节点还留着 parent 指向没人定义的节点"):
+            continue
+        check("网格骨 %s 的父节点排在它前面（引擎按顺序连乘）" % did,
+              order[par] < order[did], "父 %s @%d / 子 @%d" % (par, order[par], order[did]))
 
     # ⑦ forms.<form>.mesh_bones 点名的网格骨必须真的存在
     fb = ((sk.get("forms") or {}).get(form) or {}).get("mesh_bones") or {}
@@ -256,6 +275,13 @@ def check_form(root, char_id, sk, form, rig_path):
         for did in (ids if isinstance(ids, list) else [ids]):
             check("网格骨 %s→%r 在该形态存在" % (role, did), did in defs,
                   "rig.json 的 deformers 里找不到")
+    # ⑦b 骨链不许退回"平铺"：至少有一个网格骨写了 parent。
+    #     2026-10-25（第六十六问 S2）之前，两个形态的 25 个网格全是平铺的 ——
+    #     表现是"头发能整块弯一下"，做不出发根/发梢分层。这条闸保证它不会悄悄退回去。
+    chains = [d for d, v in defs.items() if v.get("parent")]
+    check("形态 %s 至少有一条骨链（deformers[].parent）" % form, bool(chains),
+          "全是平铺网格 = 每件只能整体弯，没有分层；这是 S2 之前的状态")
+
     # 反向：形态里每一个带 part 的形变器都该被某个角色收编（否则没人知道它归哪根骨）
     claimed = set()
     for ids in fb.values():
@@ -331,8 +357,11 @@ def _mk(tmp, rig_over=None, sk_over=None, drop_bones=(), add_bones=()):
         "chest": {"pivot": [100, 120], "parent": "root"},
         "head": {"pivot": [100, 60], "parent": "chest"}},
         "parts": [{"id": "h", "file": "h.png", "group": "head", "layer": 1,
-                   "pos": [10, 10], "anchor": [0, 0]}],
-        "deformers": [{"id": "hair_wave", "part": "h", "cols": 1, "rows": 1,
+                   "pos": [10, 10], "anchor": [0, 0], "deformer": "hair_root"}],
+        "deformers": [{"id": "hair_root", "pivot": [100, 60]},
+                      {"id": "hair_mid", "parent": "hair_root", "pivot": [100, 90]},
+                      {"id": "hair_wave", "part": "h", "parent": "hair_mid",
+                       "cols": 1, "rows": 1,
                        "points": [{"c": 0, "r": 0, "dx": 0}]}],
         "actions": [{"id": "idle", "loop": True, "channels": []}]}
     for k, v in (rig_over or {}).items():
@@ -403,6 +432,9 @@ def self_test(_root):
         sk_over={"forms": {"teen": {"mesh_bones": {"hair_side_l": ["nope"]}}}})
     run("网格骨没被 mesh_bones 收编", True,
         sk_over={"forms": {"teen": {"mesh_bones": {}}}})
+    run("网格全是平铺的（没有骨链）", True, rig_over={"deformers": [
+        {"id": "hair_wave", "part": "h", "cols": 1, "rows": 1,
+         "points": [{"c": 0, "r": 0, "dx": 0}]}]})
     run("挂点的父骨不存在", True,
         sk_over={"bones": [
             {"id": "root", "parent": None, "kind": "rigid", "required": True},

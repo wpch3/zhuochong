@@ -408,5 +408,66 @@
         ]
       }
     }
+  },
+  "chains": {
+    "_note": [
+      "S2（第六十六问）：每个部件的「旋转骨链」由 make_rig.py 的 emit_bone_chains() 生成。",
+      "root→mid→mesh：网格挂在 mid 下，部件 parts[].deformer 点 root（引擎要求纯变换节点必须被点名）。",
+      "mid 的绑定必须带 lag（行波延迟），否则根和梢同相位 = 刚性钟摆（selfcheck 有闸）。"
+    ],
+    "hair_side_l": {
+      "nodes": [
+        "hair_side_l_root",
+        "hair_side_l_mid"
+      ],
+      "mesh": [
+        "side_l_s"
+      ]
+    },
+    "hair_side_r": {
+      "nodes": [
+        "hair_side_r_root",
+        "hair_side_r_mid"
+      ],
+      "mesh": [
+        "side_r_s"
+      ]
+    },
+    "hair_back": {
+      "nodes": [
+        "hair_back_root",
+        "hair_back_mid"
+      ],
+      "mesh": [
+        "back_s"
+      ]
+    },
+    "hair_ahoge": {
+      "nodes": [
+        "hair_ahoge_root",
+        "hair_ahoge_mid"
+      ],
+      "mesh": [
+        "ahoge_s"
+      ]
+    },
+    "tail": {
+      "nodes": [
+        "tail_{pose}_root",
+        "tail_{pose}_mid"
+      ],
+      "mesh": [
+        "tail_relaxed_s",
+        "tail_up_s",
+        "tail_puff_s",
+        "tail_tuck_s"
+      ],
+      "poses": [
+        "relaxed",
+        "up",
+        "puff",
+        "tuck"
+      ]
+    }
   }
 }

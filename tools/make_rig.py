@@ -4559,6 +4559,170 @@ def prune_dead_param_refs(rig):
               f"（{', '.join(dropped[:6])}{' …' if len(dropped) > 6 else ''}）")
 
 
+def emit_bone_chains(rig, base):
+    """把已经是「平铺网格」的头发/尾巴接成**真正的骨链**（第六十六问 S2）。
+
+    为什么非做不可
+    --------------
+    引擎上一轮已经能做变形器树（节点有 pivot + rot + parent，父包住子），
+    但 rig 里**一件都没用**：25 个网格全部平铺挂在自己那个部件上、没有父子关系。
+    表现是「头发能整块弯一下」，做不出 Live2D 那种「发根先动、发梢慢半拍追」的分层。
+
+    这里按 Live2D 的标准结构插两层 **回転デフォーマ（旋转骨）**：
+        hair_side_l_root（根，绕发根转） → hair_side_l_mid（中段，绕发中段转） → side_l_s（网格 S 形）
+    并让部件显式挂到链尾（parts[].deformer）—— 这就是"每根骨都能独立驱动"的接线方式。
+
+    三条硬约束（都踩过或算过）
+    --------------------------
+    1. **父节点必须先声明**（引擎加载时校验 parent 下标 < 子下标），所以追加完新节点后
+       做一次稳定拓扑排序。不改父子关系的前提下顺序本来就只有一种，排序是幂等的。
+    2. **只给"独立部件"接旋转骨**。裙摆的网格挂在 seg_torso 上，而 A_chain 会作用于
+       **整个部件** —— 给裙子接一根旋转骨，转起来会把整个上身带飞（G66.6）。裙子得先拆件
+       才能做骨链，这一轮不做，只记缺口。
+    3. **静止必须是恒等**：新节点的 dx/dy/rot 默认 0、sx/sy 默认 1，引擎里恒等节点直接跳过
+       ⇒ 不推参数时画面一个像素都不变（这条由 test_rig_zero_regress 之外的 md5 对比 + 单测守）。
+    """
+    parts = {p["id"]: p for p in rig.get("parts", [])}
+    defs = {d["id"]: d for d in rig.get("deformers", [])}
+    params = {q["id"]: q for q in rig.get("params", [])}
+    new_nodes, binds = [], []
+
+    def rect(pid):
+        """部件在画布上的矩形（左上角 + 尺寸）。素材是 @2x，scale 已经在 part 里。"""
+        p = parts.get(pid)
+        if not p:
+            return None
+        sp = os.path.join(base, p.get("file", ""))
+        wh = png_size(sp) if os.path.exists(sp) else None
+        if not wh:
+            return None
+        sc = float(p.get("scale", 1.0) or 1.0)
+        w, h = wh[0] * sc, wh[1] * sc
+        ax, ay = (p.get("anchor") or [0.0, 0.0])[:2]
+        x, y = p.get("pos", [0.0, 0.0])[:2]
+        x0, y0 = x - w * ax, y - h * ay
+        return (x0, y0, w, h)
+
+    def add_chain(pid, mesh_ids, name, fy=0.55, root_fy=0.03, bind_param=None,
+                  root_scale=0.0, mid_scale=0.0, mid_bind_param=None, mid_lag=0.08):
+        """给一个部件插「根 → 中段」两根旋转骨，并把它的网格挂到中段下面。"""
+        rc = rect(pid)
+        if rc is None:
+            return 0
+        x0, y0, w, h = rc
+        cx = x0 + w * 0.5
+        rid, mid = name + "_root", name + "_mid"
+        # root_fy：发根在顶部（0.03），尾巴挂在髋部所以根在底部（0.97）——
+        #   绕错一端的话，转起来是"尾巴尖钉住、整条尾甩身体"，看着像脱臼。
+        new_nodes.append({"id": rid, "pivot": [round(cx, 1), round(y0 + h * root_fy, 1)],
+                          "note": "%s 的根骨：绕发根/挂接点转，梢部才会被带起来" % name})
+        new_nodes.append({"id": mid, "pivot": [round(cx, 1), round(y0 + h * fy, 1)],
+                          "parent": rid,
+                          "note": "%s 的中段骨：比根慢半拍，做出分层摆动" % name})
+        n = 0
+        for d in mesh_ids:
+            if d in defs and defs[d].get("part") == pid:
+                defs[d]["parent"] = mid
+                defs[d]["note"] = (defs[d].get("note", "") +
+                                   "；挂在中段骨 %s 下（S2 骨链）" % mid)
+                n += 1
+        if n:
+            # 部件点名的是**链的根**。为什么不是中段：引擎要求"纯变换节点（没有 part、
+            # 没有 parent）必须被某个部件点名"，根节点正好是这种节点；点中段的话
+            # 根没人引用 → 整份 rig 拒绝加载（实测：`hair_ahoge_root` 既没有 part
+            # 也没有 parent → teen 加载失败并静默退回 chibi）。
+            # 链的标记是"从部件点名的节点往上走 + 从挂在它身上的网格往上走"取并集，
+            # 所以点根和点中段算出来的链是同一整条。
+            parts[pid]["deformer"] = rid
+            parts[pid]["note"] = (parts[pid].get("note", "") +
+                                  "；骨链 %s→%s（S2）" % (rid, mid))
+        # 绑定顺序 = 从根到梢：根骨（无 lag）→ 中段骨（带 lag）→ 原有的网格（梢）。
+        #   为什么中段必须有 lag：没有它根和梢**同相位**被推，看着就是一根刚性钟摆，
+        #   而不是「根先动、梢追上来」的软组织（动画的 wave principle）。
+        #   selfcheck 里有一条闸专门盯这个（梢部形变带行波延迟），尾巴那四条就是被它抓出来
+        #   才补上的。
+        if bind_param and bind_param in params and root_scale:
+            binds.append((bind_param, rid, root_scale, 0.0))
+        if (mid_bind_param or bind_param) in params and mid_scale:
+            binds.append((mid_bind_param or bind_param, mid, mid_scale, mid_lag))
+        return n
+
+    made = 0
+    # —— 侧发：根 + 中段 —— 由 ParamHairSide（整缕跟头甩）与 ParamHairSideS（S 形）分头驱动
+    # 角度标定：侧发缕高约 132px，根骨绕顶端转、中段骨绕 55% 处转。
+    #   θ 每 1° 在梢部约 2.2px（128px × sin1°），所以 2.6° + 5.2° ≈ 11px 的梢部位移，
+    #   和原有 bend_x 的 7px 叠在一起是"看得见但不夸张"。第一版给 1.2/2.4 只有 5px，
+    #   在 466px 宽的帧里几乎看不出来（截了图才发现）—— 角度的量级要按**像素**反算。
+    made += add_chain("hair_side_l", ["side_l_s"], "hair_side_l",
+                      bind_param="ParamHairSide", root_scale=-2.6,
+                      mid_bind_param="ParamHairSideS", mid_scale=-5.2)
+    made += add_chain("hair_side_r", ["side_r_s"], "hair_side_r",
+                      bind_param="ParamHairSide", root_scale=2.6,
+                      mid_bind_param="ParamHairSideS", mid_scale=5.2)
+    # —— 后发：同上，但参数分开（后发比侧发更重、更钝） ——
+    made += add_chain("hair_back", ["back_s"], "hair_back", fy=0.5,
+                      bind_param="ParamHairBack", root_scale=-2.0,
+                      mid_bind_param="ParamHairBackS", mid_scale=-4.0)
+    # —— 呆毛：一根骨头从根甩到梢 ——
+    made += add_chain("hair_ahoge", ["ahoge_s"], "hair_ahoge", fy=0.5,
+                      bind_param="ParamHairAhoge", root_scale=5.0,
+                      mid_bind_param="ParamHairAhogeS", mid_scale=4.0)
+    # —— 尾巴：四种姿态各一根链（姿态件互斥，链条各归各的） ——
+    for pose, param in (("relaxed", "ParamAccTailRelaxedSwing"), ("up", "ParamAccTailUpSwing"),
+                        ("puff", "ParamAccTailPuffSwing"), ("tuck", "ParamAccTailTuckSwing")):
+        # 尾巴没有单独的"梢"参数，根和中段吃同一个旋钮（比例 1:2，中段甩得更开）
+        made += add_chain("acc_tail_cat_" + pose, ["tail_%s_s" % pose], "tail_" + pose,
+                          fy=0.5, root_fy=0.97, bind_param=param,
+                          root_scale=1.4, mid_scale=3.0, mid_lag=0.1)
+    if not made:
+        return 0
+
+    rig.setdefault("deformers", []).extend(
+        {k: v for k, v in nd.items()} for nd in new_nodes)
+
+    # 稳定拓扑排序：父节点必须排在子节点前面（引擎加载时逐条校验）。
+    dl = rig["deformers"]
+    order = {d["id"]: i for i, d in enumerate(dl)}
+    out, placed = [], set()
+    sys.setrecursionlimit(10000)
+
+    def place(node):
+        if node["id"] in placed:
+            return
+        par = node.get("parent")
+        if par:
+            pn = next((d for d in dl if d["id"] == par), None)
+            if pn is not None:
+                place(pn)
+        if node["id"] not in placed:
+            placed.add(node["id"])
+            out.append(node)
+
+    for nd in dl:
+        place(nd)
+    if len(out) != len(dl):        # 理论上不会，防御：成环就保持原样，让引擎去报错
+        out = dl
+    rig["deformers"] = out
+
+    # 绑定：加到**已存在**的参数上（不新建参数，避免多一个没人用的旋钮）
+    # 插到**最前面**，但要保持「根→中段」的先后：逐条 insert(0) 会把后插的排到前面
+    # （第一版就这么把 mid 排到了 root 前面，闸当场报 'tail_up_root 没有 lag'）。
+    # 所以同一个参数的链式绑定整体倒序插入。
+    by_param = {}
+    for param_id, node_id, scale, lag in binds:
+        by_param.setdefault(param_id, []).append((node_id, scale, lag))
+    for param_id, items in by_param.items():
+        q = params.get(param_id)
+        if q is None:
+            continue
+        for node_id, scale, lag in reversed(items):
+            b = {"deformer": node_id, "param": "rot_deg", "scale": scale}
+            if lag:
+                b["lag"] = lag
+            q.setdefault("binds", []).insert(0, b)
+    return len(new_nodes)
+
+
 def prune_dangling(rig):
     """把指向「本形态不存在的部件/组」的绑定清掉，连带清掉因此空掉的参数。
 
@@ -4891,6 +5055,9 @@ def main() -> int:
                 fx_table=fx_table,
                 footp=footp, skirtp=skirtp, jacketp=jacketp, handp=handp)
     attach_emit(rig, base, base_root)   # 挂件（A49 / T45）：表在就挂，不在就当没有
+    nbone = emit_bone_chains(rig, base)  # S2（第六十六问）：头发/尾巴接成真正的骨链
+    if nbone:
+        print(f"  骨链：新增 {nbone} 个旋转节点，网格改为挂在链尾")
     prune_dangling(rig)                 # 素材没齐的形态：清掉指向不存在部件的绑定
 
     out = os.path.join(base, "rig.json")

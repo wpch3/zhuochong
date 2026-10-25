@@ -347,10 +347,11 @@
       "tags": [
         "hair"
       ],
-      "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动",
+      "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动；骨链 hair_ahoge_root→hair_ahoge_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "hair_ahoge_root"
     },
     {
       "id": "hair_front",
@@ -431,10 +432,11 @@
       "tags": [
         "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；骨链 hair_side_l_root→hair_side_l_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "hair_side_l_root"
     },
     {
       "id": "hair_side_r",
@@ -452,10 +454,11 @@
       "tags": [
         "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；骨链 hair_side_r_root→hair_side_r_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "hair_side_r_root"
     },
     {
       "id": "hair_back",
@@ -473,10 +476,11 @@
       "tags": [
         "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；骨链 hair_back_root→hair_back_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "hair_back_root"
     },
     {
       "id": "arm_l_root",
@@ -1953,10 +1957,11 @@
         "accessory",
         "tail"
       ],
-      "note": "垂下·放松（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
+      "note": "垂下·放松（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）；骨链 tail_relaxed_root→tail_relaxed_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "tail_relaxed_root"
     },
     {
       "id": "acc_tail_cat_up",
@@ -1975,10 +1980,11 @@
         "accessory",
         "tail"
       ],
-      "note": "竖起·开心（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
+      "note": "竖起·开心（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）；骨链 tail_up_root→tail_up_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "tail_up_root"
     },
     {
       "id": "acc_tail_cat_puff",
@@ -1997,10 +2003,11 @@
         "accessory",
         "tail"
       ],
-      "note": "炸毛·受惊（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
+      "note": "炸毛·受惊（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）；骨链 tail_puff_root→tail_puff_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "tail_puff_root"
     },
     {
       "id": "acc_tail_cat_tuck",
@@ -2019,10 +2026,11 @@
         "accessory",
         "tail"
       ],
-      "note": "夹紧·示弱（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）",
+      "note": "夹紧·示弱（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）；骨链 tail_tuck_root→tail_tuck_mid（S2）",
       "scale_1x": 1.0,
       "scale": 0.5,
-      "hires": 2
+      "hires": 2,
+      "deformer": "tail_tuck_root"
     },
     {
       "id": "acc_ear_cat_l",
@@ -5698,11 +5706,28 @@
   ],
   "deformers": [
     {
+      "id": "hair_ahoge_root",
+      "pivot": [
+        422.0,
+        69.8
+      ],
+      "note": "hair_ahoge 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "hair_ahoge_mid",
+      "pivot": [
+        422.0,
+        98.5
+      ],
+      "parent": "hair_ahoge_root",
+      "note": "hair_ahoge 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
       "id": "ahoge_s",
       "part": "hair_ahoge",
       "cols": 2,
       "rows": 4,
-      "note": "呆毛 S 形甩动：梢与中段朝相反方向，根固定",
+      "note": "呆毛 S 形甩动：梢与中段朝相反方向，根固定；挂在中段骨 hair_ahoge_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -5767,7 +5792,8 @@
           "r": 3,
           "dx": -1.5
         }
-      ]
+      ],
+      "parent": "hair_ahoge_mid"
     },
     {
       "id": "arm_l_fore_slim",
@@ -6070,11 +6096,28 @@
       ]
     },
     {
+      "id": "hair_side_l_root",
+      "pivot": [
+        351.5,
+        225.0
+      ],
+      "note": "hair_side_l 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "hair_side_l_mid",
+      "pivot": [
+        351.5,
+        293.6
+      ],
+      "parent": "hair_side_l_root",
+      "note": "hair_side_l 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
       "id": "side_l_s",
       "part": "hair_side_l",
       "cols": 2,
       "rows": 4,
-      "note": "侧发 S 形甩动：发根固定，中段与发梢反向",
+      "note": "侧发 S 形甩动：发根固定，中段与发梢反向；挂在中段骨 hair_side_l_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -6139,14 +6182,32 @@
           "dx": 5.4,
           "dy": 1.0
         }
-      ]
+      ],
+      "parent": "hair_side_l_mid"
+    },
+    {
+      "id": "hair_side_r_root",
+      "pivot": [
+        495.5,
+        225.0
+      ],
+      "note": "hair_side_r 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "hair_side_r_mid",
+      "pivot": [
+        495.5,
+        293.6
+      ],
+      "parent": "hair_side_r_root",
+      "note": "hair_side_r 的中段骨：比根慢半拍，做出分层摆动"
     },
     {
       "id": "side_r_s",
       "part": "hair_side_r",
       "cols": 2,
       "rows": 4,
-      "note": "侧发 S 形甩动：发根固定，中段与发梢反向",
+      "note": "侧发 S 形甩动：发根固定，中段与发梢反向；挂在中段骨 hair_side_r_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -6211,14 +6272,32 @@
           "dx": 5.4,
           "dy": 1.0
         }
-      ]
+      ],
+      "parent": "hair_side_r_mid"
+    },
+    {
+      "id": "hair_back_root",
+      "pivot": [
+        422.5,
+        121.3
+      ],
+      "note": "hair_back 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "hair_back_mid",
+      "pivot": [
+        422.5,
+        188.0
+      ],
+      "parent": "hair_back_root",
+      "note": "hair_back 的中段骨：比根慢半拍，做出分层摆动"
     },
     {
       "id": "back_s",
       "part": "hair_back",
       "cols": 3,
       "rows": 6,
-      "note": "后发第二段（下沿）：r0~r3（头顶到 y187）全固定——那一段是头部剪影；只有脸侧露出来的下沿甩动。最外两列比中列多甩一点，中列整片藏在脑袋后面",
+      "note": "后发第二段（下沿）：r0~r3（头顶到 y187）全固定——那一段是头部剪影；只有脸侧露出来的下沿甩动。最外两列比中列多甩一点，中列整片藏在脑袋后面；挂在中段骨 hair_back_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -6284,7 +6363,8 @@
           "dx": 12.0,
           "dy": 1.2
         }
-      ]
+      ],
+      "parent": "hair_back_mid"
     },
     {
       "id": "brow_l_form",
@@ -6809,11 +6889,28 @@
       ]
     },
     {
+      "id": "tail_relaxed_root",
+      "pivot": [
+        318.0,
+        1037.7
+      ],
+      "note": "tail_relaxed 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "tail_relaxed_mid",
+      "pivot": [
+        318.0,
+        845.0
+      ],
+      "parent": "tail_relaxed_root",
+      "note": "tail_relaxed 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
       "id": "tail_relaxed_s",
       "part": "acc_tail_cat_relaxed",
       "cols": 2,
       "rows": 4,
-      "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+      "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子；挂在中段骨 tail_relaxed_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -6875,14 +6972,32 @@
           "r": 4,
           "dx": -27.0
         }
-      ]
+      ],
+      "parent": "tail_relaxed_mid"
+    },
+    {
+      "id": "tail_up_root",
+      "pivot": [
+        273.0,
+        679.0
+      ],
+      "note": "tail_up 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "tail_up_mid",
+      "pivot": [
+        273.0,
+        474.5
+      ],
+      "parent": "tail_up_root",
+      "note": "tail_up 的中段骨：比根慢半拍，做出分层摆动"
     },
     {
       "id": "tail_up_s",
       "part": "acc_tail_cat_up",
       "cols": 2,
       "rows": 4,
-      "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+      "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子；挂在中段骨 tail_up_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -6944,14 +7059,32 @@
           "r": 4,
           "dx": -27.0
         }
-      ]
+      ],
+      "parent": "tail_up_mid"
+    },
+    {
+      "id": "tail_puff_root",
+      "pivot": [
+        249.0,
+        686.9
+      ],
+      "note": "tail_puff 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "tail_puff_mid",
+      "pivot": [
+        249.0,
+        481.5
+      ],
+      "parent": "tail_puff_root",
+      "note": "tail_puff 的中段骨：比根慢半拍，做出分层摆动"
     },
     {
       "id": "tail_puff_s",
       "part": "acc_tail_cat_puff",
       "cols": 2,
       "rows": 4,
-      "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子",
+      "note": "尾巴 S 形甩动：r=0 是根（固定、位移 0），中段 +15 与梢 −27 反向。★ 数值是第一版的 3 倍 —— 第一版 [0,2,5,-4.5,-9] 实测整条行程只有 6.6px，而尾巴有 520px 长（摆幅 1.3%，等于没动）。呆毛那套系数不能照搬到尾巴上：呆毛是根小毛，尾巴是条大鞭子；挂在中段骨 tail_puff_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -7013,14 +7146,32 @@
           "r": 4,
           "dx": -27.0
         }
-      ]
+      ],
+      "parent": "tail_puff_mid"
+    },
+    {
+      "id": "tail_tuck_root",
+      "pivot": [
+        448.0,
+        884.5
+      ],
+      "note": "tail_tuck 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "tail_tuck_mid",
+      "pivot": [
+        448.0,
+        767.5
+      ],
+      "parent": "tail_tuck_root",
+      "note": "tail_tuck 的中段骨：比根慢半拍，做出分层摆动"
     },
     {
       "id": "tail_tuck_s",
       "part": "acc_tail_cat_tuck",
       "cols": 2,
       "rows": 4,
-      "note": "夹紧的 S 形甩动只有 relaxed 的 37% —— 尾巴被压在身上，摆不开。注意这个数**不能**照搬 relaxed 第一版那套（[0,2,5,-4.5,-9]）被否掉的理由：那次是整条 520px 的尾巴只摆 6.6px 等于没动；这里是**有意**让它几乎不动，形状本身已经表达了情绪。",
+      "note": "夹紧的 S 形甩动只有 relaxed 的 37% —— 尾巴被压在身上，摆不开。注意这个数**不能**照搬 relaxed 第一版那套（[0,2,5,-4.5,-9]）被否掉的理由：那次是整条 520px 的尾巴只摆 6.6px 等于没动；这里是**有意**让它几乎不动，形状本身已经表达了情绪。；挂在中段骨 tail_tuck_mid 下（S2 骨链）",
       "points": [
         {
           "c": 0,
@@ -7082,7 +7233,8 @@
           "r": 4,
           "dx": -9.0
         }
-      ]
+      ],
+      "parent": "tail_tuck_mid"
     },
     {
       "id": "longhair_mid",
@@ -8965,6 +9117,11 @@
       "default": 0.0,
       "binds": [
         {
+          "deformer": "hair_ahoge_root",
+          "param": "rot_deg",
+          "scale": 5.0
+        },
+        {
           "part": "hair_ahoge",
           "param": "bend_x",
           "scale": 10.0,
@@ -8979,6 +9136,12 @@
       "max": 1.0,
       "default": 0.0,
       "binds": [
+        {
+          "deformer": "hair_ahoge_mid",
+          "param": "rot_deg",
+          "scale": 4.0,
+          "lag": 0.08
+        },
         {
           "deformer": "ahoge_s",
           "scale": 1.0
@@ -9014,6 +9177,16 @@
       "default": 0.0,
       "binds": [
         {
+          "deformer": "hair_side_l_root",
+          "param": "rot_deg",
+          "scale": -2.6
+        },
+        {
+          "deformer": "hair_side_r_root",
+          "param": "rot_deg",
+          "scale": 2.6
+        },
+        {
           "part": "hair_side_l",
           "param": "bend_x",
           "scale": 7.0,
@@ -9035,6 +9208,18 @@
       "default": 0.0,
       "binds": [
         {
+          "deformer": "hair_side_l_mid",
+          "param": "rot_deg",
+          "scale": -5.2,
+          "lag": 0.08
+        },
+        {
+          "deformer": "hair_side_r_mid",
+          "param": "rot_deg",
+          "scale": 5.2,
+          "lag": 0.08
+        },
+        {
           "deformer": "side_l_s",
           "scale": 1.0
         },
@@ -9052,6 +9237,11 @@
       "default": 0.0,
       "binds": [
         {
+          "deformer": "hair_back_root",
+          "param": "rot_deg",
+          "scale": -2.0
+        },
+        {
           "part": "hair_back",
           "param": "bend_x",
           "scale": 5.0,
@@ -9066,6 +9256,12 @@
       "max": 1.0,
       "default": 0.0,
       "binds": [
+        {
+          "deformer": "hair_back_mid",
+          "param": "rot_deg",
+          "scale": -4.0,
+          "lag": 0.08
+        },
         {
           "deformer": "back_s",
           "scale": 1.0
@@ -9704,6 +9900,17 @@
       "default": 0.0,
       "binds": [
         {
+          "deformer": "tail_relaxed_root",
+          "param": "rot_deg",
+          "scale": 1.4
+        },
+        {
+          "deformer": "tail_relaxed_mid",
+          "param": "rot_deg",
+          "scale": 3.0,
+          "lag": 0.1
+        },
+        {
           "deformer": "tail_relaxed_s",
           "scale": 1.0,
           "lag": 0.17
@@ -9723,6 +9930,17 @@
       "max": 1.05,
       "default": 0.0,
       "binds": [
+        {
+          "deformer": "tail_up_root",
+          "param": "rot_deg",
+          "scale": 1.4
+        },
+        {
+          "deformer": "tail_up_mid",
+          "param": "rot_deg",
+          "scale": 3.0,
+          "lag": 0.1
+        },
         {
           "deformer": "tail_up_s",
           "scale": 1.0,
@@ -9744,6 +9962,17 @@
       "default": 0.0,
       "binds": [
         {
+          "deformer": "tail_puff_root",
+          "param": "rot_deg",
+          "scale": 1.4
+        },
+        {
+          "deformer": "tail_puff_mid",
+          "param": "rot_deg",
+          "scale": 3.0,
+          "lag": 0.1
+        },
+        {
           "deformer": "tail_puff_s",
           "scale": 1.0,
           "lag": 0.05
@@ -9763,6 +9992,17 @@
       "max": 4.508,
       "default": 0.0,
       "binds": [
+        {
+          "deformer": "tail_tuck_root",
+          "param": "rot_deg",
+          "scale": 1.4
+        },
+        {
+          "deformer": "tail_tuck_mid",
+          "param": "rot_deg",
+          "scale": 3.0,
+          "lag": 0.1
+        },
         {
           "deformer": "tail_tuck_s",
           "scale": 0.34,
