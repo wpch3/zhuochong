@@ -5825,6 +5825,158 @@ static void test_parent_warp_inherit(void)
 }
 
 /* ---------------------------------------------------------------------------
+   T66.9：单网格多骨加权（逐顶点权重 "w"）。
+
+   要解决的事：一片顶点只被一条通路驱动时，"上缘跟腰、下缘跟摆"做不到。
+   裙子只有一张网格、一个旋转骨 ⇒ 要么整条裙跟着腰走（下摆僵），要么整条跟着摆
+   走（腰被扯）。Live2D 里这靠"多条骨 + 蒙皮权重"；我们这里不引进第二套坐标系，
+   而是给**每张位移网格**配一张逐顶点权重表，两张互补的网格 = 两段骨的线性混合。
+
+   判据必须能分三档，否则测不出东西：
+     ① 上缘：只吃 A 的位移（wA=1,wB=0）；
+     ② 中段：各吃一半（0.5/0.5）；
+     ③ 下缘：只吃 B（0/1）。
+   再加两个负控：不写 w 时位移会**叠加**（老口径），以及权重和 >1 必须拒载。
+   --------------------------------------------------------------------------- */
+static void test_deform_weights(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double dx[32], dy[32];
+    int np, cols = 0, rows = 0, i;
+
+    SECTION("T66.9 单网格多骨加权：同一部件两张网格按逐顶点权重混合");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_deform_w");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* A 往右推 10（上缘权重 1 → 0），B 往下推 12（上缘 0 → 1） */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"dw\",\"name\":\"权重\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"dw\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        "\"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"deformers\":["
+        " {\"id\":\"dw_top\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0},{\"c\":1,\"r\":0,\"dx\":10,\"dy\":0},"
+        "   {\"c\":2,\"r\":0,\"dx\":10,\"dy\":0},{\"c\":0,\"r\":1,\"dx\":10,\"dy\":0},"
+        "   {\"c\":1,\"r\":1,\"dx\":10,\"dy\":0},{\"c\":2,\"r\":1,\"dx\":10,\"dy\":0},"
+        "   {\"c\":0,\"r\":2,\"dx\":10,\"dy\":0},{\"c\":1,\"r\":2,\"dx\":10,\"dy\":0},"
+        "   {\"c\":2,\"r\":2,\"dx\":10,\"dy\":0}],"
+        "  \"w\":[1,1,1, 0.5,0.5,0.5, 0,0,0]},"
+        " {\"id\":\"dw_bot\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":12},{\"c\":1,\"r\":0,\"dx\":0,\"dy\":12},"
+        "   {\"c\":2,\"r\":0,\"dx\":0,\"dy\":12},{\"c\":0,\"r\":1,\"dx\":0,\"dy\":12},"
+        "   {\"c\":1,\"r\":1,\"dx\":0,\"dy\":12},{\"c\":2,\"r\":1,\"dx\":0,\"dy\":12},"
+        "   {\"c\":0,\"r\":2,\"dx\":0,\"dy\":12},{\"c\":1,\"r\":2,\"dx\":0,\"dy\":12},"
+        "   {\"c\":2,\"r\":2,\"dx\":0,\"dy\":12}],"
+        "  \"w\":[0,0,0, 0.5,0.5,0.5, 1,1,1]}],"
+        "\"params\":["
+        " {\"id\":\"ParamTop\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_top\",\"scale\":1.0}]},"
+        " {\"id\":\"ParamBot\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_bot\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带逐顶点权重的 rig 应加载成功（%d 条诊断）", d.error_count);
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+    np = zrig_part_mesh(r, "dw", 1.0, &cols, &rows, dx, dy, 32);
+    CHECK(np == 9 && cols == 2 && rows == 2, "应拿到 3x3 顶点（实为 %d 个 / %dx%d）", np, cols, rows);
+    /* ① 上缘：A 的位移全吃，B 一点不吃 */
+    CHECK(np == 9 && fabs(dx[0] - 10.0) < 0.05 && fabs(dy[0]) < 0.05,
+          "上缘应只吃「跟腰」那张：(10,0)，实测 (%.2f,%.2f)", np ? dx[0] : 0.0, np ? dy[0] : 0.0);
+    /* ② 中段：两张各一半 */
+    CHECK(np == 9 && fabs(dx[4] - 5.0) < 0.05 && fabs(dy[4] - 6.0) < 0.05,
+          "中段应各吃一半：(5,6)，实测 (%.2f,%.2f)", np ? dx[4] : 0.0, np ? dy[4] : 0.0);
+    /* ③ 下缘：只吃 B */
+    CHECK(np == 9 && fabs(dx[8]) < 0.05 && fabs(dy[8] - 12.0) < 0.05,
+          "下缘应只吃「跟摆」那张：(0,12)，实测 (%.2f,%.2f)", np ? dx[8] : 0.0, np ? dy[8] : 0.0);
+    printf("    量到：上缘 (%.2f,%.2f) · 中段 (%.2f,%.2f) · 下缘 (%.2f,%.2f)\n",
+           dx[0], dy[0], dx[4], dy[4], dx[8], dy[8]);
+    zrig_free(r);
+
+    /* —— 负控一：不写 w 时位移是**相加**的（这就是老口径，也是必须有权重的原因） —— */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"dwn\",\"name\":\"无权重\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"dw\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        "\"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"deformers\":["
+        " {\"id\":\"dw_top\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]},"
+        " {\"id\":\"dw_bot\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":12}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamTop\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_top\",\"scale\":1.0}]},"
+        " {\"id\":\"ParamBot\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_bot\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "不带权的多网格 rig 仍应加载（老 rig 不能因此坏掉）");
+    if (r) {
+        zrig_ambient_enable(r, 0);
+        zrig_phys_set_enabled(r, 0);
+        for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+        np = zrig_part_mesh(r, "dw", 1.0, &cols, &rows, dx, dy, 32);
+        CHECK(np == 9 && fabs(dx[0] - 10.0) < 0.05 && fabs(dy[0] - 12.0) < 0.05,
+              "不写权重时两个方向的位移都会叠加上来：(10,12)，实测 (%.2f,%.2f) —— "
+              "这正是「裙子被推两次」的画面", np ? dx[0] : 0.0, np ? dy[0] : 0.0);
+        zrig_free(r);
+    }
+
+    /* —— 负控二：权重和 > 1 必须拒载（悄悄钳位会把"写错了"变成"看起来有点怪"） —— */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"dwb\",\"name\":\"越权\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"dw\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        "\"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"deformers\":["
+        " {\"id\":\"dw_top\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}],\"w\":[1,1,1,1,1,1,1,1,1]},"
+        " {\"id\":\"dw_bot\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":12}],\"w\":[1,1,1,1,1,1,1,1,1]}],"
+        "\"params\":[{\"id\":\"ParamTop\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_top\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL && d.error_count > 0,
+          "两张权重全 1 的网格叠在同一顶点上（和=2）必须拒载，实为 %s",
+          r ? "加载成功（闸失效）" : "已拒载");
+    if (r) zrig_free(r);
+
+    /* —— 负控三：权重个数不对必须拒载（不能按"取前几个"糊过去） —— */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"dwl\",\"name\":\"短权重\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"dw\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        "\"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"deformers\":["
+        " {\"id\":\"dw_top\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}],\"w\":[1,1,1]}],"
+        "\"params\":[{\"id\":\"ParamTop\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_top\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL && d.error_count > 0, "w 的个数和顶点数不一致必须拒载");
+    if (r) zrig_free(r);
+}
+
+/* ---------------------------------------------------------------------------
    T66.10b：逐顶点形变场的**显式继承**（inherit_from + warp_inherit）。
 
    为什么需要它：里布/布带/饰物这类"贴在布上的一层"，跟得比主体**少**才看得见层次
@@ -10423,6 +10575,7 @@ int main(int argc, char **argv)
     test_fore_bone_chain();
     test_keyform_ease();
     test_parent_warp_inherit();
+    test_deform_weights();
     test_inherit_from_part();
     test_fore_slim_keyform();
     test_physics_to_param();

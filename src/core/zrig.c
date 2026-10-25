@@ -244,6 +244,16 @@ typedef struct {
     double kf_v[ZRIG_MAX_DEFKF];
     double *kf_d;             /* 动态：nkf 组增量，每组 kf_np*2 个 double（末组也分配，省下标判断） */
     double kf_w[ZRIG_MAX_DEFKF];  /* 本帧插值权重（不含"第 0 组恒为 1"那一项） */
+    /* —— 逐顶点权重（T66.9 / 单网格多骨加权）——
+       "w": [w0, w1, ...] 长度 = (cols+1)*(rows+1)，取值 0~1。
+       它乘在这张网格**每个顶点**的位移上：同一部件挂着两张网格时，
+       一张给"上缘跟腰"、一张给"下缘跟摆"，靠的就是两份互补的权重表
+       （上缘 wA=1/wB=0，下缘 wA=0/wB=1）。没写 = 老行为（整张权重 1）。
+       ★ 为什么不是"每个顶点一组骨名+权重"：那需要引入皮肤权重求解（LBS/蒙皮），
+         和现在的"形变器树 + 逐顶点位移场"是两套坐标体系。这里用位移场加权，
+         在渲染结果上等价于两段骨的线性混合，但不动坐标系、不改已有 rig。 */
+    double w[ZRIG_MAX_DEFPTS];
+    int    has_w;
     /* —— keyform 分段缓动（T66.11）：第 k 段 = 第 k-1 组 key → 第 k 组 key，
        写法挂在**右端点**那一组 key 上（"走到我这儿用什么速度"）。没写 = 线性。 */
     double kf_lag;            /* keyform 也吃迟滞：读 lag 秒之前的参数值（同 bind.lag，T66.11b） */
@@ -1556,6 +1566,32 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
                 return -1;
             }
         }
+        /* 逐顶点权重（可选）：长度必须等于顶点数，取值 0~1。
+           越界一律报错，不静默钳位 —— 钳位会把"权重写错了"变成"看起来只是有点怪"。 */
+        {
+            const zjson *jw = zjson_obj_get((zjson *)dj, "w");
+            if (jw) {
+                int q;
+                if (!zjson_is(jw, ZJSON_ARR) || (int)zjson_count(jw) != g->kf_np) {
+                    zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                                "形变器 '%s' 的 w 必须是长度 %d 的数组（实为 %d）",
+                                id, g->kf_np,
+                                zjson_is(jw, ZJSON_ARR) ? (int)zjson_count(jw) : -1);
+                    return -1;
+                }
+                for (q = 0; q < g->kf_np; ++q) {
+                    double v = zjson_num(zjson_at((zjson *)jw, q), -1.0);
+                    if (v < -1e-9 || v > 1.0 + 1e-9) {
+                        zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                                    "形变器 '%s' 的 w[%d] = %.3f 越界（只允许 0~1）",
+                                    id, q, v);
+                        return -1;
+                    }
+                    g->w[q] = v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
+                }
+                g->has_w = 1;
+            }
+        }
         keys = zjson_obj_get((zjson *)dj, "keys");
         if (keys) {
             /* —— keyform：逐顶点参数驱动 —— */
@@ -1699,6 +1735,42 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
                                     id, d, file, "") != 0) return -1;
         }
         r->ndeforms++;
+    }
+
+    /* —— 权重归一化闸（T66.9）——
+       同一部件上，只要有一张网格写了 w，就必须保证**逐顶点权重和 ≤ 1**。
+       为什么：位移是相加的，两张权重各 1 的网格叠在一起 = 这个顶点被推了两次，
+       画面表现为"裙子比腰多走一倍"，而单看每张表都是合法的。
+       没写 w 的网格按老口径算 1（同一部件多张网格叠加是既有 rig 的用法，不动它）。 */
+    {
+        int a, b, q;
+        for (a = 0; a < r->ndeforms; ++a) {
+            const zdeform *ga = &r->deforms[a];
+            int has_any = 0;
+            if (ga->part < 0) continue;
+            for (b = 0; b < r->ndeforms; ++b) {
+                if (r->deforms[b].part != ga->part) continue;
+                if (r->deforms[b].has_w) { has_any = 1; break; }
+            }
+            if (!has_any) continue;
+            for (q = 0; q < ga->kf_np; ++q) {
+                double sum = 0.0;
+                for (b = 0; b < r->ndeforms; ++b) {
+                    const zdeform *gb = &r->deforms[b];
+                    if (gb->part != ga->part) continue;
+                    if (gb->cols != ga->cols || gb->rows != ga->rows) continue;
+                    sum += gb->has_w ? gb->w[q] : 1.0;
+                }
+                if (sum > 1.0 + 1e-6) {
+                    zdiag_error(d, file, 0, 0, "deformers",
+                                "部件 '%s' 第 %d 个顶点的权重和是 %.3f（>1）："
+                                "位移会被叠加两次。同一部件上写了 w 的网格，"
+                                "逐顶点权重之和必须 ≤ 1（没写 w 的按 1 算）",
+                                ga->part_id[0] ? ga->part_id : ga->id, q, sum);
+                    return -1;
+                }
+            }
+        }
     }
     return 0;
 }
@@ -6955,6 +7027,10 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
                    这里只负责按画布缩放折算并累加。kf_w 由 deform_update_keys
                    每帧算一次，读的是合成后的参数值。 */
                 deform_vertex_at(cand, q, &dx, &dy);
+                if (cand->has_w) {           /* 逐顶点权重（T66.9） */
+                    dx *= cand->w[q];
+                    dy *= cand->w[q];
+                }
                 st->mesh[q * 2]     += dx * k;
                 st->mesh[q * 2 + 1] += dy * k;
             }

@@ -266,6 +266,38 @@ def check_form(root, char_id, sk, form, rig_path):
         check("网格骨 %s 的父节点排在它前面（引擎按顺序连乘）" % did,
               order[par] < order[did], "父 %s @%d / 子 @%d" % (par, order[par], order[did]))
 
+    # ⑥c 逐顶点权重（T66.9）：同一部件上两张网格按 w 混合（上缘跟腰、下缘跟摆）。
+    #     · 长度必须等于 (cols+1)*(rows+1)，取值 0~1；
+    #     · 同一部件上（含没写 w 的，按 1 算）**逐顶点权重和必须 ≤ 1** ——
+    #       位移是相加的，和 >1 就是同一个顶点被推了两次：画面上"裙子比腰多走一倍"，
+    #       而单看每张表都合法。C 侧加载时也会拒载，这里提前在静态闸拦一次。
+    weighted = {}
+    for did, d in defs.items():
+        if "w" not in d:
+            continue
+        cols, rows = int(d.get("cols", 2)), int(d.get("rows", 2))
+        n = (cols + 1) * (rows + 1)
+        w = d["w"]
+        ok = (isinstance(w, list) and len(w) == n
+              and all(isinstance(v, (int, float)) and -1e-9 <= float(v) <= 1.0 + 1e-9 for v in w))
+        check("网格骨 %s 的逐顶点权重合法（%d 个点，0~1）" % (did, n), ok,
+              str(w)[:90] if not ok else "")
+        if ok:
+            weighted.setdefault(d.get("part"), []).append((did, w))
+    for pid, lst in weighted.items():
+        if not pid:
+            continue
+        flat = [(did, d) for did, d in defs.items()
+                if d.get("part") == pid and "w" not in d]
+        worst, where = 0.0, ""
+        for q in range(len(lst[0][1])):
+            tot = sum(w[q] for _did, w in lst) + float(len(flat))
+            if tot > worst:
+                worst = tot
+        check("部件 %s 的逐顶点权重和 ≤ 1（最坏 %.2f）" % (pid, worst), worst <= 1.0 + 1e-6,
+              "同一顶点被 %s 重复驱动 ⇒ 位移叠加；把其中一张的 w 调小"
+              % ("/".join(did for did, _w in lst + [(x, None) for x, _d in flat])))
+
     # ⑦ forms.<form>.mesh_bones 点名的网格骨必须真的存在
     fb = ((sk.get("forms") or {}).get(form) or {}).get("mesh_bones") or {}
     for role, ids in fb.items():
