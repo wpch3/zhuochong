@@ -38,6 +38,8 @@
    "opaque": 22376,
    "near_white_pct": 28.75,
    "edge_near_white_pct": 50.39,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.56,
    "dark_pct": 0.75,
    "hole_pct": 0.0,
@@ -77,6 +79,8 @@
    "opaque": 22376,
    "near_white_pct": 28.75,
    "edge_near_white_pct": 50.39,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.56,
    "dark_pct": 0.75,
    "hole_pct": 0.0,
@@ -116,6 +120,8 @@
    "opaque": 182987,
    "near_white_pct": 10.87,
    "edge_near_white_pct": 28.83,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.43,
    "dark_pct": 3.0,
    "hole_pct": 0.0,
@@ -164,6 +170,8 @@
    "opaque": 184364,
    "near_white_pct": 11.76,
    "edge_near_white_pct": 27.34,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.65,
    "dark_pct": 2.76,
    "hole_pct": 0.0,
@@ -212,6 +220,8 @@
    "opaque": 120633,
    "near_white_pct": 38.14,
    "edge_near_white_pct": 38.07,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.92,
    "dark_pct": 2.02,
    "hole_pct": 0.0,
@@ -260,6 +270,8 @@
    "opaque": 140199,
    "near_white_pct": 33.93,
    "edge_near_white_pct": 47.52,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 2.36,
    "dark_pct": 2.4,
    "hole_pct": 0.0,
@@ -308,6 +320,8 @@
    "opaque": 155546,
    "near_white_pct": 30.74,
    "edge_near_white_pct": 41.22,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 3.2,
    "dark_pct": 2.71,
    "hole_pct": 0.0,
@@ -356,6 +370,8 @@
    "opaque": 155001,
    "near_white_pct": 30.03,
    "edge_near_white_pct": 24.8,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 3.17,
    "dark_pct": 2.84,
    "hole_pct": 0.0,
@@ -404,6 +420,8 @@
    "opaque": 135529,
    "near_white_pct": 20.87,
    "edge_near_white_pct": 22.44,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.34,
    "dark_pct": 0.02,
    "hole_pct": 0.0,
@@ -452,6 +470,8 @@
    "opaque": 103414,
    "near_white_pct": 21.52,
    "edge_near_white_pct": 12.32,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.8,
    "dark_pct": 0.15,
    "hole_pct": 0.0,
@@ -500,6 +520,8 @@
    "opaque": 100313,
    "near_white_pct": 24.31,
    "edge_near_white_pct": 26.03,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.16,
    "dark_pct": 0.01,
    "hole_pct": 0.0,
@@ -548,6 +570,8 @@
    "opaque": 100899,
    "near_white_pct": 21.51,
    "edge_near_white_pct": 22.94,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.39,
    "dark_pct": 0.01,
    "hole_pct": 0.0,
@@ -596,6 +620,8 @@
    "opaque": 24568,
    "near_white_pct": 57.62,
    "edge_near_white_pct": 47.04,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.61,
    "dark_pct": 4.33,
    "hole_pct": 0.0,
@@ -644,6 +670,8 @@
    "opaque": 9083,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -664,6 +692,8 @@
    "opaque": 32873,
    "near_white_pct": 6.6,
    "edge_near_white_pct": 9.4,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.47,
    "dark_pct": 1.92,
    "hole_pct": 0.0,
@@ -712,6 +742,8 @@
    "opaque": 10868,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.06,
    "dark_pct": 0.03,
    "hole_pct": 0.0,
@@ -732,6 +764,8 @@
    "opaque": 10847,
    "near_white_pct": 0.06,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.8,
    "dark_pct": 0.79,
    "hole_pct": 0.0,
@@ -752,6 +786,8 @@
    "opaque": 5043,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.32,
    "dark_pct": 0.16,
    "hole_pct": 0.0,
@@ -782,6 +818,8 @@
    "opaque": 37356,
    "near_white_pct": 0.93,
    "edge_near_white_pct": 16.28,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.19,
    "dark_pct": 2.66,
    "hole_pct": 0.0,
@@ -802,6 +840,8 @@
    "opaque": 28321,
    "near_white_pct": 57.36,
    "edge_near_white_pct": 47.29,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.44,
    "dark_pct": 4.15,
    "hole_pct": 0.0,
@@ -850,6 +890,8 @@
    "opaque": 11471,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -870,6 +912,8 @@
    "opaque": 37037,
    "near_white_pct": 5.63,
    "edge_near_white_pct": 8.31,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.45,
    "dark_pct": 1.93,
    "hole_pct": 0.0,
@@ -918,6 +962,8 @@
    "opaque": 8993,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.08,
    "dark_pct": 0.03,
    "hole_pct": 0.0,
@@ -938,6 +984,8 @@
    "opaque": 13386,
    "near_white_pct": 0.04,
    "edge_near_white_pct": 0.61,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.43,
    "dark_pct": 0.91,
    "hole_pct": 0.0,
@@ -958,6 +1006,8 @@
    "opaque": 4739,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.34,
    "dark_pct": 0.15,
    "hole_pct": 0.0,
@@ -988,6 +1038,8 @@
    "opaque": 40196,
    "near_white_pct": 0.9,
    "edge_near_white_pct": 18.12,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.46,
    "dark_pct": 2.92,
    "hole_pct": 0.0,
@@ -1021,12 +1073,55 @@
    "edge_touch": false
   },
   {
+   "file": "armpit_mask@2x.png",
+   "kind": "body",
+   "size": "546x1000",
+   "opaque": 546000,
+   "near_white_pct": 8.23,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.0,
+   "dark_pct": 0.0,
+   "hole_pct": 0.0,
+   "straight_run": 1000,
+   "residue_pct": 8.23,
+   "residue": {
+    "mint": 0,
+    "warm": 0,
+    "shirt": 44961
+   },
+   "residue_blocks": [
+    {
+     "px": 23052,
+     "bbox": [
+      0,
+      187,
+      92,
+      539
+     ]
+    },
+    {
+     "px": 21870,
+     "bbox": [
+      467,
+      191,
+      545,
+      547
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
    "file": "blush_l@2x.png",
    "kind": "face",
    "size": "80x44",
    "opaque": 1732,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -1047,6 +1142,8 @@
    "opaque": 1732,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -1067,6 +1164,8 @@
    "opaque": 644,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.24,
    "dark_pct": 2.64,
    "hole_pct": 0.0,
@@ -1087,6 +1186,8 @@
    "opaque": 570,
    "near_white_pct": 0.53,
    "edge_near_white_pct": 1.58,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.23,
    "dark_pct": 1.58,
    "hole_pct": 0.0,
@@ -1101,12 +1202,1055 @@
    "edge_touch": true
   },
   {
+   "file": "expression_parts_a/eye_left__angry@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 10.23,
+   "edge_near_white_pct": 7.05,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.28,
+   "dark_pct": 3.37,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 55.83,
+   "residue": {
+    "mint": 716,
+    "warm": 4067,
+    "shirt": 309
+   },
+   "residue_blocks": [
+    {
+     "px": 4306,
+     "bbox": [
+      6,
+      4,
+      149,
+      103
+     ]
+    },
+    {
+     "px": 717,
+     "bbox": [
+      53,
+      49,
+      99,
+      77
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__calm@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 19.88,
+   "edge_near_white_pct": 23.49,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 6.32,
+   "dark_pct": 5.51,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 48.55,
+   "residue": {
+    "mint": 595,
+    "warm": 3420,
+    "shirt": 656
+   },
+   "residue_blocks": [
+    {
+     "px": 3789,
+     "bbox": [
+      26,
+      2,
+      149,
+      103
+     ]
+    },
+    {
+     "px": 579,
+     "bbox": [
+      65,
+      53,
+      101,
+      79
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__closed@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 3.92,
+   "edge_near_white_pct": 5.7,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.56,
+   "dark_pct": 0.92,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 83.44,
+   "residue": {
+    "mint": 0,
+    "warm": 7485,
+    "shirt": 33
+   },
+   "residue_blocks": [
+    {
+     "px": 7507,
+     "bbox": [
+      12,
+      2,
+      149,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__happy@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 4.2,
+   "edge_near_white_pct": 5.37,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.1,
+   "dark_pct": 0.98,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 80.62,
+   "residue": {
+    "mint": 0,
+    "warm": 7211,
+    "shirt": 57
+   },
+   "residue_blocks": [
+    {
+     "px": 7253,
+     "bbox": [
+      13,
+      2,
+      149,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__sad@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8991,
+   "near_white_pct": 11.11,
+   "edge_near_white_pct": 10.68,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.73,
+   "dark_pct": 3.15,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 49.97,
+   "residue": {
+    "mint": 719,
+    "warm": 3779,
+    "shirt": 337
+   },
+   "residue_blocks": [
+    {
+     "px": 4493,
+     "bbox": [
+      11,
+      2,
+      149,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__shy@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 13.5,
+   "edge_near_white_pct": 5.37,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 4.46,
+   "dark_pct": 3.79,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 50.89,
+   "residue": {
+    "mint": 663,
+    "warm": 3398,
+    "shirt": 593
+   },
+   "residue_blocks": [
+    {
+     "px": 4579,
+     "bbox": [
+      5,
+      2,
+      149,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__sleepy@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 7.85,
+   "edge_near_white_pct": 5.7,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 2.05,
+   "dark_pct": 2.26,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 69.65,
+   "residue": {
+    "mint": 605,
+    "warm": 5420,
+    "shirt": 297
+   },
+   "residue_blocks": [
+    {
+     "px": 6266,
+     "bbox": [
+      10,
+      2,
+      149,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__smile@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8993,
+   "near_white_pct": 14.61,
+   "edge_near_white_pct": 14.38,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 4.91,
+   "dark_pct": 4.74,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 46.89,
+   "residue": {
+    "mint": 945,
+    "warm": 2943,
+    "shirt": 490
+   },
+   "residue_blocks": [
+    {
+     "px": 4217,
+     "bbox": [
+      7,
+      7,
+      149,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__surprised@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 20.61,
+   "edge_near_white_pct": 10.4,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 4.28,
+   "dark_pct": 3.77,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 46.96,
+   "residue": {
+    "mint": 711,
+    "warm": 2544,
+    "shirt": 1111
+   },
+   "residue_blocks": [
+    {
+     "px": 3528,
+     "bbox": [
+      4,
+      13,
+      149,
+      103
+     ]
+    },
+    {
+     "px": 697,
+     "bbox": [
+      57,
+      47,
+      94,
+      82
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_left__thinking@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 17.56,
+   "edge_near_white_pct": 20.47,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 4.1,
+   "dark_pct": 3.67,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 39.8,
+   "residue": {
+    "mint": 592,
+    "warm": 3029,
+    "shirt": 426
+   },
+   "residue_blocks": [
+    {
+     "px": 2771,
+     "bbox": [
+      41,
+      2,
+      149,
+      103
+     ]
+    },
+    {
+     "px": 564,
+     "bbox": [
+      61,
+      53,
+      98,
+      84
+     ]
+    },
+    {
+     "px": 246,
+     "bbox": [
+      21,
+      42,
+      47,
+      75
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__angry@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8993,
+   "near_white_pct": 10.15,
+   "edge_near_white_pct": 10.1,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.68,
+   "dark_pct": 3.6,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 59.1,
+   "residue": {
+    "mint": 788,
+    "warm": 4357,
+    "shirt": 240
+   },
+   "residue_blocks": [
+    {
+     "px": 4532,
+     "bbox": [
+      2,
+      2,
+      135,
+      103
+     ]
+    },
+    {
+     "px": 783,
+     "bbox": [
+      54,
+      43,
+      100,
+      71
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__calm@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 14.46,
+   "edge_near_white_pct": 16.78,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 5.95,
+   "dark_pct": 5.56,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 42.65,
+   "residue": {
+    "mint": 654,
+    "warm": 2990,
+    "shirt": 498
+   },
+   "residue_blocks": [
+    {
+     "px": 3222,
+     "bbox": [
+      2,
+      24,
+      109,
+      103
+     ]
+    },
+    {
+     "px": 615,
+     "bbox": [
+      42,
+      45,
+      79,
+      71
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__closed@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 3.4,
+   "edge_near_white_pct": 2.35,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.61,
+   "dark_pct": 0.67,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 83.79,
+   "residue": {
+    "mint": 0,
+    "warm": 7501,
+    "shirt": 50
+   },
+   "residue_blocks": [
+    {
+     "px": 7539,
+     "bbox": [
+      2,
+      2,
+      137,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__happy@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 5.15,
+   "edge_near_white_pct": 6.04,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.93,
+   "dark_pct": 0.81,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 80.3,
+   "residue": {
+    "mint": 0,
+    "warm": 7224,
+    "shirt": 68
+   },
+   "residue_blocks": [
+    {
+     "px": 7225,
+     "bbox": [
+      2,
+      2,
+      138,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__sad@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8990,
+   "near_white_pct": 9.32,
+   "edge_near_white_pct": 9.35,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.62,
+   "dark_pct": 3.34,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 53.72,
+   "residue": {
+    "mint": 766,
+    "warm": 4025,
+    "shirt": 288
+   },
+   "residue_blocks": [
+    {
+     "px": 4076,
+     "bbox": [
+      2,
+      10,
+      137,
+      103
+     ]
+    },
+    {
+     "px": 753,
+     "bbox": [
+      60,
+      45,
+      105,
+      72
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__shy@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 11.15,
+   "edge_near_white_pct": 9.73,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 4.33,
+   "dark_pct": 3.75,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 48.55,
+   "residue": {
+    "mint": 775,
+    "warm": 3239,
+    "shirt": 500
+   },
+   "residue_blocks": [
+    {
+     "px": 4368,
+     "bbox": [
+      2,
+      19,
+      131,
+      99
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__sleepy@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 7.61,
+   "edge_near_white_pct": 7.05,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 2.31,
+   "dark_pct": 2.15,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 68.87,
+   "residue": {
+    "mint": 630,
+    "warm": 5344,
+    "shirt": 247
+   },
+   "residue_blocks": [
+    {
+     "px": 6196,
+     "bbox": [
+      2,
+      2,
+      137,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__smile@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8981,
+   "near_white_pct": 12.29,
+   "edge_near_white_pct": 12.46,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 4.84,
+   "dark_pct": 4.38,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 56.46,
+   "residue": {
+    "mint": 1028,
+    "warm": 3738,
+    "shirt": 399
+   },
+   "residue_blocks": [
+    {
+     "px": 5071,
+     "bbox": [
+      2,
+      9,
+      142,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__surprised@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8992,
+   "near_white_pct": 20.82,
+   "edge_near_white_pct": 3.91,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.31,
+   "dark_pct": 3.31,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 57.82,
+   "residue": {
+    "mint": 746,
+    "warm": 3423,
+    "shirt": 1126
+   },
+   "residue_blocks": [
+    {
+     "px": 4460,
+     "bbox": [
+      2,
+      15,
+      142,
+      103
+     ]
+    },
+    {
+     "px": 739,
+     "bbox": [
+      61,
+      40,
+      100,
+      76
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/eye_right__thinking@2x.png",
+   "kind": "face",
+   "size": "150x104",
+   "opaque": 8997,
+   "near_white_pct": 15.77,
+   "edge_near_white_pct": 12.08,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.59,
+   "dark_pct": 3.38,
+   "hole_pct": 0.0,
+   "straight_run": 3,
+   "residue_pct": 45.29,
+   "residue": {
+    "mint": 661,
+    "warm": 3383,
+    "shirt": 293
+   },
+   "residue_blocks": [
+    {
+     "px": 4075,
+     "bbox": [
+      2,
+      19,
+      135,
+      103
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__angry@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4204,
+   "near_white_pct": 0.93,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.17,
+   "dark_pct": 0.4,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 98.72,
+   "residue": {
+    "mint": 0,
+    "warm": 4151,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 4150,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__calm@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4204,
+   "near_white_pct": 33.49,
+   "edge_near_white_pct": 20.83,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.21,
+   "dark_pct": 0.31,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 97.31,
+   "residue": {
+    "mint": 0,
+    "warm": 4040,
+    "shirt": 52
+   },
+   "residue_blocks": [
+    {
+     "px": 4091,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__closed@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4204,
+   "near_white_pct": 0.26,
+   "edge_near_white_pct": 2.08,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.0,
+   "dark_pct": 0.12,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 99.52,
+   "residue": {
+    "mint": 0,
+    "warm": 4184,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 4184,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__happy@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 3975,
+   "near_white_pct": 4.48,
+   "edge_near_white_pct": 1.49,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 2.11,
+   "dark_pct": 1.84,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 83.04,
+   "residue": {
+    "mint": 0,
+    "warm": 3342,
+    "shirt": 52
+   },
+   "residue_blocks": [
+    {
+     "px": 3301,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__sad@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4204,
+   "near_white_pct": 1.31,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.24,
+   "dark_pct": 0.31,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 97.84,
+   "residue": {
+    "mint": 0,
+    "warm": 4109,
+    "shirt": 5
+   },
+   "residue_blocks": [
+    {
+     "px": 4113,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__shy@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4204,
+   "near_white_pct": 1.43,
+   "edge_near_white_pct": 2.08,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.29,
+   "dark_pct": 0.36,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 96.12,
+   "residue": {
+    "mint": 0,
+    "warm": 4043,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 4041,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__sleepy@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4118,
+   "near_white_pct": 1.65,
+   "edge_near_white_pct": 0.65,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.17,
+   "dark_pct": 1.34,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 93.69,
+   "residue": {
+    "mint": 0,
+    "warm": 3860,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 3858,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__smile@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4204,
+   "near_white_pct": 2.64,
+   "edge_near_white_pct": 3.12,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.17,
+   "dark_pct": 0.36,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 97.6,
+   "residue": {
+    "mint": 0,
+    "warm": 4096,
+    "shirt": 11
+   },
+   "residue_blocks": [
+    {
+     "px": 4103,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__surprised@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4154,
+   "near_white_pct": 1.54,
+   "edge_near_white_pct": 0.74,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.59,
+   "dark_pct": 1.52,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 94.03,
+   "residue": {
+    "mint": 0,
+    "warm": 3905,
+    "shirt": 1
+   },
+   "residue_blocks": [
+    {
+     "px": 3906,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "expression_parts_a/mouth__thinking@2x.png",
+   "kind": "face",
+   "size": "88x56",
+   "opaque": 4204,
+   "near_white_pct": 0.69,
+   "edge_near_white_pct": 1.04,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.24,
+   "dark_pct": 0.29,
+   "hole_pct": 0.0,
+   "straight_run": 42,
+   "residue_pct": 98.74,
+   "residue": {
+    "mint": 0,
+    "warm": 4152,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 4151,
+     "bbox": [
+      0,
+      0,
+      87,
+      55
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
    "file": "eye_hl_l@2x.png",
    "kind": "face",
    "size": "26x26",
    "opaque": 392,
    "near_white_pct": 91.84,
    "edge_near_white_pct": 46.67,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -1137,6 +2281,8 @@
    "opaque": 392,
    "near_white_pct": 91.84,
    "edge_near_white_pct": 46.67,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -1167,6 +2313,8 @@
    "opaque": 504,
    "near_white_pct": 98.41,
    "edge_near_white_pct": 91.67,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -1197,6 +2345,8 @@
    "opaque": 504,
    "near_white_pct": 98.41,
    "edge_near_white_pct": 91.67,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -1227,6 +2377,8 @@
    "opaque": 2490,
    "near_white_pct": 3.01,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 6.14,
    "dark_pct": 5.18,
    "hole_pct": 0.0,
@@ -1257,6 +2409,8 @@
    "opaque": 2490,
    "near_white_pct": 2.57,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 7.27,
    "dark_pct": 5.78,
    "hole_pct": 0.0,
@@ -1296,6 +2450,8 @@
    "opaque": 21270,
    "near_white_pct": 24.83,
    "edge_near_white_pct": 11.77,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.58,
    "dark_pct": 5.19,
    "hole_pct": 0.0,
@@ -1344,6 +2500,8 @@
    "opaque": 11050,
    "near_white_pct": 24.42,
    "edge_near_white_pct": 22.29,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.32,
    "dark_pct": 2.06,
    "hole_pct": 0.0,
@@ -1383,6 +2541,8 @@
    "opaque": 895,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 6.03,
    "dark_pct": 1.9,
    "hole_pct": 0.0,
@@ -1403,6 +2563,8 @@
    "opaque": 12896,
    "near_white_pct": 25.67,
    "edge_near_white_pct": 31.61,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.63,
    "dark_pct": 3.52,
    "hole_pct": 0.0,
@@ -1433,6 +2595,8 @@
    "opaque": 11051,
    "near_white_pct": 24.56,
    "edge_near_white_pct": 19.14,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.35,
    "dark_pct": 2.12,
    "hole_pct": 0.0,
@@ -1463,6 +2627,8 @@
    "opaque": 5298,
    "near_white_pct": 95.7,
    "edge_near_white_pct": 27.62,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.21,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -1493,6 +2659,8 @@
    "opaque": 18750,
    "near_white_pct": 40.69,
    "edge_near_white_pct": 19.72,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.19,
    "dark_pct": 5.01,
    "hole_pct": 0.0,
@@ -1541,6 +2709,8 @@
    "opaque": 2576,
    "near_white_pct": 5.24,
    "edge_near_white_pct": 0.62,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 5.01,
    "dark_pct": 5.98,
    "hole_pct": 0.0,
@@ -1571,6 +2741,8 @@
    "opaque": 2576,
    "near_white_pct": 4.77,
    "edge_near_white_pct": 0.62,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 6.72,
    "dark_pct": 6.6,
    "hole_pct": 0.0,
@@ -1610,6 +2782,8 @@
    "opaque": 20271,
    "near_white_pct": 27.07,
    "edge_near_white_pct": 10.42,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.32,
    "dark_pct": 4.55,
    "hole_pct": 0.17,
@@ -1658,6 +2832,8 @@
    "opaque": 11572,
    "near_white_pct": 33.11,
    "edge_near_white_pct": 32.35,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.4,
    "dark_pct": 2.51,
    "hole_pct": 0.0,
@@ -1688,6 +2864,8 @@
    "opaque": 917,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 7.42,
    "dark_pct": 1.85,
    "hole_pct": 0.0,
@@ -1708,6 +2886,8 @@
    "opaque": 13130,
    "near_white_pct": 27.33,
    "edge_near_white_pct": 25.72,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.69,
    "dark_pct": 3.32,
    "hole_pct": 0.0,
@@ -1747,6 +2927,8 @@
    "opaque": 11530,
    "near_white_pct": 30.8,
    "edge_near_white_pct": 33.93,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.36,
    "dark_pct": 2.88,
    "hole_pct": 0.0,
@@ -1777,6 +2959,8 @@
    "opaque": 5226,
    "near_white_pct": 96.06,
    "edge_near_white_pct": 25.38,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.1,
    "dark_pct": 0.1,
    "hole_pct": 0.0,
@@ -1807,6 +2991,8 @@
    "opaque": 18370,
    "near_white_pct": 44.76,
    "edge_near_white_pct": 24.91,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.18,
    "dark_pct": 4.77,
    "hole_pct": 0.0,
@@ -1855,6 +3041,8 @@
    "opaque": 10397,
    "near_white_pct": 0.77,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.3,
    "dark_pct": 0.8,
    "hole_pct": 0.0,
@@ -1875,6 +3063,8 @@
    "opaque": 18618,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.06,
    "dark_pct": 0.13,
    "hole_pct": 0.0,
@@ -1895,6 +3085,8 @@
    "opaque": 4803,
    "near_white_pct": 12.74,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.77,
    "dark_pct": 0.31,
    "hole_pct": 0.0,
@@ -1925,6 +3117,8 @@
    "opaque": 10402,
    "near_white_pct": 8.97,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.91,
    "dark_pct": 0.03,
    "hole_pct": 0.0,
@@ -1973,6 +3167,8 @@
    "opaque": 9342,
    "near_white_pct": 65.28,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.09,
    "dark_pct": 3.0,
    "hole_pct": 0.0,
@@ -2021,6 +3217,8 @@
    "opaque": 6700,
    "near_white_pct": 7.36,
    "edge_near_white_pct": 0.95,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 2.04,
    "dark_pct": 2.55,
    "hole_pct": 0.0,
@@ -2041,6 +3239,8 @@
    "opaque": 74230,
    "near_white_pct": 15.71,
    "edge_near_white_pct": 0.07,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.01,
    "dark_pct": 3.46,
    "hole_pct": 0.0,
@@ -2089,6 +3289,8 @@
    "opaque": 152268,
    "near_white_pct": 27.68,
    "edge_near_white_pct": 27.01,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.8,
    "dark_pct": 3.64,
    "hole_pct": 0.0,
@@ -2119,6 +3321,8 @@
    "opaque": 148592,
    "near_white_pct": 30.62,
    "edge_near_white_pct": 39.51,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.71,
    "dark_pct": 4.03,
    "hole_pct": 0.0,
@@ -2167,6 +3371,8 @@
    "opaque": 156471,
    "near_white_pct": 17.55,
    "edge_near_white_pct": 31.35,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.47,
    "dark_pct": 3.69,
    "hole_pct": 0.0,
@@ -2215,6 +3421,8 @@
    "opaque": 41550,
    "near_white_pct": 25.65,
    "edge_near_white_pct": 33.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.8,
    "dark_pct": 7.27,
    "hole_pct": 0.0,
@@ -2263,6 +3471,8 @@
    "opaque": 380189,
    "near_white_pct": 24.44,
    "edge_near_white_pct": 20.45,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.0,
    "dark_pct": 2.37,
    "hole_pct": 0.0,
@@ -2311,6 +3521,8 @@
    "opaque": 170898,
    "near_white_pct": 21.38,
    "edge_near_white_pct": 16.44,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 3.54,
    "dark_pct": 2.14,
    "hole_pct": 0.0,
@@ -2359,6 +3571,8 @@
    "opaque": 120519,
    "near_white_pct": 18.93,
    "edge_near_white_pct": 21.23,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.77,
    "dark_pct": 2.79,
    "hole_pct": 0.0,
@@ -2404,45 +3618,47 @@
    "file": "hair_long_back@2x.png",
    "kind": "hair",
    "size": "1138x1836",
-   "opaque": 899724,
-   "near_white_pct": 16.99,
-   "edge_near_white_pct": 10.59,
-   "seam_pct": 4.16,
-   "dark_pct": 3.45,
-   "hole_pct": 1.81,
-   "straight_run": 57,
-   "residue_pct": 28.8,
+   "opaque": 1105360,
+   "near_white_pct": 8.67,
+   "edge_near_white_pct": 62.48,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.96,
+   "dark_pct": 1.68,
+   "hole_pct": 0.0,
+   "straight_run": 54,
+   "residue_pct": 24.97,
    "residue": {
-    "mint": 247531,
-    "warm": 10,
-    "shirt": 26821
+    "mint": 243216,
+    "warm": 21,
+    "shirt": 42618
    },
    "residue_blocks": [
     {
-     "px": 102425,
+     "px": 87213,
      "bbox": [
-      636,
+      84,
       1225,
+      473,
+      1748
+     ]
+    },
+    {
+     "px": 86526,
+     "bbox": [
+      660,
+      1243,
       1050,
-      1763
+      1747
      ]
     },
     {
-     "px": 102043,
+     "px": 55575,
      "bbox": [
-      86,
-      1200,
-      502,
-      1752
-     ]
-    },
-    {
-     "px": 9389,
-     "bbox": [
-      360,
-      1011,
-      453,
-      1244
+      412,
+      1415,
+      720,
+      1767
      ]
     }
    ],
@@ -2455,6 +3671,8 @@
    "opaque": 200342,
    "near_white_pct": 17.36,
    "edge_near_white_pct": 19.1,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 2.31,
    "dark_pct": 1.0,
    "hole_pct": 0.0,
@@ -2503,6 +3721,8 @@
    "opaque": 29194,
    "near_white_pct": 7.48,
    "edge_near_white_pct": 7.01,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.25,
    "dark_pct": 10.3,
    "hole_pct": 0.98,
@@ -2551,6 +3771,8 @@
    "opaque": 30700,
    "near_white_pct": 4.45,
    "edge_near_white_pct": 4.98,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 3.52,
    "dark_pct": 9.85,
    "hole_pct": 0.43,
@@ -2599,6 +3821,8 @@
    "opaque": 5465,
    "near_white_pct": 13.58,
    "edge_near_white_pct": 13.36,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 6.46,
    "dark_pct": 3.66,
    "hole_pct": 0.0,
@@ -2629,6 +3853,8 @@
    "opaque": 131237,
    "near_white_pct": 11.91,
    "edge_near_white_pct": 9.5,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 3.71,
    "dark_pct": 1.39,
    "hole_pct": 0.0,
@@ -2677,6 +3903,8 @@
    "opaque": 50926,
    "near_white_pct": 7.69,
    "edge_near_white_pct": 9.45,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 5.16,
    "dark_pct": 2.49,
    "hole_pct": 0.0,
@@ -2725,6 +3953,8 @@
    "opaque": 50951,
    "near_white_pct": 6.62,
    "edge_near_white_pct": 7.83,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.61,
    "dark_pct": 2.57,
    "hole_pct": 0.0,
@@ -2773,6 +4003,8 @@
    "opaque": 61776,
    "near_white_pct": 14.34,
    "edge_near_white_pct": 20.22,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.0,
    "dark_pct": 2.31,
    "hole_pct": 0.0,
@@ -2803,6 +4035,8 @@
    "opaque": 61776,
    "near_white_pct": 14.34,
    "edge_near_white_pct": 20.22,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 4.0,
    "dark_pct": 2.31,
    "hole_pct": 0.0,
@@ -2833,6 +4067,8 @@
    "opaque": 13122,
    "near_white_pct": 14.8,
    "edge_near_white_pct": 9.47,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.52,
    "dark_pct": 3.65,
    "hole_pct": 0.0,
@@ -2872,6 +4108,8 @@
    "opaque": 12429,
    "near_white_pct": 5.32,
    "edge_near_white_pct": 0.19,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.82,
    "dark_pct": 2.53,
    "hole_pct": 0.0,
@@ -2911,6 +4149,8 @@
    "opaque": 12174,
    "near_white_pct": 0.53,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.47,
    "dark_pct": 1.22,
    "hole_pct": 0.0,
@@ -2941,6 +4181,8 @@
    "opaque": 8135,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -2971,6 +4213,8 @@
    "opaque": 13115,
    "near_white_pct": 16.04,
    "edge_near_white_pct": 7.32,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 1.31,
    "dark_pct": 3.42,
    "hole_pct": 0.0,
@@ -3010,6 +4254,8 @@
    "opaque": 12429,
    "near_white_pct": 5.32,
    "edge_near_white_pct": 0.19,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.82,
    "dark_pct": 2.53,
    "hole_pct": 0.0,
@@ -3049,6 +4295,8 @@
    "opaque": 12174,
    "near_white_pct": 0.53,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.47,
    "dark_pct": 1.22,
    "hole_pct": 0.0,
@@ -3079,6 +4327,218 @@
    "opaque": 8135,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.0,
+   "dark_pct": 0.0,
+   "hole_pct": 0.0,
+   "straight_run": 89,
+   "residue_pct": 100.0,
+   "residue": {
+    "mint": 0,
+    "warm": 8135,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 8135,
+     "bbox": [
+      2,
+      2,
+      90,
+      102
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hires_src/hand_l_heart@2x.png",
+   "kind": "limb",
+   "size": "136x216",
+   "opaque": 12429,
+   "near_white_pct": 5.32,
+   "edge_near_white_pct": 0.19,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.82,
+   "dark_pct": 2.53,
+   "hole_pct": 0.0,
+   "straight_run": 62,
+   "residue_pct": 88.9,
+   "residue": {
+    "mint": 0,
+    "warm": 11103,
+    "shirt": 7
+   },
+   "residue_blocks": [
+    {
+     "px": 10575,
+     "bbox": [
+      17,
+      16,
+      118,
+      197
+     ]
+    },
+    {
+     "px": 475,
+     "bbox": [
+      36,
+      156,
+      60,
+      191
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hires_src/hand_l_open@2x.png",
+   "kind": "limb",
+   "size": "172x218",
+   "opaque": 12174,
+   "near_white_pct": 0.53,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.47,
+   "dark_pct": 1.22,
+   "hole_pct": 0.0,
+   "straight_run": 50,
+   "residue_pct": 86.41,
+   "residue": {
+    "mint": 0,
+    "warm": 10510,
+    "shirt": 14
+   },
+   "residue_blocks": [
+    {
+     "px": 10520,
+     "bbox": [
+      19,
+      16,
+      153,
+      197
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hires_src/hand_l_pad@2x.png",
+   "kind": "limb",
+   "size": "92x104",
+   "opaque": 8135,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.0,
+   "dark_pct": 0.0,
+   "hole_pct": 0.0,
+   "straight_run": 89,
+   "residue_pct": 100.0,
+   "residue": {
+    "mint": 0,
+    "warm": 8135,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 8135,
+     "bbox": [
+      2,
+      2,
+      90,
+      102
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hires_src/hand_r_heart@2x.png",
+   "kind": "limb",
+   "size": "136x216",
+   "opaque": 12429,
+   "near_white_pct": 5.32,
+   "edge_near_white_pct": 0.19,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.82,
+   "dark_pct": 2.53,
+   "hole_pct": 0.0,
+   "straight_run": 62,
+   "residue_pct": 88.9,
+   "residue": {
+    "mint": 0,
+    "warm": 11103,
+    "shirt": 7
+   },
+   "residue_blocks": [
+    {
+     "px": 10575,
+     "bbox": [
+      17,
+      16,
+      118,
+      197
+     ]
+    },
+    {
+     "px": 475,
+     "bbox": [
+      75,
+      156,
+      99,
+      191
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hires_src/hand_r_open@2x.png",
+   "kind": "limb",
+   "size": "172x218",
+   "opaque": 12174,
+   "near_white_pct": 0.53,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.47,
+   "dark_pct": 1.22,
+   "hole_pct": 0.0,
+   "straight_run": 50,
+   "residue_pct": 86.41,
+   "residue": {
+    "mint": 0,
+    "warm": 10510,
+    "shirt": 14
+   },
+   "residue_blocks": [
+    {
+     "px": 10520,
+     "bbox": [
+      18,
+      16,
+      152,
+      197
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hires_src/hand_r_pad@2x.png",
+   "kind": "limb",
+   "size": "92x104",
+   "opaque": 8135,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -3109,6 +4569,8 @@
    "opaque": 1840,
    "near_white_pct": 3.91,
    "edge_near_white_pct": 4.48,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.38,
    "dark_pct": 0.54,
    "hole_pct": 0.0,
@@ -3139,6 +4601,8 @@
    "opaque": 1840,
    "near_white_pct": 100.0,
    "edge_near_white_pct": 100.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.0,
    "hole_pct": 0.0,
@@ -3169,6 +4633,8 @@
    "opaque": 553,
    "near_white_pct": 49.55,
    "edge_near_white_pct": 57.24,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 3.8,
    "hole_pct": 0.0,
@@ -3193,12 +4659,1568 @@
    "edge_touch": true
   },
   {
+   "file": "outfit_cocoa/arm_l_cap@2x.png",
+   "kind": "limb",
+   "size": "188x186",
+   "opaque": 24568,
+   "near_white_pct": 0.09,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 2.04,
+   "dark_pct": 8.71,
+   "hole_pct": 0.0,
+   "straight_run": 33,
+   "residue_pct": 82.21,
+   "residue": {
+    "mint": 5,
+    "warm": 20893,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 6843,
+     "bbox": [
+      3,
+      30,
+      73,
+      182
+     ]
+    },
+    {
+     "px": 5412,
+     "bbox": [
+      103,
+      20,
+      163,
+      161
+     ]
+    },
+    {
+     "px": 4068,
+     "bbox": [
+      59,
+      1,
+      116,
+      150
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/arm_l_fore@2x.png",
+   "kind": "limb",
+   "size": "160x294",
+   "opaque": 32873,
+   "near_white_pct": 6.6,
+   "edge_near_white_pct": 9.4,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.92,
+   "dark_pct": 2.49,
+   "hole_pct": 0.0,
+   "straight_run": 30,
+   "residue_pct": 63.27,
+   "residue": {
+    "mint": 357,
+    "warm": 19631,
+    "shirt": 1651
+   },
+   "residue_blocks": [
+    {
+     "px": 17193,
+     "bbox": [
+      7,
+      0,
+      148,
+      207
+     ]
+    },
+    {
+     "px": 1424,
+     "bbox": [
+      15,
+      225,
+      104,
+      270
+     ]
+    },
+    {
+     "px": 1177,
+     "bbox": [
+      18,
+      204,
+      107,
+      246
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/arm_l_root@2x.png",
+   "kind": "limb",
+   "size": "98x400",
+   "opaque": 10847,
+   "near_white_pct": 0.06,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.43,
+   "dark_pct": 1.69,
+   "hole_pct": 0.0,
+   "straight_run": 25,
+   "residue_pct": 73.78,
+   "residue": {
+    "mint": 9,
+    "warm": 8680,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 6583,
+     "bbox": [
+      33,
+      0,
+      97,
+      186
+     ]
+    },
+    {
+     "px": 964,
+     "bbox": [
+      33,
+      193,
+      60,
+      254
+     ]
+    },
+    {
+     "px": 228,
+     "bbox": [
+      28,
+      256,
+      44,
+      281
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/arm_l_upper@2x.png",
+   "kind": "limb",
+   "size": "170x510",
+   "opaque": 37356,
+   "near_white_pct": 0.93,
+   "edge_near_white_pct": 16.28,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.52,
+   "dark_pct": 2.82,
+   "hole_pct": 0.0,
+   "straight_run": 17,
+   "residue_pct": 78.67,
+   "residue": {
+    "mint": 10,
+    "warm": 29939,
+    "shirt": 143
+   },
+   "residue_blocks": [
+    {
+     "px": 27367,
+     "bbox": [
+      6,
+      116,
+      141,
+      506
+     ]
+    },
+    {
+     "px": 2022,
+     "bbox": [
+      126,
+      171,
+      157,
+      267
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "outfit_cocoa/arm_r_cap@2x.png",
+   "kind": "limb",
+   "size": "200x200",
+   "opaque": 28321,
+   "near_white_pct": 0.11,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 2.44,
+   "dark_pct": 8.65,
+   "hole_pct": 0.0,
+   "straight_run": 24,
+   "residue_pct": 81.94,
+   "residue": {
+    "mint": 5,
+    "warm": 23598,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 11941,
+     "bbox": [
+      27,
+      1,
+      138,
+      195
+     ]
+    },
+    {
+     "px": 7155,
+     "bbox": [
+      116,
+      40,
+      194,
+      196
+     ]
+    },
+    {
+     "px": 841,
+     "bbox": [
+      19,
+      54,
+      30,
+      177
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/arm_r_fore@2x.png",
+   "kind": "limb",
+   "size": "176x302",
+   "opaque": 37037,
+   "near_white_pct": 5.63,
+   "edge_near_white_pct": 8.31,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.08,
+   "dark_pct": 2.48,
+   "hole_pct": 0.0,
+   "straight_run": 34,
+   "residue_pct": 66.88,
+   "residue": {
+    "mint": 377,
+    "warm": 23643,
+    "shirt": 1566
+   },
+   "residue_blocks": [
+    {
+     "px": 21411,
+     "bbox": [
+      9,
+      0,
+      171,
+      221
+     ]
+    },
+    {
+     "px": 1253,
+     "bbox": [
+      71,
+      231,
+      161,
+      278
+     ]
+    },
+    {
+     "px": 1113,
+     "bbox": [
+      63,
+      209,
+      155,
+      254
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/arm_r_root@2x.png",
+   "kind": "limb",
+   "size": "130x402",
+   "opaque": 13386,
+   "near_white_pct": 0.04,
+   "edge_near_white_pct": 0.61,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.89,
+   "dark_pct": 1.73,
+   "hole_pct": 0.0,
+   "straight_run": 19,
+   "residue_pct": 83.86,
+   "residue": {
+    "mint": 1,
+    "warm": 11349,
+    "shirt": 2
+   },
+   "residue_blocks": [
+    {
+     "px": 8807,
+     "bbox": [
+      0,
+      0,
+      78,
+      206
+     ]
+    },
+    {
+     "px": 2418,
+     "bbox": [
+      40,
+      203,
+      95,
+      399
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/arm_r_upper@2x.png",
+   "kind": "limb",
+   "size": "174x516",
+   "opaque": 40196,
+   "near_white_pct": 0.9,
+   "edge_near_white_pct": 18.12,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.81,
+   "dark_pct": 3.25,
+   "hole_pct": 0.0,
+   "straight_run": 55,
+   "residue_pct": 81.16,
+   "residue": {
+    "mint": 2,
+    "warm": 33310,
+    "shirt": 93
+   },
+   "residue_blocks": [
+    {
+     "px": 30416,
+     "bbox": [
+      27,
+      134,
+      159,
+      511
+     ]
+    },
+    {
+     "px": 2207,
+     "bbox": [
+      8,
+      183,
+      44,
+      282
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "outfit_cocoa/seg_foot_l@2x.png",
+   "kind": "limb",
+   "size": "146x360",
+   "opaque": 38668,
+   "near_white_pct": 52.27,
+   "edge_near_white_pct": 0.7,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.31,
+   "dark_pct": 7.1,
+   "hole_pct": 0.0,
+   "straight_run": 77,
+   "residue_pct": 49.04,
+   "residue": {
+    "mint": 658,
+    "warm": 4468,
+    "shirt": 17265
+   },
+   "residue_blocks": [
+    {
+     "px": 5842,
+     "bbox": [
+      21,
+      236,
+      132,
+      325
+     ]
+    },
+    {
+     "px": 5372,
+     "bbox": [
+      37,
+      0,
+      113,
+      94
+     ]
+    },
+    {
+     "px": 2588,
+     "bbox": [
+      9,
+      280,
+      139,
+      357
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/seg_foot_l_tip@2x.png",
+   "kind": "limb",
+   "size": "146x420",
+   "opaque": 46102,
+   "near_white_pct": 51.54,
+   "edge_near_white_pct": 2.33,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.75,
+   "dark_pct": 8.29,
+   "hole_pct": 0.0,
+   "straight_run": 77,
+   "residue_pct": 50.47,
+   "residue": {
+    "mint": 1076,
+    "warm": 4210,
+    "shirt": 21303
+   },
+   "residue_blocks": [
+    {
+     "px": 6914,
+     "bbox": [
+      26,
+      280,
+      132,
+      379
+     ]
+    },
+    {
+     "px": 6169,
+     "bbox": [
+      36,
+      0,
+      116,
+      125
+     ]
+    },
+    {
+     "px": 2408,
+     "bbox": [
+      9,
+      330,
+      143,
+      418
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/seg_foot_r@2x.png",
+   "kind": "limb",
+   "size": "148x360",
+   "opaque": 38657,
+   "near_white_pct": 52.05,
+   "edge_near_white_pct": 1.23,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.26,
+   "dark_pct": 7.28,
+   "hole_pct": 0.0,
+   "straight_run": 77,
+   "residue_pct": 48.91,
+   "residue": {
+    "mint": 535,
+    "warm": 4190,
+    "shirt": 17159
+   },
+   "residue_blocks": [
+    {
+     "px": 5565,
+     "bbox": [
+      10,
+      236,
+      115,
+      325
+     ]
+    },
+    {
+     "px": 5132,
+     "bbox": [
+      43,
+      0,
+      114,
+      106
+     ]
+    },
+    {
+     "px": 2682,
+     "bbox": [
+      4,
+      276,
+      138,
+      357
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/seg_foot_r_tip@2x.png",
+   "kind": "limb",
+   "size": "148x420",
+   "opaque": 46099,
+   "near_white_pct": 51.01,
+   "edge_near_white_pct": 2.74,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.9,
+   "dark_pct": 8.77,
+   "hole_pct": 0.0,
+   "straight_run": 77,
+   "residue_pct": 49.74,
+   "residue": {
+    "mint": 949,
+    "warm": 3849,
+    "shirt": 21200
+   },
+   "residue_blocks": [
+    {
+     "px": 6433,
+     "bbox": [
+      15,
+      281,
+      118,
+      376
+     ]
+    },
+    {
+     "px": 6197,
+     "bbox": [
+      37,
+      0,
+      116,
+      125
+     ]
+    },
+    {
+     "px": 2387,
+     "bbox": [
+      4,
+      328,
+      140,
+      418
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/seg_leg_l@2x.png",
+   "kind": "limb",
+   "size": "272x974",
+   "opaque": 133321,
+   "near_white_pct": 24.79,
+   "edge_near_white_pct": 0.1,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.1,
+   "dark_pct": 0.44,
+   "hole_pct": 0.0,
+   "straight_run": 76,
+   "residue_pct": 92.11,
+   "residue": {
+    "mint": 939,
+    "warm": 90836,
+    "shirt": 31289
+   },
+   "residue_blocks": [
+    {
+     "px": 89237,
+     "bbox": [
+      40,
+      0,
+      271,
+      599
+     ]
+    },
+    {
+     "px": 33563,
+     "bbox": [
+      117,
+      584,
+      242,
+      973
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/seg_leg_r@2x.png",
+   "kind": "limb",
+   "size": "272x972",
+   "opaque": 133354,
+   "near_white_pct": 24.64,
+   "edge_near_white_pct": 0.15,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.08,
+   "dark_pct": 0.26,
+   "hole_pct": 0.0,
+   "straight_run": 136,
+   "residue_pct": 91.54,
+   "residue": {
+    "mint": 1202,
+    "warm": 91117,
+    "shirt": 30104
+   },
+   "residue_blocks": [
+    {
+     "px": 90046,
+     "bbox": [
+      0,
+      0,
+      237,
+      597
+     ]
+    },
+    {
+     "px": 32022,
+     "bbox": [
+      37,
+      582,
+      160,
+      971
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/seg_torso@2x.png",
+   "kind": "body",
+   "size": "546x1000",
+   "opaque": 337687,
+   "near_white_pct": 0.14,
+   "edge_near_white_pct": 0.37,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.24,
+   "dark_pct": 5.27,
+   "hole_pct": 0.0,
+   "straight_run": 266,
+   "residue_pct": 78.27,
+   "residue": {
+    "mint": 346,
+    "warm": 265214,
+    "shirt": 14
+   },
+   "residue_blocks": [
+    {
+     "px": 84539,
+     "bbox": [
+      365,
+      169,
+      545,
+      789
+     ]
+    },
+    {
+     "px": 83841,
+     "bbox": [
+      0,
+      169,
+      188,
+      788
+     ]
+    },
+    {
+     "px": 18583,
+     "bbox": [
+      327,
+      163,
+      434,
+      704
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/skirt_lining@2x.png",
+   "kind": "cloth",
+   "size": "532x196",
+   "opaque": 87516,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.25,
+   "dark_pct": 1.03,
+   "hole_pct": 0.0,
+   "straight_run": 234,
+   "residue_pct": 0.0,
+   "residue": {
+    "mint": 0,
+    "warm": 0,
+    "shirt": 0
+   },
+   "residue_blocks": [],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_cocoa/skirt_main@2x.png",
+   "kind": "cloth",
+   "size": "544x444",
+   "opaque": 140252,
+   "near_white_pct": 0.03,
+   "edge_near_white_pct": 0.05,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.95,
+   "dark_pct": 7.97,
+   "hole_pct": 0.0,
+   "straight_run": 72,
+   "residue_pct": 13.48,
+   "residue": {
+    "mint": 0,
+    "warm": 18903,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 3059,
+     "bbox": [
+      158,
+      102,
+      202,
+      191
+     ]
+    },
+    {
+     "px": 2511,
+     "bbox": [
+      361,
+      242,
+      420,
+      300
+     ]
+    },
+    {
+     "px": 2177,
+     "bbox": [
+      144,
+      237,
+      187,
+      299
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/arm_l_cap@2x.png",
+   "kind": "limb",
+   "size": "188x186",
+   "opaque": 24568,
+   "near_white_pct": 2.51,
+   "edge_near_white_pct": 2.51,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.12,
+   "dark_pct": 2.36,
+   "hole_pct": 0.0,
+   "straight_run": 33,
+   "residue_pct": 18.62,
+   "residue": {
+    "mint": 5,
+    "warm": 4822,
+    "shirt": 401
+   },
+   "residue_blocks": [
+    {
+     "px": 3277,
+     "bbox": [
+      5,
+      85,
+      72,
+      182
+     ]
+    },
+    {
+     "px": 930,
+     "bbox": [
+      30,
+      30,
+      57,
+      102
+     ]
+    },
+    {
+     "px": 368,
+     "bbox": [
+      157,
+      79,
+      167,
+      165
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/arm_l_fore@2x.png",
+   "kind": "limb",
+   "size": "160x294",
+   "opaque": 32873,
+   "near_white_pct": 6.7,
+   "edge_near_white_pct": 9.4,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.95,
+   "dark_pct": 2.5,
+   "hole_pct": 0.0,
+   "straight_run": 30,
+   "residue_pct": 69.95,
+   "residue": {
+    "mint": 357,
+    "warm": 21781,
+    "shirt": 1651
+   },
+   "residue_blocks": [
+    {
+     "px": 19411,
+     "bbox": [
+      7,
+      0,
+      148,
+      224
+     ]
+    },
+    {
+     "px": 1312,
+     "bbox": [
+      15,
+      225,
+      104,
+      270
+     ]
+    },
+    {
+     "px": 1150,
+     "bbox": [
+      21,
+      204,
+      107,
+      246
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/arm_l_root@2x.png",
+   "kind": "limb",
+   "size": "98x400",
+   "opaque": 10847,
+   "near_white_pct": 0.06,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.39,
+   "dark_pct": 1.65,
+   "hole_pct": 0.0,
+   "straight_run": 25,
+   "residue_pct": 75.36,
+   "residue": {
+    "mint": 9,
+    "warm": 8418,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 6200,
+     "bbox": [
+      33,
+      0,
+      97,
+      187
+     ]
+    },
+    {
+     "px": 1974,
+     "bbox": [
+      12,
+      185,
+      61,
+      364
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/arm_l_upper@2x.png",
+   "kind": "limb",
+   "size": "170x510",
+   "opaque": 37356,
+   "near_white_pct": 0.94,
+   "edge_near_white_pct": 16.28,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.47,
+   "dark_pct": 2.82,
+   "hole_pct": 0.0,
+   "straight_run": 17,
+   "residue_pct": 79.25,
+   "residue": {
+    "mint": 10,
+    "warm": 30401,
+    "shirt": 143
+   },
+   "residue_blocks": [
+    {
+     "px": 27411,
+     "bbox": [
+      7,
+      136,
+      141,
+      506
+     ]
+    },
+    {
+     "px": 2194,
+     "bbox": [
+      125,
+      170,
+      155,
+      313
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "outfit_midnight/arm_r_cap@2x.png",
+   "kind": "limb",
+   "size": "200x200",
+   "opaque": 28321,
+   "near_white_pct": 1.96,
+   "edge_near_white_pct": 1.86,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.38,
+   "dark_pct": 2.5,
+   "hole_pct": 0.0,
+   "straight_run": 24,
+   "residue_pct": 15.31,
+   "residue": {
+    "mint": 5,
+    "warm": 4696,
+    "shirt": 385
+   },
+   "residue_blocks": [
+    {
+     "px": 1871,
+     "bbox": [
+      152,
+      103,
+      193,
+      190
+     ]
+    },
+    {
+     "px": 868,
+     "bbox": [
+      138,
+      51,
+      172,
+      111
+     ]
+    },
+    {
+     "px": 638,
+     "bbox": [
+      116,
+      161,
+      151,
+      196
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/arm_r_fore@2x.png",
+   "kind": "limb",
+   "size": "176x302",
+   "opaque": 37037,
+   "near_white_pct": 5.65,
+   "edge_near_white_pct": 8.31,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 1.12,
+   "dark_pct": 2.54,
+   "hole_pct": 0.0,
+   "straight_run": 34,
+   "residue_pct": 70.69,
+   "residue": {
+    "mint": 377,
+    "warm": 25115,
+    "shirt": 1566
+   },
+   "residue_blocks": [
+    {
+     "px": 22609,
+     "bbox": [
+      9,
+      0,
+      167,
+      232
+     ]
+    },
+    {
+     "px": 1239,
+     "bbox": [
+      71,
+      231,
+      161,
+      280
+     ]
+    },
+    {
+     "px": 1092,
+     "bbox": [
+      63,
+      212,
+      155,
+      254
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/arm_r_root@2x.png",
+   "kind": "limb",
+   "size": "130x402",
+   "opaque": 13386,
+   "near_white_pct": 0.04,
+   "edge_near_white_pct": 0.61,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.84,
+   "dark_pct": 1.73,
+   "hole_pct": 0.0,
+   "straight_run": 19,
+   "residue_pct": 80.66,
+   "residue": {
+    "mint": 1,
+    "warm": 10897,
+    "shirt": 2
+   },
+   "residue_blocks": [
+    {
+     "px": 10797,
+     "bbox": [
+      0,
+      0,
+      95,
+      399
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/arm_r_upper@2x.png",
+   "kind": "limb",
+   "size": "174x516",
+   "opaque": 40196,
+   "near_white_pct": 0.91,
+   "edge_near_white_pct": 18.12,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.8,
+   "dark_pct": 3.25,
+   "hole_pct": 0.0,
+   "straight_run": 55,
+   "residue_pct": 78.7,
+   "residue": {
+    "mint": 2,
+    "warm": 32764,
+    "shirt": 93
+   },
+   "residue_blocks": [
+    {
+     "px": 29386,
+     "bbox": [
+      27,
+      143,
+      162,
+      511
+     ]
+    },
+    {
+     "px": 1650,
+     "bbox": [
+      8,
+      183,
+      44,
+      259
+     ]
+    },
+    {
+     "px": 598,
+     "bbox": [
+      16,
+      255,
+      38,
+      321
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "outfit_midnight/seg_foot_l@2x.png",
+   "kind": "limb",
+   "size": "146x360",
+   "opaque": 38668,
+   "near_white_pct": 52.26,
+   "edge_near_white_pct": 0.7,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.25,
+   "dark_pct": 6.64,
+   "hole_pct": 0.0,
+   "straight_run": 77,
+   "residue_pct": 42.47,
+   "residue": {
+    "mint": 658,
+    "warm": 142,
+    "shirt": 17265
+   },
+   "residue_blocks": [
+    {
+     "px": 5336,
+     "bbox": [
+      38,
+      0,
+      112,
+      93
+     ]
+    },
+    {
+     "px": 4983,
+     "bbox": [
+      29,
+      237,
+      131,
+      310
+     ]
+    },
+    {
+     "px": 1752,
+     "bbox": [
+      29,
+      321,
+      127,
+      356
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/seg_foot_l_tip@2x.png",
+   "kind": "limb",
+   "size": "146x420",
+   "opaque": 46102,
+   "near_white_pct": 51.44,
+   "edge_near_white_pct": 2.33,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.82,
+   "dark_pct": 7.92,
+   "hole_pct": 0.0,
+   "straight_run": 77,
+   "residue_pct": 45.2,
+   "residue": {
+    "mint": 1074,
+    "warm": 145,
+    "shirt": 21303
+   },
+   "residue_blocks": [
+    {
+     "px": 6516,
+     "bbox": [
+      29,
+      281,
+      131,
+      375
+     ]
+    },
+    {
+     "px": 6109,
+     "bbox": [
+      38,
+      0,
+      116,
+      125
+     ]
+    },
+    {
+     "px": 1362,
+     "bbox": [
+      19,
+      391,
+      131,
+      417
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/seg_foot_r@2x.png",
+   "kind": "limb",
+   "size": "148x360",
+   "opaque": 38657,
+   "near_white_pct": 52.05,
+   "edge_near_white_pct": 1.23,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.19,
+   "dark_pct": 6.88,
+   "hole_pct": 0.0,
+   "straight_run": 77,
+   "residue_pct": 42.31,
+   "residue": {
+    "mint": 535,
+    "warm": 78,
+    "shirt": 17159
+   },
+   "residue_blocks": [
+    {
+     "px": 5121,
+     "bbox": [
+      43,
+      0,
+      113,
+      106
+     ]
+    },
+    {
+     "px": 4864,
+     "bbox": [
+      15,
+      237,
+      114,
+      309
+     ]
+    },
+    {
+     "px": 1790,
+     "bbox": [
+      18,
+      324,
+      112,
+      356
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/seg_foot_r_tip@2x.png",
+   "kind": "limb",
+   "size": "148x420",
+   "opaque": 46099,
+   "near_white_pct": 50.93,
+   "edge_near_white_pct": 2.51,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 3.98,
+   "dark_pct": 8.46,
+   "hole_pct": 0.0,
+   "straight_run": 77,
+   "residue_pct": 44.5,
+   "residue": {
+    "mint": 949,
+    "warm": 57,
+    "shirt": 21200
+   },
+   "residue_blocks": [
+    {
+     "px": 6354,
+     "bbox": [
+      15,
+      281,
+      117,
+      375
+     ]
+    },
+    {
+     "px": 6157,
+     "bbox": [
+      37,
+      0,
+      115,
+      125
+     ]
+    },
+    {
+     "px": 1289,
+     "bbox": [
+      16,
+      394,
+      121,
+      417
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/seg_leg_l@2x.png",
+   "kind": "limb",
+   "size": "272x974",
+   "opaque": 133321,
+   "near_white_pct": 24.79,
+   "edge_near_white_pct": 0.1,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.1,
+   "dark_pct": 0.42,
+   "hole_pct": 0.0,
+   "straight_run": 76,
+   "residue_pct": 90.89,
+   "residue": {
+    "mint": 939,
+    "warm": 89263,
+    "shirt": 31289
+   },
+   "residue_blocks": [
+    {
+     "px": 89237,
+     "bbox": [
+      40,
+      0,
+      271,
+      599
+     ]
+    },
+    {
+     "px": 26340,
+     "bbox": [
+      119,
+      656,
+      241,
+      973
+     ]
+    },
+    {
+     "px": 3202,
+     "bbox": [
+      120,
+      584,
+      242,
+      636
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/seg_leg_r@2x.png",
+   "kind": "limb",
+   "size": "272x972",
+   "opaque": 133354,
+   "near_white_pct": 24.64,
+   "edge_near_white_pct": 0.15,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.08,
+   "dark_pct": 0.25,
+   "hole_pct": 0.0,
+   "straight_run": 136,
+   "residue_pct": 90.53,
+   "residue": {
+    "mint": 1202,
+    "warm": 90069,
+    "shirt": 30104
+   },
+   "residue_blocks": [
+    {
+     "px": 90046,
+     "bbox": [
+      0,
+      0,
+      237,
+      597
+     ]
+    },
+    {
+     "px": 27725,
+     "bbox": [
+      37,
+      620,
+      160,
+      971
+     ]
+    },
+    {
+     "px": 2961,
+     "bbox": [
+      38,
+      582,
+      159,
+      625
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/seg_torso@2x.png",
+   "kind": "body",
+   "size": "546x1000",
+   "opaque": 337687,
+   "near_white_pct": 4.29,
+   "edge_near_white_pct": 1.98,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.47,
+   "dark_pct": 2.72,
+   "hole_pct": 0.0,
+   "straight_run": 266,
+   "residue_pct": 8.98,
+   "residue": {
+    "mint": 225,
+    "warm": 30881,
+    "shirt": 1726
+   },
+   "residue_blocks": [
+    {
+     "px": 6351,
+     "bbox": [
+      234,
+      76,
+      331,
+      188
+     ]
+    },
+    {
+     "px": 5283,
+     "bbox": [
+      122,
+      76,
+      220,
+      223
+     ]
+    },
+    {
+     "px": 5080,
+     "bbox": [
+      345,
+      76,
+      439,
+      221
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/skirt_lining@2x.png",
+   "kind": "cloth",
+   "size": "532x196",
+   "opaque": 87516,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.03,
+   "dark_pct": 0.16,
+   "hole_pct": 0.0,
+   "straight_run": 234,
+   "residue_pct": 0.0,
+   "residue": {
+    "mint": 0,
+    "warm": 0,
+    "shirt": 0
+   },
+   "residue_blocks": [],
+   "edge_touch": true
+  },
+  {
+   "file": "outfit_midnight/skirt_main@2x.png",
+   "kind": "cloth",
+   "size": "544x444",
+   "opaque": 140252,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.15,
+   "dark_pct": 1.32,
+   "hole_pct": 0.0,
+   "straight_run": 72,
+   "residue_pct": 4.4,
+   "residue": {
+    "mint": 0,
+    "warm": 6340,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 3389,
+     "bbox": [
+      416,
+      238,
+      513,
+      295
+     ]
+    },
+    {
+     "px": 2788,
+     "bbox": [
+      31,
+      240,
+      116,
+      294
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
    "file": "seg_foot_l@2x.png",
    "kind": "limb",
    "size": "146x360",
    "opaque": 38668,
    "near_white_pct": 52.26,
    "edge_near_white_pct": 0.7,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 2.98,
    "dark_pct": 6.64,
    "hole_pct": 0.0,
@@ -3247,6 +6269,8 @@
    "opaque": 46102,
    "near_white_pct": 51.44,
    "edge_near_white_pct": 2.33,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 3.7,
    "dark_pct": 8.06,
    "hole_pct": 0.0,
@@ -3295,6 +6319,8 @@
    "opaque": 38657,
    "near_white_pct": 52.05,
    "edge_near_white_pct": 1.23,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 2.86,
    "dark_pct": 6.75,
    "hole_pct": 0.0,
@@ -3343,6 +6369,8 @@
    "opaque": 46099,
    "near_white_pct": 50.93,
    "edge_near_white_pct": 2.51,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 3.79,
    "dark_pct": 8.49,
    "hole_pct": 0.0,
@@ -3391,6 +6419,8 @@
    "opaque": 107603,
    "near_white_pct": 26.77,
    "edge_near_white_pct": 24.59,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.86,
    "dark_pct": 2.58,
    "hole_pct": 0.0,
@@ -3439,6 +6469,8 @@
    "opaque": 133321,
    "near_white_pct": 24.79,
    "edge_near_white_pct": 0.1,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.1,
    "dark_pct": 0.42,
    "hole_pct": 0.0,
@@ -3478,6 +6510,8 @@
    "opaque": 133354,
    "near_white_pct": 24.64,
    "edge_near_white_pct": 0.15,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.08,
    "dark_pct": 0.26,
    "hole_pct": 0.0,
@@ -3514,18 +6548,20 @@
    "file": "seg_torso@2x.png",
    "kind": "body",
    "size": "546x1000",
-   "opaque": 337173,
-   "near_white_pct": 54.48,
-   "edge_near_white_pct": 5.97,
-   "seam_pct": 0.81,
-   "dark_pct": 4.01,
+   "opaque": 337687,
+   "near_white_pct": 53.88,
+   "edge_near_white_pct": 5.92,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.57,
+   "dark_pct": 4.06,
    "hole_pct": 0.0,
    "straight_run": 266,
-   "residue_pct": 71.45,
+   "residue_pct": 65.21,
    "residue": {
-    "mint": 28962,
-    "warm": 53742,
-    "shirt": 163545
+    "mint": 9023,
+    "warm": 53718,
+    "shirt": 162321
    },
    "residue_blocks": [
     {
@@ -3565,6 +6601,8 @@
    "opaque": 87506,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.38,
    "dark_pct": 1.96,
    "hole_pct": 0.0,
@@ -3585,6 +6623,8 @@
    "opaque": 140175,
    "near_white_pct": 0.21,
    "edge_near_white_pct": 0.2,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.72,
    "dark_pct": 2.69,
    "hole_pct": 0.0,
@@ -3605,6 +6645,8 @@
    "opaque": 25818,
    "near_white_pct": 29.84,
    "edge_near_white_pct": 0.65,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.26,
    "dark_pct": 0.91,
    "hole_pct": 0.0,
@@ -3635,6 +6677,8 @@
    "opaque": 8114,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
    "seam_pct": 0.0,
    "dark_pct": 0.25,
    "hole_pct": 0.0,

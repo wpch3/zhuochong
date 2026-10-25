@@ -59,6 +59,9 @@ def main():
     ap.add_argument("--darken", type=float, default=0.90,
                     help="补料压暗系数（腋窝是阴影区）")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--repair", action="store_true",
+                    help="就地修现有 seg_torso 里补成雾的腋下（不复用 _orig 备份，"
+                         "因为备份是「带手臂」的上游版本）")
     a = ap.parse_args()
 
     base = os.path.join("characters", a.character, "forms", a.form)
@@ -78,8 +81,9 @@ def main():
         print("[armpit] 没有 seg_torso，跳过")
         return 0
 
-    sig = {"radius": a.radius, "darken": a.darken, "v": 1}
-    if BJ.get("armpit_patch", {}).get("sig") == sig and not a.force:
+    sig = {"radius": a.radius, "darken": a.darken, "v": 2}
+    if (BJ.get("armpit_patch", {}).get("sig") == sig and not a.force
+            and not a.repair):
         print("[armpit] 已补过腋下，跳过（--force 强制）")
         return 0
 
@@ -97,11 +101,15 @@ def main():
         bak = os.path.join(orig_dir, "seg_torso%s.png" % suf)
         if not os.path.exists(bak):
             load(f_t).save(bak)
-        tim = load(bak)
+        # --repair：拿**当前文件**当底，把已经补成雾的那块就地改成实体
+        tim = load(f_t if a.repair else bak)
         ta = np.array(tim).astype(np.int16)
         tpos = BP["seg_torso"]["pos"]
         H, W = ta.shape[:2]
         torso = ta[:, :, 3] > 16
+        # 算 zone 用的「已经是躯干」判据：--repair 时不能把雾当成躯干，
+        # 否则雾自己占住了补料区，等于什么都不补。
+        torso_ref = (ta[:, :, 3] >= 200) if a.repair else torso
 
         # 休止姿势下手臂占的地盘（换算到躯干件的局部坐标）
         armzone = np.zeros((H, W), bool)
@@ -130,31 +138,97 @@ def main():
             jx = (joints[side][0] - tpos[0]) * s
             jy = (joints[side][1] - tpos[1]) * s
             near |= ((xx - jx) ** 2 + (yy - jy) ** 2) <= (a.radius * s) ** 2
-        zone = armzone & ~torso & near
+        zone = armzone & ~torso_ref & near
         if zone.sum() == 0:
             print("[armpit] %s 没有要补的地方" % suf)
             continue
 
         # 逐行把躯干**侧缘**向外挤出去填满 zone
+        #
+        # ★★★ 2026-10-26 T67.31：这里原来连**alpha 一起抄**（`px = ta[y, src]`），
+        #   而 src 取的是 `torso`（alpha>16）的最外一行像素 —— 那一格恰恰是
+        #   抗锯齿的**半透明边**（实测 alpha≈35）。于是整块补出来的腋下
+        #   是 alpha 35/255 ≈ 14% 的**雾**：像素数统计（alpha>16）全部通过，
+        #   肉眼却是腋下根本没补上，抬臂照样透背景。
+        #   实测 seg_torso@2x 里这块雾 23,726 px（左）+ 同量（右），
+        #   alpha 中位数 35、颜色是侧缘那圈近白 AA 色 ⇒ 深底上一道灰白雾带，
+        #   叠在换装件上就是用户说的「彩边/白边」。
+        #   修法：① 颜色只从**实心**像素（alpha≥250）取；② alpha 一律写 255。
+        solid = (ta[..., 3] >= 250)
         out = ta.copy()
         filled = 0
+        # ★★★ 2026-10-26 T67.32：颜色**不许逐行从侧缘那一个像素抄**。
+        #   补完之后实测是一道道横纹（每行取到的是不同的线稿/AA 像素，
+        #   逐行颜色跳变 = 横条），这正是用户两次判死过的「逐行插值」。
+        #   改成：① 每行取**行内实体像素的中位数**（不看最外圈线稿）；
+        #        ② 沿 y 方向做一次窗口平滑（window≈15px@1x）；
+        #        ③ 每个像素按"离躯干多远"再压暗一点点，形成侧片阴影，
+        #           而不是一条平涂色带。
+        #   中位数 + 滑动平均之后，相邻行的差 < 1/255，横纹从根上没了。
+        inner = solid & ~zone
+        # 行内实体像素的 x 范围（用于算「离躯干多远」）
+        row_lo = np.full(H, -1, np.int32)
+        row_hi = np.full(H, -1, np.int32)
+        prof = np.zeros((H, 3), np.float64)
+        have_row = np.zeros(H, bool)
+        # 行内**排除线稿**（深色）和靠近补料区的边缘像素
+        bright = ta[..., :3].astype(np.float64).mean(axis=2) > 150
+        srcmask = solid & bright & ~zone
+        if srcmask.sum() < 100:
+            srcmask = solid & ~zone
+        for y in range(H):
+            xs = np.nonzero(inner[y])[0]
+            if xs.size:
+                row_lo[y], row_hi[y] = int(xs.min()), int(xs.max())
+            srow = np.nonzero(srcmask[y])[0]
+            if srow.size:
+                prof[y] = np.median(ta[y, srow][:, :3], axis=0)
+                have_row[y] = True
+        if not have_row.any():
+            continue
+        # 沿 y 平滑（只跨过有数据的行）
+        # ★ 窗口必须**够大**：行中位数沿 y 会被衣领/口袋/袖口这些横线带得跳
+        #   （实测相邻行差到 101/255），小窗口平滑压不住，补出来仍是一道道横条。
+        #   腋下这一小块本来就该是「侧片的一片柔光」，用 ±12% 画布高的窗口
+        #   拉成缓变，才是它该有的样子。
+        rad = max(3, int(0.12 * H))
+        idx = np.nonzero(have_row)[0]
+        sm = prof.copy()
+        for y in idx:
+            lo_y, hi_y = max(0, y - rad), min(H, y + rad + 1)
+            win = [k for k in idx if lo_y <= k < hi_y]
+            if win:
+                # 用**中位数**而不是均值：衣领/袖口那几行是离群值，
+                # 均值会把它们摊成一道坡，中位数直接无视。
+                sm[y] = np.median(prof[win], axis=0)
+        # 没有数据的行沿用最近一行
+        last = None
+        for y in range(H):
+            if have_row[y]:
+                last = sm[y]
+            elif last is not None:
+                sm[y] = last
+        dmax_global = 1
         for y in range(H):
             zs = np.nonzero(zone[y])[0]
-            if len(zs) == 0:
+            if zs.size and row_lo[y] >= 0:
+                dmax_global = max(dmax_global, int(np.abs(
+                    zs - np.clip(zs, row_lo[y], row_hi[y])).max()))
+        for y in range(H):
+            zs = np.nonzero(zone[y])[0]
+            if len(zs) == 0 or row_lo[y] < 0:
                 continue
-            ts = np.nonzero(torso[y])[0]
-            if len(ts) == 0:
-                continue
-            lo, hi = ts.min(), ts.max()
+            rowc = sm[y]          # ★ 别叫 base：外面那个 base 是角色目录路径
+            # 侧片阴影按**本行**的宽度归一化：各行的相对渐变一致，
+            # 行与行之间才不会因为「这一行补得宽、那一行补得窄」而跳色。
             for x in zs:
-                src = lo if x < lo else (hi if x > hi else None)
-                if src is None:
-                    # 躯干内部的孔（极少）——取同行最近的实体像素
-                    d = np.abs(ts - x)
-                    src = ts[int(np.argmin(d))]
-                px = ta[y, src].astype(float)
-                px[:3] *= a.darken
-                out[y, x] = np.clip(px, 0, 255)
+                # 离躯干边缘多远 → 越远越暗（侧片背光），最多再压 8%
+                d_out = 0 if row_lo[y] <= x <= row_hi[y] else min(
+                    abs(x - row_lo[y]), abs(x - row_hi[y]))
+                k = a.darken * (1.0 - 0.08 * min(1.0, d_out / float(dmax_global)))
+                px = np.clip(np.asarray(rowc) * k, 0, 255)
+                out[y, x, :3] = px.astype(np.int16)
+                out[y, x, 3] = 255                # ★ 补的是**实体**，不是雾
                 filled += 1
 
         # 轻微模糊只作用在补料区，避免挤出留下竖条纹
@@ -162,9 +236,48 @@ def main():
             ImageFilter.GaussianBlur(1.2 * s))).astype(np.int16)
         inner = zone.copy()
         out[inner] = blur[inner]
-        Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(f_t)
+        out = np.clip(out, 0, 255).astype(np.uint8)
+        Image.fromarray(out).save(f_t)
+        # 把补料区单独存成掩膜：① 换装重绘比对剪影时要把它排除（AI 从没见过
+        # 这块，它照着「空着的腋下」画，拿补出来的形状去卡它必然判错位）；
+        # ② 审计要能量「这块补料是不是又变回雾了」。
+        Image.fromarray((zone.astype(np.uint8) * 255)).save(
+            os.path.join(sprites, "armpit_mask%s.png" % suf))
         stats[suf or "1x"] = int(filled)
-        print("[armpit] seg_torso%s 补了 %d px" % (suf, filled))
+        # ★ 闸：补完的腋下必须是**实体**。只留补料外缘那一圈模糊（≤3px）当抗锯齿。
+        # ★ 横纹闸（T67.32）：逐行填色最容易画成一道道横条。
+        #   量法：补料区每行的平均色，相邻行的差最大不许超过 2/255。
+        #   量的是**补料本身用的行色**（`sm`），不是成图里那一行所有像素：
+        #   成图在 zone 与躯干的交界处会混进夹克自己的边线色，那是抗锯齿，
+        #   不是横纹，混进来会把正常结果判成条纹（实测误判 9.18/255）。
+        rows_mean = [sm[y] for y in range(H)
+                     if have_row[y] and (zone[y] & (out[y, :, 3] >= 200)).sum() >= 3]
+        if len(rows_mean) >= 9:
+            rm = np.asarray(rows_mean)
+            # ★ 判据是**高频**分量，不是相邻行差：衣服本身沿 y 就有明暗变化
+            #   （领子、口袋、袖口），拿相邻行差当横纹会把正常渐变判成条纹。
+            #   去掉 21 行滑动平均之后剩下的才是「条纹」。
+            k21 = np.ones(21) / 21.0
+            pad = np.pad(rm, ((10, 10), (0, 0)), mode="edge")
+            trend = np.stack([np.convolve(pad[:, c], k21, mode="same")[10:-10]
+                              for c in range(3)], axis=1)
+            jump = float(np.abs(rm - trend).max())
+            stats.setdefault("banding", {})[suf or "1x"] = round(jump, 2)
+            print("[armpit] seg_torso%s 补料高频条纹 %.2f/255（闸 ≤1.5）" % (suf, jump))
+            if jump > 1.5:
+                raise SystemExit(
+                    "[armpit] seg_torso%s 补料出现横纹（高频 %.2f/255）"
+                    " —— 逐行插值已被判死，改用行中位数 + 纵向平滑" % (suf, jump))
+        al = out[..., 3]
+        veil = int((zone & (al > 16) & (al < 200)).sum())
+        hard = int((zone & (al >= 200)).sum())
+        stats.setdefault("alpha", {})[suf or "1x"] = {"veil": veil, "hard": hard}
+        print("[armpit] seg_torso%s 补了 %d px（实体 %d / 半透 %d，半透应为外缘一圈）"
+              % (suf, filled, hard, veil))
+        if veil > 0.02 * max(1, hard):
+            raise SystemExit(
+                "[armpit] seg_torso%s 补出来的腋下有 %d px 是半透的（实体 %d）"
+                " —— 补成了雾，抬臂会透背景" % (suf, veil, hard))
 
     BJ["armpit_patch"] = {
         "sig": sig, "filled_px": stats,

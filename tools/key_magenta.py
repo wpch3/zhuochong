@@ -129,6 +129,24 @@ def match_palette(out_rgba, ref_path):
     return out.astype(np.uint8)
 
 
+def clean_transparent_rgb(rgba, eps=8):
+    """把"透明像素里残留的垃圾 RGB"清零（T67.30 实测抓到的真 bug）。
+
+    ★ 为什么会垃圾：反预乘是 `C=(观测色-(1-a)·键底)/a`，a→0 时这个式子会炸，
+      算出来的 RGB 被 clip 到 0/255 就变成**纯绿 (0,255,0)** 之类的东西。
+      肉眼看不见（alpha=0），但它会**污染边缘**：
+        · 缩放/重采样时 PIL 不预乘，会把透明区的垃圾 RGB 混进边缘像素；
+        · 引擎做线性采样、mipmap 时同理 → 头发边上出现**绿色小点**。
+      本轮就是这么来的：`hair_long_back` 上 31,219 个"纯绿"像素全是 alpha=0 的垃圾，
+      而我们之前只查了"洋红彩边"，没查"透明区的 RGB"。
+    """
+    a = rgba.copy()
+    A = a[..., 3]
+    zero = A <= eps
+    a[zero, :3] = 0
+    return a, int(zero.sum())
+
+
 def fringe_pct(rgba):
     """轮廓上还剩多少洋红彩边（R-G>40 且 B-G>40）。用户面前不许出现这个。"""
     a = rgba.astype(int)
@@ -157,6 +175,7 @@ def key_file(src, dst, check_only=False, ref_path=None):
     C = np.clip((rgb - (1.0 - alpha[..., None]) * MAGENTA) / an, 0, 255)
     rgba = np.dstack([C, alpha * 255.0])
     rgba = despill(rgba)
+    rgba, junk = clean_transparent_rgb(rgba)
     if ref_path:
         rgba = match_palette(rgba.astype(np.uint8), ref_path).astype(np.float64)
     ai, filled = fill_pinholes(Image.fromarray(rgba[..., 3].astype(np.uint8)))
@@ -164,8 +183,9 @@ def key_file(src, dst, check_only=False, ref_path=None):
     out = rgba.astype(np.uint8)
     op = int((out[..., 3] > 24).sum())
     fr = fringe_pct(out)
-    print("%s → 不透明 %d px，洋红彩边 %.2f%%，补孤点 %d"
-          % (os.path.basename(src), op, fr, filled))
+    junk_after = int(((out[..., 3] <= 8) & (out[..., :3].max(axis=2) > 16)).sum())
+    print("%s → 不透明 %d px，洋红彩边 %.2f%%，补孤点 %d，透明区垃圾 RGB 清零 %d"
+          % (os.path.basename(src), op, fr, filled, junk))
     if not check_only:
         Image.fromarray(out).save(dst)
         print("写出", dst)

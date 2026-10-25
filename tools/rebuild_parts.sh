@@ -327,6 +327,17 @@ python3 tools/make_rig.py --character "$CH" --form "$FM"
 #     必须排在 27b 之后：它是往 hair_long_back 里写像素。
 "$PY" tools/move_hair_islands.py --character "$CH" --form "$FM"
 
+# 27e 透明区垃圾 RGB 清零 + 边缘色外扩（T67.30）。
+#     ★ 必须是**最后一步**（在 check_assets 之前、所有写像素的步骤之后）：
+#       任何一步「重存 PNG」都可能把透明区的垃圾色再带回来，而它肉眼看不见 ——
+#       alpha=0 的 RGB 只有在缩放/双线性采样/mipmap 时才会混进边缘，
+#       表现就是头发边上冒绿点、衣缘一圈紫边（用户明令禁止的"制作后缺陷"）。
+#     ★ 它只改 alpha≤8 的像素 RGB，**alpha 与可见像素逐字节不动**，
+#       脚本内置自检：alpha 变了或可见像素变了直接 abort，不写盘。
+#     ★ 实测这一步清了 8 件 / 1.1 万 px，并让 `qa_sprite_audit` 的
+#       `bad_hue_transparent` 从 51 件越线降到 0。
+"$PY" tools/fix_transparent_rgb.py --character "$CH" --quiet
+
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__
 echo

@@ -260,6 +260,44 @@ def _boundary(op):
     return op & ~inner
 
 
+def _bad_hue(rgb, alpha):
+    """两种**绝不可能**的颜色：偏绿、洋红键底。
+
+    ★ 为什么这条能当硬闸（其它颜色指标都不能）：本角色的发色是冷紫（R≈G，B 更高），
+      皮肤是暖橘，青布是 B>G，藏青是暗蓝。**没有任何一件应该是绿的，也没有一件该是洋红。**
+      抓到就是制作缺陷：
+        · 偏绿 = 反预乘在 alpha→0 时炸出来的垃圾（0,255,0），肉眼在 alpha=0 处看不见，
+          但缩放/线性采样会把它们混进边缘 → 头发边上冒绿点；
+        · 洋红 = 键底没抠干净 → 彩边。
+      容忍度 = 0。
+    """
+    a = rgb.astype(np.int32)
+    R, G, B = a[..., 0], a[..., 1], a[..., 2]
+    # ★ 判"垃圾绿"必须要求 B 明显低于 G：本角色的**青布 #6CB4C0** 满足 G-R=72，
+    #   只看 G-R 会把整件青袖子/兜帽内衬判成垃圾（第一版就是这样，76/99 件误报）。
+    #   真正的垃圾绿来自 (0,255,0) 这类反预乘残渣，它是**纯绿**：B 近乎 0。
+    # ★ 绿也必须要求**饱和的纯绿**：青布 #6CB4C0 的暗部（48,147,117）满足
+    #   G-R=99、B 也低，只看这两条会把鞋子的青条暗部判成垃圾（实测 51 px）。
+    #   键色残渣长的是 (0,255,0)：R、B 都很低，G 很高。
+    green = (G > 150) & (R < 120) & (B < 120) & (G - np.maximum(R, B) > 60)
+    # ★ 洋红也必须要求**饱和**：键底色是 (253,0,251) 这种，G 近乎 0、R/B 都很高。
+    #   只看 (R-G>60)&(B-G>60) 会把角色自己的**暗紫**（发色阴影、线稿、淡紫高光）
+    #   一并判成垃圾 —— 实测 hair_side_l/eye_* 各 1~7 px 全是误报。
+    #   （和青布那条是同一个坑：判据必须描述"这把键"的样子，不是"某个色相"。）
+    #   还要用**相对**判据：键底是「R、B 都满、G 近乎 0」，G/((R+B)/2) ≈ 0；
+    #   而角色自己的暗紫（如 midnight 鞋上的紫色压暗到 (165,73,151)）比值 0.46，
+    #   不是键色。只用绝对阈值会把它误判（实测 3 px）。
+    magenta = ((R > 150) & (B > 150) & (R - G > 60) & (B - G > 60)
+               & (G * 8 < (R + B)))
+    bad = green | magenta
+    vis = alpha > 24
+    tr = alpha <= 8
+    return {
+        "bad_hue_visible": int((bad & vis).sum()),
+        "bad_hue_transparent": int((bad & tr).sum()),
+    }
+
+
 def _kind(name):
     """素材类别。不同类别的"直边/近白"含义完全不同，必须分开定阈值。"""
     n = name
@@ -278,7 +316,7 @@ def _kind(name):
     return "body"
 
 
-def audit_one(path):
+def audit_one(path, name_rel=None):
     a, size = _load(path)
     rgb = a[..., :3]
     A = a[..., 3]
@@ -319,6 +357,7 @@ def audit_one(path):
     # 是否被画布边裁掉（贴边不透明）
     edge_touch = bool(op[0, :].any() or op[-1, :].any() or op[:, 0].any() or op[:, -1].any())
 
+    bad = _bad_hue(a[..., :3], A)
     kind = _kind(os.path.basename(path))
     # 边界近白：**白边/无描线**的真判据。
     # 之前在整块上数 near_white，白外套、白袜子必然 100%，这个数就废了；
@@ -327,12 +366,16 @@ def audit_one(path):
     nb = int(bnd.sum())
     edge_nw = float((bnd & near_white).sum()) / nb if nb else 0.0
     return {
-        "file": os.path.basename(path),
+        # ★ 用相对 sprites/ 的路径：换装件里也有叫 seg_torso 的，
+        #   只印 basename 时表里三行一模一样的名字，根本分不出是哪一件。
+        "file": name_rel or os.path.basename(path),
         "kind": kind,
         "size": "%dx%d" % size,
         "opaque": n_op,
         "near_white_pct": round(100.0 * near_white.sum() / n_op, 2),
         "edge_near_white_pct": round(100.0 * edge_nw, 2),
+        "bad_hue_visible": bad["bad_hue_visible"],
+        "bad_hue_transparent": bad["bad_hue_transparent"],
         "seam_pct": round(100.0 * seam.sum() / n_op, 2),
         "dark_pct": round(100.0 * dark.sum() / n_op, 2),
         "hole_pct": round(100.0 * n_hole / n_op, 2),
@@ -349,6 +392,10 @@ def flag(r):
     """只报**硬闸**越线（其余指标在表里照常打印，但不参与判定）。"""
     th = TH_KIND.get(r.get("kind"), TH_KIND["body"])
     out = []
+    if r.get("bad_hue_visible", 0) > 0:
+        out.append("异色%dpix" % r["bad_hue_visible"])
+    if r.get("bad_hue_transparent", 0) > 0:
+        out.append("透明区垃圾%dpix" % r["bad_hue_transparent"])
     if th.get("hole_pct") is not None and r["hole_pct"] > th["hole_pct"]:
         out.append("空洞%.2f%%" % r["hole_pct"])
     if th.get("straight_run") is not None and r["straight_run"] > th["straight_run"]:
@@ -361,9 +408,11 @@ def known_reason(r):
 
 
 # 基线回归：同一件重画之后，这些指标**必须不变差**
-GATED = ("hole_pct", "straight_run", "edge_near_white_pct", "seam_pct", "residue_pct")
+GATED = ("hole_pct", "straight_run", "edge_near_white_pct", "seam_pct", "residue_pct",
+         "bad_hue_visible", "bad_hue_transparent")
 TOL = {"hole_pct": 0.5, "straight_run": 20, "edge_near_white_pct": 3.0,
-       "seam_pct": 0.5, "residue_pct": 2.0}
+       "seam_pct": 0.5, "residue_pct": 2.0,
+       "bad_hue_visible": 0, "bad_hue_transparent": 0}   # 零容忍，多一个都算退化
 
 
 def compare_baseline(rows, base_path):
@@ -397,7 +446,15 @@ def main():
     args = ap.parse_args()
 
     d = os.path.join(ROOT, "characters", args.character, "forms", args.form, "sprites")
-    files = sorted(glob.glob(os.path.join(d, "*@2x.png")))
+    # ★★★ 2026-10-26 T67.33：原来只扫 `sprites/*@2x.png`（顶层 99 件），
+    #   `sprites/outfit_*/`（换装件）**一件都没扫过** —— 所以换装躯干上
+    #   39,998 px 不透明洋红板、40,798 px 半透明洋红雾，体检一路绿灯。
+    #   `_orig/`（覆盖型工具的备份）和 `_ghostbak/`（回滚备份）依旧排除：
+    #   它们是「改之前的原样」，本来就可能带着要修的东西。
+    SKIP = ("_orig", "_ghostbak")
+    allf = sorted(glob.glob(os.path.join(d, "**", "*@2x.png"), recursive=True))
+    files = [f for f in allf
+             if not any(("/%s/" % s_) in f.replace(os.sep, "/") for s_ in SKIP)]
     if args.only:
         files = [f for f in files if args.only in os.path.basename(f)]
     if not files:
@@ -409,7 +466,7 @@ def main():
 
     rows, bad = [], 0
     for f in files:
-        r = audit_one(f)
+        r = audit_one(f, os.path.relpath(f, d))
         if not r:
             continue
         name = r["file"].replace("@2x.png", "")

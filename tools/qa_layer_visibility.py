@@ -94,6 +94,8 @@ def main():
     ap.add_argument("--min-visible", type=int, default=0,
                     help="低于它就算失败（退出码 1），用来接 CI")
     ap.add_argument("--overlay", default="", help="把「露出/被挡」画成一张图（红=露出，灰=被挡）")
+    ap.add_argument("--pose", action="append", default=[], metavar="GROUP=ENTRY",
+                    help="当前档位，可重复。同组其它条目里的部件会被当成隐藏（否则会把同伴当遮挡物）")
     a = ap.parse_args()
 
     base = os.path.join(a.root, "characters", a.character, "forms", a.form)
@@ -102,10 +104,31 @@ def main():
     parts = rig["parts"]
     byid = {p["id"]: p for p in parts}
 
+    # ��� poses 把"同组其它档位"的部件排除掉。这一步不做，算出来的可见量是错的。
+    hidden = set()
+    for spec in a.pose:
+        if "=" not in spec:
+            raise SystemExit("--pose 要写成 GROUP=ENTRY，例如 tail_pose=relaxed")
+        gid, ent = spec.split("=", 1)
+        grp = next((g for g in rig.get("poses", []) if g.get("id") == gid), None)
+        if not grp:
+            raise SystemExit("rig 里没有 pose group：%s" % gid)
+        ids = [e.get("id") for e in grp.get("entries", [])]
+        if ent not in ids:
+            raise SystemExit("%s 里没有档位 %s（有 %s）" % (gid, ent, ids))
+        for e in grp.get("entries", []):
+            if e.get("id") != ent:
+                hidden.update(e.get("parts", []))
+    if hidden:
+        print("（按档位隐藏 %d 件：%s%s）" % (
+            len(hidden), ", ".join(sorted(hidden)[:4]), " …" if len(hidden) > 4 else ""))
+    parts = [p for p in parts if p["id"] not in hidden] + [p for p in parts if p["id"] in hidden]
+    # ↑ 顺序无关；hidden 的部件 footprint 照算但不参与遮挡（下面 fps 里置 None）
+
     # 先把所有部件的 footprint 算出来（缓存，别重复读图）
     fps = {}
     for p in parts:
-        fps[p["id"]] = footprint(p, base, canvas)
+        fps[p["id"]] = None if p["id"] in hidden else footprint(p, base, canvas)
 
     bad = 0
     overlays = []

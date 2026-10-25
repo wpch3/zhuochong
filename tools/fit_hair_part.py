@@ -64,6 +64,90 @@ def drop_ahoge(im, box):
     return Image.fromarray(a)
 
 
+def resize_premultiplied(im, size):
+    """按**预乘 alpha** 缩放。
+
+    ★ 为什么不能直接 resize：PIL 对 RGBA 是 RGB 和 A 各自独立插值的。
+      透明区域的 RGB 即使是垃圾（反预乘时 0/a 会炸出纯绿），也会被混进边缘像素 →
+      头发边上出现绿点/杂边。预乘之后透明区的 RGB 权重为 0，天然不参与混合。
+      这是所有 sprite 缩放的标配做法，别省。
+    """
+    a = np.array(im).astype(np.float64)
+    al = a[..., 3:4] / 255.0
+    pm = np.concatenate([a[..., :3] * al, a[..., 3:4]], axis=2)
+    pm_im = Image.fromarray(np.clip(pm, 0, 255).astype(np.uint8))
+    pm_im = pm_im.resize(size, Image.LANCZOS)
+    b = np.array(pm_im).astype(np.float64)
+    # 分母夹在 0.25：alpha=3/255 时若直接除，放大约 85 倍，边缘会炸出一圈杂色。
+    al2 = np.maximum(b[..., 3:4] / 255.0, 0.25)
+    rgb = np.clip(b[..., :3] / al2, 0, 255)
+    out = np.concatenate([rgb, b[..., 3:4]], axis=2)
+    out = extend_edge_color(out.astype(np.uint8))
+    out = despeckle_color(out)
+    return Image.fromarray(out)
+
+
+def despeckle_color(arr, iters=6):
+    """把"不可能是这个素材的颜色"替换成邻居颜色（alpha 不动）。
+
+    ★ 判据只认两种**绝不可能**的颜色，不做任何审美判断：
+      · 偏绿：`G-R>40`（本角色的发色是冷紫，R≈G，绝不会有绿）
+      · 洋红：`R-G>60 且 B-G>60`（键底色，抠像没抠干净时会有）
+      抓到就取邻域平均替换，逐轮扩散。这样既不会改坏正常发色，又能把
+      反预乘在 alpha 很小时炸出来的杂色彻底清掉 —— 否则它会在缩放/采样时
+      污染边缘，表现为头发边上冒绿点（本轮实测 31,219 个）。
+    """
+    out = arr.copy()
+    for _ in range(iters):
+        a = out.astype(np.int32)
+        R, G, B = a[..., 0], a[..., 1], a[..., 2]
+        bad = (G - R > 40) | ((R - G > 60) & (B - G > 60))
+        if not bad.any():
+            break
+        good = ~bad
+        acc = np.zeros(out[..., :3].shape, np.float64)
+        cnt = np.zeros(out.shape[:2], np.float64)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+            k = np.roll(np.roll(good, dy, 0), dx, 1)
+            v = np.roll(np.roll(out[..., :3], dy, 0), dx, 1)
+            acc += v * k[..., None]
+            cnt += k
+        fill = bad & (cnt > 0)
+        if not fill.any():
+            break
+        out[fill, :3] = (acc[fill] / cnt[fill][:, None]).astype(np.uint8)
+    return out
+
+
+def extend_edge_color(arr, thr=16, iters=10):
+    """把不透明像素的颜色**往外扩**到透明区（alpha 不动）。
+
+    ★ 为什么：任何做了 alpha 过滤（引擎线性采样、mipmap、缩放）的地方，
+      边缘像素的颜色都会和**旁边透明像素的 RGB**混合。透明像素 RGB 要是黑的，
+      边缘就发暗（黑边）；要是垃圾（0,255,0），边缘就冒绿点。
+      正确做法不是"把透明区涂黑"，而是"让它带上邻近的皮肤/头发颜色"。
+    """
+    out = arr.copy()
+    A = out[..., 3]
+    known = A > thr
+    for _ in range(iters):
+        if known.all():
+            break
+        acc = np.zeros(out[..., :3].shape, np.float64)
+        cnt = np.zeros(A.shape, np.float64)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+            k = np.roll(np.roll(known, dy, 0), dx, 1)
+            v = np.roll(np.roll(out[..., :3], dy, 0), dx, 1)
+            acc += v * k[..., None]
+            cnt += k
+        fill = (~known) & (cnt > 0)
+        if not fill.any():
+            break
+        out[fill, :3] = (acc[fill] / cnt[fill][:, None]).astype(np.uint8)
+        known = known | fill
+    return out
+
+
 def fit_part(src_path, ref_path, out_path, ahoge_box=None):
     """把 src 拟合到 ref 的几何上并写出 out。返回 (sx, sy, 不透明px)。"""
     src = Image.open(src_path).convert("RGBA")
@@ -79,7 +163,7 @@ def fit_part(src_path, ref_path, out_path, ahoge_box=None):
     print("  旧件画布 %dx%d，内容框 %dx%d @ (%d,%d)" % (RW, RH, rw, rh, rox0, roy0))
     print("  新件内容框 %dx%d → 缩放 x%.4f y%.4f（各向异性 %.1f%%）"
           % (nw, nh, sx, sy, 100 * (sy / sx - 1)))
-    new = src.crop((nx0, ny0, nx1 + 1, ny1 + 1)).resize((rw, rh), Image.LANCZOS)
+    new = resize_premultiplied(src.crop((nx0, ny0, nx1 + 1, ny1 + 1)), (rw, rh))
     canvas = Image.new("RGBA", (RW, RH), (0, 0, 0, 0))
     canvas.paste(new, (rox0, roy0))
     canvas.save(out_path)

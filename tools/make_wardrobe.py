@@ -126,9 +126,22 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
     n = np.asarray(ai).astype(np.uint8)
     B = key_magenta(n) > 0.5
     A = np.asarray(orig)[..., 3] > 128
+    A_gate = A.copy()        # 完整剪影：安全检查一律用它，不许被下面排除腋下影响
+    zm = None
     if os.path.basename(src_path).startswith("seg_torso"):
         sc = 2 if "@2x" in src_path else 1
         A, B = unhaired(A, sc), unhaired(B, sc)
+        # ★★★ 2026-10-26 T67.31：腋下補画区（armpit_patch.py 新补的）要从比对里排除。
+        #   重绘素材是照着**没有**这块的画画的（原画腋下本来就是空的），
+        #   AI 不可能画到；拿补出来的形状去卡它就等于量「AI 有没有透视」，
+        #   midnight 实测 IoU 从 0.977 掉到 0.8898、直接被闸挡死。
+        #   这和 `unhaired()` 排除肩带是同一类问题：**参照物必须是被测物见过的形状**。
+        am = os.path.join(os.path.dirname(src_path),
+                          "armpit_mask%s.png" % ("@2x" if sc == 2 else ""))
+        if os.path.exists(am):
+            zm = np.asarray(Image.open(am).convert("L")) > 127
+            if zm.shape == A.shape:
+                A, B = A & ~zm, B & ~zm
         sf = skirt_alpha(src_path, sc)
         if sf is not None and sf.shape == A.shape:
             A = A | sf            # 参照物补回"已经切出去的那条裙子"（见 skirt_alpha 的说明）
@@ -155,6 +168,13 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
     _r, _g, _b = (n[..., i].astype(int) for i in range(3))
     contam = (_r - _g > 25) & (_b - _g > 25) & (_r > 110) & (_b > 110)
     hole = A & (~B | contam)
+    # ★ 腋下补料区（zm）也并进「洞」：这块在原画里是空的，AI 没画，
+    #   它在那儿留的是洋红底；但补料的 alpha 是实体的（armpit_patch 修好之后），
+    #   不补色就是一块**不透明洋红板**（midnight 实测 39,998 px）。
+    #   并进洞之后，补色会从紧挨着的 AI 布料色（这套是藏青）一圈圈爬进去，
+    #   抬臂露出来的是「这套衣服的颜色」，而不是原件的白夹克色。
+    if zm is not None and zm.shape == A.shape:
+        hole = hole | zm
     if hole.any():
         for _ in range(64):
             if not hole.any():
@@ -181,6 +201,98 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
             hole = hole & ~fill
     # 扩散够不到的孤立洞（被洋红包围的小坑）用**原件同位置的像素**兜底 ——
     # 几何完全一样，原图那个点就是正确内容，比继续猜一个颜色靠谱。
+    # ★★★ 2026-10-26 T67.31：腋下补料区（armpit_patch 新补的）**颜色必须取原件**。
+    #   重绘素材根本没画过这块（原画腋下是空的），AI 在那儿留的是洋红底；
+    #   而补料的 alpha 又来自原件（现在已经是实体 255）⇒ 直接贴出一块
+    #   **不透明洋红板**（midnight 实测 39,998 px @alpha 255，白底上一眼就是
+    #   左边一大块品红）。这不是「补色没补干净」，是「拿 AI 没画的区域当画了」。
+    if zm is not None and zm.shape == A.shape:
+        # ★ 腋下补料区必须换成**这套衣服的布料色**，不能留原件的白夹克色。
+        #   实测：这块四周全被 AI 的洋红底围着（AI 画的衣服比原件窄，根本没画到这里），
+        #   扩散爬进来的全是洋红，最后只能退回原件 ⇒ 藏青套装上两块白板
+        #   （抬臂就露出来）。
+        #   做法：取 AI 画到的布料色的**中位数**当主色，套到原件的明暗关系上
+        #   （`orig * (主色 / 原件该区均值)`）—— 颜色是这套衣服的，明暗褶皱是原件的，
+        #   不会变成一块平涂。
+        painted = A & (key_magenta(np.clip(px, 0, 255).astype(np.uint8)) > 0.5)
+        if painted.any():
+            dom = np.median(px[painted], axis=0).astype(np.float64)
+            o_rgb = np.asarray(orig)[..., :3].astype(np.float64)
+            o_mean = np.maximum(o_rgb[zm].reshape(-1, 3).mean(axis=0), 1.0)
+            scaled = o_rgb[zm] * (dom[None, :] / o_mean[None, :])
+            px[zm] = np.clip(scaled, 0, 255).astype(px.dtype)
+        else:
+            still = zm & (key_magenta(np.clip(px, 0, 255).astype(np.uint8)) < 0.5)
+            if still.any():
+                px[still] = np.asarray(orig)[..., :3][still]
+    # ---- 收尾：A 里还漏网的洋红（掩膜边界 / 扩散够不到的角落）----
+    #   先用**原件同位置**的颜色（几何完全一样，那就是正确答案），
+    #   再不行才用最近的非洋红像素一圈圈爬进来。绝不留下洋红。
+    #   ★ 范围用 alpha>8 而不是 A（alpha>128）：原件的抗锯齿边是半透明的，
+    #     那些像素的 RGB 也来自 AI（洋红），在浅色衣服边上一圈品红边——
+    #     正是「彩边」。它们的 alpha 不动，只把颜色换成里面那圈布色。
+    _vis = np.asarray(orig)[..., 3] > 8
+    bad_m = _vis & (key_magenta(np.clip(px, 0, 255).astype(np.uint8)) < 0.5)
+    if bad_m.any():
+        srgb = np.asarray(orig)[..., :3]
+        use = bad_m & (np.asarray(orig)[..., 3] > 8) & (key_magenta(srgb) > 0.5)
+        if use.any():
+            px[use] = srgb[use]
+            bad_m = bad_m & ~use
+        for _ in range(128):
+            if not bad_m.any():
+                break
+            srcm = (~bad_m) & A_gate
+            acc = np.zeros(px.shape, np.int32)
+            cnt = np.zeros(px.shape[:2], np.int32)
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                sh = np.roll(np.where(srcm[..., None], px, 0), (dy, dx), (0, 1))
+                sm2 = np.roll(srcm, (dy, dx), (0, 1))
+                acc += sh * sm2[..., None]
+                cnt += sm2
+            fil = bad_m & (cnt > 0)
+            if not fil.any():
+                break
+            px[fil] = acc[fil] // np.maximum(cnt[fil], 1)[:, None]
+            bad_m = bad_m & ~fil
+    # ---- 第二遍：连**偏**洋红一起清（和下面那道 tinted 闸同一个判据）----
+    #   为什么要有第二遍：扩散取色时最靠边那一圈源像素本身就是半洋红的，
+    #   爬进去之后留下 543 px 淡紫（实测），严格闸测不出来、tinted 闸才拦得住。
+    #   所以清理用的判据必须**和闸门一样**，否则永远差那一点。
+    def _tinted(arr):
+        r_, g_, b_ = (arr[..., i].astype(np.int32) for i in range(3))
+        return (r_ - g_ > 25) & (b_ - g_ > 25) & (r_ > 110) & (b_ > 110)
+
+    def _erode(m, n=2):
+        for _ in range(n):
+            m = (m & np.roll(m, 1, 0) & np.roll(m, -1, 0)
+                 & np.roll(m, 1, 1) & np.roll(m, -1, 1))
+        return m
+
+    def _diffuse_clear(bad_mask):
+        for _ in range(128):
+            if not bad_mask.any():
+                break
+            srcm = (~bad_mask) & A_gate & ~_tinted(px)
+            acc = np.zeros(px.shape, np.int64)
+            cnt = np.zeros(px.shape[:2], np.int64)
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                sh = np.roll(np.where(srcm[..., None], px, 0), (dy, dx), (0, 1))
+                sm2 = np.roll(srcm, (dy, dx), (0, 1))
+                acc += sh * sm2[..., None]
+                cnt += sm2
+            fil = bad_mask & (cnt > 0)
+            if not fil.any():
+                break
+            px[fil] = acc[fil] // np.maximum(cnt[fil], 1)[:, None]
+            bad_mask = bad_mask & ~fil
+        return bad_mask
+
+    tint_m = _vis & _tinted(px)
+    if tint_m.any():
+        tint_m = _diffuse_clear(tint_m)
+        if tint_m.any():
+            print(f"      （偏洋红收尾还剩 {int(tint_m.sum())} px 没清掉）")
     rest = A & (key_magenta(np.clip(px, 0, 255).astype(np.uint8)) < 0.5)
     if rest.any():
         px[rest] = np.asarray(orig)[..., :3][rest]
@@ -191,7 +303,9 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
     alpha_out = np.asarray(orig)[..., 3].copy()
     alpha_out[A] = 255
     out = np.dstack([np.clip(px, 0, 255), alpha_out]).astype(np.uint8)
-    left = int((A & (key_magenta(out[..., :3]) < 0.5)).sum())
+    # ★ 闸门看**完整**剪影（不允许用上面排除腋下后的 A —— 那会在安全检查上
+    #   开一个洞：补料区的洋红正好被排除掉，闸就不出声了，实测正是这样漏的）。
+    left = int((A_gate & (key_magenta(out[..., :3]) < 0.5)).sum())
     if left:
         raise SystemExit(f"[衣柜] {os.path.basename(out_path)} 补色后身上还有 "
                          f"{left} 个洋红像素")
@@ -200,10 +314,10 @@ def repaint(src_path, ai_path, out_path, iou_min, mode="repaint",
     # ★ 最后一道：连**偏**洋红都不许剩。严格判据放得过去的半洋红边
     #   会在肩膀上糊成紫斑，肉眼一看就穿帮，但严格闸测不出来。
     fr, fg, fb = (out[..., i].astype(int) for i in range(3))
-    tinted = int((((fr - fg > 25) & (fb - fg > 25) & (fr > 110) & (fb > 110)) & A).sum())
-    if tinted > A.sum() * 0.001:
+    tinted = int((((fr - fg > 25) & (fb - fg > 25) & (fr > 110) & (fb > 110)) & A_gate).sum())
+    if tinted > A_gate.sum() * 0.001:
         raise SystemExit(f"[衣柜] {os.path.basename(out_path)} 身上还有 {tinted} 个"
-                         f"偏洋红像素（上限 {int(A.sum() * 0.001)}）—— 补色没补干净")
+                         f"偏洋红像素（上限 {int(A_gate.sum() * 0.001)}）—— 补色没补干净")
     Image.fromarray(out, "RGBA").save(out_path)
     return iou, grow, shrink
 
