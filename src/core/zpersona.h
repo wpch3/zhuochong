@@ -32,6 +32,7 @@
 #define ZP_MAX_TABOO    8
 #define ZP_MAX_STORY    4
 #define ZP_MAX_SELF     1200   /* 每个关系档一段「内心档案」提示词（实测最长 907 字节） */
+#define ZP_MAX_MIND     1100   /* 思维档案片段（实测 896~950 字节；超了按整行截） */
 
 /* 一个可调维度（话量 / 亲密度 / 嘴硬 …） */
 typedef struct {
@@ -86,6 +87,12 @@ typedef struct {
        这是"这个人自己的东西"，不该被一次对话改写。 */
     char self_extra[ZP_MAX_STORY][ZP_MAX_SELF];
     int  nself;
+
+    /* ⑤ 思维档案（T67.58）：tools/mind_probe.py 生成的 inner.mind.txt，**不分档**。
+       为什么不分档：她怎么想事情、怎么消化情绪，不会因为关系变熟就换一套；
+       随关系变的是立场（④）和亲密度，不是认知方式。混在一起才是假的人。 */
+    char mind_extra[ZP_MAX_MIND];
+    int  has_mind;
 
     char story_name[ZP_MAX_STORY][24];
     char story[ZP_MAX_STORY][160];

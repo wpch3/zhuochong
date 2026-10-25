@@ -65,6 +65,29 @@ static void load_self_extra(zpersona *zp, const char *root_dir)
     }
 }
 
+/* 读 characters/<id>/inner.mind.txt（T67.58）。缺文件是合法状态。 */
+static void load_mind_extra(zpersona *zp, const char *root_dir)
+{
+    char path[1024];
+    FILE *f;
+    size_t n;
+
+    zp->has_mind = 0;
+    zp->mind_extra[0] = '\0';
+    z_snprintf(path, sizeof(path), "%s/characters/%s/inner.mind.txt",
+               root_dir, zp->character);
+    f = fopen(path, "rb");
+    if (!f) return;
+    n = fread(zp->mind_extra, 1, ZP_MAX_MIND - 1, f);
+    fclose(f);
+    zp->mind_extra[n] = '\0';
+    if (n >= ZP_MAX_MIND - 1) {            /* 截断也按整行截，不切半个字 */
+        char *nl = strrchr(zp->mind_extra, '\n');
+        if (nl) *nl = '\0';
+    }
+    if (zp->mind_extra[0]) zp->has_mind = 1;
+}
+
 static int trait_index(const zp_lib *lib, const char *id)
 {
     int i;
@@ -194,6 +217,7 @@ int zpersona_load(zpersona *zp, const char *root_dir, const char *character, zdi
     /* ④ 内心档案：放在 persona.json 之前读，因为下面"没有 persona.json 就返回"
        的早退会跳过它 —— 八个角色里目前只有 xiaoxun 有 persona.json。 */
     load_self_extra(zp, root_dir);
+    load_mind_extra(zp, root_dir);
 
     /* ②③ persona.json。**不存在是合法状态**（= 全默认 = 沿用角色原设）。 */
     z_snprintf(path, sizeof(path), "%s/characters/%s/persona.json", root_dir, character);
@@ -294,6 +318,10 @@ size_t zpersona_compose(const zpersona *zp, int tier, char *out, size_t cap)
        位置放在"角色原设"之后、"说话风格"之前 —— 先是谁，再是语气。 */
     if (tier >= 0 && tier < ZP_MAX_STORY)
         text_add(out, cap, &len, zp->self_extra[tier]);
+
+    /* ⑤ 思维档案：她怎么想事情、怎么拿主意、怎么消化情绪。
+       放在立场之后 —— 先"信什么"，再"怎么运转"。不分关系档（见 zpersona.h 的注释）。 */
+    text_add(out, cap, &len, zp->mind_extra);
 
     /* ② 预设风格 */
     p = preset_find(&zp->lib, zp->preset);

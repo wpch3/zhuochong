@@ -32,7 +32,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments audit-memory memory-seed soak-memory
+.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments audit-mind mind-fragments audit-memory memory-seed soak-memory
 
 all: test
 
@@ -113,6 +113,15 @@ persona-fragments:
 audit-persona:
 	@$(PYTHON_IMG) tools/persona_probe.py --check
 
+# 思维档案（T67.58）：这个人怎么想事情 / 怎么拿主意 / 怎么消化情绪 / 冲突走哪条路。
+# 七道闸里最关键的是 M4「行为可推」：六个情境下，八个人的**做法**必须真的不一样，
+# 且同一份数据重复推出必须一致。改 inner.json 的 mind 块之后要跑 mind-fragments。
+mind-fragments:
+	@python3 tools/mind_probe.py --write-fragments
+
+audit-mind:
+	@python3 tools/mind_probe.py --check
+
 # 长记忆体检（T67.45）：文件结构 / 正文不可变（哈希）/ 锚点上限 /
 # 自述引用与漂移 / 不许把密钥写进记忆。纯标准库，不需要 PIL，也不用手动起服务。
 # ★ 运行时的那一份在 C 侧（/api/memory.json?verify=1，冒烟里会打）；
@@ -139,6 +148,7 @@ selfcheck:
 	@python3 tools/selfcheck_repo.py --root .
 	@$(PYTHON_IMG) tools/persona_probe.py --check-fresh
 	@python3 tools/memory_audit.py --fail | tail -2
+	@python3 tools/mind_probe.py --check-fresh
 
 # 带地址消毒器跑一遍单测：越界读写、释放后使用、内存泄漏都会当场炸出来
 $(BUILD)/test_core_asan: tests/test_core.c $(CORE_SRC) $(CORE_HDR)

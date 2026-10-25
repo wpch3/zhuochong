@@ -3293,6 +3293,39 @@ static void test_persona(void)
         }
     }
 
+    /* ⑤ 思维档案（T67.58）：她怎么想事情、怎么拿主意、怎么消化情绪。
+       ★ 这一段的判据不是"字在不在"，而是三件事：
+         ① 它确实被拼进了提示词；② 它**不随关系档变**（认知方式不会因为熟了换一套）；
+         ③ 不同人的这一段不一样（否则八个人是同一个脑子）。 */
+    CHECK(zp.has_mind == 1, "小寻应有思维档案（inner.mind.txt）");
+    CHECK(strstr(p0, "你这个人怎么运转") != NULL, "第 0 档提示词应带思维档案段");
+    CHECK(strstr(p0, "倾向，不是台词") != NULL,
+          "思维档案必须写明「这是倾向，不是台词」—— 否则模型会照着念");
+    {
+        char m0[4096], m3[4096];
+        zpersona_compose(&zp, 0, m0, sizeof(m0));
+        zpersona_compose(&zp, 3, m3, sizeof(m3));
+        CHECK(strcmp(m0, m3) != 0, "不同关系档的提示词整体应当不同（立场会变）");
+        CHECK(strstr(m0, zp.mind_extra) != NULL && strstr(m3, zp.mind_extra) != NULL,
+              "思维档案必须**原样**出现在每一档里（认知方式不随关系变）");
+    }
+    {
+        zpersona zs;
+        char ps[4096];
+        zdiag ds;
+        zdiag_init(&ds);
+        if (zpersona_load(&zs, g_root, "shenyu", &ds) == 1) {
+            zpersona_compose(&zs, 0, ps, sizeof(ps));
+            CHECK(zs.has_mind == 1, "深语也应有思维档案");
+            CHECK(strcmp(zs.mind_extra, zp.mind_extra) != 0,
+                  "深语和小寻的思维档案必须不同 —— 同一个脑子就不是两个人");
+            CHECK(strstr(ps, "先拆开") != NULL,
+                  "深语是分析型：思维档案里应能看到「先拆开」这一句");
+            CHECK(strstr(p0, "先拆开") == NULL,
+                  "小寻是直觉型：她的提示词里不该出现深语的「先拆开」");
+        }
+    }
+
     /* 中间值 3 不进提示词（避免「中等」这种无约束力的废话） */
     for (i = 0; i < zp.lib.ntraits; ++i) zp.tv[i] = 3;
     zpersona_compose(&zp, 0, p3, sizeof(p3));

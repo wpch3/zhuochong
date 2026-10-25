@@ -1408,3 +1408,16 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | T67.55 | 记忆管理界面（列表/编辑/导出） | [ ] | 只读 API 已有（`/api/memory.json`：items/anchors/deleted/stories/bytes/oldest/newest/block）；界面未做 |
 | T67.56 | 倒排索引（二元组 → id） | [ ] | 现在每次回忆线性扫全表，4 万条约几十毫秒；6000 条实测 ~1 ms，够用但会随规模退化 |
 | T67.57 | 同义词 / 别名表 | [ ] | `nimiko` 与 `miyune` 这类**专名变体**靠二元组对不上，需要别名表（写入时登记，检索时展开） |
+
+### T67 追加（2026-10-26 第七轮：思维档案 T67.58 / G66.46）
+
+| 编号 | 事 | 状态 | 说明 |
+|---|---|---|---|
+| T67.58 | **思维档案 `mind`（存什么）** | [x] | `characters/<id>/inner.json` 新增 `mind`：8 条轴（thinking.style/span/openness/effort/pace、decide.style/risk/regret、emotion.regulate/express/recover/trigger、conflict.script/after、attach.style、attention.first/first_note/misses、memory_bias.keeps/loses）+ habits≥2 + constraints≥2，可选 `diel`（昼夜两套）。取值全部是**枚举或 0~1**，每个轴必须带一句 `note` 解释为什么 |
+| T67.59 | **推行为的工具 `tools/mind_probe.py`** | [x] | 六个有代价的情境（约定被取消 / 半夜被叫醒 / 被当面指出做错 / 你情绪很低 / 被人开玩笑 / 两分钟做大决定），按数据推出「先做 / 说 / 藏 / 事后」。规则只读数据、无随机；`--probe [--scenario id]` 出表，`--write-fragments` 生成 `inner.mind.txt` |
+| T67.60 | **七道闸 `make audit-mind`** | [x] | M1 结构（枚举/范围/note/习惯/底线）、M2 多样性（每轴 ≥2~3 种取值、任意两人 ≥5 轴不同）、M3 自洽（如「藏不住」+「压住」判红）、M4 行为可推（每情境 ≥4 种做法、同数据重复一致）、M5 不许把台词写回数据、M6 片段（≤1000 字节、含「倾向，不是台词」、两两重合 ≤0.60）、M7 片段新鲜。已接进 `make selfcheck` |
+| T67.61 | **C 侧拼进提示词** | [x] | `zpersona` 新增 `mind_extra[ZP_MAX_MIND 1100]`，读 `characters/<id>/inner.mind.txt`，`zpersona_compose()` 拼在内心档案之后。**不分关系档**（认知方式不随熟了换一套）。`make test` 新增 9 条；实测 persona 2500 字节（人设 1550 + 思维 950） |
+| T67.62 | 倾向要绑到经历（因果） | [ ] | 现在 `note` 是人话解释，还没指向 `episodes`。应像立场那样要求「这条倾向是哪件事撑住的」 |
+| T67.63 | 压力下的退回档 | [ ] | 真人高压下会从 rational 掉回 spontaneous。需要 `decide.under_stress` 与闸 |
+| T67.64 | 推出来的序列进对话 | [ ] | `scenario_action()` 目前只给闸用。下一步按当前情境挑**一条**喂给模型（多了就成剧本） |
+| T67.65 | 昼夜两套（双晞）进 C | [ ] | 数据里已有 `diel`，但 C 侧还没按时间挑 day/night 片段 |
