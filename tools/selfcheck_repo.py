@@ -2130,6 +2130,30 @@ def check_live2d(root):
                   else "跟 %s、系数 %.2f、延迟 %.2fs"
                        % (_elb, _eb[0]["scale"], _eb[0]["lag"]))
 
+    # ㉑b S3 判据：**每根旋转骨都必须至少有一条参数驱动**（2026-10-25 T66.11c 后补）。
+    #    《SKELETON_SYSTEM》的 S3 一行写的是"参数层接线：params[].binds → 骨；
+    #    每根骨至少一条参数"。骨链是 S2 加的，绑定的来源却可能只写了物理或只写了
+    #    环境摆动 —— 那样"关掉物理回原位"这条就变成"关掉物理就永远是原位"，骨是死的。
+    #    判据取"至少一个参数 binds 里有它"（来源是参数、不是某个子系统）。
+    for _rp in sorted(glob.glob(os.path.join(root, "characters/*/forms/*/rig.json"))):
+        _tag = "%s/%s" % (_rp.split(os.sep)[-4], _rp.split(os.sep)[-2])
+        with io.open(_rp, encoding="utf-8") as _f:
+            _rig = json.load(_f)
+        _deform = {d["id"]: d for d in _rig.get("deformers", [])}
+        # 纯变换节点（没有 part、也没有网格点）= 骨
+        _bones = [d["id"] for d in _rig.get("deformers", [])
+                  if not d.get("part")
+                  and not (d.get("points") or d.get("keys") or d.get("cols"))]
+        _driven = set()
+        for _pm in _rig.get("params", []):
+            for _b in _pm.get("binds", []) or []:
+                if _b.get("deformer"):
+                    _driven.add(_b["deformer"])
+        _orphan = [b for b in _bones if b not in _driven]
+        check("每根旋转骨都有参数驱动（%s）" % _tag, not _orphan,
+              "这些骨没有任何参数绑定（骨是死的，S3 没接上）：%s" % _orphan if _orphan
+              else "%d 根骨全部有参数来源" % len(_bones))
+
     # ㉒ 同一部件上的多张网格形变器**必须同尺寸**（引擎硬约束）。
     #    zrig 是把同部件的几张网格**逐点相加**之后再去采样的，尺寸不一样直接拒载
     #    整份 rig（T45.12 第一版给躯干加了张 6x34，撞上裙摆的 2x10 ⇒ 启动期 ERROR、
