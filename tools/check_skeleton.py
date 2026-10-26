@@ -298,6 +298,24 @@ def check_form(root, char_id, sk, form, rig_path):
               "同一顶点被 %s 重复驱动 ⇒ 位移叠加；把其中一张的 w 调小"
               % ("/".join(did for did, _w in lst + [(x, None) for x, _d in flat])))
 
+    # ⑥d 软边遮罩（T66.13）：羽化半径 0~16（画布像素），且必须真的挂了 mask。
+    #     · 越界不许钳位 —— 钳位会把"写错了"变成"看起来有点糊"；
+    #     · 写了羽化却没有 mask = 以为加了软边、其实什么也没发生（最难查的一种错）。
+    for p in parts:
+        if "mask_feather" not in p:
+            continue
+        pid = p.get("id", "?")
+        fv = p.get("mask_feather")
+        oknum = isinstance(fv, (int, float)) and not isinstance(fv, bool)
+        check("部件 %s 的 mask_feather 是数字" % pid, oknum, repr(fv))
+        if oknum:
+            check("部件 %s 的 mask_feather 在 0~16（实测 %g）" % (pid, float(fv)),
+                  0.0 <= float(fv) <= 16.0, "越界会让边缘糊成一片，或者根本没效果")
+        mk = p.get("mask")
+        has_mask = bool(mk) and (isinstance(mk, (str, list)))
+        check("部件 %s 写了 mask_feather 就必须有 mask" % pid, has_mask,
+              "没有遮罩，羽化无处可施")
+
     # ⑦ forms.<form>.mesh_bones 点名的网格骨必须真的存在
     fb = ((sk.get("forms") or {}).get(form) or {}).get("mesh_bones") or {}
     for role, ids in fb.items():

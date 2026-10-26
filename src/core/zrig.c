@@ -183,6 +183,9 @@ typedef struct {
     int    mask_invert;       /* 1 = 取反：只在遮罩**外面**可见（≈ IsInverted） */
     int    mask_only;         /* 1 = 自己只当遮罩用，不画出来 */
     int    is_mask_src;       /* 1 = 有别的部件拿我当遮罩 */
+    double mask_feather;      /* 遮罩边缘羽化半径（画布像素，0~16；T66.13）。
+                                 二值遮罩切出来的是一条硬线，羽化把那条线抹成斜坡 ——
+                                 补片的平涂色和原画差几度时，硬线是唯一看得见的东西（LESSONS 408）。 */
     char   motion_id[64];     /* motion_from：照抄哪个部件的通道值（解析期暂存 id） */
     int    motion_from;       /* 解析后的部件索引，-1 = 用自己的 */
     char   deform_id[48];     /* "deformer"：这件挂在哪根变形器链上（≈ Live2D 的父子付け） */
@@ -758,6 +761,10 @@ struct zrig {
     /* 分块渲染每条带各一份（共享会被 zimg_clear 互相清掉） */
     zimg  *band_scratch[ZRIG_MAX_BANDS];
     zimg  *band_maskbuf[ZRIG_MAX_BANDS];
+    /* 羽化用的 alpha 临时平面（每条带一份：模糊会读相邻行，共享就是竞争）。
+       只在真有羽化部件时才分配，按需长大。 */
+    uint8_t *band_ftmp[ZRIG_MAX_BANDS];
+    size_t   band_ftmp_n[ZRIG_MAX_BANDS];
     double fb_scale;
     int    fb_w, fb_h;
     double view_scale;        /* 平台层打算用的缩放；首帧渲染出来之前靠它换算坐标 */
@@ -1187,6 +1194,33 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
                 }
                 p->mask_invert = zjson_bool(zjson_obj_get(pj, "mask_invert"), 0);
                 p->mask_only = zjson_bool(zjson_obj_get(pj, "mask_only"), 0);
+                /* 软边遮罩（T66.13）：遮罩 alpha 先做一次盒式模糊，边缘就有了斜坡。
+                   两条都要校验：越界拒绝（不钳位），无遮罩却写羽化也拒绝 ——
+                   后者是"以为加了软边、其实什么也没发生"，最难查。 */
+                p->mask_feather = 0.0;
+                {
+                    const zjson *fj = zjson_obj_get(pj, "mask_feather");
+                    if (fj) {
+                        double fv;
+                        if (!zjson_is(fj, ZJSON_NUM)) {
+                            zdiag_error(d, file, fj->line, 0, buf,
+                                        "部件 '%s' 的 mask_feather 必须是数字（0~16 画布像素）", p->id);
+                            return -1;
+                        }
+                        fv = zjson_num(fj, 0.0);
+                        if (!(fv >= 0.0) || fv > 16.0) {
+                            zdiag_error(d, file, fj->line, 0, buf,
+                                        "部件 '%s' 的 mask_feather 必须在 0~16 之间（写了 %g）", p->id, fv);
+                            return -1;
+                        }
+                        if (p->nmask == 0) {
+                            zdiag_error(d, file, fj->line, 0, buf,
+                                        "部件 '%s' 写了 mask_feather，但没有 mask —— 羽化无处可施", p->id);
+                            return -1;
+                        }
+                        p->mask_feather = fv;
+                    }
+                }
             }
             /* motion_from：这个部件不自己接通道，照抄另一个部件的动作值。
                用来做"同一个零件画两遍"的场合 —— 典型就是透け眉（眉毛的半透明
@@ -4810,6 +4844,8 @@ void zrig_free(zrig *r)
         for (bi = 0; bi < ZRIG_MAX_BANDS; ++bi) {
             zimg_free(r->band_scratch[bi]); r->band_scratch[bi] = NULL;
             zimg_free(r->band_maskbuf[bi]); r->band_maskbuf[bi] = NULL;
+            free(r->band_ftmp[bi]); r->band_ftmp[bi] = NULL;   /* 羽化临时平面（T66.13） */
+            r->band_ftmp_n[bi] = 0;
         }
     }
     free(r);
@@ -7147,14 +7183,96 @@ static void draw_state(zimg *dst, const zdrawst *st, int blend)
         zimg_draw_blend(dst, st->src, st->m, st->opacity, blend);
 }
 
+/* 遮罩羽化（T66.13）：对遮罩 alpha 做一次可分离盒式模糊，半径 r = 设备像素。
+   为什么盒式够用：要修的**不是**斜坡的数学形状，而是"边缘是一刀切的硬线"这件事
+   （LESSONS 408：硬掩码切掉直角之后，边界只是换了位置，硬线还在）。
+   横向 + 纵向各一次 = 三角斜坡，成本线性，且不会像高斯那样在 1~2px 上被截断。
+   只写 [y0,y1) 行，但读 [y0-r, y1+r) —— 分块渲染时这就是"必须扩读写区"的原因：
+   只读本带，带的接缝处会出现两条水平硬线（比原来的问题更难看）。 */
+static void feather_blur(zimg *im, int r, int y0, int y1, uint8_t *tmp)
+{
+    int w, h, m, x, y, k, win;
+    if (!im || !tmp || r <= 0) return;
+    w = im->w; h = im->h;
+    if (y0 < 0) y0 = 0;
+    if (y1 > h) y1 = h;
+    m = y1 - y0;
+    if (m <= 0 || w <= 0) return;
+    win = 2 * r + 1;
+
+    /* ① 把 alpha 抄出来（后面的横/纵两趟都要读原始值） */
+    for (y = 0; y < m; ++y) {
+        const uint8_t *src = im->px + (size_t)(y0 + y) * (size_t)w * 4;
+        uint8_t *dst = tmp + (size_t)y * (size_t)w;
+        for (x = 0; x < w; ++x) dst[x] = src[x * 4 + 3];
+    }
+
+    /* ② 横向：滑动窗口求和，边界按钳位（等于把边缘像素延出去） */
+    for (y = 0; y < m; ++y) {
+        const uint8_t *row = tmp + (size_t)y * (size_t)w;
+        uint8_t *out = im->px + (size_t)(y0 + y) * (size_t)w * 4;
+        int sum = 0;
+        for (k = -r; k <= r; ++k) {
+            int sx = k < 0 ? 0 : (k >= w ? w - 1 : k);
+            sum += row[sx];
+        }
+        for (x = 0; x < w; ++x) {
+            int sx1 = x + r + 1, sx0 = x - r;
+            out[x * 4 + 3] = (uint8_t)((sum + win / 2) / win);
+            sum += row[sx1 >= w ? w - 1 : sx1];
+            sum -= row[sx0 < 0 ? 0 : sx0];
+        }
+    }
+
+    /* ③ 把横向结果再抄一遍，纵向同理 */
+    for (y = 0; y < m; ++y) {
+        const uint8_t *src = im->px + (size_t)(y0 + y) * (size_t)w * 4;
+        uint8_t *dst = tmp + (size_t)y * (size_t)w;
+        for (x = 0; x < w; ++x) dst[x] = src[x * 4 + 3];
+    }
+    for (x = 0; x < w; ++x) {
+        int sum = 0;
+        for (k = -r; k <= r; ++k) {
+            int sy = k < 0 ? 0 : (k >= m ? m - 1 : k);
+            sum += tmp[(size_t)sy * (size_t)w + x];
+        }
+        for (y = 0; y < m; ++y) {
+            int sy1 = y + r + 1, sy0 = y - r;
+            uint8_t *out = im->px + (size_t)(y0 + y) * (size_t)w * 4;
+            out[x * 4 + 3] = (uint8_t)((sum + win / 2) / win);
+            sum += tmp[(size_t)(sy1 >= m ? m - 1 : sy1) * (size_t)w + x];
+            sum -= tmp[(size_t)(sy0 < 0 ? 0 : sy0) * (size_t)w + x];
+        }
+    }
+}
+
 /* 把 p 的遮罩源画进 maskbuf（多个遮罩取并集；mask_invert 时再取反）。
    返回 0 = 遮罩完全不可见（例如眨眼时眼眶被藏起来）→ 被裁的部件这一帧也不画，
    与 Live2D 的 clipping 语义一致。取反遮罩则相反：遮罩消失＝整块可见。 */
 static int build_maskbuf(zrig *r, zimg *maskbuf, const zpart *p, double scale,
-                         double blink, const zaction *a)
+                         double blink, const zaction *a, int bidx)
 {
-    int k, any = 0;
+    int k, any = 0, r_px, oy0, oy1, by0, by1;
     if (!maskbuf) return 0;
+    /* 羽化半径按**设备像素**算：rig 里的数是画布像素（0~16），
+       渲染缩放 0.5 时 4px 的羽化在画面上是 2px —— 视觉上才跟素材一个尺度。 */
+    r_px = (int)(p->mask_feather * scale + 0.5);
+    if (r_px < 0) r_px = 0;
+    if (r_px > 16) r_px = 16;
+    oy0 = maskbuf->clip_y0;
+    oy1 = maskbuf->clip_y1;
+    by0 = (oy1 > oy0) ? oy0 : 0;
+    by1 = (oy1 > oy0) ? oy1 : maskbuf->h;
+    if (r_px > 0) {
+        /* 扩读写区：模糊要读相邻行，读不到就只能按边缘钳位 →
+           带与带之间接出一台阶。这里多画多算 r 行，写回时仍只碰本带。 */
+        int ey0 = by0 - r_px, ey1 = by1 + r_px;
+        if (ey0 < 0) ey0 = 0;
+        if (ey1 > maskbuf->h) ey1 = maskbuf->h;
+        maskbuf->clip_y0 = ey0;
+        maskbuf->clip_y1 = ey1;
+        by0 = ey0; by1 = ey1;
+    }
     zimg_clear(maskbuf);
     for (k = 0; k < p->nmask; ++k) {
         zdrawst ms;
@@ -7163,6 +7281,17 @@ static int build_maskbuf(zrig *r, zimg *maskbuf, const zpart *p, double scale,
         draw_state(maskbuf, &ms, ZIMG_BLEND_NORMAL);
         any = 1;
     }
+    if (r_px > 0 && bidx >= 0 && bidx < ZRIG_MAX_BANDS) {
+        size_t need = (size_t)maskbuf->w * (size_t)maskbuf->h;
+        if (r->band_ftmp_n[bidx] < need) {
+            uint8_t *np = (uint8_t *)realloc(r->band_ftmp[bidx], need);
+            if (np) { r->band_ftmp[bidx] = np; r->band_ftmp_n[bidx] = need; }
+        }
+        if (r->band_ftmp[bidx]) feather_blur(maskbuf, r_px, by0, by1, r->band_ftmp[bidx]);
+    }
+    /* 恢复本带的写区：羽化只是"多读了邻居"，不许把邻居的行也写出去 */
+    maskbuf->clip_y0 = oy0;
+    maskbuf->clip_y1 = oy1;
     if (p->mask_invert) {
         /* 取反也只许碰分给本线程的那几行 */
         int iy0 = (maskbuf->clip_y1 > maskbuf->clip_y0) ? maskbuf->clip_y0 : 0;
@@ -7185,6 +7314,7 @@ static void free_band_bufs(zrig *r)
     for (bi = 0; bi < ZRIG_MAX_BANDS; ++bi) {
         zimg_free(r->band_scratch[bi]); r->band_scratch[bi] = NULL;
         zimg_free(r->band_maskbuf[bi]); r->band_maskbuf[bi] = NULL;
+        free(r->band_ftmp[bi]); r->band_ftmp[bi] = NULL; r->band_ftmp_n[bi] = 0;
     }
 }
 
@@ -7201,6 +7331,7 @@ typedef struct {
     zimg          *maskbuf;   /* 本线程私有 */
     double         scale, blink;
     const zaction *a;
+    int            idx;       /* 带下标：羽化临时平面按带分配 */
 } zband;
 
 static void render_band(zband *b)
@@ -7220,7 +7351,7 @@ static void render_band(zband *b)
            再把自己画进 scratch，最后按遮罩 alpha 合成到画面。
            遮罩是**当场渲染**的，所以不要求遮罩和被裁件在图层里挨着。 */
         if (p->nmask > 0) {
-            if (!build_maskbuf(r, b->maskbuf, p, b->scale, b->blink, b->a)) continue;
+            if (!build_maskbuf(r, b->maskbuf, p, b->scale, b->blink, b->a, b->idx)) continue;
             if (!b->scratch) continue;
             zimg_clear(b->scratch);
             target = b->scratch;
@@ -7315,7 +7446,7 @@ const zimg *zrig_mask_frame(zrig *r, const char *part_id, double scale,
     r->mask_dbg->clip_y1 = fh;
     zimg_clear(r->mask_dbg);
     build_maskbuf(r, r->mask_dbg, &r->parts[pi], scale, r->blink_now,
-                  current_action(r));
+                  current_action(r), 0);
     /* 遮罩是白 alpha；把它做成"白底看得见"的灰度图，浏览器直接看 */
     {
         size_t n = (size_t)fw * fh, q;
@@ -7385,7 +7516,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                [0, fh/nb) 的旧 clip，不重置的话这一帧 y 靠下的带遮罩部件会整个消失。 */
             b.scratch->clip_y0 = 0; b.scratch->clip_y1 = fh;
             b.maskbuf->clip_y0 = 0; b.maskbuf->clip_y1 = fh;
-            b.scale = scale; b.blink = blink; b.a = a;
+            b.scale = scale; b.blink = blink; b.a = a; b.idx = 0;
             render_band(&b);
         } else {
             zband bands[ZRIG_MAX_BANDS];
@@ -7401,6 +7532,7 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h)
                 bands[k].scratch->clip_y0 = y0; bands[k].scratch->clip_y1 = y1;
                 bands[k].maskbuf->clip_y0 = y0; bands[k].maskbuf->clip_y1 = y1;
                 bands[k].scale = scale; bands[k].blink = blink; bands[k].a = a;
+                bands[k].idx = k;
             }
 #if ZRIG_THREADS
             {

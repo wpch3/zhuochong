@@ -2790,6 +2790,187 @@ static void test_action_drives_param(void)
     }
 }
 
+/* T66.13 软边遮罩：二值遮罩切出来的是硬线，羽化把它抹成斜坡。
+   判据三条（都要能拦住"看起来加了、其实没加"）：
+     ① 有羽化时，遮罩边缘必须出现**一斜坡**的中间 alpha（≥5 个 0<a<255 的像素）；
+     ② 这条斜坡要单调：离开遮罩越远越透明（不许抖、不许双峰）；
+     ③ 分块渲染（多线程）与单线程必须**逐字节相同** —— 羽化要读相邻行，
+        只读本带就会在带的接缝上留下两条水平硬线（比原来的问题更难看）。 */
+static void test_mask_feather(void)
+{
+    char dir[1024], sprites[1024], rigp[1024];
+    SECTION("T66.13 软边遮罩：边缘要有斜坡，不能换一条硬线");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_mask_feather");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    {
+        /* 夹具全部合成：80x80 的"窗"和 240x240 的"板"，尺寸写死在这里，
+           生产素材怎么改都不会碰碎这个用例（LESSONS：夹具不许借生产素材）。 */
+        zerr e;
+        zimg *win = zimg_new_filled(80, 80, 255, 255, 255, 255);
+        zimg *plate = zimg_new_filled(240, 240, 200, 60, 60, 255);
+        z_snprintf(dir, sizeof(dir), "/tmp/zc_mask_feather");
+        z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+        {
+            char p1[1024], p2[1024];
+            z_snprintf(p1, sizeof(p1), "%s/win.png", sprites);
+            z_snprintf(p2, sizeof(p2), "%s/plate.png", sprites);
+            zerr_clear(&e);
+            CHECK(win && zimg_save_png(win, p1, &e) == 0, "羽化夹具（80x80 窗）应能写出：%s", e.msg);
+            CHECK(plate && zimg_save_png(plate, p2, &e) == 0, "羽化夹具（240x240 板）应能写出：%s", e.msg);
+        }
+        zimg_free(win);
+        zimg_free(plate);
+    }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    {
+        /* 正例：板被 80x80 的窗裁切，羽化 6px（scale=1 → 设备 6px，斜坡约 12px） */
+        const char *tmpl =
+            "{\"schema_version\":\"1.0\",\"id\":\"mf\",\"name\":\"羽化\","
+            "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
+            "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},"
+            "\"parts\":["
+            " {\"id\":\"win\",\"file\":\"sprites/win.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[110,110],\"anchor\":[0,0],\"mask_only\":true},"
+            " {\"id\":\"plate\",\"file\":\"sprites/plate.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[30,30],\"anchor\":[0,0],\"mask\":\"win\",\"mask_feather\":%s}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}";
+        char json[2048];
+
+        z_snprintf(json, sizeof(json), tmpl, "0");
+        write_text(rigp, json);
+        {
+            zdiag d;
+            zrig *r;
+            int w = 0, h = 0, y = 150, x, ramp = 0;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r != NULL, "羽化=0 的 rig 应加载成功（%d 条诊断）", d.error_count);
+            if (r) {
+                const zimg *fb;
+                zrig_tick(r, 1.0);
+                fb = zrig_frame(r, 1.0, &w, &h);
+                if (fb) {
+                    for (x = 0; x < w; ++x) {
+                        int a = fb->px[((size_t)y * (size_t)w + (size_t)x) * 4 + 3];
+                        if (a > 0 && a < 255) ramp++;
+                    }
+                    CHECK(ramp <= 2, "不写羽化时边缘应基本是硬线（中间 alpha %d 个）", ramp);
+                }
+                zrig_free(r);
+            }
+        }
+
+        z_snprintf(json, sizeof(json), tmpl, "6");
+        write_text(rigp, json);
+        {
+            zdiag d;
+            zrig *r;
+            int w = 0, h = 0, y = 150;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r != NULL, "羽化=6 的 rig 应加载成功（%d 条诊断）", d.error_count);
+            if (r) {
+                const zimg *fb;
+                int ramp = 0, left_edge = -1, mono = 1, prev = -1, center_a = 0, i;
+                uint8_t *shot;
+                zrig_tick(r, 1.0);
+                fb = zrig_frame(r, 1.0, &w, &h);
+                shot = fb ? (uint8_t *)malloc((size_t)w * (size_t)h * 4) : NULL;
+                if (shot) memcpy(shot, fb->px, (size_t)w * (size_t)h * 4);
+                CHECK(shot != NULL, "应能拿到一帧");
+                if (shot) {
+                    /* ① 斜坡 */
+                    for (i = 0; i < w; ++i) {
+                        int a = shot[((size_t)y * (size_t)w + (size_t)i) * 4 + 3];
+                        if (a > 0 && a < 255) { ramp++; if (left_edge < 0) left_edge = i; }
+                    }
+                    CHECK(ramp >= 5, "6px 羽化应在边缘留下一条斜坡（中间 alpha %d 个）", ramp);
+                    /* ② 单调：从左缘往里走，alpha 不许回头 */
+                    for (i = left_edge; i < left_edge + ramp; ++i) {
+                        int a = shot[((size_t)y * (size_t)w + (size_t)i) * 4 + 3];
+                        if (prev >= 0 && a < prev - 1) mono = 0;
+                        prev = a;
+                    }
+                    CHECK(mono, "斜坡要单调（越往遮罩里越不透明）");
+                    center_a = shot[((size_t)y * (size_t)w + 150) * 4 + 3];
+                    CHECK(center_a == 255, "遮罩正中仍要完全不透明（实测 %d）", center_a);
+                    printf("    量到：斜坡 %d 个像素（从 x=%d 起）· 中心 alpha=%d\n",
+                           ramp, left_edge, center_a);
+                    free(shot);
+                }
+                /* ③ 分块 = 单线程（羽化扩读写区之后，这条最容易破） */
+                {
+                    int w1 = 0, h1 = 0, w2 = 0, h2 = 0, diff = 0;
+                    uint8_t *a1, *a2;
+                    const zimg *f1, *f2;
+                    zrig_set_render_threads(1);
+                    f1 = zrig_frame(r, 1.0, &w1, &h1);
+                    a1 = f1 ? (uint8_t *)malloc((size_t)w1 * (size_t)h1 * 4) : NULL;
+                    if (a1) memcpy(a1, f1->px, (size_t)w1 * (size_t)h1 * 4);
+                    zrig_set_render_threads(4);
+                    f2 = zrig_frame(r, 1.0, &w2, &h2);
+                    a2 = f2 ? (uint8_t *)malloc((size_t)w2 * (size_t)h2 * 4) : NULL;
+                    if (a2) memcpy(a2, f2->px, (size_t)w2 * (size_t)h2 * 4);
+                    if (a1 && a2 && w1 == w2 && h1 == h2) {
+                        size_t q, n = (size_t)w1 * (size_t)h1 * 4;
+                        for (q = 0; q < n; ++q) if (a1[q] != a2[q]) diff++;
+                    } else {
+                        diff = -1;
+                    }
+                    CHECK(diff == 0, "羽化之后分块渲染仍要逐字节相同（不同 %d 字节）", diff);
+                    free(a1); free(a2);
+                    zrig_set_render_threads(0);
+                }
+                zrig_free(r);
+            }
+        }
+
+        /* 负控一：羽化半径越界（17） → 拒载，不许钳位成 16 */
+        z_snprintf(json, sizeof(json), tmpl, "17");
+        write_text(rigp, json);
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "羽化半径 17 应拒载（实为 %s）",
+                  r ? "加载成功" : "拒载");
+            zrig_free(r);
+        }
+        /* 负控二：写了羽化却没有 mask —— 这是"以为加了软边、其实什么也没发生" */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"mf\",\"name\":\"羽化\","
+            "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
+            "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},"
+            "\"parts\":["
+            " {\"id\":\"plate\",\"file\":\"sprites/plate.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[30,30],\"anchor\":[0,0],\"mask_feather\":6}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "有羽化没遮罩应拒载");
+            zrig_free(r);
+        }
+        /* 负控三：羽化值写成字符串 → 拒载（不许"当成 0 悄悄过"） */
+        z_snprintf(json, sizeof(json), tmpl, "\"6\"");
+        write_text(rigp, json);
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "羽化写成字符串应拒载");
+            zrig_free(r);
+        }
+    }
+}
+
 static void test_mask(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -10837,6 +11018,7 @@ int main(int argc, char **argv)
     test_config_and_pet();
     test_bad_config();
     test_rig_channels();
+    test_mask_feather();
     test_mask();
     test_eyelid();
     test_lash_hold();
