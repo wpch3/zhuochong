@@ -280,6 +280,55 @@ def fragment(doc):
     return "\n".join(lines) + "\n"
 
 
+# ---------------------------------------------------------------- 节奏参数（T69.1）
+# 「脱口而出还是先想一想」由引擎决定（src/core/zthink.c），但**她有多快**来自这里。
+# C 侧不认识 inner.json 里那套结构，也不该认识 —— 推导只做一份，避免两边漂移。
+PACE_FAST = {"fast": 0.85, "steady": 0.5, "slow": 0.2}
+
+
+def params_of(doc):
+    """把 mind 块压成五个 0~1 的数。每个数都要能说出是从哪个字段来的。"""
+    m = mind(doc)
+    th, em = m["thinking"], m["emotion"]
+    at = m["attach"]["style"]
+    cf = m["conflict"]["script"]
+    # 主动倾向：愿意先说的人有两种 —— 不怕被拒的（安全型）和憋不住的（正面冲突型）。
+    # 回避型/混乱型会把这份倾向压下去，这和"她其实想说话但不敢开口"是同一件事。
+    pro = 0.35
+    pro += {"anxious": 0.15, "secure": 0.08, "avoidant": -0.10, "fearful": -0.05}[at]
+    pro += {"confront": 0.15, "deflect": 0.05, "collaborate": 0.05,
+            "appease": 0.02, "avoid": -0.12}[cf]
+    if em["express"] >= 0.7:
+        pro += 0.10
+    elif em["express"] <= 0.3:
+        pro -= 0.05
+    pro = max(0.0, min(1.0, round(pro, 2)))
+    return {
+        "character": None,
+        "pace_fast": PACE_FAST[th["pace"]],
+        "effort": round(float(th["effort"]), 2),
+        "express": round(float(em["express"]), 2),
+        "proactive": pro,
+        "curiosity": round(float(th["openness"]), 2),
+    }
+
+
+def params_path(cdir):
+    return os.path.join(cdir, "mind.params.json")
+
+
+def export_params(cdir, doc):
+    p = params_of(doc)
+    p["character"] = os.path.basename(cdir)
+    p["_from"] = ("由 tools/mind_probe.py 从 inner.json 的 mind 块导出："
+                  "pace_fast←thinking.pace / effort←thinking.effort / express←emotion.express / "
+                  "proactive←依恋+冲突脚本+外显 / curiosity←thinking.openness")
+    with io.open(params_path(cdir), "w", encoding="utf-8") as f:
+        json.dump(p, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    return p
+
+
 def frag_path(cdir):
     return os.path.join(cdir, "inner.mind.txt")
 
@@ -287,10 +336,12 @@ def frag_path(cdir):
 def write_fragments():
     n = 0
     for cdir in char_dirs():
+        doc = load(cdir)
         with io.open(frag_path(cdir), "w", encoding="utf-8") as f:
-            f.write(fragment(load(cdir)))
+            f.write(fragment(doc))
+        export_params(cdir, doc)
         n += 1
-    print("已写 %d 个思维片段（inner.mind.txt）" % n)
+    print("已写 %d 个思维片段（inner.mind.txt）+ %d 份节奏参数（mind.params.json）" % (n, n))
     return 0
 
 
@@ -459,6 +510,30 @@ def check():
         if not mind(doc) and got is not None:
             bad("M7", "%s 没有 mind 块却有 inner.mind.txt（会拼进提示词）" % cid)
 
+    # ---- 闸 8：节奏参数（T69.1）必须与 inner.json 同步。
+    #      C 侧靠这份参数决定"她多快"，它一旦过期，人物的快慢就和人设脱节了 ——
+    #      而画面/对话里完全看不出来，只能靠这道闸。
+    for cid, doc in docs.items():
+        if not mind(doc):
+            continue
+        want = params_of(doc)
+        p = params_path(os.path.join(ROOT, "characters", cid))
+        got = None
+        if os.path.exists(p):
+            try:
+                got = json.load(io.open(p, encoding="utf-8"))
+            except Exception:                       # noqa: BLE001
+                got = None
+        if got is None:
+            bad("M8", "%s 缺 mind.params.json —— 跑 --write-fragments" % cid)
+            continue
+        for k, v in want.items():
+            if k == "character":
+                continue
+            if abs(float(got.get(k, -9)) - float(v)) > 1e-6:
+                bad("M8", "%s 的 %s 过期：文件 %r / 数据 %r"
+                    % (cid, k, got.get(k), v))
+
     # ---- 报告
     print("== 六个情境：八个人各自先做什么 ==")
     for sc in SCENARIOS:
@@ -470,7 +545,8 @@ def check():
             acts = scenario_action(m, sc["id"])
             print("  %-9s %s → %s" % (cid, acts[0], acts[3]))
     print("\n" + "-" * 78)
-    print("闸 1 结构 / 2 多样性 / 3 自洽 / 4 行为可推 / 5 不许写死台词 / 6 片段 / 7 片段新鲜")
+    print("闸 1 结构 / 2 多样性 / 3 自洽 / 4 行为可推 / 5 不许写死台词 / 6 片段 / 7 片段新鲜"
+          " / 8 节奏参数同步")
     print("片段字节：" + "  ".join("%s=%d" % (cid, len(frags[cid].encode("utf-8")))
                                 for cid in sorted(frags)))
     if fails:
@@ -478,7 +554,8 @@ def check():
             print("  [%s] %s" % (code, msg))
         print("\n思维档案：%d 项不通过" % len(fails))
         return 1
-    print("思维档案：%d 个角色 x %d 个轴，七道闸全过" % (len(docs), len(AXES)))
+    print("思维档案：%d 个角色 x %d 个轴，八道闸全过（含节奏参数与 inner.json 同步）"
+          % (len(docs), len(AXES)))
     return 0
 
 

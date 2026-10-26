@@ -150,6 +150,17 @@ typedef struct {
     char   follow_id[64];     /* bend_follow：跟随哪个部件的形变（解析期暂存 id） */
     int    follow_part;       /* 解析后的部件索引，-1 表示不跟随 */
     double follow_at;         /* bend_follow_at：按这个画布高度取样（0=按部件自身高度） */
+    /* ── 父组继承度（T66.12，≈ Live2D 的 継承）──
+       "inherit" 决定**父组的矩阵**怎么并进来：
+         full（缺省） 位置 + 旋转 + 缩放全继承（老行为，不动）
+         rotation     只继承旋转与缩放，**丢掉父组的平移**
+         position     只继承平移，**丢掉父组的旋转与缩放**
+         none         完全不继承（等价于世界坐标）
+       为什么需要它：Live2D 里"头转、帽子不跟着转"是常用手法 —— 帽子若是 head 的子组，
+       现在的实现会连父亲的旋转一起吃掉，帽子就跟着甩；不挂 head 又会在转头时脱位。
+       有了 inheritance 就能既跟着头走、又不跟着转。以前的做法是给帽子额外加骨，
+       于是每件都多一层要维护的东西。 */
+    int    inherit;           /* ZRIG_INHERIT_*（见下） */
 } zgroup;
 
 typedef struct {
@@ -201,6 +212,10 @@ typedef struct {
     int    blend;             /* 混合模式 ZIMG_BLEND_*（≈ Live2D CubismBlendMode） */
     int    eye_side;          /* 0=与左右无关 1=左眼 2=右眼（ParamEyeLOpen/ROpen 分开驱动） */
 } zpart;
+
+/* 父组继承度（T66.12）：数值固定，别随手改 —— rig.json 里写的是名字。 */
+enum { ZRIG_INHERIT_FULL = 0, ZRIG_INHERIT_ROTATION = 1,
+       ZRIG_INHERIT_POSITION = 2, ZRIG_INHERIT_NONE = 3 };
 
 /* 网格形变器（≈ Live2D 的 ワープデフォーマ）与变形器树（第六十三问 P0）。
    两种用法写在同一个结构里，因为它们在 Live2D 里本来就是同一种节点的两面：
@@ -1023,6 +1038,24 @@ static int load_groups(zrig *r, const zjson *jgroups, zdiag *d, const char *file
                不写就按部件自己的高度取样（适合贴在父部件上的五官）。 */
             if (zjson_get(gj, "bend_follow_at"))
                 g->follow_at = zjson_num(zjson_obj_get(gj, "bend_follow_at"), 0.0);
+        }
+        /* inherit：父组继承度（T66.12）。写错名字必须报错 —— 静默退回 full
+           会表现成"帽子还是跟着头转"，而 rig 上明明写着要关。 */
+        g->inherit = ZRIG_INHERIT_FULL;
+        {
+            const char *inh = zjson_str(zjson_obj_get(gj, "inherit"), NULL);
+            if (inh && *inh) {
+                if (z_streq(inh, "full")) g->inherit = ZRIG_INHERIT_FULL;
+                else if (z_streq(inh, "rotation")) g->inherit = ZRIG_INHERIT_ROTATION;
+                else if (z_streq(inh, "position")) g->inherit = ZRIG_INHERIT_POSITION;
+                else if (z_streq(inh, "none")) g->inherit = ZRIG_INHERIT_NONE;
+                else {
+                    zdiag_error(d, file, gj ? gj->line : 0, 0, "groups.inherit",
+                                "组 '%s' 的 inherit 写的是 '%s'，只认 "
+                                "full / rotation / position / none", gid, inh);
+                    return -1;
+                }
+            }
         }
         z_snprintf(path, sizeof(path), "groups.%s.pivot", gid);
         read_pair(zjson_obj_get(gj, "pivot"), r->origin[0], r->origin[1], g->pivot);
@@ -5866,10 +5899,38 @@ static void group_matrix(const zrig *r, int gi, double scale, double m[6])
                      px + r->g_dx[gi] * scale,
                      py + r->g_dy[gi] * scale,
                      r->g_sx[gi], r->g_sy[gi], r->g_rot[gi], px, py);
-    if (g->parent >= 0) {
-        double pm[6];
+    if (g->parent >= 0 && g->inherit != ZRIG_INHERIT_NONE) {
+        double pm[6], pm2[6];
         group_matrix(r, g->parent, scale, pm);
-        zimg_matrix_mul(m, pm, local);
+        switch (g->inherit) {
+            case ZRIG_INHERIT_ROTATION:
+                /* 只要父的旋转+缩放，平移清零：头一转，帽子跟着角度走、但不会被推出原位 */
+                pm2[0] = pm[0]; pm2[1] = pm[1];
+                pm2[2] = pm[2]; pm2[3] = pm[3];
+                pm2[4] = 0.0;   pm2[5] = 0.0;
+                break;
+            case ZRIG_INHERIT_POSITION: {
+                /* 只要父的**位移**，线性部分换成单位阵：跟着头走，但不跟着转。
+                   ★ 不能直接拿 pm 的平移列（pm[4],pm[5]）—— 那一列里含有
+                   "绕枢轴旋转"顺带产生的位移（头转 90° 时枢轴偏移会把帽子甩出去一大截，
+                   实测是 -110px）。这里按枢轴本身的位移取：
+                     位移 = 父矩阵(父枢轴) − 父枢轴
+                   = 真正的"父组走了多远"，不含旋转带来的那部分。 */
+                double pp[2];
+                const zgroup *pg = &r->groups[g->parent];
+                double qx = pg->pivot[0] * scale, qy = pg->pivot[1] * scale;
+                pp[0] = pm[0] * qx + pm[2] * qy + pm[4];
+                pp[1] = pm[1] * qx + pm[3] * qy + pm[5];
+                pm2[0] = 1.0; pm2[1] = 0.0;
+                pm2[2] = 0.0; pm2[3] = 1.0;
+                pm2[4] = pp[0] - qx; pm2[5] = pp[1] - qy;
+                break;
+            }
+            default:
+                memcpy(pm2, pm, sizeof(pm2));
+                break;
+        }
+        zimg_matrix_mul(m, pm2, local);
     } else {
         memcpy(m, local, sizeof(local));
     }

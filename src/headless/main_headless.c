@@ -44,6 +44,7 @@
 #include "../core/zconfig.h"
 #include "../core/zpersona.h"
 #include "../core/zmem.h"
+#include "../core/zthink.h"
 #include "../core/zjson.h"
 
 #include <stdio.h>
@@ -92,6 +93,12 @@ static zpet *g_pet = NULL;
 /* 长记忆线（T67.45）。NULL = 没打开（data/ 不可写等）—— 这时她只是失忆，
    不许因此起不来，但必须能在 /api/memory.json 里看见 open:false。 */
 static zmem *g_mem = NULL;
+/* 她的节奏（T69.1）：脱口而出还是先想一想。由 mind.params.json 决定「她有多快」，
+   由 zthink 决定「这一次用不用想」。 */
+static zthink_profile g_think;
+/* 她自己上次开口的时间（monotonic 秒）—— 主动开口的冷却用它，不是用户说话的时间 */
+static double g_self_spoke_at = 0.0;
+static int    g_self_topic_open = 0;   /* 上一句是她主动提的、对方还没接 */
 /* 网关（G51）：进程启动时读一次路由表。读不到不影响桌宠本体跑，
    只是 /api/gateway.json 会如实说"没加载"。 */
 static zgateway g_gw;
@@ -1080,6 +1087,103 @@ static void handle_request(zsock fd, const http_req *r)
         send_text(fd, 200, "application/json", body);
         return;
     }
+    /* 她的节奏（T69.1）：这一句她会脱口而出，还是先想一想。
+       ★ 这个端点存在的理由不是给用户看的，是**可审计**：
+         她"这次为什么想了想"必须能被打出来，否则和随机数没区别。
+         决定完全由引擎做，没有任何"要不要深思"的开关。 */
+    if (strcmp(r->path, "/api/think.json") == 0) {
+        static char body[2048];
+        zthink_in in;
+        zthink_out out;
+        char text[512], esc[768], escwhy[512], escpre[160];
+        double mood = qint(r, "mood", -1) >= 0 ? (double)qint(r, "mood", 50) / 100.0 : 0.6;
+        time_t now = time(NULL);
+        struct tm lt;
+        int hour = qint(r, "hour", -1);
+
+        memset(&in, 0, sizeof(in));
+        qstr(r, "text", text, sizeof text);
+        in.text = text;
+        in.tier = qint(r, "tier", g_pet ? zpet_affection_tier(g_pet) : 0);
+        in.mood = mood;
+        if (hour < 0) {
+            localtime_r(&now, &lt);
+            hour = lt.tm_hour;
+        }
+        in.hour = hour;
+        in.since_last_ms = (int64_t)qint(r, "since", 60000);
+        in.had_topic = qint(r, "topic", 0) ? 1 : 0;
+
+        zthink_decide(&g_think, &in, &out);
+        zjson_escape(text, esc, sizeof esc);
+        zjson_escape(out.why, escwhy, sizeof escwhy);
+        zjson_escape(out.preface, escpre, sizeof escpre);
+        z_snprintf(body, sizeof(body),
+                   "{\"ok\":true,\"text\":\"%s\",\"mode\":\"%s\",\"mode_id\":%d,"
+                   "\"delay_ms\":%d,\"preface\":\"%s\",\"max_tokens\":%d,"
+                   "\"needs_memory\":%s,\"score\":%.3f,\"why\":\"%s\","
+                   "\"params_ok\":%s,\"tier\":%d,\"hour\":%d}",
+                   esc, zthink_mode_id(out.mode), out.mode, out.delay_ms, escpre,
+                   out.max_tokens, out.needs_memory ? "true" : "false", out.score,
+                   escwhy, g_think.ok ? "true" : "false", in.tier, in.hour);
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+
+    /* 她自己想不想开口（T69.1）。UI 隔一会儿问一次，够阈值就让她说一句。
+       ★ 这个端点**只回答"要不要"和"为什么"，不替她说** —— 说话仍然走 /api/chat，
+         这样"她主动开口"和"回答你"用同一条链路，不会长成两套性格。
+       ★ 冷却按**她自己上次开口**算，不是按用户说话算：用户刚说完她当然可以接，
+         那不算"主动"。 */
+    if (strcmp(r->path, "/api/urge.json") == 0) {
+        static char body[2048];
+        zthink_in in;
+        zthink_urge u;
+        time_t now = time(NULL);
+        struct tm lt;
+        int hour = qint(r, "hour", -1);
+        double since_ms;
+
+        memset(&in, 0, sizeof(in));
+        in.text = "";
+        in.tier = qint(r, "tier", g_pet ? zpet_affection_tier(g_pet) : 0);
+        in.mood = (double)qint(r, "mood", 60) / 100.0;
+        if (hour < 0) {
+            localtime_r(&now, &lt);
+            hour = lt.tm_hour;
+        }
+        in.hour = hour;
+        since_ms = (pet_now() - g_self_spoke_at) * 1000.0;
+        if (qint(r, "since", -1) >= 0) since_ms = (double)qint(r, "since", 0);
+        in.since_last_ms = (int64_t)(since_ms < 0 ? 0 : since_ms);
+        in.had_topic = g_self_topic_open;
+
+        zthink_urge_now(&g_think, &in, qint(r, "promise", 0), qint(r, "memory", 0), &u);
+        {
+            char escwhy[512];
+            zjson_escape(u.why, escwhy, sizeof escwhy);
+            z_snprintf(body, sizeof(body),
+                       "{\"ok\":true,\"urge\":%.3f,\"would_speak\":%s,"
+                       "\"intent\":\"%s\",\"intent_id\":%d,\"wait_s\":%d,"
+                       "\"why\":\"%s\",\"idle_s\":%d,\"hour\":%d}",
+                       u.urge, u.would_speak ? "true" : "false",
+                       zthink_intent_id(u.intent), u.intent, u.wait_s, escwhy,
+                       (int)(in.since_last_ms / 1000), in.hour);
+        }
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+
+    /* 她说完一句自己起头的话（UI 在展示自发言之后调一下）：
+       记下时间（冷却）并把"话题还没被接"标上。对方回话时这个标记会清掉。 */
+    if (strcmp(r->path, "/api/urge/spoke") == 0) {
+        g_self_spoke_at = pet_now();
+        g_self_topic_open = qint(r, "topic", 1) ? 1 : 0;
+        send_text(fd, 200, "application/json",
+                  "{\"ok\":true,\"self_spoke_at\":0,\"topic_open\":0}");
+        return;
+    }
+
     if (strcmp(r->path, "/api/memory.json") == 0) {
         /* 长记忆线的观察窗（T67.45）。三种问法：
              ?verify=1        全量对账（正文被改一个字节就报出来）
@@ -1844,6 +1948,7 @@ static void handle_request(zsock fd, const http_req *r)
         int nhist = 0;
         int dry = qint(r, "dry", 0);
         int want_persona = qint(r, "persona", 1);
+        zthink_out think;                 /* 这一句的节奏（T69.1），响应里要带回去 */
         int rc, off;
 
         if (!qstr(r, "text", text, sizeof(text)) || !text[0]) {
@@ -1984,8 +2089,28 @@ static void handle_request(zsock fd, const http_req *r)
             q.nhistory = nhist;
         }
         AIUNLOCK();
+        /* 她的节奏（T69.1）：这一句是多快说出来的，由引擎判，用户没有开关。
+           ★ 预算也由这里给：脱口而出就该短（90 token），认真想才给到 320。
+             显式传了 max_tokens 就听用户的（调试/测试要用）。 */
+        {
+            zthink_in tin;
+            time_t nowt = time(NULL);
+            struct tm lt;
+            memset(&tin, 0, sizeof tin);
+            memset(&think, 0, sizeof think);
+            tin.text = text;
+            tin.tier = g_pet ? zpet_affection_tier(g_pet) : 0;
+            tin.mood = 0.6;
+            localtime_r(&nowt, &lt);
+            tin.hour = qint(r, "hour", lt.tm_hour);
+            tin.since_last_ms = (int64_t)((pet_now() - g_self_spoke_at) * 1000.0);
+            tin.had_topic = 0;
+            zthink_decide(&g_think, &tin, &think);
+            /* 对方开口了 —— 她自提的话题就不再是"没人接" */
+            g_self_topic_open = 0;
+        }
         q.temperature = -1.0;                 /* 没填就不往请求体里塞，别覆盖服务端配置 */
-        q.max_tokens = qint(r, "max_tokens", 0);
+        q.max_tokens = qint(r, "max_tokens", think.max_tokens);
         q.timeout_ms = qint(r, "timeout", 30000);
         q.max_attempts = qint(r, "tries", 1);
         q.route.sensitive = qint(r, "sensitive", 0) ? 1 : 0;
@@ -2046,6 +2171,19 @@ static void handle_request(zsock fd, const http_req *r)
                 zjson_escape(reqbody ? reqbody : "", esc_body, sizeof(esc_body));
                 off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
                            ",\"url\":\"%s\",\"request_body\":\"%s\"", esc_url, esc_body);
+            }
+            {
+                /* 她"多快说的"要一起回去：前端靠这两个字段决定先放哪句、停多久。
+                   没有它们，"脱口而出"在界面上就退化成了"一样地等一下"。 */
+                char escpre[160], escwhy[512];
+                zjson_escape(think.preface, escpre, sizeof escpre);
+                zjson_escape(think.why, escwhy, sizeof escwhy);
+                off += (int)z_snprintf(body + off, sizeof(body) - (size_t)off,
+                    ",\"think\":{\"mode\":\"%s\",\"delay_ms\":%d,\"preface\":\"%s\","
+                    "\"max_tokens\":%d,\"needs_memory\":%s,\"score\":%.3f,\"why\":\"%s\"}",
+                    zthink_mode_id(think.mode), think.delay_ms, escpre,
+                    think.max_tokens, think.needs_memory ? "true" : "false",
+                    think.score, escwhy);
             }
             z_snprintf(body + off, sizeof(body) - (size_t)off, "}");
         }
@@ -2651,6 +2789,14 @@ int main(int argc, char **argv)
         return 3;
     }
     g_start_time = pet_now();
+    g_self_spoke_at = pet_now();
+    /* 她的节奏参数（T69.1）。缺文件是合法状态 —— 走缺省值，绝不因为
+       没导出过 mind.params.json 就起不来。 */
+    zthink_profile_load(&g_think, g_cfg.root_dir, zpet_character(g_pet));
+    ZLOGI("think", "节奏参数：%s（快%.2f 努力%.2f 外显%.2f 主动%.2f 好奇%.2f）",
+          g_think.ok ? "已读 mind.params.json" : "缺文件，走缺省",
+          g_think.pace_fast, g_think.effort, g_think.express,
+          g_think.proactive, g_think.curiosity);
 
     /* 长记忆线：四年后还认得你的物理前提就是它。
        ★ 打不开**不阻塞启动**（记忆只是失忆，不是死机），但一定要在

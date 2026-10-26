@@ -1,0 +1,9 @@
+{
+  "character": "xiaochen",
+  "pace_fast": 0.2,
+  "effort": 0.9,
+  "express": 0.25,
+  "proactive": 0.33,
+  "curiosity": 0.85,
+  "_from": "由 tools/mind_probe.py 从 inner.json 的 mind 块导出：pace_fast←thinking.pace / effort←thinking.effort / express←emotion.express / proactive←依恋+冲突脚本+外显 / curiosity←thinking.openness"
+}

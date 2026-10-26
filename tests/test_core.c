@@ -28,6 +28,7 @@
 #include "../src/core/zinteract.h"
 #include "../src/core/zgateway.h"
 #include "../src/core/zhttp.h"
+#include "../src/core/zthink.h"
 #include "../src/core/zrelay.h"
 #include "../src/core/zctx.h"
 #include "../src/core/zmem.h"
@@ -10168,6 +10169,288 @@ static void test_eye_lid_arc(void)
     zrig_free(r);
 }
 
+/* ---------------------------------------------------------------------------
+   T66.12：父组继承度（inherit）—— "头转、帽子不跟着转"。
+
+   要解决的事：帽子/发饰按道理挂在 head 组下面（这样转头时它跟着走、不会脱位），
+   但挂上去之后**连 head 的旋转也一起吃掉了**，帽子就跟着甩。以前只有两条烂路：
+   ① 不挂 head → 转头时帽子脱位；② 给帽子单独加一根骨 → 每件多一层要维护的东西。
+
+   现在给组加一个 inherit：
+     full（缺省）位置+旋转+缩放全继承（老行为）· rotation 只吃旋转、不吃平移
+     position 只吃平移、不吃旋转 · none 完全不继承（世界坐标）
+
+   判据必须能分辨这四种，所以故意把父组**同时**平移 10px、旋转 90°：
+   同一个挂点在这四种模式下算出的屏幕位置各不相同，一眼就能看出哪条路走通了。
+   --------------------------------------------------------------------------- */
+static void test_group_inherit(void)
+{
+    char path[1024], rig[8192];
+    const char *tmpl =
+        "{\"schema_version\":1,\"id\":\"inh\",\"name\":\"继承度\",\"canvas\":[400,400],"
+        "%s"
+        "\"sockets\":{\"s\":{\"group\":\"shot\",\"pos\":[110,10]}},"
+        "\"parts\":[{\"id\":\"p1\",\"file\":\"x.png\",\"socket\":\"s\","
+        "\"dpos\":[0,0],\"pos\":[110,10],\"layer\":1}],"
+        "\"params\":["
+        " {\"id\":\"ParamRot\",\"min\":0,\"max\":90,\"default\":90,"
+        "  \"binds\":[{\"group\":\"head\",\"param\":\"rot_deg\",\"scale\":1}]},"
+        " {\"id\":\"ParamDx\",\"min\":0,\"max\":10,\"default\":10,"
+        "  \"binds\":[{\"group\":\"head\",\"param\":\"dx\",\"scale\":1}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}";
+
+    SECTION("T66.12 父组继承度：头转帽子不跟着转（inherit）");
+    z_mkdir_p("/tmp/zc_inherit");
+    {
+        zerr pe;
+        zimg *px = zimg_new(2, 2);
+        int k;
+        zerr_clear(&pe);
+        for (k = 0; px && k < 4; ++k) {
+            px->px[k * 4 + 0] = 200; px->px[k * 4 + 1] = 160;
+            px->px[k * 4 + 2] = 140; px->px[k * 4 + 3] = 255;
+        }
+        CHECK(px && zimg_save_png(px, "/tmp/zc_inherit/x.png", &pe) == 0,
+              "合成素材应能写出：%s", pe.msg);
+        if (px) zimg_free(px);
+    }
+
+    /* 四种模式各跑一次，记下挂点的屏幕位置。
+       父组 head：pivot (100,0)、平移 10px、旋转 90°（都由参数推，default 即末端值）。
+       子组 shot：pivot (0,0)、自己不动，只有 inherit 不同。 */
+    {
+        const char *modes[4] = {"", "rotation", "position", "none"};
+        const char *names[4] = {"full（缺省）", "rotation", "position", "none"};
+        double got[4][2];
+        int m;
+        for (m = 0; m < 4; ++m) {
+            char groups[1024];
+            zdiag d;
+            zrig *r;
+            int i, si = -1;
+            got[m][0] = got[m][1] = -999.0;
+
+            /* 子组那一段按模式拼：缺省时不写 inherit 这个键（老 rig 就是这样） */
+            z_snprintf(groups, sizeof(groups),
+                "\"groups\":{"
+                "\"root\":{\"pivot\":[0,0]},"
+                "\"head\":{\"pivot\":[100,0],\"parent\":\"root\"},"
+                "\"shot\":{\"pivot\":[0,0],\"parent\":\"head\"%s%s%s}},"
+                ,
+                modes[m][0] ? ",\"inherit\":\"" : "",
+                modes[m][0] ? modes[m] : "",
+                modes[m][0] ? "\"" : "",
+                "");
+            z_snprintf(rig, sizeof(rig), tmpl, groups);
+            z_snprintf(path, sizeof(path), "/tmp/zc_inherit/m%d.json", m);
+            write_text(path, rig);
+            zdiag_init(&d);
+            r = zrig_load(path, "/tmp/zc_inherit", &d);
+            CHECK(r != NULL, "inherit=%s 的 rig 应加载成功（%d 条诊断）",
+                  names[m], d.error_count);
+            if (!r) continue;
+            /* ★ 必须先 tick：组的 sx/sy 是每帧重置成 1 再叠加参数的，
+               不跑 tick 时它们还是 0 —— 矩阵会退化成"全零"，量出来是 (0,0)。
+               这条坑写在测试里，免得下次有人以为是 inherit 算错了。 */
+            zrig_ambient_enable(r, 0);
+            zrig_phys_set_enabled(r, 0);
+            for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+            for (i = 0; i < zrig_socket_count(r); ++i)
+                if (strcmp(zrig_socket_id(r, i), "s") == 0) si = i;
+            CHECK(si >= 0, "应能找到挂点 s");
+            if (si >= 0) zrig_socket_screen_pos(r, si, 1.0, got[m]);
+            zrig_free(r);
+        }
+        /* 期望值（手算，别用引擎自己算一遍来对拍 —— 那是自证）：
+             head 矩阵：p' = pivot + delta + R90(p - pivot)，pivot=(100,0)、delta=(10,0)
+             full      (110,0) + R90(10,10) = (110,0)+(-10,10) = (100,10)
+             rotation  丢掉平移：(0,0) + R90(110,10)          = (-10,110)
+             position  丢掉旋转，只取**父枢轴的位移** (10,0)：(110,10)+(10,0) = (120,10)
+                       （★ 不能拿父矩阵的平移列 —— 那一列里混着"绕枢轴转"带来的 -110px）
+             none      父组整个不管                              = (110,10)          */
+        CHECK(fabs(got[0][0] - 100.0) < 0.05 && fabs(got[0][1] - 10.0) < 0.05,
+              "full 应得 (100,10)，实测 (%.2f,%.2f)", got[0][0], got[0][1]);
+        CHECK(fabs(got[1][0] + 10.0) < 0.05 && fabs(got[1][1] - 110.0) < 0.05,
+              "rotation（只吃旋转、不吃平移）应得 (-10,110)，实测 (%.2f,%.2f)",
+              got[1][0], got[1][1]);
+        CHECK(fabs(got[2][0] - 120.0) < 0.05 && fabs(got[2][1] - 10.0) < 0.05,
+              "position（只吃父枢轴的位移、不吃旋转）应得 (120,10)，实测 (%.2f,%.2f)",
+              got[2][0], got[2][1]);
+        CHECK(fabs(got[3][0] - 110.0) < 0.05 && fabs(got[3][1] - 10.0) < 0.05,
+              "none 应得 (110,10)（完全不跟父组），实测 (%.2f,%.2f)",
+              got[3][0], got[3][1]);
+        printf("    量到：full (%.1f,%.1f) · rotation (%.1f,%.1f) · "
+               "position (%.1f,%.1f) · none (%.1f,%.1f)\n",
+               got[0][0], got[0][1], got[1][0], got[1][1],
+               got[2][0], got[2][1], got[3][0], got[3][1]);
+    }
+
+    /* 负控：inherit 写错名字必须拒载。静默退回 full 的表现是"帽子还是跟着转"，
+       而 rig 上明明写着要关 —— 这种沉默的错误比崩溃难查得多。 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rig, sizeof(rig),
+            "{\"schema_version\":1,\"id\":\"bad\",\"name\":\"x\",\"canvas\":[400,400],"
+            "\"groups\":{\"root\":{\"pivot\":[0,0]},"
+            "\"head\":{\"pivot\":[100,0],\"parent\":\"root\"},"
+            "\"shot\":{\"pivot\":[0,0],\"parent\":\"head\",\"inherit\":\"rotatoin\"}},"
+            "\"parts\":[{\"id\":\"p1\",\"file\":\"x.png\",\"pos\":[0,0],\"layer\":1}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        z_snprintf(path, sizeof(path), "/tmp/zc_inherit/bad.json");
+        write_text(path, rig);
+        zdiag_init(&d);
+        r = zrig_load(path, "/tmp/zc_inherit", &d);
+        CHECK(r == NULL && d.error_count > 0,
+              "inherit 写错名字必须拒载（拼错的 rotatoin），实为 %s",
+              r ? "加载成功（闸失效）" : "已拒载");
+        if (r) zrig_free(r);
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   T69.1：脱口而出 vs 先想一想（zthink）。
+
+   用户原话：「...两种都能不需要点击什么选项，而且由 AI 自己选择...
+             就像是她真的会自己想事情，或者就是单纯的想和你说话。」
+
+   这里守三件事：
+     ① **判据**：短句/寒暄 → blurt；带"为什么/该不该/难过"→ ponder 或 deliberate。
+        判反了就成了"每句都深思"或"每句都敷衍"，两种都不像人。
+     ② **可解释**：out.why 里必须能看到加减分项 —— 没有它，"她这次为什么想了想"
+        只能靠猜，和随机数没区别。
+     ③ **确定性**：同一输入跑两次必须完全一样。随机不叫性格，叫掷骰子。
+   主动开口那一侧守：冷却（刚说过不打扰）、深夜静音、约定到期必定开口、
+   以及"上一句没被接就退半步"。
+   --------------------------------------------------------------------------- */
+static void test_zthink(void)
+{
+    zthink_profile fast, slow;
+    zthink_in in;
+    zthink_out a, b;
+    zthink_urge u;
+
+    SECTION("T69.1 脱口而出 vs 先想一想：节奏由引擎判，不由用户选");
+
+    memset(&fast, 0, sizeof fast);
+    fast.pace_fast = 0.85; fast.effort = 0.30; fast.express = 0.35;
+    fast.proactive = 0.55; fast.curiosity = 0.55;
+    memset(&slow, 0, sizeof slow);
+    slow.pace_fast = 0.20; slow.effort = 0.85; slow.express = 0.20;
+    slow.proactive = 0.25; slow.curiosity = 0.80;
+
+    memset(&in, 0, sizeof in);
+    in.tier = 1; in.mood = 0.6; in.hour = 15; in.since_last_ms = 600000;
+
+    /* ① 短句寒暄：快的那个人必须脱口而出 */
+    in.text = "在吗";
+    zthink_decide(&fast, &in, &a);
+    CHECK(a.mode == ZTHINK_BLURT, "「在吗」这种话不该被想成一道题（实为 %s）",
+          zthink_mode_id(a.mode));
+    CHECK(strstr(a.why, "→ blurt") != NULL, "判定必须带可审计的加减分明细：%s", a.why);
+    CHECK(a.delay_ms >= 0 && a.delay_ms <= 200,
+          "脱口而出的停顿必须在 200ms 以内（实为 %d ms）—— 停半秒就不叫脱口而出了",
+          a.delay_ms);
+    CHECK(a.max_tokens <= 120, "脱口而出的预算应短（实为 %d）", a.max_tokens);
+
+    /* ② 同一个人、同一句话，慢的那个要想得久一点（倾向不同，判断就该不同） */
+    zthink_decide(&slow, &in, &b);
+    CHECK(b.delay_ms > a.delay_ms, "慢的人停顿应更长（快 %d / 慢 %d）",
+          a.delay_ms, b.delay_ms);
+
+    /* ③ 重话题 + 要拿主意：必须从"想一下"起步 */
+    in.text = "你觉得我该不该和他分手，我最近很难过";
+    zthink_decide(&fast, &in, &a);
+    CHECK(a.mode != ZTHINK_BLURT, "「该不该分手、很难过」不该脱口而出（实为 %s）",
+          zthink_mode_id(a.mode));
+    CHECK(a.delay_ms >= 400, "这种话的停顿必须真的长（实为 %d ms）", a.delay_ms);
+    CHECK(a.preface[0] != 0, "想一下的时候要先放一句真反应（preface 不能空）");
+    zthink_decide(&slow, &in, &b);
+    CHECK(b.mode == ZTHINK_DELIBERATE || a.mode == ZTHINK_DELIBERATE,
+          "两个人都该往「认真想」那一档靠（快 %s / 慢 %s）",
+          zthink_mode_id(a.mode), zthink_mode_id(b.mode));
+    CHECK(strcmp(a.why, b.why) != 0, "不同人给出的理由必须不同（否则参数没起作用）");
+
+    /* ④ 「记得/上次」要触发翻记忆；普通寒暄不需要翻 */
+    in.text = "你还记得上次我们一起烤蛋糕吗";
+    zthink_decide(&fast, &in, &a);
+    CHECK(a.needs_memory == 1, "带「记得/上次」的句子应触发翻记忆");
+    in.text = "在吗";
+    zthink_decide(&fast, &in, &a);
+    CHECK(a.needs_memory == 0, "寒暄不该去翻记忆");
+
+    /* ⑤ 确定性：同一输入两次必须逐字段相同 */
+    in.text = "为什么你总是不说话";
+    zthink_decide(&fast, &in, &a);
+    zthink_decide(&fast, &in, &b);
+    CHECK(a.mode == b.mode && a.delay_ms == b.delay_ms &&
+          strcmp(a.preface, b.preface) == 0 && strcmp(a.why, b.why) == 0,
+          "同样的输入必须得到同样的判断（随机不叫性格）");
+
+    /* ⑥ 深夜会慢半拍：同一个问题 03:00 的分数应高于 15:00 */
+    in.hour = 15; zthink_decide(&fast, &in, &a);
+    in.hour = 3;  zthink_decide(&fast, &in, &b);
+    CHECK(b.score > a.score, "深夜应当更容易愣一下（15 点 %.2f / 3 点 %.2f）", a.score, b.score);
+
+    /* ---- 主动开口 ---- */
+    SECTION("T69.1 她自己想说话：有节奏、有理由、会被自己劝住");
+
+    memset(&in, 0, sizeof in);
+    in.tier = 0; in.mood = 0.6; in.hour = 15;
+
+    /* ⑦ 冷却：刚说过话就不打扰（90 秒内） */
+    in.since_last_ms = 30000;
+    zthink_urge_now(&fast, &in, 0, 0, &u);
+    CHECK(u.would_speak == 0 && u.urge == 0.0, "刚说过话不该马上又开口（urge=%.2f）", u.urge);
+    CHECK(u.wait_s > 0, "被冷却挡住时要告诉界面等多久（%d 秒）", u.wait_s);
+
+    /* ⑧ 闲得越久越想说话（单调） */
+    {
+        double prev = -1.0;
+        int64_t spans[4] = {120000, 900000, 3600000, 7200000};
+        int k, mono = 1;
+        for (k = 0; k < 4; ++k) {
+            in.since_last_ms = spans[k];
+            zthink_urge_now(&fast, &in, 0, 0, &u);
+            if (u.urge < prev) mono = 0;
+            prev = u.urge;
+        }
+        CHECK(mono, "闲得越久，想说话的冲动不该下降（末值 %.2f）", prev);
+    }
+
+    /* ⑨ 约定到期：这是最正当的理由，必须直接顶到开口 */
+    in.since_last_ms = 120000;
+    zthink_urge_now(&fast, &in, 1, 0, &u);
+    CHECK(u.would_speak == 1 && u.intent == ZINTENT_REMEMBER,
+          "记忆里约定到期时必须开口，且理由是「想起一件事」（urge=%.2f intent=%s）",
+          u.urge, zthink_intent_id(u.intent));
+
+    /* ⑩ 深夜静音：凌晨 3 点不该主动吵人，但白天同样的空闲要开口 */
+    in.since_last_ms = 7200000;
+    in.hour = 15;
+    zthink_urge_now(&fast, &in, 0, 0, &u);
+    CHECK(u.would_speak == 1, "白天闲两小时应该有话想说（urge=%.2f）", u.urge);
+    in.hour = 3;
+    zthink_urge_now(&fast, &in, 0, 0, &u);
+    CHECK(u.would_speak == 0, "凌晨三点不该主动开口（urge=%.2f）—— 会自己想事不等于半夜吵人",
+          u.urge);
+
+    /* ⑪ 上一句是她提的、对方没接：退半步 */
+    in.hour = 15;
+    {
+        zthink_urge base;
+        zthink_urge_now(&fast, &in, 0, 0, &base);
+        in.had_topic = 1;
+        zthink_urge_now(&fast, &in, 0, 0, &u);
+        CHECK(u.urge < base.urge, "上一句没人接时要退半步（%.2f → %.2f）",
+              base.urge, u.urge);
+    }
+
+    /* ⑫ 理由必须是人话（能被打出来看），且带具体数字 */
+    CHECK(strstr(u.why, "闲了") != NULL && strstr(u.why, "主动倾向") != NULL,
+          "开口理由必须写清依据：%s", u.why);
+}
+
 static void test_socket_s4(void)
 {
     SECTION("T66.19：挂点（socket）—— 配件按名字挂在骨上");
@@ -10542,6 +10825,8 @@ int main(int argc, char **argv)
     test_motion3_import();
     test_expression3_import();
     test_socket_s4();
+    test_group_inherit();
+    test_zthink();
     test_eye_lid_arc();
     test_point_play_beast_actions();
     test_phys2();

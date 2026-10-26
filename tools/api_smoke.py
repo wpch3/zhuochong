@@ -1960,6 +1960,57 @@ def run(base, root):
           b"mx-table" in page and b"mixRefresh" in js,
           "test.html %d 字节 / test.js %d 字节" % (len(page), len(js)))
 
+    print("== 节奏：脱口而出 vs 先想一想（T69.1）==")
+    t1 = a.json("/api/think.json?text=" + urllib.parse.quote("在吗") + "&hour=15")
+    check("短寒暄应判成脱口而出", t1.get("mode") == "blurt",
+          "%s / %.1f 分 / %s" % (t1.get("mode"), t1.get("score", 0), t1.get("why", "")))
+    check("脱口而出的停顿要短（<=200ms）", (t1.get("delay_ms") or 999) <= 200,
+          "%s ms" % t1.get("delay_ms"))
+    t2 = a.json("/api/think.json?text=" + urllib.parse.quote("你觉得我该不该和他分手，我很难过")
+                + "&hour=15")
+    check("重话题不许脱口而出", t2.get("mode") in ("ponder", "deliberate"),
+          "%s / %s" % (t2.get("mode"), t2.get("why", "")))
+    check("想一下要停得真的久（>=400ms）", (t2.get("delay_ms") or 0) >= 400,
+          "%s ms" % t2.get("delay_ms"))
+    check("判定要能说出理由（可审计）", "→" in (t2.get("why") or ""), t2.get("why", ""))
+    t3 = a.json("/api/think.json?text=" + urllib.parse.quote("你还记得上次的事吗") + "&hour=15")
+    check("提到「记得/上次」要翻记忆", t3.get("needs_memory") is True, str(t3.get("why")))
+    # 同一个输入两次必须一样（随机不叫性格）
+    t4 = a.json("/api/think.json?text=" + urllib.parse.quote("为什么你总是不说话") + "&hour=15")
+    t5 = a.json("/api/think.json?text=" + urllib.parse.quote("为什么你总是不说话") + "&hour=15")
+    check("同一输入两次判定必须一致",
+          (t4.get("mode"), t4.get("delay_ms")) == (t5.get("mode"), t5.get("delay_ms")),
+          "%s/%s" % (t4.get("mode"), t5.get("mode")))
+
+    u1 = a.json("/api/urge.json?since=7200000&hour=15")
+    check("白天闲两小时她会想说话", u1.get("would_speak") is True,
+          "urge=%.2f %s" % (u1.get("urge", 0), u1.get("why", "")))
+    check("开口要带理由（哪一种想说话）", u1.get("intent") in ("chat", "remember", "care", "share"),
+          str(u1.get("intent")))
+    u2 = a.json("/api/urge.json?since=7200000&hour=3")
+    check("凌晨三点不许主动开口", u2.get("would_speak") is False, "urge=%.2f" % u2.get("urge", 0))
+    u3 = a.json("/api/urge.json?since=30000&hour=15")
+    check("刚说过话不许马上又开口", u3.get("would_speak") is False and u3.get("wait_s", 0) > 0,
+          "wait=%s s" % u3.get("wait_s"))
+    u4 = a.json("/api/urge.json?since=200000&hour=15&promise=1")
+    check("约定到期必定开口，且理由是「想起一件事」",
+          u4.get("would_speak") is True and u4.get("intent") == "remember",
+          "intent=%s" % u4.get("intent"))
+    a.hit("/api/urge/spoke?topic=1")
+
+    stc, dryc = chat("/api/chat?dry=1&text=" + urllib.parse.quote("在吗"))
+    th = dryc.get("think") or {}
+    check("/api/chat 要带回节奏（前端靠它决定先放哪句、停多久）",
+          th.get("mode") in ("blurt", "ponder", "deliberate") and "delay_ms" in th,
+          str(th)[:120])
+    try:
+        rb = json.loads(dryc.get("request_body") or "{}")
+    except Exception:                                # noqa: BLE001
+        rb = {}
+    check("脱口而出的 max_tokens 要真的进请求体（不是只报个数）",
+          (rb.get("max_tokens") or 0) > 0 and (rb.get("max_tokens") or 0) <= 120,
+          "max_tokens=%s" % rb.get("max_tokens"))
+
     print("== 长记忆（T67.45）==")
     # ★ 这一节会**写进当前角色真实的** data/<角色>/memory/chronicle.zm：
     #   写一条、回忆一次、再落墓碑（墓碑不自动清，那是用户的数据）。
