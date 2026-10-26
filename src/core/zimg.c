@@ -888,16 +888,17 @@ void zimg_draw_mesh_bend_blend(zimg *dst, const zimg *src, const double m[6], do
                                 bend_x, curve_x, bend_y, curve_y, blend, 0.0, 1.0);
 }
 
-/* 带形变平台的网格版本。
-   ⚠ 必须和 zimg_draw_warp_blend_t 口径一致 —— 一个部件挂没挂形变器是**运行期**
-   才知道的（形变器 amount 为 0 时走 warp 路径、不为 0 时走 mesh 路径），
+/* 内核：mesh + bend（+ 可选逐顶点加权刚体）。公开函数都走这里，口径只有一份。
+   ⚠ 带形变平台这条路径必须和 zimg_draw_warp_blend_t 口径一致 —— 一个部件挂没挂
+   形变器是**运行期**才知道的（amount 为 0 时走 warp、不为 0 时走 mesh），
    两条路算出来的形变必须一模一样，否则裙子一摆脖子就会突然错位
    （2026-10-14 实测：bend_hold_above 当时只接了 warp 那条，
     颈部修复"只在裙子不动的时候有效"）。 */
-void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
-                                 int cols, int rows, const double *offsets,
-                                 double bend_x, int curve_x, double bend_y, int curve_y,
-                                 int blend, double bend_tmin, double bend_tmax)
+static void mesh_bend_core(zimg *dst, const zimg *src, const double m[6], double opacity,
+                           int cols, int rows, const double *offsets,
+                           double bend_x, int curve_x, double bend_y, int curve_y,
+                           int blend, double bend_tmin, double bend_tmax,
+                           const double m0[6], const double *chain_w, int nw)
 {
     int c, rr, moved = 0, np;
     int bent = (fabs(bend_x) > 1e-9 || fabs(bend_y) > 1e-9);
@@ -912,7 +913,9 @@ void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], 
     np = (cols + 1) * (rows + 1);
     for (c = 0; c < np * 2; ++c)
         if (fabs(offsets[c]) > 1e-6) { moved = 1; break; }
-    if (!moved) {                        /* 没挪控制点就走原路（但 bend 和平台都不能丢） */
+    /* 有逐顶点加权刚体时**不能**走"没挪控制点"的捷径：那时位移是 0，
+       网格本身没变形，但链上的旋转仍然要按权重作用在顶点上。 */
+    if (!moved && !(chain_w && nw > 0)) { /* 没挪控制点就走原路（但 bend 和平台都不能丢） */
         if (bent) zimg_draw_warp_blend_t(dst, src, m, opacity, bend_x, curve_x,
                                          bend_y, curve_y, blend, bend_tmin, bend_tmax);
         else      zimg_draw_blend(dst, src, m, opacity, blend);
@@ -937,6 +940,20 @@ void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], 
                 double ly = sy[k] + offsets[idx[k] * 2 + 1];
                 dxp[k] = m[0] * lx + m[2] * ly + m[4];
                 dyp[k] = m[1] * lx + m[3] * ly + m[5];
+                /* 逐顶点加权刚体（T66.9c）：同一片网格上，有些顶点该少跟一段骨。
+                   w=0 走"跳过该节点"的矩阵，w=1 走完整链，中间线性插值 ——
+                   lerp(A·p, B·p, w) 与 ((1−w)A + wB)·p 恒等，所以直接插坐标最省。 */
+                if (chain_w && nw > 0 && idx[k] < nw) {
+                    double wi = chain_w[idx[k]];
+                    if (wi < 0.0) wi = 0.0;
+                    if (wi > 1.0) wi = 1.0;
+                    if (wi < 0.999) {
+                        double ax2 = m0[0] * lx + m0[2] * ly + m0[4];
+                        double ay2 = m0[1] * lx + m0[3] * ly + m0[5];
+                        dxp[k] = ax2 + (dxp[k] - ax2) * wi;
+                        dyp[k] = ay2 + (dyp[k] - ay2) * wi;
+                    }
+                }
                 if (bent) {               /* 叠加平滑形变（和 warp 同一套曲线） */
                     double tb = sy[k] / (double)src->h;
                     if (tb < bend_tmin) tb = bend_tmin;   /* 形变平台，口径同 draw_impl */
@@ -959,6 +976,36 @@ void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], 
             }
         }
     }
+}
+
+/* 带形变平台的网格版本（口径见上面 mesh_bend_core 的注释）。 */
+void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], double opacity,
+                                 int cols, int rows, const double *offsets,
+                                 double bend_x, int curve_x, double bend_y, int curve_y,
+                                 int blend, double bend_tmin, double bend_tmax)
+{
+    mesh_bend_core(dst, src, m, opacity, cols, rows, offsets,
+                   bend_x, curve_x, bend_y, curve_y, blend, bend_tmin, bend_tmax,
+                   NULL, NULL, 0);
+}
+
+void zimg_draw_mesh_chainw_blend_t(zimg *dst, const zimg *src,
+                                   const double m[6], const double m0[6],
+                                   const double *chain_w, int nw,
+                                   double opacity, int cols, int rows,
+                                   const double *offsets,
+                                   double bend_x, int curve_x, double bend_y, int curve_y,
+                                   int blend, double bend_tmin, double bend_tmax)
+{
+    if (!chain_w || nw <= 0 || !m0) {
+        zimg_draw_mesh_bend_blend_t(dst, src, m, opacity, cols, rows, offsets,
+                                    bend_x, curve_x, bend_y, curve_y,
+                                    blend, bend_tmin, bend_tmax);
+        return;
+    }
+    mesh_bend_core(dst, src, m, opacity, cols, rows, offsets,
+                   bend_x, curve_x, bend_y, curve_y, blend, bend_tmin, bend_tmax,
+                   m0, chain_w, nw);
 }
 
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,

@@ -225,6 +225,11 @@ int    zrig_part_mesh(const zrig *r, const char *part_id, double scale,
 /* 部件锚点这一帧落在哪里（帧缓冲坐标，含组/自身旋转/变形器树）。
    scale 与 zrig_frame 同口径。返回 0 = 这帧不出现（透明度 0 / 查不到）。 */
 int    zrig_part_anchor_pos(const zrig *r, const char *part_id, double scale, double out[2]);
+/* 部件网格某个控制点这一帧落在哪里（帧缓冲坐标，含组/链和逐顶点加权刚体）。
+   col/row 超出网格就钳到边界；部件没有网格返回 0。
+   ★ 这是"加权到底有没有生效"唯一能机器量的口径：锚点只有一处，量不到"上缘不动、下缘动"。 */
+int    zrig_part_vertex_pos(const zrig *r, const char *part_id, double scale,
+                            int col, int row, double out[2]);
 
 void  zrig_set_mouth_mute(zrig *r, int on);
 int   zrig_mouth_mute(const zrig *r);

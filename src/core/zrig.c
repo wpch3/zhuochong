@@ -183,6 +183,10 @@ typedef struct {
     int    mask_invert;       /* 1 = 取反：只在遮罩**外面**可见（≈ IsInverted） */
     int    mask_only;         /* 1 = 自己只当遮罩用，不画出来 */
     int    is_mask_src;       /* 1 = 有别的部件拿我当遮罩 */
+    /* 链上带 chain_w 的那个节点（T66.9c），-1 = 这片网格整件跟着链走。
+       mesh_node = 这个部件的主网格（第一个带网格的形变器）。 */
+    int    cw_node;
+    int    mesh_node;
     double mask_feather;      /* 遮罩边缘羽化半径（画布像素，0~16；T66.13）。
                                  二值遮罩切出来的是一条硬线，羽化把那条线抹成斜坡 ——
                                  补片的平涂色和原画差几度时，硬线是唯一看得见的东西（LESSONS 408）。 */
@@ -272,6 +276,18 @@ typedef struct {
          在渲染结果上等价于两段骨的线性混合，但不动坐标系、不改已有 rig。 */
     double w[ZRIG_MAX_DEFPTS];
     int    has_w;
+    /* —— 逐顶点加权刚体（T66.9c）——
+       "chain_w": [w0, w1, ...]：把这根节点**自身的刚性变换**按顶点加权
+       （w=0 完全不吃它，w=1 全吃），长度 = 该部件主网格的控制点数。
+       动机：裙摆一片网格跨两根骨，裙腰不能跟着中段骨一起转。
+       为什么不能复用上面的 w：w 加权的是**逐顶点位移场**，而链上的旋转是
+       **矩阵**乘上去的，两者在管线里不是同一层，权重够不到矩阵。
+       ★ 同一部件链上只许有一个节点写 chain_w（多个就退化成"两段骨抢同一片顶点"，
+         语义说不清，加载时拒载）。 */
+    double chain_w[ZRIG_MAX_DEFPTS];   /* 固定数组：不需要动态分配，也不可能漏释放
+                                         （第一版用的是 malloc，加载失败时漏了 72 字节 ——
+                                           ASAN 当场抓到。上限之内放得下就别自己管内存。） */
+    int    n_chain_w;
     /* —— keyform 分段缓动（T66.11）：第 k 段 = 第 k-1 组 key → 第 k 组 key，
        写法挂在**右端点**那一组 key 上（"走到我这儿用什么速度"）。没写 = 线性。 */
     double kf_lag;            /* keyform 也吃迟滞：读 lag 秒之前的参数值（同 bind.lag，T66.11b） */
@@ -1657,6 +1673,37 @@ static int load_deformers(zrig *r, const zjson *jd, zdiag *d, const char *file)
                     g->w[q] = v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
                 }
                 g->has_w = 1;
+            }
+            /* 逐顶点加权刚体（T66.9c）：先存原始数组，长度等加载完形变器树再校验
+               （长度要跟"这个部件的主网格"对齐，而那时才知道部件的链长什么样）。 */
+            {
+                const zjson *jcw = zjson_obj_get((zjson *)dj, "chain_w");
+                g->n_chain_w = 0;
+                if (jcw) {
+                    int q, n = zjson_is(jcw, ZJSON_ARR) ? (int)zjson_count(jcw) : -1;
+                    if (n <= 0) {
+                        zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                                    "形变器 '%s' 的 chain_w 必须是非空数组", id);
+                        return -1;
+                    }
+                    if (n > ZRIG_MAX_DEFPTS) {
+                        zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                                    "形变器 '%s' 的 chain_w 有 %d 个值，超过上限 %d",
+                                    id, n, ZRIG_MAX_DEFPTS);
+                        return -1;
+                    }
+                    for (q = 0; q < n; ++q) {
+                        double v = zjson_num(zjson_at((zjson *)jcw, q), -1.0);
+                        if (v < -1e-9 || v > 1.0 + 1e-9) {
+                            zdiag_error(d, file, dj ? dj->line : 0, 0, "deformers",
+                                        "形变器 '%s' 的 chain_w[%d] = %.3f 越界（只允许 0~1）",
+                                        id, q, v);
+                            return -1;
+                        }
+                        g->chain_w[q] = v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v);
+                    }
+                    g->n_chain_w = n;
+                }
             }
         }
         keys = zjson_obj_get((zjson *)dj, "keys");
@@ -4381,6 +4428,84 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
                 goto fail;
             }
         }
+        /* chain_w 绑定（T66.9c）：把"这片网格的链上哪个节点只该让一部分顶点吃"
+           在装载期就算清楚，运行期零成本。三条必须当场红：
+           ① 该部件没有任何网格 → 没有顶点可加权（写了等于没写）；
+           ② 长度 ≠ 该部件主网格控制点数 → 逐顶点对不上；
+           ③ 同一部件链上两个节点都写了 chain_w → 两段骨抢同一片顶点，语义说不清。 */
+        for (i = 0; i < r->nparts; ++i) {
+            zpart *p = &r->parts[i];
+            int k, node = -1, nnode = 0, first_mesh = -1, np = 0;
+            /* 这个部件的主网格（第一个带网格的形变器；和渲染时累加的那批同源） */
+            for (k = 0; k < r->ndeforms; ++k) {
+                const zdeform *g = &r->deforms[k];
+                if (g->part != i) continue;
+                if (g->cols < 1 || g->rows < 1) continue;
+                if (first_mesh < 0) {
+                    first_mesh = k;
+                    np = (g->cols + 1) * (g->rows + 1);
+                }
+            }
+            p->mesh_node = first_mesh;
+            /* 链上所有带 chain_w 的节点。"在不在部件 i 的链上"= 它是某个
+               part==i 的网格节点的祖先（含它自己）—— 和 deform_mark_chain 同一判据。
+               ⚠ 第一版写反了：从节点往上找 part==i，结果纯变换节点（part=-1）
+                 永远找不到自己，于是"两个 chain_w / 长度不对"全都静默放过，
+                 而画面退化成整件跟着转 —— 这一类"闸写了但判据反了"最费时间。 */
+            {
+                int mark[ZRIG_MAX_DEFORMS];
+                int seed[2], ns = 0;
+                memset(mark, 0, sizeof(mark));
+                /* 两条入口都要算：① 部件自己的网格节点（deformers[].part）；
+                   ② 部件点名的那根链（parts[].deformer —— 裙件就是走这条）。
+                   只算 ① 会漏掉"网格没有 parent、链由 deformer 字段给出"的老写法。 */
+                for (k = 0; k < r->ndeforms; ++k)
+                    if (r->deforms[k].part == i) { seed[ns++] = k; break; }
+                if (p->deformer >= 0) seed[ns++] = p->deformer;
+                for (k = 0; k < ns; ++k) {
+                    int x;
+                    for (x = seed[k]; x >= 0 && x < ZRIG_MAX_DEFORMS && !mark[x];
+                         x = r->deforms[x].parent)
+                        mark[x] = 1;
+                }
+                for (k = 0; k < r->ndeforms; ++k) {
+                    if (r->deforms[k].n_chain_w <= 0) continue;
+                    if (!mark[k]) continue;
+                    node = k;
+                    nnode++;
+                }
+            }
+            p->cw_node = -1;
+            if (nnode == 0) continue;
+            if (nnode > 1) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "deformers.%s.chain_w", r->deforms[node].id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "部件 '%s' 的链上有 %d 个节点写了 chain_w（只允许一个："
+                            "两段骨同时按顶点加权抢同一片顶点，结果说不清）", p->id, nnode);
+                goto fail;
+            }
+            if (first_mesh < 0) {
+                /* 没有网格的部件（例如靠 inherit_from 借位移场的里布 skirt_lining）
+                   整件跟链走 —— 加权只对"有顶点"的件有意义。
+                   这里只提示、不拒载：同一个链节点常被好几件共用，
+                   其中一件没有网格是正常的（裙身有网格、里布借它的场）。 */
+                char path[160];
+                z_snprintf(path, sizeof(path), "deformers.%s.chain_w", r->deforms[node].id);
+                zdiag_warn(diag, file, 0, 0, path,
+                           "部件 '%s' 没有自己的网格，chain_w 对它不生效（整件跟链走）", p->id);
+                continue;
+            }
+            if (r->deforms[node].n_chain_w != np) {
+                char path[160];
+                z_snprintf(path, sizeof(path), "deformers.%s.chain_w", r->deforms[node].id);
+                zdiag_error(diag, file, 0, 0, path,
+                            "chain_w 有 %d 个值，而部件 '%s' 的网格有 %d 个控制点（必须一一对应）",
+                            r->deforms[node].n_chain_w, p->id, np);
+                goto fail;
+            }
+            p->cw_node = node;
+        }
         /* inherit_from → 部件下标（T66.10b）。三条必须在装载期就红：
            ① 源件不存在；② 指到自己（等于自己套自己）；③ 源件没有任何网格
            （那不是"继承到空"，而是写错了目标 —— 静默的 0 位移最难查）。 */
@@ -4834,6 +4959,7 @@ void zrig_free(zrig *r)
     for (i = 0; i < r->ndeforms; ++i) {
         free(r->deforms[i].kf_d);
         r->deforms[i].kf_d = NULL;
+        r->deforms[i].n_chain_w = 0;          /* 逐顶点加权刚体（T66.9c，固定数组，无需 free） */
     }
     zimg_free(r->fb);
     zimg_free(r->maskbuf);
@@ -6031,6 +6157,19 @@ static void deform_chain_matrix_upto(const zrig *r, const int *mark, int upto,
     }
 }
 
+/* 整条链**跳过某一个节点**的矩阵（T66.9c）。
+   为什么要它：链是连乘出来的，想让一部分顶点不吃某个节点的旋转，
+   就必须再算一份"没有它"的结果，然后在两个坐标之间按权重插值。
+   跳过 = 那个节点这一帧当作恒等。 */
+static void deform_chain_matrix_skip(const zrig *r, int pi, int skip,
+                                     double scale, double out[6])
+{
+    int mark[ZRIG_MAX_DEFORMS];
+    deform_mark_chain(r, pi, mark);
+    if (skip >= 0 && skip < ZRIG_MAX_DEFORMS) mark[skip] = 0;
+    deform_chain_matrix_upto(r, mark, -1, scale, out);
+}
+
 static void deform_chain_matrix(const zrig *r, int pi, double scale, double out[6])
 {
     int mark[ZRIG_MAX_DEFORMS];
@@ -6804,6 +6943,12 @@ typedef struct {
     int    warped;
     const zdeform *dg;
     double mesh[ZRIG_MAX_DEFPTS * 2];
+    /* 逐顶点加权刚体（T66.9c）：m = 完整链，m0 = 跳过 cw_node 的链。
+       cw 指向部件自己那张表（长度 = 网格控制点数），NULL = 整件同一个矩阵。 */
+    double m0[6];
+    double lbase[6];          /* 链之前的矩阵（组 × 部件），加权时重算 m0 用 */
+    const double *cw;
+    int    ncw;
 } zdrawst;
 
 /* 把链上**别的部件**的 warp 位移场叠进 st->mesh（T66.10 / G58.8）。
@@ -7067,6 +7212,8 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         } else {
             memcpy(st->m, base, sizeof(base));
         }
+        memcpy(st->m0, st->m, sizeof(st->m0));   /* 没有加权时 m0 == m */
+        memcpy(st->lbase, base, sizeof(st->lbase)); /* 加权时要用它重算"跳过某节点"的链 */
     }
     st->src = src;
     st->opacity = opacity;
@@ -7136,6 +7283,26 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     /* 父级 warp 的逐顶点位移场（T66.10 / G58.8）：本部件自己那几张网格算完之后
        再叠祖先件的场。顺序不能反 —— 上面的循环会把 mesh[] 清零并定下网格尺寸。 */
     deform_inherit_parent_warp(r, pi, mi, scale, st);
+
+    /* 逐顶点加权刚体（T66.9c）：链上有一个节点只该让一部分顶点吃它的变换。
+       m0 = "跳过那个节点"的链矩阵 —— 给 w=0 的顶点用。 */
+    if (p->cw_node >= 0 && p->cw_node < r->ndeforms &&
+        r->deforms[p->cw_node].n_chain_w > 0) {
+        double am[6];
+        deform_chain_matrix_skip(r, pi, p->cw_node, scale, am);
+        zimg_matrix_mul(st->m0, am, st->lbase);
+        st->cw = r->deforms[p->cw_node].chain_w;
+        st->ncw = r->deforms[p->cw_node].n_chain_w;
+        /* 有加权就必须走网格绘制路径（哪怕位移为 0）：否则链的变换会整件吃满。
+           用部件的主网格尺寸补一张零位移表。 */
+        if (!st->dg && p->mesh_node >= 0 && p->mesh_node < r->ndeforms) {
+            const zdeform *mg = &r->deforms[p->mesh_node];
+            int q, npx = (mg->cols + 1) * (mg->rows + 1);
+            st->dg = mg;
+            if (npx * 2 <= ZRIG_MAX_DEFPTS * 2)
+                for (q = 0; q < npx * 2; ++q) st->mesh[q] = 0.0;
+        }
+    }
     return 1;
 }
 
@@ -7168,7 +7335,14 @@ int zrig_part_mesh(const zrig *r, const char *part_id, double scale,
 /* 按算好的状态画一笔 */
 static void draw_state(zimg *dst, const zdrawst *st, int blend)
 {
-    if (st->dg)
+    if (st->dg && st->cw)
+        /* 逐顶点加权刚体（T66.9c）：同一片网格上的不同顶点吃不同的链矩阵 */
+        zimg_draw_mesh_chainw_blend_t(dst, st->src, st->m, st->m0, st->cw, st->ncw,
+                                      st->opacity, st->dg->cols, st->dg->rows, st->mesh,
+                                      st->warped ? st->bx : 0.0, st->curve_x,
+                                      st->warped ? st->by : 0.0, st->curve_y,
+                                      blend, st->bend_tmin, st->bend_tmax);
+    else if (st->dg)
         /* 网格 + 平滑形变一起画：以前这里丢掉 bend，多段摆链的第一段就白写了 */
         zimg_draw_mesh_bend_blend_t(dst, st->src, st->m, st->opacity,
                                     st->dg->cols, st->dg->rows, st->mesh,
@@ -7840,6 +8014,57 @@ double zrig_part_draw_opacity(const zrig *r, const char *part_id)
    为什么测试需要它：只看"画面变了"分不清"节点绕 pivot 转了 90°"还是"部件自己平移了一下"；
    有了它就能直接断言几何：绕 (px,py) 转 90° 后 (x,y) → (px−(y−py), py+(x−px))。
    查不到返回 0（pos 不动）。 */
+int zrig_part_vertex_pos(const zrig *r, const char *part_id, double scale,
+                         int col, int row, double out[2])
+{
+    int pi;
+    zdrawst st;
+    const zimg *src;
+    const zdeform *mg;
+    double sx, sy, k;
+
+    if (!r || !part_id || scale <= 0.0) return 0;
+    pi = find_part(r, part_id);
+    if (pi < 0) return 0;
+    if (!compute_draw_state((zrig *)r, pi, scale, r->blink_now,
+                            current_action((zrig *)r), &st)) return 0;
+    if (st.dg) {
+        mg = st.dg;
+    } else if (r->parts[pi].mesh_node >= 0 && r->parts[pi].mesh_node < r->ndeforms) {
+        mg = &r->deforms[r->parts[pi].mesh_node];
+    } else {
+        return 0;                       /* 这个部件没有网格，没有"顶点"可问 */
+    }
+    if (col < 0) col = 0;
+    if (row < 0) row = 0;
+    if (col > mg->cols) col = mg->cols;
+    if (row > mg->rows) row = mg->rows;
+    src = st.src;
+    if (!src) return 0;
+    /* 网格顶点的源坐标 + 这一帧的位移（位移表已折算到 src 像素） */
+    sx = (double)src->w * col / mg->cols;
+    sy = (double)src->h * row / mg->rows;
+    k  = (row * (mg->cols + 1) + col) * 2;
+    sx += st.mesh[(int)k];
+    sy += st.mesh[(int)k + 1];
+    {
+        double ax = st.m[0] * sx + st.m[2] * sy + st.m[4];
+        double ay = st.m[1] * sx + st.m[3] * sy + st.m[5];
+        if (st.cw && st.ncw > 0 && (int)(k * 0.5) < st.ncw) {
+            double wi = st.cw[(int)(k * 0.5)];
+            double bx = st.m0[0] * sx + st.m0[2] * sy + st.m0[4];
+            double by = st.m0[1] * sx + st.m0[3] * sy + st.m0[5];
+            if (wi < 0.0) wi = 0.0;
+            if (wi > 1.0) wi = 1.0;
+            ax = bx + (ax - bx) * wi;
+            ay = by + (ay - by) * wi;
+        }
+        out[0] = ax;
+        out[1] = ay;
+    }
+    return 1;
+}
+
 int zrig_part_anchor_pos(const zrig *r, const char *part_id, double scale, double out[2])
 {
     int pi;

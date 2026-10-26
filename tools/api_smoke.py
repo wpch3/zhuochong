@@ -2011,6 +2011,18 @@ def run(base, root):
           (rb.get("max_tokens") or 0) > 0 and (rb.get("max_tokens") or 0) <= 120,
           "max_tokens=%s" % rb.get("max_tokens"))
 
+    print("== 加权刚体的量法（T66.9c）==")
+    v0 = a.json("/api/vertex.json?id=skirt_main&c=1&row=0")
+    v1 = a.json("/api/vertex.json?id=skirt_main&c=1&row=10")
+    check("控制点落点探针可用（裙腰/下摆都要问到）",
+          v0.get("ok") is True and v1.get("ok") is True,
+          "裙腰 %s · 下摆 %s" % (v0.get("y"), v1.get("y")))
+    check("裙腰在下摆上面（坐标系没错）", (v0.get("y") or 0) < (v1.get("y") or 0),
+          "%.1f < %.1f" % (v0.get("y") or 0, v1.get("y") or 0))
+    st404, v404 = a.json_any("/api/vertex.json?id=__nope__&c=0&row=0")
+    check("问不存在的部件要如实说失败（404 + ok:false）",
+          st404 == 404 and v404.get("ok") is False, "%s %s" % (st404, str(v404)[:60]))
+
     print("== 她自己起头（T69.2）==")
     sc, sd = chat("/api/chat?self=1&dry=1&persona=1")
     try:

@@ -316,6 +316,53 @@ def check_form(root, char_id, sk, form, rig_path):
         check("部件 %s 写了 mask_feather 就必须有 mask" % pid, has_mask,
               "没有遮罩，羽化无处可施")
 
+    # ⑥e 逐顶点加权刚体（T66.9c）：链上有个节点"只让一部分顶点吃它的旋转"。
+    #     · 长度必须等于该部件网格的控制点数（逐顶点对不上就没法加权）；
+    #     · 取值 0~1；
+    #     · 同一部件的链上**最多一个**（两个 = 两段骨抢同一片顶点，语义说不清）。
+    #     为什么要在静态闸里查：写错了引擎会拒载（那样至少看得见），
+    #     但"长度对上了、位置写错了"只会让裙腰多走几像素 —— 静态截图完全正常。
+    part_mesh_np = {}
+    for did, d in defs.items():
+        pid = d.get("part")
+        if pid and d.get("cols") and d.get("rows"):
+            part_mesh_np.setdefault(pid, (int(d["cols"]) + 1) * (int(d["rows"]) + 1))
+    chain_of = {}
+    for did, d in defs.items():
+        x, seen = did, set()
+        while x and x in defs and x not in seen:
+            seen.add(x)
+            par = defs[x].get("parent")
+            if not par:
+                break
+            x = par
+        chain_of[did] = seen
+    cw_nodes = {}
+    for did, d in defs.items():
+        if "chain_w" not in d:
+            continue
+        cw = d["chain_w"]
+        okv = isinstance(cw, list) and all(
+            isinstance(v, (int, float)) and not isinstance(v, bool) and -1e-9 <= float(v) <= 1 + 1e-9
+            for v in cw)
+        check("网格骨 %s 的 chain_w 全是 0~1 的数" % did, okv, str(cw)[:80])
+        if not okv:
+            continue
+        owners = [p.get("id") for p in parts
+                  if p.get("deformer") == did or
+                  any(defs[o].get("part") == p.get("id") for o in chain_of.get(did, set()))]
+        check("网格骨 %s 的 chain_w 能对上一个部件" % did, bool(owners),
+              "链上没有挂任何部件：写了也没用")
+        for owner in owners:
+            np = part_mesh_np.get(owner)
+            check("部件 %s 的 chain_w 长度 = 网格控制点数 %s" % (owner, np),
+                  np is not None and len(cw) == np,
+                  "写了 %d 个" % len(cw))
+            cw_nodes.setdefault(owner, []).append(did)
+    for owner, lst in cw_nodes.items():
+        check("部件 %s 的链上只有一个 chain_w" % owner, len(lst) == 1,
+              "同时写了 %s —— 两段骨抢同一片顶点" % "/".join(lst))
+
     # ⑦ forms.<form>.mesh_bones 点名的网格骨必须真的存在
     fb = ((sk.get("forms") or {}).get(form) or {}).get("mesh_bones") or {}
     for role, ids in fb.items():

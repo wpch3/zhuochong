@@ -6020,6 +6020,252 @@ static void test_parent_warp_inherit(void)
      ③ 下缘：只吃 B（0/1）。
    再加两个负控：不写 w 时位移会**叠加**（老口径），以及权重和 >1 必须拒载。
    --------------------------------------------------------------------------- */
+/* T66.9c 逐顶点加权刚体：一片网格跨两根骨时，上缘不吃后一根骨的旋转。
+   为什么必须有这道闸：裙摆的"上缘跟腰、下缘跟摆"如果只测"下摆动了"，
+   现在下摆也在动（两级旋转整件连乘），断言会绿，而裙腰被拖着走了 5px 没人知道。
+   所以这里量的是**三排顶点各自的落点**，并且用两种独立口径：
+     ① zrig_part_vertex_pos（引擎的顶点探针）；
+     ② 渲染字节：w 全 0 时必须与"把那段旋转设成 0"逐字节相同，
+        w 全 1 时必须与"不写 chain_w 的满格旋转"逐字节相同。 */
+static void test_chain_weight(void)
+{
+    char dir[1024], sprites[1024], rigp[1024];
+    char full[8192], zero[8192], mix[8192];
+    SECTION("T66.9c 逐顶点加权刚体：上缘不吃后一段骨的旋转");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_chain_w");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    {
+        zerr e;
+        zimg *blk = zimg_new_filled(200, 200, 200, 80, 80, 255);
+        char pth[1024];
+        z_snprintf(pth, sizeof(pth), "%s/blk.png", sprites);
+        zerr_clear(&e);
+        CHECK(blk && zimg_save_png(blk, pth, &e) == 0, "加权刚体的夹具（200x200 实心块）要能写出：%s", e.msg);
+        if (blk) zimg_free(blk);
+    }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 链：cw_root（pivot 上边中点）→ cw_mid（pivot 上边中点，吃 90° 旋转）
+       顶点按 3×3 排：上排该 w=0、中排 0.5、下排 1。 */
+#define CHAIN_W_RIG(CW)                                                          \
+    "{\"schema_version\":\"1.0\",\"id\":\"cw\",\"name\":\"加权刚体\","            \
+    "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"          \
+    "\"parts\":[{\"id\":\"cw\",\"file\":\"sprites/blk.png\",\"layer\":10,"          \
+    "\"pos\":[100,100],\"anchor\":[0,0],\"scale\":1.0,\"hires\":1,"                 \
+    "\"deformer\":\"cw_root\"}],"                                                  \
+    "\"deformers\":["                                                              \
+    " {\"id\":\"cw_root\",\"pivot\":[200,100]},"                                   \
+    " {\"id\":\"cw_mid\",\"pivot\":[200,100],\"parent\":\"cw_root\"" CW "},"        \
+    " {\"id\":\"cw_mesh\",\"part\":\"cw\",\"cols\":2,\"rows\":2,"             \
+    "  \"parent\":\"cw_mid\",\"points\":[]}],"                                     \
+    "\"params\":[{\"id\":\"ParamSwing\",\"min\":0,\"max\":1,\"default\":0,"         \
+    "\"binds\":[{\"deformer\":\"cw_mid\",\"param\":\"rot_deg\",\"scale\":90.0}]}],"  \
+    "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}"
+
+    z_snprintf(full, sizeof(full), CHAIN_W_RIG(""));
+    z_snprintf(zero, sizeof(zero), CHAIN_W_RIG(
+        ",\"chain_w\":[0,0,0, 0,0,0, 0,0,0]"));
+    z_snprintf(mix, sizeof(mix), CHAIN_W_RIG(
+        ",\"chain_w\":[0,0,0, 0.5,0.5,0.5, 1,1,1]"));
+#undef CHAIN_W_RIG
+
+    {
+        /* 三个 rig 各取一次：满格旋转下的顶点落点 */
+        double pfull[3][2], pzero[3][2], pmix[3][2];
+        int col[3] = {0, 0, 0}, row[3] = {0, 1, 2};
+        int which;
+        for (which = 0; which < 3; ++which) {
+            const char *json = which == 0 ? full : (which == 1 ? zero : mix);
+            double (*out)[2] = which == 0 ? pfull : (which == 1 ? pzero : pmix);
+            zdiag d;
+            zrig *r;
+            int i, okv = 1;
+            write_text(rigp, json);
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            if (which == 2)
+                CHECK(r != NULL, "带 chain_w 的 rig 应加载成功（%d 条诊断）", d.error_count);
+            if (!r) return;
+            zrig_ambient_enable(r, 0);
+            zrig_phys_set_enabled(r, 0);
+            zrig_param_set(r, "ParamSwing", 1.0);
+            for (i = 0; i < 4; ++i) zrig_tick(r, 0.5 + i / 60.0);
+            if (which == 0)
+                CHECK(fabs(zrig_deform_transform(r, "cw_mid", "rot_deg") - 90.0) < 0.5,
+                      "满格时 cw_mid 应转到 90°（实测 %.3f°；0 说明参数没绑上）",
+                      zrig_deform_transform(r, "cw_mid", "rot_deg"));
+            for (i = 0; i < 3; ++i)
+                if (!zrig_part_vertex_pos(r, "cw", 1.0, col[i], row[i], out[i])) okv = 0;
+            CHECK(okv, "顶点探针应能拿到三排位置（rig=%d）", which);
+            zrig_free(r);
+        }
+        printf("    满格旋转：上排 (%.2f,%.2f) 中排 (%.2f,%.2f) 下排 (%.2f,%.2f)\n",
+               pfull[0][0], pfull[0][1], pfull[1][0], pfull[1][1], pfull[2][0], pfull[2][1]);
+        printf("    w 全 0 ：上排 (%.2f,%.2f) 中排 (%.2f,%.2f) 下排 (%.2f,%.2f)\n",
+               pzero[0][0], pzero[0][1], pzero[1][0], pzero[1][1], pzero[2][0], pzero[2][1]);
+        printf("    w 0/0.5/1：上排 (%.2f,%.2f) 中排 (%.2f,%.2f) 下排 (%.2f,%.2f)\n",
+               pmix[0][0], pmix[0][1], pmix[1][0], pmix[1][1], pmix[2][0], pmix[2][1]);
+
+        /* 前提：满格时上排与下排必须真的差得开，否则下面的断言是空的 */
+        CHECK(fabs(pfull[2][0] - pfull[0][0]) + fabs(pfull[2][1] - pfull[0][1]) > 20.0,
+              "满格旋转下上下排必须明显分开（否则这条用例什么也没测）");
+
+        /* ① 上排 w=0：与"没有那段旋转"完全一致（不动） */
+        CHECK(fabs(pmix[0][0] - pzero[0][0]) < 0.05 && fabs(pmix[0][1] - pzero[0][1]) < 0.05,
+              "上排 w=0 必须一点都不吃那段旋转：(%.3f,%.3f) vs (%.3f,%.3f)",
+              pmix[0][0], pmix[0][1], pzero[0][0], pzero[0][1]);
+        /* ② 下排 w=1：与完整旋转完全一致（吃满） */
+        CHECK(fabs(pmix[2][0] - pfull[2][0]) < 0.05 && fabs(pmix[2][1] - pfull[2][1]) < 0.05,
+              "下排 w=1 必须吃满旋转：(%.3f,%.3f) vs (%.3f,%.3f)",
+              pmix[2][0], pmix[2][1], pfull[2][0], pfull[2][1]);
+        /* ③ 中排 0.5：落在两个端点正中间（线性插值，不许"跳档"） */
+        {
+            double ex = (pzero[1][0] + pfull[1][0]) * 0.5;
+            double ey = (pzero[1][1] + pfull[1][1]) * 0.5;
+            CHECK(fabs(pmix[1][0] - ex) < 0.05 && fabs(pmix[1][1] - ey) < 0.05,
+                  "中排 w=0.5 要正好落在中间：(%.3f,%.3f) vs 期望 (%.3f,%.3f)",
+                  pmix[1][0], pmix[1][1], ex, ey);
+        }
+    }
+
+    /* ④ 渲染：探针和画笔必须同一套口径（防止"探针对、画面不对"）。
+       判据用**alpha 加权重心**而不是像素总数 —— 纯色矩形转 90° 之后面积不变，
+       总数断言会绿着把"根本没转"放过去（第一版就是这么写的，实测三帧全 10200000）。 */
+    {
+        struct { const char *json; double cx, cy; unsigned long sum; } shots[3];
+        int which;
+        for (which = 0; which < 3; ++which) {
+            zdiag d;
+            zrig *r;
+            const zimg *fb;
+            int i;
+            write_text(rigp, which == 0 ? full : (which == 1 ? zero : mix));
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            shots[which].cx = shots[which].cy = -1.0;
+            shots[which].sum = 0;
+            if (!r) continue;
+            zrig_ambient_enable(r, 0);
+            zrig_phys_set_enabled(r, 0);
+            zrig_param_set(r, "ParamSwing", 1.0);
+            for (i = 0; i < 4; ++i) zrig_tick(r, 0.5 + i / 60.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            if (fb) {
+                int q, n = fb->w * fb->h;
+                double sx = 0.0, sy = 0.0;
+                for (q = 0; q < n; ++q) {
+                    unsigned long a = (unsigned long)fb->px[q * 4 + 3];
+                    if (!a) continue;
+                    shots[which].sum += a;
+                    sx += (double)a * (double)(q % fb->w);
+                    sy += (double)a * (double)(q / fb->w);
+                }
+                if (shots[which].sum) {
+                    shots[which].cx = sx / (double)shots[which].sum;
+                    shots[which].cy = sy / (double)shots[which].sum;
+                }
+            }
+            zrig_free(r);
+        }
+        printf("    画面重心：满格 (%.1f,%.1f) · w 全 0 (%.1f,%.1f) · 0/0.5/1 (%.1f,%.1f)\n",
+               shots[0].cx, shots[0].cy, shots[1].cx, shots[1].cy, shots[2].cx, shots[2].cy);
+        CHECK(shots[0].sum > 0 && shots[1].sum > 0, "两种都要画得出东西（%lu / %lu）",
+              shots[0].sum, shots[1].sum);
+        /* 200x200 的块在 (100,100)，绕上边中点 (200,100) 转 90°：
+           重心 (200,200) → (100,100)。这两个数是几何算出来的，不是拟合。 */
+        CHECK(fabs(shots[1].cx - 200.0) < 3.0 && fabs(shots[1].cy - 200.0) < 3.0,
+              "w 全 0 时画面必须一动不动（重心 (%.1f,%.1f)，应为 200,200）",
+              shots[1].cx, shots[1].cy);
+        CHECK(fabs(shots[0].cx - 100.0) < 6.0 && fabs(shots[0].cy - 100.0) < 6.0,
+              "满格时画面要真的转过去（重心 (%.1f,%.1f)，应为 100,100）",
+              shots[0].cx, shots[0].cy);
+        /* 混合帧的重心只要**严格**夹在两端之间就够了 —— 别拿"离中点不能太近"当判据：
+           下排吃满、上排不吃的梯形，重心本来就会偏满格那一侧（实测 110.6 / 132.6）。 */
+        CHECK(shots[2].cx < shots[1].cx - 5.0 && shots[2].cx > shots[0].cx + 5.0 &&
+              shots[2].cy < shots[1].cy - 5.0 && shots[2].cy > shots[0].cy + 5.0,
+              "0/0.5/1 的重心要严格夹在两者之间（(%.1f,%.1f) ∈ (%.1f,%.1f)~(%.1f,%.1f)）",
+              shots[2].cx, shots[2].cy, shots[0].cx, shots[0].cy, shots[1].cx, shots[1].cy);
+    }
+
+    /* —— 负控四条：写错必须当场拒载，不许静默退化成"整件跟着转" —— */
+    {
+        static const struct { const char *chain; const char *why; } bad[] = {
+            { ",\"chain_w\":[0,0,0, 0,0,0, 1,1]", "长度不对（8 ≠ 9）" },
+            { ",\"chain_w\":[0,0,0, 0,0,0, 1,1,2]", "取值越界（2）" },
+            { ",\"chain_w\":[]", "空数组" },
+        };
+        size_t b;
+        for (b = 0; b < sizeof(bad) / sizeof(bad[0]); ++b) {
+            char js[8192];
+            zdiag d;
+            zrig *r;
+            z_snprintf(js, sizeof(js),
+                "{\"schema_version\":\"1.0\",\"id\":\"cw\",\"name\":\"坏权重\","
+                "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+                "\"parts\":[{\"id\":\"cw\",\"file\":\"sprites/blk.png\",\"layer\":10,"
+                "\"pos\":[100,100],\"anchor\":[0,0],\"scale\":1.0,\"hires\":1,"
+                "\"deformer\":\"cw_root\"}],"
+                "\"deformers\":["
+                " {\"id\":\"cw_root\",\"pivot\":[200,100]},"
+                " {\"id\":\"cw_mid\",\"pivot\":[200,100],\"parent\":\"cw_root\"%s},"
+                " {\"id\":\"cw_mesh\",\"part\":\"cw\",\"cols\":2,\"rows\":2,"
+                "  \"parent\":\"cw_mid\",\"points\":[]}],"
+                "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", bad[b].chain);
+            write_text(rigp, js);
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "chain_w %s 应拒载", bad[b].why);
+            zrig_free(r);
+        }
+        /* 同一条链上两个节点都写 chain_w：两段骨抢同一片顶点，语义说不清 */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"cw\",\"name\":\"两个加权\","
+            "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+            "\"parts\":[{\"id\":\"cw\",\"file\":\"sprites/blk.png\",\"layer\":10,"
+            "\"pos\":[100,100],\"anchor\":[0,0],\"scale\":1.0,\"hires\":1,"
+            "\"deformer\":\"cw_root\"}],"
+            "\"deformers\":["
+            " {\"id\":\"cw_root\",\"pivot\":[200,100],\"chain_w\":[0,0,0,0,0,0,1,1,1]},"
+            " {\"id\":\"cw_mid\",\"pivot\":[200,100],\"parent\":\"cw_root\","
+            "\"chain_w\":[0,0,0,0,0,0,1,1,1]},"
+            " {\"id\":\"cw_mesh\",\"part\":\"cw\",\"cols\":2,\"rows\":2,"
+            "  \"parent\":\"cw_mid\",\"points\":[]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "同一部件链上两个 chain_w 应拒载");
+            zrig_free(r);
+        }
+        /* 部件没有网格却写 chain_w：**只警告、不拒载**。
+           为什么放宽：同一个链节点常被好几件共用，裙身有网格、里布（skirt_lining）
+           是借它的位移场的 —— 那种情况下"里布没有网格"是正常的（T66.9c 实测踩到）。 */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"cw\",\"name\":\"无网格\","
+            "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+            "\"parts\":[{\"id\":\"cw\",\"file\":\"sprites/blk.png\",\"layer\":10,"
+            "\"pos\":[100,100],\"anchor\":[0,0],\"scale\":1.0,\"hires\":1,"
+            "\"deformer\":\"cw_root\"}],"
+            "\"deformers\":["
+            " {\"id\":\"cw_root\",\"pivot\":[200,100],\"chain_w\":[0,1,0,1]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r != NULL, "没有网格的部件写 chain_w 应能加载（只警告，不拒载）");
+            CHECK(d.error_count == 0 && d.count > 0,
+                  "但要留下警告（错误 %d / 诊断 %d）", d.error_count, d.count);
+            zrig_free(r);
+        }
+    }
+}
+
 static void test_deform_weights(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -11043,6 +11289,7 @@ int main(int argc, char **argv)
     test_keyform_ease();
     test_parent_warp_inherit();
     test_deform_weights();
+    test_chain_weight();
     test_inherit_from_part();
     test_fore_slim_keyform();
     test_physics_to_param();

@@ -146,6 +146,23 @@ void zimg_draw_mesh_bend_blend_t(zimg *dst, const zimg *src, const double m[6], 
                                  double bend_x, int curve_x, double bend_y, int curve_y,
                                  int blend, double bend_tmin, double bend_tmax);
 
+/* 网格 + 平滑形变 + **逐顶点加权刚体**（T66.9c）。
+   同一个部件，每个顶点用不同的矩阵：
+       p_out = (1 - chain_w[q]) · m0 · p + chain_w[q] · m · p
+   用途：一片网格跨两段骨时，上缘只跟腰（w=0）、下缘跟摆（w=1）。
+   为什么要两个矩阵而不是一个：链上的刚性变换是**连乘**出来的，
+   想只让一部分顶点吃到其中某个节点，就必须再算一份"跳过该节点"的矩阵。
+   ★ 数学上这就是 lerp(m0·p, m·p, w) = ((1-w)·m0 + w·m)·p ——
+     所以实现只需在算完两个候选坐标之后插值，不涉及旋转的球面插值。
+   chain_w == NULL 或 nw <= 0 时等价于 zimg_draw_mesh_bend_blend_t。 */
+void zimg_draw_mesh_chainw_blend_t(zimg *dst, const zimg *src,
+                                   const double m[6], const double m0[6],
+                                   const double *chain_w, int nw,
+                                   double opacity, int cols, int rows,
+                                   const double *offsets,
+                                   double bend_x, int curve_x, double bend_y, int curve_y,
+                                   int blend, double bend_tmin, double bend_tmax);
+
 /* 便捷：把 src 缩放到 scale、绕锚点 anchor(0..1) 平移 pos（画布坐标）。 */
 void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,
                       double anchor_x, double anchor_y, double scale,

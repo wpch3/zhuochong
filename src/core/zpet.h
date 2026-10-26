@@ -140,6 +140,10 @@ double      zpet_deform_amount(const zpet *p, const char *id);
    ≈ 「渲染时到底长什么样」的探针：zpet_deform_amount 只能看到形变器的驱动量，
    看不到继承（T66.10 / T66.10b 的继承是**逐顶点**的，量不出来就等于没做）。
    返回控制点数；cols/rows 给网格分辨率。 */
+/* 部件网格某个控制点这一帧的落点（帧缓冲坐标，含链和逐顶点加权刚体）。
+   T66.9c 加的：加权到底有没有把"上缘按住"，只有落点能量出来。 */
+int         zpet_part_vertex(const zpet *p, const char *part_id, double scale,
+                             int col, int row, double out[2]);
 int         zpet_part_mesh(const zpet *p, const char *part_id,
                            int *cols, int *rows, double *dx, double *dy, int cap);
 /* 挂点探针（T66.19 / S4）：骨架声明的命名位置，配件按名字挂上来。

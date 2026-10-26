@@ -2535,6 +2535,31 @@ static void handle_request(zsock fd, const http_req *r)
         send_text(fd, 200, "application/json", body);
         return;
     }
+    if (strcmp(r->path, "/api/vertex.json") == 0) {
+        /* 探针：部件网格的某个控制点这一帧落在画面哪里（T66.9c 加，T66.14 的工具要用）。
+           id=<部件>，c=<列>，row=<行>，scale=<默认 1>。
+           和 /api/partmesh.json 的分工：那个给"位移场"（源图像素），
+           这个给"落点"（帧缓冲坐标，含组、链、逐顶点加权刚体）。
+           加权刚体到底有没有把裙腰按住，只有落点能量出来。 */
+        char id[64], body[512];
+        double xy[2] = {0, 0};
+        int c = qint(r, "c", 0), row = qint(r, "row", 0);
+        double sc = qint(r, "scale", 1) > 0 ? (double)qint(r, "scale", 1) : 1.0;
+        int ok = 0;
+        if (!qstr(r, "id", id, sizeof(id))) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少 id\"}");
+            return;
+        }
+        LOCK();
+        ok = zpet_part_vertex(g_pet, id, sc, c, row, xy);
+        UNLOCK();
+        z_snprintf(body, sizeof(body),
+                   "{\"ok\":%s,\"id\":\"%s\",\"c\":%d,\"row\":%d,\"scale\":%.2f,"
+                   "\"x\":%.3f,\"y\":%.3f}",
+                   ok ? "true" : "false", id, c, row, sc, xy[0], xy[1]);
+        send_text(fd, ok ? 200 : 404, "application/json", body);
+        return;
+    }
     if (strcmp(r->path, "/api/sockets.json") == 0) {
         /* 挂点探针（T66.19 / S4）。两个数各回答一个问题：
              pos    —— 骨架把挂点摆在哪（画布像素）；

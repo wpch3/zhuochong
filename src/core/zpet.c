@@ -1162,6 +1162,13 @@ int zpet_socket_get(const zpet *p, int i, const char **id, const char **group,
     return 1;
 }
 
+int zpet_part_vertex(const zpet *p, const char *part_id, double scale,
+                     int col, int row, double out[2])
+{
+    if (!p || !p->rig || !part_id) return 0;
+    return zrig_part_vertex_pos(p->rig, part_id, scale, col, row, out);
+}
+
 int zpet_part_mesh(const zpet *p, const char *part_id,
                    int *cols, int *rows, double *dx, double *dy, int cap)
 {
