@@ -12,6 +12,9 @@ button{border:0;cursor:pointer}
 .bubble{position:relative;max-width:min(88%,440px);padding:12px 15px;border:1px solid rgba(255,255,255,.72);border-radius:8px;background:var(--glass);box-shadow:var(--shadow);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);pointer-events:auto;animation:appear .18s ease-out}
 .bubble.user{align-self:flex-end;border-radius:8px;background:rgba(235,240,255,.91)}
 .bubble .text{white-space:pre-wrap;overflow-wrap:anywhere}
+/* 她自己起头说的那句：左边一道细线，不是「回答你」，界面上看得出来又不抢戏 */
+.bubble.self{border-left:3px solid rgba(120,170,255,.85)}
+.bubble .text.pending{opacity:.55;font-style:italic}
 .bubble .meta{margin-top:7px;color:var(--muted);font-size:11px}
 .bubble .meta summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
 .bubble .meta summary::-webkit-details-marker{display:none}

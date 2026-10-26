@@ -36,13 +36,17 @@
     showToast.timer = setTimeout(() => { toast.hidden = true; }, 2600);
   }
 
-  function showBubble(who, text, meta, lifetime) {
+  /* 气泡。self=true = 这句是**她自己起头**说的（不是回答你），
+     界面上要能看出来 —— 但只是左边一道细线，不许做成"系统通知"。
+     pending=true = 占位：她还在想/先说半句。 */
+  function showBubble(who, text, meta, lifetime, opts) {
+    const o = opts || {};
     clearTimeout(bubbleTimer);
     conversation.replaceChildren();
     const bubble = document.createElement("article");
-    bubble.className = "bubble" + (who === "you" ? " user" : "");
+    bubble.className = "bubble" + (who === "you" ? " user" : "") + (o.self ? " self" : "");
     const body = document.createElement("div");
-    body.className = "text";
+    body.className = "text" + (o.pending ? " pending" : "");
     body.textContent = text;
     bubble.appendChild(body);
     if (meta) {
@@ -88,7 +92,23 @@
     return { label, dot: d.turns_held > 0 ? "warn" : (local ? "" : (d.provider ? "cloud" : "none")), detail: lines.join("\n") };
   }
 
-  async function request(text, dry) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
+  /* 最近一次"有人说话"（她说的或你说的）的时刻。她自己起头要等这个够久 ——
+     刚陪你说完一句就马上又自己挑话题，那是复读机，不是想说话的人。 */
+  let lastTalkAt = Date.now();
+
+  /* 她"多快说"由引擎判（T69.1）。界面只做两件事：按引擎给的停顿等，
+     以及想清楚时先把那句"嗯……让我想想"放出来。**没有任何开关** ——
+     用户能做的只有说话和沉默。 */
+  async function thinkFor(text) {
+    try {
+      const r = await fetch("/api/think.json?text=" + encodeURIComponent(text), { cache: "no-store" });
+      if (r.ok) return await r.json();
+    } catch (_) { /* 服务没起来时按"立刻说"处理，不打断说话 */ }
+    return { mode: "blurt", delay_ms: 0, preface: "", max_tokens: 0 };
+  }
+
+  async function request(text, dry, extra) {
     const params = new URLSearchParams({
       text,
       persona: $("persona").checked ? "1" : "0",
@@ -96,12 +116,64 @@
       tries: "1",
     });
     if (dry) params.set("dry", "1");
+    if (extra && extra.self) params.set("self", String(extra.self));
     const response = await fetch("/api/chat?" + params.toString(), { cache: "no-store" });
     let data;
     try { data = await response.json(); }
     catch (_) { data = { ok: false, error: copy.send_failed }; }
     return { status: response.status, data };
   }
+
+  function finishSend(data, status, dry, th, selfIntent) {
+    if (dry) {
+      const extra = data.ok ? "POST " + (data.url || copy.no_url) + "\n\n" + (data.request_body || "") : "";
+      const meta = metadata(data);
+      meta.extra = extra;
+      showBubble("her", data.ok ? copy.dry_header : (data.error || (copy.http_status + " " + status)), meta, 0);
+      const panel = $("dry-output");
+      panel.hidden = false;
+      panel.textContent = extra || data.error || "";
+      $("dry").open = true;
+      return;
+    }
+    if (!data.ok) {
+      showBubble("her", copy.failed + (data.error || (copy.http_status + " " + status)), metadata(data), 0);
+      return;
+    }
+    const meta = metadata(data);
+    if (selfIntent) {
+      /* 她自己起头：代价信息照旧放进去，但标题写清"这一句不是回答你" */
+      meta.detail = copy.self_speaking + "（" +
+        ((copy.self_intent || {})[selfIntent] || selfIntent) + "）\n" + meta.detail;
+      showBubble("her", data.text || copy.empty_reply, meta, 12000, { self: true });
+    } else {
+      showBubble("her", data.text || copy.empty_reply, meta, 8500);
+    }
+    lastTalkAt = Date.now();
+    fetch("/api/action?id=talk", { cache: "no-store" }).catch(() => {});
+  }
+
+  /* 她自己起头（T69.2）：每隔一会儿问一次引擎"她现在想不想说话"。
+     ★ 界面上**没有**"让她说话"的按钮 —— 想说就自己说，不想说就安静。
+     引擎不给阈值以上的冲动，这里就什么也不做。 */
+  async function maybeSpeakOnOwn() {
+    if (busy || document.hidden || input.value.trim()) return;
+    if (Date.now() - lastTalkAt < 25000) return;
+    try {
+      const r = await fetch("/api/urge.json", { cache: "no-store" });
+      if (!r.ok) return;
+      const u = await r.json();
+      if (!u.would_speak) return;
+      busy = true;
+      const intent = u.intent || "chat";
+      const res = await request("", false, { self: u.intent_id || 1 });
+      const data = res.data;
+      finishSend(data, res.status, false, null, intent);
+    } catch (_) { /* 服务不在就等下一轮 */ }
+    finally { busy = false; }
+  }
+
+  setInterval(maybeSpeakOnOwn, 12000);
 
   async function send(dry) {
     if (busy) return;
@@ -117,22 +189,24 @@
       fetch("/api/action?id=think", { cache: "no-store" }).catch(() => {});
     }
     try {
-      const { status, data } = await request(text, dry);
-      if (dry) {
-        const extra = data.ok ? "POST " + (data.url || copy.no_url) + "\n\n" + (data.request_body || "") : "";
-        const meta = metadata(data);
-        meta.extra = extra;
-        showBubble("her", data.ok ? copy.dry_header : (data.error || (copy.http_status + " " + status)), meta, 0);
-        const panel = $("dry-output");
-        panel.hidden = false;
-        panel.textContent = extra || data.error || "";
-        $("dry").open = true;
-      } else if (data.ok) {
-        showBubble("her", data.text || copy.empty_reply, metadata(data), 8500);
-        fetch("/api/action?id=talk", { cache: "no-store" }).catch(() => {});
-      } else {
-        showBubble("her", copy.failed + (data.error || (copy.http_status + " " + status)), metadata(data), 0);
+      /* 先问节奏（本地、几微秒），再按引擎给的停顿时长把字放出来。
+         注意：请求和"等待"是并行的 —— 等的是她说话的节奏，不是网络往返。 */
+      const th = dry ? { mode: "blurt", delay_ms: 0, preface: "" } : await thinkFor(text);
+      const waitMs = Number(th.delay_ms || 0);
+      const pendingText = th.mode === "blurt" ? copy.thinking_short : (th.preface || copy.thinking_long);
+      if (!dry) {
+        showBubble("her", pendingText, null, 0, { pending: true });
+        const job = request(text, dry);
+        await sleep(waitMs);
+        if (th.preface) {
+          showBubble("her", th.preface, null, 0, { pending: true });
+          await sleep(650);
+        }
+        const { status, data } = await job;
+        return finishSend(data, status, dry, th);
       }
+      const { status, data } = await request(text, dry);
+      finishSend(data, status, dry, th);
     } catch (_) {
       showBubble("her", copy.offline, { label: copy.not_sent, dot: "none", detail: copy.send_failed }, 0);
     } finally {

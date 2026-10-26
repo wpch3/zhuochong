@@ -2011,6 +2011,35 @@ def run(base, root):
           (rb.get("max_tokens") or 0) > 0 and (rb.get("max_tokens") or 0) <= 120,
           "max_tokens=%s" % rb.get("max_tokens"))
 
+    print("== 她自己起头（T69.2）==")
+    sc, sd = chat("/api/chat?self=1&dry=1&persona=1")
+    try:
+        srb = json.loads(sd.get("request_body") or "{}")
+    except Exception:                                # noqa: BLE001
+        srb = {}
+    smsgs = srb.get("messages") or []
+    sys_self = smsgs[0].get("content", "") if smsgs else ""
+    check("主动开口要带「现在是你自己想开口」这一块",
+          "现在是你自己想开口" in sys_self, str(sd.get("think"))[:60])
+    check("主动开口要说明为什么（哪一种想说话）",
+          any(k in sys_self for k in ("单纯想跟他说句话", "想起了一件跟他有关的事",
+                                      "状态不太对", "想分享")), "")
+    check("主动开口那一轮的 user 消息必须是引擎提示，不是用户台词",
+          bool(smsgs) and "引擎提示" in smsgs[-1].get("content", ""), smsgs[-1]["content"][:40] if smsgs else "")
+    check("响应要标出这一句是她自己起头的（self=1）", sd.get("self") == 1, str(sd.get("self")))
+    check("引擎提示不许算进节奏（长句项必须为 0）",
+          "长句0.00" in ((sd.get("think") or {}).get("why") or ""),
+          (sd.get("think") or {}).get("why", ""))
+    nc, nd = chat("/api/chat?dry=1&persona=1&text=" + urllib.parse.quote("你好"))
+    try:
+        nrb = json.loads(nd.get("request_body") or "{}")
+    except Exception:                                # noqa: BLE001
+        nrb = {}
+    nm = nrb.get("messages") or []
+    check("普通回答里不许混进主动开口那块",
+          not nm or "现在是你自己想开口" not in nm[0].get("content", ""), "")
+    check("普通回答的 self 必须是 0", nd.get("self") == 0, str(nd.get("self")))
+
     print("== 长记忆（T67.45）==")
     # ★ 这一节会**写进当前角色真实的** data/<角色>/memory/chronicle.zm：
     #   写一条、回忆一次、再落墓碑（墓碑不自动清，那是用户的数据）。

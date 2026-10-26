@@ -49,5 +49,14 @@
     "only_choice": "符合条件的另一侧没有可用模型",
     "sensitive_blocked": "内容标记为隐私，但本机没有可用模型，因此没有发送",
     "no_candidate": "当前没有符合条件的可用模型"
+  },
+  "thinking_short": "……",
+  "thinking_long": "嗯……让我想想",
+  "self_speaking": "她自己在说话",
+  "self_intent": {
+    "chat": "单纯想跟你说句话",
+    "remember": "想起一件跟你有关的事",
+    "care": "觉得你不太对劲",
+    "share": "想分享正在想的东西"
   }
 }

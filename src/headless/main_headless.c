@@ -517,6 +517,9 @@ static void handle_request(zsock fd, const http_req *r)
          现在按清单里 kept=1 的块顺序拼，和上面 history 那条规矩一致：
          清单写带了几块，出网的就得是那几块。 */
     char sysbuf[12288];
+    /* 她主动开口时的立场（T69.2）。放在这个作用域：块要注册进 zctx，
+       而 zctx_set_block 只存指针，所以缓冲区必须活到拼提示词那一步之后。 */
+    char self_block[768];
     if (strcmp(r->path, "/") == 0 || strcmp(r->path, "/index.html") == 0) {
         char p[1024];
         z_path_join(p, sizeof(p), g_frames_dir, "index.html");
@@ -1950,8 +1953,26 @@ static void handle_request(zsock fd, const http_req *r)
         int want_persona = qint(r, "persona", 1);
         zthink_out think;                 /* 这一句的节奏（T69.1），响应里要带回去 */
         int rc, off;
+        /* 她**自己**开口（T69.2）。self=1~4 是引擎给的方向（闲着想说话 / 想起一件事 /
+           觉得对方不对 / 想分享），不是用户说的话 —— 所以：
+             · text 可以为空，空的时候引擎自己写一行"这不是有人在跟你说话"的提示；
+             · 这一轮**不记成用户的话**（否则历史里会多出一句谁也没说过的用户台词）；
+             · 成功之后更新"她上次开口的时间"，冷却与"上一句没人接"都靠它。 */
+        int self = qint(r, "self", 0);
+        const char *self_cue =
+            "（引擎提示：现在没有人在跟你说话，是你自己想开口。"
+            "就照此刻的心情说一两句，别复述这句提示，别问「在吗」这种空话。）";
 
-        if (!qstr(r, "text", text, sizeof(text)) || !text[0]) {
+        if (self > 0) {
+            char t[1024];
+            const char *it = qstr(r, "text", t, sizeof(t)) ? t : "";
+            if (!it[0]) {
+                z_strlcpy(text, self_cue, sizeof(text));
+            } else {
+                /* 允许带上一句自己的由头（例如刚从记忆里想到的那件事） */
+                z_snprintf(text, sizeof(text), "%s\n%s", self_cue, it);
+            }
+        } else if (!qstr(r, "text", text, sizeof(text)) || !text[0]) {
             send_text(fd, 400, "application/json",
                       "{\"ok\":false,\"error\":\"缺少 text（要说的话）\"}");
             return;
@@ -2016,6 +2037,7 @@ static void handle_request(zsock fd, const http_req *r)
                  · memory_recall —— 这次想起来的相关旧事，可裁。
                    裁掉的只是「这次没想起来」，不是「她这个人」。 */
             mem_anchor[0] = mem_recall[0] = 0;
+            self_block[0] = 0;
             /* ★ persona=0 是"完全裸跑"的对照档（冒烟里用它验证不带人设），
                那就连记忆也不许带 —— 否则"基线"里混进了她的过去，
                对照就失去意义了。 */
@@ -2039,6 +2061,23 @@ static void handle_request(zsock fd, const http_req *r)
                            "data/<角色>/memory/chronicle.zm", mem_anchor, 95, 1);
             zctx_set_block(&g_ctx, "memory_recall", "长期记忆·这次想起来的",
                            "data/<角色>/memory/chronicle.zm", mem_recall, 60, 0);
+            /* 主动开口的立场（T69.2）：同样走 zctx 的块，和记忆/人设一个口径 ——
+               「这次为什么开口」在清单里看得见，不是藏在某个 if 里的隐形提示。 */
+            if (self > 0) {
+                static const char *SELF_TITLE = "现在是你自己想开口";
+                const char *want = "你单纯想跟他说句话。可以很小、很没目的：一句抱怨、一句想到的事、一个刚冒出来的念头。";
+                if (self == 2) want = "你想起了一件跟他有关的事。只许说**记忆里真的有的**事；想不起来就别装作想起来。";
+                else if (self == 3) want = "你隐约觉得他这会儿状态不太对。先关心，别追问，也别讲道理。";
+                else if (self == 4) want = "你想分享一个你正在想的东西（画面、念头、手上在做的事）。";
+                z_snprintf(self_block, sizeof self_block,
+                           "%s\n说话规矩：一到两句，像突然开口的真人；不用「在吗」「你好」开头；"
+                           "不解释自己是 AI；不要每句都以提问结尾（那会变成在盘问他）。",
+                           want);
+                zctx_set_block(&g_ctx, "self_talk", SELF_TITLE,
+                               "引擎判定：她想开口（urge 过阈值）", self_block, 98, 1);
+            } else {
+                zctx_set_block(&g_ctx, "self_talk", "现在是你自己想开口", "", "", 0, 0);
+            }
             if (!keep) zctx_clear_turns(&g_ctx);
             zctx_build(&g_ctx, cap_s, budget, dest_local);
             AIUNLOCK();
@@ -2098,7 +2137,9 @@ static void handle_request(zsock fd, const http_req *r)
             struct tm lt;
             memset(&tin, 0, sizeof tin);
             memset(&think, 0, sizeof think);
-            tin.text = text;
+            /* 她自己开口时判节奏要看"她要说的话"，而不是引擎塞进去的那行提示 ——
+               按提示判会把 100 多字的提示算成"长句"，凭空多出 0.52 分。 */
+            tin.text = (self > 0) ? "" : text;
             tin.tier = g_pet ? zpet_affection_tier(g_pet) : 0;
             tin.mood = 0.6;
             localtime_r(&nowt, &lt);
@@ -2143,10 +2184,19 @@ static void handle_request(zsock fd, const http_req *r)
                 const zctx_turn *kt = zctx_kept_turn_at(&g_ctx, k);
                 if (kt && kt->sensitive) tainted = 1;
             }
-            zctx_push_turn(&g_ctx, 0, text, q.route.sensitive);
+            /* 她自己开口那一轮**不记用户的话** —— text 里装的是引擎提示，
+               记进去就等于历史里多了一句谁也没说过的用户台词，
+               下一轮模型会以为"用户让我自己想点话说"。 */
+            if (self <= 0) zctx_push_turn(&g_ctx, 0, text, q.route.sensitive);
             zctx_push_turn(&g_ctx, 1, res.text ? res.text : "", tainted);
         }
         AIUNLOCK();
+        /* 她开口了：冷却从现在算起，并且"她自己提的话题"进入没人接的状态。
+           这两个量都只在这里改（还有一个是 /api/urge/spoke，前端主动上报）。 */
+        if (self > 0 && !dry && rc == 0 && res.ok) {
+            g_self_spoke_at = pet_now();
+            g_self_topic_open = 1;
+        }
 
         {
             char esc_err[768], esc_txt[8192];
@@ -2157,13 +2207,13 @@ static void handle_request(zsock fd, const http_req *r)
                 "\"local\":%s,\"reason\":\"%s\",\"http_status\":%d,\"attempts\":%d,"
                 "\"tokens_in\":%ld,\"tokens_out\":%ld,\"cost\":%.6f,"
                 "\"persona_bytes\":%u,\"history_sent\":%d,\"turns_total\":%d,"
-                "\"turns_held\":%d,\"text\":\"%s\",\"error\":\"%s\"",
+                "\"turns_held\":%d,\"self\":%d,\"text\":\"%s\",\"error\":\"%s\"",
                 (rc == 0 && res.ok) ? "true" : "false", dry ? "true" : "false",
                 cap_s, res.provider, res.model, res.local ? "true" : "false",
                 res.reason, res.http_status, res.attempts,
                 res.tokens_in, res.tokens_out, res.cost,
                 (unsigned)strlen(prompt), nhist, zctx_turn_count(&g_ctx),
-                g_ctx.last_turns_held, esc_txt, esc_err);
+                g_ctx.last_turns_held, self, esc_txt, esc_err);
             if (dry) {
                 /* 把真会发出去的那段原样摆出来。密钥不在里面（zrelay_dry_run 保证）。 */
                 char esc_url[640], esc_body[6144];

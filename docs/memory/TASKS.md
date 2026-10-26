@@ -1447,13 +1447,13 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | 编号 | 事 | 状态 | 说明 |
 |---|---|---|---|
 | T69.1 | **节奏引擎 `src/core/zthink.{h,c}`** | [x] | 纯函数、无随机：`zthink_decide()` 用四项情境信号（长句 / 为什么 / 讨选择 / 重话题）+ `pace_fast/effort/express` + 心情/钟点/关系档算 `score` → `blurt`(<0.45) / `ponder`(≥0.45) / `deliberate`(≥1.05)，配三档停顿与 token 预算，并把每项贡献写进 `why`（可审计）。`zthink_urge_now()` 算主动开口：留底非线性 `0.15+0.80×proactive×(0.35+0.65×(1−e^(−闲/12)))`、深夜折扣、约定必开、被晾着退半步、90s 冷却。参数源 `characters/<id>/mind.params.json`（`mind_probe.py` 导出，闸 M8 同源）。规格见 `docs/INDIVIDUALITY.md` 第 8 节 |
-| T69.2 | 三个端点 + `/api/chat` 接线 | [x] | `/api/think.json`（判节奏）、`/api/urge.json`（想不想开口）、`/api/urge/spoke`（记她自己开过口）；`/api/chat` 里判节奏并把 `think{...}` 注入响应，`max_tokens` 缺省取该档预算。冒烟 13 项 |
+| T69.2 | 三个端点 + `/api/chat` 接线 + 前端 | [x] | `/api/think.json`（判节奏）、`/api/urge.json`（想不想开口）、`/api/urge/spoke`（记她自己开过口）；`/api/chat` 判节奏并把 `think{...}` 注入响应、`max_tokens` 缺省取该档预算。**`self=1~4`：她自己开口**——`text` 可为空（引擎写提示）、提示词里加一块「现在是你自己想开口」说明这次想干什么、**这一轮不记成用户的话**、成功后更新冷却与"没人接"状态、判节奏用她要说的话而不是提示。前端 `product.js`：按 `delay_ms` 停、`preface` 先放、每 12s 问一次 urge、够阈值就 `self=` 说一句、气泡加左边细线标明不是回答。**界面上没有任何开关**（闸 `check_think_ui`）。冒烟 13+8 项，合计 328/0；spec 见 `docs/INDIVIDUALITY.md` 8.5 |
 | T69.3 | 心情由事件推 | [ ] | 现在 `mood` 是一个 0~1 的入参。应该按记忆里的事件（被夸 / 被晾 / 被凶）推出来，否则"心情差"没人给它赋值 |
 | T69.4 | 序言按角色分 | [ ] | `preface` 只有「嗯……让我想想」。深语不会这么说，应进 `inner.json` 并过闸 |
 | T69.5 | 说一半改口（`interrupt`） | [ ] | 真人会冲口而出半句又收住。要引擎出事件 + 前端停字，不能只靠模型自觉 |
 | T69.6 | 「敷衍」档 | [ ] | 累的时候只回「嗯」。现在最小档也是完整一句 90 tok |
 | T69.7 | 主动开口的话题来源 | [ ] | `intent=share` 现在让模型自由发挥；应从记忆里挑一件旧事（接 T67.45 的分层召回） |
-| T69.8 | 前端不出现任何"深思"选项 | [ ] | 判据：语音/文字界面里没有模式开关，只有说话与沉默。要进 UI 静态闸 |
+| T69.8 | 前端不许出现任何「深思」选项 | [x] | `tools/selfcheck_repo.py :: check_think_ui`：`web/` 下出现「深思模式 / 思考模式 / 要不要深思 / 让她深思 / deep_think / think_mode」判红；同时要求前端真的接了 `/api/think.json` 与 `/api/urge.json`、主动开口带 `self`、气泡有 `self` 类。已进 `make selfcheck`（720 项） |
 
 ### T66 追加（2026-10-26 第十轮：软边遮罩 T66.13）
 

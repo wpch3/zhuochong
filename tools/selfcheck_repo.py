@@ -3401,6 +3401,43 @@ def check_contract(root):
     check("端点都有文档", not undoc, f"{len(eps)} 个端点" + (f"，没写文档：{undoc}" if undoc else ""))
 
 
+def check_think_ui(root):
+    """她深思还是脱口而出，由引擎判（T69.1/T69.8）。
+
+    这道闸守的是**产品上的一个承诺**：界面上不许出现"要不要让她深思"这类开关。
+    最省事的做法就是给个复选框，一旦有了它，用户就永远在操作一台机器，
+    而不是跟一个人待着 —— 而代码里加一个复选框，比删掉它容易得多。
+    """
+    section("节奏：界面不许有「深思」开关，但她要真的会自己开口")
+    web = os.path.join(root, "web")
+    if not os.path.isdir(web):
+        return
+    banned = ("深思模式", "思考模式", "要不要深思", "让她深思", "deep_think", "think_mode")
+    hits = []
+    for name in sorted(os.listdir(web)):
+        if not name.endswith((".html", ".js", ".json")):
+            continue
+        p = os.path.join(web, name)
+        try:
+            txt = open(p, encoding="utf-8").read()
+        except OSError:
+            continue
+        for b in banned:
+            if b in txt:
+                hits.append(f"{name}:{b}")
+    check("界面里没有「深思/思考模式」开关", not hits, "、".join(hits))
+
+    js = os.path.join(web, "product.js")
+    if os.path.exists(js):
+        code = open(js, encoding="utf-8").read()
+        check("前端按引擎给的节奏放字（/api/think.json）", "/api/think.json" in code,
+              "没有它，脱口而出在界面上会退化成一模一样地等")
+        check("前端会自己问她「现在想不想说话」（/api/urge.json）",
+              "/api/urge.json" in code, "不接这个端点，她就永远不会主动开口")
+        check("主动开口不带 self 参数就等于没说", "self:" in code or "self=" in code, "")
+        check("她自己起头那句在界面上要能看出来（气泡加 self 类）", "self: true" in code, "")
+
+
 # ------------------------------------------------------------------ 7 工具链
 def strip_prose(src):
     """把源码里的注释和 docstring 都剥掉，只留会真正执行的部分。
@@ -5034,6 +5071,7 @@ def main():
                check_design_sheets,
                check_sprite_audit,
                check_audit_register,
+               check_think_ui,
                check_tools, check_hygiene):
         try:
             fn(root)
