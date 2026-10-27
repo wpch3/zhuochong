@@ -4215,3 +4215,18 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 2. 需要"局部覆盖"时用**裁切**，裁切边缘要配"放大 + 0% 的遮罩副本"来压白边。
 3. 长发这类必须与手臂**互相穿插**的件，拆成**束**（前/侧/后/胸）分别定层次，
    而不是整块放上或放下。
+
+## T67.7 长发视觉验收补充（用户 2026-10-27 明确）
+
+- 必须先把整体长发设计成**连贯、自然、浑然一体**的造型，再按遮挡/自然发束边界拆成六件。是否使用拼接不构成放宽理由：在静止或摆动中只要看得出拼接区块、硬切边或接缝，即不合格。
+- 禁止“刺猬头”、尖刺块、两块孤立蓬松侧发；短侧发、胸前长侧发、冠发应顺着同一套发流与线稿/光影衔接，根部有自然覆盖，不能像另贴的几片素材。
+- **小寻发色唯一基准**（用户 2026-10-27 明确）：以 teen 原装短发 `sprites/body_full.png` 中的发色为准；之后小寻的长发/差分不另起一套色调。主色保持原短发的浅灰紫，阴影和发梢只沿用原短发已有的蓝灰、青蓝变化；不得把长发主体调成偏暗钢蓝，也不得另做粉紫长条。
+- 截图中 `short_side_locks_refmatched_v2.png` 的块状稿明确废弃；曾记录的临时 v5 拼回路径在当前工作区已不可访问，不得当作当前候选、封板或接生产。历史静止图 `frame_static_long_color_v4.png` 也未在已检查的远端分支中找到；本轮新母稿另存为 `/tmp/t67_7_candidates/master_rebuild_unapproved_v1.png`，不是旧 v4，未获用户验收。后续先让用户确认完整母稿，再拆件并放大检查实际拼回，任何可见接缝都返工。
+
+## T67.7 长发 Live2D 变形/物理施工参考（2026-10-27）
+
+- [Live2D 官方：Adding Body Movement](https://docs.live2d.com/en/cubism-editor-tutorials/deformer/)：官方把前发、侧发、后发作为不同运动区域；发摆用 warp deformer，关键形态是发梢随参数移动，而非整片垂直缩放。后续侧发须沿根—中—梢的连续剪影分层形变。
+- [Live2D 官方：Adding XY Facial Movement](https://docs.live2d.com/en/cubism-editor-tutorials/xy/)：前、左侧、右侧、后发各自建立 deformer；教程对纵长部件建议 2×3 Bezier divisions，刘海等短件可用 2×2。先建立父子关系，父 deformer 不应小于子件。
+- [Live2D 官方：Skinning](https://docs.live2d.com/en/cubism-editor-manual/skinning/)：长发的 deform path 应从发根到发梢；推荐先建立目标 ArtMesh 的父子层级，再做 skinning；完成后逐项检查变形，长发可再接实时 physics。Cubism 的 skinning 会把一张 ArtMesh 在多个旋转 deformer 间分段并粘合，不能据此推断本仓库 JSON 直接兼容 Cubism。
+- [Live2D 官方：Physics Settings](https://docs.live2d.com/en/cubism-editor-tutorials/physical-calculation-settings/)：教程覆盖单段与两段以上摆链；本仓库 teen rig 是自有 `physics2`/deformer 实现，不是假称 Cubism `.moc3`，但可参考根固定、分段延迟、逐段软化的结构。现有后发三段链可作为代码审计起点，数值须以新图实际可见运动重测，不能照搬代替目视。
+- 施工边界：拆图与形变点需共同考虑。发根跟随头部，发中与发梢逐级产生相位滞后；保持剪影、明暗与相邻件遮挡连续。若网格运动显露接缝，优先重画/补重叠或修变形路径，不得用整体 `bend_y` 拉伸遮掩。
