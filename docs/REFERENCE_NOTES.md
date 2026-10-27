@@ -4230,3 +4230,24 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 - [Live2D 官方：Skinning](https://docs.live2d.com/en/cubism-editor-manual/skinning/)：长发的 deform path 应从发根到发梢；推荐先建立目标 ArtMesh 的父子层级，再做 skinning；完成后逐项检查变形，长发可再接实时 physics。Cubism 的 skinning 会把一张 ArtMesh 在多个旋转 deformer 间分段并粘合，不能据此推断本仓库 JSON 直接兼容 Cubism。
 - [Live2D 官方：Physics Settings](https://docs.live2d.com/en/cubism-editor-tutorials/physical-calculation-settings/)：教程覆盖单段与两段以上摆链；本仓库 teen rig 是自有 `physics2`/deformer 实现，不是假称 Cubism `.moc3`，但可参考根固定、分段延迟、逐段软化的结构。现有后发三段链可作为代码审计起点，数值须以新图实际可见运动重测，不能照搬代替目视。
 - 施工边界：拆图与形变点需共同考虑。发根跟随头部，发中与发梢逐级产生相位滞后；保持剪影、明暗与相邻件遮挡连续。若网格运动显露接缝，优先重画/补重叠或修变形路径，不得用整体 `bend_y` 拉伸遮掩。
+
+---
+
+## 第十批查证（2026-10-27，T67.7 长发母稿重画前置）：长发分层/绘制/变形官方与社区口径
+
+访问方式：`web_search`（沙箱白名单不通 docs.live2d.com，用搜索摘要 + GitBook/note 二手权威交叉印证）。
+边界：本仓库是自研 C sprite rig / mesh deformer / physics2，**不是 Cubism .moc3**；只吸收分层与形变的结构思想，不照抄接口数值，不称兼容。
+
+| 来源 | URL | 用于本任务的结论 |
+| --- | --- | --- |
+| 官方 Illustration Processing（PSD 工序） | https://docs.live2d.com/en/cubism-editor-tutorials/psd/ | 头发分前髪/横髪(左右独立层)/後ろ髪，呆毛等可动件单独分层；**拆分时必须把源图里被遮挡的部分补画回去，否则一动就断**（塗り足し，本仓库 SHEET_PIPELINE 已有同口径） |
+| 官方 Adding XY Facial Movement | https://docs.live2d.com/en/cubism-editor-tutorials/xy/ | 纵长部件贝塞尔分割 2×3、横向 3×2；前/左/右侧/后发各建独立 warp deformer 且父子嵌套；后发要略窄、前发略宽体现透视 |
+| 官方 Adding Body Movement | https://docs.live2d.com/en/cubism-editor-tutorials/deformer/ | 头发摆动前/侧/后分别加；发梢随参数左右摆，level edit 粗调 3 细调 1 |
+| 官方 Skinning | https://docs.live2d.com/en/cubism-editor-manual/skinning/ | 长发用变形路径 skinning，**从发根到发梢**逐个控制点建旋转变形器；对应本仓库 root→mid 两级骨链 + keyform 逐顶点 |
+| 乾物ひもの（高可动域 XY③） | https://note.com/himono_vtuber/n/ne6f7c0fdfdaa | **后发侧面件缺失/太窄，转头会露缝看到后发阴影**；嵌套序 旋转→物理1→物理2→ArtMesh。T67.7 拆侧发时必须留足宽度与重叠 |
+| 猫様の下僕姉弟（髪編） | https://www.geboku-kyoudai.com/entry/Live2D-Hair | 长发后发被脸/身体挡住处是大片空白，必须先隐藏前/侧发，把挡住部分的线和色补画回去 |
+| アタムアカデミー（长发画法） | https://atam-academy.com/blog/10722/ | 绘制顺序：**先画后发定整体剪影与流向**（面积最大），再侧发连接后发与前发，最后前发；毛束按大形→细分 |
+| coconala しららぎ | https://coconala.com/blogs/2995247/413605 | 二段振り子比一段更柔顺；幅度不宜过大否则头部 XY 时破綻——本仓库短发已用两级链，长发沿用 |
+| Cubism Cookbook（GitBook） | https://r3dhummingbird.gitbook.io/live2d-cubism-cookbook/modeling-and-rigging/deformer-hierarchy | Face Rotation 下 Hair Front/Side/Back XY 各自独立 warp deformer 的标准层级 |
+
+**落到 T67.7 的硬约束**：① 先出整头连贯母稿再拆，不拼碎片；② 后发/侧发隐藏处补画、侧面留够宽度防转头露缝；③ 六件对应 前髪(crown_long 含刘海区)/横髪左右(side_l/r + sidelong_l/r 胸前缕)/後ろ髪(acc_hair_long)/呆毛沿用现有；④ 每件独立骨链 root→mid，发根钉死、发梢摆；⑤ 母稿只含头发像素。
