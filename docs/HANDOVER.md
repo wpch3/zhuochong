@@ -1,6 +1,6 @@
 # 交接文档（给下一个代理）
 
-> **当前任务入口（2026-10-27）**：本文件下方主体是 2026-10-11 的旧交接，分支信息与任务状态已过期。当前活动分支为 `arena/ba836be0-zhuochong`。开工先读 `docs/memory/WORKFLOW.md` 的“铁律 0：用户要求永远排第一”，再读小寻 T67.7 [`完整交接`](T67_7_HANDOFF_NEXT_AGENT_2026-10-27.md) 与 [`沙箱运行手册`](T67_7_SANDBOX_RUNBOOK.md)。不要照搬下方旧分支指令。
+> **当前任务入口（2026-10-27；分支元数据纠正）**：本文件下方主体是 2026-10-11 的旧交接，分支信息与任务状态已过期。当前 Arena 活动分支为 `arena/8f8b86a5-zhuochong`，HEAD `43f5514`；远端 `arena/ba836be0-zhuochong` 只与该 HEAD 同提交，不能据此切换或重置分支。先读 [`项目整体接手审阅记录`](PROJECT_TAKEOVER_2026-10-27.md) 与 `docs/memory/WORKFLOW.md` 的“铁律 0：用户要求永远排第一”；若处理小寻 T67.7，再读 [`完整交接`](T67_7_HANDOFF_NEXT_AGENT_2026-10-27.md) 与 [`沙箱运行手册`](T67_7_SANDBOX_RUNBOOK.md)。不要照搬下方旧分支指令，也不要把项目缩成美术任务。
 
 更新：2026-10-11 ｜ 分支：`arena/b3359546-zhuochong` ｜ 项目根：仓库根目录
 **先读 `docs/PROJECT_SPEC.md`（当前有效规格），再读本文件（怎么继续）。**

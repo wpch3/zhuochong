@@ -7772,3 +7772,13 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 
 **数**：`make test` 1412/0、`make asan` 1412/0（ASAN 抓到 chain_w 动态分配在
 加载失败时漏 72 字节，改成固定数组后彻底没有这条路）、`make selfcheck` 720/0。
+
+## 2026-10-27 10:29
+- 做了什么：接手审阅：核对当前 Arena 分支与远端同提交历史；OCR 审阅扫描 PDF 中全部 20 张不同对话截图；阅读最新 T67.7 交接、整体产品/平台/陪伴/记忆/人格/代理/隐私规划和关键 C 接口；新增整体接手记录并更新 HANDOVER 与记忆索引，强调项目不止 Live2D 美术。
+- 遇到/修了什么：旧交接把当前分支写成 arena/ba836be0-zhuochong；本会话实际分支是 arena/8f8b86a5-zhuochong，HEAD 43f5514，远端旧名 ref 与之同提交；工作树原本干净且 shallow。PDF 没有文本层，OCR 有误识别可能。1251 个跟踪文件未逐个冷读；T67.7 候选图在本次检查的 /tmp 路径不存在，因此未作视觉验收、素材/rig 修改或真机测试。
+- 下一步：运行 make check 验证本轮文档更新；检查 selfcheck 报告与 diff；提交并普通 push 到 arena/8f8b86a5-zhuochong，确认远端 ref。后续如继续 T67.7，先确认母稿真实可用并等待用户批准，绝不跳过拆件/静态/动态门槛。
+
+## 2026-10-27 10:42
+- 做了什么：补齐审阅验证：首次 make check 因系统 Python 未装 Pillow 在 API 冒烟阶段中止；按仓库约定在 ~/.imgenv 装 Pillow/NumPy 并用该 venv 的 PATH 重跑，全套门禁通过。发现产品视图测试替身缺 setInterval 与短延迟 timer，给 tests/test_product.js 增加不触发后台轮询的 mock，产品视图 20 项与 Web 内核 262 项通过。更新整体接手记录和 MEMORY 的实际测试结果。
+- 遇到/修了什么：失败原因是沙箱 PATH 使用无 Pillow 的系统 Python；不是测试失败。另一个产品视图用例替身未模拟浏览器 timers，未触发成功断言前 Node 会静默退出；已修测试替身，并重新执行 make check 全套通过。门禁通过不等于视觉、用户批准或真机验收。
+- 下一步：查看最终 diff/status，补齐当前分支及未完成范围的交接信息；提交本轮文档和测试替身改动，并普通 push 到 arena/8f8b86a5-zhuochong。确认 push 后 HEAD/ref、工作树状态。后续如做 T67.7，先确认母稿实际存在并遵守用户批准门槛。

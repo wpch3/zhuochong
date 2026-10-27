@@ -4,9 +4,9 @@
 > 配套：`REQUIREMENTS.md`（要什么）、`MEMORY.md`（现状与决策）、`GAPS.md`（缺什么）、`TASKS.md`（任务号）、
 > `JOURNAL.md`（日志）、`LESSONS.md`（教训）。
 
-更新：2026-10-25（第六十一问：新增铁律 7 / 8）｜ 分支：`arena/ba836be0-zhuochong`
+更新：2026-10-27（接手审阅；保留铁律 7 / 8）｜ 当前分支：`arena/8f8b86a5-zhuochong`
 
-> **当前任务入口（2026-10-27）**：上述元数据是历史记录，不是当前分支状态。小寻 teen T67.7 长发返修的最新交接见 `docs/T67_7_HANDOFF_NEXT_AGENT_2026-10-27.md`，沙箱步骤见 `docs/T67_7_SANDBOX_RUNBOOK.md`。当前活动分支状态以 Arena 消息和 `git status` 为准。
+> **当前任务入口（2026-10-27）**：小寻 teen T67.7 长发返修的任务交接见 `docs/T67_7_HANDOFF_NEXT_AGENT_2026-10-27.md`，沙箱步骤见 `docs/T67_7_SANDBOX_RUNBOOK.md`；项目整体方向与本次阅读边界见 `docs/PROJECT_TAKEOVER_2026-10-27.md`。旧 HANDOVER/T67.7 文件中出现的 `arena/ba836be0-zhuochong` 是历史分支名；本次固定活动分支以 Arena 消息和 `git status` 为准，不得切换或重置。
 
 ---
 
@@ -281,9 +281,11 @@ bash tools/voice_setup.sh           # 音色包丢失时一键重建（模型不
 ```bash
 bash scripts/memory_append.sh "本轮做了什么（含思考）" "遇到的问题与结论" "下一步"   # 必须 3 个参数
 git add -A && git commit -m "中文说明：改了什么、为什么"
-git push origin <本会话分支>
+git push origin <本次固定活动分支>
 ```
-- push 前若被拒：`git fetch` + `git rebase`，不要 force。
+- 用户明确要求：**每次任务完成都要提交并上传**；普通 push 到当前 Arena 固定分支，不漏掉纯文档交付。
+- 当前会话分支由 Arena 指定，不能照抄旧交接里的名字；push 前用 `git status --short --branch` 核对。
+- push 前若被拒：先 `git fetch` 核实分支与历史，再用安全的 rebase/fast-forward 方式处理；不要 force。
 - 日志通道只用 `ci-logs/`（`gh run view` 的域名在沙箱不通）。
 
 ## 六、汇报格式（用户要的样子）

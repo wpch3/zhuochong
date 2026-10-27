@@ -79,7 +79,10 @@ async function main() {
     document, fetch, console,
     URLSearchParams,
     URL: { createObjectURL: () => "blob:test", revokeObjectURL: () => {} },
-    setTimeout: () => 1, clearTimeout: () => {},
+    setTimeout: (fn, ms) => { if (ms <= 1) Promise.resolve().then(fn); return 1; },
+    clearTimeout: () => {},
+    // product.js 在浏览器启动时注册主动开口轮询；单测只需模拟注册，不执行后台计时器。
+    setInterval: () => 1, clearInterval: () => {},
   };
   vm.runInNewContext(fs.readFileSync(path.join(WEB, "product.js"), "utf8"), context, { filename: "product.js" });
   const tick = async () => { await new Promise((r) => setImmediate(r)); await new Promise((r) => setImmediate(r)); };
