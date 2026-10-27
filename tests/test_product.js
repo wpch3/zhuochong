@@ -75,14 +75,31 @@ async function main() {
     if (String(url).startsWith("/api/frame.png")) return { ok: true, blob: async () => ({ size: 4 }) };
     return jsonResponse({ ok: true });
   };
+  /* 受控假定时器（与 test_web.js 同一思路）：零延时定时器在下个 tick 排空，
+     正延时定时器（气泡寿命、33ms 帧轮询、12s 主动说话轮询）挂起不跑——
+     单测只推进逻辑，不等真实时间，也不让递归帧循环拖住进程退出。
+     T69.2 起 send() 要 await sleep(0) 等节奏，没有零延时通路它会永挂，
+     Node 事件循环清空后进程静默 0 退出，20 条断言一条都不会执行。 */
+  const timers = new Map();
+  let timerSeq = 0;
   const context = {
     document, fetch, console,
     URLSearchParams,
     URL: { createObjectURL: () => "blob:test", revokeObjectURL: () => {} },
-    setTimeout: () => 1, clearTimeout: () => {},
+    setTimeout: (fn, ms) => { const id = ++timerSeq; timers.set(id, { fn, ms: Number(ms) || 0 }); return id; },
+    clearTimeout: (id) => { timers.delete(id); },
+    setInterval: (fn) => { const id = ++timerSeq; timers.set(id, { fn, repeat: true }); return id; },
+    clearInterval: (id) => { timers.delete(id); },
   };
   vm.runInNewContext(fs.readFileSync(path.join(WEB, "product.js"), "utf8"), context, { filename: "product.js" });
-  const tick = async () => { await new Promise((r) => setImmediate(r)); await new Promise((r) => setImmediate(r)); };
+  const tick = async () => {
+    for (let round = 0; round < 8; round++) {
+      await new Promise((r) => setImmediate(r));
+      const due = [...timers.entries()].filter(([, t]) => !t.repeat && t.ms === 0);
+      if (!due.length) break;
+      for (const [id, t] of due) { if (timers.has(id)) { timers.delete(id); t.fn(); } }
+    }
+  };
   await tick();
 
   assert.strictEqual(document.title, copy.title, "文案加载后设置产品窗口标题");
@@ -90,7 +107,8 @@ async function main() {
   assert.strictEqual(elements.conversation.children[0].children[0].textContent, copy.welcome, "初始角色气泡显示欢迎语");
 
   elements.message.value = "嗨，小寻";
-  await elements.send.fire("click");
+  /* send() 会等零延时节奏器，不能直接 await（永挂）；交给 tick 排空后再断言 */
+  elements.send.fire("click").catch(() => {});
   await tick();
   assert.strictEqual(chats.length, 1, "发送操作向 /api/chat 发出一条请求");
   assert.strictEqual(chats[0].get("text"), "嗨，小寻", "发送原文不丢失");
@@ -117,13 +135,13 @@ async function main() {
 
   elements.sensitive.checked = true;
   elements.message.value = "只在本机处理";
-  await elements.send.fire("click");
+  elements.send.fire("click").catch(() => {});
   await tick();
   assert.strictEqual(chats[2].get("sensitive"), "1", "隐私开关确实随聊天请求发送");
 
   chatFailure = true;
   elements.message.value = "隐私请求";
-  await elements.send.fire("click");
+  elements.send.fire("click").catch(() => {});
   await tick();
   assert(elements.conversation.children[0].textContent.includes("本地模型不可用"), "上游拒绝要显示真实错误而不伪装成回复");
   assert(elements.conversation.children[0].textContent.includes("本机没有可用模型"), "隐私拦截原因必须用人话解释");

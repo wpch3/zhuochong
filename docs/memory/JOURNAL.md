@@ -7772,3 +7772,8 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 
 **数**：`make test` 1412/0、`make asan` 1412/0（ASAN 抓到 chain_w 动态分配在
 加载失败时漏 72 字节，改成固定数组后彻底没有这条路）、`make selfcheck` 720/0。
+
+## 2026-10-27 11:24
+- 做了什么：新代理全仓库通读审计（1251 个跟踪文件：8 角色/44 个 C 模块 3.3 万行/102 个 Py 工具 4.7 万行/76 个供应商配置/38 个 web 文件），重建沙箱重置后丢失的 /home/user/.imgenv（Pillow 13.0.0/numpy 2.4.6/scipy 1.17.1，版本同运行手册），并修复两处重置后暴露的测试链断裂；亲眼复核 T67.7 真值源（长发/短发设定稿、back-only v1/v2 母稿、生产六件联系表、headless 整机长短发对照帧）。
+- 遇到/修了什么：两处断裂：(1) tests/test_product.js 的 VM 夹具只有 setTimeout/clearTimeout 空壳，T69.2 后 product.js 加载即注册 setInterval 主动说话轮询，且 send() 要 await sleep(0)（内部走 setTimeout）——空壳永不回调导致 send 的 Promise 永挂，Node 事件循环清空后静默 0 退出，20 条断言自 T69.2 起一条都没执行，交接文「20 项全过」是过时口径。按 test_web.js 同款改成受控假定时器（零延时下个 tick 排空、正延时挂起不跑），三个 send 触发改非阻塞。(2) Makefile 的 smoke 硬编码系统 python3（无 PIL），统一改用 $(PYTHON_IMG)，与其余图像工具同口径。复测全绿：selfcheck 720/0、warncheck 零告警、C 单测 1412/0、ASan 1412/0、smoke 331/0、web 262+20/0。T67.7 目视结论：生产六件仍是失败件（hair_long_back 烤着整身幽灵与块状锯齿空洞、sidelong 两端带手部像素、crown 下缘带肤色兜帽色）；母稿 backonly_v2 两侧外轮廓有黑三角缺口、头顶高光区薄荷偏色；整机长发帧两侧黑缺口清晰可见，发色比短发基准更紫更艳（中位紫偏 B-R 10 vs 4，p90 饱和 41 vs 29）。/tmp/t67_7_candidates 确认随沙箱灭失，未恢复。
+- 下一步：T67.7 按锁定顺序重画 hair-only 母稿候选（实验只在 /tmp，发色以原装短发为唯一基准，母稿只含头发像素），本人按整帧 1x/1.5x/局部 4-8x 与白底灰底深底合成验收后，提请用户目视批准；未获批不拆六件、不接生产。

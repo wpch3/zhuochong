@@ -83,7 +83,7 @@ preview: $(BUILD)/zhuochong_preview
 
 # 互动/动作端到端冒烟（自己起一个预览再打一圈端点，判据是"画面真的变了"）
 smoke: $(BUILD)/zhuochong_preview
-	@python3 tools/api_smoke.py --spawn --port 5200 --root .
+	@$(PYTHON_IMG) tools/api_smoke.py --spawn --port 5200 --root .
 
 # ---------------------------------------------------------------- 素材体检（T67.2）
 # 重算全部精灵的六项指标并写基线。重画任何一张 @2x 之后跑这个，
