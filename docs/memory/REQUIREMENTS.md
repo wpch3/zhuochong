@@ -120,6 +120,7 @@
 | F13 | **聊天框里的所有要求必须完整计入仓库记忆区**（本轮新增） | [聊天] 2026-10-11 | 本文件 + WORKFLOW.md + GAPS.md | ✅ 本次完成 |
 | F14 | 交付前 `bash scripts/selfcheck_all.sh` 全绿 | [交接]六 | CI/自检 | ✅ |
 | F15 | **做测试软件 / 新模块前先参考那五个桌宠项目**（bongocat-sdl、bongocat-tauri、ds-local-pet、vpet、airi），**不会的上网找资料，不许闷头做**；查到什么、从哪查的要写进 `docs/REFERENCE_NOTES.md` | [聊天] 2026-10-13 | `docs/REFERENCE_NOTES.md` + `WORKFLOW.md` 二 | ✅ 本轮按此做了口型音素的查证 |
+| F16 | **每个完成的任务都要及时提交并上传到项目**，让资料跨云端/代理会话保留；提交只包含本任务相关文件，推送到当前会话分支，普通 push、不强推 | [聊天] 2026-10-27 | `docs/memory/WORKFLOW.md` 第五节；每轮交付记录在 `JOURNAL.md` | ✅ 已记录并按本会话分支规则执行 |
 
 ## G. 变更记录（要求被覆盖时写这里）
 

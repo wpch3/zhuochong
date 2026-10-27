@@ -4,9 +4,9 @@
 > 配套：`REQUIREMENTS.md`（要什么）、`MEMORY.md`（现状与决策）、`GAPS.md`（缺什么）、`TASKS.md`（任务号）、
 > `JOURNAL.md`（日志）、`LESSONS.md`（教训）。
 
-更新：2026-10-25（第六十一问：新增铁律 7 / 8）｜ 分支：`arena/ba836be0-zhuochong`
+更新：2026-10-25（第六十一问：新增铁律 7 / 8）｜ 原分支记录：`arena/ba836be0-zhuochong`（历史元数据）
 
-> **当前任务入口（2026-10-27）**：上述元数据是历史记录，不是当前分支状态。小寻 teen T67.7 长发返修的最新交接见 `docs/T67_7_HANDOFF_NEXT_AGENT_2026-10-27.md`，沙箱步骤见 `docs/T67_7_SANDBOX_RUNBOOK.md`。当前活动分支状态以 Arena 消息和 `git status` 为准。
+> **当前任务入口（2026-10-27）**：上述分支字段和 T67.7 文档中的分支/HEAD/临时目录/进程，均为历史快照，不是当前事实。每个会话以 Arena 系统消息给定的固定分支、`git branch --show-current`、`git status` 和实际文件为准；不得因旧交接而切换分支。本会话固定在 `arena/fd7237b6-zhuochong`。T67.7 长发返修交接见 `docs/T67_7_HANDOFF_NEXT_AGENT_2026-10-27.md`，沙箱步骤见 `docs/T67_7_SANDBOX_RUNBOOK.md`；它们只提供项目流程和历史任务结论，临时状态必须重新核实。
 
 ---
 
@@ -278,12 +278,21 @@ bash tools/voice_setup.sh           # 音色包丢失时一键重建（模型不
 
 ## 五、收工三件事（少一件就是没收工）
 
+**用户明确要求：每个任务完成后都要及时提交并上传到项目里，避免仅存在当前代理上下文、临时目录或尚未同步的工作区。** 因此任务完成并核对后，当轮就在 Arena 指定的当前会话分支提交并普通 push；不得把多个独立完成的任务长期攒在本地。未完成的试验可以留在隔离区，但不能伪装成已完成交付；不应为了“每次提交”把候选素材或不安全内容写进生产目录。
+
 ```bash
 bash scripts/memory_append.sh "本轮做了什么（含思考）" "遇到的问题与结论" "下一步"   # 必须 3 个参数
-git add -A && git commit -m "中文说明：改了什么、为什么"
-git push origin <本会话分支>
+git status --short --branch
+git diff --check
+git diff -- <本轮文件>
+git add -- <本轮相关文件> && git commit -m "中文说明：改了什么、为什么"
+git fetch origin
+git rebase origin/<本会话分支>   # 仅当远端有新提交时；保留远端历史并解决冲突
+git push origin <本会话分支>    # 普通 push，禁止 force
 ```
-- push 前若被拒：`git fetch` + `git rebase`，不要 force。
+- 只暂存本任务相关文件，不用宽泛的 `git add -A` 把临时或无关文件带入提交。
+- push 被拒时先 `git fetch`、检查分支差异并 rebase；不得 force push。分支名以本会话运行时状态为准，文档里的旧名称不能覆盖 Arena 分支约束。
+- 若某个会话没有产生应入库的变更，不制造空提交；明确说明无变更，而不是声称已提交。
 - 日志通道只用 `ci-logs/`（`gh run view` 的域名在沙箱不通）。
 
 ## 六、汇报格式（用户要的样子）
