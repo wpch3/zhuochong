@@ -4536,11 +4536,65 @@ def check_tools(root):
         txt = open(rb, encoding="utf-8").read()
         allmk = sorted(os.path.basename(f) for f in
                        glob.glob(os.path.join(root, "tools", "make_*_parts.py")))
-        # 例外：不是从 base.png 这条身体重建链上走的工具（输入是另一批图）
+        # 兼容旧名：make_parts.py 也写 sprites（G107 真因），但不符合 make_*_parts.py 通配
+        _legacy = os.path.join(root, "tools", "make_parts.py")
+        if os.path.exists(_legacy):
+            allmk.append("make_parts.py")
+            allmk = sorted(set(allmk))
+        # 例外：不在 body_full 这条主重建链上的工具（输入是另一批图，或已声明离链）
+        # —— 声明口径见 TASKS T31.10：文件头 30 行内写“不在重建链”或“off_chain”即视为显式声明
+        def _has_off_chain_header(path):
+            try:
+                head = open(path, encoding="utf-8").read().splitlines()[:30]
+                h = "\n".join(head).lower()
+                return ("不在重建链" in h or "off_chain" in h or "off-chain" in h
+                        or "故意没有挂进" in h)
+            except Exception:
+                return False
         off_chain = {"make_face_parts.py"}    # 表情特写切件，输入是 parts_src/expressions
-        notin = [m for m in allmk if m not in txt and m not in off_chain]
+        notin = []
+        for m in allmk:
+            if m in txt or m in off_chain:
+                continue
+            # 已在文件头声明离链的，视为合规（T31.10）
+            fp = os.path.join(root, "tools", m)
+            if _has_off_chain_header(fp):
+                continue
+            notin.append(m)
         check("切件工具都进了重建链", not notin,
               f"{len(allmk)} 个" + (f"，漏了 {notin}" if notin else ""))
+
+        # 扩展闸：任何写进 sprites/ 的脚本都必须在链里或声明离链（T31.10 彻底版）
+        import pathlib as _pl
+        sprite_writers = []
+        for cand in _pl.Path(os.path.join(root, "tools")).glob("*.py"):
+            cname = cand.name
+            # 已被上一条闸覆盖的 make_* 切件不重复判
+            if cname.startswith("make_") and cname in allmk:
+                continue
+            try:
+                ctxt = cand.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            if "sprites" not in ctxt:
+                continue
+            # 只有“写 sprites 目录”才算：save/open 的那一行里路径包含 sprites
+            is_sprite_writer = False
+            for line in ctxt.splitlines():
+                if "sprites" in line and (".save(" in line or "json.dump" in line or "open(" in line and "\"w\"" in line or "'w'" in line):
+                    # 需是写到 sprites/ 目录（不是读）
+                    if "sprites/" in line or 'os.path.join' in line and "sprites" in line:
+                        # 排除 QA 类：out_dir/logs/docs/qa 不是 sprites
+                        if "out_dir" in line or "logs/" in line or "docs/qa" in line:
+                            continue
+                        is_sprite_writer = True
+                        break
+            if not is_sprite_writer:
+                continue
+            if cname not in txt and not _has_off_chain_header(str(cand)):
+                sprite_writers.append(cname)
+        check("写 sprites 的脚本都在链里或已声明离链", not sprite_writers,
+              f"{len(sprite_writers)} 个离链未声明" + (f"：{sprite_writers}" if sprite_writers else ""))
         # 步骤编号必须连号、总数一致（改脚本时最容易忘改的就是这个）
         steps = re.findall(r'step\s+"(\d+)/(\d+)\s', txt)
         nums = [int(a) for a, _ in steps]

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""make_parts.py - 从 body_full.png 生成“第一版可动拆件”。
+"""make_parts.py - 从 body_full.png 生成“第一版可动拆件”。【不在重建链上】
 
 当前阶段（交接文件第十一节第 4 步：先做待机、眨眼、视线）：
   - 真实拆件（眼睛、嘴、身体分段）需要 AI 重绘的独立素材，属于下一步；
