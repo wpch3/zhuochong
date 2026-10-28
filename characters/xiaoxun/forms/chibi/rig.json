@@ -6176,7 +6176,7 @@
   "generated_by": {
     "tool": "tools/make_rig.py",
     "sources": {
-      "tools/make_rig.py": "85b51844642a212a34f7d74b46a6f75be210a0633125d162ebfea091c1490e51",
+      "tools/make_rig.py": "d6485cb699715475b86a1dd2b661d34d23b909c4d76a1bd3760e6e8511ea0fec",
       "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
       "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3",
       "characters/xiaoxun/expressions/peek_blush.exp3.json": "d692dbda9205d8cf4451226e5d2adcbffff984246f1f2156723e005aa63ae59b"
