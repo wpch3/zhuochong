@@ -4219,6 +4219,37 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                          % FORE_LONG_PX,
                  "points": _lpts})
 
+            # —— G103 肘部硬折痕平滑（-80° 时纸片对折）——
+            # 折角处外侧鼓起、内侧微收，用 keyform 让肘部随 ParamArm{L,R}B 线性过渡。
+            # 0 = 原件静止零改动，±5 中度，±10 满额（外凸 8px 内收 2px，r=1/2 最重）。
+            _el_taper = (0.0, 0.7, 1.0, 0.6, 0.2)
+            _is_left = _side == "l"
+            def _el_pts(level):
+                _out=[]
+                for _r, _tp in enumerate(_el_taper):
+                    if _tp==0: continue
+                    for _c in range(3):
+                        if _is_left:
+                            _bd=-8.0*_tp if _c==0 else (-2.0*_tp if _c==1 else 2.0*_tp)
+                        else:
+                            _bd= 8.0*_tp if _c==2 else ( 2.0*_tp if _c==1 else -2.0*_tp)
+                        if abs(_bd)>0.3:
+                            _out.append({"c":_c,"r":_r,"dx":round(_bd*level,2)})
+                return _out
+            _el_keys=[
+                {"v":-10.0,"points":_el_pts(1.25)},
+                {"v":-5.0,"points":_el_pts(0.6)},
+                {"v":0.0,"points":[]},
+                {"v":5.0,"points":_el_pts(0.6)},
+                {"v":10.0,"points":_el_pts(1.25)},
+            ]
+            rig["deformers"].append(
+                {"id":"arm_%s_elbow_smooth" % _side,"part":"arm_%s_fore" % _side,
+                 "cols":2,"rows":4,"param":"ParamArm%sB" % _side.upper(),
+                 "parent":"fore_%s_mid" % _side,
+                 "note":"G103 肘部硬折痕平滑：弯曲 -80° 时外凸内收消除纸片对折，外凸 8px 内收 2px，0=原件",
+                 "keys":_el_keys})
+
     # ★ T66.17：袖管的**自主摆动**（ambient drift）。
     #   和裙子/头发同一条教训：本引擎的物理输出是"滞后量 pos−target"，待机时手臂
     #   几乎不动 ⇒ 物理给的量≈0 ⇒ 袖管是死的。所以布自己要有风。
