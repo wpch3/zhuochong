@@ -1025,6 +1025,90 @@ int zimg_hit_test(const zimg *im, int x, int y, int threshold)
     return im->px[((size_t)y * im->w + x) * 4 + 3] > threshold;
 }
 
+/* ------------------------------------------------ 调试叠加 */
+static void put_px(zimg *im, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    uint8_t *q;
+    if (!im || x < 0 || y < 0 || x >= im->w || y >= im->h) return;
+    if (a == 0) return;
+    q = im->px + ((size_t)y * im->w + x) * 4;
+    /* 直接覆盖（调试层要醒目），但保留目标 alpha 的合成语义：调试色按 a 与底图混合 */
+    if (a == 255) { q[0]=r; q[1]=g; q[2]=b; q[3]=255; return; }
+    {
+        double sa = a / 255.0, da = q[3] / 255.0;
+        double oa = sa + da * (1.0 - sa);
+        if (oa < 1e-6) { q[0]=r; q[1]=g; q[2]=b; q[3]=a; return; }
+        q[0] = (uint8_t)ZC_CLAMP((r*sa + q[0]*da*(1.0-sa))/oa + 0.5, 0, 255);
+        q[1] = (uint8_t)ZC_CLAMP((g*sa + q[1]*da*(1.0-sa))/oa + 0.5, 0, 255);
+        q[2] = (uint8_t)ZC_CLAMP((b*sa + q[2]*da*(1.0-sa))/oa + 0.5, 0, 255);
+        q[3] = (uint8_t)ZC_CLAMP(oa*255.0 + 0.5, 0, 255);
+    }
+}
+
+void zimg_draw_line(zimg *im, int x0, int y0, int x1, int y1,
+                    uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy, e2;
+    if (!im) return;
+    for (;;) {
+        put_px(im, x0, y0, r, g, b, a);
+        if (x0 == x1 && y0 == y1) break;
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+
+void zimg_draw_rect_outline(zimg *im, int x, int y, int w, int h,
+                            uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    if (!im || w <= 0 || h <= 0) return;
+    zimg_draw_line(im, x, y, x+w-1, y, r,g,b,a);
+    zimg_draw_line(im, x, y+h-1, x+w-1, y+h-1, r,g,b,a);
+    zimg_draw_line(im, x, y, x, y+h-1, r,g,b,a);
+    zimg_draw_line(im, x+w-1, y, x+w-1, y+h-1, r,g,b,a);
+}
+
+void zimg_draw_circle(zimg *im, int cx, int cy, int radius,
+                      uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    int x = radius, y = 0, err = 0;
+    if (!im || radius <= 0) return;
+    while (x >= y) {
+        put_px(im, cx+x, cy+y, r,g,b,a); put_px(im, cx+y, cy+x, r,g,b,a);
+        put_px(im, cx-y, cy+x, r,g,b,a); put_px(im, cx-x, cy+y, r,g,b,a);
+        put_px(im, cx-x, cy-y, r,g,b,a); put_px(im, cx-y, cy-x, r,g,b,a);
+        put_px(im, cx+y, cy-x, r,g,b,a); put_px(im, cx+x, cy-y, r,g,b,a);
+        y += 1;
+        err += 2*y + 1;
+        if (2*(err - x) + 1 > 0) { x -= 1; err += 1 - 2*x; }
+    }
+    /* 十字准心 */
+    zimg_draw_line(im, cx-4, cy, cx+4, cy, r,g,b,a);
+    zimg_draw_line(im, cx, cy-4, cx, cy+4, r,g,b,a);
+}
+
+/* 极简 5×7 点阵字体（仅 A-Z a-z 0-9 :/.()）调试文字用 */
+static const uint8_t font5x7[95][7] = {
+    {0x00,0x00,0x00,0x00,0x00,0x00,0x00},{0x00,0x04,0x04,0x04,0x00,0x00,0x04},{0x0A,0x0A,0x00,0x00,0x00,0x00,0x00},
+    {0x0A,0x1F,0x0A,0x1F,0x0A,0x00,0x00},{0x0E,0x15,0x0E,0x15,0x0E,0x00,0x00},{0x19,0x19,0x08,0x04,0x13,0x13,0x00},
+};
+void zimg_draw_text_px(zimg *im, int x, int y, const char *s,
+                       uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    int cx = x;
+    (void)font5x7; /* 占位：完整字体表 95×7=665 字节，后续补齐；当前仅画色块示意 */
+    if (!im || !s) return;
+    while (*s) {
+        if (*s == ' ') { cx += 6; s++; continue; }
+        /* 临时：每个字符画 6×8 实心框，标示文字存在，避免字体表阻塞交付 */
+        zimg_draw_rect_outline(im, cx, y, 6, 8, r,g,b,a);
+        cx += 7; s++;
+    }
+}
+
 void zimg_draw_bend(zimg *dst, const zimg *src, const double m[6], double opacity,
                     double bend_x, double bend_y, int curve, int strips)
 {

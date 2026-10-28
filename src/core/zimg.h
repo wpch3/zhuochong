@@ -171,6 +171,17 @@ void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,
 /* 命中测试：该点 alpha 是否 > threshold（用于“只让角色挡鼠标”）。 */
 int  zimg_hit_test(const zimg *im, int x, int y, int threshold);
 
+/* --------------------------------------------------------------- 调试叠加（铁律七 2.2 / R2） */
+/* 在已合成好的帧上直接画调试几何（像素空间，覆盖式，不改 alpha 逻辑）。 */
+void zimg_draw_line(zimg *im, int x0, int y0, int x1, int y1,
+                    uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void zimg_draw_circle(zimg *im, int cx, int cy, int radius,
+                      uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void zimg_draw_rect_outline(zimg *im, int x, int y, int w, int h,
+                            uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void zimg_draw_text_px(zimg *im, int x, int y, const char *s,
+                       uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
 /* 便捷：生成旋转+缩放的矩阵 */
 void zimg_make_matrix(double m[6], double tx, double ty, double sx, double sy,
                       double rotate_deg, double pivot_x, double pivot_y);

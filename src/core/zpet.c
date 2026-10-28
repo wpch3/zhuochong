@@ -1425,6 +1425,12 @@ void zpet_scale_reset(zpet *p)
     zrig_set_view_scale(p->rig, p->scale);
 }
 
+int zpet_debug_overlay(zpet *p, zimg *frame, int mode, double scale)
+{
+    if (!p || !p->rig || !frame) return -1;
+    return zrig_debug_overlay(p->rig, frame, mode, scale);
+}
+
 void zpet_set_tool(zpet *p, zpet_tool t) { if (p) p->tool = t; }
 zpet_tool zpet_tool_get(const zpet *p) { return p ? p->tool : ZPET_TOOL_HAND; }
 

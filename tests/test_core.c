@@ -11232,10 +11232,20 @@ static void test_micro_expression(void)
     }
 }
 
+/* R1 快闸：重型用例默认跳过，--soak 才跑。否则 make test 50 秒超时，CI 形同虚设。 */
+static int g_soak = 0;
+
 int main(int argc, char **argv)
 {
+    int ai;
     zlog_set_level(ZLOG_ERROR);
-    z_strlcpy(g_root, argc > 1 ? argv[1] : ".", sizeof(g_root));
+    z_strlcpy(g_root, ".", sizeof(g_root));
+    for (ai = 1; ai < argc; ++ai) {
+        if (z_streq(argv[ai], "--soak") || z_streq(argv[ai], "--long") || z_streq(argv[ai], "soak"))
+            g_soak = 1;
+        else if (argv[ai][0] != '-')
+            z_strlcpy(g_root, argv[ai], sizeof(g_root));
+    }
 
     printf("单元测试（[测试锁]）\n根目录：%s\n\n", g_root);
     test_json();
@@ -11311,7 +11321,8 @@ int main(int argc, char **argv)
     test_pose();
     test_xfade();
     test_mask_multi();
-    test_longrun();
+    if (g_soak) test_longrun();
+    else printf("== 长稳：2 万帧（--soak 才跑，已跳过）==\n");
     test_expression();
     test_motion_from();
     test_persona();

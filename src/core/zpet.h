@@ -237,6 +237,9 @@ int         zpet_affection_tier(const zpet *p);
 const char *zpet_affection_tier_name(const zpet *p);
 void        zpet_set_affection(zpet *p, int points);
 
+/* 调试叠加（R2）：把当前帧按 mode 叠上骨/框/力矢，直接改像素。 */
+int zpet_debug_overlay(zpet *p, zimg *frame, int mode, double scale);
+
 /* --------------------------------------------------------------- 形态/服装 */
 /* 扫描时被上限丢掉了几条（0 = 没丢）。界面/日志靠它说清"为什么少了"，
    而不是让用户对着一份短清单猜。 */

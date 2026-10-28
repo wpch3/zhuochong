@@ -8475,3 +8475,102 @@ double zrig_part_channel(const zrig *r, const char *part_id, const char *param)
         default: return 0.0;
     }
 }
+
+/* ----------------------------------------------------- 调试叠加（R2） */
+int zrig_debug_overlay(zrig *r, zimg *frame, int mode, double scale)
+{
+    int i;
+    if (!r || !frame || mode == 0) return -1;
+    if (scale <= 0.0) scale = 1.0;
+
+    /* BONES：画布 pivot → 帧坐标，父子连线 */
+    if (mode & ZRIG_DEBUG_BONES) {
+        for (i = 0; i < r->ngroups; ++i) {
+            const zgroup *g = &r->groups[i];
+            int x = (int)(g->pivot[0] * scale + 0.5);
+            int y = (int)(g->pivot[1] * scale + 0.5);
+            zimg_draw_circle(frame, x, y, 6, 255, 220, 40, 220);
+            if (g->parent >= 0 && g->parent < r->ngroups) {
+                const zgroup *pg = &r->groups[g->parent];
+                int px = (int)(pg->pivot[0] * scale + 0.5);
+                int py = (int)(pg->pivot[1] * scale + 0.5);
+                zimg_draw_line(frame, px, py, x, y, 255, 180, 0, 180);
+            }
+        }
+    }
+    /* HITBOX：regions 矩形 */
+    if (mode & ZRIG_DEBUG_HITBOX) {
+        for (i = 0; i < r->nregions; ++i) {
+            const zregion *rg = &r->regions[i];
+            int x = (int)(rg->rect[0] * scale + 0.5);
+            int y = (int)(rg->rect[1] * scale + 0.5);
+            int w = (int)(rg->rect[2] * scale + 0.5);
+            int h = (int)(rg->rect[3] * scale + 0.5);
+            zimg_draw_rect_outline(frame, x, y, w, h, 80, 220, 255, 210);
+        }
+    }
+    /* WIREFRAME：每个部件的包围盒（近似网格拓扑；精细逐三角线由后续 zimg_draw_mesh 追踪） */
+    if (mode & ZRIG_DEBUG_WIREFRAME) {
+        for (i = 0; i < r->nparts; ++i) {
+            const zpart *p = &r->parts[i];
+            int visible = 1;
+            if (r->vis_isolate) visible = (r->vis_override[i] == 2);
+            else if (r->vis_override[i] == 1) visible = 0;
+            if (!visible) continue;
+            /* 估算当前绘制用的矩阵平移（已含组偏移），画一个与贴图同大的框 */
+            double m[6];
+            double ax = 0.0, ay = 0.0;
+            /* 取当前帧的绘制矩阵：compute_draw_state 会合并 bend/mesh/组矩阵，但这里
+               轻量地只取组原点附近的近似位置 —— 目的是让审查者看到“这块图在哪”，
+               而非像素级对位（精确线框需追踪 mesh_bend_core，每部件 2 条三角形边）。 */
+            if (p->group >= 0 && p->group < r->ngroups) {
+                ax = r->groups[p->group].pivot[0];
+                ay = r->groups[p->group].pivot[1];
+                (void)ax; (void)ay;
+            }
+            /* 用 part.pos + img尺寸 估框，叠加当前 p_dx/p_dy 与 bend */
+            {
+                int x = (int)((p->pos[0] + r->p_dx[i]) * scale + 0.5);
+                int y = (int)((p->pos[1] + r->p_dy[i]) * scale + 0.5);
+                int w = p->img ? (int)(p->img->w * scale * p->scale + 0.5) : (int)(60 * scale);
+                int h = p->img ? (int)(p->img->h * scale * p->scale + 0.5) : (int)(60 * scale);
+                zimg_draw_rect_outline(frame, x, y, w, h, 160, 255, 160, 140);
+                if (p->mesh_node >= 0)
+                    zimg_draw_circle(frame, x + w/2, y + h/2, 3, 180, 255, 180, 200);
+            }
+            (void)m;
+        }
+    }
+    /* FORCES：物理摆当前推力矢量（在 pivot 上画箭头） */
+    if (mode & ZRIG_DEBUG_FORCES) {
+        for (i = 0; i < r->nphys; ++i) {
+            const zphys *ph = &r->phys[i];
+            if (ph->driver < 0 || ph->driver >= r->ngroups) continue;
+            {
+                const zgroup *g = &r->groups[ph->driver];
+                int x = (int)(g->pivot[0] * scale + 0.5);
+                int y = (int)(g->pivot[1] * scale + 0.5);
+                int dx = (int)(ph->out_last * 0.8); /* 像素/度 → 帧像素近似 */
+                int dy = 0;
+                if (ph->param == P_BEND_X) dx = (int)(ph->out_last * scale * 0.3);
+                if (ph->param == P_BEND_Y) { dx = 0; dy = (int)(ph->out_last * scale * 0.3); }
+                if (fabs(ph->out_last) > 0.5)
+                    zimg_draw_line(frame, x, y, x+dx, y+dy, 255, 80, 80, 220);
+            }
+        }
+        for (i = 0; i < r->np2; ++i) {
+            const zp2chain *ch = &r->p2[i];
+            if (ch->driver < 0 || ch->driver >= r->ngroups) continue;
+            {
+                const zgroup *g = &r->groups[ch->driver];
+                int x = (int)(g->pivot[0] * scale + 0.5);
+                int y = (int)(g->pivot[1] * scale + 0.5);
+                double ang = ch->nout > 0 ? ch->out[0].applied : 0.0;
+                int dx = (int)(ang * 0.5);
+                if (fabs(ang) > 0.3)
+                    zimg_draw_line(frame, x, y, x+dx, y-3, 255, 120, 255, 220);
+            }
+        }
+    }
+    return 0;
+}

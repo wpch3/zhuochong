@@ -86,6 +86,15 @@ const zimg *zrig_frame(zrig *r, double scale, int *out_w, int *out_h);
 const zimg *zrig_mask_frame(zrig *r, const char *part_id, double scale,
                             int *out_w, int *out_h);
 
+/* 调试叠加（R2 / 铁律七 2.2）：在已合成帧上画网格/骨点/碰撞区/力矢。
+   mode 位：1=网格线 2=骨骼锚点与父子线 4=碰撞热区 8=力矢（物理摆当前推力）。
+   返回 0 成功，-1 无帧。直接改帧内像素，调用方负责拷贝后调。 */
+#define ZRIG_DEBUG_WIREFRAME 1
+#define ZRIG_DEBUG_BONES     2
+#define ZRIG_DEBUG_HITBOX    4
+#define ZRIG_DEBUG_FORCES    8
+int zrig_debug_overlay(zrig *r, zimg *frame, int mode, double scale);
+
 /* --------------------------------------------------------------- 交互 */
 /* 画布坐标（未乘 scale）命中测试。threshold 建议 24（alpha 0..255）。 */
 int   zrig_hit_test(const zrig *r, int x, int y, int threshold);

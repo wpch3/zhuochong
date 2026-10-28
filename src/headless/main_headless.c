@@ -914,13 +914,30 @@ static void handle_request(zsock fd, const http_req *r)
         zimg *copy = NULL;
         int fw = 0, fh = 0;
         /* ?s=50..100：按百分比缩小后再编码。浏览器会拉回原尺寸显示，
-           画面略软但码率降到 1/4，远程预览能不能流畅全看这个。 */
+           画面略软但码率降到 1/4，远程预览能不能流畅全看这个。
+           ?debug=wireframe,bones,hitbox,forces（逗号分隔，R2）：在已合成帧上叠调试几何。 */
         int spct = qint(r, "s", 100);
+        char dbg_s[128] = "";
+        int dbg_mode = 0;
+        if (qstr(r, "debug", dbg_s, sizeof dbg_s) && dbg_s[0]) {
+            if (strstr(dbg_s, "wireframe")) dbg_mode |= 1;
+            if (strstr(dbg_s, "bone"))      dbg_mode |= 2;
+            if (strstr(dbg_s, "wire"))      dbg_mode |= 1;
+            if (strstr(dbg_s, "hitbox") || strstr(dbg_s, "collider")) dbg_mode |= 4;
+            if (strstr(dbg_s, "force"))     dbg_mode |= 8;
+            if (strstr(dbg_s, "all"))       dbg_mode = 15;
+            if (dbg_mode == 0 && dbg_s[0])  dbg_mode = 15; /* 未知值按 all，免得被静默忽略 */
+        }
         if (spct < 25) spct = 25;
         if (spct > 100) spct = 100;
         LOCK();
         fr = zpet_frame(g_pet, &fw, &fh);
         if (fr) copy = zimg_clone(fr);
+        if (copy && dbg_mode) {
+            double sc = zpet_scale(g_pet);
+            /* 调试叠加直接改像素，无需重渲染；scale 决定骨点换算 */
+            zpet_debug_overlay(g_pet, copy, dbg_mode, sc);
+        }
         UNLOCK();
         if (copy && spct < 100) {
             zimg *small = zimg_downscale(copy, copy->w * spct / 100, copy->h * spct / 100);
@@ -1708,14 +1725,27 @@ static void handle_request(zsock fd, const http_req *r)
         const zimg *fr;
         zimg *copy = NULL;
         int fw = 0, fh = 0;
-        /* ?s=50..100：按百分比缩小后再编码。浏览器会拉回原尺寸显示，
-           画面略软但码率降到 1/4，远程预览能不能流畅全看这个。 */
         int spct = qint(r, "s", 100);
+        char dbg_s2[128] = "";
+        int dbg_mode2 = 0;
+        if (qstr(r, "debug", dbg_s2, sizeof dbg_s2) && dbg_s2[0]) {
+            if (strstr(dbg_s2, "wireframe")) dbg_mode2 |= 1;
+            if (strstr(dbg_s2, "bone"))      dbg_mode2 |= 2;
+            if (strstr(dbg_s2, "wire"))      dbg_mode2 |= 1;
+            if (strstr(dbg_s2, "hitbox") || strstr(dbg_s2, "collider")) dbg_mode2 |= 4;
+            if (strstr(dbg_s2, "force"))     dbg_mode2 |= 8;
+            if (strstr(dbg_s2, "all"))       dbg_mode2 = 15;
+            if (dbg_mode2 == 0 && dbg_s2[0]) dbg_mode2 = 15;
+        }
         if (spct < 25) spct = 25;
         if (spct > 100) spct = 100;
         LOCK();
         fr = zpet_frame(g_pet, &fw, &fh);
         if (fr) copy = zimg_clone(fr);
+        if (copy && dbg_mode2) {
+            double sc = zpet_scale(g_pet);
+            zpet_debug_overlay(g_pet, copy, dbg_mode2, sc);
+        }
         UNLOCK();
         if (copy && spct < 100) {
             zimg *small = zimg_downscale(copy, copy->w * spct / 100, copy->h * spct / 100);
