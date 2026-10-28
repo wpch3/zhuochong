@@ -6899,6 +6899,10 @@ static int ensure_scaled(zrig *r, double scale)
         if (p->img_scaled && p->img_scaled->w == nw && p->img_scaled->h == nh) continue;
         zimg_free(p->img_scaled);
         p->img_scaled = (fabs(scale - 1.0) < 1e-6) ? zimg_clone(p->img) : zimg_resize(p->img, nw, nh);
+        /* 预缩放之后的图还要**再**被绘制矩阵缩一次（@2x 的 0.5），残留覆盖约 2 texel，
+           所以这里给缩放副本也建 mip 链（T31.4）。不建的话绘制只能退回逐像素分层
+           采样，一帧 26 ms → 38 ms，画面还不比 mip 好。 */
+        if (p->img_scaled) zimg_mip_build(p->img_scaled);
     }
     return 0;
 }

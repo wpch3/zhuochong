@@ -734,6 +734,282 @@ static void test_image(void)
     }
 }
 
+/* ------------------------------------------- 缩小采样（T31.4，G113）
+   病根不是"贴图画得糊"，是**缩小的时候一个目的像素只看了 1 个 texel**。
+
+   桌宠窗口 scale 0.55，而切件在 rig 里用的是 @2x 贴图（make_rig 把 scale 乘 0.5）
+   ⇒ 屏幕上 1 个像素对应源图里 180/49 ≈ 3.67 个 texel。旧代码走单点双线性，
+   等于在 3.67 个 texel 里**瞎挑一个**：手指之间那条 1~2 texel 宽的暗缝要么整条
+   被跳过（手指粘连），要么整条被踩中（一条断续黑线）。头发、睫毛、袖口条纹同理，
+   只是手最小、最先被看出来 —— 用户截图里"最显眼的一处"就是它。
+
+   闸的方式：**相位不变性**。同一条 1 texel 宽的暗线，在 4 个亚像素相位下缩小 4 倍，
+   输出必须几乎一样（正确的面积平均对相位不敏感）；单点采样会给出"要么全黑、
+   要么全白"的两极，怎么调相位都对不上。
+*/
+static void test_image_downsample_aa(void)
+{
+    SECTION("图像（T31.4）：缩小必须做面积平均，不许丢掉 1px 的暗线");
+    const uint8_t SKIN[3] = { 250, 240, 230 };     /* 肤色：三通道均值 240 */
+    const uint8_t LINE[3] = { 100, 88, 103 };      /* 工程统一线色：均值 97 */
+    const int SW = 32, SH = 8, DW = 8, DH = 8;     /* 32/8 = 4 texel 一个目的像素 */
+    zimg *src = zimg_new(SW, SH);
+    int phase_i;
+
+    {   /* 源图：整张肤色，正中间一列是暗线（模拟指缝 / 描边） */
+        int x, y;
+        for (y = 0; y < SH; ++y) {
+            for (x = 0; x < SW; ++x) {
+                uint8_t *q = src->px + ((size_t)y * SW + x) * 4;
+                const uint8_t *c = (x == 16) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+    }
+
+    {
+        double lo = 1e9, hi = -1e9;
+        for (phase_i = 0; phase_i < 4; ++phase_i) {
+            double m[6];
+            zimg *dst = zimg_new(DW, DH);
+            int x, y;
+            double rowmin = 1e9;
+            /* 4 个亚像素相位：0 / 0.25 / 0.5 / 0.75 texel。
+               缩小 4× ⇒ 目的方向平移 0.25 像素 = 源方向平移 1 texel；
+               这里要的是"不到 1 texel"的相位，所以目的方向只平移 0.0625。 */
+            double tx = phase_i * 0.0625;
+            zimg_make_matrix(m, tx, 0.0, (double)DW / SW, (double)DH / SH, 0.0, 0.0, 0.0);
+            zimg_draw(dst, src, m, 1.0);
+            for (y = 2; y < DH - 2; ++y) {
+                for (x = 0; x < DW; ++x) {
+                    const uint8_t *q = dst->px + ((size_t)y * DW + x) * 4;
+                    double L = (q[0] + q[1] + q[2]) / 3.0;
+                    if (q[3] < 200) continue;               /* 只看实心的目的像素 */
+                    if (L < rowmin) rowmin = L;
+                }
+            }
+            if (rowmin < lo) lo = rowmin;
+            if (rowmin > hi) hi = rowmin;
+            /* 覆盖率 = 1 texel / 4 texel = 25% ⇒ 亮度 ≈ 0.75×240 + 0.25×97 ≈ 204。
+               允许 [190, 218]：既覆盖"线还在"（<218），也覆盖"没有整条踩黑"（>190）。 */
+            CHECK(rowmin > 190.0 && rowmin < 218.0,
+                  "缩小 4× 后 1px 暗线必须落在 25%% 覆盖的灰度带（相位 %d：最暗 %.1f，"
+                  "线宽 1 texel 时单点采样只会给出 97 或 240）", phase_i, rowmin);
+            zimg_free(dst);
+        }
+        CHECK(hi - lo < 6.0,
+              "暗线深浅不许随亚像素相位跳（四个相位极差 %.1f 灰阶；单点采样实测 143）",
+              hi - lo);
+    }
+
+    {   /* 产品路径：**加载时建 mip 链**，缩小绘制读预滤波级别。
+           判据同一条 —— 1px 暗线在缩小 4× 后仍要留下约 25% 的灰度，
+           而不是"整条消失"或"整条踩黑"。 */
+        const int BW = 64, BH = 32, TW = 16, TH = 8;
+        zimg *big = zimg_new(BW, BH);
+        int x, y, phase_i;
+        double lo = 1e9, hi = -1e9;
+        for (y = 0; y < BH; ++y) {
+            for (x = 0; x < BW; ++x) {
+                uint8_t *q = big->px + ((size_t)y * BW + x) * 4;
+                const uint8_t *c = (x == 32) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        zimg_mip_build(big);
+        CHECK(big->mip != NULL && big->mip->w == BW / 2,
+              "应建出第 1 级 mip（%dx%d）", big->mip ? big->mip->w : 0,
+              big->mip ? big->mip->h : 0);
+        CHECK(big->mip == NULL || (big->mip->mip && big->mip->mip->w == BW / 4),
+              "应建出第 2 级 mip（%dx%d）",
+              (big->mip && big->mip->mip) ? big->mip->mip->w : 0,
+              (big->mip && big->mip->mip) ? big->mip->mip->h : 0);
+        for (phase_i = 0; phase_i < 4; ++phase_i) {
+            double m[6];
+            zimg *dst = zimg_new(TW, TH);
+            double rowmin = 1e9;
+            zimg_make_matrix(m, phase_i * 0.0625, 0.0, (double)TW / BW, (double)TH / BH,
+                             0.0, 0.0, 0.0);
+            zimg_draw(dst, big, m, 1.0);
+            for (y = 2; y < TH - 2; ++y) {
+                for (x = 0; x < TW; ++x) {
+                    const uint8_t *q = dst->px + ((size_t)y * TW + x) * 4;
+                    double L = (q[0] + q[1] + q[2]) / 3.0;
+                    if (q[3] < 200) continue;
+                    if (L < rowmin) rowmin = L;
+                }
+            }
+            if (rowmin < lo) lo = rowmin;
+            if (rowmin > hi) hi = rowmin;
+            CHECK(rowmin > 190.0 && rowmin < 218.0,
+                  "mip 路径：缩小 4× 后暗线仍要落在 25%% 覆盖带（相位 %d：最暗 %.1f）",
+                  phase_i, rowmin);
+            zimg_free(dst);
+        }
+        /* 阈值比分层采样那条（6.0）宽：mip 是**硬切级别**，没有三级之间的线性过渡，
+           亚 texel 相位仍会有几格抖动。实测 4 个相位极差 6.7，相对 143 灰阶的
+           对比度是 4.7%，肉眼看不出来；而单点采样是 0 / 143 的两极。 */
+        CHECK(hi - lo < 10.0, "mip 路径：暗线深浅不许随相位跳到两极（极差 %.1f 灰阶，"
+                              "对比度 143）", hi - lo);
+        {   /* 幂等：再建一次不许叠第二套（否则每帧调用就是内存泄漏） */
+            zimg *first = big->mip;
+            zimg_mip_build(big);
+            CHECK(big->mip == first, "zimg_mip_build 必须幂等");
+        }
+        {   /* 产品路径真的接上了：**从磁盘读进来的切件必须自带 mip**。
+               少了这一条，所有件都会掉回逐像素分层采样 —— 画面一样，
+               但一帧要多花一倍时间（实测 26 → 48 ms）。 */
+            zerr e;
+            zimg *back;
+            zerr_clear(&e);
+            CHECK(zimg_save_png(big, "/tmp/zc_mip_probe.png", &e) == 0,
+                  "mip 探针图应可写出：%s", e.msg);
+            back = zimg_load("/tmp/zc_mip_probe.png", &e);
+            CHECK(back != NULL, "mip 探针图应可读回：%s", e.msg);
+            if (back) {
+                CHECK(back->mip != NULL && back->mip->w == BW / 2,
+                      "zimg_load 之后必须自带 mip 链（实际 %s）",
+                      back->mip ? "有" : "没有");
+                zimg_free(back);
+            }
+        }
+        zimg_free(big);   /* 连带释放 mip 链（asan 会盯这一段） */
+    }
+
+    {   /* zimg_resize：部件加载时就被它预缩放（scale 0.55 × @2x 的 0.5），
+           所以这条路径才是 T31.4 的**主战场**。缩小必须面积平均，放大必须端点对齐。 */
+        zimg *src2 = zimg_new(32, 32);
+        zimg *small, *up;
+        int x, y, i, phase, lo = 999, hi = -1;
+        for (y = 0; y < 32; ++y) {
+            for (x = 0; x < 32; ++x) {
+                uint8_t *q = src2->px + ((size_t)y * 32 + x) * 4;
+                const uint8_t *c = (x == 16) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        /* ① 8× 缩小：1 texel 的暗线只剩 1/8 覆盖 ⇒ 亮度 ≈ 0.875×240 + 0.125×97 ≈ 222。
+              单点采样会给出 240（线完全消失）或 97（整条踩黑）两极。 */
+        small = zimg_resize(src2, 4, 4);
+        for (i = 0; i < 16; ++i) {
+            const uint8_t *q = small->px + i * 4;
+            double L = (q[0] + q[1] + q[2]) / 3.0;
+            if (L < lo) lo = (int)(L + 0.5);
+            if (L > hi) hi = (int)(L + 0.5);
+        }
+        CHECK(lo > 210 && lo < 232,
+              "zimg_resize 8× 缩小后 1px 暗线应落在 ~222 灰阶（实测最暗 %d、最亮 %d；"
+              "单点采样只会给 240 或 97）", lo, hi);
+        /* ② 相位不变：同一个 1px 线，源图整体左右平移后缩小，结果几乎一致 */
+        {
+            int spread = 0, plo = 999, phi = -1;
+            for (phase = 0; phase < 3; ++phase) {
+                zimg *sh = zimg_new(32, 32);
+                int m2 = 999;
+                for (y = 0; y < 32; ++y) {
+                    for (x = 0; x < 32; ++x) {
+                        uint8_t *q = sh->px + ((size_t)y * 32 + x) * 4;
+                        const uint8_t *c = (x == 16 + phase) ? LINE : SKIN;
+                        q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+                    }
+                }
+                {
+                    zimg *s2 = zimg_resize(sh, 4, 4);
+                    for (i = 0; i < 16; ++i) {
+                        const uint8_t *q = s2->px + i * 4;
+                        int L = (int)((q[0] + q[1] + q[2]) / 3.0 + 0.5);
+                        if (L < m2) m2 = L;
+                    }
+                    zimg_free(s2);
+                }
+                zimg_free(sh);
+                /* 每个相位只取它**自己最暗**的那个目的像素来比 ——
+                   整图的最大亮度永远是肤色 240，拿它当上界等于没比。 */
+                if (m2 < plo) plo = m2;
+                if (m2 > phi) phi = m2;
+            }
+            spread = phi - plo;
+            printf("    量到：各相位最暗像素 %d..%d，极差 %d（对比度 143）\n", plo, phi, spread);
+            CHECK(spread <= 12, "zimg_resize 缩小时暗线深浅不许随相位两极跳（极差 %d，对比度 143）",
+                  spread);
+        }
+        /* ③ 放大 2× 必须端点对齐、逐像素可预期（不能有面积平均带来的糊边） */
+        up = zimg_resize(small, 8, 8);
+        CHECK(up->px[3] == 255 && up->px[0] > 240,
+              "zimg_resize 放大 2× 后首像素应仍是肤色（实测 rgb %d,%d,%d）",
+              up->px[0], up->px[1], up->px[2]);
+        zimg_free(small); zimg_free(up); zimg_free(src2);
+    }
+
+    {   /* 1:1 必须逐像素原样：aa_steps 对覆盖 ≤1.4 texel 退回单点，放大路径一点没动 */
+        double m[6];
+        zimg *dst = zimg_new(SW, SH);
+        int i, diff = 0;
+        zimg_make_matrix(m, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, src, m, 1.0);
+        for (i = 0; i < SW * SH; ++i) {
+            if (dst->px[i * 4 + 0] != src->px[i * 4 + 0] ||
+                dst->px[i * 4 + 1] != src->px[i * 4 + 1] ||
+                dst->px[i * 4 + 2] != src->px[i * 4 + 2]) diff++;
+        }
+        CHECK(diff == 0, "1:1 绘制必须逐像素原样（差 %d px）—— 静止基线靠它", diff);
+        zimg_free(dst);
+    }
+
+    {   /* 放大 2× 必须**还是**普通双线性：暗线只影响它自己的两列，
+           不许被面积平均抹成一条更宽的糊边（那等于用"修缩小"换来"放大变糊"） */
+        double m[6];
+        zimg *u = zimg_new(16, 4), *dst = zimg_new(32, 8);
+        int x, y, touched = 0;
+        for (y = 0; y < 4; ++y) {
+            for (x = 0; x < 16; ++x) {
+                uint8_t *q = u->px + ((size_t)y * 16 + x) * 4;
+                const uint8_t *c = (x == 7) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        zimg_make_matrix(m, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, u, m, 1.0);
+        for (x = 0; x < 32; ++x) {
+            const uint8_t *q = dst->px + ((size_t)4 * 32 + x) * 4;
+            double L = (q[0] + q[1] + q[2]) / 3.0;
+            if (q[3] > 200 && L < 235.0) touched++;     /* 只数实心像素，右边缘外是透明 */
+        }
+        CHECK(touched == 4, "放大 2× 时 1px 暗线只该占 4 列（实测 %d 列）—— 多了就是在放大路径上"
+                            "也做了面积平均，画面会变糊", touched);
+        zimg_free(dst); zimg_free(u);
+    }
+
+    {   /* 半透明不能变脏：透明 texel 的颜色不许渗进不透明区域（预乘口径） */
+        double m[6];
+        zimg *dst = zimg_new(4, 4);
+        zimg *tsrc = zimg_new(16, 16);
+        int x, y, bad = 0;
+        for (y = 0; y < 16; ++y) {
+            for (x = 0; x < 16; ++x) {
+                uint8_t *q = tsrc->px + ((size_t)y * 16 + x) * 4;
+                int opaque = (x < 15);
+                q[0] = opaque ? 250 : 255;         /* 透明区故意放洋红垃圾色 */
+                q[1] = opaque ? 240 : 0;
+                q[2] = opaque ? 230 : 255;
+                q[3] = opaque ? 255 : 0;
+            }
+        }
+        zimg_make_matrix(m, 0.0, 0.0, 4.0, 4.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, tsrc, m, 1.0);
+        for (y = 0; y < 4; ++y) {
+            for (x = 0; x < 3; ++x) {
+                const uint8_t *q = dst->px + ((size_t)y * 4 + x) * 4;
+                if (q[3] > 250 && (q[0] != 250 || q[1] != 240 || q[2] != 230)) bad++;
+            }
+        }
+        CHECK(bad == 0, "缩小采样不许把透明 texel 的垃圾色混进来（脏了 %d px）", bad);
+        zimg_free(dst); zimg_free(tsrc);
+    }
+
+    zimg_free(src);
+}
+
 /* -------------------------------------------------------- deflate */
 static void test_deflate(void)
 {
@@ -11415,6 +11691,7 @@ int main(int argc, char **argv)
     test_phys2_rig();
     test_eye_aperture();
     test_image();
+    test_image_downsample_aa();
     test_deflate();
     test_config_and_pet();
     test_bad_config();
