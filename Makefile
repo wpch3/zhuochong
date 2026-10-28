@@ -25,6 +25,11 @@ CORE_SRC   = $(wildcard src/core/*.c)
 CORE_HDR   = $(wildcard src/core/*.h)
 CORE_OBJ   = $(patsubst src/%.c,$(BUILD)/%.o,$(CORE_SRC))
 
+# 热插拔模组：每个 src/modules/*.c 编成一个 .so（POSIX）供 dlopen
+MOD_SRC    = $(wildcard src/modules/*.c)
+MOD_SO     = $(patsubst src/modules/%.c,modules/%.so,$(MOD_SRC))
+BUILD_MOD  = $(patsubst src/modules/%.c,$(BUILD)/modules/%.so,$(MOD_SRC))
+
 # 带 PIL/numpy 的解释器：系统 python3 没有 PIL。
 # 现场探测一次，没有就让目标直接报错，别跑到一半 ImportError。
 PYTHON_IMG ?= $(shell for p in /home/user/.imgenv/bin/python python3; do $$p -c "import PIL,numpy" 2>/dev/null && { echo $$p; break; }; done)
@@ -39,6 +44,15 @@ all: test
 $(BUILD)/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
+
+# 模组 .so（仅 POSIX；Windows 走 DLL 自行另编）
+modules/%.so: src/modules/%.c $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(INC) -fPIC -shared -o $@ $< $(CORE_SRC) $(LDLIBS)
+
+$(BUILD)/modules/%.so: src/modules/%.c $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(INC) -fPIC -shared -o $@ $< $(CORE_SRC) $(LDLIBS)
 
 # ---------------------------------------------------------------- 单元测试
 $(BUILD)/test_core: tests/test_core.c $(CORE_SRC) $(CORE_HDR)

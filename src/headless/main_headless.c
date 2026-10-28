@@ -37,6 +37,8 @@
 #  endif
 #endif
 
+#include "../core/zbus.h"
+#include "../core/zmod.h"
 #include "../core/zpet.h"
 #include "../core/zgateway.h"
 #include "../core/zrelay.h"
@@ -90,6 +92,8 @@ static double pet_now(void)
 }
 
 static zpet *g_pet = NULL;
+static zbus g_bus;         /* 铁律一/三：无锁事件总线（渲染与 AI 解耦） */
+static zmod_mgr g_mods;     /* 铁律三：热插拔模组管理器 */
 /* 长记忆线（T67.45）。NULL = 没打开（data/ 不可写等）—— 这时她只是失忆，
    不许因此起不来，但必须能在 /api/memory.json 里看见 open:false。 */
 static zmem *g_mem = NULL;
@@ -2895,6 +2899,19 @@ int main(int argc, char **argv)
     }
     g_start_time = pet_now();
     g_self_spoke_at = pet_now();
+
+    /* 无锁总线与热插拔模组（铁律一/三） */
+    zbus_init(&g_bus);
+    zmod_mgr_init(&g_mods, root, &g_bus);
+    {
+        zdiag mdiag; zdiag_init(&mdiag);
+        if (zmod_scan(&g_mods, &mdiag) != 0) {
+            zdiag_print(&mdiag, stderr);
+            ZLOGW("mod", "模组扫描有误，但引擎继续跑（裸引擎可跑）");
+        } else {
+            ZLOGI("mod", "模组 %d 个已载（热插拔就绪）", zmod_count(&g_mods));
+        }
+    }
     /* 她的节奏参数（T69.1）。缺文件是合法状态 —— 走缺省值，绝不因为
        没导出过 mind.params.json 就起不来。 */
     zthink_profile_load(&g_think, g_cfg.root_dir, zpet_character(g_pet));
@@ -3038,11 +3055,28 @@ int main(int argc, char **argv)
                 if (cfd != ZSOCK_INVALID) zsock_close(cfd);
             }
         }
-        /* 每轮推进一次引擎：状态机、眨眼、空闲 */
-        zpet_tick(g_pet, pet_now());
+        /* 每轮推进一次引擎：状态机、眨眼、空闲 + 模组 + 总线 */
+        {
+            double now = pet_now();
+            zbus_event ev;
+            zpet_tick(g_pet, now);
+            zmod_tick(&g_mods, now);
+            /* 总线：把本轮 tick 广播给模组（模组可据此做物理/视觉采样） */
+            {
+                zbus_event tick_ev;
+                zbus_event_init(&tick_ev, ZBUS_EVT_TICK, "sys/tick", "preview");
+                zbus_event_set_u32(&tick_ev, (uint32_t)(now*1000));
+                zbus_publish(&g_bus, &tick_ev);
+            }
+            /* 消费侧：把总线上积压的事件转给模组（非阻塞，满则丢） */
+            while (zbus_consume(&g_bus, &ev) == 0) {
+                zmod_dispatch(&g_mods, &ev);
+            }
+        }
     }
 
     zsock_close(srv);
+    zmod_mgr_shutdown(&g_mods);
     zpet_destroy(g_pet);
     zlog_close();
     return 0;

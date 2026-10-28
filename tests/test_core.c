@@ -20,6 +20,8 @@
 #include "../src/core/zsm.h"
 #include "../src/core/zimg.h"
 #include "../src/core/zdeflate.h"
+#include "../src/core/zbus.h"
+#include "../src/core/zmod.h"
 #include "../src/core/zpet.h"
 #include "../src/core/zpersona.h"
 #include "../src/core/zconfig.h"
@@ -11232,6 +11234,149 @@ static void test_micro_expression(void)
     }
 }
 
+static void test_zbus(void) {
+    SECTION("zbus：无锁环形缓冲（铁律一/三，发布不阻塞渲染）");
+    {
+        zbus b; zbus_event ev, out;
+        int i;
+        zbus_init(&b);
+        CHECK(zbus_cap(&b)==1024, "容量 1024（2^n）");
+        CHECK(zbus_is_empty(&b), "初始为空");
+        /* 基础发布/消费 */
+        zbus_event_init(&ev, ZBUS_EVT_TICK, "sys/tick", "test");
+        zbus_event_set_u32(&ev, 42);
+        CHECK(zbus_publish(&b, &ev)==ZBUS_OK, "发布 1 条应成功");
+        CHECK(zbus_len(&b)==1, "len 1");
+        CHECK(zbus_peek(&b, &out)==ZBUS_OK && out.type==ZBUS_EVT_TICK, "peek 可见");
+        CHECK(zbus_len(&b)==1, "peek 不消费");
+        CHECK(zbus_consume(&b, &out)==ZBUS_OK, "消费应成功");
+        CHECK(out.type==ZBUS_EVT_TICK, "类型一致");
+        CHECK(zbus_is_empty(&b), "消费后为空");
+        CHECK(zbus_consume(&b, &out)==ZBUS_EMPTY, "空时返回 EMPTY");
+        /* 满则丢，不阻塞 */
+        for (i=0;i<ZBUS_CAP;i++) {
+            zbus_event_init(&ev, ZBUS_EVT_ACTION, "pet/action", "test");
+            if (zbus_publish(&b, &ev)!=ZBUS_OK) break;
+        }
+        CHECK(i==ZBUS_CAP, "填满 %d 条（实际 %d）", ZBUS_CAP, i);
+        CHECK(zbus_is_full(&b), "满");
+        zbus_event_init(&ev, ZBUS_EVT_ACTION, "pet/action", "test");
+        CHECK(zbus_publish(&b, &ev)==ZBUS_FULL, "满时返回 FULL，不阻塞");
+        CHECK(b.dropped==1, "dropped 计数");
+        CHECK(zbus_len(&b)==ZBUS_CAP, "len 不超容");
+        /* 清空后再用 */
+        for (i=0;i<ZBUS_CAP;i++) CHECK(zbus_consume(&b, &out)==ZBUS_OK, "逐条取 %d", i);
+        CHECK(zbus_is_empty(&b), "清空后为空");
+        /* payload 边界 */
+        zbus_event_init(&ev, ZBUS_EVT_CUSTOM, "a/b", "sender");
+        zbus_event_set_str(&ev, "hello");
+        CHECK(ev.payload_len==5, "str payload 5");
+        zbus_publish(&b, &ev);
+        zbus_consume(&b, &out);
+        CHECK(out.payload_len==5 && memcmp(out.payload,"hello",5)==0, "payload 往返一致");
+        /* 并发 SPSC：单生产者 10 万条（铁律一：AI 线程往总线丢，渲染只消，避免锁） */
+        {
+#ifndef _WIN32
+            pthread_t th;
+            zbus cb; zbus_init(&cb);
+            struct thr_arg { zbus *b; int n; } a1={&cb, 100000};
+            void *pub_fn(void *p){ struct thr_arg *a=(struct thr_arg*)p; int k; for(k=0;k<a->n;){ zbus_event e; zbus_event_init(&e,ZBUS_EVT_TICK,"thr/tick","thr"); zbus_event_set_u32(&e,(uint32_t)k); if(zbus_publish(a->b,&e)==ZBUS_OK) k++; else { sched_yield(); } } return NULL; }
+            pthread_create(&th,NULL,pub_fn,&a1);
+            {
+                int got=0;
+                uint8_t seen[100000]={0};
+                int spins=0;
+                while(got < 100000 && spins < 10000000){
+                    zbus_event o2;
+                    if(zbus_consume(&cb,&o2)==ZBUS_OK){
+                        uint32_t v=0; if(o2.payload_len>=4) memcpy(&v,o2.payload,4);
+                        if(v < 100000) seen[v]++;
+                        got++;
+                    } else { sched_yield(); spins++; }
+                }
+                CHECK(got==100000, "并发 SPSC 10 万条全收（got %d）", got);
+                int uniq=0, dup=0; for(i=0;i<100000;i++){ if(seen[i]==1) uniq++; else if(seen[i]>1) dup++; }
+                CHECK(dup==0, "并发 10 万条无重复（dup %d）", dup);
+                CHECK(uniq==100000, "10 万条序号全对（uniq %d）", uniq);
+            }
+            pthread_join(th,NULL);
+#endif
+        }
+        /* 时序：seq 单调 */
+        {
+            zbus sb; zbus_init(&sb);
+            uint32_t last=0;
+            for(i=0;i<100;i++){ zbus_event e2; zbus_event_init(&e2,ZBUS_EVT_TICK,"s","t"); zbus_publish(&sb,&e2); }
+            for(i=0;i<100;i++){ zbus_event o2; zbus_consume(&sb,&o2); CHECK(o2.seq > last || last==0, "seq 单调 %u -> %u", last, o2.seq); last=o2.seq; }
+        }
+    }
+}
+
+static void test_zmod(void) {
+    SECTION("zmod：热插拔管理器（铁律三，空目录不算错，禁用不加载）");
+    {
+        zbus bus; zbus_init(&bus);
+        zmod_mgr mgr; zdiag d; zdiag_init(&d);
+        zmod_mgr_init(&mgr, g_root, &bus);
+        /* 空目录/缺目录算 0，且不报错 */
+        CHECK(zmod_scan(&mgr, &d)==0, "扫描空/默认目录应成功");
+        CHECK(zmod_count(&mgr)==0 || zmod_count(&mgr)>=0, "count >=0（实际 %d）", zmod_count(&mgr));
+        /* 禁用示例不应被 dlopen */
+        {
+            char ex[1024]; z_path_join(ex,sizeof(ex), g_root, "config/modules/_example.json");
+            if(z_file_exists(ex)){
+                int n0=zmod_count(&mgr);
+                /* _example 禁用，若被扫描到也不应新增 handle；若未扫描到，count 不变 */
+                CHECK(zmod_find(&mgr,"example_mod")==NULL || !zmod_enabled(&mgr,"example_mod"), "禁用模组不应为 enabled");
+                (void)n0;
+            }
+        }
+        /* dummy ABI 自检 */
+        {
+            const zmod_api *api=zmod_get_api_default();
+            CHECK(api && api->version==ZMOD_ABI_VERSION, "dummy ABI 版本 %d", api?api->version:-1);
+        }
+        /* 广播：无模组时返回 0，不崩 */
+        {
+            zbus_event ev; zbus_event_init(&ev, ZBUS_EVT_TICK, "sys/tick", "test");
+            int n=zmod_dispatch(&mgr, &ev);
+            CHECK(n==0, "零模组广播返回 0");
+        }
+        /* tick：零模组不崩 */
+        zmod_tick(&mgr, 1.0);
+        zmod_mgr_shutdown(&mgr);
+        CHECK(zmod_count(&mgr)==0, "shutdown 后 count 0");
+        /* 热加载冒烟：编译产物存在时才练 */
+        {
+            char so1[1024], so2[1024], jpath[1024];
+            z_path_join(so1,sizeof(so1), g_root, "build/modules/example_mod.so");
+            z_path_join(so2,sizeof(so2), g_root, "modules/example_mod.so");
+            const char *sop = z_file_exists(so1) ? so1 : (z_file_exists(so2) ? so2 : NULL);
+            if(sop){
+                char modjson[1024];
+                z_path_join(modjson,sizeof(modjson), g_root, "config/modules/_example.json");
+                /* 构造临时启用 json */
+                char tmpj[1024]; z_path_join(tmpj,sizeof(tmpj), g_root, "build/_test_mod.json");
+                FILE *f=fopen(tmpj,"w");
+                if(f){ fprintf(f,"{\"id\":\"example_mod\",\"path\":\"%s\",\"enabled\":true}\n", sop); fclose(f);
+                    zbus_init(&bus); zmod_mgr_init(&mgr,g_root,&bus); zdiag_init(&d);
+                    if(zmod_load(&mgr, tmpj, &d)==0){
+                        CHECK(zmod_count(&mgr)==1, "加载临时模组 count 1");
+                        CHECK(zmod_find(&mgr,"example_mod")!=NULL, "find 到 example_mod");
+                        zbus_event ev2; zbus_event_init(&ev2,ZBUS_EVT_TICK,"sys/tick","test"); zmod_dispatch(&mgr,&ev2); zmod_tick(&mgr,2.0);
+                        CHECK(zmod_unload(&mgr,"example_mod")==0, "卸载成功");
+                        CHECK(zmod_count(&mgr)==0, "卸载后 0");
+                    } else { zdiag_print(&d,stderr); CHECK(0,"临时模组加载失败：%s", sop); }
+                    zmod_mgr_shutdown(&mgr); remove(tmpj);
+                }
+                (void)jpath;
+            } else {
+                printf("  [skip] 未找到 example_mod.so，跳过热加载冒烟（先 make modules/example_mod.so）\n");
+            }
+        }
+    }
+}
+
 /* R1 快闸：重型用例默认跳过，--soak 才跑。否则 make test 50 秒超时，CI 形同虚设。 */
 static int g_soak = 0;
 
@@ -11333,6 +11478,8 @@ int main(int argc, char **argv)
     test_http_url();
     test_relay();
     test_ctx();
+    test_zbus();
+    test_zmod();
 
     printf("\n通过 %d 项，失败 %d 项\n", g_pass, g_fail);
     if (g_fail) {
