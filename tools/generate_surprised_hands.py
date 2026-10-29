@@ -10,6 +10,7 @@ alpha image to keep the 1x/@2x silhouettes exactly aligned.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +20,11 @@ SIZE = (86, 109)
 TARGET_BOX_2X = (156, 204)
 MARGIN_TOP_2X = 6
 WRIST_INSERT_FRAC = 0.035  # short tapered wrist overlap; cuff hides the cut edge
+# Calibrated in the rendered pose: bring each wrist root toward the cuff center
+# and slightly into the ribbed cuff. This is a local artwork registration offset;
+# it does not translate the hand bone or alter the shoulder/elbow chain.
+SURPRISED_PART_POS = {"l": [17, 662], "r": [342, 662]}
+SURPRISED_PART_LAYERS = {"l": 319, "r": 320}
 
 
 def key_magenta(image: Image.Image) -> Image.Image:
@@ -114,6 +120,47 @@ def prepare_source(path: Path, palette_path: Path) -> Image.Image:
     return canvas.rotate(180, resample=Image.Resampling.BICUBIC, expand=False)
 
 
+def register_hand_parts(sprites: Path) -> None:
+    """Write the two surprise sprites into hand_parts.json reproducibly."""
+    meta_path = sprites / "hand_parts.json"
+    arm_path = sprites / "arm_parts.json"
+    if not arm_path.exists():
+        raise FileNotFoundError(f"arm metadata missing: {arm_path}")
+    data = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {
+        "schema_version": "2.0", "parts": [], "checks": {}, "poses": {"": ""}}
+    arms = json.loads(arm_path.read_text(encoding="utf-8"))
+    arm_by_id = {p["id"]: p for p in arms.get("parts", [])}
+    parts = data.setdefault("parts", [])
+    by_id = {p["id"]: p for p in parts}
+    for side in ("l", "r"):
+        hand = arm_by_id.get(f"hand_{side}")
+        if not hand or "pivot" not in hand:
+            raise ValueError(f"hand_{side} pivot missing from {arm_path}")
+        pid = f"hand_{side}_surprised"
+        part = by_id.get(pid)
+        if part is None:
+            part = {"id": pid, "file": f"sprites/{pid}.png",
+                    "group": f"hand_{side}"}
+            parts.append(part)
+        part.update({
+            "file": f"sprites/{pid}.png",
+            "group": f"hand_{side}",
+            "layer": SURPRISED_PART_LAYERS[side],
+            "pos": list(SURPRISED_PART_POS[side]),
+            "size": list(SIZE),
+            "pivot": list(hand["pivot"]),
+            "wrist_w": 25,
+            "note": ("surprised 专用自然微拢手差分；腕根局部配准到弯袖罗纹袖口，"
+                     "差分层压在袖口下以遮住腕桩切边")
+        })
+    data.setdefault("poses", {})["surprised"] = "surprised"
+    data.setdefault("checks", {}).setdefault("wrist_w", {}).update(
+        {f"hand_{side}_surprised": 25 for side in ("l", "r")})
+    meta_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+                         encoding="utf-8")
+    print(f"{meta_path}: surprised hand registration updated")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", type=Path, default=Path("."))
@@ -142,6 +189,7 @@ def main() -> int:
         if np.any(rgba[rgba[:, :, 3] == 0, :3] != 0):
             raise AssertionError(f"transparent pixels must be clean RGB zero: {side}")
         print(f"{one_path}: {one.size}; {two_path}: {artwork.size}")
+    register_hand_parts(sprites)
     return 0
 
 

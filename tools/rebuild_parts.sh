@@ -131,6 +131,13 @@ rm -f "characters/$CH/forms/$FM/sprites/_orig/arm_l_fore"*.png \
       "characters/$CH/forms/$FM/sprites/_orig/arm_r_fore"*.png
 "$PY" tools/wrist_tab_trim.py --character "$CH" --form "$FM"
 
+# T31.22：惊讶手差分在手差分/腕口切件之后注册，位置以腕根对齐袖口，
+# 作为局部素材锚点修正，不挪动手腕骨或其他动作的手部层。
+if [ "$CH" = "xiaoxun" ] && [ "$FM" = "teen" ]; then
+  step "3g/27 惊讶手差分（腕根局部配准到弯袖袖口）"
+  "$PY" tools/generate_surprised_hands.py --root . --form "$FM"
+fi
+
 step "4/27 鞋拆件（常态鞋 + 踮脚鞋，顺带把腿件切线以下擦干净）"
 "$PY" tools/make_foot_parts.py --character "$CH" --form "$FM"
 
