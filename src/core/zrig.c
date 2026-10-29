@@ -6307,6 +6307,24 @@ static double group_offset(const zrig *r, const char *group_id, int want_y)
     return sum;
 }
 
+/* 读取某根骨当前帧的世界枢轴位置。与 bones overlay 共用 group_matrix，
+   因而 API、可视化和渲染用的是同一套父子变换。 */
+int zrig_group_pivot_pos(const zrig *r, const char *group_id, double scale,
+                         double out[2])
+{
+    int gi;
+    double m[6], x, y;
+    if (!r || !group_id || !out || scale <= 0.0) return 0;
+    gi = find_group(r, group_id);
+    if (gi < 0) return 0;
+    group_matrix(r, gi, scale, m);
+    x = r->groups[gi].pivot[0] * scale;
+    y = r->groups[gi].pivot[1] * scale;
+    out[0] = m[0] * x + m[2] * y + m[4];
+    out[1] = m[1] * x + m[3] * y + m[5];
+    return 1;
+}
+
 double zrig_part_offset_x(const zrig *r, const char *part_id)
 {
     int pi;
@@ -8488,19 +8506,41 @@ int zrig_debug_overlay(zrig *r, zimg *frame, int mode, double scale)
     if (!r || !frame || mode == 0) return -1;
     if (scale <= 0.0) scale = 1.0;
 
-    /* BONES：画布 pivot → 帧坐标，父子连线 */
+    /* BONES：画布 pivot → 当前帧的世界坐标，再画父子连线。
+       旧版直接把静态 g->pivot 乘 scale：肩/肘/腕旋转后骨线仍留在 bind pose，
+       会把真实动作误报成直线。group_matrix 已含本组、祖先组、位移和旋转，
+       把 pivot 送进该矩阵才是当前骨端点。 */
     if (mode & ZRIG_DEBUG_BONES) {
-        for (i = 0; i < r->ngroups; ++i) {
+        double wx[64], wy[64];
+        for (i = 0; i < r->ngroups && i < 64; ++i) {
             const zgroup *g = &r->groups[i];
-            int x = (int)(g->pivot[0] * scale + 0.5);
-            int y = (int)(g->pivot[1] * scale + 0.5);
-            zimg_draw_circle(frame, x, y, 6, 255, 220, 40, 220);
-            if (g->parent >= 0 && g->parent < r->ngroups) {
-                const zgroup *pg = &r->groups[g->parent];
-                int px = (int)(pg->pivot[0] * scale + 0.5);
-                int py = (int)(pg->pivot[1] * scale + 0.5);
-                zimg_draw_line(frame, px, py, x, y, 255, 180, 0, 180);
+            double m[6], lx = g->pivot[0] * scale, ly = g->pivot[1] * scale;
+            group_matrix(r, i, scale, m);
+            wx[i] = m[0] * lx + m[2] * ly + m[4];
+            wy[i] = m[1] * lx + m[3] * ly + m[5];
+        }
+        for (i = 0; i < r->ngroups && i < 64; ++i) {
+            const zgroup *g = &r->groups[i];
+            int x = (int)(wx[i] + 0.5), y = (int)(wy[i] + 0.5);
+            uint8_t jr = 255, jg = 220, jb = 40, ja = 220;
+            uint8_t lr = 255, lg = 180, lb = 0, la = 180;
+            if (strcmp(g->id, "arm_l") == 0 || strcmp(g->id, "arm_r") == 0) {
+                jr = 255; jg = 72; jb = 72; /* shoulder = red */
+            } else if (strcmp(g->id, "forearm_l") == 0 ||
+                       strcmp(g->id, "forearm_r") == 0) {
+                jr = 48; jg = 235; jb = 96; /* elbow = green */
+                lr = 255; lg = 72; lb = 72; /* shoulder -> elbow = red */
+            } else if (strcmp(g->id, "hand_l") == 0 ||
+                       strcmp(g->id, "hand_r") == 0) {
+                jr = 64; jg = 160; jb = 255; /* wrist = blue */
+                lr = 48; lg = 235; lb = 96; /* elbow -> wrist = green */
             }
+            if (g->parent >= 0 && g->parent < r->ngroups && g->parent < 64) {
+                int px = (int)(wx[g->parent] + 0.5);
+                int py = (int)(wy[g->parent] + 0.5);
+                zimg_draw_line(frame, px, py, x, y, lr, lg, lb, la);
+            }
+            zimg_draw_circle(frame, x, y, 6, jr, jg, jb, ja);
         }
     }
     /* HITBOX：regions 矩形 */

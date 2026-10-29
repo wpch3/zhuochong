@@ -1431,6 +1431,13 @@ int zpet_debug_overlay(zpet *p, zimg *frame, int mode, double scale)
     return zrig_debug_overlay(p->rig, frame, mode, scale);
 }
 
+int zpet_group_pivot_pos(const zpet *p, const char *group_id, double scale,
+                         double out[2])
+{
+    if (!p || !p->rig) return 0;
+    return zrig_group_pivot_pos(p->rig, group_id, scale, out);
+}
+
 void zpet_set_tool(zpet *p, zpet_tool t) { if (p) p->tool = t; }
 zpet_tool zpet_tool_get(const zpet *p) { return p ? p->tool : ZPET_TOOL_HAND; }
 

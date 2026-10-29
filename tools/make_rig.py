@@ -105,6 +105,9 @@ FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
 #   参考 wave_up.png 的前/上臂 = 0.87，我们原件是 0.71；前臂 115.8 × 0.22 ≈ 26px
 #   补上去正好 141.8/162.4 = 0.873。改这一个数就能整体收放，别在别处再写死。
 FORE_LONG_PX = 26.0
+# T31.20：surprised 弯袖是独立差分件，允许比普通动作多伸 36px，
+# 让保持内收/下沉的肘点下，手腕仍能贴近脸侧；只随 ParamSurpriseArmSwap 淡入。
+SURPRISE_FORE_LONG_PX = 36.0
 # 沿轴加长的行分布（r=0 素材顶边 … r=4 底边）：肘端 0、袖口满额，
 # **r=3→r=4 两行同值** ⇒ 袖口那段条纹是刚性平移，不会被拉成椭圆。
 FORE_LONG_F = (0.0, 0.15, 0.55, 1.0, 1.0)
@@ -129,12 +132,28 @@ def _fore_long_axes(armp):
     return out
 
 
+def _upper_lengths(armp):
+    """从实际肩/肘 pivot 量每侧上臂长度，给惊讶透视短缩的位移补偿用。"""
+    out = {}
+    if not armp:
+        return out
+    apart = {q["id"]: q for q in armp.get("parts", [])}
+    for side in ("l", "r"):
+        up, fore = apart.get("arm_%s_upper" % side), apart.get("arm_%s_fore" % side)
+        if not up or not fore:
+            continue
+        ux, uy = up["pivot"]
+        ex, ey = fore["pivot"]
+        out[side] = math.hypot(ex - ux, ey - uy)
+    return out
+
+
 def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False,
                has_blend=False, has_side=False, has_legs=False,
                body_id="seg_torso", has_eyeballs=False, foot_lift=None,
                star_eyes=None, fx_table=None, hand_forms=None,
                slim_parts=(), long_axes=None,
-               elbow_parts=(), gusset_parts=()):
+               elbow_parts=(), gusset_parts=(), upper_lengths=None, root_parts=()):
     """角色级命名参数（名字对齐 Live2D 标准参数表）。
 
     每条 = 一个参数 + 它写到哪些通道；引擎按 `通道值 = 参数值 × scale` 叠在动作之上，
@@ -142,6 +161,7 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
     """
     # ✨ 的颗数：ParamMouthForm 的「笑门」要给每颗各写一条绑定，所以得先知道有几颗。
     fx_table = fx_table or {}
+    upper_lengths = upper_lengths or {}
     fx_spark = fx_table.get("sparkle")
     n_sparkle = (len(star_eyes["sparkle"]["instances"])
                  if star_eyes and star_eyes.get("sparkle") else 0)
@@ -518,6 +538,33 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                      # 13px 软收 ⇒ 过渡只剩约 1 帧、且是一层淡雾。
                      "scale": 7.692, "offset": -55.0}]
 
+        # T31.19：惊讶时把上臂沿自身长轴做轻度透视缩短（仅此动作驱动）。
+        # 本轮视觉对照发现肘仍过宽；在授权区间内把局部 sy 从约 0.841 收到 0.75，
+        # 同步移动 forearm pivot，保持前臂/手尺寸不变。只由 surprised 驱动，其它动作值为 0。
+        _shorten_binds = []
+        for _sd in ("l", "r"):
+            _length = float(upper_lengths.get(_sd, 0.0))
+            if _length <= 0.0:
+                continue
+            _shorten_binds += [
+                {"part": "arm_%s_upper" % _sd, "param": "sy", "scale": -0.25},
+                {"group": "forearm_%s" % _sd, "param": "dy",
+                 "scale": round(-0.25 * _length, 3)},
+            ]
+            if "arm_%s_root" % _sd in (root_parts or ()):
+                # The sleeve-root underlay must shorten with the upper sleeve too;
+                # otherwise its inner fill protrudes as a thin teal spur at the axilla.
+                _shorten_binds.append(
+                    {"part": "arm_%s_root" % _sd, "param": "sy", "scale": -0.25})
+        if _shorten_binds:
+            out.append({
+                "id": "ParamSurpriseForeshorten", "label": "惊讶 上臂透视短缩",
+                "min": 0.0, "max": 1.0, "default": 0.0,
+                "binds": _shorten_binds,
+                "note": "只由 surprised 驱动：上臂局部 sy=0.75，落在授权的 0.75–0.85 区间；"
+                        "同步内移肘 pivot，不改袖片源图，也不影响 happy/talk/wave。"
+            })
+
         out += [
             {"id": "ParamArmLA", "label": "左臂 抬起", "min": -10.0, "max": 10.0, "default": 0.0,
              "binds": [{"group": "arm_l", "param": "rot_deg", "scale": 18.0}]
@@ -599,6 +646,53 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
             {"id": "ParamForeLongL", "label": "左前臂 伸缩", "min": -1.2, "max": 1.2,
              "default": 0.0, "binds": fore_long("arm_l_fore", "hand_l", "l")},
         ]
+        # 惊讶折肘时，现有 gusset/seam 在脸旁旋转会产生脱离袖口的浮片。
+        # 仅由 surprised 动作驱动此参数；用部件 alpha 的乘算绑定隐藏，其他动作（尤其 wave）不变。
+        if gusset_parts:
+            out.append({
+                "id": "ParamSurpriseElbowHide", "label": "惊讶 折肘浮片抑制",
+                "min": 0.0, "max": 1.0, "default": 0.0,
+                "binds": [{"part": pid, "param": "alpha", "scale": -1.0}
+                          for pid in ("arm_l_gusset", "arm_l_seam",
+                                      "arm_r_gusset", "arm_r_seam")
+                          if pid in gusset_parts],
+                "note": "仅惊讶姿势压低折肘补布/接缝；不改 wave 等动作的原有肘部层级"})
+        # T31.20：惊讶专用弯袖/手差分。动作把该参数淡入：新袖片浮到躯干、衣领、
+        # 帽兜和后发之前，旧直袖/肘补件与其他手型同时淡出；普通动作完全不受影响。
+        _arm_ids = set(root_parts)
+        _swap_binds = []
+        for _sd in ("l", "r"):
+            _bent = f"forearm_bent_{_sd}"
+            if _bent not in _arm_ids:
+                continue
+            _swap_binds.append({"part": _bent, "param": "alpha",
+                                "scale": 1.0, "offset": -1.0})
+            # 新弯袖比普通前臂沿肘→腕轴多伸 36px；同一参数让手组同步前移，
+            # 袖口与掌根不会分离。替换件专用 deform，wave/happy 等继续用原长度。
+            _axis = (long_axes or {}).get(_sd)
+            if _axis:
+                _ux, _uy, _ = _axis
+                _swap_binds += [
+                    {"deformer": _bent + "_long", "scale": 1.0},
+                    {"group": f"hand_{_sd}", "param": "dx",
+                     "scale": round(_ux * SURPRISE_FORE_LONG_PX, 3)},
+                    {"group": f"hand_{_sd}", "param": "dy",
+                     "scale": round(_uy * SURPRISE_FORE_LONG_PX, 3)},
+                ]
+            for _old in (f"arm_{_sd}_fore", f"arm_{_sd}_elbow",
+                         f"arm_{_sd}_gusset", f"arm_{_sd}_seam"):
+                if _old in _arm_ids:
+                    _swap_binds.append({"part": _old, "param": "alpha", "scale": -1.0})
+            for _form in hand_forms or ():
+                if _form != "surprised":
+                    _swap_binds.append({"part": f"hand_{_sd}_{_form}",
+                                        "param": "alpha", "scale": -1.0})
+        if _swap_binds:
+            out.append({"id": "ParamSurpriseArmSwap", "label": "惊讶 弯袖/手前景替换",
+                        "min": 0.0, "max": 1.0, "default": 0.0,
+                        "binds": _swap_binds,
+                        "note": "surprised 独占：1 时显示 bent forearms，隐藏旧前臂/肘件与旧手型；"
+                                "新袖层级在躯干、衣领、兜帽、后发之前。"})
         # ★★★ T66.17（第六十六问 S3）：小臂袖管自己的摆动参数。
         #
         #   前面那些（Slim/Long）都是**网格**：网格只能表达"参数越大、那几行挪得越多"，
@@ -1639,6 +1733,26 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             **({"inherit_from": sp["inherit_from"]} if sp.get("inherit_from") else {}),
             **({"warp_inherit": sp["warp_inherit"]} if sp.get("inherit_from") else {}),
         } for sp in seg_src]
+        # T31.19：上臂与袖根贴图的局部缩放锚点都放到真实肩 pivot。
+        # 位置同步补上 anchor 偏移，scale=1 时 1x/2x 静态合成逐像素不变；
+        # surprised 的 sy=0.75 沿肩→肘轴缩短袖片与底衬，避免 underlay 单独探出。
+        if armp:
+            _arm_meta = {q["id"]: q for q in armp.get("parts", [])}
+            _part_meta = {q["id"]: q for q in body_parts_list}
+            for _sd in ("l", "r"):
+                for _pid in ("arm_%s_upper" % _sd, "arm_%s_root" % _sd):
+                    _src = _arm_meta.get(_pid)
+                    _dst = _part_meta.get(_pid)
+                    if not _src or not _dst or not _src.get("pivot"):
+                        continue
+                    _x, _y = _src["pos"]
+                    _w, _h = _src["size"]
+                    _px, _py = _src["pivot"]
+                    _anchor = [(_px - _x) / max(1.0, _w),
+                               (_py - _y) / max(1.0, _h)]
+                    _dst["anchor"] = _anchor
+                    _dst["pos"] = [round(ox + _x + _anchor[0] * _w, 3),
+                                   round(oy + _y + _anchor[1] * _h, 3)]
         # 躯干的形变平台：颈线以上不再继续加大形变。
         #
         # 躯干贴图的顶边（y=308）其实是**脖子和衣领**，而 bend_x 用的 root 曲线
@@ -2165,8 +2279,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
          ],
          "blink_hold": 0.32,
          "part_overrides": {}},
-        {"id": "surprised", "priority": 6, "duration": 0.9, "return_state": "idle",
-         "interruptible": False,
+        {"id": "surprised", "priority": 6, "duration": 1.4, "fade_out": 0.25,
+         "return_state": "idle", "interruptible": False,
          "channels": [
              {"target": "head", "param": "dy", "wave": "bounce", "amp": -10.0, "dur": 0.35, "ease": "out_back"},
              # 惊讶时的眼睛：**瞳孔略缩**，不是放大（2026-10-15 用户反馈"眼球不自然变大，像个怪物"）。
@@ -2359,8 +2473,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                           hand("r", 12.0, 0.0, wave="bounce", dur=0.5)])
             add("hammered", [hand("l", 11.0, 2.6, wave="decay", dur=0.7),
                              hand("r", 11.0, 2.6, wave="decay", dur=0.7)])
-            add("surprised", [hand("l", 14.0, 0.0, wave="pulse", dur=0.9, ease="out"),
-                              hand("r", 14.0, 0.0, wave="pulse", dur=0.9, ease="out")])
+            # 脸旁张掌只轻微外翻：原 50.6° 会把掌面扭向画面外，显得像举手而非护脸。
+            add("surprised", [hand("l", 27.5, 0.0, wave="pulse", dur=0.6, ease="out"),
+                              hand("r", 27.5, 0.0, wave="pulse", dur=0.6, ease="out")])
         if has_legs_p:
             # 腿：重心一偏，两条腿跟着让一点（同向，幅度比上身小得多）。
             # 用 bend 不用旋转：裙摆下沿那一排像素必须钉死，否则接缝处漏背景。
@@ -2379,15 +2494,43 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                           fore("r", 14.0, 0.0, wave="bounce", dur=0.5)])
             add("hammered", [fore("l", 9.0, 2.6, wave="decay", dur=0.7),
                              fore("r", 9.0, 2.6, wave="decay", dur=0.7)])
-            # 吓一跳：两只手一起向外抬 + 小臂抬起护在身前（以前只能抖一抖）
-            add("surprised", [
-                {"target": "arm_l", "param": "rot_deg", "wave": "pulse",
-                 "amp": 16.0, "dur": 0.9, "ease": "out"},
-                {"target": "arm_r", "param": "rot_deg", "wave": "pulse",
-                 "amp": -16.0, "dur": 0.9, "ease": "out"},
-                fore("l", 22.0, 0.0, wave="pulse", dur=0.9, ease="out"),
-                fore("r", 22.0, 0.0, wave="pulse", dur=0.9, ease="out"),
-            ])
+            # T31.20：按真实预览画面重构为前臂弯袖/并拢手差分；手腕落在脸旁，
+            # 肘内收下沉，小臂接近竖直，双腿维持轻微分开并柔性屈膝。
+            # 本轮实际动作预览的峰值值：肩 1.0/1.0（约 18°），肘 8.70/8.39；弯袖 swap 同时沿肘→腕
+            # 轴延伸 36px，把腕点送到脸旁；手腕贴近脸后再把肘留在胸侧并下沉，避免横向外架。
+            # 肘屈角仍需保持在用户裁决的 120°–150° 区间，不以旧 T31.19 外架手势验收。
+            _surprised_arm_channels = [
+                {"target": "ParamArmLA", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.6, "ease": "out"},
+                {"target": "ParamArmRA", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.6, "ease": "out"},
+                {"target": "ParamArmLB", "wave": "pulse", "amp": 8.70,
+                 "dur": 0.6, "ease": "out"},
+                {"target": "ParamArmRB", "wave": "pulse", "amp": 8.3880,
+                 "dur": 0.6, "ease": "out"},
+                {"target": "ParamSurpriseForeshorten", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.6, "ease": "out"},
+                {"target": "ParamHandLSurprised", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.6, "ease": "out"},
+                {"target": "ParamHandRSurprised", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.6, "ease": "out"},
+                {"target": "ParamSurpriseArmSwap", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.6, "ease": "out"},
+                {"target": "ParamEyeLWide", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.15, "ease": "out"},
+                {"target": "ParamEyeRWide", "wave": "pulse", "amp": 1.0,
+                 "dur": 0.15, "ease": "out"},
+                {"target": "ParamAngleZ", "wave": "pulse", "amp": -12.0,
+                 "dur": 0.9, "ease": "out"},
+                {"target": "ParamBodyAngleZ", "wave": "pulse", "amp": 5.0,
+                 "dur": 0.9, "ease": "out"},
+            ]
+            if any(p["id"].endswith(("_gusset", "_seam"))
+                   for p in (armp or {}).get("parts", [])):
+                _surprised_arm_channels.append(
+                    {"target": "ParamSurpriseElbowHide", "wave": "pulse",
+                     "amp": 1.0, "dur": 0.9, "ease": "out"})
+            add("surprised", _surprised_arm_channels)
 
         # 挥手：单图层时代做不到的动作（没有独立手臂，一抬就整张图跟着转）。
         # 同样用 bend：肩膀钉死，手往外甩 + 往上抬，再叠一个快速左右摆。
@@ -3311,14 +3454,25 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             by_id["talk"]["channels"].append(
                 {"target": "mouth_mask", "param": "sy", "wave": "flap",
                  "amp": open_to(0.80), "freq": 3.0})
+            # Без фонемного пакета talk не должен выглядеть как одна и та же
+            # открытая пасть: рот мягко переходит от широкой формы к округлой.
+            # /api/speak с настоящими A/I/U/E/O перекрывает этот fallback.
+            by_id["talk"]["channels"].append(
+                {"target": "ParamMouthForm", "wave": "sine",
+                 "amp": 0.85, "freq": 1.4})
         if "happy" in by_id:
+            # Закрытая широкая улыбка — рендерный тест показал, что при открытии
+            # даже на 0.12 mouth_open теряет дугу и становится прямой полосой.
             by_id["happy"]["channels"].append(
-                {"target": "mouth_mask", "param": "sy", "wave": "bounce",
-                 "amp": open_to(0.55), "dur": 1.2, "ease": "out"})
+                {"target": "ParamMouthForm", "wave": "pulse",
+                 "amp": 1.0, "dur": 0.25, "ease": "out"})
         if "surprised" in by_id:
             by_id["surprised"]["channels"].append(
                 {"target": "mouth_mask", "param": "sy", "wave": "pulse",
-                 "amp": open_to(0.95), "dur": 0.12, "ease": "out"})
+                 "amp": open_to(0.55), "dur": 0.12, "ease": "out"})
+            by_id["surprised"]["channels"].append(
+                {"target": "ParamMouthForm", "wave": "pulse",
+                 "amp": -0.7, "dur": 0.12, "ease": "out"})
         if "hammered" in by_id:
             by_id["hammered"]["channels"].append(
                 {"target": "mouth_mask", "param": "sy", "wave": "decay",
@@ -3559,7 +3713,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     # 这几个动作手工给一条合并后的曲线。
     MOUTH_MERGE = {
         "talk":      {"wave": "flap", "amp": 0.833, "freq": 3.0},
-        "surprised": {"wave": "pulse", "amp": 1.0, "dur": 0.25, "ease": "out"},
+        "surprised": {"wave": "pulse", "amp": 0.55, "dur": 0.12, "ease": "out"},
     }
     # 呼吸动作额外挂一条官方口径的 ParamBreath：CubismBreath 输出的是
     # offset + peak*sin（0..1 的单向值），所以写 {amp 0.5, bias 0.5} 而不是双向正弦。
@@ -3600,7 +3754,9 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                             p["id"] for p in (armp or {}).get("parts", [])
                             # Q51：盖线的 arm_?_seam 和填洞的 arm_?_gusset
                             # 共用同一条 alpha 曲线（同一个「折到位了没有」判据）
-                            if p["id"].endswith(("_gusset", "_seam"))))
+                            if p["id"].endswith(("_gusset", "_seam"))),
+                        upper_lengths=_upper_lengths(armp),
+                        root_parts=tuple(p["id"] for p in (armp or {}).get("parts", [])))
     PARAM_IDS = {q["id"] for q in PARAMS}
     # ★ Q36：裙摆/外套下摆这两个参数是在**本函数后半段**（里布、下摆模块）才
     #   append 进去的，可动作表在这里就要校验。素材在 = 参数一定会生成，
@@ -3617,7 +3773,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     BUILTIN_PARAM_IDS = {
         "ParamAngleX", "ParamAngleY", "ParamEyeOpen", "ParamEyeLOpen",
         "ParamEyeROpen", "ParamEyeLSmile", "ParamEyeRSmile",
-        "ParamEyeBallX", "ParamEyeBallY",
+        "ParamEyeBallX", "ParamEyeBallY", "ParamEyeLWide", "ParamEyeRWide",
     }
     WRITABLE_PARAM_IDS = PARAM_IDS | BUILTIN_PARAM_IDS
 
@@ -3731,13 +3887,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 {"target": KR, "wave": "pulse", "amp": 0.22, "dur": 0.5, "ease": "out"},
                 {"target": W,  "wave": "sine",  "amp": 0.10, "freq": 0.42},
             ],
-            # 受惊：一个急促的屈膝（人吓到会明显矮一截），然后弹回。
-            # 这里幅度比别的动作大 —— 受惊是全身反应，腿僵着就假了。
-            # 0.30/0.35s 实测只有噪声底 1.7 倍（看不太出来），加到 0.48/0.5s。
+            # 受惊：采用新参考的稳定分腿姿势，不交叉。左右髋反向摆开双腿，
+            # 膝盖只做轻微不对称屈曲；鞋尖保持分开，避免 X 形小腿/脚踝。
             "surprised": [
-                {"target": KL, "wave": "bounce", "amp": 0.48, "dur": 0.50, "ease": "out_back"},
-                {"target": KR, "wave": "bounce", "amp": 0.48, "dur": 0.50, "ease": "out_back"},
-                {"target": W,  "wave": "bounce", "amp": -0.24, "dur": 0.55},
+                {"target": "ParamHipL", "wave": "pulse", "amp": 8.0, "dur": 0.72, "ease": "out"},
+                {"target": "ParamHipR", "wave": "pulse", "amp": -8.0, "dur": 0.72, "ease": "out"},
+                {"target": KL, "wave": "pulse", "amp": 0.8, "dur": 0.72, "ease": "out"},
+                {"target": KR, "wave": "pulse", "amp": 1.0, "dur": 0.72, "ease": "out"},
+                {"target": W, "wave": "bounce", "amp": -0.24, "dur": 0.55},
             ],
             # 难过：重心塌下去并偏向一侧，膝盖一直松着
             "sad": [
@@ -4219,6 +4376,57 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                          "袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动"
                          % FORE_LONG_PX,
                  "points": _lpts})
+            # T31.20：弯袖差分有自己的加长网格（同轴、同腕同步量），
+            # 避免只挪手而旧前臂被隐藏后袖口与掌根脱开。
+            _bent_id = "forearm_bent_%s" % _side
+            if _bent_id in _apart:
+                _bent_pts = []
+                for _r, _f in enumerate(FORE_LONG_F):
+                    if _f <= 0.0:
+                        continue
+                    _bdx = 2.0 * _ux * SURPRISE_FORE_LONG_PX * _f
+                    _bdy = 2.0 * _uy * SURPRISE_FORE_LONG_PX * _f
+                    for _c in range(3):
+                        _bent_pts.append({"c": _c, "r": _r,
+                                          "dx": round(_bdx, 2),
+                                          "dy": round(_bdy, 2)})
+                rig["deformers"].append({
+                    "id": _bent_id + "_long", "part": _bent_id,
+                    "cols": 2, "rows": 4,
+                    "note": "surprised 弯袖专用沿肘→腕轴线延伸 %.0fpx；"
+                            "与 hand_%s 组同步，默认零位移" % (SURPRISE_FORE_LONG_PX, _side),
+                    "points": _bent_pts})
+
+            # —— G103 肘部硬折痕平滑（-80° 时纸片对折）——
+            # 折角处外侧鼓起、内侧微收，用 keyform 让肘部随 ParamArm{L,R}B 线性过渡。
+            # 0 = 原件静止零改动，±5 中度，±10 满额（外凸 8px 内收 2px，r=1/2 最重）。
+            _el_taper = (0.0, 0.7, 1.0, 0.6, 0.2)
+            _is_left = _side == "l"
+            def _el_pts(level):
+                _out=[]
+                for _r, _tp in enumerate(_el_taper):
+                    if _tp==0: continue
+                    for _c in range(3):
+                        if _is_left:
+                            _bd=-8.0*_tp if _c==0 else (-2.0*_tp if _c==1 else 2.0*_tp)
+                        else:
+                            _bd= 8.0*_tp if _c==2 else ( 2.0*_tp if _c==1 else -2.0*_tp)
+                        if abs(_bd)>0.3:
+                            _out.append({"c":_c,"r":_r,"dx":round(_bd*level,2)})
+                return _out
+            _el_keys=[
+                {"v":-10.0,"points":_el_pts(1.25)},
+                {"v":-5.0,"points":_el_pts(0.6)},
+                {"v":0.0,"points":[]},
+                {"v":5.0,"points":_el_pts(0.6)},
+                {"v":10.0,"points":_el_pts(1.25)},
+            ]
+            rig["deformers"].append(
+                {"id":"arm_%s_elbow_smooth" % _side,"part":"arm_%s_fore" % _side,
+                 "cols":2,"rows":4,"param":"ParamArm%sB" % _side.upper(),
+                 "parent":"fore_%s_mid" % _side,
+                 "note":"G103 肘部硬折痕平滑：弯曲 -80° 时外凸内收消除纸片对折，外凸 8px 内收 2px，0=原件",
+                 "keys":_el_keys})
 
             # —— G103 肘部硬折痕平滑（-80° 时纸片对折）——
             # 折角处外侧鼓起、内侧微收，用 keyform 让肘部随 ParamArm{L,R}B 线性过渡。

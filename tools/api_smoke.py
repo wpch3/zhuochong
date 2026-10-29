@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import signal
@@ -1008,22 +1009,80 @@ def run(base, root):
           (peak_h2 - low_h2) * 22.0 > 20.0,
           "%.0f°（%.2f..%.2f）" % ((peak_h2 - low_h2) * 22.0, low_h2, peak_h2))
 
-    # 非循环动作的收尾：surprised 的手臂通道是 pulse+out、长度跟动作一样，
-    # 没有动作级 FadeOutTime 的话最后一帧会停在满值（≈2.67）再硬切回 idle。
-    # 真实时钟下单点采样抖得厉害，所以在尾窗里连采取最小值。
+    # 非循环动作的收尾：surprised 的 IK 手臂通道 pulse+out 在 0.6s 到位，
+    # 新姿势稳定展示约 0.55s 后再由动作级 FadeOutTime 平滑回 idle。
+    # 真实时钟下单点采样抖得厉害，所以在中段/尾窗内连续采样。
+    # Isolate this measurement from whichever test/UI interaction ran immediately before it.
+    # Residual direct parameters and ambient forearm sway can move the same IK chain and make
+    # a correct button-triggered pose look like an endpoint/constraint regression.
+    a.hit("/api/action?id=idle&force=1")
+    a.hit("/api/param?all=1&reset=1")
+    a.hit("/api/expression?off=1")
+    a.hit("/api/ambient?on=0")
+    time.sleep(0.20)
     a.hit("/api/action?id=surprised&force=1")
-    t0 = time.time(); tail_min = 9.9; mid_peak = 0.0
-    while time.time() - t0 < 0.88:
+    t0 = time.time(); tail_min = 9.9; mid_peak = 0.0; shorten_tail = 9.9
+    pose_bones = None
+    while time.time() - t0 < 1.55:
         eff = {q["id"]: abs(q.get("effective") or 0)
                for q in (a.json("/api/params.json") or {}).get("params", [])}
         v = eff.get("ParamArmLA") or 0.0
         dt = time.time() - t0
-        if dt < 0.60: mid_peak = max(mid_peak, v)
-        elif dt > 0.78: tail_min = min(tail_min, v)
+        if dt < 1.10:
+            mid_peak = max(mid_peak, v)
+            elbow = eff.get("ParamArmLB") or 0.0
+            shortened = eff.get("ParamSurpriseForeshorten") or 0.0
+            if pose_bones is None and v > 0.85 and elbow > 8.20 and shortened > 0.98:
+                pose_bones = a.json("/api/bones.json")
+        elif dt > 1.32:
+            tail_min = min(tail_min, v)
+            shorten_tail = min(shorten_tail, eff.get("ParamSurpriseForeshorten") or 0.0)
         time.sleep(0.03)
-    # 同上：旧阈 1.2 是 scale=6 年代的参数值 ＝ 7.2°，今天写成 7.2/18。
-    check("surprised 中段手臂要摆出去（≥7°）", mid_peak > 7.2 / 18.0,
+    check("surprised 肩角在目标 10°–25° 并将双手送至脸旁",
+          10.0 <= mid_peak * 18.0 <= 25.0,
           "峰值 %.2f（＝%.0f°）" % (mid_peak, mid_peak * 18.0))
+    pose_arms = {q.get("side"): q for q in (pose_bones or {}).get("arms", [])}
+    left, right = pose_arms.get("l", {}), pose_arms.get("r", {})
+    lw, rw = left.get("wrist", [0, 0]), right.get("wrist", [0, 0])
+    lx = (424.5 - lw[0]) / 249.0
+    rx = (rw[0] - 424.5) / 249.0
+    check("surprised 双腕在脸宽外侧 0.60–0.72", 0.60 <= lx <= 0.72 and 0.60 <= rx <= 0.72,
+          "x/head-width 左 %.3f、右 %.3f；腕 y %.1f/%.1f" % (lx, rx, lw[1], rw[1]))
+    check("surprised 左右腕点相对脸中心近似对称",
+          abs(lx - rx) < 0.03,
+          "左 %.3f / 右 %.3f；差 %.3f" % (lx, rx, abs(lx-rx)))
+    ls, rs = left.get("shoulder", [0, 0]), right.get("shoulder", [0, 0])
+    le, re_pt = left.get("elbow", [0, 0]), right.get("elbow", [0, 0])
+    check("surprised 腕点落在脸颊—嘴角带（手掌向上护脸）",
+          bool(pose_bones) and abs(lw[1] - 411.0) < 12 and abs(rw[1] - 411.0) < 12,
+          "腕 y 左 %.1f / 右 %.1f（目标 411）" % (lw[1], rw[1]))
+    arm_parts_path = os.path.join(os.path.dirname(__file__), "..", "characters", "xiaoxun",
+                                  "forms", "teen", "sprites", "arm_parts.json")
+    with open(arm_parts_path, encoding="utf-8") as f:
+        arm_parts = json.load(f)
+    bind_lengths = {
+        side: math.hypot(arm_parts["elbow_joint"][side][0] - arm_parts["shoulder_joint"][side][0],
+                         arm_parts["elbow_joint"][side][1] - arm_parts["shoulder_joint"][side][1])
+        for side in ("l", "r")
+    }
+    shorten_ratios = {side: pose_arms[side]["upper_len"] / bind_lengths[side]
+                      for side in ("l", "r") if side in pose_arms}
+    check("surprised 上臂实际缩短在授权 0.75–0.85 区间",
+          set(shorten_ratios) == {"l", "r"}
+          and all(0.75 <= ratio <= 0.85 for ratio in shorten_ratios.values()),
+          "L/R %.3f / %.3f" % (shorten_ratios.get("l", 0), shorten_ratios.get("r", 0)))
+    check("surprised 肘内收于胸侧、明显低于肩线而非水平张臂",
+          bool(pose_bones) and le[0] < ls[0] and re_pt[0] > rs[0]
+          and 60 < ls[0] - le[0] < 90 and 60 < re_pt[0] - rs[0] < 90
+          and 75 < le[1] - ls[1] < 120 and 75 < re_pt[1] - rs[1] < 120,
+          "肩 L/R %.1f/%.1f；肘 L/R (%.1f,%.1f)/(%.1f,%.1f)" %
+          (ls[0], rs[0], le[0], le[1], re_pt[0], re_pt[1]))
+    check("surprised 双肘屈曲都在 120–150°", 120.0 <= left.get("flex_deg", 0) <= 150.0
+          and 120.0 <= right.get("flex_deg", 0) <= 150.0,
+          "左 %.1f° / 右 %.1f°" % (left.get("flex_deg", 0), right.get("flex_deg", 0)))
+    check("surprised 收尾短缩参数回到 0", shorten_tail < 0.05,
+          "尾窗最小 ParamSurpriseForeshorten=%.3f" % shorten_tail)
+    a.hit("/api/ambient?on=1")
     # 平台契约清单（G50）：界面靠它画"能力与供应商"面板
     pf = a.json("/platform.json")
     check("/platform.json 能取到", bool(pf and pf.get("capabilities")),

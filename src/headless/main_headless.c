@@ -8,6 +8,7 @@
  * 提供：
  *   GET /                      预览页（二次元风格，自包含，不用外部资源）
  *   GET /api/frame.png         当前帧（真实渲染结果，PNG）
+ *   GET /api/bones.json        当前帧骨骼枢轴与肘部夹角（姿势验收）
  *   GET /api/info.json         状态：动作、眨眼、缩放、形态、服装、可触发动作
  *   GET /api/poke?x=&y=&tool=  模拟点击（hand / hammer）
  *   GET /api/action?id=        触发动作
@@ -53,6 +54,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <math.h>
 
 #ifdef _WIN32
 #  include <winsock2.h>
@@ -649,6 +651,57 @@ static void handle_request(zsock fd, const http_req *r)
                 g_gw_ok ? zgw_candidate_count(&g_gw, WATCH[i]) : 0);
         }
         p += z_snprintf(p, cap - (size_t)(p - body), "]}");
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+
+    if (strcmp(r->path, "/api/bones.json") == 0) {
+        /* 关节检查必须读当前帧的世界枢轴，而不是 rig.json 里的 bind-pose 坐标。
+           与 zrig_debug_overlay(bones) 共用同一套矩阵定义。 */
+        static const char *side[] = {"l", "r"};
+        char body[4096];
+        char *p = body;
+        int si, fw = 0, fh = 0;
+        size_t cap = sizeof(body);
+        LOCK();
+        (void)zpet_frame(g_pet, &fw, &fh);
+        p += z_snprintf(p, cap, "{\"form\":\"%s\",\"action\":\"%s\",\"canvas_scale\":1,\"arms\":[",
+                        zpet_form(g_pet), zpet_action(g_pet));
+        for (si = 0; si < 2; ++si) {
+            char ids[3][32];
+            double sh[2], el[2], wr[2], upper, fore, dot, cosine, inner, flex;
+            z_snprintf(ids[0], sizeof(ids[0]), "arm_%s", side[si]);
+            z_snprintf(ids[1], sizeof(ids[1]), "forearm_%s", side[si]);
+            z_snprintf(ids[2], sizeof(ids[2]), "hand_%s", side[si]);
+            if (!zpet_group_pivot_pos(g_pet, ids[0], 1.0, sh) ||
+                !zpet_group_pivot_pos(g_pet, ids[1], 1.0, el) ||
+                !zpet_group_pivot_pos(g_pet, ids[2], 1.0, wr)) {
+                p += z_snprintf(p, cap - (size_t)(p - body),
+                                "%s{\"side\":\"%s\",\"available\":false}",
+                                si ? "," : "", side[si]);
+                continue;
+            }
+            upper = hypot(sh[0] - el[0], sh[1] - el[1]);
+            fore = hypot(wr[0] - el[0], wr[1] - el[1]);
+            dot = (sh[0] - el[0]) * (wr[0] - el[0]) +
+                  (sh[1] - el[1]) * (wr[1] - el[1]);
+            cosine = (upper > 1e-9 && fore > 1e-9) ? dot / (upper * fore) : 1.0;
+            if (cosine < -1.0) cosine = -1.0;
+            if (cosine > 1.0) cosine = 1.0;
+            inner = acos(cosine) * 180.0 / 3.14159265358979323846;
+            flex = 180.0 - inner;
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                "%s{\"side\":\"%s\",\"available\":true,"
+                "\"shoulder\":[%.2f,%.2f],\"elbow\":[%.2f,%.2f],\"wrist\":[%.2f,%.2f],"
+                "\"upper_len\":%.2f,\"forearm_len\":%.2f,"
+                "\"included_angle_deg\":%.2f,\"flex_deg\":%.2f,\"straight_fault\":%s}",
+                si ? "," : "", side[si], sh[0], sh[1], el[0], el[1], wr[0], wr[1],
+                upper, fore, inner, flex, flex < 5.0 ? "true" : "false");
+        }
+        p += z_snprintf(p, cap - (size_t)(p - body),
+                        "],\"knees\":{\"l\":\"mesh_bend_only:no rigid knee pivot\","
+                        "\"r\":\"mesh_bend_only:no rigid knee pivot\"}}");
         UNLOCK();
         send_text(fd, 200, "application/json", body);
         return;

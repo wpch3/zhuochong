@@ -91,6 +91,8 @@ root
 探针：`GET /api/sockets.json` 给每个挂点的 `pos`（骨架摆在哪）与 `screen`（过完父骨矩阵之后
 **这一刻**在哪，画布像素 × 当前缩放）。"配件跟着手腕动"能不能机检，就看 `screen` 动没动。
 
+姿势关节诊断：`GET /api/bones.json` 返回当前帧肩/肘/腕世界 pivot、两段长度、included angle 与 flex（伸直=0°），并将非刚体膝标成 mesh-only。`/api/frame.png?debug=bones` 与该端点共用 `group_matrix()` 世界坐标：肩→肘红线、肘→腕绿线、腕蓝点。**不能用 rig 静态 pivot 直接当动作姿态**；这曾使骨骼叠图在手臂实际转动后仍看起来像 bind pose，已在 T31.19 修正。IK 原型与限制校准见 `docs/qa/IK_STAGE1.md`、`characters/xiaoxun/design/joint_constraints.json`；未完成目标映射之前，solver 不接入正式 motion。
+
 ★ 为什么位置不写进 `skeleton.json`：那是角色级契约，一份；形态的尺度在四份 `anchors.json` 里。
 把 teen 量出来的像素写进角色级文件，等于让 teen 的像素去将就 chibi（T2.2.0 量过：平均偏 92 画布像素）。
 

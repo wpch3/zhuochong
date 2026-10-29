@@ -359,6 +359,9 @@ double      zrig_viseme_mix(const zrig *r);
    二者配合可以验证"五官有没有跟住身体"。查不到对象时返回 0。 */
 double zrig_group_offset_x(const zrig *r, const char *group_id);
 double zrig_group_offset_y(const zrig *r, const char *group_id);
+/* 当前帧骨骼 pivot 的世界坐标（与 zrig_frame 同 scale），不存在返回 0。 */
+int zrig_group_pivot_pos(const zrig *r, const char *group_id, double scale,
+                         double out[2]);
 double zrig_bend_at(const zrig *r, const char *part_id, double canvas_y);
 /* 部件这一帧的实际横向位移（通道 + 组 + 跟随形变）与它的画布纵坐标。 */
 double zrig_part_offset_x(const zrig *r, const char *part_id);
