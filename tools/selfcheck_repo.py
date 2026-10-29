@@ -605,7 +605,7 @@ def check_rig(root):
 L2D_STANDARD = {
     "ParamAngleX", "ParamAngleY", "ParamAngleZ",
     "ParamEyeLOpen", "ParamEyeLSmile", "ParamEyeROpen", "ParamEyeRSmile",
-    "ParamEyeBallX", "ParamEyeBallY", "ParamEyeBallForm",
+    "ParamEyeBallX", "ParamEyeBallY", "ParamEyeBallForm",  # 官方：弯曲眼睛轮廓（T31.16 起本 rig 该语义暂不实现，旧名仍作别名）
     "ParamBrowLY", "ParamBrowRY", "ParamBrowLX", "ParamBrowRX",
     "ParamBrowLAngle", "ParamBrowRAngle", "ParamBrowLForm", "ParamBrowRForm",
     "ParamMouthForm", "ParamMouthOpenY", "ParamCheek",
@@ -619,6 +619,7 @@ L2D_STANDARD = {
 # 标准表里没有、但我们确实需要的扩展。每加一个都必须在这里登记 + 写进
 # docs/LIVE2D_CONFORMANCE.md，否则参数命名会慢慢跑偏，以后接任何现成工具都对不上。
 L2D_EXTENSIONS = {
+    "ParamPupilScale": "瞳孔缩放（T31.16）：贴图模型做不出真瞳形变形，用眼球缩放 sx0.18/sy0.22 代替；旧名 ParamEyeBallForm 官方实为弯曲眼睛轮廓，已改名并保留别名",
     "ParamSkirtSway": "裙摆自主摆动（T45.9）。标准表只有身体角度，没有"
                       "「布自己在动」这一层。两级形变器：裙身 skirt_sway_x + "
                       "下摆 skirt_hem_x，下摆带 0.11 秒行波延迟",
@@ -4735,20 +4736,20 @@ def check_tools(root):
 
     # 惊讶时不许把瞳孔放大。
     # 2026-10-15 用户实拍反馈「眼球会不自然的变大，看着像个怪物」—— 当时 surprised 挂的是
-    # ParamEyeBallForm +1.0，而这个参数在本 rig 里只绑了眼球缩放（sx 0.18 / sy 0.22），
+    # ParamEyeBallForm +1.0（现 ParamPupilScale），而这个参数在本 rig 里只绑了眼球缩放（sx 0.18 / sy 0.22），
     # 于是虹膜被撑大 18~22%。官方口径相反：shocked = 眼睛开得更大 + 瞳孔**变小**
     # （saltech.llc 的 ParamEyeLWide 条目 / Animaze 手册 ParamEyeLOpen 往 max / r/Live2D 两帖）。
-    # 这条闸只认一件事：surprised 的 ParamEyeBallForm 幅度不许为正。
+    # 这条闸只认一件事：surprised 的 ParamPupilScale 幅度不许为正（旧名 ParamEyeBallForm 亦作别名检查）。
     rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
     if os.path.exists(rig_path):
         with open(rig_path, encoding="utf-8") as f:
             rigj = json.load(f)
         sp = next((a for a in rigj.get("actions", []) if a.get("id") == "surprised"), None)
         if sp:
-            ebf = [c for c in sp.get("channels", []) if c.get("target") == "ParamEyeBallForm"]
+            ebf = [c for c in sp.get("channels", []) if c.get("target") in ("ParamPupilScale", "ParamEyeBallForm")]
             amps = [c.get("amp", 0) for c in ebf]
             check("惊讶不许放大瞳孔", all(v <= 0 for v in amps),
-                  "surprised 的 ParamEyeBallForm 幅度 %s（必须 <=0，正值=虹膜被撑大）"
+                  "surprised 的 ParamPupilScale 幅度 %s（必须 <=0，正值=虹膜被撑大）"
                   % (amps if amps else "无此通道"))
 
     # 上唇线淡出斜率：参数绑定与 GEO2PARAM 换算表必须是同一个数。

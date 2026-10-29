@@ -3535,7 +3535,7 @@
           "ease": "out_back"
         },
         {
-          "target": "ParamEyeBallForm",
+          "target": "ParamPupilScale",
           "wave": "pulse",
           "amp": -0.45,
           "dur": 0.2
@@ -5538,7 +5538,7 @@
           ]
         },
         {
-          "target": "ParamEyeBallForm",
+          "target": "ParamPupilScale",
           "interp": "smooth",
           "keys": [
             [
@@ -11462,7 +11462,7 @@
       "note": "sm；idle / star_eyes 里以 freq=0.67 phase=0.09 驱动"
     },
     {
-      "id": "ParamEyeBallForm",
+      "id": "ParamPupilScale",
       "label": "瞳孔 放大/缩小",
       "min": -1.0,
       "max": 1.0,
@@ -11489,7 +11489,7 @@
           "scale": 0.22
         }
       ],
-      "note": "surprised 动作把它推到 1.0"
+      "note": "surprised 动作把它推到 -0.45（缩瞳）；旧名 ParamEyeBallForm 仍可作别名写入"
     },
     {
       "id": "ParamHandLOpen",
@@ -12950,7 +12950,7 @@
           "mode": "set"
         },
         {
-          "id": "ParamEyeBallForm",
+          "id": "ParamPupilScale",
           "value": 0.3
         },
         {
@@ -13212,7 +13212,7 @@
   "generated_by": {
     "tool": "tools/make_rig.py",
     "sources": {
-      "tools/make_rig.py": "d6485cb699715475b86a1dd2b661d34d23b909c4d76a1bd3760e6e8511ea0fec",
+      "tools/make_rig.py": "a0f99b2cc608aeb5aeaa13b6bace1a5c6766691743fd83a30f80483117cf86d9",
       "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
       "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3",
       "characters/xiaoxun/expressions/peek_blush.exp3.json": "d692dbda9205d8cf4451226e5d2adcbffff984246f1f2156723e005aa63ae59b"

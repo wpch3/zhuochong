@@ -1256,7 +1256,7 @@ static void test_rig_channels(void)
         /* 惊讶时瞳孔要**变小**，不许变大（2026-10-15 用户反馈"眼球不自然变大，像个怪物"）。
            官方/社区口径：shocked = 眼睛开得更大 + 瞳孔变小 + 挑眉 + 张嘴
            （saltech.llc 的 ParamEyeLWide 条目 / Animaze 手册 / r/Live2D 两帖）。
-           改之前 surprised 挂的是 ParamEyeBallForm +1.0，而本 rig 里这个参数只绑了
+           改之前 surprised 挂的是 ParamEyeBallForm（现 ParamPupilScale）+1.0，而本 rig 里这个参数只绑了
            眼球缩放，于是虹膜被撑大到 1.18x/1.22x。现在是 -0.45 → 约 0.92x/0.90x。 */
         {
             double sx0, sy0, sx1, sy1;
@@ -7459,7 +7459,8 @@ static void test_action_param_channels(void)
         CHECK(lo > -1e-6, "ParamBreath 不该摆到负半轴（bias 没生效？实际最小 %.3f）", lo);
     }
 
-    /* ④ 瞳孔形状 ParamEyeBallForm（标准参数表第 10 项）：+1 = 瞳孔放大。
+    /* ④ 瞳孔缩放 ParamPupilScale（T31.16 由 ParamEyeBallForm 改名而来）：+1 = 瞳孔放大。
+       旧名 ParamEyeBallForm 在 zrig.c 仍作别名兼容以便旧 rig/外部调用不炸，官方同名参数实为"弯曲眼睛轮廓"。
           眼球被眼眶裁切，所以用"蓝色虹膜在眼眶里占了多少像素"来量。 */
     {
         const zimg *fb;
@@ -7475,13 +7476,15 @@ static void test_action_param_channels(void)
         zrig_tick(r, clk);
         fb = zrig_frame(r, 1.0, &w, &h);
         snap = frame_snapshot(fb);
+        CHECK(zrig_param_set(r, "ParamPupilScale", 1.0) == 0,
+              "rig 里应该有 ParamPupilScale（T31.16 前为 ParamEyeBallForm）");
         CHECK(zrig_param_set(r, "ParamEyeBallForm", 1.0) == 0,
-              "rig 里应该有 ParamEyeBallForm（Live2D 标准名）");
+              "旧名 ParamEyeBallForm 仍应作别名兼容");
         zrig_tick(r, clk);
         fb = zrig_frame(r, 1.0, NULL, NULL);
         dd = frame_diff_box(fb, snap, 350, 238, 494, 308);
         CHECK(dd > 200, "瞳孔放大要看得出来（眼部实际只变了 %d 像素）", dd);
-        zrig_param_set(r, "ParamEyeBallForm", 0.0);
+        zrig_param_set(r, "ParamPupilScale", 0.0);
         zrig_tick(r, clk);
         fb = zrig_frame(r, 1.0, NULL, NULL);
         CHECK(frame_diff_box(fb, snap, 350, 238, 494, 308) == 0, "归零要回到原样（实际差 %d 像素）", frame_diff_box(fb, snap, 350, 238, 494, 308));

@@ -829,16 +829,17 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                         f"freq={inst['freq']} phase={inst['phase']} 驱动",
             })
     if has_eyeballs:
-        # 标准参数表的"瞳孔形状"。贴图模型做不出真正的变形，就用瞳孔缩放代替：
-        # +1 = 瞳孔睁圆放大（吓一跳），-1 = 缩成一点（惊恐/呆滞）。
+        # T31.16：旧名 ParamEyeBallForm 官方语义是"弯曲眼睛轮廓"（Animaze 手册 / VTSuku），
+        # 我们一直当"瞳孔缩放"用属命名空间偏移；改名 ParamPupilScale，旧名在 zrig.c 保留别名兼容。
+        # 贴图模型做不出真正的瞳形变形，用缩放代替：+1 = 瞳孔睁圆放大，-1 = 缩成一点。
         # 只缩放眼球件 —— 眼白底/眼眶/眼线都是矩形小块贴图，一放大就露方边。
-        out.append({"id": "ParamEyeBallForm", "label": "瞳孔 放大/缩小",
+        out.append({"id": "ParamPupilScale", "label": "瞳孔 放大/缩小",
                     "min": -1.0, "max": 1.0, "default": 0.0,
                     "binds": [{"part": "eye_l_ball", "param": "sx", "scale": 0.18},
                               {"part": "eye_r_ball", "param": "sx", "scale": 0.18},
                               {"part": "eye_l_ball", "param": "sy", "scale": 0.22},
                               {"part": "eye_r_ball", "param": "sy", "scale": 0.22}],
-                    "note": "surprised 动作把它推到 1.0"})
+                    "note": "surprised 动作把它推到 -0.45（缩瞳）；旧名 ParamEyeBallForm 仍可作别名写入"})
     if hand_forms:
         # ★ Q36 手の差分。官方口径（sites.google.com/cybernoids.jp … animator_arms_mtn）：
         #   「腕や手の差分は**パーツ表示切替**で」—— 手不是靠扭变形器掰出来的，
@@ -1006,7 +1007,7 @@ def expression_list(mouth=None, has_brows=True, head_is_part=True, has_blend=Fal
             {"id": "star_eyes", "name": "星星眼", "fade": 0.25,
              "params": brows(0.4, 0.4, lf=0.5, rf=0.5) + mform(0.6)
                        + [P("ParamStarEye", 1.0, "set"),
-                          P("ParamEyeBallForm", 0.3)]
+                          P("ParamPupilScale", 0.3)]
                        + blush(0.4) + sparkle(1.0),
              "note": "L1 星形瞳 + L2 眼内碎钻（画进贴图）+ L3 脸周围 ✨；"
                      "✨ 的闪烁由 idle 的 ParamSparkle1..N 驱动。"
@@ -2170,7 +2171,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              {"target": "head", "param": "dy", "wave": "bounce", "amp": -10.0, "dur": 0.35, "ease": "out_back"},
              # 惊讶时的眼睛：**瞳孔略缩**，不是放大（2026-10-15 用户反馈"眼球不自然变大，像个怪物"）。
              # 原来这里写的是 eye_open_* 的 sx +0.18 / sy +0.22 四条部件通道，换算到
-             # ParamEyeBallForm 刚好是 +1.0 —— 而这个参数在本 rig 里只绑了眼球缩放，
+             # ParamPupilScale（旧名 ParamEyeBallForm）刚好是 +1.0 —— 而这个参数在本 rig 里只绑了眼球缩放，
              # 于是虹膜被撑大 18~22%，整只眼睛鼓出来。
              # 官方/社区口径正好相反：shocked = 眼睛**开得更大** + 瞳孔**变小** + 挑眉 + 张嘴
              #   · saltech.llc Live2D 参数表：ParamEyeLWide「Widen the eye beyond ParamEyeLOpen」
@@ -2182,8 +2183,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
              # 幅度 -0.45 是渲 4 档对照图挑的（logs/asset_qa/surprised_eyes2.png）：
              # -0.8 偏呆滞、0.0 没表情、-0.45 露白稍多、读得出"吓一跳"又不怪。
              # 写成**参数级**一条而不是部件级四条：四条经 GEO2PARAM 换算后会合并成同一个
-             # ParamEyeBallForm，幅度靠 amp/scale 反推，改起来极易算错（嘴那边就是这么翻车的）。
-             {"target": "ParamEyeBallForm", "wave": "pulse", "amp": -0.45, "dur": 0.2},
+             # ParamPupilScale，幅度靠 amp/scale 反推，改起来极易算错（嘴那边就是这么翻车的）。
+             {"target": "ParamPupilScale", "wave": "pulse", "amp": -0.45, "dur": 0.2},
              {"target": "mouth_open", "param": "alpha", "wave": "pulse", "amp": -0.9, "dur": 0.25},
          ]},
         {"id": "hammered", "priority": 9, "duration": 0.7, "return_state": "idle",
@@ -3184,7 +3185,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 # 眼睛睁大一点点 + 瞳孔略放大：星星要有地方放
                 {"target": "ParamEyeOpen", "interp": "smooth",
                  "keys": [[0.0, 0.0], [0.3, 0.25], [2.8, 0.2], [3.4, 0.0]]},
-                {"target": "ParamEyeBallForm", "interp": "smooth",
+                {"target": "ParamPupilScale", "interp": "smooth",
                  "keys": [[0.0, 0.0], [0.3, 0.35], [2.8, 0.3], [3.4, 0.0]]},
                 {"target": "ParamMouthForm", "wave": "pulse", "amp": 0.8,
                  "dur": 0.45, "ease": "out"},
@@ -3532,14 +3533,14 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         ("eye_r_ball", "dy"):       ("ParamEyeBallY", 2.5),
         ("eye_open_left", "dx"):    ("ParamEyeBallX", 4.0),
         ("eye_open_right", "dx"):   ("ParamEyeBallX", 4.0),
-        ("eye_open_left", "sx"):    ("ParamEyeBallForm", 0.18),
-        ("eye_open_right", "sx"):   ("ParamEyeBallForm", 0.18),
-        ("eye_open_left", "sy"):    ("ParamEyeBallForm", 0.22),
-        ("eye_open_right", "sy"):   ("ParamEyeBallForm", 0.22),
-        ("eye_l_ball", "sx"):       ("ParamEyeBallForm", 0.18),
-        ("eye_r_ball", "sx"):       ("ParamEyeBallForm", 0.18),
-        ("eye_l_ball", "sy"):       ("ParamEyeBallForm", 0.22),
-        ("eye_r_ball", "sy"):       ("ParamEyeBallForm", 0.22),
+        ("eye_open_left", "sx"):    ("ParamPupilScale", 0.18),
+        ("eye_open_right", "sx"):   ("ParamPupilScale", 0.18),
+        ("eye_open_left", "sy"):    ("ParamPupilScale", 0.22),
+        ("eye_open_right", "sy"):   ("ParamPupilScale", 0.22),
+        ("eye_l_ball", "sx"):       ("ParamPupilScale", 0.18),
+        ("eye_r_ball", "sx"):       ("ParamPupilScale", 0.18),
+        ("eye_l_ball", "sy"):       ("ParamPupilScale", 0.22),
+        ("eye_r_ball", "sy"):       ("ParamPupilScale", 0.22),
     }
     # 直接删掉的通道：整只眼（眼眶+眼白+睫毛）在脸上平移。
     # 这件事本来就该由 head 组的位移带着走（眼部件全在 head 组里），

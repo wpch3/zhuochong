@@ -2282,6 +2282,7 @@ static int param_find(const zrig *r, const char *id)
 static const char *param_alias(const char *id)
 {
     if (z_streq(id, "ParamBlush")) return "ParamCheek";   /* 旧名，标准名是 ParamCheek */
+    if (z_streq(id, "ParamEyeBallForm")) return "ParamPupilScale"; /* T31.16：官方 ParamEyeBallForm 是"弯曲眼睛轮廓"，本 rig 的瞳孔缩放已改名 */
     return id;
 }
 

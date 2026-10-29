@@ -912,14 +912,19 @@ def run(base, root):
     # 上面那段像素对照是在 /api/pause?on=1 里跑的（冻结时钟才比得了像素）。
     # 动作要跑起来必须先解冻，这一段做完再冻回去给后面的口型对照用。
     a.hit("/api/pause?on=0"); time.sleep(0.15)
-    check("瞳孔形状用标准名 ParamEyeBallForm", "ParamEyeBallForm" in pids, " ".join(pids[:8]))
+    check("瞳孔缩放用 ParamPupilScale（旧名 ParamEyeBallForm 作别名兼容）", "ParamPupilScale" in pids, " ".join(pids[:8]))
     check("全身倾斜扩展参数 ParamBaseRot 在册", "ParamBaseRot" in pids, " ".join(pids[:8]))
-    if "ParamEyeBallForm" in pids:
+    if "ParamPupilScale" in pids:
         a.hit("/api/action?id=idle&force=1"); time.sleep(0.25)
         s0, _ = a.frame_hash()
-        a.hit("/api/param?id=ParamEyeBallForm&v=1")
+        a.hit("/api/param?id=ParamPupilScale&v=1")
         s1, _ = a.frame_hash()
         check("瞳孔放大改变画面", s0 != s1, "%s → %s" % (s0, s1))
+        a.hit("/api/param?id=ParamPupilScale&reset=1")
+        # 旧名别名仍应可用
+        a.hit("/api/param?id=ParamEyeBallForm&v=1")
+        sa, _ = a.frame_hash()
+        check("旧名 ParamEyeBallForm 别名仍有效", s0 != sa, "%s → %s" % (s0, sa))
         a.hit("/api/param?id=ParamEyeBallForm&reset=1")
     a.hit("/api/action?id=wave&force=1")
     peak_a = peak_b = 0.0

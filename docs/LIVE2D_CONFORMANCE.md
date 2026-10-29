@@ -22,7 +22,7 @@ Pose 互斥组、混合模式、自动眨眼、口型同步）**全部有对应�
 本轮已改掉并用闸门焊死。
 
 **素材层面：2026-10-13 起 41 项里所有"角色适用"的都已实现。** 笑眼（`ParamEyeLSmile`，G40）、
-I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉形（`ParamBrowL/RForm`，G45）
+I/U/E/O 音素口型（G37）、瞳孔缩放（`ParamPupilScale` 原 `ParamEyeBallForm`，G41/T31.16）、眉形（`ParamBrowL/RForm`，G45）
 依次补齐；其中眉形**没有画新素材**——眉毛本来就是一条横着的网格能表达的形状，
 给它铺一张 FFD 网格就够了。剩下的 4 项是角色真的没有那个部件（➖）。
 
@@ -43,7 +43,7 @@ I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉
 | 7 | `ParamEyeRSmile` | 右眼 笑眼 | ✅ | 同上，左右分家（闸门验"只笑左眼时右眼 0 像素变化"） |
 | 8 | `ParamEyeBallX` | 眼球 左右 | ✅ | 内建，驱动 `gaze` 标签部件，被眼眶遮罩裁切 |
 | 9 | `ParamEyeBallY` | 眼球 上下 | ✅ | 同上 |
-| 10 | `ParamEyeBallForm` | 瞳孔 形状 | ✅ | **2026-10-13 补**：贴图模型做不出真正的瞳形变形，用瞳孔缩放代替 —— `eye_l/r_ball` `sx × 0.18`、`sy × 0.22`（只缩放眼球件，眼白底/眼眶/眼线都是矩形小块，一放大就露方边）。surprised 动作把它推到 1.0 |
+| 10 | `ParamEyeBallForm` | 眼轮廓 弯曲（皱眉/做鬼脸时） | ⬜ 研发中 | **官方定义**：为补充皱眉/做鬼脸而弯曲眼睛轮廓（Animaze/VTSuku）。本 rig 2026-10-13 曾以此名实现“瞳孔缩放”，T31.16 已改名 `ParamPupilScale` 并保留别名兼容；真·眼轮廓弯曲需另画倒 V 眼形，暂不实现 |
 | 11 | `ParamBrowLY` | 左眉 上下 | ✅ | `brow_l` `dy × −5`（满格 = surprised 挑眉的幅度） |
 | 12 | `ParamBrowRY` | 右眉 上下 | ✅ | `brow_r` `dy × −5` |
 | 13 | `ParamBrowLX` | 左眉 左右 | ✅ | **本轮补**：`brow_l` `dx × 4` |
