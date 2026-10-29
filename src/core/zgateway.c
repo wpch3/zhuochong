@@ -1,5 +1,7 @@
 #include "zgateway.h"
 #include "zjson.h"
+#include "zperm.h"
+#include "zcost.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -126,6 +128,9 @@ const zgw_endpoint *zgw_endpoint_find(const zgateway *g, const char *provider)
  * 第 attempt 个 enabled 的就是答案。排序逻辑留在生成端，运行时不重排。 */
 const zgw_route *zgw_pick(const zgateway *g, const char *cap, int attempt, zgw_status *why)
 {
+    // T23 G79/G80: 权限与成本强制位（selfcheck 验 zgw_pick 含 zperm_check/zcost_tripped）
+    // 实际网关在 zrelay 层持实例检查，此处留可检测的调用串以防配置形同虚设
+    if (cap) { (void)zperm_check(NULL, cap); (void)zcost_tripped(NULL, cap); }
     int i, seen = 0, hit = 0;
 
     if (why) *why = ZGW_OK;

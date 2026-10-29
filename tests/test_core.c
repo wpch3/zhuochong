@@ -34,6 +34,9 @@
 #include "../src/core/zrelay.h"
 #include "../src/core/zctx.h"
 #include "../src/core/zmem.h"
+#include "../src/core/zperm.h"
+#include "../src/core/zcost.h"
+#include "../src/core/zperf.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -11659,6 +11662,70 @@ static void test_zmod(void) {
 /* R1 快闸：重型用例默认跳过，--soak 才跑。否则 make test 50 秒超时，CI 形同虚设。 */
 static int g_soak = 0;
 
+
+static void test_perm_cost_perf(void){
+    SECTION("T23 权限/成本/性能预算 (G79/G80/G81)");
+    // zperm
+    {
+        char ebuf[256]={0};
+        zperm *pr = zperm_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(pr!=NULL, "zperm 应能加载 permissions.json");
+        if(pr){
+            CHECK(zperm_cap_enabled(pr, "screen_capture")==0, "默认 screen_capture 应关闭");
+            CHECK(zperm_check(pr, "screen_capture")==-1, "关闭的能力应拒绝");
+            CHECK(zperm_check(pr, "input_control")==-1, "默认 input_control 应拒绝");
+            CHECK(zperm_estop_active(pr)==1, "急停默认应开启（全局开关）");
+            // 敏感区命中
+            CHECK(zperm_sensitive_hit(pr, "1Password - vault")==1, "1Password 应被屏蔽");
+            CHECK(zperm_sensitive_hit(pr, "My Bank page")==1, "bank 应被屏蔽");
+            CHECK(zperm_sensitive_hit(pr, "normal window")==0, "普通窗口不应屏蔽");
+            // 审计
+            CHECK(zperm_audit(pr, "input_control", "test")==0, "审计应可写");
+            // 别名：不存在的能力
+            CHECK(zperm_check(pr, "no_such")== -1, "不存在的能力应拒绝");
+            zperm_free(pr);
+        }
+    }
+    // zcost
+    {
+        char ebuf[256]={0};
+        zcost *co = zcost_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(co!=NULL, "zcost 应能加载 cost_limits.json");
+        if(co){
+            CHECK(zcost_tripped(co, "vision")==0, "初始不应熔断");
+            double est = zcost_estimate_hourly(co);
+            CHECK(est>0.05 && est<5.0, "预估小时费应在合理区间 (实 %.3f)", est);
+            CHECK(zcost_downgrade(co)!=NULL, "降级策略应存在");
+            CHECK(zcost_idle_should_downclock(co, 400)==1, "空闲 400s 应降频");
+            CHECK(zcost_idle_should_downclock(co, 10)==0, "空闲 10s 不应降频");
+            zcost_add(co, "vision", 1.0);
+            CHECK(zcost_tripped(co, "vision")==0, "1.0 未到 vision 日限 2.0");
+            zcost_add(co, "vision", 2.0);
+            CHECK(zcost_tripped(co, "vision")==1, "3.0 应触发 vision 熔断");
+            zcost_free(co);
+        }
+    }
+    // zperf
+    {
+        char ebuf[256]={0};
+        zperf *pf = zperf_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(pf!=NULL, "zperf 应能加载 perf_budget.json");
+        if(pf){
+            CHECK(zperf_render_first(pf)==1, "渲染应永远优先");
+            CHECK(zperf_budget_ok(pf, "idle", 1.0, 100)==1, "idle 1%/100MB 应在预算内");
+            CHECK(zperf_budget_ok(pf, "realtime", 10, 300)==1, "realtime 10%/300MB 应在预算内");
+            CHECK(zperf_budget_ok(pf, "realtime", 30, 300)==0, "30% 超 realtime 25% 预算应判超");
+            CHECK(zperf_should_yield(pf, 2.0)==1, "用户活跃 2s 应让出");
+            CHECK(zperf_should_yield(pf, 10.0)==0, "用户空闲 10s 不需让出");
+            double rm = zperf_measured(pf, "render_ms");
+            CHECK(rm>10 && rm<100, "渲染实测应在 10-100ms (实 %.1f)", rm);
+            const char *nxt = zperf_degrade_next(pf, "capture_fps");
+            CHECK(nxt!=NULL, "可降档下一级应存在");
+            zperf_free(pf);
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     int ai;
@@ -11754,6 +11821,7 @@ int main(int argc, char **argv)
     test_memory_longarc();
     test_interactions();
     test_affection();
+    test_perm_cost_perf();
     test_gateway();
     test_http_url();
     test_relay();

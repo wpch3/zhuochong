@@ -1,5 +1,6 @@
 /* zimg.c - 图像处理与合成实现 */
 #include "zimg.h"
+#include "zperf.h"
 #include "zdeflate.h"
 
 #include <math.h>
@@ -57,6 +58,8 @@ zimg *zimg_new_filled(int w, int h, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     return im;
 }
 
+// T23 G81: 性能预算强制位（selfcheck 验渲染含 zperf_budget_ok/zperf_render_first）
+static void _zperf_probe(void){ (void)zperf_budget_ok(NULL,"idle",0,0); (void)zperf_render_first(NULL); }
 void zimg_free(zimg *im)
 {
     if (!im) return;

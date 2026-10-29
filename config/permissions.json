@@ -1,0 +1,30 @@
+{
+  "_note": "统一权限模型 A29/G79：能力分级、独立开关、全局急停、敏感区域屏蔽、操作留痕、显眼指示。默认全部关闭，开启需用户显式确认。",
+  "schema_version": "1.0",
+  "tiers": [
+    {"id": "read_only", "level": 1, "label": "只读", "desc": "看屏幕、读文件（不含敏感区）"},
+    {"id": "voice", "level": 2, "label": "发声", "desc": "TTS 播报、音效"},
+    {"id": "network", "level": 3, "label": "联网", "desc": "出网请求（经网关白名单）"},
+    {"id": "input", "level": 4, "label": "控键鼠", "desc": "模拟键鼠输入（含游戏档位约束）"},
+    {"id": "write_exec", "level": 5, "label": "写文件/执行", "desc": "写盘、执行代码/脚本"}
+  ],
+  "capabilities": [
+    {"id": "screen_capture", "tier": "read_only", "enabled": false, "label": "屏幕捕获"},
+    {"id": "read_files", "tier": "read_only", "enabled": false, "label": "读文件", "allow_dirs": ["./characters", "./config"], "deny_patterns": ["*.env", "data/usage.jsonl"]},
+    {"id": "tts_speak", "tier": "voice", "enabled": false, "label": "语音播报"},
+    {"id": "network_out", "tier": "network", "enabled": false, "label": "联网", "allow_hosts": ["api.deepseek.com", "127.0.0.1"]},
+    {"id": "input_control", "tier": "input", "enabled": false, "label": "键鼠控制", "require_game_tier": true},
+    {"id": "file_write", "tier": "write_exec", "enabled": false, "label": "写文件", "allow_dirs": ["./data/sandbox"], "deny_patterns": ["*"]},
+    {"id": "code_exec", "tier": "write_exec", "enabled": false, "label": "执行代码", "timeout_s": 30, "deny_network": true}
+  ],
+  "e_stop": {"enabled": true, "hotkey": "Ctrl+Shift+Esc", "cuts_tiers": ["input", "write_exec"], "label": "全局急停：切断所有动手类能力"},
+  "sensitive_masks": [
+    {"id": "password_manager", "pattern": "1Password|KeePass|Bitwarden", "action": "exclude"},
+    {"id": "bank_page", "pattern": "bank|paypal|alipay", "action": "exclude"}
+  ],
+  "audit": {"enabled": true, "log_path": "data/audit.log", "retention_days": 30, "record": ["input_control", "file_write", "code_exec", "network_out"]},
+  "indicators": {
+    "screen_capturing": {"icon": "● REC", "color": "#E0484A", "position": "tray"},
+    "mic_active": {"icon": "● MIC", "color": "#E0484A", "position": "tray"}
+  }
+}

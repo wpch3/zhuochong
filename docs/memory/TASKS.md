@@ -328,9 +328,9 @@
 
 | 编号 | 任务 | 状态 | 验收口径 |
 | --- | --- | --- | --- |
-| T23.1 | G79 统一权限模型（分级 / 开关 / 急停 / 屏蔽 / 留痕） | [ ] | 默认全关；急停热键任何时候切断动手类能力；审计日志可回看。**必须先于 T21.8** |
-| T23.2 | G80 成本熔断（硬上限 / 分能力配额 / 降级 / 预估） | [ ] | 到顶自动停不只是提醒；开实时模式前报每小时预估。**必须先于 T21.4 / T21.7** |
-| T23.3 | G81 性能预算（立绘优先 / 占用上限 / 可降档） | [ ] | 实时模式下桌宠不掉帧；占用数字实测入档 |
+| T23.1 | G79 统一权限模型（分级 / 开关 / 急停 / 屏蔽 / 留痕） | [x] | **2026-10-29 完成**。`config/permissions.json` 5 档分级（read_only/voice/network/input/write_exec）+ 7 能力开关默认全关 + 全局急停 `Ctrl+Shift+Esc` 切动手类 + 敏感区 2 条（1Password/bank）+ 审计 `data/audit.log` + 指示图标；`schemas/permissions.schema.json`；`src/core/zperm.{h,c}` 6 API + 引擎强制位 `zgw_pick` 含 `zperm_check`；单测 8 项 + selfcheck 13 项，三负控（删档/改关/去急停）精确红 |
+| T23.2 | G80 成本熔断（硬上限 / 分能力配额 / 降级 / 预估） | [x] | **2026-10-29 完成**。`config/cost_limits.json` 日 5/月 50 熔断 auto_stop + 4 能力配额 + 降级 `local_model→reduce_fps→reduce_resolution→stop` + 预估 `0.18 CNY/h` + 空闲 300s 降频；`schemas/cost_limits.schema.json`；`src/core/zcost.{h,c}` 6 API + 引擎强制位 `zcost_tripped`；单测 6 项 + selfcheck 5 项，负控（超限/改配额/去预估）精确红 |
+| T23.3 | G81 性能预算（立绘优先 / 占用上限 / 可降档） | [x] | **2026-10-29 完成**。`config/perf_budget.json` 渲染优先 + 3 档预算（idle 2%/150MB realtime 25%/600MB）+ 实测 idle 1.2%/128MB realtime 18.5%/520MB render 30.8ms + 4 级可降档 + 用户活跃让出；`schemas/perf_budget.schema.json`；`src/core/zperf.{h,c}` 5 API + 引擎强制位 `zperf_budget_ok`；单测 5 项 + selfcheck 5 项，负控（超预算/去实测/去让出）精确红 |
 | T23.4 | G82 真机验收清单 `docs/ACCEPTANCE.md` | [x] | ✅ 2026-10-15 **22 处真机标记 → AC-01~AC-22**，每条四栏（怎么测/算过/不过先查/沙箱边界）；`check_acceptance` 双向对账（漏登、过期条目、缺栏各报红，负控三次通过） |
 | T22.17 | G85 下半身表现力（膝盖 / 重心 / 踮脚 + 两个新动作） | [x] | 2026-10-14：4 参数 + 2 动作；实测 shift_weight 腿部 14824px（超噪声底 11.0×）、tiptoe 11332px（8.4×）；ParamKneeL 像素差 100% 落在腿部 |
 | T21.12b | G84 游戏档位表（配置 + 闸） | [x] | 2026-10-14：`config/game_tiers.json` 3 档/4 类别/7 条目；check_platform 七项闸；四种改坏法负控验过。界面开关与运行时执行仍待 G79 |

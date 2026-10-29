@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "cost_limits",
+  "type": "object",
+  "required": ["schema_version", "hard_caps", "per_capability", "downgrade", "estimate"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "hard_caps": {"type": "object", "required": ["daily_cny", "monthly_cny", "action"], "properties": {"daily_cny": {"type": "number"}, "monthly_cny": {"type": "number"}, "action": {"type": "string", "enum": ["auto_stop", "alert_only"]}}},
+    "per_capability": {"type": "array"},
+    "downgrade": {"type": "object", "required": ["order"], "properties": {"order": {"type": "array", "items": {"type": "string"}}}},
+    "estimate": {"type": "object", "required": ["enabled", "show_before_enable"], "properties": {"enabled": {"type": "boolean"}, "show_before_enable": {"type": "boolean"}}},
+    "idle_downclock": {"type": "object"}
+  }
+}

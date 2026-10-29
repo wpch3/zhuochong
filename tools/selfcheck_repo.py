@@ -4785,6 +4785,59 @@ def check_tools(root):
     check("Shell 脚本语法都正确", not badsh, f"{len(shs)} 个" + (f"，坏：{badsh}" if badsh else ""))
 
 
+# ------------------------------------------------------------------ T23 P4 横切：权限/成本/性能预算 (A29/A30/A31 - G79/G80/G81)
+def check_t23(root):
+    """T23 三件必须同时落地：权限模型默认全关有急停、成本熔断到顶自停、性能预算渲染优先且实测入档。"""
+    section("P4 横切：权限模型/成本熔断/性能预算 (T23/G79/G80/G81)")
+    # 权限
+    perm_p = os.path.join(root, "config", "permissions.json")
+    perm = jsonc(perm_p) if os.path.exists(perm_p) else None
+    ok_perm = check("权限表在 (config/permissions.json)", perm is not None, "T23.1 落点")
+    if perm:
+        check("权限表有 tiers 且分级单调", bool(perm.get("tiers")) and len(perm["tiers"])>=3 and all(perm["tiers"][i]["level"] < perm["tiers"][i+1]["level"] for i in range(len(perm["tiers"])-1)), f'{len(perm.get("tiers",[]))} 档')
+        caps = perm.get("capabilities", [])
+        off = [c for c in caps if not c.get("enabled")]
+        check("默认全关（至少 5 项能力关闭）", len(off)>=5, f"{len(off)}/{len(caps)} 项关闭")
+        check("有全局急停 e_stop 且热键存在", bool(perm.get("e_stop",{}).get("hotkey")) and perm.get("e_stop",{}).get("enabled")==True, perm.get("e_stop",{}).get("hotkey",""))
+        check("敏感区屏蔽表存在", bool(perm.get("sensitive_masks")), f'{len(perm.get("sensitive_masks",[]))} 条')
+        check("审计日志开启且路径在 data/", perm.get("audit",{}).get("enabled")==True and "data/" in perm.get("audit",{}).get("log_path",""), perm.get("audit",{}).get("log_path",""))
+        check("显眼指示（屏幕/麦克风）存在", bool(perm.get("indicators",{}).get("screen_capturing")), "有 REC/MIC 指示")
+    # 成本
+    cost_p = os.path.join(root, "config", "cost_limits.json")
+    cost = jsonc(cost_p) if os.path.exists(cost_p) else None
+    ok_cost = check("成本熔断表在 (config/cost_limits.json)", cost is not None, "T23.2 落点")
+    if cost:
+        hc = cost.get("hard_caps",{})
+        check("硬上限 daily/monthly 存在且 action=auto_stop", hc.get("daily_cny") and hc.get("monthly_cny") and hc.get("action")=="auto_stop", f'daily {hc.get("daily_cny")} monthly {hc.get("monthly_cny")}')
+        check("分能力配额至少 3 项", len(cost.get("per_capability",[]))>=3, f'{len(cost.get("per_capability",[]))} 项')
+        check("降级顺序存在且含 local_model", "local_model" in cost.get("downgrade",{}).get("order",[]), str(cost.get("downgrade",{}).get("order",[])))
+        est = cost.get("estimate",{})
+        check("预估开关存在且 show_before_enable=true", est.get("enabled")==True and est.get("show_before_enable")==True, "")
+        check("空闲自动降频存在", bool(cost.get("idle_downclock",{}).get("enabled")), f'idle {cost.get("idle_downclock",{}).get("idle_s")}s')
+    # 性能
+    perf_p = os.path.join(root, "config", "perf_budget.json")
+    perf = jsonc(perf_p) if os.path.exists(perf_p) else None
+    ok_perf = check("性能预算表在 (config/perf_budget.json)", perf is not None, "T23.3 落点")
+    if perf:
+        check("渲染永远优先 render_first=true", perf.get("priority",{}).get("render_first")==True, "")
+        check("预算至少含 idle 与 realtime 两档", len(perf.get("budgets",[]))>=2 and any(b.get("mode")=="idle" for b in perf.get("budgets",[])), f'{len(perf.get("budgets",[]))} 档')
+        meas = perf.get("measured",{})
+        check("实测入档（idle_cpu/realtime_cpu/render_ms）", meas.get("idle_cpu") is not None and meas.get("render_ms") is not None, f'idle {meas.get("idle_cpu")}% render {meas.get("render_ms")}ms')
+        check("可独立降档至少 3 项", len(perf.get("degradable",[]))>=3, f'{len(perf.get("degradable",[]))} 项')
+        check("用户活跃时让出存在", bool(perf.get("yield_on_user_active",{}).get("enabled")), "")
+    # 引擎强制位：源码里必须出现调用点，否则配置形同虚设
+    srcs = []
+    for pat in ["src/core/zgateway.c", "src/core/zrelay.c", "src/core/zimg.c"]:
+        fp=os.path.join(root, pat)
+        if os.path.exists(fp): srcs.append((pat, open(fp, encoding="utf-8", errors="ignore").read()))
+    allsrc = "\n".join(s for _,s in srcs)
+    check("网关/中继含权限检查 zperm_check", "zperm_check" in allsrc, "zgateway.c/zrelay.c 应在选路前检查")
+    check("成本熔断检查 zcost_tripped 在中继", "zcost_tripped" in allsrc, "zrelay.c 应在出网前检查额度")
+    check("性能预算检查 zperf_budget_ok 在渲染", "zperf_budget_ok" in allsrc or "zperf_render_first" in allsrc, "渲染路径应尊重预算")
+    # Schema 存在
+    for sch in ["schemas/permissions.schema.json", "schemas/cost_limits.schema.json", "schemas/perf_budget.schema.json"]:
+        check(f"Schema 在 {sch}", os.path.exists(os.path.join(root, sch)), "")
+
 # ------------------------------------------------------------------ 7.9 语音语感（A52 / T57）
 def check_prosody(root):
     """语感表必须真的有高低差，角色必须真的接上，演出引擎自检必须全过。
@@ -5120,6 +5173,7 @@ def main():
                check_rig_freshness,
                check_external_motions,
                check_external_expressions,
+               check_t23,
                check_prosody,
                check_phys2,
                check_phys2_rig,
