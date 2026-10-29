@@ -101,6 +101,8 @@ I/U/E/O 音素口型（G37）、瞳孔缩放（`ParamPupilScale` 原 `ParamEyeBa
 | `ParamForeLongR` / `ParamForeLongL` | 前臂「折肘时沿轴加长」（ワープデフォーマ `arm_?_fore_long`，2×4 网格，和 `_slim` 挂在同一件上逐点相加；另带 `hand_?` 组 dx/dy 让手跟着袖口外移）。第四十八问：用户说「小臂有一些偏短」。对着参考模板 `pose_ref/wave_up.png` 等比并排量过 —— 参考 前臂/上臂 = 150/173 = **0.87**，我们 116/162 = **0.71**，相对短 18%，折起来就是「吊在袖口下的一只拳套」。原画是一条垂着的胳膊，肘的切点由原画决定、改不了；能改的是折肘那一刻把前臂沿自己的轴线拉长 **26px（+22%）** ⇒ 142/162 = 0.873。行权重 (0, .15, .55, 1, 1)：肘端 0（关节正圆一个像素不动，折起来不裂缝）、袖口两行同值（条纹刚性平移、不拉椭圆）。0 = 原件，静止画面零改动 |
 | `ParamSurpriseElbowHide` | 仅 `surprised` 动作使用的扩展门控：用 alpha 乘算隐藏脸侧折肘角度下会飘出的 gusset/seam。默认 0，不影响 `wave` 等其他动作；由该动作脉冲至 1 后，动作退场时复位。它是动作特定的绘制修正，不是新骨骼/新贴图。 |
 | `ParamSurpriseForeshorten` | **Teen `surprised` 专用上臂透视短缩（T31.19）**：只在该动作折臂时将上臂局部 `sy` 乘到约 0.841，并补偿肘 pivot，使视觉肩—肘距离约为 bind 的 0.848；肘以下前臂与手保持原尺度。用于让双腕优先贴近嘴角—下巴外侧、避免「螃蟹手」。默认/动作外为 0，不影响 `happy`、`talk`、`wave` 或袖片；chibi 仍受单张合成原画限制。 |
+| `ParamSurpriseArmSwap` | Teen `surprised` 专用袖片切换：动作中隐藏自然下垂的袖件、换成独立弯曲前臂袖片；其他动作不改。 |
+| `ParamHandLSurprised` / `ParamHandRSurprised` | Teen `surprised` 专用左右手差分：手指微曲并拢、拇指内收；只在该动作期间替换常态手，并与弯袖口叠放。 |
 | `ParamTiptoe` | 踮脚。`root.dy` 上提 7px + 两腿 `curve:"tip"`（顶固定、底最大，作用在脚踝）收 5px。裙摆下沿不动所以不露底 |
 | `ParamHairAhoge` / `ParamHairAhogeS` | 标准只有 Front/Side/Back/Fluffy，呆毛是这个角色的招牌 |
 | `ParamHairSideS` | 侧发的 S 形（FFD），和整体摆动分开 |

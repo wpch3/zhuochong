@@ -597,6 +597,35 @@ def check_rig(root):
         check("关键帧曲线写法合法", not badkeys,
               f"坏关键帧 {badkeys[:3]}" if badkeys else f"{nkey} 条关键帧通道")
 
+        # T31 按主人的参考图验收：惊讶必须是全身姿态+睁眼 O 嘴；开心是闭嘴笑；
+        # talk 有程序回退的嘴形变化，真实语音再由音素轨接管。
+        action_by_id = {a.get("id"): a for a in r.get("actions", [])}
+        def channel(aid, target):
+            return next((c for c in action_by_id.get(aid, {}).get("channels", [])
+                         if c.get("target") == target), None)
+        happy_form = channel("happy", "ParamMouthForm")
+        happy_open = channel("happy", "ParamMouthOpenY")
+        talk_form = channel("talk", "ParamMouthForm")
+        talk_open = channel("talk", "ParamMouthOpenY")
+        surprise_form = channel("surprised", "ParamMouthForm")
+        surprise_open = channel("surprised", "ParamMouthOpenY")
+        check("开心动作闭嘴并抬嘴角", bool(happy_form and happy_form.get("amp", 0) > 0
+                                               and not happy_open),
+              "happy 应驱动正向 ParamMouthForm，不得张开 ParamMouthOpenY")
+        check("talk 动作兼有开合与宽窄嘴形", bool(talk_form and talk_open),
+              "talk 应同时驱动 ParamMouthOpenY 与 ParamMouthForm")
+        check("惊讶动作是 O 嘴", bool(surprise_form and surprise_form.get("amp", 0) < 0
+                                             and surprise_open and surprise_open.get("amp", 0) > 0),
+              "surprised 应同时张嘴并驱动负向 ParamMouthForm")
+        if any(p.startswith("arm_") and p.endswith("_fore") for p in pids):
+            surprised = action_by_id.get("surprised", {})
+            targets = {c.get("target") for c in surprised.get("channels", [])}
+            need = {"ParamArmLA", "ParamArmRA", "ParamArmLB", "ParamArmRB",
+                    "ParamHandLSurprised", "ParamHandRSurprised",
+                    "ParamEyeLWide", "ParamEyeRWide"}
+            check("惊讶动作覆盖双臂/专用手/瞪眼", need <= targets,
+                  f"缺少 {sorted(need - targets)}")
+
 
 
 # ------------------------------------------------- 3.5 Live2D 标准合规（静态）
@@ -658,6 +687,11 @@ L2D_EXTENSIONS = {
                       "折肘时沿肘→腕轴线拉长 26px（116→142 = 0.87），"
                       "hand_? 组 dx/dy 同步外移；静止时为 0，画面一个像素不动",
     "ParamForeLongL": "同上，左前臂",
+    "ParamSurpriseElbowHide": "惊讶动作的特定 alpha 门控：折肘时隐藏会浮出的 gusset/seam；默认与其他动作保持原样",
+    "ParamSurpriseForeshorten": "Teen surprised 专用上臂透视短缩：局部 sy≈0.841，使实际肩—肘距离约为 bind 的 0.848；同步内移肘 pivot，前臂与手不缩放，其他动作值为 0（T31.19）",
+    "ParamSurpriseArmSwap": "Teen surprised 专用弯袖差分切换：动作峰值时隐藏自然下垂袖片并显示弯曲前臂袖片；其他动作保持原素材",
+    "ParamHandLSurprised": "Teen surprised 专用左手差分：与弯袖口配套，手指微曲并拢，仅动作期间替换常态手",
+    "ParamHandRSurprised": "Teen surprised 专用右手差分：与弯袖口配套，手指微曲并拢，仅动作期间替换常态手",
     "ParamForeSwayL": "左前臂袖管自己摆（T66.17 / 第六十六问 S3）。前面四条 Fore* 都是"
                       "**网格**（逐顶点），只能表达『参数越大、那几行挪得越多』；袖管要的"
                       "是 Live2D 那种『肘先动、袖口慢半拍追』的分层摆，那必须是**骨链**"
@@ -3252,7 +3286,8 @@ def check_live2d(root):
         r = jsonc(rp)
         known = {q["id"] for q in r.get("params", [])} | {
             "ParamAngleX", "ParamAngleY", "ParamEyeOpen", "ParamEyeLOpen", "ParamEyeROpen",
-            "ParamEyeLSmile", "ParamEyeRSmile", "ParamEyeBallX", "ParamEyeBallY"}
+            "ParamEyeLSmile", "ParamEyeRSmile", "ParamEyeBallX", "ParamEyeBallY",
+            "ParamEyeLWide", "ParamEyeRWide"}
         geom, unknown = [], []
         nch = 0
         for a_ in r.get("actions", []):

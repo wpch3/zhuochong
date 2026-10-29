@@ -377,12 +377,14 @@
         "arm_fore_l": [
           "arm_l_fore_slim",
           "arm_l_fore_long",
-          "arm_l_elbow_smooth"
+          "arm_l_elbow_smooth",
+          "forearm_bent_l_long"
         ],
         "arm_fore_r": [
           "arm_r_fore_slim",
           "arm_r_fore_long",
-          "arm_r_elbow_smooth"
+          "arm_r_elbow_smooth",
+          "forearm_bent_r_long"
         ],
         "skirt_lining": []
       },
