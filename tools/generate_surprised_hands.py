@@ -18,7 +18,7 @@ from PIL import Image
 SIZE = (86, 109)
 TARGET_BOX_2X = (156, 204)
 MARGIN_TOP_2X = 6
-HORIZONTAL_SHAPE_FACTOR = 1.28
+WRIST_SHAFT_TRIM = 0.12  # hide only the cuff-buried end; keep the source proportions natural
 
 
 def key_magenta(image: Image.Image) -> Image.Image:
@@ -36,51 +36,25 @@ def key_magenta(image: Image.Image) -> Image.Image:
     return Image.fromarray(rgba, "RGBA")
 
 
-def gather_fingers(image: Image.Image) -> Image.Image:
-    """Gently bring the raised fingers toward one another above the palm.
-
-    The source illustration is a five-fingered hand, but generative art tends to
-    over-spread the upper fingers. A smooth row-wise remap narrows only the
-    finger fan (0.68x at the tips, back to 1.0x across the palm), preserving the
-    hand's painted contours instead of redrawing them as geometric shapes.
-    """
-    rgba = np.asarray(image, dtype=np.float32)
-    h, w = rgba.shape[:2]
-    x = np.arange(w, dtype=np.float32)
-    center = (w - 1) * 0.5
-    out = np.zeros_like(rgba)
-    for y in range(h):
-        t = np.clip((y / max(1, h - 1) - 0.38) / 0.17, 0.0, 1.0)
-        t = t * t * (3.0 - 2.0 * t)
-        factor = 0.68 + 0.32 * t
-        source_x = center + (x - center) / factor
-        x0 = np.floor(source_x).astype(np.int32)
-        frac = (source_x - x0)[:, None]
-        valid = (x0 >= 0) & (x0 + 1 < w)
-        x0 = np.clip(x0, 0, w - 2)
-        row = rgba[y]
-        out[y, valid] = row[x0[valid]] * (1.0 - frac[valid]) + row[x0[valid] + 1] * frac[valid]
-    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA")
-
-
 def prepare_source(path: Path) -> Image.Image:
-    image = gather_fingers(key_magenta(Image.open(path)))
+    image = key_magenta(Image.open(path))
     alpha = image.getchannel("A")
     bbox = alpha.point(lambda p: 255 if p > 20 else 0).getbbox()
     if not bbox:
         raise ValueError(f"no hand pixels after chroma key: {path}")
 
+    # Trim only the excess wrist shaft that will sit inside the cuff, then keep
+    # the remaining source silhouette's natural aspect ratio (uniform resize).
     hand = image.crop(bbox)
-    # The generated pose is intentionally a little slimmer than the raw crop;
-    # normalize width only, preserving finger and palm length.
-    hand = hand.resize((round(hand.width * HORIZONTAL_SHAPE_FACTOR), hand.height),
-                       Image.Resampling.LANCZOS)
+    trim = round(hand.height * WRIST_SHAFT_TRIM)
+    if trim:
+        hand = hand.crop((0, 0, hand.width, hand.height - trim))
     hand.thumbnail(TARGET_BOX_2X, Image.Resampling.LANCZOS)
 
     canvas = Image.new("RGBA", (SIZE[0] * 2, SIZE[1] * 2), (0, 0, 0, 0))
     canvas.alpha_composite(hand, ((canvas.width - hand.width) // 2, MARGIN_TOP_2X))
-    # Part-space faces the same way as the existing surprise hand slot; the
-    # hand group performs the authored wrist rotation at runtime.
+    # The hand group inherits the forearm's near-half-turn in this pose; the
+    # part-space compensation keeps final screen-space fingers up, wrist down.
     return canvas.rotate(180, resample=Image.Resampling.BICUBIC, expand=False)
 
 

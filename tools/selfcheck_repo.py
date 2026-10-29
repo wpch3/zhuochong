@@ -3380,18 +3380,21 @@ def check_character(root):
             # 嘴退回只会张合。所以这里要红，不能让它悄悄降级。
             envs = [f for f in glob.glob(os.path.join(os.path.dirname(idx), "*.json"))
                     if not f.endswith("index.json")]
-            withvis, badlen = 0, []
+            withvis, badlen, richest = 0, [], 0
             for f in envs:
                 e = json.load(open(f, encoding="utf-8"))
                 v = e.get("visemes")
                 if not v:
                     continue
                 withvis += 1
+                richest = max(richest, len(set(v)))
                 if len(v) != len(e.get("values", [])):
                     badlen.append(os.path.basename(f))
             check("口型包络带母音音素轨", envs and withvis >= len(envs) * 0.9,
                   f"{withvis}/{len(envs)} 条带 visemes"
                   + ("（缺的那些重跑 make_lipsync.py，需要 pypinyin）" if withvis < len(envs) else ""))
+            check("说话音素轨含多种可见嘴形", richest >= 5,
+                  f"最多 {richest} 种 viseme；至少需要 SIL + 四种母音，才能逐帧验收多口型")
             check("音素轨与包络等长", not badlen, f"{badlen[:3]}" if badlen else f"{withvis} 条逐条核对")
 
 

@@ -104,7 +104,7 @@ preview: $(BUILD)/zhuochong_preview
 
 # 互动/动作端到端冒烟（自己起一个预览再打一圈端点，判据是"画面真的变了"）
 smoke: $(BUILD)/zhuochong_preview
-	@python3 tools/api_smoke.py --spawn --port 5200 --root .
+	@$(PYTHON_IMG) tools/api_smoke.py --spawn --port 5200 --root .
 
 # ---------------------------------------------------------------- 素材体检（T67.2）
 # 重算全部精灵的六项指标并写基线。重画任何一张 @2x 之后跑这个，
@@ -165,7 +165,7 @@ audit-hair:
 
 # 视觉闭环九宫格（R2 / 铁律一）：转头 × 眨眼 3×3 + 调试叠加
 audit-frames:
-	@python3 tools/audit_frames.py --spawn --port 5175 --out docs/qa/audit_nine_grid.png --root .
+	@$(PYTHON_IMG) tools/audit_frames.py --spawn --port 5175 --out docs/qa/audit_nine_grid.png --root .
 
 # ---------------------------------------------------------------- 自检（保险）
 # 仓库静态自检：引用完整性 / 唯一性 / 契约 / 卫生（1 秒，不编译不渲染）

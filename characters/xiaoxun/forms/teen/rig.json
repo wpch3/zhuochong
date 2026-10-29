@@ -6389,7 +6389,7 @@
       "part": "forearm_bent_l",
       "cols": 2,
       "rows": 4,
-      "note": "surprised 弯袖专用沿肘→腕轴线延伸 36px；与 hand_l 组同步，默认零位移",
+      "note": "surprised 弯袖沿肘→腕伸长，袖口向脸侧内收并抬高；末端与手组同位移",
       "points": [
         {
           "c": 0,
@@ -6412,56 +6412,56 @@
         {
           "c": 0,
           "r": 2,
-          "dx": -7.24,
-          "dy": 38.93
+          "dx": -32.14,
+          "dy": 53.45
         },
         {
           "c": 1,
           "r": 2,
-          "dx": -7.24,
-          "dy": 38.93
+          "dx": -32.14,
+          "dy": 53.45
         },
         {
           "c": 2,
           "r": 2,
-          "dx": -7.24,
-          "dy": 38.93
+          "dx": -32.14,
+          "dy": 53.45
         },
         {
           "c": 0,
           "r": 3,
-          "dx": -13.16,
-          "dy": 70.79
+          "dx": -84.26,
+          "dy": 112.27
         },
         {
           "c": 1,
           "r": 3,
-          "dx": -13.16,
-          "dy": 70.79
+          "dx": -84.26,
+          "dy": 112.27
         },
         {
           "c": 2,
           "r": 3,
-          "dx": -13.16,
-          "dy": 70.79
+          "dx": -84.26,
+          "dy": 112.27
         },
         {
           "c": 0,
           "r": 4,
-          "dx": -13.16,
-          "dy": 70.79
+          "dx": -109.16,
+          "dy": 126.79
         },
         {
           "c": 1,
           "r": 4,
-          "dx": -13.16,
-          "dy": 70.79
+          "dx": -109.16,
+          "dy": 126.79
         },
         {
           "c": 2,
           "r": 4,
-          "dx": -13.16,
-          "dy": 70.79
+          "dx": -109.16,
+          "dy": 126.79
         }
       ]
     },
@@ -7056,7 +7056,7 @@
       "part": "forearm_bent_r",
       "cols": 2,
       "rows": 4,
-      "note": "surprised 弯袖专用沿肘→腕轴线延伸 36px；与 hand_r 组同步，默认零位移",
+      "note": "surprised 弯袖沿肘→腕伸长，袖口向脸侧内收并抬高；末端与手组同位移",
       "points": [
         {
           "c": 0,
@@ -7079,56 +7079,56 @@
         {
           "c": 0,
           "r": 2,
-          "dx": 8.72,
-          "dy": 38.63
+          "dx": 33.62,
+          "dy": 53.15
         },
         {
           "c": 1,
           "r": 2,
-          "dx": 8.72,
-          "dy": 38.63
+          "dx": 33.62,
+          "dy": 53.15
         },
         {
           "c": 2,
           "r": 2,
-          "dx": 8.72,
-          "dy": 38.63
+          "dx": 33.62,
+          "dy": 53.15
         },
         {
           "c": 0,
           "r": 3,
-          "dx": 15.85,
-          "dy": 70.23
+          "dx": 86.95,
+          "dy": 111.71
         },
         {
           "c": 1,
           "r": 3,
-          "dx": 15.85,
-          "dy": 70.23
+          "dx": 86.95,
+          "dy": 111.71
         },
         {
           "c": 2,
           "r": 3,
-          "dx": 15.85,
-          "dy": 70.23
+          "dx": 86.95,
+          "dy": 111.71
         },
         {
           "c": 0,
           "r": 4,
-          "dx": 15.85,
-          "dy": 70.23
+          "dx": 111.85,
+          "dy": 126.23
         },
         {
           "c": 1,
           "r": 4,
-          "dx": 15.85,
-          "dy": 70.23
+          "dx": 111.85,
+          "dy": 126.23
         },
         {
           "c": 2,
           "r": 4,
-          "dx": 15.85,
-          "dy": 70.23
+          "dx": 111.85,
+          "dy": 126.23
         }
       ]
     },
@@ -11183,12 +11183,12 @@
         {
           "group": "hand_l",
           "param": "dx",
-          "scale": -6.578
+          "scale": -54.578
         },
         {
           "group": "hand_l",
           "param": "dy",
-          "scale": 35.394
+          "scale": 63.394
         },
         {
           "part": "arm_l_fore",
@@ -11233,12 +11233,12 @@
         {
           "group": "hand_r",
           "param": "dx",
-          "scale": 7.925
+          "scale": 55.925
         },
         {
           "group": "hand_r",
           "param": "dy",
-          "scale": 35.117
+          "scale": 63.117
         },
         {
           "part": "arm_r_fore",
@@ -11269,6 +11269,26 @@
           "part": "hand_r_heart",
           "param": "alpha",
           "scale": -1.0
+        },
+        {
+          "group": "forearm_l",
+          "param": "dx",
+          "scale": 53.0
+        },
+        {
+          "group": "forearm_l",
+          "param": "dy",
+          "scale": 10.0
+        },
+        {
+          "group": "forearm_r",
+          "param": "dx",
+          "scale": -53.0
+        },
+        {
+          "group": "forearm_r",
+          "param": "dy",
+          "scale": 10.0
         }
       ],
       "note": "surprised 独占：1 时显示 bent forearms，隐藏旧前臂/肘件与旧手型；新袖层级在躯干、衣领、兜帽、后发之前。"
@@ -13769,7 +13789,7 @@
   "generated_by": {
     "tool": "tools/make_rig.py",
     "sources": {
-      "tools/make_rig.py": "d164fd03debabb2d31a617a1f5f5f30726943eb97291ccab1d288b10a69c3051",
+      "tools/make_rig.py": "f34636e15abb72526e451ab6f9e381efa034b471078eb258a2728b612ba75ddd",
       "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
       "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3",
       "characters/xiaoxun/expressions/peek_blush.exp3.json": "d692dbda9205d8cf4451226e5d2adcbffff984246f1f2156723e005aa63ae59b"

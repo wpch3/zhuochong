@@ -105,9 +105,14 @@ FACE_LAYER = {side: {k: b + i for i, k in enumerate(_EYE_ORDER)}
 #   参考 wave_up.png 的前/上臂 = 0.87，我们原件是 0.71；前臂 115.8 × 0.22 ≈ 26px
 #   补上去正好 141.8/162.4 = 0.873。改这一个数就能整体收放，别在别处再写死。
 FORE_LONG_PX = 26.0
-# T31.20：surprised 弯袖是独立差分件，允许比普通动作多伸 36px，
-# 让保持内收/下沉的肘点下，手腕仍能贴近脸侧；只随 ParamSurpriseArmSwap 淡入。
+# T31.21：surprised 弯袖仅在该动作中内收。肘点向中线约 53px 并下沉 10px，
+# 腕点再向脸侧约 48px、上提 28px；网格渐进追随，袖口和手掌保持连续。
 SURPRISE_FORE_LONG_PX = 36.0
+SURPRISE_ELBOW_IN_PX = 53.0
+SURPRISE_ELBOW_DROP_PX = 10.0
+SURPRISE_WRIST_REACH_PX = 48.0
+SURPRISE_WRIST_LIFT_PX = 28.0
+SURPRISE_REACH_F = (0.0, 0.0, 0.2593, 0.7407, 1.0)
 # 沿轴加长的行分布（r=0 素材顶边 … r=4 底边）：肘端 0、袖口满额，
 # **r=3→r=4 两行同值** ⇒ 袖口那段条纹是刚性平移，不会被拉成椭圆。
 FORE_LONG_F = (0.0, 0.15, 0.55, 1.0, 1.0)
@@ -667,17 +672,28 @@ def param_list(mouth=None, has_brows=True, head_is_part=True, jointed_arms=False
                 continue
             _swap_binds.append({"part": _bent, "param": "alpha",
                                 "scale": 1.0, "offset": -1.0})
-            # 新弯袖比普通前臂沿肘→腕轴多伸 36px；同一参数让手组同步前移，
-            # 袖口与掌根不会分离。替换件专用 deform，wave/happy 等继续用原长度。
+            # 真实 screen-space 显示惊讶肘外张约 40px：仅此动作把肘枢轴向中线
+            # 平移并轻微抬回；左右镜像，普通动作不变。
+            _side_sgn = -1.0 if _sd == "l" else 1.0
+            _swap_binds += [
+                {"group": f"forearm_{_sd}", "param": "dx",
+                 "scale": round(-_side_sgn * SURPRISE_ELBOW_IN_PX, 3)},
+                {"group": f"forearm_{_sd}", "param": "dy",
+                 "scale": SURPRISE_ELBOW_DROP_PX},
+            ]
+            # 弯袖沿肘→腕多伸 36px；再让手根向脸侧内收 46px，网格袖口同步渐进移动，
+            # 避免手腕脱离袖口。替换件专用 deform，wave/happy 等继续用原长度。
             _axis = (long_axes or {}).get(_sd)
             if _axis:
                 _ux, _uy, _ = _axis
                 _swap_binds += [
                     {"deformer": _bent + "_long", "scale": 1.0},
                     {"group": f"hand_{_sd}", "param": "dx",
-                     "scale": round(_ux * SURPRISE_FORE_LONG_PX, 3)},
+                     "scale": round(_ux * SURPRISE_FORE_LONG_PX
+                                    + _side_sgn * SURPRISE_WRIST_REACH_PX, 3)},
                     {"group": f"hand_{_sd}", "param": "dy",
-                     "scale": round(_uy * SURPRISE_FORE_LONG_PX, 3)},
+                     "scale": round(_uy * SURPRISE_FORE_LONG_PX
+                                    + SURPRISE_WRIST_LIFT_PX, 3)},
                 ]
             for _old in (f"arm_{_sd}_fore", f"arm_{_sd}_elbow",
                          f"arm_{_sd}_gusset", f"arm_{_sd}_seam"):
@@ -4381,11 +4397,15 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             _bent_id = "forearm_bent_%s" % _side
             if _bent_id in _apart:
                 _bent_pts = []
+                _reach_sign = -1.0 if _side == "l" else 1.0
                 for _r, _f in enumerate(FORE_LONG_F):
-                    if _f <= 0.0:
+                    _reach_f = SURPRISE_REACH_F[_r]
+                    if _f <= 0.0 and _reach_f <= 0.0:
                         continue
-                    _bdx = 2.0 * _ux * SURPRISE_FORE_LONG_PX * _f
-                    _bdy = 2.0 * _uy * SURPRISE_FORE_LONG_PX * _f
+                    _bdx = (2.0 * _ux * SURPRISE_FORE_LONG_PX * _f
+                            + 2.0 * _reach_sign * SURPRISE_WRIST_REACH_PX * _reach_f)
+                    _bdy = (2.0 * _uy * SURPRISE_FORE_LONG_PX * _f
+                            + 2.0 * SURPRISE_WRIST_LIFT_PX * _reach_f)
                     for _c in range(3):
                         _bent_pts.append({"c": _c, "r": _r,
                                           "dx": round(_bdx, 2),

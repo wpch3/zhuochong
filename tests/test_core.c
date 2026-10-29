@@ -27,6 +27,7 @@
 #include "../src/core/zconfig.h"
 #include "../src/core/zrig.h"
 #include "../src/core/zphys2.h"
+#include "../src/core/zik.h"
 #include "../src/core/zinteract.h"
 #include "../src/core/zgateway.h"
 #include "../src/core/zhttp.h"
@@ -2194,6 +2195,42 @@ static void test_physics_timestep(void)
                   IDS[k], JIT_MAX[k], mx[k], JIT_WAS[k]);
         zrig_free(r);
     }
+}
+
+static void test_ik_two_link(void)
+{
+    zik_solution sol;
+    zik_vec2 shoulder = {0.0, 0.0};
+    zik_vec2 target = {3.0, 4.0};
+    int rc;
+    SECTION("2D IK：解析双骨链、弯肘下限与约束冲突可见");
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            53.130102, 53.130102,
+                            -180.0, 180.0, 5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_OK && sol.constraints_satisfied,
+          "3-4-5 链的可达目标应在约束内求解");
+    CHECK(fabs(hypot(sol.elbow.x - shoulder.x, sol.elbow.y - shoulder.y) - 3.0) < 1e-6,
+          "上臂长度保持刚性");
+    CHECK(fabs(hypot(sol.effector.x - sol.elbow.x,
+                     sol.effector.y - sol.elbow.y) - 4.0) < 1e-6,
+          "前臂长度保持刚性");
+    CHECK(fabs(sol.target_error) < 1e-6 && sol.elbow_flex_deg >= 5.0,
+          "末端命中且肘不落在完全伸直死点");
+
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            53.130102, 53.130102,
+                            -10.0, 10.0, 5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_CONSTRAINT_UNSAT && !sol.constraints_satisfied,
+          "肩角限制与目标冲突时必须显式报无解，不得静默越界");
+
+    target.x = 7.0; target.y = 0.0;
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            0.0, 0.0, -180.0, 180.0,
+                            5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_OK && sol.target_clamped && sol.target_error > 0.0,
+          "伸直死点目标应投影到最小弯曲可达环，而不是输出 0°");
+    CHECK(sol.elbow_flex_deg >= 4.99,
+          "投影后的肘角仍满足非零弯曲下限");
 }
 
 static void test_physics(void)
@@ -7202,18 +7239,18 @@ static void test_action_fade_sine(void)
     CHECK(r != NULL, "装载真 rig 应成功（动作淡化）");
     if (!r) return;
 
-    /* ② 非循环动作：surprised 的 ParamArmLA 是 pulse+out、dur 跟动作一样长，
-       不收尾的话会在最后一帧停在满值然后硬切。动作级 FadeOutTime=0.2 要把它带回零。
+    /* ② 非循环动作：surprised 的 ParamArmLA 是 pulse+out，0.6s 到位，
+       动作总长 1.4s；末尾 FadeOutTime=0.25 要把稳定展示的姿势带回零。
        （时间必须逐帧推，一次跳过去看到的是淡入还没起算的那一帧。） */
     for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);          /* 先让 idle 收敛 */
     zrig_action_request(r, "surprised", "test:fade", 1);
-    for (i = 1; i <= 54; ++i) {                                 /* 0.9s = 54 帧 */
+    for (i = 1; i <= 84; ++i) {                                 /* 1.4s = 84 帧 */
         double v;
         t = 2.0 + i / 60.0;
         zrig_tick(r, t);
         v = fabs(zrig_param_effective(r, "ParamArmLA"));
-        if (i <= 42 && v > peak) peak = v;                      /* 淡出窗口之前的峰值 */
-        if (i == 53) tail = v;                                  /* 结束前 1 帧 */
+        if (i <= 66 && v > peak) peak = v;                      /* 淡出窗口之前的峰值 */
+        if (i == 83) tail = v;                                  /* 结束前 1 帧 */
     }
     /* 阈值单位随 ParamArmLA 的倍率走：Q36 把倍率从 6°/单位 提到 18°/单位
        （行程回到官方的 ±10），同样的 16° 摆幅换算出来的参数值变成 1/3。
@@ -7227,7 +7264,7 @@ static void test_action_fade_sine(void)
        漏掉淡出中的旧动作，会在结束瞬间把 pulse 的满值整个闪出来。 */
     {
         double ghost = 0.0;
-        for (i = 55; i <= 90; ++i) {       /* 0.92s ~ 1.50s，动作已经演完 */
+        for (i = 85; i <= 120; ++i) {      /* 1.42s ~ 2.00s，动作已经演完 */
             zrig_tick(r, 2.0 + i / 60.0);
             if (fabs(zrig_param_effective(r, "ParamArmLA")) > ghost)
                 ghost = fabs(zrig_param_effective(r, "ParamArmLA"));
@@ -11712,9 +11749,9 @@ static void test_perm_cost_perf(void){
         CHECK(pf!=NULL, "zperf 应能加载 perf_budget.json");
         if(pf){
             CHECK(zperf_render_first(pf)==1, "渲染应永远优先");
-            CHECK(zperf_budget_ok(pf, "idle", 1.0, 100)==1, "idle 1%/100MB 应在预算内");
-            CHECK(zperf_budget_ok(pf, "realtime", 10, 300)==1, "realtime 10%/300MB 应在预算内");
-            CHECK(zperf_budget_ok(pf, "realtime", 30, 300)==0, "30% 超 realtime 25% 预算应判超");
+            CHECK(zperf_budget_ok(pf, "idle", 1.0, 100)==1, "idle 1%%/100MB 应在预算内");
+            CHECK(zperf_budget_ok(pf, "realtime", 10, 300)==1, "realtime 10%%/300MB 应在预算内");
+            CHECK(zperf_budget_ok(pf, "realtime", 30, 300)==0, "30%% 超 realtime 25%% 预算应判超");
             CHECK(zperf_should_yield(pf, 2.0)==1, "用户活跃 2s 应让出");
             CHECK(zperf_should_yield(pf, 10.0)==0, "用户空闲 10s 不需让出");
             double rm = zperf_measured(pf, "render_ms");
@@ -11798,6 +11835,7 @@ int main(int argc, char **argv)
     test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();
+    test_ik_two_link();
     test_physics();
     test_physics_timestep();
     test_look();

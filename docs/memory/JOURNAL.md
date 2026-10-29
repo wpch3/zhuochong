@@ -7772,3 +7772,37 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 
 **数**：`make test` 1412/0、`make asan` 1412/0（ASAN 抓到 chain_w 动态分配在
 加载失败时漏 72 字节，改成固定数组后彻底没有这条路）、`make selfcheck` 720/0。
+
+## 2026-10-29 第十三轮：把惊讶做成全身动作，并逐帧验口型（T31.17 / T31.18）
+
+本轮把主人给的两张全身惊讶参考落实到动作层：`surprised` 外展上举双臂、张开手掌、调用真·瞪眼补片并配 O 嘴；仍保留瞳孔轻缩，不再把虹膜撑大。动作强度不是凭数字落地：渲染对照了 5/4、6.5/4、7.5/4 三档，选 5/4 后看整身轮廓和手部遮挡。开心动作改成闭嘴正向笑形；talk 无音素时有开合+宽窄变化，音频有真实音素时由 lipsync 接管。
+
+**眼睛验收**：正常全身惊讶、wireframe、开心闭嘴笑、挥手 0.65s 与 sleeve crop 都看过。`/api/speak?id=call_start_1_tier2_0` 冻结时钟逐步运行，逐帧看到 SIL/O/U/E/A/I 的嘴形变化；不是只看静态 rig JSON。九宫格和图片证据落在 `docs/qa/t31_*` 与 `docs/qa/audit_nine_grid.png`。
+
+袖片褶线没有盲修：原右袖在最终挥手动作和放大图里没有形成用户描述的明显色块。试验性宽区域修补抹掉了原有光影并侵入袖口线，视觉上更坏，所以已恢复原始 @2x 资源，`make_arm_parts.py` 与高清生成器均未改；如果 AC-32 本机仍复现，应以那一帧再定位，旧试验坐标不复用。
+
+**完整验收**：`make selfcheck` 751/0，`make test` 2610/0，`make warncheck` 零告警，`make audit-frames` 正常产出 3×3 与 wireframe/bones/hitbox，`make check` 全部保险通过。检查同时修正了 smoke/audit-frames 使用无 Pillow 的系统 Python、product.js 单测 VM 未 stub `setInterval`、测试提示中的 `%` 格式警告。
+
+## 2026-10-29 第十四轮：IK/关节锚点第一阶段（T31.19）
+
+主人指出动作僵硬，要求先给关节点和 IK 代码、再看彩色骨骼诊断图。本轮没有继续猜动作幅度，而是先检查实时预览、真实 rig 与参考图几何。
+
+**查明的底层事实**：teen rig 并非没有肩/肘/腕锚点——`arm_l/r`、`forearm_l/r`、`hand_l/r` 早已按素材枢轴测量；真正误导视觉检查的是 `zrig_debug_overlay(BONES)` 只把静态 bind-pose `g->pivot` 乘缩放，动作时依旧在原位画线。现已改为 `group_matrix()` 变换后的世界 pivot，并以红（肩→肘）/绿（肘→腕）/蓝（腕）着色；新增 `zrig_group_pivot_pos` / `zpet_group_pivot_pos` 与 `/api/bones.json`，供 overlay 与角度读数共用同一坐标。
+
+**当前帧实测**：teen `surprised` 冻结在 0.65s，肩—肘—腕世界坐标和实际肢段长度由 API 原样落入 `docs/qa/t31_ik_stage1_measurement.json`。以“伸直 flex=0°”定义，左肘 95.41°、右肘 97.58°；画面两肘确实弯曲且比肩低，但仍略超主人提出的 60–90°、也未向躯干收。真实骨线截图 `docs/qa/t31_ik_stage1_surprised_angles.png`。
+
+**新增纯 C 原型**：`src/core/zik.{h,c}` 以余弦定理解两骨链，显式处理肘非零弯曲下限和肩/肘角约束；冲突返回 `ZIK_CONSTRAINT_UNSAT`，不向生产 rig 偷写越界角。单元测试含可达、肩限制冲突、直线死点三种情况，`make test` 2617/0。
+
+**不伪装膝盖**：当前 teen 膝是 `ParamKneeL/R` 驱动整片腿 mesh 的 sine bend，不存在上/下腿刚体 pivot，因此 API 会明确报告“mesh_bend_only”，不能声称已经检查出 hinge 角。本轮把建议约束和测得锚点记录到 `characters/xiaoxun/design/joint_constraints.json` 与 `docs/qa/IK_STAGE1.md`，求解器尚未接入动作管线。
+
+**为什么先停在校准层**：目标“脸旁腕点”需要将参考图 landmark 映射到画布；肩 `[-20°,60°]` 必须确认是相对当前垂臂 bind pose 还是相对水平；此外单片腿 mesh 要如何形成真膝铰链也需确定。继续前先用这张诊断图与数据确认目标定义，避免再用角度盲调。
+
+## 2026-10-29 第十五轮：按主人纠偏修复灰块并验证姿势目标冲突（T31.19）
+
+主人已确认：肩角相对自然下垂 bind pose 为 0°；脸中心/头宽归一化腕点目标；惊讶肘 flex 120°–150°并向内向上收；膝继续使用连续网格弯曲，不切开皮肤。还要求立即修腰侧灰块、肩接缝，并令双腿略分开、脚底贴地。
+
+**灰块来源与修复**：目视放大后发现腰侧灰块不是漏臂片本身，而是 `tools/armpit_patch.py` 把旧手臂包围区逐行挤出成不透明灰色侧片。检查 `armpit_mask.png` 与 `torso_noarms.png` alpha 后确认它超出了无臂重绘的真实服装剪影。现在脚本仅从无臂重绘图真实 alpha 复制像素，重绘剪影之外透明；重新生成 teen 1x/@2x 后，0.65s normal 与腋下放大图里的矩形消失。挥手的同一姿势也目视检查，未见灰块或新轮廓裂口；袖片资源未改。
+
+**姿势冲突（不猜值）**：把 ParamArmLA/RA 对应肩角确实限制到 +25°，并把肘 flex 实测在 132.08°–146.48°，API 实测腕仍停在 y=462–465；脸部嘴角—下巴目标按当前渲染映射约 y=324–353，相差约 110px。也就是说固定现有上臂长度时“肩 +10°~+25°”与“腕到脸颊”不能同时满足。已把旧肘 60°–90°更新为用户最新 120°–150°，并在 `joint_constraints.json` / `IK_STAGE1.md` 记录几何冲突。没有把越界肩角或臆测肘支写进生产动作。
+
+**本轮产物与验证**：`docs/qa/t31_19_alpha_clear_{surprised,underarms,bones,wireframe,wire_bones}.png`、measurement JSON。`make test` 2617/0；首次 selfcheck 因改写脚本 docstring 时漏换行，已当场修复；改后完整 `make selfcheck` 751/0，`git diff --check` 通过。T31.19 保持进行中；待主人选择肩角或脸旁腕点优先级，并澄清“肘向内向上”描述肘 pivot 还是前臂折向，再继续生产姿势和逐帧验收。
