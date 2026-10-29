@@ -356,13 +356,13 @@ def main():
         with io.open(os.path.join(sp, "arm_parts.json"), "w", encoding="utf-8") as f:
             json.dump(armp, f, ensure_ascii=False, indent=2)
 
-    # 层号：全部压在上臂（140/141）之下，且**不许和任何部件重号**。
-    #   128/129 塗り足し圆盘 → 138/139 原画手（层号由 arm_parts 给，这里不动）
-    #   130~133 两个差分档
-    # 差分档层号低于原画手没关系：它们是靠 alpha 互斥的，同一时刻只有一张不透明。
+    # 层号必须全局唯一。pad 在前臂下、heart 在身体前；open 手单独放到最前层，
+    # 因为全身惊讶姿势会把张开的手送到脸颊旁，原先层 130/132 被头发盖住，
+    # 只剩几根指尖露出（按主人给的参考图目视确认）。这复用现有手部贴图与腕骨，
+    # 不伪造新手、不加新骨；非 open 姿态（原画手/比心）保持原层序。
     LAY = {("l", "pad"): 128, ("r", "pad"): 129,
-           ("l", "open"): 130, ("l", "heart"): 131,
-           ("r", "open"): 132, ("r", "heart"): 133}
+           ("l", "open"): 260, ("l", "heart"): 131,
+           ("r", "open"): 261, ("r", "heart"): 133}
 
     for side in ("l", "r"):
         src = AP[f"hand_{side}"]

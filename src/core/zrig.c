@@ -2282,6 +2282,7 @@ static int param_find(const zrig *r, const char *id)
 static const char *param_alias(const char *id)
 {
     if (z_streq(id, "ParamBlush")) return "ParamCheek";   /* 旧名，标准名是 ParamCheek */
+    if (z_streq(id, "ParamEyeBallForm")) return "ParamPupilScale"; /* T31.16：官方 ParamEyeBallForm 是"弯曲眼睛轮廓"，本 rig 的瞳孔缩放已改名 */
     return id;
 }
 
@@ -6306,6 +6307,24 @@ static double group_offset(const zrig *r, const char *group_id, int want_y)
     return sum;
 }
 
+/* 读取某根骨当前帧的世界枢轴位置。与 bones overlay 共用 group_matrix，
+   因而 API、可视化和渲染用的是同一套父子变换。 */
+int zrig_group_pivot_pos(const zrig *r, const char *group_id, double scale,
+                         double out[2])
+{
+    int gi;
+    double m[6], x, y;
+    if (!r || !group_id || !out || scale <= 0.0) return 0;
+    gi = find_group(r, group_id);
+    if (gi < 0) return 0;
+    group_matrix(r, gi, scale, m);
+    x = r->groups[gi].pivot[0] * scale;
+    y = r->groups[gi].pivot[1] * scale;
+    out[0] = m[0] * x + m[2] * y + m[4];
+    out[1] = m[1] * x + m[3] * y + m[5];
+    return 1;
+}
+
 double zrig_part_offset_x(const zrig *r, const char *part_id)
 {
     int pi;
@@ -6899,6 +6918,10 @@ static int ensure_scaled(zrig *r, double scale)
         if (p->img_scaled && p->img_scaled->w == nw && p->img_scaled->h == nh) continue;
         zimg_free(p->img_scaled);
         p->img_scaled = (fabs(scale - 1.0) < 1e-6) ? zimg_clone(p->img) : zimg_resize(p->img, nw, nh);
+        /* 预缩放之后的图还要**再**被绘制矩阵缩一次（@2x 的 0.5），残留覆盖约 2 texel，
+           所以这里给缩放副本也建 mip 链（T31.4）。不建的话绘制只能退回逐像素分层
+           采样，一帧 26 ms → 38 ms，画面还不比 mip 好。 */
+        if (p->img_scaled) zimg_mip_build(p->img_scaled);
     }
     return 0;
 }
@@ -8474,4 +8497,125 @@ double zrig_part_channel(const zrig *r, const char *part_id, const char *param)
         case P_ALPHA: return r->p_alpha[pi];
         default: return 0.0;
     }
+}
+
+/* ----------------------------------------------------- 调试叠加（R2） */
+int zrig_debug_overlay(zrig *r, zimg *frame, int mode, double scale)
+{
+    int i;
+    if (!r || !frame || mode == 0) return -1;
+    if (scale <= 0.0) scale = 1.0;
+
+    /* BONES：画布 pivot → 当前帧的世界坐标，再画父子连线。
+       旧版直接把静态 g->pivot 乘 scale：肩/肘/腕旋转后骨线仍留在 bind pose，
+       会把真实动作误报成直线。group_matrix 已含本组、祖先组、位移和旋转，
+       把 pivot 送进该矩阵才是当前骨端点。 */
+    if (mode & ZRIG_DEBUG_BONES) {
+        double wx[64], wy[64];
+        for (i = 0; i < r->ngroups && i < 64; ++i) {
+            const zgroup *g = &r->groups[i];
+            double m[6], lx = g->pivot[0] * scale, ly = g->pivot[1] * scale;
+            group_matrix(r, i, scale, m);
+            wx[i] = m[0] * lx + m[2] * ly + m[4];
+            wy[i] = m[1] * lx + m[3] * ly + m[5];
+        }
+        for (i = 0; i < r->ngroups && i < 64; ++i) {
+            const zgroup *g = &r->groups[i];
+            int x = (int)(wx[i] + 0.5), y = (int)(wy[i] + 0.5);
+            uint8_t jr = 255, jg = 220, jb = 40, ja = 220;
+            uint8_t lr = 255, lg = 180, lb = 0, la = 180;
+            if (strcmp(g->id, "arm_l") == 0 || strcmp(g->id, "arm_r") == 0) {
+                jr = 255; jg = 72; jb = 72; /* shoulder = red */
+            } else if (strcmp(g->id, "forearm_l") == 0 ||
+                       strcmp(g->id, "forearm_r") == 0) {
+                jr = 48; jg = 235; jb = 96; /* elbow = green */
+                lr = 255; lg = 72; lb = 72; /* shoulder -> elbow = red */
+            } else if (strcmp(g->id, "hand_l") == 0 ||
+                       strcmp(g->id, "hand_r") == 0) {
+                jr = 64; jg = 160; jb = 255; /* wrist = blue */
+                lr = 48; lg = 235; lb = 96; /* elbow -> wrist = green */
+            }
+            if (g->parent >= 0 && g->parent < r->ngroups && g->parent < 64) {
+                int px = (int)(wx[g->parent] + 0.5);
+                int py = (int)(wy[g->parent] + 0.5);
+                zimg_draw_line(frame, px, py, x, y, lr, lg, lb, la);
+            }
+            zimg_draw_circle(frame, x, y, 6, jr, jg, jb, ja);
+        }
+    }
+    /* HITBOX：regions 矩形 */
+    if (mode & ZRIG_DEBUG_HITBOX) {
+        for (i = 0; i < r->nregions; ++i) {
+            const zregion *rg = &r->regions[i];
+            int x = (int)(rg->rect[0] * scale + 0.5);
+            int y = (int)(rg->rect[1] * scale + 0.5);
+            int w = (int)(rg->rect[2] * scale + 0.5);
+            int h = (int)(rg->rect[3] * scale + 0.5);
+            zimg_draw_rect_outline(frame, x, y, w, h, 80, 220, 255, 210);
+        }
+    }
+    /* WIREFRAME：每个部件的包围盒（近似网格拓扑；精细逐三角线由后续 zimg_draw_mesh 追踪） */
+    if (mode & ZRIG_DEBUG_WIREFRAME) {
+        for (i = 0; i < r->nparts; ++i) {
+            const zpart *p = &r->parts[i];
+            int visible = 1;
+            if (r->vis_isolate) visible = (r->vis_override[i] == 2);
+            else if (r->vis_override[i] == 1) visible = 0;
+            if (!visible) continue;
+            /* 估算当前绘制用的矩阵平移（已含组偏移），画一个与贴图同大的框 */
+            double m[6];
+            double ax = 0.0, ay = 0.0;
+            /* 取当前帧的绘制矩阵：compute_draw_state 会合并 bend/mesh/组矩阵，但这里
+               轻量地只取组原点附近的近似位置 —— 目的是让审查者看到“这块图在哪”，
+               而非像素级对位（精确线框需追踪 mesh_bend_core，每部件 2 条三角形边）。 */
+            if (p->group >= 0 && p->group < r->ngroups) {
+                ax = r->groups[p->group].pivot[0];
+                ay = r->groups[p->group].pivot[1];
+                (void)ax; (void)ay;
+            }
+            /* 用 part.pos + img尺寸 估框，叠加当前 p_dx/p_dy 与 bend */
+            {
+                int x = (int)((p->pos[0] + r->p_dx[i]) * scale + 0.5);
+                int y = (int)((p->pos[1] + r->p_dy[i]) * scale + 0.5);
+                int w = p->img ? (int)(p->img->w * scale * p->scale + 0.5) : (int)(60 * scale);
+                int h = p->img ? (int)(p->img->h * scale * p->scale + 0.5) : (int)(60 * scale);
+                zimg_draw_rect_outline(frame, x, y, w, h, 160, 255, 160, 140);
+                if (p->mesh_node >= 0)
+                    zimg_draw_circle(frame, x + w/2, y + h/2, 3, 180, 255, 180, 200);
+            }
+            (void)m;
+        }
+    }
+    /* FORCES：物理摆当前推力矢量（在 pivot 上画箭头） */
+    if (mode & ZRIG_DEBUG_FORCES) {
+        for (i = 0; i < r->nphys; ++i) {
+            const zphys *ph = &r->phys[i];
+            if (ph->driver < 0 || ph->driver >= r->ngroups) continue;
+            {
+                const zgroup *g = &r->groups[ph->driver];
+                int x = (int)(g->pivot[0] * scale + 0.5);
+                int y = (int)(g->pivot[1] * scale + 0.5);
+                int dx = (int)(ph->out_last * 0.8); /* 像素/度 → 帧像素近似 */
+                int dy = 0;
+                if (ph->param == P_BEND_X) dx = (int)(ph->out_last * scale * 0.3);
+                if (ph->param == P_BEND_Y) { dx = 0; dy = (int)(ph->out_last * scale * 0.3); }
+                if (fabs(ph->out_last) > 0.5)
+                    zimg_draw_line(frame, x, y, x+dx, y+dy, 255, 80, 80, 220);
+            }
+        }
+        for (i = 0; i < r->np2; ++i) {
+            const zp2chain *ch = &r->p2[i];
+            if (ch->driver < 0 || ch->driver >= r->ngroups) continue;
+            {
+                const zgroup *g = &r->groups[ch->driver];
+                int x = (int)(g->pivot[0] * scale + 0.5);
+                int y = (int)(g->pivot[1] * scale + 0.5);
+                double ang = ch->nout > 0 ? ch->out[0].applied : 0.0;
+                int dx = (int)(ang * 0.5);
+                if (fabs(ang) > 0.3)
+                    zimg_draw_line(frame, x, y, x+dx, y-3, 255, 120, 255, 220);
+            }
+        }
+    }
+    return 0;
 }

@@ -24,7 +24,7 @@
       "id": "hand_l_open",
       "file": "sprites/hand_l_open.png",
       "group": "hand_l",
-      "layer": 130,
+      "layer": 260,
       "pos": [
         9,
         656
@@ -81,7 +81,7 @@
       "id": "hand_r_open",
       "file": "sprites/hand_r_open.png",
       "group": "hand_r",
-      "layer": 132,
+      "layer": 261,
       "pos": [
         350,
         656
@@ -114,6 +114,46 @@
         666.0
       ],
       "wrist_w": 31
+    },
+    {
+      "id": "hand_l_surprised",
+      "file": "sprites/hand_l_surprised.png",
+      "group": "hand_l",
+      "layer": 319,
+      "pos": [
+        9,
+        656
+      ],
+      "size": [
+        86,
+        109
+      ],
+      "pivot": [
+        54.5,
+        666.0
+      ],
+      "wrist_w": 25,
+      "note": "surprised 专用微拢弧形手差分；腕桩延伸插入弯袖，层319在弯袖321之下，由真实罗纹袖口遮住切边"
+    },
+    {
+      "id": "hand_r_surprised",
+      "file": "sprites/hand_r_surprised.png",
+      "group": "hand_r",
+      "layer": 320,
+      "pos": [
+        350,
+        656
+      ],
+      "size": [
+        86,
+        109
+      ],
+      "pivot": [
+        390.0,
+        666.0
+      ],
+      "wrist_w": 25,
+      "note": "surprised 专用微拢弧形手差分；腕桩延伸插入弯袖，层320在弯袖322之下，由真实罗纹袖口遮住切边"
     }
   ],
   "checks": {
@@ -131,14 +171,17 @@
       "hand_l_heart": 31,
       "hand_r_pad": 43,
       "hand_r_open": 25,
-      "hand_r_heart": 31
+      "hand_r_heart": 31,
+      "hand_l_surprised": 25,
+      "hand_r_surprised": 25
     }
   },
-  "note": "tools/make_hand_parts.py 产物。放松档=原画切件（只加腕部塗り足し），张开/比心档=按原画风格生的图（design/hands/*_raw.png）键出配准而来。Q36 那版程序化画的手已废弃——用户原话「完全成怪物了」",
+  "note": "tools/make_hand_parts.py 产物。放松档=原画切件（只加腕部塗り足し），张开/比心档=按原画风格生的图（design/hands/*_raw.png）键出配准而来。Q36 那版程序化画的手已废弃——用户原话「完全成怪物了」；新增 surprised 自绘手差分与独立弯袖片",
   "poses": {
     "": "",
     "open": "open",
-    "heart": "heart"
+    "heart": "heart",
+    "surprised": "surprised"
   },
   "art_base": {
     "l": "hand_l",

@@ -1,38 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""armpit_patch.py — 把**脇の下（腋下）**补画进躯干件。
+"""armpit_patch.py — repair only hidden axilla pixels without extending the torso silhouette.
 
-为什么要有这一步（2026-10-22 第四十六问，kirara_jump 全身巡检查出来的）
-----------------------------------------------------------------------
-把手臂抬起来的三个动作逐帧数「被实体包住的背景像素」（判据：框内某个
-背景像素的上下左右都还有实体 ⇒ 它是个洞，不是轮廓外的空白）：
-
-    kirara_jump  f24  左 66 / 右 92 px
-    wave_both    全程 左 50~87 / 右 29~50 px
-    wave         全程 右 23~83 px        ← 单手挥手也一直有，是老账
-
-实拍（logs/asset_qa/q46_hole_wave_both.png）：白夹克的侧缘和青袖子之间
-裂开一道**楔形背景**，正在腋窝的位置。
-
-根因是原画的先天缺陷，和第四十四问的袖根是同一类：原画里手臂垂着，
-**腋下那块身体根本没画**（被胳膊挡着）。手臂一抬，那里就只剩背景。
-官方教程写得很直白（REFERENCE_NOTES 第五十批）：
-  「元画で隠れていた部分（脇の下、袖の中の腕の続き）は描き足しておく」
-
-袖子那一半已经由 sleeve_underlay.py 补过（arm_*_root），但那是**跟着
-手臂转**的件，手臂抬走它也跟着走，填不了腋窝。腋窝必须补在**不动的
-躯干**上。
-
-做法
-----
-  patch_zone = 休止姿势下手臂四件的并集 ∩ ¬躯干 ∩ 肩枢轴附近
-  patch      = 把躯干**侧缘的像素逐行向外挤出**填满 patch_zone，压暗 10%
-  seg_torso  = 原躯干 ∪ patch
-
-· 只补「休止姿势下被手臂盖住」的地方 ⇒ 手臂垂着时**一个像素都看不见**
-  （手臂件在层 140~145，躯干 100，盖得严严实实）；
-· 压暗 10%：腋窝本来就是阴影区，直接平铺侧缘的亮色会糊成一块白板；
-· 逐行挤出而不是镜像：夹克侧缘是一条竖直的布料，挤出正好延续它的明暗。
+The previous side-extrusion fill created broad gray rectangles when an arm lifted.
+For forms with a registered no-arms redraw, that redraw's alpha is now authoritative:
+copy its exact opaque pixels inside the hidden-arm zone and leave the rest transparent.
+This preserves the natural cardigan outline and avoids inventing a rectangular side panel.
+Forms without a redraw retain the legacy fallback for now.
 
 幂等：原件备份进 sprites/_orig/，签名写进 body_parts.json 的 armpit_patch 段。
 用法：python tools/armpit_patch.py --character xiaoxun --form teen [--force]
@@ -81,7 +55,21 @@ def main():
         print("[armpit] 没有 seg_torso，跳过")
         return 0
 
-    sig = {"radius": a.radius, "darken": a.darken, "v": 2}
+    # The old broad fill extended the torso side silhouette into the old arm's
+    # bounding box, creating two conspicuous gray rectangles when the arms moved.
+    # Use the registered no-arms redraw as the silhouette authority instead:
+    # pixels outside its opaque garment edge stay transparent; only real redraw
+    # pixels can be restored. This keeps the armpit from becoming a rectangular
+    # paint patch and avoids inventing a side contour the source art never had.
+    redraw_rel = AJ.get("redraw", "")
+    redraw_candidates = ([os.path.join(base, redraw_rel),
+                         os.path.join("characters", a.character, redraw_rel)]
+                        if redraw_rel else [])
+    redraw_path = next((p for p in redraw_candidates if os.path.isfile(p)), "")
+    redraw_full = load(redraw_path) if redraw_path else None
+
+    sig = {"radius": a.radius, "darken": a.darken, "v": 3,
+           "silhouette": "redraw-alpha-transparent-outside"}
     if (BJ.get("armpit_patch", {}).get("sig") == sig and not a.force
             and not a.repair):
         print("[armpit] 已补过腋下，跳过（--force 强制）")
@@ -143,6 +131,47 @@ def main():
             print("[armpit] %s 没有要补的地方" % suf)
             continue
 
+        if redraw_full is not None:
+            # The redraw lives in full-canvas coordinates; match the current
+            # 1x/2x sprite resolution, then crop by the measured torso origin.
+            if s == 1:
+                redraw_scaled = redraw_full
+            else:
+                redraw_scaled = redraw_full.resize(
+                    (redraw_full.width * s, redraw_full.height * s),
+                    Image.Resampling.LANCZOS)
+            rx, ry = int(tpos[0] * s), int(tpos[1] * s)
+            redraw_crop = np.array(redraw_scaled.crop((rx, ry, rx + W, ry + H)))
+            if redraw_crop.shape[:2] != (H, W):
+                raise SystemExit("[armpit] 无臂重绘图与 seg_torso 裁框不匹配")
+            # The source redraw was keyed on magenta. Respect its alpha edge,
+            # and reject any residual key fringe rather than turning it opaque.
+            rr = redraw_crop[..., :3].astype(np.int16)
+            purple = (np.minimum(rr[..., 0], rr[..., 2]) - rr[..., 1]) > 25
+            redraw_valid = (redraw_crop[..., 3] >= 200) & ~purple
+            copy_zone = zone & redraw_valid
+            out = ta.copy()
+            # Never extend the old arm's rectangular envelope. The exact
+            # redraw silhouette is the only authority for opaque pixels here.
+            out[zone, 3] = 0
+            out[copy_zone, :3] = redraw_crop[copy_zone, :3].astype(np.int16)
+            out[copy_zone, 3] = redraw_crop[copy_zone, 3].astype(np.int16)
+            out = np.clip(out, 0, 255).astype(np.uint8)
+            Image.fromarray(out).save(f_t)
+            Image.fromarray((copy_zone.astype(np.uint8) * 255)).save(
+                os.path.join(sprites, "armpit_mask%s.png" % suf))
+            filled = int(copy_zone.sum())
+            transparent = int(zone.sum() - filled)
+            stats[suf or "1x"] = {
+                "target_px": int(zone.sum()), "redraw_px": filled,
+                "transparent_outside_redraw": transparent,
+            }
+            print("[armpit] seg_torso%s 自然剪影：重绘 %d px，透明 %d px（不扩张衣服外轮廓）"
+                  % (suf, filled, transparent))
+            continue
+
+        # Legacy fallback for forms without a no-arms redraw. Teen has one, so
+        # it takes the silhouette-clipped path above.
         # 逐行把躯干**侧缘**向外挤出去填满 zone
         #
         # ★★★ 2026-10-26 T67.31：这里原来连**alpha 一起抄**（`px = ta[y, src]`），
@@ -281,8 +310,8 @@ def main():
 
     BJ["armpit_patch"] = {
         "sig": sig, "filled_px": stats,
-        "note": "tools/armpit_patch.py：把休止姿势下被手臂盖住、抬臂后会露出背景的"
-                "腋窝区域用躯干侧缘挤出补满（脇の下の描き足し）"}
+        "note": "tools/armpit_patch.py：补料仅来自无臂重绘图的真实 alpha 剪影；"
+                "重绘图之外保持透明，避免侧缘矩形补丁（脇の下の描き足し）"}
     with io.open(bpj, "w", encoding="utf-8") as f:
         f.write(json.dumps(BJ, ensure_ascii=False, indent=2))
         f.write(u"\n")

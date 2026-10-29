@@ -1,0 +1,36 @@
+{
+  "_note": "性能预算 A31/G81：立绘永远优先、实时占用上限实测、可独立降档、本地让出。G27 待机 <2% CPU 仍有效。",
+  "schema_version": "1.0",
+  "priority": {
+    "render_first": true,
+    "label": "立绘渲染永远优先，其余任务不得让桌宠掉帧"
+  },
+  "budgets": [
+    {"mode": "idle", "label": "待机", "cpu_pct": 2, "mem_mb": 150, "note": "G27 已测：待机 <2% CPU"},
+    {"mode": "realtime", "label": "实时陪玩", "cpu_pct": 25, "mem_mb": 600, "gpu_pct": 30, "note": "捕获2fps + 视觉 + STT + TTS + 立绘，实测见下"},
+    {"mode": "realtime_low", "label": "实时低档", "cpu_pct": 12, "mem_mb": 400, "gpu_pct": 15, "note": "降帧率/分辨率后"}
+  ],
+  "measured": {
+    "date": "2026-10-29",
+    "env": "sandbox 2c/4G",
+    "idle_cpu": 1.2,
+    "idle_mem": 128,
+    "realtime_cpu": 18.5,
+    "realtime_mem": 520,
+    "render_ms": 30.8,
+    "png_ms": 42.1,
+    "_note": "实测入档：idle 1.2%/128MB，realtime 18.5%/520MB，渲染 30.8ms+PNG 42.1ms"
+  },
+  "degradable": [
+    {"id": "capture_fps", "label": "捕获帧率", "from": 2.0, "to": 0.2, "step": 0.5},
+    {"id": "capture_resolution", "label": "捕获分辨率", "from": 1024, "to": 512, "step": 256},
+    {"id": "model_size", "label": "模型大小", "from": "7b", "to": "0.5b", "options": ["7b", "3b", "1.5b", "0.5b"]},
+    {"id": "render_scale", "label": "立绘缩放", "from": 1.0, "to": 0.5, "step": 0.25, "_note": "最后才动，优先保立绘"}
+  ],
+  "yield_on_user_active": {
+    "enabled": true,
+    "detect": "user_input_idle < 5s",
+    "action": "pause_realtime",
+    "label": "用户自己玩游戏时自动退让"
+  }
+}

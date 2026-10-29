@@ -22,7 +22,7 @@ Pose 互斥组、混合模式、自动眨眼、口型同步）**全部有对应�
 本轮已改掉并用闸门焊死。
 
 **素材层面：2026-10-13 起 41 项里所有"角色适用"的都已实现。** 笑眼（`ParamEyeLSmile`，G40）、
-I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉形（`ParamBrowL/RForm`，G45）
+I/U/E/O 音素口型（G37）、瞳孔缩放（`ParamPupilScale` 原 `ParamEyeBallForm`，G41/T31.16）、眉形（`ParamBrowL/RForm`，G45）
 依次补齐；其中眉形**没有画新素材**——眉毛本来就是一条横着的网格能表达的形状，
 给它铺一张 FFD 网格就够了。剩下的 4 项是角色真的没有那个部件（➖）。
 
@@ -43,7 +43,7 @@ I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉
 | 7 | `ParamEyeRSmile` | 右眼 笑眼 | ✅ | 同上，左右分家（闸门验"只笑左眼时右眼 0 像素变化"） |
 | 8 | `ParamEyeBallX` | 眼球 左右 | ✅ | 内建，驱动 `gaze` 标签部件，被眼眶遮罩裁切 |
 | 9 | `ParamEyeBallY` | 眼球 上下 | ✅ | 同上 |
-| 10 | `ParamEyeBallForm` | 瞳孔 形状 | ✅ | **2026-10-13 补**：贴图模型做不出真正的瞳形变形，用瞳孔缩放代替 —— `eye_l/r_ball` `sx × 0.18`、`sy × 0.22`（只缩放眼球件，眼白底/眼眶/眼线都是矩形小块，一放大就露方边）。surprised 动作把它推到 1.0 |
+| 10 | `ParamEyeBallForm` | 眼轮廓 弯曲（皱眉/做鬼脸时） | ⬜ 研发中 | **官方定义**：为补充皱眉/做鬼脸而弯曲眼睛轮廓（Animaze/VTSuku）。本 rig 2026-10-13 曾以此名实现“瞳孔缩放”，T31.16 已改名 `ParamPupilScale` 并保留别名兼容；真·眼轮廓弯曲需另画倒 V 眼形，暂不实现 |
 | 11 | `ParamBrowLY` | 左眉 上下 | ✅ | `brow_l` `dy × −5`（满格 = surprised 挑眉的幅度） |
 | 12 | `ParamBrowRY` | 右眉 上下 | ✅ | `brow_r` `dy × −5` |
 | 13 | `ParamBrowLX` | 左眉 左右 | ✅ | **本轮补**：`brow_l` `dx × 4` |
@@ -99,6 +99,10 @@ I/U/E/O 音素口型（G37）、瞳孔形状（`ParamEyeBallForm`，G41）、眉
 | `ParamShoulderRY` / `ParamShoulderLY` | **单侧**抬肩（`arm_?` 组 `dy`，±10 → ±30px）。标准表的 `ParamShoulderY` 是双肩共用的（三条 bind：两臂 + 胸），量程也只够 ±8px；举手打招呼抬的是举手那一侧、26px。为什么需要：这张原画是「大头短臂」——整条臂只有 1.0 个头高（参考图 1.6 个），肘贴着身子时手最高只能到肩高，抬肩才把手送到下巴旁 |
 | `ParamForeSlimR` / `ParamForeSlimL` | 前臂「折肘时收窄」（ワープデフォーマ `arm_?_fore_slim`，2×4 网格）。袖子原画是 116×75 = 1.55:1 的胖筒（参考图的前臂是 2.7:1），肘内角小于 ~45° 时两根管子的轴线间距小于两件半宽之和 ⇒ 前臂整条盖住上臂。沿**肘→腕轴线**逐行横向压缩（肘端 0%、中段 15%、袖口 6%），肘关节那一行一个像素不动（要和上臂末端的正圆严丝合缝），袖口几乎不缩（腕柄半对角 20.6px 只比袖口半宽小 2px）|
 | `ParamForeLongR` / `ParamForeLongL` | 前臂「折肘时沿轴加长」（ワープデフォーマ `arm_?_fore_long`，2×4 网格，和 `_slim` 挂在同一件上逐点相加；另带 `hand_?` 组 dx/dy 让手跟着袖口外移）。第四十八问：用户说「小臂有一些偏短」。对着参考模板 `pose_ref/wave_up.png` 等比并排量过 —— 参考 前臂/上臂 = 150/173 = **0.87**，我们 116/162 = **0.71**，相对短 18%，折起来就是「吊在袖口下的一只拳套」。原画是一条垂着的胳膊，肘的切点由原画决定、改不了；能改的是折肘那一刻把前臂沿自己的轴线拉长 **26px（+22%）** ⇒ 142/162 = 0.873。行权重 (0, .15, .55, 1, 1)：肘端 0（关节正圆一个像素不动，折起来不裂缝）、袖口两行同值（条纹刚性平移、不拉椭圆）。0 = 原件，静止画面零改动 |
+| `ParamSurpriseElbowHide` | 仅 `surprised` 动作使用的扩展门控：用 alpha 乘算隐藏脸侧折肘角度下会飘出的 gusset/seam。默认 0，不影响 `wave` 等其他动作；由该动作脉冲至 1 后，动作退场时复位。它是动作特定的绘制修正，不是新骨骼/新贴图。 |
+| `ParamSurpriseForeshorten` | **Teen `surprised` 专用上臂透视短缩（T31.19）**：只在该动作折臂时将上臂局部 `sy` 乘到约 0.841，并补偿肘 pivot，使视觉肩—肘距离约为 bind 的 0.848；肘以下前臂与手保持原尺度。用于让双腕优先贴近嘴角—下巴外侧、避免「螃蟹手」。默认/动作外为 0，不影响 `happy`、`talk`、`wave` 或袖片；chibi 仍受单张合成原画限制。 |
+| `ParamSurpriseArmSwap` | Teen `surprised` 专用袖片切换：动作中隐藏自然下垂的袖件、换成独立弯曲前臂袖片；其他动作不改。 |
+| `ParamHandLSurprised` / `ParamHandRSurprised` | Teen `surprised` 专用左右手差分：手指微曲并拢、拇指内收；只在该动作期间替换常态手，并与弯袖口叠放。 |
 | `ParamTiptoe` | 踮脚。`root.dy` 上提 7px + 两腿 `curve:"tip"`（顶固定、底最大，作用在脚踝）收 5px。裙摆下沿不动所以不露底 |
 | `ParamHairAhoge` / `ParamHairAhogeS` | 标准只有 Front/Side/Back/Fluffy，呆毛是这个角色的招牌 |
 | `ParamHairSideS` | 侧发的 S 形（FFD），和整体摆动分开 |
@@ -512,3 +516,37 @@ Vertices: v0(0,0) mobility 1   delay 1   accel 1   radius 0
 2. **坐标系是引擎帧缓冲**（= 画布 × pet scale = `info.frame_w/h`），
    不是画布坐标，也不是前端图片的 `naturalWidth`（那是帧缓冲 × 画质档 `s%`）。
    详见 LESSONS 67。
+
+---
+
+## 2026-10-30 全生态架构预留（规划项；不代表已实现）
+
+本节记录四项长期目标的引擎契约。当前已有的自有 JSON rig/FFD/physics 实现不等同于商业 Cubism 运行时兼容，也不等同于 3D 或 IM 模块已经接通。
+
+### A. 四形态通用角色母版与商业 Cubism 兼容
+
+- **角色包目标：** 每个 AI 角色零代码套用 `chibi` / `loli` / `teen` / `adult` 四个标准母版；母版定义必需部件槽、参数/动作/表情命名、插槽、画布锚点、资源清单和能力版本。角色只提供声明式素材、映射、色板和可选形态覆盖；缺件/不兼容版本在加载期给出字段路径诊断，不以复制 C 代码扩形态。
+- **原生格式目标：** 为 `.model3.json`、`.moc3`、`.physics3.json` 预留独立 `cubism` 导入/运行时适配层：模型清单与相对资源解析、参数/部件/动作/表情映射、physics 输入输出映射、版本与许可检查、错误隔离。`.moc3` 是 Cubism SDK 运行时消费的原生二进制资产；生产兼容应通过符合 Cubism SDK 许可的官方运行时/桥接完成，不能把自有 JSON 解析器描述为可直接解析任意 `.moc3`，也不能承诺任何模型无条件兼容。商业模型验收需按 SDK 版本、平台、许可和模型特性建立兼容矩阵。
+- **变形器：** 规划支持任意层级嵌套的 Warp Deformer（含父子坐标变换、网格控制点、参数/动作驱动、physics 驱动、混合与边界裁剪），按标准 Cubism 语义映射；实现前先为嵌套深度、顶点上限、循环引用、数值稳定性和性能设拒载/降级策略。不得把当前自有 FFD 语义误称为完整官方 Warp 语义。
+- **C ABI 边界：** `avatar2d_backend_v1` 以 ABI 版本、`struct_size`、不透明实例句柄、参数枚举/设值、动作/表情、更新、绘制、资源释放和错误回调构成函数表；Cubism SDK 依赖留在适配器内部，核心 `zrig`/`zbus` 不持有 SDK 对象。
+
+### B. 纯 C `mod_avatar_3d` 与 2D/3D 切换
+
+规划可插拔纯 C `mod_avatar_3d`：通过明确许可证和导入器支持 VRM、glTF 与 PMX；渲染管线包括 Toon/Cel-Shading 阶梯光照、Rim Light、法线外扩描边、面部 SDF 阴影；同一角色参数 ID/动作/表情事件经 `zbus` 映射到 3D blendshape、骨骼、材质和表情通道。2D/3D 使用共同 `avatar_handle`、统一生命周期/时钟/参数快照和可切换 renderer；切换保留动作、表情与口型状态，资源准备失败时原子回退，不丢失当前 2D 画面。
+
+建议接口族：`avatar_backend_query(abi_version)`、`avatar_create(config, &handle)`、`avatar_set_param(handle, id, value)`、`avatar_play_action(handle, id, weight)`、`avatar_set_expression(handle, id, weight)`、`avatar_update(handle, dt)`、`avatar_render(handle, target)`、`avatar_destroy(handle)`。具体导入器/图形 API 由后续性能与许可证评审决定；现阶段不是已支持格式的承诺。
+
+### C. `mod_im_bridge` 统一 Adapter ABI
+
+统一消息核心与平台 adapter 分离；双向能力显式声明为 `receive` / `send` / `edit` / `reaction` / `voice` / `media`，不可因一个能力获批就推定其他能力已授权。规划平台覆盖：
+
+- 国内：微信、QQ、飞书、钉钉、B 站私信与直播弹幕；
+- 国际：Discord、Telegram、Slack、WhatsApp、X/Twitter。
+
+每个适配器按平台官方 API、机器人政策和当地要求实施；平台没有允许的开放接口时必须标为不可用或要求用户可见的官方客户端授权，不逆向、破解或绕过访问控制。消息、会话、用户、附件、表情 reaction、语音片段统一映射为版本化 C 结构；保留原始平台 ID 供幂等去重，不将私密内容默认送云端。
+
+ABI 预留 `im_adapter_v1`：能力查询、connect/disconnect、poll/receive、send、ack、reaction、voice/media payload、取消令牌、错误/限流事件；所有回调携带 `struct_size`、ABI 版本、平台 ID、scope/隐私标签、请求关联 ID和所有权说明。token 仅以宿主 secret 引用传入，不能写日志或 adapter 配置。消息入 `zbus` 前作鉴权、限流、去重和隐私标记；表情/语音事件通过共同动作/表情总线联动。
+
+### D. 与 G79 高阶自主模块隔离
+
+`mod_vtuber_stream`、`mod_game_player`、`mod_device_control`、`mod_proactive_soul` 的完整任务分解、默认拒绝策略和审批/审计/撤销闸见 `docs/memory/BACKLOG_AUTONOMY.md`。本文中的接口只是 ABI 规划；任何真实捕屏、模拟输入、账号收发、OBS 控制或主动联系都需 G79 主人对具体 scope 显式审批。所有目标在 `docs/memory/TASKS.md` 与全局 `docs/ROADMAP.md` 登记。

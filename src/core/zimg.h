@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct zimg_s {
     int      w, h;
     uint8_t *px;   /* RGBA8，长度 w*h*4，直通 alpha（非预乘） */
     /* 行裁剪 [clip_y0, clip_y1)：所有写这张图的函数都只许碰这个范围内的行。
@@ -25,6 +25,11 @@ typedef struct {
        各自设一段 y，坐标系完全不变（还是整幅画布的坐标），
        于是分块前后的像素可以要求**逐字节相同**——那条闸比任何性能数字都重要。 */
     int      clip_y0, clip_y1;
+    /* 半分辨率预滤波副本链（mipmap）。缩小绘制时用它代替"每个屏幕像素只挑一个
+       texel"——手部那种 1~2 texel 的指缝线，在 3.6× 缩小时单点采样会整条丢掉
+       （T31.4「手指粘连」的真因）。每级宽高减半，最多两级（4× 已经够用）。
+       NULL = 还没建；由 zimg_mip_build() 建立，zimg_load() 读完自动建。 */
+    struct zimg_s *mip;
 } zimg;
 
 /* 做一个共享像素、只负责某几行的"视图"。返回的是栈上可用的值类型，
@@ -36,6 +41,9 @@ zimg *zimg_new(int w, int h);                  /* 全透明 */
 zimg *zimg_new_filled(int w, int h, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void  zimg_free(zimg *im);
 zimg *zimg_clone(const zimg *im);
+/* 建 mip 链（2×、4×）。幂等；短边不足 4 px 就停在那一级。
+   建完之后缩小绘制走预滤波级别，放大/1:1 仍然读原图 —— 那条路一像素都不许变。 */
+void  zimg_mip_build(zimg *im);
 /* 盒式平均缩小（按 alpha 预乘）。dw/dh 不小于原图时等同于 clone。
    预览按帧走网络，像素数直接等于流畅度——这是唯一的降码率手段。 */
 zimg *zimg_downscale(const zimg *im, int dw, int dh);
@@ -170,6 +178,17 @@ void zimg_draw_simple(zimg *dst, const zimg *src, double pos_x, double pos_y,
 
 /* 命中测试：该点 alpha 是否 > threshold（用于“只让角色挡鼠标”）。 */
 int  zimg_hit_test(const zimg *im, int x, int y, int threshold);
+
+/* --------------------------------------------------------------- 调试叠加（铁律七 2.2 / R2） */
+/* 在已合成好的帧上直接画调试几何（像素空间，覆盖式，不改 alpha 逻辑）。 */
+void zimg_draw_line(zimg *im, int x0, int y0, int x1, int y1,
+                    uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void zimg_draw_circle(zimg *im, int cx, int cy, int radius,
+                      uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void zimg_draw_rect_outline(zimg *im, int x, int y, int w, int h,
+                            uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+void zimg_draw_text_px(zimg *im, int x, int y, const char *s,
+                       uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
 /* 便捷：生成旋转+缩放的矩阵 */
 void zimg_make_matrix(double m[6], double tx, double ty, double sx, double sy,

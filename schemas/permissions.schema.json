@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "permissions",
+  "type": "object",
+  "required": ["schema_version", "tiers", "capabilities", "e_stop", "audit"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "tiers": {"type": "array", "items": {"type": "object", "required": ["id", "level"], "properties": {"id": {"type": "string"}, "level": {"type": "integer"}}}},
+    "capabilities": {"type": "array", "items": {"type": "object", "required": ["id", "tier", "enabled"], "properties": {"id": {"type": "string"}, "tier": {"type": "string"}, "enabled": {"type": "boolean"}}}},
+    "e_stop": {"type": "object", "required": ["enabled", "hotkey", "cuts_tiers"], "properties": {"enabled": {"type": "boolean"}, "hotkey": {"type": "string"}, "cuts_tiers": {"type": "array", "items": {"type": "string"}}}},
+    "sensitive_masks": {"type": "array"},
+    "audit": {"type": "object", "required": ["enabled", "log_path"], "properties": {"enabled": {"type": "boolean"}, "log_path": {"type": "string"}}},
+    "indicators": {"type": "object"}
+  }
+}

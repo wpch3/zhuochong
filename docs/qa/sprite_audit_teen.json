@@ -3035,6 +3035,69 @@
    "edge_touch": true
   },
   {
+   "file": "forearm_bent_l@2x.png",
+   "kind": "body",
+   "size": "160x294",
+   "opaque": 23533,
+   "near_white_pct": 1.13,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.77,
+   "dark_pct": 1.0,
+   "hole_pct": 0.0,
+   "straight_run": 14,
+   "residue_pct": 0.0,
+   "residue": {
+    "mint": 200,
+    "warm": 0,
+    "shirt": 186
+   },
+   "residue_blocks": [],
+   "edge_touch": true
+  },
+  {
+   "file": "forearm_bent_r@2x.png",
+   "kind": "body",
+   "size": "176x302",
+   "opaque": 28789,
+   "near_white_pct": 2.41,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.67,
+   "dark_pct": 2.2,
+   "hole_pct": 0.0,
+   "straight_run": 23,
+   "residue_pct": 2.76,
+   "residue": {
+    "mint": 184,
+    "warm": 0,
+    "shirt": 623
+   },
+   "residue_blocks": [
+    {
+     "px": 401,
+     "bbox": [
+      117,
+      247,
+      165,
+      289
+     ]
+    },
+    {
+     "px": 395,
+     "bbox": [
+      111,
+      232,
+      158,
+      271
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
    "file": "fx_anger@2x.png",
    "kind": "fx",
    "size": "152x152",
@@ -4207,6 +4270,38 @@
    "edge_touch": false
   },
   {
+   "file": "hand_l_surprised@2x.png",
+   "kind": "limb",
+   "size": "172x218",
+   "opaque": 14162,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.95,
+   "dark_pct": 2.12,
+   "hole_pct": 0.0,
+   "straight_run": 25,
+   "residue_pct": 87.16,
+   "residue": {
+    "mint": 0,
+    "warm": 12468,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 12344,
+     "bbox": [
+      31,
+      9,
+      138,
+      210
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
    "file": "hand_r@2x.png",
    "kind": "limb",
    "size": "180x182",
@@ -4347,6 +4442,38 @@
       2,
       90,
       102
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hand_r_surprised@2x.png",
+   "kind": "limb",
+   "size": "172x218",
+   "opaque": 14162,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.95,
+   "dark_pct": 2.12,
+   "hole_pct": 0.0,
+   "straight_run": 23,
+   "residue_pct": 87.16,
+   "residue": {
+    "mint": 0,
+    "warm": 12468,
+    "shirt": 0
+   },
+   "residue_blocks": [
+    {
+     "px": 12344,
+     "bbox": [
+      33,
+      9,
+      140,
+      210
      ]
     }
    ],

@@ -8,6 +8,7 @@
  * 提供：
  *   GET /                      预览页（二次元风格，自包含，不用外部资源）
  *   GET /api/frame.png         当前帧（真实渲染结果，PNG）
+ *   GET /api/bones.json        当前帧骨骼枢轴与肘部夹角（姿势验收）
  *   GET /api/info.json         状态：动作、眨眼、缩放、形态、服装、可触发动作
  *   GET /api/poke?x=&y=&tool=  模拟点击（hand / hammer）
  *   GET /api/action?id=        触发动作
@@ -37,6 +38,8 @@
 #  endif
 #endif
 
+#include "../core/zbus.h"
+#include "../core/zmod.h"
 #include "../core/zpet.h"
 #include "../core/zgateway.h"
 #include "../core/zrelay.h"
@@ -51,6 +54,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <math.h>
 
 #ifdef _WIN32
 #  include <winsock2.h>
@@ -90,6 +94,8 @@ static double pet_now(void)
 }
 
 static zpet *g_pet = NULL;
+static zbus g_bus;         /* 铁律一/三：无锁事件总线（渲染与 AI 解耦） */
+static zmod_mgr g_mods;     /* 铁律三：热插拔模组管理器 */
 /* 长记忆线（T67.45）。NULL = 没打开（data/ 不可写等）—— 这时她只是失忆，
    不许因此起不来，但必须能在 /api/memory.json 里看见 open:false。 */
 static zmem *g_mem = NULL;
@@ -650,6 +656,57 @@ static void handle_request(zsock fd, const http_req *r)
         return;
     }
 
+    if (strcmp(r->path, "/api/bones.json") == 0) {
+        /* 关节检查必须读当前帧的世界枢轴，而不是 rig.json 里的 bind-pose 坐标。
+           与 zrig_debug_overlay(bones) 共用同一套矩阵定义。 */
+        static const char *side[] = {"l", "r"};
+        char body[4096];
+        char *p = body;
+        int si, fw = 0, fh = 0;
+        size_t cap = sizeof(body);
+        LOCK();
+        (void)zpet_frame(g_pet, &fw, &fh);
+        p += z_snprintf(p, cap, "{\"form\":\"%s\",\"action\":\"%s\",\"canvas_scale\":1,\"arms\":[",
+                        zpet_form(g_pet), zpet_action(g_pet));
+        for (si = 0; si < 2; ++si) {
+            char ids[3][32];
+            double sh[2], el[2], wr[2], upper, fore, dot, cosine, inner, flex;
+            z_snprintf(ids[0], sizeof(ids[0]), "arm_%s", side[si]);
+            z_snprintf(ids[1], sizeof(ids[1]), "forearm_%s", side[si]);
+            z_snprintf(ids[2], sizeof(ids[2]), "hand_%s", side[si]);
+            if (!zpet_group_pivot_pos(g_pet, ids[0], 1.0, sh) ||
+                !zpet_group_pivot_pos(g_pet, ids[1], 1.0, el) ||
+                !zpet_group_pivot_pos(g_pet, ids[2], 1.0, wr)) {
+                p += z_snprintf(p, cap - (size_t)(p - body),
+                                "%s{\"side\":\"%s\",\"available\":false}",
+                                si ? "," : "", side[si]);
+                continue;
+            }
+            upper = hypot(sh[0] - el[0], sh[1] - el[1]);
+            fore = hypot(wr[0] - el[0], wr[1] - el[1]);
+            dot = (sh[0] - el[0]) * (wr[0] - el[0]) +
+                  (sh[1] - el[1]) * (wr[1] - el[1]);
+            cosine = (upper > 1e-9 && fore > 1e-9) ? dot / (upper * fore) : 1.0;
+            if (cosine < -1.0) cosine = -1.0;
+            if (cosine > 1.0) cosine = 1.0;
+            inner = acos(cosine) * 180.0 / 3.14159265358979323846;
+            flex = 180.0 - inner;
+            p += z_snprintf(p, cap - (size_t)(p - body),
+                "%s{\"side\":\"%s\",\"available\":true,"
+                "\"shoulder\":[%.2f,%.2f],\"elbow\":[%.2f,%.2f],\"wrist\":[%.2f,%.2f],"
+                "\"upper_len\":%.2f,\"forearm_len\":%.2f,"
+                "\"included_angle_deg\":%.2f,\"flex_deg\":%.2f,\"straight_fault\":%s}",
+                si ? "," : "", side[si], sh[0], sh[1], el[0], el[1], wr[0], wr[1],
+                upper, fore, inner, flex, flex < 5.0 ? "true" : "false");
+        }
+        p += z_snprintf(p, cap - (size_t)(p - body),
+                        "],\"knees\":{\"l\":\"mesh_bend_only:no rigid knee pivot\","
+                        "\"r\":\"mesh_bend_only:no rigid knee pivot\"}}");
+        UNLOCK();
+        send_text(fd, 200, "application/json", body);
+        return;
+    }
+
     if (strcmp(r->path, "/api/info.json") == 0) {
         /* ★ 缓冲区 2026-10-18 从 4096 扩到 16384（T46.3 当场撞上）：
              这份 JSON 的长度跟着 rig 的部件 / 形变器 / 摆链条数线性涨。
@@ -914,13 +971,30 @@ static void handle_request(zsock fd, const http_req *r)
         zimg *copy = NULL;
         int fw = 0, fh = 0;
         /* ?s=50..100：按百分比缩小后再编码。浏览器会拉回原尺寸显示，
-           画面略软但码率降到 1/4，远程预览能不能流畅全看这个。 */
+           画面略软但码率降到 1/4，远程预览能不能流畅全看这个。
+           ?debug=wireframe,bones,hitbox,forces（逗号分隔，R2）：在已合成帧上叠调试几何。 */
         int spct = qint(r, "s", 100);
+        char dbg_s[128] = "";
+        int dbg_mode = 0;
+        if (qstr(r, "debug", dbg_s, sizeof dbg_s) && dbg_s[0]) {
+            if (strstr(dbg_s, "wireframe")) dbg_mode |= 1;
+            if (strstr(dbg_s, "bone"))      dbg_mode |= 2;
+            if (strstr(dbg_s, "wire"))      dbg_mode |= 1;
+            if (strstr(dbg_s, "hitbox") || strstr(dbg_s, "collider")) dbg_mode |= 4;
+            if (strstr(dbg_s, "force"))     dbg_mode |= 8;
+            if (strstr(dbg_s, "all"))       dbg_mode = 15;
+            if (dbg_mode == 0 && dbg_s[0])  dbg_mode = 15; /* 未知值按 all，免得被静默忽略 */
+        }
         if (spct < 25) spct = 25;
         if (spct > 100) spct = 100;
         LOCK();
         fr = zpet_frame(g_pet, &fw, &fh);
         if (fr) copy = zimg_clone(fr);
+        if (copy && dbg_mode) {
+            double sc = zpet_scale(g_pet);
+            /* 调试叠加直接改像素，无需重渲染；scale 决定骨点换算 */
+            zpet_debug_overlay(g_pet, copy, dbg_mode, sc);
+        }
         UNLOCK();
         if (copy && spct < 100) {
             zimg *small = zimg_downscale(copy, copy->w * spct / 100, copy->h * spct / 100);
@@ -1708,14 +1782,27 @@ static void handle_request(zsock fd, const http_req *r)
         const zimg *fr;
         zimg *copy = NULL;
         int fw = 0, fh = 0;
-        /* ?s=50..100：按百分比缩小后再编码。浏览器会拉回原尺寸显示，
-           画面略软但码率降到 1/4，远程预览能不能流畅全看这个。 */
         int spct = qint(r, "s", 100);
+        char dbg_s2[128] = "";
+        int dbg_mode2 = 0;
+        if (qstr(r, "debug", dbg_s2, sizeof dbg_s2) && dbg_s2[0]) {
+            if (strstr(dbg_s2, "wireframe")) dbg_mode2 |= 1;
+            if (strstr(dbg_s2, "bone"))      dbg_mode2 |= 2;
+            if (strstr(dbg_s2, "wire"))      dbg_mode2 |= 1;
+            if (strstr(dbg_s2, "hitbox") || strstr(dbg_s2, "collider")) dbg_mode2 |= 4;
+            if (strstr(dbg_s2, "force"))     dbg_mode2 |= 8;
+            if (strstr(dbg_s2, "all"))       dbg_mode2 = 15;
+            if (dbg_mode2 == 0 && dbg_s2[0]) dbg_mode2 = 15;
+        }
         if (spct < 25) spct = 25;
         if (spct > 100) spct = 100;
         LOCK();
         fr = zpet_frame(g_pet, &fw, &fh);
         if (fr) copy = zimg_clone(fr);
+        if (copy && dbg_mode2) {
+            double sc = zpet_scale(g_pet);
+            zpet_debug_overlay(g_pet, copy, dbg_mode2, sc);
+        }
         UNLOCK();
         if (copy && spct < 100) {
             zimg *small = zimg_downscale(copy, copy->w * spct / 100, copy->h * spct / 100);
@@ -2865,6 +2952,19 @@ int main(int argc, char **argv)
     }
     g_start_time = pet_now();
     g_self_spoke_at = pet_now();
+
+    /* 无锁总线与热插拔模组（铁律一/三） */
+    zbus_init(&g_bus);
+    zmod_mgr_init(&g_mods, root, &g_bus);
+    {
+        zdiag mdiag; zdiag_init(&mdiag);
+        if (zmod_scan(&g_mods, &mdiag) != 0) {
+            zdiag_print(&mdiag, stderr);
+            ZLOGW("mod", "模组扫描有误，但引擎继续跑（裸引擎可跑）");
+        } else {
+            ZLOGI("mod", "模组 %d 个已载（热插拔就绪）", zmod_count(&g_mods));
+        }
+    }
     /* 她的节奏参数（T69.1）。缺文件是合法状态 —— 走缺省值，绝不因为
        没导出过 mind.params.json 就起不来。 */
     zthink_profile_load(&g_think, g_cfg.root_dir, zpet_character(g_pet));
@@ -3008,11 +3108,28 @@ int main(int argc, char **argv)
                 if (cfd != ZSOCK_INVALID) zsock_close(cfd);
             }
         }
-        /* 每轮推进一次引擎：状态机、眨眼、空闲 */
-        zpet_tick(g_pet, pet_now());
+        /* 每轮推进一次引擎：状态机、眨眼、空闲 + 模组 + 总线 */
+        {
+            double now = pet_now();
+            zbus_event ev;
+            zpet_tick(g_pet, now);
+            zmod_tick(&g_mods, now);
+            /* 总线：把本轮 tick 广播给模组（模组可据此做物理/视觉采样） */
+            {
+                zbus_event tick_ev;
+                zbus_event_init(&tick_ev, ZBUS_EVT_TICK, "sys/tick", "preview");
+                zbus_event_set_u32(&tick_ev, (uint32_t)(now*1000));
+                zbus_publish(&g_bus, &tick_ev);
+            }
+            /* 消费侧：把总线上积压的事件转给模组（非阻塞，满则丢） */
+            while (zbus_consume(&g_bus, &ev) == 0) {
+                zmod_dispatch(&g_mods, &ev);
+            }
+        }
     }
 
     zsock_close(srv);
+    zmod_mgr_shutdown(&g_mods);
     zpet_destroy(g_pet);
     zlog_close();
     return 0;

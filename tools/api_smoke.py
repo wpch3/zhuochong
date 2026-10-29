@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import signal
@@ -823,7 +824,11 @@ def run(base, root):
     check("笑眼用标准名 ParamEyeLSmile / ParamEyeRSmile",
           "ParamEyeLSmile" in pids and "ParamEyeRSmile" in pids, " ".join(pids[:8]))
     if "ParamEyeLSmile" in pids:
-        a.hit("/api/blink?on=0"); time.sleep(0.1)
+        a.hit("/api/blink?on=0")
+        # Blink-off can preserve a previous closed value; explicitly seed the
+        # Multiply base at 1.0 so this is a 1.0 × 0.45 test, not 0 × 0.45.
+        a.hit("/api/param?id=ParamEyeLOpen&v=1")
+        a.hit("/api/param?id=ParamEyeROpen&v=1"); time.sleep(0.1)
         s0, _ = a.frame_hash()
         a.hit("/api/param?id=ParamEyeLOpen&v=0"); a.hit("/api/param?id=ParamEyeROpen&v=0")
         s_closed, _ = a.frame_hash()
@@ -884,6 +889,8 @@ def run(base, root):
     if "peek_blush" in exps:
         a.hit("/api/pause?on=0"); time.sleep(0.15)
         a.hit("/api/action?id=idle&force=1"); time.sleep(0.3)
+        a.hit("/api/param?id=ParamEyeLOpen&v=1")
+        a.hit("/api/param?id=ParamEyeROpen&v=1"); time.sleep(0.1)
         r = a.json("/api/expression?id=peek_blush") or {}
         check("外部 .exp3 表情能选中（peek_blush）", r.get("ok") is not False, str(r)[:60])
         time.sleep(0.5)                      # FadeInTime = 0.35s
@@ -912,14 +919,19 @@ def run(base, root):
     # 上面那段像素对照是在 /api/pause?on=1 里跑的（冻结时钟才比得了像素）。
     # 动作要跑起来必须先解冻，这一段做完再冻回去给后面的口型对照用。
     a.hit("/api/pause?on=0"); time.sleep(0.15)
-    check("瞳孔形状用标准名 ParamEyeBallForm", "ParamEyeBallForm" in pids, " ".join(pids[:8]))
+    check("瞳孔缩放用 ParamPupilScale（旧名 ParamEyeBallForm 作别名兼容）", "ParamPupilScale" in pids, " ".join(pids[:8]))
     check("全身倾斜扩展参数 ParamBaseRot 在册", "ParamBaseRot" in pids, " ".join(pids[:8]))
-    if "ParamEyeBallForm" in pids:
+    if "ParamPupilScale" in pids:
         a.hit("/api/action?id=idle&force=1"); time.sleep(0.25)
         s0, _ = a.frame_hash()
-        a.hit("/api/param?id=ParamEyeBallForm&v=1")
+        a.hit("/api/param?id=ParamPupilScale&v=1")
         s1, _ = a.frame_hash()
         check("瞳孔放大改变画面", s0 != s1, "%s → %s" % (s0, s1))
+        a.hit("/api/param?id=ParamPupilScale&reset=1")
+        # 旧名别名仍应可用
+        a.hit("/api/param?id=ParamEyeBallForm&v=1")
+        sa, _ = a.frame_hash()
+        check("旧名 ParamEyeBallForm 别名仍有效", s0 != sa, "%s → %s" % (s0, sa))
         a.hit("/api/param?id=ParamEyeBallForm&reset=1")
     a.hit("/api/action?id=wave&force=1")
     peak_a = peak_b = 0.0
@@ -1003,22 +1015,136 @@ def run(base, root):
           (peak_h2 - low_h2) * 22.0 > 20.0,
           "%.0f°（%.2f..%.2f）" % ((peak_h2 - low_h2) * 22.0, low_h2, peak_h2))
 
-    # 非循环动作的收尾：surprised 的手臂通道是 pulse+out、长度跟动作一样，
-    # 没有动作级 FadeOutTime 的话最后一帧会停在满值（≈2.67）再硬切回 idle。
-    # 真实时钟下单点采样抖得厉害，所以在尾窗里连采取最小值。
+    # 非循环动作的收尾：surprised 的 IK 手臂通道 pulse+out 在 0.6s 到位，
+    # 新姿势稳定展示约 0.55s 后再由动作级 FadeOutTime 平滑回 idle。
+    # 真实时钟下单点采样抖得厉害，所以在中段/尾窗内连续采样。
+    # Isolate this measurement from whichever test/UI interaction ran immediately before it.
+    # Residual direct parameters and ambient forearm sway can move the same IK chain and make
+    # a correct button-triggered pose look like an endpoint/constraint regression.
+    a.hit("/api/action?id=idle&force=1")
+    a.hit("/api/param?all=1&reset=1")
+    a.hit("/api/expression?off=1")
+    a.hit("/api/ambient?on=0")
+    time.sleep(0.20)
     a.hit("/api/action?id=surprised&force=1")
-    t0 = time.time(); tail_min = 9.9; mid_peak = 0.0
-    while time.time() - t0 < 0.88:
+    t0 = time.time(); tail_min = 9.9; mid_peak = 0.0; shorten_tail = 9.9
+    pose_bones = None
+    pose_params = None
+    while time.time() - t0 < 1.55:
         eff = {q["id"]: abs(q.get("effective") or 0)
                for q in (a.json("/api/params.json") or {}).get("params", [])}
         v = eff.get("ParamArmLA") or 0.0
         dt = time.time() - t0
-        if dt < 0.60: mid_peak = max(mid_peak, v)
-        elif dt > 0.78: tail_min = min(tail_min, v)
+        if dt < 1.10:
+            mid_peak = max(mid_peak, v)
+            elbow = eff.get("ParamArmLB") or 0.0
+            shortened = eff.get("ParamSurpriseForeshorten") or 0.0
+            if (pose_bones is None and dt >= 0.65 and v > 0.55
+                    and elbow > 8.00 and shortened > 0.98):
+                pose_bones = a.json("/api/bones.json")
+                pose_params = dict(eff)
+        elif dt > 1.32:
+            tail_min = min(tail_min, v)
+            shorten_tail = min(shorten_tail, eff.get("ParamSurpriseForeshorten") or 0.0)
         time.sleep(0.03)
-    # 同上：旧阈 1.2 是 scale=6 年代的参数值 ＝ 7.2°，今天写成 7.2/18。
-    check("surprised 中段手臂要摆出去（≥7°）", mid_peak > 7.2 / 18.0,
-          "峰值 %.2f（＝%.0f°）" % (mid_peak, mid_peak * 18.0))
+    check("surprised 肩角在参考 8°–14° 范围内并将双手抬至脸侧",
+          8.0 <= mid_peak * 18.0 <= 14.0,
+          "峰值 %.2f（＝%.1f°）" % (mid_peak, mid_peak * 18.0))
+    pose_arms = {q.get("side"): q for q in (pose_bones or {}).get("arms", [])}
+    left, right = pose_arms.get("l", {}), pose_arms.get("r", {})
+    lw, rw = left.get("wrist", [0, 0]), right.get("wrist", [0, 0])
+    lx = (424.5 - lw[0]) / 249.0
+    rx = (rw[0] - 424.5) / 249.0
+    check("surprised 双腕落在归一化脸颊侧带（以脸中心/半脸宽计）",
+          bool(pose_bones) and 0.62 <= lx <= 0.76 and 0.62 <= rx <= 0.76
+          and 426.0 <= lw[1] <= 446.0 and 426.0 <= rw[1] <= 446.0,
+          "norm L/R %.3f/%.3f，y %.1f/%.1f" % (lx, rx, lw[1], rw[1]))
+    check("surprised 左右腕点相对脸中心近似对称",
+          abs(lx - rx) < 0.03,
+          "x/head-width 左 %.3f / 右 %.3f；差 %.3f" % (lx, rx, abs(lx-rx)))
+    ls, rs = left.get("shoulder", [0, 0]), right.get("shoulder", [0, 0])
+    le, re_pt = left.get("elbow", [0, 0]), right.get("elbow", [0, 0])
+    check("surprised 双腕保持在脸下缘高度带（手掌朝上护脸）",
+          bool(pose_bones) and 426.0 <= lw[1] <= 446.0 and 426.0 <= rw[1] <= 446.0,
+          "腕 y 左 %.1f / 右 %.1f（目标 426–446）" % (lw[1], rw[1]))
+    arm_parts_path = os.path.join(os.path.dirname(__file__), "..", "characters", "xiaoxun",
+                                  "forms", "teen", "sprites", "arm_parts.json")
+    with open(arm_parts_path, encoding="utf-8") as f:
+        arm_parts = json.load(f)
+    bind_lengths = {
+        side: math.hypot(arm_parts["elbow_joint"][side][0] - arm_parts["shoulder_joint"][side][0],
+                         arm_parts["elbow_joint"][side][1] - arm_parts["shoulder_joint"][side][1])
+        for side in ("l", "r")
+    }
+    shorten_ratios = {side: pose_arms[side]["upper_len"] / bind_lengths[side]
+                      for side in ("l", "r") if side in pose_arms}
+    check("surprised 上臂实际缩短在授权 0.75–0.85 区间",
+          set(shorten_ratios) == {"l", "r"}
+          and all(0.75 <= ratio <= 0.85 for ratio in shorten_ratios.values()),
+          "L/R %.3f / %.3f" % (shorten_ratios.get("l", 0), shorten_ratios.get("r", 0)))
+    check("surprised 双肘按参考图收拢并下沉（L x270–290 / R x555–575）",
+          bool(pose_bones) and 270.0 <= le[0] <= 290.0 and 555.0 <= re_pt[0] <= 575.0
+          and 75 < le[1] - ls[1] < 140 and 75 < re_pt[1] - rs[1] < 140,
+          "肩 L/R %.1f/%.1f；肘 L/R (%.1f,%.1f)/(%.1f,%.1f)" %
+          (ls[0], rs[0], le[0], le[1], re_pt[0], re_pt[1]))
+    # The measured shoulder–elbow–wrist chain itself must stay within the
+    # explicitly approved 120°–150° range; this guards the real bone pose, not
+    # merely the visible replacement sleeve's silhouette.
+    check("surprised 双臂真实骨链屈角在 120°–150° 且无退化",
+          120.0 <= left.get("flex_deg", 0) <= 150.0
+          and 120.0 <= right.get("flex_deg", 0) <= 150.0
+          and not left.get("straight_fault", True) and not right.get("straight_fault", True),
+          "真实骨链屈角 L/R %.1f°/%.1f°"
+          % (left.get("flex_deg", 0), right.get("flex_deg", 0)))
+    check("surprised 收尾短缩参数回到 0", shorten_tail < 0.05,
+          "尾窗最小 ParamSurpriseForeshorten=%.3f" % shorten_tail)
+    # Regression guard for the skin-colored wrist pads that previously leaked
+    # beside the cuffs: the surprise swap must hide both pads and old hands,
+    # reveal both bent sleeves, and preserve hand-behind-cuff layer order.
+    teen_rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
+    with open(teen_rig_path, encoding="utf-8") as f:
+        teen_rig = json.load(f)
+    swap = next((p for p in teen_rig.get("params", [])
+                 if p.get("id") == "ParamSurpriseArmSwap"), {})
+    swap_binds = swap.get("binds", [])
+    hidden = {b.get("part") for b in swap_binds
+              if b.get("param") == "alpha" and b.get("scale", 0) < 0}
+    shown = {b.get("part") for b in swap_binds
+             if b.get("param") == "alpha" and b.get("scale", 0) > 0
+             and b.get("offset", 0) < 0}
+    check("surprised swap 清除两侧腕垫/旧手残影",
+          {"hand_l_pad", "hand_r_pad", "hand_l", "hand_r"} <= hidden,
+          "隐藏部件含 hand_l_pad/hand_r_pad 与基础手: %s" %
+          sorted({"hand_l_pad", "hand_r_pad", "hand_l", "hand_r"} & hidden))
+    surprised_action = next((a_ for a_ in teen_rig.get("actions", [])
+                             if a_.get("id") == "surprised"), {})
+    action_amps = {ch.get("target"): ch.get("amp", 0.0)
+                   for ch in surprised_action.get("channels", [])}
+    check("surprised 双腿轻微分开并柔性屈膝（脚底端点保持）",
+          action_amps.get("ParamLegL", 0) < -0.2
+          and action_amps.get("ParamLegR", 0) > 0.2
+          and action_amps.get("ParamKneeL", 0) > 0.25
+          and action_amps.get("ParamKneeR", 0) > 0.25
+          and action_amps.get("ParamHipL", 0) > 0
+          and action_amps.get("ParamHipR", 0) < 0
+          and pose_params is not None
+          and 0.25 <= pose_params.get("ParamLegL", 0) <= 0.45
+          and 0.25 <= pose_params.get("ParamLegR", 0) <= 0.45
+          and 0.65 <= pose_params.get("ParamKneeL", 0) <= 0.90
+          and 0.85 <= pose_params.get("ParamKneeR", 0) <= 1.00,
+          "动作外分 L/R %.2f/%.2f、膝弯 %.2f/%.2f；运行时有效值已采样" %
+          (action_amps.get("ParamLegL", 0), action_amps.get("ParamLegR", 0),
+           pose_params.get("ParamKneeL", 0) if pose_params else 0,
+           pose_params.get("ParamKneeR", 0) if pose_params else 0))
+    part_layers = {p["id"]: p.get("layer", -1) for p in teen_rig.get("parts", [])}
+    hand_layers = [part_layers.get(f"hand_{side}_surprised", -1) for side in ("l", "r")]
+    sleeve_layers = [part_layers.get(f"forearm_bent_{side}", -1) for side in ("l", "r")]
+    check("surprised swap 显示两片弯袖且腕桩压在袖口下",
+          {"forearm_bent_l", "forearm_bent_r"} <= shown
+          and all(hand_layers[i] < sleeve_layers[i] for i in range(2)),
+          "hand layers L/R %d/%d < bent sleeve layers %d/%d" %
+          (hand_layers[0], hand_layers[1], sleeve_layers[0], sleeve_layers[1]))
+    a.hit("/api/ambient?on=1")
     # 平台契约清单（G50）：界面靠它画"能力与供应商"面板
     pf = a.json("/platform.json")
     check("/platform.json 能取到", bool(pf and pf.get("capabilities")),

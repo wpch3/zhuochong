@@ -597,6 +597,35 @@ def check_rig(root):
         check("关键帧曲线写法合法", not badkeys,
               f"坏关键帧 {badkeys[:3]}" if badkeys else f"{nkey} 条关键帧通道")
 
+        # T31 按主人的参考图验收：惊讶必须是全身姿态+睁眼 O 嘴；开心是闭嘴笑；
+        # talk 有程序回退的嘴形变化，真实语音再由音素轨接管。
+        action_by_id = {a.get("id"): a for a in r.get("actions", [])}
+        def channel(aid, target):
+            return next((c for c in action_by_id.get(aid, {}).get("channels", [])
+                         if c.get("target") == target), None)
+        happy_form = channel("happy", "ParamMouthForm")
+        happy_open = channel("happy", "ParamMouthOpenY")
+        talk_form = channel("talk", "ParamMouthForm")
+        talk_open = channel("talk", "ParamMouthOpenY")
+        surprise_form = channel("surprised", "ParamMouthForm")
+        surprise_open = channel("surprised", "ParamMouthOpenY")
+        check("开心动作闭嘴并抬嘴角", bool(happy_form and happy_form.get("amp", 0) > 0
+                                               and not happy_open),
+              "happy 应驱动正向 ParamMouthForm，不得张开 ParamMouthOpenY")
+        check("talk 动作兼有开合与宽窄嘴形", bool(talk_form and talk_open),
+              "talk 应同时驱动 ParamMouthOpenY 与 ParamMouthForm")
+        check("惊讶动作是 O 嘴", bool(surprise_form and surprise_form.get("amp", 0) < 0
+                                             and surprise_open and surprise_open.get("amp", 0) > 0),
+              "surprised 应同时张嘴并驱动负向 ParamMouthForm")
+        if any(p.startswith("arm_") and p.endswith("_fore") for p in pids):
+            surprised = action_by_id.get("surprised", {})
+            targets = {c.get("target") for c in surprised.get("channels", [])}
+            need = {"ParamArmLA", "ParamArmRA", "ParamArmLB", "ParamArmRB",
+                    "ParamHandLSurprised", "ParamHandRSurprised",
+                    "ParamEyeLWide", "ParamEyeRWide"}
+            check("惊讶动作覆盖双臂/专用手/瞪眼", need <= targets,
+                  f"缺少 {sorted(need - targets)}")
+
 
 
 # ------------------------------------------------- 3.5 Live2D 标准合规（静态）
@@ -605,7 +634,7 @@ def check_rig(root):
 L2D_STANDARD = {
     "ParamAngleX", "ParamAngleY", "ParamAngleZ",
     "ParamEyeLOpen", "ParamEyeLSmile", "ParamEyeROpen", "ParamEyeRSmile",
-    "ParamEyeBallX", "ParamEyeBallY", "ParamEyeBallForm",
+    "ParamEyeBallX", "ParamEyeBallY", "ParamEyeBallForm",  # 官方：弯曲眼睛轮廓（T31.16 起本 rig 该语义暂不实现，旧名仍作别名）
     "ParamBrowLY", "ParamBrowRY", "ParamBrowLX", "ParamBrowRX",
     "ParamBrowLAngle", "ParamBrowRAngle", "ParamBrowLForm", "ParamBrowRForm",
     "ParamMouthForm", "ParamMouthOpenY", "ParamCheek",
@@ -619,6 +648,7 @@ L2D_STANDARD = {
 # 标准表里没有、但我们确实需要的扩展。每加一个都必须在这里登记 + 写进
 # docs/LIVE2D_CONFORMANCE.md，否则参数命名会慢慢跑偏，以后接任何现成工具都对不上。
 L2D_EXTENSIONS = {
+    "ParamPupilScale": "瞳孔缩放（T31.16）：贴图模型做不出真瞳形变形，用眼球缩放 sx0.18/sy0.22 代替；旧名 ParamEyeBallForm 官方实为弯曲眼睛轮廓，已改名并保留别名",
     "ParamSkirtSway": "裙摆自主摆动（T45.9）。标准表只有身体角度，没有"
                       "「布自己在动」这一层。两级形变器：裙身 skirt_sway_x + "
                       "下摆 skirt_hem_x，下摆带 0.11 秒行波延迟",
@@ -657,6 +687,11 @@ L2D_EXTENSIONS = {
                       "折肘时沿肘→腕轴线拉长 26px（116→142 = 0.87），"
                       "hand_? 组 dx/dy 同步外移；静止时为 0，画面一个像素不动",
     "ParamForeLongL": "同上，左前臂",
+    "ParamSurpriseElbowHide": "惊讶动作的特定 alpha 门控：折肘时隐藏会浮出的 gusset/seam；默认与其他动作保持原样",
+    "ParamSurpriseForeshorten": "Teen surprised 专用上臂透视短缩：局部 sy≈0.841，使实际肩—肘距离约为 bind 的 0.848；同步内移肘 pivot，前臂与手不缩放，其他动作值为 0（T31.19）",
+    "ParamSurpriseArmSwap": "Teen surprised 专用弯袖差分切换：动作峰值时隐藏自然下垂袖片并显示弯曲前臂袖片；其他动作保持原素材",
+    "ParamHandLSurprised": "Teen surprised 专用左手差分：与弯袖口配套，手指微曲并拢，仅动作期间替换常态手",
+    "ParamHandRSurprised": "Teen surprised 专用右手差分：与弯袖口配套，手指微曲并拢，仅动作期间替换常态手",
     "ParamForeSwayL": "左前臂袖管自己摆（T66.17 / 第六十六问 S3）。前面四条 Fore* 都是"
                       "**网格**（逐顶点），只能表达『参数越大、那几行挪得越多』；袖管要的"
                       "是 Live2D 那种『肘先动、袖口慢半拍追』的分层摆，那必须是**骨链**"
@@ -3251,7 +3286,8 @@ def check_live2d(root):
         r = jsonc(rp)
         known = {q["id"] for q in r.get("params", [])} | {
             "ParamAngleX", "ParamAngleY", "ParamEyeOpen", "ParamEyeLOpen", "ParamEyeROpen",
-            "ParamEyeLSmile", "ParamEyeRSmile", "ParamEyeBallX", "ParamEyeBallY"}
+            "ParamEyeLSmile", "ParamEyeRSmile", "ParamEyeBallX", "ParamEyeBallY",
+            "ParamEyeLWide", "ParamEyeRWide"}
         geom, unknown = [], []
         nch = 0
         for a_ in r.get("actions", []):
@@ -3344,18 +3380,21 @@ def check_character(root):
             # 嘴退回只会张合。所以这里要红，不能让它悄悄降级。
             envs = [f for f in glob.glob(os.path.join(os.path.dirname(idx), "*.json"))
                     if not f.endswith("index.json")]
-            withvis, badlen = 0, []
+            withvis, badlen, richest = 0, [], 0
             for f in envs:
                 e = json.load(open(f, encoding="utf-8"))
                 v = e.get("visemes")
                 if not v:
                     continue
                 withvis += 1
+                richest = max(richest, len(set(v)))
                 if len(v) != len(e.get("values", [])):
                     badlen.append(os.path.basename(f))
             check("口型包络带母音音素轨", envs and withvis >= len(envs) * 0.9,
                   f"{withvis}/{len(envs)} 条带 visemes"
                   + ("（缺的那些重跑 make_lipsync.py，需要 pypinyin）" if withvis < len(envs) else ""))
+            check("说话音素轨含多种可见嘴形", richest >= 5,
+                  f"最多 {richest} 种 viseme；至少需要 SIL + 四种母音，才能逐帧验收多口型")
             check("音素轨与包络等长", not badlen, f"{badlen[:3]}" if badlen else f"{withvis} 条逐条核对")
 
 
@@ -4536,11 +4575,65 @@ def check_tools(root):
         txt = open(rb, encoding="utf-8").read()
         allmk = sorted(os.path.basename(f) for f in
                        glob.glob(os.path.join(root, "tools", "make_*_parts.py")))
-        # 例外：不是从 base.png 这条身体重建链上走的工具（输入是另一批图）
+        # 兼容旧名：make_parts.py 也写 sprites（G107 真因），但不符合 make_*_parts.py 通配
+        _legacy = os.path.join(root, "tools", "make_parts.py")
+        if os.path.exists(_legacy):
+            allmk.append("make_parts.py")
+            allmk = sorted(set(allmk))
+        # 例外：不在 body_full 这条主重建链上的工具（输入是另一批图，或已声明离链）
+        # —— 声明口径见 TASKS T31.10：文件头 30 行内写“不在重建链”或“off_chain”即视为显式声明
+        def _has_off_chain_header(path):
+            try:
+                head = open(path, encoding="utf-8").read().splitlines()[:30]
+                h = "\n".join(head).lower()
+                return ("不在重建链" in h or "off_chain" in h or "off-chain" in h
+                        or "故意没有挂进" in h)
+            except Exception:
+                return False
         off_chain = {"make_face_parts.py"}    # 表情特写切件，输入是 parts_src/expressions
-        notin = [m for m in allmk if m not in txt and m not in off_chain]
+        notin = []
+        for m in allmk:
+            if m in txt or m in off_chain:
+                continue
+            # 已在文件头声明离链的，视为合规（T31.10）
+            fp = os.path.join(root, "tools", m)
+            if _has_off_chain_header(fp):
+                continue
+            notin.append(m)
         check("切件工具都进了重建链", not notin,
               f"{len(allmk)} 个" + (f"，漏了 {notin}" if notin else ""))
+
+        # 扩展闸：任何写进 sprites/ 的脚本都必须在链里或声明离链（T31.10 彻底版）
+        import pathlib as _pl
+        sprite_writers = []
+        for cand in _pl.Path(os.path.join(root, "tools")).glob("*.py"):
+            cname = cand.name
+            # 已被上一条闸覆盖的 make_* 切件不重复判
+            if cname.startswith("make_") and cname in allmk:
+                continue
+            try:
+                ctxt = cand.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            if "sprites" not in ctxt:
+                continue
+            # 只有“写 sprites 目录”才算：save/open 的那一行里路径包含 sprites
+            is_sprite_writer = False
+            for line in ctxt.splitlines():
+                if "sprites" in line and (".save(" in line or "json.dump" in line or "open(" in line and "\"w\"" in line or "'w'" in line):
+                    # 需是写到 sprites/ 目录（不是读）
+                    if "sprites/" in line or 'os.path.join' in line and "sprites" in line:
+                        # 排除 QA 类：out_dir/logs/docs/qa 不是 sprites
+                        if "out_dir" in line or "logs/" in line or "docs/qa" in line:
+                            continue
+                        is_sprite_writer = True
+                        break
+            if not is_sprite_writer:
+                continue
+            if cname not in txt and not _has_off_chain_header(str(cand)):
+                sprite_writers.append(cname)
+        check("写 sprites 的脚本都在链里或已声明离链", not sprite_writers,
+              f"{len(sprite_writers)} 个离链未声明" + (f"：{sprite_writers}" if sprite_writers else ""))
         # 步骤编号必须连号、总数一致（改脚本时最容易忘改的就是这个）
         steps = re.findall(r'step\s+"(\d+)/(\d+)\s', txt)
         nums = [int(a) for a, _ in steps]
@@ -4681,20 +4774,20 @@ def check_tools(root):
 
     # 惊讶时不许把瞳孔放大。
     # 2026-10-15 用户实拍反馈「眼球会不自然的变大，看着像个怪物」—— 当时 surprised 挂的是
-    # ParamEyeBallForm +1.0，而这个参数在本 rig 里只绑了眼球缩放（sx 0.18 / sy 0.22），
+    # ParamEyeBallForm +1.0（现 ParamPupilScale），而这个参数在本 rig 里只绑了眼球缩放（sx 0.18 / sy 0.22），
     # 于是虹膜被撑大 18~22%。官方口径相反：shocked = 眼睛开得更大 + 瞳孔**变小**
     # （saltech.llc 的 ParamEyeLWide 条目 / Animaze 手册 ParamEyeLOpen 往 max / r/Live2D 两帖）。
-    # 这条闸只认一件事：surprised 的 ParamEyeBallForm 幅度不许为正。
+    # 这条闸只认一件事：surprised 的 ParamPupilScale 幅度不许为正（旧名 ParamEyeBallForm 亦作别名检查）。
     rig_path = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
     if os.path.exists(rig_path):
         with open(rig_path, encoding="utf-8") as f:
             rigj = json.load(f)
         sp = next((a for a in rigj.get("actions", []) if a.get("id") == "surprised"), None)
         if sp:
-            ebf = [c for c in sp.get("channels", []) if c.get("target") == "ParamEyeBallForm"]
+            ebf = [c for c in sp.get("channels", []) if c.get("target") in ("ParamPupilScale", "ParamEyeBallForm")]
             amps = [c.get("amp", 0) for c in ebf]
             check("惊讶不许放大瞳孔", all(v <= 0 for v in amps),
-                  "surprised 的 ParamEyeBallForm 幅度 %s（必须 <=0，正值=虹膜被撑大）"
+                  "surprised 的 ParamPupilScale 幅度 %s（必须 <=0，正值=虹膜被撑大）"
                   % (amps if amps else "无此通道"))
 
     # 上唇线淡出斜率：参数绑定与 GEO2PARAM 换算表必须是同一个数。
@@ -4729,6 +4822,59 @@ def check_tools(root):
             badsh.append(os.path.basename(f))
     check("Shell 脚本语法都正确", not badsh, f"{len(shs)} 个" + (f"，坏：{badsh}" if badsh else ""))
 
+
+# ------------------------------------------------------------------ T23 P4 横切：权限/成本/性能预算 (A29/A30/A31 - G79/G80/G81)
+def check_t23(root):
+    """T23 三件必须同时落地：权限模型默认全关有急停、成本熔断到顶自停、性能预算渲染优先且实测入档。"""
+    section("P4 横切：权限模型/成本熔断/性能预算 (T23/G79/G80/G81)")
+    # 权限
+    perm_p = os.path.join(root, "config", "permissions.json")
+    perm = jsonc(perm_p) if os.path.exists(perm_p) else None
+    ok_perm = check("权限表在 (config/permissions.json)", perm is not None, "T23.1 落点")
+    if perm:
+        check("权限表有 tiers 且分级单调", bool(perm.get("tiers")) and len(perm["tiers"])>=3 and all(perm["tiers"][i]["level"] < perm["tiers"][i+1]["level"] for i in range(len(perm["tiers"])-1)), f'{len(perm.get("tiers",[]))} 档')
+        caps = perm.get("capabilities", [])
+        off = [c for c in caps if not c.get("enabled")]
+        check("默认全关（至少 5 项能力关闭）", len(off)>=5, f"{len(off)}/{len(caps)} 项关闭")
+        check("有全局急停 e_stop 且热键存在", bool(perm.get("e_stop",{}).get("hotkey")) and perm.get("e_stop",{}).get("enabled")==True, perm.get("e_stop",{}).get("hotkey",""))
+        check("敏感区屏蔽表存在", bool(perm.get("sensitive_masks")), f'{len(perm.get("sensitive_masks",[]))} 条')
+        check("审计日志开启且路径在 data/", perm.get("audit",{}).get("enabled")==True and "data/" in perm.get("audit",{}).get("log_path",""), perm.get("audit",{}).get("log_path",""))
+        check("显眼指示（屏幕/麦克风）存在", bool(perm.get("indicators",{}).get("screen_capturing")), "有 REC/MIC 指示")
+    # 成本
+    cost_p = os.path.join(root, "config", "cost_limits.json")
+    cost = jsonc(cost_p) if os.path.exists(cost_p) else None
+    ok_cost = check("成本熔断表在 (config/cost_limits.json)", cost is not None, "T23.2 落点")
+    if cost:
+        hc = cost.get("hard_caps",{})
+        check("硬上限 daily/monthly 存在且 action=auto_stop", hc.get("daily_cny") and hc.get("monthly_cny") and hc.get("action")=="auto_stop", f'daily {hc.get("daily_cny")} monthly {hc.get("monthly_cny")}')
+        check("分能力配额至少 3 项", len(cost.get("per_capability",[]))>=3, f'{len(cost.get("per_capability",[]))} 项')
+        check("降级顺序存在且含 local_model", "local_model" in cost.get("downgrade",{}).get("order",[]), str(cost.get("downgrade",{}).get("order",[])))
+        est = cost.get("estimate",{})
+        check("预估开关存在且 show_before_enable=true", est.get("enabled")==True and est.get("show_before_enable")==True, "")
+        check("空闲自动降频存在", bool(cost.get("idle_downclock",{}).get("enabled")), f'idle {cost.get("idle_downclock",{}).get("idle_s")}s')
+    # 性能
+    perf_p = os.path.join(root, "config", "perf_budget.json")
+    perf = jsonc(perf_p) if os.path.exists(perf_p) else None
+    ok_perf = check("性能预算表在 (config/perf_budget.json)", perf is not None, "T23.3 落点")
+    if perf:
+        check("渲染永远优先 render_first=true", perf.get("priority",{}).get("render_first")==True, "")
+        check("预算至少含 idle 与 realtime 两档", len(perf.get("budgets",[]))>=2 and any(b.get("mode")=="idle" for b in perf.get("budgets",[])), f'{len(perf.get("budgets",[]))} 档')
+        meas = perf.get("measured",{})
+        check("实测入档（idle_cpu/realtime_cpu/render_ms）", meas.get("idle_cpu") is not None and meas.get("render_ms") is not None, f'idle {meas.get("idle_cpu")}% render {meas.get("render_ms")}ms')
+        check("可独立降档至少 3 项", len(perf.get("degradable",[]))>=3, f'{len(perf.get("degradable",[]))} 项')
+        check("用户活跃时让出存在", bool(perf.get("yield_on_user_active",{}).get("enabled")), "")
+    # 引擎强制位：源码里必须出现调用点，否则配置形同虚设
+    srcs = []
+    for pat in ["src/core/zgateway.c", "src/core/zrelay.c", "src/core/zimg.c"]:
+        fp=os.path.join(root, pat)
+        if os.path.exists(fp): srcs.append((pat, open(fp, encoding="utf-8", errors="ignore").read()))
+    allsrc = "\n".join(s for _,s in srcs)
+    check("网关/中继含权限检查 zperm_check", "zperm_check" in allsrc, "zgateway.c/zrelay.c 应在选路前检查")
+    check("成本熔断检查 zcost_tripped 在中继", "zcost_tripped" in allsrc, "zrelay.c 应在出网前检查额度")
+    check("性能预算检查 zperf_budget_ok 在渲染", "zperf_budget_ok" in allsrc or "zperf_render_first" in allsrc, "渲染路径应尊重预算")
+    # Schema 存在
+    for sch in ["schemas/permissions.schema.json", "schemas/cost_limits.schema.json", "schemas/perf_budget.schema.json"]:
+        check(f"Schema 在 {sch}", os.path.exists(os.path.join(root, sch)), "")
 
 # ------------------------------------------------------------------ 7.9 语音语感（A52 / T57）
 def check_prosody(root):
@@ -5065,6 +5211,7 @@ def main():
                check_rig_freshness,
                check_external_motions,
                check_external_expressions,
+               check_t23,
                check_prosody,
                check_phys2,
                check_phys2_rig,

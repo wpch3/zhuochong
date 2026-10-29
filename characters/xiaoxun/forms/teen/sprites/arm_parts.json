@@ -317,6 +317,44 @@
         553.0
       ],
       "note": "肘接缝盖布（Q51）：折起来之后，上臂件的内侧描边和前臂件近端的描边**并排躺在袖子中间**，读起来就是用户第五十一问截图里那条「肘关节的深色线」。参考图 wave_up.png 的折袖里面只有几笔淡褶皱、深色线只在外剪影上。这件按定稿姿势找出「被袖料包住的描边像素」（两管贴合段内，排除袖口罗纹和手），用两边袖子自己的颜色盖掉，层 150/151 压在两根管子**之上**，外剪影永远留 3px 不碰，伸直时 alpha=0。"
+    },
+    {
+      "id": "forearm_bent_l",
+      "file": "sprites/forearm_bent_l.png",
+      "group": "forearm_l",
+      "layer": 321,
+      "pos": [
+        28,
+        526
+      ],
+      "size": [
+        80,
+        147
+      ],
+      "pivot": [
+        75.5,
+        553.0
+      ],
+      "note": "surprised 专用弯曲袖片：opacity swap；与标准前臂共用肘腕骨链，层级置于躯干/衣领/帽兜/后发前方"
+    },
+    {
+      "id": "forearm_bent_r",
+      "file": "sprites/forearm_bent_r.png",
+      "group": "forearm_r",
+      "layer": 322,
+      "pos": [
+        329,
+        522
+      ],
+      "size": [
+        88,
+        151
+      ],
+      "pivot": [
+        364.5,
+        553.0
+      ],
+      "note": "surprised 专用弯曲袖片：opacity swap；与标准前臂共用肘腕骨链，层级置于躯干/衣领/帽兜/后发前方"
     }
   ],
   "checks": {

@@ -717,25 +717,20 @@
     "sig": {
       "radius": 118.0,
       "darken": 0.9,
-      "v": 2
+      "v": 3,
+      "silhouette": "redraw-alpha-transparent-outside"
     },
     "filled_px": {
-      "1x": 11068,
-      "banding": {
-        "1x": 0.52,
-        "@2x": 0.56
+      "1x": {
+        "target_px": 9944,
+        "redraw_px": 0,
+        "transparent_outside_redraw": 9944
       },
-      "alpha": {
-        "1x": {
-          "veil": 195,
-          "hard": 10873
-        },
-        "@2x": {
-          "veil": 826,
-          "hard": 44135
-        }
-      },
-      "@2x": 44961
+      "@2x": {
+        "target_px": 39978,
+        "redraw_px": 0,
+        "transparent_outside_redraw": 39978
+      }
     },
     "note": "tools/armpit_patch.py：把休止姿势下被手臂盖住、抬臂后会露出背景的腋窝区域用躯干侧缘挤出补满（脇の下の描き足し）"
   },

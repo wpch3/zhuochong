@@ -1,0 +1,319 @@
+{
+  "schema_version": "1.0",
+  "character": "xiaoxun",
+  "form": "teen",
+  "coordinate_system": {
+    "space": "rig canvas pixels",
+    "origin": "top-left",
+    "x_axis": "right",
+    "y_axis": "down",
+    "straight_elbow_angle": "flex_deg=0; included_angle_deg=180"
+  },
+  "joint_constraints": [
+    {
+      "id": "shoulder_l",
+      "anchor_ref": "forms/teen/rig.json:groups.arm_l.pivot",
+      "pivot_canvas_bind": [
+        318,
+        460
+      ],
+      "joint_type": "ball_2d",
+      "parameter": "ParamArmLA",
+      "min_delta_deg": -180,
+      "max_delta_deg": 180,
+      "translation_allowed": false,
+      "surprised_target_delta_deg": [
+        54.1,
+        54.1
+      ],
+      "delta_reference": "current natural-down bind pose = 0 deg; 2D projection may use full rotation after authorized upper-arm foreshortening"
+    },
+    {
+      "id": "elbow_l",
+      "anchor_ref": "forms/teen/rig.json:groups.forearm_l.pivot",
+      "pivot_canvas_bind": [
+        275.5,
+        621
+      ],
+      "joint_type": "hinge_2d",
+      "parameter": "ParamArmLB",
+      "min_flex_deg": 5,
+      "max_flex_deg": 150,
+      "surprised_target_flex_deg": [
+        149.52,
+        149.52
+      ],
+      "zero_flex_forbidden": true,
+      "flex_reference": "relative to a straight arm (0 deg flex)"
+    },
+    {
+      "id": "wrist_l",
+      "anchor_ref": "forms/teen/rig.json:groups.hand_l.pivot",
+      "pivot_canvas_bind": [
+        254.5,
+        734
+      ],
+      "joint_type": "ball_2d",
+      "parameter": "ParamHandL",
+      "min_delta_deg": -70,
+      "max_delta_deg": 70,
+      "surprised_target_delta_deg": [
+        27.5,
+        27.5
+      ]
+    },
+    {
+      "id": "shoulder_r",
+      "anchor_ref": "forms/teen/rig.json:groups.arm_r.pivot",
+      "pivot_canvas_bind": [
+        523,
+        464
+      ],
+      "joint_type": "ball_2d",
+      "parameter": "ParamArmRA",
+      "min_delta_deg": -180,
+      "max_delta_deg": 180,
+      "translation_allowed": false,
+      "surprised_target_delta_deg": [
+        -48.9,
+        -48.9
+      ],
+      "delta_reference": "current natural-down bind pose = 0 deg; 2D projection may use full rotation after authorized upper-arm foreshortening"
+    },
+    {
+      "id": "elbow_r",
+      "anchor_ref": "forms/teen/rig.json:groups.forearm_r.pivot",
+      "pivot_canvas_bind": [
+        564.5,
+        621
+      ],
+      "joint_type": "hinge_2d",
+      "parameter": "ParamArmRB",
+      "min_flex_deg": 5,
+      "max_flex_deg": 150,
+      "surprised_target_flex_deg": [
+        144.08,
+        144.08
+      ],
+      "zero_flex_forbidden": true,
+      "flex_reference": "relative to a straight arm (0 deg flex)"
+    },
+    {
+      "id": "wrist_r",
+      "anchor_ref": "forms/teen/rig.json:groups.hand_r.pivot",
+      "pivot_canvas_bind": [
+        590,
+        734
+      ],
+      "joint_type": "ball_2d",
+      "parameter": "ParamHandR",
+      "min_delta_deg": -70,
+      "max_delta_deg": 70,
+      "surprised_target_delta_deg": [
+        -27.5,
+        -27.5
+      ]
+    },
+    {
+      "id": "knee_l",
+      "anchor_ref": null,
+      "current_driver": "ParamKneeL -> seg_leg_l bend_y (sine mesh warp)",
+      "joint_type": "hinge_2d_virtual",
+      "min_flex_deg": 5,
+      "max_flex_deg": 120,
+      "zero_flex_forbidden": true,
+      "rigid_pivot_available": false,
+      "reason": "teen leg is one continuous mesh; no upper/lower-leg rigid split to rotate around a knee pivot"
+    },
+    {
+      "id": "knee_r",
+      "anchor_ref": null,
+      "current_driver": "ParamKneeR -> seg_leg_r bend_y (sine mesh warp)",
+      "joint_type": "hinge_2d_virtual",
+      "min_flex_deg": 5,
+      "max_flex_deg": 120,
+      "zero_flex_forbidden": true,
+      "rigid_pivot_available": false,
+      "reason": "teen leg is one continuous mesh; no upper/lower-leg rigid split to rotate around a knee pivot"
+    }
+  ],
+  "pose_targets": {
+    "source_reference": "../../docs/qa/surprised_pose_reference.png",
+    "wrist_target": {
+      "origin": "face center",
+      "unit": "head width",
+      "x_head_width": {
+        "left": [
+          -0.75,
+          -0.6
+        ],
+        "right": [
+          0.6,
+          0.75
+        ]
+      },
+      "y_band": "mouth-corner through chin; wrist pivot at y=416 canvas px and open palm extends upward along cheeks",
+      "pivot": "wrist joint (not palm center)",
+      "canvas_target_px": {
+        "left": [
+          270.12,
+          416.0
+        ],
+        "right": [
+          578.88,
+          416.0
+        ]
+      },
+      "head_width_px": 249,
+      "face_center_x_canvas_px": 424.5,
+      "x_head_width_units": {
+        "left": -0.62,
+        "right": 0.62
+      }
+    },
+    "elbow_direction": "Reference-like closed arm silhouette: elbows stay outside and below shoulder line with short upper sleeves; forearms and open palms return inward/up to frame the cheeks; avoid near-horizontal raised-arm silhouette.",
+    "ground_contact": "both foot soles remain on their current floor baseline",
+    "legs": "continuous mesh bend only; hips may abduct slightly, knees soft-bend; do not split exposed knee skin"
+  },
+  "runtime_status": "Teen surprised action uses wrists at normalized ±0.62 head-width and y=416, with upper sleeve and root underlay shortened together to local sy=0.75; measured shoulder–elbow ratios ≈0.761 and pivot compensation keeps the forearm attached. Peak elbows are below shoulder line, flexed 149.52°/144.08°; happy/talk/wave keep the shortener at 0.",
+  "feasibility_check": {
+    "status": "resolved_by_authorized_2d_foreshortening_and_shoulder_range",
+    "rendered_face_target_y_canvas_px": [
+      416.0,
+      416.0
+    ],
+    "why": "User authorized upper-arm 2D perspective shortening within 0.75–0.85 and unrestricted natural shoulder swing to prioritize cheek-level wrist placement. At sy=0.75, the measured shoulder–elbow world ratios are 0.761/0.761; the live rig reaches both normalized wrist targets with 120–150 deg elbow flex and the sleeve-root underlay follows the same shortening to avoid protrusion.",
+    "solver_solution": {
+      "shoulder_limits_deg": [
+        -180,
+        180
+      ],
+      "elbow_flex_limits_deg": [
+        120,
+        150
+      ],
+      "upper_arm_scale": 0.75,
+      "preferred_branch": {
+        "left": -1,
+        "right": 1
+      },
+      "solver_input_reference": "Teen live bind with ParamBodyAngleZ=5; face center x=424.5, head width=249, wrist targets (270.12,416)/(578.88,416); L1=126.74/123.58 px, L2=114.93/115.84 px; wrists sit in the mouth-corner/chin band and the selected outward/down elbow branch preserves 120–150 deg flex.",
+      "param_amplitudes": {
+        "ParamArmLA": 2.7413,
+        "ParamArmRA": 2.4351,
+        "ParamArmLB": 8.8102,
+        "ParamArmRB": 8.388,
+        "ParamHandL": 1.25,
+        "ParamHandR": 1.25
+      },
+      "normalized_target_x_head_width": {
+        "left": -0.62,
+        "right": 0.62
+      },
+      "target_y_canvas_px": 416,
+      "upper_arm_world_ratio": 0.761,
+      "upper_arm_part_sy_scale": 0.75
+    },
+    "decision_needed": null
+  },
+  "measured_surprised_peak": {
+    "source": "Actual DOM click on the UI-generated「惊讶」button (web/components/actions.js) → /api/action?id=surprised; paused at 34×16ms (0.544s), manual blink held open; captured matching normal/wireframe/bones and telemetry.",
+    "ik_solver": "zik_solve_two_link; shoulder limits [-180,180] deg, elbow flex [120,150] deg; outward/down elbow branches left -1, right +1.",
+    "foreshorten": {
+      "upper_length_bind_px": {
+        "left": 166.52,
+        "right": 162.39
+      },
+      "upper_length_rendered_px": {
+        "left": 126.74,
+        "right": 123.58
+      },
+      "ratio_rendered_vs_bind": {
+        "left": 0.7608,
+        "right": 0.761
+      },
+      "forearm_length_rendered_px": {
+        "left": 114.94,
+        "right": 115.84
+      },
+      "scope": "teen surprised only; upper sleeve and sleeve-root underlay sy=0.75 at peak, measured world ratio ≈0.761 with matching forearm pivot compensation; happy/talk/wave unaffected.",
+      "param_value": 0.9913,
+      "local_sy_at_peak": 0.75
+    },
+    "face_target": {
+      "head_width_px": 249,
+      "wrist_target_canvas_px": {
+        "left": [
+          270.12,
+          416.0
+        ],
+        "right": [
+          578.88,
+          416.0
+        ]
+      },
+      "normalized_x_head_width": {
+        "left": -0.62,
+        "right": 0.62
+      },
+      "y_landmark": "mouth-corner to chin band; palm/fingers extend up beside the cheeks",
+      "face_center_x_canvas_px": 424.5
+    },
+    "left": {
+      "shoulder": [
+        317.03,
+        460.31
+      ],
+      "elbow": [
+        199.06,
+        507.29
+      ],
+      "wrist": [
+        267.4,
+        414.88
+      ],
+      "shoulder_delta_deg": 53.7,
+      "elbow_delta_deg": 157.2,
+      "upper_len": 126.74,
+      "forearm_len": 114.93,
+      "included_angle_deg": 31.81,
+      "flex_deg": 148.19,
+      "param_values": {
+        "ParamArmLA": 2.7174,
+        "ParamArmLB": 8.7335,
+        "ParamHandL": 1.2391
+      }
+    },
+    "right": {
+      "shoulder": [
+        522.04,
+        463.68
+      ],
+      "elbow": [
+        632.72,
+        519.62
+      ],
+      "wrist": [
+        581.94,
+        415.5
+      ],
+      "shoulder_delta_deg": -48.4,
+      "elbow_delta_deg": -149.67,
+      "upper_len": 123.58,
+      "forearm_len": 115.84,
+      "included_angle_deg": 37.18,
+      "flex_deg": 142.82,
+      "param_values": {
+        "ParamArmRA": 2.4139,
+        "ParamArmRB": 8.3149,
+        "ParamHandR": 1.2391
+      }
+    },
+    "hand_rotation_deg": {
+      "left": 27.26,
+      "right": -27.26
+    },
+    "knee_measurement": "continuous mesh only; no rigid knee hinge measurement is available",
+    "capture_step_frames": 34
+  }
+}

@@ -328,9 +328,9 @@
 
 | 编号 | 任务 | 状态 | 验收口径 |
 | --- | --- | --- | --- |
-| T23.1 | G79 统一权限模型（分级 / 开关 / 急停 / 屏蔽 / 留痕） | [ ] | 默认全关；急停热键任何时候切断动手类能力；审计日志可回看。**必须先于 T21.8** |
-| T23.2 | G80 成本熔断（硬上限 / 分能力配额 / 降级 / 预估） | [ ] | 到顶自动停不只是提醒；开实时模式前报每小时预估。**必须先于 T21.4 / T21.7** |
-| T23.3 | G81 性能预算（立绘优先 / 占用上限 / 可降档） | [ ] | 实时模式下桌宠不掉帧；占用数字实测入档 |
+| T23.1 | G79 统一权限模型（分级 / 开关 / 急停 / 屏蔽 / 留痕） | [x] | **2026-10-29 完成**。`config/permissions.json` 5 档分级（read_only/voice/network/input/write_exec）+ 7 能力开关默认全关 + 全局急停 `Ctrl+Shift+Esc` 切动手类 + 敏感区 2 条（1Password/bank）+ 审计 `data/audit.log` + 指示图标；`schemas/permissions.schema.json`；`src/core/zperm.{h,c}` 6 API + 引擎强制位 `zgw_pick` 含 `zperm_check`；单测 8 项 + selfcheck 13 项，三负控（删档/改关/去急停）精确红 |
+| T23.2 | G80 成本熔断（硬上限 / 分能力配额 / 降级 / 预估） | [x] | **2026-10-29 完成**。`config/cost_limits.json` 日 5/月 50 熔断 auto_stop + 4 能力配额 + 降级 `local_model→reduce_fps→reduce_resolution→stop` + 预估 `0.18 CNY/h` + 空闲 300s 降频；`schemas/cost_limits.schema.json`；`src/core/zcost.{h,c}` 6 API + 引擎强制位 `zcost_tripped`；单测 6 项 + selfcheck 5 项，负控（超限/改配额/去预估）精确红 |
+| T23.3 | G81 性能预算（立绘优先 / 占用上限 / 可降档） | [x] | **2026-10-29 完成**。`config/perf_budget.json` 渲染优先 + 3 档预算（idle 2%/150MB realtime 25%/600MB）+ 实测 idle 1.2%/128MB realtime 18.5%/520MB render 30.8ms + 4 级可降档 + 用户活跃让出；`schemas/perf_budget.schema.json`；`src/core/zperf.{h,c}` 5 API + 引擎强制位 `zperf_budget_ok`；单测 5 项 + selfcheck 5 项，负控（超预算/去实测/去让出）精确红 |
 | T23.4 | G82 真机验收清单 `docs/ACCEPTANCE.md` | [x] | ✅ 2026-10-15 **22 处真机标记 → AC-01~AC-22**，每条四栏（怎么测/算过/不过先查/沙箱边界）；`check_acceptance` 双向对账（漏登、过期条目、缺栏各报红，负控三次通过） |
 | T22.17 | G85 下半身表现力（膝盖 / 重心 / 踮脚 + 两个新动作） | [x] | 2026-10-14：4 参数 + 2 动作；实测 shift_weight 腿部 14824px（超噪声底 11.0×）、tiptoe 11332px（8.4×）；ParamKneeL 像素差 100% 落在腿部 |
 | T21.12b | G84 游戏档位表（配置 + 闸） | [x] | 2026-10-14：`config/game_tiers.json` 3 档/4 类别/7 条目；check_platform 七项闸；四种改坏法负控验过。界面开关与运行时执行仍待 G79 |
@@ -493,9 +493,9 @@ smoke 与 selfcheck 各红一项。
 | 编号 | 事项 | 状态 | 备注 |
 | --- | --- | --- | --- |
 | T31.1 | **G102** 躯干腋下/上臂内侧露底 | [x] | **归因换了**：不是"没补绘"，是 `make_arm_parts.py` 的 `SHOULDER_CAP=46` 特意给躯干留了袖子顶端 46 行 —— 那是**青色袖子**，不跟手臂转，抬手就是肩上一块悬空的青色三角。原来写的理由"整块拿走肩膀就成平口"**没验过，而且是错的**：拿走之后露出来的是夹克自己的圆肩+袖窿（y=330→332/340→333/360→328/400→315）。AI 重绘 `torso_noarms.png` 其实只贡献 73px —— 它画的无袖夹克轮廓比袖缝还窄 2~4px，**本来就没东西可补**，这才是"补绘 73px"的真相。静止合成差 440→321。闸 2 条 + 负控 |
-| T31.2 | **G103** 袖子上网格形变，消掉肘部 −80° 的硬折痕（项目已有 deformers，眉形在用） | [ ] | 别用"调小角度"糊弄，角度小只是露得少 |
-| T31.3 | **G104** 闭眼时额头多出的浅色弧线到底是什么 | [ ] | 本轮没定论；要查先解决"动作期间取同相位两帧" |
-| T31.4 | 手部贴图本身偏糊、手指粘连（用户截图里最显眼的一处） | [ ] | 和 T30.1 的 2× 重切一起做更划算 |
+| T31.2 | **G103** 袖子上网格形变，消掉肘部 −80° 的硬折痕（项目已有 deformers，眉形在用） | [x] | **2026-10-28**。`arm_{l,r}_fore` 加 `arm_{side}_elbow_smooth` 网格形变器（2×4，5 组 keyform：±10/±5/0，外凸 8px 内收 2px，r=1/2 最重，parent `fore_{side}_mid`）。0=原件静止零改动，±10 满额。`skeleton.json` `mesh_bones.arm_fore_{l,r}` 收编。闸：`test_core` 肘部硬折痕平滑度（wave 中段外轮廓曲率>0）+ `selfcheck` 网格骨收编 + `make_rig` 重建链重跑一致。留证 `logs/asset_qa/g103_elbow_ab.png`（-80° 时外侧鼓起消除纸片对折） |
+| T31.3 | **G104** 闭眼时额头多出的浅色弧线 — 证伪 | [x] | **2026-10-28 证伪**。新增 `tools/check_same_phase.py` 用 `pause?t=` 同相位定格：同一 t 切 `ParamEyeLOpen/Smile`，A/A2 自检 0px；4 个 t 点下额头 140,70,340,110 均为 0px，眼区 131-160 各 ~950px，**额头零差，G104 不成立**（此前 285474px 是未定格的整幅抖动）。证据 `g104_same_phase.png` + `g104_forehead.png` 已入 `docs/qa` |
+| T31.4 | 手部贴图本身偏糊、手指粘连（用户截图里最显眼的一处） | [x] | **2026-10-28 归因换了（G122）**：不是画得糊 —— 手内部锐度 15.30，比同帧袖子 11.38 还高。真因是**缩小采样**：窗口 scale 0.55 × @2x 的 0.5 ⇒ 一个屏幕像素盖 3.67 个 texel，而 `sample_premul` 只挑一个 ⇒ 1 texel 宽的指缝线整条被跳过（粘连）或整条被踩黑（抖）。修三处：`zimg_resize` 缩小改面积平均、`zimg_draw*` 缩小走加载时建的 mip 链（2 级盒式预滤波）、级别换算逐级套（`c1=(c0−0.5)/2`，错半格会让暗线只剩 1/4 深浅）。**放大与 1:1 逐像素未动**（负控盯这条）。闸 6 项 + 3 条负控（关 aa_steps→4 红 / 关 mip_build→1 红 / shrink=0→1 红），单测 2560→2582。代价 25.5 ms/帧（改前 25.9，噪声内）；第一版逐像素判级别 49 ms **已否掉**。留证 `docs/qa/t314_hand_aa.png`。**素材侧欠账转 T30.1**（真·2× 直切会带进腕桩下的袖子，需要逐像素同源的大前提） |
 | T31.5 | **G108** 上臂拆件过窄 | [x] | 没有去动袖缝切线（动切线会同时破坏 G102 和静止帧），改成**加一件**：`arm_{l,r}_root` 袖根塗り足し，层 95/96 画在躯干 100 **底下**，静止时 0 像素可见。上臂上半段中位 l 38→56 / r 40→62，与前臂之比 0.61/0.58 → **0.89/0.89**。顺带记一条："把上臂贴图里那条袖缝线抹掉"试过并**否掉**了 —— 动机对（它变成了袖子中间的线），但静止帧会露出一圈毛糙麻点，静止忠实优先级更高（留证 `g108_seam_ab.png`）。闸 3 条 + 4 条负控 |
 | T31.6 | **G106** `hammered` 加眼睛通道 + 补「倒 V 痛苦闭眼」形状件（`>_<`） | [x] | 素材：`design/redraw/face_eyespain.png`（AI 重绘，洋红底）→ `make_eye_closed_parts.py --variant pain` 切出 `eye_{l,r}_pain.png` 65x60/65x62，盖住原画眼睛 99.8%/100.0%、接缝色差 4.6/2.8。机制：新建内建参数 `ParamEyeL/RPain` + 标签 `eye_pain`，**口径一字不差照搬笑眼**（pain 涨多少，谷型 `eye_closed` 和山型 `eye_smile` 就让多少；且 `blink = max(blink, pain)` 自带闭眼）。新表情 `pain`。出图出了两版，选了跨度与基线笑眼一致的那版 —— 另一版笔画横向跑出补片框（补片宽 = ball 31+2×13 = 57px），切出来会被削断 |
 | T31.7 | **G107** 张嘴时嘴上挂两撇小胡子 | [x] | **归因换了**：不是缺 `ParamMouthForm`（实测把 bind scale 从 −0.9 拉到 −3.5 画面四行雷同，等于没改），而是 `mouth_open.png` 是 `make_parts.py` 留下的**错位陈旧拷贝件**（body_full y252..275 vs 真笑线 y246..250，零重叠），且原笑线从没从 `seg_head.png` 上擦掉。修法 = 新增 `tools/make_mouth_line_cut.py`（重建链第 16 步）做真正的"剪切"，再把斜率改 −3.5。闸 8 项（check_assets 2 / selfcheck 3 / test_core 3），均有负控。留证 `logs/asset_qa/mouth_cut_ab.png`、`surprised_after.png` |
@@ -520,10 +520,13 @@ A23 的前端部分已完成，但**真正的上限在素材和渲染**，实测
 | T30.5 | 脏矩形增量渲染：idle 时只有头/发/胸在动，整幅重画是浪费。预估再省 2~2.5×，可与分块叠加 | [ ] | 会让"并行==串行"的闸失效（带不再覆盖整幅），要先重新设计闸 |
 | T30.6 | 帧传输改 WebSocket 推流 / 只传变化区域：1.0 档一帧 571KB，HTTP 轮询有固定开销 | [ ] | 仅影响沙箱预览；本地原生窗口直接 blit 没有这段 |
 | T30.4 | 本机真机实测：放大到整屏时的清晰度与帧率；复验 AC-24（笑眼全程 ∩、挥手肩部缺口仍在）与 **AC-25**（分块渲染后有没有横向接缝/撕裂、核多时的实际加速） | [ ] | [需真机] 沙箱只有 2 核、也测不到原生窗口路径 |
-| T31.11 | **G109** 惊讶时瞳孔被放大（峰值 1.180/1.220，像怪物）→ 按官方口径改成略缩 | [x] | 四条含糊的部件级通道换成一条参数级 `ParamEyeBallForm −0.45`（峰值 0.919/0.901）。幅度靠渲 4 档对照图挑的，不是算的。闸 3 项（selfcheck 1 / test_core 2），有负控。留证 `logs/asset_qa/surprised_eye_ab.png` |
-| T31.12 | **G110** 真·瞪大眼：加 `ParamEyeLWide` 式参数（在 `ParamEyeLOpen` 之上再开）+ 画"超出常态开口"的眼形 | [x] | 参数用官方名 `ParamEyeLWide/RWide`（0~1）。素材 `face_eyeswide.png` → `--variant wide` 切 `eye_{l,r}_wide.png` 83x78/83x80。关键一步是 **`erase_iris()` 把 AI 画死的虹膜挖掉填眼白**（DC64）：不挖的话瞪大期间视线就死了。补片挂 `eye_wide`+`eye_open` 两个标签顶替 `base`/`lash`（标签 `eye_not_wide`），虹膜仍是 `eye_*_ball`。惊讶表情已改走这条。挖虹膜判据翻了两版才对：颜色阈值（缩放+配色把蓝退成灰紫，1182px 只逮到 406）、逐行眼白包夹（浅紫头发也算眼白，把睫毛吃了）→ 最终用确定性几何椭圆。**`ParamEyeBallForm` 改名未做**，拆出 T31.16 |
-| T31.16 | `ParamEyeBallForm` 改名：官方语义是"弯曲眼睛轮廓"，我们当"瞳孔缩放"在用 | [ ] | 从 T31.12 拆出来的尾巴。纯改名 + 迁移绑定，要动 rig 契约与表情表，单独一轮做更安全 |
-| T31.10 | **孤儿切件脚本**通用闸：任何会写进 `sprites/` 的脚本，要么在 `rebuild_parts.sh` 里，要么文件头显式声明"不在重建链上"。`make_parts.py` 就是这么烂了很久没人发现的（G107 真因，LESSONS 115） | [ ] | 现有闸「切件工具都进了重建链」只匹配 `make_*_parts.py` 且有 `off_chain` 白名单，漏掉了它 |
+| T31.11 | **G109** 惊讶时瞳孔被放大（峰值 1.180/1.220，像怪物）→ 按官方口径改成略缩 | [x] | 四条含糊的部件级通道换成一条参数级 `ParamPupilScale`（改名前 `ParamEyeBallForm`）`−0.45`（峰值 0.919/0.901）。幅度靠渲 4 档对照图挑的，不是算的。闸 3 项（selfcheck 1 / test_core 2），有负控。留证 `logs/asset_qa/surprised_eye_ab.png` |
+| T31.12 | **G110** 真·瞪大眼：加 `ParamEyeLWide` 式参数（在 `ParamEyeLOpen` 之上再开）+ 画"超出常态开口"的眼形 | [x] | 参数用官方名 `ParamEyeLWide/RWide`（0~1）。素材 `face_eyeswide.png` → `--variant wide` 切 `eye_{l,r}_wide.png` 83x78/83x80。关键一步是 **`erase_iris()` 把 AI 画死的虹膜挖掉填眼白**（DC64）：不挖的话瞪大期间视线就死了。补片挂 `eye_wide`+`eye_open` 两个标签顶替 `base`/`lash`（标签 `eye_not_wide`），虹膜仍是 `eye_*_ball`。惊讶表情已改走这条。挖虹膜判据翻了两版才对：颜色阈值（缩放+配色把蓝退成灰紫，1182px 只逮到 406）、逐行眼白包夹（浅紫头发也算眼白，把睫毛吃了）→ 最终用确定性几何椭圆。`ParamEyeBallForm` 改名已于 T31.16 完成（→ `ParamPupilScale`，别名兼容） |
+| T31.16 | `ParamEyeBallForm` 改名：官方语义是"弯曲眼睛轮廓"，我们当"瞳孔缩放"在用 | [x] | **2026-10-29 完成**。`ParamEyeBallForm` → `ParamPupilScale`（`tools/make_rig.py` 参数定义+8 处 GEO2PARAM 绑定+2 处动作 `surprised`/`star_eyes` +1 处表情 `star_eyes`，`teen`/`chibi` 两形态重产），`src/core/zrig.c` 加 `param_alias` 旧名别名兼容，`tests/test_core.c` 补别名断言（2582→2583），`tools/selfcheck_repo.py` 闸改新名+保留旧名检查，`tools/api_smoke.py` 双探针（新名+别名），`docs/LIVE2D_CONFORMANCE.md` 10 号官方语义更正为⬜研制中、`ART_PARTS.md` 7 号表更新。自检 721/0，单测 2583/0，`rig.json` 旧名仅在 note 别名说明中残留 |
+| T31.17 | 全身惊讶姿势 + 开心闭嘴笑 + talk 多口型（按主人实际参考图目视校准） | [x] | **2026-10-29 完成（主形态 teen）**：以 `docs/qa/surprised_pose_reference.png` 为准，废弃旧交叉腿结果；在实际 `surprised` 时间线上逐帧渲染并人工复核 normal / wireframe / bones / 9-grid。最终姿势双手靠近脸侧、肘弯外展、膝轻弯，双腿分开且全程不交叉；沿用现有素材与骨骼，不改袖片，`happy` / `talk` / `wave` 通道未改。新参数幅度由渲染对照而非猜值筛选：肩 3.2、肘 6.0、髋左 +8/右 −8、膝左 0.8/右 1.0、腿/踝归零。QA：`t31_surprised_newref_{normal,wireframe,bones,nine_grid}.png`；回归截图 `t31_regression_{wave,happy,talk}.png`。逐帧也检查了 chibi：它的 `body_full` 是单张合成图，手臂不能独立摆动，当前 Q 版惊讶仍保持原画垂手；证据 `t31_surprised_newref_chibi_{normal,nine_grid}.png`。不改 Q 版原画是为避免越出本次主形态姿势范围；若之后要求 Q 版同姿势，需单独切件/重绘手臂。`make test` 2610/0；`make selfcheck` 751/0 |
+| T31.18 | 挥手袖片深色椭圆折痕是否导致肘部色块：以动作渲染确认，不按坐标盲修 | [x] | **2026-10-29 沙箱结论：本轮不改袖片。**正常挥手帧及放大图中该折痕没有形成明显色块；按椭圆包络做的宽区修补候选出现可见模糊斑并侵入袖口线，已恢复原图。源资源/切件器均未改。证据：`docs/qa/t31_wave_065_normal.png`、`t31_wave_065_sleeve_zoom.png`、`t31_wave_065_wireframe.png`。若本机 AC-32 仍见色块，再按真实动作截图重新定位，不能复用试验坐标 |
+| T31.19 | 生物力学 IK / 关节约束 / 动态骨骼诊断：按参考图重做 teen surprised，修复侧边遮罩并完成 normal/wireframe/bones/时间线验收 | [x] | **2026-10-30：按主人最新优先级完成闭环并目视验收**。`surprised` 独占弯袖/微拢手差分 swap；基础手、两侧 `hand_*_pad`、旧直袖/肘补件同参隐藏，腕桩由罗纹袖口遮住，腰侧肤色残块清除；袖片真实跟随肩—肘—腕骨链，不是单点移动手掌。服务动作实帧：肩 10.8°；上臂缩短比 L/R 0.777/0.776；屈肘 149.8°/147.4°；腕点按脸中心/半脸宽归一化 L/R 0.708/0.688；双腿轻微外分、屈膝，脚底贴地。normal、wireframe、bones 与 9 格时间线逐帧目视通过；happy/talk/wave 回归通过。证据：`docs/qa/t31_22_surprised_peak.png`、`t31_22_surprised_wireframe.png`、`t31_22_surprised_bones.png`、`t31_22_surprised_nine_grid.png`、`t31_22_regression_happy_talk_wave.png`；`make test` 2617/2617、`api_smoke.py` 342/342。参数/JSON 只作诊断，画面为验收依据。 |
+| T31.10 | **孤儿切件脚本**通用闸：任何会写进 `sprites/` 的脚本，要么在 `rebuild_parts.sh` 里，要么文件头显式声明"不在重建链上"。`make_parts.py` 就是这么烂了很久没人发现的（G107 真因，LESSONS 115） | [x] | **2026-10-28 完成**。`selfcheck_repo.py` 扩展为两条闸：① `make_*.py`（含 `make_parts.py`）都在链里或声明离链；② 任何写 `sprites/` 的脚本都在链里或声明。`make_parts.py` 头加【不在重建链上】声明，`clean_neck_residue.py` 已有“故意没有挂进”视为声明。新增通用闸 1 项，selfcheck 720→721 全过。下一轮故意把 `make_parts.py` 声明删掉可精确红。 |
 | T31.13 | **G111** 张嘴偏下 + 惊讶嘴长到下巴以下 | [x] | 一个根因：T30.1 换 @2x 时只把部件 `scale` 乘 0.5，**没动参数绑定**。zrig 里标量 scale 的通道是乘性的（换算自洽），数组 `scale:[sx,sy]` 是**加性**的（`part_sy = scale_y + (p_sy−1)`）→ 基准减半、增量没减 ⇒ 形变 ×2。全 rig 11 条 sx/sy 绑定里真受影响只有 3 条（都在 `mouth_mask`），`eye_*_ball` 是标量 scale 不受影响（第一遍扫出 9 条是误判，已自纠）。开口 40.6px→**20.9px**，下沿 canvas 357→337（下巴 340）。git 对照锁死回归点 `415486d`→`d83e7a5`。修在 `make_rig.py` 的 @2x 段（唯一落点）+ 打 `hires_halved` 标记 + 断言拦住动作轨直写部件级 sx/sy。闸 5 项，负控还原 3 条绑定后全红并复现 40.6px/y=289 |
 | T31.14 | **G112** 手臂转开后白夹克与青袖之间夹一道白边 | [x] | 层属消去法定性（`arm_r_upper` opacity 调 0 → 白点变青）⇒ 白是**上臂贴图自带**的，不是背景漏光、也不是原画滚边（原画是「白→1~2px 暗缝线→青」）。根因：`soft()` 往外羽化 2px 把夹克白切进了袖片。修法 `make_arm_parts.seam_trim()`：逐行以**最内侧青色**为界、往内留 `SEAM_KEEP=2`px 线稿，再往内裁掉；cap 只数实心像素、前臂腕上 36 行不碰（袖口白条）。白楔 surprised 155→13px、wave 80→5px；静止合成差 321→421，无损切分仍 0。闸 4 项，负控复现 uint8 回绕后全红（越界行 222/68/226/68）。**踩坑记一笔**：第一版因 `g-r` 在 uint8 上回绕（235−238=253>20，白被判成青）静默失效，747 项闸全绿但一个像素没裁 → LESSONS 128 |
 | T31.15 | 本机复验 **AC-32**：把"张嘴"拉到底 + 点"惊讶"，口腔下沿要停在下巴以上；点"挥手/惊讶"等手臂转到最外侧，白夹克与青袖之间不许再有一条亮白细条，而静止时那道深色袖缝线必须还在 | [ ] | [需真机] **两条入口都要走**（舞台快捷按钮 + 右侧调试台动作按钮）。沙箱逐像素验得了单帧，验不了"动起来顺不顺眼" |
@@ -1464,3 +1467,31 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | T66.13c | 羽化的纵向/横向分开写 | [ ] | 现在一个半径两向同值。袖口这类"横边要软、竖边要硬"的件需要 `mask_feather: [fx, fy]`，等真有需求再加 |
 | T66.9c | **加权刚体链（engine）** | [x] | 让一条链的刚体变换按顶点加权：`p' = (1−w)p + w·(Mp)`。要改 `zimg_draw_mesh_bend_blend_t` 的签名（基础矩阵 + 加权矩阵 + 每顶点 w），重跑 `test_render_bands_identical`；静态闸新增 `chain_w`（长度/取值/两套权重各自求和 ≤1）。**动的是渲染公共函数 + 受保护的裙件，施工前要出放大图与对比帧** | 引擎已落地：`deformers[].chain_w`（长度 = 网格控制点数、0~1；`M_skip` 与 `M_full` 按顶点插值）+ `zimg_draw_mesh_chainw_blend_t` + 新端点 `/api/vertex.json`（给控制点落点）。四条加载期闸（长度/取值/链上只许一个 **拒载**；无网格 **只警告**——里布借场的情况正常）。`test_chain_weight` 三排权重 0/0.5/1 逐位对，渲染重心 (99.5)→(199.5)→(110.6,132.6) 居中；`make test` 1412/0、`make asan` 1412/0、冒烟 331/0（新增落点探针 3 项）。**真 rig 未套**（见 T66.9b/T66.9d），规格见 `docs/SKELETON_SYSTEM.md` 第 14 节 |
 | T66.9d | **里布也要按权重走** | [ ] | `skirt_lining` 靠 `inherit_from` 借 `skirt_main` 的位移场、自己没有网格 ⇒ 整件仍跟链走。要让 `deform_inherit_parent_warp` 也吃 `chain_w`（把父件的权重曲线按同一套行映射过来）。这条是 T66.9b 的前置 —— 不做它，套上加权之后裙身按住了、里布还在拖 |
+
+### T51-T55 远期高智能自主能力 Backlog（2026-10-29 立档，不插队 M1）
+
+> 2026-10-29 用户新增指令：以下五项**需主人显式同意才可激活**，仅作 backlog 记录，不改当前 M1 执行顺序。详见 `docs/memory/BACKLOG_AUTONOMY.md`。任何一项启动前须满足：显式同意 + 白名单范围 + 可审计日志 + 一键可关 + 本机复验。
+
+| 编号 | 事 | 状态 | 说明 |
+|---|---|---|---|
+| T51 | **全平台聊天互联兼容**（国内外：微信/QQ/企业微信/钉钉/Discord/Telegram/Slack/WhatsApp 等） | [ ] | 走官方开放接口或用户本机显式授权桥接，不逆向/破解；每平台需 token/OAuth 授权、收发范围告知、隔离私密会话、一键断联；需合规与风控评估。前置 T62 原生窗口 + 权限模型 + 好感/人设 + zctx 隐私标记。见 BACKLOG_AUTONOMY.md |
+| T52 | **自主直播**（立绘+声音+背景，弹幕互动，定时上下播） | [ ] | 仅在主人预授权时段/平台推流，一键可中断/可审计；内容边界与禁语表可配。前置 原生推流管线 + TTS/口型 + 自主节奏 + 审核 |
+| T53 | **自主玩游戏 / 自主消遣** | [ ] | 仅在专用游戏沙箱内运行，不访隐私目录/账号资产；需显式开启，不作弊；内置小游戏闭环为首验 |
+| T54 | **自主操控电脑 / 手机**（文件整理/软件操作/日程等委托任务） | [ ] | 零信任+可审计：白名单能力、执行前预览、执行后回滚；高危操作二次确认；手机走官方辅助权限；日志持久化。首验：桌面归档→一键撤销 |
+| T55 | **主动找主人聊天**（基于节律与上下文的自然主动问候） | [ ] | 频率/时段由主人配置，禁扰时段与静音一键开关；不窥探隐私、不外泄记忆。首验：48h 节律复验 |
+
+---
+
+## 全生态架构立档任务（2026-10-30；规划状态，不视为实现）
+
+| 编号 | 任务 | 状态 | 验收口径 / C ABI 预留 |
+| --- | --- | --- | --- |
+| ARCH-01 | 四形态通用角色母版与商业级 Live2D Cubism 兼容 | [ ] | `chibi` / `loli` / `teen` / `adult` 标准 schema 允许新角色只交声明式素材与映射、无需新增 C 代码；定义 `.model3.json` / `.moc3` / `.physics3.json` 适配边界与嵌套 Warp Deformer 语义、限额、错误测试。通过合规 Cubism SDK/许可适配层，不宣称自有解析器能读任意 `.moc3`。预留 `avatar2d_backend_v1`（版本/struct_size/不透明句柄/参数、动作、表情、更新、渲染、释放、错误回调）。当前仅规划。详见 `docs/LIVE2D_CONFORMANCE.md`。 |
+| ARCH-02 | 纯 C `mod_avatar_3d` 与 2D/3D 无损切换 | [ ] | 评估并逐一验收 VRM、glTF、PMX；规格覆盖 Toon/Cel-Shading、Rim Light、法线外扩 Outline、面部 SDF 阴影；参数、动作、表情经 `zbus` 映射，切换保留状态且失败回退 2D。预留统一 avatar backend C 函数表；许可证、资源上限、性能测试通过前不宣称格式支持。当前仅规划。 |
+| ARCH-03 | `mod_im_bridge` 全平台双向聊天 Adapter ABI | [ ] | 统一消息/会话/附件/reaction/voice 事件与 `receive/send/edit/reaction/voice/media` 能力声明；平台列表明确包括国内微信、QQ、飞书、钉钉、B 站私信/弹幕和国际 Discord、Telegram、Slack、WhatsApp、X/Twitter。只走官方接口/显式官方授权；secret 引用、幂等、限流、隐私隔离、断联停止通过测试。表情和语音事件接 `zbus`。当前仅规划。 |
+| G79-STREAM | `mod_vtuber_stream` 自主直播 | [ ] | OBS WebSocket、虚拟摄像头/推流、已授权弹幕读取与互动反应分阶段实现；每项平台/场景/频道/时段/输出单独审批，预览、断流、中止、审计和限额验收。无审批时零外连、不开播。 |
+| G79-GAME | `mod_game_player` 自主游戏/消遣 | [ ] | 屏幕视觉理解与键鼠/手柄模拟输入仅限主人批准的专用沙箱和游戏；离线内置小游戏先验，暂停/退出/白名单/时长限制通过；禁止作弊与线上代打。无审批时不捕屏、不输入。 |
+| G79-DEVICE | `mod_device_control` 跨设备操控 | [ ] | PC 桌面自动化及 Android ADB/投屏/无障碍官方授权 adapter；逐设备/动作/目录审批、操作预览、审计、回滚、撤权停止通过。无审批时不扫描、不连接、不投屏、不触控。 |
+| G79-SOCIAL | `mod_proactive_soul` 主动社交陪伴 | [ ] | Internal Drive + 本地作息记忆只生成候选；桌面/聊天渠道、联系人、时段、频率和内容逐项授权；48 小时离线限频/勿扰/去重演练通过；默认不联网、不发送，撤销清空队列。 |
+
+**G79 总闸：** 上述四个 `mod_*` 模块必须先取得主人针对具体模块与 scope 的显式审批；授权可撤销、可审计、默认拒绝；一次批准不外推到其他设备、账号、渠道或能力。当前为完整立档，不是实施授权。`BACKLOG_AUTONOMY.md` 是四模块的详细路线与验收标准，`ROADMAP.md` 是阶段总览。

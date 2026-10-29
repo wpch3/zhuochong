@@ -80,6 +80,7 @@ async function main() {
     URLSearchParams,
     URL: { createObjectURL: () => "blob:test", revokeObjectURL: () => {} },
     setTimeout: () => 1, clearTimeout: () => {},
+    setInterval: () => 1, clearInterval: () => {},
   };
   vm.runInNewContext(fs.readFileSync(path.join(WEB, "product.js"), "utf8"), context, { filename: "product.js" });
   const tick = async () => { await new Promise((r) => setImmediate(r)); await new Promise((r) => setImmediate(r)); };

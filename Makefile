@@ -25,6 +25,11 @@ CORE_SRC   = $(wildcard src/core/*.c)
 CORE_HDR   = $(wildcard src/core/*.h)
 CORE_OBJ   = $(patsubst src/%.c,$(BUILD)/%.o,$(CORE_SRC))
 
+# 热插拔模组：每个 src/modules/*.c 编成一个 .so（POSIX）供 dlopen
+MOD_SRC    = $(wildcard src/modules/*.c)
+MOD_SO     = $(patsubst src/modules/%.c,modules/%.so,$(MOD_SRC))
+BUILD_MOD  = $(patsubst src/modules/%.c,$(BUILD)/modules/%.so,$(MOD_SRC))
+
 # 带 PIL/numpy 的解释器：系统 python3 没有 PIL。
 # 现场探测一次，没有就让目标直接报错，别跑到一半 ImportError。
 PYTHON_IMG ?= $(shell for p in /home/user/.imgenv/bin/python python3; do $$p -c "import PIL,numpy" 2>/dev/null && { echo $$p; break; }; done)
@@ -32,13 +37,22 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments audit-mind mind-fragments audit-memory memory-seed soak-memory
+.PHONY: all test soak test-soak smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments audit-mind mind-fragments audit-memory memory-seed soak-memory audit-frames
 
 all: test
 
 $(BUILD)/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
+
+# 模组 .so（仅 POSIX；Windows 走 DLL 自行另编）
+modules/%.so: src/modules/%.c $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(INC) -fPIC -shared -o $@ $< $(CORE_SRC) $(LDLIBS)
+
+$(BUILD)/modules/%.so: src/modules/%.c $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(INC) -fPIC -shared -o $@ $< $(CORE_SRC) $(LDLIBS)
 
 # ---------------------------------------------------------------- 单元测试
 $(BUILD)/test_core: tests/test_core.c $(CORE_SRC) $(CORE_HDR)
@@ -57,8 +71,15 @@ soak-memory: $(BUILD)/memory_soak
 	@./$(BUILD)/memory_soak . --days 1460
 
 test: $(BUILD)/test_core
-	@echo "== 运行单元测试 =="
-	@./$(BUILD)/test_core .
+	@echo "== 运行单元测试（快闸；--soak 才含 2 万帧长稳）=="
+	@./$(BUILD)/test_core . --quick
+
+soak: $(BUILD)/test_core
+	@echo "== 长稳 2 万帧（60fps×5分半，需 ~45 秒）=="
+	@./$(BUILD)/test_core . --soak
+
+# 向后兼容：老 CI 脚本若调 test_core soak 仍能跑
+test-soak: soak
 
 # ---------------------------------------------------------- TLS 闸门（T61.9）
 # 它需要一个真的 TLS 服务端和一张证书，所以由 tools/check_tls.py 起好环境再调用。
@@ -83,7 +104,7 @@ preview: $(BUILD)/zhuochong_preview
 
 # 互动/动作端到端冒烟（自己起一个预览再打一圈端点，判据是"画面真的变了"）
 smoke: $(BUILD)/zhuochong_preview
-	@python3 tools/api_smoke.py --spawn --port 5200 --root .
+	@$(PYTHON_IMG) tools/api_smoke.py --spawn --port 5200 --root .
 
 # ---------------------------------------------------------------- 素材体检（T67.2）
 # 重算全部精灵的六项指标并写基线。重画任何一张 @2x 之后跑这个，
@@ -141,6 +162,10 @@ memory-seed-apply:
 # 头发里出现成块的皮肤/衣服（"假手臂"）或内部破洞，这里会当场报红。
 audit-hair:
 	@$(PYTHON_IMG) tools/qa_hair_purity.py --fail
+
+# 视觉闭环九宫格（R2 / 铁律一）：转头 × 眨眼 3×3 + 调试叠加
+audit-frames:
+	@$(PYTHON_IMG) tools/audit_frames.py --spawn --port 5175 --out docs/qa/audit_nine_grid.png --root .
 
 # ---------------------------------------------------------------- 自检（保险）
 # 仓库静态自检：引用完整性 / 唯一性 / 契约 / 卫生（1 秒，不编译不渲染）

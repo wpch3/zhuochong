@@ -568,12 +568,12 @@
       "group": "arm_l",
       "layer": 95,
       "pos": [
-        299,
-        430
+        317.5,
+        460.0
       ],
       "anchor": [
-        0,
-        0
+        0.37755102040816324,
+        0.15
       ],
       "tags": [
         "arm"
@@ -589,12 +589,12 @@
       "group": "arm_l",
       "layer": 140,
       "pos": [
-        244,
-        399
+        317.5,
+        460.0
       ],
       "anchor": [
-        0,
-        0
+        0.8647058823529412,
+        0.23921568627450981
       ],
       "tags": [
         "arm"
@@ -653,12 +653,12 @@
       "group": "arm_r",
       "layer": 96,
       "pos": [
-        489,
-        430
+        523.0,
+        464.0
       ],
       "anchor": [
-        0,
-        0
+        0.5230769230769231,
+        0.1691542288557214
       ],
       "tags": [
         "arm"
@@ -674,12 +674,12 @@
       "group": "arm_r",
       "layer": 141,
       "pos": [
-        514,
-        400
+        523.0,
+        464.0
       ],
       "anchor": [
-        0,
-        0
+        0.10344827586206896,
+        0.24806201550387597
       ],
       "tags": [
         "arm"
@@ -901,6 +901,48 @@
       "hires": 2
     },
     {
+      "id": "forearm_bent_l",
+      "file": "sprites/forearm_bent_l@2x.png",
+      "group": "forearm_l",
+      "layer": 321,
+      "pos": [
+        228,
+        594
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "forearm_bent_r",
+      "file": "sprites/forearm_bent_r@2x.png",
+      "group": "forearm_r",
+      "layer": 322,
+      "pos": [
+        529,
+        590
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "hand_l_pad",
       "file": "sprites/hand_l_pad@2x.png",
       "group": "forearm_l",
@@ -925,7 +967,7 @@
       "id": "hand_l_open",
       "file": "sprites/hand_l_open@2x.png",
       "group": "hand_l",
-      "layer": 130,
+      "layer": 260,
       "pos": [
         209,
         724
@@ -988,7 +1030,7 @@
       "id": "hand_r_open",
       "file": "sprites/hand_r_open@2x.png",
       "group": "hand_r",
-      "layer": 132,
+      "layer": 261,
       "pos": [
         550,
         724
@@ -1022,6 +1064,48 @@
         "body"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "hand_l_surprised",
+      "file": "sprites/hand_l_surprised@2x.png",
+      "group": "hand_l",
+      "layer": 319,
+      "pos": [
+        209,
+        724
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "surprised 专用微拢弧形手差分；腕桩延伸插入弯袖，层319在弯袖321之下，由真实罗纹袖口遮住切边",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "hand_r_surprised",
+      "file": "sprites/hand_r_surprised@2x.png",
+      "group": "hand_r",
+      "layer": 320,
+      "pos": [
+        550,
+        724
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "surprised 专用微拢弧形手差分；腕桩延伸插入弯袖，层319在弯袖321之下，由真实罗纹袖口遮住切边",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -3388,10 +3472,10 @@
           "dur": 0.5
         },
         {
-          "target": "ParamMouthOpenY",
-          "wave": "bounce",
-          "amp": 0.5542,
-          "dur": 1.2,
+          "target": "ParamMouthForm",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.25,
           "ease": "out"
         },
         {
@@ -3523,7 +3607,8 @@
     {
       "id": "surprised",
       "priority": 6,
-      "duration": 0.9,
+      "duration": 1.4,
+      "fade_out": 0.25,
       "return_state": "idle",
       "interruptible": false,
       "channels": [
@@ -3535,7 +3620,7 @@
           "ease": "out_back"
         },
         {
-          "target": "ParamEyeBallForm",
+          "target": "ParamPupilScale",
           "wave": "pulse",
           "amp": -0.45,
           "dur": 0.2
@@ -3543,54 +3628,136 @@
         {
           "target": "ParamMouthOpenY",
           "wave": "pulse",
-          "amp": 1.0,
-          "dur": 0.25,
+          "amp": 0.55,
+          "dur": 0.12,
           "ease": "out"
         },
         {
           "target": "ParamHandL",
           "wave": "pulse",
-          "amp": 0.6364,
+          "amp": 1.25,
           "freq": 0.0,
-          "dur": 0.9,
+          "dur": 0.6,
           "ease": "out"
         },
         {
           "target": "ParamHandR",
           "wave": "pulse",
-          "amp": 0.6364,
+          "amp": 1.25,
           "freq": 0.0,
-          "dur": 0.9,
+          "dur": 0.6,
           "ease": "out"
         },
         {
           "target": "ParamArmLA",
           "wave": "pulse",
-          "amp": 0.8889,
-          "dur": 0.9,
+          "amp": 0.6,
+          "dur": 0.6,
           "ease": "out"
         },
         {
           "target": "ParamArmRA",
           "wave": "pulse",
-          "amp": 0.8889,
-          "dur": 0.9,
+          "amp": 0.6,
+          "dur": 0.6,
           "ease": "out"
         },
         {
           "target": "ParamArmLB",
           "wave": "pulse",
-          "amp": 1.2222,
-          "freq": 0.0,
-          "dur": 0.9,
+          "amp": 8.35,
+          "dur": 0.6,
           "ease": "out"
         },
         {
           "target": "ParamArmRB",
           "wave": "pulse",
-          "amp": 1.2222,
-          "freq": 0.0,
+          "amp": 8.1,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamSurpriseForeshorten",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandLSurprised",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandRSurprised",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamSurpriseArmSwap",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeLWide",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.15,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRWide",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.15,
+          "ease": "out"
+        },
+        {
+          "target": "ParamAngleZ",
+          "wave": "pulse",
+          "amp": -12.0,
           "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "ParamBodyAngleZ",
+          "wave": "pulse",
+          "amp": 5.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "ParamLegL",
+          "wave": "pulse",
+          "amp": -0.35,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamLegR",
+          "wave": "pulse",
+          "amp": 0.35,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamSurpriseElbowHide",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "ParamMouthForm",
+          "wave": "pulse",
+          "amp": -0.7,
+          "dur": 0.12,
           "ease": "out"
         },
         {
@@ -3650,18 +3817,32 @@
           "freq": 2.0
         },
         {
+          "target": "ParamHipL",
+          "wave": "pulse",
+          "amp": 8.0,
+          "dur": 0.72,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHipR",
+          "wave": "pulse",
+          "amp": -8.0,
+          "dur": 0.72,
+          "ease": "out"
+        },
+        {
           "target": "ParamKneeL",
-          "wave": "bounce",
-          "amp": 0.48,
-          "dur": 0.5,
-          "ease": "out_back"
+          "wave": "pulse",
+          "amp": 0.8,
+          "dur": 0.72,
+          "ease": "out"
         },
         {
           "target": "ParamKneeR",
-          "wave": "bounce",
-          "amp": 0.48,
-          "dur": 0.5,
-          "ease": "out_back"
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.72,
+          "ease": "out"
         },
         {
           "target": "ParamWeightShift",
@@ -3924,6 +4105,12 @@
           "wave": "sine",
           "amp": -3.6,
           "freq": 0.5
+        },
+        {
+          "target": "ParamMouthForm",
+          "wave": "sine",
+          "amp": 0.85,
+          "freq": 1.4
         },
         {
           "target": "ParamBrowLY",
@@ -5538,7 +5725,7 @@
           ]
         },
         {
-          "target": "ParamEyeBallForm",
+          "target": "ParamPupilScale",
           "interp": "smooth",
           "keys": [
             [
@@ -6212,6 +6399,446 @@
       "parent": "fore_l_mid"
     },
     {
+      "id": "forearm_bent_l_long",
+      "part": "forearm_bent_l",
+      "cols": 2,
+      "rows": 4,
+      "note": "surprised 弯袖专用沿肘→腕轴线延伸 0px；与 hand_l 组同步，默认零位移",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": -0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": -0.0,
+          "dy": 0.0
+        }
+      ]
+    },
+    {
+      "id": "forearm_bent_l_fullness",
+      "part": "forearm_bent_l",
+      "cols": 2,
+      "rows": 4,
+      "note": "surprised 专用弯袖中段布量：按参考图鼓出，袖口和肘根不扩张",
+      "points": [
+        {
+          "c": 0,
+          "r": 0,
+          "dx": -3.0
+        },
+        {
+          "c": 1,
+          "r": 0,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 0,
+          "dx": 3.0
+        },
+        {
+          "c": 0,
+          "r": 1,
+          "dx": -10.0
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 10.0
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": -16.0
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 16.0
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": -12.0
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": 12.0
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": -2.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": 2.0
+        }
+      ]
+    },
+    {
+      "id": "arm_l_elbow_smooth",
+      "part": "arm_l_fore",
+      "cols": 2,
+      "rows": 4,
+      "param": "ParamArmLB",
+      "parent": "fore_l_mid",
+      "note": "G103 肘部硬折痕平滑：弯曲 -80° 时外凸内收消除纸片对折，外凸 8px 内收 2px，0=原件",
+      "keys": [
+        {
+          "v": -10.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -7.0
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -1.75
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 1.75
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -10.0
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -2.5
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 2.5
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -6.0
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -1.5
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 1.5
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -2.0
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.5
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.5
+            }
+          ]
+        },
+        {
+          "v": -5.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -3.36
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.84
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 0.84
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -4.8
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -1.2
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 1.2
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -2.88
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -0.72
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 0.72
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.96
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.24
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.24
+            }
+          ]
+        },
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 5.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -3.36
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.84
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 0.84
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -4.8
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -1.2
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 1.2
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -2.88
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -0.72
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 0.72
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.96
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.24
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.24
+            }
+          ]
+        },
+        {
+          "v": 10.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -7.0
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -1.75
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 1.75
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -10.0
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -2.5
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 2.5
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -6.0
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -1.5
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 1.5
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -2.0
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.5
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "fore_r_root",
       "pivot": [
         564.5,
@@ -6521,6 +7148,446 @@
         }
       ],
       "parent": "fore_r_mid"
+    },
+    {
+      "id": "forearm_bent_r_long",
+      "part": "forearm_bent_r",
+      "cols": 2,
+      "rows": 4,
+      "note": "surprised 弯袖专用沿肘→腕轴线延伸 0px；与 hand_r 组同步，默认零位移",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 0.0,
+          "dy": 0.0
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": 0.0,
+          "dy": 0.0
+        }
+      ]
+    },
+    {
+      "id": "forearm_bent_r_fullness",
+      "part": "forearm_bent_r",
+      "cols": 2,
+      "rows": 4,
+      "note": "surprised 专用弯袖中段布量：按参考图鼓出，袖口和肘根不扩张",
+      "points": [
+        {
+          "c": 0,
+          "r": 0,
+          "dx": -3.0
+        },
+        {
+          "c": 1,
+          "r": 0,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 0,
+          "dx": 3.0
+        },
+        {
+          "c": 0,
+          "r": 1,
+          "dx": -10.0
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 10.0
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": -16.0
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 16.0
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": -12.0
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": 12.0
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": -2.0
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 0.0
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": 2.0
+        }
+      ]
+    },
+    {
+      "id": "arm_r_elbow_smooth",
+      "part": "arm_r_fore",
+      "cols": 2,
+      "rows": 4,
+      "param": "ParamArmRB",
+      "parent": "fore_r_mid",
+      "note": "G103 肘部硬折痕平滑：弯曲 -80° 时外凸内收消除纸片对折，外凸 8px 内收 2px，0=原件",
+      "keys": [
+        {
+          "v": -10.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -1.75
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 1.75
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 7.0
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -2.5
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 2.5
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 10.0
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -1.5
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 1.5
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 6.0
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.5
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.5
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 2.0
+            }
+          ]
+        },
+        {
+          "v": -5.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -0.84
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.84
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 3.36
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -1.2
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 1.2
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 4.8
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -0.72
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 0.72
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 2.88
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.24
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.24
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.96
+            }
+          ]
+        },
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 5.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -0.84
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.84
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 3.36
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -1.2
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 1.2
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 4.8
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -0.72
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 0.72
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 2.88
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.24
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.24
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.96
+            }
+          ]
+        },
+        {
+          "v": 10.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -1.75
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 1.75
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 7.0
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -2.5
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 2.5
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 10.0
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -1.5
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 1.5
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 6.0
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.5
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.5
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 2.0
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "hair_side_l_root",
@@ -9970,6 +11037,56 @@
       ]
     },
     {
+      "id": "ParamSurpriseForeshorten",
+      "label": "惊讶 上臂透视短缩",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "arm_l_upper",
+          "param": "sy",
+          "scale": -0.2
+        },
+        {
+          "part": "arm_l_upper",
+          "param": "sx",
+          "scale": -0.35
+        },
+        {
+          "group": "forearm_l",
+          "param": "dy",
+          "scale": -33.278
+        },
+        {
+          "part": "arm_l_root",
+          "param": "sy",
+          "scale": -0.2
+        },
+        {
+          "part": "arm_r_upper",
+          "param": "sy",
+          "scale": -0.2
+        },
+        {
+          "part": "arm_r_upper",
+          "param": "sx",
+          "scale": -0.35
+        },
+        {
+          "group": "forearm_r",
+          "param": "dy",
+          "scale": -32.478
+        },
+        {
+          "part": "arm_r_root",
+          "param": "sy",
+          "scale": -0.2
+        }
+      ],
+      "note": "只由 surprised 驱动：上臂局部 sy≈0.80，实测骨长保持在授权的 0.75–0.85 区间；同步内移肘 pivot，不改袖片源图，也不影响 happy/talk/wave。"
+    },
+    {
       "id": "ParamArmLA",
       "label": "左臂 抬起",
       "min": -10.0,
@@ -10207,6 +11324,186 @@
           "scale": 25.562
         }
       ]
+    },
+    {
+      "id": "ParamSurpriseElbowHide",
+      "label": "惊讶 折肘浮片抑制",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "arm_l_gusset",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_l_seam",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_r_gusset",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_r_seam",
+          "param": "alpha",
+          "scale": -1.0
+        }
+      ],
+      "note": "仅惊讶姿势压低折肘补布/接缝；不改 wave 等动作的原有肘部层级"
+    },
+    {
+      "id": "ParamSurpriseArmSwap",
+      "label": "惊讶 弯袖/手前景替换",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "forearm_bent_l",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "deformer": "forearm_bent_l_fullness",
+          "scale": 1.0
+        },
+        {
+          "group": "forearm_l",
+          "param": "dx",
+          "scale": 22.0
+        },
+        {
+          "group": "forearm_l",
+          "param": "sy",
+          "scale": 0.22
+        },
+        {
+          "group": "hand_l",
+          "param": "sy",
+          "scale": -0.18032786885245902
+        },
+        {
+          "part": "arm_l_fore",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_l_elbow",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_l_gusset",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_l_seam",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_l_root",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "hand_l",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "hand_l_pad",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "hand_l_open",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "hand_l_heart",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "forearm_bent_r",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "deformer": "forearm_bent_r_fullness",
+          "scale": 1.0
+        },
+        {
+          "group": "forearm_r",
+          "param": "dx",
+          "scale": -22.0
+        },
+        {
+          "group": "forearm_r",
+          "param": "sy",
+          "scale": 0.22
+        },
+        {
+          "group": "hand_r",
+          "param": "sy",
+          "scale": -0.18032786885245902
+        },
+        {
+          "part": "arm_r_fore",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_r_elbow",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_r_gusset",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_r_seam",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_r_root",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "hand_r",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "hand_r_pad",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "hand_r_open",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "hand_r_heart",
+          "param": "alpha",
+          "scale": -1.0
+        }
+      ],
+      "note": "surprised 独占：1 时显示 bent forearms，隐藏旧前臂/肘件与旧手型；新袖层级在躯干、衣领、兜帽、后发之前。"
     },
     {
       "id": "ParamForeSwayL",
@@ -10912,7 +12209,7 @@
       "note": "sm；idle / star_eyes 里以 freq=0.67 phase=0.09 驱动"
     },
     {
-      "id": "ParamEyeBallForm",
+      "id": "ParamPupilScale",
       "label": "瞳孔 放大/缩小",
       "min": -1.0,
       "max": 1.0,
@@ -10939,7 +12236,7 @@
           "scale": 0.22
         }
       ],
-      "note": "surprised 动作把它推到 1.0"
+      "note": "surprised 动作把它推到 -0.45（缩瞳）；旧名 ParamEyeBallForm 仍可作别名写入"
     },
     {
       "id": "ParamHandLOpen",
@@ -11013,6 +12310,48 @@
       "binds": [
         {
           "part": "hand_r_heart",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "hand_r",
+          "param": "alpha",
+          "scale": -1.0
+        }
+      ],
+      "note": "0=常态手，1=这一档；动作里用 pulse 整段拉满（官方：不要在动作中途切手）"
+    },
+    {
+      "id": "ParamHandLSurprised",
+      "label": "左手 surprised",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hand_l_surprised",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "hand_l",
+          "param": "alpha",
+          "scale": -1.0
+        }
+      ],
+      "note": "0=常态手，1=这一档；动作里用 pulse 整段拉满（官方：不要在动作中途切手）"
+    },
+    {
+      "id": "ParamHandRSurprised",
+      "label": "右手 surprised",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hand_r_surprised",
           "param": "alpha",
           "scale": 1.0,
           "offset": -1.0
@@ -12400,7 +13739,7 @@
           "mode": "set"
         },
         {
-          "id": "ParamEyeBallForm",
+          "id": "ParamPupilScale",
           "value": 0.3
         },
         {
@@ -12662,7 +14001,7 @@
   "generated_by": {
     "tool": "tools/make_rig.py",
     "sources": {
-      "tools/make_rig.py": "85b51844642a212a34f7d74b46a6f75be210a0633125d162ebfea091c1490e51",
+      "tools/make_rig.py": "97be057463c784fdf1a90975d139caca9b4a41edf50d83274851d4315d6f10b9",
       "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
       "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3",
       "characters/xiaoxun/expressions/peek_blush.exp3.json": "d692dbda9205d8cf4451226e5d2adcbffff984246f1f2156723e005aa63ae59b"

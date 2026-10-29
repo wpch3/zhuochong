@@ -33,7 +33,7 @@
 | 4 | 脸底 `face` | 所有五官的底，含腮红 | `ParamCheek` | — | 🟡 并在 `seg_head` 里 |
 | 5 | **眼白 `eye_?_base`** | 眼球移开后不能露洞 | — | — | ✅ |
 | 6 | **眼眶 `eye_?_socket`** | 只作遮罩，决定眼睛的开口形状 | — | **遮罩** | ✅ |
-| 7 | **眼球 `eye_?_ball`**（虹膜+瞳孔+高光） | 眼睛看向哪儿 | `ParamEyeBallX/Y`、`ParamEyeBallForm` | **遮罩 + 位移** | ✅ |
+| 7 | **眼球 `eye_?_ball`**（虹膜+瞳孔+高光） | 眼睛看向哪儿 | `ParamEyeBallX/Y`、`ParamPupilScale`（T31.16 前 `ParamEyeBallForm`） | **遮罩 + 位移** | ✅ |
 | 8 | **眼线睫毛 `eye_?_lash`** | 压在眼球上，眼球上翻被它盖住 | — | — | ✅ |
 | 9 | 上眼睑 `eyelid_?_up` | 真正的"半眯/眯眼"，不是整块淡出 | `ParamEyeLOpen`/`ParamEyeROpen`、`ParamEyeLSmile` | 形变（变形器） | ⬜ 现用闭眼贴图淡化 |
 | 10 | 下眼睑 `eyelid_?_dn` | 笑眼时下眼睑上推 | `ParamEyeLSmile`/`ParamEyeRSmile` | 形变 | ⬜ |
@@ -573,7 +573,7 @@ TTS 产出 mp3 ──► tools/make_lipsync.py ──► voice/lipsync/<id>.json
   组位移本来就带着走；而且那是一张手写清单，新加的笑眼件根本不在里面，眨眼时会掉队。
 - **新增 `bias`（直流偏置）**：官方 `CubismBreath` 是 `offset + peak*sin`，`ParamBreath` 值域 0..1，
   纯正弦会被下限 clamp 掉半个周期。breath 动作写 `{"wave":"sine","amp":0.5,"bias":0.5}`。
-- **顺带补上 `ParamEyeBallForm`**（标准参数表第 10 项，瞳孔形状）：贴图模型做不出真变形，
+- **顺带补上 `ParamPupilScale`**（T31.16 前称 `ParamEyeBallForm`，原标准表第 10 项“瞳孔形状”实为“眼轮廓弯曲”系命名偏移，已改名保留别名）：贴图模型做不出真变形，
   用瞳孔缩放代替（只缩放眼球件 —— 眼白底/眼眶/眼线是矩形小块，一放大就露方边）。
   合规表 ✅36 → **✅37**。
 - **口径统一成"参数满格 = 这个动作能做到的最大幅度"**，为此调了几个 bind 系数：

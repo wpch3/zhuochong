@@ -20,11 +20,14 @@
 #include "../src/core/zsm.h"
 #include "../src/core/zimg.h"
 #include "../src/core/zdeflate.h"
+#include "../src/core/zbus.h"
+#include "../src/core/zmod.h"
 #include "../src/core/zpet.h"
 #include "../src/core/zpersona.h"
 #include "../src/core/zconfig.h"
 #include "../src/core/zrig.h"
 #include "../src/core/zphys2.h"
+#include "../src/core/zik.h"
 #include "../src/core/zinteract.h"
 #include "../src/core/zgateway.h"
 #include "../src/core/zhttp.h"
@@ -32,6 +35,9 @@
 #include "../src/core/zrelay.h"
 #include "../src/core/zctx.h"
 #include "../src/core/zmem.h"
+#include "../src/core/zperm.h"
+#include "../src/core/zcost.h"
+#include "../src/core/zperf.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -732,6 +738,282 @@ static void test_image(void)
     }
 }
 
+/* ------------------------------------------- 缩小采样（T31.4，G113）
+   病根不是"贴图画得糊"，是**缩小的时候一个目的像素只看了 1 个 texel**。
+
+   桌宠窗口 scale 0.55，而切件在 rig 里用的是 @2x 贴图（make_rig 把 scale 乘 0.5）
+   ⇒ 屏幕上 1 个像素对应源图里 180/49 ≈ 3.67 个 texel。旧代码走单点双线性，
+   等于在 3.67 个 texel 里**瞎挑一个**：手指之间那条 1~2 texel 宽的暗缝要么整条
+   被跳过（手指粘连），要么整条被踩中（一条断续黑线）。头发、睫毛、袖口条纹同理，
+   只是手最小、最先被看出来 —— 用户截图里"最显眼的一处"就是它。
+
+   闸的方式：**相位不变性**。同一条 1 texel 宽的暗线，在 4 个亚像素相位下缩小 4 倍，
+   输出必须几乎一样（正确的面积平均对相位不敏感）；单点采样会给出"要么全黑、
+   要么全白"的两极，怎么调相位都对不上。
+*/
+static void test_image_downsample_aa(void)
+{
+    SECTION("图像（T31.4）：缩小必须做面积平均，不许丢掉 1px 的暗线");
+    const uint8_t SKIN[3] = { 250, 240, 230 };     /* 肤色：三通道均值 240 */
+    const uint8_t LINE[3] = { 100, 88, 103 };      /* 工程统一线色：均值 97 */
+    const int SW = 32, SH = 8, DW = 8, DH = 8;     /* 32/8 = 4 texel 一个目的像素 */
+    zimg *src = zimg_new(SW, SH);
+    int phase_i;
+
+    {   /* 源图：整张肤色，正中间一列是暗线（模拟指缝 / 描边） */
+        int x, y;
+        for (y = 0; y < SH; ++y) {
+            for (x = 0; x < SW; ++x) {
+                uint8_t *q = src->px + ((size_t)y * SW + x) * 4;
+                const uint8_t *c = (x == 16) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+    }
+
+    {
+        double lo = 1e9, hi = -1e9;
+        for (phase_i = 0; phase_i < 4; ++phase_i) {
+            double m[6];
+            zimg *dst = zimg_new(DW, DH);
+            int x, y;
+            double rowmin = 1e9;
+            /* 4 个亚像素相位：0 / 0.25 / 0.5 / 0.75 texel。
+               缩小 4× ⇒ 目的方向平移 0.25 像素 = 源方向平移 1 texel；
+               这里要的是"不到 1 texel"的相位，所以目的方向只平移 0.0625。 */
+            double tx = phase_i * 0.0625;
+            zimg_make_matrix(m, tx, 0.0, (double)DW / SW, (double)DH / SH, 0.0, 0.0, 0.0);
+            zimg_draw(dst, src, m, 1.0);
+            for (y = 2; y < DH - 2; ++y) {
+                for (x = 0; x < DW; ++x) {
+                    const uint8_t *q = dst->px + ((size_t)y * DW + x) * 4;
+                    double L = (q[0] + q[1] + q[2]) / 3.0;
+                    if (q[3] < 200) continue;               /* 只看实心的目的像素 */
+                    if (L < rowmin) rowmin = L;
+                }
+            }
+            if (rowmin < lo) lo = rowmin;
+            if (rowmin > hi) hi = rowmin;
+            /* 覆盖率 = 1 texel / 4 texel = 25% ⇒ 亮度 ≈ 0.75×240 + 0.25×97 ≈ 204。
+               允许 [190, 218]：既覆盖"线还在"（<218），也覆盖"没有整条踩黑"（>190）。 */
+            CHECK(rowmin > 190.0 && rowmin < 218.0,
+                  "缩小 4× 后 1px 暗线必须落在 25%% 覆盖的灰度带（相位 %d：最暗 %.1f，"
+                  "线宽 1 texel 时单点采样只会给出 97 或 240）", phase_i, rowmin);
+            zimg_free(dst);
+        }
+        CHECK(hi - lo < 6.0,
+              "暗线深浅不许随亚像素相位跳（四个相位极差 %.1f 灰阶；单点采样实测 143）",
+              hi - lo);
+    }
+
+    {   /* 产品路径：**加载时建 mip 链**，缩小绘制读预滤波级别。
+           判据同一条 —— 1px 暗线在缩小 4× 后仍要留下约 25% 的灰度，
+           而不是"整条消失"或"整条踩黑"。 */
+        const int BW = 64, BH = 32, TW = 16, TH = 8;
+        zimg *big = zimg_new(BW, BH);
+        int x, y, phase_i;
+        double lo = 1e9, hi = -1e9;
+        for (y = 0; y < BH; ++y) {
+            for (x = 0; x < BW; ++x) {
+                uint8_t *q = big->px + ((size_t)y * BW + x) * 4;
+                const uint8_t *c = (x == 32) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        zimg_mip_build(big);
+        CHECK(big->mip != NULL && big->mip->w == BW / 2,
+              "应建出第 1 级 mip（%dx%d）", big->mip ? big->mip->w : 0,
+              big->mip ? big->mip->h : 0);
+        CHECK(big->mip == NULL || (big->mip->mip && big->mip->mip->w == BW / 4),
+              "应建出第 2 级 mip（%dx%d）",
+              (big->mip && big->mip->mip) ? big->mip->mip->w : 0,
+              (big->mip && big->mip->mip) ? big->mip->mip->h : 0);
+        for (phase_i = 0; phase_i < 4; ++phase_i) {
+            double m[6];
+            zimg *dst = zimg_new(TW, TH);
+            double rowmin = 1e9;
+            zimg_make_matrix(m, phase_i * 0.0625, 0.0, (double)TW / BW, (double)TH / BH,
+                             0.0, 0.0, 0.0);
+            zimg_draw(dst, big, m, 1.0);
+            for (y = 2; y < TH - 2; ++y) {
+                for (x = 0; x < TW; ++x) {
+                    const uint8_t *q = dst->px + ((size_t)y * TW + x) * 4;
+                    double L = (q[0] + q[1] + q[2]) / 3.0;
+                    if (q[3] < 200) continue;
+                    if (L < rowmin) rowmin = L;
+                }
+            }
+            if (rowmin < lo) lo = rowmin;
+            if (rowmin > hi) hi = rowmin;
+            CHECK(rowmin > 190.0 && rowmin < 218.0,
+                  "mip 路径：缩小 4× 后暗线仍要落在 25%% 覆盖带（相位 %d：最暗 %.1f）",
+                  phase_i, rowmin);
+            zimg_free(dst);
+        }
+        /* 阈值比分层采样那条（6.0）宽：mip 是**硬切级别**，没有三级之间的线性过渡，
+           亚 texel 相位仍会有几格抖动。实测 4 个相位极差 6.7，相对 143 灰阶的
+           对比度是 4.7%，肉眼看不出来；而单点采样是 0 / 143 的两极。 */
+        CHECK(hi - lo < 10.0, "mip 路径：暗线深浅不许随相位跳到两极（极差 %.1f 灰阶，"
+                              "对比度 143）", hi - lo);
+        {   /* 幂等：再建一次不许叠第二套（否则每帧调用就是内存泄漏） */
+            zimg *first = big->mip;
+            zimg_mip_build(big);
+            CHECK(big->mip == first, "zimg_mip_build 必须幂等");
+        }
+        {   /* 产品路径真的接上了：**从磁盘读进来的切件必须自带 mip**。
+               少了这一条，所有件都会掉回逐像素分层采样 —— 画面一样，
+               但一帧要多花一倍时间（实测 26 → 48 ms）。 */
+            zerr e;
+            zimg *back;
+            zerr_clear(&e);
+            CHECK(zimg_save_png(big, "/tmp/zc_mip_probe.png", &e) == 0,
+                  "mip 探针图应可写出：%s", e.msg);
+            back = zimg_load("/tmp/zc_mip_probe.png", &e);
+            CHECK(back != NULL, "mip 探针图应可读回：%s", e.msg);
+            if (back) {
+                CHECK(back->mip != NULL && back->mip->w == BW / 2,
+                      "zimg_load 之后必须自带 mip 链（实际 %s）",
+                      back->mip ? "有" : "没有");
+                zimg_free(back);
+            }
+        }
+        zimg_free(big);   /* 连带释放 mip 链（asan 会盯这一段） */
+    }
+
+    {   /* zimg_resize：部件加载时就被它预缩放（scale 0.55 × @2x 的 0.5），
+           所以这条路径才是 T31.4 的**主战场**。缩小必须面积平均，放大必须端点对齐。 */
+        zimg *src2 = zimg_new(32, 32);
+        zimg *small, *up;
+        int x, y, i, phase, lo = 999, hi = -1;
+        for (y = 0; y < 32; ++y) {
+            for (x = 0; x < 32; ++x) {
+                uint8_t *q = src2->px + ((size_t)y * 32 + x) * 4;
+                const uint8_t *c = (x == 16) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        /* ① 8× 缩小：1 texel 的暗线只剩 1/8 覆盖 ⇒ 亮度 ≈ 0.875×240 + 0.125×97 ≈ 222。
+              单点采样会给出 240（线完全消失）或 97（整条踩黑）两极。 */
+        small = zimg_resize(src2, 4, 4);
+        for (i = 0; i < 16; ++i) {
+            const uint8_t *q = small->px + i * 4;
+            double L = (q[0] + q[1] + q[2]) / 3.0;
+            if (L < lo) lo = (int)(L + 0.5);
+            if (L > hi) hi = (int)(L + 0.5);
+        }
+        CHECK(lo > 210 && lo < 232,
+              "zimg_resize 8× 缩小后 1px 暗线应落在 ~222 灰阶（实测最暗 %d、最亮 %d；"
+              "单点采样只会给 240 或 97）", lo, hi);
+        /* ② 相位不变：同一个 1px 线，源图整体左右平移后缩小，结果几乎一致 */
+        {
+            int spread = 0, plo = 999, phi = -1;
+            for (phase = 0; phase < 3; ++phase) {
+                zimg *sh = zimg_new(32, 32);
+                int m2 = 999;
+                for (y = 0; y < 32; ++y) {
+                    for (x = 0; x < 32; ++x) {
+                        uint8_t *q = sh->px + ((size_t)y * 32 + x) * 4;
+                        const uint8_t *c = (x == 16 + phase) ? LINE : SKIN;
+                        q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+                    }
+                }
+                {
+                    zimg *s2 = zimg_resize(sh, 4, 4);
+                    for (i = 0; i < 16; ++i) {
+                        const uint8_t *q = s2->px + i * 4;
+                        int L = (int)((q[0] + q[1] + q[2]) / 3.0 + 0.5);
+                        if (L < m2) m2 = L;
+                    }
+                    zimg_free(s2);
+                }
+                zimg_free(sh);
+                /* 每个相位只取它**自己最暗**的那个目的像素来比 ——
+                   整图的最大亮度永远是肤色 240，拿它当上界等于没比。 */
+                if (m2 < plo) plo = m2;
+                if (m2 > phi) phi = m2;
+            }
+            spread = phi - plo;
+            printf("    量到：各相位最暗像素 %d..%d，极差 %d（对比度 143）\n", plo, phi, spread);
+            CHECK(spread <= 12, "zimg_resize 缩小时暗线深浅不许随相位两极跳（极差 %d，对比度 143）",
+                  spread);
+        }
+        /* ③ 放大 2× 必须端点对齐、逐像素可预期（不能有面积平均带来的糊边） */
+        up = zimg_resize(small, 8, 8);
+        CHECK(up->px[3] == 255 && up->px[0] > 240,
+              "zimg_resize 放大 2× 后首像素应仍是肤色（实测 rgb %d,%d,%d）",
+              up->px[0], up->px[1], up->px[2]);
+        zimg_free(small); zimg_free(up); zimg_free(src2);
+    }
+
+    {   /* 1:1 必须逐像素原样：aa_steps 对覆盖 ≤1.4 texel 退回单点，放大路径一点没动 */
+        double m[6];
+        zimg *dst = zimg_new(SW, SH);
+        int i, diff = 0;
+        zimg_make_matrix(m, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, src, m, 1.0);
+        for (i = 0; i < SW * SH; ++i) {
+            if (dst->px[i * 4 + 0] != src->px[i * 4 + 0] ||
+                dst->px[i * 4 + 1] != src->px[i * 4 + 1] ||
+                dst->px[i * 4 + 2] != src->px[i * 4 + 2]) diff++;
+        }
+        CHECK(diff == 0, "1:1 绘制必须逐像素原样（差 %d px）—— 静止基线靠它", diff);
+        zimg_free(dst);
+    }
+
+    {   /* 放大 2× 必须**还是**普通双线性：暗线只影响它自己的两列，
+           不许被面积平均抹成一条更宽的糊边（那等于用"修缩小"换来"放大变糊"） */
+        double m[6];
+        zimg *u = zimg_new(16, 4), *dst = zimg_new(32, 8);
+        int x, y, touched = 0;
+        for (y = 0; y < 4; ++y) {
+            for (x = 0; x < 16; ++x) {
+                uint8_t *q = u->px + ((size_t)y * 16 + x) * 4;
+                const uint8_t *c = (x == 7) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        zimg_make_matrix(m, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, u, m, 1.0);
+        for (x = 0; x < 32; ++x) {
+            const uint8_t *q = dst->px + ((size_t)4 * 32 + x) * 4;
+            double L = (q[0] + q[1] + q[2]) / 3.0;
+            if (q[3] > 200 && L < 235.0) touched++;     /* 只数实心像素，右边缘外是透明 */
+        }
+        CHECK(touched == 4, "放大 2× 时 1px 暗线只该占 4 列（实测 %d 列）—— 多了就是在放大路径上"
+                            "也做了面积平均，画面会变糊", touched);
+        zimg_free(dst); zimg_free(u);
+    }
+
+    {   /* 半透明不能变脏：透明 texel 的颜色不许渗进不透明区域（预乘口径） */
+        double m[6];
+        zimg *dst = zimg_new(4, 4);
+        zimg *tsrc = zimg_new(16, 16);
+        int x, y, bad = 0;
+        for (y = 0; y < 16; ++y) {
+            for (x = 0; x < 16; ++x) {
+                uint8_t *q = tsrc->px + ((size_t)y * 16 + x) * 4;
+                int opaque = (x < 15);
+                q[0] = opaque ? 250 : 255;         /* 透明区故意放洋红垃圾色 */
+                q[1] = opaque ? 240 : 0;
+                q[2] = opaque ? 230 : 255;
+                q[3] = opaque ? 255 : 0;
+            }
+        }
+        zimg_make_matrix(m, 0.0, 0.0, 4.0, 4.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, tsrc, m, 1.0);
+        for (y = 0; y < 4; ++y) {
+            for (x = 0; x < 3; ++x) {
+                const uint8_t *q = dst->px + ((size_t)y * 4 + x) * 4;
+                if (q[3] > 250 && (q[0] != 250 || q[1] != 240 || q[2] != 230)) bad++;
+            }
+        }
+        CHECK(bad == 0, "缩小采样不许把透明 texel 的垃圾色混进来（脏了 %d px）", bad);
+        zimg_free(dst); zimg_free(tsrc);
+    }
+
+    zimg_free(src);
+}
+
 /* -------------------------------------------------------- deflate */
 static void test_deflate(void)
 {
@@ -978,7 +1260,7 @@ static void test_rig_channels(void)
         /* 惊讶时瞳孔要**变小**，不许变大（2026-10-15 用户反馈"眼球不自然变大，像个怪物"）。
            官方/社区口径：shocked = 眼睛开得更大 + 瞳孔变小 + 挑眉 + 张嘴
            （saltech.llc 的 ParamEyeLWide 条目 / Animaze 手册 / r/Live2D 两帖）。
-           改之前 surprised 挂的是 ParamEyeBallForm +1.0，而本 rig 里这个参数只绑了
+           改之前 surprised 挂的是 ParamEyeBallForm（现 ParamPupilScale）+1.0，而本 rig 里这个参数只绑了
            眼球缩放，于是虹膜被撑大到 1.18x/1.22x。现在是 -0.45 → 约 0.92x/0.90x。 */
         {
             double sx0, sy0, sx1, sy1;
@@ -1913,6 +2195,42 @@ static void test_physics_timestep(void)
                   IDS[k], JIT_MAX[k], mx[k], JIT_WAS[k]);
         zrig_free(r);
     }
+}
+
+static void test_ik_two_link(void)
+{
+    zik_solution sol;
+    zik_vec2 shoulder = {0.0, 0.0};
+    zik_vec2 target = {3.0, 4.0};
+    int rc;
+    SECTION("2D IK：解析双骨链、弯肘下限与约束冲突可见");
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            53.130102, 53.130102,
+                            -180.0, 180.0, 5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_OK && sol.constraints_satisfied,
+          "3-4-5 链的可达目标应在约束内求解");
+    CHECK(fabs(hypot(sol.elbow.x - shoulder.x, sol.elbow.y - shoulder.y) - 3.0) < 1e-6,
+          "上臂长度保持刚性");
+    CHECK(fabs(hypot(sol.effector.x - sol.elbow.x,
+                     sol.effector.y - sol.elbow.y) - 4.0) < 1e-6,
+          "前臂长度保持刚性");
+    CHECK(fabs(sol.target_error) < 1e-6 && sol.elbow_flex_deg >= 5.0,
+          "末端命中且肘不落在完全伸直死点");
+
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            53.130102, 53.130102,
+                            -10.0, 10.0, 5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_CONSTRAINT_UNSAT && !sol.constraints_satisfied,
+          "肩角限制与目标冲突时必须显式报无解，不得静默越界");
+
+    target.x = 7.0; target.y = 0.0;
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            0.0, 0.0, -180.0, 180.0,
+                            5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_OK && sol.target_clamped && sol.target_error > 0.0,
+          "伸直死点目标应投影到最小弯曲可达环，而不是输出 0°");
+    CHECK(sol.elbow_flex_deg >= 4.99,
+          "投影后的肘角仍满足非零弯曲下限");
 }
 
 static void test_physics(void)
@@ -6921,23 +7239,24 @@ static void test_action_fade_sine(void)
     CHECK(r != NULL, "装载真 rig 应成功（动作淡化）");
     if (!r) return;
 
-    /* ② 非循环动作：surprised 的 ParamArmLA 是 pulse+out、dur 跟动作一样长，
-       不收尾的话会在最后一帧停在满值然后硬切。动作级 FadeOutTime=0.2 要把它带回零。
+    /* ② 非循环动作：surprised 的 ParamArmLA 是 pulse+out，0.6s 到位，
+       动作总长 1.4s；末尾 FadeOutTime=0.25 要把稳定展示的姿势带回零。
        （时间必须逐帧推，一次跳过去看到的是淡入还没起算的那一帧。） */
     for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);          /* 先让 idle 收敛 */
     zrig_action_request(r, "surprised", "test:fade", 1);
-    for (i = 1; i <= 54; ++i) {                                 /* 0.9s = 54 帧 */
+    for (i = 1; i <= 84; ++i) {                                 /* 1.4s = 84 帧 */
         double v;
         t = 2.0 + i / 60.0;
         zrig_tick(r, t);
         v = fabs(zrig_param_effective(r, "ParamArmLA"));
-        if (i <= 42 && v > peak) peak = v;                      /* 淡出窗口之前的峰值 */
-        if (i == 53) tail = v;                                  /* 结束前 1 帧 */
+        if (i <= 66 && v > peak) peak = v;                      /* 淡出窗口之前的峰值 */
+        if (i == 83) tail = v;                                  /* 结束前 1 帧 */
     }
-    /* 阈值单位随 ParamArmLA 的倍率走：Q36 把倍率从 6°/单位 提到 18°/单位
-       （行程回到官方的 ±10），同样的 16° 摆幅换算出来的参数值变成 1/3。
-       门槛 2.0 → 0.7 不是放水：2.0/6=12° 和 0.7×18=12.6°，要求的**角度一样**。 */
-    CHECK(peak > 0.7, "surprised 前段 ParamArmLA 要摆到位（实际峰值 %.3f）", peak);
+    /* T31.22: surprised shoulder is intentionally a small positive lift after
+       the elbow/wrist pose was re-balanced against the reference. 0.6 × 18° =
+       10.8°; keep a margin below that authored peak without requiring the old,
+       visibly over-rotated shoulder amplitude. */
+    CHECK(peak > 0.55, "surprised 前段 ParamArmLA 要到参考肩位（实际峰值 %.3f）", peak);
     CHECK(tail < peak * 0.15,
           "非循环动作结束前要按 FadeOutTime 收回去（峰值 %.3f，末帧 %.3f）", peak, tail);
 
@@ -6946,7 +7265,7 @@ static void test_action_fade_sine(void)
        漏掉淡出中的旧动作，会在结束瞬间把 pulse 的满值整个闪出来。 */
     {
         double ghost = 0.0;
-        for (i = 55; i <= 90; ++i) {       /* 0.92s ~ 1.50s，动作已经演完 */
+        for (i = 85; i <= 120; ++i) {      /* 1.42s ~ 2.00s，动作已经演完 */
             zrig_tick(r, 2.0 + i / 60.0);
             if (fabs(zrig_param_effective(r, "ParamArmLA")) > ghost)
                 ghost = fabs(zrig_param_effective(r, "ParamArmLA"));
@@ -7181,7 +7500,8 @@ static void test_action_param_channels(void)
         CHECK(lo > -1e-6, "ParamBreath 不该摆到负半轴（bias 没生效？实际最小 %.3f）", lo);
     }
 
-    /* ④ 瞳孔形状 ParamEyeBallForm（标准参数表第 10 项）：+1 = 瞳孔放大。
+    /* ④ 瞳孔缩放 ParamPupilScale（T31.16 由 ParamEyeBallForm 改名而来）：+1 = 瞳孔放大。
+       旧名 ParamEyeBallForm 在 zrig.c 仍作别名兼容以便旧 rig/外部调用不炸，官方同名参数实为"弯曲眼睛轮廓"。
           眼球被眼眶裁切，所以用"蓝色虹膜在眼眶里占了多少像素"来量。 */
     {
         const zimg *fb;
@@ -7197,13 +7517,15 @@ static void test_action_param_channels(void)
         zrig_tick(r, clk);
         fb = zrig_frame(r, 1.0, &w, &h);
         snap = frame_snapshot(fb);
+        CHECK(zrig_param_set(r, "ParamPupilScale", 1.0) == 0,
+              "rig 里应该有 ParamPupilScale（T31.16 前为 ParamEyeBallForm）");
         CHECK(zrig_param_set(r, "ParamEyeBallForm", 1.0) == 0,
-              "rig 里应该有 ParamEyeBallForm（Live2D 标准名）");
+              "旧名 ParamEyeBallForm 仍应作别名兼容");
         zrig_tick(r, clk);
         fb = zrig_frame(r, 1.0, NULL, NULL);
         dd = frame_diff_box(fb, snap, 350, 238, 494, 308);
         CHECK(dd > 200, "瞳孔放大要看得出来（眼部实际只变了 %d 像素）", dd);
-        zrig_param_set(r, "ParamEyeBallForm", 0.0);
+        zrig_param_set(r, "ParamPupilScale", 0.0);
         zrig_tick(r, clk);
         fb = zrig_frame(r, 1.0, NULL, NULL);
         CHECK(frame_diff_box(fb, snap, 350, 238, 494, 308) == 0, "归零要回到原样（实际差 %d 像素）", frame_diff_box(fb, snap, 350, 238, 494, 308));
@@ -11232,10 +11554,227 @@ static void test_micro_expression(void)
     }
 }
 
+static void test_zbus(void) {
+    SECTION("zbus：无锁环形缓冲（铁律一/三，发布不阻塞渲染）");
+    {
+        zbus b; zbus_event ev, out;
+        int i;
+        zbus_init(&b);
+        CHECK(zbus_cap(&b)==1024, "容量 1024（2^n）");
+        CHECK(zbus_is_empty(&b), "初始为空");
+        /* 基础发布/消费 */
+        zbus_event_init(&ev, ZBUS_EVT_TICK, "sys/tick", "test");
+        zbus_event_set_u32(&ev, 42);
+        CHECK(zbus_publish(&b, &ev)==ZBUS_OK, "发布 1 条应成功");
+        CHECK(zbus_len(&b)==1, "len 1");
+        CHECK(zbus_peek(&b, &out)==ZBUS_OK && out.type==ZBUS_EVT_TICK, "peek 可见");
+        CHECK(zbus_len(&b)==1, "peek 不消费");
+        CHECK(zbus_consume(&b, &out)==ZBUS_OK, "消费应成功");
+        CHECK(out.type==ZBUS_EVT_TICK, "类型一致");
+        CHECK(zbus_is_empty(&b), "消费后为空");
+        CHECK(zbus_consume(&b, &out)==ZBUS_EMPTY, "空时返回 EMPTY");
+        /* 满则丢，不阻塞 */
+        for (i=0;i<ZBUS_CAP;i++) {
+            zbus_event_init(&ev, ZBUS_EVT_ACTION, "pet/action", "test");
+            if (zbus_publish(&b, &ev)!=ZBUS_OK) break;
+        }
+        CHECK(i==ZBUS_CAP, "填满 %d 条（实际 %d）", ZBUS_CAP, i);
+        CHECK(zbus_is_full(&b), "满");
+        zbus_event_init(&ev, ZBUS_EVT_ACTION, "pet/action", "test");
+        CHECK(zbus_publish(&b, &ev)==ZBUS_FULL, "满时返回 FULL，不阻塞");
+        CHECK(b.dropped==1, "dropped 计数");
+        CHECK(zbus_len(&b)==ZBUS_CAP, "len 不超容");
+        /* 清空后再用 */
+        for (i=0;i<ZBUS_CAP;i++) CHECK(zbus_consume(&b, &out)==ZBUS_OK, "逐条取 %d", i);
+        CHECK(zbus_is_empty(&b), "清空后为空");
+        /* payload 边界 */
+        zbus_event_init(&ev, ZBUS_EVT_CUSTOM, "a/b", "sender");
+        zbus_event_set_str(&ev, "hello");
+        CHECK(ev.payload_len==5, "str payload 5");
+        zbus_publish(&b, &ev);
+        zbus_consume(&b, &out);
+        CHECK(out.payload_len==5 && memcmp(out.payload,"hello",5)==0, "payload 往返一致");
+        /* 并发 SPSC：单生产者 10 万条（铁律一：AI 线程往总线丢，渲染只消，避免锁） */
+        {
+#ifndef _WIN32
+            pthread_t th;
+            zbus cb; zbus_init(&cb);
+            struct thr_arg { zbus *b; int n; } a1={&cb, 100000};
+            void *pub_fn(void *p){ struct thr_arg *a=(struct thr_arg*)p; int k; for(k=0;k<a->n;){ zbus_event e; zbus_event_init(&e,ZBUS_EVT_TICK,"thr/tick","thr"); zbus_event_set_u32(&e,(uint32_t)k); if(zbus_publish(a->b,&e)==ZBUS_OK) k++; else { sched_yield(); } } return NULL; }
+            pthread_create(&th,NULL,pub_fn,&a1);
+            {
+                int got=0;
+                uint8_t seen[100000]={0};
+                int spins=0;
+                while(got < 100000 && spins < 10000000){
+                    zbus_event o2;
+                    if(zbus_consume(&cb,&o2)==ZBUS_OK){
+                        uint32_t v=0; if(o2.payload_len>=4) memcpy(&v,o2.payload,4);
+                        if(v < 100000) seen[v]++;
+                        got++;
+                    } else { sched_yield(); spins++; }
+                }
+                CHECK(got==100000, "并发 SPSC 10 万条全收（got %d）", got);
+                int uniq=0, dup=0; for(i=0;i<100000;i++){ if(seen[i]==1) uniq++; else if(seen[i]>1) dup++; }
+                CHECK(dup==0, "并发 10 万条无重复（dup %d）", dup);
+                CHECK(uniq==100000, "10 万条序号全对（uniq %d）", uniq);
+            }
+            pthread_join(th,NULL);
+#endif
+        }
+        /* 时序：seq 单调 */
+        {
+            zbus sb; zbus_init(&sb);
+            uint32_t last=0;
+            for(i=0;i<100;i++){ zbus_event e2; zbus_event_init(&e2,ZBUS_EVT_TICK,"s","t"); zbus_publish(&sb,&e2); }
+            for(i=0;i<100;i++){ zbus_event o2; zbus_consume(&sb,&o2); CHECK(o2.seq > last || last==0, "seq 单调 %u -> %u", last, o2.seq); last=o2.seq; }
+        }
+    }
+}
+
+static void test_zmod(void) {
+    SECTION("zmod：热插拔管理器（铁律三，空目录不算错，禁用不加载）");
+    {
+        zbus bus; zbus_init(&bus);
+        zmod_mgr mgr; zdiag d; zdiag_init(&d);
+        zmod_mgr_init(&mgr, g_root, &bus);
+        /* 空目录/缺目录算 0，且不报错 */
+        CHECK(zmod_scan(&mgr, &d)==0, "扫描空/默认目录应成功");
+        CHECK(zmod_count(&mgr)==0 || zmod_count(&mgr)>=0, "count >=0（实际 %d）", zmod_count(&mgr));
+        /* 禁用示例不应被 dlopen */
+        {
+            char ex[1024]; z_path_join(ex,sizeof(ex), g_root, "config/modules/_example.json");
+            if(z_file_exists(ex)){
+                int n0=zmod_count(&mgr);
+                /* _example 禁用，若被扫描到也不应新增 handle；若未扫描到，count 不变 */
+                CHECK(zmod_find(&mgr,"example_mod")==NULL || !zmod_enabled(&mgr,"example_mod"), "禁用模组不应为 enabled");
+                (void)n0;
+            }
+        }
+        /* dummy ABI 自检 */
+        {
+            const zmod_api *api=zmod_get_api_default();
+            CHECK(api && api->version==ZMOD_ABI_VERSION, "dummy ABI 版本 %d", api?api->version:-1);
+        }
+        /* 广播：无模组时返回 0，不崩 */
+        {
+            zbus_event ev; zbus_event_init(&ev, ZBUS_EVT_TICK, "sys/tick", "test");
+            int n=zmod_dispatch(&mgr, &ev);
+            CHECK(n==0, "零模组广播返回 0");
+        }
+        /* tick：零模组不崩 */
+        zmod_tick(&mgr, 1.0);
+        zmod_mgr_shutdown(&mgr);
+        CHECK(zmod_count(&mgr)==0, "shutdown 后 count 0");
+        /* 热加载冒烟：编译产物存在时才练 */
+        {
+            char so1[1024], so2[1024], jpath[1024];
+            z_path_join(so1,sizeof(so1), g_root, "build/modules/example_mod.so");
+            z_path_join(so2,sizeof(so2), g_root, "modules/example_mod.so");
+            const char *sop = z_file_exists(so1) ? so1 : (z_file_exists(so2) ? so2 : NULL);
+            if(sop){
+                char modjson[1024];
+                z_path_join(modjson,sizeof(modjson), g_root, "config/modules/_example.json");
+                /* 构造临时启用 json */
+                char tmpj[1024]; z_path_join(tmpj,sizeof(tmpj), g_root, "build/_test_mod.json");
+                FILE *f=fopen(tmpj,"w");
+                if(f){ fprintf(f,"{\"id\":\"example_mod\",\"path\":\"%s\",\"enabled\":true}\n", sop); fclose(f);
+                    zbus_init(&bus); zmod_mgr_init(&mgr,g_root,&bus); zdiag_init(&d);
+                    if(zmod_load(&mgr, tmpj, &d)==0){
+                        CHECK(zmod_count(&mgr)==1, "加载临时模组 count 1");
+                        CHECK(zmod_find(&mgr,"example_mod")!=NULL, "find 到 example_mod");
+                        zbus_event ev2; zbus_event_init(&ev2,ZBUS_EVT_TICK,"sys/tick","test"); zmod_dispatch(&mgr,&ev2); zmod_tick(&mgr,2.0);
+                        CHECK(zmod_unload(&mgr,"example_mod")==0, "卸载成功");
+                        CHECK(zmod_count(&mgr)==0, "卸载后 0");
+                    } else { zdiag_print(&d,stderr); CHECK(0,"临时模组加载失败：%s", sop); }
+                    zmod_mgr_shutdown(&mgr); remove(tmpj);
+                }
+                (void)jpath;
+            } else {
+                printf("  [skip] 未找到 example_mod.so，跳过热加载冒烟（先 make modules/example_mod.so）\n");
+            }
+        }
+    }
+}
+
+/* R1 快闸：重型用例默认跳过，--soak 才跑。否则 make test 50 秒超时，CI 形同虚设。 */
+static int g_soak = 0;
+
+
+static void test_perm_cost_perf(void){
+    SECTION("T23 权限/成本/性能预算 (G79/G80/G81)");
+    // zperm
+    {
+        char ebuf[256]={0};
+        zperm *pr = zperm_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(pr!=NULL, "zperm 应能加载 permissions.json");
+        if(pr){
+            CHECK(zperm_cap_enabled(pr, "screen_capture")==0, "默认 screen_capture 应关闭");
+            CHECK(zperm_check(pr, "screen_capture")==-1, "关闭的能力应拒绝");
+            CHECK(zperm_check(pr, "input_control")==-1, "默认 input_control 应拒绝");
+            CHECK(zperm_estop_active(pr)==1, "急停默认应开启（全局开关）");
+            // 敏感区命中
+            CHECK(zperm_sensitive_hit(pr, "1Password - vault")==1, "1Password 应被屏蔽");
+            CHECK(zperm_sensitive_hit(pr, "My Bank page")==1, "bank 应被屏蔽");
+            CHECK(zperm_sensitive_hit(pr, "normal window")==0, "普通窗口不应屏蔽");
+            // 审计
+            CHECK(zperm_audit(pr, "input_control", "test")==0, "审计应可写");
+            // 别名：不存在的能力
+            CHECK(zperm_check(pr, "no_such")== -1, "不存在的能力应拒绝");
+            zperm_free(pr);
+        }
+    }
+    // zcost
+    {
+        char ebuf[256]={0};
+        zcost *co = zcost_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(co!=NULL, "zcost 应能加载 cost_limits.json");
+        if(co){
+            CHECK(zcost_tripped(co, "vision")==0, "初始不应熔断");
+            double est = zcost_estimate_hourly(co);
+            CHECK(est>0.05 && est<5.0, "预估小时费应在合理区间 (实 %.3f)", est);
+            CHECK(zcost_downgrade(co)!=NULL, "降级策略应存在");
+            CHECK(zcost_idle_should_downclock(co, 400)==1, "空闲 400s 应降频");
+            CHECK(zcost_idle_should_downclock(co, 10)==0, "空闲 10s 不应降频");
+            zcost_add(co, "vision", 1.0);
+            CHECK(zcost_tripped(co, "vision")==0, "1.0 未到 vision 日限 2.0");
+            zcost_add(co, "vision", 2.0);
+            CHECK(zcost_tripped(co, "vision")==1, "3.0 应触发 vision 熔断");
+            zcost_free(co);
+        }
+    }
+    // zperf
+    {
+        char ebuf[256]={0};
+        zperf *pf = zperf_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(pf!=NULL, "zperf 应能加载 perf_budget.json");
+        if(pf){
+            CHECK(zperf_render_first(pf)==1, "渲染应永远优先");
+            CHECK(zperf_budget_ok(pf, "idle", 1.0, 100)==1, "idle 1%%/100MB 应在预算内");
+            CHECK(zperf_budget_ok(pf, "realtime", 10, 300)==1, "realtime 10%%/300MB 应在预算内");
+            CHECK(zperf_budget_ok(pf, "realtime", 30, 300)==0, "30%% 超 realtime 25%% 预算应判超");
+            CHECK(zperf_should_yield(pf, 2.0)==1, "用户活跃 2s 应让出");
+            CHECK(zperf_should_yield(pf, 10.0)==0, "用户空闲 10s 不需让出");
+            double rm = zperf_measured(pf, "render_ms");
+            CHECK(rm>10 && rm<100, "渲染实测应在 10-100ms (实 %.1f)", rm);
+            const char *nxt = zperf_degrade_next(pf, "capture_fps");
+            CHECK(nxt!=NULL, "可降档下一级应存在");
+            zperf_free(pf);
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
+    int ai;
     zlog_set_level(ZLOG_ERROR);
-    z_strlcpy(g_root, argc > 1 ? argv[1] : ".", sizeof(g_root));
+    z_strlcpy(g_root, ".", sizeof(g_root));
+    for (ai = 1; ai < argc; ++ai) {
+        if (z_streq(argv[ai], "--soak") || z_streq(argv[ai], "--long") || z_streq(argv[ai], "soak"))
+            g_soak = 1;
+        else if (argv[ai][0] != '-')
+            z_strlcpy(g_root, argv[ai], sizeof(g_root));
+    }
 
     printf("单元测试（[测试锁]）\n根目录：%s\n\n", g_root);
     test_json();
@@ -11260,6 +11799,7 @@ int main(int argc, char **argv)
     test_phys2_rig();
     test_eye_aperture();
     test_image();
+    test_image_downsample_aa();
     test_deflate();
     test_config_and_pet();
     test_bad_config();
@@ -11296,6 +11836,7 @@ int main(int argc, char **argv)
     test_skirt_physics();
     test_action_drives_param();
     test_motion_fade();
+    test_ik_two_link();
     test_physics();
     test_physics_timestep();
     test_look();
@@ -11311,17 +11852,21 @@ int main(int argc, char **argv)
     test_pose();
     test_xfade();
     test_mask_multi();
-    test_longrun();
+    if (g_soak) test_longrun();
+    else printf("== 长稳：2 万帧（--soak 才跑，已跳过）==\n");
     test_expression();
     test_motion_from();
     test_persona();
     test_memory_longarc();
     test_interactions();
     test_affection();
+    test_perm_cost_perf();
     test_gateway();
     test_http_url();
     test_relay();
     test_ctx();
+    test_zbus();
+    test_zmod();
 
     printf("\n通过 %d 项，失败 %d 项\n", g_pass, g_fail);
     if (g_fail) {

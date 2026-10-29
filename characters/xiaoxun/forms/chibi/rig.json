@@ -1709,10 +1709,10 @@
           "dur": 0.5
         },
         {
-          "target": "ParamMouthOpenY",
-          "wave": "bounce",
-          "amp": 0.5789,
-          "dur": 1.2,
+          "target": "ParamMouthForm",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.25,
           "ease": "out"
         },
         {
@@ -1785,7 +1785,8 @@
     {
       "id": "surprised",
       "priority": 6,
-      "duration": 0.9,
+      "duration": 1.4,
+      "fade_out": 0.25,
       "return_state": "idle",
       "interruptible": false,
       "channels": [
@@ -1797,7 +1798,7 @@
           "ease": "out_back"
         },
         {
-          "target": "ParamEyeBallForm",
+          "target": "ParamPupilScale",
           "wave": "pulse",
           "amp": -0.45,
           "dur": 0.2
@@ -1805,8 +1806,15 @@
         {
           "target": "ParamMouthOpenY",
           "wave": "pulse",
-          "amp": 1.0,
-          "dur": 0.25,
+          "amp": 0.55,
+          "dur": 0.12,
+          "ease": "out"
+        },
+        {
+          "target": "ParamMouthForm",
+          "wave": "pulse",
+          "amp": -0.7,
+          "dur": 0.12,
           "ease": "out"
         },
         {
@@ -1817,18 +1825,32 @@
           "freq": 2.4
         },
         {
+          "target": "ParamHipL",
+          "wave": "pulse",
+          "amp": 8.0,
+          "dur": 0.72,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHipR",
+          "wave": "pulse",
+          "amp": -8.0,
+          "dur": 0.72,
+          "ease": "out"
+        },
+        {
           "target": "ParamKneeL",
-          "wave": "bounce",
-          "amp": 0.48,
-          "dur": 0.5,
-          "ease": "out_back"
+          "wave": "pulse",
+          "amp": 0.8,
+          "dur": 0.72,
+          "ease": "out"
         },
         {
           "target": "ParamKneeR",
-          "wave": "bounce",
-          "amp": 0.48,
-          "dur": 0.5,
-          "ease": "out_back"
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.72,
+          "ease": "out"
         },
         {
           "target": "ParamWeightShift",
@@ -2028,6 +2050,12 @@
           "wave": "sine",
           "amp": -3.6,
           "freq": 0.5
+        },
+        {
+          "target": "ParamMouthForm",
+          "wave": "sine",
+          "amp": 0.85,
+          "freq": 1.4
         },
         {
           "target": "ParamWeightShift",
@@ -4862,7 +4890,7 @@
       ]
     },
     {
-      "id": "ParamEyeBallForm",
+      "id": "ParamPupilScale",
       "label": "瞳孔 放大/缩小",
       "min": -1.0,
       "max": 1.0,
@@ -4889,7 +4917,7 @@
           "scale": 0.22
         }
       ],
-      "note": "surprised 动作把它推到 1.0"
+      "note": "surprised 动作把它推到 -0.45（缩瞳）；旧名 ParamEyeBallForm 仍可作别名写入"
     },
     {
       "id": "ParamHipL",
@@ -6176,7 +6204,7 @@
   "generated_by": {
     "tool": "tools/make_rig.py",
     "sources": {
-      "tools/make_rig.py": "85b51844642a212a34f7d74b46a6f75be210a0633125d162ebfea091c1490e51",
+      "tools/make_rig.py": "97be057463c784fdf1a90975d139caca9b4a41edf50d83274851d4315d6f10b9",
       "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
       "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3",
       "characters/xiaoxun/expressions/peek_blush.exp3.json": "d692dbda9205d8cf4451226e5d2adcbffff984246f1f2156723e005aa63ae59b"
