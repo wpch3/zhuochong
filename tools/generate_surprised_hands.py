@@ -16,15 +16,15 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-SIZE = (86, 109)
-TARGET_BOX_2X = (156, 204)
+SIZE = (86, 117)
+TARGET_BOX_2X = (156, 220)  # +8% hand silhouette, anchored at the wrist root
 MARGIN_TOP_2X = 6
 WRIST_INSERT_FRAC = 0.035  # short tapered wrist overlap; cuff hides the cut edge
 # Calibrated in the live render: local hand groups inherit a near-half-turn, so
-# local x/y signs are opposite screen directions. These positions move both wrists
-# inward/down into the cuff; do not flip the signs. This only registers the art,
-# without translating the wrist bone or changing the shoulder/elbow chain.
-SURPRISED_PART_POS = {"l": [1, 650], "r": [358, 650]}
+# local x/y signs are opposite screen directions. The 2px lower local y seats the
+# enlarged hand roots a little deeper under each cuff; do not flip the signs. This
+# only registers the art, without translating the wrist bone or shoulder/elbow chain.
+SURPRISED_PART_POS = {"l": [1, 648], "r": [358, 648]}
 SURPRISED_PART_LAYERS = {"l": 319, "r": 320}
 
 
