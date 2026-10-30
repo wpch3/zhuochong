@@ -20,10 +20,11 @@ SIZE = (86, 109)
 TARGET_BOX_2X = (156, 204)
 MARGIN_TOP_2X = 6
 WRIST_INSERT_FRAC = 0.035  # short tapered wrist overlap; cuff hides the cut edge
-# Calibrated in the rendered pose: bring each wrist root toward the cuff center
-# and slightly into the ribbed cuff. This is a local artwork registration offset;
-# it does not translate the hand bone or alter the shoulder/elbow chain.
-SURPRISED_PART_POS = {"l": [17, 662], "r": [342, 662]}
+# Calibrated in the live render: local hand groups inherit a near-half-turn, so
+# local x/y signs are opposite screen directions. These positions move both wrists
+# inward/down into the cuff; do not flip the signs. This only registers the art,
+# without translating the wrist bone or changing the shoulder/elbow chain.
+SURPRISED_PART_POS = {"l": [1, 650], "r": [358, 650]}
 SURPRISED_PART_LAYERS = {"l": 319, "r": 320}
 
 
