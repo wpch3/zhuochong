@@ -118,19 +118,58 @@ def auto_boxes(root, character, form, body):
     a = np.asarray(body)
     rgb, al = a[..., :3].astype(int), a[..., 3]
 
-    # 眼框：几何法。系数是在少女**已有的手填框**上对出来的（逐项差 ≤ 2px）：
-    #   x 半宽 = 眼线那一行的剪影宽 × 0.50（含头发，脸的可见宽度就是它）
-    #   y 上 0.10 头高（睫毛/眼睑）、下 0.15 头高（下睫毛/卧蚕）
-    # 框只要**框住眼睛**就行，具体哪里是眼白/虹膜/眼线由 make_eye_parts.split_eye 自己找。
-    row = np.flatnonzero(al[min(eye_y, a.shape[0] - 1)] > 24)
-    hw = float(row[-1] - row[0] + 1) if row.size else float(head)
-    y0 = max(0, int(eye_y - head * 0.10))
-    y1 = min(a.shape[0], int(eye_y + head * 0.15))
-    eyes = {
-        "left": (max(0, int(cx - hw * 0.50)), y0, max(1, int(cx - hw * 0.03)), y1),
-        "right": (min(a.shape[1] - 1, int(cx + hw * 0.03)), y0,
-                  min(a.shape[1], int(cx + hw * 0.50)), y1),
-    }
+    if form == "chibi":
+        # Q 版头部在 eye_line 行会横跨整张画布（头发/鬓发），不能再用行宽平分。
+        # 仅在锚点附近找两块深蓝虹膜连通域，以虹膜外接框留出睫毛和眼角余量。
+        # 这避免把每只 eye_open 裁成半张脸；后续眼部拆件会以这两个真实 patch_pos
+        # 重建闭眼、差分、遮罩与 eyeline 元数据，必须从此步起整段重跑。
+        from make_bangs_parts import components as _components
+        search_y0 = max(0, eye_y - int(head * 0.10))
+        search_y1 = min(a.shape[0], eye_y + int(head * 0.10) + 1)
+        blue = ((rgb[..., 2] - rgb[..., 0] > 40)
+                & (rgb[..., 0] < 110)
+                & (rgb[..., 2] > 90)
+                & (rgb[..., 2] < 195)
+                & (al > 100))
+        found = {}
+        for pts_comp in _components(blue[search_y0:search_y1], 80):
+            ys = np.fromiter((p[0] for p in pts_comp), dtype=int) + search_y0
+            xs = np.fromiter((p[1] for p in pts_comp), dtype=int)
+            xmid, ymid = float(xs.mean()), float(ys.mean())
+            dx = abs(xmid - cx)
+            # 排除鬓发/耳饰上的蓝色：两眼应在中线两侧约 0.08–0.30 头高处。
+            if not (head * 0.08 <= dx <= head * 0.30):
+                continue
+            if abs(ymid - eye_y) > head * 0.10:
+                continue
+            side = "left" if xmid < cx else "right"
+            score = len(pts_comp) / (1.0 + abs(ymid - eye_y) / max(head, 1))
+            if side not in found or score > found[side][0]:
+                found[side] = (score, int(xs.min()), int(ys.min()),
+                               int(xs.max()) + 1, int(ys.max()) + 1, len(pts_comp))
+        if set(found) != {"left", "right"}:
+            raise SystemExit("Q 版自动量眼框失败：eye_line 邻域缺少左右虹膜；拒绝生成半脸眼贴图")
+        eyes = {}
+        for side in ("left", "right"):
+            _score, ix0, iy0, ix1, iy1, area = found[side]
+            iw, ih = ix1 - ix0, iy1 - iy0
+            pad_x = max(20, int(round(iw * 0.50)))
+            pad_up = max(20, int(round(ih * 1.25)))
+            pad_dn = max(22, int(round(ih * 1.35)))
+            eyes[side] = (max(0, ix0 - pad_x), max(0, iy0 - pad_up),
+                          min(a.shape[1], ix1 + pad_x), min(a.shape[0], iy1 + pad_dn))
+            print(f"[auto] {side} 虹膜 {area}px @ ({ix0},{iy0})-({ix1},{iy1}) → 框 {eyes[side]}")
+    else:
+        # 其他形态保留已校准的 Teen 几何量法（既有手填框逐项误差 ≤2px）。
+        row = np.flatnonzero(al[min(eye_y, a.shape[0] - 1)] > 24)
+        hw = float(row[-1] - row[0] + 1) if row.size else float(head)
+        y0 = max(0, int(eye_y - head * 0.10))
+        y1 = min(a.shape[0], int(eye_y + head * 0.15))
+        eyes = {
+            "left": (max(0, int(cx - hw * 0.50)), y0, max(1, int(cx - hw * 0.03)), y1),
+            "right": (min(a.shape[1] - 1, int(cx + hw * 0.03)), y0,
+                      min(a.shape[1], int(cx + hw * 0.50)), y1),
+        }
 
     # 嘴：眼线与颈之间 20%~80% 的带（排除下巴线），**只看中线附近 ±0.05 头高的窄柱**
     #   —— 柱子放宽到 0.12 就会把眼角的睫毛数进来，少女实测把嘴线读到 y=219（真值 249）。
