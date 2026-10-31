@@ -214,14 +214,41 @@ def main() -> int:
     warm = (hrgb[..., 0] > hrgb[..., 2] + 18) & (hrgb[..., 0] > 200)      # 皮肤
     teal = ((hrgb[..., 1] - hrgb[..., 0] > 55) & (hrgb[..., 2] - hrgb[..., 1] < 20))  # 衣领
     hairish = hrgb[..., 2] >= hrgb[..., 0] - 6        # 发色家族（淡紫/蓝梢/线稿都偏冷）
-    # 五官保护区：眼睛（以虹膜为心的圆）和嘴在原画里也是冷色，光看颜色会被当成
-    # 头发切走。位置直接取 make_eye_parts / make_mouth_parts 已经量出来的数，
-    # 不靠"填洞"去兜 —— 填洞会从外眼角的缝里漏出去（第一版整只眼睛都被切走了）。
+    # 五官保护区：原来只用「虹膜中心半径 26px」的圆。眼角睫毛超出圆的部分
+    # 仍然满足 hairish（冷紫/蓝黑），会被侧发分割误收进 hair_side_l/r；
+    # 真实引擎里就变成眼角外侧的黑色方块/短线。保留圆形兜底，同时把 eye_parts
+    # 的实际 socket + lash 掩膜投到 seg_head 坐标，并给抗锯齿边缘少量余量。
+    # 不用整块矩形，也不靠填洞：只保护开口与真实眼线，发丝仍可在眼睛外缘正常分离。
     yy = np.arange(H)[:, None] * np.ones((1, W))
     xx = np.ones((H, 1)) * np.arange(W)[None, :]
     feat = np.zeros((H, W), bool)
     for ix, iy in ((sx0 / SCALE, sy0 / SCALE), (sx1 / SCALE, sy1 / SCALE)):
         feat |= (xx - ix) ** 2 + (yy - iy) ** 2 < 26 ** 2
+
+    eye_path = os.path.join(sp, "eye_parts.json")
+    eye_feature_px = 0
+    if os.path.exists(eye_path):
+        with open(eye_path, encoding="utf-8") as f:
+            eye_data = json.load(f)
+        for eye in eye_data.get("eyes", []):
+            px, py = eye["patch_pos"]
+            for fname, threshold, pad in ((eye.get("socket"), 24, 3),
+                                           (eye.get("lash"), 24, 2)):
+                if not fname:
+                    continue
+                fp = os.path.join(sp, fname)
+                if not os.path.exists(fp):
+                    continue
+                local = np.array(Image.open(fp).convert("RGBA"))[..., 3] > threshold
+                protected = dilate(local, pad)
+                x0, y0 = int(px - head_pos[0]), int(py - head_pos[1])
+                dx0, dy0 = max(0, x0), max(0, y0)
+                dx1, dy1 = min(W, x0 + protected.shape[1]), min(H, y0 + protected.shape[0])
+                if dx0 >= dx1 or dy0 >= dy1:
+                    continue
+                feat[dy0:dy1, dx0:dx1] |= protected[dy0-y0:dy1-y0,
+                                                       dx0-x0:dx1-x0]
+        eye_feature_px = int(feat.sum())
     mpj = os.path.join(sp, "mouth_parts.json")
     if os.path.exists(mpj):
         with open(mpj, encoding="utf-8") as f:
@@ -404,6 +431,7 @@ def main() -> int:
                   "dy": round(float(dy), 1)},
         "root_y": int(y_root), "bleed_root": BLEED_ROOT, "bleed_in": BLEED_IN,
         "grow_px": GROW_PX,
+        "eye_feature_protected_px": eye_feature_px,
         "px": {"side_l": int(lock_l.sum()), "side_r": int(lock_r.sum()),
                "back": int(back.sum()), "torso_band_cut": cut},
         "skin_gain": [round(float(v), 4) for v in gain],

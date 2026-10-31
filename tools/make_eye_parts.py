@@ -110,7 +110,7 @@ def largest_cc(m):
 
 
 # ----------------------------------------------------------------- 拆件
-def split_eye(path, side, debug=None):
+def split_eye(path, side, debug=None, form=None):
     im = Image.open(path).convert("RGBA")
     a = np.array(im).astype(int)
     al = a[..., 3]
@@ -125,6 +125,7 @@ def split_eye(path, side, debug=None):
     core = largest_cc(core)
     ys, xs = np.nonzero(core)
     seed = (int(np.median(ys)), int(np.median(xs)))
+    core_box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
 
     # 2) 从虹膜往外长到整只眼睛：蓝色 + 深色线稿都算眼睛（眼白是洞，稍后补）
     loose = solid & (((rgb[..., 2] - rgb[..., 0]) > 38) | (rgb.sum(2) < 400))
@@ -258,6 +259,68 @@ def split_eye(path, side, debug=None):
             break
         sock_m = nxt
     sock_m = fill_holes(sock_m)
+
+    carve_m = aperture
+    # Chibi eyes have long external lash tips. The legacy dark-line flood used for
+    # `aperture` intentionally includes those lashes, but that silhouette is too
+    # broad to use as the sclera/iris clipping mask: filling the entire lash shape
+    # paints pale rectangles over cheek and side hair. For Chibi, derive the socket
+    # from the eye's neutral sclera + blue iris colors in a tight iris-relative ROI;
+    # keep the lash silhouette separate on `lash_img` above.
+    if form == "chibi":
+        socket_core = (solid & ((rgb[..., 2] - rgb[..., 0]) > 40)
+                       & (rgb[..., 0] < 110) & (rgb[..., 2] > 90)
+                       & (rgb[..., 2] < 195))
+        socket_core = largest_cc(socket_core)
+        sy_, sx_ = np.nonzero(socket_core)
+        if len(sx_) >= 80:
+            ix0, iy0 = int(sx_.min()), int(sy_.min())
+            ix1, iy1 = int(sx_.max()) + 1, int(sy_.max()) + 1
+        else:
+            ix0, iy0, ix1, iy1 = core_box
+        iris_h = max(1, iy1 - iy0)
+        iris_w = max(1, ix1 - ix0)
+        # Use a soft almond-like envelope around the measured iris, not a rectangular
+        # ROI: a rectangular cutoff created visible white columns at the inner corners.
+        ex, ey = (ix0 + ix1 - 1) * 0.5, (iy0 + iy1 - 1) * 0.5 + iris_h * 0.20
+        rx, ry = max(1.0, iris_w * 1.00), max(23.0, iris_h * 1.05)
+        yy_, xx_ = np.mgrid[0:h, 0:w]
+        envelope = ((xx_ - ex) / rx) ** 2 + ((yy_ - ey) / ry) ** 2 <= 1.0
+        rr, gg, bb = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+        sclera_like = (solid & (rr > 235) & (gg > 225) & (bb > 225)
+                       & (np.abs(rr - bb) < 28))
+        iris_like = (solid & ((bb - rr) > 28) & (bb > 90) & (bb < 230)
+                     & (rr < 190) & (gg < 235))
+        socket_seed = (int(round(ey)), int(round(ex)))
+        # Do not flood only from the iris center: dark outlines disconnect the white
+        # sclera wings from the blue pupil. That used to leave baked white eye wedges
+        # on seg_head and clipped the upper iris. Keep all eye-colored pixels inside
+        # this narrow iris-relative envelope, fill tiny internal gaps, then union the
+        # complete modeled iris disk (including its near-black crown).
+        eye_color = (sclera_like | iris_like) & envelope
+        interior = fill_holes(eye_color) & envelope
+        if 100 <= int(interior.sum()) <= int(h * w * 0.45):
+            sock_m = interior | disc
+            carve_m = aperture | interior | disc
+        else:
+            raise SystemExit(f"{path}: Chibi 眼眶颜色掩膜异常 ({int(interior.sum())} px)，拒绝写出")
+
+    # The base is masked by this expanded socket in the rig. Therefore its pixels
+    # across the *whole* socket must be clean sclera underlay, not source iris/hair
+    # pixels left over from the rectangular eye crop. The lash is a separate moving
+    # layer, so it must not remain baked into the base either. Keep the mask's soft
+    # edge for compositing; make the base opaque inside the binary socket core.
+    for c in range(3):
+        base[..., c] = np.where(sock_m, int(round(sclera[c])), base[..., c])
+    # The rig attaches a socket mask, so Chibi's base only needs clean pixels in
+    # that aperture. Do not retain its opaque crop halo: the wide-eye generator could
+    # otherwise stretch surrounding face/hair into a visible rectangle. Preserve the
+    # legacy Teen alpha path unchanged.
+    if form == "chibi":
+        base[..., 3] = np.where(sock_m, 255, 0)
+    else:
+        base[..., 3] = np.where(sock_m, 255, base[..., 3])
+
     sock = np.zeros((h, w, 4), np.uint8)
     sock[..., :3] = 255
     # 边缘给 2px 斜坡（不是一圈 170 的硬边），遮罩边界才不会出现阶梯
@@ -307,6 +370,14 @@ def split_eye(path, side, debug=None):
         "ball": Image.fromarray(ball_crop),
         "lash": Image.fromarray(lash_img),
     }
+    if form == "chibi":
+        # Keep the complete original eye silhouette for face cleanup. The eye socket
+        # is intentionally narrower than the source eye on Chibi; using only the
+        # socket to carve seg_head leaves the baked top half of the iris behind.
+        carve_img = np.zeros((h, w, 4), np.uint8)
+        carve_img[..., :3] = 255
+        carve_img[..., 3] = np.where(carve_m, 255, 0).astype(np.uint8)
+        imgs["carve"] = Image.fromarray(carve_img)
     if debug is not None:
         debug[side] = {"aperture": aperture, "lash": lash, "disc": disc, "im": im}
     return imgs, info
@@ -327,7 +398,7 @@ def main():
     out = {"source": "eye_open_left.png / eye_open_right.png", "eyes": []}
     for side, src_name in (("l", "eye_open_left.png"), ("r", "eye_open_right.png")):
         src = os.path.join(sp_dir, src_name)
-        imgs, info = split_eye(src, side)
+        imgs, info = split_eye(src, side, form=args.form)
         px, py = pos_of[src_name]
         info["patch_pos"] = [px, py]
         info["patch_size"] = list(Image.open(src).size)

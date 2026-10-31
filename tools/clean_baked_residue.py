@@ -125,19 +125,22 @@ def collect_targets(sdir):
     ep = _load(os.path.join(sdir, "eye_parts.json"))
     for e in ep["eyes"]:
         px, py = e["patch_pos"]
-        t.append((e["base"], (px + PATCH_TO_CANVAS[0], py + PATCH_TO_CANVAS[1])))
+        # The eye base owns the whole socket underlay. Its clean sclera can be
+        # lavender enough to trip the generic B-R hair detector, so preserve the
+        # socket itself while still cleaning hair outside that mask.
+        t.append((e["base"], (px + PATCH_TO_CANVAS[0], py + PATCH_TO_CANVAS[1]), e["socket"]))
     for name in ("eye_wide_parts", "eye_closed_parts", "eye_smile_parts", "eye_pain_parts"):
         p = os.path.join(sdir, name + ".json")
         if not os.path.exists(p):
             continue
         for e in _load(p)["eyes"]:
             px, py = e["pos"]
-            t.append((e["file"], (px + PATCH_TO_CANVAS[0], py + PATCH_TO_CANVAS[1])))
+            t.append((e["file"], (px + PATCH_TO_CANVAS[0], py + PATCH_TO_CANVAS[1]), None))
     return t
 
 
-def clean(path, origin, irises, scale=1):
-    """擦掉一张补片里的头发像素。origin/irises 都是 1× 画布坐标。"""
+def clean(path, origin, irises, scale=1, protect=None):
+    """擦掉一张补片里的头发像素。origin/irises 都是 1× 画布坐标；protect 为需保留的 0..1 遮罩。"""
     im = Image.open(path).convert("RGBA")
     a = np.asarray(im).astype(np.float32)
     h, w = a.shape[:2]
@@ -158,6 +161,11 @@ def clean(path, origin, irises, scale=1):
 
     hairness = np.clip((B - R - HAIR_T0) / (HAIR_T1 - HAIR_T0), 0.0, 1.0)
     cut = hairness * (1.0 - keep)
+    if protect is not None:
+        protect = np.asarray(protect, dtype=np.float32)
+        if protect.shape != (h, w):
+            raise ValueError(f"protect mask shape {protect.shape} != image {(h, w)}: {path}")
+        cut *= 1.0 - np.clip(protect, 0.0, 1.0)
     newA = A * (1.0 - cut)
 
     removed = float((A > 60).sum() and ((A > 60) & (newA <= 60)).sum())
@@ -720,12 +728,22 @@ def main():
     print("虹膜中心（画布 1×）：", {k: (round(v[0], 1), round(v[1], 1)) for k, v in irises.items()})
 
     report = []
-    for fname, origin in collect_targets(sdir):
+    for fname, origin, protect_file in collect_targets(sdir):
         for suffix, scale in ((".png", 1), ("@2x.png", 2)):
             p = os.path.join(sdir, fname.replace(".png", suffix))
             if not os.path.exists(p):
                 continue
-            removed, total = clean(p, origin, irises, scale)
+            protect = None
+            if protect_file:
+                mp = os.path.join(sdir, protect_file.replace(".png", suffix))
+                if not os.path.exists(mp):
+                    mp = os.path.join(sdir, protect_file)
+                target_size = Image.open(p).size
+                mask_im = Image.open(mp).convert("RGBA")
+                if mask_im.size != target_size:
+                    mask_im = mask_im.resize(target_size, Image.Resampling.NEAREST)
+                protect = (np.asarray(mask_im)[..., 3] > 0).astype(np.float32)
+            removed, total = clean(p, origin, irises, scale, protect)
             pct = 100.0 * removed / max(1, total)
             print("  %-24s 擦掉 %5d / %5d 像素 (%.1f%%)" % (os.path.basename(p), removed, total, pct))
             if scale == 1:

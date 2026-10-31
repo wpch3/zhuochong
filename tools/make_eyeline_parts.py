@@ -214,6 +214,15 @@ def main() -> int:
         wmap = np.zeros((H, W), float)
         wmap[dreg] = np.maximum(wmap[dreg], wsock[sreg])
         wmap[dreg] = np.maximum(wmap[dreg], dilate(lash > 40, 1)[sreg].astype(float))
+        # Chibi's socket is a deliberately tight sclera aperture. It does not span
+        # the full original iris silhouette, so carving only socket+lash leaves the
+        # baked dark upper iris on seg_head (which reads as a second black lash).
+        # Use the eye-source segmentation's full aperture as a separate face-cleanup
+        # mask; it is never attached as a visible rig part or used to clip the pupil.
+        if args.form == "chibi" and e.get("carve"):
+            cimg = np.array(Image.open(os.path.join(sp, e["carve"])).convert("RGBA"))
+            full_eye = dilate(cimg[..., 3] > 24, 1)
+            wmap[dreg] = np.maximum(wmap[dreg], full_eye[sreg].astype(float))
         carve = wmap > 0.004
 
         # 2) 皮肤来源：闭眼补片抹掉闭眼线
@@ -238,7 +247,11 @@ def main() -> int:
             tmp = head.copy()
             keep_a = tmp[..., 3].copy()
             tmp[..., 3] = np.where(rest, 0, tmp[..., 3])
-            tmp = grow_colors(tmp, rest, 8)
+            # The Chibi eyelash tips sit farther outside the closed-eye redraw than
+            # the teen template; an 8px frontier left dark original lash cores alive.
+            # The mask is confined to the socket + extracted lash, so grow far enough
+            # to fill the *entire* uncovered region rather than keeping baked strokes.
+            tmp = grow_colors(tmp, rest, 40)
             tmp[..., 3] = keep_a
             head = tmp
 

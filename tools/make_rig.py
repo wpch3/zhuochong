@@ -1602,6 +1602,8 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           star_eyes=None, base=None, fx_table=None, skirtp=None, jacketp=None,
           handp=None, skirtx=None):
     sp_w, sp_h = sprite["sprite_size"]
+    # Chibi wide-eye patch is incremental; keep its normal sclera base visible.
+    is_chibi = os.path.basename(os.path.normpath(base or "")) == "chibi"
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
     by_name = {p["name"]: p for p in parts["parts"]}

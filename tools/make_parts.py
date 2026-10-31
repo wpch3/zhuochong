@@ -158,6 +158,23 @@ def auto_boxes(root, character, form, body):
             pad_dn = max(22, int(round(ih * 1.35)))
             eyes[side] = (max(0, ix0 - pad_x), max(0, iy0 - pad_up),
                           min(a.shape[1], ix1 + pad_x), min(a.shape[0], iy1 + pad_dn))
+            # 虹膜外扩只是几何下界：长睫毛尖超出 iris-based ROI 后会被切掉，
+            # 眼线层在 make_eye_parts 中需要连续的完整轮廓。额外留一圈约 1.5% 头高，
+            # 之后由眼眶连通域限制实际透明区域，不会把这圈脸/头发贴到角色上。
+            roi_pad = max(12, int(round(head * 0.015)))
+            x0, y0, x1, y1 = eyes[side]
+            x0, y0 = max(0, x0 - roi_pad), max(0, y0 - roi_pad)
+            x1, y1 = min(a.shape[1], x1 + roi_pad), min(a.shape[0], y1 + roi_pad)
+            # The iris is not centered in the painted eye contour: Chibi has long
+            # outward-facing lash tips. Keep more canvas on the temple side, but
+            # only a small extra margin toward the central bang/nose bridge.
+            outer_pad = max(16, int(round(head * 0.015)))
+            inner_pad = max(4, int(round(head * 0.005)))
+            if side == "left":
+                x0, x1 = max(0, x0 - outer_pad), min(a.shape[1], x1 + inner_pad)
+            else:
+                x0, x1 = max(0, x0 - inner_pad), min(a.shape[1], x1 + outer_pad)
+            eyes[side] = (x0, y0, x1, y1)
             print(f"[auto] {side} 虹膜 {area}px @ ({ix0},{iy0})-({ix1},{iy1}) → 框 {eyes[side]}")
     else:
         # 其他形态保留已校准的 Teen 几何量法（既有手填框逐项误差 ≤2px）。

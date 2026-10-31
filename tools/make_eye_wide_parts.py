@@ -1,30 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""make_eye_wide_parts.py —— 真·瞪大眼（ParamEyeL/RWide）补片
+"""make_eye_wide_parts.py —— Chibi 瞪大眼差分（ParamEyeL/RWide）
 
-为什么这张补片**不再**从 AI 重绘里切
---------------------------------------
-Live2D 里 `ParamEyeLWide` 不是"换一张新画"，而是把**同一张眼件的顶点往上拉**：
-眼眶张开、眼白露得多、虹膜尺寸不变。Cubism 官方参数表写的是
-"Widen the eye beyond ParamEyeLOpen"，实现上就是网格形变。
+以 Chibi 原画的 eye socket、独立 iris ball 和 make_eyeline_parts 生成的
+upper-lash-only 贴图构造 wide 候选：只轻微扩张外露眼白翼/上睫毛，不拉伸虹膜，
+也不使用带脸/头发 halo 的矩形裁切。AI 的 face_eyeswide 曾生成错比例白块，故不照搬。
 
-本工程的引擎还没有可变形网格（P0 待做，见 docs/ENGINE_AUDIT_2026-10-25.md），
-能做的是**整件仿射**。所以这张补片的正确做法是：
-拿原画自己的 `eye_<side>_base.png`（眼白 + 上睫毛），以眼球中心为锚各向异性放大
-（横向 x1.12、纵向 x1.20），虹膜本来就不在这张图里（在 eye_<side>_ball 上）——
-等价于"眼眶被撑开、虹膜不变"，和 Cubism 的口径一致。
-
-为什么不用 AI 重绘那张 `face_eyeswide.png`
-------------------------------------------
-试过，且配准是准的（按虹膜两点相似变换，误差 < 2px），问题出在**画**上：
-AI 把"瞪大"画成了"整只眼放大"——重绘眼白 127x136 画布像素，而本体眼眶只有
-104x87。照抄的结果是脸颊上一块白色圆角矩形（沙箱实拍 /tmp/f_surprise.png、
-/tmp/surprise_zoom2.png）。把它各向异性缩回眼眶尺寸后又变成"重新画一遍眼白"，
-边缘必然和原画对不上（覆盖率当场掉到 0%）。
-一句话：这张 AI 图的比例和本体不是同一套，硬套只能二选一（白板 / 错边）。
-
-输出：sprites/eye_l_wide.png、eye_r_wide.png、eye_wide_parts.json
-      （字段与 make_eye_closed_parts.py 的 --variant wide 完全兼容，make_rig 不用改）
+当前倍率 KX=1.04、KY=1.10 只是待验收近似，不等价于 Live2D 网格形变；真实引擎
+截图与 full-chain QA 通过前不得把该候选视为完成。
 
 用法：
   ~/.imgenv/bin/python tools/make_eye_wide_parts.py --character xiaoxun --form chibi
@@ -38,10 +21,9 @@ import os
 import numpy as np
 from PIL import Image
 
-# 眼眶撑开的量。live2d 的 EyeWide 一般是把上眼线抬 10~20%、下眼线不动，
-# 这里用各向异性放大近似：横向 1.12（眼白变宽）、纵向 1.20（上眼线抬高）。
-KX = 1.12
-KY = 1.20
+# 候选采用轻量各向异性近似，不代表已经通过真实 wide 表情验收。
+KX = 1.04
+KY = 1.10
 FEATHER = 0.14      # 边缘羽化占比（相对半径）——不含羽化的话放大后边界是一圈硬线
 
 
@@ -131,8 +113,11 @@ def main() -> int:
     bkeep = body[..., 3] > 128
     eyes = {e["side"]: e for e in
             json.load(open(os.path.join(sp, "eye_parts.json"), encoding="utf-8"))["eyes"]}
+    el_path = os.path.join(sp, "eyeline_parts.json")
+    eyelines = ({x["side"]: x for x in json.load(open(el_path, encoding="utf-8")).get("eyes", [])}
+                if os.path.exists(el_path) else {})
 
-    out = {"source": "eye_<side>_base.png（原画眼白 + 上睫毛）各向异性放大",
+    out = {"source": "eye_<side>_socket + eye_<side>_lash_up（无裁切脸块）各向异性放大",
            "register": {"scale": [KX, KY], "ncc": None, "tx": 0.0, "ty": 0.0,
                         "seeded_by": "base_affine"},
            "source_note": "原画眼件仿射撑开（Live2D ParamEyeLWide 的贴图等价做法）",
@@ -142,97 +127,87 @@ def main() -> int:
         e = eyes[side]
         px, py = e["patch_pos"]
         base = np.array(Image.open(os.path.join(sp, f"eye_{side}_base.png")).convert("RGBA"))
+        socket = np.array(Image.open(os.path.join(sp, e["socket"])).convert("RGBA"))
         bh, bw = base.shape[:2]
-        rgb = base[..., :3].astype(np.float32)
-        alpha = base[..., 3].astype(np.float32) / 255.0
-        # 睫毛件如果单独存在就叠上（有的形态把它并进 base 了）
-        try:
-            lash = np.array(Image.open(os.path.join(sp, f"eye_{side}_lash.png")).convert("RGBA"))
-            if lash.shape[:2] == (bh, bw):
-                la = lash[..., 3].astype(np.float32) / 255.0
-                lrgb = lash[..., :3].astype(np.float32)
-                m = la[..., None]
-                rgb = rgb * (1 - m) + lrgb * m
-                alpha = np.maximum(alpha, la)
-        except OSError:
-            pass
+        if socket.shape[:2] != (bh, bw):
+            raise SystemExit(f"[wide] {side} socket/base 尺寸不一致")
+        socket_a = socket[..., 3].astype(np.float32) / 255.0
 
-        # 以眼球中心为锚放大：锚点 = ball 框中心（画布坐标）→ base 图内坐标
+        # The normal clean sclera base remains visible in Chibi wide mode. This
+        # overlay contains only the *incremental* sclera outside that base silhouette
+        # plus a mildly raised upper lash; drawing a full white ring around a fixed
+        # iris was the visible defect in v3/v4.
+        lash_file = eyelines.get(side, {}).get("lash_file") or f"eye_{side}_lash.png"
+        lash = np.array(Image.open(os.path.join(sp, lash_file)).convert("RGBA"))
+        if lash.shape[:2] != (bh, bw):
+            raise SystemExit(f"[wide] {side} upper-lash/base 尺寸不一致")
+        la = lash[..., 3].astype(np.float32) / 255.0
+
         gx0, gy0 = e["ball_pos"]
         gw, gh = e["ball_size"]
-        cxb, cyb = gx0 + gw / 2.0, gy0 + gh / 2.0      # 眼球中心（画布）
-        cxl, cyl = cxb - px, cyb - py                  # 同一根锚在 base 图内
-        # ★ base 件整幅 264x151 里除了眼白还带着眼眶外侧的一撮头发，
-        #   直接放大等于把那撮头发一起糊到脸上（实测接缝色差 95）。
-        #   只留与眼球中心连通的那一块 —— 眼球、上睫毛、眼线本来就是连着的。
-        # 只留与眼球中心连通的那一块（base 件里还带着眼眶外侧的一撮头发）
-        _seed = (int(np.clip(cyb - py, 0, bh - 1)), int(np.clip(cxb - px, 0, bw - 1)))
-        keep_eye = _fill_holes(_isolate(base[..., 3] > 40, _seed))
-        alpha = alpha * keep_eye.astype(np.float32)
-
-        s_rgb, s_a = _premul_scale(rgb, alpha, KX, KY)
-        sh, sw = s_a.shape
-        nacx, nacy = cxl * KX, cyl * KY
-        ax0 = int(round(cxb - nacx))
-        ay0 = int(round(cyb - nacy))
+        cxb, cyb = gx0 + gw / 2.0, gy0 + gh / 2.0
+        cxl, cyl = cxb - px, cyb - py
+        s_base_rgb, s_base_a = _premul_scale(base[..., :3].astype(np.float32), socket_a, KX, KY)
+        s_lash_rgb, s_lash_a = _premul_scale(lash[..., :3].astype(np.float32), la, KX, KY)
+        sh, sw = s_base_a.shape
+        ax0 = int(round(cxb - cxl * KX))
+        ay0 = int(round(cyb - cyl * KY))
         ax0 = max(0, min(W - sw, ax0))
         ay0 = max(0, min(H - sh, ay0))
         ax1, ay1 = ax0 + sw, ay0 + sh
-        tgt = brgb[ay0:ay1, ax0:ax1]
+
+        # Compare the expanded socket against the original base in the same body
+        # coordinates. Only positive difference is painted; the normal base supplies
+        # all unchanged sclera, so the iris has no white halo/ring overlay.
+        original_socket = np.zeros((H, W), np.float32)
+        sx1, sy1 = min(W, px + bw), min(H, py + bh)
+        if px < sx1 and py < sy1:
+            original_socket[py:sy1, px:sx1] = socket_a[:sy1-py, :sx1-px]
+        orig_crop = original_socket[ay0:ay1, ax0:ax1]
+        extra_a = np.clip(s_base_a - orig_crop, 0.0, 1.0)
+        # Widening should reveal a modest upper sclera crescent, not a white ring
+        # beneath and around the iris. Keep only the upper half of the incremental
+        # expansion; the unchanged base already supplies the lower/side eye shape.
+        body_y = np.arange(sh, dtype=np.float32)[:, None] + ay0
+        upper_gate = np.clip((cyb + 4.0 - body_y) / 8.0, 0.0, 1.0)
+        extra_a *= upper_gate
+
+        # Upper lash is a full replacement for the normal lash (hidden by the rig in
+        # wide mode); composite it over the incremental sclera extension.
+        combined_a = extra_a + s_lash_a * (1.0 - extra_a)
+        premul = (s_base_rgb * extra_a[..., None]
+                  + s_lash_rgb * (s_lash_a * (1.0 - extra_a))[..., None])
+        combined_rgb = np.divide(premul, np.maximum(combined_a[..., None], 1e-4),
+                                 out=np.zeros_like(premul), where=combined_a[..., None] > 1e-4)
         bk = bkeep[ay0:ay1, ax0:ax1]
+        alpha2 = combined_a * bk.astype(np.float32)
 
-        # alpha 口径**和闭眼件完全一致**：软椭圆 ∩ (原画这里是皮肤/线稿/眼睛)。
-        # 这条口径在闭眼/笑眼/痛苦三档上已经验证过（不会把头发糊到脸上、也不会
-        # 把脸糊成一整块）；早先试过"按颜色挑眼白"的写法，洞与边会互相打架，
-        # 补片变成一块白色圆角矩形（沙箱实拍 /tmp/surprise_zoom5.png）。
-        yy = np.arange(sh)[:, None].astype(np.float32)
-        xx = np.arange(sw)[None, :].astype(np.float32)
-        eccy, eccx = (sh - 1) / 2.0, (sw - 1) / 2.0
-        rad = np.sqrt(((xx - eccx) / (sw / 2.0)) ** 2 + ((yy - eccy) / (sh / 2.0)) ** 2)
-        kf = FEATHER / max(sw, sh) * 2.0
-        soft = np.clip((1.0 - rad) / max(kf, 1e-3) + 0.35, 0, 1)
-        _r, _b = tgt[..., 0], tgt[..., 2]
-        body_skin = (_r > 200) & (_r > _b + 8)
-        body_line = tgt.mean(axis=2) < 150
-        eye_zone = np.zeros((sh, sw), bool)
-        eye_zone[max(0, gy0 - 6 - ay0):min(sh, gy0 + gh + 6 - ay0),
-                 max(0, gx0 - 6 - ax0):min(sw, gx0 + gw + 6 - ax0)] = True
-        alpha2 = soft * s_a * bk * (body_skin | body_line | eye_zone).astype(np.float32)
-
-        # 覆盖检查：原画眼球件必须被盖住（和闭眼件同一口径）
-        must = np.zeros((sh, sw), bool)
-        # 要盖住的"原画眼睛" = 眼球件 ∪ 眼白/睫毛件（后者正是这张补片要顶替的那张画）
-        ball = np.array(Image.open(os.path.join(sp, f"eye_{side}_ball.png")).convert("RGBA"))
-        bb_a = ball[..., 3]
-        bh2, bw2 = bb_a.shape
-        ox, oy = gx0 - ax0, gy0 - ay0
-        sx0, sy0 = max(0, -ox), max(0, -oy)
-        dx0, dy0 = max(0, ox), max(0, oy)
-        cw = min(bw2 - sx0, sw - dx0)
-        chh = min(bh2 - sy0, sh - dy0)
-        if cw > 0 and chh > 0:
-            must[dy0:dy0 + chh, dx0:dx0 + cw] |= bb_a[sy0:sy0 + chh, sx0:sx0 + cw] > 128
-        cover = float((alpha2[must] > 0.9).mean()) if must.sum() else 1.0
-        if cover < 0.995:
-            raise SystemExit(f"[wide] {side} 放大后的补片没盖住眼球件（{cover:.1%}）——"
-                             "KX/KY 太大或锚点算错")
-
+        if int((alpha2 > 0.9).sum()) < 120:
+            raise SystemExit(f"[wide] {side} 扩展/睫毛补片有效像素不足，拒绝写出")
         img = np.zeros((sh, sw, 4), np.uint8)
-        img[..., :3] = np.clip(s_rgb, 0, 255).round().astype(np.uint8)
+        img[..., :3] = np.clip(combined_rgb, 0, 255).round().astype(np.uint8)
         img[..., 3] = (alpha2 * 255).round().astype(np.uint8)
+        rr, gg, bb, aa = (img[..., i].astype(int) for i in range(4))
+        keyed = ((aa > 40) & (gg - np.maximum(rr, bb) > 60)) | (
+            (aa > 40) & (rr - gg > 60) & (bb - gg > 60) & (rr > 150) & (bb > 150))
+        img[keyed, :3] = 0
+        img[keyed, 3] = 0
         fn = f"eye_{side}_wide.png"
         Image.fromarray(img, "RGBA").save(os.path.join(sp, fn))
 
         edge = (alpha2 > 0.05) & (alpha2 < 0.95) & bk
-        seam = float(np.abs(s_rgb - tgt)[edge].mean()) if edge.sum() else 0.0
+        tgt = brgb[ay0:ay1, ax0:ax1]
+        seam = float(np.abs(combined_rgb - tgt)[edge].mean()) if edge.sum() else 0.0
+        upper_opaque = int((extra_a > 0.9).sum())
+        lash_opaque = int((s_lash_a > 0.9).sum())
         out["eyes"].append({
             "side": side, "file": fn, "pos": [ax0, ay0], "size": [sw, sh],
             "gain": [1.0, 1.0, 1.0], "offset": [0.0, 0.0, 0.0],
-            "checks": {"cover_ratio": round(cover, 4), "seam_mean_abs": round(seam, 2),
-                       "opaque_px": int((alpha2 > 0.9).sum()), "iris_erased_px": 0},
+            "checks": {"added_sclera_px": upper_opaque, "upper_lash_px": lash_opaque,
+                       "seam_mean_abs": round(seam, 2), "keyed_px_removed": int(keyed.sum())},
         })
-        print(f"瞪大眼 {side}: {sw}x{sh} @ 身体({ax0},{ay0})  盖住眼球 {cover*100:.1f}%  "
-              f"接缝色差 {seam:.1f}（原画眼件 x({KX},{KY}) 放大）")
+        print(f"瞪大眼 {side}: {sw}x{sh} @ 身体({ax0},{ay0})  "
+              f"新增眼白 {upper_opaque}px / 上睫毛 {lash_opaque}px  接缝 {seam:.1f}")
 
     with open(os.path.join(sp, "eye_wide_parts.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)

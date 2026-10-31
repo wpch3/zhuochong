@@ -7870,3 +7870,13 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - 做了什么：T67.67 已启动。当前 Q 版的 567 底图对比原始设计图疑似源头损伤；先在隔离副本中按记录的固定裁框重抠，再决定整链方案，避免直接改生产素材或再犯 569 几何漂移。
 - 遇到/修了什么：从设计母图 design_sheet_chibi.png 的四点框 [628,101,1416,1891] 复现 569×1292 body_full。亲自白底目视对照：当前 567 基线在刘海、脸缘、衣领与衣服有明显碎裂/暗色锯齿，新抠图连续干净。归档源头审计 JSON 和 A/B 图；TASKS 标记 T67.67 进行中。
 - 下一步：先提交推送源头试产证据；随后在临时仓库中全量重建所有 Q 切件、@2x、rig 和绑定，并修复重建流程中发现的形态级几何问题；最终从真实 C 引擎目视验收全身/脸部/动作，未通过前不覆盖生产版。
+
+## 2026-11-01｜T67.67 Chibi wide 复验、全身/尾巴/idle 观察与 WIP 推送准备
+
+- **保持候选隔离**：候选根 `/tmp/zc_chibi_refit_20261101`，使用 `PYTHONPATH=/tmp/chibi_python` 检查最新 wide PNG；中心 alpha=0，确认此前预览的黑圆是透明洞，不是黑色实画。之后从 wide 贴图清除检查器发现的 16 个低 alpha 纯洋红像素；最新检查已归零该项。洋红合成只验证 alpha/颜色，不代表运行时通过。
+- 在隔离候选依次重建 rig → @2x → star eyes → rig，并重启真实 C 引擎后抓 `ParamEyeLWide/RWide=1`。先后比较 v4/v6/v7；v7 将补片改为增量眼白上缘 + 上睫毛，并让 Chibi 常态眼白底件留在 wide 状态。真实截图仍可见眼白外缘/眼角接缝；同引擎 default v7 A/B 也有基线白边，wide 暂不通过，不接生产。最新候选资产检查 `pass=false`、37 项失败（当前不是干净全链 rebuild）。
+- 默认全身帧 `chibi_candidate_default_v9.png`；tail relaxed 软蓬量尚可，up 侧可见部分偏细，puff 侧毛边/疑似像素碎线待查。6 秒 idle 抽样显示轻微身体摇摆/呼吸；检查 `api/idle` C 入口发现它只更新空闲时长，未找到定时轮换 idle 动作的逻辑；指南提到的偶发耳抖/脚步动作尚未自动化。
+- 重新核对附件清单与 rig 日志：有 16 个发/帽挂件因缺失切件被跳过；衣柜包当前只对 Teen 开放，Chibi 衣物替换位尚未落实。已将这些遗漏与验收门禁登记到 `G66.52` 和 `docs/qa/chibi_candidate_2026-11-01/README.md`。
+- 将 Chibi `make_eye_parts.py` / `make_eyeline_parts.py` / `make_eye_wide_parts.py` 的隔离候选实现同步到开发分支脚本，并修正 `rebuild_parts.sh` 顺序，使 wide 在 eyeline 之后生成；另保留候选 `make_parts.py` ROI 扩边修复。**生成贴图仍只在 `/tmp`，未接生产。**
+- 测试：`make test` 2638/0；`make web-test` 265/0；带 Pillow 的 `selfcheck_repo.py` 767 项中 1 项失败，原因是 WIP `make_rig.py` 指纹更新而正式 Teen/Chibi rig 按隔离门禁未重建；素材/JSON 卫生项已随进度 stage 后通过。`git diff --cached --check` 通过。`make warncheck` 有 1 条 `_zperf_probe` 未使用警告。候选最新资产 QA `pass=false`、37 fail；干净全链尚未重跑。
+- 当前状态：**WIP，未完成、未发布、未验收**。下一步是进一步修 wide 与尾巴/缺件、完成隔离全链清洁重建，再通过真实引擎目视及完整资产 QA；任何未解释失败都阻止接入生产。

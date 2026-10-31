@@ -171,12 +171,9 @@ step "11/27 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切�
 step "12/27 笑眼真素材（同一条流水线，底图换成山型 ∩ 的笑眼脸）"
 "$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant smile
 
-step "13/27 痛苦闭眼 >_< 与真·瞪大眼（痛苦=第三张重绘底图；瞪大=原画眼件仿射撑开）"
+step "13/27 痛苦闭眼 >_<（第三张重绘底图）"
 "$PY" tools/make_eye_closed_parts.py --character "$CH" --form "$FM" --variant pain
-# 瞪大眼**不走 AI 重绘**：那张图画成了"整只眼放大"（眼白 127x136 vs 本体眼眶 104x87），
-# 照抄=脸颊一块白圆角矩形，缩回去又变成重画一遍眼白。Live2D 的 ParamEyeLWide 本来
-# 就是"把同一张眼件的顶点往上拉"，所以这里用原画眼件各向异性放大 (1.12, 1.20)。
-"$PY" tools/make_eye_wide_parts.py --character "$CH" --form "$FM"
+# 瞪大眼依赖完整眼线拆分后的上睫毛层，故移到 18a，在 make_eyeline_parts 之后生成。
 
 step "14/27 上眼睑（没有闭眼真素材时的兜底方案）"
 "$PY" tools/make_eyelid_parts.py --character "$CH" --form "$FM"
@@ -195,8 +192,9 @@ step "17/27 头皮塗り足し（seg_head 是张光头：抹掉人耳 / 鬓发�
 #   不补画就收鬓发 = 第九问被打回的「人耳裸露在脸颊」。
 "$PY" tools/make_scalp_patch.py --character "$CH" --form "$FM"
 
-step "18/27 眼线二次拆件（最后跑：脸上那只睁眼挖成眼窝皮肤，必须排在所有改 seg_head 的工具之后）"
+step "18/27 眼线最终拆件 + 真·瞪大眼差分（眼线必须在所有改 seg_head 的工具之后；wide 只放大眼白翼与上睫毛）"
 "$PY" tools/make_eyeline_parts.py --character "$CH" --form "$FM"
+"$PY" tools/make_eye_wide_parts.py --character "$CH" --form "$FM"
 
 step "19/27 闭合笑线剪切（把笑线从 seg_head 上剪下来，必须排在所有改 seg_head 的工具之后）"
 "$PY" tools/make_mouth_line_cut.py --character "$CH" --form "$FM"
