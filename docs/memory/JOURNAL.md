@@ -7880,3 +7880,9 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - 将 Chibi `make_eye_parts.py` / `make_eyeline_parts.py` / `make_eye_wide_parts.py` 的隔离候选实现同步到开发分支脚本，并修正 `rebuild_parts.sh` 顺序，使 wide 在 eyeline 之后生成；另保留候选 `make_parts.py` ROI 扩边修复。**生成贴图仍只在 `/tmp`，未接生产。**
 - 测试：`make test` 2638/0；`make web-test` 265/0；带 Pillow 的 `selfcheck_repo.py` 767 项中 1 项失败，原因是 WIP `make_rig.py` 指纹更新而正式 Teen/Chibi rig 按隔离门禁未重建；素材/JSON 卫生项已随进度 stage 后通过。`git diff --cached --check` 通过。`make warncheck` 有 1 条 `_zperf_probe` 未使用警告。候选最新资产 QA `pass=false`、37 fail；干净全链尚未重跑。
 - 当前状态：**WIP，未完成、未发布、未验收**。下一步是进一步修 wide 与尾巴/缺件、完成隔离全链清洁重建，再通过真实引擎目视及完整资产 QA；任何未解释失败都阻止接入生产。
+
+## 2026-11-01｜T67.67 WIP 阶段进度推送
+
+- 推送时发现远端分支已先前进到 `47acf10`；先 fetch 并以远端树为基底重算本地差异，保留远端用户参考 PDF/既有提交，不 force-push，也没有把旧基底上的大提交重复推上去。
+- 在 `arena/aaf1408c-zhuochong` 以 WIP 提交 `5fa011a` 上传 28 个变更（Chibi 候选 QA 证据、脚本/流水线调整与记忆台账）。推送成功：`47acf10..5fa011a`。工作区干净。
+- 此提交明确是阶段记录而非完成交付：最新候选资产 QA 仍 fail 37；真实引擎 wide 仍未通过；正式 rig/贴图未按候选重建；未声称全链通过。
