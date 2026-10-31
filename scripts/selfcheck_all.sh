@@ -87,6 +87,8 @@ else
 fi
 for f in characters/*/forms/*/sprites/*.png; do
   [ -f "$f" ] || continue
+  # L 模式的 armpit/skirt mask 是灰度权重图，不是 RGBA 精灵；在 check_assets 中按 mask schema 校验。
+  case "$f" in */armpit_mask*.png|*/skirt_mask*.png|*/skirt_mask_base*.png) continue ;; esac
   [ -n "$PY" ] || break
   "$PY" - "$f" <<'PY' || bad "$f 透明通道检查失败"
 import sys
@@ -99,6 +101,15 @@ sys.exit(0)
 PY
 done
 [ $FAIL -eq 0 ] && ok "所有部件都有透明通道"
+if [ -n "$PY" ]; then
+  if "$PY" tools/qa_hair_purity.py --character xiaoxun --form teen --check-twin-hood-eye; then
+    ok "twin hood 刘海中央无蓝色眼部污染"
+  else
+    bad "twin hood 刘海中央眼部污染检查失败"
+  fi
+else
+  echo "  跳过 twin hood 定点像素检查（缺少带 Pillow/NumPy 的 Python）"
+fi
 
 step "6/8 Windows 交叉编译"
 if command -v python3 >/dev/null; then :; fi
@@ -146,7 +157,7 @@ fi
 
 step "8/8 互动与动作端到端（冒烟）"
 if [ -x build/zhuochong_preview ]; then
-  if python3 tools/api_smoke.py --spawn --port 5200 --root . >/tmp/zc_smoke.log 2>&1; then
+  if "${PY:-python3}" tools/api_smoke.py --spawn --port 5200 --root . >/tmp/zc_smoke.log 2>&1; then
     ok "$(tail -1 /tmp/zc_smoke.log)"
   else
     bad "互动/动作冒烟测试有不通过项（见 /tmp/zc_smoke.log）"; tail -12 /tmp/zc_smoke.log

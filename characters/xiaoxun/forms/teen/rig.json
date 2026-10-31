@@ -2571,7 +2571,7 @@
       "group": "head",
       "layer": 257,
       "pos": [
-        502,
+        497,
         156
       ],
       "anchor": [
@@ -2583,6 +2583,28 @@
         "hood"
       ],
       "note": "戴帽时垂下的马尾（挂件，槽 head_side_hair）：双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_hair_hood_pony_side",
+      "file": "sprites/hair_hood_pony_side@2x.png",
+      "group": "head",
+      "layer": 259,
+      "pos": [
+        427,
+        223
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hood"
+      ],
+      "note": "戴帽马尾脸侧鬓发（仅发丝）（挂件，槽 head_side_hair）：双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
@@ -12799,7 +12821,11 @@
             "acc_hair_pony",
             "acc_hair_long",
             "acc_hair_sidelong_l",
-            "acc_hair_sidelong_r"
+            "acc_hair_sidelong_r",
+            "acc_hair_sweep_pony_l",
+            "acc_hair_sweep_pony_r",
+            "acc_hair_sweep_twin_l",
+            "acc_hair_sweep_twin_r"
           ]
         },
         {
@@ -12815,7 +12841,8 @@
             "acc_hood_up_pony",
             "acc_hair_hood_pony",
             "acc_hood_up_long",
-            "acc_hair_hood_long"
+            "acc_hair_hood_long",
+            "acc_hair_hood_pony_side"
           ]
         }
       ],
@@ -12868,6 +12895,7 @@
             "acc_hair_crown_pony",
             "acc_hood_up_pony",
             "acc_hair_hood_pony",
+            "acc_hair_hood_pony_side",
             "acc_hair_sweep_pony_l",
             "acc_hair_sweep_pony_r"
           ],

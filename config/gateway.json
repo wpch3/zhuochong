@@ -1,4 +1,5 @@
 {
+  "schema_version": "1.0",
   "_note": "网关：所有外部调用的唯一出口。密钥不写在这里，只写 secret:// 引用；真实值放本机 .env（不入库）。",
   "proxy": {
     "enabled": false,

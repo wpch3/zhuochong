@@ -71,37 +71,40 @@ FLAT_RGB_STD = 6.0    # RGB 标准差低于这个就认为"没内容"，走插�
 def kill_keycolor(arr):
     """抑制键色残留（纯绿 / 洋红），返回 (新数组, 处理了几个像素)。
 
-    为什么需要：原图里这些残留躲在 alpha<40 的边缘，`check_assets` 的
-    「无键色垃圾像素」闸只看 alpha>40，所以 1× 是干净的。
-    **超分 + alpha LANCZOS 之后 alpha 被插值抬到 40 以上，残留就浮出来了** ——
-    2026-10-15 首次全量跑完实测 21 个（body_full@2x 8 个、hair_side_l@2x 3 个…）。
-    这正是 DC44 复查触发条件②写的情况（"超分会忠实放大抠图残留"）。
+    为什么需要：键色既可能在可见区（alpha>40），也可能藏在低 alpha 边缘。
+    后者虽然此刻不显眼，却会在后续重采样/合成时染出绿边或洋红边；因此两种区域
+    都要清理，不能把“当前不可见”误当作“可以留在生产精灵里”。
 
-    判定口径**和 check_assets 完全一致**，不能各写一套：
+    颜色判据与素材审计同源：
         纯绿   G - max(R,B) > 60
         洋红   R-G>60 且 B-G>60 且 R>150 且 B>150
-    处理方式：用 3×3 邻域里的非键色像素均值重填 RGB（保留 alpha，边缘不留洞），
-    迭代两轮；两轮后仍是键色的，直接把 alpha 清零。
+    处理方式：可见键色先用 3×3 邻域里的非键色像素均值重填 RGB；没有干净邻居时
+    才将其 alpha 清零。alpha≤40 的隐藏键色同样先从邻域修 RGB，孤立残留清 RGB，
+    始终保留其 alpha。这样不靠降低审计阈值，也不把色污染留给后续放大。
     """
     import numpy as np
     a = arr.astype(np.int16)
-    R, G, B, A = a[..., 0], a[..., 1], a[..., 2], a[..., 3]
 
-    def mask_of(x):
-        r, g, b, al = x[..., 0], x[..., 1], x[..., 2], x[..., 3]
+    def key_mask(x):
+        r, g, b = x[..., 0], x[..., 1], x[..., 2]
         green = (g - np.maximum(r, b)) > 60
         mag = (r - g > 60) & (b - g > 60) & (r > 150) & (b > 150)
-        return (al > 40) & (green | mag)
+        return green | mag
+
+    def mask_of(x):
+        return (x[..., 3] > 40) & key_mask(x)
 
     bad0 = mask_of(a)
-    n0 = int(bad0.sum())
+    low0 = (a[..., 3] <= 40) & key_mask(a)
+    n0 = int(bad0.sum() + low0.sum())
     if n0 == 0:
         return arr, 0
+    # 先修可见区；相邻的干净不透明像素提供边缘颜色，alpha 不动。
     for _ in range(2):
         bad = mask_of(a)
         if not bad.any():
             break
-        good = (~bad) & (a[..., 3] > 40)
+        good = (~key_mask(a)) & (a[..., 3] > 40)
         acc = np.zeros(a.shape[:2] + (3,), np.float64)
         cnt = np.zeros(a.shape[:2], np.float64)
         for dy in (-1, 0, 1):
@@ -115,7 +118,33 @@ def kill_keycolor(arr):
         fill = bad & (cnt > 0)
         a[..., :3][fill] = (acc[fill] / cnt[fill][:, None]).round()
     left = mask_of(a)
-    a[..., 3][left] = 0          # 实在填不掉的（周围也全是键色）就隐掉
+    a[..., 3][left] = 0          # 实在填不掉的可见键色（周围也全是键色）就隐掉
+
+    # 超分与 alpha 插值会把透明边缘的键色像素带进 PNG。alpha≤40 的像素
+    # 虽未越过可见判据，仍会在下游重采样时污染边缘；先用相邻干净像素补 RGB，
+    # 没有干净邻居的就清 RGB（保留 alpha），而不是把键色垃圾写进交付精灵。
+    low = (a[..., 3] <= 40) & key_mask(a)
+    for _ in range(2):
+        if not low.any():
+            break
+        good = (~key_mask(a)) & (a[..., 3] > 40)
+        acc = np.zeros(a.shape[:2] + (3,), np.float64)
+        cnt = np.zeros(a.shape[:2], np.float64)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy == 0 and dx == 0:
+                    continue
+                gs = np.roll(np.roll(good, dy, 0), dx, 1)
+                px = np.roll(np.roll(a[..., :3], dy, 0), dx, 1)
+                acc += px * gs[..., None]
+                cnt += gs
+        fill = low & (cnt > 0)
+        if not fill.any():
+            break
+        a[..., :3][fill] = (acc[fill] / cnt[fill][:, None]).round()
+        low = (a[..., 3] <= 40) & key_mask(a)
+    low = (a[..., 3] <= 40) & key_mask(a)
+    a[..., :3][low] = 0
     return a.astype(arr.dtype), n0
 
 
@@ -153,6 +182,8 @@ def main() -> int:
     ap.add_argument("--form", required=True)
     ap.add_argument("--root", default=".")
     ap.add_argument("--model-dir", default=".cache/models")
+    ap.add_argument("--only", default="",
+                    help="只重建逗号分隔的 PNG 子集；不删改其它 @2x，也合并保留旧报告项")
     ap.add_argument("--clean", action="store_true", help="删掉所有 @2x 再退出")
     args = ap.parse_args()
 
@@ -163,6 +194,9 @@ def main() -> int:
         return 2
 
     existing = sorted(glob.glob(os.path.join(sp_dir, "*" + SUFFIX)))
+    if args.clean and args.only:
+        print("[错误] --clean 与 --only 不能同时使用", file=sys.stderr)
+        return 2
     if args.clean:
         for f in existing:
             os.remove(f)
@@ -231,12 +265,26 @@ def main() -> int:
                   if not f.endswith(SUFFIX)
                   and os.path.basename(f) not in owned
                   and (want is None or os.path.basename(f) in want))
-    # 把不再需要的旧 @2x 清掉，别留垃圾在库里
-    for stale in glob.glob(os.path.join(sp_dir, "*" + SUFFIX)):
-        if os.path.basename(stale).replace(SUFFIX, ".png") in owned:
-            continue
-        if stale[:-len(SUFFIX)] + ".png" not in srcs:
-            os.remove(stale)
+    requested = {x.strip() for x in args.only.split(",") if x.strip()}
+    if any(os.path.basename(x) != x or not x.endswith(".png") or x.endswith(SUFFIX)
+           for x in requested):
+        print("[错误] --only 只接受 sprite 目录内的 1× .png 文件名", file=sys.stderr)
+        return 2
+    if requested:
+        available = {os.path.basename(x) for x in srcs}
+        missing = sorted(requested - available)
+        if missing:
+            print("[错误] --only 中的文件不在 rig 引用切件里：%s" % missing,
+                  file=sys.stderr)
+            return 2
+        srcs = [x for x in srcs if os.path.basename(x) in requested]
+    else:
+        # 全量模式才清理过期 @2x；定向返修必须保留未选中的配对件。
+        for stale in glob.glob(os.path.join(sp_dir, "*" + SUFFIX)):
+            if os.path.basename(stale).replace(SUFFIX, ".png") in owned:
+                continue
+            if stale[:-len(SUFFIX)] + ".png" not in srcs:
+                os.remove(stale)
     t0 = time.time()
     rows, n_sr, n_lz, n_nat, n_fixed = [], 0, 0, 0, 0
     for src in srcs:
@@ -287,6 +335,22 @@ def main() -> int:
         rows.append({"name": os.path.basename(src), "src": [w, h],
                      "dst": [w * FACTOR, h * FACTOR],
                      "method": method, "keycolor_fixed": n_junk})
+
+    if requested:
+        rp = os.path.join(sp_dir, "hires_report.json")
+        previous = {}
+        if os.path.exists(rp):
+            try:
+                with open(rp, encoding="utf-8") as f:
+                    previous = {p["name"]: p for p in json.load(f).get("parts", [])}
+            except (OSError, ValueError, KeyError, TypeError):
+                previous = {}
+        previous.update({row["name"]: row for row in rows})
+        rows = [previous[name] for name in sorted(previous)]
+        n_nat = sum(row.get("method") == "native" for row in rows)
+        n_lz = sum(row.get("method") == "lanczos" for row in rows)
+        n_sr = sum(row.get("method") == "realesrgan" for row in rows)
+        n_fixed = sum(int(row.get("keycolor_fixed", 0)) for row in rows)
 
     report = {
         "schema_version": "1.0",

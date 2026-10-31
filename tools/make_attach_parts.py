@@ -320,7 +320,13 @@ def _emit(att, crgb, ca, bw, bh, sprites_dir, anchors):
     # 高度来自**形态级** anchors.json（相对几何，T2.2.0）：
     # 同一张挂件表要能套在 teen/loli/adult/chibi 四个形态上，
     # 写绝对像素的话 chibi 那个 517px 的头上会扣一对 104px 的耳朵。
-    _pos, h1 = attach_geom.resolve(att, anchors)
+    # socket 挂件的位置由挂点表负责，附件表只保留头高比例尺寸；此时不能
+    # 调 resolve() 要求 ref/pos_rel（socket 迁移后这两个字段有意移除了）。
+    if att.get("socket") and "pos_rel" not in att:
+        h1 = int(round(float(att["sprite_h_rel"])
+                       * attach_geom.unit_px(anchors, att.get("unit", "head"))))
+    else:
+        _pos, h1 = attach_geom.resolve(att, anchors)
     # width_ratio：横向压扁/拉宽系数，1.0 = 保持原图宽高比。
     # ★ 猫耳要用到：素材画出来的宽高比是 1.09（扁三角），但真猫耳从正面看
     #   底宽约为高的 0.8，1.09 会让两只耳朵横着铺满整个头顶 —— 用户原话「过宽」。
@@ -562,6 +568,8 @@ def main() -> int:
     ap.add_argument("--root", default=".")
     ap.add_argument("--character", required=True)
     ap.add_argument("--form", required=True)
+    ap.add_argument("--only", default="",
+                    help="逗号分隔的挂件 id；只重做指定挂件并合并原 attach_parts.json")
     a = ap.parse_args()
 
     base = os.path.join(a.root, "characters", a.character)
@@ -582,8 +590,29 @@ def main() -> int:
     if anchors is None:
         anchors = attach_geom.load_anchors(os.path.join(base, "forms", a.form))
     slots = {s["id"]: s for s in table["slots"]}
+    all_attachments = table["attachments"]
+    only = {x.strip() for x in a.only.split(",") if x.strip()}
+    known_ids = {att["id"] for att in all_attachments}
+    unknown = only - known_ids
+    if unknown:
+        raise SystemExit("[attach] --only 有未知挂件 id：" + ", ".join(sorted(unknown)))
+
+    dst = os.path.join(sprites, "attach_parts.json")
+    previous = {}
+    if only:
+        if not os.path.exists(dst):
+            raise SystemExit("[attach] --only 需要现有 attach_parts.json 以保留未选条目")
+        with io.open(dst, encoding="utf-8") as f:
+            old = json.load(f)
+        previous = {entry["id"]: entry for entry in old.get("attachments", [])}
+        missing = known_ids - only - previous.keys()
+        if missing:
+            raise SystemExit("[attach] --only 无法保留缺失的既有条目：" + ", ".join(sorted(missing)))
     out = {"schema_version": "1.0", "slots": table["slots"], "attachments": []}
-    for att in table["attachments"]:
+    entries = dict(previous) if only else {}
+    for att in all_attachments:
+        if only and att["id"] not in only:
+            continue
         slot = slots.get(att["slot"])
         if slot is None:
             raise SystemExit("[attach] %s 落在不存在的插槽 %r"
@@ -591,15 +620,19 @@ def main() -> int:
         w, h, made, cover = build_one(
             attach_geom.apply_overrides(att, _ovr), slot, redraw, sprites, anchors,
             design_dir=os.path.join(base, "design"), table=table)
-        out["attachments"].append({
+        entries[att["id"]] = {
             "id": att["id"], "slot": att["slot"],
             "file": "sprites/" + att["sprite"],
             "size": [w, h],
-        })
+        }
         print("[attach] %-10s → 槽 %-18s %dx%d（覆盖 %.0f%%）"
               % (att["id"], att["slot"], w, h, cover * 100))
 
-    dst = os.path.join(sprites, "attach_parts.json")
+    out["attachments"] = [entries[att["id"]] for att in all_attachments
+                          if att["id"] in entries]
+    if len(out["attachments"]) != len(all_attachments):
+        missing = known_ids - entries.keys()
+        raise SystemExit("[attach] 输出表缺少挂件：" + ", ".join(sorted(missing)))
     with io.open(dst, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
         f.write("\n")

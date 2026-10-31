@@ -1875,6 +1875,95 @@ def _df_drivers(rig, df_id):
     return out
 
 
+def check_reference_driven_development(root):
+    """Reference-driven rule must stay actionable in workflow, conformance, lessons, and source notes."""
+    section("文档 Reference-Driven Development 闭环")
+    workflow = read(os.path.join(root, "docs/memory/WORKFLOW.md"))
+    conformance = read(os.path.join(root, "docs/LIVE2D_CONFORMANCE.md"))
+    lessons = read(os.path.join(root, "docs/memory/LESSONS.md"))
+    refs = read(os.path.join(root, "docs/REFERENCE_NOTES.md"))
+
+    check("WORKFLOW 铁律 9 已登记",
+          "铁律 9（Reference-Driven Development" in workflow,
+          "docs/memory/WORKFLOW.md")
+    phrases = ("标准原则", "项目实现", "陷阱核对", "selfcheck", "全身参考")
+    missing = [p for p in phrases if p not in workflow]
+    check("WORKFLOW 覆盖完整执行闭环", not missing,
+          "缺少 " + ", ".join(missing) if missing else "原则→实现→陷阱→自检/目视")
+    check("Live2D 合规表列出 Iron Laws 审计与缺口",
+          "Reference-Driven Development 与 Iron Laws 审计" in conformance and
+          "Iron Laws 0–8" in conformance and "审计发现的缺口" in conformance,
+          "docs/LIVE2D_CONFORMANCE.md")
+    check("LESSONS 记录标准→实现→陷阱教训",
+          "Reference-Driven Development" in lessons and
+          all(x in lessons for x in ("标准原则", "项目实现", "陷阱核对")),
+          "docs/memory/LESSONS.md")
+    check("参考笔记含官方与成熟项目来源",
+          "docs.live2d.com/en/cubism-editor-tutorials/psd/" in refs and
+          "en.esotericsoftware.com/spine-meshes" in refs and
+          "inochi2d/nodes/deformer/meshdeformer.d" in refs,
+          "docs/REFERENCE_NOTES.md：Live2D / Spine / Inochi2D")
+    check("参考池覆盖 AI、Agent、性能/评估与角色原型并标注候选边界",
+          all(x in refs for x in ("ggml-org/llama.cpp", "sgl-project/sglang",
+                                  "promptfoo/promptfoo", "opentelemetry-collector",
+                                  "qdrant/qdrant", "godotengine/godot")) and
+          "不代表已集成" in refs and "桌宠 Q 版参考图" in refs,
+          "本地推理 / agent eval / observability / memory / 角色原型")
+    pony_prod = "\n".join(read(os.path.join(root, p)) for p in (
+        "characters/xiaoxun/design/attachments.json",
+        "characters/xiaoxun/forms/teen/rig.json",
+        "characters/xiaoxun/forms/teen/sprites/attach_parts.json"))
+    check("整脸 pony face-split 仍未进入生产配置",
+          "hair_hood_pony_face" not in pony_prod,
+          "只允许经过皮肤/眼睛排除的独立鬓发，不恢复整脸覆盖片")
+
+    # Hoodie pony ref has two side locks. The source generator reports the
+    # sprite bounding-box center; runtime attachments use a top-center anchor,
+    # so y must be shifted by half the sprite height. Catch both missing wiring
+    # and the easy-to-miss half-sprite vertical offset that creates black gaps.
+    try:
+        att_path = os.path.join(root, "characters/xiaoxun/design/attachments.json")
+        geo_path = os.path.join(root, "characters/xiaoxun/design/sheets/hood_geometry.json")
+        rig_path = os.path.join(root, "characters/xiaoxun/forms/teen/rig.json")
+        cuts_path = os.path.join(root, "characters/xiaoxun/forms/teen/sprites/attach_parts.json")
+        atts = json.load(io.open(att_path, encoding="utf-8"))["attachments"]
+        geo = json.load(io.open(geo_path, encoding="utf-8"))["pieces"]["hair_hood_pony_side"]
+        rig = json.load(io.open(rig_path, encoding="utf-8"))
+        cuts = json.load(io.open(cuts_path, encoding="utf-8"))["attachments"]
+        side = next(a for a in atts if a["id"] == "hair_hood_pony_side")
+        runtime_side = next(p for p in rig["parts"] if p["id"] == "acc_hair_hood_pony_side")
+        cut_side = next(a for a in cuts if a["id"] == "hair_hood_pony_side")
+        pose_groups = {g["id"]: g for g in rig.get("poses", [])}
+        pony_entry = next(e for e in pose_groups["hairstyle"]["entries"] if e["id"] == "pony")
+        down_entry = next(e for e in pose_groups["hood_pose"]["entries"] if e["id"] == "down")
+        expected_top_y = round(geo["pos_rel"][1] - geo["sprite_h_rel"] / 2, 6)
+        geometry_matches = (
+            side.get("pos_rel") == [geo["pos_rel"][0], expected_top_y]
+            and side.get("sprite_h_rel") == geo["sprite_h_rel"]
+            and side.get("source") == geo["sprite_file"]
+            and "curve" not in side
+        )
+        pose_matches = (
+            "acc_hair_hood_pony_side" in pony_entry.get("parts", [])
+            and "acc_hair_hood_pony_side" in down_entry.get("hide", [])
+        )
+        highres_matches = runtime_side.get("file", "").endswith("hair_hood_pony_side@2x.png")
+        check("pony 脸侧鬓发按模板几何布线且非脸部覆盖片",
+              geometry_matches and pose_matches and highres_matches and
+              cut_side.get("file") == "sprites/hair_hood_pony_side.png",
+              "中心锚点转顶部锚点、pony/hood_pose 显隐、1×/@2× 产物均已对应")
+    except (OSError, KeyError, StopIteration, TypeError, ValueError) as exc:
+        check("pony 脸侧鬓发按模板几何布线且非脸部覆盖片", False, str(exc))
+
+    hair_qa = read(os.path.join(root, "tools/qa_hair_purity.py"))
+    all_checks = read(os.path.join(root, "scripts/selfcheck_all.sh"))
+    check("twin hood 眼像素污染有定点 QA 闸",
+          "def check_twin_hood_eye_fragment" in hair_qa and
+          "--check-twin-hood-eye" in hair_qa and
+          "--check-twin-hood-eye" in all_checks,
+          "源切片中央眼部 ROI：修复前 124 px、修复后 0 px，整合进 selfcheck_all")
+
+
 def check_live2d(root):
     section("Live2D 标准合规：参数命名 / 取值范围 / model3 分组（静态）")
 
@@ -2471,6 +2560,26 @@ def check_live2d(root):
                if not _scalp else
                "藏承重件的档位 %s，每档都带了**同部位**的替代件；底图补画工具在位"
                % (_who or "（无）")))
+        _head_clean = os.path.join(root, "tools", "clean_head_backing.py")
+        _head_clean_ok = os.path.exists(_head_clean)
+        _rebuild_text = ""
+        try:
+            _rebuild_text = open(os.path.join(root, "tools", "rebuild_parts.sh"),
+                                 encoding="utf-8").read()
+        except OSError:
+            pass
+        _head_step = _rebuild_text.find("clean_head_backing.py")
+        _hires_step = _rebuild_text.find("make_hires_sprites.py")
+        _head_src = open(_head_clean, encoding="utf-8").read() if _head_clean_ok else ""
+        _head_contract = (_head_clean_ok and _head_step >= 0 and _hires_step > _head_step)
+        check("头件下颌修复使用 body_full 逐行轮廓，且在高清化前执行",
+              _head_contract,
+              "clean_head_backing.py 必须接入 rebuild_parts.sh，并先于 make_hires_sprites.py")
+        _jaw_edge_contract = ("h * 0.72" in _head_src and "edge_margin = 10" in _head_src
+                              and "edge_band" in _head_src and "xs.max()" in _head_src)
+        check("下颌修复覆盖真实下颌带、限制在脸缘，不能扫回眼睛/嘴部",
+              _jaw_edge_contract,
+              "下颌修复须从 0.72h 开始，仅从 body_full 复制两侧 10px 轮廓带")
         # ⑥ 收侧发这件事要**一路通到引擎**：表里写了 hide，生成器要搬进 rig.json，
         #    引擎的 pose_opacity 要认。少任何一环都是"在 JSON 里写日记"（G117 那类病）。
         _rigp = os.path.join(root, "characters", "xiaoxun", "forms", "teen", "rig.json")
@@ -4734,6 +4843,14 @@ def check_tools(root):
         check("@2x 恰好是 1× 的两倍尺寸", not wrong_size,
               f"对不上：{wrong_size[:3]} —— 不是同一张图放大来的"
               if wrong_size else "尺寸全部 ×2")
+        _hires_script = os.path.join(root, "tools", "make_hires_sprites.py")
+        _hires_text = (open(_hires_script, encoding="utf-8").read()
+                       if os.path.exists(_hires_script) else "")
+        _low_keycolor_clean = ("low0 = (a[..., 3] <= 40) & key_mask(a)" in _hires_text
+                               and "a[..., :3][low] = 0" in _hires_text)
+        check("2×输出会清除低 alpha 边缘里的隐藏键色 RGB",
+              _low_keycolor_clean,
+              "make_hires_sprites.py 必须清理 alpha≤40 的键色残留，避免后续重采样染边")
 
     # 超分基准（T30.1）：判据不许被悄悄放宽，高清 sheet 不许和原图脱钩。
     #
@@ -5200,7 +5317,7 @@ def main():
                check_action_dead_time,
                check_motion_measure,
                check_form_roadmap,
-               check_live2d, check_character,
+               check_reference_driven_development, check_live2d, check_character,
                check_web, check_contract, check_attach_switch,
                check_no_dead_tables, check_swing_headroom,
                check_ambient_sway,

@@ -267,47 +267,47 @@
    "file": "acc_hood_pony@2x.png",
    "kind": "cloth",
    "size": "592x690",
-   "opaque": 140199,
-   "near_white_pct": 33.93,
-   "edge_near_white_pct": 47.52,
+   "opaque": 141561,
+   "near_white_pct": 36.02,
+   "edge_near_white_pct": 14.49,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 2.36,
-   "dark_pct": 2.4,
+   "seam_pct": 0.84,
+   "dark_pct": 3.7,
    "hole_pct": 0.0,
-   "straight_run": 38,
-   "residue_pct": 29.59,
+   "straight_run": 37,
+   "residue_pct": 32.35,
    "residue": {
-    "mint": 5085,
-    "warm": 800,
-    "shirt": 39271
+    "mint": 5754,
+    "warm": 1025,
+    "shirt": 43243
    },
    "residue_blocks": [
     {
-     "px": 33938,
+     "px": 40083,
      "bbox": [
-      59,
-      26,
-      530,
-      409
+      20,
+      25,
+      533,
+      512
      ]
     },
     {
-     "px": 2599,
+     "px": 2927,
      "bbox": [
-      21,
-      379,
-      68,
-      554
+      511,
+      384,
+      570,
+      519
      ]
     },
     {
-     "px": 1909,
+     "px": 1840,
      "bbox": [
-      530,
-      364,
-      563,
-      491
+      112,
+      241,
+      180,
+      282
      ]
     }
    ],
@@ -317,20 +317,20 @@
    "file": "acc_hood_twin@2x.png",
    "kind": "cloth",
    "size": "592x686",
-   "opaque": 155546,
-   "near_white_pct": 30.74,
-   "edge_near_white_pct": 41.22,
+   "opaque": 154499,
+   "near_white_pct": 30.86,
+   "edge_near_white_pct": 39.01,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 3.2,
-   "dark_pct": 2.71,
+   "seam_pct": 3.18,
+   "dark_pct": 2.53,
    "hole_pct": 0.0,
    "straight_run": 31,
-   "residue_pct": 23.1,
+   "residue_pct": 23.26,
    "residue": {
-    "mint": 5584,
-    "warm": 1905,
-    "shirt": 34672
+    "mint": 5587,
+    "warm": 1898,
+    "shirt": 34591
    },
    "residue_blocks": [
     {
@@ -417,47 +417,47 @@
    "file": "acc_tail_puff@2x.png",
    "kind": "tail",
    "size": "360x874",
-   "opaque": 135529,
-   "near_white_pct": 20.87,
-   "edge_near_white_pct": 22.44,
+   "opaque": 137507,
+   "near_white_pct": 20.91,
+   "edge_near_white_pct": 15.83,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 0.34,
-   "dark_pct": 0.02,
+   "seam_pct": 0.05,
+   "dark_pct": 0.04,
    "hole_pct": 0.0,
-   "straight_run": 6,
-   "residue_pct": 77.74,
+   "straight_run": 9,
+   "residue_pct": 85.45,
    "residue": {
-    "mint": 105421,
+    "mint": 114729,
     "warm": 0,
-    "shirt": 2722
+    "shirt": 4822
    },
    "residue_blocks": [
     {
-     "px": 102107,
+     "px": 111200,
      "bbox": [
-      13,
+      14,
       32,
-      298,
+      304,
       841
      ]
     },
     {
-     "px": 1347,
+     "px": 4103,
      "bbox": [
-      292,
-      699,
-      346,
-      759
+      227,
+      638,
+      328,
+      780
      ]
     },
     {
-     "px": 1041,
+     "px": 1964,
      "bbox": [
-      250,
-      547,
-      281,
-      652
+      280,
+      687,
+      346,
+      766
      ]
     }
    ],
@@ -467,47 +467,47 @@
    "file": "acc_tail_relaxed@2x.png",
    "kind": "tail",
    "size": "252x820",
-   "opaque": 103414,
-   "near_white_pct": 21.52,
-   "edge_near_white_pct": 12.32,
+   "opaque": 104738,
+   "near_white_pct": 22.73,
+   "edge_near_white_pct": 18.01,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 0.8,
-   "dark_pct": 0.15,
+   "seam_pct": 0.06,
+   "dark_pct": 0.08,
    "hole_pct": 0.0,
-   "straight_run": 114,
-   "residue_pct": 80.24,
+   "straight_run": 110,
+   "residue_pct": 87.2,
    "residue": {
-    "mint": 80744,
-    "warm": 7,
-    "shirt": 4112
+    "mint": 88211,
+    "warm": 0,
+    "shirt": 4566
    },
    "residue_blocks": [
     {
-     "px": 77563,
+     "px": 84828,
      "bbox": [
-      8,
+      12,
       30,
       243,
       789
      ]
     },
     {
-     "px": 2098,
+     "px": 3337,
      "bbox": [
-      58,
-      30,
-      93,
-      200
+      94,
+      31,
+      145,
+      161
      ]
     },
     {
-     "px": 1883,
+     "px": 1867,
      "bbox": [
-      89,
-      35,
-      126,
-      181
+      63,
+      30,
+      97,
+      129
      ]
     }
    ],
@@ -517,47 +517,47 @@
    "file": "acc_tail_tuck@2x.png",
    "kind": "tail",
    "size": "698x498",
-   "opaque": 100313,
-   "near_white_pct": 24.31,
-   "edge_near_white_pct": 26.03,
+   "opaque": 102279,
+   "near_white_pct": 25.37,
+   "edge_near_white_pct": 11.82,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 0.16,
-   "dark_pct": 0.01,
+   "seam_pct": 0.12,
+   "dark_pct": 0.07,
    "hole_pct": 0.0,
-   "straight_run": 12,
-   "residue_pct": 74.53,
+   "straight_run": 19,
+   "residue_pct": 81.33,
    "residue": {
-    "mint": 74883,
+    "mint": 80035,
     "warm": 0,
-    "shirt": 2369
+    "shirt": 5332
    },
    "residue_blocks": [
     {
-     "px": 72771,
+     "px": 78031,
      "bbox": [
-      106,
+      100,
       18,
       672,
       479
      ]
     },
     {
-     "px": 1069,
+     "px": 3863,
      "bbox": [
-      28,
-      28,
-      64,
-      106
+      60,
+      33,
+      113,
+      219
      ]
     },
     {
-     "px": 923,
+     "px": 1056,
      "bbox": [
-      69,
-      191,
-      140,
-      298
+      28,
+      28,
+      73,
+      88
      ]
     }
    ],
@@ -567,47 +567,47 @@
    "file": "acc_tail_up@2x.png",
    "kind": "tail",
    "size": "270x870",
-   "opaque": 100899,
-   "near_white_pct": 21.51,
-   "edge_near_white_pct": 22.94,
+   "opaque": 102816,
+   "near_white_pct": 21.62,
+   "edge_near_white_pct": 7.06,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 0.39,
-   "dark_pct": 0.01,
+   "seam_pct": 0.13,
+   "dark_pct": 0.05,
    "hole_pct": 0.0,
-   "straight_run": 10,
-   "residue_pct": 75.57,
+   "straight_run": 15,
+   "residue_pct": 83.11,
    "residue": {
-    "mint": 76463,
+    "mint": 82972,
     "warm": 0,
-    "shirt": 1929
+    "shirt": 4118
    },
    "residue_blocks": [
     {
-     "px": 74593,
+     "px": 80727,
      "bbox": [
       10,
-      32,
-      202,
+      31,
+      217,
       837
      ]
     },
     {
-     "px": 950,
+     "px": 3548,
      "bbox": [
-      210,
-      712,
-      259,
-      773
+      156,
+      640,
+      231,
+      787
      ]
     },
     {
-     "px": 709,
+     "px": 1174,
      "bbox": [
-      181,
-      564,
-      198,
-      658
+      202,
+      721,
+      259,
+      780
      ]
     }
    ],
@@ -3580,48 +3580,80 @@
   {
    "file": "hair_hood_pony@2x.png",
    "kind": "hair",
-   "size": "724x1480",
-   "opaque": 169826,
-   "near_white_pct": 21.28,
-   "edge_near_white_pct": 16.88,
+   "size": "670x1480",
+   "opaque": 148094,
+   "near_white_pct": 27.9,
+   "edge_near_white_pct": 4.74,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 3.49,
-   "dark_pct": 2.03,
-   "hole_pct": 0.38,
-   "straight_run": 38,
-   "residue_pct": 17.96,
+   "seam_pct": 0.53,
+   "dark_pct": 2.31,
+   "hole_pct": 0.11,
+   "straight_run": 40,
+   "residue_pct": 31.04,
    "residue": {
-    "mint": 29112,
-    "warm": 1,
-    "shirt": 6718
+    "mint": 41598,
+    "warm": 60,
+    "shirt": 7660
    },
    "residue_blocks": [
     {
-     "px": 23741,
+     "px": 35736,
      "bbox": [
-      436,
-      944,
-      642,
-      1423
+      360,
+      900,
+      612,
+      1425
      ]
     },
     {
-     "px": 1027,
+     "px": 2329,
      "bbox": [
-      335,
-      1111,
-      411,
+      226,
+      416,
+      264,
+      557
+     ]
+    },
+    {
+     "px": 1042,
+     "bbox": [
+      283,
+      1112,
+      359,
       1136
      ]
-    },
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hair_hood_pony_side@2x.png",
+   "kind": "hair",
+   "size": "406x290",
+   "opaque": 27880,
+   "near_white_pct": 17.36,
+   "edge_near_white_pct": 21.59,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 7.56,
+   "dark_pct": 5.61,
+   "hole_pct": 0.57,
+   "straight_run": 44,
+   "residue_pct": 2.44,
+   "residue": {
+    "mint": 843,
+    "warm": 0,
+    "shirt": 1010
+   },
+   "residue_blocks": [
     {
-     "px": 641,
+     "px": 679,
      "bbox": [
-      600,
-      1387,
-      660,
-      1419
+      51,
+      214,
+      89,
+      261
      ]
     }
    ],
@@ -3631,46 +3663,46 @@
    "file": "hair_hood_twin@2x.png",
    "kind": "hair",
    "size": "1050x1166",
-   "opaque": 120519,
-   "near_white_pct": 18.93,
-   "edge_near_white_pct": 21.23,
+   "opaque": 116400,
+   "near_white_pct": 19.44,
+   "edge_near_white_pct": 22.93,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 4.77,
-   "dark_pct": 2.79,
+   "seam_pct": 4.7,
+   "dark_pct": 2.75,
    "hole_pct": 0.0,
-   "straight_run": 32,
-   "residue_pct": 14.17,
+   "straight_run": 27,
+   "residue_pct": 14.65,
    "residue": {
-    "mint": 14286,
+    "mint": 14021,
     "warm": 1,
-    "shirt": 6461
+    "shirt": 6271
    },
    "residue_blocks": [
     {
-     "px": 4812,
+     "px": 4841,
      "bbox": [
       892,
-      920,
+      921,
       971,
-      1081
+      1083
      ]
     },
     {
-     "px": 4617,
+     "px": 4611,
      "bbox": [
       95,
-      919,
+      922,
       164,
       1087
      ]
     },
     {
-     "px": 1124,
+     "px": 1133,
      "bbox": [
       39,
-      898,
-      68,
+      901,
+      69,
       1027
      ]
     }
@@ -6543,46 +6575,46 @@
    "file": "seg_head@2x.png",
    "kind": "body",
    "size": "498x634",
-   "opaque": 107603,
-   "near_white_pct": 26.77,
-   "edge_near_white_pct": 24.59,
+   "opaque": 95966,
+   "near_white_pct": 27.41,
+   "edge_near_white_pct": 9.67,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 0.86,
-   "dark_pct": 2.58,
+   "seam_pct": 0.85,
+   "dark_pct": 1.77,
    "hole_pct": 0.0,
-   "straight_run": 138,
-   "residue_pct": 63.01,
+   "straight_run": 52,
+   "residue_pct": 68.03,
    "residue": {
-    "mint": 180,
-    "warm": 67714,
-    "shirt": 1196
+    "mint": 447,
+    "warm": 65874,
+    "shirt": 846
    },
    "residue_blocks": [
     {
-     "px": 55711,
+     "px": 55665,
      "bbox": [
       108,
-      224,
+      201,
       372,
-      553
+      549
      ]
     },
     {
-     "px": 5902,
+     "px": 5694,
      "bbox": [
-      200,
-      533,
-      298,
+      199,
+      535,
+      296,
       625
      ]
     },
     {
-     "px": 1641,
+     "px": 1614,
      "bbox": [
-      281,
+      163,
       562,
-      331,
+      214,
       625
      ]
     }

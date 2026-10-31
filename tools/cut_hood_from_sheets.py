@@ -68,7 +68,7 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cut_from_sheets as C  # noqa: E402
@@ -87,7 +87,11 @@ PLAN = {
     "twin": [("acc_hood_twin", "head_over_hair", "hood"),
              ("hair_hood_twin", "head_side_hair", "hair")],
     "pony": [("acc_hood_pony", "head_over_hair", "hood"),
-             ("hair_hood_pony", "head_side_hair", "hair")],
+             ("hair_hood_pony", "head_side_hair", "hair"),
+             # The reference-traced face-framing pixels are hair only: skin,
+             # eyes, and the open face window are excluded by cut_one(). Keep
+             # them as a dedicated side-lock piece, never as a face overlay.
+             ("hair_hood_pony_side", "head_side_hair", "side_lock")],
     "long": [("acc_hood_long", "head_over_hair", "hood"),
              ("hair_hood_long", "head_side_hair", "hair")],
 }
@@ -202,7 +206,7 @@ def flood(seed, allowed):
         cur = nxt
 
 
-def cut_one(style, design, chin, eyeline, head_cx):
+def cut_one(style, design, chin, eyeline, head_cx, head_unit):
     """切一档，返回 {'hood': mask, 'hair': mask, 'A': rgba}。
 
     ★★★ 2026-10-20 第二十三问整段重写。旧版的做法和它的下场
@@ -285,6 +289,19 @@ def cut_one(style, design, chin, eyeline, head_cx):
             for y, x in c:
                 lining[y, x] = True
     lining = C.dilate(lining, 5) & op_a          # 连线稿一起带上
+
+    # Keep the hood lining behind the actual face/neck silhouette. The lower
+    # liner was dilated after the face-hole flood stopped at the chin, so its
+    # pointed edge could intrude into the jaw/neck opening. Extend the face seed
+    # only through nearby source-skin pixels (within the head reference), then
+    # subtract a 2px contour margin from the lower lining. This is silhouette-
+    # following occlusion from the sheet, not a hand-drawn box or paint patch.
+    xx_grid = np.arange(w, dtype=np.float32)[None, :]
+    face_window = ((np.abs(xx_grid - head_cx) <= 0.42 * head_unit)
+                   & (yy <= chin + 80))
+    neck_allowed = C.dilate(skin, 3) & face_window & op_a
+    face_neck = flood(seed & neck_allowed, neck_allowed)
+    lining &= ~(C.dilate(face_neck, 5) & (yy > chin))
     hood = hood | lining
 
     # 白外布：**沿线稿测地生长**，不是按行填。
@@ -399,8 +416,100 @@ def cut_one(style, design, chin, eyeline, head_cx):
     # 填洞**只填不透明的洞**：发缕之间的缝隙是洋红背景，填了会在件里糊出紫红块。
     hairm = hairm | (C.fill_holes(hairm) & (~hairm) & op_a)
 
+    # Face-side purity: remove warm cheek/jaw texels before attachment recoloring.
+    # A 1px contour guard protects only skin antialiasing; keep the genuine
+    # lavender side-lock pixels adjacent to the cheek so the face edge does not
+    # open a wedge that exposes the hood lining.
+    face_spill = ((r > 150) & (r.astype(np.int16) - b.astype(np.int16) > 22)
+                  & (r.astype(np.int16) - g.astype(np.int16) > 8) & op_a)
+    face_exclusion = C.dilate(C.skin_like(A) | face_spill, 3) & op_a
+    face_spill_removed = int((hairm & face_exclusion).sum())
+    hairm &= ~face_exclusion
+
+    # The source sheet carries both eyes in the face opening. Remove the actual
+    # eyelid/iris footprints (tight, visually verified ellipses plus a small AA
+    # margin), not the broad old ellipse that ate the side locks and left black
+    # wedges at the temples. The blue seed catches small registration variance.
+    xx = np.arange(w, dtype=np.float32)[None, :]
+    eye_d = 0.174 * head_unit
+    eye_rx = 0.105 * head_unit
+    eye_ry = 0.080 * head_unit
+    eye_y = eyeline - 2.0
+    eye_region = np.zeros((h, w), dtype=bool)
+    for eye_cx in (head_cx - eye_d, head_cx + eye_d):
+        eye_region |= (((xx - eye_cx) / eye_rx) ** 2
+                       + ((yy - eye_y) / eye_ry) ** 2 <= 1.0)
+    sat = (np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b))
+    iris = ((b.astype(np.int16) >= r.astype(np.int16) + 50)
+            & (b.astype(np.int16) >= g.astype(np.int16) + 12)
+            & (sat >= 42) & eye_region & op_a)
+    eye_fragment = (C.dilate(eye_region, 3) | C.dilate(iris, 15)) & op_a
+    hood &= ~eye_fragment
+    hairm &= ~eye_fragment
+
+    face_lock = np.zeros_like(op_a)
+
+    # Pony hood reference: the two lavender face-framing locks are painted
+    # *over* the teal lining. The generic hood subtraction correctly keeps
+    # cloth out of the hair piece, but the face-hole flood also classified
+    # these two source locks as face-opening pixels; on the assembled sprite
+    # the lining then shows through at the temples/jaw. Restore only the source
+    # pixels inside the two reference-traced lock silhouettes. These polygons
+    # are normalized to the face center/head unit/eye line, clipped by the
+    # source palette (cool lavender/blue, not skin or teal), and stop before the
+    # central fringe, eyes, hood shell, and pony tail. This is a local source
+    # silhouette extraction, not painted texture or a screen-space patch.
+    if style == "pony":
+        left_lock = [(-0.361, -0.245), (-0.279, -0.331), (-0.178, -0.353),
+                     (-0.099, -0.331), (-0.120, -0.209), (-0.149, -0.079),
+                     (-0.189, 0.043), (-0.164, 0.155), (-0.081, 0.266),
+                     (-0.117, 0.367), (-0.243, 0.313), (-0.322, 0.205),
+                     (-0.358, 0.079), (-0.372, -0.065)]
+        # Trace the visible lavender band just outside the cheek (not the hood
+        # lining). The earlier inner edge sat 20–30 source pixels too far out,
+        # which preserved a black wedge between cheek and lock at runtime.
+        right_lock = [(0.150, -0.180), (0.250, -0.180), (0.310, -0.140),
+                      (0.360, -0.070), (0.400, 0.040), (0.400, 0.150),
+                      (0.350, 0.250), (0.290, 0.340), (0.200, 0.360),
+                      (0.150, 0.300), (0.180, 0.240), (0.200, 0.180),
+                      (0.210, 0.110), (0.210, 0.040), (0.200, -0.040),
+                      (0.180, -0.110)]
+        lock_canvas = Image.new("1", (w, h), 0)
+        draw = ImageDraw.Draw(lock_canvas)
+        for poly in (left_lock, right_lock):
+            pts = [(int(round(head_cx + dx * head_unit)),
+                    int(round(eyeline + dy * head_unit))) for dx, dy in poly]
+            draw.polygon(pts, fill=1)
+        lock_roi = np.asarray(lock_canvas, dtype=bool)
+        lock_palette = ((b.astype(np.int16) >= r.astype(np.int16) - 8)
+                        & (b.astype(np.int16) >= g.astype(np.int16) - 5)
+                        & (b > 115) & (sat >= 3))
+        clip_center_x = head_cx - 0.31 * head_unit
+        clip_center_y = eyeline - 0.14 * head_unit
+        clip_exclusion = ((((xx - clip_center_x) / (0.075 * head_unit)) ** 2
+                           + ((yy - clip_center_y) / (0.065 * head_unit)) ** 2) <= 1.0)
+        side_lock = (op_a & lock_roi & lock_palette & (~teal) & (~skin)
+                     & (~eye_fragment) & (~clip_exclusion)
+                     & (yy >= eyeline - 0.18 * head_unit))
+        # Restore only small, fully enclosed source-color gaps inside these
+        # traced locks (typically neutral lavender highlights that the hue gate
+        # rejects). Never fill the large open face window or the teal/skin masks.
+        side_holes = (C.fill_holes(side_lock) & (~side_lock) & op_a & lock_roi
+                      & (~teal) & (~skin) & (~eye_fragment) & (~clip_exclusion))
+        for hole in comps(side_holes):
+            if len(hole) <= 500:
+                for y, x in hole:
+                    side_lock[y, x] = True
+        face_lock = side_lock
+        hairm &= ~face_lock
+        hairm, hsizes = keep_parts(hairm, 1200)
+
+
     return {"A": A, "op": op_a, "hood": hood, "hair": hairm,
-            "sizes": sizes, "hsizes": hsizes}
+            "side_lock": face_lock,
+            "sizes": sizes, "hsizes": hsizes,
+            "face_spill_removed": face_spill_removed,
+            "eye_removed": int(eye_fragment.sum())}
 
 
 def main() -> int:
@@ -428,14 +537,16 @@ def main() -> int:
     C.log("底图 bbox %s  缩放 %.6f  下巴 y=%d  眼线 y=%d（模板坐标）"
           % (str(bbox), scale, chin, eyeline))
 
+    styles = [s.strip() for s in a.styles.split(",") if s.strip()]
     geom = collections.OrderedDict()
     dbg = {}
-    for style in [s.strip() for s in a.styles.split(",") if s.strip()]:
-        cut = cut_one(style, design, chin, eyeline, head_cx)
+    for style in styles:
+        cut = cut_one(style, design, chin, eyeline, head_cx, unit)
         dbg[style] = cut
-        C.log("  %-6s 帽壳 %6d px %s   帽外头发 %6d px %s"
+        C.log("  %-6s 帽壳 %6d px %s   帽外头发 %6d px %s   清肤 %d px / 眼区 %d px"
               % (style, int(cut["hood"].sum()), cut["sizes"],
-                 int(cut["hair"].sum()), cut["hsizes"]))
+                 int(cut["hair"].sum()), cut["hsizes"],
+                 cut["face_spill_removed"], cut["eye_removed"]))
         for pid, slot, key in PLAN[style]:
             mk = cut[key]
             if mk.sum() < 2000:
@@ -452,16 +563,29 @@ def main() -> int:
                      info["pos_rel"][0], info["pos_rel"][1], info["sprite_h_rel"]))
 
     gp = os.path.join(design, "sheets", "hood_geometry.json")
+    all_styles = set(PLAN)
+    output_pieces = geom
+    if set(styles) != all_styles:
+        if not os.path.exists(gp):
+            raise SystemExit("[cut_hood] 局部重切需要现有 hood_geometry.json 以保留其它发型")
+        with io.open(gp, encoding="utf-8") as fh:
+            previous = json.load(fh)
+        # 局部重切只替换选中发型的记录；其它发型与 pony side lock 均保留。
+        output_pieces = collections.OrderedDict(
+            (pid, piece) for pid, piece in previous.get("pieces", {}).items()
+            if piece.get("style") not in styles)
+        output_pieces.update(geom)
     with io.open(gp, "w", encoding="utf-8") as fh:
         json.dump({
             "_note": ("由 tools/cut_hood_from_sheets.py 量出来的兜帽件几何。"
                       "全部来自套准后的参考模板，没有一个数是手调的。"),
             "scale_sheet_to_bodyfull": round(scale, 6),
             "head_unit_px": unit,
-            "pieces": geom,
+            "pieces": output_pieces,
         }, fh, ensure_ascii=False, indent=2)
         fh.write("\n")
-    C.log("\n几何写到 %s（%d 片）" % (gp, len(geom)))
+    C.log("\n几何写到 %s（本次 %d 片，表内 %d 片）"
+          % (gp, len(geom), len(output_pieces)))
 
     if a.debug_dir:
         os.makedirs(a.debug_dir, exist_ok=True)
@@ -474,10 +598,13 @@ def main() -> int:
             bg = np.where(ck[..., None] == 0,
                           np.array([70, 70, 80], np.uint8),
                           np.array([100, 100, 112], np.uint8))
-            out = np.where((cut["hood"] | cut["hair"])[..., None], arr, bg)
+            side_lock = cut.get("side_lock", np.zeros_like(cut["hood"]))
+            out = np.where((cut["hood"] | cut["hair"] | side_lock)[..., None], arr, bg)
             out = out.astype(np.uint8).copy()
             out[cut["hair"]] = (out[cut["hair"]] * 0.75
                                 + np.array([90, 160, 255]) * 0.25).astype(np.uint8)
+            out[side_lock] = (out[side_lock] * 0.75
+                              + np.array([255, 205, 120]) * 0.25).astype(np.uint8)
             cells.append((style, Image.fromarray(out).crop((230, 30, 820, 1240))))
         wq, hq = cells[0][1].size
         o = Image.new("RGB", (wq * len(cells), hq + 22), (20, 20, 20))

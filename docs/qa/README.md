@@ -19,5 +19,8 @@
 
 - `sprite_audit_teen.json` —— 素材体检基线（T67.2）。`selfcheck` 与 `make audit-sprites`
   都以它为基准；它是"重画前后只许降不许升"的那个"前"。
+- `live2d_mask_intersection_2026-10-31.png` —— 引擎用两个错位矩形遮罩真实渲染的像素图；只露出交叠区，作为 T67.8 多遮罩交集证据。
+- `live2d_teen_eye_clipping_2026-10-31.png` —— teen 真实 rig 睁眼 / 半闭 / 闭眼渲染；核对眼眶 mask 继续贴合，不出界。
+- `live2d_teen_hairstyle_hood_matrix_2026-10-31.png` —— teen 真实 rig 四种发型（短发 / 长发 / 双马尾 / 高马尾）× 兜帽戴/不戴静帧回归。
 - `t67_*.png` —— 2026-10-26 这一轮各条结论的对照图（长发换源头前后、两腿间薄片归属、
   尾巴四档可见性、体检误报现场……）。文件名里的 `t67_NN` 对应 `docs/memory/TASKS.md` 的任务号。

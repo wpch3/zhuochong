@@ -7819,3 +7819,11 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 **编号处理**：项目已有全局铁律 0–8 且被多个文件引用，所以用户本次专题列表 1–3 映射为全局 9–11；未来新规则从 12 起追加，绝不重排。已同步 `WORKFLOW.md`、`MEMORY.md`、`REQUIREMENTS.md` A59.1–A59.3、`REQUEST_LEDGER.md`。这次仅登记规则，不宣称所有历史素材已通过新规范；之后逐件审计时按真实渲染验收。
 
 **下一步执行约束**：处理任何底层素材、衣物关节或跨关节长件时，开工先对照铁律 9–11；交付前分别做隐藏上层检查、关节接缝放大实拍、多姿势链路渲染。不要用静态参数或单一 JSON 判定通过。
+
+## 2026-10-31｜T67.8 遮罩语义审计与落地
+
+- 盘点发现 T67.8 状态与代码表象冲突：数组与取反已经解析，但数组实际按 normal-over 求并集；mask source 不可绘制时直接跳过 clipped part。
+- 对照 Live2D 官方 Clipping Mask 手册（多 ID 取交集、0% opacity 仍作参考遮罩、全部隐藏时解除裁切）与 CubismWebFramework 固定 commit 源码后，修为逐像素 alpha 乘积；显式 visibility override 隐藏源，零个有效源输出全白 alpha；opacity 0 geometry 保留。teen 单遮罩路径加直接 rasterize 快路径，数组路径才用临时缓冲累乘。
+- 新增重叠矩形、多遮罩、opacity 0、隐藏单源仍保留其他遮罩、全隐藏恢复全图测试；`make test` 1421/0，`make asan` 1421/0。静态/内容包/长记忆自检经带 Pillow Python 环境 0 项失败。
+- 本人看了真实渲染：多遮罩蓝色测试片只在 40×80 交叠区出现；teen 四发型×戴/不戴帽仍完整；睁/半闭/闭眼时眼球受眼眶裁切，未见越界。留图在 `docs/qa/live2d_*_2026-10-31.png`。
+- T67.8 标记完成。此前 `make selfcheck` 找到唯一 ROADMAP 数字过期，按仓库自检建议运行 `tools/roadmap_status.py --fix`，重新自检一致。系统默认 Python 缺 Pillow，完整 `make selfcheck` 需明确指定 `ZC_PY` / `PYTHON_IMG` 环境变量。

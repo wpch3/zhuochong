@@ -1781,7 +1781,7 @@
       "ref": "head_top",
       "unit": "head",
       "pos_rel": [
-        0.310774,
+        0.290774,
         0.314742
       ],
       "sprite_h_rel": 2.659748,
@@ -1801,9 +1801,54 @@
           "#9FC4E8"
         ],
         "stats_group": "sheet_pony_hood",
-        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。"
+        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。",
+        "keep": 0.9
       },
       "_cut_note": "★ 2026-10-19 T46.17：兜帽按参考模板重做。此前这里挂的是 acc_hood_cute.png —— 一张**单独生成再按头部几何缩放**的图，和身体没有共同约束，用户从第十三问到第十六问连着打回四次。现在这一片是从 design/sheets/sheet_<发型>_hood.png 上切下来的：同一张全身差分立绘、同一次落笔，帽口与脸、内衬与衣领天然对得上。四种发型各切一片，因为帽口处发缕穿出来的位置每档都不同。"
+    },
+    {
+      "id": "hair_hood_pony_side",
+      "label": "戴帽马尾脸侧鬓发（仅发丝）",
+      "slot": "head_side_hair",
+      "sprite": "hair_hood_pony_side.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "hair",
+        "hood"
+      ],
+      "pose_group": "hairstyle",
+      "pose_id": "pony",
+      "source": "sheetcut_hair_hood_pony_side.png",
+      "ref": "head_top",
+      "unit": "head",
+      "pos_rel": [
+        0.040163,
+        0.557109
+      ],
+      "sprite_h_rel": 0.522265,
+      "width_ratio": 1.0,
+      "layer": 259,
+      "recolor_match": {
+        "ref_sprites": [
+          "hair_back.png",
+          "hair_side_l.png",
+          "hair_side_r.png",
+          "hair_front.png"
+        ],
+        "note": "★ 2026-10-18 从色卡重铺（relay_colors）换成 **Lab 统计匹配**（Reinhard 色彩迁移）：色卡重铺是按亮度 k-means 把像素压成 3 个纯色，那套是给漫符（大片平色）设计的；头发有柔和明暗过渡和**梢部蓝渐变**，一压就变成三条硬边灰带、蓝梢被并进阴影簇消失。用户看截图第一句就是「色彩和形态完全不一样非常的违和」，病因就在这。新路径把挂件和**本体已有的头发贴图**（后发壳/侧发/刘海）都转进 Lab，逐通道对齐 mean/std —— 保留挂件内部的相对结构（哪缕亮、哪段偏蓝），只把整体色相/明度/对比挪到本体的分布上。画师口径同源：CLIP STUDIO 官方 making（森倉円）说追加的发丝要「[スポイト]で髪色の明るいところや暗いところからスポイトして描くとなじみやすい」—— 取的就是本体发色的明暗两端。",
+        "palette_hex": [
+          "#D8D8E8",
+          "#C9CBE0",
+          "#9FC4E8"
+        ],
+        "stats_group": "sheet_pony_hood",
+        "grp_note": "★★★ 2026-10-21 第二十九问：色彩迁移**留着，但改成整组共用一套系数**。上一版曾把 recolor_match 整个摘掉，理由是「切件和本体同源，不必再迁移」—— 实拍打脸：短发是淡紫、twin/pony/long 变成银灰，同一个角色换发型头发颜色就变了（七张模板是分别出图的，底色本来就偏银）。真正的病因不是「做了迁移」，而是**逐片各算一套 μ/σ**：刘海片一套、横髪片另一套，两片在脸侧相接处颜色对不上 ⇒ 用户说的「头发突然截断变淡粉」；长发帘自带蓝梢渐变，σ 一归一化就被压平成粉灰。stats_group 让同一张模板切下来的所有片共用一个仿射变换：组内相对关系原样保留，只把整组平移到本体头发的分布上。另一半病因是反预乘没抹边（见 make_attach_parts 的 bleed_edge）。",
+        "keep": 0.9
+      },
+      "_cut_note": "只取 sheet_pony_hood 参考中脸侧两缕头发；切件掩膜排除皮肤、双眼、帽衬和脸部开口。不是脸部覆盖片，用来补齐帽口与脸之间缺失的鬓发。切件器输出的是内容框中心锚点，转换为顶部锚点时 y 减半个 sprite_h_rel。"
     },
     {
       "id": "hair_hood_long",
@@ -2051,7 +2096,11 @@
           "acc_hair_pony",
           "acc_hair_long",
           "acc_hair_sidelong_l",
-          "acc_hair_sidelong_r"
+          "acc_hair_sidelong_r",
+          "acc_hair_sweep_pony_l",
+          "acc_hair_sweep_pony_r",
+          "acc_hair_sweep_twin_l",
+          "acc_hair_sweep_twin_r"
         ],
         "down": [
           "acc_hood_up_twin",
@@ -2059,10 +2108,11 @@
           "acc_hood_up_pony",
           "acc_hair_hood_pony",
           "acc_hood_up_long",
-          "acc_hair_hood_long"
+          "acc_hair_hood_long",
+          "acc_hair_hood_pony_side"
         ]
       },
-      "_hood_note": "★ T46.17：`up` 这一档除了显示帽壳，还要**收走**扎起来的那套头发。把第一版帽壳贴回不戴帽底图做验收时一眼看出：马尾/双马尾的发束会从帽顶戳出来 —— 戴上兜帽时头发本身的造型就是变了的。收走之后由hair_hood_twin / hair_hood_pony（从戴帽模板上切的）接手。★ 2026-10-20 补齐长发档：hair_hood_long 原来碎成 9 段不合格，切件器加了沿线稿的测地生长之后只剩原画本来的遮挡（手臂、裙子），于是一并接上；同时把 acc_hair_long 与两片鬓发也收走，避免「垂到胸前的发帘」和「披在背后的长发」两套错位重影。"
+      "_hood_note": "★ T46.17：`up` 这一档除了显示帽壳，还要**收走**扎起来的那套头发。把第一版帽壳贴回不戴帽底图做验收时一眼看出：马尾/双马尾的发束会从帽顶戳出来 —— 戴上兜帽时头发本身的造型就是变了的。收走之后由hair_hood_twin / hair_hood_pony（从戴帽模板上切的）接手。★ 2026-10-20 补齐长发档：hair_hood_long 原来碎成 9 段不合格，切件器加了沿线稿的测地生长之后只剩原画本来的遮挡（手臂、裙子），于是一并接上；同时把 acc_hair_long 与两片鬓发也收走，避免「垂到胸前的发帘」和「披在背后的长发」两套错位重影。 Pony hood-up keeps the short left side lock acc_hair_sweep_pony_l; only the overlapping long right sweep is hidden, since the hood-specific hair piece replaces that tail."
     },
     {
       "id": "hairstyle",

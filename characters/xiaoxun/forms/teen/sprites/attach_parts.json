@@ -308,8 +308,17 @@
       "slot": "head_side_hair",
       "file": "sprites/hair_hood_pony.png",
       "size": [
-        362,
+        335,
         740
+      ]
+    },
+    {
+      "id": "hair_hood_pony_side",
+      "slot": "head_side_hair",
+      "file": "sprites/hair_hood_pony_side.png",
+      "size": [
+        203,
+        145
       ]
     },
     {

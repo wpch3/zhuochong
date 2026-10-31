@@ -130,6 +130,22 @@ def body_colors(rgb, alpha):
     return skin, teal
 
 
+def check_twin_hood_eye_fragment(path):
+    """针对已复现的 twin hood 污染：刘海中央额前 ROI 不许混入蓝色眼像素。
+
+    2026-10-31 的源片对照实测：修复前同一 ROI 命中 124 个蓝色虹膜/巩膜像素，
+    修复后为 0。这里只看源切片坐标 x=210..254、y=95..129，避开发梢的合法蓝色高光；
+    不把脸部眼睛本身当作头发件检查。
+    """
+    a = np.array(Image.open(path).convert("RGBA"))
+    if a.shape[1] < 255 or a.shape[0] < 130:
+        raise ValueError(f"twin hood sprite 尺寸异常：{a.shape[1]}x{a.shape[0]}")
+    roi = a[95:130, 210:255]
+    r, g, b, alpha = (roi[..., i].astype(np.int32) for i in range(4))
+    blue_eye = (alpha > 40) & (b > 90) & (b > r * 1.25) & (b > g * 1.10)
+    return int(blue_eye.sum())
+
+
 def check(path):
     a = np.array(Image.open(path).convert("RGBA"))
     rgb, al = a[..., :3], a[..., 3]
@@ -163,9 +179,23 @@ def main():
     ap.add_argument("--character", default="xiaoxun")
     ap.add_argument("--form", default="teen")
     ap.add_argument("--fail", action="store_true")
+    ap.add_argument("--strict-occlusion", action="store_true",
+                    help="hood long/twin/pony cutouts must have no enclosed transparent block >=200px")
+    ap.add_argument("--check-twin-hood-eye", action="store_true",
+                    help="只检查 twin hood 刘海中央是否混入蓝色眼像素")
     a = ap.parse_args()
 
     d = os.path.join(ROOT, "characters", a.character, "forms", a.form, "sprites")
+    if a.check_twin_hood_eye:
+        path = os.path.join(d, "hair_hood_twin.png")
+        try:
+            n = check_twin_hood_eye_fragment(path)
+        except (OSError, ValueError) as exc:
+            print("twin hood 刘海中央眼部污染检查失败：", exc)
+            return 2
+        print(f"twin hood 刘海中央蓝色眼像素：{n}（期望 0）")
+        return 1 if n else 0
+
     files = [f for f in sorted(glob.glob(os.path.join(d, "*@2x.png")))
              if os.path.basename(f).startswith(("hair_", "acc_hair_"))]
     if not files:
@@ -194,6 +224,22 @@ def main():
             bad += 1
         print("%-26s %9d %7d %7d  %s" % (r["file"], r["opaque"], r["holes"], r["soft_skin"],
                                          "  ".join(marks) if marks else "干净"))
+    if a.strict_occlusion:
+        for name in ("hair_hood_long@2x.png", "hair_hood_twin@2x.png",
+                     "hair_hood_pony@2x.png"):
+            path = os.path.join(d, name)
+            if not os.path.exists(path):
+                print("[严格遮挡] 缺少兜帽头发件 %s" % name)
+                bad += 1
+                continue
+            arr = np.asarray(Image.open(path).convert("RGBA"))
+            holes = interior_holes(arr[..., 3] > 24) & (arr[..., 3] <= 8)
+            enclosed = blobs(holes, min_px=200)
+            if enclosed:
+                print("[严格遮挡] %s 内部透明块: %s" % (name, enclosed[:3]))
+                bad += 1
+            else:
+                print("[严格遮挡] %s: no enclosed transparent block >=200px" % name)
     print("-" * 104)
     print("共 %d 件；成块异物违规 %d 件；边带暖色合计 %d px（只报数，见文件头 C）"
           % (len(files), bad, soft_total))

@@ -241,9 +241,19 @@ def check(character, form, root=".", strict=False, out_json=None):
     body_mask = alpha_mask(body) if body is not None else None
 
     files = sorted(f for f in os.listdir(sprites) if f.endswith(".png"))
+    scalar_masks = {"armpit_mask", "skirt_mask", "skirt_mask_base"}
     for fn in files:
         path = os.path.join(sprites, fn)
         pid = fn[:-4]
+        if pid.split("@")[0] in scalar_masks:
+            # 这些是单通道形变/遮挡权重图，不是可见贴图；L 模式且无 alpha 是正确格式。
+            im = Image.open(path)
+            arr = np.asarray(im)
+            add(pid, "灰度遮罩格式", im.mode == "L",
+                f"模式 {im.mode}（mask map 预期 L）")
+            add(pid, "灰度遮罩有有效范围", arr.min() == 0 and arr.max() == 255,
+                f"取值 [{int(arr.min())},{int(arr.max())}]，预期 0..255")
+            continue
         im = Image.open(path)
         add(pid, "容器", im.mode in ("RGBA", "LA"), f"模式 {im.mode}")
         a = load_rgba(path)
@@ -1231,6 +1241,8 @@ def check(character, form, root=".", strict=False, out_json=None):
         flat_n = 0
         for _p in sorted(_glob.glob(os.path.join(sprites, "*@2x.png"))):
             _pid = os.path.basename(_p)[:-len("@2x.png")]
+            if _pid in {"armpit_mask", "skirt_mask", "skirt_mask_base"}:
+                continue  # 单通道遮罩不是一张“原画精灵”，不参与色数判断。
             _im = load_rgba(_p)
             _m = alpha_mask(_im)
             _area = int(_m.sum())

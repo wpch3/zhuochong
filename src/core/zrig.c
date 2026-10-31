@@ -179,7 +179,7 @@ typedef struct {
     unsigned tags;
     char   mask_id[4][64];    /* rig 里写的 "mask"：被哪些部件裁切（解析期暂存 id） */
     int    mask[4];           /* 解析后的部件索引 */
-    int    nmask;             /* 0 = 不裁切；多个遮罩取**并集**（≈ Live2D 的多重 clipping） */
+    int    nmask;             /* 0 = 不裁切；多个遮罩取**交集**（Live2D Clipping ID） */
     int    mask_invert;       /* 1 = 取反：只在遮罩**外面**可见（≈ IsInverted） */
     int    mask_only;         /* 1 = 自己只当遮罩用，不画出来 */
     int    is_mask_src;       /* 1 = 有别的部件拿我当遮罩 */
@@ -1183,7 +1183,7 @@ static int load_parts(zrig *r, const zjson *jparts, zdiag *d, const char *file)
                部件靠它，否则眼球一动就滑出眼眶。
                约束：遮罩部件的 layer 必须更小（先画），加载时会校验。 */
             {
-                /* "mask" 可以写一个部件 id，也可以写一个数组（多个遮罩取并集）。 */
+                /* "mask" 可以写一个部件 id，也可以写一个数组（多个遮罩取交集，见官方 Clipping ID 语义）。 */
                 const zjson *mj = zjson_obj_get(pj, "mask");
                 p->nmask = 0;
                 p->is_mask_src = 0;
@@ -7081,8 +7081,8 @@ static void deform_inherit_parent_warp(zrig *r, int pi, int mi, double scale,
     }
 }
 
-static int compute_draw_state(zrig *r, int pi, double scale, double blink,
-                              const zaction *a, zdrawst *st)
+static int compute_draw_state_ex(zrig *r, int pi, double scale, double blink,
+                                 const zaction *a, zdrawst *st, int for_mask)
 {
     zpart *p = &r->parts[pi];
     /* motion_from：通道值照抄别的部件（透け眉这类"同一零件画两遍"用）。
@@ -7190,7 +7190,7 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
     if (wide > 0.001) {
         if (p->tags & TAG_EYE_NOT_WIDE) opacity *= 1.0 - wide;
         if (p->tags & TAG_EYE_WIDE) opacity *= wide;
-    } else if (p->tags & TAG_EYE_WIDE) {
+    } else if (!for_mask && (p->tags & TAG_EYE_WIDE)) {
         return 0;
     }
     /* 参数驱动的交叉淡化（踮脚鞋）：淡入件按权重，淡出件按官方 Pose 的曲线。
@@ -7203,11 +7203,11 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
             else if (xf->from == pi) opacity *= zrig_xfade_hidden(xf->w);
         }
     }
-    if (opacity <= 0.001) return 0;
-    if ((p->tags & TAG_EYE_CLOSED) && blink <= 0.001) return 0;
-    if ((p->tags & TAG_EYE_OPEN) && blink >= 0.999) return 0;
-    if ((p->tags & TAG_EYE_SMILE) && smile <= 0.001) return 0;
-    if ((p->tags & TAG_EYE_PAIN) && pain <= 0.001) return 0;
+    if (!for_mask && opacity <= 0.001) return 0;
+    if (!for_mask && (p->tags & TAG_EYE_CLOSED) && blink <= 0.001) return 0;
+    if (!for_mask && (p->tags & TAG_EYE_OPEN) && blink >= 0.999) return 0;
+    if (!for_mask && (p->tags & TAG_EYE_SMILE) && smile <= 0.001) return 0;
+    if (!for_mask && (p->tags & TAG_EYE_PAIN) && pain <= 0.001) return 0;
 
     /* 部件矩阵（画布缩放 + 锚点 + 自身旋转） */
     {
@@ -7239,7 +7239,7 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         memcpy(st->lbase, base, sizeof(st->lbase)); /* 加权时要用它重算"跳过某节点"的链 */
     }
     st->src = src;
-    st->opacity = opacity;
+    st->opacity = for_mask ? 1.0 : opacity;
     st->bx = r->p_bendx[mi] * scale;
     st->by = r->p_bendy[mi] * scale;
     st->curve_x = r->p_bendcx[mi];
@@ -7327,6 +7327,19 @@ static int compute_draw_state(zrig *r, int pi, double scale, double blink,
         }
     }
     return 1;
+}
+
+static int compute_draw_state(zrig *r, int pi, double scale, double blink,
+                              const zaction *a, zdrawst *st)
+{
+    return compute_draw_state_ex(r, pi, scale, blink, a, st, 0);
+}
+
+/* Live2D 的 Clipping ID 遮罩使用几何轮廓，不吃遮罩 drawable 自身的 opacity。 */
+static int compute_mask_draw_state(zrig *r, int pi, double scale, double blink,
+                                   const zaction *a, zdrawst *st)
+{
+    return compute_draw_state_ex(r, pi, scale, blink, a, st, 1);
 }
 
 /* 一个部件这一帧**实际会画出去的网格位移**（源像素，和渲染同一份求值）。
@@ -7443,14 +7456,30 @@ static void feather_blur(zimg *im, int r, int y0, int y1, uint8_t *tmp)
     }
 }
 
-/* 把 p 的遮罩源画进 maskbuf（多个遮罩取并集；mask_invert 时再取反）。
-   返回 0 = 遮罩完全不可见（例如眨眼时眼眶被藏起来）→ 被裁的部件这一帧也不画，
-   与 Live2D 的 clipping 语义一致。取反遮罩则相反：遮罩消失＝整块可见。 */
-static int build_maskbuf(zrig *r, zimg *maskbuf, const zpart *p, double scale,
-                         double blink, const zaction *a, int bidx)
+static void maskbuf_fill_white(zimg *im, int y0, int y1)
+{
+    int y, x;
+    if (!im) return;
+    if (y0 < 0) y0 = 0;
+    if (y1 > im->h) y1 = im->h;
+    for (y = y0; y < y1; ++y) {
+        uint8_t *row = im->px + (size_t)y * (size_t)im->w * 4;
+        for (x = 0; x < im->w; ++x) {
+            row[x * 4 + 0] = row[x * 4 + 1] = row[x * 4 + 2] = 255;
+            row[x * 4 + 3] = 255;
+        }
+    }
+}
+
+/* 把 p 的遮罩源画进 maskbuf（多个遮罩取交集；mask_invert 时再取反）。
+   返回 1 = 遮罩已构造（全源隐藏时填成全白 alpha，即等价于解除裁切）；0 = 缓冲不可用。
+   Live2D 官方 Clipping ID 采用多遮罩交集；全部 mask drawable 隐藏时 clipping 解除。
+   遮罩几何忽略自身 opacity，但尊重显式可见性开关。 */
+static int build_maskbuf(zrig *r, zimg *maskbuf, zimg *scratch, const zpart *p,
+                         double scale, double blink, const zaction *a, int bidx)
 {
     int k, any = 0, r_px, oy0, oy1, by0, by1;
-    if (!maskbuf) return 0;
+    if (!maskbuf || !scratch) return 0;
     /* 羽化半径按**设备像素**算：rig 里的数是画布像素（0~16），
        渲染缩放 0.5 时 4px 的羽化在画面上是 2px —— 视觉上才跟素材一个尺度。 */
     r_px = (int)(p->mask_feather * scale + 0.5);
@@ -7462,7 +7491,7 @@ static int build_maskbuf(zrig *r, zimg *maskbuf, const zpart *p, double scale,
     by1 = (oy1 > oy0) ? oy1 : maskbuf->h;
     if (r_px > 0) {
         /* 扩读写区：模糊要读相邻行，读不到就只能按边缘钳位 →
-           带与带之间接出一台阶。这里多画多算 r 行，写回时仍只碰本带。 */
+           带与带之间接出台阶。只扩内部计算区，最终仍只写本带。 */
         int ey0 = by0 - r_px, ey1 = by1 + r_px;
         if (ey0 < 0) ey0 = 0;
         if (ey1 > maskbuf->h) ey1 = maskbuf->h;
@@ -7470,13 +7499,44 @@ static int build_maskbuf(zrig *r, zimg *maskbuf, const zpart *p, double scale,
         maskbuf->clip_y1 = ey1;
         by0 = ey0; by1 = ey1;
     }
-    zimg_clear(maskbuf);
-    for (k = 0; k < p->nmask; ++k) {
+    scratch->clip_y0 = maskbuf->clip_y0;
+    scratch->clip_y1 = maskbuf->clip_y1;
+
+    if (p->nmask == 1) {
+        /* 常见的单遮罩走原位光栅化，不做整画布 alpha 乘法；这是 teen 的主路径。 */
         zdrawst ms;
-        if (!compute_draw_state(r, p->mask[k], scale, blink, a, &ms)) continue;
-        ms.opacity = 1.0;              /* 遮罩只用形状，不用它自己的透明度 */
-        draw_state(maskbuf, &ms, ZIMG_BLEND_NORMAL);
-        any = 1;
+        int mi = p->mask[0];
+        if (!vis_hidden(r, mi) && compute_mask_draw_state(r, mi, scale, blink, a, &ms)) {
+            zimg_clear(maskbuf);
+            draw_state(maskbuf, &ms, ZIMG_BLEND_NORMAL);
+            any = 1;
+        } else {
+            /* 单遮罩源隐藏时必须覆盖旧帧内容，输出全白 alpha = clipping released。 */
+            zimg_clear(maskbuf);
+            maskbuf_fill_white(maskbuf, by0, by1);
+        }
+    } else {
+        /* 多遮罩：从全白 alpha 起步，逐个乘每张遮罩的 alpha 得交集。
+           透明区自然变成 0；部分透明边缘按乘积衰减，与官方多 Clipping ID 一致。 */
+        zimg_clear(maskbuf);
+        maskbuf_fill_white(maskbuf, by0, by1);
+        for (k = 0; k < p->nmask; ++k) {
+            zdrawst ms;
+            int y, x;
+            if (vis_hidden(r, p->mask[k])) continue;
+            if (!compute_mask_draw_state(r, p->mask[k], scale, blink, a, &ms)) continue;
+            zimg_clear(scratch);
+            draw_state(scratch, &ms, ZIMG_BLEND_NORMAL);
+            for (y = by0; y < by1; ++y) {
+                uint8_t *dst = maskbuf->px + (size_t)y * (size_t)maskbuf->w * 4;
+                const uint8_t *src = scratch->px + (size_t)y * (size_t)scratch->w * 4;
+                for (x = 0; x < maskbuf->w; ++x) {
+                    dst[x * 4 + 3] = (uint8_t)(((unsigned)dst[x * 4 + 3] *
+                                                  (unsigned)src[x * 4 + 3] + 127u) / 255u);
+                }
+            }
+            any = 1;
+        }
     }
     if (r_px > 0 && bidx >= 0 && bidx < ZRIG_MAX_BANDS) {
         size_t need = (size_t)maskbuf->w * (size_t)maskbuf->h;
@@ -7489,6 +7549,11 @@ static int build_maskbuf(zrig *r, zimg *maskbuf, const zpart *p, double scale,
     /* 恢复本带的写区：羽化只是"多读了邻居"，不许把邻居的行也写出去 */
     maskbuf->clip_y0 = oy0;
     maskbuf->clip_y1 = oy1;
+    scratch->clip_y0 = oy0;
+    scratch->clip_y1 = oy1;
+    /* 全部 mask drawable 被显式隐藏时，初始全白 alpha 保持不变，等价于解除裁切。
+       这也保证 mask_invert 在“无有效源”时不会把整张被裁件反而藏掉。 */
+    if (!any) return 1;
     if (p->mask_invert) {
         /* 取反也只许碰分给本线程的那几行 */
         int iy0 = (maskbuf->clip_y1 > maskbuf->clip_y0) ? maskbuf->clip_y0 : 0;
@@ -7500,9 +7565,8 @@ static int build_maskbuf(zrig *r, zimg *maskbuf, const zpart *p, double scale,
             px[3] = (uint8_t)(255 - px[3]);
             px[0] = px[1] = px[2] = 255;
         }
-        return 1;                      /* 取反后遮罩不可能是"全透明" */
     }
-    return any;
+    return 1;
 }
 
 static void free_band_bufs(zrig *r)
@@ -7544,14 +7608,15 @@ static void render_band(zband *b)
         if (!compute_draw_state(r, pi, b->scale, b->blink, b->a, &st)) continue;
         if (p->mask_only) continue;      /* 只当遮罩用的部件不出现在画面上 */
 
-        /* 被裁切：先按需把遮罩画进 maskbuf（可以是多个部件的并集 + 可取反），
+        /* 被裁切：先按需把遮罩画进 maskbuf（多个部件取交集 + 可取反），
            再把自己画进 scratch，最后按遮罩 alpha 合成到画面。
            遮罩是**当场渲染**的，所以不要求遮罩和被裁件在图层里挨着。 */
-        if (p->nmask > 0) {
-            if (!build_maskbuf(r, b->maskbuf, p, b->scale, b->blink, b->a, b->idx)) continue;
-            if (!b->scratch) continue;
-            zimg_clear(b->scratch);
-            target = b->scratch;
+        if (p->nmask > 0 && b->scratch) {
+            if (build_maskbuf(r, b->maskbuf, b->scratch, p,
+                              b->scale, b->blink, b->a, b->idx)) {
+                zimg_clear(b->scratch);
+                target = b->scratch;
+            } /* 全部遮罩源隐藏时构造全白 alpha，效果等于不裁切。 */
         }
         /* 被遮罩的部件先画进 scratch（那里是空的，必须用普通混合），
            混合模式留到 composite_masked 那一步再按真正的目标画面算。 */
@@ -7642,8 +7707,16 @@ const zimg *zrig_mask_frame(zrig *r, const char *part_id, double scale,
     r->mask_dbg->clip_y0 = 0;
     r->mask_dbg->clip_y1 = fh;
     zimg_clear(r->mask_dbg);
-    build_maskbuf(r, r->mask_dbg, &r->parts[pi], scale, r->blink_now,
-                  current_action(r), 0);
+    if (!r->scratch || r->scratch->w != fw || r->scratch->h != fh) {
+        zimg_free(r->scratch);
+        r->scratch = zimg_new(fw, fh);
+    }
+    if (r->scratch) {
+        r->scratch->clip_y0 = 0;
+        r->scratch->clip_y1 = fh;
+        build_maskbuf(r, r->mask_dbg, r->scratch, &r->parts[pi], scale,
+                      r->blink_now, current_action(r), 0);
+    }
     /* 遮罩是白 alpha；把它做成"白底看得见"的灰度图，浏览器直接看 */
     {
         size_t n = (size_t)fw * fh, q;

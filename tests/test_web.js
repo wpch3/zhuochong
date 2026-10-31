@@ -389,6 +389,10 @@ function slotOf(id) {
         "layout 里每个组件都应被动态加载（要 " + wanted.length + " 个，实际 " + loadedScripts.length + "）");
   CHECK(ZC.mounted.length === wanted.length,
         "每个组件都应挂载成功（要 " + wanted.length + " 个，实际 " + ZC.mounted.length + "）");
+  ["chat", "actions"].forEach((id) => {
+    CHECK(ZC.registry.has(id) && ZC.mounted.some((m) => m.def.id === id),
+          id + " 必须完成脚本注册并实际挂载");
+  });
   const errs = walk(doc.body).filter((n) => n.className === "err");
   CHECK(errs.length === 0, "不应有组件挂载失败（实际 " + errs.length + " 个 .err：" +
         errs.map((e) => e._text).join(" / ") + "）");
@@ -1131,6 +1135,8 @@ function slotOf(id) {
     CHECK(mountedOk >= 1, "正常的组件仍要挂上（实际 " + mountedOk + "）");
     CHECK(errs2.length === 1, "缺失的组件应就地显示错误而不是整页崩（实际 " + errs2.length + "）");
     CHECK(errs2.length && errs2[0]._text.includes("no_such_card"), "错误里应点名是哪个组件");
+    CHECK(errs2.length && errs2[0]._text.includes("组件脚本加载失败"),
+          "缺失组件要报告脚本加载阶段的真实错误，不能只留模糊占位符");
   }
 
   /* ---------------------------------------------------------------- G114 */

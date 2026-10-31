@@ -25,50 +25,6 @@
       "slot": "head_over_hair",
       "style": "short"
     },
-    "acc_hood_twin": {
-      "sprite_file": "sheetcut_acc_hood_twin.png",
-      "ref": "head_top",
-      "pos_rel": [
-        0.02415,
-        0.741381
-      ],
-      "sprite_h_rel": 1.234759,
-      "width_ratio": 1.0,
-      "px": [
-        353,
-        81,
-        660,
-        437
-      ],
-      "content_px": [
-        308,
-        357
-      ],
-      "slot": "head_over_hair",
-      "style": "twin"
-    },
-    "hair_hood_twin": {
-      "sprite_file": "sheetcut_hair_hood_twin.png",
-      "ref": "head_top",
-      "pos_rel": [
-        0.022549,
-        1.380281
-      ],
-      "sprite_h_rel": 2.095978,
-      "width_ratio": 1.0,
-      "px": [
-        234,
-        156,
-        778,
-        761
-      ],
-      "content_px": [
-        545,
-        606
-      ],
-      "slot": "head_side_hair",
-      "style": "twin"
-    },
     "acc_hood_pony": {
       "sprite_file": "sheetcut_acc_hood_pony.png",
       "ref": "head_top",
@@ -95,20 +51,42 @@
       "sprite_file": "sheetcut_hair_hood_pony.png",
       "ref": "head_top",
       "pos_rel": [
-        0.309173,
+        0.354009,
         1.641286
       ],
       "sprite_h_rel": 2.659748,
       "width_ratio": 1.0,
       "px": [
-        408,
+        436,
         156,
         783,
         924
       ],
       "content_px": [
-        376,
+        348,
         769
+      ],
+      "slot": "head_side_hair",
+      "style": "pony"
+    },
+    "hair_hood_pony_side": {
+      "sprite_file": "sheetcut_hair_hood_pony_side.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.040163,
+        0.818241
+      ],
+      "sprite_h_rel": 0.522265,
+      "width_ratio": 1.0,
+      "px": [
+        406,
+        208,
+        617,
+        358
+      ],
+      "content_px": [
+        212,
+        151
       ],
       "slot": "head_side_hair",
       "style": "pony"
@@ -156,6 +134,50 @@
       ],
       "slot": "head_side_hair",
       "style": "long"
+    },
+    "acc_hood_twin": {
+      "sprite_file": "sheetcut_acc_hood_twin.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.02415,
+        0.741381
+      ],
+      "sprite_h_rel": 1.234759,
+      "width_ratio": 1.0,
+      "px": [
+        353,
+        81,
+        660,
+        437
+      ],
+      "content_px": [
+        308,
+        357
+      ],
+      "slot": "head_over_hair",
+      "style": "twin"
+    },
+    "hair_hood_twin": {
+      "sprite_file": "sheetcut_hair_hood_twin.png",
+      "ref": "head_top",
+      "pos_rel": [
+        0.022549,
+        1.380281
+      ],
+      "sprite_h_rel": 2.095978,
+      "width_ratio": 1.0,
+      "px": [
+        234,
+        156,
+        778,
+        761
+      ],
+      "content_px": [
+        545,
+        606
+      ],
+      "slot": "head_side_hair",
+      "style": "twin"
     }
   }
 }

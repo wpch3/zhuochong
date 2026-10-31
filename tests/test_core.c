@@ -3363,7 +3363,7 @@ static void test_mask(void)
         }
     }
 
-    /* 眨眼把遮罩源一起关掉时，被裁切的部件必须跟着消失（遮罩全透明 = 看不见） */
+    /* 0% opacity 是“不可见的参考遮罩”，但几何仍参与 clipping（官方语义）。 */
     write_text(rigp,
         "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
         "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
@@ -3393,8 +3393,9 @@ static void test_mask(void)
             fb = zrig_frame(r, 1.1, NULL, NULL);
             closed_px = frame_opaque_px(fb);
             CHECK(open_px > 0, "睁眼时被裁切的部件可见（%d 像素）", open_px);
-            CHECK(closed_px == 0,
-                  "遮罩被眨眼隐藏后，被裁切的部件也要消失（实际还剩 %d 像素）", closed_px);
+            CHECK(closed_px > 0,
+                  "眼部遮罩透明度交叉时，遮罩仍应保留裁切几何（睁=%d 闭=%d）",
+                  open_px, closed_px);
             zrig_free(r);
         }
     }
@@ -9465,10 +9466,10 @@ static void test_xfade(void)
     }
 }
 
-/* ---- A9 遮罩升级：多遮罩并集 / 取反 / 不限层序 ---- */
+/* ---- A9 遮罩升级：多遮罩交集 / 取反 / 隐藏语义 ---- */
 static void test_mask_multi(void)
 {
-    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    char dir[1024], sprites[1024], dst[1024], rigp[1024];
     zdiag d;
     zrig *r;
     const char *head =
@@ -9476,28 +9477,45 @@ static void test_mask_multi(void)
         "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
         "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},";
 
-    SECTION("多遮罩取并集、取反遮罩、遮罩不许套娃");
+    SECTION("多遮罩取交集、0% opacity 仍作遮罩、全隐藏解除裁切、取反与套娃校验");
     z_snprintf(dir, sizeof(dir), "/tmp/zc_mask2");
     z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
     z_mkdir_p(dir); z_mkdir_p(sprites);
-    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
-    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
-    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
-    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/body_full.png", g_root);
-    z_snprintf(dst, sizeof(dst), "%s/big.png", sprites);
-    if (copy_file(src, dst) != 0) { CHECK(0, "复制大图失败"); return; }
     z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    {
+        zimg *mask = zimg_new(80, 80), *big = zimg_new(300, 300);
+        zerr pe;
+        int x, y;
+        if (!mask || !big) { CHECK(0, "遮罩测试夹具分配失败"); zimg_free(mask); zimg_free(big); return; }
+        for (y = 0; y < 80; ++y) for (x = 0; x < 80; ++x) {
+            size_t o = ((size_t)y * 80 + x) * 4;
+            mask->px[o] = mask->px[o + 1] = mask->px[o + 2] = 255;
+            mask->px[o + 3] = 255;
+        }
+        for (y = 0; y < 300; ++y) for (x = 0; x < 300; ++x) {
+            size_t o = ((size_t)y * 300 + x) * 4;
+            big->px[o] = 36; big->px[o + 1] = 128; big->px[o + 2] = 220;
+            big->px[o + 3] = 255;
+        }
+        z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+        zerr_clear(&pe);
+        CHECK(zimg_save_png(mask, dst, &pe) == 0, "写遮罩矩形测试夹具：%s", pe.msg);
+        z_snprintf(dst, sizeof(dst), "%s/big.png", sprites);
+        zerr_clear(&pe);
+        CHECK(zimg_save_png(big, dst, &pe) == 0, "写被裁测试夹具：%s", pe.msg);
+        zimg_free(mask); zimg_free(big);
+    }
 
-    {   /* 两个小遮罩分别在左右，被裁的大图应该**两处都露**（并集） */
+    {   /* 两张相交矩形遮罩必须只露出重叠部分（交集），不是左右并起来 */
         char buf[2048];
-        long only_a = 0, both = 0;
+        long only_a = 0, both = 0, one_visible = 0, unclipped = 0;
         int w = 0, h = 0, x, y;
         const zimg *f;
         z_snprintf(buf, sizeof(buf), "%s\"parts\":["
             " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
-            "  \"pos\":[20,100],\"anchor\":[0,0],\"mask_only\":true},"
+            "  \"pos\":[60,100],\"anchor\":[0,0],\"opacity\":0,\"mask_only\":true},"
             " {\"id\":\"mb\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":11,"
-            "  \"pos\":[200,100],\"anchor\":[0,0],\"mask_only\":true},"
+            "  \"pos\":[100,100],\"anchor\":[0,0],\"opacity\":0,\"mask_only\":true},"
             " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
             "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":[\"ma\"]}],"
             "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
@@ -9514,9 +9532,9 @@ static void test_mask_multi(void)
         }
         z_snprintf(buf, sizeof(buf), "%s\"parts\":["
             " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
-            "  \"pos\":[20,100],\"anchor\":[0,0],\"mask_only\":true},"
+            "  \"pos\":[60,100],\"anchor\":[0,0],\"opacity\":0,\"mask_only\":true},"
             " {\"id\":\"mb\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":11,"
-            "  \"pos\":[200,100],\"anchor\":[0,0],\"mask_only\":true},"
+            "  \"pos\":[100,100],\"anchor\":[0,0],\"opacity\":0,\"mask_only\":true},"
             " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
             "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":[\"ma\",\"mb\"]}],"
             "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
@@ -9529,10 +9547,30 @@ static void test_mask_multi(void)
             f = zrig_frame(r, 1.0, &w, &h);
             for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
                 if (f->px[((size_t)y * w + x) * 4 + 3]) both++;
+            { zerr pe; zerr_clear(&pe);
+              CHECK(zimg_save_png(f, "/tmp/zc_mask_intersection.png", &pe) == 0,
+                    "保存遮罩交集实拍图：%s", pe.msg); }
+            /* 隐藏其中一张时，剩余 source 继续生效；全部隐藏后解除裁切。 */
+            CHECK(zrig_part_vis_set(r, "ma", 0) == 0, "可以隐藏第一张遮罩");
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) one_visible++;
+            CHECK(zrig_part_vis_set(r, "mb", 0) == 0, "可以隐藏第二张遮罩");
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) unclipped++;
             zrig_free(r);
         }
-        CHECK(both > only_a * 3 / 2, "两个遮罩取并集应该露出更多（%ld → %ld）",
-              only_a, both);
+        CHECK(only_a >= 6200 && only_a <= 6600,
+              "0%% opacity 的单个遮罩仍应以几何形状裁切（area=%ld）", only_a);
+        CHECK(both >= 3000 && both <= 3400,
+              "两张 80x80 遮罩错开 40px 后应只露 40x80 交集（area=%ld）", both);
+        CHECK(both < only_a * 3 / 4,
+              "多遮罩必须取交集，结果应明显小于单张遮罩（%ld vs %ld）", both, only_a);
+        CHECK(one_visible >= 6200 && one_visible <= 6600,
+              "隐藏一张遮罩后，剩余 source 应独立裁出 80x80（area=%ld）", one_visible);
+        CHECK(unclipped >= 89500,
+              "所有遮罩源显式隐藏后应解除裁切、恢复 300x300 全图（area=%ld）", unclipped);
     }
 
     {   /* 取反遮罩：只在遮罩**外面**可见，和正向遮罩互补 */

@@ -30,13 +30,14 @@ if not force:
     if candidate.priority < current.priority: return None
 ```
 以及 `update()` 里"到期后进入 `_queued_after` 或 `spec.return_state`"的逻辑。
-本项目把它翻写成 C（`src/core/zsm.c` 的 `zsm_request()` / `zsm_update()`），并保留
-"同一状态重复请求不重置计时、`force` 可重播"的行为（用于摸头连击与唤醒）。
+本项目把它翻写成 C（`src/core/zsm.c` 的 `zsm_request()` / `zsm_update()`），但不照搬所有边界语义：
+实际源码在优先级判断前先处理 `target == current` 并返回 `None`，**即使 `force=True` 也不重播**。
+本项目的 `force` 重播是产品侧明确选择，不是 ds-local-pet 的行为；同状态普通请求不重置计时，见 `tests/test_core.c::test_state_machine`。
 
 ### 3) 空闲检测 —— ds-local-pet `awareness/idle_detector.py`
-`GetLastInputInfo` + `GetTickCount` 求差值、并按 32 位环绕取模（`& 0xFFFFFFFF`）。
+Windows 上用 `GetLastInputInfo` + `GetTickCount` 求差值，并按 32 位环绕处理；**非 Windows 或 API 失败会返回 `0.0`**，不能据此推断跨平台都能读到空闲时间。
 C 版见 `src/win32/zw32.c` 主循环里的 `LASTINPUTINFO` 段：差值转秒后交给 `zpet_report_idle()`，
-由 `src/core/zpet.c` 判断"超过 90 秒 → sleep、任何输入 → 唤醒"。
+由 `src/core/zpet.c` 判断"超过 90 秒 → sleep、任何输入 → 唤醒"。具体源码快照 SHA 及复核记录见 2026-10-31 小节。
 
 ### 4) 交互语汇 —— VPet（WPF）
 参考其"拖动 / 点击反应 / 右键菜单 / 托盘 / 触摸分区"的组织方式：
@@ -72,7 +73,28 @@ Neuro-sama 不是原六项参考项目之一；此前 `docs/VOICE_PLAN.md` 只�
 - **结论**：3D 模型展示可用开源库快速做可行性原型；“在当前 C/Win32 产品中完整兼容 VRM”仍需新增渲染后端；“兼容 VRChat 模型”不是同一功能，必须限定为用户有权使用的源文件与可转换子集。拆分任务见 `docs/memory/TASKS.md` P1.12、P2.5–P2.6；本仓库架构预审结果见 `docs/VRM_SPIKE_REPORT.md`。
 - **后续待查**：运行库对 VRM 1.0/0.x 的细项支持、MToon/shader差异、SpringBone/PhysBones映射、Unity/VRC SDK 当前版本和许可、模型元数据的再分发限制，以及 Windows WebGL/本地渲染性能。
 
-## 未决 / 待查（下一步做对应功能前先查参考项目）
+## 2026-10-31 主动扩展参考池：本地 AI、代理评测、性能与可视化
+
+> 本轮不是“看到项目名就采纳”：至少核对仓库 README / 具体源码和许可证。下表均为**候选参考**，
+> 不代表已集成、已采用、在本机有性能收益，或已获得第三方素材授权；实现前要在目标硬件/目标工作流上做小实验。
+
+| 领域 | 来源与许可 | 本轮核验到的事实 | 小寻项目适用点 / 不应误推断 |
+| --- | --- | --- | --- |
+| 本地推理 / 量化 | [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp), MIT；README blob `ff7221db733db148cc739bbc5697a58d4c98820d` | C/C++ LLM/VLM 推理、量化、CPU/GPU 混合推理，并提供 OpenAI-compatible server | 可作为 Windows 离线聊天/工具调用的技术对照；是否适配本项目需测模型加载、首 token、稳态延迟、内存/显存、包体与设备兼容，README 不等于桌面端 benchmark。 |
+| 高并发模型服务 / Agent workload | [sgl-project/sglang](https://github.com/sgl-project/sglang), Apache-2.0；README blob `0c28df5e901bf8f1e1b0f8c0d5972ed0004b0529` | 定位为 LLM/多模态高性能服务，提及 agentic workloads 与规模化推理 | 适合“本地小模型 + 可选局域网/远端服务”的架构对照；服务端吞吐不推断单用户桌宠的端到端延迟，也不替代 llama.cpp 的本地资源测量。 |
+| Prompt/Agent/RAG 评估与红队 | [promptfoo/promptfoo](https://github.com/promptfoo/promptfoo), MIT；README blob `2a56017c2609e3a92d7d5539147c9c7e620a3420` | 覆盖 prompt、agent、RAG 评估、红队、模型对比、CLI/CI 与本地运行；README 说明项目现属 OpenAI 但仍为 MIT 开源 | 可用于给“角色口吻、拒答/边界、工具调用、记忆检索”建立可重复回归集；先选少量高价值测试接入，不要把厂商宣传当作评测结果。 |
+| 可观测性 | [open-telemetry/opentelemetry-collector](https://github.com/open-telemetry/opentelemetry-collector), Apache-2.0；README blob `95bb0001d74b1415b0111e72f07ec2e806b80c0b` | traces / metrics / logs 的统一收集器 | 可为 `zgateway` / agent 链路设计关联 ID、错误率、分段耗时和脱敏日志；桌面单进程未必需要部署完整 Collector，优先明确隐私、采样和本地存储。 |
+| 本地记忆 / 语义检索 | [qdrant/qdrant](https://github.com/qdrant/qdrant), Apache-2.0；README blob `cf4c1c5213148ed9d6388654f9d3e75b06504bc9` | 向量相似检索、过滤与存储 API，另提及边缘设备方向 Qdrant Edge | 作为长期记忆/检索候选；必须与 SQLite/关键词检索按检索质量、索引体积、启动耗时、常驻内存、删除/隐私语义对比，不能仅因“向量”就上数据库。 |
+| 角色互动/动画原型 | [godotengine/godot](https://github.com/godotengine/godot), MIT；README blob `aa4bc5f484dbf486a2bd7f1773fdc7ec97f210e1` | 多平台 2D/3D 引擎 | 可做独立互动/动作的可视化原型、快速验证触碰与状态机设计；本仓库的 C/Win32 runtime 已有明确架构，Godot 仅作实验对照，不据此建议替换现有运行时。 |
+| 桌宠交互 / 状态机实地对照 | [QCYTSN/ds-local-pet](https://github.com/QCYTSN/ds-local-pet), 代码 MIT；源码快照：`animation/state_machine.py` SHA `d15e3dbabdb27b84d90a93f6a4c452763cfd39e3`，`awareness/idle_detector.py` SHA `bcdfe31a00ac9ab4159eb65d482c3b72a97ee8aa` | `request()` 对“目标状态等于当前状态”先返回 `None`，`force=True` 也不重播；idle 检测在 Windows 用 `GetLastInputInfo`/`GetTickCount`，32 位回绕安全，非 Windows/API 失败返回 0.0。 | 记录状态优先级/可中断/过期回退和输入闲置的可借鉴点；本项目对 force 重播是有测试的本地产品决策，不能再归因于该上游实现。代码许可不自动覆盖 README 中的角色图片/其他视觉资产；使用前逐个核验素材权利。 |
+
+### 这批调研怎么落到研发流程
+
+- **AI 能力增强**：把 llama.cpp / SGLang 视为不同部署层级，把 promptfoo 作为效果、安全和回归评测的候选；先定义质量/延迟/资源基线，再决定取舍。
+- **代理与性能优化**：优先记录每个请求的阶段（输入、模型、工具、记忆、TTS）和失败原因；以真实 trace/benchmark 找瓶颈，避免只优化单一模型推理吞吐。
+- **研发方法**：每个外部项目留下“官方原则/源码事实 → 小寻实现 → 反例/陷阱 → 自动化 selfcheck 或运行截图”的链条。不得把 README 声明替代源代码核对和本机实验。
+- **形象与桌宠方向**：`ds-local-pet` 的状态参考图只作为“桌面小角色在小尺寸下仍可读、idle/走路/互动差分分明”的视觉/交互方向，不复制其女仆服或素材。小寻桌宠 Q 版参考图目前单独存放在 `characters/xiaoxun/design/chibi/`；仅作为设计参考，不可直接当生产 sprite；Live2D-Q 版后续另行设计，保持它与桌宠 Q 的用途区分。
+
 - 全局键鼠钩子：Windows 的 `WH_KEYBOARD_LL` / `RawInput` 取舍与权限流程 → 参考 #2。
 - 语音打断（barge-in）与端点检测 → 参考 #5。
 - 网格形变（mesh warp）做脸/身体平滑弯曲 → 参考 #6 的参数与形变管线（不用 Cubism Core）。
@@ -4181,7 +4203,7 @@ direction.Y = ((SinF(radian) * direction.X) + (direction.Y * CosF(radian)));   /
 | 遮罩可不可见 | 遮罩件不透明度设 **0%** 仍可当遮罩（官方推荐的"参考用遮罩"） |
 | 上限 | Native **36/模型**、Web **36/模型**、Unity **64/场景**；Native 的 `_useHighPrecisionMask=true` 可去上限 |
 | 计数 | 按 **ID 排列组合**去重；`A,B` 与 `B,A` 在 Native/Web 算一张，在 Unity 算两张 |
-| 遮罩全隐藏时 | **裁切被解除**（被裁件完整显示）—— 与我方"遮罩隐藏⇒被裁件消失"**方向相反** |
+| 遮罩全隐藏时 | **裁切被解除**（被裁件完整显示）；2026-10-31 修正前我方初版行为相反 |
 | 警告三型 | ①缺关键帧（参数区间没打 key）②遮罩件被设为隐藏/underdraw（导出时不出，SDK 会读到错值）③遮罩件已被删（Clipping 列为 null） |
 
 **白边（rim）的官方解释与解法**（这一条直接对上我们量到的 1.93% 亮缝）：
@@ -4189,6 +4211,14 @@ direction.Y = ((SinF(radian) * direction.X) + (direction.Y * CosF(radian)));   /
 > 遮罩轮廓上**半透明**的部分会把被裁 ArtMesh 底下的颜色透上来，于是边上出现一圈 rim。
 > 规避：①复制遮罩 ArtMesh ②Clipping ID 指向副本 ③把副本**放大**盖住原件轮廓
 > ④副本不透明度 **0%** ⑤副本与原件做**同样的变换**。
+
+**官方 Web Framework 源码交叉核对**：`Live2D/CubismWebFramework` commit
+`d4da0aa07e47d2c1e4f5fa7ea6047861ea5e5d0b`，[`src/rendering/cubismclippingmanager.ts`](https://github.com/Live2D/CubismWebFramework/blob/d4da0aa07e47d2c1e4f5fa7ea6047861ea5e5d0b/src/rendering/cubismclippingmanager.ts)
+将一个 drawable 的 `getDrawableMasks()` 列表作为同一个 clipping context 的 mask ID 列表；
+[`src/rendering/cubismrenderer_webgl.ts`](https://github.com/Live2D/CubismWebFramework/blob/d4da0aa07e47d2c1e4f5fa7ea6047861ea5e5d0b/src/rendering/cubismrenderer_webgl.ts)
+逐张将 ID 对应的 mesh 写到该 context 的遮罩缓冲。数组的几何集合语义（交集）、opacity=0 与全隐藏时的例外，仍以官方 Editor Manual 上表为规范真值；Web Framework 源码用于核对多 ID 共用上下文的实现路径，不把其 framebuffer 优化细节当作规范。
+
+**本项目语义校正（2026-10-31）**：初版把各遮罩以正常 alpha over 累积，实际算成并集；`build_maskbuf` 遇到不可绘制的全部 source 时跳过被裁件。现在数组对 source alpha 逐像素相乘；0% opacity source 在 mask pass 中只使用 geometry；显式 visibility override 会跳过该 source，若全部跳过则全白 alpha（解除裁切）。单遮罩保留直接 rasterize 快路径。可复核：`tests/test_core.c:test_mask_multi` 及 `docs/qa/live2d_mask_intersection_2026-10-31.png`、`docs/qa/live2d_teen_eye_clipping_2026-10-31.png`、`docs/qa/live2d_teen_hairstyle_hood_matrix_2026-10-31.png`。
 
 ### B. Inochi2D 的遮罩模型（`github.com/Inochi2D/inochi2d`）
 
@@ -4230,3 +4260,46 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 - [Live2D 官方：Skinning](https://docs.live2d.com/en/cubism-editor-manual/skinning/)：长发的 deform path 应从发根到发梢；推荐先建立目标 ArtMesh 的父子层级，再做 skinning；完成后逐项检查变形，长发可再接实时 physics。Cubism 的 skinning 会把一张 ArtMesh 在多个旋转 deformer 间分段并粘合，不能据此推断本仓库 JSON 直接兼容 Cubism。
 - [Live2D 官方：Physics Settings](https://docs.live2d.com/en/cubism-editor-tutorials/physical-calculation-settings/)：教程覆盖单段与两段以上摆链；本仓库 teen rig 是自有 `physics2`/deformer 实现，不是假称 Cubism `.moc3`，但可参考根固定、分段延迟、逐段软化的结构。现有后发三段链可作为代码审计起点，数值须以新图实际可见运动重测，不能照搬代替目视。
 - 施工边界：拆图与形变点需共同考虑。发根跟随头部，发中与发梢逐级产生相位滞后；保持剪影、明暗与相邻件遮挡连续。若网格运动显露接缝，优先重画/补重叠或修变形路径，不得用整体 `bend_y` 拉伸遮掩。
+
+## Reference-Driven Development：标准 → 项目实现 → 陷阱核对（2026-10-30）
+
+本轮主动核对的成熟标准/项目资料：
+
+- [Live2D 官方 Illustration Processing](https://docs.live2d.com/en/cubism-editor-tutorials/psd/)：头发拆成刘海、左右侧发与后发；左右分束分别成层；原画中被遮挡的区域必须补画。项目落地：`design/attachments.json` 为挂件/发型来源，`make_attach_parts.py` 生成独立部件；发型切换时对照准确的全身设定稿并检查遮挡、发根与连续剪影。
+- [Live2D 官方 About Material Separation](https://docs.live2d.com/en/cubism-editor-manual/divide-the-material/) 与 [Notes on PSD creation](https://docs.live2d.com/en/cubism-editor-manual/precautions-for-psd-data/)：显著运动件和运动后会显露的区域要先画；一个运动部件作为可编辑独立层，线稿/填色/效果应按部件整理。项目落地：先验证全身/局部参考，再拆件；来源图、生成贴图、rig 引用必须逐层可追溯。
+- [Spine 官方 Mesh attachments](https://en.esotericsoftware.com/spine-meshes)：网格顶点与边决定变形，骨骼权重可驱动网格；顶点密度和连接方式要服务目标变形。项目落地：项目自己的 mesh/deformer 结构不是 Spine 格式兼容，引用仅用于理解网格变形原则；必须在本项目渲染器里用真实动作画面验收。
+- [Inochi2D MeshDeformer implementation](https://github.com/Inochi2D/inochi2d/blob/main/source/inochi2d/nodes/deformer/meshdeformer.d)：成熟项目将网格变形作为明确节点实现。项目落地：仅借鉴节点/数据边界，不复制源代码；与 `src/core/zrig.c`、项目 rig schema 和自检规则逐项对照。
+
+记录模板（每次新标准或素材流程都填写，不可只贴链接）：
+
+1. **标准原则**：来源讲了什么、适用边界是什么；
+2. **项目实现**：对应到本项目的资产、配置、代码或运行时行为；不同于标准格式的地方要明说；
+3. **陷阱核对**：至少列一个易错点、能复现的正/负控或验证命令，以及本人查看真实产物后的结论；
+4. **自检映射**：写出哪些不变量由 `tools/selfcheck_repo.py` / runtime 测试守住，哪些仍需人工视觉验收。
+
+这条记录不把“有参考链接”当成完成：URL 必须支持其旁边的结论；图像任务还必须使用本形态、服装和状态对应的正确全身参考，保存同尺度全身对照与细节放大图。自动化闸门只覆盖可判定项，视觉是否自然仍由实际渲染图和本人目视决定。
+
+## 2026-10-31 扩展参考项目：Q 版桌宠、AI 编排、代理与推理性能
+
+用户新增要求：除既有参考库外，主动寻找能服务小寻的桌宠形象、AI 能力、代理/网关和研发流程项目；不是收集 star 数，而是记清可借鉴边界、验证方法和授权边界。此次核读 GitHub 仓库页/README/LICENSE，以下均为**候选参考，不等于已集成，也不代表性能承诺**。
+
+| 项目 / 来源 | 已核实的可借鉴点 | 小寻的落点与限制 |
+| --- | --- | --- |
+| [QCYTSN/ds-local-pet](https://github.com/QCYTSN/ds-local-pet)（MIT 代码；README 明确视觉资产另行授权） | PySide6 Windows 桌宠；本地窗口元数据感知、分区交互、独立微动作与完整活动调度、manifest 帧动画、拖拽/抛掷、恢复与隐私设计。用户截图来自该项目页面；本轮已核读 README 和 `animation/state_machine.py`、`awareness/idle_detector.py`。 | 作为**真正 Q 版桌宠的状态/互动/运行时展示**参考。仅借鉴比例方向和交互结构，不复制 DeepSeek 吉祥物、原始图、付费姿势/图集或把其素材当 MIT；小寻必须按自己的全身原画与服装重新设计。 |
+| [BerriAI/litellm](https://github.com/BerriAI/litellm)（核心 MIT；`enterprise/` 独立许可） | AI Gateway / OpenAI 兼容 API、供应商路由、重试/回退、负载分配、预算/成本、观测、guardrails 与缓存配置。 | 作为现有 `zgateway` 的**功能对照表**，逐项核对路由、故障回退、超时/重试、配额、脱敏和审计；不因功能多就直接替换 C 网关，须测 p50/p95、故障恢复与资源占用。 |
+| [vLLM](https://github.com/vllm-project/vllm)（Apache-2.0） | README 列明连续批处理、chunked prefill、prefix caching 等高吞吐服务能力。 | 适用于未来独立 GPU 推理服务，不是当前 Win32/C 桌宠的轻量嵌入式库；只有在吞吐/并发需求实测成立后才立项。对单用户桌宠优先测首 token 延迟、常驻显存与唤醒成本，而非拿服务器吞吐作结论。 |
+| [vLLM Semantic Router](https://github.com/vllm-project/semantic-router)（Apache-2.0） | 可按任务、质量/延迟/成本偏好及部署位置做模型/算力选择；仓库说明其为 decision layer。 | 作为“简单规则路由 → 语义分类路由”的候选；先用本地真实 trace 对比分类开销、错误路由率和端到端 p95。小寻当前保留确定性规则优先，暂不因新项目而引入额外模型调用。 |
+| [AIRI](https://github.com/moeru-ai/airi)（MIT）与 [Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber)（MIT） | 多模态陪伴/Live2D/VRM 舞台抽象；实时语音分段、打断、可替换 STT/LLM/TTS、本地模型选项。Open-LLM-VTuber README 明确支持语音打断与离线模式。 | 沿用我们已记录的语音流水线审查：VAD/STT → turn/LLM → 可取消播放/TTS → 口型/字幕；把渲染与 agent 事件解耦。必须逐项检查当前提交与依赖，不把旧文档的能力描述当成当前代码事实。 |
+| [LangGraph](https://github.com/langchain-ai/langgraph)（MIT） | durable agent execution、checkpoint、interrupt/HITL 与短/长期 memory。 | 研发耐久状态、显式中断、审批/恢复用例；只借鉴状态图和测试点，不把框架作为当前 C agent runtime 的依赖。 |
+| [Mem0](https://github.com/mem0ai/mem0)（Apache-2.0） | 面向 agent 的持久记忆层，含 self-hosted 选项。 | 与现有本地记忆比较事实更新、撤回、重复抑制、隐私边界和检索延迟；先构建小寻真实评测集，再决定自研/引入，不以厂商 benchmark 作为验收。 |
+
+### 采用顺序（研究结论，不是功能承诺）
+
+1. **形象**：先用用户自己的 Xiaoxun 参考图确定比例、轮廓、颜色、服装，再出单张独立概念参考；每张注明“概念参考，非可直接拆件的 production sprite”。不复制 ds-local-pet 的角色/图集。
+2. **桌宠行为**：对照 ds-local-pet 的 manifest、分层调度、区域点击和本地隐私边界；以 `zsm`、`zpet` 和本项目运行时为实现主线。
+3. **AI 质量**：先建可回放 trace/eval；分别测首 token、全回复延迟、工具成功率、上下文长度、缓存命中与失败回退。无测量不称“提升”。
+4. **代理/路由**：先扩展现有 `zgateway` 的可观测与故障注入；LiteLLM/semantic-router 作对照，按模型/意图切换必须胜过本地规则基线才采纳。
+5. **性能**：本地单用户先看冷启动、内存/显存、p95 和热功耗；vLLM/SGLang 这类服务端吞吐指标不外推到桌面端。
+6. **研发工程**：参考 LangGraph 的 checkpoint/interrupt 和现有项目的 manifest/恢复测试，维护短小的黄金用例集；每次变更要求 trace 回放、正负控与人工目视（视觉任务）。
+
+**许可证边界**：所有链接均用于公开查阅。ds-local-pet README 明确代码 MIT 与视觉资产许可分离；LiteLLM `enterprise/` 另有许可；其它模型权重、语音权重、第三方运行时和数据集仍须按各自版本单独核验，不能从仓库代码 LICENSE 推断。

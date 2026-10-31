@@ -227,6 +227,11 @@ step "20c/27 脸的轮廓线（按模板把下颌/脸颊的主線补回 seg_head
 # 有主線的地方必须是实的，所以这里是"塗り足し保持 + 其上另画线"，不是裁掉塗り足し。
 "$PY" tools/draw_face_contour.py --character "$CH" --form "$FM"
 
+step "20d/27 头件发丝残留清理与下颌源图修复"
+# 以 body_full 同源脸部轮廓逐行修补下颌透明碎洞，再按皮肤边界裁除头件外侧发束。
+# 必须在全部 face/head 修补之后、高清化之前运行，保证 1×/@2x 使用同一轮廓。
+"$PY" tools/clean_head_backing.py --character "$CH" --form "$FM" --halo 4
+
 step "20c/27 腋下描き足し（把抬臂后会露底的腋窝补进躯干）"
 # 必须排在 clean_baked_residue / trim_exposed_residue 之后：那两步会把
 # 「只在被盖住时才成立」的料当残渣清掉，补在它们前面等于白补。
@@ -235,6 +240,12 @@ step "20c/27 腋下描き足し（把抬臂后会露底的腋窝补进躯干）"
 # 第四十六问 kirara_jump 全身巡检：手臂抬起时白夹克侧缘与青袖子之间
 # 裂开楔形背景（logs/asset_qa/q46_armpit_cmp.png 上下对照）。
 "$PY" tools/armpit_patch.py --character "$CH" --form "$FM"
+
+step "20e/27 从四张戴帽全身参考切兜帽与帽下头发（含脸侧鬓发，只输出发丝掩膜）"
+# 必须排在 rig/high-res 与 make_attach_parts 之前：geometry/source 先更新，
+# make_attach_parts 再据此写 1×/@2×，最终 make_rig 收录新挂件。侧鬓发掩膜明确
+# 排除了皮肤、眼睛和脸部开口，避免误把 face-framing hair 做成整脸覆盖片。
+"$PY" tools/cut_hood_from_sheets.py --character "$CH" --form "$FM"
 
 step "21/27 切件高清化（每个件生成 2× 的 @2x，make_rig 会自动改用并把 scale 乘 0.5）"
 # 先空跑一遍 make_rig 刷新「rig 引用了哪些件」这张表：高清化只给引用到的件做 @2x，

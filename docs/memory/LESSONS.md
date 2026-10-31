@@ -6992,3 +6992,28 @@ Bezier `+=7`）与 `cubismmotion.ts`（贝塞尔把 `+1..+6` 读成 `points[1..3
   看着很香。但**腕口那 10px 是 `make_arm_parts` 补出来的腕桩**，设计图那里画的是袖子，
   直接搬会糊一块青色；用区域相似度做保护又会在指节上糊出脏块。
   这种"需要前置大前提"的事，记进 GAPS 转下一轮，不在收尾时硬上。
+
+### 452. 帽内 pony 黑洞来自漏接脸侧发片，不是尾巴缺失（2026-10-31）
+
+**标准原则**：Live2D 官方 PSD 拆件要求前发、侧发、后发分层，并画出运动/遮挡后会露出的区域；本项目继续以正确的 `sheet_pony_hood.png` 全身模板为真值源。
+
+**项目实现**：根因是 `cut_hood_from_sheets.py` 已从模板提取两缕仅含头发的 face-framing locks，但它们被命名为 `hair_hood_pony_face`，曾作为未验收整脸叠片被移出生产配置；移除时也一起丢失了必需的侧发。新实现改成 `hair_hood_pony_side`：保留来源模板的侧鬓发掩膜，显式排除肤色、眼睛、帽衬与脸部开口；挂在 pony 发型档，并仅在 hood-down 时隐藏。生成几何返回内容中心，而 rig 使用顶部锚点，因此配置 y = center_y − sprite_h/2；错用中心值会把侧发整体下移半片高度。
+
+**陷阱核对**：1.0 全身截图 `/tmp/pony-scale1-latest.png` 显示脸两侧帽内黑洞；只看马尾可见会误判“pony 恢复”。加回 side-lock 后重新渲染，并与 `sheet_pony_hood.png` 同尺度脸部放大对照（`docs/qa/pony_hood_side_lock_compare_2026-10-31.png`），大片黑洞已消失；独立发片没有覆盖眼睛/脸部。自检用 `tools/selfcheck_repo.py` 守住来源、几何换算、pose 显隐与 1×/2× 布线；实际轮廓自然度仍必须目视。下颌切边细噪点仍属独立待查问题，不把这次局部修复扩大成“pony 完全无瑕”。
+
+### 453. twin hood 发层混入虹膜，必须按源 ROI 做负控（2026-10-31）
+
+**标准原则**：发层是 hair-only；眼睛/皮肤属于脸部层。切件规则不能只靠“看起来像发色”，要对准参考图中脸/发交界，并保留一项能抓回归的负控。
+
+**项目实现**：`hair_hood_twin` 源切片的中央刘海下方存在蓝色虹膜及浅色巩膜像素。对 Git 基线与修复件在同一 ROI（x=210..254、y=95..129）做色彩阈值对照，修复前有 **124** 个蓝色眼像素，修复后为 **0**；从 twin hood 源重切头发，仅重建 `hood_up_twin` 与 `hair_hood_twin` 挂件并重建 rig。全身预览以 scale=1.0、twin、hood-up、relaxed 冻结实拍，见 `docs/qa/twin_hood_face_reference_render_2026-10-31.png`；脸部局部对照见 `docs/qa/twin_hood_face_compare_2026-10-31.png`。目视可确认此前落在刘海下的蓝色异物消失、双眼边缘比污染版本清楚；这只证明该污染源被移除，不能扩大为“脸部所有模糊/边缘问题已彻底解决”。
+
+**陷阱核对**：原有大面积头发纯度阈值以连通块 ≥200px 判异物，容易漏掉 124px 的虹膜碎片。新增 `qa_hair_purity.py --check-twin-hood-eye` 只检查准确的中央额前 ROI，且由 `scripts/selfcheck_all.sh` 调用；`selfcheck_repo.py` 同时守住该检查仍接入总流程。生成/重建后需分别跑像素闸和运行截图目视验收，不能拿“脚本成功”代替脸部观感判断。
+
+## 2026-10-31｜遮罩语义不能从“有数组和 invert 字段”推断完成
+
+T67.8 盘点时发现任务表标未完成，但实现已经解析数组/取反；真正缺口是数组在渲染端被 normal-over 合成成了**并集**，以及 mask source 不可绘制时错误地跳过被裁件。字段存在不代表语义相符。
+
+- **真值源**：Live2D Editor Manual 的 Clipping Mask 页明确多 ID 取交集、0% opacity 仍能做参考遮罩、所有 mask 全隐藏则裁切解除；CubismWebFramework 的 clipping manager / renderer 交叉核对多 ID 共用 clipping context。来源与 commit 见 `docs/REFERENCE_NOTES.md` 第六十八批。
+- **陷阱**：opacity=0 是“不可见但仍作遮罩”；drawable 显式隐藏才跳过。不要把二者合并成一个 opacity early-out。
+- **正确合成**：交集 alpha 从 255 开始逐源乘积；`mask_invert` 对组合结果取补；无有效 source 必须变成全白 alpha，且 inverted 空集不能误变成全透明。
+- **验收**：遮罩 source 互相偏移的 fixture 让输出只剩重叠区域；还要单测 0% opacity 与全部显式隐藏。实际 teen 模型需看静帧与眨眼帧；自动像素断言不能替代观察。

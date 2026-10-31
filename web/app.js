@@ -173,7 +173,10 @@
     if (layout.title) document.title = layout.title;
     await applyTheme(layout.theme || "sakura");
 
-    /* 先把 layout 里出现过的组件脚本都拉下来（它们会自行 register） */
+    /* 先把 layout 里出现过的组件脚本都拉下来（它们会自行 register）。
+       script 的 load 事件也可能在语法/运行时异常之后触发；不能只把 HTTP 200 当作注册成功。
+       挂载前再核一次注册表，把网络错误与“脚本已载入但没有登记 id”保留给占位提示。 */
+    const componentLoadErrors = new Map();
     const regions = layout.regions || {};
     const ids = [];
     Object.keys(regions).forEach((rk) => {
@@ -184,8 +187,16 @@
     });
     for (const id of ids) {
       if (registry.has(id)) continue;
-      try { await loadScript("components/" + id + ".js"); }
-      catch (e) { console.error(e); }
+      const src = "components/" + id + ".js";
+      try {
+        await loadScript(src);
+        if (!registry.has(id)) {
+          throw new Error(src + " 已加载，但没有调用 ZC.register({ id: \"" + id + "\" })");
+        }
+      } catch (e) {
+        componentLoadErrors.set(id, e.message || String(e));
+        console.error(e);
+      }
     }
 
     /* 再按区域顺序挂载 */
@@ -197,8 +208,10 @@
         const opts = (typeof item === "object" && item.options) ? item.options : {};
         const def = registry.get(id);
         if (!def) {
-          console.error("布局引用了未注册的组件：" + id);
-          host_el.appendChild(el("div", "err", "缺少组件：" + id));
+          const detail = componentLoadErrors.get(id);
+          console.error("布局引用了未注册的组件：" + id + (detail ? "；" + detail : ""));
+          host_el.appendChild(el("div", "err",
+            "缺少组件：" + id + (detail ? "（" + detail + "）" : "（脚本未注册；请检查控制台）")));
           return;
         }
         mountOne(def, host_el, opts);
