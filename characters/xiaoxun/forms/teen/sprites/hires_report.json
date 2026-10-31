@@ -8,7 +8,7 @@
  "lanczos": 7,
  "native": 6,
  "keycolor_fixed": 79,
- "seconds": 0.1,
+ "seconds": 1.0,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -970,7 +970,12 @@
     360
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 0,
+   "post_finish": {
+    "toe_start_1x": 111,
+    "toe_tone_blend": 0.4,
+    "collar_ink_blend": 0.25
+   }
   },
   {
    "name": "seg_foot_l_tip.png",
@@ -983,7 +988,12 @@
     420
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 0,
+   "post_finish": {
+    "toe_start_1x": 131,
+    "toe_tone_blend": 0.4,
+    "collar_ink_blend": 0.25
+   }
   },
   {
    "name": "seg_foot_r.png",
@@ -996,7 +1006,12 @@
     360
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 0,
+   "post_finish": {
+    "toe_start_1x": 111,
+    "toe_tone_blend": 0.4,
+    "collar_ink_blend": 0.25
+   }
   },
   {
    "name": "seg_foot_r_tip.png",
@@ -1009,7 +1024,12 @@
     420
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 0
+   "keycolor_fixed": 0,
+   "post_finish": {
+    "toe_start_1x": 131,
+    "toe_tone_blend": 0.4,
+    "collar_ink_blend": 0.25
+   }
   },
   {
    "name": "seg_head.png",

@@ -176,6 +176,58 @@ def upscale_rgb(sess, img_rgb):
     return Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype("uint8"), "RGB")
 
 
+def finish_teen_foot(arr, src_name, foot_report):
+    """超分后补回 Teen 白鞋的材质阴影，避免模型把已压暗的鞋头又提成近白。
+
+    只作用于默认小寻 teen 的四张鞋件；区域由 foot_parts.json 的鞋口/鞋底几何
+    计算，sock overlap、鞋带、鞋舌与青绿鞋面均不处理。颜色与线稿均源于现有像素。
+    """
+    import numpy as np
+    name = os.path.basename(src_name)[:-4]
+    if name not in {"seg_foot_l", "seg_foot_r", "seg_foot_l_tip", "seg_foot_r_tip"}:
+        return arr, None
+    tip = name.endswith("_tip")
+    side = name.split("_")[2][0]
+    part = next((p for p in foot_report.get("parts", []) if p.get("id") == name), None)
+    check = foot_report.get("checks", {}).get("foot_" + side, {})
+    if not part or not check:
+        return arr, None
+
+    ground = int(foot_report["ground_y"])
+    y_sole_flat = int(foot_report["cut"]["sole_top"])
+    ks = float(foot_report["warp"]["sole_squash"])
+    y_shoe = int(check["tip_shoe_top"] if tip else check["flat_shoe_top"])
+    y_sole = ground - round((ground - y_sole_flat) * ks) if tip else y_sole_flat
+    y_part = int(part["pos"][1])
+    shoe_rel, sole_rel = y_shoe - y_part, y_sole - y_part
+    toe_start = int(round(shoe_rel + (sole_rel - shoe_rel) * 0.56)) * FACTOR
+
+    out = arr.astype(np.float64, copy=True)
+    h, w = out.shape[:2]
+    yy, xx = np.mgrid[:h, :w]
+    rgb, alpha = out[..., :3], out[..., 3]
+    toe = ((alpha > 60) & (rgb[..., 0] > 225) & (rgb[..., 1] > 225) &
+           (rgb[..., 2] > 218) & (yy >= toe_start))
+    target = np.array([220.0, 220.0, 228.0])
+    if toe.any():
+        rgb[toe] = rgb[toe] * 0.60 + target * 0.40
+
+    # Strengthen, but do not redraw, the existing grayscale sock/shoe collar ink.
+    lum = rgb.mean(axis=2)
+    chroma = rgb.max(axis=2) - rgb.min(axis=2)
+    seam_y = shoe_rel * FACTOR
+    seam = ((alpha > 60) & (lum < 235) & (chroma < 55) &
+            (xx >= 16) & (xx < w - 16) &
+            (yy >= seam_y - 4) & (yy <= seam_y + 4))
+    line_color = np.array([90.0, 90.0, 110.0])
+    rgb[seam] = rgb[seam] * 0.75 + line_color * 0.25
+    return np.clip(out, 0, 255).astype(arr.dtype), {
+        "toe_start_1x": toe_start // FACTOR,
+        "toe_tone_blend": 0.40,
+        "collar_ink_blend": 0.25,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--character", required=True)
@@ -215,6 +267,13 @@ def main() -> int:
               "  python3 -m venv ~/.imgenv && "
               "~/.imgenv/bin/pip install pillow numpy onnxruntime", file=sys.stderr)
         return 2
+
+    foot_report = None
+    if args.character == "xiaoxun" and args.form == "teen":
+        foot_path = os.path.join(sp_dir, "foot_parts.json")
+        if os.path.isfile(foot_path):
+            with open(foot_path, encoding="utf-8") as f:
+                foot_report = json.load(f)
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import upscale_sheet                                     # noqa: E402
@@ -328,13 +387,19 @@ def main() -> int:
         big.putalpha(im.split()[3].resize((w * FACTOR, h * FACTOR), Image.BILINEAR))
         cleaned, n_junk = kill_keycolor(np.asarray(big.convert("RGBA")))
         if n_junk:
-            big = Image.fromarray(cleaned, "RGBA")
             n_fixed += n_junk
+        post_finish = None
+        if foot_report is not None:
+            cleaned, post_finish = finish_teen_foot(cleaned, src, foot_report)
+        big = Image.fromarray(cleaned, "RGBA")
         dst = src[:-4] + SUFFIX
         big.save(dst)
-        rows.append({"name": os.path.basename(src), "src": [w, h],
-                     "dst": [w * FACTOR, h * FACTOR],
-                     "method": method, "keycolor_fixed": n_junk})
+        row = {"name": os.path.basename(src), "src": [w, h],
+               "dst": [w * FACTOR, h * FACTOR],
+               "method": method, "keycolor_fixed": n_junk}
+        if post_finish is not None:
+            row["post_finish"] = post_finish
+        rows.append(row)
 
     if requested:
         rp = os.path.join(sp_dir, "hires_report.json")

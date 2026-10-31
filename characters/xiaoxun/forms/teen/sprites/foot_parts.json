@@ -120,5 +120,16 @@
       "flat_px": 9476,
       "tip_px": 11300
     }
+  },
+  "shoe_finish": {
+    "reference": "design/design_sheet_short.png + design/palette.json",
+    "scope": "shoe toe and outsole only; sock, tongue, laces, teal panels unchanged",
+    "toe_shadow_target": "#DCDCE4",
+    "toe_shadow_blend": [
+      0.45,
+      0.55
+    ],
+    "collar_ink_target": "#5A5A6E",
+    "method": "recolor existing neutral collar ink; do not invent new geometry"
   }
 }

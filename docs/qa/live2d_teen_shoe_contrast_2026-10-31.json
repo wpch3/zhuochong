@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-31",
+  "character": "xiaoxun",
+  "form": "teen",
+  "task": "T67.9-⑤ shoe contrast refinement",
+  "visual_truth": [
+    "characters/xiaoxun/design/design_sheet_short.png",
+    "characters/xiaoxun/design/palette.json"
+  ],
+  "change": "Strengthened existing sock/shoe collar ink and added restrained cool-neutral shading to the shoe toe/outsole only. Sock overlap, tongue, laces, teal panels and geometry remain unchanged.",
+  "engine": {
+    "static": {
+      "action": "idle",
+      "scale": 1.1,
+      "frame": [
+        933,
+        1496
+      ],
+      "ParamTiptoe_effective": 0.0
+    },
+    "tiptoe_peak": {
+      "action": "tiptoe",
+      "scale": 1.1,
+      "frame": [
+        933,
+        1496
+      ],
+      "ParamTiptoe_effective": 1.0,
+      "manual_steps": 4,
+      "dt_seconds": 0.05
+    }
+  },
+  "geometry_checks": {
+    "flat_and_tip_ground_y": 1291,
+    "tiptoe_shoe_collar_rise_px": {
+      "left": 30,
+      "right": 30
+    },
+    "shoe_checks_passed": true
+  },
+  "near_white_audit_2x": {
+    "seg_foot_l": {
+      "baseline_near_white_pct": 52.26,
+      "after_near_white_pct": 30.67,
+      "reduction_pp": 21.59
+    },
+    "seg_foot_l_tip": {
+      "baseline_near_white_pct": 51.44,
+      "after_near_white_pct": 34.03,
+      "reduction_pp": 17.41
+    },
+    "seg_foot_r": {
+      "baseline_near_white_pct": 52.05,
+      "after_near_white_pct": 30.76,
+      "reduction_pp": 21.29
+    },
+    "seg_foot_r_tip": {
+      "baseline_near_white_pct": 50.93,
+      "after_near_white_pct": 33.63,
+      "reduction_pp": 17.3
+    }
+  },
+  "full_asset_audit": {
+    "pass": false,
+    "fail_count": 8,
+    "note": "Existing unrelated failures remain; all shoe-specific geometry checks passed."
+  },
+  "screenshots_sha256": {
+    "live2d_teen_shoe_contrast_engine_2026-10-31.png": "649a8f11159f391b5ec9930aeee44374e7dc50f51c5892c475c5b84da2635a41",
+    "live2d_teen_shoe_contrast_detail_2026-10-31.png": "2ade4318a198cc06b0098cd4e2653b198394b9e6a008f6bb8cceadefcb2a1530",
+    "live2d_teen_shoe_contrast_tiptoe_engine_2026-10-31.png": "6d8b206fbd36f5d77c605192f27f26cc99ba1575673ecd230bb5f4747e5e1184",
+    "live2d_teen_shoe_contrast_tiptoe_detail_2026-10-31.png": "c1789626fb3b1f76b449b0840695fa551302bb362058cc6954a3d3ceb0b1f0f0"
+  },
+  "generator": [
+    "tools/make_foot_parts.py",
+    "tools/make_hires_sprites.py"
+  ],
+  "sprite_sha256": {
+    "characters/xiaoxun/forms/teen/sprites/seg_foot_l.png": "e186ed394c68b95b6dfa9ecc05c91f5dd7cf92fb10e5534af116650864a4be3e",
+    "characters/xiaoxun/forms/teen/sprites/seg_foot_l@2x.png": "c68e0037f425236b395a14e1ae21f1ddbe72a5f406cd6a4f5b82688814fbf40a",
+    "characters/xiaoxun/forms/teen/sprites/seg_foot_l_tip.png": "73323e0894c59dc6cd8aa3baad881cf27125d5d901909300aa6174e6e4214f34",
+    "characters/xiaoxun/forms/teen/sprites/seg_foot_l_tip@2x.png": "28f61f49eaec07ac940f1e3f900ed91d0cd84e09d7f9d3b3da83de637a420a96",
+    "characters/xiaoxun/forms/teen/sprites/seg_foot_r.png": "f0788a36ad73295bbd8996dc0ec2d5b0bd22463d091c6ff84a7f4e5e86ad0574",
+    "characters/xiaoxun/forms/teen/sprites/seg_foot_r@2x.png": "8e186cb43e203504012e86bba4dba95c86b23446cc5ef78bfc4773568fb64a6a",
+    "characters/xiaoxun/forms/teen/sprites/seg_foot_r_tip.png": "c26f45e5478e1e95afd80ef507507128dc23483dcb53f4ede4712eb65053a15a",
+    "characters/xiaoxun/forms/teen/sprites/seg_foot_r_tip@2x.png": "a4cedcc344ae4b02b354ec3660ccf0ea6d2ab939b0defd7bfa66a6700e1e7a0a",
+    "characters/xiaoxun/forms/teen/sprites/foot_parts.json": "570183c1f1e2d610fc4992dc128b22245c35a380eed5b3d969f2363c9e76ff69"
+  }
+}

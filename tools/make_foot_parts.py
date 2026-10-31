@@ -64,6 +64,50 @@ def shoe_masks(rgba):
     return op, teal, dark, white
 
 
+def refine_teen_shoe_contrast(rgba, sides, ground):
+    """按原画边界加深袜鞋分界，并给白鞋头/鞋底一层克制的冷灰阴影。
+
+    视觉真值是 design_sheet_short.png 与项目色卡：袜子仍保持 #F6F2F0，鞋带、鞋舌、
+    青绿鞋面和轮廓不改；只在检测到的鞋口描边上加深原有线稿，并对鞋头/鞋底的近白
+    像素作渐变调色。阴影起点按 shoe_top 到 sole_top 的比例定位，不依赖固定画布坐标。
+    """
+    out = rgba.copy().astype(np.float64)
+    target = np.array([220.0, 220.0, 228.0])  # 近线稿色的淡冷灰，不把白鞋涂成彩色
+    line_color = np.array([90.0, 90.0, 110.0])  # 项目线稿色卡 #5A5A6E
+    h, w = out.shape[:2]
+    yy, xx = np.mgrid[:h, :w]
+    for s in sides:
+        x0, x1 = s["x0"], s["x1"]
+        y_shoe, y_sole = s["y_shoe"], s["y_sole"]
+        if y_sole <= y_shoe:
+            continue
+
+        # 只压鞋头与外底的近白，不触碰袜子、鞋带与鞋舌。起点落在鞋面下方 56% 处，
+        # 到鞋底的阴影权重从 45% 软升至 55%，保留中央高光与原画的白鞋观感。
+        toe_start = y_shoe + int(round((y_sole - y_shoe) * 0.56))
+        rgb = out[..., :3]
+        alpha = out[..., 3]
+        near_white = ((alpha > 60) & (rgb[..., 0] > 225) &
+                      (rgb[..., 1] > 225) & (rgb[..., 2] > 218) &
+                      (xx >= x0) & (xx < x1) & (yy >= toe_start))
+        if near_white.any():
+            ramp = np.clip((yy - toe_start) / max(1, ground - toe_start), 0.0, 1.0)
+            weight = 0.45 + 0.10 * ramp
+            out[..., :3][near_white] = (
+                rgb[near_white] * (1.0 - weight[near_white, None]) +
+                target * weight[near_white, None])
+
+        # 沿用原图已有弧形，不新造一条几何线：将鞋口灰线和抗锯齿边拉向线稿色，
+        # 强化袜子 / 鞋舌的层次。限定在鞋口附近和鞋宽内部，避免加重袜筒外轮廓。
+        lum = out[..., :3].mean(axis=2)
+        chroma = out[..., :3].max(axis=2) - out[..., :3].min(axis=2)
+        seam = ((alpha > 60) & (lum < 235) & (chroma < 55) &
+                (xx >= x0 + 8) & (xx < x1 - 8) &
+                (yy >= y_shoe - 2) & (yy <= y_shoe + 2))
+        out[..., :3][seam] = out[..., :3][seam] * 0.50 + line_color * 0.50
+    return np.clip(out, 0, 255)
+
+
 def find_shoe_top(teal, dark, x0, x1, y_from, y_to):
     """从脚踝往下扫，第一行出现成片鞋像素的位置 = 鞋口上沿。"""
     for y in range(y_from, y_to):
@@ -156,6 +200,14 @@ def main():
         return 2
     with open(seg_path, encoding="utf-8") as f:
         seg = json.load(f)
+    previous_foot_report = None
+    previous_foot_path = os.path.join(sp_dir, "foot_parts.json")
+    if os.path.isfile(previous_foot_path):
+        try:
+            with open(previous_foot_path, encoding="utf-8") as f:
+                previous_foot_report = json.load(f)
+        except (OSError, ValueError):
+            previous_foot_report = None
     legs = {p["id"]: p for p in seg["parts"] if p["id"] in ("seg_leg_l", "seg_leg_r")}
     if len(legs) != 2:
         print("body_parts.json 里没有两条腿，放弃", file=sys.stderr)
@@ -201,13 +253,28 @@ def main():
     ks = SOLE_SQUASH
     ku = (D + lift - d_sole * ks) / (D - d_sole)
 
+    # The reference artwork intentionally keeps socks white; only the Teen sneaker's
+    # toe/outsole receive a cool shadow, and the existing collar ink is strengthened.
+    foot_source = body
+    shoe_finish = None
+    if args.character == "xiaoxun" and args.form == "teen":
+        foot_source = refine_teen_shoe_contrast(body, sides, ground)
+        shoe_finish = {
+            "reference": "design/design_sheet_short.png + design/palette.json",
+            "scope": "shoe toe and outsole only; sock, tongue, laces, teal panels unchanged",
+            "toe_shadow_target": "#DCDCE4",
+            "toe_shadow_blend": [0.45, 0.55],
+            "collar_ink_target": "#5A5A6E",
+            "method": "recolor existing neutral collar ink; do not invent new geometry",
+        }
+
     out_parts, checks = [], {}
     qa_tiles = []
     for s in sides:
         x0, x1 = s["x0"], s["x1"]
-        flat = body[y_top_flat:ground, x0:x1].copy()
+        flat = foot_source[y_top_flat:ground, x0:x1].copy()
         flat_img = Image.fromarray(np.clip(flat, 0, 255).astype(np.uint8), "RGBA")
-        tipw = warp_rows(body, y_top_tip, ground, ground, y_shoe, d_sole, ks, ku, lift)
+        tipw = warp_rows(foot_source, y_top_tip, ground, ground, y_shoe, d_sole, ks, ku, lift)
         tip_img = crisp(Image.fromarray(
             np.clip(tipw[:, x0:x1], 0, 255).astype(np.uint8), "RGBA"))
 
@@ -233,7 +300,12 @@ def main():
         f_bot = int(np.where(fa.any(axis=1))[0].max()) + y_top_flat
         t_bot = int(np.where(ta.any(axis=1))[0].max()) + y_top_tip
         f_top_shoe = find_shoe_top(teal, dark, x0, x1, ankle_y, H)
-        tt = np.array(tip_img).astype(np.float64)
+        # Geometry is invariant under the color-only shoe finish. Measure the tip shoe
+        # edge from the unmodified source warp so darker AA ink is not mistaken for a
+        # one-pixel change in the collar position.
+        tip_geom = warp_rows(body, y_top_tip, ground, ground,
+                             y_shoe, d_sole, ks, ku, lift)
+        tt = np.array(tip_geom[:, x0:x1]).astype(np.float64)
         _, t_teal, t_dark, _ = shoe_masks(tt)
         t_top_shoe = -1
         for y in range(tt.shape[0]):
@@ -268,19 +340,29 @@ def main():
         im = Image.open(p).convert("RGBA")
         a = np.array(im)
         ly = y_cut - lp["pos"][1]                 # 切线换算到腿件自身坐标
+        prior_erased = 0
+        if (previous_foot_report and
+                int(previous_foot_report.get("cut", {}).get("leg_cut_y", -1)) == y_cut):
+            prior_erased = int(previous_foot_report.get("legs_erased_px", {}).get(lid, 0))
         if 0 <= ly < a.shape[0]:
-            erased[lid] = int((a[ly:, :, 3] > 60).sum())
+            erased_now = int((a[ly:, :, 3] > 60).sum())
+            # Re-running on already-clean legs should not erase the historical source count.
+            # Keep the prior count when the cutline is unchanged; a full rebuild from the
+            # upstream body parts will repopulate erased_now directly.
+            erased[lid] = erased_now or prior_erased
             a = a[:ly]                            # 连画布一起裁到切线
             Image.fromarray(a, "RGBA").save(p)
             crop_h[lid] = int(a.shape[0])
             lp["size"] = [int(a.shape[1]), int(a.shape[0])]
         else:
-            erased[lid] = 0
+            # The leg canvas may already end exactly at the cutline on an idempotent run.
+            erased[lid] = prior_erased
             crop_h[lid] = int(a.shape[0])
     # 裁过之后 body_parts.json 里记的尺寸就过期了，必须写回去 ——
     # make_rig.py 和 check_assets.py 都按它摆位置，不同步就全错。
     with open(seg_path, "w", encoding="utf-8") as f:
         json.dump(seg, f, ensure_ascii=False, indent=2)
+        f.write("\n")
 
     rep = {
         "schema_version": "1.0",
@@ -298,9 +380,11 @@ def main():
         "legs_cropped_h": crop_h,
         "parts": out_parts,
         "checks": checks,
+        "shoe_finish": shoe_finish,
     }
     with open(os.path.join(sp_dir, "foot_parts.json"), "w", encoding="utf-8") as f:
         json.dump(rep, f, ensure_ascii=False, indent=2)
+        f.write("\n")
 
     if args.qa and qa_tiles:
         pad, z = 12, 3
