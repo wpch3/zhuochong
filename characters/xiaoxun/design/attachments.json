@@ -144,6 +144,30 @@
       ],
       "curve": "root",
       "note": "扎起来的发型专用：头顶被收拢的那一片。★ 层 187~189 卡在 呆毛(190) 之下、头壳 seg_head(180) 之上 —— 呆毛压在它上面，刘海(240) 也压在它上面，所以件的下沿切在发际线就够了、不会露边；而它压在头壳和后发壳上面，于是颅顶看起来真的被扎起来了。用户第十二问原话「扎发造型头顶必须跟着变」，缺的就是这一层：以前只换尾巴不换头顶，结果是一颗短发脑袋后面挂两根辫子。★ 下沿绝对不能切到眼线 —— 眼睛在 211~234，比 239 低，切过头会把眼睛盖住（第十一问）。"
+    },
+    {
+      "id": "neck_cast_shadow",
+      "label": "下颏落影（头侧）",
+      "layer": 179,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "T67.9：下颏阴影叠在颈部底色上、藏于 seg_head 轮廓之下；跟随 head。"
+    },
+    {
+      "id": "neck_clavicle_detail",
+      "label": "颈根/锁骨细节",
+      "layer": 101,
+      "group": "chest",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "T67.9：仅叠在原图明确可见的颈根皮肤范围，服装仍由皮肤 alpha/color gate 遮开。"
     }
   ],
   "attachments": [
@@ -2098,6 +2122,66 @@
       "forms": [
         "teen"
       ]
+    },
+    {
+      "id": "chin_neck_shadow",
+      "label": "neck_cast_shadow",
+      "forms": [
+        "teen"
+      ],
+      "slot": "neck_cast_shadow",
+      "sprite": "chin_neck_shadow.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "neck",
+        "shadow"
+      ],
+      "source": "sheetcut_chin_shadow_short.png",
+      "unit": "head",
+      "socket": "socket_face",
+      "dpos_rel": [
+        -0.025045,
+        0.173229
+      ],
+      "sprite_h_rel": 0.145266,
+      "width_ratio": 1.0,
+      "layer": 179,
+      "blend": "multiply",
+      "solid_fill": false,
+      "note": "下颏落影：独立柔乘算片，按原始颌线曲率向颈部衰减；跟头动，只在皮肤上有效。"
+    },
+    {
+      "id": "clavicle_line",
+      "label": "neck_clavicle_detail",
+      "forms": [
+        "teen"
+      ],
+      "slot": "neck_clavicle_detail",
+      "sprite": "clavicle_line.png",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "neck",
+        "structure"
+      ],
+      "source": "sheetcut_clavicle_line_short.png",
+      "unit": "head",
+      "socket": "socket_neck",
+      "dpos_rel": [
+        0.030161,
+        -0.005369
+      ],
+      "sprite_h_rel": 0.041505,
+      "width_ratio": 1.0,
+      "layer": 101,
+      "blend": "multiply",
+      "solid_fill": false,
+      "note": "颈根锁骨提示线：短、浅、只落在参考图可见皮肤；不把锁骨画到衬衫或夹克上。"
     }
   ],
   "pose_groups": [

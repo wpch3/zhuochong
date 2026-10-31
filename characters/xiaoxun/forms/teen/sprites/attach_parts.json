@@ -120,6 +120,30 @@
       ],
       "curve": "root",
       "note": "扎起来的发型专用：头顶被收拢的那一片。★ 层 187~189 卡在 呆毛(190) 之下、头壳 seg_head(180) 之上 —— 呆毛压在它上面，刘海(240) 也压在它上面，所以件的下沿切在发际线就够了、不会露边；而它压在头壳和后发壳上面，于是颅顶看起来真的被扎起来了。用户第十二问原话「扎发造型头顶必须跟着变」，缺的就是这一层：以前只换尾巴不换头顶，结果是一颗短发脑袋后面挂两根辫子。★ 下沿绝对不能切到眼线 —— 眼睛在 211~234，比 239 低，切过头会把眼睛盖住（第十一问）。"
+    },
+    {
+      "id": "neck_cast_shadow",
+      "label": "下颏落影（头侧）",
+      "layer": 179,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "T67.9：下颏阴影叠在颈部底色上、藏于 seg_head 轮廓之下；跟随 head。"
+    },
+    {
+      "id": "neck_clavicle_detail",
+      "label": "颈根/锁骨细节",
+      "layer": 101,
+      "group": "chest",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "T67.9：仅叠在原图明确可见的颈根皮肤范围，服装仍由皮肤 alpha/color gate 遮开。"
     }
   ],
   "attachments": [
@@ -373,6 +397,24 @@
       "size": [
         153,
         65
+      ]
+    },
+    {
+      "id": "chin_neck_shadow",
+      "slot": "neck_cast_shadow",
+      "file": "sprites/chin_neck_shadow.png",
+      "size": [
+        118,
+        40
+      ]
+    },
+    {
+      "id": "clavicle_line",
+      "slot": "neck_clavicle_detail",
+      "file": "sprites/clavicle_line.png",
+      "size": [
+        76,
+        12
       ]
     }
   ]

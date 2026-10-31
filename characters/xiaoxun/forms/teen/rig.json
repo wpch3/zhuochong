@@ -2746,6 +2746,62 @@
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
+    },
+    {
+      "id": "acc_chin_neck_shadow",
+      "file": "sprites/chin_neck_shadow@2x.png",
+      "group": "head",
+      "layer": 179,
+      "pos": [
+        416,
+        321
+      ],
+      "socket": "socket_face",
+      "dpos": [
+        -7,
+        48
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "neck",
+        "shadow"
+      ],
+      "blend": "multiply",
+      "note": "neck_cast_shadow（挂件，槽 neck_cast_shadow）：T67.9：下颏阴影叠在颈部底色上、藏于 seg_head 轮廓之下；跟随 head。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "acc_clavicle_line",
+      "file": "sprites/clavicle_line@2x.png",
+      "group": "chest",
+      "layer": 101,
+      "pos": [
+        425,
+        353
+      ],
+      "socket": "socket_neck",
+      "dpos": [
+        8,
+        -1
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "tags": [
+        "neck",
+        "structure"
+      ],
+      "blend": "multiply",
+      "note": "neck_clavicle_detail（挂件，槽 neck_clavicle_detail）：T67.9：仅叠在原图明确可见的颈根皮肤范围，服装仍由皮肤 alpha/color gate 遮开。",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     }
   ],
   "regions": [

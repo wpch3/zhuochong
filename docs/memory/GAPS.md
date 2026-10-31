@@ -1768,7 +1768,9 @@ shuangxi / tonglin / xiaochen / xingxuan / yuejian）在此之前连 `skeleton.j
 
 **进度（2026-10-31）**：①兜帽内侧投影已完成：以登记短发兜帽内沿为视觉参考，做成独立柔 alpha 附件，`blend=multiply`，挂 `socket_head_top`，仅 teen 的 `hood_pose=up` 显示；layer 250 位于 hood shell 252 之下，且与两侧长鬓发层 249/251 不重号。生成链由 `tools/make_hood_inner_shadow.py` → `make_attach_parts.py` → `make_rig.py` 接入；`rebuild_parts.sh` 会在 teen 重建时再生成。`/api/info.json` 分别确认 `hood_pose=down/up` 后，在同一短发、idle、冻结时刻亲眼核过真实引擎帧：down 不显示投影，up 显示；又检查 up 状态下 short/twin/pony/long 四发型，未见裁切或层级冲突。最初留存的 `final_up/final_down` 曾都呈现戴帽，已作废并重拍，不用它们作为证据。可复核证据：`docs/qa/live2d_teen_hood_inner_shadow_full_2026-10-31.png`、`docs/qa/live2d_teen_hood_inner_shadow_detail_2026-10-31.png`、`docs/qa/live2d_teen_hood_shadow_hairstyles_2026-10-31.png`。③腮红已由 T67.20 完成；④嘴角 Y 位移完成：teen `ParamMouthForm` 驱动 `mouth_open`、`mouth_mask`、`mouth_cavity` 三张 2×1 网格，两端随正负值作反向 Y 位移、中间固定；runtime 测试直接量顶点并验 ± 方向，真实引擎闭口 -1/0/+1 与 OpenY=0.65 A/B 目视通过。嘴角证据：`docs/qa/live2d_teen_mouthform_corner_full_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_closed_detail_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_open_detail_abc_2026-10-31.png`。素材闸仍有 8 项已存在问题（包括灰度/色卡、白边、无损切分与侧发覆盖率），不能把总体审计写成全绿。
 
-仍开放：②脖子加アゴ影 + 锁骨线；⑤鞋加暗线并压掉近白；⑥按旧记录复现并追查淡青方块。默认 teen 当前帧未复现该方块，不以“不在这张图上”代替复现旧状态。
+②下颏影 + 可见颈根/锁骨提示已于 2026-10-31 完成：新增 teen 独立 Multiply 细节，头部附件跟随 `socket_face`、层 179 藏于 `seg_head` 下；锁骨提示跟随胸部 `socket_neck`、层 101，仅以原画皮肤色/不透明掩膜裁切到衣领上方可见区域。全身与颈部近景真实引擎帧，以及 `ParamAngleX=20` / `ParamBodyAngleZ=6` 动作检查均已目视；未把锁骨画到衣物上。证据及 SHA-256：`docs/qa/live2d_teen_neck_details_2026-10-31.json` 与同前缀 PNG。
+
+仍开放：⑤鞋加暗线并压掉近白；⑥按旧记录复现并追查淡青方块。默认 teen 当前帧未复现该方块，不以“不在这张图上”代替复现旧状态。
 
 **出口条件**（T66.29）：
 ①兜帽内侧加乘算阴影层（已完成，证据见上） ②脖子加アゴ影 + 锁骨线 ③腮红（已完成）

@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-31",
+  "task": "T67.9 ② 下颏影与颈根/锁骨提示",
+  "source_of_truth": "characters/xiaoxun/design/design_sheet_short.png; exposed skin only, checked against teen C-engine frames",
+  "renderer": "Live C engine preview API /api/frame.png?s=100 (raw PNG captures are full-frame; detail views are crops enlarged for inspection)",
+  "setup": {
+    "form": "teen",
+    "hairstyle": "short",
+    "action": "idle",
+    "outfit": "default",
+    "scale": 1.1,
+    "paused_time_seconds": 2.5,
+    "ambient": false,
+    "physics": false,
+    "neutral_parameters": true
+  },
+  "captures": [
+    {
+      "file": "live2d_teen_neck_details_engine_2026-10-31.png",
+      "sha256": "62775bf3c4c95c24205cafcdea658feb5eeb2611c9a3b020c3806cfbc1390f02",
+      "purpose": "Neutral raw full-frame render; confirms the neck pieces are correctly placed and do not spill onto clothes."
+    },
+    {
+      "file": "live2d_teen_neck_details_detail_2026-10-31.png",
+      "sha256": "d80e2dbd0c82bbdd04390b862370bbdbd44b9ed8f72465ea2454feb14c32f56b",
+      "purpose": "Enlarged chin-to-collar crop from the same raw render."
+    },
+    {
+      "file": "live2d_teen_neck_details_motion_engine_2026-10-31.png",
+      "sha256": "adfee0dbc871e4a172bbcf53f146bb57ac53da8cd9b6f72017d9fab6091a59fb",
+      "purpose": "Raw full-frame pose check with ParamAngleX=20 and ParamBodyAngleZ=6."
+    },
+    {
+      "file": "live2d_teen_neck_details_motion_detail_2026-10-31.png",
+      "sha256": "332bb35362ae2118a923f6795dc50cd17499bd39ed28c4d1472abededdd77b90",
+      "purpose": "Enlarged chin/neck/collar crop from the pose check."
+    }
+  ],
+  "visual_acceptance": [
+    "Jaw shadow follows the chin under the face and fades into the neck; it moves with the head.",
+    "Clavicle cues are short and low-contrast, clipped to the visible skin at the neck root; no line is painted over shirt, collar, jacket or hood.",
+    "A combined head-turn/body-tilt frame showed no obvious detachment or fabric spill.",
+    "The narrow exposed skin area in the reference was respected rather than inventing a broad clavicle over the blouse."
+  ],
+  "asset_audit": {
+    "command": "PYTHONPATH=/tmp/zc-py-lib python3 tools/check_assets.py --character xiaoxun --form teen --quiet --json /tmp/zc_t679_asset_report.json",
+    "new_parts": {
+      "chin_neck_shadow": "pass",
+      "clavicle_line": "pass"
+    },
+    "overall": "8 pre-existing unrelated failures remain; they concern armpit masks, forearm palette, long-back-hair white edge, segmentation loss, and twin-hair occlusion."
+  }
+}
