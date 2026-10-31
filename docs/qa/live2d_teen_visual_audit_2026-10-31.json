@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-31",
+  "source": "Live C engine on localhost:5199; PNGs composited over white where needed; ambient off for controlled snapshots unless noted, physics on for action states.",
+  "state_coverage": {
+    "outfits": [
+      "default",
+      "cocoa",
+      "midnight"
+    ],
+    "hair": [
+      "none",
+      "long",
+      "twin",
+      "pony"
+    ],
+    "hood": [
+      "up",
+      "down"
+    ],
+    "actions": [
+      "wave",
+      "surprised",
+      "tiptoe",
+      "heart_hands"
+    ],
+    "hair_sway_param": [
+      -1,
+      0,
+      1
+    ]
+  },
+  "observations": [
+    {
+      "area": "Teen long hair",
+      "finding": "The isolated acc_hair_long render still contains obvious dark/black and teal/white stripe-like fragments along both outer edges; this same part is visible in the full long-hair render. This is not merely another part bleeding through. The T67.7 hair-master rebuild remains open."
+    },
+    {
+      "area": "Teen clothing / raised arm",
+      "finding": "Static neutral outfit comparison shows no large hole at full-body scale. In the raised wave/surprised states, sleeve-to-jacket/underarm transitions still look rigid and have small color/edge fragments; finish the open segmented sleeve/arm and AC-32 seam review across outfits."
+    },
+    {
+      "area": "Teen motion",
+      "finding": "Wave, surprised, tiptoe, and heart_hands all render. No obvious global pose collapse or floor penetration in sampled frames. Long-hair sway extremes produce visible but modest changes; full dynamic/timeline review remains open."
+    },
+    {
+      "area": "Teen skeleton",
+      "finding": "Bones-only overlay and /api/bones.json show both arm chains present. At surprised frame 54 the elbow flex is 149.84 degrees left and 147.38 degrees right; wave frame 48 raised right elbow flex is 133.65 degrees. No disconnected joint was observed in these samples. This is not a full-rig sign-off; inspect all pose extremes and validate the pending rig contract."
+    },
+    {
+      "area": "Q/chibi",
+      "finding": "The user explicitly rejected the current visual and instructed full regeneration, not patching. Rebuild the whole form from the clean design source, then visually validate real-engine output."
+    }
+  ],
+  "captures": [
+    {
+      "file": "live2d_teen_audit_longhair_full_2026-10-31.png",
+      "sha256": "967c4a71cd8b87ca353d018342ca7433004a8b1dea46a5bb478a4aa037f8159d",
+      "bytes": 597626
+    },
+    {
+      "file": "live2d_teen_audit_longhair_isolated_2026-10-31.png",
+      "sha256": "5ba267bfbc04ad5dfa0066d94b8520ded042e12c9bc7997c852e9242c681281d",
+      "bytes": 403081
+    },
+    {
+      "file": "live2d_teen_audit_wave_sleeve_detail_2026-10-31.png",
+      "sha256": "85b764d84a2156e06120bd385bda632e223a0bd90316f8657d91cdef9ec455d1",
+      "bytes": 302270
+    },
+    {
+      "file": "live2d_teen_audit_surprised_bones_2026-10-31.png",
+      "sha256": "5dc8530a9843d53dc30b011ecac1234de69fd2d51f2773f8208cafba9f9fbc61",
+      "bytes": 449536
+    },
+    {
+      "file": "live2d_teen_audit_outfit_matrix_2026-10-31.png",
+      "sha256": "aeeff0ae288c523b08fd63f9f12fbf829b8d0ed33fea71cff74f9c46e9a4d01c",
+      "bytes": 156734
+    },
+    {
+      "file": "live2d_teen_audit_motion_matrix_2026-10-31.png",
+      "sha256": "d927d0566517494dcc60895acda514131dd1558e94e62b10ce406c0d98611aad",
+      "bytes": 247912
+    }
+  ]
+}
