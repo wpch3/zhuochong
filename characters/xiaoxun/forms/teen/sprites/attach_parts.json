@@ -365,6 +365,15 @@
         242,
         645
       ]
+    },
+    {
+      "id": "hood_inner_shadow",
+      "slot": "head_over_hair",
+      "file": "sprites/hood_inner_shadow.png",
+      "size": [
+        153,
+        65
+      ]
     }
   ]
 }

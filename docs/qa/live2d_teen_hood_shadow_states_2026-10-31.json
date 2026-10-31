@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-31",
+  "source": "Live preview API /api/frame.png?s=100 (raw frame; no crop or compositing)",
+  "setup": {
+    "form": "teen",
+    "hairstyle": "short (hairstyle current empty string)",
+    "action": "idle",
+    "scale": 0.55,
+    "paused_time": 2500,
+    "ambient": false,
+    "physics": false
+  },
+  "captures": [
+    {
+      "file": "live2d_teen_hood_shadow_engine_short_down_2026-10-31.png",
+      "api_info_poses": {
+        "hood_pose": "down",
+        "hairstyle": ""
+      },
+      "sha256": "336555f6851b23ca5d896899ea493f2fa68e3a4c96abab8f7fccafa86f7a3749"
+    },
+    {
+      "file": "live2d_teen_hood_shadow_engine_short_up_2026-10-31.png",
+      "api_info_poses": {
+        "hood_pose": "up",
+        "hairstyle": ""
+      },
+      "sha256": "cc62aba6f0b6d5b5a843a942d2be7ac82f7498da1d4adf3b1f7d1d174ed34fa5"
+    }
+  ]
+}

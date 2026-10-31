@@ -45,3 +45,20 @@
   输出到想摇的部件：「手付だと付けにくい微量の揺れが出せる」。
 - <https://ugoiraman.com/live2dkokyuu/>、<https://surume1ka.com/archives/2242> ⇒
   呼吸＝胸上抬并横向扩张、肩背微动；**大きくしすぎると不自然、少しだけ**。
+
+## T67.9 兜帽内侧投影（2026-10-31）
+
+- 夏水かなた，《Supplementary Guide for Live2D Part Separation (For Illustrators)》：
+  <https://note.com/kanata_natsumi/n/n7f96b96b6e26?hl=en>。已阅读全文。与本任务相关的分层原则：
+  发丝阴影应独立拆件；阴影素材可超出最终剪影以便遮罩裁切；被帽兜遮挡的头发背面需补齐，
+  否则运动时会露空。它关于 Multiply 的说明针对发旋层，不是兜帽投影的规范，故本项目不把它
+  当作“兜帽必须乘算”的外部规定。
+- 参考路径：Live2D Creative Studio 官方账号 X 的搜索摘要提及反转遮罩可构造投影：
+  <https://x.com/iyosuke_114/status/1601113044351754240>；尚未打开原帖，记作后续线索，
+  不作为已核实的技术要求。kawase 的帽兜拆件漫画搜索摘要提及帽下发可遮罩裁切、内衬可作遮罩：
+  <https://twiman.net/user/1554022262030073856/1707235392003645704>；同样未核读原文。
+- 本项目实施是设计选择：从已登记的短发兜帽切片按内沿追踪柔化投影，独立成柔 alpha 附件，
+  只在 teen `hood_pose=up` 显示，以 `multiply` 混合，挂 `socket_head_top` 随帽与头部运动；
+  参考切片及真实渲染证据见 `docs/qa/live2d_teen_hood_inner_shadow_detail_2026-10-31.png`。
+  状态切换验收必须先查 `/api/info.json`，再抓帧；曾出现文件名标为 up/down、实际两张都戴帽的误存，
+  已废弃该批截图并重拍。

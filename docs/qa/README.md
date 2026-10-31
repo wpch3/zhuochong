@@ -21,7 +21,11 @@
   都以它为基准；它是"重画前后只许降不许升"的那个"前"。
 - `live2d_mask_intersection_2026-10-31.png` —— 引擎用两个错位矩形遮罩真实渲染的像素图；只露出交叠区，作为 T67.8 多遮罩交集证据。
 - `live2d_teen_eye_clipping_2026-10-31.png` —— teen 真实 rig 睁眼 / 半闭 / 闭眼渲染；核对眼眶 mask 继续贴合，不出界。
-- `live2d_teen_hairstyle_hood_matrix_2026-10-31.png` —— teen 真实 rig 四种发型（短发 / 长发 / 双马尾 / 高马尾）× 兜帽戴/不戴静帧回归。
+- `live2d_teen_hairstyle_hood_matrix_2026-10-31.png` —— teen 真实 rig 四种发型（短发 / 长发 / 双马尾 / 高马尾）× 兜帽戴/不戴静帧回归（较早一轮）。
+- `live2d_teen_hood_shadow_engine_short_down_2026-10-31.png` / `live2d_teen_hood_shadow_engine_short_up_2026-10-31.png` —— 预览引擎 `/api/frame.png` 原始全身帧（未裁切、未拼图）；配套 `live2d_teen_hood_shadow_states_2026-10-31.json` 记录逐帧 `/api/info.json` 姿态、冻结参数与 SHA-256。
+- `live2d_teen_hood_inner_shadow_full_2026-10-31.png` —— 同一短发姿势与冻结时刻，hood down/up 全身对照；API 姿态状态已逐张核对。
+- `live2d_teen_hood_inner_shadow_detail_2026-10-31.png` —— 同一引擎的兜帽内沿与头发局部放大对照，确认软乘算阴影只在 hood-up 显示。
+- `live2d_teen_hood_shadow_hairstyles_2026-10-31.png` —— API 状态已核对的 hood-up 四发型 + short hood-down 控制图；用于检查兼容性与隐藏行为。
 - `live2d_teen_cheek_paramcheek_ab_2026-10-31.png` —— Teen 真实渲染 ParamCheek=0/1 放大对照；用于确认降峰值、去斜线后腮红随参数平滑出现。
 - `live2d_teen_cheek_paramcheek_on_2026-10-31.png` —— ParamCheek=1 全身静帧；核对腮红在整身尺度不过浓、不像贴纸。
 - `live2d_teen_mouthform_corner_full_abc_2026-10-31.png` —— teen 真实引擎全身 ParamMouthForm −1/0/+1；检查整身状态无副作用。

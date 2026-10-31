@@ -590,7 +590,8 @@ def main() -> int:
     if anchors is None:
         anchors = attach_geom.load_anchors(os.path.join(base, "forms", a.form))
     slots = {s["id"]: s for s in table["slots"]}
-    all_attachments = table["attachments"]
+    all_attachments = [att for att in table["attachments"]
+                       if not att.get("forms") or a.form in att["forms"]]
     only = {x.strip() for x in a.only.split(",") if x.strip()}
     known_ids = {att["id"] for att in all_attachments}
     unknown = only - known_ids

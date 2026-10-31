@@ -32,6 +32,152 @@
  },
  "sprites": [
   {
+   "file": "hand_l@2x.png",
+   "kind": "limb",
+   "size": "180x182",
+   "opaque": 13122,
+   "near_white_pct": 14.8,
+   "edge_near_white_pct": 9.47,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 1,
+   "seam_pct": 1.52,
+   "dark_pct": 3.65,
+   "hole_pct": 0.0,
+   "straight_run": 25,
+   "residue_pct": 76.67,
+   "residue": {
+    "mint": 45,
+    "warm": 9995,
+    "shirt": 192
+   },
+   "residue_blocks": [
+    {
+     "px": 8072,
+     "bbox": [
+      0,
+      0,
+      157,
+      155
+     ]
+    },
+    {
+     "px": 1989,
+     "bbox": [
+      24,
+      81,
+      88,
+      181
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "hand_r@2x.png",
+   "kind": "limb",
+   "size": "180x182",
+   "opaque": 13115,
+   "near_white_pct": 16.04,
+   "edge_near_white_pct": 7.32,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 8,
+   "seam_pct": 1.31,
+   "dark_pct": 3.42,
+   "hole_pct": 0.0,
+   "straight_run": 25,
+   "residue_pct": 76.6,
+   "residue": {
+    "mint": 36,
+    "warm": 10028,
+    "shirt": 186
+   },
+   "residue_blocks": [
+    {
+     "px": 8195,
+     "bbox": [
+      35,
+      0,
+      179,
+      155
+     ]
+    },
+    {
+     "px": 1851,
+     "bbox": [
+      94,
+      82,
+      154,
+      178
+     ]
+    }
+   ],
+   "edge_touch": true
+  },
+  {
+   "file": "hires_src/hand_l_open@2x.png",
+   "kind": "limb",
+   "size": "172x218",
+   "opaque": 12174,
+   "near_white_pct": 0.53,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 4,
+   "seam_pct": 0.47,
+   "dark_pct": 1.22,
+   "hole_pct": 0.0,
+   "straight_run": 50,
+   "residue_pct": 86.41,
+   "residue": {
+    "mint": 0,
+    "warm": 10510,
+    "shirt": 14
+   },
+   "residue_blocks": [
+    {
+     "px": 10520,
+     "bbox": [
+      19,
+      16,
+      153,
+      197
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
+   "file": "hires_src/hand_r_open@2x.png",
+   "kind": "limb",
+   "size": "172x218",
+   "opaque": 12174,
+   "near_white_pct": 0.53,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 4,
+   "seam_pct": 0.47,
+   "dark_pct": 1.22,
+   "hole_pct": 0.0,
+   "straight_run": 50,
+   "residue_pct": 86.41,
+   "residue": {
+    "mint": 0,
+    "warm": 10510,
+    "shirt": 14
+   },
+   "residue_blocks": [
+    {
+     "px": 10520,
+     "bbox": [
+      18,
+      16,
+      152,
+      197
+     ]
+    }
+   ],
+   "edge_touch": false
+  },
+  {
    "file": "acc_ear_l@2x.png",
    "kind": "tail",
    "size": "176x208",
@@ -1077,7 +1223,7 @@
    "kind": "body",
    "size": "546x1000",
    "opaque": 546000,
-   "near_white_pct": 8.23,
+   "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
@@ -1085,39 +1231,20 @@
    "dark_pct": 0.0,
    "hole_pct": 0.0,
    "straight_run": 1000,
-   "residue_pct": 8.23,
+   "residue_pct": 0.0,
    "residue": {
     "mint": 0,
     "warm": 0,
-    "shirt": 44961
+    "shirt": 0
    },
-   "residue_blocks": [
-    {
-     "px": 23052,
-     "bbox": [
-      0,
-      187,
-      92,
-      539
-     ]
-    },
-    {
-     "px": 21870,
-     "bbox": [
-      467,
-      191,
-      545,
-      547
-     ]
-    }
-   ],
+   "residue_blocks": [],
    "edge_touch": true
   },
   {
    "file": "blush_l@2x.png",
    "kind": "face",
    "size": "80x44",
-   "opaque": 1732,
+   "opaque": 1184,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
    "bad_hue_visible": 0,
@@ -1126,20 +1253,30 @@
    "dark_pct": 0.0,
    "hole_pct": 0.0,
    "straight_run": 18,
-   "residue_pct": 0.0,
+   "residue_pct": 86.32,
    "residue": {
     "mint": 0,
-    "warm": 0,
+    "warm": 1030,
     "shirt": 0
    },
-   "residue_blocks": [],
+   "residue_blocks": [
+    {
+     "px": 1022,
+     "bbox": [
+      14,
+      8,
+      65,
+      35
+     ]
+    }
+   ],
    "edge_touch": false
   },
   {
    "file": "blush_r@2x.png",
    "kind": "face",
    "size": "80x44",
-   "opaque": 1732,
+   "opaque": 1184,
    "near_white_pct": 0.0,
    "edge_near_white_pct": 0.0,
    "bad_hue_visible": 0,
@@ -1148,13 +1285,23 @@
    "dark_pct": 0.0,
    "hole_pct": 0.0,
    "straight_run": 18,
-   "residue_pct": 0.0,
+   "residue_pct": 86.32,
    "residue": {
     "mint": 0,
-    "warm": 0,
+    "warm": 1030,
     "shirt": 0
    },
-   "residue_blocks": [],
+   "residue_blocks": [
+    {
+     "px": 1022,
+     "bbox": [
+      14,
+      8,
+      65,
+      35
+     ]
+    }
+   ],
    "edge_touch": false
   },
   {
@@ -4156,47 +4303,6 @@
    "edge_touch": false
   },
   {
-   "file": "hand_l@2x.png",
-   "kind": "limb",
-   "size": "180x182",
-   "opaque": 13122,
-   "near_white_pct": 14.8,
-   "edge_near_white_pct": 9.47,
-   "bad_hue_visible": 0,
-   "bad_hue_transparent": 0,
-   "seam_pct": 1.52,
-   "dark_pct": 3.65,
-   "hole_pct": 0.0,
-   "straight_run": 25,
-   "residue_pct": 76.67,
-   "residue": {
-    "mint": 45,
-    "warm": 9995,
-    "shirt": 192
-   },
-   "residue_blocks": [
-    {
-     "px": 8072,
-     "bbox": [
-      0,
-      0,
-      157,
-      155
-     ]
-    },
-    {
-     "px": 1989,
-     "bbox": [
-      24,
-      81,
-      88,
-      181
-     ]
-    }
-   ],
-   "edge_touch": true
-  },
-  {
    "file": "hand_l_heart@2x.png",
    "kind": "limb",
    "size": "136x216",
@@ -4304,75 +4410,34 @@
   {
    "file": "hand_l_surprised@2x.png",
    "kind": "limb",
-   "size": "172x218",
-   "opaque": 14162,
-   "near_white_pct": 0.0,
+   "size": "172x234",
+   "opaque": 13331,
+   "near_white_pct": 20.81,
    "edge_near_white_pct": 0.0,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 0.95,
-   "dark_pct": 2.12,
-   "hole_pct": 0.0,
-   "straight_run": 25,
-   "residue_pct": 87.16,
+   "seam_pct": 1.75,
+   "dark_pct": 2.63,
+   "hole_pct": 0.25,
+   "straight_run": 22,
+   "residue_pct": 87.47,
    "residue": {
     "mint": 0,
-    "warm": 12468,
-    "shirt": 0
+    "warm": 11715,
+    "shirt": 26
    },
    "residue_blocks": [
     {
-     "px": 12344,
+     "px": 11660,
      "bbox": [
-      31,
+      41,
       9,
-      138,
-      210
+      130,
+      227
      ]
     }
    ],
    "edge_touch": false
-  },
-  {
-   "file": "hand_r@2x.png",
-   "kind": "limb",
-   "size": "180x182",
-   "opaque": 13115,
-   "near_white_pct": 16.04,
-   "edge_near_white_pct": 7.32,
-   "bad_hue_visible": 0,
-   "bad_hue_transparent": 0,
-   "seam_pct": 1.31,
-   "dark_pct": 3.42,
-   "hole_pct": 0.0,
-   "straight_run": 25,
-   "residue_pct": 76.6,
-   "residue": {
-    "mint": 36,
-    "warm": 10026,
-    "shirt": 186
-   },
-   "residue_blocks": [
-    {
-     "px": 8195,
-     "bbox": [
-      35,
-      0,
-      179,
-      155
-     ]
-    },
-    {
-     "px": 1851,
-     "bbox": [
-      94,
-      82,
-      154,
-      178
-     ]
-    }
-   ],
-   "edge_touch": true
   },
   {
    "file": "hand_r_heart@2x.png",
@@ -4482,30 +4547,30 @@
   {
    "file": "hand_r_surprised@2x.png",
    "kind": "limb",
-   "size": "172x218",
-   "opaque": 14162,
-   "near_white_pct": 0.0,
+   "size": "172x234",
+   "opaque": 13331,
+   "near_white_pct": 20.81,
    "edge_near_white_pct": 0.0,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 0.95,
-   "dark_pct": 2.12,
-   "hole_pct": 0.0,
-   "straight_run": 23,
-   "residue_pct": 87.16,
+   "seam_pct": 1.75,
+   "dark_pct": 2.63,
+   "hole_pct": 0.25,
+   "straight_run": 28,
+   "residue_pct": 87.47,
    "residue": {
     "mint": 0,
-    "warm": 12468,
-    "shirt": 0
+    "warm": 11715,
+    "shirt": 26
    },
    "residue_blocks": [
     {
-     "px": 12344,
+     "px": 11660,
      "bbox": [
-      33,
+      41,
       9,
-      140,
-      210
+      130,
+      227
      ]
     }
    ],
@@ -4547,38 +4612,6 @@
       156,
       60,
       191
-     ]
-    }
-   ],
-   "edge_touch": false
-  },
-  {
-   "file": "hires_src/hand_l_open@2x.png",
-   "kind": "limb",
-   "size": "172x218",
-   "opaque": 12174,
-   "near_white_pct": 0.53,
-   "edge_near_white_pct": 0.0,
-   "bad_hue_visible": 0,
-   "bad_hue_transparent": 0,
-   "seam_pct": 0.47,
-   "dark_pct": 1.22,
-   "hole_pct": 0.0,
-   "straight_run": 50,
-   "residue_pct": 86.41,
-   "residue": {
-    "mint": 0,
-    "warm": 10510,
-    "shirt": 14
-   },
-   "residue_blocks": [
-    {
-     "px": 10520,
-     "bbox": [
-      19,
-      16,
-      153,
-      197
      ]
     }
    ],
@@ -4658,38 +4691,6 @@
    "edge_touch": false
   },
   {
-   "file": "hires_src/hand_r_open@2x.png",
-   "kind": "limb",
-   "size": "172x218",
-   "opaque": 12174,
-   "near_white_pct": 0.53,
-   "edge_near_white_pct": 0.0,
-   "bad_hue_visible": 0,
-   "bad_hue_transparent": 0,
-   "seam_pct": 0.47,
-   "dark_pct": 1.22,
-   "hole_pct": 0.0,
-   "straight_run": 50,
-   "residue_pct": 86.41,
-   "residue": {
-    "mint": 0,
-    "warm": 10510,
-    "shirt": 14
-   },
-   "residue_blocks": [
-    {
-     "px": 10520,
-     "bbox": [
-      18,
-      16,
-      152,
-      197
-     ]
-    }
-   ],
-   "edge_touch": false
-  },
-  {
    "file": "hires_src/hand_r_pad@2x.png",
    "kind": "limb",
    "size": "92x104",
@@ -4720,6 +4721,28 @@
     }
    ],
    "edge_touch": false
+  },
+  {
+   "file": "hood_inner_shadow@2x.png",
+   "kind": "body",
+   "size": "306x130",
+   "opaque": 7338,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 0.03,
+   "dark_pct": 0.0,
+   "hole_pct": 0.0,
+   "straight_run": 24,
+   "residue_pct": 0.0,
+   "residue": {
+    "mint": 0,
+    "warm": 0,
+    "shirt": 0
+   },
+   "residue_blocks": [],
+   "edge_touch": true
   },
   {
    "file": "mouth_cavity@2x.png",
@@ -6707,20 +6730,20 @@
    "file": "seg_torso@2x.png",
    "kind": "body",
    "size": "546x1000",
-   "opaque": 337687,
-   "near_white_pct": 53.88,
-   "edge_near_white_pct": 5.92,
+   "opaque": 436249,
+   "near_white_pct": 43.88,
+   "edge_near_white_pct": 12.51,
    "bad_hue_visible": 0,
    "bad_hue_transparent": 0,
-   "seam_pct": 0.57,
-   "dark_pct": 4.06,
+   "seam_pct": 0.69,
+   "dark_pct": 3.94,
    "hole_pct": 0.0,
-   "straight_run": 266,
-   "residue_pct": 65.21,
+   "straight_run": 332,
+   "residue_pct": 54.16,
    "residue": {
-    "mint": 9023,
-    "warm": 53718,
-    "shirt": 162321
+    "mint": 9725,
+    "warm": 69304,
+    "shirt": 163835
    },
    "residue_blocks": [
     {
@@ -6742,12 +6765,12 @@
      ]
     },
     {
-     "px": 21860,
+     "px": 27825,
      "bbox": [
-      203,
-      144,
-      284,
-      585
+      145,
+      0,
+      447,
+      191
      ]
     }
    ],

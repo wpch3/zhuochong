@@ -246,6 +246,10 @@ step "20e/27 从四张戴帽全身参考切兜帽与帽下头发（含脸侧鬓�
 # make_attach_parts 再据此写 1×/@2×，最终 make_rig 收录新挂件。侧鬓发掩膜明确
 # 排除了皮肤、眼睛和脸部开口，避免误把 face-framing hair 做成整脸覆盖片。
 "$PY" tools/cut_hood_from_sheets.py --character "$CH" --form "$FM"
+if [ "$CH" = "xiaoxun" ] && [ "$FM" = "teen" ]; then
+  step "20f/27 生成 Teen 兜帽内沿乘算投影（仅 hood_pose=up）"
+  "$PY" tools/make_hood_inner_shadow.py --character "$CH" --form "$FM" --update-attachments
+fi
 
 step "21/27 切件高清化（每个件生成 2× 的 @2x，make_rig 会自动改用并把 scale 乘 0.5）"
 # 先空跑一遍 make_rig 刷新「rig 引用了哪些件」这张表：高清化只给引用到的件做 @2x，

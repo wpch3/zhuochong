@@ -1185,7 +1185,10 @@ def attach_emit(rig, base, base_root):
     geom = {x["id"]: x for x in cut["attachments"]}
     flick_extra = []     # wave=flick 的挂件参数：只偶尔抽一下，不进 ambient
 
+    current_form = os.path.basename(os.path.normpath(base))
     for att in table["attachments"]:
+        if att.get("forms") and current_form not in att["forms"]:
+            continue
         g = geom.get(att["id"])
         if g is None:
             print(f"警告：挂件 {att['id']} 没有切件产物，跳过", file=sys.stderr)
@@ -1239,6 +1242,7 @@ def attach_emit(rig, base, base_root):
             # 竖起的尾巴尾根在底边，曲线也必须跟着反过来（tip ↔ root）。
             "anchor": list(att.get("anchor", slot["anchor"])),
             "tags": list(att.get("tags", [])),
+            **({"blend": att["blend"]} if att.get("blend") else {}),
             "note": f"{att.get('label', att['id'])}（挂件，槽 {att['slot']}）："
                     f"{slot.get('note', '')}",
             "scale_1x": 1.0,

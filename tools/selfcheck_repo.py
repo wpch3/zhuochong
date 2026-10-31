@@ -2689,6 +2689,32 @@ def check_live2d(root):
                   _ch / _cw <= 1.35,
                   "高 %.0f / 宽 %.0f = %.2f" % (_ch, _cw, _ch / _cw))
 
+        _shadow_cfg = next((x for x in _att.get("attachments", [])
+                            if x.get("id") == "hood_inner_shadow"), None)
+        _shadow_part = next((p for p in _rig_h.get("parts", [])
+                             if p.get("id") == "acc_hood_inner_shadow"), None)
+        _hood_part = next((p for p in _rig_h.get("parts", [])
+                           if p.get("id") == "acc_hood_up"), None)
+        _hood_pose = next((g for g in _rig_h.get("poses", [])
+                           if g.get("id") == "hood_pose"), None)
+        _up_entry = next((e for e in (_hood_pose or {}).get("entries", [])
+                          if e.get("id") == "up"), None)
+        check("兜帽内侧影是 teen 专用的独立乘算软层",
+              bool(_shadow_cfg) and _shadow_cfg.get("forms") == ["teen"]
+              and _shadow_cfg.get("blend") == "multiply"
+              and _shadow_cfg.get("solid_fill") is False
+              and bool(_shadow_part) and _shadow_part.get("blend") == "multiply",
+              "forms=%s blend=%s solid_fill=%s rig_blend=%s"
+              % ((_shadow_cfg or {}).get("forms"), (_shadow_cfg or {}).get("blend"),
+                 (_shadow_cfg or {}).get("solid_fill"), (_shadow_part or {}).get("blend")))
+        check("兜帽内侧影随戴帽档显示，且被帽壳压在头发上",
+              bool(_up_entry) and "acc_hood_inner_shadow" in _up_entry.get("parts", [])
+              and bool(_shadow_part) and bool(_hood_part)
+              and int(_shadow_part.get("layer", 9999)) < int(_hood_part.get("layer", -1)),
+              "hood_pose.up=%s；shadow/hood layer=%s/%s"
+              % ((_up_entry or {}).get("parts"), (_shadow_part or {}).get("layer"),
+                 (_hood_part or {}).get("layer")))
+
     # ㉑ 头部几何闸不许是死工具（T46.8）。tools/head_silhouette.py 要被
     #    check_assets 真的调起来，否则就又是"在仓库里写日记"。
     _hs_p = os.path.join(root, "tools", "head_silhouette.py")
