@@ -736,11 +736,20 @@ def main():
 
     body = []
     if os.path.exists(os.path.join(sdir, "seg_torso.png")):
-        t, h = clean_body_seam(sdir, 1)
-        print("  seg_torso       擦掉 %5d / %6d（@2x 由 1× 派生）" % (t[0], t[1]))
-        print("  seg_head        擦掉 %5d / %6d（@2x 由 1× 派生）" % (h[0], h[1]))
-        body.append({"file": "seg_torso.png", "removed_px": t[0], "total_px": t[1]})
-        body.append({"file": "seg_head.png", "removed_px": h[0], "total_px": h[1]})
+        if args.form == "teen":
+            # The torso/head origins and jaw cut line in clean_body_seam are calibrated
+            # to Teen's canvas. Chibi uses a different source geometry (seg_head begins
+            # at body_full y=0, with the eyes around y=400), so applying Teen's fixed
+            # y=334 threshold cuts through the face and leaves transparent eye/cheek
+            # blocks. Keep the shared eye-residue cleanup above, but do not run this
+            # Teen-only body seam pass until Chibi has its own calibrated geometry.
+            t, h = clean_body_seam(sdir, 1)
+            print("  seg_torso       擦掉 %5d / %6d（@2x 由 1× 派生）" % (t[0], t[1]))
+            print("  seg_head        擦掉 %5d / %6d（@2x 由 1× 派生）" % (h[0], h[1]))
+            body.append({"file": "seg_torso.png", "removed_px": t[0], "total_px": t[1]})
+            body.append({"file": "seg_head.png", "removed_px": h[0], "total_px": h[1]})
+        else:
+            print(f"  [skip] clean_body_seam is Teen-calibrated; leave {args.form} head/torso geometry untouched")
 
     out = os.path.join(sdir, "eye_clean_report.json")
     with open(out, "w", encoding="utf-8") as f:
