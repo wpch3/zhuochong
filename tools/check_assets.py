@@ -1173,6 +1173,15 @@ def check(character, form, root=".", strict=False, out_json=None):
                     add("混合零件", f"腮红_{side} 压在实心脸上", cover >= 0.80,
                         f"{cover * 100:.0f}% 的不透明像素落在 seg_head 的实心区上"
                         f"（要求 ≥80%；multiply 画在透明处等于没画）")
+                    if character == "xiaoxun" and form == "teen":
+                        nonzero = int((part_a > 0).sum())
+                        semitransparent = int(((part_a > 0) & (part_a < 255)).sum())
+                        soft_ratio = semitransparent / max(1, nonzero)
+                        peak = int(part_a.max())
+                        add("混合零件", f"腮红_{side} 峰值柔边，无硬划痕",
+                            peak <= 110 and soft_ratio >= 0.99,
+                            f"alpha 峰值 {peak}/255、半透明占非透明像素 {soft_ratio:.1%}"
+                            "（避免小尺寸时高对比划线抢过模板的淡腮红）")
 
             # —— 差分发型必须和本体头发**同源配色**（2026-10-18 用户打回）——
             # 用户看第一眼就说「色彩和形态完全不一样非常的违和」，而当时

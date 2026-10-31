@@ -9,8 +9,8 @@
   眼高光 eye_hl_l/r —— 加算（additive）。加算只提亮已经有画面的地方，
                       透明背景上不会凭空多出一个白点，这正是高光该有的行为。
 
-两者都是程序化生成的软边椭圆（径向渐变），不需要 AI 生图，也不吃原画分辨率：
-形状由参数决定，想换大小/位置改这里就行。
+两者都是程序化生成的软边形状（径向渐变），不需要 AI 生图，也不吃原画分辨率：
+形状由参数决定，想换大小/位置改这里就行。腮红保持低峰值、无硬质斜线，按模板里的淡暖红气质画，避免小尺寸下变成红色刮痕。
 
 用法：
     python3 tools/make_blend_parts.py --character xiaoxun --form teen
@@ -45,10 +45,12 @@ HIGHLIGHT = {
     "l": {"pos": [373, 262], "size": [13, 13]},
     "r": {"pos": [446, 257], "size": [13, 13]},
 }
-# 乘算色：越暗压得越狠。R 几乎不压、G/B 压到 ~0.57，出来是偏暖的粉（压成紫红会显脏）。
-# 2026-10-14 调浓：原来 (242,150,162) + peak 0.62 实测满值只带来 27 像素可见变化，
-# 表情 shy 用 0.95 都看不出脸红 —— 等于这个零件白做了。
-BLUSH_RGB = (250, 143, 148)
+# 乘算色：R 不压、G/B 适度压低，得到与短发全身模板相符的浅暖粉。
+# 2026-10-31 目视 ParamCheek=1 发现旧 3 道 speckle 经 40×22 小尺寸后成为
+# 高对比红色短划痕。按模板淡腮红真值移除斜线，并把中心 alpha 峰值由 0.88 降至 0.40。
+BLUSH_RGB = (255, 190, 187)
+BLUSH_PEAK = 0.40
+BLUSH_GAMMA = 1.25
 HL_RGB = (255, 253, 246)         # 加算色：略偏暖的白，纯白会显得发青
 
 
@@ -70,21 +72,6 @@ def radial(w: int, h: int, rgb, peak: float, gamma: float) -> Image.Image:
             px[x, y] = (rgb[0], rgb[1], rgb[2], int(round(a * 255)))
     return im
 
-
-def speckle(im: Image.Image, n: int = 3) -> Image.Image:
-    """腮红上点几道更浓的小斜线——二次元腮红惯常画法，避免纯渐变显得像污渍。"""
-    w, h = im.size
-    px = im.load()
-    for i in range(n):
-        x0 = int(w * (0.28 + 0.18 * i))
-        for t in range(int(h * 0.52)):
-            x = x0 + int(t * 0.45)
-            y = int(h * 0.24) + t
-            if 0 <= x < w and 0 <= y < h:
-                r, g, b, a = px[x, y]
-                if a:
-                    px[x, y] = (r, g, b, min(255, int(a * 1.45) + 18))
-    return im
 
 
 def star(w: int, h: int, rgb, peak: float) -> Image.Image:
@@ -125,7 +112,7 @@ def main() -> int:
 
     for side, cfg in BLUSH.items():
         w, h = cfg["size"]
-        im = speckle(radial(w, h, BLUSH_RGB, peak=0.88, gamma=1.30))
+        im = radial(w, h, BLUSH_RGB, peak=BLUSH_PEAK, gamma=BLUSH_GAMMA)
         im.save(os.path.join(out_dir, f"blush_{side}.png"))
         report["blush"][side] = {"file": f"sprites/blush_{side}.png",
                                  "pos": cfg["pos"], "size": [w, h], "blend": "multiply"}

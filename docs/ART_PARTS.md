@@ -384,9 +384,9 @@ forms/<形态>/rig.json 的 "expression_files": [{"id":"peek_blush","file":"../.
 - 和遮罩可以叠加：被裁的部件先用普通混合画进 scratch，再由
   `zimg_composite_masked_blend()` 按真正的混合模式合到画面上（眼高光就是这条路径）。
 - 开关靠参数：零件 `opacity` 写 1.0，参数 bind 用 **`"offset": -1.0`** 先把 alpha 压到 0，
-  于是「最终透明度 = 参数值」。小寻现有 `ParamBlush`（0..1）与 `ParamEyeSparkle`（0..1，默认 0.55），
+  于是「最终透明度 = 参数值」。小寻现有 `ParamCheek`（0..1）与 `ParamEyeSparkle`（0..1，默认 0.55），
   表情里 害羞=脸红 0.95、吃惊=高光 1.0、难过=高光 0.18。
-- 素材是**程序化画的**（`tools/make_blend_parts.py`，软边椭圆 + 腮红斜线），不走 AI 生图；
+- 素材是**程序化画的**（`tools/make_blend_parts.py`，低峰值径向软腮红 + 软边高光），不走 AI 生图；Teen 腮红按设定稿控制峰值且不叠硬斜线，避免小尺寸变成刮痕；
   位置/大小/颜色都在那个文件顶部的 `BLUSH` / `HIGHLIGHT` 常量里。
 - 证据：`logs/asset_qa/a7_blend.jpg`（冻结时钟后 blush/sparkle 0→1 对照）。
   实测：腮红区 RGB `159.9,186.8,217.0 → 157.8,172.2,201.9`（G/B 掉得比 R 多 = 变暖变粉）、
@@ -444,8 +444,8 @@ Live2D 的 `pose3.json` 管的是「差分」：一组部件里同一时刻只�
 
 ```bash
 curl -s "$P/pause?on=1"
-curl -s "$P/param?id=ParamBlush&v=0" && curl -s "$P/frame.png" -o off.png
-curl -s "$P/param?id=ParamBlush&v=1" && curl -s "$P/frame.png" -o on.png
+curl -s "$P/param?id=ParamCheek&v=0" && curl -s "$P/frame.png" -o off.png
+curl -s "$P/param?id=ParamCheek&v=1" && curl -s "$P/frame.png" -o on.png
 curl -s "$P/pause?on=0"
 ```
 

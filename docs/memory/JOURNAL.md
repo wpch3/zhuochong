@@ -7827,3 +7827,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - 新增重叠矩形、多遮罩、opacity 0、隐藏单源仍保留其他遮罩、全隐藏恢复全图测试；`make test` 1421/0，`make asan` 1421/0。静态/内容包/长记忆自检经带 Pillow Python 环境 0 项失败。
 - 本人看了真实渲染：多遮罩蓝色测试片只在 40×80 交叠区出现；teen 四发型×戴/不戴帽仍完整；睁/半闭/闭眼时眼球受眼眶裁切，未见越界。留图在 `docs/qa/live2d_*_2026-10-31.png`。
 - T67.8 标记完成。此前 `make selfcheck` 找到唯一 ROADMAP 数字过期，按仓库自检建议运行 `tools/roadmap_status.py --fix`，重新自检一致。系统默认 Python 缺 Pillow，完整 `make selfcheck` 需明确指定 `ZC_PY` / `PYTHON_IMG` 环境变量。
+
+## 2026-10-31｜T67.20 Teen 腮红软化与 ParamCheek 实拍
+
+- 审计 T67.9 时发现任务记录过期：`ParamCheek` 0..1 早已接到两侧 blush alpha；真正视觉缺陷是 40×22 材料上的三道 speckle 斜划线在模型上显得刺眼，且红度过高。
+- 查 Live2D 官方 Standard Parameter List（`ParamCheek` 正值脸红）与 Palkaloid 建模实录（100% opacity 太浓，作者降至约 60%；这是风格建议而非规范阈值）；以小寻短发全身设定稿为颜色/观感基准。
+- `tools/make_blend_parts.py` 移除 speckle，调整浅暖粉与径向峰值 alpha=0.40/gamma=1.25；按流程只重建 teen `blush_l/r` 的 1×/2×，参数接线不动。`check_assets.py` 加低峰值半透明素材不变量。
+- 本人冻结 ambient/physics，在真实服务中看 ParamCheek 0/1 的 scale 1.0 全身与 3×脸部 A/B，并检查 0.55 尺寸：新腮红出现平滑、柔和、没有红刮痕，幅度跟随参数，整体仍保留设定稿的轻暖腮红感。截图 `docs/qa/live2d_teen_cheek_paramcheek_ab_2026-10-31.png`、`..._on_2026-10-31.png`。
+- 针对 teen 跑 `check_assets.py`：新增左右腮红的峰值/软边断言均通过；全量素材审计仍为 1748 项、8 项既有失败（灰度遮罩、色卡、白边、无损切分、twin 侧发遮挡覆盖），不属于本次腮红回归，也不宣称整体验收通过。
+- T67.20 完成，T67.9 改为进行中；其它脸部/鞋部欠项仍保留，旧记录的淡青方块在当前默认画面未复现，未宣称已解决。

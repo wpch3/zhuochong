@@ -8,7 +8,7 @@
  "lanczos": 7,
  "native": 6,
  "keycolor_fixed": 79,
- "seconds": 9.0,
+ "seconds": 0.1,
  "parts": [
   {
    "name": "acc_ear_l.png",

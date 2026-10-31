@@ -4303,3 +4303,10 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 6. **研发工程**：参考 LangGraph 的 checkpoint/interrupt 和现有项目的 manifest/恢复测试，维护短小的黄金用例集；每次变更要求 trace 回放、正负控与人工目视（视觉任务）。
 
 **许可证边界**：所有链接均用于公开查阅。ds-local-pet README 明确代码 MIT 与视觉资产许可分离；LiteLLM `enterprise/` 另有许可；其它模型权重、语音权重、第三方运行时和数据集仍须按各自版本单独核验，不能从仓库代码 LICENSE 推断。
+
+## 第六十九批（2026-10-31：ParamCheek 的标准与实际腮红强度）
+
+- [Live2D 官方 Standard Parameter List](https://docs.live2d.com/4.2/en/cubism-editor-manual/standard-parametor-list/)：`ParamCheek` 标准范围 0..1，正值表示 blush；default 由具体角色决定。项目对应 Teen rig 的 `ParamCheek`，绑定 `blush_l/r` 的 alpha，原接线已正确。
+- [Palkaloid：FREE版Live2D(11)｜照れの設定をする](https://palkaloid.com/529/set-shy/)：建模示例把腮红件接入“照れ”参数，1 显示、0 隐藏，并以 face clipping 防止角度变化时溢出；作者觉得 100% opacity 太浓，最终约降到 60%。这是个人视觉调节示例，不是官方硬阈值。
+- **项目修正**：实际 `ParamCheek=1` 渲染暴露旧腮红三道斜向 speckle 在 40×22 小尺寸下变成红色刮痕；颜色/强度也偏浓。参考短发全身设定稿，移除斜线，浅暖粉 `#FFBEBB`（工具中 RGB 255,190,187）、径向峰值 alpha 0.40、gamma 1.25；保留原有 ParamCheek 0..1 绑定。用 scale 1.0 全身与 3×脸部 A/B、scale 0.55 小尺寸实拍验收：新腮红均匀、柔和，无离散硬划痕，不抢眼睛/嘴的焦点。证据 `docs/qa/live2d_teen_cheek_paramcheek_ab_2026-10-31.png` 与 `..._on_2026-10-31.png`。
+- **陷阱**：程序函数名叫 `radial()` 不代表最终件一定柔和；叠加的 speckle / 高 alpha 会在生成/缩放后改变观感。必须看参数极值下的真实 render，机器检查只守 alpha 峰值和半透明轮廓，不能替代视觉标尺。

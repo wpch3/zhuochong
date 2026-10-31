@@ -73,7 +73,7 @@
 | ~~G16~~ | ✅ 2026-10-13 **多段物理摆链**：`physics[].driver` 可写**前面已声明的另一条 physics id**（输入=上一段这一帧的输出），输出可用 `"deformer":"<id>"` 直接写进网格形变器的 amount。示范链：头动 → `ahoge_x`（发根 bend_x）→ `ahoge_tip`（梢，stiffness 26/damping 3.4）→ `ahoge_s` 形变器 S 形。调试口 `zrig_phys_output()`。**侧发已于 2026-10-13 接上两段摆链**（G4n）；仍缺裙摆（等拆件） | 单测 7 项、静态自检 1 项 |
 | ~~A9~~ | ✅ 2026-10-13 初版 + 2026-10-31 语义校正：遮罩按需当场渲染、按当前帧形变，与被裁件同步；`mask` 支持单值/最多 4 张数组、`mask_invert`、mask Feather；遮罩可以不与被裁件相邻；拒绝遮罩套娃。初版错误地将多遮罩做并集，且遮罩源隐藏时跳过被裁件；按官方 Clipping ID 改为**alpha 交集**，全部显式隐藏源时输出全白 alpha（解除裁切），opacity=0 源仍按几何参与 | `make test`：1421 项通过；重叠矩形 QA 渲染仅见交集；T67.8 详见 TASKS.md |
 | ~~A8~~ | ✅ 2026-10-13 **Pose 互斥部件组**（≈ pose3.json）：rig 顶层 `poses[{id,fade,default,entries:[{id,parts[]}]}]`，同组只有一个档位可见、定长线性淡化、`none` 可整组关掉；加载期四条校验（部件存在／一个部件只能归一档／default 在档位里／至少两档）。示范组 `eye_hl_style`（圆形/星形/无），测试台有差分按钮，`/api/pose?group=&id=`，冻结时钟时自动 `zrig_pose_snap` | 单测 17 项、静态自检 1 项、冒烟 5 项；证据 `logs/asset_qa/a8_pose.jpg` |
-| ~~A7~~ | ✅ 2026-10-13 **混合模式**（≈ CubismBlendMode）：部件 `"blend":"add"\|"multiply"`，公式与 Live2D 一致且**不改目标 alpha**；能和遮罩叠用（`zimg_composite_masked_blend`）。新零件：腮红 blush_l/r（乘算）、眼高光 eye_hl_l/r（加算，跟 gaze、被眼眶裁、闭眼淡出），由 `tools/make_blend_parts.py` 程序化画出。新参数 `ParamBlush` / `ParamEyeSparkle`（bind 新增 `offset` 字段）。附带新端点 `/api/pause` 冻结时钟 | 单测 9 项、静态自检 1 项、冒烟 5 项；证据 `logs/asset_qa/a7_blend.jpg` |
+| ~~A7~~ | ✅ 2026-10-13 **混合模式**（≈ CubismBlendMode）：部件 `"blend":"add"\|"multiply"`，公式与 Live2D 一致且**不改目标 alpha**；能和遮罩叠用（`zimg_composite_masked_blend`）。新零件：腮红 blush_l/r（乘算）、眼高光 eye_hl_l/r（加算，跟 gaze、被眼眶裁、闭眼淡出），由 `tools/make_blend_parts.py` 程序化画出。新参数 `ParamCheek`（旧名 `ParamBlush` 保留别名） / `ParamEyeSparkle`（bind 新增 `offset` 字段）。附带新端点 `/api/pause` 冻结时钟 | 单测 9 项、静态自检 1 项、冒烟 5 项；证据 `logs/asset_qa/a7_blend.jpg` |
 | ~~A6~~ | ✅ 2026-10-13 **关键帧动作曲线**（≈ `.motion3.json`）：通道写 `"keys":[[t,v],…]` + `"interp":"linear\|smooth\|step"`，取代只能做对称周期的参数化波形；循环动作对末帧时间取模回绕，一次性动作保持末值；时间倒退/帧格式错/超 1024 帧池直接加载失败。示范动作 `nod`（0.18s 低头 9° → 停 → 抬起过冲 −2.5°） | 单测 7 项、静态自检 1 项、冒烟 3 项；证据 `logs/asset_qa/a6_nod_keys.jpg` |
 | ~~A1~~（原记作 G18） | ✅ 2026-10-12 **命名参数层**：rig.json 顶层 `params[]`（id/label/min/max/default + binds 到组或部件通道，`通道值 = 参数值 × scale`）+ 引擎内建 5 个（ParamAngleX/Y、ParamEyeOpen〔含 L/R 别名〕、ParamEyeBallX/Y，路由到跟随/眨眼/眼球）+ `/api/params.json`、`/api/param?id=&v=|reset=1|all=1`；测试台的滑条按参数表**自动生成**，角色加参数不用改前端。小寻 teen 现有 14 个角色参数（ParamAngleZ/BodyAngleX/Z/Breath/MouthOpenY/MouthForm/Brow×4/ArmLA/ArmRA/HairFront/HairAhoge） | — | 单测 `test_params` 17 项（总 **281**）；冒烟 40 项全过；实测 ParamArmRA −10/0/+10 → 右臂外缘 606/644/681px；对照图 `logs/asset_qa/param_sheet.png` |
 | ~~A4~~（原记作 G19） | ✅ 2026-10-12 **LipSync**：`tools/make_lipsync.py`（wav→RMS 包络 / 无 wav 时数 MPEG 帧头拿时长 + 台词音节铺节律）→ `voice/lipsync/*.json` → `/api/speak?id=` → 引擎每帧写 `ParamMouthOpenY`，动作里的嘴通道由 `zrig_set_mouth_mute` 让路。38 条台词已生成包络；~~仍缺 I/U/E/O 音素级口型~~ **✅ 2026-10-13 补齐（见 G37）** | 依赖 G5 播放链路 |
@@ -1759,16 +1759,19 @@ shuangxi / tonglin / xiaochen / xingxuan / yuejian）在此之前连 `skeleton.j
    读起来像"头发直接长在帽子上"；Live2D 里这是靠**内側影レイヤー**（乘算层）解决的。
 2. **下颏—颈—锁骨没有一条连续的结构线**：脖子只是头的延伸，缺 アゴ影 与 鎖骨影，
    所以低头的瞬间会"脖子消失"。
-3. **腮红是两个椭圆**（`blush_l/r` 各 1,732px，硬边），没有跟表情变化的强度参数。
+3. **腮红外观（已结子项）**：`blush_l/r` 两侧已由 `ParamCheek` 0..1 控 alpha；旧素材虽为软渐变，但每侧三条高对比斜线经 40×22 缩小后像红色刮痕，且峰值偏重。2026-10-31 删除斜线、降峰值并完成 1.0 实拍 A/B。
 4. **嘴只有一条 `v` 形线**：闭口嘴角没有 Y 轴平移，微笑/难过只能靠整体缩放。
 5. **鞋 46% 是近白**（`/tmp/feet_white.png`：20,503 个不透明像素里 9,354 个近白）：
    白鞋 + 白袜之间没有暗线，远看是"一坨白"（违背"不许白边"的同类观感问题）。
 6. **`window`（兜帽）与头发交界没有压暗**，右侧还有一块**淡青方块**（`/tmp/hi_legs.png`
    右腿旁），疑似别的件露出来。
 
+**进度（2026-10-31）**：第③项已完成；`ParamCheek` 绑定原本已存在，本轮修复的是 ParamCheek=1 的贴图强度与斜线伪影。参数实拍 A/B 与全身图在 `docs/qa/live2d_teen_cheek_paramcheek_*_2026-10-31.png`。其余仍开放：
+①兜帽内侧加乘算阴影层 ②脖子加アゴ影 + 锁骨线 ④嘴角加 Y 位移 ⑤鞋加暗线并压掉近白 ⑥按旧记录复现并追查淡青方块归属。默认 teen 当前帧未复现该方块，不以“不在这张图上”代替复现旧状态。
+
 **出口条件**（T66.29）：
-①兜帽内侧加乘算阴影层 ②脖子加アゴ影 + 锁骨线 ③腮红给 `ParamCheek` 与软边
-④嘴角加 `ParamMouthForm` 的 Y 位移 ⑤鞋加暗线并压掉近白 ⑥查清淡青方块属于哪一件。
+①兜帽内侧加乘算阴影层 ②脖子加アゴ影 + 锁骨线 ③腮红（已完成）
+④嘴角加 Y 位移 ⑤鞋加暗线并压掉近白 ⑥复现并查清淡青方块归属。
 
 ## G66.30 只做七个角色不够：要留**自定义形象的生成空间**（用户第 6 条）
 
