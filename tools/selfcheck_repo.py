@@ -1884,7 +1884,7 @@ def check_reference_driven_development(root):
     refs = read(os.path.join(root, "docs/REFERENCE_NOTES.md"))
 
     check("WORKFLOW 铁律 9 已登记",
-          "铁律 9（Reference-Driven Development" in workflow,
+          "铁律 12（Reference-Driven Development" in workflow,
           "docs/memory/WORKFLOW.md")
     phrases = ("标准原则", "项目实现", "陷阱核对", "selfcheck", "全身参考")
     missing = [p for p in phrases if p not in workflow]
@@ -1892,7 +1892,7 @@ def check_reference_driven_development(root):
           "缺少 " + ", ".join(missing) if missing else "原则→实现→陷阱→自检/目视")
     check("Live2D 合规表列出 Iron Laws 审计与缺口",
           "Reference-Driven Development 与 Iron Laws 审计" in conformance and
-          "Iron Laws 0–8" in conformance and "审计发现的缺口" in conformance,
+          "Iron Laws 0–11" in conformance and "审计发现的缺口" in conformance,
           "docs/LIVE2D_CONFORMANCE.md")
     check("LESSONS 记录标准→实现→陷阱教训",
           "Reference-Driven Development" in lessons and
