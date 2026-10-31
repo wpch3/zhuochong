@@ -241,16 +241,20 @@ step "20c/27 腋下描き足し（把抬臂后会露底的腋窝补进躯干）"
 # 裂开楔形背景（logs/asset_qa/q46_armpit_cmp.png 上下对照）。
 "$PY" tools/armpit_patch.py --character "$CH" --form "$FM"
 
-step "20e/27 从四张戴帽全身参考切兜帽与帽下头发（含脸侧鬓发，只输出发丝掩膜）"
-# 必须排在 rig/high-res 与 make_attach_parts 之前：geometry/source 先更新，
-# make_attach_parts 再据此写 1×/@2×，最终 make_rig 收录新挂件。侧鬓发掩膜明确
-# 排除了皮肤、眼睛和脸部开口，避免误把 face-framing hair 做成整脸覆盖片。
-"$PY" tools/cut_hood_from_sheets.py --character "$CH" --form "$FM"
-if [ "$CH" = "xiaoxun" ] && [ "$FM" = "teen" ]; then
-  step "20f/27 生成 Teen 兜帽内沿乘算投影（仅 hood_pose=up）"
-  "$PY" tools/make_hood_inner_shadow.py --character "$CH" --form "$FM" --update-attachments
-  step "20g/27 生成 Teen 下颏影与可见颈根细节（皮肤裁切）"
-  "$PY" tools/make_neck_details.py --character "$CH" --form "$FM" --update-attachments
+if [ "$CH" = "xiaoxun" ] && [ "$FM" = "chibi" ]; then
+  echo "[skip] Teen 全身参考切兜帽/帽下发；保留 Chibi 自有附件与清单"
+else
+  step "20e/27 从四张戴帽全身参考切兜帽与帽下头发（含脸侧鬓发，只输出发丝掩膜）"
+  # 必须排在 rig/high-res 与 make_attach_parts 之前：geometry/source 先更新，
+  # make_attach_parts 再据此写 1×/@2×，最终 make_rig 收录新挂件。侧鬓发掩膜明确
+  # 排除了皮肤、眼睛和脸部开口，避免误把 face-framing hair 做成整脸覆盖片。
+  "$PY" tools/cut_hood_from_sheets.py --character "$CH" --form "$FM"
+  if [ "$CH" = "xiaoxun" ] && [ "$FM" = "teen" ]; then
+    step "20f/27 生成 Teen 兜帽内沿乘算投影（仅 hood_pose=up）"
+    "$PY" tools/make_hood_inner_shadow.py --character "$CH" --form "$FM" --update-attachments
+    step "20g/27 生成 Teen 下颏影与可见颈根细节（皮肤裁切）"
+    "$PY" tools/make_neck_details.py --character "$CH" --form "$FM" --update-attachments
+  fi
 fi
 
 step "21/27 切件高清化（每个件生成 2× 的 @2x，make_rig 会自动改用并把 scale 乘 0.5）"
@@ -268,11 +272,15 @@ step "22/27 星星眼差分件（星形虹膜 + ✨ 素材，AI 源图抠像；�
 "$PY" tools/make_star_eye_parts.py --character "$CH" --form "$FM"
 "$PY" tools/make_manpu_parts.py --character "$CH" --form "$FM"
 
-step "23/27 兜帽整形（按头部实测几何把画出来的兜帽削到该有的厚度 + 算放置参数）"
-"$PY" tools/make_hood_part.py --character "$CH" --form "$FM" \
-  --source acc_hood_cute_v6.png
-"$PY" tools/make_attach_parts.py --character "$CH" --form "$FM"
-"$PY" tools/make_wardrobe.py --character "$CH" --form "$FM"
+if [ "$CH" = "xiaoxun" ] && [ "$FM" = "chibi" ]; then
+  echo "[skip] Teen 兜帽整形/附件重生成/衣柜重生成；保留 Chibi 现有附件、衣柜清单"
+else
+  step "23/27 兜帽整形（按头部实测几何把画出来的兜帽削到该有的厚度 + 算放置参数）"
+  "$PY" tools/make_hood_part.py --character "$CH" --form "$FM" \
+    --source acc_hood_cute_v6.png
+  "$PY" tools/make_attach_parts.py --character "$CH" --form "$FM"
+  "$PY" tools/make_wardrobe.py --character "$CH" --form "$FM"
+fi
 
 step "24/27 外套前襟下摆的几何（量出哪几列是前襟、哪几行是下摆，给 make_rig 定网格）"
 "$PY" tools/make_jacket_parts.py --character "$CH" --form "$FM"
