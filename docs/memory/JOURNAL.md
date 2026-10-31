@@ -7845,3 +7845,11 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - 新增 selfcheck 静态结构断言与 `test_mouth_form_corners()` 运行时真 rig 顶点断言：参数 ±1 时左右顶点方向正确、中心不动，遮罩和口内变形器都收参数。`make test` 2638/0；`make selfcheck` 765/0；Teen `check_assets.py` 仍有 1748 项中 8 项既有非本改动问题，不能报告全量素材通过。
 - 本人查看重启后的真实引擎帧：闭口 Form -1/0/+1、OpenY=0.65 且 Form -1/0/+1，以及全身对照；嘴角表情方向清楚，口内与遮罩外缘未见分离。归档 `docs/qa/live2d_teen_mouthform_corner_full_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_closed_detail_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_open_detail_abc_2026-10-31.png`。
 - T67.9 只关闭④嘴角 Y 子项；剩余①兜帽阴影、②下颏影+锁骨线、⑤鞋暗线/压近白、⑥淡青方块复现和归属。任务仍开放。
+
+## 2026-10-31｜T67.9 ⑥淡青块真实引擎复现与归属
+
+- 回到旧记录所指的长发腿部状态，不再只看默认短发帧：在真实 Teen C 引擎冻结 `idle`、`hairstyle=long`、`hood_pose=down`、`ParamTiptoe=0`，重现腿间偏右侧的淡青竖块；同时确认 `/api/info.json` 状态和 933×1496、scale 1.1 帧。
+- 做逐件归属探针：保持其余状态完全不变，只用 `/api/part?id=acc_hair_long&vis=0` 隐藏单件。大块淡青填充随即消失；恢复该件后复现。Rig 对照确认 `acc_hair_long` 指向 `hair_long_back@2x.png`、layer 58，位于腿/躯干之后。
+- 以原始长发设定图 `characters/xiaoxun/design/sheets/sheet_long.png` 为视觉真值：图中本就有一缕从裙下进入腿间、向下收尖的中央后发束。因此这是长发后件在腿间空隙中的显露，不是另一件衣物/attachment 串入。当前引擎显出的轮廓看起来较宽、容易被叫作“方块”，不在 T67.9 里擦除或染色；长发轮廓的后续重造仍归 T67.7，不能宣称 teen 长发整体已经完成。
+- 归档全身与腿部局部真实引擎截图、单件隐藏控制帧、源图/素材 SHA-256：`docs/qa/live2d_teen_longhair_centerlock_2026-10-31.json` 及同前缀 PNG；细目列于 `docs/qa/README.md`。
+- T67.9 六个子项（兜帽内影、下颏/颈根、腮红、嘴角 Y、鞋线/压近白、淡青块归属）全部闭环；这不等于全仓素材审计全绿，既有 8 项失败和 T67.7 长发重造仍开放。

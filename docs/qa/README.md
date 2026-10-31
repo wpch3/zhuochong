@@ -28,6 +28,7 @@
 - `live2d_teen_hood_shadow_hairstyles_2026-10-31.png` —— API 状态已核对的 hood-up 四发型 + short hood-down 控制图；用于检查兼容性与隐藏行为。
 - `live2d_teen_neck_details_2026-10-31.json` 及 `live2d_teen_neck_details_{engine,detail,motion_engine,motion_detail}_2026-10-31.png` —— T67.9 ② teen 引擎真实渲染证据：中立全身、颈部近景，以及头转/躯干倾斜检查；细节图为原帧裁切放大。
 - `live2d_teen_shoe_contrast_2026-10-31.json` 及同前缀 `engine/detail/tiptoe_engine/tiptoe_detail` PNG —— T67.9 ⑤ Teen 真实引擎静态与 tiptoe 峰值验收；JSON 记录近白率前后值、鞋底/鞋口几何检查和逐张 SHA-256。
+- `live2d_teen_longhair_centerlock_2026-10-31.json` 及同前缀 `engine/detail/owner_hidden_engine/owner_hidden_detail` PNG —— T67.9 ⑥淡青块真实引擎复现与逐件隐藏归属对照；确认来源是 `acc_hair_long`（long back-hair），并与 `sheet_long.png` 原画核对。不是 stray clothing；长发本体形状优化继续由 T67.7 跟踪。
 - `live2d_teen_cheek_paramcheek_ab_2026-10-31.png` —— Teen 真实渲染 ParamCheek=0/1 放大对照；用于确认降峰值、去斜线后腮红随参数平滑出现。
 - `live2d_teen_cheek_paramcheek_on_2026-10-31.png` —— ParamCheek=1 全身静帧；核对腮红在整身尺度不过浓、不像贴纸。
 - `live2d_teen_mouthform_corner_full_abc_2026-10-31.png` —— teen 真实引擎全身 ParamMouthForm −1/0/+1；检查整身状态无副作用。
