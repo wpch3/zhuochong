@@ -30,6 +30,7 @@
 - `live2d_teen_shoe_contrast_2026-10-31.json` 及同前缀 `engine/detail/tiptoe_engine/tiptoe_detail` PNG —— T67.9 ⑤ Teen 真实引擎静态与 tiptoe 峰值验收；JSON 记录近白率前后值、鞋底/鞋口几何检查和逐张 SHA-256。
 - `live2d_teen_longhair_centerlock_2026-10-31.json` 及同前缀 `engine/detail/owner_hidden_engine/owner_hidden_detail` PNG —— T67.9 ⑥淡青块真实引擎复现与逐件隐藏归属对照；确认来源是 `acc_hair_long`（long back-hair），并与 `sheet_long.png` 原画核对。不是 stray clothing；长发本体形状优化继续由 T67.7 跟踪。
 - `live2d_chibi_baseline_2026-10-31.json`、`live2d_chibi_baseline_engine_2026-10-31.png` 与 `live2d_chibi_baseline_face_detail_2026-10-31.png` —— Chibi/Q 版现有 rig 的真实 C 引擎预修复基线。几何/资产机检 0 失败，但脸侧/刘海边缘有明显碎线，明确标记为**未视觉验收**，不作为完成证据。
+- `live2d_chibi_regen_source_audit_2026-10-31.json` 与 `live2d_chibi_regen_source_ab_2026-10-31.png` —— Q/chibi 全版重生成的隔离源头试产证据：对比当前 567×1292 碎裂底图与按已记录四点框从 `design_sheet_chibi.png` 重新抠出的 569×1292 连续底图。**只验证源头候选，不代表重建 rig/切件完成或通过。**
 - `live2d_visual_work_plan_2026-10-31.md`、`live2d_teen_visual_audit_2026-10-31.json` —— 2026-10-31 Teen 真实 C 引擎目视审查、缺陷排序与后续修复计划；这是未完成项的审查记录，不是验收通过证明。长发全身/单件、袖子近景、三套衣服、四种动作和 bones-only 证据均有 SHA-256。
 - `live2d_teen_audit_longhair_full_2026-10-31.png` / `live2d_teen_audit_longhair_isolated_2026-10-31.png` —— Teen 长发全身及 `acc_hair_long` 单件隔离真实渲染；确认两侧黑/青/白条状杂边仍属于长发件，T67.7 未关闭。
 - `live2d_teen_audit_wave_sleeve_detail_2026-10-31.png` —— Teen wave 高举手臂的袖管/夹克接缝真实近景；用于 T67.6、T67.35、T31.15 修复前定位。

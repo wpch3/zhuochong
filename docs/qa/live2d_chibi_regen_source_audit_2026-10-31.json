@@ -1,0 +1,143 @@
+{
+  "date": "2026-10-31",
+  "purpose": "isolated full-regeneration source trial only; not production sprites and not visual sign-off for rebuilt rig",
+  "master_source": {
+    "file": "characters/xiaoxun/design/design_sheet_chibi.png",
+    "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c",
+    "size": [
+      2048,
+      2048
+    ]
+  },
+  "locked_extraction": {
+    "method": "tools/prepare_sprites.py key-out with existing 848x1360 output canvas; exact four-point crop [628,101,1416,1891] → 569x1292 from the recorded T64.3 geometry; no auto bbox",
+    "report": {
+      "source": "characters/xiaoxun/design/design_sheet_chibi.png",
+      "output": "/tmp/zc_chibi_regen_2026-10-31/characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "key_color": [
+        243,
+        19,
+        197
+      ],
+      "canvas": [
+        848,
+        1360
+      ],
+      "sprite_size": [
+        569,
+        1292
+      ],
+      "scale": 0.7221,
+      "alpha_bbox": [
+        0,
+        0,
+        568,
+        1291
+      ],
+      "transparent_ratio": 0.4406,
+      "white_residue_pixels": 499,
+      "magenta_residue_pixels": 34,
+      "palette": [
+        {
+          "hex": "#D8C0D8",
+          "share": 0.1038
+        },
+        {
+          "hex": "#D8CCD8",
+          "share": 0.0866
+        },
+        {
+          "hex": "#FCE4D8",
+          "share": 0.0738
+        },
+        {
+          "hex": "#FCF0F0",
+          "share": 0.0549
+        },
+        {
+          "hex": "#FCFCF0",
+          "share": 0.0381
+        },
+        {
+          "hex": "#FCE4E4",
+          "share": 0.0373
+        },
+        {
+          "hex": "#F0D8E4",
+          "share": 0.026
+        },
+        {
+          "hex": "#303060",
+          "share": 0.017
+        },
+        {
+          "hex": "#F0F0F0",
+          "share": 0.0163
+        },
+        {
+          "hex": "#30306C",
+          "share": 0.0157
+        }
+      ],
+      "suggested_regions": {
+        "head": [
+          195,
+          0,
+          455,
+          310
+        ],
+        "body": [
+          207,
+          310,
+          432,
+          775
+        ],
+        "feet": [
+          207,
+          1085,
+          432,
+          207
+        ],
+        "origin_x": 424,
+        "origin_y": 1292,
+        "sprite_w": 569,
+        "sprite_h": 1292
+      }
+    },
+    "source_body_sha256": "78e5927aa08b07179c731cedd265c2f197c41283967e37fe16e1db5a941bd3dc",
+    "metrics": {
+      "size": [
+        569,
+        1292
+      ],
+      "alpha_bbox": [
+        0,
+        0,
+        569,
+        1292
+      ],
+      "semi_alpha_pixels": 150402,
+      "opaque_pixels": 261153
+    }
+  },
+  "current_baseline": {
+    "file": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+    "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff",
+    "metrics": {
+      "size": [
+        567,
+        1292
+      ],
+      "alpha_bbox": [
+        0,
+        0,
+        567,
+        1292
+      ],
+      "semi_alpha_pixels": 21899,
+      "opaque_pixels": 389073
+    }
+  },
+  "visual_observation": "Manual side-by-side on white: the current 567 base has pronounced fragmented/dark jagged streaks across bangs, side hair, face edge, collar and outfit; the locked re-extraction from the design master is visually continuous and clean at the same rendered thumbnail scale. This only validates a cleaner source-base candidate; all dependent sprites/coordinates/rig remain to be rebuilt and visually checked.",
+  "comparison_image": "live2d_chibi_regen_source_ab_2026-10-31.png"
+}

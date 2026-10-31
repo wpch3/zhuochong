@@ -1425,7 +1425,7 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | T67.64 | 推出来的序列进对话 | [ ] | `scenario_action()` 目前只给闸用。下一步按当前情境挑**一条**喂给模型（多了就成剧本） |
 | T67.65 | 昼夜两套（双晞）进 C | [ ] | 数据里已有 `diel`，但 C 侧还没按时间挑 day/night 片段 |
 | T67.66 | **Teen 真引擎目视复核与修复计划** | [x] | 2026-10-31：已在真实 C 引擎检查三套衣服、四种发型×帽子上下、wave/surprised/tiptoe/heart_hands 与长发 ParamHairSway 极值。确认 `acc_hair_long` 自身仍有黑/青/白条状杂边；wave 高举时袖管硬三角折痕与袖—夹克接缝碎边；静态衣服全身无大洞。抽查 bones-only 与 `/api/bones.json` 未见断链，但不作为全骨架通过。按 P0 chibi 全版重生成、P1 Teen 长发五组与袖子三件套、P2 动态/骨架、P3 组合回归排序；完整计划与实引擎证据：`docs/qa/live2d_visual_work_plan_2026-10-31.md`、`docs/qa/live2d_teen_visual_audit_2026-10-31.json`。 |
-| T67.67 | **Q/chibi 全版重生成（用户明确要求，禁止局部补丁）** | [ ] | 以 `characters/xiaoxun/design/design_sheet_chibi.png` 为设计真值，在隔离副本中重建整个 Q 版素材/组装/所需骨骼与动作绑定；现有版只作对照，不覆盖 Teen。真实 C 引擎全身与脸部近景目视通过后再替换；详见 `docs/qa/live2d_visual_work_plan_2026-10-31.md`。 |
+| T67.67 | **Q/chibi 全版重生成（用户明确要求，禁止局部补丁）** | [~] | 以 `characters/xiaoxun/design/design_sheet_chibi.png` 为设计真值，在隔离副本中重建。首个源头复现完成：当前 567×1292 `body_full` 在头发/脸缘/衣领有明显碎裂，而锁定四点框 `[628,101,1416,1891]` 的全新 569×1292 抠像视觉连续；对比仅证明源图候选更干净，**不是成品/引擎通过**。接下来重建全部切件、高清件、几何、骨骼/动作绑定并在真实 C 引擎验收；现有版只作对照，不覆盖 Teen。证据 `docs/qa/live2d_chibi_regen_source_audit_2026-10-31.json` 与同前缀 PNG；总计划见 `docs/qa/live2d_visual_work_plan_2026-10-31.md`。 |
 
 ### T66 追加（2026-10-26 第八轮：逐顶点权重）
 
