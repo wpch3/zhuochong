@@ -32,6 +32,28 @@
  },
  "sprites": [
   {
+   "file": "chin_neck_shadow@2x.png",
+   "kind": "body",
+   "size": "236x80",
+   "opaque": 12747,
+   "near_white_pct": 0.0,
+   "edge_near_white_pct": 0.0,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 2,
+   "seam_pct": 0.0,
+   "dark_pct": 0.0,
+   "hole_pct": 0.0,
+   "straight_run": 30,
+   "residue_pct": 0.0,
+   "residue": {
+    "mint": 0,
+    "warm": 122,
+    "shirt": 0
+   },
+   "residue_blocks": [],
+   "edge_touch": true
+  },
+  {
    "file": "hand_l@2x.png",
    "kind": "limb",
    "size": "180x182",
@@ -1344,6 +1366,28 @@
     "mint": 0,
     "warm": 33,
     "shirt": 0
+   },
+   "residue_blocks": [],
+   "edge_touch": true
+  },
+  {
+   "file": "clavicle_line@2x.png",
+   "kind": "body",
+   "size": "152x24",
+   "opaque": 816,
+   "near_white_pct": 11.76,
+   "edge_near_white_pct": 2.85,
+   "bad_hue_visible": 0,
+   "bad_hue_transparent": 0,
+   "seam_pct": 5.15,
+   "dark_pct": 0.12,
+   "hole_pct": 0.0,
+   "straight_run": 6,
+   "residue_pct": 0.0,
+   "residue": {
+    "mint": 0,
+    "warm": 0,
+    "shirt": 41
    },
    "residue_blocks": [],
    "edge_touch": true
@@ -6882,50 +6926,6 @@
      ]
     }
    ],
-   "edge_touch": true
-  },
-  {
-   "file": "chin_neck_shadow@2x.png",
-   "kind": "body",
-   "size": "236x80",
-   "opaque": 12747,
-   "near_white_pct": 0.0,
-   "edge_near_white_pct": 0.0,
-   "bad_hue_visible": 0,
-   "bad_hue_transparent": 2,
-   "seam_pct": 0.0,
-   "dark_pct": 0.0,
-   "hole_pct": 0.0,
-   "straight_run": 30,
-   "residue_pct": 0.0,
-   "residue": {
-    "mint": 0,
-    "warm": 122,
-    "shirt": 0
-   },
-   "residue_blocks": [],
-   "edge_touch": true
-  },
-  {
-   "file": "clavicle_line@2x.png",
-   "kind": "body",
-   "size": "152x24",
-   "opaque": 816,
-   "near_white_pct": 11.76,
-   "edge_near_white_pct": 2.85,
-   "bad_hue_visible": 0,
-   "bad_hue_transparent": 0,
-   "seam_pct": 5.15,
-   "dark_pct": 0.12,
-   "hole_pct": 0.0,
-   "straight_run": 6,
-   "residue_pct": 0.0,
-   "residue": {
-    "mint": 0,
-    "warm": 0,
-    "shirt": 41
-   },
-   "residue_blocks": [],
    "edge_touch": true
   }
  ]

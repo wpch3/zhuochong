@@ -249,6 +249,8 @@ step "20e/27 从四张戴帽全身参考切兜帽与帽下头发（含脸侧鬓�
 if [ "$CH" = "xiaoxun" ] && [ "$FM" = "teen" ]; then
   step "20f/27 生成 Teen 兜帽内沿乘算投影（仅 hood_pose=up）"
   "$PY" tools/make_hood_inner_shadow.py --character "$CH" --form "$FM" --update-attachments
+  step "20g/27 生成 Teen 下颏影与可见颈根细节（皮肤裁切）"
+  "$PY" tools/make_neck_details.py --character "$CH" --form "$FM" --update-attachments
 fi
 
 step "21/27 切件高清化（每个件生成 2× 的 @2x，make_rig 会自动改用并把 scale 乘 0.5）"
@@ -269,10 +271,6 @@ step "22/27 星星眼差分件（星形虹膜 + ✨ 素材，AI 源图抠像；�
 step "23/27 兜帽整形（按头部实测几何把画出来的兜帽削到该有的厚度 + 算放置参数）"
 "$PY" tools/make_hood_part.py --character "$CH" --form "$FM" \
   --source acc_hood_cute_v6.png
-if [ "$CH" = "xiaoxun" ] && [ "$FM" = "teen" ]; then
-  step "23a/27 生成 Teen 下颏影与可见颈根细节（皮肤裁切）"
-  "$PY" tools/make_neck_details.py --character "$CH" --form "$FM" --update-attachments
-fi
 "$PY" tools/make_attach_parts.py --character "$CH" --form "$FM"
 "$PY" tools/make_wardrobe.py --character "$CH" --form "$FM"
 
