@@ -358,6 +358,11 @@
         "brow_r": [
           "brow_r_form"
         ],
+        "head": [
+          "mouth_corners_open",
+          "mouth_corners_mask",
+          "mouth_corners_cavity"
+        ],
         "skirt_sway": [
           "skirt_sway_x",
           "skirt_sway_y"

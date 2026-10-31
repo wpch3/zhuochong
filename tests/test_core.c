@@ -5330,6 +5330,66 @@ static void test_sleep_wake_blink(void)
    这两条以前都是错的：draw_state 里 mesh 和 bend 是 if/else，形变器一上来
    bend 就被整个丢掉（多段摆链的第一段因此白写）；找形变器又是找到第一张就
    break，第二张起静默失效。合成 rig 让每种组合各渲一帧，直接比像素。 */
+/* T67.9 嘴角 Y：只改 sx 会让闭口嘴变宽/变窄，但上唇线仍是一张静态弧形图。
+   真 rig 要让 ParamMouthForm 的 +/− 同时驱动两侧端点的反向 Y 位移；中心不动，
+   且遮罩与口内同步变形，运行时以真实网格顶点坐标检查方向和幅度。 */
+static void test_mouth_form_corners(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    double base_l[2] = {0}, base_c[2] = {0}, base_r[2] = {0};
+    double smile_l[2] = {0}, smile_c[2] = {0}, smile_r[2] = {0};
+    double frown_l[2] = {0}, frown_c[2] = {0}, frown_r[2] = {0};
+    SECTION("嘴角 Y：ParamMouthForm 对称抬/压嘴角，中点固定");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 teen rig 应成功（嘴角 Y）");
+    if (!r) return;
+
+    zrig_param_reset_all(r);
+    zrig_param_set(r, "ParamMouthForm", 0.0);
+    zrig_tick(r, 500.0);
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 0, 0, base_l),
+          "应能读取上唇线左角网格点");
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 1, 0, base_c),
+          "应能读取上唇线中点网格点");
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 2, 0, base_r),
+          "应能读取上唇线右角网格点");
+
+    zrig_param_set(r, "ParamMouthForm", 1.0);
+    zrig_tick(r, 500.0);
+    CHECK(fabs(zrig_deform_amount(r, "mouth_corners_open") - 1.0) < 1e-6,
+          "+1 笑形应驱动上唇线嘴角形变器");
+    CHECK(fabs(zrig_deform_amount(r, "mouth_corners_mask") - 1.0) < 1e-6 &&
+          fabs(zrig_deform_amount(r, "mouth_corners_cavity") - 1.0) < 1e-6,
+          "遮罩与口内应同步收到笑形形变");
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 0, 0, smile_l) &&
+          zrig_part_vertex_pos(r, "mouth_open", 1.0, 1, 0, smile_c) &&
+          zrig_part_vertex_pos(r, "mouth_open", 1.0, 2, 0, smile_r),
+          "笑形时应能读取三个上唇线网格点");
+    CHECK(smile_l[1] <= base_l[1] - 2.5 && smile_r[1] <= base_r[1] - 2.5,
+          "+1 笑形应将两端各抬至少 2.5px（L %.2f / R %.2f）",
+          base_l[1] - smile_l[1], base_r[1] - smile_r[1]);
+    CHECK(fabs(smile_c[1] - base_c[1]) < 0.1,
+          "+1 笑形中点应保持不动（dy %.3f）", smile_c[1] - base_c[1]);
+
+    zrig_param_set(r, "ParamMouthForm", -1.0);
+    zrig_tick(r, 500.0);
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 0, 0, frown_l) &&
+          zrig_part_vertex_pos(r, "mouth_open", 1.0, 1, 0, frown_c) &&
+          zrig_part_vertex_pos(r, "mouth_open", 1.0, 2, 0, frown_r),
+          "怒形时应能读取三个上唇线网格点");
+    CHECK(frown_l[1] >= base_l[1] + 2.5 && frown_r[1] >= base_r[1] + 2.5,
+          "-1 怒形应将两端各压至少 2.5px（L %.2f / R %.2f）",
+          frown_l[1] - base_l[1], frown_r[1] - base_r[1]);
+    CHECK(fabs(frown_c[1] - base_c[1]) < 0.1,
+          "-1 怒形中点应保持不动（dy %.3f）", frown_c[1] - base_c[1]);
+    zrig_free(r);
+}
+
 /* 眉形 ParamBrowLForm / ParamBrowRForm（合规表最后两个 ⬜）。
    官方 Cubism 手册的口径：−1 = 眉をしかめる（皱起），+1 = 山なりに上がる（隆起）；
    而且「変形」不许带位置移动——上下/左右/角度各有自己的参数。
@@ -11859,6 +11919,7 @@ int main(int argc, char **argv)
     test_smile_action_sync();
     test_action_param_channels();
     test_action_fade_sine();
+    test_mouth_form_corners();
     test_brow_form();
     test_mesh_bend_coexist();
     test_bone_chains();

@@ -89,8 +89,10 @@
    "部件 → warp → rotate → root 的节点树"之后，一个部件的链就有 2~4 个节点，
    32 张立刻不够。一张 zdeform 现在约 4.8 KB（289 控制点 × 2 double + 树字段），
    多出来的 32 张约 152 KB。
+   2026-10-31（T67.9 嘴角）：新加 3 张嘴部网格后 Teen 用 55/64，超过 85% 余量闸；
+   因而 64 → 80（增量约 77 KB），恢复容量余量，不改变同部件网格必须同尺寸的规则。
    注意：**同一个部件上的多张网格仍必须同尺寸**（要逐点相加），这条校验没变。 */
-#define ZRIG_MAX_DEFORMS  64
+#define ZRIG_MAX_DEFORMS  80
 #define ZRIG_MAX_DEFPTS   289   /* (16+1)^2 */
 #define ZRIG_MAX_DEFKF     6    /* 一个形变器最多几组 keyform（≈ Live2D 的 3 键形变） */
 #define ZRIG_MAX_VISEME    8     /* 口型音素表的行数（SIL/A/I/U/E/O/N…） */

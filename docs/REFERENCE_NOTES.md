@@ -4310,3 +4310,11 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 - [Palkaloid：FREE版Live2D(11)｜照れの設定をする](https://palkaloid.com/529/set-shy/)：建模示例把腮红件接入“照れ”参数，1 显示、0 隐藏，并以 face clipping 防止角度变化时溢出；作者觉得 100% opacity 太浓，最终约降到 60%。这是个人视觉调节示例，不是官方硬阈值。
 - **项目修正**：实际 `ParamCheek=1` 渲染暴露旧腮红三道斜向 speckle 在 40×22 小尺寸下变成红色刮痕；颜色/强度也偏浓。参考短发全身设定稿，移除斜线，浅暖粉 `#FFBEBB`（工具中 RGB 255,190,187）、径向峰值 alpha 0.40、gamma 1.25；保留原有 ParamCheek 0..1 绑定。用 scale 1.0 全身与 3×脸部 A/B、scale 0.55 小尺寸实拍验收：新腮红均匀、柔和，无离散硬划痕，不抢眼睛/嘴的焦点。证据 `docs/qa/live2d_teen_cheek_paramcheek_ab_2026-10-31.png` 与 `..._on_2026-10-31.png`。
 - **陷阱**：程序函数名叫 `radial()` 不代表最终件一定柔和；叠加的 speckle / 高 alpha 会在生成/缩放后改变观感。必须看参数极值下的真实 render，机器检查只守 alpha 峰值和半透明轮廓，不能替代视觉标尺。
+
+## 第七十批（2026-10-31：闭口嘴角 Y 形变）
+
+- [Live2D 官方 Temporary Deform Tool：Temporary warp deformation](https://docs.live2d.com/en/cubism-editor-manual/temporary-deform-tool/)：warp 网格控制点连接成网格，可移动局部点来弯曲已选对象；列/行数可按目标变形增减。适用边界：这是编辑器网格操作说明，不是本项目 JSON 格式或运行时兼容性承诺。
+- 官方 `ParamMouthForm` 语义与既有标准表记录一致：正值为笑形、负值为怒/扁形。项目已有音素也使用 Form，所以本次将角点变化作为嘴形本体的一部分，不再新造占位参数，也不宣称表达层能绕过口型对 Form 的接管权。
+- **项目实现**：teen `ParamMouthForm` 新增三张 2×1 网格（上唇线、开口遮罩、口内），控制点只给左右两列施加素材坐标 `dy=-5.5`，中间列留零；@2x 资源 `scale=0.5` 后实测画布端点位移约 2.75px。参数 +1 抬嘴角、-1 压嘴角，中心保持；遮罩与口内同步，避免唇线和开口轮廓分离。属于本仓库 `zrig` 自有网格，不等于 Cubism `.moc3`/`.model3` 可直接导入。
+- **陷阱与验证**：1) 把整张嘴 `sx` 缩放不能产生角点相对中点的 Y 变化；2) 忘记 @2x 部件的 0.5 缩放换算，素材点位移与画布位移会差一倍；3) 只动上唇线会让张嘴边缘不一致。新增 `test_mouth_form_corners()` 读取真实 rig 的实际顶点，断言 Form ±1 两侧反向、中心不动；selfcheck 检查生成网格/绑定。`make test` 2638/0、selfcheck 765/0；真实引擎中目视闭口 -1/0/+1 与 OpenY=0.65 的 A/B，未见线/遮罩/口内脱节。证据 `docs/qa/live2d_teen_mouthform_corner_full_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_closed_detail_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_open_detail_abc_2026-10-31.png`。
+- T67.9 仍开放：兜帽内侧阴影、下颏影与锁骨线、鞋近白与暗线、淡青方块旧状态的复现/归属；不能因嘴角子项通过而关闭整项。

@@ -3263,6 +3263,31 @@ def check_live2d(root):
             check("ParamMouthForm 真接了素材（≥2 条 bind）",
                   bool(mf) and len(mf[0].get("binds", [])) >= 2,
                   f"{tag}：binds={len(mf[0].get('binds', [])) if mf else 0}")
+            if tag == "characters/xiaoxun/forms/teen/rig.json":
+                corner_parts = {
+                    "mouth_corners_open": "mouth_open",
+                    "mouth_corners_mask": "mouth_mask",
+                    "mouth_corners_cavity": "mouth_cavity",
+                }
+                deforms = {q.get("id"): q for q in r.get("deformers", [])}
+                form_binds = {b.get("deformer") for b in (mf[0].get("binds", []) if mf else [])}
+                missing_bind = sorted(set(corner_parts) - form_binds)
+                malformed = []
+                for did, part_id in corner_parts.items():
+                    df = deforms.get(did, {})
+                    points = {(p.get("c"), p.get("r")): p.get("dy", 0.0)
+                              for p in df.get("points", [])}
+                    expected = {(0, 0), (2, 0), (0, 1), (2, 1)}
+                    if (df.get("part") != part_id or df.get("cols") != 2 or
+                            df.get("rows") != 1 or set(points) != expected or
+                            any(abs(points.get(pos, 0.0) + 5.5) > 1e-6 for pos in expected)):
+                        malformed.append(did)
+                check("T67.9 三个嘴部网格都由 ParamMouthForm 驱动",
+                      not missing_bind,
+                      f"缺少绑定 {missing_bind}" if missing_bind else "上唇线/遮罩/口内齐全")
+                check("T67.9 嘴角网格只移动两端，+1 抬高约 2.75px",
+                      not malformed,
+                      f"形状/网格错误 {malformed}" if malformed else "端点 dy=-5.5 素材像素，中间控制列固定")
             if doc_txt:
                 nodoc = [v for v in vids if f"| {v} " not in doc_txt and f"`{v}`" not in doc_txt]
                 check("对照表记载了音素表", not nodoc,

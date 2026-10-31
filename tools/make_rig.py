@@ -5926,6 +5926,34 @@ def main() -> int:
                 fx_table=fx_table,
                 footp=footp, skirtp=skirtp, jacketp=jacketp, handp=handp,
                 skirtx=skirtx)
+    # T67.9：闭口笑线不能只靠整张 mouth_open 的 sx 改宽度；嘴角应相对中点
+    # 有独立的 Y 形变。只应用到 Xiaoxun Teen：同一 ParamMouthForm 的 +/− 方向
+    # 分别抬高/压低两端，中心不动；遮罩和口内也用同样的位移场，避免开口轮廓
+    # 与上唇线脱节。官方 warp deformer 的网格控制点口径见 REFERENCE_NOTES。
+    if args.character == "xiaoxun" and args.form == "teen":
+        part_ids = {p["id"] for p in rig.get("parts", [])}
+        mouth_parts = (("mouth_open", "mouth_corners_open"),
+                       ("mouth_mask", "mouth_corners_mask"),
+                       ("mouth_cavity", "mouth_corners_cavity"))
+        missing = sorted({part_id for part_id, _ in mouth_parts} - part_ids)
+        if missing:
+            raise SystemExit("[make_rig] T67.9 嘴角形变缺部件：" + ", ".join(missing))
+        form = next((p for p in rig.get("params", []) if p.get("id") == "ParamMouthForm"), None)
+        if not form:
+            raise SystemExit("[make_rig] T67.9 缺 ParamMouthForm")
+        for part_id, deform_id in mouth_parts:
+            rig["deformers"].append({
+                "id": deform_id, "part": part_id, "cols": 2, "rows": 1,
+                "note": "ParamMouthForm 驱动：两侧嘴角对称 Y 形变，中点固定",
+                "points": [
+                    # 部件在 @2x 资源上 scale=0.5；5.5 素材像素落到画布约 2.75px。
+                    {"c": 0, "r": 0, "dy": -5.5},
+                    {"c": 2, "r": 0, "dy": -5.5},
+                    {"c": 0, "r": 1, "dy": -5.5},
+                    {"c": 2, "r": 1, "dy": -5.5},
+                ],
+            })
+            form["binds"].append({"deformer": deform_id, "scale": 1.0})
     # 挂点先落（T66.19 / S4）：挂件要靠名字挂上去，所以必须排在 attach_emit 之前
     nsock = emit_sockets(rig, base, base_root)
     if nsock:

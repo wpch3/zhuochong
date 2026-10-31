@@ -24,5 +24,8 @@
 - `live2d_teen_hairstyle_hood_matrix_2026-10-31.png` —— teen 真实 rig 四种发型（短发 / 长发 / 双马尾 / 高马尾）× 兜帽戴/不戴静帧回归。
 - `live2d_teen_cheek_paramcheek_ab_2026-10-31.png` —— Teen 真实渲染 ParamCheek=0/1 放大对照；用于确认降峰值、去斜线后腮红随参数平滑出现。
 - `live2d_teen_cheek_paramcheek_on_2026-10-31.png` —— ParamCheek=1 全身静帧；核对腮红在整身尺度不过浓、不像贴纸。
+- `live2d_teen_mouthform_corner_full_abc_2026-10-31.png` —— teen 真实引擎全身 ParamMouthForm −1/0/+1；检查整身状态无副作用。
+- `live2d_teen_mouthform_corner_closed_detail_abc_2026-10-31.png` —— 同一真实帧的闭口嘴部放大；检查笑形抬角、怒形压角、中心不漂。
+- `live2d_teen_mouthform_corner_open_detail_abc_2026-10-31.png` —— ParamMouthOpenY=0.65 下 Form −1/0/+1；检查口内与开口遮罩同步、不露接缝。
 - `t67_*.png` —— 2026-10-26 这一轮各条结论的对照图（长发换源头前后、两腿间薄片归属、
   尾巴四档可见性、体检误报现场……）。文件名里的 `t67_NN` 对应 `docs/memory/TASKS.md` 的任务号。

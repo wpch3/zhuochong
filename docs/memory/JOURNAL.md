@@ -7836,3 +7836,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - 本人冻结 ambient/physics，在真实服务中看 ParamCheek 0/1 的 scale 1.0 全身与 3×脸部 A/B，并检查 0.55 尺寸：新腮红出现平滑、柔和、没有红刮痕，幅度跟随参数，整体仍保留设定稿的轻暖腮红感。截图 `docs/qa/live2d_teen_cheek_paramcheek_ab_2026-10-31.png`、`..._on_2026-10-31.png`。
 - 针对 teen 跑 `check_assets.py`：新增左右腮红的峰值/软边断言均通过；全量素材审计仍为 1748 项、8 项既有失败（灰度遮罩、色卡、白边、无损切分、twin 侧发遮挡覆盖），不属于本次腮红回归，也不宣称整体验收通过。
 - T67.20 完成，T67.9 改为进行中；其它脸部/鞋部欠项仍保留，旧记录的淡青方块在当前默认画面未复现，未宣称已解决。
+
+## 2026-10-31｜T67.9 嘴角 Y 形变（只关闭子项）
+
+- 先按既有审查状态恢复预览默认：teen / idle / hood down，参数 reset，physics 与 ambient 打开，取消暂停；随后冻结时钟、关闭 physics/ambient，对相同全身状态做 A/B。
+- 继续查 `src/core/zrig.c` 的真实网格求值及 `tools/make_rig.py` 的生成链。查 Live2D 官方 [Temporary warp deformation](https://docs.live2d.com/en/cubism-editor-manual/temporary-deform-tool/)：局部网格控制点可单独移动形成非刚体变形；明确该链接说明 Cubism 编辑器行为，不代表本仓库格式兼容 Cubism。
+- 在 `tools/make_rig.py` 给 teen `ParamMouthForm` 增加三张 2×1 warp 网格：`mouth_open`、`mouth_mask`、`mouth_cavity`。两端 dy=-5.5（素材像素），中间列不位移；2×资源按 scale=0.5 换算后约 2.75 画布像素。Form +1 抬角、-1 压角，遮罩与口内同步防止开口边界脱节。同步 `skeleton.json` 的 head mesh_bones 契约；形变器上限 64 扩到 80，避免新增 3 个网格让真 rig 超过 85% 容量软闸。
+- 新增 selfcheck 静态结构断言与 `test_mouth_form_corners()` 运行时真 rig 顶点断言：参数 ±1 时左右顶点方向正确、中心不动，遮罩和口内变形器都收参数。`make test` 2638/0；`make selfcheck` 765/0；Teen `check_assets.py` 仍有 1748 项中 8 项既有非本改动问题，不能报告全量素材通过。
+- 本人查看重启后的真实引擎帧：闭口 Form -1/0/+1、OpenY=0.65 且 Form -1/0/+1，以及全身对照；嘴角表情方向清楚，口内与遮罩外缘未见分离。归档 `docs/qa/live2d_teen_mouthform_corner_full_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_closed_detail_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_open_detail_abc_2026-10-31.png`。
+- T67.9 只关闭④嘴角 Y 子项；剩余①兜帽阴影、②下颏影+锁骨线、⑤鞋暗线/压近白、⑥淡青方块复现和归属。任务仍开放。

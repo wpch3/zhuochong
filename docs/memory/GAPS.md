@@ -1766,12 +1766,11 @@ shuangxi / tonglin / xiaochen / xingxuan / yuejian）在此之前连 `skeleton.j
 6. **`window`（兜帽）与头发交界没有压暗**，右侧还有一块**淡青方块**（`/tmp/hi_legs.png`
    右腿旁），疑似别的件露出来。
 
-**进度（2026-10-31）**：第③项已完成；`ParamCheek` 绑定原本已存在，本轮修复的是 ParamCheek=1 的贴图强度与斜线伪影。参数实拍 A/B 与全身图在 `docs/qa/live2d_teen_cheek_paramcheek_*_2026-10-31.png`。其余仍开放：
-①兜帽内侧加乘算阴影层 ②脖子加アゴ影 + 锁骨线 ④嘴角加 Y 位移 ⑤鞋加暗线并压掉近白 ⑥按旧记录复现并追查淡青方块归属。默认 teen 当前帧未复现该方块，不以“不在这张图上”代替复现旧状态。
+**进度（2026-10-31）**：第③腮红已由 T67.20 完成；④嘴角 Y 位移本轮完成。teen `ParamMouthForm` 驱动 `mouth_open`、`mouth_mask`、`mouth_cavity` 三张 2×1 网格，两端随参数正负作反向 Y 位移、中间固定；runtime 测试量实际顶点并验 ± 方向，真实引擎闭口 -1/0/+1 与 OpenY=0.65 A/B 目视通过。证据：`docs/qa/live2d_teen_mouthform_corner_full_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_closed_detail_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_open_detail_abc_2026-10-31.png`。仍开放：①兜帽内侧加乘算阴影层 ②脖子加アゴ影 + 锁骨线 ⑤鞋加暗线并压掉近白 ⑥按旧记录复现并追查淡青方块归属。默认 teen 当前帧未复现该方块，不以“不在这张图上”代替复现旧状态。
 
 **出口条件**（T66.29）：
 ①兜帽内侧加乘算阴影层 ②脖子加アゴ影 + 锁骨线 ③腮红（已完成）
-④嘴角加 Y 位移 ⑤鞋加暗线并压掉近白 ⑥复现并查清淡青方块归属。
+④嘴角 Y 位移（已完成） ⑤鞋加暗线并压掉近白 ⑥复现并查清淡青方块归属。
 
 ## G66.30 只做七个角色不够：要留**自定义形象的生成空间**（用户第 6 条）
 
