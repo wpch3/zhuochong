@@ -35,6 +35,7 @@
 - `chibi_candidate_2026-11-01/engine_default_source_locked_candidate_2026-11-01.png`、`engine_face_zoom_source_locked_candidate_2026-11-01.png` 与 `rebuild_source_locked_2026-11-01.log` —— 隔离候选真实 C 引擎 default 全身/3×脸部实拍与全链日志。双眼外角碎边/接缝肉眼可见，明确标记为**未通过**，不作为完成证据。
 - `chibi_candidate_2026-11-01/reference_generated/chibi_fullbody_live2d_user_image_29_2026-11-01.png` —— 用户本轮新补的全身参考（image-29），用于身份/整体风格对照，不可直接裁成贴图。
 - `chibi_candidate_2026-11-01/head_hitbox_fix_2026-11-01.md`、`head_hitbox_engine_probe_2026-11-01.json` 与 `asset_qa_targeted_hitbox_rerun_2026-11-01.json` —— Chibi 头部互动区从粗略 x 范围扩大到完整 seg_head bbox 后，真实 C API 左右命中返回 `head_pat`，同阈值定向 QA 从 34 fail 至 33 fail；仅为该项修复证据，不代表全链重跑或视觉通过。眼睫形态学失败试验也已如实存于 `chibi_candidate_2026-11-01/eye_cleanup_trials/README.md`。
+- `chibi_candidate_2026-11-01/eye_lash_pipeline_trial_2026-11-01/` —— 最新隔离 C 引擎眼睫上弧依赖链实测：发现 rig 使用 `eye_*_lash_up@2x.png`，单改 1× 未更新画面；依次重生 eye→eyeline→@2×→rig 后主弧更连续，但外眼角小碎边仍未通过。包含 before/after 4× 对照、全身实拍、分层隔离、候选 @2×、1310/32 fail 聚焦 JSON、脚本 patch 与 SHA 清单；不是全链 QA，也未接生产。
 - `live2d_visual_work_plan_2026-10-31.md`、`live2d_teen_visual_audit_2026-10-31.json` —— 2026-10-31 Teen 真实 C 引擎目视审查、缺陷排序与后续修复计划；这是未完成项的审查记录，不是验收通过证明。长发全身/单件、袖子近景、三套衣服、四种动作和 bones-only 证据均有 SHA-256。
 - `live2d_teen_audit_longhair_full_2026-10-31.png` / `live2d_teen_audit_longhair_isolated_2026-10-31.png` —— Teen 长发全身及 `acc_hair_long` 单件隔离真实渲染；确认两侧黑/青/白条状杂边仍属于长发件，T67.7 未关闭。
 - `live2d_teen_audit_wave_sleeve_detail_2026-10-31.png` —— Teen wave 高举手臂的袖管/夹克接缝真实近景；用于 T67.6、T67.35、T31.15 修复前定位。

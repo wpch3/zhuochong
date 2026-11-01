@@ -1,6 +1,6 @@
 # Chibi 全链重建与真实引擎验收 — WIP（2026-11-01）
 
-> **状态：未验收、未接入生产。** 较早 `/tmp/zc_chibi_refit_20261101` 为 37 项失败；历史 clean candidate 为 1410 项 / 40 fail（原始报告已丢失，保留 failure-only 摘要）；本轮最新完整来源锁定 rebuild 为 81 部件 / 26 动作、1342 项中 34 fail。之后按 C 引擎/机器 QA 的命中区缺陷，隔离重生 rig 并修复摸头区：同一 1342 项定向 QA 现为 **33 fail**（只修复这一个项目，尚未重跑 27 步 full chain）。真实 C 引擎默认眼角仍明显黑碎边/锯齿，目视不通过；34-fail full-chain 与 33-fail targeted rig 口径必须区分，不能据此宣称全链改善或接入生产。候选贴图/rig 均非发布资产。
+> **状态：未验收、未接入生产。** 较早 `/tmp/zc_chibi_refit_20261101` 为 37 项失败；历史 clean candidate 为 1410 项 / 40 fail（原始报告已丢失，保留 failure-only 摘要）；本轮最新完整来源锁定 rebuild 为 81 部件 / 26 动作、1342 项中 34 fail。之后摸头区修复的 1342 项定向 QA 为 **33 fail**（未重跑 27 步 full chain）。本轮眼睫依赖链聚焦重生另有 1310 项 / **32 fail** 快照，C 实拍主弧更干净但外眼角小碎边仍未通过；三个计数口径不同，不能互相相减或宣称全链改善。候选贴图/rig 均非发布资产。阶段证据见 `eye_lash_pipeline_trial_2026-11-01/`。
 
 ## 依据与边界
 
@@ -16,7 +16,7 @@
 - 真实 C 引擎 default 全身 + 3×脸部实拍已归档。肉眼可见两眼外角黑碎边/锯齿和眉眼/眼线接缝问题，**视觉不通过**：`engine_default_source_locked_candidate_2026-11-01.png`、`engine_face_zoom_source_locked_candidate_2026-11-01.png`。
 - 用户本轮补充的全身参考 image-29 已归档于 `reference_generated/chibi_fullbody_live2d_user_image_29_2026-11-01.png`；只用于身份/整体风格对照，不直接裁切。
 - 之后完成一个**定向**命中区修复：头部交互矩形依 `seg_head` bbox 扩至 `[136,711]`，C 引擎实际区间查询通过；候选 1342 项定向 QA 为 33 fail，但未重跑 full chain。证据 `head_hitbox_fix_2026-11-01.md` 与 probe JSON。
-- 机器失败数字和图片的详细观察见 `isolated_rebuild_status.md`；不与历史 1410/40 或 37 fail 候选混算。眼部形态学试验结果见 `eye_cleanup_trials/README.md`，两个版本均被拒绝。
+- 机器失败数字和图片的详细观察见 `isolated_rebuild_status.md`；不与历史 1410/40 或 37 fail 候选混算。早期半径 1/2 形态学试验均被拒绝，见 `eye_cleanup_trials/README.md`。之后完整重生 1×→eyeline→@2×→rig 的眼睫依赖链试验见 `eye_lash_pipeline_trial_2026-11-01/README.md`：主弧改善，但眼角残留仍未过目视；聚焦 QA 1310/32 fail，不是完整全链。
 
 ## 历史 refit 候选的进展（不是当前候选）
 

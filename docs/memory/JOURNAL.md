@@ -7934,3 +7934,14 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **本轮回归**：`make -s test` 2638/0；`asset-tool-test` 通过；`selfcheck` 772 项中仅 1 项失败（正式 Teen/Chibi rig 生成器指纹过旧，隔离门禁下保留）；`roadmap_status.py` 与 `git diff --check` 通过。未跑完整 `make check`。
 - **下一步**：眼睛不再盲调形态学；下一轮从面部原画中确定睫毛/眼缘的正确 ROI 与层级，必要时向用户请求可授权的干净高分辨率全身源而不拿低清截图代替。并继续按失败台账解决 21,261px 躯干洞、1,343px 静止缺像素、嘴/闭眼/鞋/发型接管、缺 16 件；完成 `small/mitten`、独立 `hand_style`、衣物与关键动作 C 矩阵。每次需隔离，零失败前不接生产。
 - 本轮以 `WIP: fix Chibi head hitbox and archive reference QA` 提交到固定分支 `arena/aaf1408c-zhuochong`（commit `52a62c7`）；这是阶段 WIP，不是通过/发布提交。
+
+## 2026-11-01｜T67.70 眼睫依赖链隔离修复与 A65 可见进度铁律
+
+- **用户要求**：继续未完成 Chibi；必须确认实际在制作，亲自用眼/思考；不能再出现缓存记忆错误；每阶段进度与成果要让用户看见并上传仓库；把此要求写进铁律。
+- **先核实真实状态**：活动分支 `arena/aaf1408c-zhuochong` 本地与远端均为 `2427884`，工作树干净。重新读取 image-29 原图（SHA-256 `0d337f8c…72c4f0`）和 Chibi 设定稿（SHA-256 `496dc41f…be5097c`）；不依赖本轮摘要作为唯一事实。image-29 继续仅作身份/全身比例/眼型观感参考，不直接裁切。
+- **真实根因**：单改 `eye_*_lash.png` 1× 未改变 C 引擎，因为 `make_rig.py` 指向 `eye_*_lash_up@2x.png`；中间还需 `make_eyeline_parts.py` 派生 `lash_up`，再由 `make_hires_sprites.py` 派生 @2×。前几轮没有完整重跑依赖链，是此前“看起来没进展”的具体原因，本人承担这个错误。
+- **实际制作与目视**：仅在隔离候选对 Chibi upper-lash ROI 作轻微收紧；依次重跑 `make_eye_parts.py → make_eyeline_parts.py → make_hires_sprites.py → make_rig.py`，重启 C 引擎、切换 Chibi、冻结后抓全身帧与 4× 脸部，另隔离 `seg_head`/lash 单层。本人看到旧版外眼角有明显紫黑大块，新版主弧连续度有清晰改善；但左右外眼角仍各有黑/白碎边/切口，**视觉不通过**，没有提交 production sprites/rig。
+- **QA 口径**：聚焦这次候选检查退出码 1，1310 项/32 fail，IoU 0.9934918477598998。此为依赖链重生成后的定向快照，不是 27 步完整链，不可与旧 1342/34 和 1342/33 直接相减；躯干洞、静止差额、鞋、闭眼 seam、嘴、腮红、发型接管、手型等仍待处理。
+- **本轮成果路径**：`docs/qa/chibi_candidate_2026-11-01/eye_lash_pipeline_trial_2026-11-01/README.md`、`engine_face_before_after_4x.png`、`engine_fullbody_after.png`、隔离层图、左右 `candidate_eye_*_lash_up@2x.png`、`asset_qa_focused_rerun.json`、`make_eye_parts_trial.patch`、`SHA256SUMS.txt`。文档标注 WIP/失败残留与完整链差异。
+- **铁律更新**：新增 `WORKFLOW.md` 铁律 15（每阶段实际成果、真实状态和来源复核、防缓存记忆失真、成果提交推送并核远端）；需求入 `REQUIREMENTS.md` A65.1–A65.3；`TASKS.md` 新增 T67.70，G66.52 增依赖链纠正；同步 REQUEST_LEDGER/LESSONS/MEMORY。
+- **下一步（继续制作，不以文档代替）**：先用真实 C 引擎的整脸与隔离层定位仍残留的外眼角碎边（seg_head / 头发件 / lash / mask 接缝），制作下一版前确保路径完整更新 1× 与 @2×；视通过后再按全链失败表推进躯干补洞、闭眼/嘴、鞋、发型/兜帽/缺件以及 `small/mitten` + 独立 `hand_style`，最终全身动作/组合矩阵。任一轮未达到目视/QA/用户确认均不接生产。

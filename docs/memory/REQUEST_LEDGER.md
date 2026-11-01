@@ -1459,3 +1459,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 按失败台账修复并验证一个具体缺陷：头部交互区从旧 `suggested_regions` 粗略 x 范围改为覆盖 `seg_head` bbox + 4px margin；同阈值定向 QA 由 34 fail 到 33 fail（这是目标 rig 局部重生，不是完整 27 步链）。真实 C `/api/region` 左右边界点命中 `head/head_pat`，透明点保持为空。
 - 落点：`docs/qa/chibi_candidate_2026-11-01/head_hitbox_fix_2026-11-01.md`、`head_hitbox_engine_probe_2026-11-01.json`、`asset_qa_targeted_hitbox_rerun_2026-11-01.json`、`eye_cleanup_trials/README.md`、image-29 图及视觉笔记；更新 `make_rig.py`、`selfcheck_repo.py`、T67.67/G66.52/MEMORY/JOURNAL/REQUIREMENTS。
 - 仍未完成：C 引擎眼部外角碎边目视失败；targeted QA 仍有 **33 项失败**，16 个挂件缺件；手型、衣物与动作组合矩阵未完成。任何候选未接生产；当前用户反馈后仍需继续实际修复，而不能以此局部进展宣称已交付。
+
+### 2026-11-01 · 用户强调继续制作、每阶段可见上传仓库并防缓存记忆失真
+
+- 用户原话：「继续未完成的任务，必须确认自己确实在制作以及执行任务，不要出现错误的缓存记忆等，并且牢记铁律，以及用眼睛观察和大脑思考，还有基本事项。最重要的是进度要让我看到，你到底在做什么，再把每次的进度和成果都上传到仓库，以免缓存丢失，把这些该记进去铁律的都记进去。」
+- 新规则已登记为 `WORKFLOW.md` 铁律 15 与 `REQUIREMENTS.md` A65.1–A65.3：每阶段留可检查制作成果；重新核查活动分支/实际文件/真实引擎/远端，旧记忆和缓存只作线索；阶段交接前在固定活动分支提交推送、核 SHA 并在仓库记路径/门禁，WIP 不得伪装生产。
+- 实际制作：在隔离 Chibi 候选排查眼角效果，发现 C rig 实际读 `eye_*_lash_up@2x.png`；只重生 1× 不会变化。按 eye→eyeline→hires→rig 依赖重跑，并重启真实 C 引擎。现在眼睫主弧更连续，但外眼角残留仍未通过目视。
+- 实际指标：聚焦 `check_assets.py` 退出码 1，1310 项 / 32 fail，`design_iou=0.9934918477598998`；这不是 27 步全链，与 1342/34、1342/33 不可直接相减。所有候选资产与实拍只放 QA 子目录，正式 Chibi sprites/rig 未改。
+- 仓库证据：`docs/qa/chibi_candidate_2026-11-01/eye_lash_pipeline_trial_2026-11-01/`；含 C 引擎 before/after 4×、全身帧、隔离层、候选左右 @2x、JSON、QA 明细、patch 与 SHA256SUMS。

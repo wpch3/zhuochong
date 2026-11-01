@@ -1,0 +1,23 @@
+--- a/tools/make_eye_parts.py
++++ b/isolated_candidate/tools/make_eye_parts.py
+@@ -168,6 +168,21 @@
+                 if best is None or cost < best[0]:
+                     best = (cost, cx_t, cy_t, rad_t)
+     _, cx, cy, rad = best
++    # Isolated Chibi trial: source upscaling leaves neighboring hair/eye-edge
++    # fragments attached to the dark-pixel flood. Keep only the manually bounded
++    # upper-lash silhouette; the lower iris rim stays with the moving eye ball.
++    # The profile is measured in iris-relative coordinates and mirrored by side.
++    if form == "chibi":
++        left_profile = [
++            (-60, -15), (-52, -34), (-40, -45), (-29, -49), (-9, -50),
++            (9, -48), (24, -41), (35, -31), (34, -25), (24, -28),
++            (9, -31), (-9, -33), (-29, -30), (-42, -23), (-52, -17),
++        ]
++        profile = left_profile if side == "l" else [(-dx, dy) for dx, dy in left_profile]
++        poly = Image.new("1", (w, h), 0)
++        from PIL import ImageDraw
++        ImageDraw.Draw(poly).polygon([(cx + dx, cy + dy) for dx, dy in profile], fill=1)
++        lash &= np.asarray(poly, dtype=bool)
+     disc = ((xx - cx) ** 2 + (yy - cy) ** 2) <= (rad + 0.5) ** 2
+     ball_src = aperture & disc & ~lash
