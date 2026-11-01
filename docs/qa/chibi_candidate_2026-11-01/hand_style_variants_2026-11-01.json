@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "status": "design_contract_only_not_production",
+  "task": "T67.69",
+  "scope": "xiaoxun/forms/chibi",
+  "decision": "Keep both Chibi hand styles as independently selectable variants; neither style replaces or overwrites the other.",
+  "variants": {
+    "small": {
+      "label_zh": "小巧手",
+      "role": "preserve the previously selected small-hand shape",
+      "reference_files": [
+        "characters/xiaoxun/design/design_sheet_chibi.png",
+        "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_design_cuffs_hands_zoom.png",
+        "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_live2d_style_anchor_user.png",
+        "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_short_hair_live2d.png"
+      ],
+      "part_ids": ["hand_l_small", "hand_r_small"]
+    },
+    "mitten": {
+      "label_zh": "手套感／连袖感手型",
+      "role": "add the rounded, simplified hand silhouette marked by the user as a second style",
+      "reference_files": [
+        "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_hand_mitten_user_marked_2026-11-01.jpg",
+        "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_short_hair_live2d.png"
+      ],
+      "part_ids": ["hand_l_mitten", "hand_r_mitten"],
+      "source_boundary": "Use only as a shape/style guide. Do not crop production hand sprites from the annotated screenshot; derive clean parts from an approved Chibi source."
+    }
+  },
+  "rig_contract": {
+    "selector_id": "hand_style",
+    "default": "small",
+    "options": ["small", "mitten"],
+    "selection_rule": "Exactly one left/right hand-style pair is visible at a time; both source variants remain in the candidate and can be switched without rebuilding or replacing the other.",
+    "independent_axes": ["wrist_motion", "gesture_pose"],
+    "cuff_rule": "Both variants share the same Chibi wrist anchors and preserve the source cuff/ribbing; use a cuff-front overlap or sufficient wrist insertion so no bare cut edge, gap, or color discontinuity appears during rotation."
+  },
+  "acceptance": [
+    "Confirm wrist root, cuff opening, sleeve bands, skin colors, and left/right proportions from the Chibi design source before cutting.",
+    "Keep each style as separate left/right parts with independent visibility bindings; no Teen sprites or Teen hand generator output may be substituted for Chibi art.",
+    "Switch small <-> mitten in both directions: no double hands, holes, positional jump, scale jump, stale opacity, or loss of either source variant.",
+    "Check cuff occlusion and continuity at default, wrist rotation extremes, wave, heart_hands, and surprised poses.",
+    "Run the matrix over short/long/twin-tail/hood combinations in the actual C engine, capture full-body and wrist close-ups, and visually inspect every capture.",
+    "Keep the style selector independent from gesture pose so either hand style can use supported actions without changing its anatomy."
+  ],
+  "current_findings": {
+    "chibi_rig_has_independent_hand_parts": false,
+    "chibi_rig_current_hand_related_parts": ["seg_arm_l", "seg_arm_r"],
+    "teen_hand_assets_are_chibi_truth": false,
+    "production_integrated": false,
+    "engine_visual_acceptance": false
+  }
+}

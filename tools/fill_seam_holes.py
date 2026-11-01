@@ -144,6 +144,7 @@ def _blobs(mask):
 
 
 def _place(base, p, W, H):
+    """Keep only each part's cropped RGBA pixels; never allocate a float canvas per part."""
     im = Image.open(os.path.join(base, p["file"])).convert("RGBA")
     sx, sy = _norm(p.get("scale"), 1.0)
     if (sx, sy) != (1.0, 1.0):
@@ -152,9 +153,42 @@ def _place(base, p, W, H):
     ax, ay = _norm(p.get("anchor"), 0.0)
     ox = int(round(p["pos"][0] - ax * im.width))
     oy = int(round(p["pos"][1] - ay * im.height))
-    lyr = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    lyr.paste(im, (ox, oy))
-    return np.asarray(lyr, dtype=np.float64) / 255.0, (ox, oy, im.width, im.height)
+    # Keep the original sprite coordinate system for final canvas→texture writeback.
+    # Clip only while compositing/masking, so off-canvas pixels are not retained in scenes.
+    rgba = np.asarray(im, dtype=np.uint8).copy()
+    return rgba, (ox, oy, im.width, im.height)
+
+
+def _canvas_rgba(entry, W, H, dx=0):
+    """Recreate the legacy clipped canvas layer; sway uses the same canvas roll as before."""
+    rgba, (ox, oy, pw, ph) = entry
+    out = np.zeros((H, W, 4), dtype=np.uint8)
+    if pw and ph:
+        x0, y0 = max(0, ox), max(0, oy)
+        x1, y1 = min(W, ox + pw), min(H, oy + ph)
+        if x1 > x0 and y1 > y0:
+            sx0, sy0 = x0 - ox, y0 - oy
+            sx1, sy1 = sx0 + (x1 - x0), sy0 + (y1 - y0)
+            out[y0:y1, x0:x1] = rgba[sy0:sy1, sx0:sx1]
+    if dx:
+        out = np.roll(out, int(dx), axis=1)
+    return out
+
+
+def _canvas_alpha(entry, W, H, dx=0):
+    """Expand a part mask on demand, preserving legacy canvas clipping and sway roll."""
+    rgba, (ox, oy, pw, ph) = entry
+    out = np.zeros((H, W), dtype=bool)
+    if pw and ph:
+        x0, y0 = max(0, ox), max(0, oy)
+        x1, y1 = min(W, ox + pw), min(H, oy + ph)
+        if x1 > x0 and y1 > y0:
+            sx0, sy0 = x0 - ox, y0 - oy
+            sx1, sy1 = sx0 + (x1 - x0), sy0 + (y1 - y0)
+            out[y0:y1, x0:x1] = rgba[sy0:sy1, sx0:sx1, 3] > 127
+    if dx:
+        out = np.roll(out, int(dx), axis=1)
+    return out
 
 
 def _pose_combos(rig):
@@ -287,7 +321,7 @@ def main() -> int:
     hid_area = np.zeros((H, W), dtype=bool)
     for pid in hidden_ids:
         if pid in by_all:
-            hid_area |= cache[pid][0][..., 3] > 0.5
+            hid_area |= _canvas_alpha(cache[pid], W, H)
     if hid_area.any():
         joint_ok &= ~hid_area
         log(f"  被藏件地盘排除：{len(hidden_ids)} 个件，{int(hid_area.sum())} px 不补")
@@ -297,18 +331,35 @@ def main() -> int:
     scenes = []
     for picks in _pose_combos(rig):
         vis = hs.visible_ids(rig, picks)
-        comp = np.zeros((H, W, 3))
-        al = np.zeros((H, W))
+        comp = np.zeros((H, W, 3), dtype=np.float32)
+        al = np.zeros((H, W), dtype=np.float32)
         vis = vis - set(picks["hide"])
         for p in all_parts:
             if p["id"] not in vis:
                 continue
-            arr = cache[p["id"]][0]
-            if _sways(p["id"], picks["sway"]):
-                arr = np.roll(arr, picks["sway"], axis=1)
-            pa = arr[..., 3]
-            comp = arr[..., :3] * pa[..., None] + comp * (1 - pa[..., None])
-            al = pa + al * (1 - pa)
+            dx = picks["sway"] if _sways(p["id"], picks["sway"]) else 0
+            if dx:
+                # Preserve legacy semantics: clip to the canvas first, then roll.
+                src = _canvas_rgba(cache[p["id"]], W, H, dx=dx).astype(np.float32) / 255.0
+                pa = src[..., 3]
+                comp = src[..., :3] * pa[..., None] + comp * (1.0 - pa[..., None])
+                al = pa + al * (1.0 - pa)
+                continue
+            rgba, (ox, oy, pw, ph) = cache[p["id"]]
+            if not pw or not ph:
+                continue
+            x0, y0 = max(0, ox), max(0, oy)
+            x1, y1 = min(W, ox + pw), min(H, oy + ph)
+            if x1 <= x0 or y1 <= y0:
+                continue
+            sx0, sy0 = x0 - ox, y0 - oy
+            sx1, sy1 = sx0 + (x1 - x0), sy0 + (y1 - y0)
+            src = rgba[sy0:sy1, sx0:sx1].astype(np.float32) / 255.0
+            pa = src[..., 3]
+            dst = comp[y0:y1, x0:x1]
+            comp[y0:y1, x0:x1] = src[..., :3] * pa[..., None] + dst * (1.0 - pa[..., None])
+            adst = al[y0:y1, x0:x1]
+            al[y0:y1, x0:x1] = pa + adst * (1.0 - pa)
         op = al > 0.5
         hl = _erode(_dilate(op, CLOSE_K), CLOSE_K) & ~op
         # 大块的不是接缝，是真缺件 —— 不补，留给上游（本轮长发断缕就是这种）
@@ -360,11 +411,9 @@ def main() -> int:
             if (pid.startswith("fx_") or pid not in s["vis"]
                     or pid in hidden_ids):
                 continue                               # 约束 b + d + 被藏件
-            pa = cache[pid][0][..., 3] > 0.5
-            if _sways(pid, s["sway"]):
-                # 甩动档里这件已经挪走了，邻接要按**挪过去之后**的位置判，
-                # 否则会把"发丝原来盖着、现在露出来的洞"又派回给发丝自己。
-                pa = np.roll(pa, s["sway"], axis=1)
+            # Sway must use the same clipped-canvas roll as the compositor above.
+            dx = s["sway"] if _sways(pid, s["sway"]) else 0
+            pa = _canvas_alpha(cache[pid], W, H, dx=dx)
             if not pa.any():
                 continue
             near = _dilate(pa, near_k) & left          # 约束 a
