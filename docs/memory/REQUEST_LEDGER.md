@@ -1418,3 +1418,22 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
   3. **跨关节柔性链**：长发、披肩等跨头颈胸部件不可整件刚绑 head；多段链 / 渐变权重（头顶约 1.0、肩部约 0.5）并由末端物理摆动承接。
 - 落点：`WORKFLOW.md` 全局铁律 9–11、`ART_PARTS.md` 制作规范、`MEMORY.md` 当前状态 / 快速规则、`REQUIREMENTS.md` A59.1–A59.3、`JOURNAL.md` 本轮记录。
 - 全局旧号 0–8 保持不变；后续新增只顺延到 12+。存量素材没有因为规则入账就自动视为合规，需在涉及或专项审计时逐项实拍确认。
+
+### 2026-11-01 · 桌宠 Q 版 / Live2D Chibi 参考纠正（本轮续接）
+
+- 用户纠正：桌宠 Q 版和 Live2D Chibi 是不同类别；image-23 桌宠参考与 image-24 Live2D 锚点必须分开保存、命名、验收。短发/长发 Live2D 参考以 image-24 为比例/画风锚点，以项目设定稿保持角色一致。
+- image-25 的多束马尾误读、image-26 的马尾穿帽兜、image-27 的长发误读双马尾与呆毛穿布料均为负例；未验收图不接生产。代理必须亲自目视比例、头发结构、帽兜关系、服装与整体风格并汇报优缺点。
+- 本轮恢复用户 image-23–27 原图；用户选定重新生成的短发 Live2D 选项 2、长发选项 1、双马尾选项 2。目视优缺点见 `docs/qa/chibi_candidate_2026-11-01/reference_generated/README.md`。
+
+### 2026-11-01 · 继续未完成的 Chibi 全链工作
+
+- 用户请求：「继续未完成的工作」。按 T67.67 继续隔离重建与 QA，不覆盖正式贴图，不将概念图当生产素材。
+- 最新 clean candidate `/tmp/zc_chibi_clean_20261101` 全链结束，85 部件/26 动作，1410 项 QA 中 40 项失败；另有 16 个缺 Chibi 切件。失败明细已归档于 `docs/qa/chibi_candidate_2026-11-01/asset_qa_clean_failure_summary_2026-11-01.md`。
+- 局部缓存版 `fill_seam_holes.py` 已移入工具并追加等价测试；`asset-tool-test` 通过。未清零 QA、未做此候选 C 引擎目视验收，不接生产、不提交。
+
+### 2026-11-01 · Chibi 双手型并存与每轮仓库持久化
+
+- 用户新增：此前选定的小巧手与本轮截图红圈的“手套感/连袖感手型”都要保留，做成两种独立形态；不许互相覆盖。要求以图检查袖口与手部，并做实际组合验收。
+- 用户新增持久化铁律：每轮把进度/计划/工作流/需求写入仓库记忆区，成果和必要参考归档到仓库文件区；不能只依赖云端聊天、临时路径或会话记忆。交接前检查文件存在。未通过既有门禁的产物仍须标为 WIP。
+- 本轮落点：`docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_hand_mitten_user_marked_2026-11-01.jpg`（用户截图）；`chibi_design_cuffs_hands_zoom.png`（Chibi 袖口/手部真值放大）；`hand_style_variants_2026-11-01.json`（隔离切换与验收契约）；需求 A62/A63、工作流铁律 14、TASKS T67.69、GAPS G66.53、JOURNAL 记录。
+- 当前状态：只完成参考/需求归档与 source check；Chibi rig 没有独立 hand parts，两个手型都未实现；候选 QA 仍 40 fail + 16 缺件；未做 C 引擎验收、未接生产。阶段资料已作为 WIP 提交保存，非完成交付。

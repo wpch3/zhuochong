@@ -7886,3 +7886,21 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - 推送时发现远端分支已先前进到 `47acf10`；先 fetch 并以远端树为基底重算本地差异，保留远端用户参考 PDF/既有提交，不 force-push，也没有把旧基底上的大提交重复推上去。
 - 在 `arena/aaf1408c-zhuochong` 以 WIP 提交 `5fa011a` 上传 28 个变更（Chibi 候选 QA 证据、脚本/流水线调整与记忆台账）。推送成功：`47acf10..5fa011a`。工作区干净。
 - 此提交明确是阶段记录而非完成交付：最新候选资产 QA 仍 fail 37；真实引擎 wide 仍未通过；正式 rig/贴图未按候选重建；未声称全链通过。
+
+## 2026-11-01｜继续 T67.67：clean rebuild、参考恢复与 seam 内存优化
+
+- 最新干净候选 `/tmp/zc_chibi_clean_20261101`（保留原 Chibi 11 项附件、跳过 Teen 专用附件链）完整重建结束，rig 85 部件/26 动作；1410 项资产 QA 中 40 项失败，另有 16 个 Chibi 挂件缺切件。完整原始 JSON 仅在临时目录，后续 image options 操作令临时目录不可访问；根据终端输出重建 failure-only 清单至 `docs/qa/chibi_candidate_2026-11-01/asset_qa_clean_failure_summary_2026-11-01.md`，明确标为摘要而非原始报告。最新候选没有做 C 引擎验收。
+- 将 `fill_seam_holes.py` 的全画布缓存改为局部 RGBA 缓存与裁剪 ROI；按旧实现对照，101 部件图层 RGBA/alpha/±12 摆动逐像素一致；28 个 pose 合成 alpha mask 一致、量化 RGB 最大差 1。增加 `tests/test_fill_seam_memory.py` 和 `make asset-tool-test`；该闸通过。
+- image options 选择触发了工作区状态回切，丢失了未提交本轮变更与临时候选。先从同一分支远端 `origin/arena/aaf1408c-zhuochong` fetch 并快进到 `dc01402`（没有切分支），恢复此前已推送 WIP 工具/文档/素材。随后恢复用户原始 image-23–27 上传图，并按 image-24 + 项目设定重新生成/用户重新选定短发 option 2、长发 option 1、双马尾 option 2，优缺点写进 `reference_generated/README.md`。今后生图选项放入独立空目录，选择后再归档，避免覆盖其他 QA 文件。
+- 更新铁律 13、A61、T67.68、G66.52、failure summary 与记忆。ROADMAP/TASKS 已由 `roadmap_status.py --fix` 对齐。验证：`make -s test` 2638/0、`make -s web-test` 265/0、`make -s asset-tool-test` 通过；`make -s selfcheck` 767 项中 1 项失败，只是 Teen/Chibi 正式 rig 的生成器指纹旧（不得为消掉此项提前重建生产 rig）。未提交。
+- **边界**：40 项资产失败、16 个缺件与 C 引擎目视验收未完成仍为阻断；任何概念图未接生产。
+
+## 2026-11-01｜T67.69 Chibi 双手型需求归档与袖口真值检查
+
+- **思考**：用户要求不是“换掉小巧手”，而是同时保留两种形态。先分辨参考和资产：Chibi 当前 `rig.json` 只有 `seg_arm_l/r`，没有独立 `hand_*` 件；Teen 的手部差分只是数据结构参考，不能补作 Chibi 资产。因此本轮先归档用户截图、确认 Chibi 设定稿袖口/手掌特征并写隔离契约，不提前把概念抠图当成生产拆件。
+- **真值与目视**：实际查看 `characters/xiaoxun/design/design_sheet_chibi.png` 及仓库裁出的 `reference_generated/chibi_design_cuffs_hands_zoom.png`。原设定里，左右手是袖口下方的短小、略尖且带简化分叉的裸手；袖口青绿色与白色横条连续。再查看用户红圈截图归档件，圈选轮廓更短、更圆钝，指缝弱，呈手套/连袖观感；截图含手机界面与红圈，仅作风格参照，不可直接切贴图。
+- **落盘**：用户截图 `docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_hand_mitten_user_marked_2026-11-01.jpg`；袖口手部放大图 `.../chibi_design_cuffs_hands_zoom.png`；双手型切换与验收契约 `docs/qa/chibi_candidate_2026-11-01/hand_style_variants_2026-11-01.json`；更新参考 README、隔离状态、A62/A63、T67.69、G66.53、WORKFLOW 铁律 14、MEMORY 与 REQUEST_LEDGER。
+- **需求口径**：保留 `small`（小巧手）和 `mitten`（手套感/连袖感）两套左右独立部件，走互斥 `hand_style` 选择器；默认沿用此前选定的小巧手，手型轴与手腕运动/手势轴分开。不得用 Teen 贴图或截屏裁片替代 Chibi 源。
+- **现状与限制**：双手型仍只是隔离设计契约，未生成贴图、未接入 rig、未跑引擎。本轮也没有重跑 Chibi 全链 QA；最新既有候选仍是 1410 项中 40 fail、缺 16 个 Chibi 挂件，C 引擎验收未完成。
+- **工作区/持久化检查**：归档图、契约和记忆文件均位于仓库；此前已有 seam 优化/测试与 QA 文档一并以明确标记的 WIP 提交存档。该提交只保存进度，不表示候选已通过或进入生产。
+- **下一步**：从 Chibi 源图测量腕根、袖口内宽/遮挡前沿与比例；在隔离候选生成两种左右手件、独立 `hand_style` 切换并验证腕口连续和旋转；随后继续处理 40 项 QA 与 16 个缺件，合格后才做 C 引擎组合矩阵。
