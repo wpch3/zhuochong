@@ -2558,4 +2558,4 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 用户截图已归档：`docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_hand_mitten_user_marked_2026-11-01.jpg`。目视上红圈落在袖口下方的短小手部轮廓，手指细节简化、与条纹袖口直接相接；截图有手机 UI 和红圈，只是正向造型参照，不得直接切件。Chibi 原设定真值是 `characters/xiaoxun/design/design_sheet_chibi.png`。
 - 当前 `characters/xiaoxun/forms/chibi/rig.json` 只有 `seg_arm_l/r`，没有独立手件或手型选择器；`characters/xiaoxun/forms/teen/sprites/hand_parts.json` 仅供了解格式，不能充当 Chibi 资产。双手型方案契约：`docs/qa/chibi_candidate_2026-11-01/hand_style_variants_2026-11-01.json`。
 - 需在隔离候选中从合规 Chibi 来源拆/绘制 `hand_l/r_small` 与 `hand_l/r_mitten`，以共享腕锚点接入互斥的 `hand_style` 选择器；保留手腕动作和手势通道。验证切换无位移/缩放跳变、无重影/缺口，并在袖口遮挡、条纹连续、抬臂/挥手/比心/惊讶及短长发/双马尾/兜帽组合下用实际 C 引擎目视。
-- 当前没有 Chibi 独立手型资产，没有完成实现和 C 引擎验收；不得宣称已做或接生产。
+- 当前正式 Chibi rig 与 T67.67 clean candidate 均没有验收过的独立手型资产；当前任务没有完成实现和 C 引擎视觉验收，不得宣称已做或接生产。补充区别：旧隔离目录 `/home/user/zc_chibi_eye_clean_20261101_v6/` 曾有 `small/sleeve` 原型并通过 C `zrig_load` / 透明度逻辑探针，但其命名与当前 `small/mitten` 契约不同，QA 708 项中 20 项失败、静止差异 1768px，不能视为当前候选成果。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。

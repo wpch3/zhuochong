@@ -1437,3 +1437,9 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 用户新增持久化铁律：每轮把进度/计划/工作流/需求写入仓库记忆区，成果和必要参考归档到仓库文件区；不能只依赖云端聊天、临时路径或会话记忆。交接前检查文件存在。未通过既有门禁的产物仍须标为 WIP。
 - 本轮落点：`docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_hand_mitten_user_marked_2026-11-01.jpg`（用户截图）；`chibi_design_cuffs_hands_zoom.png`（Chibi 袖口/手部真值放大）；`hand_style_variants_2026-11-01.json`（隔离切换与验收契约）；需求 A62/A63、工作流铁律 14、TASKS T67.69、GAPS G66.53、JOURNAL 记录。
 - 当前状态：只完成参考/需求归档与 source check；Chibi rig 没有独立 hand parts，两个手型都未实现；候选 QA 仍 40 fail + 16 缺件；未做 C 引擎验收、未接生产。阶段资料已作为 WIP 提交保存，非完成交付。
+
+### 2026-11-01 续接 —— 「继续未完成的工作记住铁律，并且把目前的进度写入仓库」
+
+- 按铁律 0–14 先核对活动分支与最新远端状态：远端 `arena/aaf1408c-zhuochong` 已到 `14b99f8`，以该 WIP 中的 T67.67–T67.69 / A60–A63 / G66.52–G66.53 为当前权威记录，不用旧本地基线覆盖。
+- 将外部旧候选 `zc_chibi_eye_clean_20261101_v6` 记录为**独立失败原型**：708 项 QA 20 失败，C `zrig_load` 与 small/sleeve 透明度逻辑探针通过，静止差异 1768px；它不是当前 85 部件/26 动作、1410 QA 40 失败的 clean candidate，也不代表当前 `small/mitten` 任务已实现。
+- 落点：`docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`；更新 `TASKS.md` T67.69、`GAPS.md` G66.53、`MEMORY.md` 与本日志。生产贴图/rig 未修改；候选未验收，不接生产。
