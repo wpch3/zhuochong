@@ -1604,6 +1604,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
     sp_w, sp_h = sprite["sprite_size"]
     # Chibi wide-eye patch is incremental; keep its normal sclera base visible.
     is_chibi = os.path.basename(os.path.normpath(base or "")) == "chibi"
+    hand_form_ids = {f for f, suffix in (handp or {}).get("poses", {}).items() if suffix}
     ox = (cw - sp_w) // 2
     oy = ch - sp_h
     by_name = {p["name"]: p for p in parts["parts"]}
@@ -1642,7 +1643,17 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
         # seg_parts.json 的 pos 是切图内坐标，+oy 才是画布坐标（和上面 body_parts_list 同一套换算）
         head_top = oy + seg_head_def["pos"][1]
         head_bot = head_top + seg_head_def["size"][1]
-        # 下巴往下留 6px 余量再交给 body；head 的 x 保持建议值（要罩住比脸更宽的头发）
+        if is_chibi:
+            head_left = ox + seg_head_def["pos"][0]
+            head_right = head_left + seg_head_def["size"][0]
+            # Chibi 头部交互区必须覆盖真实 silhouette；粗略建议 X 框漏掉两侧脸/发缘。
+            # 仅修 Chibi，不改变 Teen hitbox；向外留 4px，底边仍在下巴后切给 body。
+            margin = 4
+            old_right = head_rect[0] + head_rect[2]
+            head_rect[0] = min(head_rect[0], int(math.floor(head_left)) - margin)
+            head_right = max(old_right, int(math.ceil(head_right)) + margin)
+            head_rect[2] = head_right - head_rect[0]
+        # 下巴往下留 6px 余量再交给 body。
         chin = int(round(head_bot)) + 6
         head_rect[1] = min(head_rect[1], int(round(head_top)))
         head_rect[3] = chin - head_rect[1]
@@ -2539,12 +2550,6 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                  "dur": 0.6, "ease": "out"},
                 {"target": "ParamSurpriseForeshorten", "wave": "pulse", "amp": 1.0,
                  "dur": 0.6, "ease": "out"},
-                {"target": "ParamHandLSurprised", "wave": "pulse", "amp": 1.0,
-                 "dur": 0.6, "ease": "out"},
-                {"target": "ParamHandRSurprised", "wave": "pulse", "amp": 1.0,
-                 "dur": 0.6, "ease": "out"},
-                {"target": "ParamSurpriseArmSwap", "wave": "pulse", "amp": 1.0,
-                 "dur": 0.6, "ease": "out"},
                 {"target": "ParamEyeLWide", "wave": "pulse", "amp": 1.0,
                  "dur": 0.15, "ease": "out"},
                 {"target": "ParamEyeRWide", "wave": "pulse", "amp": 1.0,
@@ -2554,6 +2559,18 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
                 {"target": "ParamBodyAngleZ", "wave": "pulse", "amp": 5.0,
                  "dur": 0.9, "ease": "out"},
             ]
+            if "surprised" in hand_form_ids:
+                _surprised_arm_channels += [
+                    {"target": "ParamHandLSurprised", "wave": "pulse", "amp": 1.0,
+                     "dur": 0.6, "ease": "out"},
+                    {"target": "ParamHandRSurprised", "wave": "pulse", "amp": 1.0,
+                     "dur": 0.6, "ease": "out"},
+                ]
+            if (not is_chibi and any(p.get("id") in ("forearm_bent_l", "forearm_bent_r")
+                                      for p in parts_list)):
+                _surprised_arm_channels.append(
+                    {"target": "ParamSurpriseArmSwap", "wave": "pulse", "amp": 1.0,
+                     "dur": 0.6, "ease": "out"})
             if has_legs_p:
                 # surprised 下肢只做轻微外分与柔性膝弯，脚踝端固定不抬脚：
                 # ParamLeg 的 tip bend 把脚底横向分开，ParamKnee 的 sine bend
@@ -3649,6 +3666,25 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
             _p["eye_side"] = "l"
         elif "r" in _tok or "right" in _tok:
             _p["eye_side"] = "r"
+
+    # Chibi 暂无合法的 open/heart/surprised 专用手贴图；动作保留腕部运动，
+    # 但必须移除只用于切换缺失手势贴图的参数通道。Teen 有对应 hand_parts 时不变。
+    _pose_param = {"ParamHandLOpen": "open", "ParamHandROpen": "open",
+                   "ParamHandLHeart": "heart", "ParamHandRHeart": "heart",
+                   "ParamHandLSurprised": "surprised", "ParamHandRSurprised": "surprised"}
+    _dropped_pose_channels = []
+    for _action in actions:
+        _kept_channels = []
+        for _channel in _action.get("channels", []):
+            _target = _channel.get("target")
+            if _target in _pose_param and _pose_param[_target] not in hand_form_ids:
+                _dropped_pose_channels.append((_action.get("id"), _target))
+                continue
+            _kept_channels.append(_channel)
+        _action["channels"] = _kept_channels
+    if _dropped_pose_channels:
+        print("[make_rig] no source hand poses; omitted pose-only channels "
+              + ", ".join(f"{a}:{p}" for a, p in _dropped_pose_channels))
 
     # ------------------------------------------------------------------
     # 动作通道 → 参数通道（Live2D 合规：.motion3 的曲线只能打在参数上）

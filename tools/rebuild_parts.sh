@@ -103,10 +103,10 @@ step "3b/27 正圆关节（肩球 + 肘圆：把关节那一圈做成绕枢轴�
 # 正解是 Live2D 官方那条「関節パーツは腕幅と同じ直径の正円、枢轴＝その中心」。
 "$PY" tools/round_arm_sockets.py --character "$CH" --form "$FM"
 
-step "3c/27 手差分件（放松/张开/比心 × 左右，程序化重画）"
+step "3c/27 腕垫片与差分手（Teen 另有 open/heart；Chibi 只从本形态原画生成腕垫片）"
 # 必须排在 make_arm_parts 之后：腕线、袖口内宽都是从它的产物上实测的。
-# 原画那只手是\"摊平的蹼\"（五指等长、没有掌骨），掰是掰不出来的，只能重画；
-# 官方口径也是手的差分**换贴图**而不是靠变形器（animator_arms_mtn）。
+# Chibi 尚无经确认的 Chibi 专用 open/heart 来源，不能从 Teen design/hands 借贴图；
+# make_hand_parts.py 对 Chibi 仅输出结构腕垫片，small/mitten 差分由 T67.69 专项实施。
 "$PY" tools/make_hand_parts.py --character "$CH" --form "$FM"
 
 step "3d/27 腕正圆关节（把袖口里的垫片做成以腕枢轴为心的正圆）"
@@ -223,7 +223,11 @@ step "20c/27 脸的轮廓线（按模板把下颌/脸颊的主線补回 seg_head
 # 跟着头发一起走了。短发档被 hair_side_l/r 盖住看不出来，twin/pony/long 全露。
 # Live2D 官方：のりしろ要留，但「主線が無いパーツの分かれ目」才该模糊 ——
 # 有主線的地方必须是实的，所以这里是"塗り足し保持 + 其上另画线"，不是裁掉塗り足し。
-"$PY" tools/draw_face_contour.py --character "$CH" --form "$FM"
+if [ "$CH" = "xiaoxun" ] && [ "$FM" = "chibi" ]; then
+  echo "[skip] Chibi 已直接保留同源设定稿脸缘；draw_face_contour 的 ROI 是 Teen 坐标，禁止跨形态描线"
+else
+  "$PY" tools/draw_face_contour.py --character "$CH" --form "$FM" --sheet "$SHEET_REL"
+fi
 
 step "20d/27 头件发丝残留清理与下颌源图修复"
 # 以 body_full 同源脸部轮廓逐行修补下颌透明碎洞，再按皮肤边界裁除头件外侧发束。

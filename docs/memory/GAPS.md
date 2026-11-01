@@ -2544,9 +2544,11 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 
 ## G66.52 Chibi 全链重建仍有未验收眼部、挂件与换装空位（2026-11-01，T67.67）
 
-- **完整 QA 未通过**：最新干净隔离重建有 85 部件/26 动作；1410 项资产检查中 40 项失败。包括无损切分少 407px、躯干内部新洞 20,259px、鞋口抬高 73/74px（目标 30）、闭眼接缝色差约 48、口内无牙且张嘴越过下巴、腮红落在透明区、摸头范围未罩整脸、差分接管不足等。失败细目见 `docs/qa/chibi_candidate_2026-11-01/asset_qa_clean_failure_summary_2026-11-01.md`。
-- **眼部 C 引擎验收未通过**：较早 refit 候选真实引擎仍有白环/眼角接缝；最新干净候选还未做真实 C 引擎目视矩阵，不能由静态 QA 替代。
-- **缺件**：最新 rebuild 仍跳过 16 个头发/兜帽挂件；必须由验收过的 Chibi 来源补切。不得用 Teen 参考图/附件填 Chibi；image-25/26/27 为负例，不得正向使用。
+- **完整 QA 未通过（最新完整来源锁定候选）**：81 部件/26 动作；1342 项中 34 项失败。静止拼合少 1343px、躯干新洞 21,261px、鞋口抬高 73/74px、闭眼接缝 45.48/47.92、口内无牙且张嘴越过下巴、腮红落在透明区、发色与发型接管不足、结构性腕垫片与平色 mouth mask 真伪等。原始 JSON：`docs/qa/chibi_candidate_2026-11-01/asset_qa_source_locked_rebuild_2026-11-01.json`；34 项明细：`asset_qa_source_locked_rebuild_summary_2026-11-01.md`。历史 1410/40 候选另存 `asset_qa_clean_failure_summary_2026-11-01.md`，不得混算。
+- **定向修复进展**：按新 QA 逐项修复 `make_rig.py` 摸头区 X 范围并在真实 C API 用左右边缘像素验证 `head_pat`；同阈值定向重测为 1342 项 / 33 fail，仅一项由红转绿，未重跑 full chain。眼睫形态学试验未改善且已回滚；详细结果 `head_hitbox_fix_2026-11-01.md` 与 `eye_cleanup_trials/README.md`。
+- **C 引擎目视失败**：2026-11-01 本人查看来源锁定候选 scale=1.0 default 全身与 3×脸部：两眼外角黑色碎边/锯齿明显，眉眼/眼线接缝不自然；截图 `engine_default_source_locked_candidate_2026-11-01.png` 与 `engine_face_zoom_source_locked_candidate_2026-11-01.png`。本轮又以用户 image-29 全身图做风格对照，参考眼型更圆润干净；对照图仅作风格参照，不直接裁切。default 之外的全动作矩阵未验，视觉仍阻断。
+- **缺件**：新 rebuild 仍跳过 16 个头发/兜帽挂件；必须由验收过的 Chibi 来源补切。不得用 Teen 参考图/附件填 Chibi；image-25/26/27 为负例，不得正向使用。
+- **来源防污染修复（工具链/隔离候选）**：Chibi form_art 显式锁到 `design_sheet_chibi.png` 与四点框；clean rebuild 不再误用 Teen `design_sheet_short.png`，并跳过 Teen 专属 face-contour ROI 与 open/heart 手图。此保护只修正输入来源与禁用跨形态污染，不代表 QA 通过；small/mitten 与 Chibi 专属手势贴图仍待实现。
 - **尾巴/待机**：relaxed 有软蓬体积，up 较窄且部分遮挡，puff 疑有边缘碎线；idle 有轻微摇摆/呼吸但暂未找到定时轮换额外 idle 动作的调度。依指南复核尾巴与“偶发耳抖/脚部动作”，不随意加大摆幅。
 - **换装槽**：附件清单有挂点槽，但现有服装包只面向 Teen。保留 Chibi torso/袖臂/裙/腿鞋基础部件的替换映射空间；没有对应原画时不制作伪装服装素材。
 - **参考分流（铁律 13）**：桌宠 Q 版与 Live2D Chibi 分开保存、命名和验收；image-24 是 Live2D 比例/画风锚点。短/长发与双马尾概念图已经用户选定，但兜帽关系仍待正确参考与目视验收，不能直接接生产。
@@ -2558,4 +2560,5 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 用户截图已归档：`docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_hand_mitten_user_marked_2026-11-01.jpg`。目视上红圈落在袖口下方的短小手部轮廓，手指细节简化、与条纹袖口直接相接；截图有手机 UI 和红圈，只是正向造型参照，不得直接切件。Chibi 原设定真值是 `characters/xiaoxun/design/design_sheet_chibi.png`。
 - 当前 `characters/xiaoxun/forms/chibi/rig.json` 只有 `seg_arm_l/r`，没有独立手件或手型选择器；`characters/xiaoxun/forms/teen/sprites/hand_parts.json` 仅供了解格式，不能充当 Chibi 资产。双手型方案契约：`docs/qa/chibi_candidate_2026-11-01/hand_style_variants_2026-11-01.json`。
 - 需在隔离候选中从合规 Chibi 来源拆/绘制 `hand_l/r_small` 与 `hand_l/r_mitten`，以共享腕锚点接入互斥的 `hand_style` 选择器；保留手腕动作和手势通道。验证切换无位移/缩放跳变、无重影/缺口，并在袖口遮挡、条纹连续、抬臂/挥手/比心/惊讶及短长发/双马尾/兜帽组合下用实际 C 引擎目视。
-- 当前正式 Chibi rig 与 T67.67 clean candidate 均没有验收过的独立手型资产；当前任务没有完成实现和 C 引擎视觉验收，不得宣称已做或接生产。补充区别：旧隔离目录 `/home/user/zc_chibi_eye_clean_20261101_v6/` 曾有 `small/sleeve` 原型并通过 C `zrig_load` / 透明度逻辑探针，但其命名与当前 `small/mitten` 契约不同，QA 708 项中 20 项失败、静止差异 1768px，不能视为当前候选成果。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。
+- 新来源锁定 rebuild 已做防污染：Chibi `make_hand_parts.py` 仅出腕垫片，不再读取 Teen `design/hands/*_raw.png`；`make_rig.py` 对不存在的 open/heart/surprised 手贴图省略贴图切换通道，同时保留腕部运动。这只是拒绝伪造/跨形态素材，不是双手型完成；当前候选仍无 small/mitten 两档、`hand_style` 选择器或可验收的 Chibi 手势贴图。
+- 当前正式 Chibi rig 与候选均没有验收过的独立手型资产；当前任务未完成实现和 C 引擎视觉验收，不得宣称已做或接生产。补充区别：旧隔离目录 `/home/user/zc_chibi_eye_clean_20261101_v6/` 曾有 `small/sleeve` 原型并通过 C `zrig_load` / 透明度逻辑探针，但其命名与当前 `small/mitten` 契约不同，QA 708 项中 20 项失败、静止差异 1768px，不能视为当前候选成果。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。

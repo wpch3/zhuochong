@@ -19,7 +19,7 @@
 > 规则：**每次工作开始先读本文件与自己上次的日志；结束时必须追加 `JOURNAL.md` 并更新本文件的"当前状态"。**
 > 用户的新要求**当轮就要写进 `REQUIREMENTS.md`**，不许只留在聊天里。
 
-更新：**2026-11-01（铁律 14：每轮记忆/成果仓库持久化；T67.67 QA 未验收；T67.69 双手型需求已归档）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
+更新：**2026-11-01（铁律 14：每轮记忆/成果仓库持久化；A64 全身范围；image-29 已归档；T67.67 full-chain 34 fail，hitbox 定向修复后 33 fail，C 目视仍不通过；T67.69 双手型未实现）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
 
 > ### ★★★ 开工先读这四样（2026-10-25 加第四样）
 > 0. **`docs/ENGINE_AUDIT_2026-10-25.md`** —— 底层体检 + Live2D 工序对位 + P0/P1/P2 优化清单。
@@ -49,14 +49,14 @@
 | C 桌宠基础软件 | ✅ 可运行，`dist/windows/x86_64/zhuochong.exe`（370KB，x86_64 GUI，零依赖） |
 | 立绘引擎 | ✅ 数据驱动 rig.json（组/部件/通道曲线/交互区/眨眼五态/视线/换装/**弯曲形变**） |
 | 配置体系 | ✅ 5 份配置 + JSON Schema + 精确错误定位，功能默认全关 |
-| 测试 | 🟡 本轮 `make test` **2638/0**、`make web-test` **265/0**、`make asset-tool-test` 通过。配置 `/home/user/.imgenv` 后，`make selfcheck` 为 767 项中 1 项未过：Teen/Chibi 正式 rig 的生成器指纹旧（按隔离门禁不提前重建生产 rig）；未跑完整 `make check`。Chibi 最新完整候选 QA 1410 项中 40 项失败；不宣称全仓或 Chibi 通过。 |
+| 测试 | 🟡 本轮 `make test` **2638/0**、`make asset-tool-test` 通过。带隔离 Pillow/Numpy 的 `make selfcheck` 772 项中 1 项失败，唯一项是 Teen/Chibi 正式 rig 的生成器指纹旧（按门禁不提前重建生产 rig）；未跑完整 `make check`。新的 Chibi 来源锁定候选 QA 1342 项中 **34 项失败**；旧候选 1410/40 是另一套结果；不宣称全仓或 Chibi 通过。 |
 | 沙箱预览 | ✅ 端口 5173，C 引擎实时渲染，可点击交互；**Web UI 第一版已接入**（`web/` + `/api/*`） |
 | 测试台 | ✅ `http://localhost:5173/test.html`（手点：17 个动作 / 四种互动 / 眨眼·视线·缩放滑杆 / 零件表 / 请求日志 / 一键自动测试）；命令行同判据 `make smoke`（`tools/api_smoke.py`，**86 项**）；2026-10-13 加了**口型音素面板**（A/I/U/E/O 按钮 + 强度滑杆 + 念一串 a-i-u-e-o）与**「表情 × 口型」分层看板**（组合按钮 + `参数值 / 过表情后 / 最终` 三列实时表）；smoke 现 **86 项** |
 | **素材配准线（第六十一问）** | ✅ `tools/align_redraw.py`：AI 重绘 → 本形态像素系（剪影 Dice 定尺度 + 截尾色差细化 + 逐通道配色），Q 版无臂躯干实测色差 **8.19**、叠图重合；`tools/form_art.py` 做形态级设计图/重绘解析（`aligned_info` 让预配准底图跳过二次配准）。**四个面部件工具已改走 form_art**；Q 版 8 张重绘已入库 |
-| **Q 版素材链（T67.67）** | 🟡 最新干净候选曾重建完成：85 部件/26 动作，1410 项 QA 中 40 项失败；16 个 Chibi 挂件无正确切件。交接时 `/tmp/zc_chibi_clean_20261101` 已不存在，原始 JSON 无法恢复，只留失败摘要。未接生产、未做该候选 C 引擎目视验收。状态与依赖顺序见 `docs/qa/chibi_candidate_2026-11-01/isolated_rebuild_status.md`；旧 37 项 refit 和早期 41 项结果只作历史记录。 |
+| **Q 版素材链（T67.67）** | 🟡 完整来源锁定 27 步 rebuild：Chibi `design_sheet_chibi.png` + 框 `[628,101,1416,1891]`、567×1292；rig 81 部件/26 动作，1342 项 **34 fail**，缺 16 个 Chibi 挂件。随后修复摸头 hitbox，并用 C 引擎 canvas 区域 API 测试左右命中：定向 rig/QA 同 1342 项 **33 fail**，未重跑 full chain。眼睫形态学试验未改善、已回滚。image-29 已归档作为风格对照；真实 C 引擎眼角仍有黑碎边/接缝，视觉不通过；发型/兜帽/手型/衣物/动作矩阵也未完成。无候选接生产。见 `docs/qa/chibi_candidate_2026-11-01/isolated_rebuild_status.md`；历史候选不混算。 |
 | **Chibi 参考分流（铁律 13 / T67.68）** | 🟡 image-23 桌宠、image-24 Live2D 锚点、image-25/26/27 负例分开保存；本轮用户选择短发 2、长发 1、双马尾 2 的概念参考并已逐图目视，见 `reference_generated/README.md`。兜帽关系还未验收；概念图不是生产素材。 |
-| **Chibi 双手型（T67.69 / A62）** | 🟡 小巧手 + 手套感/连袖感手型需求、红圈截图和 `small/mitten` 隔离契约已归档。正式 Chibi rig 与当前 clean candidate 均无验收过的独立 hand parts。外部旧 v6 曾有 `small/sleeve` 原型并通过 C 加载/透明度探针，但 708 项 QA 有 20 项失败、静止差 1768px，命名与当前 mitten 契约不同，不计完成。待按 Chibi 来源制作两套左右手件、切换并做腕口/动作 C 引擎目视；不得用 Teen 代替。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。 |
-| **本地持久化（铁律 14 / A63）** | 🟡 本轮进度、需求、参考图、手型契约均已写入仓库并以 WIP 提交保存；交接前已核路径存在。生产 QA 仍未完成，提交不代表接入生产。 |
+| **Chibi 双手型（T67.69 / A62）** | 🟡 `small/mitten` 契约和红圈参考已归档。最新候选只由 Chibi 源生成基础手/结构腕垫片；流水线现明确禁止 Teen open/heart 生图进入 Chibi，并省略无 Chibi 来源的 pose-only 参数通道。左右 small/mitten 独立贴图、`hand_style` 选择器与 Chibi 手势图仍未实现。旧 v6 `small/sleeve` 708 项 QA 20 fail、静止差 1768px，不计完成。后续需按 Chibi 来源做独立腕口/手势实引擎视觉回归，Teen 贴图不可代替。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。 |
+| **本地持久化（铁律 14 / A63）** | 🟡 新来源锁定候选、34 项失败明细、日志和 C 引擎截图均已归档，TASKS/GAPS/JOURNAL/MEMORY/REQUEST_LEDGER 已更新；当前轮增量尚未提交，前序 WIP 提交不代表 QA 通过或接入生产。 |
 | 小寻形态 | 🟡 `teen` 完整（rig：**部件 94 / 动作 23 / 组 13 / 参数 71**，手臂已三节拆件 + 原画手件 + 四档发型 + 兜帽四形态 + 猫耳猫尾）；`chibi` 进行中；loli/adult 未开 |
 | 拆件与表情 | 🟡 眼睛(睁/闭几何版)、嘴(暗线蒙版)；完整拆件与表情集 = **当前任务** |
 | 软件形态 | 🟡 规划完成（`docs/PRODUCT_PLAN.md`）：三进程（桌宠 C / 本地 Web 工作区 / 本地网关）+ 三张注册表（skills / providers / modules）；缺口清单与里程碑已列 |

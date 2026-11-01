@@ -1443,3 +1443,19 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 按铁律 0–14 先核对活动分支与最新远端状态：远端 `arena/aaf1408c-zhuochong` 已到 `14b99f8`，以该 WIP 中的 T67.67–T67.69 / A60–A63 / G66.52–G66.53 为当前权威记录，不用旧本地基线覆盖。
 - 将外部旧候选 `zc_chibi_eye_clean_20261101_v6` 记录为**独立失败原型**：708 项 QA 20 失败，C `zrig_load` 与 small/sleeve 透明度逻辑探针通过，静止差异 1768px；它不是当前 85 部件/26 动作、1410 QA 40 失败的 clean candidate，也不代表当前 `small/mitten` 任务已实现。
 - 落点：`docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`；更新 `TASKS.md` T67.69、`GAPS.md` G66.53、`MEMORY.md` 与本日志。生产贴图/rig 未修改；候选未验收，不接生产。
+
+### 2026-11-01 · 继续完成整个 Chibi Live2D：来源锁定重建与目视（本轮续）
+
+- 用户要求继续完成**整个** Live2D Chibi，遵守项目铁律、亲自用眼观察并把进度落仓库；不局限单个手型。此前“Read head only”限制不适用于当前 Chibi 全身任务；范围更新为 A64.1–A64.3，其他角色/无关素材范围不变。继续执行 T67.67 全版隔离，不把候选写入生产。
+- 发现旧 `form_art` 未锁 `sheet`，重建默认回退到 Teen 全身源；重现 445×1292 与 Chibi redraw 567×1292 不匹配并立即停止错误链。按 Chibi 设定稿 `design_sheet_chibi.png` + 四点框 `[628,101,1416,1891]` 以 567×1292 建立来源锁定候选；显式跳过 Teen face ROI 和 Teen 手势参考。
+- 候选完成 81 部件/26 动作，1342 项 QA **34 fail**，缺 16 个 Chibi 发/帽挂件；原始 JSON/日志/摘要见 `docs/qa/chibi_candidate_2026-11-01/`。C 引擎 scale=1.0 default 全身与 3×脸图实拍：双眼外角碎边/锯齿和接缝明显，视觉不通过。旧 1410/40 报告属于别的候选，不混算。
+- 双手型仍未实现：只生成 Chibi 腕垫片，移除了无 Chibi 来源的 Teen pose-only 贴图参数；此保护不是交付。`small/mitten` 与独立 `hand_style`、手势贴图仍待 Chibi 来源与引擎验收。
+- 验证：`make test` 2638/0、`asset-tool-test` 通过、`selfcheck` 771 中 1 项是 Teen/Chibi 生产 rig 指纹旧（隔离门禁预期）；候选外的仓库源 rig/贴图未重建。具体日志与下轮顺序见 `docs/memory/JOURNAL.md` 最新条目、`TASKS.md` T67.67/T67.69、`GAPS.md` G66.52/G66.53 和 QA 状态文件。
+
+### 2026-11-01 · 用户要求继续制作并反馈缺少可见进展（image-29）
+
+- 用户原话：「继续制作未完成的任务，我怎么感觉你什么都没做呢？」并补传 `image-29.png`。这明确要求继续实际制作，不只是把状态写得更详尽。
+- 本轮将 image-29 原图归档为全身风格/身份参考；与隔离 C 引擎实际截图对照，说明它不是清洁生产贴图源。实拍两个眼睫形态学候选，发现 1px 无明显改善，2px 会加厚上眼线，均回滚并保留失败证据。
+- 按失败台账修复并验证一个具体缺陷：头部交互区从旧 `suggested_regions` 粗略 x 范围改为覆盖 `seg_head` bbox + 4px margin；同阈值定向 QA 由 34 fail 到 33 fail（这是目标 rig 局部重生，不是完整 27 步链）。真实 C `/api/region` 左右边界点命中 `head/head_pat`，透明点保持为空。
+- 落点：`docs/qa/chibi_candidate_2026-11-01/head_hitbox_fix_2026-11-01.md`、`head_hitbox_engine_probe_2026-11-01.json`、`asset_qa_targeted_hitbox_rerun_2026-11-01.json`、`eye_cleanup_trials/README.md`、image-29 图及视觉笔记；更新 `make_rig.py`、`selfcheck_repo.py`、T67.67/G66.52/MEMORY/JOURNAL/REQUIREMENTS。
+- 仍未完成：C 引擎眼部外角碎边目视失败；targeted QA 仍有 **33 项失败**，16 个挂件缺件；手型、衣物与动作组合矩阵未完成。任何候选未接生产；当前用户反馈后仍需继续实际修复，而不能以此局部进展宣称已交付。

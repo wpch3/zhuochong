@@ -7910,3 +7910,26 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - 用户要求继续未完成工作、牢记铁律并把进度写入仓库。检查时发现远端活动分支已推进到 `14b99f8`，包含最新 T67.67–T67.69、A60–A63、G66.52–G66.53 与候选失败摘要；不沿用旧本地快照覆盖这些更新。同步时保留远端当前文档作为权威状态。
 - 补充核实仓库外旧隔离目录 `/home/user/zc_chibi_eye_clean_20261101_v6/` 仍在：其 `report2` 为 708 项/20 失败，独立 C `zrig_load` 与 small/sleeve 透明度探针通过，静止差异 1768px。此为较早 prototype，命名 `sleeve`、与当前 T67.69 `mitten` 合约不同；不替代当前 clean candidate（85 部件/26 动作、1410 项/40 失败），不计手型任务完成。
 - 新增补充记录 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`，并在 T67.69、G66.53、MEMORY 中标注上述版本区分；没有复制旧候选贴图或 rig 到生产。当前门禁仍未通过，继续隔离。
+
+## 2026-11-01｜T67.67 来源锁定 clean rebuild + C 引擎目视（仍为 WIP）
+
+- **开工与基线/范围**：用户本轮明确继续整个 Live2D Chibi；原先“Read head only”限制不适用于本任务，可检查直接相关全身、部件、表情、动作与组合。新增 A64.1–A64.3，并读 `WORKFLOW.md`、T67.67–T67.69、隔离状态/QA 摘要/参考约束、A60–A63 和相关经验；`make -s test` 2638/0。此前最新 1410 项/40 fail 报告是历史候选，临时源已失，不能当本轮复测。
+- **发现根本的形态来源污染**：从 HEAD 以 `git archive` 在 `/home/user/chibi-candidate-20261101` 建隔离副本后，原 `form_art.json` 没写 `sheet`，`form_art.py` 静默回退 Teen `design_sheet_short.png`；clean rebuild 立刻把 body_full 生到 445×1292，随后 Chibi `torso_noarms` 567×1292 触发严格尺寸错误。没有继续使用错误候选。
+- **真值与对照**：Chibi 设定稿 `design_sheet_chibi.png` 的原记录四点裁框为 `[628,101,1416,1891]`。隔离中按同一框输出 567×1292，与仓库旧 body_full 同尺寸；本人 A/B 目视确认新源脸/发缘连续干净，旧底图可见碎线/缺口。但这是换源重抠候选，必须重建所有依赖切件，不能单独换图或接生产。
+- **实现（工具/配置 WIP）**：`forms/chibi/design/form_art.json` 显式锁 Chibi sheet；角色 `body_fit.json` 增 Chibi 四点框并保留既有 Teen 锁。`rebuild_parts.sh` 不再让 Chibi 调用使用 Teen 坐标 ROI 的 `draw_face_contour`。`make_hand_parts.py` 对 Chibi 只建腕垫片、不读取 Teen `design/hands/*_raw.png`；`make_rig.py` 对缺失 Chibi open/heart/surprised 贴图省略 pose-only 通道、仍保留腕动作。新增 selfcheck 保护这三项隔离规则。
+- **真实全链候选**：onnxruntime 在隔离 Python target 安装，模型从允许的 GitHub codeload 来源取回并 sha256 校验。clean rebuild 完成：81 部件/26 动作，1342 项资产 QA 中 **34 fail**，design IoU 0.993492；16 项挂件缺切件。失败包括：静止拼合少 1343px、躯干新洞 21261px、踮脚鞋口高 73/74px、开口无牙、闭眼接缝 45.48/47.92、摸头 hitbox/腮红、差分发色与接管、结构腕垫片/平色 mask 真伪等。完整 JSON、日志和 34 条摘要已归档在 `docs/qa/chibi_candidate_2026-11-01/`；本轮计数与旧 1410/40 不混算。
+- **本人 C 引擎目视**：在隔离预览启动 C 引擎，`/api/form?id=chibi`、freeze、physics/ambient off、scale=1.0 后抓默认全身及 3×脸放大。眼角外侧黑色碎边/锯齿、眼线/眉眼接缝和脸部层拼合肉眼明显失败；全身头身比例大体保持，衣服/尾部可见但未验动作/姿态/发型矩阵。归档 `engine_default_source_locked_candidate_2026-11-01.png`、`engine_face_zoom_source_locked_candidate_2026-11-01.png`。不是通过验收。
+- **测试**：`make -s test` 2638/0；`make -s asset-tool-test` 通过；`make -s selfcheck` 771 项中仅 1 项未过：Teen/Chibi 正式 rig 生成器指纹旧（隔离门禁要求不提前重建生产 rig）。隔离内 Teen `make_rig.py` 生成正常（112 部件/26 动作）；`git diff --check` 通过。未跑完整 `make check`/web-test。
+- **当前状态**：WIP，生产 sprites/rig 未改。新来源锁定配置与手部/rig工具保护有改动，尚未提交；候选 QA 和眼部目视均不通过。
+- **下一步**：先在隔离候选按真实 Chibi 面部轮廓重做眼睛 carving/底件与 lashes，C 引擎逐态检查 default/wide/blink/closed；然后按 failure JSON 修身体遮挡、鞋/嘴/闭眼/hitbox/腮红/发型接管。只从获准 Chibi 来源补 16 个挂件；实现 `small/mitten` 及独立 `hand_style`，不可借 Teen 贴图。QA 必须 0 fail/0 缺件后才做短/长发、双马尾/兜帽、手型、衣服与动作的完整 C 引擎矩阵；当前候选绝不接生产。
+
+## 2026-11-01｜用户 image-29 全身参考、眼部 A/B 与摸头区实引擎修复
+
+- **用户反馈**：「继续制作未完成的任务，我怎么感觉你什么都没做呢？」这是对前轮只汇报文档/状态而缺少可见制作进展的纠正。本轮转为实际 C 引擎对照、真实缺陷修复与目标 QA，不把“写了记录”当制作完成。
+- **新真值归档**：用户 image-29 原图已复制到 `docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_fullbody_live2d_user_image_29_2026-11-01.png`，SHA-256 `0d337f8cc4790f9297209774f652e6677f90f2b986248d244e70167e1e72c4f0`。本人目视：短浅紫 bob/青蓝发梢、猫耳、鲸鱼发夹、青白外套、奶油衬衫、深蓝百褶裙、青白袜鞋、蓝尾身份一致；用户参考眼形更圆润，外眼角视觉更干净。该图有斜纹背景、UI、低分辨率和局部细碎像素，仅作全身身份/风格对照，不直接裁切；几何真值仍为 `design_sheet_chibi.png`。
+- **眼部实测而非口头判断**：在隔离 C 候选的真实 `eye_open_left.png` / socket/base/lash 层中检查后，做了两个只作用于 Chibi lash mask 的二值开运算试验：1px + 小连通分量剔除、2px + 同阈值。重新生 eye parts、eyeline、对应 @2x、rig 并重启真实 C 引擎实拍。1px 未消除外角黑碎边；2px 让上眼线明显变厚且碎边仍在，视觉更差。两版均拒绝，脚本改动已回滚，没有把未通过滤镜合入工具或生产。试验图片与可复核结论：`docs/qa/chibi_candidate_2026-11-01/eye_cleanup_trials/README.md`；原始形态学代码未保留。
+- **已完成的一个真正缺陷修复**：查 QA 失败的“摸头区域罩住整张脸”。`make_rig.py` 原只依赖 `sprites_report` 粗框 x196..649，真实 `seg_head` bbox 是 x140..707。改为与真实 bbox 并集并留 4px，定向生成区域 `[136,711]`，保留下巴 y 分界。加 `selfcheck_repo.py` 静态保护。
+- **QA 与 C API 实验**：候选执行 `make_rig.py` 定向重生后，同阈值 `check_assets.py` 1342 项 / **33 fail**（原完整 27 步 full-chain 34 fail），本次恰是摸头区项由 fail→pass；未放宽门槛，未宣称全链变绿。真实 C Engine scale=1.0、冻结、physics/ambient off，`/api/region?space=canvas` 对点 (180,500)、(200,500)、(690,500)、(705,500) 返回 `head/head_pat`；透明控制 (150,500) 正确为空。报告 `asset_qa_targeted_hitbox_rerun_2026-11-01.json`，探针 `head_hitbox_engine_probe_2026-11-01.json`，修复说明 `head_hitbox_fix_2026-11-01.md`。仍有 33 fail、16 缺件、default 眼部视觉失败。
+- **候选/生产边界**：所有工作均在 `/home/user/chibi-candidate-20261101` 隔离目录或生成器逻辑；没有写入正式 Chibi sprites/rig。隔离预览进程已停止。前轮 34-fail 原始完整链报告仍保留；定向 33-fail 不冒称 full-chain 改善。
+- **本轮回归**：`make -s test` 2638/0；`asset-tool-test` 通过；`selfcheck` 772 项中仅 1 项失败（正式 Teen/Chibi rig 生成器指纹过旧，隔离门禁下保留）；`roadmap_status.py` 与 `git diff --check` 通过。未跑完整 `make check`。
+- **下一步**：眼睛不再盲调形态学；下一轮从面部原画中确定睫毛/眼缘的正确 ROI 与层级，必要时向用户请求可授权的干净高分辨率全身源而不拿低清截图代替。并继续按失败台账解决 21,261px 躯干洞、1,343px 静止缺像素、嘴/闭眼/鞋/发型接管、缺 16 件；完成 `small/mitten`、独立 `hand_style`、衣物与关键动作 C 矩阵。每次需隔离，零失败前不接生产。

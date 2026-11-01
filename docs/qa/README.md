@@ -31,6 +31,10 @@
 - `live2d_teen_longhair_centerlock_2026-10-31.json` 及同前缀 `engine/detail/owner_hidden_engine/owner_hidden_detail` PNG —— T67.9 ⑥淡青块真实引擎复现与逐件隐藏归属对照；确认来源是 `acc_hair_long`（long back-hair），并与 `sheet_long.png` 原画核对。不是 stray clothing；长发本体形状优化继续由 T67.7 跟踪。
 - `live2d_chibi_baseline_2026-10-31.json`、`live2d_chibi_baseline_engine_2026-10-31.png` 与 `live2d_chibi_baseline_face_detail_2026-10-31.png` —— Chibi/Q 版现有 rig 的真实 C 引擎预修复基线。几何/资产机检 0 失败，但脸侧/刘海边缘有明显碎线，明确标记为**未视觉验收**，不作为完成证据。
 - `live2d_chibi_regen_source_audit_2026-10-31.json` 与 `live2d_chibi_regen_source_ab_2026-10-31.png` —— Q/chibi 全版重生成的隔离源头试产证据：对比当前 567×1292 碎裂底图与按已记录四点框从 `design_sheet_chibi.png` 重新抠出的 569×1292 连续底图。**只验证源头候选，不代表重建 rig/切件完成或通过。**
+- `chibi_candidate_2026-11-01/asset_qa_source_locked_rebuild_2026-11-01.json` 与 `asset_qa_source_locked_rebuild_summary_2026-11-01.md` —— 2026-11-01 新来源锁定候选的原始 1342 项 / 34 fail 报告与逐项失败台账；与历史 1410/40 fail 候选分开。
+- `chibi_candidate_2026-11-01/engine_default_source_locked_candidate_2026-11-01.png`、`engine_face_zoom_source_locked_candidate_2026-11-01.png` 与 `rebuild_source_locked_2026-11-01.log` —— 隔离候选真实 C 引擎 default 全身/3×脸部实拍与全链日志。双眼外角碎边/接缝肉眼可见，明确标记为**未通过**，不作为完成证据。
+- `chibi_candidate_2026-11-01/reference_generated/chibi_fullbody_live2d_user_image_29_2026-11-01.png` —— 用户本轮新补的全身参考（image-29），用于身份/整体风格对照，不可直接裁成贴图。
+- `chibi_candidate_2026-11-01/head_hitbox_fix_2026-11-01.md`、`head_hitbox_engine_probe_2026-11-01.json` 与 `asset_qa_targeted_hitbox_rerun_2026-11-01.json` —— Chibi 头部互动区从粗略 x 范围扩大到完整 seg_head bbox 后，真实 C API 左右命中返回 `head_pat`，同阈值定向 QA 从 34 fail 至 33 fail；仅为该项修复证据，不代表全链重跑或视觉通过。眼睫形态学失败试验也已如实存于 `chibi_candidate_2026-11-01/eye_cleanup_trials/README.md`。
 - `live2d_visual_work_plan_2026-10-31.md`、`live2d_teen_visual_audit_2026-10-31.json` —— 2026-10-31 Teen 真实 C 引擎目视审查、缺陷排序与后续修复计划；这是未完成项的审查记录，不是验收通过证明。长发全身/单件、袖子近景、三套衣服、四种动作和 bones-only 证据均有 SHA-256。
 - `live2d_teen_audit_longhair_full_2026-10-31.png` / `live2d_teen_audit_longhair_isolated_2026-10-31.png` —— Teen 长发全身及 `acc_hair_long` 单件隔离真实渲染；确认两侧黑/青/白条状杂边仍属于长发件，T67.7 未关闭。
 - `live2d_teen_audit_wave_sleeve_detail_2026-10-31.png` —— Teen wave 高举手臂的袖管/夹克接缝真实近景；用于 T67.6、T67.35、T31.15 修复前定位。

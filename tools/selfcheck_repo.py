@@ -4726,7 +4726,50 @@ def check_tools(root):
     section("工具链：重建脚本引用的工具都在 + 全部能编译")
     rb = os.path.join(root, "tools", "rebuild_parts.sh")
     if os.path.exists(rb):
-        used = sorted(set(re.findall(r"tools/([a-z_0-9]+\.py)", open(rb, encoding="utf-8").read())))
+        rb_text = open(rb, encoding="utf-8").read()
+        used = sorted(set(re.findall(r"tools/([a-z_0-9]+\.py)", rb_text)))
+        # Chibi 与 Teen 的设计来源/坐标系必须显式分离；尤其不能让 clean rebuild
+        # 因 form_art 缺 sheet 而悄悄回退到 Teen 的 design_sheet_short。
+        art_path = os.path.join(root, "characters", "xiaoxun", "forms", "chibi",
+                                 "design", "form_art.json")
+        fit_path = os.path.join(root, "characters", "xiaoxun", "design", "body_fit.json")
+        art = jsonc(art_path) if os.path.exists(art_path) else {}
+        fit = jsonc(fit_path) if os.path.exists(fit_path) else {}
+        chibi_fit = fit.get("design_sheet_chibi.png", {})
+        chibi_body_lock = (art.get("sheet") == "design/design_sheet_chibi.png"
+                           and chibi_fit.get("box") == [628, 101, 1416, 1891]
+                           and chibi_fit.get("size") == [567, 1292])
+        check("Chibi clean rebuild 锁定 Chibi 设定稿与既有 567x1292 画布",
+              chibi_body_lock,
+              "form_art.sheet 必须是 design_sheet_chibi.png，body_fit 必须有同源四点框及 567x1292 锁")
+        hand_tool = os.path.join(root, "tools", "make_hand_parts.py")
+        hand_src = open(hand_tool, encoding="utf-8").read() if os.path.exists(hand_tool) else ""
+        chibi_hand_guard = ('(args.character, args.form) == ("xiaoxun", "chibi")' in hand_src
+                            and "poses = ()" in hand_src)
+        check("Chibi hand rebuild 不借用 Teen 的 open/heart 贴图",
+              chibi_hand_guard,
+              "Chibi 无专属手势来源时只生成腕垫片，small/mitten 另按 T67.69 实现")
+        contour_guard = ('[ "$FM" = "chibi" ]; then' in rb_text
+                         and "draw_face_contour.py" in rb_text
+                         and "ROI 是 Teen 坐标" in rb_text)
+        check("Chibi rebuild 不套 Teen 专用脸缘 ROI",
+              contour_guard,
+              "draw_face_contour 的硬编码 ROI 是 Teen 坐标，Chibi 需跳过或提供形态专属 ROI")
+        rig_tool = os.path.join(root, "tools", "make_rig.py")
+        rig_src = open(rig_tool, encoding="utf-8").read() if os.path.exists(rig_tool) else ""
+        hand_pose_guard = ('_pose_param' in rig_src and
+                           '_pose_param[_target] not in hand_form_ids' in rig_src and
+                           'if "surprised" in hand_form_ids' in rig_src)
+        check("Rig 只为有本形态贴图的手势注册参数通道",
+              hand_pose_guard,
+              "缺少 open/heart/surprised 手贴图时，不能留下悬空 Parameter；腕部运动照常保留")
+        head_hitbox_guard = ('if is_chibi:' in rig_src
+                             and 'head_left = ox + seg_head_def["pos"][0]' in rig_src
+                             and 'head_right = head_left + seg_head_def["size"][0]' in rig_src
+                             and 'head_rect[2] = head_right - head_rect[0]' in rig_src)
+        check("头部交互区 X 范围必须覆盖真实 seg_head bbox",
+              head_hitbox_guard,
+              "不得只沿用 sprites_report 的粗略建议框，否则脸缘像素会被判成 body")
         miss = [u for u in used if not os.path.exists(os.path.join(root, "tools", u))]
         check("重建链里的工具都在", not miss, f"{len(used)} 个" + (f"，缺 {miss}" if miss else ""))
         # 反向再查一遍：切件工具漏进重建链 = 零件会静默过期。

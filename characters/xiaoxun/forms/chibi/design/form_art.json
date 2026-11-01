@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
   "_note": [
-    "Q 版的重绘底图来源表。**故意不写 sheet**：",
-    "sheet 一改，prepare_sprites 会按新的抠像参数重出 body_full，整张图换坐标系，",
-    "17 个切件 JSON 里上百个像素手调常数集体作废。",
-    "2026-10-25 试过一次（569x1292，发丝更平滑），整链重跑后有回归（眼 socket 落点漂、",
-    "6 个件 @2x 变旧、闭眼态渲染不对），已回滚，改成独立任务（见 docs/memory/JOURNAL 续一百三十二）。",
-    "在没有 design/body_fit.json 的 Q 版条目之前，sheet 一律沿用旧路径。"
+    "Live2D Chibi 的形态级美术来源。sheet 必须显式指向 design_sheet_chibi.png，",
+    "不可回退到 Teen 用的 design_sheet_short.png；body_full 的几何锁按该来源名",
+    "保存在 characters/xiaoxun/design/body_fit.json。",
+    "本轮先在隔离候选中以旧画布 567x1292 验证同源重建，候选通过全链 QA 与真实引擎目视前，",
+    "不得覆盖正式贴图/rig。历史 569x1292 试验及坐标迁移回归见 JOURNAL 续一百三十二。"
   ],
+  "sheet": "design/design_sheet_chibi.png",
   "redraw": {
     "torso_noarms": "forms/chibi/design/redraw/torso_noarms.png",
     "head_nobangs": "forms/chibi/design/redraw/head_nobangs.png",

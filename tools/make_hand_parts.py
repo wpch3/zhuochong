@@ -49,7 +49,7 @@ WRIST_UP = 34.0                # 往袖子里续多长（塞进去的部分，�
 WRIST_DOWN = 16.0              # 露在袖口下面的那截腕子（下端是半圆＝关节转动面）
 PAD = 8                        # 切件四周留白，防旋转时边缘被裁
 
-POSES = ("open", "heart")      # 放松档不在这里生成：它就是原画件本身
+POSES = ("open", "heart")      # Teen 生图差分；Chibi 无合法来源时只生成腕垫片
 
 
 def key_magenta(im):
@@ -335,6 +335,10 @@ def main():
                     help="原画切件（放松手）放大倍数。1.10 = 量出来的：切件 ÷ 原画 "
                          "= 1/1.12，再折算 rig/sheet 的 1.7%% 全局尺度差")
     args = ap.parse_args()
+    # Teen 的 open/heart 参考稿属于 Teen 来源，不能跨形态挪用给 Chibi。
+    # Chibi 目前只可生成依附于其原画手腕的结构垫片；专属 small/mitten 与手势
+    # 需有 Chibi 源图后由独立 T67.69 流程注册，不在此处伪装成已完成。
+    poses = () if (args.character, args.form) == ("xiaoxun", "chibi") else POSES
 
     base = os.path.join(args.root, "characters", args.character, "forms", args.form)
     sp = os.path.join(base, "sprites")
@@ -344,9 +348,11 @@ def main():
     AP = {p["id"]: p for p in armp["parts"]}
 
     report = {"schema_version": "2.0", "parts": [], "checks": {},
-              "note": "tools/make_hand_parts.py 产物。放松档=原画切件（只加腕部塗り足し），"
-                      "张开/比心档=按原画风格生的图（design/hands/*_raw.png）键出配准而来。"
-                      "Q36 那版程序化画的手已废弃——用户原话「完全成怪物了」"}
+              "note": ("tools/make_hand_parts.py 产物。放松档=本形态原画切件；Chibi 仅生成腕部结构垫片，"
+                       "未提供 Chibi small/mitten 或手势贴图，不得视作手型完成。"
+                       if not poses else
+                       "tools/make_hand_parts.py 产物。放松档=本形态原画切件；"
+                       "张开/比心档=按原画风格的 design/hands/*_raw.png 键出配准而来。")}
 
     # ---- Q52：先把原画切出来的放松手放大到正确尺寸 ----
     # 必须排在后面所有步骤**之前**：⓪ 擦袖口碎片、① 腕桩都要按放大后的手量。
@@ -404,7 +410,7 @@ def main():
              LAY[(side, "pad")], f"forearm_{side}", report)
 
         # ---- ② 生图差分档 ----
-        for pose in POSES:
+        for pose in poses:
             raw = os.path.join(design, f"hand_{pose}_raw.png")
             im, (wx, wy) = load_pose(raw, target_len=args.hand_len * 2,          # 2× 画布上量
                                       line_gain=args.line_gain,
@@ -433,13 +439,14 @@ def main():
 
     # make_rig 按这张表建差分参数（ParamHand{L,R}{Open,Heart}）。
     # 塗り足し圆盘 hand_*_pad 不在表里：它不是一档手势，是一直垫着的补片。
-    report["poses"] = {"": "", **{p: p for p in POSES}}
+    report["poses"] = {"": "", **{p: p for p in poses}}
     report["art_base"] = {s2: f"hand_{s2}" for s2 in ("l", "r")}
 
     out = os.path.join(sp, "hand_parts.json")
     with io.open(out, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
-    print("手部件完成：%d 件（放松=原画件，张开/比心=生图件）" % len(report["parts"]))
+    pose_note = "张开/比心=生图件" if poses else "Chibi 暂仅腕垫片；small/mitten 待专属来源与 T67.69 验收"
+    print("手部件完成：%d 件（放松=本形态原画件，%s）" % (len(report["parts"]), pose_note))
     for p in report["parts"]:
         print("  %-14s %3dx%-3d @(%4d,%4d) 腕宽 %d"
               % (p["id"], p["size"][0], p["size"][1], p["pos"][0], p["pos"][1], p["wrist_w"]))
