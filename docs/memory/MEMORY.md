@@ -56,7 +56,7 @@
 | **Q 版素材链（T67.67）** | 🟡 完整来源锁定 27 步 rebuild：Chibi `design_sheet_chibi.png` + 框 `[628,101,1416,1891]`、567×1292；rig 81 部件/26 动作，1342 项 **34 fail**，缺 16 个 Chibi 挂件。随后修复摸头 hitbox，并用 C 引擎 canvas 区域 API 测试左右命中：定向 rig/QA 同 1342 项 **33 fail**，未重跑 full chain。眼睫形态学试验未改善、已回滚。image-29 已归档作为风格对照；真实 C 引擎眼角仍有黑碎边/接缝，视觉不通过；发型/兜帽/手型/衣物/动作矩阵也未完成。无候选接生产。见 `docs/qa/chibi_candidate_2026-11-01/isolated_rebuild_status.md`；历史候选不混算。 |
 | **Chibi 参考分流（铁律 13 / T67.68）** | 🟡 image-23 桌宠、image-24 Live2D 锚点、image-25/26/27 负例分开保存；本轮用户选择短发 2、长发 1、双马尾 2 的概念参考并已逐图目视，见 `reference_generated/README.md`。兜帽关系还未验收；概念图不是生产素材。 |
 | **Chibi 双手型（T67.69 / A62）** | 🟡 `small/mitten` 契约和红圈参考已归档。最新候选只由 Chibi 源生成基础手/结构腕垫片；流水线现明确禁止 Teen open/heart 生图进入 Chibi，并省略无 Chibi 来源的 pose-only 参数通道。左右 small/mitten 独立贴图、`hand_style` 选择器与 Chibi 手势图仍未实现。旧 v6 `small/sleeve` 708 项 QA 20 fail、静止差 1768px，不计完成。后续需按 Chibi 来源做独立腕口/手势实引擎视觉回归，Teen 贴图不可代替。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。 |
-| **本地持久化（铁律 14 / A63）** | 🟡 新来源锁定候选、34 项失败明细、日志和 C 引擎截图均已归档，TASKS/GAPS/JOURNAL/MEMORY/REQUEST_LEDGER 已更新；当前轮增量尚未提交，前序 WIP 提交不代表 QA 通过或接入生产。 |
+| **本地持久化（铁律 14 / A63）** | 🟡 新来源锁定候选、失败明细、眼部试验和 C 引擎交互证据均已归档；TASKS/GAPS/JOURNAL/MEMORY/REQUEST_LEDGER 已更新，本轮以明确 WIP 提交保存在固定活动分支。提交不代表全链 QA 通过或接入生产。 |
 | 小寻形态 | 🟡 `teen` 完整（rig：**部件 94 / 动作 23 / 组 13 / 参数 71**，手臂已三节拆件 + 原画手件 + 四档发型 + 兜帽四形态 + 猫耳猫尾）；`chibi` 进行中；loli/adult 未开 |
 | 拆件与表情 | 🟡 眼睛(睁/闭几何版)、嘴(暗线蒙版)；完整拆件与表情集 = **当前任务** |
 | 软件形态 | 🟡 规划完成（`docs/PRODUCT_PLAN.md`）：三进程（桌宠 C / 本地 Web 工作区 / 本地网关）+ 三张注册表（skills / providers / modules）；缺口清单与里程碑已列 |

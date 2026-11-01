@@ -7933,3 +7933,4 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **候选/生产边界**：所有工作均在 `/home/user/chibi-candidate-20261101` 隔离目录或生成器逻辑；没有写入正式 Chibi sprites/rig。隔离预览进程已停止。前轮 34-fail 原始完整链报告仍保留；定向 33-fail 不冒称 full-chain 改善。
 - **本轮回归**：`make -s test` 2638/0；`asset-tool-test` 通过；`selfcheck` 772 项中仅 1 项失败（正式 Teen/Chibi rig 生成器指纹过旧，隔离门禁下保留）；`roadmap_status.py` 与 `git diff --check` 通过。未跑完整 `make check`。
 - **下一步**：眼睛不再盲调形态学；下一轮从面部原画中确定睫毛/眼缘的正确 ROI 与层级，必要时向用户请求可授权的干净高分辨率全身源而不拿低清截图代替。并继续按失败台账解决 21,261px 躯干洞、1,343px 静止缺像素、嘴/闭眼/鞋/发型接管、缺 16 件；完成 `small/mitten`、独立 `hand_style`、衣物与关键动作 C 矩阵。每次需隔离，零失败前不接生产。
+- 本轮以 `WIP: fix Chibi head hitbox and archive reference QA` 提交到固定分支 `arena/aaf1408c-zhuochong`（commit `52a62c7`）；这是阶段 WIP，不是通过/发布提交。
