@@ -7946,3 +7946,13 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **铁律更新**：新增 `WORKFLOW.md` 铁律 15（每阶段实际成果、真实状态和来源复核、防缓存记忆失真、成果提交推送并核远端）；需求入 `REQUIREMENTS.md` A65.1–A65.3；`TASKS.md` 新增 T67.70，G66.52 增依赖链纠正；同步 REQUEST_LEDGER/LESSONS/MEMORY。
 - **下一步（继续制作，不以文档代替）**：先用真实 C 引擎的整脸与隔离层定位仍残留的外眼角碎边（seg_head / 头发件 / lash / mask 接缝），制作下一版前确保路径完整更新 1× 与 @2×；视通过后再按全链失败表推进躯干补洞、闭眼/嘴、鞋、发型/兜帽/缺件以及 `small/mitten` + 独立 `hand_style`，最终全身动作/组合矩阵。任一轮未达到目视/QA/用户确认均不接生产。
 - **提交/上传实核**：眼睫试验、全套证据与铁律 15 已随 WIP commit `14cde6b` 推送到固定活动分支；核对时本地与 `origin/arena/aaf1408c-zhuochong` 均为 `14cde6b`。此次推进仍是未验收候选，不是生产发布。
+
+## 2026-11-02｜Chibi socket-aperture 限界试验与完整重建（仍为 WIP）
+
+- **重新核实**：开工时固定活动分支 `arena/aaf1408c-zhuochong`，本地/远端 HEAD 均为 `508f588`，工作树干净。只在 `/home/user/chibi-candidate-20261101` 隔离候选试验；生产 Chibi sprites/rig 未写入。
+- **实施而非只复盘**：此前测得候选 socket 在测得的 source eye aperture 外分别有 1,489/2,354 个像素。修改隔离候选 `make_eye_parts.py`，将 Chibi socket 的 eye-color、hole fill 与最终 socket 限制在 source aperture 内；把完整候选脚本差异和眼件产物归档。新的 mask 不是已证实的唯一根因。
+- **发现遗漏依赖并纠正**：初始定向重生后，检查 `make_sidehair_parts.py` 发现其五官保护区依赖 `eye_parts.json`；只重生眼件会让侧发仍用旧保护区，不能据此验收。于是从 Chibi 设定稿起重跑完整 `rebuild_parts.sh xiaoxun chibi` 27 步，生成侧发、`seg_head`、eyeline、所有相关 @2× 与 rig；再重启 C 引擎、切到 Chibi、冻结动作现场复拍。启用了 `onnxruntime` 的 Python 依赖（仅环境，不入库）。
+- **本人视觉结果**：将新的 1×全身、5×脸部与上一轮已归档的真实 C 画面作同窗口对照。外眼角碎边有可见收敛，画面左侧改善更明显；画面右侧仍有黑色方块/短切口，故眼部视觉门禁仍失败。真实 C 隔离图中单独的侧发是窄发片，而 `seg_head` 自身仍留有角部暗碎边；当前根因应继续检查 source aperture/carve 与 `make_eyeline_parts.py` 在 `seg_head` 上补肤范围，不盲目扩大 socket。
+- **QA**：这次完整 27 步候选资产报告为 **1,342 项、33 项失败、design_iou=0.9934918477598998**，退出码 1。失败仍涉及静止拼合、躯干内部洞、鞋、嘴/牙、闭眼接缝、腮红、发型接管/配色、手件与平色 mask。此为单独全链候选批次的实测结果，不能与 1,342/34 历史来源锁定候选、1,342/33 定向 hitbox 修复、1,310/32 眼部聚焦快照混作连续改进。
+- **阶段归档**：`docs/qa/chibi_candidate_2026-11-02/socket_mask_bound_trial_2026-11-02/` 含脚本 patch、关键候选贴图与元数据、完整 rebuild log、QA JSON、C 引擎全身/放大/隔离/对照图及 SHA-256 清单。WIP 尚未过目视、全链 QA 零失败、缺件/手型/组合矩阵与用户确认门禁；不接生产。
+- **接续**：继续实际处理 `seg_head` 眼角残留，出同源局部 ROI、C 引擎隔离及 before/after；每次完整刷新 eyedependent sidehair、eyeline、@2× 和 rig 并重启 C。之后仍按 G66.52 逐项修复全身失败，并实现 T67.69 `small/mitten` 与独立 `hand_style`；用户要求的整个 Chibi 任务尚远未完成。

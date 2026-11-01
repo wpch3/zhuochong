@@ -2570,3 +2570,10 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 需在隔离候选中从合规 Chibi 来源拆/绘制 `hand_l/r_small` 与 `hand_l/r_mitten`，以共享腕锚点接入互斥的 `hand_style` 选择器；保留手腕动作和手势通道。验证切换无位移/缩放跳变、无重影/缺口，并在袖口遮挡、条纹连续、抬臂/挥手/比心/惊讶及短长发/双马尾/兜帽组合下用实际 C 引擎目视。
 - 新来源锁定 rebuild 已做防污染：Chibi `make_hand_parts.py` 仅出腕垫片，不再读取 Teen `design/hands/*_raw.png`；`make_rig.py` 对不存在的 open/heart/surprised 手贴图省略贴图切换通道，同时保留腕部运动。这只是拒绝伪造/跨形态素材，不是双手型完成；当前候选仍无 small/mitten 两档、`hand_style` 选择器或可验收的 Chibi 手势贴图。
 - 当前正式 Chibi rig 与候选均没有验收过的独立手型资产；当前任务未完成实现和 C 引擎视觉验收，不得宣称已做或接生产。补充区别：旧隔离目录 `/home/user/zc_chibi_eye_clean_20261101_v6/` 曾有 `small/sleeve` 原型并通过 C `zrig_load` / 透明度逻辑探针，但其命名与当前 `small/mitten` 契约不同，QA 708 项中 20 项失败、静止差异 1768px，不能视为当前候选成果。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。
+
+### G66.52 续：socket-aperture 限界与完整 sidehair 重建（2026-11-02，T67.70）
+
+- 眼 socket 1×/2× 现已在隔离候选中限定于测得的 source aperture，候选从 Chibi 设定稿完整执行 27 步，确保 `make_sidehair_parts.py` 重新读取本轮 `eye_parts.json`，并刷新眼线、@2× 与 rig 后重启 C 引擎。
+- 实际 C 比较中，画面左侧眼角碎边收敛；右侧仍有黑色矩形短块/切口，目视不通过。分层隔离显示侧发变成窄发片，但 `seg_head` 单层仍见眼角暗碎边。需进一步追踪 `eye_carve` / source aperture 和 `make_eyeline_parts.py` 补肤区域；不可将 socket 无限制扩宽或只改 lash 后声称修复。
+- 本次完整候选 QA 1,342 项/33 fail，`design_iou=0.9934918477598998`，退出码 1；与历史来源锁定完整链 1,342/34、摸头定向 1,342/33、眼部聚焦 1,310/32 口径不同，不相减、不冒称总体改善。眼部门禁和其他全身失败均未清零，生产资产不动。
+- 可复核 patch、候选眼件/rig 摘要、完整构建日志、QA JSON、C 全身/脸部/隔离/对照截图与 SHA-256：`docs/qa/chibi_candidate_2026-11-02/socket_mask_bound_trial_2026-11-02/`。
