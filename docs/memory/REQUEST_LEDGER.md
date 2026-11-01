@@ -1467,3 +1467,4 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 实际制作：在隔离 Chibi 候选排查眼角效果，发现 C rig 实际读 `eye_*_lash_up@2x.png`；只重生 1× 不会变化。按 eye→eyeline→hires→rig 依赖重跑，并重启真实 C 引擎。现在眼睫主弧更连续，但外眼角残留仍未通过目视。
 - 实际指标：聚焦 `check_assets.py` 退出码 1，1310 项 / 32 fail，`design_iou=0.9934918477598998`；这不是 27 步全链，与 1342/34、1342/33 不可直接相减。所有候选资产与实拍只放 QA 子目录，正式 Chibi sprites/rig 未改。
 - 仓库证据：`docs/qa/chibi_candidate_2026-11-01/eye_lash_pipeline_trial_2026-11-01/`；含 C 引擎 before/after 4×、全身帧、隔离层、候选左右 @2x、JSON、QA 明细、patch 与 SHA256SUMS。
+- **上传核验**：眼睫实拍、QA/patch/hash 及新铁律已随 commit `14cde6b` 推送到当前活动分支；本地/远端 SHA 相同。后续只会再提交本次收尾状态校正，不会把 WIP 改述为已验收。

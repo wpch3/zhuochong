@@ -7945,3 +7945,4 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **本轮成果路径**：`docs/qa/chibi_candidate_2026-11-01/eye_lash_pipeline_trial_2026-11-01/README.md`、`engine_face_before_after_4x.png`、`engine_fullbody_after.png`、隔离层图、左右 `candidate_eye_*_lash_up@2x.png`、`asset_qa_focused_rerun.json`、`make_eye_parts_trial.patch`、`SHA256SUMS.txt`。文档标注 WIP/失败残留与完整链差异。
 - **铁律更新**：新增 `WORKFLOW.md` 铁律 15（每阶段实际成果、真实状态和来源复核、防缓存记忆失真、成果提交推送并核远端）；需求入 `REQUIREMENTS.md` A65.1–A65.3；`TASKS.md` 新增 T67.70，G66.52 增依赖链纠正；同步 REQUEST_LEDGER/LESSONS/MEMORY。
 - **下一步（继续制作，不以文档代替）**：先用真实 C 引擎的整脸与隔离层定位仍残留的外眼角碎边（seg_head / 头发件 / lash / mask 接缝），制作下一版前确保路径完整更新 1× 与 @2×；视通过后再按全链失败表推进躯干补洞、闭眼/嘴、鞋、发型/兜帽/缺件以及 `small/mitten` + 独立 `hand_style`，最终全身动作/组合矩阵。任一轮未达到目视/QA/用户确认均不接生产。
+- **提交/上传实核**：眼睫试验、全套证据与铁律 15 已随 WIP commit `14cde6b` 推送到固定活动分支；核对时本地与 `origin/arena/aaf1408c-zhuochong` 均为 `14cde6b`。此次推进仍是未验收候选，不是生产发布。
