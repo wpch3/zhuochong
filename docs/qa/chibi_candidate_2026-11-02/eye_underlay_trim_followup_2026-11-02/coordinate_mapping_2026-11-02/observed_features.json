@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-02",
+  "branch": "arena/aaf1408c-zhuochong",
+  "repo_head_at_archive_start": "6d42dc4f9e2ac6bde241c5ca080c927b131988f1",
+  "candidate": {
+    "kind": "isolated 2px lash-pad rebuild; diagnostic only; not production",
+    "root_outside_repo": "/tmp/chibi-candidate-20261102",
+    "form": "chibi",
+    "character": "xiaoxun",
+    "rig_file_sha256": "525e987cbc9006d3faeb2ea232c09c9398431310d5f7e9dddc0b512971e6a64a",
+    "seg_head_png_sha256": "d081279cade4a44166c94df295d4f2a7c179b053782ae7ff6c669ef215fbbc3b",
+    "seg_head_2x_png_sha256": "38e3fb625bbe127acdb4a24a220abafbf3bafd982d794e8cda793bdad30bdacd",
+    "eye_l_carve_png_sha256": "5aa866699c7e6c619e83537f963e5e92e1667d9d32dac7bd3dc454cb1d55116c",
+    "eye_r_carve_png_sha256": "3dc7669aa1c862d2c9d6962f36134d4bd14bbaa0849cfeb4e570a5f62855b55b"
+  },
+  "rig_space_layout": {
+    "seg_head": {
+      "source_png_size_px": [567, 644],
+      "rig_pos": [140, 68],
+      "scale": 0.5,
+      "hires": 2
+    },
+    "eye_l": {
+      "patch_body_origin": [1, 399],
+      "patch_size": [264, 151],
+      "eye_base_rig_pos": [141, 467],
+      "carve_bbox_patch_local_xyxy_exclusive": [119, 8, 223, 95]
+    },
+    "eye_r": {
+      "patch_body_origin": [298, 399],
+      "patch_size": [265, 151],
+      "eye_base_rig_pos": [438, 467],
+      "carve_bbox_patch_local_xyxy_exclusive": [40, 0, 144, 94]
+    },
+    "layout_conclusion": "Patch origins agree with rig eye-base positions after adding seg_head rig_pos. This establishes static body/rig layout only; it is not a per-pixel screen transform under the current head-group pose."
+  },
+  "c_frame": {
+    "engine": "C headless real renderer, isolated candidate",
+    "canvas_px": [848, 1360],
+    "form": "chibi",
+    "scale": 1.0,
+    "physics": false,
+    "ambient": false,
+    "time_frozen_seconds": 0,
+    "frame_file": "c_engine_full_scale1.png",
+    "important_pose_caveat": "The screenshot-coordinate evidence comes from the archived initial capture. The capture did not persist a complete per-frame param snapshot. A later recapture at frozen t=0 saved fixed_pose_state.json; ParamAngleX still had builtin expr/effective 1.7798, so the head was not a strict neutral identity transform. Do not infer exact source pixels by subtracting rig_pos."
+  },
+  "observed_screen_windows": [
+    {
+      "id": "left_short_dark_dash",
+      "canvas_xyxy_exclusive": [289, 536, 299, 537],
+      "detector": "C full-frame RGB luma < 60; 8-neighbor component/run bounds; one-pixel-high dark run",
+      "also_visible_in": ["isolate_seg_head.png"],
+      "not_visible_in_eye_part_isolations": ["isolate_eye_l_base.png", "isolate_eye_l_lash.png"],
+      "source_pixel_mapping_confirmed": false
+    },
+    {
+      "id": "left_short_gray_dash",
+      "canvas_xyxy_exclusive": [292, 518, 302, 522],
+      "detector": "manual visual bounding window on nearest-neighbor C crop; not a threshold-derived mask",
+      "also_visible_in": ["isolate_seg_head.png"],
+      "not_visible_in_eye_part_isolations": ["isolate_eye_l_base.png", "isolate_eye_l_lash.png"],
+      "source_pixel_mapping_confirmed": false
+    },
+    {
+      "id": "right_outer_horizontal_dark_line",
+      "canvas_xyxy_exclusive": [555, 518, 570, 520],
+      "detector": "C full-frame RGB luma < 90; horizontal run bounds (row 518: x=[555,570), row 519: x=[555,569))",
+      "also_visible_in": ["isolate_seg_head.png"],
+      "not_visible_in_eye_part_isolations": ["isolate_eye_r_base.png", "isolate_eye_r_lash.png"],
+      "source_pixel_mapping_confirmed": false,
+      "ownership_caution": "It lies adjacent to the visible outer lash/sidehair edge; it may include intended eye or hair artwork."
+    },
+    {
+      "id": "right_lower_short_dark_edge",
+      "canvas_xyxy_exclusive": [553, 533, 557, 535],
+      "detector": "C full-frame RGB luma < 90; horizontal run bounds (row 533: x=[553,557), row 534: x=[553,556))",
+      "also_visible_in": ["isolate_seg_head.png"],
+      "not_visible_in_eye_part_isolations": ["isolate_eye_r_base.png", "isolate_eye_r_lash.png"],
+      "source_pixel_mapping_confirmed": false,
+      "ownership_caution": "This is on the neighboring sidehair/head edge and is not yet confirmed as an eye-removal target."
+    }
+  ],
+  "layer_test": {
+    "observation": "The marked features remain in the C seg_head-only render and are absent from the separately isolated eye base/lash renders.",
+    "supported_conclusion": "The marks are contributed by seg_head in these captures, not by eye base/lash as isolated parts.",
+    "not_proven": [
+      "exact original texture texels after the head-group transform/filtering",
+      "whether each marked pixel is unwanted rather than intentional eye/hair line art",
+      "whether a pixel belongs to seg_head, sidehair, or a shared overlap before isolation",
+      "a safe production carve/alpha mask"
+    ]
+  },
+  "acceptance": {
+    "root_cause_locked": false,
+    "production_assets_changed": false,
+    "production_rig_changed": false,
+    "candidate_visual_pass": false,
+    "candidate_qa_pass": false,
+    "next_gate": "Resolve deterministic head-group screen-to-source mapping and source-layer overlap before trying a narrow isolated patch."
+  }
+}

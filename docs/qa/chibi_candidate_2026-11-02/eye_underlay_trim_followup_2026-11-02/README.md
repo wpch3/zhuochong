@@ -34,8 +34,13 @@
 
 本人查看 `c_engine_face_baseline_vs_2px.png` 与 `c_engine_outer_corners_baseline_vs_2px.png`。上眼弧和脸部整体基本保持；新增 padding 没有消除右眼外角处仍可见的黑/灰色短切口，左右细节也未达到干净、稳定的 Chibi 眼缘要求。全身外观不能替代局部放大验收；因此**继续失败**。真实帧分别为 `c_engine_baseline_1px_fullbody.png` 与 `c_engine_lash_pad_2px_fullbody.png`。
 
+## 本轮坐标配准补档
+
+新增 `coordinate_mapping_2026-11-02/`，已把 C 全帧、`seg_head` 与眼底/上眼线/侧发隔离帧、左右坐标配准面板、屏幕 ROI 放大图、固定时刻复拍、观察坐标 JSON 和运行态说明复制入库。当前确认可见线段来自 `seg_head` 的 C 画面贡献，但**还未映射到精确源 texel，也未锁定与 sidehair/carve 的重叠归属**；红框不是修补 mask。文件内分开记录了 rig-space 部件原点与屏幕坐标，提醒 head group 的有效 `ParamAngleX` 非零，不能直接用 rig pos 当像素平移。没有改生产贴图/rig，也没有升级候选。
+
 ## 可复核文件
 
+- `coordinate_mapping_2026-11-02/README.md`、`observed_features.json` 和配套 PNG：本轮坐标证据、可复核的候选屏幕 ROI、方法与尚未解决的映射限制。
 - `rejected_lash_pad_2px.patch`、`rejected_alpha_restore_guard.patch`、`rejected_clean_head_eye_keep.patch`：只归档未采纳候选差异。
 - `full_rebuild_*_1px.log` / `full_rebuild_*_2px.log` / `full_rebuild_alpha_restore_guard.log` 与三个 `asset_qa_full_chain_*.json`：每次完整候选链与对应报告。
 - `candidate_seg_head_*`、`candidate_eye_parts.json`、`candidate_eyeline_parts_*.json`、socket/carve/lash 及 rig 实际引用的 `lash_up@2x`：隔离输出抽样。
