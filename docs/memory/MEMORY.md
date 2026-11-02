@@ -19,16 +19,16 @@
 > 规则：**每次工作开始先读本文件与自己上次的日志；结束时必须追加 `JOURNAL.md` 并更新本文件的"当前状态"。**
 > 用户的新要求**当轮就要写进 `REQUIREMENTS.md`**，不许只留在聊天里。
 
-更新：**2026-11-02（Chibi 参考审计与 T70.2 source-cuff seam WIP；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；全链旧基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
+更新：**2026-11-02（T70.2 source-cuff seam 与原像素 small-hand 提取 WIP；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；全链旧基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
 
 ## 最新状态（2026-11-02）
 
 - 本轮参考资料审计已归档：运行时、网格、遮罩与绑定方法资料足以继续自研；Chibi 自身全身差分稿、合规 `small/mitten` 手型设计板和组合验收仍不足。
-- 资料报告：`docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；索引见 `REFERENCE_NOTES.md` 第六十八批。续查袖口拆件/接缝检查方法已记第六十九批；A66.1 是参考审计，A66.2 是持续按铁律查方法、隔离制作并本人目视的流程提醒（A59 已被既有 Live2D 铁律占用）；执行任务 T70.1–T70.4。
+- 资料报告：`docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；canonical 索引是 `docs/REFERENCE_NOTES.md`（第六十八批审计、T70.2 cuff 方法和第七十一批官方拆件/来源资格复核）。A66.1 是参考审计，A66.2 是持续按铁律查方法、隔离制作并本人目视的流程提醒（A59 已被既有 Live2D 铁律占用）；执行任务 T70.1–T70.4。
 - 当前 Chibi 配置驱动隔离全链为 **1,342 项 / 33 fail / pass=false**。眼缘 underlay 局部工作不是全身通过；生产素材/rig 未因这次审计变更。
 - 最新静态自检：772 项、1 项既有生成器指纹失败（Teen 与 Chibi `rig.json` 过期）；其余 771 项通过。未为压绿门禁重生受保护生产 rig。`roadmap_status.py` 一致，`git diff --check` 通过。
 - 后续仍需按用户要求完成整身拆件、差分发型/兜帽、眼口、small/mitten 独立手型、服装遮挡、动作和真实 C 引擎组合验收；不得用 Teen 手件或红圈截图裁成生产贴图。
-- 本轮继续 Chibi `small/mitten` 腕口研究，目录 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。small 保留 Chibi 原像素；程序化轮廓按“禁程序化画手”铁律拒绝。AI trial 02/03 失败，04/05 分别作左右圆掌 WIP。新 pass 改用 source-derived cuff mask、source small-hand bbox、源手肤色采样，并清理 cuff 邻域重复 AI 腕线；本人看 8× seam 与全身板，静止条纹连续、未见明显空洞，双线减轻，但仍有微弱暖影带和线稿密度差。AI 手型仍未获批准、无动态/C 引擎验证，未接生产。原创合规 mitten 画稿、独立拆件、hand_style 与 wrist/gesture 组合验收仍未完成；生产 sprites/rig 未改。参考索引 `REFERENCE_NOTES.md` 第六十九批，候选与 SHA 在隔离 study 目录。
+- 本轮继续 Chibi `small/mitten` 腕口研究，目录 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。程序化轮廓按“禁程序化画手”铁律拒绝。AI trial 02/03 失败，04/05 仍是未批准 WIP；source-derived cuff mask 改善静止接缝但暖影/线稿差异尚存。新增 source eligibility audit：仓库没有 Chibi 专用 `design/hands`；generic `design/hands/*raw.png` 不合 Chibi 尺度/风格，惊讶 SVG 实指 Teen sprites，均排除。新增 `extract_chibi_small_hands_reference.py` 从 Chibi `body_full` ROI 精确保留原 RGB/alpha 提取左右可见 small hands，8×目视可辨源轮廓；袖下隐藏腕部未补，所以绝非 rig-ready hand parts。原创合规 mitten 画稿、独立拆件、hand_style 与 wrist/gesture 组合验收仍未完成；无动态/C 引擎验证，生产 sprites/rig/generator 未改。参考 `docs/REFERENCE_NOTES.md` 第七十一批；研究输出、metrics 与 SHA 在隔离 study 目录。
 
 > ### ★★★ 开工先读这四样（2026-10-25 加第四样）
 > 0. **`docs/ENGINE_AUDIT_2026-10-25.md`** —— 底层体检 + Live2D 工序对位 + P0/P1/P2 优化清单。

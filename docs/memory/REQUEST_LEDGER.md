@@ -1480,3 +1480,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 ### 2026-11-02 续接：继续实际完成整个 Chibi
 
 用户要求继续未完成任务并遵守铁律/基本事项。本轮先将活动分支从浅层 `43f5514` fast-forward 到远端已推送的 `90b25c3`，再推进 T70.2。新做 trial 02/03/04/05；02/03 拒绝，04/05 分别生成左右圆掌，经 Chibi 色卡拟合并复盖源 cuff 成隔离 WIP/全身预览，但腕口接缝与画风尚疑，两侧均不算合规完成或生产资产。程序化手草图仍被拒绝；无生产 sprite/rig 改动、无 C 引擎验收。文件/hash/限制见 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/README.md`、`mitten_ai_fit_metrics.json` 与 SHA 清单。
+
+### 2026-11-02 · 用户续令「继续未完成的任务」：T70.2 source-backed small-hand 基线（WIP）
+
+- 先核对当前活动分支/远端 SHA 与工作树，重读 WORKFLOW 铁律、T70.2、双手型 contract 和实际 source assets。
+- 继续实际工作：查官方 Production Flow / PSD / Pose Settings 方法；审计仓库里看似 hand source 的文件，确认泛化 magenta 手势图非 Chibi、surprised SVG 实指 Teen、Chibi 专用 `design/hands` 目录缺失，不用其像素。
+- 从 Chibi `body_full` 注册 ROI 精确保留左右可见 small-hand 原 RGB/alpha，输出隔离 source extraction board/cutouts/metrics；8×本人目视，发现源手轮廓可作为 small 真值基线，但隐藏 wrist under cuff 未画，不能当 rig part。仍缺合规 mitten 原稿；未改生产资源/rig/生成器，无 C 引擎验收。
+- 落点：study `extract_chibi_small_hands_reference.py`、`chibi_small_hand_source_extraction_board_wip.png`、metrics/SHA；canonical `docs/REFERENCE_NOTES.md` 第七十一批；T70.2/G66.53/MEMORY/JOURNAL。

@@ -1,0 +1,111 @@
+{
+  "status": "isolated_source_pixel_reference_wip_not_production",
+  "method": "select the measured Chibi source warm-skin connected component and original-alpha contour pixels within a 3px neighborhood; exclude source cuff mask; preserve selected RGB/alpha exactly; no drawing, recoloring, or resizing of saved cutouts",
+  "limitations": [
+    "The hidden wrist continuation under the cuff is not present in body_full and was not invented; this is not a rig-ready hand part.",
+    "Selection is a color/component diagnostic and must be visually checked for missing or extraneous contour pixels.",
+    "This documents only the existing small-hand source, not original mitten artwork or approval of AI mitten trials.",
+    "No production sprite, rig, generator, or engine was changed."
+  ],
+  "sources": {
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    },
+    "source_crop_manifest": {
+      "path": "source_crop_manifest.json",
+      "sha256": "44b1c2081dbed29c8ef98ea10f6f1e70d2b378a68b2f6d290a5dfaf2d6f03a1a"
+    }
+  },
+  "hands": {
+    "left": {
+      "cuff_core_px": 2208,
+      "cuff_filled_px": 2301,
+      "cuff_cover_px": 2440,
+      "source_hand_skin_component_px": 843,
+      "source_hand_bbox_xyxy_exclusive_with_1px_outline_margin": [
+        19,
+        32,
+        64,
+        80
+      ],
+      "source_hand_bbox_size": [
+        45,
+        48
+      ],
+      "body_full_roi_xyxy_exclusive": [
+        43,
+        846,
+        132,
+        938
+      ],
+      "source_hand_bbox_body_full_xyxy_exclusive": [
+        60,
+        876,
+        109,
+        928
+      ],
+      "extraction_crop_xyxy_exclusive_with_3px_source_neighborhood": [
+        17,
+        30,
+        66,
+        82
+      ],
+      "selected_source_pixel_count": 1419,
+      "saved_cutout_size": [
+        49,
+        52
+      ],
+      "saved_cutout_sha256": "77e265585ab738647be2a27b914dc8c562fa5f63a09f95470aaceb1ed7b1a950",
+      "pixel_operation": "exact source pixels and alpha retained inside selected mask; all other cutout pixels transparent",
+      "source_rgba_identity_verified_after_png_round_trip": true
+    },
+    "right": {
+      "cuff_core_px": 2211,
+      "cuff_filled_px": 2322,
+      "cuff_cover_px": 2498,
+      "source_hand_skin_component_px": 897,
+      "source_hand_bbox_xyxy_exclusive_with_1px_outline_margin": [
+        27,
+        34,
+        72,
+        80
+      ],
+      "source_hand_bbox_size": [
+        45,
+        46
+      ],
+      "body_full_roi_xyxy_exclusive": [
+        435,
+        846,
+        524,
+        938
+      ],
+      "source_hand_bbox_body_full_xyxy_exclusive": [
+        460,
+        878,
+        509,
+        928
+      ],
+      "extraction_crop_xyxy_exclusive_with_3px_source_neighborhood": [
+        25,
+        32,
+        74,
+        82
+      ],
+      "selected_source_pixel_count": 1382,
+      "saved_cutout_size": [
+        49,
+        50
+      ],
+      "saved_cutout_sha256": "3ceca5e04153bf10b669645c0f73bf0b0d8b56edb44013c8830af53b3b43a6eb",
+      "pixel_operation": "exact source pixels and alpha retained inside selected mask; all other cutout pixels transparent",
+      "source_rgba_identity_verified_after_png_round_trip": true
+    }
+  },
+  "files": {
+    "chibi_small_left_source_pixels_wip.png": "77e265585ab738647be2a27b914dc8c562fa5f63a09f95470aaceb1ed7b1a950",
+    "chibi_small_right_source_pixels_wip.png": "3ceca5e04153bf10b669645c0f73bf0b0d8b56edb44013c8830af53b3b43a6eb",
+    "chibi_small_hand_source_extraction_board_wip.png": "13bcb42c24b694e15cdb3888b633cff458010819fb6c52facd1f32124a8bd575"
+  }
+}

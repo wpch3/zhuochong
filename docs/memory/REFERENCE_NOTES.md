@@ -83,3 +83,5 @@
 - **补充社区分层说明：夏水かなた《Supplementary Guide for Live2D Part Separation (For Illustrators)》**，<https://note.com/kanata_natsumi/n/n7f96b96b6e26?hl=en>。本文明确是作者个人偏好，且引用官方分层手册；适用原则是被遮住的部件仍补足填色与线稿，以免运动露洞。这里只用于遮挡完整性，不把其示例图作 Chibi 手型素材。
 - **本项目落地与边界**：旧拟合脚本的硬编码 8 点边在放大图中与左右源 cuff 轮廓不一致，已在隔离研究中改为由 Chibi `body_full` teal + 中性乳白条纹连通区域取 sleeve/cuff mask，保存原袖口像素；从实际 `small` 手部肤色区域量 bbox 作等比缩放/位置拟合；AI 手在 cuff 下重叠，仅清理 cuff 邻域里的重复 AI 腕线。脚本 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/fit_mitten_source_cuff_trial.py`，证据 `mitten_cuff_seam_detail_wip.png` 与 `source_cuff_mask_diagnostic_wip.png`。
 - **观察/判定**：本人已看 8× seam detail 和全身板：源袖口条纹/轮廓连续，旧重复腕线减少，静止图未见明显透明缺口；仍有轻微暖色腕影与线稿细节密度差异。候选仍是未批准的 AI 来源手型，动态/C 引擎 seam 未测，未接生产。任何后续认可都须先过艺术风格/左右形状复核，再做独立手件与真实 C 渲染。
+
+> **索引定位更正（2026-11-02）**：本文件保留本轮手型方法研究的交接摘要；项目 canonical `docs/REFERENCE_NOTES.md` 已追加第七十一批，包含官方 Production Flow / PSD / Pose Settings 的核对、Chibi 来源资格审计与 exact-pixel small-hand 提取结论。后续对外/正式引用以 canonical 文件为准。

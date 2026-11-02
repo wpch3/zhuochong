@@ -36,9 +36,18 @@ After reviewing the old fit board at enlarged scale, I found the former `CUFF_ED
 
 The previous hand-entered-edge study and negative/diagnostic artifacts remain separate from the current candidate; do not reuse the old candidate as production input.
 
+## 2026-11-02 source eligibility and original `small` hand extraction
+
+A source audit found that `characters/xiaoxun/forms/chibi/design/hands/` is absent in this checkout. The only existing `body_full`-registered Chibi small hands are the visible hands in the original Chibi body/sheet. The unrelated `characters/xiaoxun/design/hands/hand_open_raw.png`, `hand_heart_raw.png`, and `hand_surprised_raw.png` are large isolated illustrations on a magenta background and do not match the tiny Chibi hand proportions/style; no pixels from them were reused. More decisively, `hand_surprised_l.svg` and `_r.svg` are just wrappers around `characters/xiaoxun/forms/teen/sprites/hand_l_surprised@2x.png` and `hand_r_surprised@2x.png`, so they are explicitly excluded. `design/pose_ref/wave_out.png` and `wave_up.png` are whole-body pose references, not Chibi hand-piece art; they are not cut or used as hand pixels.
+
+To lock the actual Chibi `small` visual truth, `extract_chibi_small_hands_reference.py` selects the warm-skin component plus nearby existing contour/AA pixels from each registered ROI, excludes the source cuff, and copies only original `body_full` RGB/alpha into isolated study cutouts. The saved cutouts are not resized or recolored. The board `chibi_small_hand_source_extraction_board_wip.png` was reviewed at 8×: the visible source hand contours are retained; the top wrist edge ends at the existing cuff boundary because hidden wrist continuation is not present in `body_full`. No pixels were invented. This is **not** a rig-ready `hand_*_small` part and does not create the missing original mitten art; the AI trials remain unapproved.
+
+The source pixels, per-side ROIs/bounds, operation limits, and SHA-256 values are in `chibi_small_hand_source_extraction_metrics.json`; cutouts are `chibi_small_left_source_pixels_wip.png` and `chibi_small_right_source_pixels_wip.png`. This is an isolated source-truth study only; no production asset, rig, generator, or engine changed.
+
 ## 文件
 
 - `build_hand_style_study.py`：生成 Chibi 原像素观察窗与已拒绝的几何示意。
-- `fit_mitten_ai_trial.py`：只对 AI 试稿做隔离的 alpha 分割/配色/套准，不绘制手、不写生产路径。
-- `source_crop_manifest.json`、`study_metrics.json`、`mitten_ai_fit_metrics.json`：来源、坐标、产物 SHA 与门槛说明。
-- `SHA256SUMS.txt`、`mitten_ai_fit_SHA256SUMS.txt`：两组 WIP 文件校验清单。
+- `fit_mitten_ai_trial.py` / `fit_mitten_source_cuff_trial.py`：仅对 AI 试稿做隔离分割/配色/套准，不绘制手、不写生产路径。
+- `extract_chibi_small_hands_reference.py`：从 Chibi `body_full` 选择原有可见 small-hand 像素，精确保留源 RGB/alpha，不补画隐藏腕部。
+- `source_crop_manifest.json`、`study_metrics.json`、`mitten_ai_fit_metrics.json`、`mitten_source_cuff_fit_metrics.json`、`chibi_small_hand_source_extraction_metrics.json`：来源、坐标、产物 SHA 与门槛说明。
+- `SHA256SUMS.txt`、`mitten_ai_fit_SHA256SUMS.txt`、`mitten_source_cuff_SHA256SUMS.txt`、`chibi_small_hand_source_SHA256SUMS.txt`：WIP 文件校验清单。
