@@ -7974,4 +7974,5 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **实际核查**：用 GitHub API 搜索 `live2d`、`Live2D SDK`、`2D puppet animation/rigging`、`chibi Live2D`；读取 Cubism Native Samples 的 README/LICENSE/NOTICE 与模型树、Inochi Creator PSD/automesh 工作流、Iki `AUTO-RIG.md`/editor/plugin 文档、Umamo README/LICENSE。未导入第三方代码或图片。
 - **使用边界**：Cubism samples 对照装配结构但按 Core/模型许可分开核读；Inochi Creator 用于 PSD/网格编辑流程学习；Iki 的测量/rig-plan/report、clamp/refusal、artist/critic 回路可作方法参考；Umamo GPL-3 且 alpha，仅作备份项目 UI 流程探索，不作依赖/不并入。未找到可安全替代 Chibi 手件的外部图像素材。
 - **归档/编号**：完整报告 `docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；索引 `REFERENCE_NOTES.md` 第六十八批；新需求是 A66.1（A59 已用于 2026-10-30 Live2D 铁律，避免重复编号）；任务 T70.1–T70.4。路线图进度以 `roadmap_status.py --fix` 核对。
+- **验证与门禁**：`python tools/roadmap_status.py` 显示 ROADMAP 与 TASKS 一致，`git diff --check` 通过。最终 `python tools/selfcheck_repo.py --quiet` 为 772 项、1 项失败（Chibi 与 Teen 的 `rig.json` 生成器指纹过期）；其余 771 项通过。未为消除旧指纹而重生受保护生产 rig，这与本轮文档审计无关，另需按素材/生成链门禁处理。
 - **下一步仍是制作**：以 Chibi 自有 design sheet/body_full/anchors 先做全身差分和 small/mitten 手型板，再做独立 `hand_style` 并与 wrist/gesture 分轴；随后覆盖衣服、发型/兜帽、表情和动作的真实 C 引擎矩阵。当前全链仍 1,342 项/33 fail/`pass=false`，不得称全身验收。

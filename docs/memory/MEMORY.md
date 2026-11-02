@@ -26,6 +26,7 @@
 - 本轮参考资料审计已归档：运行时、网格、遮罩与绑定方法资料足以继续自研；Chibi 自身全身差分稿、`small/mitten` 手型设计板和组合验收仍不足。
 - 资料报告：`docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；索引见 `REFERENCE_NOTES.md` 第六十八批；需求编号 A66.1（A59 已被既有 Live2D 铁律占用）；执行任务 T70.1–T70.4。
 - 当前 Chibi 配置驱动隔离全链为 **1,342 项 / 33 fail / pass=false**。眼缘 underlay 局部工作不是全身通过；生产素材/rig 未因这次审计变更。
+- 最新静态自检：772 项、1 项既有生成器指纹失败（Teen 与 Chibi `rig.json` 过期）；其余 771 项通过。未为压绿门禁重生受保护生产 rig。`roadmap_status.py` 一致，`git diff --check` 通过。
 - 后续仍需按用户要求完成整身拆件、差分发型/兜帽、眼口、small/mitten 独立手型、服装遮挡、动作和真实 C 引擎组合验收；不得用 Teen 手件或红圈截图裁成生产贴图。
 
 > ### ★★★ 开工先读这四样（2026-10-25 加第四样）
