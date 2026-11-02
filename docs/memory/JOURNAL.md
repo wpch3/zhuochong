@@ -7965,3 +7965,13 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **进一步手工对因（未采纳）**：保存 head 从 eyeline→mouth cut→baked residue→hair residue→`clean_head_backing` 阶段图，看到最后一步 alpha 变动 9,664px（左右 eye-patch 带各 1,126/1,613px）；这提示清理顺序/边界值得查，但不证明因果。临时 eye-protect 变体离线额外保留 935px（眼带 305/630），黑色短线仍见且未经 C 验证，因此整段 patch 作为 rejected proposal 归档，不进入正式工具。
 - **完整全身/项目回归**：三份不同隔离完整链均 1,342 项/33 fail；失败面仍覆盖拼合、躯干洞、鞋、嘴、闭眼、腮红、发型/遮挡、腕垫片等。当前工作仓库 `make -s test`：2,638 通过、0 失败；未跑 2 万帧 soak。`make -s selfcheck` 为 772 项/1 fail，唯一失败是现有正式 Teen 与 Chibi `rig.json` 生成器指纹过期；没有为了静态闸去重生/改写未通过 QA 的生产 rig。QA 统计口径不和历史的 1,342/34、1,342/33 定向、1,310/32 聚焦混算。
 - **归档与下一步**：`docs/qa/chibi_candidate_2026-11-02/eye_underlay_trim_followup_2026-11-02/` 包含三份全链日志/QA、rejected patches、候选眼部件、真实 C before/after、阶段 alpha/source mask 诊断与 SHA 清单。本人判断眼部门禁仍失败；下一步要把真实 C 残留坐标精确映射到 Chibi source 和 rig 部件再做最窄试验。T67.69 双手型、缺件、衣物遮挡、差分发型/兜帽、动作矩阵与全身零失败验收仍未完成；不接生产。
+
+## 2026-11-02｜Chibi 参考资料充分性审计与任务化（第六十六问）
+
+用户要求评估参考项目和资料是否够用，主动搜索需要的学习材料/项目/方法并归档。
+
+- **审计判断**：引擎、网格、遮罩、参数/物理与运行时装配的技术资料够继续自研；Chibi 自身的全身差分稿、`small/mitten` 手型板及组合验收不足。仓内 Chibi 仍是 `seg_arm_l/r` 整段含手，无独立 Chibi hand part / `hand_style`。
+- **实际核查**：用 GitHub API 搜索 `live2d`、`Live2D SDK`、`2D puppet animation/rigging`、`chibi Live2D`；读取 Cubism Native Samples 的 README/LICENSE/NOTICE 与模型树、Inochi Creator PSD/automesh 工作流、Iki `AUTO-RIG.md`/editor/plugin 文档、Umamo README/LICENSE。未导入第三方代码或图片。
+- **使用边界**：Cubism samples 对照装配结构但按 Core/模型许可分开核读；Inochi Creator 用于 PSD/网格编辑流程学习；Iki 的测量/rig-plan/report、clamp/refusal、artist/critic 回路可作方法参考；Umamo GPL-3 且 alpha，仅作备份项目 UI 流程探索，不作依赖/不并入。未找到可安全替代 Chibi 手件的外部图像素材。
+- **归档/编号**：完整报告 `docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；索引 `REFERENCE_NOTES.md` 第六十八批；新需求是 A66.1（A59 已用于 2026-10-30 Live2D 铁律，避免重复编号）；任务 T70.1–T70.4。路线图进度以 `roadmap_status.py --fix` 核对。
+- **下一步仍是制作**：以 Chibi 自有 design sheet/body_full/anchors 先做全身差分和 small/mitten 手型板，再做独立 `hand_style` 并与 wrist/gesture 分轴；随后覆盖衣服、发型/兜帽、表情和动作的真实 C 引擎矩阵。当前全链仍 1,342 项/33 fail/`pass=false`，不得称全身验收。

@@ -4,7 +4,14 @@
 > 规则：补上一项就改状态并写日期，不删行（留痕）。编号与 `TASKS.md` 对齐。
 > 配套：`REQUIREMENTS.md`（要什么）、`WORKFLOW.md`（怎么干）、`PRODUCT_PLAN.md` 第四/八节（原始缺口清单）。
 
-更新：2026-10-11 ｜ 分支：`arena/cc642f66-zhuochong`
+历史基线：2026-10-11 ｜ 原始分支：`arena/cc642f66-zhuochong`
+
+## 2026-11-02 Chibi 参考资料缺口增补
+
+- **方法资料**（拆件、网格、遮罩、物理、C 引擎验证）：够继续自研；见 `CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md` 与 `REFERENCE_NOTES.md` 第六十八批。
+- **Chibi 美术真值**：不足。待完成自己的 `small/mitten` 手型板与全身差分稿；不能用 Teen 手件或未授权开源模型图替代。
+- **端到端验收**：尚无 Chibi `hand_style × gesture × wrist angle × outfit` 状态矩阵；现有手部仍并在 `seg_arm_l/r`。资产与 rig/运行时组合工作仍未完成。
+- 本条为记忆增补，不把任何外部项目升级为生产依赖；`GAPS.md` 的历史表格仍需按新基线分批校准。
 
 ---
 

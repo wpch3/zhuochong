@@ -53,3 +53,16 @@
 4. **不抄的部分**：他们的模型都靠人在 Cubism/编辑器里手工绑；
    我们这条"原画 → 自动切件 → 自动绑骨 → 自动验收"的链路是自己的护城河，
    继续沿 `docs/SHEET_PIPELINE.md` 走。
+
+## 4. Chibi 视觉生产需要的作者工作台参考（2026-11-02）
+
+这一轮补看了运行时之外的**制作/作者侧**项目。许可证、限制与本项目如何借鉴的完整表格见 `docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`，历史参考索引见 `docs/memory/REFERENCE_NOTES.md` 第六十八批。
+
+| 项目 | 新核实的价值 | 使用边界 |
+|---|---|---|
+| [Live2D/CubismNativeSamples](https://github.com/Live2D/CubismNativeSamples) | Haru 样例同时包含 model3、physics3、pose3、motion3、exp3 等，是运行时模型装配的官方参照 | Core 单独专有许可；样例模型另有 Free Material License/单模型条款；只查结构，不拆图当小寻素材 |
+| [Inochi2D/inochi-creator](https://github.com/Inochi2D/inochi-creator) | BSD-2 项目；PSD 导入、自动网格、轮廓与网格编辑工作流，可对照艺术家怎样调 mesh | 另一个 `.inp` 格式/运行时，不把其代码或资产迁入 C 核心 |
+| [zeikar/iki](https://github.com/zeikar/iki) | MIT、早期开放 puppet；层角色表、rig-plan/report、量测与越界 refusal，以及 artist/critic 视觉闭环 | 仅借鉴可审计报告、几何边界与盲评方法；自有格式/图像生成结果需独立审授权 |
+| [umamoorg/umamo](https://github.com/umamoorg/umamo) | GPL-3、alpha 阶段；声称 `.cmo3/.moc3` 导入导出，可观察建模 UI | 只用备份副本探索；不依赖、不并入 GPL 代码，README 警示项目可能损坏 |
+
+结论：这些项目补强了 rig 编辑和运行时比较，但**没有补出小寻 Chibi 的手型源图**。当前素材真值仍须来自本项目自己的 Chibi 设计板，不能以外部模型图或 Teen 手件替代。

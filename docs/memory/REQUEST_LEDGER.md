@@ -1468,3 +1468,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 实际指标：聚焦 `check_assets.py` 退出码 1，1310 项 / 32 fail，`design_iou=0.9934918477598998`；这不是 27 步全链，与 1342/34、1342/33 不可直接相减。所有候选资产与实拍只放 QA 子目录，正式 Chibi sprites/rig 未改。
 - 仓库证据：`docs/qa/chibi_candidate_2026-11-01/eye_lash_pipeline_trial_2026-11-01/`；含 C 引擎 before/after 4×、全身帧、隔离层、候选左右 @2x、JSON、QA 明细、patch 与 SHA256SUMS。
 - **上传核验**：眼睫实拍、QA/patch/hash 及新铁律已随 commit `14cde6b` 推送到当前活动分支；本地/远端 SHA 相同。后续只会再提交本次收尾状态校正，不会把 WIP 改述为已验收。
+
+### 第六十六问（2026-11-02）「目前参考项目和资料是否足够」
+
+**用户要求**：评估现有参考项目/资料是否足够；不足处要主动搜索需要的学习资料、项目和方法，并保存进仓库记忆区。
+
+**调查与结论**：核查记忆索引、开源项目比较及拆件/套准文档；GitHub API 搜索并读取 Cubism Native Samples、Inochi Creator、Iki、Umamo 的项目文档和许可证。引擎/网格/遮罩/物理方法足够继续自研；Chibi 全身/手型视觉真值不足。未找到可直接取代小寻 Chibi 手件的授权素材；Teen 件不可代用。
+
+**落点**：审计报告、`REFERENCE_NOTES.md` 第六十八批、需求 `REQUIREMENTS.md` A66.1、任务 `TASKS.md` T70.1–T70.4、路线图 T70。资料归档不等于 Chibi 制作/验收完成。

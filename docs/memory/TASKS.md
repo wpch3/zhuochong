@@ -1500,3 +1500,12 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | G79-SOCIAL | `mod_proactive_soul` 主动社交陪伴 | [ ] | Internal Drive + 本地作息记忆只生成候选；桌面/聊天渠道、联系人、时段、频率和内容逐项授权；48 小时离线限频/勿扰/去重演练通过；默认不联网、不发送，撤销清空队列。 |
 
 **G79 总闸：** 上述四个 `mod_*` 模块必须先取得主人针对具体模块与 scope 的显式审批；授权可撤销、可审计、默认拒绝；一次批准不外推到其他设备、账号、渠道或能力。当前为完整立档，不是实施授权。`BACKLOG_AUTONOMY.md` 是四模块的详细路线与验收标准，`ROADMAP.md` 是阶段总览。
+
+### T70（2026-11-02）：Chibi 专属美术真值与手型维度
+
+| 编号 | 事 | 状态 | 说明 |
+|---|---|---|---|
+| T70.1 | **参考资料充分性审计与缺口归档** | [x] | GitHub 资料/项目核验、许可证边界、Chibi 视觉资料不足项与方法写入 `docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`、`REFERENCE_NOTES.md` 第六十八批；未导入外部代码/图像 |
+| T70.2 | **Chibi 自有全身/手型参考板** | [ ] | 以 `design_sheet_chibi.png`、Chibi `body_full`、anchors 为真值，先画全身一致差分板与 `small/mitten` 袖口-手腕放大板；保留 small 既有设计，新 mitten 重画。禁止 Teen hand、未授权图片裁贴；按 `SHEET_PIPELINE.md` 套准，hash/差分入库后再切件 |
+| T70.3 | **独立 `hand_style` 与手势/腕运动解耦** | [ ] | 当前 `seg_arm_l/r` 含手、无独立 Chibi hand parts。先审现有 poses/variant 组合能力，再设计最小声明：hand_style 只选 small/mitten；wrist angle 与 open/heart gesture 独立驱动。覆盖 `hand_style × gesture × wrist angle × outfit`，以静止拼合、接缝、角度扫、高分辨率及真实 C 引擎验收；通过前不宣称完成 |
+| T70.4 | **继续全身 Chibi 失败项与组合验收** | [ ] | 从最新隔离全链 1342/33 失败 JSON 起步，按素材/rig/形变/动作分类，不跨快照相减 QA；完成发型/兜帽、表情、服装遮挡、hand-style 与动作交叉状态的真实 C 帧验收 |

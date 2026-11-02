@@ -62,3 +62,14 @@
   参考切片及真实渲染证据见 `docs/qa/live2d_teen_hood_inner_shadow_detail_2026-10-31.png`。
   状态切换验收必须先查 `/api/info.json`，再抓帧；曾出现文件名标为 up/down、实际两张都戴帽的误存，
   已废弃该批截图并重拍。
+
+## 第六十八批（第六十六问：Chibi 资料充分性与缺口检索，2026-11-02）
+
+**结论**：引擎/网格/遮罩/动作方法资料够继续自研；Chibi 专属视觉真值不足，特别是独立 `small/mitten` 手件稿、全身差分板及跨“手型×手势×腕角×服装”验收。完整报告：`docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`。
+
+- <https://github.com/Live2D/CubismNativeSamples>：用于对照 model3/moc3/physics3/pose3/motion3 装配；LICENSE 区分 Open Software、Cubism Core proprietary 和模型各自条款，样例图不自动可复用。
+- <https://github.com/Inochi2D/inochi-creator> / <https://github.com/Inochi2D/inochi2d>：BSD-2-Clause；PSD、自动网格、网格编辑工作流可比较，不迁移实现/格式。
+- <https://github.com/zeikar/iki>：MIT、检索时 early-stage；读 `packages/editor/AUTO-RIG.md`、README、插件说明。可借鉴 rig-plan/report、测量、越界 clamp/refusal、artist/critic 复核；不复制代码、提示词或角色图。
+- <https://github.com/umamoorg/umamo>：GPL-3.0、alpha；仅在备份副本学习 UI 工作流，不并入项目或作为稳定依赖。
+
+检索词为 `live2d`、`Live2D SDK`、`2D puppet animation/rigging`、`chibi Live2D`。未找到许可清晰且风格匹配、可直接作为小寻 Chibi 手件的素材。落实：以 Chibi 自有 design sheet/body_full/anchors 为真值，先画整身与手型差分板，拆件后将 `hand_style` 与 wrist angle、open/heart gesture 分轴；按状态矩阵在真实 C 引擎验收。
