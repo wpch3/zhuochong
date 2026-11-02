@@ -30,6 +30,7 @@
 - 后续仍需按用户要求完成整身拆件、差分发型/兜帽、眼口、small/mitten 独立手型、服装遮挡、动作和真实 C 引擎组合验收；不得用 Teen 手件或红圈截图裁成生产贴图。
 - 本轮继续 Chibi `small/mitten` 腕口研究，目录 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。程序化轮廓按“禁程序化画手”铁律拒绝。AI trial 02/03 失败，04/05 仍是未批准 WIP；source eligibility audit 确认 Chibi 专用 `design/hands` 缺失，generic `design/hands/*raw.png` 不合 Chibi 尺度/风格、惊讶 SVG 实指 Teen sprites，均排除。`extract_chibi_small_hands_reference.py` 从 Chibi `body_full` ROI 精确保留原 RGB/alpha 提取左右可见 small hands，8×目视可辨源轮廓；袖下隐藏腕部未补，绝非 rig-ready part。继续测试完整 AI full-body trial 06 的手部像素，左右 cutout 各 45×43，按 source small boxes 拟合并通过原 cuff 2,440/2,498 像素 RGBA identity 断言；4×目视仍见腕口空隙/不均、暖浅 seam 与线稿差异，判为 shape-only concept，fit 未通过。原创合规 mitten 画稿、独立拆件、hand_style 与 wrist/gesture 组合验收仍未完成；无动态/C 引擎验证，生产 sprites/rig/generator 未改。参考 `docs/REFERENCE_NOTES.md` 第七十一/七十二批；研究输出、metrics 与 SHA 在隔离 study 目录。
 
+- **T70.2 下一步解除阻塞**：新增 `chibi_mitten_original_art_handoff_brief_2026-11-02.md`，把 body_full 注册 ROI/小手框、cuff 真值、隐藏腕部、左右独立层、禁止来源与审核交付包整理给用户/授权美术；这是规格单而非手稿或批准，不代替可见画稿。
 - **T70.2 时间预估（估算，不是承诺）**：当前已可查看 trial 06 source-cuff fit WIP，但不是可用成品。复核实际 Chibi sprites 只有 `seg_arm_l/r.png`，无 hand parts / `hand_style`；`make_hand_parts.py` 对 Chibi 明确只出腕垫片。未获批的 Chibi mitten 全手稿/袖下隐藏腕部是日历阻塞项，缺稿时无法估日期。手稿获批到首个隔离 C 引擎双向切换约 2–4 个专注工作日，完整组合矩阵约再加 1–3 天；不包括全身 QA 其余问题。细分估算在 hand-study README。
 
 > ### ★★★ 开工先读这四样（2026-10-25 加第四样）

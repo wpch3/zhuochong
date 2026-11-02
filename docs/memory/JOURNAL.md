@@ -8031,3 +8031,9 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **实际代码/素材审计**：当前 Chibi sprites 里只有 `seg_arm_l.png` / `seg_arm_r.png`；没有独立 `hand_l/r_small`、`hand_l/r_mitten`，也没有 `hand_style` rig binding。`tools/make_hand_parts.py` 显式对 Chibi 把 `poses=()`，注释为 Chibi 仅腕垫片且 small/mitten 等待专属来源；它不是只差接线。仓内也无获批、含袖下 hidden-wrist 的完整 Chibi mitten 原画。AI trial 06 只可作 shape-only 提示，fit board 中的 seam 不合格。
 - **时间答复依据**：当前能马上看到的是 hand-study WIP board，但不能把它称为成效验收。因为 artwork 是前置输入，未提供/批准合规原画前，日历 ETA 无法估。获得完整且获准的左右手稿后，估约 2–4 个专注工作日到隔离 C 引擎首个双向 `hand_style` 可见切换：约半天至一天半 source-aligned parts + hidden wrist/cuff 静态目视，一至两天隔离 generator/rig selector 与一次修订，再半天至一天 C smoke。完整手型×手势×腕角×服装/发型矩阵再约 1–3 天，并可能根据目视失败增加修订；不包括用户/美术等待和全 Chibi 其它 QA/缺件。
 - **决定/落点**：无新的 AI 试稿或程序化手绘；不碰生产 assets/rig/generator、不冒充 C engine acceptance。把有条件的工程估算和未知的原画等待期写入 hand-study README 与 MEMORY；T70.2 仍开放。
+
+## 2026-11-02｜T70.2：原画手件交接规范（非画稿）
+
+- **真值与尺寸**：复核 registered `body_full` 来源及 metrics；左 small ROI `[43,846,132,938]` / hand box 45×48，右 `[435,846,524,938]` / 45×46；source cuff masks 2,440/2,498 selected pixels。现有源纹理隐藏 cuff 下 wrist 不存在；现有 AI trial06 fit 已明确目视不通过。
+- **实际推进**：新增 `chibi_mitten_original_art_handoff_brief_2026-11-02.md`，把完整全身先行、Chibi 角色/服装/cuff 不变、左右独立 hand layers、hidden-wrist insertion、source small 尺寸/调色参考、排除 AI/Teen/截图像素、用户/授权美术确认和 C 引擎验收顺序写清。它不生成/描摹任何手，也不宣称获批；目的是把唯一 blocker 转成可执行的合规原画交付条件。
+- **当前状态与估算**：现成可见的是候选 WIP；合规 art 未到/未批时 calendar ETA unknown。获批完整原画后估 2–4 专注工作日到隔离 C 引擎首个双向切换，完整矩阵另需 1–3 天，见 study README。没有改 production assets/rig/generator，也没有运行或声称 C-engine acceptance。

@@ -1502,3 +1502,8 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 实际检查 Chibi 素材和生成链：现有 Chibi 只有合并的 `seg_arm_l/r`，没有 hand part 或 `hand_style`；`make_hand_parts.py` 明确对 Chibi 不生成 pose hands。approved mitten/hidden-wrist art 缺失，因此不是单纯的代码排期问题。
 - **当前可见**：hand-only 试验板现在可看，但 trial 06 fit seam 目视未通过，仍只属 shape concept。**日历等待合规原画/批准期间不可预测**；从完整原画获批开始，估约 2–4 个专注工作日做到隔离 C 引擎首个双向切换，再用约 1–3 天覆盖完整组合矩阵（并留修订时间）。此为条件式工程估算，不是承诺，也不包含全身 Chibi 其余 QA。
 - 细分、依赖与门槛在 hand-study README；没有为追求速度使用 Teen/截图手或脚本绘制手，没有生产资源变更。
+
+### 本轮实际续做：创建 Chibi mitten 原画 handoff brief（非画稿）
+
+- 经核实当前只有 `seg_arm_l/r`，Chibi generator 明确不输出独立 mitten 手件；缺的不是程序化图形/参数，而是合规、含 hidden-wrist 的 Chibi 原画与批准。
+- 将已登记 ROI、small-hand measured bounds、cuff exact-source 约束、左右独立层、袖下补全、禁止 AI/Teen/截图像素、审阅与 C-engine 后续门槛整理进 `chibi_mitten_original_art_handoff_brief_2026-11-02.md`，供下一次合规创作直接用。此文件是文字 handoff brief，不是新增手稿/艺术批准/生产进展。

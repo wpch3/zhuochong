@@ -53,6 +53,7 @@ Trial 06 was first reviewed as a complete AI-generated figure against `design_sh
 - The candidate board `chibi_mitten_trial_06_source_cuff_candidate_board_wip.png` and preview `body_full_ai_trial06_source_cuff_preview_wip.png` were opened and visually inspected. The shapes read as rounded mittens and can inform silhouette direction, but the fitted wrist boundary still shows uneven transparent slivers/visible transition mismatch—most on the left—plus a warm/pale seam band and outline-density/style mismatch. So trial 06 is **shape-only concept reference**, not a reusable/source-aligned hand piece, not approved art, and not a successful cuff-fit acceptance.
 - The trial-06 full-body concept is intentionally not replaced by the source body: only hand silhouettes were tested against source sizing/cuffs; AI body/cuff/outfit pixels were excluded. No hidden wrist continuation was invented. No production sprite, rig, generator, or C-engine state was changed or tested.
 - Full provenance, metrics and per-file hashes: `mitten_trial_06_source_cuff_metrics.json`, `fit_mitten_full_body_trial_06.py`, and `mitten_trial_06_source_cuff_SHA256SUMS.txt`.
+- To unblock compliant art rather than keep tweaking the rejected AI fit, `chibi_mitten_original_art_handoff_brief_2026-11-02.md` records source measurements, hidden-wrist/cuff requirements, prohibited sources, and the approval package. It is a written handoff brief—not a hand drawing, design approval, or source asset.
 
 ## 预计看到可验收进展的时间（粗估，依赖门槛）
 
@@ -65,5 +66,6 @@ Trial 06 was first reviewed as a complete AI-generated figure against `design_sh
 - `build_hand_style_study.py`：生成 Chibi 原像素观察窗与已拒绝的几何示意。
 - `fit_mitten_ai_trial.py` / `fit_mitten_source_cuff_trial.py`：仅对 AI 试稿做隔离分割/配色/套准，不绘制手、不写生产路径。
 - `extract_chibi_small_hands_reference.py`：从 Chibi `body_full` 选择原有可见 small-hand 像素，精确保留源 RGB/alpha，不补画隐藏腕部。
-- `source_crop_manifest.json`、`study_metrics.json`、`mitten_ai_fit_metrics.json`、`mitten_source_cuff_fit_metrics.json`、`chibi_small_hand_source_extraction_metrics.json`：来源、坐标、产物 SHA 与门槛说明。
+- `source_crop_manifest.json`、`study_metrics.json`、`mitten_ai_fit_metrics.json`、`mitten_source_cuff_fit_metrics.json`、`chibi_small_hand_source_extraction_metrics.json`、`mitten_trial_06_source_cuff_metrics.json`：来源、坐标、产物 SHA 与门槛说明。
+- `chibi_mitten_original_art_handoff_brief_2026-11-02.md`：合规 Chibi 原画的来源、结构与审核要求说明；不是画稿或批准。
 - `SHA256SUMS.txt`、`mitten_ai_fit_SHA256SUMS.txt`、`mitten_source_cuff_SHA256SUMS.txt`、`chibi_small_hand_source_SHA256SUMS.txt`：WIP 文件校验清单。
