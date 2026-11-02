@@ -1,0 +1,16 @@
+--- a/tools/make_eyeline_parts.py
++++ b/tools/make_eyeline_parts.py
+@@ -213,7 +213,12 @@
+         wsock = np.clip((sock.astype(float) - 24.0) / 72.0, 0.0, 1.0)
+         wmap = np.zeros((H, W), float)
+         wmap[dreg] = np.maximum(wmap[dreg], wsock[sreg])
+-        wmap[dreg] = np.maximum(wmap[dreg], dilate(lash > 40, 1)[sreg].astype(float))
++        # Narrow Chibi corner trial: carry the detached eye-line fringe one more
++        # source pixel into the face underlay. This does not widen the visible
++        # socket or move the rig mask; it only lets the closed-eye skin patch erase
++        # the last AA/dark fringe pixels adjacent to the extracted lash.
++        lash_pad = 2 if args.form == "chibi" else 1
++        wmap[dreg] = np.maximum(wmap[dreg], dilate(lash > 40, lash_pad)[sreg].astype(float))
+         # Chibi's socket is a deliberately tight sclera aperture. It does not span
+         # the full original iris silhouette, so carving only socket+lash leaves the
+         # baked dark upper iris on seg_head (which reads as a second black lash).

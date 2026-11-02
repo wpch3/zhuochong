@@ -2577,3 +2577,11 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 实际 C 比较中，画面左侧眼角碎边收敛；右侧仍有黑色矩形短块/切口，目视不通过。分层隔离显示侧发变成窄发片，但 `seg_head` 单层仍见眼角暗碎边。需进一步追踪 `eye_carve` / source aperture 和 `make_eyeline_parts.py` 补肤区域；不可将 socket 无限制扩宽或只改 lash 后声称修复。
 - 本次完整候选 QA 1,342 项/33 fail，`design_iou=0.9934918477598998`，退出码 1；与历史来源锁定完整链 1,342/34、摸头定向 1,342/33、眼部聚焦 1,310/32 口径不同，不相减、不冒称总体改善。眼部门禁和其他全身失败均未清零，生产资产不动。
 - 可复核 patch、候选眼件/rig 摘要、完整构建日志、QA JSON、C 全身/脸部/隔离/对照截图与 SHA-256：`docs/qa/chibi_candidate_2026-11-02/socket_mask_bound_trial_2026-11-02/`。
+
+### G66.52 续：underlay padding 与 clean-head 裁边追查（2026-11-02，仍失败）
+
+- 同一 fast-forward HEAD 与既有 candidate patch 上建立 1px baseline，隔离完整重跑 2px lash-underlay padding，再另跑 alpha-restore guard；三次都是各自完整 27 步，QA 分别仍为 1,342/33、`design_iou=0.9934918477598998`。不把三个相同数字称为连续改善，也不与旧批次混算。
+- 真实 C (466×748，Chibi/idle，ambient off，freeze `t=0`) 的 1px/2px同窗帧经本人放大检查：右外角黑短切口仍清晰可见；2px padding 拒绝。完整依赖链已包含眼件、侧发、`seg_head`、@2×、rig；生产贴图/rig 未改。
+- alpha restore guard 统计左右 `alpha_restored_px=0`；输出 `seg_head.png` SHA `c5300a7576f026b59d6b45d1cd87fd5c09e90a1166fb38939680c8798239177a`，`seg_head@2x` 与 rig 同样逐字节等于 1px baseline。因此不重启 C 冒充有视觉变化。clean-head 离线 eye-protect 保留了边界 alpha，但目标短线仍在，未采纳。
+- 阶段像素快照显示 `clean_head_backing` 前后总 alpha 变化 9,664px、左右 eye-patch 带变化 1,126/1,613px；它是定位线索，不足以归因为根因或说明都属于错误裁切。source fringe 图也显示低半径周边暗像素与侧发交错，盲目扩框有误涂风险。
+- 阶段归档 `docs/qa/chibi_candidate_2026-11-02/eye_underlay_trim_followup_2026-11-02/` 含三份全链日志/QA、未采纳 patches、候选眼件、真实 C A/B、mask 与 alpha-stage 诊断、SHA-256 清单。门禁继续失败：下一步需建立 C 屏幕像素到 Chibi 原图与 rig 层的映射，再提出窄修；QA 全身其他缺口、手型、挂件与组合动作任务均仍未完成，生产资产保持不动。

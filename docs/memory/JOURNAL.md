@@ -7956,3 +7956,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **QA**：这次完整 27 步候选资产报告为 **1,342 项、33 项失败、design_iou=0.9934918477598998**，退出码 1。失败仍涉及静止拼合、躯干内部洞、鞋、嘴/牙、闭眼接缝、腮红、发型接管/配色、手件与平色 mask。此为单独全链候选批次的实测结果，不能与 1,342/34 历史来源锁定候选、1,342/33 定向 hitbox 修复、1,310/32 眼部聚焦快照混作连续改进。
 - **阶段归档**：`docs/qa/chibi_candidate_2026-11-02/socket_mask_bound_trial_2026-11-02/` 含脚本 patch、关键候选贴图与元数据、完整 rebuild log、QA JSON、C 引擎全身/放大/隔离/对照图及 SHA-256 清单。WIP 尚未过目视、全链 QA 零失败、缺件/手型/组合矩阵与用户确认门禁；不接生产。
 - **接续**：继续实际处理 `seg_head` 眼角残留，出同源局部 ROI、C 引擎隔离及 before/after；每次完整刷新 eyedependent sidehair、eyeline、@2× 和 rig 并重启 C。之后仍按 G66.52 逐项修复全身失败，并实现 T67.69 `small/mitten` 与独立 `hand_style`；用户要求的整个 Chibi 任务尚远未完成。
+
+## 2026-11-02｜外眼角 underlay 续查：两项假设均拒绝（WIP）
+
+- **先同步真值**：本地同名固定活动分支曾落后 origin 49 个提交；确认本地干净、无独有提交后在原分支 `--ff-only` 快进到远端 `6ad6d8382cf0222864029ee1a5662ac3cadddf24`。重读 TASKS/GAPS/JOURNAL 与 socket-bound 归档；之后所有构建都从该 HEAD 的 `git archive` 进 `/tmp` 隔离候选，正式 Chibi sprites/rig 从未改动。
+- **受控 A/B 实作**：为验证“lash 扩一像素能否填掉切口”，在基线 + 既有 candidate socket patch 上建立 1px 完整重建，再将 `make_eyeline_parts.py` 的 Chibi underlay lash dilation 从 1 改为 2，完成第二次 27 步重建。双方 QA 各为 1,342 项/33 fail、`design_iou=0.9934918477598998`。真实 C 两次均设为 Chibi idle、ambient off、`pause t=0`，viewport 466×748；本人逐眼角放大，2px 仍有右侧黑短切口，故拒绝。差异只记录为局部图像证据，不描述为成功。
+- **定位 alpha 假设**：新增隔离 alpha-restore guard，先要求 eye carve 与闭眼皮肤 patch 的有效区同时成立，仅修复 <=24 alpha。完整重建 QA 再次 1,342/33；报告两侧实际 restore 均 0px，且 `seg_head.png` SHA `c5300a7576f026b59d6b45d1cd87fd5c09e90a1166fb38939680c8798239177a`、`seg_head@2x`、rig 与 1px baseline 完全一致。因 C 可见输入无差异，不重开 C 伪称有结果。
+- **进一步手工对因（未采纳）**：保存 head 从 eyeline→mouth cut→baked residue→hair residue→`clean_head_backing` 阶段图，看到最后一步 alpha 变动 9,664px（左右 eye-patch 带各 1,126/1,613px）；这提示清理顺序/边界值得查，但不证明因果。临时 eye-protect 变体离线额外保留 935px（眼带 305/630），黑色短线仍见且未经 C 验证，因此整段 patch 作为 rejected proposal 归档，不进入正式工具。
+- **完整全身/项目回归**：三份不同隔离完整链均 1,342 项/33 fail；失败面仍覆盖拼合、躯干洞、鞋、嘴、闭眼、腮红、发型/遮挡、腕垫片等。当前工作仓库 `make -s test`：2,638 通过、0 失败；未跑 2 万帧 soak。`make -s selfcheck` 为 772 项/1 fail，唯一失败是现有正式 Teen 与 Chibi `rig.json` 生成器指纹过期；没有为了静态闸去重生/改写未通过 QA 的生产 rig。QA 统计口径不和历史的 1,342/34、1,342/33 定向、1,310/32 聚焦混算。
+- **归档与下一步**：`docs/qa/chibi_candidate_2026-11-02/eye_underlay_trim_followup_2026-11-02/` 包含三份全链日志/QA、rejected patches、候选眼部件、真实 C before/after、阶段 alpha/source mask 诊断与 SHA 清单。本人判断眼部门禁仍失败；下一步要把真实 C 残留坐标精确映射到 Chibi source 和 rig 部件再做最窄试验。T67.69 双手型、缺件、衣物遮挡、差分发型/兜帽、动作矩阵与全身零失败验收仍未完成；不接生产。

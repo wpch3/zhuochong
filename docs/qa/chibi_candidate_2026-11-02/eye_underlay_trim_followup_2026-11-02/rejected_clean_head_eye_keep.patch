@@ -1,0 +1,41 @@
+--- a/tools/clean_head_backing.py
++++ b/tools/clean_head_backing.py
+@@ -147,0 +148,38 @@
++    # The skin-only face band deliberately removes detached fringe, but the eye
++    # underlay includes non-skin sclera/lash-shaped pixels at its boundary. Keep
++    # the already-cleaned Chibi eye carve inside the movable head; otherwise this
++    # cleanup punches transparent slits that render black around the eye corners.
++    # Only preserve existing alpha inside the eye cleanup footprint; this cannot
++    # add pixels outside the previously established head silhouette.
++    eye_json = os.path.join(sprites, "eye_parts.json")
++    if a.form == "chibi" and os.path.exists(eye_json):
++        eye_data = json.load(open(eye_json, encoding="utf-8"))
++        eye_keep = np.zeros((h, w), dtype=bool)
++        for eye in eye_data.get("eyes", []):
++            px, py = map(int, eye["patch_pos"])
++            socket = np.asarray(Image.open(os.path.join(sprites, eye["socket"]))
++                                .convert("RGBA"))[..., 3] > 24
++            lash = np.asarray(Image.open(os.path.join(sprites, eye["lash"]))
++                              .convert("RGBA"))[..., 3] > 40
++            carve_path = eye.get("carve")
++            carve = (np.asarray(Image.open(os.path.join(sprites, carve_path))
++                                 .convert("RGBA"))[..., 3] > 24
++                     if carve_path else np.zeros_like(socket))
++            # Match make_eyeline_parts' 1px safety fringe around source carve/lash.
++            def grow1(mask):
++                return np.asarray(Image.fromarray((mask * 255).astype(np.uint8), "L")
++                                  .filter(ImageFilter.MaxFilter(3))) > 0
++            local = socket | grow1(lash) | grow1(carve)
++            sy, sx = local.shape
++            dx0, dy0 = px - x0, py - y0
++            dst_x0, dst_y0 = max(0, dx0), max(0, dy0)
++            dst_x1, dst_y1 = min(w, dx0 + sx), min(h, dy0 + sy)
++            if dst_x0 < dst_x1 and dst_y0 < dst_y1:
++                src_x0, src_y0 = dst_x0 - dx0, dst_y0 - dy0
++                eye_keep[dst_y0:dst_y1, dst_x0:dst_x1] |= \
++                    local[src_y0:src_y0 + dst_y1 - dst_y0,
++                          src_x0:src_x0 + dst_x1 - dst_x0]
++        keep |= eye_keep & (alpha > 16)
++        print("[head-clean] preserved existing eye underlay=%d px"
++              % int((eye_keep & (alpha > 16)).sum()))
++
