@@ -19,19 +19,19 @@
 > 规则：**每次工作开始先读本文件与自己上次的日志；结束时必须追加 `JOURNAL.md` 并更新本文件的"当前状态"。**
 > 用户的新要求**当轮就要写进 `REQUIREMENTS.md`**，不许只留在聊天里。
 
-更新：**2026-11-02（T70.2：用户选定 AI trial 07 概念方向，trial 08 修订稿已目视但仅为 WIP；无获批源画/生产素材；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
+更新：**2026-11-03（T70.2：trial 08 全身视觉方向获用户确认；trial 08 direct hand-fit 失败；trial 09 被用户拒绝；trial 10 更宽 mitten 仍在源位置过小/不自然、内部判失败；需要用户/美术给出可接受的全身手型方向；无生产手层/隐藏腕部/C-engine 验收；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
 
-## 最新状态（2026-11-02）
+## 最新状态（2026-11-03）
 
 - 本轮参考资料审计已归档：运行时、网格、遮罩与绑定方法资料足以继续自研；Chibi 自身全身差分稿、合规 `small/mitten` 手型设计板和组合验收仍不足。
 - 资料报告：`docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；canonical 索引是 `docs/REFERENCE_NOTES.md`（第六十八批审计、T70.2 cuff 方法和第七十一批官方拆件/来源资格复核）。A66.1 是参考审计，A66.2 是持续按铁律查方法、隔离制作并本人目视的流程提醒（A59 已被既有 Live2D 铁律占用）；执行任务 T70.1–T70.4。
 - 当前 Chibi 配置驱动隔离全链为 **1,342 项 / 33 fail / pass=false**。眼缘 underlay 局部工作不是全身通过；生产素材/rig 未因这次审计变更。
 - 最新静态自检：772 项、1 项既有生成器指纹失败（Teen 与 Chibi `rig.json` 过期）；其余 771 项通过。未为压绿门禁重生受保护生产 rig。`roadmap_status.py` 一致，`git diff --check` 通过。
 - 后续仍需按用户要求完成整身拆件、差分发型/兜帽、眼口、small/mitten 独立手型、服装遮挡、动作和真实 C 引擎组合验收；不得用 Teen 手件或红圈截图裁成生产贴图。
-- 本轮继续 Chibi `small/mitten` 腕口研究，目录 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。程序化轮廓按“禁程序化画手”铁律拒绝。AI trial 02/03 失败，04/05 未批准；来源审计排除不合 Chibi 的 generic raw hands 与实际指向 Teen 的 surprised SVG。`extract_chibi_small_hands_reference.py` 从 Chibi `body_full` ROI 精确保留原 RGB/alpha 提取左右可见 small hands；袖下隐藏腕部未补，非 rig-ready part。trial 06 的源 cuff fit（45×43 hand cutouts，source cuff 2,440/2,498 RGBA identity）4×目视失败，见腕口缝隙/暖影/线稿差。用户之后要求“做出这份原画”：trial 07 两方案中 option 2 被用户选作概念方向；检查发现手偏大且双袖口浅纹被简化成单纹，trial-07 source-cuff hand fit 同样失败。基于 trial07 与设定表生成的 trial 08 已打开全身图及 4× wrist board：手缩小、双条纹可见恢复、手腕衔接观感改善，但仍是 AI redraw，手部有两条分指线且 cuff 不是源像素。用户现明确回复 trial 08“非常好，符合了”，因此视觉概念方向获确认；它仍是 AI redraw/WIP，不是 source-pixel 原画或生产件批准。原创 source-aligned mitten art、左右独立层、hidden-wrist、hand_style 与 wrist/gesture 组合和真实 C 引擎验收仍未完成；production sprites/rig/generator 未改。研究输出、metrics 与 SHA 在隔离 study 目录。
+- 本轮继续 Chibi `small/mitten` 腕口研究，目录 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。程序化轮廓按“禁程序化画手”铁律拒绝。AI trial 02/03 失败，04/05 未批准；来源审计排除不合 Chibi 的 generic raw hands 与实际指向 Teen 的 surprised SVG。`extract_chibi_small_hands_reference.py` 从 Chibi `body_full` ROI 精确保留原 RGB/alpha 提取左右可见 small hands；袖下隐藏腕部未补，非 rig-ready part。trial 06 的源 cuff fit（45×43 hand cutouts，source cuff 2,440/2,498 RGBA identity）4×目视失败，见腕口缝隙/暖影/线稿差。用户之后要求“做出这份原画”：trial 07 两方案中 option 2 被用户选作概念方向；检查发现手偏大且双袖口浅纹被简化成单纹，trial-07 source-cuff hand fit 同样失败。基于 trial07 与设定表生成的 trial 08 已打开全身图及 4× wrist board：手缩小、双条纹可见恢复、手腕衔接观感改善，但仍是 AI redraw，手部有两条分指线且 cuff 不是源像素。用户现明确回复 trial 08“非常好，符合了”，因此视觉概念方向获确认；它仍是 AI redraw/WIP，不是 source-pixel 原画或生产件批准。trial08 手像素直接 source-cuff fit 已目视失败（底对齐有明显间隙，袖口对齐则手太短/轮廓过弱）。随后用两张独立 trial09 hand-art study 做 source hand-box 等比试装：左 44×48、右 39×46；源袖口层 2,440/2,498 RGBA pixels 分别精确验证。助手近景检查未见明显静态 cuff 缝，但用户全身审阅明确拒绝 trial09：手在源位置显得太小且不自然、观感差；用户结论优先，trial09 仅保留失败证据、不得复用。trial10 依照“更宽、更有力的手型”重新生成左右 AI 单手研究稿并作 source-cuff 静态试装，重新打开 4×板与全身 preview 后发现：孤立大图在源框内仍压成偏小轮廓，左手侧凸方向不自然、右手侧叶赘余，全身仍不合格；trial10 内部判失败，仅保留证据。原创 source-aligned mitten art、左右独立生产层、hidden-wrist 动态覆盖、hand_style 与 wrist/gesture 组合和真实 C 引擎验收仍未完成；production sprites/rig/generator 未改。不要继续 AI blob 试装/微调；需用户或美术提供/确认全身可接受的手型与相对尺寸方向。研究输出、metrics 与 SHA 在隔离 study 目录。
 
-- **T70.2 handoff brief**：含 body_full 注册 ROI/小手框、cuff 真值、隐藏腕部、左右独立层、来源禁项与审核交付包；其后已补注 trial 07/08 概念进展。它仍是规格单而非画稿或批准。
-- **T70.2 时间预估（估算，不是承诺）**：现可查看 trial 08 全身概念 WIP，但它不是可批准 source art。Chibi sprites 仍只有 `seg_arm_l/r.png`，无 hand parts / `hand_style`；`make_hand_parts.py` 对 Chibi 仅出腕垫片。获批、source-aligned 且含袖下隐藏腕部的手稿仍是日历阻塞项；缺稿时无法估日期。获批后首个隔离 C 引擎双向切换约 2–4 个专注工作日，完整组合矩阵约再加 1–3 天；不包括全身 QA 其余问题。细分估算在 hand-study README。
+- **T70.2 handoff brief**：含 body_full 注册 ROI/小手框、cuff 真值、隐藏腕部、左右独立层、来源禁项与审核交付包；其后已补注 trial 07/08 概念进展、trial08 direct-fit 失败、用户对 trial09 fullbody fit 的拒绝，以及 trial10 更宽 silhouette 仍失败。它仍是规格单而非画稿或生产批准。
+- **T70.2 时间预估（估算，不是承诺）**：可查看用户确认视觉方向的 trial08 全身 WIP，以及已拒绝的 trial09、trial10 source-cuff failure studies。合格 source-aligned、含袖下隐藏腕部的原画仍是日历阻塞项；现阶段还需明确可接受的全身手型/尺寸方向，缺此输入无法估日期。Chibi sprites 仍只有 `seg_arm_l/r.png`，无 hand parts / `hand_style`；`make_hand_parts.py` 对 Chibi 仅出腕垫片。获批后首个隔离 C 引擎双向切换约 2–4 个专注工作日，完整组合矩阵约再加 1–3 天；不包括全身 QA 其余问题。细分估算在 hand-study README。
 
 > ### ★★★ 开工先读这四样（2026-10-25 加第四样）
 > 0. **`docs/ENGINE_AUDIT_2026-10-25.md`** —— 底层体检 + Live2D 工序对位 + P0/P1/P2 优化清单。

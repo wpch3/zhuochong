@@ -1514,4 +1514,15 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 目视 trial 07 后发现手偏大、袖口从源图双浅条纹被 AI 简化为单条；单独试装 AI 手型与精确保留的 source cuffs 时，手过小/浅、腕口连接仍不合格，判失败并存证。
 - 基于 trial07 与设定表生成 trial 08 修订概念。本人已打开全身图及 4× wrist review board：手型缩小并圆钝、视觉上连接袖口，双条纹恢复；放大仍见细分指线，cuff/figure 是 AI redraw 而非源像素。最初归档为待审阅概念 WIP；随后用户明确回复“非常好，符合了”，现更新为**用户认可的视觉概念方向**。该确认不视为源像素原画、独立层/hidden-wrist、生产资源或 C-engine 批准。
 - 产物/证据：`chibi_mitten_original_fullbody_concept_trial_07_wip.png`、`chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png`、`chibi_mitten_trial_07_source_cuff_candidate_board_wip.png`、`chibi_mitten_trial_08_wrist_review_board_wip.png`；摘要与 SHA 在 `mitten_trial_08_concept_review_metrics.json` 和 trial-07 metrics。同步 hand-study README、handoff brief、TASKS/MEMORY/GAPS/JOURNAL；未改 production sprites/rig/generator，无 C-engine 验收。
-- 下一步：向用户展示 trial08 全身 WIP，收集外观/手型批准或修订意见；在明确批准前不拆生产手件，不进入 rig/C 引擎。
+- 该步骤现已完成：trial08 全身 WIP 已展示，用户明确确认其视觉概念方向。后续仍不得把概念确认等同于生产层级/引擎批准。
+
+### 2026-11-03 · 用户续令「继续未完成的任务，记住铁律，以及基本事项，还有用眼睛看，用脑袋想等」
+
+- **现场核对**：本地固定活动分支起始在浅层旧 SHA `43f5514`，远端当前为 `7395bd4`；工作树干净。只在原活动分支 fetch + `--ff-only` 快进，没有换分支。
+- **复核规则与真值**：重读 `WORKFLOW.md` 铁律 0–15、`TASKS.md` T70.2–T70.4、Chibi hand-style contract、handoff brief 与 trial07/08 metrics；再次打开用户确认的 trial08 全身图、4×腕口板，以及原始 `body_full`/设定表。
+- **完成实际试验**：先把 trial08 可见 hands 直接抽取后套进源 cuff。打开 5×对照与两张全身 source 预览；底对齐明显留缝，袖口对齐则手又短又弱，判失败并保留 `fit_mitten_full_body_trial_08.py` 与 board/metrics。
+- 为避免复用失败 silhouette，分别生成 viewer-left/right trial09 hand-art studies，并写隔离试装脚本，只选 AI 已有皮肤/轮廓像素、均匀拟合到注册 Chibi hand box，分离提取原 `body_full` cuff layer。分别 2,440/2,498 个 cuff pixels 做 exact RGBA identity 检查；手件尺寸 44×48 / 39×46。
+- **trial09 用户验收结论优先**：我曾重开左右4× source-vs-candidate 板与 source-body full preview，近景静态接缝未见明显空洞；但用户明确反馈 trial09 全身中的手在源位置显得太小且不自然/观感差，故 trial09 **已拒绝**，不能叫 promising、不能复用或晋升。线稿/AA 比 Chibi 源更淡更软，边缘有轻微浅色像素；无腕角/动态 hidden-wrist 测试。近景 cuff closure 不得覆盖用户全身结论。
+- **落点/范围**：study `fit_mitten_full_body_trial_08.py`、`mitten_trial_08_source_cuff_fit_metrics.json`、失败 board/预览；trial09 两张独立手稿、`fit_mitten_hand_art_trial_09.py`、左右 hand/cuff layers、合成预览、4×board、metrics/SHA；README 与 handoff brief、TASKS/MEMORY/GAPS/JOURNAL 同步。未改 production sprite/rig/generator，未跑 C 引擎。
+- **trial10 续试结果**：遵循 trial09 失败反馈，另生成左右独立、较宽 padded mitten studies；不是镜像。把现有手/轮廓像素均匀 fit 到 registered source boxes 并复原 exact source cuffs，重开 `chibi_mitten_trial_10_source_cuff_candidate_board_wip.png` 与 `body_full_ai_trial10_source_cuff_preview_wip.png`。本人判源框内形状仍显小，左侧凸朝外、右侧叶状侧凸不自然；源位置全身仍不合格。trial10 由 agent 内部拒绝，用户未审阅；只保留失败 WIP，不作成功或获准素材。
+- **下一步门禁**：停止同类 AI blob / scale-alignment 迭代。需用户或美术先给出/确认可接受的全身 mitten silhouette 与相对尺寸方向，才继续做隔离 WIP；新件先全身核对、后拆件。任何新 WIP 未获明确用户接受前不得升为生产；之后仍需完善足量 hidden wrist、source-to-part anchors，再做隔离 rig 与真实 C-engine 动态验收。

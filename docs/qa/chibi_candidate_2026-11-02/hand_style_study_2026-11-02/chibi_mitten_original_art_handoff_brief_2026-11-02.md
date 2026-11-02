@@ -2,7 +2,7 @@
 
 **状态：需求约束与来源测量说明；不是新手稿、生产素材或用户批准。** 本文不绘制手形、不描摹 AI 轮廓，也不复用用户标记截图像素；目的是让下一张合规 Chibi 原画一次性满足拆件/引擎前置条件。
 
-**后续概念进展（2026-11-02）：** 用户先选择了 AI 全身 trial 07 的 option 2 作为概念方向；随后生成并目视检查 trial 08，并明确回复“非常好，符合了”。因此 trial 08 的视觉概念方向现已获用户确认。它仍是 AI redraw，不能替代此 brief 要求的 source-aligned 原画、左右透明层、hidden-wrist 补全或生产批准。记录与检查板见同目录 `README.md`、`mitten_trial_08_concept_review_metrics.json`。
+**后续概念进展（2026-11-03）：** 用户先选择 AI 全身 trial07 option 2 作为概念方向，随后明确确认 trial08 全身视觉概念“非常好，符合了”；这只批准视觉方向。trial08 像素直接抽取套入 source cuff 的尝试目视失败（有缝或手过短）。trial09 左右独立 AI hand-art source-cuff fit 后由用户明确拒绝：全身源位置上的手显得过小且不自然/观感差。尽管 source cuff 层的 RGBA 身份验证通过，不能据此声称手件验收；trial09 仅作为失败证据保留，禁止复用/晋升。随后 trial10 尝试较宽的 AI silhouette，但本人目视其 fit 入原源框后仍过小且左右侧凸不自然，内部判失败，用户未审阅。停止同类 scale/alignment 循环；继续前需用户/美术给出或确认可接受的全身手型与相对尺寸方向。以上均不能替代此 brief 要求的 source-aligned 原画、左右透明层、hidden-wrist 补全或生产批准。记录与检查板见同目录 `README.md` 与 trial07/08/09/10 metrics。
 
 ## 先锁角色真值
 
@@ -22,7 +22,7 @@
 ## 已知负例，不要复刻
 
 - AI full-body trial 06 改画脸/发、比例、衣裙鞋和 cuff；仅可作“圆钝形状方向”参考。其 45×43 hand-only 像素 fit 虽逐侧保留 source cuff RGBA（左 2,440、右 2,498 个 cuff pixels），4× 检查仍有 wrist opening 外缘空隙/不均、暖浅 seam 与线稿密度差；不是接缝验收，也不是获批手件。
-- AI full-body trial 07 option 2 是用户选定的概念方向，但检查发现手偏大且袖口被重画成单条浅纹；按源 cuff 拟合手件又出现明显腕口间隔。trial 08 将手缩小、恢复双条纹，但仍是 AI redraw，袖口非源像素，放大可见细微分指线；目前只供用户概念审阅。详细证据见 hand-style study README 和 trial-07/08 metrics、review boards。
+- AI full-body trial 07 option 2 是用户选定的概念方向，但检查发现手偏大且袖口被重画成单条浅纹；按源 cuff 拟合手件又出现明显腕口间隔。trial 08 将手缩小、恢复双条纹，用户随后确认其视觉方向“非常好，符合了”；但它仍是 AI redraw，袖口非源像素，放大可见细微分指线。当前可以作为已确认的设计方向进行隔离试装，不能直接作为生产源图。详细证据见 hand-style study README 和 trial-07/08 metrics、review boards。
 - trial 04/05 同样是未批准 AI 候选；不得取它们改变过的 cuff 或身体细节。
 - 用户红圈截图只可作抽象形状提示；禁止截图裁片、描摹其轮廓/像素或将其当作 production texture。
 - 禁止程序化画手；禁止用 Teen/generic raw hands 代替 Chibi。

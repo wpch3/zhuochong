@@ -3,7 +3,7 @@
   "stage": "isolated AI-generated full-body mitten concept; visual review only",
   "user_decision_context": {
     "trial_07_option_2": "selected by user as the preferred concept direction; this does not approve the image as source art or production material",
-    "trial_08": "unselected refinement generated from the selected trial-07 image and the registered Chibi design sheet; awaiting user review"
+    "trial_08": "refinement generated from the selected trial-07 image and the registered Chibi design sheet; user confirmed the visual concept direction with '非常好，符合了'"
   },
   "source_truth": {
     "design_sheet": {
@@ -59,12 +59,12 @@
     ]
   },
   "scope": {
-    "allowed": "visual concept review and feedback",
+    "allowed": "the user-approved visual concept direction and isolated source-cuff fit study",
     "prohibited_until_approved_and_rebuilt_as_source-aligned_parts": [
       "production sprites",
       "rig or hand_style integration",
       "generator or runtime changes",
-      "claims that user selected or approved trial 08"
+      "claims that visual-concept approval equals source-art or production approval"
     ]
   }
 }
