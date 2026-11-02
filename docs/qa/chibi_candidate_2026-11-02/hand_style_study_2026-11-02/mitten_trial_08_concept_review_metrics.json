@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-02",
+  "stage": "isolated AI-generated full-body mitten concept; visual review only",
+  "user_decision_context": {
+    "trial_07_option_2": "selected by user as the preferred concept direction; this does not approve the image as source art or production material",
+    "trial_08": "unselected refinement generated from the selected trial-07 image and the registered Chibi design sheet; awaiting user review"
+  },
+  "source_truth": {
+    "design_sheet": {
+      "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+      "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+    },
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    }
+  },
+  "inputs_and_outputs": {
+    "trial_07_selected_concept": {
+      "path": "chibi_mitten_original_fullbody_concept_trial_07_wip.png",
+      "sha256": "502a0d2686ee42d3cc5980481dea8cafeaa38f71edd5a4012677c0c9ce9aa34e"
+    },
+    "trial_08_refined_fullbody": {
+      "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+      "dimensions": "1024x1024",
+      "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368"
+    },
+    "trial_08_wrist_review_board": {
+      "path": "chibi_mitten_trial_08_wrist_review_board_wip.png",
+      "sha256": "20bb2b33dbe9e696e73f7672050cd7e607d680d724e5ea8d4794caeac7936eda"
+    }
+  },
+  "review": {
+    "status": "visually_reviewed_WIP_awaiting_user_acceptance",
+    "inspection": [
+      "Viewed the complete 1024x1024 trial-08 concept and a 4x source-versus-candidate wrist comparison board.",
+      "The full figure retains the requested Chibi identity cues and full-body standing presentation; the hands are smaller than trial 07 and appear connected beneath the cuffs.",
+      "Both cuffs again visibly contain two pale stripes, correcting trial 07's one-stripe redraw at the concept level.",
+      "The rounded hands still show two visible crease/finger-separation lines at enlargement; they are simplified but not completely featureless mittens.",
+      "Trial 08 is an AI redraw: cuff contours, stripe shapes, hand pixels, and other figure details are not source-pixel-identical. The review board verifies visual resemblance only, not exact geometry or production fit."
+    ],
+    "decision": "present_trial_08_as_a_revised_original_concept_WIP_for_user_review; do_not_claim_approval_or_use_as_a_production_asset",
+    "not_tested": [
+      "independent left/right transparent hand layers",
+      "hidden wrist continuation or source-aligned cuff occlusion",
+      "source pixel identity outside the untouched source files",
+      "rig, pose, animation, or C-engine integration"
+    ]
+  },
+  "scope": {
+    "allowed": "visual concept review and feedback",
+    "prohibited_until_approved_and_rebuilt_as_source-aligned_parts": [
+      "production sprites",
+      "rig or hand_style integration",
+      "generator or runtime changes",
+      "claims that user selected or approved trial 08"
+    ]
+  }
+}

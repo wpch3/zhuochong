@@ -55,9 +55,20 @@ Trial 06 was first reviewed as a complete AI-generated figure against `design_sh
 - Full provenance, metrics and per-file hashes: `mitten_trial_06_source_cuff_metrics.json`, `fit_mitten_full_body_trial_06.py`, and `mitten_trial_06_source_cuff_SHA256SUMS.txt`.
 - To unblock compliant art rather than keep tweaking the rejected AI fit, `chibi_mitten_original_art_handoff_brief_2026-11-02.md` records source measurements, hidden-wrist/cuff requirements, prohibited sources, and the approval package. It is a written handoff brief—not a hand drawing, design approval, or source asset.
 
+## 2026-11-02 user-requested original mitten full-body concept trials 07/08 (WIP)
+
+The user asked for an original full-body mitten concept. Of the two AI-generated trial-07 concepts, the user chose option 2 as the preferred direction; this is a concept selection, not approval as source art or production material. Visual review of `chibi_mitten_original_fullbody_concept_trial_07_wip.png` found the hands larger than the Chibi source and each redrawn cuff simplified to one pale stripe instead of the source's two.
+
+A refined AI redraw, `chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png`, was generated using the selected direction and registered design sheet. The whole figure and 4x wrist board `chibi_mitten_trial_08_wrist_review_board_wip.png` have now been opened and visually checked:
+
+- The full-body Chibi identity cues and relaxed standing presentation remain recognizable; the hands are smaller and appear connected beneath the cuffs.
+- Both AI-redrawn cuffs visibly restore two pale stripes. At enlargement, each rounded hand still contains two visible crease/finger-separation lines. The cuffs, hands, and other figure details remain AI redraws, not source-pixel-identical artwork.
+- **Current result:** trial 08 is an original-art concept WIP ready for the user's visual review—not an approved original source drawing, independent hand-layer package, or production candidate. It does not establish hidden-wrist coverage, exact cuff geometry, source-to-part mapping, or rig/C-engine acceptance. No production path, rig, generator, or C engine was modified.
+- Full source/output hashes and the visual-review notes are in `mitten_trial_08_concept_review_metrics.json`; trial-07 source-cuff fit limitations are in `mitten_trial_07_source_cuff_metrics.json`.
+
 ## 预计看到可验收进展的时间（粗估，依赖门槛）
 
-- **现在可见**：trial 06 的 full-body 对照、左右手部 source-cuff fit board 与透明 variants 已在本目录；这是研究 WIP，不是生产或引擎功能成效。
+- **现在可见**：trial 08 的完整全身修订概念与 4x 袖口/手部 review board 已在本目录；这是 AI 研究 WIP，不是生产或引擎功能成效。
 - **当前阻塞项**：仓内没有获批的 Chibi `mitten` 左右原画，也没有袖下 hidden-wrist 完整原画。现有 Chibi 只有 `seg_arm_l/r`；`make_hand_parts.py` 对 Chibi 明确不产手势档，`hand_style` 与 `hand_{l/r}_{small,mitten}` 不在 Chibi rig 中。AI trial 06 fit 已看出 cuff-facing seam 不合，不能把继续磨它当成可交付倒计时。因此，在干净、可审阅且获准的 Chibi 手稿出现前，**日历时间无法诚实估算**。
 - **从获批完整手稿到首个 C 引擎可见切换的工程粗估**：约 **2–4 个专注工作日**：约 0.5–1.5 天准备 source-aligned 左右 hand/cuff/hidden-wrist parts 和静态目视；约 1–2 天接隔离 `make_hand_parts.py` / `make_rig.py` 的独立 `hand_style`，保持 wrist/gesture 分轴，并构建/修一轮；另留约 0.5–1 天做 C 引擎基础双向切换与 cuff/腕角冒烟。**完整**手型×手势×腕角×衣物/发型矩阵及重修约 **再需 1–3 天**。这是现有 pipeline 结构上的工程估算，不是承诺；不包含等待原画/用户审阅的日历时间，也不包含整个 Chibi 仍失败的全身 QA、缺件及其他动作任务。
 
@@ -68,4 +79,7 @@ Trial 06 was first reviewed as a complete AI-generated figure against `design_sh
 - `extract_chibi_small_hands_reference.py`：从 Chibi `body_full` 选择原有可见 small-hand 像素，精确保留源 RGB/alpha，不补画隐藏腕部。
 - `source_crop_manifest.json`、`study_metrics.json`、`mitten_ai_fit_metrics.json`、`mitten_source_cuff_fit_metrics.json`、`chibi_small_hand_source_extraction_metrics.json`、`mitten_trial_06_source_cuff_metrics.json`：来源、坐标、产物 SHA 与门槛说明。
 - `chibi_mitten_original_art_handoff_brief_2026-11-02.md`：合规 Chibi 原画的来源、结构与审核要求说明；不是画稿或批准。
-- `SHA256SUMS.txt`、`mitten_ai_fit_SHA256SUMS.txt`、`mitten_source_cuff_SHA256SUMS.txt`、`chibi_small_hand_source_SHA256SUMS.txt`：WIP 文件校验清单。
+- `chibi_mitten_original_fullbody_concept_trial_07_wip.png`：用户选定的概念方向；不等于源画或生产批准。
+- `chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png`、`chibi_mitten_trial_08_wrist_review_board_wip.png`、`mitten_trial_08_concept_review_metrics.json`：缩小手型/恢复双袖口条纹后的未批准修订稿、放大检查板与目视审查记录。
+- `fit_mitten_full_body_trial_07.py`、`mitten_trial_07_source_cuff_metrics.json`、`chibi_mitten_trial_07_source_cuff_candidate_board_wip.png`：试装失败的复现脚本、指标与证据板，不可作生产资源。
+- `SHA256SUMS.txt`、`mitten_ai_fit_SHA256SUMS.txt`、`mitten_source_cuff_SHA256SUMS.txt`、`chibi_small_hand_source_SHA256SUMS.txt`、`mitten_trial_06_source_cuff_SHA256SUMS.txt`、`mitten_trial_07_source_cuff_SHA256SUMS.txt`、`mitten_trial_08_concept_SHA256SUMS.txt`：分阶段 WIP 文件校验清单。

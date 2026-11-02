@@ -1159,3 +1159,10 @@ TASKS **T46.15（已完）/ T46.16 / T46.17**、LESSONS **236**。
 | A66.2 | 继续实际推进未完成的下一项任务；每轮先核对适用真值与铁律、主动找本任务的方法/参考，再隔离制作、本人看放大实物并修正；自动检查不能代替目视，WIP 不得描述成完成 | [聊天] 2026-11-02 | `docs/memory/WORKFLOW.md` 铁律 0/1/2/4/12/14/15；canonical `docs/REFERENCE_NOTES.md` 第七十一批；T70.2 | 🟡 本轮完成 source eligibility audit 和 Chibi 原像素 small-hand 提取 WIP；mitten 原稿、批准与引擎验收仍欠 |
 
 **验收口径**：参考项目有仓库链接与许可/风险边界；不足项列为可执行 T70；未引入第三方代码或图像。后续每轮继续按适用领域查真值/方法、隔离制作、本人目视和如实记录。编号说明：A59 已用于 2026-10-30 的 Live2D 铁律，A66.1 为资料审计，A66.2 为持续制作/工作法提醒。
+
+## A67（2026-11-02）制作原创 Chibi mitten 全身概念并逐阶段目视
+
+| 编号 | 要求（用户原意） | 来源 | 落点 | 状态 |
+| --- | --- | --- | --- | --- |
+| A67.1 | 制作完整 Chibi mitten 全身概念，保留小寻角色身份、银白短发、蓝眼、teal/白外套与双浅纹袖口、深色百褶裙、袜鞋和整体比例；自然站姿、左右手均可见，手部圆钝、弱分指 | [聊天] 2026-11-02 | `chibi_mitten_original_fullbody_concept_trial_07_wip.png`、trial 08 refined WIP；T70.2 | 🟡 已产 AI 概念 WIP；trial 07 option 2 被选为方向，trial 08 待用户审阅 |
+| A67.2 | 用户选择的 AI 概念方向不自动等于批准原画或生产素材；袖口真值、隐藏腕部、左右独立 hand layers/source-to-part 与真实 C-engine 集成仍需单独审核 | [聊天/续接] 2026-11-02 | study README、trial 07/08 metrics/review boards、handoff brief；T70.2–T70.4 | 🟡 视觉 WIP 已目视；无生产批准、无 rig/引擎改动 |
