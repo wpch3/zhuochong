@@ -1,0 +1,75 @@
+{
+  "status": "isolated_ai_fullbody_concept_wip_user_rejected_size_too_large_not_production_art",
+  "created_on": "2026-11-03",
+  "feedback_context": {
+    "user_feedback": "After review, the user said trial14 is still too large; trial12/13 had also been judged too large.",
+    "latest_revision": "trial14 keeps the hand silhouette within the trial08 visible hand footprint or slightly smaller; rounded mitten shape replaces visible finger marks."
+  },
+  "approved_direction": {
+    "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+    "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368"
+  },
+  "source_truth": {
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    },
+    "design_sheet_chibi": {
+      "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+      "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+    }
+  },
+  "generation_brief": {
+    "method": "one isolated full-body concept revision; not a hand extraction/scale script",
+    "summary": "Keep both hand silhouettes within the overall trial08 hand width/height or slightly smaller; compact rounded mitten palm and very short inward thumb nub; no finger grooves or creases.",
+    "reference_inputs": [
+      {
+        "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+        "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368"
+      },
+      {
+        "path": "chibi_small_hand_source_extraction_board_wip.png",
+        "sha256": "13bcb42c24b694e15cdb3888b633cff458010819fb6c52facd1f32124a8bd575"
+      },
+      {
+        "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+        "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+      },
+      {
+        "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+        "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+      }
+    ],
+    "limits": "AI redraw only; cuff and body details are not source-exact; no production/layer approval."
+  },
+  "output": {
+    "full_body": {
+      "path": "chibi_mitten_original_fullbody_concept_trial_14_wip.png",
+      "sha256": "f7815da5d293d037ead75a361b0409080b5ce73356c84d6f3c87a98ad8bb491d",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "comparison_board": {
+      "path": "chibi_mitten_trial_14_fullbody_size_comparison_board_wip.png",
+      "sha256": "e033cef4f3b8636377b5c7f28f85681979a93931b0155df73c9e549f26dfbbf2"
+    },
+    "board_builder": {
+      "path": "build_mitten_trial_14_review_board.py",
+      "sha256": "83df7fa1ca128fea9dfa2688f5a15505428d9d2d4e05e9bb8c53808abe57cd63"
+    }
+  },
+  "visual_review": {
+    "status": "user_rejected_size_too_large", 
+    "reviewer": "assistant visual inspection of raw trial14 and 08/11/13/14 same-position board",
+    "observations": [
+      "Trial14 is now much smaller than the oversized 11/12/13 studies and roughly matches or slightly undercuts trial08 outer hand extents at full-body scale.",
+      "Both hands are compact rounded mitten shapes with no visible finger grooves; thumb nubs are subtle and may be too weak to read distinctly.",
+      "The full-body identity/outfit remains close to trial08 and both cuffs retain two visible stripes, but this remains an AI redraw rather than exact source art.",
+      "The reduced size may be close to the approved trial08 footprint; compare hand readability against the user's small-but-natural criterion. Do not claim acceptance before user review."
+    ],
+    "decision": "rejected_by_user_as_still_too_large; retain as comparison/failure evidence only; no source-cuff fitting or production promotion",
+    "next_step": "Trial15 has been made visibly smaller; ask user whether it is now small enough while remaining a mitten."
+  }
+}

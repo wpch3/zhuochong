@@ -8069,3 +8069,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **实际产物**：生成 trial12（目标为 trial11/08 之间的中间大小）和 trial13（再减一轮）的完整全身 AI 概念，保持圆钝 mitten 和朝内的左右 thumb nubs。新增 `build_mitten_trial_13_review_board.py` 及 `chibi_mitten_trial_13_fullbody_size_comparison_board_wip.png`，把 08/11/12/13 全身缩放并列，并以同一 115×145px 源位置 crop、3× nearest-neighbour 并排左右腕口细节。没有从用户截图取像素，也没有程序化画手。
 - **本人目视**：打开 trial12、trial13 原全身及最终四版 board。两版仍清楚读作 mitten、无分指线，左右侧 nub 朝身体内侧；12/13 相比11确有缩小，但幅度不大、两者大小接近，且显著大于08。 trial13 更接近袖口宽度，但仍可能偏大。结论为**两张减小候选待用户判断**；不声称已满足修订、不进入拆件。
 - **来源/边界/验证**：trial12/13 hashes、生成意图和观察记录在 `mitten_trial_12_concept_review_metrics.json`、`mitten_trial_13_concept_review_metrics.json`；trial11/12/13 metrics JSON、两种 review-board scripts `py_compile`、全部本目录 SHA manifests、`roadmap_status.py` 与 `git diff --check` 均通过。全身/cuff 仍 AI redraw，双纹可见但不精确保留源像素；未做 source cuff、hidden wrist、rig、动作或 C-engine 验收，未改生产 sprite/rig/generator。
+
+## 2026-11-03｜用户确认 trial15 尺寸并要求完整启动制作工作流
+
+- **指令与批准边界**：用户确认 trial15 mittens 的大小“完全合适”，要求开始完整工作流、记住铁律并先查项目/资料，再以思考与实际目视完成制作计划和工作。尺寸方向获批；AI 像素、source art、hidden-wrist、拆件、rig、生产和 C-engine 仍各有独立门禁。
+- **先查项目/资料**：回顾 WORKFLOW 铁律 0–15、T70.2–T70.4、trial15/hand-style contract、source crop manifest、Chibi design sheet/body_full、`make_arm_parts.py`、`make_hand_parts.py`、`make_rig.py`、C-runtime `zrig`、SHEET/ART/PART_LAYERING 和 `REFERENCE_NOTES.md` 第七十一批。记录官方方法仅为拆件/互斥 pose 参考，不声称本引擎已兼容。
+- **完整计划**：新增 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/chibi_mitten_production_plan_2026-11-03.md`，按 Stage A–F 列尺寸/真值锁定、左右源稿、审核、hidden-wrist/source cuff 层、generator/rig、静态/动作/衣发组合与真实 C-engine 晋升门禁。Stage A 完成；后续阶段有明确前置依赖。
+- **实际隔离制作与目视**：用独立手件 AI WIP 做 trial16 source-fit 候选，目标大小按 trial15 方向，cuff mask RGBA byte-exact 检查分别覆盖 2,440/2,498 个源像素。打开 review board 和全身 preview 后，目视发现 viewer-left 偏细长、viewer-right 掌体偏宽、左右不成对，线稿/阴影与 Chibi 源画不匹配，接缝视觉不自然。将候选判失败，留作失败证据；metrics 的 `decision` 已同步拒绝状态。
+- **产物与范围**：`build_mitten_sourcefit_trial16_wip.py`、trial16 AI 输入/裁切/parts、全身 preview、review board、metrics 与生产计划均留在 hand-study 隔离目录；trial15 metrics 明示仅尺寸批准，README/handoff/memory/requirements 同步更新。无生产 sprites/rig/generator 改动；未做 hidden-wrist 动态或 C-engine 验收。
+- **下一步**：继续隔离制作符合 Chibi 源画线稿/阴影、尺寸与左右形态一致的原创左右手稿；本人目视通过与用户/授权美术确认后，再做隐藏腕部、正式拆件和工程阶段。不得以本轮计划或 trial16 静态源 cuff 检验冒称全流程完成。

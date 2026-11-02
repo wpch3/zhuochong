@@ -1541,3 +1541,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 实际生成 trial12（较 trial11 适度缩小）和 trial13（再尝试缩小）的两张 full-body AI concept WIP；新增 `build_mitten_trial_13_review_board.py` 与 `chibi_mitten_trial_13_fullbody_size_comparison_board_wip.png`，用同一 115×145px 两侧 wrist/hand crops 3× nearest-neighbour，及等比例 08/11/12/13 全身对比。
 - 本人目视：trial12/13 都较圆钝、朝内 nub、无分指线；相比 trial11略小，但 12/13 间尺寸差异仍有限，且仍明显大于 trial08。不能声称已满足“偏大”的修订，也未获用户确认；请用户判断当前 12/13 尺寸是否足够小。
 - 来源/边界：同一 approved trial08 visual direction、Chibi `body_full` 和 `design_sheet_chibi` 作身份/尺寸参考。全部仍是 AI redraw WIP，袖口非源像素；未做 source-cuff, hidden-wrist, layer/rig/C-engine 测试，未修改 production。
+
+### 2026-11-03 · 用户确认 trial15 尺寸并要求完整启动制作工作流
+
+- 用户明确：“这次的大小完全合适，开始工作流”，并要求牢记铁律/基本事项、先查询项目与资料，结合思考和目视，写完整制作计划后完整执行。
+- 批准范围锁定为 trial15 的 mitten 尺寸方向；不外推为对 AI 像素、source-aligned 原画、左右手件、袖下 hidden-wrist、rig、生产接入或 C-engine 的批准。
+- 实际开工后按已审查的项目真值/资料先做隔离候选 trial16；本人打开全身/局部 review board 后发现左右轮廓比例、线稿与阴影不匹配，故拒绝该候选，不进生产。该结果、门禁和 Stage A–F 完整计划写入 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/chibi_mitten_production_plan_2026-11-03.md`。
+- 后续仍须实际制作符合 Chibi 风格且左右成对一致的原创候选，逐阶段目视审查；通过后才进入 hidden wrist、正式 parts、generator/rig、C-engine 动态与组合矩阵。不能把计划或静态 cuff byte-exact 说成完整制作已完成。

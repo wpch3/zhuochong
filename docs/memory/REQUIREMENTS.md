@@ -1164,6 +1164,15 @@ TASKS **T46.15（已完）/ T46.16 / T46.17**、LESSONS **236**。
 
 | 编号 | 要求（用户原意） | 来源 | 落点 | 状态 |
 | --- | --- | --- | --- | --- |
-| A67.1 | 制作完整 Chibi mitten 全身概念，保留小寻角色身份、银白短发、蓝眼、teal/白外套与双浅纹袖口、深色百褶裙、袜鞋和整体比例；自然站姿、左右手均可见，手部圆钝、弱分指 | [聊天] 2026-11-02 | `chibi_mitten_original_fullbody_concept_trial_07_wip.png`、trial08/11/12/13 WIP；T70.2 | 🟡 trial08 经用户确认视觉方向；trial11 用户反馈手偏大，trial12/13 为减小版本，待用户选择/修订，均未批准 |
-| A67.2 | 用户选择/确认的 AI 概念方向不自动等于 source-pixel 原画或生产素材批准；袖口真值、隐藏腕部、左右独立 hand layers/source-to-part 与真实 C-engine 集成仍需单独审核 | [聊天/续接] 2026-11-02 | study README、trial 07/08/11/12/13 metrics/review boards、handoff brief；T70.2–T70.4 | 🟡 仅 trial08 全身概念方向获用户确认；无 source-aligned 生产批准、无 rig/引擎改动 |
-| A67.3 | trial11 全身 mitten 手型被用户指出偏大；后续修订需减小双手，同时保留圆钝 mitten 可读性、左右朝内 thumb nub 与全身 Chibi 比例；必须先全身比较、用户确认后才继续拆件 | [聊天] 2026-11-03 | trial12/13 全身 WIP 与 `chibi_mitten_trial_13_fullbody_size_comparison_board_wip.png`；T70.2 | 🟡 已生成/目视 trial12、13；两者较 trial11略小但差异有限，待用户判断尺寸 |
+| A67.1 | 制作完整 Chibi mitten 全身概念，保留小寻角色身份、银白短发、蓝眼、teal/白外套与双浅纹袖口、深色百褶裙、袜鞋和整体比例；自然站姿、左右手均可见，手部圆钝、弱分指 | [聊天] 2026-11-02 | `chibi_mitten_original_fullbody_concept_trial_07_wip.png`、trial08/11/12/13/14/15 WIP；T70.2 | 🟡 trial08 概念方向、trial15 尺寸方向获用户确认；均非原画/生产批准 |
+| A67.2 | 用户选择/确认的 AI 概念方向不自动等于 source-pixel 原画或生产素材批准；袖口真值、隐藏腕部、左右独立 hand layers/source-to-part 与真实 C-engine 集成仍需单独审核 | [聊天/续接] 2026-11-02 | study README、trial 07/08/11/12/13/14/15/16 metrics/review boards、handoff brief；T70.2–T70.4 | 🟡 trial08 概念方向与 trial15 尺寸方向分别获确认；无 source-aligned 生产批准、无 rig/引擎改动 |
+| A67.3 | trial11 全身 mitten 手型被用户指出偏大；后续修订需减小双手，同时保留圆钝 mitten 可读性、左右朝内 thumb nub 与全身 Chibi 比例；必须先全身比较、用户确认后才继续拆件 | [聊天] 2026-11-03 | trial12–15 全身 WIP/比较板；T70.2 | ✅ trial15 尺寸方向获用户确认；拆件仍需 source-art 等独立门禁 |
+
+## A68（2026-11-03）trial15 尺寸确认并启动 Chibi mitten 完整工作流
+
+| 编号 | 要求（用户原意） | 来源 | 落点 | 状态 |
+| --- | --- | --- | --- | --- |
+| A68.1 | 用户明确确认 trial15 手部尺寸“完全合适”；后续按此尺寸方向制作，不再扩大/缩小候选 | [聊天] 2026-11-03 | trial15 metrics/README；T70.2；`chibi_mitten_production_plan_2026-11-03.md` | ✅ 尺寸方向获批；不扩展为 AI 像素/原画/生产批准 |
+| A68.2 | 开始完整手型工作流前先读项目铁律、真值源、教程/已查参考和 generator/rig 现状；大脑分析、亲眼目视真实成果、主动发现问题并修正；每个实质阶段要有可检验产物/状态记录 | [聊天] 2026-11-03 | WORKFLOW 铁律 0–15；`docs/REFERENCE_NOTES.md` 第七十一批；study production plan / README / metrics / JOURNAL | 🟡 执行中 |
+| A68.3 | 继续完成 Chibi mitten 原画、左右独立部件、袖下腕部补全、source cuff 夹层、独立 `hand_style` 并与 wrist/gesture 解耦、真实 C 引擎动作/服装组合验收；不得用程序化手绘、Teen/generic hand 或用户截图像素替代 | [聊天/既有 A62/A64] 2026-11-03 | T70.2–T70.4；isolated hand-study；经艺术/用户验收后才接生产 | 🟡 生产工作流已启动；trial16 art pair 自检失败，未进生产；后续阶段尚未完成 |
+| A68.4 | 用户要求本轮按“完整制作”执行，但旧的 source-art/目视/QA/用户确认门禁仍有效；任何未通过的 AI WIP 不能伪装完成或晋升生产 | [聊天 + WORKFLOW 铁律 0–15] 2026-11-03 | production plan、metrics、项目生产 sprites/rig/guardrails | 🟡 常驻门禁；无 production 改动 |
