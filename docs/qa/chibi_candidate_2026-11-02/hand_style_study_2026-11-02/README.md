@@ -63,7 +63,7 @@ A refined AI redraw, `chibi_mitten_original_fullbody_concept_trial_08_refined_wi
 
 - The full-body Chibi identity cues and relaxed standing presentation remain recognizable; the hands are smaller and appear connected beneath the cuffs.
 - Both AI-redrawn cuffs visibly restore two pale stripes. At enlargement, each rounded hand still contains two visible crease/finger-separation lines. The cuffs, hands, and other figure details remain AI redraws, not source-pixel-identical artwork.
-- **Current result:** trial 08 is an original-art concept WIP ready for the user's visual review—not an approved original source drawing, independent hand-layer package, or production candidate. It does not establish hidden-wrist coverage, exact cuff geometry, source-to-part mapping, or rig/C-engine acceptance. No production path, rig, generator, or C engine was modified.
+- **Current result:** the user has now explicitly confirmed trial 08 is visually right (`非常好，符合了`). Record it as an **approved visual concept direction**. That confirmation does not turn the AI redraw into source-pixel original art or approve an independent hand-layer package / production candidate. Hidden-wrist coverage, exact cuff geometry, source-to-part mapping, and rig/C-engine acceptance are still unestablished. No production path, rig, generator, or C engine was modified.
 - Full source/output hashes and the visual-review notes are in `mitten_trial_08_concept_review_metrics.json`; trial-07 source-cuff fit limitations are in `mitten_trial_07_source_cuff_metrics.json`.
 
 ## 预计看到可验收进展的时间（粗估，依赖门槛）

@@ -1512,6 +1512,6 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 
 - 用户授权制作 AI 辅助的原创 mitten 全身概念；以 Chibi 设定表为身份/服装真值，制作 trial 07 两种全身构图。用户选择 option 2 作为概念方向，不代表源画/生产批准。
 - 目视 trial 07 后发现手偏大、袖口从源图双浅条纹被 AI 简化为单条；单独试装 AI 手型与精确保留的 source cuffs 时，手过小/浅、腕口连接仍不合格，判失败并存证。
-- 基于 trial07 与设定表生成 trial 08 修订概念。本人已打开全身图及 4× wrist review board：手型缩小并圆钝、视觉上连接袖口，双条纹恢复；放大仍见细分指线，cuff/figure 是 AI redraw 而非源像素。当前只可作为待用户审阅的原创概念 WIP，不称为用户批准原画或生产件。
+- 基于 trial07 与设定表生成 trial 08 修订概念。本人已打开全身图及 4× wrist review board：手型缩小并圆钝、视觉上连接袖口，双条纹恢复；放大仍见细分指线，cuff/figure 是 AI redraw 而非源像素。最初归档为待审阅概念 WIP；随后用户明确回复“非常好，符合了”，现更新为**用户认可的视觉概念方向**。该确认不视为源像素原画、独立层/hidden-wrist、生产资源或 C-engine 批准。
 - 产物/证据：`chibi_mitten_original_fullbody_concept_trial_07_wip.png`、`chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png`、`chibi_mitten_trial_07_source_cuff_candidate_board_wip.png`、`chibi_mitten_trial_08_wrist_review_board_wip.png`；摘要与 SHA 在 `mitten_trial_08_concept_review_metrics.json` 和 trial-07 metrics。同步 hand-study README、handoff brief、TASKS/MEMORY/GAPS/JOURNAL；未改 production sprites/rig/generator，无 C-engine 验收。
 - 下一步：向用户展示 trial08 全身 WIP，收集外观/手型批准或修订意见；在明确批准前不拆生产手件，不进入 rig/C 引擎。

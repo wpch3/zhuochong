@@ -2,7 +2,7 @@
 
 **状态：需求约束与来源测量说明；不是新手稿、生产素材或用户批准。** 本文不绘制手形、不描摹 AI 轮廓，也不复用用户标记截图像素；目的是让下一张合规 Chibi 原画一次性满足拆件/引擎前置条件。
 
-**后续概念进展（2026-11-02）：** 用户选择了 AI 全身 trial 07 的 option 2 作为概念方向；随后生成并目视检查了全身修订 trial 08。trial 08 恢复了双袖口浅条纹并缩小 mitten 手，现仅为待用户审阅的概念 WIP。它仍是 AI redraw，不能替代此 brief 要求的 source-aligned 原画、左右透明层、hidden-wrist 补全或生产批准。记录与检查板见同目录 `README.md`、`mitten_trial_08_concept_review_metrics.json`。
+**后续概念进展（2026-11-02）：** 用户先选择了 AI 全身 trial 07 的 option 2 作为概念方向；随后生成并目视检查 trial 08，并明确回复“非常好，符合了”。因此 trial 08 的视觉概念方向现已获用户确认。它仍是 AI redraw，不能替代此 brief 要求的 source-aligned 原画、左右透明层、hidden-wrist 补全或生产批准。记录与检查板见同目录 `README.md`、`mitten_trial_08_concept_review_metrics.json`。
 
 ## 先锁角色真值
 

@@ -31,7 +31,7 @@
     }
   },
   "review": {
-    "status": "visually_reviewed_WIP_awaiting_user_acceptance",
+    "status": "visually_reviewed_and_user_approved_as_concept_direction",
     "inspection": [
       "Viewed the complete 1024x1024 trial-08 concept and a 4x source-versus-candidate wrist comparison board.",
       "The full figure retains the requested Chibi identity cues and full-body standing presentation; the hands are smaller than trial 07 and appear connected beneath the cuffs.",
@@ -39,7 +39,18 @@
       "The rounded hands still show two visible crease/finger-separation lines at enlargement; they are simplified but not completely featureless mittens.",
       "Trial 08 is an AI redraw: cuff contours, stripe shapes, hand pixels, and other figure details are not source-pixel-identical. The review board verifies visual resemblance only, not exact geometry or production fit."
     ],
-    "decision": "present_trial_08_as_a_revised_original_concept_WIP_for_user_review; do_not_claim_approval_or_use_as_a_production_asset",
+    "decision": "user_approved_trial_08_visual_concept_direction_only; retain_WIP_and_do_not_claim_source_pixel_art_or_production_approval",
+    "user_approval": {
+      "date": "2026-11-02",
+      "statement": "非常好，符合了",
+      "scope": "visual acceptance of the trial-08 full-body mitten concept direction",
+      "does_not_approve": [
+        "source-pixel-identical original art",
+        "independent production hand layers or hidden-wrist fill",
+        "source-to-part mapping",
+        "rig or C-engine integration"
+      ]
+    },
     "not_tested": [
       "independent left/right transparent hand layers",
       "hidden wrist continuation or source-aligned cuff occlusion",

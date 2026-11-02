@@ -8042,6 +8042,6 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 
 - **授权与构图**：用户明确说“做出这份原画”，授权制作全身 mitten 概念，不等于批准 AI 输出为正式原画/生产件。基于唯一 Chibi 设定表生成 trial 07 两个方案；用户选择 option 2 作为概念方向。没有把该选择外推成源像素/生产批准。
 - **视觉复核 trial 07**：重新打开全身候选并制作袖口局部比较板。发现手明显偏大，原袖口两条浅纹被 AI redraw 简化成一条。随后隔离提取 trial07 手形并试装 source cuff；4×看板中 fitted hands 过小/浅，腕口存在明显间隔、轮廓和衔接观感不足。因此拒绝该 hand-fit，不作正式原画。
-- **实际制作 trial 08**：以选定 trial07 和源设定表进行 refined fullbody AI redraw。打开全身图及新制 4× source-vs-AI wrist board；目前手缩小、圆钝、与袖口视觉连续，左右袖口均可见两条浅纹。放大仍见手上两条分指/褶线；手、cuff 与其它细节都非源像素。结论为**待用户审阅的概念 WIP**，不是 approved original Chibi art，也不能进生产拆件。
+- **实际制作 trial 08**：以选定 trial07 和源设定表进行 refined fullbody AI redraw。打开全身图及新制 4× source-vs-AI wrist board；目前手缩小、圆钝、与袖口视觉连续，左右袖口均可见两条浅纹。放大仍见手上两条分指/褶线；手、cuff 与其它细节都非源像素。最初归档为待用户审阅 WIP；随后用户明确回复“非常好，符合了”，因此 trial08 现记为**用户认可的视觉概念方向**。这不是 source-pixel original Chibi art 或 production-art / layer / engine 批准。
 - **证据/落点**：`docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/` 下 trial07/08 fullbody PNG、两组 wrist review boards、`fit_mitten_full_body_trial_07.py`、trial07/08 metrics、SHA256 清单以及 README/handoff brief 已同步结论；TASKS/MEMORY/GAPS/REQUEST_LEDGER 更新。生成图尺寸 1024×1024，trial08 SHA `670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368`。
-- **边界/下一步**：没有 hand layers/hidden-wrist/source-to-part 处理，没有 production sprite/rig/generator 改动，也未运行 C 引擎。下一步把 trial08 全身 WIP 展示给用户，等待外观/手型反馈；明确批准前不拆生产件。
+- **边界/下一步**：没有 hand layers/hidden-wrist/source-to-part 处理，没有 production sprite/rig/generator 改动，也未运行 C 引擎。trial08 的全身视觉方向现已获用户确认；后续若进入拆件，仍需另行完成 source-aligned 左右手层、袖下 hidden-wrist/cuff 遮挡与 source-to-part 审核，再单独通过生产/引擎门禁；本次概念确认不自动批准生产拆件。
