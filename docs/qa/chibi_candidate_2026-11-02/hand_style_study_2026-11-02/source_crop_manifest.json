@@ -1,0 +1,60 @@
+{
+  "source": "characters/xiaoxun/design/design_sheet_chibi.png",
+  "source_sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c",
+  "body_fit_box": [
+    628,
+    101,
+    1416,
+    1891
+  ],
+  "body_full_size": [
+    567,
+    1292
+  ],
+  "scale_sheet_px_per_body_px": [
+    1.3897707231040564,
+    1.3854489164086687
+  ],
+  "source_crops": {
+    "left": {
+      "body_full_roi_xyxy_exclusive": [
+        43,
+        846,
+        132,
+        938
+      ],
+      "sheet_roi_xyxy_exclusive": [
+        688,
+        1273,
+        811,
+        1401
+      ],
+      "file": "source_left_cuff_hand.png",
+      "sha256": "b023afdf484191424abedb9aeebe7ffc8e4d18e33f144e10b1278c21ff66b981",
+      "size": [
+        123,
+        128
+      ]
+    },
+    "right": {
+      "body_full_roi_xyxy_exclusive": [
+        435,
+        846,
+        524,
+        938
+      ],
+      "sheet_roi_xyxy_exclusive": [
+        1233,
+        1273,
+        1356,
+        1401
+      ],
+      "file": "source_right_cuff_hand.png",
+      "sha256": "a9efd5719bf1da30548813fc548c7d4809a3c1c6323f5d7eb8cb005c0500efcf",
+      "size": [
+        123,
+        128
+      ]
+    }
+  }
+}

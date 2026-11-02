@@ -1476,3 +1476,7 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 **调查与结论**：核查记忆索引、开源项目比较及拆件/套准文档；GitHub API 搜索并读取 Cubism Native Samples、Inochi Creator、Iki、Umamo 的项目文档和许可证。引擎/网格/遮罩/物理方法足够继续自研；Chibi 全身/手型视觉真值不足。未找到可直接取代小寻 Chibi 手件的授权素材；Teen 件不可代用。
 
 **落点**：审计报告、`REFERENCE_NOTES.md` 第六十八批、需求 `REQUIREMENTS.md` A66.1、任务 `TASKS.md` T70.1–T70.4、路线图 T70。资料归档不等于 Chibi 制作/验收完成。
+
+### 2026-11-02 续接：继续实际完成整个 Chibi
+
+用户要求继续未完成任务并遵守铁律/基本事项。本轮未把之前的眼缘 WIP 当成 Chibi 完成；继续推进 T70.2，建立 Chibi 自有来源的 small 腕口观察、body_full 比例预览与来源 SHA 记录。自制程序化 mitten 草图经复核违反“禁程序化画手”铁律，已明确拒绝为美术并隔离为几何示意；图像生成候选亦因袖口/线稿/比例漂移拒绝。合规原创 mitten 手稿、独立拆件及 C 引擎验收仍未完成。边界见 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/README.md`、JOURNAL、TASKS T70.2 与 GAPS G66.53。

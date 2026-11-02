@@ -7976,3 +7976,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **归档/编号**：完整报告 `docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；索引 `REFERENCE_NOTES.md` 第六十八批；新需求是 A66.1（A59 已用于 2026-10-30 Live2D 铁律，避免重复编号）；任务 T70.1–T70.4。路线图进度以 `roadmap_status.py --fix` 核对。
 - **验证与门禁**：`python tools/roadmap_status.py` 显示 ROADMAP 与 TASKS 一致，`git diff --check` 通过。最终 `python tools/selfcheck_repo.py --quiet` 为 772 项、1 项失败（Chibi 与 Teen 的 `rig.json` 生成器指纹过期）；其余 771 项通过。未为消除旧指纹而重生受保护生产 rig，这与本轮文档审计无关，另需按素材/生成链门禁处理。
 - **下一步仍是制作**：以 Chibi 自有 design sheet/body_full/anchors 先做全身差分和 small/mitten 手型板，再做独立 `hand_style` 并与 wrist/gesture 分轴；随后覆盖衣服、发型/兜帽、表情和动作的真实 C 引擎矩阵。当前全链仍 1,342 项/33 fail/`pass=false`，不得称全身验收。
+
+## 2026-11-02｜T70.2 继续：手型几何板复核，mitten 程序草图拒绝（WIP）
+
+- **先核对路线图与状态**：上一轮把 T70.2 由 `[ ]` 标成 `[~]` 后，`ROADMAP.md` 进行中数仍为 21，实际 TASKS 为 22。本轮运行 `python tools/roadmap_status.py --fix` 同步至总任务 630 / 完成 245 / 进行中 22；随后 `python tools/roadmap_status.py` 显示一致。
+- **复核既有铁律后纠偏**：重读 `LESSONS.md` 391、`REQUEST_LEDGER.md` 第三十七问与 `docs/memory/WORKFLOW.md` 对“手必须用原画件做部件，禁程序化画手”的规则。`mitten_left/right_concept.png` 是脚本画出的平涂几何草图，不符合该铁律；本轮将其明确标记为拒绝的几何示意，不是美术稿、正式参考、贴图或 rig 输入。两张 AI 候选仍因手部尺度、袖口条纹和线稿漂移而拒绝。该纠偏已同步写入 WIP README、生成器注释/板面和 GAPS/TASKS/MEMORY/REQUEST_LEDGER。
+- **仍有的可用研究结果**：Chibi `body_full` 的左右 source wrist crop 是原像素；坐标经设定稿框 `[628,101,1416,1891] → 567×1292` 配准，左 ROI `[43,846,132,938]`，右 ROI `[435,846,524,938]`。来源 SHA、窗口与产物 SHA 在 `source_crop_manifest.json`、`study_metrics.json`；检查板只用于几何/全身比例观察，不能当作 mitten 视觉验收。隔离目录 `SHA256SUMS.txt` 已在此轮修改后重算并校验。
+- **未做/不可混淆**：原创 Chibi mitten 手稿、独立 hand parts / `hand_style`、腕角/手势/衣服遮挡组合、全身差分板仍未完成；生产 sprites/rig/生成器未改，真实 C 引擎动作验收未跑。此前完整候选 QA 1,342 项/33 fail/`pass=false` 仍是失败基线，本轮未运行或改变该快照。
+- **静态门禁**：`roadmap_status.py` 与 `git diff --check` 通过；`selfcheck_repo.py --quiet` 为 772 项、1 项失败，唯一失败仍是 Chibi/Teen 生产 `rig.json` 的旧生成器指纹。未为消红而盲目重生未验收生产 rig。无新的完整引擎 QA 或全链 QA。
+- **下一步**：不继续打磨程序化 mitten 草图。按“禁程序化画手”规则，以合规 Chibi 原画/可审阅的艺术流程获取原创 mitten 画稿；先完成左右袖口/手掌的真实线稿、阴影与腕口连续检查，再独立拆件并接 `hand_style`。全 Chibi 的眼缘残余、全身拆件、发型/兜帽、眼口表情、衣物遮挡及动作/C 引擎组合仍开放，不能以这张板结束任务。

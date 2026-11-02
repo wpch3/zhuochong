@@ -2592,3 +2592,10 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - alpha restore guard 统计左右 `alpha_restored_px=0`；输出 `seg_head.png` SHA `c5300a7576f026b59d6b45d1cd87fd5c09e90a1166fb38939680c8798239177a`，`seg_head@2x` 与 rig 同样逐字节等于 1px baseline。因此不重启 C 冒充有视觉变化。clean-head 离线 eye-protect 保留了边界 alpha，但目标短线仍在，未采纳。
 - 阶段像素快照显示 `clean_head_backing` 前后总 alpha 变化 9,664px、左右 eye-patch 带变化 1,126/1,613px；它是定位线索，不足以归因为根因或说明都属于错误裁切。source fringe 图也显示低半径周边暗像素与侧发交错，盲目扩框有误涂风险。
 - 阶段归档 `docs/qa/chibi_candidate_2026-11-02/eye_underlay_trim_followup_2026-11-02/` 含三份全链日志/QA、未采纳 patches、候选眼件、真实 C A/B、mask 与 alpha-stage 诊断、SHA-256 清单。门禁继续失败：下一步需建立 C 屏幕像素到 Chibi 原图与 rig 层的映射，再提出窄修；QA 全身其他缺口、手型、挂件与组合动作任务均仍未完成，生产资产保持不动。
+
+### G66.53 续：Chibi source-locked small/mitten 手型板初稿（2026-11-02，WIP）
+
+- 当前已从 Chibi `design_sheet_chibi.png` 的注册 body_fit 坐标抽取原始袖口/手部观察窗，保留 `small` 源像素，并完成 body_full 比例观察图。目录内另存的程序化 mitten 轮廓违反“禁程序化画手”铁律，明确拒绝为美术，只是隔离几何示意，不得作正式参考、生产贴图或 rig 输入。合规原创 mitten 手稿仍缺。证据与脚本：`docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。
+- 这只是视觉研究图：mitten 尚缺 Chibi 原画级线稿、边缘暖色阴影及全身状态参考；分开的袖/手生产件、共享锚点与独立 `hand_style` 都没有落地。没有接入生产，也没有真实 C 引擎矩阵验收。
+- 两张独立生成的 mitten 图因手尺寸、袖口条纹和描边风格偏移而拒绝；保留为 rejected evidence，不能进素材链。禁止把红圈截图裁为贴图，禁止用 Teen 手替代。
+- 下一步不再打磨程序化 mitten 草图；按“禁程序化画手”铁律取得可审阅的 Chibi 原画风格 mitten 稿，核对袖口条纹/遮挡与腕根连续后，再拆 source-backed hand/cuff layers、实现互斥 `hand_style`、保留 wrist/gesture 正交，并覆盖挥手/比心/惊讶与服装遮挡的 C 引擎验收。

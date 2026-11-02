@@ -1506,6 +1506,6 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 | 编号 | 事 | 状态 | 说明 |
 |---|---|---|---|
 | T70.1 | **参考资料充分性审计与缺口归档** | [x] | GitHub 资料/项目核验、许可证边界、Chibi 视觉资料不足项与方法写入 `docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`、`REFERENCE_NOTES.md` 第六十八批；未导入外部代码/图像 |
-| T70.2 | **Chibi 自有全身/手型参考板** | [ ] | 以 `design_sheet_chibi.png`、Chibi `body_full`、anchors 为真值，先画全身一致差分板与 `small/mitten` 袖口-手腕放大板；保留 small 既有设计，新 mitten 重画。禁止 Teen hand、未授权图片裁贴；按 `SHEET_PIPELINE.md` 套准，hash/差分入库后再切件 |
+| T70.2 | **Chibi 自有全身/手型参考板** | [~] | 2026-11-02：完成来源锁定的静止腕口 `small/mitten` 几何研究 WIP 与全身比例预览，`docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。`small` 为 Chibi 原像素；mitten 程序化轮廓明确违反“禁程序化画手”铁律，已拒绝为美术，仅隔离作几何示意，不可进入正式参考板/生产。原创 mitten 手件、原画线稿/阴影及全身发型/兜帽差分板仍缺，未验收/未接生产。继续以 `design_sheet_chibi.png`、`body_full`、anchors 为真值；不得用 Teen hand 或红圈截图作贴图；按 `SHEET_PIPELINE.md` 套准，确认合规原画后才拆件 |
 | T70.3 | **独立 `hand_style` 与手势/腕运动解耦** | [ ] | 当前 `seg_arm_l/r` 含手、无独立 Chibi hand parts。先审现有 poses/variant 组合能力，再设计最小声明：hand_style 只选 small/mitten；wrist angle 与 open/heart gesture 独立驱动。覆盖 `hand_style × gesture × wrist angle × outfit`，以静止拼合、接缝、角度扫、高分辨率及真实 C 引擎验收；通过前不宣称完成 |
 | T70.4 | **继续全身 Chibi 失败项与组合验收** | [ ] | 从最新隔离全链 1342/33 失败 JSON 起步，按素材/rig/形变/动作分类，不跨快照相减 QA；完成发型/兜帽、表情、服装遮挡、hand-style 与动作交叉状态的真实 C 帧验收 |
