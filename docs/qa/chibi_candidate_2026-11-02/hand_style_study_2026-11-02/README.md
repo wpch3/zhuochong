@@ -23,6 +23,19 @@
 3. 美术门禁通过后，才在隔离 rig 拆 `hand_l/r_small` 与 `hand_l/r_mitten`，以独立 `hand_style` 切换；腕角与 open/heart 手势保持正交。之后用真实 C 引擎检查接缝、无重影/空洞/跳尺寸，以及动作/衣物组合。
 4. 当前 full-body Chibi、眼口、发型/兜帽、服装遮挡及动作矩阵仍未通过；本目录任何图均不能关闭 A64 / T70.2–T70.4。
 
+## 2026-11-02 source-measured cuff seam pass (still WIP)
+
+After reviewing the old fit board at enlarged scale, I found the former `CUFF_EDGES` polyline was hand-entered and did not follow the Chibi source cuff contour—especially on the right. The rejected-edge diagnostic is archived as `cuff_seam_probe_wip.png`; it is evidence only, not a source/production input. I replaced that *study-only* fit with `fit_mitten_source_cuff_trial.py`:
+
+- Cuff coverage is derived from the dominant connected component of the registered Chibi teal sleeve plus strict neutral cream stripes; enclosed gaps are filled, one source pixel of contour is retained, and warm hand pixels are excluded. The overlay uses original `body_full` pixels only.
+- The AI trial silhouettes remain the only source of the mitten shapes. Each is uniformly scaled to fit its own measured Chibi `small` hand bounding box and bottom/center aligned; no programmatic hand geometry is drawn.
+- Skin tones are sampled from the Chibi source hand's low/mid/high luminance pixels. `source_hand_bbox_test_wip.png` records the color-derived hand region and measured fit box for audit; it is not a hand-design reference. The AI hand sits under the cuff; only the duplicate AI wrist-line pixels in a narrow cuff-adjacent band are removed before compositing the exact source cuff.
+- The comparison / source / mask / enlarged seam evidence is in `hand_style_ai_source_cuff_candidate_board_wip.png`, `mitten_cuff_seam_detail_wip.png`, and `source_cuff_mask_diagnostic_wip.png`; details and source/output SHA-256 values are in `mitten_source_cuff_fit_metrics.json` and `mitten_source_cuff_SHA256SUMS.txt`.
+
+**My visual review:** at 8× the cuff stripes and source outline are preserved, and the prior double-line seam is reduced with no obvious static transparent gap. A slight warm shadow band and line/detail-density mismatch remain. The two hand silhouettes are still AI-origin candidates, not Chibi-approved original art; no wrist rotation, C-engine fit, or user approval is established. Status stays **WIP / NOT PRODUCTION**; no rig, production sprite, or generator was changed.
+
+The previous hand-entered-edge study and negative/diagnostic artifacts remain separate from the current candidate; do not reuse the old candidate as production input.
+
 ## 文件
 
 - `build_hand_style_study.py`：生成 Chibi 原像素观察窗与已拒绝的几何示意。

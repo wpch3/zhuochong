@@ -73,3 +73,13 @@
 - <https://github.com/umamoorg/umamo>：GPL-3.0、alpha；仅在备份副本学习 UI 工作流，不并入项目或作为稳定依赖。
 
 检索词为 `live2d`、`Live2D SDK`、`2D puppet animation/rigging`、`chibi Live2D`。未找到许可清晰且风格匹配、可直接作为小寻 Chibi 手件的素材。落实：以 Chibi 自有 design sheet/body_full/anchors 为真值，先画整身与手型差分板，拆件后将 `hand_style` 与 wrist angle、open/heart gesture 分轴；按状态矩阵在真实 C 引擎验收。
+
+## 第六十九批（T70.2 腕口接缝拟合方法复核，2026-11-02）
+
+**本次查到的方法不是“手画一条 cuff 边”，而是按领域分工：** Chibi `body_full` 是视觉真值；Live2D 分层/切件资料提供“手腕插入袖口、上层遮住接缝”的结构原则；最后在源图像素和放大预览中核对。没有把外部角色图或教材示例直接当小寻手稿。
+
+- **Live2D 官方：Create Motion with Pose Switching**，<https://docs.live2d.com/en/cubism-editor-manual/change-pose/>。官方说明切换用的手臂/部件必须分层；对交叠纹理先减少显眼交叠区、软化交叠边，并可把部件设为约 50% 不透明度检查突出接缝。适用于后续 `small ↔ mitten` 切换与层级检查；该页不规定 Chibi 手型，也不证明当前 WIP 已适用于动作。
+- **社区插画/建模教程：ミミシーム《How to Make a Kemono Live2D Model… Part 4 – Arms and Hands》**，<https://note.com/mikischine/n/nd7dc931e4c4b?hl=en>（2026-08-28，本文自述是个人示例）。文中分层顺序包含 hand / forearm / sleeve / upper arm / sleeve inside，腕处用前臂圆端与相应手件切口组织连接；这只作为“前后层与腕端应配套”的结构思路，不采用其兽耳角色画稿/PSD/形状，不等同小寻 Chibi 的视觉真值或授权生产资产。
+- **补充社区分层说明：夏水かなた《Supplementary Guide for Live2D Part Separation (For Illustrators)》**，<https://note.com/kanata_natsumi/n/n7f96b96b6e26?hl=en>。本文明确是作者个人偏好，且引用官方分层手册；适用原则是被遮住的部件仍补足填色与线稿，以免运动露洞。这里只用于遮挡完整性，不把其示例图作 Chibi 手型素材。
+- **本项目落地与边界**：旧拟合脚本的硬编码 8 点边在放大图中与左右源 cuff 轮廓不一致，已在隔离研究中改为由 Chibi `body_full` teal + 中性乳白条纹连通区域取 sleeve/cuff mask，保存原袖口像素；从实际 `small` 手部肤色区域量 bbox 作等比缩放/位置拟合；AI 手在 cuff 下重叠，仅清理 cuff 邻域里的重复 AI 腕线。脚本 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/fit_mitten_source_cuff_trial.py`，证据 `mitten_cuff_seam_detail_wip.png` 与 `source_cuff_mask_diagnostic_wip.png`。
+- **观察/判定**：本人已看 8× seam detail 和全身板：源袖口条纹/轮廓连续，旧重复腕线减少，静止图未见明显透明缺口；仍有轻微暖色腕影与线稿细节密度差异。候选仍是未批准的 AI 来源手型，动态/C 引擎 seam 未测，未接生产。任何后续认可都须先过艺术风格/左右形状复核，再做独立手件与真实 C 渲染。
