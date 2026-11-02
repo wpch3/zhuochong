@@ -1,0 +1,69 @@
+{
+  "status": "isolated_ai_fullbody_concept_wip_pending_user_review_not_production_art",
+  "created_on": "2026-11-03",
+  "tool": "image generation tool; one standalone full-body concept revision",
+  "approved_reference": {
+    "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+    "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368",
+    "user_approved_scope": "trial08 visual concept direction only"
+  },
+  "source_truth": {
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    },
+    "design_sheet_chibi": {
+      "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+      "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+    }
+  },
+  "generation_brief": {
+    "scope": "full-body visual concept only; only hand silhouette/size intended to change",
+    "constraints": [
+      "retain trial08 character identity, pose, outfit, palette, framing",
+      "retain visibly two pale cuff stripes on each sleeve",
+      "make hands visibly larger with broad rounded mitten palms",
+      "short inward-facing thumb nubs (viewer-left nub toward center/right; viewer-right toward center/left)",
+      "no finger grooves or crease marks"
+    ],
+    "reference_inputs": [
+      "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+      "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "characters/xiaoxun/design/design_sheet_chibi.png"
+    ],
+    "limits": "AI redraw; cuffs and body details are not exact source pixels; no production or layer approval implied"
+  },
+  "output": {
+    "full_body": {
+      "path": "chibi_mitten_original_fullbody_concept_trial_11_wip.png",
+      "sha256": "2c53454b9552931c8742f4dd245b45a0f4cb5d1d760c4e5835ef7d73a1c0509e",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "comparison_board": {
+      "path": "chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png",
+      "sha256": "2572b20c38fe9810767d8815c56d679b1288d358bc3fffe757e8516de5cd3c8c"
+    },
+    "board_builder": {
+      "path": "build_mitten_trial_11_review_board.py",
+      "sha256": "c75161c86e4d340891d09e387423a15239579078162c065ddb1ff5865ea2d06b"
+    }
+  },
+  "visual_review": {
+    "status": "assistant_reviewed_concept_direction_pending_user_review",
+    "viewed_artifacts": [
+      "chibi_mitten_original_fullbody_concept_trial_11_wip.png",
+      "chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png"
+    ],
+    "observations": [
+      "At full-body scale, both hands are visibly larger than in trial08 and read as rounded mittens rather than tiny separated-finger hands.",
+      "Viewer-left and viewer-right thumb nubs face toward the body center, giving the pair a coherent inward-facing orientation; no finger grooves are visible.",
+      "The comparison board uses the same full-body view plus identical 115×145px source-position windows at 3× nearest-neighbour. Cuffs retain two visible pale stripes, but they are AI-redrawn and not source-exact.",
+      "The character remains recognizably close to trial08 in face, hair, clothing, pose, and palette. Hands may now be slightly oversized relative to cuffs; this is the key user-review question, not a production acceptance."
+    ],
+    "decision": "candidate_visual_revision_only; user approval pending; do not split or promote yet",
+    "next_step": "Ask user to judge trial11 whole-body mitten size/shape against the confirmed trial08 direction. If accepted as concept, separately test source cuff fit and hidden-wrist coverage; production remains blocked."
+  }
+}

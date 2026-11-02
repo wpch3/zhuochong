@@ -1525,4 +1525,12 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **trial09 用户验收结论优先**：我曾重开左右4× source-vs-candidate 板与 source-body full preview，近景静态接缝未见明显空洞；但用户明确反馈 trial09 全身中的手在源位置显得太小且不自然/观感差，故 trial09 **已拒绝**，不能叫 promising、不能复用或晋升。线稿/AA 比 Chibi 源更淡更软，边缘有轻微浅色像素；无腕角/动态 hidden-wrist 测试。近景 cuff closure 不得覆盖用户全身结论。
 - **落点/范围**：study `fit_mitten_full_body_trial_08.py`、`mitten_trial_08_source_cuff_fit_metrics.json`、失败 board/预览；trial09 两张独立手稿、`fit_mitten_hand_art_trial_09.py`、左右 hand/cuff layers、合成预览、4×board、metrics/SHA；README 与 handoff brief、TASKS/MEMORY/GAPS/JOURNAL 同步。未改 production sprite/rig/generator，未跑 C 引擎。
 - **trial10 续试结果**：遵循 trial09 失败反馈，另生成左右独立、较宽 padded mitten studies；不是镜像。把现有手/轮廓像素均匀 fit 到 registered source boxes 并复原 exact source cuffs，重开 `chibi_mitten_trial_10_source_cuff_candidate_board_wip.png` 与 `body_full_ai_trial10_source_cuff_preview_wip.png`。本人判源框内形状仍显小，左侧凸朝外、右侧叶状侧凸不自然；源位置全身仍不合格。trial10 由 agent 内部拒绝，用户未审阅；只保留失败 WIP，不作成功或获准素材。
-- **下一步门禁**：停止同类 AI blob / scale-alignment 迭代。需用户或美术先给出/确认可接受的全身 mitten silhouette 与相对尺寸方向，才继续做隔离 WIP；新件先全身核对、后拆件。任何新 WIP 未获明确用户接受前不得升为生产；之后仍需完善足量 hidden wrist、source-to-part anchors，再做隔离 rig 与真实 C-engine 动态验收。
+- **下一步门禁**：停止源框内的 AI blob / scale-alignment 迭代。已改为直接全身画布概念修订 trial11（记录于后续续令）；先请用户判断 trial11 的手型/相对尺寸。只有全身方向获接受后才考虑拆件，且用户概念确认仍不等于 source art、生产层或引擎批准；之后仍需 hidden wrist、source-to-part anchors、隔离 rig 与真实 C-engine 动态验收。
+
+### 2026-11-03 · 用户续令「继续未完成的任务。」
+
+- **现场核对/同步**：新回合 checkout 本地分支浅层停在旧 `43f5514`，工作树干净；fetch 固定活动分支并仅 `--ff-only` 快进到已推送 `d3668c1`，未切分支。
+- **回读真值与限制**：重新核对 WORKFLOW 铁律 0–15、MEMORY/REQUIREMENTS/GAPS/TASKS/JOURNAL/LESSONS、REQUEST_LEDGER 常驻回归、T70.2–T70.4 和 hand-study README。trial08 概念方向用户已确认；trial09 用户拒绝、trial10 内部失败，均不能复用；不绘手、不用 Teen/截图、不改生产。
+- **实际续做 trial11**：不继续在小 source box 里微调失败的 AI blob，直接基于 trial08 的全身方向生成一张更大 mitten 概念修订，prompt 明确左右短 thumb nubs 朝身体中心。新增 `chibi_mitten_original_fullbody_concept_trial_11_wip.png` 及 `build_mitten_trial_11_review_board.py` 构建的 `chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png`；同尺寸、同位置裁切并列 trial08/11 全身及左右 3× wrist/hand。1024×1024 全身原图 SHA 记录在 `mitten_trial_11_concept_review_metrics.json`。
+- **本人目视**：trial11 手在全身里明显比 trial08 大、更易读为圆钝 mitten；左右小拇指/拇指状侧凸朝身体内侧，无分指线；双袖仍见两条浅纹，脸、发、衣、姿态及色盘大体保持。风险是手相对袖口可能偏大；袖口和全身仍为 AI redraw，不是源像素。结论只是**候选全身视觉修订，待用户审阅**，未批准拆件或生产。
+- **验证/边界**：试制和对照板均在隔离 study 目录；metrics、README、handoff、memory 和 SHA manifests 已补并核对；未改 sprite/rig/generator，无 hidden-wrist/source-cuff/动态/C 引擎验证。下一步请用户判断 trial11 的全身手型与相对尺寸；若获准为方向，再单独做 source-cuff 与隐藏腕部试验，仍须再次目视及真实 C-engine 门禁。

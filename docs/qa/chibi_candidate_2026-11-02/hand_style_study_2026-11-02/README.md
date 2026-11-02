@@ -83,9 +83,18 @@ To make actual progress without touching production, I generated separate viewer
 
 No production sprite, rig, generator, or C engine was changed. Trials 09 and 10 remain isolated failed WIP evidence; approval of the trial-08 concept is not production approval.
 
+## Trial 11: full-body mitten size revision (WIP, user review pending)
+
+To continue from the trial09/10 failures without another source-box extraction loop, I made a new full-body concept revision directly at body scale, using trial08 as the approved visual-direction reference and the registered Chibi source/design sheet as identity context. The intended change is limited to clearly larger rounded mittens with short inward-facing thumb nubs; the rest of the character is meant to stay close to trial08.
+
+- I opened both `chibi_mitten_original_fullbody_concept_trial_11_wip.png` and `chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png`. At full-body scale the new hands are immediately more visible than trial08; the close-up panels show a broad, rounded mitten mass and inward-facing side nubs, with no finger grooves.
+- The face, hair, outfit, pose and overall palette remain recognizably close to trial08. Both cuffs still show two pale stripes, but AI-redrawn cuffs/body details are not source-exact; the hands may now be slightly oversized relative to the cuffs. **This is a concept candidate, not an accepted result.** User review is pending, with relative hand size the key question.
+- Metrics/source hashes: `mitten_trial_11_concept_review_metrics.json`. Board recipe: `build_mitten_trial_11_review_board.py`. WIP file hashes: `mitten_trial_11_concept_SHA256SUMS.txt`.
+- If the user accepts this full-body direction, the next step is a separate source-cuff/hand-pixel and hidden-wrist test. User concept approval would still not equal source-pixel art, layer, rig, or C-engine approval.
+
 ## 预计看到可验收进展的时间（粗估，依赖门槛）
 
-- **现在可见**：用户确认的 trial 08 全身概念、trial 08 source-cuff fit 失败对照、用户拒绝的 trial 09 与内部失败的 trial 10 手型/全身试装证据均在本目录；这些是 AI 研究 WIP，不是生产或引擎功能成效。
+- **现在可见**：用户确认的 trial08 全身概念、用户拒绝的 trial09 / 内部失败的 trial10 source-cuff fit，以及待用户审阅的 trial11 全身手型尺寸修订板均在本目录；均为 AI 概念/研究 WIP，不是生产或引擎功能成效。
 - **当前阻塞项**：仓内没有获批的 Chibi `mitten` 左右原画，也没有袖下 hidden-wrist 完整原画。现有 Chibi 只有 `seg_arm_l/r`；`make_hand_parts.py` 对 Chibi 明确不产手势档，`hand_style` 与 `hand_{l/r}_{small,mitten}` 不在 Chibi rig 中。AI trial 06 fit 已看出 cuff-facing seam 不合，不能把继续磨它当成可交付倒计时。因此，在干净、可审阅且获准的 Chibi 手稿出现前，**日历时间无法诚实估算**。
 - **从获批完整手稿到首个 C 引擎可见切换的工程粗估**：约 **2–4 个专注工作日**：约 0.5–1.5 天准备 source-aligned 左右 hand/cuff/hidden-wrist parts 和静态目视；约 1–2 天接隔离 `make_hand_parts.py` / `make_rig.py` 的独立 `hand_style`，保持 wrist/gesture 分轴，并构建/修一轮；另留约 0.5–1 天做 C 引擎基础双向切换与 cuff/腕角冒烟。**完整**手型×手势×腕角×衣物/发型矩阵及重修约 **再需 1–3 天**。这是现有 pipeline 结构上的工程估算，不是承诺；不包含等待原画/用户审阅的日历时间，也不包含整个 Chibi 仍失败的全身 QA、缺件及其他动作任务。
 
@@ -101,4 +110,5 @@ No production sprite, rig, generator, or C engine was changed. Trials 09 and 10 
 - `fit_mitten_full_body_trial_07.py` / `fit_mitten_full_body_trial_08.py`、`mitten_trial_07_source_cuff_metrics.json` / `mitten_trial_08_source_cuff_fit_metrics.json`、各自的 source-cuff review boards：trial 07/08 试装失败的复现脚本、指标与证据板，不可作生产资源。
 - `chibi_mitten_hand_viewer_left_trial_09_art_wip.png`、`chibi_mitten_hand_viewer_right_trial_09_art_wip.png`、`fit_mitten_hand_art_trial_09.py`、`mitten_trial_09_source_cuff_fit_metrics.json`、`chibi_mitten_trial_09_source_cuff_candidate_board_wip.png`、`body_full_ai_trial09_source_cuff_preview_wip.png`：用户拒绝的左右独立 AI hand-study、source cuff 试装工具/指标/失败证据；不得当作生产层。
 - `chibi_mitten_hand_viewer_left_trial_10_art_wip.png`、`chibi_mitten_hand_viewer_right_trial_10_art_wip.png`、`fit_mitten_hand_art_trial_10.py`、`mitten_trial_10_source_cuff_fit_metrics.json`、`chibi_mitten_trial_10_source_cuff_candidate_board_wip.png`、`body_full_ai_trial10_source_cuff_preview_wip.png`：较宽轮廓的后续手型试验；本人目视仍判源位置过小/不自然，仅失败证据。
-- `SHA256SUMS.txt`、`mitten_ai_fit_SHA256SUMS.txt`、`mitten_source_cuff_SHA256SUMS.txt`、`chibi_small_hand_source_SHA256SUMS.txt`、`mitten_trial_06_source_cuff_SHA256SUMS.txt`、`mitten_trial_07_source_cuff_SHA256SUMS.txt`、`mitten_trial_08_concept_SHA256SUMS.txt`、`mitten_trial_08_source_cuff_fit_SHA256SUMS.txt`、`mitten_trial_09_source_cuff_SHA256SUMS.txt`、`mitten_trial_10_source_cuff_SHA256SUMS.txt`：分阶段 WIP 文件校验清单。
+- `chibi_mitten_original_fullbody_concept_trial_11_wip.png`、`chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png`、`mitten_trial_11_concept_review_metrics.json`、`build_mitten_trial_11_review_board.py`：在全身画布中放大左右 mitten 并朝内 thumb-nub 的概念修订及同位对照；本人已目视，待用户审阅。
+- `SHA256SUMS.txt`、`mitten_ai_fit_SHA256SUMS.txt`、`mitten_source_cuff_SHA256SUMS.txt`、`chibi_small_hand_source_SHA256SUMS.txt`、`mitten_trial_06_source_cuff_SHA256SUMS.txt`、`mitten_trial_07_source_cuff_SHA256SUMS.txt`、`mitten_trial_08_concept_SHA256SUMS.txt`、`mitten_trial_08_source_cuff_fit_SHA256SUMS.txt`、`mitten_trial_09_source_cuff_SHA256SUMS.txt`、`mitten_trial_10_source_cuff_SHA256SUMS.txt`、`mitten_trial_11_concept_SHA256SUMS.txt`：分阶段 WIP 文件校验清单。

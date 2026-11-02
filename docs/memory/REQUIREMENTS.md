@@ -1164,5 +1164,5 @@ TASKS **T46.15（已完）/ T46.16 / T46.17**、LESSONS **236**。
 
 | 编号 | 要求（用户原意） | 来源 | 落点 | 状态 |
 | --- | --- | --- | --- | --- |
-| A67.1 | 制作完整 Chibi mitten 全身概念，保留小寻角色身份、银白短发、蓝眼、teal/白外套与双浅纹袖口、深色百褶裙、袜鞋和整体比例；自然站姿、左右手均可见，手部圆钝、弱分指 | [聊天] 2026-11-02 | `chibi_mitten_original_fullbody_concept_trial_07_wip.png`、trial 08 refined WIP；T70.2 | ✅ trial 07 option 2 被选为方向；trial 08 经用户“非常好，符合了”确认视觉概念方向 |
+| A67.1 | 制作完整 Chibi mitten 全身概念，保留小寻角色身份、银白短发、蓝眼、teal/白外套与双浅纹袖口、深色百褶裙、袜鞋和整体比例；自然站姿、左右手均可见，手部圆钝、弱分指 | [聊天] 2026-11-02 | `chibi_mitten_original_fullbody_concept_trial_07_wip.png`、trial08/11 WIP；T70.2 | 🟡 trial08 经用户“非常好，符合了”确认视觉概念方向；trial11 为更大 mitten 尺寸修订，待用户审阅，未批准 |
 | A67.2 | 用户选择/确认的 AI 概念方向不自动等于 source-pixel 原画或生产素材批准；袖口真值、隐藏腕部、左右独立 hand layers/source-to-part 与真实 C-engine 集成仍需单独审核 | [聊天/续接] 2026-11-02 | study README、trial 07/08 metrics/review boards、handoff brief；T70.2–T70.4 | 🟡 仅全身概念方向获用户确认；无 source-aligned 生产批准、无 rig/引擎改动 |

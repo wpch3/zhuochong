@@ -2,7 +2,7 @@
 
 **状态：需求约束与来源测量说明；不是新手稿、生产素材或用户批准。** 本文不绘制手形、不描摹 AI 轮廓，也不复用用户标记截图像素；目的是让下一张合规 Chibi 原画一次性满足拆件/引擎前置条件。
 
-**后续概念进展（2026-11-03）：** 用户先选择 AI 全身 trial07 option 2 作为概念方向，随后明确确认 trial08 全身视觉概念“非常好，符合了”；这只批准视觉方向。trial08 像素直接抽取套入 source cuff 的尝试目视失败（有缝或手过短）。trial09 左右独立 AI hand-art source-cuff fit 后由用户明确拒绝：全身源位置上的手显得过小且不自然/观感差。尽管 source cuff 层的 RGBA 身份验证通过，不能据此声称手件验收；trial09 仅作为失败证据保留，禁止复用/晋升。随后 trial10 尝试较宽的 AI silhouette，但本人目视其 fit 入原源框后仍过小且左右侧凸不自然，内部判失败，用户未审阅。停止同类 scale/alignment 循环；继续前需用户/美术给出或确认可接受的全身手型与相对尺寸方向。以上均不能替代此 brief 要求的 source-aligned 原画、左右透明层、hidden-wrist 补全或生产批准。记录与检查板见同目录 `README.md` 与 trial07/08/09/10 metrics。
+**后续概念进展（2026-11-03）：** 用户先选择 AI 全身 trial07 option 2 作为概念方向，随后明确确认 trial08 全身视觉概念“非常好，符合了”；这只批准视觉方向。trial08 像素直接抽取套入 source cuff 的尝试目视失败（有缝或手过短）。trial09 左右独立 AI hand-art source-cuff fit 后由用户明确拒绝：全身源位置上的手显得过小且不自然/观感差。尽管 source cuff 层的 RGBA 身份验证通过，不能据此声称手件验收；trial09 仅作为失败证据保留，禁止复用/晋升。随后 trial10 尝试较宽的 AI silhouette，但本人目视其 fit 入原源框后仍过小且左右侧凸不自然，内部判失败，用户未审阅。trial11 已在用户确认的 trial08 全身方向上制作了明显较大的、朝内 thumb-nub 的 mitten 尺寸修订，并由本人打开全身与同位 3× 细节板；初看更易读、圆钝，但可能相对袖口略大，**仍待用户审阅**。如果用户接受这张全身概念，才继续独立 source-cuff/hidden-wrist 检查；无论如何它不是 source art、拆件或生产批准。trial09/10 仍是失败证据，不复用。以上均不能替代此 brief 要求的 source-aligned 原画、左右透明层、hidden-wrist 补全或生产批准。记录与检查板见同目录 `README.md` 与 trial07/08/09/10/11 metrics。
 
 ## 先锁角色真值
 
