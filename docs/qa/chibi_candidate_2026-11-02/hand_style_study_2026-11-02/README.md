@@ -54,6 +54,12 @@ Trial 06 was first reviewed as a complete AI-generated figure against `design_sh
 - The trial-06 full-body concept is intentionally not replaced by the source body: only hand silhouettes were tested against source sizing/cuffs; AI body/cuff/outfit pixels were excluded. No hidden wrist continuation was invented. No production sprite, rig, generator, or C-engine state was changed or tested.
 - Full provenance, metrics and per-file hashes: `mitten_trial_06_source_cuff_metrics.json`, `fit_mitten_full_body_trial_06.py`, and `mitten_trial_06_source_cuff_SHA256SUMS.txt`.
 
+## 预计看到可验收进展的时间（粗估，依赖门槛）
+
+- **现在可见**：trial 06 的 full-body 对照、左右手部 source-cuff fit board 与透明 variants 已在本目录；这是研究 WIP，不是生产或引擎功能成效。
+- **当前阻塞项**：仓内没有获批的 Chibi `mitten` 左右原画，也没有袖下 hidden-wrist 完整原画。现有 Chibi 只有 `seg_arm_l/r`；`make_hand_parts.py` 对 Chibi 明确不产手势档，`hand_style` 与 `hand_{l/r}_{small,mitten}` 不在 Chibi rig 中。AI trial 06 fit 已看出 cuff-facing seam 不合，不能把继续磨它当成可交付倒计时。因此，在干净、可审阅且获准的 Chibi 手稿出现前，**日历时间无法诚实估算**。
+- **从获批完整手稿到首个 C 引擎可见切换的工程粗估**：约 **2–4 个专注工作日**：约 0.5–1.5 天准备 source-aligned 左右 hand/cuff/hidden-wrist parts 和静态目视；约 1–2 天接隔离 `make_hand_parts.py` / `make_rig.py` 的独立 `hand_style`，保持 wrist/gesture 分轴，并构建/修一轮；另留约 0.5–1 天做 C 引擎基础双向切换与 cuff/腕角冒烟。**完整**手型×手势×腕角×衣物/发型矩阵及重修约 **再需 1–3 天**。这是现有 pipeline 结构上的工程估算，不是承诺；不包含等待原画/用户审阅的日历时间，也不包含整个 Chibi 仍失败的全身 QA、缺件及其他动作任务。
+
 ## 文件
 
 - `build_hand_style_study.py`：生成 Chibi 原像素观察窗与已拒绝的几何示意。

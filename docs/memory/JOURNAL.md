@@ -8024,3 +8024,10 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **本人目视判读**：开启 `chibi_mitten_trial_06_source_cuff_candidate_board_wip.png`、全身 preview、左右 fit crop 与 hand cutouts。两只 shape 均读作圆钝 mitten，可作为形状方向提示；fit board 4× 显示左右 cuff 原像素完整，但 wrist opening 不匹配，仍见外缘空隙/过渡不均、暖浅 seam band 与 outline-density/style mismatch，左侧较明显。判定：trial 06 是“形状提示 only”，拟合本身未达到可复用/美术批准；fullbody redrawn 亦不合源。未把本静态观察称为接缝验收/成品。
 - **边界/证据**：metrics `mitten_trial_06_source_cuff_metrics.json` 保存源哈希、窗口、手尺寸、source box、palette、cuff identity、输出哈希与目视结论；`mitten_trial_06_source_cuff_SHA256SUMS.txt` 清单覆盖图、工具与笔记。无隐藏腕部补齐、无 production sprites/rig/generator 变更、无真实 C 引擎/动画/hand_style/衣物组合测试。既有全链 1,342/33 fail 是未变的旧失败快照，不属于本轮拟合。
 - **后续**：T70.2 仍开放。不得继续打磨脚本手或把 AI fit 伪装为 approved art；需合规 Chibi original mitten art 与左右确认，继而完成隐藏腕部、独立 hand parts、互斥 `hand_style` 且 wrist/gesture 分轴、服装 occlusion 和实际 C engine matrix。
+
+## 2026-11-02｜T70.2 时间问题：可见结果与阻塞门槛复核
+
+- **先核分支/现场**：本回合工作区起始在固定活动分支的旧浅层 `43f5514`，远端活动分支已推到 `86d26fc`；工作区无未提交修改，因此在同一分支 `--ff-only` 快进至 `86d26fc`，未换分支。之后重读 WORKFLOW 铁律 0–15、T70.2、hand-study README/metrics 与 hand-style contract。
+- **实际代码/素材审计**：当前 Chibi sprites 里只有 `seg_arm_l.png` / `seg_arm_r.png`；没有独立 `hand_l/r_small`、`hand_l/r_mitten`，也没有 `hand_style` rig binding。`tools/make_hand_parts.py` 显式对 Chibi 把 `poses=()`，注释为 Chibi 仅腕垫片且 small/mitten 等待专属来源；它不是只差接线。仓内也无获批、含袖下 hidden-wrist 的完整 Chibi mitten 原画。AI trial 06 只可作 shape-only 提示，fit board 中的 seam 不合格。
+- **时间答复依据**：当前能马上看到的是 hand-study WIP board，但不能把它称为成效验收。因为 artwork 是前置输入，未提供/批准合规原画前，日历 ETA 无法估。获得完整且获准的左右手稿后，估约 2–4 个专注工作日到隔离 C 引擎首个双向 `hand_style` 可见切换：约半天至一天半 source-aligned parts + hidden wrist/cuff 静态目视，一至两天隔离 generator/rig selector 与一次修订，再半天至一天 C smoke。完整手型×手势×腕角×服装/发型矩阵再约 1–3 天，并可能根据目视失败增加修订；不包括用户/美术等待和全 Chibi 其它 QA/缺件。
+- **决定/落点**：无新的 AI 试稿或程序化手绘；不碰生产 assets/rig/generator、不冒充 C engine acceptance。把有条件的工程估算和未知的原画等待期写入 hand-study README 与 MEMORY；T70.2 仍开放。

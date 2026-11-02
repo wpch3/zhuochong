@@ -1495,3 +1495,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 重新打开 4×左右源 small vs fit board、全身 source/preview、左右透明 hand variants 与 tight cutouts。圆形 mitten silhouette 有参考价值，但 cuff 下方过渡仍出现外缘空隙/不均、暖浅 seam band 与 outline-density mismatch，尤其左侧；因此判“形状提示 only”，不是可复用 source-aligned art，也不通过美术门。
 - 文件：study `fit_mitten_full_body_trial_06.py`、`mitten_trial_06_source_cuff_metrics.json`、`chibi_mitten_trial_06_source_cuff_candidate_board_wip.png`、左右 variants/cutouts、`mitten_trial_06_source_cuff_SHA256SUMS.txt`。仍无 approved Chibi mitten art、完整独立 hand parts/hidden wrists、hand_style runtime、衣物/手势/wrist 组合或真实 C-engine acceptance；生产 sprites/rig/generator 未改。
 - 下一步：保留此概念和失败 fit 作为研究证据，继续寻求合规可审阅的 Chibi mitten 原画/批准流程；不继续用 AI/程序化几何伪装成原画、不用 Teen/截图像素，已知源 cuff 不变，T70.2 保持未完成。
+
+### 2026-11-02 · 用户问「这一批工作还有多久才能看到成效？」
+
+- 同步前先复核工作区：本地浅层活动分支在 `43f5514` 且干净，远端固定分支已含 `86d26fc`；在原分支 fast-forward 同步，未切分支。
+- 实际检查 Chibi 素材和生成链：现有 Chibi 只有合并的 `seg_arm_l/r`，没有 hand part 或 `hand_style`；`make_hand_parts.py` 明确对 Chibi 不生成 pose hands。approved mitten/hidden-wrist art 缺失，因此不是单纯的代码排期问题。
+- **当前可见**：hand-only 试验板现在可看，但 trial 06 fit seam 目视未通过，仍只属 shape concept。**日历等待合规原画/批准期间不可预测**；从完整原画获批开始，估约 2–4 个专注工作日做到隔离 C 引擎首个双向切换，再用约 1–3 天覆盖完整组合矩阵（并留修订时间）。此为条件式工程估算，不是承诺，也不包含全身 Chibi 其余 QA。
+- 细分、依赖与门槛在 hand-study README；没有为追求速度使用 Teen/截图手或脚本绘制手，没有生产资源变更。
