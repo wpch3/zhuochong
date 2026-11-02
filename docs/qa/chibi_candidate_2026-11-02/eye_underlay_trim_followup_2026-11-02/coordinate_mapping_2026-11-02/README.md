@@ -1,5 +1,7 @@
 # Chibi C 帧眼缘残留坐标配准（证据归档，未修复）
 
+> **后续状态更新（2026-11-02）：** 子目录 `c_engine_gapfill_followup_2026-11-02/` 已从固定 C 帧 sockets 拟合实际 head-group affine，并映射到 `seg_head@2x` texel；已确认左右侧发在四个候选屏幕窗内 alpha=0。三块隔离补片中右侧两块局部 C 像素清除，左黑线仍残 1px；左灰线并非活动高分辨率透明缺口。完整结论、QA 限制及资产 SHA 见该子目录 README。上一份正文记录的是配准尚未完成时的历史状态，仍保留作时间线，不代表当前状态。生产贴图与 rig 仍未修改。
+
 日期：2026-11-02  
 分支：`arena/aaf1408c-zhuochong`  
 仓库 HEAD（开始本次归档时）：`6d42dc4f9e2ac6bde241c5ca080c927b131988f1`  
