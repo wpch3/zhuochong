@@ -7985,3 +7985,13 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **未做/不可混淆**：原创 Chibi mitten 手稿、独立 hand parts / `hand_style`、腕角/手势/衣服遮挡组合、全身差分板仍未完成；生产 sprites/rig/生成器未改，真实 C 引擎动作验收未跑。此前完整候选 QA 1,342 项/33 fail/`pass=false` 仍是失败基线，本轮未运行或改变该快照。
 - **静态门禁**：`roadmap_status.py` 与 `git diff --check` 通过；`selfcheck_repo.py --quiet` 为 772 项、1 项失败，唯一失败仍是 Chibi/Teen 生产 `rig.json` 的旧生成器指纹。未为消红而盲目重生未验收生产 rig。无新的完整引擎 QA 或全链 QA。
 - **下一步**：不继续打磨程序化 mitten 草图。按“禁程序化画手”规则，以合规 Chibi 原画/可审阅的艺术流程获取原创 mitten 画稿；先完成左右袖口/手掌的真实线稿、阴影与腕口连续检查，再独立拆件并接 `hand_style`。全 Chibi 的眼缘残余、全身拆件、发型/兜帽、眼口表情、衣物遮挡及动作/C 引擎组合仍开放，不能以这张板结束任务。
+
+## 2026-11-02｜T70.2 续：左右独立 AI 圆掌拟合研究（WIP）
+
+- **先同步远端真值**：本轮开工时本地固定分支落在浅层 `43f5514`，工作树干净；`git ls-remote` 显示同一远端分支在 `90b25c3`。未换分支，在 `arena/aaf1408c-zhuochong` 执行 fetch + `--ff-only` 快进至远端 HEAD。
+- **来源与生成探索**：重新核对 Chibi body_fit、small crop 与双手型契约。试做 AI trial 02（腕口/手比例漂移）、03（手-only 比例/背景偏离），均拒绝；随后以 Chibi 左右腕口源作画风/尺度参考、用户红圈图只作形状提示，分别生成 trial 04/05。04/05 原始图均更改袖口、纹理比例/背景，不直接作为贴图。
+- **实际拟合候选**：用隔离脚本对 trial 04/05 分割手掌、映射到 Chibi 色卡 `#FCE4D8/#E8B8A8/#5A5A6E/#FFFAF6`，按 small 手部尺度拟合，并从原 `body_full` 恢复左右袖口像素。两手分别生成，右手不是镜像。建立 `hand_style_ai_candidate_board_wip.png` 与 `body_full_ai_mitten_preview_wip.png`，本人目视：圆掌/弱分指方向更接近契约、全身底图不变；腕口边缘/阴影接缝仍有疑点，线稿细节密度仍不完全匹配，故仍为未批准候选。
+- **边界**：用户截图只作为形状提示，没有裁图/复制像素；没有 Teen 手件。程序化几何轮廓仍被拒绝为美术。新候选未接入 rig/生成器/生产 sprites，未启动 C 引擎或动作组合 QA；全身 QA 口径未变。
+- **可复核产物**：WIP 目录内 `fit_mitten_ai_trial.py`、`mitten_ai_fit_metrics.json`、`mitten_ai_fit_SHA256SUMS.txt` 记录生成来源、mask/色卡/套准和限制；目录原有 `SHA256SUMS.txt` 与新增清单均逐项通过。完整 board/README 继续标注 WIP / NOT PRODUCTION。
+- **验证**：`python tools/roadmap_status.py` 与 `git diff --check` 通过；两个 SHA 清单全部通过，`fit_mitten_ai_trial.py` 可编译/运行。`selfcheck_repo.py --quiet` 为 772 项/1 fail，唯一失败仍是 Chibi/Teen rig 的旧生成器指纹；没有为消红重生生产 rig。无全链 QA 或 C 引擎验收。
+- **下一步**：继续只在隔离候选处理左右腕口 seam 与 source-style 线稿；若目视不能达到 Chibi 原画质感就拒绝，不接生产。通过美术门后再拆独立 small/mitten 部件并实现 hand_style，手腕/手势正交，随后才做 C 引擎动作×遮挡验收。其余全 Chibi 缺陷仍开放。

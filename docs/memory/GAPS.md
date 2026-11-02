@@ -2597,5 +2597,5 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 
 - 当前已从 Chibi `design_sheet_chibi.png` 的注册 body_fit 坐标抽取原始袖口/手部观察窗，保留 `small` 源像素，并完成 body_full 比例观察图。目录内另存的程序化 mitten 轮廓违反“禁程序化画手”铁律，明确拒绝为美术，只是隔离几何示意，不得作正式参考、生产贴图或 rig 输入。合规原创 mitten 手稿仍缺。证据与脚本：`docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。
 - 这只是视觉研究图：mitten 尚缺 Chibi 原画级线稿、边缘暖色阴影及全身状态参考；分开的袖/手生产件、共享锚点与独立 `hand_style` 都没有落地。没有接入生产，也没有真实 C 引擎矩阵验收。
-- 两张独立生成的 mitten 图因手尺寸、袖口条纹和描边风格偏移而拒绝；保留为 rejected evidence，不能进素材链。禁止把红圈截图裁为贴图，禁止用 Teen 手替代。
-- 下一步不再打磨程序化 mitten 草图；按“禁程序化画手”铁律取得可审阅的 Chibi 原画风格 mitten 稿，核对袖口条纹/遮挡与腕根连续后，再拆 source-backed hand/cuff layers、实现互斥 `hand_style`、保留 wrist/gesture 正交，并覆盖挥手/比心/惊讶与服装遮挡的 C 引擎验收。
+- AI trial 02/03 因手尺寸、袖口条纹、腕根和线稿风格偏移而拒绝。trial 04/05 分别独立生成左右圆掌；在 Chibi 色卡下拟色并复盖原 cuff pixels 后形成 `hand_style_ai_candidate_board_wip.png` 与全身比例 preview。本人目视仍发现腕口过渡/接缝和线稿风格疑点；两侧均未通过，不能作为合规画稿或手件。详细 provenance/hash 在 WIP README 与 `mitten_ai_fit_metrics.json`。
+- 下一步仅在隔离板上核对并修正 AI 候选的腕口接缝与左右方向；若仍无法匹配 Chibi 原画即拒绝，不能为迎合进度而接生产。通过视觉门后再拆 source-backed hand/cuff layers、实现互斥 `hand_style`、保留 wrist/gesture 正交，并覆盖挥手/比心/惊讶与服装遮挡的 C 引擎验收。禁止把红圈截图裁为贴图，禁止用 Teen 手替代。

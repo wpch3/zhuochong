@@ -1479,4 +1479,4 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 
 ### 2026-11-02 续接：继续实际完成整个 Chibi
 
-用户要求继续未完成任务并遵守铁律/基本事项。本轮未把之前的眼缘 WIP 当成 Chibi 完成；继续推进 T70.2，建立 Chibi 自有来源的 small 腕口观察、body_full 比例预览与来源 SHA 记录。自制程序化 mitten 草图经复核违反“禁程序化画手”铁律，已明确拒绝为美术并隔离为几何示意；图像生成候选亦因袖口/线稿/比例漂移拒绝。合规原创 mitten 手稿、独立拆件及 C 引擎验收仍未完成。边界见 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/README.md`、JOURNAL、TASKS T70.2 与 GAPS G66.53。
+用户要求继续未完成任务并遵守铁律/基本事项。本轮先将活动分支从浅层 `43f5514` fast-forward 到远端已推送的 `90b25c3`，再推进 T70.2。新做 trial 02/03/04/05；02/03 拒绝，04/05 分别生成左右圆掌，经 Chibi 色卡拟合并复盖源 cuff 成隔离 WIP/全身预览，但腕口接缝与画风尚疑，两侧均不算合规完成或生产资产。程序化手草图仍被拒绝；无生产 sprite/rig 改动、无 C 引擎验收。文件/hash/限制见 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/README.md`、`mitten_ai_fit_metrics.json` 与 SHA 清单。
