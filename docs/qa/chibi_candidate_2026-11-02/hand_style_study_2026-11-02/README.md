@@ -44,6 +44,16 @@ To lock the actual Chibi `small` visual truth, `extract_chibi_small_hands_refere
 
 The source pixels, per-side ROIs/bounds, operation limits, and SHA-256 values are in `chibi_small_hand_source_extraction_metrics.json`; cutouts are `chibi_small_left_source_pixels_wip.png` and `chibi_small_right_source_pixels_wip.png`. This is an isolated source-truth study only; no production asset, rig, generator, or engine changed.
 
+## 2026-11-02 full-body trial 06 hand-only extraction + source-cuff fit (WIP / rejected as reusable art)
+
+Trial 06 was first reviewed as a complete AI-generated figure against `design_sheet_chibi.png`; because it redraws facial/hair details, proportions, outfit details and cuff geometry, the full image is not a source-faithful Chibi body and is not production art. For a narrower experiment, `fit_mitten_full_body_trial_06.py` crops only the candidate hands, selects the existing warm hand component plus a 2px neighborhood of existing non-magenta pixels while excluding teal/cream AI-cuff colors (no synthesized geometry), maps the colors from measured source-small hand samples, fits uniformly inside each registered source hand box, then composites the exact original `body_full` cuff over the result.
+
+- The left and right tight cutouts are each 45×43 source pixels selected from the full-body AI concept; broad proximity-only masks that picked up nearby clothing were visually rejected and removed. The hand cutouts are `mitten_trial_06_left_tight_hand_source_pixels_wip.png` and `mitten_trial_06_right_tight_hand_source_pixels_wip.png`.
+- The source small-hand fit boxes are 45×48 (left) and 45×46 (right); the unwarped fitted silhouettes remain 45×43, bottom-aligned. Both source cuff masks were checked by exact RGBA pixel identity before saving (2,440 selected cuff pixels left; 2,498 right).
+- The candidate board `chibi_mitten_trial_06_source_cuff_candidate_board_wip.png` and preview `body_full_ai_trial06_source_cuff_preview_wip.png` were opened and visually inspected. The shapes read as rounded mittens and can inform silhouette direction, but the fitted wrist boundary still shows uneven transparent slivers/visible transition mismatch—most on the left—plus a warm/pale seam band and outline-density/style mismatch. So trial 06 is **shape-only concept reference**, not a reusable/source-aligned hand piece, not approved art, and not a successful cuff-fit acceptance.
+- The trial-06 full-body concept is intentionally not replaced by the source body: only hand silhouettes were tested against source sizing/cuffs; AI body/cuff/outfit pixels were excluded. No hidden wrist continuation was invented. No production sprite, rig, generator, or C-engine state was changed or tested.
+- Full provenance, metrics and per-file hashes: `mitten_trial_06_source_cuff_metrics.json`, `fit_mitten_full_body_trial_06.py`, and `mitten_trial_06_source_cuff_SHA256SUMS.txt`.
+
 ## 文件
 
 - `build_hand_style_study.py`：生成 Chibi 原像素观察窗与已拒绝的几何示意。

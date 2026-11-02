@@ -4340,3 +4340,11 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 - **项目真值审计**：`characters/xiaoxun/forms/chibi/design/hands/` 在当前仓库不存在。`characters/xiaoxun/design/hands/hand_open_raw.png`、`hand_heart_raw.png`、`hand_surprised_raw.png` 为大幅独立手势图、洋红底，画风/比例并非 Chibi small 手，未用其像素；惊讶左右 SVG 实际引用 `forms/teen/sprites/hand_{l,r}_surprised@2x.png`，明确不可用于 Chibi。`design/pose_ref/wave_out.png`/`wave_up.png` 是整身 pose 图，不是 Chibi 手件，未作为手图裁切。
 - **当轮 source-backed 制作与目视**：以已登记 `source_crop_manifest.json` ROI 从原 `body_full.png` 选择 warm-skin connected component 与相邻源轮廓/抗锯齿像素；只保留原 RGB/alpha，零重绘、零重采样、零改色。产物 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/chibi_small_hand_source_extraction_board_wip.png`、左右 cutout 与 metrics。本人看 8×：可见小手剪影由原像素组成，袖口仍是 source crop；上缘止于现有 cuff，未发明其下隐藏腕部。该 mask 仍是研究选择而非经过美术批准的生产切层；AI trial 04/05 仍未批，合规原画 mitten 仍缺。
 - **易错点/验证/边界**：不能因 repo 中出现 `hand_open_raw.png` 或 `hand_surprised_l.svg` 就误判成 Chibi 原画；必须追 SVG/素材的最终像素来源和形态。脚本 `extract_chibi_small_hands_reference.py` 仅保存精确源像素并生成诊断板；检查 `chibi_small_hand_source_extraction_metrics.json`、SHA manifest，且本人逐图目视。所有输出仍为 `WIP / NOT A RIG PART`，没有改 production sprites/rig/generator；真实袖下补全、mitten 原稿、互斥切换和 C 引擎画面均未通过。
+
+## 第七十二批（2026-11-02：full-body trial 06 mitten 只作手型像素 fit WIP）
+
+本批是对已查过的 Chibi source pixels 与 Live2D 隐藏/拆件方法的具体应用复核；没有新增外部方法主张。按 Live2D official Production Flow 的“先完整插画/运动拆分，再补足将显露的区域”原则，trial 06 必须先作为 full-body AI concept 与 Chibi 原稿比较；它脸发、身形、衣裙鞋与 cuff 均被改绘，不能认作源级 Chibi。只有左右 mitten silhouette 被隔离成 WIP 像素候选，并按 registered source small-hand boxes 等比拟合；原 cuff selected RGBA pixels 有 2,440/2,498 像素级 identity 断言。
+
+- 目视 4× candidate board/variants：轮廓读作圆钝 mitten，可供形状方向参考；但 source cuff 下腕口仍有外缘空隙/过渡不均、暖浅 seam band、线稿密度/风格 mismatch，左侧较明显。因此不是 seam-clean fit，也不是批准美术；只保留为“AI shape-only concept”。
+- 试验中曾用过较宽的近邻线条范围并夹带裙/衫碎片；该分割物已删除。当前像素选择收窄为手部连通 warm component + 2px 已有非洋红邻域（排除识别到的 teal/cream AI cuff 色），并将来源 SHA、框和选区说明记在 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/mitten_trial_06_source_cuff_metrics.json`；完整摘要见同目录 README/SHA。
+- 重要边界：精确保留 cuff 不会使新 mitten 自动合规；source small ROI 也不含袖下 hidden wrist。未做 artist approval、独立 hand part、hand_style、wrist/gesture 解耦、服装遮挡或真实 C-engine 动画矩阵；无 production assets 变更。

@@ -1487,3 +1487,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 继续实际工作：查官方 Production Flow / PSD / Pose Settings 方法；审计仓库里看似 hand source 的文件，确认泛化 magenta 手势图非 Chibi、surprised SVG 实指 Teen、Chibi 专用 `design/hands` 目录缺失，不用其像素。
 - 从 Chibi `body_full` 注册 ROI 精确保留左右可见 small-hand 原 RGB/alpha，输出隔离 source extraction board/cutouts/metrics；8×本人目视，发现源手轮廓可作为 small 真值基线，但隐藏 wrist under cuff 未画，不能当 rig part。仍缺合规 mitten 原稿；未改生产资源/rig/生成器，无 C 引擎验收。
 - 落点：study `extract_chibi_small_hands_reference.py`、`chibi_small_hand_source_extraction_board_wip.png`、metrics/SHA；canonical `docs/REFERENCE_NOTES.md` 第七十一批；T70.2/G66.53/MEMORY/JOURNAL。
+
+### 2026-11-02 续接：trial 06 full-body mitten 概念只做手部像素拟合测试（WIP）
+
+- 按上轮交接先用完整 AI full-body trial 06 做风格/真值对比；确认脸发、比例、衣服/袖口都有明显 redraw，整图不是 faithful Chibi source，不允许整图进生产。
+- 实际试验仅提取其左右 hand-only warm-skin + 2px 已有像素邻域（各 45×43），映射到从 Chibi source small hand 测得的色阶，均匀拟合到 45×48 / 45×46 源框，原 Chibi cuff pixel RGBA identity 断言分别核过 2,440 / 2,498 个 cuff pixels。早期 broad-neighborhood mask 捎入裙/衫边，已删除；不作可用 cutout。
+- 重新打开 4×左右源 small vs fit board、全身 source/preview、左右透明 hand variants 与 tight cutouts。圆形 mitten silhouette 有参考价值，但 cuff 下方过渡仍出现外缘空隙/不均、暖浅 seam band 与 outline-density mismatch，尤其左侧；因此判“形状提示 only”，不是可复用 source-aligned art，也不通过美术门。
+- 文件：study `fit_mitten_full_body_trial_06.py`、`mitten_trial_06_source_cuff_metrics.json`、`chibi_mitten_trial_06_source_cuff_candidate_board_wip.png`、左右 variants/cutouts、`mitten_trial_06_source_cuff_SHA256SUMS.txt`。仍无 approved Chibi mitten art、完整独立 hand parts/hidden wrists、hand_style runtime、衣物/手势/wrist 组合或真实 C-engine acceptance；生产 sprites/rig/generator 未改。
+- 下一步：保留此概念和失败 fit 作为研究证据，继续寻求合规可审阅的 Chibi mitten 原画/批准流程；不继续用 AI/程序化几何伪装成原画、不用 Teen/截图像素，已知源 cuff 不变，T70.2 保持未完成。
