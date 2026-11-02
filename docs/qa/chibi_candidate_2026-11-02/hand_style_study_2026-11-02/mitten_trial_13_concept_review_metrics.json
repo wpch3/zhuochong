@@ -1,0 +1,71 @@
+{
+  "status": "isolated_ai_fullbody_concept_wip_pending_user_review_not_production_art",
+  "created_on": "2026-11-03",
+  "reference_approved_direction": {
+    "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+    "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368",
+    "scope": "visual concept direction only"
+  },
+  "feedback_context": "User said trial11 hands were too large. Trial08 remains the approved visual direction; no trial11/12/13 size variant is user-approved yet.",
+  "generation_brief": {
+    "summary": "Second full-body reduction attempt after trial11 feedback: shrink trial12 mitten hands further, target a middle size between trial08 and trial11, keep broad rounded palms and inward-facing nubs; avoid finger grooves and oversized hands.",
+    "reference_inputs": [
+      {
+        "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+        "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368"
+      },
+      {
+        "path": "chibi_mitten_original_fullbody_concept_trial_12_wip.png",
+        "sha256": "b02a44de26f3dcdd443f0cef09003faacba852d6ca40afd7bb3c7b88cfcf1ead"
+      },
+      {
+        "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+        "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+      },
+      {
+        "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+        "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+      }
+    ],
+    "limits": "AI full-body redraw only; no production pixels, no source-aligned hand parts or cuff identity implied."
+  },
+  "output": {
+    "full_body": {
+      "path": "chibi_mitten_original_fullbody_concept_trial_13_wip.png",
+      "sha256": "5bbfc5187c053b941f95abce5919cad7a2d97b59c6931e35a6183c6604fc115e",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "comparison_board": {
+      "path": "chibi_mitten_trial_13_fullbody_size_comparison_board_wip.png",
+      "sha256": "3b576988507593a414dbe0a10bc05678ff3d4b2fb088d236320d7810046bbfa9"
+    },
+    "board_builder": {
+      "path": "build_mitten_trial_13_review_board.py",
+      "sha256": "d4eaa0e34bc889e440a6170536112ff392bf718f6138d6429a37dbb7aba10f09"
+    }
+  },
+  "visual_review": {
+    "status": "assistant_reviewed_second_reduction_attempt_pending_user_review",
+    "reviewed_by": "assistant",
+    "observations": [
+      "Opened the full-body image and a 08/11/12/13 same-position 3x board.",
+      "Trial13 is slightly smaller than trial12, but visual difference is modest; trial12 and 13 remain close to trial11 in the detail crops, and both are clearly larger than trial08.",
+      "The hand silhouette remains rounded with inward-facing nubs and no finger grooves. The palms approach cuff width but are still visually substantial; user acceptance is needed before calling the size right.",
+      "The full figure is an AI redraw; source cuff identity, hidden wrist, layer fit and engine are not tested."
+    ],
+    "decision": "candidate visual revision only; do not split/promote pending user feedback"
+  },
+  "source_truth": {
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    },
+    "design_sheet_chibi": {
+      "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+      "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+    }
+  }
+}

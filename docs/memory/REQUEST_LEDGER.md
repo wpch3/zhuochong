@@ -1534,3 +1534,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **实际续做 trial11**：不继续在小 source box 里微调失败的 AI blob，直接基于 trial08 的全身方向生成一张更大 mitten 概念修订，prompt 明确左右短 thumb nubs 朝身体中心。新增 `chibi_mitten_original_fullbody_concept_trial_11_wip.png` 及 `build_mitten_trial_11_review_board.py` 构建的 `chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png`；同尺寸、同位置裁切并列 trial08/11 全身及左右 3× wrist/hand。1024×1024 全身原图 SHA 记录在 `mitten_trial_11_concept_review_metrics.json`。
 - **本人目视**：trial11 手在全身里明显比 trial08 大、更易读为圆钝 mitten；左右小拇指/拇指状侧凸朝身体内侧，无分指线；双袖仍见两条浅纹，脸、发、衣、姿态及色盘大体保持。风险是手相对袖口可能偏大；袖口和全身仍为 AI redraw，不是源像素。结论只是**候选全身视觉修订，待用户审阅**，未批准拆件或生产。
 - **验证/边界**：试制和对照板均在隔离 study 目录；metrics、README、handoff、memory 和 SHA manifests 已补并核对；未改 sprite/rig/generator，无 hidden-wrist/source-cuff/动态/C 引擎验证。下一步请用户判断 trial11 的全身手型与相对尺寸；若获准为方向，再单独做 source-cuff 与隐藏腕部试验，仍须再次目视及真实 C-engine 门禁。
+
+### 2026-11-03 · 用户反馈「手确实偏大了」
+
+- 记录 trial11 尺寸反馈为明确修订要求：减小双手，但仍维持可读 mitten、向内 thumb nubs、全身 Chibi 比例；不是把手件拉回 trial09 那种小而不自然的源框 fit。
+- 实际生成 trial12（较 trial11 适度缩小）和 trial13（再尝试缩小）的两张 full-body AI concept WIP；新增 `build_mitten_trial_13_review_board.py` 与 `chibi_mitten_trial_13_fullbody_size_comparison_board_wip.png`，用同一 115×145px 两侧 wrist/hand crops 3× nearest-neighbour，及等比例 08/11/12/13 全身对比。
+- 本人目视：trial12/13 都较圆钝、朝内 nub、无分指线；相比 trial11略小，但 12/13 间尺寸差异仍有限，且仍明显大于 trial08。不能声称已满足“偏大”的修订，也未获用户确认；请用户判断当前 12/13 尺寸是否足够小。
+- 来源/边界：同一 approved trial08 visual direction、Chibi `body_full` 和 `design_sheet_chibi` 作身份/尺寸参考。全部仍是 AI redraw WIP，袖口非源像素；未做 source-cuff, hidden-wrist, layer/rig/C-engine 测试，未修改 production。

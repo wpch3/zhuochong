@@ -38,7 +38,7 @@ def main() -> None:
     full_h = 500
     for x, im, label in (
         (155, im08, "TRIAL 08 · USER-APPROVED VISUAL DIRECTION"),
-        (885, im11, "TRIAL 11 · LARGER MITTEN CONCEPT · REVIEW PENDING"),
+        (885, im11, "TRIAL 11 · USER FEEDBACK: TOO LARGE"),
     ):
         d.text((x, 100), label, font=font(18), fill=(48, 42, 59))
         thumb = im.resize((full_w, full_h), Image.Resampling.LANCZOS)

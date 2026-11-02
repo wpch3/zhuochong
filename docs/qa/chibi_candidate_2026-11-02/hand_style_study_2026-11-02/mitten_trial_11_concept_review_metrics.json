@@ -44,15 +44,15 @@
     },
     "comparison_board": {
       "path": "chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png",
-      "sha256": "2572b20c38fe9810767d8815c56d679b1288d358bc3fffe757e8516de5cd3c8c"
+      "sha256": "95608ef39f1ab6ef8a90280c68de7f27e833fdcbaffbcfa28d76e27b71884067"
     },
     "board_builder": {
       "path": "build_mitten_trial_11_review_board.py",
-      "sha256": "c75161c86e4d340891d09e387423a15239579078162c065ddb1ff5865ea2d06b"
+      "sha256": "a4d2668e3ed32c1da9a1a0031f5b3e2dfbcf1c46e32b82e8418640ad4626ccad"
     }
   },
   "visual_review": {
-    "status": "assistant_reviewed_concept_direction_pending_user_review",
+    "status": "user_reviewed_rejected_as_oversized",
     "viewed_artifacts": [
       "chibi_mitten_original_fullbody_concept_trial_11_wip.png",
       "chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png"
@@ -61,9 +61,11 @@
       "At full-body scale, both hands are visibly larger than in trial08 and read as rounded mittens rather than tiny separated-finger hands.",
       "Viewer-left and viewer-right thumb nubs face toward the body center, giving the pair a coherent inward-facing orientation; no finger grooves are visible.",
       "The comparison board uses the same full-body view plus identical 115×145px source-position windows at 3× nearest-neighbour. Cuffs retain two visible pale stripes, but they are AI-redrawn and not source-exact.",
-      "The character remains recognizably close to trial08 in face, hair, clothing, pose, and palette. Hands may now be slightly oversized relative to cuffs; this is the key user-review question, not a production acceptance."
+      "The character remains recognizably close to trial08 in face, hair, clothing, pose, and palette. Hands may now be slightly oversized relative to cuffs; this is the key user-review question, not a production acceptance.",
+      "The user explicitly judged trial11 hands too large; this overrides the assistant initial note that the size might be acceptable."
     ],
-    "decision": "candidate_visual_revision_only; user approval pending; do not split or promote yet",
-    "next_step": "Ask user to judge trial11 whole-body mitten size/shape against the confirmed trial08 direction. If accepted as concept, separately test source cuff fit and hidden-wrist coverage; production remains blocked."
+    "decision": "trial11_size_rejected_by_user; retain_only_as_comparison_reference; trial12_13_reductions_pending_review",
+    "next_step": "Use the trial12/13 reduced-size full-body comparison as the next review point; no source-aligned fitting or production before a size direction is accepted.",
+    "user_feedback": "The user said: 手确实偏大了。"
   }
 }

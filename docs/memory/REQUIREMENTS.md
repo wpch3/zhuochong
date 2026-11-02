@@ -1164,5 +1164,6 @@ TASKS **T46.15（已完）/ T46.16 / T46.17**、LESSONS **236**。
 
 | 编号 | 要求（用户原意） | 来源 | 落点 | 状态 |
 | --- | --- | --- | --- | --- |
-| A67.1 | 制作完整 Chibi mitten 全身概念，保留小寻角色身份、银白短发、蓝眼、teal/白外套与双浅纹袖口、深色百褶裙、袜鞋和整体比例；自然站姿、左右手均可见，手部圆钝、弱分指 | [聊天] 2026-11-02 | `chibi_mitten_original_fullbody_concept_trial_07_wip.png`、trial08/11 WIP；T70.2 | 🟡 trial08 经用户“非常好，符合了”确认视觉概念方向；trial11 为更大 mitten 尺寸修订，待用户审阅，未批准 |
-| A67.2 | 用户选择/确认的 AI 概念方向不自动等于 source-pixel 原画或生产素材批准；袖口真值、隐藏腕部、左右独立 hand layers/source-to-part 与真实 C-engine 集成仍需单独审核 | [聊天/续接] 2026-11-02 | study README、trial 07/08 metrics/review boards、handoff brief；T70.2–T70.4 | 🟡 仅全身概念方向获用户确认；无 source-aligned 生产批准、无 rig/引擎改动 |
+| A67.1 | 制作完整 Chibi mitten 全身概念，保留小寻角色身份、银白短发、蓝眼、teal/白外套与双浅纹袖口、深色百褶裙、袜鞋和整体比例；自然站姿、左右手均可见，手部圆钝、弱分指 | [聊天] 2026-11-02 | `chibi_mitten_original_fullbody_concept_trial_07_wip.png`、trial08/11/12/13 WIP；T70.2 | 🟡 trial08 经用户确认视觉方向；trial11 用户反馈手偏大，trial12/13 为减小版本，待用户选择/修订，均未批准 |
+| A67.2 | 用户选择/确认的 AI 概念方向不自动等于 source-pixel 原画或生产素材批准；袖口真值、隐藏腕部、左右独立 hand layers/source-to-part 与真实 C-engine 集成仍需单独审核 | [聊天/续接] 2026-11-02 | study README、trial 07/08/11/12/13 metrics/review boards、handoff brief；T70.2–T70.4 | 🟡 仅 trial08 全身概念方向获用户确认；无 source-aligned 生产批准、无 rig/引擎改动 |
+| A67.3 | trial11 全身 mitten 手型被用户指出偏大；后续修订需减小双手，同时保留圆钝 mitten 可读性、左右朝内 thumb nub 与全身 Chibi 比例；必须先全身比较、用户确认后才继续拆件 | [聊天] 2026-11-03 | trial12/13 全身 WIP 与 `chibi_mitten_trial_13_fullbody_size_comparison_board_wip.png`；T70.2 | 🟡 已生成/目视 trial12、13；两者较 trial11略小但差异有限，待用户判断尺寸 |

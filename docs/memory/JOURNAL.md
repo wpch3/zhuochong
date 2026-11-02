@@ -8062,3 +8062,10 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **实际产物**：基于用户确认的 trial08 全身视觉方向，独立生成 trial11 完整全身概念，直接在全身大小设计更大的 mitten，而非抽手后硬塞 source box。生成图 `chibi_mitten_original_fullbody_concept_trial_11_wip.png` (1024×1024)；同尺寸对照板 `chibi_mitten_trial_11_fullbody_and_hand_detail_review_board_wip.png`，由 `build_mitten_trial_11_review_board.py` 以相同全身图和相同 115×145px cuff/hand 窗口、3× nearest-neighbour 排版；没有改动/重绘任一输入图。
 - **本人目视**：重新打开 trial08 原全身、trial11 原全身与完整对照板。trial11 双手在全身里明显更大、轮廓更饱满；左右短 thumb nub 朝身体中心，没有 trial08 明显分指线；两袖口仍可见两条浅纹；脸发、服装、姿态、色盘大体保持 trial08 方向。手可能较袖口略大，且 cuff/body 全图仍 AI redraw；这仅是待用户审核的视觉概念变体，不是原画、生产件、source-cuff fit 或拆件批准。
 - **来源与边界**：概念参考 trial08 (`SHA 670f009e…`)、Chibi `body_full`、`design_sheet_chibi`；来源、prompt brief、输出 SHA 和 review 状态见 `mitten_trial_11_concept_review_metrics.json`，清单见 `mitten_trial_11_concept_SHA256SUMS.txt`。board-builder `py_compile`、metrics JSON 解析、全部本目录 SHA manifests、`roadmap_status.py` 与 `git diff --check` 均通过。下一步先等用户判断全身手型尺寸；若确认，再做真实 source-cuff identity/hidden-wrist 分层测试，后续仍须动态与 C-engine QA。未改 production sprites/rig/generator，未运行 C engine。
+
+## 2026-11-03｜按用户“手确实偏大了”修订 trial11：trial12/13 尺寸校准
+
+- **现场同步/规则**：本轮 checkout 在固定分支浅层旧 `43f5514`，工作树干净；fetch + `--ff-only` 更新到已推送 `7dfadc4`，未切换分支。回读铁律、常驻回归表和 T70.2 门槛。用户明确反馈 trial11 双手过大，按新反馈优先修订。
+- **实际产物**：生成 trial12（目标为 trial11/08 之间的中间大小）和 trial13（再减一轮）的完整全身 AI 概念，保持圆钝 mitten 和朝内的左右 thumb nubs。新增 `build_mitten_trial_13_review_board.py` 及 `chibi_mitten_trial_13_fullbody_size_comparison_board_wip.png`，把 08/11/12/13 全身缩放并列，并以同一 115×145px 源位置 crop、3× nearest-neighbour 并排左右腕口细节。没有从用户截图取像素，也没有程序化画手。
+- **本人目视**：打开 trial12、trial13 原全身及最终四版 board。两版仍清楚读作 mitten、无分指线，左右侧 nub 朝身体内侧；12/13 相比11确有缩小，但幅度不大、两者大小接近，且显著大于08。 trial13 更接近袖口宽度，但仍可能偏大。结论为**两张减小候选待用户判断**；不声称已满足修订、不进入拆件。
+- **来源/边界/验证**：trial12/13 hashes、生成意图和观察记录在 `mitten_trial_12_concept_review_metrics.json`、`mitten_trial_13_concept_review_metrics.json`；trial11/12/13 metrics JSON、两种 review-board scripts `py_compile`、全部本目录 SHA manifests、`roadmap_status.py` 与 `git diff --check` 均通过。全身/cuff 仍 AI redraw，双纹可见但不精确保留源像素；未做 source cuff、hidden wrist、rig、动作或 C-engine 验收，未改生产 sprite/rig/generator。
