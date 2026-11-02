@@ -20,6 +20,41 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 
+def preserve_existing_regions(
+    keep: np.ndarray,
+    source_rgba: np.ndarray,
+    body_rgba: np.ndarray,
+    component: np.ndarray,
+    regions: list[tuple[int, int, int, int]],
+    *,
+    threshold: int = 16,
+) -> int:
+    """Keep already-existing, body-backed pixels in small source ROIs.
+
+    This helper only extends the trim keep-mask. It never paints RGBA or
+    creates alpha where the split source/body backing has none. Requiring the
+    original largest component prevents detached fringe islands from being
+    restored by a configured ROI.
+    """
+    if source_rgba.shape[:2] != keep.shape or body_rgba.shape[:2] != keep.shape:
+        raise ValueError("underlay source/body dimensions must match the keep mask")
+    if component.shape != keep.shape:
+        raise ValueError("underlay component dimensions must match the keep mask")
+
+    h, w = keep.shape
+    preserved = 0
+    for x0, y0, x1, y1 in regions:
+        if not (0 <= x0 < x1 <= w and 0 <= y0 < y1 <= h):
+            raise ValueError(f"underlay ROI outside source bounds: {(x0, y0, x1, y1)}")
+        source_alpha = source_rgba[y0:y1, x0:x1, 3]
+        body_alpha = body_rgba[y0:y1, x0:x1, 3]
+        connected = component[y0:y1, x0:x1]
+        use = (source_alpha > threshold) & (body_alpha > threshold) & connected
+        keep[y0:y1, x0:x1] |= use
+        preserved += int(use.sum())
+    return preserved
+
+
 def largest_component(mask: np.ndarray) -> np.ndarray:
     h, w = mask.shape
     seen = np.zeros_like(mask, dtype=bool)
@@ -144,6 +179,33 @@ def main() -> int:
     yy = np.arange(h)[:, None]
     neck_keep = yy >= max(0, neck_y - 5)
     keep = component & (face_band | face_halo | neck_keep)
+
+    # Chibi face-underlay exclusions are form-specific, source-space ROIs
+    # established by fixed C-frame/socket registration. They only preserve
+    # already-opaque pixels that remain connected to the main head and have
+    # opaque body_full backing; they never paint or grow the sprite silhouette.
+    if a.character == "xiaoxun" and a.form == "chibi":
+        config_path = os.path.join(form, "design", "seg_head_underlay_keep.json")
+        if os.path.exists(config_path):
+            config = json.load(open(config_path, encoding="utf-8"))
+            expected_size = config.get("expected_texture_size")
+            if (config.get("texture") != "seg_head.png"
+                    or expected_size != [w, h]):
+                raise SystemExit(
+                    "[head-clean] underlay config texture/size mismatch; refuse trim"
+                )
+            if not os.path.exists(full_path) or donor.shape[:2] != (h, w):
+                raise SystemExit("[head-clean] underlay config requires matching body_full")
+            try:
+                regions = [tuple(map(int, item["xyxy"]))
+                           for item in config.get("regions", [])]
+                preserved = preserve_existing_regions(
+                    keep, rgba, donor, component, regions, threshold=16
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise SystemExit(f"[head-clean] invalid underlay config: {exc}") from exc
+            print("[head-clean] preserved configured source underlay=%d px (%s)"
+                  % (preserved, os.path.relpath(config_path, a.root)))
 
     remove = (alpha > 0) & ~keep
     rgba[..., 3][remove] = 0
