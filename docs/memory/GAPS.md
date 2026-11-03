@@ -2604,3 +2604,11 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - **T70.2 trial 06 提取/拟合续（2026-11-02，失败为可复用 art fit）**：以完整 AI trial 06 为概念，另选左右 hand-only 源像素并按 Chibi measured small boxes 拟合；源 cuff 像素逐侧 RGBA identity 断言通过（2,440/2,498 px），但本人 4×看到腕口外缘空隙/不均、暖浅 seam 与线稿密度差。该 full-body 仅能作 mitten 外形概念提示；拟合产物未达到可复用/批准标准。详情 `mitten_trial_06_source_cuff_metrics.json` 与 README；无生产、rig、generator 或 C 引擎变更。
 - **进度时间风险（T70.2）**：hand-study WIP 现已可见；首个合规 C-engine 双向效果需等待获批且含袖下隐藏腕部的 Chibi mitten 原画。获批后估 2–4 个专注工作日出隔离双向切换、完整矩阵约再需 1–3 天；原画等待及全身 Chibi QA 不在该估算内。细节见 study README。
 - 为解除 T70.2 原画阻塞已新增 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/chibi_mitten_original_art_handoff_brief_2026-11-02.md`；它是尺寸/分层/隐藏腕部/审批要求 brief。用户已确认 trial08 全身视觉方向；但 trial08 直接 hand-pixel/source-cuff fit 目视失败（一个对齐方式有缝，另一个导致手过短）。trial09 左右独立 AI 手件虽通过 source cuff exact RGBA 检查，用户仍明确拒绝全身观感：太小且不自然；trial10 更宽 AI mitten fit 也由本人判失败（仍显小、侧凸不自然）。trial11 用户反馈偏大，trial12/13 仍偏大，trial14 用户否决。trial15 尺寸方向现由用户明确确认“完全合适”，该认可仅限尺寸。trial16 source-fit 静态 board 源 cuff byte-exact 保留，但本人目视发现左右掌形比例不一致、线稿/阴影不符 Chibi，故艺术门失败，仅留 WIP 证据。trial21–23 迭代后，trial24 source-fit 成为目前尺寸/配对方向最合适的候选：本人看过全身、4×/7×接缝、左右2×层；左右均读作紧凑 mitten，朝内 nub 可见，静态未见明显缝，源 cuff byte-exact。仍有轻度左右形态与线影风格差，故仅待用户审阅、不算 source art 或生产批准。未验 hidden-wrist 动态或引擎。合规 source-aligned Chibi mitten 原画、正式独立手层和 C-engine 仍缺；不允许进生产。完整阶段门禁在 `chibi_mitten_production_plan_2026-11-03.md`。
+
+### G66.53 / T70.2–T70.4 续：真实 C-engine 仅做隔离 feasibility（2026-11-03）
+
+- 本轮已从 Chibi `body_full` 提取的 exact-pixel small-hand cutouts 组成隔离 candidate pose，并在临时工具副本生成候选 rig；它不是当前生产 rig。没有绘制 hidden wrist，trial24 mitten 仍是未批准 AI WIP。
+- 真实 C `zrig` 运行了 86 帧 body-only 矩阵。`wave_both` arms visibly move；`heart_hands` 无 distinct Chibi hand gesture。±70° stress detail 暴露源 small hand cuff 下缺失像素，出现 alpha gaps；不能因此发明/程序化补画手，也不能宣称安全角度。
+- 目视 neutral C/source 比较仍见 eyes/eyelash、hair contour、clothes/arms、legs/shoes 的可见差异。指标未校准，不是 source-fidelity 验收分数。
+- 正式 Chibi rig 仍无验收过的独立 hand parts/hand_style；只将 T70.3 从未动过推进为**隔离可行性部分实现**。T70.2 的获批原创 mitten art、hidden wrist 未解决；T70.4 全身失败链、完整姿势/衣发/遮挡矩阵仍失败/开放。详细证据：hand-study README、production plan、`chibi_arm_rig_candidate_2026-11-03_wip/REVIEW_NOTES_wip.md`。
+- 全仓 `make test` 2638 项通过；完整 `scripts/selfcheck_all.sh` 仍失败，不可交付：production teen/chibi rig 生成器指纹旧、C 编译有既存未使用函数告警、全仓素材 QA 8 项（详见 `logs/asset_qa/report.json` 与 `REQUEST_LEDGER`）。这些不属于本手部候选，未修改生产数据掩盖。

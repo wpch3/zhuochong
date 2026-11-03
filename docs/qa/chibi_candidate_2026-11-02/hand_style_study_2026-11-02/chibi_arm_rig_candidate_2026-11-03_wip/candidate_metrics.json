@@ -1,0 +1,149 @@
+{
+  "status": "isolated_candidate_wip_only",
+  "generated_from_commit": "817bbf12f786dbb0ef2f40df1463b61c68b11a59",
+  "builder_source_hashes": {
+    "make_arm_parts.py": "1a31cb26f6ea73b72eca5861a0c9a6393fb115598df5bd080c87f1d9fe5f18ba",
+    "make_rig.py": "4d36ed880c86e6f8d3f28585f87879afae5656ea8704c46c10a433612ac67ac9"
+  },
+  "source_body_sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff",
+  "trial24_metrics_sha256": "3a0af71cf140a4f3c1694d0db344ee91d045cabb0f1aae49e9d50a8f5aa77252",
+  "candidate_rig_id": "xiaoxun_chibi_arm_rig_candidate_wip",
+  "part_count": 59,
+  "group_count": 13,
+  "pose_group_count": 5,
+  "hand_style": {
+    "id": "hand_style",
+    "fade": 0,
+    "default": "small",
+    "entries": [
+      {
+        "id": "small",
+        "parts": [
+          "hand_l",
+          "hand_r"
+        ]
+      },
+      {
+        "id": "mitten",
+        "parts": [
+          "hand_l_mitten_trial24_candidate_wip",
+          "hand_r_mitten_trial24_candidate_wip"
+        ]
+      }
+    ],
+    "note": "isolated QA feasibility pose; does not approve AI art or production integration"
+  },
+  "hand_parts_added": [
+    "hand_l_mitten_trial24_candidate_wip",
+    "hand_r_mitten_trial24_candidate_wip"
+  ],
+  "source_small_hand_parts": {
+    "l": {
+      "source_cutout": "chibi_small_left_source_pixels_wip.png",
+      "source_cutout_sha256": "77e265585ab738647be2a27b914dc8c562fa5f63a09f95470aaceb1ed7b1a950",
+      "source_rgba_identity_verified": true,
+      "registered_canvas_top_left": [
+        200,
+        944
+      ],
+      "pivot_canvas": [
+        234.5,
+        962.0
+      ],
+      "image_size": [
+        49,
+        52
+      ],
+      "anchor": [
+        0.704082,
+        0.346154
+      ],
+      "hidden_wrist_invented": false
+    },
+    "r": {
+      "source_cutout": "chibi_small_right_source_pixels_wip.png",
+      "source_cutout_sha256": "3ceca5e04153bf10b669645c0f73bf0b0d8b56edb44013c8830af53b3b43a6eb",
+      "source_rgba_identity_verified": true,
+      "registered_canvas_top_left": [
+        600,
+        946
+      ],
+      "pivot_canvas": [
+        613.5,
+        962.0
+      ],
+      "image_size": [
+        49,
+        50
+      ],
+      "anchor": [
+        0.27551,
+        0.32
+      ],
+      "hidden_wrist_invented": false
+    }
+  },
+  "hand_art_placement": {
+    "l": {
+      "target_top_left_canvas": [
+        202,
+        936
+      ],
+      "pivot_canvas": [
+        234.5,
+        962.0
+      ],
+      "image_size": [
+        46,
+        58
+      ],
+      "anchor": [
+        0.706522,
+        0.448276
+      ],
+      "roi_body_xy": [
+        43,
+        846
+      ],
+      "placement_in_roi": [
+        19,
+        22
+      ],
+      "source_ai_art_sha256": "03422cdcfa9fa1f9a113a4cf29b9efea5248223d0a1db3c7855f70fc807f24b3"
+    },
+    "r": {
+      "target_top_left_canvas": [
+        603,
+        936
+      ],
+      "pivot_canvas": [
+        613.5,
+        962.0
+      ],
+      "image_size": [
+        45,
+        58
+      ],
+      "anchor": [
+        0.233333,
+        0.448276
+      ],
+      "roi_body_xy": [
+        435,
+        846
+      ],
+      "placement_in_roi": [
+        28,
+        22
+      ],
+      "source_ai_art_sha256": "be2df054cf9431d933a40ecb24d8352afa1c2007f850eb361af18e3ef062d02f"
+    }
+  },
+  "limits": [
+    "only isolated QA assets; no official Chibi sprite/rig/generator writes",
+    "mitten parts are AI-origin WIP and remain unapproved",
+    "small source hand pixels stop at original cuff; no hidden-wrist art is invented",
+    "only default Chibi outfit/hair is available",
+    "gesture hand artwork is absent"
+  ]
+}

@@ -1,0 +1,1774 @@
+{
+  "title": "Isolated Chibi arm rig C-engine matrix (WIP)",
+  "date": "2026-11-03",
+  "candidate_rig_sha256": "7c3f4937cc27cd753ed1c0a6610770580aca1b5a721069c7eb2ca4dbf46077a7",
+  "case_count": 86,
+  "case_breakdown": {
+    "default_idle_controls": 2,
+    "wrist_sweep": 58,
+    "shoulder_elbow": 18,
+    "action_pose": 8
+  },
+  "wrist_angles_deg": [
+    -70,
+    -65,
+    -60,
+    -55,
+    -50,
+    -45,
+    -40,
+    -35,
+    -30,
+    -25,
+    -20,
+    -15,
+    -10,
+    -5,
+    0,
+    5,
+    10,
+    15,
+    20,
+    25,
+    30,
+    35,
+    40,
+    45,
+    50,
+    55,
+    60,
+    65,
+    70
+  ],
+  "actions": [
+    "wave_both",
+    "heart_hands"
+  ],
+  "assertions": [
+    "C load/render success",
+    "848x1360 non-empty-alpha frames",
+    "hand_style one-hot",
+    "wrist values unclamped",
+    "requested action active",
+    "action geometry channels zero"
+  ],
+  "limitations": [
+    "all 6 separated ear/tail accessory parts hidden for the body-only QA matrix",
+    "trial24 AI mitten pixels unapproved",
+    "small style uses exact visible source pixels but hidden wrist absent",
+    "default outfit/hair only",
+    "±70° stress samples not safety range",
+    "gesture hand artwork absent",
+    "not production acceptance"
+  ],
+  "review_boards": [
+    "candidate_c_engine_default_idle_controls_review_board_wip.png",
+    "candidate_c_engine_small_wrist_sweep_review_board_wip.png",
+    "candidate_c_engine_mitten_wrist_sweep_review_board_wip.png",
+    "candidate_c_engine_shoulder_elbow_matrix_review_board_wip.png",
+    "candidate_c_engine_action_pose_review_board_wip.png",
+    "candidate_c_engine_wrist_extremes_4x_detail_review_board_wip.png"
+  ],
+  "records": [
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "29bb4cbfe07ec53595288bbe4dae228c550253f147090c9dd433d7691447554a",
+      "case": "default_idle_small"
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "113629dc46cdce8b5f3f5d189e8c7a61c945959b2bd7b8656ec02dfc68ca17bf",
+      "case": "default_idle_mitten"
+    },
+    {
+      "style": "small",
+      "wrist_deg": -70,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-3.18181818,-3.18181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "cdd876caaefdcbda2bcdb9c082b338e06a276d63603a225bf46c0b47a13e6cd4",
+      "case": "wrist_small_-70",
+      "requested_wrist_param": -3.1818181818181817,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -65,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-2.95454545,-2.95454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "fa26b80621e9ee8475eee9d62432b3c59b6aad9071ef33d99b753bf0eed695af",
+      "case": "wrist_small_-65",
+      "requested_wrist_param": -2.9545454545454546,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -60,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-2.72727273,-2.72727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "2feb878aa9993081e7b84c4c04666f28314250d5b8a2d359da3eb29fdcfc2ce0",
+      "case": "wrist_small_-60",
+      "requested_wrist_param": -2.727272727272727,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -55,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-2.50000000,-2.50000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "287da726d32d6615897ad74e36e99fde27d53806520c86bc72c574c1a8a15644",
+      "case": "wrist_small_-55",
+      "requested_wrist_param": -2.5,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -50,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-2.27272727,-2.27272727) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "6096d564d0750a6f82c90c3d7ebc1c02989533e6b15175f1c9e293b5674a6370",
+      "case": "wrist_small_-50",
+      "requested_wrist_param": -2.272727272727273,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -45,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-2.04545455,-2.04545455) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "7247c1d59a4ab85fd37e542cef95c1280f868e234f86b1156a098aa019492fdb",
+      "case": "wrist_small_-45",
+      "requested_wrist_param": -2.0454545454545454,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -40,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-1.81818182,-1.81818182) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "c94a84bb15509d1d6c54bff9d2912fdbdec4d4994f938f00d618bb9b34e78cd9",
+      "case": "wrist_small_-40",
+      "requested_wrist_param": -1.8181818181818181,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -35,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-1.59090909,-1.59090909) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "dba5beb91ed01202af3018148797e5fb36450deffeacc1d8988fe22c2df53ffc",
+      "case": "wrist_small_-35",
+      "requested_wrist_param": -1.5909090909090908,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -30,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-1.36363636,-1.36363636) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "cc8c24753c37c65dbd8fd3b091d926c26ef789649538a50a3cba3d07a09e94e8",
+      "case": "wrist_small_-30",
+      "requested_wrist_param": -1.3636363636363635,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -25,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-1.13636364,-1.13636364) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "48140af07c35103965af405490d2d1d992b4cb63f5c3cb844a0d878c25a47510",
+      "case": "wrist_small_-25",
+      "requested_wrist_param": -1.1363636363636365,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -20,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-0.90909091,-0.90909091) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "09a9889aff7fea29fd31aa36969dc12178540bdaa32c017d069af77096579c02",
+      "case": "wrist_small_-20",
+      "requested_wrist_param": -0.9090909090909091,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -15,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-0.68181818,-0.68181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "552a61bad7978b0f56dbde673392128c85cc257bbb0067f27b4c5752dbb819bf",
+      "case": "wrist_small_-15",
+      "requested_wrist_param": -0.6818181818181818,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -10,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-0.45454545,-0.45454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "ea5df45342651415aed8b1fd560252a78c68ecb279e2ca2fdb1a7fae8532e62c",
+      "case": "wrist_small_-10",
+      "requested_wrist_param": -0.45454545454545453,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": -5,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-0.22727273,-0.22727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "fd6650548db5cc0bd20202cd703f8eb6c913ed59d405a5f61c3990bf86dc7d78",
+      "case": "wrist_small_-05",
+      "requested_wrist_param": -0.22727272727272727,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "29bb4cbfe07ec53595288bbe4dae228c550253f147090c9dd433d7691447554a",
+      "case": "wrist_small_+00",
+      "requested_wrist_param": 0.0,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 5,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.22727273,0.22727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "061c836ecc2a08c5f980fe69f911bc05edc36c0bc698ef0f36f5e59e1c0dd842",
+      "case": "wrist_small_+05",
+      "requested_wrist_param": 0.22727272727272727,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 10,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.45454545,0.45454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "1ead9299294798b82d8822f07f91d6a13de247cf483377ef04fea034a91ceeb9",
+      "case": "wrist_small_+10",
+      "requested_wrist_param": 0.45454545454545453,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 15,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.68181818,0.68181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "97e4c8ffb7b8f14407d96345c8424659d8d83962d78d53356842f9f77fd5f8d7",
+      "case": "wrist_small_+15",
+      "requested_wrist_param": 0.6818181818181818,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 20,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.90909091,0.90909091) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "3c6ed8fbf4394a9dbda95e960c2dbc74aa3e720020d0e466983b5f2760c849b8",
+      "case": "wrist_small_+20",
+      "requested_wrist_param": 0.9090909090909091,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 25,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(1.13636364,1.13636364) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "a7f1f6a9b61857b2c892856914723758a7b54cd8adc3189f72b9660ede7d7f21",
+      "case": "wrist_small_+25",
+      "requested_wrist_param": 1.1363636363636365,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 30,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(1.36363636,1.36363636) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "c9141ff95d0e83c7f6f8e8615e5102dfbfd66bc902cf664bb9fbf85b19d99821",
+      "case": "wrist_small_+30",
+      "requested_wrist_param": 1.3636363636363635,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 35,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(1.59090909,1.59090909) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "a35af9242bd789b655501edad82018499f54966f641c74418d664469e035d45d",
+      "case": "wrist_small_+35",
+      "requested_wrist_param": 1.5909090909090908,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 40,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(1.81818182,1.81818182) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "5d0ea84a41e9725a957091b645ffb14f8e79b43a5f32199a3666b1b467a04394",
+      "case": "wrist_small_+40",
+      "requested_wrist_param": 1.8181818181818181,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 45,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(2.04545455,2.04545455) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "1c355f440603a1a1740f3a889d5831078283d5034ea01ce596f9b2adce47871a",
+      "case": "wrist_small_+45",
+      "requested_wrist_param": 2.0454545454545454,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 50,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(2.27272727,2.27272727) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "d94764d116bf779e3e57dd3145445f482cbdde5c38a5475f48c2043ca1cd5edd",
+      "case": "wrist_small_+50",
+      "requested_wrist_param": 2.272727272727273,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 55,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(2.50000000,2.50000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "cd3582ae093d61799cce4bf3d429244f84d1286eb9401158af8eae4c750b6381",
+      "case": "wrist_small_+55",
+      "requested_wrist_param": 2.5,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 60,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(2.72727273,2.72727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "c8611ff1ff8cc997d6c4108cc5eeb418a991fabfd26bf8aff3d5c2ae4beffd8a",
+      "case": "wrist_small_+60",
+      "requested_wrist_param": 2.727272727272727,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 65,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(2.95454545,2.95454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "8764cf096cd695e152ceed5f88558115f5e73ee14168733a10fde43e5a9dfc41",
+      "case": "wrist_small_+65",
+      "requested_wrist_param": 2.9545454545454546,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 70,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(3.18181818,3.18181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "c1e41eb5a9647d3b94525e7e8c9db5ef65fa2cfb10f7129fea2387d40e5cdecd",
+      "case": "wrist_small_+70",
+      "requested_wrist_param": 3.1818181818181817,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -70,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-3.18181818,-3.18181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "8d168c636fb83cf8393138df9d5a10862d0151133c199df370c47c10e0b15e2f",
+      "case": "wrist_mitten_-70",
+      "requested_wrist_param": -3.1818181818181817,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -65,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-2.95454545,-2.95454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "18eedd61dab4aee48507d9d0be47c48d99ebc998ccf26893a1d3336d777624fc",
+      "case": "wrist_mitten_-65",
+      "requested_wrist_param": -2.9545454545454546,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -60,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-2.72727273,-2.72727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "599348cc9499815a945ae1175981d18dd2f23147c682c025dc285207ed0da227",
+      "case": "wrist_mitten_-60",
+      "requested_wrist_param": -2.727272727272727,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -55,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-2.50000000,-2.50000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "548d7e247a37be0b132d2be9506b6217f9ea13c0a656f7cb043e7aea58a6a989",
+      "case": "wrist_mitten_-55",
+      "requested_wrist_param": -2.5,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -50,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-2.27272727,-2.27272727) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "6d72aee88f2f557a6e93d691f49b49a38769701ad35248bc40ef9dcfd9c9de1b",
+      "case": "wrist_mitten_-50",
+      "requested_wrist_param": -2.272727272727273,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -45,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-2.04545455,-2.04545455) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "4ebc73600ab80bbab3b58061473684ab10354ce759e24fb8efb7f5c26a013645",
+      "case": "wrist_mitten_-45",
+      "requested_wrist_param": -2.0454545454545454,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -40,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-1.81818182,-1.81818182) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "bb40c92e0a27558ee17d3a295991d4c0cde22d490816b2872db551c004b72685",
+      "case": "wrist_mitten_-40",
+      "requested_wrist_param": -1.8181818181818181,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -35,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-1.59090909,-1.59090909) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "b00de15005f61ceda36fb5209029ecbd3ba1bea548641a81d99185c8fa72210f",
+      "case": "wrist_mitten_-35",
+      "requested_wrist_param": -1.5909090909090908,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -30,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-1.36363636,-1.36363636) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "c84ee1259170b4198b79f4252a88de91779617a7ab08aa1b755573af693ecbef",
+      "case": "wrist_mitten_-30",
+      "requested_wrist_param": -1.3636363636363635,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -25,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-1.13636364,-1.13636364) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "a62eefaf4b57c27722b73862002b91a8ed862939b8b4b903aa610478b7759c63",
+      "case": "wrist_mitten_-25",
+      "requested_wrist_param": -1.1363636363636365,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -20,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-0.90909091,-0.90909091) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "b61d50e2dec5d1c66d3c53d70b9242a606afcc96f7f57d50dff72cb6775992b2",
+      "case": "wrist_mitten_-20",
+      "requested_wrist_param": -0.9090909090909091,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -15,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-0.68181818,-0.68181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "6f0ebda6d723be05fbfc6324064303dc6f5ea74ec6f352b13facf1cf6a14f69f",
+      "case": "wrist_mitten_-15",
+      "requested_wrist_param": -0.6818181818181818,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -10,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-0.45454545,-0.45454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "dcbc53ad4f676c31c0d59470a22b735ac4e3ece69dd74abcdf5e0ceef2ee1bfd",
+      "case": "wrist_mitten_-10",
+      "requested_wrist_param": -0.45454545454545453,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": -5,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-0.22727273,-0.22727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "e672e298b3e03f4986d1fd064301db7891aef3b9ea77dd7a82c4de6154294d58",
+      "case": "wrist_mitten_-05",
+      "requested_wrist_param": -0.22727272727272727,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "113629dc46cdce8b5f3f5d189e8c7a61c945959b2bd7b8656ec02dfc68ca17bf",
+      "case": "wrist_mitten_+00",
+      "requested_wrist_param": 0.0,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 5,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.22727273,0.22727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "a970376bc11c8ac645c1330711799bf86565ac0cdd397b729ebcee663310d035",
+      "case": "wrist_mitten_+05",
+      "requested_wrist_param": 0.22727272727272727,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 10,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.45454545,0.45454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "6cdce09ba1fd0003567593bc313d9598b9353afedf99f57eda70b0aa4a334697",
+      "case": "wrist_mitten_+10",
+      "requested_wrist_param": 0.45454545454545453,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 15,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.68181818,0.68181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "c96185afe6747f65a2a7463db27af97d50e4fcfd33b7c4d12c00cc1c2f42435b",
+      "case": "wrist_mitten_+15",
+      "requested_wrist_param": 0.6818181818181818,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 20,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.90909091,0.90909091) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "1f4ac6c9cce9b163c2bc711d1c80510968d12fecc4fbdf7d6d7a3ab0d257dfb2",
+      "case": "wrist_mitten_+20",
+      "requested_wrist_param": 0.9090909090909091,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 25,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(1.13636364,1.13636364) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "135553718c83840f9ecf993f788244547ca226e3f5d51c02aec3993a32712d91",
+      "case": "wrist_mitten_+25",
+      "requested_wrist_param": 1.1363636363636365,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 30,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(1.36363636,1.36363636) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "199f59e17a5e45c1cd0f8f9ff383c0436000de0fdf1880022eabcb7af5f6defb",
+      "case": "wrist_mitten_+30",
+      "requested_wrist_param": 1.3636363636363635,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 35,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(1.59090909,1.59090909) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "bac6c31ddee80fe2dfdce1517f8e3043896fbafbfe262b2b7a6e60d13f729bf3",
+      "case": "wrist_mitten_+35",
+      "requested_wrist_param": 1.5909090909090908,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 40,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(1.81818182,1.81818182) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "4a0a275f97eeb0eb9cc4c4db5365aefe5abd579be5aa78da1c7c1fc07fb1ba33",
+      "case": "wrist_mitten_+40",
+      "requested_wrist_param": 1.8181818181818181,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 45,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(2.04545455,2.04545455) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "7335f81624584f676aafe1bb6d6cbe41236556c5d57912f0c020d433c5eb1d33",
+      "case": "wrist_mitten_+45",
+      "requested_wrist_param": 2.0454545454545454,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 50,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(2.27272727,2.27272727) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "eecfb12c10f9ba655061ea6afe3d73c5632e3007ea7f4bc94ca2a295ce01beb1",
+      "case": "wrist_mitten_+50",
+      "requested_wrist_param": 2.272727272727273,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 55,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(2.50000000,2.50000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "d43934cc18c0dad5c18afb0cc42f93933897e89fae978da41413b57476354abc",
+      "case": "wrist_mitten_+55",
+      "requested_wrist_param": 2.5,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 60,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(2.72727273,2.72727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "0e659bb4a3c201d6b900f67f89013383a61a2c68704100ab7b420d897abb870d",
+      "case": "wrist_mitten_+60",
+      "requested_wrist_param": 2.727272727272727,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 65,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(2.95454545,2.95454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "b17b527e14f3e9a307807e87aa5776e99ba8c3085d49758e566ab88365ffde8e",
+      "case": "wrist_mitten_+65",
+      "requested_wrist_param": 2.9545454545454546,
+      "clamp_check": true
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 70,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(3.18181818,3.18181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "3009a33d5b9c1026aef760d6af6da2956a5a15f9cd0adda3ae5fd8a03ea61426",
+      "case": "wrist_mitten_+70",
+      "requested_wrist_param": 3.1818181818181817,
+      "clamp_check": true
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "29bb4cbfe07ec53595288bbe4dae228c550253f147090c9dd433d7691447554a",
+      "case": "joint_small_s0_e0",
+      "requested_shoulder_param": 0.0,
+      "requested_elbow_param": 0.0
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 45,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(2.50000000,2.50000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "ea460ebeeb93bbfdc0126057505ac2e751a0ffbbf98a8e74f775510b92cd5138",
+      "case": "joint_small_s0_e45",
+      "requested_shoulder_param": 0.0,
+      "requested_elbow_param": 2.5
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 90,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(5.00000000,5.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "b223f3dc158153b3157e76e36b95245f3df957b54d66550dd428960930f502a1",
+      "case": "joint_small_s0_e90",
+      "requested_shoulder_param": 0.0,
+      "requested_elbow_param": 5.0
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 30,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(1.66666667,1.66666667) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        134,
+        67,
+        715,
+        1360
+      ],
+      "sha256": "7fa47d46a4e437ad2274405ed2c929300a6c28fd6c89b55761a9504d53f04c19",
+      "case": "joint_small_s30_e0",
+      "requested_shoulder_param": 1.6666666666666667,
+      "requested_elbow_param": 0.0
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 30,
+      "elbow_deg": 45,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(1.66666667,1.66666667) elbow=(2.50000000,2.50000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        116,
+        67,
+        730,
+        1360
+      ],
+      "sha256": "d047349a50906ff45d470e321b1371c343e7f5dafdf8ecb4a6c2e8777d82f655",
+      "case": "joint_small_s30_e45",
+      "requested_shoulder_param": 1.6666666666666667,
+      "requested_elbow_param": 2.5
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 30,
+      "elbow_deg": 90,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(1.66666667,1.66666667) elbow=(5.00000000,5.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "a5a3906c253a01dd17b0e429031c4b2200ea726da020d79587ff177219b08e76",
+      "case": "joint_small_s30_e90",
+      "requested_shoulder_param": 1.6666666666666667,
+      "requested_elbow_param": 5.0
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 60,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(3.33333333,3.33333333) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        102,
+        67,
+        745,
+        1360
+      ],
+      "sha256": "a298a12910866153916d22828cc914537b42cbe2ba55bcba150b6d144a4f3c40",
+      "case": "joint_small_s60_e0",
+      "requested_shoulder_param": 3.3333333333333335,
+      "requested_elbow_param": 0.0
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 60,
+      "elbow_deg": 45,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(3.33333333,3.33333333) elbow=(2.50000000,2.50000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        119,
+        67,
+        725,
+        1360
+      ],
+      "sha256": "a6648d78746ac5659f919176a768ccabed46fc9702238ca1c883ee999e577160",
+      "case": "joint_small_s60_e45",
+      "requested_shoulder_param": 3.3333333333333335,
+      "requested_elbow_param": 2.5
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 60,
+      "elbow_deg": 90,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(3.33333333,3.33333333) elbow=(5.00000000,5.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "57dc9197b6d87a6973694d4098ffca7f4fbdd70574ad35a8313e8a859341d1aa",
+      "case": "joint_small_s60_e90",
+      "requested_shoulder_param": 3.3333333333333335,
+      "requested_elbow_param": 5.0
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "113629dc46cdce8b5f3f5d189e8c7a61c945959b2bd7b8656ec02dfc68ca17bf",
+      "case": "joint_mitten_s0_e0",
+      "requested_shoulder_param": 0.0,
+      "requested_elbow_param": 0.0
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 45,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(2.50000000,2.50000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "c517a179ecf70f75c2e8409dc6741acf6ac1cf213760b2b953a3b161a5bcf6db",
+      "case": "joint_mitten_s0_e45",
+      "requested_shoulder_param": 0.0,
+      "requested_elbow_param": 2.5
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 90,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(5.00000000,5.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "2b09f06aa56ecca0957861e394e123a3d30b2700800cdbc88a5bb873ba09fd58",
+      "case": "joint_mitten_s0_e90",
+      "requested_shoulder_param": 0.0,
+      "requested_elbow_param": 5.0
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 30,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(1.66666667,1.66666667) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        138,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "57c97ce93191cc1d1a88be00d1d35818e2174978bccc8aada08576e1cd9c4d27",
+      "case": "joint_mitten_s30_e0",
+      "requested_shoulder_param": 1.6666666666666667,
+      "requested_elbow_param": 0.0
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 30,
+      "elbow_deg": 45,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(1.66666667,1.66666667) elbow=(2.50000000,2.50000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        120,
+        67,
+        726,
+        1360
+      ],
+      "sha256": "a4d1526cfa7dafb80de5377ec4113c26b3696f9cd69c5ae38be220a95f5dd6fe",
+      "case": "joint_mitten_s30_e45",
+      "requested_shoulder_param": 1.6666666666666667,
+      "requested_elbow_param": 2.5
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 30,
+      "elbow_deg": 90,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(1.66666667,1.66666667) elbow=(5.00000000,5.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "3d1c89b7f44e1297d509b8abcd82b9e514c59cb33d77691006ec1e2dfd7b8b2d",
+      "case": "joint_mitten_s30_e90",
+      "requested_shoulder_param": 1.6666666666666667,
+      "requested_elbow_param": 5.0
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 60,
+      "elbow_deg": 0,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(3.33333333,3.33333333) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        107,
+        67,
+        740,
+        1360
+      ],
+      "sha256": "a23ac6c635ffe92e1c9e109e050955c78baff172511b5e3741d415c685452543",
+      "case": "joint_mitten_s60_e0",
+      "requested_shoulder_param": 3.3333333333333335,
+      "requested_elbow_param": 0.0
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 60,
+      "elbow_deg": 45,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(3.33333333,3.33333333) elbow=(2.50000000,2.50000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        118,
+        67,
+        725,
+        1360
+      ],
+      "sha256": "3cdbcbccabc7444b4b8896b5aaafbdb93523bd67df574244971aa619c971b958",
+      "case": "joint_mitten_s60_e45",
+      "requested_shoulder_param": 3.3333333333333335,
+      "requested_elbow_param": 2.5
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 60,
+      "elbow_deg": 90,
+      "requested_action": "none",
+      "sample_tick_sec": 0.02,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(3.33333333,3.33333333) elbow=(5.00000000,5.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        67,
+        712,
+        1360
+      ],
+      "sha256": "752a3409869011e2406cd387ed24cf62b1f4136ae9b010ad331484339d01c122",
+      "case": "joint_mitten_s60_e90",
+      "requested_shoulder_param": 3.3333333333333335,
+      "requested_elbow_param": 5.0
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "wave_both",
+      "sample_tick_sec": 0.2,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=wave_both active_action=wave_both sample_tick=0.200s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        145,
+        71,
+        715,
+        1360
+      ],
+      "sha256": "25bd4c5d075a2a7e324977c95b9bff4329a4aa1a93cf438b00ff20fa31cd7908",
+      "case": "action_wave_both_0"
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "wave_both",
+      "sample_tick_sec": 0.42,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=wave_both active_action=wave_both sample_tick=0.420s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        131,
+        64,
+        702,
+        1360
+      ],
+      "sha256": "d052f53e529f0e97f58709dc02e281f65914c9855bc06be79469b05257f59dc3",
+      "case": "action_wave_both_1"
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "wave_both",
+      "sample_tick_sec": 0.68,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=wave_both active_action=wave_both sample_tick=0.680s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        143,
+        69,
+        711,
+        1360
+      ],
+      "sha256": "434d53bc772202b07110a7cc52064f949c8d1d6d22a4d62d9ca1297db7b86394",
+      "case": "action_wave_both_2"
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "wave_both",
+      "sample_tick_sec": 0.96,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=wave_both active_action=wave_both sample_tick=0.960s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        137,
+        67,
+        705,
+        1360
+      ],
+      "sha256": "d8892b0c717587cf0752d606332574d4940a6d43a32d4106b6af7eb41398ca67",
+      "case": "action_wave_both_3"
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "heart_hands",
+      "sample_tick_sec": 0.2,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=heart_hands active_action=heart_hands sample_tick=0.200s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        164,
+        70,
+        737,
+        1360
+      ],
+      "sha256": "c58b9ec0822566b6a40f04437bf6407f89a9ef12ace78af10766f805ee013d17",
+      "case": "action_heart_hands_4"
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "heart_hands",
+      "sample_tick_sec": 0.46,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=heart_hands active_action=heart_hands sample_tick=0.460s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        163,
+        71,
+        737,
+        1360
+      ],
+      "sha256": "779ba66d7751d8270b73bbc46f5b2b167b32c079fc3b3c65d98c588758f3ab18",
+      "case": "action_heart_hands_5"
+    },
+    {
+      "style": "mitten",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "heart_hands",
+      "sample_tick_sec": 0.76,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=heart_hands active_action=heart_hands sample_tick=0.760s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        155,
+        70,
+        728,
+        1360
+      ],
+      "sha256": "455cc8b3aab2e99bf4fd8359182e3687e4b71177246295a67694408769fed359",
+      "case": "action_heart_hands_6"
+    },
+    {
+      "style": "small",
+      "wrist_deg": 0,
+      "shoulder_deg": 0,
+      "elbow_deg": 0,
+      "requested_action": "heart_hands",
+      "sample_tick_sec": 1.1,
+      "ambient_enabled": true,
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=heart_hands active_action=heart_hands sample_tick=1.100s frame_scale=1.0 ambient=1 core_hidden=1",
+      "alpha_bbox": [
+        176,
+        73,
+        750,
+        1360
+      ],
+      "sha256": "73f6a546a8aa6f340a09bbcafd7147fa58b6ad8d563cb86ef72c9078fa67ff33",
+      "case": "action_heart_hands_7"
+    }
+  ]
+}

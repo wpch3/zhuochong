@@ -1,0 +1,80 @@
+{
+  "blush": {
+    "l": {
+      "file": "sprites/blush_l.png",
+      "pos": [
+        366,
+        299
+      ],
+      "size": [
+        40,
+        22
+      ],
+      "blend": "multiply"
+    },
+    "r": {
+      "file": "sprites/blush_r.png",
+      "pos": [
+        437,
+        299
+      ],
+      "size": [
+        40,
+        22
+      ],
+      "blend": "multiply"
+    }
+  },
+  "highlight": {
+    "l": {
+      "file": "sprites/eye_hl_l.png",
+      "pos": [
+        373,
+        262
+      ],
+      "size": [
+        13,
+        13
+      ],
+      "blend": "add"
+    },
+    "r": {
+      "file": "sprites/eye_hl_r.png",
+      "pos": [
+        446,
+        257
+      ],
+      "size": [
+        13,
+        13
+      ],
+      "blend": "add"
+    }
+  },
+  "star": {
+    "l": {
+      "file": "sprites/eye_hl_star_l.png",
+      "pos": [
+        369,
+        258
+      ],
+      "size": [
+        20,
+        20
+      ],
+      "blend": "add"
+    },
+    "r": {
+      "file": "sprites/eye_hl_star_r.png",
+      "pos": [
+        442,
+        253
+      ],
+      "size": [
+        20,
+        20
+      ],
+      "blend": "add"
+    }
+  }
+}
