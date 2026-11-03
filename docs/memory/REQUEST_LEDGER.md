@@ -1574,3 +1574,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **本人目视 bracket**：source-only small 在 0°/±5°看起来仍贴合；约 ±10°出现细微腕口分离，±15°采样看到清楚棋盘格 sliver，幅度再大则更明显。5°间距只给起点区间估计，不是精确阈值、可用范围或 motion-safety 结论。Mitten AI WIP 在所选 ±30°帧里未见同等明显大开缝，但有边缘/阴影差，仍未获 art 或 hidden-wrist 批准。
 - small 手件使用精确源像素且没有 hidden-wrist；不能以脚本生成肉色或修改袖口来隐藏此缺口。下一步骤是合规原创 mitten + 真实 hidden-wrist artwork / 审核，不是把 ±10°/15°误当合格上限。
 - 更新 hand-study README、production plan、handoff brief、candidate review notes、T70.3 与 JOURNAL/GAPS；新增 moderate runner 与两张 4× board / metrics 已纳入两层 SHA manifests。runner `py_compile`、23 个 JSON、26 帧 records/logs、manifest-derived ROIs、board dimensions、122 项 candidate + 78 项 study SHA checks 与 `git diff --check` 均通过。未改生产 sprite、rig、generator 或 engine；待提交本续做。
+
+### 2026-11-03 · 用户续令「继续未完成的任务，别忘记铁律和基本事项等，要做出事实」：trial25 原画 WIP
+
+- 现场核对固定活动 branch：`arena/aaf1408c-zhuochong`，本地/远端均 `9b05d312f806fbcb6793fe60f9983a1bea140e2b`，开工工作树 clean。回读 WORKFLOW 0–15、相关记忆文件、T70.2–T70.4、source crop manifest、trial15/24 证据和生产计划；`make test` 基线通过 2638/2638。此轮未跑 `selfcheck_all.sh`。
+- 生成 viewer-left/right 两个独立 AI mitten hand WIP，保存在 `trial25_mitten_art_wip/`。用图像工具原样生成并亲自打开；没有程序像素绘制、抠背景、源 cuff 拟合或接 rig。文件分别 1024×1024 与 912×1150；PNG color type=2 RGB，无 alpha。左图 `(0,0)=(52,11,47)`、右图 `(0,0)=(197,198,197)`；棋盘背景是 opaque pixels。
+- 目视发现：两侧朝内 nub 大致符合要求、不是完全镜像，但窄长 wrist/forearm 超长且顶端硬切，描边/阴影比 Chibi 源粗重且平滑，审美/透明件门失败。拒绝，不当原画/生产素材；只保存为失败证据。哈希/事实指标在 `trial25_metrics_wip.json`。
+- 仍开放：合规 source-aligned Chibi 左右手稿、真实 hidden-wrist、source cuff 视觉验收、用户/授权艺术批准、隔离 rig/C-engine 组合门禁。无 production 路径更改。trial25 JSON、84 项 study SHA、5 项 trial25 局部 SHA、122 项 C candidate SHA 校验通过；`git diff --check` 通过、生产路径 diff 为 0。MEMORY/GAPS/TASKS/JOURNAL/LESSONS/REQUEST_LEDGER、study README/plan/handoff 与 prompt/metrics/review records 已更新。当前待按活动分支提交推送并复核远端 SHA 与 clean status。

@@ -19,7 +19,7 @@
 > 规则：**每次工作开始先读本文件与自己上次的日志；结束时必须追加 `JOURNAL.md` 并更新本文件的"当前状态"。**
 > 用户的新要求**当轮就要写进 `REQUIREMENTS.md`**，不许只留在聊天里。
 
-更新：**2026-11-03（T70.2：trial08 全身概念方向仍获用户确认；trial09 用户拒绝、trial10 内部失败；trial11 与 trial12/13 手型尺寸被用户指出偏大；trial14 用户仍嫌偏大而否决；trial15 尺寸方向已由用户明确确认合适；trial16 隔离 source-fit art 自检未通过、留作 failure evidence；trial21–23 迭代未达标，trial24 source-fit 是待用户审阅 WIP；没有生产手层/hidden wrist/C-engine 验收；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
+更新：**2026-11-03（T70.2：trial08 全身概念方向仍获用户确认；trial09 用户拒绝、trial10 内部失败；trial11 与 trial12/13 手型尺寸被用户指出偏大；trial14 用户仍嫌偏大而否决；trial15 尺寸方向已由用户明确确认合适；trial16 隔离 source-fit art 自检未通过、留作 failure evidence；trial21–23 迭代未达标，trial24 source-fit 是待用户审阅 WIP，trial25 左右 hand art 因 opaque RGB checkerboards/比例与画风失败仅存负例；没有生产手层/hidden wrist/C-engine 验收；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
 
 ## 最新状态（2026-11-03）
 
@@ -32,6 +32,7 @@
 
 - **T70.2 handoff brief**：含 body_full 注册 ROI/小手框、cuff 真值、隐藏腕部、左右独立层、来源禁项与审核交付包；其后已补注 trial07/08 概念进展、trial08 direct-fit 失败、用户拒绝 trial09、trial10 内部失败、用户指出 trial11/12/13 偏大；trial14 被用户指出仍偏大；trial15 尺寸方向获用户确认；trial16 AI source-fit art 自检未通过、仅留 WIP 证据。它仍是规格单而非画稿或生产批准。
 - **T70.2 时间预估（估算，不是承诺）**：trial15 的尺寸方向已获用户确认，source art 门仍未通过；trial16 source-fit 配对因左右形态/画风不一致而内部拒绝。下一步继续做一对风格与尺寸一致的独立 Chibi mitten 源稿、hidden-wrist 补画与静态 cuff 审核，之后再进 rig/engine。Chibi sprites 仍只有 `seg_arm_l/r.png`，无 hand parts / `hand_style`；`make_hand_parts.py` 对 Chibi 仅出腕垫片。获批完整原画后，首个隔离 C 引擎双向切换约 2–4 个专注工作日，完整组合矩阵约再加 1–3 天；不包括全身 QA 其余问题。细分估算在 hand-study README。
+- **Trial25 续（2026-11-03）**：本轮新生成的独立左右 mitten 图经原尺寸目视和 PNG header 核实，均为无 alpha 的 RGB opaque checkerboard；腕部过长/顶端硬切，描边阴影与 Chibi 不符。已明确拒绝，仅留于 `.../trial25_mitten_art_wip/` 作为负例。此事实没有关闭原画/hidden-wrist/artist approval 门禁；不允许抠假透明或用这些图接生产。
 
 > ### ★★★ 开工先读这四样（2026-10-25 加第四样）
 > 0. **`docs/ENGINE_AUDIT_2026-10-25.md`** —— 底层体检 + Live2D 工序对位 + P0/P1/P2 优化清单。
