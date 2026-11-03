@@ -9,7 +9,7 @@
 - 主视觉源：`characters/xiaoxun/design/design_sheet_chibi.png`，登记 body-fit 框 `[628,101,1416,1891] → 567×1292`；角色脸、发型、身体比例、服装、袖口条纹与配色均保持不变。
 - 静止小手像素基线：`characters/xiaoxun/forms/chibi/sprites/body_full.png`（567×1292；SHA-256 `a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff`）。原画已经有左右 small；其 visible pixels 可对照，但 cuff 下方隐藏腕部并不存在于该纹理。
 - 注册腕口 ROI：左 `[43,846,132,938]`，右 `[435,846,524,938]`（均为 body_full 中 exclusive XYXY）。small 手测量框（含 1px 原轮廓 margin）：左 ROI 内 `[19,32,64,80]` / 45×48，右 `[27,34,72,80]` / 45×46；对应 body_full 区域左 `[60,876,109,928]`、右 `[460,878,509,928]`。
-- 当前 source-only small cutouts `chibi_small_left_source_pixels_wip.png` / `chibi_small_right_source_pixels_wip.png` 仅用作像素级可见手形基准；源 RGBA round-trip 已验证。手稿需补足被袖口遮住、旋腕后会露出的 wrist 内容，但不能把该缺失误称为已有源像素。
+- 当前 source-only small cutouts `chibi_small_left_source_pixels_wip.png` / `chibi_small_right_source_pixels_wip.png` 仅用作像素级可见手形基准；源 RGBA round-trip 已验证。隔离 C `zrig` 在 −30°…+30° / 5°步长的目视 follow-up 显示：small 在 ±5°仍看似贴合，约 ±10°出现细微分离，±15°见明显棋盘格 sliver（仅视觉 bracket，不是安全角）。手稿需补足被袖口遮住、旋腕后会露出的 wrist 内容，但不能把该缺失误称为已有源像素。
 
 ## 要交付的原画内容
 

@@ -18,6 +18,12 @@
 - `wave_both` visibly moves the arms. `heart_hands` does **not** produce a distinct heart-hand pose in this Chibi candidate; the arms remain down in the sampled frames. This is evidence that gesture hand artwork/channels are still missing, not a successful gesture test.
 - Joint matrix demonstrates visible arm response at coarse sample angles only; it is not a full joint-occlusion or outfit-coverage acceptance.
 
+## Moderate wrist boundary follow-up — visual diagnostic only
+
+The next targeted sweep rendered both styles at `−30°…+30°` in `5°` increments (26 C frames total), with both registered hand ROIs shown at 4× nearest-neighbour. ROIs are calculated from `source_crop_manifest.json` plus the registered body-to-canvas offset; they are not hand-entered rig anchors. Boards: `candidate_c_engine_moderate_wrist_small_review_board_wip.png` and `candidate_c_engine_moderate_wrist_mitten_review_board_wip.png`; full frame logs/hashes and derived ROIs: `candidate_c_engine_moderate_wrist_review_metrics_wip.json`.
+
+**My visual estimate from the board:** the source-pixel `small` wrists look seated at 0° and ±5°; a subtle separation is becoming visible around the ±10° samples, and an obvious checkerboard sliver appears by the ±15° samples, with larger displacement/gap at higher samples. Because samples are 5° apart, this is only a visual onset bracket (roughly 10°–15°), not a measured tolerance or safe limit. The trial24 AI mitten has no comparably obvious large open gap in the displayed −30°…+30° samples, but small edge/seam artifacts remain and its art/hidden-wrist are not approved. This side-by-side observation cannot authorize either style or any angle range.
+
 ## Neutral source review and direct visual findings
 
 `candidate_c_engine_neutral_core_source_comparison_review_board_wip.png`, `candidate_c_engine_neutral_core_face_source_detail_board_wip.png`, and `candidate_c_engine_neutral_wrist_source_comparison_review_board_wip.png` were opened and inspected after regeneration. Neutral comparison conditions: action idle, wrist/shoulder/elbow zero, ambient off, 0.02 s tick, scale 1.0; the six separated ear/tail parts are hidden.
@@ -28,9 +34,9 @@
 
 ## Artifacts
 
-- Motion boards: `candidate_c_engine_default_idle_controls_review_board_wip.png`, `candidate_c_engine_small_wrist_sweep_review_board_wip.png`, `candidate_c_engine_mitten_wrist_sweep_review_board_wip.png`, `candidate_c_engine_shoulder_elbow_matrix_review_board_wip.png`, `candidate_c_engine_action_pose_review_board_wip.png`, `candidate_c_engine_wrist_extremes_4x_detail_review_board_wip.png`.
+- Motion boards: `candidate_c_engine_default_idle_controls_review_board_wip.png`, `candidate_c_engine_small_wrist_sweep_review_board_wip.png`, `candidate_c_engine_mitten_wrist_sweep_review_board_wip.png`, `candidate_c_engine_shoulder_elbow_matrix_review_board_wip.png`, `candidate_c_engine_action_pose_review_board_wip.png`, `candidate_c_engine_wrist_extremes_4x_detail_review_board_wip.png`, `candidate_c_engine_moderate_wrist_small_review_board_wip.png`, `candidate_c_engine_moderate_wrist_mitten_review_board_wip.png`.
 - Neutral/source boards: `candidate_c_engine_neutral_core_source_comparison_review_board_wip.png`, `candidate_c_engine_neutral_core_face_source_detail_board_wip.png`, `candidate_c_engine_neutral_wrist_source_comparison_review_board_wip.png`.
-- Data: `candidate_metrics.json`, `candidate_c_engine_motion_matrix_results_wip.json`, `candidate_c_engine_neutral_source_comparison_metrics_wip.json`, `rig_candidate_wip.json`, `arm_parts_candidate_wip.json`, plus per-file `SHA256SUMS.txt`.
+- Data: `candidate_metrics.json`, `candidate_c_engine_motion_matrix_results_wip.json`, `candidate_c_engine_neutral_source_comparison_metrics_wip.json`, `candidate_c_engine_moderate_wrist_review_metrics_wip.json`, `rig_candidate_wip.json`, `arm_parts_candidate_wip.json`, plus per-file `SHA256SUMS.txt`.
 
 ## Project test status (not all-green)
 

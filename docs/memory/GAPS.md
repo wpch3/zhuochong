@@ -2612,3 +2612,9 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 目视 neutral C/source 比较仍见 eyes/eyelash、hair contour、clothes/arms、legs/shoes 的可见差异。指标未校准，不是 source-fidelity 验收分数。
 - 正式 Chibi rig 仍无验收过的独立 hand parts/hand_style；只将 T70.3 从未动过推进为**隔离可行性部分实现**。T70.2 的获批原创 mitten art、hidden wrist 未解决；T70.4 全身失败链、完整姿势/衣发/遮挡矩阵仍失败/开放。详细证据：hand-study README、production plan、`chibi_arm_rig_candidate_2026-11-03_wip/REVIEW_NOTES_wip.md`。
 - 全仓 `make test` 2638 项通过；完整 `scripts/selfcheck_all.sh` 仍失败，不可交付：production teen/chibi rig 生成器指纹旧、C 编译有既存未使用函数告警、全仓素材 QA 8 项（详见 `logs/asset_qa/report.json` 与 `REQUEST_LEDGER`）。这些不属于本手部候选，未修改生产数据掩盖。
+
+### T70.2 small-hand cuff gap 已细化定位（2026-11-03，仍未解决）
+
+- 真实 C `zrig` 对 source-only exact-pixel small 做 ±30°、5°步长的左右 wrist close sweep；ROI 从 `source_crop_manifest.json` 派生。本人目视估计 0/±5°似乎贴合、约±10°有细微分离、±15°出现清晰棋盘格 sliver。此为 5°样本的目视起点 bracket，不是合格/安全角判定。
+- trial24 mitten 在同批 ±30°样本未显示同等级大缺口，但其 AI 像素/边缘和隐藏腕 artwork仍未批准；不能转生产。
+- 实际缺件仍是源 cuff 内未绘制的真实 wrist 内容。禁止通过代码画肤色或修改袖口盖住问题。图与runner/method/path见 hand-study README、handoff brief 和 candidate `REVIEW_NOTES_wip.md`。

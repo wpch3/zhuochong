@@ -16,3 +16,9 @@ The real C `zrig` sources were compiled and used for an accessory-excluded 86-fr
 - Keep all production gates open: compliant approved left/right mitten source art; hidden-wrist completion; art/source review; gesture-specific hand art; full source-to-part/cuff verification; outfit/hair/occlusion matrix; user and production approval.
 
 The exact boards, logs, hashes, metrics, scripts, and limitations are listed in `chibi_arm_rig_candidate_2026-11-03_wip/REVIEW_NOTES_wip.md` and the hand-study README. This probe changes the observed status from “no isolated C-engine exercise” to “limited feasibility matrix completed”; it does **not** close T70.2, T70.3, or T70.4.
+
+### 2026-11-03 follow-up: moderate wrist boundary bracket (diagnostic, not safety)
+
+To refine the earlier ±70° stress observation without proposing a safe range, rendered 26 additional C frames for both styles from −30° to +30° in 5° steps. The registered wrist ROIs are computed from `source_crop_manifest.json` and the body-to-canvas registration, then enlarged 4× nearest-neighbour in `candidate_c_engine_moderate_wrist_small_review_board_wip.png` and `candidate_c_engine_moderate_wrist_mitten_review_board_wip.png`.
+
+本人目视估计：exact-source `small` 看起来在 0/±5°仍贴合；±10°附近开始出现细微分离，±15°采样可见清楚的棋盘格 sliver。该范围只是 5°采样下的视觉起点 bracket，不是误差容限、安全角或验收。trial24 AI mitten 在所示 ±30°样本中未见同等明显的大开缝，但仍有细小边缘问题，且 AI 手稿/hidden-wrist 未批准。对应原始运行 log/hash/ROI 位于 candidate 的 `candidate_c_engine_moderate_wrist_review_metrics_wip.json`；所有结果只用于定位缺件，不授权绘制/改写手稿或接生产。
