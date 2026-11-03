@@ -1581,3 +1581,12 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 生成 viewer-left/right 两个独立 AI mitten hand WIP，保存在 `trial25_mitten_art_wip/`。用图像工具原样生成并亲自打开；没有程序像素绘制、抠背景、源 cuff 拟合或接 rig。文件分别 1024×1024 与 912×1150；PNG color type=2 RGB，无 alpha。左图 `(0,0)=(52,11,47)`、右图 `(0,0)=(197,198,197)`；棋盘背景是 opaque pixels。
 - 目视发现：两侧朝内 nub 大致符合要求、不是完全镜像，但窄长 wrist/forearm 超长且顶端硬切，描边/阴影比 Chibi 源粗重且平滑，审美/透明件门失败。拒绝，不当原画/生产素材；只保存为失败证据。哈希/事实指标在 `trial25_metrics_wip.json`。
 - 仍开放：合规 source-aligned Chibi 左右手稿、真实 hidden-wrist、source cuff 视觉验收、用户/授权艺术批准、隔离 rig/C-engine 组合门禁。无 production 路径更改。trial25 JSON、84 项 study SHA、5 项 trial25 局部 SHA、122 项 C candidate SHA 校验通过；`git diff --check` 通过、生产路径 diff 为 0。MEMORY/GAPS/TASKS/JOURNAL/LESSONS/REQUEST_LEDGER、study README/plan/handoff 与 prompt/metrics/review records 已更新。阶段实物/记录已提交并推送活动分支，commit `7d054cadbe76f9273ea4156dd3782155559674f9`；推送后本地/远端 SHA 一致，工作区 clean。
+
+### 2026-11-03 · 用户续令「手套手基本过关，你自行判断是否沿用」：trial24 复用决策
+
+- 复核固定活动分支/远端/工作区；重读铁律与 T70.2–T70.4，并实开 trial24 full-body/4×/7× review board、trial24 RGBA parts、C-engine moderate/extreme boards。
+- 我决定沿用 trial24 的 source-fit RGBA pair 作为隔离 QA 的 basic mitten shape base：左右 46×58 / 45×58，source cuff identity 2,440/2,498 px；图上短宽掌体、朝内 nub 与 trial15 尺寸方向可辨。trial25 是无 alpha opaque checkerboard，腕段过长，不复用其 raster。
+- 用户“基本过关”仅用于继续手型工作；不自动批准 trial24 AI 像素为 source art，不证明 hidden-wrist complete/动作安全，也不许可 production integration。C-engine 角度结果沿用既有测试，不本轮重跑。
+- 发现 active plan 文件在当前 HEAD 仅 30 行 Stage E 记录；用 Git history 核实 817bbf1 存在完整 73 行 Stage A–F，而 4f2e742 将其覆盖为 Stage E-only。本轮恢复原 A–F 内容并保留后续 E feasibility、moderate、trial25 addenda；显式记录恢复事实，不改生产素材。
+- 本轮更新完整 plan、trial24 reuse decision note、README、handoff、C review notes、GAPS/TASKS/MEMORY/REQUIREMENTS/JOURNAL。后续重新打开两侧 @2× parts 并用 ImageMagick 检查 alpha：顶行 y=0 已有宽近水平 alpha 区（左 x=21–70、右 x=25–69），静态 cuff 遮住不等于 hidden-wrist 补全；本轮未重跑 C。
+- 完成 SHA / diff / production-path checks 后仅提交固定活动分支。

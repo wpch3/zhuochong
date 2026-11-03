@@ -2622,4 +2622,9 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 ### T70.2 trial25 art-generation blocker remains open (2026-11-03)
 
 - 两张独立 viewer-left/right mitten 概念图已生成并在原尺寸目视；实际文件均为无 alpha 的 RGB PNG，图上的 checkerboard 是不透明背景。轮廓的腕段过长并以硬切平口结束，线稿/阴影也不符 Chibi 源画；只观察到朝内 nub 方向大致正确。此候选拒绝，完整事实和 SHA 在 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/trial25_mitten_art_wip/`。
-- 仍缺 Chibi source-aligned、左右成对、含真实 hidden-wrist continuation 的获批手稿。不得 chroma-key 掩盖假透明、程序化补手、复用 Teen/截图像素或把 AI WIP 当成批准原画。
+- 仍缺 source-aligned、左右成对、含真实 hidden-wrist continuation 的完整获批原稿。不得 chroma-key 掩盖假透明、程序化补手、复用 Teen/截图像素或把 AI WIP 当成批准原画。
+
+### T70.2 trial24 reuse decision after user feedback (2026-11-03)
+
+- 用户新反馈“（手套）手基本过关，你自行判断是否沿用”。我决定沿用 trial24 source-fit RGBA pair 的基本形态作为隔离 QA 基准：左右 46×58 / 45×58，cuff identity 2,440/2,498 px，板上读作短宽 mitten 且 nub 朝内。trial25 是另一项失败试验，opaque RGB checkers 不当部件使用。
+- 这一反馈和选择只打开继续验证的路径，不证明 source-art fidelity、袖下 hidden-wrist 完整、动作安全、所有风格门或生产接入。续查 2× parts 的 alpha：两件在 y=0 即有宽顶边（左 x=21–70/92 px，右 x=25–69/90 px），静态 source cuff 可遮住，不能证明隐藏腕补画完整；现存 ±30° board 是抽样，不代表界外安全。本轮没生成新帧或修改手像素。下一步继续用获批美术补/审袖下腕段，再查实际 underlap、cuff layering 与旋腕露底。

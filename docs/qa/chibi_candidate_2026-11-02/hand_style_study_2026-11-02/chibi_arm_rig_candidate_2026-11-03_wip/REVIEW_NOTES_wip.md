@@ -51,4 +51,12 @@ The next targeted sweep rendered both styles at `−30°…+30°` in `5°` incre
 3. Supply/approve actual gesture hand art and independently test `hand_style × gesture × wrist angle × outfit/hair`; the current 8 action samples are only runtime checks.
 4. Reconcile the neutral source discrepancies, complete full-body Chibi visual/occlusion review, then rerun the full project QA. User approval and separate production approval remain required.
 
+## Subsequent user feedback and reuse decision (2026-11-03)
+
+The user said the mitten hand is basically passing and delegated whether to reuse it. I choose the existing **trial24** RGBA source-fit pair as the provisional `mitten` shape for continued isolated QA; it is compact, follows the trial15 size direction, has inward nubs, and overlays the registered source cuff. The exact cuff identity checks remain 2,440/2,498 px. The user feedback supports the basic visual form, but not source-art fidelity, hidden-wrist completeness, all-angle motion safety, final approval of the exact AI pixels, or production integration. The previously tested moderate C sweep showed no comparably large open gap in the selected ±30° samples but did show minor edge/seam artifacts; that remains only a sampled visual observation. Trial25 opaque RGB checkerboard images are not used as the hand parts.
+
+## Follow-up hidden-wrist boundary check (2026-11-03)
+
+I reopened the @2× isolated trial24 parts after the reuse decision. Their occupied alpha begins at image row 0 and spans x=21–70 (viewer-left 92×116) and x=25–69 (viewer-right 90×116), yielding broad, nearly horizontal top boundaries at the crop edge. The registered static cuff hides these boundaries, and the existing moderate ±30° samples do not establish what happens outside the sampled poses. This is an explicit hidden-wrist/under-cuff art gap, not evidence of a complete wrist. No new C frames or hand pixels were produced in this check.
+
 Until these gates close, keep every candidate file isolated and describe the work only as a rendered QA WIP. No production integration is authorized by these results.
