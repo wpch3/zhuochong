@@ -1,0 +1,323 @@
+{
+  "status": "isolated_ai_hand_candidate_pending_user_review_not_production",
+  "created_on": "2026-11-03",
+  "approval_scope": "User approved only the trial15 full-body mitten size direction.",
+  "sources": {
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    },
+    "approved_size_direction": {
+      "path": "chibi_mitten_original_fullbody_concept_trial_15_wip.png",
+      "sha256": "63fd306a54e4de75a6a3ee4389de48e57b28d2af560b0dec13c7fd6cd6c228a3"
+    },
+    "fit_method": "select existing AI pixels; source-sample palette; fit uniformly to registered source small-hand bbox; retain exact Chibi cuff mask; no hand geometry drawn",
+    "target_size_px": [
+      52,
+      58
+    ]
+  },
+  "ai_art_inputs": {
+    "left": {
+      "file": "hand_viewer_left_trial_24_ai_art_wip.png",
+      "sha256": "a296bd6360cd3b2f09abb45441a183571e57efc13e1a1b50d84717acc9a96df1"
+    },
+    "right": {
+      "file": "hand_viewer_right_trial_24_ai_art_wip.png",
+      "sha256": "e751a95c11c697ba4b9ed11c321028baf3331a1f94578dfd6ce38f95a2ff56fe"
+    }
+  },
+  "fit_metrics": {
+    "left": {
+      "cuff_core_px": 2208,
+      "cuff_filled_px": 2301,
+      "cuff_cover_px": 2440,
+      "source_hand_skin_component_px": 843,
+      "source_hand_bbox_xyxy_exclusive_with_1px_outline_margin": [
+        19,
+        32,
+        64,
+        80
+      ],
+      "source_hand_bbox_size": [
+        45,
+        48
+      ],
+      "skin_shadow": [
+        248,
+        220,
+        212
+      ],
+      "skin": [
+        253,
+        233,
+        221
+      ],
+      "highlight": [
+        255,
+        239,
+        223
+      ],
+      "source_skin_luminance_p10_p50_p90": [
+        231.81957092285157,
+        236.67320251464844,
+        239.8159942626953
+      ],
+      "source_skin_sample_count": 843,
+      "ai_source_file": "hand_viewer_left_trial_24_ai_art_wip.png",
+      "ai_source_sha256": "a296bd6360cd3b2f09abb45441a183571e57efc13e1a1b50d84717acc9a96df1",
+      "ai_source_silhouette_bbox_xyxy": [
+        268,
+        200,
+        757,
+        812
+      ],
+      "ai_source_silhouette_size": [
+        489,
+        612
+      ],
+      "method": "AI-trial warm skin component + adjacent plum outline; color mapped to source-sampled Chibi hand tones",
+      "source_sampled_palette": {
+        "skin_shadow": [
+          248,
+          220,
+          212
+        ],
+        "skin": [
+          253,
+          233,
+          221
+        ],
+        "highlight": [
+          255,
+          239,
+          223
+        ],
+        "source_skin_luminance_p10_p50_p90": [
+          231.81957092285157,
+          236.67320251464844,
+          239.8159942626953
+        ],
+        "source_skin_sample_count": 843
+      },
+      "target_bbox_xyxy_exclusive": [
+        16,
+        22,
+        68,
+        80
+      ],
+      "target_bbox_size": [
+        52,
+        58
+      ],
+      "scale_uniform": 0.09477124183006536,
+      "fitted_size": [
+        46,
+        58
+      ],
+      "placement_xy": [
+        19,
+        22
+      ],
+      "bottom_aligned_to_source_hand_bbox": true,
+      "cuff_edge_band_radius_px": 2,
+      "ai_wrist_outline_pixels_removed_in_edge_band": 11,
+      "ai_hand_underlaps_source_cuff": true,
+      "candidate_target_source_bbox_xyxy": [
+        16,
+        22,
+        68,
+        80
+      ],
+      "candidate_local_size": [
+        89,
+        92
+      ],
+      "cuff_exact_rgba_identity_px": 2440,
+      "source_rgba_cuff_equal": true,
+      "uniform_fit_output": {
+        "target_bbox_xyxy_exclusive": [
+          16,
+          22,
+          68,
+          80
+        ],
+        "target_bbox_size": [
+          52,
+          58
+        ],
+        "scale_uniform": 0.09477124183006536,
+        "fitted_size": [
+          46,
+          58
+        ],
+        "placement_xy": [
+          19,
+          22
+        ],
+        "bottom_aligned_to_source_hand_bbox": true
+      }
+    },
+    "right": {
+      "cuff_core_px": 2211,
+      "cuff_filled_px": 2322,
+      "cuff_cover_px": 2498,
+      "source_hand_skin_component_px": 897,
+      "source_hand_bbox_xyxy_exclusive_with_1px_outline_margin": [
+        27,
+        34,
+        72,
+        80
+      ],
+      "source_hand_bbox_size": [
+        45,
+        46
+      ],
+      "skin_shadow": [
+        248,
+        218,
+        208
+      ],
+      "skin": [
+        254,
+        233,
+        222
+      ],
+      "highlight": [
+        254,
+        238,
+        225
+      ],
+      "source_skin_luminance_p10_p50_p90": [
+        228.81183776855468,
+        236.02859497070312,
+        239.41968994140626
+      ],
+      "source_skin_sample_count": 897,
+      "ai_source_file": "hand_viewer_right_trial_24_ai_art_wip.png",
+      "ai_source_sha256": "e751a95c11c697ba4b9ed11c321028baf3331a1f94578dfd6ce38f95a2ff56fe",
+      "ai_source_silhouette_bbox_xyxy": [
+        239,
+        154,
+        786,
+        862
+      ],
+      "ai_source_silhouette_size": [
+        547,
+        708
+      ],
+      "method": "AI-trial warm skin component + adjacent plum outline; color mapped to source-sampled Chibi hand tones",
+      "source_sampled_palette": {
+        "skin_shadow": [
+          248,
+          218,
+          208
+        ],
+        "skin": [
+          254,
+          233,
+          222
+        ],
+        "highlight": [
+          254,
+          238,
+          225
+        ],
+        "source_skin_luminance_p10_p50_p90": [
+          228.81183776855468,
+          236.02859497070312,
+          239.41968994140626
+        ],
+        "source_skin_sample_count": 897
+      },
+      "target_bbox_xyxy_exclusive": [
+        24,
+        22,
+        76,
+        80
+      ],
+      "target_bbox_size": [
+        52,
+        58
+      ],
+      "scale_uniform": 0.08192090395480225,
+      "fitted_size": [
+        45,
+        58
+      ],
+      "placement_xy": [
+        28,
+        22
+      ],
+      "bottom_aligned_to_source_hand_bbox": true,
+      "cuff_edge_band_radius_px": 2,
+      "ai_wrist_outline_pixels_removed_in_edge_band": 2,
+      "ai_hand_underlaps_source_cuff": true,
+      "candidate_target_source_bbox_xyxy": [
+        24,
+        22,
+        76,
+        80
+      ],
+      "candidate_local_size": [
+        89,
+        92
+      ],
+      "cuff_exact_rgba_identity_px": 2498,
+      "source_rgba_cuff_equal": true,
+      "uniform_fit_output": {
+        "target_bbox_xyxy_exclusive": [
+          24,
+          22,
+          76,
+          80
+        ],
+        "target_bbox_size": [
+          52,
+          58
+        ],
+        "scale_uniform": 0.08192090395480225,
+        "fitted_size": [
+          45,
+          58
+        ],
+        "placement_xy": [
+          28,
+          22
+        ],
+        "bottom_aligned_to_source_hand_bbox": true
+      }
+    }
+  },
+  "visual_review": {
+    "reviewed": [
+      "chibi_mitten_trial24_sourcefit_review_board_wip.png",
+      "body_full_trial24_mitten_sourcefit_preview_wip.png",
+      "trial24_sourcefit_candidate_parts/hand_left_mitten_trial24_candidate_2x_wip.png",
+      "trial24_sourcefit_candidate_parts/hand_right_mitten_trial24_candidate_2x_wip.png"
+    ],
+    "observations": [
+      "At full-body scale, both fitted hands follow the user-approved trial15 size direction and remain positioned beneath the original source cuffs.",
+      "At 4x and 7x, both read as compact mitten palms with inward thumb nubs; the palms are reasonably paired after uniform fitting, though the viewer-left is a little broader and the viewer-right thumb is slightly more prominent.",
+      "The source cuff pixels remain byte-exact and the static joins show no obvious open gap in this board. The AI contour and shading are still smoother/softer than the Chibi source, and static inspection does not test hidden-wrist coverage or motion."
+    ],
+    "decision": "assistant_visual_candidate_for_user_review_only_not_approved_source_art_or_production"
+  },
+  "limits": [
+    "AI WIP, not source pixels or production art",
+    "no hand geometry programmatically drawn",
+    "no user screenshot pixels or Teen/generic art",
+    "no production sprite/rig/generator changed",
+    "no hidden-wrist animation or C-engine test"
+  ],
+  "files": {
+    "body_full_trial24_mitten_sourcefit_preview_wip.png": "94202de41d1d1ad8d8aab7abca746bd6d3c42a39c5a21b97363d7ff637167798",
+    "chibi_mitten_trial24_sourcefit_review_board_wip.png": "1385479de83c834dd9e171aeb056fb6a7237a013e19c6375ceb3cbb6862b35cf",
+    "trial24_sourcefit_candidate_parts/hand_left_mitten_source_cuff_trial24_candidate_wip.png": "b5de1e6d7120081770005c0672f859b0a4b3851e6cb2b20da89fe827929b9b2a",
+    "trial24_sourcefit_candidate_parts/hand_left_mitten_trial24_candidate_2x_wip.png": "452aa2994826efb9641c795cc89425b3ff63f9204be2635c3b6250baa008e6bd",
+    "trial24_sourcefit_candidate_parts/hand_left_mitten_trial24_candidate_wip.png": "03422cdcfa9fa1f9a113a4cf29b9efea5248223d0a1db3c7855f70fc807f24b3",
+    "trial24_sourcefit_candidate_parts/hand_right_mitten_source_cuff_trial24_candidate_wip.png": "63abda4b9515d791117d9c8760bb7d842a52e5a2a85a32674f24395eb58c50e3",
+    "trial24_sourcefit_candidate_parts/hand_right_mitten_trial24_candidate_2x_wip.png": "3adc05d66147ecb2a93ba85600453f843c041a3f3a7e38b526cfb014abc73110",
+    "trial24_sourcefit_candidate_parts/hand_right_mitten_trial24_candidate_wip.png": "be2df054cf9431d933a40ecb24d8352afa1c2007f850eb361af18e3ef062d02f"
+  }
+}

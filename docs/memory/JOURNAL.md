@@ -8078,3 +8078,11 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **实际隔离制作与目视**：用独立手件 AI WIP 做 trial16 source-fit 候选，目标大小按 trial15 方向，cuff mask RGBA byte-exact 检查分别覆盖 2,440/2,498 个源像素。打开 review board 和全身 preview 后，目视发现 viewer-left 偏细长、viewer-right 掌体偏宽、左右不成对，线稿/阴影与 Chibi 源画不匹配，接缝视觉不自然。将候选判失败，留作失败证据；metrics 的 `decision` 已同步拒绝状态。
 - **产物与范围**：`build_mitten_sourcefit_trial16_wip.py`、trial16 AI 输入/裁切/parts、全身 preview、review board、metrics 与生产计划均留在 hand-study 隔离目录；trial15 metrics 明示仅尺寸批准，README/handoff/memory/requirements 同步更新。无生产 sprites/rig/generator 改动；未做 hidden-wrist 动态或 C-engine 验收。
 - **下一步**：继续隔离制作符合 Chibi 源画线稿/阴影、尺寸与左右形态一致的原创左右手稿；本人目视通过与用户/授权美术确认后，再做隐藏腕部、正式拆件和工程阶段。不得以本轮计划或 trial16 静态源 cuff 检验冒称全流程完成。
+
+## 2026-11-03｜续做 T70.2：trial21–24 迭代与 trial24 source-fit WIP
+
+- **现场/真值核对**：当前工具 checkout 落在固定活动分支旧 SHA `43f5514`，工作树干净；核对远端活动 branch 为 `16e7c56` 后仅执行 `fetch + --ff-only` 快进，不切分支。重读 MEMORY/需求/铁律/上一轮 journal、T70.2 与生产计划，重看 trial15 全身尺寸、Chibi 原 `body_full`、原 small-hand ROI 和 trial16 board。trial15 批准仅针对大小；trial16 因左右轮廓与画风不一致仍拒绝。
+- **制作与修正**：分别生成 trial21、trial22 左右手 WIP，并补一张 trial23 viewer-left matching study。亲眼看图后拒绝试验形态：trial21 一侧过细长、另一侧多出 wrist/cuff 感；trial22 左右掌体比例明显不同；trial23 虽更匹配但轮廓过于镜像，不作候选。
+- **trial24 source-fit**：分别生成左右 compact mitten WIP，要求短宽圆掌、细小朝内 thumb nub、很短 wrist continuation。新建隔离 `build_mitten_trial24_sourcefit_wip.py`，调用已审核 source-cuff helpers，从生成图中提取现有 AI 像素、依源 Chibi skin sample 映射、按注册 source hand bounds 做 uniform fit，并保留原 cuff source RGBA。结果 left 46×58、right 45×58；cuff 两侧 exact 像素分别 2,440 / 2,498。
+- **本人目视结论**：新开 `chibi_mitten_trial24_sourcefit_review_board_wip.png`（完整 board）、`body_full_trial24_mitten_sourcefit_preview_wip.png`（全身）及两个 2× hand part。尺寸对齐 trial15 方向；左掌略宽、右 nub 稍显，但双方都仍读作 mitten，内向 nub 可见；4×/7×处未见明显开缝，源 cuff 清晰保留。AI 线影仍较源图柔软，不等于原画。决定：可交用户审阅 WIP，仅此；不进 production，不进入 hidden-wrist/rig/engine。
+- **归档状态**：trial21–24 AI 图片与 trial24 builder/parts/preview/review/metrics 均留 hand-study，production plan、README 与 T70.2 记忆区同步。临时图片分析依赖在 `/tmp/mitten-img2`，未改项目依赖。验证结果：trial24 metrics JSON 解析、builder `py_compile`、study 全部 SHA256 清单和 `git diff --check` 均通过；没有改生产 sprite/rig/generator。

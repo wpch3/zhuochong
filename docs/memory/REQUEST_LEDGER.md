@@ -1548,3 +1548,12 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 批准范围锁定为 trial15 的 mitten 尺寸方向；不外推为对 AI 像素、source-aligned 原画、左右手件、袖下 hidden-wrist、rig、生产接入或 C-engine 的批准。
 - 实际开工后按已审查的项目真值/资料先做隔离候选 trial16；本人打开全身/局部 review board 后发现左右轮廓比例、线稿与阴影不匹配，故拒绝该候选，不进生产。该结果、门禁和 Stage A–F 完整计划写入 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/chibi_mitten_production_plan_2026-11-03.md`。
 - 后续仍须实际制作符合 Chibi 风格且左右成对一致的原创候选，逐阶段目视审查；通过后才进入 hidden wrist、正式 parts、generator/rig、C-engine 动态与组合矩阵。不能把计划或静态 cuff byte-exact 说成完整制作已完成。
+
+### 2026-11-03 · 用户续令「继续未完成的任务」：trial21–24 左右 mitten 候选与 source-fit
+
+- 先核对固定活动分支与远端：工作区干净，但 checkout 停在旧 `43f5514`；仅在同一活动分支 fast-forward 到远端 `16e7c56` 后继续。重读铁律、上轮日志、T70.2 门禁、用户认可的 trial15 尺寸、Chibi 原 `body_full` 与手稿来源规则。
+- 目视复核 trial16：cuff 原像素虽精确保留，左右手比例/画风不匹配，维持拒绝。
+- 生成 trial21–23 单手 AI WIP 并逐张打开：21 两侧轮廓差异过大；22 左右掌体尺寸形状不合；23 虽成对比例接近，但几乎成为同一轮廓的镜像，不继续用作候选。
+- 生成 trial24 左右独立手稿：把 palm 约束为短宽圆钝、仅有朝身体内侧的短 thumb nub 和短 wrist continuation，参考 Chibi 源线色/肤色与 trial15 已批准尺寸方向。制作 `build_mitten_trial24_sourcefit_wip.py`，只选择已有 AI 像素、映射源肤色色卡、均匀缩放至测量 hand anchor、覆回精确 source cuff；没有程序化画手或改生产路径。左右 fitted sizes 为 46×58 / 45×58；source cuff 分别 2,440 / 2,498 px byte-exact。
+- **本人目视**：打开 `chibi_mitten_trial24_sourcefit_review_board_wip.png`、全身 preview 和左右2×手件；全身尺寸沿用 trial15 方向，左右都读作紧凑 mitten，朝内 nub 可见。4×/7×静态接缝没有明显开缝。仍有左掌略宽、右 nub 略突出、AI 线影较 source 软的问题；因此只把它作为目前最合适的用户审阅 WIP，不称批准的原画或生产件。hidden-wrist 动态、rig 与真实 C-engine 未验。
+- **落点/检查**：新增 trial21–24 AI 源图、trial24 builder、左右透明 candidate parts、全身 preview、review board 与 metrics；README/production plan/MEMORY/TASKS/GAPS同步。临时使用 `/tmp/mitten-img2` 中的 Pillow/NumPy，没有改项目依赖。验证收尾：trial24 metrics JSON 解析通过，builder `py_compile` 通过，study `SHA256SUMS.txt` 全部通过、`git diff --check` 通过；无生产 sprite/rig/generator 改动。

@@ -39,7 +39,7 @@
 - 只把 AI 作为原创新稿候选，不把任何 WIP 直接当 source pixel。禁止脚本生成轮廓或借用别形态手件；像素分析脚本只可测量、切取已有 AI pixels、与源 cuff 遮叠。
 - cuff 适配：逐侧从 Chibi 原图测 cuff 材料连通区，cuff 仅保留 source RGBA；新手置于 cuff 后方，并核对 source hand 外围没有原小手指/旧轮廓露出。
 - 验收包：1× / @2× 左右手透明件、source hand/cuff vs candidate 的 4× 与 8×板、全身对照、像素来源/哈希/目标框与静态 composite 差异。
-- 阻塞：trial16 早期左右生成物 wrist 长短与掌宽不一致。隔离试装 `chibi_mitten_trial16_sourcefit_review_board_wip.png` 已目视：源 cuff 像素保留，但候选掌体比例/线条密度与 Chibi source 不齐，仍是 WIP，不能作为最终原画或进入 rig。
+- Stage B 迭代：trial16 左右生成物 wrist 长短与掌宽不一致，内部拒绝；trial21–23 继续尝试，仍存在左右比例差/多余 wrist 形状或过于镜像的问题。trial24 依据 Chibi `body_full` palette、trial15 批准尺寸方向及注册 hand anchors 做统一比例 source fit；本人检查 1×全身、4× hand/cuff、7× seam 和 2×左右手件后，认为其可作为目前较合适的**用户审阅 WIP**：左右都读作 compact mitten、朝内 nub 可见、尺寸方向一致、source cuff 区 byte-exact，静态未见明显开缝。仍有左掌略宽、右 nub 略显、AI 线影更软的风格差；故不作为最终 source art、不进 rig，等待用户审阅与 source-art 批准。hidden-wrist / 动态未测。
 
 ### Stage C — 用户/授权美术确认实际手稿（未完成）
 
@@ -68,6 +68,6 @@
 ## 本轮实际产物与状态
 
 - 视觉方向与对照：`chibi_mitten_original_fullbody_concept_trial_15_wip.png`、`chibi_mitten_trial_15_fullbody_size_comparison_board_wip.png`；trial15 size 用户明确确认。
-- 隔离源件试装：`build_mitten_sourcefit_trial16_wip.py`、`trial16_sourcefit_candidate_parts/`、`body_full_trial16_mitten_sourcefit_preview_wip.png`、`chibi_mitten_trial16_sourcefit_review_board_wip.png`、`mitten_trial16_sourcefit_metrics.json`。
-- 本人重新打开 review board 后的判断：full-body 手部大小可以承接 trial15 批准方向；但 AI 轮廓左右有差异、掌体与源图线稿/阴影密度不匹配，不能称为完成 source art。source cuff 区 byte-exact 保持（metrics 对应静态核验），但动态 hidden-wrist 和实际引擎未测试。
+- 隔离源件试装：trial16 的失败证据，以及当前 trial24 `build_mitten_trial24_sourcefit_wip.py`、`trial24_sourcefit_candidate_parts/`、`body_full_trial24_mitten_sourcefit_preview_wip.png`、`chibi_mitten_trial24_sourcefit_review_board_wip.png`、`mitten_trial24_sourcefit_metrics.json`。trial21–23 的单手 AI WIP 留作形态迭代过程记录。
+- 本人重新打开 trial24 review board、全身 preview 和两侧 2×透明手件后的判断：尺寸方向遵从 trial15；左右都是紧凑圆掌 mitten、朝内 nub 可辨；选中的源 cuff 区 byte-exact，静态未见明显开缝。仍有左掌略宽、右侧 nub 略显、轮廓/阴影比 Chibi 源更软的问题；仅推进到用户审阅 WIP，不是完成 source art。动态 hidden-wrist 与实际引擎未测试。
 - `characters/xiaoxun/forms/chibi/sprites/`、Chibi `rig.json` 与生成器尚未修改。当前处于 **T70.2 批准尺寸、继续原创手稿阶段**；T70.3 / T70.4 未完成。
