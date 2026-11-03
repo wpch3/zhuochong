@@ -7054,7 +7054,7 @@ T67.8 盘点时发现任务表标未完成，但实现已经解析数组/取反�
 
 ### 459. 生图提示“透明背景”不代表 PNG 真透明（2026-11-03）
 
-图像生成器可能把棋盘格直接烘焙进 RGB 像素，即使提示里写了 transparent background。Trial25 左右 mitten 都是 PNG color type 2（RGB、无 alpha），角像素分别为 `[52,11,47]` 和 `[197,198,197]`；视觉上像透明预览并不代表可做部件。
+图像生成器可能把棋盘格直接烘焙进 RGB 像素，即使提示里写了 transparent background；对已有透明部件做 AI edit 也不保证保留 alpha。Trial25 左右 mitten 与 trial26 两侧 wrist-extension edit 都是 RGB/no alpha（trial26 即使以 sRGBA 图作输入、明确要求 true transparent PNG，仍生成 opaque checkerboard）；视觉上像透明预览并不代表可做部件。
 
 - **检查闭环**：图像原尺寸目视 + PNG IHDR color type / `identify %[channels]` + SHA。必须确认 alpha 通道/有效透明区域再谈切件或接缝；提示词、预览棋盘、扩展名、生成成功消息都不是证据。
 - **陷阱**：对失败 WIP 直接 chroma-key/matte-remove 会掩饰假透明，且不能修复比例或风格差异。先如实拒绝并保存负例；只有取得合规、透明且批准的美术后才继续拆件。
@@ -7062,3 +7062,7 @@ T67.8 盘点时发现任务表标未完成，但实现已经解析数组/取反�
 ### 460. 重要计划/台账意外变短时先以 Git 对象核实，而不是信任旧摘要（2026-11-03）
 
 续做时发现 production plan 从完整 A–F 变成仅余 Stage E addendum；不应根据会话记忆猜测缺了什么，也不能只在当前文件上继续堆叠。先对照当前路径、行数和 `git log`，用已知 commit 的 `git show <commit>:<path>` 验证完整原文，然后恢复经对象核验的正文并合并现存 addenda。完成后需查标题/行数、`git diff --check` 和工作树状态。本次证实 `817bbf1` 有 73 行 A–F，而 `4f2e742` 把计划替换成 Stage E-only；恢复并加入后续 alpha-edge 检查后当前计划 112 行（恢复内容 + 既有后续记录 + 本次决策/检查）。
+
+### 461. 遮挡可见性测试必须写清被切换的是整条袖还是独立 cuff（2026-11-03）
+
+C 层级诊断中隐藏 `arm_*_fore` 会同时隐藏前臂整件和袖口；它不是只关 cuff-front 的测试。九帧 normal/forearm-hidden/mitten-hidden board 说明：在 −30°/0°/+30° 三个样本，trial24 手在原 cuff 后外观连续；关闭整条 forearm 后会看到 hand art 顶边。只能得出层级可见性和当前罩边观察，不等于单独 cuff 前后夹层验收、隐藏腕补全或运动安全。将 toggle 范围写入 runner、metrics 与报告，避免把“整袖隐藏”误报成“cuff 前片隐藏”。

@@ -1,0 +1,34 @@
+{
+  "status": "rejected_negative_wip_not_transparent_art",
+  "created_on": "2026-11-03",
+  "intent": "edit trial24 isolated RGBA mitten parts by extending only wrist continuation behind cuff",
+  "inputs": {
+    "viewer_left": "../trial24_sourcefit_candidate_parts/hand_left_mitten_trial24_candidate_2x_wip.png",
+    "viewer_right": "../trial24_sourcefit_candidate_parts/hand_right_mitten_trial24_candidate_2x_wip.png"
+  },
+  "results": {
+    "viewer_left": {
+      "file": "trial26_viewer_left_mitten_with_wrist_extension_wip.png",
+      "dimensions": [912, 1150],
+      "channels": "RGB",
+      "alpha": false,
+      "sha256": "01c1a0dee6f704e440bb1095d4edc3fe64c4b0065e0f6e946031372afde59023",
+      "visual_review": "opaque checkerboard; tube-like elongated wrist is too broad and not source-aligned"
+    },
+    "viewer_right": {
+      "file": "trial26_viewer_right_mitten_with_wrist_extension_wip.png",
+      "dimensions": [912, 1175],
+      "channels": "RGB",
+      "alpha": false,
+      "sha256": "76b73d4402349c828b65dcb8f0d7e2d77beedea237bde6e8bba527b6237425dd",
+      "visual_review": "opaque checkerboard; wrist shaft is too tall/narrow with a hard seam at palm"
+    }
+  },
+  "decision": "do_not_use_as_parts; do_not_chroma_key; do_not cuff-fit; preserve as negative evidence",
+  "limits": [
+    "No source art approval.",
+    "No exact transparent pixels; both files are opaque RGB.",
+    "No hand pixels were programmatically painted or cleaned.",
+    "No production sprite, rig, generator, or engine change."
+  ]
+}

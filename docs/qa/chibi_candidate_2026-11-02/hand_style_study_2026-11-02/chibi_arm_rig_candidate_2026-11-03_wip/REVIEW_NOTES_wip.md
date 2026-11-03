@@ -59,4 +59,14 @@ The user said the mitten hand is basically passing and delegated whether to reus
 
 I reopened the @2× isolated trial24 parts after the reuse decision. Their occupied alpha begins at image row 0 and spans x=21–70 (viewer-left 92×116) and x=25–69 (viewer-right 90×116), yielding broad, nearly horizontal top boundaries at the crop edge. The registered static cuff hides these boundaries, and the existing moderate ±30° samples do not establish what happens outside the sampled poses. This is an explicit hidden-wrist/under-cuff art gap, not evidence of a complete wrist. No new C frames or hand pixels were produced in this check.
 
+## C-engine layer-visibility follow-up (2026-11-03)
+
+A separate runner rendered 9 additional trial24 `mitten` samples at −30°/0°/+30° under three layer modes: normal, whole `arm_l_fore`/`arm_r_fore` hidden, and both trial24 mitten parts hidden. The board/metrics live one directory up as `trial24_wrist_layer_visibility_board_wip.png` and `trial24_wrist_layer_visibility_metrics_wip.json`.
+
+本人目视：the normal columns retain a visually joined hand/cuff in these three samples, with small edge/shading differences. Hiding the mitten leaves the original forearm/cuff layer; hiding the forearm exposes the hand artwork boundary. This confirms only visibility/layer ordering in the isolated candidate. There is no independent `cuff_front` toggle here—hiding `arm_*_fore` removes the complete sleeve. These three poses do not establish full hidden-wrist art or safe angles.
+
+## Trial26 wrist-extension edit (rejected)
+
+Two image edits of the trial24 @2× parts were requested to add a modest wrist continuation with true transparency. Both results instead contain opaque RGB checkerboards. The viewer-left wrist is too broad/elongated; the viewer-right shaft is too tall/narrow with a hard join. The originals and failure facts are archived under `../trial26_hidden_wrist_art_wip/`. They were not matte-removed, fit, or inserted into C.
+
 Until these gates close, keep every candidate file isolated and describe the work only as a rendered QA WIP. No production integration is authorized by these results.

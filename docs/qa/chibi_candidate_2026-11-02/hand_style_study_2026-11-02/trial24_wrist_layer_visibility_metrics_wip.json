@@ -1,0 +1,106 @@
+{
+  "status": "isolated visibility diagnostic only; trial24 AI art remains unapproved WIP",
+  "candidate_rig_sha256": "7c3f4937cc27cd753ed1c0a6610770580aca1b5a721069c7eb2ca4dbf46077a7",
+  "runner_sha256": "4c1c9c1232f9f3f1ab255c99487488f22c4c19ee440973aac9efd1a76767f315",
+  "board": "trial24_wrist_layer_visibility_board_wip.png",
+  "board_sha256": "7bf132c321f80af2608d19a6e0ac88baeaf50a1871d9f757004e8c5b33f4b0d0",
+  "angles_deg": [
+    -30,
+    0,
+    30
+  ],
+  "modes": {
+    "normal": "all candidate and arm layers visible",
+    "forearm_hidden": "both complete arm_*_fore parts hidden; this is NOT a cuff-only toggle",
+    "mitten_hidden": "both trial24 mitten hand parts hidden after selecting the mitten pose"
+  },
+  "render_conditions": {
+    "style": "mitten",
+    "shoulder_elbow_deg": [
+      0,
+      0
+    ],
+    "requested_action": "none",
+    "active_action_asserted": "idle",
+    "tick_sec": 0.02,
+    "ambient": 0,
+    "core_accessories_hidden": true
+  },
+  "registered_rois_canvas_xywh": {
+    "left": [
+      183,
+      914,
+      89,
+      92
+    ],
+    "right": [
+      575,
+      914,
+      89,
+      92
+    ]
+  },
+  "crop_scale_nearest": 4,
+  "frames": [
+    {
+      "angle_deg": -30,
+      "layer_mode": "normal",
+      "sha256": "0c0cadd64d70c649dd732284fc29f4d161d40401c3031efbb87a5c10bdc84b4d",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=-30.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=normal tick=0.020s ambient=0 core_hidden=1"
+    },
+    {
+      "angle_deg": -30,
+      "layer_mode": "forearm_hidden",
+      "sha256": "354635bf66dad47d5dc39b22849a78db64a335493d0d3796c1f8e820d805d241",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=-30.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=forearm_hidden tick=0.020s ambient=0 core_hidden=1"
+    },
+    {
+      "angle_deg": -30,
+      "layer_mode": "mitten_hidden",
+      "sha256": "dda68ae07cb9f71c3bba840158bf99bc2454f2405ae241635ae70342e355def2",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=-30.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=mitten_hidden tick=0.020s ambient=0 core_hidden=1"
+    },
+    {
+      "angle_deg": 0,
+      "layer_mode": "normal",
+      "sha256": "08de5654d68d719f83dc694f9ce97250eb80ef16ebaa6002b90bedef0938c0e5",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=0.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=normal tick=0.020s ambient=0 core_hidden=1"
+    },
+    {
+      "angle_deg": 0,
+      "layer_mode": "forearm_hidden",
+      "sha256": "f7b861ce5adea3ce8ee4a0ea36d63fbaf2c152b127cc558f7348d346932a0457",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=0.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=forearm_hidden tick=0.020s ambient=0 core_hidden=1"
+    },
+    {
+      "angle_deg": 0,
+      "layer_mode": "mitten_hidden",
+      "sha256": "dda68ae07cb9f71c3bba840158bf99bc2454f2405ae241635ae70342e355def2",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=0.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=mitten_hidden tick=0.020s ambient=0 core_hidden=1"
+    },
+    {
+      "angle_deg": 30,
+      "layer_mode": "normal",
+      "sha256": "0b67949e36473e45f1c3c03456e4599372f932654675721144e38531a1522f33",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=30.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=normal tick=0.020s ambient=0 core_hidden=1"
+    },
+    {
+      "angle_deg": 30,
+      "layer_mode": "forearm_hidden",
+      "sha256": "8f59421f895216ca72c3eb8ca3ee0f595a19268380a5c60c5fd994f170e1c27c",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=30.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=forearm_hidden tick=0.020s ambient=0 core_hidden=1"
+    },
+    {
+      "angle_deg": 30,
+      "layer_mode": "mitten_hidden",
+      "sha256": "dda68ae07cb9f71c3bba840158bf99bc2454f2405ae241635ae70342e355def2",
+      "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 style=mitten wrist=30.0 shoulder=0.0 elbow=0.0 requested_action=none active_action=idle mode=mitten_hidden tick=0.020s ambient=0 core_hidden=1"
+    }
+  ],
+  "limitations": [
+    "This visibility diagnostic itself generated or modified no art; all C frames are temporary and represented by hashes/logs.",
+    "Forearm-hidden removes the entire forearm/sleeve layer, not a separate cuff-front part.",
+    "Three wrist samples are a visibility diagnostic, not an exhaustive motion matrix, safe range, or art approval.",
+    "The test uses an isolated candidate rig; production assets/rig/generator are untouched."
+  ]
+}

@@ -8,6 +8,8 @@
 
 **用户后续反馈与复用选择（2026-11-03）：** 用户表示“（手套）手基本过关”，由我判断是否沿用。我选择继续使用 trial24 source-fit pair 作为隔离 QA 的基本形态：其左右透明 RGBA 件分别 46×58 / 45×58，原 Chibi cuff 区 2,440/2,498 px byte-exact；重开 board 看到短宽掌体、朝内小 nub 和试15认可的尺寸方向。此处是对基本形状方向的继续，不自动批准 exact AI pixels、隐藏腕部完整性、source-art fidelity、运动安全或生产。trial25 的 opaque RGB checkerboard 图不复用。
 
+**继续检查（2026-11-03）：** 新建隔离真实 C `zrig` wrist visibility board，9 帧覆盖 −30°/0°/+30° × normal / hide whole forearm / hide mitten；样帧中正常袖口仍遮住手件上缘，隐藏整条 forearm 后可见手图上缘；该 candidate 没有独立 cuff-front toggle，因此这是层序诊断，不是隐藏腕验收。trial26 对 trial24 @2× 手件做延腕 AI edit，仍返回 opaque RGB checkerboards 且腕段画风/比例失败；不做抠背景或源 cuff 拟合，负例保存在 `trial26_hidden_wrist_art_wip/`。
+
 ## 先锁角色真值
 
 - 主视觉源：`characters/xiaoxun/design/design_sheet_chibi.png`，登记 body-fit 框 `[628,101,1416,1891] → 567×1292`；角色脸、发型、身体比例、服装、袖口条纹与配色均保持不变。

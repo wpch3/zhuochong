@@ -1590,3 +1590,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 发现 active plan 文件在当前 HEAD 仅 30 行 Stage E 记录；用 Git history 核实 817bbf1 存在完整 73 行 Stage A–F，而 4f2e742 将其覆盖为 Stage E-only。本轮恢复原 A–F 内容并保留后续 E feasibility、moderate、trial25 addenda；显式记录恢复事实，不改生产素材。
 - 本轮更新完整 plan、trial24 reuse decision note、README、handoff、C review notes、GAPS/TASKS/MEMORY/REQUIREMENTS/JOURNAL。后续重新打开两侧 @2× parts 并用 ImageMagick 检查 alpha：顶行 y=0 已有宽近水平 alpha 区（左 x=21–70、右 x=25–69），静态 cuff 遮住不等于 hidden-wrist 补全；本轮未重跑 C。
 - 完成 SHA / diff / production-path checks 后仅提交固定活动分支。
+
+### 2026-11-03 · 用户续令「继续未完成的任务」：真实 C 层级可见性检查 + trial26 负例
+
+- 开工核对本地固定 branch/HEAD `8918f4f0667281bee921fee70e0b8931c5c03a4e`、工作树 clean；重读 WORKFLOW 铁律与 T70.2–T70.4、完整 production plan、handoff brief、最新 QA 记录。`make test` 通过 2,638/0；完整 `selfcheck_all.sh` 实跑（Pillow/NumPy 装在仓库外 `.imgenv`）后仍 exit 1：静态旧生成器指纹 1、编译 unused warning 1、素材 QA 8；Windows/preview/API smoke 342/0 通过。roadmap fix 后 repo selfcheck 仍剩一项 Teen/Chibi production rig fingerprint；自检生成的 Windows tracked files 已恢复。
+- 新增隔离 C renderer `render_candidate_c_engine_wrist_layer_visibility_wip.c` 和 builder `build_candidate_c_engine_wrist_layer_visibility_wip.py`，编译真实 `src/core/zrig`，运行 9 帧：−30°/0°/+30° × normal/forearm-hidden/mitten-hidden，裁注册左右 wrists 做 4×板。
+- **本人目视**：normal 三档中试24手仍由 source cuff 遮住，接缝未见明显开口但有细边差；隐藏 mitten 后 source forearm/cuff 留在上层；隐藏 forearm 会露出 mitten 上缘。重要限制：这是隐藏整件 `arm_*_fore`（前臂+袖），不是 cuff-front-only toggle；该候选没有分离 cuff front/back。这只证明候选层级/可见性抽样，非 hidden-wrist 完整或安全范围。
+- 试作 trial26 左右延腕编辑 WIP，提示要求 true alpha；`identify` 实查仍为 912×1150/912×1175 的 RGB/no-alpha opaque checkerboard，目视又发现左腕过宽过长、右腕过窄过长并有硬接线。拒绝，不 chroma-key、不清背景、不 fit、不进 rig；保存 PNG、prompt、review、metrics 与局部 SHA manifest 作为负例。
+- 更新 study README/plan/decision note/C review、trial26 evidence、TASKS/GAPS/REQUIREMENTS/MEMORY/JOURNAL/LESSONS。source/production art 未改；new C artifacts are isolated diagnostics only。后续门：需授权 source-aligned wrist continuation，再查独立 cuff front/back 与真实 wrist motion。

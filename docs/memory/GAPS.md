@@ -2627,4 +2627,5 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 ### T70.2 trial24 reuse decision after user feedback (2026-11-03)
 
 - 用户新反馈“（手套）手基本过关，你自行判断是否沿用”。我决定沿用 trial24 source-fit RGBA pair 的基本形态作为隔离 QA 基准：左右 46×58 / 45×58，cuff identity 2,440/2,498 px，板上读作短宽 mitten 且 nub 朝内。trial25 是另一项失败试验，opaque RGB checkers 不当部件使用。
-- 这一反馈和选择只打开继续验证的路径，不证明 source-art fidelity、袖下 hidden-wrist 完整、动作安全、所有风格门或生产接入。续查 2× parts 的 alpha：两件在 y=0 即有宽顶边（左 x=21–70/92 px，右 x=25–69/90 px），静态 source cuff 可遮住，不能证明隐藏腕补画完整；现存 ±30° board 是抽样，不代表界外安全。本轮没生成新帧或修改手像素。下一步继续用获批美术补/审袖下腕段，再查实际 underlap、cuff layering 与旋腕露底。
+- 这一反馈和选择只打开继续验证的路径，不证明 source-art fidelity、袖下 hidden-wrist 完整、动作安全、所有风格门或生产接入。2× parts 顶行有宽 alpha 边（左 x=21–70/92 px，右 x=25–69/90 px），静态 cuff 可遮住但不代表补腕完整。
+- 本轮实际 C `zrig` 增做 9 个 isolated visibility frames：−30°/0°/+30° × normal/隐藏完整 forearm/隐藏 mitten。目视正常帧当前 cuff seam 连续，隐藏 forearm 会露出 hand art 上缘，隐藏 mitten 显示原 forearm/cuff仍在上层。候选没有独立 cuff-front toggle，隐藏的是整条 sleeve；这里只验证 layer visibility，不是 full motion 或安全。trial26 左右 AI 延腕编辑仍生成 opaque RGB checkerboard、且线影/比例差，作为失败证据拒绝，不做 chroma-key、cuff-fit 或 rig insertion。下一步需获批的源对齐腕段，再测 cuff-front/back 与旋腕 underlap。
