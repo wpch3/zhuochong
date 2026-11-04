@@ -1648,3 +1648,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 验证：`make test` C 2638/0；独立 `make rig-tool-test` 4/4；保持已有 `_zperf_probe` 编译告警及负向测试诊断说明。系统 Python 不含 Pillow/NumPy，本轮未运行 selfcheck。
 - 边界：没有执行 generator，没有重生或修改任何生产 rig/sprite。故当前 Chibi `rig.json` ID 仍错，Chibi/Teen 生产输出指纹仍 stale，未批准或打包。Cubism source PSD/Editor/官方导出、双手型源稿、hidden-wrist 与运行时门禁仍开放。详细记录在 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md` 和 source-layer inventory README/JSON。
 - 提交/推送：代码修复 `bf291f1fa814c68e087921b004ac72b11112de6a`、验证记录 `ac7b6c2ae4d4764139b47a8936e9a119ddbe6319`、测试边界调整 `9fb72efcdc310cf3e0c83787abefa0cb278bdad5` 均已推送固定分支；遇到 GitHub internal errors 后重试成功，最终本地/远端 HEAD 为 `9fb72efcdc310cf3e0c83787abefa0cb278bdad5`。
+
+### 2026-11-04｜用户新增铁律：任务对位、记忆核验与反空转
+
+- 用户原意：每次任务都必须确定执行的是正确任务和正确步骤，避免错误记忆或原地做无用功；要求记入铁律区并推送仓库。
+- 开工核对发现活动固定分支本地 checkout `43f551462c31a5ac4e41077af9be998316607ee3` 落后于远端 `5f403639cf9edd28ed9035d2c88f12bed8e53a8f`，工作树干净。先在同一固定分支安全 `fetch` + `--ff-only` 快进；没有根据旧 session summary 继续施工，也未覆盖文件。
+- 已把要求写入 `docs/memory/WORKFLOW.md` 铁律 17 及开工五步；`docs/memory/REQUIREMENTS.md` 新增 A69.1；更新 `MEMORY.md`。铁律规定：逐项核用户原话/验收、当下分支与远端、当前记忆/失败证据；每步说明推进哪项；无新依据不复做失败路径；结果没有核心进展时停止纠偏，交付前对账并如实说明。
+- 本轮仅处理用户明确要求的流程规则持久化；不宣称 Chibi 手部原画/Cubism 模型有进展。`git diff --check`、铁律 17/A69.1 唯一性与交叉引用通过；commit/push 状态待核。

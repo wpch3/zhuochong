@@ -19,7 +19,7 @@
 > 规则：**每次工作开始先读本文件与自己上次的日志；结束时必须追加 `JOURNAL.md` 并更新本文件的"当前状态"。**
 > 用户的新要求**当轮就要写进 `REQUIREMENTS.md`**，不许只留在聊天里。
 
-更新：**2026-11-04（T70.2：trial08 全身概念方向仍获用户确认；trial09 用户拒绝、trial10 内部失败；trial11 与 trial12/13 手型尺寸被用户指出偏大；trial14 用户仍嫌偏大而否决；trial15 尺寸方向已由用户明确确认合适；trial16 隔离 source-fit art 自检未通过、留作 failure evidence；trial21–23 迭代未达标；用户后续称手套手基本过关，我选择 trial24 source-fit 作为隔离 QA 的基本形态继续用（非 source art/生产批准）；trial25 左右 hand art 因 opaque RGB checkerboards/比例与画风失败仅存负例；没有生产手层/hidden wrist/C-engine 验收；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
+更新：**2026-11-04（T70.2：trial08 全身概念方向仍获用户确认；trial09 用户拒绝、trial10 内部失败；trial11 与 trial12/13 手型尺寸被用户指出偏大；trial14 用户仍嫌偏大而否决；trial15 尺寸方向已由用户明确确认合适；trial16 隔离 source-fit art 自检未通过、留作 failure evidence；trial21–23 迭代未达标；用户后续称手套手基本过关，我选择 trial24 source-fit 作为隔离 QA 的基本形态继续用（非 source art/生产批准）；trial25 左右 hand art 因 opaque RGB checkerboards/比例与画风失败仅存负例；没有生产手层/hidden wrist/C-engine 验收；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail；新增 A69 / WORKFLOW 铁律 17：每轮任务对位、记忆核验与反空转）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
 
 ## 最新状态（2026-11-04）
 
@@ -29,7 +29,7 @@
 - **下一步门槛**：先取得/制作获批 Chibi 完整分层 PSD，在支持的官方 Cubism Editor 环境建立 `.cmo3` 并导出 `.moc3` / `.model3.json`；之后分别完成双手型的编辑器模型验证与官方 Viewer/SDK 实测。当前官方模型制作任务 T70.5 仅研究完成、模型未开始。
 - **验证（trial30–40 后续，历史记录）**：该轮未重跑 `make test`；当时最近一次 `make test` 为 **2638/0**。当时 `selfcheck_repo.py --quiet` 为 **772 项 / 1 fail**，唯一是受保护 Teen/Chibi rig 旧 generator fingerprint；未重生 rig，`selfcheck_all.sh` 未运行。
 - **T70.5 rig identity generator follow-up（2026-11-04）**：`tools/make_rig.py` 现按请求的 `--form` 生成身份（保留 Teen 既有格式，并避免 Chibi/未来形态被标成 Teen），新增 4 个 Python 回归测试并接入独立 `make rig-tool-test`；`make test` 保持 C-only（C 单测 **2638/0**），`make rig-tool-test` **4/4**；编译时仍有既知 `_zperf_probe` unused-function warning/负向测试预期诊断。未运行 selfcheck：系统 Python 缺 Pillow/NumPy，且现有生产 rig 未重生，fingerprint 检查必然仍红；没有改写生产 rig。`py_compile`、inventory JSON/SHA manifest、`git diff --check` 均通过；保护的 Chibi/Teen rigs 与 Chibi sprites diff 为 0。
-- **本轮提交/推送**：代码修复 `bf291f1fa814c68e087921b004ac72b11112de6a`、验证记录 `ac7b6c2ae4d4764139b47a8936e9a119ddbe6319`、C-only 边界记录 `9fb72efcdc310cf3e0c83787abefa0cb278bdad5` 均已推送；最终本地/远端 HEAD 为 `9fb72efcdc310cf3e0c83787abefa0cb278bdad5`。
+- **铁律 17 / 本轮开工对位**：用户要求每项任务都核验当前正确步骤、记忆可靠性并避免无效循环；已纳入 `WORKFLOW.md` 铁律 17 与 `REQUIREMENTS.md` A69.1。开工实查发现本地 checkout `43f5514` 落后于固定分支远端 `5f40363`，工作树干净；已在同一分支 fetch + `--ff-only` 同步，没有覆盖文件。此修正说明不能把旧交接摘要当当前仓库状态。上轮 code/test commits `bf291f1` / `ac7b6c2` / `9fb72ef` 已在分支历史中；本轮 `git diff --check` 与 WORKFLOW/A69 编号交叉核对通过；提交和推送待做。
 - **提交/推送**：trial27–29 review 前序提交 `5747ff5176eaf75a29e29be3b422b47d164583fb`、trial30–32/Cubism 初审提交 `4a2b80acff072ae94e7b351faf18fd6381cc35e1`、视角标准/日志更新 `25e5e7f3559f8be3a24473df83d5b0c2b4252e1a` 均已推送。trial33–40 自审与 Cubism inventory 提交 `19956de5b5022b74bb54297466f1884e50df0292`、收尾日志 `d2749428b769a168c908f5bf7a86ffd172bd1f39`、修订视角准则复审 `a34dfd0a6288270f36e025327a3bb1bed8a35611`、trial41/42 精确 ROI 编辑失败证据 `0a424e57719b0e4c01b39ec2c9d492654537b2a3` 均已推送；最终 `git rev-parse` 与 `git ls-remote` SHA 相同。
 
 - 本轮参考资料审计已归档：运行时、网格、遮罩与绑定方法资料足以继续自研；Chibi 自身全身差分稿、合规 `small/mitten` 手型设计板和组合验收仍不足。
@@ -49,7 +49,7 @@
 > ### ★★★ 开工先读这四样（2026-10-25 加第四样）
 > 0. **`docs/ENGINE_AUDIT_2026-10-25.md`** —— 底层体检 + Live2D 工序对位 + P0/P1/P2 优化清单。
 >    **动引擎之前先读它**，别再从零讨论"要不要网格形变"。
-> 1. **`WORKFLOW.md` 零章铁律 0–16** —— 尤其**铁律 3 TRUTH-FIRST**（动手前先拿到
+> 1. **`WORKFLOW.md` 零章铁律 0–17** —— 尤其**铁律 3 TRUTH-FIRST**（动手前先拿到
 >    **这个领域的真值源**；"先出参考图"只是**动作/姿势类**的真值源，别的领域
 >    看**第十三章 方法对位表**）、**铁律 5**（多指标 + 叠图验收）与 Live2D 专项**铁律 9–11**（底层零空洞、关节衣物夹层、跨关节柔性链）与**铁律 12**（标准→实现→陷阱闭环）。
 > 2. **`WORKFLOW.md` 第十一章 自欺陷阱清单** —— 十条都真发生过，交付前对照一遍。

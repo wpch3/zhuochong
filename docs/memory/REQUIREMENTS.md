@@ -8,7 +8,7 @@
 > 4. 配套：`MEMORY.md`（项目现状与决策）、`WORKFLOW.md`（怎么干活）、`GAPS.md`（还缺什么、需要什么）、
 >    `TASKS.md`（任务编号）、`JOURNAL.md`（日志）、`LESSONS.md`（教训）。
 
-更新：2026-11-04（A68.5 双手型均保留且 small 明确为正常有指手；A68.6 真正 Cubism 模型作者/导出流程）｜ 当前分支：`arena/aaf1408c-zhuochong`
+更新：2026-11-04（A68.5 双手型均保留且 small 明确为正常有指手；A68.6 真正 Cubism 模型作者/导出流程；A69 每轮任务对位、记忆核验与反空转）｜ 当前分支：`arena/aaf1408c-zhuochong`
 
 ---
 
@@ -1173,7 +1173,7 @@ TASKS **T46.15（已完）/ T46.16 / T46.17**、LESSONS **236**。
 | 编号 | 要求（用户原意） | 来源 | 落点 | 状态 |
 | --- | --- | --- | --- | --- |
 | A68.1 | 用户明确确认 trial15 手部尺寸“完全合适”；后续按此尺寸方向制作，不再扩大/缩小候选 | [聊天] 2026-11-03 | trial15 metrics/README；T70.2；`chibi_mitten_production_plan_2026-11-03.md` | ✅ 尺寸方向获批；不扩展为 AI 像素/原画/生产批准 |
-| A68.2 | 开始完整手型工作流前先读项目铁律、真值源、教程/已查参考和 generator/rig 现状；大脑分析、亲眼目视真实成果、主动发现问题并修正；每个实质阶段要有可检验产物/状态记录 | [聊天] 2026-11-03 | WORKFLOW 铁律 0–16；`docs/REFERENCE_NOTES.md` 第七十一批；study production plan / README / metrics / JOURNAL | 🟡 执行中 |
+| A68.2 | 开始完整手型工作流前先读项目铁律、真值源、教程/已查参考和 generator/rig 现状；大脑分析、亲眼目视真实成果、主动发现问题并修正；每个实质阶段要有可检验产物/状态记录 | [聊天] 2026-11-03 | WORKFLOW 铁律 0–17；`docs/REFERENCE_NOTES.md` 第七十一批；study production plan / README / metrics / JOURNAL | 🟡 执行中 |
 | A68.3 | 继续完成 Chibi mitten 原画、左右独立部件、袖下腕部补全、source cuff 夹层、独立 `hand_style` 并与 wrist/gesture 解耦、真实 C 引擎动作/服装组合验收；不得用程序化手绘、Teen/generic hand 或用户截图像素替代 | [聊天/既有 A62/A64] 2026-11-03 | T70.2–T70.4；isolated hand-study；经艺术/用户验收后才接生产 | 🟡 用户反馈 mitten 基本过关；agent 选择 trial24 RGBA source-fit 形态继续隔离 QA。新 real-C 9帧 visibility board 仅验证抽样层序；trial26 延腕图无 alpha 被拒。source-art/hidden-wrist/rig/动作组合和生产门禁仍未完成 |
 | A68.4 | 用户要求本轮按“完整制作”执行，但旧的 source-art/目视/QA/用户确认门禁仍有效；任何未通过的 AI WIP 不能伪装完成或晋升生产 | [聊天 + WORKFLOW 铁律 0–15] 2026-11-03 | production plan、metrics、项目生产 sprites/rig/guardrails | 🟡 常驻门禁；用户认为 mitten 基本过关，我选择 trial24 作为隔离基础；trial25 透明/比例/风格失败仅留负例；无 production 改动 |
 | A68.5 | **两种手型都必须保留**：正常、可辨识手指的手与手套／mitten 手是独立样式；`small` 名称或现有 crop 不能自动证明正常有指手型已完成；样式切换与腕部运动/手势解耦 | [聊天] 2026-11-04 | `hand_style_variants_2026-11-01.json`；T70.2–T70.4；Chibi 左右独立 hand parts / rig | 🟡 契约已明确 normal-fingered + mitten；trial27–32 均未通过目标比例/读形/姿态/风格艺术门；现有 source crop 未获批为生产手件，左右部件、隐藏腕部、组合验收未完成 |
@@ -1181,3 +1181,9 @@ TASKS **T46.15（已完）/ T46.16 / T46.17**、LESSONS **236**。
 | A68.7 | **候选艺术的通过/否决由代理自行判断**：不要每轮要求用户选择或批准；代理必须亲自看全身、局部和目标尺寸证据，决定采用/拒绝并说明理由。用户明确授权该任务的自主候选判断 | [聊天] 2026-11-04 | `WORKFLOW.md` Chibi hand self-judgment scope note；T70.2；trial33–40 README/metrics/boards | 🟡 已执行：代理目视并否决 trial33–40；不代表失败 WIP 获准，也不跳过 source/provenance、左右独立、hidden-wrist、生产 QA 或真 Cubism/许可门禁 |
 
 > **A68.6 对 D1 的范围修订**：仍保留 `zrig` 作为现有自研应用运行时路线，但“无 Live2D 编辑器”不再能限制用户要求的 Cubism 作者工程；开始制作真 Cubism 模型需使用可用的官方编辑器。该要求不自动授权集成/发布 Cubism Core，也不代表 `zrig` 能运行 `.moc3`。
+
+## A69（2026-11-04）每轮任务对位、记忆核验与反空转
+
+| 编号 | 要求（用户原意） | 来源 | 落点 | 状态 |
+|---|---|---|---|---|
+| A69.1 | **每次任务都必须确认正在执行正确的任务与步骤，并核实现存记忆没有错误、没有原地重复做无用功。** 开工以本轮用户要求、当前固定分支、仓库现状和任务验收标准为准；核对当前记忆/旧失败记录；每一步说明推进哪个验收项，并检查实际结果。发现记忆过期、步骤偏离、反复失败或核心进度没增加时，立即停止、纠正任务/记忆/方法并如实说明，不准用文档、测试数量、提交或长汇报伪装核心进展。 | [聊天] 2026-11-04 | `WORKFLOW.md` 铁律 17；开工五步；`MEMORY.md` / `TASKS.md` / `JOURNAL.md` / `REQUEST_LEDGER.md` | 🟡 常驻执行规则；本轮发现本地 checkout 落后远端后已在固定分支安全 fast-forward，再按当前真实版本记录并落实规则。 |
