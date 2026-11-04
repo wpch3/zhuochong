@@ -1612,3 +1612,4 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 新增原创 viewer-left trial29 概念和同样的目标框 probe。五指分离在小图仍可见，但姿势变成掌心朝前、五指张开，比例/风格不符小寻 Chibi 侧垂手；拒绝，只留负例。三张原图均 1024×1024 RGB/no alpha；probe 只保留背景缩图，不作抠底或 production sprite。
 - 记录路径：`docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/trial27_normal_fingered_hand_wip/`、`trial28_normal_fingered_hand_wip/`、`trial29_normal_fingered_hand_wip/`；各含原图、目标框 probe、README、prompt_record、metrics、local SHA manifest。更新 study 根 README/SHA、A68.5 契约、T70.2/G66.53、LESSONS #463、MEMORY 与 JOURNAL。
 - 验证：`make test` 2638/0；静态 repo selfcheck 772/1（唯一旧 Teen/Chibi rig generator fingerprint，未改受保护 rig）；全仓 selfcheck_all 未运行。契约/metrics JSON 与各层 SHA 清单、`git diff --check` 通过；生产 hand/rig/source/core 路径改动为 0。
+- 提交/推送：`5747ff5176eaf75a29e29be3b422b47d164583fb` 已推送到 `arena/aaf1408c-zhuochong`；核实本地/远端 SHA 一致，工作树 clean。
