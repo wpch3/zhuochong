@@ -1637,4 +1637,5 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 本轮在活动固定分支继续 T70.2：创建精确 source ROI 的 8×诊断输入，生成 trial41 左手 / trial42 右手 crop-edit 概念，按已修订的侧背垂手验收标准由代理自行审查。
 - 两张均拒绝：可见多枚指端，但生成结果扩张/重画袖口与前臂、手型超出45×48/45×46目标框、线稿/织物偏离 source，且 checkerboard 为 opaque RGB 并无 alpha。没有抠底、fit、入 rig 或生产。
 - 新增 `trial41_normal_hand_left_target_crop_wip/`、`trial42_normal_hand_right_target_crop_wip/`；记录精确 prompt、source ROI、输出 metadata/hash 与拒绝理由。结论：不继续同类 prompt 变体；需真正 source-aligned 原画/layered source。真实 Cubism PSD/Editor 门禁未解决。
-- 验证：trial41/42 local SHA、trial27–42 study root SHA、metrics/contract JSON、`git diff --check` 均通过；未跑 `make test` / 当前 selfcheck。本轮仅 docs/QA WIP，生产 Chibi art/rig 与 `src/core` 无变更。commit/push 状态在收尾提交后补记。
+- 验证：trial41/42 local SHA、trial27–42 study root SHA、metrics/contract JSON、`git diff --check` 均通过；未跑 `make test` / 当前 selfcheck。本轮仅 docs/QA WIP，生产 Chibi art/rig 与 `src/core` 无变更。
+- 提交/推送：`0a424e57719b0e4c01b39ec2c9d492654537b2a3`（`Archive Chibi target-crop hand edit failures`）已推送固定分支 `arena/aaf1408c-zhuochong`，推送后 HEAD 与远端 SHA 一致。
