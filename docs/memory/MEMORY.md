@@ -23,11 +23,11 @@
 
 ## 最新状态（2026-11-04）
 
-- **双手型修订**：用户明确 normal fingered hand 与 mitten 必须同时保留；`small` 是正常有指手风格，不可用名称或当前可见 source crop 自动宣称完成。trial27–29 的 45×48 诊断均未通过（27成人化细长、28目标尺寸读作 paw/mitten、29清晰五指但姿势/比例不合 Chibi）；仅存 WIP 负例/形态研究，不是生产候选。左右合规手件、hidden wrist 和生产验收仍欠。
-- **真正 Cubism 模型研究**：已查官方 PSD 导入、ArtMesh/Editor 建模、MOC3/Model3 导出、SDK/Core 与发布许可，并核对 `CubismWebFramework`。研究与路线记于 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`、`docs/REFERENCE_NOTES.md` 第七十三批。
+- **双手型修订**：用户明确 normal fingered hand 与 mitten 必须同时保留；`small` 是正常有指手风格，不可用名称或当前可见 source crop 自动宣称完成。trial27–32 的 45×48 诊断均未通过（27成人化细长、28读作 paw/mitten、29张掌姿势不合、30指缝塌陷、31像素风格、32成人化细长）；仅存 WIP 负例/形态研究，不是生产候选。左右合规手件、hidden wrist 和生产验收仍欠。
+- **真正 Cubism 模型研究**：已查官方 PSD 导入、ArtMesh/Editor 建模、MOC3/Model3 导出、SDK/Core 与发布许可，并核对 `CubismWebFramework`。最新源输入复查确认有 Chibi PNG cutouts 但无完整 approved PSD/手袖来源层；桌宠 Q 版图不是 Live2D 源稿，Editor/Wine 亦缺。路线与详细盘点记于 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`、`docs/REFERENCE_NOTES.md` 第七十三批。
 - **环境/资产事实**：checkout 为 Linux；`CubismEditor` 未安装；全仓无 `.psd` / `.cmo3` / `.moc3` / `.model3.json`。所以没有制作/导出/官方 Viewer 验证真 Cubism 模型。自研 C `zrig` 不是真 Cubism 模型，官方 Core/SDK 运行时整合仍单独受许可/架构审批限制。
 - **下一步门槛**：先取得/制作获批 Chibi 完整分层 PSD，在支持的官方 Cubism Editor 环境建立 `.cmo3` 并导出 `.moc3` / `.model3.json`；之后分别完成双手型的编辑器模型验证与官方 Viewer/SDK 实测。当前官方模型制作任务 T70.5 仅研究完成、模型未开始。
-- **本轮验证**：`make test` **2638/0**；hand-style/metrics JSON、三份 trial 本地 SHA 清单、study 根级 SHA256 manifest 校验通过，`git diff --check` 通过；本轮生产 `characters/xiaoxun/forms/chibi` 与 `src/core` diff 为 0。`selfcheck_repo.py --quiet` **772 项 / 1 fail**，唯一失败是受保护 Teen/Chibi 生产 rig 的旧 generator fingerprint；未重生生产 rig。完整 `selfcheck_all.sh` 本轮未运行，不宣称全仓通过。
+- **本轮验证**：`make test` **2638/0**（C 编译有已知 `_zperf_probe` unused-function warning）；contract/metrics JSON、trial27–32 六份本地 SHA 清单及 study 根 SHA256 manifest 均通过，`git diff --check` 通过；本轮生产 Chibi hand/rig 与 `src/core` diff 为 0。安装仓库外 Pillow 13.0.0 / NumPy 2.4.6 后，`selfcheck_repo.py --quiet` **772 项 / 1 fail**，唯一失败为受保护 Teen/Chibi 生产 rig 的旧 generator fingerprint；未重生 rig。完整 `selfcheck_all.sh` 本轮未运行，不宣称全仓通过。
 - **提交/推送**：trial27–29 review 与台账已提交为 `5747ff5176eaf75a29e29be3b422b47d164583fb` 并推送到固定活动分支；本地与远端 SHA 已核对一致。
 
 - 本轮参考资料审计已归档：运行时、网格、遮罩与绑定方法资料足以继续自研；Chibi 自身全身差分稿、合规 `small/mitten` 手型设计板和组合验收仍不足。

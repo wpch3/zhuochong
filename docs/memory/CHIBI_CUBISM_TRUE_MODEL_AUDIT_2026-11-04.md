@@ -77,3 +77,15 @@
 - **已执行**：查官方 PSD 导入、MOC3/embedded export、文件类型、Web SDK/Core、SDK Release License 文档；核查 Live2D 官方 Web Framework README；在仓库搜索 Cubism 文件；确认 Linux 环境无 CubismEditor 可执行文件；更新双手型契约与非兼容声明。
 - **未执行**：没有 PSD/CMO3/MOC3 可编辑源；没有启动 Cubism Editor；没有绘制/重做生产艺术；没有导出或加载模型；没有集成 Core/SDK；没有做全身 Cubism 模型 QA。
 - **下一步阻塞**：先得到 approved Chibi 分层源稿/PSD，再在支持的 Cubism Editor 环境创建 `.cmo3`。当前沙箱不具备该应用或源工程，因此此项本轮不能靠自研 C 代码替代。
+
+## 2026-11-04 follow-up — refreshed source-readiness inventory
+
+After fast-forwarding the active branch to `dad05a95beafdc2aea0b46e597d1461bd4bc148b`, I re-audited the actual Chibi tree rather than assuming the earlier file inventory was current:
+
+- No `*.psd`, `*.cmo3`, `*.moc3`, `*.model3.json`, physics/pose/CDI Cubism files exist in the checkout. `CubismEditor`, `cubism-editor`, `wine`, and `wine64` are not installed on this Linux runner.
+- `characters/xiaoxun/design/chibi/README.md` explicitly says its `desktop_pet_base_2026-10-31.png` and side-walk reference are **desktop-pet design references**, not Live2D Chibi sources or production sprites. They are not valid substitutes for an approved Live2D source PSD.
+- The Live2D Chibi source manifest `characters/xiaoxun/forms/chibi/design/form_art.json` points to `design/design_sheet_chibi.png`; it does not name a layered PSD. The sheet is a flattened 1024×1024 image. `sprites/body_full.png` is a 567×1292 flattened RGBA source-derived body image; the production cutouts include `seg_arm_l.png` / `seg_arm_r.png` (100×230 each), separate face/hair/garment/accessory PNGs, but the current Chibi rig lists only `seg_arm_l/r` for arms and there are no Chibi hand/cuff PNGs or `hand_parts.json`.
+- The current Chibi subtree therefore has usable *rendered/cutout components* but is not a verified layered authoring master: the tree lacks a normal-fingered/mitten left-right pair, genuine hidden-wrist continuation, and explicit cuff-front/back source layers. Existing redraw fragments are not one complete, approved PSD with proven overlap coverage.
+- I did not automatically recombine the sprite cutouts into a PSD or label such an assembly a Cubism source: crop edges and omitted underlap could become visible in deformation, and no Editor is available to validate any generated PSD. No Core/SDK was downloaded or integrated.
+
+This updates the blocker from “no Chibi material at all” to the more precise state: **many Chibi PNG cutouts exist, but there is no approved complete layered source project and no official Editor runtime here**. Next model-authoring gate is an approved, overlap-complete layered Chibi PSD (including both hand styles) plus an environment that runs official Cubism Editor; only then start `.cmo3` editing and exported `.moc3` / `.model3.json` verification.

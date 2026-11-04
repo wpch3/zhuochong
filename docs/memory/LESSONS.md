@@ -7077,6 +7077,6 @@ C 层级诊断中隐藏 `arm_*_fore` 会同时隐藏前臂整件和袖口；它�
 
 ### 463. 小尺寸手型必须在目标框下验读形，不能只看 1024px 原图（2026-11-04）
 
-Normal-hand trial28 在 1024px 原图上可见四个指瓣和三个指缝，缩到注册 45×48 手部框后却变成 paw/mitten；trial27 保留了指缝但比例成人化；trial29 在目标框里能辨五指，却生成了与 Chibi 站姿不符的张掌动作。原尺寸目视仍重要，但须补一张明确标为诊断的目标尺寸视图，并同时检查手指可读性、姿态、头身/手尺寸和源线影。背景必须保持真实不透明，不把这类视觉 probe 冒称 C/Cubism 渲染或生产 sprite。
+Normal-hand trial28 在 1024px 原图上可见四个指瓣和三个指缝，缩到注册 45×48 手部框后却变成 paw/mitten；trial27 保留了指缝但比例成人化；trial29 目标框能辨五指却是张掌姿势；trial30 的 clefts 缩小后塌陷；trial31 分指可读但变成 pixel-art；trial32 分指可读但 wrist/digits 仍成人化。原尺寸目视仍重要，但须补一张明确标为诊断的目标尺寸视图，并同时检查手指可读性、姿态、头身/手尺寸和源线影。背景必须保持真实不透明，不把这类视觉 probe 冒称 C/Cubism 渲染或生产 sprite。六轮未同时过艺术门后，应停止相同 prompt 盲目迭代，转向获批原稿/美术反馈或重新验证的来源。
 
-- **来源**：`trial27_normal_fingered_hand_wip/`、`trial28_normal_fingered_hand_wip/`、`trial29_normal_fingered_hand_wip/`；本条不使任何试稿获得批准。
+- **来源**：`trial27_normal_fingered_hand_wip/` 至 `trial32_normal_fingered_hand_wip/` 与 45×48 比较板；本条不使任何试稿获得批准。

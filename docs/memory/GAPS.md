@@ -2639,6 +2639,7 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 
 ### T70.2 normal-fingered small-hand WIP probes（2026-11-04，仍未批准）
 
-- 为落实两种手型并存，新增 viewer-left 原创概念 trial27/28/29；都只参考 Chibi design sheet 与 source crop，不复制像素。三张原图均为 opaque sRGB PNG，无 alpha。
-- 45×48 opaque-background visual probes（非 C/Cubism 渲染）已打开：trial27 的指形能区分但成人化细长；trial28 缩小后指缝变糊，读作 paw/mitten；trial29 五指仍分开，但生成成掌心朝前、五指张开的姿势，比例/风格不符 Chibi。三者均拒绝为生产手型，分别仅留负例/形态研究证据。
-- 下一次正常手艺术研究应以源 Chibi relaxed side-hanging 姿态、短圆小指且在 45×48 下仍有四指间分隔为联合验收条件；不复用、抠底、镜像或拟合上述负例。合规来源、左右分件、hidden-wrist/cuff、用户审阅与 rig/C 引擎验证仍未完成；mitten trial24 继续独立保留为 provisional QA 方向，不因此获生产批准。
+- 为落实两种手型并存，新增 viewer-left 原创概念 trial27–32；都只参考 Chibi design sheet 与 source crop，不复制像素。六张原图均为 opaque sRGB PNG、无 alpha。
+- 45×48 opaque-background visual probes 与对比板（非 C/Cubism 渲染）已实开：27 过长成人化；28 指缝变糊、读作 paw/mitten；29 五指可辨但掌心朝前、五指张开；30 目标尺寸的指缝塌成 grooves；31 五指保留但变成 pixel-art、手腕比例过长；32 五指可读但仍成人化细长。六项都未达 Chibi 艺术门，无一批准。
+- 本轮另实查 Cubism 源输入：`design/chibi/README.md` 标明其 PNG 是桌宠设计参考；Live2D Chibi 有设计表和多张 cutout PNG，但没有 `.psd`，`body_full.png` 是 567×1292；`seg_arm_l/r` 仅 100×230，Chibi rig 没有独立 hand/cuff 层或 `hand_parts.json`。Linux runner 没有 Cubism Editor/Wine，全仓没有 Cubism 工程/导出物。详情已续写 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`；未把 cutouts 自动拼成未验证 PSD、未假称模型完成。
+- 下一次 normal-hand 美术研究应以源 Chibi relaxed side-hanging 姿态、短圆手比例、45×48 下四指仍分离且细线画风为联合验收条件；不复用、抠底、镜像或拟合以上负例。合规左右来源手件、hidden-wrist/cuff、用户审阅与 rig/C 引擎验证仍未完成；trial24 mitten 继续独立保留为 provisional QA 方向，不因此获生产批准。

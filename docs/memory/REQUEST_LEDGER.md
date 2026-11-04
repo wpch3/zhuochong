@@ -1613,3 +1613,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 记录路径：`docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/trial27_normal_fingered_hand_wip/`、`trial28_normal_fingered_hand_wip/`、`trial29_normal_fingered_hand_wip/`；各含原图、目标框 probe、README、prompt_record、metrics、local SHA manifest。更新 study 根 README/SHA、A68.5 契约、T70.2/G66.53、LESSONS #463、MEMORY 与 JOURNAL。
 - 验证：`make test` 2638/0；静态 repo selfcheck 772/1（唯一旧 Teen/Chibi rig generator fingerprint，未改受保护 rig）；全仓 selfcheck_all 未运行。契约/metrics JSON 与各层 SHA 清单、`git diff --check` 通过；生产 hand/rig/source/core 路径改动为 0。
 - 提交/推送：`5747ff5176eaf75a29e29be3b422b47d164583fb` 已推送到 `arena/aaf1408c-zhuochong`；核实本地/远端 SHA 一致，工作树 clean。
+
+### 2026-11-04 · 续令「继续未完成任务」：trial30–32、正常手型交接规格及 Cubism 输入审计
+
+- 按固定活动分支同步远端 `dad05a95beafdc2aea0b46e597d1461bd4bc148b` 后继续；新增 trial30–32 45×48 目标尺寸 WIP 与 trial27–32 比较板，目视三张新稿均未通过；均留档负例，不进 rig。
+- 正常有指手与 mitten 继续作为独立手型；新增正常手原画交接 brief。trial24 仍仅 provisional mitten 方向，非 hidden-wrist/生产批准。
+- 复核 Chibi 现有 PNG cutouts 不含完整授权 PSD/手件/袖口；Linux runner 无 Cubism Editor/Wine。仅补充真实模型输入就绪度与官方 Cubism 路线审计；没有拼 PSD、制作/导出 `.cmo3`/`.moc3`、集成 SDK/Core 或声称完成真模型。
+- 验证：`make test` 2638/0；`selfcheck_repo.py --quiet` 772/1，唯一为既有 Teen/Chibi production rig generator fingerprint；全仓 `selfcheck_all.sh` 未运行。JSON、trial27–32 六份本地 SHA、study root SHA 与 `git diff --check` 通过；生产 Chibi hand/rig 和 `src/core` diff 0。
+- 提交/推送状态在本轮收尾后补记。
