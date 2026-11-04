@@ -23,7 +23,7 @@
 
 ## 最新状态（2026-11-04）
 
-- **双手型/候选自审**：normal fingered hand 与 mitten 必须同时保留；`small` 名称或源 crop 不证明完整正常手通过。用户最新明确候选批准由代理判断；不再逐轮索要选图。代理目视 trial27–40 全部否决：27–32 目标尺寸/比例/风格问题；33–36 独立手稿或 source-crop edit 成人化/袖口重绘；37–40 全身/`body_full` 编辑在精确注册 ROI 错位、超尺寸或改坏无关区域。全为 WIP 负例；左右合规手件、hidden wrist、cuff、动作/rig 与生产验收仍欠。
+- **双手型/候选自审**：normal fingered hand 与 mitten 必须同时保留；`small` 名称或 source crop 不证明完整正常手通过。用户授权候选批准由代理判断；不逐轮索要选图。代理目视 trial27–40 全部否决：27–32 尺寸/姿势/风格问题；依侧背视角标准复审后，33–36 在目标尺寸能看出约三枚圆指尖，仍因姿势、比例、线稿或袖口未保真而拒绝；37–40 精确注册 ROI 未包含三枚圆指尖，且错位/过大或改坏无关区域。全为 WIP 负例；左右合规源手件、hidden wrist、cuff、动作/rig 与生产验收仍欠。
 - **真正 Cubism 模型研究**：已查官方 PSD 导入、ArtMesh/Editor 建模、MOC3/Model3 导出、SDK/Core 与发布许可，并核对 `CubismWebFramework`。当前 49 个 zrig PNG 引用均存在，但仍无 overlap-complete PSD/手袖来源层；另发现 Chibi 路径的 `rig.json` id 异常写成 `小寻_teen`，生产 rig 受保护，未修。桌宠 Q 版图不是 Live2D 源稿，Editor/Wine 亦缺。官方路线/机器层清单见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`、`cubism_source_layer_inventory_wip/`、`REFERENCE_NOTES.md` 第七十三批。
 - **环境/资产事实**：checkout 为 Linux；`CubismEditor` 未安装；全仓无 `.psd` / `.cmo3` / `.moc3` / `.model3.json`。所以没有制作/导出/官方 Viewer 验证真 Cubism 模型。自研 C `zrig` 不是真 Cubism 模型，官方 Core/SDK 运行时整合仍单独受许可/架构审批限制。
 - **下一步门槛**：先取得/制作获批 Chibi 完整分层 PSD，在支持的官方 Cubism Editor 环境建立 `.cmo3` 并导出 `.moc3` / `.model3.json`；之后分别完成双手型的编辑器模型验证与官方 Viewer/SDK 实测。当前官方模型制作任务 T70.5 仅研究完成、模型未开始。

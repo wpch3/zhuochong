@@ -4,7 +4,7 @@
   "date": "2026-11-04",
   "method": "Full-body study with trial15 + actual body_full references",
   "reference": "trial15 full-body WIP + Chibi `body_full.png` as references; no pixels copied",
-  "review": "Overall ratio normalizes, but hands shift down/oversize; exact source hand ROI misses fingertips. Rejected.",
+  "review": "Re-reviewed under the three-rounded-tip rule: the exact registered ROIs show upper palm/crease strokes and miss the distal finger tips, so the source-scale hand does not meet the digit-read gate. Better overall normalization does not fix the hand offset/scale. Reject.",
   "target_scale_diagnostic": "source-relative torso/hand and registered ROI comparison boards",
   "production_use": false,
   "cubism_source": false,
@@ -23,5 +23,12 @@
   "review_boards": [
     "../trial37_39_normal_hand_body_registration_detail_board_wip.png",
     "../trial39_normal_hand_registered_target_roi_comparison_wip.png"
-  ]
+  ],
+  "initial_review": "Overall ratio normalizes, but hands shift down/oversize; exact source hand ROI misses fingertips. Rejected.",
+  "post_rubric_review": {
+    "date": "2026-11-04",
+    "criterion": "side/back relaxed hanging hand: at least three clearly separated rounded fingertip lobes; fourth finger may naturally overlap",
+    "decision": "rejected_wip_not_production",
+    "reason": "Re-reviewed under the three-rounded-tip rule: the exact registered ROIs show upper palm/crease strokes and miss the distal finger tips, so the source-scale hand does not meet the digit-read gate. Better overall normalization does not fix the hand offset/scale. Reject."
+  }
 }

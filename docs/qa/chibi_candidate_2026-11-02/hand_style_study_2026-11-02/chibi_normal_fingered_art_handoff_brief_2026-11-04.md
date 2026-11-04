@@ -21,6 +21,15 @@ Create the Chibi character’s relaxed, small normal hand as a distinct alternat
 5. **Left/right authenticity:** provide separate viewer-left and viewer-right source art with their own anatomy/orientation; do not mirror one side to invent the other.
 6. **Layer completeness:** include authorized under-cuff wrist continuation and enough overlap to test the existing cuff-front/back plan. Preserve hand-style independence from wrist rotation and gesture channels.
 
+## Re-review of existing WIPs after correcting the view criterion (2026-11-04)
+
+The revised rule does **not** require four fully separated fingers. I re-opened the target-size boards and exact source-ROI boards under the side/back hanging-view criterion:
+
+- Trials 33–36 show roughly three rounded digit tips at diagnostic scale, so they are **not** rejected merely for a naturally obscured fourth finger. They still fail as Chibi candidates: 33/34 are open/front-facing, adult-long isolated hands with mismatched rendering and no cuff registration; 35/36 redraw the cuff, enlarge the wrist/hand, and have heavy/inconsistent linework with no source-registered layer.
+- Trials 37–40 still fail the target-scale registration gate: exact source hand ROIs show only cuff/upper palm or crease-like strokes, not three separated rounded fingertip lobes; 37–39 are shifted/oversized and 40 also redraws unrelated face/clothing detail.
+
+Thus all trial33–40 remain rejected for specific view/style/registration/source reasons—not for forcing a four-finger silhouette. Per-trial record is in each `metrics.json` under `post_rubric_review`.
+
 ## Required review package before rig/model work
 
 - Source/provenance note and approvals; separate left/right artwork; genuine transparency verified from file data; exact dimensions/anchors; full-body source-aligned view; target-size and 4× detail comparisons; hashes.
