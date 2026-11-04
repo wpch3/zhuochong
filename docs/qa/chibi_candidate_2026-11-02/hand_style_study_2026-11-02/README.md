@@ -31,3 +31,13 @@ User said the mitten hand is basically passing and left reuse to my judgement. I
 手型验收必须同时包含两条独立路径：正常、可辨识手指的 `small` 与手套式 `mitten`。当前 small 提取图仅证明源图可见像素被选取，未证明完整手指造型、hidden wrist 或生产拆件已完成；trial24 仍仅为 provisional mitten 基线。
 
 另：用户已要求真正 Live2D Cubism 作者工程/模型。此 study 中的 C `zrig` 渲染和 rig feasibility 不是 Cubism Editor 工程、不是 `.moc3`，不构成 Cubism 兼容性。官方完整作者/导出/运行时边界和本仓库阻塞事实见 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。本 study 仅为隔离手型研究。
+
+## Trial 27–29 — normal-fingered small-hand probes (2026-11-04; all WIP, none approved)
+
+为落实用户要求的正常有指手与 mitten 双风格并存，生成 viewer-left normal-hand 原创概念探针；只以 Chibi 设定图与 source crop 作视觉参考，没有复制参考像素。三张原图都是 1024×1024 sRGB、不带 alpha 的灰底 PNG；透明提取、生产拆件和 rig 接入均未做。
+
+- `trial27_normal_fingered_hand_wip/`：原尺寸与 45×48 诊断缩图可见 thumb + 四指，但手/指过长且比例成人化，线稿/阴影不符 Chibi，拒绝。
+- `trial28_normal_fingered_hand_wip/`：全尺寸较短圆，但打开 45×48 诊断 probe 后指缝变软，形状仍读作 paw/mitten；不批准。
+- `trial29_normal_fingered_hand_wip/`：全尺寸及 45×48 probe 都能辨认五指；模型却生成掌心朝前、手指大幅张开的姿势，比例/风格不符 Chibi，拒绝。
+
+45×48 probes 只是保留不透明背景的缩小视觉诊断（每张处理方法、评语、SHA 见子目录 README/metrics/SHA）；不是 C 引擎或 Cubism 渲染，更不是生产部件。不得据此抠底、套袖口、镜像补右手或升生产。normal-fingered art 与左右独立手件仍未完成；trial24 仍单独保留为 provisional mitten 方向。真正 Cubism 模型仍按 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md` 的 PSD/Editor/SDK 门禁阻塞。

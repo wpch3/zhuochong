@@ -1,0 +1,31 @@
+{
+  "trial": "trial27_normal_fingered_hand_left",
+  "status": "rejected_style_and_proportion_wip",
+  "output": "chibi_normal_fingered_hand_left_trial27_wip.png",
+  "format": "PNG",
+  "dimensions_px": [1024, 1024],
+  "channels_observed": "sRGB (no alpha; confirmed with ImageMagick identify)",
+  "target_hand_reference_px": [45, 48],
+  "target_scale_probe": {
+    "output": "trial27_target_box_45x48_visual_probe_wip.png",
+    "diagnostic_thumbnail_px": [45, 48],
+    "display_px": [360, 384],
+    "method": "opaque background retained; subject bbox crop; LANCZOS fit; centered on opaque gray canvas; nearest-neighbor 8x display enlargement",
+    "visual_reviewed": true,
+    "exact_engine_or_cubism_render": false
+  },
+  "visual_review": {
+    "four_fingers_plus_thumb_visible_at_original_size": true,
+    "digit separation visible in target_box_probe": true,
+    "chibi_proportion_match": false,
+    "outline_and_shading_match": false,
+    "production_approved": false
+  },
+  "limitations": [
+    "long, adult-like finger and hand proportions",
+    "opaque gray background; no alpha channel",
+    "viewer-left only; no matched right part, cuff, sleeve, or hidden wrist",
+    "not fitted to production pixels and not tested in rig, C engine, Cubism Editor, or official runtime"
+  ],
+  "production_use": false
+}

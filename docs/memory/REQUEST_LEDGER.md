@@ -1604,3 +1604,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 用户明确纠正：正常、可辨识手指的手也必须保留；它和 mitten 是两套独立样式，不能只留手套手。不能把 `small` 名称或现有源 crop 当成正常有指手已完成。已同步 `hand_style_variants` 契约与 REQUIREMENTS A68.5，左右部件、腕部、gesture 解耦和生产门禁继续开放。
 - 用户要求继续研究官方教程/项目，完成真正 Live2D 骨骼部件与模型，不能把自研 C `zrig` 冒称 Cubism。已查官方 PSD 导入、ArtMesh/参数化建模、`.cmo3` / `.moc3` / `.model3.json` 导出、SDK Core 与发布许可，并核对官方 WebFramework / Samples；来源与路线见 `docs/REFERENCE_NOTES.md` 第七十三批、`docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。
 - 事实边界：Linux checkout 无 Cubism Editor、无 Chibi PSD/CMO3/MOC3/Model3。故当前只完成研究、手型契约和文档纠错，**没有制作/导出真 Cubism 模型，也没有整合 Core/SDK**。下一步是取得 approved Chibi 分层 PSD 与可运行官方 Editor 环境；运行时许可/架构另审。
+
+### 2026-11-04 · 续令「继续未完成的任务」：normal-fingered 手的 45×48 可读性探针（WIP）
+
+- 承接 trial27/28 未提交工作；实际核到固定 branch `arena/aaf1408c-zhuochong` / HEAD `430bcc9f56b110e1f2dbf062032990313ecc25d3`，本轮工作区确有此前 trial27/28 与当前未提交变更。未切分支，也没有把 WIP 当已完成。
+- 为响应“正常有指手与 mitten 双式都保留”，先用 `.imgenv` Pillow 制作保持不透明灰底的 45×48 视觉诊断并实开。trial27：五指可辨但成人化细长；trial28：缩小后指缝糊、仍像 paw/mitten；两者都拒绝/不批准。
+- 新增原创 viewer-left trial29 概念和同样的目标框 probe。五指分离在小图仍可见，但姿势变成掌心朝前、五指张开，比例/风格不符小寻 Chibi 侧垂手；拒绝，只留负例。三张原图均 1024×1024 RGB/no alpha；probe 只保留背景缩图，不作抠底或 production sprite。
+- 记录路径：`docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/trial27_normal_fingered_hand_wip/`、`trial28_normal_fingered_hand_wip/`、`trial29_normal_fingered_hand_wip/`；各含原图、目标框 probe、README、prompt_record、metrics、local SHA manifest。更新 study 根 README/SHA、A68.5 契约、T70.2/G66.53、LESSONS #463、MEMORY 与 JOURNAL。
+- 验证：`make test` 2638/0；静态 repo selfcheck 772/1（唯一旧 Teen/Chibi rig generator fingerprint，未改受保护 rig）；全仓 selfcheck_all 未运行。契约/metrics JSON 与各层 SHA 清单、`git diff --check` 通过；生产 hand/rig/source/core 路径改动为 0。

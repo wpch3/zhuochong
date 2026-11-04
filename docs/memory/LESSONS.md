@@ -7074,3 +7074,9 @@ C 层级诊断中隐藏 `arm_*_fore` 会同时隐藏前臂整件和袖口；它�
 - **闭环**：使用官方 Cubism Editor 从合规分层 PSD 创建 ArtMesh / Deformer / 参数 keyforms，制作 atlas 并导出 `.moc3` / `.model3.json`；官方 Viewer/SDK/Core 真实载入成功，才可称为 Cubism 模型完成。作者工具、模型文件、运行时 Core 与发布许可分别核验。
 - **手型提醒**：变体名称 `small` 不能替代视觉标准。若正常手要求有可辨识手指，必须在契约、source art 和 review rubric 中明确 digit separation；mitten 仍需单独存在。
 - **来源**：`docs/REFERENCE_NOTES.md` 第七十三批；项目调查 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。
+
+### 463. 小尺寸手型必须在目标框下验读形，不能只看 1024px 原图（2026-11-04）
+
+Normal-hand trial28 在 1024px 原图上可见四个指瓣和三个指缝，缩到注册 45×48 手部框后却变成 paw/mitten；trial27 保留了指缝但比例成人化；trial29 在目标框里能辨五指，却生成了与 Chibi 站姿不符的张掌动作。原尺寸目视仍重要，但须补一张明确标为诊断的目标尺寸视图，并同时检查手指可读性、姿态、头身/手尺寸和源线影。背景必须保持真实不透明，不把这类视觉 probe 冒称 C/Cubism 渲染或生产 sprite。
+
+- **来源**：`trial27_normal_fingered_hand_wip/`、`trial28_normal_fingered_hand_wip/`、`trial29_normal_fingered_hand_wip/`；本条不使任何试稿获得批准。

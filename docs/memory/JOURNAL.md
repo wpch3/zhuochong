@@ -8143,3 +8143,13 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 
 - **收尾验证（2026-11-04）**：`make test` 实跑 **2638 项通过 / 0 失败**（编译有已知 `_zperf_probe` unused warning）。重建仓库外 `/home/user/.imgenv` 的 Pillow 13.0.0 / NumPy 2.4.6 后，`python3 tools/selfcheck_repo.py --quiet` **772 项 / 1 项失败**，唯一失败是 Teen 与 Chibi 生产 `rig.json` 的旧生成器指纹；依既有门禁未重生生产 rig。`scripts/selfcheck_all.sh` 本轮未运行。hand-style JSON 解析通过、study 根级 `SHA256SUMS.txt` 全部通过、`roadmap_status.py --print` 显示一致的 631 项 / 245 完成、`git diff --check` 通过。ROADMAP 因新增 T70.5 已按脚本修为 631/245/25。未改 production sprite/rig/generator/engine；当前 Cubism `.cmo3`/`.moc3` 仍未制作，双手也未通过生产/用户门禁。
 - **提交/推送**：实质研究与契约变更已提交为 `ec4748d571cc69b7763cc415aa6df1ad5613d03d`（`Document Cubism model path and preserve Chibi hand styles`），并推送到固定分支 `arena/aaf1408c-zhuochong`。推送目标 SHA 已由本地 `git rev-parse` 与远端 `git ls-remote` 核对；日志行本身作为后续收尾记录单独提交。
+
+## 2026-11-04｜续做 T70.2：trial27–29 normal-fingered hand 的目标尺寸审查（WIP）
+
+- **现场核对**：固定 branch `arena/aaf1408c-zhuochong`，本地 HEAD `430bcc9f56b110e1f2dbf062032990313ecc25d3`。承接摘要中未提交的 trial27/28 WIP；本轮实际 `git status` 确认已有 trial27/28 目录与此次文档改动，未把上一轮 clean 状态误记为本轮工作区状态。未切分支；该现场记录写入时尚未完成最终 commit/push 核对。
+- **目标尺寸视觉诊断**：发现系统 `python3` 没有 Pillow（`ModuleNotFoundError: PIL`），改用仓库外 `/home/user/.imgenv/bin/python`，未改仓库依赖。对灰底不透明图用 RGB 差阈值 >18 仅定位主体框，保留背景裁框、LANCZOS 缩到 45×48、居中放在原色不透明灰底并最近邻放大 8×，仅产 WIP 视觉 probe，不抠 alpha、不做 production sprite；用 `read_file` 实际打开全部三张 probe。
+- **trial27**：全尺寸与 45×48 probe 都能辨 thumb+四指，但手/指成人化细长、线影不符 Chibi，拒绝。原图 SHA `a4f4a984eba8ad0c6ea253601d16ab65bde8e6630b4840e0b8a93e85c588d5a7`，probe SHA `951839058c444f5a3a7f4587bd0b9ee57cf6303885cdca672574a91e0b1a55b9`。
+- **trial28**：全尺寸较短圆；打开 45×48 probe 后指缝变软、整体仍读 paw/mitten，故不批准。原图 SHA `5834c1826fa79522d5ddc116db2ffcfe9608217e66596061eea84e1e0461a307`，probe SHA `bcde886ebdad681c2fef19f080de70d6d4f5acd81c24299c85d469ad8ae09ade`。
+- **trial29**：新生成 viewer-left 概念；全尺寸及 probe 可见五个分离指，但生成器把“放松/短指”误解成掌心朝前、五指大幅张开，成人比例且不匹配 Chibi 侧垂手势。拒绝作 Chibi 手型。原图 SHA `4e77cdb2532cf6502a13189e4db92fe214cb9fe7e9d6291a0d1a5047f90e1e2e`，probe SHA `7b00a811bd97b4d84f60ed7ce429015cb368715a455199847897cbe517645758`。
+- **范围/落盘**：三张原图为 1024×1024 sRGB no-alpha，三张 probe 为 360×384 的 8×展示；都留在 `trial27/28/29_normal_fingered_hand_wip/`，有 prompt、README、metrics、本地 SHA。更新 study README/root manifest、hand-style contract、TASKS/GAPS/REQUIREMENTS/MEMORY/LESSONS。双手型并存约束继续有效，trial24 仍仅 provisional mitten 基线；未做左/右配对、袖口、hidden-wrist、fit、rig/Cubism 或生产变更。
+- **验证**：`make test` 2638 项通过 / 0 失败；`python3 tools/selfcheck_repo.py --quiet` 772 项 / 1 失败，唯一为受保护 Teen/Chibi 生产 `rig.json` 的旧 generator fingerprint；未重生 rig。`selfcheck_all.sh` 未运行。契约/metrics JSON、三份本地 SHA、study 根 SHA、`git diff --check` 全过；生产 Chibi hand/rig 与 `src/core` diff 0。下一步需换用更短圆、放松侧垂姿态且在 45×48 仍能分出四指的合规设计；本轮不因此批准任何 WIP。

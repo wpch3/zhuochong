@@ -1,0 +1,33 @@
+{
+  "trial": "trial28_normal_fingered_hand_left",
+  "status": "normal_fingered_shape_study_wip_not_approved",
+  "output": "chibi_normal_fingered_hand_left_trial28_wip.png",
+  "format": "PNG",
+  "dimensions_px": [1024, 1024],
+  "channels_observed": "sRGB (no alpha; confirmed with ImageMagick identify)",
+  "target_hand_reference_px": [45, 48],
+  "target_scale_probe": {
+    "output": "trial28_target_box_45x48_visual_probe_wip.png",
+    "diagnostic_thumbnail_px": [45, 48],
+    "display_px": [360, 384],
+    "method": "opaque background retained; subject bbox crop; LANCZOS fit; centered on opaque gray canvas; nearest-neighbor 8x display enlargement",
+    "visual_reviewed": true,
+    "exact_engine_or_cubism_render": false
+  },
+  "visual_review": {
+    "thumb_plus_four_finger_lobes_visible_at_original_size": true,
+    "three_finger_clefts_visible_at_original_size": true,
+    "fingered_hand_readable_at_target_box_probe": false,
+    "may_read_as_paw_or_mitten_at_target_box_probe": true,
+    "chibi_source_style_match": false,
+    "production_approved": false
+  },
+  "limitations": [
+    "full-resolution shape is compact, but finger separations soften at target box and can read as paw/mitten",
+    "opaque gray background; no alpha channel",
+    "no cuff, sleeve, or hidden-wrist continuation",
+    "viewer-left only; no verified right-side counterpart",
+    "not tested in rig, C engine, Cubism Editor, or official Cubism runtime"
+  ],
+  "production_use": false
+}

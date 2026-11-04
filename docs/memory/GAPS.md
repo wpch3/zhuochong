@@ -2636,3 +2636,9 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - **真实 Cubism 模型**（A68.6 / T70.5）：已核官方 PSD→Editor ArtMesh/Deformer/keyforms→`.cmo3`→`.moc3`/`.model3.json`→官方 Viewer/SDK 验证流程，详见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。当前环境 Linux 且无 Cubism Editor；全仓无 Chibi 分层 PSD/CMO3/MOC3/Model3，所以本轮不能做/导出真模型。
 - **需取得的输入/环境**：approved Chibi 完整分层 PSD（含足够塗り足し、袖下 hidden wrist 与两套正常/mitten 左右手层），以及能运行 Cubism Editor 的授权环境。取得后先建 `.cmo3` 并官方导出、验证，再单独决定是否把符合许可的 SDK/Core 接入桌宠。自研 `zrig` 不可冒称 Cubism；Core/SDK 运行时与模型作者工程分开审查。
 - **发布授权待核**：官方 SDK Release License 对发布与 Expandable Application 有具体条款；项目代理不作法律归类。发布或集成前按届时条款确认。
+
+### T70.2 normal-fingered small-hand WIP probes（2026-11-04，仍未批准）
+
+- 为落实两种手型并存，新增 viewer-left 原创概念 trial27/28/29；都只参考 Chibi design sheet 与 source crop，不复制像素。三张原图均为 opaque sRGB PNG，无 alpha。
+- 45×48 opaque-background visual probes（非 C/Cubism 渲染）已打开：trial27 的指形能区分但成人化细长；trial28 缩小后指缝变糊，读作 paw/mitten；trial29 五指仍分开，但生成成掌心朝前、五指张开的姿势，比例/风格不符 Chibi。三者均拒绝为生产手型，分别仅留负例/形态研究证据。
+- 下一次正常手艺术研究应以源 Chibi relaxed side-hanging 姿态、短圆小指且在 45×48 下仍有四指间分隔为联合验收条件；不复用、抠底、镜像或拟合上述负例。合规来源、左右分件、hidden-wrist/cuff、用户审阅与 rig/C 引擎验证仍未完成；mitten trial24 继续独立保留为 provisional QA 方向，不因此获生产批准。
