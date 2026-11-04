@@ -1620,4 +1620,4 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 正常有指手与 mitten 继续作为独立手型；新增正常手原画交接 brief。trial24 仍仅 provisional mitten 方向，非 hidden-wrist/生产批准。
 - 复核 Chibi 现有 PNG cutouts 不含完整授权 PSD/手件/袖口；Linux runner 无 Cubism Editor/Wine。仅补充真实模型输入就绪度与官方 Cubism 路线审计；没有拼 PSD、制作/导出 `.cmo3`/`.moc3`、集成 SDK/Core 或声称完成真模型。
 - 验证：`make test` 2638/0；`selfcheck_repo.py --quiet` 772/1，唯一为既有 Teen/Chibi production rig generator fingerprint；全仓 `selfcheck_all.sh` 未运行。JSON、trial27–32 六份本地 SHA、study root SHA 与 `git diff --check` 通过；生产 Chibi hand/rig 和 `src/core` diff 0。
-- 提交/推送状态在本轮收尾后补记。
+- 提交/推送：`4a2b80acff072ae94e7b351faf18fd6381cc35e1`（`Archive Chibi hand probes and Cubism source audit`）已推送至 `arena/aaf1408c-zhuochong`；`git rev-parse` / `git ls-remote` SHA 一致。
