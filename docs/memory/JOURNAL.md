@@ -8203,4 +8203,4 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **开工事实核对**：工作树起始干净、固定分支正确，但本地 checkout 为 `43f551462c31a5ac4e41077af9be998316607ee3`，远端固定分支为 `5f403639cf9edd28ed9035d2c88f12bed8e53a8f`。发现后没有按旧摘要继续，而是在同一固定分支执行 `git fetch` + `git merge --ff-only FETCH_HEAD` 快进到远端状态，确认无覆盖。该差异本身验证本轮要求必要：交接/旧会话记录不可代替工作树/远端实查。
 - **执行范围**：本轮唯一任务是流程规则持久化，不声称推进 Chibi 美术或真实 Cubism 制作。新增 `WORKFLOW.md` 铁律 17，规定用户要求/验收对位、当前分支与事实同步、逐步说明验收关联、失败方法不无证据重做、每阶段检查真实增量、交付前逐项对账；同步更新开工五步。
 - **记忆落点**：新增 `REQUIREMENTS.md` A69.1；更新 `WORKFLOW.md` 铁律编号到 0–17、`MEMORY.md` 当前状态；在 `REQUEST_LEDGER.md` 记录本轮用户要求。无代码、生产资产或 Cubism 文件修改。
-- **验证/推送**：doc-only 改动经 `git diff --check`、WORKFLOW/A69 编号唯一性、文档交叉引用和工作树检查通过；本轮不以 `make test` 数量冒充规则落地或 Chibi 进度。规则/验证落点已完成，提交和推送固定分支待做。
+- **验证/推送**：doc-only 改动经 `git diff --check`、WORKFLOW/A69 编号唯一性、文档交叉引用和工作树检查通过；本轮不以 `make test` 数量冒充规则落地或 Chibi 进度。提交 `4a3fc29ac445bb3d34ca2d9547f72bcf24f4d1ee`（`Add task alignment and anti-drift iron law`）已推送固定分支；随后核验本地与远端 SHA 一致、工作树干净。
