@@ -29,7 +29,7 @@
 - **下一步门槛**：先取得/制作获批 Chibi 完整分层 PSD，在支持的官方 Cubism Editor 环境建立 `.cmo3` 并导出 `.moc3` / `.model3.json`；之后分别完成双手型的编辑器模型验证与官方 Viewer/SDK 实测。当前官方模型制作任务 T70.5 仅研究完成、模型未开始。
 - **验证（trial30–40 后续，历史记录）**：该轮未重跑 `make test`；当时最近一次 `make test` 为 **2638/0**。当时 `selfcheck_repo.py --quiet` 为 **772 项 / 1 fail**，唯一是受保护 Teen/Chibi rig 旧 generator fingerprint；未重生 rig，`selfcheck_all.sh` 未运行。
 - **T70.5 rig identity generator follow-up（2026-11-04）**：`tools/make_rig.py` 现按请求的 `--form` 生成身份（保留 Teen 既有格式，并避免 Chibi/未来形态被标成 Teen），新增 4 个 Python 回归测试并接入独立 `make rig-tool-test`；`make test` 保持 C-only（C 单测 **2638/0**），`make rig-tool-test` **4/4**；编译时仍有既知 `_zperf_probe` unused-function warning/负向测试预期诊断。未运行 selfcheck：系统 Python 缺 Pillow/NumPy，且现有生产 rig 未重生，fingerprint 检查必然仍红；没有改写生产 rig。`py_compile`、inventory JSON/SHA manifest、`git diff --check` 均通过；保护的 Chibi/Teen rigs 与 Chibi sprites diff 为 0。
-- **本轮提交/推送**：`bf291f1fa814c68e087921b004ac72b11112de6a` 已推送到固定活动分支；本地与远端 HEAD 一致。
+- **本轮提交/推送**：代码修复 `bf291f1fa814c68e087921b004ac72b11112de6a`、验证记录 `ac7b6c2ae4d4764139b47a8936e9a119ddbe6319`、C-only 边界记录 `9fb72efcdc310cf3e0c83787abefa0cb278bdad5` 均已推送；最终本地/远端 HEAD 为 `9fb72efcdc310cf3e0c83787abefa0cb278bdad5`。
 - **提交/推送**：trial27–29 review 前序提交 `5747ff5176eaf75a29e29be3b422b47d164583fb`、trial30–32/Cubism 初审提交 `4a2b80acff072ae94e7b351faf18fd6381cc35e1`、视角标准/日志更新 `25e5e7f3559f8be3a24473df83d5b0c2b4252e1a` 均已推送。trial33–40 自审与 Cubism inventory 提交 `19956de5b5022b74bb54297466f1884e50df0292`、收尾日志 `d2749428b769a168c908f5bf7a86ffd172bd1f39`、修订视角准则复审 `a34dfd0a6288270f36e025327a3bb1bed8a35611`、trial41/42 精确 ROI 编辑失败证据 `0a424e57719b0e4c01b39ec2c9d492654537b2a3` 均已推送；最终 `git rev-parse` 与 `git ls-remote` SHA 相同。
 
 - 本轮参考资料审计已归档：运行时、网格、遮罩与绑定方法资料足以继续自研；Chibi 自身全身差分稿、合规 `small/mitten` 手型设计板和组合验收仍不足。
