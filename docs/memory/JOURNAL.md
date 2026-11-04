@@ -8204,3 +8204,14 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **执行范围**：本轮唯一任务是流程规则持久化，不声称推进 Chibi 美术或真实 Cubism 制作。新增 `WORKFLOW.md` 铁律 17，规定用户要求/验收对位、当前分支与事实同步、逐步说明验收关联、失败方法不无证据重做、每阶段检查真实增量、交付前逐项对账；同步更新开工五步。
 - **记忆落点**：新增 `REQUIREMENTS.md` A69.1；更新 `WORKFLOW.md` 铁律编号到 0–17、`MEMORY.md` 当前状态；在 `REQUEST_LEDGER.md` 记录本轮用户要求。无代码、生产资产或 Cubism 文件修改。
 - **验证/推送**：doc-only 改动经 `git diff --check`、WORKFLOW/A69 编号唯一性、文档交叉引用和工作树检查通过；本轮不以 `make test` 数量冒充规则落地或 Chibi 进度。提交 `4a3fc29ac445bb3d34ca2d9547f72bcf24f4d1ee`（`Add task alignment and anti-drift iron law`）已推送固定分支；随后核验本地与远端 SHA 一致、工作树干净。
+
+## 2026-11-04｜复核建议.md、启动预览并追查 T67.39 动态遮挡（WIP）
+
+- **任务对位 / 分支**：按用户要求重新核验工作流、未完任务与聊天附件，不复用上一轮结论代替当前树。固定分支 `arena/aaf1408c-zhuochong`，同步后 HEAD `4f0131d28f54c96cee6fb2df3ebf2dc602b5a44c`，开始时工作树 clean。仓库 `建议.md` 与聊天附件 SHA-256 均为 `d89ab6dcc29565ec94bd4d49776bf6050dda41679b84d51f6ef61a8b827c2e44`。
+- **计划/建议审查**：`WORKFLOW.md` 原铁律 0–17 对任务对位、读当前记忆、阻止重复失败、C-only `make test`、真实 Cubism 门禁等已很充分。建议文件大多与现行规则重复，不采用“一键全量复制”与十二条自检硬编码。L-02 的一般提醒（目标尺寸目视，避免按像素把手指捏坏）有参考价值，但指定的 `gather_fingers(0.68)` / `HORIZONTAL_SHAPE_FACTOR=1.28` 在当前仓库均不存在；当前 `generate_surprised_hands.py` 是 0.90 横向缩放并按近半转组坐标作 180°局部补偿，不能把建议的历史叙述直接当作现行项目事实。L-03 的柔性发链已由 WORKFLOW 铁律 11 覆盖；teen `rig.json` 当前已有 `physics2.longhair2` 三粒子链，不能说当前长发完全死绑刚体。L-01 的全局“整个头发 alpha 必须 255”不成立为通用规则，但其“静帧覆盖不证明运动中遮挡”值得实测；故只吸收这个已证实新增部分。
+- **长发动态实测**：通过 `make preview` 构建并启动真实 C 引擎 HTTP 预览，绑定 `0.0.0.0:5173`，进程 `process-3e282eb0` 仍在运行；`/`、`/api/info.json`、`/api/frame.png` 都返回 200。固定 teen long + hood-up，真实 C `848×1360` 截取 arms-down idle（`ParamHairSway=0`），再从同姿势触发 surprised，步进 12×0.05s、设置 `ParamHairSway=1`、再步进 10×0.05s。动作端点实际参数为 `ParamArmLA/RA=0.6`、`ParamArmLB=8.35`、`ParamArmRB=8.1`、`ParamSurpriseArmSwap=1`、`ParamHairSway=1`。
+- **本人目视 / 结论**：看 side-by-side magenta detail 与两张原始 C 帧；静帧里旧手位大致被正常前臂/袖口遮住；抬臂画面在旧腕位仍见袖口/手形残留，周围长发有透明缺口。单件 `teen/sprites/hair_hood_long@2x.png` 也可直接看见透明 cutouts 与残留非发像素。由此纠正旧 T67.39 的范围：它只通过了固定姿势样本，不能支持动态通过；L-01 的动态风险在这一样本成立，但透明挖除、剩余污染、层序和形变各自贡献尚未分离，未把 alpha=0 写成唯一根因。证据：`docs/qa/t67_39_dynamic_followup_2026-11-04/`，含 README、side-by-side 板、两个原始帧与 SHA 清单。
+- **工具限制**：尝试 `make audit-hair` 时，本地没有 `PIL/numpy` 图像解释器，`PYTHON_IMG` 为空后 Make 尝试直接执行非 executable 脚本并因 Permission denied 退出；本轮不报数值 hair QA 通过。实测判据来自真实 C 帧目视及 sprite 本身，不编造静态 QA 数字。
+- **记忆/计划更新**：新增 WORKFLOW 铁律 9 动态遮挡核验细则，铁律 17 建议/附件逐条事实核验；新增 LESSONS 466、GAPS/TASKS T67.71；将 T67.39 明确收窄到固定姿势；T70.2 补记 trial41–42 全拒绝并停止同类 prompt 迭代；MEMORY 记录本轮新状态。没有复制 L-01 中“所有头发 alpha==255”或把十二条建议整包注入。手部 candidate 未获批准、未进 rig/生产；T70.5 Cubism Editor/PSD 门也仍阻塞。
+- **预览收尾**：实测后解除 pause，复位发型/兜帽/ParamHairSway/scale，确认 preview 回到 teen idle 466×748；端点仍可用。preview 进程没有当作修复或交付素材。
+- **本轮实际范围**：新增长发动态 QA 证据及其记忆/流程修订；未修改 production sprite、rig、generator、C engine。未运行 `make test` / `selfcheck_all.sh`。后续需先逐像素追踪原贴图中的 cutouts 与残留像素，再找合规 source-art/inpainting 方案，随后重跑 idle、sway 极值、surprised 抬臂、遮挡隐藏的真实 C 矩阵；不复做已失败的 trial27–42 类 AI 手型 prompt。

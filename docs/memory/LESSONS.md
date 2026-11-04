@@ -7092,3 +7092,11 @@ Normal-hand trial28 在 1024px 原图上可见四个指瓣和三个指缝，缩�
 重新查看 Chibi 设定表确认双手为身体侧面的外/背侧视角；初版 handoff brief 要求四指全分离，可能迫使模型把手画成张掌/成人姿势。正常手仍须明显区别 mitten，但目标框应以至少三枚可辨圆指尖与真实轮廓分隔为主，第四指可按遮挡自然重叠；拇指是姿势允许时的小侧边线索，而非必须正面摊开。不能降低到模糊 paw/two-prong；最终由代理在全身注册和目标尺寸下自审。
 
 - **来源**：Chibi `design_sheet_chibi.png`、`body_full.png` 和更新后的 `chibi_normal_fingered_art_handoff_brief_2026-11-04.md`。
+
+### 466. 静帧“有人接住”不证明挖除区在动作中仍被覆盖（2026-11-04）
+
+**标准原则**：当上层部件把内容烘进底层贴图、再用 `alpha=0` 清除异物时，静止合成可能恰好由当前前景件遮住切口。只看那一帧不能证明运动后底层仍连续，也不能证明旧位置不会露出异物。验收必须移动/隐藏遮挡件，并检查相关发丝摆动、动作极值和最终合成；但也不能因此把所有头发 alpha 粗暴规定为 255，合法发丝间隙与外轮廓透明仍需保留。
+
+**项目实测**：T67.37 的 `purge_hair_foreign_blocks.py` 将长发件里检测到的皮肤/青布块及外扩边界透明化；T67.39 的“下层接住”仅有固定姿势证据。2026-11-04 用真实 C 预览渲染 Teen long + hood-up 的 idle/arms-down（`ParamHairSway=0`）与 surprised 抬臂（`ParamHairSway=1`）对照，抬臂帧在旧手腕位置出现残留的袖口/手形碎片和透明缺口；单件 `hair_hood_long@2x.png` 也能看到 alpha cutouts 与非发像素残留。细节板 `docs/qa/t67_39_dynamic_followup_2026-11-04/idle_vs_surprised_detail.png`；原图与方法见同目录 README。
+
+**陷阱核对 / 未决边界**：该样本证明 T67.39 不能外推为动态通过；尚未分离透明挖除区、剩余异物、层序、动作替身与物理变形的因果贡献，所以不把“alpha=0 是唯一根因”写成事实。修复前先追踪 source ROI 与层序；以合规原画/inpainting 补回该连续存在的头发，再用静帧、抬臂、sway 两端和遮挡隐藏做真实 C 复验。此次仅新增 QA/记忆，production assets 未改。

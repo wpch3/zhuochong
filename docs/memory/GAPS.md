@@ -13,6 +13,12 @@
 - **端到端验收**：尚无 Chibi `hand_style × gesture × wrist angle × outfit` 状态矩阵；现有手部仍并在 `seg_arm_l/r`。资产与 rig/运行时组合工作仍未完成。
 - 本条为记忆增补，不把任何外部项目升级为生产依赖；`GAPS.md` 的历史表格仍需按新基线分批校准。
 
+## 2026-11-04 Teen 长发动态遮挡缺口（T67.71）
+
+- **现状**：T67.39 只验固定姿势。真实 C 预览以 Teen `hairstyle=long`、`hood_pose=up` 对照 idle（手臂下垂、`ParamHairSway=0`）与 surprised 抬臂（`ParamHairSway=1`）时，动作帧在旧手腕位置出现残留袖口/手形碎片及头发透明缺口。`hair_hood_long@2x.png` 本身也可见 alpha cutouts 与残留异物。
+- **根因状态**：已证明静帧覆盖不保证动态覆盖；尚未隔离 alpha 挖除、未清除的异物、图层顺序和姿态/形变各自的贡献。不要把它们混称为单一“alpha=0 bug”。
+- **下一步**：从源图/PNG 坐标逐像素追踪缺口与残留；选用合规 source-art 或可审阅 inpainting 修复；再跑 idle、sway 两端、surprised 抬臂和遮挡隐藏的全身 + 局部真实 C 复验。证据和当前边界见 `docs/qa/t67_39_dynamic_followup_2026-11-04/`。生产贴图尚未修改。
+
 ---
 
 ## 一、现在能跑的（基线，别重复造）

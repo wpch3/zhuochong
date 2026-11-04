@@ -1655,3 +1655,12 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 开工核对发现活动固定分支本地 checkout `43f551462c31a5ac4e41077af9be998316607ee3` 落后于远端 `5f403639cf9edd28ed9035d2c88f12bed8e53a8f`，工作树干净。先在同一固定分支安全 `fetch` + `--ff-only` 快进；没有根据旧 session summary 继续施工，也未覆盖文件。
 - 已把要求写入 `docs/memory/WORKFLOW.md` 铁律 17 及开工五步；`docs/memory/REQUIREMENTS.md` 新增 A69.1；更新 `MEMORY.md`。铁律规定：逐项核用户原话/验收、当下分支与远端、当前记忆/失败证据；每步说明推进哪项；无新依据不复做失败路径；结果没有核心进展时停止纠偏，交付前对账并如实说明。
 - 本轮仅处理用户明确要求的流程规则持久化；不宣称 Chibi 手部原画/Cubism 模型有进展。`git diff --check`、铁律 17/A69.1 唯一性与交叉引用通过；提交 `4a3fc29ac445bb3d34ca2d9547f72bcf24f4d1ee` 已推送，复核时固定分支本地/远端 SHA 一致、工作树干净。
+
+### 2026-11-04 · 复核用户建议、修订验收计划并实际启动预览
+
+- 用户要求重新检查计划/工作流是否足以指导行动，有缺漏则完善；继续未完成任务，实际打开预览；审阅仓库分支与聊天附件 `建议.md`，只把有证据和新增价值的经验放进记忆。
+- 本地 `建议.md` 与附件 SHA-256 一致：`d89ab6dcc29565ec94bd4d49776bf6050dda41679b84d51f6ef61a8b827c2e44`。拒绝复制“一键十二条铁律”包；L-02 的像素/目标尺寸谨慎原则已由 hand QA 体现，但原叙述中的命名函数/系数不在当前代码；L-03 与现有铁律 11 / teen 三粒子 longhair2 链重复。L-01 的 blanket alpha255 规则不纳入，但其静态遮挡与动态验收差异需实际测试。
+- `make preview` 已以真实 C 引擎构建并运行，0.0.0.0:5173；HTTP `/`、`/api/info.json`、`/api/frame.png` 均 200，预览进程 `process-3e282eb0` 保持运行。实测后状态复位为 idle。
+- 在同一真实 Teen long + hood-up rig 下对比 arms-down idle (`ParamHairSway=0`) 与 surprised 抬臂 (`ParamHairSway=1`)；抬臂 C 帧在旧手位出现袖口/手形残留与长发透明缺口。该样本推翻了把 T67.39 固定姿势 QA 外推为动态通过的说法；因未隔离残留污染、alpha cutout、层序/形变，不将 alpha=0 宣称为唯一根因。实拍、crop board、状态/限制在 `docs/qa/t67_39_dynamic_followup_2026-11-04/`，新增 TASKS T67.71。
+- 补强 WORKFLOW 铁律 9（移动/隐藏遮挡件的动态复验）与铁律 17（建议/附件逐条核验而非盲目入库），新增 LESSONS 466；更新 GAPS/TASKS/MEMORY。T70.2 同步 trial41–42 失败事实和停止同类 prompt 的下一步。没有 production asset/rig/C engine 改动。
+- `make audit-hair` 本地失败于图像 Python 环境缺 PIL/NumPy，空 `PYTHON_IMG` 导致 shell 直接执行 mode 100644 脚本并报 Permission denied；未声称 hair purity 数值闸通过。未跑 `make test` / `selfcheck_all.sh`；本轮验证包括 C preview 实际渲染、HTTP 200、图像/文档 SHA 和后续 `git diff --check`。
