@@ -47,7 +47,7 @@
     }
   },
   "identity_anomalies": [
-    "The current file is under forms/chibi and its form_art.json points to design_sheet_chibi.png, but rig.json id is 小寻_teen; resolve this stale/misleading identity before building/packaging any Cubism model."
+    "Snapshot fact: the unchanged production file is under forms/chibi and its form_art.json points to design_sheet_chibi.png, but rig.json id remains 小寻_teen. Root cause was tools/make_rig.py hard-coding the Teen suffix; the generator is now fixed to derive id from --form and has regression tests. Production rig was not regenerated, so its id and generated_by fingerprint remain stale; do not package it as-is or treat this inventory as a Cubism model."
   ],
   "parts": [
     {

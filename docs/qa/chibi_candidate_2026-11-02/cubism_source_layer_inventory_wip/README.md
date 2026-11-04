@@ -7,7 +7,7 @@
 - `rig.json` references **49 parts**, all 49 referenced image files currently exist. Groups: `arm_l` 1, `arm_r` 1, `chest` 7, `foot_l` 2, `foot_r` 2, `head` 34, `leg_l` 1, `leg_r` 1.
 - Existing rig metadata contains 43 parameter definitions, 26 deformers, 19 `physics` records and 5 `physics2` records. These are **zrig data, not Cubism Editor objects**.
 - Canvas `848×1360`, origin `[424, 1360]`. `body_full.png` is 567×1292 RGBA; it is a rendered source-derived composite, not a layered authoring file.
-- **Identity anomaly:** this path is `forms/chibi`, and `form_art.json` references Chibi design sheet, but the current `rig.json` reports id `小寻_teen`. Resolve before authoring/packaging a Cubism project.
+- **Observed identity mismatch (current production output):** this path is `forms/chibi`, and `form_art.json` references the Chibi design sheet, but the unchanged `rig.json` reports id `小寻_teen`. Root cause was the hard-coded `f"{name}_teen"` in `tools/make_rig.py`; the generator now derives the suffix from the requested `--form`, with regression tests. The protected production rig was deliberately not regenerated, so its current id is still wrong and its recorded generator fingerprint is stale. Do not package this output as-is; regeneration and review remain a separate gate.
 - There are no independent approved normal/mitten hand parts, hidden-wrist continuations, cuff front/back layers, or complete approved layered PSD. The current arm layers are only `seg_arm_l` and `seg_arm_r`.
 
 ## Proposed use (future editor work)

@@ -73,6 +73,7 @@ soak-memory: $(BUILD)/memory_soak
 test: $(BUILD)/test_core
 	@echo "== 运行单元测试（快闸；--soak 才含 2 万帧长稳）=="
 	@./$(BUILD)/test_core . --quick
+	@python3 tests/test_make_rig_identity.py
 
 soak: $(BUILD)/test_core
 	@echo "== 长稳 2 万帧（60fps×5分半，需 ~45 秒）=="

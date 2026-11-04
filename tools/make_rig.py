@@ -16,6 +16,17 @@ import argparse, hashlib, json, math, os, sys
 import attach_geom
 
 
+def rig_model_id(name: str, form: str) -> str:
+    """Build a stable model id from the character name and the requested form.
+
+    `forms/<form>/rig.json` is form-specific; hard-coding a Teen suffix silently
+    mislabeled Chibi output and would mislabel every future form as well.
+    """
+    if not form:
+        raise ValueError("form is required to build a rig identity")
+    return f"{name}_{form}"
+
+
 AP_MIN = 0.06   # 眼眶开口闭到底时纵向还剩几成（引擎 aperture_min 的默认值也是它）
 # —— 上眼皮的弧线（T66.22b / G66.13）——
 # 只靠 aperture_min 纵向缩放，开口上边界永远是**水平直线**，半闭时虹膜会被一条直线
@@ -1600,7 +1611,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
           closed=None, blendp=None, eyeline=None, smile_eyes=None,
           pain_eyes=None, wide_eyes=None, footp=None,
           star_eyes=None, base=None, fx_table=None, skirtp=None, jacketp=None,
-          handp=None, skirtx=None):
+          handp=None, skirtx=None, form=None):
     sp_w, sp_h = sprite["sprite_size"]
     # Chibi wide-eye patch is incremental; keep its normal sclera base visible.
     is_chibi = os.path.basename(os.path.normpath(base or "")) == "chibi"
@@ -4105,7 +4116,7 @@ def build(parts, sprite, canvas, name, cw, ch, head_is_part=False,
 
     rig = {
         "schema_version": "1.0",
-        "id": f"{name}_teen",
+        "id": rig_model_id(name, form),
         "name": name,
         "canvas": {"w": cw, "h": ch},
         "origin": [cw // 2, ch],
@@ -5967,7 +5978,7 @@ def main() -> int:
                 star_eyes=star_eyes,
                 fx_table=fx_table,
                 footp=footp, skirtp=skirtp, jacketp=jacketp, handp=handp,
-                skirtx=skirtx)
+                skirtx=skirtx, form=args.form)
     # T67.9：闭口笑线不能只靠整张 mouth_open 的 sx 改宽度；嘴角应相对中点
     # 有独立的 Y 形变。只应用到 Xiaoxun Teen：同一 ParamMouthForm 的 +/− 方向
     # 分别抬高/压低两端，中心不动；遮罩和口内也用同样的位移场，避免开口轮廓
