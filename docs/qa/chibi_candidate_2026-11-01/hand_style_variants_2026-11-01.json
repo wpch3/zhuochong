@@ -48,7 +48,9 @@
   "current_findings": {
     "normal_fingered_style_required": true,
     "normal_fingered_art_candidate_approved": false,
-    "normal_fingered_wip_trials": ["trial27_rejected_style_and_proportion", "trial28_target_scale_reads_as_paw_or_mitten", "trial29_digits_readable_but_pose_and_style_rejected", "trial30_target_scale_clefts_collapse", "trial31_digits_readable_but_pixel_style_rejected", "trial32_digits_readable_but_proportions_rejected"],
+    "agent_self_review_authorized": true,
+    "last_agent_review_trials": "trial27-40; all rejected",
+    "normal_fingered_wip_trials": ["trial27_rejected_style_and_proportion", "trial28_target_scale_reads_as_paw_or_mitten", "trial29_digits_readable_but_pose_and_style_rejected", "trial30_target_scale_clefts_collapse", "trial31_pixel_style_and_wrist_proportion_rejected", "trial32_adult_proportion_rejected", "trial33_34_long_narrow_digits_collapse_at_target_scale", "trial35_36_source_crop_edit_style_and_scale_rejected", "trial37_38_fullbody_edit_registered_scale_rejected", "trial39_two_reference_hand_roi_mismatch", "trial40_body_full_edit_hand_roi_and_style_drift_rejected"],
     "small_source_crop_is_production_approved": false,
     "chibi_rig_has_independent_hand_parts": false,
     "chibi_rig_current_hand_related_parts": ["seg_arm_l", "seg_arm_r"],

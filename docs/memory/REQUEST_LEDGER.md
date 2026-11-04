@@ -1621,3 +1621,12 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 复核 Chibi 现有 PNG cutouts 不含完整授权 PSD/手件/袖口；Linux runner 无 Cubism Editor/Wine。仅补充真实模型输入就绪度与官方 Cubism 路线审计；没有拼 PSD、制作/导出 `.cmo3`/`.moc3`、集成 SDK/Core 或声称完成真模型。
 - 验证：`make test` 2638/0；`selfcheck_repo.py --quiet` 772/1，唯一为既有 Teen/Chibi production rig generator fingerprint；全仓 `selfcheck_all.sh` 未运行。JSON、trial27–32 六份本地 SHA、study root SHA 与 `git diff --check` 通过；生产 Chibi hand/rig 和 `src/core` diff 0。
 - 提交/推送：`4a2b80acff072ae94e7b351faf18fd6381cc35e1`（`Archive Chibi hand probes and Cubism source audit`）已推送至 `arena/aaf1408c-zhuochong`；`git rev-parse` / `git ls-remote` SHA 一致。
+
+### 2026-11-04 · 用户授权代理自主判断批准 + 继续 Chibi 手部候选
+
+- 用户明确询问并要求候选批准由代理自行判断。代理确认将负责视觉候选 pass/reject 与采用决策，不再把每轮选择推回用户；继续遵守真实来源、目标注册、hidden-wrist、引擎、生产与真 Cubism 的硬门。新增 REQUIREMENTS A68.7 和 WORKFLOW 的 task-scoped self-review 说明。
+- 重新目视 Chibi 设定图、body_full 和 exact source-pixel hand extraction board。源裁切有简化分叉，但从目标图大小仍不足以可靠区别正常手与 mitten；不能仅按名称或源像素身份批准。基于真实侧背视角，更新 handoff rubric 为至少三枚清晰圆指尖、第四指可自然遮挡，不强逼正掌四指全分开。
+- 新增 trial33–40：33/34 以左右 cuff crop 作孤立参考；35/36 受限编辑左右 source crop；37/38 full-body edit/refinement；39 trial15 + body_full 双参考；40 直接编辑 body_full。制作 45×48/45×46 probes、8×细节板、body_full 高度归一化板及精确注册 ROI board。
+- **代理自审：全部拒绝。** 33/34 长窄、缩小时指缝塌陷；35/36 袖口重绘/手过大；37–39 注册 ROI 只落袖口/上掌而错过指尖，手位低/过大；40 仍错位且重绘无关脸/衣料。未抠底、未fit、未进 rig/生产；两种手型仍并存，trial24仍仅mitten provisional方向。
+- 实物在 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/trial33_normal_fingered_hand_wip/` 至 `trial40_normal_fingered_hand_wip/`；总体板含 `trial33_36_normal_hand_target_scale_comparison_wip.png`、`trial37_38_normal_hand_fullbody_registration_board_wip.png`、`trial37_39_normal_hand_body_registration_detail_board_wip.png`、`trial39_normal_hand_registered_target_roi_comparison_wip.png`、`trial40_normal_hand_target_roi_board_wip.png`。另新增 `cubism_source_layer_inventory_wip/`：确认 Chibi rig 的 49 张 PNG 引用全存在，但识别 `rig.json id=小寻_teen` 异常；报告只作 PSD 作者输入准备，不是 Cubism 模型。未改生产图、rig、引擎或 Cubism 模型。
+- 验证：14 份 local SHA、study root SHA、inventory SHA、metrics/contract/inventory JSON 与 `git diff --check` 均通过。`selfcheck_repo.py --quiet` **772/1**，唯一仍是受保护 Chibi/Teen production rig 的过时 generator fingerprint；未重生。完整 `selfcheck_all.sh` 未运行；本轮图像/文档变更未重跑 `make test`（最近一次实际 2638/0）。

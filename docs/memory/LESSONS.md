@@ -7080,3 +7080,15 @@ C 层级诊断中隐藏 `arm_*_fore` 会同时隐藏前臂整件和袖口；它�
 Normal-hand trial28 在 1024px 原图上可见四个指瓣和三个指缝，缩到注册 45×48 手部框后却变成 paw/mitten；trial27 保留了指缝但比例成人化；trial29 目标框能辨五指却是张掌姿势；trial30 的 clefts 缩小后塌陷；trial31 分指可读但变成 pixel-art；trial32 分指可读但 wrist/digits 仍成人化。原尺寸目视仍重要，但须补一张明确标为诊断的目标尺寸视图，并同时检查手指可读性、姿态、头身/手尺寸和源线影。背景必须保持真实不透明，不把这类视觉 probe 冒称 C/Cubism 渲染或生产 sprite。六轮未同时过艺术门后，应停止相同 prompt 盲目迭代，转向获批原稿/美术反馈或重新验证的来源。
 
 - **来源**：`trial27_normal_fingered_hand_wip/` 至 `trial32_normal_fingered_hand_wip/` 与 45×48 比较板；本条不使任何试稿获得批准。
+
+### 464. 自主候选批准不等于降低注册/来源门禁（2026-11-04）
+
+用户授权代理自行判断手型候选是否批准，意味着代理必须亲自做 pass/reject 决定、不能把审美选择推给用户；不意味着勉强批准任何 WIP。Trial37–40 全身编辑在单看小图时似乎更有手指，但按真实 `body_full` 567×1292 坐标归一后，精确 45×48/45×46 ROI 未包含完整生成手部，说明全身位置/尺寸并未贴合真源。应先做全身配准，再按精确注册 ROI 检查；目标 ROI 偏移本身就是失败证据，不能用移动/fit 掩盖。
+
+- **来源**：`trial37_38_normal_hand_fullbody_registration_board_wip.png`、`trial39_normal_hand_registered_target_roi_comparison_wip.png`、`trial40_normal_hand_target_roi_board_wip.png`；代理拒绝 trial33–40，不进入 rig/生产。
+
+### 465. 指数验收要尊重 Chibi 侧背手视角，不能把解剖清单画成正掌手势（2026-11-04）
+
+重新查看 Chibi 设定表确认双手为身体侧面的外/背侧视角；初版 handoff brief 要求四指全分离，可能迫使模型把手画成张掌/成人姿势。正常手仍须明显区别 mitten，但目标框应以至少三枚可辨圆指尖与真实轮廓分隔为主，第四指可按遮挡自然重叠；拇指是姿势允许时的小侧边线索，而非必须正面摊开。不能降低到模糊 paw/two-prong；最终由代理在全身注册和目标尺寸下自审。
+
+- **来源**：Chibi `design_sheet_chibi.png`、`body_full.png` 和更新后的 `chibi_normal_fingered_art_handoff_brief_2026-11-04.md`。

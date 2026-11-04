@@ -1,0 +1,26 @@
+{
+  "status": "rejected_wip_not_production",
+  "trial": 40,
+  "date": "2026-11-04",
+  "method": "Direct edit of actual body_full image",
+  "reference": "Chibi `body_full.png` input to image edit",
+  "review": "Hand ROI still shifted low; unrelated face/clothing linework changed. Rejected.",
+  "target_scale_diagnostic": "Exact left/right 45×48 / 45×46 target ROI comparison board",
+  "production_use": false,
+  "cubism_source": false,
+  "outputs": [
+    {
+      "file": "chibi_body_full_normal_hands_trial40_wip.png",
+      "size_px": [
+        688,
+        1568
+      ],
+      "mode": "RGB",
+      "sha256": "e896ebb5ffb03dd49ffaa9d0d25e70a8ec11ed68f9ad288e96180f963c55a9f1"
+    }
+  ],
+  "probe_method": "See linked full-body normalization and exact registered source-ROI comparison boards. Board transforms are diagnostic only; no generated pixels are fitted to the production sprite.",
+  "review_boards": [
+    "../trial40_normal_hand_target_roi_board_wip.png"
+  ]
+}

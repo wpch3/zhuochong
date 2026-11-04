@@ -1,0 +1,66 @@
+{
+  "status": "WIP visual registration diagnostic; not fit, Cubism render, or approval",
+  "method": "normalize each fullbody to body_full height and 567px width canvas; crop torso/arms/hands/skirt band y=730..1010; WIP concepts are not source pixel art",
+  "panels": [
+    {
+      "label": "Source body_full",
+      "source": true
+    },
+    {
+      "label": "trial15 mitten",
+      "input_size": [
+        1024,
+        1024
+      ],
+      "trim_bbox": [
+        313,
+        50,
+        709,
+        946
+      ],
+      "scale": 1.4419642857142858,
+      "resized_width": 571,
+      "clip": 4
+    },
+    {
+      "label": "trial37",
+      "input_size": [
+        1024,
+        1024
+      ],
+      "trim_bbox": [
+        313,
+        50,
+        709,
+        946
+      ],
+      "scale": 1.4419642857142858,
+      "resized_width": 571,
+      "clip": 4
+    },
+    {
+      "label": "trial38",
+      "input_size": [
+        1024,
+        1024
+      ],
+      "trim_bbox": [
+        313,
+        50,
+        709,
+        946
+      ],
+      "scale": 1.4419642857142858,
+      "resized_width": 571,
+      "clip": 4
+    },
+    {
+      "label": "trial39",
+      "input_size": [
+        688,
+        1568
+      ],
+      "transform": "uniform resize to 567x1292 (same ratio)"
+    }
+  ]
+}

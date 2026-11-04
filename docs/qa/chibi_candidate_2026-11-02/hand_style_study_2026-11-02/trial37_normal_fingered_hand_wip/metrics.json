@@ -1,0 +1,28 @@
+{
+  "status": "rejected_wip_not_production",
+  "trial": 37,
+  "date": "2026-11-04",
+  "method": "Full-body normal-hand edit from trial15 concept",
+  "reference": "trial15 full-body WIP, scale/pose reference only",
+  "review": "Digits more readable, but after source-relative body normalization the registered hand box catches cuff/upper palm, indicating hands too low/large. Rejected.",
+  "target_scale_diagnostic": "8× hand-detail board; body_full-height normalized comparison; exact ROI comparison",
+  "production_use": false,
+  "cubism_source": false,
+  "outputs": [
+    {
+      "file": "chibi_fullbody_normal_hands_trial37_wip.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "mode": "RGB",
+      "sha256": "e9e19fc096127a35a868ba51d6639336aa25a3ee34976ad992faea7513d5b5fa"
+    }
+  ],
+  "probe_method": "See linked full-body normalization and exact registered source-ROI comparison boards. Board transforms are diagnostic only; no generated pixels are fitted to the production sprite.",
+  "review_boards": [
+    "../trial37_normal_hand_fullbody_detail_board_wip.png",
+    "../trial37_normal_fullbody_target_registration_board_wip.png",
+    "../trial39_normal_hand_registered_target_roi_comparison_wip.png"
+  ]
+}

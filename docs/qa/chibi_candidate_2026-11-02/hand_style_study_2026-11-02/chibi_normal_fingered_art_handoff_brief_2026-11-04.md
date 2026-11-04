@@ -4,7 +4,7 @@
 
 ## Goal
 
-Create the Chibi character’s relaxed, small normal hand as a distinct alternative to the rounded mitten. At the registered small-hand box (viewer-left 45×48 px; viewer-right 45×46 px), it must read as a hand with **one thumb and four visibly separate fingers**, without becoming an adult hand or a splayed gesture.
+Create the Chibi character’s relaxed, small normal hand as a distinct alternative to the rounded mitten. At the registered small-hand box (viewer-left 45×48 px; viewer-right 45×46 px), it must unmistakably read as a fingered hand without becoming an adult hand or a splayed gesture. Because the source pose shows the outer/back of a side-hanging hand, require **at least three clearly distinct rounded fingertip lobes** and anatomically plausible thumb/edge cues; the fourth finger may overlap naturally in this view. Do not demand four fully separated fingers if that contradicts the source angle.
 
 ## Reference and pose
 
@@ -14,7 +14,7 @@ Create the Chibi character’s relaxed, small normal hand as a distinct alternat
 
 ## Visual acceptance checklist
 
-1. **Digit read at target size:** four individual rounded fingertips remain identifiable; three inter-finger gaps are silhouette separations, not faint crease marks. The thumb is a separate side digit. Evaluate the art at 45×48/45×46 and on the full-body registration, not only at enlarged concept resolution.
+1. **Digit read at target size:** at least three rounded fingertip lobes remain distinctly readable, with real silhouette notches rather than faint crease marks; the fourth finger may partially overlap naturally from this outer/back view. A small thumb/side-digit cue should be plausible for the pose, not a mitten seam. Evaluate at 45×48/45×46 and on the full-body registration, not only enlarged concept resolution. A vague paw or two-pronged mitten still fails.
 2. **Chibi proportions:** short, soft, compact palm/fingers; wrist insertion is not a long adult forearm. Preserve the trial15-approved small-hand size direction; do not enlarge the hand to make the gaps readable.
 3. **Source style:** fine, light contour and restrained warm shading matching the source Chibi. No heavy contour, pixel-art edge treatment, photoreal anatomy, nails/wrinkles/jewelry, or soft blurry blob shading.
 4. **Rest pose:** hand hangs naturally at the side, not open toward the camera, widely splayed, or posed as a gesture.

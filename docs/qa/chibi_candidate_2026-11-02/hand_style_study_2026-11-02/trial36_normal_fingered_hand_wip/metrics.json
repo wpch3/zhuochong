@@ -1,0 +1,32 @@
+{
+  "status": "rejected_wip_not_production",
+  "trial": 36,
+  "date": "2026-11-04",
+  "method": "Viewer-right edit of source cuff crop",
+  "reference": "`source_right_cuff_hand.png` (visual reference only)",
+  "review": "Model enlarged/redrew cuff and hand; target reads glove/paw with crease-like separations. Rejected.",
+  "target_scale_diagnostic": "45×48 diagnostic of generated crop",
+  "production_use": false,
+  "cubism_source": false,
+  "outputs": [
+    {
+      "file": "chibi_normal_fingered_hand_right_trial36_wip.png",
+      "size_px": [
+        1008,
+        1049
+      ],
+      "mode": "RGB",
+      "sha256": "84c08303d6487152c29e0f5d4556150aff413c56b8c79bb5c686387c18323e84"
+    },
+    {
+      "file": "trial36_target_box_45x48_visual_probe_wip.png",
+      "size_px": [
+        360,
+        384
+      ],
+      "mode": "RGB",
+      "sha256": "4b8ca560050f54fe07e695f08fa7c20c23471429b0c9b1dcbb837bf5b3bf793c"
+    }
+  ],
+  "probe_method": "Take median RGB of image corners as opaque background; threshold maximum per-channel difference >18; the edited sleeve/hand content reaches the image boundary, so the entire edge-touching crop is retained and contain-fit with LANCZOS into 45x48; nearest-neighbor 8x display. This probe includes sleeve and is not a hand cutout or fit."
+}

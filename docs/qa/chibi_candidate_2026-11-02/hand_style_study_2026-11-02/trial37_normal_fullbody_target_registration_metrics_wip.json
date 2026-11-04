@@ -1,0 +1,76 @@
+{
+  "status": "diagnostic_wip_not_fit_or_approval",
+  "normalization": "trim subject bbox then uniform scale to source body_full height 1292px; center on 567x1292 canvas; clip if too wide",
+  "panels": [
+    {
+      "label": "SOURCE body_full",
+      "source_size": [
+        567,
+        1292
+      ],
+      "trim_bbox_xyxy": [
+        0,
+        0,
+        567,
+        1292
+      ],
+      "trim_size": [
+        567,
+        1292
+      ],
+      "scale_to_height": 1.0,
+      "resized_size": [
+        567,
+        1292
+      ],
+      "horizontal_clip_px": 0
+    },
+    {
+      "label": "trial15 mitten size-direction reference",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "trim_bbox_xyxy": [
+        313,
+        50,
+        709,
+        946
+      ],
+      "trim_size": [
+        396,
+        896
+      ],
+      "scale_to_height": 1.4419642857142858,
+      "resized_size": [
+        571,
+        1292
+      ],
+      "horizontal_clip_px": 4
+    },
+    {
+      "label": "trial37 normal-hand edit",
+      "source_size": [
+        1024,
+        1024
+      ],
+      "trim_bbox_xyxy": [
+        313,
+        50,
+        709,
+        946
+      ],
+      "trim_size": [
+        396,
+        896
+      ],
+      "scale_to_height": 1.4419642857142858,
+      "resized_size": [
+        571,
+        1292
+      ],
+      "horizontal_clip_px": 4
+    }
+  ],
+  "visual_review_required": true
+}

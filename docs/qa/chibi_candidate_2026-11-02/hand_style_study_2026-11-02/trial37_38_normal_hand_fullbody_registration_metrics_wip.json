@@ -1,0 +1,54 @@
+{
+  "status": "WIP visual diagnostic only",
+  "method": "trim non-background; uniformly normalize subject height to 1292; center on 567x1292 canvas; not a source-cuff fit or production approval",
+  "panels": [
+    {
+      "label": "Source body_full",
+      "bbox": [
+        0,
+        0,
+        567,
+        1292
+      ],
+      "scale_to_1292": 1.0,
+      "resized_width": 567,
+      "clip": 0
+    },
+    {
+      "label": "trial15 mitten",
+      "bbox": [
+        313,
+        50,
+        709,
+        946
+      ],
+      "scale_to_1292": 1.4419642857142858,
+      "resized_width": 571,
+      "clip": 4
+    },
+    {
+      "label": "trial37 normal",
+      "bbox": [
+        313,
+        50,
+        709,
+        946
+      ],
+      "scale_to_1292": 1.4419642857142858,
+      "resized_width": 571,
+      "clip": 4
+    },
+    {
+      "label": "trial38 refined normal",
+      "bbox": [
+        313,
+        50,
+        709,
+        946
+      ],
+      "scale_to_1292": 1.4419642857142858,
+      "resized_width": 571,
+      "clip": 4
+    }
+  ]
+}

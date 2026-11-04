@@ -1,0 +1,32 @@
+{
+  "status": "rejected_wip_not_production",
+  "trial": 33,
+  "date": "2026-11-04",
+  "method": "Isolated viewer-left reference generation",
+  "reference": "`source_left_cuff_hand.png` (visual reference only)",
+  "review": "Long, narrow, adult-like palm/wrist; finger notches collapse into paw/glove at target scale. Rejected.",
+  "target_scale_diagnostic": "45×48 opaque-background probe",
+  "production_use": false,
+  "cubism_source": false,
+  "outputs": [
+    {
+      "file": "chibi_normal_fingered_hand_left_trial33_wip.png",
+      "size_px": [
+        992,
+        1072
+      ],
+      "mode": "RGB",
+      "sha256": "9090d255438c973345a2001a5ae8a19044e02bf17fd1ac40d5c3903f5006476d"
+    },
+    {
+      "file": "trial33_target_box_45x48_visual_probe_wip.png",
+      "size_px": [
+        360,
+        384
+      ],
+      "mode": "RGB",
+      "sha256": "ff435ccb56bcd57ae6a792802a306c7b4b84e6366031684d7db930c950c0be7c"
+    }
+  ],
+  "probe_method": "Take median RGB of the four image corners as opaque background; threshold maximum per-channel difference >18 to locate hand; crop subject; LANCZOS contain-fit to 45x48 (trial33) or 45x46 (trial34); center on original opaque background; nearest-neighbor 8x display. Diagnostic segmentation only."
+}

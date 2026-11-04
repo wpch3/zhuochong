@@ -2633,13 +2633,13 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 ## 2026-11-04 新增：正常有指手与真正 Cubism 模型
 
 - **两种手型并存**（A68.5 / T70.2–T70.4）：正常、可辨识手指的 `small` 与独立 mitten 都要保留；现有 small 源 crop 不是已批准的完整手件。仍缺合规左右独立 part、隐藏腕部补画、袖口前后夹层与手型 × 手势 × 腕角 × 衣发的真实 C 引擎矩阵。
-- **真实 Cubism 模型**（A68.6 / T70.5）：已核官方 PSD→Editor ArtMesh/Deformer/keyforms→`.cmo3`→`.moc3`/`.model3.json`→官方 Viewer/SDK 验证流程，详见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。当前环境 Linux 且无 Cubism Editor；全仓无 Chibi 分层 PSD/CMO3/MOC3/Model3，所以本轮不能做/导出真模型。
+- **真实 Cubism 模型**（A68.6 / T70.5）：已核官方 PSD→Editor ArtMesh/Deformer/keyforms→`.cmo3`→`.moc3`/`.model3.json`→官方 Viewer/SDK 验证流程，详见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。新增机器可读的 49 层源引用 inventory（所有 rig 引用图存在）；同时发现 Chibi 路径下 rig 自报 id 为 `小寻_teen`，需要先厘清。当前 Linux 无 Cubism Editor；全仓无 Chibi 分层 PSD/CMO3/MOC3/Model3，所以本轮不能做/导出真模型。
 - **需取得的输入/环境**：approved Chibi 完整分层 PSD（含足够塗り足し、袖下 hidden wrist 与两套正常/mitten 左右手层），以及能运行 Cubism Editor 的授权环境。取得后先建 `.cmo3` 并官方导出、验证，再单独决定是否把符合许可的 SDK/Core 接入桌宠。自研 `zrig` 不可冒称 Cubism；Core/SDK 运行时与模型作者工程分开审查。
 - **发布授权待核**：官方 SDK Release License 对发布与 Expandable Application 有具体条款；项目代理不作法律归类。发布或集成前按届时条款确认。
 
 ### T70.2 normal-fingered small-hand WIP probes（2026-11-04，仍未批准）
 
-- 为落实两种手型并存，新增 viewer-left 原创概念 trial27–32；都只参考 Chibi design sheet 与 source crop，不复制像素。六张原图均为 opaque sRGB PNG、无 alpha。
-- 45×48 opaque-background visual probes 与对比板（非 C/Cubism 渲染）已实开：27 过长成人化；28 指缝变糊、读作 paw/mitten；29 五指可辨但掌心朝前、五指张开；30 目标尺寸的指缝塌成 grooves；31 五指保留但变成 pixel-art、手腕比例过长；32 五指可读但仍成人化细长。六项都未达 Chibi 艺术门，无一批准。
-- 本轮另实查 Cubism 源输入：`design/chibi/README.md` 标明其 PNG 是桌宠设计参考；Live2D Chibi 有设计表和多张 cutout PNG，但没有 `.psd`，`body_full.png` 是 567×1292；`seg_arm_l/r` 仅 100×230，Chibi rig 没有独立 hand/cuff 层或 `hand_parts.json`。Linux runner 没有 Cubism Editor/Wine，全仓没有 Cubism 工程/导出物。详情已续写 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`；未把 cutouts 自动拼成未验证 PSD、未假称模型完成。
-- 下一次 normal-hand 美术研究应以源 Chibi relaxed side-hanging 姿态、短圆手比例、45×48 下四指仍分离且细线画风为联合验收条件；不复用、抠底、镜像或拟合以上负例。合规左右来源手件、hidden-wrist/cuff、用户审阅与 rig/C 引擎验证仍未完成；trial24 mitten 继续独立保留为 provisional QA 方向，不因此获生产批准。
+- 为落实两种手型并存，新增 viewer-left/right normal-hand WIP trials 27–40。33–36 参考源 cuff crops，37–39 参考全身概念/`body_full`，40 直接编辑真实 `body_full`；概念图不是 production source。
+- 代理已目视所有输出、局部板与目标注册 ROI，并按用户最新授权自行批准/拒绝，无需逐轮向用户索要选图。27–32 均失败；33/34 目标尺度下长指/腕比例失衡；35/36 重绘袖口且手太大；37/38/39 全身手位/手框 mismatch；40 仍错位并重绘无关区域。**27–40 全部由代理否决**，没有任何正常手通过候选艺术门。
+- 真实 Cubism 源输入阻塞仍在：`design/chibi/README.md` 标明其 PNG 是桌宠设计参考；Live2D Chibi 有设计表和多张 cutout PNG，但没有 `.psd`，`body_full.png` 是 567×1292；`seg_arm_l/r` 仅 100×230，Chibi rig 没有独立 hand/cuff 层或 `hand_parts.json`。Linux runner 没有 Cubism Editor/Wine，全仓没有 Cubism 工程/导出物。详情见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`；未把 cutouts 自动拼成未验证 PSD、未假称模型完成。
+- 当前不重复相同 AI 生成/编辑策略；下一步换用能保持 source registration、细线画风和左右差异的合规原稿制作路径。来源、hidden-wrist/cuff、左右分件、rig/C 引擎与真正 Cubism 仍未完成；mitten trial24 独立保留 provisional，不因此批准手部生产件。
