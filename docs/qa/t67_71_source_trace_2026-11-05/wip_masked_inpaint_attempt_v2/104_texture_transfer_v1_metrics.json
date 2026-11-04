@@ -1,0 +1,94 @@
+{
+  "task": "T67.71",
+  "status": "isolated texture-transfer WIP; not accepted, not C-tested, not production",
+  "method_change": "literal donor RGB pixels from hair_long_back_v2, rather than a newly painted flat gradient; inferred lock alpha is independent of cuff/hand contours",
+  "source_donor": "characters/xiaoxun/design/redraw/hair_long_back_v2.png",
+  "source_donor_sha256": "e2a24c7f9bfd7bce5132072feb9e8d57afa91be36b7e9c5c7dc23d006765b576",
+  "donor_crop_xyxy": [
+    260,
+    430,
+    480,
+    800
+  ],
+  "donor_crop_size": [
+    220,
+    370
+  ],
+  "donor_crop_magenta_like_pixels": 0,
+  "target": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "target_sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15",
+  "artifact_mask_source": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_silhouette_polygons_v3.json",
+  "alpha_shape_is_not_artifact_mask": true,
+  "outputs": [
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/101_hair_long_back_v2_texture_donor_crop.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/102_texture_transfer_underlay_v1.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/103_texture_transfer_v1_local_review.png"
+  ],
+  "counts": {
+    "left": {
+      "backfill_alpha_gt24": 16374,
+      "curve_anchors_local": [
+        [
+          171,
+          218
+        ],
+        [
+          160,
+          286
+        ],
+        [
+          176,
+          365
+        ],
+        [
+          192,
+          438
+        ],
+        [
+          208,
+          493
+        ]
+      ],
+      "widths_px": [
+        42,
+        60,
+        68,
+        56,
+        24
+      ]
+    },
+    "right": {
+      "backfill_alpha_gt24": 16433,
+      "curve_anchors_local": [
+        [
+          174,
+          218
+        ],
+        [
+          188,
+          286
+        ],
+        [
+          172,
+          365
+        ],
+        [
+          154,
+          438
+        ],
+        [
+          138,
+          493
+        ]
+      ],
+      "widths_px": [
+        42,
+        60,
+        68,
+        56,
+        24
+      ]
+    }
+  },
+  "gate": "must pass this exact local review for hair-strand direction, value/palette integration, silhouette, and no cuff/hand contour before any C test; failure means stop this donor-transfer method, not tweak repeatedly"
+}

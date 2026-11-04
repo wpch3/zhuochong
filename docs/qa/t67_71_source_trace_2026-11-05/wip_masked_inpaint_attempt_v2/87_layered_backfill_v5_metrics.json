@@ -1,0 +1,25 @@
+{
+  "task": "T67.71",
+  "status": "WIP5 inferred backfill only; not source truth, not visually accepted, not production",
+  "source": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "mask_basis": "manual visible cuff/hand silhouette v3 for the foreground diagnostic; its boundary remains under review",
+  "backfill_method": "three broad curved ribbons with continuous soft lavender shading and low-contrast painted strand accents; no source pixel copy, inpainting, or arbitrary displacement",
+  "geometry": "hidden strand paths are new inference; left/right correspondences are a design hypothesis, not recovered source",
+  "palette": "restrained interpolation from sampled cool target-hair colors and same-piece style reference",
+  "order": "local amplified visual/style review required before any C integration",
+  "counts": {
+    "left": {
+      "front_alpha_cleared": 16242,
+      "backfill_alpha_gt24": 36058
+    },
+    "right": {
+      "front_alpha_cleared": 13172,
+      "backfill_alpha_gt24": 36107
+    }
+  },
+  "outputs": [
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/84_backfill_freeflow_inference_v5.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/85_front_artifact_clear_v5_diagnostic.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/86_backfill_v5_local_style_review.png"
+  ]
+}

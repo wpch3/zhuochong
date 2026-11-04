@@ -1,0 +1,18 @@
+{
+  "task": "T67.71",
+  "status": "split-layer WIP2 only; hidden hair is inferred, not recovered",
+  "front_test_layer": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/50_clean_front_alpha_masked_roi_test_only.png",
+  "inferred_backfill": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/51_backfill_freeflow_inference_v2.png",
+  "visible_artifact_roi": "manual_artifact_polygons_v2; includes adjacent legal hair, therefore broad clearing is diagnostic only and not a valid final removal mask",
+  "backfill_roi_relation": "none: independent freeflow curves extend beyond the artifact ROI; ribbon alpha is not clipped to it",
+  "layer_hypothesis": "existing front layer 258 plus new inferred layer behind arms at 135",
+  "front_alpha_pixels_cleared": 32161,
+  "front_outside_roi_byte_identity": "asserted exact",
+  "roi_pixels": 47311,
+  "backfill_alpha_gt24_pixels": 52412,
+  "negative_space": "separate tapered locks and gaps remain; curves are not a source reconstruction",
+  "palette": "smooth vertical gradient sampled as color guidance from visible hair in the same sprite; no neighboring pixel copy or displacement",
+  "geometry": "manual Bézier inference; exact hidden courses, overlap, and left/right equivalence unknown",
+  "production_changes": false,
+  "candidate_gate": "C compositing + local visual review; reject if edge, join, or motion is visibly inconsistent"
+}

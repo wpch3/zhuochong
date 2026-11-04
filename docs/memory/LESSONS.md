@@ -7100,3 +7100,9 @@ Normal-hand trial28 在 1024px 原图上可见四个指瓣和三个指缝，缩�
 **项目实测**：T67.37 的 `purge_hair_foreign_blocks.py` 将长发件里检测到的皮肤/青布块及外扩边界透明化；T67.39 的“下层接住”仅有固定姿势证据。2026-11-04 用真实 C 预览渲染 Teen long + hood-up 的 idle/arms-down（`ParamHairSway=0`）与 surprised 抬臂（`ParamHairSway=1`）对照，抬臂帧在旧手腕位置出现残留的袖口/手形碎片和透明缺口；单件 `hair_hood_long@2x.png` 也能看到 alpha cutouts 与非发像素残留。细节板 `docs/qa/t67_39_dynamic_followup_2026-11-04/idle_vs_surprised_detail.png`；原图与方法见同目录 README。
 
 **陷阱核对 / 未决边界**：该样本证明 T67.39 不能外推为动态通过；尚未分离透明挖除区、剩余异物、层序、动作替身与物理变形的因果贡献，所以不把“alpha=0 是唯一根因”写成事实。修复前先追踪 source ROI 与层序；以合规原画/inpainting 补回该连续存在的头发，再用静帧、抬臂、sway 两端和遮挡隐藏做真实 C 复验。此次仅新增 QA/记忆，production assets 未改。
+
+### 467. 不同造型发件的真像素不能仅凭相近色调直接转成隐藏发束（T67.71，2026-11-05）
+
+把 `hair_long_back_v2.png` 220×370 的实际像素块作为 donor，虽然来源选区无近洋红，但嵌入 Teen 兜帽长发 cuff/hand ROI 后，直线密度、冰蓝色块和端头轮廓明显不贴目标；透明清除对象后周边仍有未补空区。数字“选区干净”不说明它是同一画风、同一拓扑或可直接平移纹理。必须把 donor 的可迁移内容（颜色/纹理）与目的部件真值分开；局部板不过即停止，不能继续只调 donor crop/条带宽度，更不能送 C。
+
+- **证据**：`docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/101_hair_long_back_v2_texture_donor_crop.png`、`103_texture_transfer_v1_local_review.png`、`104_texture_transfer_v1_metrics.json`。同造型源层缺失，隐藏形状仍未知。

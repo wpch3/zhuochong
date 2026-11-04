@@ -1,0 +1,18 @@
+{
+  "task": "T67.71",
+  "status": "WIP candidate mask only; manually expanded after reviewing original crop and v1/v2 residuals; not hair segmentation or source truth",
+  "coordinate_space": "local 345x519 crop copied pixel-for-pixel from target sprite boxes in 06_mask_metrics_and_provenance.json",
+  "purpose": "cover all visually identified cuff/hand pixels plus their antialiased outline for a possible local redraw; portions of underlying hair may also fall inside",
+  "polygons": {
+    "left": [
+      [[135,247],[164,244],[204,251],[240,263],[266,277],[266,300],[252,321],[228,329],[198,326],[165,318],[140,304]],
+      [[149,307],[174,309],[201,319],[219,338],[208,360],[201,385],[190,411],[174,441],[160,452],[142,448],[144,426],[130,443],[111,452],[91,447],[66,437],[73,410],[91,384],[110,359],[130,339],[143,322]]
+    ],
+    "right": [
+      [[59,247],[97,244],[146,243],[184,251],[212,265],[222,284],[215,307],[194,329],[161,330],[121,326],[86,317],[61,299]],
+      [[118,311],[150,313],[177,318],[201,329],[221,347],[242,376],[266,408],[293,437],[297,451],[281,460],[255,454],[235,438],[220,417],[213,438],[195,452],[178,445],[168,421],[157,392],[145,369],[124,347]]
+    ]
+  },
+  "provenance": "Expanded from manual_artifact_polygons.json only after visual review of 25_left_artifact_grid.png, 25_right_artifact_grid.png, 26_manual_artifact_mask_review.png and failed candidates 33/36. No RGB/alpha pixels are inferred from this mask.",
+  "warning": "A mask covering foreign pixels can also cover legitimate hair. It is only a temporary cleanup ROI; it does not say where hair belongs or what hidden strands looked like. Review the overlay before using it."
+}

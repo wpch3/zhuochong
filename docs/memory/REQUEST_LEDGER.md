@@ -1664,3 +1664,12 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 在同一真实 Teen long + hood-up rig 下对比 arms-down idle (`ParamHairSway=0`) 与 surprised 抬臂 (`ParamHairSway=1`)；抬臂 C 帧在旧手位出现袖口/手形残留与长发透明缺口。该样本推翻了把 T67.39 固定姿势 QA 外推为动态通过的说法；因未隔离残留污染、alpha cutout、层序/形变，不将 alpha=0 宣称为唯一根因。实拍、crop board、状态/限制在 `docs/qa/t67_39_dynamic_followup_2026-11-04/`，新增 TASKS T67.71。
 - 补强 WORKFLOW 铁律 9（移动/隐藏遮挡件的动态复验）与铁律 17（建议/附件逐条核验而非盲目入库），新增 LESSONS 466；更新 GAPS/TASKS/MEMORY。T70.2 同步 trial41–42 失败事实和停止同类 prompt 的下一步。没有 production asset/rig/C engine 改动。
 - `make audit-hair` 本地失败于图像 Python 环境缺 PIL/NumPy，空 `PYTHON_IMG` 导致 shell 直接执行 mode 100644 脚本并报 Permission denied；未声称 hair purity 数值闸通过。未跑 `make test` / `selfcheck_all.sh`；本轮验证包括 C preview 实际渲染、HTTP 200、图像/文档 SHA 和后续 `git diff --check`。
+
+### 2026-11-05 · 用户续令「继续未完成的任务，谨遵铁律，牢记基础事项」：T67.71 纹理 donor 门控
+
+- **用户要求/对位**：继续 T67.71，开工先核活动分支、工作树与远端，回看铁律/基础事项和当前失败证据；不得把失败候选包装为进度，不重复已失败路线；局部视觉门通过后才进入真实 C 动作/转场验证。
+- **分支/工作树纠正**：实查本地 `43f5514`，远端固定分支 `2d04ede`。先创建 stash `cf890ff` 保全 4 份既有 memory 文档改动和 11-05 QA untracked 包，再在固定分支 fetch + `--ff-only`。从 stash 的 untracked parent 单独恢复 QA 包；保留 stash，未覆盖文件。
+- **实际推进**：复核 T67.71 源链与现有 v1/v2 C 失败、v3–v7 局部门失败、阈值 mask 与 AI 91/92 的拒绝记录；本人重新打开 v6/v7 板和 raw crop。为了检验 `hair_long_back_v2` 字面纹理 donor 的可行性，新增隔离 script `make_hair_long_back_texture_transfer_v1.py`，取 donor 内部 220×370 px 并生成独立推断 alpha；图、脚本、metrics 在 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/`，101–104 号产物。
+- **目视判定**：本人打开 donor crop 与 `103_texture_transfer_v1_local_review.png`。像素 donor 色相/线密度与目标不符，candidate 呈直硬条带/截平端头，移除手/袖后仍留大空区；代理拒绝局部门，不进 C。`hair_long_back_v2` 不是同造型隐藏源。停止继续调同一 crop/条带宽度，不把此诊断叫修复。
+- **验证与范围**：`make test` 2638/0（存在已知 unused-function warning 与负向测试诊断）；脚本实际跑出候选/board/JSON。未跑 `selfcheck_all.sh`；未启动 C（局部门失败）；production sprites/rig/generator/engine 无改动。
+- **记忆/下一步**：更新 `layered_backfill_wip_review.md`、GAPS/TASKS/MEMORY/JOURNAL/LESSONS #467；A69.1/铁律17继续适用，不新增重复规则。T67.71 仍阻塞；需要获批同造型分层源或作者补画源。取得新来源后仍按异物 mask 与新发丝 alpha 分离、先局部目视、后完整 C 矩阵的顺序执行。

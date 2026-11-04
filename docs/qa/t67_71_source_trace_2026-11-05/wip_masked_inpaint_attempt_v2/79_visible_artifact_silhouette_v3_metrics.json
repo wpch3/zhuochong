@@ -1,0 +1,25 @@
+{
+  "task": "T67.71",
+  "status": "WIP candidate only, not accepted and not production",
+  "source": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "mask_basis": "manual_artifact_silhouette_polygons_v3, tracing the full visible cuff and hand contours rather than the broad edit ROI",
+  "hidden_region": "original hair shape under cuff/hand remains unknown; no fill or neighbor copy",
+  "review_warning": "Check all cuff bands, palm, every fingertip, outline antialiasing, and negative spaces. Any hair overlap or contour mismatch rejects mask.",
+  "outside_reviewed_roi_modifications": 0,
+  "sides": {
+    "left": {
+      "mask_gt127_px": 14959,
+      "mask_gt0_px": 16242,
+      "opaque_source_px_under_mask": 11051
+    },
+    "right": {
+      "mask_gt127_px": 11856,
+      "mask_gt0_px": 13172,
+      "opaque_source_px_under_mask": 7466
+    }
+  },
+  "outputs": [
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/77_visible_artifact_silhouette_v3_mask.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/78_visible_artifact_silhouette_v3_review.png"
+  ]
+}
