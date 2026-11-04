@@ -1647,3 +1647,4 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - Chibi 与 Teen 当前 `rig.json` 都报 `小寻_teen`；直接根因为 `tools/make_rig.py` 将 id 后缀硬编码为 Teen。生成器现按 `args.form` 生成 id；新增 4 项 Python regression tests 并接入 `make test`。
 - 验证：`make test` C 2638/0，新增 Python 4/4；保持已有 `_zperf_probe` 编译告警及负向测试诊断说明。系统 Python 不含 Pillow/NumPy，本轮未运行 selfcheck。
 - 边界：没有执行 generator，没有重生或修改任何生产 rig/sprite。故当前 Chibi `rig.json` ID 仍错，Chibi/Teen 生产输出指纹仍 stale，未批准或打包。Cubism source PSD/Editor/官方导出、双手型源稿、hidden-wrist 与运行时门禁仍开放。详细记录在 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md` 和 source-layer inventory README/JSON。
+- 提交/推送：`bf291f1fa814c68e087921b004ac72b11112de6a`（`Fix rig IDs to follow requested form`）已推送固定分支；GitHub 首次返回 internal error，重试成功，最终本地与远端 HEAD 一致。
