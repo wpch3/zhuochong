@@ -19,9 +19,15 @@
 > 规则：**每次工作开始先读本文件与自己上次的日志；结束时必须追加 `JOURNAL.md` 并更新本文件的"当前状态"。**
 > 用户的新要求**当轮就要写进 `REQUIREMENTS.md`**，不许只留在聊天里。
 
-更新：**2026-11-03（T70.2：trial08 全身概念方向仍获用户确认；trial09 用户拒绝、trial10 内部失败；trial11 与 trial12/13 手型尺寸被用户指出偏大；trial14 用户仍嫌偏大而否决；trial15 尺寸方向已由用户明确确认合适；trial16 隔离 source-fit art 自检未通过、留作 failure evidence；trial21–23 迭代未达标；用户后续称手套手基本过关，我选择 trial24 source-fit 作为隔离 QA 的基本形态继续用（非 source art/生产批准）；trial25 左右 hand art 因 opaque RGB checkerboards/比例与画风失败仅存负例；没有生产手层/hidden wrist/C-engine 验收；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
+更新：**2026-11-04（T70.2：trial08 全身概念方向仍获用户确认；trial09 用户拒绝、trial10 内部失败；trial11 与 trial12/13 手型尺寸被用户指出偏大；trial14 用户仍嫌偏大而否决；trial15 尺寸方向已由用户明确确认合适；trial16 隔离 source-fit art 自检未通过、留作 failure evidence；trial21–23 迭代未达标；用户后续称手套手基本过关，我选择 trial24 source-fit 作为隔离 QA 的基本形态继续用（非 source art/生产批准）；trial25 左右 hand art 因 opaque RGB checkerboards/比例与画风失败仅存负例；没有生产手层/hidden wrist/C-engine 验收；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
 
-## 最新状态（2026-11-03）
+## 最新状态（2026-11-04）
+
+- **双手型修订**：用户明确 normal fingered hand 与 mitten 必须同时保留；`small` 是正常有指手风格，不可用名称或当前可见 source crop 自动宣称完成。已更新 hand style contract，左右手件、hidden wrist 和生产验收仍欠。
+- **真正 Cubism 模型研究**：已查官方 PSD 导入、ArtMesh/Editor 建模、MOC3/Model3 导出、SDK/Core 与发布许可，并核对 `CubismWebFramework`。研究与路线记于 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`、`docs/REFERENCE_NOTES.md` 第七十三批。
+- **环境/资产事实**：checkout 为 Linux；`CubismEditor` 未安装；全仓无 `.psd` / `.cmo3` / `.moc3` / `.model3.json`。所以没有制作/导出/官方 Viewer 验证真 Cubism 模型。自研 C `zrig` 不是真 Cubism 模型，官方 Core/SDK 运行时整合仍单独受许可/架构审批限制。
+- **下一步门槛**：先取得/制作获批 Chibi 完整分层 PSD，在支持的官方 Cubism Editor 环境建立 `.cmo3` 并导出 `.moc3` / `.model3.json`；之后分别完成双手型的编辑器模型验证与官方 Viewer/SDK 实测。当前官方模型制作任务 T70.5 仅研究完成、模型未开始。
+- **本轮验证**：`make test` **2638/0**；双手型 JSON 和 hand-study 根级 SHA256 manifest 校验通过，`git diff --check` 通过。`selfcheck_repo.py --quiet` **772 项 / 1 fail**，唯一失败是受保护 Teen/Chibi 生产 rig 的旧 generator fingerprint；未重生生产 rig。完整 `selfcheck_all.sh` 本轮未运行，不宣称全仓通过。
 
 - 本轮参考资料审计已归档：运行时、网格、遮罩与绑定方法资料足以继续自研；Chibi 自身全身差分稿、合规 `small/mitten` 手型设计板和组合验收仍不足。
 - 资料报告：`docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；canonical 索引是 `docs/REFERENCE_NOTES.md`（第六十八批审计、T70.2 cuff 方法和第七十一批官方拆件/来源资格复核）。A66.1 是参考审计，A66.2 是持续按铁律查方法、隔离制作并本人目视的流程提醒（A59 已被既有 Live2D 铁律占用）；执行任务 T70.1–T70.4。
@@ -40,7 +46,7 @@
 > ### ★★★ 开工先读这四样（2026-10-25 加第四样）
 > 0. **`docs/ENGINE_AUDIT_2026-10-25.md`** —— 底层体检 + Live2D 工序对位 + P0/P1/P2 优化清单。
 >    **动引擎之前先读它**，别再从零讨论"要不要网格形变"。
-> 1. **`WORKFLOW.md` 零章铁律 0–15** —— 尤其**铁律 3 TRUTH-FIRST**（动手前先拿到
+> 1. **`WORKFLOW.md` 零章铁律 0–16** —— 尤其**铁律 3 TRUTH-FIRST**（动手前先拿到
 >    **这个领域的真值源**；"先出参考图"只是**动作/姿势类**的真值源，别的领域
 >    看**第十三章 方法对位表**）、**铁律 5**（多指标 + 叠图验收）与 Live2D 专项**铁律 9–11**（底层零空洞、关节衣物夹层、跨关节柔性链）与**铁律 12**（标准→实现→陷阱闭环）。
 > 2. **`WORKFLOW.md` 第十一章 自欺陷阱清单** —— 十条都真发生过，交付前对照一遍。
@@ -71,7 +77,7 @@
 | **素材配准线（第六十一问）** | ✅ `tools/align_redraw.py`：AI 重绘 → 本形态像素系（剪影 Dice 定尺度 + 截尾色差细化 + 逐通道配色），Q 版无臂躯干实测色差 **8.19**、叠图重合；`tools/form_art.py` 做形态级设计图/重绘解析（`aligned_info` 让预配准底图跳过二次配准）。**四个面部件工具已改走 form_art**；Q 版 8 张重绘已入库 |
 | **Q 版素材链（T67.67/T67.70）** | 🟡 完整来源锁定 27 步 rebuild：Chibi `design_sheet_chibi.png` + 框 `[628,101,1416,1891]`、567×1292；rig 81 部件/26 动作，1342 项 **34 fail**，缺 16 个 Chibi 挂件。摸头 hitbox 修复后的定向 QA 为 1342 项 **33 fail**，未重跑 full chain。最新眼睫隔离试验查明 C rig 指向 `eye_*_lash_up@2x.png`；只重生 1× 是依赖链漏步。补跑 eye→eyeline→@2x→rig 并重启 C 后，主弧更干净，但外眼角仍有小碎边；定向快照 1310 项 **32 fail**（不是全链，不能与 1342/34、1342/33 相减）。image-29 SHA 已核，作为身份/比例/画风参考而非贴图源。手型、发型/兜帽/衣物和动作矩阵尚未完成；无候选接生产。证据见 `docs/qa/chibi_candidate_2026-11-01/eye_lash_pipeline_trial_2026-11-01/`；历史候选不混算。 |
 | **Chibi 参考分流（铁律 13 / T67.68）** | 🟡 image-23 桌宠、image-24 Live2D 锚点、image-25/26/27 负例分开保存；本轮用户选择短发 2、长发 1、双马尾 2 的概念参考并已逐图目视，见 `reference_generated/README.md`。兜帽关系还未验收；概念图不是生产素材。 |
-| **Chibi 双手型（T67.69 / A62）** | 🟡 `small/mitten` 契约和红圈参考已归档。最新候选只由 Chibi 源生成基础手/结构腕垫片；流水线现明确禁止 Teen open/heart 生图进入 Chibi，并省略无 Chibi 来源的 pose-only 参数通道。左右 small/mitten 独立贴图、`hand_style` 选择器与 Chibi 手势图仍未实现。旧 v6 `small/sleeve` 708 项 QA 20 fail、静止差 1768px，不计完成。后续需按 Chibi 来源做独立腕口/手势实引擎视觉回归，Teen 贴图不可代替。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。 |
+| **Chibi 双手型（T67.69 / A62 / A68.5）** | 🟡 `small` 明确为正常可辨识手指手，`mitten` 是独立手套手，两者必须并存；`small/mitten` 契约和参考已归档。最新候选只由 Chibi 源生成基础手/结构腕垫片；流水线现明确禁止 Teen open/heart 生图进入 Chibi，并省略无 Chibi 来源的 pose-only 参数通道。左右 small/mitten 独立贴图、`hand_style` 选择器与 Chibi 手势图仍未实现。旧 v6 `small/sleeve` 708 项 QA 20 fail、静止差 1768px，不计完成。后续需按 Chibi 来源做独立腕口/手势实引擎视觉回归，Teen 贴图不可代替。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。 |
 | **仓库持久化（铁律 14/15，A63/A65）** | 🟢 新来源锁定候选、失败明细、眼睫依赖链实拍/JSON/patch 与 hash 已归档至 `docs/qa/`；更新 WORKFLOW/REQUIREMENTS/TASKS/GAPS/JOURNAL/LESSONS/REQUEST_LEDGER/MEMORY。阶段 WIP `14cde6b` 已推送并核远端 SHA；不代表全链 QA 通过或接入生产。 |
 | 小寻形态 | 🟡 `teen` 完整（rig：**部件 94 / 动作 23 / 组 13 / 参数 71**，手臂已三节拆件 + 原画手件 + 四档发型 + 兜帽四形态 + 猫耳猫尾）；`chibi` 进行中；loli/adult 未开 |
 | 拆件与表情 | 🟡 眼睛(睁/闭几何版)、嘴(暗线蒙版)；完整拆件与表情集 = **当前任务** |

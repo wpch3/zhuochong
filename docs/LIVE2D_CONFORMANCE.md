@@ -1,4 +1,6 @@
-# 小寻 vs Live2D 标准：合规对照表
+# 自研 `zrig` 与 Cubism 的语义对照（非 Cubism 模型/兼容认证）
+
+> **范围纠正（2026-11-04）**：本文件只能用于比较自研 C `zrig` 与 Live2D Cubism 的相似概念/功能，不是合规认证、官方格式兼容声明或真实 Cubism 模型说明。仓库没有小寻 `.cmo3` / `.moc3` / `.model3.json` 模型工程/导出物；`rig.json`、PNG 与 `zrig` 不能被称为 Cubism 模型，也不能由此推断可由 Cubism Editor 打开或由 Cubism Core 加载。文中旧版“合格 / 等价 / 能力覆盖”等措辞若未注明，均仅指项目内的功能类比，不能作为 Cubism 兼容证据。真正 Cubism 模型需用官方编辑器制作并导出，再由官方 Viewer/SDK/Core 验证；模型制作与当前 C 引擎运行时是两条独立路线。
 
 > 口径来源（2026-10-13 实际拉取核对，不是凭印象写的）：
 > - 参数全集：`Live2D/CubismWebFramework` → `src/cubismdefaultparameterid.ts`（41 个标准参数 ID + HitArea 前缀）
@@ -6,16 +8,13 @@
 >   `Haru.physics3.json`、`Haru.pose3.json`、`Haru.cdi3.json`
 > - 美术规范：Live2D 官方 / CLIP STUDIO 教程（切件粒度、塗り足し、抗锯齿、预乘 alpha）
 >
-> 这份表回答一个问题：**把小寻当成一个 Live2D 模型看，它合格吗？** 下面逐条给判定，
-> 并且标出"**现在不做、以后补不回来**"的项 —— 那才是真正的风险。
+> 这份表记录自研 `zrig` 与 Cubism 概念之间的映射，仅帮助审计可借鉴点与缺口；**不判定小寻是不是 Cubism 模型，不判定 Cubism SDK 兼容性**。
 
-## 零、一句话结论（2026-10-13）
+## 零、一句话结论（2026-11-04 纠正）
 
-**能力层面：合格。** Live2D 的运行时能力（部件图层、两级以上旋转变形器、FFD 网格形变、
-剪贴蒙版含多重/取反、关键帧动作曲线、动作淡入淡出、物理摆链含多段、参数层、表情层、
-Pose 互斥组、混合模式、自动眨眼、口型同步）**全部有对应实现并且有闸门守着**。
+**项目内存在部分相似能力，不代表 Cubism 合规或模型兼容。** 当前角色运行时仍为自研 C `zrig`；真正 Cubism 作者工程、`.moc3` 导出、官方 Viewer/SDK/Core 加载验证均未完成。任何历史“等价 / 合格”只可解读为功能意图类比，不能用于对外宣称。
 
-**协议层面：此前不合格，本轮补齐。** 过去的参数表少了 18 个标准 ID，而且有两个**语义错误**：
+**参数命名对齐不等于协议兼容。** 自有 rig 使用部分官方参数 ID，只说明名称/行为参考了标准；仍不能证明文件格式、模型对象、变形器语义或 SDK 接口兼容。过去参数表少了 18 个标准 ID，而且有两个**语义错误**：
 左右眼并成一个 `ParamEyeOpen`（Live2D 是 `ParamEyeLOpen` / `ParamEyeROpen` 两个参数，
 官方 SDK 的 `EyeBlink` 组就是按这两个走的）、腮红用了自造名 `ParamBlush`（标准名 `ParamCheek`）。
 这类"命名空间偏移"正是**跑完了补救不了**的那种错 —— 动作、表情、口型、外部工具全都写死在错名字上。
@@ -249,17 +248,17 @@ Live2D 社区里这个口径两种都有（按角色视角 vs 按画面），**�
 
 ## 二、文件结构对照（model3 / motion3 / exp3 / physics3 / pose3 …）
 
-| Live2D 文件 | 作用 | 小寻怎么对应 | 判定 |
+| Cubism 文件/概念 | 作用 | 自研 `zrig` 的对应概念 | 自研功能类比（不是格式/运行时兼容） |
 | --- | --- | --- | --- |
-| `.moc3` + 纹理图集 | 模型本体 | 我们是**一张张 PNG + rig.json**（没有图集打包） | 等价。图集是 GPU 优化，桌宠规模用不上 |
-| `.model3.json` `FileReferences` | 把各文件串起来 | `rig.json` 一个文件全包 | 等价 |
-| `.model3.json` `Groups` | `EyeBlink` / `LipSync` 两组 | **本轮补** `rig.json` 的 `param_groups` | ✅ 而且**不是摆设**：自动眨眼只眨组里列的眼，口型只写组里声明的参数（改组名会改行为，有单测守着） |
-| `.model3.json` `HitAreas` | `Head` / `Body` 点击区 | `regions`（head / body / feet 三块，各自带动作与光标） | 等价且更强（我们多一层"点了触发哪个动作"） |
+| `.moc3` + 纹理图集 | Cubism SDK 使用的模型本体 | 自研 PNG + `rig.json` | 仅有自有部件/配置概念；**绝不等价于 `.moc3`，不能互相打开或加载** |
+| `.model3.json` `FileReferences` | 关联 Cubism 模型及资源 | `rig.json` 内的自有引用 | 都有“资源清单”这一类用途；**格式、语义和解析器完全不同** |
+| `.model3.json` `Groups` | `EyeBlink` / `LipSync` 两组 | 自有 `rig.json` 的 `param_groups` | 仅是用途类比；自有单测守自有行为，不代表 Cubism Group 兼容 |
+| `.model3.json` `HitAreas` | `Head` / `Body` 点击区 | 自有 `regions`（head / body / feet） | 都有区域概念；数据格式、渲染/交互语义由各自运行时处理 |
 | `.motion3.json` | 关键帧动作曲线，目标是**参数** | 两条路：① 自己的 `actions[].channels[].target = "ParamXxx"`（2026-10-13 起全部如此）；② **2026-10-25 起直接导入官方文件**（`characters/<角色>/motions/*.motion3.json`，`zrig_motion3_add()`） | ✅ 能读真文件（段编码是按真文件核对的：起点在前 + 类型逐段重复 + 贝塞尔控制点在前）。换算两处：**绝对值 → 偏移**（减默认值）、**贝塞尔 → 20fps 烘焙**成线性关键帧。不支持 `Target=PartOpacity/Model`（跳过并计数） |
 | `.exp3.json` | 表情（参数偏移，Add/Multiply/Overwrite） | 两条路：① 自家 `expressions[].params[].mode = add / set / multiply`；② **2026-10-25 起直接导入官方文件**（`characters/<角色>/expressions/*.exp3.json`，`zrig_expression3_add()`）。求值照 `CubismExpressionMotion` 的三累加器 `(overwrite + additive) × multiply` | ✅ 三种混合都有且**能读真文件**（Blend 缺省 = Add、FadeIn/FadeOut 缺省 1.0s 都照官方）。偏差：单权重交叉淡化 ⇒ 两个表情互切时只能用新表情的 FadeIn，切回无表情时用旧表情的 FadeOut（官方是两条独立插值轨）|
-| `.physics3.json` | 摆动：**参数 → 参数**，带 Vertices 摆链 | `physics[]`：**部件/形变器 → 位移**，driver 可串另一条 physics（多段摆链） | 功能等价，**语义不同**（见下） |
-| `.pose3.json` | 互斥部件组 + 淡入淡出 | `poses[]`（眼高光形状差分在用） | 等价 |
-| `.cdi3.json` | 编辑器显示信息（参数中文名/分组） | 参数的 `label` 字段 + `/api/params.json` | 等价（测试台的滑条就是它长出来的） |
+| `.physics3.json` | 摆动：**参数 → 参数**，带 Vertices 摆链 | 自有 `physics[]`：**部件/形变器 → 位移** | 有相似动画目的但**语义不同**，不可互换（见下） |
+| `.pose3.json` | 互斥部件组 + 淡入淡出 | 自有 `poses[]`（当前用于眼高光形状差分） | 都可表达部分显隐意图；数据及运行时行为并不兼容 |
+| `.cdi3.json` | 编辑器显示信息（参数中文名/分组） | 自有参数 `label` + `/api/params.json` | 仅为 UI 显示用途类比；不是 Cubism display-info 文件 |
 | `.userdata3.json` | 自定义元数据 | 暂无需求 | ➖ |
 
 ### 动作文件导入的偏差登记（T66.21，2026-10-25）
@@ -280,8 +279,8 @@ warp 又挂在回転デフォーマ（rotate）下，一路到 root；每个节�
 
 | Live2D | 本项目 rig.json | 说明 |
 | --- | --- | --- |
-| アートメッシュ（网格 + 纹理） | `parts[]` + `deformers[]` 的 `cols/rows/points` | 等价（A5 起就有，逐控制点位移） |
-| ワープデフォーマ | `deformers[].points`（`amount=1` 时的位移） | 等价；同部件多张网格逐点相加 |
+| アートメッシュ（网格 + 纹理） | 自有 `parts[]` + `deformers[]` 的 `cols/rows/points` | 存在自有网格/纹理类比；不是 Cubism ArtMesh 对象或模型数据 |
+| ワープデフォーマ | 自有 `deformers[].points`（`amount=1` 时的位移） | 存在逐控制点位移类比；不实现/不承诺完整 Cubism Warp Deformer 语义 |
 | **キーフォーム**（参数キー） | `deformers[].param` + `keys[{v,points,ease}]` | **2026-10-25 新增**：第 0 组绝对、其余为增量，按合成后的参数值插值；**每段可配缓动**（名字缓动 / 阶梯 / 三次贝塞尔，T66.11） |
 | 回転デフォーマ | `deformers[]` 节点 + `pivot` + `dx/dy/rot_deg/sx/sy` | **2026-10-25 新增**：由绑定或动作通道写入 |
 | 親子付け（部件 → 变形器） | `deformers[].parent` / `parts[].deformer` | **2026-10-25 新增**：父先子后，矩阵按"父包住子"连乘 |

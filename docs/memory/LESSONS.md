@@ -7066,3 +7066,11 @@ T67.8 盘点时发现任务表标未完成，但实现已经解析数组/取反�
 ### 461. 遮挡可见性测试必须写清被切换的是整条袖还是独立 cuff（2026-11-03）
 
 C 层级诊断中隐藏 `arm_*_fore` 会同时隐藏前臂整件和袖口；它不是只关 cuff-front 的测试。九帧 normal/forearm-hidden/mitten-hidden board 说明：在 −30°/0°/+30° 三个样本，trial24 手在原 cuff 后外观连续；关闭整条 forearm 后会看到 hand art 顶边。只能得出层级可见性和当前罩边观察，不等于单独 cuff 前后夹层验收、隐藏腕补全或运动安全。将 toggle 范围写入 runner、metrics 与报告，避免把“整袖隐藏”误报成“cuff 前片隐藏”。
+
+### 462. 自研 `zrig` 的功能相似不等于真实 Cubism 模型（2026-11-04）
+
+`rig.json` + PNG + C 网格/物理可以复现一些 Live2D 风格行为，但它不是 Cubism Editor 作者工程 `.cmo3`，也不是嵌入导出 `.moc3` / `.model3.json`，更不能仅凭名称/结构推断 Cubism Core 可加载。能力对照文档中的“等价/合格”措辞会误导，应改写为“自研功能类比（非格式/运行时兼容）”。
+
+- **闭环**：使用官方 Cubism Editor 从合规分层 PSD 创建 ArtMesh / Deformer / 参数 keyforms，制作 atlas 并导出 `.moc3` / `.model3.json`；官方 Viewer/SDK/Core 真实载入成功，才可称为 Cubism 模型完成。作者工具、模型文件、运行时 Core 与发布许可分别核验。
+- **手型提醒**：变体名称 `small` 不能替代视觉标准。若正常手要求有可辨识手指，必须在契约、source art 和 review rubric 中明确 digit separation；mitten 仍需单独存在。
+- **来源**：`docs/REFERENCE_NOTES.md` 第七十三批；项目调查 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。

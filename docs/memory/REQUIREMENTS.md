@@ -8,7 +8,7 @@
 > 4. 配套：`MEMORY.md`（项目现状与决策）、`WORKFLOW.md`（怎么干活）、`GAPS.md`（还缺什么、需要什么）、
 >    `TASKS.md`（任务编号）、`JOURNAL.md`（日志）、`LESSONS.md`（教训）。
 
-更新：2026-11-01（A62 双手型；A63 仓库持久化）｜ 当前分支：`arena/aaf1408c-zhuochong`
+更新：2026-11-04（A68.5 双手型均保留且 small 明确为正常有指手；A68.6 真正 Cubism 模型作者/导出流程）｜ 当前分支：`arena/aaf1408c-zhuochong`
 
 ---
 
@@ -67,7 +67,7 @@
 
 | # | 要求 | 来源 | 落点 | 状态 |
 | --- | --- | --- | --- | --- |
-| D1 | 方法 A：AI 生成部件 PNG + 代码实现 2D 骨骼与**网格形变**，不依赖 Live2D 编辑器、不引入 Cubism Core | [交接]8.1 | `zrig.c` + `zimg_draw_warp` | ✅ |
+| D1 | 方法 A：AI 生成部件 PNG + 代码实现 2D 骨骼与**网格形变**，不依赖 Live2D 编辑器、不引入 Cubism Core | [交接]8.1 | `zrig.c` + `zimg_draw_warp` | 🟡 仍是自研 C 运行时路线；不满足 A68.6 的真实 Cubism 模型制作/导出要求，且不得冒称 `.moc3` / Cubism 模型 |
 | D2 | 拆件层级 14 组（前景饰品→前发→眉→眼→嘴→脸底→脖→上半身→下半身→手臂→腿→后发→尾巴→后景） | [交接]8.2 | `tools/make_parts.py` + rig | 🟡 素材欠账 |
 | D3 | 会动的部位独立成层；左右对称件不合并；被遮挡部位补全；图层英文命名建组；阴影单独成层 | [交接]8.2 | 素材规范 | ✅ 规则登记 |
 | D4 | 每个部件过验收：统一画布、透明无白底、颜色比对色卡、**形状与设计图蒙版重合度**、关节位置对齐；不过最多重试 3 次，仍不过**不入库不标完成** | [交接]8.3 | `tools/prepare_sprites.py` + 验收脚本 | 🟡 蒙版验收工具待写（T12.x） |
@@ -1173,6 +1173,10 @@ TASKS **T46.15（已完）/ T46.16 / T46.17**、LESSONS **236**。
 | 编号 | 要求（用户原意） | 来源 | 落点 | 状态 |
 | --- | --- | --- | --- | --- |
 | A68.1 | 用户明确确认 trial15 手部尺寸“完全合适”；后续按此尺寸方向制作，不再扩大/缩小候选 | [聊天] 2026-11-03 | trial15 metrics/README；T70.2；`chibi_mitten_production_plan_2026-11-03.md` | ✅ 尺寸方向获批；不扩展为 AI 像素/原画/生产批准 |
-| A68.2 | 开始完整手型工作流前先读项目铁律、真值源、教程/已查参考和 generator/rig 现状；大脑分析、亲眼目视真实成果、主动发现问题并修正；每个实质阶段要有可检验产物/状态记录 | [聊天] 2026-11-03 | WORKFLOW 铁律 0–15；`docs/REFERENCE_NOTES.md` 第七十一批；study production plan / README / metrics / JOURNAL | 🟡 执行中 |
+| A68.2 | 开始完整手型工作流前先读项目铁律、真值源、教程/已查参考和 generator/rig 现状；大脑分析、亲眼目视真实成果、主动发现问题并修正；每个实质阶段要有可检验产物/状态记录 | [聊天] 2026-11-03 | WORKFLOW 铁律 0–16；`docs/REFERENCE_NOTES.md` 第七十一批；study production plan / README / metrics / JOURNAL | 🟡 执行中 |
 | A68.3 | 继续完成 Chibi mitten 原画、左右独立部件、袖下腕部补全、source cuff 夹层、独立 `hand_style` 并与 wrist/gesture 解耦、真实 C 引擎动作/服装组合验收；不得用程序化手绘、Teen/generic hand 或用户截图像素替代 | [聊天/既有 A62/A64] 2026-11-03 | T70.2–T70.4；isolated hand-study；经艺术/用户验收后才接生产 | 🟡 用户反馈 mitten 基本过关；agent 选择 trial24 RGBA source-fit 形态继续隔离 QA。新 real-C 9帧 visibility board 仅验证抽样层序；trial26 延腕图无 alpha 被拒。source-art/hidden-wrist/rig/动作组合和生产门禁仍未完成 |
 | A68.4 | 用户要求本轮按“完整制作”执行，但旧的 source-art/目视/QA/用户确认门禁仍有效；任何未通过的 AI WIP 不能伪装完成或晋升生产 | [聊天 + WORKFLOW 铁律 0–15] 2026-11-03 | production plan、metrics、项目生产 sprites/rig/guardrails | 🟡 常驻门禁；用户认为 mitten 基本过关，我选择 trial24 作为隔离基础；trial25 透明/比例/风格失败仅留负例；无 production 改动 |
+| A68.5 | **两种手型都必须保留**：正常、可辨识手指的手与手套／mitten 手是独立样式；`small` 名称或现有 crop 不能自动证明正常有指手型已完成；样式切换与腕部运动/手势解耦 | [聊天] 2026-11-04 | `hand_style_variants_2026-11-01.json`；T70.2–T70.4；Chibi 左右独立 hand parts / rig | 🟡 契约已明确 normal-fingered + mitten；现有 source crop 仍未获批为生产手件，左右部件、隐藏腕部、组合验收未完成 |
+| A68.6 | 制作**真正的 Live2D Cubism 模型与部件**；主动学习官方教程/样例与可参考项目，按官方编辑器工程和导出流程制作；自研 C `zrig` 只能称自研引擎，不能称 `.moc3`/Cubism 模型；作者工程/模型文件与 SDK/Core 运行时集成、授权分别评估 | [聊天] 2026-11-04 | `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`；T70.5；官方 Cubism Editor `.cmo3`→`.moc3` 导出与官方 SDK/Core 验证 | 🟡 官方 PSD/ArtMesh/MOC3 与许可流程已研究并记档；本仓库无 Cubism Editor、无 PSD/CMO3/MOC3；未制作、未导出、未运行真 Cubism 模型 |
+
+> **A68.6 对 D1 的范围修订**：仍保留 `zrig` 作为现有自研应用运行时路线，但“无 Live2D 编辑器”不再能限制用户要求的 Cubism 作者工程；开始制作真 Cubism 模型需使用可用的官方编辑器。该要求不自动授权集成/发布 Cubism Core，也不代表 `zrig` 能运行 `.moc3`。

@@ -2629,3 +2629,10 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 用户新反馈“（手套）手基本过关，你自行判断是否沿用”。我决定沿用 trial24 source-fit RGBA pair 的基本形态作为隔离 QA 基准：左右 46×58 / 45×58，cuff identity 2,440/2,498 px，板上读作短宽 mitten 且 nub 朝内。trial25 是另一项失败试验，opaque RGB checkers 不当部件使用。
 - 这一反馈和选择只打开继续验证的路径，不证明 source-art fidelity、袖下 hidden-wrist 完整、动作安全、所有风格门或生产接入。2× parts 顶行有宽 alpha 边（左 x=21–70/92 px，右 x=25–69/90 px），静态 cuff 可遮住但不代表补腕完整。
 - 本轮实际 C `zrig` 增做 9 个 isolated visibility frames：−30°/0°/+30° × normal/隐藏完整 forearm/隐藏 mitten。目视正常帧当前 cuff seam 连续，隐藏 forearm 会露出 hand art 上缘，隐藏 mitten 显示原 forearm/cuff仍在上层。候选没有独立 cuff-front toggle，隐藏的是整条 sleeve；这里只验证 layer visibility，不是 full motion 或安全。trial26 左右 AI 延腕编辑仍生成 opaque RGB checkerboard、且线影/比例差，作为失败证据拒绝，不做 chroma-key、cuff-fit 或 rig insertion。下一步需获批的源对齐腕段，再测 cuff-front/back 与旋腕 underlap。
+
+## 2026-11-04 新增：正常有指手与真正 Cubism 模型
+
+- **两种手型并存**（A68.5 / T70.2–T70.4）：正常、可辨识手指的 `small` 与独立 mitten 都要保留；现有 small 源 crop 不是已批准的完整手件。仍缺合规左右独立 part、隐藏腕部补画、袖口前后夹层与手型 × 手势 × 腕角 × 衣发的真实 C 引擎矩阵。
+- **真实 Cubism 模型**（A68.6 / T70.5）：已核官方 PSD→Editor ArtMesh/Deformer/keyforms→`.cmo3`→`.moc3`/`.model3.json`→官方 Viewer/SDK 验证流程，详见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。当前环境 Linux 且无 Cubism Editor；全仓无 Chibi 分层 PSD/CMO3/MOC3/Model3，所以本轮不能做/导出真模型。
+- **需取得的输入/环境**：approved Chibi 完整分层 PSD（含足够塗り足し、袖下 hidden wrist 与两套正常/mitten 左右手层），以及能运行 Cubism Editor 的授权环境。取得后先建 `.cmo3` 并官方导出、验证，再单独决定是否把符合许可的 SDK/Core 接入桌宠。自研 `zrig` 不可冒称 Cubism；Core/SDK 运行时与模型作者工程分开审查。
+- **发布授权待核**：官方 SDK Release License 对发布与 Expandable Application 有具体条款；项目代理不作法律归类。发布或集成前按届时条款确认。

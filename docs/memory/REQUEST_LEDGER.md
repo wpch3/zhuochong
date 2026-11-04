@@ -1598,3 +1598,9 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **本人目视**：normal 三档中试24手仍由 source cuff 遮住，接缝未见明显开口但有细边差；隐藏 mitten 后 source forearm/cuff 留在上层；隐藏 forearm 会露出 mitten 上缘。重要限制：这是隐藏整件 `arm_*_fore`（前臂+袖），不是 cuff-front-only toggle；该候选没有分离 cuff front/back。这只证明候选层级/可见性抽样，非 hidden-wrist 完整或安全范围。
 - 试作 trial26 左右延腕编辑 WIP，提示要求 true alpha；`identify` 实查仍为 912×1150/912×1175 的 RGB/no-alpha opaque checkerboard，目视又发现左腕过宽过长、右腕过窄过长并有硬接线。拒绝，不 chroma-key、不清背景、不 fit、不进 rig；保存 PNG、prompt、review、metrics 与局部 SHA manifest 作为负例。
 - 更新 study README/plan/decision note/C review、trial26 evidence、TASKS/GAPS/REQUIREMENTS/MEMORY/JOURNAL/LESSONS。source/production art 未改；new C artifacts are isolated diagnostics only。后续门：需授权 source-aligned wrist continuation，再查独立 cuff front/back 与真实 wrist motion。
+
+### 2026-11-04 · 双手型纠正 + 真正 Live2D/Cubism 模型路线
+
+- 用户明确纠正：正常、可辨识手指的手也必须保留；它和 mitten 是两套独立样式，不能只留手套手。不能把 `small` 名称或现有源 crop 当成正常有指手已完成。已同步 `hand_style_variants` 契约与 REQUIREMENTS A68.5，左右部件、腕部、gesture 解耦和生产门禁继续开放。
+- 用户要求继续研究官方教程/项目，完成真正 Live2D 骨骼部件与模型，不能把自研 C `zrig` 冒称 Cubism。已查官方 PSD 导入、ArtMesh/参数化建模、`.cmo3` / `.moc3` / `.model3.json` 导出、SDK Core 与发布许可，并核对官方 WebFramework / Samples；来源与路线见 `docs/REFERENCE_NOTES.md` 第七十三批、`docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。
+- 事实边界：Linux checkout 无 Cubism Editor、无 Chibi PSD/CMO3/MOC3/Model3。故当前只完成研究、手型契约和文档纠错，**没有制作/导出真 Cubism 模型，也没有整合 Core/SDK**。下一步是取得 approved Chibi 分层 PSD 与可运行官方 Editor 环境；运行时许可/架构另审。

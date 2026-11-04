@@ -4348,3 +4348,19 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 - 目视 4× candidate board/variants：轮廓读作圆钝 mitten，可供形状方向参考；但 source cuff 下腕口仍有外缘空隙/过渡不均、暖浅 seam band、线稿密度/风格 mismatch，左侧较明显。因此不是 seam-clean fit，也不是批准美术；只保留为“AI shape-only concept”。
 - 试验中曾用过较宽的近邻线条范围并夹带裙/衫碎片；该分割物已删除。当前像素选择收窄为手部连通 warm component + 2px 已有非洋红邻域（排除识别到的 teal/cream AI cuff 色），并将来源 SHA、框和选区说明记在 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/mitten_trial_06_source_cuff_metrics.json`；完整摘要见同目录 README/SHA。
 - 重要边界：精确保留 cuff 不会使新 mitten 自动合规；source small ROI 也不含袖下 hidden wrist。未做 artist approval、独立 hand part、hand_style、wrist/gesture 解耦、服装遮挡或真实 C-engine 动画矩阵；无 production assets 变更。
+
+## 第七十三批（2026-11-04：Cubism Editor 真模型制作、导出与 Core 分轨）
+
+这批资料用于落实“真正 Live2D 模型”的要求。项目自研 `zrig` 只能作功能概念参考，不是 Cubism 文件或运行时兼容证明。
+
+- **Live2D 官方 PSD Import**：<https://docs.live2d.com/en/cubism-editor-manual/psd-import/>。PSD 图层可导入为 ArtMesh，默认网格顶点较少；模型仍需按目标动作编辑网格、层级与变形。落地要求：从 Chibi 自己的完整分层母稿入手，不把单张 `body_full.png` 自动当成可动模型。
+- **Live2D 官方 Data for Embedded Use**：<https://docs.live2d.com/en/cubism-editor-manual/export-moc3-motion3-files/>。先准备 texture atlas，再经 Editor 导出 `.moc3`、`.model3.json` 和纹理；Physics、MotionSync、UserData、CDI 等可按需输出。`.moc3` 才是应用消费的 Cubism 模型数据；自有 `rig.json` 不能替代它。
+- **Live2D 官方 File Types**：<https://docs.live2d.com/en/cubism-editor-manual/file-type-and-extension/>。Editor 工程 `.cmo3` 与运行时 `.moc3` 是不同阶段文件；Model3 settings 关联模型、纹理和其他资源。项目验收应同时保留作者工程、正式导出物及版本/哈希。
+- **Live2D 官方 SDK for Web**：<https://docs.live2d.com/en/cubism-sdk-manual/cubism-sdk-for-web/>。Cubism Core 按 Proprietary Software License 发布，不在 GitHub；需要从官方 SDK distribution 获取。不得把公开 Framework 源码误作包含 Core 或获得再分发许可。
+- **Live2D 官方 SDK Release License**：<https://www.live2d.com/en/sdk/license/>。开发验证和公开发布适用不同流程；发布含 SDK 的内容可能需要 SDK Release License，官方列出一般个人/小规模豁免及 Expandable Application 例外。项目是否落入例外由发布主体结合最新条款确认，本项目不作法律结论，不因制作模型自动批准 Core 集成/发布。
+- **Live2D 官方 CubismWebFramework**：<https://github.com/Live2D/CubismWebFramework>。README 明确它面向 Cubism Editor 输出模型，需搭配 Cubism Core 加载；Core 本身不在仓库中。用来参考正确的作者产物—运行时边界，不复制第三方代码或模型图。
+- **Live2D 官方 CubismWebSamples**：<https://github.com/Live2D/CubismWebSamples>。仓库 README 的 Haru 样例可检查 `.model3.json`、MOC3、texture、physics、pose 与动作资源的装配；它是运行时结构样例，不是 Chibi 作者工程模板/美术来源。其模型/样例素材许可证须与 SDK 代码分开核验。
+
+**结论/项目边界**：`zrig` 的部件、网格、Physics 等只写作“自研功能类比”，不能写“Cubism 等价/兼容/模型已完成”。真模型须官方 Editor `.cmo3`→embedded `.moc3`/`.model3.json` 导出，并用官方 Viewer/SDK/Core 实际验证。作者流程与现有 C runtime 是分轨；Core/SDK 下载、整合和发布仍需独立的架构/许可审查。实际环境核验：当前为 Linux，无 `CubismEditor` 命令；仓库全树无 Chibi PSD、CMO3、MOC3、Model3 等文件，因此本轮只完成研究和路线修订，没有生成真模型。
+
+**手型要求同步**：Chibi `small` 应代表正常、可辨识手指的手；mitten 是另一种独立样式，二者均须保留，且 style 与 wrist/gesture 分轴。旧 `small` crop 不等于已通过生产艺术门。

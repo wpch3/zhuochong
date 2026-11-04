@@ -42,3 +42,8 @@
 - `/tmp/zc_chibi_work_20261101/` 曾把 Teen 附件链引入 Chibi，清单从 11 变 27；`hair_hood_long` 源 ROI 带手和袖口，该路线作废。
 - 最早隔离尝试在 `fill_seam_holes.py` 被系统终止，随后 1653 项中 41 项失败。
 - `/tmp/zc_chibi_refit_20261101/` 有另一份 37 项失败记录，说明见本目录 `README.md`。这些结果与最新 40 项失败候选不混为一谈。
+
+## 最新范围纠正（2026-11-04）
+
+- Chibi 手型必须并存：正常、有可辨识手指的 `small` 与独立 `mitten`。名称 `small` 或旧源像素 crop 不能自动视为已完成正常有指手；生产手件与腕部/手势解耦门仍开放。
+- 真正 Cubism 模型另有作者工程门：自研 C `zrig` 不等于 `.moc3`。当前 Linux checkout 无 Cubism Editor，也无 Chibi PSD/CMO3/MOC3/Model3；官方制作、导出、Core/许可路线见 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。不得以功能类比声称 Cubism 合规或兼容。

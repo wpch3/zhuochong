@@ -9,7 +9,7 @@
 - Chibi 同时保留此前选定的小巧手，并新增红圈参考所指的手套感/连袖感手型；两套是独立可切换形态。
 - `hand_style` 默认 small，并与腕部运动和手势动作分离；左右件必须来自合规 Chibi 来源。
 - 截图只作形状指导，不得直接裁成贴图；不得以 Teen 手件或 Teen 生成器输出代替 Chibi 素材。
-- 遵守 `docs/memory/WORKFLOW.md` 铁律 0–14，尤其用户优先、真值源、隔离制作、本人目视实际结果、QA 不代替视觉验收、未通过和未获用户确认前不接生产。
+- 遵守 `docs/memory/WORKFLOW.md` 铁律 0–16，尤其用户优先、真值源、隔离制作、本人目视实际结果、QA 不代替视觉验收、未通过和未获用户确认前不接生产。
 - 用户已将工作范围明确扩展到**整个 Chibi Live2D**，因此可查看与全身 Chibi 直接相关的部件、动作、候选图和组合状态；不扩展到无关角色/素材。
 
 ## 2. 较早 v6 原型做过什么
@@ -42,4 +42,12 @@
 - `docs/qa/chibi_candidate_2026-11-01/isolated_rebuild_status.md`
 - `docs/qa/chibi_candidate_2026-11-01/README.md`
 - `docs/qa/chibi_candidate_2026-11-01/hand_style_variants_2026-11-01.json`
-- `docs/memory/WORKFLOW.md` 铁律 0–14
+- `docs/memory/WORKFLOW.md` 铁律 0–16
+
+## 范围纠正（2026-11-04）
+
+用户明确要求两种手型同时保留：`small` 是正常、需清楚表现手指分隔的手型；`mitten` 是独立的手套/连袖感手型，不能以 mitten 取代 normal-fingered hand，也不能把现有 small source crop 直接当成完整生产手。选择器仍须独立于腕部运动与手势。契约已更新至 `docs/qa/chibi_candidate_2026-11-01/hand_style_variants_2026-11-01.json`；两套左右源件、hidden wrist、袖口夹层、真实 C 引擎组合验收均未完成。
+
+## 真正 Cubism 模型路线（2026-11-04）
+
+用户新增真正 Live2D 模型要求。现有自研 C `zrig` 不是 Cubism 模型；详细官方 PSD/ArtMesh/Deformer/导出/SDK/Core/许可流程及当前 Linux 无 Editor、全仓无 Chibi PSD/CMO3/MOC3 的阻塞事实见 `docs/memory/CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。不得将自研能力类比写成 `.moc3` 或 Cubism 兼容；正式作者工程与运行时集成分轨。
