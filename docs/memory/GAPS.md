@@ -15,9 +15,9 @@
 
 ## 2026-11-04 Teen 长发动态遮挡缺口（T67.71）
 
-- **现状**：T67.39 只验固定姿势。真实 C 预览以 Teen `hairstyle=long`、`hood_pose=up` 对照 idle（手臂下垂、`ParamHairSway=0`）与 surprised 抬臂（`ParamHairSway=1`）时，动作帧在旧手腕位置出现残留袖口/手形碎片及头发透明缺口。`hair_hood_long@2x.png` 本身也可见 alpha cutouts 与残留异物。
-- **根因状态**：已证明静帧覆盖不保证动态覆盖；尚未隔离 alpha 挖除、未清除的异物、图层顺序和姿态/形变各自的贡献。不要把它们混称为单一“alpha=0 bug”。
-- **下一步**：从源图/PNG 坐标逐像素追踪缺口与残留；选用合规 source-art 或可审阅 inpainting 修复；再跑 idle、sway 两端、surprised 抬臂和遮挡隐藏的全身 + 局部真实 C 复验。证据和当前边界见 `docs/qa/t67_39_dynamic_followup_2026-11-04/`。生产贴图尚未修改。
+- **现状 / 源像素追踪（2026-11-04）**：新增 `docs/qa/t67_71_source_trace_2026-11-04/`。追到输入 `design/sheets/sheet_long_hood.png` → `design/redraw/sheetcut_hair_hood_long.png` → Teen `sprites/hair_hood_long@2x.png`。切片框 `[212,156,799,1020]`（588×865）；严格 QA 在生产贴图内部报 11,336 个透明像素及 3 个 ≥200px 封闭块（3,418 / 2,970 / 982px），约映回手/袖口处。实际 cutout 和生产 hair 层均肉眼包含袖口/手形；当前颜色阈值分类器对 long 件未报达阈值的 skin/teal blob，不能据此否认可见残留。
+- **C rig / 动作 / 层序分离**：目标件 `acc_hair_hood_long` 是 `group=head`、layer 258、无专属 `physics`/`physics2`/deformer。正常手臂层 138–151；惊讶替换件 319–322；zrig 按 layer 升序绘制。现已在同一 C 预览做 long+hood-up 下 idle、surprised、wave_both、heart_hands、wave × `ParamHairSway=-1/0/+1` 共15帧；另对 neutral sway 的 surprised/wave 过程加拍13个固定步 C 时间点。surprised腕y约661→506→445（0.60–1.10s）→658；wave右腕y约716→651→491→455→448→610（2.30s），左腕仍约732–738。惊讶0.30s时替换参数在crossfade中，单独记作过渡态而不冒充端点。上举/合手姿势中目标发件里的旧袖口/手形仍可见，隐藏该件后碎片消失、实际动作手臂仍在。全身 sway -1/+1 对照约有3.9–4.1k可见像素RGB通道差>4；目标件 only 隔离对比除surprised最大通道差2外其余为0，全部无Δ>4像素。因此其它可见发件响应sway，但不等于该烘入袖口/手的目标发片有意义独立摆动。静帧/透明洞/层内残留/动作层序/发件物理分别留痕，不归并成单因果。
+- **来源门槛 / 下一步**：`sheet_long_hood.png` 与 raw 都是扁平 RGB；全仓未找到 PSD/PSB/KRA/XCF 分层作者文件，扁平图不含袖口/手后方被遮住的真实发丝。非兜帽 `sheet_long.png` 造型不同，不能冒充该隐藏区域的源真值。未做生产修补，也不采用随意邻域补色、任意位移或全贴图 `alpha=255`。需要获批分层/补画来源，或先做可审阅、隔离的连续发丝重建 WIP；动态矩阵仍欠其它手臂角度/过渡/摆动相位与更多组合后，才具备完整真实 C 验收。详细帧、坐标、QA exit 1、SHA 与解释见上述 T67.71 evidence 包。
 
 ---
 
