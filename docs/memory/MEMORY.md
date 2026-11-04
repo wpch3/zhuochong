@@ -28,7 +28,7 @@
 - **环境/资产事实**：checkout 为 Linux；`CubismEditor` 未安装；全仓无 `.psd` / `.cmo3` / `.moc3` / `.model3.json`。所以没有制作/导出/官方 Viewer 验证真 Cubism 模型。自研 C `zrig` 不是真 Cubism 模型，官方 Core/SDK 运行时整合仍单独受许可/架构审批限制。
 - **下一步门槛**：先取得/制作获批 Chibi 完整分层 PSD，在支持的官方 Cubism Editor 环境建立 `.cmo3` 并导出 `.moc3` / `.model3.json`；之后分别完成双手型的编辑器模型验证与官方 Viewer/SDK 实测。当前官方模型制作任务 T70.5 仅研究完成、模型未开始。
 - **验证（trial30–40 后续）**：本轮为图片/QA/文档变更，未重跑 `make test`；最近一次实际 `make test` **2638/0**（编译有已知 `_zperf_probe` unused-function warning）。本轮 `selfcheck_repo.py --quiet` 实跑 **772 项 / 1 fail**，唯一仍是受保护 Teen/Chibi rig 旧 generator fingerprint；未重生 rig，`selfcheck_all.sh` 未运行。hand-style JSON、trial27–40 14 份 local SHA、study root SHA 与各 metrics JSON、`git diff --check` 均过；production Chibi sprites/rig 和 `src/core` diff 为 0。
-- **提交/推送**：trial27–29 review 的前序提交 `5747ff5176eaf75a29e29be3b422b47d164583fb` 已推送；本轮 trial30–32、比较板、normal-hand 美术交接 brief 与 Cubism 源输入审计提交 `4a2b80acff072ae94e7b351faf18fd6381cc35e1` 已推送，且 `git rev-parse` 与 `git ls-remote` 的 SHA 一致。收尾日志随后单独提交。
+- **提交/推送**：trial27–29 review 前序提交 `5747ff5176eaf75a29e29be3b422b47d164583fb`、trial30–32/Cubism 初审提交 `4a2b80acff072ae94e7b351faf18fd6381cc35e1` 均已推送；后续日志/视角验收标准更新 `25e5e7f3559f8be3a24473df83d5b0c2b4252e1a` 已推送。trial33–40 自审证据、视角标准修订、机器层清单与 49 张 Chibi PNG 引用 inventory 提交 `19956de5b5022b74bb54297466f1884e50df0292` 已推送；`git rev-parse` 与 `git ls-remote` SHA 相同。
 
 - 本轮参考资料审计已归档：运行时、网格、遮罩与绑定方法资料足以继续自研；Chibi 自身全身差分稿、合规 `small/mitten` 手型设计板和组合验收仍不足。
 - 资料报告：`docs/memory/CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md`；canonical 索引是 `docs/REFERENCE_NOTES.md`（第六十八批审计、T70.2 cuff 方法和第七十一批官方拆件/来源资格复核）。A66.1 是参考审计，A66.2 是持续按铁律查方法、隔离制作并本人目视的流程提醒（A59 已被既有 Live2D 铁律占用）；执行任务 T70.1–T70.4。
