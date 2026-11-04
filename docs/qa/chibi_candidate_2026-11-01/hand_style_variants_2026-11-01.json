@@ -14,7 +14,10 @@
         "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_live2d_style_anchor_user.png",
         "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_short_hair_live2d.png"
       ],
-      "part_ids": ["hand_l_small", "hand_r_small"]
+      "part_ids": [
+        "hand_l_small",
+        "hand_r_small"
+      ]
     },
     "mitten": {
       "label_zh": "手套感／连袖感手型",
@@ -23,16 +26,25 @@
         "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_hand_mitten_user_marked_2026-11-01.jpg",
         "docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_short_hair_live2d.png"
       ],
-      "part_ids": ["hand_l_mitten", "hand_r_mitten"],
+      "part_ids": [
+        "hand_l_mitten",
+        "hand_r_mitten"
+      ],
       "source_boundary": "Use only as a shape/style guide. Do not crop production hand sprites from the annotated screenshot; derive clean parts from an approved Chibi source."
     }
   },
   "rig_contract": {
     "selector_id": "hand_style",
     "default": "small",
-    "options": ["small", "mitten"],
+    "options": [
+      "small",
+      "mitten"
+    ],
     "selection_rule": "Exactly one left/right hand-style pair is visible at a time; both source variants remain in the candidate and can be switched without rebuilding or replacing the other.",
-    "independent_axes": ["wrist_motion", "gesture_pose"],
+    "independent_axes": [
+      "wrist_motion",
+      "gesture_pose"
+    ],
     "cuff_rule": "Both variants share the same Chibi wrist anchors and preserve the source cuff/ribbing; use a cuff-front overlap or sufficient wrist insertion so no bare cut edge, gap, or color discontinuity appears during rotation."
   },
   "acceptance": [
@@ -49,11 +61,28 @@
     "normal_fingered_style_required": true,
     "normal_fingered_art_candidate_approved": false,
     "agent_self_review_authorized": true,
-    "last_agent_review_trials": "trial27-40; all rejected",
-    "normal_fingered_wip_trials": ["trial27_rejected_style_and_proportion", "trial28_target_scale_reads_as_paw_or_mitten", "trial29_digits_readable_but_pose_and_style_rejected", "trial30_target_scale_clefts_collapse", "trial31_pixel_style_and_wrist_proportion_rejected", "trial32_adult_proportion_rejected", "trial33_34_long_narrow_digits_collapse_at_target_scale", "trial35_36_source_crop_edit_style_and_scale_rejected", "trial37_38_fullbody_edit_registered_scale_rejected", "trial39_two_reference_hand_roi_mismatch", "trial40_body_full_edit_hand_roi_and_style_drift_rejected"],
+    "last_agent_review_trials": "trial27-42; all rejected after rechecking trial33-40 under side/back view criteria",
+    "normal_fingered_wip_trials": [
+      "trial27_rejected_style_and_proportion",
+      "trial28_target_scale_reads_as_paw_or_mitten",
+      "trial29_digits_readable_but_pose_and_style_rejected",
+      "trial30_target_scale_clefts_collapse",
+      "trial31_pixel_style_and_wrist_proportion_rejected",
+      "trial32_adult_proportion_rejected",
+      "trial33_34_three_tips_visible_but_open_pose_style_and_registration_rejected",
+      "trial35_36_three_tips_roughly_visible_but_cuff_redraw_scale_and_line_style_rejected",
+      "trial37_38_registered_roi_misses_tips_and_scale_rejected",
+      "trial39_registered_roi_misses_tips_rejected",
+      "trial40_registered_roi_and_unrelated_image_drift_rejected",
+      "trial41_exact_left_roi_edit_cuff_scale_style_and_opaque_checkerboard_rejected",
+      "trial42_exact_right_roi_edit_cuff_scale_style_and_opaque_checkerboard_rejected"
+    ],
     "small_source_crop_is_production_approved": false,
     "chibi_rig_has_independent_hand_parts": false,
-    "chibi_rig_current_hand_related_parts": ["seg_arm_l", "seg_arm_r"],
+    "chibi_rig_current_hand_related_parts": [
+      "seg_arm_l",
+      "seg_arm_r"
+    ],
     "teen_hand_assets_are_chibi_truth": false,
     "production_integrated": false,
     "engine_visual_acceptance": false

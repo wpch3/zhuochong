@@ -1,0 +1,28 @@
+{
+  "status": "rejected_wip_not_production",
+  "trial": 42,
+  "date": "2026-11-04",
+  "method": "Target ROI crop edit from exact source-pixel hand frame, enlarged 8x nearest-neighbor for model input",
+  "source_roi_body_full_xyxy": [462, 880, 507, 926],
+  "source_roi_px": [45, 46],
+  "source_reference": {
+    "file": "source_roi_8x_reference_wip.png",
+    "size_px": [360, 368],
+    "channels": "RGBA",
+    "sha256": "dc22efa423eb3f77801a52b99caa8329e8c8bfdbd9eeb87bf90d72514fbdc943",
+    "method": "Exact crop of body_full.png; 8x nearest-neighbor only, no image content added."
+  },
+  "output": {
+    "file": "trial42_right_hand_edit_wip.png",
+    "size_px": [1024, 1047],
+    "channels": "RGB (opaque, no alpha)",
+    "sha256": "c60806b3d249a872b21f7c860ae213c7f37753f569a5ef3812adebc37bda838d"
+  },
+  "review": "Rejected: the model redrew/enlarged the cuff and arm, produced an oversized hand with heavier/smoother contours than the Chibi source, and returned an opaque RGB checkerboard. Multiple digits show, but registration, target scale, style, and alpha gates fail.",
+  "production_use": false,
+  "cubism_source": false,
+  "post_rubric_review": {
+    "criterion": "at least three clearly separated rounded fingertip lobes; fourth may naturally overlap",
+    "result": "digit-count roughly passes as a concept, but overall candidate rejected for scale, cuff redraw, style, and opaque background"
+  }
+}

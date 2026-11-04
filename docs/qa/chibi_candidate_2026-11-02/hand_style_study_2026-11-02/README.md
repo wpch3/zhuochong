@@ -58,3 +58,12 @@ User said the mitten hand is basically passing and left reuse to my judgement. I
 - **40**：直接编辑真实 `body_full` 后，目标框仍只有上掌/袖口及浅折线、没有三枚分离圆指尖；脸部和衣物等无关区域也被重绘，拒绝，不替代 source art。
 
 目视记录：`trial33_normal_fingered_hand_wip/` 至 `trial36_normal_fingered_hand_wip/`、`trial37_normal_fingered_hand_wip/` 至 `trial40_normal_fingered_hand_wip/` 各含输出、精确 prompt、metrics、review 与 local SHA。比较板 `trial33_36_normal_hand_target_scale_comparison_wip.png`、`trial37_38_normal_hand_fullbody_registration_board_wip.png`、`trial37_39_normal_hand_body_registration_detail_board_wip.png`、`trial39_normal_hand_registered_target_roi_comparison_wip.png`、`trial40_normal_hand_target_roi_board_wip.png` 均为人工诊断，不是 source fit/C/Cubism render。**33–40 全部由代理拒绝；零件、rig、生产图和 Cubism 模型均未改。** 后续不应重复相同生成策略；应换用有能力保留原注册/细线画风的源稿工作方式，并继续由代理自审候选。
+
+## Trial 41–42 — exact target-ROI crop edits (2026-11-04; both rejected)
+
+To avoid repeating full-body regeneration, I tried a tighter experiment: feed the exact left/right `body_full` hand ROIs, enlarged 8× with nearest-neighbour only, and request a small side/back hanging hand while preserving the source cuff. Inputs are `trial41_normal_hand_left_target_crop_wip/source_roi_8x_reference_wip.png` (exact source ROI `[62,878,107,926]`, 45×48) and `trial42_normal_hand_right_target_crop_wip/source_roi_8x_reference_wip.png` (`[462,880,507,926]`, 45×46). No artwork was added to the reference crops.
+
+- **41 left:** the model expanded/redrew the cuff and arm well beyond the registered crop, made the hand adult-long/oversized, changed line weight/fabric proportions, and returned an opaque RGB checkerboard. Several digit tips show, but the source, size, style, and alpha gates fail.
+- **42 right:** similarly expanded/redrew the cuff/arm and hand, made the contours heavier/smoother than source Chibi, and returned opaque RGB checkerboard pixels. Several digits show, but source registration, target size, style, and alpha gates fail.
+
+Both are rejected WIP only. Do not background-remove, fit, or insert. These focused crop edits confirm that the current image-generation route does not preserve the tiny registered source cuff/hand well enough; do not repeat it as another prompt variation. The next useful input is genuinely source-aligned original art or a proper layered source project, not more model-generated crop edits. Per-trial prompt, metrics, output hashes and review are stored in each trial41/42 directory.

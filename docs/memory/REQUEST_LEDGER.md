@@ -1631,3 +1631,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - 实物在 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/trial33_normal_fingered_hand_wip/` 至 `trial40_normal_fingered_hand_wip/`；总体板含 `trial33_36_normal_hand_target_scale_comparison_wip.png`、`trial37_38_normal_hand_fullbody_registration_board_wip.png`、`trial37_39_normal_hand_body_registration_detail_board_wip.png`、`trial39_normal_hand_registered_target_roi_comparison_wip.png`、`trial40_normal_hand_target_roi_board_wip.png`。另新增 `cubism_source_layer_inventory_wip/`：确认 Chibi rig 的 49 张 PNG 引用全存在，但识别 `rig.json id=小寻_teen` 异常；报告只作 PSD 作者输入准备，不是 Cubism 模型。未改生产图、rig、引擎或 Cubism 模型。
 - 验证：14 份 local SHA、study root SHA、inventory SHA、metrics/contract/inventory JSON 与 `git diff --check` 均通过。`selfcheck_repo.py --quiet` **772/1**，唯一仍是受保护 Chibi/Teen production rig 的过时 generator fingerprint；未重生。完整 `selfcheck_all.sh` 未运行；本轮图像/文档变更未重跑 `make test`（最近一次实际 2638/0）。
 - 提交/推送：主工作 `19956de5b5022b74bb54297466f1884e50df0292`（`Record Chibi hand self-review and Cubism inventory`）、日志收尾 `d2749428b769a168c908f5bf7a86ffd172bd1f39` 与修订准则复审 `a34dfd0a6288270f36e025327a3bb1bed8a35611` 均推送至固定分支 `arena/aaf1408c-zhuochong`；最新 HEAD 与远端 SHA 核对一致。
+
+### 2026-11-04 · 续令「继续未完成的工作」：trial41–42 精确目标框编辑
+
+- 本轮在活动固定分支继续 T70.2：创建精确 source ROI 的 8×诊断输入，生成 trial41 左手 / trial42 右手 crop-edit 概念，按已修订的侧背垂手验收标准由代理自行审查。
+- 两张均拒绝：可见多枚指端，但生成结果扩张/重画袖口与前臂、手型超出45×48/45×46目标框、线稿/织物偏离 source，且 checkerboard 为 opaque RGB 并无 alpha。没有抠底、fit、入 rig 或生产。
+- 新增 `trial41_normal_hand_left_target_crop_wip/`、`trial42_normal_hand_right_target_crop_wip/`；记录精确 prompt、source ROI、输出 metadata/hash 与拒绝理由。结论：不继续同类 prompt 变体；需真正 source-aligned 原画/layered source。真实 Cubism PSD/Editor 门禁未解决。
+- 验证：trial41/42 local SHA、trial27–42 study root SHA、metrics/contract JSON、`git diff --check` 均通过；未跑 `make test` / 当前 selfcheck。本轮仅 docs/QA WIP，生产 Chibi art/rig 与 `src/core` 无变更。commit/push 状态在收尾提交后补记。

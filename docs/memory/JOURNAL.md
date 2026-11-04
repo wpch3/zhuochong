@@ -8179,3 +8179,11 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **Cubism 源件准备产物**：另建 `docs/qa/chibi_candidate_2026-11-02/cubism_source_layer_inventory_wip/`，从当前 Chibi `rig.json` 实查 49 个 parts 引用（49/49 PNG 存在）、group/layer/position/alpha bounds/SHA、43 params、26 deformers、19 physics + 5 physics2。发现 `characters/xiaoxun/forms/chibi/rig.json` 的 `id` 竟为 `小寻_teen`，但 form path 与 `form_art.json` 指向 Chibi；这是需先解决的生产元数据异常。本报告只是 Editor PSD authoring inventory，不是 PSD 或 Cubism 模型，未碰受保护 rig。
 - **真实模型状态**：本轮仍没有 Chibi overlap-complete PSD 或 Cubism Editor/Wine，未制作 PSD/CMO3/MOC3、未集成 Core/SDK；不假称真 Cubism 完成。下一步不重复本轮已失败的隔离生成/局部编辑套路，改找能保持 source registration/细线画风的合规原稿制作路径，同时继续准备官方 Editor 环境门。
 - **修订后复审与验证**：重新打开 33–36 目标尺寸板、37/38 全身注册板、39 精确 ROI 板与 40 ROI 板。33–36 的三枚圆指尖基本满足修订后指尖数量门，但其姿势/风格/比例或 source cuff 仍不合格；37–40 exact ROI 内无三枚圆指尖，依旧拒绝。已同步更新 handoff brief、study README、trial33–40 各 metrics `post_rubric_review` 及全部 SHA manifests。14 份 local SHA、study root SHA、inventory SHA、JSON、`git diff --check` 均复验通过。`selfcheck_repo.py --quiet` 再跑 **772/1**，唯一仍是受保护 Chibi/Teen rig 旧 generator fingerprint；没重生 rig。未重跑 `make test`（最近一次 2638/0），生产 Chibi art/rig 和 `src/core` diff=0。复审提交 `a34dfd0a6288270f36e025327a3bb1bed8a35611` 已推送，最终 `git rev-parse` 与 `git ls-remote` SHA 已核对一致。
+
+## 2026-11-04｜继续：trial41–42 精确目标框手稿编辑与复审
+
+- **分支同步**：本轮起始工作树显示固定分支 `arena/aaf1408c-zhuochong` 在基线 `43f5514`，先 fetch 并在同一分支 `--ff-only` 同步至远端 `a06950808fdc2ed5dc6b321cec1243201d01fa7f`。新候选目录为当轮未跟踪 WIP，合并前暂存于 `/tmp`，快进后恢复；生产/历史文件没有丢失或改写。
+- **新编辑策略**：不重复 trial37–40 全身重绘；将 `body_full.png` 左 ROI `[62,878,107,926]` (45×48) 与右 ROI `[462,880,507,926]` (45×46) 做精确裁切，仅以 nearest-neighbor 放大 8×作图像模型输入（没有人工补画）。分别生成 trial41/42，要求保持袖口位置/细线并补出至少三枚圆指尖。
+- **代理自审：trial41/42 全拒绝。** 两图近景均出现多枚指端，但生成器显著放大并重绘袖口/前臂，手掌/腕部超出目标框、比例成人化；线条更重、织物细节变化，背景棋盘格实际为 opaque RGB 像素且无 alpha。shape 数量门不代表整体合格。未抠底、未 fit、未镜像、未入 rig/生产。
+- **结论**：精确框 crop-edit 仍不能守住 Chibi 小比例、袖口原位、线稿风格和 alpha；不再做相同 AI prompt 变体。后续需真正 source-aligned 原画/获批 layered source 或美术支持，当前两个候选只留作失败证据。每个目录含原始输出、8×精确参考、完整 prompt、metrics 与 SHA。
+- **验证**：核对输出尺寸/颜色通道：trial41 992×1058 RGB，trial42 1024×1047 RGB；source references 分别 360×384 / 360×368 RGBA。trial41/42 各自 SHA manifests、trial27–42 study root SHA、trial metrics/hand-style JSON、`git diff --check` 均通过。未运行 `make test` 或本轮 `selfcheck_repo.py`；此前基线最近为 772/1（唯一为受保护 Teen/Chibi rig 旧 generator fingerprint），production art/rig 与 `src/core` 本轮无改。
