@@ -8192,7 +8192,7 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 
 - 开工复核固定 branch `arena/aaf1408c-zhuochong`；上一交接 HEAD/远端同为 `0cd1785f2b28b5f142c575510eca0a0a625d79da`，当时工作树干净。重读 `WORKFLOW.md`、当前任务/记忆和身份异常证据。
 - 沿 `zrig_id` 搜索运行时调用：目前只有 getter 声明/实现，未发现名称被产品逻辑硬依赖；Chibi 与 Teen 生产 `rig.json` 顶层 id 都是 `小寻_teen`。原因是 `tools/make_rig.py` 在构造时把后缀硬编码为 Teen，而 CLI 已提供 `args.form`。
-- 将生成器改为 `rig_model_id(name, form)` 并从所选 form 构造 ID；新增 `tests/test_make_rig_identity.py`，覆盖既有 Teen 格式、Chibi 与其它形态；将该 Python 回归纳入 `make test`。没有运行生成器、重生或修改任何生产 rig/sprite。
-- 验证：`make test` C 单测 **2638 项通过、0 失败**，新增 Python 测试 **4/4 通过**。保留已知 `_zperf_probe` unused warning 与负向测试预期诊断。未运行 selfcheck（系统 Python 缺 Pillow/NumPy，且生成器指纹改变后现有生产 rig 必然仍 stale）。
+- 将生成器改为 `rig_model_id(name, form)` 并从所选 form 构造 ID；新增 `tests/test_make_rig_identity.py`，覆盖既有 Teen 格式、Chibi 与其它形态；将该 Python 回归移入独立的 `make rig-tool-test`，并将其纳入完整 `make check`；`make test` 保持 C-only。没有运行生成器、重生或修改任何生产 rig/sprite。
+- 验证：`make test` C 单测 **2638 项通过、0 失败**，`make rig-tool-test` 新增 Python 测试 **4/4 通过**。保留已知 `_zperf_probe` unused warning 与负向测试预期诊断。未运行 selfcheck（系统 Python 缺 Pillow/NumPy，且生成器指纹改变后现有生产 rig 必然仍 stale）。
 - 更新 Cubism inventory、真实模型 audit 与 MEMORY/TASKS/GAPS，明确 root cause 与边界：当前 Chibi rig ID 仍错误，Chibi/Teen 两份生产 `generated_by` fingerprints 都需要更新；禁止把未重生的旧输出当作修复完成或用于 Cubism 打包。完整 layered PSD、small/mitten source art、hidden-wrist 和官方 Cubism Editor/Viewer 门禁均未解决。
 - 收尾复核：`py_compile`、inventory JSON 解析、该 inventory 的 SHA manifest、`git diff --check` 均通过；Chibi/Teen 生产 rig 与 Chibi sprites 路径 diff 为 0。分支仍为固定 `arena/aaf1408c-zhuochong`。selfcheck 未运行。提交 `bf291f1fa814c68e087921b004ac72b11112de6a`（`Fix rig IDs to follow requested form`）已推送；第一次 push 收到 GitHub internal error，重试成功。固定分支本地/远端 HEAD 均为 `bf291f1fa814c68e087921b004ac72b11112de6a`，工作树干净。正式生产重生成须另行确认精确范围并审阅 diff，不把生成器代码修复混作资产或 Cubism 通过。

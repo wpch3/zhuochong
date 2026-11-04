@@ -37,7 +37,7 @@ ZIG       ?= $(shell ls /home/user/.cache/tc/zigenv/lib/python3.*/site-packages/
 WINTARGET  = x86_64-windows-gnu
 DIST_WIN   = dist/windows/x86_64
 
-.PHONY: all test soak test-soak smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments audit-mind mind-fragments audit-memory memory-seed soak-memory audit-frames asset-tool-test
+.PHONY: all test soak test-soak smoke preview win pack-win clean fmt-check selfcheck asan check warncheck tls win-bench pack-bench audit-sprites audit-hair audit-persona persona-fragments audit-mind mind-fragments audit-memory memory-seed soak-memory audit-frames asset-tool-test rig-tool-test
 
 all: test
 
@@ -73,7 +73,6 @@ soak-memory: $(BUILD)/memory_soak
 test: $(BUILD)/test_core
 	@echo "== 运行单元测试（快闸；--soak 才含 2 万帧长稳）=="
 	@./$(BUILD)/test_core . --quick
-	@python3 tests/test_make_rig_identity.py
 
 soak: $(BUILD)/test_core
 	@echo "== 长稳 2 万帧（60fps×5分半，需 ~45 秒）=="
@@ -200,7 +199,10 @@ asset-tool-test:
 	@if [ -z "$(PYTHON_IMG)" ]; then echo "需要 Pillow + numpy：配置 PYTHON_IMG 后重试"; exit 2; fi
 	@$(PYTHON_IMG) tests/test_fill_seam_memory.py
 
-check: selfcheck asset-tool-test warncheck test asan smoke web-test
+rig-tool-test:
+	@python3 tests/test_make_rig_identity.py
+
+check: selfcheck asset-tool-test rig-tool-test warncheck test asan smoke web-test
 	@echo "== 全部保险都过了 =="
 
 # 零告警闸：CI 是 `make clean` 后从零编的，本地增量编译会把告警藏起来。
