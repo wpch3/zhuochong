@@ -51,3 +51,9 @@
 - 本人打开预览：当前头发仍能看到中间片、左右长发与目标 ROI 里的袖口/手形；两个矩形框覆盖的是检查区域而非推断发丝外形。三个草稿层透明为空，没有任何新增笔触/像素。该文件是制作模板，不是画稿、候选或批准源。
 - `make_t67_71_registered_artist_template.py` 生成模板和预览，并结构检查 ORA mimetype/图层顺序/画布、三张空白透明层、reference 像素身份与 merged image；metrics `108_artist_template_metrics.json`。本地无 Krita，故只做容器结构验证，未声称在 Krita 实际打开成功。
 - 这一步只降低之后的配准/分层摩擦，不解决隐藏发丝真值。仍需获批同造型分层源或作者明确补画，局部门目视通过前不启动真实 C，也不改生产。
+
+## 2026-11-05 追加：早期 hair-only v1/v2 来源适用性复核（非候选）
+
+- 追看 `characters/xiaoxun/design/redraw/hair_only/hair_long_backonly_v1_raw.png`、`hair_long_backonly_v2_raw.png` 及对应透明处理图；它们属于早期 T67.7 的非 hood-up 长发“髮だけ差分”路线，处理后均为 843×1264。
+- 对照板 `109_backonly_source_audit.png`：两侧 target ROI 与两张完整 hair-only 片并列显示。v1 有中心开口、双侧长发和可见绿色边缘杂点；v2 是较连续的中心后发片，色相/材质比此前 `hair_long_back_v2` 更接近目标，可作为**画风旁证**，但中心分缝、外轮廓、发束流向与 hood-up 目标不同，也无目标画布注册。它不能证明袖口/手后隐藏头发的拓扑。
+- 结论：两张图都不作目标真值、修复 donor 或候选；本轮没有转移像素、绘制头发、跑 C 或改生产文件。配套 `109_backonly_source_audit_metrics.json` 记录路径、尺寸、alpha、SHA 与限制，`make_backonly_source_audit.py` 只合成现存图像。后续仍需获批同造型分层源或作者明确补画；不因发现相似画风资源而放宽来源/局部门。

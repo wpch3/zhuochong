@@ -8258,3 +8258,10 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **本人目视**：打开 preview 看到现存顶部中间 hair、左右长发和两侧 ROI 内的 cuff/hand 原样保留；蓝/橙框仅限定 crop bounds，不能读成新发束轮廓。预览只是供作者定位/开画的空白模板，不是 artwork、候选或修复。
 - **结构验证和限制**：生成器运行 exit 0，`108_artist_template_metrics.json` 可解析、Python `py_compile` 通过。ZIP 检查 ORA mimetype 首项、stack XML、1132×1664、5 个命名图层、3 个 full-canvas transparent draft layers、reference 像素 identity 与 merged-image identity；SHA 随目录 manifest 再验。环境未安装 Krita，因此只声称结构验证，未声称由编辑器打开。无真实 C 渲染，生产 sprite/rig/generator/engine 无改动，T67.71 仍无通过候选。
 - **下一步**：获取获批同造型作者分层工程或明确标注的新补画层，在此或等价 coordinate-registered 文件中单独创作 back-hair/clean plate；先审 full sprite 与双 ROI 的放大图，未过局部门不进 C；局部门通过后才跑实际动作/转场并独立控制 `ParamHairSway`，通过后再等待用户批准评估生产接入。
+
+## 2026-11-05｜继续 T67.71：复核早期 hair-only v1/v2（来源审计，未修复）
+
+- **任务对位与新发现**：继续核查上轮新发现、此前未目视的 `characters/xiaoxun/design/redraw/hair_only/hair_long_backonly_v1_raw.png`、`v2_raw.png` 及其处理图；读 T67.7 历史，确认是早期非 hood-up 长发“髮だけ差分”路线，而非目标遮挡区的作者真值。
+- **本人目视结论**：打开 v1 raw、v2 raw、v1/v2 处理图、旧 `hair_long_back_v2.png` 与当前 `hair_hood_long@2x.png`。hair-only v2 的调色/材质在这几份旧来源中最接近目标，但中心分缝、完整宽背片轮廓、发束流向和比例与 hood-up 目标不同；v1 为中心空开双侧长片，处理图还可见绿色边缘杂点。两者未提供目标 canvas registration，也不能证明袖口/手后隐藏拓扑。未将它们作为 donor 或 hidden truth。
+- **审计资源**：生成 `109_backonly_source_audit.png`（2560×1510，SHA-256 `64895b0024f1651131c96efdaff514755e4ce08c7009e690b6f953086abb9c28`）、`109_backonly_source_audit_metrics.json` 与 `make_backonly_source_audit.py`。本人打开图板核对左右 ROI 与 v1/v2 整件；该图只并列现有像素、透明棋盘与来源适用性结论，不含绘制/转移像素；指标记录路径、尺寸、alpha 与 SHA。更新 handoff brief、WIP review、TASKS/GAPS/MEMORY。
+- **验证与边界**：新脚本运行 exit 0，metrics JSON 可读，目标与源图尺寸/alpha 记录齐全。没有生成 repair candidate、没有 C/动作或转场验证、没有生产 sprite/rig/generator/engine 改动；本轮未重跑 `make test`（本次仅来源图板与文档工作，既有 2638/0 基线不视为本轮资产验收）。T67.71 仍没有候选通过，仍需获批同造型分层源或作者明确标记的新补画层。
