@@ -13,6 +13,13 @@
 - **端到端验收**：尚无 Chibi `hand_style × gesture × wrist angle × outfit` 状态矩阵；现有手部仍并在 `seg_arm_l/r`。资产与 rig/运行时组合工作仍未完成。
 - 本条为记忆增补，不把任何外部项目升级为生产依赖；`GAPS.md` 的历史表格仍需按新基线分批校准。
 
+## 2026-11-05 后续：T67.71 主缺陷已进生产，内缘台阶未收口
+
+- 生产 `hair_hood_long@2x.png` 与 1× 已换成新设计补绘（authored：`characters/xiaoxun/design/redraw/hair_hood_long_occlusion_repair_v1.png`）。不是隐藏原画。
+- 真实 C（端口 5173）目视：idle、surprised、wave、wave_both、heart_hands，以及 surprised 发片隔离/隐藏。假手、青白袖口、半透明暗矩形都没有了。证据在 `docs/qa/t67_71_source_trace_2026-11-05/strand_continuation_paint_v1/c_verify/`。
+- 未收口：左右下段内缘各有一小段台阶。方向性涂抹（v10）会拉出横纹，已拒绝，没有装进生产。
+- 重建链 27f 会把 authored 下段贴回。不要再跑 `purge_hair_foreign_blocks.py` 当修复。
+
 ## 2026-11-04 Teen 长发动态遮挡缺口（T67.71）
 
 - **现状 / 源像素追踪（2026-11-04）**：新增 `docs/qa/t67_71_source_trace_2026-11-04/`。追到输入 `design/sheets/sheet_long_hood.png` → `design/redraw/sheetcut_hair_hood_long.png` → Teen `sprites/hair_hood_long@2x.png`。切片框 `[212,156,799,1020]`（588×865）；严格 QA 在生产贴图内部报 11,336 个透明像素及 3 个 ≥200px 封闭块（3,418 / 2,970 / 982px），约映回手/袖口处。实际 cutout 和生产 hair 层均肉眼包含袖口/手形；当前颜色阈值分类器对 long 件未报达阈值的 skin/teal blob，不能据此否认可见残留。

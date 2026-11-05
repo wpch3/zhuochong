@@ -5,7 +5,9 @@
 仓库：`/home/user/zhuochong`
 本交接写入前 HEAD：`7915730 Archive T67.71 interlocking strand design studies`
 
-> **结论先行：T67.71 仍未修复。没有候选通过局部目视门；没有进行候选确认或真实 C 复验；生产 sprite、rig、generator、engine 均未修改。** 本文是如实交接，不把失败 WIP、静态 mock、C-only 测试或已有交接资源称为修复。
+> **2026-11-05 后续会话更新（分支 `arena/1d2d05c4-zhuochong`）：** 主缺陷已修并写入生产贴图。戴帽长发下段的烘入手/袖口已去掉，补的是新设计发束，不是挖出来的原画。真实 C 引擎 idle / surprised / wave / wave_both / heart_hands 以及发片隔离图里，抬臂不再露出假手或青白袖口，也没有半透明暗底矩形。下段内缘仍有一小段台阶状轮廓，放大能看见，不算原画级收口。`tools/apply_hair_hood_long_repair.py` 挂在 `rebuild_parts.sh` 27f，避免下次重建把假手贴回来。下面的旧结论是本文件写入时的状态，不要拿它覆盖这次更新。
+>
+> **写入当时的结论：T67.71 仍未修复。没有候选通过局部目视门；没有进行候选确认或真实 C 复验；生产 sprite、rig、generator、engine 均未修改。**
 
 ## 1. 本任务要解决什么
 

@@ -8311,3 +8311,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **最新 WIP 处理**：检查用户中断后留下的 `painted_volume_v1/`，实际打开 `t67_71_painted_volume_v1_review.png`。观察到单一圆钝水滴团、纹理线过少、根部无法和现有侧发融接；判拒绝。metrics/完整 manifest/部分 crops 不存在，脚本依赖一次性 `/tmp/arena_t67_packages` 中 Pillow；这批文件只按不完整负例归档，不作为候选。review SHA `f45a4653836aae2a4a45d6c68e8deed30dd2adaa855855c6e3afcbed95bad7a4`。
 - **交接文件**：新增 `docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`，列出真值源限制、用户新设计授权边界、历史拒绝路径、代理能力边界、下一执行顺序和局部/C/生产门。更新 `REQUIREMENTS.md` A69.6、TASKS/GAPS/MEMORY/JOURNAL/REQUEST_LEDGER/LESSONS 与 WIP review。后续提交只含交接/QA 负例与记忆，不动生产。
 - **诚实自评**：代理可承担来源追踪、图层隔离、配准和 QA 工程；目前连续多轮设计均未达标，未证明能独立交付原画质量的连续发丝图。不得继续靠程序化换名或调参承诺视觉完成。该结论不撤销用户已给的新设计授权；但具体图稿仍须局部目视通过和用户确认。
+
+## 2026-11-05｜T67.71 戴帽长发假手修复进生产（内缘台阶未收口）
+
+- 分支 `arena/1d2d05c4-zhuochong`。按交接继续做，没有重跑已拒绝的几何板、inpaint、列克隆。
+- 用贴近现有发束的新设计补上下段被手挡住的位置。第一版整幅替换在深色底上看着连续，进真实 C 后露出两块半透明暗矩形：暗底被当成了半透明。改成只保留够亮的发丝、背景 alpha 归零后，矩形消失。
+- 已写入 `characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png` 和 1×。authored 在 `characters/xiaoxun/design/redraw/hair_hood_long_occlusion_repair_v1.png`。`tools/apply_hair_hood_long_repair.py` 挂在 `rebuild_parts.sh` 27f。
+- 真实 C 目视：idle、surprised、wave、wave_both、heart_hands，以及 surprised 发片隔离。抬臂不再露出假手或袖口。证据 `docs/qa/t67_71_source_trace_2026-11-05/strand_continuation_paint_v1/c_verify/`。
+- 未收口：左右下段内缘各有一小段台阶。试图沿外侧重涂（v10）拉出横纹，已拒绝，没有装进生产。
+- 没有把整个产品标完成。Chibi 官方 Cubism、其它形态、网关实发请求都还没做。本轮没有重跑 `make test`。

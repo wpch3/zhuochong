@@ -81,6 +81,7 @@
 ## 三、当前状态（每个代理收工必须更新这一节）
 | 项 | 状态 |
 | --- | --- |
+| **T67.71 戴帽长发（2026-11-05 本会话）** | 🟡 假手/袖口主缺陷已修进生产，真实 C 的 idle/surprised/wave/wave_both/heart_hands 与发片隔离已目视，不再露出假手或暗底矩形。下段内缘仍有台阶，未标完成。authored `hair_hood_long_occlusion_repair_v1.png`；重建钩子 `tools/apply_hair_hood_long_repair.py`。预览在 5173。 |
 | C 桌宠基础软件 | ✅ 可运行，`dist/windows/x86_64/zhuochong.exe`（370KB，x86_64 GUI，零依赖） |
 | 立绘引擎 | ✅ 数据驱动 rig.json（组/部件/通道曲线/交互区/眨眼五态/视线/换装/**弯曲形变**） |
 | 配置体系 | ✅ 5 份配置 + JSON Schema + 精确错误定位，功能默认全关 |

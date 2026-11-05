@@ -384,6 +384,14 @@ python3 tools/make_rig.py --character "$CH" --form "$FM"
 #       `bad_hue_transparent` 从 51 件越线降到 0。
 "$PY" tools/fix_transparent_rgb.py --character "$CH" --quiet
 
+# 27f T67.71：戴帽长发下段的袖口/手是烘进发层的异物。purge 只挖洞，
+#     手臂一抬洞和残留又露出来。这里把已目视通过的新设计补绘贴回
+#     左右下段；不是隐藏原画，也不是 alpha=0。尺寸不对就中止，不挪坐标。
+#     必须排在 purge / 透明 RGB 清理之后，否则下一次重建会把假手贴回来。
+if [ "$FM" = "teen" ]; then
+  "$PY" tools/apply_hair_hood_long_repair.py --character "$CH" --form "$FM"
+fi
+
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__
 echo
