@@ -526,6 +526,12 @@ static void handle_request(zsock fd, const http_req *r)
     /* 她主动开口时的立场（T69.2）。放在这个作用域：块要注册进 zctx，
        而 zctx_set_block 只存指针，所以缓冲区必须活到拼提示词那一步之后。 */
     char self_block[768];
+    /* 打开软件先看到产品页（角色 + 工作区）。测试台仍在 /index.html。 */
+    if (strcmp(r->path, "/") == 0) {
+        char p[1024];
+        z_path_join(p, sizeof(p), g_frames_dir, "product.html");
+        if (send_file(fd, p) == 0) return;
+    }
     if (strcmp(r->path, "/") == 0 || strcmp(r->path, "/index.html") == 0) {
         char p[1024];
         z_path_join(p, sizeof(p), g_frames_dir, "index.html");

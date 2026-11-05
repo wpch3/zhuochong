@@ -274,6 +274,222 @@
     setTimeout(nextFrame, 1000 / 30);
   }
 
+  /* 产品工作区。只接已经存在的接口：状态、记忆、形态、发型、表情、动作。
+     任务 / 创作 / 代码 / 技能没有后端，首页只说明还没接，不造假列表。
+     测试替身没有这些节点时整段跳过，不碰原来的聊天链路。 */
+  const workspace = $("workspace");
+  const panes = {
+    home: $("pane-home"),
+    talk: $("pane-talk"),
+    memory: $("pane-memory"),
+    look: $("pane-look"),
+  };
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  async function getJson(url) {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(url);
+    return r.json();
+  }
+
+  function showPane(id) {
+    Object.keys(panes).forEach((key) => {
+      if (panes[key]) panes[key].hidden = key !== id;
+    });
+    document.querySelectorAll("#workspace-nav button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.pane === id);
+    });
+  }
+
+  function openWorkspace(on) {
+    if (!workspace) return;
+    workspace.hidden = !on;
+    document.body.classList.toggle("workspace-on", on);
+    $("desktop-pet").classList.toggle("workspace-on", on);
+    if (on) refreshWorkspace();
+  }
+
+  async function refreshWorkspace() {
+    if (!workspace || workspace.hidden) return;
+    let info = {};
+    let memory = {};
+    try { info = await getJson("/api/info.json"); } catch (_) { info = {}; }
+    try { memory = await getJson("/api/memory.json"); } catch (_) { memory = {}; }
+    renderHome(info);
+    renderTalk();
+    renderMemory(memory);
+    renderLook(info);
+  }
+
+  function renderHome(info) {
+    const pane = panes.home;
+    if (!pane) return;
+    pane.replaceChildren();
+    const grid = el("div", "status-grid");
+    [
+      [copy.mood, info.mood || "—"],
+      [copy.affection, (info.tier_name || "—") + " · " + (info.affection != null ? info.affection : "—")],
+      [copy.form, info.form_name || info.form || "—"],
+      [copy.now_action, info.action || "—"],
+    ].forEach(([label, value]) => {
+      const card = el("div", "status-card");
+      card.append(el("span", "", label), el("b", "", value));
+      grid.appendChild(card);
+    });
+    pane.append(grid, el("p", "note-card", copy.unbuilt || ""));
+  }
+
+  function renderTalk() {
+    const pane = panes.talk;
+    if (!pane) return;
+    pane.replaceChildren(el("p", "note-card", copy.talk_hint || ""));
+  }
+
+  function renderMemory(memory) {
+    const pane = panes.memory;
+    if (!pane) return;
+    pane.replaceChildren();
+    const form = el("div", "remember");
+    const hint = el("p", "section-label", copy.remember_label || "");
+    const input = document.createElement("input");
+    input.maxLength = 240;
+    input.placeholder = copy.remember_placeholder || "";
+    const save = el("button", "", copy.remember_button || "");
+    save.type = "button";
+    save.addEventListener("click", async () => {
+      const text = input.value.trim();
+      if (!text) { showToast(copy.empty); return; }
+      try {
+        const data = await getJson("/api/memory/add?text=" + encodeURIComponent(text) + "&salience=6");
+        if (!data.ok) throw new Error("add");
+        input.value = "";
+        showToast(copy.saved);
+        refreshWorkspace();
+      } catch (_) { showToast(copy.offline); }
+    });
+    form.append(hint, input, save);
+    pane.appendChild(form);
+    const items = (memory.list && memory.list.items) || [];
+    if (!items.length) {
+      pane.appendChild(el("p", "note-card", copy.memory_empty || ""));
+      return;
+    }
+    items.forEach((item) => {
+      if (item.deleted) return;
+      const card = el("article", "mem-card");
+      card.append(el("p", "", item.text || ""), el("small", "", item.date || ""));
+      const reason = document.createElement("input");
+      reason.placeholder = copy.forget_reason_placeholder || "";
+      const forget = el("button", "", copy.forget || "");
+      forget.type = "button";
+      forget.addEventListener("click", async () => {
+        if (!reason.value.trim()) { showToast(copy.need_reason); return; }
+        try {
+          const data = await getJson("/api/memory/del?id=" + encodeURIComponent(item.id) + "&reason=" + encodeURIComponent(reason.value.trim()));
+          if (!data.ok) throw new Error("del");
+          showToast(copy.deleted);
+          refreshWorkspace();
+        } catch (_) { showToast(copy.offline); }
+      });
+      card.append(reason, forget);
+      pane.appendChild(card);
+    });
+  }
+
+  function addPills(parent, label, specs) {
+    parent.appendChild(el("p", "section-label", label));
+    const row = el("div", "pill-row");
+    specs.forEach((spec) => {
+      const button = el("button", "pill" + (spec.disabled ? " planned" : ""), spec.label);
+      button.type = "button";
+      button.disabled = !!spec.disabled;
+      if (!spec.disabled && spec.run) button.addEventListener("click", spec.run);
+      row.appendChild(button);
+    });
+    parent.appendChild(row);
+  }
+
+  function renderLook(info) {
+    const pane = panes.look;
+    if (!pane) return;
+    pane.replaceChildren();
+    const roadmap = info.form_roadmap || [];
+    if (roadmap.length) {
+      addPills(pane, copy.form, roadmap.map((item) => ({
+        label: item.name + (item.status === "ready" ? "" : " · " + (copy.planned || "")),
+        disabled: item.status !== "ready",
+        run: async () => {
+          await getJson("/api/form?id=" + encodeURIComponent(item.id));
+          showToast(copy.switched);
+          refreshWorkspace();
+        },
+      })));
+    }
+    addPills(pane, copy.hair, [
+      ["long", copy.hair_long],
+      ["twin", copy.hair_twin],
+      ["pony", copy.hair_pony],
+    ].map(([id, label]) => ({
+      label,
+      run: async () => {
+        await getJson("/api/pose?group=hairstyle&id=" + id);
+        showToast(copy.switched);
+      },
+    })));
+    addPills(pane, copy.hood, [
+      ["up", copy.hood_up],
+      ["down", copy.hood_down],
+    ].map(([id, label]) => ({
+      label,
+      run: async () => {
+        await getJson("/api/pose?group=hood_pose&id=" + id);
+        showToast(copy.switched);
+      },
+    })));
+    const expressions = info.expressions || [];
+    if (expressions.length) {
+      addPills(pane, copy.expression, expressions.slice(0, 8).map((item) => ({
+        label: item.name || item.id,
+        run: async () => {
+          await getJson("/api/expression?id=" + encodeURIComponent(item.id));
+          showToast(copy.switched);
+        },
+      })));
+    }
+    const names = info.action_names || [];
+    const ids = info.actions || [];
+    const wanted = ["idle", "wave", "wave_both", "surprised", "heart_hands"];
+    const actions = wanted.map((id) => {
+      const index = ids.indexOf(id);
+      return index >= 0 ? { id, label: names[index] || id } : null;
+    }).filter(Boolean);
+    if (actions.length) {
+      addPills(pane, copy.actions, actions.map((item) => ({
+        label: item.label,
+        run: async () => {
+          await getJson("/api/action?id=" + encodeURIComponent(item.id));
+          showToast(copy.switched);
+          refreshWorkspace();
+        },
+      })));
+    }
+  }
+
+  if (workspace && $("workspace-toggle") && $("workspace-close")) {
+    $("workspace-toggle").addEventListener("click", () => openWorkspace(workspace.hidden));
+    $("workspace-close").addEventListener("click", () => openWorkspace(false));
+    document.querySelectorAll("#workspace-nav button").forEach((button) => {
+      button.addEventListener("click", () => showPane(button.dataset.pane));
+    });
+    showPane("home");
+  }
+
   loadCopy().then(nextFrame).catch(() => {
     console.error(copy.copy_load_failed);
   });

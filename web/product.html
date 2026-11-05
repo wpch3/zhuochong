@@ -9,6 +9,27 @@
 </head>
 <body>
   <main class="desktop-pet" id="desktop-pet">
+    <aside class="workspace" id="workspace" hidden>
+      <header class="workspace-head">
+        <div>
+          <p class="workspace-kicker" data-copy="workspace_kicker"></p>
+          <h2 data-copy="workspace_title"></h2>
+        </div>
+        <button id="workspace-close" type="button" data-copy="close"></button>
+      </header>
+      <nav class="workspace-nav" id="workspace-nav">
+        <button type="button" data-pane="home" data-copy="nav_home"></button>
+        <button type="button" data-pane="talk" data-copy="nav_talk"></button>
+        <button type="button" data-pane="memory" data-copy="nav_memory"></button>
+        <button type="button" data-pane="look" data-copy="nav_look"></button>
+      </nav>
+      <div class="workspace-body">
+        <section id="pane-home" class="pane"></section>
+        <section id="pane-talk" class="pane" hidden></section>
+        <section id="pane-memory" class="pane" hidden></section>
+        <section id="pane-look" class="pane" hidden></section>
+      </div>
+    </aside>
     <section class="scene" id="scene">
       <div class="conversation" id="conversation" aria-live="polite" aria-relevant="additions text"></div>
       <img class="character" id="character" src="/api/frame.png" draggable="false">
@@ -17,6 +38,7 @@
         <textarea id="message" rows="1" maxlength="4000"></textarea>
         <button class="send" id="send" type="button">↑</button>
         <button class="more" id="more" type="button" aria-expanded="false">···</button>
+        <button class="workspace-open" id="workspace-toggle" type="button" data-copy="workspace"></button>
         <div class="options" id="options" hidden>
           <label><input id="persona" type="checkbox" checked> <span data-copy="persona"></span></label>
           <label><input id="sensitive" type="checkbox"> <span data-copy="sensitive"></span></label>
