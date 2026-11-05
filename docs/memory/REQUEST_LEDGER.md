@@ -1673,3 +1673,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **目视判定**：本人打开 donor crop 与 `103_texture_transfer_v1_local_review.png`。像素 donor 色相/线密度与目标不符，candidate 呈直硬条带/截平端头，移除手/袖后仍留大空区；代理拒绝局部门，不进 C。`hair_long_back_v2` 不是同造型隐藏源。停止继续调同一 crop/条带宽度，不把此诊断叫修复。
 - **验证与范围**：`make test` 2638/0（存在已知 unused-function warning 与负向测试诊断）；脚本实际跑出候选/board/JSON。未跑 `selfcheck_all.sh`；未启动 C（局部门失败）；production sprites/rig/generator/engine 无改动。
 - **记忆/下一步**：更新 `layered_backfill_wip_review.md`、GAPS/TASKS/MEMORY/JOURNAL/LESSONS #467；A69.1/铁律17继续适用，不新增重复规则。T67.71 仍阻塞；需要获批同造型分层源或作者补画源。取得新来源后仍按异物 mask 与新发丝 alpha 分离、先局部目视、后完整 C 矩阵的顺序执行。
+
+### 2026-11-05 · 用户续令「继续未完成的任务，牢记铁律、亲自观察并继续制作资源/计划」：T67.71 来源交接资源
+
+- **用户要求/对位**：继续未完成 T67.71；遵守既有铁律；本人用眼睛看现存源和产物，不把失败候选包装成修复；继续制作有实际用途的资源及可执行工作流计划。当前缺少获批同造型源，故禁止猜画新发束；局部门通过前不进入 C，生产仍不得改动。
+- **分支/工作树核对**：固定分支 `arena/aaf1408c-zhuochong`；本地/远端都为 `3d1670d`。起始旧 checkout `43f5514` 上的本地记忆与未跟踪 QA 先安全保存在 stash `4d260cc`，随后同分支 `fetch`+`--ff-only`。比较确认 stash 没有仅存于 stash 的路径；相关文档差异与 11-05 QA 包已在 HEAD 递进保存，故丢弃冗余 stash。当前没有 stash 需要恢复。
+- **依据 / 视觉审计**：重读 `WORKFLOW.md` 铁律 0–17、要求/任务/记忆/日志与 T67.71 WIP review。重新打开 `hair_long_back@2x.png`、`hair_hood_pony@2x.png`、`hair_hood_twin@2x.png`：颜色或画风相近不等于隐藏形状来源；三个发型的轮廓/流向都不同，不能直接像素转移。打开最终 `105_artist_handoff_reference.png`：全身扁平源中左右手/袖位置可框定，但遮挡下真实头发并不存在；raw cutout 中袖带和手指一起进入发件；production ROI 也仍有袖口/手形。图板只呈现来源事实，没有任何候选发丝。
+- **实际资源**：新增 `105_artist_handoff_reference.png`（2800×1840，最终 SHA-256 `e1c04d933edcb43cb4eb2505a44bbd29f28017dd6f43a934fc9434752603bd52`）、`105_artist_handoff_brief.md`（来源/图层交付契约、局部视觉门、真实 C 顺序）、`make_t67_71_artist_handoff_sheet.py`（仅拼合事实来源与 ROI，不绘制候选）、`106_artist_handoff_metrics.json`（源/目标 hash、区域和 no-inference 状态）。均在 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/`。生成器运行 exit 0；metrics JSON 解析、script `py_compile` 通过。
+- **验证/边界**：本轮开始后 `make test` 实跑 2638 通过 / 0 失败；保留已知 `_zperf_probe` warning 与负向测试预期诊断。没有启动 C，因为没有新的局部门通过候选；没有修改生产 sprite、rig、generator 或 engine。该 handoff 是阻塞输入资源，不是核心头发修复通过。下一步取得获批同造型分层作者工程或作者明确标注的新补画层，再先做隔离局部目视，之后才进行动作/转场与 `ParamHairSway` 分离的真实 C 矩阵。

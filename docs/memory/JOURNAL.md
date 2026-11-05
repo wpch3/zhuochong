@@ -8240,3 +8240,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **本人目视结果/停止条件**：打开 `101_hair_long_back_v2_texture_donor_crop.png` 与 `103_texture_transfer_v1_local_review.png`。donor 具有强直线/冰蓝区域，与目标的紫粉渐变及线稿密度不匹配；合成板呈直硬条带、端头截平，且清除袖口/手后仍留下大块未补空区。候选**局部门拒绝**，不送真实 C；不继续微调同一 donor crop、条带宽度或 mask。`hair_long_back_v2` 是不同形状的独立后发件，不能充当该兜帽长发隐藏形状的来源真值。
 - **验证/边界**：本轮 `make test` C-only **2638/0**，出现已知 `_zperf_probe` unused-function warning 与负控预期诊断；texture script 实际运行生成 3 个图与 JSON，WIP review 已更新。未跑 `selfcheck_all.sh` 或 C 预览（局部门没过，不触发 C 门），未改 production sprite、rig、generator、engine。`Pillow 13.0.0` 只临时装到 `/tmp/t67_pillow`，未改项目依赖。
 - **仍未解决/下一步**：可达图像没有同造型遮挡后发丝真值，当前已尝试的 donor 直接转移失败。需要获批的同造型分层原稿或作者明确补画源；取得前停止猜测条带。未来重启时先逐像素分离异物清理 mask 与新发丝 alpha，先过局部目视，再进真实 C 完整动作/转场矩阵，arm action 与 `ParamHairSway` 分开归因。
+
+## 2026-11-05｜继续 T67.71：制作来源交接资源和审阅工作流（仍未修复）
+
+- **用户本轮对位**：继续未完成任务，遵守铁律，用眼睛观察并思考，继续制作所需资源和工作流计划；失败候选不算修复，诊断价值不等于通过。核心目标仍是袖口/手遮挡处的长发连续性。没有获批同造型源，不能以猜画代替来源；局部视觉门通过前不启动真实 C，生产必须保持不变。
+- **状态核验**：固定分支 `arena/aaf1408c-zhuochong`。起始 `43f5514`，本地改动先保全到 stash `4d260cc`，再 `fetch + --ff-only` 到 `3d1670d`；核实远端同为 `3d1670d`。stash 没有仅存在于 stash 的路径，文档及 QA WIP 已被提交版本覆盖/更新，故安全 drop；当前无 stash、工作区开始时干净。重读 `WORKFLOW.md` 铁律 0–17、REQUIREMENTS/TASKS/MEMORY/最近 JOURNAL/LESSONS 与 donor 失败记录。`make test` 2638/0；仅为既有 C-only 基线，不宣称视觉/资产 QA 通过。
+- **新来源观察**：打开 `hair_long_back@2x.png`、`hair_hood_pony@2x.png`、`hair_hood_twin@2x.png`。长后发件能提供画风线索，但形状/发束路径与目标不同；hood pony/twin 也不是目标长发遮挡后的源。未做像素搬运或新的头发候选。当前 production ROI 的实际图仍看得到袖口/手形，raw cutout 也证实对象随发层进入；扁平全身源不能提供被遮挡头发真值。
+- **实际制作资源**：生成 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/105_artist_handoff_reference.png`（2800×1840，SHA-256 `e1c04d933edcb43cb4eb2505a44bbd29f28017dd6f43a934fc9434752603bd52`）。本人打开最终板：左侧全身 flat source 框仅定位遮挡对象；中部 raw crop 清楚呈现袖带/手指被带入 cutout；右侧 production crop 显示当前发层的旧对象像素；图板没有绘制或暗示发束形状。配套 `105_artist_handoff_brief.md` 明确要求作者来源、坐标注册、后发与可动对象分层、局部门先审和真实 C 后审；`make_t67_71_artist_handoff_sheet.py` 只拼现存图像；`106_artist_handoff_metrics.json` 登记源/目标/非匹配 style sources hash 与 no-inference 声明。
+- **验证与边界**：handoff script exit 0；metrics JSON 解析、`py_compile` 通过。此次生成图是来源请求/工作流资源，不是发丝候选或核心修复。无 C 运行/帧验证，无 production sprite、rig、generator 或 engine 改动；`selfcheck_all.sh` 未运行。`Pillow` 临时安装在 `/tmp/t67_pillow`，未改依赖。
+- **下一步**：等获批的本造型分层作者工程，或作者明确标记的新补画层。收到后依 brief 的第 0–4 阶段走：来源核验→隔离导出→整件和双 ROI 放大目视（不合格即停）→真实 C 动作/转场与 `ParamHairSway` 分离矩阵→用户批准后才评估生产。当前 T67.71 仍开放、无 accepted candidate。

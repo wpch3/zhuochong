@@ -20,6 +20,7 @@
 - **来源门槛 / 下一步**：`sheet_long_hood.png` 与 raw 都是扁平 RGB；全仓未找到 PSD/PSB/KRA/XCF 分层作者文件，扁平图不含袖口/手后方被遮住的真实发丝。非兜帽 `sheet_long.png` 造型不同，不能冒充该隐藏区域的源真值。未做生产修补，也不采用随意邻域补色、任意位移或全贴图 `alpha=255`。需要获批分层/补画来源，或先做可审阅、隔离的连续发丝重建 WIP；动态矩阵仍欠其它手臂角度/过渡/摆动相位与更多组合后，才具备完整真实 C 验收。详细帧、坐标、QA exit 1、SHA 与解释见上述 T67.71 evidence 包。
 - **2026-11-05 WIP 复核与新方法止损**：先从固定分支旧 checkout `43f5514` 安全保全本地改动，再 fetch + `--ff-only` 到远端 `2d04ede`；提取 stash 中的未跟踪 QA 包 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/`。同一包记录 v1/v2 的 C 探索失败、v3–v7 的局部门失败、颜色 mask/AI 91/92失败。新增一次完全不同的字面纹理转移试验：把 `design/redraw/hair_long_back_v2.png` 内部 220×370 像素块映射到分离曲线锁 alpha。本人打开 `103_texture_transfer_v1_local_review.png` 后拒绝：donor 色相/线密度和目标不合，条带端头截平，清除对象处周边仍空；未过局部门，未送 C。直接纹理 donor 方法停止，不做同源条带宽度/遮罩微调。详见 WIP review 与 `104_texture_transfer_v1_metrics.json`。
 - **当前阻塞**：`hair_long_back_v2.png` 是不同形状的独立后发设计，不是兜帽长发遮挡后的原画真值；目标贴图邻接可见像素不足以推断隐藏发束拓扑，且同一 flattened cutout 含衣物残留风险。下一步必须取得获批同造型分层来源/明确补画源；未有新输入前不再堆猜测候选。生产素材、rig、生成器未改，T67.71 仍未修复。
+- **2026-11-05 最新续做 / 作者来源交接（未修复）**：固定分支实查从 `43f5514` 快进至 `3d1670d`；stash `4d260cc` 没有仅存在于 stash 的路径，原有记忆与 QA 内容已在提交版中，故安全删除。本人检查 `hair_long_back@2x.png`、`hair_hood_pony@2x.png`、`hair_hood_twin@2x.png`，视觉轮廓/流向不匹配，不作 donor。为下一步获取真实来源，增加 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/105_artist_handoff_reference.png`（扁平全身源/旧 cutout/当前发件 ROI 的事实定位，无绘制发丝）、`105_artist_handoff_brief.md`、生成脚本和 `106_artist_handoff_metrics.json`。目视确认当前生产 hair ROI 仍见旧手袖像素；扁平源不能揭示隐藏发丝。该 handoff 只是来源请求资源与分阶段验收计划，非美术修复。局部门未通过，无 C、无生产改动；下一步等获批同造型分层源或作者明确补画层，再从隔离局部目视门开始。
 
 ---
 

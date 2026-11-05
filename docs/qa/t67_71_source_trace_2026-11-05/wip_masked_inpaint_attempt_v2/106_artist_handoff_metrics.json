@@ -1,0 +1,67 @@
+{
+  "task": "T67.71",
+  "status": "source-only author handoff; not a hair candidate and not a repair",
+  "production_changes": false,
+  "source_sheet": {
+    "path": "characters/xiaoxun/design/sheets/sheet_long_hood.png",
+    "sha256": "32f38c1006d04f4d52216965f3a4388dd5efce39b6d48afe77411ec7938b5deb",
+    "dimensions": [
+      1024,
+      1536
+    ],
+    "flattened": true
+  },
+  "target_sprite": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15",
+    "dimensions": [
+      1132,
+      1664
+    ]
+  },
+  "raw_cutout_crop_board": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/49_raw_source_cuff_hand_crop_review.png",
+    "sha256": "299a775be9c6ca1632cb7aea8fa0774ff3da11b74509d0b3c025d7893a0bd16c"
+  },
+  "visually_audited_nonmatching_style_sources": {
+    "characters/xiaoxun/forms/teen/sprites/hair_long_back@2x.png": "15b0e42604acafb9bbf1475ac178bf54b37f222914b632c4def590b199ab5873",
+    "characters/xiaoxun/forms/teen/sprites/hair_hood_pony@2x.png": "7853415211fbad155b7020e3e44aa664849f57268ad06121e7f5ddeeb7ff3319",
+    "characters/xiaoxun/forms/teen/sprites/hair_hood_twin@2x.png": "d3f664a0205814bbdca8f7fb43284fdb67783b418cf4b2e4ab0fe70892fe5a71"
+  },
+  "target_crop_boxes_xyxy_half_open": {
+    "LEFT": [
+      51,
+      849,
+      396,
+      1368
+    ],
+    "RIGHT": [
+      736,
+      849,
+      1081,
+      1368
+    ]
+  },
+  "approx_source_sheet_boxes_xyxy": {
+    "LEFT": [
+      270.59,
+      790.78,
+      312.17,
+      858.21
+    ],
+    "RIGHT": [
+      702.08,
+      791.35,
+      744.22,
+      858.21
+    ]
+  },
+  "output": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/105_artist_handoff_reference.png",
+  "output_sha256": "e1c04d933edcb43cb4eb2505a44bbd29f28017dd6f43a934fc9434752603bd52",
+  "output_dimensions": [
+    2800,
+    1840
+  ],
+  "visual_claim": "Boxes localize source evidence only; hidden hair shape remains unknown. No pixels were painted, inferred, or transferred.",
+  "next_gate": "author-approved layered source or explicitly authored repair layer; then local visual pass before any real C test"
+}
