@@ -1,0 +1,86 @@
+{
+  "task": "T67.71",
+  "status": "isolated speculative new-design WIP; not accepted; not hidden source truth; not production",
+  "design_method": "new S-flow cascade: five overlapping, curved lock volumes with hand-authored asymmetrical highlight/shadow ribbons and staggered ends; no source-image pixel remap, no single broad plate, no image-generation or inpainting",
+  "reference": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15",
+    "size": [
+      1132,
+      1664
+    ],
+    "use": "visible silhouette/color/line-flow reference only; not proof of occluded topology"
+  },
+  "cleanup_mask": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_polygons_v2.json",
+    "sha256": "06d50f64c5b76ebc60f6b5cf4f582bd8916a070484a6783e88ab0d6022e64f49",
+    "warning": "visible cuff/hand cleanup ROI only; overlaps some legal hair and is not a hair silhouette"
+  },
+  "manual_new_art_local_bounds": [
+    120,
+    118,
+    342,
+    520
+  ],
+  "c_validation": false,
+  "production_changed": false,
+  "outputs": {
+    "t67_71_ribbon_cascade_v1_left_local.png": {
+      "sha256": "3acfd3fc892f37c56df570711d41f73915c161481d60d36c109ced0a544b404c",
+      "bytes": 92587
+    },
+    "t67_71_ribbon_cascade_v1_right_local.png": {
+      "sha256": "049df634190c8e6f2a134d585831c299a965823f0426695ff6f4df2748d4cb0e",
+      "bytes": 92171
+    },
+    "t67_71_ribbon_cascade_v1_underlay.png": {
+      "sha256": "daabe9131081d3a8318098b66dd277881e9b5d95ed0a9e1a290930feee731db7",
+      "bytes": 186574
+    },
+    "t67_71_ribbon_cascade_v1_object_clear_mask.png": {
+      "sha256": "e5f36bfa0233be99ebe435b806c78a100f1b6259501f8977eb920121860a63fe",
+      "bytes": 20119
+    },
+    "t67_71_ribbon_cascade_v1_clean_front.png": {
+      "sha256": "64bce6713226bcb47336a43aa25b59ba6f1cfd6cfde3308683ad4987502af747",
+      "bytes": 907476
+    },
+    "t67_71_ribbon_cascade_v1_composite.png": {
+      "sha256": "cf8685f0697a6e67078d130c615e184069ec0b841f63626b099a8d58d8c4d35b",
+      "bytes": 839943
+    },
+    "t67_71_ribbon_cascade_v1_registration_foreground.png": {
+      "sha256": "6b814997a34663e4f02d3551b75327bb27ec06e6abd6719d4a00fdfbb2de1167",
+      "bytes": 848959
+    },
+    "t67_71_ribbon_cascade_v1_static_mock.png": {
+      "sha256": "2befe3ccaa8f0621dfad7191b777703ddf7cc442fb048b76deea15dd35bb7808",
+      "bytes": 867935
+    },
+    "t67_71_ribbon_cascade_v1_review.png": {
+      "sha256": "c16cadbd31258f20722dbebb023dc0f5fd4a0087087f2da9ac44871fb55beaca",
+      "bytes": 719003
+    },
+    "t67_71_ribbon_cascade_v1_left_composite_3x.png": {
+      "sha256": "21b9ef60ee852b0779cb3c3627ca918ec9813b85fd8baeb4b8f0c0d9a8586d6d",
+      "bytes": 224747
+    },
+    "t67_71_ribbon_cascade_v1_left_static_mock_3x.png": {
+      "sha256": "22ec86cb71b10945c71b9da121568ccc0ba7bbdbdc50affd2feabb12d42c4dee",
+      "bytes": 244270
+    },
+    "t67_71_ribbon_cascade_v1_right_composite_3x.png": {
+      "sha256": "248dd9bdb1c5fdc01b4fb5128bee803a867ffcbc0fde235240a3c4142710d9a1",
+      "bytes": 213146
+    },
+    "t67_71_ribbon_cascade_v1_right_static_mock_3x.png": {
+      "sha256": "cf823a135afeea52d84dc1d884387c31250255eed12e12f3b4ccfa3867ae11d5",
+      "bytes": 232459
+    }
+  },
+  "limitations": [
+    "Ribbon topology and overlap are a design hypothesis; hidden strand order/coverage remain unknown.",
+    "Static foreground is a registered duplicate from the flattened sprite, not an actual C arm/cuff.",
+    "Must pass isolated local human review and user confirmation before real C action/transition testing; production requires separate approval."
+  ]
+}

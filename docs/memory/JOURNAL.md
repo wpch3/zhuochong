@@ -8293,3 +8293,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **隔离试作与亲目判决**：`handpainted_continuation_v1..v4/` 每轮均由本人打开 review board；细交叉丝浮离已有发件，宽叶/宽片仍呈几何块面且没有自然连入当前两侧长发，逐一拒绝。接着以当前目标精灵里可见的下段后发作为纹理参考，做 2-D remap 到独立手绘轮廓（`same_sprite_warp_v1..v3/`）。v1 donor 透明边被误作 RGB，黑孔/硬切；v2 使用全 alpha donor 后硬横顶；v3 根部延长与渐隐后，左右 3× clean/static crops 仍读成独立大板，深直竖线与局部楔口突出，故仍拒绝。颜色/来源相同不等于隐藏发束 topology 或 art direction 正确。全部是新设计 WIP，不是 hidden truth。
 - **范围与门禁**：review 图板与左右放大证据在每个 QA 子目录；详细观察和失败原因见 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/layered_backfill_wip_review.md`；hash manifest 为 `docs/qa/t67_71_source_trace_2026-11-05/continuation_experiments_SHA256SUMS.txt`。没有任何候选过局部门，因此未进真实 C、未测 arm transition/ParamHairSway、未改 production sprite、rig、generator 或 engine。不能将这批 work-in-progress 算作 T67.71 修复。
 - **下一步**：继续只能探索新的艺术构成依据；不得重复几何板、同-source remap 或只调 alpha/宽度。达到本地门之前不能进 C；候选局部通过后也需用户确认具体新设计，再跑真实 C 动作/转场，生产审批独立。T67.71 仍开放。
+
+
+## 2026-11-05｜继续 T67.71：锁组与 S-flow 新设计研究（均未通过）
+
+- **任务/约束对位**：T67.71 仍未完成；本轮延续用户 A69.4/A69.5 授权：只允许贴近 hood-up 长发的新设计提案，不准称为隐藏真值；未过局部门不得进真实 C，生产改动独立审批。开工核对固定分支 `arena/aaf1408c-zhuochong` 与本地改动，沿用当前来源追踪结论：扁平源没有被袖/手遮住的发丝作者层。此前 `make test` 2638/0 是 C-only 基线；本轮未重跑，因为仅新增隔离 QA 图，不触及生产/C。
+- **执行路线判断**：不再碰同目标 lower-hair warp、AI、inpaint、透明 mask 膨胀或单张后发板；试做三种新的手工构成：窄锁束群、相互覆盖的锁量、S 流瀑布。源图仅作现有可见轮廓/色彩/线流参考。使用独立 object-clear mask 与 preserved-alpha compositing；静态前景只作注册 mock。
+- **实际 WIP 与本人审查**：`strand_weave_v1/` 将六条窄锁分束，review 仍如梳齿/细板，根端漂离；拒绝。`strand_weave_v2/` 改成五条重叠锁体和弧形体积带，review 仍有规则并行齿、阶梯根端和独立挂片感；拒绝。`ribbon_cascade_v1/` 做五条 S-flow 锁体，review 和左右 3× 图仍显示重复扁带、根部外露、轮廓过齐，与现有宽侧发笔触/体积不融；拒绝。三者均不是用户确认候选。
+- **资源/验证**：脚本、isolated underlay/clean-front/composite/static registration mock、左右 ROI、3× crop、review、metrics 和 SHA 在 `docs/qa/t67_71_source_trace_2026-11-05/{strand_weave_v1,strand_weave_v2,ribbon_cascade_v1}/` 与 `strand_lock_studies_SHA256SUMS.txt`。`sha256sum -c`、JSON 解析与脚本编译均通过。本人看最终 review board，所有新发层仍不达美术局部门。
+- **范围结论**：无候选过局部门，没有实际 C 动作/手袖遮挡/转场/`ParamHairSway` 验证，不修改 production sprite/rig/generator/engine。不得把这些 WIP、静态 mock 或 C-only 测试说成修复。T67.71 继续开放；下一轮不能再通过增加锁数、调宽度/颜色/alpha 重跑，应另找真实可见笔触关系支撑的新构成。

@@ -98,3 +98,15 @@
 这是实际的隔离绘制与 texture-remap 试作，但没有一项成为可交付候选。用户授权的新设计范围仍有效；这些形状仅能称为新设计 WIP，不能说成原像素或隐藏真值。局部目视门不通过，所以没有启动真实 C 动作、转场、`ParamHairSway` 分离验证，也没有任何生产接入。记录真实困难：脚本能套准、但当前合成形状仍有明显“板/片”读感，无法靠调宽度/alpha/换同 donor 局部达到角色原画级质量。后续继续工作须采用真正有新增艺术结构依据的方案（不可再重复已失败的同形几何板/同源 remap），并先把左右全件及放大图看过；不得把寻画师建议或本记录本身当作核心修复。
 
 **可复核文件**：`handpainted_continuation_v1..v4/` 各自 script/metrics/review/composite；`same_sprite_warp_v1..v3/` 各自 script/metrics/underlay/review/static mock；v3 左右 clean/static 3× crops。统一 SHA 清单：`docs/qa/t67_71_source_trace_2026-11-05/continuation_experiments_SHA256SUMS.txt`。
+
+## 2026-11-05 追加：分叉锁组与 S 流瀑布新构成试验（均拒绝）
+
+用户要求未完成就继续制作，且不得把失败方法换名重跑。执行判断：不再重复同目标 2-D texture warp，也不再做单张宽板；改为单独手工构成多个有独立明暗和错落发尾的锁束，配准在原目标 ROI，仅把可见 hood-up 长发作为轮廓/色线参考。先做隔离 underlay 与前景清除层，保留原 sprite alpha；静态 foreground 仅用于坐标检查。该路线仍是 speculative new design，不可能恢复隐藏真值。
+
+- **`strand_weave_v1/`**：六条分离的窄锁束 + 细槽线。本人看 `t67_71_strand_weave_v1_review.png`、左右局部和 3× 放大，仍明显读作梳齿/并排细板，根端漂离现有侧发，底部尖端过均匀；拒绝。
+- **`strand_weave_v2/`**：把构图改为五条相互覆盖的锁体，并加弧形明暗带，不能靠“更多细丝”修补 v1。复看 review 后仍有规则平行的齿梳、阶梯根端和独立挂片感；与原有侧发的连接和颜色/笔触不融，拒绝。
+- **`ribbon_cascade_v1/`**：新做 S-flow 发束瀑布，让上根更早藏进可见发件、弯折与尾端错落。本人逐图看 review board 和左右 3× clean/static crops；虽然比直条有流动，但仍像重复的扁长带，根部阶梯、轮廓过齐，局部明暗过硬，仍未融入现有发片；拒绝。没有把这版当候选，更没有进 C。
+
+这些是新构成探索，不是几何板/旧 remap 微调；结果仍表明人工矢量锁束在当前细节级别下读作“梳子/带片”，没有达到局部风格门。v1 脚本的 alpha 组合后来修正为“原 alpha × keep mask”，已重新生成最终 review；所有最终文件按 `docs/qa/t67_71_source_trace_2026-11-05/strand_lock_studies_SHA256SUMS.txt` 校验。执行 `make test` 未重跑；此前 2638/0 仅是 C-only 基线，且不构成美术验收。没有候选通过，因此没有真实 C 动作、手袖遮挡、转场或 `ParamHairSway` 测试，没有生产 sprite/rig/generator/engine 变更。
+
+**当前结论**：T67.71 仍未完成。下一次若继续制作，须从现有目标的可见笔触/实际发片体积关系重新构造，不可再增加锁数、只调 alpha/颜色/宽度，或复用同源 texture remap；先看局部过门，再让用户确认具体新设计，之后才进真实 C。生产审批独立。完整可复核实验与统一 SHA 在 `strand_weave_v1/`、`strand_weave_v2/`、`ribbon_cascade_v1/` 与 `strand_lock_studies_SHA256SUMS.txt`。

@@ -1697,3 +1697,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **方案判断/实际制作**：先跑 `make test`（2638/0，C-only），之后不再用已拒 AI、扩 mask、inpaint 或外国型发件 donor。新作左右独立手绘曲线续层 v1–v4；本人看板后因浮离细丝、几何叶片/板面和不自然连接全部拒绝。再试同目标 sprite 下段可见头发纹理的 2-D warp v1–v3；修透明 donor 后仍有硬顶或大板/竖线/楔口，全部拒绝。
 - **当前门禁与产物**：WIP / metrics / review board / 3× crop 及 SHA 在 `docs/qa/t67_71_source_trace_2026-11-05/handpainted_continuation_v1..v4/`、`same_sprite_warp_v1..v3/`、`continuation_experiments_SHA256SUMS.txt`，细节同步 `layered_backfill_wip_review.md`。本轮有实际隔离 art WIP，不是只写建议；但没有通过候选，故没有 C、转场或 `ParamHairSway` 验证，也没有生产/rig/generator 改动。T67.71 仍未完成。
 - **下一步**：继续探索真正不同且有新增艺术结构依据的方案；不得重复同几何板、同源 remap 或单纯调 mask/宽度。先局部通过，再请用户确认具体设计，之后才做真实 C；生产审批仍独立。
+
+
+### 2026-11-05 · 续令执行记录「确认未完成就继续制作，不只停在交接」：T67.71 新构成研究
+
+- **实际执行**：在已归档手绘 continuation 与 same-sprite warp 均拒绝后，不重复该两路；本轮新增窄锁组 `strand_weave_v1`、交叠锁组 `strand_weave_v2`、S 流瀑布 `ribbon_cascade_v1`。本人逐一打开最终 review board 与局部 3× crops。
+- **结果**：三种仍读作梳齿/平行扁带，且根部未融接、轮廓过齐；全部拒绝，没进入用户确认或真实 C 门。QA 与 metrics 在同名隔离目录，SHA 清单 `strand_lock_studies_SHA256SUMS.txt`。production/rig/generator/engine 未改，未跑 C/动作/转场/ParamHairSway；此前 C-only make test 2638/0 不代表本轮美术通过。
+- **下一步**：T67.71 仍未完成。不得把失败 WIP 算进度完成，也不得重复增加锁数或只改宽度/色/alpha；继续寻找不同的艺术构成依据后重新局部目视，具体提案过门并由用户确认后才进入 C，生产另批。
