@@ -8284,3 +8284,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **本人结论**：以上没有一份过局部门；WIP review board `161`/`166`、目标 full sprite 与 3× ROI 都已目视。图板上的静态复叠只用旧手袖像素检查注册，不是实际手臂层或 C 动作。自动/半自动工具当前无法做到“和原发笔触足够接近又自然连续”的新画，尤其在低分辨率 2× ROI 里，遮挡后发束拓扑和边缘笔触仍需有经验的角色画师人工设计/收口；此为当前实际困难，不再用新名称重复相同路线。
 - **下一步**：用户的新设计权限已在案，无需再次询问是否允许；应把 `107_T67_71_registered_artist_template.ora`、原 target sprite 与已确认手袖 contour review 交给具备相应日系游戏立绘笔触能力的画师，要求小幅贴近原方案的连续后发分层/干净前景层。收到后先进行注册、透明 alpha、左右/全件局部目视，用户确认此实际图稿后，才进真实 C 帧矩阵；arm action 与 `ParamHairSway` 单独归因，生产审批独立。
 - **验证/提交边界**：已运行 `make test` 2638/0（C-only）；对 OpenCV/ Pillow 工具脚本做过运行；本轮仍不宣称美术通过。未进入 C，不改 production sprite、rig、generator 或 engine。新编号 119–167 及各 script/metrics/review 是审计性负例，清单之后需重算并校验。
+
+
+## 2026-11-05｜T67.71 新设计方向继续实作：手绘 continuation 与同目标 texture warp（均拒绝）
+
+- **对位与基线**：按最新用户要求继续做，而不是只写 handoff；锁定 `arena/aaf1408c-zhuochong`，HEAD 为 `77e25f9b8803e19fcdb5dd2a62d39655b0eb8ec2`。开工重读 `WORKFLOW.md` 铁律 0–17、A69.4、T67.71/失败 review。保留当前工作区差异的旧 `stash@{0}` 未apply。`make test` 实跑 **2638 项通过 / 0 失败**；仅 C-only 基线。
+- **先行判断方案**：放弃已否决的 AI 重绘、扩 mask、inpaint 和 foreign-hair donor。先用手工指定左右独立曲线/alpha 做非原像素局部新设计；局部画面不好时再考虑一个实质不同来源的同目标低层发片纹理 remap。全部只写入 QA 隔离目录，不动生产。
+- **隔离试作与亲目判决**：`handpainted_continuation_v1..v4/` 每轮均由本人打开 review board；细交叉丝浮离已有发件，宽叶/宽片仍呈几何块面且没有自然连入当前两侧长发，逐一拒绝。接着以当前目标精灵里可见的下段后发作为纹理参考，做 2-D remap 到独立手绘轮廓（`same_sprite_warp_v1..v3/`）。v1 donor 透明边被误作 RGB，黑孔/硬切；v2 使用全 alpha donor 后硬横顶；v3 根部延长与渐隐后，左右 3× clean/static crops 仍读成独立大板，深直竖线与局部楔口突出，故仍拒绝。颜色/来源相同不等于隐藏发束 topology 或 art direction 正确。全部是新设计 WIP，不是 hidden truth。
+- **范围与门禁**：review 图板与左右放大证据在每个 QA 子目录；详细观察和失败原因见 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/layered_backfill_wip_review.md`；hash manifest 为 `docs/qa/t67_71_source_trace_2026-11-05/continuation_experiments_SHA256SUMS.txt`。没有任何候选过局部门，因此未进真实 C、未测 arm transition/ParamHairSway、未改 production sprite、rig、generator 或 engine。不能将这批 work-in-progress 算作 T67.71 修复。
+- **下一步**：继续只能探索新的艺术构成依据；不得重复几何板、同-source remap 或只调 alpha/宽度。达到本地门之前不能进 C；候选局部通过后也需用户确认具体新设计，再跑真实 C 动作/转场，生产审批独立。T67.71 仍开放。

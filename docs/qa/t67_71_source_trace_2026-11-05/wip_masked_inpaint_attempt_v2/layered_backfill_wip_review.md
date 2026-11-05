@@ -78,3 +78,23 @@
 - **163–167 OpenCV inpaint + alpha union：拒绝**。Telea / Navier-Stokes 在 broadened cuff/hand mask上虽能补 RGB，联合 alpha 后仍出现明显几何云团/色块，不是发束画法。review `166_inpaint_alpha_union_review_v3.png` 记录。
 - **结论/下一步**：已试局部 AI、干净 guide、alpha-hole 修复与两类 inpainting；截至 v6，没有通过局部目视的提案。此处真实工作不是更换 script 名称，而是熟悉原角色笔触的画师做连续细束、轮廓收口并保持与现有宽侧发小幅接续。已明确暂停同类自动生成/微调，不送真实 C。用户的“新设计提案”授权已经有效，无需重问授权；需要的是能达到美术质量的作者手工层。之后用户确认实际图稿和本地目视过门后，才进入 C 动作/转场，生产另审批。
 - **验证边界**：所有编号 119–167 均是隔离 QA / guide / 负例；局部 mock 中复用的旧手袖只检查坐标，不是实际可动手臂或 C 验证。未修改 production sprite / rig / generator / engine。
+
+## 2026-11-05 续作：隔离手绘连续层与同目标纹理网格试验（全部未过局部门）
+
+用户最新要求是确认未完成就继续制作，且不能把已失败的 AI/inpaint/扩 mask 换名重跑。先重读当前 branch、工作区、`WORKFLOW.md` 铁律、A69.4 与本节旧负例；`make test` 基线为 2638/0（C-only，不是图像验收）。本轮没有恢复仍保留的旧 stash；当前生产精灵、rig、generator 均未改。
+
+### 隔离手绘线条试验（handpainted_continuation_v1–v4）
+
+- 新建 `docs/qa/t67_71_source_trace_2026-11-05/handpainted_continuation_v1..v4/`：由手工指定左右独立的 Bézier 线流和渐变、单独导出后发层；与已拒绝的 image-generation、OpenCV inpaint、18px mask 膨胀不同，没有 AI 或清理扩张。异物清理仍用单独 polygon mask；新发 alpha 没有从手/袖轮廓复制。
+- 本人打开每轮 review board 与 3× ROI 后全部拒绝：v1 是浮离既有发件的细小交叉丝；v2/v3 的尖叶形大面与黑洞不连贯；v4 虽改成低对比宽板和较直的向下流线，3× 仍呈独立几何片，和已有边缘发束的连接/线密度不足。遮挡物 trace v3 也留下可见轮廓痕迹；采用较宽的 manual polygon v2 后只解决清理覆盖，仍会擦掉一部分邻接头发，不能单独当发丝 alpha。四轮均未通过局部风格门、不送 C。
+
+### 同目标精灵纹理网格（same_sprite_warp_v1–v3）
+
+- 新建 `same_sprite_warp_v1..v3/`。与 `hair_long_back_v2.png` 外形不同的旧 donor 试验有别，此次只以目标 `hair_hood_long@2x.png` 本身下段可见后发作**新设计纹理参考**，将 fully-opaque source patch 经 2-D remap 放进另行手绘的局部后发轮廓；没有拿手/袖 silhouette 作发丝 mask。它仍是重建假设，不是 hidden truth。
+- v1 因 donor crop 含透明边/underlying RGB，3× review 可见黑洞和硬切；v2 限定全不透明样本并修正 alpha，黑洞消失但顶边是明显水平硬切；v3 将根部延入现有侧发下方并对顶/尾做渐隐。本人逐项看 `same_sprite_warp_v3_review.png` 与保存的左右 3× clean/static crops，纹理与现发色材更接近，但新增板仍读作一片独立的大面，内侧有一条过直且突出的深色竖线，和手袖前景相交处局部成楔口；静态 mock 只用于注册查看，不是实际 C 手臂。v3 仍拒绝，不送 C。不要继续微调同一 remap 区域或遮罩宽度。
+
+### 本轮结论 / 下一步门
+
+这是实际的隔离绘制与 texture-remap 试作，但没有一项成为可交付候选。用户授权的新设计范围仍有效；这些形状仅能称为新设计 WIP，不能说成原像素或隐藏真值。局部目视门不通过，所以没有启动真实 C 动作、转场、`ParamHairSway` 分离验证，也没有任何生产接入。记录真实困难：脚本能套准、但当前合成形状仍有明显“板/片”读感，无法靠调宽度/alpha/换同 donor 局部达到角色原画级质量。后续继续工作须采用真正有新增艺术结构依据的方案（不可再重复已失败的同形几何板/同源 remap），并先把左右全件及放大图看过；不得把寻画师建议或本记录本身当作核心修复。
+
+**可复核文件**：`handpainted_continuation_v1..v4/` 各自 script/metrics/review/composite；`same_sprite_warp_v1..v3/` 各自 script/metrics/underlay/review/static mock；v3 左右 clean/static 3× crops。统一 SHA 清单：`docs/qa/t67_71_source_trace_2026-11-05/continuation_experiments_SHA256SUMS.txt`。

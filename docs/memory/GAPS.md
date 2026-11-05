@@ -26,6 +26,8 @@
 - **2026-11-05 参考研究与绘制路线自审（仍阻塞）**：查 Live2D 官方 Illustration Processing/Template、CLIP STUDIO PAINT 官方/MUGENUP 拆件教程、Krita 图层手册；它们支持“扁平图拆件要补绘隐藏背景、头发分前/侧/后层”，但不提供小寻 hood-up 隐藏发束真值。重搜角色 long/hood/hair 资产、git refs 与 unreachable commit，未找到 PSD/PSB/KRA/XCF/同造型分层源；`hair_back@2x`、`hair_crown_long@2x`、midlong/hair-turn 只作不同形态/风格旁证。为回答用户是否制作困难，做了三种隔离 WIP：同图纵向续纹（110/111/112，竖向污迹）、生成式全发重绘（113/metrics，848×1248 RGB 白底无 alpha、轮廓不匹配）、程序化左右后发底片（114–118，平板硬块且前层仍见残留）。本人逐图自审后全部拒绝、未送 C；WIP review 标注这是偏离“无来源不猜画”门的实验，不作进度或通过。下一步需获批同造型分层源，或用户明确授权一个全新设计重绘方向；局部门/真实 C/生产门不变。参考/证据见 `docs/REFERENCE_NOTES.md` 第七十四批与 `wip_masked_inpaint_attempt_v2/layered_backfill_wip_review.md`。
 - **2026-11-05 新设计授权后续试验（仍未过局部门）**：用户明确授权新设计提案、同时要求贴近现方案。此授权覆盖“可提案新设计”，不代表隐藏真值、具体图稿批准或 C/生产许可。尝试全头发 AI（119）、左右局部 AI（122/123）、清洁引导后的重绘（133/134）、alpha 注册修正 v3–v6（139–161）和 OpenCV 表面续纹/alpha union（163–166）。失败证据：119 全发变化过大；122/123 仍携带袖手黑痕；133/134 变成过宽平板；alpha 注册 v3–v5 清理残留/平直切口；v6 strand 版在本人 3× ROI 查看仍有水平硬顶、白色楔口和右下暗痕；OpenCV 结果是明显几何色块。均拒绝、不进真实 C；在最终图板中静态复叠旧手袖只证明配准，不是实际臂件验证。当前最佳行动是让熟悉该角色笔触的画师在 `107_T67_71_registered_artist_template.ora` 或同坐标透明层上绘制窄小后发提案，先经局部/全件目视和用户确认；仍不得说成原始隐藏头发。详细试验、ROI、门禁与哈希见 `layered_backfill_wip_review.md` 和目录 `SHA256SUMS.txt`。
 
+- **2026-11-05 新设计实作继续（手绘/同源纹理试验全拒绝）**：新增隔离 `handpainted_continuation_v1..v4/` 与 `same_sprite_warp_v1..v3/`。前者经本人复看仍是断开的细丝、几何叶片或板状块；后者用同目标发件下段可见 hair texture 做 2-D remap，v1 有 alpha/透明黑洞、v2 硬顶，v3 顶缘渐隐后仍是独立大块和深直线。均不通过局部目视，不进 C/动作/转场，不改生产。下一步严禁重复同 remap 或几何板细调；T67.71 仍未修复。详情在 `layered_backfill_wip_review.md` 续记与 `continuation_experiments_SHA256SUMS.txt`。
+
 ---
 
 ## 一、现在能跑的（基线，别重复造）

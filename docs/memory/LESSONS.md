@@ -7106,3 +7106,7 @@ Normal-hand trial28 在 1024px 原图上可见四个指瓣和三个指缝，缩�
 把 `hair_long_back_v2.png` 220×370 的实际像素块作为 donor，虽然来源选区无近洋红，但嵌入 Teen 兜帽长发 cuff/hand ROI 后，直线密度、冰蓝色块和端头轮廓明显不贴目标；透明清除对象后周边仍有未补空区。数字“选区干净”不说明它是同一画风、同一拓扑或可直接平移纹理。必须把 donor 的可迁移内容（颜色/纹理）与目的部件真值分开；局部板不过即停止，不能继续只调 donor crop/条带宽度，更不能送 C。
 
 - **证据**：`docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/101_hair_long_back_v2_texture_donor_crop.png`、`103_texture_transfer_v1_local_review.png`、`104_texture_transfer_v1_metrics.json`。同造型源层缺失，隐藏形状仍未知。
+
+### 468. 同一精灵的纹理可减色差，但不能把几何板变成自然发束（T67.71，2026-11-05）
+
+以同目标下段后发做 2-D texture warp，比跨发型 donor 更贴近色材，但输出仍可读成独立大面：alpha-safe patch 解决黑洞，不解决根部融接、线条组织和动态轮廓。手绘 Bézier 添几条丝也不能弥补缺少整体发束结构。局部门要按实际 3× 画面判；不因“同源颜色”或脚本指标晋级，也不继续只改 warp/mask 参数。

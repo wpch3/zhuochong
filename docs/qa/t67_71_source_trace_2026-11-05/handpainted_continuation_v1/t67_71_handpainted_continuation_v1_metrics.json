@@ -1,0 +1,77 @@
+{
+  "task": "T67.71",
+  "status": "isolated new-design WIP; not accepted; not hidden-original truth; not production",
+  "method": "hand-authored asymmetric tapered ribbon painting with local hair palette and sparse ink/glint accents; no AI, image inpainting, pixel donor, or broad object-mask dilation",
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "size": [
+      1132,
+      1664
+    ],
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15"
+  },
+  "object_trace": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_silhouette_polygons_v3.json",
+    "sha256": "4d32601b4e693c1b536a1201560bb88ef19dcb2a4367ad503828097dd0ab3813",
+    "use": "visible cuff/hand cleanup only; not hidden-hair alpha"
+  },
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "removed_visible_object_pixels": 17735,
+      "painted_ribbons": 3,
+      "design_note": "Three independently shaped tapered locks; no copied donor pixels."
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "removed_visible_object_pixels": 14845,
+      "painted_ribbons": 3,
+      "design_note": "Three independently shaped tapered locks; no copied donor pixels."
+    }
+  },
+  "outputs": {
+    "t67_71_handpainted_continuation_v1_review.png": {
+      "size": [
+        1840,
+        1500
+      ],
+      "sha256": "1d65ef84a0d8dec6518d25cd1fffa7174865728c085a3964b588875f4b1e2487"
+    },
+    "t67_71_handpainted_continuation_v1_underlay.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "5b46dfebaee3b790eb165c2c0ede4ecd1093cdc609ee680226215d08b3ee54e9"
+    },
+    "t67_71_handpainted_continuation_v1_clean_front.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "69ff545cb44ee2652b6f5ae66644520cf0495d92fbf4da04a654bee881c10bd2"
+    },
+    "t67_71_handpainted_continuation_v1_composite.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "571cebb68151d97ee290678f2f542d33bd64fb11712c2e79f9108a0d7c427cc1"
+    }
+  },
+  "limitations": [
+    "New line and lock topology is a design proposal, not recovered original hidden source.",
+    "No true C arm/cuff composition, action/transition, or ParamHairSway validation.",
+    "No production sprite, rig, or generator was modified."
+  ]
+}

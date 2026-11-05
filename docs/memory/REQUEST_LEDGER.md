@@ -1689,3 +1689,11 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **基线**：`make test` 实跑 2638 通过 / 0 失败；已知 `_zperf_probe` unused-function warning 与负向测试预期诊断保留。该 C-only 测试不表示美术/资产验收通过。
 - **实际资源**：为减少下一阶段作者绘制的坐标注册错误，新增 `107_T67_71_registered_artist_template.ora`（1132×1664）、`107_artist_template_preview.png`、`make_t67_71_registered_artist_template.py`、`108_artist_template_metrics.json`。模板中仅有旧 production PNG 参考、空白 clean-hair 层、空白左右 back-hair 层和 ROI 框线 guide；没有头发笔触/像素，不是候选或修复。程序验证 ORA mimetype/顺序、画布、5 层名称、三个空透明层、参考层 byte identity 和 merged image identity。本人打开预览，看到目标发件原有中间/侧发、袖口/手残留仍在；色框仅界定检查框，不构成 hidden hair shape。
 - **验证边界**：生成器 exit 0，metrics JSON / `py_compile` / ORA structural checks 通过；Krita 不在环境中，所以没有声称应用打开验证。没有 C 渲染、生产贴图/rig/generator/engine diff 为空。当前核心修复仍没有通过候选；下一步待获批同造型分层来源或作者明确补画层，先本地目视再进真实 C 动作/转场矩阵。
+
+
+### 2026-11-05 · 续令「没做好就继续制作；记住铁律与基础事项；先判断执行方案」：T67.71
+
+- **用户要求**：确认新设计尚未完成后继续制作，不要只重复建议画师/维护交接文档；遵守铁律与基础检查，并先判断执行路线。维持 A69.4 范围：新设计需贴近现有 hood-up 长发，不能伪装 hidden truth；具体候选局部目视通过并由用户确认后才进真实 C 动作/转场，生产改动另批。
+- **方案判断/实际制作**：先跑 `make test`（2638/0，C-only），之后不再用已拒 AI、扩 mask、inpaint 或外国型发件 donor。新作左右独立手绘曲线续层 v1–v4；本人看板后因浮离细丝、几何叶片/板面和不自然连接全部拒绝。再试同目标 sprite 下段可见头发纹理的 2-D warp v1–v3；修透明 donor 后仍有硬顶或大板/竖线/楔口，全部拒绝。
+- **当前门禁与产物**：WIP / metrics / review board / 3× crop 及 SHA 在 `docs/qa/t67_71_source_trace_2026-11-05/handpainted_continuation_v1..v4/`、`same_sprite_warp_v1..v3/`、`continuation_experiments_SHA256SUMS.txt`，细节同步 `layered_backfill_wip_review.md`。本轮有实际隔离 art WIP，不是只写建议；但没有通过候选，故没有 C、转场或 `ParamHairSway` 验证，也没有生产/rig/generator 改动。T67.71 仍未完成。
+- **下一步**：继续探索真正不同且有新增艺术结构依据的方案；不得重复同几何板、同源 remap 或单纯调 mask/宽度。先局部通过，再请用户确认具体设计，之后才做真实 C；生产审批仍独立。
