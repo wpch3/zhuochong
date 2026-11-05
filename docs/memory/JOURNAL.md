@@ -8249,3 +8249,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **实际制作资源**：生成 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/105_artist_handoff_reference.png`（2800×1840，SHA-256 `e1c04d933edcb43cb4eb2505a44bbd29f28017dd6f43a934fc9434752603bd52`）。本人打开最终板：左侧全身 flat source 框仅定位遮挡对象；中部 raw crop 清楚呈现袖带/手指被带入 cutout；右侧 production crop 显示当前发层的旧对象像素；图板没有绘制或暗示发束形状。配套 `105_artist_handoff_brief.md` 明确要求作者来源、坐标注册、后发与可动对象分层、局部门先审和真实 C 后审；`make_t67_71_artist_handoff_sheet.py` 只拼现存图像；`106_artist_handoff_metrics.json` 登记源/目标/非匹配 style sources hash 与 no-inference 声明。
 - **验证与边界**：handoff script exit 0；metrics JSON 解析、`py_compile` 通过。此次生成图是来源请求/工作流资源，不是发丝候选或核心修复。无 C 运行/帧验证，无 production sprite、rig、generator 或 engine 改动；`selfcheck_all.sh` 未运行。`Pillow` 临时安装在 `/tmp/t67_pillow`，未改依赖。
 - **下一步**：等获批的本造型分层作者工程，或作者明确标记的新补画层。收到后依 brief 的第 0–4 阶段走：来源核验→隔离导出→整件和双 ROI 放大目视（不合格即停）→真实 C 动作/转场与 `ParamHairSway` 分离矩阵→用户批准后才评估生产。当前 T67.71 仍开放、无 accepted candidate。
+
+## 2026-11-05｜继续 T67.71：制作坐标注册的空白作者模板（仍未修复）
+
+- **本轮要求**：用户只要求“继续未完成的任务。别忘记铁律”。按铁律 0–17 对位 T67.71；不重复 donor/AI/矢量失败路径，不把 template 当 candidate。当前源仍扁平且隐藏发丝未知，因此只能准备进一步可操作的输入模板，不画新头发、不做 C candidate。
+- **分支/现状核对**：当前固定分支 `arena/aaf1408c-zhuochong`。checkout 再次回到 `43f5514`，远端已前进至 `e88d0f6`。先 stash `ab02eb7` 保全 4 个记忆文档改动和 QA untracked，再 fetch + `--ff-only` 同步到 `e88d0f6`。确认 stash 无仅存路径，107 个未跟踪 QA 文件均在 HEAD，文档/WIP 已由当前版本保存后 drop stash；随后重读 WORKFLOW、REQUIREMENTS、MEMORY、TASKS、最近 JOURNAL、LESSONS 与 T67.71 WIP。
+- **基线与模板工作**：重新 `make test`，2638 项通过/0 失败；已知 `_zperf_probe` warning 与 negative-test 诊断保留。生成 `107_T67_71_registered_artist_template.ora`（1132×1664）、`107_artist_template_preview.png`、`make_t67_71_registered_artist_template.py`、`108_artist_template_metrics.json`。空白图层分别是 clean-hair plate、left back-hair、right back-hair；另有纯 ROI 框线 guide 和当前 production sprite reference。没有画入任何新 hair pixels。
+- **本人目视**：打开 preview 看到现存顶部中间 hair、左右长发和两侧 ROI 内的 cuff/hand 原样保留；蓝/橙框仅限定 crop bounds，不能读成新发束轮廓。预览只是供作者定位/开画的空白模板，不是 artwork、候选或修复。
+- **结构验证和限制**：生成器运行 exit 0，`108_artist_template_metrics.json` 可解析、Python `py_compile` 通过。ZIP 检查 ORA mimetype 首项、stack XML、1132×1664、5 个命名图层、3 个 full-canvas transparent draft layers、reference 像素 identity 与 merged-image identity；SHA 随目录 manifest 再验。环境未安装 Krita，因此只声称结构验证，未声称由编辑器打开。无真实 C 渲染，生产 sprite/rig/generator/engine 无改动，T67.71 仍无通过候选。
+- **下一步**：获取获批同造型作者分层工程或明确标注的新补画层，在此或等价 coordinate-registered 文件中单独创作 back-hair/clean plate；先审 full sprite 与双 ROI 的放大图，未过局部门不进 C；局部门通过后才跑实际动作/转场并独立控制 `ParamHairSway`，通过后再等待用户批准评估生产接入。

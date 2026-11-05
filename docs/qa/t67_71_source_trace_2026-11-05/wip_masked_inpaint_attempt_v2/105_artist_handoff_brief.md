@@ -42,4 +42,7 @@
 - `105_artist_handoff_reference.png` — source-only 图板，2800×1840；
 - `make_t67_71_artist_handoff_sheet.py` — 图板生成器，只合成现存来源/ROI，不绘制候选；
 - `106_artist_handoff_metrics.json` — source/target/hash、ROI、状态及 no-inference 声明；
+- `107_T67_71_registered_artist_template.ora` — 1132×1664 OpenRaster 空白工作模板：含空白 `Clean hair plate`、左右独立 back-hair 空图层、仅 ROI 框线的 guide，以及可见但标记为不可导出的当前生产参考图。没有新头发像素、没有批准来源、不得直接导出为修复；作者只在空白草稿层中创作，提交前须另做局部视觉门。
+- `107_artist_template_preview.png` 与 `108_artist_template_metrics.json` — 模板预览及图层/尺寸/透明空层/参考像素身份的结构核验。已验证 ORA ZIP 结构、canvas 尺寸、图层顺序、空层透明和 reference/merged 像素；当前环境无 Krita，尚未由图像编辑器实际打开验证。
+- `make_t67_71_registered_artist_template.py` — 模板生成与结构核验脚本；仅依据当前生产 PNG 建坐标模板，不绘制或推断发丝。
 - `SHA256SUMS.txt` — 本目录归档哈希。
