@@ -1,0 +1,84 @@
+{
+  "task": "T67.71",
+  "status": "explicit author-redraw WIP; not hidden truth, not locally accepted, not production",
+  "reference_basis": [
+    "Live2D official illustration-processing guidance: separate bangs/sides/back and add portions hidden in source before modeling.",
+    "Clip Studio Official tutorial (MUGENUP commentary): splitting a merged illustration requires drawing background behind parts; hidden back-hair tuft portions are redrawn.",
+    "Project target-side visible hair strands and existing alpha only; no pixels from hair_long_backonly_v1/v2 were copied."
+  ],
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "size": [
+      1132,
+      1664
+    ],
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15"
+  },
+  "visible_object_mask": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_silhouette_polygons_v3.json",
+    "sha256": "4d32601b4e693c1b536a1201560bb88ef19dcb2a4367ad503828097dd0ab3813"
+  },
+  "method": "Independent left/right soft back-hair plates with curved tapered locks; clean the visible cuff/hand from a separate front layer, then composite the new rear plate underneath. Design is inferred and explicitly labeled as a redraw.",
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "clean_mask_dilated_pixels": 17109,
+      "plate_alpha_gt0_pixels": 59206,
+      "plate_alpha_gt240_pixels": 56605,
+      "mask_sha256": "ac111a8e02dc1e5a0152bb74776411051538b4f31fe7e0264835b1d61e926bad"
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "clean_mask_dilated_pixels": 14167,
+      "plate_alpha_gt0_pixels": 62385,
+      "plate_alpha_gt240_pixels": 59765,
+      "mask_sha256": "d8ae19dae1836f76c1974144cfd3e5d5ebba406bf9e217e0f157bcacc421a0a4"
+    }
+  },
+  "outputs": {
+    "114_author_backhair_redraw_v1_plate_wip.png": {
+      "sha256": "f75c95c5072923e6d7f51c10b2bc2be4be5c209cd489b82b4aa881532d4f0803",
+      "size": [
+        1132,
+        1664
+      ]
+    },
+    "115_author_backhair_redraw_v1_clean_front_wip.png": {
+      "sha256": "4434e9a7694fc4dd8cc94a19f9ab486ebc810ba4490824d5acfeafcfb98de561",
+      "size": [
+        1132,
+        1664
+      ]
+    },
+    "116_author_backhair_redraw_v1_local_review.png": {
+      "sha256": "6f0f28b6b1ff462c2c6fcdae2b39aba04509b779c94c92b52db4c905f102baac",
+      "size": [
+        2600,
+        1640
+      ]
+    },
+    "118_author_backhair_redraw_v1_composite_wip.png": {
+      "sha256": "67d7c8d184112b7942354252b9c999ad66558f9a71c5763903fddd7bccc80a92",
+      "size": [
+        1132,
+        1664
+      ]
+    }
+  },
+  "limitations": [
+    "The occluded hair design cannot be recovered from the merged source; this is a new proposal, not source truth.",
+    "The mask may clear adjacent legitimate hair and must be visually checked at 100/200/400 percent on light and dark backgrounds.",
+    "This composite has not been tested with real foreground arms/cuffs, action extremes, transitions, or ParamHairSway.",
+    "The plate must be placed behind actual moving arm/cuff; front side locks remain separate. No rig or production integration has been made."
+  ]
+}

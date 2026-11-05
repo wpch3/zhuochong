@@ -56,4 +56,13 @@
 
 - 追看 `characters/xiaoxun/design/redraw/hair_only/hair_long_backonly_v1_raw.png`、`hair_long_backonly_v2_raw.png` 及对应透明处理图；它们属于早期 T67.7 的非 hood-up 长发“髮だけ差分”路线，处理后均为 843×1264。
 - 对照板 `109_backonly_source_audit.png`：两侧 target ROI 与两张完整 hair-only 片并列显示。v1 有中心开口、双侧长发和可见绿色边缘杂点；v2 是较连续的中心后发片，色相/材质比此前 `hair_long_back_v2` 更接近目标，可作为**画风旁证**，但中心分缝、外轮廓、发束流向与 hood-up 目标不同，也无目标画布注册。它不能证明袖口/手后隐藏头发的拓扑。
-- 结论：两张图都不作目标真值、修复 donor 或候选；本轮没有转移像素、绘制头发、跑 C 或改生产文件。配套 `109_backonly_source_audit_metrics.json` 记录路径、尺寸、alpha、SHA 与限制，`make_backonly_source_audit.py` 只合成现存图像。后续仍需获批同造型分层源或作者明确补画；不因发现相似画风资源而放宽来源/局部门。
+- 结论：两张图都不作目标真值、修复 donor 或候选；该阶段没有转移像素、绘制头发、跑 C 或改生产文件。配套 `109_backonly_source_audit_metrics.json` 记录路径、尺寸、alpha、SHA 与限制，`make_backonly_source_audit.py` 只合成现存图像。后续仍需获批同造型分层源或作者明确补画；不因发现相似画风资源而放宽来源/局部门。
+
+## 2026-11-05 追加：查阅绘制参考并自审新路线（全部拒绝，未进 C）
+
+- **参考核查**：查 Live2D 官方 Illustration Processing 与 Template Tutorial、CLIP STUDIO PAINT 官方/MUGENUP 合并图拆件教程及 Krita 图层手册；结论是被遮挡区域确需在分层前补绘，左右后发/侧发应按可动关系组织；合并图拆件时要新画被遮住背景，并叠回原图检查。官方/社区通用流程不能给出本目标隐藏发丝真值。来源及项目映射已记 `docs/REFERENCE_NOTES.md` 第七十四批。
+- **项目/历史搜索**：本轮查看 `hair_back@2x.png`、`hair_crown_long@2x.png`、`design_sheet_midlong.png`、`pose_ref/hair_turn.png`，并重搜 `characters/xiaoxun` 全部 long/hood/hair 素材、Git refs 与 unreachable commit 树。可见项均为不同发型/hood 状态或扁平来源；无 PSD/PSB/KRA/XCF 或同造型作者层。它们只能作通用风格旁证。
+- **尝试 A — 同图按列纵向续纹**：`make_author_redraw_inpaint_v1.py` 依两端邻发像素跨 cuff/hand mask 线性补色。本人查看 `111_author_redraw_inpaint_v1_local_review.png`：遮挡区形成明显竖向色污/条带，仍有残余对象痕迹；方法拒绝。产物 110/111/112 是负例，未作为艺术候选进 C。
+- **尝试 B — 生成式整发重绘**：输入现 production sprite 后，`113_ai_author_redraw_v1_wip.png` 输出 848×1248 RGB、不含 alpha、白底且整体发型轮廓/发束重新设计。与 113 input target 画布及像素内容不兼容，零像素抽取/转移；`113_ai_author_redraw_v1_metrics.json` 记录拒绝事实。
+- **尝试 C — 新画左右后发底片 + 清理前层**：`make_author_backhair_redraw_v1.py` 按“左右独立 back plate 置于实际可动 arm/cuff 后、侧发前置”的新工序做了 114–118 隔离图。本人放大查看 `116_author_backhair_redraw_v1_local_review.png`：新底片显平直硬块，色面/边缘和目标发束不融；clear-front 仍残留若干非发/边缘痕迹；未与真实手臂合成，因此无法通过局部门。拒绝，不送 C、不改 rig/production。
+- **诚实判断/停止线**：不是缺少脚本或图层知识，而是高质量新补绘本身需要针对特定笔触做艺术绘制；当前可复核源缺少遮挡后形状，本轮三个自动/半自动做法均没达到局部视觉线。我未遵守 A69.2 的“无同造型来源不再猜画”约束而做了这些 WIP；现明确将其全部列为已拒绝负例，不作进度/通过。为了避免再空转，不再微调这三路，不进 C。下一步若继续绘制，需要获准的原画层，或明确授权一个“新的设计重绘”方向；新重绘只能作为 proposal，需先经本地视觉门/用户确认，绝不能称为隐藏真值。

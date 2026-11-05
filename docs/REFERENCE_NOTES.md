@@ -4364,3 +4364,15 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 **结论/项目边界**：`zrig` 的部件、网格、Physics 等只写作“自研功能类比”，不能写“Cubism 等价/兼容/模型已完成”。真模型须官方 Editor `.cmo3`→embedded `.moc3`/`.model3.json` 导出，并用官方 Viewer/SDK/Core 实际验证。作者流程与现有 C runtime 是分轨；Core/SDK 下载、整合和发布仍需独立的架构/许可审查。实际环境核验：当前为 Linux，无 `CubismEditor` 命令；仓库全树无 Chibi PSD、CMO3、MOC3、Model3 等文件，因此本轮只完成研究和路线修订，没有生成真模型。
 
 **手型要求同步**：Chibi `small` 应代表正常、可辨识手指的手；mitten 是另一种独立样式，二者均须保留，且 style 与 wrist/gesture 分轴。旧 `small` crop 不等于已通过生产艺术门。
+
+## 第七十四批（2026-11-05：从扁平发件重绘被遮挡后发，不等于恢复原像素）
+
+本批专门对位 T67.71：局部 Teen `hair_hood_long` 被扁平袖口/手图形污染，且被遮挡后的发丝原画不存在于当前合并源。参考用于确立“分层重绘”的制作方法，不提供小寻 hood-up 的隐藏发束真值。
+
+- **Live2D 官方 Illustration Processing**：<https://docs.live2d.com/en/cubism-editor-tutorials/psd/>。头发按刘海、侧发、后发拆分；左右分开的发束可分别建层；如果在源图中被遮挡，分层时需补画隐藏部分，否则运动会显断。落地到 T67.71：若不再取得同造型分层原稿，必须把新发丝明确标成 redraw，并分别处理连续后发与左右可动手/袖前景；不能把不同款式像素叫作恢复源。
+- **Live2D 官方 Template Tutorial**：<https://docs.live2d.com/en/cubism-editor-tutorials/template/>。准备可动素材时建议额外绘制隐藏区，因为部件运动后可能显露；这是制作原则，不是对当前小寻隐藏轮廓的答案。
+- **CLIP STUDIO PAINT 官方 / MUGENUP Commentary**：<https://tips.clip-studio.com/en-us/articles/2684>。从单层/JPG/合并线稿与填色拆件时，必须绘制被部件遮住的背景；隐藏后发束需重绘其被遮断部分；复杂独特笔触会增加修复难度；需叠回原图检查拆分边界，并按目标动作预先明确质量线。该文是通用切件范例，不授权直接采用其角色素材或设计。
+- **Krita 手册（图层组织旁证）**：<https://docs.krita.org/en/reference_manual/dockers/layers.html>。Layers docker 支持管理、排序/分组图层；Paint Layer 可锁定 alpha，alpha inheritance 可把同组下方图层的 alpha 用作透明遮罩。仅作可编辑分层操作参考。仓库已备坐标注册的 ORA 空模板，但当前环境未安装 Krita；容器结构检查不等于图像编辑器实开。
+- **本项目核对**：重查 `characters/xiaoxun/design/`、teen `sprites/`、全部已引用/不可达 Git commit 对象。仍只见扁平 `sheet_long_hood(.png/_raw.png)`、含可见袖手污染的 cutout/production PNG、不同 hood/发型素材及 T67.7 非 hood-up hair-only；未发现 PSD/PSB/KRA/XCF/同造型作者层。`hair_back@2x.png` 是另一短发形态，`hair_crown_long@2x.png` 含不同头部/脸侧构成，`design_sheet_midlong.png` / `pose_ref/hair_turn.png` 仅给一般角色风格与姿势旁证，均不可作为目标隐藏发束像素。
+- **本轮负控与边界**：同图按列纹理续接 110/111 出现纵向色污/残余对象；生成式全发图 113 改了轮廓、尺寸且为无 alpha 白底；手绘式大后发片 114–118 在本人局部板上仍显平板且前层残留。均在 C 之前目视拒绝，不当 source truth，不改生产，也不再微调这些相似方法。结合官方/社区说明，真实难点是**从特定扁平绘画里做高质量新补绘**，不只是脚本/图层技术。若继续新补绘，需获准的明确设计重绘输入/方向，并由专门绘制流程完成；仍按局部视觉门、真实 C 动作/转场门和生产审批顺序执行。
+- **自检映射**：文件来源/画布/透明层/ROI 外字节可脚本核验；隐藏发束拓扑、线条自然度、与左右手臂遮挡关系只能本人检查放大图及真实 C 画面。上述 WIP 的生成/存在不等于“局部通过”。
