@@ -1704,3 +1704,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **实际执行**：在已归档手绘 continuation 与 same-sprite warp 均拒绝后，不重复该两路；本轮新增窄锁组 `strand_weave_v1`、交叠锁组 `strand_weave_v2`、S 流瀑布 `ribbon_cascade_v1`。本人逐一打开最终 review board 与局部 3× crops。
 - **结果**：三种仍读作梳齿/平行扁带，且根部未融接、轮廓过齐；全部拒绝，没进入用户确认或真实 C 门。QA 与 metrics 在同名隔离目录，SHA 清单 `strand_lock_studies_SHA256SUMS.txt`。production/rig/generator/engine 未改，未跑 C/动作/转场/ParamHairSway；此前 C-only make test 2638/0 不代表本轮美术通过。
 - **下一步**：T67.71 仍未完成。不得把失败 WIP 算进度完成，也不得重复增加锁数或只改宽度/色/alpha；继续寻找不同的艺术构成依据后重新局部目视，具体提案过门并由用户确认后才进入 C，生产另批。
+
+
+### 2026-11-05 · 用户要求「写好目前的交接」：T67.71
+
+- **交接范围**：新写 `docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`，总结任务目标、源/隐藏真值边界、用户已授权但未批准具体稿的 new-design 范围、各路线视觉拒绝原因、未完成门禁、交接入口及下一执行顺序；如实记代理艺术能力自评。
+- **不完整试作**：`painted_volume_v1` 在此前被用户打断后留下部分图和 board；本人打开 board 后拒绝（圆钝水滴团，根部不融接）；metrics/完整 manifest 未生成，明确不作候选。WIP review、TASKS/GAPS/MEMORY/JOURNAL/LESSONS 与 REQUIREMENTS 已链接当前交接。
+- **范围**：无 C 动作/袖口/转场/ParamHairSway 验证，无生产 sprite/rig/generator/engine 改动。需在固定活动分支提交交接及部分 WIP 证据，不能声称修复完成。

@@ -110,3 +110,10 @@
 这些是新构成探索，不是几何板/旧 remap 微调；结果仍表明人工矢量锁束在当前细节级别下读作“梳子/带片”，没有达到局部风格门。v1 脚本的 alpha 组合后来修正为“原 alpha × keep mask”，已重新生成最终 review；所有最终文件按 `docs/qa/t67_71_source_trace_2026-11-05/strand_lock_studies_SHA256SUMS.txt` 校验。执行 `make test` 未重跑；此前 2638/0 仅是 C-only 基线，且不构成美术验收。没有候选通过，因此没有真实 C 动作、手袖遮挡、转场或 `ParamHairSway` 测试，没有生产 sprite/rig/generator/engine 变更。
 
 **当前结论**：T67.71 仍未完成。下一次若继续制作，须从现有目标的可见笔触/实际发片体积关系重新构造，不可再增加锁数、只调 alpha/颜色/宽度，或复用同源 texture remap；先看局部过门，再让用户确认具体新设计，之后才进真实 C。生产审批独立。完整可复核实验与统一 SHA 在 `strand_weave_v1/`、`strand_weave_v2/`、`ribbon_cascade_v1/` 与 `strand_lock_studies_SHA256SUMS.txt`。
+
+## 2026-11-05 追加：painterly volume v1（用户打断后的不完整试作，拒绝）
+
+- 在上一轮自评后，尝试一个与梳齿/窄带不同的 painterly volume 构成；文件在 `docs/qa/t67_71_source_trace_2026-11-05/painted_volume_v1/`。此轮生成命令被用户中断，现有部分 PNG 与 review board 已留在工作区；metrics JSON、完整输出哈希清单和部分对称放大图未完成。脚本依赖 Pillow，系统 Python 默认环境不含 Pillow，之前一次性运行通过 `/tmp/arena_t67_packages`；没有锁定或提交该临时依赖。
+- 本人打开现存 `t67_71_painted_volume_v1_review.png`：单一圆钝水滴/发团，线条过少，根部未与可见发束自然融接；右侧同样像浮在现有头发旁的软团。**拒绝，不作候选**。不把部分输出说成完整候选，也不送真实 C。
+- 文件只作负例留档；关键 hashes：review `f45a4653836aae2a4a45d6c68e8deed30dd2adaa855855c6e3afcbed95bad7a4`，underlay `eeb96fa4eddd77287820acbacbf05e817ee92cf48d579642bc0243265420ecd2`，composite `2411545888b09d7a0db21ca1d058134d58a7e3ba6687895e47193f92927749ae`。完整交接：`docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`。
+- 当前结论仍为 T67.71 未完成；无一项局部视觉通过。没有 C/动作/袖口/转场/`ParamHairSway` 测试，无 production sprite/rig/generator/engine 改动。后续执行者应遵循当前 handoff，不再继续相同程序化形状调参。

@@ -28,6 +28,9 @@
 
 - **2026-11-05 新设计实作继续（手绘/同源纹理试验全拒绝）**：新增隔离 `handpainted_continuation_v1..v4/` 与 `same_sprite_warp_v1..v3/`。前者经本人复看仍是断开的细丝、几何叶片或板状块；后者用同目标发件下段可见 hair texture 做 2-D remap，v1 有 alpha/透明黑洞、v2 硬顶，v3 顶缘渐隐后仍是独立大块和深直线。均不通过局部目视，不进 C/动作/转场，不改生产。下一步严禁重复同 remap 或几何板细调；T67.71 仍未修复。详情在 `layered_backfill_wip_review.md` 续记与 `continuation_experiments_SHA256SUMS.txt`。
 
+- **2026-11-05 再续新构成（均拒绝）**：在不重复手绘宽板与同源 2-D remap 的判断下，实际做了 `strand_weave_v1` 的分离锁束、`strand_weave_v2` 的相互覆盖锁组、`ribbon_cascade_v1` 的 S 流瀑布；本人看 review board/左右 ROI/3× crop 后仍见梳齿/细板、根端漂离现有头发、轮廓过齐与硬带感，全部未过局部门。隔离目录和 hash 在 `docs/qa/t67_71_source_trace_2026-11-05/strand_weave_v1/`、`strand_weave_v2/`、`ribbon_cascade_v1/`、`strand_lock_studies_SHA256SUMS.txt`。未跑 C/动作/转场/`ParamHairSway`，未改 production sprite/rig/generator/engine。不能把这批 WIP 当修复；T67.71 仍开放。下一次不再追加同类矢量锁条微调。
+- **2026-11-05 当前交接与中断 WIP**：已写 `docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`，明确隐藏真值未知、用户新设计授权边界、失败路线、自评能力边界、局部/C/生产门与资源入口。最近 `painted_volume_v1` review 已亲目判为水滴状软团、不与侧发融接，拒绝；生成被中断，metrics/hash manifest 未完整，文件仅作为部分负例证据。详情和文件 SHA 见 handoff 与 WIP review。当前没有 accepted candidate；C/生产未进入。
+
 ---
 
 ## 一、现在能跑的（基线，别重复造）
@@ -2658,5 +2661,3 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 代理已目视所有输出、局部板与目标注册 ROI，并按用户最新授权自行批准/拒绝，无需逐轮向用户索要选图。27–32 均失败；33/34 目标尺度下长指/腕比例失衡；35/36 重绘袖口且手太大；37/38/39 全身手位/手框 mismatch；40 仍错位并重绘无关区域。**27–40 全部由代理否决**，没有任何正常手通过候选艺术门。
 - 真实 Cubism 源输入阻塞仍在：`design/chibi/README.md` 标明其 PNG 是桌宠设计参考；Live2D Chibi 有设计表和多张 cutout PNG，但没有 `.psd`，`body_full.png` 是 567×1292；`seg_arm_l/r` 仅 100×230，Chibi rig 没有独立 hand/cuff 层或 `hand_parts.json`。Linux runner 没有 Cubism Editor/Wine，全仓没有 Cubism 工程/导出物。详情见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`；未把 cutouts 自动拼成未验证 PSD、未假称模型完成。
 - 当前不重复相同 AI 生成/编辑策略；下一步换用能保持 source registration、细线画风和左右差异的合规原稿制作路径。来源、hidden-wrist/cuff、左右分件、rig/C 引擎与真正 Cubism 仍未完成；mitten trial24 独立保留 provisional，不因此批准手部生产件。
-
-- **2026-11-05 再续新构成（均拒绝）**：在不重复手绘宽板与同源 2-D remap 的判断下，实际做了 `strand_weave_v1` 的分离锁束、`strand_weave_v2` 的相互覆盖锁组、`ribbon_cascade_v1` 的 S 流瀑布；本人看 review board/左右 ROI/3× crop 后仍见梳齿/细板、根端漂离现有头发、轮廓过齐与硬带感，全部未过局部门。隔离目录和 hash 在 `docs/qa/t67_71_source_trace_2026-11-05/strand_weave_v1/`、`strand_weave_v2/`、`ribbon_cascade_v1/`、`strand_lock_studies_SHA256SUMS.txt`。未跑 C/动作/转场/`ParamHairSway`，未改 production sprite/rig/generator/engine。不能把这批 WIP 当修复；T67.71 仍开放。下一次不再追加同类矢量锁条微调。

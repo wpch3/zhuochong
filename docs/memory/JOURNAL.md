@@ -8302,3 +8302,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **实际 WIP 与本人审查**：`strand_weave_v1/` 将六条窄锁分束，review 仍如梳齿/细板，根端漂离；拒绝。`strand_weave_v2/` 改成五条重叠锁体和弧形体积带，review 仍有规则并行齿、阶梯根端和独立挂片感；拒绝。`ribbon_cascade_v1/` 做五条 S-flow 锁体，review 和左右 3× 图仍显示重复扁带、根部外露、轮廓过齐，与现有宽侧发笔触/体积不融；拒绝。三者均不是用户确认候选。
 - **资源/验证**：脚本、isolated underlay/clean-front/composite/static registration mock、左右 ROI、3× crop、review、metrics 和 SHA 在 `docs/qa/t67_71_source_trace_2026-11-05/{strand_weave_v1,strand_weave_v2,ribbon_cascade_v1}/` 与 `strand_lock_studies_SHA256SUMS.txt`。`sha256sum -c`、JSON 解析与脚本编译均通过。本人看最终 review board，所有新发层仍不达美术局部门。
 - **范围结论**：无候选过局部门，没有实际 C 动作/手袖遮挡/转场/`ParamHairSway` 验证，不修改 production sprite/rig/generator/engine。不得把这些 WIP、静态 mock 或 C-only 测试说成修复。T67.71 继续开放；下一轮不能再通过增加锁数、调宽度/颜色/alpha 重跑，应另找真实可见笔触关系支撑的新构成。
+
+
+## 2026-11-05｜T67.71 当前交接整理（核心美术仍未完成）
+
+- **用户要求**：用户问代理能否胜任后，要求写好当前交接。交接按当前仓库真实状态写，不把失败 WIP 或文档整理说成核心修复。
+- **状态复核**：固定分支 `arena/aaf1408c-zhuochong`，开始时 HEAD `7915730`。T67.71 仍开放；没有候选通过局部目视，未启动 C/动作/袖口/转场/`ParamHairSway`，production sprite/rig/generator/engine 未改。最近 `make test` 2638/0 是旧 C-only 基线，本轮不作为图像验收；本轮未重跑。
+- **最新 WIP 处理**：检查用户中断后留下的 `painted_volume_v1/`，实际打开 `t67_71_painted_volume_v1_review.png`。观察到单一圆钝水滴团、纹理线过少、根部无法和现有侧发融接；判拒绝。metrics/完整 manifest/部分 crops 不存在，脚本依赖一次性 `/tmp/arena_t67_packages` 中 Pillow；这批文件只按不完整负例归档，不作为候选。review SHA `f45a4653836aae2a4a45d6c68e8deed30dd2adaa855855c6e3afcbed95bad7a4`。
+- **交接文件**：新增 `docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`，列出真值源限制、用户新设计授权边界、历史拒绝路径、代理能力边界、下一执行顺序和局部/C/生产门。更新 `REQUIREMENTS.md` A69.6、TASKS/GAPS/MEMORY/JOURNAL/REQUEST_LEDGER/LESSONS 与 WIP review。后续提交只含交接/QA 负例与记忆，不动生产。
+- **诚实自评**：代理可承担来源追踪、图层隔离、配准和 QA 工程；目前连续多轮设计均未达标，未证明能独立交付原画质量的连续发丝图。不得继续靠程序化换名或调参承诺视觉完成。该结论不撤销用户已给的新设计授权；但具体图稿仍须局部目视通过和用户确认。
