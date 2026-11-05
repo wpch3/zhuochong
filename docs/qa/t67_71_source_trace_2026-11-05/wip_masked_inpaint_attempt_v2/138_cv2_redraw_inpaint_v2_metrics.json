@@ -1,0 +1,80 @@
+{
+  "task": "T67.71",
+  "status": "experimental authorized redraw; not accepted; not production",
+  "authorization": "User authorized a new design proposal on 2026-11-05, constrained to stay close to the current design.",
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "size": [
+      1132,
+      1664
+    ],
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15"
+  },
+  "method": "OpenCV Telea and Navier-Stokes inpainting of manually traced cuff/hand mask on local RGB hair crop. This tests texture continuity only; further tapered strand art may be needed.",
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "mask_pixels": 17992,
+      "mask_sha256": "28f62e3a73c7757b768daa6ee5f381a98f0d792e57c79a7a78a7b3352a618119",
+      "telea": {
+        "radius": 12,
+        "repaired_rgb_sha256": "de5ff0ff8ecf69b5b773275880cec6e0fcb4f69af33daeca17e9e0d9d7b44d2d"
+      },
+      "ns": {
+        "radius": 12,
+        "repaired_rgb_sha256": "7f333e006f4cc9955484939ffe26c7305f8dad44161eeff485e3c844a349be35"
+      }
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "mask_pixels": 15230,
+      "mask_sha256": "a7b813475238750fbf9c09ff21eba7b140190c1968bbf11fec84fbf852bd8caf",
+      "telea": {
+        "radius": 12,
+        "repaired_rgb_sha256": "9c2d3545b9ba610d01c672703ca890bd95b1b47c12c000067541b01f6866f2e4"
+      },
+      "ns": {
+        "radius": 12,
+        "repaired_rgb_sha256": "2479d9c5ce9f5963f6875a6abb4b892e6403040df0d68348acd2e612c8749349"
+      }
+    }
+  },
+  "outputs": {
+    "135_backhair_telea_v2_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "8f7dc549cab6b99fb10262ec3bc58ce093aa873a5b5347e826123889aa3074d3"
+    },
+    "136_backhair_ns_v2_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "2fa0f097c621ea3a98cd13681158c78f3920348a94bf46229eda806814c85484"
+    },
+    "137_cv2_redraw_inpaint_comparison_v2.png": {
+      "size": [
+        2600,
+        1100
+      ],
+      "sha256": "566a8590a55b4994962c87e797f38737a834ee22d5d0611a5be0de1d7e20fb99"
+    }
+  },
+  "limitations": [
+    "Algorithmic inpainting is a material continuation proposal, not hidden original hair truth.",
+    "No actual moving arm/cuff layers, C actions, transitions, or ParamHairSway were tested.",
+    "No production sprite, rig, or engine was modified."
+  ]
+}

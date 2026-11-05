@@ -66,3 +66,15 @@
 - **尝试 B — 生成式整发重绘**：输入现 production sprite 后，`113_ai_author_redraw_v1_wip.png` 输出 848×1248 RGB、不含 alpha、白底且整体发型轮廓/发束重新设计。与 113 input target 画布及像素内容不兼容，零像素抽取/转移；`113_ai_author_redraw_v1_metrics.json` 记录拒绝事实。
 - **尝试 C — 新画左右后发底片 + 清理前层**：`make_author_backhair_redraw_v1.py` 按“左右独立 back plate 置于实际可动 arm/cuff 后、侧发前置”的新工序做了 114–118 隔离图。本人放大查看 `116_author_backhair_redraw_v1_local_review.png`：新底片显平直硬块，色面/边缘和目标发束不融；clear-front 仍残留若干非发/边缘痕迹；未与真实手臂合成，因此无法通过局部门。拒绝，不送 C、不改 rig/production。
 - **诚实判断/停止线**：不是缺少脚本或图层知识，而是高质量新补绘本身需要针对特定笔触做艺术绘制；当前可复核源缺少遮挡后形状，本轮三个自动/半自动做法均没达到局部视觉线。我未遵守 A69.2 的“无同造型来源不再猜画”约束而做了这些 WIP；现明确将其全部列为已拒绝负例，不作进度/通过。为了避免再空转，不再微调这三路，不进 C。下一步若继续绘制，需要获准的原画层，或明确授权一个“新的设计重绘”方向；新重绘只能作为 proposal，需先经本地视觉门/用户确认，绝不能称为隐藏真值。
+
+## 用户授权“贴近现有方案”的新设计重绘后续（2026-11-05；仍未通过）
+
+用户随后明确授权新设计提案，但要求不要和目前方案有太大出入。记录为 A69.4：此授权允许作新设计，不构成原像素恢复、隐藏真值或对具体候选/生产的批准。故本节 119 起的设计实验属于用户授权之后的 WIP；110–118 仍是授权之前的偏离约束负例，不追溯改成合法来源。
+
+- **119 全头发 AI study：拒绝**。`119_backhair_strand_redesign_study.png` 输出完整后视头发造型、对称分缝和大轮廓，而输入/目标只是局部袖手 ROI。离目标过远，不抽取任何像素，不作 donor。
+- **122/123 局部 AI proposal：拒绝**。使用 120 左右 crop 作为注册参考，生成 `122_left_backhair_local_redraw_proposal.png`、`123_right_backhair_local_redraw_proposal.png`，并检查 `124_ai_local_redraw_alignment_review.png`。局部更贴近发色，但黑色袖口/手部沟痕被带入候选；单纯按原有 alpha 贴回还使对象内透明槽继续透空。不是候选。
+- **133/134 cleaned-guide proposal：拒绝**。把 cuff/hand 区先遮成灰紫引导形再生成，黑线有所减少但发板扩大为大块面，细线与原发束比例不符；区域内置换幅度过大。
+- **139–161 alpha-mask 修正/strand proposal：拒绝**。先发现源 alpha 在 cuff stripes/hand mark 内有透明洞；原 alpha 截板会留下黑色洞，故将手袖 silhouette 与旧 alpha 联合。对象边缘 mask 2px 时污染残留；扩张到 18px 后，v5 clean-guide 仍像平板硬板。改用细线多 strand 的 v6 (`158`–`162`) 后，本人打开完整图 `160_clean_hair_composite_redraw_v6_wip.png`、board `161_backhair_local_redraw_v6_review.png`，并 3× 放大右 ROI：其色材较接近，但新板有一条横向平顶、内侧白楔/尖角和右下暗痕，不能保证手臂动作时边缘自然。拒绝，不进 C。
+- **163–167 OpenCV inpaint + alpha union：拒绝**。Telea / Navier-Stokes 在 broadened cuff/hand mask上虽能补 RGB，联合 alpha 后仍出现明显几何云团/色块，不是发束画法。review `166_inpaint_alpha_union_review_v3.png` 记录。
+- **结论/下一步**：已试局部 AI、干净 guide、alpha-hole 修复与两类 inpainting；截至 v6，没有通过局部目视的提案。此处真实工作不是更换 script 名称，而是熟悉原角色笔触的画师做连续细束、轮廓收口并保持与现有宽侧发小幅接续。已明确暂停同类自动生成/微调，不送真实 C。用户的“新设计提案”授权已经有效，无需重问授权；需要的是能达到美术质量的作者手工层。之后用户确认实际图稿和本地目视过门后，才进入 C 动作/转场，生产另审批。
+- **验证边界**：所有编号 119–167 均是隔离 QA / guide / 负例；局部 mock 中复用的旧手袖只检查坐标，不是实际可动手臂或 C 验证。未修改 production sprite / rig / generator / engine。

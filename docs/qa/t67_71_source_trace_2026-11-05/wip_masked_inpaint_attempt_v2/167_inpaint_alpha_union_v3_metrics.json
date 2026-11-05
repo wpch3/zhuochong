@@ -1,0 +1,95 @@
+{
+  "task": "T67.71",
+  "status": "experimental inpaint redraw; not accepted; not hidden truth; not production",
+  "authorization": "User explicitly authorized a new design proposal on 2026-11-05 with the constraint to stay close to current design.",
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15",
+    "size": [
+      1132,
+      1664
+    ]
+  },
+  "method": "OpenCV Telea and Navier-Stokes on RGB hair crops. A 18px dilated cuff/hand silhouette is removed from clean-front and unioned with existing alpha on back plates, including transparent holes.",
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "dilation_px": 18,
+      "mask_pixels": 32493,
+      "source_alpha_pixels": 92517,
+      "union_alpha_pixels": 101070,
+      "filled_alpha_holes_inside_mask": 8553,
+      "mask_sha256": "ec8d2650bb0ae549314ab8311346aaa48028da588adc5977cfe355547cf692bc",
+      "telea": {
+        "radius_px": 8,
+        "rgb_sha256": "a4f52f2ad62395bd07da1ec660455dbfeb86c57520f7a013ecb42a5c6a45320d"
+      },
+      "ns": {
+        "radius_px": 8,
+        "rgb_sha256": "e4fc7acfb77790f9e6d3395ba55ebf8b3ca2154ac0560f70189c8f524bd59c4e"
+      }
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "dilation_px": 18,
+      "mask_pixels": 32555,
+      "source_alpha_pixels": 88682,
+      "union_alpha_pixels": 98399,
+      "filled_alpha_holes_inside_mask": 9717,
+      "mask_sha256": "173c20ae76fe2e8b8b1f295b029d57fefb498fca63c1d49fba3d82c5b488440d",
+      "telea": {
+        "radius_px": 8,
+        "rgb_sha256": "4dbedb37ab5f09397d659d87b709ad08404aa262e48e3f0e6984a26b1fbca240"
+      },
+      "ns": {
+        "radius_px": 8,
+        "rgb_sha256": "dbb71361e07cad36654b71ab7c60192b100e1d45500569ff1e7742320643402f"
+      }
+    }
+  },
+  "outputs": {
+    "163_backhair_inpaint_telea_v3_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "0f20d0fc9c3582c72b2de4e39f7998b438824b8fd99ff8dde1e5577059f33250"
+    },
+    "164_backhair_inpaint_ns_v3_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "34b33f0ab3973abde9e298442ea3f6a5a68af5d3c427f3cf0062b96434d57103"
+    },
+    "165_clean_front_inpaint_v3_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "d67665270e68131e36311f6bbd8a412ccd29715cfd0aeb019e2006d1e36588f1"
+    },
+    "166_inpaint_alpha_union_review_v3.png": {
+      "size": [
+        2800,
+        1120
+      ],
+      "sha256": "5e6e15ab73dac497bd865ea1b4943463fcfede6a32d61505be2ebb9e77caddaa"
+    }
+  },
+  "limitations": [
+    "Inpaint may look too smooth or stripe-like and is not accepted art unless local view passes.",
+    "No actual arm/cuff layers, C actions, transitions, or ParamHairSway tested.",
+    "No production sprite, rig, generator, or engine changed."
+  ]
+}

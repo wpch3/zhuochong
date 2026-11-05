@@ -1,0 +1,98 @@
+{
+  "task": "T67.71",
+  "status": "AI-assisted local new-design redraw WIP; not hidden truth; not accepted; not production",
+  "authorization": "User explicitly authorized a new design proposal on 2026-11-05 with the constraint not to depart substantially from the current design.",
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "size": [
+      1132,
+      1664
+    ],
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15"
+  },
+  "mask_source": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_silhouette_polygons_v3.json",
+    "sha256": "4d32601b4e693c1b536a1201560bb88ef19dcb2a4367ad503828097dd0ab3813"
+  },
+  "method": "Two local design proposals are registered to the corresponding 440x640 target crops. Back-plate alpha is union(existing target alpha, traced cuff/hand silhouette), repairing alpha holes inside the contaminated objects. The cuff/hand is removed from clean-front, with the new plate underneath. Static mock reuses old pixels solely to show registration.",
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "registered_crop_xyxy": [
+        0,
+        780,
+        440,
+        1420
+      ],
+      "input_proposal": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/122_left_backhair_local_redraw_proposal.png",
+      "input_proposal_sha256": "b947211499021376a38f6691668f79434505b996ec93002f0da47e6519806ded",
+      "object_mask_pixels": 18365,
+      "source_alpha_pixels": 118910,
+      "union_plate_alpha_pixels": 123930,
+      "filled_alpha_holes_inside_mask": 5020,
+      "mask_sha256": "e9ccc84ef758a6a7bfe65b50cf6cecae6def443c1a9ea4fd37f87604499b28a0"
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "registered_crop_xyxy": [
+        692,
+        780,
+        1132,
+        1420
+      ],
+      "input_proposal": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/123_right_backhair_local_redraw_proposal.png",
+      "input_proposal_sha256": "9151cd337df44cf55600b666bab3518540d1538fc2488c3c2f7e1b9c03c081c1",
+      "object_mask_pixels": 15620,
+      "source_alpha_pixels": 116728,
+      "union_plate_alpha_pixels": 122079,
+      "filled_alpha_holes_inside_mask": 5351,
+      "mask_sha256": "27c8bad3a94a4e844f7a442de4bf68ee2ac4cc2b825ec6aa98deb6ca9d3303f0"
+    }
+  },
+  "outputs": {
+    "139_backhair_ai_local_redraw_v3_plate_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "ee2a83bdc53e31e9afcbecbfdb3d9eb550316ee5e8c439fcf350176242bd79a5"
+    },
+    "140_clean_front_ai_local_redraw_v3_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "7ff5d3cce233715e2fd8856b54bb6946b2a3a59c7c0ec6173466b07c6c6867e1"
+    },
+    "141_ai_local_backhair_composite_v3_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "1ab1bf323ca930df534893308c5b4b0f9fb7fbdb7ab1bc4731362138f4af1375"
+    },
+    "142_ai_local_backhair_review_v3.png": {
+      "size": [
+        3000,
+        1760
+      ],
+      "sha256": "314bed9970f0de9e638a8453175de64c258261faf34006ef538e474b4d3eff69"
+    }
+  },
+  "limitations": [
+    "The generated pixels are new design, not original hidden hair truth.",
+    "The back-plate silhouette is bounded by the union of old sprite alpha and traced cuff/hand; action reveal extent is not yet tested.",
+    "Mock foreground is not the actual dynamic arm/cuff layer.",
+    "No local acceptance, C action/transition/ParamHairSway validation, or production change is claimed."
+  ]
+}

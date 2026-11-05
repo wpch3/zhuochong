@@ -1,0 +1,110 @@
+{
+  "task": "T67.71",
+  "status": "AI-assisted local new-design redraw WIP; not hidden truth; not accepted; not production",
+  "authorization": "User explicitly authorized a new design proposal on 2026-11-05, with the constraint not to depart substantially from the current design.",
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "size": [
+      1132,
+      1664
+    ],
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15"
+  },
+  "visible_object_mask": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_silhouette_polygons_v3.json",
+    "sha256": "4d32601b4e693c1b536a1201560bb88ef19dcb2a4367ad503828097dd0ab3813"
+  },
+  "method": "Use one tightly framed AI-assisted repaint per side as new design material; register to the exact target ROI; clip the back plate to existing hair-sprite alpha; remove the visible cuff/hand polygons from a separate clean-front layer; plate remains underneath. The mock foreground reuses original contaminated pixels only to verify static registration.",
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "proposal_path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/122_left_backhair_local_redraw_proposal.png",
+      "proposal_sha256": "b947211499021376a38f6691668f79434505b996ec93002f0da47e6519806ded",
+      "crop_xyxy": [
+        0,
+        780,
+        440,
+        1420
+      ],
+      "generated_input_size": [
+        848,
+        1264
+      ],
+      "registered_size": [
+        440,
+        640
+      ],
+      "source_alpha_pixels": 118910,
+      "clean_object_mask_pixels": 17109,
+      "mask_sha256": "ac111a8e02dc1e5a0152bb74776411051538b4f31fe7e0264835b1d61e926bad"
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "proposal_path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/123_right_backhair_local_redraw_proposal.png",
+      "proposal_sha256": "9151cd337df44cf55600b666bab3518540d1538fc2488c3c2f7e1b9c03c081c1",
+      "crop_xyxy": [
+        692,
+        780,
+        1132,
+        1420
+      ],
+      "generated_input_size": [
+        848,
+        1264
+      ],
+      "registered_size": [
+        440,
+        640
+      ],
+      "source_alpha_pixels": 116728,
+      "clean_object_mask_pixels": 14167,
+      "mask_sha256": "d8ae19dae1836f76c1974144cfd3e5d5ebba406bf9e217e0f157bcacc421a0a4"
+    }
+  },
+  "outputs": {
+    "126_backhair_ai_local_redraw_v2_plate_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "78952e595fe2a93aa0e59a1fd2cb9fc743236586c876ce3a80c4d06956a4dce8"
+    },
+    "127_clean_front_ai_local_redraw_v2_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "4434e9a7694fc4dd8cc94a19f9ab486ebc810ba4490824d5acfeafcfb98de561"
+    },
+    "128_ai_local_backhair_review_v2.png": {
+      "size": [
+        2960,
+        1670
+      ],
+      "sha256": "c4b162a77f5d4370eece2c28460305788cf27caa40fe3ce57368058784274034"
+    },
+    "129_ai_local_backhair_composite_v2_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "7cca72d245fb3638984d43fc5bb15dd10851cfa61af3d1b62cc23fc017ce10fc"
+    }
+  },
+  "limitations": [
+    "Generated proposals are new art, not the original hidden hair; they may change strand topology and painterly detail.",
+    "Static mock arm/cuff is copied from the contaminated source and is not a real moving foreground layer.",
+    "No local visual acceptance is claimed until both complete sprite and 100/200/400% ROI views pass review.",
+    "No C action, transition, ParamHairSway, production sprite, rig, or engine validation has been performed."
+  ]
+}

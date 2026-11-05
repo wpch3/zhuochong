@@ -1,0 +1,100 @@
+{
+  "task": "T67.71",
+  "status": "new-design redraw WIP; not accepted; not hidden-original truth; not production",
+  "authorization": "User explicitly authorized a new design proposal on 2026-11-05, constrained not to depart substantially from the current design.",
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "size": [
+      1132,
+      1664
+    ],
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15"
+  },
+  "mask_source": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_silhouette_polygons_v3.json",
+    "sha256": "4d32601b4e693c1b536a1201560bb88ef19dcb2a4367ad503828097dd0ab3813"
+  },
+  "method": "Use cleaned guide redraws (cuff/hand marks hidden before generation) as design material, register to target crop; alpha is union of existing target silhouette and traced object mask; place new back-hair under a separate cleaned hair foreground.",
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "registered_crop_xyxy": [
+        0,
+        780,
+        440,
+        1420
+      ],
+      "proposal": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/122_left_backhair_local_redraw_proposal.png",
+      "proposal_sha256": "b947211499021376a38f6691668f79434505b996ec93002f0da47e6519806ded",
+      "generated_size": [
+        848,
+        1264
+      ],
+      "clean_object_pixels": 32493,
+      "filled_alpha_holes": 8553
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "registered_crop_xyxy": [
+        692,
+        780,
+        1132,
+        1420
+      ],
+      "proposal": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/123_right_backhair_local_redraw_proposal.png",
+      "proposal_sha256": "9151cd337df44cf55600b666bab3518540d1538fc2488c3c2f7e1b9c03c081c1",
+      "generated_size": [
+        848,
+        1264
+      ],
+      "clean_object_pixels": 32555,
+      "filled_alpha_holes": 9717
+    }
+  },
+  "outputs": {
+    "158_backhair_local_redraw_v6_plate_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "5c3e3af8369cfcd934b35256703bd4e3340faf711fc73f83bcb00521d61ca78b"
+    },
+    "159_clean_front_redraw_v6_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "d67665270e68131e36311f6bbd8a412ccd29715cfd0aeb019e2006d1e36588f1"
+    },
+    "160_clean_hair_composite_redraw_v6_wip.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "78c0fae2d613bdd0e8d4624efddaca5c1a3b2032f1cc284d330c296242c03f82"
+    },
+    "161_backhair_local_redraw_v6_review.png": {
+      "size": [
+        3000,
+        1760
+      ],
+      "sha256": "7fe129365f1fb29729c68ac2cbe41fa753c74f8fd5fba96860eba90813a3dbaa"
+    }
+  },
+  "limitations": [
+    "The generated art is a proposal and does not recover unknown hidden topology.",
+    "Static mock uses the old source cuff/hand as a temporary registration check, not actual C layers.",
+    "Local visual review is not yet passed; no C action/transition/ParamHairSway validation.",
+    "No production sprite, rig, or engine change."
+  ]
+}
