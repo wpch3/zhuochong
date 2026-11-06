@@ -102,7 +102,12 @@ preview: $(BUILD)/zhuochong_preview
 	@echo "预览服务：http://0.0.0.0:5173   测试台：http://0.0.0.0:5173/test.html"
 	./$(BUILD)/zhuochong_preview --root . --port 5173 --bind 0.0.0.0
 
-.PHONY: test-preview-actions
+.PHONY: test-preview-actions test-rig-editor
+test-rig-editor: $(BUILD)/zhuochong_preview
+	@node tests/test_rig_editor.js
+	@python3 tests/test_rig_editor_integration.py
+	@python3 tests/test_human_chibi_study.py
+
 test-preview-actions: $(BUILD)/zhuochong_preview
 	@python3 tests/test_preview_actions.py
 
@@ -207,7 +212,7 @@ asset-tool-test:
 rig-tool-test:
 	@python3 tests/test_make_rig_identity.py
 
-check: selfcheck asset-tool-test rig-tool-test warncheck test asan smoke web-test test-preview-actions
+check: selfcheck asset-tool-test rig-tool-test warncheck test asan smoke web-test test-preview-actions test-rig-editor
 	@echo "== 全部保险都过了 =="
 
 # 零告警闸：CI 是 `make clean` 后从零编的，本地增量编译会把告警藏起来。

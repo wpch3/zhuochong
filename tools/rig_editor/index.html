@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小寻 · zrig 编辑器原型</title><link rel="stylesheet" href="style.css"></head>
+<body><main>
+<header><div><span class="eyebrow">ZHUOCHONG / 本地工具原型</span><h1>zrig 编辑与绑定</h1><p>加载自研 rig.json，调整部件位置或添加参数到组的绑定；下载副本后再用 C 引擎验证。</p></div><strong>实验版 · 非 Cubism</strong></header>
+<section class="toolbar"><label class="file">打开 rig.json<input type="file" id="file" accept="application/json,.json"></label><button id="demo">载入无兽特征试装</button><button id="undo" disabled>撤销</button><button id="redo" disabled>重做</button><button id="download" disabled>下载 rig 副本</button></section>
+<p class="notice">文件只在当前浏览器内处理，不会自动写回仓库。素材、网格画布、PSD 导入、物理编辑和官方格式导出尚未实现。操作绑定前先备份，并在隔离目录用引擎检查。</p>
+<p id="status" role="status">请打开 zrig JSON 或载入试装。</p>
+<div class="columns" id="work" hidden>
+<section class="card"><h2>部件</h2><p>直接修改画布坐标与层号，不更改组或资源路径。</p><label>部件<select id="part"></select></label><div class="grid"><label>X<input id="x" type="number" step="any"></label><label>Y<input id="y" type="number" step="any"></label><label>层号<input id="layer" type="number" step="1"></label></div><button id="savePart">应用部件位置</button></section>
+<section class="card"><h2>新建参数</h2><div class="grid"><label>参数 ID<input id="newId" placeholder="ParamStudioHead"></label><label>标签<input id="newLabel" placeholder="头部控制"></label><label>最小值<input id="min" type="number" value="-1" step="any"></label><label>最大值<input id="max" type="number" value="1" step="any"></label><label>默认值<input id="default" type="number" value="0" step="any"></label></div><button id="addParam">新建参数</button></section>
+<section class="card wide"><h2>绑定参数到组</h2><p>仅支持已有 JSON 参数绑定组的平移、缩放、旋转；不能为内建参数新建重复声明。</p><div class="grid"><label>参数<select id="param"></select></label><label>目标组<select id="group"></select></label><label>通道<select id="channel"><option value="rot_deg">旋转 rot_deg</option><option value="dx">水平 dx</option><option value="dy">垂直 dy</option><option value="sx">横向缩放 sx</option><option value="sy">纵向缩放 sy</option></select></label><label>倍率<input id="scale" type="number" value="1" step="any"></label><label>偏移<input id="offset" type="number" value="0" step="any"></label></div><button id="addBind">添加绑定</button><h3>已存在的绑定</h3><ul id="bindings"></ul></section>
+</div></main><script src="core.js"></script><script src="app.js"></script></body></html>

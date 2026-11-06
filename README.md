@@ -2,7 +2,7 @@
 
 拟人化桌面 AI 伴侣：**Windows 原生 C 桌宠** + （后续）Web 主工作区。
 
-> 2026-11-06 重启基线与实际完成情况见 [`docs/RESTART_BASELINE_2026-11-06.md`](docs/RESTART_BASELINE_2026-11-06.md)；桌宠面部试作见 [`experiments/chibi_face_study/README.md`](experiments/chibi_face_study/README.md)，独立的 Live2D 风格 Chibi 短发试装见 [`experiments/live2d_chibi_short/README.md`](experiments/live2d_chibi_short/README.md)。下面的旧版状态是历史记录，不代表全部模型已完成或通过视觉验收。自研 `rig.json` 不是官方 Cubism 模型。
+> 2026-11-06 重启基线与实际完成情况见 [`docs/RESTART_BASELINE_2026-11-06.md`](docs/RESTART_BASELINE_2026-11-06.md)；桌宠面部试作见 [`experiments/chibi_face_study/README.md`](experiments/chibi_face_study/README.md)，独立的 Live2D 风格 Chibi 短发试装见 [`experiments/live2d_chibi_short/README.md`](experiments/live2d_chibi_short/README.md)，无兽特征版见 [`experiments/live2d_chibi_human_short/README.md`](experiments/live2d_chibi_human_short/README.md)。自研编辑与绑定原型见 [`tools/rig_editor/README.md`](tools/rig_editor/README.md)，制作流程及少女缺口见 [`docs/CUBISM_WORKFLOW_AND_EDITOR_GAPS_2026-11-06.md`](docs/CUBISM_WORKFLOW_AND_EDITOR_GAPS_2026-11-06.md)。下面的旧版状态是历史记录，不代表全部模型已完成或通过视觉验收。自研 `rig.json` 不是官方 Cubism 模型。
 
 ## 现状（2026-10-11）
 

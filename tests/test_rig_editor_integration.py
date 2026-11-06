@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Run editor-exported group binding through a temporary real C preview."""
+import json
+import shutil
+import socket
+import subprocess
+import tempfile
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / 'experiments/live2d_chibi_human_short'
+
+
+def main():
+    with tempfile.TemporaryDirectory(prefix='zrig-editor-test-') as tmp:
+        root = Path(tmp)
+        shutil.copytree(ROOT / 'config', root / 'config')
+        pet = root / 'config/pet.json'
+        text = pet.read_text(encoding='utf-8')
+        if '"form": "teen"' not in text:
+            raise AssertionError('unexpected default form')
+        pet.write_text(text.replace('"form": "teen"', '"form": "editor_test"', 1), encoding='utf-8')
+        (root / 'schemas').symlink_to(ROOT / 'schemas', target_is_directory=True)
+        char = root / 'characters/xiaoxun'
+        char.mkdir(parents=True)
+        for path in (ROOT / 'characters/xiaoxun').iterdir():
+            if path.name not in ('forms', 'forms.json'):
+                (char / path.name).symlink_to(path, target_is_directory=path.is_dir())
+        form = char / 'forms/editor_test'
+        form.mkdir(parents=True)
+        shutil.copytree(SOURCE / 'sprites', form / 'sprites')
+        subprocess.run(['node', 'tests/test_rig_editor.js', str(form / 'rig.json')], cwd=ROOT, check=True)
+        with socket.socket() as s:
+            s.bind(('127.0.0.1', 0))
+            port = s.getsockname()[1]
+        base = f'http://127.0.0.1:{port}'
+        proc = subprocess.Popen([str(ROOT / 'build/zhuochong_preview'), '--root', str(root),
+                                 '--bind', '127.0.0.1', '--port', str(port)],
+                                cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        def get(path):
+            with urllib.request.urlopen(base + path, timeout=10) as response:
+                return response.read()
+        try:
+            for _ in range(100):
+                if proc.poll() is not None:
+                    raise AssertionError('preview exited: ' + proc.stderr.read().decode(errors='replace'))
+                try:
+                    info = json.loads(get('/api/info.json'))
+                    break
+                except (OSError, urllib.error.URLError):
+                    time.sleep(.1)
+            else:
+                raise AssertionError('preview startup timeout')
+            assert info['form'] == 'editor_test', info
+            get('/api/action?id=idle')
+            get('/api/pause?on=1')
+            get('/api/blink?v=0')
+            get('/api/param?id=ParamEditorHead&v=0')
+            get('/api/step?n=1')
+            a = get('/api/frame.png')
+            get('/api/param?id=ParamEditorHead&v=1')
+            get('/api/step?n=1')
+            b = get('/api/frame.png')
+            get('/api/param?id=ParamEditorHead&v=0')
+            get('/api/step?n=1')
+            restored = get('/api/frame.png')
+            assert a.startswith(b'\x89PNG\r\n\x1a\n') and b.startswith(b'\x89PNG\r\n\x1a\n')
+            assert a != b, 'editor binding failed to change the rendered frame'
+            assert a == restored, 'return to zero must restore the exact original frame'
+            print('编辑器生成 rig：C 引擎加载成功，参数驱动头部改变真实渲染帧')
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            proc.stderr.close()
+
+
+if __name__ == '__main__':
+    main()
