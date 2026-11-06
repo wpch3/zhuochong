@@ -5074,15 +5074,16 @@ def check_t23(root):
         check("实测入档（idle_cpu/realtime_cpu/render_ms）", meas.get("idle_cpu") is not None and meas.get("render_ms") is not None, f'idle {meas.get("idle_cpu")}% render {meas.get("render_ms")}ms')
         check("可独立降档至少 3 项", len(perf.get("degradable",[]))>=3, f'{len(perf.get("degradable",[]))} 项')
         check("用户活跃时让出存在", bool(perf.get("yield_on_user_active",{}).get("enabled")), "")
-    # 引擎强制位：源码里必须出现调用点，否则配置形同虚设
-    srcs = []
-    for pat in ["src/core/zgateway.c", "src/core/zrelay.c", "src/core/zimg.c"]:
-        fp=os.path.join(root, pat)
-        if os.path.exists(fp): srcs.append((pat, open(fp, encoding="utf-8", errors="ignore").read()))
-    allsrc = "\n".join(s for _,s in srcs)
-    check("网关/中继含权限检查 zperm_check", "zperm_check" in allsrc, "zgateway.c/zrelay.c 应在选路前检查")
-    check("成本熔断检查 zcost_tripped 在中继", "zcost_tripped" in allsrc, "zrelay.c 应在出网前检查额度")
-    check("性能预算检查 zperf_budget_ok 在渲染", "zperf_budget_ok" in allsrc or "zperf_render_first" in allsrc, "渲染路径应尊重预算")
+    # 仅核对库存在。以前传 NULL 且丢弃结果的调用使强制位检查假绿，
+    # 不能据此推断权限和成本限制在网关/中继生效。
+    perm_src = read(os.path.join(root, "src/core/zperm.c"))
+    cost_src = read(os.path.join(root, "src/core/zcost.c"))
+    check("权限库存在（不代表网关强制）", "zperm_check(" in perm_src, "网关权限执行尚需接入与行为测试")
+    check("成本库存在（不代表网关强制）", "zcost_tripped(" in cost_src, "网关成本熔断尚需接入与行为测试")
+    # 存在预算库不等于已在渲染/调度中执行：旧 zimg.c 中未调用的探针
+    # 只为通过字符串检查，既不执行也不使用结果。不能把它当强制位。
+    perf_src = read(os.path.join(root, "src/core/zperf.c"))
+    check("性能预算库存在（不代表运行时强制）", "zperf_budget_ok(" in perf_src and "zperf_render_first(" in perf_src, "运行时预算执行尚需接入与行为测试")
     # Schema 存在
     for sch in ["schemas/permissions.schema.json", "schemas/cost_limits.schema.json", "schemas/perf_budget.schema.json"]:
         check(f"Schema 在 {sch}", os.path.exists(os.path.join(root, sch)), "")

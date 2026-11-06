@@ -19,11 +19,17 @@ ZC.register({
     const c = host.card(opts.title || "动作");
     this.grid = host.el("div", "grid");
     c.body.appendChild(this.grid);
+    this.error = host.el("p", "hint");
+    this.error.hidden = true;
+    c.body.appendChild(this.error);
     root.appendChild(c.box);
-    this.built = false;
+    this.signature = null;
   },
   onInfo(d) {
-    if (this.built || !d.actions || !d.actions.length) return;
+    if (!Array.isArray(d.actions)) return;
+    /* 形态或角色切换后动作和显示名可能变化；相同清单才跳过重建。 */
+    const signature = JSON.stringify([d.character, d.form, d.actions, d.action_names || []]);
+    if (signature === this.signature) return;
     /* 引擎给的名字优先 —— actions 和 action_names 一一对应 */
     const fromEngine = {};
     (d.action_names || []).forEach((nm, i) => {
@@ -35,13 +41,20 @@ ZC.register({
     ids.forEach((id) => {
       const b = this.host.el("button", "btn small", label(id));
       b.addEventListener("click", async () => {
-        await this.host.api("/api/action", { id: id });
-        this.grid.querySelectorAll(".btn").forEach((x) => x.classList.remove("active"));
-        b.classList.add("active");
-        this.host.refresh();
+        try {
+          await this.host.api("/api/action", { id: id });
+          this.error.hidden = true;
+          this.grid.querySelectorAll(".btn").forEach((x) => x.classList.remove("active"));
+          b.classList.add("active");
+          this.host.refresh();
+        } catch (e) {
+          this.error.textContent = "动作播放失败：" + e.message;
+          this.error.hidden = false;
+          this.host.refresh();
+        }
       });
       this.grid.appendChild(b);
     });
-    this.built = true;
+    this.signature = signature;
   },
 });

@@ -1,0 +1,16 @@
+{
+  "frame": [
+    563,
+    563
+  ],
+  "left_blink_pixels": 2713,
+  "right_blink_pixels": 2534,
+  "mouth_pixels": 296,
+  "head_motion_pixels": 36780,
+  "left_ear_motion_pixels": 2355,
+  "right_ear_motion_pixels": 2309,
+  "tail_motion_pixels": 3869,
+  "head_test_body_pixels": 0,
+  "ear_test_body_pixels": 0,
+  "tail_test_head_pixels": 0
+}

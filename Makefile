@@ -102,6 +102,10 @@ preview: $(BUILD)/zhuochong_preview
 	@echo "预览服务：http://0.0.0.0:5173   测试台：http://0.0.0.0:5173/test.html"
 	./$(BUILD)/zhuochong_preview --root . --port 5173 --bind 0.0.0.0
 
+.PHONY: test-preview-actions
+test-preview-actions: $(BUILD)/zhuochong_preview
+	@python3 tests/test_preview_actions.py
+
 # 互动/动作端到端冒烟（自己起一个预览再打一圈端点，判据是"画面真的变了"）
 smoke: $(BUILD)/zhuochong_preview
 	@$(PYTHON_IMG) tools/api_smoke.py --spawn --port 5200 --root .
@@ -194,6 +198,7 @@ platform:
 web-test:
 	@node tests/test_web.js
 	@node tests/test_product.js
+	@node tests/test_face_study.js
 
 asset-tool-test:
 	@if [ -z "$(PYTHON_IMG)" ]; then echo "需要 Pillow + numpy：配置 PYTHON_IMG 后重试"; exit 2; fi
@@ -202,7 +207,7 @@ asset-tool-test:
 rig-tool-test:
 	@python3 tests/test_make_rig_identity.py
 
-check: selfcheck asset-tool-test rig-tool-test warncheck test asan smoke web-test
+check: selfcheck asset-tool-test rig-tool-test warncheck test asan smoke web-test test-preview-actions
 	@echo "== 全部保险都过了 =="
 
 # 零告警闸：CI 是 `make clean` 后从零编的，本地增量编译会把告警藏起来。

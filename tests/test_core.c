@@ -529,6 +529,75 @@ static void test_blink(void)
     }
 }
 
+/* 没有 param_groups 的旧 rig 必须默认两眼眨；不只是眨眼数值变化，
+   必须检查左右两块实际合成像素。面部试作故意不声明该可选字段。 */
+static void test_blink_missing_groups(void)
+{
+    char dir[1024], path[1200];
+    zdiag d;
+    zrig *r;
+    const zimg *frame;
+    zimg *open;
+    int w, h, left = 0, right = 0;
+    SECTION("未声明 param_groups 的模型：左右眼仍随眨眼变化");
+    z_snprintf(dir, sizeof(dir), "%s/experiments/chibi_face_study", g_root);
+    z_snprintf(path, sizeof(path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(path, dir, &d);
+    CHECK(r != NULL, "面部试作 rig 应可加载");
+    if (!r) return;
+    CHECK(zrig_blink_targets(r) == 3, "缺省分组应眨双眼，实际 %d", zrig_blink_targets(r));
+    zrig_blink_set_manual(r, 0.0);
+    zrig_tick(r, 1.0);
+    frame = zrig_frame(r, 0.5, &w, &h);
+    open = frame ? zimg_clone(frame) : NULL;
+    CHECK(open != NULL, "睁眼帧应可渲染");
+    zrig_blink_set_manual(r, 1.0);
+    zrig_tick(r, 1.1);
+    frame = zrig_frame(r, 0.5, &w, &h);
+    if (open && frame && open->w == w && open->h == h) {
+        for (int y = 155; y < 225 && y < h; ++y) {
+            for (int x = 175; x < 325 && x < w; ++x) {
+                size_t i = ((size_t)y * w + x) * 4;
+                if (memcmp(open->px + i, frame->px + i, 4) != 0) {
+                    if (x < 252) ++left; else ++right;
+                }
+            }
+        }
+    }
+    CHECK(left > 50 && right > 50, "闭眼应改变双眼区域像素，左 %d / 右 %d", left, right);
+    zrig_blink_set_manual(r, 0.0);
+    CHECK(zrig_param_set(r, "ParamEyeLOpen", 0.0) == 0, "单眼参数应可设定");
+    zrig_tick(r, 1.2);
+    frame = zrig_frame(r, 0.5, &w, &h);
+    left = right = 0;
+    if (open && frame && open->w == w && open->h == h) {
+        for (int y = 155; y < 225 && y < h; ++y)
+            for (int x = 175; x < 325 && x < w; ++x) {
+                size_t i = ((size_t)y * w + x) * 4;
+                if (memcmp(open->px + i, frame->px + i, 4) != 0) {
+                    if (x < 252) ++left; else ++right;
+                }
+            }
+    }
+    CHECK(left > 50 && right == 0, "单闭左眼不能影响右眼，左 %d / 右 %d", left, right);
+    zrig_param_reset(r, "ParamEyeLOpen");
+    CHECK(zrig_param_set(r, "ParamMouthOpenY", 1.0) == 0, "口型参数应可设定");
+    zrig_tick(r, 1.3);
+    frame = zrig_frame(r, 0.5, &w, &h);
+    left = 0;
+    if (open && frame && open->w == w && open->h == h) {
+        for (int y = 220; y < 245 && y < h; ++y)
+            for (int x = 235; x < 270 && x < w; ++x) {
+                size_t i = ((size_t)y * w + x) * 4;
+                if (memcmp(open->px + i, frame->px + i, 4) != 0) ++left;
+            }
+    }
+    CHECK(left > 50, "张嘴应改变口部像素，实际 %d", left);
+    zimg_free(open);
+    zrig_free(r);
+}
+
 /* ---------------------------------------------------------- 图像 */
 /* 某一行的 alpha 加权横向重心；行里没有像素时返回 -1。用于量形变位移。 */
 static double row_centroid(const zimg *im, int y)
@@ -11879,6 +11948,7 @@ int main(int argc, char **argv)
     test_schema();
     test_state_machine();
     test_blink();
+    test_blink_missing_groups();
     test_eye_saccade();
     test_sparkle_trigger();
     test_eye_variants();

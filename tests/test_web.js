@@ -461,11 +461,15 @@ function slotOf(id) {
     const leaked = btns.filter((b) => /^[a-z][a-z0-9_]*$/.test(b._text || ""));
     CHECK(leaked.length === 0,
           "★ 按钮上不许出现英文 id（漏了：" + leaked.map((b) => b._text).join(" ") + "）");
-    /* 引擎新增的未知动作也要能出现（名字回落成 id） */
-    ZC.bus.emit("info", Object.assign({}, INFO, { actions: INFO.actions.concat(["brand_new"]) }));
-    const again = walk(el).filter((n) => n.tagName === "BUTTON");
-    CHECK(again.length === INFO.actions.length,
-          "动作列表只建一次，不该每次 info 都重建（实际 " + again.length + "）");
+    /* 相同 info 不重建；角色/形态清单改变时必须重建，避免指向旧 rig。 */
+    ZC.bus.emit("info", Object.assign({}, INFO));
+    const same = walk(el).filter((n) => n.tagName === "BUTTON");
+    CHECK(same[0] === btns[0], "相同动作清单不应重建按钮");
+    ZC.bus.emit("info", Object.assign({}, INFO, { form: "chibi", actions: ["brand_new"], action_names: ["新动作"] }));
+    const changed = walk(el).filter((n) => n.tagName === "BUTTON");
+    CHECK(changed.length === 2 && changed.some((b) => b._text === "新动作") &&
+          !changed.some((b) => b._text === "挥手"), "切形态后动作按钮必须替换为新模型清单");
+    ZC.bus.emit("info", INFO);
   }
   {
     const el = slotOf("appearance");

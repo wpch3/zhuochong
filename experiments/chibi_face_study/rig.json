@@ -1,0 +1,253 @@
+{
+  "schema_version": "1.0",
+  "id": "xiaoxun_chibi_face_study",
+  "name": "小寻 · 面部试作",
+  "canvas": {
+    "w": 1008,
+    "h": 1042
+  },
+  "origin": [
+    504,
+    1042
+  ],
+  "ground_line": 1000,
+  "groups": {
+    "root": {
+      "pivot": [
+        504,
+        1042
+      ],
+      "parent": ""
+    },
+    "figure": {
+      "pivot": [
+        504,
+        1000
+      ],
+      "parent": "root"
+    }
+  },
+  "blink": {
+    "enabled": true,
+    "closing_s": 0.1,
+    "closed_s": 0.08,
+    "opening_s": 0.15,
+    "interval_min_s": 2.5,
+    "interval_max_s": 6.0
+  },
+  "parts": [
+    {
+      "id": "base",
+      "file": "sprites/base.png",
+      "group": "figure",
+      "layer": 0,
+      "pos": [
+        0,
+        0
+      ],
+      "anchor": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "eye_l_open",
+      "file": "sprites/eye_l_open.png",
+      "group": "figure",
+      "pos": [
+        357,
+        318
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 10,
+      "tags": [
+        "eye_open"
+      ],
+      "eye_side": "l"
+    },
+    {
+      "id": "eye_l_closed",
+      "file": "sprites/eye_l_closed.png",
+      "group": "figure",
+      "pos": [
+        357,
+        318
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 11,
+      "tags": [
+        "eye_closed"
+      ],
+      "eye_side": "l"
+    },
+    {
+      "id": "eye_r_open",
+      "file": "sprites/eye_r_open.png",
+      "group": "figure",
+      "pos": [
+        531,
+        318
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 10,
+      "tags": [
+        "eye_open"
+      ],
+      "eye_side": "r"
+    },
+    {
+      "id": "eye_r_closed",
+      "file": "sprites/eye_r_closed.png",
+      "group": "figure",
+      "pos": [
+        531,
+        318
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 11,
+      "tags": [
+        "eye_closed"
+      ],
+      "eye_side": "r"
+    },
+    {
+      "id": "nose",
+      "file": "sprites/nose.png",
+      "group": "figure",
+      "pos": [
+        492,
+        420
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 10
+    },
+    {
+      "id": "mouth_rest",
+      "file": "sprites/mouth_rest.png",
+      "group": "figure",
+      "pos": [
+        475,
+        443
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 10
+    },
+    {
+      "id": "mouth_speak",
+      "file": "sprites/mouth_speak.png",
+      "group": "figure",
+      "pos": [
+        475,
+        443
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 11
+    }
+  ],
+  "params": [
+    {
+      "id": "ParamMouthOpenY",
+      "label": "张嘴",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "binds": []
+    }
+  ],
+  "xfades": [
+    {
+      "id": "mouth",
+      "param": "ParamMouthOpenY",
+      "in": [
+        0,
+        1
+      ],
+      "from": "mouth_rest",
+      "to": "mouth_speak"
+    }
+  ],
+  "actions": [
+    {
+      "id": "idle",
+      "title": "待机",
+      "priority": 0,
+      "loop": true,
+      "channels": []
+    },
+    {
+      "id": "sway",
+      "title": "整体摇摆（试作）",
+      "priority": 2,
+      "loop": true,
+      "channels": [
+        {
+          "target": "figure",
+          "param": "rot_deg",
+          "wave": "sine",
+          "amp": 1.5,
+          "freq": 0.2
+        }
+      ]
+    },
+    {
+      "id": "talk",
+      "title": "说话（试作）",
+      "priority": 2,
+      "loop": true,
+      "channels": [
+        {
+          "target": "ParamMouthOpenY",
+          "param": "value",
+          "wave": "flap",
+          "amp": 1,
+          "freq": 2
+        }
+      ]
+    }
+  ],
+  "regions": [
+    {
+      "id": "head",
+      "rect": [
+        260,
+        80,
+        750,
+        500
+      ],
+      "cursor": "hand",
+      "action": "idle"
+    },
+    {
+      "id": "body",
+      "rect": [
+        325,
+        500,
+        680,
+        780
+      ],
+      "cursor": "hand",
+      "action": "idle"
+    }
+  ]
+}

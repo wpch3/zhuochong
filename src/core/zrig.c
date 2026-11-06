@@ -2493,7 +2493,8 @@ static int load_param_groups(zrig *r, const zjson *jg, zdiag *d, const char *fil
     size_t i, n;
     r->blink_targets = 0;
     z_strlcpy(r->lipsync_param, "ParamMouthOpenY", sizeof(r->lipsync_param));
-    if (!jg) return 0;
+    /* 老 rig 没有 param_groups 时，两眼也要跟随眨眼；不能在默认值之前返回。 */
+    if (!jg) { r->blink_targets = 3; return 0; }
     if (jg->type != ZJSON_ARR) {
         zdiag_error(d, file, jg->line, 0, "param_groups", "期望 array");
         return -1;

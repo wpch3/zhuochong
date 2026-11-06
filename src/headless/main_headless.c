@@ -2347,10 +2347,18 @@ static void handle_request(zsock fd, const http_req *r)
     }
     if (strcmp(r->path, "/api/action") == 0) {
         char id[64];
-        if (qstr(r, "id", id, sizeof(id))) {
-            LOCK();
-            zpet_action_request(g_pet, id, "preview", 1);
-            UNLOCK();
+        int accepted;
+        if (!qstr(r, "id", id, sizeof(id)) || !id[0]) {
+            send_text(fd, 400, "application/json", "{\"ok\":false,\"error\":\"缺少动作 id\"}");
+            return;
+        }
+        LOCK();
+        /* 预览动作按钮有意强制打断；force=1 时只有未知动作会被拒绝。 */
+        accepted = zpet_action_request(g_pet, id, "preview", 1);
+        UNLOCK();
+        if (!accepted) {
+            send_text(fd, 404, "application/json", "{\"ok\":false,\"error\":\"当前模型没有这个动作\"}");
+            return;
         }
         send_text(fd, 200, "application/json", "{\"ok\":true}");
         return;

@@ -2,6 +2,8 @@
 
 拟人化桌面 AI 伴侣：**Windows 原生 C 桌宠** + （后续）Web 主工作区。
 
+> 2026-11-06 重启基线与实际完成情况见 [`docs/RESTART_BASELINE_2026-11-06.md`](docs/RESTART_BASELINE_2026-11-06.md)；桌宠面部试作见 [`experiments/chibi_face_study/README.md`](experiments/chibi_face_study/README.md)，独立的 Live2D 风格 Chibi 短发试装见 [`experiments/live2d_chibi_short/README.md`](experiments/live2d_chibi_short/README.md)。下面的旧版状态是历史记录，不代表全部模型已完成或通过视觉验收。自研 `rig.json` 不是官方 Cubism 模型。
+
 ## 现状（2026-10-11）
 
 - ✅ Windows 原生 C 桌宠可运行：透明小窗、像素级鼠标穿透、拖动、托盘菜单、缩放、热键、
