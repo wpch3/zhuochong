@@ -102,7 +102,7 @@ preview: $(BUILD)/zhuochong_preview
 	@echo "预览服务：http://0.0.0.0:5173   测试台：http://0.0.0.0:5173/test.html"
 	./$(BUILD)/zhuochong_preview --root . --port 5173 --bind 0.0.0.0
 
-.PHONY: test-preview-actions test-rig-editor test-zrig-project test-blackline test-human-cleanup
+.PHONY: test-preview-actions test-rig-editor test-rig-editor-browser test-zrig-project test-blackline test-human-cleanup
 test-zrig-project: $(BUILD)/zhuochong_preview
 	@python3 tests/test_zrig_project.py
 
@@ -113,13 +113,24 @@ test-blackline:
 test-human-cleanup:
 	@test -n "$(PYTHON_IMG)" || { echo 'Pillow 和 numpy 解释器未找到'; exit 1; }
 	@$(PYTHON_IMG) tests/test_human_cleanup.py
+	@$(PYTHON_IMG) tests/test_human_seam_review.py
 
-test-rig-editor: $(BUILD)/zhuochong_preview
+$(BUILD)/rig_mesh_probe: tests/rig_mesh_probe.c $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) $(INC) -o $@ tests/rig_mesh_probe.c $(CORE_SRC) $(LDLIBS)
+
+test-rig-editor: $(BUILD)/zhuochong_preview $(BUILD)/rig_mesh_probe
+	@node tests/test_rig_mesh_geometry.js
 	@node tests/test_rig_viewport.js
 	@node tests/test_rig_editor_ui.js
 	@node tests/test_rig_editor.js
 	@python3 tests/test_rig_editor_integration.py
 	@python3 tests/test_human_chibi_study.py
+
+# Optional: externally installed playwright-core + @sparticuz/chromium and OS libs.
+test-rig-editor-browser: $(BUILD)/zhuochong_preview
+	@ZRIG_BROWSER_QA=$(BUILD)/browser-editor-qa node tests/test_rig_editor_browser.js
+	@ZRIG_BROWSER_RIG=$(BUILD)/browser-editor-qa/browser-rig.json ZRIG_QA_DIR=$(BUILD)/browser-editor-qa python3 tests/test_rig_editor_integration.py
 
 test-preview-actions: $(BUILD)/zhuochong_preview
 	@python3 tests/test_preview_actions.py

@@ -32,15 +32,44 @@
     const lx = dx*c + dy*s + g.ax, ly = -dx*s + dy*c + g.ay;
     return lx >= 0 && ly >= 0 && lx <= g.w && ly <= g.h;
   }
+  // Coordinates are a static authoring approximation: keyframe offsets are
+  // in source-image pixels, before the part's scale and rotation.
+  function meshPoints(part, image, rig, mesh, value, preview) {
+    if (!part || !image || !mesh || mesh.part !== part.id || part.socket || part.deformer || part.inherit_from ||
+        mesh.parent || mesh.w || mesh.chain_w || !Number.isInteger(mesh.cols) || !Number.isInteger(mesh.rows) ||
+        mesh.cols < 1 || mesh.rows < 1 || mesh.cols > 16 || mesh.rows > 16 || !Array.isArray(mesh.keys)) return null;
+    const key = mesh.keys.find(k => k && k.v === value);
+    const g = geometry(part, image, rig);
+    if (!key || !Array.isArray(key.points) || !g) return null;
+    const scaleX = g.w / image.width, scaleY = g.h / image.height;
+    const cos = Math.cos(g.angle), sin = Math.sin(g.angle), result = [];
+    for (let row = 0; row <= mesh.rows; row++) for (let col = 0; col <= mesh.cols; col++) {
+      const stored = key.points.find(p => p && p.c === col && p.r === row) || {};
+      const offset = preview && preview.c === col && preview.r === row ? preview : stored;
+      const dx = offset.dx ?? 0, dy = offset.dy ?? 0;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+      const x = (image.width * col / mesh.cols + dx) * scaleX - g.ax;
+      const y = (image.height * row / mesh.rows + dy) * scaleY - g.ay;
+      result.push({c:col, r:row, dx, dy, x:g.x + x*cos - y*sin, y:g.y + x*sin + y*cos});
+    }
+    return result;
+  }
+  function sourceDelta(g, image, dx, dy) {
+    const cos = Math.cos(g.angle), sin = Math.sin(g.angle);
+    return [(dx*cos + dy*sin) / (g.w / image.width), (-dx*sin + dy*cos) / (g.h / image.height)];
+  }
   class Viewport {
-    constructor(canvas, onMove, onStatus) {
+    constructor(canvas, onMove, onStatus, onMeshMove = () => {}) {
       this.canvas = canvas; this.ctx = canvas.getContext('2d');
-      this.onMove = onMove; this.onStatus = onStatus; this.images = new Map(); this.rig = null; this.drag = null;
+      this.onMove = onMove; this.onStatus = onStatus; this.onMeshMove = onMeshMove;
+      this.images = new Map(); this.rig = null; this.drag = null; this.meshMode = false;
       this.loadToken = 0;
       canvas.addEventListener('pointerdown', e => this.start(e));
       canvas.addEventListener('pointermove', e => this.move(e));
       canvas.addEventListener('pointerup', e => this.finish(e));
-      canvas.addEventListener('pointercancel', () => { this.drag = null; this.draw(); });
+      canvas.addEventListener('pointercancel', e => {
+        if (this.drag && this.drag.pointerId === e.pointerId) { this.drag = null; this.draw(); }
+      });
     }
     setRig(rig, clearImages) {
       const w = rig.canvas?.w, h = rig.canvas?.h;
@@ -52,6 +81,19 @@
       this.draw();
     }
     setSelection(id) { this.selected = id; this.draw(); }
+    setMesh(id, value, enabled) {
+      this.meshId = id; this.meshValue = value; this.meshMode = enabled;
+      this.drag = null; this.draw();
+    }
+    meshContext() {
+      if (!this.rig || !this.meshMode || !Number.isFinite(this.meshValue)) return null;
+      const mesh = (this.rig.deformers || []).find(d => d && d.id === this.meshId);
+      const part = this.rig.parts.find(p => p.id === this.selected);
+      const image = part && this.images.get(part.file);
+      const preview = this.drag && this.drag.kind === 'mesh' ? this.drag.offset : null;
+      const points = meshPoints(part, image, this.rig, mesh, this.meshValue, preview);
+      return points ? {mesh, part, image, points} : null;
+    }
     async loadFiles(files) {
       if (!this.rig) throw new Error('请先载入 rig');
       const token = ++this.loadToken;
@@ -107,31 +149,71 @@
         c.setLineDash([10, 7]); c.strokeRect(-selection.ax, -selection.ay, selection.w, selection.h);
         c.setLineDash([]); c.beginPath(); c.arc(0, 0, 5, 0, 2*Math.PI); c.fillStyle = '#ff6f4c'; c.fill(); c.restore();
       }
+      const grid = this.meshContext();
+      if (grid) {
+        const {mesh, points} = grid, at = (c, r) => points[r * (mesh.cols + 1) + c];
+        c.save(); c.lineWidth = Math.max(2, this.canvas.width / 500); c.strokeStyle = '#008d80';
+        c.beginPath();
+        for (let row = 0; row <= mesh.rows; row++) for (let col = 0; col < mesh.cols; col++) {
+          const a = at(col, row), b = at(col + 1, row); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y);
+        }
+        for (let col = 0; col <= mesh.cols; col++) for (let row = 0; row < mesh.rows; row++) {
+          const a = at(col, row), b = at(col, row + 1); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y);
+        }
+        c.stroke(); c.fillStyle = '#ed7549';
+        for (const point of points) { c.beginPath(); c.arc(point.x, point.y, Math.max(5, this.canvas.width / 180), 0, 2*Math.PI); c.fill(); }
+        c.restore();
+      }
     }
     start(e) {
-      if (!this.rig || e.button !== 0) return;
+      if (!this.rig || this.drag || e.button !== 0) return;
+      if (this.meshMode) {
+        const context = this.meshContext();
+        if (!context) { this.onStatus('网格不可编辑：请选择匹配部件、有效关键值和已加载素材；复杂权重/链/挂点不支持。'); return; }
+        const p = this.position(e), rect = this.canvas.getBoundingClientRect();
+        const radius = Math.max(this.canvas.width / rect.width, this.canvas.height / rect.height) * 12;
+        const hit = context.points.reduce((best, point) => {
+          const dist = Math.hypot(point.x - p[0], point.y - p[1]);
+          return dist <= radius && (!best || dist < best.dist) ? {point, dist} : best;
+        }, null);
+        if (!hit) return;
+        this.drag = {kind:'mesh', pointerId:e.pointerId, from:p, mesh:context.mesh.id, value:this.meshValue,
+                     part:context.part, image:context.image, offset:{c:hit.point.c, r:hit.point.r, dx:hit.point.dx, dy:hit.point.dy},
+                     initial:[hit.point.dx, hit.point.dy]};
+        this.canvas.setPointerCapture(e.pointerId); e.preventDefault(); return;
+      }
       const p = this.rig.parts.find(p => p.id === this.selected);
       const image = p && this.images.get(p.file);
       if (!p || !image || p.socket) return;
       const g = geometry(p, image, this.rig); const point = this.position(e);
       if (!g || !contains(g, ...point)) return;
-      this.drag = {id: p.id, from: point, initial: [g.x, g.y], pos: [g.x, g.y], layer: p.layer || 0};
+      this.drag = {kind:'part', pointerId:e.pointerId, id: p.id, from: point, initial: [g.x, g.y], pos: [g.x, g.y], layer: p.layer || 0};
       this.canvas.setPointerCapture(e.pointerId); e.preventDefault();
     }
     move(e) {
       if (!this.drag) return;
+      if (e.pointerId !== this.drag.pointerId) return;
       const p = this.position(e);
-      this.drag.pos = [this.drag.initial[0] + p[0] - this.drag.from[0], this.drag.initial[1] + p[1] - this.drag.from[1]];
+      if (this.drag.kind === 'mesh') {
+        const d = this.drag, g = geometry(d.part, d.image, this.rig);
+        const delta = sourceDelta(g, d.image, p[0] - d.from[0], p[1] - d.from[1]);
+        d.offset.dx = d.initial[0] + delta[0]; d.offset.dy = d.initial[1] + delta[1];
+      } else {
+        this.drag.pos = [this.drag.initial[0] + p[0] - this.drag.from[0], this.drag.initial[1] + p[1] - this.drag.from[1]];
+      }
       this.draw();
     }
-    finish() {
-      if (!this.drag) return;
+    finish(e) {
+      if (!this.drag || e.pointerId !== this.drag.pointerId) return;
       const d = this.drag; this.drag = null;
-      if (Math.hypot(d.pos[0]-d.initial[0], d.pos[1]-d.initial[1]) > .25) this.onMove(d.id, d.pos, d.layer);
+      if (d.kind === 'mesh') {
+        if (Math.hypot(d.offset.dx-d.initial[0], d.offset.dy-d.initial[1]) > .01)
+          this.onMeshMove(d.mesh, d.value, d.offset.c, d.offset.r, d.offset.dx, d.offset.dy);
+      } else if (Math.hypot(d.pos[0]-d.initial[0], d.pos[1]-d.initial[1]) > .25) this.onMove(d.id, d.pos, d.layer);
       this.draw();
     }
   }
-  const api = {safePath, geometry, visible, contains, Viewport};
+  const api = {safePath, geometry, visible, contains, meshPoints, sourceDelta, Viewport};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.ZRigViewport = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

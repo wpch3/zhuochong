@@ -3,8 +3,8 @@
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
-const ids = ['file','demo','undo','redo','download','status','work','part','x','y','layer','savePart','newId','newLabel','min','max','default','addParam','param','group','channel','scale','offset','addBind','bindings','assetFiles','viewport','canvasStatus','meshId','meshCols','meshRows','mesh','meshValue','meshC','meshR','meshDx','meshDy','addMesh','setMeshPoint','meshDetails'];
-const ctx2d = {clearRect(){}, save(){}, restore(){}, translate(){}, rotate(){}, drawImage(){}, setLineDash(){}, strokeRect(){}, beginPath(){}, arc(){}, fill(){}};
+const ids = ['file','demo','undo','redo','download','status','work','part','x','y','layer','savePart','newId','newLabel','min','max','default','addParam','param','group','channel','scale','offset','addBind','bindings','assetFiles','viewport','canvasStatus','meshId','meshCols','meshRows','mesh','meshValue','meshEdit','meshC','meshR','meshDx','meshDy','addMesh','setMeshPoint','meshDetails'];
+const ctx2d = {clearRect(){}, save(){}, restore(){}, translate(){}, rotate(){}, drawImage(){}, setLineDash(){}, strokeRect(){}, beginPath(){}, arc(){}, fill(){}, moveTo(){}, lineTo(){}, stroke(){}};
 class Element {
   constructor(id) { this.id=id; this.value=''; this.children=[]; this.handlers={}; this.hidden=false; this.disabled=false; this.textContent=''; this.width=0; this.height=0; }
   addEventListener(event, fn) { this.handlers[event]=fn; }

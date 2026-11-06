@@ -32,8 +32,13 @@ def main():
                 (char / path.name).symlink_to(path, target_is_directory=path.is_dir())
         form = char / 'forms/editor_test'
         form.mkdir(parents=True)
-        shutil.copytree(SOURCE / 'sprites', form / 'sprites')
-        subprocess.run(['node', 'tests/test_rig_editor.js', str(form / 'rig.json')], cwd=ROOT, check=True)
+        browser_rig = os.environ.get('ZRIG_BROWSER_RIG')
+        source = ROOT / 'experiments/live2d_chibi_human_blackline' if browser_rig else SOURCE
+        shutil.copytree(source / 'sprites', form / 'sprites')
+        if browser_rig:
+            shutil.copyfile(browser_rig, form / 'rig.json')
+        else:
+            subprocess.run(['node', 'tests/test_rig_editor.js', str(form / 'rig.json')], cwd=ROOT, check=True)
         with socket.socket() as s:
             s.bind(('127.0.0.1', 0))
             port = s.getsockname()[1]

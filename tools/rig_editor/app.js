@@ -5,7 +5,12 @@ let session = null;
 const status = message => { $('status').textContent = message; };
 const viewport = new ZRigViewport.Viewport($('viewport'), (id, pos, layer) => {
   run(() => session.setPart(id, Math.round(pos[0] * 100) / 100, Math.round(pos[1] * 100) / 100, layer), '部件位置已更新，可撤销。');
-}, message => { $('canvasStatus').textContent = message; });
+}, message => { $('canvasStatus').textContent = message; }, (id, value, col, row, dx, dy) => {
+  const round = n => Math.round(n * 100) / 100;
+  if (run(() => session.setKeyformPoint(id, value, col, row, round(dx), round(dy)), '控制点已更新（一次可撤销事务）；贴图仍是静态近似。')) {
+    $('meshC').value = col; $('meshR').value = row; $('meshDx').value = round(dx); $('meshDy').value = round(dy);
+  }
+});
 function number(id) {
   const text = $(id).value.trim();
   if (!text) throw new Error('数值不能为空');
@@ -14,7 +19,7 @@ function number(id) {
   return n;
 }
 function run(fn, message) {
-  try { fn(); render(); status(message); } catch (error) { status('操作失败：' + error.message); }
+  try { fn(); render(); status(message); return true; } catch (error) { status('操作失败：' + error.message); return false; }
 }
 function load(rig) {
   const next = new ZRigEditor.Session(rig);
@@ -56,6 +61,8 @@ function showMesh() {
   const mesh = (session.rig.deformers || []).find(item => item.id === $('mesh').value && Array.isArray(item.keys));
   $('meshDetails').textContent = mesh ? JSON.stringify(mesh, null, 2) : '暂无单参数关键形态网格。';
   $('setMeshPoint').disabled = !mesh;
+  const text = $('meshValue').value.trim();
+  viewport.setMesh(mesh ? mesh.id : '', text ? Number(text) : NaN, $('meshEdit').checked);
 }
 function render() {
   $('work').hidden = !session;
@@ -90,6 +97,8 @@ $('assetFiles').addEventListener('change', async event => {
 $('part').addEventListener('change', showPart);
 $('param').addEventListener('change', showBindings);
 $('mesh').addEventListener('change', showMesh);
+$('meshValue').addEventListener('input', showMesh);
+$('meshEdit').addEventListener('change', showMesh);
 $('addMesh').addEventListener('click', () => run(() => session.addKeyform($('meshId').value.trim(), $('part').value, $('param').value, number('meshCols'), number('meshRows')), '网格已新建；请填写关键形态控制点。'));
 $('setMeshPoint').addEventListener('click', () => run(() => session.setKeyformPoint($('mesh').value, number('meshValue'), number('meshC'), number('meshR'), number('meshDx'), number('meshDy')), '关键形态控制点已更新；请导出并用 C 引擎验证。'));
 $('savePart').addEventListener('click', () => run(() => session.setPart($('part').value, number('x'), number('y'), number('layer')), '部件位置已更新。'));

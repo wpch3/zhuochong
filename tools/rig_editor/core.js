@@ -20,8 +20,9 @@
       if (rig.parts.some(p => !p || typeof p !== 'object' || typeof p.id !== 'string' || typeof p.file !== 'string' ||
           (p.tags !== undefined && !Array.isArray(p.tags))) ||
           rig.params.some(p => !p || typeof p !== 'object' || typeof p.id !== 'string') ||
+          (rig.deformers !== undefined && (!Array.isArray(rig.deformers) || rig.deformers.some(d => !d || typeof d !== 'object' || Array.isArray(d)))) ||
           (rig.xfades !== undefined && (!Array.isArray(rig.xfades) || rig.xfades.some(f => !f || typeof f !== 'object')))) {
-        throw new Error('部件、参数或交叉淡化结构有误');
+        throw new Error('部件、参数、形变器或交叉淡化结构有误');
       }
       this.rig = clone(rig);
       this.history = [];

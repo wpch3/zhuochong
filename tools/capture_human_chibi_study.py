@@ -31,9 +31,14 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--blackline', action='store_true', help='Capture the separate black-outline study on port 5205')
     mode.add_argument('--clean', action='store_true', help='Capture the isolated edge cleanup on port 5206')
+    mode.add_argument('--seam', action='store_true', help='Capture the reviewed seam study on port 5207')
     args = parser.parse_args()
     expected = 'human_study'
-    if args.clean:
+    if args.seam:
+        BASE = 'http://127.0.0.1:5207'
+        OUT = Path(__file__).resolve().parents[1] / 'experiments/live2d_chibi_human_blackline_seam/qa'
+        expected = 'human_seam_study'
+    elif args.clean:
         BASE = 'http://127.0.0.1:5206'
         OUT = Path(__file__).resolve().parents[1] / 'experiments/live2d_chibi_human_blackline_clean/qa'
         expected = 'human_clean_study'
@@ -63,18 +68,23 @@ def main():
         get('/api/action?id=head_test')
         get('/api/step?n=60')
         frames['head_test'] = image()
+        if args.seam:
+            # Half a cycle later for the opposite head rotation (0.25 Hz).
+            get('/api/step?n=120&dt=0.0166666667')
+            frames['head_opposite'] = image()
         for name, im in frames.items():
             im.save(OUT / (name + '.png'))
-        if args.blackline or args.clean:
+        if args.blackline or args.clean or args.seam:
             # The model image is still an actual C frame; the neutral backdrops
             # are post-composites for inspection of thin outlines and matte.
             for name, color in [('idle_light', (247, 247, 247, 255)), ('idle_dark', (38, 43, 49, 255))]:
                 bg = Image.new('RGBA', frames['idle'].size, color)
                 bg.alpha_composite(frames['idle'])
                 bg.convert('RGB').save(OUT / (name + '.png'))
-        if args.clean:
+        if args.clean or args.seam:
             # The detail images are derived from real C frames, not new renders.
-            for name in ('idle', 'head_test', 'closed'):
+            details = ('idle', 'head_test', 'head_opposite', 'closed') if args.seam else ('idle', 'head_test', 'closed')
+            for name in details:
                 bg = Image.new('RGBA', frames[name].size, (235, 236, 236, 255))
                 bg.alpha_composite(frames[name])
                 bg.crop((160, 100, 405, 285)).resize((980, 740)).convert('RGB').save(OUT / (name + '_detail.png'))
