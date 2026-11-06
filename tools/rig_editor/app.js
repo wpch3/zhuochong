@@ -3,6 +3,9 @@
 const $ = id => document.getElementById(id);
 let session = null;
 const status = message => { $('status').textContent = message; };
+const viewport = new ZRigViewport.Viewport($('viewport'), (id, pos, layer) => {
+  run(() => session.setPart(id, Math.round(pos[0] * 100) / 100, Math.round(pos[1] * 100) / 100, layer), '部件位置已更新，可撤销。');
+}, message => { $('canvasStatus').textContent = message; });
 function number(id) {
   const text = $(id).value.trim();
   if (!text) throw new Error('数值不能为空');
@@ -13,7 +16,12 @@ function number(id) {
 function run(fn, message) {
   try { fn(); render(); status(message); } catch (error) { status('操作失败：' + error.message); }
 }
-function load(rig) { session = new ZRigEditor.Session(rig); render(); status('已载入：' + (session.rig.name || session.rig.id || '未命名')); }
+function load(rig) {
+  const next = new ZRigEditor.Session(rig);
+  viewport.setRig(next.rig, true); session = next;
+  $('canvasStatus').textContent = '未加载贴图。';
+  render(); status('已载入：' + (session.rig.name || session.rig.id || '未命名'));
+}
 function options(select, values, preferred) {
   const previous = preferred === undefined ? select.value : preferred;
   select.replaceChildren();
@@ -27,7 +35,8 @@ function showPart() {
   $('x').value = p && Array.isArray(p.pos) ? p.pos[0] : 0;
   $('y').value = p && Array.isArray(p.pos) ? p.pos[1] : 0;
   $('layer').value = p && Number.isInteger(p.layer) ? p.layer : 0;
-  $('savePart').disabled = !p;
+  $('savePart').disabled = !p || !!p.socket;
+  viewport.setSelection(p ? p.id : null);
 }
 function showBindings() {
   const list = $('bindings'); list.replaceChildren();
@@ -49,6 +58,7 @@ function render() {
   $('undo').disabled = !session || !session.history.length;
   $('redo').disabled = !session || !session.future.length;
   if (!session) return;
+  viewport.setRig(session.rig, false);
   options($('part'), session.rig.parts.filter(p => p && typeof p.id === 'string').map(p => [p.id, p.id]));
   options($('param'), session.rig.params.filter(p => p && typeof p.id === 'string').map(p => [p.id, (p.label || p.id) + ' · ' + p.id]));
   options($('group'), Object.keys(session.rig.groups).map(id => [id, id]));
@@ -61,8 +71,15 @@ $('file').addEventListener('change', async event => {
   event.target.value = '';
 });
 $('demo').addEventListener('click', async () => {
-  try { const response = await fetch('demo.json'); if (!response.ok) throw new Error('示例不可用'); load(await response.json()); }
-  catch (error) { status('读取失败：' + error.message); }
+  try {
+    const response = await fetch('demo.json'); if (!response.ok) throw new Error('示例不可用');
+    load(await response.json()); await viewport.loadDemo();
+  } catch (error) { status('读取失败：' + error.message); }
+});
+$('assetFiles').addEventListener('change', async event => {
+  try { await viewport.loadFiles(event.target.files); }
+  catch (error) { $('canvasStatus').textContent = '素材加载失败：' + error.message; }
+  event.target.value = '';
 });
 $('part').addEventListener('change', showPart);
 $('param').addEventListener('change', showBindings);

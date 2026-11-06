@@ -5,6 +5,7 @@ Requires Pillow and numpy, and resets preview 5203 to idle after testing.
 """
 from io import BytesIO
 from pathlib import Path
+import argparse
 import json
 import urllib.request
 
@@ -25,9 +26,18 @@ def image():
 
 
 def main():
+    global BASE, OUT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--blackline', action='store_true', help='Capture the separate black-outline study on port 5205')
+    args = parser.parse_args()
+    expected = 'human_study'
+    if args.blackline:
+        BASE = 'http://127.0.0.1:5205'
+        OUT = Path(__file__).resolve().parents[1] / 'experiments/live2d_chibi_human_blackline/qa'
+        expected = 'human_blackline_study'
     info = json.loads(get('/api/info.json'))
-    if info.get('form') != 'human_study':
-        raise SystemExit('Refusing: port 5203 is not the isolated human_study preview')
+    if info.get('form') != expected:
+        raise SystemExit('Refusing: preview is not the expected isolated study')
     OUT.mkdir(parents=True, exist_ok=True)
     try:
         get('/api/pause?on=1')
@@ -49,6 +59,13 @@ def main():
         frames['head_test'] = image()
         for name, im in frames.items():
             im.save(OUT / (name + '.png'))
+        if args.blackline:
+            # The model image is still an actual C frame; the neutral backdrops
+            # are post-composites for inspection of thin outlines and matte.
+            for name, color in [('idle_light', (247, 247, 247, 255)), ('idle_dark', (38, 43, 49, 255))]:
+                bg = Image.new('RGBA', frames['idle'].size, color)
+                bg.alpha_composite(frames['idle'])
+                bg.convert('RGB').save(OUT / (name + '.png'))
         base = np.asarray(frames['idle'])
         h, w = base.shape[:2]
         def count(name, box):

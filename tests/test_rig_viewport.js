@@ -1,0 +1,36 @@
+'use strict';
+const assert = require('assert');
+const fs = require('fs');
+const v = require('../tools/rig_editor/viewport.js');
+const rig = JSON.parse(fs.readFileSync('tools/rig_editor/demo.json', 'utf8'));
+assert.strictEqual(v.safePath('sprites/head.png'), 'sprites/head.png');
+for (const path of ['../evil', '/etc/passwd', 'sprites/../../bad', 'sprites\\bad', '']) assert.throws(() => v.safePath(path));
+const shown = v.visible(rig).map(p => p.id);
+assert(shown.includes('eye_l_open') && !shown.includes('eye_l_closed'));
+assert(shown.includes('mouth_rest') && !shown.includes('mouth_speak'));
+const geo = v.geometry({pos:[100,200], anchor:[0.5,0.5], scale:0.5}, {width:80,height:40}, rig);
+assert.deepStrictEqual(geo, {x:100,y:200,w:40,h:20,ax:20,ay:10,angle:0});
+assert(v.contains(geo, 110, 200)); assert(!v.contains(geo, 121, 200));
+const turn = v.geometry({pos:[0,0], anchor:[0,0], rot_deg:90}, {width:10,height:20}, rig);
+assert(v.contains(turn, -10, 5)); assert(!v.contains(turn, 5, 5));
+const events = {};
+const ctx = {clearRect(){}, save(){}, restore(){}, translate(){}, rotate(){}, drawImage(){},
+  setLineDash(){}, strokeRect(){}, beginPath(){}, arc(){}, fill(){}};
+const canvas = {width:0,height:0, addEventListener(k, f){events[k]=f}, getContext(){return ctx},
+  getBoundingClientRect(){return {left:0,top:0,width:1024,height:1024}}, setPointerCapture(){}};
+let move = null;
+const view = new v.Viewport(canvas, (id,pos,layer) => { move = {id,pos,layer}; }, () => {});
+view.setRig(rig, false);
+view.images.set('sprites/body.png', {width:480,height:512});
+view.setSelection('body');
+events.pointerdown({button:0,pointerId:1,clientX:400,clientY:500,preventDefault(){}});
+events.pointermove({clientX:420,clientY:530});
+events.pointerup({});
+assert.deepStrictEqual(move, {id:'body',pos:[300,488],layer:10});
+const socketRig = JSON.parse(JSON.stringify(rig)); socketRig.parts[0].socket = 'fixed';
+view.setRig(socketRig, false); view.setSelection('body'); move = null;
+events.pointerdown({button:0,pointerId:1,clientX:400,clientY:500,preventDefault(){}});
+events.pointermove({clientX:420,clientY:530}); events.pointerup({});
+assert.strictEqual(move, null, 'socket-controlled parts must not drag');
+assert.throws(() => view.setRig({canvas:{w:99999,h:3}}, true), /4096/);
+console.log('zrig 画布：默认可见层、路径安全、坐标与拖动/挂点保护通过');

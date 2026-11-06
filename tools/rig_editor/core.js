@@ -17,6 +17,12 @@
       if (!rig || typeof rig !== 'object' || Array.isArray(rig) ||
           !Array.isArray(rig.parts) || !rig.groups || typeof rig.groups !== 'object' || Array.isArray(rig.groups) ||
           !Array.isArray(rig.params)) throw new Error('需要含 parts、groups、params 的 zrig JSON');
+      if (rig.parts.some(p => !p || typeof p !== 'object' || typeof p.id !== 'string' || typeof p.file !== 'string' ||
+          (p.tags !== undefined && !Array.isArray(p.tags))) ||
+          rig.params.some(p => !p || typeof p !== 'object' || typeof p.id !== 'string') ||
+          (rig.xfades !== undefined && (!Array.isArray(rig.xfades) || rig.xfades.some(f => !f || typeof f !== 'object')))) {
+        throw new Error('部件、参数或交叉淡化结构有误');
+      }
       this.rig = clone(rig);
       this.history = [];
       this.future = [];
@@ -43,6 +49,7 @@
       this.change(r => {
         const p = r.parts.find(item => item.id === id);
         if (!p) throw new Error('部件不存在');
+        if (p.socket) throw new Error('挂点部件的位置由 socket 决定，当前工具不能编辑');
         p.pos = [x, y]; p.layer = layer;
       });
     }

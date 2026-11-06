@@ -7,11 +7,15 @@ const source = JSON.parse(fs.readFileSync('experiments/live2d_chibi_human_short/
 const sourceJson = JSON.stringify(source);
 const s = new Session(source);
 assert.throws(() => new Session({}), /zrig/);
+const malformed = JSON.parse(sourceJson); malformed.parts[0].tags = 42;
+assert.throws(() => new Session(malformed), /结构/);
 assert.throws(() => s.addParameter('ParamAngleX', '内建', -1, 1, 0), /内建/);
 assert.throws(() => s.addParameter('invalid', '错误', -1, 1, 0), /参数 ID/);
 assert.throws(() => s.addParameter('Param' + 'a'.repeat(35), '过长', -1, 1, 0), /参数 ID/);
 assert.throws(() => s.addParameter('ParamWrong', '错误', -1, 1, 2), /范围/);
 assert.throws(() => s.setPart('head', NaN, 0, 0), /有限/);
+const socketRig = JSON.parse(sourceJson); socketRig.parts[0].socket = 's_anchor';
+assert.throws(() => new Session(socketRig).setPart('body', 10, 10, 10), /挂点/);
 assert.throws(() => s.addGroupBind('ParamMouthOpenY', 'head', 'alpha', 1, 0), /不支持/);
 assert.strictEqual(s.history.length, 0, 'errors must not create history or mutate');
 s.addParameter('ParamEditorHead', '编辑器测试', -1, 1, 0);

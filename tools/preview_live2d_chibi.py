@@ -17,12 +17,23 @@ def link(source, target):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('port', nargs='?', default=None)
-    parser.add_argument('--human', action='store_true', help='Use the independent no-animal-feature study')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--human', action='store_true', help='Use the independent no-animal-feature study')
+    mode.add_argument('--blackline', action='store_true', help='Use the independent black-outline human study')
     args = parser.parse_args()
-    human = args.human
-    preview = ROOT / ('build/human-chibi-preview' if human else 'build/live2d-chibi-preview')
-    study = ROOT / ('experiments/live2d_chibi_human_short' if human else 'experiments/live2d_chibi_short')
-    form = 'human_study' if human else 'live2d_study'
+    human = args.human or args.blackline
+    if args.blackline:
+        preview = ROOT / 'build/human-blackline-preview'
+        study = ROOT / 'experiments/live2d_chibi_human_blackline'
+        form = 'human_blackline_study'
+    elif human:
+        preview = ROOT / 'build/human-chibi-preview'
+        study = ROOT / 'experiments/live2d_chibi_human_short'
+        form = 'human_study'
+    else:
+        preview = ROOT / 'build/live2d-chibi-preview'
+        study = ROOT / 'experiments/live2d_chibi_short'
+        form = 'live2d_study'
     if not (study / 'rig.json').exists():
         raise SystemExit('Build the selected study first')
     preview.mkdir(parents=True, exist_ok=True)
@@ -37,7 +48,8 @@ def main():
     shutil.copytree(ROOT / 'web', web, dirs_exist_ok=True)
     layout_path = web / 'layout.json'
     layout = json.loads(layout_path.read_text(encoding='utf-8'))
-    layout['title'] = '小寻 · 无兽特征 Chibi 试装' if human else '小寻 · Live2D 风格 Chibi 试装'
+    layout['title'] = ('小寻 · 无兽特征黑描边试装' if args.blackline else
+                       '小寻 · 无兽特征 Chibi 试装' if human else '小寻 · Live2D 风格 Chibi 试装')
     hint = ('独立无兽特征试装：头与眼口分层；手臂和身体尚未独立拆分。' if human else
             '隔离试装：头、猫耳、尾巴和眼口分层；手臂和身体尚未独立拆分。')
     description = ('实验模型：头与眼口独立；无猫耳、猫尾。手臂仍包含在身体中，暂未绑定完整网格与物理。' if human else
@@ -62,7 +74,7 @@ def main():
     exe = ROOT / 'build/zhuochong_preview'
     if not exe.exists():
         raise SystemExit('Run make build/zhuochong_preview first')
-    port = args.port or ('5203' if human else '5202')
+    port = args.port or ('5205' if args.blackline else '5203' if human else '5202')
     os.execv(str(exe), [str(exe), '--root', str(preview), '--web', str(web),
                         '--port', port, '--bind', '0.0.0.0'])
 
