@@ -1,0 +1,352 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 820" width="600" height="820" id="zhuopet-character">
+  <style>
+    #zhuopet-character{
+      --hair-1:#F1EDFB; --hair-2:#D6CDEF; --hair-3:#B7A6E2; --hair-4:#9A85CE;
+      --hair-line:#6B5A8E; --hair-shine:#FFFFFF;
+      --skin-1:#FFF1E7; --skin-2:#FFDCCB; --skin-3:#F3C3B2; --skin-line:#D79C8B;
+      --eye-1:#A8F0FA; --eye-2:#5AA6EE; --eye-3:#3B3F9E; --eye-line:#3A2C55;
+      --hoodie-1:#FFFDF7; --hoodie-2:#F4E5CF; --hoodie-line:#C7A98A;
+      --sleeve-1:#A6E7DC; --sleeve-2:#6FC9BD; --sleeve-line:#4E9E94;
+      --skirt-1:#4C5A7C; --skirt-2:#333D59; --skirt-line:#252D44;
+      --sock-1:#FFFDF8; --sock-2:#EFE6DA; --sock-line:#C9B8A6;
+      --shoe-1:#8ADBD0; --shoe-2:#5FBDB2; --shoe-line:#3F8F86;
+      --accent-1:#FFC2DA; --accent-2:#FF9EC4; --accent-3:#FFD98E; --accent-line:#D98BA8;
+      --line:#5B4A70; --blush:#FF9FBC;
+    }
+  </style>
+  <defs>
+    <linearGradient id="hairGrad" x1="0" y1="0" x2="0.25" y2="1">
+      <stop offset="0" stop-color="var(--hair-1)"/>
+      <stop offset="0.45" stop-color="var(--hair-2)"/>
+      <stop offset="1" stop-color="var(--hair-3)"/>
+    </linearGradient>
+    <linearGradient id="hairGradDeep" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="var(--hair-2)"/>
+      <stop offset="1" stop-color="var(--hair-4)"/>
+    </linearGradient>
+    <linearGradient id="skinGrad" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="var(--skin-1)"/>
+      <stop offset="1" stop-color="var(--skin-2)"/>
+    </linearGradient>
+    <linearGradient id="hoodieGrad" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="var(--hoodie-1)"/>
+      <stop offset="1" stop-color="var(--hoodie-2)"/>
+    </linearGradient>
+    <linearGradient id="sleeveGrad" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="var(--sleeve-1)"/>
+      <stop offset="1" stop-color="var(--sleeve-2)"/>
+    </linearGradient>
+    <linearGradient id="skirtGrad" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="var(--skirt-1)"/>
+      <stop offset="1" stop-color="var(--skirt-2)"/>
+    </linearGradient>
+    <linearGradient id="sockGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--sock-1)"/>
+      <stop offset="1" stop-color="var(--sock-2)"/>
+    </linearGradient>
+    <linearGradient id="shoeGrad" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="var(--shoe-1)"/>
+      <stop offset="1" stop-color="var(--shoe-2)"/>
+    </linearGradient>
+    <linearGradient id="eyeGrad" x1="0" y1="0" x2="0.15" y2="1">
+      <stop offset="0" stop-color="var(--eye-1)"/>
+      <stop offset="0.5" stop-color="var(--eye-2)"/>
+      <stop offset="1" stop-color="var(--eye-3)"/>
+    </linearGradient>
+    <linearGradient id="starGrad" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="var(--accent-3)"/>
+      <stop offset="1" stop-color="var(--accent-2)"/>
+    </linearGradient>
+    <radialGradient id="buddyGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="var(--accent-3)" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="var(--accent-3)" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softBlur" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+    <filter id="tinyBlur" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.4"/>
+    </filter>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- ground shadow -->
+  <ellipse data-part="shadow" cx="300" cy="780" rx="138" ry="15" fill="#2A1E3A" opacity="0.20" filter="url(#softBlur)"/>
+
+  <g data-part="world">
+    <!-- ============ BACK HAIR + TWIN TAILS (behind body, follows head) ============ -->
+    <g data-part="hairBackRig">
+      <g data-part="hairBack">
+        <path d="M300,70 C408,70 480,150 476,264 C473,344 454,406 434,456 C422,486 402,504 380,510 L220,510 C198,504 178,486 166,456 C146,406 127,344 124,264 C120,150 192,70 300,70 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M300,86 C392,86 456,156 454,258 C452,326 438,382 420,430 C410,456 396,474 380,484 L220,484 C204,474 190,456 180,430 C162,382 148,326 146,258 C144,156 208,86 300,86 Z" fill="url(#hairGrad)" opacity="0.96"/>
+        <path d="M196,300 C186,360 194,420 214,466 M404,300 C414,360 406,420 386,466" fill="none" stroke="var(--hair-4)" stroke-width="4" stroke-linecap="round" opacity="0.35"/>
+        <path d="M236,150 C258,128 286,118 312,120" fill="none" stroke="var(--hair-shine)" stroke-width="9" stroke-linecap="round" opacity="0.30"/>
+      </g>
+
+
+      <!-- long straight hair (hairstyle variant) -->
+      <g data-hairstyle="long" opacity="0">
+        <path d="M196,236 C154,330 142,470 152,612 C156,654 184,676 214,662 C192,556 198,414 224,296 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.4" stroke-linejoin="round"/>
+        <path d="M404,236 C446,330 458,470 448,612 C444,654 416,676 386,662 C408,556 402,414 376,296 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.4" stroke-linejoin="round"/>
+        <path d="M300,250 C258,340 246,500 256,646 C276,668 324,668 344,646 C354,500 342,340 300,250 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.4" stroke-linejoin="round"/>
+        <path d="M206,300 C184,390 178,500 188,606 M394,300 C416,390 422,500 412,606" fill="none" stroke="var(--hair-shine)" stroke-width="7" stroke-linecap="round" opacity="0.22"/>
+        <path d="M232,330 C216,420 214,520 224,610 M368,330 C384,420 386,520 376,610" fill="none" stroke="var(--hair-4)" stroke-width="3" stroke-linecap="round" opacity="0.35"/>
+      </g>
+
+      <!-- side ponytail (hairstyle variant) -->
+      <g data-hairstyle="pony" opacity="0">
+        <path d="M414,206 C474,222 516,292 514,372 C512,446 490,520 468,584 C458,614 434,612 432,588 C448,516 458,446 448,384 C438,322 418,268 396,238 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.4" stroke-linejoin="round"/>
+        <path d="M424,232 C470,254 496,312 494,376 C492,438 474,502 456,558 C450,578 438,578 438,560 C452,500 462,438 454,382 C446,326 430,278 410,250 Z" fill="url(#hairGrad)" opacity="0.9"/>
+        <path d="M462,540 C476,592 474,638 458,674 C450,692 430,684 434,664 C444,624 448,588 448,556 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M470,300 C486,350 488,410 476,466" fill="none" stroke="var(--hair-shine)" stroke-width="7" stroke-linecap="round" opacity="0.28"/>
+        <ellipse cx="424" cy="232" rx="20" ry="15" fill="var(--accent-2)" stroke="var(--accent-line)" stroke-width="3" transform="rotate(-24 424 232)"/>
+        <path d="M414,226 C422,220 432,222 436,230" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+      </g>
+
+      <!-- left twin tail: upper -->
+      <g data-part="twinL1" data-hairstyle="twin" transform="translate(0,0)">
+        <path d="M172,218 C112,230 72,290 70,360 C68,420 90,464 124,488 C106,442 102,394 114,350 C126,302 150,258 184,236 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M166,238 C120,254 92,304 90,360 C88,404 102,440 122,464 C112,424 112,382 124,344 C136,304 154,268 180,248 Z" fill="url(#hairGrad)" opacity="0.9"/>
+        <path d="M120,300 C104,344 102,392 116,436" fill="none" stroke="var(--hair-shine)" stroke-width="7" stroke-linecap="round" opacity="0.28"/>
+        <!-- lower segment -->
+        <g data-part="twinL2" transform="translate(0,0)">
+          <path d="M96,414 C84,478 90,552 116,624 C128,658 152,668 164,646 C142,602 132,542 138,482 C142,448 150,426 162,408 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M108,438 C100,494 106,556 126,614 C134,638 148,644 154,630 C138,590 130,538 136,486 C139,462 146,442 154,426 Z" fill="url(#hairGrad)" opacity="0.9"/>
+          <path d="M118,470 C110,520 114,570 130,612" fill="none" stroke="var(--hair-shine)" stroke-width="6" stroke-linecap="round" opacity="0.25"/>
+        </g>
+      </g>
+
+      <!-- right twin tail: upper -->
+      <g data-part="twinR1" data-hairstyle="twin" transform="translate(0,0)">
+        <path d="M428,218 C488,230 528,290 530,360 C532,420 510,464 476,488 C494,442 498,394 486,350 C474,302 450,258 416,236 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M434,238 C480,254 508,304 510,360 C512,404 498,440 478,464 C488,424 488,382 476,344 C464,304 446,268 420,248 Z" fill="url(#hairGrad)" opacity="0.9"/>
+        <path d="M480,300 C496,344 498,392 484,436" fill="none" stroke="var(--hair-shine)" stroke-width="7" stroke-linecap="round" opacity="0.28"/>
+        <g data-part="twinR2" transform="translate(0,0)">
+          <path d="M504,414 C516,478 510,552 484,624 C472,658 448,668 436,646 C458,602 468,542 462,482 C458,448 450,426 438,408 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M492,438 C500,494 494,556 474,614 C466,638 452,644 446,630 C462,590 470,538 464,486 C461,462 454,442 446,426 Z" fill="url(#hairGrad)" opacity="0.9"/>
+          <path d="M482,470 C490,520 486,570 470,612" fill="none" stroke="var(--hair-shine)" stroke-width="6" stroke-linecap="round" opacity="0.25"/>
+        </g>
+      </g>
+
+      <!-- hair ties -->
+      <g data-part="hairTieL" data-hairstyle="twin">
+        <path d="M150,232 C164,220 182,224 186,238 C190,252 178,264 164,260 C152,256 144,244 150,232 Z" fill="var(--accent-2)" stroke="var(--accent-line)" stroke-width="3"/>
+        <path d="M158,236 C166,230 176,232 178,240" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+      </g>
+      <g data-part="hairTieR" data-hairstyle="twin">
+        <path d="M450,232 C436,220 418,224 414,238 C410,252 422,264 436,260 C448,256 456,244 450,232 Z" fill="var(--accent-2)" stroke="var(--accent-line)" stroke-width="3"/>
+        <path d="M442,236 C434,230 424,232 422,240" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+      </g>
+    </g>
+
+    <!-- ============ BODY ============ -->
+    <g data-part="bodyRig">
+      <!-- cat tail -->
+      <g data-part="tail1" transform="translate(0,0)">
+        <path d="M366,596 C420,588 462,556 470,516 C474,494 460,482 446,492 C428,504 422,538 398,558 C384,570 370,578 358,582 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.5" stroke-linejoin="round"/>
+        <g data-part="tail2" transform="translate(0,0)">
+          <path d="M452,506 C466,494 480,500 482,516 C484,536 470,552 452,556 C440,558 432,548 436,536 C440,524 446,514 452,506 Z" fill="var(--hair-1)" stroke="var(--hair-line)" stroke-width="3.5"/>
+        </g>
+      </g>
+
+      <!-- legs -->
+      <g data-part="legL" transform="translate(0,0)">
+        <path d="M250,646 C246,674 248,700 252,718 L288,718 C292,696 292,670 290,646 Z" fill="url(#skinGrad)" stroke="var(--skin-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M248,700 C246,724 248,746 252,760 L290,760 C294,742 294,720 292,700 Z" fill="url(#sockGrad)" stroke="var(--sock-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M248,708 L292,708 M249,718 L291,718" stroke="var(--sleeve-2)" stroke-width="5" stroke-linecap="round"/>
+        <path d="M242,754 C238,766 240,780 250,784 L296,784 C302,778 302,766 298,754 Z" fill="url(#shoeGrad)" stroke="var(--shoe-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M240,778 L300,778 L300,786 L242,786 Z" fill="var(--sock-1)" stroke="var(--shoe-line)" stroke-width="2.6"/>
+        <path d="M254,762 L286,762 M256,770 L288,770" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+      </g>
+      <g data-part="legR" transform="translate(0,0)">
+        <path d="M350,646 C354,674 352,700 348,718 L312,718 C308,696 308,670 310,646 Z" fill="url(#skinGrad)" stroke="var(--skin-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M352,700 C354,724 352,746 348,760 L310,760 C306,742 306,720 308,700 Z" fill="url(#sockGrad)" stroke="var(--sock-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M352,708 L308,708 M351,718 L309,718" stroke="var(--sleeve-2)" stroke-width="5" stroke-linecap="round"/>
+        <path d="M358,754 C362,766 360,780 350,784 L304,784 C298,778 298,766 302,754 Z" fill="url(#shoeGrad)" stroke="var(--shoe-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M360,778 L300,778 L300,786 L358,786 Z" fill="var(--sock-1)" stroke="var(--shoe-line)" stroke-width="2.6"/>
+        <path d="M346,762 L314,762 M344,770 L312,770" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.75"/>
+      </g>
+
+      <!-- skirt -->
+      <g data-part="skirt" transform="translate(0,0)">
+        <path d="M228,548 C270,540 330,540 372,548 L406,650 C362,672 238,672 194,650 Z" fill="url(#skirtGrad)" stroke="var(--skirt-line)" stroke-width="3.4" stroke-linejoin="round"/>
+        <path d="M250,552 L232,658 M280,548 L272,664 M300,546 L300,668 M320,548 L328,664 M350,552 L368,658" stroke="var(--skirt-line)" stroke-width="2.4" opacity="0.65"/>
+        <path d="M198,644 C240,664 360,664 402,644" fill="none" stroke="#7C8CB4" stroke-width="3" opacity="0.55"/>
+        <path d="M228,548 C270,540 330,540 372,548 L374,562 C330,554 270,554 226,562 Z" fill="var(--skirt-2)" stroke="var(--skirt-line)" stroke-width="2.6"/>
+      </g>
+
+      <!-- neck -->
+      <g data-part="neck" transform="translate(0,0)">
+        <path d="M278,350 L322,350 L324,420 C316,430 284,430 276,420 Z" fill="url(#skinGrad)" stroke="var(--skin-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M278,356 C290,374 310,374 322,356 L322,382 C310,392 290,392 278,382 Z" fill="var(--skin-3)" opacity="0.55"/>
+      </g>
+
+      <!-- torso / hoodie -->
+      <g data-part="torso" transform="translate(0,0)">
+        <path d="M238,430 C244,396 356,396 362,430 C368,456 340,472 300,472 C260,472 232,456 238,430 Z" fill="var(--hoodie-2)" stroke="var(--hoodie-line)" stroke-width="3.2"/>
+        <path d="M218,438 C250,424 350,424 382,438 C398,470 402,520 396,562 C360,578 240,578 204,562 C198,520 202,470 218,438 Z" fill="url(#hoodieGrad)" stroke="var(--hoodie-line)" stroke-width="3.4" stroke-linejoin="round"/>
+        <path d="M252,512 C280,506 320,506 348,512 L344,548 C320,556 280,556 256,548 Z" fill="var(--hoodie-2)" opacity="0.7" stroke="var(--hoodie-line)" stroke-width="2.6"/>
+        <path d="M300,470 L300,560" stroke="var(--hoodie-line)" stroke-width="2.6"/>
+        <path d="M282,462 C278,486 276,502 278,516 M318,462 C322,486 324,502 322,516" fill="none" stroke="var(--hoodie-line)" stroke-width="3.4" stroke-linecap="round"/>
+        <circle cx="278" cy="518" r="4" fill="var(--accent-2)" stroke="var(--accent-line)" stroke-width="1.6"/>
+        <circle cx="322" cy="518" r="4" fill="var(--accent-2)" stroke="var(--accent-line)" stroke-width="1.6"/>
+        <path d="M300,478 L304,488 L315,489 L307,496 L309,507 L300,501 L291,507 L293,496 L285,489 L296,488 Z" fill="var(--accent-3)" stroke="var(--accent-line)" stroke-width="2"/>
+        <path d="M206,552 C240,566 360,566 394,552 L396,566 C360,580 240,580 204,566 Z" fill="var(--hoodie-2)" stroke="var(--hoodie-line)" stroke-width="2.6"/>
+      </g>
+
+      <!-- arms -->
+      <g data-part="armL" transform="translate(0,0)">
+        <path d="M222,440 C198,452 184,492 180,532 C178,548 190,558 202,552 C216,520 228,486 242,462 Z" fill="url(#sleeveGrad)" stroke="var(--sleeve-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M178,536 C174,548 178,558 188,560 L204,556 L202,540 Z" fill="var(--sleeve-2)" stroke="var(--sleeve-line)" stroke-width="2.8"/>
+        <path d="M180,556 C168,562 164,578 172,590 C180,602 196,600 202,588 C208,576 202,560 192,554 Z" fill="url(#skinGrad)" stroke="var(--skin-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M184,566 C190,570 194,578 192,586" fill="none" stroke="var(--skin-line)" stroke-width="2.4" stroke-linecap="round"/>
+      </g>
+      <g data-part="armR" transform="translate(0,0)">
+        <path d="M378,440 C402,452 416,492 420,532 C422,548 410,558 398,552 C384,520 372,486 358,462 Z" fill="url(#sleeveGrad)" stroke="var(--sleeve-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M422,536 C426,548 422,558 412,560 L396,556 L398,540 Z" fill="var(--sleeve-2)" stroke="var(--sleeve-line)" stroke-width="2.8"/>
+        <path d="M420,556 C432,562 436,578 428,590 C420,602 404,600 398,588 C392,576 398,560 408,554 Z" fill="url(#skinGrad)" stroke="var(--skin-line)" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M416,566 C410,570 406,578 408,586" fill="none" stroke="var(--skin-line)" stroke-width="2.4" stroke-linecap="round"/>
+      </g>
+
+      <!-- ============ HEAD ============ -->
+      <g data-part="headRig" transform="translate(0,0)">
+        <!-- cat ears -->
+        <g data-part="catEarL" transform="translate(0,0)">
+          <path d="M212,152 C196,122 180,80 178,52 C178,42 186,38 194,44 C222,66 248,92 262,116 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.4" stroke-linejoin="round"/>
+          <path d="M206,132 C196,108 188,84 188,66 C204,82 224,102 238,120 Z" fill="var(--accent-1)" opacity="0.85"/>
+        </g>
+        <g data-part="catEarR" transform="translate(0,0)">
+          <path d="M388,152 C404,122 420,80 422,52 C422,42 414,38 406,44 C378,66 352,92 338,116 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.4" stroke-linejoin="round"/>
+          <path d="M394,132 C404,108 412,84 412,66 C396,82 376,102 362,120 Z" fill="var(--accent-1)" opacity="0.85"/>
+        </g>
+
+        <!-- face -->
+        <g data-part="face">
+          <path d="M300,98 C392,98 452,162 452,252 C452,322 408,376 300,394 C192,376 148,322 148,252 C148,162 208,98 300,98 Z" fill="url(#skinGrad)" stroke="var(--skin-line)" stroke-width="3.4" stroke-linejoin="round"/>
+          <path d="M300,110 C380,110 436,168 438,250 C440,310 402,358 300,378 C198,358 160,310 162,250 C164,168 220,110 300,110 Z" fill="none" stroke="#fff" stroke-width="6" opacity="0.18"/>
+          <path d="M232,356 C258,378 342,378 368,356 C352,384 328,394 300,396 C272,394 248,384 232,356 Z" fill="var(--skin-3)" opacity="0.35"/>
+        </g>
+
+        <!-- blush -->
+        <g data-part="blush">
+          <ellipse cx="204" cy="318" rx="27" ry="12" fill="var(--blush)" opacity="0.42" filter="url(#tinyBlur)"/>
+          <ellipse cx="396" cy="318" rx="27" ry="12" fill="var(--blush)" opacity="0.42" filter="url(#tinyBlur)"/>
+          <path d="M192,314 L200,322 M200,312 L208,320 M208,312 L216,320" stroke="var(--blush)" stroke-width="2.6" stroke-linecap="round" opacity="0.7"/>
+          <path d="M384,314 L392,322 M392,312 L400,320 M400,312 L408,320" stroke="var(--blush)" stroke-width="2.6" stroke-linecap="round" opacity="0.7"/>
+        </g>
+
+        <!-- eyes -->
+        <g data-part="eyeL" transform="translate(0,0)">
+          <g data-eye="open">
+            <path d="M206,262 C206,232 222,218 244,218 C268,218 282,236 282,264 C282,294 266,312 244,312 C222,312 206,294 206,262 Z" fill="#fff" stroke="var(--eye-line)" stroke-width="3"/>
+            <g data-eyeball="L"><g data-eyeball="R"><ellipse cx="244" cy="268" rx="27" ry="33" fill="url(#eyeGrad)"/>
+            <ellipse cx="244" cy="268" rx="27" ry="33" fill="none" stroke="var(--eye-3)" stroke-width="2" opacity="0.4"/>
+            <ellipse cx="244" cy="272" rx="12" ry="18" fill="#241E45"/>
+            <ellipse cx="244" cy="292" rx="16" ry="8" fill="#9FE8FF" opacity="0.55"/>
+            <circle cx="234" cy="252" r="9.5" fill="#fff"/>
+            <circle cx="254" cy="286" r="4.5" fill="#fff" opacity="0.85"/>
+            <circle cx="252" cy="250" r="3" fill="#fff" opacity="0.6"/></g></g>
+            <path d="M204,252 C210,224 226,212 246,212 C266,212 280,226 284,248" fill="none" stroke="var(--eye-line)" stroke-width="7" stroke-linecap="round"/>
+            <path d="M204,252 L194,244" stroke="var(--eye-line)" stroke-width="6" stroke-linecap="round"/>
+            <path d="M214,300 C226,310 244,312 258,304" fill="none" stroke="var(--eye-line)" stroke-width="2.6" stroke-linecap="round" opacity="0.55"/>
+            <path d="M212,232 C226,218 248,214 266,222" fill="none" stroke="var(--skin-line)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          </g>
+          <g data-eye="closed" opacity="0">
+            <path d="M210,270 C224,288 246,290 264,272" fill="none" stroke="var(--eye-line)" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M210,270 L202,264 M264,272 L272,266" stroke="var(--eye-line)" stroke-width="4" stroke-linecap="round"/>
+          </g>
+        </g>
+        <g data-part="eyeR" transform="translate(0,0)">
+          <g transform="translate(600,0) scale(-1,1)">
+            <g data-eye="open">
+              <path d="M206,262 C206,232 222,218 244,218 C268,218 282,236 282,264 C282,294 266,312 244,312 C222,312 206,294 206,262 Z" fill="#fff" stroke="var(--eye-line)" stroke-width="3"/>
+              <ellipse cx="244" cy="268" rx="27" ry="33" fill="url(#eyeGrad)"/>
+              <ellipse cx="244" cy="268" rx="27" ry="33" fill="none" stroke="var(--eye-3)" stroke-width="2" opacity="0.4"/>
+              <ellipse cx="244" cy="272" rx="12" ry="18" fill="#241E45"/>
+              <ellipse cx="244" cy="292" rx="16" ry="8" fill="#9FE8FF" opacity="0.55"/>
+              <circle cx="234" cy="252" r="9.5" fill="#fff"/>
+              <circle cx="254" cy="286" r="4.5" fill="#fff" opacity="0.85"/>
+              <circle cx="252" cy="250" r="3" fill="#fff" opacity="0.6"/>
+              <path d="M204,252 C210,224 226,212 246,212 C266,212 280,226 284,248" fill="none" stroke="var(--eye-line)" stroke-width="7" stroke-linecap="round"/>
+              <path d="M204,252 L194,244" stroke="var(--eye-line)" stroke-width="6" stroke-linecap="round"/>
+              <path d="M214,300 C226,310 244,312 258,304" fill="none" stroke="var(--eye-line)" stroke-width="2.6" stroke-linecap="round" opacity="0.55"/>
+              <path d="M212,232 C226,218 248,214 266,222" fill="none" stroke="var(--skin-line)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+            </g>
+            <g data-eye="closed" opacity="0">
+              <path d="M210,270 C224,288 246,290 264,272" fill="none" stroke="var(--eye-line)" stroke-width="5.5" stroke-linecap="round"/>
+              <path d="M210,270 L202,264 M264,272 L272,266" stroke="var(--eye-line)" stroke-width="4" stroke-linecap="round"/>
+            </g>
+          </g>
+        </g>
+
+        <!-- brows -->
+        <g data-part="browL" transform="translate(0,0)">
+          <path d="M214,208 C228,196 250,194 268,202" fill="none" stroke="var(--hair-line)" stroke-width="5.5" stroke-linecap="round"/>
+        </g>
+        <g data-part="browR" transform="translate(0,0)">
+          <path d="M386,208 C372,196 350,194 332,202" fill="none" stroke="var(--hair-line)" stroke-width="5.5" stroke-linecap="round"/>
+        </g>
+
+        <!-- nose -->
+        <path d="M296,312 C299,316 303,316 306,312" fill="none" stroke="var(--skin-line)" stroke-width="3" stroke-linecap="round"/>
+
+        <!-- mouth variants -->
+        <g data-part="mouth" transform="translate(0,0)">
+          <g data-mouth="neutral">
+            <path d="M288,340 C294,346 306,346 312,340" fill="none" stroke="#A85A6A" stroke-width="3.5" stroke-linecap="round"/>
+          </g>
+          <g data-mouth="open" opacity="0">
+            <path d="M286,334 C286,352 314,352 314,334 C306,340 294,340 286,334 Z" fill="#8E3E52" stroke="#7A3044" stroke-width="2"/>
+            <path d="M292,344 C296,352 304,352 308,344 C302,348 298,348 292,344 Z" fill="#E88A9A"/>
+          </g>
+          <g data-mouth="smile" opacity="0">
+            <path d="M282,334 C292,350 308,350 318,334 C308,342 292,342 282,334 Z" fill="#8E3E52" stroke="#7A3044" stroke-width="2"/>
+          </g>
+          <g data-mouth="cat" opacity="0">
+            <path d="M286,338 C292,346 298,346 300,338 C302,346 308,346 314,338" fill="none" stroke="#A85A6A" stroke-width="3.5" stroke-linecap="round"/>
+          </g>
+          <g data-mouth="surprised" opacity="0">
+            <ellipse cx="300" cy="342" rx="8" ry="11" fill="#8E3E52" stroke="#7A3044" stroke-width="2"/>
+          </g>
+        </g>
+
+        <!-- front hair -->
+        <g data-part="hairFront" transform="translate(0,0)">
+          <path d="M300,86 C372,86 432,128 448,196 C430,182 414,186 402,206 C392,180 372,172 356,196 C346,170 326,164 312,190 C304,168 288,166 276,192 C262,168 242,174 232,200 C218,178 198,184 186,208 C170,186 154,190 148,206 C160,132 224,86 300,86 Z" fill="url(#hairGrad)" stroke="var(--hair-line)" stroke-width="3.4" stroke-linejoin="round"/>
+          <path d="M232,120 C262,100 300,94 336,102" fill="none" stroke="var(--hair-shine)" stroke-width="8" stroke-linecap="round" opacity="0.32"/>
+          <path d="M160,190 C140,240 138,310 148,370 C152,392 168,400 176,384 C164,330 166,260 182,206 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.2" stroke-linejoin="round"/>
+          <path d="M440,190 C460,240 462,310 452,370 C448,392 432,400 424,384 C436,330 434,260 418,206 Z" fill="url(#hairGradDeep)" stroke="var(--hair-line)" stroke-width="3.2" stroke-linejoin="round"/>
+          <path d="M170,250 C162,300 164,344 172,372" fill="none" stroke="var(--hair-shine)" stroke-width="5" stroke-linecap="round" opacity="0.25"/>
+          <path d="M430,250 C438,300 436,344 428,372" fill="none" stroke="var(--hair-shine)" stroke-width="5" stroke-linecap="round" opacity="0.25"/>
+        </g>
+
+        <!-- ahoge -->
+        <g data-part="ahoge" transform="translate(0,0)">
+          <path d="M298,100 C292,60 312,28 342,30 C362,32 372,48 366,62 C360,76 344,78 338,66 C334,58 340,50 348,52 C340,44 326,48 322,64 C316,86 318,100 318,108 Z" fill="url(#hairGrad)" stroke="var(--hair-line)" stroke-width="3.2" stroke-linejoin="round"/><ellipse cx="331" cy="60" rx="11" ry="12" fill="var(--hair-2)"/>
+        </g>
+
+        <!-- star hairpin -->
+        <g data-part="accessory" transform="translate(0,0)">
+          <path d="M410,148 L415,163 L431,163 L419,173 L423,188 L410,179 L377,188 L381,173 L369,163 L385,163 Z" fill="url(#starGrad)" stroke="var(--accent-line)" stroke-width="2.6" stroke-linejoin="round"/>
+          <circle cx="410" cy="170" r="4" fill="#fff" opacity="0.85"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- floating star buddy -->
+    <g data-part="starBuddy" transform="translate(0,0)">
+      <circle cx="470" cy="300" r="46" fill="url(#buddyGlow)"/>
+      <g filter="url(#glow)">
+        <path d="M470,272 L477,291 L497,292 L481,304 L486,324 L470,313 L454,324 L459,304 L443,292 L463,291 Z" fill="url(#starGrad)" stroke="var(--accent-line)" stroke-width="2.6" stroke-linejoin="round"/>
+      </g>
+      <circle cx="463" cy="298" r="2.6" fill="#6B4A5E"/>
+      <circle cx="477" cy="298" r="2.6" fill="#6B4A5E"/>
+      <path d="M465,305 C468,309 472,309 475,305" fill="none" stroke="#6B4A5E" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="458" cy="304" r="3.4" fill="var(--accent-2)" opacity="0.55"/>
+      <circle cx="482" cy="304" r="3.4" fill="var(--accent-2)" opacity="0.55"/>
+    </g>
+  </g>
+</svg>
