@@ -1,0 +1,33 @@
+{
+  "roi": [
+    390,
+    455,
+    465,
+    470
+  ],
+  "max_component_pixels": 12,
+  "removed": {
+    "body": [
+      {
+        "pixels": 9,
+        "canvas_bbox": [
+          401,
+          458,
+          407,
+          462
+        ]
+      }
+    ],
+    "head": [
+      {
+        "pixels": 4,
+        "canvas_bbox": [
+          412,
+          465,
+          415,
+          465
+        ]
+      }
+    ]
+  }
+}

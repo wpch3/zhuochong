@@ -52,6 +52,11 @@ function showBindings() {
   if (!binds.length) { const li = document.createElement('li'); li.textContent = '该参数暂无绑定。'; list.appendChild(li); }
   $('addBind').disabled = !p || !$('group').value;
 }
+function showMesh() {
+  const mesh = (session.rig.deformers || []).find(item => item.id === $('mesh').value && Array.isArray(item.keys));
+  $('meshDetails').textContent = mesh ? JSON.stringify(mesh, null, 2) : '暂无单参数关键形态网格。';
+  $('setMeshPoint').disabled = !mesh;
+}
 function render() {
   $('work').hidden = !session;
   $('download').disabled = !session;
@@ -62,7 +67,8 @@ function render() {
   options($('part'), session.rig.parts.filter(p => p && typeof p.id === 'string').map(p => [p.id, p.id]));
   options($('param'), session.rig.params.filter(p => p && typeof p.id === 'string').map(p => [p.id, (p.label || p.id) + ' · ' + p.id]));
   options($('group'), Object.keys(session.rig.groups).map(id => [id, id]));
-  showPart(); showBindings();
+  options($('mesh'), (Array.isArray(session.rig.deformers) ? session.rig.deformers : []).filter(d => d && typeof d.id === 'string' && Array.isArray(d.keys)).map(d => [d.id, d.id]));
+  showPart(); showBindings(); showMesh();
 }
 $('file').addEventListener('change', async event => {
   const file = event.target.files[0];
@@ -83,6 +89,9 @@ $('assetFiles').addEventListener('change', async event => {
 });
 $('part').addEventListener('change', showPart);
 $('param').addEventListener('change', showBindings);
+$('mesh').addEventListener('change', showMesh);
+$('addMesh').addEventListener('click', () => run(() => session.addKeyform($('meshId').value.trim(), $('part').value, $('param').value, number('meshCols'), number('meshRows')), '网格已新建；请填写关键形态控制点。'));
+$('setMeshPoint').addEventListener('click', () => run(() => session.setKeyformPoint($('mesh').value, number('meshValue'), number('meshC'), number('meshR'), number('meshDx'), number('meshDy')), '关键形态控制点已更新；请导出并用 C 引擎验证。'));
 $('savePart').addEventListener('click', () => run(() => session.setPart($('part').value, number('x'), number('y'), number('layer')), '部件位置已更新。'));
 $('addParam').addEventListener('click', () => run(() => session.addParameter($('newId').value.trim(), $('newLabel').value, number('min'), number('max'), number('default')), '参数已添加。'));
 $('addBind').addEventListener('click', () => run(() => session.addGroupBind($('param').value, $('group').value, $('channel').value, number('scale'), number('offset')), '绑定已添加。'));

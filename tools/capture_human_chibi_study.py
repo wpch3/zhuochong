@@ -28,10 +28,16 @@ def image():
 def main():
     global BASE, OUT
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--blackline', action='store_true', help='Capture the separate black-outline study on port 5205')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--blackline', action='store_true', help='Capture the separate black-outline study on port 5205')
+    mode.add_argument('--clean', action='store_true', help='Capture the isolated edge cleanup on port 5206')
     args = parser.parse_args()
     expected = 'human_study'
-    if args.blackline:
+    if args.clean:
+        BASE = 'http://127.0.0.1:5206'
+        OUT = Path(__file__).resolve().parents[1] / 'experiments/live2d_chibi_human_blackline_clean/qa'
+        expected = 'human_clean_study'
+    elif args.blackline:
         BASE = 'http://127.0.0.1:5205'
         OUT = Path(__file__).resolve().parents[1] / 'experiments/live2d_chibi_human_blackline/qa'
         expected = 'human_blackline_study'
@@ -59,13 +65,19 @@ def main():
         frames['head_test'] = image()
         for name, im in frames.items():
             im.save(OUT / (name + '.png'))
-        if args.blackline:
+        if args.blackline or args.clean:
             # The model image is still an actual C frame; the neutral backdrops
             # are post-composites for inspection of thin outlines and matte.
             for name, color in [('idle_light', (247, 247, 247, 255)), ('idle_dark', (38, 43, 49, 255))]:
                 bg = Image.new('RGBA', frames['idle'].size, color)
                 bg.alpha_composite(frames['idle'])
                 bg.convert('RGB').save(OUT / (name + '.png'))
+        if args.clean:
+            # The detail images are derived from real C frames, not new renders.
+            for name in ('idle', 'head_test', 'closed'):
+                bg = Image.new('RGBA', frames[name].size, (235, 236, 236, 255))
+                bg.alpha_composite(frames[name])
+                bg.crop((160, 100, 405, 285)).resize((980, 740)).convert('RGB').save(OUT / (name + '_detail.png'))
         base = np.asarray(frames['idle'])
         h, w = base.shape[:2]
         def count(name, box):

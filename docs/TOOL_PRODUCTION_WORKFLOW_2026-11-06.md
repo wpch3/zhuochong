@@ -4,11 +4,18 @@
 
 做自主 C `zrig` 引擎的作者工具、工程和插件；不把自有 JSON/PNG 或 `.zproj` 宣称为官方 Cubism 格式，也不反编译或暗示能生成官方私有 `.moc3`。官方流程与许可参考见 `docs/CUBISM_WORKFLOW_AND_EDITOR_GAPS_2026-11-06.md`。桌宠 Q、带兽特征 Chibi、无兽特征 Chibi、少女是不同资产，不能相互覆盖。每次都在隔离副本中开发、记录来源、测试后才考虑迁移正式资产。
 
+**用户持续要求**：每轮有成果时提交并推送到本会话当前活动分支，确认推送结果，不以本地文件代替云端保存；不能切换到旧文档指定的历史分支。美术与模型结果必须由执行者实际打开图片目视，检查全图、关键细节、不同背景和真实运行帧，写清所见缺陷，不以数值测试代替眼睛。遇到不会的地方检索官方教程与可合法参考的开源项目，记录具体来源、版本、许可与实际学到的内容，不假称研究或复制未授权代码。
+
 ## 本轮完成及证据
 
 1. **黑描边**：从无兽特征试装生成独立黑描边试装，算法针对暗线及透明轮廓，保留 alpha/坐标；`tools/build_human_chibi_blackline.py`、`experiments/live2d_chibi_human_blackline/qa/`、`make test-blackline`。这是自动处理而非人工精描，需用户和美术目视审阅；原版未覆盖。
 2. **可视化素材画布**：`tools/rig_editor/` 在浏览器读取 PNG、按图层/坐标绘制静态近似，允许选定部件后拖动并撤销、重做；挂点坐标只读。`make test-rig-editor` 含计算、模拟 UI 与编辑后真实 C 帧测试。静态画布不处理遮罩、参数变形、物理、姿态等，不能视为 C 渲染预览。真实浏览器自动化仍缺。
 3. **自研工程快照 v1**：`tools/zrig_project.py` 创建/验证/解包 `.zproj`，有文件上限、路径检查与 SHA-256；`experiments/live2d_chibi_human_blackline/model.zproj` 为可复验示例。`make test-zrig-project` 测试正常往返、篡改、重复路径、路径逃逸、现有目录保护、外部动作拒绝，以及解包后真实 C 加载。SHA 不代表签名，v1 不支持外部动作/表情，不含原画 PSD 或编辑历史。
+
+## 继续制作记录：局部清边与单轴关键形态
+
+- 隔离派生 `experiments/live2d_chibi_human_blackline_clean/`，仅删除发尾/领口 ROI 内经约束筛选的 13 个像素；原素材保留。已实际目视浅深底全图及睁眼、闭眼、头动放大帧：发梢/领口仍有细点和毛边，尚未修复接缝，详见试装 README。`make test-human-cleanup` 检验变更范围及可复现性。
+- 编辑器新增单参数规则网格关键形态的**数值**创建/控制点修改及事务撤销，非可视拖网格。真实 C 测试验证中间态、极值和恢复，`tools/rig_editor/qa/` 保留示例帧；实际目视最大值示例，整张身体被拉扭，不是合格生产绑定。参照 [官方 Keyforms 教程](https://docs.live2d.com/en/cubism-editor-manual/keyform-xydirection/) 和 [编辑关键值](https://docs.live2d.com/en/cubism-editor-manual/edit-parameters/) 了解参数/形态概念，只参考文档，不复制官方代码；自研单轴规则网格不等同官方双轴组合。
 
 ## 实际制作与检查顺序
 

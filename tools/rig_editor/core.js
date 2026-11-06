@@ -76,6 +76,39 @@
         param.binds.push({group, param: channel, scale, offset});
       });
     }
+    addKeyform(id, partId, paramId, cols, rows) {
+      if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9_]{0,46}$/.test(id)) throw new Error('形变器 ID 须为不超过 47 位英文、数字或下划线');
+      if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1 || cols > 16 || rows > 16) throw new Error('网格行列必须为 1 至 16 的整数');
+      this.change(r => {
+        const part = r.parts.find(p => p.id === partId);
+        const param = r.params.find(p => p.id === paramId);
+        if (!part) throw new Error('部件不存在');
+        if (part.deformer) throw new Error('部件已挂接形变器；当前工具不支持叠加');
+        if (!param || ![param.min, param.max, param.default].every(Number.isFinite) || param.min >= param.max || param.default < param.min || param.default > param.max) throw new Error('参数不存在或范围无效');
+        if (r.deformers !== undefined && !Array.isArray(r.deformers)) throw new Error('形变器不是数组');
+        if (!r.deformers) r.deformers = [];
+        if (r.deformers.length >= 80) throw new Error('达到 C 引擎形变器上限');
+        if (r.parts.some(p => p.id === id) || Object.prototype.hasOwnProperty.call(r.groups, id) || r.deformers.some(d => d.id === id)) throw new Error('形变器 ID 与已有对象重复');
+        // Conservatively avoid combining with existing weighted or differently
+        // sized meshes; advanced multi-mesh editing is not supported here.
+        if (r.deformers.some(d => d.part === partId)) throw new Error('该部件已有网格；当前工具不支持叠加');
+        const values = [...new Set([param.min, param.default, param.max])].sort((a, b) => a - b);
+        r.deformers.push({id, part: partId, cols, rows, param: paramId, keys: values.map(v => ({v, points: []}))});
+      });
+    }
+    setKeyformPoint(id, value, column, row, dx, dy) {
+      finite(value, '关键值'); finite(dx, 'X 位移'); finite(dy, 'Y 位移');
+      if (!Number.isInteger(column) || !Number.isInteger(row)) throw new Error('控制点行列须为整数');
+      this.change(r => {
+        const d = (r.deformers || []).find(item => item.id === id);
+        if (!d || !Array.isArray(d.keys) || !Number.isInteger(d.cols) || !Number.isInteger(d.rows)) throw new Error('关键形态网格不存在');
+        if (column < 0 || column > d.cols || row < 0 || row > d.rows) throw new Error('控制点越界');
+        const key = d.keys.find(k => k.v === value);
+        if (!key || !Array.isArray(key.points)) throw new Error('关键值不存在或不是可编辑形态');
+        key.points = key.points.filter(p => !(p.c === column && p.r === row));
+        if (dx !== 0 || dy !== 0) key.points.push({c: column, r: row, dx, dy});
+      });
+    }
     removeBind(id, index) {
       this.change(r => {
         const p = r.params.find(item => item.id === id);

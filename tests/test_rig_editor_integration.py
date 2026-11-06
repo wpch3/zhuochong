@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run editor-exported group binding through a temporary real C preview."""
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -70,7 +71,27 @@ def main():
             assert a.startswith(b'\x89PNG\r\n\x1a\n') and b.startswith(b'\x89PNG\r\n\x1a\n')
             assert a != b, 'editor binding failed to change the rendered frame'
             assert a == restored, 'return to zero must restore the exact original frame'
-            print('编辑器生成 rig：C 引擎加载成功，参数驱动头部改变真实渲染帧')
+            get('/api/param?id=ParamEditorMesh&v=0')
+            get('/api/step?n=1')
+            mesh_neutral = get('/api/frame.png')
+            get('/api/param?id=ParamEditorMesh&v=0.5')
+            get('/api/step?n=1')
+            mesh_mid = get('/api/frame.png')
+            get('/api/param?id=ParamEditorMesh&v=1')
+            get('/api/step?n=1')
+            mesh_deformed = get('/api/frame.png')
+            get('/api/param?id=ParamEditorMesh&v=0')
+            get('/api/step?n=1')
+            mesh_restored = get('/api/frame.png')
+            if os.environ.get('ZRIG_QA_DIR'):
+                qa_dir = Path(os.environ['ZRIG_QA_DIR'])
+                qa_dir.mkdir(parents=True, exist_ok=True)
+                (qa_dir / 'keyform_neutral.png').write_bytes(mesh_neutral)
+                (qa_dir / 'keyform_max.png').write_bytes(mesh_deformed)
+            assert mesh_neutral != mesh_mid and mesh_mid != mesh_deformed, 'keyform intermediate frame must be distinct'
+            assert mesh_neutral != mesh_deformed, 'keyform failed to change the rendered frame'
+            assert mesh_neutral == mesh_restored, 'keyform must restore exact neutral frame'
+            print('编辑器生成 rig：C 引擎参数驱动组与关键形态网格并恢复原帧')
         finally:
             proc.terminate()
             try:
