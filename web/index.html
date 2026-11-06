@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小寻 · 桌面伴侣工作台</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<!--
+  这份 HTML 只剩"区域容器"：哪些卡片、什么顺序、放哪个区域，全部由 web/layout.json 决定，
+  内核（app.js）按配置动态加载 components/<id>.js 并挂载。
+  加一个卡片 = 放一个组件文件 + 在 layout.json 里写上它的 id，**不改这份文件，也不改 JS 内核**。
+-->
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo"></span>
+    <div>
+      <h1>小寻</h1>
+      <p class="sub">桌面伴侣 · 基础软件（沙箱预览）</p>
+    </div>
+  </div>
+  <div id="region-topbar" class="region region-topbar"></div>
+</header>
+
+<main>
+  <div id="region-stage" class="region region-stage"></div>
+  <aside id="region-side" class="region panels"></aside>
+</main>
+
+<footer class="footer">
+  <div id="region-footer" class="region region-footer"></div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

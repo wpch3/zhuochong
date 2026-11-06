@@ -1,0 +1,572 @@
+{
+  "parts": [
+    {
+      "id": "eye_l_socket",
+      "file": "sprites/eye_l_socket@2x.png",
+      "group": "head",
+      "layer": 211,
+      "pos": [
+        331.5,
+        562.0
+      ],
+      "anchor": [
+        0.72159,
+        0.62914
+      ],
+      "tags": [
+        "eye_aperture"
+      ],
+      "mask_only": true,
+      "note": "眼眶开口（65×74px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
+      "aperture_min": 0.06,
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_base",
+      "file": "sprites/eye_l_base@2x.png",
+      "group": "head",
+      "layer": 212,
+      "pos": [
+        141,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open",
+        "eye_not_wide"
+      ],
+      "mask": "eye_l_socket",
+      "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_ball",
+      "file": "sprites/eye_l_ball@2x.png",
+      "group": "head",
+      "layer": 214,
+      "pos": [
+        292,
+        487
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_l_socket",
+      "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±10px，由眼眶裁切",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_ball_star",
+      "file": "sprites/eye_l_ball_star@2x.png",
+      "group": "head",
+      "layer": 215,
+      "pos": [
+        292,
+        487
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_l_socket",
+      "motion_from": "eye_l_ball",
+      "note": "星形虹膜（星星眼 L1+L2：五角星瞳 + 眼内碎钻高光）。ParamStarEye=0 时全透明、常态虹膜露出来；=1 时反过来",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_lash",
+      "file": "sprites/eye_l_lash_up@2x.png",
+      "group": "head",
+      "layer": 218,
+      "pos": [
+        141,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eyelid",
+        "eye_not_wide"
+      ],
+      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 70.0px，闭到底 = 那条闭眼线",
+      "eyelid_travel": 70.0,
+      "lash_hold": 0.5,
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_closed",
+      "file": "sprites/eye_l_closed@2x.png",
+      "group": "head",
+      "layer": 219,
+      "pos": [
+        253,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_closed"
+      ],
+      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 45.48）：blink=1 时完全显形",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_smile",
+      "file": "sprites/eye_l_smile@2x.png",
+      "group": "head",
+      "layer": 221,
+      "pos": [
+        253,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_smile"
+      ],
+      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 43.16）：ParamEyeL/RSmile=1 时显形",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_pain",
+      "file": "sprites/eye_l_pain@2x.png",
+      "group": "head",
+      "layer": 222,
+      "pos": [
+        249,
+        446
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_pain"
+      ],
+      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 41.84）：ParamEyeL/RPain=1 时显形",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_wide",
+      "file": "sprites/eye_l_wide@2x.png",
+      "group": "head",
+      "layer": 213,
+      "pos": [
+        140,
+        461
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_wide",
+        "eye_open"
+      ],
+      "note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_l_ball",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_socket",
+      "file": "sprites/eye_r_socket@2x.png",
+      "group": "head",
+      "layer": 223,
+      "pos": [
+        513.0,
+        561.0
+      ],
+      "anchor": [
+        0.28302,
+        0.62252
+      ],
+      "tags": [
+        "eye_aperture"
+      ],
+      "mask_only": true,
+      "note": "眼眶开口（64×73px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
+      "aperture_min": 0.06,
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_base",
+      "file": "sprites/eye_r_base@2x.png",
+      "group": "head",
+      "layer": 224,
+      "pos": [
+        438,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_open",
+        "eye_not_wide"
+      ],
+      "mask": "eye_r_socket",
+      "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_ball",
+      "file": "sprites/eye_r_ball@2x.png",
+      "group": "head",
+      "layer": 226,
+      "pos": [
+        476,
+        487
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_r_socket",
+      "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±11px，由眼眶裁切",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_ball_star",
+      "file": "sprites/eye_r_ball_star@2x.png",
+      "group": "head",
+      "layer": 227,
+      "pos": [
+        476,
+        487
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_r_socket",
+      "motion_from": "eye_r_ball",
+      "note": "星形虹膜（星星眼 L1+L2：五角星瞳 + 眼内碎钻高光）。ParamStarEye=0 时全透明、常态虹膜露出来；=1 时反过来",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_lash",
+      "file": "sprites/eye_r_lash_up@2x.png",
+      "group": "head",
+      "layer": 230,
+      "pos": [
+        438,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eyelid",
+        "eye_not_wide"
+      ],
+      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 68.0px，闭到底 = 那条闭眼线",
+      "eyelid_travel": 68.0,
+      "lash_hold": 0.5,
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_closed",
+      "file": "sprites/eye_r_closed@2x.png",
+      "group": "head",
+      "layer": 231,
+      "pos": [
+        437,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_closed"
+      ],
+      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 47.92）：blink=1 时完全显形",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_smile",
+      "file": "sprites/eye_r_smile@2x.png",
+      "group": "head",
+      "layer": 233,
+      "pos": [
+        437,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_smile"
+      ],
+      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 45.85）：ParamEyeL/RSmile=1 时显形",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_pain",
+      "file": "sprites/eye_r_pain@2x.png",
+      "group": "head",
+      "layer": 234,
+      "pos": [
+        433,
+        446
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_pain"
+      ],
+      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 46.29）：ParamEyeL/RPain=1 时显形",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_wide",
+      "file": "sprites/eye_r_wide@2x.png",
+      "group": "head",
+      "layer": 225,
+      "pos": [
+        431,
+        461
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "eye_wide",
+        "eye_open"
+      ],
+      "note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_r_ball",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "blush_l",
+      "file": "sprites/blush_l@2x.png",
+      "group": "head",
+      "layer": 203,
+      "pos": [
+        366,
+        299
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "opacity": 1.0,
+      "blend": "multiply",
+      "tags": [],
+      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "blush_r",
+      "file": "sprites/blush_r@2x.png",
+      "group": "head",
+      "layer": 204,
+      "pos": [
+        437,
+        299
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "opacity": 1.0,
+      "blend": "multiply",
+      "tags": [],
+      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_hl_star_l",
+      "file": "sprites/eye_hl_star_l@2x.png",
+      "group": "head",
+      "layer": 220,
+      "pos": [
+        369,
+        258
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "opacity": 1.0,
+      "blend": "add",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_l_socket",
+      "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_hl_l",
+      "file": "sprites/eye_hl_l@2x.png",
+      "group": "head",
+      "layer": 217,
+      "pos": [
+        373,
+        262
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "opacity": 1.0,
+      "blend": "add",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_l_socket",
+      "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_hl_star_r",
+      "file": "sprites/eye_hl_star_r@2x.png",
+      "group": "head",
+      "layer": 232,
+      "pos": [
+        442,
+        253
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "opacity": 1.0,
+      "blend": "add",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_r_socket",
+      "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_hl_r",
+      "file": "sprites/eye_hl_r@2x.png",
+      "group": "head",
+      "layer": 229,
+      "pos": [
+        446,
+        257
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "opacity": 1.0,
+      "blend": "add",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_r_socket",
+      "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    }
+  ]
+}

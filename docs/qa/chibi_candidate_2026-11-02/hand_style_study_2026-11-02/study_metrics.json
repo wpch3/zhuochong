@@ -1,0 +1,91 @@
+{
+  "status": "wip_geometry_study_procedural_mitten_rejected_as_art",
+  "source_sheet": "characters/xiaoxun/design/design_sheet_chibi.png",
+  "source_sheet_sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c",
+  "source_body_full": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+  "source_body_full_sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff",
+  "source_sheet_crop_and_fit": {
+    "box": [
+      628,
+      101,
+      1416,
+      1891
+    ],
+    "body_full_size": [
+      567,
+      1292
+    ],
+    "note": "body_full was re-derived from the Chibi-owned design sheet geometry; hand crop coordinates are body_full coordinates."
+  },
+  "hand_crops": {
+    "left": {
+      "body_full_roi_xyxy_exclusive": [
+        43,
+        846,
+        132,
+        938
+      ],
+      "crop_size": [
+        89,
+        92
+      ],
+      "small_skin_bbox_local_xyxy_exclusive": [
+        18,
+        86,
+        7,
+        82
+      ],
+      "mitten_skin_bbox_local_xyxy_exclusive": [
+        14,
+        86,
+        7,
+        84
+      ],
+      "small_skin_pixels_thresholded": 1814,
+      "mitten_skin_pixels_thresholded": 2195,
+      "source_hand_erasure": "warm-skin threshold within the recorded wrist crop plus 2px outline dilation; only applied to WIP full-body preview"
+    },
+    "right": {
+      "body_full_roi_xyxy_exclusive": [
+        435,
+        846,
+        524,
+        938
+      ],
+      "crop_size": [
+        89,
+        92
+      ],
+      "small_skin_bbox_local_xyxy_exclusive": [
+        4,
+        73,
+        10,
+        80
+      ],
+      "mitten_skin_bbox_local_xyxy_exclusive": [
+        4,
+        74,
+        10,
+        84
+      ],
+      "small_skin_pixels_thresholded": 1721,
+      "mitten_skin_pixels_thresholded": 2145,
+      "source_hand_erasure": "warm-skin threshold within the recorded wrist crop plus 2px outline dilation; only applied to WIP full-body preview"
+    }
+  },
+  "constraints": [
+    "small is the exact current Chibi source crop, not re-drawn",
+    "mitten is a procedural geometry schematic explicitly rejected as hand artwork under the no-programmatic-hands rule",
+    "the schematic uses a Chibi source-derived cuff but is not an approved art reference, texture, or rig input",
+    "no marked screenshot or Teen hand assets used",
+    "production sprites and rig untouched"
+  ],
+  "files": {
+    "small_left_source.png": "2cf92bdfba8b471d6dc8d5ca03b0e9d7433f4a183bd2def74c1d44306c1db816",
+    "small_right_source.png": "96a014d7e4f7287cf82b97f51ddf98b0ad6d998f03d528a7e45c079c0ee8e2ec",
+    "mitten_left_concept.png": "d3bad693df8c2798df7054c81fa1f0f2b38e4b5fbe637205cf1b405689b763f6",
+    "mitten_right_concept.png": "c066714b359d94d4ca1a9185ef29fe9585606d34a2411bec1edadb362c4ce2f5",
+    "body_full_mitten_preview_wip.png": "3341a7abbc26aa9d8a39fb94d9d18db5643e2ca3e3b95823e74fd76637f8f8cb",
+    "hand_style_board_wip.png": "eddf895c8891b05ae7580991ff85fc4dbae820c7d46e8659018d65fb4e774dc9"
+  }
+}

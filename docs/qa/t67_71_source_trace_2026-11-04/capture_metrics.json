@@ -1,0 +1,317 @@
+{
+  "status": "diagnosis only; no production sprite/rig/generator/engine edits",
+  "source_chain": {
+    "source_sheet": "characters/xiaoxun/design/sheets/sheet_long_hood.png",
+    "source_dimensions_px": [
+      1024,
+      1536
+    ],
+    "source_is_flattened_rgb": true,
+    "registered_sha16": "32f38c1006d04f4d",
+    "cutout_source": "characters/xiaoxun/design/redraw/sheetcut_hair_hood_long.png",
+    "cutout_dimensions_px": [
+      588,
+      865
+    ],
+    "cutout_from_sheet_bbox_xyxy_inclusive": [
+      212,
+      156,
+      799,
+      1020
+    ],
+    "production_1x_dimensions_px": [
+      566,
+      832
+    ],
+    "production_2x_dimensions_px": [
+      1132,
+      1664
+    ],
+    "png_to_sheet_approx_edge_mapping": {
+      "x_sheet": "188 + x_png * 636 / 1132",
+      "y_sheet": "121 + y_png * 935 / 1664",
+      "notes": "4% padding added around source-alpha bbox; LANCZOS/realesrgan resampling means mapped edges are approximate, not per-pixel identity."
+    },
+    "strict_transparent_blocks_production_xyxy_half_open": [
+      {
+        "area_px": 3418,
+        "bbox": [
+          915,
+          1193,
+          990,
+          1312
+        ],
+        "approx_source_sheet_bbox": [
+          702.08,
+          791.35,
+          744.22,
+          858.21
+        ]
+      },
+      {
+        "area_px": 2970,
+        "bbox": [
+          147,
+          1192,
+          221,
+          1312
+        ],
+        "approx_source_sheet_bbox": [
+          270.59,
+          790.78,
+          312.17,
+          858.21
+        ]
+      },
+      {
+        "area_px": 982,
+        "bbox": [
+          878,
+          1159,
+          931,
+          1209
+        ],
+        "approx_source_sheet_bbox": [
+          681.29,
+          772.24,
+          711.07,
+          800.34
+        ]
+      }
+    ],
+    "long_hair_internal_transparent_pixels_total": 11336
+  },
+  "c_engine": {
+    "preview": "make preview; HTTP 200 at /api/info.json and /api/frame.png; real C zrig; 848x1360, scale=1.0",
+    "pose": "hairstyle=long; hood_pose=up; ambient off; fixed-step action sample",
+    "idle_sway0": {
+      "action": "idle",
+      "canvas_px": [
+        848,
+        1360
+      ],
+      "scale": 1.0,
+      "effective_params": {
+        "ParamArmLA": -0.0193,
+        "ParamArmRA": 0.0193,
+        "ParamArmLB": 0.011,
+        "ParamArmRB": 0.011,
+        "ParamSurpriseArmSwap": 0.0,
+        "ParamHairSway": 0.0
+      },
+      "wrist_screen_px": {
+        "l": [
+          255.87,
+          734.86
+        ],
+        "r": [
+          592.13,
+          734.97
+        ]
+      }
+    },
+    "surprised_sway0": {
+      "action": "surprised",
+      "canvas_px": [
+        848,
+        1360
+      ],
+      "scale": 1.0,
+      "effective_params": {
+        "ParamArmLA": 0.6,
+        "ParamArmRA": 0.6,
+        "ParamArmLB": 8.35,
+        "ParamArmRB": 8.1,
+        "ParamSurpriseArmSwap": 1.0,
+        "ParamHairSway": 0.0
+      },
+      "wrist_screen_px": {
+        "l": [
+          248.06,
+          444.95
+        ],
+        "r": [
+          595.75,
+          445.42
+        ]
+      }
+    },
+    "surprised_sway1": {
+      "action": "surprised",
+      "canvas_px": [
+        848,
+        1360
+      ],
+      "scale": 1.0,
+      "effective_params": {
+        "ParamArmLA": 0.6,
+        "ParamArmRA": 0.6,
+        "ParamArmLB": 8.35,
+        "ParamArmRB": 8.1,
+        "ParamSurpriseArmSwap": 1.0,
+        "ParamHairSway": 1.0
+      },
+      "wrist_screen_px": {
+        "l": [
+          248.06,
+          444.95
+        ],
+        "r": [
+          595.75,
+          445.42
+        ]
+      }
+    },
+    "wrist_delta_px_up": {
+      "left": -289.91,
+      "right": -289.55
+    },
+    "hair_hidden_control": "/api/part?id=acc_hair_hood_long&vis=0 after /api/part?all=1; full C underlay frame captured",
+    "hair_isolation_control": "/api/part?id=acc_hair_hood_long&vis=2; isolated part frame captured",
+    "hair_sway_isolated_pixel_diff": {
+      "changed_pixels": 370,
+      "target_alpha_nonzero_sway0": 108301,
+      "target_alpha_nonzero_sway1": 108301,
+      "max_channel_delta": 1,
+      "repeat_same_sway1_changed_pixels": 20,
+      "repeat_max_channel_delta": 1,
+      "interpretation": "no gross motion in the isolated hood-long hair; the small delta is not attributed to a specific mechanism"
+    },
+    "part_rig": {
+      "id": "acc_hair_hood_long",
+      "group": "head",
+      "layer": 258,
+      "pos": [
+        422,
+        152
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "scale": 0.5,
+      "hires": 2,
+      "physics_records": 0,
+      "physics2_records": 0,
+      "deformer_records": 0
+    },
+    "normal_arm_layers": {
+      "hand_l": 138,
+      "hand_r": 139,
+      "arm_l_upper": 140,
+      "arm_r_upper": 141,
+      "arm_l_cap": 142,
+      "arm_r_cap": 143,
+      "arm_l_fore": 144,
+      "arm_r_fore": 145,
+      "arm_l_elbow": 146,
+      "arm_r_elbow": 147,
+      "arm_l_seam": 150,
+      "arm_r_seam": 151
+    },
+    "surprised_arm_layers": {
+      "hand_l_surprised": 319,
+      "hand_r_surprised": 320,
+      "forearm_bent_l": 321,
+      "forearm_bent_r": 322
+    },
+    "draw_order": "zrig.c stable-sorts layer ascending and draws in that order; 258 overlays normal arms 138-151 but precedes surprised variants 319-322.",
+    "idle_to_surprised_isolated_part_diff": {
+      "changed_pixels": 162947,
+      "max_channel_delta": 255,
+      "interpretation": "the isolated head-group part changes/relocates under the surprised action even with ParamHairSway=0; this is head/action transform, distinct from independent arm-group movement. Pixel diff is not a per-source-pixel motion field."
+    }
+  },
+  "qa_command_exit_code": 1,
+  "qa_transcript": "hair_purity_strict.txt",
+  "sha256": {
+    "characters/xiaoxun/design/sheets/sheet_long_hood.png": "32f38c1006d04f4d52216965f3a4388dd5efce39b6d48afe77411ec7938b5deb",
+    "characters/xiaoxun/design/sheets/sheet_long_hood_raw.png": "de2a4ed1f39c2c543ddc7b79d3f4019100a20a78cca0577dc5e17f1305e62ada",
+    "characters/xiaoxun/design/redraw/sheetcut_hair_hood_long.png": "4cb721bebe642fe3d84f6c423a83b7db37a5d001b4a72e3faaa17a846d47ca1a",
+    "characters/xiaoxun/forms/teen/sprites/hair_hood_long.png": "47b6bad4a6bd8895e7f17ab009decca12ec325f96a6d6ccf90320fda36319910",
+    "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15",
+    "characters/xiaoxun/forms/teen/rig.json": "66b4692b0e2d217c49a70757d01246a3af6d2ff051c388930372f3c0c3385ebe",
+    "tools/cut_hood_from_sheets.py": "0702f2eb67414a6e1c712a5c44da75b519928b83a111c7a7df8e0b44876872ee",
+    "tools/make_attach_parts.py": "39ede6b3d2e40ea5ad3f9a1ef062036ba2498fdf8b86e39044278e5abff46e02",
+    "tools/purge_hair_foreign_blocks.py": "5b95bcc09f4b2664f33c19b1ce7bbac306de18a0957a422d5134c990c56ecaeb",
+    "tools/qa_hair_purity.py": "6be1eda7d8527f2c481f520b3ab421e29ee29f1aa361a641e66b5389723427c5",
+    "src/core/zrig.c": "4541faeb381701a32dcaa436664a68b892af53ed4dd63990e8b33b32d5d41121"
+  },
+  "validation": {
+    "make_test": {
+      "scope": "C-only",
+      "passed": 2638,
+      "failed": 0,
+      "warning": "existing unused _zperf_probe in src/core/zimg.c; negative-case diagnostics are expected"
+    },
+    "selfcheck_all": "not run",
+    "preview": {
+      "process_id": "process-19d405ad",
+      "port": 5173,
+      "http_api_info": 200,
+      "http_frame": 200,
+      "final_state": "Teen long hair, hood up, all parts visible, idle"
+    },
+    "strict_image_qa_exit_code": 1,
+    "strict_image_qa_target_interpretation": "hair_hood_long row is clean in the alpha>=200 foreign-color blob column; strict occlusion reports its three enclosed transparent blocks. Overall command exit 1 also includes an enclosed 373px block on hair_hood_pony. Do not treat the generic final summary sentence as evidence of a color-classifier hit on long hair.",
+    "extended_pose_matrix": {
+      "capture_script": "capture_pose_matrix.py",
+      "metrics_file": "pose_matrix_metrics.json",
+      "actions": [
+        "idle",
+        "surprised",
+        "wave_both",
+        "heart_hands",
+        "wave"
+      ],
+      "ParamHairSway_values": [
+        -1,
+        0,
+        1
+      ],
+      "full_body_states": 15,
+      "target_only_and_hidden_visibility_controls": "captured at -1 and +1 for all five actions",
+      "visible_full_frame_pixels_with_rgb_delta_gt_4_by_action": {
+        "idle": 3894,
+        "surprised": 3947,
+        "wave_both": 4067,
+        "heart_hands": 3928,
+        "wave": 4106
+      },
+      "target_only_isolated_max_visible_channel_delta_by_action": {
+        "idle": 0,
+        "surprised": 2,
+        "wave_both": 0,
+        "heart_hands": 0,
+        "wave": 0
+      },
+      "interpretation": "visible hair changes in this hood-up combination via other hair parts; hoodie accessory remains effectively stable; old cuff/hand residues remain inside target part across tested poses. The longhair2 chain is attached to acc_hair_long, which hood_pose=up hides, so it is not attributed to these visible-frame changes."
+    },
+    "action_timing_sweep": {
+      "capture_script": "capture_action_sweep.py",
+      "metrics_file": "action_sweep_metrics.json",
+      "actions": {
+        "surprised": [
+          0.15,
+          0.3,
+          0.6,
+          0.9,
+          1.1,
+          1.3
+        ],
+        "wave": [
+          0.15,
+          0.3,
+          0.6,
+          0.9,
+          1.1,
+          1.8,
+          2.3
+        ]
+      },
+      "sway": "0",
+      "full_body_transition_frames": 13,
+      "key_finding": "surprised ParamSurpriseArmSwap is 0.75 at t=0.30s (crossfade), 1.0 by 0.60s, and returns to 0.3455 by t=1.30s; arm wrist trajectories and the target cutout remain separately visible in C captures"
+    }
+  }
+}

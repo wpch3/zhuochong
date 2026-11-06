@@ -1,0 +1,236 @@
+{
+ "schema_version": "1.0",
+ "character": "xiaoxun",
+ "engine": "edge-tts",
+ "note": "微软神经网络 TTS（edge-tts）；音色为供应商正规音色，不使用真人克隆",
+ "lines": [
+  {
+   "id": "hammer_1",
+   "variant": "base0",
+   "text": "哇！别敲啦，会痛的！",
+   "file": "characters/xiaoxun/voice/lines/hammer_1_base0.mp3"
+  },
+  {
+   "id": "hammer_1",
+   "variant": "base1",
+   "text": "咚——！好痛呀，你是想把我敲成扁扁的吗？",
+   "file": "characters/xiaoxun/voice/lines/hammer_1_base1.mp3"
+  },
+  {
+   "id": "hammer_1",
+   "variant": "tier1_0",
+   "text": "又敲我？我记住你了哦！",
+   "file": "characters/xiaoxun/voice/lines/hammer_1_tier1_0.mp3"
+  },
+  {
+   "id": "hammer_1",
+   "variant": "tier2_0",
+   "text": "你敲我，我也会有点委屈…不过你是故意的吧？",
+   "file": "characters/xiaoxun/voice/lines/hammer_1_tier2_0.mp3"
+  },
+  {
+   "id": "hammer_2",
+   "variant": "base0",
+   "text": "再这样我要生气了哦！",
+   "file": "characters/xiaoxun/voice/lines/hammer_2_base0.mp3"
+  },
+  {
+   "id": "pat_combo",
+   "variant": "base0",
+   "text": "摸这么多次…我、我会害羞的啦！",
+   "file": "characters/xiaoxun/voice/lines/pat_combo_base0.mp3"
+  },
+  {
+   "id": "pat_combo",
+   "variant": "tier2_0",
+   "text": "再这样摸下去，我的脸要烧起来了…",
+   "file": "characters/xiaoxun/voice/lines/pat_combo_tier2_0.mp3"
+  },
+  {
+   "id": "pat_head_1",
+   "variant": "base0",
+   "text": "嘿嘿，好舒服～",
+   "file": "characters/xiaoxun/voice/lines/pat_head_1_base0.mp3"
+  },
+  {
+   "id": "pat_head_1",
+   "variant": "base1",
+   "text": "头发会被你摸乱啦。",
+   "file": "characters/xiaoxun/voice/lines/pat_head_1_base1.mp3"
+  },
+  {
+   "id": "pat_head_1",
+   "variant": "tier1_0",
+   "text": "嗯…你摸得还挺轻的嘛。",
+   "file": "characters/xiaoxun/voice/lines/pat_head_1_tier1_0.mp3"
+  },
+  {
+   "id": "pat_head_1",
+   "variant": "tier2_0",
+   "text": "每次被你摸，我都会乖乖不动哦。",
+   "file": "characters/xiaoxun/voice/lines/pat_head_1_tier2_0.mp3"
+  },
+  {
+   "id": "pat_head_1",
+   "variant": "tier3_0",
+   "text": "有你在身边，摸头都变得好安心呀。",
+   "file": "characters/xiaoxun/voice/lines/pat_head_1_tier3_0.mp3"
+  },
+  {
+   "id": "pat_head_2",
+   "variant": "base0",
+   "text": "再摸一下下就好～",
+   "file": "characters/xiaoxun/voice/lines/pat_head_2_base0.mp3"
+  },
+  {
+   "id": "stroke_1",
+   "variant": "base0",
+   "text": "呀，别碰那里啦！",
+   "file": "characters/xiaoxun/voice/lines/stroke_1_base0.mp3"
+  },
+  {
+   "id": "stroke_1",
+   "variant": "base1",
+   "text": "痒、痒痒的…",
+   "file": "characters/xiaoxun/voice/lines/stroke_1_base1.mp3"
+  },
+  {
+   "id": "stroke_2",
+   "variant": "base0",
+   "text": "你还要继续吗？",
+   "file": "characters/xiaoxun/voice/lines/stroke_2_base0.mp3"
+  },
+  {
+   "id": "feet_1",
+   "variant": "base0",
+   "text": "脚脚是很敏感的！",
+   "file": "characters/xiaoxun/voice/lines/feet_1_base0.mp3"
+  },
+  {
+   "id": "click_1",
+   "variant": "base0",
+   "text": "我在这里哦～",
+   "file": "characters/xiaoxun/voice/lines/click_1_base0.mp3"
+  },
+  {
+   "id": "click_1",
+   "variant": "base1",
+   "text": "怎么啦？",
+   "file": "characters/xiaoxun/voice/lines/click_1_base1.mp3"
+  },
+  {
+   "id": "click_1",
+   "variant": "tier1_0",
+   "text": "又找我呀？",
+   "file": "characters/xiaoxun/voice/lines/click_1_tier1_0.mp3"
+  },
+  {
+   "id": "click_1",
+   "variant": "tier3_0",
+   "text": "你每次叫我，我都超开心的！",
+   "file": "characters/xiaoxun/voice/lines/click_1_tier3_0.mp3"
+  },
+  {
+   "id": "click_2",
+   "variant": "base0",
+   "text": "找我有事吗？",
+   "file": "characters/xiaoxun/voice/lines/click_2_base0.mp3"
+  },
+  {
+   "id": "drag_1",
+   "variant": "base0",
+   "text": "啊啊啊，带我去哪里呀？",
+   "file": "characters/xiaoxun/voice/lines/drag_1_base0.mp3"
+  },
+  {
+   "id": "drop_1",
+   "variant": "base0",
+   "text": "呼…落地成功！",
+   "file": "characters/xiaoxun/voice/lines/drop_1_base0.mp3"
+  },
+  {
+   "id": "wake_1",
+   "variant": "base0",
+   "text": "唔…我没有睡着哦。",
+   "file": "characters/xiaoxun/voice/lines/wake_1_base0.mp3"
+  },
+  {
+   "id": "mood_joy_1",
+   "variant": "base0",
+   "text": "今天好开心呀！",
+   "file": "characters/xiaoxun/voice/lines/mood_joy_1_base0.mp3"
+  },
+  {
+   "id": "mood_joy_1",
+   "variant": "tier2_0",
+   "text": "和你在一起，每天都好开心。",
+   "file": "characters/xiaoxun/voice/lines/mood_joy_1_tier2_0.mp3"
+  },
+  {
+   "id": "mood_sad_1",
+   "variant": "base0",
+   "text": "有点难过…",
+   "file": "characters/xiaoxun/voice/lines/mood_sad_1_base0.mp3"
+  },
+  {
+   "id": "mood_surprise_1",
+   "variant": "base0",
+   "text": "诶？真的吗！",
+   "file": "characters/xiaoxun/voice/lines/mood_surprise_1_base0.mp3"
+  },
+  {
+   "id": "mood_think_1",
+   "variant": "base0",
+   "text": "让我想想…",
+   "file": "characters/xiaoxun/voice/lines/mood_think_1_base0.mp3"
+  },
+  {
+   "id": "mood_sleepy_1",
+   "variant": "base0",
+   "text": "好困…晚安。",
+   "file": "characters/xiaoxun/voice/lines/mood_sleepy_1_base0.mp3"
+  },
+  {
+   "id": "call_start_1",
+   "variant": "base0",
+   "text": "电话接通啦，我在听哦。",
+   "file": "characters/xiaoxun/voice/lines/call_start_1_base0.mp3"
+  },
+  {
+   "id": "call_start_1",
+   "variant": "tier2_0",
+   "text": "终于等到你的电话啦，我一直在等你呢。",
+   "file": "characters/xiaoxun/voice/lines/call_start_1_tier2_0.mp3"
+  },
+  {
+   "id": "call_end_1",
+   "variant": "base0",
+   "text": "下次再聊呀。",
+   "file": "characters/xiaoxun/voice/lines/call_end_1_base0.mp3"
+  },
+  {
+   "id": "tier_up",
+   "variant": "base0",
+   "text": "我们更熟了一点呢。",
+   "file": "characters/xiaoxun/voice/lines/tier_up_base0.mp3"
+  },
+  {
+   "id": "tier_up",
+   "variant": "tier1_0",
+   "text": "我们熟起来啦，以后多找我玩吧！",
+   "file": "characters/xiaoxun/voice/lines/tier_up_tier1_0.mp3"
+  },
+  {
+   "id": "tier_up",
+   "variant": "tier2_0",
+   "text": "好像离你越来越近了呢，我会一直在。",
+   "file": "characters/xiaoxun/voice/lines/tier_up_tier2_0.mp3"
+  },
+  {
+   "id": "tier_up",
+   "variant": "tier3_0",
+   "text": "我们是最好的朋友啦，说好了哦！",
+   "file": "characters/xiaoxun/voice/lines/tier_up_tier3_0.mp3"
+  }
+ ]
+}

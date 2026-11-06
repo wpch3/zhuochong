@@ -1,0 +1,41 @@
+{
+  "task": "T67.71",
+  "status": "WIP mask exploration; not production, not hair truth",
+  "source": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "broad_roi": "manual_artifact_polygons_v2 covers whole cuff band and hand; includes adjacent legal hair",
+  "seed_rules": {
+    "skin": "R-G>=2, R-B>=2, R>165, G>115, alpha>12 within broad hand ROI",
+    "cuff_teal": "G-R>=6, -16<=B-G<=28, G<250, alpha>12 within cuff ROI",
+    "cuff_neutral": "near-white cuff candidates only within 12px of cyan seeds",
+    "hand_neutral": "near-neutral palm pixels only within 18px of warm skin seeds",
+    "outline": "dark pixels within 2px of color seeds and broad ROI; mask expanded 1px for anti-alias edge"
+  },
+  "warning": "Heuristics locate candidate foreign pixels; warm hair highlights or neutral hair may be false positives. Inspect red overlay at native/zoom before using. Clear-only output is a hole diagnostic, not an acceptable repair.",
+  "side_counts": {
+    "left": {
+      "artifact_mask_pixels": 11086,
+      "skin_seed_px": 4253,
+      "teal_seed_px": 1474,
+      "neutral_cuff_px": 1674,
+      "neutral_hand_px": 4342,
+      "dark_outline_px": 1687,
+      "mask_nonzero_alpha_source_px": 10112
+    },
+    "right": {
+      "artifact_mask_pixels": 10001,
+      "skin_seed_px": 3640,
+      "teal_seed_px": 1210,
+      "neutral_cuff_px": 1916,
+      "neutral_hand_px": 3579,
+      "dark_outline_px": 1410,
+      "mask_nonzero_alpha_source_px": 8909
+    }
+  },
+  "total_mask_pixels": 21087,
+  "outside_mask_byte_identity": "asserted exact for clear-only diagnostic",
+  "outputs": [
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/68_artifact_color_mask_candidate_v1.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/69_artifact_color_mask_candidate_v1_review.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/70_artifact_color_mask_clear_only_test.png"
+  ]
+}

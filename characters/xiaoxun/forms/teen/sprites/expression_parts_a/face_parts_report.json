@@ -1,0 +1,653 @@
+{
+  "source_dir": "characters/xiaoxun/parts_src/expressions_a",
+  "items": [
+    {
+      "name": "smile",
+      "source": "smile.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "iris",
+      "eye_left": [
+        316.496908558412,
+        528.753335502766
+      ],
+      "eye_right": [
+        525.5091056252529,
+        519.5556454876569
+      ],
+      "align": {
+        "scale": 0.4111,
+        "src_anchor": [
+          421.0,
+          524.2
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__smile.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5759
+        },
+        {
+          "file": "eye_right__smile.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5746
+        },
+        {
+          "file": "mouth__smile.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8344
+        }
+      ]
+    },
+    {
+      "name": "angry",
+      "source": "angry.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "iris",
+      "eye_left": [
+        318.09130645944634,
+        530.7406508013598
+      ],
+      "eye_right": [
+        532.1795989537925,
+        523.7227550130776
+      ],
+      "align": {
+        "scale": 0.4015,
+        "src_anchor": [
+          425.1,
+          527.2
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__angry.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "eye_right__angry.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5759
+        },
+        {
+          "file": "mouth__angry.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8344
+        }
+      ]
+    },
+    {
+      "name": "closed",
+      "source": "closed.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "face_geometry",
+      "eye_left": [
+        310.36,
+        509.5
+      ],
+      "eye_right": [
+        528.64,
+        509.5
+      ],
+      "align": {
+        "scale": 0.394,
+        "src_anchor": [
+          419.5,
+          509.5
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__closed.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "eye_right__closed.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "mouth__closed.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8344
+        }
+      ]
+    },
+    {
+      "name": "happy",
+      "source": "happy.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "face_geometry",
+      "eye_left": [
+        310.52,
+        510.0
+      ],
+      "eye_right": [
+        529.48,
+        510.0
+      ],
+      "align": {
+        "scale": 0.3928,
+        "src_anchor": [
+          420.0,
+          510.0
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__happy.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "eye_right__happy.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "mouth__happy.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.7768
+        }
+      ]
+    },
+    {
+      "name": "sad",
+      "source": "sad.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "iris",
+      "eye_left": [
+        317.77110266159696,
+        528.9266159695818
+      ],
+      "eye_right": [
+        528.2993166287016,
+        520.8888382687927
+      ],
+      "align": {
+        "scale": 0.4082,
+        "src_anchor": [
+          423.0,
+          524.9
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__sad.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5756
+        },
+        {
+          "file": "eye_right__sad.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5756
+        },
+        {
+          "file": "mouth__sad.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8344
+        }
+      ]
+    },
+    {
+      "name": "shy",
+      "source": "shy.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "iris",
+      "eye_left": [
+        322.06648522550546,
+        528.1967340590979
+      ],
+      "eye_right": [
+        536.2094823415578,
+        519.6840832123851
+      ],
+      "align": {
+        "scale": 0.4013,
+        "src_anchor": [
+          429.1,
+          523.9
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__shy.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "eye_right__shy.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "mouth__shy.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8344
+        }
+      ]
+    },
+    {
+      "name": "sleepy",
+      "source": "sleepy.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "iris",
+      "eye_left": [
+        316.0675596971462,
+        536.5247524752475
+      ],
+      "eye_right": [
+        529.192679558011,
+        529.7665745856353
+      ],
+      "align": {
+        "scale": 0.4033,
+        "src_anchor": [
+          422.6,
+          533.1
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__sleepy.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "eye_right__sleepy.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "mouth__sleepy.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8149
+        }
+      ]
+    },
+    {
+      "name": "surprised",
+      "source": "surprised.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "iris",
+      "eye_left": [
+        320.5898404701931,
+        527.9706129303106
+      ],
+      "eye_right": [
+        526.4399806389158,
+        520.6456921587609
+      ],
+      "align": {
+        "scale": 0.4175,
+        "src_anchor": [
+          423.5,
+          524.3
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__surprised.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "eye_right__surprised.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5759
+        },
+        {
+          "file": "mouth__surprised.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8222
+        }
+      ]
+    },
+    {
+      "name": "thinking",
+      "source": "thinking.png",
+      "key_color": [
+        255,
+        0,
+        255
+      ],
+      "detect": "iris",
+      "eye_left": [
+        323.9526026237833,
+        525.2014388489208
+      ],
+      "eye_right": [
+        536.6310395314788,
+        511.03660322108345
+      ],
+      "align": {
+        "scale": 0.4035,
+        "src_anchor": [
+          430.3,
+          518.1
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__thinking.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "eye_right__thinking.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "mouth__thinking.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8344
+        }
+      ]
+    },
+    {
+      "name": "calm",
+      "source": "characters/xiaoxun/forms/teen/sprites/body_full.png",
+      "detect": "body_reference",
+      "align": {
+        "scale": 1.0,
+        "src_anchor": [
+          223.5,
+          204.0
+        ]
+      },
+      "parts": [
+        {
+          "file": "eye_left__calm.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            143,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "eye_right__calm.png",
+          "size": [
+            75,
+            52
+          ],
+          "origin": [
+            228,
+            178
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.5762
+        },
+        {
+          "file": "mouth__calm.png",
+          "size": [
+            44,
+            28
+          ],
+          "origin": [
+            195,
+            236
+          ],
+          "magenta_residue": 0,
+          "opaque_ratio": 0.8344
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

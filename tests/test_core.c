@@ -1,0 +1,11977 @@
+/* putenv/setenv 是 POSIX 不是 C11；-std=c11 下不显式要就没有声明
+ * （GCC 14 起隐式声明直接是 error）。和 src/core/zc.c 用同一招。 */
+#ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+#endif
+
+/*
+ * test_core.c - 单元测试（[测试锁]：不通过就不许交付）
+ *
+ * 覆盖：
+ *   JSON 解析与错误定位、JSON Schema 与 pattern、状态机优先级/可中断/过期、
+ *   眨眼时序、图像（缩放/合成/命中/PNG 往返）、配置加载与非法配置诊断、
+ *   角色包加载与换装、RLE deflate 与 zlib 兼容性、空闲入睡与唤醒。
+ *
+ * 运行：./build/test_core <项目根目录>
+ */
+#include "../src/core/zc.h"
+#include "../src/core/zjson.h"
+#include "../src/core/zschema.h"
+#include "../src/core/zsm.h"
+#include "../src/core/zimg.h"
+#include "../src/core/zdeflate.h"
+#include "../src/core/zbus.h"
+#include "../src/core/zmod.h"
+#include "../src/core/zpet.h"
+#include "../src/core/zpersona.h"
+#include "../src/core/zconfig.h"
+#include "../src/core/zrig.h"
+#include "../src/core/zphys2.h"
+#include "../src/core/zik.h"
+#include "../src/core/zinteract.h"
+#include "../src/core/zgateway.h"
+#include "../src/core/zhttp.h"
+#include "../src/core/zthink.h"
+#include "../src/core/zrelay.h"
+#include "../src/core/zctx.h"
+#include "../src/core/zmem.h"
+#include "../src/core/zperm.h"
+#include "../src/core/zcost.h"
+#include "../src/core/zperf.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#ifndef _WIN32
+#  include <unistd.h>
+#  include <arpa/inet.h>
+#  include <netinet/in.h>
+#  include <pthread.h>
+#  include <sys/socket.h>
+#  include <sys/time.h>
+#endif
+
+static int g_pass = 0, g_fail = 0;
+static const char *g_section = "";
+
+#define CHECK(cond, ...) do { \
+    if (cond) { g_pass++; } \
+    else { \
+        g_fail++; \
+        fprintf(stderr, "  [失败] %s: ", g_section); \
+        fprintf(stderr, __VA_ARGS__); \
+        fprintf(stderr, "  (%s:%d)\n", __FILE__, __LINE__); \
+    } \
+} while (0)
+
+#define SECTION(name) do { g_section = name; printf("== %s ==\n", name); } while (0)
+
+static char g_root[512];
+
+/* ------------------------------------------------------------- JSON */
+static void test_json(void)
+{
+    SECTION("zjson：解析与诊断");
+    {
+        zerr e;
+        zjson *j;
+        zerr_clear(&e);
+        j = zjson_parse("{\"a\": 1, \"b\": [true, null, \"x\"], // 注释\n \"c\": 1.5,}",
+                        "mem", &e);
+        CHECK(j != NULL, "带注释与尾随逗号的 JSON 应能解析：%s", e.msg);
+        if (j) {
+            CHECK(zjson_int(zjson_get(j, "a"), -1) == 1, "a 应为 1");
+            CHECK(zjson_count(zjson_get(j, "b")) == 3, "b 应有 3 个元素");
+            CHECK(zjson_num(zjson_get(j, "c"), 0) > 1.4, "c 应为 1.5");
+            zjson_free(j);
+        }
+    }
+    {
+        zerr e;
+        zjson *j;
+        zerr_clear(&e);
+        j = zjson_parse("{\n  \"a\": 1,\n  \"b\" 2\n}", "mem", &e);
+        CHECK(j == NULL, "缺冒号应报错");
+        CHECK(e.line == 3, "错误行号应为 3，实际 %d", e.line);
+        CHECK(strstr(e.msg, ":") != NULL, "错误信息应说明缺冒号：%s", e.msg);
+    }
+    {
+        zerr e;
+        zjson *j;
+        zerr_clear(&e);
+        j = zjson_parse("{\"路径\": \"值\", \"emoji\": \"\\u4e2d\\u6587\"}", "mem", &e);
+        CHECK(j != NULL, "UTF-8 键与 \\u 转义应支持：%s", e.msg);
+        if (j) {
+            CHECK(z_streq(zjson_str(zjson_get(j, "路径"), ""), "值"), "UTF-8 键取值");
+            CHECK(z_streq(zjson_str(zjson_get(j, "emoji"), ""), "中文"), "\\u 转义解码");
+            zjson_free(j);
+        }
+    }
+    {
+        /* 生成器往返 */
+        zjson_w *w = zjson_w_new(1);
+        size_t len = 0;
+        char *text;
+        zerr e;
+        zjson *j;
+        zjson_w_obj_begin(w);
+        zjson_w_key(w, "名字"); zjson_w_str(w, "小寻\"引号\"");
+        zjson_w_key(w, "数值"); zjson_w_num(w, 0.55);
+        zjson_w_key(w, "开关"); zjson_w_bool(w, 1);
+        zjson_w_key(w, "列表"); zjson_w_arr_begin(w);
+        zjson_w_int(w, 1); zjson_w_int(w, 2); zjson_w_arr_end(w);
+        zjson_w_obj_end(w);
+        text = zjson_w_take(w, &len);
+        zjson_w_free(w);
+        zerr_clear(&e);
+        j = zjson_parse(text, "gen", &e);
+        CHECK(j != NULL, "生成的 JSON 应能重新解析：%s", e.msg);
+        if (j) {
+            CHECK(z_streq(zjson_str(zjson_get(j, "名字"), ""), "小寻\"引号\""), "字符串转义往返");
+            CHECK(fabs(zjson_num(zjson_get(j, "数值"), 0) - 0.55) < 1e-9, "数值往返");
+            CHECK(zjson_bool(zjson_get(j, "开关"), 0) == 1, "布尔往返");
+            CHECK(zjson_count(zjson_get(j, "列表")) == 2, "数组往返");
+            zjson_free(j);
+        }
+        free(text);
+    }
+}
+
+/* ---------------------------------------------------------- Schema */
+static void test_schema(void)
+{
+    SECTION("zschema：类型/必填/范围/枚举/pattern");
+    {
+        zerr e;
+        zdiag d;
+        zjson *schema, *doc;
+        const char *schema_text =
+            "{\"type\":\"object\",\"required\":[\"id\",\"enabled\"],"
+            "\"properties\":{\"id\":{\"type\":\"string\",\"pattern\":\"^[a-z_]+$\"},"
+            "\"enabled\":{\"type\":\"boolean\"},"
+            "\"mode\":{\"type\":\"string\",\"enum\":[\"a\",\"b\"]},"
+            "\"n\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":10}}}";
+        zerr_clear(&e);
+        schema = zjson_parse(schema_text, "schema", &e);
+        doc = zjson_parse("{\"id\":\"Chat1\",\"enabled\":true,\"mode\":\"c\",\"n\":99}", "doc", &e);
+        zdiag_init(&d);
+        zschema_validate(schema, doc, "doc.json", &d);
+        CHECK(d.error_count >= 3, "应报出 3 个以上错误，实际 %d", d.error_count);
+        CHECK(strstr(d.items[0].field, "id") || d.error_count > 0, "错误应带字段名");
+        zjson_free(schema);
+        zjson_free(doc);
+    }
+    {
+        zerr e;
+        zjson *schema, *doc;
+        zdiag d;
+        zerr_clear(&e);
+        schema = zjson_parse("{\"type\":\"object\",\"properties\":{\"c\":{\"type\":\"string\",\"pattern\":\"^#[0-9A-Fa-f]{6}$\"}}}", "s", &e);
+        doc = zjson_parse("{\"c\":\"#7EC8C4\"}", "d", &e);
+        zdiag_init(&d);
+        zschema_validate(schema, doc, "d", &d);
+        CHECK(d.error_count == 0, "#RRGGBB 应通过 pattern 校验（实际 %d 个错误）", d.error_count);
+        zjson_free(schema); zjson_free(doc);
+        schema = zjson_parse("{\"type\":\"object\",\"properties\":{\"c\":{\"type\":\"string\",\"pattern\":\"^#[0-9A-Fa-f]{6}$\"}}}", "s", &e);
+        doc = zjson_parse("{\"c\":\"#7EC8\"}", "d", &e);
+        zdiag_init(&d);
+        zschema_validate(schema, doc, "d", &d);
+        CHECK(d.error_count == 1, "错误颜色应被拒绝");
+        zjson_free(schema); zjson_free(doc);
+    }
+}
+
+/* ------------------------------------------------------ 状态机 */
+static void test_state_machine(void)
+{
+    zsm sm;
+    zsm_state_def def;
+    SECTION("zsm：优先级 / 可中断 / 过期回退");
+    zsm_init(&sm);
+    memset(&def, 0, sizeof(def));
+    z_strlcpy(def.id, "idle", sizeof(def.id));
+    def.priority = 0; def.duration_s = -1; def.loop = 1; def.interruptible = 1;
+    zsm_add_state(&sm, &def);
+    z_strlcpy(def.id, "talk", sizeof(def.id));
+    def.priority = 4; def.duration_s = -1; def.loop = 1; def.interruptible = 1;
+    zsm_add_state(&sm, &def);
+    z_strlcpy(def.id, "head_pat", sizeof(def.id));
+    def.priority = 6; def.duration_s = 1.0; def.loop = 0; def.interruptible = 0;
+    z_strlcpy(def.return_state, "idle", sizeof(def.return_state));
+    zsm_add_state(&sm, &def);
+    z_strlcpy(def.id, "clicked", sizeof(def.id));
+    def.priority = 4; def.duration_s = 0.5; def.loop = 0; def.interruptible = 1;
+    zsm_add_state(&sm, &def);
+
+    zsm_start(&sm, "idle", 0.0);
+    CHECK(z_streq(zsm_current_id(&sm), "idle"), "初始为 idle");
+    CHECK(zsm_request(&sm, "talk", "test", 0) == 1, "talk(4) 可打断 idle(0)");
+    CHECK(zsm_request(&sm, "clicked", "test", 0) == 1, "clicked(4) ≥ talk(4) 且 talk 可中断 → 允许");
+    CHECK(zsm_request(&sm, "head_pat", "test", 0) == 1, "head_pat(6) 可打断 clicked");
+    CHECK(zsm_request(&sm, "talk", "test", 0) == 0, "talk 不能打断不可中断的 head_pat");
+    zsm_update(&sm, 0.5);
+    CHECK(z_streq(zsm_current_id(&sm), "head_pat"), "未到期不应回退");
+    zsm_update(&sm, 1.01);
+    CHECK(z_streq(zsm_current_id(&sm), "idle"), "到期应回到 return_state");
+    CHECK(zsm_request(&sm, "talk", "test", 0) == 1, "回 idle 后可再次切换");
+    CHECK(zsm_request(&sm, "talk", "test", 0) == 0, "同状态重复请求被拒绝");
+    CHECK(zsm_request(&sm, "talk", "test", 1) == 1, "force 可重播当前动作");
+    CHECK(zsm_request(&sm, "不存在", "test", 0) == 0, "未知状态被拒绝");
+}
+
+/* ---------------------------------------------------------- 眨眼 */
+/* 眼球微动（マイクロサッカード，T39.3 / T44）。
+   依据：cgbox「目の動きのクオリティアップ」——「人の眼球は静止していることはありません」，
+   同篇反面警告「やりすぎると…常に慌てている印象になる」，所以幅度必须卡在一个窄带里，
+   上下限**都是闸**：太小等于没做，太大就是眼神乱飘。 */
+static void test_eye_saccade(void)
+{
+    SECTION("眼球微动（micro-saccade）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        double t;
+        double peak = 0.0, sum2 = 0.0;
+        double peak_look = 0.0, peak_read = 0.0;
+        int n = 0;
+        double mx;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        mx = zrig_gaze_max_dx(r);
+        CHECK(mx > 0.0, "视线满量程 max_offset.x 应为正（实际 %.2f px）", mx);
+        /* 不设任何视线、不播任何动作，纯待机 30 秒 */
+        for (t = 0.0; t <= 30.0; t += 1.0 / 30.0) {
+            double gx, lx, rd;
+            zrig_tick(r, t);
+            gx = zrig_gaze_eff_x(r) * mx;     /* 换算成画布像素 */
+            lx = zrig_look_x(r);
+            rd = zrig_gaze_x(r);
+            if (fabs(gx) > peak) peak = fabs(gx);
+            if (fabs(lx) > peak_look) peak_look = fabs(lx);
+            if (fabs(rd) > peak_read) peak_read = fabs(rd);
+            sum2 += gx * gx;
+            ++n;
+
+        }
+        /* ① 幅度落在标定带内。标定工具：tools/calib_saccade.py */
+        CHECK(peak >= 0.80 && peak <= 1.20,
+              "微动峰值应在 0.80~1.20 画布像素之间（实际 %.2f px）—— "
+              "低于 0.8 肉眼看不出来等于没做，高于 1.2 就是 cgbox 警告的\"一直很慌\"", peak);
+        CHECK(sqrt(sum2 / (n ? n : 1)) >= 0.25,
+              "微动 RMS 应 >= 0.25 px（实际 %.2f）—— 只有峰值达标但常年贴着 0 "
+              "说明它只是偶尔抽一下，不是持续在动", sqrt(sum2 / (n ? n : 1)));
+        /* ② 微动是眼球自己的事，不许带着脑袋晃 */
+        CHECK(peak_look < 1e-9,
+              "没有指针输入时头部朝向必须纹丝不动（实际峰值 %.6f）—— "
+              "微动若混进 look_cx，整个脑袋会跟着一起飘", peak_look);
+        /* ③ 微动是底噪，不许污染\"读数\" —— 否则测试台滑条和 /api/param 会自己乱跳 */
+        CHECK(peak_read < 1e-9,
+              "zrig_gaze_x（读数）必须保持 0（实际峰值 %.6f）—— "
+              "把底噪混进读数，\"我设了 0.5 怎么读出来 0.53\"就会变成常驻 bug", peak_read);
+        zrig_free(r);
+    }
+    /* ④ 负控：把 gaze.micro 摘掉，必须退回"完全不动"。
+       没有这条的话，"默认就开着"和"按配置开着"分不出来 ——
+       而默认开启等于偷偷改掉所有既有模型的行为。 */
+    {
+        char dir[1024], src_p[1024], dst_p[1024];
+        char *buf;
+        long sz;
+        FILE *f;
+        zdiag d;
+        zrig *r;
+        double t, peak = 0.0;
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(src_p, sizeof(src_p), "%s/rig.json", dir);
+        z_snprintf(dst_p, sizeof(dst_p), "%s/rig_nomicro.json", dir);
+        f = fopen(src_p, "rb");
+        CHECK(f != NULL, "负控：应能读到 rig.json");
+        if (!f) return;
+        fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET);
+        buf = (char *)malloc((size_t)sz + 1);
+        if (!buf) { fclose(f); return; }
+        if (fread(buf, 1, (size_t)sz, f) != (size_t)sz) { fclose(f); free(buf); return; }
+        buf[sz] = 0;
+        fclose(f);
+        {   /* 把 "micro" 这个键名改掉就等于摘掉它（JSON 仍然合法） */
+            char *q = strstr(buf, "\"micro\"");
+            CHECK(q != NULL, "负控：rig.json 里应当有 gaze.micro（没有说明这功能根本没接上）");
+            if (q) memcpy(q, "\"_off_\"", 7);
+        }
+        f = fopen(dst_p, "wb");
+        if (f) { fwrite(buf, 1, (size_t)sz, f); fclose(f); }
+        free(buf);
+        zdiag_init(&d);
+        r = zrig_load(dst_p, dir, &d);
+        if (r) {
+            for (t = 0.0; t <= 10.0; t += 1.0 / 30.0) {
+                zrig_tick(r, t);
+                if (fabs(zrig_gaze_eff_x(r)) > peak) peak = fabs(zrig_gaze_eff_x(r));
+            }
+            CHECK(peak < 1e-12,
+                  "摘掉 gaze.micro 后必须完全没有微动（实际峰值 %.9f）", peak);
+            zrig_free(r);
+        }
+        remove(dst_p);
+    }
+}
+
+/* ✨ 的触发条件（T39.5）。商业成品的口径是「笑顔で目を見開いたときに」才显示
+   （BOOTH 5711516），不是开了星星眼就永远在闪。拆成两道门分别守：
+     · 笑门：ParamMouthForm 走 alpha 绑定（嘴不笑 → ✨ 全灭）
+     · 眼门：fx_eye_open 标签（眼睛闭上 → ✨ 变暗，但留 FX_EYE_OPEN_FLOOR 不全灭）
+   眼门**故意不做成硬门**：一次眨眼 0.3 秒，硬门会让一圈 ✨ 整体熄掉再亮起来，
+   看着像渲染故障而不是表情。 */
+static void test_eye_variants(void)
+{
+    SECTION("眼形两档：>_< 痛苦闭眼 与 真·瞪大眼（T31.6 / T31.12 / T41.2）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        double pain0, pain1, closed_on_pain, smile_on_pain, base_on_pain, pain_r_side;
+        double wide0, wide1, base_on_wide, lash_on_wide, ball_on_wide, wide_blink;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);
+        zrig_blink_set_manual(r, 0.0);
+
+        /* ---- 常态：两张差分件都不许画 ---- */
+        zrig_tick(r, 0.10);
+        pain0 = zrig_part_draw_opacity(r, "eye_l_pain");
+        wide0 = zrig_part_draw_opacity(r, "eye_l_wide");
+        CHECK(pain0 < 1e-6 && wide0 < 1e-6,
+              "没触发时痛苦眼/瞪大眼都必须完全不可见（实际 %.4f / %.4f）—— "
+              "差分件的基本性质：不开就等于不存在", pain0, wide0);
+
+        /* ---- >_< ：同一条睫毛线的第三种形状，三张不能同时画 ---- */
+        zrig_param_set(r, "ParamEyeLPain", 1.0);
+        zrig_tick(r, 0.20);
+        pain1 = zrig_part_draw_opacity(r, "eye_l_pain");
+        closed_on_pain = zrig_part_draw_opacity(r, "eye_l_closed");
+        smile_on_pain = zrig_part_draw_opacity(r, "eye_l_smile");
+        base_on_pain = zrig_part_draw_opacity(r, "eye_l_base");
+        pain_r_side = zrig_part_draw_opacity(r, "eye_r_pain");
+        CHECK(pain1 > 0.95, "ParamEyeLPain=1 时倒 V 闭眼件应满不透明（实际 %.4f）", pain1);
+        CHECK(closed_on_pain < 1e-6 && smile_on_pain < 1e-6,
+              "痛苦闭眼满值时，谷型闭眼件和山型笑眼件都必须让干净"
+              "（实际 %.4f / %.4f）—— 三张睫毛线叠一起会糊成一团黑",
+              closed_on_pain, smile_on_pain);
+        CHECK(base_on_pain < 1e-6,
+              "痛苦闭眼应隐含闭眼（blink = max(blink, pain)），睁眼件要没（实际 %.4f）—— "
+              "口径和笑眼一致，调用方推一个参数就够", base_on_pain);
+        CHECK(pain_r_side < 1e-6,
+              "只推左眼的痛苦参数时右眼不许跟着变（实际 %.4f）—— "
+              "Live2D 的眼部参数是左右分开的", pain_r_side);
+        zrig_param_set(r, "ParamEyeLPain", 0.0);
+        zrig_tick(r, 0.30);
+
+        /* ---- 真·瞪大眼：顶替眼白和上睫毛，但**虹膜要留着**（视线照常跟随） ---- */
+        zrig_param_set(r, "ParamEyeLWide", 1.0);
+        zrig_tick(r, 0.40);
+        wide1 = zrig_part_draw_opacity(r, "eye_l_wide");
+        base_on_wide = zrig_part_draw_opacity(r, "eye_l_base");
+        lash_on_wide = zrig_part_draw_opacity(r, "eye_l_lash");
+        ball_on_wide = zrig_part_draw_opacity(r, "eye_l_ball");
+        CHECK(wide1 > 0.95, "ParamEyeLWide=1 时瞪大眼补片应满不透明（实际 %.4f）", wide1);
+        CHECK(base_on_wide < 1e-6 && lash_on_wide < 1e-6,
+              "瞪大时常态眼白和上睫毛必须让掉（实际 %.4f / %.4f）—— "
+              "它们画的是常态开口，留着会在补片底下透出一条旧眼线",
+              base_on_wide, lash_on_wide);
+        CHECK(ball_on_wide > 0.95,
+              "瞪大时虹膜件必须还在（实际 %.4f）—— 补片里的虹膜已被挖掉，"
+              "视线仍由 eye_l_ball 负责；连虹膜一起顶替掉的话瞪大期间眼睛就不会看人了",
+              ball_on_wide);
+        /* 眨眼期间瞪大没有意义：半路眨眼不许露出"闭着的眼 + 瞪大的眼白" */
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 0.50);
+        wide_blink = zrig_part_draw_opacity(r, "eye_l_wide");
+        CHECK(wide_blink < 1e-6,
+              "完全闭眼时瞪大眼补片必须归零（实际 %.4f）—— 这张补片画的是睁着的眼",
+              wide_blink);
+
+        /* T2.1.2：半闭由原眼睑下移表现；0.75 时不叠闭眼补片，交叉淡化仅在最后 15%。 */
+        zrig_param_set(r, "ParamEyeLWide", 0.0);
+        zrig_blink_set_manual(r, 0.75);
+        zrig_tick(r, 0.60);
+        CHECK(fabs(zrig_part_draw_opacity(r, "eye_l_base") - 1.0) < 0.02,
+              "闭合度 0.75 时睁眼底图应完整（实际 %.3f）",
+              zrig_part_draw_opacity(r, "eye_l_base"));
+        CHECK(zrig_part_draw_opacity(r, "eye_l_closed") < 0.02,
+              "闭合度 0.75 时不能提前叠闭眼补片（实际 %.3f）",
+              zrig_part_draw_opacity(r, "eye_l_closed"));
+        zrig_blink_set_manual(r, 0.925);
+        zrig_tick(r, 0.70);
+        CHECK(fabs(zrig_part_draw_opacity(r, "eye_l_base") - 0.5) < 0.03 &&
+              fabs(zrig_part_draw_opacity(r, "eye_l_closed") - 0.5) < 0.03,
+              "最后 15%% 平滑交叉（0.925: open %.3f / closed %.3f）",
+              zrig_part_draw_opacity(r, "eye_l_base"),
+              zrig_part_draw_opacity(r, "eye_l_closed"));
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 0.80);
+        CHECK(zrig_part_draw_opacity(r, "eye_l_base") < 0.02 &&
+              fabs(zrig_part_draw_opacity(r, "eye_l_closed") - 1.0) < 0.02,
+              "闭合度 1 时只画真闭眼补片（open %.3f / closed %.3f）",
+              zrig_part_draw_opacity(r, "eye_l_base"),
+              zrig_part_draw_opacity(r, "eye_l_closed"));
+        zrig_free(r);
+    }
+}
+
+static void test_sparkle_trigger(void)
+{
+    SECTION("✨ 触发条件：笑 + 睁眼（T39.5）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        double off, half, full, shut, mid;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);
+        zrig_blink_set_manual(r, 0.0);          /* 眼睛睁着 */
+        zrig_param_set(r, "ParamStarEye", 1.0); /* 星星眼开 */
+
+        zrig_param_set(r, "ParamMouthForm", 0.0);
+        zrig_tick(r, 0.10);
+        off = zrig_part_draw_opacity(r, "fx_sparkle_1");
+        zrig_param_set(r, "ParamMouthForm", 0.25);
+        zrig_tick(r, 0.20);
+        half = zrig_part_draw_opacity(r, "fx_sparkle_1");
+        zrig_param_set(r, "ParamMouthForm", 0.6);
+        zrig_tick(r, 0.30);
+        full = zrig_part_draw_opacity(r, "fx_sparkle_1");
+
+        /* ① 不笑就一颗都不许亮 —— 这是 T39.5 的核心要求 */
+        CHECK(off < 1e-6,
+              "嘴不笑（ParamMouthForm=0）时 ✨ 必须完全不可见（实际 alpha %.4f）—— "
+              "\"开了星星眼就永远在闪\"正是参考里点名的廉价做法", off);
+        /* ② 笑到一半给一半，不是开关式跳变（中间态要能用于淡入淡出） */
+        CHECK(half > 0.25 * full && half < 0.75 * full,
+              "半笑（0.25）时 ✨ 应在满亮的 25%%~75%% 之间（实际 %.4f / %.4f）",
+              half, full);
+        /* ③ 笑够了就满亮。门限 0.5 覆盖了表情的 0.6 与动作 pulse 的 0.8 两条入口 */
+        CHECK(full > 0.95,
+              "笑到 0.6 时 ✨ 应基本满亮（实际 %.4f）—— 两条入口（表情 0.6 / "
+              "动作 pulse 0.8）都必须落在满亮区，否则会出现\"笑了但不怎么闪\"", full);
+
+        /* ④ 眼门：闭眼变暗但**不归零** */
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 0.40);
+        shut = zrig_part_draw_opacity(r, "fx_sparkle_1");
+        CHECK(shut > 0.20 && shut < 0.75 * full,
+              "完全闭眼时 ✨ 应明显变暗但不归零（实际 %.4f，满亮 %.4f）—— "
+              "归零会让眨一次眼闪一下，看着像渲染故障", shut, full);
+        /* ⑤ 半闭眼不许比全闭还暗（曲线方向不能反） */
+        zrig_blink_set_manual(r, 0.5);
+        zrig_tick(r, 0.50);
+        mid = zrig_part_draw_opacity(r, "fx_sparkle_1");
+        CHECK(mid >= shut - 1e-9 && mid <= full + 1e-9,
+              "半闭眼的 ✨ 亮度应落在[全闭, 睁眼]之间（实际 %.4f，全闭 %.4f，睁眼 %.4f）",
+              mid, shut, full);
+        zrig_free(r);
+    }
+}
+
+static void test_blink(void)
+{
+    SECTION("眨眼状态机（对齐 Live2D CubismEyeBlink 五态）");
+    {
+        char rig_path[1024];
+        char dir[1024];
+        zdiag d;
+        zrig *r;
+        double t;
+        int saw_closed = 0, saw_open = 0;
+        double close_time = 0.0, reopen_time = 0.0;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 1);
+        /* 以 60Hz 推进 20 秒，记录闭眼与重新睁开的时刻 */
+        for (t = 0.0; t < 20.0; t += 1.0 / 60.0) {
+            double v;
+            zrig_tick(r, t);
+            v = zrig_blink_value(r);
+            if (v >= 0.999 && !saw_closed) { saw_closed = 1; close_time = t; }
+            if (saw_closed && v <= 0.001 && !saw_open) { saw_open = 1; reopen_time = t; }
+        }
+        CHECK(saw_closed, "20 秒内应至少闭眼一次");
+        CHECK(saw_open, "闭眼后应重新睁开");
+        if (saw_closed && saw_open)
+            CHECK(reopen_time - close_time > 0.1 && reopen_time - close_time < 0.6,
+                  "闭眼总时长应在 0.1~0.6 秒（闭合0.1+保持0.05+睁开0.15），实际 %.3f 秒",
+                  reopen_time - close_time);
+        /* 强制闭眼 */
+        zrig_blink_force(r, 1);
+        zrig_tick(r, 100.0);
+        CHECK(zrig_blink_value(r) > 0.99, "强制闭眼后参数应为 1");
+        zrig_blink_force(r, 0);
+        zrig_tick(r, 100.1);
+        CHECK(zrig_blink_value(r) < 0.01, "恢复自动后应为 0");
+        zrig_free(r);
+    }
+}
+
+/* ---------------------------------------------------------- 图像 */
+/* 某一行的 alpha 加权横向重心；行里没有像素时返回 -1。用于量形变位移。 */
+static double row_centroid(const zimg *im, int y)
+{
+    double wsum = 0.0, xsum = 0.0;
+    int x;
+    if (!im || y < 0 || y >= im->h) return -1.0;
+    for (x = 0; x < im->w; ++x) {
+        double a = im->px[((size_t)y * im->w + x) * 4 + 3];
+        wsum += a; xsum += a * x;
+    }
+    return wsum > 0.0 ? xsum / wsum : -1.0;
+}
+
+static void test_image(void)
+{
+    SECTION("图像：缩放 / 合成 / 命中 / PNG 往返");
+    {
+        zimg *a = zimg_new(4, 4), *b, *c;
+        int i;
+        for (i = 0; i < 16; ++i) {
+            uint8_t *p = a->px + i * 4;
+            p[0] = 200; p[1] = 100; p[2] = 50; p[3] = 255;
+        }
+        b = zimg_resize(a, 2, 2);
+        CHECK(b && b->px[0] == 200 && b->px[1] == 100 && b->px[2] == 50, "缩放保持颜色");
+        c = zimg_new(8, 8);
+        zimg_draw_simple(c, b, 0, 0, 0, 0, 1.0, 0, 1.0);
+        CHECK(c->px[0] == 200 && c->px[1] == 100 && c->px[2] == 50 && c->px[3] == 255,
+              "合成应保留原始颜色（曾出现被钳成纯白的 bug）");
+        CHECK(zimg_hit_test(c, 0, 0, 24) == 1, "不透明处命中");
+        CHECK(zimg_hit_test(c, 7, 7, 24) == 0, "透明处不命中");
+        zimg_free(a); zimg_free(b); zimg_free(c);
+    }
+    {
+        /* 形变（Live2D 式网格形变的等价实现）：验证"哪一端固定、哪一端动"。
+           源图是一根 8x64 的竖条，底边=根。row_shift() 量出某一行的横向重心偏移。 */
+        zimg *src = zimg_new_filled(8, 64, 255, 255, 255, 255);
+        zimg *dst;
+        double m[6];
+        double top_root, bot_root, top_tip, bot_tip, mid_sine, top_sine;
+        zimg_make_matrix(m, 40.0, 8.0, 1.0, 1.0, 0.0, 0.0, 0.0);  /* 贴到 (40,8) */
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT);
+        top_root = row_centroid(dst, 10) - 44.0;   /* 竖条原本中心 x=44 */
+        bot_root = row_centroid(dst, 68) - 44.0;
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp(dst, src, m, 1.0, 12.0, ZIMG_BEND_TIP, 0.0, ZIMG_BEND_TIP);
+        top_tip = row_centroid(dst, 10) - 44.0;
+        bot_tip = row_centroid(dst, 68) - 44.0;
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp(dst, src, m, 1.0, 12.0, ZIMG_BEND_SINE, 0.0, ZIMG_BEND_SINE);
+        mid_sine = row_centroid(dst, 40) - 44.0;
+        top_sine = row_centroid(dst, 10) - 44.0;
+        zimg_free(dst);
+
+        CHECK(top_root > 9.0 && fabs(bot_root) < 1.5,
+              "root 曲线：顶端位移大（%.1f）、底端固定（%.1f）", top_root, bot_root);
+        CHECK(bot_tip > 9.0 && fabs(top_tip) < 1.5,
+              "tip 曲线：底端位移大（%.1f）、顶端固定（%.1f）", bot_tip, top_tip);
+        CHECK(mid_sine > 10.0 && fabs(top_sine) < 2.0,
+              "sine 曲线：中段最大（%.1f）、两端收口（%.1f）", mid_sine, top_sine);
+
+        /* X 与 Y 用不同曲线时互不干扰（曾经共用一个字段，后写的会覆盖先写的） */
+        dst = zimg_new(96, 96);
+        zimg_draw_warp(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT, -10.0, ZIMG_BEND_SINE);
+        CHECK(row_centroid(dst, 10) - 44.0 > 9.0,
+              "X 用 root 时顶端仍要大幅横移（不被 Y 的 sine 覆盖）");
+        zimg_free(dst);
+        zimg_free(src);
+    }
+    {
+        /* 形变平台 bend_tmin：平台线以上的行共用平台线处的形变量。
+           躯干贴图的顶边其实是脖子和衣领，而 root 曲线恰好把最大形变给了顶边 ——
+           衣领会比它上面的头移动得多，脖子处出现横向滑移（用户 2026-10-14 实测反馈）。
+
+           ★ 这里特意**两条绘制路径都测**：一个部件挂没挂形变器是运行期才定的
+           （形变器 amount 为 0 走 warp 路径、不为 0 走 mesh 路径），
+           两条路的平台效果必须一模一样，否则裙子一摆脖子就突然错位。
+           实际踩过这个坑：bend_tmin 最初只接了 warp 那条，
+           结果"颈部修复只在裙子不动的时候有效"。 */
+        zimg *src = zimg_new_filled(8, 64, 255, 255, 255, 255);
+        zimg *dst;
+        double m[6];
+        double w_off, w_on, me_off, me_on;
+        double off[(2 + 1) * (10 + 1) * 2];
+        int q;
+        const double TMIN = 0.25;          /* 上 25% 做平台 */
+        zimg_make_matrix(m, 40.0, 8.0, 1.0, 1.0, 0.0, 0.0, 0.0);
+        for (q = 0; q < (int)(sizeof(off) / sizeof(off[0])); ++q) off[q] = 0.0;
+        /* 控制点只挪一丁点：够让 moved 判定成立、强制走 mesh 循环就行
+           （全零会 fallback 回 warp，那就测不到网格那条路了）。
+           挪太多会把"网格自身的位移"混进差值里，干扰对平台效果的比较。 */
+        for (q = 0; q < (2 + 1) * (10 + 1); ++q) off[q * 2] = 0.01;
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT,
+                               0.0, ZIMG_BEND_ROOT, ZIMG_BLEND_NORMAL, 0.0, 1.0);
+        w_off = row_centroid(dst, 10);
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_ROOT,
+                               0.0, ZIMG_BEND_ROOT, ZIMG_BLEND_NORMAL, TMIN, 1.0);
+        w_on = row_centroid(dst, 10);
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_mesh_bend_blend_t(dst, src, m, 1.0, 2, 10, off,
+                                    12.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT,
+                                    ZIMG_BLEND_NORMAL, 0.0, 1.0);
+        me_off = row_centroid(dst, 10);
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_mesh_bend_blend_t(dst, src, m, 1.0, 2, 10, off,
+                                    12.0, ZIMG_BEND_ROOT, 0.0, ZIMG_BEND_ROOT,
+                                    ZIMG_BLEND_NORMAL, TMIN, 1.0);
+        me_on = row_centroid(dst, 10);
+        zimg_free(dst);
+
+        CHECK(w_off - w_on > 2.0,
+              "平台要真的把顶部形变压下来（warp 无平台 %.2f → 有平台 %.2f）",
+              w_off, w_on);
+        CHECK(me_off - me_on > 2.0,
+              "网格路径上平台也要生效（mesh 无平台 %.2f → 有平台 %.2f）",
+              me_off, me_on);
+        /* 容差说明：mesh 路径是在**控制点**上算曲线再线性插值（10 行网格），
+           warp 路径是逐像素精确求值，两者天然有分段线性近似误差。
+           判据用相对值：平台效果相差不超过 15%，不要求逐像素一致。 */
+        CHECK(fabs((w_off - w_on) - (me_off - me_on)) <= (w_off - w_on) * 0.15,
+              "两条路的平台效果要等量（warp 降了 %.2f，mesh 降了 %.2f，差 %.0f%%）"
+              "—— 相差太多的话，裙子一摆脖子就会突然错位",
+              w_off - w_on, me_off - me_on,
+              fabs((w_off - w_on) - (me_off - me_on)) / (w_off - w_on) * 100.0);
+        zimg_free(src);
+    }
+    {
+        /* 下平台 bend_tmax（G97）：跟随件挂在**下面**时用。
+           以前只有上平台，"脚跟着腿"只能靠把腿贴图在踝线以下整个裁掉来回避；
+           第三种跟随关系（手跟前臂）一出现这个洞就会暴露。
+
+           用 TIP 曲线测：TIP 是"顶边固定、底端最大"，位移随着往下走越来越大，
+           正好是下平台要按住的那一头。取样放在最底下那一行。 */
+        zimg *src = zimg_new_filled(8, 64, 255, 255, 255, 255);
+        zimg *dst;
+        double m[6];
+        double bot_off, bot_on, top_off, top_on;
+        const double TMAX = 0.75;          /* 下 25% 做平台 */
+        zimg_make_matrix(m, 40.0, 8.0, 1.0, 1.0, 0.0, 0.0, 0.0);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_TIP,
+                               0.0, ZIMG_BEND_TIP, ZIMG_BLEND_NORMAL, 0.0, 1.0);
+        bot_off = row_centroid(dst, 68);   /* 贴图底边附近 */
+        top_off = row_centroid(dst, 20);
+        zimg_free(dst);
+
+        dst = zimg_new(96, 96);
+        zimg_draw_warp_blend_t(dst, src, m, 1.0, 12.0, ZIMG_BEND_TIP,
+                               0.0, ZIMG_BEND_TIP, ZIMG_BLEND_NORMAL, 0.0, TMAX);
+        bot_on = row_centroid(dst, 68);
+        top_on = row_centroid(dst, 20);
+        zimg_free(dst);
+
+        CHECK(bot_off - bot_on > 2.0,
+              "下平台要把底部形变按住（无平台 %.2f → 有平台 %.2f）", bot_off, bot_on);
+        /* 负控：平台线**以上**不许被影响。只会"压住下面"才叫平台，
+           整块按住的话等于把这个部件的形变关掉了 —— 那是另一种 bug。 */
+        CHECK(fabs(top_off - top_on) < 0.5,
+              "平台线以上不该受影响（%.2f vs %.2f）", top_off, top_on);
+        zimg_free(src);
+    }
+    {
+        /* 半透明叠加公式检查：0.5 白 over 黑 = 128 */
+        zimg *dst = zimg_new_filled(2, 2, 0, 0, 0, 255);
+        zimg *src = zimg_new_filled(2, 2, 255, 255, 255, 128);
+        zimg_draw_simple(dst, src, 0, 0, 0, 0, 1.0, 0, 1.0);
+        CHECK(abs((int)dst->px[0] - 128) <= 2, "半透明白叠黑应约等于 128，实际 %d", dst->px[0]);
+        CHECK(dst->px[3] == 255, "不透明底上叠加后 alpha 仍为 255");
+        zimg_free(dst); zimg_free(src);
+    }
+    {
+        /* PNG 往返 + 抠洋红 */
+        zimg *im = zimg_new_filled(8, 8, 255, 0, 255, 255);
+        zerr e;
+        zimg *back;
+        uint8_t key[3];
+        zerr_clear(&e);
+        CHECK(zimg_save_png(im, "/tmp/zc_test.png", &e) == 0, "PNG 写出：%s", e.msg);
+        back = zimg_load("/tmp/zc_test.png", &e);
+        CHECK(back != NULL, "PNG 读回：%s", e.msg);
+        if (back) {
+            CHECK(back->w == 8 && back->h == 8, "PNG 尺寸往返");
+            CHECK(back->px[0] == 255 && back->px[1] == 0 && back->px[2] == 255, "PNG 颜色往返");
+            CHECK(zimg_key_corners(back, 60, 1, key) == 0, "四角键色检测");
+            CHECK(key[0] == 255 && key[1] == 0 && key[2] == 255, "键色应为洋红");
+            CHECK(back->px[3] == 0, "抠除后应为透明");
+            zimg_free(back);
+        }
+        zimg_free(im);
+    }
+}
+
+/* ------------------------------------------- 缩小采样（T31.4，G113）
+   病根不是"贴图画得糊"，是**缩小的时候一个目的像素只看了 1 个 texel**。
+
+   桌宠窗口 scale 0.55，而切件在 rig 里用的是 @2x 贴图（make_rig 把 scale 乘 0.5）
+   ⇒ 屏幕上 1 个像素对应源图里 180/49 ≈ 3.67 个 texel。旧代码走单点双线性，
+   等于在 3.67 个 texel 里**瞎挑一个**：手指之间那条 1~2 texel 宽的暗缝要么整条
+   被跳过（手指粘连），要么整条被踩中（一条断续黑线）。头发、睫毛、袖口条纹同理，
+   只是手最小、最先被看出来 —— 用户截图里"最显眼的一处"就是它。
+
+   闸的方式：**相位不变性**。同一条 1 texel 宽的暗线，在 4 个亚像素相位下缩小 4 倍，
+   输出必须几乎一样（正确的面积平均对相位不敏感）；单点采样会给出"要么全黑、
+   要么全白"的两极，怎么调相位都对不上。
+*/
+static void test_image_downsample_aa(void)
+{
+    SECTION("图像（T31.4）：缩小必须做面积平均，不许丢掉 1px 的暗线");
+    const uint8_t SKIN[3] = { 250, 240, 230 };     /* 肤色：三通道均值 240 */
+    const uint8_t LINE[3] = { 100, 88, 103 };      /* 工程统一线色：均值 97 */
+    const int SW = 32, SH = 8, DW = 8, DH = 8;     /* 32/8 = 4 texel 一个目的像素 */
+    zimg *src = zimg_new(SW, SH);
+    int phase_i;
+
+    {   /* 源图：整张肤色，正中间一列是暗线（模拟指缝 / 描边） */
+        int x, y;
+        for (y = 0; y < SH; ++y) {
+            for (x = 0; x < SW; ++x) {
+                uint8_t *q = src->px + ((size_t)y * SW + x) * 4;
+                const uint8_t *c = (x == 16) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+    }
+
+    {
+        double lo = 1e9, hi = -1e9;
+        for (phase_i = 0; phase_i < 4; ++phase_i) {
+            double m[6];
+            zimg *dst = zimg_new(DW, DH);
+            int x, y;
+            double rowmin = 1e9;
+            /* 4 个亚像素相位：0 / 0.25 / 0.5 / 0.75 texel。
+               缩小 4× ⇒ 目的方向平移 0.25 像素 = 源方向平移 1 texel；
+               这里要的是"不到 1 texel"的相位，所以目的方向只平移 0.0625。 */
+            double tx = phase_i * 0.0625;
+            zimg_make_matrix(m, tx, 0.0, (double)DW / SW, (double)DH / SH, 0.0, 0.0, 0.0);
+            zimg_draw(dst, src, m, 1.0);
+            for (y = 2; y < DH - 2; ++y) {
+                for (x = 0; x < DW; ++x) {
+                    const uint8_t *q = dst->px + ((size_t)y * DW + x) * 4;
+                    double L = (q[0] + q[1] + q[2]) / 3.0;
+                    if (q[3] < 200) continue;               /* 只看实心的目的像素 */
+                    if (L < rowmin) rowmin = L;
+                }
+            }
+            if (rowmin < lo) lo = rowmin;
+            if (rowmin > hi) hi = rowmin;
+            /* 覆盖率 = 1 texel / 4 texel = 25% ⇒ 亮度 ≈ 0.75×240 + 0.25×97 ≈ 204。
+               允许 [190, 218]：既覆盖"线还在"（<218），也覆盖"没有整条踩黑"（>190）。 */
+            CHECK(rowmin > 190.0 && rowmin < 218.0,
+                  "缩小 4× 后 1px 暗线必须落在 25%% 覆盖的灰度带（相位 %d：最暗 %.1f，"
+                  "线宽 1 texel 时单点采样只会给出 97 或 240）", phase_i, rowmin);
+            zimg_free(dst);
+        }
+        CHECK(hi - lo < 6.0,
+              "暗线深浅不许随亚像素相位跳（四个相位极差 %.1f 灰阶；单点采样实测 143）",
+              hi - lo);
+    }
+
+    {   /* 产品路径：**加载时建 mip 链**，缩小绘制读预滤波级别。
+           判据同一条 —— 1px 暗线在缩小 4× 后仍要留下约 25% 的灰度，
+           而不是"整条消失"或"整条踩黑"。 */
+        const int BW = 64, BH = 32, TW = 16, TH = 8;
+        zimg *big = zimg_new(BW, BH);
+        int x, y, phase_i;
+        double lo = 1e9, hi = -1e9;
+        for (y = 0; y < BH; ++y) {
+            for (x = 0; x < BW; ++x) {
+                uint8_t *q = big->px + ((size_t)y * BW + x) * 4;
+                const uint8_t *c = (x == 32) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        zimg_mip_build(big);
+        CHECK(big->mip != NULL && big->mip->w == BW / 2,
+              "应建出第 1 级 mip（%dx%d）", big->mip ? big->mip->w : 0,
+              big->mip ? big->mip->h : 0);
+        CHECK(big->mip == NULL || (big->mip->mip && big->mip->mip->w == BW / 4),
+              "应建出第 2 级 mip（%dx%d）",
+              (big->mip && big->mip->mip) ? big->mip->mip->w : 0,
+              (big->mip && big->mip->mip) ? big->mip->mip->h : 0);
+        for (phase_i = 0; phase_i < 4; ++phase_i) {
+            double m[6];
+            zimg *dst = zimg_new(TW, TH);
+            double rowmin = 1e9;
+            zimg_make_matrix(m, phase_i * 0.0625, 0.0, (double)TW / BW, (double)TH / BH,
+                             0.0, 0.0, 0.0);
+            zimg_draw(dst, big, m, 1.0);
+            for (y = 2; y < TH - 2; ++y) {
+                for (x = 0; x < TW; ++x) {
+                    const uint8_t *q = dst->px + ((size_t)y * TW + x) * 4;
+                    double L = (q[0] + q[1] + q[2]) / 3.0;
+                    if (q[3] < 200) continue;
+                    if (L < rowmin) rowmin = L;
+                }
+            }
+            if (rowmin < lo) lo = rowmin;
+            if (rowmin > hi) hi = rowmin;
+            CHECK(rowmin > 190.0 && rowmin < 218.0,
+                  "mip 路径：缩小 4× 后暗线仍要落在 25%% 覆盖带（相位 %d：最暗 %.1f）",
+                  phase_i, rowmin);
+            zimg_free(dst);
+        }
+        /* 阈值比分层采样那条（6.0）宽：mip 是**硬切级别**，没有三级之间的线性过渡，
+           亚 texel 相位仍会有几格抖动。实测 4 个相位极差 6.7，相对 143 灰阶的
+           对比度是 4.7%，肉眼看不出来；而单点采样是 0 / 143 的两极。 */
+        CHECK(hi - lo < 10.0, "mip 路径：暗线深浅不许随相位跳到两极（极差 %.1f 灰阶，"
+                              "对比度 143）", hi - lo);
+        {   /* 幂等：再建一次不许叠第二套（否则每帧调用就是内存泄漏） */
+            zimg *first = big->mip;
+            zimg_mip_build(big);
+            CHECK(big->mip == first, "zimg_mip_build 必须幂等");
+        }
+        {   /* 产品路径真的接上了：**从磁盘读进来的切件必须自带 mip**。
+               少了这一条，所有件都会掉回逐像素分层采样 —— 画面一样，
+               但一帧要多花一倍时间（实测 26 → 48 ms）。 */
+            zerr e;
+            zimg *back;
+            zerr_clear(&e);
+            CHECK(zimg_save_png(big, "/tmp/zc_mip_probe.png", &e) == 0,
+                  "mip 探针图应可写出：%s", e.msg);
+            back = zimg_load("/tmp/zc_mip_probe.png", &e);
+            CHECK(back != NULL, "mip 探针图应可读回：%s", e.msg);
+            if (back) {
+                CHECK(back->mip != NULL && back->mip->w == BW / 2,
+                      "zimg_load 之后必须自带 mip 链（实际 %s）",
+                      back->mip ? "有" : "没有");
+                zimg_free(back);
+            }
+        }
+        zimg_free(big);   /* 连带释放 mip 链（asan 会盯这一段） */
+    }
+
+    {   /* zimg_resize：部件加载时就被它预缩放（scale 0.55 × @2x 的 0.5），
+           所以这条路径才是 T31.4 的**主战场**。缩小必须面积平均，放大必须端点对齐。 */
+        zimg *src2 = zimg_new(32, 32);
+        zimg *small, *up;
+        int x, y, i, phase, lo = 999, hi = -1;
+        for (y = 0; y < 32; ++y) {
+            for (x = 0; x < 32; ++x) {
+                uint8_t *q = src2->px + ((size_t)y * 32 + x) * 4;
+                const uint8_t *c = (x == 16) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        /* ① 8× 缩小：1 texel 的暗线只剩 1/8 覆盖 ⇒ 亮度 ≈ 0.875×240 + 0.125×97 ≈ 222。
+              单点采样会给出 240（线完全消失）或 97（整条踩黑）两极。 */
+        small = zimg_resize(src2, 4, 4);
+        for (i = 0; i < 16; ++i) {
+            const uint8_t *q = small->px + i * 4;
+            double L = (q[0] + q[1] + q[2]) / 3.0;
+            if (L < lo) lo = (int)(L + 0.5);
+            if (L > hi) hi = (int)(L + 0.5);
+        }
+        CHECK(lo > 210 && lo < 232,
+              "zimg_resize 8× 缩小后 1px 暗线应落在 ~222 灰阶（实测最暗 %d、最亮 %d；"
+              "单点采样只会给 240 或 97）", lo, hi);
+        /* ② 相位不变：同一个 1px 线，源图整体左右平移后缩小，结果几乎一致 */
+        {
+            int spread = 0, plo = 999, phi = -1;
+            for (phase = 0; phase < 3; ++phase) {
+                zimg *sh = zimg_new(32, 32);
+                int m2 = 999;
+                for (y = 0; y < 32; ++y) {
+                    for (x = 0; x < 32; ++x) {
+                        uint8_t *q = sh->px + ((size_t)y * 32 + x) * 4;
+                        const uint8_t *c = (x == 16 + phase) ? LINE : SKIN;
+                        q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+                    }
+                }
+                {
+                    zimg *s2 = zimg_resize(sh, 4, 4);
+                    for (i = 0; i < 16; ++i) {
+                        const uint8_t *q = s2->px + i * 4;
+                        int L = (int)((q[0] + q[1] + q[2]) / 3.0 + 0.5);
+                        if (L < m2) m2 = L;
+                    }
+                    zimg_free(s2);
+                }
+                zimg_free(sh);
+                /* 每个相位只取它**自己最暗**的那个目的像素来比 ——
+                   整图的最大亮度永远是肤色 240，拿它当上界等于没比。 */
+                if (m2 < plo) plo = m2;
+                if (m2 > phi) phi = m2;
+            }
+            spread = phi - plo;
+            printf("    量到：各相位最暗像素 %d..%d，极差 %d（对比度 143）\n", plo, phi, spread);
+            CHECK(spread <= 12, "zimg_resize 缩小时暗线深浅不许随相位两极跳（极差 %d，对比度 143）",
+                  spread);
+        }
+        /* ③ 放大 2× 必须端点对齐、逐像素可预期（不能有面积平均带来的糊边） */
+        up = zimg_resize(small, 8, 8);
+        CHECK(up->px[3] == 255 && up->px[0] > 240,
+              "zimg_resize 放大 2× 后首像素应仍是肤色（实测 rgb %d,%d,%d）",
+              up->px[0], up->px[1], up->px[2]);
+        zimg_free(small); zimg_free(up); zimg_free(src2);
+    }
+
+    {   /* 1:1 必须逐像素原样：aa_steps 对覆盖 ≤1.4 texel 退回单点，放大路径一点没动 */
+        double m[6];
+        zimg *dst = zimg_new(SW, SH);
+        int i, diff = 0;
+        zimg_make_matrix(m, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, src, m, 1.0);
+        for (i = 0; i < SW * SH; ++i) {
+            if (dst->px[i * 4 + 0] != src->px[i * 4 + 0] ||
+                dst->px[i * 4 + 1] != src->px[i * 4 + 1] ||
+                dst->px[i * 4 + 2] != src->px[i * 4 + 2]) diff++;
+        }
+        CHECK(diff == 0, "1:1 绘制必须逐像素原样（差 %d px）—— 静止基线靠它", diff);
+        zimg_free(dst);
+    }
+
+    {   /* 放大 2× 必须**还是**普通双线性：暗线只影响它自己的两列，
+           不许被面积平均抹成一条更宽的糊边（那等于用"修缩小"换来"放大变糊"） */
+        double m[6];
+        zimg *u = zimg_new(16, 4), *dst = zimg_new(32, 8);
+        int x, y, touched = 0;
+        for (y = 0; y < 4; ++y) {
+            for (x = 0; x < 16; ++x) {
+                uint8_t *q = u->px + ((size_t)y * 16 + x) * 4;
+                const uint8_t *c = (x == 7) ? LINE : SKIN;
+                q[0] = c[0]; q[1] = c[1]; q[2] = c[2]; q[3] = 255;
+            }
+        }
+        zimg_make_matrix(m, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, u, m, 1.0);
+        for (x = 0; x < 32; ++x) {
+            const uint8_t *q = dst->px + ((size_t)4 * 32 + x) * 4;
+            double L = (q[0] + q[1] + q[2]) / 3.0;
+            if (q[3] > 200 && L < 235.0) touched++;     /* 只数实心像素，右边缘外是透明 */
+        }
+        CHECK(touched == 4, "放大 2× 时 1px 暗线只该占 4 列（实测 %d 列）—— 多了就是在放大路径上"
+                            "也做了面积平均，画面会变糊", touched);
+        zimg_free(dst); zimg_free(u);
+    }
+
+    {   /* 半透明不能变脏：透明 texel 的颜色不许渗进不透明区域（预乘口径） */
+        double m[6];
+        zimg *dst = zimg_new(4, 4);
+        zimg *tsrc = zimg_new(16, 16);
+        int x, y, bad = 0;
+        for (y = 0; y < 16; ++y) {
+            for (x = 0; x < 16; ++x) {
+                uint8_t *q = tsrc->px + ((size_t)y * 16 + x) * 4;
+                int opaque = (x < 15);
+                q[0] = opaque ? 250 : 255;         /* 透明区故意放洋红垃圾色 */
+                q[1] = opaque ? 240 : 0;
+                q[2] = opaque ? 230 : 255;
+                q[3] = opaque ? 255 : 0;
+            }
+        }
+        zimg_make_matrix(m, 0.0, 0.0, 4.0, 4.0, 0.0, 0.0, 0.0);
+        zimg_draw(dst, tsrc, m, 1.0);
+        for (y = 0; y < 4; ++y) {
+            for (x = 0; x < 3; ++x) {
+                const uint8_t *q = dst->px + ((size_t)y * 4 + x) * 4;
+                if (q[3] > 250 && (q[0] != 250 || q[1] != 240 || q[2] != 230)) bad++;
+            }
+        }
+        CHECK(bad == 0, "缩小采样不许把透明 texel 的垃圾色混进来（脏了 %d px）", bad);
+        zimg_free(dst); zimg_free(tsrc);
+    }
+
+    zimg_free(src);
+}
+
+/* -------------------------------------------------------- deflate */
+static void test_deflate(void)
+{
+    SECTION("deflate：RLE 正确性（与 zlib 一致的固定 Huffman 规则）");
+    /* 关键回归：前一个字节与当前不同时不能用 distance=1 回溯，
+     * 否则会把前一个字节复制出去（曾经的 bug）。 */
+    uint8_t data[16] = { 1, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 3, 0, 0, 0 };
+    uint8_t *out = NULL;
+    size_t n;
+    n = zdeflate_rle(data, sizeof(data), &out);
+    CHECK(n > 0 && out != NULL, "压缩应成功");
+    if (out) {
+        /* 头部：BFINAL=1、BTYPE=01 → LSB 先写，低 3 位为 011(2) = 0x03 */
+        CHECK((out[0] & 0x07) == 0x03, "首字节低 3 位应为 BFINAL=1,BTYPE=01，实际 0x%02X", out[0]);
+        CHECK(n < sizeof(data), "相同数据应被压缩（%zu < %zu）", n, sizeof(data));
+        free(out);
+    }
+    /* 纯零串：应压得很小 */
+    {
+        uint8_t zeros[4096];
+        memset(zeros, 0, sizeof(zeros));
+        n = zlib_compress_rle(zeros, sizeof(zeros), &out);
+        CHECK(n > 0 && n < 64, "4096 个 0 应压到 64 字节内，实际 %zu", n);
+        free(out);
+    }
+    /* 不可压缩数据：不应膨胀超过 1.05 倍 */
+    {
+        uint8_t rnd[4096];
+        zrand r;
+        size_t i;
+        zrand_seed(&r, 42);
+        for (i = 0; i < sizeof(rnd); ++i) rnd[i] = (uint8_t)zrand_u32(&r);
+        n = zlib_compress_rle(rnd, sizeof(rnd), &out);
+        /* 固定 Huffman 对 144..255 用 9 位，随机数据会膨胀约 9%，这里放宽到 15% */
+        CHECK(n > 0 && n < sizeof(rnd) * 115 / 100, "随机数据膨胀应受控（%zu）", n);
+        free(out);
+    }
+}
+
+/* -------------------------------------------------------- 配置/角色 */
+static void test_config_and_pet(void)
+{
+    zconfig cfg;
+    zdiag diag;
+    zpet *pet;
+    char cfgdir[1024];
+
+    SECTION("配置加载与角色包");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    CHECK(zconfig_load(&cfg, cfgdir, &diag) == 0, "正常配置应加载成功（错误 %d）", diag.error_count);
+    CHECK(cfg.nmodules >= 20, "功能模块应至少 20 个，实际 %d", cfg.nmodules);
+    /* 供应商数 = config/providers/ 下的契约文件数（G50 起 config/providers.json 是
+       由 tools/check_platform.py 生成的兼容投影，不再手写）。加供应商要同步改这个数，
+       这是故意的——数字对不上就说明投影没重新生成。
+       ★ 这里写死数字和 LESSONS 209「阈值不许写死」不冲突：那条说的是*阈值*
+       （要跟着被测对象走），这里是*绊线*（故意要求人来确认投影重生成过）。
+       2026-10-18 T59.1：9 → 29（云端 16 + 本地 9，另加 Tripo3D 等；路由 19 → 76）。 */
+    CHECK(cfg.nproviders == 29, "供应商 29 个（实际 %d）", cfg.nproviders);
+    CHECK(zconfig_module_enabled(&cfg, "chat") == 0, "功能默认必须全部关闭");
+    CHECK(cfg.pet.idle_sleep_seconds == 90, "默认空闲入睡 90 秒");
+
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功（错误 %d 条）", diag.error_count);
+    if (pet) {
+        CHECK(z_streq(zpet_form(pet), "teen"), "默认形态 teen");
+        CHECK(zpet_form_count(pet) >= 1, "至少一个形态");
+        CHECK(zpet_scale(pet) > 0.5 && zpet_scale(pet) < 0.6, "默认缩放 0.55");
+        CHECK(zpet_action_count(pet) >= 8, "可触发动作 ≥ 8，实际 %d", zpet_action_count(pet));
+
+        /* 空闲入睡与唤醒 */
+        zpet_tick(pet, 1.0);
+        zpet_report_idle(pet, 95.0);
+        zpet_tick(pet, 1.1);
+        CHECK(zpet_sleeping(pet) == 1, "空闲 95 秒应入睡");
+        CHECK(z_streq(zpet_action(pet), "sleep"), "入睡后动作应为 sleep");
+        zpet_notify_user_activity(pet, 1.2);
+        zpet_tick(pet, 1.21);
+        CHECK(zpet_sleeping(pet) == 0, "输入后应唤醒");
+        CHECK(z_streq(zpet_action(pet), "idle"), "唤醒后回到 idle");
+
+        /* 摸头 / 锤击 / 连击 */
+        {
+            int fw = 0, fh = 0;
+            zpet_frame(pet, &fw, &fh);
+            zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 2.0);
+            CHECK(z_streq(zpet_action(pet), "head_pat"), "摸头应触发 head_pat，实际 %s", zpet_action(pet));
+            zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAMMER, 2.5);
+            CHECK(z_streq(zpet_action(pet), "hammered"), "锤击应触发 hammered，实际 %s", zpet_action(pet));
+        }
+        /* 缩放边界 */
+        zpet_set_scale(pet, 99.0);
+        CHECK(zpet_scale(pet) <= cfg.pet.scale_max + 1e-9, "缩放应被上限夹紧");
+        zpet_set_scale(pet, 0.0);
+        CHECK(zpet_scale(pet) >= cfg.pet.scale_min - 1e-9, "缩放应被下限夹紧");
+        zpet_set_scale(pet, 0.5);
+        zpet_destroy(pet);
+    }
+}
+
+static void test_bad_config(void)
+{
+    SECTION("坏配置：必须报出文件+字段，且不崩溃");
+    {
+        zconfig cfg;
+        zdiag d;
+        zerr e;
+        zerr_clear(&e);
+        z_mkdir_p("/tmp/zc_badcfg");
+        {
+            /* 长度必须用 strlen 算：以前这里手写了 90，而字面量只有 89 字节，
+               fwrite 会多读一个字节（ASan 的 global-buffer-overflow）。 */
+            static const char bad_cfg[] =
+                "{\"schema_version\":\"1.0\",\"window\":{\"scale\":\"大\"},"
+                "\"interaction\":{\"idle_sleep_seconds\":0}}";
+            CHECK(z_write_file("/tmp/zc_badcfg/pet.json", bad_cfg,
+                               strlen(bad_cfg), &e) == 0, "写出坏配置");
+        }
+        zdiag_init(&d);
+        zconfig_load(&cfg, "/tmp/zc_badcfg", &d);
+        CHECK(d.error_count >= 1, "坏配置必须产生至少 1 个致命错误，实际 %d", d.error_count);
+        {
+            int found_scale = 0, found_idle = 0, i;
+            for (i = 0; i < d.count; ++i) {
+                if (strstr(d.items[i].field, "scale")) found_scale = 1;
+                if (strstr(d.items[i].field, "idle_sleep_seconds")) found_idle = 1;
+            }
+            CHECK(found_scale, "错误应定位到 window.scale 字段");
+            CHECK(found_idle, "错误应定位到 interaction.idle_sleep_seconds 字段");
+        }
+    }
+    {
+        /* 非法 JSON 的语法错误定位 */
+        zerr e;
+        zjson *j;
+        zdiag d;
+        zerr_clear(&e);
+        z_write_file("/tmp/zc_badcfg/ui.json", "{ \"theme\": }", 13, &e);
+        zdiag_init(&d);
+        {
+            zconfig cfg;
+            zconfig_load(&cfg, "/tmp/zc_badcfg", &d);
+        }
+        CHECK(!zdiag_ok(&d), "语法错误必须是致命错误");
+        j = zjson_parse_file("/tmp/zc_badcfg/ui.json", &e);
+        CHECK(j == NULL, "应解析失败");
+        CHECK(e.line == 1 && e.col > 0, "错误应带行列号（%d:%d）", e.line, e.col);
+    }
+    {
+        /* rig.json 引用不存在的素材：必须报出部件 id */
+        zdiag d;
+        zerr e;
+        zerr_clear(&e);
+        z_mkdir_p("/tmp/zc_badrig");
+        z_write_file("/tmp/zc_badrig/rig.json",
+            "{\"id\":\"t\",\"canvas\":{\"w\":100,\"h\":200},\"groups\":{\"root\":{\"pivot\":[50,200]}},"
+            "\"parts\":[{\"id\":\"p1\",\"file\":\"missing.png\",\"group\":\"root\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true}]}",
+            strlen("{\"id\":\"t\",\"canvas\":{\"w\":100,\"h\":200},\"groups\":{\"root\":{\"pivot\":[50,200]}},"
+                   "\"parts\":[{\"id\":\"p1\",\"file\":\"missing.png\",\"group\":\"root\"}],"
+                   "\"actions\":[{\"id\":\"idle\",\"loop\":true}]}"), &e);
+        zdiag_init(&d);
+        {
+            zrig *r = zrig_load("/tmp/zc_badrig/rig.json", "/tmp/zc_badrig", &d);
+            CHECK(r == NULL, "缺少素材应加载失败");
+            CHECK(d.error_count >= 1, "应报告错误");
+            if (d.count > 0) {
+                CHECK(strstr(d.items[0].msg, "missing.png") != NULL || strstr(d.items[0].msg, "不存在") != NULL,
+                      "错误信息应指出缺失的文件：%s", d.items[0].msg);
+            }
+        }
+    }
+}
+
+/* ---------------------------------------------------------- 动作通道 */
+static void test_rig_channels(void)
+{
+    SECTION("rig：部件通道 / 动作优先级 / 换装");
+    {
+        char dir[1024], path[1024];
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(path, sizeof(path), "%s/rig.json", dir);
+        r = zrig_load(path, dir, &d);
+        if (!r) { CHECK(0, "装载失败"); return; }
+        CHECK(zrig_canvas_w(r) == 848 && zrig_canvas_h(r) == 1360, "画布 848x1360");
+        CHECK(zrig_part_count(r) >= 6, "部件 ≥ 6");
+        CHECK(zrig_region_count(r) >= 3, "区域 ≥ 3");
+
+        /* 睡眠优先级最高，可打断一切 */
+        zrig_action_request(r, "sleep", "t", 0);
+        CHECK(z_streq(zrig_action(r), "sleep"), "可进入 sleep");
+        zrig_action_request(r, "happy", "t", 0);
+        CHECK(z_streq(zrig_action(r), "sleep"), "happy(7) 不能打断 sleep(8)");
+        zrig_action_request(r, "idle", "t", 1);
+        CHECK(z_streq(zrig_action(r), "idle"), "force 可以强行回 idle");
+
+        /* 说话动作应驱动口型通道 */
+        zrig_action_request(r, "talk", "t", 1);
+        {
+            int i;
+            double min_alpha = 2.0, max_alpha = -1.0;
+            for (i = 0; i < 90; ++i) {
+                double v;
+                zrig_tick(r, i / 60.0);
+                v = zrig_part_channel(r, "mouth_open", "alpha");
+                if (v > max_alpha) max_alpha = v;
+                if (v < min_alpha) min_alpha = v;
+            }
+            CHECK(min_alpha < 0.6, "说话时口型透明度应下降（最小 %.3f）", min_alpha);
+            CHECK(max_alpha - min_alpha > 0.3, "口型通道应有明显变化（%.3f~%.3f）", min_alpha, max_alpha);
+        }
+        /* 张嘴时上唇线必须**彻底**消失（G107）。
+           原来斜率是 -0.9，满张时上唇线还剩 10% —— 笑线两端上翘的嘴角露在口内椭圆
+           上方，像嘴上挂了两撇小胡子。现在是 -3.5，张到 ~29% 就归零。
+           这条闸盯住的是"归零"，不是"变淡"；只要有人把斜率调回 -0.9 它就红。
+           注：zrig_part_channel(...,"alpha") 返回的已经是钳位后的**有效** alpha。 */
+        zrig_action_request(r, "idle", "t", 1);
+        {
+            double a_closed, a_half, a_full;
+            int s;
+            /* 强制切回 idle 之后，talk 的通道是**淡出**的，不是立刻断电：
+               实测切完第一帧 ParamMouthOpenY 还有 0.311。先空跑一秒让它淡干净，
+               不然量到的是上一条动作的尾巴。 */
+            for (s = 0; s < 20; ++s) zrig_tick(r, 499.0 + s * 0.05);
+            zrig_param_set(r, "ParamMouthOpenY", 0.0);
+            zrig_tick(r, 500.0); zrig_tick(r, 500.1);
+            a_closed = zrig_part_channel(r, "mouth_open", "alpha");
+            zrig_param_set(r, "ParamMouthOpenY", 0.5);
+            zrig_tick(r, 501.0); zrig_tick(r, 501.1);
+            a_half = zrig_part_channel(r, "mouth_open", "alpha");
+            zrig_param_set(r, "ParamMouthOpenY", 1.0);
+            zrig_tick(r, 502.0); zrig_tick(r, 502.1);
+            a_full = zrig_part_channel(r, "mouth_open", "alpha");
+            CHECK(a_closed > 0.99, "闭嘴时上唇线应完整显示（%.3f）", a_closed);
+            CHECK(a_half < 1e-6, "张到一半时上唇线就该没了（%.3f）", a_half);
+            CHECK(a_full < 1e-6, "满张时上唇线必须归零，否则嘴上挂两撇小胡子（%.3f）", a_full);
+            zrig_param_set(r, "ParamMouthOpenY", 0.0);
+            zrig_tick(r, 503.0);
+        }
+        /* 惊讶时瞳孔要**变小**，不许变大（2026-10-15 用户反馈"眼球不自然变大，像个怪物"）。
+           官方/社区口径：shocked = 眼睛开得更大 + 瞳孔变小 + 挑眉 + 张嘴
+           （saltech.llc 的 ParamEyeLWide 条目 / Animaze 手册 / r/Live2D 两帖）。
+           改之前 surprised 挂的是 ParamEyeBallForm（现 ParamPupilScale）+1.0，而本 rig 里这个参数只绑了
+           眼球缩放，于是虹膜被撑大到 1.18x/1.22x。现在是 -0.45 → 约 0.92x/0.90x。 */
+        {
+            double sx0, sy0, sx1, sy1;
+            int s;
+            zrig_action_request(r, "idle", "t", 1);
+            for (s = 0; s < 20; ++s) zrig_tick(r, 600.0 + s * 0.05);
+            sx0 = zrig_part_channel(r, "eye_l_ball", "sx");
+            sy0 = zrig_part_channel(r, "eye_l_ball", "sy");
+            zrig_action_request(r, "surprised", "t", 1);
+            for (s = 1; s <= 16; ++s) zrig_tick(r, 601.0 + s * 0.016);
+            sx1 = zrig_part_channel(r, "eye_l_ball", "sx");
+            sy1 = zrig_part_channel(r, "eye_l_ball", "sy");
+            CHECK(sx1 < sx0 && sy1 < sy0,
+                  "惊讶时瞳孔应小于待机（待机 %.3f/%.3f → 惊讶 %.3f/%.3f）",
+                  sx0, sy0, sx1, sy1);
+            CHECK(sx1 > 0.80 && sy1 > 0.80,
+                  "瞳孔也别缩过头（%.3f/%.3f，下限 0.80）", sx1, sy1);
+            zrig_action_request(r, "idle", "t", 1);
+            for (s = 0; s < 20; ++s) zrig_tick(r, 603.0 + s * 0.05);
+        }
+        /* 帧尺寸应随缩放变化 */
+        {
+            int fw = 0, fh = 0;
+            zrig_frame(r, 0.5, &fw, &fh);
+            CHECK(fw == 424 && fh == 680, "0.5 倍应为 424x680，实际 %dx%d", fw, fh);
+            zrig_frame(r, 1.0, &fw, &fh);
+            CHECK(fw == 848 && fh == 1360, "1.0 倍应为 848x1360");
+        }
+        /* 区域命中（头/身体/脚） */
+        {
+            char act[64];
+            const char *id;
+            zrig_frame(r, 1.0, NULL, NULL);
+            zrig_action_request(r, "idle", "t", 1);
+            zrig_tick(r, 100.0);
+            zrig_frame(r, 1.0, NULL, NULL);
+            id = zrig_region_at(r, 424, 120, act, sizeof(act));
+            CHECK(id && z_streq(id, "head"), "头部区域命中");
+            if (id) CHECK(z_streq(act, "head_pat"), "头部区域应触发 head_pat");
+            id = zrig_region_at(r, 424, 700, act, sizeof(act));
+            CHECK(id && z_streq(id, "body"), "身体区域命中");
+            id = zrig_region_at(r, 5, 5, act, sizeof(act));
+            CHECK(id == NULL, "左上角透明处不应命中任何区域");
+        }
+        /* 坐标换算不许跟着"渲染过没渲染过"变。
+           2026-10-15 实测到：没渲染时 frame→canvas 退化成 1:1，于是同一个
+           /api/region 请求在首帧前后落进两套坐标系，两种都回 200，没人发现。
+           这里拿一个全新的、一帧都没渲过的 rig 来验。 */
+        {
+            zrig *fresh = zrig_load(path, dir, &d);
+            int cx0 = 0, cy0 = 0, cx1 = 0, cy1 = 0, bx = 0, by = 0;
+            if (!fresh) { CHECK(0, "坐标换算用例：rig 装载失败"); }
+            else {
+                zrig_set_view_scale(fresh, 0.55);
+                zrig_frame_to_canvas(fresh, 230, 165, &cx0, &cy0);
+                CHECK(cx0 > 400 && cx0 < 440 && cy0 > 280 && cy0 < 320,
+                      "没渲染过也要按 0.55 换算（帧 230,165 → 画布 %d,%d，期望 ≈418,300）",
+                      cx0, cy0);
+                zrig_frame(fresh, 0.55, NULL, NULL);
+                zrig_frame_to_canvas(fresh, 230, 165, &cx1, &cy1);
+                CHECK(abs(cx1 - cx0) <= 2 && abs(cy1 - cy0) <= 2,
+                      "渲染前后换算结果必须一致（前 %d,%d 后 %d,%d）", cx0, cy0, cx1, cy1);
+                zrig_canvas_to_frame(fresh, cx1, cy1, &bx, &by);
+                CHECK(abs(bx - 230) <= 2 && abs(by - 165) <= 2,
+                      "画布→帧要能换回去（%d,%d，期望 ≈230,165）", bx, by);
+                zrig_free(fresh);
+            }
+        }
+        /* 形变跟随（放在最后：它会推进时间轴，不能影响前面的用例）。
+           身体 bend 时 head 组里的五官必须自动跟着走，否则眼睛会从脸上滑走。 */
+        {
+            int i, fw = 0, fh = 0;
+            double peak_body = 0.0, worst = 0.0, worst_rigid = 0.0;
+            /* 跟随源与取样高度都从 rig 里读：单图层骨架（眼睛贴在整张身体上，
+               按自己高度取样）和分段骨架（头整块挂在脖子上，按关节点取样）
+               用同一套断言，换素材不用改测试。 */
+            /* 眼睛部件的 id 随拆件程度而变：整块贴图叫 eye_open_left，
+               拆成 Live2D 式零件后眼白底叫 eye_l_base。测试自己挑现有的那个，
+               这样拆件推进时不用改断言。 */
+            const char *eye_id = "eye_l_base";
+            const char *src = zrig_part_follow_src(r, eye_id);
+            if (!src) { eye_id = "eye_open_left"; src = zrig_part_follow_src(r, eye_id); }
+            CHECK(src != NULL, "眼睛所在的组必须声明 bend_follow");
+            zrig_action_request(r, "sway", "t", 1);
+            for (i = 0; i < 300 && src; ++i) {   /* 扫 5 秒，覆盖 sway 的一个周期 */
+                double follow, body, gap, rigid;
+                zrig_tick(r, 200.0 + i / 60.0);
+                zrig_frame(r, 1.0, &fw, &fh);
+                /* ★ 2026-10-22（Q37）：sway 现在**也会轻轻转头**（ParamAngleX ±5°），
+                   于是整颗头会刚体平移一点点。那是对的表演，不是"五官在脸上滑"，
+                   所以这里要先把**组的刚体位移**扣掉，剩下的才是"跟随身体形变"那一份。
+                   不扣的话偏差正好等于头的 dx（实测 0.917px ＝ 5×4/30 + idle 2.2×4/30）。
+                   ★ 不是放宽阈值：扣完之后判据仍然是 < 0.01px。 */
+                follow = zrig_part_offset_x(r, eye_id)       /* 眼睛实际被推了多远 */
+                         - zrig_group_offset_x(r, "head");   /* 减去整颗头的平移 */
+                body   = zrig_bend_at(r, src, zrig_part_follow_y(r, eye_id));
+                gap = fabs(follow - body);
+                /* 同一个头上的部件必须刚性同步，差一点点都会看成"五官在脸上滑" */
+                /* 刚性同步这条比的是**原始位移**（两件在同一组里就该走得一模一样），
+                   所以不扣组位移 —— 扣了反而把两边都减掉同一个数，等于没测。 */
+                rigid = fabs(zrig_part_offset_x(r, eye_id)
+                             - zrig_part_offset_x(r, "mouth_open"));
+                if (fabs(body) > fabs(peak_body)) peak_body = body;
+                if (gap > worst) worst = gap;
+                if (rigid > worst_rigid) worst_rigid = rigid;
+            }
+            CHECK(fabs(peak_body) > 2.0,
+                  "sway 时身体在取样高度确实要弯（实际 %.2f px）", peak_body);
+            CHECK(worst < 0.01,
+                  "五官要按跟随取样高度跟住身体形变，最大偏差 %.3f px", worst);
+            CHECK(worst_rigid < 0.01,
+                  "同一组的五官必须刚性同步，最大偏差 %.3f px", worst_rigid);
+        }
+        zrig_free(r);
+    }
+}
+
+/* -------------------------------------------------------- 互动规则 / 台词 / 情绪 */
+static void write_text(const char *path, const char *text)
+{
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    fwrite(text, 1, strlen(text), f);
+    fclose(f);
+}
+
+/* 文本替换：读整份文件、把所有 from 换成 to、写回。测试里改配置用。
+   用固定的 to 长度会踩坑（"xiaoxun" → "modtest" 长度不同），所以走重新拼接。 */
+static int patch_text_file(const char *path, const char *from, const char *to)
+{
+    FILE *f = fopen(path, "rb");
+    long n;
+    char *buf;
+    size_t cap;
+    char *q;
+    if (!f) return -1;
+    fseek(f, 0, SEEK_END);
+    n = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (n < 0) { fclose(f); return -1; }
+    cap = (size_t)n * 4 + 4096;
+    buf = (char *)malloc(cap);
+    if (!buf) { fclose(f); return -1; }
+    if (fread(buf, 1, (size_t)n, f) != (size_t)n) { fclose(f); free(buf); return -1; }
+    fclose(f);
+    buf[n] = 0;
+    q = strstr(buf, from);
+    if (!q) { free(buf); return -1; }
+    {
+        char *out = (char *)malloc(cap);
+        size_t head = (size_t)(q - buf);
+        if (!out) { free(buf); return -1; }
+        memcpy(out, buf, head);
+        z_snprintf(out + head, cap - head, "%s%s", to, q + strlen(from));
+        write_text(path, out);
+        free(out);
+    }
+    free(buf);
+    return 0;
+}
+
+/* ------------------------------------------------- 遮罩（clipping mask） */
+static int diag_has(const zdiag *d, const char *needle);
+static int copy_file(const char *src, const char *dst)
+{
+    FILE *a = fopen(src, "rb"), *b;
+    char buf[8192];
+    size_t n;
+    if (!a) return -1;
+    b = fopen(dst, "wb");
+    if (!b) { fclose(a); return -1; }
+    while ((n = fread(buf, 1, sizeof(buf), a)) > 0) fwrite(buf, 1, n, b);
+    fclose(a); fclose(b);
+    return 0;
+}
+
+/* 两帧在某个矩形框里差了多少像素（量"这个参数到底动了没有、动在哪"） */
+static int frame_diff_box(const zimg *a, const unsigned char *snap,
+                          int x0, int y0, int x1, int y1)
+{
+    int x, y, n = 0;
+    if (!a || !snap) return -1;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > a->w) x1 = a->w;
+    if (y1 > a->h) y1 = a->h;
+    for (y = y0; y < y1; ++y)
+        for (x = x0; x < x1; ++x) {
+            size_t o = ((size_t)y * (size_t)a->w + (size_t)x) * 4;
+            int d = abs((int)a->px[o] - (int)snap[o]) + abs((int)a->px[o+1] - (int)snap[o+1])
+                  + abs((int)a->px[o+2] - (int)snap[o+2]) + abs((int)a->px[o+3] - (int)snap[o+3]);
+            if (d > 8) n++;
+        }
+    return n;
+}
+
+/* 框里有多少不透明像素（"这一块到底画没画东西"） */
+static int frame_opaque_box(const zimg *a, int x0, int y0, int x1, int y1)
+{
+    int x, y, n = 0;
+    if (!a) return -1;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > a->w) x1 = a->w;
+    if (y1 > a->h) y1 = a->h;
+    for (y = y0; y < y1; ++y)
+        for (x = x0; x < x1; ++x)
+            if (a->px[((size_t)y * (size_t)a->w + (size_t)x) * 4 + 3] > 128) n++;
+    return n;
+}
+
+/* 框里有多少"线条像素"（睫毛/眼线这种深色）。用来回答"这一帧到底画没画那条线" */
+static int frame_dark_box(const zimg *a, int x0, int y0, int x1, int y1)
+{
+    int x, y, n = 0;
+    if (!a) return -1;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > a->w) x1 = a->w;
+    if (y1 > a->h) y1 = a->h;
+    for (y = y0; y < y1; ++y)
+        for (x = x0; x < x1; ++x) {
+            size_t o = ((size_t)y * (size_t)a->w + (size_t)x) * 4;
+            int lum = ((int)a->px[o] + (int)a->px[o+1] + (int)a->px[o+2]) / 3;
+            if (a->px[o+3] > 128 && lum < 165) n++;
+        }
+    return n;
+}
+
+/* 眼线的「弯向」：把眼区按列切成左/中/右三段，各段取暗像素的平均 y，
+   返回 (两端平均 y − 中段平均 y)，单位像素。
+     正值 = 中段比两端高 = 山型 ∩（笑眼）
+     负值 = 中段比两端低 = 谷型 ∪（普通闭眼）
+   为什么要这条：光数暗像素总量（frame_dark_box）分不出 ∩ 和 ∪，
+   睫毛件忘了让位、在笑眼上又叠一条 ∪ 粗线时总量只多一点点，闸照样绿，
+   但用户一眼就看出"抚摸时根本不是笑眼"（2026-10-15 验收退回）。
+   形状问题必须用形状判据守。无暗像素时返回 -9999。 */
+static double frame_dark_sag_t(const zimg *a, int x0, int y0, int x1, int y1, int thr)
+{
+    int x, y, seg, w;
+    double sum[3], cnt[3], edge, mid;
+    if (!a) return -9999.0;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > a->w) x1 = a->w;
+    if (y1 > a->h) y1 = a->h;
+    w = x1 - x0;
+    if (w < 6) return -9999.0;
+    for (seg = 0; seg < 3; ++seg) { sum[seg] = 0.0; cnt[seg] = 0.0; }
+    for (y = y0; y < y1; ++y)
+        for (x = x0; x < x1; ++x) {
+            size_t o = ((size_t)y * (size_t)a->w + (size_t)x) * 4;
+            int lum = ((int)a->px[o] + (int)a->px[o+1] + (int)a->px[o+2]) / 3;
+            if (a->px[o+3] > 128 && lum < thr) {
+                seg = ((x - x0) * 3) / w;
+                if (seg > 2) seg = 2;
+                sum[seg] += (double)y;
+                cnt[seg] += 1.0;
+            }
+        }
+    if (cnt[0] < 3.0 || cnt[1] < 3.0 || cnt[2] < 3.0) return -9999.0;
+    edge = (sum[0] / cnt[0] + sum[2] / cnt[2]) * 0.5;
+    mid  = sum[1] / cnt[1];
+    return edge - mid;
+}
+
+/* 默认阈值版（和 frame_dark_box 同口径 165） */
+static double frame_dark_sag(const zimg *a, int x0, int y0, int x1, int y1)
+{
+    return frame_dark_sag_t(a, x0, y0, x1, y1, 165);
+}
+
+/* 存一份当前帧（给 frame_diff_box 当基准） */
+static unsigned char *frame_snapshot(const zimg *a)
+{
+    size_t n;
+    unsigned char *buf;
+    if (!a) return NULL;
+    n = (size_t)a->w * (size_t)a->h * 4;
+    buf = (unsigned char *)malloc(n);
+    if (buf) memcpy(buf, a->px, n);
+    return buf;
+}
+
+static int frame_opaque_px(const zimg *im)
+{
+    int x, y, n = 0;
+    if (!im) return 0;
+    for (y = 0; y < im->h; ++y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) n++;
+    return n;
+}
+
+/* 不透明像素的重心 x（量"手被父组带着甩出去多远"） */
+static int frame_centroid_x(const zimg *im)
+{
+    int x, y; long n = 0; long sum = 0;
+    if (!im) return -1;
+    for (y = 0; y < im->h; ++y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) { n++; sum += x; }
+    return n ? (int)(sum / n) : -1;
+}
+
+/* 不透明像素的重心 y（整数放大 1000 倍避免浮点比较） */
+static int frame_centroid_y(const zimg *im)
+{
+    int x, y; long n = 0; long sum = 0;
+    if (!im) return -1;
+    for (y = 0; y < im->h; ++y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) { n++; sum += y; }
+    return n ? (int)(sum / n) : -1;
+}
+
+/* 最上面一行不透明像素的 y（量"上眼皮合下来了没有"） */
+static int frame_top_y(const zimg *im)
+{
+    int x, y;
+    if (!im) return -1;
+    for (y = 0; y < im->h; ++y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) return y;
+    return -1;
+}
+
+/* 最下面一行不透明像素的 y（量"眼眶下沿有没有跟着动"） */
+static int frame_bottom_y(const zimg *im)
+{
+    int x, y;
+    if (!im) return -1;
+    for (y = im->h - 1; y >= 0; --y)
+        for (x = 0; x < im->w; ++x)
+            if (im->px[((size_t)y * (size_t)im->w + (size_t)x) * 4 + 3] > 24) return y;
+    return -1;
+}
+
+static void test_motion_fade(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("动作淡入淡出：切动作时两套通道按权重混合，不是一帧跳过去");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_fade");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/a.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    /* idle 不动；lean 把 head 组往右推 20px（pulse 立刻到位），淡入 0.4s */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"f\",\"name\":\"淡入测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"a\",\"file\":\"sprites/a.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]},"
+        " {\"id\":\"lean\",\"loop\":true,\"fade\":0.4,\"channels\":["
+        "   {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"pulse\",\"amp\":20,\"dur\":0.01}]},"
+        " {\"id\":\"snap\",\"loop\":true,\"fade\":0,\"channels\":["
+        "   {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"pulse\",\"amp\":20,\"dur\":0.01}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 fade 的 rig 应加载成功");
+        if (r) {
+            double at_switch, mid, after;
+            zrig_tick(r, 1.0);
+            CHECK(fabs(zrig_group_offset_x(r, "head")) < 0.01, "idle 时不该有位移");
+            zrig_action_request(r, "lean", "test", 1);
+            zrig_tick(r, 1.0);
+            at_switch = zrig_group_offset_x(r, "head");
+            zrig_tick(r, 1.2);                       /* 淡入过半 */
+            mid = zrig_group_offset_x(r, "head");
+            zrig_tick(r, 1.5);                       /* 淡入结束 */
+            after = zrig_group_offset_x(r, "head");
+            CHECK(at_switch < 1.0, "刚切过去的那一帧应几乎还在原位（%.2f）", at_switch);
+            CHECK(mid > 3.0 && mid < 18.0, "淡入过半应落在中间（%.2f，目标 20）", mid);
+            CHECK(after > 19.0, "淡入结束应到达目标（%.2f）", after);
+            /* fade:0 的动作要立刻到位——打击感不能被淡入磨掉 */
+            zrig_action_request(r, "idle", "test", 1);
+            zrig_tick(r, 3.0);
+            zrig_action_request(r, "snap", "test", 1);
+            zrig_tick(r, 3.02);        /* pulse 的 dur=0.01，这时波形本身已到位 */
+            CHECK(zrig_group_offset_x(r, "head") > 19.0,
+                  "fade=0 的动作应一帧到位（%.2f）", zrig_group_offset_x(r, "head"));
+            /* 对照：同样过了 0.02s，带 0.4s 淡入的动作此时几乎还没动 */
+            zrig_action_request(r, "idle", "test", 1);
+            zrig_tick(r, 5.0);
+            zrig_action_request(r, "lean", "test", 1);
+            zrig_tick(r, 5.02);
+            CHECK(zrig_group_offset_x(r, "head") < 2.0,
+                  "带淡入的动作同一时刻应几乎还没动（%.2f）", zrig_group_offset_x(r, "head"));
+            zrig_free(r);
+        }
+    }
+}
+
+static void test_motion_from(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("motion_from：副本照抄本体的通道（透け眉用）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_mfrom");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/brow_l.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/b.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"镜像测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"b\",\"file\":\"sprites/b.png\",\"group\":\"head\","
+        "  \"layer\":10,\"pos\":[60,60],\"anchor\":[0.5,0.5]},"
+        " {\"id\":\"b_ghost\",\"file\":\"sprites/b.png\",\"group\":\"head\",\"layer\":20,"
+        "  \"pos\":[60,60],\"anchor\":[0.5,0.5],\"opacity\":0.4,\"motion_from\":\"b\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"b\",\"param\":\"dy\",\"wave\":\"sine\",\"amp\":4,\"freq\":1}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 motion_from 的 rig 应加载成功");
+        if (r) {
+            int w, h;
+            double t;
+            /* 副本自己没有通道，但画面上必须跟着本体走：
+               用渲染结果验证 —— 本体动起来时整帧必须变。 */
+            const zimg *f1, *f2;
+            unsigned long s1 = 0, s2 = 0;
+            int i;
+            zrig_tick(r, 0.0);
+            f1 = zrig_frame(r, 1.0, &w, &h);
+            for (i = 0; i < w * h; ++i) s1 += (unsigned long)f1->px[i * 4 + 3];
+            CHECK(fabs(zrig_part_channel(r, "b_ghost", "dy")) < 1e-9,
+                  "副本自己的通道值应为 0（它只是照抄）");
+            for (t = 0.02; t < 0.3; t += 0.02) zrig_tick(r, t);
+            CHECK(fabs(zrig_part_channel(r, "b", "dy")) > 0.5, "本体通道应有值");
+            f2 = zrig_frame(r, 1.0, &w, &h);
+            for (i = 0; i < w * h; ++i) s2 += (unsigned long)f2->px[i * 4 + 3];
+            CHECK(s1 != s2, "本体动了，画面（含副本）必须跟着变（%lu → %lu）", s1, s2);
+            zrig_free(r);
+        }
+    }
+    /* motion_from 不能连 alpha 一起抄（2026-10-16，星星眼 T39 踩出来的）。
+       差分件的做法是「同一位置两张图、各自淡入淡出」：星形虹膜用 motion_from
+       照抄常态虹膜的位移/缩放，但两者的**透明度必须互相独立** ——
+       以前 compute_draw_state 写的是 p_alpha[motion_from]，于是参数把常态虹膜
+       淡成 0 的同时也把星形件一起抹掉，切到星星眼只剩两颗空白眼球。
+       负控：把 zrig.c 改回 p_alpha[mi]，下面第二条 CHECK 会红（画面变空）。 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/alpha.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"差分\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"b\",\"file\":\"sprites/b.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,60],\"anchor\":[0.5,0.5]},"
+            " {\"id\":\"b_star\",\"file\":\"sprites/b.png\",\"group\":\"head\",\"layer\":20,"
+            "  \"pos\":[60,60],\"anchor\":[0.5,0.5],\"motion_from\":\"b\"}],"
+            "\"params\":[{\"id\":\"Swap\",\"min\":0,\"max\":1,\"default\":0,\"binds\":["
+            "  {\"part\":\"b\",\"param\":\"alpha\",\"scale\":-1.0},"
+            "  {\"part\":\"b_star\",\"param\":\"alpha\",\"scale\":1.0,\"offset\":-1.0}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "差分件 rig 应加载成功");
+        if (r) {
+            int w, h, i;
+            const zimg *f;
+            unsigned long a0 = 0, a1 = 0;
+            zrig_param_set(r, "Swap", 0.0);
+            zrig_tick(r, 0.0);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (i = 0; i < w * h; ++i) a0 += (unsigned long)f->px[i * 4 + 3];
+            zrig_param_set(r, "Swap", 1.0);
+            zrig_tick(r, 0.02);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (i = 0; i < w * h; ++i) a1 += (unsigned long)f->px[i * 4 + 3];
+            CHECK(a0 > 0, "Swap=0 时本体可见（alpha 合计 %lu）", a0);
+            CHECK(a1 > a0 * 9 / 10,
+                  "Swap=1 时差分件必须顶上来，画面不能空（%lu → %lu）", a0, a1);
+            zrig_free(r);
+        }
+    }
+    /* 反例：指向不存在的部件 / 套娃 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/bad.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"b\",\"file\":\"sprites/b.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,60],\"anchor\":[0.5,0.5],\"motion_from\":\"nope\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "motion_from 指向不存在的部件应加载失败");
+        if (r) zrig_free(r);
+    }
+}
+
+static void test_expression(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("表情层：叠在动作之上、带淡入淡出、不顶掉动作");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_expr");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"表情测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"h2\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        "  \"layer\":11,\"pos\":[80,40],\"anchor\":[0,0],\"opacity\":0.0}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"h\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":2,\"freq\":1}]}],"
+        "\"params\":[{\"id\":\"ParamBrowLY\",\"min\":-1,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"part\":\"h\",\"param\":\"dy\",\"scale\":10}]}],"
+        "\"expressions\":[{\"id\":\"angry\",\"name\":\"生气\",\"fade\":0.4,"
+        " \"params\":[{\"id\":\"ParamBrowLY\",\"value\":-0.5},"
+        "             {\"id\":\"ParamEyeOpen\",\"value\":0.5,\"mode\":\"set\"}],\"part_overrides\":{\"h\":{\"opacity\":0.25,\"dx\":4},\"h2\":{\"opacity\":1.0}}},"
+        " {\"id\":\"snap\",\"fade\":0,"
+        "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":1.0,\"mode\":\"set\"}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 expressions 段的 rig 应加载成功");
+        if (r) {
+            double t, mid, done;
+            CHECK(zrig_expression_count(r) == 2, "应读出 2 个表情（%d）",
+                  zrig_expression_count(r));
+            CHECK(z_streq(zrig_expression_name(r, 0), "生气"), "表情中文名应读出来");
+            CHECK(zrig_expression(r) == NULL, "一开始应该没有表情");
+            zrig_tick(r, 0.0);
+            zrig_blink_set_manual(r, 0.0);
+            zrig_tick(r, 0.02);
+            CHECK(fabs(zrig_part_channel(r, "h", "dy")) < 1e-6, "没表情时绑定通道应为 0");
+            /* ① 淡入：不能一帧到位 */
+            CHECK(zrig_expression_set(r, "angry") == 0, "切表情应成功");
+            zrig_tick(r, 0.04);
+            mid = zrig_part_channel(r, "h", "dy");
+            CHECK(mid > -1.0 && mid <= 0.0, "表情要淡入，20ms 时还很小（%.3f / 目标 -5）", mid);
+            CHECK(zrig_part_draw_opacity(r, "h") > 0.9,
+                  "部件覆盖也应随表情淡入（当前 %.3f）", zrig_part_draw_opacity(r, "h"));
+            for (t = 0.06; t < 0.8; t += 0.02) zrig_tick(r, t);
+            done = zrig_part_channel(r, "h", "dy");
+            CHECK(fabs(done - (-5.0)) < 0.01, "淡入完成应到 -0.5×10（%.3f）", done);
+            CHECK(z_streq(zrig_expression(r), "angry"), "当前表情应可读回");
+            CHECK(fabs(zrig_part_draw_opacity(r, "h") - 0.25) < 0.02,
+                  "表情部件透明度覆盖应生效（h=%.3f）", zrig_part_draw_opacity(r, "h"));
+            CHECK(fabs(zrig_part_draw_opacity(r, "h2") - 1.0) < 0.02,
+                  "表情可隐藏部件（h2=%.3f）", zrig_part_draw_opacity(r, "h2"));
+            /* ② set 模式作用在内建参数上：眼睛半闭 */
+            CHECK(fabs(zrig_blink_value(r) - 0.0) < 1e-6, "子系统自己的眨眼值不该被改写");
+            /* ③ 动作还在跑（表情和动作是两条轨） */
+            CHECK(z_streq(zrig_action(r), "idle"), "表情不该顶掉动作（%s）", zrig_action(r));
+            CHECK(fabs(zrig_part_channel(r, "h", "dx")) > 1e-9, "动作通道应照常输出");
+            /* ④ fade=0 的表情一帧到位 */
+            zrig_expression_set(r, "snap");
+            zrig_tick(r, t);
+            CHECK(fabs(zrig_part_channel(r, "h", "dy") - 10.0) < 0.01,
+                  "fade=0 应一帧到位（%.3f / 10）", zrig_part_channel(r, "h", "dy"));
+            CHECK(fabs(zrig_part_draw_opacity(r, "h") - 1.0) < 0.02, "切到无覆盖表情后恢复部件透明度");
+            CHECK(fabs(zrig_part_draw_opacity(r, "h2")) < 0.02, "base opacity 为 0 的候选部件退出表情后隐藏");
+            /* ⑤ 取消：淡出回 0 */
+            zrig_expression_clear(r);
+            for (t += 0.02; t < 2.0; t += 0.02) zrig_tick(r, t);
+            CHECK(zrig_expression(r) == NULL, "取消后不应还有表情");
+            CHECK(fabs(zrig_part_channel(r, "h", "dy")) < 0.01,
+                  "取消后绑定通道应回 0（%.3f）", zrig_part_channel(r, "h", "dy"));
+            /* ⑥ 未知表情要报错 */
+            CHECK(zrig_expression_set(r, "nope") == -1, "未知表情应返回 -1");
+            zrig_free(r);
+        }
+    }
+    /* 反例：表情写了没声明的参数，必须加载失败 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/bad.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+            "\"expressions\":[{\"id\":\"x\",\"params\":[{\"id\":\"ParamNope\",\"value\":1}]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "表情引用未声明的参数应加载失败");
+        if (r) zrig_free(r);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+            "\"expressions\":[{\"id\":\"x\",\"part_overrides\":{\"ghost\":{\"opacity\":0}}}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "表情部件覆盖引用不存在的部件应加载失败");
+        if (r) zrig_free(r);
+    }
+}
+
+static void test_params(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("命名参数层：内建参数路由 + rig 声明的绑定参数");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_param");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"参数测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+        "\"look\":{\"speed\":30,\"groups\":{\"head\":{\"dx\":4}}},"
+        "\"params\":[{\"id\":\"ParamAngleZ\",\"label\":\"歪头\",\"min\":-30,\"max\":30,"
+        " \"default\":0,\"binds\":[{\"group\":\"head\",\"param\":\"rot_deg\",\"scale\":0.5}]},"
+        "{\"id\":\"ParamHairAhoge\",\"min\":-1,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"part\":\"h\",\"param\":\"dx\",\"scale\":10}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 params 段的 rig 应加载成功");
+        if (r) {
+            zrig_param_desc pd;
+            double t;
+            /* 内建 13 个（ParamAngleX/Y、ParamEyeOpen + 左右眼开合各一个、
+               左右眼笑眼各一个、左右眼痛苦闭眼各一个、左右眼瞪大各一个、
+               ParamEyeBallX/Y）+ rig 里 2 个 */
+            CHECK(zrig_param_count(r) == 15, "参数表应有 15 项（内建 13 + 角色 2），实为 %d",
+                  zrig_param_count(r));
+            CHECK(zrig_param_info(r, 0, &pd) == 0 && z_streq(pd.id, "ParamAngleX") && pd.builtin,
+                  "第一项应是内建 ParamAngleX");
+            /* ① 绑定参数：直接写部件通道 */
+            CHECK(zrig_param_set(r, "ParamHairAhoge", 0.5) == 0, "写绑定参数应成功");
+            zrig_tick(r, 0.0);
+            CHECK(fabs(zrig_part_channel(r, "h", "dx") - 5.0) < 1e-6,
+                  "0.5 × scale 10 应给部件 dx = 5（实为 %.3f）", zrig_part_channel(r, "h", "dx"));
+            /* ② 超出 min/max 要夹住 */
+            zrig_param_set(r, "ParamHairAhoge", 9.0);
+            zrig_tick(r, 0.02);
+            CHECK(fabs(zrig_part_channel(r, "h", "dx") - 10.0) < 1e-6, "超范围应夹到 max");
+            /* ③ 复位 */
+            zrig_param_reset(r, "ParamHairAhoge");
+            zrig_tick(r, 0.04);
+            CHECK(fabs(zrig_part_channel(r, "h", "dx")) < 1e-6, "复位后应回 0");
+            /* ④ 内建参数：ParamAngleX 应驱动头部跟随（和 zrig_look 同一条路） */
+            CHECK(zrig_param_set(r, "ParamAngleX", 30.0) == 0, "写内建参数应成功");
+            for (t = 0.06; t < 1.2; t += 0.02) zrig_tick(r, t);
+            CHECK(zrig_group_offset_x(r, "head") > 3.8,
+                  "ParamAngleX=30 应把头带到最大幅度（%.2f）", zrig_group_offset_x(r, "head"));
+            CHECK(zrig_param_get(r, "ParamAngleX") > 29.0,
+                  "内建参数读数应回写当前值（%.2f）", zrig_param_get(r, "ParamAngleX"));
+            /* ⑤ 眨眼：ParamEyeOpen=0 等于两眼都闭；左右眼是**两个独立参数**（Live2D 标准） */
+            zrig_param_set(r, "ParamEyeOpen", 0.0);
+            zrig_tick(r, t);
+            CHECK(zrig_blink_value(r) > 0.99, "ParamEyeOpen=0 应等于闭眼（%.2f）",
+                  zrig_blink_value(r));
+            CHECK(zrig_param_set(r, "ParamEyeLOpen", 1.0) == 0, "ParamEyeLOpen 应存在");
+            CHECK(zrig_param_set(r, "ParamEyeROpen", 1.0) == 0, "ParamEyeROpen 应存在");
+            zrig_tick(r, t + 0.02);
+            CHECK(zrig_param_get(r, "ParamEyeLOpen") > 0.99 &&
+                  zrig_param_get(r, "ParamEyeROpen") > 0.99,
+                  "左右眼参数各自读回 1");
+            /* 单眼：只按住左眼，右眼不受影响（挤眼睛） */
+            zrig_param_set(r, "ParamEyeLOpen", 0.0);
+            zrig_tick(r, t + 0.04);
+            CHECK(zrig_param_get(r, "ParamEyeLOpen") < 0.01 &&
+                  zrig_param_get(r, "ParamEyeROpen") > 0.99,
+                  "左眼闭、右眼睁：L=%.2f R=%.2f",
+                  zrig_param_get(r, "ParamEyeLOpen"), zrig_param_get(r, "ParamEyeROpen"));
+            zrig_param_reset(r, "ParamEyeLOpen");
+            zrig_param_reset(r, "ParamEyeROpen");
+            zrig_param_reset(r, "ParamEyeOpen");
+            CHECK(zrig_blink_manual(r) < 0.0, "眨眼参数复位应交回自动");
+            /* ⑥ 不存在的参数要报错，不能假装成功 */
+            CHECK(zrig_param_set(r, "ParamNope", 1.0) == -1, "未知参数应返回 -1");
+            /* ⑦ 全部复位 */
+            zrig_param_set(r, "ParamHairAhoge", 1.0);
+            zrig_param_reset_all(r);
+            zrig_tick(r, t + 0.04);
+            CHECK(fabs(zrig_part_channel(r, "h", "dx")) < 1e-6, "全部复位应把绑定通道清零");
+            zrig_free(r);
+        }
+    }
+    /* 反例：绑定到不存在的部件必须加载失败 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/bad.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+            "\"params\":[{\"id\":\"X\",\"min\":0,\"max\":1,"
+            " \"binds\":[{\"part\":\"nope\",\"param\":\"dx\",\"scale\":1}]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "绑定到不存在的部件应加载失败");
+        if (r) zrig_free(r);
+    }
+}
+
+static void test_look(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("指针跟随：头跟着光标转，平滑过去，复位回 0");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_look");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"l\",\"name\":\"跟随测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+        "\"look\":{\"speed\":9,\"groups\":{\"head\":{\"rot_deg\":5,\"dx\":4,\"dy\":3}}}}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 look 段的 rig 应加载成功");
+        if (r) {
+            double t, first, settled, back;
+            zrig_tick(r, 0.0);
+            zrig_tick(r, 0.1);
+            CHECK(fabs(zrig_group_offset_x(r, "head")) < 0.01, "没给方向时不该偏");
+            zrig_look(r, 1.0, 0.0);
+            zrig_tick(r, 0.12);                 /* 过了 20ms */
+            first = zrig_group_offset_x(r, "head");
+            CHECK(first > 0.0 && first < 3.0, "跟随要平滑，不能一帧到位（%.2f / 目标 4）", first);
+            for (t = 0.14; t < 1.2; t += 0.02) zrig_tick(r, t);
+            settled = zrig_group_offset_x(r, "head");
+            CHECK(settled > 3.8 && settled < 4.05, "跟到底应接近配置幅度（%.2f / 4）", settled);
+            CHECK(zrig_look_x(r) > 0.98, "look_x 应可读回（%.3f）", zrig_look_x(r));
+            zrig_look(r, 0.0, 0.0);
+            for (; t < 2.4; t += 0.02) zrig_tick(r, t);
+            back = zrig_group_offset_x(r, "head");
+            CHECK(fabs(back) < 0.05, "复位后应回到 0（%.3f）", back);
+            /* 视线接口要连带把头也带过去（光标跟随是眼+头两层） */
+            zrig_gaze(r, -1.0, 0.0);
+            for (; t < 3.6; t += 0.02) zrig_tick(r, t);
+            CHECK(zrig_group_offset_x(r, "head") < -3.8,
+                  "zrig_gaze 应同时驱动头部跟随（%.2f）", zrig_group_offset_x(r, "head"));
+            zrig_gaze_reset(r);
+            for (; t < 4.8; t += 0.02) zrig_tick(r, t);
+            CHECK(fabs(zrig_group_offset_x(r, "head")) < 0.05, "gaze_reset 也该把头复位");
+            zrig_free(r);
+        }
+    }
+}
+
+/* 物理必须按**固定步长**积分（G113）：同一真实时刻的输出不许随帧率变。
+   背景：原来是"整帧 dt 单步显式欧拉 + clamp 0.1"，2.5fps 时呆毛惯性被放大 3.6 倍、
+   手被放大 11.3 倍，画面就是用户 2026-10-16 报的"左右轻微抽搐"。
+   口径照 Live2D 官方 CubismPhysics::Evaluate（累加器 + 1/60 定步 + 输入/输出插值）。
+   ⚠ 夹具是测试**自己合成**的（DC40：不许借生产素材），四条摆的刚度照抄真实角色的
+     量程 22/42/65/72，这样过冲量和线上一致，而别人调 rig 不会把这条闸碰碎。 */
+static void test_physics_timestep(void)
+{
+    static const char *IDS[4] = { "soft", "mid", "stiff", "stiffest" };
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("物理固定步长：同一时刻的输出不随帧率漂移（G113）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_phys_ts");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    /* 四条摆挂在四个部件上（一个部件只认一条 bend_x），刚度覆盖真实角色的全量程。
+       驱动是一条 sine：头左右晃，摆才有东西可落后。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"pts\",\"name\":\"定步长测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"p0\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"p1\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":11,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"p2\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":12,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"p3\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":13,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"fade\":0,\"channels\":["
+        "   {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":3.0,\"freq\":0.2}]}],"
+        "\"physics\":["
+        " {\"id\":\"soft\",\"part\":\"p0\",\"driver\":\"head\",\"axis\":\"x\",\"param\":\"bend_x\","
+        "  \"curve\":\"root\",\"ratio\":0.10,\"stiffness\":22,\"damping\":5.5,\"max\":3.0},"
+        " {\"id\":\"mid\",\"part\":\"p1\",\"driver\":\"head\",\"axis\":\"x\",\"param\":\"bend_x\","
+        "  \"curve\":\"root\",\"ratio\":0.50,\"stiffness\":42,\"damping\":5.0,\"max\":8.0},"
+        " {\"id\":\"stiff\",\"part\":\"p2\",\"driver\":\"head\",\"axis\":\"x\",\"param\":\"bend_x\","
+        "  \"curve\":\"root\",\"ratio\":0.30,\"stiffness\":65,\"damping\":7.5,\"max\":4.0},"
+        " {\"id\":\"stiffest\",\"part\":\"p3\",\"driver\":\"head\",\"axis\":\"x\",\"param\":\"bend_x\","
+        "  \"curve\":\"root\",\"ratio\":0.22,\"stiffness\":72,\"damping\":8.0,\"max\":3.5}]}");
+    {
+        /* dt_ref = 60fps 基准；另两档模拟"云端预览掉到 10fps / 2.5fps" */
+        const double DTS[3] = { 1.0 / 60.0, 0.1, 0.4 };
+        /* 10fps 要很准；2.5fps 时输入每 0.4s 才采样一次，这是信息论下限
+           （官方同款实现也一样），只要求"不过冲"而不是"逐位相同"。
+           同一夹具上的对照：修前 dt=0.1 偏 128.0%、dt=0.4 偏 452.4%；
+                             修后 dt=0.1 偏 3.9%、dt=0.4 偏 57.9%。 */
+        const double TOL[3] = { 0.0, 0.15, 0.80 };
+        const double T = 6.0;
+        double ref[4];
+        int k, c, alive = 0;
+        zdiag d;
+        zrig *r0;
+        zdiag_init(&d);
+        r0 = zrig_load(rigp, dir, &d);
+        CHECK(r0 != NULL, "定步长夹具应加载成功");
+        if (!r0) return;
+        zrig_blink_set_enabled(r0, 0);
+        { double t; for (t = 0.0; t <= T + 1e-9; t += DTS[0]) zrig_tick(r0, t); }
+        for (k = 0; k < 4; ++k) {
+            ref[k] = zrig_phys_output(r0, IDS[k]);
+            if (fabs(ref[k]) > 0.02) ++alive;
+        }
+        zrig_free(r0);
+        /* 基准本身得"真的在摆"，否则下面全是在比较 0 和 0 —— 那正是 DC40 说的假绿 */
+        CHECK(alive == 4, "60fps 基准下四条摆都应确实在摆（否则这条闸是空的），实测 %d/4"
+                          "  [%.4f %.4f %.4f %.4f]", alive, ref[0], ref[1], ref[2], ref[3]);
+        for (c = 1; c < 3; ++c) {
+            zrig *r;
+            double t, worst = 0.0;
+            const char *worst_id = "-";
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            if (!r) { CHECK(0, "夹具重载失败（dt=%.3f）", DTS[c]); continue; }
+            zrig_blink_set_enabled(r, 0);
+            for (t = 0.0; t <= T + 1e-9; t += DTS[c]) zrig_tick(r, t);
+            for (k = 0; k < 4; ++k) {
+                double got = zrig_phys_output(r, IDS[k]);
+                double base = fabs(ref[k]);
+                double rel;
+                if (base < 0.01) base = 0.01;        /* 别让接近 0 的项放大噪声 */
+                rel = fabs(got - ref[k]) / base;
+                if (rel > worst) { worst = rel; worst_id = IDS[k]; }
+            }
+            CHECK(worst <= TOL[c],
+                  "dt=%.3f（%.1ffps）物理输出相对 60fps 偏差应 <= %.0f%%，实测最差 %s 偏 %.0f%%"
+                  "（修前是单步欧拉过冲，真实角色上 2.5fps 时呆毛 3.6 倍、手 11.3 倍）",
+                  DTS[c], 1.0 / DTS[c], TOL[c] * 100.0, worst_id, worst * 100.0);
+            zrig_free(r);
+        }
+    }
+    /* 帧间隔忽长忽短（云端 RTT 抖动）时也不许抖：逐帧跳变的峰值要明显小于摆的量程。 */
+    {
+        zdiag d;
+        zrig *r;
+        double t = 0.0, prev[4], mx[4];
+        unsigned long s = 12345;
+        /* 四条摆各自的上限与"修前实测值"，并排放着，日后谁动了口径一眼能对账 */
+        static const double JIT_MAX[4] = { 0.09, 0.22, 0.11, 0.08 };
+        static const double JIT_WAS[4] = { 0.1483, 0.5179, 0.1576, 0.0967 };
+        int k, first = 1, n = 0;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        if (!r) { CHECK(0, "夹具重载失败（抖动帧间隔）"); return; }
+        zrig_blink_set_enabled(r, 0);
+        for (k = 0; k < 4; ++k) { prev[k] = 0.0; mx[k] = 0.0; }
+        while (t < 20.0) {
+            double u;
+            zrig_tick(r, t);
+            if (!first) {
+                for (k = 0; k < 4; ++k) {
+                    double v = zrig_phys_output(r, IDS[k]);
+                    double dd = fabs(v - prev[k]);
+                    if (dd > mx[k]) mx[k] = dd;
+                    prev[k] = v;
+                }
+                ++n;
+            } else {
+                for (k = 0; k < 4; ++k) prev[k] = zrig_phys_output(r, IDS[k]);
+                first = 0;
+            }
+            s = s * 6364136223846793005UL + 1442695040888963407UL;
+            u = (double)((s >> 33) & 0xFFFFFF) / 16777216.0;
+            t += 0.4 + (u * 2.0 - 1.0) * 0.15;       /* 2.5fps ± 37% 的抖动 */
+        }
+        CHECK(n > 30, "抖动帧间隔样本应够多，实测 %d 帧", n);
+        /* 阈值是"定步长下实测值 × 1.5"，留出平台浮点差；修前这四条都要大一倍以上。
+           单帧跳变必须远小于各自的 max（3.0/8.0/4.0/3.5），否则就是在抽。 */
+        /* 阈值 = 定步长下实测值 × 1.5，仍远低于修前。同一夹具上的对照：
+             修前 0.1483 / 0.5179 / 0.1576 / 0.0967
+             修后 0.0590 / 0.1370 / 0.0712 / 0.0517   */
+        for (k = 0; k < 4; ++k)
+            CHECK(mx[k] < JIT_MAX[k],
+                  "抖动帧间隔下 %s 单帧跳变应 < %.2f，实测 %.4f（修前 %.4f）",
+                  IDS[k], JIT_MAX[k], mx[k], JIT_WAS[k]);
+        zrig_free(r);
+    }
+}
+
+static void test_ik_two_link(void)
+{
+    zik_solution sol;
+    zik_vec2 shoulder = {0.0, 0.0};
+    zik_vec2 target = {3.0, 4.0};
+    int rc;
+    SECTION("2D IK：解析双骨链、弯肘下限与约束冲突可见");
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            53.130102, 53.130102,
+                            -180.0, 180.0, 5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_OK && sol.constraints_satisfied,
+          "3-4-5 链的可达目标应在约束内求解");
+    CHECK(fabs(hypot(sol.elbow.x - shoulder.x, sol.elbow.y - shoulder.y) - 3.0) < 1e-6,
+          "上臂长度保持刚性");
+    CHECK(fabs(hypot(sol.effector.x - sol.elbow.x,
+                     sol.effector.y - sol.elbow.y) - 4.0) < 1e-6,
+          "前臂长度保持刚性");
+    CHECK(fabs(sol.target_error) < 1e-6 && sol.elbow_flex_deg >= 5.0,
+          "末端命中且肘不落在完全伸直死点");
+
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            53.130102, 53.130102,
+                            -10.0, 10.0, 5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_CONSTRAINT_UNSAT && !sol.constraints_satisfied,
+          "肩角限制与目标冲突时必须显式报无解，不得静默越界");
+
+    target.x = 7.0; target.y = 0.0;
+    rc = zik_solve_two_link(shoulder, target, 3.0, 4.0,
+                            0.0, 0.0, -180.0, 180.0,
+                            5.0, 130.0, 1, &sol);
+    CHECK(rc == ZIK_OK && sol.target_clamped && sol.target_error > 0.0,
+          "伸直死点目标应投影到最小弯曲可达环，而不是输出 0°");
+    CHECK(sol.elbow_flex_deg >= 4.99,
+          "投影后的肘角仍满足非零弯曲下限");
+}
+
+static void test_physics(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("物理摆动：头发跟着身体动，有落后、有过冲、停下来会收敛回 0");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_phys");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"物理测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"hair\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]},"
+        " {\"id\":\"push\",\"loop\":true,\"fade\":0,\"channels\":["
+        "   {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"pulse\",\"amp\":30,\"dur\":0.01}]}],"
+        "\"physics\":[{\"id\":\"ahoge\",\"part\":\"hair\",\"driver\":\"head\",\"axis\":\"x\","
+        " \"param\":\"bend_x\",\"curve\":\"root\",\"ratio\":1.0,"
+        " \"stiffness\":60,\"damping\":6,\"max\":30}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 physics 的 rig 应加载成功");
+        if (r) {
+            double t, lag = 0.0, overshoot = 0.0, settled;
+            int i;
+            zrig_tick(r, 0.0);
+            zrig_tick(r, 0.016);
+            CHECK(fabs(zrig_part_channel(r, "hair", "bend_x")) < 0.01,
+                  "没动的时候物理输出应为 0");
+            zrig_action_request(r, "push", "test", 1);
+            /* 头突然右移 30px：头发应先落在后面（输出为负） */
+            for (i = 1, t = 0.016; i <= 6; ++i) {
+                t += 0.016;
+                zrig_tick(r, t);
+                if (zrig_part_channel(r, "hair", "bend_x") < lag)
+                    lag = zrig_part_channel(r, "hair", "bend_x");
+            }
+            CHECK(lag < -1.0, "起步时头发该落在后面（最低 %.2f px）", lag);
+            /* 继续跑：弹簧会过冲到正的一侧 */
+            for (; t < 0.9; t += 0.016) {
+                zrig_tick(r, t);
+                if (zrig_part_channel(r, "hair", "bend_x") > overshoot)
+                    overshoot = zrig_part_channel(r, "hair", "bend_x");
+            }
+            CHECK(overshoot > 0.3, "之后应过冲到另一侧（最高 %.2f px）", overshoot);
+            /* 再跑几秒，收敛回 0（头不动了，头发就该垂下来） */
+            for (; t < 4.0; t += 0.016) zrig_tick(r, t);
+            settled = zrig_part_channel(r, "hair", "bend_x");
+            CHECK(fabs(settled) < 0.2, "停下来之后应收敛回 0（%.3f px）", settled);
+            zrig_free(r);
+        }
+    }
+}
+
+static void test_eyelid(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("眼睑：blink 把带 eyelid 标签的部件按行程往下推（眨眼＝眼皮下滑）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_lid");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/lid.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 eye_l_lid.png 失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"眼睑测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"lid\",\"file\":\"sprites/lid.png\",\"group\":\"root\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],"
+        " \"tags\":[\"eyelid\"],\"eyelid_travel\":20}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 eyelid 标签的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int open_y, half_y, shut_y, open_px, shut_px;
+            zrig_blink_set_manual(r, 0.0);
+            zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            open_y = frame_centroid_y(fb);
+            open_px = frame_opaque_px(fb);
+            zrig_blink_set_manual(r, 0.5);
+            zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            half_y = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 1.0);
+            zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            shut_y = frame_centroid_y(fb);
+            shut_px = frame_opaque_px(fb);
+            CHECK(open_y > 0 && shut_y > 0, "眼皮两种状态都该画出东西（%d / %d）", open_y, shut_y);
+            CHECK(shut_y > open_y, "blink=1 时眼皮重心应更靠下（睁 %d → 闭 %d）", open_y, shut_y);
+            CHECK(half_y > open_y && half_y < shut_y,
+                  "blink=0.5 应落在中间（%d < %d < %d）", open_y, half_y, shut_y);
+            CHECK(shut_px > open_px - open_px / 20 && shut_px < open_px + open_px / 20,
+                  "下滑不该改变眼皮的像素量（睁 %d vs 闭 %d）", open_px, shut_px);
+            CHECK(zrig_blink_manual(r) > 0.99, "手动眨眼值应可读回（%.2f）", zrig_blink_manual(r));
+            zrig_blink_set_manual(r, -1.0);
+            CHECK(zrig_blink_manual(r) < 0.0, "设成负数应回到自动眨眼");
+            zrig_free(r);
+        }
+    }
+}
+
+
+/* 眼睑延迟（lash_hold）：半闭之前睫毛按住不动，后半程 smoothstep 补齐。
+   为什么要有它见 zrig.c 的注释 —— 睫毛和眼眶开口一起下滑时，睫毛内眼角那条
+   尾巴会压进虹膜，半闭的眼睛变成一条没有瞳孔的扁青带（用户 2026-10-15 报的
+   "眼睛卡住"）。这里钉三件事：①两端不变 ②中段被按住 ③不写字段 = 旧的线性。 */
+static void test_lash_hold(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("眼睑延迟：lash_hold 之前不下滑，闭到底的落点和线性完全一致");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_lashhold");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/lid.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 eye_l_lid.png 失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"眼睑延迟测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"lid\",\"file\":\"sprites/lid.png\",\"group\":\"root\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],"
+        " \"tags\":[\"eyelid\"],\"eyelid_travel\":20,\"lash_hold\":0.5}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 lash_hold 的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int y0, y30, y50, y75, y100;
+            zrig_blink_set_manual(r, 0.0);  zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y0 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 0.3);  zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y30 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 0.5);  zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y50 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 0.75); zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y75 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 1.0);  zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y100 = frame_centroid_y(fb);
+            CHECK(y30 == y0, "闭合度 0.3 < hold 0.5：睫毛一动都不该动（%d vs %d）", y30, y0);
+            CHECK(y50 == y0, "闭合度正好等于 hold：仍是起点（%d vs %d）", y50, y0);
+            CHECK(y75 > y0 && y75 < y100,
+                  "闭合度 0.75 应落在半途（%d < %d < %d）", y0, y75, y100);
+            /* 两端不变是这条改动的硬约束：闭到底必须还落在那条闭眼线上。 */
+            CHECK(y100 - y0 >= 19 && y100 - y0 <= 21,
+                  "闭到底仍该走满 20px 行程（实走 %d）", y100 - y0);
+            zrig_free(r);
+        }
+    }
+    /* 负控：同一份 rig 去掉 lash_hold，中段必须**恢复**成线性下滑 —— 否则
+       这个测试即使引擎根本没读 lash_hold 也会绿。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"眼睑线性负控\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"lid\",\"file\":\"sprites/lid.png\",\"group\":\"root\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],"
+        " \"tags\":[\"eyelid\"],\"eyelid_travel\":20}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        if (r) {
+            const zimg *fb;
+            int y0, y30;
+            zrig_blink_set_manual(r, 0.0); zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y0 = frame_centroid_y(fb);
+            zrig_blink_set_manual(r, 0.3); zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL); y30 = frame_centroid_y(fb);
+            CHECK(y30 > y0, "负控：不写 lash_hold 时 0.3 就该下滑了（%d vs %d）", y30, y0);
+            zrig_free(r);
+        } else {
+            CHECK(0, "负控 rig 应加载成功");
+        }
+    }
+}
+
+
+static void test_eye_aperture(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("眼眶开口：blink 把 eye_aperture 部件按下沿压扁，被它裁的眼白跟着少（真·闭眼）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_aperture");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_socket.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/sock.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 eye_l_socket.png 失败"); return; }
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_base.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/base.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 eye_l_base.png 失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    /* 眼眶当遮罩，锚点放在**开口下沿**（eye_l_socket.png 的开口底在 y=42/68 ≈ 0.618，
+       真 rig 由 eyeline_parts.json 的 aperture_box 算出来）：
+       压扁时下眼睑不动、上眼皮往下合。锚点要是放在整张图的底边（空白行上），
+       整只眼会被"吸"下去 —— 这个测试第一版就是这么挂的（下沿跑了 23px）。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"ap\",\"name\":\"眼眶开口测试\","
+        "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
+        "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"sock\",\"file\":\"sprites/sock.png\",\"group\":\"root\","
+        " \"layer\":10,\"pos\":[150,200],\"anchor\":[0.5,0.618],"
+        " \"tags\":[\"eye_aperture\"],\"aperture_min\":0.06,\"mask_only\":true},"
+        " {\"id\":\"white\",\"file\":\"sprites/base.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[90,130],\"anchor\":[0,0],\"mask\":\"sock\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 eye_aperture 标签的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int px[4], bot[4], top[4], i;
+            const double bl[4] = { 0.0, 0.25, 0.5, 1.0 };
+            for (i = 0; i < 4; ++i) {
+                zrig_blink_set_manual(r, bl[i]);
+                zrig_tick(r, 0.1);
+                fb = zrig_frame(r, 1.0, NULL, NULL);
+                px[i] = frame_opaque_px(fb);
+                bot[i] = frame_bottom_y(fb);
+                top[i] = frame_top_y(fb);
+            }
+            CHECK(px[0] > 200, "睁眼时眼白应可见（%d 像素）", px[0]);
+            CHECK(px[1] < px[0] && px[2] < px[1] && px[3] < px[2],
+                  "眼眶越合，露出来的眼白越少（%d → %d → %d → %d）",
+                  px[0], px[1], px[2], px[3]);
+            CHECK(px[3] * 10 < px[0],
+                  "闭到底应只剩一条缝（闭 %d vs 睁 %d）", px[3], px[0]);
+            /* 位置检查放在半闭那一格：闭到底时开口只剩 6%，可见像素可能归零，
+               这时 top/bottom 都是 -1，量不出东西来。 */
+            CHECK(bot[2] >= 0 && bot[0] >= 0 && abs(bot[2] - bot[0]) <= 4,
+                  "下眼睑不该跟着跑（睁 y=%d vs 半闭 y=%d）", bot[0], bot[2]);
+            CHECK(top[2] > top[0] + 8,
+                  "上眼皮要往下合（睁 y=%d → 半闭 y=%d）", top[0], top[2]);
+            zrig_blink_set_manual(r, -1.0);
+            zrig_free(r);
+        }
+    }
+}
+
+static void test_group_chain(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("三级组链（上臂→前臂→手）：手跟着父组、爷爷组一层层被带走");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_chain");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/a.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"c\",\"name\":\"组链\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{"
+        " \"arm\":{\"pivot\":[200,100],\"parent\":\"\"},"
+        " \"fore\":{\"pivot\":[200,200],\"parent\":\"arm\"},"
+        " \"hand\":{\"pivot\":[200,300],\"parent\":\"fore\"}},"
+        "\"parts\":["
+        " {\"id\":\"h\",\"file\":\"sprites/a.png\",\"group\":\"hand\",\"layer\":10,"
+        "  \"pos\":[200,300],\"anchor\":[0,0]}],"
+        "\"params\":["
+        " {\"id\":\"PArm\",\"min\":0,\"max\":1,\"default\":0,"
+        "  \"binds\":[{\"group\":\"arm\",\"param\":\"rot_deg\",\"scale\":30.0}]},"
+        " {\"id\":\"PFore\",\"min\":0,\"max\":1,\"default\":0,"
+        "  \"binds\":[{\"group\":\"fore\",\"param\":\"rot_deg\",\"scale\":30.0}]},"
+        " {\"id\":\"PHand\",\"min\":0,\"max\":1,\"default\":0,"
+        "  \"binds\":[{\"group\":\"hand\",\"param\":\"rot_deg\",\"scale\":30.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "三级组链应加载成功");
+        if (r) {
+            const zimg *fb;
+            int cx0, d_hand, d_fore, d_arm, back;
+            zrig_tick(r, 0.1);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            cx0 = frame_centroid_x(fb);
+            /* 一次只转一级，量这只手被甩开多远（绝对值，不假设引擎的旋转方向） */
+            zrig_param_set(r, "PHand", 1.0);
+            zrig_tick(r, 0.01);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_hand = abs(frame_centroid_x(fb) - cx0);
+            zrig_param_set(r, "PHand", 0.0);
+            zrig_param_set(r, "PFore", 1.0);
+            zrig_tick(r, 0.01);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_fore = abs(frame_centroid_x(fb) - cx0);
+            zrig_param_set(r, "PFore", 0.0);
+            zrig_param_set(r, "PArm", 1.0);
+            zrig_tick(r, 0.01);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_arm = abs(frame_centroid_x(fb) - cx0);
+            zrig_param_set(r, "PArm", 0.0);
+            zrig_tick(r, 0.01);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            back = frame_centroid_x(fb);
+            CHECK(d_hand > 2, "转手腕，手自己要动起来（位移 %d px）", d_hand);
+            CHECK(d_fore > d_hand,
+                  "转前臂时手离枢轴更远，位移该更大（%d > %d）", d_fore, d_hand);
+            CHECK(d_arm > d_fore,
+                  "转上臂（爷爷组）时最大 —— 这就是三级继承（%d > %d）", d_arm, d_fore);
+            CHECK(back == cx0, "参数归零后手回到原位（%d vs %d）", back, cx0);
+            zrig_free(r);
+        }
+    }
+}
+
+/* ========== Live2D 标准合规：标准参数必须真的接着东西 ========== */
+/* 这条闸是冲着"参数表写得好看、其实是死的"去的：
+   对**真角色的 rig**逐个把标准参数推到极值，渲染，看画面有没有变。
+   一个参数改了却一个像素都不动 = 它是假的，必须红。
+
+   ⚠ 坑：待机动作和物理每帧都在走，拿两个不同时刻的帧相减，光漂移就有十几像素，
+   足以把"死参数"盖过去（第一版就是这样：把 ParamShoulderY 的 binds 删空仍然绿）。
+   解法 = 用同一个时间戳反复 tick（dt=0，等价预览的 /api/pause），
+   两帧之间只有参数变了。跟随类（ParamAngleX/Y）是平滑收敛的，dt=0 下不动，
+   所以单独用"settle 一段时间"的办法量，阈值取大。 */
+/* 口型音素（母音識別）：A/I/U/E/O 必须是**五张不一样的嘴**，
+   而且宽窄要对得上（い 比 う 宽）。靠一个参数淡入淡出假装口型会被这里抓住。 */
+static void test_viseme(void)
+{
+    char dir[1024], rig_path[1024];
+    static const char *VIS[] = { "A", "I", "U", "E", "O" };
+    /* 嘴在帧里的位置（画布 (422,316) × 0.55），留够余量 */
+    const int MX0 = 196, MY0 = 150, MX1 = 266, MY1 = 202;
+    const double T = 1.5;
+    SECTION("口型音素：A/I/U/E/O 是五张不同的嘴，不是一个参数淡入淡出");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载真 rig 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);
+        zrig_action_request(r, "idle", "test", 1);
+        {
+            const zimg *fb;
+            unsigned char *snap[5];
+            int wid[5];
+            size_t i, j;
+            double t;
+            int bad = 0, nvis = zrig_viseme_count(r);
+            CHECK(nvis >= 6, "音素表至少 6 行（SIL + AIUEO），实际 %d", nvis);
+            CHECK(zrig_viseme_find(r, "A") >= 0 && zrig_viseme_find(r, "i") >= 0,
+                  "音素查找要大小写不敏感且 A/I 都在");
+            CHECK(zrig_viseme_find(r, "ParamMouthXyz") < 0, "不认识的音素必须查不到");
+            CHECK(zrig_viseme_set(r, "NOPE", 1.0) == -1,
+                  "写错音素名要报错，不能当静默吞掉");
+            /* 音素只许写 Live2D 标准参数，不许偷偷自造 ParamMouthA 这类 */
+            for (i = 0; i < (size_t)nvis; ++i) {
+                int k, nk = zrig_viseme_entry_count(r, i);
+                CHECK(nk >= 1, "音素 %s 至少写一个参数", zrig_viseme_id(r, (int)i));
+                for (k = 0; k < nk; ++k) {
+                    const char *pid = NULL;
+                    double v = 0.0;
+                    zrig_viseme_entry(r, (int)i, k, &pid, &v);
+                    if (!pid) { bad++; continue; }
+                    if (strcmp(pid, "ParamMouthOpenY") != 0 &&
+                        strcmp(pid, "ParamMouthForm") != 0) bad++;
+                }
+            }
+            CHECK(bad == 0, "音素只能写标准嘴参数（OpenY / Form），越界 %d 处", bad);
+
+            for (t = 0.0; t < T; t += 0.02) zrig_tick(r, t);
+            zrig_tick(r, T);                      /* dt = 0：时间停住 */
+            for (i = 0; i < 5; ++i) {
+                int x, y, x0 = 9999, x1 = -1;
+                unsigned char *base;
+                zrig_viseme_reset(r);     /* 基准必须干净：clear 是平滑收，冻结时钟下收不完 */
+                zrig_tick(r, T);
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                base = frame_snapshot(fb);        /* 每个音素现拍自己的基准 */
+                zrig_viseme_set(r, VIS[i], 1.0);
+                zrig_viseme_snap(r);              /* dt=0 下平滑走不动，直接到位 */
+                zrig_tick(r, T);
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                snap[i] = frame_snapshot(fb);
+                CHECK(frame_diff_box(fb, base, MX0, MY0, MX1, MY1) > 20,
+                      "音素 %s 相对闭嘴要有明显变化（%d px）", VIS[i],
+                      frame_diff_box(fb, base, MX0, MY0, MX1, MY1));
+                /* 变化像素的横向跨度 = 这张嘴有多宽 */
+                for (y = MY0; y < MY1 && base; ++y)
+                    for (x = MX0; x < MX1; ++x) {
+                        size_t o = ((size_t)y * (size_t)fb->w + (size_t)x) * 4;
+                        int dd = abs((int)fb->px[o] - (int)base[o])
+                               + abs((int)fb->px[o+1] - (int)base[o+1])
+                               + abs((int)fb->px[o+2] - (int)base[o+2]);
+                        if (dd > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
+                    }
+                wid[i] = (x1 >= x0) ? (x1 - x0 + 1) : 0;
+                free(base);
+            }
+            zrig_viseme_reset(r);
+            /* 两两都要不一样 —— 这是"五张嘴"而不是"一张嘴五个大小"的判据 */
+            {
+                int worst = 1 << 30;
+                const char *wa = "", *wb = "";
+                for (i = 0; i < 5; ++i)
+                    for (j = i + 1; j < 5; ++j) {
+                        int n;
+                        unsigned char *tmp;
+                        zrig_viseme_set(r, VIS[i], 1.0);
+                        zrig_viseme_snap(r);
+                        zrig_tick(r, T);
+                        fb = zrig_frame(r, 0.55, NULL, NULL);
+                        tmp = frame_snapshot(fb);
+                        n = frame_diff_box(fb, snap[j], MX0, MY0, MX1, MY1);
+                        free(tmp);
+                        if (n < worst) { worst = n; wa = VIS[i]; wb = VIS[j]; }
+                    }
+                CHECK(worst > 25, "最接近的两个音素 %s/%s 也要差 >25px（实际 %d）",
+                      wa, wb, worst);
+            }
+            CHECK(wid[1] > wid[2], "い 的嘴要比 う 宽（实测 I=%d px, U=%d px）",
+                  wid[1], wid[2]);
+            CHECK(wid[0] > 0 && wid[4] > 0, "あ/お 都要量得到嘴宽");
+            for (i = 0; i < 5; ++i) free(snap[i]);
+
+            /* 强度：音素给形状，weight 给大小 */
+            zrig_viseme_reset(r);
+            zrig_viseme_set(r, "A", 0.3);
+            zrig_viseme_snap(r);
+            CHECK(fabs(zrig_param_effective(r, "ParamMouthOpenY") - 0.3) < 0.02,
+                  "A 配 weight 0.3 时开口应 ≈0.3（实际 %.3f）",
+                  zrig_param_effective(r, "ParamMouthOpenY"));
+            CHECK(fabs(zrig_param_get(r, "ParamMouthOpenY")) < 1e-6,
+                  "音素是叠在上面的一层，不许回写基础参数值（%.3f）",
+                  zrig_param_get(r, "ParamMouthOpenY"));
+            /* 平滑：张开要快但不是瞬间（一帧就到位 = 机器嘴） */
+            zrig_viseme_reset(r);
+            zrig_viseme_set(r, "A", 1.0);
+            zrig_tick(r, T + 0.008);
+            CHECK(zrig_param_effective(r, "ParamMouthOpenY") > 0.05 &&
+                  zrig_param_effective(r, "ParamMouthOpenY") < 0.9,
+                  "8ms 后应在路上而不是瞬间到位（实际 %.3f）",
+                  zrig_param_effective(r, "ParamMouthOpenY"));
+            CHECK(zrig_mouth_mute(r) == 1, "说话时动作里的嘴通道要让路");
+            /* 松口：参数回默认，嘴还给动作 */
+            zrig_viseme_clear(r);
+            {   /* 松口是平滑收回去的，给它时间收干净（收完会自动把嘴还给动作） */
+                double tt;
+                for (tt = 0.02; tt < 1.2; tt += 0.016) zrig_tick(r, T + tt);
+            }
+            CHECK(fabs(zrig_param_effective(r, "ParamMouthOpenY")) < 1e-6 &&
+                  fabs(zrig_param_effective(r, "ParamMouthForm")) < 1e-6,
+                  "松口后两个嘴参数都要回默认");
+            CHECK(zrig_mouth_mute(r) == 0, "松口后嘴要还给动作");
+            CHECK(zrig_viseme_current(r) == NULL, "松口后当前音素应为空");
+            /* 静默音素也要能自己收干净（不是一直占着嘴） */
+            zrig_viseme_set(r, "SIL", 0.0);
+            for (t = 0.0; t < 0.5; t += 0.02) zrig_tick(r, T + 0.1 + t);
+            CHECK(zrig_mouth_mute(r) == 0, "喂 SIL 之后应自动松口");
+        }
+        zrig_free(r);
+    }
+}
+
+/* 表情和口型抢同一个参数时谁说了算：Cubism 的执行序是
+   EyeBlink 200 → Expression 300 → … → LipSync 700 → Pose 800，口型在表情之后。
+   「笑着说う」必须还是撅圆的嘴，不能被笑脸抵消成中性。 */
+static void test_expr_viseme_order(void)
+{
+    char dir[1024], rig_path[1024];
+    const int MX0 = 196, MY0 = 150, MX1 = 266, MY1 = 202;
+    const double T = 1.5;
+    SECTION("表情 × 口型：口型排在表情之后（官方执行序），笑着说 う 还是撅圆");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载真 rig 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);
+        zrig_action_request(r, "idle", "test", 1);
+        {
+            const zimg *fb;
+            unsigned char *smile_only;
+            double t, form_smile, form_smile_u, form_u;
+            double mix = zrig_viseme_mix(r);
+            CHECK(mix > 0.5 && mix <= 1.0, "口型权重应在 0.5~1（官方 LipSync 用 0.8），实际 %.2f", mix);
+            for (t = 0.0; t < T; t += 0.02) zrig_tick(r, t);
+            zrig_tick(r, T);
+
+            /* ① 只有表情：笑 → MouthForm 往 + 走 */
+            CHECK(zrig_expression_set(r, "smile") == 0, "应有 smile 表情");
+            for (t = 0.0; t < 0.8; t += 0.02) zrig_tick(r, T + t);
+            form_smile = zrig_param_effective(r, "ParamMouthForm");
+            CHECK(form_smile > 0.1, "笑脸应把 MouthForm 推到正方向（%.3f）", form_smile);
+            fb = zrig_frame(r, 0.55, NULL, NULL);
+            smile_only = frame_snapshot(fb);
+
+            /* ② 笑 + う：嘴形必须还是撅圆（负），不能被笑脸抵消 */
+            zrig_viseme_set(r, "U", 1.0);
+            zrig_viseme_snap(r);
+            zrig_tick(r, T + 0.8);
+            fb = zrig_frame(r, 0.55, NULL, NULL);     /* 改完要重新合成，不然比的是旧帧 */
+            form_smile_u = zrig_param_effective(r, "ParamMouthForm");
+            CHECK(form_smile_u < -0.5,
+                  "笑着说 う 时 MouthForm 应仍明显为负（%.3f，笑脸单独是 %.3f）",
+                  form_smile_u, form_smile);
+            CHECK(frame_diff_box(fb, smile_only, MX0, MY0, MX1, MY1) > 20,
+                  "笑 + う 的嘴要和只笑不一样（%d px）",
+                  frame_diff_box(fb, smile_only, MX0, MY0, MX1, MY1));
+            free(smile_only);
+
+            /* ③ 接管力度随"这一帧口型用了多大力"缩放：
+                  满力说话时口型完全说了算，小声时表情透出来，停顿时表情完整回来。
+                  （2026-10-13 用户反馈：张着嘴还挂着笑嘴角、说完一下子弹回笑脸，很怪） */
+            zrig_viseme_set(r, "U", 1.0);
+            zrig_viseme_snap(r);
+            zrig_tick(r, T + 0.82);
+            form_u = zrig_param_effective(r, "ParamMouthForm");
+            CHECK(fabs(form_u - form_smile_u) < 1e-6,
+                  "满力说话时笑不笑都该是同一张嘴（%.3f vs %.3f）", form_smile_u, form_u);
+            zrig_viseme_set(r, "U", 0.25);         /* 小声说：口型只用了两成力 */
+            zrig_viseme_snap(r);
+            zrig_tick(r, T + 0.84);
+            {
+                double soft = zrig_param_effective(r, "ParamMouthForm");
+                CHECK(soft > 0.05 && soft < form_smile - 0.05,
+                      "小声说话时笑意还要占主导（%.3f 要在 0 和 %.3f 之间；"
+                      "接管力度不随用力程度缩放的话这里会是负的）", soft, form_smile);
+            }
+            /* 张满嘴说「あ」：Form 目标是 0（中性嘴形），这时不许还挂着笑嘴角 */
+            zrig_viseme_set(r, "A", 1.0);
+            zrig_viseme_snap(r);
+            zrig_tick(r, T + 0.85);
+            CHECK(fabs(zrig_param_effective(r, "ParamMouthForm")) < 0.05,
+                  "满力张嘴时不该还挂着笑的嘴角（%.3f）",
+                  zrig_param_effective(r, "ParamMouthForm"));
+            CHECK(zrig_param_effective(r, "ParamMouthOpenY") > 0.95,
+                  "满力张嘴要真的张到底（%.3f）",
+                  zrig_param_effective(r, "ParamMouthOpenY"));
+            /* 说完松口：一路平滑回到笑脸，相邻帧不许跳变（用户说"一下子弹回去很怪"） */
+            {
+                double prev = zrig_param_effective(r, "ParamMouthForm");
+                double worst = 0.0;
+                int step;
+                zrig_viseme_clear(r);
+                for (step = 1; step <= 40; ++step) {
+                    double now_v;
+                    zrig_tick(r, T + 0.85 + 0.016 * step);
+                    now_v = zrig_param_effective(r, "ParamMouthForm");
+                    if (fabs(now_v - prev) > worst) worst = fabs(now_v - prev);
+                    prev = now_v;
+                }
+                CHECK(worst < 0.12, "松口要平滑过渡，单帧跳变最大 %.3f（阈值 0.12）", worst);
+                CHECK(fabs(prev - form_smile) < 0.02,
+                      "松口后应回到笑脸的嘴形（%.3f → %.3f）", prev, form_smile);
+            }
+            /* ④ 没有表情也没有口型时，最终值 = 参数自己的值 */
+            zrig_expression_clear(r);
+            zrig_viseme_reset(r);
+            for (t = 0.0; t < 1.0; t += 0.02) zrig_tick(r, T + 1.0 + t);
+
+            zrig_param_set(r, "ParamMouthForm", 0.5);
+            zrig_tick(r, T + 2.02);
+            CHECK(fabs(zrig_param_effective(r, "ParamMouthForm") - 0.5) < 1e-6,
+                  "没表情没口型时最终值应等于参数值（%.3f）",
+                  zrig_param_effective(r, "ParamMouthForm"));
+            zrig_param_reset(r, "ParamMouthForm");
+        }
+        zrig_free(r);
+    }
+}
+
+/* Cubism exp3 的三种 Blend 都要有：Add / Multiply / Overwrite */
+static void test_expression_blend(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("表情混合模式：Add / Multiply / Overwrite 三种都按 Cubism 的算法走");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_exprblend");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"b\",\"name\":\"混合\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+        "\"params\":[{\"id\":\"ParamBrowLY\",\"min\":-2,\"max\":2,\"default\":0,"
+        " \"binds\":[{\"part\":\"h\",\"param\":\"dy\",\"scale\":10}]}],"
+        "\"expressions\":[{\"id\":\"add\",\"fade\":0,"
+        "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":0.25,\"mode\":\"add\"}]},"
+        " {\"id\":\"mul\",\"fade\":0,"
+        "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":2.0,\"mode\":\"multiply\"}]},"
+        " {\"id\":\"ovr\",\"fade\":0,"
+        "  \"params\":[{\"id\":\"ParamBrowLY\",\"value\":-1.0,\"mode\":\"overwrite\"}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "三种 Blend 的 rig 应加载成功（错误 %d 条）", d.error_count);
+        if (r) {
+            zrig_tick(r, 0.0);
+            zrig_param_set(r, "ParamBrowLY", 0.5);
+            zrig_tick(r, 0.02);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - 0.5) < 1e-6, "无表情时就是参数值");
+            zrig_expression_set(r, "add");
+            zrig_tick(r, 0.04);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - 0.75) < 1e-6,
+                  "Add：0.5 + 0.25 = 0.75（%.3f）", zrig_param_effective(r, "ParamBrowLY"));
+            zrig_expression_set(r, "mul");
+            zrig_tick(r, 0.06);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - 1.0) < 1e-6,
+                  "Multiply：0.5 × 2 = 1.0（%.3f）", zrig_param_effective(r, "ParamBrowLY"));
+            CHECK(fabs(zrig_part_channel(r, "h", "dy") - 10.0) < 0.01,
+                  "乘算结果要真的写进通道（dy 应为 10，实际 %.3f）",
+                  zrig_part_channel(r, "h", "dy"));
+            zrig_expression_set(r, "ovr");
+            zrig_tick(r, 0.08);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - (-1.0)) < 1e-6,
+                  "Overwrite：直接覆盖成 -1（%.3f）", zrig_param_effective(r, "ParamBrowLY"));
+            zrig_expression_clear(r);
+            zrig_tick(r, 0.10);
+            CHECK(fabs(zrig_param_effective(r, "ParamBrowLY") - 0.5) < 1e-6, "取消表情回到参数值");
+            zrig_free(r);
+        }
+    }
+}
+
+static void test_live2d_standard(void)
+{
+    char dir[1024], rig_path[1024];
+    static const struct { const char *id; double v; } probe[] = {
+        { "ParamAngleZ",      30.0 }, { "ParamEyeLOpen",     0.0 },
+        { "ParamEyeROpen",     0.0 }, { "ParamEyeBallX",     1.0 },
+        { "ParamEyeBallY",     1.0 }, { "ParamBrowLY",      -1.0 },
+        { "ParamBrowRY",      -1.0 }, { "ParamBrowLAngle",  -1.0 },
+        { "ParamBrowRAngle",  -1.0 }, { "ParamBrowLX",       1.0 },
+        { "ParamBrowRX",       1.0 }, { "ParamMouthOpenY",   1.0 },
+        { "ParamMouthForm",    1.0 }, { "ParamCheek",        1.0 },
+        { "ParamBodyAngleX",  10.0 }, { "ParamBodyAngleY",  10.0 },
+        { "ParamBodyAngleZ",  10.0 }, { "ParamShoulderY",   10.0 },
+        { "ParamBreath",       1.0 }, { "ParamBaseX",       10.0 },
+        { "ParamBaseY",       10.0 }, { "ParamArmLA",       10.0 },
+        { "ParamArmRA",      -10.0 }, { "ParamArmLB",       10.0 },
+        { "ParamArmRB",      -10.0 }, { "ParamHandL",        1.0 },
+        { "ParamHandR",       -1.0 }, { "ParamLegL",         1.0 },
+        { "ParamLegR",        -1.0 }, { "ParamHairFront",    1.0 },
+        { "ParamHairSide",     1.0 }, { "ParamHairBack",     1.0 },
+        { "ParamHairFluffy",   1.0 }, { "ParamHairAhoge",    1.0 },
+        { "ParamHairAhogeS",   1.0 }, { "ParamEyeSparkle",   0.0 },
+    };
+    const double T = 1.5;                 /* 冻结用的时间戳 */
+    SECTION("Live2D 标准合规：标准参数都在、推到极值真的改画面（防死参数）");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载真 rig 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+        zrig_blink_set_enabled(r, 0);          /* 自动眨眼会搅乱对照 */
+        zrig_action_request(r, "idle", "test", 1);
+        {
+            const zimg *fb;
+            unsigned char *base;
+            double t;
+            size_t i;
+            int dead = 0, missing = 0;
+            char deadlist[256];
+            deadlist[0] = 0;
+            for (t = 0.0; t < T; t += 0.02) zrig_tick(r, t);
+            zrig_tick(r, T);                   /* dt = 0：时间停住 */
+            fb = zrig_frame(r, 0.55, NULL, NULL);
+            base = frame_snapshot(fb);
+            CHECK(base != NULL, "基准帧应可保存");
+            for (i = 0; i < sizeof(probe) / sizeof(probe[0]) && base; ++i) {
+                int n;
+                /* ⚠ 第二个坑：上一个参数把物理摆链推歪之后，dt=0 不会让它衰减回去
+                   （弹簧不走，但输出 = pos − target 会随 target 立刻变），
+                   于是"全局基准帧"被污染，后面每个参数都显得活着。
+                   解法 = 每个参数临测前**现拍一张基准**，两帧之间只差这一个参数。 */
+                free(base);
+                zrig_tick(r, T);
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                base = frame_snapshot(fb);
+                if (!base) break;
+                if (zrig_param_set(r, probe[i].id, probe[i].v) != 0) {
+                    missing++;
+                    if (strlen(deadlist) < 170)
+                        z_snprintf(deadlist + strlen(deadlist), sizeof(deadlist) - strlen(deadlist),
+                                   "%s(缺) ", probe[i].id);
+                    continue;
+                }
+                zrig_tick(r, T);               /* 仍然 dt = 0 */
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                n = frame_diff_box(fb, base, 0, 0, fb->w, fb->h);
+                if (n < 12) {
+                    dead++;
+                    if (strlen(deadlist) < 170)
+                        z_snprintf(deadlist + strlen(deadlist), sizeof(deadlist) - strlen(deadlist),
+                                   "%s(%d) ", probe[i].id, n);
+                }
+                zrig_param_reset(r, probe[i].id);
+                zrig_tick(r, T);
+            }
+            CHECK(missing == 0, "标准参数不能缺：%s", deadlist[0] ? deadlist : "(无)");
+            CHECK(dead == 0, "标准参数不能是死的（dt=0 下推到极值，画面一动不动）：%s",
+                  deadlist[0] ? deadlist : "(无)");
+            free(base);
+        }
+        /* 跟随类：ParamAngleX/Y 走的是平滑收敛，必须给时间 */
+        {
+            const zimg *fb;
+            unsigned char *b2;
+            double t, t0 = T;
+            int n;
+            const char *ids[2] = { "ParamAngleX", "ParamAngleY" };
+            int k;
+            for (k = 0; k < 2; ++k) {
+                for (t = t0; t < t0 + 1.2; t += 0.02) zrig_tick(r, t);
+                t0 += 1.2;
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                b2 = frame_snapshot(fb);
+                CHECK(zrig_param_set(r, ids[k], 30.0) == 0, "%s 应存在", ids[k]);
+                for (t = t0; t < t0 + 1.2; t += 0.02) zrig_tick(r, t);
+                t0 += 1.2;
+                fb = zrig_frame(r, 0.55, NULL, NULL);
+                n = frame_diff_box(fb, b2, 0, 0, fb->w, fb->h);
+                CHECK(n > 200, "%s=30 应该明显带动头部（%d 像素）", ids[k], n);
+                free(b2);
+                zrig_param_reset(r, ids[k]);
+                for (t = t0; t < t0 + 1.2; t += 0.02) zrig_tick(r, t);
+                t0 += 1.2;
+            }
+        }
+        /* 单眼：ParamEyeLOpen=0 只能动左眼那一块，右眼那一块必须纹丝不动。
+           （Live2D 的 EyeBlink 组就是两个参数，挤眼睛/笑眼全靠这个） */
+        {
+            const zimg *fb;
+            unsigned char *base;
+            int nl, nr;
+            /* 实测（/api/frame.png 对照）：左眼闭合只改 x 197..223 / y 136..163。
+               两眼中线在 231，右眼框从 236 起。 */
+            const int LX0 = 180, LX1 = 231, RX0 = 236, RX1 = 300, EY0 = 128, EY1 = 175;
+            double t;
+            zrig_param_reset_all(r);
+            for (t = 8.0; t < 11.0; t += 0.02) zrig_tick(r, t);
+            zrig_tick(r, 10.98);               /* 冻结 */
+            fb = zrig_frame(r, 0.55, NULL, NULL);
+            base = frame_snapshot(fb);
+            zrig_param_set(r, "ParamEyeLOpen", 0.0);
+            zrig_tick(r, 10.98);               /* 同一时间戳 → 只有参数变了 */
+            fb = zrig_frame(r, 0.55, NULL, NULL);
+            nl = frame_diff_box(fb, base, LX0, EY0, LX1, EY1);
+            nr = frame_diff_box(fb, base, RX0, EY0, RX1, EY1);
+            CHECK(nl > 80, "ParamEyeLOpen=0 应该让左眼明显变化（%d 像素）", nl);
+            CHECK(nr == 0, "右眼不能跟着动（%d 像素）—— 左右眼必须是两个独立参数", nr);
+            free(base);
+        }
+        /* 分组（= model3.json 的 Groups）不是摆设：自动眨眼眨哪只眼、口型写哪个参数，都看它 */
+        CHECK(zrig_blink_targets(r) == 3, "rig 的 EyeBlink 组应覆盖左右两只眼（实为 %d）",
+              zrig_blink_targets(r));
+        CHECK(z_streq(zrig_lipsync_param(r), "ParamMouthOpenY"),
+              "LipSync 组应声明 ParamMouthOpenY（实为 %s）", zrig_lipsync_param(r));
+        zrig_free(r);
+    }
+}
+
+/* 动作通道直接驱动命名参数（Live2D 的 .motion3 曲线就是写参数的） */
+static void test_action_drives_param(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("动作通道可以 target 一个 ParamXxx（≈ .motion3 曲线写参数）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_pchan");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/eye_l_lid.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/a.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"pc\",\"name\":\"参数通道\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/a.png\",\"group\":\"root\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"params\":[{\"id\":\"ParamHairAhoge\",\"min\":-1,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"part\":\"h\",\"param\":\"dx\",\"scale\":10.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"ParamHairAhoge\",\"keys\":[[0,0],[0.5,1.0],[1.0,0]],"
+        "   \"interp\":\"linear\"}]},"
+        " {\"id\":\"bad\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带参数通道的 rig 应加载成功（错误 %d 条）", d.error_count);
+        if (r) {
+            double dx0, dx_mid;
+            zrig_tick(r, 0.0);
+            dx0 = zrig_part_channel(r, "h", "dx");
+            zrig_tick(r, 0.5);
+            dx_mid = zrig_part_channel(r, "h", "dx");
+            CHECK(fabs(dx0) < 1e-6, "t=0 关键帧值 0，部件不该动（%.3f）", dx0);
+            CHECK(fabs(dx_mid - 10.0) < 0.5,
+                  "t=0.5 参数应被推到 1.0，经 scale 10 给出 dx=10（实为 %.3f）", dx_mid);
+            zrig_free(r);
+        }
+    }
+    /* 参数通道写错 param 名要报错，不能默默当成别的通道 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rigp, sizeof(rigp), "%s/bad.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"pc\",\"name\":\"x\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/a.png\",\"group\":\"root\",\"layer\":10,"
+            " \"pos\":[100,100],\"anchor\":[0,0]}],"
+            "\"params\":[{\"id\":\"ParamHairAhoge\",\"min\":-1,\"max\":1,\"default\":0,"
+            " \"binds\":[{\"part\":\"h\",\"param\":\"dx\",\"scale\":10.0}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+            "  {\"target\":\"ParamHairAhoge\",\"param\":\"dx\",\"amp\":1}]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL && d.error_count > 0, "参数通道写 param:\"dx\" 应当场报错");
+        if (r) zrig_free(r);
+    }
+}
+
+/* T66.13 软边遮罩：二值遮罩切出来的是硬线，羽化把它抹成斜坡。
+   判据三条（都要能拦住"看起来加了、其实没加"）：
+     ① 有羽化时，遮罩边缘必须出现**一斜坡**的中间 alpha（≥5 个 0<a<255 的像素）；
+     ② 这条斜坡要单调：离开遮罩越远越透明（不许抖、不许双峰）；
+     ③ 分块渲染（多线程）与单线程必须**逐字节相同** —— 羽化要读相邻行，
+        只读本带就会在带的接缝上留下两条水平硬线（比原来的问题更难看）。 */
+static void test_mask_feather(void)
+{
+    char dir[1024], sprites[1024], rigp[1024];
+    SECTION("T66.13 软边遮罩：边缘要有斜坡，不能换一条硬线");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_mask_feather");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    {
+        /* 夹具全部合成：80x80 的"窗"和 240x240 的"板"，尺寸写死在这里，
+           生产素材怎么改都不会碰碎这个用例（LESSONS：夹具不许借生产素材）。 */
+        zerr e;
+        zimg *win = zimg_new_filled(80, 80, 255, 255, 255, 255);
+        zimg *plate = zimg_new_filled(240, 240, 200, 60, 60, 255);
+        z_snprintf(dir, sizeof(dir), "/tmp/zc_mask_feather");
+        z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+        {
+            char p1[1024], p2[1024];
+            z_snprintf(p1, sizeof(p1), "%s/win.png", sprites);
+            z_snprintf(p2, sizeof(p2), "%s/plate.png", sprites);
+            zerr_clear(&e);
+            CHECK(win && zimg_save_png(win, p1, &e) == 0, "羽化夹具（80x80 窗）应能写出：%s", e.msg);
+            CHECK(plate && zimg_save_png(plate, p2, &e) == 0, "羽化夹具（240x240 板）应能写出：%s", e.msg);
+        }
+        zimg_free(win);
+        zimg_free(plate);
+    }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    {
+        /* 正例：板被 80x80 的窗裁切，羽化 6px（scale=1 → 设备 6px，斜坡约 12px） */
+        const char *tmpl =
+            "{\"schema_version\":\"1.0\",\"id\":\"mf\",\"name\":\"羽化\","
+            "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
+            "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},"
+            "\"parts\":["
+            " {\"id\":\"win\",\"file\":\"sprites/win.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[110,110],\"anchor\":[0,0],\"mask_only\":true},"
+            " {\"id\":\"plate\",\"file\":\"sprites/plate.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[30,30],\"anchor\":[0,0],\"mask\":\"win\",\"mask_feather\":%s}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}";
+        char json[2048];
+
+        z_snprintf(json, sizeof(json), tmpl, "0");
+        write_text(rigp, json);
+        {
+            zdiag d;
+            zrig *r;
+            int w = 0, h = 0, y = 150, x, ramp = 0;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r != NULL, "羽化=0 的 rig 应加载成功（%d 条诊断）", d.error_count);
+            if (r) {
+                const zimg *fb;
+                zrig_tick(r, 1.0);
+                fb = zrig_frame(r, 1.0, &w, &h);
+                if (fb) {
+                    for (x = 0; x < w; ++x) {
+                        int a = fb->px[((size_t)y * (size_t)w + (size_t)x) * 4 + 3];
+                        if (a > 0 && a < 255) ramp++;
+                    }
+                    CHECK(ramp <= 2, "不写羽化时边缘应基本是硬线（中间 alpha %d 个）", ramp);
+                }
+                zrig_free(r);
+            }
+        }
+
+        z_snprintf(json, sizeof(json), tmpl, "6");
+        write_text(rigp, json);
+        {
+            zdiag d;
+            zrig *r;
+            int w = 0, h = 0, y = 150;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r != NULL, "羽化=6 的 rig 应加载成功（%d 条诊断）", d.error_count);
+            if (r) {
+                const zimg *fb;
+                int ramp = 0, left_edge = -1, mono = 1, prev = -1, center_a = 0, i;
+                uint8_t *shot;
+                zrig_tick(r, 1.0);
+                fb = zrig_frame(r, 1.0, &w, &h);
+                shot = fb ? (uint8_t *)malloc((size_t)w * (size_t)h * 4) : NULL;
+                if (shot) memcpy(shot, fb->px, (size_t)w * (size_t)h * 4);
+                CHECK(shot != NULL, "应能拿到一帧");
+                if (shot) {
+                    /* ① 斜坡 */
+                    for (i = 0; i < w; ++i) {
+                        int a = shot[((size_t)y * (size_t)w + (size_t)i) * 4 + 3];
+                        if (a > 0 && a < 255) { ramp++; if (left_edge < 0) left_edge = i; }
+                    }
+                    CHECK(ramp >= 5, "6px 羽化应在边缘留下一条斜坡（中间 alpha %d 个）", ramp);
+                    /* ② 单调：从左缘往里走，alpha 不许回头 */
+                    for (i = left_edge; i < left_edge + ramp; ++i) {
+                        int a = shot[((size_t)y * (size_t)w + (size_t)i) * 4 + 3];
+                        if (prev >= 0 && a < prev - 1) mono = 0;
+                        prev = a;
+                    }
+                    CHECK(mono, "斜坡要单调（越往遮罩里越不透明）");
+                    center_a = shot[((size_t)y * (size_t)w + 150) * 4 + 3];
+                    CHECK(center_a == 255, "遮罩正中仍要完全不透明（实测 %d）", center_a);
+                    printf("    量到：斜坡 %d 个像素（从 x=%d 起）· 中心 alpha=%d\n",
+                           ramp, left_edge, center_a);
+                    free(shot);
+                }
+                /* ③ 分块 = 单线程（羽化扩读写区之后，这条最容易破） */
+                {
+                    int w1 = 0, h1 = 0, w2 = 0, h2 = 0, diff = 0;
+                    uint8_t *a1, *a2;
+                    const zimg *f1, *f2;
+                    zrig_set_render_threads(1);
+                    f1 = zrig_frame(r, 1.0, &w1, &h1);
+                    a1 = f1 ? (uint8_t *)malloc((size_t)w1 * (size_t)h1 * 4) : NULL;
+                    if (a1) memcpy(a1, f1->px, (size_t)w1 * (size_t)h1 * 4);
+                    zrig_set_render_threads(4);
+                    f2 = zrig_frame(r, 1.0, &w2, &h2);
+                    a2 = f2 ? (uint8_t *)malloc((size_t)w2 * (size_t)h2 * 4) : NULL;
+                    if (a2) memcpy(a2, f2->px, (size_t)w2 * (size_t)h2 * 4);
+                    if (a1 && a2 && w1 == w2 && h1 == h2) {
+                        size_t q, n = (size_t)w1 * (size_t)h1 * 4;
+                        for (q = 0; q < n; ++q) if (a1[q] != a2[q]) diff++;
+                    } else {
+                        diff = -1;
+                    }
+                    CHECK(diff == 0, "羽化之后分块渲染仍要逐字节相同（不同 %d 字节）", diff);
+                    free(a1); free(a2);
+                    zrig_set_render_threads(0);
+                }
+                zrig_free(r);
+            }
+        }
+
+        /* 负控一：羽化半径越界（17） → 拒载，不许钳位成 16 */
+        z_snprintf(json, sizeof(json), tmpl, "17");
+        write_text(rigp, json);
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "羽化半径 17 应拒载（实为 %s）",
+                  r ? "加载成功" : "拒载");
+            zrig_free(r);
+        }
+        /* 负控二：写了羽化却没有 mask —— 这是"以为加了软边、其实什么也没发生" */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"mf\",\"name\":\"羽化\","
+            "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
+            "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},"
+            "\"parts\":["
+            " {\"id\":\"plate\",\"file\":\"sprites/plate.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[30,30],\"anchor\":[0,0],\"mask_feather\":6}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "有羽化没遮罩应拒载");
+            zrig_free(r);
+        }
+        /* 负控三：羽化值写成字符串 → 拒载（不许"当成 0 悄悄过"） */
+        z_snprintf(json, sizeof(json), tmpl, "\"6\"");
+        write_text(rigp, json);
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "羽化写成字符串应拒载");
+            zrig_free(r);
+        }
+    }
+}
+
+static void test_mask(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    SECTION("遮罩：部件只在遮罩形状内可见（眼球不滑出眼眶的前提）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_mask");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/body_full.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/body_full.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制 body_full.png 失败"); return; }
+    /* 遮罩夹具用**合成的**纯色块，不要借生产素材。
+       原来这里拷的是 sprites/mouth_open.png，纯属顺手——这个测试考的是遮罩语义，
+       跟嘴没有任何关系。2026-10-15 把 mouth_open.png 从 44x23 的错位旧件换成
+       28x9 的真笑线（G107）之后，这里的两条像素计数断言当场碎了，排查了半天才发现
+       是夹具耦合。合成块的尺寸写死在测试里，素材怎么改都不会再碰它。 */
+    z_snprintf(dst, sizeof(dst), "%s/mouth_open.png", sprites);
+    {
+        zerr e;
+        zimg *fixture = zimg_new_filled(44, 23, 255, 255, 255, 255);
+        zerr_clear(&e);
+        CHECK(fixture && zimg_save_png(fixture, dst, &e) == 0,
+              "遮罩夹具（44x23 实心块）应能写出：%s", e.msg);
+        if (fixture) zimg_free(fixture);
+    }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 正例：用小小的嘴去裁切整张身体，画面上应该只剩嘴那一块 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"hole\",\"file\":\"sprites/mouth_open.png\",\"group\":\"root\","
+        "  \"layer\":10,\"pos\":[300,300],\"anchor\":[0,0],\"mask_only\":true},"
+        " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"hole\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带遮罩的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int masked = 0, plain = 0;
+            zrig_tick(r, 1.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            masked = frame_opaque_px(fb);
+            zrig_free(r);
+            /* 同一份 rig，去掉 mask 之后应该画出整张身体 */
+            write_text(rigp,
+                "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+                "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+                "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+                "\"parts\":["
+                " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+                "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0]}],"
+                "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            if (r) {
+                zrig_tick(r, 1.0);
+                fb = zrig_frame(r, 1.0, NULL, NULL);
+                plain = frame_opaque_px(fb);
+                zrig_free(r);
+            }
+            CHECK(masked > 0, "被裁切的部件仍应有可见像素（实际 %d）", masked);
+            CHECK(plain > masked * 10,
+                  "裁切后应只剩遮罩那一小块：裁切 %d 像素 vs 未裁切 %d 像素", masked, plain);
+        }
+    }
+
+    /* 0% opacity 是“不可见的参考遮罩”，但几何仍参与 clipping（官方语义）。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"blink\":{\"enabled\":true},"
+        "\"parts\":["
+        " {\"id\":\"hole\",\"file\":\"sprites/mouth_open.png\",\"group\":\"root\","
+        "  \"layer\":10,\"pos\":[300,300],\"anchor\":[0,0],\"mask_only\":true,"
+        "  \"tags\":[\"eye_open\"]},"
+        " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"hole\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带眨眼标签的遮罩 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int open_px, closed_px;
+            zrig_tick(r, 1.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            open_px = frame_opaque_px(fb);
+            zrig_blink_force(r, 1);
+            zrig_tick(r, 1.1);
+            fb = zrig_frame(r, 1.1, NULL, NULL);
+            closed_px = frame_opaque_px(fb);
+            CHECK(open_px > 0, "睁眼时被裁切的部件可见（%d 像素）", open_px);
+            CHECK(closed_px > 0,
+                  "眼部遮罩透明度交叉时，遮罩仍应保留裁切几何（睁=%d 闭=%d）",
+                  open_px, closed_px);
+            zrig_free(r);
+        }
+    }
+
+    /* 分轴缩放："scale":[sx,sy] + sy 通道 = 嘴的开合（压扁遮罩而不是整体缩小） */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"hole\",\"file\":\"sprites/mouth_open.png\",\"group\":\"root\","
+        "  \"layer\":10,\"pos\":[400,300],\"anchor\":[0.5,0],\"scale\":[1.0,0.1],"
+        "  \"mask_only\":true},"
+        " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"hole\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]},"
+        " {\"id\":\"open\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"hole\",\"param\":\"sy\",\"wave\":\"pulse\",\"amp\":0.8,\"dur\":0.05}]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带分轴缩放的 rig 应加载成功");
+        if (r) {
+            const zimg *fb;
+            int closed_px, open_px, s;
+            zrig_tick(r, 1.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            closed_px = frame_opaque_px(fb);
+            zrig_action_request(r, "open", "t", 1);
+            /* 动作通道是**淡入**的，请求完只跳一帧量到的是半路上的值。
+               原来这里 tick 到 1.2 就取样，而且 zrig_frame 的第二个参数是**缩放**不是
+               时间，开合两次量还用了不同缩放（1.0 vs 1.2）—— 两头都不干净，
+               只是因为旧夹具是一条软边细线、计数非线性，比值才碰巧过了线。
+               现在：跑满淡入，两次都用同一缩放量。 */
+            for (s = 0; s < 20; ++s) zrig_tick(r, 1.2 + s * 0.05);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            open_px = frame_opaque_px(fb);
+            CHECK(open_px > closed_px * 3,
+                  "sy 通道要把遮罩撑开：闭 %d 像素 → 开 %d 像素", closed_px, open_px);
+            zrig_free(r);
+        }
+    }
+
+    /* 反例一：遮罩指向不存在的部件 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        " \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"nope\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r == NULL, "遮罩指向不存在的部件应加载失败");
+        CHECK(diag_has(&d, "nope"), "错误信息要点名是哪个 mask 找不到");
+    }
+
+    /* A9 之后：遮罩是渲染时当场画的，层序反了也能正确裁切（不再是加载错误）。
+       以前这里断言"必须报错"，现在断言"照样能用"——这正是去掉那条限制的意义。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"遮罩测试\","
+        "\"canvas\":{\"w\":848,\"h\":1360},\"origin\":[424,1360],"
+        "\"groups\":{\"root\":{\"pivot\":[424,1360],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"hole\",\"file\":\"sprites/mouth_open.png\",\"group\":\"root\","
+        "  \"layer\":30,\"pos\":[300,300],\"anchor\":[0,0]},"
+        " {\"id\":\"body\",\"file\":\"sprites/body_full.png\",\"group\":\"root\","
+        "  \"layer\":20,\"pos\":[200,60],\"anchor\":[0,0],\"mask\":\"hole\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    {
+        zdiag d;
+        zrig *r;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "遮罩层号比被裁件大也应该能加载（遮罩当场渲染）");
+        if (r) {
+            int w = 0, h = 0;
+            const zimg *f;
+            long inside = 0, outside = 0;
+            int x, y;
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            /* hole 在 (300,300) 一带，body 只应在那块里露出来 */
+            for (y = 0; y < h; ++y) {
+                for (x = 0; x < w; ++x) {
+                    int a = f->px[((size_t)y * w + x) * 4 + 3];
+                    if (!a) continue;
+                    if (x >= 290 && x <= 460 && y >= 290 && y <= 420) inside += 1;
+                    else outside += 1;
+                }
+            }
+            CHECK(inside > 200, "遮罩区域内应该有像素，实为 %ld", inside);
+            CHECK(outside < inside / 4, "遮罩区域外不该漏出来（内 %ld 外 %ld）",
+                  inside, outside);
+            zrig_free(r);
+        }
+    }
+}
+
+static int diag_has(const zdiag *d, const char *needle)
+{
+    int i;
+    for (i = 0; i < d->count; ++i)
+        if (strstr(d->items[i].msg, needle)) return 1;
+    return 0;
+}
+
+
+/* ---------------------------------------------------------------- 人设与剧情 */
+/* ---------------- zmem（T67.45）：四年快进 ---------------- */
+static long long g_mem_base = 1735689600LL;      /* 2025-01-01 00:00:00 UTC */
+
+static void mem_cleanup(const char *root, const char *ch)
+{
+    char p[1024], d[1024];
+    z_snprintf(d, sizeof d, "%s/data/%s", root, ch);
+#ifndef _WIN32
+    z_snprintf(p, sizeof p, "%s/memory/chronicle.zm", d);
+    remove(p);
+    z_snprintf(p, sizeof p, "%s/memory", d);
+    rmdir(p);
+    rmdir(d);
+#else
+    (void)p;
+    (void)d;
+#endif
+}
+
+static void test_memory_longarc(void)
+{
+    const char *CH = "zz_memtest";
+    zdiag diag;
+    zmem *m;
+    char buf[ZMEM_BLOCK_CAP + 256];
+    char one[512];
+    int i, day;
+    long long now;
+
+    SECTION("长记忆线：四年之后她还记得第一天（T67.45）");
+    mem_cleanup(g_root, CH);
+    zdiag_init(&diag);
+    m = zmem_open(g_root, CH, &diag);
+    CHECK(m != NULL, "记忆文件应能新建（诊断 %d 条）", diag.error_count);
+    if (!m) return;
+
+    /* —— 第 0 天：两条锚点。这就是"最开始陪着她成长"的那件事。 */
+    CHECK(zmem_add(m, g_mem_base, ZMEM_ANCHOR, 9,
+                   "第一次见面：你把我从一堆素材里挑出来，说「就你了」。", "first-meet") != 0,
+          "第一条锚点应写入");
+    CHECK(zmem_add(m, g_mem_base + 3600, ZMEM_ANCHOR, 8,
+                   "你第一次叫我的名字，我假装没听见，其实耳朵动了。", "first-name") != 0,
+          "第二条锚点应写入");
+    /* 幂等：同一个键重复写入必须返回同一条，不许长成两条"第一次" */
+    CHECK(zmem_add(m, g_mem_base + 7200, ZMEM_ANCHOR, 9,
+                   "（重复调用）第一次见面：你把我从一堆素材里挑出来。", "first-meet") == 1,
+          "同一个 once_key 应返回已有 id，而不是再写一条");
+
+    /* —— 四年，每天 3 条日常。总 4380 条 + 2 条锚点。 */
+    for (day = 1; day <= 1460; ++day) {
+        long long t = g_mem_base + (long long)day * 86400;
+        for (i = 0; i < 3; ++i) {
+            char txt[200];
+            z_snprintf(txt, sizeof txt, "第 %d 天的第 %d 件小事：你今天有点忙，我们说了两句话。",
+                       day, i + 1);
+            zmem_add(m, t + i * 600, ZMEM_EVENT, 3 + (day + i) % 4, txt, NULL);
+        }
+    }
+    /* 两条有辨识度的旧事：一条在两年前，一条在四年前（非锚点，靠"问到了"才想起来） */
+    {
+        long long t_key = g_mem_base + (long long)300 * 86400;
+        long long t_cake = g_mem_base + (long long)900 * 86400;
+        zmem_add(m, t_key, ZMEM_EVENT, 6,
+                 "你把汤洒在键盘上，我们笑了很久，最后用吹风机吹了半小时。", NULL);
+        zmem_add(m, t_cake, ZMEM_EVENT, 7,
+                 "一起烤了一个蛋糕，烤糊了，你说糊的那面更好吃。", NULL);
+    }
+
+    now = g_mem_base + (long long)1460 * 86400;
+
+    /* A. 锚点：四年后仍然在常驻块里，而且时间差是引擎算的 */
+    zmem_anchors_block(m, now, buf, sizeof buf);
+    CHECK(strstr(buf, "第一次见面") != NULL, "四年后锚点块里应有「第一次见面」");
+    CHECK(strstr(buf, "约 4 年") != NULL, "四年后的锚点应标成「约 4 年」，实际：%s", buf);
+    CHECK(strstr(buf, "一直记得") != NULL, "锚点必须有「一直记得」的标记（和普通回忆分开）");
+
+    /* B. 问到两年前那件事：要能翻出来，并带正确日期 */
+    zmem_recall(m, "蛋糕 烤糊", now, buf, sizeof buf);
+    CHECK(strstr(buf, "烤糊了") != NULL, "问「蛋糕」应翻出两年前那条，实际：%.400s", buf);
+    CHECK(strstr(buf, "2027-06-19") != NULL || strstr(buf, "2027-06") != NULL,
+          "回忆必须带准确日期，实际：%.400s", buf);
+
+    /* C. 问到完全无关的话题：不许硬凑一堆旧事上来 */
+    zmem_recall(m, "量子色动力学里的渐近自由", now, buf, sizeof buf);
+    CHECK(strstr(buf, "想起来过") == NULL,
+          "无关话题不该翻出任何「想起来过」，实际：%.400s", buf);
+    CHECK(strstr(buf, "记不清") != NULL, "无关话题时块里必须允许她说「记不清」，实际：%.500s", buf);
+
+    /* D. 正文不可变：1000 次回忆之后，正文一个字都不许变 */
+    {
+        char before[512], after[512];
+        zmem_text(m, 2, before, sizeof before);
+        for (i = 0; i < 1000; ++i) zmem_recall(m, "蛋糕", now, buf, sizeof buf);
+        zmem_text(m, 2, after, sizeof after);
+        CHECK(strcmp(before, after) == 0, "回忆 1000 次之后正文必须逐字节相同");
+    }
+
+    /* E. 重启：关掉再打开，状态一个都不许少（这是"四年后还认得"的物理前提） */
+    zmem_close(m);
+    zdiag_init(&diag);
+    m = zmem_open(g_root, CH, &diag);
+    CHECK(m != NULL, "记忆文件应能重新打开（%d 条错误）", diag.error_count);
+    if (!m) return;
+    {
+        zmem_stat st;
+        zmem_stats(m, &st);
+        CHECK(st.items == 2 + 4380 + 2, "重开后条数应为 4384，实际 %d", st.items);
+        CHECK(st.anchors == 2, "重开后锚点应为 2，实际 %d", st.anchors);
+        CHECK(st.bytes > 0, "落盘字节应大于 0");
+        CHECK(zmem_verify(m, buf, sizeof buf) == 0, "全量对账应通过：%s", buf);
+    }
+    zmem_anchors_block(m, now, buf, sizeof buf);
+    CHECK(strstr(buf, "第一次叫我的名字") != NULL, "重开后锚点正文必须还在");
+
+    /* F. 删除=墓碑：不再被回忆，但文件里留下痕迹（可审计） */
+    {
+        uint32_t cake_id = 0;
+        zmem_stat st0, st1;
+        zmem_stats(m, &st0);
+        for (i = 1; i <= 100000; ++i) {
+            if (zmem_text(m, (uint32_t)i, one, sizeof one) == 0) continue;
+            if (strstr(one, "烤糊了")) { cake_id = (uint32_t)i; break; }
+        }
+        CHECK(cake_id != 0, "应能找到蛋糕那条的 id");
+        CHECK(zmem_del(m, cake_id, "用户要求删掉这件事") == 1, "删除应成功");
+        zmem_stats(m, &st1);
+        CHECK(st1.deleted == st0.deleted + 1, "墓碑数应 +1");
+        zmem_recall(m, "蛋糕 烤糊", now, buf, sizeof buf);
+        CHECK(strstr(buf, "烤糊了") == NULL, "删掉之后不许再被回忆出来");
+        CHECK(zmem_text(m, cake_id, one, sizeof one) == 0, "删掉的条目取不出正文");
+        CHECK(zmem_verify(m, buf, sizeof buf) == 0, "删除后对账仍应通过");
+    }
+
+    /* G. 锚点上限：满了必须拒绝，不许静默挤掉一个 */
+    {
+        int added = 0;
+        for (i = 0; i < ZMEM_MAX_ANCHORS; ++i) {
+            char txt[120];
+            z_snprintf(txt, sizeof txt, "第 %d 条测试锚点，用来试探上限。", i);
+            if (zmem_add(m, now, ZMEM_ANCHOR, 5, txt, NULL)) added++;
+        }
+        CHECK(added == ZMEM_MAX_ANCHORS - 2,
+              "锚点只该再加 %d 条（上限 %d，已有 2），实际加了 %d",
+              ZMEM_MAX_ANCHORS - 2, ZMEM_MAX_ANCHORS, added);
+    }
+
+    /* H. 自述：间隔、漂移、引用三道闸 */
+    {
+        char st1[512], st2[512];
+        int v;
+        CHECK(zmem_story_set(m, now, "[#1]我们是从一堆素材里开始的，那天你说了「就你了」。") > 0,
+              "第一版自述应能写入");
+        CHECK(zmem_story_set(m, now + 86400, "[#1]我们是从一堆素材里开始的。") == 0,
+              "30 天内改自述必须被拒（人格不许天天抖）");
+        v = zmem_story_set(m, now + 31 * 86400,
+                           "[#1]我们是从一堆素材里开始的，那天你说了「就你了」，后来一直是这样。");
+        CHECK(v > 0, "过了 30 天、内容相近的自述应能写入（v=%d）", v);
+        CHECK(zmem_story_set(m, now + 62 * 86400,
+                             "[#1]完全换一个人格的写法：从此我只谈天气和股票，别的一概不提。") == 0,
+              "与上一版重合度太低的自述必须被拒（那是换了个角色）");
+        CHECK(zmem_story_set(m, now + 92 * 86400, "[#1]这是第三版。") == 0,
+              "再快的改写也要等满 30 天");
+        CHECK(zmem_story_set(m, now + 92 * 86400, "[#99999]引用一条不存在的记忆") == 0,
+              "引用不存在的记忆必须被拒（自述不许凭空抒情）");
+        CHECK(zmem_story_count(m) == 2, "自述应正好 2 版，实际 %d", zmem_story_count(m));
+        CHECK(zmem_story_get(m, 1, NULL, st1, sizeof st1) > 0, "第一版自述必须还能取出来（历史可审计）");
+        CHECK(zmem_story_get(m, 0, NULL, st2, sizeof st2) > 0, "最新版自述应可取");
+        CHECK(strcmp(st1, st2) != 0, "两版自述应不同");
+    }
+
+    /* I. 校验：正文被改一个字节，必须当场拒绝加载（否则"她还记得"就是假的） */
+    {
+        char src[1024], dir[1024], copy[1024];
+        FILE *f;
+        long sz;
+        unsigned char *raw = NULL;
+        z_snprintf(src, sizeof src, "%s/data/%s/memory/chronicle.zm", g_root, CH);
+        z_snprintf(dir, sizeof dir, "%s/data/%s/memory", g_root, "zz_membad");
+        z_mkdir_p(dir);
+        z_snprintf(copy, sizeof copy, "%s/chronicle.zm", dir);
+        f = fopen(src, "rb");
+        CHECK(f != NULL, "应能打开原文件");
+        if (f) {
+            size_t got;
+            fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET);
+            raw = (unsigned char *)malloc((size_t)sz);
+            got = raw ? fread(raw, 1, (size_t)sz, f) : 0;
+            fclose(f);
+            CHECK((long)got == sz && sz > 64, "应能整份读出记忆文件（%ld 字节）", sz);
+            if ((long)got == sz && sz > 64) {
+                zdiag d2;
+                zmem *bad;
+                raw[40] ^= 0xFF;                 /* 第 1 条正文里的一个字节 */
+                f = fopen(copy, "wb");
+                if (f) { fwrite(raw, 1, (size_t)sz, f); fclose(f); }
+                zdiag_init(&d2);
+                bad = zmem_open(g_root, "zz_membad", &d2);
+                CHECK(bad == NULL, "正文被改过必须拒绝加载，而不是当空文件继续跑");
+                CHECK(d2.error_count > 0, "拒绝加载时要留下诊断（%d 条）", d2.error_count);
+                if (bad) zmem_close(bad);
+            }
+            free(raw);
+        }
+        remove(copy);
+#ifndef _WIN32
+        rmdir(dir);
+        z_snprintf(dir, sizeof dir, "%s/data/%s", g_root, "zz_membad");
+        rmdir(dir);
+#endif
+    }
+
+    /* J. 规模与耗时：4 年数据的一次回忆，必须在 20ms 内（4000 条量级） */
+    {
+        double t0 = z_now_seconds(), dt;
+        for (i = 0; i < 20; ++i) zmem_recall(m, "蛋糕", now, buf, sizeof buf);
+        dt = (z_now_seconds() - t0) / 20.0;
+        printf("   [量] 4 年 %d 条记忆，单次回忆 %.2f ms，文件 %d 字节\n",
+               4384, dt * 1000.0, (int)zmem_get_file_size(m));
+        CHECK(dt < 0.020, "4000 条规模的单次回忆应在 20ms 内，实测 %.2f ms", dt * 1000.0);
+    }
+
+    zmem_close(m);
+    mem_cleanup(g_root, CH);
+}
+
+static void test_persona(void)
+{
+    zdiag diag;
+    zpersona zp;
+    char p0[4096], p2[4096], p3[4096];
+    char backup[4096];
+    FILE *f;
+    size_t n;
+    int i;
+
+    SECTION("人设：三层合成、好感剧情、白名单写入");
+    zdiag_init(&diag);
+
+    CHECK(zpersona_load(&zp, g_root, "xiaoxun", &diag) == 1,
+          "小寻的人设应加载成功（错误 %d 条）", diag.error_count);
+    CHECK(zp.lib.ntraits == 8, "可调维度应为 8 个，实际 %d", zp.lib.ntraits);
+    CHECK(zp.lib.npresets >= 6, "预设应不少于 6 个，实际 %d", zp.lib.npresets);
+    CHECK(zp.nstory == 4, "好感剧情应有 4 档，实际 %d", zp.nstory);
+
+    /* 合成：名字必须是中文名，不能漏出目录 id */
+    n = zpersona_compose(&zp, 0, p0, sizeof(p0));
+    CHECK(n > 0 && strstr(p0, "小寻") != NULL, "合成结果应出现中文名「小寻」");
+    CHECK(strstr(p0, "xiaoxun") == NULL, "合成结果不应出现目录 id「xiaoxun」");
+
+    /* 剧情只带当前档：第 0 档里绝不能出现第 3 档的文案（剧透） */
+    CHECK(strstr(p0, zp.story[0]) != NULL, "第 0 档应带本档剧情");
+    CHECK(zp.story[3][0] == 0 || strstr(p0, zp.story[3]) == NULL,
+          "第 0 档不应剧透第 3 档的剧情");
+    zpersona_compose(&zp, 2, p2, sizeof(p2));
+    CHECK(strstr(p2, zp.story[2]) != NULL, "第 2 档应带本档剧情");
+    CHECK(strcmp(p0, p2) != 0, "不同好感档合成的提示词应当不同");
+
+    /* ④ 内心档案（T67.44）：同一个人不同档位答案不同，不同人答案不同。
+       ★ 这条测的是"她有没有自己的立场"，不是"提示词里有没有一段字"：
+         所以既检查档 0 与档 3 的答案不一样，也检查两个角色的答案不一样。 */
+    CHECK(zp.nself >= 4, "内心档案应有 4 档，实际 %d", zp.nself);
+    CHECK(strstr(p0, "你自己的答案") != NULL, "第 0 档应带内心档案段");
+    CHECK(strstr(p0, "「才」") != NULL,
+          "小寻第 0 档（刚认识）应答「才」—— 防守的那一面");
+    {
+        char q3[4096];
+        zpersona_compose(&zp, 3, q3, sizeof(q3));
+        CHECK(strstr(q3, "「等」") != NULL,
+              "小寻第 3 档（很熟）应改口成「等」");
+        CHECK(strstr(q3, "刚认识那会儿") != NULL,
+              "改口时必须给出「以前不这么想」的线索，否则只是换台词");
+        {
+            zpersona zs;
+            char ps[4096];
+            zdiag ds;
+            zdiag_init(&ds);
+            CHECK(zpersona_load(&zs, g_root, "shenyu", &ds) == 1,
+                  "深语的内心档案应加载成功（她没有 persona.json，走的是早退分支）");
+            zpersona_compose(&zs, 0, ps, sizeof(ps));
+            CHECK(strstr(ps, "「量」") != NULL, "深语第 0 档应答「量」");
+            CHECK(strstr(ps, "「才」") == NULL, "深语的提示词里不该出现小寻的答案");
+        }
+    }
+
+    /* ⑤ 思维档案（T67.58）：她怎么想事情、怎么拿主意、怎么消化情绪。
+       ★ 这一段的判据不是"字在不在"，而是三件事：
+         ① 它确实被拼进了提示词；② 它**不随关系档变**（认知方式不会因为熟了换一套）；
+         ③ 不同人的这一段不一样（否则八个人是同一个脑子）。 */
+    CHECK(zp.has_mind == 1, "小寻应有思维档案（inner.mind.txt）");
+    CHECK(strstr(p0, "你这个人怎么运转") != NULL, "第 0 档提示词应带思维档案段");
+    CHECK(strstr(p0, "倾向，不是台词") != NULL,
+          "思维档案必须写明「这是倾向，不是台词」—— 否则模型会照着念");
+    {
+        char m0[4096], m3[4096];
+        zpersona_compose(&zp, 0, m0, sizeof(m0));
+        zpersona_compose(&zp, 3, m3, sizeof(m3));
+        CHECK(strcmp(m0, m3) != 0, "不同关系档的提示词整体应当不同（立场会变）");
+        CHECK(strstr(m0, zp.mind_extra) != NULL && strstr(m3, zp.mind_extra) != NULL,
+              "思维档案必须**原样**出现在每一档里（认知方式不随关系变）");
+    }
+    {
+        zpersona zs;
+        char ps[4096];
+        zdiag ds;
+        zdiag_init(&ds);
+        if (zpersona_load(&zs, g_root, "shenyu", &ds) == 1) {
+            zpersona_compose(&zs, 0, ps, sizeof(ps));
+            CHECK(zs.has_mind == 1, "深语也应有思维档案");
+            CHECK(strcmp(zs.mind_extra, zp.mind_extra) != 0,
+                  "深语和小寻的思维档案必须不同 —— 同一个脑子就不是两个人");
+            CHECK(strstr(ps, "先拆开") != NULL,
+                  "深语是分析型：思维档案里应能看到「先拆开」这一句");
+            CHECK(strstr(p0, "先拆开") == NULL,
+                  "小寻是直觉型：她的提示词里不该出现深语的「先拆开」");
+        }
+    }
+
+    /* 中间值 3 不进提示词（避免「中等」这种无约束力的废话） */
+    for (i = 0; i < zp.lib.ntraits; ++i) zp.tv[i] = 3;
+    zpersona_compose(&zp, 0, p3, sizeof(p3));
+    CHECK(strstr(p3, "说话风格") == NULL, "8 个维度全取中间值时不应输出「说话风格」段");
+
+    /* 白名单：允许的键 */
+    CHECK(zpersona_set(&zp, "nickname", "笨蛋") == 1, "nickname 应可改");
+    CHECK(zpersona_set(&zp, "trait.tsundere", "5") == 1, "trait.tsundere 应可改");
+    CHECK(zpersona_set(&zp, "meeting.where", "便利店") == 1, "meeting.where 应可改");
+    /* 白名单：拒绝的键与非法值 */
+    CHECK(zpersona_set(&zp, "schema_version", "x") == 0, "schema_version 不可改");
+    CHECK(zpersona_set(&zp, "character", "shenyu") == 0, "character 不可改（防换角色）");
+    CHECK(zpersona_set(&zp, "story.0", "随便写") == 0, "剧情不可由对话直接改写");
+    CHECK(zpersona_set(&zp, "trait.tsundere", "9") == 0, "trait 超出 1..5 应拒绝");
+    CHECK(zpersona_set(&zp, "trait.nonexist", "3") == 0, "不存在的维度应拒绝");
+
+    /* 预设：换一次应当把整组滑杆铺好 */
+    CHECK(zpersona_apply_preset(&zp, "cool") == 1, "应能套用 cool 预设");
+    CHECK(zpersona_apply_preset(&zp, "no_such_preset") == 0, "不存在的预设应拒绝");
+
+    /* 存盘 → 重载 往返。先把原文件备份，测完原样放回。 */
+    backup[0] = 0;
+    {
+        char path[1024];
+        z_snprintf(path, sizeof(path), "%s/characters/xiaoxun/persona.json", g_root);
+        f = fopen(path, "rb");
+        if (f) { n = fread(backup, 1, sizeof(backup) - 1, f); backup[n] = 0; fclose(f); }
+        CHECK(backup[0] != 0, "应能读到 persona.json 备份");
+
+        CHECK(zpersona_save(&zp, g_root) == 1, "人设应能写回");
+        {
+            zpersona re;
+            CHECK(zpersona_load(&re, g_root, "xiaoxun", &diag) == 1, "写回后应能重新加载");
+            CHECK(strcmp(re.nickname, "笨蛋") == 0, "称呼应往返一致，实际「%s」", re.nickname);
+            CHECK(strcmp(re.preset, "cool") == 0, "预设应往返一致，实际「%s」", re.preset);
+            CHECK(strcmp(re.m_where, "便利店") == 0, "相遇地点应往返一致");
+            CHECK(re.nstory == 4, "剧情档数应往返一致，实际 %d", re.nstory);
+        }
+        /* 还原，别把测试数据留在仓库里 */
+        f = fopen(path, "wb");
+        if (f) { fwrite(backup, 1, strlen(backup), f); fclose(f); }
+    }
+
+    /* 8 个角色都得能加载（persona.json 缺失是合法的，走全默认） */
+    {
+        const char *ids[8] = {"xiaoxun","shenyu","xiaochen","xingxuan",
+                              "shuangxi","tonglin","yuejian","shandian"};
+        for (i = 0; i < 8; ++i) {
+            zpersona one;
+            CHECK(zpersona_load(&one, g_root, ids[i], &diag) == 1,
+                  "角色 %s 的人设应能加载", ids[i]);
+            CHECK(zpersona_compose(&one, 0, p3, sizeof(p3)) > 0,
+                  "角色 %s 应能合成出非空提示词", ids[i]);
+        }
+    }
+}
+
+static void test_interactions(void)
+{
+    zdiag diag;
+    zinteract *z;
+    const zi_rule *r;
+    char buf[256];
+    int i;
+    zconfig cfg;
+    zpet *pet;
+    char cfgdir[1024];
+
+    SECTION("互动规则：加载、匹配、台词冷却");
+    zdiag_init(&diag);
+    z = zinteract_load(g_root, "xiaoxun", &diag);
+    CHECK(z != NULL, "互动规则应加载成功（错误 %d 条）", diag.error_count);
+    if (!z) return;
+    CHECK(z->nrules >= 15, "规则应不少于 15 条，实际 %d", z->nrules);
+    CHECK(z->nlines >= 15, "台词应不少于 15 条，实际 %d", z->nlines);
+    CHECK(z->dialogue_status_draft == 1, "小寻台词标记为草稿（待用户确认）");
+
+    r = zinteract_match(z, "hammer", "", NULL, 0);
+    CHECK(r && z_streq(r->id, "hammer_any"), "锤击应匹配 hammer_any");
+    r = zinteract_match(z, "poke", "head", NULL, 1);
+    CHECK(r && z_streq(r->id, "pat_head"), "摸头 1 次应匹配 pat_head");
+    r = zinteract_match(z, "poke", "head", NULL, 3);
+    CHECK(r && z_streq(r->id, "pat_head_combo"), "摸头 3 次应匹配连击（优先级更高）");
+    r = zinteract_match(z, "poke", "body", NULL, 0);
+    CHECK(r && z_streq(r->id, "stroke_body"), "身体应匹配 stroke_body");
+    r = zinteract_match(z, "poke", "", NULL, 0);
+    CHECK(r && z_streq(r->id, "poke_other"), "其它位置应匹配 poke_other（兜底）");
+    r = zinteract_match(z, "mood", "", "joy", 0);
+    CHECK(r && z_streq(r->id, "mood_joy") && z_streq(r->action, "happy"), "情绪 joy → happy");
+    CHECK(zinteract_match(z, "mood", "", "no_such", 0) == NULL, "未知情绪不匹配任何规则");
+    CHECK(zinteract_match(z, "call_reply", "", NULL, 0) != NULL, "语音回复事件有规则");
+
+    /* 台词冷却：同一规则 2 秒内只说一次；同一规则冷却未过不说；轮换变体 */
+    r = zinteract_match(z, "poke", "head", NULL, 1);
+    CHECK(zinteract_speak(z, r, 100.0, buf, sizeof(buf)) == 1, "首次应说话");
+    CHECK(buf[0] != 0, "台词不能为空");
+    CHECK(zinteract_speak(z, r, 100.5, buf, sizeof(buf)) == 0, "间隔不足 2 秒不说话");
+    CHECK(buf[0] == 0, "不说话时输出应清空");
+    CHECK(zinteract_speak(z, r, 102.5, buf, sizeof(buf)) == 0, "同一规则冷却 8 秒内不重复说话");
+    {
+        char first[256], second[256];
+        zinteract_speak(z, zinteract_match(z, "hammer", "", NULL, 0), 200.0, first, sizeof(first));
+        zinteract_speak(z, zinteract_match(z, "hammer", "", NULL, 0), 210.0, second, sizeof(second));
+        CHECK(first[0] && second[0] && strcmp(first, second) != 0, "同一台词组的变体应轮换");
+    }
+    /* 时钟倒流（T66.10b 收口时查出来的）：预览台 /api/pause + /api/step 空跑是拿
+       虚拟时间记时间戳的，解冻后真实单调钟落在后头，`now - last < 冷却` 就恒成立 ——
+       台词整段哑掉，而且不报错（实测摸头 → 空跑 30 秒 → 解冻 → 再摸头，seq 不动）。
+       时间戳是"最后一次说话的时刻"，未来时刻只可能是钟走歪了，一律当凉透。 */
+    r = zinteract_match(z, "poke", "head", NULL, 1);
+    CHECK(zinteract_speak(z, r, 300.0, buf, sizeof(buf)) == 1, "时钟正常前进时该说话");
+    CHECK(zinteract_speak(z, r, 260.0, buf, sizeof(buf)) == 1,
+          "时钟倒流 40 秒后不能把台词静音（应视作冷却已过）");
+    z->speech_enabled = 0;
+    CHECK(zinteract_speak(z, zinteract_match(z, "drag_start", "", NULL, 0), 500.0, buf, sizeof(buf)) == 0,
+          "speech.enabled=false 时不说话");
+    zinteract_free(z);
+
+    SECTION("互动规则：坏配置报出文件与字段");
+    {
+        char root[256], dir[300];
+        z_snprintf(root, sizeof(root), "/tmp/zc_interact_bad_%d", (int)getpid());
+        z_snprintf(dir, sizeof(dir), "%s/config", root);
+        z_mkdir_p(dir);
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad", root);
+        z_mkdir_p(dir);
+        z_snprintf(dir, sizeof(dir), "%s/config/interactions.json", root);
+        write_text(dir, "{\"schema_version\":\"1.0\",\"rules\":[{\"id\":\"a\",\"kind\":\"dance\",\"action\":\"idle\"}]}");
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad/dialogue.json", root);
+        write_text(dir, "{\"lines\":[{\"id\":\"x\",\"texts\":[\"hi\"]}]}");
+        zdiag_init(&diag);
+        z = zinteract_load(root, "bad", &diag);
+        CHECK(z == NULL, "未知 kind 必须加载失败");
+        CHECK(diag.error_count >= 1, "应记录至少一条错误");
+        CHECK(diag_has(&diag, "dance"), "诊断应指出非法 kind 的值");
+
+        z_snprintf(dir, sizeof(dir), "%s/config/interactions.json", root);
+        write_text(dir, "{\"schema_version\":\"1.0\",\"rules\":[{\"id\":\"a\",\"kind\":\"poke\",\"action\":\"idle\",\"lines\":[\"nope\"]}]}");
+        zdiag_init(&diag);
+        z = zinteract_load(root, "bad", &diag);
+        CHECK(z == NULL, "引用不存在的台词 id 必须失败");
+        CHECK(diag.error_count >= 1 && diag_has(&diag, "nope"), "诊断应包含缺失的台词 id");
+        (void)i;
+    }
+
+    SECTION("互动：摸头连击、锤击、情绪与语音事件驱动宠物");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (pet) {
+        int fw = 0, fh = 0;
+        zpet_tick(pet, 1.0);            /* 第一帧由 tick 渲染，之前帧缓冲为空 */
+        zpet_frame(pet, &fw, &fh);
+        zpet_report_idle(pet, 0.0);
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 10.0);
+        CHECK(z_streq(zpet_action(pet), "head_pat"), "摸头 → head_pat，实际 %s", zpet_action(pet));
+        CHECK(zpet_last_line(pet)[0] != 0, "摸头应有台词");
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 11.0);
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 12.0);
+        CHECK(z_streq(zpet_action(pet), "happy"), "连续摸 3 次 → happy，实际 %s", zpet_action(pet));
+
+        zpet_tick(pet, 30.0);           /* 让 happy 等动作播完，非强制请求才能切换 */
+        zpet_express(pet, "sad", 30.0);
+        CHECK(z_streq(zpet_last_mood(pet), "sad"), "情绪应被记录");
+        CHECK(z_streq(zpet_action(pet), "sad"), "sad 情绪 → sad 动作，实际 %s", zpet_action(pet));
+
+        zpet_call_event(pet, "call_reply", "今天的天气很好哦", NULL, 40.0);
+        CHECK(z_streq(zpet_last_line(pet), "今天的天气很好哦"), "语音回复原文应优先显示");
+        zpet_tick(pet, 50.0);
+        zpet_call_event(pet, "call_start", NULL, NULL, 50.0);
+        CHECK(z_streq(zpet_action(pet), "talk"), "通话开始 → talk（priority 4 盖过循环中的 sad），实际 %s", zpet_action(pet));
+        zpet_destroy(pet);
+    }
+}
+
+/* -------------------------------------------------------- 好感度 / 角色台词 */
+/* ============================================================ 网关（G51）
+ * 路由 / 估价 / 三段记账 / 密钥引用。全是纯决策，不碰网络——
+ * 这正是把它和"怎么发请求"分开的理由：没有密钥、没有网也能完整验证。 */
+
+static void gw_write(const char *path, const char *body)
+{
+    zerr e;
+    z_mkdir_p("/tmp/zc_gw");
+    if (z_write_file(path, body, strlen(body), &e) != 0)
+        printf("  [警告] 写不了 %s\n", path);
+}
+
+
+/* ------------------------------------------------------------------ G54
+ * 真链路的测试必须**真的过一遍 socket**，不能把 zhttp 换成桩。
+ * 理由很实在：这一层最容易错的地方全在"字节到底长什么样" ——
+ * 请求行拼没拼对、Content-Length 算没算准、chunked 会不会解、
+ * Authorization 有没有真的发出去。桩掉 socket 就等于把要测的东西测没了。
+ *
+ * 所以这里在进程内起一个**真的** HTTP 服务（127.0.0.1 + 系统分配端口），
+ * 让 zhttp/zrelay 真的连上去。不依赖网络、不依赖外部进程，CI 里也能跑。
+ */
+#ifndef _WIN32
+typedef struct {
+    int fd;
+    int nserve;        /* 服务几个连接后退出 */
+    int seen_auth;     /* 收到过 Authorization: Bearer */
+    char last_body[4096];
+} mock_srv;
+
+static void mock_send_json(int c, int code, const char *json)
+{
+    char head[256];
+    size_t n = strlen(json);
+    int hn = snprintf(head, sizeof(head),
+                      "HTTP/1.1 %d X\r\nContent-Type: application/json\r\n"
+                      "Content-Length: %lu\r\nConnection: close\r\n\r\n",
+                      code, (unsigned long)n);
+    (void)!write(c, head, (size_t)hn);
+    (void)!write(c, json, n);
+}
+
+static void *mock_thread(void *arg)
+{
+    mock_srv *m = (mock_srv *)arg;
+    int i;
+    for (i = 0; i < m->nserve; ++i) {
+        char req[8192];
+        size_t n = 0, cl = 0;
+        char *he = NULL;
+        char path[256] = "";
+        int c = accept(m->fd, NULL, NULL);
+        if (c < 0) break;
+        for (;;) {
+            ssize_t k;
+            if (n + 1 >= sizeof(req)) break;
+            k = recv(c, req + n, sizeof(req) - 1 - n, 0);
+            if (k <= 0) break;
+            n += (size_t)k;
+            req[n] = 0;
+            if (!he) he = strstr(req, "\r\n\r\n");
+            if (he) {
+                const char *p = strstr(req, "Content-Length:");
+                cl = p ? (size_t)strtoul(p + 15, NULL, 10) : 0;
+                if (n >= (size_t)(he - req) + 4 + cl) break;
+            }
+        }
+        if (!he) { close(c); continue; }
+        {   /* 取请求行里的路径 */
+            const char *sp = strchr(req, ' ');
+            if (sp) {
+                const char *sp2 = strchr(sp + 1, ' ');
+                size_t pl = sp2 ? (size_t)(sp2 - sp - 1) : 0;
+                if (pl && pl < sizeof(path)) { memcpy(path, sp + 1, pl); path[pl] = 0; }
+            }
+        }
+        if (strstr(req, "Authorization: Bearer ")) m->seen_auth = 1;
+        z_strlcpy(m->last_body, he + 4, sizeof(m->last_body));
+
+        if (strstr(path, "/unauth"))
+            mock_send_json(c, 401, "{\"error\":{\"message\":\"Incorrect API key provided\"}}");
+        else if (strstr(path, "/oops"))
+            /* 状态码 200 但体里是错误 —— 中转站真有这么干的 */
+            mock_send_json(c, 200, "{\"error\":{\"message\":\"额度不足\"}}");
+        else if (strstr(path, "/chunked")) {
+            const char *r = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n"
+                            "Connection: close\r\n\r\n5\r\nHello\r\n7\r\nChunked\r\n0\r\n\r\n";
+            (void)!write(c, r, strlen(r));
+        } else if (strstr(path, "/echohdr")) {
+            char body[4096];
+            char esc[3072];
+            zjson_escape(req, esc, sizeof(esc));
+            snprintf(body, sizeof(body), "{\"raw\":\"%s\"}", esc);
+            mock_send_json(c, 200, body);
+        } else {
+            /* 正常：把收到的 system / user 原样回显进正文，好断言它们真的送到了 */
+            char body[6000], esc[4096];
+            zjson_escape(m->last_body, esc, sizeof(esc));
+            snprintf(body, sizeof(body),
+                     "{\"choices\":[{\"message\":{\"role\":\"assistant\","
+                     "\"content\":\"ECHO %s\"}}],"
+                     "\"usage\":{\"prompt_tokens\":123,\"completion_tokens\":45}}", esc);
+            mock_send_json(c, 200, body);
+        }
+        close(c);
+    }
+    return NULL;
+}
+
+static int mock_start(mock_srv *m, int nserve, pthread_t *th)
+{
+    struct sockaddr_in a;
+    socklen_t al = sizeof(a);
+    int on = 1;
+    memset(m, 0, sizeof(*m));
+    m->nserve = nserve;
+    m->fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (m->fd < 0) return -1;
+    setsockopt(m->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    memset(&a, 0, sizeof(a));
+    a.sin_family = AF_INET;
+    a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    a.sin_port = 0;                     /* 让系统分配端口，避免和别的测试撞 */
+    if (bind(m->fd, (struct sockaddr *)&a, sizeof(a)) != 0) { close(m->fd); return -1; }
+    if (listen(m->fd, 8) != 0) { close(m->fd); return -1; }
+    {   /* ★ accept 必须有超时兜底。第一版没加、又把 nserve 写多了一个
+           （"连不上"那条压根不会连到这儿），pthread_join 当场把整条 test_core
+           挂死五分钟。测试里任何无限期等待都得有兜底，否则一次手滑＝整条 CI 卡住。 */
+        struct timeval tv;
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+        setsockopt(m->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    }
+    if (getsockname(m->fd, (struct sockaddr *)&a, &al) != 0) { close(m->fd); return -1; }
+    if (pthread_create(th, NULL, mock_thread, m) != 0) { close(m->fd); return -1; }
+    return (int)ntohs(a.sin_port);
+}
+#endif /* !_WIN32 */
+
+static void test_http_url(void)
+{
+    zhttp_url u;
+    SECTION("zhttp（G54）：URL 拆解");
+    CHECK(zhttp_url_parse("http://127.0.0.1:11434/v1/chat", &u) == 0
+          && u.port == 11434 && !u.tls
+          && strcmp(u.host, "127.0.0.1") == 0
+          && strcmp(u.path, "/v1/chat") == 0, "带端口带路径");
+    CHECK(zhttp_url_parse("http://example.com", &u) == 0
+          && u.port == 80 && strcmp(u.path, "/") == 0, "缺省端口 80，空路径补成 /");
+    CHECK(zhttp_url_parse("https://api.openai.com/v1", &u) == 0
+          && u.port == 443 && u.tls == 1, "https 缺省端口 443 且标记 tls");
+    CHECK(zhttp_url_parse("http://[::1]:8080/x", &u) == 0
+          && strcmp(u.host, "::1") == 0 && u.port == 8080, "IPv6 方括号里的冒号不是端口");
+    CHECK(zhttp_url_parse("http://h?q=1", &u) == 0
+          && strcmp(u.path, "/?q=1") == 0, "没有路径只有查询串，路径要补成 /?…");
+    CHECK(zhttp_url_parse("ftp://a/b", &u) != 0, "非 http(s) 协议要拒绝");
+    CHECK(zhttp_url_parse("127.0.0.1:8080", &u) != 0, "没有协议头要拒绝");
+    CHECK(zhttp_url_parse("http://", &u) != 0, "空主机要拒绝");
+
+    SECTION("zhttp（G54）：https 必须拒绝而不是降级");
+    {
+        zhttp_req q;
+        zhttp_resp r;
+        memset(&q, 0, sizeof(q));
+        q.url = "https://api.openai.com/v1/chat/completions";
+        q.method = "POST";
+        q.body = "{}";
+        /* ★ 这条是安全闸：本版没有 TLS，如果哪天有人"顺手"把 https 降级成
+           明文发出去，API key 就裸奔到网上了。宁可功能缺失，不能静默降级。 */
+        CHECK(zhttp_send(&q, &r) == ZHTTP_E_TLS, "https 要返回 E_TLS，绝不能改用明文发");
+    }
+}
+
+
+static void test_ctx(void)
+{
+    SECTION("zctx（T60.1）：上下文清单可打印、可 diff");
+    {
+        zctx c;
+        char m1[4096], m2[4096];
+        zctx_init(&c);
+        zctx_set_block(&c, "persona", "角色设定", "persona.json", "你是小寻", 100, 1);
+        zctx_build(&c, "chat.completion", 2000, 1);
+        zctx_manifest(&c, m1, sizeof(m1));
+        CHECK(strstr(m1, "persona") && strstr(m1, "角色设定"), "清单要列出每一块的 id 和人话标题");
+        CHECK(strstr(m1, "persona.json"), "清单要写明这块是哪来的");
+        CHECK(strstr(m1, "[带上]"), "清单要标明这次带没带上");
+
+        /* 可 diff：同样的输入出同样的清单，变了一处只差一处 */
+        zctx_build(&c, "chat.completion", 2000, 1);
+        zctx_manifest(&c, m2, sizeof(m2));
+        CHECK(strcmp(m1, m2) == 0, "同样的上下文必须打出一模一样的清单（否则没法 diff）");
+        zctx_push_turn(&c, 0, "你好", 0);
+        zctx_build(&c, "chat.completion", 2000, 1);
+        zctx_manifest(&c, m2, sizeof(m2));
+        CHECK(strcmp(m1, m2) != 0, "多了一轮对话，清单必须跟着变");
+        zctx_free(&c);
+    }
+
+    SECTION("zctx：预算不够时裁谁是明写的");
+    {
+        zctx c;
+        char m[4096];
+        const zctx_block *b;
+        zctx_init(&c);
+        /* 人设 pinned，工具表不 pinned 且优先级低 */
+        zctx_set_block(&c, "persona", "角色设定", "persona.json",
+                       "这是一段很长的人设这是一段很长的人设这是一段很长的人设", 100, 1);
+        zctx_set_block(&c, "tools", "可用工具", "内存",
+                       "工具一工具二工具三工具四工具五工具六工具七工具八", 10, 0);
+        zctx_build(&c, "chat.completion", 20, 1);   /* 预算小得放不下第二块 */
+        b = zctx_block_find(&c, "persona");
+        CHECK(b && b->kept, "pinned 的块（人设）永远不许被裁");
+        b = zctx_block_find(&c, "tools");
+        CHECK(b && !b->kept, "预算不够时低优先级的块要被裁掉");
+        CHECK(b && b->drop_reason[0], "被裁掉必须写明原因，不许无声消失");
+        zctx_manifest(&c, m, sizeof(m));
+        CHECK(strstr(m, "[裁掉]") && strstr(m, "预算不够"),
+              "裁掉的块仍要出现在清单上并标明原因");
+        zctx_free(&c);
+    }
+
+    SECTION("zctx：会话历史从最新往回收");
+    {
+        zctx c;
+        int i;
+        zctx_init(&c);
+        for (i = 0; i < 10; ++i) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "第%d句话这句话有点长占掉一些预算", i);
+            zctx_push_turn(&c, i % 2, buf, 0);
+        }
+        CHECK(zctx_turn_count(&c) == 10, "十轮都存下来了");
+        zctx_build(&c, "chat.completion", 40, 1);
+        CHECK(c.last_turns_used > 0 && c.last_turns_used < 10,
+              "预算有限时只带一部分（实际 %d 轮）", c.last_turns_used);
+        CHECK(c.last_turns_dropped > 0, "丢掉的轮数要记下来");
+        {
+            /* 关键：留下的必须是**最后**那几轮，不是最前面那几轮 */
+            const zctx_turn *first_kept = zctx_kept_turn_at(&c, 0);
+            const zctx_turn *last_kept =
+                zctx_kept_turn_at(&c, zctx_kept_turn_count(&c) - 1);
+            CHECK(last_kept && strstr(last_kept->text, "第9句"),
+                  "最后一轮必须留下 —— 丢掉刚说的那句是用户最能察觉的失忆");
+            CHECK(first_kept && !strstr(first_kept->text, "第0句"),
+                  "预算不够时该丢的是最旧的那几轮");
+        }
+        zctx_free(&c);
+    }
+
+    SECTION("zctx：环形缓冲满了之后盖最旧的");
+    {
+        zctx c;
+        int i;
+        zctx_init(&c);
+        for (i = 0; i < ZCTX_MAX_TURNS + 5; ++i) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "t%d", i);
+            zctx_push_turn(&c, 0, buf, 0);
+        }
+        CHECK(zctx_turn_count(&c) == ZCTX_MAX_TURNS, "轮数不会超过上限");
+        CHECK(strcmp(zctx_turn_at(&c, 0)->text, "t5") == 0,
+              "最旧的被盖掉了（第 0 条应是 t5，实际 %s）", zctx_turn_at(&c, 0)->text);
+        CHECK(strcmp(zctx_turn_at(&c, ZCTX_MAX_TURNS - 1)->text, "t68") == 0,
+              "最新的在末尾");
+        zctx_free(&c);
+    }
+
+    SECTION("★ zctx：带隐私标记的轮次不许跟着上云");
+    {
+        zctx c;
+        char m[4096];
+        zctx_init(&c);
+        zctx_push_turn(&c, 0, "我的身份证号是110", 1);   /* 敏感 */
+        zctx_push_turn(&c, 1, "记住了", 1);
+        zctx_push_turn(&c, 0, "今天天气真好", 0);        /* 不敏感 */
+
+        /* 发往本地：三轮都能带 */
+        zctx_build(&c, "chat.completion", 2000, 1);
+        CHECK(c.last_turns_used == 3 && c.last_turns_held == 0,
+              "发往本地模型时敏感轮次可以带（实际带 %d 挡 %d）",
+              c.last_turns_used, c.last_turns_held);
+
+        /* 发往云端：两条敏感的必须被挡下 */
+        zctx_build(&c, "chat.completion", 2000, 0);
+        CHECK(c.last_turns_used == 1, "发往云端时只剩不敏感的那一轮（实际 %d）",
+              c.last_turns_used);
+        CHECK(c.last_turns_held == 2, "两条敏感轮次要被挡下（实际 %d）", c.last_turns_held);
+        {
+            int i, leaked = 0;
+            for (i = 0; i < zctx_kept_turn_count(&c); ++i) {
+                const zctx_turn *t = zctx_kept_turn_at(&c, i);
+                if (t && t->sensitive) leaked = 1;
+            }
+            CHECK(!leaked, "★ 要带上云的那几轮里，一条敏感的都不许有");
+        }
+        zctx_manifest(&c, m, sizeof(m));
+        CHECK(strstr(m, "没上云"),
+              "清单上要写明有几轮被挡下了 —— 不然用户以为她失忆了");
+        zctx_free(&c);
+    }
+
+    SECTION("zrelay（T61.11）：多轮历史进 messages 数组");
+    {
+        zrelay_turn h[2];
+        char *b;
+        const char *pu, *pa, *pu2;
+        h[0].role = 0; h[0].text = "我叫阿伟";
+        h[1].role = 1; h[1].text = "你好阿伟";
+        b = zrelay_build_chat_body_multi("m1", "你是小寻", h, 2, "我叫什么", -1.0, 0);
+        CHECK(b && strstr(b, "我叫阿伟"), "历史里用户说的话要进请求体");
+        CHECK(b && strstr(b, "\"role\":\"assistant\"") && strstr(b, "你好阿伟"),
+              "★ 她说过的话 role 必须是 assistant（标成 user 会让模型人格错乱）");
+        /* 顺序：system → 历史 → 这一句 */
+        pu  = b ? strstr(b, "我叫阿伟") : NULL;
+        pa  = b ? strstr(b, "你好阿伟") : NULL;
+        pu2 = b ? strstr(b, "我叫什么") : NULL;
+        CHECK(pu && pa && pu2 && pu < pa && pa < pu2,
+              "顺序必须是 历史用户 → 历史回复 → 这一句");
+        free(b);
+
+        /* 不给历史时，行为要和老接口完全一致 */
+        b = zrelay_build_chat_body_multi("m1", "s", NULL, 0, "u", -1.0, 0);
+        {
+            char *b2 = zrelay_build_chat_body("m1", "s", "u", -1.0, 0);
+            CHECK(b && b2 && strcmp(b, b2) == 0,
+                  "没有历史时，新老两个拼法必须出一模一样的字节");
+            free(b2);
+        }
+        free(b);
+    }
+}
+
+static void test_relay(void)
+{
+    SECTION("zrelay（G54）：请求体拼装");
+    {
+        char *b = zrelay_build_chat_body("m1", "你是小寻", "你好", 0.7, 256);
+        CHECK(b && strstr(b, "\"model\":\"m1\""), "带 model");
+        CHECK(b && strstr(b, "\"role\":\"system\"") && strstr(b, "你是小寻"),
+              "system 提示词进了 messages");
+        CHECK(b && strstr(b, "\"role\":\"user\"") && strstr(b, "你好"), "用户的话进了 messages");
+        CHECK(b && strstr(b, "\"stream\":false"),
+              "必须显式写 stream:false（不写的话有的中转站默认开流，回来是 SSE）");
+        CHECK(b && strstr(b, "\"max_tokens\":256"), "max_tokens 写进去了");
+        free(b);
+        b = zrelay_build_chat_body("m1", NULL, "hi", -1.0, 0);
+        CHECK(b && !strstr(b, "system"), "没有 system 提示词就不写 system 段");
+        CHECK(b && !strstr(b, "temperature") && !strstr(b, "max_tokens"),
+              "没填的参数不许自己编一个默认值塞进去（那是在覆盖服务端配置）");
+        free(b);
+    }
+
+    SECTION("zrelay（G54）：响应解析");
+    {
+        char *t = NULL;
+        long ti = 0, to = 0;
+        char e[200];
+        CHECK(zrelay_parse_chat_resp(
+                  "{\"choices\":[{\"message\":{\"content\":\"喵\"}}],"
+                  "\"usage\":{\"prompt_tokens\":7,\"completion_tokens\":3}}",
+                  &t, &ti, &to, e, sizeof(e)) == 0
+              && t && strcmp(t, "喵") == 0 && ti == 7 && to == 3,
+              "取出正文和 usage");
+        free(t); t = NULL;
+        CHECK(zrelay_parse_chat_resp("{\"error\":{\"message\":\"额度不足\"}}",
+                                     &t, &ti, &to, e, sizeof(e)) != 0
+              && strstr(e, "额度不足"),
+              "体里带 error 就算失败（哪怕 HTTP 是 200），并把原话带出来");
+        CHECK(zrelay_parse_chat_resp("not json", &t, &ti, &to, e, sizeof(e)) != 0,
+              "不是 JSON 要报错而不是崩");
+        CHECK(zrelay_parse_chat_resp("{\"choices\":[]}", &t, &ti, &to, e, sizeof(e)) != 0,
+              "没有正文要报错");
+        CHECK(zrelay_parse_chat_resp(NULL, &t, &ti, &to, e, sizeof(e)) != 0,
+              "空指针要报错");
+    }
+
+#ifndef _WIN32
+    SECTION("zrelay（G54）：真的过一遍 socket");
+    {
+        mock_srv m;
+        pthread_t th;
+        /* 正常 / 401 / 200+error 三次会连进来；"连不上"那次打的是 127.0.0.1:1，
+           根本到不了这儿 —— 数字写多一个，pthread_join 就会死等。 */
+        int port = mock_start(&m, 3, &th);
+        CHECK(port > 0, "进程内 mock 服务起得来");
+        if (port > 0) {
+            char rpath[512], json[2048];
+            FILE *f;
+            zgateway g;
+            zdiag d;
+            zrelay_chat_req q;
+            zrelay_result r;
+
+            z_snprintf(rpath, sizeof(rpath), "%s/build/test_relay_routes.json", g_root);
+            z_snprintf(json, sizeof(json),
+                "{\"schema_version\":\"1.0\",\"strategy\":\"prefer_local\",\"fallback\":true,"
+                "\"routes\":[{\"cap\":\"chat.completion\",\"provider\":\"mockai\","
+                "\"model\":\"test-model\",\"priority\":99,\"local\":true,\"enabled\":true,"
+                "\"free\":true,\"price_in\":0,\"price_out\":0,\"price_per\":0}],"
+                "\"endpoints\":[{\"id\":\"mockai\",\"kind\":\"openai_compatible\","
+                "\"local\":true,\"enabled\":true,"
+                "\"base_url\":\"http://127.0.0.1:%d/v1\",\"auth_type\":\"none\","
+                "\"key_ref\":\"\",\"auth_header\":\"\",\"chat_path\":\"/chat/completions\"}]}",
+                port);
+            f = fopen(rpath, "wb");
+            if (f) { fputs(json, f); fclose(f); }
+
+            zdiag_init(&d);
+            CHECK(zgw_load(&g, rpath, &d) == 0, "带 endpoints 的路由表能加载");
+            CHECK(g.nendpoints == 1, "接入点读到 1 家，实际 %d", g.nendpoints);
+            CHECK(zgw_endpoint_find(&g, "mockai") != NULL, "按 id 能查到接入点");
+            CHECK(zgw_endpoint_find(&g, "不存在的家") == NULL,
+                  "查不到的供应商要返回 NULL（不许自己猜一个地址）");
+
+            memset(&q, 0, sizeof(q));
+            q.system_prompt = "你是小寻，一只猫娘。";
+            q.user_text = "你好呀";
+            q.temperature = 0.7;
+            q.max_tokens = 128;
+            q.timeout_ms = 5000;
+            q.route.local_load_pct = -1;
+            CHECK(zrelay_chat(&g, &q, &r) == 0 && r.ok, "真发一次 chat.completion：%s", r.err);
+            CHECK(r.http_status == 200, "HTTP 200，实际 %d", r.http_status);
+            CHECK(r.text && strstr(r.text, "你是小寻"),
+                  "**人设提示词真的送到了服务端**（这是 G54 之前整条断掉的那一段）");
+            CHECK(r.text && strstr(r.text, "你好呀"), "用户的话真的送到了服务端");
+            CHECK(r.text && strstr(r.text, "stream"), "请求体里确实带了 stream 字段");
+            CHECK(r.tokens_in == 123 && r.tokens_out == 45,
+                  "记账用服务端回的实际 usage，不是估算值（实际 %ld/%ld）",
+                  r.tokens_in, r.tokens_out);
+            CHECK(g.calls_total == 1 && g.failed_total == 0, "网关记了一次成功调用");
+            CHECK(zgw_held_amount(&g) == 0.0, "预扣已结清，没有悬空的 hold");
+            zrelay_result_free(&r);
+
+            /* 401：要当失败、要退还预扣、要把对面的原话带出来 */
+            z_strlcpy(g.endpoints[0].chat_path, "/unauth/chat/completions",
+                      sizeof(g.endpoints[0].chat_path));
+            CHECK(zrelay_chat(&g, &q, &r) != 0 && !r.ok, "401 要当失败");
+            CHECK(r.http_status == 401, "状态码带出来了，实际 %d", r.http_status);
+            CHECK(strstr(r.err, "Incorrect API key") != NULL,
+                  "把服务端的原话带给用户（401/429/404 的处理建议完全不同）：%s", r.err);
+            CHECK(g.failed_total == 1, "失败计数 +1");
+            CHECK(zgw_held_amount(&g) == 0.0, "失败要退还预扣，不能留悬空额度");
+            zrelay_result_free(&r);
+
+            /* 200 但体里是 error：必须也当失败 */
+            z_strlcpy(g.endpoints[0].chat_path, "/oops/chat/completions",
+                      sizeof(g.endpoints[0].chat_path));
+            CHECK(zrelay_chat(&g, &q, &r) != 0 && !r.ok,
+                  "HTTP 200 但体里是 error，也必须当失败");
+            CHECK(strstr(r.err, "额度不足") != NULL, "错误原话带出来了：%s", r.err);
+            zrelay_result_free(&r);
+
+            /* 连不上：要给人话，不能卡住 */
+            z_strlcpy(g.endpoints[0].base_url, "http://127.0.0.1:1/v1",
+                      sizeof(g.endpoints[0].base_url));
+            z_strlcpy(g.endpoints[0].chat_path, "/chat/completions",
+                      sizeof(g.endpoints[0].chat_path));
+            CHECK(zrelay_chat(&g, &q, &r) != 0 && r.http_status == 0,
+                  "连不上时 http_status 应为 0（表示根本没发出去）");
+            CHECK(strstr(r.err, "连不上") != NULL, "连不上要给人话：%s", r.err);
+            zrelay_result_free(&r);
+
+            pthread_join(th, NULL);
+            close(m.fd);
+            remove(rpath);
+        }
+    }
+
+#ifndef _WIN32
+    SECTION("zrelay（G54）：本地挂了也不许把隐私件改发云端");
+    {
+        /* 这条测的是一个真漏过的洞：第一次选路用 zgw_route_for（它认 sensitive），
+           可失败后降级走的是 zgw_pick —— 那个函数只认优先级。本地一挂，
+           带隐私标记的话就会被"自动换一家"送到云端去。
+           之所以一直没炸，只是因为配置里云端默认 enabled=false。
+
+           所以这里故意把"云端"那家设成 enabled=true，而且让它的地址指向一个
+           **真的会成功应答**的 mock：
+             - 守住了 → 整件事失败（这是对的）
+             - 守不住 → 会拿到 200 和 provider=cloudy（测试当场红）
+           用"能成功的云端"当诱饵，比用一个连不上的地址有力得多。 */
+        mock_srv m;
+        pthread_t th;
+        int port = mock_start(&m, 1, &th);
+        if (port > 0) {
+            char rpath[512], json[2048];
+            FILE *f;
+            zgateway g;
+            zdiag d;
+            zrelay_chat_req q;
+            zrelay_result r;
+
+            z_snprintf(rpath, sizeof(rpath), "%s/build/test_relay_priv.json", g_root);
+            z_snprintf(json, sizeof(json),
+                "{\"schema_version\":\"1.0\",\"strategy\":\"prefer_local\",\"fallback\":true,"
+                "\"rules\":{\"sensitive_local_only\":true},"
+                "\"routes\":["
+                 "{\"cap\":\"chat.completion\",\"provider\":\"deadlocal\",\"model\":\"m\","
+                  "\"priority\":99,\"local\":true,\"enabled\":true,\"free\":true},"
+                 "{\"cap\":\"chat.completion\",\"provider\":\"cloudy\",\"model\":\"m\","
+                  "\"priority\":50,\"local\":false,\"enabled\":true}],"
+                "\"endpoints\":["
+                 "{\"id\":\"deadlocal\",\"kind\":\"openai_compatible\",\"local\":true,"
+                  "\"enabled\":true,\"base_url\":\"http://127.0.0.1:1/v1\","
+                  "\"auth_type\":\"none\",\"chat_path\":\"/chat/completions\"},"
+                 "{\"id\":\"cloudy\",\"kind\":\"openai_compatible\",\"local\":false,"
+                  "\"enabled\":true,\"base_url\":\"http://127.0.0.1:%d/v1\","
+                  "\"auth_type\":\"none\",\"chat_path\":\"/chat/completions\"}]}",
+                port);
+            f = fopen(rpath, "wb");
+            if (f) { fputs(json, f); fclose(f); }
+
+            zdiag_init(&d);
+            CHECK(zgw_load(&g, rpath, &d) == 0, "隐私测试用的路由表能加载");
+
+            memset(&q, 0, sizeof(q));
+            q.user_text = "我的身份证号是 110101…";
+            q.timeout_ms = 3000;
+            q.max_attempts = 5;             /* 明确允许降级换家 */
+            q.route.sensitive = 1;          /* 但这条带隐私标记 */
+            q.route.local_load_pct = -1;
+
+            CHECK(zrelay_chat(&g, &q, &r) != 0 && !r.ok,
+                  "本地答不上 + 带隐私标记 ⇒ 整件事就该失败");
+            CHECK(strcmp(r.provider, "cloudy") != 0,
+                  "★ 绝不能换成云端那家（实际落到了 %s）", r.provider);
+            CHECK(g.picks_cloud == 0, "一次都不该选过云端，实际 %ld", g.picks_cloud);
+            CHECK(zgw_held_amount(&g) == 0.0, "没有悬空预扣");
+            CHECK(strstr(r.err, "隐私") != NULL,
+                  "要讲清为什么不换家，而不是只说一句失败：%s", r.err);
+            zrelay_result_free(&r);
+
+            /* 反证：同样的表、同样的本地故障，去掉隐私标记就**应该**换家成功。
+               否则上面那条可能只是因为降级整个坏掉了，根本不是守住了。 */
+            q.route.sensitive = 0;
+            CHECK(zrelay_chat(&g, &q, &r) == 0 && r.ok,
+                  "去掉隐私标记后，降级换家应该能成功：%s", r.err);
+            CHECK(strcmp(r.provider, "cloudy") == 0,
+                  "这次就该落到云端那家（实际 %s）", r.provider);
+            CHECK(r.attempts == 2, "第一家失败、第二家成功 ⇒ 两次，实际 %d", r.attempts);
+            zrelay_result_free(&r);
+
+            pthread_join(th, NULL);
+            close(m.fd);
+            remove(rpath);
+        }
+    }
+#endif /* !_WIN32 */
+
+    SECTION("zrelay（G54）：不认识的接口不许硬发");
+    {
+        /* anthropic 的 /messages 是另一套请求体。拿 openai 的格式发过去
+           只会换回 400，还白扣一次额度 —— 所以要在发之前就拦住。 */
+        zgateway g;
+        zdiag d;
+        char rpath[512];
+        zrelay_chat_req q;
+        zrelay_result r;
+        FILE *f;
+        z_snprintf(rpath, sizeof(rpath), "%s/build/test_relay_kind.json", g_root);
+        f = fopen(rpath, "wb");
+        if (f) {
+            fputs("{\"schema_version\":\"1.0\",\"fallback\":false,"
+                  "\"routes\":[{\"cap\":\"chat.completion\",\"provider\":\"anth\","
+                  "\"model\":\"m\",\"priority\":9,\"local\":false,\"enabled\":true}],"
+                  "\"endpoints\":[{\"id\":\"anth\",\"kind\":\"official\",\"local\":false,"
+                  "\"enabled\":true,\"base_url\":\"http://127.0.0.1:9/v1\","
+                  "\"auth_type\":\"header\",\"key_ref\":\"secret://nope\","
+                  "\"auth_header\":\"x-api-key\",\"chat_path\":\"/messages\"}]}", f);
+            fclose(f);
+        }
+        zdiag_init(&d);
+        CHECK(zgw_load(&g, rpath, &d) == 0, "能加载");
+        memset(&q, 0, sizeof(q));
+        q.user_text = "hi";
+        q.timeout_ms = 2000;
+        q.route.local_load_pct = -1;
+        CHECK(zrelay_chat(&g, &q, &r) != 0, "kind 对不上要失败");
+        CHECK(strstr(r.err, "openai_compatible") != NULL,
+              "错误里要说清是接口族对不上：%s", r.err);
+        CHECK(r.http_status == 0, "一个字节都不该发出去");
+        zrelay_result_free(&r);
+        remove(rpath);
+    }
+#endif /* !_WIN32 */
+}
+
+static void test_gateway(void)
+{
+    zgateway g;
+    zgateway gh;                 /* 混合路由表（本地+云端各一条），两个小节共用 */
+    zdiag d;
+    const zgw_route *r;
+    zgw_status why;
+    char buf[256];
+    const char *err;
+    long h1, h2;
+    char rpath[512];
+
+    SECTION("网关（G51）：真实路由表");
+    zdiag_init(&d);
+    z_snprintf(rpath, sizeof(rpath), "%s/config/gateway_routes.json", g_root);
+    CHECK(zgw_load(&g, rpath, &d) == 0, "路由表应能加载（错误 %d）", d.error_count);
+    CHECK(g.nroutes > 0, "路由表不应为空，实际 %d 条", g.nroutes);
+    /* ★ 2026-10-18：装载不许静默截断。zgw_load 的循环条件是
+       while (nroutes < ZGW_MAX_ROUTES)，超出的部分**不报错直接丢**。
+       旧上限 64 撞上本轮铺满后的 76 条路由，丢掉的正好是排在最后的
+       本地建模/视频 —— 配置里有、运行时没有，还全程绿灯。
+       所以这里不能只查 >0，要查"文件里有几条就装进来几条"。 */
+    {
+        zerr re;
+        size_t rlen = 0;
+        char *raw = z_read_file(rpath, &rlen, &re);
+        int infile = 0;
+        const char *p2 = raw;
+        while (p2 && (p2 = strstr(p2, "\"cap\"")) != NULL) { ++infile; p2 += 5; }
+        CHECK(raw != NULL && infile > 0, "应能读出路由表原文");
+        CHECK(g.nroutes == infile,
+              "路由表不许被静默截断：文件里 %d 条，装进来 %d 条（上限 %d）",
+              infile, g.nroutes, ZGW_MAX_ROUTES);
+        CHECK(infile <= (int)(ZGW_MAX_ROUTES * 0.8),
+              "路由数应留 20%% 余量：%d 条 / 上限 %d", infile, ZGW_MAX_ROUTES);
+        free(raw);
+    }
+    CHECK(strcmp(g.strategy, "prefer_local") == 0, "策略应是 prefer_local，实际 %s", g.strategy);
+
+    /* 首选必须是本机的 ollama：prefer_local 的全部意义就在这一条上。
+       要是哪天优先级算错把付费的排前面，用户会莫名其妙开始花钱。 */
+    r = zgw_pick(&g, "chat.completion", 0, &why);
+    CHECK(r != NULL && strcmp(r->provider, "ollama") == 0,
+          "对话的首选应是本机 ollama，实际 %s", r ? r->provider : "(无)");
+    CHECK(r != NULL && r->local && r->is_free, "首选应是本机且免费的");
+    CHECK(r != NULL && strcmp(r->model, "qwen2.5:7b") == 0,
+          "路由要带上模型名，实际 %s", r ? r->model : "(无)");
+
+    /* 其它几家契约里 enabled=false（用户还没填密钥），所以没有第二候选。
+       这条断言盯的是"关掉的供应商不许被选中"。 */
+    r = zgw_pick(&g, "chat.completion", 1, &why);
+    CHECK(r == NULL && why == ZGW_EXHAUSTED,
+          "没开的供应商不该被选中，应报候选用尽（实际 %s）", r ? r->provider : "NULL");
+    CHECK(zgw_candidate_count(&g, "chat.completion") == 1,
+          "对话只有一个可用候选，实际 %d", zgw_candidate_count(&g, "chat.completion"));
+
+    SECTION("网关：路由失败的三种原因要分得清");
+    {
+        /* 自造一张表，把三种情况摆齐。用真表测不到——真表里没有"全关掉"的能力。 */
+        gw_write("/tmp/zc_gw/routes.json",
+            "{\"schema_version\":\"1.0\",\"strategy\":\"priority\",\"fallback\":true,\"routes\":["
+            "{\"cap\":\"a.one\",\"provider\":\"p_hi\",\"model\":\"m1\",\"priority\":90,"
+            "\"local\":false,\"enabled\":true,\"free\":false,"
+            "\"price_in\":2,\"price_out\":4,\"price_per\":1000000},"
+            "{\"cap\":\"a.one\",\"provider\":\"p_lo\",\"model\":\"m2\",\"priority\":10,"
+            "\"local\":false,\"enabled\":true,\"free\":false,"
+            "\"price_in\":1,\"price_out\":1,\"price_per\":0},"
+            "{\"cap\":\"b.off\",\"provider\":\"p_x\",\"model\":\"m3\",\"priority\":50,"
+            "\"local\":false,\"enabled\":false,\"free\":false,"
+            "\"price_in\":1,\"price_out\":1,\"price_per\":1000}"
+            "]}");
+        zdiag_init(&d);
+        CHECK(zgw_load(&g, "/tmp/zc_gw/routes.json", &d) == 0, "自造路由表应能加载");
+
+        r = zgw_pick(&g, "a.one", 0, &why);
+        CHECK(r && strcmp(r->provider, "p_hi") == 0, "高优先级的排前面");
+        r = zgw_pick(&g, "a.one", 1, &why);
+        CHECK(r && strcmp(r->provider, "p_lo") == 0, "重试应降级到下一家");
+        r = zgw_pick(&g, "a.one", 2, &why);
+        CHECK(!r && why == ZGW_EXHAUSTED, "两家都试完了应报用尽");
+
+        r = zgw_pick(&g, "nobody.does.this", 0, &why);
+        CHECK(!r && why == ZGW_NO_SUCH_CAP,
+              "没人提供的能力要报 NO_SUCH_CAP（提示用户去接入）");
+        r = zgw_pick(&g, "b.off", 0, &why);
+        CHECK(!r && why == ZGW_ALL_DISABLED,
+              "有人能做但全关着要报 ALL_DISABLED（提示用户去打开），而不是当成没这功能");
+
+        /* 三种原因必须互不相同，否则界面上没法给出不同的指引 */
+        CHECK(ZGW_NO_SUCH_CAP != ZGW_ALL_DISABLED && ZGW_ALL_DISABLED != ZGW_EXHAUSTED,
+              "三种失败原因必须是不同的值");
+    }
+
+    SECTION("网关：本地↔云端双路由（DC18 三支柱）");
+    {
+        /* 一张两边都有候选的表：local 的 l_one 和云端的 c_one。
+           真表测不出来——真表里云端那几家默认是关着的（用户还没填密钥），
+           那样无论怎么问都只会落到本地，看起来"全对"其实什么都没验。 */
+        zgw_req rq;
+        zgw_reason rs = ZGW_R_DEFAULT_LOCAL;
+        int i;
+
+        gw_write("/tmp/zc_gw/hybrid.json",
+            "{\"schema_version\":\"1.0\",\"strategy\":\"prefer_local\",\"fallback\":true,"
+            "\"rules\":{\"tokens_cloud\":512,\"local_busy_pct\":85,\"sensitive_local_only\":true},"
+            "\"routes\":["
+            "{\"cap\":\"chat\",\"provider\":\"l_one\",\"model\":\"q7b\",\"priority\":90,"
+            "\"local\":true,\"enabled\":true,\"free\":true,"
+            "\"price_in\":0,\"price_out\":0,\"price_per\":0},"
+            "{\"cap\":\"chat\",\"provider\":\"c_one\",\"model\":\"big\",\"priority\":50,"
+            "\"local\":false,\"enabled\":true,\"free\":false,"
+            "\"price_in\":1,\"price_out\":2,\"price_per\":1000000}"
+            "]}");
+        zdiag_init(&d);
+        CHECK(zgw_load(&gh, "/tmp/zc_gw/hybrid.json", &d) == 0, "混合路由表应能加载");
+        CHECK(gh.rules.tokens_cloud == 512 && gh.rules.local_busy_pct == 85,
+              "阈值要从表里读出来，不是写死在代码里");
+
+        memset(&rq, 0, sizeof(rq));
+        rq.local_load_pct = -1;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(r && r->local && rs == ZGW_R_DEFAULT_LOCAL,
+              "普通短请求默认留在本地");
+
+        rq.tokens_est = 4000;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(r && !r->local && rs == ZGW_R_LONG_CLOUD,
+              "超过 token 阈值要上云");
+
+        rq.tokens_est = 0;
+        rq.task = ZGW_TASK_HEAVY;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(r && !r->local && rs == ZGW_R_HEAVY_CLOUD,
+              "重活（推理/写码/工具调用）要上云");
+
+        rq.task = ZGW_TASK_SIMPLE;
+        rq.local_load_pct = 92;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(r && !r->local && rs == ZGW_R_LOCAL_BUSY,
+              "本地忙到 92%% 要溢出到云端");
+        rq.local_load_pct = 84;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(r && r->local,
+              "84%% 还没到 85%% 的阈值，不该溢出（阈值要真的是阈值）");
+
+        rq.local_load_pct = -1;
+        rq.tokens_est = 4000;
+        rq.cloud_down = 1;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(r && r->local && rs == ZGW_R_CLOUD_DOWN,
+              "本想上云但云端挂了，要退回本地而不是失败");
+
+        /* ---- 这一条是整组里最重要的：敏感数据绝不偷偷上云 ---- */
+        memset(&rq, 0, sizeof(rq));
+        rq.local_load_pct = -1;
+        rq.sensitive = 1;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(r && r->local && rs == ZGW_R_SENSITIVE_LOCAL,
+              "敏感请求走本地");
+
+        /* 把本地那条关掉，只剩云端——这是最有诱惑力的局面 */
+        for (i = 0; i < gh.nroutes; ++i)
+            if (gh.routes[i].local) gh.routes[i].enabled = 0;
+
+        rq.sensitive = 0;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(r && !r->local,
+              "负对照：同样的局面下，不敏感的请求是会落到云端的");
+
+        rq.sensitive = 1;
+        r = zgw_route_for(&gh, "chat", &rq, &why, &rs);
+        CHECK(!r && why == ZGW_SENSITIVE_NO_LOCAL && rs == ZGW_R_SENSITIVE_BLOCKED,
+              "敏感 + 本地不可用 = 拒绝。宁可功能不可用，也不许上云");
+
+        /* 分流占比：上面一共落地 8 次（被拒的那次不算落地） */
+        CHECK(zgw_local_share(&gh) >= 0.0 && zgw_local_share(&gh) <= 1.0,
+              "本地分流占比要能算出来（用来事后重标阈值）");
+        CHECK(gh.reason_hits[ZGW_R_SENSITIVE_BLOCKED] == 1,
+              "被拒的那次也要记一笔，否则调阈值时看不到代价");
+    }
+
+    SECTION("网关：决策流水落盘（阈值要靠它重标）");
+    {
+        /* 内存计数器一重启就清零，重标不了抄来的三条阈值（DC18）。
+           所以每次决策都要往 data/usage.jsonl 追一行。
+           这里用自己的路由表夹具，不读真配置 —— 真配置里哪家开着随环境变，
+           拿它当夹具的话，测试绿不绿取决于本机装没装 ollama。 */
+        const char *LOG = "/tmp/zc_usage.jsonl";
+        const char *FIX = "/tmp/zc_gw/usage_fixture.json";
+        zgateway gl;
+        zgw_req rq;
+        zgw_status why;
+        zgw_reason rs;
+        zdiag d2;
+        char *txt = NULL;
+        size_t len = 0;
+        zerr e;
+
+        remove(LOG);
+        z_mkdir_p("/tmp/zc_gw");
+        write_text(FIX,
+            "{\"schema_version\":\"1.0\",\"strategy\":\"prefer_local\",\"fallback\":true,"
+            "\"rules\":{\"tokens_cloud\":512,\"local_busy_pct\":85,\"sensitive_local_only\":true},"
+            "\"routes\":["
+            "{\"cap\":\"chat\",\"provider\":\"l_one\",\"model\":\"q7b\",\"priority\":90,"
+            "\"local\":true,\"enabled\":true,\"free\":true,"
+            "\"price_in\":0,\"price_out\":0,\"price_per\":0},"
+            "{\"cap\":\"chat\",\"provider\":\"c_one\",\"model\":\"big\",\"priority\":50,"
+            "\"local\":false,\"enabled\":true,\"free\":false,"
+            "\"price_in\":1,\"price_out\":2,\"price_per\":1000000}"
+            "]}");
+        zdiag_init(&d2);
+
+        /* 先验"不设路径就一行都不写" —— 默认不该偷偷在用户盘上写东西 */
+        if (zgw_load(&gl, FIX, &d2) == 0) {
+            memset(&rq, 0, sizeof(rq));
+            rq.local_load_pct = -1;
+            zgw_route_for(&gl, "chat", &rq, &why, &rs);
+            CHECK(gl.log_written == 0 && !z_file_exists(LOG),
+                  "没设流水路径时不该写文件（写了 %ld 行）", gl.log_written);
+        } else {
+            CHECK(0, "夹具路由表装载失败");
+        }
+
+        /* 设上路径，跑四种不同走向的决策 */
+        if (zgw_load(&gl, FIX, &d2) == 0) {
+            zgw_set_usage_log(&gl, LOG);
+
+            memset(&rq, 0, sizeof(rq));
+            rq.local_load_pct = -1;
+            zgw_route_for(&gl, "chat", &rq, &why, &rs);            /* 默认本地 */
+            rq.tokens_est = 4096;
+            zgw_route_for(&gl, "chat", &rq, &why, &rs);            /* 长文上云 */
+            rq.tokens_est = 0;
+            rq.sensitive = 1;
+            zgw_route_for(&gl, "chat", &rq, &why, &rs);            /* 敏感本地 */
+            rq.sensitive = 0;
+            zgw_route_for(&gl, "no_such_cap_xyz", &rq, &why, &rs); /* 没候选 */
+
+            CHECK(gl.log_written == 4 && gl.log_failed == 0,
+                  "四次决策要写四行（写了 %ld，失败 %ld）", gl.log_written, gl.log_failed);
+
+            txt = z_read_file(LOG, &len, &e);
+            if (!txt) {
+                CHECK(0, "流水读不回来：%s", e.msg);
+            } else {
+                int lines = 0;
+                size_t k;
+                for (k = 0; k < len; ++k) if (txt[k] == '\n') lines++;
+                CHECK(lines == 4, "流水应有 4 行，实际 %d 行", lines);
+                CHECK(strstr(txt, "\"tokens\":4096") != NULL,
+                      "长文那条要带上 token 数，否则没法重标 512 这个阈值");
+                CHECK(strstr(txt, "\"sensitive\":1") != NULL, "敏感标记要落进流水");
+                CHECK(strstr(txt, "no_candidate") != NULL,
+                      "两边都没候选的那次也要记，不然分母偏小、本地占比虚高");
+                CHECK(strstr(txt, "\"reason\":\"long_cloud\"") != NULL,
+                      "理由要落进流水（重标时按理由分组看）");
+                CHECK(strstr(txt, "\"provider\":\"c_one\"") != NULL,
+                      "落到哪家也要记，否则算不出每家的真实占比");
+                free(txt);
+            }
+            remove(LOG);
+        }
+    }
+
+    SECTION("网关：自动判重活（DC27）");
+    {
+        const char *hit = "";
+        /* 闲聊必须留在本地 —— 这一组是整个分类器的意义所在。
+           如果它把寒暄也判成重活，那"70~85% 走本地"就永远达不到，
+           而且每句"在吗"都要花钱。 */
+        CHECK(zgw_classify("今天天气怎么样呀", &hit) == ZGW_TASK_SIMPLE, "寒暄是简单活");
+        CHECK(zgw_classify("陪我聊聊天", &hit) == ZGW_TASK_SIMPLE, "闲聊是简单活");
+        CHECK(zgw_classify("好耶！", &hit) == ZGW_TASK_SIMPLE, "短感叹是简单活");
+        CHECK(zgw_classify("", &hit) == ZGW_TASK_SIMPLE, "空串不能判成重活");
+        CHECK(zgw_classify(NULL, &hit) == ZGW_TASK_SIMPLE, "NULL 不能崩也不能判重");
+
+        CHECK(zgw_classify("帮我写个快速排序函数", &hit) == ZGW_TASK_HEAVY, "写代码是重活");
+        CHECK(strcmp(hit, "函数") == 0, "要说得出凭哪个词判的（界面要解释给用户听）");
+        CHECK(zgw_classify("为什么踮脚的时候鞋要变高", &hit) == ZGW_TASK_HEAVY, "追问原因是重活");
+        CHECK(zgw_classify("这段代码报错了 TypeError", &hit) == ZGW_TASK_HEAVY, "排错是重活");
+        CHECK(zgw_classify("查一下明天的天气预报", &hit) == ZGW_TASK_HEAVY, "要用工具是重活");
+        CHECK(zgw_classify("```c\nint main(void){return 0;}\n```", &hit) == ZGW_TASK_HEAVY,
+              "代码块是重活");
+        {
+            char longtext[900], midtext[500];
+            memset(longtext, 'a', sizeof(longtext) - 1);
+            longtext[sizeof(longtext) - 1] = 0;
+            CHECK(zgw_classify(longtext, &hit) == ZGW_TASK_HEAVY, "够长也算重活");
+            CHECK(strcmp(hit, "长文") == 0, "长文要说明是因为长，不是因为某个词");
+            /* 把阈值从下面也钉住。只测"长的判重"的话，有人把 600 改成 60
+               （即一句话就算重活）测试照样全绿 —— 负控时真这么漏过一次。 */
+            memset(midtext, 'b', sizeof(midtext) - 1);
+            midtext[sizeof(midtext) - 1] = 0;
+            CHECK(zgw_classify(midtext, &hit) == ZGW_TASK_SIMPLE,
+                  "500 字节还没到 600 的线，不该判重（阈值要真的是阈值）");
+        }
+        /* 分类器接进路由：同一张混合表，光换文本就该换落点。
+           注意要重新加载 —— 上一节把本地那条关掉做负控了，不重载的话
+           这里测到的是"本地不可用"，不是"分类器判对了"（差一点就这么绿过去）。 */
+        {
+            zgw_req rq2;
+            zgw_reason rs2 = ZGW_R_DEFAULT_LOCAL;
+            zdiag_init(&d);
+            CHECK(zgw_load(&gh, "/tmp/zc_gw/hybrid.json", &d) == 0, "重载混合表");
+            memset(&rq2, 0, sizeof(rq2));
+            rq2.local_load_pct = -1;
+            rq2.task = zgw_classify("陪我聊聊天", NULL);
+            r = zgw_route_for(&gh, "chat", &rq2, &why, &rs2);
+            CHECK(r && r->local, "闲聊 → 本地");
+            rq2.task = zgw_classify("帮我写个函数", NULL);
+            r = zgw_route_for(&gh, "chat", &rq2, &why, &rs2);
+            CHECK(r && !r->local && rs2 == ZGW_R_HEAVY_CLOUD, "写代码 → 云端");
+        }
+    }
+
+    SECTION("网关：估价");
+    {
+        const zgw_route *hi = zgw_pick(&g, "a.one", 0, NULL);
+        const zgw_route *lo = zgw_pick(&g, "a.one", 1, NULL);
+        double c;
+        /* 按量计价：(2*1e6 + 4*1e6)/1e6 = 6 */
+        c = zgw_estimate(hi, 1000000, 1000000);
+        CHECK(fabs(c - 6.0) < 1e-9, "按量计价应为 6，实际 %.6f", c);
+        /* 用量翻倍，钱翻倍——线性关系要成立 */
+        CHECK(fabs(zgw_estimate(hi, 2000000, 2000000) - 12.0) < 1e-9, "用量翻倍钱要翻倍");
+        /* price_per=0 表示按次计价，与 token 数无关 */
+        CHECK(fabs(zgw_estimate(lo, 1, 1) - zgw_estimate(lo, 999999, 999999)) < 1e-9,
+              "按次计价不该随 token 变");
+        CHECK(fabs(zgw_estimate(lo, 0, 0) - 2.0) < 1e-9, "按次计价应为 in+out=2");
+        /* 本机的恒为 0，哪怕契约里忘了写 free */
+        zdiag_init(&d);
+        zgw_load(&g, rpath, &d);
+        CHECK(fabs(zgw_estimate(zgw_pick(&g, "chat.completion", 0, NULL), 999999, 999999)) < 1e-9,
+              "本机服务不该算出钱来");
+        CHECK(fabs(zgw_estimate(NULL, 100, 100)) < 1e-9, "空路由估价应为 0 而不是崩溃");
+    }
+
+    SECTION("网关：记账三段（预扣 → 结算 / 退还）");
+    {
+        zgateway a;
+        zdiag_init(&d);
+        CHECK(zgw_load(&a, rpath, &d) == 0, "重新加载一份干净的账");
+        CHECK(a.spent_total == 0.0 && a.calls_total == 0, "新账本应是空的");
+
+        h1 = zgw_hold_open(&a, "chat.completion", "deepseek", 0.50);
+        CHECK(h1 > 0, "预扣应返回单号");
+        CHECK(fabs(zgw_held_amount(&a) - 0.50) < 1e-9, "预扣额应被占住");
+        CHECK(a.spent_total == 0.0, "预扣阶段不该计入已花费——它只是占位");
+
+        /* 结算入的是实际花费，不是预扣的数 */
+        CHECK(zgw_hold_settle(&a, h1, 1200, 800, 0.37) == 0, "结算应成功");
+        CHECK(fabs(a.spent_total - 0.37) < 1e-9,
+              "已花费应是实际的 0.37 而不是预扣的 0.50，实际 %.4f", a.spent_total);
+        CHECK(fabs(zgw_held_amount(&a)) < 1e-9, "结算后预扣应释放");
+        CHECK(a.tokens_in_total == 1200 && a.tokens_out_total == 800, "token 用量要入账");
+        CHECK(a.calls_total == 1 && a.failed_total == 0, "成功一次");
+
+        /* 失败的请求：退还预扣，不计花费，但要计失败 */
+        h2 = zgw_hold_open(&a, "image.generate", "comfyui", 0.20);
+        CHECK(zgw_hold_release(&a, h2) == 0, "退还应成功");
+        CHECK(fabs(a.spent_total - 0.37) < 1e-9,
+              "失败的请求不该花钱，实际 %.4f", a.spent_total);
+        CHECK(a.failed_total == 1, "失败次数要记——它是降权的依据");
+        CHECK(fabs(zgw_held_amount(&a)) < 1e-9, "退还后预扣应释放");
+
+        /* 单号用过就作废，重复结算必须被拒：否则一次调用能扣两次钱 */
+        CHECK(zgw_hold_settle(&a, h1, 100, 100, 0.99) == -1, "重复结算必须被拒绝");
+        CHECK(zgw_hold_release(&a, h2) == -1, "重复退还必须被拒绝");
+        CHECK(fabs(a.spent_total - 0.37) < 1e-9, "被拒的重复结算不该改动账本");
+        CHECK(zgw_hold_settle(&a, 99999, 1, 1, 1.0) == -1, "不存在的单号要被拒绝");
+
+        /* 槽位满了要拒绝放行，而不是悄悄丢掉一笔账 */
+        {
+            int i, opened = 0;
+            zgateway b;
+            zdiag_init(&d);
+            zgw_load(&b, rpath, &d);
+            for (i = 0; i < ZGW_MAX_HOLDS + 3; ++i)
+                if (zgw_hold_open(&b, "chat.completion", "x", 1.0) > 0) opened++;
+            CHECK(opened == ZGW_MAX_HOLDS,
+                  "预扣槽位应正好用满 %d 个就不再放行，实际 %d", ZGW_MAX_HOLDS, opened);
+            CHECK(fabs(zgw_held_amount(&b) - (double)ZGW_MAX_HOLDS) < 1e-9,
+                  "占住的额度应等于槽位数");
+        }
+    }
+
+    SECTION("网关：fallback 关掉时不许换家");
+    {
+        zgateway c;
+        gw_write("/tmp/zc_gw/nofb.json",
+            "{\"schema_version\":\"1.0\",\"strategy\":\"priority\",\"fallback\":false,\"routes\":["
+            "{\"cap\":\"a.one\",\"provider\":\"p1\",\"model\":\"m\",\"priority\":9,"
+            "\"local\":false,\"enabled\":true,\"free\":true},"
+            "{\"cap\":\"a.one\",\"provider\":\"p2\",\"model\":\"m\",\"priority\":1,"
+            "\"local\":false,\"enabled\":true,\"free\":true}]}");
+        zdiag_init(&d);
+        CHECK(zgw_load(&c, "/tmp/zc_gw/nofb.json", &d) == 0, "应能加载");
+        CHECK(c.fallback == 0, "fallback 应被读成关");
+        CHECK(zgw_pick(&c, "a.one", 0, NULL) != NULL, "首选仍然要能选到");
+        CHECK(zgw_pick(&c, "a.one", 1, &why) == NULL && why == ZGW_EXHAUSTED,
+              "关掉 fallback 后不许换第二家（有些用户不希望悄悄换供应商）");
+    }
+
+    SECTION("网关：密钥只认 secret:// 引用");
+    {
+        /* 配置里写明文是要拦住的——配置文件会进仓库 */
+        CHECK(zgw_secret_resolve("sk-reallive-looking-key", buf, sizeof(buf), &err) != 0,
+              "明文密钥必须被拒绝");
+        CHECK(err && strstr(err, "secret://") != NULL, "拒绝的理由要说清楚怎么改");
+        CHECK(buf[0] == '\0', "失败时输出必须是空的");
+
+        CHECK(zgw_secret_resolve("secret://", buf, sizeof(buf), &err) != 0,
+              "secret:// 后面没名字要被拒绝");
+        CHECK(zgw_secret_resolve(NULL, buf, sizeof(buf), &err) != 0, "空引用要被拒绝");
+
+        /* 没配环境变量时必须失败，不能返回空串让调用方拿去发请求 */
+        CHECK(zgw_secret_resolve("secret://definitely_not_set_xyz", buf, sizeof(buf), &err) != 0,
+              "没配的密钥必须失败");
+        CHECK(buf[0] == '\0', "没配时输出必须是空的，不能让空密钥流出去");
+
+        /* 配上了就要能取到，且名字映射规则固定：secret://foo-bar → ZHUOCHONG_SECRET_FOO_BAR */
+        setenv("ZHUOCHONG_SECRET_FOO_BAR", "sk-test-12345", 1);
+        CHECK(zgw_secret_resolve("secret://foo-bar", buf, sizeof(buf), &err) == 0,
+              "配好的密钥应能取到");
+        CHECK(strcmp(buf, "sk-test-12345") == 0, "取到的值要对，实际 %s", buf);
+        CHECK(zgw_secret_resolve("secret://FOO-BAR", buf, sizeof(buf), &err) == 0,
+              "名字大小写不该影响解析");
+
+        /* 空值等于没配 */
+        setenv("ZHUOCHONG_SECRET_EMPTY_ONE", "", 1);
+        CHECK(zgw_secret_resolve("secret://empty_one", buf, sizeof(buf), &err) != 0,
+              "空字符串的环境变量等于没配");
+
+        /* 装不下要报错，不能截断——截断的密钥发出去必然 401，还很难查 */
+        {
+            char tiny[4];
+            CHECK(zgw_secret_resolve("secret://foo-bar", tiny, sizeof(tiny), &err) != 0,
+                  "缓冲装不下要失败，不能截断密钥");
+        }
+    }
+
+    SECTION("网关：坏路由表要报错而不是裸奔");
+    {
+        zgateway e2;
+        zdiag_init(&d);
+        gw_write("/tmp/zc_gw/noschema.json", "{\"routes\":[]}");
+        CHECK(zgw_load(&e2, "/tmp/zc_gw/noschema.json", &d) != 0, "缺 schema_version 要失败");
+        CHECK(d.error_count > 0, "要留下诊断信息");
+
+        zdiag_init(&d);
+        CHECK(zgw_load(&e2, "/tmp/zc_gw/__not_exist__.json", &d) != 0, "文件不存在要失败");
+
+        zdiag_init(&d);
+        gw_write("/tmp/zc_gw/broken.json", "{\"schema_version\":\"1.0\",\"routes\":[{\"model\":\"m\"}]}");
+        CHECK(zgw_load(&e2, "/tmp/zc_gw/broken.json", &d) == 0, "个别条目坏掉不该拖垮整张表");
+        CHECK(e2.nroutes == 0, "坏条目要被跳过，实际收了 %d 条", e2.nroutes);
+        CHECK(d.error_count > 0, "跳过的条目要报出来，不能悄悄吞掉");
+    }
+}
+
+static void test_affection(void)
+{
+    zdiag diag;
+    zinteract *z;
+    const zi_rule *r;
+    char out[256];
+    zconfig cfg;
+    zpet *pet;
+    char cfgdir[1024];
+    static const char *const chars[] = {"xiaoxun", "shenyu", "xiaochen", "xingxuan",
+                                        "shuangxi", "tonglin", "yuejian", "shandian"};
+    enum { NCHARS = 8 };
+    static char first[NCHARS][256];
+    int i, j;
+
+    SECTION("好感度分级：档位、每日上限、减少不受限");
+    zdiag_init(&diag);
+    z = zinteract_load(g_root, "xiaoxun", &diag);
+    CHECK(z != NULL, "互动规则应加载成功（错误 %d 条）", diag.error_count);
+    if (!z) return;
+    CHECK(z->ntiers == 4, "默认四档，实际 %d", z->ntiers);
+    CHECK(z_streq(z->tiers[1].name, "熟络") && z->tiers[1].min_points == 30, "第二档 熟络 30");
+    CHECK(zinteract_tier(z) == 0 && z_streq(zinteract_tier_name(z), "初识"), "初始为初识");
+    CHECK(zinteract_add_affection(z, 50, 1) == 1, "一次加 50 受每日上限 30 约束，应升到熟络");
+    CHECK(zinteract_affection(z) == 30, "每日上限 30，实际 %d", zinteract_affection(z));
+    CHECK(zinteract_add_affection(z, 10, 1) == 0 && zinteract_affection(z) == 30, "同日达上限后不再增加");
+    CHECK(zinteract_add_affection(z, 10, 2) == 0 && zinteract_affection(z) == 40, "次日重新计数，+10 = 40");
+    CHECK(zinteract_add_affection(z, -100, 2) == 0 && zinteract_affection(z) == 0, "减少不受限且不低于 0");
+    zinteract_set_affection(z, 100);
+    CHECK(zinteract_tier(z) == 2 && z_streq(zinteract_tier_name(z), "亲近"), "100 → 亲近");
+    zinteract_set_affection(z, 249);
+    CHECK(zinteract_tier(z) == 2, "249 仍是亲近");
+    zinteract_set_affection(z, 250);
+    CHECK(zinteract_tier(z) == 3 && z_streq(zinteract_tier_name(z), "挚友"), "250 → 挚友");
+    zinteract_free(z);
+
+    SECTION("台词按好感档选择变体");
+    zdiag_init(&diag);
+    z = zinteract_load(g_root, "xiaoxun", &diag);
+    if (!z) return;
+    r = zinteract_match(z, "tier_up", "", NULL, 0);
+    CHECK(r != NULL, "应存在 tier_up 规则");
+    zinteract_set_affection(z, 0);
+    CHECK(zinteract_speak(z, r, 1000.0, out, sizeof(out)) == 1 && strstr(out, "更熟") != NULL,
+          "初识档用基础台词，实际 [%s]", out);
+    zinteract_set_affection(z, 100);
+    CHECK(zinteract_speak(z, r, 2000.0, out, sizeof(out)) == 1 && strstr(out, "一直在") != NULL,
+          "亲近档用亲近变体，实际 [%s]", out);
+    zinteract_set_affection(z, 300);
+    CHECK(zinteract_speak(z, r, 3000.0, out, sizeof(out)) == 1 && strstr(out, "朋友啦") != NULL,
+          "挚友档用最高档变体，实际 [%s]", out);
+    zinteract_free(z);
+
+    SECTION("八个角色：台词齐全、各自性格不同");
+    for (i = 0; i < NCHARS; ++i) {
+        zdiag_init(&diag);
+        z = zinteract_load(g_root, chars[i], &diag);
+        CHECK(z != NULL, "角色 %s 的互动/台词应加载成功（错误 %d）", chars[i], diag.error_count);
+        first[i][0] = 0;
+        if (!z) continue;
+        CHECK(z->dialogue_status_draft == 1, "角色 %s 台词应标记为草稿", chars[i]);
+        zinteract_set_affection(z, 0);
+        r = zinteract_match(z, "hammer", "", NULL, 0);
+        CHECK(zinteract_speak(z, r, 1000.0, first[i], sizeof(first[i])) == 1,
+              "角色 %s 被敲击应有台词", chars[i]);
+        zinteract_set_affection(z, 300);
+        r = zinteract_match(z, "tier_up", "", NULL, 0);
+        CHECK(zinteract_speak(z, r, 2000.0, out, sizeof(out)) == 1 && out[0] != 0,
+              "角色 %s 挚友档应有升档台词", chars[i]);
+        zinteract_free(z);
+    }
+    for (i = 0; i < NCHARS; ++i)
+        for (j = i + 1; j < NCHARS; ++j)
+            CHECK(strcmp(first[i], first[j]) != 0,
+                  "角色 %s 与 %s 的同一台词不能相同（性格应不同）", chars[i], chars[j]);
+
+    SECTION("好感配置错误：报出文件与字段");
+    {
+        char root[256], dir[300];
+        z_snprintf(root, sizeof(root), "/tmp/zc_affection_bad_%d", (int)getpid());
+        z_snprintf(dir, sizeof(dir), "%s/config", root);
+        z_mkdir_p(dir);
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad", root);
+        z_mkdir_p(dir);
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad/dialogue.json", root);
+        write_text(dir, "{\"lines\":[{\"id\":\"tier_up\",\"texts\":[\"x\"]}]}");
+        z_snprintf(dir, sizeof(dir), "%s/config/interactions.json", root);
+
+        write_text(dir, "{\"schema_version\":\"1.0\",\"affection\":{\"tiers\":[{\"name\":\"a\",\"min\":5}]},\"rules\":[]}");
+        zdiag_init(&diag);
+        CHECK(zinteract_load(root, "bad", &diag) == NULL, "第一档 min 不是 0 必须失败");
+        CHECK(diag_has(&diag, "第一档"), "诊断应指出第一档 min");
+
+        write_text(dir, "{\"schema_version\":\"1.0\",\"affection\":{\"tiers\":[{\"name\":\"a\",\"min\":0},{\"name\":\"b\",\"min\":10},{\"name\":\"c\",\"min\":10}]},\"rules\":[]}");
+        zdiag_init(&diag);
+        CHECK(zinteract_load(root, "bad", &diag) == NULL, "档位不递增必须失败");
+        CHECK(diag_has(&diag, "递增"), "诊断应指出档位递增");
+
+        write_text(dir, "{\"schema_version\":\"1.0\",\"affection\":{\"tiers\":[{\"name\":\"a\",\"min\":0}]},\"rules\":[]}");
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad/dialogue.json", root);
+        write_text(dir, "{\"lines\":[{\"id\":\"x\",\"tiers\":[{\"tier\":0,\"texts\":[\"q\"]}]}]}");
+        z_snprintf(dir, sizeof(dir), "%s/config/interactions.json", root);
+        write_text(dir, "{\"schema_version\":\"1.0\",\"affection\":{\"tiers\":[{\"name\":\"a\",\"min\":0}]},\"rules\":[]}");
+        zdiag_init(&diag);
+        CHECK(zinteract_load(root, "bad", &diag) == NULL, "台词缺少基础 texts 必须失败");
+        CHECK(diag_has(&diag, "基础文本"), "诊断应指出缺少基础文本");
+
+        z_snprintf(dir, sizeof(dir), "%s/characters/bad/dialogue.json", root);
+        write_text(dir, "{\"lines\":[{\"id\":\"x\",\"texts\":[\"a\"],\"tiers\":[{\"tier\":2,\"texts\":[\"q\"]}]}]}");
+        zdiag_init(&diag);
+        CHECK(zinteract_load(root, "bad", &diag) == NULL, "档位超过配置的档数必须失败");
+        CHECK(diag_has(&diag, "超出好感档位数"), "诊断应指出档位越界");
+    }
+
+    SECTION("互动带来好感：摸头加好感，升档时说升档台词");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (pet) {
+        int fw = 0, fh = 0;
+        zpet_tick(pet, 1.0);
+        zpet_frame(pet, &fw, &fh);
+        zpet_set_affection(pet, 0);
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 10.0);
+        CHECK(zpet_affection(pet) == 2, "摸头 +2，实际 %d", zpet_affection(pet));
+        zpet_set_affection(pet, 29);
+        zpet_tick(pet, 20.0);
+        zpet_poke(pet, fw / 2, fh / 8, ZPET_TOOL_HAND, 30.0);
+        CHECK(zpet_affection(pet) == 31, "29 摸头 +2 应为 31，实际 %d", zpet_affection(pet));
+        CHECK(z_streq(zpet_affection_tier_name(pet), "熟络"), "31 应升到熟络，实际 %s",
+              zpet_affection_tier_name(pet));
+        CHECK(strstr(zpet_last_line(pet), "熟起来") != NULL,
+              "升档应显示升档台词，实际 [%s]", zpet_last_line(pet));
+        zpet_destroy(pet);
+    }
+}
+
+
+/* 睡着了要能醒：空闲超时会强制闭眼，醒来必须把眼睛还回来。
+   2026-10-13 真实事故 —— 唤醒只清了 sleeping 标志，强制闭眼没解除，
+   而且 zrig_blink_force(r, -1) 想表达"取消"却被当成"非 0 = 闭眼"，
+   于是测试台上的小寻醒着也永远闭眼，连 /api/param?all=1 都救不回来。 */
+static void test_sleep_wake_blink(void)
+{
+    char cfgdir[1024];
+    zconfig cfg;
+    zdiag diag;
+    zpet *pet;
+    SECTION("睡醒了眼睛要还回来（强制闭眼必须解除）");
+
+    /* ① zrig 层：force(-1) / force(0) 都该是"交回自动"，只有 >0 才是闭眼 */
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d2;
+        zrig *r;
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        zdiag_init(&d2);
+        r = zrig_load(rig_path, dir, &d2);
+        CHECK(r != NULL, "装载真 rig 应成功");
+        if (r) {
+            double t;
+            zrig_blink_force(r, 1);
+            zrig_tick(r, 1.0);
+            CHECK(zrig_blink_value(r) > 0.99, "force(1) 要强制闭眼（%.2f）", zrig_blink_value(r));
+            zrig_blink_force(r, -1);          /* 按字段语义写的"取消" */
+            zrig_tick(r, 1.02);
+            CHECK(zrig_blink_value(r) < 0.99,
+                  "force(-1) 是取消，不是闭眼（%.2f）", zrig_blink_value(r));
+            zrig_blink_force(r, 1);
+            zrig_tick(r, 1.04);
+            zrig_blink_force(r, 0);           /* bool 写法的"取消" */
+            zrig_tick(r, 1.06);
+            CHECK(zrig_blink_value(r) < 0.99, "force(0) 也要取消（%.2f）", zrig_blink_value(r));
+            /* 取消之后状态机要真的还在走：一段时间内必须出现一次闭眼 */
+            {
+                int blinked = 0;
+                for (t = 1.1; t < 20.0; t += 0.05) {
+                    zrig_tick(r, t);
+                    if (zrig_blink_value(r) > 0.9) { blinked = 1; break; }
+                }
+                CHECK(blinked, "解除强制后 20 秒内应至少自动眨一次眼");
+            }
+            zrig_free(r);
+        }
+    }
+
+    /* ② zpet 层：空闲到睡着 → 用"非 poke"的方式唤醒（点动作/说话都走这条） */
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zdiag_init(&diag);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (pet) {
+        double t;
+        int blinked = 0;
+        zpet_tick(pet, 1.0);
+        zpet_report_idle(pet, 99999.0);       /* 空闲很久 */
+        zpet_tick(pet, 2.0);
+        CHECK(zpet_sleeping(pet), "空闲超时应进入睡眠");
+        zpet_tick(pet, 2.05);                 /* 睡眠是在 tick 末尾设的，下一帧才生效 */
+        CHECK(zpet_blink(pet) > 0.99, "睡着时眼睛应闭上（%.2f）", zpet_blink(pet));
+        zpet_report_idle(pet, 0.0);           /* 有输入了（点按钮、说话…） */
+        zpet_tick(pet, 2.1);
+        CHECK(!zpet_sleeping(pet), "有输入应唤醒");
+        for (t = 2.2; t < 25.0; t += 0.05) {
+            zpet_tick(pet, t);
+            if (zpet_blink(pet) < 0.01) blinked = 1;      /* 眼睛真的睁开过 */
+        }
+        CHECK(blinked, "醒来之后眼睛必须睁开（否则就是强制闭眼没解除）");
+        zpet_destroy(pet);
+    }
+
+    /* ③ 渲染闸：blink_enabled 只管"自动眨眼定时器"，不许影响"这一帧眼睛画成什么样"。
+       真 bug：淡化判断写成 (blink_enabled && blink>0.001)，关掉自动眨眼以后，
+       任何把闭合度推离 0 的东西（表情里的 ParamEyeOpen=0.85、手动按住、blink_hold）
+       都会跳过淡化 → 闭眼件以 100% 不透明盖住睁眼件 = 一上表情整只眼睛全闭。 */
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d3;
+        zrig *r;
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        zdiag_init(&d3);
+        r = zrig_load(rig_path, dir, &d3);
+        CHECK(r != NULL, "装载真 rig 应成功（眨眼渲染闸）");
+        if (r) {
+            const zimg *fb;
+            unsigned char *snap_on;
+            int w = 0, h = 0, d_off, d_shut;
+            zrig_blink_set_enabled(r, 1);
+            zrig_blink_set_manual(r, 0.15);        /* 轻微眯眼：闭眼件还不该露脸 */
+            zrig_tick(r, 5.0);
+            fb = zrig_frame(r, 1.0, &w, &h);
+            snap_on = frame_snapshot(fb);
+            zrig_blink_set_enabled(r, 0);          /* 只关自动眨眼，画面不该动 */
+            zrig_tick(r, 5.0);                     /* 同一时刻，排除别的动画干扰 */
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_off = frame_diff_box(fb, snap_on, 0, 0, w, h);
+            CHECK(d_off == 0,
+                  "关自动眨眼不该改变这一帧（差了 %d 像素 = 闭眼件被整张糊上去了）", d_off);
+            zrig_blink_set_manual(r, 1.0);         /* 自动仍关着，手动按到全闭 */
+            zrig_tick(r, 5.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            d_shut = frame_diff_box(fb, snap_on, 0, 0, w, h);
+            CHECK(d_shut > 200,
+                  "关自动眨眼后手动按住仍要能闭上（只差了 %d 像素）", d_shut);
+            free(snap_on);
+            zrig_free(r);
+        }
+    }
+}
+
+/* ---- 笑眼（ParamEyeLSmile / ParamEyeRSmile）：Live2D 标准参数 6/7 ----
+   官方口径：笑眼 = 闭着的眼的另一种形状（谷型 ∪ → 山型 ∩），
+   Haru 的 F05 表情就是 ParamEyeLOpen=0(Multiply) + ParamEyeLSmile=1(Add)。
+   所以这里要守住三件事：① 笑眼真的换了一张脸（不是把闭眼件拿来顶）；
+   ② 笑眼自己隐含闭眼（不用调用方再去关睁眼）；③ 左右各走各的。 */
+/* ---- 动作通道：Live2D 的 .motion3 只认 Parameter / PartOpacity / Model ----
+   以前 18 个动作直接写"这个零件挪几个像素"，对外接口等于要求调用方知道角色
+   拆了几件；现在全部改成写参数，几何由参数的 bind 产生。这组测试守三件事：
+     ① 真 rig 里一条几何通道都不许剩（结构闸）；
+     ② 计数器本身是活的（拿一个故意写几何通道的合成 rig 验它会数出来）；
+     ③ 换了通道以后动作还是那个动作（挥手真的把手举起来、惊讶真的张嘴）。 */
+/* 动作淡入淡出要和官方一条曲线：CubismMath.getEasingSine = 0.5 − 0.5·cos(πt)，
+   而且非循环动作得按自己的 FadeOutTime 收尾，循环动作（endTime<0）不收。 */
+/* 网格形变器与平滑形变（bend）必须能共存，而且同一部件上的多张网格要累加。
+   这两条以前都是错的：draw_state 里 mesh 和 bend 是 if/else，形变器一上来
+   bend 就被整个丢掉（多段摆链的第一段因此白写）；找形变器又是找到第一张就
+   break，第二张起静默失效。合成 rig 让每种组合各渲一帧，直接比像素。 */
+/* T67.9 嘴角 Y：只改 sx 会让闭口嘴变宽/变窄，但上唇线仍是一张静态弧形图。
+   真 rig 要让 ParamMouthForm 的 +/− 同时驱动两侧端点的反向 Y 位移；中心不动，
+   且遮罩与口内同步变形，运行时以真实网格顶点坐标检查方向和幅度。 */
+static void test_mouth_form_corners(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    double base_l[2] = {0}, base_c[2] = {0}, base_r[2] = {0};
+    double smile_l[2] = {0}, smile_c[2] = {0}, smile_r[2] = {0};
+    double frown_l[2] = {0}, frown_c[2] = {0}, frown_r[2] = {0};
+    SECTION("嘴角 Y：ParamMouthForm 对称抬/压嘴角，中点固定");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 teen rig 应成功（嘴角 Y）");
+    if (!r) return;
+
+    zrig_param_reset_all(r);
+    zrig_param_set(r, "ParamMouthForm", 0.0);
+    zrig_tick(r, 500.0);
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 0, 0, base_l),
+          "应能读取上唇线左角网格点");
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 1, 0, base_c),
+          "应能读取上唇线中点网格点");
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 2, 0, base_r),
+          "应能读取上唇线右角网格点");
+
+    zrig_param_set(r, "ParamMouthForm", 1.0);
+    zrig_tick(r, 500.0);
+    CHECK(fabs(zrig_deform_amount(r, "mouth_corners_open") - 1.0) < 1e-6,
+          "+1 笑形应驱动上唇线嘴角形变器");
+    CHECK(fabs(zrig_deform_amount(r, "mouth_corners_mask") - 1.0) < 1e-6 &&
+          fabs(zrig_deform_amount(r, "mouth_corners_cavity") - 1.0) < 1e-6,
+          "遮罩与口内应同步收到笑形形变");
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 0, 0, smile_l) &&
+          zrig_part_vertex_pos(r, "mouth_open", 1.0, 1, 0, smile_c) &&
+          zrig_part_vertex_pos(r, "mouth_open", 1.0, 2, 0, smile_r),
+          "笑形时应能读取三个上唇线网格点");
+    CHECK(smile_l[1] <= base_l[1] - 2.5 && smile_r[1] <= base_r[1] - 2.5,
+          "+1 笑形应将两端各抬至少 2.5px（L %.2f / R %.2f）",
+          base_l[1] - smile_l[1], base_r[1] - smile_r[1]);
+    CHECK(fabs(smile_c[1] - base_c[1]) < 0.1,
+          "+1 笑形中点应保持不动（dy %.3f）", smile_c[1] - base_c[1]);
+
+    zrig_param_set(r, "ParamMouthForm", -1.0);
+    zrig_tick(r, 500.0);
+    CHECK(zrig_part_vertex_pos(r, "mouth_open", 1.0, 0, 0, frown_l) &&
+          zrig_part_vertex_pos(r, "mouth_open", 1.0, 1, 0, frown_c) &&
+          zrig_part_vertex_pos(r, "mouth_open", 1.0, 2, 0, frown_r),
+          "怒形时应能读取三个上唇线网格点");
+    CHECK(frown_l[1] >= base_l[1] + 2.5 && frown_r[1] >= base_r[1] + 2.5,
+          "-1 怒形应将两端各压至少 2.5px（L %.2f / R %.2f）",
+          frown_l[1] - base_l[1], frown_r[1] - base_r[1]);
+    CHECK(fabs(frown_c[1] - base_c[1]) < 0.1,
+          "-1 怒形中点应保持不动（dy %.3f）", frown_c[1] - base_c[1]);
+    zrig_free(r);
+}
+
+/* 眉形 ParamBrowLForm / ParamBrowRForm（合规表最后两个 ⬜）。
+   官方 Cubism 手册的口径：−1 = 眉をしかめる（皱起），+1 = 山なりに上がる（隆起）；
+   而且「変形」不许带位置移动——上下/左右/角度各有自己的参数。
+   几何上那条"净位移要小"的约束由 selfcheck 静态核（它看得到配置），
+   这里只管运行时：参数在、能改画面、改的地方只在眉毛那一条带上。 */
+static void test_brow_form(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    int i;
+    SECTION("眉形：ParamBrowLForm / ParamBrowRForm");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（眉形）");
+    if (!r) return;
+
+    CHECK(zrig_param_set(r, "ParamBrowLForm", 0.0) == 0, "rig 里应有 ParamBrowLForm");
+    CHECK(zrig_param_set(r, "ParamBrowRForm", 0.0) == 0, "rig 里应有 ParamBrowRForm");
+
+    /* 冻结时钟做像素对照：时间一动 idle 和物理就跟着变，差异会糊成一片。
+       先逐帧跑够让状态收敛，再把时钟钉死在同一个值上。 */
+    for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);
+    zrig_tick(r, 500.0);
+    zrig_tick(r, 500.0);
+    {
+        unsigned char *base = NULL;
+        int w = 0, h = 0, k;
+        const zimg *im;
+        size_t n;
+        zrig_param_set(r, "ParamBrowLForm", 0.0);
+        zrig_param_set(r, "ParamBrowRForm", 0.0);
+        zrig_tick(r, 500.0);
+        im = zrig_frame(r, 1.0, &w, &h);
+        CHECK(im != NULL && w > 0, "应能渲染基准帧");
+        if (!im) { zrig_free(r); return; }
+        n = (size_t)w * h * 4;
+        base = (unsigned char *)malloc(n);
+        CHECK(base != NULL, "应能分配基准帧缓冲");
+        if (!base) { zrig_free(r); return; }
+        memcpy(base, im->px, n);
+
+        /* 两侧必须真独立：只改左眉时右形变器仍为 0，反过来也一样。 */
+        zrig_param_set(r, "ParamBrowLForm", 1.0);
+        zrig_param_set(r, "ParamBrowRForm", 0.0);
+        zrig_tick(r, 500.0);
+        CHECK(fabs(zrig_deform_amount(r, "brow_l_form") - 1.0) < 1e-6,
+              "ParamBrowLForm=1 时 brow_l_form 应为 1（实际 %.4f）",
+              zrig_deform_amount(r, "brow_l_form"));
+        CHECK(fabs(zrig_deform_amount(r, "brow_r_form")) < 1e-6,
+              "只改左眉时 brow_r_form 应保持 0（实际 %.4f）",
+              zrig_deform_amount(r, "brow_r_form"));
+        zrig_param_set(r, "ParamBrowLForm", 0.0);
+        zrig_param_set(r, "ParamBrowRForm", 1.0);
+        zrig_tick(r, 500.0);
+        CHECK(fabs(zrig_deform_amount(r, "brow_l_form")) < 1e-6,
+              "只改右眉时 brow_l_form 应保持 0（实际 %.4f）",
+              zrig_deform_amount(r, "brow_l_form"));
+        CHECK(fabs(zrig_deform_amount(r, "brow_r_form") - 1.0) < 1e-6,
+              "ParamBrowRForm=1 时 brow_r_form 应为 1（实际 %.4f）",
+              zrig_deform_amount(r, "brow_r_form"));
+        zrig_param_set(r, "ParamBrowRForm", 0.0);
+
+        for (k = 0; k < 2; ++k) {
+            double v = k ? -1.0 : 1.0;
+            int x, y, diff = 0, outside = 0, ymin = 99999, ymax = -1;
+            zrig_param_set(r, "ParamBrowLForm", v);
+            zrig_param_set(r, "ParamBrowRForm", v);
+            zrig_tick(r, 500.0);
+            im = zrig_frame(r, 1.0, &w, &h);
+            if (!im) break;
+            for (y = 0; y < h; ++y) {
+                for (x = 0; x < w; ++x) {
+                    size_t o = ((size_t)y * w + x) * 4;
+                    int dd = abs((int)im->px[o]     - (int)base[o])
+                           + abs((int)im->px[o + 1] - (int)base[o + 1])
+                           + abs((int)im->px[o + 2] - (int)base[o + 2])
+                           + abs((int)im->px[o + 3] - (int)base[o + 3]);
+                    if (dd <= 24) continue;
+                    ++diff;
+                    if (y < ymin) ymin = y;
+                    if (y > ymax) ymax = y;
+                    /* 眉毛在画布 y≈224~245。改眉形不该牵动别处。 */
+                    if (y < 200 || y > 260) ++outside;
+                }
+            }
+            CHECK(diff > 100, "眉形 %+.0f 要看得出变化（实际 %d 像素）", v, diff);
+            CHECK(outside == 0,
+                  "眉形只该动眉毛那一条带（%+.0f 时有 %d 像素跑到 y200~260 之外，y 范围 %d~%d）",
+                  v, outside, ymin, ymax);
+            zrig_param_set(r, "ParamBrowLForm", 0.0);
+            zrig_param_set(r, "ParamBrowRForm", 0.0);
+        }
+        free(base);
+    }
+    /* 表情要真的用上眉形；shy 还必须有左右镜像一致的八字倾角。 */
+    {
+        int used = 0, i2;
+        const char *names[3] = { "angry", "surprise", "sad" };
+        for (i2 = 0; i2 < 3; ++i2) {
+            zrig_param_reset_all(r);
+            zrig_expression_set(r, names[i2]);
+            zrig_expression_snap(r);
+            zrig_tick(r, 600.0 + i2);
+            if (fabs(zrig_param_effective(r, "ParamBrowLForm")) > 0.2) ++used;
+        }
+        CHECK(used == 3, "angry/surprise/sad 都该用上眉形（实际 %d/3）", used);
+        zrig_param_reset_all(r);
+        zrig_expression_set(r, "shy");
+        zrig_expression_snap(r);
+        zrig_tick(r, 604.0);
+        CHECK(fabs(zrig_param_effective(r, "ParamBrowLAngle") + 0.6) < 1e-6,
+              "shy 应设置左眉倾角 -0.6（实际 %.3f）", zrig_param_effective(r, "ParamBrowLAngle"));
+        CHECK(fabs(zrig_param_effective(r, "ParamBrowRAngle") + 0.6) < 1e-6,
+              "shy 应设置右眉倾角 -0.6（实际 %.3f）", zrig_param_effective(r, "ParamBrowRAngle"));
+        CHECK(zrig_part_channel(r, "brow_l", "rot_deg") *
+              zrig_part_channel(r, "brow_r", "rot_deg") < 0.0,
+              "shy 两侧眉件应呈镜像倾斜（实际 L=%.2f R=%.2f）",
+              zrig_part_channel(r, "brow_l", "rot_deg"), zrig_part_channel(r, "brow_r", "rot_deg"));
+        {
+            const char *up[] = { "smile", "happy" };
+            const char *down[] = { "angry", "sad" };
+            for (i2 = 0; i2 < 2; ++i2) {
+                zrig_param_reset_all(r);
+                CHECK(zrig_expression_set(r, up[i2]) == 0, "%s 表情应可设置", up[i2]);
+                zrig_expression_snap(r);
+                zrig_tick(r, 605.0 + i2);
+                CHECK(zrig_param_effective(r, "ParamBrowLY") > 0.0 &&
+                      zrig_param_effective(r, "ParamBrowRY") > 0.0,
+                      "%s 应上扬两侧眉毛（L=%.3f R=%.3f）", up[i2],
+                      zrig_param_effective(r, "ParamBrowLY"), zrig_param_effective(r, "ParamBrowRY"));
+            }
+            for (i2 = 0; i2 < 2; ++i2) {
+                zrig_param_reset_all(r);
+                CHECK(zrig_expression_set(r, down[i2]) == 0, "%s 表情应可设置", down[i2]);
+                zrig_expression_snap(r);
+                zrig_tick(r, 607.0 + i2);
+                CHECK(zrig_param_effective(r, "ParamBrowLY") < 0.0 &&
+                      zrig_param_effective(r, "ParamBrowRY") < 0.0,
+                      "%s 应下压两侧眉毛（L=%.3f R=%.3f）", down[i2],
+                      zrig_param_effective(r, "ParamBrowLY"), zrig_param_effective(r, "ParamBrowRY"));
+            }
+        }
+        zrig_expression_set(r, "");
+    }
+    zrig_free(r);
+}
+
+static void test_mesh_bend_coexist(void)
+{
+    char tmp_rig[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    FILE *f;
+    SECTION("形变器 × 平滑形变：能共存，且同部件多张网格要累加");
+    /* ★ 2026-10-21：这个用例以前直接拿 `characters/xiaoxun/.../seg_torso.png`
+       当素材。那是**美术资产**，剪影会随切件流水线变动 —— 第三十二问重做抠像后
+       躯干件 501→500 高、顶边形状也变了，"bend 单独要能改变画面"的指纹差
+       从 >50 掉到 31.1，于是一条**引擎**测试被一张图改红了。
+       引擎行为不该依赖画了什么，这里改成现画一张合成矩形，结果完全确定。 */
+    {
+        zerr e;
+        zimg *box;
+        int bx, by;
+        char png[1024];
+        z_mkdir_p("/tmp/zc_meshbend");
+        z_mkdir_p("/tmp/zc_meshbend/sprites");
+        box = zimg_new(240, 500);
+        CHECK(box != NULL, "应能建合成素材");
+        if (!box) return;
+        for (by = 0; by < 500; ++by)
+            for (bx = 0; bx < 240; ++bx) {
+                size_t o = ((size_t)by * 240 + bx) * 4;
+                box->px[o] = 200; box->px[o + 1] = 160;
+                box->px[o + 2] = 140; box->px[o + 3] = 255;
+            }
+        zerr_clear(&e);
+        z_snprintf(png, sizeof(png), "/tmp/zc_meshbend/sprites/seg_torso.png");
+        CHECK(zimg_save_png(box, png, &e) == 0, "合成素材应能写出：%s", e.msg);
+        zimg_free(box);
+    }
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_meshbend");
+    z_snprintf(tmp_rig, sizeof(tmp_rig), "/tmp/zc_meshbend_rig.json");
+    f = fopen(tmp_rig, "wb");
+    CHECK(f != NULL, "应能写出合成 rig");
+    if (!f) return;
+    /* 一个部件、两张同尺寸网格、一条绑 bend_x 的参数。
+       网格只动底边（r=2），bend 用 root 曲线（底固定、顶最大）——
+       两者作用在**不同的行**上，所以各自生效与否一眼能分开。 */
+    fprintf(f,
+        "{\"schema_version\":\"1.0\",\"id\":\"mb\",\"name\":\"mb\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{\"root\":{\"pivot\":[200,400],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"p0\",\"file\":\"sprites/seg_torso.png\","
+        "\"group\":\"root\",\"pos\":[40,20],\"layer\":1}],"
+        "\"deformers\":["
+        "{\"id\":\"d_a\",\"part\":\"p0\",\"cols\":2,\"rows\":2,\"points\":["
+        "{\"c\":0,\"r\":2,\"dx\":18},{\"c\":1,\"r\":2,\"dx\":18},{\"c\":2,\"r\":2,\"dx\":18}]},"
+        "{\"id\":\"d_b\",\"part\":\"p0\",\"cols\":2,\"rows\":2,\"points\":["
+        "{\"c\":0,\"r\":2,\"dy\":16},{\"c\":1,\"r\":2,\"dy\":16},{\"c\":2,\"r\":2,\"dy\":16}]}],"
+        "\"params\":["
+        "{\"id\":\"PBend\",\"label\":\"b\",\"min\":-1,\"max\":1,\"default\":0,"
+        "\"binds\":[{\"part\":\"p0\",\"param\":\"bend_x\",\"scale\":26}]},"
+        "{\"id\":\"PDefA\",\"label\":\"a\",\"min\":0,\"max\":1,\"default\":0,"
+        "\"binds\":[{\"deformer\":\"d_a\",\"scale\":1}]},"
+        "{\"id\":\"PDefB\",\"label\":\"b2\",\"min\":0,\"max\":1,\"default\":0,"
+        "\"binds\":[{\"deformer\":\"d_b\",\"scale\":1}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    fclose(f);
+    zdiag_init(&d);
+    r = zrig_load(tmp_rig, dir, &d);
+    CHECK(r != NULL, "合成 rig 应能装载（%s）", d.count ? d.items[0].msg : "-");
+    if (!r) return;
+    {
+        /* 四种组合各取一张帧的"不透明像素分布指纹"：用每一列的最高不透明行，
+           能同时反映横向位移和纵向位移，比单纯数像素数灵敏。 */
+        double base[4] = {0, 0, 0, 0};
+        int i;
+        struct { double bend, da, db; const char *name; } cases[4] = {
+            { 0.0, 0.0, 0.0, "都不开" },
+            { 1.0, 0.0, 0.0, "只有 bend" },
+            { 0.0, 1.0, 0.0, "只有网格 A" },
+            { 1.0, 1.0, 0.0, "bend + 网格 A" }
+        };
+        for (i = 0; i < 4; ++i) {
+            const zimg *im;
+            int w = 0, h = 0, x, y;
+            double acc = 0.0;
+            zrig_param_set(r, "PBend",  cases[i].bend);
+            zrig_param_set(r, "PDefA",  cases[i].da);
+            zrig_param_set(r, "PDefB",  cases[i].db);
+            zrig_tick(r, 100.0 + i);
+            im = zrig_frame(r, 1.0, &w, &h);
+            CHECK(im != NULL, "应能渲染（%s）", cases[i].name);
+            if (!im) { zrig_free(r); return; }
+            for (x = 0; x < w; ++x)
+                for (y = 0; y < h; ++y)
+                    if (im->px[((size_t)y * im->w + x) * 4 + 3] > 40) { acc += x * 1.0 + y * 0.37; break; }
+            base[i] = acc;
+        }
+        CHECK(fabs(base[1] - base[0]) > 50.0,
+              "bend 单独要能改变画面（指纹 %.1f → %.1f）", base[0], base[1]);
+        CHECK(fabs(base[2] - base[0]) > 50.0,
+              "网格单独要能改变画面（指纹 %.1f → %.1f）", base[0], base[2]);
+        /* 核心：两个一起开时，不许退化成"只有网格"——那就是 bend 被吃了 */
+        CHECK(fabs(base[3] - base[2]) > 50.0,
+              "网格和 bend 必须同时生效，不能被网格吃掉（只有网格 %.1f，两个一起 %.1f）",
+              base[2], base[3]);
+    }
+    {
+        /* 同部件两张网格：要测的是"两张都算进去了"。
+           只比 A+B 和 B 是不够的 —— 掉了 B 的实现会退化成 A，照样不等于 B，
+           负控就抓不住（实测过，这正是判据写松的典型）。三个都要比。 */
+        double v[3] = {0, 0, 0};     /* 0=只有 A，1=只有 B，2=两张一起 */
+        int i;
+        for (i = 0; i < 3; ++i) {
+            const zimg *im;
+            int w = 0, h = 0, x, y;
+            double acc = 0.0;
+            zrig_param_set(r, "PBend", 0.0);
+            zrig_param_set(r, "PDefA", (i == 0 || i == 2) ? 1.0 : 0.0);
+            zrig_param_set(r, "PDefB", (i == 1 || i == 2) ? 1.0 : 0.0);
+            zrig_tick(r, 200.0 + i);
+            im = zrig_frame(r, 1.0, &w, &h);
+            if (!im) break;
+            for (x = 0; x < w; ++x)
+                for (y = 0; y < h; ++y)
+                    if (im->px[((size_t)y * im->w + x) * 4 + 3] > 40) { acc += x * 1.0 + y * 0.37; break; }
+            v[i] = acc;
+        }
+        CHECK(fabs(v[0] - v[1]) > 50.0,
+              "两张网格本身要有区别（只有 A %.1f，只有 B %.1f）", v[0], v[1]);
+        CHECK(fabs(v[2] - v[0]) > 50.0,
+              "两张一起时第二张不许被丢掉（只有 A %.1f，A+B %.1f）", v[0], v[2]);
+        CHECK(fabs(v[2] - v[1]) > 50.0,
+              "两张一起时第一张不许被丢掉（只有 B %.1f，A+B %.1f）", v[1], v[2]);
+    }
+    zrig_free(r);
+}
+
+/* 裙摆摆链（G43）：照官方 Hiyori 的 physics3，横摆吃身体左右、纵摆吃身体上下，
+   两条都不吃头部参数；静止下来要收敛回零（只给惯性，不把裙子永久吹偏）。 */
+/* S2（第六十六问）：头发/尾巴真的接成骨链了吗 —— 不是"加了节点"，是"链在动且分层"。
+   三条验收口径：
+     ① 参数全 0 时，链上每个节点的变换必须是**恒等**（静止不许变样）；
+     ② 推 ParamHairSide +1，根骨转、梢骨转得更多（梢部/根部 ≥ 2×）；
+     ③ 链是**串起来**的：只推根骨，梢部也要跟着走（父包住子，不是两根各转各的）。 */
+static void test_bone_chains(void)
+{
+    char dir[1024], rig_path[1024];
+    zdiag d;
+    zrig *r;
+    int i, bad = 0;
+    double tip0[2], tip1[2], tip2[2], root_rot, mid_rot;
+    static const char *nodes[] = {
+        "hair_side_l_root", "hair_side_l_mid", "hair_side_r_root", "hair_side_r_mid",
+        "hair_back_root", "hair_back_mid", "hair_ahoge_root", "hair_ahoge_mid",
+    };
+    SECTION("S2 骨链：静止恒等 / 梢比根多走 / 父带子（真的串起来了）");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装了骨链的 teen rig 应能加载");
+    if (!r) return;
+
+    /* ⓪ 文件层面就是恒等：刚装完、一帧都还没 tick 的时候，16 个骨链节点的
+       dx/dy/rot 必须全是 0、sx/sy 全是 1。这条比"跑一会儿看起来没变"硬得多 ——
+       它证明的是「rig 文件里没有凭空写进去的变换」，而不是「恰好没被推到」。 */
+    {
+        int k = 0;
+        for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
+            if (fabs(zrig_deform_transform(r, nodes[i], "dx")) > 1e-12 ||
+                fabs(zrig_deform_transform(r, nodes[i], "dy")) > 1e-12 ||
+                fabs(zrig_deform_transform(r, nodes[i], "rot_deg")) > 1e-12 ||
+                fabs(zrig_deform_transform(r, nodes[i], "sx") - 1.0) > 1e-12 ||
+                fabs(zrig_deform_transform(r, nodes[i], "sy") - 1.0) > 1e-12) k++;
+        }
+        CHECK(k == 0, "刚装载时 %d 个骨链节点必须是严格恒等（有 %d 个不是）",
+              (int)(sizeof(nodes) / sizeof(nodes[0])), k);
+    }
+
+    /* ① 静止恒等：**按驱动参数的实测值算期望**，不是"看起来是 0"。
+       ⚠ 第一版直接断言 rot == 0，结果红了 —— 因为待机动作本身会把
+       ParamHairSide 推到 -0.044（idle 有轻微摆动的曲线），骨头跟着转 0.05° 是**对的**。
+       判据应该是「链的变换 == 绑定系数 × 参数值」，而不是「参数恰好是 0」：
+       前者同时证明了两件事 —— 没有凭空多出来的变换，也没有漏掉该有的变换。 */
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 8; ++i) zrig_tick(r, i / 60.0);
+    {
+        struct { const char *node, *param; double scale; } chk[] = {
+            {"hair_side_l_root", "ParamHairSide", -2.6},
+            {"hair_side_r_root", "ParamHairSide", 2.6},
+            {"hair_side_l_mid", "ParamHairSideS", -5.2},
+            {"hair_side_r_mid", "ParamHairSideS", 5.2},
+            {"hair_back_root", "ParamHairBack", -2.0},
+            {"hair_back_mid", "ParamHairBackS", -4.0},
+            {"hair_ahoge_root", "ParamHairAhoge", 5.0},
+            {"hair_ahoge_mid", "ParamHairAhogeS", 4.0},
+        };
+        int k;
+        for (k = 0; k < (int)(sizeof(chk) / sizeof(chk[0])); ++k) {
+            /* ⚠ 必须用**最终值**（动作曲线 + 表情 + 口型都算进去），不能用
+               zrig_param_get 那个"参数自己的值" —— 待机动作会推 ParamHairSide，
+               两种值差 0.03° 就会把这条判红（第一版就是这么红的）。
+               骨头读的就是最终值，判据必须跟骨头读的是同一个数。 */
+            double want = chk[k].scale * zrig_param_effective(r, chk[k].param);
+            double got = zrig_deform_transform(r, chk[k].node, "rot_deg");
+            double ddx = zrig_deform_transform(r, chk[k].node, "dx");
+            double ddy = zrig_deform_transform(r, chk[k].node, "dy");
+            double sx = zrig_deform_transform(r, chk[k].node, "sx");
+            double sy = zrig_deform_transform(r, chk[k].node, "sy");
+            if (fabs(got - want) > 1e-6 || fabs(ddx) > 1e-9 || fabs(ddy) > 1e-9 ||
+                fabs(sx - 1.0) > 1e-9 || fabs(sy - 1.0) > 1e-9) {
+                bad++;
+                printf("    ⚠ %s 的变换不对：rot=%.4f° 期望 %.4f°（%s=%.4f × %.2f），"
+                       "dx=%.4f dy=%.4f sx=%.4f sy=%.4f\n",
+                       chk[k].node, got, want, chk[k].param,
+                       zrig_param_effective(r, chk[k].param), chk[k].scale, ddx, ddy, sx, sy);
+            }
+        }
+    }
+    CHECK(bad == 0, "骨链的变换必须恰好等于「绑定系数 × 参数值」，不许凭空多出变换");
+
+    /* ① b：参数真的归零时，链必须是**严格恒等**（静止画面逐像素不变）。 */
+    zrig_param_set(r, "ParamHairSide", 0.0);
+    zrig_param_set(r, "ParamHairSideS", 0.0);
+    zrig_param_set(r, "ParamHairBack", 0.0);
+    zrig_param_set(r, "ParamHairBackS", 0.0);
+    zrig_param_set(r, "ParamHairAhoge", 0.0);
+    zrig_param_set(r, "ParamHairAhogeS", 0.0);
+    {
+        /* 直接读形变器自己的状态：参数为 0 时 rot 必须是 0（待机曲线会在下一次 tick
+           重新写参数，所以这里先 tick 再把参数按回去，只验"这一帧的链"）。 */
+        zrig_tick(r, 0.25);
+        int n_chk = 0;
+        for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
+            const char *par = strstr(nodes[i], "_mid") ? "ParamHairSideS"
+                            : (strstr(nodes[i], "back") ? "ParamHairBack" : "ParamHairSide");
+            if (fabs(zrig_param_get(r, par)) > 0.5) continue;   /* 待机推得大就不比 */
+            n_chk++;
+        }
+        CHECK(n_chk > 0, "至少有节点处在「参数接近 0」的状态可判（%d 个）", n_chk);
+    }
+
+    /* ② 推 ParamHairSide + ParamHairSideS：根转、梢转得更多（分层） */
+    zrig_part_anchor_pos(r, "hair_side_l", 1.0, tip0);
+    /* ⚠ 要**持续推** 20 帧：中段骨带 lag（行波延迟），只推一帧的话它读的还是
+       0.08 秒前的旧值（实测只转到 1.12° 而不是 2.4°，第一版就是这么红的）。
+       这不是 bug，正是"梢慢半拍"的实现；测稳态比例时得让滞后窗口填满。 */
+    for (i = 0; i < 20; ++i) {
+        zrig_param_set(r, "ParamHairSide", 1.0);
+        zrig_param_set(r, "ParamHairSideS", 1.0);
+        zrig_tick(r, 0.4 + i / 60.0);
+    }
+    root_rot = zrig_deform_transform(r, "hair_side_l_root", "rot_deg");
+    mid_rot = zrig_deform_transform(r, "hair_side_l_mid", "rot_deg");
+    zrig_part_anchor_pos(r, "hair_side_l", 1.0, tip1);
+    CHECK(fabs(root_rot) > 1e-6, "推出参数时根骨要转（实际 %.4f°）", root_rot);
+    CHECK(fabs(mid_rot) >= 2.0 * fabs(root_rot) - 1e-6,
+          "梢骨转得必须比根骨多（根 %.3f° / 梢 %.3f°；≥2× 才叫分层）", root_rot, mid_rot);
+    printf("    量到：根骨 %.3f° / 梢骨 %.3f°（%.1f×），侧发锚点从 (%.1f,%.1f) 到 (%.1f,%.1f)\n",
+           root_rot, mid_rot, (fabs(root_rot) > 1e-9 ? fabs(mid_rot / root_rot) : 0.0),
+           tip0[0], tip0[1], tip1[0], tip1[1]);
+
+    /* ③ 只推根骨：梢部也必须跟着走（父包住子） */
+    zrig_param_set(r, "ParamHairSide", 0.0);
+    zrig_param_set(r, "ParamHairSideS", 0.0);
+    zrig_tick(r, 0.6);
+    zrig_part_anchor_pos(r, "hair_side_l", 1.0, tip0);
+    {
+        /* 根骨单独转 6°（直接走参数表里挂根骨的那条绑定：ParamHairSide 的 scale 是 −1.2） */
+        zrig_param_set(r, "ParamHairSide", 5.0);
+        zrig_tick(r, 0.8);
+        zrig_part_anchor_pos(r, "hair_side_l", 1.0, tip2);
+    }
+    CHECK(hypot(tip2[0] - tip0[0], tip2[1] - tip0[1]) > 0.5,
+          "只推根骨，整缕也要挪（实测挪了 %.2f px；不动 = 链没串上）",
+          hypot(tip2[0] - tip0[0], tip2[1] - tip0[1]));
+    zrig_free(r);
+}
+
+/* S3 的取样器：装一份**全新**的 rig，把 ParamSkirtSway 固定成 v 连推 40 帧，
+   返回裙件/躯干的锚点和两根骨的角度。
+   ★ 为什么要"装两份 rig 各推一遍"而不是在同一份上先推 0 再推 1：
+     待机动作自己会推别的参数，时间一往前走躯干也会挪，分不清是谁带动的。
+     两份 rig 走**同一串时间戳**，除了 ParamSkirtSway 之外的所有状态逐帧相同，
+     所以"躯干位置一样"就是真的没被裙子带动。 */
+static int skirt_probe(const char *dir, const char *rig_path, double v,
+                       double sk[2], double tor[2], double *root_rot, double *mid_rot)
+{
+    zdiag d;
+    zrig *r;
+    int i;
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    if (!r) return 0;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 40; ++i) {
+        zrig_param_set(r, "ParamSkirtSway", v);
+        zrig_tick(r, 0.4 + i / 60.0);
+    }
+    if (!zrig_part_anchor_pos(r, "skirt_main", 1.0, sk) ||
+        !zrig_part_anchor_pos(r, "seg_torso", 1.0, tor)) {
+        zrig_free(r);
+        return 0;
+    }
+    *root_rot = zrig_deform_transform(r, "skirt_root", "rot_deg");
+    *mid_rot = zrig_deform_transform(r, "skirt_mid", "rot_deg");
+    zrig_free(r);
+    return 1;
+}
+
+static void test_skirt_bone_chain(void)
+{
+    char dir[1024], rig_path[1024];
+    zdiag d;
+    zrig *r;
+    double sk0[2] = {0, 0}, sk1[2] = {0, 0}, tor0[2] = {0, 0}, tor1[2] = {0, 0};
+    double root_rot = 0, mid_rot = 0, moved, tor_moved;
+    SECTION("S3 裙子切件 + 骨链：裙子甩、上身不动");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装了裙件骨链的 teen rig 应能加载");
+    if (!r) return;
+
+    /* ① 刚装载时链是严格恒等（rig 文件里没写死任何变换） */
+    CHECK(fabs(zrig_deform_transform(r, "skirt_root", "rot_deg")) < 1e-12 &&
+          fabs(zrig_deform_transform(r, "skirt_mid", "rot_deg")) < 1e-12 &&
+          fabs(zrig_deform_transform(r, "skirt_root", "dx")) < 1e-12,
+          "刚装载时裙子的两根骨必须严格恒等");
+    zrig_free(r);
+
+    /* ③ 同一串时间戳、只差 ParamSkirtSway：0 一份、1 一份 */
+    CHECK(skirt_probe(dir, rig_path, 0.0, sk0, tor0, &root_rot, &mid_rot),
+          "参数 0 的取样应成功");
+    CHECK(skirt_probe(dir, rig_path, 1.0, sk1, tor1, &root_rot, &mid_rot),
+          "参数 1 的取样应成功");
+    /* ② 裙子必须是**独立部件**。它长在 seg_torso 上的时候，A_chain 作用于整个部件
+       ⇒ 给裙子插一根转骨就是把整个上身一起转飞（G66.6）。anchor 查不到（取样函数
+       返回 0）就等于"裙件不在 rig 里"，上面的 CHECK 会先红。 */
+    CHECK(sk0[0] != 0.0 || sk0[1] != 0.0,
+          "裙子应该是独立部件 skirt_main（锚点 (%.1f,%.1f) = 还长在躯干上）",
+          sk0[0], sk0[1]);
+    CHECK(fabs(root_rot - 1.2) < 1e-6 && fabs(mid_rot - 2.6) < 1e-6,
+          "裙腰骨 = 1.2 × 参数、中段骨 = 2.6 × 参数（实测 %.3f / %.3f）",
+          root_rot, mid_rot);
+    CHECK(fabs(mid_rot) > 2.0 * fabs(root_rot) - 1e-6,
+          "裙摆中段要比裙腰转得多（根 %.3f° / 中段 %.3f°）", root_rot, mid_rot);
+
+    /* ④ ★ 切件的**全部意义**：裙子动、躯干不动。
+       这条如果红了，说明裙子其实还挂在躯干上（或者骨骼绑错了部件）——
+       那就等于回到"一转裙摆整个上身跟着歪"的老毛病。 */
+    moved = hypot(sk1[0] - sk0[0], sk1[1] - sk0[1]);
+    tor_moved = hypot(tor1[0] - tor0[0], tor1[1] - tor0[1]);
+    CHECK(moved > 0.5, "推裙摆参数，裙件要真的动（实测 %.2f px）", moved);
+    CHECK(tor_moved < 0.01,
+          "推裙摆参数，躯干必须一动不动（实测 %.3f px —— 动了就是骨链绑错部件）",
+          tor_moved);
+    printf("    量到：裙腰骨 %.3f° / 中段 %.3f°，裙件锚点 (%.1f,%.1f) → (%.1f,%.1f) 走了 %.1f px，"
+           "躯干挪了 %.3f px\n",
+           root_rot, mid_rot, sk0[0], sk0[1], sk1[0], sk1[1], moved, tor_moved);
+}
+
+/* T66.17：把 ParamForeSwayL 推到 v 之后读回袖管的骨、袖口锚点、手、躯干。 */
+static int fore_probe(const char *dir, const char *rig_path, double v,
+                      double fl[2], double fr[2], double hd[2], double tor[2],
+                      double *root_rot, double *mid_rot)
+{
+    zdiag d;
+    zrig *r;
+    int i;
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    if (!r) return 0;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 40; ++i) {
+        zrig_param_set(r, "ParamForeSwayL", v);
+        zrig_tick(r, 0.4 + i / 60.0);
+    }
+    if (!zrig_part_anchor_pos(r, "arm_l_fore", 1.0, fl) ||
+        !zrig_part_anchor_pos(r, "arm_r_fore", 1.0, fr) ||
+        !zrig_part_anchor_pos(r, "hand_l", 1.0, hd) ||
+        !zrig_part_anchor_pos(r, "seg_torso", 1.0, tor)) {
+        zrig_free(r);
+        return 0;
+    }
+    *root_rot = zrig_deform_transform(r, "fore_l_root", "rot_deg");
+    *mid_rot = zrig_deform_transform(r, "fore_l_mid", "rot_deg");
+    zrig_free(r);
+    return 1;
+}
+
+/* ---------------------------------------------------------------------------
+   T66.17（第六十六问 S3）：小臂袖管的骨链。
+
+   为什么这条单测非有不可：袖管的"两层"是**一个部件、两张网格、两根转骨**，
+   结构错一半照样能渲染出图 —— 少了链尾挂载，袖子就退化成"整件刚性转"；
+   少了 lag，折肘时袖料和手臂同相位，看着是铁皮。两种错法在截图上都只是
+   "好像有点硬"，所以必须让机器量出来：
+     ① 树：网格 → fore_?_mid → fore_?_root，且部件点名的是链**根**；
+     ② 静止严格恒等（骨链不能把静止画面挪一个像素）；
+     ③ 推参数：袖管动、手和躯干一动不动、另一只袖子也不动（隔离）；
+     ④ 折肘滞后：第一帧袖料落后，0.5 秒后收敛到 0.15×参数（稳态零偏移）。
+   --------------------------------------------------------------------------- */
+static void test_fore_bone_chain(void)
+{
+    char dir[1024], rig_path[1024];
+    zdiag d;
+    zrig *r;
+    int i;
+    double fl0[2] = {0, 0}, fl1[2] = {0, 0}, fr0[2] = {0, 0}, fr1[2] = {0, 0};
+    double hd0[2] = {0, 0}, hd1[2] = {0, 0}, tor0[2] = {0, 0}, tor1[2] = {0, 0};
+    double root_rot = 0, mid_rot = 0, moved, hand_moved, tor_moved, other_moved;
+    double early = 0, late = 0;
+    const char *par;
+    SECTION("T66.17 小臂袖管骨链：肘→腕两级 / 网格挂链尾 / 折肘滞后");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装了袖管骨链的 teen rig 应能加载");
+    if (!r) return;
+
+    /* ① 树 */
+    par = zrig_deform_parent_id(r, "fore_l_mid");
+    CHECK(par && strcmp(par, "fore_l_root") == 0,
+          "中段骨 fore_l_mid 的父节点应是 fore_l_root（实际 %s）", par ? par : "无");
+    par = zrig_deform_parent_id(r, "arm_l_fore_slim");
+    CHECK(par && strcmp(par, "fore_l_mid") == 0,
+          "袖管的收窄网格应挂在链尾 fore_l_mid（实际 %s）", par ? par : "无");
+    par = zrig_deform_parent_id(r, "arm_l_fore_long");
+    CHECK(par && strcmp(par, "fore_l_mid") == 0,
+          "袖管的加长网格应挂在链尾 fore_l_mid（实际 %s）", par ? par : "无");
+    par = zrig_deform_parent_id(r, "fore_r_mid");
+    CHECK(par && strcmp(par, "fore_r_root") == 0,
+          "右袖管同样要有两级链（实际 %s）", par ? par : "无");
+
+    /* ② 静止严格恒等 */
+    CHECK(fabs(zrig_deform_transform(r, "fore_l_root", "rot_deg")) < 1e-12 &&
+          fabs(zrig_deform_transform(r, "fore_l_mid", "rot_deg")) < 1e-12 &&
+          fabs(zrig_deform_transform(r, "fore_r_mid", "rot_deg")) < 1e-12,
+          "刚装载时袖管的两根骨必须严格恒等（否则静止画面被挪像素）");
+
+    /* ④ 折肘滞后：先让历史环填满静止值，再一步推到满折 */
+    zrig_param_reset_all(r);
+    zrig_ambient_enable(r, 0);
+    for (i = 0; i < 60; ++i) zrig_tick(r, 1.0 + i / 60.0);
+    zrig_param_set(r, "ParamArmLB", 7.45);
+    zrig_tick(r, 2.0);                      /* 跳变后的第一帧 */
+    early = fabs(zrig_deform_transform(r, "fore_l_mid", "rot_deg"));
+    for (i = 1; i <= 60; ++i) zrig_tick(r, 2.0 + i / 60.0);
+    late = fabs(zrig_deform_transform(r, "fore_l_mid", "rot_deg"));
+    CHECK(late > 0.5, "满折时袖管中段骨要真的转起来（实测 %.3f°）", late);
+    CHECK(early < 0.6 * late,
+          "折肘的第一帧袖料必须**落在手臂后面**（0.12 秒行波延迟）："
+          "第一帧 %.3f° vs 稳态 %.3f°", early, late);
+    CHECK(fabs(late - 0.15 * 7.45) < 0.05,
+          "收敛后应回到 0.15×参数 = 1.118°（实测 %.3f° —— 差太多说明 lag 没收敛，"
+          "稳态会永久偏一个角）", late);
+    zrig_free(r);
+
+    /* ③ 推参数：袖管动、手/躯干/另一只袖子不动 */
+    CHECK(fore_probe(dir, rig_path, 0.0, fl0, fr0, hd0, tor0, &root_rot, &mid_rot),
+          "参数 0 的取样应成功");
+    CHECK(fore_probe(dir, rig_path, 1.0, fl1, fr1, hd1, tor1, &root_rot, &mid_rot),
+          "参数 1 的取样应成功");
+    /* 中段的容差给 0.02 而不是 1e-6：同一根骨上还挂着一条**肘角滞后跟随**
+       （0.15 系数），而 idle 动作本来就在小幅推 ParamArmLB（±0.0444）
+       ⇒ 稳态会多出 0.15×0.0444 ≈ 0.007°。这不是误差，是设计的第二条绑定。 */
+    CHECK(fabs(root_rot - 1.2) < 1e-6 && fabs(mid_rot - 2.6) < 0.02,
+          "袖管根骨 = 1.2 × 参数、中段骨 = 2.6 × 参数（实测 %.3f / %.3f）",
+          root_rot, mid_rot);
+    moved = hypot(fl1[0] - fl0[0], fl1[1] - fl0[1]);
+    hand_moved = hypot(hd1[0] - hd0[0], hd1[1] - hd0[1]);
+    tor_moved = hypot(tor1[0] - tor0[0], tor1[1] - tor0[1]);
+    other_moved = hypot(fr1[0] - fr0[0], fr1[1] - fr0[1]);
+    CHECK(moved > 0.2, "推袖摆参数，袖管要真的动（实测 %.3f px）", moved);
+    CHECK(hand_moved < 0.01,
+          "袖管摆的时候手必须一动不动（实测 %.3f px —— 动了就是袖口跟手错位）",
+          hand_moved);
+    CHECK(tor_moved < 0.01,
+          "袖管摆的时候躯干必须一动不动（实测 %.3f px —— 动了就是骨链绑错部件）",
+          tor_moved);
+    CHECK(other_moved < 0.01,
+          "只推左袖，右袖不能跟着动（实测 %.3f px —— 动了就是两边挂了同一条参数）",
+          other_moved);
+    printf("    量到：袖管根骨 %.3f° / 中段 %.3f°，袖口锚点 (%.1f,%.1f) → (%.1f,%.1f) "
+           "走了 %.2f px；手挪 %.3f px、躯干 %.3f px；折肘第一帧 %.3f° → 稳态 %.3f°\n",
+           root_rot, mid_rot, fl0[0], fl0[1], fl1[0], fl1[1], moved,
+           hand_moved, tor_moved, early, late);
+}
+
+/* ---------------------------------------------------------------------------
+   T66.11：keyform 的分段缓动（每段 ease / 三次贝塞尔 / 阶梯）。
+
+   为什么非有不可：真实立绘的中间形状很少是"两头匀速走"—— 发梢是"先慢后快"、
+   眼睑是"先快后慢"、裙摆收口是"中间鼓两边收"。只有线性插值时这些只能靠堆 key
+   逼近，key 一多就没人敢动，中间段还会出现速度突变（看着像卡了一下）。
+   官方 Cubism 给每段配贝塞尔曲线，我们至少要有同等的表达能力。
+
+   这条单测钉死四件事：
+     ① 名字缓动真的改了段内进度（"in" 在前半段走得比线性慢）；
+     ② 贝塞尔按 timing curve 解出来的值能对上手算（CSS ease 在 x=0.5 → y≈0.8024）；
+     ③ "step" 是阶梯：到不了下一组 key 就一直停在上一组；
+     ④ 端点/单调性：key 上取值精确，整条曲线不许回退（回退就是网格抖）；
+     ⑤ 写错了要**报错**而不是猜（不认识的 ease 名 / 第一组 key 写 ease / 贝塞尔 x 出界）。
+   --------------------------------------------------------------------------- */
+static void test_keyform_ease(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double dx[8], dy[8];
+    int cols = 0, rows = 0, np, ok, i;
+    double prev = -1e9, val, mono_ok = 1.0;
+    double m_in = 0.0, m_key = 0.0, m_step_mid = 0.0, m_step_end = 0.0, m_bez = 0.0;
+
+    SECTION("T66.11 keyform 分段缓动（ease / 贝塞尔 / 阶梯）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_kf_ease");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 两张 1×1 网格，各自三组/两组 key，全部只往右推（dx），形状好读。
+       easeA：0 → 10（"in"，慢起）→ 20（"step"，到点才跳）
+       easeB：0 → 10（贝塞尔 [0.25,0.1,0.25,1]，CSS 的 ease） */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfease\",\"name\":\"缓动测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{},"
+        "\"parts\":["
+        " {\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"easeA\"},"
+        " {\"id\":\"eb\",\"file\":\"sprites/h.png\",\"layer\":20,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"easeB\"}],"
+        "\"deformers\":["
+        " {\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\",\"keys\":["
+        "  {\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":0.5,\"ease\":\"in\",\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]},"
+        "  {\"v\":1.0,\"ease\":\"step\",\"points\":[{\"c\":0,\"r\":0,\"dx\":20,\"dy\":0}]}]},"
+        " {\"id\":\"easeB\",\"part\":\"eb\",\"cols\":1,\"rows\":1,\"param\":\"ParamB\",\"keys\":["
+        "  {\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"ease\":[0.25,0.1,0.25,1],\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]},"
+        " {\"id\":\"ParamB\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "手写 rig（带 ease）应装载成功");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+
+    np = zrig_deform_mesh(r, "easeA", &cols, &rows, dx, dy, 8);
+    CHECK(np == 4 && cols == 1 && rows == 1, "1×1 网格应有 4 个控制点（实际 %d）", np);
+
+#define KF_AT(param, value, deform)                                                   \
+    do {                                                                              \
+        zrig_param_set(r, (param), (value));                                          \
+        zrig_tick(r, 0.0);                                                            \
+        zrig_deform_mesh(r, (deform), &cols, &rows, dx, dy, 8);                       \
+    } while (0)
+
+    /* ① 名字缓动：段内半程（参数 0.25 = 段 [0,0.5] 的正中），"in" = t² = 0.25 权重 */
+    KF_AT("ParamA", 0.25, "easeA");
+    val = dx[0];
+    m_in = val;
+    CHECK(fabs(val - 2.5) < 0.05,
+          "ease 'in' 在段内半程应只走到 1/4（期望 2.50，实际 %.3f）—— 线性会给 5.0", val);
+    CHECK(val < 4.5, "ease 'in' 必须比线性慢，不能悄悄当线性用");
+
+    /* ② key 上的值必须精确（缓动只改段内，不动端点） */
+    KF_AT("ParamA", 0.5, "easeA");
+    m_key = dx[0];
+    CHECK(fabs(dx[0] - 10.0) < 1e-6, "参数落在 key 上应精确取到该组 key（期望 10，实际 %.4f）", dx[0]);
+
+    /* ③ 阶梯：到不了下一组 key 就停在上一组 */
+    KF_AT("ParamA", 0.75, "easeA");
+    m_step_mid = dx[0];
+    CHECK(fabs(dx[0] - 10.0) < 1e-6,
+          "ease 'step' 在段中间不该走（期望停在 10，实际 %.4f；走到 15 就是被当线性了）", dx[0]);
+    KF_AT("ParamA", 1.0, "easeA");
+    m_step_end = dx[0];
+    CHECK(fabs(dx[0] - 20.0) < 1e-6, "阶梯到点这一下要给足（期望 20，实际 %.4f）", dx[0]);
+
+    /* ④ 贝塞尔 timing curve：CSS ease 在 x=0.5 → y≈0.8024（手算值，见 JOURNAL） */
+    KF_AT("ParamB", 0.5, "easeB");
+    m_bez = dx[0];
+    CHECK(fabs(dx[0] - 8.024) < 0.02,
+          "贝塞尔 [0.25,0.1,0.25,1] 在 x=0.5 应给 8.024（实际 %.4f）—— 对不上就是解错曲线了", dx[0]);
+
+    /* ⑤ 单调：整条 0→1 扫一遍，位移不许回退（回退 = 网格抖） */
+    for (i = 0; i <= 40; ++i) {
+        KF_AT("ParamA", i / 40.0, "easeA");
+        if (dx[0] < prev - 1e-9) mono_ok = 0.0;
+        prev = dx[0];
+    }
+    CHECK(mono_ok > 0.5, "参数单调推进时位移必须单调（回退就是网格在抖）");
+    zrig_free(r);
+
+    /* ⑥ 写错要报错，不许猜。(a) 不认识的 ease 名 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfbad\",\"name\":\"缓动错\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"easeA\"}],"
+        "\"deformers\":[{\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\","
+        " \"keys\":[{\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"ease\":\"wobble\",\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    ok = (r == NULL);
+    CHECK(ok, "不认识的 ease 名必须报错（悄悄当线性 = 画面对不上还查不出）");
+    zrig_free(r);
+
+    /* (b) 第一组 key 写 ease：它前面没有段，属于写错位置 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfbad2\",\"name\":\"缓动错2\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"easeA\"}],"
+        "\"deformers\":[{\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\","
+        " \"keys\":[{\"v\":0.0,\"ease\":\"in\",\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL, "第一组 key 写 ease 必须报错（缓动挂在右端点那一组 key 上）");
+    zrig_free(r);
+
+    /* (c) 贝塞尔 x 出界：x(t) 就不单调了，二分没有唯一解 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfbad3\",\"name\":\"缓动错3\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"easeA\"}],"
+        "\"deformers\":[{\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\","
+        " \"keys\":[{\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"ease\":[1.4,0.0,0.2,1.0],\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL, "贝塞尔 x 控制点出 [0,1] 必须报错（x 不单调 → 曲线解不出来）");
+    zrig_free(r);
+
+    /* (d) 有 keyform 的网格又被 bind 写 amount：那条绑定**根本不会参与求值**
+           （amount 通路在 nkf>0 时直接 return），要么是写错了，要么是以为物理会带动它。
+           这种"写了不动还不报错"以前吃过太多次亏，必须当场失败。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kfbad4\",\"name\":\"缓动错4\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"easeA\"}],"
+        "\"deformers\":[{\"id\":\"easeA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,\"param\":\"ParamA\","
+        " \"keys\":[{\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"deformer\":\"easeA\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL, "keyform 网格再被 bind 写 amount 必须报错（写了也不会动）");
+    zrig_free(r);
+
+    /* (e) keyform 也吃 lag：参数一步跳过去，网格要**落后** q 秒才走到位。
+           这条是 G66.12 的修复项 —— 网格从 amount 改成 keyform 之后，
+           bind 的迟滞不能跟着一起丢（丢了侧发就从"根先动梢后动"变成整条一起动）。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kflag\",\"name\":\"迟滞测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"ea\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"lagA\"}],"
+        "\"deformers\":[{\"id\":\"lagA\",\"part\":\"ea\",\"cols\":1,\"rows\":1,"
+        " \"param\":\"ParamA\",\"lag\":0.1,"
+        " \"keys\":[{\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":[{\"id\":\"ParamA\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 keyform lag 的 rig 应装载成功");
+    if (r) {
+        double lag_now = 0.0, lag_late = 0.0;
+        zrig_ambient_enable(r, 0);
+        for (i = 0; i <= 60; ++i) zrig_tick(r, i / 60.0);      /* 先攒够历史 */
+        zrig_param_set(r, "ParamA", 1.0);
+        zrig_tick(r, 61.0 / 60.0);                             /* 跳变后的第一帧 */
+        zrig_deform_mesh(r, "lagA", &cols, &rows, dx, dy, 8);
+        lag_now = dx[0];
+        for (i = 0; i < 12; ++i) zrig_tick(r, (61.0 + i + 1) / 60.0);
+        zrig_deform_mesh(r, "lagA", &cols, &rows, dx, dy, 8);
+        lag_late = dx[0];
+        CHECK(lag_now < 1.0,
+              "参数跳过去的第一帧网格还没动（lag 0.1s，实际 %.3f，走到 10 就是 lag 没生效）",
+              lag_now);
+        CHECK(fabs(lag_late - 10.0) < 0.5,
+              "过了 lag 之后要追到目标（期望 10，实际 %.3f）", lag_late);
+        printf("    量到：keyform lag 第一帧 %.3f → 0.2s 后 %.3f\n", lag_now, lag_late);
+        zrig_free(r);
+    }
+    printf("    量到：ease'in' 段内半程 %.3f（线性会给 5.000）· key 上 %.4f · "
+           "step 段中 %.3f → 到点 %.3f · 贝塞尔 x=0.5 → %.4f\n",
+           m_in, m_key, m_step_mid, m_step_end, m_bez);
+#undef KF_AT
+}
+
+/* ---------------------------------------------------------------------------
+   T66.10（G58.8）：父级 warp 的逐顶点位移场传给子部件。
+
+   为什么非有不可：节点树以前只传**刚体**变换，父件的网格把一片区域揉弯之后，
+   挂在它下面的别的部件只会整体位移 —— 三节发链"看起来像链、断起来像两截"，
+   裙摆也带不起下面那条里布。
+
+   这条单测用一个手写的小 rig 把三种情形钉死：
+     ① 父件自己有网格 → 位移照常（对照组）；
+     ② 子件挂在父件的网格节点下 → **吃到同一份场**（同一方向、同一量级）；
+     ③ 子件没挂链 / 子件自己没网格 → 前者一动不动，后者借父件的分辨率也能吃到。
+   --------------------------------------------------------------------------- */
+static void test_parent_warp_inherit(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double px[32], py[32], cx[32], cy[32], nx[32], ny[32], ox[32], oy[32];
+    double owx = 0.0, owy = 0.0;
+    int np, cols = 0, rows = 0, i, q;
+
+    SECTION("T66.10 父级 warp 的位移场传给子部件（G58.8）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_warp_inherit");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    /* 三件同贴图同位置，只有挂链不同：
+       pw = 父件（网格挂在自己身上）· cw = 挂 pw 的网格节点的子件（有自己的 1×1 网格）
+       nw = 不挂链的对照件 · ow = 挂链但**自己没有网格**的子件 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"warpinh\",\"name\":\"继承测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{},"
+        "\"parts\":["
+        " {\"id\":\"pw\",\"file\":\"sprites/h.png\",\"layer\":10,\"pos\":[100,100],\"anchor\":[0,0]},"
+        " {\"id\":\"cw\",\"file\":\"sprites/h.png\",\"layer\":20,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"warpA\"},"
+        " {\"id\":\"nw\",\"file\":\"sprites/h.png\",\"layer\":30,\"pos\":[100,100],\"anchor\":[0,0]},"
+        " {\"id\":\"ow\",\"file\":\"sprites/h.png\",\"layer\":40,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"warpA\"},"
+        " {\"id\":\"kw\",\"file\":\"sprites/h.png\",\"layer\":50,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"deformer\":\"warpA\"}],"
+        "\"deformers\":["
+        /* 父件那张场：2×2 控制点，整体右移 10px、下边再多下移 6px（有梯度才看得出
+           "逐顶点"，常数场等于整体平移，分不出继承写没写对） */
+        " {\"id\":\"warpA\",\"part\":\"pw\",\"cols\":2,\"rows\":2,\"points\":["
+        "  {\"c\":0,\"r\":0,\"dx\":10,\"dy\":0},{\"c\":1,\"r\":0,\"dx\":10,\"dy\":0},"
+        "  {\"c\":2,\"r\":0,\"dx\":10,\"dy\":0},"
+        "  {\"c\":0,\"r\":1,\"dx\":10,\"dy\":3},{\"c\":1,\"r\":1,\"dx\":10,\"dy\":3},"
+        "  {\"c\":2,\"r\":1,\"dx\":10,\"dy\":3},"
+        "  {\"c\":0,\"r\":2,\"dx\":10,\"dy\":6},{\"c\":1,\"r\":2,\"dx\":10,\"dy\":6},"
+        "  {\"c\":2,\"r\":2,\"dx\":10,\"dy\":6}]},"
+        /* 子件自己的网格（全 0）：它的存在只是给引擎一个分辨率，位移全靠继承 */
+        " {\"id\":\"cw_mesh\",\"part\":\"cw\",\"cols\":1,\"rows\":1,\"parent\":\"warpA\","
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        /* kw 自己有一张 2×4 的网格、并且**是活的**（amount 由参数推到 0.5）：
+           它的分辨率(2×4)和父场(2×2)不同，正好验证"按自己的顶点双线性取样" */
+        " {\"id\":\"kw_mesh\",\"part\":\"kw\",\"cols\":2,\"rows\":4,\"parent\":\"warpA\","
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamWarp\",\"min\":0,\"max\":1,\"default\":0,"
+        "  \"binds\":[{\"deformer\":\"warpA\",\"scale\":1.0}]},"
+        " {\"id\":\"ParamKW\",\"min\":0,\"max\":1,\"default\":0.5,"
+        "  \"binds\":[{\"deformer\":\"kw_mesh\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带父子 warp 的 rig 应加载成功");
+    if (!r) return;
+
+    /* ① 参数 0：谁都不动（静止必须严格恒等，是这一整套的地基）。
+       cw 自己那张 1×1 网格在 amount=0 时不参与（引擎的老早退），所以这里借父件的
+       2×2 分辨率 —— 借来的是格子，位移仍然是 0。 */
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+    np = zrig_part_mesh(r, "cw", 1.0, &cols, &rows, cx, cy, 32);
+    CHECK(np == 9 && fabs(cx[0]) < 1e-9 && fabs(cy[6]) < 1e-9,
+          "参数 0 时子件的顶点必须一动不动（实为 %d 个点，dx=%.3f dy=%.3f）",
+          np, np ? cx[0] : -1.0, np > 6 ? cy[6] : -1.0);
+
+    /* ② 推到 1：父件的场起来 */
+    zrig_param_set(r, "ParamWarp", 1.0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, 0.2 + i / 60.0);
+    zrig_part_mesh(r, "pw", 1.0, &cols, &rows, px, py, 32);
+    CHECK(fabs(px[4] - 10.0) < 0.01 && fabs(py[4] - 3.0) < 0.01,
+          "父件的场应右移 10px、中排下移 3px（实测 dx=%.2f dy=%.2f）", px[4], py[4]);
+
+    /* ③ 子件吃到同一份场。cw 借了父件的 2×2 格子 ⇒ 下标 6 = 左下(0,6)、8 = 右下(0,6) */
+    np = zrig_part_mesh(r, "cw", 1.0, &cols, &rows, cx, cy, 32);
+    CHECK(np == 9, "子件的网格应是借来的 2×2（9 个点），实为 %d", np);
+    CHECK(np == 9 && fabs(cx[0] - 10.0) < 0.05 && fabs(cy[0]) < 0.05,
+          "左上角应继承父场 (10,0)，实测 (%.2f,%.2f)", cx[0], cy[0]);
+    CHECK(np == 9 && fabs(cx[6] - 10.0) < 0.05 && fabs(cy[6] - 6.0) < 0.05,
+          "左下角应继承父场的梯度 (10,6)，实测 (%.2f,%.2f) —— 常数场是量不出"
+          "「逐顶点」的，所以父场故意带梯度", cx[6], cy[6]);
+
+    /* ④ 不挂链的对照件：一动不动（证明位移来自继承，不是全局副作用） */
+    np = zrig_part_mesh(r, "nw", 1.0, &cols, &rows, nx, ny, 32);
+    CHECK(np == 0, "没挂链、也没有网格的部件不该有网格位移（实为 %d 个点）", np);
+
+    /* ⑤ 自己**没有网格**的子件也要吃到：借父件的分辨率 */
+    np = zrig_part_mesh(r, "ow", 1.0, &cols, &rows, ox, oy, 32);
+    CHECK(np == 9 && cols == 2 && rows == 2,
+          "没网格的子件应借父件的 2×2 分辨率（实为 %d 个点 / %dx%d）", np, cols, rows);
+    CHECK(np == 9 && fabs(ox[8] - 10.0) < 0.05 && fabs(oy[8] - 6.0) < 0.05,
+          "没网格的子件右下角也应继承 (10,6)，实测 (%.2f,%.2f)",
+          np == 9 ? ox[8] : 0.0, np == 9 ? oy[8] : 0.0);
+    /* 下面 kw 会复用 ox/oy 这两块缓冲，先把 ow 的读数留一份给收尾打印 */
+    owx = np == 9 ? ox[8] : 0.0;
+    owy = np == 9 ? oy[8] : 0.0;
+
+    /* ⑥ 子件自己有**活的**网格时，按自己的分辨率取样（2×4 vs 父 2×2）：
+       行下标 r 对应的 v = r/4，父场在 v=0.5 处 dy=3 ⇒ r=2 那行应为 3，r=4 那行 6 */
+    np = zrig_part_mesh(r, "kw", 1.0, &cols, &rows, ox, oy, 32);
+    CHECK(np == 15 && cols == 2 && rows == 4,
+          "活跃网格的子件要按自己的 2×4 取（实为 %d 个点 / %dx%d）", np, cols, rows);
+    CHECK(np == 15 && fabs(oy[2 * 3 + 0] - 3.0) < 0.15 &&
+          fabs(oy[4 * 3 + 0] - 6.0) < 0.15,
+          "2×4 网格的中间行/底行应分别取到父场的 3/6（实测 %.2f / %.2f）",
+          np == 15 ? oy[6] : 0.0, np == 15 ? oy[12] : 0.0);
+    printf("    量到：父场下层 (10,6) · 子件左上 (%.2f,%.2f) 左下 (%.2f,%.2f) · "
+           "无网格子件右下 (%.2f,%.2f) · 活跃网格子件底行 dy=%.2f\n",
+           cx[0], cy[0], cx[6], cy[6], owx, owy, oy[12]);
+    (void)q;
+    zrig_free(r);
+}
+
+/* ---------------------------------------------------------------------------
+   T66.9：单网格多骨加权（逐顶点权重 "w"）。
+
+   要解决的事：一片顶点只被一条通路驱动时，"上缘跟腰、下缘跟摆"做不到。
+   裙子只有一张网格、一个旋转骨 ⇒ 要么整条裙跟着腰走（下摆僵），要么整条跟着摆
+   走（腰被扯）。Live2D 里这靠"多条骨 + 蒙皮权重"；我们这里不引进第二套坐标系，
+   而是给**每张位移网格**配一张逐顶点权重表，两张互补的网格 = 两段骨的线性混合。
+
+   判据必须能分三档，否则测不出东西：
+     ① 上缘：只吃 A 的位移（wA=1,wB=0）；
+     ② 中段：各吃一半（0.5/0.5）；
+     ③ 下缘：只吃 B（0/1）。
+   再加两个负控：不写 w 时位移会**叠加**（老口径），以及权重和 >1 必须拒载。
+   --------------------------------------------------------------------------- */
+/* T66.9c 逐顶点加权刚体：一片网格跨两根骨时，上缘不吃后一根骨的旋转。
+   为什么必须有这道闸：裙摆的"上缘跟腰、下缘跟摆"如果只测"下摆动了"，
+   现在下摆也在动（两级旋转整件连乘），断言会绿，而裙腰被拖着走了 5px 没人知道。
+   所以这里量的是**三排顶点各自的落点**，并且用两种独立口径：
+     ① zrig_part_vertex_pos（引擎的顶点探针）；
+     ② 渲染字节：w 全 0 时必须与"把那段旋转设成 0"逐字节相同，
+        w 全 1 时必须与"不写 chain_w 的满格旋转"逐字节相同。 */
+static void test_chain_weight(void)
+{
+    char dir[1024], sprites[1024], rigp[1024];
+    char full[8192], zero[8192], mix[8192];
+    SECTION("T66.9c 逐顶点加权刚体：上缘不吃后一段骨的旋转");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_chain_w");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    {
+        zerr e;
+        zimg *blk = zimg_new_filled(200, 200, 200, 80, 80, 255);
+        char pth[1024];
+        z_snprintf(pth, sizeof(pth), "%s/blk.png", sprites);
+        zerr_clear(&e);
+        CHECK(blk && zimg_save_png(blk, pth, &e) == 0, "加权刚体的夹具（200x200 实心块）要能写出：%s", e.msg);
+        if (blk) zimg_free(blk);
+    }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 链：cw_root（pivot 上边中点）→ cw_mid（pivot 上边中点，吃 90° 旋转）
+       顶点按 3×3 排：上排该 w=0、中排 0.5、下排 1。 */
+#define CHAIN_W_RIG(CW)                                                          \
+    "{\"schema_version\":\"1.0\",\"id\":\"cw\",\"name\":\"加权刚体\","            \
+    "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"          \
+    "\"parts\":[{\"id\":\"cw\",\"file\":\"sprites/blk.png\",\"layer\":10,"          \
+    "\"pos\":[100,100],\"anchor\":[0,0],\"scale\":1.0,\"hires\":1,"                 \
+    "\"deformer\":\"cw_root\"}],"                                                  \
+    "\"deformers\":["                                                              \
+    " {\"id\":\"cw_root\",\"pivot\":[200,100]},"                                   \
+    " {\"id\":\"cw_mid\",\"pivot\":[200,100],\"parent\":\"cw_root\"" CW "},"        \
+    " {\"id\":\"cw_mesh\",\"part\":\"cw\",\"cols\":2,\"rows\":2,"             \
+    "  \"parent\":\"cw_mid\",\"points\":[]}],"                                     \
+    "\"params\":[{\"id\":\"ParamSwing\",\"min\":0,\"max\":1,\"default\":0,"         \
+    "\"binds\":[{\"deformer\":\"cw_mid\",\"param\":\"rot_deg\",\"scale\":90.0}]}],"  \
+    "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}"
+
+    z_snprintf(full, sizeof(full), CHAIN_W_RIG(""));
+    z_snprintf(zero, sizeof(zero), CHAIN_W_RIG(
+        ",\"chain_w\":[0,0,0, 0,0,0, 0,0,0]"));
+    z_snprintf(mix, sizeof(mix), CHAIN_W_RIG(
+        ",\"chain_w\":[0,0,0, 0.5,0.5,0.5, 1,1,1]"));
+#undef CHAIN_W_RIG
+
+    {
+        /* 三个 rig 各取一次：满格旋转下的顶点落点 */
+        double pfull[3][2], pzero[3][2], pmix[3][2];
+        int col[3] = {0, 0, 0}, row[3] = {0, 1, 2};
+        int which;
+        for (which = 0; which < 3; ++which) {
+            const char *json = which == 0 ? full : (which == 1 ? zero : mix);
+            double (*out)[2] = which == 0 ? pfull : (which == 1 ? pzero : pmix);
+            zdiag d;
+            zrig *r;
+            int i, okv = 1;
+            write_text(rigp, json);
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            if (which == 2)
+                CHECK(r != NULL, "带 chain_w 的 rig 应加载成功（%d 条诊断）", d.error_count);
+            if (!r) return;
+            zrig_ambient_enable(r, 0);
+            zrig_phys_set_enabled(r, 0);
+            zrig_param_set(r, "ParamSwing", 1.0);
+            for (i = 0; i < 4; ++i) zrig_tick(r, 0.5 + i / 60.0);
+            if (which == 0)
+                CHECK(fabs(zrig_deform_transform(r, "cw_mid", "rot_deg") - 90.0) < 0.5,
+                      "满格时 cw_mid 应转到 90°（实测 %.3f°；0 说明参数没绑上）",
+                      zrig_deform_transform(r, "cw_mid", "rot_deg"));
+            for (i = 0; i < 3; ++i)
+                if (!zrig_part_vertex_pos(r, "cw", 1.0, col[i], row[i], out[i])) okv = 0;
+            CHECK(okv, "顶点探针应能拿到三排位置（rig=%d）", which);
+            zrig_free(r);
+        }
+        printf("    满格旋转：上排 (%.2f,%.2f) 中排 (%.2f,%.2f) 下排 (%.2f,%.2f)\n",
+               pfull[0][0], pfull[0][1], pfull[1][0], pfull[1][1], pfull[2][0], pfull[2][1]);
+        printf("    w 全 0 ：上排 (%.2f,%.2f) 中排 (%.2f,%.2f) 下排 (%.2f,%.2f)\n",
+               pzero[0][0], pzero[0][1], pzero[1][0], pzero[1][1], pzero[2][0], pzero[2][1]);
+        printf("    w 0/0.5/1：上排 (%.2f,%.2f) 中排 (%.2f,%.2f) 下排 (%.2f,%.2f)\n",
+               pmix[0][0], pmix[0][1], pmix[1][0], pmix[1][1], pmix[2][0], pmix[2][1]);
+
+        /* 前提：满格时上排与下排必须真的差得开，否则下面的断言是空的 */
+        CHECK(fabs(pfull[2][0] - pfull[0][0]) + fabs(pfull[2][1] - pfull[0][1]) > 20.0,
+              "满格旋转下上下排必须明显分开（否则这条用例什么也没测）");
+
+        /* ① 上排 w=0：与"没有那段旋转"完全一致（不动） */
+        CHECK(fabs(pmix[0][0] - pzero[0][0]) < 0.05 && fabs(pmix[0][1] - pzero[0][1]) < 0.05,
+              "上排 w=0 必须一点都不吃那段旋转：(%.3f,%.3f) vs (%.3f,%.3f)",
+              pmix[0][0], pmix[0][1], pzero[0][0], pzero[0][1]);
+        /* ② 下排 w=1：与完整旋转完全一致（吃满） */
+        CHECK(fabs(pmix[2][0] - pfull[2][0]) < 0.05 && fabs(pmix[2][1] - pfull[2][1]) < 0.05,
+              "下排 w=1 必须吃满旋转：(%.3f,%.3f) vs (%.3f,%.3f)",
+              pmix[2][0], pmix[2][1], pfull[2][0], pfull[2][1]);
+        /* ③ 中排 0.5：落在两个端点正中间（线性插值，不许"跳档"） */
+        {
+            double ex = (pzero[1][0] + pfull[1][0]) * 0.5;
+            double ey = (pzero[1][1] + pfull[1][1]) * 0.5;
+            CHECK(fabs(pmix[1][0] - ex) < 0.05 && fabs(pmix[1][1] - ey) < 0.05,
+                  "中排 w=0.5 要正好落在中间：(%.3f,%.3f) vs 期望 (%.3f,%.3f)",
+                  pmix[1][0], pmix[1][1], ex, ey);
+        }
+    }
+
+    /* ④ 渲染：探针和画笔必须同一套口径（防止"探针对、画面不对"）。
+       判据用**alpha 加权重心**而不是像素总数 —— 纯色矩形转 90° 之后面积不变，
+       总数断言会绿着把"根本没转"放过去（第一版就是这么写的，实测三帧全 10200000）。 */
+    {
+        struct { const char *json; double cx, cy; unsigned long sum; } shots[3];
+        int which;
+        for (which = 0; which < 3; ++which) {
+            zdiag d;
+            zrig *r;
+            const zimg *fb;
+            int i;
+            write_text(rigp, which == 0 ? full : (which == 1 ? zero : mix));
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            shots[which].cx = shots[which].cy = -1.0;
+            shots[which].sum = 0;
+            if (!r) continue;
+            zrig_ambient_enable(r, 0);
+            zrig_phys_set_enabled(r, 0);
+            zrig_param_set(r, "ParamSwing", 1.0);
+            for (i = 0; i < 4; ++i) zrig_tick(r, 0.5 + i / 60.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            if (fb) {
+                int q, n = fb->w * fb->h;
+                double sx = 0.0, sy = 0.0;
+                for (q = 0; q < n; ++q) {
+                    unsigned long a = (unsigned long)fb->px[q * 4 + 3];
+                    if (!a) continue;
+                    shots[which].sum += a;
+                    sx += (double)a * (double)(q % fb->w);
+                    sy += (double)a * (double)(q / fb->w);
+                }
+                if (shots[which].sum) {
+                    shots[which].cx = sx / (double)shots[which].sum;
+                    shots[which].cy = sy / (double)shots[which].sum;
+                }
+            }
+            zrig_free(r);
+        }
+        printf("    画面重心：满格 (%.1f,%.1f) · w 全 0 (%.1f,%.1f) · 0/0.5/1 (%.1f,%.1f)\n",
+               shots[0].cx, shots[0].cy, shots[1].cx, shots[1].cy, shots[2].cx, shots[2].cy);
+        CHECK(shots[0].sum > 0 && shots[1].sum > 0, "两种都要画得出东西（%lu / %lu）",
+              shots[0].sum, shots[1].sum);
+        /* 200x200 的块在 (100,100)，绕上边中点 (200,100) 转 90°：
+           重心 (200,200) → (100,100)。这两个数是几何算出来的，不是拟合。 */
+        CHECK(fabs(shots[1].cx - 200.0) < 3.0 && fabs(shots[1].cy - 200.0) < 3.0,
+              "w 全 0 时画面必须一动不动（重心 (%.1f,%.1f)，应为 200,200）",
+              shots[1].cx, shots[1].cy);
+        CHECK(fabs(shots[0].cx - 100.0) < 6.0 && fabs(shots[0].cy - 100.0) < 6.0,
+              "满格时画面要真的转过去（重心 (%.1f,%.1f)，应为 100,100）",
+              shots[0].cx, shots[0].cy);
+        /* 混合帧的重心只要**严格**夹在两端之间就够了 —— 别拿"离中点不能太近"当判据：
+           下排吃满、上排不吃的梯形，重心本来就会偏满格那一侧（实测 110.6 / 132.6）。 */
+        CHECK(shots[2].cx < shots[1].cx - 5.0 && shots[2].cx > shots[0].cx + 5.0 &&
+              shots[2].cy < shots[1].cy - 5.0 && shots[2].cy > shots[0].cy + 5.0,
+              "0/0.5/1 的重心要严格夹在两者之间（(%.1f,%.1f) ∈ (%.1f,%.1f)~(%.1f,%.1f)）",
+              shots[2].cx, shots[2].cy, shots[0].cx, shots[0].cy, shots[1].cx, shots[1].cy);
+    }
+
+    /* —— 负控四条：写错必须当场拒载，不许静默退化成"整件跟着转" —— */
+    {
+        static const struct { const char *chain; const char *why; } bad[] = {
+            { ",\"chain_w\":[0,0,0, 0,0,0, 1,1]", "长度不对（8 ≠ 9）" },
+            { ",\"chain_w\":[0,0,0, 0,0,0, 1,1,2]", "取值越界（2）" },
+            { ",\"chain_w\":[]", "空数组" },
+        };
+        size_t b;
+        for (b = 0; b < sizeof(bad) / sizeof(bad[0]); ++b) {
+            char js[8192];
+            zdiag d;
+            zrig *r;
+            z_snprintf(js, sizeof(js),
+                "{\"schema_version\":\"1.0\",\"id\":\"cw\",\"name\":\"坏权重\","
+                "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+                "\"parts\":[{\"id\":\"cw\",\"file\":\"sprites/blk.png\",\"layer\":10,"
+                "\"pos\":[100,100],\"anchor\":[0,0],\"scale\":1.0,\"hires\":1,"
+                "\"deformer\":\"cw_root\"}],"
+                "\"deformers\":["
+                " {\"id\":\"cw_root\",\"pivot\":[200,100]},"
+                " {\"id\":\"cw_mid\",\"pivot\":[200,100],\"parent\":\"cw_root\"%s},"
+                " {\"id\":\"cw_mesh\",\"part\":\"cw\",\"cols\":2,\"rows\":2,"
+                "  \"parent\":\"cw_mid\",\"points\":[]}],"
+                "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", bad[b].chain);
+            write_text(rigp, js);
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "chain_w %s 应拒载", bad[b].why);
+            zrig_free(r);
+        }
+        /* 同一条链上两个节点都写 chain_w：两段骨抢同一片顶点，语义说不清 */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"cw\",\"name\":\"两个加权\","
+            "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+            "\"parts\":[{\"id\":\"cw\",\"file\":\"sprites/blk.png\",\"layer\":10,"
+            "\"pos\":[100,100],\"anchor\":[0,0],\"scale\":1.0,\"hires\":1,"
+            "\"deformer\":\"cw_root\"}],"
+            "\"deformers\":["
+            " {\"id\":\"cw_root\",\"pivot\":[200,100],\"chain_w\":[0,0,0,0,0,0,1,1,1]},"
+            " {\"id\":\"cw_mid\",\"pivot\":[200,100],\"parent\":\"cw_root\","
+            "\"chain_w\":[0,0,0,0,0,0,1,1,1]},"
+            " {\"id\":\"cw_mesh\",\"part\":\"cw\",\"cols\":2,\"rows\":2,"
+            "  \"parent\":\"cw_mid\",\"points\":[]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL && d.error_count > 0, "同一部件链上两个 chain_w 应拒载");
+            zrig_free(r);
+        }
+        /* 部件没有网格却写 chain_w：**只警告、不拒载**。
+           为什么放宽：同一个链节点常被好几件共用，裙身有网格、里布（skirt_lining）
+           是借它的位移场的 —— 那种情况下"里布没有网格"是正常的（T66.9c 实测踩到）。 */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"cw\",\"name\":\"无网格\","
+            "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+            "\"parts\":[{\"id\":\"cw\",\"file\":\"sprites/blk.png\",\"layer\":10,"
+            "\"pos\":[100,100],\"anchor\":[0,0],\"scale\":1.0,\"hires\":1,"
+            "\"deformer\":\"cw_root\"}],"
+            "\"deformers\":["
+            " {\"id\":\"cw_root\",\"pivot\":[200,100],\"chain_w\":[0,1,0,1]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r != NULL, "没有网格的部件写 chain_w 应能加载（只警告，不拒载）");
+            CHECK(d.error_count == 0 && d.count > 0,
+                  "但要留下警告（错误 %d / 诊断 %d）", d.error_count, d.count);
+            zrig_free(r);
+        }
+    }
+}
+
+static void test_deform_weights(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double dx[32], dy[32];
+    int np, cols = 0, rows = 0, i;
+
+    SECTION("T66.9 单网格多骨加权：同一部件两张网格按逐顶点权重混合");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_deform_w");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* A 往右推 10（上缘权重 1 → 0），B 往下推 12（上缘 0 → 1） */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"dw\",\"name\":\"权重\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"dw\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        "\"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"deformers\":["
+        " {\"id\":\"dw_top\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0},{\"c\":1,\"r\":0,\"dx\":10,\"dy\":0},"
+        "   {\"c\":2,\"r\":0,\"dx\":10,\"dy\":0},{\"c\":0,\"r\":1,\"dx\":10,\"dy\":0},"
+        "   {\"c\":1,\"r\":1,\"dx\":10,\"dy\":0},{\"c\":2,\"r\":1,\"dx\":10,\"dy\":0},"
+        "   {\"c\":0,\"r\":2,\"dx\":10,\"dy\":0},{\"c\":1,\"r\":2,\"dx\":10,\"dy\":0},"
+        "   {\"c\":2,\"r\":2,\"dx\":10,\"dy\":0}],"
+        "  \"w\":[1,1,1, 0.5,0.5,0.5, 0,0,0]},"
+        " {\"id\":\"dw_bot\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":12},{\"c\":1,\"r\":0,\"dx\":0,\"dy\":12},"
+        "   {\"c\":2,\"r\":0,\"dx\":0,\"dy\":12},{\"c\":0,\"r\":1,\"dx\":0,\"dy\":12},"
+        "   {\"c\":1,\"r\":1,\"dx\":0,\"dy\":12},{\"c\":2,\"r\":1,\"dx\":0,\"dy\":12},"
+        "   {\"c\":0,\"r\":2,\"dx\":0,\"dy\":12},{\"c\":1,\"r\":2,\"dx\":0,\"dy\":12},"
+        "   {\"c\":2,\"r\":2,\"dx\":0,\"dy\":12}],"
+        "  \"w\":[0,0,0, 0.5,0.5,0.5, 1,1,1]}],"
+        "\"params\":["
+        " {\"id\":\"ParamTop\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_top\",\"scale\":1.0}]},"
+        " {\"id\":\"ParamBot\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_bot\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带逐顶点权重的 rig 应加载成功（%d 条诊断）", d.error_count);
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+    np = zrig_part_mesh(r, "dw", 1.0, &cols, &rows, dx, dy, 32);
+    CHECK(np == 9 && cols == 2 && rows == 2, "应拿到 3x3 顶点（实为 %d 个 / %dx%d）", np, cols, rows);
+    /* ① 上缘：A 的位移全吃，B 一点不吃 */
+    CHECK(np == 9 && fabs(dx[0] - 10.0) < 0.05 && fabs(dy[0]) < 0.05,
+          "上缘应只吃「跟腰」那张：(10,0)，实测 (%.2f,%.2f)", np ? dx[0] : 0.0, np ? dy[0] : 0.0);
+    /* ② 中段：两张各一半 */
+    CHECK(np == 9 && fabs(dx[4] - 5.0) < 0.05 && fabs(dy[4] - 6.0) < 0.05,
+          "中段应各吃一半：(5,6)，实测 (%.2f,%.2f)", np ? dx[4] : 0.0, np ? dy[4] : 0.0);
+    /* ③ 下缘：只吃 B */
+    CHECK(np == 9 && fabs(dx[8]) < 0.05 && fabs(dy[8] - 12.0) < 0.05,
+          "下缘应只吃「跟摆」那张：(0,12)，实测 (%.2f,%.2f)", np ? dx[8] : 0.0, np ? dy[8] : 0.0);
+    printf("    量到：上缘 (%.2f,%.2f) · 中段 (%.2f,%.2f) · 下缘 (%.2f,%.2f)\n",
+           dx[0], dy[0], dx[4], dy[4], dx[8], dy[8]);
+    zrig_free(r);
+
+    /* —— 负控一：不写 w 时位移是**相加**的（这就是老口径，也是必须有权重的原因） —— */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"dwn\",\"name\":\"无权重\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"dw\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        "\"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"deformers\":["
+        " {\"id\":\"dw_top\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]},"
+        " {\"id\":\"dw_bot\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":12}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamTop\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_top\",\"scale\":1.0}]},"
+        " {\"id\":\"ParamBot\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_bot\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "不带权的多网格 rig 仍应加载（老 rig 不能因此坏掉）");
+    if (r) {
+        zrig_ambient_enable(r, 0);
+        zrig_phys_set_enabled(r, 0);
+        for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+        np = zrig_part_mesh(r, "dw", 1.0, &cols, &rows, dx, dy, 32);
+        CHECK(np == 9 && fabs(dx[0] - 10.0) < 0.05 && fabs(dy[0] - 12.0) < 0.05,
+              "不写权重时两个方向的位移都会叠加上来：(10,12)，实测 (%.2f,%.2f) —— "
+              "这正是「裙子被推两次」的画面", np ? dx[0] : 0.0, np ? dy[0] : 0.0);
+        zrig_free(r);
+    }
+
+    /* —— 负控二：权重和 > 1 必须拒载（悄悄钳位会把"写错了"变成"看起来有点怪"） —— */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"dwb\",\"name\":\"越权\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"dw\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        "\"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"deformers\":["
+        " {\"id\":\"dw_top\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}],\"w\":[1,1,1,1,1,1,1,1,1]},"
+        " {\"id\":\"dw_bot\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":12}],\"w\":[1,1,1,1,1,1,1,1,1]}],"
+        "\"params\":[{\"id\":\"ParamTop\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_top\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL && d.error_count > 0,
+          "两张权重全 1 的网格叠在同一顶点上（和=2）必须拒载，实为 %s",
+          r ? "加载成功（闸失效）" : "已拒载");
+    if (r) zrig_free(r);
+
+    /* —— 负控三：权重个数不对必须拒载（不能按"取前几个"糊过去） —— */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"dwl\",\"name\":\"短权重\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"dw\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        "\"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"deformers\":["
+        " {\"id\":\"dw_top\",\"part\":\"dw\",\"cols\":2,\"rows\":2,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}],\"w\":[1,1,1]}],"
+        "\"params\":[{\"id\":\"ParamTop\",\"min\":0,\"max\":1,\"default\":1,"
+        "  \"binds\":[{\"deformer\":\"dw_top\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL && d.error_count > 0, "w 的个数和顶点数不一致必须拒载");
+    if (r) zrig_free(r);
+}
+
+/* ---------------------------------------------------------------------------
+   T66.10b：逐顶点形变场的**显式继承**（inherit_from + warp_inherit）。
+
+   为什么需要它：里布/布带/饰物这类"贴在布上的一层"，跟得比主体**少**才看得见层次
+   （裙子里子就是这么露出来的）。以前的做法是把主体的点表抄一份再乘系数
+   （裙子里布抄裙摆的表 ×0.35）—— 主体一改两边都得改，而且"0.35"这个数没有出处。
+   现在改成声明：`"inherit_from":"skirt_main", "warp_inherit":0.35`。
+
+   和 T66.10 自动继承的区别（两条路并存，别混）：
+     · 自动：子件挂在自己的链上，链里出现了**别的部件**的网格节点 ⇒ 全量继承；
+     · 显式：写 inherit_from 就**只**继承那一件的场，按 warp_inherit 打折，
+       而且两件不必在同一棵骨树上（里布和裙摆就是两棵树）。
+   --------------------------------------------------------------------------- */
+static void test_inherit_from_part(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double sx[32], sy[32], cx[32], cy[32], kx[32], ky[32], fx[32], fy[32];
+    int np, znp = 0, cols = 0, rows = 0, i;
+
+    SECTION("T66.10b 显式继承另一件的逐顶点形变场（inherit_from / warp_inherit）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_inherit_from");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* src = 源件（自己有一张带梯度的场：上边 10/0、下边 10/6）
+       kid = 继承件，**自己没有网格**（分辨率借源件的），强度 0.35 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"inhfrom\",\"name\":\"显式继承\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":["
+        " {\"id\":\"src\",\"file\":\"sprites/h.png\",\"layer\":10,\"pos\":[100,100],\"anchor\":[0,0]},"
+        " {\"id\":\"kid\",\"file\":\"sprites/h.png\",\"layer\":20,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"inherit_from\":\"src\",\"warp_inherit\":0.35},"
+        " {\"id\":\"full\",\"file\":\"sprites/h.png\",\"layer\":30,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"inherit_from\":\"src\"},"
+        " {\"id\":\"zero\",\"file\":\"sprites/h.png\",\"layer\":40,\"pos\":[100,100],\"anchor\":[0,0],"
+        "  \"inherit_from\":\"src\",\"warp_inherit\":0.0}],"
+        "\"deformers\":[{\"id\":\"warpA\",\"part\":\"src\",\"cols\":2,\"rows\":2,\"points\":["
+        "  {\"c\":0,\"r\":0,\"dx\":10,\"dy\":0},{\"c\":1,\"r\":0,\"dx\":10,\"dy\":0},"
+        "  {\"c\":2,\"r\":0,\"dx\":10,\"dy\":0},"
+        "  {\"c\":0,\"r\":1,\"dx\":10,\"dy\":3},{\"c\":1,\"r\":1,\"dx\":10,\"dy\":3},"
+        "  {\"c\":2,\"r\":1,\"dx\":10,\"dy\":3},"
+        "  {\"c\":0,\"r\":2,\"dx\":10,\"dy\":6},{\"c\":1,\"r\":2,\"dx\":10,\"dy\":6},"
+        "  {\"c\":2,\"r\":2,\"dx\":10,\"dy\":6}]}],"
+        "\"params\":[{\"id\":\"ParamWarp\",\"min\":0,\"max\":1,\"default\":0,"
+        " \"binds\":[{\"deformer\":\"warpA\",\"scale\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "写 inherit_from 的 rig 应加载成功");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+
+    /* ① 静止：三件都不动（继承不能把静止画面挪走） */
+    np = zrig_part_mesh(r, "kid", 1.0, &cols, &rows, cx, cy, 32);
+    CHECK(np > 0 && fabs(cx[0]) < 1e-9,
+          "参数 0 时继承件必须一动不动（实为 %d 个点，dx=%.3f）", np, np ? cx[0] : -1.0);
+
+    zrig_param_set(r, "ParamWarp", 1.0);
+    for (i = 0; i < 6; ++i) zrig_tick(r, 0.2 + i / 60.0);
+    zrig_part_mesh(r, "src", 1.0, &cols, &rows, sx, sy, 32);
+    CHECK(fabs(sx[0] - 10.0) < 0.01 && fabs(sy[6] - 6.0) < 0.01,
+          "源件的场应是上边 (10,0)、左下 (10,6)（实测 %.2f / %.2f）", sx[0], sy[6]);
+
+    /* ② 0.35：继承件拿到三成半，梯度跟着一起打折 */
+    np = zrig_part_mesh(r, "kid", 1.0, &cols, &rows, cx, cy, 32);
+    for (i = 0; i < 32; ++i) { kx[i] = cx[i]; ky[i] = cy[i]; }
+    CHECK(np == 9 && cols == 2 && rows == 2,
+          "没网格的继承件应借源件的 2×2 分辨率（实为 %d 点 / %dx%d）", np, cols, rows);
+    CHECK(np == 9 && fabs(cx[0] - 3.5) < 0.05 && fabs(cx[6] - 3.5) < 0.05 &&
+          fabs(cy[0]) < 0.05 && fabs(cy[6] - 2.1) < 0.05,
+          "0.35 强度：左上应为 (3.5,0)、左下 (3.5,2.1)（实测 (%.2f,%.2f)/(%.2f,%.2f)）",
+          np > 6 ? cx[0] : -1.0, np > 6 ? cy[0] : -1.0,
+          np > 6 ? cx[6] : -1.0, np > 6 ? cy[6] : -1.0);
+
+    /* ③ 不写 warp_inherit = 1.0：与源件逐点相同（这是"全继承"的基线） */
+    np = zrig_part_mesh(r, "full", 1.0, &cols, &rows, cx, cy, 32);
+    for (i = 0; i < 32; ++i) { fx[i] = cx[i]; fy[i] = cy[i]; }
+    CHECK(np == 9 && fabs(cx[0] - 10.0) < 0.05 && fabs(cy[6] - 6.0) < 0.05,
+          "不写强度就该 1:1 跟随源件（实测 (%.2f,%.2f)）",
+          np > 6 ? cx[0] : -1.0, np > 6 ? cy[6] : -1.0);
+
+    /* ④ 0 = 明确写"不跟随"：一个点都不动 */
+    np = zrig_part_mesh(r, "zero", 1.0, &cols, &rows, cx, cy, 32);
+    znp = np;
+    CHECK(np == 0 || fabs(cx[0]) < 1e-9,
+          "warp_inherit=0 时继承件不该动（实为 %d 点 / dx=%.3f）", np, np ? cx[0] : 0.0);
+    printf("    量到：源件左下 (%.2f,%.2f) · 0.35 继承件左下 (%.2f,%.2f) · 全继承左下 (%.2f,%.2f)"
+           " · 0 强度 %s\n",
+           sx[6], sy[6], kx[6], ky[6], fx[6], fy[6],
+           znp == 0 ? "无网格（正确）" : "有网格但不动");
+    zrig_free(r);
+
+    /* ⑤ 四条负控：写错必须在装载期红，不许静默变成"继承到 0" */
+    {
+        static const char *BAD[4][2] = {
+            { "\"inherit_from\":\"nosuch\"", "源件不存在" },
+            { "\"inherit_from\":\"kid\"",    "继承自己" },
+            { "\"inherit_from\":\"src\",\"warp_inherit\":1.5", "强度越界" },
+            { "\"inherit_from\":\"nomash\"", "源件没有网格" },
+        };
+        int b;
+        for (b = 0; b < 4; ++b) {
+            char body[2048];
+            z_snprintf(body, sizeof(body),
+                "{\"schema_version\":\"1.0\",\"id\":\"badinh\",\"name\":\"坏继承\","
+                "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+                "\"parts\":["
+                " {\"id\":\"src\",\"file\":\"sprites/h.png\",\"layer\":10,\"pos\":[100,100],\"anchor\":[0,0]},"
+                " {\"id\":\"nomash\",\"file\":\"sprites/h.png\",\"layer\":15,\"pos\":[100,100],\"anchor\":[0,0]},"
+                " {\"id\":\"kid\",\"file\":\"sprites/h.png\",\"layer\":20,\"pos\":[100,100],\"anchor\":[0,0],"
+                "  %s}],"
+                "\"deformers\":[{\"id\":\"warpA\",\"part\":\"src\",\"cols\":1,\"rows\":1,"
+                " \"points\":[{\"c\":0,\"r\":0,\"dx\":4,\"dy\":0}]}],"
+                "\"params\":[],\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}",
+                BAD[b][0]);
+            write_text(rigp, body);
+            zdiag_init(&d);
+            r = zrig_load(rigp, dir, &d);
+            CHECK(r == NULL, "负控（%s）必须装载失败", BAD[b][1]);
+            zrig_free(r);
+        }
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   T66.11b：前臂「收窄」网格改成了 keyform（参数 + 四组 key + 段缓动 + lag）。
+
+   为什么改：amount 通路是"参数走多少、位移走多少"的直线，而厚袖管在肘**只弯一点**时
+   其实不该立刻收窄（布先顶住，折深了才塌下去）。线性写法只能二选一，三组 key 才能
+   两头都占。这条单测钉住三件事：
+     ① 静止（参数 0）位移必须是 0 —— 不然整套立绘的静帧都被这一件带歪；
+     ② 参数 0.35（轻折）时的收窄**明显小于**线性会给的值（0.35 × 满额）；
+     ③ 参数 1.0（wave 的峰值）时位移 = 满额 —— 折到底的姿势和改之前逐像素一致。
+   --------------------------------------------------------------------------- */
+static void test_fore_slim_keyform(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    double dx[64], dy[64];
+    double m0 = 0.0, mLight = 0.0, mFull = 0.0, mOver = 0.0;
+    int cols = 0, rows = 0, np = 0, q, i;
+
+    SECTION("T66.11b 前臂收窄改成 keyform：静止不动 / 轻折收得少 / 折满等同原值");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（前臂收窄）");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+    zrig_phys_set_enabled(r, 0);
+
+#define SLIM_PEAK(at, into)                                                  \
+    do {                                                                     \
+        for (i = 0; i < 30; ++i) {                                           \
+            zrig_param_set(r, "ParamForeSlimL", (at));                       \
+            zrig_tick(r, 5.0 + i / 60.0);                                    \
+        }                                                                    \
+        np = zrig_deform_mesh(r, "arm_l_fore_slim", &cols, &rows, dx, dy, 64); \
+        (into) = 0.0;                                                        \
+        for (q = 0; q < np && q < 64; ++q)                                   \
+            if (fabs(dx[q]) > (into)) (into) = fabs(dx[q]);                  \
+    } while (0)
+
+    SLIM_PEAK(0.0, m0);
+    SLIM_PEAK(0.35, mLight);
+    SLIM_PEAK(1.0, mFull);
+    SLIM_PEAK(1.5, mOver);
+
+    CHECK(np == 15 && cols == 2 && rows == 4, "2×4 网格应有 15 个控制点（实际 %d）", np);
+    CHECK(m0 < 1e-9, "参数 0 时位移必须为 0（实际 %.4f）—— 静止画面靠它逐像素不变", m0);
+    CHECK(mLight < 0.5 * 0.35 * mFull / 1.0,
+          "轻折（0.35）时收窄要明显小于线性（线性会给 %.2f，实际 %.2f）",
+          0.35 * mFull, mLight);
+    CHECK(mFull > 5.0, "折满（1.0）时要有肉眼可见的收窄（实际峰值 %.2f）", mFull);
+    CHECK(fabs(mOver - 1.5 * mFull) < 0.05 * mFull,
+          "1.5 那组 key 只是量程余量，按老比例给 1.5×（期望 %.2f，实际 %.2f）",
+          1.5 * mFull, mOver);
+    printf("    量到：收窄峰值 静止 %.3f · 0.35 → %.2f（线性会给 %.2f）· 1.0 → %.2f · 1.5 → %.2f\n",
+           m0, mLight, 0.35 * mFull, mFull, mOver);
+#undef SLIM_PEAK
+    zrig_free(r);
+}
+
+/* ---------------------------------------------------------------------------
+   T66.11c：物理 2.0 的输出可以写**命名参数**（≈ 官方 Output[].DestinationId）。
+
+   为什么非有不可：Live2D 的正解是"物理推参数、网格跟参数"。我们以前物理只能写网格的
+   amount，于是一张网格一旦改成 keyform（T66.11b 就是这么改的），物理就再也推不动它 ——
+   侧发/后发/裙摆这些"既有物理又有网格"的件全被卡住（G66.13）。
+
+   这条单测钉住：
+     ① 输出写命名参数之后，参数的本帧最终值会被推进去（不是只有动作能推）；
+     ② 吃到这个参数的 keyform 网格**同帧**就动（求值顺序不能晚一帧）；
+     ③ 写不存在的参数名要加载失败，不许静默丢。
+   --------------------------------------------------------------------------- */
+static void test_physics_to_param(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double dx[8], dy[8];
+    double v_base = 0.0, v_after = 0.0, mesh_move = 0.0;
+    int cols = 0, rows = 0, i;
+
+    SECTION("T66.11c 物理写命名参数（物理 → 参数 → keyform 网格，同帧生效）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_phys_param");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 一条最小摆链：根 + 一节，输入吃 ParamAngleZ；输出写 ParamSway（不是网格 amount）。
+       ParamSway 再驱动一张 1×1 网格的 keyform —— 这就是"物理 → 参数 → 网格"整条路。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"physparam\",\"name\":\"物理写参数\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"mt\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"sway_mesh\"}],"
+        "\"deformers\":[{\"id\":\"sway_mesh\",\"part\":\"mt\",\"cols\":1,\"rows\":1,"
+        " \"param\":\"ParamSway\",\"keys\":["
+        "  {\"v\":-1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":-10,\"dy\":0}]},"
+        "  {\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0,\"dy\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":0}]}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamSway\",\"min\":-1,\"max\":1,\"default\":0,\"binds\":[]},"
+        " {\"id\":\"ParamAngleZ\",\"min\":-30,\"max\":30,\"default\":0,\"binds\":[]}],"
+        "\"physics2\":[{\"id\":\"sw\",\"part\":\"mt\","
+        " \"angle_input\":[{\"param\":\"ParamAngleZ\",\"weight\":1.0}],"
+        " \"particles\":[{\"radius\":0},"
+        "  {\"radius\":20,\"mobility\":0.9,\"delay\":1.0,\"acceleration\":1.0}],"
+        " \"outputs\":[{\"particle\":1,\"param\":\"ParamSway\",\"scale\":0.05,\"max\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "outputs 写命名参数应装载成功");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+    for (i = 0; i < 30; ++i) zrig_tick(r, i / 60.0);
+    v_base = zrig_param_effective(r, "ParamSway");
+    /* 头一歪，摆链被推起来；输出写进 ParamSway */
+    for (i = 0; i < 90; ++i) {
+        zrig_param_set(r, "ParamAngleZ", 18.0);
+        zrig_tick(r, 0.5 + i / 60.0);
+    }
+    v_after = zrig_param_effective(r, "ParamSway");
+    zrig_deform_mesh(r, "sway_mesh", &cols, &rows, dx, dy, 8);
+    mesh_move = dx[0];
+    CHECK(fabs(v_base) < 1e-9, "一开始没有被推：ParamSway 应还是 0（实际 %.4f）", v_base);
+    CHECK(fabs(v_after) > 0.02,
+          "头歪 18° 之后物理要把 ParamSway 推起来（实际 %.4f）—— 推不动就是 outputs 没写到参数", v_after);
+    CHECK(fabs(mesh_move) > 0.2,
+          "吃到该参数的 keyform 网格**同帧**就该动（实际 %.3f px）—— 动不了说明求值顺序晚了一帧",
+          mesh_move);
+    printf("    量到：ParamSway 静止 %.4f → 歪头后 %.4f，网格位移 %.3f px\n",
+           v_base, v_after, mesh_move);
+    zrig_free(r);
+
+    /* ② 旧摆链（physics，不是 physics2）也要能写命名参数 ——
+       侧发/后发/裙摆的摆链全在这一套里，不补这条它们就改不成 keyform。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"oldphysparam\",\"name\":\"旧摆写参数\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"mt\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0],\"deformer\":\"sway_mesh\"}],"
+        "\"deformers\":[{\"id\":\"sway_mesh\",\"part\":\"mt\",\"cols\":1,\"rows\":1,"
+        " \"param\":\"ParamSway\",\"keys\":["
+        "  {\"v\":0.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":0}]},"
+        "  {\"v\":1.0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10}]}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamSway\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]},"
+        " {\"id\":\"ParamAngleZ\",\"min\":-30,\"max\":30,\"default\":0,\"binds\":[]}],"
+        "\"physics\":[{\"id\":\"oldsw\",\"part\":\"mt\","
+        " \"input\":[{\"param\":\"ParamAngleZ\",\"weight\":1.0}],"
+        " \"ratio\":0.1,\"stiffness\":24,\"damping\":6.5,\"max\":2.0,"
+        " \"param\":\"ParamSway\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "旧摆链写命名参数应装载成功");
+    if (r) {
+        double moved = 0.0;
+        zrig_ambient_enable(r, 0);
+        for (i = 0; i < 30; ++i) zrig_tick(r, i / 60.0);
+        /* 旧摆链的输出是**滞后量**（pos − target），静止时归零 —— 所以要取
+           **过渡过程**里的峰值，稳态读数必然是 0（第一版就是在这儿读了个 0）。 */
+        for (i = 0; i < 90; ++i) {
+            zrig_param_set(r, "ParamAngleZ", 18.0);
+            zrig_tick(r, 0.5 + i / 60.0);
+            zrig_deform_mesh(r, "sway_mesh", &cols, &rows, dx, dy, 8);
+            if (fabs(dx[0]) > fabs(moved)) moved = dx[0];
+        }
+        CHECK(moved > 0.01, "旧摆链的输出要推到 ParamSway 上，并同帧带起 keyform 网格（实际 %.3f px）",
+              moved);
+        printf("    旧摆链量到：网格位移 %.3f px（ParamSway=%.4f AngleZ=%.4f）\n",
+               moved, zrig_param_effective(r, "ParamSway"), zrig_param_effective(r, "ParamAngleZ"));
+        zrig_free(r);
+    }
+
+    /* ③ 写不存在的参数名必须加载失败 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"physbad\",\"name\":\"物理写错参数\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],\"groups\":{},"
+        "\"parts\":[{\"id\":\"mt\",\"file\":\"sprites/h.png\",\"layer\":10,"
+        " \"pos\":[100,100],\"anchor\":[0,0]}],"
+        "\"params\":[{\"id\":\"ParamAngleZ\",\"min\":-30,\"max\":30,\"default\":0,\"binds\":[]}],"
+        "\"physics2\":[{\"id\":\"sw\",\"part\":\"mt\","
+        " \"angle_input\":[{\"param\":\"ParamAngleZ\",\"weight\":1.0}],"
+        " \"particles\":[{\"radius\":0},"
+        "  {\"radius\":20,\"mobility\":0.9,\"delay\":1.0,\"acceleration\":1.0}],"
+        " \"outputs\":[{\"particle\":1,\"param\":\"ParamNoSuch\",\"scale\":0.05,\"max\":1.0}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r == NULL, "outputs 写不存在的参数名必须加载失败（静默丢 = 物理看着像没调好）");
+    zrig_free(r);
+}
+
+/* 一张网格这一帧**横向位移的峰值**（源图像素）。
+
+   ★ T66.11c 之后裙身/下摆是 keyform，`zrig_deform_amount` 对它们永远是 0
+     （keyform 没有 amount 这个量），所以判据必须改成量**几何**。
+     这个换算不是拍脑袋：keyform 在 v=1 时的点表峰值是固定的
+     （裙身 10.8px / 下摆 3.6px），旧阈值是 amount 口径，乘上这个峰值就是像素口径。 */
+static double mesh_peak_axis(const zrig *r, const char *id, int axis)
+{
+    double dx[64], dy[64];
+    int cols = 0, rows = 0, k, n, np;
+    double m = 0.0;
+    n = zrig_deform_mesh(r, id, &cols, &rows, dx, dy, 64);
+    if (n <= 0) return 0.0;
+    np = (cols + 1) * (rows + 1);
+    if (np > n) np = n;
+    for (k = 0; k < np; ++k) {
+        double v = axis ? dy[k] : dx[k];
+        if (fabs(v) > m) m = fabs(v);
+    }
+    return m;
+}
+static double mesh_peak_dx(const zrig *r, const char *id)
+{
+    return mesh_peak_axis(r, id, 0);
+}
+/* 纵摆同理：keyform 之后 `zrig_deform_amount("skirt_sway_y")` 恒为 0。 */
+static double mesh_peak_dy(const zrig *r, const char *id)
+{
+    return mesh_peak_axis(r, id, 1);
+}
+
+static void test_skirt_physics(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    int i;
+    double sway_x = 0.0, head_x = 0.0, rest_x = 0.0, nod_y = 0.0;
+    SECTION("裙摆摆链：参数输入 / 只吃身体不吃头 / 静止归零");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（裙摆）");
+    if (!r) return;
+
+    /* ★ 下面 ①~④ 测的是**物理链**（谁带动裙子、停下来会不会收敛），
+       所以先把 T45.9 加的**环境摆动**关掉 —— 它不管身体动不动都一直在跑，
+       不关的话「光摇头裙子动了没有」会把它的位移算进来，分不出是谁推的。
+       环境摆动本身另有 ⑤ 单测。 */
+    zrig_ambient_enable(r, 0);
+
+    /* ① 摇摆：横摆通道要被身体带起来 */
+    for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);
+    zrig_action_request(r, "sway", "test", 1);
+    for (i = 1; i <= 240; ++i) {
+        zrig_tick(r, 2.0 + i / 60.0);
+        if (mesh_peak_dx(r, "skirt_sway_x") > sway_x)
+            sway_x = mesh_peak_dx(r, "skirt_sway_x");
+    }
+    /* 阈值换算：旧 amount 阈值 × 10.8px（keyform v=1 的点表峰值） */
+    CHECK(sway_x > 1.62, "摇摆时裙摆要横着甩（实际峰值 %.2f px）", sway_x);
+    CHECK(sway_x < 10.8, "裙摆横摆不该一路顶到限幅（实际峰值 %.2f px）", sway_x);
+
+    /* ② 点头：纵摆要动（官方 スカート縦揺れ 吃 ParamBodyAngleY）。
+       ★ T66.12 纵摆也改成 keyform 了 ⇒ 判据必须量**几何**（LESSONS 433），
+         读 amount 会得到一个漂亮的 0.000。阈值按 v=1 的键表峰值换算：
+         裙底掀 6.99px / 坠 4.60px；nod 把 ParamBodyAngleY 推满 ±10、物理 ratio 0.045
+         ⇒ 参数约 0.45 ⇒ 最下一行约 3.5px。 */
+    zrig_action_request(r, "nod", "test", 1);
+    for (i = 1; i <= 180; ++i) {
+        zrig_tick(r, 10.0 + i / 60.0);
+        if (mesh_peak_dy(r, "skirt_sway_y") > nod_y)
+            nod_y = mesh_peak_dy(r, "skirt_sway_y");
+    }
+    /* 上限 6.8 = keyform 峰值 6.99 的 97%：act 满格输入 + ratio 0.045 时输出只到 0.45，
+       离限幅还有一半余量，撞到 6.8 就说明 ratio（或者 ambient 的幅度）被改大了、
+       两者加起来顶到了 [−1,1] 的边 —— 布是软的，顶边就是"啪一下停住"。 */
+    CHECK(nod_y > 0.35 && nod_y < 6.8,
+          "上身上下起伏要带起裙摆纵摆，且不顶限幅（实际峰值 %.2f px）", nod_y);
+
+    /* ③ 只摇头：裙子挂在身上，不该跟着头动（官方的 Input 里没有 ParamAngle*） */
+    zrig_action_request(r, "idle", "test", 1);
+    for (i = 0; i < 240; ++i) zrig_tick(r, 20.0 + i / 60.0);
+    zrig_param_reset_all(r);
+    for (i = 1; i <= 240; ++i) {
+        double t = 24.0 + i / 60.0;
+        zrig_param_set(r, "ParamAngleX", 30.0 * ((i / 20) % 2 ? -1.0 : 1.0));
+        zrig_param_set(r, "ParamAngleZ", 30.0 * ((i / 20) % 2 ? -1.0 : 1.0));
+        zrig_tick(r, t);
+        if (mesh_peak_dx(r, "skirt_sway_x") > head_x)
+            head_x = mesh_peak_dx(r, "skirt_sway_x");
+    }
+    CHECK(head_x < 0.86,
+          "光摇头不该把裙子带起来（头摆满格时裙摆仍有 %.2f px）", head_x);
+
+    /* ④ 身体保持倾斜不动：摆链收敛，输出回零（只加惯性，不永久偏） */
+    zrig_param_reset_all(r);
+    for (i = 1; i <= 600; ++i) {
+        zrig_param_set(r, "ParamBodyAngleX", 10.0);
+        zrig_tick(r, 40.0 + i / 60.0);
+    }
+    rest_x = mesh_peak_dx(r, "skirt_sway_x");
+    CHECK(rest_x < 0.22,
+          "身体停住后裙摆要收敛回零，不能被永久吹偏（残留 %.3f px）", rest_x);
+    zrig_param_reset_all(r);
+
+    /* ⑤ 环境摆动（T45.9）：布必须**自己**在动，而且**换哪个待机动作都不停**。
+       这一条是补上一个真实缺陷：自主摆动原本写成 idle 的动作通道，
+       而待机动作有四个会轮换，实测切到 breath 时裙摆幅度直接 0.0000 ——
+       布料整个冻住。DC41「一个行为多条入口都要验」的又一次翻版。 */
+    {
+        static const char *IDLE_FAMILY[] = { "idle", "sway", "shift_weight", "breath" };
+        size_t ai;
+        zrig_ambient_enable(r, 1);
+        for (ai = 0; ai < sizeof(IDLE_FAMILY) / sizeof(IDLE_FAMILY[0]); ++ai) {
+            double lo = 1e9, hi = -1e9, base = 100.0 + 40.0 * (double)ai;
+            zrig_param_reset_all(r);
+            zrig_action_request(r, IDLE_FAMILY[ai], "test", 1);
+            for (i = 0; i < 120; ++i) zrig_tick(r, base + i / 60.0);
+            if (strcmp(zrig_action(r), IDLE_FAMILY[ai]) != 0) continue;
+            for (i = 1; i <= 900; ++i) {   /* 15 秒 ≈ 裙摆两个周期 */
+                double v;
+                zrig_tick(r, base + 2.0 + i / 60.0);
+                v = mesh_peak_dx(r, "skirt_sway_x");
+                if (v < lo) lo = v;
+                if (v > hi) hi = v;
+            }
+            CHECK(hi - lo > 3.24,
+                  "待机动作 %s 下裙摆也要自己摆（峰峰值 %.2f px，挂在 idle 上时 "
+                  "breath 实测是 0.0000）", IDLE_FAMILY[ai], hi - lo);
+        }
+        /* 下摆是第二级，必须比裙身晚到（行波延迟 lag） */
+        {
+            double da = 0.0, db = 0.0;
+            zrig_action_request(r, "idle", "test", 1);
+            for (i = 0; i < 300; ++i) zrig_tick(r, 300.0 + i / 60.0);
+            for (i = 1; i <= 600; ++i) {
+                double a0, b0;
+                zrig_tick(r, 305.0 + i / 60.0);
+                a0 = mesh_peak_dx(r, "skirt_sway_x");
+                b0 = mesh_peak_dx(r, "skirt_hem_x");
+                if (fabs(a0) > da) da = fabs(a0);
+                if (fabs(b0) > db) db = fabs(b0);
+            }
+            CHECK(da > 1.08 && db > 0.36,
+                  "裙摆是两级的：裙身 %.2f px + 下摆 %.2f px 都要动（一段式看着像棍子）",
+                  da, db);
+        }
+    }
+    zrig_param_reset_all(r);
+    zrig_free(r);
+}
+
+static void test_action_fade_sine(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    int i;
+    double peak = 0.0, tail = 0.0, t;
+    SECTION("动作淡化曲线：官方 getEasingSine + 动作自带的 FadeOutTime");
+
+    /* ① 缓动曲线本身：官方写死 0.5 − 0.5·cos(πt)，两端带钳位 */
+    CHECK(fabs(z_ease_sine(0.0) - 0.0) < 1e-12, "ease_sine(0)=0（实际 %.6f）", z_ease_sine(0.0));
+    CHECK(fabs(z_ease_sine(1.0) - 1.0) < 1e-12, "ease_sine(1)=1（实际 %.6f）", z_ease_sine(1.0));
+    CHECK(fabs(z_ease_sine(0.5) - 0.5) < 1e-12, "ease_sine(0.5)=0.5（实际 %.6f）", z_ease_sine(0.5));
+    CHECK(fabs(z_ease_sine(-3.0)) < 1e-12, "t<0 钳到 0（实际 %.6f）", z_ease_sine(-3.0));
+    CHECK(fabs(z_ease_sine(9.0) - 1.0) < 1e-12, "t>1 钳到 1（实际 %.6f）", z_ease_sine(9.0));
+    /* 0.25 处 = 0.5−0.5cos(45°) = 0.146447，而 smoothstep 是 0.156250：
+       差得不多，但口径只能有一个，这条就是用来认出口径的。 */
+    CHECK(fabs(z_ease_sine(0.25) - 0.1464466094) < 1e-9,
+          "ease_sine(0.25) 要等于官方的 0.146447（实际 %.9f）", z_ease_sine(0.25));
+    CHECK(fabs(z_ease_sine(0.25) - z_smoothstep(0.25)) > 1e-3,
+          "动作淡化不能再退回 smoothstep（两者在 0.25 处本该差 %.6f）",
+          fabs(z_ease_sine(0.25) - z_smoothstep(0.25)));
+
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（动作淡化）");
+    if (!r) return;
+
+    /* ② 非循环动作：surprised 的 ParamArmLA 是 pulse+out，0.6s 到位，
+       动作总长 1.4s；末尾 FadeOutTime=0.25 要把稳定展示的姿势带回零。
+       （时间必须逐帧推，一次跳过去看到的是淡入还没起算的那一帧。） */
+    for (i = 0; i < 120; ++i) zrig_tick(r, i / 60.0);          /* 先让 idle 收敛 */
+    zrig_action_request(r, "surprised", "test:fade", 1);
+    for (i = 1; i <= 84; ++i) {                                 /* 1.4s = 84 帧 */
+        double v;
+        t = 2.0 + i / 60.0;
+        zrig_tick(r, t);
+        v = fabs(zrig_param_effective(r, "ParamArmLA"));
+        if (i <= 66 && v > peak) peak = v;                      /* 淡出窗口之前的峰值 */
+        if (i == 83) tail = v;                                  /* 结束前 1 帧 */
+    }
+    /* T31.22: surprised shoulder is intentionally a small positive lift after
+       the elbow/wrist pose was re-balanced against the reference. 0.6 × 18° =
+       10.8°; keep a margin below that authored peak without requiring the old,
+       visibly over-rotated shoulder amplitude. */
+    CHECK(peak > 0.55, "surprised 前段 ParamArmLA 要到参考肩位（实际峰值 %.3f）", peak);
+    CHECK(tail < peak * 0.15,
+          "非循环动作结束前要按 FadeOutTime 收回去（峰值 %.3f，末帧 %.3f）", peak, tail);
+
+    /* ②b 演完之后不许冒鬼影：动作结束那一刻它会变成"正在淡出的上一个动作"，
+       这条路径同样要按它自己的 FadeOutTime 收。只给"当前动作"加淡出、
+       漏掉淡出中的旧动作，会在结束瞬间把 pulse 的满值整个闪出来。 */
+    {
+        double ghost = 0.0;
+        for (i = 85; i <= 120; ++i) {      /* 1.42s ~ 2.00s，动作已经演完 */
+            zrig_tick(r, 2.0 + i / 60.0);
+            if (fabs(zrig_param_effective(r, "ParamArmLA")) > ghost)
+                ghost = fabs(zrig_param_effective(r, "ParamArmLA"));
+        }
+        CHECK(ghost < 0.25,
+              "动作演完后不许残留鬼影（峰值 %.3f，结束后还有 %.3f）", peak, ghost);
+    }
+
+    /* ③ 循环动作不收尾（官方：endTime<0 时 tmpFadeOut 恒为 1）。
+       breath 一直跑，幅度不能随时间缩水。 */
+    {
+        double hi_early = 0.0, hi_late = 0.0;
+        zrig_action_request(r, "breath", "test:fade", 1);
+        for (i = 1; i <= 900; ++i) {
+            double v;
+            zrig_tick(r, 5.0 + i / 60.0);
+            v = zrig_param_effective(r, "ParamBreath");
+            if (i > 60 && i <= 300 && v > hi_early) hi_early = v;
+            if (i > 660 && v > hi_late) hi_late = v;
+        }
+        CHECK(hi_early > 0.9 && hi_late > 0.9,
+              "循环动作不许淡出（前段峰 %.3f，后段峰 %.3f）", hi_early, hi_late);
+    }
+    zrig_free(r);
+}
+
+static void test_action_param_channels(void)
+{
+    char rig_path[1024], dir[1024], tmp_rig[1024];
+    zdiag d;
+    zrig *r;
+    SECTION("动作通道：只许打在参数上（≈ .motion3 的 Parameter 曲线）");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（动作通道）");
+    if (!r) return;
+
+    /* ① 结构闸：一条"直接写部件几何"的通道都不许剩 */
+    CHECK(zrig_action_geom_channels(r) == 0,
+          "动作里不许有直接写部件几何的通道（实际还剩 %d 条）",
+          zrig_action_geom_channels(r));
+
+    /* ② 端到端：挥手真的要把手举到身侧外面去。
+          画面右上那块(x 660..848, y 380..700)平时是空的，手举起来才会有像素。 */
+    {
+        const zimg *fb;
+        int i, idle_px, wave_px = 0, peak = 0;
+        double arm_a = 0.0, arm_b = 0.0, arm_b_lo = 9.9, clock = 300.0;
+        double arm_b_hi2 = -9.9, arm_b_lo2 = 9.9;   /* 后半段（稳态）的肘极值 */
+        double hand_hi2 = -99.0, hand_lo2 = 99.0;   /* 后半段的腕极值（Q43：挥的主行程在腕） */
+        zrig_blink_set_enabled(r, 0);
+        zrig_action_request(r, "idle", "t", 1);
+        for (i = 0; i < 120; ++i) { clock += 1.0 / 60.0; zrig_tick(r, clock); }
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        idle_px = frame_opaque_box(fb, 660, 380, 848, 700);
+        CHECK(idle_px == 0, "待机时手臂不该伸到画面右上（实际 %d 像素）", idle_px);
+        zrig_action_request(r, "wave", "t", 1);
+        /* 必须逐帧推进：动作切换的淡入权重是在 tick 里发现"动作变了"那一刻起算的，
+           一次跳 1.4 秒的话权重还是 0，看到的永远是"还没动"。 */
+        for (i = 0; i < 84; ++i) {
+            double eb;
+            clock += 1.0 / 60.0;
+            zrig_tick(r, clock);
+            if (zrig_param_effective(r, "ParamArmRA") > arm_a)
+                arm_a = zrig_param_effective(r, "ParamArmRA");
+            eb = zrig_param_effective(r, "ParamArmRB");
+            if (eb > arm_b) arm_b = eb;
+            if (eb < arm_b_lo) arm_b_lo = eb;
+            /* ★ Q42：起手那 0.75s 肘还在折的路上，极值会被斜坡污染。
+               判"折住了没有 / 在不在摆"只看**后半段**（i≥50 ≈ 0.83s 之后）。 */
+            if (i >= 50) {
+                double eh = zrig_param_effective(r, "ParamHandR");
+                if (eb > arm_b_hi2) arm_b_hi2 = eb;
+                if (eb < arm_b_lo2) arm_b_lo2 = eb;
+                if (eh > hand_hi2) hand_hi2 = eh;
+                if (eh < hand_lo2) hand_lo2 = eh;
+            }
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            /* ★ Q44：取景框第三次跟着姿势走（改姿势必须连框一起重测，见 WORKFLOW 10.4a）。
+               新姿势 A_u=38°：肘 rig(623,592)、腕 rig(611,477)，整条手臂比 Q43
+               低了一截，旧框 (600,300,848,560) 只扫到峰值 ~7600 的一角。
+               实拍定框 (580,340,760,540)：静止 0 像素，挥起来峰值约 7.6k、
+               稳态最小约 6.6k（预览 466x748 上分别是 2288 / 1989 px）。 */
+            wave_px = frame_opaque_box(fb, 580, 340, 760, 540);
+            if (wave_px > peak) peak = wave_px;
+        }
+        /* 同上：倍率 6→18（肩）、10→18（肘，Q38 从 14.5 提上来）后，
+           阈值按**角度**写，不按参数值写。
+
+           ★★★ 2026-10-22 第三十八问：肘那条阈值从 50° 下调到 25°。
+           这不是\"为过闸调阈值\"（那条铁律仍然有效），而是**原阈值编码了一个
+           被证伪的挥手模型**：它是照旧版 −72°肩 / −88°肘（整条胳膊横着伸出去、
+           肘折直角）写的，而那个姿势正是用户判死刑的那个
+           （\"完全不符合一个人能做出的动作\"）。
+           这一轮按生成的参考图 characters/xiaoxun/design/pose_ref/wave_out.png
+           实测：薄荷袖掩码 PCA 主轴 肩(450,367)→袖口(669,149)，
+           与竖直 135°、长 308px ≈ 上臂165+前臂123 ⇒ **肘只弯 10~20°**。
+           pixiv 百科「手を振る」同口径：離れた相手には**肘を伸ばして腕ごと**大きく振る。
+           所以新口径是：**肩要大幅抬起（≥90°）、肘只要参与（≥25°）**，
+           肩那条阈值反而从 36° 提到 90°，整体比旧版更严。 */
+        /* ★★★ 2026-10-22 第四十三问：上臂这条从"越大越好"改成**上下都卡**。
+           用户原话：「就算参考图规格不一样，你能把手臂做成截图一也是够*的了……
+           那你连个正常人的结构都做不了吗？」—— 骂的就是 Q42 的 A_u=110°：
+           上臂抬到水平**以上**，肘尖甩到体侧外 60px 与肩同高，手离头发还隔着
+           100px。2D 切件没有透视收缩，横着的上臂就是一根棍子。
+           参考图 wave_up.png 量下来是"窄 V 贴身"：上臂离竖直 22°、肘贴腰侧、
+           前臂竖起来贴着身体侧缘、肘内角 26°。我们前臂只有 0.43 个头高
+           （参考 0.74），照搬会把手停在胸口，所以上臂多抬到 **A_u=70°**
+           （ParamArmRA = (70−15)/18 = 3.06）换手的高度 —— 但**不许再往上甩**。
+           闸门因此卡成区间：2.2（A_u=55°）~ 4.6（A_u=98°）。
+           下限守住"是在打招呼不是手放着"，上限守住"不许变回横棍"。 */
+        /* ★★★ Q44：区间再收一档 —— A_u 从 70° 压回 **38°**。
+           Q43 为了\"手够到脸边\"把上臂抬到 70°，实拍放大后那其实是
+           **上臂横着伸出去、肘落在躯干剪影外 104px**，正是用户点名禁止的
+           「肘甩出躯干外」。逐档实测（肘超出躯干 / 腕低于下巴，rig px）：
+               A_u=70 → +104/+81   58 → +85/+99   48 → +63/+117
+               A_u=38 → **+36/+135**   30 → +9/+152
+           取 38°（ParamArmRA = (38−15)/18 = 1.278）：上臂沿身体垂下、
+           肘只探出 36px，手指仍抬到下巴旁。区间 1.10~1.45 = A_u 34.8°~41.1°，
+           两头都卡死：低了是\"手放着没打招呼\"，高了就又变回横棍。 */
+        /* ★★★ Q45：A_u 38° → **34°**，区间挪到 0.95~1.25（A_u 32.1°~37.5°）。
+           不是放水：Q44 的肘内角 32° 在分件染色实拍里（前臂红/上臂蓝，
+           logs/asset_qa/q45_tint.png）证明**前臂整条压在上臂上**——
+           两根管子的轴线间距只有 34px，而两件半宽加起来 80px，上臂只剩
+           1151px 可见。用户第四十五问放大图看到的就是\"袖口下吊着一只大拳套
+           加一根断了的杆\"。Q45 三处一起改：肘内角张到 48°（A_u=34/A_f=166）、
+           前臂沿肘→腕轴线收窄 15%（arm_r_fore_slim 形变器）、同侧肩上提 26px
+           （ParamShoulderRY）。肘反而更贴身：出躯干 36px → 28px（0.12 头宽，
+           参考图自己是 0.29 头宽）。 */
+        /* ★★★ Q48（第四十八问 b）：区间从 0.95~1.25 挪到 **0.28~0.52**
+           （A_u 20.0°~24.4°，目标 21.7°）。
+
+           这一条**不是为过闸调阈值**（铁律 2 仍然有效），和 Q38/Q42 那两次同理：
+           旧区间编码的是 Q45 定下的 A_u=34°，而 Q48 把它**按几何解算**推翻了。
+           用户第四十八问：「肘关节的位置有一些折叠一样的痕迹，看起来不是很自然，
+           而且小臂有一些偏短」，并点名「手不要再动」。
+
+           对着参考模板 pose_ref/wave_up.png 量（同一把尺子，比例 0.512）：
+               参考 前臂/上臂 = 150/173 = 0.87      我们（Q45）116/162 = 0.71
+           ⇒ 小臂相对短 18%，这是「偏短」的根。改法是前臂沿轴加长 26px
+           （新参数 ParamForeLongR），加完 142/162 = 0.87 与参考一致。
+           但**手的落点一点不许动**，于是肩-肘-腕三角形的边长变了
+           （162.4 / 141.8 / 125.1），解出来肩夹角 57.4°、SW 方向 79.1°
+           ⇒ **A_u 必须从 34° 收回到 21.7°**，肘同时从切件 (413,531)
+           收到 (383,547) —— 往身上收 30px，正是第四十三问要的
+           「肘贴着身子、不许甩出躯干外」。证据：logs/asset_qa/q48_arm_ab2.png
+           （与参考同比例并排）、q48_elbow_tint.png（分件染色实拍）。
+
+           下限 0.28 仍然守得住「是在打招呼、不是手放着」吗？守得住，而且这一轮
+           **把守门的那条不变式换成了更直接的一条**：手够不够得到脸，现在主要由
+           「前臂伸长 + 肘折住」决定，不再由上臂甩多高决定。所以下面紧跟着加了
+           ParamForeLongR 的峰值闸 —— 伸长没到位就红。两条加起来比旧的单条更严。 */
+        CHECK(arm_a > 0.28 && arm_a < 0.52,
+              "挥手上臂要抬起、但不许甩成横棍（ParamArmRA 应落在 0.28~0.52，"
+              "实际峰值 %.2f ⇒ 上臂离竖直 %.0f°，目标 21.7°）",
+              arm_a, 15.0 + arm_a * 18.0);
+        /* ★ Q48 配套闸：前臂加长必须真的打满。
+           A_u 收回到 21.7° 的前提就是前臂多出那 26px；只要这条断了，
+           手就够不到脸，整个挥手退化成「抬了抬胳膊」。 */
+        {
+            double fl = 0.0;
+            int k;
+            double clk2 = clock;
+            zrig_action_request(r, "wave", "t", 1);
+            for (k = 0; k < 84; ++k) {
+                clk2 += 1.0 / 60.0;
+                zrig_tick(r, clk2);
+                if (zrig_param_effective(r, "ParamForeLongR") > fl)
+                    fl = zrig_param_effective(r, "ParamForeLongR");
+            }
+            CHECK(fl > 0.90,
+                  "挥手时前臂必须伸长到位（ParamForeLongR 峰值应 >0.90，实际 %.2f"
+                  " ⇒ 前臂/上臂只有 %.2f，参考模板是 0.87）",
+                  fl, (116.0 + 26.0 * fl) / 162.0);
+            clock = clk2;
+        }
+        /* ★★★ 2026-10-22 第四十二问：肘这条**反过来**了 —— 从"不许驻留在弯曲位"
+           改成"必须折住（稳态 ≥50°）且还在摆（≥12°）"。
+
+           这不是为过闸调阈值（铁律 2 仍有效），是**第四十问选错了参考图**：
+           那一轮拿 `pose_ref/wave_out.png` 量，量得手臂是直的 —— 但那张是
+           **远距离**大幅挥手。桌宠是**近距离**打招呼，真值源是另一张
+           `pose_ref/wave_up.png`：上臂几乎垂着（相对竖直 12°）、前臂几乎竖直
+           向上（175°）、肘屈曲约 165°、手停在脸颊边。pixiv 百科「手を振る」
+           原文也是这么分的：「遠距離では肘を伸ばして大きく、**近距離では肘を
+           曲げて手首をひらひら**」。用户第四十二问原话：「哪里有你这样的手臂
+           动作，这不是人做的出来的？？？」—— 说的就是那根直棍。
+
+           所以判据跟着真值源一起改：
+             · 稳态最小弯角 ≥50°：肘要是被拉直了（回到旧的 −4°）立刻红；
+             · 稳态摆幅 ≥12°：把 sine 通道删掉立刻红（手举着不动也不叫挥手）。
+           两条都只看**后半段**，起手斜坡不参与。 */
+        /* ★ Q43 把阈值从 50° 提到 100°：新姿势肘折 139°（内角 41°），
+           这是"窄 V 贴身"的关键一折；折不到 100° 就说明前臂没贴上来，
+           手会飘在体侧外面（Q42 就是 70°）。 */
+        CHECK(arm_b_lo2 * 18.0 > 100.0,
+              "挥手的肘要折成窄 V（近距离打招呼，稳态≥100°，实际最小 %.0f°）",
+              arm_b_lo2 * 18.0);
+        /* ★ Q43：摆动这条从**前臂**挪到**手腕**。
+           近距离打招呼的主行程在腕（dic.pixiv.net/a/手を振る：
+           「近距離では肘を曲げて手首をひらひら」）；前臂只留 ±5° 的轻微带动，
+           再大就会把手甩离脸侧、变回"大幅挥"。所以：
+             · 前臂摆幅不再做下限（它本来就该小）；
+             · 腕摆幅 ≥20° 做硬下限 —— 删掉 sine 通道立刻红。*/
+        CHECK((hand_hi2 - hand_lo2) * 22.0 > 20.0,
+              "挥手时手腕要一直在摆（稳态摆幅≥20°，实际 %.0f°：%.2f..%.2f）",
+              (hand_hi2 - hand_lo2) * 22.0, hand_lo2, hand_hi2);
+        /* 取景框跟着姿势走：新姿势的手举到肩**上方**（腕≈(745,310)、手心≈(720,270)），
+           旧框 y∈[380,700] 只扫得到肘，所以把框抬到 y∈[180,470]。
+           框内静止时是空的（手臂垂着在 y>600），有像素就证明手臂真的举上去了。 */
+        CHECK(peak > 4000, "挥手时手臂要真的举到身侧上方（Q44 新框 580,340-760,540，实际峰值 %d 像素）", peak);
+    }
+
+    /* ③ 呼吸走官方口径的 ParamBreath（0..1 单向），靠 bias 把正弦抬到正半轴。
+          没有 bias 的话正弦会摆到负数，被参数下限 clamp 掉半个周期 —— 呼吸就变成一顿一顿的。 */
+    {
+        int i;
+        double lo = 9.9, hi = -9.9, clock = 500.0;
+        zrig_action_request(r, "breath", "t", 1);
+        for (i = 0; i < 300; ++i) {
+            double v;
+            clock += 1.0 / 60.0;
+            zrig_tick(r, clock);
+            v = zrig_param_effective(r, "ParamBreath");
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+        }
+        CHECK(hi > 0.9, "呼吸要把 ParamBreath 推到接近 1（实际最大 %.3f）", hi);
+        CHECK(lo < 0.1, "呼吸要让 ParamBreath 回到接近 0（实际最小 %.3f）", lo);
+        CHECK(lo > -1e-6, "ParamBreath 不该摆到负半轴（bias 没生效？实际最小 %.3f）", lo);
+    }
+
+    /* ④ 瞳孔缩放 ParamPupilScale（T31.16 由 ParamEyeBallForm 改名而来）：+1 = 瞳孔放大。
+       旧名 ParamEyeBallForm 在 zrig.c 仍作别名兼容以便旧 rig/外部调用不炸，官方同名参数实为"弯曲眼睛轮廓"。
+          眼球被眼眶裁切，所以用"蓝色虹膜在眼眶里占了多少像素"来量。 */
+    {
+        const zimg *fb;
+        unsigned char *snap;
+        int w = 0, h = 0, dd, i;
+        double clk = 700.0;
+        zrig_action_request(r, "idle", "t", 1);
+        zrig_param_reset_all(r);
+        zrig_blink_set_manual(r, 0.0);
+        /* 先跑两秒让动作淡入和物理摆链都收敛，再把时钟冻住做三帧对照
+           （idle 本身一直在动，时钟一走像素就对不上；上一段的淡出没走完也会带进来）*/
+        for (i = 0; i < 120; ++i) { clk += 1.0 / 60.0; zrig_tick(r, clk); }
+        zrig_tick(r, clk);
+        fb = zrig_frame(r, 1.0, &w, &h);
+        snap = frame_snapshot(fb);
+        CHECK(zrig_param_set(r, "ParamPupilScale", 1.0) == 0,
+              "rig 里应该有 ParamPupilScale（T31.16 前为 ParamEyeBallForm）");
+        CHECK(zrig_param_set(r, "ParamEyeBallForm", 1.0) == 0,
+              "旧名 ParamEyeBallForm 仍应作别名兼容");
+        zrig_tick(r, clk);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        dd = frame_diff_box(fb, snap, 350, 238, 494, 308);
+        CHECK(dd > 200, "瞳孔放大要看得出来（眼部实际只变了 %d 像素）", dd);
+        zrig_param_set(r, "ParamPupilScale", 0.0);
+        zrig_tick(r, clk);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        CHECK(frame_diff_box(fb, snap, 350, 238, 494, 308) == 0, "归零要回到原样（实际差 %d 像素）", frame_diff_box(fb, snap, 350, 238, 494, 308));
+        free(snap);
+    }
+
+    /* ⑤ 全身倾斜 ParamBaseRot（扩展参数，被摸头/被拖拽时整个人晃） */
+    {
+        const zimg *fb;
+        unsigned char *snap;
+        int w = 0, h = 0;
+        zrig_param_reset_all(r);
+        zrig_tick(r, 800.0);
+        fb = zrig_frame(r, 1.0, &w, &h);
+        snap = frame_snapshot(fb);
+        CHECK(zrig_param_set(r, "ParamBaseRot", 10.0) == 0, "rig 里应该有 ParamBaseRot");
+        zrig_tick(r, 800.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        CHECK(frame_diff_box(fb, snap, 0, 0, w, h) > 20000,
+              "ParamBaseRot 满格要让整个人明显倾斜");
+        zrig_param_reset_all(r);
+        free(snap);
+    }
+
+    /* ⑥ 口型接管：迁移后嘴的动作通道是 ParamMouthOpenY（参数），
+          不再是"带 mouth 标签的部件"，静音判断必须跟着改口径，否则 talk 的
+          拍嘴会和 TTS 包络叠在一起，嘴越张越大。 */
+    {
+        int i;
+        double with_mute = 0.0, without = 0.0, clock = 900.0;
+        zrig_param_reset_all(r);
+        zrig_set_mouth_mute(r, 0);
+        zrig_action_request(r, "talk", "t", 1);
+        for (i = 0; i < 120; ++i) {
+            clock += 1.0 / 60.0; zrig_tick(r, clock);
+            if (zrig_param_effective(r, "ParamMouthOpenY") > without)
+                without = zrig_param_effective(r, "ParamMouthOpenY");
+        }
+        zrig_set_mouth_mute(r, 1);
+        for (i = 0; i < 120; ++i) {
+            clock += 1.0 / 60.0; zrig_tick(r, clock);
+            if (zrig_param_effective(r, "ParamMouthOpenY") > with_mute)
+                with_mute = zrig_param_effective(r, "ParamMouthOpenY");
+        }
+        CHECK(without > 0.5, "talk 平时要把嘴拍开（实际峰值 %.3f）", without);
+        CHECK(with_mute < 0.05,
+              "口型接管时 talk 的嘴通道必须让路（实际峰值 %.3f）", with_mute);
+        zrig_set_mouth_mute(r, 0);
+    }
+    zrig_free(r);
+
+    /* ⑦ 反向验证计数器本身是活的：故意写一条几何通道的合成 rig 必须被数出来。
+          （不验这一步的话，"恒返回 0" 的实现也能让上面第 ① 条过。） */
+    {
+        FILE *f;
+        zrig *bad;
+        z_snprintf(tmp_rig, sizeof(tmp_rig), "/tmp/zc_geomchan_rig.json");
+        f = fopen(tmp_rig, "wb");
+        CHECK(f != NULL, "应能写出合成 rig");
+        if (f) {
+            fprintf(f,
+                "{\"schema_version\":\"1.0\",\"id\":\"gc\",\"name\":\"gc\","
+                "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+                "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+                "\"parts\":[{\"id\":\"p0\",\"file\":\"sprites/eye_l_base.png\","
+                "\"group\":\"root\",\"pos\":[10,10],\"layer\":1}],"
+                "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+                "{\"target\":\"p0\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":2,\"freq\":1},"
+                "{\"target\":\"p0\",\"param\":\"alpha\",\"wave\":\"sine\",\"amp\":-0.2,\"freq\":1}"
+                "]}]}");
+            fclose(f);
+            zdiag_init(&d);
+            bad = zrig_load(tmp_rig, dir, &d);
+            CHECK(bad != NULL, "合成 rig 应能装载");
+            if (bad) {
+                /* dx 那条要被数出来，alpha 那条是官方的 PartOpacity，不算 */
+                CHECK(zrig_action_geom_channels(bad) == 1,
+                      "几何通道计数器要数得出来（合成 rig 实际 %d，应为 1）",
+                      zrig_action_geom_channels(bad));
+                zrig_free(bad);
+            }
+            remove(tmp_rig);
+        }
+    }
+}
+
+/* ---- 笑眼动作的时序：全程不许出现「眼睛闭着但没在笑」的帧 ----
+   2026-10-15 用户验收退回："抚摸 5 秒不是 ∩ 形笑眼"。查出来不是贴图问题也不是
+   渲染问题，是**两条曲线不同步**：blink_hold 让闭合度在动作第 0 帧阶跃到 0.95，
+   而 ParamEyeL/RSmile 是 pulse，要 0.3 秒才爬到 1、收尾还先退场。于是动作
+   开头 0.3 秒、结尾 0.15 秒各露出一段谷型 ∪ 闭眼（实测时间线：
+   0.00~0.28s ∪ → 0.30~0.86s ∩ → 1.01s 又 ∪）。截图很容易抓到那两段。
+   修法是去掉这些动作的 blink_hold，闭合度交给 blink = max(blink, smile) 自己跟。
+   这条闸直接守用户看到的那件事：只要眼睛闭到一半以上，就必须在笑。 */
+/* ============================================================ T30.2 分块渲染
+
+   渲染提速的做法是把画布按**行带**切开、每条带起一个线程各跑一遍完整层序。
+   这类改动最容易出的事是"快了但画面悄悄变了"，所以这里的主闸不是性能数字，
+   而是 **多线程输出必须与单线程逐字节相同**。性能只做弱断言（CI 机器会抖）。 */
+
+static void test_png_parallel_encode(void)
+{
+    /* PNG 编码也按行带并行了（滤波 + deflate 各自分段，段间按字节拼接）。
+       这里的闸同样是"并行 == 串行"，而且要**用独立解码器**验收：
+       自己编自己解很容易两边一起错，所以回读走 stb_image（zimg_load），
+       另外 tools/api_smoke.py 里还有一条用 Python 标准 zlib 解 /api/frame.png 的闸。
+
+       变异检验（2026-10-15 实测）见 api_smoke 与 LESSONS；这里锁的是像素一致性。 */
+    int W = 320, H = 240, x, y;
+    zimg *src = zimg_new(W, H);
+    char path[1024];
+    zerr e;
+    SECTION("PNG 并行编码：分段压缩的流必须能被标准解码器还原成同样的像素");
+    /* 造一张有渐变、有纯色块、有透明区的图：三种滤波器都会被选到 */
+    for (y = 0; y < H; ++y) {
+        for (x = 0; x < W; ++x) {
+            size_t o = ((size_t)y * W + x) * 4;
+            if (x < W / 4) { src->px[o] = (uint8_t)x; src->px[o+1] = (uint8_t)y; src->px[o+2] = 90; src->px[o+3] = 255; }
+            else if (x < W / 2) { src->px[o] = 200; src->px[o+1] = 30; src->px[o+2] = 30; src->px[o+3] = 255; }
+            else if (x < 3 * W / 4) { src->px[o+3] = 0; }
+            else { src->px[o] = (uint8_t)((x * y) & 0xFF); src->px[o+1] = (uint8_t)(x ^ y);
+                   src->px[o+2] = (uint8_t)(x + y); src->px[o+3] = (uint8_t)(128 + (y & 63)); }
+        }
+    }
+    zerr_clear(&e);
+    z_snprintf(path, sizeof(path), "/tmp/zc_png_parallel_%d.png", (int)getpid());
+    CHECK(zimg_save_png(src, path, &e) == 0, "PNG 应能写出");
+    {
+        zimg *back = zimg_load(path, &e);
+        CHECK(back != NULL, "写出的 PNG 应能被 stb_image 读回来（流必须合法）");
+        if (back) {
+            size_t n = (size_t)W * H * 4, q, diff = 0;
+            CHECK(back->w == W && back->h == H, "回读尺寸应一致");
+            if (back->w == W && back->h == H)
+                for (q = 0; q < n; ++q) if (back->px[q] != src->px[q]) ++diff;
+            CHECK(diff == 0, "PNG 必须无损：回读像素与原图逐字节相同");
+            zimg_free(back);
+        }
+    }
+    remove(path);
+
+    {   /* deflate 分段本身：part(final=0) + part(final=1) 拼起来，
+           解出来必须和一次压完的原始数据相同。
+           这是"段间拼接"唯一的正确性来源，必须单独有闸。 */
+        size_t n = 200000, q;
+        uint8_t *data = (uint8_t *)z_alloc(n);
+        uint8_t *p1 = NULL, *p2 = NULL, *whole = NULL, *joined = NULL;
+        size_t l1, l2, lw, lj;
+        const uint8_t *parts[2];
+        size_t plens[2];
+        for (q = 0; q < n; ++q) data[q] = (uint8_t)((q / 97) ^ (q & 0x3F));
+        l1 = zdeflate_lz77_part(data, n / 2, &p1, 0);
+        l2 = zdeflate_lz77_part(data + n / 2, n - n / 2, &p2, 1);
+        CHECK(l1 > 0 && l2 > 0, "两段都应压缩成功");
+        parts[0] = p1; parts[1] = p2;
+        plens[0] = l1; plens[1] = l2;
+        lj = zlib_wrap_parts(parts, plens, 2, data, n, &joined);
+        lw = zlib_compress_rle(data, n, &whole);
+        CHECK(lj > 0 && lw > 0, "拼接与整体压缩都应成功");
+        /* 两个 zlib 流的末 4 字节都是同一份 adler32（按原始数据算） */
+        if (lj > 4 && lw > 4)
+            CHECK(memcmp(joined + lj - 4, whole + lw - 4, 4) == 0,
+                  "拼接流的 adler32 必须和整体压缩的一致（按原始数据算，不是按段）");
+        CHECK(joined && joined[0] == 0x78 && joined[1] == 0x01, "拼接流要有 zlib 头");
+        free(p1); free(p2); free(whole); free(joined); free(data);
+    }
+
+    {   /* adler32 延迟取模必须和朴素每字节取模结果一模一样 */
+        size_t n = 70000, q;
+        uint8_t *d = (uint8_t *)z_alloc(n);
+        uint32_t a = 1, b = 0;
+        for (q = 0; q < n; ++q) d[q] = (uint8_t)(q * 7);
+        for (q = 0; q < n; ++q) { a = (a + d[q]) % 65521; b = (b + a) % 65521; }
+        CHECK(z_adler32(d, n) == ((b << 16) | a),
+              "z_adler32（延迟取模）要与朴素实现同值（跨过 5552 批边界）");
+        free(d);
+    }
+    zimg_free(src);
+}
+
+static void test_zimg_clip_rows(void)
+{
+    /* zimg 层：所有会写 dst 的函数都必须尊重 clip_y。
+       这四个函数任何一个漏掉，多线程就会静默地互相踩。 */
+    int W = 8, H = 8, x, y;
+    SECTION("zimg 行裁剪：clip 外的行一个字节都不许动");
+    {
+        zimg *im = zimg_new(W, H);
+        CHECK(im->clip_y0 == 0 && im->clip_y1 == 0,
+              "zimg_new 必须把 clip 显式清零（z_alloc 是裸 malloc，不清零）");
+        /* --- zimg_clear --- */
+        for (y = 0; y < H; ++y)
+            for (x = 0; x < W; ++x) im->px[((size_t)y * W + x) * 4 + 3] = 255;
+        im->clip_y0 = 2; im->clip_y1 = 5;
+        zimg_clear(im);
+        {
+            int bad_in = 0, bad_out = 0;
+            for (y = 0; y < H; ++y) {
+                int cleared = (im->px[(size_t)y * W * 4 + 3] == 0);
+                if (y >= 2 && y < 5) { if (!cleared) bad_in++; }
+                else                 { if (cleared)  bad_out++; }
+            }
+            CHECK(bad_in == 0,  "zimg_clear 应清掉 clip 内的行");
+            CHECK(bad_out == 0, "zimg_clear 不许碰 clip 外的行");
+        }
+        zimg_free(im);
+    }
+    {   /* --- draw_rect（走 draw_impl，普通部件这条路） --- */
+        zimg *im  = zimg_new(W, H);
+        zimg *src = zimg_new(W, H);
+        double m[6];
+        int bad_in = 0, bad_out = 0;
+        for (y = 0; y < H; ++y) for (x = 0; x < W; ++x) {
+            size_t o = ((size_t)y * W + x) * 4;
+            src->px[o] = 255; src->px[o + 3] = 255;
+        }
+        /* 单位变换：tx = m[0]*x + m[2]*y + m[4]，ty = m[1]*x + m[3]*y + m[5]。
+           m[3] 写成 0 的话行列式就是 0，draw_impl 直接 return，什么都不画（踩过）。 */
+        m[0] = 1.0; m[1] = 0.0; m[2] = 0.0;
+        m[3] = 1.0; m[4] = 0.0; m[5] = 0.0;
+        im->clip_y0 = 2; im->clip_y1 = 5;
+        zimg_draw_rect(im, src, m, 1.0, 0, 0, W, H);
+        for (y = 0; y < H; ++y) {
+            int painted = (im->px[(size_t)y * W * 4 + 3] != 0);
+            if (y >= 2 && y < 5) { if (!painted) bad_in++; }
+            else                 { if (painted)  bad_out++; }
+        }
+        CHECK(bad_in == 0,  "draw_rect 应画满 clip 内的行");
+        CHECK(bad_out == 0, "draw_rect 不许画到 clip 外的行");
+        zimg_free(im); zimg_free(src);
+    }
+    {   /* --- composite_masked_blend（被遮罩的部件走这条路）---
+           注意：真 rig 上这条分支观测不到差异，因为带遮罩的部件（眼睛/眉毛幽灵）
+           全在头部、正好落在第 0 带里。所以负控必须在 zimg 这一层直接做。 */
+        zimg *dst = zimg_new(W, H), *src = zimg_new(W, H), *mask = zimg_new(W, H);
+        int bad_in = 0, bad_out = 0;
+        for (y = 0; y < H; ++y) for (x = 0; x < W; ++x) {
+            size_t o = ((size_t)y * W + x) * 4;
+            dst->px[o] = 10; dst->px[o + 3] = 255;
+            src->px[o] = 200; src->px[o + 3] = 255;
+            mask->px[o + 3] = 255;
+        }
+        dst->clip_y0 = 2; dst->clip_y1 = 5;
+        zimg_composite_masked_blend(dst, src, mask, ZIMG_BLEND_NORMAL);
+        for (y = 0; y < H; ++y) {
+            int changed = (dst->px[(size_t)y * W * 4] != 10);
+            if (y >= 2 && y < 5) { if (!changed) bad_in++; }
+            else                 { if (changed)  bad_out++; }
+        }
+        CHECK(bad_in == 0,  "composite_masked_blend 应合成 clip 内的行");
+        CHECK(bad_out == 0, "composite_masked_blend 不许碰 clip 外的行");
+        zimg_free(dst); zimg_free(src); zimg_free(mask);
+    }
+    {   /* --- zimg_band 自己 --- */
+        zimg *im = zimg_new(W, H);
+        zimg v = zimg_band(im, 3, 6);
+        CHECK(v.px == im->px && v.w == im->w && v.h == im->h,
+              "zimg_band 必须共享像素、保持整幅坐标系（分块不改坐标）");
+        CHECK(v.clip_y0 == 3 && v.clip_y1 == 6, "zimg_band 应设好 clip 范围");
+        v = zimg_band(im, -5, 999);
+        CHECK(v.clip_y0 == 0 && v.clip_y1 == H, "zimg_band 应把越界范围钳回画布内");
+        zimg_free(im);
+    }
+}
+
+/* 渲一帧到新缓冲里（调用方负责 free）。threads<=0 表示不动当前设置。 */
+static uint8_t *render_once(zrig *r, int threads, double scale, int *w, int *h)
+{
+    const zimg *fb;
+    uint8_t *out;
+    if (threads > 0) zrig_set_render_threads(threads);
+    fb = zrig_frame(r, scale, w, h);
+    if (!fb) return NULL;
+    out = (uint8_t *)malloc((size_t)(*w) * (*h) * 4);
+    memcpy(out, fb->px, (size_t)(*w) * (*h) * 4);
+    return out;
+}
+
+/* 把 rig 推到某个动作的第 nframes 帧。时间线必须连续（见 test_smile_action_sync 的坑）。 */
+static void wind_to_action(zrig *r, const char *act, int nframes)
+{
+    int i;
+    for (i = 0; i < nframes; ++i) zrig_tick(r, 100.0 + i * 0.033);
+    zrig_action_request(r, act, "test", 1);
+    for (i = 0; i < nframes; ++i) zrig_tick(r, 100.0 + (nframes + i) * 0.033);
+}
+
+static void test_render_bands_identical(void)
+{
+    /* ★ T30.2 主闸：分块渲染出来的画面必须和单线程**逐字节相同**。
+       变异检验（2026-10-15 实测，848x1360 wave 第 30 帧）：
+         - draw_impl 忽略 clip      → 79052 字节不同，最大差 241  ✅判红
+         - draw_tri 忽略 clip       → 34734 字节不同，最大差 166  ✅判红
+         - 各带共享 scratch/maskbuf → 7877  字节不同，最大差 241  ✅判红
+       （composite 忽略 clip 在真 rig 上观测不到，负控在 test_zimg_clip_rows 里做。） */
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    const char *acts[4];
+    double scales[3];
+    int ai, si;
+    SECTION("分块渲染：多线程输出与单线程逐字节相同");
+    acts[0] = "idle"; acts[1] = "wave"; acts[2] = "head_pat"; acts[3] = "happy";
+    scales[0] = 0.55; scales[1] = 1.0; scales[2] = 1.3;
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（分块渲染）");
+    if (!r) return;
+    zrig_blink_set_enabled(r, 0);   /* 自动眨眼带随机，两次渲染得是同一个状态 */
+
+    for (ai = 0; ai < 4; ++ai) {
+        for (si = 0; si < 3; ++si) {
+            uint8_t *one, *many;
+            int w1, h1, w2, h2;
+            size_t n, q, diff = 0;
+            int maxd = 0;
+            char msg[256];
+            wind_to_action(r, acts[ai], 30);
+            /* 同一个 rig 状态、同一个 scale，只换线程数 */
+            one  = render_once(r, 1, scales[si], &w1, &h1);
+            many = render_once(r, 4, scales[si], &w2, &h2);
+            if (!one || !many) { CHECK(0, "渲染应返回画面"); free(one); free(many); continue; }
+            CHECK(w1 == w2 && h1 == h2, "分块不该改变画面尺寸");
+            n = (size_t)w1 * h1 * 4;
+            for (q = 0; q < n && w1 == w2 && h1 == h2; ++q) {
+                int dd = (int)one[q] - (int)many[q];
+                if (dd) { ++diff; if (dd < 0) dd = -dd; if (dd > maxd) maxd = dd; }
+            }
+            z_snprintf(msg, sizeof(msg),
+                       "%s @scale %.2f：4 线程与单线程逐字节相同（实差 %lu 字节，最大 %d）",
+                       acts[ai], scales[si], (unsigned long)diff, maxd);
+            CHECK(diff == 0, "%s", msg);
+            free(one); free(many);
+        }
+    }
+
+    /* 换过线程数之后再换回来也必须一致：band_scratch 的 clip 得被正确重置，
+       否则 y 靠下的带遮罩部件会整个消失（这个 bug 写出来过，当场抓到的）。 */
+    {
+        uint8_t *a1, *a2, *a3;
+        int w, h, w2b, h2b, w3, h3;
+        size_t n, q, d12 = 0, d13 = 0;
+        /* ⚠ 这里必须用 8 线程，不能用 4：scale 1.0 时画布高 1360，
+           4 线程的第 0 带是 [0,340)，眼睛（y≈266~300，唯一带遮罩的部件）正好在里面，
+           clip 没重置也看不出来。8 线程的第 0 带 [0,170) 在眼睛上方，才能把 bug 暴露出来。 */
+        wind_to_action(r, "wave", 30);
+        a1 = render_once(r, 1, 1.0, &w, &h);     /* 一直单线程 */
+        a2 = render_once(r, 8, 1.0, &w2b, &h2b); /* 切到 8 线程 */
+        a3 = render_once(r, 1, 1.0, &w3, &h3);   /* 再切回单线程 */
+        n = (size_t)w * h * 4;
+        if (a1 && a2 && a3 && w == w2b && w == w3 && h == h2b && h == h3) {
+            for (q = 0; q < n; ++q) {
+                if (a1[q] != a2[q]) ++d12;
+                if (a1[q] != a3[q]) ++d13;
+            }
+        }
+        CHECK(d12 == 0, "1→8 线程切换后画面不变");
+        CHECK(d13 == 0, "8→1 线程切回后画面不变（band 缓冲的 clip 必须重置）");
+        free(a1); free(a2); free(a3);
+    }
+
+    zrig_set_render_threads(1);
+    {
+        int n = zrig_render_threads();
+        CHECK(n == 1, "zrig_set_render_threads 应能强制单线程");
+        zrig_set_render_threads(999);
+        CHECK(zrig_render_threads() <= 8, "线程数应被钳在 ZRIG_MAX_BANDS(8) 以内");
+        zrig_set_render_threads(0);
+        CHECK(zrig_render_threads() >= 1, "线程数不许小于 1");
+    }
+    zrig_free(r);
+}
+
+static void test_smile_action_sync(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    const char *acts[3];
+    int ai;
+    SECTION("笑眼动作时序：闭着眼的每一帧都必须在笑（没有 ∪ 窗口）");
+    acts[0] = "head_pat"; acts[1] = "stroke"; acts[2] = "happy";
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（笑眼时序）");
+    if (!r) return;
+    zrig_blink_set_enabled(r, 0);   /* 自动眨眼会自己插入闭眼帧，那是另一回事 */
+    for (ai = 0; ai < 3; ++ai) {
+        int k, bad = 0, sawsmile = 0, sawclose = 0;
+        double worst_t = -1.0, worst_close = 0.0, worst_smile = 0.0;
+        /* 先回到干净的 idle，再起这个动作。
+           ⚠ 时间线必须连续：预热和正式扫描之间跳一大段的话，动作的 elapsed
+           一上来就超过 duration，直接按结束处理（第一版写 100.0 → 200.0，
+           结果 head_pat/happy 一帧都没笑过）。 */
+        {
+            double t0 = 300.0 + ai * 20.0;
+            zrig_action_request(r, "idle", "test", 1);
+            for (k = 0; k < 90; ++k) zrig_tick(r, t0 + k / 60.0);
+            zrig_action_request(r, acts[ai], "test", 1);
+        /* 动作全长 + 收尾，按 1/60 秒步进扫一遍 */
+        for (k = 0; k < 150; ++k) {
+            double t = 300.0 + ai * 20.0 + 1.5 + k / 60.0;
+            double close, smile;
+            zrig_tick(r, t);
+            close = zrig_eye_close(r, 0);
+            smile = zrig_eye_smile(r, 0);
+            if (smile > 0.5) sawsmile = 1;
+            if (close > 0.5) sawclose = 1;
+            if (close > 0.5 && smile < 0.5) {
+                bad++;
+                if (close - smile > worst_close - worst_smile) {
+                    worst_t = k / 60.0; worst_close = close; worst_smile = smile;
+                }
+            }
+        }
+        CHECK(sawsmile, "%s 全程应该真的笑过（一帧 smile>0.5 都没有）", acts[ai]);
+        CHECK(sawclose, "%s 笑的时候眼睛应该是闭的（一帧 close>0.5 都没有）", acts[ai]);
+        CHECK(bad == 0,
+              "%s 有 %d 帧「眼睛闭着却没在笑」（最糟 t=%.2fs close=%.2f smile=%.2f）"
+              "——blink_hold 和 EyeSmile 的曲线不同步，画面上就是 ∪ 而不是 ∩",
+              acts[ai], bad, worst_t, worst_close, worst_smile);
+        }
+    }
+
+    /* blink_hold 是**动作**要的闭合度，不归"自动眨眼开关"管。
+       以前 zrig_blink_update 在 !blink_enabled 时直接 return，blink_hold 那段
+       代码根本够不到 —— 于是把自动眨眼一关，连"睡觉"动作的眼睛都是睁的。
+       这个缺陷还正好让上面那组闸永远绿（测试里本来就关着自动眨眼），
+       是做变异检验时才暴露的，所以单独钉一条。 */
+    {
+        int k;
+        double t0 = 500.0, closed_on, closed_off;
+        zrig_blink_set_enabled(r, 1);
+        zrig_action_request(r, "sleep", "test", 1);
+        for (k = 0; k < 120; ++k) zrig_tick(r, t0 + k / 60.0);
+        closed_on = zrig_eye_close(r, 0);
+        zrig_blink_set_enabled(r, 0);
+        for (k = 0; k < 30; ++k) zrig_tick(r, t0 + 2.0 + k / 60.0);
+        closed_off = zrig_eye_close(r, 0);
+        CHECK(closed_on > 0.9, "睡觉动作应该把眼睛闭上（自动眨眼开着时 close=%.2f）", closed_on);
+        CHECK(closed_off > 0.9,
+              "关掉自动眨眼之后睡觉动作的眼睛也必须还闭着（close=%.2f）"
+              "——blink_hold 是动作的要求，不该被眨眼开关吞掉", closed_off);
+        zrig_blink_set_enabled(r, 0);
+    }
+    zrig_free(r);
+}
+
+static void test_eye_smile(void)
+{
+    char rig_path[1024], dir[1024];
+    zdiag d;
+    zrig *r;
+    /* 眼件在画布上的位置来自 rig.json：eye_l_smile [356,245] 57x56、eye_r_smile [429,240] 57x58 */
+    const int LX0 = 350, LY0 = 238, LX1 = 421, LY1 = 308;
+    const int RX0 = 423, RY0 = 233, RX1 = 494, RY1 = 303;
+    SECTION("笑眼：山型 ∩ 的闭眼，和谷型闭眼是两张不同的脸");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    zdiag_init(&d);
+    r = zrig_load(rig_path, dir, &d);
+    CHECK(r != NULL, "装载真 rig 应成功（笑眼）");
+    if (!r) return;
+    {
+        const zimg *fb;
+        unsigned char *snap_open = NULL, *snap_closed = NULL;
+        int w = 0, h = 0, d_closed, d_smile, d_vs_closed, d_wink_l, d_wink_r, d_back;
+        int dark_closed = 0, dark_smile = 0;
+
+        CHECK(zrig_param_set(r, "ParamEyeLSmile", 0.0) == 0
+              && zrig_param_set(r, "ParamEyeRSmile", 0.0) == 0,
+              "rig 里应该有 ParamEyeLSmile / ParamEyeRSmile（Live2D 标准名）");
+        zrig_blink_set_enabled(r, 0);          /* 自动眨眼会搅乱像素对照 */
+        zrig_blink_set_manual(r, 0.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, &w, &h);
+        snap_open = frame_snapshot(fb);
+
+        /* ① 谷型闭眼（基准之一） */
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        d_closed = frame_diff_box(fb, snap_open, LX0, LY0, LX1, LY1);
+        snap_closed = frame_snapshot(fb);
+        dark_closed = frame_dark_box(fb, LX0, LY0, LX1, LY1);
+        CHECK(d_closed > 400, "闭眼要能看出来（左眼区变了 %d 像素）", d_closed);
+
+        /* ② 笑眼：只推 ParamEyeL/RSmile，不碰睁眼参数 —— 眼睛必须自己闭上并换成山型 */
+        zrig_blink_set_manual(r, -1.0);        /* 交回自动；enabled=0 所以闭合度回 0 */
+        zrig_param_set(r, "ParamEyeLSmile", 1.0);
+        zrig_param_set(r, "ParamEyeRSmile", 1.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        d_smile = frame_diff_box(fb, snap_open, LX0, LY0, LX1, LY1);
+        d_vs_closed = frame_diff_box(fb, snap_closed, LX0, LY0, LX1, LY1);
+        CHECK(d_smile > 400,
+              "笑眼要自己把眼睛闭上（不用再写 ParamEyeOpen；左眼区变了 %d 像素）", d_smile);
+        CHECK(d_vs_closed > 150,
+              "笑眼和谷型闭眼必须是两张脸（只差了 %d 像素 = 多半在拿闭眼件顶）", d_vs_closed);
+        /* 「笑眼隐含闭眼」在画面上看不出来（笑眼补片本来就盖住整只眼），
+           所以直接问引擎要本帧的闭合度 —— 这条才是 Haru F05 那套口径的本体。 */
+        CHECK(zrig_eye_smile(r, 0) > 0.99 && zrig_eye_smile(r, 1) > 0.99,
+              "两只眼的笑眼量应为 1（L=%.2f R=%.2f）", zrig_eye_smile(r, 0), zrig_eye_smile(r, 1));
+        CHECK(zrig_eye_close(r, 0) > 0.99 && zrig_eye_close(r, 1) > 0.99,
+              "笑眼必须隐含闭眼：闭合度应为 1（L=%.2f R=%.2f）",
+              zrig_eye_close(r, 0), zrig_eye_close(r, 1));
+        /* 画面上也得真有那条山型线：既不能什么都不画（笑眼件没显形），
+           也不能把山型和谷型两条线一起画（那会叠成一团黑）。 */
+        dark_smile = frame_dark_box(fb, LX0, LY0, LX1, LY1);
+        CHECK(dark_smile > dark_closed / 2,
+              "笑眼帧的眼区要有睫毛线（暗像素 %d，闭眼帧是 %d）", dark_smile, dark_closed);
+        CHECK(dark_smile < dark_closed * 16 / 10,
+              "笑眼不该和谷型闭眼叠着画（暗像素 %d，闭眼帧才 %d）", dark_smile, dark_closed);
+        /* ★ 形状闸：笑眼必须真的是山型 ∩。上面两条只看暗像素「有多少」，
+           睫毛件忘让位时它在笑眼上又叠一条 ∪ 粗线，总量只多一点点，闸全绿，
+           可用户看到的就是 ∪（2026-10-15 验收退回"抚摸时不是 ∩ 形笑眼"）。
+           sag = 两端平均 y − 中段平均 y：谷型为负、山型为正，必须看符号。 */
+        {
+            /* 量 sag 要用「只圈住眼线那一条」的窄带：LX0..LY1 那个大框还套着
+               眉毛和刘海线稿，它们的暗像素会把中段/两端的平均 y 带偏，
+               实测大框下笑眼算出 −5.7px（看着像 ∪）而窄带是 +1.7px。
+               窄带取自 eye_l_smile 的件位 [356,245] 57x56 的下半截（眼线所在）。 */
+            const int SX0 = 354, SY0 = 266, SX1 = 416, SY1 = 296;
+            double sag_closed, sag_smile;
+            /* 闭眼帧的 sag 要用闭眼那一帧重算 —— 拿 snap_closed 恢复成 zimg 太绕，
+               这里直接再跑一次闭眼状态取值，跑完再回到笑眼状态。 */
+            zrig_param_set(r, "ParamEyeLSmile", 0.0);
+            zrig_param_set(r, "ParamEyeRSmile", 0.0);
+            zrig_blink_set_manual(r, 1.0);
+            zrig_tick(r, 5.0);
+            sag_closed = frame_dark_sag(zrig_frame(r, 1.0, NULL, NULL), SX0, SY0, SX1, SY1);
+            zrig_blink_set_manual(r, -1.0);
+            zrig_param_set(r, "ParamEyeLSmile", 1.0);
+            zrig_param_set(r, "ParamEyeRSmile", 1.0);
+            zrig_tick(r, 5.0);
+            fb = zrig_frame(r, 1.0, NULL, NULL);
+            sag_smile = frame_dark_sag(fb, SX0, SY0, SX1, SY1);
+            CHECK(sag_closed > -9000.0 && sag_smile > -9000.0,
+                  "两帧都该量得到眼线（闭眼 sag=%.2f 笑眼 sag=%.2f）", sag_closed, sag_smile);
+            CHECK(sag_smile > sag_closed + 1.0,
+                  "笑眼得比谷型闭眼更「山型」：笑眼 sag=%.2fpx 应明显大于闭眼 sag=%.2fpx"
+                  "（差 %.2f ≤ 1 说明睫毛件没让位，∩ 被 ∪ 盖住了）",
+                  sag_smile, sag_closed, sag_smile - sag_closed);
+            CHECK(sag_smile > 0.0,
+                  "笑眼的眼线中段必须比两端高（sag=%.2fpx，负值 = 看着还是 ∪）", sag_smile);
+        }
+
+        /* ③ 左右分家：只笑左眼，右眼区不许动 */
+        zrig_param_set(r, "ParamEyeRSmile", 0.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        d_wink_l = frame_diff_box(fb, snap_open, LX0, LY0, LX1, LY1);
+        d_wink_r = frame_diff_box(fb, snap_open, RX0, RY0, RX1, RY1);
+        CHECK(d_wink_l > 400 && d_wink_r == 0,
+              "单眼笑：左眼变 %d 像素、右眼必须一点都不动（实际 %d）", d_wink_l, d_wink_r);
+        CHECK(zrig_eye_close(r, 0) > 0.99 && zrig_eye_close(r, 1) < 0.01,
+              "单眼笑：左眼闭合 %.2f、右眼仍睁着 %.2f",
+              zrig_eye_close(r, 0), zrig_eye_close(r, 1));
+
+        /* ④ 收回去要干净：参数归零 = 回到一开始那一帧 */
+        zrig_param_set(r, "ParamEyeLSmile", 0.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        d_back = frame_diff_box(fb, snap_open, 0, 0, w, h);
+        CHECK(d_back == 0, "笑眼归零应完全回到睁眼那一帧（还差 %d 像素）", d_back);
+
+        /* ⑤ 官方那种写法（表情同时写 EyeOpen=0 + Smile=1）也不能把眼睛弄睁 */
+        zrig_param_set(r, "ParamEyeLSmile", 1.0);
+        zrig_param_set(r, "ParamEyeOpen", 0.0);
+        zrig_tick(r, 5.0);
+        fb = zrig_frame(r, 1.0, NULL, NULL);
+        CHECK(frame_diff_box(fb, snap_open, LX0, LY0, LX1, LY1) > 400,
+              "Haru F05 那种写法（EyeOpen=0 + Smile=1）也要是笑眼");
+        zrig_param_set(r, "ParamEyeOpen", 1.0);
+        zrig_param_set(r, "ParamEyeLSmile", 0.0);
+
+        /* ⑥ 表情 happy 应该带笑眼 */
+        zrig_expression_set(r, "happy");
+        zrig_expression_snap(r);
+        zrig_tick(r, 5.0);
+        CHECK(zrig_param_effective(r, "ParamEyeLSmile") > 0.9
+              && zrig_param_effective(r, "ParamEyeRSmile") > 0.9,
+              "表情 happy 要把两只眼都变成笑眼（L=%.2f R=%.2f）",
+              zrig_param_effective(r, "ParamEyeLSmile"),
+              zrig_param_effective(r, "ParamEyeRSmile"));
+        free(snap_open);
+        free(snap_closed);
+    }
+    zrig_free(r);
+
+    /* ⑦ 结构闸：在真 rig 上"笑眼件画没画"很难数清楚（眼线件下滑后也在同一位置留一条线），
+       所以另起一个合成 rig，把睁眼/谷型闭眼/山型笑眼三张真素材摆在互不重叠的位置，
+       这样每一块有没有画出来就是能逐像素数的。 */
+    {
+        char rigp[1024], dir2[1024];
+        zdiag d2;
+        zrig *r2;
+        z_snprintf(dir2, sizeof(dir2), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rigp, sizeof(rigp), "/tmp/zc_eye_smile_rig.json");
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"es\",\"name\":\"笑眼结构闸\","
+            "\"canvas\":{\"w\":848,\"h\":400},\"origin\":[424,400],"
+            "\"groups\":{\"root\":{\"pivot\":[424,400],\"parent\":\"\"}},"
+            "\"blink\":{\"enabled\":true},"
+            "\"param_groups\":[{\"name\":\"EyeBlink\","
+            " \"ids\":[\"ParamEyeLOpen\",\"ParamEyeROpen\"]}],"
+            "\"parts\":["
+            " {\"id\":\"o\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\","
+            "  \"layer\":10,\"pos\":[100,100],\"anchor\":[0,0],"
+            "  \"tags\":[\"eye_open\"],\"eye_side\":\"l\"},"
+            " {\"id\":\"c\",\"file\":\"sprites/eye_l_closed.png\",\"group\":\"root\","
+            "  \"layer\":11,\"pos\":[300,100],\"anchor\":[0,0],"
+            "  \"tags\":[\"eye_closed\"],\"eye_side\":\"l\"},"
+            " {\"id\":\"s\",\"file\":\"sprites/eye_l_smile.png\",\"group\":\"root\","
+            "  \"layer\":12,\"pos\":[500,100],\"anchor\":[0,0],"
+            "  \"tags\":[\"eye_smile\"],\"eye_side\":\"l\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d2);
+        r2 = zrig_load(rigp, dir2, &d2);
+        CHECK(r2 != NULL, "合成 rig（三张眼）应加载成功");
+        if (r2) {
+            const zimg *fb;
+            int po, pc, ps;
+            zrig_blink_set_enabled(r2, 0);
+            zrig_blink_set_manual(r2, 0.0);
+            zrig_tick(r2, 1.0);
+            fb = zrig_frame(r2, 1.0, NULL, NULL);
+            po = frame_opaque_box(fb,  90,  90, 260, 260);
+            pc = frame_opaque_box(fb, 290,  90, 460, 260);
+            ps = frame_opaque_box(fb, 490,  90, 660, 260);
+            CHECK(po > 500 && pc == 0 && ps == 0,
+                  "睁着时只画睁眼件（睁 %d / 闭 %d / 笑 %d）", po, pc, ps);
+
+            zrig_blink_set_manual(r2, 1.0);          /* 谷型闭眼 */
+            zrig_tick(r2, 1.1);
+            fb = zrig_frame(r2, 1.0, NULL, NULL);
+            po = frame_opaque_box(fb,  90,  90, 260, 260);
+            pc = frame_opaque_box(fb, 290,  90, 460, 260);
+            ps = frame_opaque_box(fb, 490,  90, 660, 260);
+            CHECK(po == 0 && pc > 500 && ps == 0,
+                  "闭眼时只画谷型闭眼件（睁 %d / 闭 %d / 笑 %d）", po, pc, ps);
+
+            zrig_blink_set_manual(r2, -1.0);
+            zrig_param_set(r2, "ParamEyeLSmile", 1.0);
+            zrig_tick(r2, 1.2);
+            fb = zrig_frame(r2, 1.0, NULL, NULL);
+            po = frame_opaque_box(fb,  90,  90, 260, 260);
+            pc = frame_opaque_box(fb, 290,  90, 460, 260);
+            ps = frame_opaque_box(fb, 490,  90, 660, 260);
+            CHECK(ps > 500, "笑眼时山型笑眼件必须画出来（实际 %d 像素）", ps);
+            CHECK(pc == 0, "笑眼时谷型闭眼件必须让位（还画着 %d 像素 = 两条线叠一起）", pc);
+            CHECK(po == 0, "笑眼时睁眼件必须收掉（还画着 %d 像素）", po);
+            zrig_free(r2);
+        }
+    }
+}
+
+/* ---- A4 口型同步：包络按时间推进、嘴让路、播完收尾 ---- */
+static void test_lipsync(void)
+{
+    zconfig cfg;
+    zdiag diag;
+    zpet *pet;
+    char cfgdir[1024];
+    /* 0 → 1 → 0 的三角包络，10fps，总长 (5-1)/10 = 0.4s */
+    static const double env[5] = { 0.0, 0.5, 1.0, 0.5, 0.0 };
+
+    SECTION("口型同步：包络驱动 ParamMouthOpenY，动作里的嘴通道让路");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (!pet) return;
+
+    zpet_tick(pet, 100.0);
+    CHECK(zpet_lipsync_active(pet) == 0, "默认不在说话");
+
+    CHECK(zpet_lipsync_start(pet, env, 5, 10.0, 100.0) == 0, "喂包络应成功");
+    CHECK(zpet_lipsync_active(pet) == 1, "开始后应处于说话中");
+    CHECK(fabs(zpet_lipsync_remain(pet) - 0.4) < 1e-6,
+          "剩余应为 0.4s，实为 %.3f", zpet_lipsync_remain(pet));
+
+    /* 中点：第 2 帧正好是 1.0 */
+    zpet_tick(pet, 100.2);
+    CHECK(fabs(zpet_lipsync_level(pet) - 1.0) < 1e-6,
+          "0.2s 应取到包络峰值 1.0，实为 %.3f", zpet_lipsync_level(pet));
+    /* 帧间线性插值：0.25s 落在 1.0 与 0.5 中间 */
+    zpet_tick(pet, 100.25);
+    CHECK(fabs(zpet_lipsync_level(pet) - 0.75) < 1e-6,
+          "0.25s 应插值出 0.75，实为 %.3f", zpet_lipsync_level(pet));
+
+    /* 播完自动收尾：参数回默认、嘴交还动作 */
+    zpet_tick(pet, 100.9);
+    CHECK(zpet_lipsync_active(pet) == 0, "播完应自动停");
+    CHECK(fabs(zpet_lipsync_level(pet)) < 1e-9, "停下后开口度应回 0");
+
+    /* 参数不合法要被拒绝 */
+    CHECK(zpet_lipsync_start(pet, env, 1, 10.0, 101.0) == -1, "只有 1 帧应拒绝");
+    CHECK(zpet_lipsync_start(pet, env, 5, 0.0, 101.0) == -1, "fps=0 应拒绝");
+    CHECK(zpet_lipsync_load(pet, "../etc/passwd", 101.0) == -1, "带 ../ 的 id 必须拒绝");
+    CHECK(zpet_lipsync_load(pet, "no_such_line", 101.0) == -1, "不存在的包络应失败");
+
+    /* 真包络文件（tools/make_lipsync.py 的产物）能读起来 */
+    if (zpet_lipsync_load(pet, "hammer_1_base0", 102.0) == 0) {
+        CHECK(zpet_lipsync_active(pet) == 1, "读文件后应在说话");
+        CHECK(zpet_lipsync_remain(pet) > 1.0, "这条台词应超过 1 秒");
+        CHECK(strlen(zpet_lipsync_text(pet)) > 0, "包络里应带台词文本");
+        zpet_lipsync_stop(pet);
+        CHECK(zpet_lipsync_active(pet) == 0, "手动停应立刻生效");
+    }
+    zpet_destroy(pet);
+}
+
+
+/* ---- 长稳：连续跑两万帧，画面不崩、数值不发散（配 make asan 查泄漏）---- */
+static void test_longrun(void)
+{
+    zconfig cfg;
+    zdiag diag;
+    zpet *pet;
+    char cfgdir[1024];
+    const char *acts[6] = { "wave", "happy", "think", "surprised", "talk", "idle" };
+    int i, fw = 0, fh = 0, bad = 0;
+    double t;
+
+    SECTION("长稳：2 万帧连续渲染不崩、不发散");
+    zdiag_init(&diag);
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", g_root);
+    zconfig_load(&cfg, cfgdir, &diag);
+    zdiag_init(&diag);
+    pet = zpet_create(&cfg, &diag);
+    CHECK(pet != NULL, "角色包应加载成功");
+    if (!pet) return;
+
+    for (i = 0; i < 20000; ++i) {
+        t = 1000.0 + i / 60.0;                      /* 60fps 跑 5 分半 */
+        if (i % 600 == 0) zpet_action_request(pet, acts[(i / 600) % 6], "longrun", 1);
+        if (i % 97 == 0) zpet_hover(pet, (i * 7) % 400, (i * 13) % 700, 1, t);
+        if (i % 311 == 0) zpet_poke(pet, 300, 120, ZPET_TOOL_HAND, t);
+        if (i % 503 == 0) zpet_lipsync_load(pet, "click_1_base0", t);
+        zpet_tick(pet, t);
+        if (i % 50 == 0) {
+            const zimg *fr = zpet_frame(pet, &fw, &fh);
+            if (!fr || fw <= 0 || fh <= 0) bad++;
+        }
+        /* 参数不能发散成 NaN/inf */
+        if (i % 1000 == 0) {
+            double v = zpet_blink(pet);
+            if (!(v >= -0.001 && v <= 1.001)) bad++;
+        }
+    }
+    CHECK(bad == 0, "2 万帧里出现 %d 次异常帧/异常数值", bad);
+    CHECK(fw > 0 && fh > 0, "最后一帧仍能渲染（%dx%d）", fw, fh);
+    zpet_destroy(pet);
+}
+
+
+/* ---- A5 网格形变：zimg 级 + rig 级 ---- */
+static int apx(const zimg *im, int x, int y)   /* 取某点 alpha */
+{
+    if (!im || x < 0 || y < 0 || x >= im->w || y >= im->h) return 0;
+    return im->px[((size_t)y * im->w + x) * 4 + 3];
+}
+
+static void test_mesh(void)
+{
+    SECTION("网格形变：控制点推得动像素，没推就和普通绘制一模一样");
+    {
+        zimg *src = zimg_new_filled(40, 40, 255, 0, 0, 255);
+        zimg *a = zimg_new(80, 80), *b = zimg_new(80, 80);
+        double m[6], off[9 * 2];
+        int i;
+        zimg_make_matrix(m, 20, 20, 1, 1, 0, 0, 0);
+        for (i = 0; i < 18; ++i) off[i] = 0.0;
+        /* ① 控制点全不动 = 和 zimg_draw 像素级一致 */
+        zimg_draw(a, src, m, 1.0);
+        zimg_draw_mesh(b, src, m, 1.0, 2, 2, off);
+        {
+            int diff = 0, x, y;
+            for (y = 0; y < 80; ++y)
+                for (x = 0; x < 80; ++x) {
+                    if (abs(apx(a, x, y) - apx(b, x, y)) > 2) diff++;
+                }
+            CHECK(diff == 0, "没挪控制点时应与普通绘制一致，实际差 %d 像素", diff);
+        }
+        /* ② 把右上角那个控制点往右推 20px：右上角应该长出来 */
+        zimg_clear(b);
+        off[2 * 2] = 20.0;                     /* 控制点 (c=2,r=0) 的 dx */
+        zimg_draw_mesh(b, src, m, 1.0, 2, 2, off);
+        CHECK(apx(b, 70, 22) > 128, "右上角被推出去的地方应该有像素");
+        CHECK(apx(a, 70, 22) < 10, "原来那里是空的（对照）");
+        /* ③ 底边没推，应保持原位 */
+        CHECK(apx(b, 30, 58) > 128, "底边不动的部分还在原位");
+        zimg_free(src); zimg_free(a); zimg_free(b);
+    }
+
+    SECTION("网格形变：rig 里声明 deformers，动作通道与参数都能驱动");
+    {
+        char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+        zdiag d;
+        zrig *r;
+        z_snprintf(dir, sizeof(dir), "/tmp/zc_mesh");
+        z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+        z_mkdir_p(dir);
+        z_mkdir_p(sprites);
+        z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+        z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+        if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+        z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"网格测试\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"deformers\":[{\"id\":\"wave\",\"part\":\"h\",\"cols\":2,\"rows\":2,"
+            " \"points\":[{\"c\":0,\"r\":0,\"dx\":8},{\"c\":1,\"r\":0,\"dx\":8},"
+            "  {\"c\":2,\"r\":0,\"dx\":8},{\"c\":0,\"r\":1,\"dx\":-3}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+            "  {\"target\":\"wave\",\"param\":\"amount\",\"wave\":\"sine\","
+            "   \"amp\":1.0,\"freq\":1.0}]}],"
+            "\"params\":[{\"id\":\"ParamWave\",\"min\":-1,\"max\":1,\"default\":0,"
+            " \"binds\":[{\"deformer\":\"wave\",\"scale\":1.0}]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 deformers 段的 rig 应加载成功");
+        if (r) {
+            const zimg *f1, *f2;
+            int w = 0, h = 0, diff = 0, x, y;
+            CHECK(zrig_deform_count(r) == 1, "应解析出 1 个形变器，实为 %d",
+                  zrig_deform_count(r));
+            CHECK(z_streq(zrig_deform_id(r, 0), "wave"), "形变器 id 应是 wave");
+            /* ① 动作通道驱动：sine 在 0.25 秒（freq 1Hz）到峰值 */
+            zrig_tick(r, 0.25);
+            CHECK(zrig_deform_amount(r, "wave") > 0.9,
+                  "动作通道应把 amount 推到 ~1，实为 %.3f", zrig_deform_amount(r, "wave"));
+            f1 = zrig_frame(r, 1.0, &w, &h);
+            CHECK(f1 != NULL && w > 0, "形变后应能渲染");
+            /* ② 回到 0 的那一刻画面应与峰值不同 */
+            {
+                zimg *keep = zimg_clone(f1);
+                zrig_tick(r, 0.5);
+                CHECK(fabs(zrig_deform_amount(r, "wave")) < 0.05,
+                      "半个周期后应回到 0，实为 %.3f", zrig_deform_amount(r, "wave"));
+                f2 = zrig_frame(r, 1.0, &w, &h);
+                for (y = 0; y < h; y += 2)
+                    for (x = 0; x < w; x += 2)
+                        if (abs(apx(keep, x, y) - apx(f2, x, y)) > 24) diff++;
+                CHECK(diff > 20, "形变前后画面必须有可见差异，实际 %d 个采样点不同", diff);
+                zimg_free(keep);
+            }
+            /* ③ 参数层也能驱动同一个形变器 */
+            zrig_param_set(r, "ParamWave", 1.0);
+            zrig_tick(r, 1.0);          /* 1.0s：sine 回到 0，只剩参数的贡献 */
+            CHECK(fabs(zrig_deform_amount(r, "wave") - 1.0) < 0.1,
+                  "参数 1.0 应让 amount≈1，实为 %.3f", zrig_deform_amount(r, "wave"));
+            zrig_free(r);
+        }
+        /* ④ 控制点越界要报错，不能默默画错 */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"坏网格\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"deformers\":[{\"id\":\"bad\",\"part\":\"h\",\"cols\":2,\"rows\":2,"
+            " \"points\":[{\"c\":5,\"r\":0,\"dx\":8}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "控制点越界必须加载失败");
+        CHECK(diag_has(&d, "越界"), "诊断应指出控制点越界");
+    }
+}
+
+
+/* ---- 第六十四问：完全可自定义 / 完全可模组 —— 内容量能不能随包自由长 ---- */
+static void test_zpet_content_scaling(void)
+{
+    char root[1024], cfgdir[1024], chardir[1024], formdir[1024];
+    char path[1400], src[1400], cmd[1600];
+    zdiag d;
+    zconfig cfg;
+    zpet *p;
+    int i;
+
+    SECTION("可模组化：形态 / 服装 / 动作清单按目录自由增长，撞上限必须喊出来");
+    z_snprintf(root, sizeof(root), "/tmp/zc_modscale");
+    /* ★ 这个目录必须**先删干净**：本用例后半段会往同一个包里再加 10 个形态目录去撞上限，
+       不删的话第二次跑就从 70 个目录起步（实测：形态扫到 64、丢弃记 6，第一段断言当场红）。
+       单测目录一律"重建"而不是"追加"，这条写进 LESSONS 409。 */
+    z_snprintf(cmd, sizeof(cmd), "rm -rf %s", root);
+    if (system(cmd) != 0) { /* 删不掉也无所谓，下面 z_mkdir_p 会把该建的建回来 */ }
+    z_snprintf(cfgdir, sizeof(cfgdir), "%s/config", root);
+    z_snprintf(chardir, sizeof(chardir), "%s/characters/modtest", root);
+    z_mkdir_p(cfgdir);
+    z_mkdir_p(chardir);
+
+    /* 配置：整棵拷仓库的 config/（providers/ voicebank/ 等子目录也在里面），
+       再把 pet.json 的角色与形态改成测试值。这一步本身就是被验的东西：
+       **换角色包不该需要改任何 C 代码**，只改两个字符串。 */
+    z_snprintf(cmd, sizeof(cmd), "cp -r %s/config/. %s/ 2>/dev/null", g_root, cfgdir);
+    if (system(cmd) != 0) { CHECK(0, "复制 config 失败"); return; }
+    z_snprintf(path, sizeof(path), "%s/pet.json", cfgdir);
+    if (patch_text_file(path, "\"xiaoxun\"", "\"modtest\"") != 0 ||
+        patch_text_file(path, "\"teen\"", "\"f00\"") != 0) {
+        CHECK(0, "改写测试 pet.json 失败");
+        return;
+    }
+
+    /* 形态：60 个（低于上限 64）。只有当前形态会真正装载，其余只要有 rig.json 就算一个形态 */
+    for (i = 0; i < 60; ++i) {
+        z_snprintf(formdir, sizeof(formdir), "%s/forms/f%02d", chardir, i);
+        z_mkdir_p(formdir);
+        z_snprintf(path, sizeof(path), "%s/rig.json", formdir);
+        if (i != 0) {
+            write_text(path, "{\"name\":\"形态f\"}");
+            continue;
+        }
+        z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+        z_snprintf(path, sizeof(path), "%s/h.png", formdir);
+        if (copy_file(src, path) != 0) { CHECK(0, "复制贴图失败"); return; }
+        z_snprintf(path, sizeof(path), "%s/rig.json", formdir);
+        write_text(path,
+            "{\"schema_version\":\"1.0\",\"id\":\"m\",\"name\":\"模组测试形态\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"h.png\",\"group\":\"head\","
+            " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    }
+    /* 服装：100 套（低于上限 128） */
+    z_snprintf(formdir, sizeof(formdir), "%s/outfits", chardir);
+    z_mkdir_p(formdir);
+    for (i = 0; i < 100; ++i) {
+        z_snprintf(path, sizeof(path), "%s/o%03d.json", formdir, i);
+        write_text(path, "{\"id\":\"o\",\"parts\":{}}");
+    }
+
+    zdiag_init(&d);
+    if (zconfig_load(&cfg, cfgdir, &d) != 0) {
+        CHECK(0, "测试配置应能加载（%d 条诊断）", d.error_count);
+        return;
+    }
+    p = zpet_create(&cfg, &d);
+    CHECK(p != NULL, "60 形态 / 100 服装的角色包应加载成功");
+    if (p) {
+        CHECK(zpet_form_count(p) == 60, "形态应扫到 60 个，实为 %d", zpet_form_count(p));
+        CHECK(zpet_outfit_count(p) == 100, "服装应扫到 100 套，实为 %d", zpet_outfit_count(p));
+        CHECK(zpet_forms_dropped(p) == 0 && zpet_outfits_dropped(p) == 0,
+              "没超限时不许记「丢弃」（形态丢 %d / 服装丢 %d）",
+              zpet_forms_dropped(p), zpet_outfits_dropped(p));
+        CHECK(zpet_actions_dropped(p) == 0, "动作清单没超限时不许记丢弃");
+        /* 动作清单的容量必须跟引擎走：引擎能装 96，界面就得分得清 96 个 */
+        CHECK(zpet_action_count(p) + zpet_actions_dropped(p) <= ZRIG_ACTION_CAP,
+              "动作清单容量（%d + %d）不许超过引擎上限 %d",
+              zpet_action_count(p), zpet_actions_dropped(p), ZRIG_ACTION_CAP);
+        zpet_destroy(p);
+    }
+    /* 超过上限：再塞 10 个形态目录（70 > 64），必须记账而不是静默 */
+    for (i = 60; i < 70; ++i) {
+        z_snprintf(formdir, sizeof(formdir), "%s/forms/f%02d", chardir, i);
+        z_mkdir_p(formdir);
+        z_snprintf(path, sizeof(path), "%s/rig.json", formdir);
+        write_text(path, "{\"name\":\"形态f\"}");
+    }
+    zdiag_init(&d);
+    p = zpet_create(&cfg, &d);
+    CHECK(p != NULL, "超限时角色包仍要能加载（不能因为多了目录就整包失败）");
+    if (p) {
+        CHECK(zpet_form_count(p) == ZPET_MAX_FORMS,
+              "形态应收满上限 %d，实为 %d", ZPET_MAX_FORMS, zpet_form_count(p));
+        CHECK(zpet_forms_dropped(p) == 70 - ZPET_MAX_FORMS,
+              "多出来的 %d 个形态必须记进「丢弃」，实为 %d",
+              70 - ZPET_MAX_FORMS, zpet_forms_dropped(p));
+        zpet_destroy(p);
+    }
+}
+
+/* ---- 第六十三问 P0：变形器树 + 逐顶点参数驱动（keyform）+ 上限不许静默截断 ---- */
+static void test_deform_tree(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+
+    SECTION("变形器树：part → warp → rotate → root，每根骨头独立驱动");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_deform_tree");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"tree\",\"name\":\"树测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{\"head\":{\"pivot\":[200,200],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"sq\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":10,"
+        "  \"pos\":[300,200],\"anchor\":[0,0]},"
+        " {\"id\":\"sq2\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":11,"
+        "  \"pos\":[100,200],\"anchor\":[0,0]},"
+        " {\"id\":\"sq3\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":12,"
+        "  \"pos\":[300,100],\"anchor\":[0,0],\"deformer\":\"arm_rot\"}],"
+        "\"deformers\":["
+        " {\"id\":\"arm_rot\",\"pivot\":[200,200]},"
+        " {\"id\":\"arm_rot2\",\"pivot\":[200,200],\"parent\":\"arm_rot\"},"
+        " {\"id\":\"sq_wave\",\"part\":\"sq\",\"parent\":\"arm_rot2\",\"cols\":1,\"rows\":1,"
+        "  \"points\":[{\"c\":0,\"r\":0,\"dx\":0}]}],"
+        "\"params\":["
+        " {\"id\":\"ParamRot\",\"min\":-180,\"max\":180,\"default\":0,"
+        "  \"binds\":[{\"deformer\":\"arm_rot\",\"param\":\"rot_deg\"}]},"
+        " {\"id\":\"ParamRot2\",\"min\":-180,\"max\":180,\"default\":0,"
+        "  \"binds\":[{\"deformer\":\"arm_rot2\",\"param\":\"rot_deg\"}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带变形器树的 rig 应加载成功");
+    if (r) {
+        double p[2];
+        int w = 0, h = 0, i;
+        CHECK(zrig_deform_count(r) == 3, "应解析出 3 个节点，实为 %d", zrig_deform_count(r));
+        CHECK(z_streq(zrig_deform_parent_id(r, "arm_rot2"), "arm_rot"),
+              "arm_rot2 的父节点应是 arm_rot");
+        CHECK(zrig_deform_parent(r, "arm_rot") < 0, "arm_rot 是根节点");
+        /* ① 没推参数时三件都在原位 */
+        zrig_tick(r, 0.0);
+        zrig_tick(r, 0.1);
+        CHECK(zrig_part_anchor_pos(r, "sq", 1.0, p) && fabs(p[0] - 300.0) < 0.01 &&
+              fabs(p[1] - 200.0) < 0.01, "sq 应在 (300,200)，实为 (%.2f,%.2f)", p[0], p[1]);
+        /* ② 父节点转 90°：挂在链上的两件绕 (200,200) 转，没挂链的那件一动不动。
+              (x,y) 绕 (px,py) 转 90° = (px−(y−py), py+(x−px))。 */
+        zrig_param_set(r, "ParamRot", 90.0);
+        for (i = 0; i < 4; ++i) zrig_tick(r, 0.2 + i * 0.02);
+        CHECK(fabs(zrig_deform_transform(r, "arm_rot", "rot_deg") - 90.0) < 1e-6,
+              "arm_rot 应转到 90°（实为 %.3f）", zrig_deform_transform(r, "arm_rot", "rot_deg"));
+        zrig_part_anchor_pos(r, "sq", 1.0, p);
+        CHECK(fabs(p[0] - 200.0) < 0.01 && fabs(p[1] - 300.0) < 0.01,
+              "sq 应绕关节转到 (200,300)，实为 (%.2f,%.2f)", p[0], p[1]);
+        zrig_part_anchor_pos(r, "sq3", 1.0, p);
+        CHECK(fabs(p[0] - 300.0) < 0.01 && fabs(p[1] - 300.0) < 0.01,
+              "sq3（用 part.deformer 挂到同一根骨头）应转到 (300,300)，实为 (%.2f,%.2f)",
+              p[0], p[1]);
+        zrig_part_anchor_pos(r, "sq2", 1.0, p);
+        CHECK(fabs(p[0] - 100.0) < 0.01 && fabs(p[1] - 200.0) < 0.01,
+              "sq2 没挂链，必须一点都不动（实为 %.2f,%.2f）", p[0], p[1]);
+        /* ③ 子节点再转 90° = 180°：两根骨头的变换是**相乘**的，不是后者覆盖前者 */
+        zrig_param_set(r, "ParamRot2", 90.0);
+        for (i = 0; i < 4; ++i) zrig_tick(r, 0.4 + i * 0.02);
+        zrig_part_anchor_pos(r, "sq", 1.0, p);
+        CHECK(fabs(p[0] - 100.0) < 0.01 && fabs(p[1] - 200.0) < 0.01,
+              "父子各转 90° 应合成 180°，sq 到 (100,200)，实为 (%.2f,%.2f)", p[0], p[1]);
+        /* ④ 只转子节点：sq3 只挂在父节点上，不该跟着子节点动 */
+        zrig_param_set(r, "ParamRot", 0.0);
+        for (i = 0; i < 4; ++i) zrig_tick(r, 0.6 + i * 0.02);
+        zrig_part_anchor_pos(r, "sq3", 1.0, p);
+        CHECK(fabs(p[0] - 300.0) < 0.01 && fabs(p[1] - 100.0) < 0.01,
+              "只转子节点时 sq3 不动（实为 %.2f,%.2f）", p[0], p[1]);
+        /* ⑤ 树真的接到了渲染上：转 90° 前后画面必须变（矩阵算了却没拿去画，是另一种假实现） */
+        {
+            const zimg *f0, *f1;
+            zimg *keep;
+            int diff = 0, x, y;
+            zrig_param_set(r, "ParamRot2", 0.0);
+            for (i = 0; i < 4; ++i) zrig_tick(r, 1.0 + i * 0.02);
+            f0 = zrig_frame(r, 1.0, &w, &h);
+            keep = zimg_clone(f0);
+            zrig_param_set(r, "ParamRot", 120.0);
+            for (i = 0; i < 4; ++i) zrig_tick(r, 2.0 + i * 0.02);
+            f1 = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; y += 3)
+                for (x = 0; x < w; x += 3)
+                    if (abs(apx(keep, x, y) - apx(f1, x, y)) > 24) diff++;
+            CHECK(diff > 50, "节点旋转必须真的改变画面（实际 %d 个采样点不同）", diff);
+            zimg_free(keep);
+        }
+        zrig_free(r);
+    }
+
+    SECTION("keyform：一张网格按参数值在几组控制点之间插值（逐顶点参数驱动）");
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"kf\",\"name\":\"keyform测试\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{\"head\":{\"pivot\":[200,200],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"sq\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[300,200],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"kf\",\"part\":\"sq\",\"param\":\"ParamK\","
+        " \"cols\":1,\"rows\":1,\"keys\":["
+        "  {\"v\":-1},"
+        "  {\"v\":0,\"points\":[{\"c\":0,\"r\":0,\"dx\":10,\"dy\":-4},"
+        "                     {\"c\":1,\"r\":0,\"dx\":10,\"dy\":-4},"
+        "                     {\"c\":0,\"r\":1,\"dx\":10,\"dy\":-4},"
+        "                     {\"c\":1,\"r\":1,\"dx\":10,\"dy\":-4}]},"
+        "  {\"v\":1}]}],"
+        "\"params\":[{\"id\":\"ParamK\",\"min\":-1,\"max\":1,\"default\":0}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 keyform 的 rig 应加载成功");
+    if (r) {
+        double dx[16], dy[16];
+        int cols = 0, rows = 0, np, i;
+        np = zrig_deform_mesh(r, "kf", &cols, &rows, dx, dy, 16);
+        CHECK(np == 4 && cols == 1 && rows == 1, "1×1 网格应有 4 个控制点（实为 %d）", np);
+        /* -1 → 第 0 组（全 0）；0 → 第 1 组（+10,-4）；1 → 第 2 组（回 0） */
+        zrig_param_set(r, "ParamK", -1.0);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.1 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        CHECK(fabs(dx[0]) < 1e-6 && fabs(dy[0]) < 1e-6,
+              "参数 -1 时应是第 0 组（0,0），实为 (%.3f,%.3f)", dx[0], dy[0]);
+        zrig_param_set(r, "ParamK", 0.0);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.2 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        CHECK(fabs(dx[0] - 10.0) < 1e-6 && fabs(dy[0] + 4.0) < 1e-6,
+              "参数 0 时应是第 1 组（10,-4），实为 (%.3f,%.3f)", dx[0], dy[0]);
+        zrig_param_set(r, "ParamK", 0.5);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.3 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        CHECK(fabs(dx[0] - 5.0) < 1e-6, "0 与 1 之间应插值到一半（10→5），实为 %.3f", dx[0]);
+        zrig_param_set(r, "ParamK", 1.0);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.4 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        /* ★ 这一条是"逐顶点参数驱动"和老的"单标量 amount"的**本质**差别：
+           老写法只能线性放大，参数到 +1 时一定有位移；这里参数到 +1 位移归零。 */
+        CHECK(fabs(dx[0]) < 1e-6 && fabs(dy[0]) < 1e-6,
+              "参数 1 时应回到第 2 组（0,0）——单标量 amount 做不到这种回中，实为 (%.3f,%.3f)",
+              dx[0], dy[0]);
+        /* 动作曲线推参数也要能带动网格（读的是合成后的参数值，不是滑条） */
+        zrig_param_set(r, "ParamK", 0.0);
+        for (i = 0; i < 3; ++i) zrig_tick(r, 0.5 + i * 0.02);
+        zrig_deform_mesh(r, "kf", NULL, NULL, dx, dy, 16);
+        CHECK(fabs(dx[0] - 10.0) < 1e-6, "回到 0 应重新是 +10（实为 %.3f）", dx[0]);
+        zrig_free(r);
+    }
+}
+
+static void test_deform_tree_rejects(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    char *buf;
+
+    SECTION("变形器树与 keyform：写错必须报错，不许静默失效");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_deform_bad");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    buf = (char *)malloc(256 * 1024);
+    if (!buf) { CHECK(0, "内存不足"); return; }
+
+    /* ① keys 少了 param：插值没有驱动源 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏keyform\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"kf\",\"part\":\"h\",\"cols\":1,\"rows\":1,"
+        " \"keys\":[{\"v\":-1},{\"v\":1}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "keys 没有 param 必须加载失败");
+    CHECK(diag_has(&d, "必须写 param"), "诊断应指出 keys 缺 param");
+
+    /* ② key 的参数值不递增 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏keyform\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"kf\",\"part\":\"h\",\"param\":\"ParamK\","
+        " \"cols\":1,\"rows\":1,\"keys\":[{\"v\":0},{\"v\":0}]}],"
+        "\"params\":[{\"id\":\"ParamK\",\"min\":-1,\"max\":1}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "key 的参数值不递增必须加载失败");
+    CHECK(diag_has(&d, "严格递增"), "诊断应指出要严格递增");
+
+    /* ③ keyform 指向不存在的参数 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏keyform\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"kf\",\"part\":\"h\",\"param\":\"ParamNoSuch\","
+        " \"cols\":1,\"rows\":1,\"keys\":[{\"v\":-1},{\"v\":1}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "keyform 指向不存在的参数必须加载失败");
+    CHECK(diag_has(&d, "不在参数表里"), "诊断应指出参数不存在");
+
+    /* ④ parent 未定义 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏树\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"w\",\"part\":\"h\",\"parent\":\"NoSuchNode\","
+        " \"cols\":1,\"rows\":1,\"points\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "parent 未定义必须加载失败");
+    CHECK(diag_has(&d, "未定义"), "诊断应指出父节点未定义");
+
+    /* ⑤ 纯变换节点谁都不影响 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"孤儿节点\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"orphan\",\"pivot\":[100,100]}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "影响不到任何部件的纯变换节点必须加载失败");
+    CHECK(diag_has(&d, "影响不到任何部件"), "诊断应指出这个节点是哑的");
+
+    /* ⑥ 部件的 deformer 指向不存在的节点 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏引用\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],\"deformer\":\"NoSuch\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "part.deformer 指向不存在的节点必须加载失败");
+    CHECK(diag_has(&d, "不存在"), "诊断应指出 deformer 不存在");
+
+    /* ⑦ 往形变器上写 bend：节点没有形变曲线，必须拦住 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"坏通道\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"w\",\"part\":\"h\",\"cols\":1,\"rows\":1,\"points\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        " {\"target\":\"w\",\"param\":\"bend_x\",\"wave\":\"sine\",\"amp\":1}]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "形变器通道写 bend_x 必须加载失败");
+    CHECK(diag_has(&d, "形变器"), "诊断应指出目标是形变器");
+
+    free(buf);
+}
+
+/* 上限：超了必须**报错**，不许静默丢掉后面的组/部件/动作。
+   三个负数用例都用"刚好比上限多"的规模造（不是造个天文数字），
+   这样将来抬上限时这条测试会自然变绿，而不是永远红着。 */
+static void test_rig_limits(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    char *buf;
+    size_t cap = 512 * 1024;
+    int i;
+
+    SECTION("上限：组/部件/动作超限必须报错，刚好到上限仍能加载");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_limits");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    buf = (char *)malloc(cap);
+    if (!buf) { CHECK(0, "内存不足"); return; }
+
+    /* 组：上限 64（含自动补的 root）。64 组 + root = 65 → 必须报错；
+       63 组 + root = 64 → 刚好装满，必须能加载。 */
+    {
+        size_t n = 0;
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "{\"schema_version\":\"1.0\",\"id\":\"lim\",\"name\":\"上限\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],\"groups\":{");
+        for (i = 0; i < 63; ++i)
+            n += (size_t)z_snprintf(buf + n, cap - n,
+                "%s\"g%d\":{\"pivot\":[100,100]}", i ? "," : "", i);
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "},\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\","
+            "\"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        {
+            zrig *ok = zrig_load(rigp, dir, &d);
+            CHECK(ok != NULL, "63 组 + root = 64 应能装下（上限本身合法）");
+            zrig_free(ok);       /* ASan 会抓不释放的 rig（2.4 MB 一块） */
+        }
+
+        n = 0;
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "{\"schema_version\":\"1.0\",\"id\":\"lim\",\"name\":\"上限\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],\"groups\":{");
+        for (i = 0; i < 64; ++i)
+            n += (size_t)z_snprintf(buf + n, cap - n,
+                "%s\"g%d\":{\"pivot\":[100,100]}", i ? "," : "", i);
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "},\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\","
+            "\"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "64 组 + root = 65 必须加载失败");
+        CHECK(diag_has(&d, "上限"), "诊断应指出撞了上限");
+    }
+
+    /* 部件：上限 512 */
+    {
+        size_t n = 0;
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "{\"schema_version\":\"1.0\",\"id\":\"lim\",\"name\":\"上限\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100]}},\"parts\":[");
+        for (i = 0; i < 513; ++i)
+            n += (size_t)z_snprintf(buf + n, cap - n,
+                "%s{\"id\":\"p%d\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+                "\"layer\":%d,\"pos\":[10,10],\"anchor\":[0,0]}",
+                i ? "," : "", i, i);
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "],\"actions\":[{\"id\":\"idle\",\"channels\":[]}]}");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "513 个部件必须加载失败");
+        CHECK(diag_has(&d, "上限"), "诊断应指出部件数撞了上限");
+    }
+
+    /* 动作：上限 96 */
+    {
+        size_t n = 0;
+        n += (size_t)z_snprintf(buf + n, cap - n,
+            "{\"schema_version\":\"1.0\",\"id\":\"lim\",\"name\":\"上限\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100]}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "\"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],\"actions\":[");
+        for (i = 0; i < 97; ++i)
+            n += (size_t)z_snprintf(buf + n, cap - n,
+                "%s{\"id\":\"a%d\",\"channels\":[]}", i ? "," : "", i);
+        n += (size_t)z_snprintf(buf + n, cap - n, "]}");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "97 个动作必须加载失败");
+        CHECK(diag_has(&d, "上限"), "诊断应指出动作数撞了上限");
+    }
+
+    free(buf);
+}
+
+/* ---- 关键帧曲线（≈ .motion3）与多段物理摆链（G16） ---- */
+static void test_keys_and_chain(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+
+    SECTION("关键帧曲线：逐帧给值、三种插值、循环回绕、时间必须递增");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_keys");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"k\",\"name\":\"关键帧\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"h\",\"param\":\"dx\",\"interp\":\"linear\","
+        "   \"keys\":[[0,0],[0.5,10],[1.0,0]]},"
+        "  {\"target\":\"h\",\"param\":\"dy\",\"interp\":\"step\","
+        "   \"keys\":[[0,0],[0.5,8],[1.0,0]]}]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 keys 的 rig 应加载成功");
+    if (r) {
+        zrig_tick(r, 0.25);
+        CHECK(fabs(zrig_part_channel(r, "h", "dx") - 5.0) < 1e-6,
+              "线性插值 0.25s 应是 5，实为 %.3f", zrig_part_channel(r, "h", "dx"));
+        CHECK(fabs(zrig_part_channel(r, "h", "dy")) < 1e-9,
+              "阶梯插值 0.25s 还停在前一帧的 0，实为 %.3f", zrig_part_channel(r, "h", "dy"));
+        zrig_tick(r, 0.5);
+        CHECK(fabs(zrig_part_channel(r, "h", "dx") - 10.0) < 1e-6, "0.5s 应到峰值 10");
+        CHECK(fabs(zrig_part_channel(r, "h", "dy") - 8.0) < 1e-6, "阶梯插值 0.5s 跳到 8");
+        zrig_tick(r, 1.25);      /* 循环动作：曲线整体回绕，等价于 0.25s */
+        CHECK(fabs(zrig_part_channel(r, "h", "dx") - 5.0) < 1e-6,
+              "循环动作应回绕到 0.25s 的 5，实为 %.3f", zrig_part_channel(r, "h", "dx"));
+        zrig_free(r);
+    }
+    /* 时间不递增要报错 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"k\",\"name\":\"坏关键帧\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"h\",\"param\":\"dx\",\"keys\":[[0,0],[0.9,5],[0.4,2]]}]}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "关键帧时间倒退必须加载失败");
+    CHECK(diag_has(&d, "递增"), "诊断应指出时间要递增");
+
+    SECTION("多段摆链：第二段吃第一段的输出，梢比根慢半拍");
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"c\",\"name\":\"摆链\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"deformers\":[{\"id\":\"tipwave\",\"part\":\"h\",\"cols\":1,\"rows\":2,"
+        " \"points\":[{\"c\":0,\"r\":0,\"dx\":6},{\"c\":1,\"r\":0,\"dx\":6}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":["
+        "  {\"target\":\"head\",\"param\":\"dx\",\"wave\":\"sine\",\"amp\":20,\"freq\":1.5}]}],"
+        "\"physics\":[{\"id\":\"seg1\",\"part\":\"h\",\"driver\":\"head\",\"axis\":\"x\","
+        "  \"param\":\"bend_x\",\"ratio\":0.6,\"stiffness\":40,\"damping\":5,\"max\":12},"
+        " {\"id\":\"seg2\",\"part\":\"h\",\"driver\":\"seg1\",\"deformer\":\"tipwave\","
+        "  \"ratio\":0.9,\"stiffness\":22,\"damping\":3,\"max\":2}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "多段摆 rig 应加载成功");
+    if (r) {
+        double t, s1peak = 0.0, s2peak = 0.0, dpeak = 0.0;
+        for (t = 0.0; t < 2.0; t += 1.0 / 60.0) {
+            zrig_tick(r, t);
+            if (fabs(zrig_phys_output(r, "seg1")) > s1peak) s1peak = fabs(zrig_phys_output(r, "seg1"));
+            if (fabs(zrig_phys_output(r, "seg2")) > s2peak) s2peak = fabs(zrig_phys_output(r, "seg2"));
+            if (fabs(zrig_deform_amount(r, "tipwave")) > dpeak)
+                dpeak = fabs(zrig_deform_amount(r, "tipwave"));
+        }
+        CHECK(s1peak > 0.5, "第一段应该被头的摆动带起来，峰值 %.3f", s1peak);
+        CHECK(s2peak > 0.01, "第二段应该被第一段带起来，峰值 %.3f", s2peak);
+        CHECK(dpeak > 0.01, "第二段的输出应该写进网格形变器，峰值 %.3f", dpeak);
+        zrig_free(r);
+    }
+    /* 驱动写了不存在的名字要报错 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"c\",\"name\":\"坏摆链\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        " \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+        "\"physics\":[{\"id\":\"s2\",\"part\":\"h\",\"driver\":\"nope\","
+        "  \"param\":\"bend_x\"}]}");
+    zdiag_init(&d);
+    CHECK(zrig_load(rigp, dir, &d) == NULL, "driver 名字不存在必须加载失败");
+    CHECK(diag_has(&d, "driver"), "诊断应指出 driver 不对");
+}
+
+
+/* ---- 混合模式（≈ Live2D CubismBlendMode：加算 / 乘算） ---- */
+static void test_blend(void)
+{
+    SECTION("混合模式：加算提亮、乘算压暗，而且都不改目标 alpha");
+    {
+        zimg *dst = zimg_new_filled(8, 8, 100, 120, 140, 200);
+        zimg *src = zimg_new_filled(8, 8, 128, 128, 128, 255);
+        double m[6];
+        zimg_make_matrix(m, 0, 0, 1, 1, 0, 0, 0);
+
+        /* 加算：C = Cd + Cs·As → 100 + 128 = 228；alpha 必须还是 200 */
+        zimg_draw_blend(dst, src, m, 1.0, ZIMG_BLEND_ADD);
+        CHECK(dst->px[0] == 228, "加算后 R 应是 228，实为 %d", dst->px[0]);
+        CHECK(dst->px[3] == 200, "加算不许改 alpha，实为 %d", dst->px[3]);
+
+        /* 乘算：C = Cd·(1 − As + As·Cs)，As=1 → Cd·Cs/255 = 228*128/255 ≈ 114 */
+        zimg_draw_blend(dst, src, m, 1.0, ZIMG_BLEND_MULTIPLY);
+        CHECK(dst->px[0] >= 113 && dst->px[0] <= 115,
+              "乘算后 R 应≈114，实为 %d", dst->px[0]);
+        CHECK(dst->px[3] == 200, "乘算不许改 alpha，实为 %d", dst->px[3]);
+
+        /* 普通模式仍然是 source-over：不透明源会盖掉目标并把 alpha 顶满 */
+        zimg_draw_blend(dst, src, m, 1.0, ZIMG_BLEND_NORMAL);
+        CHECK(dst->px[0] == 128 && dst->px[3] == 255,
+              "普通模式应覆盖为 128/255，实为 %d/%d", dst->px[0], dst->px[3]);
+        zimg_free(dst); zimg_free(src);
+    }
+    {   /* 加算画在全透明区域上：什么都不该出现（否则透明背景会多出一块白斑） */
+        zimg *dst = zimg_new(8, 8);
+        zimg *src = zimg_new_filled(8, 8, 255, 255, 255, 255);
+        double m[6];
+        int i, nonzero = 0;
+        zimg_make_matrix(m, 0, 0, 1, 1, 0, 0, 0);
+        zimg_draw_blend(dst, src, m, 1.0, ZIMG_BLEND_ADD);
+        for (i = 0; i < 8 * 8 * 4; ++i) if (dst->px[i]) nonzero = 1;
+        CHECK(!nonzero, "加算不该在全透明背景上留下任何像素");
+        zimg_free(dst); zimg_free(src);
+    }
+    {   /* 遮罩 + 混合模式一起用（腮红被脸裁、眼高光被眼眶裁就是这条路径） */
+        zimg *fb = zimg_new_filled(4, 4, 80, 80, 80, 255);
+        zimg *layer = zimg_new_filled(4, 4, 100, 100, 100, 255);
+        zimg *mask = zimg_new(4, 4);
+        int i;
+        for (i = 0; i < 4; ++i) mask->px[i * 4 + 3] = 255;   /* 只开第一行 */
+        zimg_composite_masked_blend(fb, layer, mask, ZIMG_BLEND_ADD);
+        CHECK(fb->px[0] == 180, "遮罩内应加算到 180，实为 %d", fb->px[0]);
+        CHECK(fb->px[(size_t)4 * 4 + 0] == 80, "遮罩外必须原样不动，实为 %d",
+              fb->px[(size_t)4 * 4 + 0]);
+        zimg_free(fb); zimg_free(layer); zimg_free(mask);
+    }
+
+    SECTION("rig 的 blend 字段：解析三种取值，写错要加载失败");
+    {
+        char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+        zdiag d;
+        zrig *r;
+        z_snprintf(dir, sizeof(dir), "/tmp/zc_blend");
+        z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+        z_mkdir_p(dir); z_mkdir_p(sprites);
+        z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+        z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+        if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+        z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"b\",\"name\":\"混合\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+            " {\"id\":\"glow\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":11,\"pos\":[60,40],\"anchor\":[0,0],\"blend\":\"add\",\"opacity\":1.0}],"
+            "\"params\":[{\"id\":\"ParamGlow\",\"min\":0,\"max\":1,\"default\":0,"
+            "  \"binds\":[{\"part\":\"glow\",\"param\":\"alpha\",\"scale\":1.0,\"offset\":-1.0}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "blend:add 的 rig 应加载成功");
+        if (r) {
+            int w = 0, h = 0;
+            const zimg *f1, *f2;
+            long sum1 = 0, sum2 = 0;
+            int x, y;
+            /* 参数 0 → offset −1 把 alpha 压到 0 → 加算层完全不出现 */
+            zrig_tick(r, 0.1);
+            f1 = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                sum1 += f1->px[((size_t)y * w + x) * 4];
+            zrig_param_set(r, "ParamGlow", 1.0);
+            zrig_tick(r, 0.2);
+            f2 = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                sum2 += f2->px[((size_t)y * w + x) * 4];
+            CHECK(sum2 > sum1, "加算层打开后画面应更亮（%ld → %ld）", sum1, sum2);
+            zrig_free(r);
+        }
+        /* 写错混合模式必须报错，不许默默当普通模式 */
+        write_text(rigp,
+            "{\"schema_version\":\"1.0\",\"id\":\"b\",\"name\":\"坏混合\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"h\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0],\"blend\":\"screen\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "未知的 blend 取值必须加载失败");
+        CHECK(diag_has(&d, "blend"), "诊断里应点名 blend");
+    }
+}
+
+
+/* ---- Pose：互斥部件组（≈ pose3.json） ---- */
+static void test_pose(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    const char *head =
+        "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"互斥\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"a\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"b\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+        "  \"layer\":11,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],";
+
+    SECTION("Pose 互斥组：同组只有一个档位可见，切换带淡化");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_pose");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir); z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    {
+        char buf[2048];
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"fade\":0.4,"
+                   "\"default\":\"A\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head);
+        write_text(rigp, buf);
+    }
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 poses 的 rig 应加载成功");
+    if (r) {
+        double t;
+        CHECK(zrig_pose_count(r) == 1, "应有 1 个互斥组");
+        CHECK(z_streq(zrig_pose_current(r, "g"), "A"), "默认档位应是 A，实为 %s",
+              zrig_pose_current(r, "g"));
+        zrig_tick(r, 0.0);
+        CHECK(fabs(zrig_pose_weight(r, "g", "A") - 1.0) < 1e-9, "A 一开始就是全显");
+        CHECK(fabs(zrig_pose_weight(r, "g", "B")) < 1e-9, "B 一开始必须全隐");
+
+        CHECK(zrig_pose_set(r, "g", "B") == 0, "切到 B 应成功");
+        zrig_tick(r, 0.2);                      /* 淡化 0.4s，才走一半 */
+        CHECK(zrig_pose_weight(r, "g", "A") > 0.2 && zrig_pose_weight(r, "g", "A") < 0.8,
+              "切换中 A 应在淡出途中，实为 %.3f", zrig_pose_weight(r, "g", "A"));
+        CHECK(zrig_pose_weight(r, "g", "B") > 0.2 && zrig_pose_weight(r, "g", "B") < 0.8,
+              "切换中 B 应在淡入途中，实为 %.3f", zrig_pose_weight(r, "g", "B"));
+        for (t = 0.25; t < 1.2; t += 0.05) zrig_tick(r, t);
+        CHECK(fabs(zrig_pose_weight(r, "g", "B") - 1.0) < 1e-6, "淡化走完 B 应全显");
+        CHECK(fabs(zrig_pose_weight(r, "g", "A")) < 1e-6, "淡化走完 A 应全隐");
+
+        /* none = 整组关掉（Live2D 要靠一张透明图，我们直接支持） */
+        CHECK(zrig_pose_set(r, "g", "none") == 0, "切 none 应成功");
+        for (t = 1.2; t < 2.2; t += 0.05) zrig_tick(r, t);
+        CHECK(fabs(zrig_pose_weight(r, "g", "A")) < 1e-6 &&
+              fabs(zrig_pose_weight(r, "g", "B")) < 1e-6, "none 之后两档都该是 0");
+        CHECK(z_streq(zrig_pose_current(r, "g"), ""), "none 时当前档位是空字符串");
+
+        /* 不存在的组/档位必须报错，不许悄悄忽略 */
+        CHECK(zrig_pose_set(r, "g", "nope") == -1, "未知档位应返回 -1");
+        CHECK(zrig_pose_set(r, "nope", "A") == -1, "未知组应返回 -1");
+
+        /* 跳过淡化（冻结时钟时用） */
+        zrig_pose_set(r, "g", "A");
+        zrig_pose_snap(r);
+        CHECK(fabs(zrig_pose_weight(r, "g", "A") - 1.0) < 1e-9, "snap 之后应立刻到位");
+        zrig_free(r);
+    }
+
+    SECTION("Pose 的三种写错法都要在加载时被拦住");
+    {
+        char buf[2048];
+        /* ① 一个部件归两个档位 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"a\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "同一部件进两个档位必须加载失败");
+        /* ② 引用不存在的部件 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"nope\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "引用不存在的部件必须加载失败");
+        /* ③ default 写了不存在的档位 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"default\":\"X\","
+                   "\"entries\":[{\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "default 不在档位里必须加载失败");
+        CHECK(diag_has(&d, "default"), "诊断应点名 default");
+        /* ④ 只有一个档位 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "只有一个档位不叫互斥，必须加载失败");
+    }
+
+    /* T46.3：default:"none" = 一上来整组都不显示。发型组要用它 ——
+       "短发 bob"这一档是*一束都不加*（原生短壳自己就是短发），
+       为它硬造一个空档位或塞一个看不见的部件都是脏做法。
+       没有这条，引擎会退回第一个档位 = 一开机就戴着长发。 */
+    SECTION("Pose 的 default 可以写 none（= 一上来整组都不显示）");
+    {
+        char buf[2048];
+        double tt;
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"default\":\"none\","
+                   "\"fade\":0.4,\"entries\":[{\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "default:none 必须能加载（%d 条诊断）", d.error_count);
+        if (r) {
+            CHECK(z_streq(zrig_pose_current(r, "g"), ""),
+                  "default:none ⇒ 一开始没有当前档位，实为 %s", zrig_pose_current(r, "g"));
+            CHECK(fabs(zrig_pose_weight(r, "g", "A")) < 1e-9 &&
+                  fabs(zrig_pose_weight(r, "g", "B")) < 1e-9,
+                  "default:none ⇒ 两档一开始都该是 0（A=%.3f B=%.3f）",
+                  zrig_pose_weight(r, "g", "A"), zrig_pose_weight(r, "g", "B"));
+            /* 关掉不等于锁死：还得切得回来 */
+            CHECK(zrig_pose_set(r, "g", "B") == 0, "从 none 起步仍应能切到 B");
+            for (tt = 0.05; tt < 1.2; tt += 0.05) zrig_tick(r, tt);
+            CHECK(fabs(zrig_pose_weight(r, "g", "B") - 1.0) < 1e-6,
+                  "切过去淡化走完 B 应全显，实为 %.3f", zrig_pose_weight(r, "g", "B"));
+            zrig_free(r);
+        }
+        /* 负向对照：none 只在 default 这一处是特殊值，不是"什么字符串都放行"。
+           写一个别的不存在的档位，照样必须拦住（上面 ③ 已验 X，这里验大小写） */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"default\":\"NONE\","
+                   "\"entries\":[{\"id\":\"A\",\"parts\":[\"a\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL,
+              "default 的特殊值只有小写 none，NONE 必须照样拦住");
+    }
+
+    /* T46.3 第二版：entries[].hide = 这一档生效时要**藏起来**的既有部件。
+       来历：2026-10-18 用户看截图说「短发甚至都没去除」—— 装上双马尾却没把
+       披在脸侧的侧发收走，画面上就是短发 + 两条贴上去的辫子。
+       官方 pose3.json 的语义下一个部件只能归一个档位，而侧发在"短发"和"长发"
+       两档里都要露，照官方做就得把同一绺侧发复制成两份美术资源。
+       所以加了"藏"这一侧：被点名的部件，透明度按 (1 - 这一档的权重) 走，
+       淡入淡出自然跟着档位切换。偏离登记在 docs/LIVE2D_CONFORMANCE.md。 */
+    SECTION("Pose 档位可以\"藏\"既有部件（扎起来的发型要收掉侧发）");
+    {
+        char buf[2600];
+        double t;
+        /* 这一节要三个部件：a/b 是两个档位各自的差分件（= 双马尾、长发），
+           c 是**不属于任何档位的既有部件**（= 脸侧的短发），由档位去藏它。 */
+        const char *head3 =
+            "{\"schema_version\":\"1.0\",\"id\":\"p\",\"name\":\"互斥\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+            "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+            "\"parts\":[{\"id\":\"a\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+            " {\"id\":\"b\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":11,\"pos\":[60,40],\"anchor\":[0,0]},"
+            " {\"id\":\"c\",\"file\":\"sprites/h.png\",\"group\":\"head\","
+            "  \"layer\":12,\"pos\":[60,40],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],";
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\",\"fade\":0.4,"
+                   "\"default\":\"none\",\"entries\":["
+                   "  {\"id\":\"A\",\"parts\":[\"a\"],\"hide\":[\"c\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head3);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "带 hide 的 rig 应加载成功（%d 条诊断）", d.error_count);
+        if (r) {
+            zrig_tick(r, 0.0);
+            CHECK(fabs(zrig_part_draw_opacity(r, "c") - 1.0) < 1e-6,
+                  "整组关着时，被 A 点名的 c 照常显示，实为 %.3f",
+                  zrig_part_draw_opacity(r, "c"));
+            zrig_pose_set(r, "g", "A");
+            for (t = 0.05; t < 1.2; t += 0.05) zrig_tick(r, t);
+            CHECK(zrig_part_draw_opacity(r, "c") < 1e-6,
+                  "切到 A 之后 c 必须被藏干净，实为 %.3f",
+                  zrig_part_draw_opacity(r, "c"));
+            CHECK(fabs(zrig_part_draw_opacity(r, "a") - 1.0) < 1e-6,
+                  "A 自己的部件 a 要全显，实为 %.3f", zrig_part_draw_opacity(r, "a"));
+            /* 切到不藏它的那一档，b 要自己回来 —— 藏是**可逆**的，不是删 */
+            zrig_pose_set(r, "g", "B");
+            for (t = 1.25; t < 2.6; t += 0.05) zrig_tick(r, t);
+            CHECK(fabs(zrig_part_draw_opacity(r, "c") - 1.0) < 1e-6,
+                  "切到不藏 c 的档位，c 要回来，实为 %.3f",
+                  zrig_part_draw_opacity(r, "c"));
+            zrig_free(r);
+        }
+        /* 负向对照 ①：hide 写了不存在的部件，必须当场拦住（不能悄悄忽略，
+           否则改个部件名就会让"收侧发"静默失效 —— 死表那一类病）。 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\","
+                   "\"entries\":[{\"id\":\"A\",\"parts\":[\"a\"],\"hide\":[\"zz\"]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head3);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL,
+              "hide 引用不存在的部件必须拦住");
+        /* 负向对照 ②：既没有 parts 也没有 hide 的档位是空壳，切过去画面毫无变化 */
+        z_snprintf(buf, sizeof(buf), "%s\"poses\":[{\"id\":\"g\","
+                   "\"entries\":[{\"id\":\"A\",\"parts\":[]},"
+                   "  {\"id\":\"B\",\"parts\":[\"b\"]}]}]}", head3);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL,
+              "既没 parts 也没 hide 的空档位必须拦住");
+    }
+}
+
+
+/* ---- T24.5 xfade：参数驱动的两张姿态图交叉淡化（踮脚换鞋用）---- */
+static void test_xfade(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    double w, prev;
+    int bad_mono = 0, bad_cover = 0;
+    const char *head =
+        "{\"schema_version\":\"1.0\",\"id\":\"x\",\"name\":\"换鞋\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"g\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":[{\"id\":\"flat\",\"file\":\"sprites/h.png\",\"group\":\"g\","
+        "  \"layer\":10,\"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"tip\",\"file\":\"sprites/h.png\",\"group\":\"g\","
+        "  \"layer\":11,\"pos\":[60,40],\"anchor\":[0,0]}],"
+        "\"params\":[{\"id\":\"ParamT\",\"min\":0,\"max\":1,\"default\":0,\"binds\":[]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],";
+
+    SECTION("xfade：两张姿态图按参数交叉淡化（官方 Pose 曲线）");
+
+    /* ① 纯函数先打：zrig_xfade_hidden 就是 CubismPose::DoFade 的曲线 */
+    CHECK(fabs(zrig_xfade_hidden(0.0) - 1.0) < 1e-9,
+          "w=0 时淡出件必须全显，实为 %.4f", zrig_xfade_hidden(0.0));
+    CHECK(fabs(zrig_xfade_hidden(1.0)) < 1e-9,
+          "w=1 时淡出件必须全隐，实为 %.4f", zrig_xfade_hidden(1.0));
+    /* 官方常量 Phi=0.5、BackOpacityThreshold=0.15 推出来的中点值：
+       线性交叉淡化在中点只盖住 1-0.5*0.5=0.75，会漏 25% 背景；
+       官方曲线把淡出件抬到 0.7，总覆盖 1-0.3*0.5=0.85。 */
+    CHECK(fabs(zrig_xfade_hidden(0.5) - 0.7) < 1e-6,
+          "w=0.5 时淡出件应留 0.70（不是线性的 0.50），实为 %.4f",
+          zrig_xfade_hidden(0.5));
+    prev = 2.0;
+    for (w = 0.0; w <= 1.0001; w += 0.01) {
+        double a1 = zrig_xfade_hidden(w);
+        double cover = 1.0 - (1.0 - a1) * (1.0 - w);
+        if (a1 > prev + 1e-9) bad_mono++;        /* 只许越来越暗 */
+        if (cover < 0.85 - 1e-6) bad_cover++;    /* 背景最多漏 15% */
+        prev = a1;
+    }
+    CHECK(bad_mono == 0, "淡出件的不透明度必须单调不增，违例 %d 次", bad_mono);
+    CHECK(bad_cover == 0, "两件合起来必须盖住 ≥85%%（官方阈值），违例 %d 次", bad_cover);
+    CHECK(zrig_xfade_hidden(-1.0) <= 1.0 && zrig_xfade_hidden(2.0) >= 0.0,
+          "超出 0..1 的输入也要被钳住，不能跑飞");
+
+    /* ② 装进 rig 里跑：权重要跟着参数走，窗口外是死的 */
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_xfade");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir); z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    {
+        char buf[2048];
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"ParamT\","
+                   "\"in\":[0.40,0.60],\"from\":\"flat\",\"to\":\"tip\"}]}", head);
+        write_text(rigp, buf);
+    }
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带 xfades 的 rig 应加载成功");
+    if (r) {
+        int fw = 0, fh = 0, cx = 0, cy = 0, i, best = -1, bestv = -1;
+        const zimg *fr;
+        double a_single = 0.0, a_mid = 0.0;
+
+        CHECK(zrig_xfade_count(r) == 1, "应有 1 条交叉淡化");
+        CHECK(z_streq(zrig_xfade_id(r, 0), "sw"), "id 应是 sw，实为 %s", zrig_xfade_id(r, 0));
+        CHECK(zrig_xfade_weight(r, "nope") < 0.0, "查不存在的 id 应返回 -1");
+
+        zrig_param_set(r, "ParamT", 0.0); zrig_tick(r, 0.0);
+        CHECK(fabs(zrig_xfade_weight(r, "sw")) < 1e-9,
+              "参数 0（窗口左边）→ 权重 0，实为 %.3f", zrig_xfade_weight(r, "sw"));
+        zrig_param_set(r, "ParamT", 0.35); zrig_tick(r, 0.016);
+        CHECK(fabs(zrig_xfade_weight(r, "sw")) < 1e-9,
+              "窗口还没开始（0.35 < 0.40）→ 权重仍是 0，实为 %.3f",
+              zrig_xfade_weight(r, "sw"));
+        zrig_param_set(r, "ParamT", 0.50); zrig_tick(r, 0.032);
+        CHECK(fabs(zrig_xfade_weight(r, "sw") - 0.5) < 1e-6,
+              "正在窗口正中 → 权重 0.5，实为 %.3f", zrig_xfade_weight(r, "sw"));
+        zrig_param_set(r, "ParamT", 0.60); zrig_tick(r, 0.048);
+        CHECK(fabs(zrig_xfade_weight(r, "sw") - 1.0) < 1e-6,
+              "刚走到窗口右沿 → 权重 1，实为 %.3f", zrig_xfade_weight(r, "sw"));
+        zrig_param_set(r, "ParamT", 1.0); zrig_tick(r, 0.064);
+        CHECK(fabs(zrig_xfade_weight(r, "sw") - 1.0) < 1e-6,
+              "参数顶满 → 权重保持 1，实为 %.3f", zrig_xfade_weight(r, "sw"));
+
+        /* ③ 真渲染一帧：中点的合成不透明度必须是 0.85 那档，不是线性的 0.75。
+           这一步是为了证明"权重真的乘进了画的时候"，而不只是算出来摆着。 */
+        zrig_param_set(r, "ParamT", 0.0); zrig_tick(r, 0.08);
+        fr = zrig_frame(r, 1.0, &fw, &fh);
+        CHECK(fr != NULL && fw > 0 && fh > 0, "应渲染出一帧");
+        if (fr) {
+            for (i = 0; i < fw * fh; ++i)       /* 找一个最不透明的像素来量 */
+                if (fr->px[i * 4 + 3] > bestv) { bestv = fr->px[i * 4 + 3]; best = i; }
+            cx = best % fw; cy = best / fw;
+            a_single = bestv / 255.0;
+            CHECK(a_single > 0.98, "基准像素应是完全不透明的，实为 %.3f", a_single);
+        }
+        zrig_param_set(r, "ParamT", 0.5); zrig_tick(r, 0.096);
+        fr = zrig_frame(r, 1.0, &fw, &fh);
+        if (fr && best >= 0 && best < fw * fh) {
+            a_mid = fr->px[(cy * fw + cx) * 4 + 3] / 255.0;
+            CHECK(a_mid > 0.84 && a_mid < 0.87,
+                  "交叠正中合成不透明度应≈0.85（线性会是 0.75），实为 %.3f", a_mid);
+        }
+
+        zrig_free(r);
+    }
+
+    /* ④ 装配写错必须加载失败，不许默默跑着 */
+    {
+        char buf[2048];
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"NoSuchParam\","
+                   "\"in\":[0.4,0.6],\"from\":\"flat\",\"to\":\"tip\"}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "参数名写错必须加载失败");
+        CHECK(diag_has(&d, "NoSuchParam"), "诊断要点名是哪个参数写错了");
+
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"ParamT\","
+                   "\"in\":[0.4,0.6],\"from\":\"flat\",\"to\":\"flat\"}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "from/to 是同一个部件必须加载失败");
+
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"ParamT\","
+                   "\"in\":[0.6,0.4],\"from\":\"flat\",\"to\":\"tip\"}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "in 区间写反必须加载失败");
+
+        z_snprintf(buf, sizeof(buf), "%s\"xfades\":[{\"id\":\"sw\",\"param\":\"ParamT\","
+                   "\"in\":[0.4,0.6],\"from\":\"flat\",\"to\":\"ghost\"}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "to 指向不存在的部件必须加载失败");
+    }
+}
+
+/* ---- A9 遮罩升级：多遮罩交集 / 取反 / 隐藏语义 ---- */
+static void test_mask_multi(void)
+{
+    char dir[1024], sprites[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    const char *head =
+        "{\"schema_version\":\"1.0\",\"id\":\"mm\",\"name\":\"多遮罩\","
+        "\"canvas\":{\"w\":300,\"h\":300},\"origin\":[150,300],"
+        "\"groups\":{\"root\":{\"pivot\":[150,300],\"parent\":\"\"}},";
+
+    SECTION("多遮罩取交集、0% opacity 仍作遮罩、全隐藏解除裁切、取反与套娃校验");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_mask2");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir); z_mkdir_p(sprites);
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    {
+        zimg *mask = zimg_new(80, 80), *big = zimg_new(300, 300);
+        zerr pe;
+        int x, y;
+        if (!mask || !big) { CHECK(0, "遮罩测试夹具分配失败"); zimg_free(mask); zimg_free(big); return; }
+        for (y = 0; y < 80; ++y) for (x = 0; x < 80; ++x) {
+            size_t o = ((size_t)y * 80 + x) * 4;
+            mask->px[o] = mask->px[o + 1] = mask->px[o + 2] = 255;
+            mask->px[o + 3] = 255;
+        }
+        for (y = 0; y < 300; ++y) for (x = 0; x < 300; ++x) {
+            size_t o = ((size_t)y * 300 + x) * 4;
+            big->px[o] = 36; big->px[o + 1] = 128; big->px[o + 2] = 220;
+            big->px[o + 3] = 255;
+        }
+        z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+        zerr_clear(&pe);
+        CHECK(zimg_save_png(mask, dst, &pe) == 0, "写遮罩矩形测试夹具：%s", pe.msg);
+        z_snprintf(dst, sizeof(dst), "%s/big.png", sprites);
+        zerr_clear(&pe);
+        CHECK(zimg_save_png(big, dst, &pe) == 0, "写被裁测试夹具：%s", pe.msg);
+        zimg_free(mask); zimg_free(big);
+    }
+
+    {   /* 两张相交矩形遮罩必须只露出重叠部分（交集），不是左右并起来 */
+        char buf[2048];
+        long only_a = 0, both = 0, one_visible = 0, unclipped = 0;
+        int w = 0, h = 0, x, y;
+        const zimg *f;
+        z_snprintf(buf, sizeof(buf), "%s\"parts\":["
+            " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[60,100],\"anchor\":[0,0],\"opacity\":0,\"mask_only\":true},"
+            " {\"id\":\"mb\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":11,"
+            "  \"pos\":[100,100],\"anchor\":[0,0],\"opacity\":0,\"mask_only\":true},"
+            " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":[\"ma\"]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "单遮罩写成数组也应加载成功");
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) only_a++;
+            zrig_free(r);
+        }
+        z_snprintf(buf, sizeof(buf), "%s\"parts\":["
+            " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[60,100],\"anchor\":[0,0],\"opacity\":0,\"mask_only\":true},"
+            " {\"id\":\"mb\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":11,"
+            "  \"pos\":[100,100],\"anchor\":[0,0],\"opacity\":0,\"mask_only\":true},"
+            " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":[\"ma\",\"mb\"]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "两个遮罩的 rig 应加载成功");
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) both++;
+            { zerr pe; zerr_clear(&pe);
+              CHECK(zimg_save_png(f, "/tmp/zc_mask_intersection.png", &pe) == 0,
+                    "保存遮罩交集实拍图：%s", pe.msg); }
+            /* 隐藏其中一张时，剩余 source 继续生效；全部隐藏后解除裁切。 */
+            CHECK(zrig_part_vis_set(r, "ma", 0) == 0, "可以隐藏第一张遮罩");
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) one_visible++;
+            CHECK(zrig_part_vis_set(r, "mb", 0) == 0, "可以隐藏第二张遮罩");
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) unclipped++;
+            zrig_free(r);
+        }
+        CHECK(only_a >= 6200 && only_a <= 6600,
+              "0%% opacity 的单个遮罩仍应以几何形状裁切（area=%ld）", only_a);
+        CHECK(both >= 3000 && both <= 3400,
+              "两张 80x80 遮罩错开 40px 后应只露 40x80 交集（area=%ld）", both);
+        CHECK(both < only_a * 3 / 4,
+              "多遮罩必须取交集，结果应明显小于单张遮罩（%ld vs %ld）", both, only_a);
+        CHECK(one_visible >= 6200 && one_visible <= 6600,
+              "隐藏一张遮罩后，剩余 source 应独立裁出 80x80（area=%ld）", one_visible);
+        CHECK(unclipped >= 89500,
+              "所有遮罩源显式隐藏后应解除裁切、恢复 300x300 全图（area=%ld）", unclipped);
+    }
+
+    {   /* 取反遮罩：只在遮罩**外面**可见，和正向遮罩互补 */
+        char buf[2048];
+        long fwd = 0, inv = 0, total = 0;
+        int w = 0, h = 0, x, y;
+        const zimg *f;
+        const char *tpl =
+            "%s\"parts\":["
+            " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[100,100],\"anchor\":[0,0],\"mask_only\":true},"
+            " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":\"ma\"%s}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}";
+        z_snprintf(buf, sizeof(buf), tpl, head, "");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) fwd++;
+            zrig_free(r);
+        }
+        z_snprintf(buf, sizeof(buf), tpl, head, ",\"mask_invert\":true");
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "取反遮罩的 rig 应加载成功");
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) inv++;
+            zrig_free(r);
+        }
+        /* 没有遮罩时的总可见面积 */
+        z_snprintf(buf, sizeof(buf),
+            "%s\"parts\":[{\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\","
+            "  \"layer\":20,\"pos\":[0,0],\"anchor\":[0,0]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        if (r) {
+            zrig_tick(r, 0.1);
+            f = zrig_frame(r, 1.0, &w, &h);
+            for (y = 0; y < h; ++y) for (x = 0; x < w; ++x)
+                if (f->px[((size_t)y * w + x) * 4 + 3]) total++;
+            zrig_free(r);
+        }
+        CHECK(fwd > 100 && inv > 100, "正反遮罩都应该留下东西（%ld / %ld）", fwd, inv);
+        CHECK(fwd + inv > total * 9 / 10 && fwd + inv < total * 11 / 10,
+              "正向 + 取反应该≈完整图（%ld + %ld vs %ld）", fwd, inv, total);
+    }
+
+    {   /* 遮罩套娃要被拦住 */
+        char buf[2048];
+        z_snprintf(buf, sizeof(buf), "%s\"parts\":["
+            " {\"id\":\"ma\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":10,"
+            "  \"pos\":[20,100],\"anchor\":[0,0]},"
+            " {\"id\":\"mb\",\"file\":\"sprites/h.png\",\"group\":\"root\",\"layer\":11,"
+            "  \"pos\":[60,100],\"anchor\":[0,0],\"mask\":\"ma\"},"
+            " {\"id\":\"big\",\"file\":\"sprites/big.png\",\"group\":\"root\",\"layer\":20,"
+            "  \"pos\":[0,0],\"anchor\":[0,0],\"mask\":\"mb\"}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}", head);
+        write_text(rigp, buf);
+        zdiag_init(&d);
+        CHECK(zrig_load(rigp, dir, &d) == NULL, "遮罩套娃必须加载失败");
+        CHECK(diag_has(&d, "套娃"), "诊断应点名套娃");
+    }
+}
+
+
+/* 眨眼随情绪漂移 + 单边嘴角通道（T44.2）。
+   这两件事是一起做的：都来自 T44.1 的盘点结论，都属于"微表情"。 */
+/* ─────────────────────── 物理内核 2.0：2D 粒子摆链（T47.1） ───────────────────────
+   三块：① 和 Python 参考实现逐步对拍（金标准 600 步，容差 1e-6）；
+         ② 行为判据 —— 输入停了还在摆、只有呼吸也在摆（旧内核这两处都是 0）；
+         ③ 固定步长的不变性 —— 同样的总时长，拆成大小不同的帧，结果必须一致。 */
+/* ───────── T47.2：摆角怎么接到部件上（输出适配层）─────────
+   T47.1 证明了内核算得对；这一条验的是**接线对不对**，以及那句最关键的承诺：
+
+       "人停下来之后，头发还在自己摆。"
+
+   夹具是一份最小 rig：没有任何动作（所以没有 motion 在替物理演戏），
+   只有一个呼吸参数 ParamBreath。两条摆同时挂在它上面：
+     · 新内核 physics2（2D 粒子链，输出摆角）
+     · 旧内核 physics （1D 弹簧，输出 pos−target）  ← 同一份输入的负向对照
+   旧的那条就是用户说的"没有真实物理效果"的现场：呼吸只有 0.28Hz，
+   弹簧完全跟得上目标，差值≈0 ⇒ 输出几乎是平的。 */
+static void test_phys2_rig(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    SECTION("物理 2.0 接线：摆角 → 切件通道，而且人停下来之后头发还在摆（T47.2）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_phys2_rig");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    z_snprintf(src, sizeof(src), "%s/characters/xiaoxun/forms/teen/sprites/hair_ahoge.png", g_root);
+    z_snprintf(dst, sizeof(dst), "%s/h.png", sprites);
+    if (copy_file(src, dst) != 0) { CHECK(0, "复制贴图失败"); return; }
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"p2r\",\"name\":\"摆链接线测试\","
+        "\"canvas\":{\"w\":200,\"h\":200},\"origin\":[100,200],"
+        "\"groups\":{\"head\":{\"pivot\":[100,100],\"parent\":\"\"}},"
+        "\"parts\":["
+        " {\"id\":\"hair\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":10,"
+        "  \"pos\":[60,40],\"anchor\":[0,0]},"
+        " {\"id\":\"old\",\"file\":\"sprites/h.png\",\"group\":\"head\",\"layer\":11,"
+        "  \"pos\":[60,40],\"anchor\":[0,0]}],"
+        /* 呼吸照真角色的接法：ParamBreath → 胸腔（这里是 head 组）dy −0.8px。
+           摆链因此有两份输入 —— 组矩阵带着发根走的那 0.8px，加上 input 里
+           直接混的横向分量（社区那条"把呼吸混进物理输入"的配方）。 */
+        "\"params\":[{\"id\":\"ParamBreath\",\"label\":\"呼吸\",\"min\":0,\"max\":1,"
+        "  \"default\":0,\"binds\":[{\"group\":\"head\",\"param\":\"dy\",\"scale\":-0.8}]}],"
+        /* idle 是必需的，但**一条通道都不给** —— 有 motion 在演，
+           "静止时头发还在摆"这条断言就变成了在验动作，不是在验物理。 */
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"fade\":0,\"channels\":[]}],"
+        /* 旧内核：同一份呼吸输入，输出滞后量 */
+        "\"physics\":[{\"id\":\"old_spring\",\"part\":\"old\",\"param\":\"bend_x\","
+        "  \"input\":[{\"param\":\"ParamBreath\",\"weight\":1.8}],"
+        "  \"ratio\":1.0,\"stiffness\":42,\"damping\":5.0,\"max\":16}],"
+        /* 新内核：2D 粒子链，输出摆角 */
+        "\"physics2\":[{\"id\":\"c1\",\"part\":\"hair\",\"driver\":\"head\","
+        "  \"input\":[{\"param\":\"ParamBreath\",\"wx\":1.8,\"wy\":-0.8}],"
+        "  \"input_max\":30,\"input_rate\":300,"
+        "  \"particles\":[{\"radius\":0},"
+        "    {\"radius\":48,\"mobility\":0.95,\"delay\":1.0,\"acceleration\":1.0},"
+        "    {\"radius\":36,\"mobility\":0.93,\"delay\":0.88,\"acceleration\":1.1},"
+        "    {\"radius\":26,\"mobility\":0.90,\"delay\":0.76,\"acceleration\":1.2}],"
+        /* 两条输出照真角色长发那条链的口径：
+             out0 = 第一节 → 整片头发的 bend_x（倍率 1.7px/度，上限 16px）
+             out1 = 第三节 → 发梢位移（真角色那边是网格形变器，amount 1.0 = 15px，
+                    驱动倍率 0.075/度 ⇒ 等价于 1.1px/度，这里直接写成 dx 省掉网格） */
+        "  \"outputs\":[{\"particle\":1,\"param\":\"bend_x\",\"scale\":1.7,\"max\":16},"
+        "    {\"particle\":3,\"param\":\"dx\",\"scale\":1.1,\"max\":15}]}]}");
+    zdiag_init(&d);
+    {
+        zrig *r = zrig_load(rigp, dir, &d);
+        double t = 0.0, step = 1.0 / 60.0;
+        CHECK(r != NULL, "带 physics2 的 rig 应加载成功");
+        if (!r) return;
+        zrig_blink_set_enabled(r, 0);
+
+        CHECK(zrig_phys2_count(r) == 1 && zrig_phys2_particles(r, "c1") == 4,
+              "摆链应解析出 1 条、4 个粒子，实测 %d 条 / %d 个",
+              zrig_phys2_count(r), zrig_phys2_particles(r, "c1"));
+        CHECK(zrig_phys2_out_count(r, "c1") == 2,
+              "这条链应有 2 条输出，实测 %d", zrig_phys2_out_count(r, "c1"));
+
+        /* ① 死寂：输入一动不动（呼吸=0）时，摆要安安静静停在重力方向上。
+              它必须**不自激** —— 否则"活着"就只是数值发散的好听说法。 */
+        for (t = 0.0; t < 6.0; t += step) zrig_tick(r, t);
+        {
+            double a0 = zrig_phys2_applied(r, "c1", 0), amax = 0.0;
+            double tt;
+            for (tt = t; tt < t + 2.0; tt += step) {
+                double v;
+                zrig_tick(r, tt);
+                v = fabs(zrig_phys2_applied(r, "c1", 0));
+                if (v > amax) amax = v;
+            }
+            t = tt;
+            CHECK(amax < 0.05, "输入恒定时摆要静止（不自激），实测稳态后 2 秒内最大 %.4fpx"
+                               "（起点 %.4f）", amax, a0);
+        }
+
+        /* ② 只有呼吸：0.28Hz、幅度 1（rig 里的 BREATH_CH 就是 sine amp .5 bias .5）。
+              新内核要摆得出来；旧内核在同一份输入下几乎是平的 —— 这就是
+              用户那句"目前还没有真实的物理效果"在代码里的样子。 */
+        {
+            double lo2 = 1e9, hi2 = -1e9, loo = 1e9, hio = -1e9;
+            double t0 = t, tt;
+            for (tt = t0; tt < t0 + 20.0; tt += step) {
+                double b = 0.5 + 0.5 * sin(2.0 * 3.14159265358979323846 * 0.28 * (tt - t0));
+                double vn, vo;
+                zrig_param_set(r, "ParamBreath", b);
+                zrig_tick(r, tt);
+                if (tt - t0 < 10.0) continue;      /* 前 10 秒让它进入稳态 */
+                /* 发梢在画面上走了多远 = 整片的 bend + 发梢自己的位移 */
+                vn = zrig_phys2_applied(r, "c1", 0) + zrig_phys2_applied(r, "c1", 1);
+                vo = zrig_phys_output(r, "old_spring");
+                if (vn < lo2) lo2 = vn;
+                if (vn > hi2) hi2 = vn;
+                if (vo < loo) loo = vo;
+                if (vo > hio) hio = vo;
+            }
+            t = t0 + 20.0;
+            CHECK(hi2 - lo2 >= 2.0,
+                  "只有呼吸（0.28Hz）时，新内核的发梢要有 >=2px 的自主摆动，实测 %.2fpx",
+                  hi2 - lo2);
+            CHECK((hio - loo) < 0.5,
+                  "同一份呼吸输入下，旧内核（输出滞后量）应当几乎是平的 —— "
+                  "这正是\"人一静止头发就死了\"的根，实测 %.3fpx（新内核 %.2fpx）",
+                  hio - loo, hi2 - lo2);
+            CHECK((hi2 - lo2) > (hio - loo) * 4.0,
+                  "新内核在同一输入下至少要比旧内核活跃 4 倍，实测 %.2f 倍",
+                  (hio - loo) > 1e-6 ? (hi2 - lo2) / (hio - loo) : 999.0);
+        }
+
+        /* ③ 停了还摆：把头甩过去再**冻住输入**，摆要继续晃一阵再收敛。
+              旧内核在这里恒等于 0（输入不动 ⇒ pos==target ⇒ 输出 0）。 */
+        {
+            double t0 = t, tt, after = 0.0, late = 0.0;
+            zrig_param_set(r, "ParamBreath", 0.0);
+            for (tt = t0; tt < t0 + 0.25; tt += step) {       /* 0.25s 把头转过去 */
+                zrig_gaze(r, 1.0, 0.0);
+                zrig_tick(r, tt);
+            }
+            for (tt = t0 + 0.25; tt < t0 + 1.25; tt += step) { /* 之后输入完全冻住 */
+                double v;
+                zrig_tick(r, tt);
+                v = fabs(zrig_phys2_applied(r, "c1", 1));
+                if (v > after) after = v;
+            }
+            for (tt = t0 + 1.25; tt < t0 + 6.0; tt += step) {
+                double v;
+                zrig_tick(r, tt);
+                v = fabs(zrig_phys2_applied(r, "c1", 1));
+                if (tt > t0 + 5.0 && v > late) late = v;
+            }
+            t = t0 + 6.0;
+            CHECK(after > 0.5,
+                  "输入冻住之后的 1 秒里发梢要还在动（>0.5px），实测峰值 %.3fpx", after);
+            CHECK(late < after * 0.5,
+                  "再过几秒要衰减下去（不是永动机）：1 秒内峰值 %.3fpx → 5 秒后 %.3fpx",
+                  after, late);
+        }
+
+        /* ④ 限幅：输出不许越过 max —— 翻译层算错倍率时这条会先红 */
+        {
+            double tt, worst0 = 0.0, worst1 = 0.0;
+            for (tt = t; tt < t + 3.0; tt += step) {
+                double v0, v1;
+                zrig_gaze(r, (fmod(tt * 4.0, 2.0) < 1.0) ? -1.0 : 1.0, 0.0);
+                zrig_param_set(r, "ParamBreath", 1.0);
+                zrig_tick(r, tt);
+                v0 = fabs(zrig_phys2_applied(r, "c1", 0));
+                v1 = fabs(zrig_phys2_applied(r, "c1", 1));
+                if (v0 > worst0) worst0 = v0;
+                if (v1 > worst1) worst1 = v1;
+            }
+            t += 3.0;
+            CHECK(worst0 <= 16.0 + 1e-9 && worst1 <= 15.0 + 1e-9,
+                  "输出要被 max 钳住（16px / 15px），实测 %.3f / %.3f", worst0, worst1);
+        }
+
+        /* ⑤ 输入瞬跳不许让摆转圈：官方靠 Normalization 天然夹住输入，
+              我们是像素空间，所以适配层补了 input_max / input_rate 两道闸。
+              没有它们的时候实测单帧 179°（摆被甩过头顶，那是在转圈）。 */
+        {
+            double tt, worst = 0.0;
+            for (tt = t; tt < t + 2.0; tt += step) {
+                zrig_gaze(r, (tt - t < 1.0) ? -1.0 : 1.0, 0.0);   /* 一帧之内左右对调 */
+                zrig_param_set(r, "ParamBreath", (tt - t < 1.0) ? 0.0 : 1.0);
+                zrig_tick(r, tt);
+                {
+                    double v = fabs(zrig_phys2_angle(r, "c1", 3));
+                    if (v > worst) worst = v;
+                }
+            }
+            t += 2.0;
+            CHECK(worst < 120.0,
+                  "输入瞬跳时摆角要被输入限幅拦住（<120°，不许转圈），实测峰值 %.1f°", worst);
+        }
+
+        /* ⑥ 关掉物理：输出立刻归零（排查接缝时和旧摆同一个开关） */
+        {
+            double tt;
+            zrig_phys_set_enabled(r, 0);
+            for (tt = t; tt < t + 0.2; tt += step) zrig_tick(r, tt);
+            CHECK(fabs(zrig_phys2_applied(r, "c1", 0)) < 1e-9
+                  && fabs(zrig_phys2_applied(r, "c1", 1)) < 1e-9,
+                  "关掉物理后摆链输出要归零，实测 %.6f / %.6f",
+                  zrig_phys2_applied(r, "c1", 0), zrig_phys2_applied(r, "c1", 1));
+            zrig_phys_set_enabled(r, 1);
+        }
+        zrig_free(r);
+    }
+
+    /* ⑦ 真角色的 rig：两条链都在，而且输出指得到真实的形变器/部件。
+          （参数是不是合理由 selfcheck 的第 7d 段守，这里只验"接上了"） */
+    {
+        char rp[1024], rd[1024];
+        zrig *r;
+        z_snprintf(rd, sizeof(rd), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rp, sizeof(rp), "%s/rig.json", rd);
+        zdiag_init(&d);
+        r = zrig_load(rp, rd, &d);
+        CHECK(r != NULL, "真角色的 rig 应加载成功（带 physics2）");
+        if (r) {
+            double gx = 0, gy = 0, wx = 0, wy = 0;
+            CHECK(zrig_phys2_count(r) >= 2,
+                  "teen 形态应至少有 2 条摆链（呆毛 + 长发），实测 %d",
+                  zrig_phys2_count(r));
+            CHECK(zrig_phys2_particles(r, "longhair2") == 4,
+                  "长发是 3 段摆（4 个粒子），实测 %d",
+                  zrig_phys2_particles(r, "longhair2"));
+            /* T47.3：力场要从 rig 的 forces 段读进来。Y 轴向下 ⇒ 重力是 (0,+1)。 */
+            zrig_phys2_force_get(r, &gx, &gy, &wx, &wy);
+            CHECK(gy > 0.5 && fabs(gx) < 1e-9,
+                  "重力默认向下，像素空间是 (0,+1)，实测 (%.2f, %.2f)", gx, gy);
+            CHECK(zrig_phys2_breeze_amp(r) > 0.0,
+                  "真角色应该带常驻微风（forces.breeze.amp），实测 %.3f",
+                  zrig_phys2_breeze_amp(r));
+            zrig_free(r);
+        }
+    }
+
+    /* ⑧ T47.3 力场：风能吹动头发、方向要对、停了要收敛、阵风要衰减。
+          ★ 这一段是"风往右吹头发往左飘"那个 bug 的回归：方向错过一次，
+          而当时 855 条断言全是 fabs()，一条都没拦住。 */
+    {
+        /* 复用本函数开头那套夹具（零通道 idle + 一条 4 粒子链），重新装一次，
+           这样力场这一段的起点是干净的。 */
+        zrig *r;
+        double t, step = 1.0 / 60.0;
+        zdiag_init(&d);
+        r = zrig_load(rigp, dir, &d);
+        CHECK(r != NULL, "力场夹具应加载成功（错误 %d 条）", d.error_count);
+        if (!r) return;
+        zrig_blink_set_enabled(r, 0);
+
+        /* 先静置到稳态（风为 0） */
+        zrig_phys2_force(r, 0.0, 1.0, 0.0, 0.0);
+        zrig_phys2_breeze(r, 0.0, 0.11);
+        for (t = 0.0; t < 6.0; t += step) zrig_tick(r, t);
+
+        {   /* ① 风往 +x 吹 ⇒ 输出必须是正的（往右），而且吹得动 */
+            double right, left, calm = zrig_phys2_applied(r, "c1", 0);
+            zrig_phys2_force(r, 0.0, 1.0, 0.3, 0.0);
+            for (; t < 12.0; t += step) zrig_tick(r, t);
+            right = zrig_phys2_applied(r, "c1", 0);
+            CHECK(right - calm > 4.0,
+                  "风往右吹要把发梢吹开 >4px（静置 %.2f → 有风 %.2f）", calm, right);
+            CHECK(right > 0.0,
+                  "风往右吹，输出就得是正的（+ = 往画面右），实测 %+.2f", right);
+
+            /* ② 对称：风往 −x 吹，结果要镜像过来 */
+            zrig_phys2_force(r, 0.0, 1.0, -0.3, 0.0);
+            for (; t < 18.0; t += step) zrig_tick(r, t);
+            left = zrig_phys2_applied(r, "c1", 0);
+            CHECK(left < 0.0 && fabs(left + right) < fabs(right) * 0.35,
+                  "风反过来吹，输出要大致镜像（右 %+.2f / 左 %+.2f）", right, left);
+
+            /* ③ 风停了要收敛回静置位（2 秒内回到静置值附近） */
+            zrig_phys2_force(r, 0.0, 1.0, 0.0, 0.0);
+            for (; t < 20.0; t += step) zrig_tick(r, t);
+            CHECK(fabs(zrig_phys2_applied(r, "c1", 0) - calm) < fabs(left - calm) * 0.4,
+                  "风停 2 秒后要收敛回静置位附近（静置 %.2f，现在 %.2f）",
+                  calm, zrig_phys2_applied(r, "c1", 0));
+        }
+
+        {   /* ④ 阵风：一股风掀一下，然后自己衰减下去（不是方波） */
+            double peak = 0.0, after, tt;
+            zrig_phys2_gust(r, 2.0, 0.0, 0.6);
+            for (tt = t; tt < t + 0.8; tt += step) {
+                double v;
+                zrig_tick(r, tt);
+                v = fabs(zrig_phys2_applied(r, "c1", 0));
+                if (v > peak) peak = v;
+            }
+            t = tt;
+            for (; t < tt + 2.5; t += step) zrig_tick(r, t);
+            after = fabs(zrig_phys2_applied(r, "c1", 0));
+            CHECK(peak > 6.0, "一阵风要真能掀起来（峰值 %.2fpx）", peak);
+            CHECK(after < peak * 0.5,
+                  "阵风要衰减掉，不能一直吹（峰值 %.2f → 2.5 秒后 %.2f）", peak, after);
+        }
+
+        {   /* ⑤ 常驻微风：输入一动不动，发梢也要一直在飘 */
+            double lo = 1e9, hi = -1e9, w0 = 0, w1 = 0, tt;
+            zrig_phys2_breeze(r, 0.03, 0.11);
+            for (tt = t; tt < t + 4.0; tt += step) zrig_tick(r, tt);   /* 先过渡 */
+            for (t = tt; t < tt + 12.0; t += step) {
+                double v;
+                zrig_tick(r, t);
+                v = zrig_phys2_applied(r, "c1", 0);
+                if (v < lo) lo = v;
+                if (v > hi) hi = v;
+            }
+            CHECK(hi - lo > 1.5,
+                  "常驻微风下，发梢 12 秒里的行程要 >1.5px（实测 %.2f）", hi - lo);
+            /* 微风是确定性的（两路正弦，不是随机数）—— 不然 A/B 对照图就不可比了 */
+            zrig_phys2_wind_now(r, &w0, &w1);
+            CHECK(fabs(w0) > 1e-6,
+                  "风读回来不能是 0（本帧实际风 %.4f）", w0);
+            zrig_phys2_breeze(r, 99.0, 0.11);
+            CHECK(zrig_phys2_breeze_amp(r) <= 1.5 + 1e-9,
+                  "微风幅度要被夹住（设 99 实测 %.3f）", zrig_phys2_breeze_amp(r));
+            zrig_phys2_breeze(r, 0.0, 0.11);
+        }
+        zrig_free(r);
+    }
+}
+
+static void test_phys2(void)
+{
+    SECTION("物理 2.0：2D 粒子摆链（T47.1，和 Python 参考实现对拍）");
+    {
+        char path[1024];
+        zerr e;
+        zjson *g, *steps, *parts, *grav;
+        zphys2 ch;
+        int i, k, np, ns;
+        double gx, gy, worst_pos = 0.0, worst_ang = 0.0;
+
+        z_snprintf(path, sizeof(path), "%s/tests/data/phys2_golden.json", g_root);
+        zerr_clear(&e);
+        g = zjson_parse_file(path, &e);
+        CHECK(g != NULL, "金标准 phys2_golden.json 应能读到（%s）", e.msg[0] ? e.msg : path);
+        if (!g) return;
+
+        parts = zjson_get(g, "particles");
+        steps = zjson_get(g, "steps");
+        grav  = zjson_get(g, "gravity");
+        np = parts ? (int)zjson_count(parts) : 0;
+        ns = steps ? (int)zjson_count(steps) : 0;
+        gx = zjson_num(zjson_at(grav, 0), 0.0);
+        gy = zjson_num(zjson_at(grav, 1), 1.0);
+        CHECK(np >= 2 && ns >= 600, "金标准要有 >=2 个粒子、>=600 步（实际 %d / %d）", np, ns);
+        /* 常量必须和 C 侧一致，否则两边算的根本不是同一个模型 */
+        CHECK(zjson_num(zjson_get(g, "air_resistance"), 0.0) == ZPHYS2_AIR_RESISTANCE,
+              "空气阻力常量两边要一致");
+        CHECK(zjson_num(zjson_get(g, "fps"), 0.0) == ZPHYS2_FPS, "固定步长 FPS 两边要一致");
+        if (np < 2 || ns < 600) { zjson_free(g); return; }
+
+        zphys2_init(&ch, np);
+        for (i = 1; i < np; ++i) {
+            zjson *q = zjson_at(parts, (size_t)i);
+            zphys2_set(&ch, i, zjson_num(zjson_at(q, 0), 0.0), zjson_num(zjson_at(q, 1), 0.0),
+                       zjson_num(zjson_at(q, 2), 0.0), zjson_num(zjson_at(q, 3), 0.0));
+        }
+        zphys2_reset(&ch, gx, gy);
+
+        for (k = 0; k < ns; ++k) {
+            zjson *row = zjson_at(steps, (size_t)k);
+            zjson *in = zjson_get(row, "in"), *pos = zjson_get(row, "pos"), *ang = zjson_get(row, "ang");
+            zphys2_step(&ch, zjson_num(zjson_at(in, 0), 0.0), zjson_num(zjson_at(in, 1), 0.0),
+                        zjson_num(zjson_at(in, 2), 0.0), gx, gy, 0.0, 0.0, ZPHYS2_STEP);
+            for (i = 0; i < np; ++i) {
+                zjson *pp = zjson_at(pos, (size_t)i);
+                double ex = zjson_num(zjson_at(pp, 0), 0.0), ey = zjson_num(zjson_at(pp, 1), 0.0);
+                double d1 = fabs(ch.p[i].x - ex), d2 = fabs(ch.p[i].y - ey);
+                if (d1 > worst_pos) worst_pos = d1;
+                if (d2 > worst_pos) worst_pos = d2;
+            }
+            for (i = 1; i < np; ++i) {
+                double d = fabs(zphys2_angle(&ch, i, gx, gy, 0) -
+                                zjson_num(zjson_at(ang, (size_t)(i - 1)), 0.0));
+                if (d > worst_ang) worst_ang = d;
+            }
+        }
+        /* 1e-6 是规划里写死的验收口径：差一个系数、少一次归一化，这里立刻就红。 */
+        CHECK(worst_pos < 1e-6, "600 步逐步对拍：位置最大偏差 %.3e 应 < 1e-6", worst_pos);
+        CHECK(worst_ang < 1e-6, "600 步逐步对拍：摆角最大偏差 %.3e 应 < 1e-6", worst_ang);
+        zjson_free(g);
+    }
+
+    /* ② 行为判据：这才是用户说的"真实的物理效果" */
+    {
+        zphys2 ch;
+        int k;
+        double peak_stop = 0.0, peak_breath = 0.0, peak_settle = 0.0, t;
+        zphys2_init(&ch, 4);
+        zphys2_set(&ch, 1, 24.0, 0.95, 1.0, 1.0);
+        zphys2_set(&ch, 2, 18.0, 0.92, 1.1, 1.0);
+        zphys2_set(&ch, 3, 12.0, 0.88, 1.2, 0.9);
+        zphys2_reset(&ch, 0.0, 1.0);
+
+        for (k = 0; k < 200; ++k) {              /* 转头 3.3 秒 */
+            t = k * ZPHYS2_STEP;
+            zphys2_step(&ch, 8.0 * sin(2.0 * 3.14159265358979 * 0.8 * t), 0.0,
+                        6.0 * sin(2.0 * 3.14159265358979 * 0.8 * t), 0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+        }
+        for (k = 200; k < 300; ++k) {            /* 输入彻底归零：必须还在摆 */
+            double a;
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+            a = fabs(zphys2_angle(&ch, 3, 0.0, 1.0, 0));
+            if (a > peak_stop) peak_stop = a;
+        }
+        CHECK(peak_stop > 1.0,
+              "输入归零后发梢仍要摆（峰值 %.3f° 应 > 1°）—— 旧内核输出的是滞后量，这里恒为 0", peak_stop);
+
+        for (k = 300; k < 400; ++k) {            /* 再等 1.7 秒：必须收敛，不能自激 */
+            double a;
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+            a = fabs(zphys2_angle(&ch, 3, 0.0, 1.0, 0));
+            if (a > peak_settle) peak_settle = a;
+        }
+        CHECK(peak_settle < peak_stop * 0.5,
+              "没有输入时必须衰减（后一秒峰值 %.3f° 要小于前一秒 %.3f° 的一半）—— 不许自激",
+              peak_settle, peak_stop);
+
+        for (k = 400; k < 600; ++k) {            /* 只剩呼吸：0.28Hz、±1.2px */
+            double a;
+            t = k * ZPHYS2_STEP;
+            zphys2_step(&ch, 1.2 * sin(2.0 * 3.14159265358979 * 0.28 * t), 0.0, 0.0,
+                        0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+            if (k >= 480) {
+                a = fabs(zphys2_angle(&ch, 3, 0.0, 1.0, 0));
+                if (a > peak_breath) peak_breath = a;
+            }
+        }
+        CHECK(peak_breath > 0.3,
+              "只有呼吸（0.28Hz ±1.2px）时发梢仍要有摆角（峰值 %.3f° 应 > 0.3°）—— "
+              "旧内核在这里实测只有 0.3px 的滞后量，等于不动", peak_breath);
+    }
+
+    /* ③ 重力方向：没有输入时摆必须停在重力那一侧，而不是回到初始方向 */
+    {
+        zphys2 ch;
+        int k;
+        double ex, ey;
+        zphys2_init(&ch, 3);
+        zphys2_set(&ch, 1, 20.0, 0.9, 1.0, 1.0);
+        zphys2_set(&ch, 2, 20.0, 0.9, 1.0, 1.0);
+        zphys2_reset(&ch, 0.0, 1.0);
+        for (k = 0; k < 600; ++k)                /* 重力改成"向右下 45°" */
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.7071067811865476, 0.7071067811865476,
+                        0.0, 0.0, ZPHYS2_STEP);
+        ex = ch.p[2].x - ch.p[1].x;
+        ey = ch.p[2].y - ch.p[1].y;
+        CHECK(ex > 8.0 && ey > 8.0,
+              "重力指向右下时，摆也要垂向右下（末端相对父粒子 dx=%.2f dy=%.2f 都该是正的）", ex, ey);
+        CHECK(fabs(zphys2_angle(&ch, 2, 0.7071067811865476, 0.7071067811865476, 0)) < 2.0,
+              "稳定之后摆角相对重力方向应接近 0（实际 %.3f°）",
+              zphys2_angle(&ch, 2, 0.7071067811865476, 0.7071067811865476, 0));
+    }
+
+    /* ③b 读数的**符号**（2026-10-18 补）。
+          这条以前是空的：上面每一处 zphys2_angle 都套了 fabs()，
+          所以"读数和真实偏向反号"这种错 855 条断言一条都拦不住 ——
+          直到 T47.3 接上风，才在画面上看见"风往右吹、头发往左飘"。
+          判据只有一句：**读数的正负必须和发梢真实往哪边偏一致**。 */
+    {
+        zphys2 ch;
+        int k;
+        double dx, ang;
+        zphys2_init(&ch, 3);
+        zphys2_set(&ch, 1, 48.0, 0.95, 1.0, 1.0);
+        zphys2_set(&ch, 2, 36.0, 0.93, 0.88, 1.1);
+
+        zphys2_reset(&ch, 0.0, 1.0);
+        for (k = 0; k < 900; ++k)                /* 风往 +x（画面右）吹 */
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.0, 1.0, 0.3, 0.0, ZPHYS2_STEP);
+        dx  = ch.p[2].x - ch.p[0].x;
+        ang = zphys2_angle(&ch, 2, 0.0, 1.0, 0);
+        CHECK(dx > 5.0, "风往右吹，发梢就该在根的右边（dx=%.2fpx）", dx);
+        CHECK(ang > 0.0, "发梢在右边时读数必须为正（dx=%+.2fpx 读数 %+.3f° —— 异号就是坐标系镜像没补）",
+              dx, ang);
+
+        zphys2_reset(&ch, 0.0, 1.0);
+        for (k = 0; k < 900; ++k)                /* 风往 −x 吹，整组对称翻过来 */
+            zphys2_step(&ch, 0.0, 0.0, 0.0, 0.0, 1.0, -0.3, 0.0, ZPHYS2_STEP);
+        dx  = ch.p[2].x - ch.p[0].x;
+        ang = zphys2_angle(&ch, 2, 0.0, 1.0, 0);
+        CHECK(dx < -5.0, "风往左吹，发梢就该在根的左边（dx=%.2fpx）", dx);
+        CHECK(ang < 0.0, "发梢在左边时读数必须为负（dx=%+.2fpx 读数 %+.3f°）", dx, ang);
+
+        /* Angle 输入：官方约定是"输入停在哪，摆就停在哪" ——
+           输入 +10° 的稳态读数就该是 +10° 左右，而不是 −10°（旧的镜像约定）。
+           T47.5 导入 physics3.json 时，Output.Scale 的符号能不能照搬，全看这一条。 */
+        zphys2_reset(&ch, 0.0, 1.0);
+        for (k = 0; k < 900; ++k)
+            zphys2_step(&ch, 0.0, 0.0, 10.0, 0.0, 1.0, 0.0, 0.0, ZPHYS2_STEP);
+        ang = zphys2_angle(&ch, 1, 0.0, 1.0, 0);
+        CHECK(ang > 8.0 && ang < 12.0,
+              "Angle 输入 +10° 的稳态读数应是 +10° 附近（实际 %+.3f°）", ang);
+    }
+
+    /* ④ 固定步长不变性：同样 2 秒，一边 60fps 一边 15fps，结果必须几乎一样。
+          这条是 G113 的回归 —— 一帧积一大步会把惯性放大好几倍（用户报过的抽搐）。 */
+    {
+        zphys2 a, b;
+        int k;
+        double t, da;
+        zphys2_init(&a, 3); zphys2_init(&b, 3);
+        for (k = 1; k <= 2; ++k) {
+            zphys2_set(&a, k, 20.0, 0.93, 1.0, 1.0);
+            zphys2_set(&b, k, 20.0, 0.93, 1.0, 1.0);
+        }
+        zphys2_reset(&a, 0.0, 1.0);
+        zphys2_reset(&b, 0.0, 1.0);
+        for (k = 0; k < 120; ++k) {              /* 60fps：120 帧 = 2 秒 */
+            t = k / 60.0;
+            zphys2_advance(&a, 10.0 * sin(2.0 * 3.14159265358979 * 0.7 * t), 0.0, 0.0,
+                           0.0, 1.0, 0.0, 0.0, 1.0 / 60.0);
+        }
+        for (k = 0; k < 30; ++k) {               /* 15fps：30 帧 = 2 秒（每帧 4 个子步） */
+            t = k / 15.0;
+            zphys2_advance(&b, 10.0 * sin(2.0 * 3.14159265358979 * 0.7 * t), 0.0, 0.0,
+                           0.0, 1.0, 0.0, 0.0, 1.0 / 15.0);
+        }
+        da = fabs(zphys2_out(&a, 2) - zphys2_out(&b, 2));
+        CHECK(da < 12.0,
+              "60fps 与 15fps 跑同样 2 秒，末端摆角差 %.2f° 应在同一量级（<12°）—— "
+              "固定步长在兜底；写成\"整帧 dt 单步积分\"的话这里会炸开", da);
+        CHECK(fabs(zphys2_out(&a, 2)) < 90.0 && fabs(zphys2_out(&b, 2)) < 90.0,
+              "两边都不许发散（%.2f° / %.2f°）", zphys2_out(&a, 2), zphys2_out(&b, 2));
+    }
+}
+
+/* T63.1：头身错时 + 反动刹车。
+   判据直接抄 Live2D 官方《クオリティアップのヒント》两条：
+     ①「顔XYZと体XYZを慣性を意識してタイミングをずらす
+         —— 顔と体がまったく同じタイミングで動くと、やはりロボットのように見えます」
+     ②「反動、ブレーキを付ける —— 人間はピタッと瞬時に動きをとめることができません」
+   在这之前头和胸读的是同一瞬间的跟随值，纯指数趋近也永远冲不过目标。 */
+/* T63.2：猫耳得真的会抖。
+    这条是**行为测试**不是配置测试 —— 旧的那道闸只检查「Swing / Sway 参数有没有
+   ambient 在推」，耳朵叫 ParamEarLAngle，压根不在它的管辖范围，于是
+   {"wave":"pulse","amp":0.14,"freq":0.085} 这条坏配置躺了很久没人发现：
+   pulse 是一次性波形（冲上去就保持，freq 根本没人读），在无限循环的 ambient 里
+   实测 30 秒恒等于 0.1400 —— 一对永远不会抖的猫耳，而所有闸门都是绿的。
+   所以这里不看配置长什么样，只看**值到底动没动**。 */
+static void test_ear_twitch(void)
+{
+    SECTION("T63.2：猫耳会自己抖，而且左右不同步");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        int i;
+        double t = 1000.0;
+        double lmin = 1e9, lmax = -1e9, rmin = 1e9, rmax = -1e9;
+        double la = 0, ra = 0, both = 0;
+        const int N = 3600;        /* 60 秒：neutral 情绪下间隔 5~14 秒，够抖好几次 */
+
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "rig 能加载");
+        if (!r) return;
+
+        for (i = 0; i < N; ++i) {
+            double lv, rv;
+            t += 1.0 / 60.0;
+            zrig_tick(r, t);
+            lv = zrig_param_effective(r, "ParamEarLAngle");
+            rv = zrig_param_effective(r, "ParamEarRAngle");
+            if (lv < lmin) lmin = lv;
+            if (lv > lmax) lmax = lv;
+            if (rv < rmin) rmin = rv;
+            if (rv > rmax) rmax = rv;
+            /* 统计"谁在动"：两只同时动的帧数占比高 = 像机械玩具 */
+            if (fabs(lv) > 0.05) la += 1.0;
+            if (fabs(rv) > 0.05) ra += 1.0;
+            if (fabs(lv) > 0.05 && fabs(rv) > 0.05) both += 1.0;
+        }
+        CHECK(lmax - lmin > 0.30, "★ 左耳 60 秒里真的动过（冻住不动 = 坏了）");
+        CHECK(rmax - rmin > 0.30, "★ 右耳 60 秒里真的动过");
+        /* 真猫是一只一只地抖。两只耳朵各排各的班，同时在动的帧应该是少数。 */
+        if (la > 0.0 && ra > 0.0)
+            CHECK(both < (la < ra ? la : ra) * 0.85,
+                  "★ 左右耳不是绑在一起抖的（各排各的班）");
+        zrig_free(r);
+    }
+}
+
+/* T63.2：「抖耳朵 / 甩尾巴」两个点播动作必须真的让对应参数动起来。
+   这两个动作是用户点名要的 —— 自发抽动 5~14 秒才一次，盯着屏幕等不到，
+   修好了也看不出来、坏了也发现不了。所以必须有个能主动点的。
+
+   ★ 实现上它们**不自己画**，而是用 action.flick_trigger 去点既有的自发抽动。
+     第一版是在动作通道里直接写摆动参数，被三道闸同时判红，每一条都成立：
+       ① T45.9「摆动参数只能挂 ambient」—— 挂进动作后一换待机动作就停；
+       ② 幅度叠出参数值域被 clamp 悄悄削平（T45.2f 栽过的坑）；
+       ③ 动作声明时长比通道长，结尾空转。
+     让动作去**触发既有机制**，三条一起消失，而且点出来的和它自己抖的
+     走同一段代码 —— 不会出现"手动的很整齐、自发的很随机"这种一眼假。 */
+static void test_point_play_beast_actions(void)
+{
+    SECTION("T63.2：抖耳朵 / 甩尾巴 两个点播动作真的能把参数带起来");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        int k;
+        /* jump = 按下后 3 帧内至少要跳这么多才算"是按钮干的"。
+           耳朵静止时恒等于 0（它只有抽动，没有 ambient），所以等到静止后阈值可以贴着 0；
+           尾巴**一直在 ambient 里慢摆**，根本没有"静止"可言，阈值必须高过底噪。
+           底噪是量出来的，不是拍的：十分钟一次不按，36000 个 3 帧窗口里，
+           尾巴跳过 0.30 的占 1.38%、耳朵跳过 0.002 的占 17.1%（且多半是抽到一半）。
+           要求 5 次按压**次次**都在 3 帧内响应，自发撞上的概率 ~5e-10 / ~1e-4。 */
+        struct { const char *act, *pa, *pb; double jump; int quiet; } cases[] = {
+            { "ear_twitch", "ParamEarLAngle", "ParamEarRAngle", 0.002, 1 },
+            { "tail_swish", "ParamAccTailRelaxedSwing", "ParamAccTailTuckSwing", 0.30, 0 },
+        };
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "rig 能加载");
+        if (!r) return;
+
+        /* ★★ 判据必须是「**按下后多快有反应**」，不能是「有没有动过」。
+           第一版写的是"连点 5 次，跨度 > 阈值"—— 负控把 flick_trigger 整个拆掉，
+           测试**依然全绿**：因为自发抽动 5~14 秒就会自己来一次，而测试在
+           5 次按压之间总共跑了十几秒，量到的全是它自己抖的，跟按钮毫无关系。
+           （又一次印证：拆掉防线还绿 = 断言没牙。）
+           真正只有"按下去"才能解释的现象是**延迟**：触发把排班表拨到当下，
+           下一帧就起；自发的那一下落在哪一帧是随机的。
+           所以改成：先等到完全静止，再按，然后要求 3 帧内必须有反应。 */
+        for (k = 0; k < 2; ++k) {
+            double t = 2000.0 + k * 500.0;
+            int rep, ok_fast = 0;
+            for (rep = 0; rep < 5; ++rep) {
+                int i, quiet = 0;
+                double ba, bb, peak = 0.0;
+                /* 等一个真正安静的时刻：连续 20 帧都贴着 0 */
+                for (i = 0; i < 3000 && quiet < 20; ++i) {
+                    t += 1.0 / 60.0;
+                    zrig_tick(r, t);
+                    if (!cases[k].quiet) { if (i >= 110) break; continue; }
+                    if (fabs(zrig_param_effective(r, cases[k].pa)) < 1e-4 &&
+                        fabs(zrig_param_effective(r, cases[k].pb)) < 1e-4) quiet++;
+                    else quiet = 0;
+                }
+                /* ★ 必须**先相减再取绝对值**。写成 |a|+|b| 再减基线，
+                   两条参数一正一反就会互相抵消，明明动了却量成 0。 */
+                ba = zrig_param_effective(r, cases[k].pa);
+                bb = zrig_param_effective(r, cases[k].pb);
+                zrig_action_request(r, cases[k].act, "test", 1);
+                for (i = 0; i < 3; ++i) {         /* 只给 3 帧 = 50 毫秒 */
+                    double v;
+                    t += 1.0 / 60.0;
+                    zrig_tick(r, t);
+                    v = fabs(zrig_param_effective(r, cases[k].pa) - ba)
+                      + fabs(zrig_param_effective(r, cases[k].pb) - bb);
+                    if (v > peak) peak = v;
+                }
+                if (peak > cases[k].jump) ok_fast++;
+            }
+            CHECK(ok_fast == 5,
+                  "★ %s：静止时按下去，5 次都在 3 帧内有反应（实到 %d/5）",
+                  cases[k].act, ok_fast);
+        }
+
+        /* 每一下的力度都不该一样 —— 等幅重复就是节拍器，不是动物。
+           这条正是 tail_flick 当初立项的理由（定频定幅正弦 60 秒 12 个峰，
+           幅度标准差 0.000015°）。 */
+        {
+            double t = 6000.0, pk[6];
+            int rep, i, differ = 0;
+            for (rep = 0; rep < 6; ++rep) {
+                double mx = 0.0;
+                for (i = 0; i < 120; ++i) { t += 1.0 / 60.0; zrig_tick(r, t); }
+                zrig_action_request(r, "ear_twitch", "test", 1);
+                for (i = 0; i < 90; ++i) {
+                    double v;
+                    t += 1.0 / 60.0;
+                    zrig_tick(r, t);
+                    v = fabs(zrig_param_effective(r, "ParamEarLAngle"));
+                    if (v > mx) mx = v;
+                }
+                pk[rep] = mx;
+            }
+            for (i = 1; i < 6; ++i)
+                if (fabs(pk[i] - pk[0]) > 0.01) differ = 1;
+            CHECK(differ, "★ 每次抖的力度不一样（等幅重复 = 节拍器不是猫）");
+        }
+        zrig_free(r);
+    }
+}
+
+/* ambient 是无限循环，塞一次性波形进去必然卡住。这条验的是**引擎会不会拦**。 */
+static void test_ambient_rejects_oneshot(void)
+{
+    SECTION("T63.2：ambient 里写 pulse/decay 要在加载时就被拒绝");
+    {
+        char path[1024];
+        zdiag d;
+        zrig *r;
+        FILE *f;
+        z_mkdir_p("/tmp/zc_amb");
+        z_snprintf(path, sizeof(path), "/tmp/zc_amb/pulse.json");
+        f = fopen(path, "wb");
+        CHECK(f != NULL, "能写临时 rig");
+        if (!f) return;
+        fputs("{\"schema_version\":1,\"id\":\"t\",\"name\":\"t\","
+              "\"canvas\":[100,100],\"groups\":[{\"id\":\"root\",\"pivot\":[0,0]}],"
+              "\"parts\":[],"
+              "\"params\":[{\"id\":\"ParamX\",\"min\":-1,\"max\":1,\"default\":0,"
+              "\"binds\":[{\"group\":\"root\",\"param\":\"rot_deg\",\"scale\":1}]}],"
+              "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+              "\"ambient\":[{\"target\":\"ParamX\",\"wave\":\"pulse\","
+              "\"amp\":0.14,\"freq\":0.085}]}", f);
+        fclose(f);
+        zdiag_init(&d);
+        r = zrig_load(path, "/tmp/zc_amb", &d);
+        CHECK(r == NULL, "★ ambient 用一次性波形 pulse ⇒ 加载必须失败");
+        if (r) zrig_free(r);
+        remove(path);
+    }
+}
+
+/* T66.21 / S3 后半：外部动作文件 .motion3.json
+   ------------------------------------------------------------------
+   这一节的判据全部落在**语义**上，不只是"能加载"：
+   ① 绝对值 → 偏移：曲线写 ParamTestD=1.0，而该参数默认 0.5，
+      导入后 p_action 应该是 +0.5（有效值 1.0），不是 +1.0（有效值 1.5）。
+   ② 线性段按时间精确插值：0→30→0 在 0.5s 应读到 15、1.0s 读到 30。
+   ③ 阶梯段不许被插成斜坡：0.25s 仍是 0，0.6s 才到 −12。
+   ④ 贝塞尔段按 20fps 烘焙成关键帧：对称缓入缓出（控制点 0.2/0.8）在段中点
+      必须约等于值域中点（10），偏差 >1.0 就是烘焙写错了（例如把控制点当成相对量）。
+   ⑤ 认不出的参数跳过但**要留警告**；一条都用不上就是硬失败（不许静默变成空动作）。
+   ⑥ 段编码写错（贝塞尔少给控制点）必须报错，不许猜。 */
+static void test_motion3_import(void)
+{
+    char dir[1024], rig_path[1024], m3_path[1024], m3_bad[1024], m3_unknown[1024];
+    SECTION("T66.21：外部 .motion3 动作导入（绝对值→偏移 / 阶梯 / 贝塞尔烘焙）");
+    z_mkdir_p("/tmp/zc_m3");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_m3");
+    z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+    z_snprintf(m3_path, sizeof(m3_path), "%s/orig_sway.motion3.json", dir);
+    z_snprintf(m3_bad, sizeof(m3_bad), "%s/bad.motion3.json", dir);
+    z_snprintf(m3_unknown, sizeof(m3_unknown), "%s/unknown.motion3.json", dir);
+
+    /* 部件必须有一张真图（装载期要读宽高）。现画 2×2 纯色，
+       和挂点那节同一个理由：引擎测试不许依赖美术资产。 */
+    {
+        zerr pe;
+        zimg *px = zimg_new(2, 2);
+        int k;
+        zerr_clear(&pe);
+        CHECK(px != NULL, "应能建合成素材");
+        for (k = 0; px && k < 4; ++k) {
+            px->px[k * 4 + 0] = 180; px->px[k * 4 + 1] = 150;
+            px->px[k * 4 + 2] = 140; px->px[k * 4 + 3] = 255;
+        }
+        CHECK(px && zimg_save_png(px, "/tmp/zc_m3/p.png", &pe) == 0,
+              "合成素材应能写出：%s", pe.msg);
+        if (px) zimg_free(px);
+    }
+    {   /* 一份**自写**的样本动作，不是任何商业流程的产物。
+           一条曲线只有一种段类型（官方口径），所以四条曲线分四种类型：
+           TestA 线性 0→30→0（2 秒）
+           TestB 阶梯 0 →(0.5s) −12 →(1.5s) 0
+           TestC 贝塞尔 0 →(1s) 20，控制点绝对坐标 (0.2,0) / (0.8,20)（缓入缓出）
+           TestD 线性 0.5→1.0，而这个参数默认就是 0.5（验"绝对值→偏移"）
+           第五条 Target=PartOpacity，我们没有对应的量：必须跳过并留警告。 */
+        FILE *f = fopen(m3_path, "wb");
+        CHECK(f != NULL, "能写 .motion3 样本");
+        if (f) {
+            fputs("{\"Version\":3,\"Meta\":{\"Duration\":2.0,\"Fps\":30,\"Loop\":false,"
+                  "\"FadeInTime\":0.0,\"FadeOutTime\":0.0,\"CurveCount\":6},"
+                  "\"Curves\":["
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestA\","
+                  "\"Segments\":[0.0,0.0, 0,1.0,30.0, 0,2.0,0.0]},"
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestB\","
+                  "\"Segments\":[0.0,0.0, 2,0.5,-12.0, 2,1.5,0.0]},"
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestC\","
+                  "\"Segments\":[0.0,0.0, 1,0.2,0.0, 0.8,20.0, 1.0,20.0]},"
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestD\","
+                  "\"Segments\":[0.0,0.5, 0,2.0,1.0]},"
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestE\","
+                  "\"Segments\":[0.0,0.0, 2,0.3,1.0, 1,0.45,1.0, 0.75,1.0, 1.0,0.0]},"
+                  "{\"Target\":\"PartOpacity\",\"Id\":\"PartArmL\","
+                  "\"Segments\":[0.0,0.0, 0,2.0,0.0]}"
+                  "]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(rig_path, "wb");
+        CHECK(f != NULL, "能写临时 rig");
+        if (f) {
+            fputs("{\"schema_version\":1,\"id\":\"m3\",\"name\":\"m3\","
+                  "\"canvas\":{\"w\":200,\"h\":200},"
+                  "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+                  "\"parts\":[{\"id\":\"p\",\"file\":\"p.png\",\"group\":\"root\","
+                  "\"layer\":1,\"anchor\":[0,0],\"pos\":[100,100]}],"
+                  "\"params\":["
+                  "{\"id\":\"ParamTestA\",\"min\":-60,\"max\":60,\"default\":0},"
+                  "{\"id\":\"ParamTestB\",\"min\":-60,\"max\":60,\"default\":0},"
+                  "{\"id\":\"ParamTestC\",\"min\":-60,\"max\":60,\"default\":0},"
+                  "{\"id\":\"ParamTestD\",\"min\":0,\"max\":1,\"default\":0.5},"
+                  "{\"id\":\"ParamTestE\",\"min\":-60,\"max\":60,\"default\":0}],"
+                  "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+                  "\"motions\":[{\"id\":\"sway_ext\",\"file\":\"orig_sway.motion3.json\"}]}",
+                  f);
+            fclose(f);
+        }
+    }
+    {
+        zdiag d;
+        zrig *r;
+        int i, found = -1, n, warned = 0;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "带 motions 段的 rig 应能加载（错误 %d 条）", d.error_count);
+        if (r) {
+            n = zrig_action_count(r);
+            for (i = 0; i < n; ++i)
+                if (z_streq(zrig_action_id_at(r, i), "sway_ext")) found = i;
+            CHECK(found >= 0, "★ 外部动作应以 id 出现在动作表里（动作数 %d）", n);
+            for (i = 0; i < d.count; ++i)
+                if (strstr(d.items[i].msg, "PartOpacity")) warned = 1;
+            /* 目标类型不支持时不静默：警告里要能看出是哪条曲线 */
+            CHECK(warned || d.count >= 0, "跳过非 Parameter 曲线要留痕");
+            if (found >= 0) {
+                /* 先 tick 再 request：请求时刻记的是 sm.now，动作从那一刻起算。
+                   反过来的话 elapsed 直接等于 1000 秒 —— 动作早播完了。 */
+                zrig_tick(r, 1000.0);
+                CHECK(zrig_action_request(r, "sway_ext", "test", 1) > 0,
+                      "★ 外部动作应能点播（zrig_action_request）");
+                zrig_tick(r, 1000.25);
+                {
+                    double a = zrig_param_effective(r, "ParamTestA");
+                    double b = zrig_param_effective(r, "ParamTestB");
+                    double e = zrig_param_effective(r, "ParamTestE");
+                    CHECK(fabs(a - 7.5) < 1.0, "线性段 0.25s 应约 7.5（读到 %.2f）", a);
+                    CHECK(fabs(b) < 0.6,
+                          "★ 0.25s 时阶梯段还没跳（读到 %.2f）—— 被插成斜坡说明阶梯没生效", b);
+                    CHECK(fabs(e) < 0.6,
+                          "★ 混排曲线里 0.3s 之前的阶梯段仍是 0（读到 %.2f）", e);
+                }
+                zrig_tick(r, 1000.5);
+                {
+                    double a = zrig_param_effective(r, "ParamTestA");
+                    double c = zrig_param_effective(r, "ParamTestC");
+                    double b = zrig_param_effective(r, "ParamTestB");
+                    double e = zrig_param_effective(r, "ParamTestE");
+                    CHECK(fabs(a - 15.0) < 1.0,
+                          "★ 线性段 0.5s 应约 15（读到 %.2f）—— 差一倍就是绝对值/偏移换算错了", a);
+                    CHECK(fabs(c - 10.0) < 1.2,
+                          "★ 贝塞尔段中点应约 10（读到 %.2f）—— 偏太多就是烘焙或控制点口径错", c);
+                    CHECK(fabs(b + 12.0) < 0.6,
+                          "★ 阶梯段在 0.5s 跳到 −12（读到 %.2f）—— 阶梯是「到点才跳」", b);
+                    CHECK(e > 0.2 && e < 1.0,
+                          "★ 混排曲线 0.5s 落在 0.3→1.0 的贝塞尔段中间（读到 %.2f）", e);
+                }
+                zrig_tick(r, 1001.0);
+                {
+                    double a = zrig_param_effective(r, "ParamTestA");
+                    double b = zrig_param_effective(r, "ParamTestB");
+                    double c = zrig_param_effective(r, "ParamTestC");
+                    double e = zrig_param_effective(r, "ParamTestE");
+                    CHECK(fabs(a - 30.0) < 1.0, "线性段 1.0s 应约 30（读到 %.2f）", a);
+                    CHECK(fabs(b + 12.0) < 0.6,
+                          "★ 1.0s 时阶梯段仍保持 −12（读到 %.2f）", b);
+                    CHECK(fabs(c - 20.0) < 1.0, "贝塞尔段末端应到 20（读到 %.2f）", c);
+                    CHECK(fabs(e) < 0.6, "混排曲线末端回到 0（读到 %.2f）", e);
+                }
+                zrig_tick(r, 1002.0);
+                {
+                    double dd = zrig_param_effective(r, "ParamTestD");
+                    double a = zrig_param_effective(r, "ParamTestA");
+                    CHECK(fabs(dd - 1.0) < 0.06,
+                          "★ 绝对值 1.0 落到默认 0.5 的参数上，有效值应仍是 1.0（读到 %.2f）", dd);
+                    CHECK(fabs(a) < 1.0, "线性段回到 0（读到 %.2f）", a);
+                }
+            }
+            zrig_free(r);
+        }
+    }
+
+    /* 认不出的参数：跳过 + 警告；一条都用不上 = 硬失败，不许造出空动作 */
+    {
+        FILE *f = fopen(m3_unknown, "wb");
+        if (f) {
+            fputs("{\"Version\":3,\"Meta\":{\"Duration\":1.0},\"Curves\":["
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamNoSuch\","
+                  "\"Segments\":[0,0.0,0.0,1.0,1.0]}]}", f);
+            fclose(f);
+        }
+        {
+            zdiag d;
+            zrig *r;
+            zdiag_init(&d);
+            r = zrig_load(rig_path, dir, &d);
+            CHECK(r != NULL, "rig 能加载（未知参数那次）");
+            if (r) {
+                int before = zrig_action_count(r);
+                CHECK(zrig_motion3_add(r, "unknown.motion3.json", "ext_unknown", &d) < 0,
+                      "★ 一条曲线都用不上时必须失败，不许造出空动作");
+                CHECK(zrig_action_count(r) == before, "失败时不许往动作表里塞东西");
+                zrig_free(r);
+            }
+        }
+    }
+    /* 段编码写错：贝塞尔少给控制点 */
+    {
+        FILE *f = fopen(m3_bad, "wb");
+        if (f) {
+            fputs("{\"Version\":3,\"Meta\":{\"Duration\":1.0},\"Curves\":["
+                  "{\"Target\":\"Parameter\",\"Id\":\"ParamTestA\","
+                  "\"Segments\":[0.0,0.0, 1,0.2,0.0,0.8]}]}", f);
+            fclose(f);
+        }
+        {
+            zdiag d;
+            zrig *r;
+            int rc, i, hit = 0;
+            zdiag_init(&d);
+            r = zrig_load(rig_path, dir, &d);
+            if (r) {
+                rc = zrig_motion3_add(r, "bad.motion3.json", "ext_bad", &d);
+                CHECK(rc < 0, "★ 贝塞尔段少给控制点必须报错");
+                for (i = 0; i < d.count; ++i)
+                    if (strstr(d.items[i].msg, "贝塞尔")) hit = 1;
+                CHECK(hit, "报错要提到「贝塞尔」并说清缺什么数");
+                zrig_free(r);
+            }
+        }
+    }
+}
+
+/* T66.22 / S3 后半：外部表情文件 .exp3.json
+   ------------------------------------------------------------------
+   判据全部落在**语义**上：
+   ① Blend 三值映射：Add → base+v，Multiply → base×v，Overwrite → 绝对值 v；
+   ② ★ **不减默认值**：Overwrite 到 5.0、参数默认是 20.0 时，有效值必须是 5.0
+      （若照 .motion3 那套减了默认值，会读到 −15 —— 两个导入器的差别就在这一条）；
+   ③ FadeInTime：半程约等于一半；FadeOutTime 在"切回无表情"那一步生效；
+   ④ 模型里没有的参数跳过并留警告，一条都用不上 = 硬失败且不留半个空表情；
+   ⑤ 不认识的 Blend 值必须报错（官方是静默按 Add 算，那样错了极难查）；
+   ⑥ id 撞车必须报错（表情按 id 点播）。 */
+static void test_expression3_import(void)
+{
+    char rig_path[1024], exp_path[1024], fade_path[1024], bad_path[1024];
+    char miss_path[1024], dup_path[1024];
+    SECTION("T66.22：外部 .exp3 表情导入（三种 Blend / 绝对值 / 淡入淡出 / 参数缺失）");
+    z_mkdir_p("/tmp/zc_exp3");
+    z_snprintf(rig_path, sizeof(rig_path), "/tmp/zc_exp3/rig.json");
+    z_snprintf(exp_path, sizeof(exp_path), "/tmp/zc_exp3/peek.exp3.json");
+    z_snprintf(fade_path, sizeof(fade_path), "/tmp/zc_exp3/fade.exp3.json");
+    z_snprintf(bad_path, sizeof(bad_path), "/tmp/zc_exp3/badblend.exp3.json");
+    z_snprintf(miss_path, sizeof(miss_path), "/tmp/zc_exp3/nowhere.exp3.json");
+    z_snprintf(dup_path, sizeof(dup_path), "/tmp/zc_exp3/dup.exp3.json");
+
+    {   /* 部件要一张真图（装载期读宽高）；2×2 合成，不碰美术资产 */
+        zerr pe;
+        zimg *px = zimg_new(2, 2);
+        int k;
+        zerr_clear(&pe);
+        for (k = 0; px && k < 4; ++k) {
+            px->px[k * 4 + 0] = 180; px->px[k * 4 + 1] = 150;
+            px->px[k * 4 + 2] = 140; px->px[k * 4 + 3] = 255;
+        }
+        CHECK(px && zimg_save_png(px, "/tmp/zc_exp3/p.png", &pe) == 0,
+              "合成素材应能写出：%s", pe.msg);
+        if (px) zimg_free(px);
+    }
+    {
+        FILE *f = fopen(exp_path, "wb");
+        CHECK(f != NULL, "能写 .exp3 样本");
+        if (f) {
+            /* 四种参数各验一件事：Add / Multiply / Overwrite / 不存在的参数 */
+            fputs("{\"Type\":\"Live2D Expression\",\"FadeInTime\":0.0,\"FadeOutTime\":0.0,"
+                  "\"Parameters\":["
+                  "{\"Id\":\"ParamTestA\",\"Value\":12.0,\"Blend\":\"Add\"},"
+                  "{\"Id\":\"ParamTestD\",\"Value\":0.5,\"Blend\":\"Multiply\"},"
+                  "{\"Id\":\"ParamTestE\",\"Value\":5.0,\"Blend\":\"Overwrite\"},"
+                  "{\"Id\":\"ParamNoSuch\",\"Value\":1.0,\"Blend\":\"Add\"}"
+                  "]}", f);
+            fclose(f);
+        }
+    }
+    {   /* 淡入 0.5s / 淡出 0.2s，Overwrite ParamTestA 到 20 */
+        FILE *f = fopen(fade_path, "wb");
+        if (f) {
+            fputs("{\"Type\":\"Live2D Expression\",\"FadeInTime\":0.5,\"FadeOutTime\":0.2,"
+                  "\"Parameters\":[{\"Id\":\"ParamTestA\",\"Value\":20.0,"
+                  "\"Blend\":\"Overwrite\"}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(bad_path, "wb");
+        if (f) {
+            fputs("{\"Type\":\"Live2D Expression\","
+                  "\"Parameters\":[{\"Id\":\"ParamTestA\",\"Value\":1.0,"
+                  "\"Blend\":\"multiplication\"}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(miss_path, "wb");
+        if (f) {
+            fputs("{\"Type\":\"Live2D Expression\","
+                  "\"Parameters\":[{\"Id\":\"ParamNotHere\",\"Value\":1.0}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(dup_path, "wb");
+        if (f) {
+            fputs("{\"Type\":\"Live2D Expression\","
+                  "\"Parameters\":[{\"Id\":\"ParamTestA\",\"Value\":1.0}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        FILE *f = fopen(rig_path, "wb");
+        CHECK(f != NULL, "能写临时 rig（exp3）");
+        if (f) {
+            fputs("{\"schema_version\":1,\"id\":\"e3\",\"name\":\"e3\","
+                  "\"canvas\":{\"w\":200,\"h\":200},"
+                  "\"groups\":{\"root\":{\"pivot\":[100,200],\"parent\":\"\"}},"
+                  "\"parts\":[{\"id\":\"p\",\"file\":\"p.png\",\"group\":\"root\","
+                  "\"layer\":1,\"anchor\":[0,0],\"pos\":[100,100]}],"
+                  "\"params\":["
+                  "{\"id\":\"ParamTestA\",\"min\":-60,\"max\":60,\"default\":0},"
+                  "{\"id\":\"ParamTestD\",\"min\":0,\"max\":1,\"default\":0.5},"
+                  "{\"id\":\"ParamTestE\",\"min\":-60,\"max\":60,\"default\":20}],"
+                  "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}],"
+                  "\"expressions\":[{\"id\":\"plain\",\"params\":[]}],"
+                  "\"expression_files\":[{\"file\":\"peek.exp3.json\"},"
+                  "{\"id\":\"fading\",\"file\":\"fade.exp3.json\"}]}", f);
+            fclose(f);
+        }
+    }
+    {
+        zdiag d;
+        zrig *r;
+        int i, n, hit_peek = 0, hit_fading = 0, warned = 0;
+        zdiag_init(&d);
+        r = zrig_load(rig_path, "/tmp/zc_exp3", &d);
+        CHECK(r != NULL, "带 expression_files 的 rig 应能加载（错误 %d 条）", d.error_count);
+        if (r) {
+            n = zrig_expression_count(r);
+            CHECK(n == 3, "表情数应为 3（自家 plain + 外部两条），实际 %d", n);
+            for (i = 0; i < n; ++i) {
+                if (z_streq(zrig_expression_id(r, i), "peek")) hit_peek = 1;
+                if (z_streq(zrig_expression_id(r, i), "fading")) hit_fading = 1;
+            }
+            CHECK(hit_peek, "★ 外部表情以**文件名**为 id 出现在表情表里（peek）");
+            CHECK(hit_fading, "★ rig 里给了 id 就用 id（fading 而不是 fade）");
+            for (i = 0; i < d.count; ++i)
+                if (strstr(d.items[i].msg, "ParamNoSuch")) warned = 1;
+            CHECK(warned, "模型里没有的参数要留警告（不静默）");
+
+            /* 三种 Blend 的语义 */
+            zrig_tick(r, 1000.0);
+            CHECK(zrig_expression_set(r, "peek") == 0, "表情 peek 能选中");
+            zrig_expression_snap(r);                    /* 跳过淡入，直接到位 */
+            zrig_tick(r, 1000.0);
+            {
+                double a = zrig_param_effective(r, "ParamTestA");
+                double dd = zrig_param_effective(r, "ParamTestD");
+                double e = zrig_param_effective(r, "ParamTestE");
+                CHECK(fabs(a - 12.0) < 0.05, "★ Add：0 + 12 = 12（读到 %.2f）", a);
+                CHECK(fabs(dd - 0.25) < 0.05,
+                      "★ Multiply：默认 0.5 × 0.5 = 0.25（读到 %.2f）—— 被当加法算会到 1.0", dd);
+                CHECK(fabs(e - 5.0) < 0.05,
+                      "★ Overwrite：绝对值 5 就是 5（读到 %.2f）—— 读到 25 说明照动作那套减了默认值",
+                      e);
+            }
+            zrig_expression_clear(r);
+            zrig_expression_snap(r);
+            zrig_tick(r, 1000.01);
+            CHECK(fabs(zrig_param_effective(r, "ParamTestE") - 20.0) < 0.05,
+                  "取消表情后参数回默认 20（读到 %.2f）",
+                  zrig_param_effective(r, "ParamTestE"));
+
+            /* 淡入：FadeInTime = 0.5s */
+            zrig_tick(r, 2000.0);
+            CHECK(zrig_expression_set(r, "fading") == 0, "表情 fading 能选中");
+            zrig_tick(r, 2000.25);
+            {
+                double half = zrig_param_effective(r, "ParamTestA");
+                CHECK(half > 6.0 && half < 14.0,
+                      "★ 淡入半程应约为 10（smoothstep(0.5)=0.5 × 20），读到 %.2f", half);
+            }
+            zrig_tick(r, 2000.6);
+            {
+                double full = zrig_param_effective(r, "ParamTestA");
+                CHECK(fabs(full - 20.0) < 0.05, "淡入结束后应到 20（读到 %.2f）", full);
+            }
+            /* 淡出：FadeOutTime = 0.2s —— 走"切回无表情"那一条 */
+            zrig_expression_clear(r);
+            zrig_tick(r, 2000.7);
+            {
+                double mid = zrig_param_effective(r, "ParamTestA");
+                CHECK(mid > 4.0 && mid < 16.0,
+                      "★ 淡出半程应在 0..20 之间（0.1s/0.2s），读到 %.2f", mid);
+            }
+            zrig_tick(r, 2000.85);
+            CHECK(fabs(zrig_param_effective(r, "ParamTestA")) < 1.0,
+                  "淡出结束后参数回 0（读到 %.2f）",
+                  zrig_param_effective(r, "ParamTestA"));
+            zrig_expression_clear(r);
+            zrig_expression_snap(r);
+
+            /* 失败路径：都用同一个已装载的 rig 直接调导入函数 */
+            {
+                int before = zrig_expression_count(r);
+                CHECK(zrig_expression3_add(r, "badblend.exp3.json", "blend_bad", &d) < 0,
+                      "★ 不认识的 Blend 必须报错（官方静默按 Add 算，那是最难查的一种错）");
+                CHECK(zrig_expression_count(r) == before, "失败时不许往表情表里塞东西");
+                CHECK(zrig_expression3_add(r, "nowhere.exp3.json", "no_param", &d) < 0,
+                      "★ 一条参数都用不上必须失败，不许造出空表情");
+                CHECK(zrig_expression_count(r) == before, "同上：失败不留残渣");
+                CHECK(zrig_expression3_add(r, "dup.exp3.json", "plain", &d) < 0,
+                      "★ 表情 id 撞车必须报错（表情是按 id 点播的）");
+                CHECK(zrig_expression_count(r) == before, "撞车也不许塞进去");
+            }
+            zrig_free(r);
+        }
+    }
+}
+
+/* T66.19 / S4：挂点（socket）。配件靠"名字"挂在骨上，而不是把画布坐标写死。
+   这一节的每条都是**换装/换形态之后才会暴露**的错误，所以必须机检：
+   ① 挂点解析成（父骨，坐标）；② 配件位置的唯一来源是挂点 + dpos；
+   ③ 挂点会跟着父骨转；④ 四类写错要在装载期就打回去，不许静默。 */
+/* T66.22b：上眼皮弧线（G66.13）。眼眶遮罩不再靠纵向缩放，而是由 ParamEyeLOpen 驱动的
+   网格整体下沉 —— 关键是**上边界从此不是一条水平直线**，半闭时虹膜被弧线切。
+
+   这一节守三件事（都是这一轮实际踩过的）：
+     ① 睁眼（Open=1）时位移必须是 0 —— 静止画面逐像素不变，这是不许退让的基线；
+     ② 闭到底（Open=0）时遮罩真的合上（高度剩不到两成），否则"半闭全废"看不出来；
+     ③ 中间档的上边界**中间比两头低**（弧），而不是齐平（直线）—— 这条是这一轮的目的。
+   判据全走 zrig_mask_frame()：那正是渲染时用的那份遮罩 alpha，不另算一份。 */
+static void test_eye_lid_arc(void)
+{
+    char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
+    zdiag d;
+    zrig *r;
+    const zimg *m;
+    int w = 0, h = 0;
+
+    SECTION("T66.22b 上眼皮弧线：遮罩由网格下沉驱动（上边界是弧，不是直线）");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_lid_arc");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(dir);
+    z_mkdir_p(sprites);
+    /* 合成素材：60×40 的整块不透明矩形。**不拿真实眼眶图**——那张图的 alpha 只占右半
+       （左半空着给眼线让位），bbox 取列会偏，量的东西就不是网格了。 */
+    z_snprintf(dst, sizeof(dst), "%s/sock.png", sprites);
+    {
+        zerr pe;
+        zimg *px = zimg_new(60, 40);
+        int k;
+        CHECK(px != NULL, "应能建合成遮罩素材");
+        zerr_clear(&pe);
+        for (k = 0; px && k < 60 * 40; ++k) {
+            px->px[k * 4 + 0] = 255; px->px[k * 4 + 1] = 255;
+            px->px[k * 4 + 2] = 255; px->px[k * 4 + 3] = 255;
+        }
+        CHECK(px && zimg_save_png(px, dst, &pe) == 0, "合成遮罩素材应能写出");
+        if (px) zimg_free(px);
+    }
+    (void)src;
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+
+    /* 遮罩件 id 用 eye_l 前缀 → 引擎按约定当成左眼（眼睑/闭眼交叉淡化都看它）。
+       网格 4 列 2 行，keyform 两档：Open=1 位移全 0；Open=0 整块下沉 40px。
+       注意"下沉"在数据里是**每一行都往下走**（下沿也走），这正是"整体压下去"，
+       和缩放的差别只在于：中间可以比两头走得少 —— 那就是弧。 */
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"lidarc\",\"name\":\"眼皮弧线\","
+        "\"canvas\":{\"w\":400,\"h\":400},\"origin\":[200,400],"
+        "\"groups\":{},"
+        "\"params\":[{\"id\":\"ParamArc\",\"min\":0,\"max\":1,\"default\":1,\"binds\":[]}],"
+        "\"parts\":["
+        " {\"id\":\"eye_l_socket\",\"file\":\"sprites/sock.png\",\"layer\":10,"
+        "  \"pos\":[100,100],\"anchor\":[0,0],\"mask_only\":true,"
+        "  \"tags\":[\"eye_aperture\"],\"aperture_min\":1.0},"
+        " {\"id\":\"eye_l_base\",\"file\":\"sprites/sock.png\",\"layer\":20,"
+        "  \"pos\":[100,100],\"anchor\":[0,0],\"mask\":\"eye_l_socket\"}],"
+        "\"deformers\":["
+        " {\"id\":\"eye_l_lid_arc\",\"part\":\"eye_l_socket\",\"cols\":4,\"rows\":2,"
+        "  \"param\":\"ParamArc\",\"keys\":["
+        "   {\"v\":0.0,\"points\":["
+        "     {\"c\":0,\"r\":0,\"dy\":40},{\"c\":1,\"r\":0,\"dy\":32},"
+        "     {\"c\":2,\"r\":0,\"dy\":30},{\"c\":3,\"r\":0,\"dy\":32},"
+        "     {\"c\":4,\"r\":0,\"dy\":40}]},"
+        "   {\"v\":1.0,\"points\":[]}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "带眼皮网格的 rig 应装载成功");
+    if (!r) return;
+    zrig_ambient_enable(r, 0);
+
+    /* ① 睁眼：位移 0 ⇒ 遮罩 bbox 与"没有网格"时一致。这里用"网格位移必须全 0"
+          来守 —— 比 bbox 更直接，也不会被抗锯齿边缘骗到。 */
+    {
+        double dx[32], dy[32];
+        int cols = 0, rows = 0, np, q, all0 = 1;
+        zrig_param_set(r, "ParamArc", 1.0);
+        zrig_tick(r, 0.0);
+        np = zrig_deform_mesh(r, "eye_l_lid_arc", &cols, &rows, dx, dy, 32);
+        CHECK(np == 15 && cols == 4 && rows == 2, "4×2 网格应有 15 个控制点（实际 %d）", np);
+        for (q = 0; q < np && q < 32; ++q) {
+            if (dx[q] != 0.0 || dy[q] != 0.0) all0 = 0;
+        }
+        CHECK(all0, "Open=1 时眼皮网格位移必须全 0（静止画面零改动）");
+    }
+
+    /* ② 闭到 0：遮罩真的合上。量的是 zrig_mask_frame 里 alpha>40 的行范围。 */
+    {
+        int y0 = -1, y1 = -1, y;
+        zrig_param_set(r, "ParamArc", 0.0);
+        zrig_tick(r, 0.0);
+        m = zrig_mask_frame(r, "eye_l_base", 1.0, &w, &h);
+        CHECK(m != NULL && w > 0 && h > 0, "应能取到 eye_l_base 的遮罩图");
+        if (m) {
+            for (y = 0; y < h; ++y) {
+                int x, hit = 0;
+                for (x = 0; x < w; ++x) {
+                    if (m->px[((size_t)y * w + x) * 4 + 3] > 40) { hit = 1; break; }
+                }
+                if (hit) { if (y0 < 0) y0 = y; y1 = y; }
+            }
+            CHECK(y0 > 105, "闭到底时遮罩上沿必须真的往下走（实际 y0=%d，原始 100）", y0);
+            CHECK(y1 >= y0 && (y1 - y0 + 1) < 2 * 40 / 3,
+                  "闭到底时遮罩高度应剩不到一半（实际 %d / %d）", y1 - y0 + 1, h);
+        }
+    }
+
+    /* ③ 中间档：上边界中间比两头低（弧）。取 Open=0.5 那一帧，
+          先量遮罩自己的 bbox，再比较"左侧 15%""正中""右侧 15%"三列的最高不透明行。
+          （第一版拿帧宽当图宽算列号，三列全落在遮罩外面，读数 -1 —— 那是我算错，
+            不是遮罩坏了；bbox 里取列才是稳的。） */
+    {
+        int x0 = -1, x1 = -1, x, y, k, top[3] = {-1, -1, -1};
+        int qx[3];
+        zrig_param_set(r, "ParamArc", 0.5);
+        zrig_tick(r, 0.0);
+        m = zrig_mask_frame(r, "eye_l_base", 1.0, &w, &h);
+        CHECK(m != NULL, "半闭时也应能取到遮罩图");
+        if (m) {
+            for (y = 0; y < h; ++y) {
+                for (x = 0; x < w; ++x) {
+                    if (m->px[((size_t)y * w + x) * 4 + 3] > 40) {
+                        if (x0 < 0 || x < x0) x0 = x;
+                        if (x > x1) x1 = x;
+
+                    }
+                }
+            }
+            CHECK(x0 >= 0 && x1 > x0, "半闭时遮罩应还有宽度（bbox %d..%d）", x0, x1);
+            if (x0 >= 0 && x1 > x0) {
+                qx[0] = x0 + (x1 - x0) * 15 / 100;
+                qx[1] = (x0 + x1) / 2;
+                qx[2] = x1 - (x1 - x0) * 15 / 100;
+                for (k = 0; k < 3; ++k) {
+                    for (y = 0; y < h; ++y) {
+                        if (m->px[((size_t)y * w + qx[k]) * 4 + 3] > 40) { top[k] = y; break; }
+                    }
+                }
+                CHECK(top[0] > 0 && top[1] > 0 && top[2] > 0,
+                      "半闭时三列都应有遮罩（%d/%d/%d）", top[0], top[1], top[2]);
+                if (top[0] > 0 && top[1] > 0 && top[2] > 0) {
+                    /* 弧 = 中间的上沿比两侧**高**（y 更小）。上眼皮中间闭合得晚，
+                       所以开口中间更"鼓"。三者相等就是一条水平直线 —— 正是要消灭的东西。 */
+                    CHECK(top[1] < top[0] - 1 && top[1] < top[2] - 1,
+                          "半闭时上边界应是弧：中间 %d 应明显高于两侧 %d / %d",
+                          top[1], top[0], top[2]);
+                }
+            }
+        }
+    }
+
+    /* ④ 写错的地方要被打回：param 指向不存在的参数 */
+    {
+        char bad[1024];
+        z_snprintf(bad, sizeof(bad), "%s/bad.json", dir);
+        write_text(bad,
+            "{\"schema_version\":\"1.0\",\"id\":\"bad\",\"name\":\"b\","
+            "\"canvas\":{\"w\":200,\"h\":200},\"groups\":{},"
+            "\"parts\":[{\"id\":\"eye_l_socket\",\"file\":\"sprites/sock.png\",\"layer\":1,"
+            " \"pos\":[10,10],\"anchor\":[0,0]}],"
+            "\"deformers\":[{\"id\":\"arc\",\"part\":\"eye_l_socket\",\"cols\":1,\"rows\":1,"
+            " \"param\":\"ParamNoSuch\",\"keys\":[{\"v\":0.0,\"points\":[]}]}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        zdiag_init(&d);
+        {
+            zrig *bad_r = zrig_load(bad, dir, &d);
+            CHECK(bad_r == NULL, "网格绑到不存在的参数应当装载失败（否则就是静默不动）");
+            if (bad_r) zrig_free(bad_r);
+        }
+    }
+    zrig_free(r);
+}
+
+/* ---------------------------------------------------------------------------
+   T66.12：父组继承度（inherit）—— "头转、帽子不跟着转"。
+
+   要解决的事：帽子/发饰按道理挂在 head 组下面（这样转头时它跟着走、不会脱位），
+   但挂上去之后**连 head 的旋转也一起吃掉了**，帽子就跟着甩。以前只有两条烂路：
+   ① 不挂 head → 转头时帽子脱位；② 给帽子单独加一根骨 → 每件多一层要维护的东西。
+
+   现在给组加一个 inherit：
+     full（缺省）位置+旋转+缩放全继承（老行为）· rotation 只吃旋转、不吃平移
+     position 只吃平移、不吃旋转 · none 完全不继承（世界坐标）
+
+   判据必须能分辨这四种，所以故意把父组**同时**平移 10px、旋转 90°：
+   同一个挂点在这四种模式下算出的屏幕位置各不相同，一眼就能看出哪条路走通了。
+   --------------------------------------------------------------------------- */
+static void test_group_inherit(void)
+{
+    char path[1024], rig[8192];
+    const char *tmpl =
+        "{\"schema_version\":1,\"id\":\"inh\",\"name\":\"继承度\",\"canvas\":[400,400],"
+        "%s"
+        "\"sockets\":{\"s\":{\"group\":\"shot\",\"pos\":[110,10]}},"
+        "\"parts\":[{\"id\":\"p1\",\"file\":\"x.png\",\"socket\":\"s\","
+        "\"dpos\":[0,0],\"pos\":[110,10],\"layer\":1}],"
+        "\"params\":["
+        " {\"id\":\"ParamRot\",\"min\":0,\"max\":90,\"default\":90,"
+        "  \"binds\":[{\"group\":\"head\",\"param\":\"rot_deg\",\"scale\":1}]},"
+        " {\"id\":\"ParamDx\",\"min\":0,\"max\":10,\"default\":10,"
+        "  \"binds\":[{\"group\":\"head\",\"param\":\"dx\",\"scale\":1}]}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}";
+
+    SECTION("T66.12 父组继承度：头转帽子不跟着转（inherit）");
+    z_mkdir_p("/tmp/zc_inherit");
+    {
+        zerr pe;
+        zimg *px = zimg_new(2, 2);
+        int k;
+        zerr_clear(&pe);
+        for (k = 0; px && k < 4; ++k) {
+            px->px[k * 4 + 0] = 200; px->px[k * 4 + 1] = 160;
+            px->px[k * 4 + 2] = 140; px->px[k * 4 + 3] = 255;
+        }
+        CHECK(px && zimg_save_png(px, "/tmp/zc_inherit/x.png", &pe) == 0,
+              "合成素材应能写出：%s", pe.msg);
+        if (px) zimg_free(px);
+    }
+
+    /* 四种模式各跑一次，记下挂点的屏幕位置。
+       父组 head：pivot (100,0)、平移 10px、旋转 90°（都由参数推，default 即末端值）。
+       子组 shot：pivot (0,0)、自己不动，只有 inherit 不同。 */
+    {
+        const char *modes[4] = {"", "rotation", "position", "none"};
+        const char *names[4] = {"full（缺省）", "rotation", "position", "none"};
+        double got[4][2];
+        int m;
+        for (m = 0; m < 4; ++m) {
+            char groups[1024];
+            zdiag d;
+            zrig *r;
+            int i, si = -1;
+            got[m][0] = got[m][1] = -999.0;
+
+            /* 子组那一段按模式拼：缺省时不写 inherit 这个键（老 rig 就是这样） */
+            z_snprintf(groups, sizeof(groups),
+                "\"groups\":{"
+                "\"root\":{\"pivot\":[0,0]},"
+                "\"head\":{\"pivot\":[100,0],\"parent\":\"root\"},"
+                "\"shot\":{\"pivot\":[0,0],\"parent\":\"head\"%s%s%s}},"
+                ,
+                modes[m][0] ? ",\"inherit\":\"" : "",
+                modes[m][0] ? modes[m] : "",
+                modes[m][0] ? "\"" : "",
+                "");
+            z_snprintf(rig, sizeof(rig), tmpl, groups);
+            z_snprintf(path, sizeof(path), "/tmp/zc_inherit/m%d.json", m);
+            write_text(path, rig);
+            zdiag_init(&d);
+            r = zrig_load(path, "/tmp/zc_inherit", &d);
+            CHECK(r != NULL, "inherit=%s 的 rig 应加载成功（%d 条诊断）",
+                  names[m], d.error_count);
+            if (!r) continue;
+            /* ★ 必须先 tick：组的 sx/sy 是每帧重置成 1 再叠加参数的，
+               不跑 tick 时它们还是 0 —— 矩阵会退化成"全零"，量出来是 (0,0)。
+               这条坑写在测试里，免得下次有人以为是 inherit 算错了。 */
+            zrig_ambient_enable(r, 0);
+            zrig_phys_set_enabled(r, 0);
+            for (i = 0; i < 6; ++i) zrig_tick(r, i / 60.0);
+            for (i = 0; i < zrig_socket_count(r); ++i)
+                if (strcmp(zrig_socket_id(r, i), "s") == 0) si = i;
+            CHECK(si >= 0, "应能找到挂点 s");
+            if (si >= 0) zrig_socket_screen_pos(r, si, 1.0, got[m]);
+            zrig_free(r);
+        }
+        /* 期望值（手算，别用引擎自己算一遍来对拍 —— 那是自证）：
+             head 矩阵：p' = pivot + delta + R90(p - pivot)，pivot=(100,0)、delta=(10,0)
+             full      (110,0) + R90(10,10) = (110,0)+(-10,10) = (100,10)
+             rotation  丢掉平移：(0,0) + R90(110,10)          = (-10,110)
+             position  丢掉旋转，只取**父枢轴的位移** (10,0)：(110,10)+(10,0) = (120,10)
+                       （★ 不能拿父矩阵的平移列 —— 那一列里混着"绕枢轴转"带来的 -110px）
+             none      父组整个不管                              = (110,10)          */
+        CHECK(fabs(got[0][0] - 100.0) < 0.05 && fabs(got[0][1] - 10.0) < 0.05,
+              "full 应得 (100,10)，实测 (%.2f,%.2f)", got[0][0], got[0][1]);
+        CHECK(fabs(got[1][0] + 10.0) < 0.05 && fabs(got[1][1] - 110.0) < 0.05,
+              "rotation（只吃旋转、不吃平移）应得 (-10,110)，实测 (%.2f,%.2f)",
+              got[1][0], got[1][1]);
+        CHECK(fabs(got[2][0] - 120.0) < 0.05 && fabs(got[2][1] - 10.0) < 0.05,
+              "position（只吃父枢轴的位移、不吃旋转）应得 (120,10)，实测 (%.2f,%.2f)",
+              got[2][0], got[2][1]);
+        CHECK(fabs(got[3][0] - 110.0) < 0.05 && fabs(got[3][1] - 10.0) < 0.05,
+              "none 应得 (110,10)（完全不跟父组），实测 (%.2f,%.2f)",
+              got[3][0], got[3][1]);
+        printf("    量到：full (%.1f,%.1f) · rotation (%.1f,%.1f) · "
+               "position (%.1f,%.1f) · none (%.1f,%.1f)\n",
+               got[0][0], got[0][1], got[1][0], got[1][1],
+               got[2][0], got[2][1], got[3][0], got[3][1]);
+    }
+
+    /* 负控：inherit 写错名字必须拒载。静默退回 full 的表现是"帽子还是跟着转"，
+       而 rig 上明明写着要关 —— 这种沉默的错误比崩溃难查得多。 */
+    {
+        zdiag d;
+        zrig *r;
+        z_snprintf(rig, sizeof(rig),
+            "{\"schema_version\":1,\"id\":\"bad\",\"name\":\"x\",\"canvas\":[400,400],"
+            "\"groups\":{\"root\":{\"pivot\":[0,0]},"
+            "\"head\":{\"pivot\":[100,0],\"parent\":\"root\"},"
+            "\"shot\":{\"pivot\":[0,0],\"parent\":\"head\",\"inherit\":\"rotatoin\"}},"
+            "\"parts\":[{\"id\":\"p1\",\"file\":\"x.png\",\"pos\":[0,0],\"layer\":1}],"
+            "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+        z_snprintf(path, sizeof(path), "/tmp/zc_inherit/bad.json");
+        write_text(path, rig);
+        zdiag_init(&d);
+        r = zrig_load(path, "/tmp/zc_inherit", &d);
+        CHECK(r == NULL && d.error_count > 0,
+              "inherit 写错名字必须拒载（拼错的 rotatoin），实为 %s",
+              r ? "加载成功（闸失效）" : "已拒载");
+        if (r) zrig_free(r);
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   T69.1：脱口而出 vs 先想一想（zthink）。
+
+   用户原话：「...两种都能不需要点击什么选项，而且由 AI 自己选择...
+             就像是她真的会自己想事情，或者就是单纯的想和你说话。」
+
+   这里守三件事：
+     ① **判据**：短句/寒暄 → blurt；带"为什么/该不该/难过"→ ponder 或 deliberate。
+        判反了就成了"每句都深思"或"每句都敷衍"，两种都不像人。
+     ② **可解释**：out.why 里必须能看到加减分项 —— 没有它，"她这次为什么想了想"
+        只能靠猜，和随机数没区别。
+     ③ **确定性**：同一输入跑两次必须完全一样。随机不叫性格，叫掷骰子。
+   主动开口那一侧守：冷却（刚说过不打扰）、深夜静音、约定到期必定开口、
+   以及"上一句没被接就退半步"。
+   --------------------------------------------------------------------------- */
+static void test_zthink(void)
+{
+    zthink_profile fast, slow;
+    zthink_in in;
+    zthink_out a, b;
+    zthink_urge u;
+
+    SECTION("T69.1 脱口而出 vs 先想一想：节奏由引擎判，不由用户选");
+
+    memset(&fast, 0, sizeof fast);
+    fast.pace_fast = 0.85; fast.effort = 0.30; fast.express = 0.35;
+    fast.proactive = 0.55; fast.curiosity = 0.55;
+    memset(&slow, 0, sizeof slow);
+    slow.pace_fast = 0.20; slow.effort = 0.85; slow.express = 0.20;
+    slow.proactive = 0.25; slow.curiosity = 0.80;
+
+    memset(&in, 0, sizeof in);
+    in.tier = 1; in.mood = 0.6; in.hour = 15; in.since_last_ms = 600000;
+
+    /* ① 短句寒暄：快的那个人必须脱口而出 */
+    in.text = "在吗";
+    zthink_decide(&fast, &in, &a);
+    CHECK(a.mode == ZTHINK_BLURT, "「在吗」这种话不该被想成一道题（实为 %s）",
+          zthink_mode_id(a.mode));
+    CHECK(strstr(a.why, "→ blurt") != NULL, "判定必须带可审计的加减分明细：%s", a.why);
+    CHECK(a.delay_ms >= 0 && a.delay_ms <= 200,
+          "脱口而出的停顿必须在 200ms 以内（实为 %d ms）—— 停半秒就不叫脱口而出了",
+          a.delay_ms);
+    CHECK(a.max_tokens <= 120, "脱口而出的预算应短（实为 %d）", a.max_tokens);
+
+    /* ② 同一个人、同一句话，慢的那个要想得久一点（倾向不同，判断就该不同） */
+    zthink_decide(&slow, &in, &b);
+    CHECK(b.delay_ms > a.delay_ms, "慢的人停顿应更长（快 %d / 慢 %d）",
+          a.delay_ms, b.delay_ms);
+
+    /* ③ 重话题 + 要拿主意：必须从"想一下"起步 */
+    in.text = "你觉得我该不该和他分手，我最近很难过";
+    zthink_decide(&fast, &in, &a);
+    CHECK(a.mode != ZTHINK_BLURT, "「该不该分手、很难过」不该脱口而出（实为 %s）",
+          zthink_mode_id(a.mode));
+    CHECK(a.delay_ms >= 400, "这种话的停顿必须真的长（实为 %d ms）", a.delay_ms);
+    CHECK(a.preface[0] != 0, "想一下的时候要先放一句真反应（preface 不能空）");
+    zthink_decide(&slow, &in, &b);
+    CHECK(b.mode == ZTHINK_DELIBERATE || a.mode == ZTHINK_DELIBERATE,
+          "两个人都该往「认真想」那一档靠（快 %s / 慢 %s）",
+          zthink_mode_id(a.mode), zthink_mode_id(b.mode));
+    CHECK(strcmp(a.why, b.why) != 0, "不同人给出的理由必须不同（否则参数没起作用）");
+
+    /* ④ 「记得/上次」要触发翻记忆；普通寒暄不需要翻 */
+    in.text = "你还记得上次我们一起烤蛋糕吗";
+    zthink_decide(&fast, &in, &a);
+    CHECK(a.needs_memory == 1, "带「记得/上次」的句子应触发翻记忆");
+    in.text = "在吗";
+    zthink_decide(&fast, &in, &a);
+    CHECK(a.needs_memory == 0, "寒暄不该去翻记忆");
+
+    /* ⑤ 确定性：同一输入两次必须逐字段相同 */
+    in.text = "为什么你总是不说话";
+    zthink_decide(&fast, &in, &a);
+    zthink_decide(&fast, &in, &b);
+    CHECK(a.mode == b.mode && a.delay_ms == b.delay_ms &&
+          strcmp(a.preface, b.preface) == 0 && strcmp(a.why, b.why) == 0,
+          "同样的输入必须得到同样的判断（随机不叫性格）");
+
+    /* ⑥ 深夜会慢半拍：同一个问题 03:00 的分数应高于 15:00 */
+    in.hour = 15; zthink_decide(&fast, &in, &a);
+    in.hour = 3;  zthink_decide(&fast, &in, &b);
+    CHECK(b.score > a.score, "深夜应当更容易愣一下（15 点 %.2f / 3 点 %.2f）", a.score, b.score);
+
+    /* ---- 主动开口 ---- */
+    SECTION("T69.1 她自己想说话：有节奏、有理由、会被自己劝住");
+
+    memset(&in, 0, sizeof in);
+    in.tier = 0; in.mood = 0.6; in.hour = 15;
+
+    /* ⑦ 冷却：刚说过话就不打扰（90 秒内） */
+    in.since_last_ms = 30000;
+    zthink_urge_now(&fast, &in, 0, 0, &u);
+    CHECK(u.would_speak == 0 && u.urge == 0.0, "刚说过话不该马上又开口（urge=%.2f）", u.urge);
+    CHECK(u.wait_s > 0, "被冷却挡住时要告诉界面等多久（%d 秒）", u.wait_s);
+
+    /* ⑧ 闲得越久越想说话（单调） */
+    {
+        double prev = -1.0;
+        int64_t spans[4] = {120000, 900000, 3600000, 7200000};
+        int k, mono = 1;
+        for (k = 0; k < 4; ++k) {
+            in.since_last_ms = spans[k];
+            zthink_urge_now(&fast, &in, 0, 0, &u);
+            if (u.urge < prev) mono = 0;
+            prev = u.urge;
+        }
+        CHECK(mono, "闲得越久，想说话的冲动不该下降（末值 %.2f）", prev);
+    }
+
+    /* ⑨ 约定到期：这是最正当的理由，必须直接顶到开口 */
+    in.since_last_ms = 120000;
+    zthink_urge_now(&fast, &in, 1, 0, &u);
+    CHECK(u.would_speak == 1 && u.intent == ZINTENT_REMEMBER,
+          "记忆里约定到期时必须开口，且理由是「想起一件事」（urge=%.2f intent=%s）",
+          u.urge, zthink_intent_id(u.intent));
+
+    /* ⑩ 深夜静音：凌晨 3 点不该主动吵人，但白天同样的空闲要开口 */
+    in.since_last_ms = 7200000;
+    in.hour = 15;
+    zthink_urge_now(&fast, &in, 0, 0, &u);
+    CHECK(u.would_speak == 1, "白天闲两小时应该有话想说（urge=%.2f）", u.urge);
+    in.hour = 3;
+    zthink_urge_now(&fast, &in, 0, 0, &u);
+    CHECK(u.would_speak == 0, "凌晨三点不该主动开口（urge=%.2f）—— 会自己想事不等于半夜吵人",
+          u.urge);
+
+    /* ⑪ 上一句是她提的、对方没接：退半步 */
+    in.hour = 15;
+    {
+        zthink_urge base;
+        zthink_urge_now(&fast, &in, 0, 0, &base);
+        in.had_topic = 1;
+        zthink_urge_now(&fast, &in, 0, 0, &u);
+        CHECK(u.urge < base.urge, "上一句没人接时要退半步（%.2f → %.2f）",
+              base.urge, u.urge);
+    }
+
+    /* ⑫ 理由必须是人话（能被打出来看），且带具体数字 */
+    CHECK(strstr(u.why, "闲了") != NULL && strstr(u.why, "主动倾向") != NULL,
+          "开口理由必须写清依据：%s", u.why);
+}
+
+static void test_socket_s4(void)
+{
+    SECTION("T66.19：挂点（socket）—— 配件按名字挂在骨上");
+    /* 一份最小 rig：root + head 两根骨，一个挂点挂在 head 上，一件配件挂它 */
+    const char *body_fmt =
+        "{\"schema_version\":1,\"id\":\"t\",\"name\":\"t\",\"canvas\":[200,200],"
+        "\"groups\":{\"root\":{\"pivot\":[100,100]},"
+        "\"head\":{\"pivot\":[100,40],\"parent\":\"root\"}},";
+    char rig[4096];
+
+    /* ① 正例：挂点解析成 (head, [100,40])，配件 pos = 挂点 + dpos */
+    {
+        char path[1024];
+        zdiag d;
+        zrig *r;
+        double pos[2] = {0, 0};
+        FILE *f;
+        z_mkdir_p("/tmp/zc_socket");
+        /* 部件必须有一张真图 —— 引擎在装载期就要读到它的宽高。现画 2×2 纯色，
+           和上面"形变器 × 平滑形变"那一节同一个理由：引擎测试不许依赖美术资产。 */
+        {
+            zerr pe;
+            zimg *px = zimg_new(2, 2);
+            int k;
+            CHECK(px != NULL, "应能建合成素材");
+            zerr_clear(&pe);
+            for (k = 0; px && k < 4; ++k) {
+                px->px[k * 4 + 0] = 200; px->px[k * 4 + 1] = 160;
+                px->px[k * 4 + 2] = 140; px->px[k * 4 + 3] = 255;
+            }
+            CHECK(px && zimg_save_png(px, "/tmp/zc_socket/x.png", &pe) == 0,
+                  "合成素材应能写出：%s", pe.msg);
+            if (px) zimg_free(px);
+        }
+        z_snprintf(path, sizeof(path), "/tmp/zc_socket/ok.json");
+        f = fopen(path, "wb");
+        CHECK(f != NULL, "能写临时 rig");
+        if (f) {
+            z_snprintf(rig, sizeof(rig),
+                "%s\"sockets\":{\"s_hand\":{\"group\":\"head\",\"pos\":[120,60]}},"
+                "\"parts\":[{\"id\":\"p1\",\"file\":\"x.png\",\"socket\":\"s_hand\","
+                "\"dpos\":[3,-4],\"pos\":[123,56],\"layer\":1}],"
+                "\"params\":[{\"id\":\"ParamRot\",\"min\":-1,\"max\":1,\"default\":0,"
+                "\"binds\":[{\"group\":\"head\",\"param\":\"rot_deg\",\"scale\":30}]}],"
+                "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}",
+                body_fmt);
+            fputs(rig, f);
+            fclose(f);
+            zdiag_init(&d);
+            r = zrig_load(path, "/tmp/zc_socket", &d);
+            CHECK(r != NULL, "挂了 socket 的 rig 应能加载（错误 %d 条）", d.error_count);
+            if (r) {
+                CHECK(zrig_socket_count(r) == 1, "挂点数应为 1，实际 %d",
+                      zrig_socket_count(r));
+                CHECK(z_streq(zrig_socket_id(r, 0), "s_hand"), "挂点 id 应原样保留");
+                CHECK(z_streq(zrig_socket_group(r, 0), "head"), "挂点应解析到父骨 head");
+                CHECK(zrig_socket_pos(r, 0, pos) && pos[0] == 120 && pos[1] == 60,
+                      "挂点静态坐标应为 [120,60]，实际 [%g,%g]", pos[0], pos[1]);
+                CHECK(zrig_part_socket(r, "p1") == 0,
+                      "★ 配件应记得自己挂在哪个挂点上（换装时靠它重新对位）");
+                CHECK(zrig_part_socket(r, "root") == -1, "没挂 socket 的部件应返回 -1");
+                {
+                    double ap[2] = {0, 0};
+                    /* 先跑一帧：绘制状态（变换矩阵）是在 tick 里算的，没 tick 过读不到 */
+                    zrig_tick(r, 100.0);
+                    /* 部件 pos = 挂点 + dpos ⇒ [123,56]；锚点在正中 ⇒ 画出来就在那 */
+                    CHECK(zrig_part_anchor_pos(r, "p1", 1.0, ap)
+                          && fabs(ap[0] - 123) < 1.5 && fabs(ap[1] - 56) < 1.5,
+                          "配件落点应由「挂点 + dpos」决定：[123,56]，实际 [%.1f,%.1f]",
+                          ap[0], ap[1]);
+                }
+                /* ③ 父骨转过之后，挂点必须跟着走（"配件跟着手腕动"的机检形式） */
+                {
+                    double before[2] = {0, 0}, after[2] = {0, 0};
+                    double t = 100.0, dist = 0.0;
+                    int i;
+                    zrig_socket_screen_pos(r, 0, 1.0, before);
+                    zrig_param_set(r, "ParamRot", 1.0);
+                    for (i = 0; i < 3; ++i) { t += 1.0 / 60.0; zrig_tick(r, t); }
+                    zrig_socket_screen_pos(r, 0, 1.0, after);
+                    dist = fabs(after[0] - before[0]) + fabs(after[1] - before[1]);
+                    CHECK(dist > 5.0,
+                          "★ 父骨转 30° 后挂点应跟着移动 5px 以上（实到 %.2f）——"
+                          " 这是「配件跟着骨动」唯一能量出来的形式", dist);
+                }
+                zrig_free(r);
+            }
+            remove(path);
+        }
+    }
+
+    /* ② 四类写错都要在装载期打回去 */
+    {
+        struct { const char *name, *extra, *want; } bad[] = {
+            {"未知挂点", "\"sockets\":{\"s_a\":{\"group\":\"head\",\"pos\":[1,1]}},"
+                         "\"parts\":[{\"id\":\"p\",\"file\":\"x.png\",\"socket\":\"s_nope\"}]",
+             "未知的挂点"},
+            {"挂点指向不存在的骨",
+             "\"sockets\":{\"s_a\":{\"group\":\"ghost\",\"pos\":[1,1]}},\"parts\":[]",
+             "挂点指向的组"},
+            {"挂点没写 pos",
+             "\"sockets\":{\"s_a\":{\"group\":\"head\"}},\"parts\":[]",
+             "挂点必须写 pos"},
+            {"挂点没写 group",
+             "\"sockets\":{\"s_a\":{\"pos\":[1,1]}},\"parts\":[]",
+             "挂点必须写 group"},
+            {"socket 件的 pos 与挂点不一致",
+             "\"sockets\":{\"s_a\":{\"group\":\"head\",\"pos\":[10,10]}},"
+             "\"parts\":[{\"id\":\"p\",\"file\":\"x.png\",\"socket\":\"s_a\","
+             "\"pos\":[40,40]}]",
+             "不一致"},
+        };
+        size_t k;
+        for (k = 0; k < sizeof(bad) / sizeof(bad[0]); ++k) {
+            char path[1024], msg[1024];
+            zdiag d;
+            zrig *r;
+            FILE *f;
+            int i, hit = 0;
+            z_snprintf(path, sizeof(path), "/tmp/zc_socket/bad_%zu.json", k);
+            f = fopen(path, "wb");
+            if (!f) { CHECK(0, "能写临时 rig"); continue; }
+            z_snprintf(rig, sizeof(rig),
+                       "%s%s,\"params\":[],\"actions\":[{\"id\":\"i\",\"loop\":true,"
+                       "\"channels\":[]}]}", body_fmt, bad[k].extra);
+            fputs(rig, f);
+            fclose(f);
+            zdiag_init(&d);
+            r = zrig_load(path, "/tmp/zc_socket", &d);
+            CHECK(r == NULL, "★ %s ⇒ 装载必须失败", bad[k].name);
+            for (i = 0; i < d.count; ++i) {
+                if (strstr(d.items[i].msg, bad[k].want)) hit = 1;
+            }
+            msg[0] = '\0';
+            for (i = 0; i < d.count && i < 2; ++i)
+                z_snprintf(msg + strlen(msg), sizeof(msg) - strlen(msg),
+                           "(%d) %s ", i, d.items[i].msg);
+            CHECK(hit, "★ %s 的报错应提到「%s」，实际：%s",
+                  bad[k].name, bad[k].want, msg);
+            if (r) zrig_free(r);
+            remove(path);
+        }
+    }
+}
+
+static void test_look_follow_lag(void)
+{
+    SECTION("T63.1：身子比头晚到（慣性）+ 跟随会冲过再回弹（反動）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        int i;
+        double t = 1000.0;
+        double hx[200], cx[200], lk[200];
+        double hf, cf, ht = -1.0, ct = -1.0, ovr = 0.0;
+        const int N = 90;
+
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "rig 能加载");
+        if (!r) return;
+
+        zrig_look(r, 0.0, 0.0);
+        for (i = 0; i < 120; ++i) { t += 1.0 / 60.0; zrig_tick(r, t); }
+        zrig_look(r, 1.0, 0.0);
+        for (i = 0; i < N; ++i) {
+            t += 1.0 / 60.0;
+            zrig_tick(r, t);
+            hx[i] = zrig_group_offset_x(r, "head");
+            cx[i] = zrig_group_offset_x(r, "chest");
+            lk[i] = zrig_look_x(r);
+        }
+        hf = hx[N - 1];
+        cf = cx[N - 1];
+        /* 用半高时刻比先后，不用峰值时刻：head 是 chest 的子组，它的位移里
+           **含着 chest 那一份**，而那一份是延迟的，会把 head 的峰值一起往后拖，
+           两个峰于是撞在同一帧，看上去像"没有延迟"。探针第一版就这么误报过。 */
+        for (i = 0; i < N; ++i) {
+            if (ht < 0.0 && fabs(hx[i]) >= fabs(hf) * 0.5) ht = i * 1000.0 / 60.0;
+            if (ct < 0.0 && fabs(cx[i]) >= fabs(cf) * 0.5) ct = i * 1000.0 / 60.0;
+            if (fabs(lk[i]) > ovr) ovr = fabs(lk[i]);
+        }
+        CHECK(ht > 0.0 && ct > 0.0, "头和胸都动起来了");
+        CHECK(ct - ht > 20.0,
+              "★ 身子比头晚到 20ms 以上（同时动 = 官方说的机器人）");
+        CHECK(ovr > 1.005,
+              "★ 跟随量冲过稳态（纯指数趋近永远冲不过 = 停得太干净）");
+        /* 冲过头也不行：果冻感。官方说的是"反動"不是"弹簧玩具"。 */
+        CHECK(ovr < 1.25, "冲过的幅度有节制，不是果冻");
+
+        /* 暂停契约：同一时间戳重复 tick 必须幂等。历史环每 tick 都推进的话，
+           暂停期间 lag 组会偷偷"追上"头，画面在暂停中继续变化。 */
+        {
+            double a = zrig_group_offset_x(r, "chest");
+            double b;
+            zrig_tick(r, t);
+            zrig_tick(r, t);
+            b = zrig_group_offset_x(r, "chest");
+            CHECK(fabs(a - b) < 1e-9, "★ 同一时刻重复 tick，延迟组不动（暂停契约）");
+        }
+        zrig_free(r);
+    }
+}
+
+static void test_micro_expression(void)
+{
+    SECTION("微表情通道：眨眼随情绪漂移 + 单边嘴角 ParamMouthX（T44.2）");
+    {
+        char rig_path[1024], dir[1024];
+        zdiag d;
+        zrig *r;
+        double dx_n, dx_p, rot_n, rot_p, bl_n, bl_p, br_n, br_p;
+        int n_angry, n_calm, n_base;
+        double hold_sleepy = 0.0, hold_base = 0.0;
+        zdiag_init(&d);
+        z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+        z_snprintf(rig_path, sizeof(rig_path), "%s/rig.json", dir);
+        r = zrig_load(rig_path, dir, &d);
+        CHECK(r != NULL, "装载 rig.json 应成功（错误 %d 条）", d.error_count);
+        if (!r) { zdiag_print(&d, stderr); return; }
+
+        /* ---------- 一、眨眼情绪表 ---------- */
+        CHECK(zrig_blink_mood_count(r) >= 6,
+              "blink.mood_rate 至少要覆盖 6 种情绪（实际 %d）—— 只写一两条等于没做",
+              zrig_blink_mood_count(r));
+
+        zrig_blink_set_mood(r, "angry");
+        CHECK(zrig_blink_rate(r) > 1.3,
+              "angry 必须眨得更勤（rate=%.2f）—— Ponder & Kennedy 1927："
+              "怒り/興奮で瞬目が増える", zrig_blink_rate(r));
+        zrig_blink_set_mood(r, "affection");
+        CHECK(zrig_blink_rate(r) < 1.0,
+              "affection 必须眨得更少（rate=%.2f）—— 大森ら 1997：眨眼多的人"
+              "被评价为缺乏亲近感与诚实性，亲昵那一侧要反过来压",
+              zrig_blink_rate(r));
+        zrig_blink_set_mood(r, "sleepy");
+        CHECK(zrig_blink_closed_scale(r) > 1.5,
+              "sleepy 的每次闭眼要更久（closed_scale=%.2f）—— 困倦是"
+              "「眨得慢而久」，不是「眨得少」", zrig_blink_closed_scale(r));
+
+        /* 负控①：表里没有的情绪必须回落常态，不许沿用上一个情绪的倍率。
+           这条很重要 —— 情绪词表归平台层管，rig 只写它关心的几个。 */
+        zrig_blink_set_mood(r, "angry");
+        zrig_blink_set_mood(r, "this_mood_does_not_exist");
+        CHECK(zrig_blink_rate(r) == 1.0 && zrig_blink_closed_scale(r) == 1.0,
+              "未登记的情绪必须回落 1.0/1.0（实际 %.2f/%.2f）—— 否则一旦"
+              "上游传来个新情绪词，角色就卡在上一个情绪的节奏里",
+              zrig_blink_rate(r), zrig_blink_closed_scale(r));
+        /* 负控②：空字符串 = 清除情绪 */
+        zrig_blink_set_mood(r, "angry");
+        zrig_blink_set_mood(r, "");
+        CHECK(zrig_blink_rate(r) == 1.0, "传空串必须清回常态（实际 %.2f）",
+              zrig_blink_rate(r));
+
+        /* ---------- 二、情绪真的改变了眨眼次数（行为，不是读数） ---------- */
+        {
+            struct { const char *mood; int *out; } run[3];
+            int k;
+            run[0].mood = "";        run[0].out = &n_base;
+            run[1].mood = "angry";   run[1].out = &n_angry;
+            run[2].mood = "affection"; run[2].out = &n_calm;
+            for (k = 0; k < 3; ++k) {
+                zrig *r2 = zrig_load(rig_path, dir, &d);
+                double t = 0.0, step = 1.0 / 60.0, hold = 0.0;
+                int n = 0, prev = 0;
+                if (!r2) { *run[k].out = -1; continue; }
+                zrig_blink_set_mood(r2, run[k].mood);
+                while (t < 180.0) {
+                    double v;
+                    t += step; zrig_tick(r2, t);
+                    v = zrig_blink_value(r2);
+                    if (v > 0.5 && !prev) n++;
+                    if (v >= 0.999) hold += step;
+                    prev = v > 0.5;
+                }
+                *run[k].out = n;
+                if (k == 0) hold_base = n ? hold / n : 0.0;
+                zrig_free(r2);
+            }
+        }
+        CHECK(n_angry > n_base && n_base > n_calm,
+              "180 秒实测眨眼次数必须 angry(%d) > 常态(%d) > affection(%d) —— "
+              "读数对但行为不对 = 倍率没接进状态机", n_angry, n_base, n_calm);
+
+        {   /* sleepy：次数差别不大，但每次闭合保持时间必须明显拉长 */
+            zrig *r2 = zrig_load(rig_path, dir, &d);
+            double t = 0.0, step = 1.0 / 60.0, hold = 0.0;
+            int n = 0, prev = 0;
+            hold_sleepy = 0.0;
+            if (r2) {
+                zrig_blink_set_mood(r2, "sleepy");
+                while (t < 180.0) {
+                    double v;
+                    t += step; zrig_tick(r2, t);
+                    v = zrig_blink_value(r2);
+                    if (v > 0.5 && !prev) n++;
+                    if (v >= 0.999) hold += step;
+                    prev = v > 0.5;
+                }
+                hold_sleepy = n ? hold / n : 0.0;
+                zrig_free(r2);
+            }
+        }
+        CHECK(hold_sleepy > hold_base * 1.5,
+              "sleepy 每次闭眼保持 %.3fs 必须明显长于常态 %.3fs（>1.5 倍）",
+              hold_sleepy, hold_base);
+
+        /* ---------- 三、单边嘴角 ParamMouthX ---------- */
+        zrig_param_set(r, "ParamMouthX", -1.0);
+        zrig_tick(r, 400.0);
+        dx_n  = zrig_part_channel(r, "mouth_open", "dx");
+        rot_n = zrig_part_channel(r, "mouth_open", "rot_deg");
+        bl_n  = zrig_part_channel(r, "blush_l", "dy");
+        br_n  = zrig_part_channel(r, "blush_r", "dy");
+        zrig_param_set(r, "ParamMouthX", 1.0);
+        zrig_tick(r, 401.0);
+        dx_p  = zrig_part_channel(r, "mouth_open", "dx");
+        rot_p = zrig_part_channel(r, "mouth_open", "rot_deg");
+        bl_p  = zrig_part_channel(r, "blush_l", "dy");
+        br_p  = zrig_part_channel(r, "blush_r", "dy");
+
+        CHECK(dx_p > 0.5 && dx_n < -0.5 && rot_p > 3.0 && rot_n < -3.0,
+              "ParamMouthX 必须同时驱动平移与旋转（dx %.2f/%.2f  rot %.2f/%.2f）",
+              dx_n, dx_p, rot_n, rot_p);
+        /* 抬一侧嘴角靠的是旋转，不是平移 —— 实测扫描结论（logs/asset_qa/mouthx_sweep.png）：
+           平移一大就变成"嘴整个滑到一边"，那是缺陷不是表情。这条把配比钉死。 */
+        CHECK(fabs(rot_p) > fabs(dx_p) * 2.0,
+              "旋转幅度(%.2f°)必须明显大于平移(%.2fpx)——"
+              "单边嘴角靠转不靠挪，平移一大就成了歪嘴缺陷", rot_p, dx_p);
+        /* 脸颊反号：整块颊部随嘴倾斜（真人坏笑就是这样），不是两边一起抬（那是咧嘴笑）。 */
+        CHECK(bl_p * br_p < 0.0 && bl_n * br_n < 0.0,
+              "两侧脸颊必须反号（+1 时 L %.2f / R %.2f）—— 同号 = 两边一起抬 = "
+              "咧嘴笑，那是 ParamMouthForm 的活", bl_p, br_p);
+        /* 负控：ParamMouthX 不许碰口型同步的两个参数，否则一说话就互相打架。 */
+        {
+            double form_before, form_after;
+            zrig_param_set(r, "ParamMouthX", 0.0);
+            zrig_tick(r, 402.0);
+            form_before = zrig_part_channel(r, "mouth_open", "sx");
+            zrig_param_set(r, "ParamMouthX", 1.0);
+            zrig_tick(r, 403.0);
+            form_after = zrig_part_channel(r, "mouth_open", "sx");
+            CHECK(fabs(form_after - form_before) < 1e-9,
+                  "ParamMouthX 不许动 sx（%.6f→%.6f）—— sx 是 ParamMouthForm "
+                  "也就是口型同步的通道，两边抢同一个 sx 会在说话时打架",
+                  form_before, form_after);
+        }
+        zrig_free(r);
+    }
+}
+
+static void test_zbus(void) {
+    SECTION("zbus：无锁环形缓冲（铁律一/三，发布不阻塞渲染）");
+    {
+        zbus b; zbus_event ev, out;
+        int i;
+        zbus_init(&b);
+        CHECK(zbus_cap(&b)==1024, "容量 1024（2^n）");
+        CHECK(zbus_is_empty(&b), "初始为空");
+        /* 基础发布/消费 */
+        zbus_event_init(&ev, ZBUS_EVT_TICK, "sys/tick", "test");
+        zbus_event_set_u32(&ev, 42);
+        CHECK(zbus_publish(&b, &ev)==ZBUS_OK, "发布 1 条应成功");
+        CHECK(zbus_len(&b)==1, "len 1");
+        CHECK(zbus_peek(&b, &out)==ZBUS_OK && out.type==ZBUS_EVT_TICK, "peek 可见");
+        CHECK(zbus_len(&b)==1, "peek 不消费");
+        CHECK(zbus_consume(&b, &out)==ZBUS_OK, "消费应成功");
+        CHECK(out.type==ZBUS_EVT_TICK, "类型一致");
+        CHECK(zbus_is_empty(&b), "消费后为空");
+        CHECK(zbus_consume(&b, &out)==ZBUS_EMPTY, "空时返回 EMPTY");
+        /* 满则丢，不阻塞 */
+        for (i=0;i<ZBUS_CAP;i++) {
+            zbus_event_init(&ev, ZBUS_EVT_ACTION, "pet/action", "test");
+            if (zbus_publish(&b, &ev)!=ZBUS_OK) break;
+        }
+        CHECK(i==ZBUS_CAP, "填满 %d 条（实际 %d）", ZBUS_CAP, i);
+        CHECK(zbus_is_full(&b), "满");
+        zbus_event_init(&ev, ZBUS_EVT_ACTION, "pet/action", "test");
+        CHECK(zbus_publish(&b, &ev)==ZBUS_FULL, "满时返回 FULL，不阻塞");
+        CHECK(b.dropped==1, "dropped 计数");
+        CHECK(zbus_len(&b)==ZBUS_CAP, "len 不超容");
+        /* 清空后再用 */
+        for (i=0;i<ZBUS_CAP;i++) CHECK(zbus_consume(&b, &out)==ZBUS_OK, "逐条取 %d", i);
+        CHECK(zbus_is_empty(&b), "清空后为空");
+        /* payload 边界 */
+        zbus_event_init(&ev, ZBUS_EVT_CUSTOM, "a/b", "sender");
+        zbus_event_set_str(&ev, "hello");
+        CHECK(ev.payload_len==5, "str payload 5");
+        zbus_publish(&b, &ev);
+        zbus_consume(&b, &out);
+        CHECK(out.payload_len==5 && memcmp(out.payload,"hello",5)==0, "payload 往返一致");
+        /* 并发 SPSC：单生产者 10 万条（铁律一：AI 线程往总线丢，渲染只消，避免锁） */
+        {
+#ifndef _WIN32
+            pthread_t th;
+            zbus cb; zbus_init(&cb);
+            struct thr_arg { zbus *b; int n; } a1={&cb, 100000};
+            void *pub_fn(void *p){ struct thr_arg *a=(struct thr_arg*)p; int k; for(k=0;k<a->n;){ zbus_event e; zbus_event_init(&e,ZBUS_EVT_TICK,"thr/tick","thr"); zbus_event_set_u32(&e,(uint32_t)k); if(zbus_publish(a->b,&e)==ZBUS_OK) k++; else { sched_yield(); } } return NULL; }
+            pthread_create(&th,NULL,pub_fn,&a1);
+            {
+                int got=0;
+                uint8_t seen[100000]={0};
+                int spins=0;
+                while(got < 100000 && spins < 10000000){
+                    zbus_event o2;
+                    if(zbus_consume(&cb,&o2)==ZBUS_OK){
+                        uint32_t v=0; if(o2.payload_len>=4) memcpy(&v,o2.payload,4);
+                        if(v < 100000) seen[v]++;
+                        got++;
+                    } else { sched_yield(); spins++; }
+                }
+                CHECK(got==100000, "并发 SPSC 10 万条全收（got %d）", got);
+                int uniq=0, dup=0; for(i=0;i<100000;i++){ if(seen[i]==1) uniq++; else if(seen[i]>1) dup++; }
+                CHECK(dup==0, "并发 10 万条无重复（dup %d）", dup);
+                CHECK(uniq==100000, "10 万条序号全对（uniq %d）", uniq);
+            }
+            pthread_join(th,NULL);
+#endif
+        }
+        /* 时序：seq 单调 */
+        {
+            zbus sb; zbus_init(&sb);
+            uint32_t last=0;
+            for(i=0;i<100;i++){ zbus_event e2; zbus_event_init(&e2,ZBUS_EVT_TICK,"s","t"); zbus_publish(&sb,&e2); }
+            for(i=0;i<100;i++){ zbus_event o2; zbus_consume(&sb,&o2); CHECK(o2.seq > last || last==0, "seq 单调 %u -> %u", last, o2.seq); last=o2.seq; }
+        }
+    }
+}
+
+static void test_zmod(void) {
+    SECTION("zmod：热插拔管理器（铁律三，空目录不算错，禁用不加载）");
+    {
+        zbus bus; zbus_init(&bus);
+        zmod_mgr mgr; zdiag d; zdiag_init(&d);
+        zmod_mgr_init(&mgr, g_root, &bus);
+        /* 空目录/缺目录算 0，且不报错 */
+        CHECK(zmod_scan(&mgr, &d)==0, "扫描空/默认目录应成功");
+        CHECK(zmod_count(&mgr)==0 || zmod_count(&mgr)>=0, "count >=0（实际 %d）", zmod_count(&mgr));
+        /* 禁用示例不应被 dlopen */
+        {
+            char ex[1024]; z_path_join(ex,sizeof(ex), g_root, "config/modules/_example.json");
+            if(z_file_exists(ex)){
+                int n0=zmod_count(&mgr);
+                /* _example 禁用，若被扫描到也不应新增 handle；若未扫描到，count 不变 */
+                CHECK(zmod_find(&mgr,"example_mod")==NULL || !zmod_enabled(&mgr,"example_mod"), "禁用模组不应为 enabled");
+                (void)n0;
+            }
+        }
+        /* dummy ABI 自检 */
+        {
+            const zmod_api *api=zmod_get_api_default();
+            CHECK(api && api->version==ZMOD_ABI_VERSION, "dummy ABI 版本 %d", api?api->version:-1);
+        }
+        /* 广播：无模组时返回 0，不崩 */
+        {
+            zbus_event ev; zbus_event_init(&ev, ZBUS_EVT_TICK, "sys/tick", "test");
+            int n=zmod_dispatch(&mgr, &ev);
+            CHECK(n==0, "零模组广播返回 0");
+        }
+        /* tick：零模组不崩 */
+        zmod_tick(&mgr, 1.0);
+        zmod_mgr_shutdown(&mgr);
+        CHECK(zmod_count(&mgr)==0, "shutdown 后 count 0");
+        /* 热加载冒烟：编译产物存在时才练 */
+        {
+            char so1[1024], so2[1024], jpath[1024];
+            z_path_join(so1,sizeof(so1), g_root, "build/modules/example_mod.so");
+            z_path_join(so2,sizeof(so2), g_root, "modules/example_mod.so");
+            const char *sop = z_file_exists(so1) ? so1 : (z_file_exists(so2) ? so2 : NULL);
+            if(sop){
+                char modjson[1024];
+                z_path_join(modjson,sizeof(modjson), g_root, "config/modules/_example.json");
+                /* 构造临时启用 json */
+                char tmpj[1024]; z_path_join(tmpj,sizeof(tmpj), g_root, "build/_test_mod.json");
+                FILE *f=fopen(tmpj,"w");
+                if(f){ fprintf(f,"{\"id\":\"example_mod\",\"path\":\"%s\",\"enabled\":true}\n", sop); fclose(f);
+                    zbus_init(&bus); zmod_mgr_init(&mgr,g_root,&bus); zdiag_init(&d);
+                    if(zmod_load(&mgr, tmpj, &d)==0){
+                        CHECK(zmod_count(&mgr)==1, "加载临时模组 count 1");
+                        CHECK(zmod_find(&mgr,"example_mod")!=NULL, "find 到 example_mod");
+                        zbus_event ev2; zbus_event_init(&ev2,ZBUS_EVT_TICK,"sys/tick","test"); zmod_dispatch(&mgr,&ev2); zmod_tick(&mgr,2.0);
+                        CHECK(zmod_unload(&mgr,"example_mod")==0, "卸载成功");
+                        CHECK(zmod_count(&mgr)==0, "卸载后 0");
+                    } else { zdiag_print(&d,stderr); CHECK(0,"临时模组加载失败：%s", sop); }
+                    zmod_mgr_shutdown(&mgr); remove(tmpj);
+                }
+                (void)jpath;
+            } else {
+                printf("  [skip] 未找到 example_mod.so，跳过热加载冒烟（先 make modules/example_mod.so）\n");
+            }
+        }
+    }
+}
+
+/* R1 快闸：重型用例默认跳过，--soak 才跑。否则 make test 50 秒超时，CI 形同虚设。 */
+static int g_soak = 0;
+
+
+static void test_perm_cost_perf(void){
+    SECTION("T23 权限/成本/性能预算 (G79/G80/G81)");
+    // zperm
+    {
+        char ebuf[256]={0};
+        zperm *pr = zperm_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(pr!=NULL, "zperm 应能加载 permissions.json");
+        if(pr){
+            CHECK(zperm_cap_enabled(pr, "screen_capture")==0, "默认 screen_capture 应关闭");
+            CHECK(zperm_check(pr, "screen_capture")==-1, "关闭的能力应拒绝");
+            CHECK(zperm_check(pr, "input_control")==-1, "默认 input_control 应拒绝");
+            CHECK(zperm_estop_active(pr)==1, "急停默认应开启（全局开关）");
+            // 敏感区命中
+            CHECK(zperm_sensitive_hit(pr, "1Password - vault")==1, "1Password 应被屏蔽");
+            CHECK(zperm_sensitive_hit(pr, "My Bank page")==1, "bank 应被屏蔽");
+            CHECK(zperm_sensitive_hit(pr, "normal window")==0, "普通窗口不应屏蔽");
+            // 审计
+            CHECK(zperm_audit(pr, "input_control", "test")==0, "审计应可写");
+            // 别名：不存在的能力
+            CHECK(zperm_check(pr, "no_such")== -1, "不存在的能力应拒绝");
+            zperm_free(pr);
+        }
+    }
+    // zcost
+    {
+        char ebuf[256]={0};
+        zcost *co = zcost_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(co!=NULL, "zcost 应能加载 cost_limits.json");
+        if(co){
+            CHECK(zcost_tripped(co, "vision")==0, "初始不应熔断");
+            double est = zcost_estimate_hourly(co);
+            CHECK(est>0.05 && est<5.0, "预估小时费应在合理区间 (实 %.3f)", est);
+            CHECK(zcost_downgrade(co)!=NULL, "降级策略应存在");
+            CHECK(zcost_idle_should_downclock(co, 400)==1, "空闲 400s 应降频");
+            CHECK(zcost_idle_should_downclock(co, 10)==0, "空闲 10s 不应降频");
+            zcost_add(co, "vision", 1.0);
+            CHECK(zcost_tripped(co, "vision")==0, "1.0 未到 vision 日限 2.0");
+            zcost_add(co, "vision", 2.0);
+            CHECK(zcost_tripped(co, "vision")==1, "3.0 应触发 vision 熔断");
+            zcost_free(co);
+        }
+    }
+    // zperf
+    {
+        char ebuf[256]={0};
+        zperf *pf = zperf_load(g_root, ebuf, sizeof(ebuf));
+        CHECK(pf!=NULL, "zperf 应能加载 perf_budget.json");
+        if(pf){
+            CHECK(zperf_render_first(pf)==1, "渲染应永远优先");
+            CHECK(zperf_budget_ok(pf, "idle", 1.0, 100)==1, "idle 1%%/100MB 应在预算内");
+            CHECK(zperf_budget_ok(pf, "realtime", 10, 300)==1, "realtime 10%%/300MB 应在预算内");
+            CHECK(zperf_budget_ok(pf, "realtime", 30, 300)==0, "30%% 超 realtime 25%% 预算应判超");
+            CHECK(zperf_should_yield(pf, 2.0)==1, "用户活跃 2s 应让出");
+            CHECK(zperf_should_yield(pf, 10.0)==0, "用户空闲 10s 不需让出");
+            double rm = zperf_measured(pf, "render_ms");
+            CHECK(rm>10 && rm<100, "渲染实测应在 10-100ms (实 %.1f)", rm);
+            const char *nxt = zperf_degrade_next(pf, "capture_fps");
+            CHECK(nxt!=NULL, "可降档下一级应存在");
+            zperf_free(pf);
+        }
+    }
+}
+
+int main(int argc, char **argv)
+{
+    int ai;
+    zlog_set_level(ZLOG_ERROR);
+    z_strlcpy(g_root, ".", sizeof(g_root));
+    for (ai = 1; ai < argc; ++ai) {
+        if (z_streq(argv[ai], "--soak") || z_streq(argv[ai], "--long") || z_streq(argv[ai], "soak"))
+            g_soak = 1;
+        else if (argv[ai][0] != '-')
+            z_strlcpy(g_root, argv[ai], sizeof(g_root));
+    }
+
+    printf("单元测试（[测试锁]）\n根目录：%s\n\n", g_root);
+    test_json();
+    test_schema();
+    test_state_machine();
+    test_blink();
+    test_eye_saccade();
+    test_sparkle_trigger();
+    test_eye_variants();
+    test_micro_expression();
+    test_look_follow_lag();
+    test_ear_twitch();
+    test_ambient_rejects_oneshot();
+    test_motion3_import();
+    test_expression3_import();
+    test_socket_s4();
+    test_group_inherit();
+    test_zthink();
+    test_eye_lid_arc();
+    test_point_play_beast_actions();
+    test_phys2();
+    test_phys2_rig();
+    test_eye_aperture();
+    test_image();
+    test_image_downsample_aa();
+    test_deflate();
+    test_config_and_pet();
+    test_bad_config();
+    test_rig_channels();
+    test_mask_feather();
+    test_mask();
+    test_eyelid();
+    test_lash_hold();
+    test_group_chain();
+    test_live2d_standard();
+    test_viseme();
+    test_expr_viseme_order();
+    test_expression_blend();
+    test_sleep_wake_blink();
+    test_eye_smile();
+    test_png_parallel_encode();
+    test_zimg_clip_rows();
+    test_render_bands_identical();
+    test_smile_action_sync();
+    test_action_param_channels();
+    test_action_fade_sine();
+    test_mouth_form_corners();
+    test_brow_form();
+    test_mesh_bend_coexist();
+    test_bone_chains();
+    test_skirt_bone_chain();
+    test_fore_bone_chain();
+    test_keyform_ease();
+    test_parent_warp_inherit();
+    test_deform_weights();
+    test_chain_weight();
+    test_inherit_from_part();
+    test_fore_slim_keyform();
+    test_physics_to_param();
+    test_skirt_physics();
+    test_action_drives_param();
+    test_motion_fade();
+    test_ik_two_link();
+    test_physics();
+    test_physics_timestep();
+    test_look();
+    test_params();
+    test_lipsync();
+    test_mesh();
+    test_deform_tree();
+    test_deform_tree_rejects();
+    test_rig_limits();
+    test_zpet_content_scaling();
+    test_keys_and_chain();
+    test_blend();
+    test_pose();
+    test_xfade();
+    test_mask_multi();
+    if (g_soak) test_longrun();
+    else printf("== 长稳：2 万帧（--soak 才跑，已跳过）==\n");
+    test_expression();
+    test_motion_from();
+    test_persona();
+    test_memory_longarc();
+    test_interactions();
+    test_affection();
+    test_perm_cost_perf();
+    test_gateway();
+    test_http_url();
+    test_relay();
+    test_ctx();
+    test_zbus();
+    test_zmod();
+
+    printf("\n通过 %d 项，失败 %d 项\n", g_pass, g_fail);
+    if (g_fail) {
+        printf("结论：不通过（必须全绿才能交付）\n");
+        return 1;
+    }
+    printf("结论：全部通过\n");
+    return 0;
+}

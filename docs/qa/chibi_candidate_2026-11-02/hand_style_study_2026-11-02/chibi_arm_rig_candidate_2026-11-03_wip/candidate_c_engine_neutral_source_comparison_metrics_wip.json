@@ -1,0 +1,213 @@
+{
+  "status": "isolated QA WIP; descriptive source comparison only",
+  "source": {
+    "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+    "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff",
+    "registered_offset_848x1360": [
+      140,
+      68
+    ]
+  },
+  "candidate_rig_sha256": "7c3f4937cc27cd753ed1c0a6610770580aca1b5a721069c7eb2ca4dbf46077a7",
+  "render_conditions": {
+    "style_one_hot": true,
+    "wrist_shoulder_elbow_deg": [
+      0,
+      0,
+      0
+    ],
+    "active_action": "idle",
+    "ambient": 0,
+    "tick_sec": 0.02,
+    "frame_scale": 1.0,
+    "hidden_part_ids": [
+      "acc_ear_cat_l",
+      "acc_ear_cat_r",
+      "acc_tail_cat_relaxed",
+      "acc_tail_cat_up",
+      "acc_tail_cat_puff",
+      "acc_tail_cat_tuck"
+    ]
+  },
+  "c_engine_logs": {
+    "small": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1",
+    "mitten": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+  },
+  "metrics": {
+    "small": {
+      "fullframe": {
+        "changed_pixels_max_rgb_gt_8": 131858,
+        "rgb_mae_all_channels_gray_composited": 5.225973,
+        "alpha_changed_pixels_gt_8": 26101,
+        "roi_xyxy": [
+          0,
+          0,
+          848,
+          1360
+        ]
+      },
+      "roi": {
+        "face_eyes": {
+          "changed_pixels_max_rgb_gt_8": 51716,
+          "rgb_mae_all_channels_gray_composited": 22.369819,
+          "alpha_changed_pixels_gt_8": 5174,
+          "roi_xyxy": [
+            205,
+            390,
+            650,
+            675
+          ]
+        },
+        "hair_head": {
+          "changed_pixels_max_rgb_gt_8": 48099,
+          "rgb_mae_all_channels_gray_composited": 10.432903,
+          "alpha_changed_pixels_gt_8": 8926,
+          "roi_xyxy": [
+            180,
+            75,
+            665,
+            480
+          ]
+        },
+        "torso_arms": {
+          "changed_pixels_max_rgb_gt_8": 30351,
+          "rgb_mae_all_channels_gray_composited": 6.746947,
+          "alpha_changed_pixels_gt_8": 4828,
+          "roi_xyxy": [
+            190,
+            620,
+            665,
+            1010
+          ]
+        },
+        "skirt_legs": {
+          "changed_pixels_max_rgb_gt_8": 16416,
+          "rgb_mae_all_channels_gray_composited": 4.132322,
+          "alpha_changed_pixels_gt_8": 3244,
+          "roi_xyxy": [
+            210,
+            980,
+            640,
+            1340
+          ]
+        }
+      }
+    },
+    "mitten": {
+      "fullframe": {
+        "changed_pixels_max_rgb_gt_8": 132575,
+        "rgb_mae_all_channels_gray_composited": 5.289099,
+        "alpha_changed_pixels_gt_8": 26720,
+        "roi_xyxy": [
+          0,
+          0,
+          848,
+          1360
+        ]
+      },
+      "roi": {
+        "face_eyes": {
+          "changed_pixels_max_rgb_gt_8": 51716,
+          "rgb_mae_all_channels_gray_composited": 22.369819,
+          "alpha_changed_pixels_gt_8": 5174,
+          "roi_xyxy": [
+            205,
+            390,
+            650,
+            675
+          ]
+        },
+        "hair_head": {
+          "changed_pixels_max_rgb_gt_8": 48099,
+          "rgb_mae_all_channels_gray_composited": 10.432903,
+          "alpha_changed_pixels_gt_8": 8926,
+          "roi_xyxy": [
+            180,
+            75,
+            665,
+            480
+          ]
+        },
+        "torso_arms": {
+          "changed_pixels_max_rgb_gt_8": 31068,
+          "rgb_mae_all_channels_gray_composited": 7.139942,
+          "alpha_changed_pixels_gt_8": 5447,
+          "roi_xyxy": [
+            190,
+            620,
+            665,
+            1010
+          ]
+        },
+        "skirt_legs": {
+          "changed_pixels_max_rgb_gt_8": 16682,
+          "rgb_mae_all_channels_gray_composited": 4.316717,
+          "alpha_changed_pixels_gt_8": 3457,
+          "roi_xyxy": [
+            210,
+            980,
+            640,
+            1340
+          ]
+        }
+      }
+    }
+  },
+  "wrist_roi_metrics": {
+    "left": {
+      "small": {
+        "changed_pixels_max_rgb_gt_8": 1089,
+        "rgb_mae_all_channels_gray_composited": 3.250905,
+        "alpha_changed_pixels_gt_8": 405,
+        "roi_xyxy": [
+          183,
+          914,
+          272,
+          1006
+        ]
+      },
+      "mitten": {
+        "changed_pixels_max_rgb_gt_8": 1467,
+        "rgb_mae_all_channels_gray_composited": 7.68289,
+        "alpha_changed_pixels_gt_8": 701,
+        "roi_xyxy": [
+          183,
+          914,
+          272,
+          1006
+        ]
+      }
+    },
+    "right": {
+      "small": {
+        "changed_pixels_max_rgb_gt_8": 2554,
+        "rgb_mae_all_channels_gray_composited": 12.074576,
+        "alpha_changed_pixels_gt_8": 550,
+        "roi_xyxy": [
+          575,
+          914,
+          664,
+          1006
+        ]
+      },
+      "mitten": {
+        "changed_pixels_max_rgb_gt_8": 2893,
+        "rgb_mae_all_channels_gray_composited": 16.533949,
+        "alpha_changed_pixels_gt_8": 873,
+        "roi_xyxy": [
+          575,
+          914,
+          664,
+          1006
+        ]
+      }
+    }
+  },
+  "limitations": [
+    "gray-composited threshold statistics are not calibrated fidelity gates",
+    "small visible hand uses registered exact-source cutouts; hidden wrist continuation is absent",
+    "mitten pixels remain unapproved AI WIP",
+    "visible eye, cuff, body and contour residuals need source/art review",
+    "no motion, occlusion or production acceptance implied"
+  ]
+}

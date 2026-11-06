@@ -1,0 +1,77 @@
+{
+  "name": "阿里百炼 / 通义千问",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 50,
+  "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://dashscope"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "qwen-plus",
+      "price": {
+        "in": 0.8,
+        "out": 2.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "qwen-plus",
+      "price": {
+        "in": 0.8,
+        "out": 2.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "qwen-vl-plus",
+      "price": {
+        "in": 1.5,
+        "out": 4.5,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "embed.text",
+      "model": "text-embedding-v3",
+      "price": {
+        "in": 0.5,
+        "out": 0.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "image.generate",
+      "model": "wanx2.1-t2i-turbo",
+      "price": {
+        "unit": 0.14,
+        "per": 1,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "video.generate",
+      "model": "wanx2.1-t2v-turbo",
+      "price": {
+        "unit": 0.24,
+        "per": 1,
+        "currency": "CNY"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "兼容模式端点是 /compatible-mode/v1（海外站把 dashscope 换成 dashscope-intl）。百炼同时代理了 DeepSeek/Kimi/GLM/MiniMax —— 一把钥匙试多家模型时很省事。出图走 wanx（万相），不是 OpenAI 的 images 端点，需适配层转一道。 ★ 视频走万相 wanx2.1-t2v —— 和本机 ComfyUI 跑的 Wan2.1/2.2 是**同一个模型家族**，所以\"配置够就本地、不够就上云\"在视频这条线上真能做到观感接近，这是双栈最理想的形态。",
+  "id": "dashscope"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "chat.stream",
+  "name": "流式对话",
+  "kind": "stream",
+  "unit": "token",
+  "input": {
+    "messages": "message[]"
+  },
+  "output": {
+    "delta": "text"
+  },
+  "ui": {
+    "panel": "chat"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "mm_diadia_xuemei",
+  "name": "嗲嗲学妹（MiniMax）",
+  "provider": "minimax",
+  "voice_id": "diadia_xuemei",
+  "persona": "shoujo",
+  "anime": true,
+  "langs": [
+    "zh-CN"
+  ],
+  "emotion_mode": "emotion",
+  "emotions": [
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "disgusted",
+    "surprised",
+    "neutral"
+  ],
+  "tunable": {
+    "speed": [
+      0.5,
+      2.0
+    ],
+    "pitch": [
+      -12,
+      12
+    ],
+    "volume": [
+      0,
+      10
+    ]
+  },
+  "recommend": "黏人系，陪伴场景",
+  "source": "MiniMax v2 音色表",
+  "roles": [],
+  "enabled": true
+}

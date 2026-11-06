@@ -1,0 +1,16 @@
+{
+  "id": "stt.listen",
+  "name": "语音识别",
+  "kind": "analyze",
+  "unit": "second",
+  "input": {
+    "audio": "file"
+  },
+  "output": {
+    "text": "text",
+    "segments": "segment[]?"
+  },
+  "ui": {
+    "panel": "text"
+  }
+}

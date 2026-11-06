@@ -1,0 +1,40 @@
+{
+ "lids": [
+  {
+   "side": "l",
+   "file": "eye_l_lid.png",
+   "pos": [
+    108,
+    290
+   ],
+   "size": [
+    128,
+    108
+   ],
+   "travel": 102,
+   "aperture": [
+    118,
+    98
+   ],
+   "liner_top": 0
+  },
+  {
+   "side": "r",
+   "file": "eye_r_lid.png",
+   "pos": [
+    328,
+    292
+   ],
+   "size": [
+    121,
+    106
+   ],
+   "travel": 100,
+   "aperture": [
+    111,
+    96
+   ],
+   "liner_top": 0
+  }
+ ]
+}

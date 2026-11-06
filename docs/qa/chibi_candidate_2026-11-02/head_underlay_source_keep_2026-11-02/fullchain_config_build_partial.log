@@ -1,0 +1,365 @@
+美术来源：characters/xiaoxun/design/design_sheet_chibi.png
+
+=== 1/27 从设计图抠像出 body_full.png（整条流水线的源头） ===
+[警告] 检测到较多白色半透明残留，请检查抠图容差
+[几何锁] body_fit.json：模板裁框 (628.00,101.00) 缩放 0.719543 → 567x1292
+{
+  "source": "characters/xiaoxun/design/design_sheet_chibi.png",
+  "output": "./characters/xiaoxun/forms/chibi/sprites/body_full.png",
+  "key_color": [
+    243,
+    19,
+    197
+  ],
+  "canvas": [
+    848,
+    1360
+  ],
+  "sprite_size": [
+    567,
+    1292
+  ],
+  "scale": 0.7195,
+  "alpha_bbox": [
+    0,
+    0,
+    566,
+    1291
+  ],
+  "transparent_ratio": 0.4407,
+  "white_residue_pixels": 460,
+  "magenta_residue_pixels": 27,
+  "palette": [
+    {
+      "hex": "#D8C0D8",
+      "share": 0.1051
+    },
+    {
+      "hex": "#D8CCD8",
+      "share": 0.0862
+    },
+    {
+      "hex": "#FCE4D8",
+      "share": 0.0748
+    },
+    {
+      "hex": "#FCF0F0",
+      "share": 0.0567
+    },
+    {
+      "hex": "#FCFCF0",
+      "share": 0.0386
+    },
+    {
+      "hex": "#FCE4E4",
+      "share": 0.0379
+    },
+    {
+      "hex": "#F0D8E4",
+      "share": 0.0266
+    },
+    {
+      "hex": "#F0F0F0",
+      "share": 0.0163
+    },
+    {
+      "hex": "#303060",
+      "share": 0.0162
+    },
+    {
+      "hex": "#243060",
+      "share": 0.0159
+    }
+  ],
+  "suggested_regions": {
+    "head": [
+      196,
+      0,
+      453,
+      310
+    ],
+    "body": [
+      208,
+      310,
+      430,
+      775
+    ],
+    "feet": [
+      208,
+      1085,
+      430,
+      207
+    ],
+    "origin_x": 424,
+    "origin_y": 1292,
+    "sprite_w": 567,
+    "sprite_h": 1292
+  }
+}
+
+=== 2/27 身体分段（头/躯干/双臂/双腿） ===
+  seg_head    567x 644  左上 (0,0)
+  seg_torso   327x 397  左上 (121,567)
+  seg_arm_l    99x 230  左上 (61,698)
+  seg_arm_r    99x 230  左上 (409,698)
+  seg_leg_l   148x 408  左上 (124,884)
+  seg_leg_r   171x 407  左上 (272,885)
+手臂离身行 897（此行以下按真实轮廓抠，以上竖切）
+裙摆下沿（逐列）y 948..964（中位 956，离群列 132 条按最近正常列取值），大腿补了 17351 像素
+切线：颈 605 肩 736 髋 921 裙摆底 962 腕 914；躯干 x [121,447]；重叠 38px
+写出 ./characters/xiaoxun/forms/chibi/sprites/body_parts.json
+预览（不入库）：logs/asset_qa/segments_preview.png
+
+=== 3/27 手臂四件（上臂/前臂 × 左右，袖下躯干用 AI 重绘补齐） ===
+  肩关节 l: 肩峰y=736 + 臂半径35.3 → 关节(131,771)  [与外轮廓 x=96 相切；旧口径取可见中点 128 ⇒ 圆盘 14% 戳到空气里]
+  插肩育克 l: 关节(131,771) R=35.3 → 3259 px 留给躯干（不跟着胳膊转）
+  肩キャップ l: 塔高 84.0 → 半径 88.0（=2.49×R）→ 9750 px 归躯干、层 142
+  肩关节 r: 肩峰y=736 + 臂半径37.5 → 关节(436,774)  [与外轮廓 x=473 相切；旧口径取可见中点 440 ⇒ 圆盘 14% 戳到空气里]
+  插肩育克 r: 关节(436,774) R=37.5 → 3431 px 留给躯干（不跟着胳膊转）
+  肩キャップ r: 塔高 86.0 → 半径 90.0（=2.40×R）→ 10358 px 归躯干、层 143
+  袖根圆盘 l: 关节R=35.3 → 补绘R=37.3（袖宽80分位 72.0）
+  肘关节 l: 圆心(106,833) R=36.0  [anchors 给的是 (104,833)]
+  袖根圆盘 r: 关节R=37.5 → 补绘R=39.5（袖宽80分位 76.0）
+  肘关节 r: 圆心(460,833) R=38.0  [anchors 给的是 (462,833)]
+手臂拆件完成：4 件；躯干补了 1 像素、清掉 26785 像素；静止合成差 635 像素
+  arm_l_root     pos=[131, 707] size=[65, 118] pivot=[131.3, 771.0] layer=95
+  arm_l_upper    pos=[69, 683] size=[97, 191] pivot=[131.3, 771.0] layer=140
+  arm_l_fore     pos=[65, 798] size=[87, 105] pivot=[105.5, 833.0] layer=144
+  hand_l         pos=[61, 883] size=[67, 45] pivot=[94.5, 896.0] layer=138
+  arm_r_root     pos=[369, 708] size=[68, 121] pivot=[435.5, 774.0] layer=96
+  arm_r_upper    pos=[401, 684] size=[99, 192] pivot=[435.5, 774.0] layer=141
+  arm_r_fore     pos=[413, 796] size=[90, 106] pivot=[460.5, 833.0] layer=145
+  hand_r         pos=[440, 882] size=[68, 47] pivot=[473.0, 895.0] layer=139
+  arm_l_cap      pos=[98, 684] size=[122, 132] pivot=[131.3, 771.0] layer=142
+  arm_r_cap      pos=[346, 685] size=[126, 137] pivot=[435.5, 774.0] layer=143
+
+=== 3a/27 袖子塗り足し（把被白夹克盖掉的那半条上臂补回袖根件） ===
+[sleeve_underlay] 肩关节半径 35.3/37.5（来源 joint_r(make_arm_parts)）
+[sleeve_underlay] l 臂
+  [l] 1x 补料 143 px / 圆盘内保留 409 px → 35x81 @(132,736)
+  [l] @2x 补料 80 px / 圆盘内保留 1467 px → 48x129 @(279,1491)
+    @2x 对齐到严格 2 倍画布 70x162
+[sleeve_underlay] r 臂
+  [r] 1x 补料 168 px / 圆盘内保留 512 px → 38x86 @(398,737)
+  [r] @2x 补料 546 px / 圆盘内保留 0 px → 26x44 @(820,1595)
+    @2x 对齐到严格 2 倍画布 76x172
+[sleeve_underlay] 写回 characters/xiaoxun/forms/chibi/sprites/arm_parts.json
+
+=== 3b/27 正圆关节（肩球 + 肘圆：把关节那一圈做成绕枢轴旋转不变的圆） ===
+[socket] l 肩圆 R=35.9 肘圆 R=52.8 重叠 4px  搬进 cap 4800 px(1x)
+[socket] r 肩圆 R=37.1 肘圆 R=55.0 重叠 4px  搬进 cap 5114 px(1x)
+[socket] 写回 characters/xiaoxun/forms/chibi/sprites/arm_parts.json
+
+=== 3c/27 腕垫片与差分手（Teen 另有 open/heart；Chibi 只从本形态原画生成腕垫片） ===
+手部件完成：2 件（放松=本形态原画件，Chibi 暂仅腕垫片；small/mitten 待专属来源与 T67.69 验收）
+  hand_l_pad      46x52  @(  72, 861) 腕宽 43
+  hand_r_pad      46x52  @( 450, 860) 腕宽 43
+
+=== 3d/27 腕正圆关节（把袖口里的垫片做成以腕枢轴为心的正圆） ===
+[wrist] l 腕圆 R=25.5  垫片 1x=[51, 40, 1721]  2x=[102, 80, 6980]
+[wrist] r 腕圆 R=26.0  垫片 1x=[53, 40, 1755]  2x=[106, 80, 6882]
+[wrist] 写回 characters/xiaoxun/forms/chibi/sprites/hand_parts.json
+
+=== 3e/27 腕半圆塗り足し（手件在腕口补一枚以枢轴为心的正圆） ===
+[wrist_bridge] 完成 0 件
+
+=== 3f/27 裁袖口肉桩（袖管末端那块不跟手转的方料，手一摆就从剪影外探出来） ===
+[wrist_tab] 完成 0 件
+
+=== 4/27 鞋拆件（常态鞋 + 踮脚鞋，顺带把腿件切线以下擦干净） ===
+鞋口 y=1196 鞋底带 y=1276 切线 y=1190 ｜ lift=30.0 拉伸 ku=1.445 压扁 ks=0.65
+  foot_l 触地 常态1291/踮脚1291  鞋口抬高 73 px  像素 12289/15292
+  foot_r 触地 常态1290/踮脚1291  鞋口抬高 74 px  像素 12657/15840
+  腿件擦掉像素：{'seg_leg_l': 9240, 'seg_leg_r': 9547}
+
+=== 5/27 眼部四件（眼眶/眼白/眼球/眼线） ===
+[l] 虹膜半径 36.5px  眼眶 5794px  可动范围 ±19/±10px  眼白 #FDF8F6
+[r] 虹膜半径 36.8px  眼眶 5710px  可动范围 ±19/±11px  眼白 #FDF8F6
+写出 sprites/eye_parts.json
+
+=== 6/27 嘴三件（量嘴线 + 先铺一版几何口内兜底） ===
+嘴线 x260..304 y531..540  开口 39x32（最大张 28px）
+配色 {'上颚': '#351616', '口腔': '#291111', '舌': '#9C3C41', '下唇': '#301313'}
+写出 sprites/mouth_mask.png、mouth_cavity.png、mouth_parts.json
+
+=== 7/27 张嘴真素材（AI 重绘张嘴脸 → 虹膜配准 → 取口内） ===
+[张嘴] 底图已是画布尺寸 → 整体恒等，口内实测 (274,565) → 嘴部平移校正 (-7.9,+17.8)px（4094px）
+张嘴零件完成：配准 scale=1.0000 NCC=1.000；口内 45x24（940px，牙 0px、舌 341px）→ pos=[260, 536]
+
+=== 8/27 呆毛（无损切出） ===
+呆毛切线 y=104，零件 116x116 @ 身体坐标 [223, 0]
+已写出 sprites/hair_ahoge.png，并从 seg_head.png 抹掉原来的发丝
+
+=== 9/27 刘海 + 额头（AI 重绘回贴） ===
+对齐 scale=0.8230 平移=(431.3,755.5)  肤色增益 [0.8, 0.8, 0.8] 偏移 [50.3, 50.9, 60.9]
+补全额头 10552 像素；刘海零件 130x131 @ [219, 324]
+
+=== 10/27 眉毛（AI 重绘 + alpha 抠像） ===
+跳过：本形态没有 head_nobrows 重绘底图（眉毛烘在原画里，rig 不拆眉件）
+
+=== 11/27 闭眼真素材（AI 重绘闭眼脸 → 脸部 NCC 配准 → 切补片） ===
+[闭眼] 底图已是画布尺寸（align_redraw 输出，色差 20.43）→ 恒等映射，不再配准
+闭眼 l: 155x155 @ 身体(113,380)  盖住原画眼睛 100.0%  接缝色差 45.5
+闭眼 r: 155x155 @ 身体(297,380)  盖住原画眼睛 100.0%  接缝色差 47.9
+配准 scale=1.0000 NCC=1.000 → sprites/eye_closed_parts.json
+
+=== 12/27 笑眼真素材（同一条流水线，底图换成山型 ∩ 的笑眼脸） ===
+[笑眼] 底图已是画布尺寸（align_redraw 输出，色差 24.34）→ 恒等映射，不再配准
+笑眼 l: 155x155 @ 身体(113,380)  盖住原画眼睛 100.0%  接缝色差 43.2
+笑眼 r: 155x155 @ 身体(297,380)  盖住原画眼睛 100.0%  接缝色差 45.8
+配准 scale=1.0000 NCC=1.000 → sprites/eye_smile_parts.json
+
+=== 13/27 痛苦闭眼 >_<（第三张重绘底图） ===
+[痛苦闭眼] 底图已是画布尺寸（align_redraw 输出，色差 37.86）→ 恒等映射，不再配准
+痛苦闭眼 l: 163x159 @ 身体(109,378)  盖住原画眼睛 100.0%  接缝色差 41.8
+痛苦闭眼 r: 163x159 @ 身体(293,378)  盖住原画眼睛 100.0%  接缝色差 46.3
+配准 scale=1.0000 NCC=1.000 → sprites/eye_pain_parts.json
+
+=== 14/27 上眼睑（没有闭眼真素材时的兜底方案） ===
+眼睑 l: 75x84 @ 身体(154,335)  行程 78px（眼眶 65x74）
+眼睑 r: 74x83 @ 身体(336,336)  行程 77px（眼眶 64x73）
+写出 sprites/eye_l_lid.png、eye_r_lid.png、eyelid_parts.json
+
+=== 15/27 混合模式零件（腮红·乘算 / 眼高光·加算，程序化画出来的） ===
+写出 ./characters/xiaoxun/forms/chibi/sprites/blush_[lr].png + eye_hl_[lr].png + eye_hl_star_[lr].png + blend_parts.json
+
+=== 16/27 侧发两缕 + 后发（AI 重绘无侧发的脸 → 虹膜配准 → 挖发补脸） ===
+对齐 scale=0.8261 平移=(429.7,743.8) 根部切线 y=428
+侧发 左 20680 / 右 21029 像素，后发 109365 像素，躯干重叠带挖掉 7038 像素
+  hair_side_l  253x205 @ [0, 407] 层 245
+  hair_side_r  254x205 @ [313, 407] 层 246
+  hair_back    567x339 @ [0, 104] 层 170
+
+=== 17/27 头皮塗り足し（seg_head 是张光头：抹掉人耳 / 鬓发翼换发色 / 颅顶铺发基色） ===
+[scalp] seg_head.png 补画完成：30701 像素被换成头发（耳朵 / 鬓发翼 / 颅顶）
+[scalp] seg_head@2x.png 补画完成：34306 像素被换成头发（耳朵 / 鬓发翼 / 颅顶）
+
+=== 18/27 眼线最终拆件 + 真·瞪大眼差分（眼线必须在所有改 seg_head 的工具之后；wide 只放大眼白翼与上睫毛） ===
+  l 眼：换皮肤 5493 像素（补画外扩 759），闭眼线抹掉 2167 像素，眼眶开口 [158, 21, 223, 95]
+  r 眼：换皮肤 5349 像素（补画外扩 623），闭眼线抹掉 2247 像素，眼眶开口 [43, 21, 107, 94]
+写出 sprites/eyeline_parts.json
+瞪大眼 l: 275x166 @ 身体(0,393)  新增眼白 337px / 上睫毛 1507px  接缝 92.4
+瞪大眼 r: 276x166 @ 身体(291,393)  新增眼白 237px / 上睫毛 1509px  接缝 108.3
+[wide] → sprites/eye_wide_parts.json
+
+=== 19/27 闭合笑线剪切（把笑线从 seg_head 上剪下来，必须排在所有改 seg_head 的工具之后） ===
+笑线剪切：body_full x257..307 y528..543 → mouth_open.png 51x16 @ [257, 528]
+  seg_head 对应块已填平（擦前后最大色差 210.4），不透明像素 450 个
+
+=== 20/27 擦掉烘进别的部件里的残留（眼部差分件里的侧发 / 躯干肩上的鲍勃发梢 / 头件下缘的烂衣领） ===
+  seg_leg_l.png    删掉 1 个断开的小碎岛共     1 px（本体 28538 px）
+  seg_leg_r.png    删掉 1 个断开的小碎岛共     1 px（本体 29887 px）
+  [skip] clean_body_seam is Teen-calibrated; leave chibi head/torso geometry untouched
+写出 characters/xiaoxun/forms/chibi/sprites/eye_clean_report.json
+
+=== 20b/27 发片残渣 + 边缘返修（切件时多吃进去的衣领青布/皮肤、撕碎的发梢、硬台阶边） ===
+  接缝补画 seg_torso.png            改色 1202 像素
+  接缝补画 seg_torso@2x.png         改色 2720 像素
+发片残渣清理完成：重画 5796 像素，擦掉 13543 像素，接缝补画 22654 像素，涉及 15 个件
+
+=== 20c/27 脸的轮廓线（按模板把下颌/脸颊的主線补回 seg_head） ===
+[skip] Chibi 已直接保留同源设定稿脸缘；draw_face_contour 的 ROI 是 Teen 坐标，禁止跨形态描线
+
+=== 20d/27 头件发丝残留清理与下颌源图修复 ===
+[head-clean] preserved configured source underlay=60 px (characters/xiaoxun/forms/chibi/design/seg_head_underlay_keep.json)
+[head-clean] jaw source contour repairs=1236; opaque 78432 -> 78432; removed 9616 px; halo=4; neck_y=605
+
+=== 20c/27 腋下描き足し（把抬臂后会露底的腋窝补进躯干） ===
+[armpit] seg_torso 自然剪影：重绘 0 px，透明 8433 px（不扩张衣服外轮廓）
+[armpit] seg_torso@2x 自然剪影：重绘 0 px，透明 33025 px（不扩张衣服外轮廓）
+[armpit] 完成
+[skip] Teen 全身参考切兜帽/帽下发；保留 Chibi 自有附件与清单
+
+=== 21/27 切件高清化（每个件生成 2× 的 @2x，make_rig 会自动改用并把 scale 乘 0.5） ===
+警告：挂件 hair_sidelong_l 没有切件产物，跳过
+警告：挂件 hair_sidelong_r 没有切件产物，跳过
+警告：挂件 hair_crown_twin 没有切件产物，跳过
+警告：挂件 hair_crown_pony 没有切件产物，跳过
+警告：挂件 hair_crown_long 没有切件产物，跳过
+警告：挂件 hood_up_twin 没有切件产物，跳过
+警告：挂件 hood_up_pony 没有切件产物，跳过
+警告：挂件 hood_up_long 没有切件产物，跳过
+警告：挂件 hair_hood_twin 没有切件产物，跳过
+警告：挂件 hair_hood_pony 没有切件产物，跳过
+警告：挂件 hair_hood_pony_side 没有切件产物，跳过
+警告：挂件 hair_hood_long 没有切件产物，跳过
+警告：挂件 hair_sweep_twin_l 没有切件产物，跳过
+警告：挂件 hair_sweep_twin_r 没有切件产物，跳过
+警告：挂件 hair_sweep_pony_l 没有切件产物，跳过
+警告：挂件 hair_sweep_pony_r 没有切件产物，跳过
+[高清] 忽略 hand_l_pad@2x.png：(92, 104) ≠ (102, 80)
+[高清] 忽略 hand_r_pad@2x.png：(92, 104) ≠ (106, 80)
+[高清] 61 个切件 → 2×   （原生 0 / 超分 52 / 插值 9，键色残留修掉 1970 像素，55.1s）
+
+=== 22/27 星星眼差分件（星形虹膜 + ✨ 素材，AI 源图抠像；整组可选） ===
+写出 ./characters/xiaoxun/forms/chibi/sprites/eye_[lr]_ball_star.png（4 个角，占虹膜 19%，星内外亮度差 99.6/108.0，描边深 26.7/24.1，星外保真 100%/100%） + fx_sparkle.png 72×72 + 8 个散布点 → star_eye_parts.json
+[manpu] sweat: fx_sweat.png 92px × 1 片（覆盖 30%）
+[manpu] anger: fx_anger.png 76px × 1 片（覆盖 44%）
+[manpu] gloom: fx_gloom.png 108px × 1 片（覆盖 39%）
+[manpu] zzz: fx_zzz.png 96px × 1 片（覆盖 24%）
+写出 ./characters/xiaoxun/forms/chibi/sprites/manpu_parts.json：4 组
+[skip] Teen 兜帽整形/附件重生成/衣柜重生成；保留 Chibi 现有附件、衣柜清单
+
+=== 24/27 外套前襟下摆的几何（量出哪几列是前襟、哪几行是下摆，给 make_rig 定网格） ===
+前襟 2 片：[(79, 107), (208, 239)]（宽 [29, 32] 列）
+下摆带局部 y=286..330（带高 30 = 躯干高的 7.5%）
+两片之间的空当 101 列 —— 中间的衬衫/裙腰不许跟着摆
+写出 sprites/jacket_parts.json
+
+=== 24d/27 颈部脖子桩拆件（seg_torso 顶部 overlap 行 → torso_top_fill） ===
+[顶条拆件] need 掩膜：326 px(1x) 真会破洞（扩 6 px 后）
+[顶条拆件] torso_top_fill 327x41 @[121, 567]（11497 px 1x）；torso_top_patch 22x13 @[318, 583]（161 px 1x）
+
+=== 24e/27 肘关节补件（折肘时内侧两半料的拼缝 + 交叉尖角） ===
+[肘补件] l 侧：r 52.8→76.6，扇区内 15968 px、抹线 2237 px，切件 81x90 @[67, 812]
+[肘补件] r 侧：r 55.0→79.8，扇区内 16338 px、抹线 2290 px，切件 83x91 @[418, 810]
+
+=== 24f/27 肘内侧褶布 + 接缝盖布（层 150/151，压在两根袖管之上） ===
+[褶布] l 侧：缺口 463 px，接缝描边 467 px（离肘 11~54 px，胀开后 3559 px）
+[褶布] l 侧：缺口 463 px → 褶布 1500 px @[45, 30][38, 800]；接缝描边 467 px（离肘 11~54 px）→ 盖布 3559 px @[52, 54][50, 799]
+[褶布] r 侧：缺口 195 px，接缝描边 430 px（离肘 13~56 px，胀开后 3145 px）
+[褶布] r 侧：缺口 195 px → 褶布 900 px @[42, 24][482, 803]；接缝描边 430 px（离肘 13~56 px）→ 盖布 3145 px @[52, 45][466, 809]
+[褶布] 写回 characters/xiaoxun/forms/chibi/sprites/arm_parts.json
+
+=== 25/27 裙子切件（从 seg_torso 里整件切出来 + のりしろ） ===
+[裙件] skirt_main 302x168 @[131, 795]（30878 px 1x）；躯干 69% 的料留给外套；无损校验 0 误差
+[裙件] 裙腰第 229 行、裙摆第 394 行（1x 切图内），中心 x=160.0，のりしろ 7100 px
+
+=== 26/27 裙子里布（从躯干件上复制裙摆 → 压暗当裏地；@2x 同掩码原样切） ===
+里布 288x86 @ 身体(139,875)  满宽裙摆起始局部 y=80  像素 21231
+  压在表布半透明边上的里布像素 = 0（必须 0，否则静止时裙边会发暗）
+  @2x 576x172（正好是 1× 的两倍）
+写出 sprites/skirt_lining.png、skirt_lining@2x.png、skirt_parts.json
+
+=== 27/27 生成 rig 并验收 ===
+警告：挂件 hair_sidelong_l 没有切件产物，跳过
+警告：挂件 hair_sidelong_r 没有切件产物，跳过
+警告：挂件 hair_crown_twin 没有切件产物，跳过
+警告：挂件 hair_crown_pony 没有切件产物，跳过
+警告：挂件 hair_crown_long 没有切件产物，跳过
+警告：挂件 hood_up_twin 没有切件产物，跳过
+警告：挂件 hood_up_pony 没有切件产物，跳过
+警告：挂件 hood_up_long 没有切件产物，跳过
+警告：挂件 hair_hood_twin 没有切件产物，跳过
+警告：挂件 hair_hood_pony 没有切件产物，跳过
+警告：挂件 hair_hood_pony_side 没有切件产物，跳过
+警告：挂件 hair_hood_long 没有切件产物，跳过
+警告：挂件 hair_sweep_twin_l 没有切件产物，跳过
+警告：挂件 hair_sweep_twin_r 没有切件产物，跳过
+警告：挂件 hair_sweep_pony_l 没有切件产物，跳过
+警告：挂件 hair_sweep_pony_r 没有切件产物，跳过
+[rig] 肩枢轴用 arm_parts.shoulder_joint: l=[271, 839] r=[576, 842]
+[rig] 肘枢轴用 arm_parts.elbow_joint: l=[245.5, 901.0] r=[600.5, 901.0]
+[make_rig] no source hand poses; omitted pose-only channels wave:ParamHandROpen, wave_both:ParamHandROpen, wave_both:ParamHandLOpen, heart_hands:ParamHandRHeart, heart_hands:ParamHandLHeart, kirara_jump:ParamHandLOpen, kirara_jump:ParamHandROpen
+  下半身陪衬：给 8 个动作补了腿部通道
+  动作通道：312 条几何通道 → 396 条参数通道（≈ Live2D .motion3 的 Parameter 曲线）
+[rig] 高清切件 70/70 个用上 @2x（scale ×0.5）
+[rig]   其中 2 个是数组 scale（加性通道），已把 3 条 sx/sy 绑定一并减半
+  挂点：落地 8 个
+  ⚠ 本形态没有 ['acc_hair_crown_twin', 'acc_hair_crown_pony', 'acc_hair_crown_long', 'acc_hair_sidelong_l', 'acc_hair_sidelong_r', 'acc_hair_sweep_pony_l', 'acc_hair_sweep_pony_r', 'acc_hair_sweep_twin_l', 'acc_hair_sweep_twin_r'] —— 档位 'up' 的 hide 名单跳过它们
+  ⚠ 本形态没有 ['acc_hood_up_twin', 'acc_hair_hood_twin', 'acc_hood_up_pony', 'acc_hair_hood_pony', 'acc_hood_up_long', 'acc_hair_hood_long', 'acc_hair_hood_pony_side'] —— 档位 'down' 的 hide 名单跳过它们
+  骨链：新增 22 个旋转节点，网格改为挂在链尾
+  ⚠ 本形态缺素材：删掉 2 条指向空部件的条目（deformers:brow_l_form, deformers:brow_r_form）
+写出 ./characters/xiaoxun/forms/chibi/rig.json：部件 81 动作 26 区域 3 组 15（分段身体）
+tools/rebuild_parts.sh: line 347:  7847 Killed                  "$PY" tools/trim_exposed_residue.py --character "$CH" --form "$FM"
+      7848 Done                    | tail -2

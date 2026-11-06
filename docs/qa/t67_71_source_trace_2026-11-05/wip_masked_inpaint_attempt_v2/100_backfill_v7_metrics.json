@@ -1,0 +1,23 @@
+{
+  "task": "T67.71",
+  "status": "WIP7 broad inferred back-hair sheet; unknown geometry, not production or accepted",
+  "source": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "inference": "broad continuous hair surface deliberately extends beyond the visible cuff/hand cutout so source hair remains a separate layer in front",
+  "style": "soft cool-lavender gradient and low-contrast painted folds; shape is newly inferred, not sourced or texture-transferred",
+  "mask": "manual visible-object silhouette v3 used only for diagnostic foreground clearing; it is still separately reviewable",
+  "outputs": [
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/97_backfill_broad_sheet_inference_v7.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/98_front_clear_v7_diagnostic.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/99_backfill_v7_style_review.png"
+  ],
+  "counts": {
+    "left": {
+      "front_clear_mask_px_gt0": 16242,
+      "backfill_alpha_gt24": 40465
+    },
+    "right": {
+      "front_clear_mask_px_gt0": 13172,
+      "backfill_alpha_gt24": 40499
+    }
+  }
+}

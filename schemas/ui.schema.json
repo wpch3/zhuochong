@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ui.json - 界面主题与资源",
+  "type": "object",
+  "required": ["schema_version", "theme"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "theme": { "type": "string", "minLength": 1 },
+    "fonts": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" }
+      }
+    },
+    "palette": {
+      "type": "object",
+      "properties": {
+        "primary": { "type": "string" },
+        "accent": { "type": "string" },
+        "background": { "type": "string" },
+        "text": { "type": "string" },
+        "bubble_self": { "type": "string" },
+        "bubble_pet": { "type": "string" }
+      }
+    },
+    "shapes": {
+      "type": "object",
+      "properties": {
+        "corner_radius": { "type": "number", "minimum": 0, "maximum": 128 },
+        "border_width": { "type": "number", "minimum": 0, "maximum": 32 }
+      }
+    },
+    "motion": {
+      "type": "object",
+      "properties": {
+        "bounce_amp": { "type": "number", "minimum": 0, "maximum": 1 },
+        "duration_s": { "type": "number", "exclusiveMinimum": 0, "maximum": 5 }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "bubble": { "type": "string" },
+        "button": { "type": "string" },
+        "icon_dir": { "type": "string" },
+        "tray_icon": { "type": "string" }
+      }
+    }
+  }
+}

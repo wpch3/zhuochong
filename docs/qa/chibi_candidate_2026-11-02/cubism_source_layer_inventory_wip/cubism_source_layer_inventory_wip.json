@@ -1,0 +1,1970 @@
+{
+  "status": "wip_source_inventory_not_psd_not_cubism_model",
+  "generated_date": "2026-11-04",
+  "scope": "Snapshot inventory of current Chibi form rig references for future Editor source assembly. This does not create or validate PSD/CMO3/MOC3 and is not a production approval.",
+  "form_path": "characters/xiaoxun/forms/chibi",
+  "source_hashes": {
+    "characters/xiaoxun/forms/chibi/rig.json": "5c4ace98f781f87d1189352dc6f8b5f37d1075ecea6e7fc41a5e30fedf49f3ac",
+    "characters/xiaoxun/forms/chibi/sprites/body_parts.json": "796e3deb4842fd463b12601b174dcc8d9ea4545693350b2d483130630314dbeb",
+    "characters/xiaoxun/forms/chibi/design/form_art.json": "96993ff63b0c8a61d56ae781e7b7d6532a18edb5a653af72f365524c484ec2af",
+    "characters/xiaoxun/forms/chibi/sprites/body_full.png": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff",
+    "characters/xiaoxun/design/design_sheet_chibi.png": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+  },
+  "rig_snapshot": {
+    "id": "小寻_teen",
+    "name": "小寻",
+    "canvas": {
+      "w": 848,
+      "h": 1360
+    },
+    "origin": [
+      424,
+      1360
+    ],
+    "parts_count": 49,
+    "groups_count": {
+      "leg_l": 1,
+      "leg_r": 1,
+      "chest": 7,
+      "arm_l": 1,
+      "arm_r": 1,
+      "head": 34,
+      "foot_l": 2,
+      "foot_r": 2
+    },
+    "params_count": 43,
+    "deformers_count": 26,
+    "physics_count": 19,
+    "physics2_count": 5,
+    "generated_by": {
+      "tool": "tools/make_rig.py",
+      "sources": {
+        "tools/make_rig.py": "b2ec826f708a90d38527dbedbc20f72943330eb2c0b10dda5c840e5adf3da836",
+        "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
+        "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3",
+        "characters/xiaoxun/expressions/peek_blush.exp3.json": "d692dbda9205d8cf4451226e5d2adcbffff984246f1f2156723e005aa63ae59b"
+      }
+    }
+  },
+  "identity_anomalies": [
+    "Snapshot fact: the unchanged production file is under forms/chibi and its form_art.json points to design_sheet_chibi.png, but rig.json id remains 小寻_teen. Root cause was tools/make_rig.py hard-coding the Teen suffix; the generator is now fixed to derive id from --form and has regression tests. Production rig was not regenerated, so its id and generated_by fingerprint remain stale; do not package it as-is or treat this inventory as a Cubism model."
+  ],
+  "parts": [
+    {
+      "id": "acc_tail_cat_relaxed",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/acc_tail_relaxed@2x.png",
+      "exists": true,
+      "sha256": "91c62f3a9338d58b5c55bb5f67e50b8af8e0ddcf7ca7b6cc5ae73da727e6e16b",
+      "size_px": [
+        252,
+        820
+      ],
+      "alpha_bbox_xyxy": [
+        7,
+        27,
+        246,
+        792
+      ],
+      "rgba_alpha_nonzero_pixels": 107043,
+      "zrig_draw_order": 30,
+      "zrig_canvas_pos": [
+        322,
+        857
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "group": "chest",
+      "candidate_cubism_part_group": "Body/Clothing",
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "source_note": "垂下·放松（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）；骨链 tail_relaxed_root→tail_relaxed_mid（S2）"
+    },
+    {
+      "id": "acc_tail_cat_up",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/acc_tail_up@2x.png",
+      "exists": true,
+      "sha256": "07665025e75d630063bda254ec7f812ca107195e5805ea90fc419847d1f485bf",
+      "size_px": [
+        228,
+        960
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        2,
+        228,
+        927
+      ],
+      "rgba_alpha_nonzero_pixels": 130997,
+      "zrig_draw_order": 31,
+      "zrig_canvas_pos": [
+        276,
+        909
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "group": "chest",
+      "candidate_cubism_part_group": "Body/Clothing",
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "source_note": "竖起·开心（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）；骨链 tail_up_root→tail_up_mid（S2）"
+    },
+    {
+      "id": "acc_tail_cat_puff",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/acc_tail_puff@2x.png",
+      "exists": true,
+      "sha256": "7b1a5bf8649db743632ec6daf4a003a43b95bb61152996e4e8045a837cf3e01a",
+      "size_px": [
+        362,
+        860
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        30,
+        362,
+        831
+      ],
+      "rgba_alpha_nonzero_pixels": 191594,
+      "zrig_draw_order": 32,
+      "zrig_canvas_pos": [
+        253,
+        917
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "group": "chest",
+      "candidate_cubism_part_group": "Body/Clothing",
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "source_note": "炸毛·受惊（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）；骨链 tail_puff_root→tail_puff_mid（S2）"
+    },
+    {
+      "id": "acc_tail_cat_tuck",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/acc_tail_tuck@2x.png",
+      "exists": true,
+      "sha256": "87fdec634e8242458be39e690f8a3017c14e463b9027f7aaedc81201be471ce9",
+      "size_px": [
+        254,
+        808
+      ],
+      "alpha_bbox_xyxy": [
+        6,
+        0,
+        248,
+        781
+      ],
+      "rgba_alpha_nonzero_pixels": 128079,
+      "zrig_draw_order": 33,
+      "zrig_canvas_pos": [
+        451,
+        860
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "group": "chest",
+      "candidate_cubism_part_group": "Body/Clothing",
+      "tags": [
+        "accessory",
+        "tail"
+      ],
+      "source_note": "夹紧·示弱（挂件，槽 hip_back）：尾巴、披风、背后长饰带。锚点在顶边中点 = 挂接处 = 物理支点，所以曲线用 tip（顶边固定、底端甩得最大）；骨链 tail_tuck_root→tail_tuck_mid（S2）"
+    },
+    {
+      "id": "skirt_lining",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/skirt_lining.png",
+      "exists": true,
+      "sha256": "297cbfd8e500c91d4ea6aa7be5294eb2d8c8b528f2a5096cf9620c09ae677730",
+      "size_px": [
+        312,
+        98
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        312,
+        98
+      ],
+      "rgba_alpha_nonzero_pixels": 24381,
+      "zrig_draw_order": 50,
+      "zrig_canvas_pos": [
+        267,
+        936
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "chest",
+      "candidate_cubism_part_group": "Body/Clothing",
+      "tags": [
+        "body",
+        "skirt"
+      ],
+      "source_note": "层 50 = 腿（60/61）之后、尾巴（30~33）之前；挂裙子的中段骨 skirt_mid（T66.10b）"
+    },
+    {
+      "id": "acc_hair_pony",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/hair_pony_back@2x.png",
+      "exists": true,
+      "sha256": "a3065e2ca4350186b05e430a0d711509e22265e93d45e382c5995333405d690b",
+      "size_px": [
+        756,
+        1708
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        61,
+        756,
+        1659
+      ],
+      "rgba_alpha_nonzero_pixels": 503553,
+      "zrig_draw_order": 57,
+      "zrig_canvas_pos": [
+        764,
+        43
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "source_note": "高马尾（挂件，槽 body_back_pony）：高马尾专用，和长发的 body_back_hair(58) 同一区段（整个身体之后，最低的身体件是腿 60）。★ 马尾和双马尾的层位必须反着来：马尾扎在**后脑**，正面视角下它本来就该被身体挡住，只在轮廓外侧露出来 —— 这正是\"它在身后\"的视觉证据。所以素材画成**往一侧甩**的弧线，露出来的是甩出轮廓的那半边。锚点在顶边 = 发绳，曲线 tip。"
+    },
+    {
+      "id": "acc_hair_long",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/hair_long_back@2x.png",
+      "exists": true,
+      "sha256": "a657f436ef6938204d8068216105c3c88a1ead850077c46996859348a4f46951",
+      "size_px": [
+        882,
+        2192
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        2,
+        882,
+        2192
+      ],
+      "rgba_alpha_nonzero_pixels": 1439344,
+      "zrig_draw_order": 58,
+      "zrig_canvas_pos": [
+        438,
+        91
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "source_note": "长发·过腰（挂件，槽 body_back_hair）：长发/披肩发专用。★ 层 58 = **整个身体之后**（最低的身体件是腿 60），所以长发从脖子后面垂下来、被躯干和腿挡住，只在身体轮廓两侧露出来 —— 这是 Live2D 里後ろ髪的标准层位。★ 组却是 **head**：层号管遮挡、组管跟谁动，两件事互不相干。後ろ髪必须跟着头转，所以挂 head 组；官方教程的デフォーマ结构也是「頭の回転デフォーマ → 後ろ髪の物理デフォーマ」。锚点在顶边中点（发旋/后脑）= 物理支点，曲线 tip（顶固定、越往下甩得越远）"
+    },
+    {
+      "id": "seg_leg_l",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_leg_l.png",
+      "exists": true,
+      "sha256": "e7d6ce9fd96adf40b3555a4ff773024f02e6492c7e7561745c186bedd8c43f59",
+      "size_px": [
+        149,
+        307
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        149,
+        307
+      ],
+      "rgba_alpha_nonzero_pixels": 28409,
+      "zrig_draw_order": 60,
+      "zrig_canvas_pos": [
+        263,
+        951
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "leg_l",
+      "candidate_cubism_part_group": "Body/LeftLeg",
+      "tags": [
+        "leg"
+      ],
+      "source_note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "seg_leg_r",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_leg_r.png",
+      "exists": true,
+      "sha256": "a04af4cfea11578b3e0462ce5a968b08415ee6597dcfba8b58c5f530c09d6a2d",
+      "size_px": [
+        171,
+        305
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        171,
+        305
+      ],
+      "rgba_alpha_nonzero_pixels": 29619,
+      "zrig_draw_order": 61,
+      "zrig_canvas_pos": [
+        412,
+        953
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "leg_r",
+      "candidate_cubism_part_group": "Body/RightLeg",
+      "tags": [
+        "leg"
+      ],
+      "source_note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "seg_foot_l",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_foot_l.png",
+      "exists": true,
+      "sha256": "0624e52e8baba0276cc34a8141ab5aee7a6f739828870784b79c8e280e20f35d",
+      "size_px": [
+        101,
+        140
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        0,
+        101,
+        140
+      ],
+      "rgba_alpha_nonzero_pixels": 12559,
+      "zrig_draw_order": 62,
+      "zrig_canvas_pos": [
+        311,
+        1220
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "foot_l",
+      "candidate_cubism_part_group": "Body/LeftFoot",
+      "tags": [
+        "leg",
+        "foot"
+      ],
+      "source_note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+    },
+    {
+      "id": "seg_foot_r",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_foot_r.png",
+      "exists": true,
+      "sha256": "c4c6cc50e00842ab10b4cd090d4723dcf0bbbe3cffe950b98781e65736ddbfeb",
+      "size_px": [
+        127,
+        140
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        126,
+        140
+      ],
+      "rgba_alpha_nonzero_pixels": 12981,
+      "zrig_draw_order": 63,
+      "zrig_canvas_pos": [
+        412,
+        1220
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "foot_r",
+      "candidate_cubism_part_group": "Body/RightFoot",
+      "tags": [
+        "leg",
+        "foot"
+      ],
+      "source_note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+    },
+    {
+      "id": "seg_foot_l_tip",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_foot_l_tip.png",
+      "exists": true,
+      "sha256": "fe281434a25ea672161579b4e5ac5ff15830d968b758ddbd781bbdf51f4cfc0c",
+      "size_px": [
+        101,
+        170
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        0,
+        101,
+        170
+      ],
+      "rgba_alpha_nonzero_pixels": 15587,
+      "zrig_draw_order": 64,
+      "zrig_canvas_pos": [
+        311,
+        1190
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "foot_l",
+      "candidate_cubism_part_group": "Body/LeftFoot",
+      "tags": [
+        "leg",
+        "foot"
+      ],
+      "source_note": "踮脚鞋（鞋身×1.476 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+    },
+    {
+      "id": "seg_foot_r_tip",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_foot_r_tip.png",
+      "exists": true,
+      "sha256": "d196706f2a5f5b63359682f25532838ccc50a7430754f3120b782951c9e9c83c",
+      "size_px": [
+        127,
+        170
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        126,
+        170
+      ],
+      "rgba_alpha_nonzero_pixels": 16199,
+      "zrig_draw_order": 65,
+      "zrig_canvas_pos": [
+        412,
+        1190
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "foot_r",
+      "candidate_cubism_part_group": "Body/RightFoot",
+      "tags": [
+        "leg",
+        "foot"
+      ],
+      "source_note": "踮脚鞋（鞋身×1.476 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+    },
+    {
+      "id": "skirt_main",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/skirt_main.png",
+      "exists": true,
+      "sha256": "3c36f974b3a357ff75e636a8e52b125d21038b7da6c888a816fe6d6bb949a8d1",
+      "size_px": [
+        320,
+        183
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        320,
+        183
+      ],
+      "rgba_alpha_nonzero_pixels": 34595,
+      "zrig_draw_order": 97,
+      "zrig_canvas_pos": [
+        263,
+        851
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "chest",
+      "candidate_cubism_part_group": "Body/Clothing",
+      "tags": [
+        "body"
+      ],
+      "source_note": "裙子从 seg_torso 切出来的独立件（T66.16）：只有它自己能接旋转骨，否则一转就把上身带飞。层 97 = 腿(60/61)之上、躯干(100)之下；骨链 skirt_root→skirt_mid（S2）"
+    },
+    {
+      "id": "seg_torso",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_torso.png",
+      "exists": true,
+      "sha256": "95f8229769344d55ec9da5c46d95d34cb2b780a945fe8d5025c874e997887db2",
+      "size_px": [
+        326,
+        399
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        326,
+        399
+      ],
+      "rgba_alpha_nonzero_pixels": 88532,
+      "zrig_draw_order": 100,
+      "zrig_canvas_pos": [
+        261,
+        635
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "chest",
+      "candidate_cubism_part_group": "Body/Clothing",
+      "tags": [
+        "body"
+      ],
+      "source_note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；颈线 y=673 以上形变不再加大（衣领跟着头走，不然脖子会横向滑移）"
+    },
+    {
+      "id": "seg_arm_l",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_arm_l.png",
+      "exists": true,
+      "sha256": "a736fd252c6b0d7b6a38cb1fb73c886d525a757c85b3524a0fedfe9c1e2f6df6",
+      "size_px": [
+        100,
+        230
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        99,
+        230
+      ],
+      "rgba_alpha_nonzero_pixels": 14754,
+      "zrig_draw_order": 140,
+      "zrig_canvas_pos": [
+        200,
+        766
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "arm_l",
+      "candidate_cubism_part_group": "Body/LeftArm",
+      "tags": [
+        "arm"
+      ],
+      "source_note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "seg_arm_r",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_arm_r.png",
+      "exists": true,
+      "sha256": "c0777d86baba51ede5c8083fe27876f2c218759e02a32edebf030eab66474f6b",
+      "size_px": [
+        100,
+        230
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        0,
+        100,
+        230
+      ],
+      "rgba_alpha_nonzero_pixels": 14740,
+      "zrig_draw_order": 141,
+      "zrig_canvas_pos": [
+        548,
+        766
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "arm_r",
+      "candidate_cubism_part_group": "Body/RightArm",
+      "tags": [
+        "arm"
+      ],
+      "source_note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "acc_hair_twin_l",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/hair_twin_l@2x.png",
+      "exists": true,
+      "sha256": "a0c9a8dfaefa1e1f8e68156fbfcf5248e85b0f0e2417d885ccfadd75b95e2e4a",
+      "size_px": [
+        442,
+        1360
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        48,
+        442,
+        1348
+      ],
+      "rgba_alpha_nonzero_pixels": 263536,
+      "zrig_draw_order": 160,
+      "zrig_canvas_pos": [
+        53,
+        298
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "source_note": "双马尾·左（挂件，槽 head_side_hair）：双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。"
+    },
+    {
+      "id": "acc_hair_twin_r",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/hair_twin_r@2x.png",
+      "exists": true,
+      "sha256": "8b240c5f7e5e8923e18f1e55d2375e5d217f16316a17bff5fa0cb22284f70e77",
+      "size_px": [
+        442,
+        1360
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        48,
+        442,
+        1348
+      ],
+      "rgba_alpha_nonzero_pixels": 263536,
+      "zrig_draw_order": 161,
+      "zrig_canvas_pos": [
+        793,
+        298
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "hair",
+        "hairstyle"
+      ],
+      "source_note": "双马尾·右（挂件，槽 head_side_hair）：双马尾/侧发束专用。★ 层 160 夹在**手臂(143) 之上、猫耳(165)/后发壳(170)/头(180) 之下** —— 这一层位同时买到两件事：① 发根被头壳盖住，于是是\"从头发里扎出来的\"而不是\"贴在脸上的\"（和猫耳同一条教程口径：髪の上に乗せるのではなく差し込む）；② 垂下来那一截画在肩膀和手臂**之前**，所以从正面看得见整束，不会像后发那样被身体吃掉。★ 不能照抄长发的层 58：双马尾扎在头侧，身体那一层会把它从肩膀往下全挡住，只剩脑袋边上两个小角。锚点在顶边 = 发绳位置 = 物理支点，曲线 tip。"
+    },
+    {
+      "id": "acc_ear_cat_l",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/acc_ear_l@2x.png",
+      "exists": true,
+      "sha256": "e7d5c5de33ae5919164082fb4dde10ce4bfe16ea407a9d75e4a5febd63f0dc30",
+      "size_px": [
+        382,
+        452
+      ],
+      "alpha_bbox_xyxy": [
+        12,
+        14,
+        370,
+        438
+      ],
+      "rgba_alpha_nonzero_pixels": 107169,
+      "zrig_draw_order": 165,
+      "zrig_canvas_pos": [
+        310,
+        307
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "accessory",
+        "ear"
+      ],
+      "source_note": "猫耳（左）（挂件，槽 head_in_hair）：兽耳专用。层 144~169 整段空着，夹在手臂(143) 和 hair_back(170) 之间。★ 关键：必须在 hair_back 之下。头顶那片头发就是 hair_back，hair_front(240) 从 y=163 才开始、只盖刘海，指望它压耳根是压不住的（旧版就栽在这）。教程口径：「髪の上に耳を『乗せる』のではなく、頭のラインに沿って『差し込む』イメージで描く」—— 耳が浮いて見える原因就是画在髪の上。kiri-hana.com"
+    },
+    {
+      "id": "acc_ear_cat_r",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/acc_ear_r@2x.png",
+      "exists": true,
+      "sha256": "257154200c6ed4f11d21858b0824efe307864d1711ee49c1f46c3a66567e8bc3",
+      "size_px": [
+        382,
+        452
+      ],
+      "alpha_bbox_xyxy": [
+        12,
+        14,
+        370,
+        438
+      ],
+      "rgba_alpha_nonzero_pixels": 107169,
+      "zrig_draw_order": 166,
+      "zrig_canvas_pos": [
+        549,
+        307
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "accessory",
+        "ear"
+      ],
+      "source_note": "猫耳（右）（挂件，槽 head_in_hair）：兽耳专用。层 144~169 整段空着，夹在手臂(143) 和 hair_back(170) 之间。★ 关键：必须在 hair_back 之下。头顶那片头发就是 hair_back，hair_front(240) 从 y=163 才开始、只盖刘海，指望它压耳根是压不住的（旧版就栽在这）。教程口径：「髪の上に耳を『乗せる』のではなく、頭のラインに沿って『差し込む』イメージで描く」—— 耳が浮いて見える原因就是画在髪の上。kiri-hana.com"
+    },
+    {
+      "id": "seg_head",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/seg_head.png",
+      "exists": true,
+      "sha256": "786bfae5d814217eb7918a8869be8710a689762e32c3428622f36d05077bdd1f",
+      "size_px": [
+        567,
+        644
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        105,
+        567,
+        643
+      ],
+      "rgba_alpha_nonzero_pixels": 230861,
+      "zrig_draw_order": 180,
+      "zrig_canvas_pos": [
+        140,
+        68
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "head_base"
+      ],
+      "source_note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+    },
+    {
+      "id": "hair_ahoge",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/hair_ahoge.png",
+      "exists": true,
+      "sha256": "74fd14fc40ace9af5ff1c7544882129a66907d71c1a0bceed1590e7971b45ee2",
+      "size_px": [
+        121,
+        117
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        121,
+        117
+      ],
+      "rgba_alpha_nonzero_pixels": 3785,
+      "zrig_draw_order": 190,
+      "zrig_canvas_pos": [
+        359,
+        68
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "hair"
+      ],
+      "source_note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动；骨链 hair_ahoge_root→hair_ahoge_mid（S2）"
+    },
+    {
+      "id": "blush_l",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/blush_l.png",
+      "exists": true,
+      "sha256": "cdc6dde75c7572cff1ee1a18d0378b5a871166b43a4798a844101078934890ee",
+      "size_px": [
+        40,
+        22
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        1,
+        39,
+        21
+      ],
+      "rgba_alpha_nonzero_pixels": 620,
+      "zrig_draw_order": 203,
+      "zrig_canvas_pos": [
+        366,
+        299
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [],
+      "source_note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来"
+    },
+    {
+      "id": "blush_r",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/blush_r.png",
+      "exists": true,
+      "sha256": "cdc6dde75c7572cff1ee1a18d0378b5a871166b43a4798a844101078934890ee",
+      "size_px": [
+        40,
+        22
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        1,
+        39,
+        21
+      ],
+      "rgba_alpha_nonzero_pixels": 620,
+      "zrig_draw_order": 204,
+      "zrig_canvas_pos": [
+        437,
+        299
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [],
+      "source_note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来"
+    },
+    {
+      "id": "mouth_mask",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/mouth_mask.png",
+      "exists": true,
+      "sha256": "be0d799bc55889fb239288812df8028bc956011eee7c63412547fc9b25409098",
+      "size_px": [
+        45,
+        24
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        45,
+        24
+      ],
+      "rgba_alpha_nonzero_pixels": 970,
+      "zrig_draw_order": 205,
+      "zrig_canvas_pos": [
+        423,
+        604
+      ],
+      "anchor": [
+        0.5,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "mouth"
+      ],
+      "source_note": "开口形状：锚点在上唇线，sy=0.0 是闭嘴，sy≈0.95 是张到最大（24px）"
+    },
+    {
+      "id": "mouth_cavity",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/mouth_cavity.png",
+      "exists": true,
+      "sha256": "7f309ff9b415c1e9db2128d85d46209303e03687d4628f0975c752e1e16eb07d",
+      "size_px": [
+        45,
+        24
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        45,
+        24
+      ],
+      "rgba_alpha_nonzero_pixels": 970,
+      "zrig_draw_order": 206,
+      "zrig_canvas_pos": [
+        423,
+        604
+      ],
+      "anchor": [
+        0.5,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "mouth"
+      ],
+      "source_note": "口内（牙/上颚/舌/嘴角，AI 重绘的真素材）。motion_from=mouth_mask：口内跟着开口形状一起压扁，所以半开时是一张压扁的嘴，而不是把整张口内图裁掉下半截（那样半开只剩一条黑缝）"
+    },
+    {
+      "id": "mouth_open",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/mouth_open.png",
+      "exists": true,
+      "sha256": "b7427e942d761fd5b6a96dcd7121c1af54184eb7fb1e9f3824230d4bc03dc99e",
+      "size_px": [
+        51,
+        16
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        51,
+        16
+      ],
+      "rgba_alpha_nonzero_pixels": 468,
+      "zrig_draw_order": 210,
+      "zrig_canvas_pos": [
+        422.5,
+        595.0
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "mouth"
+      ],
+      "source_note": "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移"
+    },
+    {
+      "id": "eye_l_socket",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_l_socket.png",
+      "exists": true,
+      "sha256": "b50eb7b16eecbf2a4b0079b7620821fdeff10be062b089d8e5eb59615810ef9d",
+      "size_px": [
+        264,
+        151
+      ],
+      "alpha_bbox_xyxy": [
+        111,
+        0,
+        231,
+        151
+      ],
+      "rgba_alpha_nonzero_pixels": 8495,
+      "zrig_draw_order": 211,
+      "zrig_canvas_pos": [
+        141,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [],
+      "source_note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"
+    },
+    {
+      "id": "eye_l_base",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_l_base.png",
+      "exists": true,
+      "sha256": "31aaa8a89d2c7f5b431e4279d7f21ebc1e8eaa2728cebf647de37d2a5f9ae51d",
+      "size_px": [
+        264,
+        151
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        264,
+        151
+      ],
+      "rgba_alpha_nonzero_pixels": 37341,
+      "zrig_draw_order": 212,
+      "zrig_canvas_pos": [
+        141,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_open",
+        "eye_not_wide"
+      ],
+      "source_note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"
+    },
+    {
+      "id": "eye_l_wide",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_l_wide.png",
+      "exists": true,
+      "sha256": "ab481642bf20f712111da9e039bb89e31127fe25a13daf5471093b4f63155421",
+      "size_px": [
+        296,
+        181
+      ],
+      "alpha_bbox_xyxy": [
+        3,
+        0,
+        296,
+        181
+      ],
+      "rgba_alpha_nonzero_pixels": 24420,
+      "zrig_draw_order": 213,
+      "zrig_canvas_pos": [
+        140,
+        455
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_wide",
+        "eye_open"
+      ],
+      "source_note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_l_ball"
+    },
+    {
+      "id": "eye_l_ball",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_l_ball.png",
+      "exists": true,
+      "sha256": "071791b8c4152325cad3b1d5b063758f3049bd85a4a49185ea861f6c8b3499a9",
+      "size_px": [
+        77,
+        77
+      ],
+      "alpha_bbox_xyxy": [
+        2,
+        1,
+        76,
+        75
+      ],
+      "rgba_alpha_nonzero_pixels": 4295,
+      "zrig_draw_order": 214,
+      "zrig_canvas_pos": [
+        292,
+        487
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "source_note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±10px，由眼眶裁切"
+    },
+    {
+      "id": "eye_hl_l",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_hl_l.png",
+      "exists": true,
+      "sha256": "78a6167f408d2b057f60587a321382bd81b85f5c0e10ab9bf92a7e7b500ded66",
+      "size_px": [
+        13,
+        13
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        1,
+        12,
+        12
+      ],
+      "rgba_alpha_nonzero_pixels": 109,
+      "zrig_draw_order": 217,
+      "zrig_canvas_pos": [
+        373,
+        262
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "source_note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出"
+    },
+    {
+      "id": "eye_l_lash",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_l_lash.png",
+      "exists": true,
+      "sha256": "dbe96b35e7f3cdb21d675317231fdb3c3fb62b3214201f76a689757ee05ff4e1",
+      "size_px": [
+        264,
+        151
+      ],
+      "alpha_bbox_xyxy": [
+        117,
+        8,
+        223,
+        96
+      ],
+      "rgba_alpha_nonzero_pixels": 2358,
+      "zrig_draw_order": 218,
+      "zrig_canvas_pos": [
+        141,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_open",
+        "eye_not_wide"
+      ],
+      "source_note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"
+    },
+    {
+      "id": "eye_l_closed",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_l_closed.png",
+      "exists": true,
+      "sha256": "b635291738c7bbab2db0d1f90627f514609ef8210e81a10f15df9fe03e17a71a",
+      "size_px": [
+        155,
+        155
+      ],
+      "alpha_bbox_xyxy": [
+        23,
+        23,
+        132,
+        132
+      ],
+      "rgba_alpha_nonzero_pixels": 11245,
+      "zrig_draw_order": 219,
+      "zrig_canvas_pos": [
+        253,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_closed"
+      ],
+      "source_note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 3.81）：blink=1 时完全显形"
+    },
+    {
+      "id": "eye_hl_star_l",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_hl_star_l.png",
+      "exists": true,
+      "sha256": "a47e988117d314c29f3bd7f1bd50441b1aa06221a1fede8ef0bc040332502e0f",
+      "size_px": [
+        20,
+        20
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        1,
+        19,
+        19
+      ],
+      "rgba_alpha_nonzero_pixels": 180,
+      "zrig_draw_order": 220,
+      "zrig_canvas_pos": [
+        369,
+        258
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "source_note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位"
+    },
+    {
+      "id": "eye_l_smile",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_l_smile.png",
+      "exists": true,
+      "sha256": "48f8cf011e730a761c8dfbbea5b691d180ac9aad4d51e6dea0792263f73f9930",
+      "size_px": [
+        155,
+        155
+      ],
+      "alpha_bbox_xyxy": [
+        23,
+        23,
+        132,
+        132
+      ],
+      "rgba_alpha_nonzero_pixels": 11245,
+      "zrig_draw_order": 221,
+      "zrig_canvas_pos": [
+        253,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_smile"
+      ],
+      "source_note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.54）：ParamEyeL/RSmile=1 时显形"
+    },
+    {
+      "id": "eye_l_pain",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_l_pain.png",
+      "exists": true,
+      "sha256": "cc57aa5411d82a4630f9371a70c2fe075ac954f7f60eb4e6826db83ea06b054e",
+      "size_px": [
+        163,
+        159
+      ],
+      "alpha_bbox_xyxy": [
+        27,
+        25,
+        136,
+        134
+      ],
+      "rgba_alpha_nonzero_pixels": 11245,
+      "zrig_draw_order": 222,
+      "zrig_canvas_pos": [
+        249,
+        446
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_pain"
+      ],
+      "source_note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.51）：ParamEyeL/RPain=1 时显形"
+    },
+    {
+      "id": "eye_r_socket",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_r_socket.png",
+      "exists": true,
+      "sha256": "435eea70fb3c892e47897fc333a0ea32d6ef7f921ff7409683a55c57001b7a84",
+      "size_px": [
+        265,
+        151
+      ],
+      "alpha_bbox_xyxy": [
+        33,
+        0,
+        147,
+        151
+      ],
+      "rgba_alpha_nonzero_pixels": 7980,
+      "zrig_draw_order": 223,
+      "zrig_canvas_pos": [
+        438,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [],
+      "source_note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）"
+    },
+    {
+      "id": "eye_r_base",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_r_base.png",
+      "exists": true,
+      "sha256": "e038bdc44f1e593f7e52abaaebd9c60557178bcb568fbe7e5112746ec10e97ba",
+      "size_px": [
+        265,
+        151
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        265,
+        151
+      ],
+      "rgba_alpha_nonzero_pixels": 37327,
+      "zrig_draw_order": 224,
+      "zrig_canvas_pos": [
+        438,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_open",
+        "eye_not_wide"
+      ],
+      "source_note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切"
+    },
+    {
+      "id": "eye_r_wide",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_r_wide.png",
+      "exists": true,
+      "sha256": "76200f9e5062286a4f8602bf44396d196c7a8dffcd46af2d8b0e6c922ba4e3d0",
+      "size_px": [
+        297,
+        181
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        285,
+        181
+      ],
+      "rgba_alpha_nonzero_pixels": 23890,
+      "zrig_draw_order": 225,
+      "zrig_canvas_pos": [
+        410,
+        455
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_wide",
+        "eye_open"
+      ],
+      "source_note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_r_ball"
+    },
+    {
+      "id": "eye_r_ball",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_r_ball.png",
+      "exists": true,
+      "sha256": "25b10e672fe31b12248d1cdc9bbbd2084e0023e564cf4593721fbdcfc40fb351",
+      "size_px": [
+        77,
+        77
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        1,
+        76,
+        76
+      ],
+      "rgba_alpha_nonzero_pixels": 4375,
+      "zrig_draw_order": 226,
+      "zrig_canvas_pos": [
+        476,
+        487
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "source_note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±11px，由眼眶裁切"
+    },
+    {
+      "id": "eye_hl_r",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_hl_r.png",
+      "exists": true,
+      "sha256": "78a6167f408d2b057f60587a321382bd81b85f5c0e10ab9bf92a7e7b500ded66",
+      "size_px": [
+        13,
+        13
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        1,
+        12,
+        12
+      ],
+      "rgba_alpha_nonzero_pixels": 109,
+      "zrig_draw_order": 229,
+      "zrig_canvas_pos": [
+        446,
+        257
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "source_note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出"
+    },
+    {
+      "id": "eye_r_lash",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_r_lash.png",
+      "exists": true,
+      "sha256": "b9571a3de6e715cb1cb908af7e2b2ee97ec6b2ab2172d0e8b48ca0ef939f6882",
+      "size_px": [
+        265,
+        151
+      ],
+      "alpha_bbox_xyxy": [
+        38,
+        0,
+        146,
+        94
+      ],
+      "rgba_alpha_nonzero_pixels": 2426,
+      "zrig_draw_order": 230,
+      "zrig_canvas_pos": [
+        438,
+        467
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_open",
+        "eye_not_wide"
+      ],
+      "source_note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线"
+    },
+    {
+      "id": "eye_r_closed",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_r_closed.png",
+      "exists": true,
+      "sha256": "9906fd116e05530e02722731e972dab2db1dc26c7b9303f01c9840f9e282ff2e",
+      "size_px": [
+        155,
+        155
+      ],
+      "alpha_bbox_xyxy": [
+        23,
+        23,
+        132,
+        132
+      ],
+      "rgba_alpha_nonzero_pixels": 11235,
+      "zrig_draw_order": 231,
+      "zrig_canvas_pos": [
+        437,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_closed"
+      ],
+      "source_note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.74）：blink=1 时完全显形"
+    },
+    {
+      "id": "eye_hl_star_r",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_hl_star_r.png",
+      "exists": true,
+      "sha256": "a47e988117d314c29f3bd7f1bd50441b1aa06221a1fede8ef0bc040332502e0f",
+      "size_px": [
+        20,
+        20
+      ],
+      "alpha_bbox_xyxy": [
+        1,
+        1,
+        19,
+        19
+      ],
+      "rgba_alpha_nonzero_pixels": 180,
+      "zrig_draw_order": 232,
+      "zrig_canvas_pos": [
+        442,
+        253
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "source_note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位"
+    },
+    {
+      "id": "eye_r_smile",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_r_smile.png",
+      "exists": true,
+      "sha256": "fe4de667b49553ac7d8c914766b35dcfe2d45c3fb62b4562fca829b040c013bd",
+      "size_px": [
+        155,
+        155
+      ],
+      "alpha_bbox_xyxy": [
+        23,
+        23,
+        132,
+        132
+      ],
+      "rgba_alpha_nonzero_pixels": 11235,
+      "zrig_draw_order": 233,
+      "zrig_canvas_pos": [
+        437,
+        448
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_smile"
+      ],
+      "source_note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.76）：ParamEyeL/RSmile=1 时显形"
+    },
+    {
+      "id": "eye_r_pain",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/eye_r_pain.png",
+      "exists": true,
+      "sha256": "12a287072051e1429df2aa9d45d00d5edc37d55679dd5dac63721b721ae944a2",
+      "size_px": [
+        163,
+        159
+      ],
+      "alpha_bbox_xyxy": [
+        27,
+        25,
+        136,
+        134
+      ],
+      "rgba_alpha_nonzero_pixels": 11235,
+      "zrig_draw_order": 234,
+      "zrig_canvas_pos": [
+        433,
+        446
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "eye_pain"
+      ],
+      "source_note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 5.73）：ParamEyeL/RPain=1 时显形"
+    },
+    {
+      "id": "acc_hood_up",
+      "source_file": "characters/xiaoxun/forms/chibi/sprites/acc_hood_up@2x.png",
+      "exists": true,
+      "sha256": "779a4e547382cc2adb2cf0c53b18bc4857c6abc1c0c690c4065e501b5006fb8c",
+      "size_px": [
+        1480,
+        1880
+      ],
+      "alpha_bbox_xyxy": [
+        48,
+        59,
+        1430,
+        1820
+      ],
+      "rgba_alpha_nonzero_pixels": 1106824,
+      "zrig_draw_order": 252,
+      "zrig_canvas_pos": [
+        439,
+        143
+      ],
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "group": "head",
+      "candidate_cubism_part_group": "Head",
+      "tags": [
+        "accessory",
+        "outfit",
+        "hood"
+      ],
+      "source_note": "兜帽·戴上（挂件，槽 head_over_hair）：发卡、发带、小帽子、耳饰。247~299 整段空着，离最近的 hair_side(246) 和 fx_sparkle(300) 都有余量"
+    }
+  ],
+  "hand_layer_audit": {
+    "hand_related_rig_parts": [],
+    "expected_missing_files": [
+      "characters/xiaoxun/forms/chibi/sprites/hand_parts.json"
+    ],
+    "confirmed_absent_layers": [
+      "independent left/right normal-fingered hand art",
+      "independent left/right mitten art as approved source art",
+      "hidden-wrist continuation beneath both cuffs",
+      "cuff-front/cuff-back source layers",
+      "overlap-complete approved layered PSD"
+    ],
+    "current_arm_parts": [
+      "seg_arm_l",
+      "seg_arm_r"
+    ],
+    "note": "Current cutouts and body_full do not prove underlap/hidden-wrist completeness. Do not synthesize PSD from these crops or call this a Cubism source."
+  },
+  "cubism_mapping_guidance": {
+    "artmesh_rule": "Use one PSD layer per independently deformable source part, but do not directly assume zrig layer numbers equal Cubism draw order; review draw order and masks in Editor.",
+    "parameterization": "Existing param IDs/ranges are only an inventory/reference; build Cubism parameters and keyforms in Editor, verify with actual Chibi poses.",
+    "deformers": "Existing zrig deformer/physics data are not importable Cubism deformers/physics; author and validate them in Editor.",
+    "next_gate": "Obtain/author a complete overlap-closed Chibi PSD with both hand styles, hidden wrists and cuff front/back; then run official Cubism Editor, save CMO3, author meshes/deformers/parameters, export MOC3/Model3 and inspect with official viewer."
+  },
+  "parameter_inventory": [
+    {
+      "id": "ParamAngleZ",
+      "label": "头 歪头",
+      "min": -30.0,
+      "max": 30.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamBodyAngleX",
+      "label": "上身 左右",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamBodyAngleZ",
+      "label": "上身 倾斜",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamBodyAngleY",
+      "label": "上身 上下",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamShoulderY",
+      "label": "肩 上下",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamBaseX",
+      "label": "全身 左右",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamBaseY",
+      "label": "全身 上下",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamBaseRot",
+      "label": "全身 倾斜",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamBreath",
+      "label": "呼吸",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamMouthOpenY",
+      "label": "张嘴",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamMouthForm",
+      "label": "嘴形 笑/扁",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamMouthX",
+      "label": "嘴 左右（单边嘴角）",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamArmLA",
+      "label": "左臂 摆动",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamArmRA",
+      "label": "右臂 摆动",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamArmLB",
+      "label": "左臂 抬起（未拆件：整条弯）",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamArmRB",
+      "label": "右臂 抬起（未拆件：整条弯）",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamLegL",
+      "label": "左腿 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamLegR",
+      "label": "右腿 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamKneeL",
+      "label": "左膝 屈伸",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamKneeR",
+      "label": "右膝 屈伸",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamHipDrop",
+      "label": "胯 下沉（屈膝承重）",
+      "min": -6.0,
+      "max": 6.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamWeightShift",
+      "label": "重心 左右",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamTiptoe",
+      "label": "踮脚",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamHairAhoge",
+      "label": "呆毛 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamHairAhogeS",
+      "label": "呆毛 S 形甩动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamHairFluffy",
+      "label": "头发 蓬松飘动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamCheek",
+      "label": "脸红 浓淡",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamEyeSparkle",
+      "label": "眼高光 强弱",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.55
+    },
+    {
+      "id": "ParamPupilScale",
+      "label": "瞳孔 放大/缩小",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamHipL",
+      "label": "左髋 前后摆",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamAnkleL",
+      "label": "左踝 回转",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamHipR",
+      "label": "右髋 前后摆",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamAnkleR",
+      "label": "右踝 回转",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamSkirtSway",
+      "label": "裙摆摆动",
+      "min": -1.15,
+      "max": 1.15,
+      "default": 0.0
+    },
+    {
+      "id": "ParamSkirtSwayY",
+      "label": "裙摆纵摆",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    {
+      "id": "ParamAccTailRelaxedSwing",
+      "label": "猫尾摆动（垂下·放松）",
+      "min": -4.41,
+      "max": 4.41,
+      "default": 0.0
+    },
+    {
+      "id": "ParamAccTailUpSwing",
+      "label": "猫尾摆动（竖起·开心）",
+      "min": -1.657,
+      "max": 1.05,
+      "default": 0.0
+    },
+    {
+      "id": "ParamAccTailPuffSwing",
+      "label": "猫尾摆动（炸毛·受惊）",
+      "min": -1.367,
+      "max": 1.05,
+      "default": 0.0
+    },
+    {
+      "id": "ParamAccTailTuckSwing",
+      "label": "猫尾摆动（夹紧·示弱）",
+      "min": -5.608,
+      "max": 4.508,
+      "default": 0.0
+    },
+    {
+      "id": "ParamAccEarL",
+      "label": "猫耳L（0=摘 1=戴）",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 1.0
+    },
+    {
+      "id": "ParamEarLAngle",
+      "label": "猫耳角度r（−1飞机耳 +1竖起）",
+      "min": -1.238,
+      "max": 1.238,
+      "default": 0.0
+    },
+    {
+      "id": "ParamAccEarR",
+      "label": "猫耳R（0=摘 1=戴）",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 1.0
+    },
+    {
+      "id": "ParamEarRAngle",
+      "label": "猫耳角度r（−1飞机耳 +1竖起）",
+      "min": -1.238,
+      "max": 1.238,
+      "default": 0.0
+    }
+  ]
+}

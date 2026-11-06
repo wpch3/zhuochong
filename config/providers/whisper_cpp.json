@@ -1,0 +1,30 @@
+{
+  "name": "whisper.cpp（本机转写）",
+  "kind": "local_script",
+  "local": true,
+  "enabled": false,
+  "priority": 83,
+  "base_url": "http://127.0.0.1:8081",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "stt.listen",
+      "model": "ggml-large-v3-turbo-q5_0",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 0,
+    "note": "纯 C/C++，CPU 就能实时；Metal/CUDA/Vulkan 可选加速。large-v3-turbo q5 约 0.6GB 模型文件。"
+  },
+  "launch": "whisper-server -m models/ggml-large-v3-turbo-q5_0.bin --host 127.0.0.1 --port 8081 --inference-path /v1/audio/transcriptions",
+  "note": "★ 坑：whisper-server **默认不挂在 /v1/audio/transcriptions**，要用 --inference-path 把它挪过去，否则 OpenAI SDK 打不中（社区反复踩，见 REFERENCE_NOTES 第四十五批）。另一个坑：不显式传 language 时它默认当英文，中文要传 language=zh。",
+  "id": "whisper_cpp"
+}

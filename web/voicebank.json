@@ -1,0 +1,846 @@
+{
+  "_note": "由 tools/check_platform.py 生成，不要手改。源在 config/voicebank/ 与 config/voice_cast.json。",
+  "voices": [
+    {
+      "id": "az_xiaoshuang",
+      "name": "晓双（Azure，儿童）",
+      "provider": "azure_speech",
+      "voice_id": "zh-CN-XiaoshuangNeural",
+      "persona": "loli",
+      "anime": true,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "chat"
+      ],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "官方描述 cute and lovely，儿童场景；但只有 chat 一种 style",
+      "ready": false,
+      "emotion_distinct": 0
+    },
+    {
+      "id": "az_xiaoshuang_multi",
+      "name": "晓双 多语言（童声跨语言）",
+      "provider": "azure_speech",
+      "voice_id": "zh-CN-XiaoshuangMultilingualNeural",
+      "persona": "loli",
+      "anime": true,
+      "langs": [
+        "zh-CN",
+        "ja-JP",
+        "en-US"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "chat"
+      ],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "萝莉音说英文/日文；官方描述 cute and lovely",
+      "ready": false,
+      "emotion_distinct": 0
+    },
+    {
+      "id": "az_xiaoyou_hd",
+      "name": "晓悠 HD（Azure，清澈童声）",
+      "provider": "azure_speech",
+      "voice_id": "zh-CN-Xiaoyou:DragonHDFlashLatestNeural",
+      "persona": "loli",
+      "anime": true,
+      "langs": [
+        "zh-CN",
+        "en-US"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "chat",
+        "angry",
+        "cheerful",
+        "poetry-reading",
+        "sad",
+        "story",
+        "cute"
+      ],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "官方描述 angelic and clear，带 cute style，萝莉里情绪最全",
+      "ready": false,
+      "emotion_distinct": 4
+    },
+    {
+      "id": "mm_cute_elf",
+      "name": "Cute Elf（MiniMax 精灵）",
+      "provider": "minimax",
+      "voice_id": "Cute_Elf",
+      "persona": "loli",
+      "anime": true,
+      "langs": [
+        "en-US"
+      ],
+      "emotion_mode": "emotion",
+      "emotions": [
+        "happy",
+        "sad",
+        "angry",
+        "surprised",
+        "neutral"
+      ],
+      "roles": [],
+      "tunable": {
+        "speed": [
+          0.5,
+          2.0
+        ],
+        "pitch": [
+          -12,
+          12
+        ],
+        "volume": [
+          0,
+          10
+        ]
+      },
+      "recommend": "英文萝莉/精灵音，奇幻角色向",
+      "ready": false,
+      "emotion_distinct": 5
+    },
+    {
+      "id": "mm_lovely_girl",
+      "name": "萌萌女童（MiniMax）",
+      "provider": "minimax",
+      "voice_id": "lovely_girl",
+      "persona": "loli",
+      "anime": true,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "emotion",
+      "emotions": [
+        "happy",
+        "sad",
+        "angry",
+        "fearful",
+        "surprised",
+        "neutral"
+      ],
+      "roles": [],
+      "tunable": {
+        "speed": [
+          0.5,
+          2.0
+        ],
+        "pitch": [
+          -12,
+          12
+        ],
+        "volume": [
+          0,
+          10
+        ]
+      },
+      "recommend": "小寻 loli 形态首选",
+      "ready": false,
+      "emotion_distinct": 5
+    },
+    {
+      "id": "az_xiaoyi",
+      "name": "晓伊（Azure，活泼少女）",
+      "provider": "azure_speech",
+      "voice_id": "zh-CN-XiaoyiNeural",
+      "persona": "shoujo",
+      "anime": true,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "affectionate",
+        "angry",
+        "cheerful",
+        "disgruntled",
+        "embarrassed",
+        "fearful",
+        "gentle",
+        "sad",
+        "serious"
+      ],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "当前 39 条台词就是这个音色（走的免费 edge 通道，没有情绪）。换到 Azure 正规 API 后同一音色能带 9 种情绪",
+      "ready": false,
+      "emotion_distinct": 5
+    },
+    {
+      "id": "az_xiaoyi_hd",
+      "name": "晓伊 HD（Azure，可爱/害羞/撒娇）",
+      "provider": "azure_speech",
+      "voice_id": "zh-CN-Xiaoyi:DragonHDFlashLatestNeural",
+      "persona": "shoujo",
+      "anime": true,
+      "langs": [
+        "zh-CN",
+        "en-US"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "angry",
+        "complaining",
+        "cute",
+        "gentle",
+        "nervous",
+        "sad",
+        "shy",
+        "strict"
+      ],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "二次元最贴的一个：cute / shy / complaining / nervous 正好是桌宠要的表情",
+      "ready": false,
+      "emotion_distinct": 5
+    },
+    {
+      "id": "edge_xiaoyi",
+      "name": "晓伊（edge-tts 免费通道）",
+      "provider": "edge_tts",
+      "voice_id": "zh-CN-XiaoyiNeural",
+      "persona": "shoujo",
+      "anime": true,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "prosody",
+      "emotions": [],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ]
+      },
+      "recommend": "不要密钥就能用，现有 39 条台词就是它生成的。但官方 README 明说 SSML style 被移除，所以它永远做不到情绪变化——只能靠语速/音调模拟",
+      "ready": true,
+      "emotion_distinct": 0
+    },
+    {
+      "id": "mm_diadia_xuemei",
+      "name": "嗲嗲学妹（MiniMax）",
+      "provider": "minimax",
+      "voice_id": "diadia_xuemei",
+      "persona": "shoujo",
+      "anime": true,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "emotion",
+      "emotions": [
+        "happy",
+        "sad",
+        "angry",
+        "fearful",
+        "disgusted",
+        "surprised",
+        "neutral"
+      ],
+      "roles": [],
+      "tunable": {
+        "speed": [
+          0.5,
+          2.0
+        ],
+        "pitch": [
+          -12,
+          12
+        ],
+        "volume": [
+          0,
+          10
+        ]
+      },
+      "recommend": "黏人系，陪伴场景",
+      "ready": false,
+      "emotion_distinct": 5
+    },
+    {
+      "id": "mm_qiaopi_mengmei",
+      "name": "俏皮萌妹（MiniMax）",
+      "provider": "minimax",
+      "voice_id": "qiaopi_mengmei",
+      "persona": "shoujo",
+      "anime": true,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "emotion",
+      "emotions": [
+        "happy",
+        "sad",
+        "angry",
+        "fearful",
+        "disgusted",
+        "surprised",
+        "neutral"
+      ],
+      "roles": [],
+      "tunable": {
+        "speed": [
+          0.5,
+          2.0
+        ],
+        "pitch": [
+          -12,
+          12
+        ],
+        "volume": [
+          0,
+          10
+        ]
+      },
+      "recommend": "更跳脱的少女，适合吐槽和撒娇台词",
+      "ready": false,
+      "emotion_distinct": 5
+    },
+    {
+      "id": "mm_shaonv",
+      "name": "少女音（MiniMax）",
+      "provider": "minimax",
+      "voice_id": "female-shaonv",
+      "persona": "shoujo",
+      "anime": true,
+      "langs": [
+        "zh-CN",
+        "en-US",
+        "ja-JP"
+      ],
+      "emotion_mode": "emotion",
+      "emotions": [
+        "happy",
+        "sad",
+        "angry",
+        "fearful",
+        "disgusted",
+        "surprised",
+        "neutral"
+      ],
+      "roles": [],
+      "tunable": {
+        "speed": [
+          0.5,
+          2.0
+        ],
+        "pitch": [
+          -12,
+          12
+        ],
+        "volume": [
+          0,
+          10
+        ]
+      },
+      "recommend": "小寻 teen 首选：官方音色库里直接叫「少女音色」，二次元向",
+      "ready": false,
+      "emotion_distinct": 5
+    },
+    {
+      "id": "mm_sweet_girl",
+      "name": "Sweet Girl（MiniMax 英文甜妹）",
+      "provider": "minimax",
+      "voice_id": "Sweet_Girl",
+      "persona": "shoujo",
+      "anime": true,
+      "langs": [
+        "en-US"
+      ],
+      "emotion_mode": "emotion",
+      "emotions": [
+        "happy",
+        "sad",
+        "angry",
+        "fearful",
+        "surprised",
+        "neutral"
+      ],
+      "roles": [],
+      "tunable": {
+        "speed": [
+          0.5,
+          2.0
+        ],
+        "pitch": [
+          -12,
+          12
+        ],
+        "volume": [
+          0,
+          10
+        ]
+      },
+      "recommend": "英文二次元甜妹音",
+      "ready": false,
+      "emotion_distinct": 5
+    },
+    {
+      "id": "az_ava_multi",
+      "name": "Ava 多语言（明亮少女感）",
+      "provider": "azure_speech",
+      "voice_id": "en-US-AvaMultilingualNeural",
+      "persona": "young_woman",
+      "anime": false,
+      "langs": [
+        "en-US",
+        "zh-CN",
+        "ja-JP"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "chat",
+        "cheerful",
+        "empathetic",
+        "excited",
+        "friendly",
+        "sad"
+      ],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "官方描述 bright, youthful；英语母语最自然的一个",
+      "ready": false,
+      "emotion_distinct": 4
+    },
+    {
+      "id": "az_xiaohan",
+      "name": "晓涵（Azure，10 种情绪）",
+      "provider": "azure_speech",
+      "voice_id": "zh-CN-XiaohanNeural",
+      "persona": "young_woman",
+      "anime": false,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "affectionate",
+        "angry",
+        "calm",
+        "cheerful",
+        "disgruntled",
+        "embarrassed",
+        "fearful",
+        "gentle",
+        "sad",
+        "serious"
+      ],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "情绪谱最全的中文女声之一，偏写实不算二次元",
+      "ready": false,
+      "emotion_distinct": 6
+    },
+    {
+      "id": "az_xiaomo",
+      "name": "晓墨（Azure，可演不同年龄）",
+      "provider": "azure_speech",
+      "voice_id": "zh-CN-XiaomoNeural",
+      "persona": "young_woman",
+      "anime": false,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "affectionate",
+        "angry",
+        "calm",
+        "cheerful",
+        "depressed",
+        "disgruntled",
+        "embarrassed",
+        "envious",
+        "fearful",
+        "gentle",
+        "sad",
+        "serious"
+      ],
+      "roles": [
+        "Boy",
+        "Girl",
+        "YoungAdultFemale",
+        "OlderAdultFemale",
+        "SeniorFemale"
+      ],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "唯一带 role 的：同一个音色能演女孩/少女/成年女性，形态切换可以不换音色",
+      "ready": false,
+      "emotion_distinct": 6
+    },
+    {
+      "id": "az_xiaoxiao_multi",
+      "name": "晓晓 多语言（91 种语言）",
+      "provider": "azure_speech",
+      "voice_id": "zh-CN-XiaoxiaoMultilingualNeural",
+      "persona": "young_woman",
+      "anime": false,
+      "langs": [
+        "zh-CN",
+        "ja-JP",
+        "en-US",
+        "ko-KR"
+      ],
+      "emotion_mode": "style",
+      "emotions": [
+        "affectionate",
+        "cheerful",
+        "empathetic",
+        "excited",
+        "poetry-reading",
+        "sorry",
+        "story"
+      ],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ],
+        "style_degree": [
+          0.01,
+          2.0
+        ]
+      },
+      "recommend": "同一把嗓子说中/日/英，音色不跳——跨语言对话用它",
+      "ready": false,
+      "emotion_distinct": 3
+    },
+    {
+      "id": "edge_xiaoxiao",
+      "name": "晓晓（edge-tts 免费通道）",
+      "provider": "edge_tts",
+      "voice_id": "zh-CN-XiaoxiaoNeural",
+      "persona": "young_woman",
+      "anime": false,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "prosody",
+      "emotions": [],
+      "roles": [],
+      "tunable": {
+        "rate": [
+          -50,
+          100
+        ],
+        "pitch": [
+          -50,
+          50
+        ],
+        "volume": [
+          -50,
+          50
+        ]
+      },
+      "recommend": "成年女声免费保底",
+      "ready": true,
+      "emotion_distinct": 0
+    },
+    {
+      "id": "mm_danya_xuejie",
+      "name": "淡雅学姐（MiniMax）",
+      "provider": "minimax",
+      "voice_id": "danya_xuejie",
+      "persona": "young_woman",
+      "anime": true,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "emotion",
+      "emotions": [
+        "happy",
+        "sad",
+        "angry",
+        "neutral"
+      ],
+      "roles": [],
+      "tunable": {
+        "speed": [
+          0.5,
+          2.0
+        ],
+        "pitch": [
+          -12,
+          12
+        ],
+        "volume": [
+          0,
+          10
+        ]
+      },
+      "recommend": "温和知性，适合讲解类回答",
+      "ready": false,
+      "emotion_distinct": 4
+    },
+    {
+      "id": "mm_yujie",
+      "name": "御姐音（MiniMax）",
+      "provider": "minimax",
+      "voice_id": "female-yujie",
+      "persona": "young_woman",
+      "anime": true,
+      "langs": [
+        "zh-CN"
+      ],
+      "emotion_mode": "emotion",
+      "emotions": [
+        "happy",
+        "sad",
+        "angry",
+        "fearful",
+        "disgusted",
+        "surprised",
+        "neutral"
+      ],
+      "roles": [],
+      "tunable": {
+        "speed": [
+          0.5,
+          2.0
+        ],
+        "pitch": [
+          -12,
+          12
+        ],
+        "volume": [
+          0,
+          10
+        ]
+      },
+      "recommend": "小寻 adult 形态候选",
+      "ready": false,
+      "emotion_distinct": 5
+    }
+  ],
+  "cast": {
+    "characters": [
+      {
+        "character": "xiaoxun",
+        "form": "teen",
+        "voice": "mm_shaonv",
+        "fallback": "edge_xiaoyi",
+        "note": "少女：官方音色库里就叫「少女音色」，比现在的晓伊更贴二次元"
+      },
+      {
+        "character": "xiaoxun",
+        "form": "loli",
+        "voice": "mm_lovely_girl",
+        "fallback": "edge_xiaoyi",
+        "note": "萝莉：萌萌女童"
+      },
+      {
+        "character": "xiaoxun",
+        "form": "adult",
+        "voice": "mm_yujie",
+        "fallback": "edge_xiaoxiao",
+        "note": "青年女性：御姐音"
+      }
+    ],
+    "agents": [
+      {
+        "agent": "gpt",
+        "lang": "en-US",
+        "voice": "az_ava_multi",
+        "note": "美国模型用英语：Ava 官方描述 bright / youthful"
+      },
+      {
+        "agent": "gemini",
+        "lang": "en-US",
+        "voice": "mm_sweet_girl",
+        "note": "同样英语，但换一家生源、换一种音色"
+      },
+      {
+        "agent": "deepseek",
+        "lang": "zh-CN",
+        "voice": "az_xiaohan",
+        "note": "中文、情绪谱最全的一个"
+      },
+      {
+        "agent": "ollama",
+        "lang": "zh-CN",
+        "voice": "az_xiaomo",
+        "note": "本机模型：晓墨带 role，可以演不同年龄"
+      },
+      {
+        "agent": "relay_test",
+        "lang": "zh-CN",
+        "voice": "mm_danya_xuejie",
+        "note": "中转站：淡雅学姐"
+      }
+    ]
+  },
+  "personas": [
+    "boy",
+    "loli",
+    "mature",
+    "onee_san",
+    "shoujo",
+    "young_woman",
+    "youth"
+  ],
+  "emotion_modes": [
+    "emotion",
+    "inline_tag",
+    "prosody",
+    "style"
+  ]
+}

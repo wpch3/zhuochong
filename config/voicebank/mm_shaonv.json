@@ -1,0 +1,41 @@
+{
+  "id": "mm_shaonv",
+  "name": "少女音（MiniMax）",
+  "provider": "minimax",
+  "voice_id": "female-shaonv",
+  "persona": "shoujo",
+  "anime": true,
+  "langs": [
+    "zh-CN",
+    "en-US",
+    "ja-JP"
+  ],
+  "emotion_mode": "emotion",
+  "emotions": [
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "disgusted",
+    "surprised",
+    "neutral"
+  ],
+  "tunable": {
+    "speed": [
+      0.5,
+      2.0
+    ],
+    "pitch": [
+      -12,
+      12
+    ],
+    "volume": [
+      0,
+      10
+    ]
+  },
+  "recommend": "小寻 teen 首选：官方音色库里直接叫「少女音色」，二次元向",
+  "source": "MiniMax 音色表 voice_id=female-shaonv",
+  "roles": [],
+  "enabled": true
+}

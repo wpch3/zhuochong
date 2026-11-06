@@ -1,0 +1,146 @@
+{
+  "status": "corrected WIP registered target-ROI diagnostic only; normalized concepts are not source fit/approval",
+  "method": "left/right ROIs from chibi_small_hand_source_extraction_metrics.json exact source hand bboxes (left 45x48 x62..107/y878..926; right 45x46 x462..507/y880..926). Concept fullbodies are normalized to the 567x1292 source coordinate canvas, then crops shown nearest-neighbor at 8x. No hand art is alpha-cut, fitted, or inserted.",
+  "panels": [
+    {
+      "panel": "Source",
+      "side": "left",
+      "roi": [
+        62,
+        878,
+        107,
+        926
+      ],
+      "target_size": [
+        45,
+        48
+      ]
+    },
+    {
+      "panel": "trial15 mitten",
+      "side": "left",
+      "roi": [
+        62,
+        878,
+        107,
+        926
+      ],
+      "target_size": [
+        45,
+        48
+      ]
+    },
+    {
+      "panel": "trial37",
+      "side": "left",
+      "roi": [
+        62,
+        878,
+        107,
+        926
+      ],
+      "target_size": [
+        45,
+        48
+      ]
+    },
+    {
+      "panel": "trial38",
+      "side": "left",
+      "roi": [
+        62,
+        878,
+        107,
+        926
+      ],
+      "target_size": [
+        45,
+        48
+      ]
+    },
+    {
+      "panel": "trial39",
+      "side": "left",
+      "roi": [
+        62,
+        878,
+        107,
+        926
+      ],
+      "target_size": [
+        45,
+        48
+      ]
+    },
+    {
+      "panel": "Source",
+      "side": "right",
+      "roi": [
+        462,
+        880,
+        507,
+        926
+      ],
+      "target_size": [
+        45,
+        46
+      ]
+    },
+    {
+      "panel": "trial15 mitten",
+      "side": "right",
+      "roi": [
+        462,
+        880,
+        507,
+        926
+      ],
+      "target_size": [
+        45,
+        46
+      ]
+    },
+    {
+      "panel": "trial37",
+      "side": "right",
+      "roi": [
+        462,
+        880,
+        507,
+        926
+      ],
+      "target_size": [
+        45,
+        46
+      ]
+    },
+    {
+      "panel": "trial38",
+      "side": "right",
+      "roi": [
+        462,
+        880,
+        507,
+        926
+      ],
+      "target_size": [
+        45,
+        46
+      ]
+    },
+    {
+      "panel": "trial39",
+      "side": "right",
+      "roi": [
+        462,
+        880,
+        507,
+        926
+      ],
+      "target_size": [
+        45,
+        46
+      ]
+    }
+  ]
+}

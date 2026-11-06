@@ -1,0 +1,26 @@
+{
+  "task": "T67.71",
+  "status": "isolated diagnostic only; not production and not accepted repair",
+  "source": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "mask_basis": "manual_artifact_polygons_v2 full visible cuff-and-hand silhouette; includes reviewed margins and may overlap legitimate hair",
+  "intent": "remove only source-visible cuff/hand foreign object silhouette for review; hidden hair shape remains unknown; no fill or neighbor sampling",
+  "edge_handling": "4x supersampled polygon rasterization with fractional alpha clearance at the boundary",
+  "changed_pixels_outside_reviewed_boxes": 0,
+  "side_counts": {
+    "left": {
+      "silhouette_mask_pixels_gt_127": 21360,
+      "silhouette_mask_pixels_gt_0": 22545,
+      "source_nonzero_alpha_under_mask_gt_127": 15183
+    },
+    "right": {
+      "silhouette_mask_pixels_gt_127": 23491,
+      "silhouette_mask_pixels_gt_0": 24766,
+      "source_nonzero_alpha_under_mask_gt_127": 15131
+    }
+  },
+  "outputs": [
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/72_visible_artifact_silhouette_candidate_mask.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/73_visible_artifact_silhouette_clear_diagnostic.png"
+  ],
+  "warning": "This does not establish what was behind the visible object and may erase adjacent legitimate hair where the manual silhouette is broad. Do not use as production input before visual approval and separate backfill inference."
+}

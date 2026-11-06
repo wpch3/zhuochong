@@ -1,0 +1,373 @@
+{
+  "engine": "0.1.0",
+  "action": "surprised",
+  "reason": "preview",
+  "blink": 0.0,
+  "scale": 1.0,
+  "form": "teen",
+  "form_name": "少女",
+  "outfit": "",
+  "mood": "calm",
+  "affection": 2,
+  "tier": 0,
+  "tier_name": "初识",
+  "sleeping": false,
+  "idle": 0.0,
+  "frame_w": 848,
+  "frame_h": 1360,
+  "canvas_w": 848,
+  "canvas_h": 1360,
+  "character": "xiaoxun",
+  "root": ".",
+  "blink_manual": -1.0,
+  "actions": [
+    "breath",
+    "sway",
+    "focus",
+    "nod",
+    "head_pat",
+    "happy",
+    "sad",
+    "surprised",
+    "hammered",
+    "stroke",
+    "clicked",
+    "dragged",
+    "talk",
+    "think",
+    "wave",
+    "wave_both",
+    "heart_hands",
+    "kirara_jump",
+    "look_around",
+    "star_eyes",
+    "shift_weight",
+    "tiptoe",
+    "ear_twitch",
+    "tail_swish",
+    "curious_tilt"
+  ],
+  "action_names": [
+    "呼吸",
+    "摇摆",
+    "专注",
+    "点头",
+    "摸头",
+    "开心",
+    "难过",
+    "惊讶",
+    "被锤",
+    "抚摸",
+    "被点",
+    "被拖",
+    "说话",
+    "思考",
+    "挥手",
+    "双手挥",
+    "比心",
+    "蹦一下",
+    "张望",
+    "星星眼",
+    "换重心",
+    "踮脚",
+    "抖耳朵",
+    "甩尾巴",
+    "好奇地歪头张望"
+  ],
+  "forms": [
+    "chibi",
+    "teen"
+  ],
+  "form_names": [
+    "Q 版",
+    "少女"
+  ],
+  "form_roadmap": [
+    {
+      "id": "chibi",
+      "name": "Q 版",
+      "status": "ready",
+      "note": "H6 的第四形态。2026-10-17 用它把「新形态：设计图 → 拆件 → rig → 引擎」整条链路跑通（T2.2.5），现在能切换、能渲染、能做动作：37 部件 / 20 "
+    },
+    {
+      "id": "teen",
+      "name": "少女",
+      "status": "ready",
+      "note": "主形态。40 部件 / 18 动作 / 46 参数 / 7 表情，Live2D 合规 39 项全部实测通过。 ★ 2026-10-17 更正头身比：这里原来写 1:6，而 anchors.json 实测 meta.heads_"
+    },
+    {
+      "id": "loli",
+      "name": "萝莉",
+      "status": "planned",
+      "note": "H6 要求的四形态之一。音色已经选好（萌萌女童），缺的是设计图 + 拆件 + rig。对应 T2.2.1。"
+    },
+    {
+      "id": "adult",
+      "name": "青年女性",
+      "status": "planned",
+      "note": "音色已选（御姐音）。对应 T2.2.2。"
+    }
+  ],
+  "outfits": [
+    "cocoa",
+    "default",
+    "midnight"
+  ],
+  "outfit_names": [
+    "可可（针织开衫）",
+    "常服（棒球外套）",
+    "夜航（深蓝 × 米）"
+  ],
+  "expression": "",
+  "expressions": [
+    {
+      "id": "smile",
+      "name": "微笑"
+    },
+    {
+      "id": "shy",
+      "name": "害羞"
+    },
+    {
+      "id": "angry",
+      "name": "生气"
+    },
+    {
+      "id": "sad",
+      "name": "难过"
+    },
+    {
+      "id": "surprise",
+      "name": "吃惊"
+    },
+    {
+      "id": "sleepy",
+      "name": "困倦"
+    },
+    {
+      "id": "happy",
+      "name": "开心（笑眼）"
+    },
+    {
+      "id": "pain",
+      "name": "痛（>_<）"
+    },
+    {
+      "id": "star_eyes",
+      "name": "星星眼"
+    },
+    {
+      "id": "peek_blush",
+      "name": "peek_blush"
+    }
+  ],
+  "poses": [
+    {
+      "id": "eye_hl_style",
+      "current": "round",
+      "entries": [
+        "round",
+        "star"
+      ]
+    },
+    {
+      "id": "tail_pose",
+      "current": "relaxed",
+      "entries": [
+        "relaxed",
+        "up",
+        "puff",
+        "tuck"
+      ]
+    },
+    {
+      "id": "hood_pose",
+      "current": "up",
+      "entries": [
+        "up",
+        "down"
+      ]
+    },
+    {
+      "id": "hairstyle",
+      "current": "long",
+      "entries": [
+        "long",
+        "twin",
+        "pony"
+      ]
+    }
+  ],
+  "regions": [
+    {
+      "id": "head",
+      "action": "head_pat",
+      "cursor": "hand",
+      "rect": [
+        244,
+        0,
+        357,
+        391
+      ]
+    },
+    {
+      "id": "body",
+      "action": "stroke",
+      "cursor": "hand",
+      "rect": [
+        253,
+        391,
+        339,
+        694
+      ]
+    },
+    {
+      "id": "feet",
+      "action": "surprised",
+      "cursor": "hand",
+      "rect": [
+        253,
+        1085,
+        339,
+        207
+      ]
+    }
+  ],
+  "viseme": "",
+  "viseme_weight": 0.0,
+  "visemes": [
+    "SIL",
+    "A",
+    "I",
+    "U",
+    "E",
+    "O",
+    "N"
+  ],
+  "deformers": {
+    "hair_ahoge_root": 0.0,
+    "hair_ahoge_mid": 0.0,
+    "ahoge_s": 0.72725,
+    "fore_l_root": 0.0,
+    "fore_l_mid": 0.0,
+    "arm_l_fore_slim": 0.0,
+    "arm_l_fore_long": 0.0,
+    "forearm_bent_l_long": 0.0,
+    "forearm_bent_l_fullness": 1.0,
+    "arm_l_elbow_smooth": 0.0,
+    "fore_r_root": 0.0,
+    "fore_r_mid": 0.0,
+    "arm_r_fore_slim": 0.0,
+    "arm_r_fore_long": 0.0,
+    "forearm_bent_r_long": 0.0,
+    "forearm_bent_r_fullness": 1.0,
+    "arm_r_elbow_smooth": 0.0,
+    "hair_side_l_root": 0.0,
+    "hair_side_l_mid": 0.0,
+    "side_l_s": 0.0,
+    "hair_side_r_root": 0.0,
+    "hair_side_r_mid": 0.0,
+    "side_r_s": 0.0,
+    "hair_back_root": 0.0,
+    "hair_back_mid": 0.0,
+    "back_s": 0.0,
+    "brow_l_form": 0.0,
+    "brow_r_form": 0.0,
+    "skirt_root": 0.0,
+    "skirt_mid": 0.0,
+    "skirt_sway_x": 0.0,
+    "skirt_hem_x": 0.0,
+    "skirt_sway_y": 0.0,
+    "jacket_hem_x": -0.0873,
+    "mouth_corners_open": -0.7,
+    "mouth_corners_mask": -0.7,
+    "mouth_corners_cavity": -0.7,
+    "tail_relaxed_root": 0.0,
+    "tail_relaxed_mid": 0.0,
+    "tail_relaxed_s": 0.19237,
+    "tail_up_root": 0.0,
+    "tail_up_mid": 0.0,
+    "tail_up_s": 0.19237,
+    "tail_puff_root": 0.0,
+    "tail_puff_mid": 0.0,
+    "tail_puff_s": 0.19237,
+    "tail_tuck_root": 0.0,
+    "tail_tuck_mid": 0.0,
+    "tail_tuck_s": -0.3864,
+    "longhair_mid": 2.06028,
+    "longhair_tip": 0.9457,
+    "twintail_l_tip": 1.1426,
+    "twintail_r_tip": 1.0716,
+    "pony_mid": 1.6632,
+    "pony_tip": 0.79929
+  },
+  "physics": {
+    "torso_follow_head": 0.43234,
+    "ahoge_y": 0.0727,
+    "hand_l_lag": -6.0,
+    "hand_r_lag": 6.0,
+    "bangs_x": 0.07796,
+    "side_l_x": 1.57848,
+    "side_l_tip": 0.45381,
+    "side_r_x": 1.83196,
+    "side_r_tip": 0.43973,
+    "back_x": 1.00043,
+    "back_tip": 0.30706,
+    "skirt_x": -0.21275,
+    "skirt_y": -0.00273,
+    "jacket_x": -0.0873,
+    "tail_relaxed_x": -1.09402,
+    "tail_relaxed_tip": 0.19237,
+    "tail_relaxed_y": -0.04992,
+    "tail_up_x": -1.09402,
+    "tail_up_tip": 0.19237,
+    "tail_up_y": -0.04992,
+    "tail_puff_x": -1.09402,
+    "tail_puff_tip": 0.19237,
+    "tail_puff_y": -0.04992,
+    "tail_tuck_x": -0.59914,
+    "tail_tuck_tip": -0.3864,
+    "tail_tuck_y": -0.01242,
+    "ear_l_x": -0.44055,
+    "ear_r_x": -0.39189,
+    "hood_x": 0.0984,
+    "hood_up_twin_x": 0.09769,
+    "hood_up_pony_x": 0.09769,
+    "hood_up_long_x": 0.09626
+  },
+  "physics2": {
+    "ahoge2.1": -17.89504,
+    "ahoge2.2": 12.12088,
+    "ahoge2#0": -8.0,
+    "ahoge2#1": 0.72725,
+    "longhair2.1": 4.62025,
+    "longhair2.2": 20.60279,
+    "longhair2.3": 12.60929,
+    "longhair2#0": 7.85442,
+    "longhair2#1": 2.06028,
+    "longhair2#2": 0.9457,
+    "twin_l2.1": -1.80806,
+    "twin_l2.2": 19.04337,
+    "twin_l2#0": -2.89289,
+    "twin_l2#1": 1.1426,
+    "twin_r2.1": 0.34211,
+    "twin_r2.2": 17.86,
+    "twin_r2#0": 0.54737,
+    "twin_r2#1": 1.0716,
+    "pony2.1": 4.22409,
+    "pony2.2": 23.76004,
+    "pony2.3": 14.5326,
+    "pony2#0": 7.18095,
+    "pony2#1": 1.6632,
+    "pony2#2": 0.79929
+  },
+  "forces": {
+    "gx": 0.0,
+    "gy": 1.0,
+    "wx": 0.0,
+    "wy": 0.0,
+    "breeze": 0.03,
+    "wind_x": 0.0168,
+    "wind_y": 0.0
+  }
+}

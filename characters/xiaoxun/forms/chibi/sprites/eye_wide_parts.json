@@ -1,0 +1,72 @@
+{
+  "source": "eye_<side>_base.png（原画眼白 + 上睫毛）各向异性放大",
+  "register": {
+    "scale": [
+      1.12,
+      1.2
+    ],
+    "ncc": null,
+    "tx": 0.0,
+    "ty": 0.0,
+    "seeded_by": "base_affine"
+  },
+  "source_note": "原画眼件仿射撑开（Live2D ParamEyeLWide 的贴图等价做法）",
+  "eyes": [
+    {
+      "side": "l",
+      "file": "eye_l_wide.png",
+      "pos": [
+        0,
+        387
+      ],
+      "size": [
+        296,
+        181
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "cover_ratio": 0.9988,
+        "seam_mean_abs": 83.42,
+        "opaque_px": 24240,
+        "iris_erased_px": 0
+      }
+    },
+    {
+      "side": "r",
+      "file": "eye_r_wide.png",
+      "pos": [
+        270,
+        387
+      ],
+      "size": [
+        297,
+        181
+      ],
+      "gain": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "cover_ratio": 1.0,
+        "seam_mean_abs": 82.27,
+        "opaque_px": 23653,
+        "iris_erased_px": 0
+      }
+    }
+  ]
+}

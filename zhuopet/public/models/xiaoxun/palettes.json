@@ -1,0 +1,54 @@
+{
+  "xiaoxun": {
+    "hair-1": "#F1EDFB", "hair-2": "#D6CDEF", "hair-3": "#B7A6E2", "hair-4": "#9A85CE",
+    "hair-line": "#6B5A8E", "hair-shine": "#FFFFFF",
+    "skin-1": "#FFF1E7", "skin-2": "#FFDCCB", "skin-3": "#F3C3B2", "skin-line": "#D79C8B",
+    "eye-1": "#A8F0FA", "eye-2": "#5AA6EE", "eye-3": "#3B3F9E", "eye-line": "#3A2C55",
+    "hoodie-1": "#FFFDF7", "hoodie-2": "#F4E5CF", "hoodie-line": "#C7A98A",
+    "sleeve-1": "#A6E7DC", "sleeve-2": "#6FC9BD", "sleeve-line": "#4E9E94",
+    "skirt-1": "#4C5A7C", "skirt-2": "#333D59", "skirt-line": "#252D44",
+    "sock-1": "#FFFDF8", "sock-2": "#EFE6DA", "sock-line": "#C9B8A6",
+    "shoe-1": "#8ADBD0", "shoe-2": "#5FBDB2", "shoe-line": "#3F8F86",
+    "accent-1": "#FFC2DA", "accent-2": "#FF9EC4", "accent-3": "#FFD98E", "accent-line": "#D98BA8",
+    "line": "#5B4A70", "blush": "#FF9FBC"
+  },
+  "yuejian": {
+    "hair-1": "#E8ECFA", "hair-2": "#B9C4E8", "hair-3": "#8494C9", "hair-4": "#6474AE",
+    "hair-line": "#4A5680", "hair-shine": "#FFFFFF",
+    "skin-1": "#FFF3EC", "skin-2": "#FFDCCB", "skin-3": "#F3C3B2", "skin-line": "#D79C8B",
+    "eye-1": "#D8C8FF", "eye-2": "#9A7BE8", "eye-3": "#4B3A8F", "eye-line": "#332A55",
+    "hoodie-1": "#F7F5FF", "hoodie-2": "#DDD8F2", "hoodie-line": "#A9A0C9",
+    "sleeve-1": "#C9C2F0", "sleeve-2": "#9A8FD6", "sleeve-line": "#6F63AE",
+    "skirt-1": "#3E3A5C", "skirt-2": "#2A2742", "skirt-line": "#1E1B30",
+    "sock-1": "#FFFDF8", "sock-2": "#E8E2F2", "sock-line": "#BDB2CE",
+    "shoe-1": "#B9A8E8", "shoe-2": "#8F7BC9", "shoe-line": "#6A579E",
+    "accent-1": "#D8CCFF", "accent-2": "#B9A0FF", "accent-3": "#FFE6A8", "accent-line": "#9A7BD9",
+    "line": "#4A3F66", "blush": "#FFA8C8"
+  },
+  "shuangxi": {
+    "hair-1": "#FFE9D6", "hair-2": "#FFC9A8", "hair-3": "#F5A07E", "hair-4": "#D97C5E",
+    "hair-line": "#9A5540", "hair-shine": "#FFFFFF",
+    "skin-1": "#FFF1E7", "skin-2": "#FFDCCB", "skin-3": "#F3C3B2", "skin-line": "#D79C8B",
+    "eye-1": "#FFE9A8", "eye-2": "#FFB45E", "eye-3": "#C96A2E", "eye-line": "#5A3A2E",
+    "hoodie-1": "#FFF9F0", "hoodie-2": "#FFE3CC", "hoodie-line": "#D9A98A",
+    "sleeve-1": "#FFD1B0", "sleeve-2": "#F5A97E", "sleeve-line": "#C97E55",
+    "skirt-1": "#7A4A52", "skirt-2": "#5A343C", "skirt-line": "#42242B",
+    "sock-1": "#FFFDF8", "sock-2": "#F6E6DA", "sock-line": "#D9B8A6",
+    "shoe-1": "#FFC49E", "shoe-2": "#F09A6E", "shoe-line": "#C4734A",
+    "accent-1": "#FFE0A8", "accent-2": "#FFB86B", "accent-3": "#FFE9A8", "accent-line": "#D99A4E",
+    "line": "#6B4A3E", "blush": "#FF9F8E"
+  },
+  "xiaochen": {
+    "hair-1": "#E8FAF2", "hair-2": "#BFEBD8", "hair-3": "#8FD4BC", "hair-4": "#6BB49C",
+    "hair-line": "#3F7A68", "hair-shine": "#FFFFFF",
+    "skin-1": "#FFF1E7", "skin-2": "#FFDCCB", "skin-3": "#F3C3B2", "skin-line": "#D79C8B",
+    "eye-1": "#C8F5E8", "eye-2": "#5EC9AE", "eye-3": "#2E7A6A", "eye-line": "#2E4A44",
+    "hoodie-1": "#F8FFFC", "hoodie-2": "#DDF2E9", "hoodie-line": "#9CC9B8",
+    "sleeve-1": "#B8EBDD", "sleeve-2": "#7FCBB8", "sleeve-line": "#4F9A88",
+    "skirt-1": "#3E5A54", "skirt-2": "#2A403B", "skirt-line": "#1E2E2A",
+    "sock-1": "#FFFDF8", "sock-2": "#E6F2EC", "sock-line": "#B8CEC4",
+    "shoe-1": "#9EE0CE", "shoe-2": "#6BBFA9", "shoe-line": "#478F7C",
+    "accent-1": "#C8F5E8", "accent-2": "#8FE0C8", "accent-3": "#FFE9A8", "accent-line": "#5EA88F",
+    "line": "#3E5A50", "blush": "#FFA8C0"
+  }
+}

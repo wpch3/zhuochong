@@ -1,0 +1,29 @@
+{
+  "name": "Hunyuan3D 2.1（本机建模）",
+  "kind": "local_script",
+  "local": true,
+  "enabled": false,
+  "priority": 70,
+  "base_url": "http://127.0.0.1:8084",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "model3d.generate",
+      "model": "hunyuan3d-dit-v2-1",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 10,
+    "note": "官方 README：形状 10GB / 贴图 21GB / 全流程 29GB，--low_vram_mode 约 15GB；2.0 版更省（形状 6GB、含贴图 16GB）。"
+  },
+  "note": "★ 协议要先读：Tencent Hunyuan 3D Community License —— **不适用于欧盟/英国/韩国**，月活超 100 万需单独授权，输出不得用于训练别的模型。我们人在香港、单机自用，条款内；但分发包里**不内置权重**（同 DC14 的态度：协议有坑的东西不进仓库，只做可选外挂）。仓库里只放适配器与工作流。",
+  "id": "hunyuan3d"
+}

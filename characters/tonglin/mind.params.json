@@ -1,0 +1,9 @@
+{
+  "character": "tonglin",
+  "pace_fast": 0.5,
+  "effort": 0.5,
+  "express": 0.5,
+  "proactive": 0.45,
+  "curiosity": 0.5,
+  "_from": "由 tools/mind_probe.py 从 inner.json 的 mind 块导出：pace_fast←thinking.pace / effort←thinking.effort / express←emotion.express / proactive←依恋+冲突脚本+外显 / curiosity←thinking.openness"
+}

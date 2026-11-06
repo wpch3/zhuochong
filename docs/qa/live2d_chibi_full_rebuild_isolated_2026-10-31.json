@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-31",
+  "task": "T67.67 isolated full chibi regeneration",
+  "design_truth": "characters/xiaoxun/design/design_sheet_chibi.png",
+  "isolation_root": "/tmp/zc_chibi_full_2026-10-31",
+  "status": "not accepted; production assets untouched by this isolated trial",
+  "completed_in_trial": [
+    "Re-registered the 569x1292 body and five expression redraws against the chibi form anchors.",
+    "Rebuilt body parts, eye/mouth parts, hair parts, high-resolution sprites, skirt/arm parts, rig, and seam fill in the isolated copy.",
+    "Preserved the chibi-specific sprites/attach_parts.json and skipped the Teen-only hood-source/cutter path.",
+    "Rendered the trial through the real C engine headless preview after switching to chibi."
+  ],
+  "engine_result": {
+    "preview_port": 5200,
+    "visual_status": "fail",
+    "notes": [
+      "A too-wide initial eye crop introduced duplicate hair/face content; a temporary iris-component crop reduced the eye source boxes from roughly half-face width to the measured eye regions.",
+      "The C render still exposed square/fragment artifacts because the regenerated side-hair sprites contained eye and a few collar pixels.",
+      "An isolated face-underlay experiment removed the black square gaps but did not clear the remaining eyebrow/forehead and side-hair artifacts; this is not acceptance evidence."
+    ]
+  },
+  "automated_qa_before_face_underlay_experiment": {
+    "check_assets_pass": false,
+    "fail_count": 39,
+    "notable_failures": [
+      "Static assembly lost 3186 pixels versus body_full.",
+      "Torso internal holes: 14424 pixels.",
+      "Closed-eye seam color differences: 41.95 and 50.69 against a limit of 12.",
+      "Mouth/interaction-region and hairstyle color/coverage checks still failed."
+    ]
+  },
+  "unresolved": [
+    "Regenerate or cleanly segment chibi side hair so eye and clothing pixels cannot be packaged into the foreground hair sprites.",
+    "Resolve the closed-eye redraw alignment/color seams and remaining mouth, head-region, and dynamic coverage failures.",
+    "Re-run the full rebuild from a fresh isolated copy, then inspect default, expressions, hairstyle/hood combinations, motion extremes, and bones in the C engine.",
+    "Do not copy the trial rig or sprites into production before the real-render visual review passes."
+  ],
+  "production_changes_from_this_trial": false,
+  "temporary_tool_experiments_not_promoted": [
+    "make_parts.py iris-component eye-box detection",
+    "make_rig.py optional Teen-only surprised hand channels",
+    "rebuild_parts.sh Chibi attachment/wardrobe conditionals",
+    "float32 cache in fill_seam_holes.py",
+    "temporary side-hair cleanup prototype"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "status": "rejected_wip_not_production",
+  "trial": 35,
+  "date": "2026-11-04",
+  "method": "Viewer-left edit of source cuff crop",
+  "reference": "`source_left_cuff_hand.png` (visual reference only)",
+  "review": "Re-reviewed under the updated criterion: the target-size crop appears to show at least three rounded tips, so fourth-finger separation is not the rejection basis. Reject because the edit redraws the source cuff, enlarges the wrist/hand, uses a heavier contour, and is not a source-registered hand layer.",
+  "target_scale_diagnostic": "45×48 diagnostic of generated crop",
+  "production_use": false,
+  "cubism_source": false,
+  "outputs": [
+    {
+      "file": "chibi_normal_fingered_hand_left_trial35_wip.png",
+      "size_px": [
+        1008,
+        1049
+      ],
+      "mode": "RGB",
+      "sha256": "cd56de493967fad125f44bf1fd82527472ef8b6d529e20f380fd425e0c19cb6e"
+    },
+    {
+      "file": "trial35_target_box_45x48_visual_probe_wip.png",
+      "size_px": [
+        360,
+        384
+      ],
+      "mode": "RGB",
+      "sha256": "a3efd0d12a9202ab7ccbd2518848a30f55dc460edb5e7722c20b5da07dcdfe48"
+    }
+  ],
+  "probe_method": "Take median RGB of image corners as opaque background; threshold maximum per-channel difference >18; the edited sleeve/hand content reaches the image boundary, so the entire edge-touching crop is retained and contain-fit with LANCZOS into 45x48; nearest-neighbor 8x display. This probe includes sleeve and is not a hand cutout or fit.",
+  "initial_review": "Model enlarged/redrew cuff and hand; heavy outlines, broad forearm, wrong scale/style. Rejected.",
+  "post_rubric_review": {
+    "date": "2026-11-04",
+    "criterion": "side/back relaxed hanging hand: at least three clearly separated rounded fingertip lobes; fourth finger may naturally overlap",
+    "decision": "rejected_wip_not_production",
+    "reason": "Re-reviewed under the updated criterion: the target-size crop appears to show at least three rounded tips, so fourth-finger separation is not the rejection basis. Reject because the edit redraws the source cuff, enlarges the wrist/hand, uses a heavier contour, and is not a source-registered hand layer."
+  }
+}

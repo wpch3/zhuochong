@@ -1,0 +1,13 @@
+--- a/tools/make_eyeline_parts.py
++++ b/tools/make_eyeline_parts.py
+@@ -239 +239,7 @@
+-        # 3) 只换 RGB、不动 alpha
++        # 3) Skin underlay: preserve existing alpha, but restore source-cut eye
++        # holes only where both the eye carve mask and the aligned clean-skin patch
++        # agree the pixel is face. The old RGB-only path left transparent slits in
++        # seg_head; the C renderer showed those as black corner fragments.
++        alpha_restore = carve & have & (head[..., 3] <= 24)
++        if alpha_restore.any():
++            head[alpha_restore] = sk[alpha_restore]
+@@ -295,0 +302 @@
++            "alpha_restored_px": int(alpha_restore.sum()),

@@ -1,0 +1,443 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""make_hires_sprites.py —— 给每个切件生成 2× 高清版（T30.1）。
+
+为什么是这个做法（原计划被否掉了）
+----------------------------------
+T30.1 原来的打法是「整条切件链切到 2× 坐标系」：prepare_sprites 输出 2× 的
+body_full，16 个切件脚本都在 2× 坐标里跑，make_rig 再把坐标除回画布尺度。
+**动手前先数了一遍改动面，发现不可行**：坐标散在 17 个 JSON、上百个字段名里
+（pos / size / pivot / patch_pos / ball_pos / iris_center / travel / aperture_px /
+socket_size / lash_travel …），而且 `*_px` 里有些是距离、有些是统计量，
+逐个判断必然漏，漏一个就是整件错位。
+
+换成现在这个做法：**切件链一行都不改**，在它跑完之后、make_rig 之前插一步，
+把每个 sprite 单独放大到 2×，make_rig 发现有 `@2x` 就改用它并把 `scale` 乘 0.5。
+画布坐标系完全不动，所以 rig 里所有像素常数（travel / lift / pivot / hold 线）
+一个都不用改。
+
+2026-10-15 实测（先拿 4 个脸部件验的，`logs/asset_qa/hires_part_ab.png`）
+-------------------------------------------------------------------------
+    画质   1.0 档锐度 ×1.947，2.0 档 ×1.948      （眼睛轮廓/睫毛/发卡描边肉眼可见变锐）
+    性能   0.55/1.0/1.2/2.0 四档 **全部在 ±1% 噪声内**，没有代价
+           —— 渲染成本由输出像素数决定，不是源图大小；部件都小，照样在 cache 里。
+
+放大策略（不是所有件都该走超分）
+--------------------------------
+    有原生 2× 源      → **直接用它**（sprites/hires_src/<件名>@2x.png）
+                        超分是「只有 1× 像素可用」时的退路，不是目的。
+                        AI 生成的差分件（星形虹膜 / 闪光特效）源图就有 2048px，
+                        从源图直接缩到 62px，比「缩到 31px 再超分回 62px」
+                        多留一整档细节 —— 星形的描边和碎钻高光只有这样才活得下来
+                        （2026-10-16 实测，logs/asset_qa/star_eye_v2.png）。
+                        alpha 仍按下面那条规则由 1× 插值而来，所以遮罩与同组件逐像素对齐。
+    RGB 有内容        → Real-ESRGAN anime 4× 再降到 2×（和 upscale_sheet.py 同一个模型）
+    RGB 空 / 近纯色   → 直接 LANCZOS
+                        （mask_only 的 mouth_mask / eye_*_socket 三件 RGB 标准差为 0；
+                         eye_hl_* 四个高光件标准差 3.9。对这些做超分没有信息可恢复，
+                         还可能引入噪声。）
+    alpha            → 一律 LANCZOS（软边插值够用，超分模型也只吃 RGB）
+
+★ 必须全量，不许挑着做
+----------------------
+`mask` / `motion_from` 把件两两绑在一起（eye_*_socket 罩着 eye_*_base/ball，
+mouth_mask 罩着 mouth_cavity，hair_front 罩着 brow_*_ghost）。
+一个 2× 一个 1× 会让遮罩对不上。所以要么全做要么全不做，闸会检查这一点。
+
+用法
+----
+    python3 tools/make_hires_sprites.py --character xiaoxun --form teen
+    python3 tools/make_hires_sprites.py --character xiaoxun --form teen --clean  # 删掉所有 @2x
+
+依赖 onnxruntime + pillow + numpy（和 upscale_sheet.py 一样走 ~/.imgenv）。
+模型由 upscale_sheet.fetch_model() 负责下载与 sha256 校验，缓存在 .cache/models/。
+"""
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import os
+import sys
+import time
+
+SUFFIX = "@2x.png"
+NATIVE_DIR = "hires_src"   # 原生 2× 源：有就直接用，不走超分（见下）
+FACTOR = 2
+NATIVE = 4            # 模型原生倍率
+FLAT_RGB_STD = 6.0    # RGB 标准差低于这个就认为"没内容"，走插值
+
+
+def kill_keycolor(arr):
+    """抑制键色残留（纯绿 / 洋红），返回 (新数组, 处理了几个像素)。
+
+    为什么需要：键色既可能在可见区（alpha>40），也可能藏在低 alpha 边缘。
+    后者虽然此刻不显眼，却会在后续重采样/合成时染出绿边或洋红边；因此两种区域
+    都要清理，不能把“当前不可见”误当作“可以留在生产精灵里”。
+
+    颜色判据与素材审计同源：
+        纯绿   G - max(R,B) > 60
+        洋红   R-G>60 且 B-G>60 且 R>150 且 B>150
+    处理方式：可见键色先用 3×3 邻域里的非键色像素均值重填 RGB；没有干净邻居时
+    才将其 alpha 清零。alpha≤40 的隐藏键色同样先从邻域修 RGB，孤立残留清 RGB，
+    始终保留其 alpha。这样不靠降低审计阈值，也不把色污染留给后续放大。
+    """
+    import numpy as np
+    a = arr.astype(np.int16)
+
+    def key_mask(x):
+        r, g, b = x[..., 0], x[..., 1], x[..., 2]
+        green = (g - np.maximum(r, b)) > 60
+        mag = (r - g > 60) & (b - g > 60) & (r > 150) & (b > 150)
+        return green | mag
+
+    def mask_of(x):
+        return (x[..., 3] > 40) & key_mask(x)
+
+    bad0 = mask_of(a)
+    low0 = (a[..., 3] <= 40) & key_mask(a)
+    n0 = int(bad0.sum() + low0.sum())
+    if n0 == 0:
+        return arr, 0
+    # 先修可见区；相邻的干净不透明像素提供边缘颜色，alpha 不动。
+    for _ in range(2):
+        bad = mask_of(a)
+        if not bad.any():
+            break
+        good = (~key_mask(a)) & (a[..., 3] > 40)
+        acc = np.zeros(a.shape[:2] + (3,), np.float64)
+        cnt = np.zeros(a.shape[:2], np.float64)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy == 0 and dx == 0:
+                    continue
+                gs = np.roll(np.roll(good, dy, 0), dx, 1)
+                px = np.roll(np.roll(a[..., :3], dy, 0), dx, 1)
+                acc += px * gs[..., None]
+                cnt += gs
+        fill = bad & (cnt > 0)
+        a[..., :3][fill] = (acc[fill] / cnt[fill][:, None]).round()
+    left = mask_of(a)
+    a[..., 3][left] = 0          # 实在填不掉的可见键色（周围也全是键色）就隐掉
+
+    # 超分与 alpha 插值会把透明边缘的键色像素带进 PNG。alpha≤40 的像素
+    # 虽未越过可见判据，仍会在下游重采样时污染边缘；先用相邻干净像素补 RGB，
+    # 没有干净邻居的就清 RGB（保留 alpha），而不是把键色垃圾写进交付精灵。
+    low = (a[..., 3] <= 40) & key_mask(a)
+    for _ in range(2):
+        if not low.any():
+            break
+        good = (~key_mask(a)) & (a[..., 3] > 40)
+        acc = np.zeros(a.shape[:2] + (3,), np.float64)
+        cnt = np.zeros(a.shape[:2], np.float64)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy == 0 and dx == 0:
+                    continue
+                gs = np.roll(np.roll(good, dy, 0), dx, 1)
+                px = np.roll(np.roll(a[..., :3], dy, 0), dx, 1)
+                acc += px * gs[..., None]
+                cnt += gs
+        fill = low & (cnt > 0)
+        if not fill.any():
+            break
+        a[..., :3][fill] = (acc[fill] / cnt[fill][:, None]).round()
+        low = (a[..., 3] <= 40) & key_mask(a)
+    low = (a[..., 3] <= 40) & key_mask(a)
+    a[..., :3][low] = 0
+    return a.astype(arr.dtype), n0
+
+
+def is_flat_rgb(arr) -> bool:
+    """RGB 是不是没什么内容（纯 alpha 遮罩 / 近纯色高光）。"""
+    import numpy as np
+    vis = arr[..., 3] > 8
+    if not vis.any():
+        return True
+    return float(arr[..., :3][vis].std()) < FLAT_RGB_STD
+
+
+def upscale_rgb(sess, img_rgb):
+    """Real-ESRGAN 4×。小图直接整张过，不用分块。
+
+    边缘先 edge-pad 8px 再裁回去 —— 不补的话超分会在图块边界上压出一圈暗边，
+    而切件全是带透明边的小块，边界瑕疵特别显眼。
+    """
+    import numpy as np
+    from PIL import Image
+    name = sess.get_inputs()[0].name
+    a = np.asarray(img_rgb, dtype=np.float32) / 255.0
+    h, w, _ = a.shape
+    pad = 8
+    ap = np.pad(a, ((pad, pad), (pad, pad), (0, 0)), mode="edge")
+    out = sess.run(None, {name: np.ascontiguousarray(ap.transpose(2, 0, 1)[None])})[0][0]
+    out = out.transpose(1, 2, 0)[pad * NATIVE:(pad + h) * NATIVE,
+                                 pad * NATIVE:(pad + w) * NATIVE]
+    return Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype("uint8"), "RGB")
+
+
+def finish_teen_foot(arr, src_name, foot_report):
+    """超分后补回 Teen 白鞋的材质阴影，避免模型把已压暗的鞋头又提成近白。
+
+    只作用于默认小寻 teen 的四张鞋件；区域由 foot_parts.json 的鞋口/鞋底几何
+    计算，sock overlap、鞋带、鞋舌与青绿鞋面均不处理。颜色与线稿均源于现有像素。
+    """
+    import numpy as np
+    name = os.path.basename(src_name)[:-4]
+    if name not in {"seg_foot_l", "seg_foot_r", "seg_foot_l_tip", "seg_foot_r_tip"}:
+        return arr, None
+    tip = name.endswith("_tip")
+    side = name.split("_")[2][0]
+    part = next((p for p in foot_report.get("parts", []) if p.get("id") == name), None)
+    check = foot_report.get("checks", {}).get("foot_" + side, {})
+    if not part or not check:
+        return arr, None
+
+    ground = int(foot_report["ground_y"])
+    y_sole_flat = int(foot_report["cut"]["sole_top"])
+    ks = float(foot_report["warp"]["sole_squash"])
+    y_shoe = int(check["tip_shoe_top"] if tip else check["flat_shoe_top"])
+    y_sole = ground - round((ground - y_sole_flat) * ks) if tip else y_sole_flat
+    y_part = int(part["pos"][1])
+    shoe_rel, sole_rel = y_shoe - y_part, y_sole - y_part
+    toe_start = int(round(shoe_rel + (sole_rel - shoe_rel) * 0.56)) * FACTOR
+
+    out = arr.astype(np.float64, copy=True)
+    h, w = out.shape[:2]
+    yy, xx = np.mgrid[:h, :w]
+    rgb, alpha = out[..., :3], out[..., 3]
+    toe = ((alpha > 60) & (rgb[..., 0] > 225) & (rgb[..., 1] > 225) &
+           (rgb[..., 2] > 218) & (yy >= toe_start))
+    target = np.array([220.0, 220.0, 228.0])
+    if toe.any():
+        rgb[toe] = rgb[toe] * 0.60 + target * 0.40
+
+    # Strengthen, but do not redraw, the existing grayscale sock/shoe collar ink.
+    lum = rgb.mean(axis=2)
+    chroma = rgb.max(axis=2) - rgb.min(axis=2)
+    seam_y = shoe_rel * FACTOR
+    seam = ((alpha > 60) & (lum < 235) & (chroma < 55) &
+            (xx >= 16) & (xx < w - 16) &
+            (yy >= seam_y - 4) & (yy <= seam_y + 4))
+    line_color = np.array([90.0, 90.0, 110.0])
+    rgb[seam] = rgb[seam] * 0.75 + line_color * 0.25
+    return np.clip(out, 0, 255).astype(arr.dtype), {
+        "toe_start_1x": toe_start // FACTOR,
+        "toe_tone_blend": 0.40,
+        "collar_ink_blend": 0.25,
+    }
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--character", required=True)
+    ap.add_argument("--form", required=True)
+    ap.add_argument("--root", default=".")
+    ap.add_argument("--model-dir", default=".cache/models")
+    ap.add_argument("--only", default="",
+                    help="只重建逗号分隔的 PNG 子集；不删改其它 @2x，也合并保留旧报告项")
+    ap.add_argument("--clean", action="store_true", help="删掉所有 @2x 再退出")
+    args = ap.parse_args()
+
+    sp_dir = os.path.join(args.root, "characters", args.character,
+                          "forms", args.form, "sprites")
+    if not os.path.isdir(sp_dir):
+        print(f"[错误] 没有 {sp_dir}", file=sys.stderr)
+        return 2
+
+    existing = sorted(glob.glob(os.path.join(sp_dir, "*" + SUFFIX)))
+    if args.clean and args.only:
+        print("[错误] --clean 与 --only 不能同时使用", file=sys.stderr)
+        return 2
+    if args.clean:
+        for f in existing:
+            os.remove(f)
+        rp = os.path.join(sp_dir, "hires_report.json")
+        if os.path.exists(rp):
+            os.remove(rp)
+        print(f"[清理] 删掉 {len(existing)} 个 {SUFFIX}")
+        return 0
+
+    try:
+        import numpy as np
+        import onnxruntime as ort
+        from PIL import Image
+    except ImportError as e:
+        print(f"[错误] 缺依赖：{e}\n"
+              "  python3 -m venv ~/.imgenv && "
+              "~/.imgenv/bin/pip install pillow numpy onnxruntime", file=sys.stderr)
+        return 2
+
+    foot_report = None
+    if args.character == "xiaoxun" and args.form == "teen":
+        foot_path = os.path.join(sp_dir, "foot_parts.json")
+        if os.path.isfile(foot_path):
+            with open(foot_path, encoding="utf-8") as f:
+                foot_report = json.load(f)
+
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import upscale_sheet                                     # noqa: E402
+
+    model = upscale_sheet.fetch_model(os.path.join(args.root, args.model_dir))
+    sess = ort.InferenceSession(model, providers=["CPUExecutionProvider"])
+
+    # 只给 rig 真正引用的件做 @2x。
+    #
+    # 2026-10-15 首次全量跑完发现 53 个件里有 11 个 rig 根本不用
+    # （body_full 是切件源图、seg_arm_* 是拆成 upper/fore 之前的中间产物、
+    #  eye_open_*/eye_closed_*/eye_*_lid/eye_*_lash 是配准用的中间件），
+    # 白占 **2.09 MB**，光 body_full@2x 就 1.6 MB。
+    #
+    # 鸡生蛋：本步跑在 make_rig 之前，读到的是**上一次**的 rig.json。
+    # 新增部件时第一次会漏，第二次才补上 —— 所以 selfcheck 有一条闸兜底
+    # （「rig 引用的件都有 @2x」），漏了会判红而不是悄悄少一个。
+    rig_p = os.path.join(args.root, "characters", args.character,
+                         "forms", args.form, "rig.json")
+    want = None
+    if os.path.exists(rig_p):
+        with open(rig_p, encoding="utf-8") as f:
+            rj = json.load(f)
+        want = {os.path.basename(p["file"]).replace(SUFFIX, ".png")
+                for p in rj.get("parts", []) if p.get("file")}
+
+    # 有些件的 @2x 由它们**自己的工具**原生产出（2048px 源图直出，比超分清楚得多），
+    # 本工具既不重做也不清理：重做 = 把原生 2× 换成超分版；清理 = 直接删掉人家的成果。
+    # 目前有两组：星星眼（tools/make_star_eye_parts.py）和裙子里布
+    # （tools/make_skirt_parts.py）—— 后者的 @2x 是**用 1× 的掩码放大两倍**后
+    # 从 seg_torso@2x 上原样切下来的，和表布逐像素对齐；换成超分就会错开一两像素，
+    # 静止时裙边上会多出一条暗线（T45.11 实测）。两组都排在本工具之后跑。
+    owned = set()
+    sj = os.path.join(sp_dir, "star_eye_parts.json")
+    if os.path.exists(sj):
+        with open(sj, encoding="utf-8") as f:
+            sjd = json.load(f)
+        owned = {os.path.basename(e["file"]) for e in sjd.get("eyes", [])}
+        if sjd.get("sparkle", {}).get("file"):
+            owned.add(os.path.basename(sjd["sparkle"]["file"]))
+    kj = os.path.join(sp_dir, "skirt_parts.json")
+    if os.path.exists(kj):
+        with open(kj, encoding="utf-8") as f:
+            kjd = json.load(f)
+        owned |= {os.path.basename(e["file"]) for e in kjd.get("parts", []) if e.get("file")}
+
+    srcs = sorted(f for f in glob.glob(os.path.join(sp_dir, "*.png"))
+                  if not f.endswith(SUFFIX)
+                  and os.path.basename(f) not in owned
+                  and (want is None or os.path.basename(f) in want))
+    requested = {x.strip() for x in args.only.split(",") if x.strip()}
+    if any(os.path.basename(x) != x or not x.endswith(".png") or x.endswith(SUFFIX)
+           for x in requested):
+        print("[错误] --only 只接受 sprite 目录内的 1× .png 文件名", file=sys.stderr)
+        return 2
+    if requested:
+        available = {os.path.basename(x) for x in srcs}
+        missing = sorted(requested - available)
+        if missing:
+            print("[错误] --only 中的文件不在 rig 引用切件里：%s" % missing,
+                  file=sys.stderr)
+            return 2
+        srcs = [x for x in srcs if os.path.basename(x) in requested]
+    else:
+        # 全量模式才清理过期 @2x；定向返修必须保留未选中的配对件。
+        for stale in glob.glob(os.path.join(sp_dir, "*" + SUFFIX)):
+            if os.path.basename(stale).replace(SUFFIX, ".png") in owned:
+                continue
+            if stale[:-len(SUFFIX)] + ".png" not in srcs:
+                os.remove(stale)
+    t0 = time.time()
+    rows, n_sr, n_lz, n_nat, n_fixed = [], 0, 0, 0, 0
+    for src in srcs:
+        im = Image.open(src).convert("RGBA")
+        w, h = im.size
+        arr = np.asarray(im)
+        nat = os.path.join(sp_dir, NATIVE_DIR,
+                           os.path.basename(src)[:-4] + SUFFIX)
+        method = None
+        if os.path.exists(nat):
+            cand = Image.open(nat).convert("RGBA")
+            if cand.size == (w * FACTOR, h * FACTOR):
+                big = cand.convert("RGB")
+                method = "native"
+                n_nat += 1
+            else:
+                # 尺寸对不上就不要硬用：这说明 1× 件被重切过而原生源没跟着更新，
+                # 静默缩放会让它和同组件错位。退回超分，并在报告里留痕。
+                print(f"[高清] 忽略 {os.path.basename(nat)}："
+                      f"{cand.size} ≠ {(w * FACTOR, h * FACTOR)}", file=sys.stderr)
+        if method is None:
+            flat = is_flat_rgb(arr)
+            if flat:
+                big = im.convert("RGB").resize((w * FACTOR, h * FACTOR), Image.LANCZOS)
+                method = "lanczos"
+                n_lz += 1
+            else:
+                big4 = upscale_rgb(sess, im.convert("RGB"))
+                big = big4.resize((w * FACTOR, h * FACTOR), Image.LANCZOS)
+                method = "realesrgan"
+                n_sr += 1
+        # ★★★ 2026-10-21 第二十八问：alpha 的放大滤镜 LANCZOS → BILINEAR。
+        #   LANCZOS 的核有负瓣，碰到 0→255 的硬 alpha 边会**振铃**：边外甩出一条
+        #   3~5px 宽、alpha 在 1~60 之间的"雾"。它在浅色背景上看不见，可一放到
+        #   深色背景（或深色衣服）上就是一圈**白毛边** —— 用户第 ② 条「黑边」
+        #   和脸周那层白雾里有它一份。
+        #   实测同一张 seg_torso 的 alpha 放大到 2×，弱 alpha(1~60) 像素数：
+        #       NEAREST 556 / BILINEAR 2685 / BICUBIC 3498 / **LANCZOS 7548**
+        #   BILINEAR 是单调插值，不会过冲，边仍然是平滑的 2px 过渡。
+        #   （RGB 仍然走超分模型或 LANCZOS —— 那边要的是锐度，没有过冲问题。）
+        big.putalpha(im.split()[3].resize((w * FACTOR, h * FACTOR), Image.BILINEAR))
+        cleaned, n_junk = kill_keycolor(np.asarray(big.convert("RGBA")))
+        if n_junk:
+            n_fixed += n_junk
+        post_finish = None
+        if foot_report is not None:
+            cleaned, post_finish = finish_teen_foot(cleaned, src, foot_report)
+        big = Image.fromarray(cleaned, "RGBA")
+        dst = src[:-4] + SUFFIX
+        big.save(dst)
+        row = {"name": os.path.basename(src), "src": [w, h],
+               "dst": [w * FACTOR, h * FACTOR],
+               "method": method, "keycolor_fixed": n_junk}
+        if post_finish is not None:
+            row["post_finish"] = post_finish
+        rows.append(row)
+
+    if requested:
+        rp = os.path.join(sp_dir, "hires_report.json")
+        previous = {}
+        if os.path.exists(rp):
+            try:
+                with open(rp, encoding="utf-8") as f:
+                    previous = {p["name"]: p for p in json.load(f).get("parts", [])}
+            except (OSError, ValueError, KeyError, TypeError):
+                previous = {}
+        previous.update({row["name"]: row for row in rows})
+        rows = [previous[name] for name in sorted(previous)]
+        n_nat = sum(row.get("method") == "native" for row in rows)
+        n_lz = sum(row.get("method") == "lanczos" for row in rows)
+        n_sr = sum(row.get("method") == "realesrgan" for row in rows)
+        n_fixed = sum(int(row.get("keycolor_fixed", 0)) for row in rows)
+
+    report = {
+        "schema_version": "1.0",
+        "factor": FACTOR,
+        "suffix": SUFFIX,
+        "model": os.path.basename(model),
+        "count": len(rows),
+        "realesrgan": n_sr,
+        "lanczos": n_lz,
+        "native": n_nat,
+        "keycolor_fixed": n_fixed,
+        "seconds": round(time.time() - t0, 1),
+        "parts": rows,
+        "note": "切件链不改坐标，这一步只换像素密度；make_rig 发现 @2x 就把 scale 乘 0.5",
+    }
+    with open(os.path.join(sp_dir, "hires_report.json"), "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=1)
+    print(f"[高清] {len(rows)} 个切件 → 2×   "
+          f"（原生 {n_nat} / 超分 {n_sr} / 插值 {n_lz}，"
+          f"键色残留修掉 {n_fixed} 像素，{report['seconds']}s）")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,31 @@
+{
+  "id": "edge_xiaoxiao",
+  "name": "晓晓（edge-tts 免费通道）",
+  "provider": "edge_tts",
+  "voice_id": "zh-CN-XiaoxiaoNeural",
+  "persona": "young_woman",
+  "anime": false,
+  "langs": [
+    "zh-CN"
+  ],
+  "emotion_mode": "prosody",
+  "emotions": [],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ]
+  },
+  "recommend": "成年女声免费保底",
+  "source": "rany2/edge-tts 音色表（中文共 14 个）",
+  "roles": [],
+  "enabled": true
+}

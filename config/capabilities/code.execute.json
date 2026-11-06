@@ -1,0 +1,19 @@
+{
+  "id": "code.execute",
+  "name": "执行代码",
+  "kind": "transform",
+  "unit": "call",
+  "input": {
+    "files": "file[]",
+    "entry": "text?",
+    "timeout_s": "int?"
+  },
+  "output": {
+    "stdout": "text",
+    "exit_code": "int",
+    "artifacts": "file[]?"
+  },
+  "ui": {
+    "panel": "code"
+  }
+}

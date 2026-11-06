@@ -1,0 +1,37 @@
+{
+  // 小寻的角色参考图登记（用户提供，放在仓库根目录；此文件只登记不搬运）
+  // 用途：① 角色设定的唯一权威参考（发色/瞳色/服装/呆毛/鲸鱼发夹）
+  //       ② 生图的 img2img 参考（锁取景）
+  //       ③ 角色 LoRA 训练的数据源之一（见 docs/TRAINING.md）
+  // 注意：这些是**参考图**不是素材——白底、无透明通道、尺寸不一，不能直接进 sprites/。
+  "schema_version": "1.0",
+  "character": "xiaoxun",
+  "references": [
+    {
+      "id": "ref_full_long",
+      "file": "小寻.png",
+      "size": [1696, 2528],
+      "background": "white",
+      "role": "角色设定总参考（长发版，高清）",
+      "note": "1696×2528 ≈ 2 倍 848×1264，接近项目画布 848×1360；适合作为 img2img 底稿与 LoRA 训练集"
+    },
+    {
+      "id": "ref_short",
+      "file": "小寻短发.png",
+      "size": [1280, 1280],
+      "background": "white",
+      "role": "短发版参考（半身到全身过度构图）",
+      "note": "方形画布，主要看发型与发夹细节"
+    },
+    {
+      "id": "ref_long_alt",
+      "file": "小寻长发.png",
+      "size": [1696, 2528],
+      "background": "white",
+      "role": "长发版参考（另一姿态）",
+      "note": "与 小寻.png 同尺寸，可互为对照检查一致性"
+    }
+  ],
+  "key_marks": ["呆毛", "鲸鱼发夹（左侧）", "棒球外套（白+青绿袖）", "藏青百褶裙", "条纹及膝袜", "青绿运动鞋"],
+  "palette_ref": "docs/PROJECT_SPEC.md 第二节色卡"
+}

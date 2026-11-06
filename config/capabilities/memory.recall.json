@@ -1,0 +1,17 @@
+{
+  "id": "memory.recall",
+  "name": "回忆",
+  "kind": "analyze",
+  "unit": "call",
+  "input": {
+    "query": "text",
+    "k": "int?",
+    "layer": "enum?"
+  },
+  "output": {
+    "items": "memory[]"
+  },
+  "ui": {
+    "panel": "list"
+  }
+}

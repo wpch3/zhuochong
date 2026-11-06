@@ -1,0 +1,24 @@
+{
+  "task": "T67.71",
+  "status": "WIP6 inferred single-sheet backfill; not recovered source, not production, pending visual rejection/approval",
+  "source": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "hidden_region": "occluded hair geometry remains unknown",
+  "geometry": "one continuous smooth sheet inferred behind each full cuff/hand silhouette; left/right flow is manually guided, not recovered",
+  "appearance": "cool lavender palette with subtle target-inspired gradient and low-contrast painted folds; no source pixel copy, generic inpaint, or arbitrary displacement",
+  "clear_mask": "manual visible-object silhouette v3 used only for local diagnostic and remains separately reviewable",
+  "outputs": [
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/93_backfill_single_sheet_inference_v6.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/94_front_clear_v6_diagnostic.png",
+    "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/95_backfill_v6_style_review.png"
+  ],
+  "counts": {
+    "left": {
+      "front_alpha_clear_mask_pixels_gt0": 16242,
+      "patch_alpha_gt24": 17902
+    },
+    "right": {
+      "front_alpha_clear_mask_pixels_gt0": 13172,
+      "patch_alpha_gt24": 17894
+    }
+  }
+}

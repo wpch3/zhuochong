@@ -1,0 +1,77 @@
+{
+  "task": "T67.71",
+  "status": "isolated new-design WIP; not accepted; not hidden-original truth; not production",
+  "method": "hand-painted continuous rear-hair sheet connected through the cuff/hand gap into the existing lower panel, with two distinct custom-curved strands, a low-contrast cool gradient, and tapered ink details; no AI, inpainting, or pixel donor",
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "size": [
+      1132,
+      1664
+    ],
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15"
+  },
+  "object_trace": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_polygons_v2.json",
+    "sha256": "06d50f64c5b76ebc60f6b5cf4f582bd8916a070484a6783e88ab0d6022e64f49",
+    "use": "visible cuff/hand cleanup only; not hidden-hair alpha"
+  },
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "removed_visible_object_pixels": 24032,
+      "painted_ribbons": 2,
+      "design_note": "Continuous rear sheet plus a custom tapered internal strand; no donor pixels."
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "removed_visible_object_pixels": 26441,
+      "painted_ribbons": 2,
+      "design_note": "Continuous rear sheet plus a custom tapered internal strand; no donor pixels."
+    }
+  },
+  "outputs": {
+    "t67_71_handpainted_continuation_v3_review.png": {
+      "size": [
+        1840,
+        1500
+      ],
+      "sha256": "034f7b5759561339c4651ee7d0d8adf19bf469cc5af87b6d1e8e387255dba1f3"
+    },
+    "t67_71_handpainted_continuation_v3_underlay.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "48c1cfb34fb42a3cd725d399a3342bdbfb99e9dc9854fbdd93fc037b72627660"
+    },
+    "t67_71_handpainted_continuation_v3_clean_front.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "9eca46b0d0ff5bde9cfb23bf83c9a64879410fe64d14702141655ddb0a8e5912"
+    },
+    "t67_71_handpainted_continuation_v3_composite.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "c4e527f099b72851006f99216a69d33a8e98694857d427a23879f008c51e53ac"
+    }
+  },
+  "limitations": [
+    "New line and lock topology is a design proposal, not recovered original hidden source.",
+    "No true C arm/cuff composition, action/transition, or ParamHairSway validation.",
+    "No production sprite, rig, or generator was modified."
+  ]
+}

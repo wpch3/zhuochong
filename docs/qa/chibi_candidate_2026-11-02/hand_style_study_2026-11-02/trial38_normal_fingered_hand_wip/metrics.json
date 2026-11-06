@@ -1,0 +1,35 @@
+{
+  "status": "rejected_wip_not_production",
+  "trial": 38,
+  "date": "2026-11-04",
+  "method": "Attempted full-body size refinement of trial37",
+  "reference": "trial37 full-body WIP",
+  "review": "Re-reviewed under the three-rounded-tip rule: the full-body result has finger-like strokes, but exact registered ROIs still capture cuff/upper palm rather than three rounded tips; the visible separations read as shallow fan/groove lines. Size/registration remains low and oversized. Reject.",
+  "target_scale_diagnostic": "8× hand-detail board; source-relative registration board and ROI comparison",
+  "production_use": false,
+  "cubism_source": false,
+  "outputs": [
+    {
+      "file": "chibi_fullbody_normal_hands_trial38_wip.png",
+      "size_px": [
+        1024,
+        1024
+      ],
+      "mode": "RGB",
+      "sha256": "0cf5118cb139a4148d4a9c06bfdca0747c8bc10be7adbded65a683ad3afb18c3"
+    }
+  ],
+  "probe_method": "See linked full-body normalization and exact registered source-ROI comparison boards. Board transforms are diagnostic only; no generated pixels are fitted to the production sprite.",
+  "review_boards": [
+    "../trial38_normal_hand_fullbody_detail_board_wip.png",
+    "../trial37_38_normal_hand_fullbody_registration_board_wip.png",
+    "../trial39_normal_hand_registered_target_roi_comparison_wip.png"
+  ],
+  "initial_review": "15–20% size reduction was not achieved; hands still low/large and appear fan/groove-like. Rejected.",
+  "post_rubric_review": {
+    "date": "2026-11-04",
+    "criterion": "side/back relaxed hanging hand: at least three clearly separated rounded fingertip lobes; fourth finger may naturally overlap",
+    "decision": "rejected_wip_not_production",
+    "reason": "Re-reviewed under the three-rounded-tip rule: the full-body result has finger-like strokes, but exact registered ROIs still capture cuff/upper palm rather than three rounded tips; the visible separations read as shallow fan/groove lines. Size/registration remains low and oversized. Reject."
+  }
+}

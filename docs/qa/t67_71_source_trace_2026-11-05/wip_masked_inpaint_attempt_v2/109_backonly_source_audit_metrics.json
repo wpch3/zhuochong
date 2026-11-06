@@ -1,0 +1,87 @@
+{
+  "task": "T67.71",
+  "status": "source-only visual audit; no repair candidate",
+  "target": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "size": [
+      1132,
+      1664
+    ],
+    "alpha_zero_pixels": 1485881,
+    "alpha_partial_pixels": 99352,
+    "alpha_opaque_pixels": 298415,
+    "alpha_nonzero_fraction": 0.211168,
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15"
+  },
+  "target_rois_xyxy": {
+    "left": [
+      51,
+      849,
+      396,
+      1368
+    ],
+    "right": [
+      736,
+      849,
+      1081,
+      1368
+    ]
+  },
+  "hair_only_v1": {
+    "path": "characters/xiaoxun/design/redraw/hair_only/hair_long_backonly_v1.png",
+    "size": [
+      843,
+      1264
+    ],
+    "alpha_zero_pixels": 613165,
+    "alpha_partial_pixels": 3080,
+    "alpha_opaque_pixels": 449307,
+    "alpha_nonzero_fraction": 0.424556,
+    "sha256": "329819792ba2d6af1fc5cde67a1c5a84417e1a1b5779735a64898a04d4637c33"
+  },
+  "hair_only_v2": {
+    "path": "characters/xiaoxun/design/redraw/hair_only/hair_long_backonly_v2.png",
+    "size": [
+      843,
+      1264
+    ],
+    "alpha_zero_pixels": 559336,
+    "alpha_partial_pixels": 1337,
+    "alpha_opaque_pixels": 504879,
+    "alpha_nonzero_fraction": 0.475074,
+    "sha256": "65ae1aecb974404730d8d31ab213263e0d8107bb03bd1cd5ccdb20cf841c3f7a"
+  },
+  "raw_source_files": [
+    {
+      "path": "characters/xiaoxun/design/redraw/hair_only/hair_long_backonly_v1_raw.png",
+      "size": [
+        843,
+        1264
+      ],
+      "sha256": "de1d8223a0900aeca29bfd8740a575a83921e638c462b85651ad7d1aec427c63"
+    },
+    {
+      "path": "characters/xiaoxun/design/redraw/hair_only/hair_long_backonly_v2_raw.png",
+      "size": [
+        843,
+        1264
+      ],
+      "sha256": "aca7c4a47b215c410e503eb383f5028a7c96a86dfb089312ed7a773a6583391d"
+    }
+  ],
+  "visual_findings": [
+    "hair-only v1 has a center opening and twin descending masses; it does not define the hood-up hidden topology",
+    "hair-only v2 has a broad continuous central back panel and is the closer palette/material reference of these two",
+    "hair-only v2 still has a different center-part, silhouette, strand directions, and no hood-up registration; it is not hidden-hair truth",
+    "no source pixels were transferred; no candidate was created; no production, rig, or generator files were changed"
+  ],
+  "board": {
+    "path": "109_backonly_source_audit.png",
+    "size": [
+      2560,
+      1510
+    ],
+    "sha256": "64895b0024f1651131c96efdaff514755e4ce08c7009e690b6f953086abb9c28"
+  },
+  "disclaimer": "The board is not an acceptance result or C-engine validation. It is a source-suitability record only."
+}

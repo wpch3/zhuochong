@@ -1,0 +1,235 @@
+{
+ "character": "xiaoxun",
+ "fps": 30.0,
+ "count": 38,
+ "items": [
+  {
+   "id": "hammer_1_base0",
+   "line": "hammer_1",
+   "text": "哇！别敲啦，会痛的！",
+   "dur": 3.24
+  },
+  {
+   "id": "hammer_1_base1",
+   "line": "hammer_1",
+   "text": "咚——！好痛呀，你是想把我敲成扁扁的吗？",
+   "dur": 4.56
+  },
+  {
+   "id": "hammer_1_tier1_0",
+   "line": "hammer_1",
+   "text": "又敲我？我记住你了哦！",
+   "dur": 3.168
+  },
+  {
+   "id": "hammer_1_tier2_0",
+   "line": "hammer_1",
+   "text": "你敲我，我也会有点委屈…不过你是故意的吧？",
+   "dur": 4.704
+  },
+  {
+   "id": "hammer_2_base0",
+   "line": "hammer_2",
+   "text": "再这样我要生气了哦！",
+   "dur": 2.568
+  },
+  {
+   "id": "pat_combo_base0",
+   "line": "pat_combo",
+   "text": "摸这么多次…我、我会害羞的啦！",
+   "dur": 3.648
+  },
+  {
+   "id": "pat_combo_tier2_0",
+   "line": "pat_combo",
+   "text": "再这样摸下去，我的脸要烧起来了…",
+   "dur": 3.648
+  },
+  {
+   "id": "pat_head_1_base0",
+   "line": "pat_head_1",
+   "text": "嘿嘿，好舒服～",
+   "dur": 2.232
+  },
+  {
+   "id": "pat_head_1_base1",
+   "line": "pat_head_1",
+   "text": "头发会被你摸乱啦。",
+   "dur": 2.64
+  },
+  {
+   "id": "pat_head_1_tier1_0",
+   "line": "pat_head_1",
+   "text": "嗯…你摸得还挺轻的嘛。",
+   "dur": 2.736
+  },
+  {
+   "id": "pat_head_1_tier2_0",
+   "line": "pat_head_1",
+   "text": "每次被你摸，我都会乖乖不动哦。",
+   "dur": 3.6
+  },
+  {
+   "id": "pat_head_1_tier3_0",
+   "line": "pat_head_1",
+   "text": "有你在身边，摸头都变得好安心呀。",
+   "dur": 3.912
+  },
+  {
+   "id": "pat_head_2_base0",
+   "line": "pat_head_2",
+   "text": "再摸一下下就好～",
+   "dur": 2.136
+  },
+  {
+   "id": "stroke_1_base0",
+   "line": "stroke_1",
+   "text": "呀，别碰那里啦！",
+   "dur": 2.4
+  },
+  {
+   "id": "stroke_1_base1",
+   "line": "stroke_1",
+   "text": "痒、痒痒的…",
+   "dur": 2.088
+  },
+  {
+   "id": "stroke_2_base0",
+   "line": "stroke_2",
+   "text": "你还要继续吗？",
+   "dur": 1.896
+  },
+  {
+   "id": "feet_1_base0",
+   "line": "feet_1",
+   "text": "脚脚是很敏感的！",
+   "dur": 2.328
+  },
+  {
+   "id": "click_1_base0",
+   "line": "click_1",
+   "text": "我在这里哦～",
+   "dur": 1.872
+  },
+  {
+   "id": "click_1_base1",
+   "line": "click_1",
+   "text": "怎么啦？",
+   "dur": 1.872
+  },
+  {
+   "id": "click_1_tier1_0",
+   "line": "click_1",
+   "text": "又找我呀？",
+   "dur": 1.872
+  },
+  {
+   "id": "click_1_tier3_0",
+   "line": "click_1",
+   "text": "你每次叫我，我都超开心的！",
+   "dur": 3.288
+  },
+  {
+   "id": "click_2_base0",
+   "line": "click_2",
+   "text": "找我有事吗？",
+   "dur": 1.872
+  },
+  {
+   "id": "drag_1_base0",
+   "line": "drag_1",
+   "text": "啊啊啊，带我去哪里呀？",
+   "dur": 2.64
+  },
+  {
+   "id": "drop_1_base0",
+   "line": "drop_1",
+   "text": "呼…落地成功！",
+   "dur": 2.328
+  },
+  {
+   "id": "wake_1_base0",
+   "line": "wake_1",
+   "text": "唔…我没有睡着哦。",
+   "dur": 2.4
+  },
+  {
+   "id": "mood_joy_1_base0",
+   "line": "mood_joy_1",
+   "text": "今天好开心呀！",
+   "dur": 2.184
+  },
+  {
+   "id": "mood_joy_1_tier2_0",
+   "line": "mood_joy_1",
+   "text": "和你在一起，每天都好开心。",
+   "dur": 3.432
+  },
+  {
+   "id": "mood_sad_1_base0",
+   "line": "mood_sad_1",
+   "text": "有点难过…",
+   "dur": 1.872
+  },
+  {
+   "id": "mood_surprise_1_base0",
+   "line": "mood_surprise_1",
+   "text": "诶？真的吗！",
+   "dur": 2.424
+  },
+  {
+   "id": "mood_think_1_base0",
+   "line": "mood_think_1",
+   "text": "让我想想…",
+   "dur": 1.872
+  },
+  {
+   "id": "mood_sleepy_1_base0",
+   "line": "mood_sleepy_1",
+   "text": "好困…晚安。",
+   "dur": 2.304
+  },
+  {
+   "id": "call_start_1_base0",
+   "line": "call_start_1",
+   "text": "电话接通啦，我在听哦。",
+   "dur": 2.832
+  },
+  {
+   "id": "call_start_1_tier2_0",
+   "line": "call_start_1",
+   "text": "终于等到你的电话啦，我一直在等你呢。",
+   "dur": 3.912
+  },
+  {
+   "id": "call_end_1_base0",
+   "line": "call_end_1",
+   "text": "下次再聊呀。",
+   "dur": 1.92
+  },
+  {
+   "id": "tier_up_base0",
+   "line": "tier_up",
+   "text": "我们更熟了一点呢。",
+   "dur": 2.256
+  },
+  {
+   "id": "tier_up_tier1_0",
+   "line": "tier_up",
+   "text": "我们熟起来啦，以后多找我玩吧！",
+   "dur": 3.408
+  },
+  {
+   "id": "tier_up_tier2_0",
+   "line": "tier_up",
+   "text": "好像离你越来越近了呢，我会一直在。",
+   "dur": 3.816
+  },
+  {
+   "id": "tier_up_tier3_0",
+   "line": "tier_up",
+   "text": "我们是最好的朋友啦，说好了哦！",
+   "dur": 3.264
+  }
+ ]
+}

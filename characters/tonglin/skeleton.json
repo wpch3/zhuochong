@@ -1,0 +1,488 @@
+{
+  "schema_version": "1.0",
+  "character": "tonglin",
+  "skeleton": "humanoid_v1",
+  "status": "contract_only",
+  "canvas": [
+    848,
+    1360
+  ],
+  "_note": "本文件由 tools/scaffold_character.py 从 xiaoxun 的 humanoid_v1 契约派生，**不是**美术资产清单。骨名/父子/挂点与模板一字不差，所以四个形态、换装、挂点、动作都能直接复用。status=contract_only 表示：契约齐了，素材还没有；做出第一个形态的 rig 之后把它改成 full（闸会检查这一步）。",
+  "bones": [
+    {
+      "id": "root",
+      "parent": null,
+      "kind": "rigid",
+      "required": true,
+      "note": "全身根。pivot 在脚底中线，四个形态都是画布底边附近"
+    },
+    {
+      "id": "chest",
+      "parent": "root",
+      "kind": "rigid",
+      "required": true,
+      "note": "上身。呼吸、重心、后仰都从这根走"
+    },
+    {
+      "id": "head",
+      "parent": "chest",
+      "kind": "rigid",
+      "required": true,
+      "note": "头。转头/点头/歪头；脸上的眼嘴眉全挂在这根下面"
+    },
+    {
+      "id": "arm_l",
+      "parent": "chest",
+      "kind": "rigid",
+      "required": true,
+      "note": "上臂（肩关节）"
+    },
+    {
+      "id": "forearm_l",
+      "parent": "arm_l",
+      "kind": "rigid",
+      "required": true,
+      "note": "小臂（肘关节）"
+    },
+    {
+      "id": "elbow_fold_l",
+      "parent": "arm_l",
+      "kind": "rigid",
+      "required": true,
+      "note": "肘褶件。它必须和小臂**同 pivot 但不同父级选择**：折起来时褶子只压不转"
+    },
+    {
+      "id": "hand_l",
+      "parent": "forearm_l",
+      "kind": "rigid",
+      "required": true,
+      "note": "手（腕关节）"
+    },
+    {
+      "id": "arm_r",
+      "parent": "chest",
+      "kind": "rigid",
+      "required": true,
+      "note": "上臂（右侧）"
+    },
+    {
+      "id": "forearm_r",
+      "parent": "arm_r",
+      "kind": "rigid",
+      "required": true,
+      "note": "小臂（右侧）"
+    },
+    {
+      "id": "elbow_fold_r",
+      "parent": "arm_r",
+      "kind": "rigid",
+      "required": true,
+      "note": "肘褶件（右侧）"
+    },
+    {
+      "id": "hand_r",
+      "parent": "forearm_r",
+      "kind": "rigid",
+      "required": true,
+      "note": "手（右侧）"
+    },
+    {
+      "id": "leg_l",
+      "parent": "root",
+      "kind": "rigid",
+      "required": true,
+      "note": "腿（髋关节）"
+    },
+    {
+      "id": "foot_l",
+      "parent": "leg_l",
+      "kind": "rigid",
+      "required": true,
+      "note": "脚（踝关节）"
+    },
+    {
+      "id": "leg_r",
+      "parent": "root",
+      "kind": "rigid",
+      "required": true,
+      "note": "腿（右侧）"
+    },
+    {
+      "id": "foot_r",
+      "parent": "leg_r",
+      "kind": "rigid",
+      "required": true,
+      "note": "脚（右侧）"
+    },
+    {
+      "id": "hair_side_l",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false,
+      "note": "侧发三节链的第一节（T66.3）。网格骨，用 deformers 的 parent 挂到 head"
+    },
+    {
+      "id": "hair_side_r",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false
+    },
+    {
+      "id": "hair_back",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false,
+      "note": "后发整体摆动"
+    },
+    {
+      "id": "hair_ahoge",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false,
+      "note": "呆毛"
+    },
+    {
+      "id": "hair_tail",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false,
+      "note": "马尾/双马尾/长发（附件轴）"
+    },
+    {
+      "id": "brow_l",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false,
+      "note": "眉毛表情形变"
+    },
+    {
+      "id": "brow_r",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false
+    },
+    {
+      "id": "skirt_sway",
+      "parent": "chest",
+      "kind": "mesh",
+      "required": false,
+      "note": "裙摆左右摆"
+    },
+    {
+      "id": "skirt_hem",
+      "parent": "chest",
+      "kind": "mesh",
+      "required": false,
+      "note": "裙摆下缘甩动"
+    },
+    {
+      "id": "arm_fore_l",
+      "parent": "forearm_l",
+      "kind": "mesh",
+      "required": false,
+      "note": "袖子在小臂上的粗细/长短形变（动作折袖用）"
+    },
+    {
+      "id": "arm_fore_r",
+      "parent": "forearm_r",
+      "kind": "mesh",
+      "required": false
+    },
+    {
+      "id": "skirt_lining",
+      "parent": "chest",
+      "kind": "mesh",
+      "required": false,
+      "note": "裙里布（比外层慢半拍，防透视）"
+    },
+    {
+      "id": "jacket_hem",
+      "parent": "chest",
+      "kind": "mesh",
+      "required": false,
+      "note": "外套下摆"
+    },
+    {
+      "id": "ear_l",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false,
+      "note": "兽耳（物种轴 5），可一键关回人类"
+    },
+    {
+      "id": "ear_r",
+      "parent": "head",
+      "kind": "mesh",
+      "required": false
+    },
+    {
+      "id": "tail",
+      "parent": "root",
+      "kind": "mesh",
+      "required": false,
+      "note": "尾巴（物种轴 5），四种姿态各一档 key"
+    },
+    {
+      "id": "socket_head_top",
+      "parent": "head",
+      "kind": "socket",
+      "required": false,
+      "note": "头顶发饰/帽子挂点"
+    },
+    {
+      "id": "socket_face",
+      "parent": "head",
+      "kind": "socket",
+      "required": false,
+      "note": "眼镜/口罩挂点"
+    },
+    {
+      "id": "socket_ear_l",
+      "parent": "head",
+      "kind": "socket",
+      "required": false,
+      "note": "耳饰挂点"
+    },
+    {
+      "id": "socket_ear_r",
+      "parent": "head",
+      "kind": "socket",
+      "required": false
+    },
+    {
+      "id": "socket_neck",
+      "parent": "chest",
+      "kind": "socket",
+      "required": false,
+      "note": "项链/围巾挂点"
+    },
+    {
+      "id": "socket_wrist_l",
+      "parent": "hand_l",
+      "kind": "socket",
+      "required": false,
+      "note": "腕带挂点（用户点过名）"
+    },
+    {
+      "id": "socket_wrist_r",
+      "parent": "hand_r",
+      "kind": "socket",
+      "required": false
+    },
+    {
+      "id": "socket_back",
+      "parent": "chest",
+      "kind": "socket",
+      "required": false,
+      "note": "背包/翅膀/披风挂点"
+    }
+  ],
+  "waivers": [
+    {
+      "form": "chibi",
+      "bone": "forearm_l",
+      "reason": "Q 版手臂是整件素材（arm_l 一件到底），没有小臂分段",
+      "task": "T66.2"
+    },
+    {
+      "form": "chibi",
+      "bone": "forearm_r",
+      "reason": "同上",
+      "task": "T66.2"
+    },
+    {
+      "form": "chibi",
+      "bone": "elbow_fold_l",
+      "reason": "Q 版没有肘褶件（整件手臂没有折线）",
+      "task": "T66.2"
+    },
+    {
+      "form": "chibi",
+      "bone": "elbow_fold_r",
+      "reason": "同上",
+      "task": "T66.2"
+    },
+    {
+      "form": "chibi",
+      "bone": "hand_l",
+      "reason": "Q 版手是手臂的一部分，没有单独手件",
+      "task": "T66.2"
+    },
+    {
+      "form": "chibi",
+      "bone": "hand_r",
+      "reason": "同上",
+      "task": "T66.2"
+    }
+  ],
+  "forms": {
+    "teen": {
+      "mesh_bones": {
+        "hair_side_l": [
+          "side_l_s"
+        ],
+        "hair_side_r": [
+          "side_r_s"
+        ],
+        "hair_back": [
+          "back_s"
+        ],
+        "hair_ahoge": [
+          "ahoge_s"
+        ],
+        "hair_tail": [
+          "longhair_mid",
+          "longhair_tip",
+          "twintail_l_tip",
+          "twintail_r_tip",
+          "pony_mid",
+          "pony_tip"
+        ],
+        "brow_l": [
+          "brow_l_form"
+        ],
+        "brow_r": [
+          "brow_r_form"
+        ],
+        "skirt_sway": [
+          "skirt_sway_x",
+          "skirt_sway_y"
+        ],
+        "skirt_hem": [
+          "skirt_hem_x"
+        ],
+        "jacket_hem": [
+          "jacket_hem_x"
+        ],
+        "tail": [
+          "tail_relaxed_s",
+          "tail_up_s",
+          "tail_puff_s",
+          "tail_tuck_s"
+        ],
+        "arm_fore_l": [
+          "arm_l_fore_slim",
+          "arm_l_fore_long"
+        ],
+        "arm_fore_r": [
+          "arm_r_fore_slim",
+          "arm_r_fore_long"
+        ],
+        "skirt_lining": []
+      },
+      "inherit_parts": {
+        "skirt_lining": {
+          "from": "skirt_main",
+          "strength": 0.35,
+          "note": "里布没有自己的网格：逐顶点形变场按 35% 继承表布（T66.10b），并挂裙子的中段骨 skirt_mid。以前是抄一份表布点表乘 0.35 —— 表布一改那份抄件就过时。"
+        }
+      }
+    },
+    "chibi": {
+      "mesh_bones": {
+        "hair_ahoge": [
+          "ahoge_s"
+        ],
+        "hair_tail": [
+          "longhair_mid",
+          "longhair_tip",
+          "twintail_l_tip",
+          "twintail_r_tip",
+          "pony_mid",
+          "pony_tip"
+        ],
+        "tail": [
+          "tail_relaxed_s",
+          "tail_up_s",
+          "tail_puff_s",
+          "tail_tuck_s"
+        ],
+        "skirt_sway": [
+          "skirt_sway_x",
+          "skirt_sway_y"
+        ],
+        "skirt_hem": [
+          "skirt_hem_x"
+        ],
+        "skirt_lining": []
+      },
+      "inherit_parts": {
+        "skirt_lining": {
+          "from": "skirt_main",
+          "strength": 0.35,
+          "note": "里布没有自己的网格：逐顶点形变场按 35% 继承表布（T66.10b），并挂裙子的中段骨 skirt_mid。以前是抄一份表布点表乘 0.35 —— 表布一改那份抄件就过时。"
+        }
+      }
+    }
+  },
+  "chains": {
+    "_note": [
+      "S2（第六十六问）：每个部件的「旋转骨链」由 make_rig.py 的 emit_bone_chains() 生成。",
+      "root→mid→mesh：网格挂在 mid 下，部件 parts[].deformer 点 root（引擎要求纯变换节点必须被点名）。",
+      "mid 的绑定必须带 lag（行波延迟），否则根和梢同相位 = 刚性钟摆（selfcheck 有闸）。"
+    ],
+    "hair_side_l": {
+      "nodes": [
+        "hair_side_l_root",
+        "hair_side_l_mid"
+      ],
+      "mesh": [
+        "side_l_s"
+      ]
+    },
+    "hair_side_r": {
+      "nodes": [
+        "hair_side_r_root",
+        "hair_side_r_mid"
+      ],
+      "mesh": [
+        "side_r_s"
+      ]
+    },
+    "hair_back": {
+      "nodes": [
+        "hair_back_root",
+        "hair_back_mid"
+      ],
+      "mesh": [
+        "back_s"
+      ]
+    },
+    "hair_ahoge": {
+      "nodes": [
+        "hair_ahoge_root",
+        "hair_ahoge_mid"
+      ],
+      "mesh": [
+        "ahoge_s"
+      ]
+    },
+    "tail": {
+      "nodes": [
+        "tail_{pose}_root",
+        "tail_{pose}_mid"
+      ],
+      "mesh": [
+        "tail_relaxed_s",
+        "tail_up_s",
+        "tail_puff_s",
+        "tail_tuck_s"
+      ],
+      "poses": [
+        "relaxed",
+        "up",
+        "puff",
+        "tuck"
+      ]
+    }
+  },
+  "todo": [
+    "四个形态的素材：forms/{teen,loli,midlong,chibi}/sprites/（拆件 PNG，带 alpha）",
+    "每个形态的 design sheet + anchors.json（锚点由 tools/make_anchors.py 量出来）",
+    "每个形态跑一次 tools/make_rig.py 得到 rig.json，再把 status 改成 full",
+    "design/wardrobe.json + outfits/*.json（服装包；先做常服一套）",
+    "design/attachments.json（挂件表：猫耳/尾巴/发饰，走挂点）",
+    "voice/ + dialogue.json 接线（口型包由 tools/make_lipsync.py 生成）"
+  ],
+  "_name": "通琳"
+}

@@ -1,0 +1,30 @@
+{
+  "name": "TTS-WebUI（本机 萌系音色）",
+  "kind": "tts",
+  "protocol": "openai_audio",
+  "local": true,
+  "enabled": false,
+  "priority": 82,
+  "base_url": "http://127.0.0.1:7778/v1",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "tts.speak",
+      "model": "index-tts-2",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 8,
+    "note": "IndexTTS2 权重约 8GB（1.5B）；CosyVoice2-0.5B 约 4GB；GPT-SoVITS 小得多，6GB 卡能跑。"
+  },
+  "note": "★ 这一条是**本地二次元音色**的落点：同一个壳里挂着 GPT-SoVITS / IndexTTS2 / CosyVoice2 / Kokoro，并对外暴露 /v1/audio/speech。为什么不是 speaches：Kokoro/Piper 做不出\"萌\"，而 IndexTTS2 是音色-情感解耦（emo_alpha 调情绪强度，Apache-2.0，⚠ 2.5 版改了 Bilibili 协议，要钉 2.0）。和云端 Azure 晓伊 cute / MiniMax 少女音是同一类能力的两条腿。",
+  "id": "tts_webui"
+}

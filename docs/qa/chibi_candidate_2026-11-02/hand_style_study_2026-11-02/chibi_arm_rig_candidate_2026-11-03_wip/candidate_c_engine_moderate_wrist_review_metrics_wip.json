@@ -1,0 +1,194 @@
+{
+  "status": "isolated diagnostic only; no angle safety or art acceptance",
+  "candidate_rig_sha256": "7c3f4937cc27cd753ed1c0a6610770580aca1b5a721069c7eb2ca4dbf46077a7",
+  "angles_deg": [
+    -30,
+    -25,
+    -20,
+    -15,
+    -10,
+    -5,
+    0,
+    5,
+    10,
+    15,
+    20,
+    25,
+    30
+  ],
+  "render_conditions": {
+    "shoulder_elbow_deg": [
+      0,
+      0
+    ],
+    "action": "idle",
+    "ambient": 0,
+    "tick_sec": 0.02,
+    "frame_scale": 1.0,
+    "separated_ear_tail_parts_hidden": true
+  },
+  "rois_xyxy": {
+    "left": [
+      183,
+      914,
+      272,
+      1006
+    ],
+    "right": [
+      575,
+      914,
+      664,
+      1006
+    ]
+  },
+  "styles": {
+    "small": {
+      "review_board": "candidate_c_engine_moderate_wrist_small_review_board_wip.png",
+      "samples": [
+        {
+          "angle_deg": -30,
+          "sha256": "0147153442f5af560821da4170c67764f84475400eea2645c39228a1824c8c48",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-1.36363636,-1.36363636) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -25,
+          "sha256": "9dc39190bec116dd5685bf6a444276b62057330d5101dc47dac608d8adb64beb",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-1.13636364,-1.13636364) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -20,
+          "sha256": "3b400319f2c0f83a4e3c6e1cce93779646d8c6f5983076ba1e8d77cb4d7ef686",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-0.90909091,-0.90909091) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -15,
+          "sha256": "fc4e4f9f0020486b6cf9a4d8844a3a042ed645f21c17b79e6ba71591d73504d7",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-0.68181818,-0.68181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -10,
+          "sha256": "175296fef21e146dcdb29ac9603a0be8a1044dcb4e4962fab3c5255058bd0882",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-0.45454545,-0.45454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -5,
+          "sha256": "8cf728ce54530ac073b4a915eaa1acc0636702ef44477eb2b79295c67b49bccd",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(-0.22727273,-0.22727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 0,
+          "sha256": "79f70d8633c77eab387c12363211259d91746439cc9bf28a5be4843e0428954b",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 5,
+          "sha256": "355818a3ff68a845cfab5813f83c9b7f71bb20e291f3bca522e25be411f832b1",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.22727273,0.22727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 10,
+          "sha256": "f1f14e56dc548f648d0e1d5b1e8a81bda037d107691cb2a804bbed01355d6336",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.45454545,0.45454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 15,
+          "sha256": "0a0dad8808d21b37efe5f55c07aaad6739ce638700671bacf0735f89e0df1c16",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.68181818,0.68181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 20,
+          "sha256": "f30d9f4e786939cee3b4a7a51f577e462b3101a78da6e895d17cc9c905132bc9",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(0.90909091,0.90909091) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 25,
+          "sha256": "7bc8365f283de6cdbfa8b83bd5b7c15d18afe9844b56ca3c8384fb0c58b00a70",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(1.13636364,1.13636364) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 30,
+          "sha256": "7322e200c8fe836645817407c5571623997395b8543058c330d02f2d1b0c69f1",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(1,0) wrist=(1.36363636,1.36363636) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        }
+      ],
+      "limitations": [
+        "pixel positions move normally under rotation; visual review, not an automated gap gate",
+        "exact source hand pixels stop at the source cuff; no hidden-wrist pixels exist"
+      ]
+    },
+    "mitten": {
+      "review_board": "candidate_c_engine_moderate_wrist_mitten_review_board_wip.png",
+      "samples": [
+        {
+          "angle_deg": -30,
+          "sha256": "0c0cadd64d70c649dd732284fc29f4d161d40401c3031efbb87a5c10bdc84b4d",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-1.36363636,-1.36363636) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -25,
+          "sha256": "e5847ec9366b1560e24dc5a1195c5d33a0c16df9374990aed4ce8393e8c6f676",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-1.13636364,-1.13636364) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -20,
+          "sha256": "7328066fe17103e570271ee8deb85842a87be8479a42e8ed24c043de351ab243",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-0.90909091,-0.90909091) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -15,
+          "sha256": "3ee0998cf2bb13b4b0fee88f80026cc74352a539a381a07cde57265f5ff00fde",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-0.68181818,-0.68181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -10,
+          "sha256": "17ede85c76cc86293e0c283ed96fbada3c3f43d2d4df25bde1e24a431c805d9c",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-0.45454545,-0.45454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": -5,
+          "sha256": "b80bf591066c25a363d2f2e429dfb3a7ba3ae0c5b8a523923a33572fa060872a",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(-0.22727273,-0.22727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 0,
+          "sha256": "08de5654d68d719f83dc694f9ce97250eb80ef16ebaa6002b90bedef0938c0e5",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.00000000,0.00000000) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 5,
+          "sha256": "970c1d63d0a32b0fb45034cea415229f2af5c19a37f9883d9fd0f67db34ca1dd",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.22727273,0.22727273) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 10,
+          "sha256": "b4676fb40c172e5acbce16b9326c08a8833da76430ba57164ee84c9ed0bb4fe9",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.45454545,0.45454545) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 15,
+          "sha256": "2b8a48ea82c27178a4659cf6176b72071dfa4efe544665cc6bfb1459028a464b",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.68181818,0.68181818) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 20,
+          "sha256": "7e2eaeb7b26422b03ae60b76b24ebda917b70cc9ce03d67d102b9c1bfad194e9",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(0.90909091,0.90909091) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 25,
+          "sha256": "6a99835ab78dac12cc776a73580543788c8279aa70b71a696fa5c2cc7cf02584",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(1.13636364,1.13636364) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        },
+        {
+          "angle_deg": 30,
+          "sha256": "0b67949e36473e45f1c3c03456e4599372f932654675721144e38531a1522f33",
+          "log": "loaded=xiaoxun_chibi_arm_rig_candidate_wip size=848x1360 parts=59 styles=(0,1) wrist=(1.36363636,1.36363636) shoulder=(0.00000000,0.00000000) elbow=(0.00000000,0.00000000) requested_action=none active_action=idle sample_tick=0.020s frame_scale=1.0 ambient=0 core_hidden=1"
+        }
+      ],
+      "limitations": [
+        "pixel positions move normally under rotation; visual review, not an automated gap gate",
+        "trial24 mitten remains unapproved AI WIP"
+      ]
+    }
+  }
+}

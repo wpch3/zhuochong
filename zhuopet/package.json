@@ -1,0 +1,71 @@
+{
+  "name": "zhuopet",
+  "version": "1.0.0",
+  "private": true,
+  "description": "桌宠 · ZhuoPet — 一个真正能用的 AI 桌面伴侣",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "node scripts/sync-model.mjs && tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "model:check": "node scripts/validate-model.mjs",
+    "model:render": "node scripts/render-model.mjs",
+    "electron": "electron .",
+    "dist": "npm run build && electron-builder",
+    "model:sync": "node scripts/sync-model.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@sparticuz/chromium": "^153.0.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "jsdom": "^31.0.0",
+    "puppeteer-core": "^25.16.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  },
+  "build": {
+    "appId": "ai.zhuopet.app",
+    "productName": "ZhuoPet",
+    "directories": {
+      "output": "release"
+    },
+    "icon": "electron/icon.png",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    }
+  }
+}

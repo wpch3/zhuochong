@@ -1,0 +1,96 @@
+{
+  "task": "T67.71",
+  "status": "isolated new-design WIP; not accepted; not hidden-original truth; not production",
+  "method": "2-D mesh remap of a visible lower-panel texture from the same target hood-up hair sprite into a separately hand-drawn flowing alpha shape; not image inpainting and not a foreign-hairstyle donor",
+  "source": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15",
+    "size": [
+      1132,
+      1664
+    ]
+  },
+  "mask_source": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_polygons_v2.json",
+    "sha256": "06d50f64c5b76ebc60f6b5cf4f582bd8916a070484a6783e88ab0d6022e64f49",
+    "scope": "visible cuff/hand cleanup only, independent of proposed hair alpha"
+  },
+  "regions": {
+    "left": {
+      "roi_xyxy": [
+        51,
+        849,
+        396,
+        1368
+      ],
+      "donor_xyxy": [
+        220,
+        1300,
+        320,
+        1595
+      ],
+      "donor_opaque_fraction": 0.66559,
+      "proposal_alpha_pixels": 30414,
+      "visible_object_clear_pixels": 24032
+    },
+    "right": {
+      "roi_xyxy": [
+        736,
+        849,
+        1081,
+        1368
+      ],
+      "donor_xyxy": [
+        812,
+        1300,
+        912,
+        1595
+      ],
+      "donor_opaque_fraction": 0.66214,
+      "proposal_alpha_pixels": 30419,
+      "visible_object_clear_pixels": 26441
+    }
+  },
+  "outputs": {
+    "t67_71_same_sprite_warp_v1_underlay.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "208bfa2142883971e2f55f68485c98988f221b5f652395af52242906488cadef"
+    },
+    "t67_71_same_sprite_warp_v1_clean_front.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "9eca46b0d0ff5bde9cfb23bf83c9a64879410fe64d14702141655ddb0a8e5912"
+    },
+    "t67_71_same_sprite_warp_v1_composite.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "68747cc3b9afd54021d0f638db4337180a38e4a51983368ba6cd5fd8baa41ce2"
+    },
+    "t67_71_same_sprite_warp_v1_static_mock.png": {
+      "size": [
+        1132,
+        1664
+      ],
+      "sha256": "21faa6b375da0a51c5f5a8737ae79198a140cd3a4bf0b7a434e91ec79e6aadac"
+    },
+    "t67_71_same_sprite_warp_v1_review.png": {
+      "size": [
+        2048,
+        1520
+      ],
+      "sha256": "a0a9cb74364eadc4604793c65e8e8f489e8200124b504ee8e8f858b5f60ef047"
+    }
+  },
+  "limitations": [
+    "Warped visible source pixels are a texture/design reference only; hidden topology remains unknown.",
+    "Static mock reuses source cuff/hand only to show registration; actual C arms/cuffs, actions/transitions and ParamHairSway are not tested.",
+    "No production sprite, rig, generator or engine was changed."
+  ]
+}

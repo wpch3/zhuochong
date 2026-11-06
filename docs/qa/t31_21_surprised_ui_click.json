@@ -1,0 +1,10 @@
+{
+  "source": "web/components/actions.js",
+  "control": "surprised button click handler",
+  "route": "/api/action?id=surprised",
+  "sample_time_s": 0.752,
+  "preview": "5199",
+  "reset_pose": {"hairstyle": "none (bob)", "hood_pose": "down", "tail_pose": "relaxed"},
+  "pose_bones": "t31_21_surprised_live_bones.json",
+  "frame": "t31_21_surprised_normal.png"
+}

@@ -1,0 +1,30 @@
+{
+  "status": "isolated WIP; not source art/approval",
+  "method": "Direct image edit of body_full; output uniformly resized to registered body_full 567x1292 frame; exact source hand target ROIs cropped and shown nearest-neighbor 8x; no source fit, masking, or production edit.",
+  "source_body_full_size": [
+    567,
+    1292
+  ],
+  "generated_output_size": [
+    688,
+    1568
+  ],
+  "normalized_output_size": [
+    567,
+    1292
+  ],
+  "rois": {
+    "left": [
+      62,
+      878,
+      107,
+      926
+    ],
+    "right": [
+      462,
+      880,
+      507,
+      926
+    ]
+  }
+}

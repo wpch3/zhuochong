@@ -1,0 +1,86 @@
+{
+  "task": "T67.71",
+  "status": "isolated speculative new-design WIP; not accepted; not hidden source truth; not production",
+  "design_method": "hand-authored cohesive curtain of five overlapping, individually shaded tapered locks with nested curved volume bands and fine flow grooves; no source-image pixel remap, no single flat plate, no image-generation or inpainting",
+  "reference": {
+    "path": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+    "sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15",
+    "size": [
+      1132,
+      1664
+    ],
+    "use": "visible silhouette/color/line-flow reference only; not proof of occluded topology"
+  },
+  "cleanup_mask": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/manual_artifact_polygons_v2.json",
+    "sha256": "06d50f64c5b76ebc60f6b5cf4f582bd8916a070484a6783e88ab0d6022e64f49",
+    "warning": "visible cuff/hand cleanup ROI only; overlaps some legal hair and is not a hair silhouette"
+  },
+  "manual_new_art_local_bounds": [
+    126,
+    191,
+    313,
+    519
+  ],
+  "c_validation": false,
+  "production_changed": false,
+  "outputs": {
+    "t67_71_strand_weave_v2_left_local.png": {
+      "sha256": "bbcb2e583fec94bdb3d9d766e7dea226bbbd1838f97d07126f1a4cd812997798",
+      "bytes": 65114
+    },
+    "t67_71_strand_weave_v2_right_local.png": {
+      "sha256": "0895ef4a7ea82c6e477cdd59164fcc2c342512e1d19b80867c9e9746c9b425f2",
+      "bytes": 65695
+    },
+    "t67_71_strand_weave_v2_underlay.png": {
+      "sha256": "0bcd40fe64b3f6eea650e167e2629bc733e8bf1f0ad128b33580b54a70094af3",
+      "bytes": 133619
+    },
+    "t67_71_strand_weave_v2_object_clear_mask.png": {
+      "sha256": "843ea578922e533686962644f14316688faa74a47ec6ebc21efa68f7e021459f",
+      "bytes": 20119
+    },
+    "t67_71_strand_weave_v2_clean_front.png": {
+      "sha256": "02a167c2b1c1a411930a435d6dcc57df2654c6fc477d5b25c230fd0c012cdae4",
+      "bytes": 907476
+    },
+    "t67_71_strand_weave_v2_composite.png": {
+      "sha256": "f3dad084841eb9f8c321489dab6f836c863f4dcba2cc42475c872a55d9f333f6",
+      "bytes": 792315
+    },
+    "t67_71_strand_weave_v2_registration_foreground.png": {
+      "sha256": "b010cfb476882e0e5ab917e3cc94b04b9e9eb2e7b99b9776a89152a6c9035c35",
+      "bytes": 848959
+    },
+    "t67_71_strand_weave_v2_static_mock.png": {
+      "sha256": "afe8e0af4856926e33d64358f56061187dc7e7cda6339ad621d8688bbdf3efd4",
+      "bytes": 821294
+    },
+    "t67_71_strand_weave_v2_review.png": {
+      "sha256": "3735d1f400a4814230cc8ece3b479ca693e784d3e4ee5ad5b0646895d241c12a",
+      "bytes": 668932
+    },
+    "t67_71_strand_weave_v2_left_composite_3x.png": {
+      "sha256": "2cd2282859fa0223be6245d462ff604c1d78d8f7adbdac7d8f99176eb36ab795",
+      "bytes": 202410
+    },
+    "t67_71_strand_weave_v2_left_static_mock_3x.png": {
+      "sha256": "dc4b3112cefefaa2eb46148bb1527e550beb4995b719503f703e1a4793d3afde",
+      "bytes": 219916
+    },
+    "t67_71_strand_weave_v2_right_composite_3x.png": {
+      "sha256": "00dc35116e617eb266e5e827f1798e5f919e5b05e3d18c62f1a8f5463b96311f",
+      "bytes": 192887
+    },
+    "t67_71_strand_weave_v2_right_static_mock_3x.png": {
+      "sha256": "de71827b523d59416b95dddfd783e18e73cf00c427154aba3c4cd0bf2997bbd7",
+      "bytes": 211288
+    }
+  },
+  "limitations": [
+    "Ribbon topology and overlap are a design hypothesis; hidden strand order/coverage remain unknown.",
+    "Static foreground is a registered duplicate from the flattened sprite, not an actual C arm/cuff.",
+    "Must pass isolated local human review and user confirmation before real C action/transition testing; production requires separate approval."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "seg_head",
+  "file": "sprites/seg_head@2x.png",
+  "group": "head",
+  "pos": [
+    140,
+    68
+  ],
+  "anchor": [
+    0,
+    0
+  ],
+  "scale": 0.5,
+  "scale_1x": 1.0,
+  "hires": 2,
+  "layer": 180
+}

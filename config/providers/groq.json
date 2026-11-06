@@ -1,0 +1,48 @@
+{
+  "name": "Groq（超低延迟）",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 55,
+  "base_url": "https://api.groq.com/openai/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://groq"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "llama-3.3-70b-versatile",
+      "price": {
+        "in": 0.59,
+        "out": 0.79,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "llama-3.3-70b-versatile",
+      "price": {
+        "in": 0.59,
+        "out": 0.79,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "stt.listen",
+      "model": "whisper-large-v3-turbo",
+      "price": {
+        "unit": 0.04,
+        "per": 3600,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "★ 路径是 /openai/v1 不是 /v1。它的卖点是**首字延迟**（LPU 推理），对\"桌宠要秒回\"这件事比模型分数更重要 —— 陪伴体的体感是\"等多久\"，不是\"benchmark 几分\"。顺带提供便宜的 Whisper 转写。",
+  "id": "groq"
+}

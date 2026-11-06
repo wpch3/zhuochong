@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-31",
+  "task": "T67.9 ⑥ 淡青块复现与归属",
+  "source_of_truth": {
+    "file": "characters/xiaoxun/design/sheets/sheet_long.png",
+    "sha256": "bb0e6d0378e0d05b8f1803baec6194c230d93cc40e4c684f722ffd68f808e6f8",
+    "observation": "The long-hair reference includes a narrow central back-hair lock visible between the legs."
+  },
+  "renderer": "Live C engine preview API /api/frame.png; detail views are enlarged crops of those raw captures.",
+  "setup": {
+    "form": "teen",
+    "hairstyle": "long",
+    "hood_pose": "down",
+    "action": "idle",
+    "scale": 1.1,
+    "frame": [933, 1496],
+    "paused": true,
+    "neutral_parameters": true,
+    "ParamTiptoe": 0.0
+  },
+  "attribution": {
+    "part_id": "acc_hair_long",
+    "sprite": "characters/xiaoxun/forms/teen/sprites/hair_long_back@2x.png",
+    "part_layer": 58,
+    "sprite_sha256": "15b0e42604acafb9bbf1475ac178bf54b37f222914b632c4def590b199ab5873",
+    "probe": "With all state held constant, visibility override vis=0 on acc_hair_long removes the broad pale-blue center lock from the leg gap; restoring visibility restores it.",
+    "conclusion": "The observed cyan region is long back-hair showing through the gap, not a stray garment or unrelated attachment. The reference artwork contains the corresponding center lock. Its silhouette may still read blocky in the current render; do not delete or recolor the reference-defined lock as a T67.9 cleanup. Broader hair silhouette work remains tracked by T67.7."
+  },
+  "captures": [
+    {
+      "file": "live2d_teen_longhair_centerlock_engine_2026-10-31.png",
+      "sha256": "4a706abd5d75e13e3bc52a49f2f88125530eecbf6077a386cf95f0f8d64191d5",
+      "purpose": "Raw full-frame render reproducing the pale-blue lock in long-hair, hood-down state."
+    },
+    {
+      "file": "live2d_teen_longhair_centerlock_detail_2026-10-31.png",
+      "sha256": "2681e41869fad75af3e5deefe5de88fccab162feddef930579da1ebd5b3ac545",
+      "purpose": "Enlarged crop of the inter-leg region from the raw reproduction frame."
+    },
+    {
+      "file": "live2d_teen_longhair_centerlock_owner_hidden_engine_2026-10-31.png",
+      "sha256": "c9be49b905b533af75f839b2ddb6c51d2b3c7caabaa9f18bbcd2a9ba1c813155",
+      "purpose": "Same engine state with only acc_hair_long hidden; broad cyan fill is absent."
+    },
+    {
+      "file": "live2d_teen_longhair_centerlock_owner_hidden_detail_2026-10-31.png",
+      "sha256": "09b44363e0356a0d68ab83919b3d5d7f13ccb64a34c0e2c2507fe64ef0760e93",
+      "purpose": "Enlarged crop of the visibility-control frame."
+    }
+  ],
+  "scope_note": "T67.9 item ⑥ is closed by reproduction and attribution. This does not close T67.7 or claim the teen long-hair asset is fully polished; the project-wide asset audit still has eight pre-existing failures."
+}

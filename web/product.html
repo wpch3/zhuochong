@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title></title>
+  <link rel="stylesheet" href="product.css">
+</head>
+<body>
+  <main class="desktop-pet" id="desktop-pet">
+    <section class="scene" id="scene">
+      <div class="conversation" id="conversation" aria-live="polite" aria-relevant="additions text"></div>
+      <img class="character" id="character" src="/api/frame.png" draggable="false">
+      <div class="dock" id="dock">
+        <button class="dock-avatar" id="talk-toggle" type="button">✦</button>
+        <textarea id="message" rows="1" maxlength="4000"></textarea>
+        <button class="send" id="send" type="button">↑</button>
+        <button class="more" id="more" type="button" aria-expanded="false">···</button>
+        <div class="options" id="options" hidden>
+          <label><input id="persona" type="checkbox" checked> <span data-copy="persona"></span></label>
+          <label><input id="sensitive" type="checkbox"> <span data-copy="sensitive"></span></label>
+          <button id="reset" type="button" data-copy="reset"></button>
+          <details class="dry-panel" id="dry">
+            <summary data-copy="dry"></summary>
+            <pre id="dry-output" hidden></pre>
+          </details>
+        </div>
+      </div>
+      <div class="toast" id="toast" role="status" hidden></div>
+    </section>
+  </main>
+  <script src="product.js" defer></script>
+</body>
+</html>

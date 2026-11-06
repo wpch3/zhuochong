@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "xiaoxun",
+  "name": "小寻",
+  "provider_role": "",
+  "persona": "活泼的少女，嘴上会嫌弃你，其实很在意你。开心时会黏人，被欺负会委屈但不记仇。",
+  "status": "draft",
+  "species": {
+    "id": "cat",
+    "name": "猫娘",
+    "parts": [
+      "三角耳（略外翻、前倾）",
+      "细长尾，通体近等粗、梢钝圆"
+    ],
+    "status": "done",
+    "toggleable": true,
+    "note": "兽娘轴（FORM_MATRIX 轴5 / 需求 H9 / 任务 T47）。必须可一键关回纯人类少女；做件前先查资料+生成本角色参考图（REF-FIRST，WORKFLOW 第十章）；耳长在头顶线上并前倾、人耳要被头发盖住，尾巴照猫尾验收口径"
+  }
+}

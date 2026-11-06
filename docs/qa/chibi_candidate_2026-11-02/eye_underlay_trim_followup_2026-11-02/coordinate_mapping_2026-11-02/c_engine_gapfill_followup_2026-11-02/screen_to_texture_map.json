@@ -1,0 +1,811 @@
+{
+  "date": "2026-11-02",
+  "scope": "isolated C-engine mapping and visual WIP; no production texture/rig edits",
+  "render_controls": {
+    "form": "chibi",
+    "physics": false,
+    "ambient": false,
+    "scale": 1.0,
+    "gaze": "off",
+    "params_reset": true,
+    "paused": true,
+    "time": 0.0,
+    "action": "idle"
+  },
+  "affine_fit": {
+    "socket_ids": [
+      "socket_head_top",
+      "socket_face",
+      "socket_ear_l",
+      "socket_ear_r"
+    ],
+    "group_to_screen": [
+      [
+        0.999790928149046,
+        -0.019581635124255568,
+        14.387007535350865
+      ],
+      [
+        0.019581245367078007,
+        0.9998205324232459,
+        -8.036728191210981
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "screen_to_group": [
+      [
+        0.9998256006432303,
+        0.019581734386104315,
+        -14.22712537371725
+      ],
+      [
+        -0.019581344626951026,
+        0.9997959962189625,
+        8.316805620973051
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "max_abs_socket_residual_px": 0.0019799856928841564,
+    "rms_socket_residual_px": 0.0012837630110656185,
+    "rotation_degrees": 1.1220138805557525,
+    "seg_head_runtime_pos": [
+      140,
+      68
+    ],
+    "active_texture": "sprites/seg_head@2x.png",
+    "texture_scale": 0.5,
+    "hires_factor": 2,
+    "mapping_rule": "Transform screen pixel centers by inverse affine, subtract runtime seg_head pos [140,68] to obtain seg_head texture coordinates, then multiply by 2 for active @2x texels."
+  },
+  "matched_state": {
+    "params_exact": true,
+    "sockets_exact": true,
+    "eye_base_lash_isolation": {
+      "eye_l_base": {
+        "baseline_sha256": "c209e479db3145311269d191541f1d4aeb1c44c013946f1cacbc169f6776cf0e",
+        "candidate_sha256": "c209e479db3145311269d191541f1d4aeb1c44c013946f1cacbc169f6776cf0e",
+        "byte_identical": true
+      },
+      "eye_l_lash": {
+        "baseline_sha256": "d6655ec93d7a976f2484471596967dbb05ce5aa842285f7fcc77b9fb94138b06",
+        "candidate_sha256": "d6655ec93d7a976f2484471596967dbb05ce5aa842285f7fcc77b9fb94138b06",
+        "byte_identical": true
+      },
+      "eye_r_base": {
+        "baseline_sha256": "c100bdc406b70ced857265f74a2a18ab863ef19c7ea3d7d22542086cf232c2d2",
+        "candidate_sha256": "c100bdc406b70ced857265f74a2a18ab863ef19c7ea3d7d22542086cf232c2d2",
+        "byte_identical": true
+      },
+      "eye_r_lash": {
+        "baseline_sha256": "ba7045a700d0e208fc34ccff65b59ec215d18b09567c7a0b7d4e529548d4b2c0",
+        "candidate_sha256": "ba7045a700d0e208fc34ccff65b59ec215d18b09567c7a0b7d4e529548d4b2c0",
+        "byte_identical": true
+      }
+    }
+  },
+  "C_frame_differences": {
+    "full_frame_changed_pixels": 1504,
+    "full_frame_bbox_xyxy_exclusive": [
+      289,
+      488,
+      571,
+      563
+    ],
+    "seg_head_isolation_changed_pixels": 95,
+    "seg_head_isolation_bbox_xyxy_exclusive": [
+      289,
+      517,
+      571,
+      538
+    ],
+    "interpretation": "The larger whole-frame difference is unexplained and must not be attributed to the patch. The head-only changes are localized to the mapped eye-adjacent windows; eye base/lash isolation frames are identical."
+  },
+  "observed_screen_features": [
+    {
+      "id": "left_dark_short_dash",
+      "side": "l",
+      "screen_roi_xyxy_exclusive": [
+        289,
+        536,
+        299,
+        537
+      ],
+      "luma_selection_threshold_strict_lt": 60,
+      "selected_screen_pixels": 10,
+      "group_local_continuous_span_xy": {
+        "min": [
+          285.72798651064295,
+          538.8623262213015
+        ],
+        "max": [
+          294.726416916432,
+          539.0385583229441
+        ]
+      },
+      "seg_head_texture_continuous_span_xy": {
+        "min": [
+          145.72798651064295,
+          470.8623262213015
+        ],
+        "max": [
+          154.72641691643202,
+          471.03855832294414
+        ]
+      },
+      "seg_head_texture_roi_xyxy_exclusive": [
+        145,
+        470,
+        155,
+        472
+      ],
+      "seg_head_2x_texture_roi_xyxy_exclusive": [
+        290,
+        940,
+        310,
+        944
+      ],
+      "eye_patch_position": [
+        1,
+        399
+      ],
+      "eye_patch_local_continuous_span_xy": {
+        "min": [
+          144.72798651064295,
+          71.86232622130149
+        ],
+        "max": [
+          153.72641691643202,
+          72.03855832294414
+        ]
+      },
+      "closed_eye_donor_position": [
+        113,
+        380
+      ],
+      "closed_eye_donor_local_continuous_span_xy": {
+        "min": [
+          32.72798651064295,
+          90.86232622130149
+        ],
+        "max": [
+          41.726416916432015,
+          91.03855832294414
+        ]
+      },
+      "clean_donor_roi_xyxy_exclusive": [
+        32,
+        90,
+        42,
+        92
+      ],
+      "clean_donor_alpha_gt0": 18,
+      "baseline_1x_alpha_histogram": {
+        "0": 20
+      },
+      "candidate_1x_alpha_histogram": {
+        "0": 2,
+        "51": 2,
+        "102": 2,
+        "153": 2,
+        "204": 2,
+        "255": 10
+      },
+      "baseline_2x_alpha_histogram": {
+        "0": 38,
+        "64": 40,
+        "112": 2
+      },
+      "candidate_2x_alpha_histogram": {
+        "0": 2,
+        "51": 4,
+        "64": 40,
+        "102": 4,
+        "112": 2,
+        "153": 4,
+        "204": 4,
+        "255": 20
+      },
+      "1x_pixels_changed_in_mapped_roi": 18,
+      "2x_pixels_changed_in_mapped_roi": 36,
+      "C_full_changed_pixels_in_screen_roi": 10,
+      "C_seg_head_changed_pixels_in_screen_roi": 10,
+      "dark_pixel_count_before": 10,
+      "dark_pixel_count_after": 1
+    },
+    {
+      "id": "left_gray_mark_unconfirmed",
+      "side": "l",
+      "screen_roi_xyxy_exclusive": [
+        292,
+        518,
+        302,
+        522
+      ],
+      "luma_selection_threshold_strict_lt": 200,
+      "selected_screen_pixels": 7,
+      "group_local_continuous_span_xy": {
+        "min": [
+          289.3943994286521,
+          521.944119664087
+        ],
+        "max": [
+          293.4132835656111,
+          522.9634970049328
+        ]
+      },
+      "seg_head_texture_continuous_span_xy": {
+        "min": [
+          149.3943994286521,
+          453.944119664087
+        ],
+        "max": [
+          153.4132835656111,
+          454.96349700493283
+        ]
+      },
+      "seg_head_texture_roi_xyxy_exclusive": [
+        149,
+        453,
+        154,
+        455
+      ],
+      "seg_head_2x_texture_roi_xyxy_exclusive": [
+        298,
+        906,
+        308,
+        910
+      ],
+      "eye_patch_position": [
+        1,
+        399
+      ],
+      "eye_patch_local_continuous_span_xy": {
+        "min": [
+          148.3943994286521,
+          54.944119664087
+        ],
+        "max": [
+          152.4132835656111,
+          55.96349700493283
+        ]
+      },
+      "closed_eye_donor_position": [
+        113,
+        380
+      ],
+      "closed_eye_donor_local_continuous_span_xy": {
+        "min": [
+          36.39439942865209,
+          73.944119664087
+        ],
+        "max": [
+          40.413283565611096,
+          74.96349700493283
+        ]
+      },
+      "clean_donor_roi_xyxy_exclusive": [
+        36,
+        73,
+        41,
+        75
+      ],
+      "clean_donor_alpha_gt0": 10,
+      "baseline_1x_alpha_histogram": {
+        "0": 5,
+        "255": 5
+      },
+      "candidate_1x_alpha_histogram": {
+        "0": 5,
+        "255": 5
+      },
+      "baseline_2x_alpha_histogram": {
+        "64": 16,
+        "112": 4,
+        "191": 8,
+        "207": 2,
+        "255": 10
+      },
+      "candidate_2x_alpha_histogram": {
+        "64": 16,
+        "112": 4,
+        "191": 8,
+        "207": 2,
+        "255": 10
+      },
+      "1x_pixels_changed_in_mapped_roi": 0,
+      "2x_pixels_changed_in_mapped_roi": 0,
+      "C_full_changed_pixels_in_screen_roi": 0,
+      "C_seg_head_changed_pixels_in_screen_roi": 0,
+      "dark_pixel_count_before": 7,
+      "dark_pixel_count_after": 7
+    },
+    {
+      "id": "right_upper_outer_dash",
+      "side": "r",
+      "screen_roi_xyxy_exclusive": [
+        555,
+        518,
+        570,
+        520
+      ],
+      "luma_selection_threshold_strict_lt": 90,
+      "selected_screen_pixels": 29,
+      "group_local_continuous_span_xy": {
+        "min": [
+          551.3291250627923,
+          515.5594538954565
+        ],
+        "max": [
+          565.3266834717975,
+          516.8333887164528
+        ]
+      },
+      "seg_head_texture_continuous_span_xy": {
+        "min": [
+          411.3291250627923,
+          447.5594538954565
+        ],
+        "max": [
+          425.32668347179754,
+          448.83338871645276
+        ]
+      },
+      "seg_head_texture_roi_xyxy_exclusive": [
+        411,
+        447,
+        426,
+        449
+      ],
+      "seg_head_2x_texture_roi_xyxy_exclusive": [
+        822,
+        894,
+        852,
+        898
+      ],
+      "eye_patch_position": [
+        298,
+        399
+      ],
+      "eye_patch_local_continuous_span_xy": {
+        "min": [
+          113.32912506279229,
+          48.5594538954565
+        ],
+        "max": [
+          127.32668347179754,
+          49.83338871645276
+        ]
+      },
+      "closed_eye_donor_position": [
+        297,
+        380
+      ],
+      "closed_eye_donor_local_continuous_span_xy": {
+        "min": [
+          114.32912506279229,
+          67.5594538954565
+        ],
+        "max": [
+          128.32668347179754,
+          68.83338871645276
+        ]
+      },
+      "clean_donor_roi_xyxy_exclusive": [
+        114,
+        67,
+        129,
+        69
+      ],
+      "clean_donor_alpha_gt0": 30,
+      "baseline_1x_alpha_histogram": {
+        "0": 29,
+        "254": 1
+      },
+      "candidate_1x_alpha_histogram": {
+        "204": 2,
+        "254": 1,
+        "255": 27
+      },
+      "baseline_2x_alpha_histogram": {
+        "0": 94,
+        "16": 3,
+        "48": 4,
+        "64": 14,
+        "112": 1,
+        "143": 1,
+        "191": 1,
+        "207": 1,
+        "254": 1
+      },
+      "candidate_2x_alpha_histogram": {
+        "48": 4,
+        "64": 14,
+        "112": 1,
+        "143": 1,
+        "191": 1,
+        "204": 3,
+        "207": 1,
+        "254": 1,
+        "255": 94
+      },
+      "1x_pixels_changed_in_mapped_roi": 29,
+      "2x_pixels_changed_in_mapped_roi": 97,
+      "C_full_changed_pixels_in_screen_roi": 30,
+      "C_seg_head_changed_pixels_in_screen_roi": 30,
+      "dark_pixel_count_before": 29,
+      "dark_pixel_count_after": 0
+    },
+    {
+      "id": "right_lower_short_edge",
+      "side": "r",
+      "screen_roi_xyxy_exclusive": [
+        553,
+        533,
+        557,
+        535
+      ],
+      "luma_selection_threshold_strict_lt": 90,
+      "selected_screen_pixels": 7,
+      "group_local_continuous_span_xy": {
+        "min": [
+          549.6231998772973,
+          530.8109513188913
+        ],
+        "max": [
+          552.6226766792271,
+          531.8694913489911
+        ]
+      },
+      "seg_head_texture_continuous_span_xy": {
+        "min": [
+          409.62319987729734,
+          462.8109513188913
+        ],
+        "max": [
+          412.6226766792271,
+          463.8694913489911
+        ]
+      },
+      "seg_head_texture_roi_xyxy_exclusive": [
+        409,
+        462,
+        413,
+        464
+      ],
+      "seg_head_2x_texture_roi_xyxy_exclusive": [
+        818,
+        924,
+        826,
+        928
+      ],
+      "eye_patch_position": [
+        298,
+        399
+      ],
+      "eye_patch_local_continuous_span_xy": {
+        "min": [
+          111.62319987729734,
+          63.810951318891284
+        ],
+        "max": [
+          114.62267667922708,
+          64.86949134899112
+        ]
+      },
+      "closed_eye_donor_position": [
+        297,
+        380
+      ],
+      "closed_eye_donor_local_continuous_span_xy": {
+        "min": [
+          112.62319987729734,
+          82.81095131889128
+        ],
+        "max": [
+          115.62267667922708,
+          83.86949134899112
+        ]
+      },
+      "clean_donor_roi_xyxy_exclusive": [
+        112,
+        82,
+        116,
+        84
+      ],
+      "clean_donor_alpha_gt0": 8,
+      "baseline_1x_alpha_histogram": {
+        "0": 8
+      },
+      "candidate_1x_alpha_histogram": {
+        "255": 8
+      },
+      "baseline_2x_alpha_histogram": {
+        "0": 18,
+        "64": 12,
+        "112": 2
+      },
+      "candidate_2x_alpha_histogram": {
+        "64": 12,
+        "112": 2,
+        "255": 18
+      },
+      "1x_pixels_changed_in_mapped_roi": 8,
+      "2x_pixels_changed_in_mapped_roi": 18,
+      "C_full_changed_pixels_in_screen_roi": 8,
+      "C_seg_head_changed_pixels_in_screen_roi": 8,
+      "dark_pixel_count_before": 7,
+      "dark_pixel_count_after": 0
+    }
+  ],
+  "isolated_WIP_patch_regions": [
+    {
+      "id": "left_dark_short_dash",
+      "screen_roi": [
+        289,
+        536,
+        299,
+        537
+      ],
+      "texture_roi_1x_xyxy_exclusive": [
+        145,
+        470,
+        156,
+        472
+      ],
+      "texture_roi_2x_xyxy_exclusive": [
+        290,
+        940,
+        312,
+        944
+      ],
+      "donor_file": "donor_eye_l_closed.png",
+      "donor_roi_xyxy_exclusive": [
+        32,
+        90,
+        43,
+        92
+      ],
+      "donor_clean_alpha_gt0": 20,
+      "donor_clean_alpha_gt160": 14,
+      "pixels_changed_1x": 20,
+      "pixels_changed_2x": 38,
+      "1x_alpha_before": {
+        "0": 22
+      },
+      "1x_alpha_after": {
+        "0": 2,
+        "51": 2,
+        "102": 2,
+        "153": 2,
+        "204": 2,
+        "255": 12
+      },
+      "2x_alpha_before": {
+        "0": 40,
+        "64": 44,
+        "112": 4
+      },
+      "2x_alpha_after": {
+        "0": 2,
+        "51": 4,
+        "64": 44,
+        "102": 4,
+        "112": 4,
+        "153": 4,
+        "204": 4,
+        "255": 22
+      }
+    },
+    {
+      "id": "right_upper_outer_dash",
+      "screen_roi": [
+        555,
+        518,
+        570,
+        520
+      ],
+      "texture_roi_1x_xyxy_exclusive": [
+        411,
+        447,
+        426,
+        449
+      ],
+      "texture_roi_2x_xyxy_exclusive": [
+        822,
+        894,
+        852,
+        898
+      ],
+      "donor_file": "donor_eye_r_closed.png",
+      "donor_roi_xyxy_exclusive": [
+        114,
+        67,
+        129,
+        69
+      ],
+      "donor_clean_alpha_gt0": 30,
+      "donor_clean_alpha_gt160": 29,
+      "pixels_changed_1x": 29,
+      "pixels_changed_2x": 97,
+      "1x_alpha_before": {
+        "0": 29,
+        "254": 1
+      },
+      "1x_alpha_after": {
+        "204": 2,
+        "254": 1,
+        "255": 27
+      },
+      "2x_alpha_before": {
+        "0": 94,
+        "16": 3,
+        "48": 4,
+        "64": 14,
+        "112": 1,
+        "143": 1,
+        "191": 1,
+        "207": 1,
+        "254": 1
+      },
+      "2x_alpha_after": {
+        "48": 4,
+        "64": 14,
+        "112": 1,
+        "143": 1,
+        "191": 1,
+        "204": 3,
+        "207": 1,
+        "254": 1,
+        "255": 94
+      }
+    },
+    {
+      "id": "right_lower_short_edge",
+      "screen_roi": [
+        553,
+        533,
+        557,
+        535
+      ],
+      "texture_roi_1x_xyxy_exclusive": [
+        409,
+        462,
+        413,
+        464
+      ],
+      "texture_roi_2x_xyxy_exclusive": [
+        818,
+        924,
+        826,
+        928
+      ],
+      "donor_file": "donor_eye_r_closed.png",
+      "donor_roi_xyxy_exclusive": [
+        112,
+        82,
+        116,
+        84
+      ],
+      "donor_clean_alpha_gt0": 8,
+      "donor_clean_alpha_gt160": 8,
+      "pixels_changed_1x": 8,
+      "pixels_changed_2x": 18,
+      "1x_alpha_before": {
+        "0": 8
+      },
+      "1x_alpha_after": {
+        "255": 8
+      },
+      "2x_alpha_before": {
+        "0": 18,
+        "64": 12,
+        "112": 2
+      },
+      "2x_alpha_after": {
+        "64": 12,
+        "112": 2,
+        "255": 18
+      }
+    }
+  ],
+  "sidehair_isolation": {
+    "hair_side_l": {
+      "baseline_sha256": "61114eb64eeb3d7a03b2216c054e38b3901f65f04d4b43b2f934d33d73bb6698",
+      "candidate_sha256": "61114eb64eeb3d7a03b2216c054e38b3901f65f04d4b43b2f934d33d73bb6698",
+      "byte_identical": true,
+      "regions": {
+        "left_dark_short_dash": {
+          "pixels": 10,
+          "baseline_alpha_gt0": 0,
+          "candidate_alpha_gt0": 0,
+          "baseline_alpha_max": 0,
+          "candidate_alpha_max": 0
+        },
+        "left_gray_mark_unconfirmed": {
+          "pixels": 40,
+          "baseline_alpha_gt0": 0,
+          "candidate_alpha_gt0": 0,
+          "baseline_alpha_max": 0,
+          "candidate_alpha_max": 0
+        },
+        "right_upper_outer_dash": {
+          "pixels": 30,
+          "baseline_alpha_gt0": 0,
+          "candidate_alpha_gt0": 0,
+          "baseline_alpha_max": 0,
+          "candidate_alpha_max": 0
+        },
+        "right_lower_short_edge": {
+          "pixels": 8,
+          "baseline_alpha_gt0": 0,
+          "candidate_alpha_gt0": 0,
+          "baseline_alpha_max": 0,
+          "candidate_alpha_max": 0
+        }
+      }
+    },
+    "hair_side_r": {
+      "baseline_sha256": "0ce843c6fe36bf43174182c2c118a0568a5a9bc1066142953460840b307ec9e4",
+      "candidate_sha256": "0ce843c6fe36bf43174182c2c118a0568a5a9bc1066142953460840b307ec9e4",
+      "byte_identical": true,
+      "regions": {
+        "left_dark_short_dash": {
+          "pixels": 10,
+          "baseline_alpha_gt0": 0,
+          "candidate_alpha_gt0": 0,
+          "baseline_alpha_max": 0,
+          "candidate_alpha_max": 0
+        },
+        "left_gray_mark_unconfirmed": {
+          "pixels": 40,
+          "baseline_alpha_gt0": 0,
+          "candidate_alpha_gt0": 0,
+          "baseline_alpha_max": 0,
+          "candidate_alpha_max": 0
+        },
+        "right_upper_outer_dash": {
+          "pixels": 30,
+          "baseline_alpha_gt0": 0,
+          "candidate_alpha_gt0": 0,
+          "baseline_alpha_max": 0,
+          "candidate_alpha_max": 0
+        },
+        "right_lower_short_edge": {
+          "pixels": 8,
+          "baseline_alpha_gt0": 0,
+          "candidate_alpha_gt0": 0,
+          "baseline_alpha_max": 0,
+          "candidate_alpha_max": 0
+        }
+      }
+    }
+  },
+  "texture_sha256": {
+    "baseline_1x": "d081279cade4a44166c94df295d4f2a7c179b053782ae7ff6c669ef215fbbc3b",
+    "candidate_1x": "c0dfa9831f910a5dfe1885b35df27466e1df9b4efaf7e57a7a1daa410bd71079",
+    "baseline_2x": "38e3fb625bbe127acdb4a24a220abafbf3bafd982d794e8cda793bdad30bdacd",
+    "candidate_2x": "a1a6939f0dca0938c7d39a059be5a85f5e24f59ffe1e3fc543d33ec6153bbb30"
+  },
+  "asset_check_snapshot": {
+    "command": "tools/check_assets.py --character xiaoxun --form chibi --root . --json <report>",
+    "pass": false,
+    "items": 1342,
+    "fail_count": 33,
+    "design_iou": 0.9934918477598998,
+    "caveat": "Run on the already-built isolated candidate after local pixel edits; not a fresh 27-step dependency-chain rebuild. This independent snapshot must not be merged with historical QA counts as a continuous trend."
+  },
+  "limitations": [
+    "Left dark dash: luma<60 count drops from 10 to 1; one edge pixel remains dark, so the repair is not visually complete.",
+    "Left gray mark: active @2x source pixels were not a transparent gap and were deliberately left unchanged in the final WIP candidate.",
+    "Right upper and lower mapped gaps: local dark-pixel counts drop to zero in the C frame; no rectangle/seam judged visible in the saved zoom, but this is not production acceptance.",
+    "No full rebuild, production integration, expression/hand/hair/hood/outfit/action matrix, or whole-Chibi acceptance was completed."
+  ]
+}

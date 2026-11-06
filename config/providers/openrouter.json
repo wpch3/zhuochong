@@ -1,0 +1,54 @@
+{
+  "name": "OpenRouter（多家聚合）",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 40,
+  "base_url": "https://openrouter.ai/api/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://openrouter"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "openai/gpt-4o-mini",
+      "price": {
+        "in": 0.15,
+        "out": 0.6,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "openai/gpt-4o-mini",
+      "price": {
+        "in": 0.15,
+        "out": 0.6,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "google/gemini-flash-1.5",
+      "price": {
+        "in": 0.075,
+        "out": 0.3,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "api",
+    "endpoint": "/credits",
+    "pick": "data.total_credits",
+    "minus": "data.total_usage",
+    "currency": "USD"
+  },
+  "balance_note": "credits 接口给的是累计额度与累计用量，要相减才是余额。",
+  "note": "一把钥匙打通 OpenAI/Anthropic/Google/Meta 等数百个模型，模型名写成 `厂商/模型`。适合\"用户只愿意配一把钥匙，但想随时换模型\"。注意：它是中转，隐私级别按**云端**算，敏感内容按 gateway 的 sensitive_local_only 规则留在本地。",
+  "id": "openrouter"
+}

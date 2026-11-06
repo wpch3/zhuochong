@@ -1,0 +1,32 @@
+$ PYTHONPATH=/tmp/zc-t67qa python3 tools/qa_hair_purity.py --character xiaoxun --form teen --strict-occlusion --fail
+exit_code=1
+头发件                              不透明     内部洞    边带暖色  成块异物（alpha≥200 且 ≥200px）
+--------------------------------------------------------------------------------------------------------
+acc_hair_sidelong_l@2x.png    182987      73    1482  干净
+acc_hair_sidelong_r@2x.png    183898     130    1313  干净
+hair_ahoge@2x.png               6700       0       4  干净
+hair_back@2x.png               74230       0       0  干净
+hair_crown_long@2x.png        150574      23     668  干净
+hair_crown_pony@2x.png        148592       3     207  干净
+hair_crown_twin@2x.png        156471       0     221  干净
+hair_front@2x.png              41550       0    1781  干净
+hair_hood_long@2x.png         368854   11336    1314  干净
+hair_hood_pony@2x.png         148094     483     177  干净
+hair_hood_pony_side@2x.png     27880     465     210  干净
+hair_hood_twin@2x.png         116400       0     908  干净
+hair_long_back@2x.png        1105360       0      11  干净
+hair_pony_back@2x.png         200342     163     138  干净
+hair_side_l@2x.png             29194     484    1063  干净
+hair_side_r@2x.png             30700     367     960  干净
+hair_sweep_pony_l@2x.png        5465       8      91  干净
+hair_sweep_pony_r@2x.png      131237      35     107  干净
+hair_sweep_twin_l@2x.png       50926      36      65  干净
+hair_sweep_twin_r@2x.png       50951      48      82  干净
+hair_twin_l@2x.png             61776       0      16  干净
+hair_twin_r@2x.png             61776       0      16  干净
+[严格遮挡] hair_hood_long@2x.png 内部透明块: [(3418, (np.int64(1193), np.int64(1311), np.int64(915), np.int64(989))), (2970, (np.int64(1192), np.int64(1311), np.int64(147), np.int64(220))), (982, (np.int64(1159), np.int64(1208), np.int64(878), np.int64(930)))]
+[严格遮挡] hair_hood_twin@2x.png: no enclosed transparent block >=200px
+[严格遮挡] hair_hood_pony@2x.png 内部透明块: [(373, (np.int64(169), np.int64(216), np.int64(155), np.int64(174)))]
+--------------------------------------------------------------------------------------------------------
+共 22 件；成块异物违规 2 件；边带暖色合计 10834 px（只报数，见文件头 C）
+头发布料纯度：不通过 —— 头发层里出现了皮肤/衣服的成块像素

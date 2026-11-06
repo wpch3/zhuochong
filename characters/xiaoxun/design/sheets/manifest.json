@@ -1,0 +1,79 @@
+{
+  "_note": "参考模板套准台账，由 tools/register_sheets.py 生成。sha16 绑死图片内容：换了图不重跑套准，selfcheck 的「参考模板套准到同一套身体坐标上」那一项就会红。leg_diff_pct = 膝盖以下（裙摆之下只有腿/袜/鞋）与短发底图的像素差异率，这一带任何发型和兜帽都不该动它。",
+  "base": "characters/xiaoxun/design/design_sheet_short.png",
+  "canvas": [
+    1024,
+    1536
+  ],
+  "band": [
+    1100,
+    1520
+  ],
+  "leg_diff_max_pct": 3.0,
+  "base_sole_y": 1479,
+  "sheets": [
+    {
+      "file": "sheet_long.png",
+      "sha16": "bb0e6d0378e0d05b",
+      "scale": 1.214,
+      "dx": 0,
+      "dy": 1,
+      "leg_diff_pct": 1.955,
+      "sole_y": 1479
+    },
+    {
+      "file": "sheet_long_hood.png",
+      "sha16": "32f38c1006d04f4d",
+      "scale": 1.2006,
+      "dx": 3,
+      "dy": 13,
+      "leg_diff_pct": 2.237,
+      "sole_y": 1479
+    },
+    {
+      "file": "sheet_pony.png",
+      "sha16": "5b3ef4781911735f",
+      "scale": 1.214,
+      "dx": 0,
+      "dy": 1,
+      "leg_diff_pct": 1.536,
+      "sole_y": 1479
+    },
+    {
+      "file": "sheet_pony_hood.png",
+      "sha16": "97aa13b8701a2420",
+      "scale": 1.2006,
+      "dx": 3,
+      "dy": 13,
+      "leg_diff_pct": 2.076,
+      "sole_y": 1479
+    },
+    {
+      "file": "sheet_short_hood.png",
+      "sha16": "1d83fafd5535134f",
+      "scale": 1.2091,
+      "dx": 2,
+      "dy": 7,
+      "leg_diff_pct": 1.977,
+      "sole_y": 1479
+    },
+    {
+      "file": "sheet_twin.png",
+      "sha16": "850638801b458bae",
+      "scale": 1.214,
+      "dx": 0,
+      "dy": 1,
+      "leg_diff_pct": 1.555,
+      "sole_y": 1479
+    },
+    {
+      "file": "sheet_twin_hood.png",
+      "sha16": "b3151ea4b9c125d5",
+      "scale": 1.2006,
+      "dx": 3,
+      "dy": 13,
+      "leg_diff_pct": 2.707,
+      "sole_y": 1479
+    }
+  ]
+}

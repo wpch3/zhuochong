@@ -1,0 +1,63 @@
+name: voice-render
+
+# 为什么用 Actions 渲声音：沙箱出网白名单到不了任何 TTS 端点，
+# 而这里用的 edge-tts（微软神经网络 TTS）就是网上“AI 少女音”最常用的生成方式。
+# 产物：样例音色采样 + 全部台词 mp3，打包成 artifact 供下载。
+on:
+  workflow_dispatch:
+    inputs:
+      character:
+        description: "角色 id（characters/<id>/）"
+        required: true
+        default: xiaoxun
+      only:
+        description: "all | samples | lines"
+        required: true
+        default: all
+      voice:
+        description: "可选：覆盖少女音色（如 zh-CN-XiaoyiNeural）"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装 edge-tts
+        run: python -m pip install --quiet edge-tts==7.2.8
+
+      - name: 合成语音
+        run: |
+          python tools/voice_render.py --character "${{ inputs.character }}" --root . \
+            --only "${{ inputs.only }}" ${{ inputs.voice && format('--voice {0}', inputs.voice) || '' }}
+
+      - name: 校验产物（数量与非空）
+        run: |
+          set -e
+          D="characters/${{ inputs.character }}/voice"
+          echo "--- 采样 ---"; ls -la "$D/samples" || true
+          echo "--- 台词数 ---"; ls "$D/lines" | wc -l
+          find "$D" -name '*.mp3' -size -2k -print | tee /tmp/bad.txt
+          test ! -s /tmp/bad.txt
+
+      - name: 打包
+        run: |
+          cd "characters/${{ inputs.character }}/voice"
+          zip -q -r "$GITHUB_WORKSPACE/voice_${{ inputs.character }}.zip" samples lines catalog.json plan.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voice-${{ inputs.character }}
+          path: voice_${{ inputs.character }}.zip
+          retention-days: 30

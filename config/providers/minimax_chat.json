@@ -1,0 +1,39 @@
+{
+  "name": "MiniMax 文本",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 40,
+  "base_url": "https://api.minimaxi.com/v1",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://minimax"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "MiniMax-Text-01",
+      "price": {
+        "in": 1.0,
+        "out": 8.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "MiniMax-Text-01",
+      "price": {
+        "in": 1.0,
+        "out": 8.0,
+        "per": 1000000,
+        "currency": "CNY"
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "和 minimax（语音）共用同一把 Key —— 配一次钥匙，文本与 TTS 两条能力一起亮。国内站 api.minimaxi.com / 海外站 api.minimax.io，两站不互通。",
+  "id": "minimax_chat"
+}

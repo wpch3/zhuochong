@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "_note": "命名挂点表，由 tools/scaffold_character.py 从 xiaoxun 派生。位置按形态锚点表达，四形态共用；如果新角色的头身比例差得多，改这里的 pos_rel 就行，不用碰骨架（骨是语义，位置是数据）。",
+  "_fields": {
+    "sockets[].id": "必须与 skeleton.json 里 kind:socket 的骨同名 —— 生成器逐条对表，对不上直接炸（挂点表不能自己长出新名字）",
+    "sockets[].ref": "形态锚点名（anchors.json 的 points），只允许 attach_geom.VALID_REFS 里的值",
+    "sockets[].pos_rel": "相对锚点的偏移，单位见 unit",
+    "sockets[].unit": "head / body / torso —— 和挂件表同一套单位（attach_geom.unit_px）",
+    "_wiring": "配件要挂到挂点上，在 design/attachments.json 里写 \"socket\": \"<挂点名>\"（可再写 dpos_rel 微调）。组和坐标都归挂点管，配件自己不再写 pos/pos_rel。"
+  },
+  "sockets": [
+    {
+      "id": "socket_head_top",
+      "ref": "head_top",
+      "pos_rel": [
+        0.025751,
+        0.140014
+      ],
+      "unit": "head",
+      "inherited_from": "xiaoxun",
+      "note": "头顶（发饰/帽子/呆毛夹）。数值 = hood_up / hair_crown_long 一直以来的落点，挂上去位置不变。"
+    },
+    {
+      "id": "socket_face",
+      "ref": "eye_line",
+      "pos_rel": [
+        0.0,
+        0.0
+      ],
+      "unit": "head",
+      "inherited_from": "xiaoxun",
+      "note": "脸面中心（眼镜/口罩）。眼下缘高度，横向落在脸中线上。"
+    },
+    {
+      "id": "socket_ear_l",
+      "ref": "head_top",
+      "pos_rel": [
+        -0.18702,
+        0.39563
+      ],
+      "unit": "head",
+      "inherited_from": "xiaoxun",
+      "note": "左耳。数值 = acc_ear_cat_l 一直以来的落点。"
+    },
+    {
+      "id": "socket_ear_r",
+      "ref": "head_top",
+      "pos_rel": [
+        0.2086,
+        0.39563
+      ],
+      "unit": "head",
+      "inherited_from": "xiaoxun",
+      "note": "右耳。数值 = acc_ear_cat_r 一直以来的落点。"
+    },
+    {
+      "id": "socket_neck",
+      "ref": "neck",
+      "pos_rel": [
+        0.0,
+        0.03
+      ],
+      "unit": "head",
+      "inherited_from": "xiaoxun",
+      "note": "颈根（项链/围巾）。挂在 chest 骨上，所以身体前倾时项链跟着躯干走而不是跟着头。"
+    },
+    {
+      "id": "socket_wrist_l",
+      "ref": "wrist_l",
+      "pos_rel": [
+        0.0,
+        0.0
+      ],
+      "unit": "head",
+      "inherited_from": "xiaoxun",
+      "note": "左手腕（腕带/手链）。挂在 hand_l 骨上 —— 手一抬，腕带就跟着抬，这是这个挂点存在的唯一理由。"
+    },
+    {
+      "id": "socket_wrist_r",
+      "ref": "wrist_r",
+      "pos_rel": [
+        0.0,
+        0.0
+      ],
+      "unit": "head",
+      "inherited_from": "xiaoxun",
+      "note": "右手腕。"
+    },
+    {
+      "id": "socket_back",
+      "ref": "neck",
+      "pos_rel": [
+        0.0,
+        0.3
+      ],
+      "unit": "head",
+      "inherited_from": "xiaoxun",
+      "note": "后背中线（背包/披风/翅膀）。挂 chest 骨：身体前倾时披风跟躯干，不跟头。"
+    }
+  ]
+}

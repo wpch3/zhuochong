@@ -1,0 +1,40 @@
+{
+  "case": "T31.21 surprised, teen/default, live UI action",
+  "preview_port": 5199,
+  "trigger": "web/components/actions.js 驚讶按钮 click handler → /api/action?id=surprised",
+  "sample_time_s": 0.752,
+  "canvas_scale": 1.2,
+  "reference_targets_canvas_px": {
+    "elbow_l_x": [275, 295],
+    "elbow_r_x": [545, 565],
+    "wrist_l": {"x": [335, 355], "y": [395, 415]},
+    "wrist_r": {"x": [485, 505], "y": [395, 415]},
+    "upper_arm_ratio": [0.75, 0.85]
+  },
+  "measured_canvas_px": {
+    "shoulder_l": [316.99, 460.32],
+    "elbow_l": [287.4, 586.73],
+    "wrist_l": [345.45, 403.82],
+    "shoulder_r": [522.01, 463.66],
+    "elbow_r": [550.53, 587.34],
+    "wrist_r": [503.65, 399.06]
+  },
+  "upper_arm_ratio": {"left": 0.780, "right": 0.782},
+  "projected_endpoint_flex_deg": {"left": 175.57, "right": 179.0},
+  "projected_flex_note": "The requested face-side wrist and elbow X windows produce a nearly straight shoulder-to-wrist 2D chord with the current pivots. This is not the earlier 120–150° endpoint-angle target; visible sleeve curvature is documented in normal/zoom/wireframe captures, but the geometric flex criterion remains a known conflict.",
+  "visual_review": {
+    "fingers_screen_space": "up",
+    "wrist_screen_space": "down into cuff; cuff overlaps the wrist end",
+    "stance": "feet flat, legs uncrossed, subtly apart with soft knee creases",
+    "artifacts": [
+      "t31_21_surprised_normal.png",
+      "t31_21_surprised_hand_cuff_zoom.png",
+      "t31_21_surprised_wireframe.png",
+      "t31_21_surprised_bones.png",
+      "t31_21_surprised_timeline_9grid.jpg",
+      "t31_21_surprised_reference_compare.png"
+    ]
+  },
+  "api_smoke": {"passed": 339, "failed": 0},
+  "regressions": ["happy", "talk", "wave"]
+}
