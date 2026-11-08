@@ -1,0 +1,103 @@
+{
+  "source": "experiments/live2d_chibi_human_blackline_seam",
+  "body_size": [
+    480,
+    512
+  ],
+  "left_polygon": [
+    [
+      0,
+      35
+    ],
+    [
+      140,
+      35
+    ],
+    [
+      158,
+      70
+    ],
+    [
+      152,
+      105
+    ],
+    [
+      140,
+      145
+    ],
+    [
+      133,
+      172
+    ],
+    [
+      135,
+      190
+    ],
+    [
+      131,
+      205
+    ],
+    [
+      115,
+      220
+    ],
+    [
+      110,
+      240
+    ],
+    [
+      0,
+      240
+    ]
+  ],
+  "right_polygon": [
+    [
+      480,
+      35
+    ],
+    [
+      315,
+      35
+    ],
+    [
+      302,
+      70
+    ],
+    [
+      308,
+      105
+    ],
+    [
+      320,
+      145
+    ],
+    [
+      327,
+      172
+    ],
+    [
+      325,
+      190
+    ],
+    [
+      330,
+      205
+    ],
+    [
+      365,
+      220
+    ],
+    [
+      370,
+      240
+    ],
+    [
+      480,
+      240
+    ]
+  ],
+  "left_source_pixels": 7700,
+  "right_source_pixels": 7990,
+  "underpaint_pixels": 4674,
+  "limitation": "binary partition with synthetic narrow seam underpaint; no original hidden shoulder art"
+}

@@ -102,7 +102,7 @@ preview: $(BUILD)/zhuochong_preview
 	@echo "预览服务：http://0.0.0.0:5173   测试台：http://0.0.0.0:5173/test.html"
 	./$(BUILD)/zhuochong_preview --root . --port 5173 --bind 0.0.0.0
 
-.PHONY: test-preview-actions test-rig-editor test-rig-editor-browser test-zrig-project test-blackline test-human-cleanup
+.PHONY: test-preview-actions test-rig-editor test-rig-editor-browser test-zrig-project test-blackline test-human-cleanup test-dynamic-chibi
 test-zrig-project: $(BUILD)/zhuochong_preview
 	@python3 tests/test_zrig_project.py
 
@@ -114,6 +114,12 @@ test-human-cleanup:
 	@test -n "$(PYTHON_IMG)" || { echo 'Pillow 和 numpy 解释器未找到'; exit 1; }
 	@$(PYTHON_IMG) tests/test_human_cleanup.py
 	@$(PYTHON_IMG) tests/test_human_seam_review.py
+
+test-dynamic-chibi: $(BUILD)/zhuochong_preview
+	@test -n "$(PYTHON_IMG)" || { echo 'Pillow 和 numpy 解释器未找到'; exit 1; }
+	@node tests/test_dynamic_study_ui.js
+	@$(PYTHON_IMG) tests/test_dynamic_chibi.py
+	@$(PYTHON_IMG) tests/test_dynamic_chibi_engine.py
 
 $(BUILD)/rig_mesh_probe: tests/rig_mesh_probe.c $(CORE_SRC) $(CORE_HDR)
 	@mkdir -p $(BUILD)
@@ -236,7 +242,7 @@ asset-tool-test:
 rig-tool-test:
 	@python3 tests/test_make_rig_identity.py
 
-check: selfcheck asset-tool-test rig-tool-test warncheck test asan smoke web-test test-preview-actions test-rig-editor test-zrig-project test-blackline test-human-cleanup
+check: selfcheck asset-tool-test rig-tool-test warncheck test asan smoke web-test test-preview-actions test-rig-editor test-zrig-project test-blackline test-human-cleanup test-dynamic-chibi
 	@echo "== 全部保险都过了 =="
 
 # 零告警闸：CI 是 `make clean` 后从零编的，本地增量编译会把告警藏起来。

@@ -1,0 +1,577 @@
+{
+  "schema_version": "1.0",
+  "id": "xiaoxun_live2d_chibi_dynamic_study",
+  "name": "小寻 · 无兽动态绑定试装",
+  "canvas": {
+    "w": 1024,
+    "h": 1024
+  },
+  "origin": [
+    512,
+    1024
+  ],
+  "ground_line": 946,
+  "groups": {
+    "root": {
+      "pivot": [
+        512,
+        946
+      ],
+      "parent": ""
+    },
+    "body": {
+      "pivot": [
+        512,
+        706
+      ],
+      "parent": "root"
+    },
+    "head": {
+      "pivot": [
+        512,
+        457
+      ],
+      "parent": "body"
+    },
+    "shoulder_l": {
+      "pivot": [
+        420,
+        493
+      ],
+      "parent": "body"
+    },
+    "shoulder_r": {
+      "pivot": [
+        595,
+        493
+      ],
+      "parent": "body"
+    }
+  },
+  "blink": {
+    "enabled": true,
+    "closing_s": 0.1,
+    "closed_s": 0.08,
+    "opening_s": 0.15,
+    "interval_min_s": 2.5,
+    "interval_max_s": 6
+  },
+  "parts": [
+    {
+      "id": "body",
+      "file": "sprites/body.png",
+      "group": "body",
+      "pos": [
+        280,
+        458
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 10
+    },
+    {
+      "id": "head",
+      "file": "sprites/head.png",
+      "group": "head",
+      "pos": [
+        290,
+        35
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 30
+    },
+    {
+      "id": "eye_l_open",
+      "file": "sprites/eye_l_open.png",
+      "group": "head",
+      "pos": [
+        390,
+        286
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 40,
+      "tags": [
+        "eye_open"
+      ],
+      "eye_side": "l"
+    },
+    {
+      "id": "eye_l_closed",
+      "file": "sprites/eye_l_closed.png",
+      "group": "head",
+      "pos": [
+        390,
+        286
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 41,
+      "tags": [
+        "eye_closed"
+      ],
+      "eye_side": "l"
+    },
+    {
+      "id": "eye_r_open",
+      "file": "sprites/eye_r_open.png",
+      "group": "head",
+      "pos": [
+        525,
+        286
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 40,
+      "tags": [
+        "eye_open"
+      ],
+      "eye_side": "r"
+    },
+    {
+      "id": "eye_r_closed",
+      "file": "sprites/eye_r_closed.png",
+      "group": "head",
+      "pos": [
+        525,
+        286
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 41,
+      "tags": [
+        "eye_closed"
+      ],
+      "eye_side": "r"
+    },
+    {
+      "id": "nose",
+      "file": "sprites/nose.png",
+      "group": "head",
+      "pos": [
+        497,
+        379
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 40
+    },
+    {
+      "id": "mouth_rest",
+      "file": "sprites/mouth_rest.png",
+      "group": "head",
+      "pos": [
+        480,
+        405
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 40
+    },
+    {
+      "id": "mouth_speak",
+      "file": "sprites/mouth_speak.png",
+      "group": "head",
+      "pos": [
+        480,
+        405
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 41
+    },
+    {
+      "id": "arm_l",
+      "file": "sprites/arm_l.png",
+      "group": "shoulder_l",
+      "pos": [
+        280,
+        458
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 11
+    },
+    {
+      "id": "arm_r",
+      "file": "sprites/arm_r.png",
+      "group": "shoulder_r",
+      "pos": [
+        280,
+        458
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "layer": 11
+    }
+  ],
+  "params": [
+    {
+      "id": "ParamMouthOpenY",
+      "label": "张嘴",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "binds": []
+    },
+    {
+      "id": "ParamHeadTilt",
+      "label": "头部倾斜",
+      "min": -1,
+      "max": 1,
+      "default": 0,
+      "binds": [
+        {
+          "group": "head",
+          "param": "rot_deg",
+          "scale": 4
+        }
+      ]
+    },
+    {
+      "id": "ParamHeadShiftX",
+      "label": "头部平移 X",
+      "min": -1,
+      "max": 1,
+      "default": 0,
+      "binds": [
+        {
+          "group": "head",
+          "param": "dx",
+          "scale": 5
+        }
+      ]
+    },
+    {
+      "id": "ParamHeadShiftY",
+      "label": "头部平移 Y",
+      "min": -1,
+      "max": 1,
+      "default": 0,
+      "binds": [
+        {
+          "group": "head",
+          "param": "dy",
+          "scale": 3
+        }
+      ]
+    },
+    {
+      "id": "ParamArmL",
+      "label": "左侧袖手",
+      "min": -1,
+      "max": 1,
+      "default": 0,
+      "binds": [
+        {
+          "group": "shoulder_l",
+          "param": "rot_deg",
+          "scale": 2
+        }
+      ]
+    },
+    {
+      "id": "ParamArmR",
+      "label": "右侧袖手",
+      "min": -1,
+      "max": 1,
+      "default": 0,
+      "binds": [
+        {
+          "group": "shoulder_r",
+          "param": "rot_deg",
+          "scale": -2
+        }
+      ]
+    },
+    {
+      "id": "ParamBreath",
+      "label": "呼吸（轻微缩放）",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "binds": [
+        {
+          "group": "body",
+          "param": "sy",
+          "scale": 0.006
+        }
+      ]
+    },
+    {
+      "id": "ParamMotionDrive",
+      "label": "身体摆动",
+      "min": -1,
+      "max": 1,
+      "default": 0,
+      "binds": [
+        {
+          "group": "body",
+          "param": "rot_deg",
+          "scale": 1.2
+        },
+        {
+          "group": "head",
+          "param": "rot_deg",
+          "scale": -1
+        }
+      ]
+    },
+    {
+      "id": "ParamSleeveFollow",
+      "label": "袖子物理跟随",
+      "min": -1,
+      "max": 1,
+      "default": 0,
+      "binds": [
+        {
+          "group": "shoulder_l",
+          "param": "rot_deg",
+          "scale": 0.4
+        },
+        {
+          "group": "shoulder_r",
+          "param": "rot_deg",
+          "scale": -0.4
+        }
+      ]
+    }
+  ],
+  "param_groups": [
+    {
+      "name": "EyeBlink",
+      "ids": [
+        "ParamEyeLOpen",
+        "ParamEyeROpen"
+      ]
+    },
+    {
+      "name": "LipSync",
+      "ids": [
+        "ParamMouthOpenY"
+      ]
+    }
+  ],
+  "xfades": [
+    {
+      "id": "mouth",
+      "param": "ParamMouthOpenY",
+      "in": [
+        0,
+        1
+      ],
+      "from": "mouth_rest",
+      "to": "mouth_speak"
+    }
+  ],
+  "actions": [
+    {
+      "id": "neutral",
+      "title": "静止检查",
+      "priority": 2,
+      "loop": true,
+      "channels": []
+    },
+    {
+      "id": "idle",
+      "title": "呼吸待机",
+      "priority": 0,
+      "loop": true,
+      "channels": [
+        {
+          "target": "ParamBreath",
+          "param": "value",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.18,
+          "bias": 0.5
+        },
+        {
+          "target": "ParamMotionDrive",
+          "param": "value",
+          "wave": "drift",
+          "amp": 0.35,
+          "freq": 0.12
+        },
+        {
+          "target": "ParamHeadTilt",
+          "param": "value",
+          "wave": "drift",
+          "amp": 0.22,
+          "freq": 0.13,
+          "phase": 0.2
+        }
+      ]
+    },
+    {
+      "id": "sway",
+      "title": "轻轻摇摆",
+      "priority": 2,
+      "loop": true,
+      "channels": [
+        {
+          "target": "ParamMotionDrive",
+          "param": "value",
+          "wave": "sine",
+          "amp": 0.8,
+          "freq": 0.18
+        },
+        {
+          "target": "ParamHeadTilt",
+          "param": "value",
+          "wave": "sine",
+          "amp": 0.4,
+          "freq": 0.18,
+          "phase": 0.15
+        },
+        {
+          "target": "ParamBreath",
+          "param": "value",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.18,
+          "bias": 0.5
+        }
+      ]
+    },
+    {
+      "id": "hand_wave",
+      "title": "袖手轻摆",
+      "priority": 2,
+      "loop": true,
+      "channels": [
+        {
+          "target": "ParamArmL",
+          "param": "value",
+          "wave": "sine",
+          "amp": 0.8,
+          "freq": 0.3
+        },
+        {
+          "target": "ParamArmR",
+          "param": "value",
+          "wave": "sine",
+          "amp": 0.8,
+          "freq": 0.3,
+          "phase": 0.5
+        }
+      ]
+    },
+    {
+      "id": "head_test",
+      "title": "头部倾斜",
+      "priority": 2,
+      "loop": true,
+      "channels": [
+        {
+          "target": "ParamHeadTilt",
+          "param": "value",
+          "wave": "sine",
+          "amp": 1,
+          "freq": 0.25
+        }
+      ]
+    },
+    {
+      "id": "talk",
+      "title": "说话",
+      "priority": 2,
+      "loop": true,
+      "channels": [
+        {
+          "target": "ParamMouthOpenY",
+          "param": "value",
+          "wave": "flap",
+          "amp": 1,
+          "freq": 2
+        },
+        {
+          "target": "ParamBreath",
+          "param": "value",
+          "wave": "sine",
+          "amp": 0.5,
+          "freq": 0.18,
+          "bias": 0.5
+        }
+      ]
+    }
+  ],
+  "regions": [
+    {
+      "id": "head",
+      "rect": [
+        310,
+        90,
+        710,
+        465
+      ],
+      "cursor": "hand",
+      "action": "head_test"
+    },
+    {
+      "id": "body",
+      "rect": [
+        340,
+        465,
+        680,
+        720
+      ],
+      "cursor": "hand",
+      "action": "sway"
+    }
+  ],
+  "physics2": [
+    {
+      "id": "sleeve_follow",
+      "part": "arm_l",
+      "angle_input": [
+        {
+          "param": "ParamMotionDrive",
+          "weight": 1.0
+        }
+      ],
+      "particles": [
+        {
+          "radius": 0
+        },
+        {
+          "radius": 20,
+          "mobility": 0.9,
+          "delay": 1.0,
+          "acceleration": 1.0
+        }
+      ],
+      "outputs": [
+        {
+          "particle": 1,
+          "param": "ParamSleeveFollow",
+          "scale": 0.05,
+          "max": 1.0
+        }
+      ]
+    }
+  ]
+}
