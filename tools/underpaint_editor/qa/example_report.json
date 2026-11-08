@@ -1,0 +1,20 @@
+{
+  "source": "experiments/live2d_chibi_dynamic",
+  "patch_sha256": "544a2bae0435be0b5ef92d2186e31bf7356acb04cbe78b6f9089ecae53b4784c",
+  "source_rig_sha256": "d52623e14a7ebedc848ed8dc756b91448efd22b46a290eaa78d4550dbbc7b1e6",
+  "source_body_sha256": "f0b8aff36743e6f3898ea4725eb5e9f93aa8f78d47a12dd1f17e0102568b7185",
+  "source_arm_sha256": {
+    "l": "eccc7418227d5ee14f52df49c5bbaf49d2cdf863e8b9168c36d95cc87839c117",
+    "r": "f82b6d8a81a6f24f1a0a2f60d44bbc57d2e3a023c2cce01c48aeda2801af8f3f"
+  },
+  "patch_nontransparent_pixels": 3544,
+  "changed_body_pixels": 3513,
+  "changed_bbox": [
+    122,
+    44,
+    338,
+    191
+  ],
+  "neutral_rgba_equal": true,
+  "visual_acceptance": "not evaluated"
+}
