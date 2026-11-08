@@ -13,6 +13,7 @@ import shutil
 import sys
 import numpy as np
 from PIL import Image
+from underpaint_mask import safe_mask
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'experiments/live2d_chibi_dynamic'
@@ -22,9 +23,9 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(patch_path, out):
+def build(patch_path, out, margin=6):
     patch_path, out = Path(patch_path), Path(out)
-    resolved, root = out.resolve(), ROOT.resolve()
+    resolved = out.resolve()
     scratch = (ROOT / 'build').resolve()
     exp = (ROOT / 'experiments').resolve()
     valid_scratch = scratch in resolved.parents
@@ -47,12 +48,12 @@ def build(patch_path, out):
     if body.size != patch.size or any(a.size != patch.size for a in arms):
         raise ValueError('source dimensions changed')
     pixels = np.asarray(patch)
-    allowed = (np.asarray(arms[0])[...,3] == 255) | (np.asarray(arms[1])[...,3] == 255)
+    allowed = safe_mask([np.asarray(a)[...,3] for a in arms], margin)
     touched = pixels[...,3] > 0
     if not touched.any():
         raise ValueError('empty patch')
     if np.any(touched & ~allowed):
-        raise ValueError('patch contains pixels not fully occluded by a neutral arm')
+        raise ValueError(f'patch outside opaque-arm safety margin {margin}; use the same margin as the editor')
     result = Image.alpha_composite(body, patch)
     before = body.copy(); after = result.copy()
     for arm in arms:
@@ -81,7 +82,7 @@ def build(patch_path, out):
         report = {'source':str(SOURCE.relative_to(ROOT)), 'patch_sha256':sha(patch_path),
                   'source_rig_sha256':sha(SOURCE/'rig.json'), 'source_body_sha256':sha(SOURCE/'sprites/body.png'),
                   'source_arm_sha256':{side:sha(SOURCE/f'sprites/arm_{side}.png') for side in ('l','r')},
-                  'patch_nontransparent_pixels':int(touched.sum()), 'changed_body_pixels':int(changed.sum()),
+                  'safety_margin_px':margin, 'patch_nontransparent_pixels':int(touched.sum()), 'changed_body_pixels':int(changed.sum()),
                   'changed_bbox':[int(xx.min()),int(yy.min()),int(xx.max()+1),int(yy.max()+1)],
                   'neutral_rgba_equal':True, 'visual_acceptance':'not evaluated'}
         (out/'underpaint_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
@@ -94,8 +95,9 @@ def build(patch_path, out):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('patch'); parser.add_argument('output')
+    parser.add_argument('--margin',type=int,choices=range(9),default=6,help='source-pixel safety margin (default: 6); use 0 for legacy patches')
     args=parser.parse_args()
-    try: print(json.dumps(build(args.patch,args.output),ensure_ascii=False,indent=2))
+    try: print(json.dumps(build(args.patch,args.output,args.margin),ensure_ascii=False,indent=2))
     except (ValueError,OSError,KeyError,TypeError) as e:
         print('Underpaint trial error:',e,file=sys.stderr); return 1
     return 0

@@ -20,7 +20,7 @@
 
 - **资料与目视**：重新核对 Live2D 官方[插画处理](https://docs.live2d.com/en/cubism-editor-tutorials/psd/)和[素材拆分](https://docs.live2d.com/en/cubism-editor-manual/divide-the-material/)中保留原层、为移动时露出部分单独补画的原则。放大动态试装身体图，原底层的程序延色有明显水平色条；它并非完整肩部原画。
 - **工具**：新建隔离 `tools/underpaint_editor/`、独立临时静态预览、透明补画导出及新候选生成器。补画只能落在中立状态下袖手完全不透明覆盖的位置；浏览器显示的是素材层近似旋转，不模拟 C 渲染。C 候选预览与前一试装分目录、分端口，标题标记“未验收”。
-- **实际绘制和验证**：真实 Chromium 用浅色沿两侧袖下画两笔，导出 `qa/example_patch_not_approved.png`。候选报告记录 3544 补画像素、3513 个身体像素改变，中立三层 RGBA 合成一致。通过独立 C 引擎动作和物理验证，但不能据此声称视觉修复。固定步进 C 对照的中立、袖手向外、向内分别相差 200、532、48 像素。
+- **实际绘制和验证（旧版 0px 边距）**：真实 Chromium 用浅色沿两侧袖下画两笔，导出 `qa/example_patch_not_approved.png`。候选报告记录 3544 补画像素、3513 个身体像素改变，中立三层 RGBA 合成一致。通过独立 C 引擎动作和物理验证，但不能据此声称视觉修复。固定步进 C 对照的中立、袖手向外、向内分别相差 200、532、48 像素。
 - **目视结论**：查看了无遮挡底层、浏览器近似预览、真实 C 帧的浅/深底及袖手放大图；单色补画并未建立可信衣物隐藏结构，接缝仍不够自然。示例仅留在 `tools/underpaint_editor/qa/` 作为失败/局限证据，不覆盖已有动态试装，不当成合格模型。下一步仍须原创可编辑遮挡画稿或分层重绘，再处理真实大幅动作和独立眼球。
 - **自动测试**：`make test-underpaint test-dynamic-chibi` 通过，拒绝越界、空补画、错误尺寸、覆盖既有目录及正式形态；从补画建立临时候选并由真实 C 检查参数、动作与物理。`make test-underpaint-browser` 在真实 Chromium 验证遮挡区高亮、两种缩放、取用并导出补画、撤销/重做、取消指针、取消重新载入和非法 PNG 保留未保存内容；再将浏览器下载 PNG 用 C 运行。编辑器、项目包、动作 API 回归通过；旧正式 Chibi 仍有 3 条加载警告。
-- **安全和打包**：工作台预览只服务独立临时目录，`/config/pet.json` 与 `/.git/config` 实测 404，不把整个仓库作为公开静态站点。候选自研 `.zproj` v1 的创建、校验与解包通过；补画源与历史仍应另存，不是 Cubism 工程。工作台说明、重现命令和 QA 见 `tools/underpaint_editor/README.md`。
+- **安全和打包**：工作台预览只服务独立临时目录，`/config/pet.json` 与 `/.git/config` 实测 404，不把整个仓库作为公开静态站点。候选自研 `.zproj` v1 的创建、校验与解包通过；补画源与历史仍应另存，不是 Cubism 工程。工作台说明、重现命令和 QA 见 `tools/underpaint_editor/README.md`。后续工具默认改为 6px；重建本次旧版示例需在生成器传 `--margin 0`，详见 `docs/UNDERPAINT_SAMPLING_STUDY_2026-11-06.md`。

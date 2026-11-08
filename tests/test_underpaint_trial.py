@@ -13,6 +13,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import build_underpaint_trial as tool
+from underpaint_mask import safe_mask
 
 
 def manifest(p):
@@ -27,7 +28,8 @@ class UnderpaintTest(unittest.TestCase):
         self.tmp=Path(self.temp.name)
         self.source_before=manifest(tool.SOURCE)
         arms=[np.asarray(Image.open(tool.SOURCE/f'sprites/arm_{s}.png').convert('RGBA')) for s in ('l','r')]
-        self.mask=(arms[0][...,3]==255)|(arms[1][...,3]==255)
+        self.legacy_mask=(arms[0][...,3]==255)|(arms[1][...,3]==255)
+        self.mask=safe_mask([a[...,3] for a in arms],6)
         self.patch=np.zeros((512,480,4),dtype=np.uint8)
         self.patch[self.mask]=[240,10,80,255]
     def tearDown(self):
@@ -73,6 +75,16 @@ class UnderpaintTest(unittest.TestCase):
         self.assertEqual(marker.read_text(),'keep')
         self.assertFalse((preview/'config').exists())
         self.assertEqual(form.resolve(),tool.SOURCE.resolve())
+    def test_legacy_patch_requires_explicit_margin_zero(self):
+        edge=np.zeros_like(self.patch)
+        eligible=self.legacy_mask & ~self.mask
+        self.assertTrue(eligible.any())
+        edge[eligible]=[245,0,0,255]
+        patch=self.save(edge)
+        with self.assertRaisesRegex(ValueError,'safety margin'):
+            tool.build(patch,self.tmp/'strict')
+        report=tool.build(patch,self.tmp/'legacy',0)
+        self.assertEqual(report['safety_margin_px'],0)
     def test_existing_underlay_colour_is_noop(self):
         # Fully transparent patch is explicitly rejected, not silently published.
         with self.assertRaisesRegex(ValueError,'empty patch'):

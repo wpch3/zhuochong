@@ -123,8 +123,10 @@ test-dynamic-chibi: $(BUILD)/zhuochong_preview
 
 test-underpaint: $(BUILD)/zhuochong_preview
 	@test -n "$(PYTHON_IMG)" || { echo 'Pillow 和 numpy 解释器未找到'; exit 1; }
+	@$(PYTHON_IMG) tests/test_underpaint_mask.py
 	@$(PYTHON_IMG) tests/test_underpaint_trial.py
 	@$(PYTHON_IMG) tests/test_underpaint_c_engine.py
+	@$(PYTHON_IMG) tests/test_underpaint_sampling.py
 
 # Optional: start preview_underpaint_editor.py first and install browser dependencies.
 test-underpaint-browser: $(BUILD)/zhuochong_preview

@@ -19,7 +19,7 @@ def main():
         editor = preview / 'tools/underpaint_editor'
         sprites = preview / 'experiments/live2d_chibi_dynamic/sprites'
         editor.mkdir(parents=True); sprites.mkdir(parents=True)
-        for name in ('index.html', 'style.css', 'app.js'):
+        for name in ('index.html', 'style.css', 'mask.js', 'app.js'):
             shutil.copyfile(ROOT/'tools/underpaint_editor'/name, editor/name)
         for name in ('body.png', 'arm_l.png', 'arm_r.png'):
             shutil.copyfile(ROOT/'experiments/live2d_chibi_dynamic/sprites'/name, sprites/name)

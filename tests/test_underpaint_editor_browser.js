@@ -15,6 +15,8 @@ const out = path.resolve(process.env.UNDERPAINT_QA || 'build/underpaint-qa');
     await page.goto(process.env.UNDERPAINT_URL || 'http://127.0.0.1:5211/');
     await page.click('#demo');
     await page.waitForFunction(()=>document.querySelector('#status').textContent.startsWith('已载入'));
+    assert.strictEqual(await page.locator('#margin').inputValue(),'6');
+    await page.selectOption('#margin','0');
     await page.uncheck('#showArms');
     const canvas=page.locator('#canvas');
     const save=key=>page.evaluate(key=>{window[key]=document.querySelector('#canvas').getContext('2d').getImageData(0,0,480,512).data.slice();},key);
@@ -53,6 +55,9 @@ const out = path.resolve(process.env.UNDERPAINT_QA || 'build/underpaint-qa');
     assert.strictEqual(await different('_both'),0,'canceling reload must retain edits');
     await page.click('#undo');assert.strictEqual(await different('_painted'),0);
     await page.click('#redo');assert.strictEqual(await different('_both'),0);
+    await page.selectOption('#margin','6'); assert((await different('_both'))>20);
+    await page.selectOption('#margin','0'); assert.strictEqual(await different('_both'),0,'margin must not erase hidden strokes');
+    await page.selectOption('#margin','6'); // export the stricter, independently verified patch
     await page.selectOption('#zoom','1');
     await page.locator('#canvasWrap').evaluate(el=>{el.scrollTop=0;el.scrollLeft=0;});
     await page.screenshot({path:path.join(out,'underpaint.png'),fullPage:true});

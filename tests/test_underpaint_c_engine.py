@@ -14,6 +14,7 @@ from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import build_underpaint_trial
+from underpaint_mask import safe_mask
 
 
 def main():
@@ -23,7 +24,7 @@ def main():
         patch=os.environ.get('UNDERPAINT_PATCH')
         if not patch:
             arms=[np.asarray(Image.open(build_underpaint_trial.SOURCE/f'sprites/arm_{s}.png').convert('RGBA')) for s in ('l','r')]
-            allowed=(arms[0][...,3]==255)|(arms[1][...,3]==255)
+            allowed=safe_mask([a[...,3] for a in arms],6)
             arr=np.zeros((512,480,4),dtype=np.uint8);arr[allowed]=[248,245,250,255]
             patch=tmp/'patch.png';Image.fromarray(arr).save(patch)
         candidate=tmp/'candidate';build_underpaint_trial.build(patch,candidate)
