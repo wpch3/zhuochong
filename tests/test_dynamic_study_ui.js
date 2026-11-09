@@ -69,7 +69,7 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
   for (let i=0; i<10; i++) await flush();
   assert(wrists.every(x => x.value === '0'));
   assert.deepStrictEqual(calls.filter(c => c.url === '/api/param').pop().params, {all:1});
-  const allRoot = el('root'); component.mount(host, allRoot, {wrists:true, elbows:true, gaze:true});
+  const allRoot = el('root'); component.mount(host, allRoot, {wrists:true, elbows:true, gaze:true, fingers:true});
   const allBody = allRoot.children[0].children[0];
   const find = label => allBody.children.flatMap(row => row.children || []).find(x => x.attributes && x.attributes['aria-label'] === label);
   for (const [label, id] of [['左肘（试验）','ParamElbowL'],['右肘（试验）','ParamElbowR'],['眼球横向（试验）','ParamGazeX']]) {
@@ -77,6 +77,12 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
     for (let i=0; i<5; i++) await flush();
     assert(calls.some(c => c.params.id === id && c.params.v === 0.65));
   }
+  for (const [label,id] of [['左小指（试验）','ParamFingerLLittle'],['右拇指（试验）','ParamFingerRThumb']]) {
+    const input = find(label); assert(input); input.value = '0.7'; input.input();
+    for (let i=0; i<5; i++) await flush();
+    assert(calls.some(c => c.params.id === id && c.params.v === 0.7));
+  }
+  assert(!slider('左小指（试验）'), 'finger controls must be opt-in');
   assert(!slider('左肘（试验）') && !slider('眼球横向（试验）'), 'new controls must be opt-in');
   console.log('动态控制：在途合并、复位优先、错误提示与恢复通过');
 })().catch(e => {console.error(e); process.exitCode=1;});

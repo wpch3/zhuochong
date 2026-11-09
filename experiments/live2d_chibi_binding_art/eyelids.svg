@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="215" height="114" viewBox="0 0 215 114">
+ <!-- Separate mobile upper eyelash art, both sides use eye-local coordinates. -->
+ <g id="left_lid">
+  <path d="M 12 70 C 18 57 32 50 48 48 C 64 46 77 51 83 61 L 80 65 C 72 58 62 56 49 56 C 34 56 24 62 20 75 Z" fill="#1b121b"/>
+  <path d="M 15 69 C 23 57 34 52 48 51 C 63 49 75 53 80 61 C 71 56 61 53 49 54 C 34 54 23 61 17 72 Z" fill="#4a1b3a"/>
+  <path d="M 15 70 L 9 69 L 15 65 M 20 64 L 13 62 L 21 60 M 79 62 L 86 66 L 80 59" fill="#1b121b"/>
+ </g>
+ <g id="right_lid">
+  <path d="M 132 61 C 139 51 151 46 167 48 C 184 50 197 57 203 70 L 195 75 C 191 62 181 56 166 56 C 153 56 143 58 135 65 Z" fill="#1b121b"/>
+  <path d="M 135 61 C 141 53 152 49 166 51 C 180 52 193 57 200 69 L 198 72 C 191 61 181 54 166 54 C 154 53 144 56 135 61 Z" fill="#4a1b3a"/>
+  <path d="M 200 70 L 207 69 L 201 65 M 194 64 L 202 62 L 194 60 M 136 62 L 129 66 L 135 59" fill="#1b121b"/>
+ </g>
+</svg>

@@ -78,6 +78,8 @@ def main():
     underlay_trial = bool(args.dynamic_study and (study / 'underlay_report.json').is_file())
     wrist_trial = bool(args.dynamic_study and (study / 'wrist_report.json').is_file())
     joint_trial = bool(args.dynamic_study and (study / 'joint_report.json').is_file())
+    binding_trial = bool(args.dynamic_study and (study / 'binding_report.json').is_file())
+    lid_trial = bool(args.dynamic_study and (study / 'lid_report.json').is_file())
     eye_trial = bool(args.dynamic_study and (study / 'eye_report.json').is_file())
     target = preview / 'characters/xiaoxun/forms' / form
     if target.is_symlink():
@@ -97,7 +99,9 @@ def main():
     shutil.copytree(ROOT / 'web', web, dirs_exist_ok=True)
     layout_path = web / 'layout.json'
     layout = json.loads(layout_path.read_text(encoding='utf-8'))
-    layout['title'] = ('小寻 · 眼球重绘试验（未验收）' if eye_trial else
+    layout['title'] = ('小寻 · 手指口腔绑定试验（未验收）' if binding_trial else
+                       '小寻 · 眼睑遮罩试验（未验收）' if lid_trial else
+                       '小寻 · 眼球重绘试验（未验收）' if eye_trial else
                        '小寻 · 肘腕连接试验（未验收）' if joint_trial else
                        '小寻 · 手腕连接试验（未验收）' if wrist_trial else
                        '小寻 · 衣身底稿试验（未验收）' if underlay_trial else
@@ -126,13 +130,20 @@ def main():
             if joint_trial:
                 hint = '肘腕精修试验：上臂、前臂、手和隐藏底稿，小幅活动尚未通过美术验收。'
                 description = '新绘肘腕补画与腕部局部修色；肩、手指和眼口还未完整拆分。'
+            if binding_trial:
+                hint = '手指、口腔拆层和参数试验：真实 C 帧，尚未通过美术验收。'
+                description = '十指独立旋转，口腔五层随开口变形；手指连接和闭嘴过渡仍需重绘。'
             if eye_trial:
                 hint = '眼球重绘试验：独立眼白、眼球与遮罩，画风和眨眼尚未通过验收。'
                 description = '眼部静止外观已改变；睫毛、眼睑及嘴部尚未完整拆分。'
+            if lid_trial:
+                hint = '眼睑和眨眼遮罩试验：尚未通过视觉验收。'
+                description = '重绘眼睑随遮罩下移；眼角残片和闭眼线仍需修画。'
     layout['regions'] = {
         'topbar': ['statuschips'],
         'stage': [{'id': 'stage', 'options': {'buttons': [], 'hint': hint}}],
-        'side': ([{'id':'dynamic_study','options':{'wrists':True,'elbows':True,'gaze':True}}] if eye_trial else
+        'side': ([{'id':'dynamic_study','options':{'wrists':True,'elbows':True,'fingers':True}}] if binding_trial else
+                 [{'id':'dynamic_study','options':{'wrists':True,'elbows':True,'gaze':True}}] if eye_trial else
                  [{'id':'dynamic_study','options':{'wrists':True,'elbows':True}}] if joint_trial else
                  [{'id':'dynamic_study','options':{'wrists':True}}] if wrist_trial else
                  ['dynamic_study'] if args.dynamic else []) +

@@ -64,6 +64,13 @@ ZC.register({
     if (options.gaze === true) {
       specs.push(["ParamGazeX", "眼球横向（试验）", -1, 1, 0]);
     }
+    if (options.fingers === true) {
+      for (const [side, label] of [["L", "左"], ["R", "右"]]) {
+        for (const [name, finger] of [["Little", "小指"], ["Ring", "无名指"], ["Middle", "中指"], ["Index", "食指"], ["Thumb", "拇指"]]) {
+          specs.push(["ParamFinger" + side + name, label + finger + "（试验）", -1, 1, 0]);
+        }
+      }
+    }
     specs.forEach(([id, label, min, max, initial]) => {
       const row = host.el("label", "voice-item");
       row.appendChild(host.el("span", "id", label));

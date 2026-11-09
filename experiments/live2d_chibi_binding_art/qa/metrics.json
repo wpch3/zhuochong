@@ -1,0 +1,15 @@
+{
+  "ParamFingerLLittle": 49,
+  "ParamFingerLRing": 91,
+  "ParamFingerLMiddle": 125,
+  "ParamFingerLIndex": 218,
+  "ParamFingerLThumb": 90,
+  "ParamFingerRLittle": 49,
+  "ParamFingerRRing": 90,
+  "ParamFingerRMiddle": 125,
+  "ParamFingerRIndex": 218,
+  "ParamFingerRThumb": 91,
+  "joint_combined_changed": 16575,
+  "mouth_full_changed": 779,
+  "finger_loop_changed": 970
+}
