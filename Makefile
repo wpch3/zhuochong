@@ -422,3 +422,20 @@ test-chibi-pupil-hold-study: $(BUILD)/zhuochong_preview
 .PHONY: test-chibi-topology-studies
 test-chibi-topology-studies: $(BUILD)/zhuochong_preview $(BUILD)/zhuochong_eye_morph_experiment
 	@$(PYTHON_IMG) tests/test_chibi_topology_studies.py
+
+$(BUILD)/finger_depth_experiment/src/core/zrig.c: src/core/zrig.c experiments/live2d_chibi_morph_study/rejected/finger_depth/engine.patch
+	@mkdir -p $(BUILD)/finger_depth_experiment/src/core
+	@patch -s -o $@.tmp src/core/zrig.c < experiments/live2d_chibi_morph_study/rejected/finger_depth/engine.patch
+	@mv $@.tmp $@
+
+$(BUILD)/zhuochong_finger_depth_experiment: src/headless/main_headless.c $(filter-out src/core/zrig.c,$(CORE_SRC)) $(CORE_HDR) $(BUILD)/finger_depth_experiment/src/core/zrig.c
+	$(CC) $(CFLAGS) $(INC) -Isrc/core -o $@ src/headless/main_headless.c $(filter-out src/core/zrig.c,$(CORE_SRC)) $(BUILD)/finger_depth_experiment/src/core/zrig.c $(LDLIBS)
+
+.PHONY: test-chibi-occlusion-diagnostics
+test-chibi-occlusion-diagnostics: $(BUILD)/zhuochong_preview $(BUILD)/zhuochong_eye_morph_experiment $(BUILD)/zhuochong_finger_depth_experiment
+	@$(PYTHON_IMG) tests/test_chibi_occlusion_diagnostics.py
+
+.PHONY: test-chibi-pocket-split-study
+test-chibi-pocket-split-study: $(BUILD)/zhuochong_preview
+	@$(PYTHON_IMG) -c 'import cv2' || { echo '需要安装 OpenCV Python 才能运行口袋诊断'; exit 1; }
+	@$(PYTHON_IMG) tests/test_chibi_pocket_split_study.py

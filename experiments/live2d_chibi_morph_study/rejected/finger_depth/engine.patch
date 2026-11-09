@@ -1,0 +1,30 @@
+--- a/src/core/zrig.c
++++ b/src/core/zrig.c
+@@ -6937,2 +6937,27 @@
+     deform_update_keys(r);
++    /* ISOLATED DIAGNOSTIC ONLY: depth sort the named trial fingers by
++       parameter. Changes can pop on crossing; not a production algorithm. */
++    {
++        static const char *sn[] = {"l", "r"};
++        static const char *fn[] = {"little", "ring", "middle", "index", "thumb"};
++        static const char *pn[] = {"Little", "Ring", "Middle", "Index", "Thumb"};
++        double score[ZRIG_MAX_PARTS];
++        int n, side, finger;
++        for (n = 0; n < r->nparts; ++n) score[n] = r->parts[n].layer;
++        for (side = 0; side < 2; ++side) for (finger = 0; finger < 5; ++finger) {
++            char part[64], param[64]; int pi, qi;
++            z_snprintf(part, sizeof(part), "finger_%s_%s", sn[side], fn[finger]);
++            z_snprintf(param, sizeof(param), "ParamFinger%c%s", side ? 'R' : 'L', pn[finger]);
++            pi = find_part(r, part); qi = param_find(r, param);
++            if (pi >= 0 && qi >= 0) score[pi] = 15.0 + .1 * (finger-2) + 1.5 * param_effective(r, qi);
++        }
++        for (n = 0; n < r->nparts; ++n) r->order[n] = n;
++        for (n = 1; n < r->nparts; ++n) {
++            int key = r->order[n], j = n - 1;
++            while (j >= 0 && score[r->order[j]] > score[key]) {
++                r->order[j+1] = r->order[j]; --j;
++            }
++            r->order[j+1] = key;
++        }
++    }
+ }

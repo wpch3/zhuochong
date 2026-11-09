@@ -4,7 +4,7 @@
 Each pose is reset and its exact parameter values are recorded. A sampled
 matrix is not an exhaustive test or an automated aesthetic judgment.
 """
-import argparse,itertools,json,shutil,tempfile
+import argparse,hashlib,itertools,json,shutil,tempfile
 from pathlib import Path
 from PIL import Image
 from capture_chibi_joint_art import image
@@ -39,14 +39,17 @@ def scenarios():
   for b in (.5,.75,.85):out[f'{side}_smile_b{b}']={f'ParamEye{side}Smile':.85,'blink':b,'ParamGazeX':1 if side=='L' else -1}
  return out
 
-def capture(candidate,output):
+def capture(candidate,output,executable=None):
  candidate=Path(candidate).resolve();out=Path(output);dest=out.resolve();root=(ROOT/'build').resolve()
  if root not in candidate.parents or root not in dest.parents or dest==candidate or dest in candidate.parents or candidate in dest.parents:raise ValueError('separate paths inside build required')
  if out.exists() or out.is_symlink() or not out.parent.is_dir():raise ValueError('output must be new')
  if not (candidate/'closure_report.json').exists():raise ValueError('expected closure candidate')
+ binary=Path(executable).resolve() if executable else ROOT/'build/zhuochong_preview'
+ provenance={'rig_sha256':hashlib.sha256((candidate/'rig.json').read_bytes()).hexdigest(),
+             'preview_executable_sha256':hashlib.sha256(binary.read_bytes()).hexdigest()}
  cases=scenarios();shots={};sweep=[];sweep_values=[]
  with tempfile.TemporaryDirectory(prefix='visual-matrix-',dir=root) as tmp:
-  proc,url=start(Path(tmp)/'preview',candidate)
+  proc,url=start(Path(tmp)/'preview',candidate,executable)
   try:
    setup(url)
    for name,params in cases.items():
@@ -76,13 +79,13 @@ def capture(candidate,output):
     frame=Image.fromarray(arr);canvas=Image.new('RGBA',frame.size,bg);canvas.alpha_composite(frame)
     sequence.append(canvas.crop((300,460,730,715)).convert('RGB'))
    sequence[0].save(out/f'mixed_sweep_{label}.gif',save_all=True,append_images=sequence[1:],duration=140,loop=0,optimize=True)
-  (out/'poses.json').write_text(json.dumps({'fixed':cases,'mixed_sweep':sweep_values},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+  (out/'poses.json').write_text(json.dumps({'fixed':cases,'mixed_sweep':sweep_values,'provenance_before_capture':provenance},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
  except BaseException:shutil.rmtree(out);raise
  return len(cases)
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('candidate');p.add_argument('output');a=p.parse_args()
- try:print('C frames captured:',capture(a.candidate,a.output))
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('candidate');p.add_argument('output');p.add_argument('--preview-executable',type=Path);a=p.parse_args()
+ try:print('C frames captured:',capture(a.candidate,a.output,a.preview_executable))
  except (ValueError,OSError,RuntimeError) as e:print('capture:',e,file=__import__('sys').stderr);return 1
  return 0
 if __name__=='__main__':raise SystemExit(main())

@@ -1,0 +1,156 @@
+{
+  "L_all": {
+    "parameters": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "all",
+    "part": null
+  },
+  "L_hide_body": {
+    "parameters": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "hide_body",
+    "part": "body"
+  },
+  "L_hide_arm": {
+    "parameters": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "hide_arm",
+    "part": "arm_l"
+  },
+  "L_hide_forearm": {
+    "parameters": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "hide_forearm",
+    "part": "forearm_l"
+  },
+  "L_only_body": {
+    "parameters": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "only_body",
+    "part": "body"
+  },
+  "L_only_arm": {
+    "parameters": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "only_arm",
+    "part": "arm_l"
+  },
+  "L_only_forearm": {
+    "parameters": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "only_forearm",
+    "part": "forearm_l"
+  },
+  "R_all": {
+    "parameters": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "all",
+    "part": null
+  },
+  "R_hide_body": {
+    "parameters": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "hide_body",
+    "part": "body"
+  },
+  "R_hide_arm": {
+    "parameters": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "hide_arm",
+    "part": "arm_r"
+  },
+  "R_hide_forearm": {
+    "parameters": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "hide_forearm",
+    "part": "forearm_r"
+  },
+  "R_only_body": {
+    "parameters": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "only_body",
+    "part": "body"
+  },
+  "R_only_arm": {
+    "parameters": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "only_arm",
+    "part": "arm_r"
+  },
+  "R_only_forearm": {
+    "parameters": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamMotionDrive": -1,
+      "ParamBreath": 1
+    },
+    "visibility_mode": "only_forearm",
+    "part": "forearm_r"
+  }
+}

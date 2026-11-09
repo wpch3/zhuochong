@@ -3,7 +3,7 @@
 
 This does not claim all 1024 two-hand combinations or continuous poses.
 """
-import argparse,itertools,json,shutil,tempfile
+import argparse,hashlib,itertools,json,shutil,tempfile
 from pathlib import Path
 from PIL import Image,ImageDraw
 from capture_chibi_joint_art import image
@@ -12,14 +12,17 @@ from capture_chibi_art_review import reset
 from capture_chibi_visual_matrix import verify_pose,FINGERS
 from study_underpaint_sampling import ROOT,start,stop,request
 
-def capture(candidate,output):
+def capture(candidate,output,executable=None):
  candidate=Path(candidate).resolve();out=Path(output);dest=out.resolve();root=(ROOT/'build').resolve()
  if root not in candidate.parents or root not in dest.parents or dest==candidate or dest in candidate.parents or candidate in dest.parents:raise ValueError('separate paths inside build required')
  if out.exists() or out.is_symlink() or not out.parent.is_dir():raise ValueError('output must be new')
  if not (candidate/'closure_report.json').is_file():raise ValueError('expected closure study')
+ binary=Path(executable).resolve() if executable else ROOT/'build/zhuochong_preview'
+ provenance={'rig_sha256':hashlib.sha256((candidate/'rig.json').read_bytes()).hexdigest(),
+             'preview_executable_sha256':hashlib.sha256(binary.read_bytes()).hexdigest()}
  shots={};poses={}
  with tempfile.TemporaryDirectory(prefix='finger-endpoints-',dir=root) as tmp:
-  proc,url=start(Path(tmp)/'preview',candidate)
+  proc,url=start(Path(tmp)/'preview',candidate,executable)
   try:
    setup(url)
    for side in 'LR':
@@ -41,13 +44,13 @@ def capture(candidate,output):
     for i,name in enumerate(names):
      x=(i%4)*255;y=(i//4)*275;draw.text((x+4,y+3),name,fill='black');sheet.paste(Image.open(out/f'{name}_{label}.png'),(x,y+20))
     sheet.save(out/f'{side}_{label}_endpoints.png')
-  (out/'poses.json').write_text(json.dumps({'order':list(FINGERS),'poses':poses},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+  (out/'poses.json').write_text(json.dumps({'order':list(FINGERS),'poses':poses,'provenance_before_capture':provenance},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
  except BaseException:shutil.rmtree(out);raise
  return len(shots)
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('candidate');p.add_argument('output');a=p.parse_args()
- try:print('C single-hand endpoint poses:',capture(a.candidate,a.output))
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('candidate');p.add_argument('output');p.add_argument('--preview-executable',type=Path);a=p.parse_args()
+ try:print('C single-hand endpoint poses:',capture(a.candidate,a.output,a.preview_executable))
  except (ValueError,OSError,RuntimeError) as e:print('capture:',e,file=__import__('sys').stderr);return 1
  return 0
 if __name__=='__main__':raise SystemExit(main())
