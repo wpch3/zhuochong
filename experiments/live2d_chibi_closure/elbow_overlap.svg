@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Region of sleeve texture allowed as a hidden moving overlap. -->
+ <path d="M 91 136 C 92 121 103 114 120 115 C 136 115 148 123 150 137 L 145 157 C 139 162 104 162 97 155 Z" fill="white"/>
+ <path d="M 310 137 C 312 123 324 115 340 115 C 357 114 368 121 369 136 L 363 155 C 356 162 321 162 315 157 Z" fill="white"/>
+</svg>
