@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Continuation attached to hand, hidden behind the cuff at rest. -->
+ <defs><linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#eab7b1"/><stop offset="1" stop-color="#f7d8cf"/></linearGradient></defs>
+ <path d="M 82 200 C 82 195 85 192 90 192 C 99 194 110 199 114 204 L 113 213 C 103 210 92 205 82 204 Z" fill="url(#skin)"/>
+
+ <g transform="translate(460 0) scale(-1 1)"><path d="M 82 200 C 82 195 85 192 90 192 C 99 194 110 199 114 204 L 113 213 C 103 210 92 205 82 204 Z" fill="url(#skin)"/></g>
+</svg>

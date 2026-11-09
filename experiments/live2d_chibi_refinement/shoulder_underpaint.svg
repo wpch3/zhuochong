@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Rounded turquoise continuation behind the shoulder seam. -->
+ <defs><linearGradient id="cloth" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#609ba4"/><stop offset=".5" stop-color="#7bb9ba"/><stop offset="1" stop-color="#659da5"/></linearGradient>
+ <g id="shoulder"><path d="M 131 40 C 136 31 146 28 156 33 C 166 39 172 48 170 59 C 169 71 163 82 155 88 C 145 86 136 81 132 73 C 128 62 127 50 131 40 Z" fill="url(#cloth)"/><path d="M 138 39 C 148 39 158 46 163 56" fill="none" stroke="#c3dddd" stroke-width="2.2" stroke-linecap="round" opacity=".18"/></g></defs>
+ <use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#shoulder"/><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#shoulder" transform="translate(460 0) scale(-1 1)"/>
+</svg>

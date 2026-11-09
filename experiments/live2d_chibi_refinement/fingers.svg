@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <defs>
+  <linearGradient id="skin" x1="0" y1="0" x2=".15" y2="1"><stop stop-color="#eebdb7"/><stop offset=".4" stop-color="#f8dcd3"/><stop offset="1" stop-color="#ffede5"/></linearGradient>
+  <g id="hand">
+   <!-- Hidden finger roots overlap beneath the palm; only the free edges are inked. -->
+   <g id="little"><path d="M 88 214 C 85 222 79 231 73 234 C 71 235 69 234 69 232 C 69 229 74 222 78 216 Z" fill="url(#skin)"/><path d="M 87 219 C 84 225 78 232 73 234 C 71 235 69 234 69 232" fill="none" stroke="#241a23" stroke-width="1" stroke-linecap="round"/></g>
+   <g id="ring"><path d="M 86 212 C 83 220 76 230 70 232 C 68 233 66 232 66 230 C 66 228 72 220 77 214 Z" fill="url(#skin)"/><path d="M 84 217 C 81 224 75 230 70 232 C 68 233 66 232 66 230" fill="none" stroke="#241a23" stroke-width="1" stroke-linecap="round"/></g>
+   <g id="middle"><path d="M 84 209 C 80 218 73 227 67 230 C 65 231 63 230 63 228 C 63 226 70 218 75 212 Z" fill="url(#skin)"/><path d="M 82 215 C 78 222 72 228 67 230 C 65 231 63 230 63 228" fill="none" stroke="#241a23" stroke-width="1" stroke-linecap="round"/></g>
+   <g id="index"><path d="M 82 207 C 78 216 70 224 65 227 C 63 228 61.5 227 62.5 225 C 64 222 71 215 76 209 L 80 204 Z" fill="url(#skin)"/><path d="M 80 209 C 76 216 69 224 65 227 C 63 228 61.5 227 62.5 225 C 64 222 70 216 75 210" fill="none" stroke="#241a23" stroke-width="1.1" stroke-linecap="round"/></g>
+   <g id="thumb"><path d="M 86 214 C 90 213 93 215 95 218 L 99 224 C 100 226 99.5 228 98 228.5 C 96.5 229 95 228 94 226.5 L 88 221 L 84 219 Z" fill="url(#skin)"/><path d="M 87 219 C 90 219 92 222 94 225 C 95 227 97 229.5 98.5 228 C 99.7 227 99 225 98 223" fill="none" stroke="#241a23" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></g>
+   <path id="palm" d="M 83 196 C 91 197 105 203 113 208 C 113 214 110 219 105 222 C 103 222 101 224 100 224 C 98 222 95 219 92 218 C 90 217 88 217 86 219 C 83 221 79 222 76 220 C 74 218 75 213 78 207 Z" fill="url(#skin)"/>
+   <path d="M 75 211 C 77 206 81 199 83 196 M 113 208 C 113 214 110 219 105 222 C 103 222 101 224 100 224" fill="none" stroke="#241a23" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+   <path d="M 85 201 C 94 203 103 207 110 211" fill="none" stroke="#c88f91" stroke-width="1.6" opacity=".23"/>
+  </g>
+ </defs>
+ <g id="left_hand"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#hand"/></g>
+ <g id="right_hand" transform="translate(460 0) scale(-1 1)"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#hand"/></g>
+</svg>
