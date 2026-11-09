@@ -58,6 +58,12 @@ ZC.register({
     if (options.wrists === true) {
       specs.push(["ParamWristL", "左手腕（试验）", -1, 1, 0], ["ParamWristR", "右手腕（试验）", -1, 1, 0]);
     }
+    if (options.elbows === true) {
+      specs.push(["ParamElbowL", "左肘（试验）", -1, 1, 0], ["ParamElbowR", "右肘（试验）", -1, 1, 0]);
+    }
+    if (options.gaze === true) {
+      specs.push(["ParamGazeX", "眼球横向（试验）", -1, 1, 0]);
+    }
     specs.forEach(([id, label, min, max, initial]) => {
       const row = host.el("label", "voice-item");
       row.appendChild(host.el("span", "id", label));

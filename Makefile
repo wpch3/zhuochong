@@ -348,3 +348,9 @@ test-chibi-wrists: $(BUILD)/zhuochong_preview
 	@test -n "$(PYTHON_IMG)" || { echo '需要 Pillow 和 numpy'; exit 1; }
 	@$(PYTHON_IMG) -c 'import resvg_py' || { echo '需要安装 resvg-py 0.5.0'; exit 1; }
 	@$(PYTHON_IMG) tests/test_chibi_wrists.py
+
+.PHONY: test-chibi-joint-art
+test-chibi-joint-art: $(BUILD)/zhuochong_preview
+	@test -n "$(PYTHON_IMG)" || { echo '需要 Pillow 和 numpy'; exit 1; }
+	@$(PYTHON_IMG) -c 'import resvg_py' || { echo '需要安装 resvg-py 0.5.0'; exit 1; }
+	@$(PYTHON_IMG) tests/test_chibi_joint_art.py

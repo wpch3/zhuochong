@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Scumbling into existing skin, excluding both outer hand outlines. -->
+ <defs>
+  <linearGradient id="l" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#efb8b2"/><stop offset="1" stop-color="#f4c7be"/></linearGradient>
+  <linearGradient id="r" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#eeb6b0"/><stop offset="1" stop-color="#f4c4b9"/></linearGradient>
+ </defs>
+ <path id="left" d="M 84 198 L 111 211 L 111 215 C 103 212 92 207 84 203 Z" fill="url(#l)"/>
+ <path id="right" d="M 351 211 L 379 200 L 379 205 C 371 207 361 212 353 216 Z" fill="url(#r)"/>
+</svg>

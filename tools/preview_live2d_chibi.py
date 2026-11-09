@@ -77,6 +77,8 @@ def main():
             raise SystemExit('Refusing to use study or its ancestor as preview root')
     underlay_trial = bool(args.dynamic_study and (study / 'underlay_report.json').is_file())
     wrist_trial = bool(args.dynamic_study and (study / 'wrist_report.json').is_file())
+    joint_trial = bool(args.dynamic_study and (study / 'joint_report.json').is_file())
+    eye_trial = bool(args.dynamic_study and (study / 'eye_report.json').is_file())
     target = preview / 'characters/xiaoxun/forms' / form
     if target.is_symlink():
         if target.resolve() != study.resolve():
@@ -95,7 +97,9 @@ def main():
     shutil.copytree(ROOT / 'web', web, dirs_exist_ok=True)
     layout_path = web / 'layout.json'
     layout = json.loads(layout_path.read_text(encoding='utf-8'))
-    layout['title'] = ('小寻 · 手腕连接试验（未验收）' if wrist_trial else
+    layout['title'] = ('小寻 · 眼球重绘试验（未验收）' if eye_trial else
+                       '小寻 · 肘腕连接试验（未验收）' if joint_trial else
+                       '小寻 · 手腕连接试验（未验收）' if wrist_trial else
                        '小寻 · 衣身底稿试验（未验收）' if underlay_trial else
                        '小寻 · 遮挡补画候选（未验收）' if args.dynamic_study else
                        '小寻 · 无兽动态绑定试装' if args.dynamic else
@@ -119,10 +123,18 @@ def main():
             if wrist_trial:
                 hint = '独立手腕试验：手掌、袖口及隐藏腕部拆分；小幅运动未通过美术验收。'
                 description = '手腕遮挡画稿和关节切分仍需审视；原始袖手及衣身试装未覆盖。'
+            if joint_trial:
+                hint = '肘腕精修试验：上臂、前臂、手和隐藏底稿，小幅活动尚未通过美术验收。'
+                description = '新绘肘腕补画与腕部局部修色；肩、手指和眼口还未完整拆分。'
+            if eye_trial:
+                hint = '眼球重绘试验：独立眼白、眼球与遮罩，画风和眨眼尚未通过验收。'
+                description = '眼部静止外观已改变；睫毛、眼睑及嘴部尚未完整拆分。'
     layout['regions'] = {
         'topbar': ['statuschips'],
         'stage': [{'id': 'stage', 'options': {'buttons': [], 'hint': hint}}],
-        'side': ([{'id':'dynamic_study','options':{'wrists':True}}] if wrist_trial else
+        'side': ([{'id':'dynamic_study','options':{'wrists':True,'elbows':True,'gaze':True}}] if eye_trial else
+                 [{'id':'dynamic_study','options':{'wrists':True,'elbows':True}}] if joint_trial else
+                 [{'id':'dynamic_study','options':{'wrists':True}}] if wrist_trial else
                  ['dynamic_study'] if args.dynamic else []) +
                 [{'id': 'face_study', 'options': {'title': '表情控制', 'description': description}}, 'actions'],
         'footer': ['statusbar'],
