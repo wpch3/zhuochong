@@ -4376,3 +4376,9 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 - **本项目核对**：重查 `characters/xiaoxun/design/`、teen `sprites/`、全部已引用/不可达 Git commit 对象。仍只见扁平 `sheet_long_hood(.png/_raw.png)`、含可见袖手污染的 cutout/production PNG、不同 hood/发型素材及 T67.7 非 hood-up hair-only；未发现 PSD/PSB/KRA/XCF/同造型作者层。`hair_back@2x.png` 是另一短发形态，`hair_crown_long@2x.png` 含不同头部/脸侧构成，`design_sheet_midlong.png` / `pose_ref/hair_turn.png` 仅给一般角色风格与姿势旁证，均不可作为目标隐藏发束像素。
 - **本轮负控与边界**：同图按列纹理续接 110/111 出现纵向色污/残余对象；生成式全发图 113 改了轮廓、尺寸且为无 alpha 白底；手绘式大后发片 114–118 在本人局部板上仍显平板且前层残留。均在 C 之前目视拒绝，不当 source truth，不改生产，也不再微调这些相似方法。结合官方/社区说明，真实难点是**从特定扁平绘画里做高质量新补绘**，不只是脚本/图层技术。若继续新补绘，需获准的明确设计重绘输入/方向，并由专门绘制流程完成；仍按局部视觉门、真实 C 动作/转场门和生产审批顺序执行。
 - **自检映射**：文件来源/画布/透明层/ROI 外字节可脚本核验；隐藏发束拓扑、线条自然度、与左右手臂遮挡关系只能本人检查放大图及真实 C 画面。上述 WIP 的生成/存在不等于“局部通过”。
+
+## 2026-11-06：眼睫单网格、Glue 与分层交接（适用性核对）
+
+- Live2D 官方表情教程 <https://docs.live2d.com/en/cubism-editor-tutorials/expression/>：用同一睫毛 ArtMesh 的开闭 keyforms 变形；用眼白 clipping 限制眼球。可借鉴“连续睫线，不靠两套错位半透明线交接”的建模原则；zrig 网格/遮罩不等于 Cubism，痛眼如何分支仍须自己建模和验证。
+- 官方 Glue <https://docs.live2d.com/en/cubism-editor-manual/glue/>：两 ArtMesh 的对应重合顶点可被绑定，权重按顶点设置；不等于已有 zrig mesh 已具备 glue。对手指根/袖关节的启示是先构造对应接缝、验证连续性和遮挡；不能凭视觉猜称已实现 glue。
+- 官方姿势切换 <https://docs.live2d.com/en/cubism-editor-manual/change-pose/>：交叉淡化时检查重叠区域，必要时减少重叠/调整形变或素材。其建议不能单独证明本项目两条不同轮廓可平滑交接；本项目现有反例见 `memory/ERROR_INDEX.md`。

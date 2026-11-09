@@ -418,3 +418,7 @@ test-chibi-contour-studies: $(BUILD)/zhuochong_preview $(BUILD)/zhuochong_eye_mo
 .PHONY: test-chibi-pupil-hold-study
 test-chibi-pupil-hold-study: $(BUILD)/zhuochong_preview
 	@$(PYTHON_IMG) tests/test_chibi_pupil_hold_study.py
+
+.PHONY: test-chibi-topology-studies
+test-chibi-topology-studies: $(BUILD)/zhuochong_preview $(BUILD)/zhuochong_eye_morph_experiment
+	@$(PYTHON_IMG) tests/test_chibi_topology_studies.py
