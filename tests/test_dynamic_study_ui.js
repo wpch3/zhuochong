@@ -84,5 +84,18 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
   }
   assert(!slider('左小指（试验）'), 'finger controls must be opt-in');
   assert(!slider('左肘（试验）') && !slider('眼球横向（试验）'), 'new controls must be opt-in');
+  assert(!find('左眼开度（试验）'), 'eye controls must be opt-in');
+  const eyeRoot=el('root'); component.mount(host,eyeRoot,{eyes:true});
+  const eyeBody=eyeRoot.children[0].children[0];
+  const eyeFind=label=>eyeBody.children.flatMap(row=>row.children||[]).find(x=>x.attributes && x.attributes['aria-label']===label);
+  const eye=eyeFind('左眼开度（试验）'), smile=eyeFind('右笑眼（试验）');
+  assert(eye && smile); assert.strictEqual(eye.value,'1');
+  eye.value='0.15'; eye.input(); smile.value='0.85'; smile.input();
+  for (let i=0; i<10; i++) await flush();
+  assert(calls.some(c=>c.url==='/api/blink' && c.params.v===0));
+  assert(calls.some(c=>c.params.id==='ParamEyeLOpen' && c.params.v===0.15));
+  assert(calls.some(c=>c.params.id==='ParamEyeRSmile' && c.params.v===0.85));
+  eyeBody.children[1].click(); for (let i=0; i<10; i++) await flush();
+  assert.strictEqual(eye.value,'1'); assert.strictEqual(smile.value,'0');
   console.log('动态控制：在途合并、复位优先、错误提示与恢复通过');
 })().catch(e => {console.error(e); process.exitCode=1;});

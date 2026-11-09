@@ -126,7 +126,8 @@ enum {
     TAG_EYE_WIDE = 1u << 14,    /* 真·瞪大眼补片：ParamEyeL/RWide 淡入，提供更高的眼线和更多眼白 */
     TAG_EYE_NOT_WIDE = 1u << 15, /* 会被瞪大眼补片顶替掉的常态眼件（眼白 base / 上睫毛 lash） */
     TAG_EYE_OPEN_POSE_FADE = 1u << 16, /* opt-in: Pose-style outgoing alpha for overlapping lid art */
-    TAG_EYE_OPEN_EARLY_FADE = 1u << 17 /* opt-in: retire iris/aperture before the final lid crossfade */
+    TAG_EYE_OPEN_EARLY_FADE = 1u << 17, /* opt-in: retire iris/aperture before the final lid crossfade */
+    TAG_EYE_APERTURE_FAST_CLOSE = 1u << 18 /* opt-in: aperture reaches its minimum at 0.9 blink */
 };
 
 /* 特效件跟随眨眼时的亮度下限。
@@ -959,6 +960,7 @@ static unsigned parse_tags(const zjson *arr)
         else if (z_streq(s, "eye_open")) t |= TAG_EYE_OPEN;
         else if (z_streq(s, "eye_open_pose_fade")) t |= TAG_EYE_OPEN_POSE_FADE;
         else if (z_streq(s, "eye_open_early_fade")) t |= TAG_EYE_OPEN_EARLY_FADE;
+        else if (z_streq(s, "eye_aperture_fast_close")) t |= TAG_EYE_APERTURE_FAST_CLOSE;
         else if (z_streq(s, "eye_closed")) t |= TAG_EYE_CLOSED;
         else if (z_streq(s, "eye_smile")) t |= TAG_EYE_SMILE;
         else if (z_streq(s, "eye_pain")) t |= TAG_EYE_PAIN;
@@ -7139,9 +7141,13 @@ static int compute_draw_state_ex(zrig *r, int pi, double scale, double blink,
     part_sy = p->scale_y + (r->p_sy[mi] - 1.0);
     if (part_sx < 0.0) part_sx = 0.0;
     if (part_sy < 0.0) part_sy = 0.0;
-    /* 眼眶开口：按眨眼参数纵向压扁（锚点在开口下沿，所以是上眼皮往下合）。 */
+    /* 眼眶开口：按眨眼参数纵向压扁（锚点在开口下沿，所以是上眼皮往下合）。
+       快速收口是可选标签：在闭合度 0.9 达到 aperture_min；默认仍使用原线性曲线。
+       应和眼线行程及画稿一起审视，快速收口本身不保证遮罩边界自然。 */
     if ((p->tags & TAG_EYE_APERTURE) && blink > 0.0) {
-        part_sy *= 1.0 - blink * (1.0 - p->aperture_min);
+        double aperture_blink = (p->tags & TAG_EYE_APERTURE_FAST_CLOSE)
+                              ? ZC_CLAMP(blink / 0.9, 0.0, 1.0) : blink;
+        part_sy *= 1.0 - aperture_blink * (1.0 - p->aperture_min);
     }
 
     /* 动作对部件的覆盖 */

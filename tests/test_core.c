@@ -2620,6 +2620,47 @@ static void test_eye_aperture(void)
     }
 }
 
+/* Fast aperture is opt-in and operates on the per-eye blink, not alpha. */
+static void test_eye_fast_aperture(void)
+{
+    char dir[1024];
+    const char *rigp="/tmp/zc_eye_fast_aperture.json";
+    zdiag d; zrig *r;
+    int old0, fast0, old85, fast85, fast90, fast100, right_closed;
+    const zimg *fb;
+    SECTION("眼眶快速收口：可选标签、旧口径和单眼隔离");
+    z_snprintf(dir,sizeof(dir),"%s/characters/xiaoxun/forms/teen",g_root);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"af\",\"name\":\"fast aperture\","
+        "\"canvas\":{\"w\":900,\"h\":300},\"origin\":[450,300],"
+        "\"groups\":{\"root\":{\"pivot\":[450,300],\"parent\":\"\"}},"
+        "\"parts\":["
+        "{\"id\":\"mask0\",\"file\":\"sprites/eye_l_socket.png\",\"group\":\"root\",\"pos\":[150,200],\"anchor\":[0.5,0.618],\"tags\":[\"eye_aperture\"],\"eye_side\":\"l\",\"aperture_min\":0,\"mask_only\":true},"
+        "{\"id\":\"white0\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"pos\":[90,130],\"anchor\":[0,0],\"mask\":\"mask0\"},"
+        "{\"id\":\"mask1\",\"file\":\"sprites/eye_l_socket.png\",\"group\":\"root\",\"pos\":[450,200],\"anchor\":[0.5,0.618],\"tags\":[\"eye_aperture\",\"eye_aperture_fast_close\"],\"eye_side\":\"l\",\"aperture_min\":0,\"mask_only\":true},"
+        "{\"id\":\"white1\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"pos\":[390,130],\"anchor\":[0,0],\"mask\":\"mask1\"},"
+        "{\"id\":\"mask2\",\"file\":\"sprites/eye_l_socket.png\",\"group\":\"root\",\"pos\":[750,200],\"anchor\":[0.5,0.618],\"tags\":[\"eye_aperture\",\"eye_aperture_fast_close\"],\"eye_side\":\"r\",\"aperture_min\":0,\"mask_only\":true},"
+        "{\"id\":\"white2\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"pos\":[690,130],\"anchor\":[0,0],\"mask\":\"mask2\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);r=zrig_load(rigp,dir,&d);
+    CHECK(r!=NULL,"快速眼眶合成 rig 加载");if(!r)return;
+    zrig_blink_set_manual(r,0);zrig_tick(r,1);fb=zrig_frame(r,1,NULL,NULL);
+    old0=frame_opaque_box(fb,0,0,300,300);fast0=frame_opaque_box(fb,300,0,600,300);
+    CHECK(old0>200 && old0==fast0,"睁眼时旧开口和新开口相同 (%d,%d)",old0,fast0);
+    zrig_blink_set_manual(r,.85);zrig_tick(r,1.1);fb=zrig_frame(r,1,NULL,NULL);
+    old85=frame_opaque_box(fb,0,0,300,300);fast85=frame_opaque_box(fb,300,0,600,300);
+    CHECK(old85>fast85,"0.85 快速开口应小于旧口径 (%d,%d)",old85,fast85);
+    zrig_blink_set_manual(r,.9);zrig_tick(r,1.2);fb=zrig_frame(r,1,NULL,NULL);
+    fast90=frame_opaque_box(fb,300,0,600,300);
+    zrig_blink_set_manual(r,1);zrig_tick(r,1.3);fb=zrig_frame(r,1,NULL,NULL);
+    fast100=frame_opaque_box(fb,300,0,600,300);
+    CHECK(fast90==fast100,"0.9 已到达最小开口 (%d,%d)",fast90,fast100);
+    zrig_blink_set_manual(r,0);zrig_param_set(r,"ParamEyeLOpen",0);zrig_tick(r,1.4);fb=zrig_frame(r,1,NULL,NULL);
+    right_closed=frame_opaque_box(fb,600,0,900,300);
+    CHECK(right_closed==fast0,"左单眼闭合不改变右快速遮罩 (%d,%d)",right_closed,fast0);
+    zrig_free(r);
+}
+
 static void test_group_chain(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -12015,6 +12056,7 @@ int main(int argc, char **argv)
     test_phys2();
     test_phys2_rig();
     test_eye_aperture();
+    test_eye_fast_aperture();
     test_image();
     test_image_downsample_aa();
     test_deflate();

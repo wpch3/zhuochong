@@ -6,7 +6,9 @@ ZC.register({
   title: "动态试装控制",
   mount(host, root, options = {}) {
     const card = host.card("动态试装控制", "实验");
-    card.body.appendChild(host.el("p", "hint", "拖动滑块会切到静止检查；动作按钮可恢复循环。袖手摆幅受限，遮挡底稿仍需重画。"));
+    card.body.appendChild(host.el("p", "hint", options.eyes === true
+      ? "拖动滑块会切到静止检查并固定自动眨眼；眼开度 1 为睁眼、0 为闭眼。要恢复自动眨眼，先静止并复位，再点自动眨眼。"
+      : "拖动滑块会切到静止检查；动作按钮可恢复循环。袖手摆幅受限，遮挡底稿仍需重画。"));
     const state = host.el("p", "hint", "就绪");
     const sliders = [];
     const pending = new Map();
@@ -20,9 +22,11 @@ ZC.register({
             reset = false;
             await host.api("/api/action", {id: "neutral"});
             await host.api("/api/param", {all: 1});
+            if (options.eyes === true) await host.api("/api/blink", {v: 0});
           }
           if (pending.size) {
             await host.api("/api/action", {id: "neutral"});
+            if (options.eyes === true) await host.api("/api/blink", {v: 0});
             // A reset may have arrived while the action request was in flight.
             // Do not drain newer slider values until that reset has completed.
             if (reset) continue;
@@ -63,6 +67,10 @@ ZC.register({
     }
     if (options.gaze === true) {
       specs.push(["ParamGazeX", "眼球横向（试验）", -1, 1, 0]);
+    }
+    if (options.eyes === true) {
+      specs.push(["ParamEyeLOpen", "左眼开度（试验）", 0, 1, 1], ["ParamEyeROpen", "右眼开度（试验）", 0, 1, 1],
+                 ["ParamEyeLSmile", "左笑眼（试验）", 0, 1, 0], ["ParamEyeRSmile", "右笑眼（试验）", 0, 1, 0]);
     }
     if (options.fingers === true) {
       for (const [side, label] of [["L", "左"], ["R", "右"]]) {
