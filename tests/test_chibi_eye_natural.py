@@ -33,7 +33,11 @@ def main():
   assert not any(p['id'] in ('ParamEyeLOpen','ParamEyeROpen') for p in rig['params'])
   for side in 'lr':
    for kind in ('closed','smile','pain'):assert f'lid_{kind}_{side}' in ids
-   assert next(p for p in rig['parts'] if p['id']=='iris_'+side)['mask']=='aperture_'+side
+   iris=next(p for p in rig['parts'] if p['id']=='iris_'+side)
+   assert iris['mask']=='aperture_'+side and 'eye_open_early_fade' in iris['tags']
+   assert 'eye_open_early_fade' in next(p for p in rig['parts'] if p['id']=='sclera_'+side)['tags']
+   assert 'eye_open_pose_fade' in next(p for p in rig['parts'] if p['id']=='lid_'+side)['tags']
+   assert next(p for p in rig['parts'] if p['id']=='aperture_'+side)['eyelid_travel']==-5
   proc,url=start(tmp/'run',model)
   try:
    shots=cap.collect(url)

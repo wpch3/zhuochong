@@ -30,10 +30,13 @@ def build(output):
    for name,img in (('sclera',white),('aperture',mask),('lid',lids[:,xoff:xoff+width])):
     Image.fromarray(img).save(out/f'sprites/{name}_{side}.png')
    mask_part=next(p for p in rig['parts'] if p['id']==f'aperture_{side}')
-   # Bottom edge is y=104 in local eye coordinates. Anchors are normalized.
-   mask_part.update(anchor=[0,104/114],pos=[390 if side=='l' else 525,390])
+   # Lift the closing aperture slightly as well as compressing it, so its
+   # lower edge meets the lid. The existing eyelid tag uses per-eye blink.
+   # Bottom edge is y=104 in local eye coordinates; anchors are normalized.
+   mask_part.update(anchor=[0,104/114],pos=[390 if side=='l' else 525,390],
+                    tags=['eye_aperture','eyelid'],eyelid_travel=-5)
    lid=next(p for p in rig['parts'] if p['id']==f'lid_{side}')
-   lid['pos']=[390 if side=='l' else 525,283];lid['eyelid_travel']=33;lid['tags']=['eyelid','eye_open']
+   lid['pos']=[390 if side=='l' else 525,283];lid['eyelid_travel']=33;lid['tags']=['eyelid','eye_open','eye_open_pose_fade']
    Image.fromarray(closed_lids[:,xoff:xoff+width]).save(out/f'sprites/lid_closed_{side}.png')
    rig['parts'].append({'id':f'lid_closed_{side}','file':f'sprites/lid_closed_{side}.png',
        'group':'head','pos':[390 if side=='l' else 525,283],'anchor':[0,0],
@@ -44,6 +47,8 @@ def build(output):
         'group':'head','pos':[390 if side=='l' else 525,283],'anchor':[0,0],
         'layer':46,'tags':['eyelid','eye_'+kind],'eye_side':side,'eyelid_travel':33})
    iris=next(p for p in rig['parts'] if p['id']==f'iris_{side}');iris['pos'][1]-=2
+   iris['tags'].append('eye_open_early_fade')
+   next(p for p in rig['parts'] if p['id']==f'sclera_{side}')['tags'].append('eye_open_early_fade')
    d=next(x for x in rig['deformers'] if x['id']=='mesh_lid_'+side)
    vals=[-10,-8,-3,3,5,3,-2,-6,-8]
    if side=='r':vals=vals[::-1]
@@ -56,7 +61,7 @@ def build(output):
   prior_path.write_text(json.dumps(prior,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
   report={'art_sha256':{n:torso.sha(ART/n) for n in ('apertures.svg','eyelids.svg','closed_lids.svg','expression_lids.svg')},
           'source_report':'refinement_report.json (upstream state only)', 'visual_acceptance':'not evaluated',
-          'limitations':'near-closed crossfade ghosts and iris sliver; smile/pain art is provisional; likeness and motion need visual review'}
+          'limitations':'near-closed iris and sclera fade may look pale; lid transition and simplified smile/pain art still need visual review'}
   (out/'eye_natural_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
   return report
  except BaseException:shutil.rmtree(out);raise

@@ -124,7 +124,9 @@ enum {
     TAG_FX_EYE_OPEN = 1u << 12, /* 画面特效跟着眼睛开合变淡，但**不会全灭**（见 FX_EYE_OPEN_FLOOR） */
     TAG_EYE_PAIN = 1u << 13,    /* >_< 痛苦闭眼：倒 V 的闭眼线，顶替谷型闭眼件（口径同 eye_smile） */
     TAG_EYE_WIDE = 1u << 14,    /* 真·瞪大眼补片：ParamEyeL/RWide 淡入，提供更高的眼线和更多眼白 */
-    TAG_EYE_NOT_WIDE = 1u << 15 /* 会被瞪大眼补片顶替掉的常态眼件（眼白 base / 上睫毛 lash） */
+    TAG_EYE_NOT_WIDE = 1u << 15, /* 会被瞪大眼补片顶替掉的常态眼件（眼白 base / 上睫毛 lash） */
+    TAG_EYE_OPEN_POSE_FADE = 1u << 16, /* opt-in: Pose-style outgoing alpha for overlapping lid art */
+    TAG_EYE_OPEN_EARLY_FADE = 1u << 17 /* opt-in: retire iris/aperture before the final lid crossfade */
 };
 
 /* 特效件跟随眨眼时的亮度下限。
@@ -955,6 +957,8 @@ static unsigned parse_tags(const zjson *arr)
         if (z_streq(s, "body")) t |= TAG_BODY;
         else if (z_streq(s, "head")) t |= TAG_HEAD;
         else if (z_streq(s, "eye_open")) t |= TAG_EYE_OPEN;
+        else if (z_streq(s, "eye_open_pose_fade")) t |= TAG_EYE_OPEN_POSE_FADE;
+        else if (z_streq(s, "eye_open_early_fade")) t |= TAG_EYE_OPEN_EARLY_FADE;
         else if (z_streq(s, "eye_closed")) t |= TAG_EYE_CLOSED;
         else if (z_streq(s, "eye_smile")) t |= TAG_EYE_SMILE;
         else if (z_streq(s, "eye_pain")) t |= TAG_EYE_PAIN;
@@ -7153,17 +7157,23 @@ static int compute_draw_state_ex(zrig *r, int pi, double scale, double blink,
     }
     /* 表情级部件覆盖：作为独立表情轨淡入淡出，覆盖几何值可与动作覆盖叠加。 */
     expr_part_override(r, pi, &opacity, &extra_dx, &extra_dy);
-    /* 眨眼：睁眼件和闭眼件只在最后四分之一闭合行程交叉淡化。
-       0.85 之前不画闭眼补片；由原眼睑的下移表现半闭，避免中途双线/灰影。
-       全闭时闭眼补片仍满不透明，睁眼件归零。 */
+    /* 默认 0.85 之前不画闭眼补片；之后线性交叉淡化，保留旧 rig 行为。
+       两个可选标签只修饰 eye_open：pose_fade 用 Pose 保底以减少重叠处透底；
+       early_fade 从 0.75 到 0.90 消退（适合已闭合的虹膜/眼白）。两者同时标记
+       时 early 优先。它们不改变遮罩几何，也不保证不同轮廓没有双线，需配合画稿。 */
     /* ⚠ 这里**不能**再看 r->blink_enabled：enabled 只管"自动眨眼定时器要不要跑"，
        不管"这一帧眼睛闭了多少"。曾经写成 (blink_enabled && blink>0.001)，结果关掉
        自动眨眼之后，任何把闭合度推离 0 的东西（表情的 ParamEyeOpen、手动按住、
        blink_hold）都会跳过淡化 → 闭眼件以 100% 不透明直接盖住睁眼件 = 整只眼睛
        突然全闭。判据只看 blink 本身。 */
     if (blink > 0.001) {
-        if (p->tags & TAG_EYE_OPEN)
-            opacity *= ZC_CLAMP((1.0 - blink) / 0.15, 0.0, 1.0);
+        if (p->tags & TAG_EYE_OPEN) {
+            double w = ZC_CLAMP((blink - 0.85) / 0.15, 0.0, 1.0);
+            if (p->tags & TAG_EYE_OPEN_EARLY_FADE)
+                opacity *= ZC_CLAMP((0.90 - blink) / 0.15, 0.0, 1.0);
+            else if (p->tags & TAG_EYE_OPEN_POSE_FADE) opacity *= zrig_xfade_hidden(w);
+            else opacity *= ZC_CLAMP((1.0 - blink) / 0.15, 0.0, 1.0);
+        }
         if (p->tags & TAG_EYE_CLOSED)
             opacity *= ZC_CLAMP((blink - 0.85) / 0.15, 0.0, 1.0);
         if (p->tags & TAG_FX_EYE_OPEN)

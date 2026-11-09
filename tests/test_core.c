@@ -2364,6 +2364,55 @@ static void test_physics(void)
     }
 }
 
+/* Optional Chibi lid/art crossfades must not change the old eye_open curve. */
+static void test_eye_optional_fades(void)
+{
+    char dir[1024];
+    const char *rigp = "/tmp/zc_eye_optional_fades.json";
+    zdiag d;
+    zrig *r;
+    int i;
+    const double values[] = {0.0, 0.75, 0.825, 0.90, 0.925, 1.0};
+    SECTION("眼部可选淡化：旧素材曲线不变，左右及笑眼走同一闭合值");
+    z_snprintf(dir, sizeof(dir), "%s/characters/xiaoxun/forms/teen", g_root);
+    write_text(rigp,
+        "{\"schema_version\":\"1.0\",\"id\":\"f\",\"name\":\"fade\","
+        "\"canvas\":{\"w\":848,\"h\":400},\"origin\":[424,400],"
+        "\"groups\":{\"root\":{\"pivot\":[424,400],\"parent\":\"\"}},"
+        "\"parts\":["
+        "{\"id\":\"old\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"tags\":[\"eye_open\"],\"eye_side\":\"l\"},"
+        "{\"id\":\"pose\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"tags\":[\"eye_open\",\"eye_open_pose_fade\"],\"eye_side\":\"l\"},"
+        "{\"id\":\"early\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"tags\":[\"eye_open\",\"eye_open_early_fade\"],\"eye_side\":\"l\"},"
+        "{\"id\":\"alone\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"tags\":[\"eye_open_early_fade\"],\"eye_side\":\"l\"},"
+        "{\"id\":\"both\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"tags\":[\"eye_open\",\"eye_open_early_fade\",\"eye_open_pose_fade\"],\"eye_side\":\"l\"},"
+        "{\"id\":\"right\",\"file\":\"sprites/eye_l_base.png\",\"group\":\"root\",\"tags\":[\"eye_open\",\"eye_open_early_fade\"],\"eye_side\":\"r\"}],"
+        "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}");
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "可选淡化合成 rig 能加载");
+    if (!r) return;
+    zrig_blink_set_enabled(r, 0);
+    for (i = 0; i < (int)(sizeof(values)/sizeof(values[0])); ++i) {
+        double b = values[i];
+        double old = fmax(0.0, fmin(1.0, (1.0-b)/0.15));
+        double early = fmax(0.0, fmin(1.0, (0.90-b)/0.15));
+        double w = fmax(0.0, fmin(1.0, (b-0.85)/0.15));
+        zrig_blink_set_manual(r, b);
+        zrig_tick(r, 1.0+i*0.1);
+        CHECK(fabs(zrig_part_draw_opacity(r,"old")-old)<1e-6, "原淡化 b=%.3f", b);
+        CHECK(fabs(zrig_part_draw_opacity(r,"pose")-zrig_xfade_hidden(w))<1e-6, "Pose 淡化 b=%.3f", b);
+        CHECK(fabs(zrig_part_draw_opacity(r,"early")-early)<1e-6, "提前淡化 b=%.3f", b);
+        CHECK(fabs(zrig_part_draw_opacity(r,"alone")-1.0)<1e-6, "可选标签单独使用不生效 b=%.3f", b);
+        CHECK(fabs(zrig_part_draw_opacity(r,"both")-early)<1e-6, "同时标记时提前淡化优先 b=%.3f", b);
+    }
+    zrig_blink_set_manual(r, 0);
+    zrig_param_set(r, "ParamEyeLSmile", 0.90);
+    zrig_tick(r, 2.0);
+    CHECK(zrig_part_draw_opacity(r,"early")<1e-6, "左笑眼的隐含闭合应使左提前淡化");
+    CHECK(fabs(zrig_part_draw_opacity(r,"right")-1.0)<1e-6, "左笑眼不能改变右眼");
+    zrig_free(r);
+}
+
 static void test_eyelid(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -11975,6 +12024,7 @@ int main(int argc, char **argv)
     test_mask_feather();
     test_mask();
     test_eyelid();
+    test_eye_optional_fades();
     test_lash_hold();
     test_group_chain();
     test_live2d_standard();

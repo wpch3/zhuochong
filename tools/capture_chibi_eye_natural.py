@@ -35,6 +35,26 @@ def collect(url):
  return shots
 
 
+def collect_auto(url):
+ # Sample a real autonomous blink, not a hand-authored easing curve.
+ # Check every C step even while idle, so the closing phase is not skipped.
+ setup(url);request(url,'/api/blink?on=1');request(url,'/api/blink?v=auto')
+ frames=[];values=[];active=False;ready=False
+ for _ in range(1600):
+  request(url,'/api/step?n=1')
+  blink=json.loads(request(url,'/api/info.json'))['blink']
+  # Manual hold may have left the automatic state machine partway through a
+  # blink. Wait for an actually open frame before recording the next cycle.
+  if not ready:
+   if blink<=0.001:ready=True;frames=[image(url)];values=[blink]
+   continue
+  if blink>0.001:active=True
+  if active:
+   frames.append(image(url));values.append(blink)
+   if blink<=0.001:return frames,values
+ raise RuntimeError('automatic blink did not finish within sampling budget')
+
+
 def capture(candidate,output):
  root=(ROOT/'build').resolve();candidate=Path(candidate).resolve();out=Path(output);dest=out.resolve()
  if root not in candidate.parents or root not in dest.parents or dest==candidate or dest in candidate.parents or candidate in dest.parents:raise ValueError('paths must be separate and inside build')
@@ -42,7 +62,8 @@ def capture(candidate,output):
  if not (candidate/'eye_natural_report.json').is_file():raise ValueError('expected natural eye candidate')
  with tempfile.TemporaryDirectory(prefix='eye-natural-capture-',dir=root) as tmp:
   proc,url=start(Path(tmp)/'preview',candidate)
-  try:shots=collect(url)
+  try:
+   shots=collect(url);auto_frames,auto_values=collect_auto(url)
   finally:stop(proc)
  out.mkdir()
  try:
@@ -55,6 +76,13 @@ def capture(candidate,output):
    frame=Image.fromarray(shots[f'sweep_{i:02d}']);canvas=Image.new('RGBA',frame.size,(247,247,247,255));canvas.alpha_composite(frame)
    sequence.append(canvas.crop((375,320,640,410)).convert('RGB'))
   sequence[0].save(out/'controlled_blink.gif',save_all=True,append_images=sequence[1:],duration=40,loop=0,optimize=True)
+  sequence=[]
+  for arr in auto_frames:
+   frame=Image.fromarray(arr);canvas=Image.new('RGBA',frame.size,(247,247,247,255));canvas.alpha_composite(frame)
+   sequence.append(canvas.crop((375,320,640,410)).convert('RGB'))
+  # Deliberately slowed for inspection; auto_values retain the original sample order.
+  sequence[0].save(out/'auto_blink_slow.gif',save_all=True,append_images=sequence[1:],duration=100,loop=0,optimize=True)
+  (out/'auto_blink_values.json').write_text(json.dumps(auto_values,indent=2)+'\n',encoding='utf-8')
   Image.fromarray(shots['neutral']).save(out/'neutral_full.png')
   metrics={'half_blink':changed(shots['blink_0'],shots['blink_0.5']), 'closed_blink':changed(shots['blink_0'],shots['blink_1']),
            'wink_L':changed(shots['blink_0'],shots['wink_L']), 'wink_R':changed(shots['blink_0'],shots['wink_R']),
