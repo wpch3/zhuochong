@@ -33,10 +33,11 @@ def request(base,path):
     with urllib.request.urlopen(base+path,timeout=30) as response:return response.read()
 
 
-def start(root,study=None):
+def start(root,study=None,executable=None):
     n=port();cmd=[sys.executable,str(ROOT/'tools/preview_live2d_chibi.py'),'--dynamic',
                   '--bind','127.0.0.1','--preview-root',str(root),str(n)]
     if study:cmd.extend(['--dynamic-study',str(study)])
+    if executable:cmd.extend(['--preview-executable',str(executable)])
     proc=subprocess.Popen(cmd,cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
     base=f'http://127.0.0.1:{n}'
     for _ in range(100):

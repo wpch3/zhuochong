@@ -127,7 +127,8 @@ enum {
     TAG_EYE_NOT_WIDE = 1u << 15, /* 会被瞪大眼补片顶替掉的常态眼件（眼白 base / 上睫毛 lash） */
     TAG_EYE_OPEN_POSE_FADE = 1u << 16, /* opt-in: Pose-style outgoing alpha for overlapping lid art */
     TAG_EYE_OPEN_EARLY_FADE = 1u << 17, /* opt-in: retire iris/aperture before the final lid crossfade */
-    TAG_EYE_APERTURE_FAST_CLOSE = 1u << 18 /* opt-in: aperture reaches its minimum at 0.9 blink */
+    TAG_EYE_APERTURE_FAST_CLOSE = 1u << 18, /* opt-in: aperture reaches its minimum at 0.9 blink */
+    TAG_EYE_KEYFORM_EFFECTIVE = 1u << 19 /* opt-in: eye-open keyform follows rendered per-eye closure */
 };
 
 /* 特效件跟随眨眼时的亮度下限。
@@ -961,6 +962,7 @@ static unsigned parse_tags(const zjson *arr)
         else if (z_streq(s, "eye_open_pose_fade")) t |= TAG_EYE_OPEN_POSE_FADE;
         else if (z_streq(s, "eye_open_early_fade")) t |= TAG_EYE_OPEN_EARLY_FADE;
         else if (z_streq(s, "eye_aperture_fast_close")) t |= TAG_EYE_APERTURE_FAST_CLOSE;
+        else if (z_streq(s, "eye_keyform_effective_blink")) t |= TAG_EYE_KEYFORM_EFFECTIVE;
         else if (z_streq(s, "eye_closed")) t |= TAG_EYE_CLOSED;
         else if (z_streq(s, "eye_smile")) t |= TAG_EYE_SMILE;
         else if (z_streq(s, "eye_pain")) t |= TAG_EYE_PAIN;
@@ -4425,6 +4427,17 @@ zrig *zrig_load(const char *rig_path, const char *base_dir, zdiag *diag)
                             g->id, g->kf_param_id);
                 goto fail;
             }
+            if (g->part >= 0 && (r->parts[g->part].tags & TAG_EYE_KEYFORM_EFFECTIVE)) {
+                int b = r->params[g->param].builtin;
+                if (b == PBI_EYE_L_OPEN || b == PBI_EYE_R_OPEN) {
+                    int side = b == PBI_EYE_L_OPEN ? 1 : 2;
+                    if (r->parts[g->part].eye_side != side || g->kf_lag > 0.0) {
+                        zdiag_error(diag, file, 0, 0, "deformers",
+                                    "形变器 '%s' 的有效闭眼 keyform 要匹配 eye_side 且不能带 lag", g->id);
+                        goto fail;
+                    }
+                }
+            }
         }
         for (i = 0; i < r->nparts; ++i) {
             zpart *p = &r->parts[i];
@@ -5495,6 +5508,15 @@ static void deform_update_keys(zrig *r)
            看着立刻变硬（G66.12）。 */
         v = (g->kf_lag > 0.0) ? lag_sample(r, g->param, r->now - g->kf_lag)
                               : param_effective(r, g->param);
+        /* Only opted-in eye-open keyforms use the same closure as rendering.
+           The builtin parameter readback stays unchanged, preserving the old
+           parameter contract and all untagged rigs. Validation rejects lag and
+           mismatched eye sides for this mode. */
+        if (g->part >= 0 && (r->parts[g->part].tags & TAG_EYE_KEYFORM_EFFECTIVE)) {
+            int b = r->params[g->param].builtin;
+            if (b == PBI_EYE_L_OPEN) v = 1.0 - r->blink_l;
+            else if (b == PBI_EYE_R_OPEN) v = 1.0 - r->blink_r;
+        }
         if (v <= g->kf_v[0]) continue;                        /* 低于第一组：第 0 组 */
         if (v >= g->kf_v[g->nkf - 1]) { g->kf_w[g->nkf - 1] = 1.0; continue; }
         for (k = 1; k < g->nkf; ++k) {

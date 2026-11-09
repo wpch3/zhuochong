@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="480" height="512" viewBox="0 0 480 512">
+ <defs>
+  <linearGradient id="skin" x1="0" y1="0" x2=".15" y2="1"><stop stop-color="#eebdb7"/><stop offset=".4" stop-color="#f8dcd3"/><stop offset="1" stop-color="#ffede5"/></linearGradient>
+  <g id="hand">
+   <!-- A single outlined, webbed silhouette: no independent root overlays. -->
+   <path d="M 83 196 C 92 197 105 203 113 208 C 113 214 110 219 105 222
+    C 102 223 101 224 100 224 C 101.8 225.4 101.4 227.4 99.7 228
+    C 98 228.8 96.5 227.2 95 225 L 90.8 221.5 L 88 219
+    C 86 218 85 219 83 222 L 79 229 C 77 232 74 232 73.5 230
+    C 73 229 74 227 76 224 L 78 221
+    L 73 229 C 71 232 68.5 232 68 230 C 67.5 229 69 227 70.5 225 L 75 219
+    L 69 228 C 67 230 64.5 230 64.5 228 C 64.5 227 65.5 225.5 67 224 L 72 217
+    L 66 224 C 64 226 62 225 62.5 223 C 63 221 70 214 75 209 C 78 203 81 198 83 196 Z"
+    fill="url(#skin)" stroke="#241a23" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+   <path d="M 85 201 C 94 203 103 207 110 211" fill="none" stroke="#c88f91" stroke-width="1.6" opacity=".23"/>
+  </g>
+ </defs>
+ <use xlink:href="#hand"/>
+ <g transform="translate(460 0) scale(-1 1)"><use xlink:href="#hand"/></g>
+</svg>

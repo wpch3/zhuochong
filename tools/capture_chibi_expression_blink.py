@@ -18,14 +18,14 @@ def cases():
      name=f'{side}_{expr}_{val}_{blink}';out[name]={f'ParamEye{side}{expr}':val,'blink':blink}
  return out
 
-def capture(candidate,output):
+def capture(candidate,output,executable=None):
  root=(ROOT/'build').resolve();candidate=Path(candidate).resolve();out=Path(output);target=out.resolve()
  if root not in candidate.parents or root not in target.parents or target==candidate or candidate in target.parents or target in candidate.parents:raise ValueError('separate paths inside build required')
  if out.exists() or out.is_symlink() or not out.parent.is_dir():raise ValueError('output must be new')
  if not (candidate/'extended_report.json').is_file():raise ValueError('expected extended study')
  poses=cases();shots={}
  with tempfile.TemporaryDirectory(prefix='expression-blink-',dir=root) as tmp:
-  proc,url=start(Path(tmp)/'preview',candidate)
+  proc,url=start(Path(tmp)/'preview',candidate,executable)
   try:
    setup(url)
    for name,params in poses.items():
@@ -50,8 +50,8 @@ def capture(candidate,output):
  return len(shots)
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('candidate');p.add_argument('output');a=p.parse_args()
- try:print('C expression + blink poses:',capture(a.candidate,a.output))
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('candidate');p.add_argument('output');p.add_argument('--preview-executable',type=Path);a=p.parse_args()
+ try:print('C expression + blink poses:',capture(a.candidate,a.output,a.preview_executable))
  except (ValueError,OSError,RuntimeError) as e:print('capture:',e,file=__import__('sys').stderr);return 1
  return 0
 if __name__=='__main__':raise SystemExit(main())

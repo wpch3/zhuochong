@@ -2413,6 +2413,109 @@ static void test_eye_optional_fades(void)
     zrig_free(r);
 }
 
+/* Opt-in keyforms follow the final rendered closure without changing the
+   builtin parameter's public readback or untagged parts. */
+static void test_eye_effective_keyform(void)
+{
+    char dir[1024], sprites[1024], rigp[1024], imgp[1024], js[16384];
+    const char *parts[] = {"left", "right", "legacy_l", "legacy_r"};
+    double base[4], p[4][2];
+    zrig *r;
+    zdiag d;
+    zerr e;
+    zimg *img;
+    int i;
+    SECTION("眼部 keyform：可选最终闭合值、左右隔离及旧口径");
+    z_snprintf(dir, sizeof(dir), "/tmp/zc_eye_effective_keyform");
+    z_snprintf(sprites, sizeof(sprites), "%s/sprites", dir);
+    z_mkdir_p(sprites);
+    z_snprintf(imgp, sizeof(imgp), "%s/block.png", sprites);
+    img = zimg_new_filled(20, 20, 100, 130, 180, 255);
+    zerr_clear(&e);
+    CHECK(img && zimg_save_png(img, imgp, &e) == 0, "写入 keyform 夹具：%s", e.msg);
+    if (!img) return;
+    zimg_free(img);
+    z_snprintf(rigp, sizeof(rigp), "%s/rig.json", dir);
+#define EYE_KF_PART(ID,SIDE,TAGS,POS) \
+    "{\"id\":\"" ID "\",\"file\":\"sprites/block.png\",\"pos\":[" POS ",20]," \
+    "\"anchor\":[0,0],\"eye_side\":\"" SIDE "\",\"tags\":" TAGS "}"
+#define EYE_KF_MESH(ID,PARAM,LAG) \
+    "{\"id\":\"m_" ID "\",\"part\":\"" ID "\",\"cols\":1,\"rows\":1," \
+    "\"param\":\"" PARAM "\"" LAG ",\"keys\":[{\"v\":0,\"points\":[" \
+    "{\"c\":0,\"r\":0,\"dy\":20},{\"c\":1,\"r\":0,\"dy\":20}," \
+    "{\"c\":0,\"r\":1,\"dy\":20},{\"c\":1,\"r\":1,\"dy\":20}]}," \
+    "{\"v\":1,\"points\":[]}]}"
+#define EYE_KF_RIG(LEFT_SIDE,LEFT_LAG) \
+    "{\"schema_version\":\"1.0\",\"id\":\"e\",\"name\":\"effective\"," \
+    "\"canvas\":{\"w\":220,\"h\":100},\"origin\":[110,100],\"groups\":{},\"parts\":[" \
+    EYE_KF_PART("left",LEFT_SIDE,"[\"eye_keyform_effective_blink\"]","10") "," \
+    EYE_KF_PART("right","r","[\"eye_keyform_effective_blink\"]","60") "," \
+    EYE_KF_PART("legacy_l","l","[]","110") "," \
+    EYE_KF_PART("legacy_r","r","[]","160") "],\"deformers\":[" \
+    EYE_KF_MESH("left","ParamEyeLOpen",LEFT_LAG) "," \
+    EYE_KF_MESH("right","ParamEyeROpen","") "," \
+    EYE_KF_MESH("legacy_l","ParamEyeLOpen","") "," \
+    EYE_KF_MESH("legacy_r","ParamEyeROpen","") "]," \
+    "\"actions\":[{\"id\":\"idle\",\"loop\":true,\"channels\":[]}]}"
+    z_snprintf(js, sizeof(js), EYE_KF_RIG("l", ""));
+    write_text(rigp, js);
+    zdiag_init(&d);
+    r = zrig_load(rigp, dir, &d);
+    CHECK(r != NULL, "可选有效闭合 keyform 能加载");
+    if (r) {
+        zrig_blink_set_enabled(r, 0);
+        zrig_blink_set_manual(r, 0.0);
+        zrig_ambient_enable(r, 0);
+        zrig_phys_set_enabled(r, 0);
+        zrig_tick(r, 1.0);
+        for (i = 0; i < 4; ++i) {
+            CHECK(zrig_part_vertex_pos(r, parts[i], 1.0, 0, 0, p[i]), "读取中立顶点 %s", parts[i]);
+            base[i] = p[i][1];
+        }
+        zrig_param_set(r, "ParamEyeLSmile", .5);
+        zrig_tick(r, 2.0);
+        for (i = 0; i < 4; ++i) CHECK(zrig_part_vertex_pos(r, parts[i], 1.0, 0, 0, p[i]), "读取笑眼顶点 %s", parts[i]);
+        CHECK(fabs(p[0][1] - base[0] - 10.0) < .001, "左笑眼应驱动左 keyform %.3f", p[0][1] - base[0]);
+        CHECK(fabs(p[1][1] - base[1]) < .001 && fabs(p[2][1] - base[2]) < .001 && fabs(p[3][1] - base[3]) < .001,
+              "右眼与旧口径不应随左笑眼改变");
+        CHECK(fabs(zrig_param_get(r, "ParamEyeLOpen") - 1.0) < .001, "内建开眼参数回读仍是旧语义");
+        zrig_param_set(r, "ParamEyeRPain", .75);
+        zrig_tick(r, 3.0);
+        CHECK(zrig_part_vertex_pos(r, "right", 1.0, 0, 0, p[1]) && fabs(p[1][1] - base[1] - 15.0) < .001,
+              "右痛眼应驱动右 keyform");
+        CHECK(zrig_part_vertex_pos(r, "legacy_r", 1.0, 0, 0, p[3]) && fabs(p[3][1] - base[3]) < .001,
+              "未标记的右 keyform 保持旧行为");
+        zrig_blink_set_manual(r, 1.0);
+        zrig_tick(r, 4.0);
+        for (i = 0; i < 4; ++i) {
+            CHECK(zrig_part_vertex_pos(r, parts[i], 1.0, 0, 0, p[i]) && fabs(p[i][1] - base[i] - 20.0) < .001,
+                  "显式全眨眼两种口径均闭合 %s", parts[i]);
+        }
+        zrig_blink_set_manual(r, 0.0);
+        zrig_param_reset_all(r);
+        zrig_param_set(r, "ParamEyeROpen", .25);
+        zrig_tick(r, 5.0);
+        CHECK(zrig_part_vertex_pos(r, "right", 1.0, 0, 0, p[1]) && fabs(p[1][1] - base[1] - 15.0) < .001,
+              "右单眼闭合应生效");
+        CHECK(zrig_part_vertex_pos(r, "left", 1.0, 0, 0, p[0]) && fabs(p[0][1] - base[0]) < .001,
+              "右单眼不改变左眼");
+        zrig_free(r);
+    }
+    z_snprintf(js, sizeof(js), EYE_KF_RIG("r", ""));
+    write_text(rigp, js);
+    zdiag_init(&d); r = zrig_load(rigp, dir, &d);
+    CHECK(!r && d.error_count > 0, "眼侧不匹配应拒载");
+    if (r) zrig_free(r);
+    z_snprintf(js, sizeof(js), EYE_KF_RIG("l", ",\"lag\":0.1"));
+    write_text(rigp, js);
+    zdiag_init(&d); r = zrig_load(rigp, dir, &d);
+    CHECK(!r && d.error_count > 0, "最终闭合 keyform 不支持 lag，应拒载");
+    if (r) zrig_free(r);
+#undef EYE_KF_RIG
+#undef EYE_KF_MESH
+#undef EYE_KF_PART
+}
+
 static void test_eyelid(void)
 {
     char dir[1024], sprites[1024], src[1024], dst[1024], rigp[1024];
@@ -12067,6 +12170,7 @@ int main(int argc, char **argv)
     test_mask();
     test_eyelid();
     test_eye_optional_fades();
+    test_eye_effective_keyform();
     test_lash_hold();
     test_group_chain();
     test_live2d_standard();

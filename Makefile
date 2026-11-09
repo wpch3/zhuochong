@@ -390,3 +390,31 @@ test-chibi-visual-review: $(BUILD)/zhuochong_preview
 .PHONY: test-chibi-extended
 test-chibi-extended: $(BUILD)/zhuochong_preview
 	@$(PYTHON_IMG) tests/test_chibi_extended.py
+
+.PHONY: test-chibi-weighted-sleeve-study
+test-chibi-weighted-sleeve-study: $(BUILD)/zhuochong_preview
+	@$(PYTHON_IMG) tests/test_chibi_weighted_sleeve_study.py
+
+$(BUILD)/rig_layered_sleeve_probe: tests/rig_layered_sleeve_probe.c $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) $(INC) -o $@ tests/rig_layered_sleeve_probe.c $(CORE_SRC) $(LDLIBS)
+
+.PHONY: test-chibi-layered-sleeve-study
+test-chibi-layered-sleeve-study: $(BUILD)/zhuochong_preview $(BUILD)/rig_layered_sleeve_probe
+	@$(PYTHON_IMG) tests/test_chibi_layered_sleeve_study.py
+
+$(BUILD)/morph_eye_experiment/src/core/zrig.c: src/core/zrig.c experiments/live2d_chibi_morph_study/engine_experimental.patch
+	@mkdir -p $(BUILD)/morph_eye_experiment/src/core
+	@patch -s -o $@.tmp src/core/zrig.c < experiments/live2d_chibi_morph_study/engine_experimental.patch
+	@mv $@.tmp $@
+
+$(BUILD)/zhuochong_eye_morph_experiment: src/headless/main_headless.c $(filter-out src/core/zrig.c,$(CORE_SRC)) $(CORE_HDR) $(BUILD)/morph_eye_experiment/src/core/zrig.c
+	$(CC) $(CFLAGS) $(INC) -Isrc/core -o $@ src/headless/main_headless.c $(filter-out src/core/zrig.c,$(CORE_SRC)) $(BUILD)/morph_eye_experiment/src/core/zrig.c $(LDLIBS)
+
+.PHONY: test-chibi-contour-studies
+test-chibi-contour-studies: $(BUILD)/zhuochong_preview $(BUILD)/zhuochong_eye_morph_experiment
+	@$(PYTHON_IMG) tests/test_chibi_contour_studies.py
+
+.PHONY: test-chibi-pupil-hold-study
+test-chibi-pupil-hold-study: $(BUILD)/zhuochong_preview
+	@$(PYTHON_IMG) tests/test_chibi_pupil_hold_study.py

@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--bind', choices=('0.0.0.0', '127.0.0.1'), default='0.0.0.0',
                         help='bind address; use loopback for internal automated tests')
     parser.add_argument('--preview-root', type=Path, help='Isolated preview directory (default: build/<study>-preview)')
+    parser.add_argument('--preview-executable', type=Path, help='Optional explicitly selected preview executable for isolated A/B diagnostics')
     parser.add_argument('--dynamic-study', type=Path, help='Use an isolated dynamic candidate; requires --dynamic and a separate --preview-root')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--human', action='store_true', help='Use the independent no-animal-feature study')
@@ -178,9 +179,9 @@ def main():
     forms = char / 'forms'
     forms.mkdir(exist_ok=True)
     link(study, forms / form)
-    exe = ROOT / 'build/zhuochong_preview'
-    if not exe.exists():
-        raise SystemExit('Run make build/zhuochong_preview first')
+    exe = args.preview_executable.resolve() if args.preview_executable else ROOT / 'build/zhuochong_preview'
+    if not exe.is_file() or not os.access(exe, os.X_OK):
+        raise SystemExit(f'Preview executable missing or not executable: {exe}')
     port = args.port or ('5209' if args.dynamic else '5207' if args.seam else '5206' if args.clean else '5205' if args.blackline else '5203' if human else '5202')
     os.execv(str(exe), [str(exe), '--root', str(preview), '--web', str(web),
                         '--port', port, '--bind', args.bind])

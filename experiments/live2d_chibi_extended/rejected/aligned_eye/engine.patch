@@ -1,0 +1,30 @@
+--- a/src/core/zrig.c
++++ b/src/core/zrig.c
+@@ -130,3 +130,4 @@
+     TAG_EYE_APERTURE_FAST_CLOSE = 1u << 18, /* opt-in: aperture reaches its minimum at 0.9 blink */
+-    TAG_EYE_KEYFORM_EFFECTIVE = 1u << 19 /* opt-in: eye-open keyform follows rendered per-eye closure */
++    TAG_EYE_KEYFORM_EFFECTIVE = 1u << 19, /* opt-in: eye-open keyform follows rendered per-eye closure */
++    TAG_EYE_EXPRESSION_ALIGNED_FADE = 1u << 20 /* experimental outgoing expression ramp */
+ };
+@@ -965,2 +966,3 @@
+         else if (z_streq(s, "eye_keyform_effective_blink")) t |= TAG_EYE_KEYFORM_EFFECTIVE;
++        else if (z_streq(s, "eye_expression_aligned_fade")) t |= TAG_EYE_EXPRESSION_ALIGNED_FADE;
+         else if (z_streq(s, "eye_closed")) t |= TAG_EYE_CLOSED;
+@@ -7214,3 +7216,7 @@
+     if (smile > 0.001) {
+-        if (p->tags & TAG_EYE_CLOSED) opacity *= 1.0 - smile;
++        if (p->tags & TAG_EYE_CLOSED) {
++            double w = ZC_CLAMP((smile - 0.75) * 4.0, 0.0, 1.0);
++            opacity *= (p->tags & TAG_EYE_EXPRESSION_ALIGNED_FADE)
++                     ? zrig_xfade_hidden(w) : 1.0 - smile;
++        }
+         if (p->tags & TAG_EYE_SMILE)
+@@ -7221,3 +7227,7 @@
+     if (pain > 0.001) {
+-        if (p->tags & (TAG_EYE_CLOSED | TAG_EYE_SMILE)) opacity *= 1.0 - pain;
++        if (p->tags & (TAG_EYE_CLOSED | TAG_EYE_SMILE)) {
++            double w = ZC_CLAMP((pain - 0.75) * 4.0, 0.0, 1.0);
++            opacity *= (p->tags & TAG_EYE_EXPRESSION_ALIGNED_FADE)
++                     ? zrig_xfade_hidden(w) : 1.0 - pain;
++        }
+         if (p->tags & TAG_EYE_PAIN)
