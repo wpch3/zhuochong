@@ -4,7 +4,7 @@
 ZC.register({
   id: "dynamic_study",
   title: "动态试装控制",
-  mount(host, root) {
+  mount(host, root, options = {}) {
     const card = host.card("动态试装控制", "实验");
     card.body.appendChild(host.el("p", "hint", "拖动滑块会切到静止检查；动作按钮可恢复循环。袖手摆幅受限，遮挡底稿仍需重画。"));
     const state = host.el("p", "hint", "就绪");
@@ -55,6 +55,9 @@ ZC.register({
       ["ParamHeadShiftY", "头部平移 Y", -1, 1, 0], ["ParamBreath", "呼吸", 0, 1, 0],
       ["ParamMotionDrive", "身体摆动 / 物理输入", -1, 1, 0],
     ];
+    if (options.wrists === true) {
+      specs.push(["ParamWristL", "左手腕（试验）", -1, 1, 0], ["ParamWristR", "右手腕（试验）", -1, 1, 0]);
+    }
     specs.forEach(([id, label, min, max, initial]) => {
       const row = host.el("label", "voice-item");
       row.appendChild(host.el("span", "id", label));

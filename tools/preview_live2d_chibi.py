@@ -76,6 +76,7 @@ def main():
         if preview == study.resolve() or study.resolve() in preview.parents or preview in study.resolve().parents:
             raise SystemExit('Refusing to use study or its ancestor as preview root')
     underlay_trial = bool(args.dynamic_study and (study / 'underlay_report.json').is_file())
+    wrist_trial = bool(args.dynamic_study and (study / 'wrist_report.json').is_file())
     target = preview / 'characters/xiaoxun/forms' / form
     if target.is_symlink():
         if target.resolve() != study.resolve():
@@ -94,7 +95,8 @@ def main():
     shutil.copytree(ROOT / 'web', web, dirs_exist_ok=True)
     layout_path = web / 'layout.json'
     layout = json.loads(layout_path.read_text(encoding='utf-8'))
-    layout['title'] = ('小寻 · 衣身底稿试验（未验收）' if underlay_trial else
+    layout['title'] = ('小寻 · 手腕连接试验（未验收）' if wrist_trial else
+                       '小寻 · 衣身底稿试验（未验收）' if underlay_trial else
                        '小寻 · 遮挡补画候选（未验收）' if args.dynamic_study else
                        '小寻 · 无兽动态绑定试装' if args.dynamic else
                        '小寻 · 黑描边发梢清理试装' if args.seam else
@@ -114,10 +116,14 @@ def main():
             if underlay_trial:
                 hint = '独立衣身底稿候选：真实 C 帧，袖手仍仅小幅试动；未通过视觉验收。'
                 description = '新绘衣身侧片在原身体分割层下方，缩放中立帧仍有差异；不是完整肩袖原画。'
+            if wrist_trial:
+                hint = '独立手腕试验：手掌、袖口及隐藏腕部拆分；小幅运动未通过美术验收。'
+                description = '手腕遮挡画稿和关节切分仍需审视；原始袖手及衣身试装未覆盖。'
     layout['regions'] = {
         'topbar': ['statuschips'],
         'stage': [{'id': 'stage', 'options': {'buttons': [], 'hint': hint}}],
-        'side': (['dynamic_study'] if args.dynamic else []) +
+        'side': ([{'id':'dynamic_study','options':{'wrists':True}}] if wrist_trial else
+                 ['dynamic_study'] if args.dynamic else []) +
                 [{'id': 'face_study', 'options': {'title': '表情控制', 'description': description}}, 'actions'],
         'footer': ['statusbar'],
     }

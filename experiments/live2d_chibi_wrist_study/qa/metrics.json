@@ -1,0 +1,127 @@
+{
+  "baseline_repeat": "equal in 12 tested frames",
+  "scale_pose_changed_pixels": {
+    "0.35": {
+      "neutral": 63,
+      "outward": 74,
+      "inward": 68
+    },
+    "0.55": {
+      "neutral": 101,
+      "outward": 122,
+      "inward": 123
+    },
+    "0.8": {
+      "neutral": 122,
+      "outward": 153,
+      "inward": 152
+    },
+    "1.0": {
+      "neutral": 0,
+      "outward": 110,
+      "inward": 109
+    }
+  },
+  "wrist_values": {
+    "neutral": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "left_plus": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "left_minus": [
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "right_plus": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "right_minus": [
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "both_plus": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "both_minus": [
+      -1,
+      -1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "both_mid": [
+      0.5,
+      0.5,
+      0,
+      0,
+      0,
+      0
+    ],
+    "mixed": [
+      1,
+      -1,
+      0.8,
+      0.8,
+      0,
+      0
+    ],
+    "body_sleeve_wrist": [
+      1,
+      -1,
+      0.8,
+      -0.8,
+      0.7,
+      0.6
+    ]
+  },
+  "wrist_pose_changed_vs_neutral_0.55": {
+    "left_plus": 424,
+    "left_minus": 431,
+    "right_plus": 418,
+    "right_minus": 430,
+    "both_plus": 842,
+    "both_minus": 861,
+    "both_mid": 783,
+    "mixed": 5518,
+    "body_sleeve_wrist": 58614
+  },
+  "scope": "same fixed sequence and selected poses only; no artistic acceptance",
+  "pose_parameter_order": [
+    "ParamWristL",
+    "ParamWristR",
+    "ParamArmL",
+    "ParamArmR",
+    "ParamMotionDrive",
+    "ParamBreath"
+  ]
+}

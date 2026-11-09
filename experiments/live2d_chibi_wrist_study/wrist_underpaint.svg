@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Two independent, intentionally different wrist sections in body-local
+      coordinates. Drawn below the original hand and hidden by its cuff at rest. -->
+ <defs>
+  <linearGradient id="skinL" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#edb4b0"/><stop offset=".35" stop-color="#f5d1c8"/><stop offset="1" stop-color="#fff0e5"/></linearGradient>
+  <linearGradient id="skinR" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e8aaa9"/><stop offset=".4" stop-color="#f6d1c9"/><stop offset="1" stop-color="#fff0e6"/></linearGradient>
+ </defs>
+ <g id="left_wrist">
+  <path d="M 89 196 C 97 197 106 202 112 206 C 115 208 114 212 111 215 C 106 218 96 217 90 214 C 85 212 84 207 85 202 C 85 199 87 197 89 196 Z" fill="url(#skinL)"/>
+  <path d="M 87 201 C 95 202 105 207 112 210 L 111 213 C 103 212 94 208 86 206 Z" fill="#d99899" opacity=".3"/>
+ </g>
+ <g id="right_wrist">
+  <path d="M 347 206 C 356 202 367 199 374 197 C 378 198 380 202 380 207 C 380 213 376 216 372 218 C 362 220 354 217 350 214 C 347 212 346 209 347 206 Z" fill="url(#skinR)"/>
+  <path d="M 348 209 C 355 205 366 202 376 201 L 378 205 C 368 206 357 210 350 213 Z" fill="#d69498" opacity=".28"/>
+ </g>
+</svg>
