@@ -3,7 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
-const ids = ['file','demo','undo','redo','download','status','work','part','x','y','layer','savePart','newId','newLabel','min','max','default','addParam','param','group','channel','scale','offset','addBind','bindings','assetFiles','viewport','canvasStatus','meshId','meshCols','meshRows','mesh','meshValue','meshEdit','meshC','meshR','meshDx','meshDy','addMesh','setMeshPoint','meshDetails'];
+const ids = ['file','demo','undo','redo','download','status','work','part','x','y','layer','savePart','newId','newLabel','min','max','default','addParam','param','group','channel','scale','offset','addBind','bindings','assetFiles','viewport','canvasStatus','meshId','meshCols','meshRows','mesh','meshValue','meshEdit','meshC','meshR','meshDx','meshDy','addMesh','setMeshPoint','meshDetails','partGroup','savePartGroup','newGroupId','newGroupParent','newGroupX','newGroupY','addGroup','editGroup','editGroupParent','groupX','groupY','saveGroup'];
 const ctx2d = {clearRect(){}, save(){}, restore(){}, translate(){}, rotate(){}, drawImage(){}, setLineDash(){}, strokeRect(){}, beginPath(){}, arc(){}, fill(){}, moveTo(){}, lineTo(){}, stroke(){}};
 class Element {
   constructor(id) { this.id=id; this.value=''; this.children=[]; this.handlers={}; this.hidden=false; this.disabled=false; this.textContent=''; this.width=0; this.height=0; }
@@ -34,6 +34,10 @@ for (const file of ['core.js','viewport.js','app.js']) vm.runInContext(fs.readFi
   elements.savePart.click(); assert.strictEqual(elements.x.value,312);
   elements.undo.click(); assert.strictEqual(elements.x.value,280);
   elements.redo.click(); assert.strictEqual(elements.x.value,312);
+  elements.newGroupId.value='ui_bone'; elements.newGroupParent.value='head'; elements.newGroupX.value='512'; elements.newGroupY.value='400'; elements.addGroup.click();
+  assert(elements.editGroup.children.some(c=>c.value==='ui_bone'));
+  elements.part.value='nose'; elements.part.handlers.change(); elements.partGroup.value='ui_bone'; elements.savePartGroup.click();
+  assert.strictEqual(elements.partGroup.value,'ui_bone'); elements.undo.click(); assert.strictEqual(elements.partGroup.value,'head'); elements.redo.click();
   elements.newId.value='ParamUIHead'; elements.newLabel.value='测试'; elements.addParam.click();
   assert(elements.param.children.some(c => c.value==='ParamUIHead'));
   elements.param.value='ParamUIHead'; elements.group.value='head'; elements.scale.value='4'; elements.addBind.click();

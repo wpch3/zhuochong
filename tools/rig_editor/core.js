@@ -54,6 +54,37 @@
         p.pos = [x, y]; p.layer = layer;
       });
     }
+    addGroup(id, parent, x, y) {
+      if (typeof id !== 'string' || !/^[A-Za-z][A-Za-z0-9_]{0,46}$/.test(id)) throw new Error('组 ID 须为不超过 47 位英文、数字或下划线');
+      finite(x, '枢轴 X'); finite(y, '枢轴 Y');
+      this.change(r => {
+        if (Object.keys(r.groups).length >= 63) throw new Error('达到 C 引擎组上限（预留自动 root）');
+        if (Object.prototype.hasOwnProperty.call(r.groups, id) || r.parts.some(p => p.id === id) || (r.deformers || []).some(d => d.id === id)) throw new Error('ID 与已有对象重复');
+        if (parent !== 'root' && !Object.prototype.hasOwnProperty.call(r.groups, parent)) throw new Error('父组不存在');
+        r.groups[id] = {pivot: [x, y], parent};
+      });
+    }
+    setGroup(id, parent, x, y) {
+      finite(x, '枢轴 X'); finite(y, '枢轴 Y');
+      this.change(r => {
+        const keys = Object.keys(r.groups), idx = keys.indexOf(id);
+        if (idx < 0 || id === 'root') throw new Error('组不存在或不能编辑 root');
+        // C resolves parents in declaration order; rejecting later groups also prevents cycles.
+        if (parent !== 'root' && (keys.indexOf(parent) < 0 || keys.indexOf(parent) >= idx)) throw new Error('父组须先于子组声明，不能循环引用');
+        const group = r.groups[id];
+        if (!group || typeof group !== 'object' || Array.isArray(group)) throw new Error('组结构错误');
+        group.pivot = [x,y]; group.parent = parent;
+      });
+    }
+    setPartGroup(partId, groupId) {
+      this.change(r => {
+        const p = r.parts.find(item => item.id === partId);
+        if (!p) throw new Error('部件不存在');
+        if (p.socket) throw new Error('挂点部件由 socket 指定组，不能在此修改');
+        if (groupId !== 'root' && !Object.prototype.hasOwnProperty.call(r.groups, groupId)) throw new Error('组不存在');
+        p.group = groupId;
+      });
+    }
     addParameter(id, label, min, max, value) {
       if (typeof id !== 'string' || !/^Param[A-Za-z0-9_]{1,34}$/.test(id)) throw new Error('参数 ID 须为 Param 开头的英文、数字或下划线');
       if (builtin.has(id)) throw new Error('参数 ID 已由 C 引擎内建，不能重复声明');

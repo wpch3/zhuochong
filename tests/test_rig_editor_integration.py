@@ -76,6 +76,14 @@ def main():
             assert a.startswith(b'\x89PNG\r\n\x1a\n') and b.startswith(b'\x89PNG\r\n\x1a\n')
             assert a != b, 'editor binding failed to change the rendered frame'
             assert a == restored, 'return to zero must restore the exact original frame'
+            # The data and browser paths both create a new parented group and attach a part.
+            get('/api/param?id=ParamEditorBone&v=0')
+            get('/api/step?n=1'); bone_zero = get('/api/frame.png')
+            get('/api/param?id=ParamEditorBone&v=1')
+            get('/api/step?n=1'); bone_one = get('/api/frame.png')
+            get('/api/param?id=ParamEditorBone&v=0')
+            get('/api/step?n=1'); bone_back = get('/api/frame.png')
+            assert bone_zero != bone_one and bone_zero == bone_back, 'new bone attachment must move and restore'
             get('/api/param?id=ParamEditorMesh&v=0')
             get('/api/step?n=1')
             mesh_neutral = get('/api/frame.png')

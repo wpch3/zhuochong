@@ -52,6 +52,23 @@ assert.deepStrictEqual(s.rig.deformers.at(-1).keys, [{v:0,points:[]},{v:1,points
 assert(s.undo()); assert.strictEqual(s.rig.deformers.at(-1).keys[1].points.length, 0);
 assert(s.redo()); assert.strictEqual(s.rig.deformers.at(-1).keys[1].points[0].dx, 25);
 assert.strictEqual(JSON.stringify(source), sourceJson, 'source object must not be mutated');
+// Create an actual parent-child group, attach a non-socket part and bind it.
+assert.throws(() => s.addGroup('1bad','head',0,0), /组 ID/);
+assert.throws(() => s.addGroup('editor_bone','missing',0,0), /父组/);
+assert.throws(() => s.addGroup('head','root',0,0), /重复/);
+assert.throws(() => s.addGroup('finite_test','root',NaN,0), /有限/);
+const fullGroups = JSON.parse(sourceJson); for (let i=0; Object.keys(fullGroups.groups).length<63; i++) fullGroups.groups['g'+i]={pivot:[0,0],parent:'root'};
+assert.throws(() => new Session(fullGroups).addGroup('too_many','root',0,0), /上限/);
+s.addGroup('editor_bone','head',512,400);
+s.addGroup('editor_child','editor_bone',512,410);
+assert.throws(() => s.setGroup('editor_bone','editor_child',512,400), /父组/);
+assert.throws(() => s.setGroup('root','head',0,0), /root/);
+assert.throws(() => new Session(socketRig).setPartGroup('body','head'), /挂点/);
+s.setGroup('editor_child','head',513,412); assert.strictEqual(s.rig.groups.editor_child.parent,'head');
+assert(s.undo()); assert.strictEqual(s.rig.groups.editor_child.parent,'editor_bone');
+s.setPartGroup('nose','editor_bone'); assert.strictEqual(s.rig.parts.find(p=>p.id==='nose').group,'editor_bone');
+assert(s.undo()); assert.strictEqual(s.rig.parts.find(p=>p.id==='nose').group,'head'); assert(s.redo());
+s.addParameter('ParamEditorBone', '骨骼测试', -1, 1, 0);s.addGroupBind('ParamEditorBone','editor_bone','dx',12,0);
 const roundtrip = JSON.parse(s.serialize());
 assert.deepStrictEqual(roundtrip.params.find(p => p.id === 'ParamEditorHead').binds, [{group:'head', param:'rot_deg', scale:4, offset:0}]);
 assert.deepStrictEqual(roundtrip.deformers.at(-1), s.rig.deformers.at(-1));

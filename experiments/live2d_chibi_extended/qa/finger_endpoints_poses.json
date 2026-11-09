@@ -1,0 +1,459 @@
+{
+  "order": [
+    "Little",
+    "Ring",
+    "Middle",
+    "Index",
+    "Thumb"
+  ],
+  "poses": {
+    "L_00000": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": -1
+    },
+    "L_00001": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_00010": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_00011": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 1
+    },
+    "L_00100": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": -1
+    },
+    "L_00101": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_00110": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_00111": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 1
+    },
+    "L_01000": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": -1
+    },
+    "L_01001": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_01010": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_01011": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 1
+    },
+    "L_01100": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": -1
+    },
+    "L_01101": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_01110": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_01111": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 1
+    },
+    "L_10000": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": -1
+    },
+    "L_10001": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_10010": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_10011": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 1
+    },
+    "L_10100": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": -1
+    },
+    "L_10101": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_10110": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_10111": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 1
+    },
+    "L_11000": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": -1
+    },
+    "L_11001": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_11010": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_11011": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 1
+    },
+    "L_11100": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": -1
+    },
+    "L_11101": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_11110": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_11111": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 1
+    },
+    "R_00000": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": -1
+    },
+    "R_00001": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_00010": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_00011": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 1
+    },
+    "R_00100": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": -1
+    },
+    "R_00101": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_00110": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_00111": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 1
+    },
+    "R_01000": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": -1
+    },
+    "R_01001": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_01010": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_01011": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 1
+    },
+    "R_01100": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": -1
+    },
+    "R_01101": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_01110": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_01111": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 1
+    },
+    "R_10000": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": -1
+    },
+    "R_10001": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_10010": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_10011": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 1
+    },
+    "R_10100": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": -1
+    },
+    "R_10101": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_10110": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_10111": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 1
+    },
+    "R_11000": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": -1
+    },
+    "R_11001": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_11010": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_11011": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 1
+    },
+    "R_11100": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": -1
+    },
+    "R_11101": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_11110": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_11111": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 1
+    }
+  }
+}

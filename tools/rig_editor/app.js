@@ -41,7 +41,16 @@ function showPart() {
   $('y').value = p && Array.isArray(p.pos) ? p.pos[1] : 0;
   $('layer').value = p && Number.isInteger(p.layer) ? p.layer : 0;
   $('savePart').disabled = !p || !!p.socket;
+  $('savePartGroup').disabled = !p || !!p.socket;
+  if (p) $('partGroup').value = p.group || 'root';
   viewport.setSelection(p ? p.id : null);
+}
+function showGroup() {
+  const id = $('editGroup').value, g = session.rig.groups[id];
+  $('groupX').value = g && Array.isArray(g.pivot) ? g.pivot[0] : 0;
+  $('groupY').value = g && Array.isArray(g.pivot) ? g.pivot[1] : 0;
+  $('editGroupParent').value = g && g.parent ? g.parent : 'root';
+  $('saveGroup').disabled = !g || id === 'root';
 }
 function showBindings() {
   const list = $('bindings'); list.replaceChildren();
@@ -73,9 +82,13 @@ function render() {
   viewport.setRig(session.rig, false);
   options($('part'), session.rig.parts.filter(p => p && typeof p.id === 'string').map(p => [p.id, p.id]));
   options($('param'), session.rig.params.filter(p => p && typeof p.id === 'string').map(p => [p.id, (p.label || p.id) + ' · ' + p.id]));
-  options($('group'), Object.keys(session.rig.groups).map(id => [id, id]));
+  const groups = Object.keys(session.rig.groups);
+  const choices = [...new Set(['root', ...groups])].map(id => [id, id]);
+  options($('group'), groups.map(id => [id, id]));
+  options($('partGroup'), choices); options($('newGroupParent'), choices);
+  options($('editGroup'), groups.map(id => [id, id])); options($('editGroupParent'), choices);
   options($('mesh'), (Array.isArray(session.rig.deformers) ? session.rig.deformers : []).filter(d => d && typeof d.id === 'string' && Array.isArray(d.keys)).map(d => [d.id, d.id]));
-  showPart(); showBindings(); showMesh();
+  showPart(); showGroup(); showBindings(); showMesh();
 }
 $('file').addEventListener('change', async event => {
   const file = event.target.files[0];
@@ -95,6 +108,10 @@ $('assetFiles').addEventListener('change', async event => {
   event.target.value = '';
 });
 $('part').addEventListener('change', showPart);
+$('editGroup').addEventListener('change', showGroup);
+$('addGroup').addEventListener('click', () => run(() => session.addGroup($('newGroupId').value.trim(), $('newGroupParent').value, number('newGroupX'), number('newGroupY')), '骨骼组已添加；请用 C 引擎验证。'));
+$('saveGroup').addEventListener('click', () => run(() => session.setGroup($('editGroup').value, $('editGroupParent').value, number('groupX'), number('groupY')), '组连接已更新；请用 C 引擎验证。'));
+$('savePartGroup').addEventListener('click', () => run(() => session.setPartGroup($('part').value, $('partGroup').value), '部件已连接；请用 C 引擎验证。'));
 $('param').addEventListener('change', showBindings);
 $('mesh').addEventListener('change', showMesh);
 $('meshValue').addEventListener('input', showMesh);

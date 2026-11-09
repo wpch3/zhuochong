@@ -1,0 +1,290 @@
+{
+  "L_Smile_0.5_0": {
+    "ParamEyeLSmile": 0.5,
+    "blink": 0
+  },
+  "L_Smile_0.5_0.25": {
+    "ParamEyeLSmile": 0.5,
+    "blink": 0.25
+  },
+  "L_Smile_0.5_0.5": {
+    "ParamEyeLSmile": 0.5,
+    "blink": 0.5
+  },
+  "L_Smile_0.5_0.75": {
+    "ParamEyeLSmile": 0.5,
+    "blink": 0.75
+  },
+  "L_Smile_0.5_0.85": {
+    "ParamEyeLSmile": 0.5,
+    "blink": 0.85
+  },
+  "L_Smile_0.5_1": {
+    "ParamEyeLSmile": 0.5,
+    "blink": 1
+  },
+  "L_Smile_0.85_0": {
+    "ParamEyeLSmile": 0.85,
+    "blink": 0
+  },
+  "L_Smile_0.85_0.25": {
+    "ParamEyeLSmile": 0.85,
+    "blink": 0.25
+  },
+  "L_Smile_0.85_0.5": {
+    "ParamEyeLSmile": 0.85,
+    "blink": 0.5
+  },
+  "L_Smile_0.85_0.75": {
+    "ParamEyeLSmile": 0.85,
+    "blink": 0.75
+  },
+  "L_Smile_0.85_0.85": {
+    "ParamEyeLSmile": 0.85,
+    "blink": 0.85
+  },
+  "L_Smile_0.85_1": {
+    "ParamEyeLSmile": 0.85,
+    "blink": 1
+  },
+  "L_Smile_1_0": {
+    "ParamEyeLSmile": 1,
+    "blink": 0
+  },
+  "L_Smile_1_0.25": {
+    "ParamEyeLSmile": 1,
+    "blink": 0.25
+  },
+  "L_Smile_1_0.5": {
+    "ParamEyeLSmile": 1,
+    "blink": 0.5
+  },
+  "L_Smile_1_0.75": {
+    "ParamEyeLSmile": 1,
+    "blink": 0.75
+  },
+  "L_Smile_1_0.85": {
+    "ParamEyeLSmile": 1,
+    "blink": 0.85
+  },
+  "L_Smile_1_1": {
+    "ParamEyeLSmile": 1,
+    "blink": 1
+  },
+  "L_Pain_0.5_0": {
+    "ParamEyeLPain": 0.5,
+    "blink": 0
+  },
+  "L_Pain_0.5_0.25": {
+    "ParamEyeLPain": 0.5,
+    "blink": 0.25
+  },
+  "L_Pain_0.5_0.5": {
+    "ParamEyeLPain": 0.5,
+    "blink": 0.5
+  },
+  "L_Pain_0.5_0.75": {
+    "ParamEyeLPain": 0.5,
+    "blink": 0.75
+  },
+  "L_Pain_0.5_0.85": {
+    "ParamEyeLPain": 0.5,
+    "blink": 0.85
+  },
+  "L_Pain_0.5_1": {
+    "ParamEyeLPain": 0.5,
+    "blink": 1
+  },
+  "L_Pain_0.85_0": {
+    "ParamEyeLPain": 0.85,
+    "blink": 0
+  },
+  "L_Pain_0.85_0.25": {
+    "ParamEyeLPain": 0.85,
+    "blink": 0.25
+  },
+  "L_Pain_0.85_0.5": {
+    "ParamEyeLPain": 0.85,
+    "blink": 0.5
+  },
+  "L_Pain_0.85_0.75": {
+    "ParamEyeLPain": 0.85,
+    "blink": 0.75
+  },
+  "L_Pain_0.85_0.85": {
+    "ParamEyeLPain": 0.85,
+    "blink": 0.85
+  },
+  "L_Pain_0.85_1": {
+    "ParamEyeLPain": 0.85,
+    "blink": 1
+  },
+  "L_Pain_1_0": {
+    "ParamEyeLPain": 1,
+    "blink": 0
+  },
+  "L_Pain_1_0.25": {
+    "ParamEyeLPain": 1,
+    "blink": 0.25
+  },
+  "L_Pain_1_0.5": {
+    "ParamEyeLPain": 1,
+    "blink": 0.5
+  },
+  "L_Pain_1_0.75": {
+    "ParamEyeLPain": 1,
+    "blink": 0.75
+  },
+  "L_Pain_1_0.85": {
+    "ParamEyeLPain": 1,
+    "blink": 0.85
+  },
+  "L_Pain_1_1": {
+    "ParamEyeLPain": 1,
+    "blink": 1
+  },
+  "R_Smile_0.5_0": {
+    "ParamEyeRSmile": 0.5,
+    "blink": 0
+  },
+  "R_Smile_0.5_0.25": {
+    "ParamEyeRSmile": 0.5,
+    "blink": 0.25
+  },
+  "R_Smile_0.5_0.5": {
+    "ParamEyeRSmile": 0.5,
+    "blink": 0.5
+  },
+  "R_Smile_0.5_0.75": {
+    "ParamEyeRSmile": 0.5,
+    "blink": 0.75
+  },
+  "R_Smile_0.5_0.85": {
+    "ParamEyeRSmile": 0.5,
+    "blink": 0.85
+  },
+  "R_Smile_0.5_1": {
+    "ParamEyeRSmile": 0.5,
+    "blink": 1
+  },
+  "R_Smile_0.85_0": {
+    "ParamEyeRSmile": 0.85,
+    "blink": 0
+  },
+  "R_Smile_0.85_0.25": {
+    "ParamEyeRSmile": 0.85,
+    "blink": 0.25
+  },
+  "R_Smile_0.85_0.5": {
+    "ParamEyeRSmile": 0.85,
+    "blink": 0.5
+  },
+  "R_Smile_0.85_0.75": {
+    "ParamEyeRSmile": 0.85,
+    "blink": 0.75
+  },
+  "R_Smile_0.85_0.85": {
+    "ParamEyeRSmile": 0.85,
+    "blink": 0.85
+  },
+  "R_Smile_0.85_1": {
+    "ParamEyeRSmile": 0.85,
+    "blink": 1
+  },
+  "R_Smile_1_0": {
+    "ParamEyeRSmile": 1,
+    "blink": 0
+  },
+  "R_Smile_1_0.25": {
+    "ParamEyeRSmile": 1,
+    "blink": 0.25
+  },
+  "R_Smile_1_0.5": {
+    "ParamEyeRSmile": 1,
+    "blink": 0.5
+  },
+  "R_Smile_1_0.75": {
+    "ParamEyeRSmile": 1,
+    "blink": 0.75
+  },
+  "R_Smile_1_0.85": {
+    "ParamEyeRSmile": 1,
+    "blink": 0.85
+  },
+  "R_Smile_1_1": {
+    "ParamEyeRSmile": 1,
+    "blink": 1
+  },
+  "R_Pain_0.5_0": {
+    "ParamEyeRPain": 0.5,
+    "blink": 0
+  },
+  "R_Pain_0.5_0.25": {
+    "ParamEyeRPain": 0.5,
+    "blink": 0.25
+  },
+  "R_Pain_0.5_0.5": {
+    "ParamEyeRPain": 0.5,
+    "blink": 0.5
+  },
+  "R_Pain_0.5_0.75": {
+    "ParamEyeRPain": 0.5,
+    "blink": 0.75
+  },
+  "R_Pain_0.5_0.85": {
+    "ParamEyeRPain": 0.5,
+    "blink": 0.85
+  },
+  "R_Pain_0.5_1": {
+    "ParamEyeRPain": 0.5,
+    "blink": 1
+  },
+  "R_Pain_0.85_0": {
+    "ParamEyeRPain": 0.85,
+    "blink": 0
+  },
+  "R_Pain_0.85_0.25": {
+    "ParamEyeRPain": 0.85,
+    "blink": 0.25
+  },
+  "R_Pain_0.85_0.5": {
+    "ParamEyeRPain": 0.85,
+    "blink": 0.5
+  },
+  "R_Pain_0.85_0.75": {
+    "ParamEyeRPain": 0.85,
+    "blink": 0.75
+  },
+  "R_Pain_0.85_0.85": {
+    "ParamEyeRPain": 0.85,
+    "blink": 0.85
+  },
+  "R_Pain_0.85_1": {
+    "ParamEyeRPain": 0.85,
+    "blink": 1
+  },
+  "R_Pain_1_0": {
+    "ParamEyeRPain": 1,
+    "blink": 0
+  },
+  "R_Pain_1_0.25": {
+    "ParamEyeRPain": 1,
+    "blink": 0.25
+  },
+  "R_Pain_1_0.5": {
+    "ParamEyeRPain": 1,
+    "blink": 0.5
+  },
+  "R_Pain_1_0.75": {
+    "ParamEyeRPain": 1,
+    "blink": 0.75
+  },
+  "R_Pain_1_0.85": {
+    "ParamEyeRPain": 1,
+    "blink": 0.85
+  },
+  "R_Pain_1_1": {
+    "ParamEyeRPain": 1,
+    "blink": 1
+  }
+}

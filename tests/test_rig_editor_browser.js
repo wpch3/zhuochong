@@ -30,6 +30,18 @@ const server = http.createServer((req,res) => {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.click('#demo');
     await page.waitForFunction(() => document.querySelector('#canvasStatus').textContent.includes('示例贴图已载入'));
+    await page.fill('#newGroupId','editor_bone'); await page.selectOption('#newGroupParent','head');
+    await page.fill('#newGroupX','512'); await page.fill('#newGroupY','400'); await page.click('#addGroup');
+    await page.fill('#newGroupId','editor_child'); await page.selectOption('#newGroupParent','editor_bone'); await page.click('#addGroup');
+    await page.selectOption('#editGroup','editor_bone'); await page.selectOption('#editGroupParent','editor_child'); await page.click('#saveGroup');
+    assert((await page.locator('#status').textContent()).includes('父组须先于子组'));
+    await page.selectOption('#editGroupParent','head'); await page.fill('#groupX','510'); await page.click('#saveGroup');
+    assert.strictEqual(await page.locator('#groupX').inputValue(),'510');
+    await page.click('#undo'); assert.strictEqual(await page.locator('#groupX').inputValue(),'512'); await page.click('#redo');
+    await page.selectOption('#part','nose'); await page.selectOption('#partGroup','editor_bone'); await page.click('#savePartGroup');
+    await page.fill('#newId','ParamEditorBone'); await page.fill('#newLabel','骨骼测试'); await page.click('#addParam');
+    await page.selectOption('#param','ParamEditorBone'); await page.selectOption('#group','editor_bone'); await page.selectOption('#channel','dx'); await page.fill('#scale','12'); await page.click('#addBind');
+    await page.selectOption('#channel','rot_deg');
     await page.fill('#newId','ParamEditorHead'); await page.fill('#newLabel','头部测试'); await page.click('#addParam');
     await page.selectOption('#param','ParamEditorHead'); await page.selectOption('#group','head');
     await page.fill('#scale','4'); await page.click('#addBind');
