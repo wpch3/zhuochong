@@ -382,3 +382,7 @@ test-chibi-art-review: $(BUILD)/zhuochong_preview
 .PHONY: test-chibi-closure
 test-chibi-closure: $(BUILD)/zhuochong_preview
 	@$(PYTHON_IMG) tests/test_chibi_closure.py
+
+.PHONY: test-chibi-visual-review
+test-chibi-visual-review: $(BUILD)/zhuochong_preview
+	@$(PYTHON_IMG) tests/test_chibi_visual_review.py
