@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="215" height="114" viewBox="0 0 215 114">
+ <!-- A shallower neutral opening, preserving the lower edge and the pupil art. -->
+ <defs><linearGradient id="white" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e9d6e0"/><stop offset=".45" stop-color="#fff7f2"/><stop offset="1" stop-color="#fffef9"/></linearGradient></defs>
+ <path id="left" d="M 17 76 C 25 66 39 61 56 61 C 73 61 82 67 82 80 C 82 96 71 104 54 104 C 36 104 22 96 17 84 Z" fill="url(#white)"/>
+ <path id="right" d="M 130 80 C 130 67 140 61 157 61 C 174 61 190 66 197 76 L 197 84 C 192 96 179 104 160 104 C 142 104 130 96 130 80 Z" fill="url(#white)"/>
+</svg>

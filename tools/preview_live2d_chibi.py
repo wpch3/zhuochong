@@ -78,6 +78,7 @@ def main():
     underlay_trial = bool(args.dynamic_study and (study / 'underlay_report.json').is_file())
     wrist_trial = bool(args.dynamic_study and (study / 'wrist_report.json').is_file())
     joint_trial = bool(args.dynamic_study and (study / 'joint_report.json').is_file())
+    natural_eye_trial = bool(args.dynamic_study and (study / 'eye_natural_report.json').is_file())
     refinement_trial = bool(args.dynamic_study and (study / 'refinement_report.json').is_file())
     binding_trial = bool(args.dynamic_study and (study / 'binding_report.json').is_file())
     lid_trial = bool(args.dynamic_study and (study / 'lid_report.json').is_file())
@@ -100,7 +101,8 @@ def main():
     shutil.copytree(ROOT / 'web', web, dirs_exist_ok=True)
     layout_path = web / 'layout.json'
     layout = json.loads(layout_path.read_text(encoding='utf-8'))
-    layout['title'] = ('小寻 · 面部关节重绘试验（未验收）' if refinement_trial else
+    layout['title'] = ('小寻 · 自然眼形与眨眼试验（未验收）' if natural_eye_trial else
+                       '小寻 · 面部关节重绘试验（未验收）' if refinement_trial else
                        '小寻 · 手指口腔绑定试验（未验收）' if binding_trial else
                        '小寻 · 眼睑遮罩试验（未验收）' if lid_trial else
                        '小寻 · 眼球重绘试验（未验收）' if eye_trial else
@@ -144,6 +146,9 @@ def main():
             if refinement_trial:
                 hint = '手指、口腔、眼睑及关节重绘合并试验：未通过视觉验收。'
                 description = '独立候选，重绘改变原貌；手指连接、眨眼和肩腕仍需人工审视。'
+            if natural_eye_trial:
+                hint = '自然眼形与眨眼独立试验：真实 C 帧，仍有过渡瑕疵，未通过视觉验收。'
+                description = '眼形与闭眼线已重绘；近闭重影、表情过渡及原貌相似度仍需检查。'
     layout['regions'] = {
         'topbar': ['statuschips'],
         'stage': [{'id': 'stage', 'options': {'buttons': [], 'hint': hint}}],
