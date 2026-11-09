@@ -17,6 +17,8 @@ def link(source, target):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('port', nargs='?', default=None)
+    parser.add_argument('--bind', choices=('0.0.0.0', '127.0.0.1'), default='0.0.0.0',
+                        help='bind address; use loopback for internal automated tests')
     parser.add_argument('--preview-root', type=Path, help='Isolated preview directory (default: build/<study>-preview)')
     parser.add_argument('--dynamic-study', type=Path, help='Use an isolated dynamic candidate; requires --dynamic and a separate --preview-root')
     mode = parser.add_mutually_exclusive_group()
@@ -73,6 +75,7 @@ def main():
             raise SystemExit('Refusing to write a preview into repository sources; use build or a temporary directory')
         if preview == study.resolve() or study.resolve() in preview.parents or preview in study.resolve().parents:
             raise SystemExit('Refusing to use study or its ancestor as preview root')
+    underlay_trial = bool(args.dynamic_study and (study / 'underlay_report.json').is_file())
     target = preview / 'characters/xiaoxun/forms' / form
     if target.is_symlink():
         if target.resolve() != study.resolve():
@@ -91,7 +94,8 @@ def main():
     shutil.copytree(ROOT / 'web', web, dirs_exist_ok=True)
     layout_path = web / 'layout.json'
     layout = json.loads(layout_path.read_text(encoding='utf-8'))
-    layout['title'] = ('小寻 · 遮挡补画候选（未验收）' if args.dynamic_study else
+    layout['title'] = ('小寻 · 衣身底稿试验（未验收）' if underlay_trial else
+                       '小寻 · 遮挡补画候选（未验收）' if args.dynamic_study else
                        '小寻 · 无兽动态绑定试装' if args.dynamic else
                        '小寻 · 黑描边发梢清理试装' if args.seam else
                        '小寻 · 黑描边清边试装' if args.clean else
@@ -107,6 +111,9 @@ def main():
         if args.dynamic_study:
             hint = '隔离补画候选：真实 C 帧，仅供对照；尚未通过视觉验收。'
             description = '透明补画仅限中立袖手遮挡区，不代表拥有完整肩部隐藏画稿。'
+            if underlay_trial:
+                hint = '独立衣身底稿候选：真实 C 帧，袖手仍仅小幅试动；未通过视觉验收。'
+                description = '新绘衣身侧片在原身体分割层下方，缩放中立帧仍有差异；不是完整肩袖原画。'
     layout['regions'] = {
         'topbar': ['statuschips'],
         'stage': [{'id': 'stage', 'options': {'buttons': [], 'hint': hint}}],
@@ -130,7 +137,7 @@ def main():
         raise SystemExit('Run make build/zhuochong_preview first')
     port = args.port or ('5209' if args.dynamic else '5207' if args.seam else '5206' if args.clean else '5205' if args.blackline else '5203' if human else '5202')
     os.execv(str(exe), [str(exe), '--root', str(preview), '--web', str(web),
-                        '--port', port, '--bind', '0.0.0.0'])
+                        '--port', port, '--bind', args.bind])
 
 
 if __name__ == '__main__':

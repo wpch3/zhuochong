@@ -336,3 +336,9 @@ test-hidden-art-studies: $(BUILD)/zhuochong_preview $(BUILD)/rig_part_ab
 $(BUILD)/rig_part_ab: tools/rig_part_ab.c $(CORE_SRC) $(CORE_HDR)
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) $(INC) -o $@ tools/rig_part_ab.c $(CORE_SRC) $(LDLIBS)
+
+.PHONY: test-chibi-underlay
+test-chibi-underlay: $(BUILD)/zhuochong_preview
+	@test -n "$(PYTHON_IMG)" || { echo '需要 Pillow 和 numpy'; exit 1; }
+	@$(PYTHON_IMG) -c 'import resvg_py' || { echo '需要安装 resvg-py 0.5.0'; exit 1; }
+	@$(PYTHON_IMG) tests/test_chibi_underlay.py

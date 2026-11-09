@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Independently drawn full side panels, behind the existing body, in
+      source body pixel coordinates. A work-in-progress, not a PSD layer. -->
+ <defs>
+  <linearGradient id="side" x1="0" y1="0" x2="1" y2="0">
+   <stop offset="0" stop-color="#c5b2c6"/>
+   <stop offset=".2" stop-color="#e0d0df"/>
+   <stop offset=".60" stop-color="#f7eff5"/>
+   <stop offset="1" stop-color="#fffdfd"/>
+  </linearGradient>
+  <g id="panel">
+   <path d="M 144,30 C 138,41 133,52 130,65 C 129,85 123,110 117,132 C 111,153 108,171 111,181 C 114,191 123,197 139,200 L 163,200 L 169,39 Z" fill="url(#side)"/>
+   <path d="M 139,49 C 142,72 141,95 137,117 C 134,134 129,153 126,172 C 124,150 128,130 131,112 C 134,90 135,69 139,49 Z" fill="#b69eb7" opacity=".23"/>
+   <path d="M 113,174 C 119,181 129,186 141,188 C 145,189 148,189 153,189 L 155,195 C 138,196 124,193 117,187 Z" fill="#c4aec5" opacity=".3"/>
+   <path d="M 136,57 C 135,80 132,101 129,115" fill="none" stroke="#fffafd" stroke-linecap="round" stroke-width="2" opacity=".52"/>
+  </g>
+ </defs>
+ <use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#panel"/>
+ <use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#panel" transform="translate(460 0) scale(-1 1)"/>
+</svg>

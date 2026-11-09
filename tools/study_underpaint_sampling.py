@@ -35,7 +35,7 @@ def request(base,path):
 
 def start(root,study=None):
     n=port();cmd=[sys.executable,str(ROOT/'tools/preview_live2d_chibi.py'),'--dynamic',
-                  '--preview-root',str(root),str(n)]
+                  '--bind','127.0.0.1','--preview-root',str(root),str(n)]
     if study:cmd.extend(['--dynamic-study',str(study)])
     proc=subprocess.Popen(cmd,cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
     base=f'http://127.0.0.1:{n}'
