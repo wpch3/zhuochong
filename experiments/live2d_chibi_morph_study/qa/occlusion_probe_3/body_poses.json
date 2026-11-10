@@ -1,0 +1,227 @@
+{
+  "neutral": {},
+  "L_a-1_e-1_w-1_body-1": {
+    "ParamArmL": -1,
+    "ParamElbowL": -1,
+    "ParamWristL": -1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "L_a-1_e-1_w-1_body1": {
+    "ParamArmL": -1,
+    "ParamElbowL": -1,
+    "ParamWristL": -1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "L_a-1_e-1_w1_body-1": {
+    "ParamArmL": -1,
+    "ParamElbowL": -1,
+    "ParamWristL": 1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "L_a-1_e-1_w1_body1": {
+    "ParamArmL": -1,
+    "ParamElbowL": -1,
+    "ParamWristL": 1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "L_a-1_e1_w-1_body-1": {
+    "ParamArmL": -1,
+    "ParamElbowL": 1,
+    "ParamWristL": -1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "L_a-1_e1_w-1_body1": {
+    "ParamArmL": -1,
+    "ParamElbowL": 1,
+    "ParamWristL": -1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "L_a-1_e1_w1_body-1": {
+    "ParamArmL": -1,
+    "ParamElbowL": 1,
+    "ParamWristL": 1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "L_a-1_e1_w1_body1": {
+    "ParamArmL": -1,
+    "ParamElbowL": 1,
+    "ParamWristL": 1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "L_a1_e-1_w-1_body-1": {
+    "ParamArmL": 1,
+    "ParamElbowL": -1,
+    "ParamWristL": -1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "L_a1_e-1_w-1_body1": {
+    "ParamArmL": 1,
+    "ParamElbowL": -1,
+    "ParamWristL": -1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "L_a1_e-1_w1_body-1": {
+    "ParamArmL": 1,
+    "ParamElbowL": -1,
+    "ParamWristL": 1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "L_a1_e-1_w1_body1": {
+    "ParamArmL": 1,
+    "ParamElbowL": -1,
+    "ParamWristL": 1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "L_a1_e1_w-1_body-1": {
+    "ParamArmL": 1,
+    "ParamElbowL": 1,
+    "ParamWristL": -1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "L_a1_e1_w-1_body1": {
+    "ParamArmL": 1,
+    "ParamElbowL": 1,
+    "ParamWristL": -1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "L_a1_e1_w1_body-1": {
+    "ParamArmL": 1,
+    "ParamElbowL": 1,
+    "ParamWristL": 1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "L_a1_e1_w1_body1": {
+    "ParamArmL": 1,
+    "ParamElbowL": 1,
+    "ParamWristL": 1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "R_a-1_e-1_w-1_body-1": {
+    "ParamArmR": -1,
+    "ParamElbowR": -1,
+    "ParamWristR": -1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "R_a-1_e-1_w-1_body1": {
+    "ParamArmR": -1,
+    "ParamElbowR": -1,
+    "ParamWristR": -1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "R_a-1_e-1_w1_body-1": {
+    "ParamArmR": -1,
+    "ParamElbowR": -1,
+    "ParamWristR": 1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "R_a-1_e-1_w1_body1": {
+    "ParamArmR": -1,
+    "ParamElbowR": -1,
+    "ParamWristR": 1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "R_a-1_e1_w-1_body-1": {
+    "ParamArmR": -1,
+    "ParamElbowR": 1,
+    "ParamWristR": -1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "R_a-1_e1_w-1_body1": {
+    "ParamArmR": -1,
+    "ParamElbowR": 1,
+    "ParamWristR": -1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "R_a-1_e1_w1_body-1": {
+    "ParamArmR": -1,
+    "ParamElbowR": 1,
+    "ParamWristR": 1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "R_a-1_e1_w1_body1": {
+    "ParamArmR": -1,
+    "ParamElbowR": 1,
+    "ParamWristR": 1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "R_a1_e-1_w-1_body-1": {
+    "ParamArmR": 1,
+    "ParamElbowR": -1,
+    "ParamWristR": -1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "R_a1_e-1_w-1_body1": {
+    "ParamArmR": 1,
+    "ParamElbowR": -1,
+    "ParamWristR": -1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "R_a1_e-1_w1_body-1": {
+    "ParamArmR": 1,
+    "ParamElbowR": -1,
+    "ParamWristR": 1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "R_a1_e-1_w1_body1": {
+    "ParamArmR": 1,
+    "ParamElbowR": -1,
+    "ParamWristR": 1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "R_a1_e1_w-1_body-1": {
+    "ParamArmR": 1,
+    "ParamElbowR": 1,
+    "ParamWristR": -1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "R_a1_e1_w-1_body1": {
+    "ParamArmR": 1,
+    "ParamElbowR": 1,
+    "ParamWristR": -1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  },
+  "R_a1_e1_w1_body-1": {
+    "ParamArmR": 1,
+    "ParamElbowR": 1,
+    "ParamWristR": 1,
+    "ParamMotionDrive": -1,
+    "ParamBreath": 1
+  },
+  "R_a1_e1_w1_body1": {
+    "ParamArmR": 1,
+    "ParamElbowR": 1,
+    "ParamWristR": 1,
+    "ParamMotionDrive": 1,
+    "ParamBreath": 1
+  }
+}

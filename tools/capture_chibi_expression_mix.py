@@ -2,7 +2,9 @@
 """Sample smile and pain together with blink using the real C preview."""
 import argparse
 import itertools
+import hashlib
 import json
+import math
 import shutil
 import tempfile
 from pathlib import Path
@@ -33,8 +35,11 @@ def capture(candidate, output, executable=None, blinks=(0, .5, 1)):
         raise ValueError('output must be new')
     if not (candidate / 'extended_report.json').is_file():
         raise ValueError('expected extended study')
-    if not blinks or len(set(blinks)) != len(blinks) or any(not 0 <= v <= 1 for v in blinks):
+    if not blinks or len(set(blinks)) != len(blinks) or any(not math.isfinite(v) or not 0 <= v <= 1 for v in blinks):
         raise ValueError('blink values must be distinct finite numbers in 0..1')
+    binary = Path(executable).resolve() if executable else ROOT / 'build/zhuochong_preview'
+    provenance = {'rig_sha256': hashlib.sha256((candidate / 'rig.json').read_bytes()).hexdigest(),
+                  'preview_executable_sha256': hashlib.sha256(binary.read_bytes()).hexdigest()}
     poses, shots = cases(blinks), {}
     with tempfile.TemporaryDirectory(prefix='expression-mix-', dir=root) as temp:
         proc, url = start(Path(temp) / 'preview', candidate, executable)
@@ -66,6 +71,7 @@ def capture(candidate, output, executable=None, blinks=(0, .5, 1)):
                         sheet.paste(im, (x, y + 20))
                 sheet.save(out / f'{side}_blink{blink}_sheet.png')
         (out / 'poses.json').write_text(json.dumps(poses, indent=2) + '\n', encoding='utf-8')
+        (out / 'provenance.json').write_text(json.dumps({'before_capture': provenance}, indent=2) + '\n', encoding='utf-8')
     except BaseException:
         shutil.rmtree(out)
         raise

@@ -5,6 +5,7 @@ A diagnostic sample, not an exhaustive motion or visual acceptance test.
 """
 import argparse
 import itertools
+import hashlib
 import json
 import shutil
 import tempfile
@@ -37,6 +38,8 @@ def capture(candidate, output):
         raise ValueError('output must be new')
     if not (candidate / 'joint_stress_report.json').is_file():
         raise ValueError('expected joint stress rig')
+    provenance = {'rig_sha256': hashlib.sha256((candidate / 'rig.json').read_bytes()).hexdigest(),
+                  'preview_executable_sha256': hashlib.sha256((ROOT / 'build/zhuochong_preview').read_bytes()).hexdigest()}
     shots = {}
     poses = cases()
     with tempfile.TemporaryDirectory(prefix='body-joint-', dir=root) as temp:
@@ -58,6 +61,7 @@ def capture(candidate, output):
             for label, bg in (('light', (247, 247, 247, 255)), ('dark', (38, 43, 49, 255))):
                 save_crop(arr, (290, 450, 730, 720), 1, out / f'{name}_{label}.png', bg)
         (out / 'poses.json').write_text(json.dumps(poses, indent=2) + '\n', encoding='utf-8')
+        (out / 'provenance.json').write_text(json.dumps({'before_capture': provenance}, indent=2) + '\n', encoding='utf-8')
     except BaseException:
         shutil.rmtree(out)
         raise
