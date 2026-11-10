@@ -19,9 +19,9 @@
 证据图 `logs/asset_qa/_viseme_sheet.jpg` |
 | T2.1.3b | 表情 × 口型的叠加口径（G38） | [x] | ✅ 2026-10-13 照官方 `ICubismUpdater` 执行序把口型排在表情之后（Expression 300 < LipSync 700）：`param_effective()` = 动作 → 表情（三累加器 `(base+ov+add)×mul`，补齐 exp3 的 multiply）→ 口型（按 `viseme_weight` 默认 0.8 落位，给表情留 20% 余味）。「笑着说う」Form −0.86（纯加算会抵消成 −0.30）。音素层不再回写基础参数；`/api/params.json` 报 `value / expr / effective` 三列；测试台加分层看板。闸门：`test_expr_viseme_order()` + `test_expression_blend()` + smoke 6 项 + selfcheck 9 项，负控 3 次全红 |
 | T2.1.4 | 眉毛：常态/上扬（喜）/下压（怒、悲）/八字（害羞） | [x] | 2026-10-24：复核已有左右独立眉件、锚点与遮罩透眉副本；shy 补左右镜像倾角（-0.6）以对应原始 `parts_src/expressions_a/shy.png` 的八字眉，不新增静态素材。C 回归覆盖左右形变隔离、微笑/开心上扬、生气/难过下压、shy 角度和镜像旋转；7 状态运行时截图与 effective 参数记录见 `docs/qa/T2.1.4-brow-review.md`。 |
-| T2.1.5 | 前发分层：刘海（中/左/右）、鬓角 L/R | [ ] | 切到头发时能单独摆动；被遮挡的额头要补图 |
-| T2.1.6 | 后发（短发版 / 中长发版） | [ ] | 发根补图，转头不裂缝 |
-| T2.1.7 | 呆毛、鲸鱼发夹（独立图层） | [ ] | 呆毛可做微风摆动（rig 已有通道类型） |
+| T2.1.5 | 前发分层：刘海（中/左/右）、鬓角 L/R | [~] | 切到头发时能单独摆动；被遮挡的额头要补图。**2026-11-10 接手审计更正（原 [ ] 已过期）**：teen rig 已有单件 `hair_front` + `hair_side_l/r` 并可独立摆动（physics `bangs_x`/`side_*`），但**不是规格要求的刘海中/左/右三分**，额头补图未单独验收。部分实现，未通过。证据 `docs/qa/takeover_audit_2026-11-10/README.md` §3.1 |
+| T2.1.6 | 后发（短发版 / 中长发版） | [~] | 发根补图，转头不裂缝。**2026-11-10 更正**：`hair_back` + 长/双马尾/高马尾差分件已存在，但长发版有 T67.71 烘袖口/手残留（举臂露钢琴键黑条）与 `hair_long_back@2x` 白边 4106px 超标；twin 档侧发漏底 7–18%。部分实现，未通过 |
+| T2.1.7 | 呆毛、鲸鱼发夹（独立图层） | [~] | 呆毛可做微风摆动（rig 已有通道类型）。**2026-11-10 更正**：呆毛 `hair_ahoge` 已独立且有 physics；**鲸鱼发夹无独立部件**（两形态均 0 件，烘在 `seg_head` 里，chibi 帧中悬空）。半完成，未通过 |
 | T2.1.8 | 身体分段：上半身、下半身、裙摆、大臂/小臂/手 L/R、腿/袜/鞋 L/R | [~] | 关节两侧补图（肩/肘/腕/髋/膝/踝），静态拼回与全身图重合。**2026-10-12：大臂/小臂 ×2 已完成**（`tools/make_arm_parts.py`，袖下躯干 AI 重绘 + 肘关节；静止拼回 0 像素差、25°/20° 压力姿势肩肘 0 空洞、231 项验收全过）；**2026-10-13：手腕 + 裙下大腿已完成**（六件臂 `arm_?/forearm_?/hand_?`，腕线 666，手画在前臂底下、塗り足し按 `erode(掩码,4)` 缩进；裙下大腿从躯干归还给腿件，腿改 bend ±20px）；腿/袜/鞋仍整条（新 GAPS 项待开） |
 | T2.1.8b | **Live2D 协议合规**：参数命名/取值范围对齐官方 41 项、左右眼分家、model3 的 Groups | [x] | 2026-10-13：标准参数 ✅34/⬜5/➖4，`docs/LIVE2D_CONFORMANCE.md` + selfcheck 56 项 + `test_live2d_standard` + smoke 68 项；缺的 5 项（笑眼 ×2、眉形 ×2、瞳形）都只差素材 |
 | T2.1.8c | **验收反馈修复**：睡醒还闭眼 / 关自动眨眼就全闭眼 / 张嘴了微笑还在 / 说完话嘴角抽一下 | [x] | 2026-10-13（G39）：`blink_force` 改三态 + 唯一唤醒入口 `pet_wake()`；眼件淡化不再看 `blink_enabled`；口型接管改 `w = viseme_weight × viseme_activity`（权重 0.8→1.0）；`viseme_clear` 改平滑松口 + 两档 release（音素间 30/s、整句 8/s）+ 新增 `viseme_reset`。单测 484/0、smoke 95/0、selfcheck 83/0，四次负控全判红 |
@@ -30,12 +30,12 @@
 | T2.1.8g | **裙摆摆链 + physics 参数输入**（照 Hiyori 横摆/纵摆两通道） | [x] | 2026-10-13（G43/G43b）：裙子不拆件，用挂在 seg_torso 上的 rows=10 网格只动裙摆那几行；physics 新增 `input` 参数数组；顺带修掉"形变器吃掉 bend"（G16 多段摆链第一段一直白写）和"只认第一张网格"两个渲染 bug。单测 553/0、smoke 112/0、selfcheck 112/0，四道负控全判红 |
 | T2.1.8f | **动作淡化对齐官方**（getEasingSine + 每动作 FadeOutTime） | [x] | 2026-10-13（G42）：`z_ease_sine = 0.5−0.5cos(πt)` 换掉 smoothstep；动作加 `fade_out`（默认 0.2s），循环动作不淡出；拆掉 W_PULSE 里只管一种波形的收尾 hack；修掉淡出中的旧动作闪满值的鬼影。单测 535/0、smoke 109/0、selfcheck 104/0，三道运行时负控 + 一道静态闸负控全判红 |
 | T2.1.8e | **动作通道迁到参数**（合规表最后一个结构性偏差） | [x] | 2026-10-13（G41）：官方 .motion3 的曲线目标只有 Parameter / PartOpacity / Model；197 条几何通道按 bind 系数反算成 160 条参数通道，`zrig_action_geom_channels()` 恒为 0。顺带补 ParamEyeBallForm / ParamBaseRot / bias。单测 523/0、smoke 107/0、selfcheck 97/0，三次负控全判红 |
-| T2.1.9 | 表情集入库并驱动动作（平静/微笑/开心/害羞/生气/难过/惊讶/思考/困倦） | [ ] | 每个表情能在预览里切换并看到差异；`part_overrides` 自动生成 |
+| T2.1.9 | 表情集入库并驱动动作（平静/微笑/开心/害羞/生气/难过/惊讶/思考/困倦） | [x] | 每个表情能在预览里切换并看到差异；`part_overrides` 自动生成。**2026-11-10 更正（原 [ ] 已过期）**：teen rig `expressions[]` 9 项（smile/shy/angry/sad/surprise/sleepy/happy/pain/star_eyes）+ `/api/info.json` 实列 9+1，smoke 覆盖切换。表情机制完成；**不代表 teen 整体视觉通过**（长发/双马尾缺陷另计） |
 | T2.1.10 | 说话口型跟随（AEIOU 轮换 + 音频驱动留接口） | [x] | 说话动作下口型有可见变化。**2026-10-12：音频驱动这条已通**（`tools/make_lipsync.py` → `voice/lipsync/*.json` → `/api/speak?id=` → `ParamMouthOpenY`，38 条台词有包络，单测 17 项 + 冒烟 5 项）；~~AEIOU 轮换还没有~~ **✅ 2026-10-13**：`make_lipsync.py` 用 pypinyin 取韵母 → 母音，
 写进包络的 `visemes` 轨（38 条台词全带），`zpet_lipsync_start_v()` 播放时逐帧
 `zrig_viseme_set(音素, 包络值)`；没装 pypinyin 会打警告 + 自检判红，不会静默退回只开合 |
-| T2.1.11 | 视线跟随（虹膜拆件 + gaze 标签） | [ ] | 鼠标移动时虹膜偏移，且被眼白裁剪（不越出眼眶） |
-| T2.1.12 | 摸头/抚摸/锤击/拖动在拆件后仍正确（含头发/身体跟随） | [ ] | 状态对比图重拍，无裂缝/错位 |
+| T2.1.11 | 视线跟随（虹膜拆件 + gaze 标签） | [~] | 鼠标移动时虹膜偏移，且被眼白裁剪（不越出眼眶）。**2026-11-10 更正**：`eye_*_ball` 已带 gaze 标签、`gaze.max_offset=[4,2.5]` 已配置、API 接受 `ParamEyeBallX`，但本轮 4× 眼部放大（idle vs `ParamEyeBallX=1.0`）**无可见虹膜位移**，未拿到“偏移且不越眶”证据。机制部分实现，未验收 |
+| T2.1.12 | 摸头/抚摸/锤击/拖动在拆件后仍正确（含头发/身体跟随） | [~] | 状态对比图重拍，无裂缝/错位。**2026-11-10 更正**：`head_pat/stroke/hammered/dragged` 动作已存在且引擎可播，但拆件后“无裂缝/错位”的状态对比图未按铁律 9–11 重拍验收（长发举臂仍露残留）。部分实现，未通过 |
 
 ### T2.2 小寻 · 其余三个形态
 | # | 任务 | 状态 | 验收口径 |

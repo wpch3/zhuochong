@@ -1,0 +1,2959 @@
+{
+  "character": "xiaoxun",
+  "form": "chibi",
+  "thresholds": {
+    "min_side": 12,
+    "body_min_w": 300,
+    "key_residue": 200,
+    "white_edge": 900,
+    "white_edge_ratio": 0.3,
+    "iou": 0.8,
+    "palette_dist": 70,
+    "anchor_tol": 0.04,
+    "joint_hole": 60,
+    "sway_hole": 20,
+    "junk_px": 0,
+    "eye_residue": 24,
+    "hair_dE": 5.0,
+    "hair_dSD": 6.0
+  },
+  "pass": true,
+  "fail_count": 0,
+  "design_iou": 0.9819505654288961,
+  "items": [
+    {
+      "part": "acc_ear_l",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_ear_l",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 15920"
+    },
+    {
+      "part": "acc_ear_l",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 26300"
+    },
+    {
+      "part": "acc_ear_l",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "191x226"
+    },
+    {
+      "part": "acc_ear_l",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_ear_l",
+      "check": "白边",
+      "ok": true,
+      "detail": "30 像素（上限 900）、占边缘一圈 3.1%（上限 30%，环长 955）"
+    },
+    {
+      "part": "acc_ear_l",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 24（#E8E8E8 占比 12%）"
+    },
+    {
+      "part": "acc_ear_l@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_ear_l@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 65495"
+    },
+    {
+      "part": "acc_ear_l@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 104617"
+    },
+    {
+      "part": "acc_ear_l@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "382x452"
+    },
+    {
+      "part": "acc_ear_l@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_ear_l@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "232 像素（上限 900）、占边缘一圈 9.0%（上限 30%，环长 2577）"
+    },
+    {
+      "part": "acc_ear_l@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 24（#E8E8E8 占比 11%）"
+    },
+    {
+      "part": "acc_ear_r",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_ear_r",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 15920"
+    },
+    {
+      "part": "acc_ear_r",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 26300"
+    },
+    {
+      "part": "acc_ear_r",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "191x226"
+    },
+    {
+      "part": "acc_ear_r",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_ear_r",
+      "check": "白边",
+      "ok": true,
+      "detail": "35 像素（上限 900）、占边缘一圈 4.4%（上限 30%，环长 790）"
+    },
+    {
+      "part": "acc_ear_r",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 24（#E8E8E8 占比 12%）"
+    },
+    {
+      "part": "acc_ear_r@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_ear_r@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 65495"
+    },
+    {
+      "part": "acc_ear_r@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 104617"
+    },
+    {
+      "part": "acc_ear_r@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "382x452"
+    },
+    {
+      "part": "acc_ear_r@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_ear_r@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "226 像素（上限 900）、占边缘一圈 10.8%（上限 30%，环长 2095）"
+    },
+    {
+      "part": "acc_ear_r@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 24（#E8E8E8 占比 11%）"
+    },
+    {
+      "part": "acc_hood_up",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_hood_up",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 418638"
+    },
+    {
+      "part": "acc_hood_up",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 270271"
+    },
+    {
+      "part": "acc_hood_up",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "740x940"
+    },
+    {
+      "part": "acc_hood_up",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_hood_up",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 4374）【白色衣料，本项豁免】"
+    },
+    {
+      "part": "acc_hood_up",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 27（#98C8D8 占比 6%）"
+    },
+    {
+      "part": "acc_hood_up@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_hood_up@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 1675576"
+    },
+    {
+      "part": "acc_hood_up@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 1080749"
+    },
+    {
+      "part": "acc_hood_up@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "1480x1880"
+    },
+    {
+      "part": "acc_hood_up@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_hood_up@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "3 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 8757）【白色衣料，本项豁免】"
+    },
+    {
+      "part": "acc_hood_up@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 27（#98C8D8 占比 6%）"
+    },
+    {
+      "part": "acc_tail_puff",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_tail_puff",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 28741"
+    },
+    {
+      "part": "acc_tail_puff",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 46289"
+    },
+    {
+      "part": "acc_tail_puff",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "181x430"
+    },
+    {
+      "part": "acc_tail_puff",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_tail_puff",
+      "check": "白边",
+      "ok": true,
+      "detail": "21 像素（上限 900）、占边缘一圈 0.7%（上限 30%，环长 2874）"
+    },
+    {
+      "part": "acc_tail_puff",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 48（#B8D8F8 占比 9%）"
+    },
+    {
+      "part": "acc_tail_puff@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_tail_puff@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 119726"
+    },
+    {
+      "part": "acc_tail_puff@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 183413"
+    },
+    {
+      "part": "acc_tail_puff@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "362x860"
+    },
+    {
+      "part": "acc_tail_puff@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_tail_puff@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "495 像素（上限 900）、占边缘一圈 5.2%（上限 30%，环长 9588）"
+    },
+    {
+      "part": "acc_tail_puff@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 48（#B8D8F8 占比 9%）"
+    },
+    {
+      "part": "acc_tail_relaxed",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_tail_relaxed",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 24277"
+    },
+    {
+      "part": "acc_tail_relaxed",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 26035"
+    },
+    {
+      "part": "acc_tail_relaxed",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "126x410"
+    },
+    {
+      "part": "acc_tail_relaxed",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_tail_relaxed",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 1214）"
+    },
+    {
+      "part": "acc_tail_relaxed",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#D8E8F8 占比 9%）"
+    },
+    {
+      "part": "acc_tail_relaxed@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_tail_relaxed@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 99597"
+    },
+    {
+      "part": "acc_tail_relaxed@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 103410"
+    },
+    {
+      "part": "acc_tail_relaxed@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "252x820"
+    },
+    {
+      "part": "acc_tail_relaxed@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_tail_relaxed@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "52 像素（上限 900）、占边缘一圈 1.4%（上限 30%，环长 3777）"
+    },
+    {
+      "part": "acc_tail_relaxed@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#D8E8F8 占比 9%）"
+    },
+    {
+      "part": "acc_tail_tuck",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_tail_tuck",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 18840"
+    },
+    {
+      "part": "acc_tail_tuck",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 31194"
+    },
+    {
+      "part": "acc_tail_tuck",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "127x404"
+    },
+    {
+      "part": "acc_tail_tuck",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_tail_tuck",
+      "check": "白边",
+      "ok": true,
+      "detail": "68 像素（上限 900）、占边缘一圈 6.1%（上限 30%，环长 1113）"
+    },
+    {
+      "part": "acc_tail_tuck",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#B8D8E8 占比 6%）"
+    },
+    {
+      "part": "acc_tail_tuck@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_tail_tuck@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 77153"
+    },
+    {
+      "part": "acc_tail_tuck@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 124638"
+    },
+    {
+      "part": "acc_tail_tuck@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "254x808"
+    },
+    {
+      "part": "acc_tail_tuck@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_tail_tuck@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "820 像素（上限 900）、占边缘一圈 27.8%（上限 30%，环长 2950）"
+    },
+    {
+      "part": "acc_tail_tuck@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#C8D8E8 占比 9%）"
+    },
+    {
+      "part": "acc_tail_up",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_tail_up",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 21887"
+    },
+    {
+      "part": "acc_tail_up",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 24647"
+    },
+    {
+      "part": "acc_tail_up",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "114x480"
+    },
+    {
+      "part": "acc_tail_up",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_tail_up",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 1305）"
+    },
+    {
+      "part": "acc_tail_up",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 28（#B8C8D8 占比 7%）"
+    },
+    {
+      "part": "acc_tail_up@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "acc_tail_up@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 87883"
+    },
+    {
+      "part": "acc_tail_up@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 98374"
+    },
+    {
+      "part": "acc_tail_up@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "228x960"
+    },
+    {
+      "part": "acc_tail_up@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "acc_tail_up@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "31 像素（上限 900）、占边缘一圈 1.0%（上限 30%，环长 3030）"
+    },
+    {
+      "part": "acc_tail_up@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 28（#B8C8D8 占比 7%）"
+    },
+    {
+      "part": "blush_l",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "blush_l",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 260"
+    },
+    {
+      "part": "blush_l",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 432"
+    },
+    {
+      "part": "blush_l",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "40x22"
+    },
+    {
+      "part": "blush_l",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "blush_l",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 85）"
+    },
+    {
+      "part": "blush_l",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 56（#F88898 占比 100%）"
+    },
+    {
+      "part": "blush_r",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "blush_r",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 260"
+    },
+    {
+      "part": "blush_r",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 432"
+    },
+    {
+      "part": "blush_r",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "40x22"
+    },
+    {
+      "part": "blush_r",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "blush_r",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 85）"
+    },
+    {
+      "part": "blush_r",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 56（#F88898 占比 100%）"
+    },
+    {
+      "part": "body_full",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "body_full",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 321592"
+    },
+    {
+      "part": "body_full",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 404608"
+    },
+    {
+      "part": "body_full",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "567x1292"
+    },
+    {
+      "part": "body_full",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "body_full",
+      "check": "白边",
+      "ok": true,
+      "detail": "665 像素（上限 900）、占边缘一圈 9.1%（上限 30%，环长 7345）"
+    },
+    {
+      "part": "body_full",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 42（#E8C8D8 占比 9%）"
+    },
+    {
+      "part": "eye_closed_left",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_closed_left",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 1605"
+    },
+    {
+      "part": "eye_closed_left",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 5490"
+    },
+    {
+      "part": "eye_closed_left",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "264x27"
+    },
+    {
+      "part": "eye_closed_left",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_closed_left",
+      "check": "白边",
+      "ok": true,
+      "detail": "7 像素（上限 900）、占边缘一圈 1.5%（上限 30%，环长 476）"
+    },
+    {
+      "part": "eye_closed_left",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 52（#182858 占比 12%）"
+    },
+    {
+      "part": "eye_closed_right",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_closed_right",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 1489"
+    },
+    {
+      "part": "eye_closed_right",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 5504"
+    },
+    {
+      "part": "eye_closed_right",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "259x27"
+    },
+    {
+      "part": "eye_closed_right",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_closed_right",
+      "check": "白边",
+      "ok": true,
+      "detail": "2 像素（上限 900）、占边缘一圈 0.4%（上限 30%，环长 510）"
+    },
+    {
+      "part": "eye_closed_right",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 13%）"
+    },
+    {
+      "part": "eye_hl_l",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_hl_l",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 60"
+    },
+    {
+      "part": "eye_hl_l",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 97"
+    },
+    {
+      "part": "eye_hl_l",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "13x13"
+    },
+    {
+      "part": "eye_hl_l",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_hl_l",
+      "check": "白边",
+      "ok": true,
+      "detail": "35 像素（上限 900）、占边缘一圈 100.0%（上限 30%，环长 35）"
+    },
+    {
+      "part": "eye_hl_l",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 100%）"
+    },
+    {
+      "part": "eye_hl_r",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_hl_r",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 60"
+    },
+    {
+      "part": "eye_hl_r",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 97"
+    },
+    {
+      "part": "eye_hl_r",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "13x13"
+    },
+    {
+      "part": "eye_hl_r",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_hl_r",
+      "check": "白边",
+      "ok": true,
+      "detail": "35 像素（上限 900）、占边缘一圈 100.0%（上限 30%，环长 35）"
+    },
+    {
+      "part": "eye_hl_r",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 100%）"
+    },
+    {
+      "part": "eye_hl_star_l",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_hl_star_l",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 220"
+    },
+    {
+      "part": "eye_hl_star_l",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 124"
+    },
+    {
+      "part": "eye_hl_star_l",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "20x20"
+    },
+    {
+      "part": "eye_hl_star_l",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_hl_star_l",
+      "check": "白边",
+      "ok": true,
+      "detail": "53 像素（上限 900）、占边缘一圈 100.0%（上限 30%，环长 53）"
+    },
+    {
+      "part": "eye_hl_star_l",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 100%）"
+    },
+    {
+      "part": "eye_hl_star_r",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_hl_star_r",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 220"
+    },
+    {
+      "part": "eye_hl_star_r",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 124"
+    },
+    {
+      "part": "eye_hl_star_r",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "20x20"
+    },
+    {
+      "part": "eye_hl_star_r",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_hl_star_r",
+      "check": "白边",
+      "ok": true,
+      "detail": "53 像素（上限 900）、占边缘一圈 100.0%（上限 30%，环长 53）"
+    },
+    {
+      "part": "eye_hl_star_r",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 100%）"
+    },
+    {
+      "part": "eye_l_ball",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_ball",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 1634"
+    },
+    {
+      "part": "eye_l_ball",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 4277"
+    },
+    {
+      "part": "eye_l_ball",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "77x77"
+    },
+    {
+      "part": "eye_l_ball",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_ball",
+      "check": "白边",
+      "ok": true,
+      "detail": "27 像素（上限 900）、占边缘一圈 10.8%（上限 30%，环长 249）"
+    },
+    {
+      "part": "eye_l_ball",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 64（#B8E8F8 占比 12%）"
+    },
+    {
+      "part": "eye_l_base",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_base",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 2523"
+    },
+    {
+      "part": "eye_l_base",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 36887"
+    },
+    {
+      "part": "eye_l_base",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "264x151"
+    },
+    {
+      "part": "eye_l_base",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_base",
+      "check": "白边",
+      "ok": true,
+      "detail": "45 像素（上限 900）、占边缘一圈 5.6%（上限 30%，环长 804）"
+    },
+    {
+      "part": "eye_l_base",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 42（#E8C8D8 占比 6%）"
+    },
+    {
+      "part": "eye_l_closed",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_closed",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 12780"
+    },
+    {
+      "part": "eye_l_closed",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 11245"
+    },
+    {
+      "part": "eye_l_closed",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "155x155"
+    },
+    {
+      "part": "eye_l_closed",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_closed",
+      "check": "白边",
+      "ok": true,
+      "detail": "5 像素（上限 900）、占边缘一圈 0.7%（上限 30%，环长 670）"
+    },
+    {
+      "part": "eye_l_closed",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 20（#F8E8E8 占比 64%）"
+    },
+    {
+      "part": "eye_l_lash",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_lash",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 37506"
+    },
+    {
+      "part": "eye_l_lash",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 2349"
+    },
+    {
+      "part": "eye_l_lash",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "264x151"
+    },
+    {
+      "part": "eye_l_lash",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_lash",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 665）"
+    },
+    {
+      "part": "eye_l_lash",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 43（#380828 占比 10%）"
+    },
+    {
+      "part": "eye_l_lid",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_lid",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 2064"
+    },
+    {
+      "part": "eye_l_lid",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 11760"
+    },
+    {
+      "part": "eye_l_lid",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "128x108"
+    },
+    {
+      "part": "eye_l_lid",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_lid",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 416）"
+    },
+    {
+      "part": "eye_l_lid",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 20（#F8E8E8 占比 26%）"
+    },
+    {
+      "part": "eye_l_pain",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_pain",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 14672"
+    },
+    {
+      "part": "eye_l_pain",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 11245"
+    },
+    {
+      "part": "eye_l_pain",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "163x159"
+    },
+    {
+      "part": "eye_l_pain",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_pain",
+      "check": "白边",
+      "ok": true,
+      "detail": "2 像素（上限 900）、占边缘一圈 0.3%（上限 30%，环长 670）"
+    },
+    {
+      "part": "eye_l_pain",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 20（#F8E8E8 占比 52%）"
+    },
+    {
+      "part": "eye_l_smile",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_smile",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 12780"
+    },
+    {
+      "part": "eye_l_smile",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 11245"
+    },
+    {
+      "part": "eye_l_smile",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "155x155"
+    },
+    {
+      "part": "eye_l_smile",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_smile",
+      "check": "白边",
+      "ok": true,
+      "detail": "2 像素（上限 900）、占边缘一圈 0.3%（上限 30%，环长 670）"
+    },
+    {
+      "part": "eye_l_smile",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#F8D8C8 占比 8%）"
+    },
+    {
+      "part": "eye_l_socket",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_socket",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 31369"
+    },
+    {
+      "part": "eye_l_socket",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 8317"
+    },
+    {
+      "part": "eye_l_socket",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "264x151"
+    },
+    {
+      "part": "eye_l_socket",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_socket",
+      "check": "白边",
+      "ok": true,
+      "detail": "611 像素（上限 900）、占边缘一圈 100.0%（上限 30%，环长 611）"
+    },
+    {
+      "part": "eye_l_socket",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 100%）"
+    },
+    {
+      "part": "eye_l_wide",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_l_wide",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 29156"
+    },
+    {
+      "part": "eye_l_wide",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 24417"
+    },
+    {
+      "part": "eye_l_wide",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "296x181"
+    },
+    {
+      "part": "eye_l_wide",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_l_wide",
+      "check": "白边",
+      "ok": true,
+      "detail": "62 像素（上限 900）、占边缘一圈 2.4%（上限 30%，环长 2628）"
+    },
+    {
+      "part": "eye_l_wide",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 20（#F8E8E8 占比 17%）"
+    },
+    {
+      "part": "eye_open_left",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_open_left",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 2523"
+    },
+    {
+      "part": "eye_open_left",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 36886"
+    },
+    {
+      "part": "eye_open_left",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "264x151"
+    },
+    {
+      "part": "eye_open_left",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_open_left",
+      "check": "白边",
+      "ok": true,
+      "detail": "45 像素（上限 900）、占边缘一圈 5.6%（上限 30%，环长 808）"
+    },
+    {
+      "part": "eye_open_left",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 42（#E8C8D8 占比 6%）"
+    },
+    {
+      "part": "eye_open_right",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_open_right",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 2688"
+    },
+    {
+      "part": "eye_open_right",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 36944"
+    },
+    {
+      "part": "eye_open_right",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "265x151"
+    },
+    {
+      "part": "eye_open_right",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_open_right",
+      "check": "白边",
+      "ok": true,
+      "detail": "14 像素（上限 900）、占边缘一圈 2.1%（上限 30%，环长 652）"
+    },
+    {
+      "part": "eye_open_right",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 8%）"
+    },
+    {
+      "part": "eye_r_ball",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_ball",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 1554"
+    },
+    {
+      "part": "eye_r_ball",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 4354"
+    },
+    {
+      "part": "eye_r_ball",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "77x77"
+    },
+    {
+      "part": "eye_r_ball",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_ball",
+      "check": "白边",
+      "ok": true,
+      "detail": "4 像素（上限 900）、占边缘一圈 1.6%（上限 30%，环长 253）"
+    },
+    {
+      "part": "eye_r_ball",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 64（#B8E8F8 占比 9%）"
+    },
+    {
+      "part": "eye_r_base",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_base",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 2688"
+    },
+    {
+      "part": "eye_r_base",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 36944"
+    },
+    {
+      "part": "eye_r_base",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "265x151"
+    },
+    {
+      "part": "eye_r_base",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_base",
+      "check": "白边",
+      "ok": true,
+      "detail": "14 像素（上限 900）、占边缘一圈 2.1%（上限 30%，环长 652）"
+    },
+    {
+      "part": "eye_r_base",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 8%）"
+    },
+    {
+      "part": "eye_r_closed",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_closed",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 12790"
+    },
+    {
+      "part": "eye_r_closed",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 11235"
+    },
+    {
+      "part": "eye_r_closed",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "155x155"
+    },
+    {
+      "part": "eye_r_closed",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_closed",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 654）"
+    },
+    {
+      "part": "eye_r_closed",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 20（#F8E8E8 占比 64%）"
+    },
+    {
+      "part": "eye_r_lash",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_lash",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 37589"
+    },
+    {
+      "part": "eye_r_lash",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 2422"
+    },
+    {
+      "part": "eye_r_lash",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "265x151"
+    },
+    {
+      "part": "eye_r_lash",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_lash",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 689）"
+    },
+    {
+      "part": "eye_r_lash",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 53（#380818 占比 8%）"
+    },
+    {
+      "part": "eye_r_lid",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_lid",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 2230"
+    },
+    {
+      "part": "eye_r_lid",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 10596"
+    },
+    {
+      "part": "eye_r_lid",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "121x106"
+    },
+    {
+      "part": "eye_r_lid",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_lid",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 346）"
+    },
+    {
+      "part": "eye_r_lid",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#F8C8D8 占比 12%）"
+    },
+    {
+      "part": "eye_r_pain",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_pain",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 14682"
+    },
+    {
+      "part": "eye_r_pain",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 11235"
+    },
+    {
+      "part": "eye_r_pain",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "163x159"
+    },
+    {
+      "part": "eye_r_pain",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_pain",
+      "check": "白边",
+      "ok": true,
+      "detail": "13 像素（上限 900）、占边缘一圈 2.0%（上限 30%，环长 654）"
+    },
+    {
+      "part": "eye_r_pain",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 20（#F8E8E8 占比 56%）"
+    },
+    {
+      "part": "eye_r_smile",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_smile",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 12790"
+    },
+    {
+      "part": "eye_r_smile",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 11235"
+    },
+    {
+      "part": "eye_r_smile",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "155x155"
+    },
+    {
+      "part": "eye_r_smile",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_smile",
+      "check": "白边",
+      "ok": true,
+      "detail": "1 像素（上限 900）、占边缘一圈 0.2%（上限 30%，环长 654）"
+    },
+    {
+      "part": "eye_r_smile",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#F8D8C8 占比 9%）"
+    },
+    {
+      "part": "eye_r_socket",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_socket",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 32035"
+    },
+    {
+      "part": "eye_r_socket",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 7848"
+    },
+    {
+      "part": "eye_r_socket",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "265x151"
+    },
+    {
+      "part": "eye_r_socket",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_socket",
+      "check": "白边",
+      "ok": true,
+      "detail": "546 像素（上限 900）、占边缘一圈 100.0%（上限 30%，环长 546）"
+    },
+    {
+      "part": "eye_r_socket",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 100%）"
+    },
+    {
+      "part": "eye_r_wide",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "eye_r_wide",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 29867"
+    },
+    {
+      "part": "eye_r_wide",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 23871"
+    },
+    {
+      "part": "eye_r_wide",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "297x181"
+    },
+    {
+      "part": "eye_r_wide",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "eye_r_wide",
+      "check": "白边",
+      "ok": true,
+      "detail": "41 像素（上限 900）、占边缘一圈 1.8%（上限 30%，环长 2340）"
+    },
+    {
+      "part": "eye_r_wide",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 20（#F8E8E8 占比 18%）"
+    },
+    {
+      "part": "hair_ahoge",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_ahoge",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 10372"
+    },
+    {
+      "part": "hair_ahoge",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 3785"
+    },
+    {
+      "part": "hair_ahoge",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "121x117"
+    },
+    {
+      "part": "hair_ahoge",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_ahoge",
+      "check": "白边",
+      "ok": true,
+      "detail": "53 像素（上限 900）、占边缘一圈 8.4%（上限 30%，环长 630）"
+    },
+    {
+      "part": "hair_ahoge",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 42（#E8C8D8 占比 15%）"
+    },
+    {
+      "part": "hair_long_back",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_long_back",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 122885"
+    },
+    {
+      "part": "hair_long_back",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 348145"
+    },
+    {
+      "part": "hair_long_back",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "441x1096"
+    },
+    {
+      "part": "hair_long_back",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_long_back",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 4608）"
+    },
+    {
+      "part": "hair_long_back",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 8%）"
+    },
+    {
+      "part": "hair_long_back@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_long_back@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 494000"
+    },
+    {
+      "part": "hair_long_back@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 1392435"
+    },
+    {
+      "part": "hair_long_back@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "882x2192"
+    },
+    {
+      "part": "hair_long_back@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_long_back@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 9280）"
+    },
+    {
+      "part": "hair_long_back@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 8%）"
+    },
+    {
+      "part": "hair_pony_back",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_pony_back",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 195215"
+    },
+    {
+      "part": "hair_pony_back",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 123372"
+    },
+    {
+      "part": "hair_pony_back",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "378x854"
+    },
+    {
+      "part": "hair_pony_back",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_pony_back",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 3439）"
+    },
+    {
+      "part": "hair_pony_back",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 22%）"
+    },
+    {
+      "part": "hair_pony_back@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_pony_back@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 787695"
+    },
+    {
+      "part": "hair_pony_back@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 493029"
+    },
+    {
+      "part": "hair_pony_back@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "756x1708"
+    },
+    {
+      "part": "hair_pony_back@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_pony_back@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 6907）"
+    },
+    {
+      "part": "hair_pony_back@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 22%）"
+    },
+    {
+      "part": "hair_twin_l",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_twin_l",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 83116"
+    },
+    {
+      "part": "hair_twin_l",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 64904"
+    },
+    {
+      "part": "hair_twin_l",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "221x680"
+    },
+    {
+      "part": "hair_twin_l",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_twin_l",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 1600）"
+    },
+    {
+      "part": "hair_twin_l",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 17%）"
+    },
+    {
+      "part": "hair_twin_l@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_twin_l@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 337584"
+    },
+    {
+      "part": "hair_twin_l@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 259043"
+    },
+    {
+      "part": "hair_twin_l@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "442x1360"
+    },
+    {
+      "part": "hair_twin_l@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_twin_l@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 3217）"
+    },
+    {
+      "part": "hair_twin_l@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 18%）"
+    },
+    {
+      "part": "hair_twin_r",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_twin_r",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 83116"
+    },
+    {
+      "part": "hair_twin_r",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 64904"
+    },
+    {
+      "part": "hair_twin_r",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "221x680"
+    },
+    {
+      "part": "hair_twin_r",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_twin_r",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 1845）"
+    },
+    {
+      "part": "hair_twin_r",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 17%）"
+    },
+    {
+      "part": "hair_twin_r@2x",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "hair_twin_r@2x",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 337584"
+    },
+    {
+      "part": "hair_twin_r@2x",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 259043"
+    },
+    {
+      "part": "hair_twin_r@2x",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "442x1360"
+    },
+    {
+      "part": "hair_twin_r@2x",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "hair_twin_r@2x",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 3721）"
+    },
+    {
+      "part": "hair_twin_r@2x",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#E8C8E8 占比 18%）"
+    },
+    {
+      "part": "mouth_cavity",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "mouth_cavity",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 110"
+    },
+    {
+      "part": "mouth_cavity",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 962"
+    },
+    {
+      "part": "mouth_cavity",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "45x24"
+    },
+    {
+      "part": "mouth_cavity",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "mouth_cavity",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 72）"
+    },
+    {
+      "part": "mouth_cavity",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#D87878 占比 26%）"
+    },
+    {
+      "part": "mouth_mask",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "mouth_mask",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 110"
+    },
+    {
+      "part": "mouth_mask",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 962"
+    },
+    {
+      "part": "mouth_mask",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "45x24"
+    },
+    {
+      "part": "mouth_mask",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "mouth_mask",
+      "check": "白边",
+      "ok": true,
+      "detail": "72 像素（上限 900）、占边缘一圈 100.0%（上限 30%，环长 72）"
+    },
+    {
+      "part": "mouth_mask",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 100%）"
+    },
+    {
+      "part": "mouth_open",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "mouth_open",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 348"
+    },
+    {
+      "part": "mouth_open",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 381"
+    },
+    {
+      "part": "mouth_open",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "51x16"
+    },
+    {
+      "part": "mouth_open",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "mouth_open",
+      "check": "白边",
+      "ok": true,
+      "detail": "46 像素（上限 900）、占边缘一圈 20.8%（上限 30%，环长 221）"
+    },
+    {
+      "part": "mouth_open",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 24（#E8F8E8 占比 8%）"
+    },
+    {
+      "part": "seg_arm_l",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_arm_l",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 8246"
+    },
+    {
+      "part": "seg_arm_l",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 14156"
+    },
+    {
+      "part": "seg_arm_l",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "100x230"
+    },
+    {
+      "part": "seg_arm_l",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_arm_l",
+      "check": "白边",
+      "ok": true,
+      "detail": "39 像素（上限 900）、占边缘一圈 6.6%（上限 30%，环长 590）"
+    },
+    {
+      "part": "seg_arm_l",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#68B8C8 占比 10%）"
+    },
+    {
+      "part": "seg_arm_r",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_arm_r",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 8260"
+    },
+    {
+      "part": "seg_arm_r",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 14136"
+    },
+    {
+      "part": "seg_arm_r",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "100x230"
+    },
+    {
+      "part": "seg_arm_r",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_arm_r",
+      "check": "白边",
+      "ok": true,
+      "detail": "95 像素（上限 900）、占边缘一圈 12.4%（上限 30%，环长 768）"
+    },
+    {
+      "part": "seg_arm_r",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 32（#68C8C8 占比 8%）"
+    },
+    {
+      "part": "seg_foot_l",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_foot_l",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 1581"
+    },
+    {
+      "part": "seg_foot_l",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 12247"
+    },
+    {
+      "part": "seg_foot_l",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "101x140"
+    },
+    {
+      "part": "seg_foot_l",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_foot_l",
+      "check": "白边",
+      "ok": true,
+      "detail": "70 像素（上限 900）、占边缘一圈 17.7%（上限 30%，环长 396）"
+    },
+    {
+      "part": "seg_foot_l",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 29%）"
+    },
+    {
+      "part": "seg_foot_l_tip",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_foot_l_tip",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 1583"
+    },
+    {
+      "part": "seg_foot_l_tip",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 15235"
+    },
+    {
+      "part": "seg_foot_l_tip",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "101x170"
+    },
+    {
+      "part": "seg_foot_l_tip",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_foot_l_tip",
+      "check": "白边",
+      "ok": true,
+      "detail": "106 像素（上限 900）、占边缘一圈 24.2%（上限 30%，环长 438）"
+    },
+    {
+      "part": "seg_foot_l_tip",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 35%）"
+    },
+    {
+      "part": "seg_foot_r",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_foot_r",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 4799"
+    },
+    {
+      "part": "seg_foot_r",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 12585"
+    },
+    {
+      "part": "seg_foot_r",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "127x140"
+    },
+    {
+      "part": "seg_foot_r",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_foot_r",
+      "check": "白边",
+      "ok": true,
+      "detail": "104 像素（上限 900）、占边缘一圈 21.4%（上限 30%，环长 487）"
+    },
+    {
+      "part": "seg_foot_r",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 20（#F8E8E8 占比 6%）"
+    },
+    {
+      "part": "seg_foot_r_tip",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_foot_r_tip",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 5391"
+    },
+    {
+      "part": "seg_foot_r_tip",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 15733"
+    },
+    {
+      "part": "seg_foot_r_tip",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "127x170"
+    },
+    {
+      "part": "seg_foot_r_tip",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_foot_r_tip",
+      "check": "白边",
+      "ok": true,
+      "detail": "162 像素（上限 900）、占边缘一圈 30.6%（上限 30%，环长 529）"
+    },
+    {
+      "part": "seg_foot_r_tip",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 34%）"
+    },
+    {
+      "part": "seg_head",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_head",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 134287"
+    },
+    {
+      "part": "seg_head",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 230061"
+    },
+    {
+      "part": "seg_head",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "567x644"
+    },
+    {
+      "part": "seg_head",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_head",
+      "check": "白边",
+      "ok": true,
+      "detail": "321 像素（上限 900）、占边缘一圈 7.5%（上限 30%，环长 4288）"
+    },
+    {
+      "part": "seg_head",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 42（#E8C8D8 占比 15%）"
+    },
+    {
+      "part": "seg_leg_l",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_leg_l",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 17334"
+    },
+    {
+      "part": "seg_leg_l",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 28409"
+    },
+    {
+      "part": "seg_leg_l",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "149x307"
+    },
+    {
+      "part": "seg_leg_l",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_leg_l",
+      "check": "白边",
+      "ok": true,
+      "detail": "72 像素（上限 900）、占边缘一圈 7.7%（上限 30%，环长 930）"
+    },
+    {
+      "part": "seg_leg_l",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 48（#F8C8B8 占比 14%）"
+    },
+    {
+      "part": "seg_leg_r",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_leg_r",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 22536"
+    },
+    {
+      "part": "seg_leg_r",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 29619"
+    },
+    {
+      "part": "seg_leg_r",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "171x305"
+    },
+    {
+      "part": "seg_leg_r",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_leg_r",
+      "check": "白边",
+      "ok": true,
+      "detail": "85 像素（上限 900）、占边缘一圈 8.8%（上限 30%，环长 962）"
+    },
+    {
+      "part": "seg_leg_r",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 48（#F8C8B8 占比 10%）"
+    },
+    {
+      "part": "seg_torso",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "seg_torso",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 41542"
+    },
+    {
+      "part": "seg_torso",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 88532"
+    },
+    {
+      "part": "seg_torso",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "326x399"
+    },
+    {
+      "part": "seg_torso",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "seg_torso",
+      "check": "白边",
+      "ok": true,
+      "detail": "133 像素（上限 900）、占边缘一圈 7.2%（上限 30%，环长 1840）"
+    },
+    {
+      "part": "seg_torso",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 16（#F8F8F8 占比 38%）"
+    },
+    {
+      "part": "skirt_lining",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "skirt_lining",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 6195"
+    },
+    {
+      "part": "skirt_lining",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 24381"
+    },
+    {
+      "part": "skirt_lining",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "312x98"
+    },
+    {
+      "part": "skirt_lining",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "skirt_lining",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 881）"
+    },
+    {
+      "part": "skirt_lining",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 38（#181838 占比 57%）"
+    },
+    {
+      "part": "skirt_main",
+      "check": "容器",
+      "ok": true,
+      "detail": "模式 RGBA"
+    },
+    {
+      "part": "skirt_main",
+      "check": "透明通道",
+      "ok": true,
+      "detail": "全透明像素 23965"
+    },
+    {
+      "part": "skirt_main",
+      "check": "不是空图",
+      "ok": true,
+      "detail": "不透明像素 34595"
+    },
+    {
+      "part": "skirt_main",
+      "check": "尺寸",
+      "ok": true,
+      "detail": "320x183"
+    },
+    {
+      "part": "skirt_main",
+      "check": "键色残留",
+      "ok": true,
+      "detail": "0 像素（上限 200）"
+    },
+    {
+      "part": "skirt_main",
+      "check": "白边",
+      "ok": true,
+      "detail": "0 像素（上限 900）、占边缘一圈 0.0%（上限 30%，环长 1055）"
+    },
+    {
+      "part": "skirt_main",
+      "check": "色卡",
+      "ok": true,
+      "detail": "最远主色距离 44（#283868 占比 21%）"
+    },
+    {
+      "part": "skirt_mask",
+      "check": "灰度遮罩格式",
+      "ok": true,
+      "detail": "模式 L（mask map 预期 L）"
+    },
+    {
+      "part": "skirt_mask",
+      "check": "灰度遮罩有有效范围",
+      "ok": true,
+      "detail": "取值 [0,255]，预期 0..255"
+    },
+    {
+      "part": "skirt_mask_base",
+      "check": "灰度遮罩格式",
+      "ok": true,
+      "detail": "模式 L（mask map 预期 L）"
+    },
+    {
+      "part": "skirt_mask_base",
+      "check": "灰度遮罩有有效范围",
+      "ok": true,
+      "detail": "取值 [0,255]，预期 0..255"
+    },
+    {
+      "part": "body_full",
+      "check": "形状(与设计图 IoU)",
+      "ok": true,
+      "detail": "IoU 0.982（下限 0.8，参照 design_sheet_chibi.png）"
+    },
+    {
+      "part": "分段",
+      "check": "部件齐全",
+      "ok": true,
+      "detail": "10 个部件"
+    },
+    {
+      "part": "分段",
+      "check": "无损切分",
+      "ok": true,
+      "detail": "静止合成比原图少 0 像素"
+    },
+    {
+      "part": "头部几何",
+      "check": "acc_hood_up按头宽定标",
+      "ok": true,
+      "detail": "外宽 683 / 头部剪影宽 566 = 1.21 倍（许可 1.10~1.40）；帽顶 y=178、头顶 y=190（不许比头顶低 12 像素以上）"
+    },
+    {
+      "part": "素材真伪",
+      "check": "acc_ear_l 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 104617px 里只有 16979 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "acc_ear_r 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 104617px 里只有 16979 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "acc_hood_up 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 1080749px 里只有 83168 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "acc_tail_puff 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 183413px 里只有 20029 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "acc_tail_relaxed 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 103410px 里只有 21730 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "acc_tail_tuck 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 124638px 里只有 22523 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "acc_tail_up 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 98374px 里只有 16477 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "hair_long_back 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 1392435px 里只有 21166 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "hair_pony_back 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 493029px 里只有 18192 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "hair_twin_l 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 259043px 里只有 12791 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "hair_twin_r 是真原画不是平涂色块",
+      "ok": true,
+      "detail": "不透明区 259043px 里只有 12791 种颜色（真原画最低一档 ~597 色，判据 128）；若确属结构件请到 FLAT_BY_DESIGN 写明理由"
+    },
+    {
+      "part": "素材真伪",
+      "check": "受检件数不为零",
+      "ok": true,
+      "detail": "查了 11 件（≥2000px，不含 5 件豁免）"
+    }
+  ]
+}

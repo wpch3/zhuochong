@@ -2661,3 +2661,8 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 代理已目视所有输出、局部板与目标注册 ROI，并按用户最新授权自行批准/拒绝，无需逐轮向用户索要选图。27–32 均失败；33/34 目标尺度下长指/腕比例失衡；35/36 重绘袖口且手太大；37/38/39 全身手位/手框 mismatch；40 仍错位并重绘无关区域。**27–40 全部由代理否决**，没有任何正常手通过候选艺术门。
 - 真实 Cubism 源输入阻塞仍在：`design/chibi/README.md` 标明其 PNG 是桌宠设计参考；Live2D Chibi 有设计表和多张 cutout PNG，但没有 `.psd`，`body_full.png` 是 567×1292；`seg_arm_l/r` 仅 100×230，Chibi rig 没有独立 hand/cuff 层或 `hand_parts.json`。Linux runner 没有 Cubism Editor/Wine，全仓没有 Cubism 工程/导出物。详情见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`；未把 cutouts 自动拼成未验证 PSD、未假称模型完成。
 - 当前不重复相同 AI 生成/编辑策略；下一步换用能保持 source registration、细线画风和左右差异的合规原稿制作路径。来源、hidden-wrist/cuff、左右分件、rig/C 引擎与真正 Cubism 仍未完成；mitten trial24 独立保留 provisional，不因此批准手部生产件。
+
+## 2026-11-10 接手审计增补（少女/Chibi 未完成）
+
+- **结论**：teen 部分完成未过视觉验收；chibi 未完成视觉验收失败。详见 `docs/qa/takeover_audit_2026-11-10/README.md`。用户粘贴的 2026-11-06 交接与 HEAD 不符（200+ 部件等虚假），不得作为依据。
+- **新增缺口**：teen `check_assets` 8 失败（armpit_mask 全零、forearm 色卡、白边、无损切分、twin 漏底）；鲸鱼发夹未独立；前发未三分；视线无可见位移证据。均需重画/重切/重标定，不调阈值。

@@ -8311,3 +8311,10 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **最新 WIP 处理**：检查用户中断后留下的 `painted_volume_v1/`，实际打开 `t67_71_painted_volume_v1_review.png`。观察到单一圆钝水滴团、纹理线过少、根部无法和现有侧发融接；判拒绝。metrics/完整 manifest/部分 crops 不存在，脚本依赖一次性 `/tmp/arena_t67_packages` 中 Pillow；这批文件只按不完整负例归档，不作为候选。review SHA `f45a4653836aae2a4a45d6c68e8deed30dd2adaa855855c6e3afcbed95bad7a4`。
 - **交接文件**：新增 `docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`，列出真值源限制、用户新设计授权边界、历史拒绝路径、代理能力边界、下一执行顺序和局部/C/生产门。更新 `REQUIREMENTS.md` A69.6、TASKS/GAPS/MEMORY/JOURNAL/REQUEST_LEDGER/LESSONS 与 WIP review。后续提交只含交接/QA 负例与记忆，不动生产。
 - **诚实自评**：代理可承担来源追踪、图层隔离、配准和 QA 工程；目前连续多轮设计均未达标，未证明能独立交付原画质量的连续发丝图。不得继续靠程序化换名或调参承诺视觉完成。该结论不撤销用户已给的新设计授权；但具体图稿仍须局部目视通过和用户确认。
+
+## 2026-11-10｜接手审计：少女与 Chibi 均未完成（不接受虚假完成）
+
+- **用户要求**：接手项目，不要接受未完成/错误事项，少女与 chibi 均未完全完成或有缺陷，自己判断。
+- **独立复核（当前 HEAD `b208eb4`，真实 C 引擎新抓帧）**：`make test` 2638/0（仅代码）；`check_assets` teen 1792 项 8 失败、chibi 489 项 0 失败（假绿，只查 11 件）；rig 实数 teen 112 部件/26 动作、chibi 49 部件/22 动作（缺 63 件）；本人目视：teen 短发静止可看、长发举臂露袖口钢琴键残留（T67.71）、twin 漏底、视线无可见位移；chibi 脸部黑碎/粉边/鲸鱼悬空/颈部 scribble/无指手，视觉验收失败。用户粘贴的 2026-11-06 交接（200+ 部件、`preview_live2d_chibi.py`、`tracking/` 等）与仓库不符，作废。
+- **修正**：新增 `docs/qa/takeover_audit_2026-11-10/README.md` + 8 图 + 2 JSON；`TASKS.md` T2.1.5/6/7/11/12 改 `[~]`、T2.1.9 改 `[x]`（表情机制）；`PROJECT_SPEC.md` 改“0 形态通过视觉验收”；`forms.json` chibi/teen 追加视觉验收注记。未改 rig/sprites/src，未硬修美术。
+- **下一步**：需画师重绘底图/分层源后重跑链路 + 目视 + 用户确认，才接生产。chibi 仅 WIP 预览。
