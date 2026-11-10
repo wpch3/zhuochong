@@ -32,9 +32,9 @@ def port():
 
 
 def request(base, path):
-    req = urllib.request.Request(base + path, timeout=30)
+    req = urllib.request.Request(base + path)
     req.add_header('Host', '0.0.0.0')
-    with urllib.request.urlopen(req) as response:
+    with urllib.request.urlopen(req, timeout=30) as response:
         return response.read()
 
 
