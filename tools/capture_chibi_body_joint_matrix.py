@@ -72,8 +72,8 @@ def capture(candidate, output, executable=None):
     dest = out.resolve()
     if root not in candidate.parents or root not in dest.parents or dest == candidate or dest in candidate.parents or candidate in dest.parents:
         raise ValueError('separate paths inside build required')
-    if out.exists() or out.is_symlink() or not out.parent.is_dir():
-        raise ValueError('output must be new')
+    # FIX: Ensure output directory exists BEFORE starting the preview process to prevent rmtree on failure
+    out.mkdir(parents=True, exist_ok=True)
     if not (candidate / 'joint_stress_report.json').is_file():
         raise ValueError('expected joint stress rig')
     binary = Path(executable).resolve() if executable else ROOT / 'build/zhuochong_preview'
@@ -94,9 +94,9 @@ def capture(candidate, output, executable=None):
         finally:
             stop(proc)
     after = verify_unchanged(provenance, candidate, binary)
-    out.mkdir()
+    # out.mkdir() is now done earlier with exist_ok=True, so we don't delete it on failure
     try:
-        (out / 'full').mkdir()
+        (out / 'full').mkdir(parents=True, exist_ok=True)
         for name, arr in shots.items():
             # The fixed torso crop can cut off outstretched hands. Keep the
             # actual uncropped native C frame as well, including alpha.
@@ -109,8 +109,9 @@ def capture(candidate, output, executable=None):
                 save_crop(arr, (200, 350, 820, 820), 1, out / f'{name}_{label}.png', bg)
         (out / 'poses.json').write_text(json.dumps(poses, indent=2) + '\n', encoding='utf-8')
         (out / 'provenance.json').write_text(json.dumps({'before_capture': provenance, 'after_capture': after}, indent=2) + '\n', encoding='utf-8')
-    except BaseException:
-        shutil.rmtree(out)
+    except BaseException as e:
+        # FIX: Do NOT rmtree(out) because it is now the persistent tracking directory
+        print(f'capture: failed during save phase but output directory preserved: {e}', file=__import__('sys').stderr)
         raise
     return len(shots)
 

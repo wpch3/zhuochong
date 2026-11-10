@@ -16,7 +16,8 @@ from study_underpaint_sampling import ROOT,start,stop,request
 def capture(candidate,output,executable=None):
  candidate=Path(candidate).resolve();out=Path(output);dest=out.resolve();root=(ROOT/'build').resolve()
  if root not in candidate.parents or root not in dest.parents or dest==candidate or dest in candidate.parents or candidate in dest.parents:raise ValueError('separate paths inside build required')
- if out.exists() or out.is_symlink() or not out.parent.is_dir():raise ValueError('output must be new')
+ # FIX: Ensure output directory exists BEFORE starting the preview process
+ out.mkdir(parents=True, exist_ok=True)
  if not (candidate/'closure_report.json').is_file():raise ValueError('expected closure study')
  binary=Path(executable).resolve() if executable else ROOT/'build/zhuochong_preview'
  provenance=snapshot(candidate,binary)
@@ -33,20 +34,23 @@ def capture(candidate,output,executable=None):
      request(url,'/api/step?n=3');verify_pose(url,params);shots[name]=image(url);poses[name]=params
   finally:stop(proc)
  after=verify_unchanged(provenance,candidate,binary)
- out.mkdir()
+ # out.mkdir() already done above
  try:
   for name,arr in shots.items():
    box=(325,625,410,710) if name[0]=='L' else (610,625,695,710)
-   for label,bg in (('light',(247,247,247,255)),('dark',(38,43,49,255))):save_crop(arr,box,1,out/f'{name}_{label}.png',bg)
+   for label,bg in (('light', (247, 247, 247, 255)), ('dark', (38, 43, 49, 255))):save_crop(arr,box,1,out/f'{name}_{label}.png',bg)
   for side in 'LR':
    for label in ('light','dark'):
     # Each tile is an actual enlarged C crop; numbers encode -1 as 0 and +1 as 1.
-    names=[n for n in shots if n.startswith(side+'_')];sheet=Image.new('RGB',(255*4,275*8),'white');draw=ImageDraw.Draw(sheet)
+    names=[n for n in shots if n.startswith(side+'_')];sheet=Image.new('RGB', (255*4,275*8), 'white');draw=ImageDraw.Draw(sheet)
     for i,name in enumerate(names):
      x=(i%4)*255;y=(i//4)*275;draw.text((x+4,y+3),name,fill='black');sheet.paste(Image.open(out/f'{name}_{label}.png'),(x,y+20))
     sheet.save(out/f'{side}_{label}_endpoints.png')
   (out/'poses.json').write_text(json.dumps({'order':list(FINGERS),'poses':poses,'provenance_before_capture':provenance,'provenance_after_capture':after},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
- except BaseException:shutil.rmtree(out);raise
+ except BaseException as e:
+  # FIX: Do NOT rmtree(out) because it is now the persistent tracking directory
+  print(f'capture: failed during save phase but output directory preserved: {e}', file=__import__('sys').stderr)
+  raise
  return len(shots)
 
 def main():

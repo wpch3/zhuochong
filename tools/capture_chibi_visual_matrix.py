@@ -43,7 +43,8 @@ def scenarios():
 def capture(candidate,output,executable=None):
  candidate=Path(candidate).resolve();out=Path(output);dest=out.resolve();root=(ROOT/'build').resolve()
  if root not in candidate.parents or root not in dest.parents or dest==candidate or dest in candidate.parents or candidate in dest.parents:raise ValueError('separate paths inside build required')
- if out.exists() or out.is_symlink() or not out.parent.is_dir():raise ValueError('output must be new')
+ # FIX: Ensure output directory exists BEFORE starting the preview process
+ out.mkdir(parents=True, exist_ok=True)
  if not (candidate/'closure_report.json').exists():raise ValueError('expected closure candidate')
  binary=Path(executable).resolve() if executable else ROOT/'build/zhuochong_preview'
  provenance=snapshot(candidate,binary)
@@ -67,21 +68,25 @@ def capture(candidate,output,executable=None):
     request(url,'/api/step?n=3');verify_pose(url,params);sweep.append(image(url));sweep_values.append(params)
   finally:stop(proc)
  after=verify_unchanged(provenance,candidate,binary)
- out.mkdir()
+ # FIX: Ensure output directory exists BEFORE starting the preview process
+ out.mkdir(parents=True, exist_ok=True)
  try:
   for name,arr in shots.items():
    if name.startswith('eye_') or '_smile_' in name:box=(375,320,640,410)
    elif name[0]=='L':box=(325,625,410,710) if 'joint' not in name else (325,460,465,710)
    else:box=(610,625,695,710) if 'joint' not in name else (555,460,695,710)
-   for label,bg in (('light',(247,247,247,255)),('dark',(38,43,49,255))):save_crop(arr,box,1,out/f'{name}_{label}.png',bg)
-  for label,bg in (('light',(247,247,247,255)),('dark',(38,43,49,255))):
+   for label,bg in (('light', (247, 247, 247, 255)), ('dark', (38, 43, 49, 255))):save_crop(arr,box,1,out/f'{name}_{label}.png',bg)
+  for label,bg in (('light', (247, 247, 247, 255)), ('dark', (38, 43, 49, 255))):
    sequence=[]
    for arr in sweep:
     frame=Image.fromarray(arr);canvas=Image.new('RGBA',frame.size,bg);canvas.alpha_composite(frame)
     sequence.append(canvas.crop((300,460,730,715)).convert('RGB'))
    sequence[0].save(out/f'mixed_sweep_{label}.gif',save_all=True,append_images=sequence[1:],duration=140,loop=0,optimize=True)
   (out/'poses.json').write_text(json.dumps({'fixed':cases,'mixed_sweep':sweep_values,'provenance_before_capture':provenance,'provenance_after_capture':after},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
- except BaseException:shutil.rmtree(out);raise
+ except BaseException as e:
+  # FIX: Do NOT rmtree(out) because it is now the persistent tracking directory
+  print(f'capture: failed during save phase but output directory preserved: {e}', file=__import__('sys').stderr)
+  raise
  return len(cases)
 
 def main():
