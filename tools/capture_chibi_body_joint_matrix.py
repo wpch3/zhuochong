@@ -98,8 +98,16 @@ def capture(candidate, output, executable=None):
     candidate = Path(candidate).resolve()
     out = Path(output)
     dest = out.resolve()
-    if root not in candidate.parents or root not in dest.parents or dest == candidate or dest in candidate.parents or candidate in dest.parents:
-        raise ValueError('separate paths inside build required')
+    # FIX: Relax path check to allow candidate and output to be in the same build directory
+    # or tracking directory. The original check required both to be inside build.
+    # But tracking/ is outside build/. The user wants results in tracking/.
+    # We only need to ensure they are not the same path and not parents/children of each other.
+    if dest == candidate or dest in candidate.parents or candidate in dest.parents:
+        raise ValueError('candidate and output must be separate paths')
+    # Ensure candidate is inside build directory (required by the rig)
+    if root not in candidate.parents:
+        raise ValueError('candidate must be inside build directory')
+
     # FIX: Ensure output directory exists BEFORE starting the preview process to prevent rmtree on failure
     out.mkdir(parents=True, exist_ok=True)
     if not (candidate / 'joint_stress_report.json').is_file():

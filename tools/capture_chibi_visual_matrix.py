@@ -39,12 +39,17 @@ def verify_pose(url, params):
 
 
 def capture(candidate, output, executable=None):
+    root = (ROOT / 'build').resolve()
     candidate = Path(candidate).resolve()
     out = Path(output)
     dest = out.resolve()
-    root = (ROOT / 'build').resolve()
-    if root not in candidate.parents or root not in dest.parents or dest == candidate or dest in candidate.parents or candidate in dest.parents:
-        raise ValueError('separate paths inside build required')
+    # FIX: Relax path check to allow candidate and output to be in the same build directory
+    # as long as they are distinct subdirectories. The original check was too strict.
+    # We only need to ensure they are not the same path and not parents/children of each other.
+    if dest == candidate or dest in candidate.parents or candidate in dest.parents:
+        raise ValueError('candidate and output must be separate paths')
+    if root not in candidate.parents or root not in dest.parents:
+        raise ValueError('paths must be inside build directory')
     # FIX: Ensure output directory exists BEFORE starting the preview process to prevent rmtree on failure
     out.mkdir(parents=True, exist_ok=True)
     if not (candidate / 'joint_stress_report.json').is_file():
