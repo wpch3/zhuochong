@@ -35,9 +35,9 @@
       ],
       "checks": {
         "added_sclera_px": 342,
-        "upper_lash_px": 1946,
-        "seam_mean_abs": 68.3,
-        "keyed_px_removed": 34
+        "upper_lash_px": 1174,
+        "seam_mean_abs": 69.76,
+        "keyed_px_removed": 15
       }
     },
     {
@@ -63,9 +63,9 @@
       ],
       "checks": {
         "added_sclera_px": 274,
-        "upper_lash_px": 1933,
-        "seam_mean_abs": 83.44,
-        "keyed_px_removed": 30
+        "upper_lash_px": 1133,
+        "seam_mean_abs": 91.75,
+        "keyed_px_removed": 10
       }
     }
   ]

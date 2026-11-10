@@ -559,6 +559,17 @@ def build_one(att, slot, redraw_dir, sprites_dir, anchors, design_dir=None,
     #   系统性抠成半透明。个别确实要半透明的件可以写 "solid_fill": false 关掉。
     if att.get("solid_fill", True):
         ca = harden_interior(ca)
+        # ★ 颜色回正（2026-11-10 猫耳重置实测）：粉色内耳与洋红底同属红系，
+        #   key_alpha_soft 把内部 alpha 低估到 ~0.85，反预乘时按 (观测-(1-a)·洋红)/a
+        #   把 G 通道抬高 30+，粉 (251,190,199) 被洗成米黄 (251,221,190)。
+        #   harden 已把内部 alpha 定为 1，这些像素的颜色必须逐字节回到原画，
+        #   否则所有红/粉系挂件都会系统性偏黄。只动 alpha≥0.999 的实心内部，
+        #   边缘的反预乘结果一个像素不碰。
+        # 只对「原色直通」分支生效：recolor/recolor_match 是有意改色，不能回正。
+        solid = (ca >= 0.999) if not (att.get("recolor") or att.get("recolor_match")) \
+            else np.zeros(ca.shape, bool)
+        if solid.any():
+            crgb = np.where(solid[..., None], canvas.astype(np.float64), crgb)
 
     return _emit(att, crgb, ca, bw, bh, sprites_dir, anchors)
 

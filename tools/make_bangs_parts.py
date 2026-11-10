@@ -211,9 +211,40 @@ def main():
     # 颜色取原画像素（含刘海压皮肤那圈混合色），alpha 用软掩码乘头部自身 alpha
     bangs[..., :3] = np.where(softm[..., None] > 0, hrgb, 0)
     bangs[..., 3] = np.clip(hal * softm, 0, 255).round().astype(np.uint8)
+    if args.form == "chibi":
+        # ★重做路线（铁律 19，2026-11-10）：刘海件右下角曾混入一块与主体断开的
+        # 深色碎片（原画眼线/阴影被掩码边沿带入），在引擎里压在眼角成黑点；
+        # 已修两轮未净，改为只保留最大 8 连通块，其余整块删除。刘海各发束在
+        # 顶部相连，最大块即完整刘海。
+        _m = bangs[..., 3] > 8
+        _lab = np.zeros(_m.shape, np.int32)
+        _sizes = [0]
+        for _yy, _xx in np.argwhere(_m):
+            if _lab[_yy, _xx]:
+                continue
+            _cur = len(_sizes)
+            _sizes.append(0)
+            _dq = [(_yy, _xx)]
+            _lab[_yy, _xx] = _cur
+            while _dq:
+                _y, _x = _dq.pop()
+                _sizes[_cur] += 1
+                for _dy in (-1, 0, 1):
+                    for _dx in (-1, 0, 1):
+                        _ny, _nx = _y + _dy, _x + _dx
+                        if 0 <= _ny < _m.shape[0] and 0 <= _nx < _m.shape[1] \
+                                and _m[_ny, _nx] and not _lab[_ny, _nx]:
+                            _lab[_ny, _nx] = _cur
+                            _dq.append((_ny, _nx))
+        if len(_sizes) > 2:
+            _big = int(np.argmax(_sizes))
+            _drop = (_lab != _big) & _m
+            if _drop.any():
+                bangs[..., 3] = np.where(_drop, 0, bangs[..., 3]).astype(np.uint8)
+                print(f"  刘海重做：删断开碎片 {int(_drop.sum())} 像素，只留主体 {_sizes[_big]} 像素")
     soft_region = softm > 0.02     # 只有"切出来的零件范围"按软掩码算；
                                    # 换额头仍然按原来的硬掩码，多铺 2px 会啃到眉毛
-    ys, xs = np.nonzero(soft_region)
+    ys, xs = np.nonzero(soft_region & (bangs[..., 3] > 0) if args.form == "chibi" else soft_region)
     by0, by1, bx0, bx1 = int(ys.min()), int(ys.max()) + 1, int(xs.min()), int(xs.max()) + 1
     Image.fromarray(bangs[by0:by1, bx0:bx1]).save(os.path.join(sp, "hair_front.png"))
 

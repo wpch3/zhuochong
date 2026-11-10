@@ -21,8 +21,8 @@
   },
   "hair_front.png": {
     "repaint": 15,
-    "erase": 1481,
-    "opaque": 11211
+    "erase": 1267,
+    "opaque": 10628
   },
   "hair_front@2x.png": {
     "repaint": 869,
@@ -36,13 +36,13 @@
   },
   "hair_long_back@2x.png": {
     "repaint": 823,
-    "erase": 1130,
-    "opaque": 1389187
+    "erase": 1109,
+    "opaque": 1388982
   },
   "hair_pony_back@2x.png": {
     "repaint": 0,
-    "erase": 125,
-    "opaque": 492707
+    "erase": 115,
+    "opaque": 492555
   },
   "hair_side_l.png": {
     "repaint": 305,
@@ -66,12 +66,12 @@
   },
   "hair_twin_l@2x.png": {
     "repaint": 0,
-    "erase": 19,
-    "opaque": 259475
+    "erase": 15,
+    "opaque": 259344
   },
   "hair_twin_r@2x.png": {
     "repaint": 0,
-    "erase": 38,
-    "opaque": 259475
+    "erase": 31,
+    "opaque": 259344
   }
 }

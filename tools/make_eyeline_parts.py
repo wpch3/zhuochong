@@ -307,21 +307,37 @@ def main() -> int:
         # 上眼线单独存一张"只剩上沿"的，给 rig 用；原 lash 留着不动（挖脸还要用它）
         lash_top, cut_px = trim_lash_top(lash_rgba)
         if args.form == "chibi":
-            # 睫毛尖与主弧常被 1px 抗锯齿断开成独立小块，引擎里渲染成眼角竖条碎边
-            # （2026-11-10 新版脸放大实测）。做 1px 闭运算把断口接回：闭合后的新增
-            # 像素用 grow_colors 取邻域睫毛色，alpha 与可见色一致，不留灰桥。
-            _a = lash_top[..., 3] > 24
-            _closed = ~dilate(~dilate(_a, 1), 1)
-            _bridge = _closed & ~_a & (lash_top[..., 3] <= 24)
-            if _bridge.any():
-                _tmp = lash_top.copy()
-                _keep = _tmp[..., 3].copy()
-                _tmp[..., 3] = np.where(_bridge, 0, _tmp[..., 3])
-                _tmp = grow_colors(_tmp.astype(int), _bridge, 4)
-                _tmp[..., 3] = _keep
-                _tmp[..., 3] = np.where(_bridge, 220, _tmp[..., 3])
-                lash_top = _tmp
-                print(f"  {side} 眼线闭运算接回 {_bridge.sum()} 像素")
+            # ★重做路线（铁律 19，2026-11-10）：眼线此前已修两轮（碎岛清理+闭运算
+            # 接桥）仍在引擎里留眼角竖条/黑点，用户明令弃补丁重做。新路线=只保留
+            # 主弧：对 alpha>24 做 8 连通标记，只留最大连通块，其余卫星块整块
+            # 删除（原画上睫毛本就是一条连续弧，卫星块是阈值切割的产物）。
+            _m = lash_top[..., 3] > 24
+            _lab = np.zeros(_m.shape, np.int32)
+            _sizes = [0]
+            _dq = []
+            for _yy, _xx in np.argwhere(_m):
+                if _lab[_yy, _xx]:
+                    continue
+                _cur = len(_sizes)
+                _sizes.append(0)
+                _dq = [(_yy, _xx)]
+                _lab[_yy, _xx] = _cur
+                while _dq:
+                    _y, _x = _dq.pop()
+                    _sizes[_cur] += 1
+                    for _dy in (-1, 0, 1):
+                        for _dx in (-1, 0, 1):
+                            _ny, _nx = _y + _dy, _x + _dx
+                            if 0 <= _ny < _m.shape[0] and 0 <= _nx < _m.shape[1] \
+                                    and _m[_ny, _nx] and not _lab[_ny, _nx]:
+                                _lab[_ny, _nx] = _cur
+                                _dq.append((_ny, _nx))
+            if len(_sizes) > 2:
+                _big = int(np.argmax(_sizes))
+                _drop = (_lab != _big) & _m
+                if _drop.any():
+                    lash_top[..., 3] = np.where(_drop, 0, lash_top[..., 3])
+                    print(f"  {side} 眼线重做：删卫星块 {int(_drop.sum())} 像素，只留主弧 {_sizes[_big]} 像素")
         lash_file = f"eye_{side}_lash_up.png"
         Image.fromarray(lash_top.astype(np.uint8)).save(os.path.join(sp, lash_file))
         report["eyes"].append({

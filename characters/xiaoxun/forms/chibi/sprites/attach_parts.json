@@ -84,6 +84,66 @@
       ],
       "curve": "tip",
       "note": "高马尾专用，和长发的 body_back_hair(58) 同一区段（整个身体之后，最低的身体件是腿 60）。★ 马尾和双马尾的层位必须反着来：马尾扎在**后脑**，正面视角下它本来就该被身体挡住，只在轮廓外侧露出来 —— 这正是\"它在身后\"的视觉证据。所以素材画成**往一侧甩**的弧线，露出来的是甩出轮廓的那半边。锚点在顶边 = 发绳，曲线 tip。"
+    },
+    {
+      "id": "head_side_sweep",
+      "label": "脸侧细缕（刘海与鬓发之上）",
+      "layer": 247,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "扎起来时脸侧的那缕（もみあげ）。层 247 = 刘海 240 / 原生鬓发 245·246 之上。教程口径：发型拆件必须有**前髪・横髪(左右)・後ろ髪・アホ毛・结起来的那束**五类（redeyerui / Live2D 官方 PSD 教程），扎发不是\"把横髪删掉\"，是**换一缕更细、向后掠的横髪**。"
+    },
+    {
+      "id": "head_side_long",
+      "label": "长鬓发位（长发档的横髪）",
+      "layer": 249,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "tip",
+      "note": "★ 参考实拍：长发的**横髪也是长的** —— 从太阳穴一路垂到胸口，不是齐腮的短鬓。这是第十二问用户贴的长发参考图里最明显的一条结构，也是之前长发\"不契合\"的真因：留着齐腮短鬓 + 背后挂一片长发 = 短发女孩背后挂了片头发。层 249 > torso 100，所以它垂在衣服前面（参考图里也是垂在身前）。"
+    },
+    {
+      "id": "head_crown_tied",
+      "label": "扎发的头顶（刘海之下、后发之上）",
+      "layer": 189,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "扎起来的发型专用：头顶被收拢的那一片。★ 层 187~189 卡在 呆毛(190) 之下、头壳 seg_head(180) 之上 —— 呆毛压在它上面，刘海(240) 也压在它上面，所以件的下沿切在发际线就够了、不会露边；而它压在头壳和后发壳上面，于是颅顶看起来真的被扎起来了。用户第十二问原话「扎发造型头顶必须跟着变」，缺的就是这一层：以前只换尾巴不换头顶，结果是一颗短发脑袋后面挂两根辫子。★ 下沿绝对不能切到眼线 —— 眼睛在 211~234，比 239 低，切过头会把眼睛盖住（第十一问）。"
+    },
+    {
+      "id": "neck_cast_shadow",
+      "label": "下颏落影（头侧）",
+      "layer": 179,
+      "group": "head",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "T67.9：下颏阴影叠在颈部底色上、藏于 seg_head 轮廓之下；跟随 head。"
+    },
+    {
+      "id": "neck_clavicle_detail",
+      "label": "颈根/锁骨细节",
+      "layer": 101,
+      "group": "chest",
+      "anchor": [
+        0.5,
+        0.0
+      ],
+      "curve": "root",
+      "note": "T67.9：仅叠在原图明确可见的颈根皮肤范围，服装仍由皮肤 alpha/color gate 遮开。"
     }
   ],
   "attachments": [
@@ -92,7 +152,7 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_relaxed.png",
       "size": [
-        126,
+        357,
         410
       ]
     },
@@ -101,8 +161,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_up.png",
       "size": [
-        114,
-        480
+        185,
+        435
       ]
     },
     {
@@ -110,8 +170,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_puff.png",
       "size": [
-        181,
-        430
+        242,
+        437
       ]
     },
     {
@@ -119,8 +179,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_tuck.png",
       "size": [
-        127,
-        404
+        154,
+        249
       ]
     },
     {
@@ -128,7 +188,7 @@
       "slot": "head_in_hair",
       "file": "sprites/acc_ear_l.png",
       "size": [
-        191,
+        163,
         226
       ]
     },
@@ -137,7 +197,7 @@
       "slot": "head_in_hair",
       "file": "sprites/acc_ear_r.png",
       "size": [
-        191,
+        163,
         226
       ]
     },
@@ -146,8 +206,8 @@
       "slot": "head_over_hair",
       "file": "sprites/acc_hood_up.png",
       "size": [
-        740,
-        940
+        648,
+        753
       ]
     },
     {
@@ -155,8 +215,8 @@
       "slot": "body_back_hair",
       "file": "sprites/hair_long_back.png",
       "size": [
-        441,
-        1096
+        1238,
+        1998
       ]
     },
     {
@@ -164,8 +224,8 @@
       "slot": "head_side_hair",
       "file": "sprites/hair_twin_l.png",
       "size": [
-        221,
-        680
+        324,
+        958
       ]
     },
     {
@@ -173,8 +233,8 @@
       "slot": "head_side_hair",
       "file": "sprites/hair_twin_r.png",
       "size": [
-        221,
-        680
+        324,
+        958
       ]
     },
     {
@@ -182,8 +242,152 @@
       "slot": "body_back_pony",
       "file": "sprites/hair_pony_back.png",
       "size": [
-        378,
-        854
+        589,
+        1835
+      ]
+    },
+    {
+      "id": "hair_sidelong_l",
+      "slot": "head_side_long",
+      "file": "sprites/acc_hair_sidelong_l.png",
+      "size": [
+        622,
+        1588
+      ]
+    },
+    {
+      "id": "hair_sidelong_r",
+      "slot": "head_side_long",
+      "file": "sprites/acc_hair_sidelong_r.png",
+      "size": [
+        617,
+        1586
+      ]
+    },
+    {
+      "id": "hair_crown_twin",
+      "slot": "head_crown_tied",
+      "file": "sprites/hair_crown_twin.png",
+      "size": [
+        769,
+        592
+      ]
+    },
+    {
+      "id": "hair_crown_pony",
+      "slot": "head_crown_tied",
+      "file": "sprites/hair_crown_pony.png",
+      "size": [
+        705,
+        596
+      ]
+    },
+    {
+      "id": "hair_crown_long",
+      "slot": "head_crown_tied",
+      "file": "sprites/hair_crown_long.png",
+      "size": [
+        567,
+        592
+      ]
+    },
+    {
+      "id": "hood_up_twin",
+      "slot": "head_over_hair",
+      "file": "sprites/acc_hood_twin.png",
+      "size": [
+        644,
+        747
+      ]
+    },
+    {
+      "id": "hood_up_pony",
+      "slot": "head_over_hair",
+      "file": "sprites/acc_hood_pony.png",
+      "size": [
+        644,
+        751
+      ]
+    },
+    {
+      "id": "hood_up_long",
+      "slot": "head_over_hair",
+      "file": "sprites/acc_hood_long.png",
+      "size": [
+        645,
+        680
+      ]
+    },
+    {
+      "id": "hair_hood_twin",
+      "slot": "head_side_hair",
+      "file": "sprites/hair_hood_twin.png",
+      "size": [
+        1142,
+        1268
+      ]
+    },
+    {
+      "id": "hair_hood_pony",
+      "slot": "head_side_hair",
+      "file": "sprites/hair_hood_pony.png",
+      "size": [
+        728,
+        1609
+      ]
+    },
+    {
+      "id": "hair_hood_pony_side",
+      "slot": "head_side_hair",
+      "file": "sprites/hair_hood_pony_side.png",
+      "size": [
+        442,
+        316
+      ]
+    },
+    {
+      "id": "hair_hood_long",
+      "slot": "head_side_hair",
+      "file": "sprites/hair_hood_long.png",
+      "size": [
+        1231,
+        1810
+      ]
+    },
+    {
+      "id": "hair_sweep_twin_l",
+      "slot": "head_side_sweep",
+      "file": "sprites/hair_sweep_twin_l.png",
+      "size": [
+        435,
+        760
+      ]
+    },
+    {
+      "id": "hair_sweep_twin_r",
+      "slot": "head_side_sweep",
+      "file": "sprites/hair_sweep_twin_r.png",
+      "size": [
+        437,
+        762
+      ]
+    },
+    {
+      "id": "hair_sweep_pony_l",
+      "slot": "head_side_sweep",
+      "file": "sprites/hair_sweep_pony_l.png",
+      "size": [
+        84,
+        184
+      ]
+    },
+    {
+      "id": "hair_sweep_pony_r",
+      "slot": "head_side_sweep",
+      "file": "sprites/hair_sweep_pony_r.png",
+      "size": [
+        527,
+        1404
       ]
     }
   ]
