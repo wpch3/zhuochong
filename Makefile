@@ -423,9 +423,16 @@ test-chibi-pupil-hold-study: $(BUILD)/zhuochong_preview
 test-chibi-topology-studies: $(BUILD)/zhuochong_preview $(BUILD)/zhuochong_eye_morph_experiment
 	@$(PYTHON_IMG) tests/test_chibi_topology_studies.py
 
-.PHONY: test-chibi-pocket-cover-and-pain-branch
+.PHONY: test-chibi-pocket-cover-and-pain-branch test-chibi-capture-provenance
 test-chibi-pocket-cover-and-pain-branch: $(BUILD)/zhuochong_preview $(BUILD)/zhuochong_eye_morph_experiment
 	@$(PYTHON_IMG) tests/test_chibi_pocket_cover_and_pain_branch.py
+
+test-chibi-capture-provenance:
+	@python3 tests/test_chibi_capture_provenance.py
+
+.PHONY: test-chibi-hires-hand-study
+test-chibi-hires-hand-study: $(BUILD)/zhuochong_preview
+	@$(PYTHON_IMG) tests/test_chibi_hires_hand_study.py
 
 $(BUILD)/finger_depth_experiment/src/core/zrig.c: src/core/zrig.c experiments/live2d_chibi_morph_study/rejected/finger_depth/engine.patch
 	@mkdir -p $(BUILD)/finger_depth_experiment/src/core

@@ -4382,3 +4382,9 @@ README：把官方 runtime 重写成高层 API，"draw order + clipping" 是渲�
 - Live2D 官方表情教程 <https://docs.live2d.com/en/cubism-editor-tutorials/expression/>：用同一睫毛 ArtMesh 的开闭 keyforms 变形；用眼白 clipping 限制眼球。可借鉴“连续睫线，不靠两套错位半透明线交接”的建模原则；zrig 网格/遮罩不等于 Cubism，痛眼如何分支仍须自己建模和验证。
 - 官方 Glue <https://docs.live2d.com/en/cubism-editor-manual/glue/>：两 ArtMesh 的对应重合顶点可被绑定，权重按顶点设置；不等于已有 zrig mesh 已具备 glue。对手指根/袖关节的启示是先构造对应接缝、验证连续性和遮挡；不能凭视觉猜称已实现 glue。
 - 官方姿势切换 <https://docs.live2d.com/en/cubism-editor-manual/change-pose/>：交叉淡化时检查重叠区域，必要时减少重叠/调整形变或素材。其建议不能单独证明本项目两条不同轮廓可平滑交接；本项目现有反例见 `memory/ERROR_INDEX.md`。
+
+### 2026-11-06 · 指根/眼部资料复核（非官方兼容声明）
+
+- <https://docs.live2d.com/en/cubism-editor-manual/glue/>：在两个 ArtMesh 的重合顶点设置连接和逐点权重；对应接缝需预先建好，不自动提供被遮挡画稿或动态前后关系。zrig 当前不等同具备官方 Glue。
+- <https://docs.live2d.com/en/cubism-editor-tutorials/expression/>：主睫毛变形成闭眼并以眼白裁切瞳孔；说明优先研究持续轮廓及遮罩，而不是把多条互不重合的线做交叉淡化。
+- <https://docs.live2d.com/en/cubism-editor-manual/eye-blink-settings/>：官方 blink 与设置中的开眼度按乘法叠合；这是官方模式，必须分别核查自研引擎现有语义与所用素材，不能直接声称二者相同。

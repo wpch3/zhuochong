@@ -5,15 +5,16 @@ A diagnostic sample, not an exhaustive motion or visual acceptance test.
 """
 import argparse
 import itertools
-import hashlib
 import json
 import shutil
 import tempfile
 from pathlib import Path
+from PIL import Image
 from capture_chibi_art_review import reset
 from capture_chibi_joint_art import image
 from capture_chibi_refinement import setup, save_crop
 from capture_chibi_visual_matrix import verify_pose
+from chibi_capture_provenance import snapshot, verify_unchanged
 from study_underpaint_sampling import ROOT, request, start, stop
 
 
@@ -38,8 +39,8 @@ def capture(candidate, output):
         raise ValueError('output must be new')
     if not (candidate / 'joint_stress_report.json').is_file():
         raise ValueError('expected joint stress rig')
-    provenance = {'rig_sha256': hashlib.sha256((candidate / 'rig.json').read_bytes()).hexdigest(),
-                  'preview_executable_sha256': hashlib.sha256((ROOT / 'build/zhuochong_preview').read_bytes()).hexdigest()}
+    binary = ROOT / 'build/zhuochong_preview'
+    provenance = snapshot(candidate, binary)
     shots = {}
     poses = cases()
     with tempfile.TemporaryDirectory(prefix='body-joint-', dir=root) as temp:
@@ -55,13 +56,18 @@ def capture(candidate, output):
                 shots[name] = image(url)
         finally:
             stop(proc)
+    after = verify_unchanged(provenance, candidate, binary)
     out.mkdir()
     try:
+        (out / 'full').mkdir()
         for name, arr in shots.items():
+            # The fixed torso crop can cut off outstretched hands. Keep the
+            # actual uncropped native C frame as well, including alpha.
+            Image.fromarray(arr).save(out / 'full' / f'{name}.png')
             for label, bg in (('light', (247, 247, 247, 255)), ('dark', (38, 43, 49, 255))):
                 save_crop(arr, (290, 450, 730, 720), 1, out / f'{name}_{label}.png', bg)
         (out / 'poses.json').write_text(json.dumps(poses, indent=2) + '\n', encoding='utf-8')
-        (out / 'provenance.json').write_text(json.dumps({'before_capture': provenance}, indent=2) + '\n', encoding='utf-8')
+        (out / 'provenance.json').write_text(json.dumps({'before_capture': provenance, 'after_capture': after}, indent=2) + '\n', encoding='utf-8')
     except BaseException:
         shutil.rmtree(out)
         raise

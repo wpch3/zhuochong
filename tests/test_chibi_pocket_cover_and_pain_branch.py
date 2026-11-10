@@ -16,6 +16,7 @@ import build_chibi_pocket_cover_study as cover
 import build_chibi_drawn_pain_branch_study as branch
 import capture_chibi_body_joint_matrix as body_capture
 import capture_chibi_expression_mix as eye_capture
+import chibi_capture_provenance as provenance_tool
 import zrig_project
 
 
@@ -68,13 +69,35 @@ def main():
                 pass
             else:
                 raise AssertionError('invalid blink sequence accepted')
-        eye_out, body_out = tmp / 'eye-shots', tmp / 'body-shots'
         executable = ROOT / 'build/zhuochong_eye_morph_experiment'
+        original = provenance_tool.snapshot(eye, executable)
+        sprite = eye / next(name for name in original['referenced_files'] if name.startswith('sprites/'))
+        original_bytes = sprite.read_bytes()
+        sprite.write_bytes(original_bytes + b'changed')
+        try:
+            provenance_tool.verify_unchanged(original, eye, executable)
+        except RuntimeError as exc:
+            assert sprite.name in str(exc)
+        else:
+            raise AssertionError('changed sprite not detected')
+        sprite.write_bytes(original_bytes)
+        assert provenance_tool.verify_unchanged(original, eye, executable) == original
+        eye_out, body_out = tmp / 'eye-shots', tmp / 'body-shots'
         assert eye_capture.capture(eye, eye_out, executable, (.925,)) == 18
         assert body_capture.capture(pocket, body_out) == 33
+        assert len(list((body_out / 'full').glob('*.png'))) == 33
+        with Image.open(body_out / 'full' / 'neutral.png') as full:
+            assert full.mode == 'RGBA' and full.width >= 730 and full.height >= 720
         for output, model, binary in ((eye_out, eye, executable), (body_out, pocket, ROOT / 'build/zhuochong_preview')):
-            provenance = json.loads((output / 'provenance.json').read_text())['before_capture']
-            assert provenance == {'rig_sha256': digest(model / 'rig.json'), 'preview_executable_sha256': digest(binary)}
+            provenance = json.loads((output / 'provenance.json').read_text())
+            before = provenance['before_capture']
+            assert before == provenance['after_capture']
+            assert before['rig_sha256'] == digest(model / 'rig.json')
+            assert before['preview_executable_sha256'] == digest(binary)
+            assert before['referenced_files']['rig.json']['sha256'] == before['rig_sha256']
+            assert len(before['referenced_files']) > 10
+            for name, item in before['referenced_files'].items():
+                assert item['sha256'] == digest(model / name)
             assert json.loads((output / 'poses.json').read_text())
     print('structure, package and sampled C provenance passed; NOT visual acceptance')
 
