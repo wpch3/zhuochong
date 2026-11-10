@@ -7,8 +7,8 @@
  "realesrgan": 52,
  "lanczos": 9,
  "native": 0,
- "keycolor_fixed": 2062,
- "seconds": 49.1,
+ "keycolor_fixed": 2003,
+ "seconds": 45.4,
  "parts": [
   {
    "name": "acc_ear_l.png",
@@ -21,7 +21,7 @@
     452
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 8
+   "keycolor_fixed": 10
   },
   {
    "name": "acc_ear_r.png",
@@ -104,11 +104,11 @@
   {
    "name": "arm_l_cap.png",
    "src": [
-    125,
+    126,
     134
    ],
    "dst": [
-    250,
+    252,
     268
    ],
    "method": "realesrgan",
@@ -385,7 +385,7 @@
     332
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 129
+   "keycolor_fixed": 114
   },
   {
    "name": "eye_r_ball.png",
@@ -489,7 +489,7 @@
     332
    ],
    "method": "realesrgan",
-   "keycolor_fixed": 192
+   "keycolor_fixed": 146
   },
   {
    "name": "hair_ahoge.png",

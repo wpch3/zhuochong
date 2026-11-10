@@ -237,10 +237,35 @@ def main() -> int:
         have = sk[..., 3] > 160                    # 补片里足够实的地方才敢用
 
         # 3) 只换 RGB、不动 alpha
+        head_before = head.copy()
         use = carve & have & (head[..., 3] > 0)
         wfin = np.where(use, wmap, 0.0)
         for c in range(3):
             head[..., c] = np.round(head[..., c] * (1.0 - wfin) + sk[..., c] * wfin)
+        if args.form == "chibi" and use.any():
+            # 接缝收口（2026-11-10 新版实拍：额前出现浅色矩形接缝）：闭眼重绘补片的
+            # 肤色与 seg_head 原肤有系统偏差，硬权重换皮后在 carve 边界留下矩形边。
+            # ①色调匹配：用 carve 外圈原肤 vs 内沿新肤的均值差（钳 ±16）整体校正新肤；
+            # ②边缘羽化：把换皮权重做 2 次 3x3 模糊，在 dilate(use,2) 内与原图渐变混合。
+            ring = dilate(use, 4) & ~use & (head_before[..., 3] > 0)
+            inner = use & ~dilate(~use, 2)
+            if ring.any() and inner.any():
+                for c in range(3):
+                    delta = float(head_before[..., c][ring].mean() - head[..., c][inner].mean())
+                    delta = max(-16.0, min(16.0, delta))
+                    head[..., c] = np.clip(head[..., c].astype(float) + delta * use, 0, 255).round()
+            wf = wfin.astype(np.float32)
+            for _ in range(2):
+                acc = wf.copy()
+                for dy2 in (-1, 0, 1):
+                    for dx2 in (-1, 0, 1):
+                        if dy2 or dx2:
+                            acc += np.roll(np.roll(wf, dy2, 0), dx2, 1)
+                wf = acc / 9.0
+            region = dilate(use, 2)
+            for c in range(3):
+                mixed = head_before[..., c] * (1.0 - wf) + head[..., c] * wf
+                head[..., c] = np.where(region, np.round(mixed), head[..., c])
         # 补片没盖到的零星角落：拿刚写进去的皮肤往外涂
         rest = carve & ~have & (head[..., 3] > 0)
         if rest.any():
@@ -281,6 +306,22 @@ def main() -> int:
         travel = measure_lash_travel(ap_m, lash_rgba, abox)
         # 上眼线单独存一张"只剩上沿"的，给 rig 用；原 lash 留着不动（挖脸还要用它）
         lash_top, cut_px = trim_lash_top(lash_rgba)
+        if args.form == "chibi":
+            # 睫毛尖与主弧常被 1px 抗锯齿断开成独立小块，引擎里渲染成眼角竖条碎边
+            # （2026-11-10 新版脸放大实测）。做 1px 闭运算把断口接回：闭合后的新增
+            # 像素用 grow_colors 取邻域睫毛色，alpha 与可见色一致，不留灰桥。
+            _a = lash_top[..., 3] > 24
+            _closed = ~dilate(~dilate(_a, 1), 1)
+            _bridge = _closed & ~_a & (lash_top[..., 3] <= 24)
+            if _bridge.any():
+                _tmp = lash_top.copy()
+                _keep = _tmp[..., 3].copy()
+                _tmp[..., 3] = np.where(_bridge, 0, _tmp[..., 3])
+                _tmp = grow_colors(_tmp.astype(int), _bridge, 4)
+                _tmp[..., 3] = _keep
+                _tmp[..., 3] = np.where(_bridge, 220, _tmp[..., 3])
+                lash_top = _tmp
+                print(f"  {side} 眼线闭运算接回 {_bridge.sum()} 像素")
         lash_file = f"eye_{side}_lash_up.png"
         Image.fromarray(lash_top.astype(np.uint8)).save(os.path.join(sp, lash_file))
         report["eyes"].append({

@@ -652,8 +652,16 @@ def drop_detached_islands(sdir, min_keep=300):
     """
     import collections
     hits = []
+    # 2026-11-10：扩展到刘海/侧发/上眼线（新版实拍：hair_front 右侧有断开的深色碎片、
+    # lash_up 两端有竖条与碎点、hair_side 发梢有脱落碎片）。这些件按定义是单连通
+    # 主体（一条刘海/一条眼线弧），用很小的阈值（<150px 且 <2% 主体）只删真碎岛，
+    # 不碰合法的多缕头发件（那种件不在此名单）。
+    extra = ("hair_front.png", "hair_side_l.png", "hair_side_r.png",
+             "eye_l_lash_up.png", "eye_r_lash_up.png")
     for fname in sorted(os.listdir(sdir)):
-        if not fname.startswith("seg_") or not fname.endswith(".png"):
+        is_seg = fname.startswith("seg_") and fname.endswith(".png")
+        is_extra = fname in extra
+        if not (is_seg or is_extra):
             continue
         if "@2x" in fname:
             continue
@@ -685,7 +693,10 @@ def drop_detached_islands(sdir, min_keep=300):
         if cur <= 1:
             continue
         big = int(np.argmax(sizes))
-        limit = max(min_keep, 0.01 * sizes[big])
+        if is_extra:
+            limit = max(30.0, min(150.0, 0.05 * sizes[big]))
+        else:
+            limit = max(min_keep, 0.01 * sizes[big])
         kill = np.zeros((H, W), bool)
         killed = 0
         for i in range(1, cur + 1):

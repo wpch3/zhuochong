@@ -48,8 +48,8 @@
         461
       ],
       "removed_px": 66,
-      "total_px": 2567,
-      "removed_pct": 2.57
+      "total_px": 2674,
+      "removed_pct": 2.47
     },
     {
       "file": "eye_r_wide.png",
@@ -57,9 +57,9 @@
         491,
         461
       ],
-      "removed_px": 204,
-      "total_px": 2432,
-      "removed_pct": 8.39
+      "removed_px": 203,
+      "total_px": 2475,
+      "removed_pct": 8.2
     },
     {
       "file": "eye_l_closed.png",
