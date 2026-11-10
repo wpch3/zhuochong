@@ -1,0 +1,81 @@
+# 持续修复三处视觉问题及工具链/工作流补充 (2026-11-06)
+
+## 1. 根因查明与参考资料
+### CH-HAND-01: 交错指根融合、断离
+- **根因**：
+  - 刚体平移/减角/固定根分片/高斯网格/连续指蹼均未解决指根脱开、悬线、融合。
+  - 隔离 C 动态指层排序实验（`experiments/live2d_chibi_morph_study/rejected/finger_depth/engine.patch`）导致阈值跳变，部分端点缺指。
+  - 1,024 哈希相同仅证明采样范围局部独立，不代表视觉通过。
+- **参考资料**：
+  - [Live2D Glue 教程](https://docs.live2d.com/en/cubism-editor-manual/glue/)：重叠 ArtMesh 顶点可绑定并设权重，指根共享接缝但需解决遮挡/补画。
+  - `../CHIBI_WEIGHTED_STUDIES_2026-11-06.md`, `../CHIBI_CONTOUR_AND_LAYER_STUDIES_2026-11-06.md`, `../CHIBI_DEPTH_AND_POCKET_2026-11-06.md`
+- **修复策略**：
+  - 需设计新被遮挡区补画及独立层序/遮罩、可证实的共享接缝或不同拓扑。
+  - 扩大检查：肩肘腕角度、全部手指混合/连续组合。
+
+### CH-EYE-02/04: 痛眼近闭灰影/楔形及单网格不保证单轮廓
+- **根因**：
+  - 不同形状眼线交叉淡化、同源双闭线+pain 优先、推迟变形仍有非重合双线。
+  - 持续睫线复制或窄线分支仍粗重或碎裂。
+  - 单网格烘入同一睫线并压合：睁眼仍有灰线、痛眼断续。
+  - 官方 [Blink 设置](https://docs.live2d.com/en/cubism-editor-manual/eye-blink-settings/) 与 [表情教程](https://docs.live2d.com/en/cubism-editor-tutorials/expression/) 仅为概念参考。
+- **参考资料**：
+  - `../CHIBI_OCCLUSION_FOLLOWUP_2026-11-06.md`, `../CHIBI_COVER_AND_DRAWN_BRANCH_2026-11-06.md`
+  - Reddit 讨论：Clipping Mask 边缘白边与层级问题 [2][3][4]
+- **修复策略**：
+  - 尝试不同拓扑：同一条持续可见睫线从睁眼形变为闭眼，再考虑痛眼分支。
+  - 检查近闭、左右单眼、gaze、表情和自动时序。
+  - 扩大检查：表情叠眨眼。
+
+### CH-SLEEVE-01/02/03: 大角袖侧尖角、衣身口袋残露、肩参覆盖口袋
+- **根因**：
+  - 单层连续网格丢原前后层序且父子次序不匹配。
+  - 遮挡定位表明小青三角是衣身口袋局部露出（隐藏 body 时消失，只看 body 时可见完整口袋）。
+  - 肩参覆盖中立不改像素但目标青角消失，右肩 -1/肘 +1/body +1 时口袋被整段抹掉。
+  - 自动 inpaint 不是源画批准，粗挪口袋有残留。
+- **参考资料**：
+  - [Live2D Part Palette](https://docs.live2d.com/en/cubism-editor-manual/partspalette/)：绘制顺序决定遮挡。
+  - `../CHIBI_OCCLUSION_FOLLOWUP_2026-11-06.md`, `../CHIBI_COVER_AND_DRAWN_BRANCH_2026-11-06.md`
+- **修复策略**：
+  - 逐部件隐藏确认真正来源，不能据一个样本泛化。
+  - 检查覆盖贴图、内外轮廓、网格/UV 和旋转极值。
+  - 须证明新增美术结构/关节拓扑确实不同。
+
+## 2. 补充工具链与资料
+- **动态编辑器能力**：
+  - `tools/rig_editor/` 已更新父子连线/枢轴拖动、网格关键形态编辑、真实 Chromium E2E 测试。
+  - 缺：真实 C 同步画布、多轴 keyform/UV/共享顶点连接、完整作者工程和实机。
+- **项目打包**：`tools/zrig_project.py` (v1) 仅支持 rig+PNG，不含分层原稿/历史。
+- **采集与 Provenance**：
+  - `tools/capture_chibi_rotation_sampling_probe.py` (124 帧双引擎扫描，scale 1/.55/.35)
+  - `tracking/rotation_aa_20261106/` (视觉文件、报告、provenance、姿态清单)
+  - `experiments/live2d_chibi_morph_study/qa/occlusion_probe_4/` (高分辨率手部试验拒绝证据、口袋/身体 provenance)
+
+## 3. 工作流与扩大检查
+1. **肩肘腕角度、表情叠眨眼、全部手指混合检查**：
+   - 需逐帧目视真实 C 采样（124 帧双引擎扫描及后续组合）。
+   - 检查中间态、叠表情、两背景和两侧。
+2. **自制 Live2D 风格骨骼链接工具核查**：
+   - `tools/rig_editor/` (动态编辑、父子连线、枢轴拖动、网格关键形态、真实 Chromium E2E)
+   - `tools/zrig_project.py` (v1 工程快照)
+   - 缺：真实 C 同步画布、多轴 keyform/UV/共享顶点连接、完整作者工程和实机。
+3. **完整任务流**：
+   - 锁来源/授权 → 分层与隐藏补画 → 绑定/参数/网格/遮罩 → 真 C 极值与中间态 → 个人目视排错 → 安全打包/解包重验 → 完整自动测试/性能 → Windows 真机。
+
+## 4. 尚未说及的事项（自查）
+- **工具链安全与完整性**：
+  - `scripts/selfcheck_all.sh` 会清理 `build/`，需保护跟踪目录 `tracking/`（已在 `.gitignore` 或手动隔离）。
+  - 确保 `.zproj` v1 不覆盖生产 rig。
+- **视觉验收标准**：
+  - 技术测试通过不等于视觉通过。
+  - 必须本人目视放大图，确认指根、痛眼、袖侧完全修复。
+  - 不在视觉通过前请求真机验收。
+- **资料留存**：
+  - 所有失败证据、provenance、报告必须推送仓库（已完成 `tracking/rotation_aa_20261106/`）。
+- **扩展组合检查**：
+  - 肩肘腕角度（0-360° 连续）、表情叠眨眼（smile+pain+blink 组合）、全部手指混合（1024 端点及混合矩阵）。
+
+## 5. 后续执行
+- 持续修复三处视觉问题（指根、痛眼、袖侧）。
+- 扩大组合检查及核查骨骼链接工具。
+- 保持工具链、资料、工作流推送仓库。
