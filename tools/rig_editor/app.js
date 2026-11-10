@@ -10,6 +10,9 @@ const viewport = new ZRigViewport.Viewport($('viewport'), (id, pos, layer) => {
   if (run(() => session.setKeyformPoint(id, value, col, row, round(dx), round(dy)), '控制点已更新（一次可撤销事务）；贴图仍是静态近似。')) {
     $('meshC').value = col; $('meshR').value = row; $('meshDx').value = round(dx); $('meshDy').value = round(dy);
   }
+}, (id, pos) => {
+  const g = session.rig.groups[id];
+  run(() => session.setGroup(id, g.parent || 'root', Math.round(pos[0] * 100) / 100, Math.round(pos[1] * 100) / 100), '枢轴已更新（一次可撤销）；静态连接不代表实际变形。');
 });
 function number(id) {
   const text = $(id).value.trim();
@@ -51,6 +54,7 @@ function showGroup() {
   $('groupY').value = g && Array.isArray(g.pivot) ? g.pivot[1] : 0;
   $('editGroupParent').value = g && g.parent ? g.parent : 'root';
   $('saveGroup').disabled = !g || id === 'root';
+  viewport.setGroup(id, $('groupEdit').checked);
 }
 function showBindings() {
   const list = $('bindings'); list.replaceChildren();
@@ -109,13 +113,14 @@ $('assetFiles').addEventListener('change', async event => {
 });
 $('part').addEventListener('change', showPart);
 $('editGroup').addEventListener('change', showGroup);
+$('groupEdit').addEventListener('change', () => { if ($('groupEdit').checked) $('meshEdit').checked = false; showGroup(); showMesh(); });
 $('addGroup').addEventListener('click', () => run(() => session.addGroup($('newGroupId').value.trim(), $('newGroupParent').value, number('newGroupX'), number('newGroupY')), '骨骼组已添加；请用 C 引擎验证。'));
 $('saveGroup').addEventListener('click', () => run(() => session.setGroup($('editGroup').value, $('editGroupParent').value, number('groupX'), number('groupY')), '组连接已更新；请用 C 引擎验证。'));
 $('savePartGroup').addEventListener('click', () => run(() => session.setPartGroup($('part').value, $('partGroup').value), '部件已连接；请用 C 引擎验证。'));
 $('param').addEventListener('change', showBindings);
 $('mesh').addEventListener('change', showMesh);
 $('meshValue').addEventListener('input', showMesh);
-$('meshEdit').addEventListener('change', showMesh);
+$('meshEdit').addEventListener('change', () => { if ($('meshEdit').checked) $('groupEdit').checked = false; showGroup(); showMesh(); });
 $('addMesh').addEventListener('click', () => run(() => session.addKeyform($('meshId').value.trim(), $('part').value, $('param').value, number('meshCols'), number('meshRows')), '网格已新建；请填写关键形态控制点。'));
 $('setMeshPoint').addEventListener('click', () => run(() => session.setKeyformPoint($('mesh').value, number('meshValue'), number('meshC'), number('meshR'), number('meshDx'), number('meshDy')), '关键形态控制点已更新；请导出并用 C 引擎验证。'));
 $('savePart').addEventListener('click', () => run(() => session.setPart($('part').value, number('x'), number('y'), number('layer')), '部件位置已更新。'));

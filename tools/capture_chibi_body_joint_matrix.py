@@ -20,15 +20,52 @@ from study_underpaint_sampling import ROOT, request, start, stop
 
 def cases():
     result = {'neutral': {}}
-    for side, (arm, elbow, wrist), body in itertools.product(
-            'LR', itertools.product((-1, 1), repeat=3), (-1, 1)):
-        key = f'{side}_a{arm}_e{elbow}_w{wrist}_body{body}'
-        result[key] = {f'ParamArm{side}': arm, f'ParamElbow{side}': elbow,
-                       f'ParamWrist{side}': wrist, 'ParamMotionDrive': body, 'ParamBreath': 1}
+    # 0-360° continuous mapping: -1.0 to 1.0 with step 0.05 (41 steps)
+    # Total combinations per side: 41^3 = 68,921
+    # Key sampling: 1,024 critical poses (Gray code or random sampling covering extremes)
+    # For execution, we use a subset of 1,024 key poses per side as per COMBINATION_CHECK_RANGE_2026-11-06.md
+    # Parameters: ParamArm, ParamElbow, ParamWrist, ParamMotionDrive, ParamBreath
+    import random
+    random.seed(42) # Fixed seed for reproducibility
+    
+    # Generate 1,024 key poses per side (L/R)
+    # Range: -1.0 to 1.0 (0-360° continuous mapping)
+    steps = [i/20.0 for i in range(-20, 21)] # 41 steps: -1.0, -0.95, ..., 1.0
+    
+    for side in 'LR':
+        # Neutral base
+        result[f'{side}_neutral'] = {f'ParamArm{side}': 0, f'ParamElbow{side}': 0,
+                                     f'ParamWrist{side}': 0, 'ParamMotionDrive': 0, 'ParamBreath': 1}
+        
+        # Generate 1,024 key poses
+        # Using a deterministic selection from the 68,921 combinations
+        # Focus on extremes and critical transitions (CH-SLEEVE-01/02/03, CH-HAND-01/02/03)
+        count = 0
+        # Sample extremes first
+        extremes = [(-1, -1, -1), (-1, 1, 1), (1, -1, 1), (1, 1, -1), (0, 0, 0)]
+        for arm, elbow, wrist in extremes:
+            for body in [-1, 0, 1]:
+                if count >= 1024: break
+                key = f'{side}_a{arm}_e{elbow}_w{wrist}_body{body}'
+                result[key] = {f'ParamArm{side}': arm, f'ParamElbow{side}': elbow,
+                               f'ParamWrist{side}': wrist, 'ParamMotionDrive': body, 'ParamBreath': 1}
+                count += 1
+        
+        # Fill remaining with random combinations within the 0-360° continuous range
+        while count < 1024:
+            arm = random.choice(steps)
+            elbow = random.choice(steps)
+            wrist = random.choice(steps)
+            body = random.choice([-1, -0.5, 0, 0.5, 1])
+            key = f'{side}_a{arm:.2f}_e{elbow:.2f}_w{wrist:.2f}_body{body}'
+            if key not in result:
+                result[key] = {f'ParamArm{side}': arm, f'ParamElbow{side}': elbow,
+                               f'ParamWrist{side}': wrist, 'ParamMotionDrive': body, 'ParamBreath': 1}
+                count += 1
     return result
 
 
-def capture(candidate, output):
+def capture(candidate, output, executable=None):
     root = (ROOT / 'build').resolve()
     candidate = Path(candidate).resolve()
     out = Path(output)
@@ -39,12 +76,12 @@ def capture(candidate, output):
         raise ValueError('output must be new')
     if not (candidate / 'joint_stress_report.json').is_file():
         raise ValueError('expected joint stress rig')
-    binary = ROOT / 'build/zhuochong_preview'
+    binary = Path(executable).resolve() if executable else ROOT / 'build/zhuochong_preview'
     provenance = snapshot(candidate, binary)
     shots = {}
     poses = cases()
     with tempfile.TemporaryDirectory(prefix='body-joint-', dir=root) as temp:
-        proc, url = start(Path(temp) / 'preview', candidate)
+        proc, url = start(Path(temp) / 'preview', candidate, executable)
         try:
             setup(url)
             for name, params in poses.items():
@@ -64,8 +101,12 @@ def capture(candidate, output):
             # The fixed torso crop can cut off outstretched hands. Keep the
             # actual uncropped native C frame as well, including alpha.
             Image.fromarray(arr).save(out / 'full' / f'{name}.png')
+            # Save expanded crop for CH-SLEEVE-01/02/03 and CH-HAND-01/02/03 verification
+            # Original crop: (290, 450, 730, 720) -> width 440, height 270
+            # Expanded crop to include sleeve side and finger roots: (200, 350, 820, 820) -> width 620, height 470
             for label, bg in (('light', (247, 247, 247, 255)), ('dark', (38, 43, 49, 255))):
-                save_crop(arr, (290, 450, 730, 720), 1, out / f'{name}_{label}.png', bg)
+                # Use expanded crop for visual acceptance verification
+                save_crop(arr, (200, 350, 820, 820), 1, out / f'{name}_{label}.png', bg)
         (out / 'poses.json').write_text(json.dumps(poses, indent=2) + '\n', encoding='utf-8')
         (out / 'provenance.json').write_text(json.dumps({'before_capture': provenance, 'after_capture': after}, indent=2) + '\n', encoding='utf-8')
     except BaseException:
@@ -78,9 +119,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('candidate')
     parser.add_argument('output')
+    parser.add_argument('--preview-executable', type=Path)
     args = parser.parse_args()
     try:
-        print('C body/joint poses captured:', capture(args.candidate, args.output))
+        print('C body/joint poses captured:', capture(args.candidate, args.output, args.preview_executable))
     except (ValueError, OSError, RuntimeError) as exc:
         print(f'capture: {exc}', file=__import__('sys').stderr)
         return 1

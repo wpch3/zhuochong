@@ -434,6 +434,30 @@ test-chibi-capture-provenance:
 test-chibi-hires-hand-study: $(BUILD)/zhuochong_preview
 	@$(PYTHON_IMG) tests/test_chibi_hires_hand_study.py
 
+# Isolated sampling experiment only; never replaces the default renderer.
+$(BUILD)/rotation_aa_experiment/src/core/zimg.c: src/core/zimg.c experiments/live2d_chibi_morph_study/rotation_aa/engine.patch
+	@mkdir -p $(BUILD)/rotation_aa_experiment/src/core
+	@patch -s -o $@.tmp src/core/zimg.c < experiments/live2d_chibi_morph_study/rotation_aa/engine.patch
+	@mv $@.tmp $@
+
+$(BUILD)/zhuochong_rotation_aa_experiment: src/headless/main_headless.c $(filter-out src/core/zimg.c,$(CORE_SRC)) $(CORE_HDR) $(BUILD)/rotation_aa_experiment/src/core/zimg.c
+	$(CC) $(CFLAGS) $(INC) -Isrc/core -o $@ src/headless/main_headless.c $(filter-out src/core/zimg.c,$(CORE_SRC)) $(BUILD)/rotation_aa_experiment/src/core/zimg.c $(LDLIBS)
+
+$(BUILD)/rotation_aa_experiment_probe: tests/rotation_aa_experiment_probe.c $(filter-out src/core/zimg.c,$(CORE_SRC)) $(CORE_HDR) $(BUILD)/rotation_aa_experiment/src/core/zimg.c
+	$(CC) $(CFLAGS) $(INC) -Isrc/core -o $@ tests/rotation_aa_experiment_probe.c $(filter-out src/core/zimg.c,$(CORE_SRC)) $(LDLIBS)
+
+.PHONY: test-chibi-rotation-aa-experiment
+test-chibi-rotation-aa-experiment: $(BUILD)/zhuochong_preview $(BUILD)/zhuochong_rotation_aa_experiment $(BUILD)/rotation_aa_experiment_probe
+	@./$(BUILD)/rotation_aa_experiment_probe
+	@$(PYTHON_IMG) tests/test_chibi_rotation_sampling_probe.py
+
+$(BUILD)/test_core_rotation_aa: tests/test_core.c $(filter-out src/core/zimg.c,$(CORE_SRC)) $(CORE_HDR) $(BUILD)/rotation_aa_experiment/src/core/zimg.c
+	$(CC) $(CFLAGS) $(INC) -Isrc/core -o $@ tests/test_core.c $(filter-out src/core/zimg.c,$(CORE_SRC)) $(BUILD)/rotation_aa_experiment/src/core/zimg.c $(LDLIBS)
+
+.PHONY: test-core-rotation-aa
+test-core-rotation-aa: $(BUILD)/test_core_rotation_aa
+	@./$(BUILD)/test_core_rotation_aa . --quick
+
 $(BUILD)/finger_depth_experiment/src/core/zrig.c: src/core/zrig.c experiments/live2d_chibi_morph_study/rejected/finger_depth/engine.patch
 	@mkdir -p $(BUILD)/finger_depth_experiment/src/core
 	@patch -s -o $@.tmp src/core/zrig.c < experiments/live2d_chibi_morph_study/rejected/finger_depth/engine.patch

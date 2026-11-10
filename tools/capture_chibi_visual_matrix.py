@@ -4,12 +4,13 @@
 Each pose is reset and its exact parameter values are recorded. A sampled
 matrix is not an exhaustive test or an automated aesthetic judgment.
 """
-import argparse,hashlib,itertools,json,shutil,tempfile
+import argparse,itertools,json,shutil,tempfile
 from pathlib import Path
 from PIL import Image
 from capture_chibi_joint_art import image
 from capture_chibi_refinement import setup,save_crop
 from capture_chibi_art_review import reset
+from chibi_capture_provenance import snapshot,verify_unchanged
 from study_underpaint_sampling import ROOT,start,stop,request
 
 FINGERS=('Little','Ring','Middle','Index','Thumb')
@@ -45,8 +46,7 @@ def capture(candidate,output,executable=None):
  if out.exists() or out.is_symlink() or not out.parent.is_dir():raise ValueError('output must be new')
  if not (candidate/'closure_report.json').exists():raise ValueError('expected closure candidate')
  binary=Path(executable).resolve() if executable else ROOT/'build/zhuochong_preview'
- provenance={'rig_sha256':hashlib.sha256((candidate/'rig.json').read_bytes()).hexdigest(),
-             'preview_executable_sha256':hashlib.sha256(binary.read_bytes()).hexdigest()}
+ provenance=snapshot(candidate,binary)
  cases=scenarios();shots={};sweep=[];sweep_values=[]
  with tempfile.TemporaryDirectory(prefix='visual-matrix-',dir=root) as tmp:
   proc,url=start(Path(tmp)/'preview',candidate,executable)
@@ -66,6 +66,7 @@ def capture(candidate,output,executable=None):
     for k,val in params.items():request(url,f'/api/param?id={k}&v={val}')
     request(url,'/api/step?n=3');verify_pose(url,params);sweep.append(image(url));sweep_values.append(params)
   finally:stop(proc)
+ after=verify_unchanged(provenance,candidate,binary)
  out.mkdir()
  try:
   for name,arr in shots.items():
@@ -79,7 +80,7 @@ def capture(candidate,output,executable=None):
     frame=Image.fromarray(arr);canvas=Image.new('RGBA',frame.size,bg);canvas.alpha_composite(frame)
     sequence.append(canvas.crop((300,460,730,715)).convert('RGB'))
    sequence[0].save(out/f'mixed_sweep_{label}.gif',save_all=True,append_images=sequence[1:],duration=140,loop=0,optimize=True)
-  (out/'poses.json').write_text(json.dumps({'fixed':cases,'mixed_sweep':sweep_values,'provenance_before_capture':provenance},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+  (out/'poses.json').write_text(json.dumps({'fixed':cases,'mixed_sweep':sweep_values,'provenance_before_capture':provenance,'provenance_after_capture':after},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
  except BaseException:shutil.rmtree(out);raise
  return len(cases)
 

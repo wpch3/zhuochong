@@ -3,13 +3,14 @@
 
 This does not claim all 1024 two-hand combinations or continuous poses.
 """
-import argparse,hashlib,itertools,json,shutil,tempfile
+import argparse,itertools,json,shutil,tempfile
 from pathlib import Path
 from PIL import Image,ImageDraw
 from capture_chibi_joint_art import image
 from capture_chibi_refinement import setup,save_crop
 from capture_chibi_art_review import reset
 from capture_chibi_visual_matrix import verify_pose,FINGERS
+from chibi_capture_provenance import snapshot,verify_unchanged
 from study_underpaint_sampling import ROOT,start,stop,request
 
 def capture(candidate,output,executable=None):
@@ -18,8 +19,7 @@ def capture(candidate,output,executable=None):
  if out.exists() or out.is_symlink() or not out.parent.is_dir():raise ValueError('output must be new')
  if not (candidate/'closure_report.json').is_file():raise ValueError('expected closure study')
  binary=Path(executable).resolve() if executable else ROOT/'build/zhuochong_preview'
- provenance={'rig_sha256':hashlib.sha256((candidate/'rig.json').read_bytes()).hexdigest(),
-             'preview_executable_sha256':hashlib.sha256(binary.read_bytes()).hexdigest()}
+ provenance=snapshot(candidate,binary)
  shots={};poses={}
  with tempfile.TemporaryDirectory(prefix='finger-endpoints-',dir=root) as tmp:
   proc,url=start(Path(tmp)/'preview',candidate,executable)
@@ -32,6 +32,7 @@ def capture(candidate,output,executable=None):
      for k,v in params.items():request(url,f'/api/param?id={k}&v={v}')
      request(url,'/api/step?n=3');verify_pose(url,params);shots[name]=image(url);poses[name]=params
   finally:stop(proc)
+ after=verify_unchanged(provenance,candidate,binary)
  out.mkdir()
  try:
   for name,arr in shots.items():
@@ -44,7 +45,7 @@ def capture(candidate,output,executable=None):
     for i,name in enumerate(names):
      x=(i%4)*255;y=(i//4)*275;draw.text((x+4,y+3),name,fill='black');sheet.paste(Image.open(out/f'{name}_{label}.png'),(x,y+20))
     sheet.save(out/f'{side}_{label}_endpoints.png')
-  (out/'poses.json').write_text(json.dumps({'order':list(FINGERS),'poses':poses,'provenance_before_capture':provenance},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+  (out/'poses.json').write_text(json.dumps({'order':list(FINGERS),'poses':poses,'provenance_before_capture':provenance,'provenance_after_capture':after},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
  except BaseException:shutil.rmtree(out);raise
  return len(shots)
 

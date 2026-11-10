@@ -59,9 +59,9 @@
     return [(dx*cos + dy*sin) / (g.w / image.width), (-dx*sin + dy*cos) / (g.h / image.height)];
   }
   class Viewport {
-    constructor(canvas, onMove, onStatus, onMeshMove = () => {}) {
+    constructor(canvas, onMove, onStatus, onMeshMove = () => {}, onGroupMove = () => {}) {
       this.canvas = canvas; this.ctx = canvas.getContext('2d');
-      this.onMove = onMove; this.onStatus = onStatus; this.onMeshMove = onMeshMove;
+      this.onMove = onMove; this.onStatus = onStatus; this.onMeshMove = onMeshMove; this.onGroupMove = onGroupMove;
       this.images = new Map(); this.rig = null; this.drag = null; this.meshMode = false;
       this.loadToken = 0;
       canvas.addEventListener('pointerdown', e => this.start(e));
@@ -84,6 +84,19 @@
     setMesh(id, value, enabled) {
       this.meshId = id; this.meshValue = value; this.meshMode = enabled;
       this.drag = null; this.draw();
+    }
+    setGroup(id, enabled) { this.groupId = id; this.groupMode = enabled; this.drag = null; this.draw(); }
+    groupPoints() {
+      const origin = this.rig.origin || [this.rig.canvas.w * .5, this.rig.canvas.h];
+      const groups = {root: {pivot: origin}, ...this.rig.groups};
+      const points = {};
+      for (const [id, g] of Object.entries(groups)) {
+        if (!g || typeof g !== 'object') continue;
+        const p = g.pivot || origin;
+        if (!Array.isArray(p) || p.length !== 2 || !p.every(Number.isFinite)) continue;
+        points[id] = this.drag && this.drag.kind === 'group' && this.drag.id === id ? this.drag.pos : p;
+      }
+      return {groups, points};
     }
     meshContext() {
       if (!this.rig || !this.meshMode || !Number.isFinite(this.meshValue)) return null;
@@ -137,7 +150,7 @@
       let selection = null;
       for (const p of visible(this.rig)) {
         const image = this.images.get(p.file); if (!image) continue;
-        const override = this.drag && this.drag.id === p.id ? this.drag.pos : null;
+        const override = this.drag && this.drag.kind === 'part' && this.drag.id === p.id ? this.drag.pos : null;
         const g = geometry(p, image, this.rig, override); if (!g) continue;
         c.save(); c.translate(g.x, g.y); c.rotate(g.angle); c.globalAlpha = Math.max(0, Math.min(1, p.opacity ?? 1));
         c.drawImage(image, -g.ax, -g.ay, g.w, g.h); c.restore();
@@ -148,6 +161,20 @@
         c.lineWidth = Math.max(2, this.canvas.width/500); c.strokeStyle = '#ff6f4c';
         c.setLineDash([10, 7]); c.strokeRect(-selection.ax, -selection.ay, selection.w, selection.h);
         c.setLineDash([]); c.beginPath(); c.arc(0, 0, 5, 0, 2*Math.PI); c.fillStyle = '#ff6f4c'; c.fill(); c.restore();
+      }
+      if (this.groupMode) {
+        const {groups, points} = this.groupPoints();
+        c.save(); c.lineWidth = Math.max(2, this.canvas.width / 500); c.strokeStyle = '#007b86';
+        c.beginPath();
+        for (const [id, group] of Object.entries(groups)) {
+          if (group && points[id] && points[group.parent]) { c.moveTo(...points[id]); c.lineTo(...points[group.parent]); }
+        }
+        c.stroke();
+        for (const [id, point] of Object.entries(points)) {
+          c.beginPath(); c.arc(point[0], point[1], id === this.groupId ? 9 : 5, 0, 2*Math.PI);
+          c.fillStyle = id === this.groupId ? '#ef704b' : '#007b86'; c.fill();
+        }
+        c.restore();
       }
       const grid = this.meshContext();
       if (grid) {
@@ -167,6 +194,15 @@
     }
     start(e) {
       if (!this.rig || this.drag || e.button !== 0) return;
+      if (this.groupMode) {
+        const point = this.position(e), pos = this.groupPoints().points[this.groupId];
+        if (!pos || this.groupId === 'root') return;
+        const rect = this.canvas.getBoundingClientRect();
+        const radius = Math.max(this.canvas.width / rect.width, this.canvas.height / rect.height) * 12;
+        if (Math.hypot(point[0]-pos[0], point[1]-pos[1]) > radius) return;
+        this.drag = {kind:'group', pointerId:e.pointerId, id:this.groupId, from:point, initial:[...pos], pos:[...pos]};
+        this.canvas.setPointerCapture(e.pointerId); e.preventDefault(); return;
+      }
       if (this.meshMode) {
         const context = this.meshContext();
         if (!context) { this.onStatus('网格不可编辑：请选择匹配部件、有效关键值和已加载素材；复杂权重/链/挂点不支持。'); return; }
@@ -209,7 +245,10 @@
       if (d.kind === 'mesh') {
         if (Math.hypot(d.offset.dx-d.initial[0], d.offset.dy-d.initial[1]) > .01)
           this.onMeshMove(d.mesh, d.value, d.offset.c, d.offset.r, d.offset.dx, d.offset.dy);
-      } else if (Math.hypot(d.pos[0]-d.initial[0], d.pos[1]-d.initial[1]) > .25) this.onMove(d.id, d.pos, d.layer);
+      } else if (Math.hypot(d.pos[0]-d.initial[0], d.pos[1]-d.initial[1]) > .25) {
+        if (d.kind === 'group') this.onGroupMove(d.id, d.pos);
+        else this.onMove(d.id, d.pos, d.layer);
+      }
       this.draw();
     }
   }

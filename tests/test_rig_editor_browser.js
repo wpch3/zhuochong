@@ -38,6 +38,15 @@ const server = http.createServer((req,res) => {
     await page.selectOption('#editGroupParent','head'); await page.fill('#groupX','510'); await page.click('#saveGroup');
     assert.strictEqual(await page.locator('#groupX').inputValue(),'510');
     await page.click('#undo'); assert.strictEqual(await page.locator('#groupX').inputValue(),'512'); await page.click('#redo');
+    await page.check('#groupEdit');
+    const groupCanvas = page.locator('#viewport'); await groupCanvas.scrollIntoViewIfNeeded();
+    const groupBox = await groupCanvas.boundingBox();
+    const gx = groupBox.x + groupBox.width * 510/1024, gy = groupBox.y + groupBox.height * 400/1024;
+    await page.mouse.move(gx,gy); await page.mouse.down(); await page.mouse.move(gx+10,gy+5,{steps:4}); await page.mouse.up();
+    assert(Number(await page.locator('#groupX').inputValue()) > 520);
+    await page.click('#undo'); assert.strictEqual(await page.locator('#groupX').inputValue(),'510');
+    await page.click('#redo'); assert(Number(await page.locator('#groupX').inputValue()) > 520);
+    await page.uncheck('#groupEdit');
     await page.selectOption('#part','nose'); await page.selectOption('#partGroup','editor_bone'); await page.click('#savePartGroup');
     await page.fill('#newId','ParamEditorBone'); await page.fill('#newLabel','骨骼测试'); await page.click('#addParam');
     await page.selectOption('#param','ParamEditorBone'); await page.selectOption('#group','editor_bone'); await page.selectOption('#channel','dx'); await page.fill('#scale','12'); await page.click('#addBind');
