@@ -13,9 +13,23 @@ from PIL import Image
 from capture_chibi_art_review import reset
 from capture_chibi_joint_art import image
 from capture_chibi_refinement import setup, save_crop
-from capture_chibi_visual_matrix import verify_pose, FINGERS
+# from capture_chibi_visual_matrix import verify_pose, FINGERS  # REMOVED to break circular import
 from chibi_capture_provenance import snapshot, verify_unchanged
 from study_underpaint_sampling import ROOT, request, start, stop
+
+
+FINGERS = ('Little', 'Ring', 'Middle', 'Index', 'Thumb')
+
+
+def verify_pose(url, params):
+    current = {p['id']: p['value'] for p in json.loads(request(url, '/api/params.json'))['params']}
+    for key, value in params.items():
+        if key == 'blink':
+            actual = json.loads(request(url, '/api/info.json'))['blink_manual']
+        else:
+            actual = current[key]
+        if actual is None or abs(actual - value) > .001:
+            raise ValueError(f'pose did not apply: {key}={value}, got {actual}')
 
 
 def capture(candidate, output, executable=None):
