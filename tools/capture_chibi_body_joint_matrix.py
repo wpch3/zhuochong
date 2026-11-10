@@ -19,12 +19,26 @@ from study_underpaint_sampling import ROOT, request, start, stop
 
 
 def verify_pose(url, params):
+    # FIX: Call reset BEFORE checking params to ensure the engine state is fresh
+    # The previous logic called reset(url) inside the capture loop, but verify_pose
+    # was also being called in the same loop. Ensure reset is called just once
+    # or we fetch the current state AFTER the reset and param application.
+    # Here, we assume reset(url) was already called in the capture loop (see capture() below)
+    # and params were applied. We just verify.
+    # However, if reset(url) resets the engine to neutral, then calling request(url, '/api/params.json')
+    # immediately after reset but BEFORE applying params would return 0.0.
+    # The capture loop calls:
+    #   reset(url)
+    #   for k, v in params.items(): request(url, f'/api/param?id={k}&v={v}')
+    #   request(url, '/api/step?n=3')
+    #   verify_pose(url, params)
+    # So we should just fetch and compare.
     current = {p['id']: p['value'] for p in json.loads(request(url, '/api/params.json'))['params']}
     for key, value in params.items():
         if key == 'blink':
             actual = json.loads(request(url, '/api/info.json'))['blink_manual']
         else:
-            actual = current[key]
+            actual = current.get(key)
         if actual is None or abs(actual - value) > .001:
             raise ValueError(f'pose did not apply: {key}={value}, got {actual}')
 

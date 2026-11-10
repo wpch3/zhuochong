@@ -22,7 +22,7 @@ from PIL import Image
 from build_underpaint_trial import SOURCE, build
 from underpaint_mask import safe_mask
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def port():
@@ -34,7 +34,15 @@ def port():
 def request(base, path):
     req = urllib.request.Request(base + path)
     req.add_header('Host', '0.0.0.0')
-    with urllib.request.urlopen(req, timeout=30) as response:
+    # FIX: Use a custom opener to bypass any proxy or local routing issues
+    # Also use 127.0.0.1 internally because os.execv in preview_live2d_chibi.py binds to 0.0.0.0
+    # but urllib inside subprocess/os.execv context might resolve 0.0.0.0 to external network interface
+    # or fail if the sandbox blocks external loopback. 127.0.0.1 is guaranteed internal.
+    internal_base = base.replace('0.0.0.0', '127.0.0.1')
+    req = urllib.request.Request(internal_base + path)
+    req.add_header('Host', '0.0.0.0')
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(req, timeout=30) as response:
         return response.read()
 
 
@@ -46,11 +54,16 @@ def start(root, study=None, executable=None):
         cmd.extend(['--dynamic-study', str(study)])
     if executable:
         cmd.extend(['--preview-executable', str(executable)])
-    proc = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    err_file = ROOT / 'build/study_underpaint_sampling_err.log'
+    err_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(err_file, 'w') as f:
+        proc = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.DEVNULL, stderr=f)
     base = f'http://0.0.0.0:{n}'
-    for _ in range(100):
+    for _ in range(150):  # Increased from 100 to 150 (15 seconds)
         if proc.poll() is not None:
-            raise RuntimeError(proc.stderr.read().decode(errors='replace'))
+            with open(err_file, 'r') as f:
+                err = f.read()
+            raise RuntimeError(f'preview process exited early: {err}')
         try:
             request(base, '/api/info.json')
             return proc, base
@@ -58,7 +71,9 @@ def start(root, study=None, executable=None):
             time.sleep(.1)
     proc.terminate()
     proc.wait()
-    raise RuntimeError('preview did not start')
+    with open(err_file, 'r') as f:
+        err = f.read()
+    raise RuntimeError(f'preview did not start within 15 seconds; stderr: {err}')
 
 
 def stop(proc):
@@ -68,7 +83,6 @@ def stop(proc):
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.wait()
-    proc.stderr.close()
 
 
 def frames(base, scales):
