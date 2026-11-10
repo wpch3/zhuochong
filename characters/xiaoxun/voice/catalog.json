@@ -26,7 +26,7 @@
       "text": "哇！别敲啦，会痛的！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/hammer_1_base0.mp3",
-      "bytes": 34653,
+      "bytes": 34652,
       "emotion": "surprised",
       "emotion_why": "id 精确命中 hammer_1",
       "segments": [
@@ -70,7 +70,7 @@
       "text": "咚——！好痛呀，你是想把我敲成扁扁的吗？",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/hammer_1_base1.mp3",
-      "bytes": 38253,
+      "bytes": 38252,
       "emotion": "surprised",
       "emotion_why": "id 精确命中 hammer_1",
       "segments": [
@@ -113,7 +113,7 @@
       "text": "又敲我？我记住你了哦！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/hammer_1_tier1_0.mp3",
-      "bytes": 23565,
+      "bytes": 23564,
       "emotion": "surprised",
       "emotion_why": "id 精确命中 hammer_1",
       "segments": [
@@ -145,7 +145,7 @@
       "text": "你敲我，我也会有点委屈…不过你是故意的吧？",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/hammer_1_tier2_0.mp3",
-      "bytes": 38397,
+      "bytes": 38396,
       "emotion": "surprised",
       "emotion_why": "id 精确命中 hammer_1",
       "segments": [
@@ -211,7 +211,7 @@
       "text": "摸这么多次…我、我会害羞的啦！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/pat_combo_base0.mp3",
-      "bytes": 40413,
+      "bytes": 40412,
       "emotion": "shy",
       "emotion_why": "id 精确命中 pat_combo",
       "segments": [
@@ -251,7 +251,7 @@
       "text": "再这样摸下去，我的脸要烧起来了…",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/pat_combo_tier2_0.mp3",
-      "bytes": 29469,
+      "bytes": 29468,
       "emotion": "shy",
       "emotion_why": "id 精确命中 pat_combo",
       "segments": [
@@ -284,7 +284,7 @@
       "text": "嘿嘿，好舒服～",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/pat_head_1_base0.mp3",
-      "bytes": 23277,
+      "bytes": 23276,
       "emotion": "happy",
       "emotion_why": "id 前缀命中 pat",
       "segments": [
@@ -339,7 +339,7 @@
       "text": "嗯…你摸得还挺轻的嘛。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/pat_head_1_tier1_0.mp3",
-      "bytes": 27021,
+      "bytes": 27020,
       "emotion": "happy",
       "emotion_why": "id 前缀命中 pat",
       "segments": [
@@ -373,7 +373,7 @@
       "text": "每次被你摸，我都会乖乖不动哦。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/pat_head_1_tier2_0.mp3",
-      "bytes": 26445,
+      "bytes": 26444,
       "emotion": "happy",
       "emotion_why": "id 前缀命中 pat",
       "segments": [
@@ -405,7 +405,7 @@
       "text": "有你在身边，摸头都变得好安心呀。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/pat_head_1_tier3_0.mp3",
-      "bytes": 29181,
+      "bytes": 29180,
       "emotion": "happy",
       "emotion_why": "id 前缀命中 pat",
       "segments": [
@@ -461,7 +461,7 @@
       "text": "呀，别碰那里啦！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/stroke_1_base0.mp3",
-      "bytes": 25293,
+      "bytes": 25292,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -496,7 +496,7 @@
       "text": "痒、痒痒的…",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/stroke_1_base1.mp3",
-      "bytes": 23133,
+      "bytes": 23132,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -647,7 +647,7 @@
       "text": "你每次叫我，我都超开心的！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/click_1_tier3_0.mp3",
-      "bytes": 23421,
+      "bytes": 23420,
       "emotion": "happy",
       "emotion_why": "文本线索「开心」",
       "segments": [
@@ -702,7 +702,7 @@
       "text": "啊啊啊，带我去哪里呀？",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/drag_1_base0.mp3",
-      "bytes": 24573,
+      "bytes": 24572,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -735,7 +735,7 @@
       "text": "呼…落地成功！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/drop_1_base0.mp3",
-      "bytes": 24717,
+      "bytes": 24716,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -766,7 +766,7 @@
       "text": "唔…我没有睡着哦。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/wake_1_base0.mp3",
-      "bytes": 30909,
+      "bytes": 30908,
       "emotion": "sleepy",
       "emotion_why": "id 前缀命中 wake",
       "segments": [
@@ -824,7 +824,7 @@
       "text": "和你在一起，每天都好开心。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/mood_joy_1_tier2_0.mp3",
-      "bytes": 23997,
+      "bytes": 23996,
       "emotion": "happy",
       "emotion_why": "文本线索「开心」",
       "segments": [
@@ -878,7 +878,7 @@
       "text": "诶？真的吗！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/mood_surprise_1_base0.mp3",
-      "bytes": 23565,
+      "bytes": 20540,
       "emotion": "surprised",
       "emotion_why": "文本线索「诶」",
       "segments": [
@@ -936,7 +936,7 @@
       "text": "好困…晚安。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/mood_sleepy_1_base0.mp3",
-      "bytes": 26301,
+      "bytes": 26300,
       "emotion": "sleepy",
       "emotion_why": "文本线索「困」",
       "segments": [
@@ -967,7 +967,7 @@
       "text": "电话接通啦，我在听哦。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/call_start_1_base0.mp3",
-      "bytes": 24861,
+      "bytes": 24860,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -1001,7 +1001,7 @@
       "text": "终于等到你的电话啦，我一直在等你呢。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/call_start_1_tier2_0.mp3",
-      "bytes": 31917,
+      "bytes": 31916,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -1085,7 +1085,7 @@
       "text": "我们熟起来啦，以后多找我玩吧！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/tier_up_tier1_0.mp3",
-      "bytes": 27885,
+      "bytes": 27884,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -1119,7 +1119,7 @@
       "text": "好像离你越来越近了呢，我会一直在。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/tier_up_tier2_0.mp3",
-      "bytes": 29757,
+      "bytes": 29756,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -1153,7 +1153,7 @@
       "text": "我们是最好的朋友啦，说好了哦！",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/lines/tier_up_tier3_0.mp3",
-      "bytes": 28749,
+      "bytes": 28748,
       "emotion": "neutral",
       "emotion_why": "无线索，按平静处理",
       "segments": [
@@ -1177,6 +1177,858 @@
           "marks": [
             "句尾",
             "语气词「哦」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_long",
+      "variant": "base0",
+      "tier": 0,
+      "text": "这是我为你专门留的长发，喜欢吗？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_long_base0.mp3",
+      "bytes": 26876,
+      "emotion": "happy",
+      "emotion_why": "文本线索「喜欢」",
+      "segments": [
+        {
+          "text": "这是我为你专门留的长发，",
+          "rate_pct": 16,
+          "pitch_hz": 5,
+          "volume_pct": 6,
+          "gap_ms": 187,
+          "marks": []
+        },
+        {
+          "text": "喜欢吗？",
+          "rate_pct": 12,
+          "pitch_hz": 14,
+          "volume_pct": 6,
+          "gap_ms": 0,
+          "marks": [
+            "疑问上扬",
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_long",
+      "variant": "base1",
+      "tier": 0,
+      "text": "长头发打理起来很麻烦的…不过你喜欢就算了。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_long_base1.mp3",
+      "bytes": 30908,
+      "emotion": "happy",
+      "emotion_why": "文本线索「喜欢」",
+      "segments": [
+        {
+          "text": "长头发打理起来很麻烦的…",
+          "rate_pct": 16,
+          "pitch_hz": 5,
+          "volume_pct": 6,
+          "gap_ms": 357,
+          "marks": []
+        },
+        {
+          "text": "不过你喜欢就算了。",
+          "rate_pct": 12,
+          "pitch_hz": 12,
+          "volume_pct": 6,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_long",
+      "variant": "tier1_0",
+      "tier": 1,
+      "text": "长发飘飘的样子，有没有一点点好看？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_long_tier1_0.mp3",
+      "bytes": 28460,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "长发飘飘的样子，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "有没有一点点好看？",
+          "rate_pct": 2,
+          "pitch_hz": 10,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "疑问上扬",
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_long",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "我留长发，是因为你说过好看呀。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_long_tier2_0.mp3",
+      "bytes": 29180,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "我留长发，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "是因为你说过好看呀。",
+          "rate_pct": -10,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「呀」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_long",
+      "variant": "tier3_0",
+      "tier": 3,
+      "text": "这头长发是为你留的——这句话我只说一次哦。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_long_tier3_0.mp3",
+      "bytes": 36380,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "这头长发是为你留的——",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 300,
+          "marks": []
+        },
+        {
+          "text": "这句话我只说一次哦。",
+          "rate_pct": -10,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「哦」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_twin",
+      "variant": "base0",
+      "tier": 0,
+      "text": "双马尾！这样看起来有精神多了吧？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_twin_base0.mp3",
+      "bytes": 32060,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "双马尾！",
+          "rate_pct": 6,
+          "pitch_hz": 6,
+          "volume_pct": 4,
+          "gap_ms": 240,
+          "marks": [
+            "起势"
+          ]
+        },
+        {
+          "text": "这样看起来有精神多了吧？",
+          "rate_pct": -10,
+          "pitch_hz": 10,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "疑问上扬",
+            "句尾",
+            "语气词「吧」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_twin",
+      "variant": "base1",
+      "tier": 0,
+      "text": "帮我看看，两边扎得一样高吗？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_twin_base1.mp3",
+      "bytes": 26444,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "帮我看看，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "两边扎得一样高吗？",
+          "rate_pct": 2,
+          "pitch_hz": 10,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "疑问上扬",
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_twin",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "你盯着我的马尾看…是想拽一下吧？不准哦。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_twin_tier2_0.mp3",
+      "bytes": 40700,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "你盯着我的马尾看…",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 420,
+          "marks": []
+        },
+        {
+          "text": "是想拽一下吧？",
+          "rate_pct": -6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 280,
+          "marks": [
+            "语气词「吧」拖长"
+          ]
+        },
+        {
+          "text": "不准哦。",
+          "rate_pct": -10,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「哦」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_pony",
+      "variant": "base0",
+      "tier": 0,
+      "text": "扎起来清爽多了～",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_pony_base0.mp3",
+      "bytes": 13104,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "扎起来清爽多了～",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_pony",
+      "variant": "base1",
+      "tier": 0,
+      "text": "马尾一甩一甩的，是不是很可爱？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_pony_base1.mp3",
+      "bytes": 26732,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "马尾一甩一甩的，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "是不是很可爱？",
+          "rate_pct": 2,
+          "pitch_hz": 10,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "疑问上扬",
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_pony",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "今天想利落一点，好陪你出门。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_pony_tier2_0.mp3",
+      "bytes": 25292,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "今天想利落一点，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "好陪你出门。",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_short",
+      "variant": "base0",
+      "tier": 0,
+      "text": "短发才是我的本体啦！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_short_base0.mp3",
+      "bytes": 15984,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "短发才是我的本体啦！",
+          "rate_pct": -10,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「啦」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_short",
+      "variant": "base1",
+      "tier": 0,
+      "text": "剪短了…你会不会不习惯？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_short_base1.mp3",
+      "bytes": 27308,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "剪短了…",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 420,
+          "marks": []
+        },
+        {
+          "text": "你会不会不习惯？",
+          "rate_pct": 2,
+          "pitch_hz": 10,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "疑问上扬",
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hair_short",
+      "variant": "tier1_0",
+      "tier": 1,
+      "text": "短头发洗起来快嘛，才不是为了方便你摸头。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hair_short_tier1_0.mp3",
+      "bytes": 32780,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "短头发洗起来快嘛，",
+          "rate_pct": -12,
+          "pitch_hz": 0,
+          "volume_pct": 8,
+          "gap_ms": 220,
+          "marks": [
+            "语气词「嘛」拖长",
+            "重音：快"
+          ]
+        },
+        {
+          "text": "才不是为了方便你摸头。",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hood_up",
+      "variant": "base0",
+      "tier": 0,
+      "text": "帽子戴上啦，外面风好大。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hood_up_base0.mp3",
+      "bytes": 23420,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "帽子戴上啦，",
+          "rate_pct": -6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": [
+            "语气词「啦」拖长"
+          ]
+        },
+        {
+          "text": "外面风好大。",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hood_up",
+      "variant": "base1",
+      "tier": 0,
+      "text": "躲进帽子里，谁都找不到我～",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hood_up_base1.mp3",
+      "bytes": 24284,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "躲进帽子里，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "谁都找不到我～",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hood_up",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "这样两个人躲在一个帽檐下面…咳，我什么都没说。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hood_up_tier2_0.mp3",
+      "bytes": 52652,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "这样两个人躲在一个帽檐",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 180,
+          "marks": []
+        },
+        {
+          "text": "下面…",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 420,
+          "marks": []
+        },
+        {
+          "text": "咳，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "我什么都没说。",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_hood_down",
+      "variant": "base0",
+      "tier": 0,
+      "text": "摘掉帽子，透透气～",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_hood_down_base0.mp3",
+      "bytes": 23420,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "摘掉帽子，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "透透气～",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_tail_up",
+      "variant": "base0",
+      "tier": 0,
+      "text": "尾巴竖起来，代表我现在心情很好哦！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_tail_up_base0.mp3",
+      "bytes": 31340,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "尾巴竖起来，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "代表我现在心情很好哦！",
+          "rate_pct": -10,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「哦」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_tail_up",
+      "variant": "tier2_0",
+      "tier": 2,
+      "text": "猫的尾巴竖得笔直，就是最喜欢你的意思啦。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_tail_up_tier2_0.mp3",
+      "bytes": 29180,
+      "emotion": "happy",
+      "emotion_why": "文本线索「喜欢」",
+      "segments": [
+        {
+          "text": "猫的尾巴竖得笔直，",
+          "rate_pct": 16,
+          "pitch_hz": 5,
+          "volume_pct": 6,
+          "gap_ms": 187,
+          "marks": []
+        },
+        {
+          "text": "就是最喜欢你的意思啦。",
+          "rate_pct": -6,
+          "pitch_hz": 12,
+          "volume_pct": 14,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「啦」拖长",
+            "重音：最"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_tail_puff",
+      "variant": "base0",
+      "tier": 0,
+      "text": "哇！毛都炸起来了——吓我一跳嘛！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_tail_puff_base0.mp3",
+      "bytes": 35084,
+      "emotion": "surprised",
+      "emotion_why": "文本线索「哇」",
+      "segments": [
+        {
+          "text": "哇！",
+          "rate_pct": 22,
+          "pitch_hz": 12,
+          "volume_pct": 12,
+          "gap_ms": 192,
+          "marks": [
+            "起势"
+          ]
+        },
+        {
+          "text": "毛都炸起来了——",
+          "rate_pct": 22,
+          "pitch_hz": 6,
+          "volume_pct": 8,
+          "gap_ms": 240,
+          "marks": []
+        },
+        {
+          "text": "吓我一跳嘛！",
+          "rate_pct": 6,
+          "pitch_hz": 14,
+          "volume_pct": 8,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「嘛」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_tail_tuck",
+      "variant": "base0",
+      "tier": 0,
+      "text": "尾巴夹起来了…我有点紧张。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_tail_tuck_base0.mp3",
+      "bytes": 24716,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "尾巴夹起来了…",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 420,
+          "marks": []
+        },
+        {
+          "text": "我有点紧张。",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_tail_relaxed",
+      "variant": "base0",
+      "tier": 0,
+      "text": "尾巴放松下来咯～",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_tail_relaxed_base0.mp3",
+      "bytes": 12672,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "尾巴放松下来咯～",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_eye_star",
+      "variant": "base0",
+      "tier": 0,
+      "text": "眼睛里有星星吗？那是因为在看着你呀！",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_eye_star_base0.mp3",
+      "bytes": 29468,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "眼睛里有星星吗？",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 280,
+          "marks": []
+        },
+        {
+          "text": "那是因为在看着你呀！",
+          "rate_pct": -10,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾",
+            "语气词「呀」拖长"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_eye_round",
+      "variant": "base0",
+      "tier": 0,
+      "text": "好啦好啦，不闪了。",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_eye_round_base0.mp3",
+      "bytes": 23420,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "好啦好啦，",
+          "rate_pct": -6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": [
+            "语气词「啦」拖长"
+          ]
+        },
+        {
+          "text": "不闪了。",
+          "rate_pct": 2,
+          "pitch_hz": 4,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "句尾"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dress_any",
+      "variant": "base0",
+      "tier": 0,
+      "text": "换个样子…怎么样，还合适吗？",
+      "voice": "zh-CN-XiaoyiNeural",
+      "file": "characters/xiaoxun/voice/lines/dress_any_base0.mp3",
+      "bytes": 36380,
+      "emotion": "neutral",
+      "emotion_why": "无线索，按平静处理",
+      "segments": [
+        {
+          "text": "换个样子…",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 420,
+          "marks": []
+        },
+        {
+          "text": "怎么样，",
+          "rate_pct": 6,
+          "pitch_hz": 0,
+          "volume_pct": 0,
+          "gap_ms": 220,
+          "marks": []
+        },
+        {
+          "text": "还合适吗？",
+          "rate_pct": 2,
+          "pitch_hz": 10,
+          "volume_pct": 0,
+          "gap_ms": 0,
+          "marks": [
+            "疑问上扬",
+            "句尾"
           ]
         }
       ]
@@ -1255,11 +2107,11 @@
     }
   ],
   "emotion_histogram": {
-    "surprised": 5,
+    "surprised": 6,
     "angry": 1,
     "shy": 2,
-    "happy": 9,
-    "neutral": 18,
+    "happy": 12,
+    "neutral": 40,
     "sleepy": 2,
     "sad": 1
   },
@@ -1269,7 +2121,7 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/neutral.mp3",
-      "bytes": 39981,
+      "bytes": 38396,
       "segments": [
         {
           "text": "今天也一起加油吧，",
@@ -1296,7 +2148,7 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/happy.mp3",
-      "bytes": 35517,
+      "bytes": 37820,
       "segments": [
         {
           "text": "今天也一起加油吧，",
@@ -1323,7 +2175,7 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/shy.mp3",
-      "bytes": 42861,
+      "bytes": 42860,
       "segments": [
         {
           "text": "今天也一起加油吧，",
@@ -1350,7 +2202,7 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/angry.mp3",
-      "bytes": 36957,
+      "bytes": 36956,
       "segments": [
         {
           "text": "今天也一起加油吧，",
@@ -1377,7 +2229,7 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/sad.mp3",
-      "bytes": 44445,
+      "bytes": 44444,
       "segments": [
         {
           "text": "今天也一起加油吧，",
@@ -1404,7 +2256,7 @@
       "text": "今天也一起加油吧，我就在这儿，一直陪着你。",
       "voice": "zh-CN-XiaoyiNeural",
       "file": "characters/xiaoxun/voice/demo/sleepy.mp3",
-      "bytes": 48909,
+      "bytes": 48908,
       "segments": [
         {
           "text": "今天也一起加油吧，",
@@ -1468,7 +2320,7 @@
       ],
       "bytes_off": 27216,
       "file_off": "characters/xiaoxun/voice/ab/01_off.mp3",
-      "bytes_on": 39981,
+      "bytes_on": 39980,
       "file_on": "characters/xiaoxun/voice/ab/01_on.mp3"
     },
     {
@@ -1511,7 +2363,7 @@
       ],
       "bytes_off": 27216,
       "file_off": "characters/xiaoxun/voice/ab/02_off.mp3",
-      "bytes_on": 35517,
+      "bytes_on": 37820,
       "file_on": "characters/xiaoxun/voice/ab/02_on.mp3"
     },
     {
@@ -1555,7 +2407,7 @@
       ],
       "bytes_off": 27360,
       "file_off": "characters/xiaoxun/voice/ab/03_off.mp3",
-      "bytes_on": 38253,
+      "bytes_on": 38252,
       "file_on": "characters/xiaoxun/voice/ab/03_on.mp3"
     },
     {
@@ -1596,7 +2448,7 @@
       ],
       "bytes_off": 21888,
       "file_off": "characters/xiaoxun/voice/ab/04_off.mp3",
-      "bytes_on": 40413,
+      "bytes_on": 40412,
       "file_on": "characters/xiaoxun/voice/ab/04_on.mp3"
     },
     {
@@ -1656,7 +2508,7 @@
       ],
       "bytes_off": 14400,
       "file_off": "characters/xiaoxun/voice/ab/06_off.mp3",
-      "bytes_on": 30909,
+      "bytes_on": 30908,
       "file_on": "characters/xiaoxun/voice/ab/06_on.mp3"
     }
   ],
