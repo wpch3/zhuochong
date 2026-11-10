@@ -1,0 +1,37 @@
+{
+  "scales": [
+    0.35,
+    0.55,
+    0.8,
+    1.0
+  ],
+  "poses": {
+    "neutral": 0,
+    "outward": 1,
+    "inward": -1
+  },
+  "baseline_repeat_differences": "zero in all tested frames",
+  "candidate_changed_pixels": {
+    "0.35": {
+      "neutral": 176,
+      "outward": 329,
+      "inward": 114
+    },
+    "0.55": {
+      "neutral": 269,
+      "outward": 601,
+      "inward": 127
+    },
+    "0.8": {
+      "neutral": 342,
+      "outward": 997,
+      "inward": 138
+    },
+    "1.0": {
+      "neutral": 0,
+      "outward": 1034,
+      "inward": 47
+    }
+  },
+  "scope": "fixed C frames, not a visual acceptance"
+}

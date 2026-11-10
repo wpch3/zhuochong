@@ -1,0 +1,93 @@
+{
+  "source": "characters/xiaoxun/design/design_sheet_chibi.png",
+  "output": "./characters/xiaoxun/forms/chibi/sprites/body_full.png",
+  "key_color": [
+    243,
+    19,
+    197
+  ],
+  "canvas": [
+    848,
+    1360
+  ],
+  "sprite_size": [
+    567,
+    1292
+  ],
+  "scale": 0.723,
+  "alpha_bbox": [
+    0,
+    0,
+    566,
+    1291
+  ],
+  "transparent_ratio": 0.4467,
+  "white_residue_pixels": 502,
+  "magenta_residue_pixels": 163,
+  "palette": [
+    {
+      "hex": "#D8C0D8",
+      "share": 0.1704
+    },
+    {
+      "hex": "#FCE4D8",
+      "share": 0.0744
+    },
+    {
+      "hex": "#FCF0F0",
+      "share": 0.0552
+    },
+    {
+      "hex": "#FCFCF0",
+      "share": 0.0397
+    },
+    {
+      "hex": "#FCE4E4",
+      "share": 0.0387
+    },
+    {
+      "hex": "#F0D8E4",
+      "share": 0.0285
+    },
+    {
+      "hex": "#E4CCE4",
+      "share": 0.0254
+    },
+    {
+      "hex": "#E4C0D8",
+      "share": 0.0211
+    },
+    {
+      "hex": "#F0F0F0",
+      "share": 0.0172
+    },
+    {
+      "hex": "#303060",
+      "share": 0.0167
+    }
+  ],
+  "suggested_regions": {
+    "head": [
+      196,
+      0,
+      453,
+      310
+    ],
+    "body": [
+      208,
+      310,
+      430,
+      775
+    ],
+    "feet": [
+      208,
+      1085,
+      430,
+      207
+    ],
+    "origin_x": 424,
+    "origin_y": 1292,
+    "sprite_w": 567,
+    "sprite_h": 1292
+  }
+}

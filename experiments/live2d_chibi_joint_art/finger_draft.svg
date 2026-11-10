@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Construction draft: five editable fingers on each hand; not yet fitted to model. -->
+ <defs>
+  <linearGradient id="skin" x1="0" y1="0" x2=".2" y2="1"><stop stop-color="#eab2ad"/><stop offset=".35" stop-color="#f9dcd2"/><stop offset="1" stop-color="#fff0e8"/></linearGradient>
+  <g id="hand">
+   <!-- Hidden roots intentionally extend inside the palm. Back fingers first. -->
+   <path id="little" d="M 88 218 C 86 223 80 231 74 234 C 72 235 69 235 69 233 C 69 231 73 226 77 221 L 82 214 Z" fill="url(#skin)" stroke="#241a23" stroke-width="1.15" stroke-linejoin="round"/>
+   <path id="ring" d="M 87 216 C 85 223 78 232 72 235 C 70 236 67 235 67 233 C 67 231 72 224 76 219 L 82 213 Z" fill="url(#skin)" stroke="#241a23" stroke-width="1.15" stroke-linejoin="round"/>
+   <path id="middle" d="M 85 214 C 82 221 75 230 69 233 C 67 234 64 233 64 231 C 64 229 71 221 76 216 L 80 211 Z" fill="url(#skin)" stroke="#241a23" stroke-width="1.15" stroke-linejoin="round"/>
+   <path id="index" d="M 84 211 C 80 218 72 226 66 230 C 64 231 62 230 63 228 C 65 224 72 217 77 211 L 81 206 Z" fill="url(#skin)" stroke="#241a23" stroke-width="1.15" stroke-linejoin="round"/>
+   <path id="thumb" d="M 94 215 C 96 217 97 220 97 223 C 97 226 99 229 97 231 C 96 232 94 231 93 229 L 88 222 L 85 217 Z" fill="url(#skin)" stroke="#241a23" stroke-width="1.15" stroke-linejoin="round"/>
+   <path id="palm" d="M 83 201 C 90 202 101 209 109 213 C 109 218 106 222 102 225 C 100 227 98 227 96 225 C 94 222 91 219 88 220 C 86 222 82 224 79 223 C 77 222 76 220 77 217 C 78 212 81 206 83 201 Z" fill="url(#skin)"/>
+   <path d="M 77 211 C 79 207 81 203 83 201 C 90 202 101 209 109 213 C 109 218 106 222 102 225 C 100 226 99 229 97 231" fill="none" stroke="#241a23" stroke-width="1.15" stroke-linecap="round"/>
+   <path d="M 84 204 C 92 206 100 211 106 214" fill="none" stroke="#d69799" stroke-width="2" opacity=".45"/>
+  </g>
+ </defs>
+ <g id="left_hand"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#hand"/></g>
+ <g id="right_hand" transform="translate(460 0) scale(-1 1)"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#hand"/></g>
+</svg>

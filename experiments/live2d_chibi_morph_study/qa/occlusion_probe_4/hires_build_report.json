@@ -1,0 +1,20 @@
+{
+  "visual_acceptance": "not evaluated",
+  "source_sha256": {
+    "experiments/live2d_chibi_closure/hand_left.svg": "3ac7b0933b6659962604d06fe45a5457de0030208927a55d384ef49041918ed5",
+    "experiments/live2d_chibi_closure/hand_right.svg": "17e0d1844a564f2ed72097dec6acd6a0a6e4d2ed1e9b612a3cdc945a7300aae0",
+    "experiments/live2d_chibi_visual_review/hand_right.svg": "b67b032b0651db721a4d315a54152b39e4c7c4651c2a49109dd8f414fa90d4a3"
+  },
+  "resolution": [
+    960,
+    1024
+  ],
+  "part_scale": 0.5,
+  "limitations": [
+    "original contours and finger depth unchanged",
+    "neutral not pixel-identical",
+    "downsampling/rotation may still blur",
+    "not a root or sleeve fix",
+    "only fixed isolated fixture, no production changes"
+  ]
+}

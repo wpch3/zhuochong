@@ -1,0 +1,37 @@
+{
+  "_note": "成本熔断 A30/G80：硬上限、分能力配额、降级而非停摆、预估先行、空闲自动降频。默认到顶自动停。",
+  "schema_version": "1.0",
+  "hard_caps": {
+    "daily_cny": 5.0,
+    "monthly_cny": 50.0,
+    "action": "auto_stop",
+    "_action_values": ["auto_stop", "alert_only"]
+  },
+  "per_capability": [
+    {"id": "vision", "label": "视觉（屏幕捕获+视觉模型）", "daily_cny": 2.0, "quota_pct": 40},
+    {"id": "voice_stt", "label": "语音识别", "daily_cny": 1.0, "quota_pct": 20},
+    {"id": "voice_tts", "label": "语音合成", "daily_cny": 1.0, "quota_pct": 20},
+    {"id": "text_llm", "label": "文本对话", "daily_cny": 1.0, "quota_pct": 20}
+  ],
+  "downgrade": {
+    "order": ["local_model", "reduce_fps", "reduce_resolution", "stop"],
+    "local_model": "qwen2.5-0.5b",
+    "reduce_fps": {"from": 2.0, "to": 0.5},
+    "reduce_resolution": {"from": 1024, "to": 512},
+    "_note": "到额度先切本地、降帧率、降分辨率，最后才停"
+  },
+  "estimate": {
+    "enabled": true,
+    "show_before_enable": true,
+    "hourly_formula": "sum(per_capability.daily_cny) / 24 * realtime_factor",
+    "realtime_factor": 2.5,
+    "_example": "视觉常开 2fps + 语音常开 ≈ 0.18 CNY/h，月上限 50 可跑约 278h"
+  },
+  "idle_downclock": {
+    "enabled": true,
+    "idle_s": 300,
+    "target_fps": 0.2,
+    "target_resolution": 512,
+    "_note": "空闲 5 分钟自动降频"
+  }
+}

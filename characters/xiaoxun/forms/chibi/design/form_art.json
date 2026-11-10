@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "_note": [
+    "Live2D Chibi 的形态级美术来源。sheet 必须显式指向 design_sheet_chibi.png，",
+    "不可回退到 Teen 用的 design_sheet_short.png；body_full 的几何锁按该来源名",
+    "保存在 characters/xiaoxun/design/body_fit.json。",
+    "本轮先在隔离候选中以旧画布 567x1292 验证同源重建，候选通过全链 QA 与真实引擎目视前，",
+    "不得覆盖正式贴图/rig。历史 569x1292 试验及坐标迁移回归见 JOURNAL 续一百三十二。"
+  ],
+  "sheet": "design/design_sheet_chibi.png",
+  "redraw": {
+    "torso_noarms": "forms/chibi/design/redraw/torso_noarms.png",
+    "head_nobangs": "forms/chibi/design/redraw/head_nobangs.png",
+    "head_nosidehair": "forms/chibi/design/redraw/head_nosidehair.png",
+    "face_eyesclosed": "forms/chibi/design/redraw/face_eyesclosed.png",
+    "face_eyesmile": "forms/chibi/design/redraw/face_eyesmile.png",
+    "face_eyespain": "forms/chibi/design/redraw/face_eyespain.png",
+    "face_eyeswide": "forms/chibi/design/redraw/face_eyeswide.png",
+    "face_mouthopen": "forms/chibi/design/redraw/face_mouthopen.png"
+  }
+}

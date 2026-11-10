@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <defs>
+  <linearGradient id="skin" x1="0" y1="0" x2=".15" y2="1"><stop stop-color="#eebdb7"/><stop offset=".4" stop-color="#f8dcd3"/><stop offset="1" stop-color="#ffede5"/></linearGradient>
+  <g id="hand">
+   <!-- Hidden finger roots overlap beneath the palm; only the free edges are inked. -->
+   <g id="little"><path d="M 88.42 211.55 L 74.38 230.99 Q 72.82 233.15 73.22 235.08 Q 75.18 234.85 76.74 232.69 L 90.78 213.25 Z" fill="url(#skin)"/><path d="M 81.01 221.81 L 74.38 230.99 Q 72.82 233.15 73.22 235.08 Q 75.18 234.85 76.74 232.69 L 83.37 223.51" fill="none" stroke="#241a23" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/></g>
+   <g id="ring"><path d="M 87.57 209.51 L 68.13 227.87 Q 65.97 229.91 65.92 232.02 Q 68.03 232.09 70.19 230.05 L 89.63 211.69 Z" fill="url(#skin)"/><path d="M 77.31 219.20 L 68.13 227.87 Q 65.97 229.91 65.92 232.02 Q 68.03 232.09 70.19 230.05 L 79.37 221.38" fill="none" stroke="#241a23" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/></g>
+   <g id="middle"><path d="M 84.88 207.95 L 64.36 223.07 Q 62.08 224.75 61.86 226.84 Q 63.92 227.25 66.20 225.57 L 86.72 210.45 Z" fill="url(#skin)"/><path d="M 74.05 215.93 L 64.36 223.07 Q 62.08 224.75 61.86 226.84 Q 63.92 227.25 66.20 225.57 L 75.89 218.43" fill="none" stroke="#241a23" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/></g>
+   <g id="index"><path d="M 82.79 205.48 L 63.35 217.36 Q 61.19 218.68 60.92 220.66 Q 62.81 221.32 64.97 220.00 L 84.41 208.12 Z" fill="url(#skin)"/><path d="M 72.53 211.75 L 63.35 217.36 Q 61.19 218.68 60.92 220.66 Q 62.81 221.32 64.97 220.00 L 74.15 214.39" fill="none" stroke="#241a23" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/></g>
+   <g id="thumb"><path d="M 86 214 C 89 212 93 214 96 218 L 99 223 C 100.5 225 100 227.5 98.2 228 C 96.4 228.3 95 226.8 94 225 L 88 220 L 84 219 Z" fill="url(#skin)"/><path d="M 87 219 C 90 219 92 221.5 94 224.5 C 95.5 227 97 228.7 98.6 227.6 C 99.7 226.7 99 224.7 98 223" fill="none" stroke="#241a23" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></g>
+   <path id="palm" d="M 83 196 C 91 197 105 203 113 208 C 113 214 110 219 105 222 C 103 222 101 224 100 224 C 98 222 95 219 92 218 C 90 217 88 217 86 219 C 83 221 79 222 76 220 C 74 218 75 213 78 207 Z" fill="url(#skin)"/>
+   <path d="M 75 211 C 77 206 81 199 83 196 M 113 208 C 113 214 110 219 105 222 C 103 222 101 224 100 224" fill="none" stroke="#241a23" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+   <path d="M 85 201 C 94 203 103 207 110 211" fill="none" stroke="#c88f91" stroke-width="1.6" opacity=".23"/>
+  </g>
+ </defs>
+ <g id="left_hand"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#hand"/></g>
+</svg>

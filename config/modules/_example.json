@@ -1,0 +1,6 @@
+{
+  "id": "example_mod",
+  "path": "modules/example_mod.so",
+  "enabled": false,
+  "note": "示例：被禁用的模组不会被加载，仅作热插拔演示"
+}

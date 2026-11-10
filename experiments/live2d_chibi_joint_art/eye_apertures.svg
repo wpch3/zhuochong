@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="215" height="114" viewBox="0 0 215 114">
+ <!-- Independent aperture / sclera artwork, eye-local; right eye begins x=110. -->
+ <defs><linearGradient id="white" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e9d6e0"/><stop offset=".45" stop-color="#fff7f2"/><stop offset="1" stop-color="#fffef9"/></linearGradient></defs>
+ <path id="left_sclera" d="M 17 72 C 25 59 39 54 56 54 C 73 54 82 62 82 78 C 82 96 71 105 54 105 C 36 105 22 95 17 82 Z" fill="url(#white)"/>
+ <path id="right_sclera" d="M 130 78 C 130 62 140 54 157 54 C 174 54 190 60 197 72 L 197 82 C 192 96 179 105 160 105 C 142 105 130 96 130 78 Z" fill="url(#white)"/>
+</svg>

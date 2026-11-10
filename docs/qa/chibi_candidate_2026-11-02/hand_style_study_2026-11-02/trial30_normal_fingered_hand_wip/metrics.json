@@ -1,0 +1,24 @@
+{
+  "trial": "trial30_normal_fingered_hand_left",
+  "status": "rejected_target_scale_readability_and_proportion_wip",
+  "output": "chibi_normal_fingered_hand_left_trial30_wip.png",
+  "dimensions_px": [1008, 1070],
+  "channels_observed": "sRGB (no alpha; confirmed by identify)",
+  "target_probe": {
+    "file": "trial30_target_box_45x48_visual_probe_wip.png",
+    "target_px": [45, 48],
+    "display_px": [360, 384],
+    "visual_reviewed": true,
+    "probe_is_engine_render": false
+  },
+  "visual_review": {
+    "downward_relaxed_orientation": true,
+    "four_finger_tips_distinct_at_target_scale": false,
+    "reads_as_mitten_or_paw_at_target_scale": true,
+    "short_chibi_proportions": false,
+    "chibi_line_style_match": false,
+    "production_approved": false
+  },
+  "production_use": false,
+  "limitations": ["long wrist shaft", "target-scale finger gaps collapse into grooves", "no alpha, cuff, right counterpart, or hidden wrist", "not tested in C or Cubism"]
+}

@@ -1,0 +1,59 @@
+{
+  // 小寻的音色方案（改这里换音色，不需要改任何代码）
+  // 生成方式：神经网络 TTS 的少女音色（网上“AI 少女音”的常规做法），不克隆任何真人声音。
+  //   A. 云端 edge-tts（微软音色）：晓伊=少女；升调可再压低年龄感 → tools/voice_render.py + Actions
+  //   B. 本地离线 Piper 音色 + 少女化处理 → tools/voice_local.py + tools/voice_pitch.py
+  "schema_version": "1.0",
+  "character": "xiaoxun",
+  "provider": "edge-tts",
+
+  // 形态 → 音色（少女形态用晓伊；萝莉/Q版用晓伊大幅升调或晓双；成年形态用晓晓）
+  "form_voices": {
+    "teen": "zh-CN-XiaoyiNeural",
+    "loli": "zh-CN-XiaoshuangNeural",
+    "chibi": "zh-CN-XiaoshuangNeural",
+    "adult": "zh-CN-XiaoxiaoNeural"
+  },
+
+  // 统一风格参数（只有 --prosody off 时才用；开着语感时参数由 config/prosody.json 逐段给）
+  "style": { "rate": "+0%", "pitch": "+0Hz", "volume": "+0%" },
+
+  // 语感（用户 2026-10-17：「情绪变化、语气我听测试台词都没有变化，要做出真人的语感」
+  //       「小寻的声音要更像少女一点，现在更像青年」）
+  // profile 指向 config/prosody.json 的语感档；demo_* 是用来一耳朵对比语气的同一句话。
+  "prosody": {
+    "profile": "moe_shoujo",
+    "demo_text": "今天也一起加油吧，我就在这儿，一直陪着你。",
+    "demo_emotions": ["neutral", "happy", "shy", "angry", "sad", "sleepy"],
+
+    // A/B：同一句话渲两版（语感关 / 语感开）。emotion 省略时按台词 id 与文本线索自动判。
+    "ab": [
+      { "id": "", "emotion": "neutral", "note": "日常长句 · 中性",
+        "text": "今天也一起加油吧，我就在这儿，一直陪着你。" },
+      { "id": "", "emotion": "happy", "note": "日常长句 · 开心（同一句，只换情绪）",
+        "text": "今天也一起加油吧，我就在这儿，一直陪着你。" },
+      { "id": "hammer_1", "note": "被敲 · 惊讶", "text": "咚——！好痛呀，你是想把我敲成扁扁的吗？" },
+      { "id": "pat_combo", "note": "摸头太多次 · 害羞", "text": "摸这么多次…我、我会害羞的啦！" },
+      { "id": "mood_joy_1", "note": "短句 · 开心（短句只剩音高差，属实情）", "text": "今天好开心呀！" },
+      { "id": "wake_1", "note": "刚醒 · 迷糊", "text": "唔…我没有睡着哦。" }
+    ]
+  },
+
+  // 挑音色用的采样句（只用于 samples/，不是台词）。
+  // 注意：samples/ 故意**不加语感**——它是用来比「音色年龄感」的，多一层语气反而干扰判断；
+  //       语气变化请听 demo/（同一句 × 六种情绪）。
+  "sample_text": "你好呀，我是小寻！今天也一起加油吧，累了就靠过来休息一会儿，我陪着你哦。",
+
+  // 候选音色：重点是年龄感。晓伊（少女音色）升调后更接近 16 岁；
+  // 晓双/晓萌为更小的音色（供应商音色表变动时会自动跳过，不影响其他音色）。
+  "candidates": [
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+0Hz",  "label": "晓伊-原调（★ 语感档现在的默认，不变调）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+6Hz",  "label": "晓伊-微升6Hz（年龄感略降，仍自然）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+12Hz", "label": "晓伊-升12Hz（能听出变亮，边界附近）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+18Hz", "label": "晓伊-升18Hz（⚠ 开始发尖）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+30Hz", "label": "晓伊-升30Hz（⚠⚠ 小黄人/鼠来宝，留作反例对照）" },
+    { "voice": "zh-CN-XiaoyiNeural", "pitch": "+0Hz", "rate": "+8%", "label": "晓伊-原调-快8%（靠语速求活泼，不动音高）" },
+    { "voice": "zh-CN-XiaoxiaoNeural", "pitch": "+0Hz", "label": "晓晓-原调（对照：另一个女声底子）" },
+    { "voice": "zh-CN-XiaoyouNeural", "pitch": "+0Hz", "label": "晓悠-童声（edge 免费通道没有，会自动跳过；Azure Dragon HD 上有）" }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "_note": "形态路线图。这里声明「这个角色规划了哪些形态」，status 决定它在界面上是什么样：\n  ready   = forms/<id>/rig.json 真的存在，能切换、能渲染\n  planned = 还没做，界面上显示成灰色占位卡（点了给提示，不会白屏）\n软件扫描 forms/ 目录得到 ready 的那些；planned 的只有这份清单知道。\n**不要为 planned 的形态造假素材**：假素材会被 check_assets 的 375 项逐条检查，\n要么闸全红、要么给它开后门，而后门一开就再也想不起来关。空目录也不行 —— git 不跟踪空目录。\n做好一个形态 = 把素材放进 forms/<id>/ 并生成 rig.json，这里的 status 改成 ready，闸会自动开始管它。",
+  "character": "xiaoxun",
+  "forms": [
+    {
+      "id": "teen",
+      "name": "少女",
+      "status": "ready",
+      "head_body_ratio": "1:4.65",
+      "note": "主形态。40 部件 / 18 动作 / 46 参数 / 7 表情，Live2D 合规 39 项全部实测通过。 ★ 2026-10-17 更正头身比：这里原来写 1:6，而 anchors.json 实测 meta.heads_tall=4.65 —— 设计稿的目标和成品不一样，元数据必须描述**成品**（挂件的相对几何就是按它定标的，写错会让别的形态一起偏）。"
+    },
+    {
+      "id": "loli",
+      "name": "萝莉",
+      "status": "planned",
+      "head_body_ratio": "1:4",
+      "voice": "mm_lovely_girl",
+      "note": "H6 要求的四形态之一。音色已经选好（萌萌女童），缺的是设计图 + 拆件 + rig。对应 T2.2.1。"
+    },
+    {
+      "id": "adult",
+      "name": "青年女性",
+      "status": "planned",
+      "head_body_ratio": "1:7",
+      "voice": "mm_yujie",
+      "note": "音色已选（御姐音）。对应 T2.2.2。"
+    },
+    {
+      "id": "chibi",
+      "name": "Q 版",
+      "status": "ready",
+      "head_body_ratio": "1:2.14",
+      "note": "H6 的第四形态。2026-10-17 用它把「新形态：设计图 → 拆件 → rig → 引擎」整条链路跑通（T2.2.5），现在能切换、能渲染、能做动作：37 部件 / 20 动作 / 9 组。★ 头身比 1:2.14 是 anchors.json 实测（剪影口径，含呆毛；按发团顶算是 1:2.6），不是设计目标值。★ 素材还缺「按本形态像素重绘」的那一批：前发/侧发/眉毛/闭眼笑眼痛眼瞪眼/张嘴口内/无臂躯干（手臂拆件）/星星眼，以及 @2x 高清切件与衣柜三套 —— 缺的部分 make_rig 会自动丢掉对应通道并打印清单，不会让 rig 带着悬空绑定上线。细目见 docs/memory/TASKS.md 的 T2.2.5。"
+    }
+  ]
+}

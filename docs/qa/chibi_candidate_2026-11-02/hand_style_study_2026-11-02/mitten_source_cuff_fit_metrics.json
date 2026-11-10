@@ -1,0 +1,226 @@
+{
+  "status": "isolated_ai_art_candidate_wip_not_production",
+  "sources": {
+    "design_sheet_chibi": {
+      "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+      "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+    },
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    },
+    "source_crop_manifest": {
+      "path": "source_crop_manifest.json",
+      "sha256": "44b1c2081dbed29c8ef98ea10f6f1e70d2b378a68b2f6d290a5dfaf2d6f03a1a"
+    },
+    "body_full_roi_coordinates": {
+      "left": [
+        43,
+        846,
+        132,
+        938
+      ],
+      "right": [
+        435,
+        846,
+        524,
+        938
+      ]
+    },
+    "source_cuff_method": "dominant connected component of Chibi teal pixels plus strict neutral cream stripe pixels; enclosed color gaps filled; one source pixel of contour included; source alpha retained; warm hand pixels excluded",
+    "source_hand_fit_method": "each AI silhouette fitted uniformly within its own measured source small-hand bounding box; centered and bottom-aligned; no hand-drawn geometry",
+    "source_sampled_skin_tone_method": "low/mid/high luminance colors sampled from the measured Chibi source small-hand skin component; only the outline color uses the existing Chibi palette entry",
+    "wrist_join_method": "AI hand underlaps source cuff; retain exact source cuff/edge; remove only duplicate AI outline pixels in the 2px cuff-adjacent band"
+  },
+  "ai_trials": {
+    "left": {
+      "file": "mitten_left_art_trial_04.png",
+      "sha256": "e3415cc89486883fe8d8e0189fad55f49733083a26e2dfd5ca46ba4aadbb4955"
+    },
+    "right": {
+      "file": "mitten_right_art_trial_05.png",
+      "sha256": "0599c551af734cb934cb2c5e17327759f0b5e08e56e25c0d197f6d6905f80d25"
+    }
+  },
+  "fitting": {
+    "left": {
+      "ai_source_file": "mitten_left_art_trial_04.png",
+      "ai_source_sha256": "e3415cc89486883fe8d8e0189fad55f49733083a26e2dfd5ca46ba4aadbb4955",
+      "ai_source_silhouette_bbox_xyxy": [
+        132,
+        618,
+        528,
+        1073
+      ],
+      "ai_source_silhouette_size": [
+        396,
+        455
+      ],
+      "method": "AI-trial warm skin component + adjacent plum outline; color mapped to source-sampled Chibi hand tones",
+      "source_sampled_palette": {
+        "skin_shadow": [
+          248,
+          220,
+          212
+        ],
+        "skin": [
+          253,
+          233,
+          221
+        ],
+        "highlight": [
+          255,
+          239,
+          223
+        ],
+        "source_skin_luminance_p10_p50_p90": [
+          231.81957092285157,
+          236.67320251464844,
+          239.8159942626953
+        ],
+        "source_skin_sample_count": 843
+      },
+      "cuff_core_px": 2208,
+      "cuff_filled_px": 2301,
+      "cuff_cover_px": 2440,
+      "source_hand_skin_component_px": 843,
+      "source_hand_bbox_xyxy_exclusive_with_1px_outline_margin": [
+        19,
+        32,
+        64,
+        80
+      ],
+      "source_hand_bbox_size": [
+        45,
+        48
+      ],
+      "target_bbox_xyxy_exclusive": [
+        19,
+        32,
+        64,
+        80
+      ],
+      "target_bbox_size": [
+        45,
+        48
+      ],
+      "scale_uniform": 0.1054945054945055,
+      "fitted_size": [
+        42,
+        48
+      ],
+      "placement_xy": [
+        20,
+        32
+      ],
+      "bottom_aligned_to_source_hand_bbox": true,
+      "cuff_edge_band_radius_px": 2,
+      "ai_wrist_outline_pixels_removed_in_edge_band": 37,
+      "ai_hand_underlaps_source_cuff": true
+    },
+    "right": {
+      "ai_source_file": "mitten_right_art_trial_05.png",
+      "ai_source_sha256": "0599c551af734cb934cb2c5e17327759f0b5e08e56e25c0d197f6d6905f80d25",
+      "ai_source_silhouette_bbox_xyxy": [
+        266,
+        360,
+        826,
+        925
+      ],
+      "ai_source_silhouette_size": [
+        560,
+        565
+      ],
+      "method": "AI-trial warm skin component + adjacent plum outline; color mapped to source-sampled Chibi hand tones",
+      "source_sampled_palette": {
+        "skin_shadow": [
+          248,
+          218,
+          208
+        ],
+        "skin": [
+          254,
+          233,
+          222
+        ],
+        "highlight": [
+          254,
+          238,
+          225
+        ],
+        "source_skin_luminance_p10_p50_p90": [
+          228.81183776855468,
+          236.02859497070312,
+          239.41968994140626
+        ],
+        "source_skin_sample_count": 897
+      },
+      "cuff_core_px": 2211,
+      "cuff_filled_px": 2322,
+      "cuff_cover_px": 2498,
+      "source_hand_skin_component_px": 897,
+      "source_hand_bbox_xyxy_exclusive_with_1px_outline_margin": [
+        27,
+        34,
+        72,
+        80
+      ],
+      "source_hand_bbox_size": [
+        45,
+        46
+      ],
+      "target_bbox_xyxy_exclusive": [
+        27,
+        34,
+        72,
+        80
+      ],
+      "target_bbox_size": [
+        45,
+        46
+      ],
+      "scale_uniform": 0.08035714285714286,
+      "fitted_size": [
+        45,
+        45
+      ],
+      "placement_xy": [
+        27,
+        35
+      ],
+      "bottom_aligned_to_source_hand_bbox": true,
+      "cuff_edge_band_radius_px": 2,
+      "ai_wrist_outline_pixels_removed_in_edge_band": 26,
+      "ai_hand_underlaps_source_cuff": true
+    }
+  },
+  "visual_review": {
+    "viewed_artifacts": [
+      "hand_style_ai_source_cuff_candidate_board_wip.png",
+      "mitten_cuff_seam_detail_wip.png",
+      "source_cuff_mask_diagnostic_wip.png"
+    ],
+    "observations": [
+      "Source cuff stripes and outer contour remain continuous; the 8x static detail shows no obvious transparent gap after source-mask fitting.",
+      "Removing the duplicate AI wrist outline reduces the double-line seam, but a slight warm shadow-band and style-density mismatch remain visible.",
+      "Left/right silhouettes are independently fitted, but visual identity/style approval and animated behavior are not established."
+    ],
+    "decision": "improved_isolated_static_candidate_only_not_approved_for_production"
+  },
+  "limits": [
+    "AI trials 04 and 05 changed cuff geometry in their source outputs; their cuffs were not used",
+    "AI hand silhouettes remain unapproved for Chibi style/identity and are not production textures",
+    "the user-marked screenshot was a shape cue only, never copied, cropped, or used as texture",
+    "no Teen hand asset used",
+    "no production sprite, rig, generator, or engine changed",
+    "static seam appearance was visually reviewed but is not approved as final hand art; wrist rotation, hand proportions under motion, and C-engine fit remain unverified"
+  ],
+  "files": {
+    "mitten_left_ai_source_cuff_wip.png": "702dca8267c500054528e60c9dcd17d0eec12d8e34a5af0338a2be938172cd48",
+    "mitten_right_ai_source_cuff_wip.png": "8937feb4ddd33b5123ad08eedcf3164f999c711ee6e7dd26652f0093d771e54f",
+    "body_full_ai_source_cuff_preview_wip.png": "d0d5d39de8c5de40792f903d8ce0405e2b309a48469d7a3fe6a958646b4da549",
+    "hand_style_ai_source_cuff_candidate_board_wip.png": "d4279a3160b88c7570bb16c7ee2f78006067f6f8bebfdd0f305102f64eb94470",
+    "source_cuff_mask_diagnostic_wip.png": "d35b510654825e8b5d5ec618d2ab084395fef1f834cd14b4ff1a1a75fdc187d0",
+    "mitten_cuff_seam_detail_wip.png": "7fdab966932e44ccca0cf00a913fe1b6915d0b286b1cc1b99173fdc230df44d2"
+  }
+}

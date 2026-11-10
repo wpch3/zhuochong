@@ -1,0 +1,38 @@
+{
+  "finger_pixels": {
+    "ParamFingerLLittle": 92,
+    "ParamFingerLRing": 88,
+    "ParamFingerLMiddle": 115,
+    "ParamFingerLIndex": 176,
+    "ParamFingerLThumb": 101,
+    "ParamFingerRLittle": 93,
+    "ParamFingerRRing": 87,
+    "ParamFingerRMiddle": 114,
+    "ParamFingerRIndex": 176,
+    "ParamFingerRThumb": 101
+  },
+  "mouth_full": 817,
+  "half_blink": 4261,
+  "closed_blink": 6962,
+  "wink_left": 3422,
+  "gaze_extremes": 2726,
+  "finger_loop": 1007,
+  "multi_pose_pixels": {
+    "0.35": {
+      "outward": 2421,
+      "inward": 2386
+    },
+    "0.55": {
+      "outward": 5617,
+      "inward": 5669
+    },
+    "0.8": {
+      "outward": 11558,
+      "inward": 11523
+    },
+    "1": {
+      "outward": 17265,
+      "inward": 17257
+    }
+  }
+}

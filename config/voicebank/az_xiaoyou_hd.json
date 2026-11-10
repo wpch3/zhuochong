@@ -1,0 +1,44 @@
+{
+  "id": "az_xiaoyou_hd",
+  "name": "晓悠 HD（Azure，清澈童声）",
+  "provider": "azure_speech",
+  "voice_id": "zh-CN-Xiaoyou:DragonHDFlashLatestNeural",
+  "persona": "loli",
+  "anime": true,
+  "langs": [
+    "zh-CN",
+    "en-US"
+  ],
+  "emotion_mode": "style",
+  "emotions": [
+    "chat",
+    "angry",
+    "cheerful",
+    "poetry-reading",
+    "sad",
+    "story",
+    "cute"
+  ],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ],
+    "style_degree": [
+      0.01,
+      2.0
+    ]
+  },
+  "recommend": "官方描述 angelic and clear，带 cute style，萝莉里情绪最全",
+  "source": "Azure Neural HD Flash 音色与 style 表",
+  "roles": [],
+  "enabled": true
+}

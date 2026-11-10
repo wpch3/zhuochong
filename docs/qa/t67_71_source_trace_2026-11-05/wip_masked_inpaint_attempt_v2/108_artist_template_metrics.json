@@ -1,0 +1,46 @@
+{
+  "task": "T67.71",
+  "status": "blank registered source template; no hair reconstruction",
+  "application_open_test": "not run (Krita not installed in this environment)",
+  "ora_structural_validation": "passed: mimetype/order, canvas dimensions, 5 named layers, 3 empty full-canvas draft layers, reference pixel identity, merged-image identity",
+  "production_changes": false,
+  "canvas_px": [
+    1132,
+    1664
+  ],
+  "target_source": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "target_sha256": "314b1dc23421f6332ac4e3139b10ea0445e17b791ea04b81982761f92c4fcb15",
+  "roi_xyxy_half_open": {
+    "LEFT": [
+      51,
+      849,
+      396,
+      1368
+    ],
+    "RIGHT": [
+      736,
+      849,
+      1081,
+      1368
+    ]
+  },
+  "draft_layer_names": [
+    "DRAFT - Clean hair plate (EMPTY; author art only)",
+    "DRAFT - Back-hair continuation LEFT (EMPTY)",
+    "DRAFT - Back-hair continuation RIGHT (EMPTY)"
+  ],
+  "guide_semantics": "thin ROI outlines only; not object mask, segmentation, hair alpha, or hidden strand shape",
+  "ora": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/107_T67_71_registered_artist_template.ora",
+    "sha256": "129048b6d8cbbb92de0de155180dbf9b6fa50bf6c48aa7ed7f739fd4b27f8b32",
+    "bytes": 1807854
+  },
+  "preview": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/107_artist_template_preview.png",
+    "sha256": "ae2ad3fdd4dde405f9ec118026a7086ea7260456f7baf5fe6ed2f25e1bebaad8",
+    "dimensions": [
+      1228,
+      1776
+    ]
+  }
+}

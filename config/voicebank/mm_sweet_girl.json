@@ -1,0 +1,38 @@
+{
+  "id": "mm_sweet_girl",
+  "name": "Sweet Girl（MiniMax 英文甜妹）",
+  "provider": "minimax",
+  "voice_id": "Sweet_Girl",
+  "persona": "shoujo",
+  "anime": true,
+  "langs": [
+    "en-US"
+  ],
+  "emotion_mode": "emotion",
+  "emotions": [
+    "happy",
+    "sad",
+    "angry",
+    "fearful",
+    "surprised",
+    "neutral"
+  ],
+  "tunable": {
+    "speed": [
+      0.5,
+      2.0
+    ],
+    "pitch": [
+      -12,
+      12
+    ],
+    "volume": [
+      0,
+      10
+    ]
+  },
+  "recommend": "英文二次元甜妹音",
+  "source": "MiniMax v2 音色表",
+  "roles": [],
+  "enabled": true
+}

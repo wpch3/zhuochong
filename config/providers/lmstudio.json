@@ -1,0 +1,43 @@
+{
+  "name": "LM Studio（本机）",
+  "kind": "openai_compatible",
+  "local": true,
+  "enabled": false,
+  "priority": 86,
+  "base_url": "http://127.0.0.1:1234/v1",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "local-gguf",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "local-gguf",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "embed.text",
+      "model": "text-embedding-nomic-embed-text-v1.5",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 0,
+    "note": "同 llama.cpp（它内置 llama.cpp / MLX 两个后端）。"
+  },
+  "note": "桌面 GUI 派的默认选择：图形界面挑模型、一键开本地服务器（默认 1234 端口）。缺点是**不能 headless**，得有人登录着桌面；所以服务器档位还是推荐 Ollama / llama-server。",
+  "id": "lmstudio"
+}

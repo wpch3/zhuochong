@@ -1,0 +1,53 @@
+{
+  "form": "teen",
+  "action": "wave",
+  "canvas_scale": 1,
+  "arms": [
+    {
+      "side": "l",
+      "available": true,
+      "shoulder": [
+        307.78,
+        461.21
+      ],
+      "elbow": [
+        258.78,
+        620.35
+      ],
+      "wrist": [
+        233.21,
+        732.41
+      ],
+      "upper_len": 166.52,
+      "forearm_len": 114.93,
+      "included_angle_deg": 175.74,
+      "flex_deg": 4.26,
+      "straight_fault": true
+    },
+    {
+      "side": "r",
+      "available": true,
+      "shoulder": [
+        512.17,
+        434.12
+      ],
+      "elbow": [
+        575.94,
+        583.47
+      ],
+      "wrist": [
+        627.75,
+        451.43
+      ],
+      "upper_len": 162.39,
+      "forearm_len": 141.84,
+      "included_angle_deg": 44.55,
+      "flex_deg": 135.45,
+      "straight_fault": false
+    }
+  ],
+  "knees": {
+    "l": "mesh_bend_only:no rigid knee pivot",
+    "r": "mesh_bend_only:no rigid knee pivot"
+  }
+}

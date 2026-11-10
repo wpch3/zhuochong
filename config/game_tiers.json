@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "_note": [
+    "游戏档位表（对应 REQUIREMENTS A25）。回答的是同一个问题：",
+    "对这个游戏，AI 最多能做到什么程度？",
+    "",
+    "用户 2026-10-14 原话：『不是完全禁止网游，而是让他们可以在网游也陪伴聊天和",
+    "实时屏幕操作进行回应对话，而其他的可以真正的游玩。』",
+    "",
+    "所以档位不是偏好设置，是硬约束：网游条目 locked=true，界面上不提供提升开关，",
+    "tools/check_platform.py 有静态闸盯着，改坏会判红。",
+    "不在本表里的游戏一律按 default_tier（=1，最安全的那档）处理。"
+  ],
+  "default_tier": 1,
+  "tiers": {
+    "1": {
+      "id": "watch_and_chat",
+      "name": "观战陪聊",
+      "input": "none",
+      "summary": "看着你玩，实时说话。零输入——代码层面就不接输入通道。",
+      "capabilities": ["screen.capture", "vision.describe", "chat.realtime", "tts.speak"],
+      "forbidden": ["input.keyboard", "input.mouse", "input.gamepad"]
+    },
+    "2": {
+      "id": "protocol_play",
+      "name": "协议游玩",
+      "input": "game_protocol",
+      "summary": "以一个普通玩家身份接入游戏自己的协议，拿结构化世界数据，动作是代码。不读屏、不模拟键鼠。",
+      "capabilities": ["game.protocol", "code.generate", "code.execute", "chat.realtime", "tts.speak"],
+      "forbidden": ["input.keyboard", "input.mouse", "input.gamepad"],
+      "requires": ["code.sandbox.timeout", "cost.circuit_breaker"]
+    },
+    "3": {
+      "id": "gamepad_play",
+      "name": "手柄游玩",
+      "input": "virtual_gamepad",
+      "summary": "屏幕捕获 + 虚拟手柄，当第二个玩家。本地双人游戏本来就是手柄分屏，虚拟手柄比模拟键鼠更贴合这个身份。",
+      "capabilities": ["screen.capture", "vision.describe", "input.gamepad", "chat.realtime", "tts.speak"],
+      "forbidden": ["input.keyboard", "input.mouse"],
+      "requires": ["input.emergency_stop", "input.rate_limit", "user.explicit_grant"]
+    }
+  },
+  "categories": {
+    "online_competitive": {
+      "name": "网络竞技",
+      "max_tier": 1,
+      "locked": true,
+      "reason": "用户明确要求只陪聊不代打；且反作弊系统会检测输入注入，代打会导致封号"
+    },
+    "online_casual": {
+      "name": "网络休闲",
+      "max_tier": 1,
+      "locked": true,
+      "reason": "同属联网对战范畴，按最保守处理"
+    },
+    "sandbox_protocol": {
+      "name": "有开放协议的沙盒",
+      "max_tier": 2,
+      "locked": false,
+      "reason": "游戏自己提供客户端协议，AI 作为正常玩家接入，不存在作弊注入"
+    },
+    "local_coop": {
+      "name": "本地 / 局域网双人",
+      "max_tier": 3,
+      "locked": false,
+      "reason": "单机或局域网，没有第三方竞技公平性问题；需用户逐游戏授权"
+    }
+  },
+  "games": [
+    {
+      "id": "lol",
+      "name": "英雄联盟",
+      "aliases": ["League of Legends", "撸啊撸"],
+      "category": "online_competitive",
+      "max_tier": 1,
+      "note": "用户点名的例子。AI 看着你打、实时吐槽鼓励提醒，但绝不碰输入。"
+    },
+    {
+      "id": "valorant",
+      "name": "无畏契约",
+      "category": "online_competitive",
+      "max_tier": 1,
+      "note": "Vanguard 是内核级反作弊，连读屏都要谨慎，输入一律禁止。"
+    },
+    {
+      "id": "genshin",
+      "name": "原神",
+      "category": "online_casual",
+      "max_tier": 1
+    },
+    {
+      "id": "minecraft_java",
+      "name": "我的世界（Java 版）",
+      "aliases": ["Minecraft", "MC", "麦块"],
+      "category": "sandbox_protocol",
+      "max_tier": 2,
+      "access": "mineflayer",
+      "note": "走 Minecraft 协议以普通玩家身份登录，拿方块/实体/背包/聊天的结构化数据。不装 mod、不截屏、不模拟键鼠。局域网世界（对局域网开放）同样适用——这时候『陪你玩』和『陪伴联机』是同一件事。"
+    },
+    {
+      "id": "terraria",
+      "name": "泰拉瑞亚",
+      "category": "local_coop",
+      "max_tier": 3,
+      "note": "支持局域网联机，但没有像 Mineflayer 那样成熟的协议客户端，先按档三处理。"
+    },
+    {
+      "id": "stardew_valley",
+      "name": "星露谷物语",
+      "category": "local_coop",
+      "max_tier": 3
+    },
+    {
+      "id": "overcooked2",
+      "name": "胡闹厨房 2",
+      "category": "local_coop",
+      "max_tier": 3,
+      "note": "典型的本地双人手柄分屏游戏，是档三最对口的场景。"
+    }
+  ]
+}

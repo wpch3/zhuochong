@@ -1,0 +1,375 @@
+{
+  "status": "isolated_trial08_ai_hand_pixels_source_cuff_fit_wip_not_production",
+  "tool": {
+    "path": "fit_mitten_full_body_trial_08.py",
+    "sha256": "9f9fb5129e9b72c52b9ca08f91297e8a0a9c5bc13dcfa2607b0633fe7a834f9d"
+  },
+  "sources": {
+    "approved_visual_concept": {
+      "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+      "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    },
+    "design_sheet_chibi": {
+      "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+      "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+    },
+    "source_crop_manifest": {
+      "path": "source_crop_manifest.json",
+      "sha256": "44b1c2081dbed29c8ef98ea10f6f1e70d2b378a68b2f6d290a5dfaf2d6f03a1a"
+    },
+    "hand_windows_xyxy_exclusive": {
+      "left": [
+        336,
+        660,
+        394,
+        700
+      ],
+      "right": [
+        628,
+        660,
+        686,
+        700
+      ]
+    },
+    "source_hand_roi_xyxy_exclusive": {
+      "left": [
+        43,
+        846,
+        132,
+        938
+      ],
+      "right": [
+        435,
+        846,
+        524,
+        938
+      ]
+    },
+    "placement_tests": [
+      "bottom-aligned-to-source-hand-box",
+      "top-aligned-to-source-hand-box/cuff insertion"
+    ]
+  },
+  "hands": {
+    "left": {
+      "trial08_extraction": {
+        "warm_skin_component_px": 727,
+        "preserved_existing_outline_px": 64,
+        "selected_existing_pixels_px": 791,
+        "crop_xyxy_exclusive": [
+          5,
+          4,
+          54,
+          36
+        ],
+        "cutout_size": [
+          49,
+          32
+        ],
+        "pixel_source": "unaltered RGB pixels selected from trial-08 hand and immediately adjacent existing plum outline; outside pixels transparent"
+      },
+      "source": {
+        "cuff_core_px": 2208,
+        "cuff_filled_px": 2301,
+        "cuff_cover_px": 2440,
+        "source_hand_skin_component_px": 843,
+        "source_hand_bbox_xyxy_exclusive_with_1px_outline_margin": [
+          19,
+          32,
+          64,
+          80
+        ],
+        "source_hand_bbox_size": [
+          45,
+          48
+        ]
+      },
+      "source_palette_for_comparison_only": {
+        "skin_shadow": [
+          248,
+          220,
+          212
+        ],
+        "skin": [
+          253,
+          233,
+          221
+        ],
+        "highlight": [
+          255,
+          239,
+          223
+        ],
+        "source_skin_luminance_p10_p50_p90": [
+          231.81957092285157,
+          236.67320251464844,
+          239.8159942626953
+        ],
+        "source_skin_sample_count": 843
+      },
+      "bottom": {
+        "target_bbox_xyxy_exclusive": [
+          19,
+          32,
+          64,
+          80
+        ],
+        "target_bbox_size": [
+          45,
+          48
+        ],
+        "scale_uniform": 0.9183673469387755,
+        "fitted_size": [
+          45,
+          29
+        ],
+        "placement_xy": [
+          19,
+          51
+        ],
+        "bottom_aligned_to_source_hand_bbox": true,
+        "placement_anchor": "bottom",
+        "actual_placement_xy": [
+          19,
+          51
+        ],
+        "removed_existing_ai_outline_px_in_2px_cuff_edge_band": 0,
+        "cuff_overlay": "original registered body_full RGBA pixels selected by source-derived mask",
+        "source_cuff_pixel_identity_verified": true,
+        "source_cuff_selected_pixel_count": 2440,
+        "source_cuff_rgba_sha256": "941f1d5bff148ec699095181d70601ab722f471161d1733e748a46a31460f845"
+      },
+      "cuff_aligned": {
+        "target_bbox_xyxy_exclusive": [
+          19,
+          32,
+          64,
+          80
+        ],
+        "target_bbox_size": [
+          45,
+          48
+        ],
+        "scale_uniform": 0.9183673469387755,
+        "fitted_size": [
+          45,
+          29
+        ],
+        "placement_xy": [
+          19,
+          51
+        ],
+        "bottom_aligned_to_source_hand_bbox": true,
+        "placement_anchor": "cuff_aligned",
+        "actual_placement_xy": [
+          19,
+          32
+        ],
+        "removed_existing_ai_outline_px_in_2px_cuff_edge_band": 3,
+        "cuff_overlay": "original registered body_full RGBA pixels selected by source-derived mask",
+        "source_cuff_pixel_identity_verified": true,
+        "source_cuff_selected_pixel_count": 2440,
+        "source_cuff_rgba_sha256": "941f1d5bff148ec699095181d70601ab722f471161d1733e748a46a31460f845"
+      }
+    },
+    "right": {
+      "trial08_extraction": {
+        "warm_skin_component_px": 671,
+        "preserved_existing_outline_px": 40,
+        "selected_existing_pixels_px": 711,
+        "crop_xyxy_exclusive": [
+          5,
+          4,
+          52,
+          36
+        ],
+        "cutout_size": [
+          47,
+          32
+        ],
+        "pixel_source": "unaltered RGB pixels selected from trial-08 hand and immediately adjacent existing plum outline; outside pixels transparent"
+      },
+      "source": {
+        "cuff_core_px": 2211,
+        "cuff_filled_px": 2322,
+        "cuff_cover_px": 2498,
+        "source_hand_skin_component_px": 897,
+        "source_hand_bbox_xyxy_exclusive_with_1px_outline_margin": [
+          27,
+          34,
+          72,
+          80
+        ],
+        "source_hand_bbox_size": [
+          45,
+          46
+        ]
+      },
+      "source_palette_for_comparison_only": {
+        "skin_shadow": [
+          248,
+          218,
+          208
+        ],
+        "skin": [
+          254,
+          233,
+          222
+        ],
+        "highlight": [
+          254,
+          238,
+          225
+        ],
+        "source_skin_luminance_p10_p50_p90": [
+          228.81183776855468,
+          236.02859497070312,
+          239.41968994140626
+        ],
+        "source_skin_sample_count": 897
+      },
+      "bottom": {
+        "target_bbox_xyxy_exclusive": [
+          27,
+          34,
+          72,
+          80
+        ],
+        "target_bbox_size": [
+          45,
+          46
+        ],
+        "scale_uniform": 0.9574468085106383,
+        "fitted_size": [
+          45,
+          31
+        ],
+        "placement_xy": [
+          27,
+          49
+        ],
+        "bottom_aligned_to_source_hand_bbox": true,
+        "placement_anchor": "bottom",
+        "actual_placement_xy": [
+          27,
+          49
+        ],
+        "removed_existing_ai_outline_px_in_2px_cuff_edge_band": 0,
+        "cuff_overlay": "original registered body_full RGBA pixels selected by source-derived mask",
+        "source_cuff_pixel_identity_verified": true,
+        "source_cuff_selected_pixel_count": 2498,
+        "source_cuff_rgba_sha256": "d0f4d9db0658f3b546a1e3b27a7b20cd5e8ce6d9b2794ca99e01d0a6d32b858d"
+      },
+      "cuff_aligned": {
+        "target_bbox_xyxy_exclusive": [
+          27,
+          34,
+          72,
+          80
+        ],
+        "target_bbox_size": [
+          45,
+          46
+        ],
+        "scale_uniform": 0.9574468085106383,
+        "fitted_size": [
+          45,
+          31
+        ],
+        "placement_xy": [
+          27,
+          49
+        ],
+        "bottom_aligned_to_source_hand_bbox": true,
+        "placement_anchor": "cuff_aligned",
+        "actual_placement_xy": [
+          27,
+          34
+        ],
+        "removed_existing_ai_outline_px_in_2px_cuff_edge_band": 1,
+        "cuff_overlay": "original registered body_full RGBA pixels selected by source-derived mask",
+        "source_cuff_pixel_identity_verified": true,
+        "source_cuff_selected_pixel_count": 2498,
+        "source_cuff_rgba_sha256": "d0f4d9db0658f3b546a1e3b27a7b20cd5e8ce6d9b2794ca99e01d0a6d32b858d"
+      }
+    }
+  },
+  "limits": [
+    "Trial 08 is user-approved as a visual concept direction only; this fit is isolated and not production approval.",
+    "Hand silhouettes and outline pixels come from existing trial-08 pixels; no hand shape or hidden-wrist continuation is drawn or generated by this script.",
+    "Exact source cuff pixels are composited over each test; this does not make the AI-derived hand a source-original part.",
+    "No user-marked screenshot pixels, Teen hand art, or programmatically drawn hand geometry are used.",
+    "No production sprite, rig, generator, or C-engine state changed."
+  ],
+  "outputs": {
+    "cutouts": {
+      "left": {
+        "path": "mitten_trial_08_left_ai_hand_pixels_wip.png",
+        "sha256": "b27e9491593df6244decddb3f630c83581660aa7f1cd00323c6c64a08d1a9d3f"
+      },
+      "right": {
+        "path": "mitten_trial_08_right_ai_hand_pixels_wip.png",
+        "sha256": "f34efcd07d9cb8b00c393890987e3d3ef3c3f0989d410b4f2d5fcf99f9b79c30"
+      }
+    },
+    "variants": {
+      "left": {
+        "bottom": {
+          "path": "mitten_left_ai_trial08_bottom_source_cuff_wip.png",
+          "sha256": "3cd06d4b70945283a9c9f75c9a84cec683814ab2c96fdc0dd7c281bc13f32214"
+        },
+        "cuff_aligned": {
+          "path": "mitten_left_ai_trial08_cuff_aligned_source_cuff_wip.png",
+          "sha256": "470fd01c66db708afa546c189289bd38169ec96fc99458dec10b5d305698d309"
+        }
+      },
+      "right": {
+        "bottom": {
+          "path": "mitten_right_ai_trial08_bottom_source_cuff_wip.png",
+          "sha256": "4d91f2f05cae476a45dc1bcee1e6af65a5441e95228a8a864bcc7d5df5b8bf71"
+        },
+        "cuff_aligned": {
+          "path": "mitten_right_ai_trial08_cuff_aligned_source_cuff_wip.png",
+          "sha256": "ec7b1830d0686625365e47fd264142d27fe7b73b8ede9faddd6da9458bffbdb7"
+        }
+      }
+    },
+    "full_previews": {
+      "bottom": {
+        "path": "body_full_ai_trial08_bottom_source_cuff_preview_wip.png",
+        "sha256": "a48d336d20621e467ec2b5b49ca731b983877e507e7eff0843b69a311c78016e"
+      },
+      "cuff_aligned": {
+        "path": "body_full_ai_trial08_cuff_aligned_source_cuff_preview_wip.png",
+        "sha256": "c54d5a9a54103c4ab6fd9ef4dcfb1c62792dfda009174e44aca9fc935967c15d"
+      }
+    },
+    "board": {
+      "path": "chibi_mitten_trial_08_source_cuff_fit_board_wip.png",
+      "sha256": "208a243537568ad44d57ba7e1a377568abe23b2fa18e2f155f20ad4148e4e47c"
+    }
+  },
+  "visual_review": {
+    "status": "reviewed_rejected_as_source_aligned_hand_fit",
+    "viewed_artifacts": [
+      "chibi_mitten_trial_08_source_cuff_fit_board_wip.png",
+      "body_full_ai_trial08_bottom_source_cuff_preview_wip.png",
+      "body_full_ai_trial08_cuff_aligned_source_cuff_preview_wip.png"
+    ],
+    "observations": [
+      "The source-derived hand windows contain a wide/flat visible trial-08 silhouette; uniform fitting to source width produces a 45x27px hand instead of filling the 45x48px small-hand box.",
+      "The bottom-aligned 5x board visibly leaves a large cuff-to-hand gap. Cuff-aligned placement closes the gap but leaves a stubby, weakly outlined hand and still fails to match the source hand's usable wrist length.",
+      "The full-body source previews show undersized, faint-looking hand joins and edge artifacts; preserving source cuff pixels alone does not make the AI extraction reusable.",
+      "The original cuff layer remains selected from registered body_full pixels; this is a static fit experiment only, not production art or animated hidden-wrist coverage."
+    ],
+    "decision": "reject_trial08_flattened_hand_extraction_for_reuse; keep_user_approved_trial08_as_visual_direction; test_independent_hand_art_study"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "baseline": "joint candidate, repeat neutral frames agree",
+  "neutral_changed_pixels": {
+    "0.35": 696,
+    "0.55": 1621,
+    "0.8": 3154,
+    "1.0": 4613
+  },
+  "states_changed_vs_center_at_1": {
+    "left": 1749,
+    "right": 1748,
+    "half_blink": 1748,
+    "late_blink": 15880,
+    "closed": 16262,
+    "mouth_open": 956
+  },
+  "half_blink_changed_vs_right": 0,
+  "limits": "new eye art intentionally changes appearance; no visual acceptance"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "embed.text",
+  "name": "文本向量",
+  "kind": "analyze",
+  "unit": "token",
+  "input": {
+    "texts": "text[]"
+  },
+  "output": {
+    "vectors": "vector[]"
+  }
+}

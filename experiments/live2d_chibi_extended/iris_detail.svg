@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="215" height="114" viewBox="0 0 215 114">
+ <defs>
+  <linearGradient id="iris" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#222451" /><stop offset=".40" stop-color="#284d83" /><stop offset=".58" stop-color="#50a0ca" /><stop offset="1" stop-color="#a9e1ed" /></linearGradient>
+  <g id="pupil">
+   <path d="M -5 60 C -5 66 -5 77 -4 81 C -2 87 2 88 4 81 C 5 76 5 67 4 60 Z" fill="#102c4c" />
+   <path d="M -2 75 L 2 75 L 2 80 L 0 82 L -2 80 Z" fill="#246396" />
+   <ellipse cx="1" cy="68" rx="3.8" ry="4.3" fill="#fffdfd" />
+  </g>
+ </defs>
+ <g id="left_iris" transform="translate(56 0)"><use xlink:href="#pupil" /><ellipse cx="10" cy="67" rx="2.4" ry="2.7" fill="#fff" /></g>
+ <g id="right_iris" transform="translate(158 0)"><use xlink:href="#pupil" /></g>
+</svg>

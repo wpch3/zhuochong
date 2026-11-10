@@ -1,0 +1,143 @@
+{
+  "_note": "由 tools/check_platform.py 从 config/emotion_map.json 投影，不要手改。面板只能从 web 根目录取文件，config/ 下的取不到。",
+  "fallback_order": [
+    "style",
+    "emotion",
+    "tag",
+    "prosody"
+  ],
+  "emotions": {
+    "neutral": {
+      "name": "平静",
+      "expression": "",
+      "style": "",
+      "minimax": "neutral",
+      "tag": "",
+      "prosody": {
+        "rate": 0,
+        "pitch": 0,
+        "volume": 0
+      }
+    },
+    "happy": {
+      "name": "开心",
+      "expression": "happy",
+      "style": "cheerful",
+      "minimax": "happy",
+      "tag": "[excited]",
+      "prosody": {
+        "rate": 8,
+        "pitch": 12,
+        "volume": 5
+      }
+    },
+    "smile": {
+      "name": "微笑",
+      "expression": "smile",
+      "style": "friendly",
+      "minimax": "happy",
+      "tag": "",
+      "prosody": {
+        "rate": 2,
+        "pitch": 5,
+        "volume": 0
+      }
+    },
+    "shy": {
+      "name": "害羞",
+      "expression": "shy",
+      "style": "shy",
+      "minimax": "neutral",
+      "tag": "[whispering]",
+      "prosody": {
+        "rate": -8,
+        "pitch": 6,
+        "volume": -12
+      }
+    },
+    "angry": {
+      "name": "生气",
+      "expression": "angry",
+      "style": "angry",
+      "minimax": "angry",
+      "tag": "[angry]",
+      "prosody": {
+        "rate": 10,
+        "pitch": -5,
+        "volume": 10
+      }
+    },
+    "sad": {
+      "name": "难过",
+      "expression": "sad",
+      "style": "sad",
+      "minimax": "sad",
+      "tag": "[sad]",
+      "prosody": {
+        "rate": -12,
+        "pitch": -10,
+        "volume": -8
+      }
+    },
+    "surprise": {
+      "name": "吃惊",
+      "expression": "surprise",
+      "style": "excited",
+      "minimax": "surprised",
+      "tag": "[surprised]",
+      "prosody": {
+        "rate": 14,
+        "pitch": 18,
+        "volume": 6
+      }
+    },
+    "sleepy": {
+      "name": "困倦",
+      "expression": "sleepy",
+      "style": "gentle",
+      "minimax": "neutral",
+      "tag": "[yawning]",
+      "prosody": {
+        "rate": -20,
+        "pitch": -8,
+        "volume": -10
+      }
+    },
+    "think": {
+      "name": "思考",
+      "expression": "",
+      "style": "calm",
+      "minimax": "neutral",
+      "tag": "",
+      "prosody": {
+        "rate": -6,
+        "pitch": -3,
+        "volume": -4
+      }
+    },
+    "affection": {
+      "name": "亲昵",
+      "expression": "smile",
+      "style": "affectionate",
+      "minimax": "happy",
+      "tag": "",
+      "prosody": {
+        "rate": -4,
+        "pitch": 8,
+        "volume": 0
+      }
+    },
+    "cute": {
+      "name": "撒娇",
+      "expression": "happy",
+      "style": "cute",
+      "minimax": "happy",
+      "tag": "",
+      "prosody": {
+        "rate": 4,
+        "pitch": 16,
+        "volume": 2
+      }
+    }
+  }
+}

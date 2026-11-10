@@ -1,0 +1,19 @@
+{
+  "task": "T67.71",
+  "status": "rejected AI concept; negative evidence only; not candidate, not production",
+  "input": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "output": {
+    "path": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/113_ai_author_redraw_v1_wip.png",
+    "size": [848, 1248],
+    "mode": "RGB",
+    "alpha_channel": false,
+    "sha256": "b9c3dc0b5d5dad2e622e5f6feffd801bbb7b902ae98c19215242fa611396daf3"
+  },
+  "visual_review": "The generated result is a different full-hair design on an opaque white background, changes the overall silhouette/strand layout, and does not preserve the input canvas or transparent alpha. It cannot be aligned or used as target back-hair pixels. No crop was transferred.",
+  "decision": "reject before local candidate review or C; retain only to document that this generative route is unsuitable for the target sprite",
+  "limitations": [
+    "A plausible generated design is not the original hidden hair truth.",
+    "This tool output did not satisfy the target dimensions, alpha, shape, or pixel-preservation requirements.",
+    "No pixels were used in any other asset."
+  ]
+}

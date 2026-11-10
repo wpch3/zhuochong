@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+  <!-- Experimental hand-authored inner jacket fabric, in body.png coordinates.
+       Both sleeves cover these shapes at rest only after the builder clips them.
+       This is editable conceptual artwork, not original layered source art. -->
+  <defs>
+    <linearGradient id="cloth" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#d8c5d5"/><stop offset=".4" stop-color="#eee3eb"/><stop offset="1" stop-color="#fffdfd"/>
+    </linearGradient>
+    <g id="inner">
+      <path d="M 119 33 C 135 31 150 37 161 48 L 166 75 C 157 108 151 142 145 171 C 145 181 153 187 166 190 L 161 204 L 115 204 C 111 180 112 151 117 120 C 121 88 119 56 119 33 Z" fill="url(#cloth)"/>
+      <path d="M 135 48 C 145 63 150 77 149 96 C 148 118 142 142 137 160 C 140 137 139 120 140 100 C 140 78 137 63 135 48 Z" fill="#ccb8cd" opacity=".48"/>
+      <path d="M 121 172 C 127 180 137 186 150 187 C 147 191 139 193 126 190 Z" fill="#b6a4bb" opacity=".30"/>
+      <path d="M 124 59 C 126 82 125 102 123 119" fill="none" stroke="#faf4f9" stroke-width="2" stroke-linecap="round" opacity=".75"/>
+    </g>
+  </defs>
+  <use href="#inner" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#inner"/>
+  <use href="#inner" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#inner" transform="translate(460 0) scale(-1 1)"/>
+</svg>

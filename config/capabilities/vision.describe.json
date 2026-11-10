@@ -1,0 +1,16 @@
+{
+  "id": "vision.describe",
+  "name": "看图",
+  "kind": "analyze",
+  "unit": "token",
+  "input": {
+    "images": "file[]",
+    "question": "text?"
+  },
+  "output": {
+    "text": "text"
+  },
+  "ui": {
+    "panel": "text"
+  }
+}

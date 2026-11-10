@@ -1,0 +1,54 @@
+{
+  "id": "az_xiaomo",
+  "name": "晓墨（Azure，可演不同年龄）",
+  "provider": "azure_speech",
+  "voice_id": "zh-CN-XiaomoNeural",
+  "persona": "young_woman",
+  "anime": false,
+  "langs": [
+    "zh-CN"
+  ],
+  "emotion_mode": "style",
+  "emotions": [
+    "affectionate",
+    "angry",
+    "calm",
+    "cheerful",
+    "depressed",
+    "disgruntled",
+    "embarrassed",
+    "envious",
+    "fearful",
+    "gentle",
+    "sad",
+    "serious"
+  ],
+  "roles": [
+    "Boy",
+    "Girl",
+    "YoungAdultFemale",
+    "OlderAdultFemale",
+    "SeniorFemale"
+  ],
+  "tunable": {
+    "rate": [
+      -50,
+      100
+    ],
+    "pitch": [
+      -50,
+      50
+    ],
+    "volume": [
+      -50,
+      50
+    ],
+    "style_degree": [
+      0.01,
+      2.0
+    ]
+  },
+  "recommend": "唯一带 role 的：同一个音色能演女孩/少女/成年女性，形态切换可以不换音色",
+  "source": "Azure voice styles 表：zh-CN-XiaomoNeural（Roles 列）",
+  "enabled": true
+}

@@ -1,0 +1,17 @@
+{
+  "id": "image.generate",
+  "name": "生成图片",
+  "kind": "generate",
+  "unit": "image",
+  "input": {
+    "prompt": "text",
+    "size": "enum?",
+    "n": "int?"
+  },
+  "output": {
+    "images": "file[]"
+  },
+  "ui": {
+    "panel": "gallery"
+  }
+}

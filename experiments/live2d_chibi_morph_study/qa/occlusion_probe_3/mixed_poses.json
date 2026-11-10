@@ -1,0 +1,718 @@
+{
+  "fixed": {
+    "L_neutral": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 0
+    },
+    "L_alternating": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "L_alternating_reverse": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_index_spread": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": 0
+    },
+    "L_index_close": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 0
+    },
+    "L_thumb_spread": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 1
+    },
+    "L_thumb_close": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": -1
+    },
+    "L_joint_mix_0": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_joint_mix_1": {
+      "ParamArmL": -1,
+      "ParamElbowL": -1,
+      "ParamWristL": 1,
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_joint_mix_2": {
+      "ParamArmL": -1,
+      "ParamElbowL": 1,
+      "ParamWristL": -1,
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_joint_mix_3": {
+      "ParamArmL": -1,
+      "ParamElbowL": 1,
+      "ParamWristL": 1,
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_joint_mix_4": {
+      "ParamArmL": 1,
+      "ParamElbowL": -1,
+      "ParamWristL": -1,
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_joint_mix_5": {
+      "ParamArmL": 1,
+      "ParamElbowL": -1,
+      "ParamWristL": 1,
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_joint_mix_6": {
+      "ParamArmL": 1,
+      "ParamElbowL": 1,
+      "ParamWristL": -1,
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "L_joint_mix_7": {
+      "ParamArmL": 1,
+      "ParamElbowL": 1,
+      "ParamWristL": 1,
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "R_neutral": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 0
+    },
+    "R_alternating": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "R_alternating_reverse": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_index_spread": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": 0
+    },
+    "R_index_close": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 0
+    },
+    "R_thumb_spread": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 1
+    },
+    "R_thumb_close": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": -1
+    },
+    "R_joint_mix_0": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_joint_mix_1": {
+      "ParamArmR": -1,
+      "ParamElbowR": -1,
+      "ParamWristR": 1,
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_joint_mix_2": {
+      "ParamArmR": -1,
+      "ParamElbowR": 1,
+      "ParamWristR": -1,
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_joint_mix_3": {
+      "ParamArmR": -1,
+      "ParamElbowR": 1,
+      "ParamWristR": 1,
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_joint_mix_4": {
+      "ParamArmR": 1,
+      "ParamElbowR": -1,
+      "ParamWristR": -1,
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_joint_mix_5": {
+      "ParamArmR": 1,
+      "ParamElbowR": -1,
+      "ParamWristR": 1,
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_joint_mix_6": {
+      "ParamArmR": 1,
+      "ParamElbowR": 1,
+      "ParamWristR": -1,
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "R_joint_mix_7": {
+      "ParamArmR": 1,
+      "ParamElbowR": 1,
+      "ParamWristR": 1,
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "eye_x-1_tilt-1_b0.5": {
+      "ParamGazeX": -1,
+      "ParamHeadTilt": -1,
+      "blink": 0.5
+    },
+    "eye_x-1_tilt-1_b0.75": {
+      "ParamGazeX": -1,
+      "ParamHeadTilt": -1,
+      "blink": 0.75
+    },
+    "eye_x-1_tilt-1_b0.85": {
+      "ParamGazeX": -1,
+      "ParamHeadTilt": -1,
+      "blink": 0.85
+    },
+    "eye_x-1_tilt1_b0.5": {
+      "ParamGazeX": -1,
+      "ParamHeadTilt": 1,
+      "blink": 0.5
+    },
+    "eye_x-1_tilt1_b0.75": {
+      "ParamGazeX": -1,
+      "ParamHeadTilt": 1,
+      "blink": 0.75
+    },
+    "eye_x-1_tilt1_b0.85": {
+      "ParamGazeX": -1,
+      "ParamHeadTilt": 1,
+      "blink": 0.85
+    },
+    "eye_x1_tilt-1_b0.5": {
+      "ParamGazeX": 1,
+      "ParamHeadTilt": -1,
+      "blink": 0.5
+    },
+    "eye_x1_tilt-1_b0.75": {
+      "ParamGazeX": 1,
+      "ParamHeadTilt": -1,
+      "blink": 0.75
+    },
+    "eye_x1_tilt-1_b0.85": {
+      "ParamGazeX": 1,
+      "ParamHeadTilt": -1,
+      "blink": 0.85
+    },
+    "eye_x1_tilt1_b0.5": {
+      "ParamGazeX": 1,
+      "ParamHeadTilt": 1,
+      "blink": 0.5
+    },
+    "eye_x1_tilt1_b0.75": {
+      "ParamGazeX": 1,
+      "ParamHeadTilt": 1,
+      "blink": 0.75
+    },
+    "eye_x1_tilt1_b0.85": {
+      "ParamGazeX": 1,
+      "ParamHeadTilt": 1,
+      "blink": 0.85
+    },
+    "L_smile_b0.5": {
+      "ParamEyeLSmile": 0.85,
+      "blink": 0.5,
+      "ParamGazeX": 1
+    },
+    "L_smile_b0.75": {
+      "ParamEyeLSmile": 0.85,
+      "blink": 0.75,
+      "ParamGazeX": 1
+    },
+    "L_smile_b0.85": {
+      "ParamEyeLSmile": 0.85,
+      "blink": 0.85,
+      "ParamGazeX": 1
+    },
+    "R_smile_b0.5": {
+      "ParamEyeRSmile": 0.85,
+      "blink": 0.5,
+      "ParamGazeX": -1
+    },
+    "R_smile_b0.75": {
+      "ParamEyeRSmile": 0.85,
+      "blink": 0.75,
+      "ParamGazeX": -1
+    },
+    "R_smile_b0.85": {
+      "ParamEyeRSmile": 0.85,
+      "blink": 0.85,
+      "ParamGazeX": -1
+    }
+  },
+  "mixed_sweep": [
+    {
+      "ParamArmL": -1.0,
+      "ParamElbowL": 1.0,
+      "ParamWristL": -1.0,
+      "ParamFingerLLittle": 1.0,
+      "ParamFingerLRing": -1.0,
+      "ParamFingerLMiddle": 1.0,
+      "ParamFingerLIndex": -1.0,
+      "ParamFingerLThumb": 1.0,
+      "ParamArmR": -1.0,
+      "ParamElbowR": 1.0,
+      "ParamWristR": -1.0,
+      "ParamFingerRLittle": 1.0,
+      "ParamFingerRRing": -1.0,
+      "ParamFingerRMiddle": 1.0,
+      "ParamFingerRIndex": -1.0,
+      "ParamFingerRThumb": 1.0
+    },
+    {
+      "ParamArmL": -0.8,
+      "ParamElbowL": 0.8,
+      "ParamWristL": -0.8,
+      "ParamFingerLLittle": 0.8,
+      "ParamFingerLRing": -0.8,
+      "ParamFingerLMiddle": 0.8,
+      "ParamFingerLIndex": -0.8,
+      "ParamFingerLThumb": 0.8,
+      "ParamArmR": -0.8,
+      "ParamElbowR": 0.8,
+      "ParamWristR": -0.8,
+      "ParamFingerRLittle": 0.8,
+      "ParamFingerRRing": -0.8,
+      "ParamFingerRMiddle": 0.8,
+      "ParamFingerRIndex": -0.8,
+      "ParamFingerRThumb": 0.8
+    },
+    {
+      "ParamArmL": -0.6,
+      "ParamElbowL": 0.6,
+      "ParamWristL": -0.6,
+      "ParamFingerLLittle": 0.6,
+      "ParamFingerLRing": -0.6,
+      "ParamFingerLMiddle": 0.6,
+      "ParamFingerLIndex": -0.6,
+      "ParamFingerLThumb": 0.6,
+      "ParamArmR": -0.6,
+      "ParamElbowR": 0.6,
+      "ParamWristR": -0.6,
+      "ParamFingerRLittle": 0.6,
+      "ParamFingerRRing": -0.6,
+      "ParamFingerRMiddle": 0.6,
+      "ParamFingerRIndex": -0.6,
+      "ParamFingerRThumb": 0.6
+    },
+    {
+      "ParamArmL": -0.4,
+      "ParamElbowL": 0.4,
+      "ParamWristL": -0.4,
+      "ParamFingerLLittle": 0.4,
+      "ParamFingerLRing": -0.4,
+      "ParamFingerLMiddle": 0.4,
+      "ParamFingerLIndex": -0.4,
+      "ParamFingerLThumb": 0.4,
+      "ParamArmR": -0.4,
+      "ParamElbowR": 0.4,
+      "ParamWristR": -0.4,
+      "ParamFingerRLittle": 0.4,
+      "ParamFingerRRing": -0.4,
+      "ParamFingerRMiddle": 0.4,
+      "ParamFingerRIndex": -0.4,
+      "ParamFingerRThumb": 0.4
+    },
+    {
+      "ParamArmL": -0.2,
+      "ParamElbowL": 0.2,
+      "ParamWristL": -0.2,
+      "ParamFingerLLittle": 0.2,
+      "ParamFingerLRing": -0.2,
+      "ParamFingerLMiddle": 0.2,
+      "ParamFingerLIndex": -0.2,
+      "ParamFingerLThumb": 0.2,
+      "ParamArmR": -0.2,
+      "ParamElbowR": 0.2,
+      "ParamWristR": -0.2,
+      "ParamFingerRLittle": 0.2,
+      "ParamFingerRRing": -0.2,
+      "ParamFingerRMiddle": 0.2,
+      "ParamFingerRIndex": -0.2,
+      "ParamFingerRThumb": 0.2
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamElbowL": -0.0,
+      "ParamWristL": 0.0,
+      "ParamFingerLLittle": -0.0,
+      "ParamFingerLRing": 0.0,
+      "ParamFingerLMiddle": -0.0,
+      "ParamFingerLIndex": 0.0,
+      "ParamFingerLThumb": -0.0,
+      "ParamArmR": 0.0,
+      "ParamElbowR": -0.0,
+      "ParamWristR": 0.0,
+      "ParamFingerRLittle": -0.0,
+      "ParamFingerRRing": 0.0,
+      "ParamFingerRMiddle": -0.0,
+      "ParamFingerRIndex": 0.0,
+      "ParamFingerRThumb": -0.0
+    },
+    {
+      "ParamArmL": 0.2,
+      "ParamElbowL": -0.2,
+      "ParamWristL": 0.2,
+      "ParamFingerLLittle": -0.2,
+      "ParamFingerLRing": 0.2,
+      "ParamFingerLMiddle": -0.2,
+      "ParamFingerLIndex": 0.2,
+      "ParamFingerLThumb": -0.2,
+      "ParamArmR": 0.2,
+      "ParamElbowR": -0.2,
+      "ParamWristR": 0.2,
+      "ParamFingerRLittle": -0.2,
+      "ParamFingerRRing": 0.2,
+      "ParamFingerRMiddle": -0.2,
+      "ParamFingerRIndex": 0.2,
+      "ParamFingerRThumb": -0.2
+    },
+    {
+      "ParamArmL": 0.4,
+      "ParamElbowL": -0.4,
+      "ParamWristL": 0.4,
+      "ParamFingerLLittle": -0.4,
+      "ParamFingerLRing": 0.4,
+      "ParamFingerLMiddle": -0.4,
+      "ParamFingerLIndex": 0.4,
+      "ParamFingerLThumb": -0.4,
+      "ParamArmR": 0.4,
+      "ParamElbowR": -0.4,
+      "ParamWristR": 0.4,
+      "ParamFingerRLittle": -0.4,
+      "ParamFingerRRing": 0.4,
+      "ParamFingerRMiddle": -0.4,
+      "ParamFingerRIndex": 0.4,
+      "ParamFingerRThumb": -0.4
+    },
+    {
+      "ParamArmL": 0.6,
+      "ParamElbowL": -0.6,
+      "ParamWristL": 0.6,
+      "ParamFingerLLittle": -0.6,
+      "ParamFingerLRing": 0.6,
+      "ParamFingerLMiddle": -0.6,
+      "ParamFingerLIndex": 0.6,
+      "ParamFingerLThumb": -0.6,
+      "ParamArmR": 0.6,
+      "ParamElbowR": -0.6,
+      "ParamWristR": 0.6,
+      "ParamFingerRLittle": -0.6,
+      "ParamFingerRRing": 0.6,
+      "ParamFingerRMiddle": -0.6,
+      "ParamFingerRIndex": 0.6,
+      "ParamFingerRThumb": -0.6
+    },
+    {
+      "ParamArmL": 0.8,
+      "ParamElbowL": -0.8,
+      "ParamWristL": 0.8,
+      "ParamFingerLLittle": -0.8,
+      "ParamFingerLRing": 0.8,
+      "ParamFingerLMiddle": -0.8,
+      "ParamFingerLIndex": 0.8,
+      "ParamFingerLThumb": -0.8,
+      "ParamArmR": 0.8,
+      "ParamElbowR": -0.8,
+      "ParamWristR": 0.8,
+      "ParamFingerRLittle": -0.8,
+      "ParamFingerRRing": 0.8,
+      "ParamFingerRMiddle": -0.8,
+      "ParamFingerRIndex": 0.8,
+      "ParamFingerRThumb": -0.8
+    },
+    {
+      "ParamArmL": 1.0,
+      "ParamElbowL": -1.0,
+      "ParamWristL": 1.0,
+      "ParamFingerLLittle": -1.0,
+      "ParamFingerLRing": 1.0,
+      "ParamFingerLMiddle": -1.0,
+      "ParamFingerLIndex": 1.0,
+      "ParamFingerLThumb": -1.0,
+      "ParamArmR": 1.0,
+      "ParamElbowR": -1.0,
+      "ParamWristR": 1.0,
+      "ParamFingerRLittle": -1.0,
+      "ParamFingerRRing": 1.0,
+      "ParamFingerRMiddle": -1.0,
+      "ParamFingerRIndex": 1.0,
+      "ParamFingerRThumb": -1.0
+    },
+    {
+      "ParamArmL": 0.8,
+      "ParamElbowL": -0.8,
+      "ParamWristL": 0.8,
+      "ParamFingerLLittle": -0.8,
+      "ParamFingerLRing": 0.8,
+      "ParamFingerLMiddle": -0.8,
+      "ParamFingerLIndex": 0.8,
+      "ParamFingerLThumb": -0.8,
+      "ParamArmR": 0.8,
+      "ParamElbowR": -0.8,
+      "ParamWristR": 0.8,
+      "ParamFingerRLittle": -0.8,
+      "ParamFingerRRing": 0.8,
+      "ParamFingerRMiddle": -0.8,
+      "ParamFingerRIndex": 0.8,
+      "ParamFingerRThumb": -0.8
+    },
+    {
+      "ParamArmL": 0.6,
+      "ParamElbowL": -0.6,
+      "ParamWristL": 0.6,
+      "ParamFingerLLittle": -0.6,
+      "ParamFingerLRing": 0.6,
+      "ParamFingerLMiddle": -0.6,
+      "ParamFingerLIndex": 0.6,
+      "ParamFingerLThumb": -0.6,
+      "ParamArmR": 0.6,
+      "ParamElbowR": -0.6,
+      "ParamWristR": 0.6,
+      "ParamFingerRLittle": -0.6,
+      "ParamFingerRRing": 0.6,
+      "ParamFingerRMiddle": -0.6,
+      "ParamFingerRIndex": 0.6,
+      "ParamFingerRThumb": -0.6
+    },
+    {
+      "ParamArmL": 0.4,
+      "ParamElbowL": -0.4,
+      "ParamWristL": 0.4,
+      "ParamFingerLLittle": -0.4,
+      "ParamFingerLRing": 0.4,
+      "ParamFingerLMiddle": -0.4,
+      "ParamFingerLIndex": 0.4,
+      "ParamFingerLThumb": -0.4,
+      "ParamArmR": 0.4,
+      "ParamElbowR": -0.4,
+      "ParamWristR": 0.4,
+      "ParamFingerRLittle": -0.4,
+      "ParamFingerRRing": 0.4,
+      "ParamFingerRMiddle": -0.4,
+      "ParamFingerRIndex": 0.4,
+      "ParamFingerRThumb": -0.4
+    },
+    {
+      "ParamArmL": 0.2,
+      "ParamElbowL": -0.2,
+      "ParamWristL": 0.2,
+      "ParamFingerLLittle": -0.2,
+      "ParamFingerLRing": 0.2,
+      "ParamFingerLMiddle": -0.2,
+      "ParamFingerLIndex": 0.2,
+      "ParamFingerLThumb": -0.2,
+      "ParamArmR": 0.2,
+      "ParamElbowR": -0.2,
+      "ParamWristR": 0.2,
+      "ParamFingerRLittle": -0.2,
+      "ParamFingerRRing": 0.2,
+      "ParamFingerRMiddle": -0.2,
+      "ParamFingerRIndex": 0.2,
+      "ParamFingerRThumb": -0.2
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamElbowL": -0.0,
+      "ParamWristL": 0.0,
+      "ParamFingerLLittle": -0.0,
+      "ParamFingerLRing": 0.0,
+      "ParamFingerLMiddle": -0.0,
+      "ParamFingerLIndex": 0.0,
+      "ParamFingerLThumb": -0.0,
+      "ParamArmR": 0.0,
+      "ParamElbowR": -0.0,
+      "ParamWristR": 0.0,
+      "ParamFingerRLittle": -0.0,
+      "ParamFingerRRing": 0.0,
+      "ParamFingerRMiddle": -0.0,
+      "ParamFingerRIndex": 0.0,
+      "ParamFingerRThumb": -0.0
+    },
+    {
+      "ParamArmL": -0.2,
+      "ParamElbowL": 0.2,
+      "ParamWristL": -0.2,
+      "ParamFingerLLittle": 0.2,
+      "ParamFingerLRing": -0.2,
+      "ParamFingerLMiddle": 0.2,
+      "ParamFingerLIndex": -0.2,
+      "ParamFingerLThumb": 0.2,
+      "ParamArmR": -0.2,
+      "ParamElbowR": 0.2,
+      "ParamWristR": -0.2,
+      "ParamFingerRLittle": 0.2,
+      "ParamFingerRRing": -0.2,
+      "ParamFingerRMiddle": 0.2,
+      "ParamFingerRIndex": -0.2,
+      "ParamFingerRThumb": 0.2
+    },
+    {
+      "ParamArmL": -0.4,
+      "ParamElbowL": 0.4,
+      "ParamWristL": -0.4,
+      "ParamFingerLLittle": 0.4,
+      "ParamFingerLRing": -0.4,
+      "ParamFingerLMiddle": 0.4,
+      "ParamFingerLIndex": -0.4,
+      "ParamFingerLThumb": 0.4,
+      "ParamArmR": -0.4,
+      "ParamElbowR": 0.4,
+      "ParamWristR": -0.4,
+      "ParamFingerRLittle": 0.4,
+      "ParamFingerRRing": -0.4,
+      "ParamFingerRMiddle": 0.4,
+      "ParamFingerRIndex": -0.4,
+      "ParamFingerRThumb": 0.4
+    },
+    {
+      "ParamArmL": -0.6,
+      "ParamElbowL": 0.6,
+      "ParamWristL": -0.6,
+      "ParamFingerLLittle": 0.6,
+      "ParamFingerLRing": -0.6,
+      "ParamFingerLMiddle": 0.6,
+      "ParamFingerLIndex": -0.6,
+      "ParamFingerLThumb": 0.6,
+      "ParamArmR": -0.6,
+      "ParamElbowR": 0.6,
+      "ParamWristR": -0.6,
+      "ParamFingerRLittle": 0.6,
+      "ParamFingerRRing": -0.6,
+      "ParamFingerRMiddle": 0.6,
+      "ParamFingerRIndex": -0.6,
+      "ParamFingerRThumb": 0.6
+    },
+    {
+      "ParamArmL": -0.8,
+      "ParamElbowL": 0.8,
+      "ParamWristL": -0.8,
+      "ParamFingerLLittle": 0.8,
+      "ParamFingerLRing": -0.8,
+      "ParamFingerLMiddle": 0.8,
+      "ParamFingerLIndex": -0.8,
+      "ParamFingerLThumb": 0.8,
+      "ParamArmR": -0.8,
+      "ParamElbowR": 0.8,
+      "ParamWristR": -0.8,
+      "ParamFingerRLittle": 0.8,
+      "ParamFingerRRing": -0.8,
+      "ParamFingerRMiddle": 0.8,
+      "ParamFingerRIndex": -0.8,
+      "ParamFingerRThumb": 0.8
+    }
+  ],
+  "provenance_before_capture": {
+    "rig_sha256": "8e501160f0cc559d7778e3b6e334e18c62c916d59654812990c1111384970474",
+    "preview_executable_sha256": "84903d3a37661f13175a3a634c0d6c1fa1607f0b9296aab9de4e191756636698"
+  }
+}

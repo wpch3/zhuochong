@@ -1,0 +1,16 @@
+{
+  "id": "tts.speak",
+  "name": "语音合成",
+  "kind": "generate",
+  "unit": "char",
+  "input": {
+    "text": "text",
+    "voice": "text?"
+  },
+  "output": {
+    "audio": "file"
+  },
+  "ui": {
+    "panel": "audio"
+  }
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="215" height="114" viewBox="0 0 215 114">
+ <!-- Match the moving lid at near closure, including its tapered ends. -->
+ <g id="left_closed">
+  <path d="M 13 63 L 19 62 C 25 61 31 62 38 63 C 50 63 62 63 70 62 C 76 61 80 63 83 65 L 86 69 L 80 67 C 76 66 72 66 68 67 C 57 68 43 68 34 67 C 27 67 23 68 20 72 L 16 68 Z" fill="#211421"/>
+  <path d="M 19 65 C 29 63 38 65 49 65 C 62 65 72 63 80 65" fill="none" stroke="#54243f" stroke-width="1.1" stroke-linecap="round"/>
+  <path d="M 16 64 L 10 63 L 16 60" fill="#211421"/>
+ </g>
+ <g id="right_closed" transform="translate(215 0) scale(-1 1)">
+  <path d="M 13 63 L 19 62 C 25 61 31 62 38 63 C 50 63 62 63 70 62 C 76 61 80 63 83 65 L 86 69 L 80 67 C 76 66 72 66 68 67 C 57 68 43 68 34 67 C 27 67 23 68 20 72 L 16 68 Z" fill="#211421"/>
+  <path d="M 19 65 C 29 63 38 65 49 65 C 62 65 72 63 80 65" fill="none" stroke="#54243f" stroke-width="1.1" stroke-linecap="round"/>
+  <path d="M 16 64 L 10 63 L 16 60" fill="#211421"/>
+ </g>
+</svg>

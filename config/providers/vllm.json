@@ -1,0 +1,36 @@
+{
+  "name": "vLLM（本机高吞吐）",
+  "kind": "openai_compatible",
+  "local": true,
+  "enabled": false,
+  "priority": 84,
+  "base_url": "http://127.0.0.1:8002/v1",
+  "auth": {
+    "type": "none"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "Qwen/Qwen2.5-7B-Instruct",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "Qwen/Qwen2.5-7B-Instruct",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "none"
+  },
+  "hardware": {
+    "min_vram_gb": 8,
+    "note": "吃 safetensors/AWQ/GPTQ，不吃 GGUF；而且会**预占显存**做 PagedAttention ⇒ 同一个 14B，llama.cpp 12GB 能跑的，vLLM 可能要 16GB。"
+  },
+  "note": "多路并发才用得上它（一边陪聊一边后台跑记忆整理/批量生成）。单人用桌宠，llama.cpp/Ollama 更省显存。端口特意写 8002，避开 speaches(8000) 与 llama-server(8080)。",
+  "id": "vllm"
+}

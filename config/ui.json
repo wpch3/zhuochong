@@ -1,0 +1,26 @@
+{
+  // 界面主题（二次元风格）。颜色、圆角、字体、动效参数全部从这里读，不写死在代码里。
+  "schema_version": "1.0",
+  "theme": "soft_handdrawn",          // 内置：soft_handdrawn（柔和手绘）/ candy（Q 版糖果）
+  "fonts": {
+    "title": "assets/fonts/rounded_title.ttf",
+    "body": "assets/fonts/rounded_body.ttf",
+    "note": "标题用圆体/手写体；字体文件放 assets/fonts/，缺失时回退系统字体"
+  },
+  "palette": {
+    "primary": "#7EC8C4",             // 主色（与小寻发色呼应）
+    "accent": "#F7B7C8",
+    "background": "#FFFDF6",
+    "text": "#4A4458",
+    "bubble_self": "#FFF3F7",
+    "bubble_pet": "#EAF7F6"
+  },
+  "shapes": { "corner_radius": 8, "control_radius": 4, "border_width": 3 },  // Fluent 三档：容器 8 / 控件 4 / 嵌套 6（DC20）
+  "motion": { "bounce_amp": 0.08, "duration_s": 0.25 },
+  "resources": {
+    "bubble": "assets/ui/bubble_pet.png",       // 全部为高清生成 PNG，禁止 emoji/SVG
+    "button": "assets/ui/button_soft.png",
+    "icon_dir": "assets/ui/icons",
+    "tray_icon": "assets/brand/xiaoxun.ico"
+  }
+}

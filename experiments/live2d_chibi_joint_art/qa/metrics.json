@@ -1,0 +1,230 @@
+{
+  "baseline": "prior wrist candidate, 12 fixed baseline frames identical",
+  "scale_pose_changed_pixels": {
+    "0.35": {
+      "neutral": 180,
+      "outward": 220,
+      "inward": 219
+    },
+    "0.55": {
+      "neutral": 276,
+      "outward": 363,
+      "inward": 355
+    },
+    "0.8": {
+      "neutral": 398,
+      "outward": 489,
+      "inward": 487
+    },
+    "1.0": {
+      "neutral": 98,
+      "outward": 381,
+      "inward": 392
+    }
+  },
+  "pose_parameter_order": [
+    "ParamElbowL",
+    "ParamElbowR",
+    "ParamWristL",
+    "ParamWristR",
+    "ParamArmL",
+    "ParamArmR",
+    "ParamMotionDrive",
+    "ParamBreath"
+  ],
+  "poses": {
+    "neutral": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "elbow_l_min": [
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "elbow_l_max": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "elbow_r_min": [
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "elbow_r_max": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "elbows_min": [
+      -1,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "elbows_mid": [
+      0.5,
+      0.5,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "elbows_max": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "combined": [
+      1,
+      -1,
+      1,
+      -1,
+      0.8,
+      -0.8,
+      0.7,
+      0.6
+    ]
+  },
+  "pose_changed_pixels_0.55": {
+    "elbow_l_min": 1666,
+    "elbow_l_max": 1671,
+    "elbow_r_min": 1702,
+    "elbow_r_max": 1683,
+    "elbows_min": 3368,
+    "elbows_mid": 3030,
+    "elbows_max": 3354,
+    "combined": 58802
+  },
+  "action_samples": [
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": 0.4455,
+      "ParamWristR": -0.4455,
+      "ParamElbowL": 0.3632,
+      "ParamElbowR": -0.3632
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": 0.5,
+      "ParamWristR": -0.5,
+      "ParamElbowL": 0.6472,
+      "ParamElbowR": -0.6472
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": 0.4455,
+      "ParamWristR": -0.4455,
+      "ParamElbowL": 0.7902,
+      "ParamElbowR": -0.7902
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": 0.2939,
+      "ParamWristR": -0.2939,
+      "ParamElbowL": 0.7608,
+      "ParamElbowR": -0.7608
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": 0.0782,
+      "ParamWristR": -0.0782,
+      "ParamElbowL": 0.5657,
+      "ParamElbowR": -0.5657
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": -0.1545,
+      "ParamWristR": 0.1545,
+      "ParamElbowL": 0.2472,
+      "ParamElbowR": -0.2472
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": -0.3536,
+      "ParamWristR": 0.3536,
+      "ParamElbowL": -0.1251,
+      "ParamElbowR": 0.1251
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": -0.4755,
+      "ParamWristR": 0.4755,
+      "ParamElbowL": -0.4702,
+      "ParamElbowR": 0.4702
+    },
+    {
+      "ParamArmL": 0.0,
+      "ParamArmR": 0.0,
+      "ParamBreath": 0.0,
+      "ParamMotionDrive": 0.0,
+      "ParamWristL": -0.4938,
+      "ParamWristR": 0.4938,
+      "ParamElbowL": -0.7128,
+      "ParamElbowR": 0.7128
+    }
+  ],
+  "limits": "only fixed states, not a measure of artistic quality"
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <defs>
+  <linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#edb4b0"/><stop offset=".38" stop-color="#f5d1c8"/><stop offset="1" stop-color="#fff0e5"/></linearGradient>
+  <linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e8aaa9"/><stop offset=".4" stop-color="#f6d1c9"/><stop offset="1" stop-color="#fff0e6"/></linearGradient>
+ </defs>
+ <g id="left_wrist">
+  <path d="M 81 204 C 82 200 84 196 88 195 C 97 196 108 201 113 205 C 116 208 115 213 111 218 L 106 217 C 98 214 90 210 83 207 Z" fill="url(#l)"/>
+  <path d="M 81.8 204 C 82.4 201 84 198.5 86 197 M 112.9 207 C 114.7 211 113 214 110.5 217" fill="none" stroke="#241a23" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M 85 201 C 94 202 105 207 113 210 L 111 213 C 103 212 94 208 84 206 Z" fill="#d99899" opacity=".22"/>
+ </g>
+ <g id="right_wrist">
+  <path d="M 347 205 C 356 200 367 197 375 196 C 379 197 382 200 382 204 L 381 208 C 378 211 372 215 369 216 L 353 219 C 350 216 347 211 347 205 Z" fill="url(#r)"/>
+  <path d="M 348 207 C 346.8 211 349 214 353 218 M 377 197 C 380 198.5 381.5 201 382 204" fill="none" stroke="#241a23" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M 348 209 C 355 205 366 202 378 201 L 379 205 C 368 206 357 210 350 213 Z" fill="#d69498" opacity=".22"/>
+ </g>
+</svg>

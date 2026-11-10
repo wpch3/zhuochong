@@ -1,0 +1,32 @@
+{
+  "trial": "trial29_normal_fingered_hand_left",
+  "status": "rejected_pose_and_style_wip",
+  "output": "chibi_normal_fingered_hand_left_trial29_wip.png",
+  "format": "PNG",
+  "dimensions_px": [1024, 1024],
+  "channels_observed": "sRGB (no alpha; confirmed with ImageMagick identify)",
+  "target_hand_reference_px": [45, 48],
+  "target_scale_probe": {
+    "output": "trial29_target_box_45x48_visual_probe_wip.png",
+    "diagnostic_thumbnail_px": [45, 48],
+    "display_px": [360, 384],
+    "method": "opaque background retained; subject bbox crop; LANCZOS fit; centered on opaque gray canvas; nearest-neighbor 8x display enlargement",
+    "visual_reviewed": true,
+    "exact_engine_or_cubism_render": false
+  },
+  "visual_review": {
+    "thumb_plus_four_separate_digits_at_original_size": true,
+    "five_digits_still_separate_in_target_box_probe": true,
+    "pose_matches_relaxed_side_hanging_chibi_hand": false,
+    "chibi_proportion_and_style_match": false,
+    "production_approved": false
+  },
+  "limitations": [
+    "palm-facing, widely spread open-hand pose; unsuitable for the current Chibi pose",
+    "adult-like finger proportions and non-matching line/shading treatment",
+    "opaque gray background; no alpha channel",
+    "viewer-left only; no matched viewer-right hand or sleeve/cuff",
+    "no hidden wrist, rig, real C-engine motion, Cubism Editor, or official runtime validation"
+  ],
+  "production_use": false
+}

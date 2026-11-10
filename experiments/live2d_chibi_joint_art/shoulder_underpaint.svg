@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Hidden continuation of turquoise upper sleeves under the jacket. -->
+ <defs>
+  <linearGradient id="l" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#568f98"/><stop offset=".5" stop-color="#77b5b6"/><stop offset="1" stop-color="#6da4aa"/></linearGradient>
+  <linearGradient id="r" x1="1" y1="0" x2="0" y2="1"><stop stop-color="#568f98"/><stop offset=".5" stop-color="#77b5b6"/><stop offset="1" stop-color="#6da4aa"/></linearGradient>
+ </defs>
+ <g id="left_shoulder"><path d="M 135 38 C 140 30 149 29 157 35 C 167 41 171 51 168 64 C 166 74 160 82 154 87 L 136 75 C 130 62 131 47 135 38 Z" fill="url(#l)"/><path d="M 143 39 C 152 42 160 50 162 60 C 155 53 148 49 139 48 Z" fill="#b8d4ce" opacity=".18"/></g>
+ <g id="right_shoulder"><path d="M 325 38 C 320 30 311 29 303 35 C 293 41 289 51 292 64 C 294 74 300 82 306 87 L 324 75 C 330 62 329 47 325 38 Z" fill="url(#r)"/><path d="M 317 39 C 308 42 300 50 298 60 C 305 53 312 49 321 48 Z" fill="#b8d4ce" opacity=".18"/></g>
+</svg>

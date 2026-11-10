@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "texture": "seg_head.png",
+  "expected_texture_size": [567, 644],
+  "coordinate_space": "seg_head texture-local pixels; half-open xyxy",
+  "purpose": "Prevent clean_head_backing from alpha-trimming three confirmed, body-backed Chibi eye-edge underlay windows. This is a keep-mask only: it cannot create alpha or RGB; each kept source pixel must already be alpha>16, body_full-backed alpha>16, and part of the largest connected seg_head component.",
+  "evidence": "docs/qa/chibi_candidate_2026-11-02/eye_underlay_trim_followup_2026-11-02/coordinate_mapping_2026-11-02/c_engine_gapfill_followup_2026-11-02/screen_to_texture_map.json",
+  "regions": [
+    {
+      "id": "left_dark_short_dash",
+      "xyxy": [145, 470, 156, 472],
+      "screen_roi_xyxy_exclusive": [289, 536, 299, 537]
+    },
+    {
+      "id": "right_upper_outer_dash",
+      "xyxy": [411, 447, 426, 449],
+      "screen_roi_xyxy_exclusive": [555, 518, 570, 520]
+    },
+    {
+      "id": "right_lower_short_edge",
+      "xyxy": [409, 462, 413, 464],
+      "screen_roi_xyxy_exclusive": [553, 533, 557, 535]
+    }
+  ]
+}

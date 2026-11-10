@@ -1,0 +1,222 @@
+{
+  "task": "T67.71",
+  "status": "manual reconstruction inference v3; WIP only, source geometry unknown",
+  "source": "characters/xiaoxun/forms/teen/sprites/hair_hood_long@2x.png",
+  "candidate": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/40_manual_strand_trace_candidate_v3_wip.png",
+  "mask": "manual_artifact_polygons_v2.json; expanded visible cuff/hand artifact ROI, not hair segmentation; no rig-mask intersection",
+  "changed_alpha_pixels": 30543,
+  "changed_rgba_pixels": 37765,
+  "roi_nonzero_pixels": 47311,
+  "new_strand_alpha_px_gt24": 20084,
+  "outside_roi_byte_identity": "asserted exact",
+  "negative_space": "separate ribbons; no global fill; transparent gaps retained between strokes",
+  "geometry": "curves trace adjacent visible flow direction; hidden path and mirrored L/R symmetry are explicit inference assumptions",
+  "production_changes": false,
+  "manual_curves_local_345x519": {
+    "left": [
+      {
+        "curve": [
+          [
+            164,
+            246
+          ],
+          [
+            184,
+            286
+          ],
+          [
+            205,
+            323
+          ],
+          [
+            188,
+            372
+          ]
+        ],
+        "widths": [
+          7,
+          40,
+          32
+        ]
+      },
+      {
+        "curve": [
+          [
+            150,
+            260
+          ],
+          [
+            154,
+            318
+          ],
+          [
+            126,
+            382
+          ],
+          [
+            92,
+            441
+          ]
+        ],
+        "widths": [
+          5,
+          31,
+          1
+        ]
+      },
+      {
+        "curve": [
+          [
+            228,
+            281
+          ],
+          [
+            226,
+            337
+          ],
+          [
+            247,
+            396
+          ],
+          [
+            258,
+            443
+          ]
+        ],
+        "widths": [
+          4,
+          29,
+          1
+        ]
+      },
+      {
+        "curve": [
+          [
+            188,
+            366
+          ],
+          [
+            177,
+            395
+          ],
+          [
+            173,
+            423
+          ],
+          [
+            166,
+            447
+          ]
+        ],
+        "widths": [
+          24,
+          31,
+          1
+        ]
+      }
+    ],
+    "right": [
+      {
+        "curve": [
+          [
+            181,
+            246
+          ],
+          [
+            161,
+            286
+          ],
+          [
+            140,
+            323
+          ],
+          [
+            157,
+            372
+          ]
+        ],
+        "widths": [
+          7,
+          40,
+          32
+        ]
+      },
+      {
+        "curve": [
+          [
+            195,
+            260
+          ],
+          [
+            191,
+            318
+          ],
+          [
+            219,
+            382
+          ],
+          [
+            253,
+            441
+          ]
+        ],
+        "widths": [
+          5,
+          31,
+          1
+        ]
+      },
+      {
+        "curve": [
+          [
+            117,
+            281
+          ],
+          [
+            119,
+            337
+          ],
+          [
+            98,
+            396
+          ],
+          [
+            87,
+            443
+          ]
+        ],
+        "widths": [
+          4,
+          29,
+          1
+        ]
+      },
+      {
+        "curve": [
+          [
+            157,
+            366
+          ],
+          [
+            168,
+            395
+          ],
+          [
+            172,
+            423
+          ],
+          [
+            179,
+            447
+          ]
+        ],
+        "widths": [
+          24,
+          31,
+          1
+        ]
+      }
+    ]
+  },
+  "gate": "must pass local visual review before any C render; no claim of recovered source"
+}

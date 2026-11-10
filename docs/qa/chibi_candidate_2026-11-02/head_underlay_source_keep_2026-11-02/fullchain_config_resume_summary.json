@@ -1,0 +1,197 @@
+{
+  "full_rebuild_state": "Completed all stages and asset QA after resuming the post-rig tail; the initial one-shot process was killed at trim_exposed_residue while preview servers were consuming memory. Do not describe the initial process itself as a pass.",
+  "resume_steps": [
+    {
+      "step": "trim_exposed_residue",
+      "result": "completed after stopping redundant C preview processes; removed 0 px on this candidate"
+    },
+    {
+      "step": "apply_hair_only",
+      "result": "no source for xiaoxun/chibi; skipped"
+    },
+    {
+      "step": "move_hair_islands",
+      "result": "no islands to move; skipped"
+    },
+    {
+      "step": "purge_hair_foreign_blocks",
+      "result": "4 files; 3511 px removed/repaired per tool output"
+    },
+    {
+      "step": "fix_transparent_rgb",
+      "result": "30 assets; 2019 transparent RGB pixels processed"
+    },
+    {
+      "step": "check_assets",
+      "result": "1342 checks; 33 failures; design_iou=0.9934918477598998; not a pass"
+    }
+  ],
+  "qa_failures": [
+    {
+      "part": "arm_l_gusset@2x",
+      "check": "色卡"
+    },
+    {
+      "part": "arm_l_root",
+      "check": "色卡"
+    },
+    {
+      "part": "armpit_mask",
+      "check": "灰度遮罩有有效范围"
+    },
+    {
+      "part": "分段",
+      "check": "无损切分"
+    },
+    {
+      "part": "鞋",
+      "check": "踮脚鞋鞋口抬高=30px(l)"
+    },
+    {
+      "part": "鞋",
+      "check": "常态鞋触地(r)"
+    },
+    {
+      "part": "鞋",
+      "check": "踮脚鞋鞋口抬高=30px(r)"
+    },
+    {
+      "part": "真素材",
+      "check": "口内有牙"
+    },
+    {
+      "part": "真素材",
+      "check": "闭眼接缝(l)"
+    },
+    {
+      "part": "真素材",
+      "check": "闭眼接缝(r)"
+    },
+    {
+      "part": "分段",
+      "check": "袖下躯干无新窟窿"
+    },
+    {
+      "part": "分段",
+      "check": "头发摆动不露底(-12,+0)"
+    },
+    {
+      "part": "分段",
+      "check": "头发摆动不露底(+12,+0)"
+    },
+    {
+      "part": "分段",
+      "check": "裙摆接缝不露底(腿 -20px)"
+    },
+    {
+      "part": "分段",
+      "check": "裙摆接缝不露底(腿 +20px)"
+    },
+    {
+      "part": "嘴部",
+      "check": "张到最大不越过下巴"
+    },
+    {
+      "part": "混合零件",
+      "check": "腮红_l 压在实心脸上"
+    },
+    {
+      "part": "混合零件",
+      "check": "腮红_r 压在实心脸上"
+    },
+    {
+      "part": "差分发型",
+      "check": "hair_twin_l 与本体头发同源配色"
+    },
+    {
+      "part": "差分发型",
+      "check": "hair_twin_r 与本体头发同源配色"
+    },
+    {
+      "part": "差分发型",
+      "check": "hair_pony_back 与本体头发同源配色"
+    },
+    {
+      "part": "差分发型",
+      "check": "hair_long_back 与本体头发同源配色"
+    },
+    {
+      "part": "头部几何",
+      "check": "藏hair_back有件接管"
+    },
+    {
+      "part": "头部几何",
+      "check": "藏hair_side_l有件接管"
+    },
+    {
+      "part": "头部几何",
+      "check": "藏hair_side_r有件接管"
+    },
+    {
+      "part": "头部几何",
+      "check": "藏torso_top_fill有件接管"
+    },
+    {
+      "part": "头部几何",
+      "check": "藏hair_back有件接管"
+    },
+    {
+      "part": "头部几何",
+      "check": "藏hair_side_l有件接管"
+    },
+    {
+      "part": "头部几何",
+      "check": "藏hair_side_r有件接管"
+    },
+    {
+      "part": "头部几何",
+      "check": "藏torso_top_fill有件接管"
+    },
+    {
+      "part": "素材真伪",
+      "check": "hand_l_pad 仍是结构性平涂"
+    },
+    {
+      "part": "素材真伪",
+      "check": "hand_r_pad 仍是结构性平涂"
+    },
+    {
+      "part": "素材真伪",
+      "check": "mouth_mask 是真原画不是平涂色块"
+    }
+  ],
+  "qa_pass": false,
+  "texture_hashes": {
+    "candidate_seg_head.png": "12cbd11b9889bc74f127c95a12649f00e0254b4f8c56ef328e3fb2aa7f0a80ea",
+    "candidate_seg_head@2x.png": "170ac1d6b5bc12a2b02a117cbc8a9d4f2361b8b614a00b76d63cc66315270220"
+  },
+  "target_c_frame_dark_pixel_counts": {
+    "left_dark": {
+      "baseline": 10,
+      "candidate": 0
+    },
+    "left_gray_marker": {
+      "baseline": 7,
+      "candidate": 7
+    },
+    "right_upper": {
+      "baseline": 29,
+      "candidate": 0
+    },
+    "right_lower": {
+      "baseline": 7,
+      "candidate": 0
+    }
+  },
+  "fixed_pose_checks": {
+    "params_equal": true,
+    "sockets_equal": true,
+    "eye_base_and_lash_isolations_identical": true,
+    "sidehair_left_right_isolations_identical": true
+  },
+  "c_frame_diff": {
+    "full_frame_changed_pixels": 9262,
+    "seg_head_isolation_changed_pixels": 1902,
+    "note": "Full-frame differences include unrelated full-chain output changes and must not be attributed to this underlay rule."
+  }
+}

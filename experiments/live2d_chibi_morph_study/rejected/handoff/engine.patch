@@ -1,0 +1,39 @@
+--- a/src/core/zrig.c
++++ b/src/core/zrig.c
+@@ -130,3 +130,4 @@
+     TAG_EYE_APERTURE_FAST_CLOSE = 1u << 18, /* opt-in: aperture reaches its minimum at 0.9 blink */
+-    TAG_EYE_KEYFORM_EFFECTIVE = 1u << 19 /* opt-in: eye-open keyform follows rendered per-eye closure */
++    TAG_EYE_KEYFORM_EFFECTIVE = 1u << 19 /* opt-in: eye-open keyform follows rendered per-eye closure */,
++    TAG_EYE_CLOSED_MORPH = 1u << 20 /* experimental morph contour, not expression-faded */
+ };
+@@ -965,2 +966,3 @@
+         else if (z_streq(s, "eye_keyform_effective_blink")) t |= TAG_EYE_KEYFORM_EFFECTIVE;
++        else if (z_streq(s, "eye_closed_morph")) t |= TAG_EYE_CLOSED_MORPH;
+         else if (z_streq(s, "eye_closed")) t |= TAG_EYE_CLOSED;
+@@ -5519,2 +5521,16 @@
+         }
++        /* Experimental eye topology: pain takes precedence over smile. */
++        if (g->part >= 0 && (r->parts[g->part].tags & TAG_EYE_CLOSED_MORPH)) {
++            int b = r->params[g->param].builtin;
++            if (b == PBI_EYE_L_SMILE || b == PBI_EYE_L_PAIN) {
++                double t = ZC_CLAMP((r->blink_l - .85) / .15, 0.0, 1.0);
++                v *= t * t * (3.0 - 2.0 * t);
++                if (b == PBI_EYE_L_SMILE) v *= 1.0 - r->pain_l;
++            }
++            if (b == PBI_EYE_R_SMILE || b == PBI_EYE_R_PAIN) {
++                double t = ZC_CLAMP((r->blink_r - .85) / .15, 0.0, 1.0);
++                v *= t * t * (3.0 - 2.0 * t);
++                if (b == PBI_EYE_R_SMILE) v *= 1.0 - r->pain_r;
++            }
++        }
+         if (v <= g->kf_v[0]) continue;                        /* 低于第一组：第 0 组 */
+@@ -7214,3 +7230,3 @@
+     if (smile > 0.001) {
+-        if (p->tags & TAG_EYE_CLOSED) opacity *= 1.0 - smile;
++        if ((p->tags & TAG_EYE_CLOSED) && !(p->tags & TAG_EYE_CLOSED_MORPH)) opacity *= 1.0 - smile;
+         if (p->tags & TAG_EYE_SMILE)
+@@ -7221,3 +7237,3 @@
+     if (pain > 0.001) {
+-        if (p->tags & (TAG_EYE_CLOSED | TAG_EYE_SMILE)) opacity *= 1.0 - pain;
++        if ((p->tags & (TAG_EYE_CLOSED | TAG_EYE_SMILE)) && !(p->tags & TAG_EYE_CLOSED_MORPH)) opacity *= 1.0 - pain;
+         if (p->tags & TAG_EYE_PAIN)

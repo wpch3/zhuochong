@@ -1,0 +1,17 @@
+{
+  "half_blink": 5275,
+  "closed": 5816,
+  "combined": 20520,
+  "finger_motion": {
+    "LLittle": 98,
+    "LRing": 118,
+    "LMiddle": 132,
+    "LIndex": 202,
+    "LThumb": 106,
+    "RLittle": 76,
+    "RRing": 121,
+    "RMiddle": 165,
+    "RIndex": 217,
+    "RThumb": 109
+  }
+}

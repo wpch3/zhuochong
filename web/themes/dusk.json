@@ -1,0 +1,18 @@
+{
+  "name": "暮色（深色）",
+  "vars": {
+    "--pink": "#e07fa8",
+    "--pink-deep": "#f08fb8",
+    "--blue": "#6cb4d8",
+    "--mint": "#7fc8a8",
+    "--cream": "#1b1d26",
+    "--card": "#242734",
+    "--ink": "#e6e6f0",
+    "--ink-soft": "#9a9ab0",
+    "--line": "#3a3d4e",
+    "--radius": "18px",
+    "--shadow": "0 6px 18px rgba(0, 0, 0, .35)",
+    "--bg-1": "#242838",
+    "--bg-2": "#1c2030"
+  }
+}

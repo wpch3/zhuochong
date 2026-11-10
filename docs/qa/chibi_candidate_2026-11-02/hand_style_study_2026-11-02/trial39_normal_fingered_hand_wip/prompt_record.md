@@ -1,0 +1,11 @@
+# Trial 39 — normal-fingered Chibi hand WIP
+
+**Method:** trial15 + source body_full multi-reference generation; `functions.generate_image`, 2026-11-04. Reference(s): `chibi_mitten_original_fullbody_concept_trial_15_wip.png + characters/xiaoxun/forms/chibi/sprites/body_full.png`. Generated output: `chibi_fullbody_normal_hands_trial39_wip.png`.
+
+**Exact prompt:**
+
+> Make an original full-body Chibi small-hand study using BOTH supplied references with separate roles. The first is the trial15 concept: use its clean composition, character identity, clothing, and trial15-approved compact hand-size direction. The second is the actual Chibi body_full: use it only to measure source-relative body proportions, the exact sleeve-cuff placement, hanging-hand location, and the compact 45x48 / 45x46 hand registration. Do not copy pixels or reproduce artifacts. Preserve the first reference's silver-lilac short bob and ahoge, blue eyes, teal/white two-stripe jacket, cream shirt, navy pleated skirt, legs, socks and shoes, front-facing relaxed pose, and plain white background. Change only the two mitten hands into normal-fingered hands. Keep the hand footprint no larger than the trial15 mitten footprint and place the hand directly under each cuff in the source-relative location; do not make the hands hang lower or stretch the arm. At full-body scale, show one small inward-facing thumb plus four tiny rounded fingers, clearly distinguishable as four fingertips by narrow true silhouette notches, not just surface crease lines. Hands stay close, relaxed and childlike, with short palms and no splay, open-palm pose, long adult digits, nails, jewelry, or wrinkles. Fine subtle Chibi contours and soft restrained shading. Each side must have its own anatomy; do not mirror one hand. This remains an isolated WIP art study only, not source art, a rig part, or production approval.
+
+**Self-review:** Full-body aspect ratio is usable, but source-normalized hand ROIs show cuff/upper palm rather than full target hand and overall size/placement mismatch. Reject; no source fit.
+
+**Status:** WIP/rejected. The normal-fingered and mitten styles remain separate; this image is not production art, not a rig part and not a Cubism model source.

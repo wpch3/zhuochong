@@ -1,0 +1,93 @@
+{
+  "pipeline_transition": "after_clean_hair -> clean_head_backing -> after_clean_head",
+  "texture_size": [
+    567,
+    644
+  ],
+  "head_body_full_registered_pos": [
+    0,
+    0
+  ],
+  "clean_head_halo_px": 4,
+  "rule": "keep = largest_component & (face_band | face_halo | neck_keep); configured windows OR only ((source_alpha>16) & (body_full_alpha>16) & largest_component)",
+  "regions": [
+    {
+      "id": "left_dark_short_dash",
+      "xyxy_half_open_source": [
+        145,
+        470,
+        156,
+        472
+      ],
+      "pixels": 22,
+      "before_alpha_gt16": 22,
+      "after_baseline_clean_head_alpha_gt16": 0,
+      "body_full_alpha_gt16": 22,
+      "main_component_pixels": 22,
+      "baseline_keep_mask_pixels": 0,
+      "rule_restored_pixels": 22,
+      "face_band_pixels": 0,
+      "face_halo_pixels": 0
+    },
+    {
+      "id": "right_upper_outer_dash",
+      "xyxy_half_open_source": [
+        411,
+        447,
+        426,
+        449
+      ],
+      "pixels": 30,
+      "before_alpha_gt16": 30,
+      "after_baseline_clean_head_alpha_gt16": 1,
+      "body_full_alpha_gt16": 30,
+      "main_component_pixels": 30,
+      "baseline_keep_mask_pixels": 1,
+      "rule_restored_pixels": 29,
+      "face_band_pixels": 0,
+      "face_halo_pixels": 1
+    },
+    {
+      "id": "right_lower_short_edge",
+      "xyxy_half_open_source": [
+        409,
+        462,
+        413,
+        464
+      ],
+      "pixels": 8,
+      "before_alpha_gt16": 8,
+      "after_baseline_clean_head_alpha_gt16": 0,
+      "body_full_alpha_gt16": 8,
+      "main_component_pixels": 8,
+      "baseline_keep_mask_pixels": 0,
+      "rule_restored_pixels": 8,
+      "face_band_pixels": 0,
+      "face_halo_pixels": 0
+    }
+  ],
+  "global_counts": {
+    "alpha_gt16_before": 87506,
+    "alpha_gt16_after_baseline_clean_head": 78373,
+    "largest_component_before": 81206,
+    "configured_pixels_retained_by_rule": 59
+  },
+  "interpretation": "All configured source pixels already exist before trimming, are opaque in body_full, and belong to the largest connected seg_head component. The baseline face-band/face-halo keep mask excludes the windows; clean_head_backing removes them. The form-specific rule only retains those source RGBA pixels.",
+  "unconfigured_reference": {
+    "id": "left_gray_marker_not_in_config",
+    "xyxy_half_open_source": [
+      149,
+      453,
+      154,
+      455
+    ],
+    "pixels": 10,
+    "before_alpha_gt16": 10,
+    "after_baseline_clean_head_alpha_gt16": 5,
+    "body_full_alpha_gt16": 10,
+    "main_component_pixels": 10,
+    "baseline_keep_mask_pixels": 5,
+    "rule_restored_pixels": 0,
+    "reason": "The gray marker is excluded from the form config; the measured C-frame dark count stays 7 in both baseline and candidate."
+  }
+}

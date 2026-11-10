@@ -1,0 +1,17 @@
+{
+  "task": "T67.71",
+  "status": "split-layer WIP3 inference only, not recovered source or production",
+  "front_diagnostic": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/55_clean_front_alpha_roi_diagnostic_v3.png",
+  "backfill": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/56_backfill_freeflow_inference_v3.png",
+  "front_roi": "broad visible cuff/hand ROI includes adjacent legal hair; clearing it entirely is diagnostic only and not an acceptable final removal mask",
+  "backfill_roi_relation": "independent manually traced alpha; not clipped by projection or artifact ROI",
+  "layer_hypothesis": "front hair layer 258 and inferred backfill behind arms at 135",
+  "front_alpha_pixels_cleared": 32161,
+  "roi_pixels": 47311,
+  "backfill_alpha_gt24_pixels": 49523,
+  "negative_space": "three separated locks with smooth width plateaus and tapered ends; transparent gaps retained",
+  "style": "local smooth gradient guided by sampled same-asset hair colors; no neighbor pixel copy or displacement",
+  "geometry": "all hidden paths inferred; left/right mirroring is an assumption, not source truth",
+  "outside_roi_byte_identity": "front diagnostic only, asserted exact",
+  "production_changes": false
+}

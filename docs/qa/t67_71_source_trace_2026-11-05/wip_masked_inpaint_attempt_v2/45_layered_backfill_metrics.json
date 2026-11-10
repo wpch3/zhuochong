@@ -1,0 +1,172 @@
+{
+  "task": "T67.71",
+  "status": "split-layer manual reconstruction WIP; not source recovery or production",
+  "clean_front": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/43_layered_clean_front_hair_wip.png",
+  "backfill_patch": "docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/44_layered_manual_backfill_wip.png",
+  "mask": "manual_artifact_polygons_v2 visible cuff/hand ROI only; it includes some neighboring hair and does not define target hair geometry",
+  "layer_hypothesis": "clean front retains existing layer 258 and alpha-clears foreign limb pixels; backfill patch will be tested behind arms at layer 135",
+  "clean_alpha_pixels_removed": 32161,
+  "backfill_alpha_pixels_gt24": 23832,
+  "roi_pixels": 47311,
+  "front_outside_roi_byte_identity": "asserted exact",
+  "negative_space": "patch contains separated curved ribbons with transparent gaps; no whole-canvas fill",
+  "geometry": "manual curves use adjacent visible flow as style/anchor; hidden paths, internal overlaps, and mirrored L/R correspondence are inference",
+  "production_changes": false,
+  "curves_local_345x519": {
+    "left": [
+      {
+        "curve": [
+          [
+            165,
+            247
+          ],
+          [
+            188,
+            287
+          ],
+          [
+            205,
+            338
+          ],
+          [
+            177,
+            449
+          ]
+        ],
+        "widths": [
+          8,
+          76,
+          2
+        ]
+      },
+      {
+        "curve": [
+          [
+            145,
+            265
+          ],
+          [
+            145,
+            330
+          ],
+          [
+            119,
+            396
+          ],
+          [
+            91,
+            445
+          ]
+        ],
+        "widths": [
+          5,
+          38,
+          1
+        ]
+      },
+      {
+        "curve": [
+          [
+            234,
+            282
+          ],
+          [
+            229,
+            343
+          ],
+          [
+            251,
+            399
+          ],
+          [
+            260,
+            446
+          ]
+        ],
+        "widths": [
+          4,
+          39,
+          1
+        ]
+      }
+    ],
+    "right": [
+      {
+        "curve": [
+          [
+            180,
+            247
+          ],
+          [
+            157,
+            287
+          ],
+          [
+            140,
+            338
+          ],
+          [
+            168,
+            449
+          ]
+        ],
+        "widths": [
+          8,
+          76,
+          2
+        ]
+      },
+      {
+        "curve": [
+          [
+            200,
+            265
+          ],
+          [
+            200,
+            330
+          ],
+          [
+            226,
+            396
+          ],
+          [
+            254,
+            445
+          ]
+        ],
+        "widths": [
+          5,
+          38,
+          1
+        ]
+      },
+      {
+        "curve": [
+          [
+            111,
+            282
+          ],
+          [
+            116,
+            343
+          ],
+          [
+            94,
+            399
+          ],
+          [
+            85,
+            446
+          ]
+        ],
+        "widths": [
+          4,
+          39,
+          1
+        ]
+      }
+    ]
+  },
+  "next_gate": "review isolated patch and C-composited frames before any further work; reject if transitions show gaps, blobs, or style mismatch"
+}

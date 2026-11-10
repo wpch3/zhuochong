@@ -1,0 +1,56 @@
+{
+  "name": "Google Gemini（OpenAI 兼容端点）",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 45,
+  "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://gemini"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "gemini-2.0-flash",
+      "price": {
+        "in": 0.1,
+        "out": 0.4,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "gemini-2.0-flash",
+      "price": {
+        "in": 0.1,
+        "out": 0.4,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "gemini-2.0-flash",
+      "price": {
+        "in": 0.1,
+        "out": 0.4,
+        "per": 1000000,
+        "currency": "USD"
+      }
+    },
+    {
+      "cap": "embed.text",
+      "model": "text-embedding-004",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "Google 自己提供了 OpenAI 形状的兼容端点（/v1beta/openai），所以不用为它单写一个 kind。原生 generateContent 端点功能更全（比如 thinking 预算），要用时再加 kind=official 的第二条记录。",
+  "id": "gemini"
+}

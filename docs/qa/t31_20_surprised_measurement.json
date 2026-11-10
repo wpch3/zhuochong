@@ -1,0 +1,149 @@
+{
+  "uiButton": "惊讶",
+  "uiRequest": "/api/action?id=surprised",
+  "activeAction": "surprised",
+  "form": "teen",
+  "outfit": "default",
+  "scale": 1.2,
+  "blink": 0,
+  "poses": [
+    {
+      "id": "eye_hl_style",
+      "current": "round",
+      "entries": [
+        "round",
+        "star"
+      ]
+    },
+    {
+      "id": "tail_pose",
+      "current": "relaxed",
+      "entries": [
+        "relaxed",
+        "up",
+        "puff",
+        "tuck"
+      ]
+    },
+    {
+      "id": "hood_pose",
+      "current": "down",
+      "entries": [
+        "up",
+        "down"
+      ]
+    },
+    {
+      "id": "hairstyle",
+      "current": "",
+      "entries": [
+        "long",
+        "twin",
+        "pony"
+      ]
+    }
+  ],
+  "bones": {
+    "form": "teen",
+    "action": "surprised",
+    "canvas_scale": 1,
+    "arms": [
+      {
+        "side": "l",
+        "available": true,
+        "shoulder": [
+          317.13,
+          460.28
+        ],
+        "elbow": [
+          240.26,
+          561.48
+        ],
+        "wrist": [
+          249.31,
+          411.13
+        ],
+        "upper_len": 127.08,
+        "forearm_len": 150.62,
+        "included_angle_deg": 33.77,
+        "flex_deg": 146.23,
+        "straight_fault": false
+      },
+      {
+        "side": "r",
+        "available": true,
+        "shoulder": [
+          522.14,
+          463.71
+        ],
+        "elbow": [
+          597.69,
+          561.92
+        ],
+        "wrist": [
+          596.66,
+          410.4
+        ],
+        "upper_len": 123.91,
+        "forearm_len": 151.53,
+        "included_angle_deg": 37.18,
+        "flex_deg": 142.82,
+        "straight_fault": false
+      }
+    ],
+    "knees": {
+      "l": "mesh_bend_only:no rigid knee pivot",
+      "r": "mesh_bend_only:no rigid knee pivot"
+    }
+  },
+  "params": {
+    "ParamSurpriseForeshorten": {
+      "effective": 0.9913,
+      "value": 0
+    },
+    "ParamArmLA": {
+      "effective": 0.9913,
+      "value": 0
+    },
+    "ParamArmRA": {
+      "effective": 0.9913,
+      "value": 0
+    },
+    "ParamArmLB": {
+      "effective": 8.6242,
+      "value": 0
+    },
+    "ParamArmRB": {
+      "effective": 8.3149,
+      "value": 0
+    },
+    "ParamSurpriseArmSwap": {
+      "effective": 0.9913,
+      "value": 0
+    },
+    "ParamKneeL": {
+      "effective": 0.7522,
+      "value": 0
+    },
+    "ParamKneeR": {
+      "effective": 0.9402,
+      "value": 0
+    },
+    "ParamHandLSurprised": {
+      "effective": 0.9913,
+      "value": 0
+    },
+    "ParamHandRSurprised": {
+      "effective": 0.9913,
+      "value": 0
+    },
+    "ParamHipL": {
+      "effective": 7.522,
+      "value": 0
+    },
+    "ParamHipR": {
+      "effective": -7.522,
+      "value": 0
+    }
+  }
+}

@@ -1,0 +1,36 @@
+--- a/tools/make_eye_parts.py
++++ b/tools/make_eye_parts.py
+@@ -170,0 +171,15 @@
++    # Isolated Chibi trial: source upscaling leaves neighboring hair/eye-edge
++    # fragments attached to the dark-pixel flood. Keep only the manually bounded
++    # upper-lash silhouette; the lower iris rim stays with the moving eye ball.
++    # The profile is measured in iris-relative coordinates and mirrored by side.
++    if form == "chibi":
++        left_profile = [
++            (-60, -15), (-52, -34), (-40, -45), (-29, -49), (-9, -50),
++            (9, -48), (24, -41), (35, -31), (34, -25), (24, -28),
++            (9, -31), (-9, -33), (-29, -30), (-42, -23), (-52, -17),
++        ]
++        profile = left_profile if side == "l" else [(-dx, dy) for dx, dy in left_profile]
++        poly = Image.new("1", (w, h), 0)
++        from PIL import ImageDraw
++        ImageDraw.Draw(poly).polygon([(cx + dx, cy + dy) for dx, dy in profile], fill=1)
++        lash &= np.asarray(poly, dtype=bool)
+@@ -296,6 +311,6 @@
+-        # sclera wings from the blue pupil. That used to leave baked white eye wedges
+-        # on seg_head and clipped the upper iris. Keep all eye-colored pixels inside
+-        # this narrow iris-relative envelope, fill tiny internal gaps, then union the
+-        # complete modeled iris disk (including its near-black crown).
+-        eye_color = (sclera_like | iris_like) & envelope
+-        interior = fill_holes(eye_color) & envelope
++        # sclera wings from the blue pupil. Keep eye-colored pixels inside both the
++        # iris-relative envelope and measured source-eye aperture. Without the aperture
++        # bound, stray white/blue hair-edge pixels inside the broad ellipse grow tabs
++        # in the clipping mask and create rectangular corner cutouts.
++        eye_color = (sclera_like | iris_like) & envelope & aperture
++        interior = fill_holes(eye_color) & envelope & aperture
+@@ -303,2 +318,2 @@
+-            sock_m = interior | disc
+-            carve_m = aperture | interior | disc
++            sock_m = (interior | disc) & aperture
++            carve_m = aperture | sock_m

@@ -1,0 +1,52 @@
+{
+  "trial": "25",
+  "status": "rejected_wip",
+  "purpose": "isolated independent left/right mitten hand concept generation",
+  "scope": {
+    "production_modified": false,
+    "source_art_pixels_used": false,
+    "images_edited_after_generation": false,
+    "source_cuff_fit_performed": false,
+    "rig_or_c_engine_test_performed": false,
+    "user_approval": false
+  },
+  "approval_boundary": "Trial15 size direction only is user-approved. These generated pixels and this trial are not approved.",
+  "inputs_used_as_visual_references": [
+    "characters/xiaoxun/design/design_sheet_chibi.png",
+    "source_left_cuff_hand.png / source_right_cuff_hand.png",
+    "trial15_viewer_left_hand_reference_wip.png / trial15_viewer_right_hand_reference_wip.png"
+  ],
+  "outputs": {
+    "viewer_left": {
+      "file": "trial25_viewer_left_hand_concept_wip.png",
+      "size_px": [1024, 1024],
+      "png_color_type": 2,
+      "channels": "RGB/sRGB; no alpha channel",
+      "sha256": "ae620dc048fb5ee8d336217a26fe922e025d363dbfb8cdea34de7d13cc3b1136",
+      "top_left_pixel": [52, 11, 47]
+    },
+    "viewer_right": {
+      "file": "trial25_viewer_right_hand_concept_wip.png",
+      "size_px": [912, 1150],
+      "png_color_type": 2,
+      "channels": "RGB/sRGB; no alpha channel",
+      "sha256": "4e3e7b0d3913807d6d89d2e707bcb386c3c2499c93088cc63b7fdcebce07ddd7",
+      "top_left_pixel": [197, 198, 197]
+    }
+  },
+  "automated_observations": [
+    "Both PNGs are RGB color type 2; neither carries alpha/transparency.",
+    "ImageMagick identify reports 1024x1024 srgb and 912x1150 srgb respectively."
+  ],
+  "human_visual_review": {
+    "opened_at_native_resolution": true,
+    "positive_observation": "Inward-facing thumb nubs appear on the requested inner edges; contours are not exact mirrored duplicates.",
+    "failure_observations": [
+      "Both images show long narrow wrist/forearm shafts relative to the compact hand target, ending in blunt visible top cuts.",
+      "Opaque checkerboard-pattern backgrounds make neither output a transparent part.",
+      "Uniform heavy plum outlines and smooth broad gradients do not match the registered Chibi source's finer, softer line/shadow treatment."
+    ],
+    "decision": "Reject; retain as negative evidence only. Do not matte-remove, chroma-key, source-fit, rig, or promote these images."
+  },
+  "remaining_gap": "Compliant source-aligned left/right mitten art with genuine hidden-wrist continuation, followed by source-cuff review and required user/artist approval."
+}

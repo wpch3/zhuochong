@@ -1,0 +1,26 @@
+{
+  "status": "visual QA WIP, all probes rejected; not production sprites",
+  "method": "four opaque-background target-box probes, each 45x48 (displayed nearest-neighbor 8x); probe segmentation/crop method recorded in individual metrics",
+  "panels": [
+    {
+      "trial": 33,
+      "file": "trial33_normal_fingered_hand_wip/trial33_target_box_45x48_visual_probe_wip.png",
+      "sha256": "ff435ccb56bcd57ae6a792802a306c7b4b84e6366031684d7db930c950c0be7c"
+    },
+    {
+      "trial": 34,
+      "file": "trial34_normal_fingered_hand_wip/trial34_target_box_45x46_visual_probe_wip.png",
+      "sha256": "45c3cfef01d64020b55cad9d8867b01d65cd9d91742040f8b8d342d0c15269e8"
+    },
+    {
+      "trial": 35,
+      "file": "trial35_normal_fingered_hand_wip/trial35_target_box_45x48_visual_probe_wip.png",
+      "sha256": "a3efd0d12a9202ab7ccbd2518848a30f55dc460edb5e7722c20b5da07dcdfe48"
+    },
+    {
+      "trial": 36,
+      "file": "trial36_normal_fingered_hand_wip/trial36_target_box_45x48_visual_probe_wip.png",
+      "sha256": "4b8ca560050f54fe07e695f08fa7c20c23471429b0c9b1dcbb837bf5b3bf793c"
+    }
+  ]
+}

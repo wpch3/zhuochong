@@ -1,0 +1,19 @@
+{
+  "name": "Gemini · 四色流光",
+  "note": "Google 四色官方值：蓝 #4285F4 / 红 #EA4335 / 黄 #FBBC05 / 绿 #34A853，正文近黑 #202124、浅灰面 #F1F3F4。Gemini 没有单独发布固定调色板，它继承 Google 这套；Material 的按钮圆角是 4px，但桌宠界面太方会发硬，这里折中到 12px。",
+  "vars": {
+    "--pink": "#4285f4",
+    "--pink-deep": "#1a73e8",
+    "--blue": "#34a853",
+    "--mint": "#fbbc05",
+    "--cream": "#ffffff",
+    "--card": "#ffffff",
+    "--ink": "#202124",
+    "--ink-soft": "#5f6368",
+    "--line": "#f1f3f4",
+    "--radius": "12px",
+    "--shadow": "0 6px 18px rgba(66, 133, 244, .16)",
+    "--bg-1": "#e8f0fe",
+    "--bg-2": "#fef7e0"
+  }
+}

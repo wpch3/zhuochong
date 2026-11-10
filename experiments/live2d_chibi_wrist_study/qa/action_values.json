@@ -1,0 +1,38 @@
+[
+  {
+    "ParamWristL": 0.3632,
+    "ParamWristR": -0.3632
+  },
+  {
+    "ParamWristL": 0.6472,
+    "ParamWristR": -0.6472
+  },
+  {
+    "ParamWristL": 0.7902,
+    "ParamWristR": -0.7902
+  },
+  {
+    "ParamWristL": 0.7608,
+    "ParamWristR": -0.7608
+  },
+  {
+    "ParamWristL": 0.5657,
+    "ParamWristR": -0.5657
+  },
+  {
+    "ParamWristL": 0.2472,
+    "ParamWristR": -0.2472
+  },
+  {
+    "ParamWristL": -0.1251,
+    "ParamWristR": 0.1251
+  },
+  {
+    "ParamWristL": -0.4702,
+    "ParamWristR": 0.4702
+  },
+  {
+    "ParamWristL": -0.7128,
+    "ParamWristR": 0.7128
+  }
+]

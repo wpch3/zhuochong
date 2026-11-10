@@ -1,0 +1,55 @@
+{
+  "status": "isolated_ai_art_candidate_wip_not_production",
+  "ai_trials": {
+    "left": {
+      "ai_source_file": "mitten_left_art_trial_04.png",
+      "ai_source_sha256": "e3415cc89486883fe8d8e0189fad55f49733083a26e2dfd5ca46ba4aadbb4955",
+      "ai_source_bbox_xyxy": [
+        129,
+        618,
+        531,
+        1076
+      ],
+      "ai_source_hand_size": [
+        402,
+        458
+      ]
+    },
+    "right": {
+      "ai_source_file": "mitten_right_art_trial_05.png",
+      "ai_source_sha256": "0599c551af734cb934cb2c5e17327759f0b5e08e56e25c0d197f6d6905f80d25",
+      "ai_source_bbox_xyxy": [
+        263,
+        358,
+        829,
+        928
+      ],
+      "ai_source_hand_size": [
+        566,
+        570
+      ]
+    }
+  },
+  "source_body_full_sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff",
+  "source_cuff_overlay": "Original Chibi source cuff pixels composited over each side's AI hand at recorded body_full edge",
+  "fitting": {
+    "target_height_px": 65,
+    "aspect_ratio_preserved": true,
+    "right_hand": "independently generated trial 05; not mirrored"
+  },
+  "palette_adjustment": "AI hand luminosity mapped to Chibi palette colors #FCE4D8, #E8B8A8, #5A5A6E, #FFFAF6",
+  "limits": [
+    "AI trials 04 and 05 changed cuff geometry; their cuffs were not used",
+    "fitted hand silhouettes remain unapproved for Chibi style/identity and are not production textures",
+    "the user-marked screenshot was a shape cue only, never copied, cropped, or used as texture",
+    "no Teen hand asset used",
+    "no production sprite, rig, generator, or engine changed",
+    "cuff seam, line style, proportions and C-engine fit remain unverified"
+  ],
+  "files": {
+    "mitten_left_ai_fit_wip.png": "399d91c39594ec49a9872c285b07717fc5d1311fe31fdde7b6818cc1614d5791",
+    "mitten_right_ai_fit_wip.png": "8db5eca1489d9711ff65ec008b09b1daf2be5b7ba61a1a658437a350c532cbf8",
+    "body_full_ai_mitten_preview_wip.png": "fea1c9688ddf34b987fd2e5caba7f17452f87d4ed8c6d400a65c892cca0f7977",
+    "hand_style_ai_candidate_board_wip.png": "49a526ccdefd5d45592bd4cc5abf828979b760f373fdb34b70a91894b7a99a88"
+  }
+}

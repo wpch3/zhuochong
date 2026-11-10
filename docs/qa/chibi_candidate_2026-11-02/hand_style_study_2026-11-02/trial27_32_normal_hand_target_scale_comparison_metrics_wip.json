@@ -1,0 +1,25 @@
+{
+  "board": "trial27_32_normal_hand_target_scale_comparison_wip.png",
+  "status": "diagnostic_comparison_only_not_approved_art",
+  "dimensions_px": [1152, 860],
+  "channels_observed": "sRGB (opaque after flattening)",
+  "inputs": [
+    "trial27_normal_fingered_hand_wip/trial27_target_box_45x48_visual_probe_wip.png",
+    "trial28_normal_fingered_hand_wip/trial28_target_box_45x48_visual_probe_wip.png",
+    "trial29_normal_fingered_hand_wip/trial29_target_box_45x48_visual_probe_wip.png",
+    "trial30_normal_fingered_hand_wip/trial30_target_box_45x48_visual_probe_wip.png",
+    "trial31_normal_fingered_hand_wip/trial31_target_box_45x48_visual_probe_wip.png",
+    "trial32_normal_fingered_hand_wip/trial32_target_box_45x48_visual_probe_wip.png"
+  ],
+  "layout": "3 columns x 2 rows; each target-size probe shown at 8x, with trial/status label",
+  "visual_review": {
+    "trial27": "finger separation visible, but adult-like long proportions",
+    "trial28": "target-scale paw/mitten reading",
+    "trial29": "five digits readable, but splayed palm-facing pose",
+    "trial30": "finger clefts collapse at target scale",
+    "trial31": "digit separation readable, but pixel-art style and long wrist",
+    "trial32": "digit separation readable, but adult-like proportions"
+  },
+  "production_use": false,
+  "engine_or_cubism_render": false
+}

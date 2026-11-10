@@ -1,0 +1,2663 @@
+# 缺口与需求清单（GAPS）—— 还缺什么、需要用户给什么
+
+> 本文件回答三个问题：**现在缺什么？谁来补？需要用户提供什么？**
+> 规则：补上一项就改状态并写日期，不删行（留痕）。编号与 `TASKS.md` 对齐。
+> 配套：`REQUIREMENTS.md`（要什么）、`WORKFLOW.md`（怎么干）、`PRODUCT_PLAN.md` 第四/八节（原始缺口清单）。
+
+历史基线：2026-10-11 ｜ 原始分支：`arena/cc642f66-zhuochong`
+
+## 2026-11-02 Chibi 参考资料缺口增补
+
+- **方法资料**（拆件、网格、遮罩、物理、C 引擎验证）：够继续自研；见 `CHIBI_LIVE2D_REFERENCE_AUDIT_2026-11-02.md` 与 `REFERENCE_NOTES.md` 第六十八批。
+- **Chibi 美术真值**：不足。待完成自己的 `small/mitten` 手型板与全身差分稿；不能用 Teen 手件或未授权开源模型图替代。
+- **端到端验收**：尚无 Chibi `hand_style × gesture × wrist angle × outfit` 状态矩阵；现有手部仍并在 `seg_arm_l/r`。资产与 rig/运行时组合工作仍未完成。
+- 本条为记忆增补，不把任何外部项目升级为生产依赖；`GAPS.md` 的历史表格仍需按新基线分批校准。
+
+## 2026-11-04 Teen 长发动态遮挡缺口（T67.71）
+
+- **现状 / 源像素追踪（2026-11-04）**：新增 `docs/qa/t67_71_source_trace_2026-11-04/`。追到输入 `design/sheets/sheet_long_hood.png` → `design/redraw/sheetcut_hair_hood_long.png` → Teen `sprites/hair_hood_long@2x.png`。切片框 `[212,156,799,1020]`（588×865）；严格 QA 在生产贴图内部报 11,336 个透明像素及 3 个 ≥200px 封闭块（3,418 / 2,970 / 982px），约映回手/袖口处。实际 cutout 和生产 hair 层均肉眼包含袖口/手形；当前颜色阈值分类器对 long 件未报达阈值的 skin/teal blob，不能据此否认可见残留。
+- **C rig / 动作 / 层序分离**：目标件 `acc_hair_hood_long` 是 `group=head`、layer 258、无专属 `physics`/`physics2`/deformer。正常手臂层 138–151；惊讶替换件 319–322；zrig 按 layer 升序绘制。现已在同一 C 预览做 long+hood-up 下 idle、surprised、wave_both、heart_hands、wave × `ParamHairSway=-1/0/+1` 共15帧；另对 neutral sway 的 surprised/wave 过程加拍13个固定步 C 时间点。surprised腕y约661→506→445（0.60–1.10s）→658；wave右腕y约716→651→491→455→448→610（2.30s），左腕仍约732–738。惊讶0.30s时替换参数在crossfade中，单独记作过渡态而不冒充端点。上举/合手姿势中目标发件里的旧袖口/手形仍可见，隐藏该件后碎片消失、实际动作手臂仍在。全身 sway -1/+1 对照约有3.9–4.1k可见像素RGB通道差>4；目标件 only 隔离对比除surprised最大通道差2外其余为0，全部无Δ>4像素。因此其它可见发件响应sway，但不等于该烘入袖口/手的目标发片有意义独立摆动。静帧/透明洞/层内残留/动作层序/发件物理分别留痕，不归并成单因果。
+- **来源门槛 / 下一步**：`sheet_long_hood.png` 与 raw 都是扁平 RGB；全仓未找到 PSD/PSB/KRA/XCF 分层作者文件，扁平图不含袖口/手后方被遮住的真实发丝。非兜帽 `sheet_long.png` 造型不同，不能冒充该隐藏区域的源真值。未做生产修补，也不采用随意邻域补色、任意位移或全贴图 `alpha=255`。需要获批分层/补画来源，或先做可审阅、隔离的连续发丝重建 WIP；动态矩阵仍欠其它手臂角度/过渡/摆动相位与更多组合后，才具备完整真实 C 验收。详细帧、坐标、QA exit 1、SHA 与解释见上述 T67.71 evidence 包。
+- **2026-11-05 WIP 复核与新方法止损**：先从固定分支旧 checkout `43f5514` 安全保全本地改动，再 fetch + `--ff-only` 到远端 `2d04ede`；提取 stash 中的未跟踪 QA 包 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/`。同一包记录 v1/v2 的 C 探索失败、v3–v7 的局部门失败、颜色 mask/AI 91/92失败。新增一次完全不同的字面纹理转移试验：把 `design/redraw/hair_long_back_v2.png` 内部 220×370 像素块映射到分离曲线锁 alpha。本人打开 `103_texture_transfer_v1_local_review.png` 后拒绝：donor 色相/线密度和目标不合，条带端头截平，清除对象处周边仍空；未过局部门，未送 C。直接纹理 donor 方法停止，不做同源条带宽度/遮罩微调。详见 WIP review 与 `104_texture_transfer_v1_metrics.json`。
+- **当前阻塞**：`hair_long_back_v2.png` 是不同形状的独立后发设计，不是兜帽长发遮挡后的原画真值；目标贴图邻接可见像素不足以推断隐藏发束拓扑，且同一 flattened cutout 含衣物残留风险。下一步必须取得获批同造型分层来源/明确补画源；未有新输入前不再堆猜测候选。生产素材、rig、生成器未改，T67.71 仍未修复。
+- **2026-11-05 作者来源交接（上一阶段，未修复）**：固定分支实查从 `43f5514` 快进至 `3d1670d`；stash `4d260cc` 没有仅存在于 stash 的路径，原有记忆与 QA 内容已在提交版中，故安全删除。本人检查 `hair_long_back@2x.png`、`hair_hood_pony@2x.png`、`hair_hood_twin@2x.png`，视觉轮廓/流向不匹配，不作 donor。为下一步获取真实来源，增加 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/105_artist_handoff_reference.png`（扁平全身源/旧 cutout/当前发件 ROI 的事实定位，无绘制发丝）、`105_artist_handoff_brief.md`、生成脚本和 `106_artist_handoff_metrics.json`。目视确认当前生产 hair ROI 仍见旧手袖像素；扁平源不能揭示隐藏发丝。该 handoff 只是来源请求资源与分阶段验收计划，非美术修复。局部门未通过，无 C、无生产改动。
+- **2026-11-05 注册作者模板续做（未修复）**：此会话又检测到本地 checkout `43f5514` 落后固定分支远端 `e88d0f6`，先保存到 stash `ab02eb7`，再同分支 `fetch + --ff-only`；核实 stash 无独有路径、untracked QA 共107条均已在 HEAD，相关记忆/WIP 已更新，安全删除。为让作者能在目标 2× 坐标下补画而不误把 ROI 当发丝形状，新增 `107_T67_71_registered_artist_template.ora`、`107_artist_template_preview.png`、生成器与 `108_artist_template_metrics.json`。模板只有空白 clean-hair / 左右 back-hair 草稿层、ROI 边框 guide 和不可导出的现生产参考图，不含新发丝。本人查看预览确认当前发件中的旧手袖仍可见，彩框只框检查范围。ORA 结构和空白层通过脚本核验；Krita 未安装，未做应用实开验证。`make test` 2638/0；局部门仍无候选通过，无 C 或生产改动。下一步仍须获批同造型分层源或作者明确补画层，再从隔离局部目视门开始。
+- **2026-11-05 早期 hair-only 来源复核（非候选）**：首次目视打开 `hair_long_backonly_v1/v2_raw.png` 与处理图，确认为 T67.7 早期非 hood-up 长发差分。并列板 `docs/qa/t67_71_source_trace_2026-11-05/wip_masked_inpaint_attempt_v2/109_backonly_source_audit.png` 显示 v2 画风/色料更接近但中心分缝、轮廓、流向及配准均不匹配；v1 有明显中心空洞与绿色边缘杂点。两者都不是隐藏真值、donor 或候选；没有像素转移、C 验证或生产更改。指标与限制见 `109_backonly_source_audit_metrics.json`，板生成器 `make_backonly_source_audit.py` 只拼合既有图像。下一步仍需获批同造型分层/明确补画源，验收门不变。
+- **2026-11-05 参考研究与绘制路线自审（仍阻塞）**：查 Live2D 官方 Illustration Processing/Template、CLIP STUDIO PAINT 官方/MUGENUP 拆件教程、Krita 图层手册；它们支持“扁平图拆件要补绘隐藏背景、头发分前/侧/后层”，但不提供小寻 hood-up 隐藏发束真值。重搜角色 long/hood/hair 资产、git refs 与 unreachable commit，未找到 PSD/PSB/KRA/XCF/同造型分层源；`hair_back@2x`、`hair_crown_long@2x`、midlong/hair-turn 只作不同形态/风格旁证。为回答用户是否制作困难，做了三种隔离 WIP：同图纵向续纹（110/111/112，竖向污迹）、生成式全发重绘（113/metrics，848×1248 RGB 白底无 alpha、轮廓不匹配）、程序化左右后发底片（114–118，平板硬块且前层仍见残留）。本人逐图自审后全部拒绝、未送 C；WIP review 标注这是偏离“无来源不猜画”门的实验，不作进度或通过。下一步需获批同造型分层源，或用户明确授权一个全新设计重绘方向；局部门/真实 C/生产门不变。参考/证据见 `docs/REFERENCE_NOTES.md` 第七十四批与 `wip_masked_inpaint_attempt_v2/layered_backfill_wip_review.md`。
+- **2026-11-05 新设计授权后续试验（仍未过局部门）**：用户明确授权新设计提案、同时要求贴近现方案。此授权覆盖“可提案新设计”，不代表隐藏真值、具体图稿批准或 C/生产许可。尝试全头发 AI（119）、左右局部 AI（122/123）、清洁引导后的重绘（133/134）、alpha 注册修正 v3–v6（139–161）和 OpenCV 表面续纹/alpha union（163–166）。失败证据：119 全发变化过大；122/123 仍携带袖手黑痕；133/134 变成过宽平板；alpha 注册 v3–v5 清理残留/平直切口；v6 strand 版在本人 3× ROI 查看仍有水平硬顶、白色楔口和右下暗痕；OpenCV 结果是明显几何色块。均拒绝、不进真实 C；在最终图板中静态复叠旧手袖只证明配准，不是实际臂件验证。当前最佳行动是让熟悉该角色笔触的画师在 `107_T67_71_registered_artist_template.ora` 或同坐标透明层上绘制窄小后发提案，先经局部/全件目视和用户确认；仍不得说成原始隐藏头发。详细试验、ROI、门禁与哈希见 `layered_backfill_wip_review.md` 和目录 `SHA256SUMS.txt`。
+
+- **2026-11-05 新设计实作继续（手绘/同源纹理试验全拒绝）**：新增隔离 `handpainted_continuation_v1..v4/` 与 `same_sprite_warp_v1..v3/`。前者经本人复看仍是断开的细丝、几何叶片或板状块；后者用同目标发件下段可见 hair texture 做 2-D remap，v1 有 alpha/透明黑洞、v2 硬顶，v3 顶缘渐隐后仍是独立大块和深直线。均不通过局部目视，不进 C/动作/转场，不改生产。下一步严禁重复同 remap 或几何板细调；T67.71 仍未修复。详情在 `layered_backfill_wip_review.md` 续记与 `continuation_experiments_SHA256SUMS.txt`。
+
+- **2026-11-05 再续新构成（均拒绝）**：在不重复手绘宽板与同源 2-D remap 的判断下，实际做了 `strand_weave_v1` 的分离锁束、`strand_weave_v2` 的相互覆盖锁组、`ribbon_cascade_v1` 的 S 流瀑布；本人看 review board/左右 ROI/3× crop 后仍见梳齿/细板、根端漂离现有头发、轮廓过齐与硬带感，全部未过局部门。隔离目录和 hash 在 `docs/qa/t67_71_source_trace_2026-11-05/strand_weave_v1/`、`strand_weave_v2/`、`ribbon_cascade_v1/`、`strand_lock_studies_SHA256SUMS.txt`。未跑 C/动作/转场/`ParamHairSway`，未改 production sprite/rig/generator/engine。不能把这批 WIP 当修复；T67.71 仍开放。下一次不再追加同类矢量锁条微调。
+- **2026-11-05 当前交接与中断 WIP**：已写 `docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`，明确隐藏真值未知、用户新设计授权边界、失败路线、自评能力边界、局部/C/生产门与资源入口。最近 `painted_volume_v1` review 已亲目判为水滴状软团、不与侧发融接，拒绝；生成被中断，metrics/hash manifest 未完整，文件仅作为部分负例证据。详情和文件 SHA 见 handoff 与 WIP review。当前没有 accepted candidate；C/生产未进入。
+
+---
+
+## 一、现在能跑的（基线，别重复造）
+
+| 能力 | 证据 |
+| --- | --- |
+| C 桌宠本体 | `dist/windows/x86_64/zhuochong.exe`（370 KB，零依赖）[需真机] |
+| 立绘引擎（数据驱动） | `src/core/zrig.c` + `characters/xiaoxun/forms/teen/rig.json`（15 动作） |
+| **Live2D 式形变** | `zimg_draw_warp`（逐像素平滑，X/Y 各自曲线）+ curve(root/sine/linear/tip)；**idle 常驻呼吸**；动作 breath / sway |
+| 交互 | 18 条规则 `config/interactions.json`；摸头/摸脸/锤击/点击/睡眠唤醒 |
+| 眨眼与视线 | 五态机（对齐 Cubism）+ 虹膜跟随 |
+| 换形态/换装 | `zpet_set_form` / `zpet_set_outfit`（机制就绪，缺素材） |
+| Web UI 第一版 | `web/`（12 fps 轮询 `/api/frame.png`，动作/情绪/形态/服装/缩放/语音面板） |
+| 预览 API | `/api/info.json`、`/api/action|express|poke|hover|scale|form|outfit|call|idle|quit`、`/media/<path>`（白名单+越界 404/403） |
+| 语音 | 云端晓伊标准定案；38 条台词已渲染；本地 Praat 少女化工具链；音色包安装器 |
+| 测试 | `make test` 217 项全通过；`scripts/selfcheck_all.sh` 六步全绿 |
+| 参考资料 | 七个项目已查验，结论在 `docs/REFERENCE_NOTES.md` |
+
+---
+
+## 二、缺口（我来补，按优先级）
+
+### P0 —— 不做就不算"软件"
+| # | 缺什么 | 为什么要 | 验收 |
+| --- | --- | --- | --- |
+| ~~G1 (T9.1)~~ | ✅ 2026-10-13 **主工作区骨架**：界面从"写死在 index.html 里的一堆卡片 + 380 行全局 app.js"改成**配置装配**。`web/layout.json` 是唯一装配表（区域 / 顺序 / 每个组件的参数），内核 `web/app.js` 按它**动态加载** `components/<id>.js` 并挂载；组件只认一个宿主门面 `host`（照搬 VPet 的 `IMainWindow`：`api/on/emit/state/el/card/refresh/components/find/theme`），生命周期四个钩子 `mount/onInfo/onSpeech/destroy`；主题 `themes/<id>.json` 是一张 CSS 变量表，写进 `:root`。九个组件：stage / statuschips / actions / moods / appearance / voice / usage / settings / statusbar。**业务逻辑原样搬移，没有重写**，内核里只剩一处 `getElementById`（查区域容器） | 闸门：**新增 `tests/test_web.js`（node + DOM stub，39 项）** 真正挂载全部组件并断言 DOM/区域/顺序/请求 URL/点击坐标换算；selfcheck 新增 ⑰ 组 7 项（layout 引用完整性、组件文件 id 对得上、区域容器存在、主题变量齐平、内核不写死元素）；smoke 新增 4 项（layout/组件脚本/主题文件都能下载、不存在的组件要 404）。`make check` 加挂 `web-test` | 验收实测：把 `side` 倒序 + `usage` 挪到顶栏 + 删掉 `voice`，**一行代码没动**，顺序/区域/挂载三条断言全过。负控：删掉一个组件文件 → selfcheck 与 web-test 同时判红 |
+| G2 (T9.2) | **本地 API 网关**：Key 只存本机、统一转发、计量、限流、离线降级 | 多模型对话的前提；Key 安全红线 | 假服务器契约测试 [测试锁] |
+| G3 (T9.3) | **Token 计费与用量看板**：价目表、按功能分类、预算告警、导出 | 用户点名要"用量记录" | 一次调用落一条账 |
+| G4 | **人物素材重做**：小寻 4 形态（设计图→拆件→rig→表情集） | 现在是单图层，表情/口型全是占位 | 机器验收通过率 100% |
+| ~~G4a~~ | ✅ 2026-10-11 前置工具已完成：`tools/make_anchors.py`（锚点标注）、`tools/check_assets.py`（形状/色卡/对位验收，已接入自检第 4 步） | — | 当前素材 53 项检查全过 |
+| ~~G4b~~ | ✅ 2026-10-11 **身体分段跑通**：`tools/make_body_parts.py` 把单图层切成 头/躯干/双臂/双腿 6 件（关节留 38px 重叠带 + 颈部脖子桩），`make_rig.py` 自动生成 7 组分段骨架并恢复转头，引擎新增 `bend_follow_at`（整块挂关节的部件按关节点取样） | — | 90 项验收全过：无损切分 0 像素丢失；头-15°/臂±10° 压力姿势关节新增空洞 ≤0 |
+| ~~G4d~~ | ✅ 2026-10-12 **引擎遮罩（clipping mask）**：`parts[].mask` / `mask_only`，`zimg_composite_masked()`；加载期校验层序与"遮罩夹层"，遮罩被隐藏时被裁切件一起消失 | — | 单测 5 项（正例+层序反例+找不到+眨眼联动）。**注：层序/夹层两条限制已在 A9（2026-10-13）取消**，遮罩改为按需当场渲染 |
+| ~~G4e~~ | ✅ 2026-10-12 **眼睛零件化**：`tools/make_eye_parts.py` 拆出 眼眶(遮罩)/眼白底/眼球(补全成完整圆)/眼线 四件 × 左右，`make_rig.py` 自动接线并新增 `look_around` 动作 | — | 146 项素材验收全过；`logs/preview_check/eye_zoom.png` 眼球位移不出眶 |
+| ~~G4f~~ | ✅ 2026-10-12 **嘴零件化**：`tools/make_mouth_parts.py` 造出开口形状(遮罩)+口内(上颚/口腔/舌/下唇)，引擎补**分轴缩放** `"scale":[sx,sy]` 与 **flap 波形**；talk/happy/surprised/hammered/sleep 真的张嘴 | — | 160 项素材验收全过；`logs/preview_check/mouth_strip.png` |
+| ~~G4h~~ | ✅ 2026-10-12 **呆毛独立**：`tools/make_hair_parts.py` 无损切出 `hair_ahoge`（切线 y=48，根部 12 行渐隐），9 个动作接了摆动通道（curve=root） | — | 无损切分仍 0 像素差；`logs/preview_check/ahoge_strip.png` |
+| ~~G4i~~ | ✅ 2026-10-12 **上眼睑拆件**：`tools/make_eyelid_parts.py` 逐列照眼眶下沿描出眼皮（自带闭眼线 + 逐列取肤色），引擎加 `tags:["eyelid"]`+`eyelid_travel` → `extra_dy += blink×travel`、动作可写 `blink_hold`、`zrig_blink_set_manual` 直控；眨眼从"两张图淡化"变成连续开合（能停在半眯眼）。**顺带把层序改了**：眉 232/233、刘海 240（原来 181/182、188 会被眼皮盖住） | — | 单测 `test_eyelid` 7 项；素材 202 项全过；冒烟 34 项全过；实拍 `logs/preview_check/eyelid_strip.png` |
+| ~~G4j~~ | ✅ 2026-10-12 **前发分层 + 额头 AI 重绘**：`tools/make_bangs_parts.py` —— 生图重绘无刘海脸 → 按虹膜质心/瞳距解相似变换（scale 0.8555）→ 只回贴被遮的 11773 像素 → 切出 `hair_front.png`(169×169, layer 183)，摆动 `bend_x + curve:tip`。**这是第一件按 D19 走 AI 重绘的零件** | — | 174 项素材验收全过；静止合成仍 0 像素差；证据 `logs/asset_qa/bangs_pipeline.png`、`logs/preview_check/bangs_strip.png` |
+| ~~G4k~~ | ✅ 2026-10-12 **眉毛拆件**：`tools/make_brow_parts.py` —— 再生一张「无眉脸」→ 带旋转的相似变换对齐（残差 1.5px）→ alpha 抠像 + 解混切出 `brow_l/r.png`（锚点中心，layer 181/182）→ 9 个动作接 `dy`/`rot_deg`（对应 `ParamBrowLY/RY`、`ParamBrowLAngle/RAngle`） | — | 188 项素材验收全过；静止合成 0 像素差；证据 `logs/asset_qa/brow_check.png`、`logs/preview_check/brow_strip.png` |
+| ~~G4l~~ | ✅ 2026-10-12 **修 surprised 的「补丁带」**：老动作把 `sx/sy` 摊给了眼眶/眼白/眼线这些**矩形小块贴图**，一放大就露出方边（脸上横着一条带）。现在缩放只发给眼球（它被眼眶裁切，放大=瞳孔放大） | — | 修前 `logs/preview_check/old_surprised.png`，修后 `logs/preview_check/brow_strip.png` 第二行 |
+| ~~G4o~~ | ✅ 2026-10-12 **闭眼没闭严 + 零件切口阶梯**（用户报"毛边、切割感"）：① 眼眶遮罩按颜色 flood，吃不进眼白下缘的淡蓝和外眼角的白 → 眼皮盖不住（眼眶 27×33 → **46×41**）；② 眼皮自画的闭眼线落在遮罩外被切掉 → 线上移 OVERSHOOT；③ 睫毛原来淡出，半闭时先丢上眼线 → 改成跟眼皮一起下滑（`eyelid_travel = 眼皮 − 6` + 挂遮罩）；④ 刘海按二值掩码切，切口是 0/255 阶梯 → 软切口（硬跳变 **100% → 0%**，半透明 0.1% → 11.2%）；⑤ **`rebuild_parts.sh` 原本没有眼睑步骤**，身体一重切眼皮就过期 → 七步改八步 | — | 202 素材 / 244 单测 / 34 冒烟 全过；抓帧 `logs/asset_qa/blink_zoom.png`（0/0.5/1 三档 4 倍） |
+| ~~G4p~~ | ✅ 2026-10-12 **抠像"毛边"查证（结论：不动）**：距离斜坡软 matte + 预乘 LANCZOS 缩放 → 白边光晕 61 → **1197**（LANCZOS 负瓣过冲 ÷ 小 alpha 被放大）；换 BOX → 硬跳变 4% → **25%**（缩放比 0.89 时 BOX ≈ 最近邻）。现用的 bleed + 直接 LANCZOS 才是对的 | — | 对比表见 `docs/ART_PARTS.md` 5.7、`docs/memory/LESSONS.md` |
+| ~~G4q~~ | ✅ 2026-10-12 **动画底层三块**（用户："动画底层没有做好立绘做完了也没用"）：① **动作淡入淡出** `actions[].fade`（默认 0.22s，0=硬切）—— 旧动作淡出期继续推进时间轴，按 smoothstep 权重与新动作叠加，不再瞬间跳帧；② **物理摆动** rig 顶层 `physics[]` 弹簧阻尼，输入取驱动组**完整矩阵**（含旋转与父链）带动锚点的位移、输出 `clamp(pos-目标,±max)`（静止必收敛回 0）；③ **指针跟随** rig 顶层 `look{}`，`/api/gaze` 同时驱动眼球与头/上身（≈`ParamAngleX/Y/Z`+`ParamBodyAngleX`），`1-exp(-speed·dt)` 平滑。叠加序：动作 → 跟随 → 物理 | — | 单测 `test_motion_fade`/`test_physics`/`test_look` 共 20 项（总 **264**）；实拍 wave→idle 右手外缘 171→157→145 分三帧回落（无淡入应一帧跳 20px）、hammered 呆毛摆幅 5.5px 震荡收敛、转头头部质心 ±25px 且复位残差 0.1px，`logs/asset_qa/look_follow.png` |
+| G4r ✅ | ~~**闭眼是几何假造**~~（2026-10-12 修完：AI 重绘闭眼脸 → 脸部 NCC 0.684 配准 → 软椭圆补片，盖住原画眼睛 99.5%/99.7%、接缝色差 4.5/2.3，rig 用 eye_open↔eye_closed 交叉淡化）原问题：（用户 2026-10-12 实拍指出"开心的闭眼错位"）：`make_eyelid_parts.py` 画的是"肤色贴片 + 一条线"，半闭时是一块黑、全闭时是一张比周围亮的圆饼，和脸的明暗/形状都对不上 | 眨眼、开心、困倦全都露馅 | 按 D19 出一张「同一张脸、眼睛闭上」的 AI 重绘，按虹膜/轮廓配准后切出真正的闭眼件（上睑+睫毛线），4 倍放大看不出补丁 |
+| G4s ✅ | ~~**张嘴是一个深色椭圆**~~（2026-10-12 修完：AI 重绘张嘴脸 → 虹膜配准 NCC 0.925 → 原分辨率取嘴洞 → 24×22 口内，牙 18px/舌 183px，`motion_from` 让口内跟着压扁）原问题：（用户 2026-10-12 指出"惊讶的嘴巴位置错误，形状也很怪"）：`mouth_mask` 只是把一个椭圆按 sy 拉高，口内没有上颚/牙/舌，位置也偏下 | 惊讶/说话/开心全都是一块黑斑 | 按 D19 出一张「同一张脸、嘴张开」的 AI 重绘，配准后切出 `mouth_open_art`（含口内结构），开口度用两张图交叉淡化 + 遮罩，而不是拉伸椭圆 |
+| ~~G4n~~ | ✅ 2026-10-13 **侧发两缕 + 后发拆件**（D19 重绘型，`tools/make_sidehair_parts.py`，`rebuild_parts.sh` 第 12/13 步）：① AI 重绘「无侧发的脸」（提示词必须写具体发型名 BOWL-CUT + 硬边界，写 remove/tuck 无效）→ 虹膜相似变换 scale 0.7701 对齐；② 脸掩码 `fill_holes(largest(dilate(暖色,3),种子) | 虹膜圆∪嘴框)`（**不能用闭运算**，会把发丝连成脸）；③ 切出 `hair_side_l` 106×132/层245、`hair_side_r` 105×132/层246、`hair_back` 241×143/**层170（画在脸底下）**；④ 根部留 16 行重复像素藏切口、后发往脸底下铺 14px 塗り足し（**先挖再算区域**）；⑤ 头/躯干重叠带里的发梢在 `seg_torso` 上**只换颜色不动 alpha**（直接挖会多出 72 个窟窿）；⑥ rig 接 `ParamHairSide`/`ParamHairSideS`/`ParamHairBack` + 形变器 `side_l/r_s` + **两段摆链** `side_?_x → side_?_tip(deformer)` 与慢摆 `back_x` | — | **素材验收 322 项 0 不通过**（部件 36/物理 9/形变器 3；新增「头发摆动不露底」「无键色垃圾像素」两类闸）；静止合成 **少 0 多 48 像素**（共同区 248124，均差 0.08）；`make test` 393/0；证据 `logs/asset_qa/_hair_param_zoom.jpg`、`_cheek_zoom.jpg`、`_dyn_hammered.jpg` |
+| ~~G4m~~ | ~~**眼线二次拆件**：脸上 `seg_head` 仍画着整圈眼线~~ **已完成 2026-10-13**：`make_eyeline_parts.py` 把「眼眶开口 ∪ 上眼线」换成干净眼窝皮肤（皮肤源 = 抹掉线的闭眼补片，按列上下插值填），引擎加 `eye_aperture` 标签按 `blink` 压扁眼眶、上眼线改 `eyelid` 实测行程下滑，淡化曲线改成两头让开的门控斜坡 | 见 `docs/ART_PARTS.md` 5.11 | ✅ `check_assets` 新闸 0 残留（负例 553+329 变红）、`test_eye_aperture` 1281→980→667→0、`eye_blink_sheet.jpg` 五态无灰幽灵 |
+| ~~G4c~~ | ✅ 2026-10-12 **手臂拆件（真关节）**：`tools/make_arm_parts.py` —— ① AI 重绘「无手臂躯干」→ **各向异性四参数配准**（sx .470 / sy .480 / 平移 5,240；单一等比变换残差 31px 不可用）+ 逐通道配色（误差 12.13）→ `design/redraw/torso_noarms.png`；② 沿袖缝切（青色 flood + 多段逐行跟随 + 补到轮廓）而不是切直线；③ 肘部切两件、24px 重叠带**只让前臂淡入**；④ 躯干挖 40713px、补绘 73px、切口塗り足し 5 圈渐隐；⑤ rig 建 `forearm_l/r` 子组（父=`arm_l/r`，枢轴=肘 553），动作里 `bend_x` 按 1°≈6.0px 换算成 `rot_deg`，新增 `ParamArmLB/RB`，挥手改成上臂 −52°+前臂 −28°±15°@2.2Hz | — | **231 项素材验收全过**（含新项「关节不露底(肘)」）；无损切分 **0 像素**；压力姿势 25°/20° 肩肘各 **0** 新增空洞；角度扫描 25→0、40→2、52→3、70→2、90→147（≤70° 安全）；303 单测 / 46 冒烟全过；证据 `logs/asset_qa/g4c_{align_check,arm_mask_check,static_diff,arm_pose_strip,wave_strip}` |
+| ~~G4c2~~ | ✅ 2026-10-13 **手腕拆件 + 裙下大腿**（见 `docs/ART_PARTS.md` 5.12）：① `make_arm_parts.py` 四件臂 → **六件臂**，腕线在**手臂掩码内**从肘往下扫肤色得 `wrist_y=666`（`anchors.json` 的比例值 708 落在指尖、整列扫被裙腿干扰得 732，都不能用）；手件画在前臂**底下**（层 138/139），前臂切到 `wrist_y+1`，手带 `WRIST_STUB=10` 皮肤续出且按 `erode(前臂掩码, WRIST_STUB_IN=4)` **往里缩**（贴边补会在 ±20° 探出"飘肉"）；② **真根因不是腿画短了，是躯干扛着大腿**——`seg_torso` 原先切到 776，裙下那截大腿是画在躯干上的静止副本；改为逐列扫 `thigh_top`（两腿间空档列必须回填）、整条大腿归腿件、躯干按同线裁 148375px、删掉腿件上缘渐隐；③ **腿绕髋旋转实测否决**（裆侧撕口 109~252px，补画只能长在裙摆下沿之上、缺口却在下沿之下）→ 改 **bend（curve `tip`）±20px**，实测 0 露底；④ rig：`ParamHandL/R` ±22°、`ParamLegL/R` bend ±20px、5 个动作接手通道 / 4 个接腿通道、`wave` 用手腕甩两通道；physics 加 `hand_?_lag`（鞭子第三节） | **验收超标达成**：手腕安全 ≤40°（扫描 10°:6 / 20°:21 / 30°:38 / 40°:49 / 50°:105 → 现用 ±22°）；腿不是"抬 15°"而是 bend ±20px 新露底 **0 像素** | `check_assets` **358/0**（新增腕专用闸 + 裙摆接缝闸 + `ParamLegL/R` 必须 tip 曲线）；`make test` **404/0**（新增 `test_group_chain` 三级组链）；smoke 64/0；证据 `logs/asset_qa/_wave_hand_sheet.jpg`、`_wrist_stub_cmp.jpg`、`_thigh_gapmap.jpg`、`_g4c2_param_sheet.jpg` |
+| ~~G36~~ | ✅ 2026-10-13 **Live2D 协议合规**（用户问"小寻是否合格、尽量往 Live2D 标准走"）：拉官方 `CubismWebFramework/src/cubismdefaultparameterid.ts`（41 个标准参数）与 `Haru.model3/physics3/pose3.json` 逐条核对，补齐 **ParamEyeLOpen/ParamEyeROpen 左右眼分家**（引擎加 `eye_side`，部件按眼别取闭合度）、`ParamBlush → ParamCheek` 正名（留别名）、新增 `ParamBodyAngleY / ParamShoulderY / ParamBaseX / ParamBaseY / ParamBrowLX / ParamBrowRX / ParamHairFluffy`；新增 `param_groups`（= model3 的 Groups，EyeBlink / LipSync）且**真的管用**（自动眨眼只眨组里列的眼、口型只写组里声明的参数）；动作通道现在可以 `target:"ParamXxx"`（≈ motion3 曲线写参数，参数表因此必须在动作之前加载） | 现状：标准参数 **✅34 / ⬜5（缺素材：笑眼·眉形·瞳形）/ ➖4（角色无该部件）**；physics 仍是部件级而非参数级（功能等价，属"随时能补"） | `docs/LIVE2D_CONFORMANCE.md`（含风险分级）；闸门：selfcheck **56 项**（命名/范围/分组/eye_side/文档覆盖）、`test_live2d_standard` 逐参数推极值比像素（负控：binds 清空 → 红）、smoke **68 项**（含单眼眨眼）；证据 `logs/asset_qa/_l2d_param_sheet.jpg` |
+| G5 | **语音链路收尾**：Windows 播放与混音、每日额度、缓存、多音字回归测试 | 现在只有文件，没有播放链路 | [需真机] 能听见 |
+| G6 | 配置迁移器 + 诊断包 + 备份恢复 | 版本升级不炸用户数据 | 旧配置能自动升级 |
+
+### P1 —— 决定好不好用
+| # | 缺什么 | 备注 |
+| --- | --- | --- |
+| G7 (T10) | 代理编排：任务队列、工具权限、人工确认、失败回放、预算熔断 | |
+| G8 (T10.3) | **Skills 注册表 + 技能测试台**：`skills/<id>/skill.json` | 用户点名"AI 能力可扩展" |
+| G9 | 生图区 + "拆件候选"流水线与自动验收 | 和 G4 共用验收工具 |
+| G10 | 代码区（执行沙箱 + Git 面板 + 一键自检） | |
+| G11 | 工作区 RAG（本地索引 + 引用即插入） | |
+| G12 (T15/M0.5) | **训练区**：数据集管理、配方、执行器（本机 GPU / SSH / 云）、模型库、评估、合规闸门 | **角色 LoRA 最先做** |
+| G13 | 视频区（ffmpeg 链 + 长任务队列） | 沙箱无 ffmpeg，[需真机] |
+| G14 | 桌宠动作扩充：双击/甩动/时间问候/道具/话题 | |
+| A5 (T12.6，原记作 G15) | ✅ 2026-10-12 **部件内细分网格**（`zimg_draw_mesh` + rig `deformers`，呆毛 2×4 控制点能摆 S 形，单测 14 项 / 冒烟 1 项）；遮罩侧已于 A9 补齐（逐像素裁切 + 多遮罩交集 + 取反 + 跟随形变；仍需关注全画布缓冲与官方分块的性能差异） | Live2D 相比我们唯一真正缺的两项 |
+| ~~G16~~ | ✅ 2026-10-13 **多段物理摆链**：`physics[].driver` 可写**前面已声明的另一条 physics id**（输入=上一段这一帧的输出），输出可用 `"deformer":"<id>"` 直接写进网格形变器的 amount。示范链：头动 → `ahoge_x`（发根 bend_x）→ `ahoge_tip`（梢，stiffness 26/damping 3.4）→ `ahoge_s` 形变器 S 形。调试口 `zrig_phys_output()`。**侧发已于 2026-10-13 接上两段摆链**（G4n）；仍缺裙摆（等拆件） | 单测 7 项、静态自检 1 项 |
+| ~~A9~~ | ✅ 2026-10-13 初版 + 2026-10-31 语义校正：遮罩按需当场渲染、按当前帧形变，与被裁件同步；`mask` 支持单值/最多 4 张数组、`mask_invert`、mask Feather；遮罩可以不与被裁件相邻；拒绝遮罩套娃。初版错误地将多遮罩做并集，且遮罩源隐藏时跳过被裁件；按官方 Clipping ID 改为**alpha 交集**，全部显式隐藏源时输出全白 alpha（解除裁切），opacity=0 源仍按几何参与 | `make test`：1421 项通过；重叠矩形 QA 渲染仅见交集；T67.8 详见 TASKS.md |
+| ~~A8~~ | ✅ 2026-10-13 **Pose 互斥部件组**（≈ pose3.json）：rig 顶层 `poses[{id,fade,default,entries:[{id,parts[]}]}]`，同组只有一个档位可见、定长线性淡化、`none` 可整组关掉；加载期四条校验（部件存在／一个部件只能归一档／default 在档位里／至少两档）。示范组 `eye_hl_style`（圆形/星形/无），测试台有差分按钮，`/api/pose?group=&id=`，冻结时钟时自动 `zrig_pose_snap` | 单测 17 项、静态自检 1 项、冒烟 5 项；证据 `logs/asset_qa/a8_pose.jpg` |
+| ~~A7~~ | ✅ 2026-10-13 **混合模式**（≈ CubismBlendMode）：部件 `"blend":"add"\|"multiply"`，公式与 Live2D 一致且**不改目标 alpha**；能和遮罩叠用（`zimg_composite_masked_blend`）。新零件：腮红 blush_l/r（乘算）、眼高光 eye_hl_l/r（加算，跟 gaze、被眼眶裁、闭眼淡出），由 `tools/make_blend_parts.py` 程序化画出。新参数 `ParamCheek`（旧名 `ParamBlush` 保留别名） / `ParamEyeSparkle`（bind 新增 `offset` 字段）。附带新端点 `/api/pause` 冻结时钟 | 单测 9 项、静态自检 1 项、冒烟 5 项；证据 `logs/asset_qa/a7_blend.jpg` |
+| ~~A6~~ | ✅ 2026-10-13 **关键帧动作曲线**（≈ `.motion3.json`）：通道写 `"keys":[[t,v],…]` + `"interp":"linear\|smooth\|step"`，取代只能做对称周期的参数化波形；循环动作对末帧时间取模回绕，一次性动作保持末值；时间倒退/帧格式错/超 1024 帧池直接加载失败。示范动作 `nod`（0.18s 低头 9° → 停 → 抬起过冲 −2.5°） | 单测 7 项、静态自检 1 项、冒烟 3 项；证据 `logs/asset_qa/a6_nod_keys.jpg` |
+| ~~A1~~（原记作 G18） | ✅ 2026-10-12 **命名参数层**：rig.json 顶层 `params[]`（id/label/min/max/default + binds 到组或部件通道，`通道值 = 参数值 × scale`）+ 引擎内建 5 个（ParamAngleX/Y、ParamEyeOpen〔含 L/R 别名〕、ParamEyeBallX/Y，路由到跟随/眨眼/眼球）+ `/api/params.json`、`/api/param?id=&v=|reset=1|all=1`；测试台的滑条按参数表**自动生成**，角色加参数不用改前端。小寻 teen 现有 14 个角色参数（ParamAngleZ/BodyAngleX/Z/Breath/MouthOpenY/MouthForm/Brow×4/ArmLA/ArmRA/HairFront/HairAhoge） | — | 单测 `test_params` 17 项（总 **281**）；冒烟 40 项全过；实测 ParamArmRA −10/0/+10 → 右臂外缘 606/644/681px；对照图 `logs/asset_qa/param_sheet.png` |
+| ~~A4~~（原记作 G19） | ✅ 2026-10-12 **LipSync**：`tools/make_lipsync.py`（wav→RMS 包络 / 无 wav 时数 MPEG 帧头拿时长 + 台词音节铺节律）→ `voice/lipsync/*.json` → `/api/speak?id=` → 引擎每帧写 `ParamMouthOpenY`，动作里的嘴通道由 `zrig_set_mouth_mute` 让路。38 条台词已生成包络；~~仍缺 I/U/E/O 音素级口型~~ **✅ 2026-10-13 补齐（见 G37）** | 依赖 G5 播放链路 |
+| ~~G38~~ | ✅ 2026-10-13 **表情 × 口型的叠加口径**：照官方 `ICubismUpdater` 执行序（EyeBlink 200 / Expression 300 / Drag 400 / Breath 500 / Physics 600 / **LipSync 700** / Pose 800）把口型排在表情之后，「笑着说う」Form 从被抵消的 −0.30 变成 **−0.86**（仍是撅圆）；表情求值重写成 Cubism 的三累加器 `(base+overwrite+additive)×multiply`，补上第三种混合 **multiply**；音素层不再回写基础参数（`viseme_write()` 删除），改为 `param_effective()` 分层合成；`/api/params.json` 每个参数报 `value / expr / effective` 三列，测试台加「表情 × 口型」看板。闸门：单测 2 组（含 3 次负控）、smoke 6 项、selfcheck 9 项 | 查证记录见 `docs/REFERENCE_NOTES.md` 第三批 |
+| ~~G39~~ | ✅ 2026-10-13 **用户验收反馈的四个真 bug（测试台实测复现 → 修 → 加闸）**：① **一直闭眼**：`zpet_tick` 的唤醒分支只清了 `sleeping`，没解除睡眠时下的强制闭眼；而且 `zrig_blink_force(r,int)` 当年写成 bool 语义，字段里 −1 表"自动"，调用方写 `force(-1)` 反被当成"闭眼" → 改三态（>0 闭、<=0 取消）+ 新增唯一唤醒入口 `pet_wake()`；② **关掉自动眨眼就全闭眼**：部件淡化判断写成 `blink_enabled && blink>0.001`，关掉自动眨眼后闭眼件不走淡化、以 100% 不透明盖住睁眼件（官方 `CubismEyeBlink` 只写参数、不碰绘制，见 REFERENCE_NOTES 第四批）→ 判据只看闭合度；③ **张嘴了微笑还在**：口型接管权重是恒定的 `vis_mix`，笑着说一整句时 `ParamMouthForm` 全程卡在 0.14 —— 改成 `w = viseme_weight × viseme_activity`（接管力度随本帧口型用力程度缩放），`viseme_weight` 0.8→1.0；④ **说完话嘴角抽一下**：`zrig_viseme_clear()` 是硬切，一帧之内从说话嘴形弹回表情 → 改平滑松口（`vis_weight→0`，形状收干净才释放）+ 新增两档 release（音素间 30/s，整句松口 `ZRIG_VIS_RELEASE_OFF` 8/s）+ 新增 `zrig_viseme_reset()` 给"要立刻清零"的场合 | 闸门：单测 **484/0**（新增 `test_sleep_wake_blink()` 的 3 段含整帧像素闸、`test_expr_viseme_order()` 四条新判据）、smoke **95/0**、selfcheck **83/0**（新增口型接管/松口/眼件淡化 6 项静态闸）；负控四次全部判红后还原 | 证据：`logs/asset_qa/_expr_viseme_sheet.jpg`（四格嘴部特写 + 整句两条曲线）；查证记录 `docs/REFERENCE_NOTES.md` 第四批 |
+| ~~G40~~ | ✅ 2026-10-13 **笑眼 `ParamEyeLSmile` / `ParamEyeRSmile`（合规表 ⬜5 → ⬜3）**：先查官方 Haru 的八个 exp3 —— F05 写的是 `ParamEyeLOpen=0(Multiply) + ParamEyeLSmile=1(Add) + 眉 0.32`，再对四篇日文建模教程，口径一致：**笑眼不是另一种睁眼，是另一种闭眼**（谷型 ∪ → 山型 ∩）。于是 AI 重绘「山型笑眼脸」，走闭眼那条同一条流水线 `make_eye_closed_parts.py --variant smile` 切补片（同位同尺寸、覆盖 99.5%/99.7%、接缝色差 4.0/2.2）；引擎加 `eye_smile` 标签 + 两个内建参数，三条规矩：笑眼隐含闭眼（`blink = max(blink, smile)`）、谷型闭眼件按 `1−smile` 让位、笑眼件走同样的最后 25% 淡入斜坡；新增表情 `happy`；`rebuild_parts.sh` 14 步 → 15 步 | 闸门：单测 **504/0**（新增 `test_eye_smile()`，含**合成 rig 结构闸**：三张眼摆开位置逐块数像素）、smoke **101/0**、selfcheck **90/0**、check_assets **372/0**；负控三次全部判红 | 证据 `logs/asset_qa/_eye_smile_sheet.jpg`；查证记录 `docs/REFERENCE_NOTES.md` 第五批 |
+| ~~G41~~ | ✅ 2026-10-13 **18 个动作从部件通道迁到参数通道（合规表最后一个结构性偏差 🟠）**：先拉官方源码核实 —— `cubismmotion.ts` 第 38~40 行写死了曲线目标只有 `Model` / `Parameter` / `PartOpacity` 三种，实测 Haru 的 `haru_g_m01.motion3.json` = Parameter 42 + PartOpacity 20 + Model 1，**没有"直接写部件几何"这一类**。迁法不是重写动作，而是按参数 bind 系数反算 `参数振幅 = 几何振幅 ÷ scale`（换算表 `tools/make_rig.py` 的 `GEO2PARAM`，漏登记就报错）；197 条几何通道 → 160 条参数通道。顺带：左右对称通道合一、删掉 24 条"整只眼在脸上平移"的逐件通道（head 组位移本来就带着走，而且新加的笑眼件不在那张手写清单里）、新增 `bias` 直流偏置（官方 CubismBreath 的 offset，让 ParamBreath 这种 0..1 单向参数能用正弦驱动）、补上标准参数 `ParamEyeBallForm`（瞳孔缩放）与扩展参数 `ParamBaseRot`（全身倾斜）| 闸门：单测 **523/0**（新增 `test_action_param_channels()`，含"拿故意写几何通道的合成 rig 反验计数器"）、smoke **107/0**、selfcheck **97/0**、check_assets **372/0**；三次负控（计数器不自增 / 忽略 bias / 静音不管参数通道）全判红 | 回归：18 动作 × 7 时刻逐像素对照，质心位移 ≤5.3px；证据 `logs/asset_qa/_param_channel_ab.jpg`。合规表 ✅36 → **✅37 / ⬜2 / ➖4** |
+| ~~G37~~ | ✅ 2026-10-13 **口型音素（母音識別 / T2.1.3）**：`rig.json` 的 `visemes` 表（音素 → `ParamMouthOpenY`×`ParamMouthForm`，官方标准表里没有 ParamMouthA/I/U/E/O，所以不自造参数）+ `viseme_update()` 两档平滑（attack 50/s、release 30/s，学 airi 的 wlipsync vowel driver）+ `/api/viseme` + 包络音素轨（pypinyin 取韵母）。闸门：`test_viseme()` / smoke 10 项 / selfcheck 6 项 | 查证记录见 `docs/REFERENCE_NOTES.md` 第二批 |
+| ~~A2~~（原记作 G20） | ✅ 2026-10-12 **表情叠加层**：rig.json 顶层 `expressions[]`（一组参数偏移，mode add/set，自带 fade），`/api/expression?id=|off=1`，info.json 带 `expression` + 表情表，测试台表情按钮自动生成。小寻 teen 现有 6 个：微笑/害羞/生气/难过/吃惊/困倦。表情**不占动作状态机**（能"笑着挥手"） | — | 单测 `test_expression` 17 项（总 **298**）；冒烟 46 项全过；对照图 `logs/asset_qa/expression_sheet.png` |
+| ~~A3~~（原记作 G21） | ✅ 2026-10-12 **透け眉**：眉的半透明副本（层 241/242、opacity 0.42）画在刘海之上并用 `mask:"hair_front"` 裁切，只在被刘海挡住处显形；引擎新增 `motion_from` 字段让副本照抄本体的全部通道（动作/参数/表情/形变跟随一起动，不用重写通道） | — | 单测 `test_motion_from` 5 项（总 **303**）；生气/难过/吃惊眉区变化 9880/10231/9885 像素（原来 0）；对照图 `logs/asset_qa/brow_ghost.png` |
+| G17 (T16.7) | **歌声**：TTS 唱句 + 音高对齐；SVC 产物按音色包接入 | 用户问过"AI 翻唱"，路线已定 |
+
+### P1.5 —— 第七轮补充的六项（T16）
+| # | 缺什么 | 验收 |
+| --- | --- | --- |
+| G18 (T16.1) | 多用户档案 Profile（会话/记忆/好感/用量隔离） | 切档案数据不串 |
+| G19 (T16.2) | 通知中心与系统通知（长任务、额度告警、角色主动说话） | [需真机]；可一键免打扰 |
+| G20 (T16.3) | 国际化 i18n（界面 + 台词 `i18n/<lang>.json`） | 换语言不改代码 |
+| G21 (T16.4) | 导入导出与迁移（会话/角色/技能/音色打包） | 跨机器导回功能一致 |
+| G22 (T16.5) | 定时与自动化（问候、朋友圈、备份） | 到点执行，失败有日志 |
+| G23 (T16.6) | 多设备/远程访问（默认关，鉴权 + 加密） | 开启需二次确认 |
+
+### P2 —— 打磨与合规
+| # | 缺什么 |
+| --- | --- |
+| G24 | 无障碍、护眼、勿扰、专注计时 |
+| G25 | 技能/主题/音色/模块的导入导出市场化 |
+| G26 | 加密与隐私增强（数据库加密、敏感信息扫描） |
+| ~~Q1~~ | ✅ 2026-10-12 **自检与保险体系**：`tools/selfcheck_repo.py`（41 项静态核对）+ `make asan`（ASan/UBSan，首跑抓出 2 个真内存错）+ 2 万帧长稳单测 + `scripts/precommit.sh` 钩子 + `.github/workflows/ci.yml`；一条命令 `make check` |
+| G27 | 性能与长稳（待机 CPU < 2%、24 h 无泄漏；**单进程 2 万帧已过，24h 仍 [需真机]**） |
+| G28 | 第三方许可登记 `docs/LICENSES.md` + 音色合规闸门 |
+| G29 | 安装包、自动更新、卸载清理 |
+
+### 小修（随手就能做，别积压）
+| # | 缺什么 | 位置 |
+| --- | --- | --- |
+| ~~G30~~ | ✅ 2026-10-11 已修：`/api/info.json` 增加 `mood`/`affection`/`tier`/`tier_name` | `src/headless/main_headless.c` |
+| ~~G31~~ | ✅ 2026-10-11 已修：增加 `form_names`/`outfit_names`，界面显示角色包里写的中文名（新增形态不改前端） | `main_headless.c` + `web/app.js` |
+| G32 | `send_png` 用 `/tmp` 固定文件名，同秒并发有碰撞风险 | `src/headless/main_headless.c` |
+| ~~G34~~ | ✅ 2026-10-12 **互动/动作测试台**：`web/test.html`（手点：动作/互动/滑杆/零件表/日志 + 一键自动测试）与 `tools/api_smoke.py`（命令行 34 项，判据是"画面真的变了"）；新增 `/api/region`；自检升到 7 步、`make smoke` | `web/test.*`、`tools/api_smoke.py`、`scripts/selfcheck_all.sh` |
+| ~~G35~~ | ✅ 2026-10-12 **通话姿态切不过去**：`call_user_speaking → focus`（优先级 2）被正在放的 `talk`（优先级 4）挡掉，表现是"对面说话了，她还在讲话姿势"。`config/interactions.json` 的 call_user/call_reply 两条加 `"force": true` | `config/interactions.json` |
+| G33 | 本地 Praat 样音 `local5_praat_1.10/1.20/1.32`（267/284/315 Hz）还没进试听页 21–23 | `characters/xiaoxun/voice/samples/index.html` |
+
+---
+
+## 三、需要用户提供 / 确认的（我做不了的）
+
+| # | 需要什么 | 为什么卡我 | 用户怎么给 |
+| --- | --- | --- | --- |
+| N1 | **挑本地音色**：试听 `local5_praat_1.10 / 1.20 / 1.32`（267 / 284 / 315 Hz）选一档，或判"仍不行" | 本地兜底音色定不下来 | 听完回一个档位号 |
+| N2 | **GPU 机器跑训练**（角色 LoRA / 音色模型 / SVC） | 沙箱无 GPU、无外网大文件 | 在自己机器按 `docs/TRAINING.md` 执行 |
+| N3 | **Kokoro / 其它高质量中文女声模型文件** | GitHub 只返 LFS 指针（134 B），沙箱拉不到 | 从 HuggingFace `hexgrad/Kokoro-82M` 下载后用 `tools/voice_packs.py install` 装入 |
+| N4 | **中转站选型**（zenmux.ai / crun.ai / easyrouter.io 或其它）+ 测试额度 | 网关与多模型对话没法实测 | 给一个 base_url + 模型名（Key 自己填本机，别发聊天框） |
+| N5 | **两套 UI 风格的设计稿确认**（A 柔和手绘 / B Q 版糖果） | 交接要求"先出设计稿再实现" | 看稿后回 A / B / 都要 |
+| N6 | **小寻四形态的设定确认**（萝莉 / 青年女性 / Q 版的头身比与差异） | 素材重做要先锁设定 | 回一句比例要求即可 |
+| N7 | **真机验收**：透明窗、穿透、托盘、动效观感、音频播放 | 代理不许替用户宣布完成 | 在 Windows 上跑 `dist/windows/x86_64/zhuochong.exe` |
+| N8 | 是否删除仓库里的旧交接文件（`docs/HANDOVER_XIAOXUN.md` 等） | 不擅自删旧文件 | 一句"删"或"留" |
+
+**安全红线**：任何 API Key、密码、Token 都**不要发到聊天框**，只写进本机 `.env`（历史上泄露过一次，`.env` 已不入库）。
+
+---
+
+## 四、执行顺序（我接下来按这个走，除非用户改）
+
+1. **动画底层**：G4q（淡入淡出/物理/跟随）+ G18 参数层 + G20 表情层 + G21 motion_from 已完成；**G4c 手臂真关节已完成**（2026-10-12）→ 只剩 **G19 LipSync**（TTS 包络写 `ParamMouthOpenY`，依赖 G5 播放链路）与 **G15 网格顶点级编辑**；立绘侧 **侧发/后发（G4n）、眼线二次拆件（G4m）、手腕+裙下大腿（G4c2）都已完成（2026-10-13）**，**I/U/E/O 四音素口型（T2.1.3，G37）与表情×口型叠加口径（G38）也已完成（2026-10-13）**，
+   下一件 = **笑眼素材 `ParamEyeLSmile`/`ParamEyeRSmile`**（补齐 CONFORMANCE 的 ⬜5），随后 18 个动作从部件通道迁到参数通道、动作 fade 线性→正弦。
+2. **素材工具先行**（G4 前置）：锚点标注工具 + 蒙版验收工具，再出设定图。
+3. **工作区骨架 G1 + 网关 G2 + 计费 G3**（M2/M3 里程碑）。
+4. **训练区 G12**（角色 LoRA 优先，解决素材风格一致的根问题）。
+5. 其余按 P1 / P1.5 / P2 顺序推进。
+| ~~G42~~ | ✅ 2026-10-13 **动作淡化换官方曲线 + 每个动作自带 FadeOutTime**：淡入原来用自选的 `z_smoothstep`，收尾靠 `W_PULSE` 里硬写的"结束前 0.15 秒"，两处都不是官方口径、而且收尾只管 pulse 一种波形。查 `CubismMath.getEasingSine`（`cubismmath.ts:107`）= `0.5 − 0.5·cos(πt)` 带两端钳位，`cubismmotion.ts:417-430` 用它分别算 `tmpFadeIn` / `tmpFadeOut` 再相乘，`endTime < 0`（循环）不淡出。照此新增 `z_ease_sine()`、动作加 `fade_out` 字段（默认 0.2s），W_PULSE 的后门拆掉。**过程中抓到一个真 bug**：只给"当前动作"加淡出、漏掉 `prev` 分支（正在淡出的旧动作），动作演完那一帧会把 pulse 满值整个闪出来（`ParamArmLA` 0 → 2.667 持续 0.2s）——逐帧回归采样抓到的，眼睛看不出来 | 闸门：单测 **535/0**（新增 `test_action_fade_sine()` 11 项，含"演完后不许有鬼影"）、smoke **109/0**（真实时钟下尾窗实测 中段峰 2.34 → 0.17）、selfcheck **104/0**（新增 ⑭ 组 7 项静态闸，盯调用点防偷偷换回 smoothstep）、check_assets 372/0；三道运行时负控 + 一道静态闸负控全判红 | 回归：18 动作 × 7 时刻，残留差异全部有机制解释（@0.1 是淡入换曲线、head_pat @0.9 是新淡出窗口），`wave` / `surprised` 原有的尾部偏差随鬼影一起消失。证据 `logs/asset_qa/_fade_sine_ab.jpg` |
+| ~~G43~~ | ✅ 2026-10-13 **裙摆接摆链**：先翻官方 8 个示例模型的 physics3，发现 Haru 根本没给裙子做物理，**Hiyori 有**「スカート横揺れ/縦揺れ」——裙子不是串成多段，而是**横摆、纵摆两条独立通道**，输入只吃 `ParamBodyAngleX/Y/Z`、一个头部参数都不吃，纵摆比横摆钝。照此配了 `skirt_x` / `skirt_y`。裙子**没有拆成独立部件**：形变器本来就是挂在部件上的网格，`cols=2,rows=10` 让 r=0~5 不动、r=6 当裙腰、r=7~10 是裙身裙底。为此补了 **physics 参数输入**（≈ 官方 Input 数组）——原来只能读驱动组位移，而 `ParamBodyAngleX` 绑的是 `seg_torso.bend_x`，弯曲非仿射、不进组矩阵，读不到 | 闸门：单测 **553/0**（新增 `test_mesh_bend_coexist()` + `test_skirt_physics()` 共 18 项）、smoke **112/0**、selfcheck **112/0**、check_assets 372/0；四道负控全判红（mesh/bend 互斥 / 只认第一张网格 / physics 忽略参数输入 / 让裙摆去吃头部参数） | 证据 `logs/asset_qa/_skirt_ab.jpg`；`/api/info.json` 新增 `deformers` 字段让摆链输出可观测 |
+| ~~G43b~~ | ✅ 2026-10-13 **两个渲染 bug（做裙摆时撞出来的）**：① `draw_state` 里网格形变器和 bend 是 `if/else` 互斥，部件一挂形变器 `bend_x/bend_y` 就被整个丢掉——**G16 多段摆链正是"第一段写 bend、第二段写形变器"，第一段一直白写**；② 找形变器的循环 `break` 掉了，同一部件上的第二张网格起静默失效。按 Live2D 变形器嵌套语义改成叠加（新函数 `zimg_draw_mesh_bend_blend`），并在加载时拦住"同部件两张网格尺寸不同" | 实测同一个 rig、旧引擎 vs 新引擎，head_pat/nod/sway 每帧差 7926~10540 像素 | selfcheck 新增 ⑮ 组 7 项静态闸盯死两条退化路径 |
+| G44 | ⬜ **physics 输出也参数化**：官方摆链的 Output 是写回一个参数（`ParamSkirt`，Type Angle、Scale 1.434），再由美术把那个参数绑到形变器；我们现在直接写形变器 `amount`，少一层间接，动作/表情就没法手 K 裙摆。纯增量、不影响素材，等真需要"动作里手写裙摆曲线"时再做 | — | 依据见 REFERENCE_NOTES 第八批 |
+| ~~G45~~ | ✅ 2026-10-13 **眉形 `ParamBrowLForm` / `ParamBrowRForm`（合规表最后两个 ⬜）**：原记作"缺素材"，实际**不用画新素材**——眉毛是一条横着的细带，`cols=4/rows=2` 的网格就能表达「山なり ↔ しかめ」。官方口径查 `Haru.cdi3.json`（「左眉　変形」）+ Cubism 手册（−1 皱眉 / +1 山形）；社区教程方向互相矛盾，以官方为准。关键约束是**「変形」不许带位置移动**（上下/左右/角度各有参数），落成每列 dy `[+2.3,−1.1,−3.6,−1.1,+2.3]`、净和仅形变量的 0.172。七个表情全部接上（照 Haru 的 exp3，六个表情都在用眉形）。透け眉 ghost 靠 `motion_from` + 形变器同时认 mi/pi 自动跟随 | 闸门：单测 **564/0**（新增 `test_brow_form()` 11 项，含"变化必须全部落在 y200~260 这条眉毛带内"）、selfcheck **118/0**（新增 ⑯ 组 6 项按几何核"变形不带位移"）；三道负控全判红（网格改成整体平移 / 表情不接眉形 / 形变器 bind 不写 amount） | **合规表 ✅37 → ✅39 / ⬜0 / ➖4**：41 项里凡是这个角色适用的全部实现且有闸门。证据 `logs/asset_qa/_brow_form.jpg` |
+| 注 | ⚠️ **编号撞号**：`G19` 在本表里出现过两次——"LipSync"那个早已改记作 **A4（✅ 2026-10-12）**，`G19 (T16.2)` 是**通知中心**（未做，需真机）。执行顺序那一节里"只剩 G19 LipSync"是过时表述，LipSync 已完成（`tools/make_lipsync.py` 出 30fps 包络 + 音素序列，39 条台词在库，`viseme_source: pinyin_finals`） | — | 2026-10-13 核对时发现 |
+| ~~G50~~ | ✅ 2026-10-13 **契约与注册表（框架第一块）**：四份契约 —— 能力 `config/capabilities/<id>.json`（15 份）、供应商 `config/providers/<id>.json`（6 份：openai/deepseek/relay_test 网络 + ollama/comfyui/mcp_filesystem 本机）、技能 `skills/<name>/SKILL.md`（**直接采 Agent Skills 规范**，查 super-agent-party 才知道有现成标准，没自造）、任务 `data/tasks/<id>.json`。**能力与供应商解耦**：调用方只说"我要一张图"。校验器 `tools/check_platform.py` 生成 `web/platform.json`。旧的扁平 `config/providers.json` 没删成——C 侧 `zconfig.c` 在读它（路径是拼出来的，grep 文件名查不到，`make check` 才抓到），改成**由校验器从新契约投影生成**，老格式的消费者一行不改而真相只有一份 | 闸门：platform 13/0（`--check` 改成"验证生成物是最新的"）、selfcheck ⑱ 组、web-test 新增 7 项 | 负控六道全判红：声明不存在的能力 / 明文密钥 / 本地供应商声明 api 余额 / 能力 id 与文件名不符 / 改契约不重算投影 / 手改生成物 |
+| ~~G51~~ | ✅ 2026-10-13 **网关骨架**：`src/core/zgateway.{c,h}` —— 路由（`zgw_pick`，按能力挑供应商，支持 attempt 降级重试；失败原因分 `NO_SUCH_CAP`/`ALL_DISABLED`/`EXHAUSTED` 三种，因为给用户的指引完全不同）+ 估价（`zgw_estimate`，按量/按次/免费三种口径）+ 三段记账（`zgw_hold_open`→`settle`/`release`，照 one-api `relay/billing` 的预扣-结算-退还；**入账的是实际花费不是预扣额**，失败的请求不扣钱但计失败次数）+ 密钥引用（`zgw_secret_resolve`：`secret://foo-bar` → 环境变量 `ZHUOCHONG_SECRET_FOO_BAR`，**取不到必须失败，绝不返回空串**，装不下要报错不许截断）。路由表不是运行时现算的，是 `tools/check_platform.py` 预先物化成 `config/gateway_routes.json`（照 one-api 的 `Ability` 表做法，**顺序即优先级**，运行时取第一个 enabled 的就是首选）。新端点 **`/api/gateway.json`** 报告每种能力实际路由到谁 + 账本 + 三态 `ready/disabled/missing`；平台面板显示"契约说谁能做"与"网关说现在走谁" | 闸门：test **627/0**（新增 63 项）、smoke **138/0**（新增 19 项）、selfcheck ⑲ 组 9 项、web-test **52/0** | 负控七道全判红：路由不看 enabled / 结算记预扣额 / 密钥失败返回空串 / 退还也扣钱 / 重复结算不拒 / 三态混成"不可用" / 账本不显示花费。**真实 HTTP 调用不在本件内**（那是 G54）——把"选谁/花多少/钥匙在哪"和"怎么发"分开，前者在无网无密钥的机器上就能完整验证 |
+| G52 | **资源区骨架**：`data/workspaces/` 工作区、`data/files/` 文件区（带索引与校验和）、`data/memory/` 记忆区三层（profile / episodic / working）。全部只存本机 | — | P0 |
+| G53 | **任务机**：队列 + 状态机（queued/running/waiting_user/done/failed/cancelled）+ 可中断 + 可回放 | — | P0 |
+| ~~G54~~ | ✅ 2026-10-23 **真链路打通（第一段）**：`src/core/zhttp.{c,h}` 自带 HTTP/1.1 客户端（零依赖，Linux/Windows 双平台，chunked + 超时 + 体积上限）+ `src/core/zrelay.{c,h}` 中继层（选路 → 取密钥 → 拼 openai 格式请求体 → 真发 → 解析 → 记账）+ 新端点 **`/api/chat`**。详见下方 G54 正文 | 闸门：test **936 → 992**、smoke **246 → 266**、check_platform 37/0 | **2026-10-23 第二段补齐**：TLS（T61.9，`src/core/ztls.{h,c}` 运行期 dlopen，`make tls` 24/0）+ 聊天框 UI（T61.10，`web/components/chat.js`，test_web +25）。云端 16 家现在握得上手了 |
+| G55 | **余额与用量**：真实记账落 `data/usage.jsonl`，替掉工作台现在的占位用量卡 | — | P1 |
+| G56 | skills 装载（Agent Skills 规范）+ 技能面板 | — | P1 |
+| G57 | image / video / model3d 能力接入（含本地 ComfyUI） | — | P2 |
+| G58 | code.generate + code.execute（沙盒执行，参考 `KroMiose/nekro-agent`） | — | P2 |
+| G59 | **MCP 适配器**：`provider.kind = "mcp"`，把 MCP server 的 tools 映射成能力 —— 接一次拿到整个生态（官方 servers ★91210） | — | P2 |
+| G60 | 任务分解与子代理（agent 带独立 workspace + 受限能力集） | — | P2 |
+| G61 | 记忆区三层 + 向量检索（时间衰减 + 重要度加权） | — | P3 |
+| G62 | **思考循环**：内部独白 / 空闲时主动话题 / 引用记忆可回溯 / 失败反思写回 —— 用户说的"真正的思考载入" | — | P3 |
+| G63 | 人格层接到立绘：已有的 41 项标准参数 + 7 表情 + 18 动作就是现成的表达通道 | — | P3 |
+
+## G64 云端音色库（2026-10-14 完成主体）
+
+**用户要求**：去掉本地音源；换云端标准音色；要少女/萝莉/青年女性；偏二次元；
+能变声调语气和情绪；用户可自己选择和配调；**每个 AI 的声音都不一样，不能同一种生源**。
+
+**已做**：
+- 删本地 Piper 全套（`voices/`、`tools/voice_local.py`、`voice_packs.py`、`voice_setup.sh`，9 个文件）。
+  删前先 grep 过闸门与 C 源码确认无引用（教训 51 的坑）。
+- `config/voicebank/<id>.json` **19 份**音色契约：minimax 8 / azure_speech 9 / edge_tts 2；
+  少女 7 / 萝莉 5 / 青年女性 7；二次元向 14。每份带 `emotion_mode` 和可调参数范围。
+- `config/voice_cast.json`：角色形态 3 条 + AI 5 条分配，两条硬要求由校验器判红。
+- `config/emotion_map.json`：11 种情绪 × 四条通路 + 对应的脸部表情。
+- 三份新供应商契约；`tts.speak` 从 missing 变成有供应商。
+- `config/voices.json` **降级为生成物**（第四个这么处理的遗留格式），C 侧照常读。
+- 面板 `web/components/voicebank.js`：挑音色、调参数、看情绪怎么发。
+
+**还没做（排队）**：
+- `tools/voice_render.py` 目前只会 edge-tts，要扩成按 `emotion_mode` 分发的多供应商渲染器。
+- 面板上选的音色还存不住（没有写配置的后端接口），重开就回到默认。
+- 桌宠 mood 变化时自动切 TTS 情绪，还没接到运行时。
+- 试听要真发请求，得等用户配密钥。
+
+## G65 立绘调试台（2026-10-14 完成）
+
+**起因**：用户问"live2 动态立绘做完了吗"，并要求"测试软件先兼容动态立绘功能"。
+查下来底层 41 项合规 ✅39/➖4 确实做完了，**但界面只用到 24 个 API 端点里的 9 个** ——
+46 个参数、7 个表情、7 个口型、互斥差分、视线、眨眼、暂停，全都没有入口。
+
+**已做**：`web/components/rig.js`
+- 动作 18 个（补上 info 里不列出的 idle/sleep）、表情 7 + 取消、口型 7、差分档位 + 整组关
+- 开关：暂停动画 / 眨一下 / 视线跟随（在舞台上移鼠标）/ 参数全复位
+- 形变器当前量只读显示（光看图分不出裙摆在不在荡）
+- 46 个参数按 Live2D 官方前缀分 9 组折叠，滑块实时驱动
+- `/api/info.json` 补了 `visemes` / `viseme` / `viseme_weight` 三个字段，
+  口型表不再在前端硬编码
+
+**闸**：web-test +27 项、api_smoke +9 项（46 参数逐个设值回读、表情/口型/差分/动作全覆盖）、
+selfcheck +1 组（前端参数名与 C 侧 qstr 对照）。
+
+## G66 脸红几乎看不见（2026-10-14 发现，**当天修完**）
+
+`ParamCheek` 满值只带来 27 像素可见变化。接线和方向都是对的
+（0→0.25→0.5→0.75→1 对应 0→0→6→16→27 像素，单调递增），所以第一反应是"素材太淡"。
+
+**调浓度治不了，根因是落点**。把 `make_blend_parts.py` 的 `peak` 从 0.62 提到 0.88、
+颜色也加重，素材平均 alpha 从 43 升到 63，可见变化只从 27 升到 41 像素 ——
+和按 alpha 估算的 ~400 差了十倍，这才反推去查位置。
+
+诊断手法：把像素差阈值降到 4，看 `np.where` 出来的影响区范围，
+再读**最大变化点在底图上的 alpha** —— 读到 10（几乎全透明），当场定性。
+
+> 腮红是 `multiply` 混合，**乘算在透明像素上没有任何效果**。
+> 原来的落点 `[311,300] 64×34`，而 `seg_head` 在画布 y=300 的实心范围只有 x 345..491
+> （脸是上宽下窄的锥形，y=340 时只剩 386..455）—— 92% 的腮红画在空气上。
+
+**修法**：按瞳孔位置重新定位（`eye_l_ball` 中心 x≈384、`eye_r_ball` x≈457），
+尺寸收到 40×22 保证整块压在实心脸上。满值可见变化 **27 → 268 像素**，
+最大色差 **34 → 167**，最大变化点底图 alpha=255。
+
+**加闸**（`check_assets.py`「混合零件」组）：腮红的不透明像素必须 ≥80% 落在
+`seg_head` 的实心区（alpha>200）上。负控：摆回旧位置 → 覆盖率 8%，红。
+
+---
+
+## G67 立绘交互三件套点不到 + 坐标系用错（2026-10-14 发现并修完）
+
+G65 把参数/表情/口型/差分接进了 UI，但 24 个端点里还剩
+`hover` / `region` / `speak` 没有任何界面入口 —— 而这三个恰好是"桌宠"区别于
+"立绘播放器"的部分：鼠标靠近会看过来、知道你摸的是头还是脚、说话时嘴跟着动。
+
+修完的四件事：
+
+1. **新组件 `web/components/interact.js`**（舞台交互）：视线跟随开关、区域探针
+   （实时显示指向哪个区域 / 会触发什么动作 / 改鼠标光标）、手-锤工具切换、
+   台词下拉 + 播放停止 + 口型电平条。
+
+2. **`info.json` 补 `regions` 和 `canvas_w/canvas_h`**（C 侧新增
+   `zrig_region_id_at/action_at/cursor_at/rect_at` + `zpet_` 转发）。
+   不报这张表，前端只能把 `head/body/feet` 和 `848×1360` 写死，
+   rig.json 一改区域就对不上 —— 和当初加 `visemes`/`poses` 是同一个理由。
+
+3. **摸头区域漏了下半张脸**。区域 rect 原本由 `prepare_sprites.py` 按比例估
+   （头 = 角色高的 24%，还假设头顶贴着 y=0），实际 head 只到画布 y=310，
+   而 `seg_head` 占到 y=385 —— **嘴和下巴落在 body 里，点脸触发的是「摸身体」**。
+   改成在 `make_rig.py` 里按 seg_head 真实 bbox 校正（head 到 y=391）。
+   加闸 `check_assets.py`「交互区域」组：head 区域必须罩住整张脸，负控能红。
+
+4. **坐标系用错（影响面最大的一条）**。`hover/region/poke` 吃的都是
+   **引擎帧缓冲坐标**（= 画布 × pet scale = `info.frame_w/h`），
+   而 `stage.js` 一直拿 `img.naturalWidth` 换算 —— 那是**画布 × 画质档 s%**，
+   两者只在画质档恰好等于 scale 时相等。画质一降或 `/api/scale` 一改就整体点偏。
+   两个组件都改成按 `info.frame_w/h` 换算；web-test 的 stub 故意把
+   `naturalWidth` 设成 848×1360（和 frame_w 466 不同），用错立刻红。
+
+顺带修掉的状态泄漏：`api_smoke.py` 的 scale 用例跑完把 1.0 留给了后面所有用例
+（也留给预览进程），现在跑完还原成启动值。
+
+## G68 形态分区只有 teen，其余形态在界面上凭空消失（2026-10-14 发现并修完）
+
+**现象**：`characters/xiaoxun/forms/` 只有 `teen/`，而 `config/voice_cast.json` 早就给
+teen/loli/adult 三个形态配好了音色。界面上形态下拉只有一项，用户看不出"还规划了另外三个"。
+
+**根因**：`scan_forms()` 只认磁盘上有 `rig.json` 的目录（这是对的 —— 空目录切过去会白屏），
+但"规划中"这件事没有任何地方记录。而且 **git 不跟踪空目录**，想靠建空文件夹占位是行不通的。
+
+**修法**：加清单文件 `characters/xiaoxun/forms.json` 声明路线图，`status` 只有 `ready`/`planned`。
+引擎 `load_form_roadmap()` 在 `read_form_name()` 之后合并，**以磁盘为准**：清单写 ready 但
+没有 rig.json 的，照样降级成 planned（防止清单吹牛）。`info.json` 新增 `form_roadmap`，
+而 `forms`/`form_names` **继续只含 ready**，不破坏既有调用方。界面上 planned 的形态灰显、
+禁用、鼠标悬停显示"还差什么"。
+
+**顺手修掉的小 bug**：`read_form_name()` 从 `rig.json` 的 `name` 字段取形态显示名，
+但那里存的是**角色名**（"小寻"）。三个形态都做完的话，下拉里会三项全叫"小寻"。
+现在 forms.json 的名字优先，teen 正确显示成"少女"。
+
+**闸**：`selfcheck_repo.py: check_form_roadmap()` 五项 —— ready 必须真有 rig.json /
+磁盘上的必须登记 / planned 不许留半拉子素材 / status 只用两种值。三种坏法都做了负控。
+`test_web.js` 另有 5 项：planned 不许进切换下拉、但必须在界面上看得见且禁用。
+
+**不要为 planned 的形态造模板素材**：假素材会被 `check_assets.py` 的 375 项逐条检查，
+要么全红要么开后门，而且会混进 LoRA 训练数据。空着才是对的。
+
+---
+
+## G69~G78 P4「实时陪玩」缺口（2026-10-14 登记，尚未动工）
+
+用户 2026-10-14 提的四件新能力，拆成 10 个缺口，全部登记在 `docs/PLATFORM_PLAN.md` 第六节 P4。
+这里只记**为什么是缺口**，做法见计划文档。
+
+| 编号 | 缺口 | 现状证据 |
+|---|---|---|
+| G69 | 网关只有 `prefer_local` 一种策略，没有真正的云/本地双路由与降级链 | `config/gateway_routes.json` 的 policy 字段只认一个值 |
+| G70 | 本地模型没有自定义区块：选模型/调参/显存/量化档全缺 | 供应商列表里 ollama 只是一个 base_url，没有任何可调项 |
+| G71 | 没有事件流总线，所有交互都是"用户点一下才动" | `/api` 全是请求-响应，没有事件队列 |
+| G72 | 没有实时 STT，`stt.listen` 能力在 gateway 里是 missing | `/api/gateway.json` 实测 |
+| G73 | 没有延迟预算，也没测过端到端延迟 | 全仓库 grep 无延迟相关指标 |
+| G74 | 角色不会主动开口，只有 idle 动作循环 | `zpet_tick` 里没有发话触发 |
+| G75 | 没有屏幕捕获，`vision.describe` 没有图像来源 | 无捕获代码 |
+| G76 | 没有输入控制，也没有急停机制 | 无 |
+| G77 | 没有联机：状态只存本机单实例 | 无同步层 |
+| G78 | 能对话的供应商只有 4 个，其中 relay_test 是测试桩 | `config/providers.json` 9 个里 4 个有 chat 能力 |
+
+**硬约束（用户明确排除）**：G78 扩充供应商时**绝对不要豆包 / 火山引擎 / 火山方舟 / Seed 系列**。
+已落静态闸 `check_platform.py`「供应商里没有豆包 / 火山引擎」，扫 48 份配置 9 个关键词，负控验过。
+
+## G79~G82 P4 横切缺口（2026-10-14 审计补登）
+
+用户问「做好计划了还缺什么吗」，查了一遍，发现 P4 那批能力有四个**横切关注点**
+没有任何归属 —— 它们不属于 G69~G78 里的任何一个，所以谁都不会顺手做掉。
+
+| 编号 | 缺口 | 为什么是缺口 | 现状证据 |
+|---|---|---|---|
+| G79 | 统一权限模型 | AI 要看屏幕+控键鼠+读文件+联网+常开麦，攻击面很大 | 全仓库只有 A25.4 一句「逐游戏授权」在管 |
+| G80 | 成本熔断 | 实时回路烧钱，现在只有"告警"没有"熔断"，且 G3 还没做 | grep「预算/熔断/上限」在计划里 0 命中 |
+| G81 | 性能预算 | 捕获+视觉+STT+TTS+立绘同时跑，桌宠不能卡 | G27 只管待机 CPU < 2%，没管实时模式 |
+| ~~G82~~ | ✅ 2026-10-15 **真机验收清单已建** `docs/ACCEPTANCE.md`（AC-01~AC-22，按 窗口输入/语音/立绘/平台长稳/模型训练/游戏三档 六组），每条写明怎么测、什么算过、不过先查什么、**沙箱里做到了哪一步**；`selfcheck_repo.py::check_acceptance` 与 TASKS 的 `[需真机]` 标记双向对账 | — | 562 项自检 0 不通过；负控：删一条 → 报「漏登 T21.4」、删一栏 → 报「AC-15 缺沙箱边界」、给 T22.3 加标记 → 报「漏登 T22.3」 |
+
+**排序约束**：G79 先于 G76（控键鼠）；G80 先于 G72/G75（常开麦与持续捕获）；
+G82 尽早 —— 它定义 P4 其余各项"做完了"算什么。
+
+## G83 / G84 Minecraft 协议游玩与游戏档位表（2026-10-14 登记）
+
+用户两次澄清把"玩游戏"切成了三档（REQUIREMENTS A25）：
+**网游只看不碰、Minecraft 走协议真玩、本地双人用虚拟手柄真玩**。
+原先 G75/G76 按"捕获 + 键鼠"一条路设计，覆盖不了 Minecraft —— 那条路既慢又不准，
+而 Minecraft 有现成的协议客户端。所以拆出两个新缺口。
+
+| 编号 | 缺口 | 为什么单独立项 | 关键依据 |
+|---|---|---|---|
+| G83 | Minecraft 协议游玩（Mineflayer + 技能库 + 代码熔断） | 和 G75 的实现完全不重叠：拿的是结构化世界数据不是像素，动作是代码不是键鼠 | Voyager 实证 63 物品/3.3×；MINDcraft 的参数化命令更可靠（REFERENCE_NOTES 第十五批） |
+| G84 | 游戏档位表（游戏 → 最高档位） | 没有这张表，"网游只读"就只是口头约定 | 用户硬要求：网游不可提升；归 G79 权限模型管辖 |
+
+**延迟实测（直接决定架构）**：GPT-4 每动作 **25 秒**，本地 7B **300~500ms**。
+所以 Minecraft 陪玩必须**本地做快决策、云端做慢规划** —— 这是 A23 双路由的头号用例，
+不是可选优化。
+
+## G85 下半身只有一个摆动参数，18 个动作里 14 个腿是僵的（2026-10-14 发现并修完）
+
+**现象**：上半身 46 个参数演得很细（头/眉/眼/嘴/三段手臂/手），下半身**只有
+`ParamLegL/R` 一个左右 bend**，而且 18 个动作里只有 sway/idle/happy/hammered 四个
+碰得到腿。角色站着的时候下半身是一根柱子。
+
+**排查中踩的两个坑**（都已记进 LESSONS）：
+1. 一开始以为"腿完全不会动"，查动作通道 target 时按组名（leg_l）去 grep，结果 0 命中 ——
+   **动作通道打的是参数（ParamLegL）不是组**。按参数名查才看到有 4 条。
+2. 实测时拿到"噪声底 = 0"还往下走。**噪声底 0 就是引擎时钟被冻结的铁证**
+   （上一个脚本在 404 处崩溃，`pause?on=0` 没执行）。解冻后噪声底是全身 16723 / 腿部 1348。
+
+**修法**（不用拆件 —— 靠 bend 曲线选对作用位置）：
+- `curve:"sine"`（两端固定、中段最大）峰值正好落在**膝盖**高度 → `ParamKneeL/R` ±9px
+- `curve:"tip"`（顶边固定、底端最大）作用在**脚踝** → `ParamTiptoe` 收 5px
+- `ParamWeightShift` 一个参数绑三条：骨盆 `root.dx` ±5px + 两腿中段 sine 反向补偿 ∓4px
+- 新动作两个：`shift_weight`（站立微动，freq 0.11 比呼吸 0.28 / 摇摆 0.18 都慢，
+  三者不同步才不像机械）、`tiptoe`（踮脚，双膝微屈 + 头发滞后一拍）
+
+**实测**（帧 466×748，腿部区域 y≥402）：
+| 对象 | 全身差异 | 腿部差异 | 备注 |
+|---|---|---|---|
+| 噪声底（idle 连拍） | 16723 | 1348 | 时钟在走 |
+| ParamKneeL = 1.0 | 4905 | 4905 | **100% 落在腿部**，sine 峰定位准确 |
+| ParamKneeR = 1.0 | 4866 | 4866 | 100% |
+| ParamWeightShift = 1.0 | 45087 | 14287 | 32% 在腿，其余是 root 横移带的 |
+| ParamTiptoe = 1.0 | 43219 | 15056 | 35%，root 上提带全身 |
+| 动作 shift_weight | 49935 | 14824 | 超噪声底 **11.0 倍** |
+| 动作 tiptoe | 38686 | 11332 | 超噪声底 **8.4 倍** |
+
+**连带改动**：`ZRIG_MAX_PARAMS` 48 → 64（加完 4 个参数共 50 个，撞上限导致
+rig 加载失败、形态回退）。`make_rig.py` 的通道转换器新增"参数直写"通路 ——
+原先只认几何通道，而 `ParamWeightShift` 绑三条 bind 没法用几何写法表达。
+判据仍是"target 必须是 param_list 登记过的 id"，写错名字照样拦。
+
+### 后半段：新参数得真用起来（2026-10-14 续五）
+
+加完参数当时就留了个尾巴 —— **新的 4 个参数只有 `shift_weight`/`tiptoe` 两个
+新动作在用，14 个老动作一条都没接**。等于买了工具没开封。
+
+补法是在 `make_rig.py` 的 `to_param_channels()` 调用**之前**加一张集中表
+`LOWER_EXTRA`（动作 id → 追加通道），而不是逐个去改上面的动作定义。三个理由：
+`wave`/`look_around` 是动态拼出来的没有字面量可改；集中成表幅度能横向比
+（都是陪衬，不能喧宾夺主）；将来整体调强弱改一处。
+
+补了 8 个：wave（重心压支撑腿）、surprised（急促屈膝）、sad（重心塌陷）、
+think（单腿承重）、talk（轻微重心挪动）、sleep（极慢摇晃+膝软）、
+look_around（重心跟视线、慢半拍）、head_pat（被按住微沉）。
+判定**不该动**所以没补的 6 个：nod / focus / breath / stroke / clicked / dragged。
+
+**量这件事本身花的功夫比改代码多** —— 判据连废两版，详见 LESSONS 78/79：
+- 第一版「比 idle 噪声底 ≥2.0 倍」：负对照 `nod`/`focus`/`clicked`（根本没有腿部
+  通道）照样测出 1.5~1.7 倍，`stroke` 更是 5.3 倍。**它量的是"切换动作"的扰动**。
+- 第二版「剥掉通道做 A/B」判据对了，但 `sleep` 报 +1%「基本没用」—— 实为
+  **指标饱和**：sleep 相对 idle 基准帧，腿部变化像素 28745 = 腿区角色像素 27137 的
+  **106%**，顶到天花板了，再动也加不上去。
+- 终版：**一次性动作**用「相对 idle 基准帧的峰值差」，**循环动作**用「自方差」
+  （基准帧取自动作进行中，量的是这个状态下身体还动不动）。
+
+**终版实测**（同一二进制、同一采样，唯一变量是那 25 条通道）：
+
+| 动作 | 类型 | 补之前 | 补之后 | 净增 | 判定 |
+|---|---|---|---|---|---|
+| nod（负对照） | 一次性 | 5917 | 6045 | +128 (+2%) | **这就是测量误差底** |
+| wave | 一次性 | 9567 | 11550 | +1983 (+21%) | 有效（绝对值 15× 误差底） |
+| surprised | 一次性 | 6805 | 8154 | +1349 (+20%) | 有效（10× 误差底） |
+| sad | 一次性 | 5154 | 7625 | +2471 (+48%) | 有效 |
+| think | 一次性 | 5265 | 7399 | +2134 (+41%) | 有效 |
+| talk | 循环 | 5157 | 7243 | +2086 (+40%) | 有效 |
+| look_around | 循环 | 5131 | 7959 | +2828 (+55%) | 有效 |
+| head_pat | 一次性 | 5036 | 7219 | +2183 (+43%) | 有效 |
+| **sleep** | 循环·自方差 | **734 (3%)** | **7583 (28%)** | **10.3 倍** | **八个里最强** |
+
+sleep 那行是整轮最大的教训：**饱和的指标把效果最好的一个报成了最差的**。
+参照系：idle 自方差 7004、sway 11028，sleep 的 7583 落在两者之间，合理。
+
+调过一次参：surprised 原本 knee 0.30/0.35s 只有 +?%（第一版判据下 1.7×），
+加到 0.48/0.50s。受惊是全身反应，腿僵着就假了，这个动作幅度就该比别的大。
+
+
+## G86 眨眼和视线/转头完全无关（2026-10-14 发现，未做）
+
+Live2D 官方《提高动态质量的技巧》第 4 条：**"人在转脸或换视线时经常眨眼"**
+（https://docs.live2d.com/zh-CHS/cubism-editor-tutorials/motion-hint/）。
+
+我们现在的眨眼是**纯随机定时器**（`blink_imin/imax` 区间内抽一个间隔），
+和 `look_around`、gaze 跟随、头部转动一概无关。引擎里已经有现成的
+`zrig_blink_trigger()`，接上去成本很低。
+
+做法建议：视线横向位移超过阈值、或 `look_around` 每段转向开始时，
+以一定概率触发一次眨眼（不要每次都眨，否则又变机器人）。
+
+## G87 闭眼时眼型没有横向收窄（2026-10-14 发现，试过一版已撤回）
+
+同一份官方教程的眨眼视频字幕原话：
+**"Making the shape slightly narrower horizontally when the eye is closed
+than when open makes it easy to create a natural blink"**。
+
+**本轮试过 `aperture_narrow`（眼眶遮罩随 blink 横向收 12%），已撤回**：
+实测虹膜宽度 0.25/0.40/0.55 三档都是 123px，**一点没变**。
+因为我们是遮罩裁切，虹膜 31×30 离遮罩左右边缘很远，收 6% 够不到它，
+只削到了眼白外角（变化 1500~2400 像素，肉眼看不出）。
+
+要真做到，得把眼部件的 `anchor` 从 `[0,0]`（左上角）改成各自中心，
+再让整组 eye_open 随 blink 横向缩 —— 锚点一动 `pos` 必须同步改到那个点的
+身体坐标（`zimg_make_matrix` 是把 anchor 这个像素点放到 pos 上），
+属 `make_rig.py` 的结构性改动。
+
+⚠ **不要看到官方那句话就再加一次 aperture_narrow** —— 那条路已经验证过走不通。
+
+## G88 踮脚 ✅ **2026-10-14 全部做完**（标题原为"脚部拆件经模拟验证后否决"——该结论已被推翻）
+
+> **★ 读这一节先看这段。** 下面保留了当天的完整推演过程，但其中**两个中间结论已作废**：
+> ① "改成 root.dy 与腿 bend_y 异号等量就算修好了" —— 只钉住了脚底，鞋本身没变化；
+> ② "脚部拆件已否决" —— 否决的前提（踮脚时鞋会变扁）本身就是错的，
+>    正确物理是**鞋在画面里变高**（俯角 θ≈37°，绕趾尖转 φ ≡ 纵向拉伸 k=sin(θ+φ)/sinθ）。
+> **最终实现见 TASKS T24.5 与 `docs/ART_PARTS.md` 5.13**：鞋拆四件 + 参数驱动交叉淡化。
+> 保留下文是为了记住"方向搞反会把一条对的路否掉"这件事，**不是让人照着做**。
+
+
+用户实测："踮脚高度有了，只不过脚部的模型没有变化，没有出现鞋子往地垫的动画"。
+**确认属实**：`leg_l`/`leg_r` 两组各只有一个整段部件 `seg_leg_l`/`seg_leg_r`，
+**没有 foot / ankle / shoe 组**。`ParamTiptoe` 能做的只有 root 上提 7px +
+两腿 `bend_y` 用 tip 曲线（底端形变），**没有任何部件可以绕脚尖旋转**，
+所以不可能出现"脚跟抬起、鞋底与地面成角"的效果。
+
+好消息：`tools/make_anchors.py:227-230` **已经算出 `ankle` 和 `foot` 两个锚点**，
+在脚踝处切件的数据是现成的。
+
+做法：
+1. `make_body_parts.py` 把 `seg_leg_*` 在 ankle 线切成小腿 + `seg_foot_*`（带重叠带）
+2. `make_rig.py` 加 `foot_l`/`foot_r` 组，**pivot 放在脚尖**，parent 为 `leg_l`/`leg_r`
+3. `ParamTiptoe` 增绑 `foot_*.rot_deg`（脚跟抬起 = 绕脚尖转）
+4. 脚踝背面转出来的楔形缺口若露底，按 D19 走 AI 重绘补片
+
+成本：要跑 `bash tools/rebuild_parts.sh xiaoxun teen`（≈240s）。
+
+---
+
+### ★ 2026-10-14 复查结论（覆盖上面的计划，上面那段保留作为背景）
+
+**① 先查出一个比"没拆件"更根本的 bug，已修。**
+
+`ParamTiptoe` 的两条绑定原本是**同号**的：
+`root.dy = -7`（整体上提）+ `seg_leg_*.bend_y = -5`（tip 曲线，底端满额），
+两个一起往上 → **不是踮脚，是整个人连脚一起浮空 12px**。
+引擎实测角色最底行 **1359 → 1347**。
+
+「脚部没有变化」这句话有一半就出在这：脚相对身体确实没变化，因为它跟着整个人飘走了。
+
+改成异号等量（`bend_y = +7`，tip 曲线底端权重 1.0 正好抵消）后实测
+**Tiptoe=0 和 1 的最底行都是 1359，脚底精确钉在地面**，身体照常升高，
+差额由小腿伸展吸收 —— 这才是踮脚。
+
+新闸 `check_tiptoe_grounded()`：root.dy 与两腿 bend_y 必须**异号、等量、tip 曲线**。
+负控（改回 -5.0）已验红。
+
+**② 脚部拆件：做了图像模拟，结论是不做。**
+
+拆件的目的是让鞋子能独立压缩/旋转出"抬脚跟"。动手之前先用图像模拟
+验证了这个想法（`logs/asset_qa/tiptoe_mock.png`，把鞋段以鞋底为锚压缩
+2% / 8% / 14% / 22% 四档）：
+
+- 8%：几乎看不出变化，等于白拆
+- **14% / 22%：鞋子只是被压扁了，读起来像"踩瘪的鞋"，不是"抬起脚跟"**
+
+根因是**鞋子是正面视角画的**（实测鞋底着地段 x164~207 对脚踝 x166~201，
+左右基本对称 = 正对镜头）。正面视角下，2D 平面内的纵向压缩给不出抬跟的读感，
+平面内旋转则读成"崴脚"。
+
+**真要做抬脚跟，必须 AI 重绘踮脚姿态的鞋**（D19：被遮挡区域必须重绘 ——
+鞋底翻起来会露出原画里根本不存在的鞋底面）。那是独立的一块素材活，
+不在本轮。拆件本身（切脚踝线、建 foot 组）在没有新素材的前提下**不产生价值**，
+所以撤销 T24.1 的"拆件"部分。
+
+脚踝切线本身是验过的：`anchors.json` 的 `ankle y=1142` 正好落在鞋口上沿
+（`logs/asset_qa/leg_cutline.png`），将来真要拆，这条线可以直接用。
+
+## G89 颈部/兜帽横向滑移（2026-10-14 用户实测反馈，已修完）
+
+**现象**：用户反馈"颈部会横向整体错误细微的位移，包括颈部附近的兜帽位置"，
+并指出"我在测试网关很容易就看到了"。
+
+**根因**（逐行位移剖面实测出来的）：
+- `seg_torso` 贴图顶边在画布 **y=308**，但那一段其实是**脖子和衣领/兜帽**
+- `ParamBodyAngleX → seg_torso.bend_x` 用 `root` 曲线，`f(t)=(1-t)²`，
+  **t=0（顶边）时系数 1.0，拿满额形变**
+- 而 `head` 组是 `bend_follow_at=346`（颈关节），按**那一行**的量做**刚性整体平移**，
+  只拿到 `f(0.0758)=0.854`
+- 结果：**衣领比它上面的头、下面的胸都移动得多，自己"鼓"出来一块**
+
+**实测（ParamBodyAngleX 满格 10）**：
+| 画布 y | 修前 | 修后 |
+|---|---|---|
+| 305（头部最后一行） | −4.68 | −4.68 |
+| **309（躯干顶边）** | **−5.08（跳变 0.40）** | **−4.76（跳变 0.08）** |
+| 316 / 327 / 342 | −4.96 / −4.89 / −4.76 | −4.73 / −4.75 / −4.74 |
+| 349 以下 | 正常错切 | 正常错切（保留） |
+
+衣领整段从"斜坡"变成"与头齐平的平台"，**相对滑移 0.34px → 0.04px，8.5 倍改善**。
+
+**修法**：给部件加 `bend_hold_above`（形变平台线，画布 y）。
+渲染时 `if (t < bend_tmin) t = bend_tmin;` —— 平台线以上的行共用平台线处的形变量。
+生成器给 `seg_torso` 写上 `bend_hold_above = neck_pt[1] = 346`。
+
+引擎新增 `zimg_draw_warp_blend_t()`（带平台的版本），老函数保留为 0 平台的包装，
+**没有改动任何既有调用方的签名**（tests 里 4 处 `zimg_draw_warp` 不受影响）。
+
+**闸**：`check_neck_seam()` —— 凡是被 bend 驱动、又被某个组当 `bend_follow` 源的部件，
+必须写 `bend_hold_above` 且落在部件纵向范围内。两种坏法（删掉值 / 写到贴图外）已验红。
+
+**为什么我自己没查出来**：之前的实测脚本都在量"动作幅度够不够大"（整帧/分区像素差），
+**量的是"有没有动"，而不是"各部分动得一不一致"**。
+一致性要用**逐行位移剖面**（相邻行的位移应当连续，跳变=接缝）。
+已把这个方法加进 `tools/measure_motion.py` 的 `--profile` 模式。
+
+## G90 剩下那几处跳变查完了：一处是误报，其余低于可见阈值（2026-10-14 发现，2026-10-15 查完）
+
+修完颈部（G89）后用 `measure_motion.py --profile` 跑剖面，`ParamBodyAngleX=10` 下
+还剩四处跳变，最大的一处 **+2.35px 在"躯干底边与腿交界"**。当时写着"先确认不是量法问题"。
+
+**查的过程（两次走弯路，都记下来）**：
+
+1. 第一次想用"物理开 / 关"做对照 —— **这个对照是空转的**：
+   `measure_motion.py` 第 219 行自己就把物理关了，我那两次跑的是同一个状态。
+   凡是"拿旋钮做对照"，先确认那个旋钮没被工具内部改掉。
+2. 第二次直接看图（`logs/asset_qa/hip_seam.png`，A/B + 差分，胯部 ×3）：
+   **那处根本不是裂缝，是一条自由边** —— 裙摆下沿压着大腿，
+   裙子跟上身走、腿站着不动，本来就该相对错开（真人侧身也是这样）。
+   原来的判据"位移跳变 = 接缝"在这里是**误报**。
+
+**判据已修**（`measure_motion.py` 新增 `row_material()`）：跳变分两类 ——
+两侧**同材质**（同一块皮肤/同一件衣服被切开）才是真接缝；两侧**不同材质**
+（藏青裙 ↔ 肤色腿）是自由边，预期如此。阈值取平均色距 40：
+实测同材质三处是 5 / 9 / 27，异材质是 66，取中间而不是贴着 27。
+负控：合成图喂进去，肤色↔肤色 = 0.0（判真接缝）、藏青↔肤色 = 275（判自由边）、全透明 = None 不参与。
+
+**四个参数跑完的结论**（`--jump 0.25`，帧行×0.55 = 画布 y）：
+
+| 参数 | 真接缝（同材质） | 自由边（预期） |
+|---|---|---|
+| ParamBodyAngleX=10 | 3 处，最大 **0.35 帧px** | 1 处（裙摆↔腿，2.35） |
+| ParamAngleZ=10 | 3 处，最大 **0.45 帧px** | 2 处 |
+| ParamAngleX=10 | **0 处** | 0 处 |
+| ParamBodyAngleY=10 | 0 处 | 5 处 |
+
+**最大的真接缝 0.45 帧px ≈ 0.82 画布px —— 不到一个像素，肉眼看不见。**
+所以**不改**（理由与"如果反过来会怎样"见 DECISIONS DC28）。
+
+## G91 摸头把脖子抽长 + 没有开心表情（2026-10-14 用户反馈，已修完）
+
+用户原话："摸头的时候不应该脖子伸长而是微微歪头一脸开心享受对不对？" —— 对。
+
+**根因**：生成器里 `head_pat` 写的是 `head.dy = -7.0`（pulse 保持），
+**字面意义上把整个头往上平移 7 像素**。而 look 配置里 `head.dy=10 / chest.dy=1`，
+胸只跟 0.7px → 净脖子抽长 6.3px。引擎层实测 **颈长峰值 -9.48px**。
+
+**改法**：
+- 去掉上平移，改成 `ParamAngleZ` pulse 11（歪头，走 head.rot_deg 绕颈关节转，**不改颈长**）
+- 头顺着手的力道微沉：`head.dy` 取正 2.0（原来是 -7.0）
+- 一脸享受：`ParamEyeLSmile/RSmile` = 1.0（山型笑眼顶替谷型闭眼）
+  + `ParamCheek` 0.6（脸红）+ `ParamMouthForm` 0.85（嘴角上扬）
+
+**实测**：颈长峰值 **-9.48px（抽长）→ +3.23px（微沉，被摸时的自然反应）**。
+
+顺手解决的拦路问题：`ParamEyeLSmile/RSmile` 是**引擎内建参数**（zrig.c 的
+`param_add_builtin`），不写进 rig.json 的 params，所以生成器的
+`to_param_channels` 不认、会直接 SystemExit 拒绝。
+在 make_rig.py 加了 `BUILTIN_PARAM_IDS` 白名单（9 个），和 zrig.c 保持一致。
+
+## G92 歪头时身体是刚体（2026-10-14 用户反馈，已修完）
+
+用户原话："光是头在动，身体没联动不自然"。
+Live2D 官方《提高动态质量的技巧》第 1 条一字不差：
+**「如果只转动脸部，则会看起来像一个机器人」**。
+
+**根因**（查出来比想象的更干净）：
+- `ParamAngleX/Y` 是**引擎内建**、走 look 系统，本来就同时写 head 和 chest
+  （`head.rot 5.0 / chest.rot 1.2`，比例 0.24）
+- **`ParamAngleZ` 是普通参数，只绑了 `head.rot_deg×0.5`，胸部分量为 0**
+- 而 20 个动作里 **19 个有头部通道、其中 15 个身体完全不动**，
+  这 15 个里 12 个用的正是 AngleZ
+
+**改法**：给 `ParamAngleZ` 加第二条绑定 `chest.rot_deg × 0.12`。
+比例 0.12/0.5 = **0.24，照抄 look 里已经调好的 chest/head 比**，口径一致。
+
+**A/B 实测**（ParamAngleZ=30，逐行位移剖面）：
+
+| 画布 y | 剥离胸部分量 | 有耦合 |
+|---|---|---|
+| 175~349（头） | −6.5 | −6.0 |
+| **393~567（胸）** | **+0.00（精确的刚体）** | **−6.5 ~ −5.0** |
+| 611~698（腰） | 0.00 | −3.92 → −1.58 |
+| 742~785（胯下，过枢轴） | 0.00 | **+2.58（反向，正确）** |
+
+胸部段平均净增 **5.88px**，而修之前是**精确的 0.00px**。
+
+**为什么选这条路而不是手工给 15 个动作补身体通道**：见 LESSONS 86。
+
+**闸**：`check_head_body_link()`，三种拆法（删胸绑定 / 加回上平移 / 删开心表情）
+已逐个验红。selfcheck 171 → 179 项。
+
+## G93 上身追头的惯性滞后（2026-10-14，已做完）
+
+Live2D 官方《提高动态质量的技巧》第 2 条：**「转动脸部，身体会在稍后跟随」** ——
+脸和身体**同时**到位仍然像机器人。G92 把身体接上了，但身体是**同步**跟的。
+
+**做法**：加一条物理 `torso_follow_head`，
+`input: [{param: ParamAngleZ, weight: 1.0}]` → 输出 `seg_torso.bend_x`。
+
+**为什么能和 G92 那条瞬时绑定共存而不重复计数**：物理的输出是 `pos - target`，
+即**纯滞后量**，静止时自动归零（zrig.c physics_update 的注释写了
+"只加惯性，不会永久吹偏"）。稳态倾斜由绑定给，物理只补转头过程中的追赶。
+
+参数：`ratio 0.10, stiffness 22, damping 5.5, max 3.0`。
+ω=√22≈4.7rad/s（周期 1.34s，远慢于头发），ζ=5.5/(2√22)=0.586（收得干净、一点点回弹）。
+对照：呆毛 stiffness 42 ζ=0.39（更弹），手腕 34/4.4。
+
+**实测**（阶跃 ParamAngleZ→25）：静止 0.011≈0 → 瞬间落后 −2.47px → 1.3s 内归零。
+**各动作里的真实量级**，正好符合官方"动作要有张弛"：
+
+| 动作 | 惯性峰值 | 平均 |
+|---|---|---|
+| idle | −0.25px | 0.03 |
+| sway | −0.17px | 0.05 |
+| look_around | −0.28px | 0.15 |
+| head_pat | −1.17px | 0.35 |
+| nod | **+1.90px** | 0.62 |
+
+闸 `check_torso_inertia()`：输入必须是 ParamAngleZ、输出在躯干、
+**阻尼比 ζ 必须落在 0.4~1.2**（太小一直晃、太大等于没惯性）、stiffness 必须低于呆毛。
+负控（damping 调到 1.0 → ζ=0.107）验红。
+
+## G94 ★ 物理条数超过引擎上限会被静默丢掉（2026-10-14 意外挖出，已修）
+
+加 G93 那条物理时单测红了「裙摆纵摆实际峰值 0.000」。查出来：
+
+**`ZRIG_MAX_PHYS` 是 12，而 rig 里早就声明了 13 条。**
+解析循环写的是 `for (i = 0; i < n && r->nphys < ZRIG_MAX_PHYS; ++i)` ——
+**超出的直接丢掉，一句报错都没有。**
+
+也就是说第 13 条 **`back_x`（后发摆动）一直是哑的**，而且它是全场最大的一个摆
+（look_around 时峰值 **1.77px**，比裙摆 0.13、躯干 0.26 都大）。
+从头到尾没有任何征兆，直到我再加一条把 skirt_y 也挤掉，单测才红出来。
+
+负控实测：
+| | 上限 12 | 上限 24 |
+|---|---|---|
+| back_x | **0.0000 哑** | **1.7713 活** |
+| skirt_y | **0.0000 哑** | 0.1319 活 |
+
+**两处修**：
+1. `ZRIG_MAX_PHYS` 12 → 24
+2. **超限改成硬报错**（`if (n > ZRIG_MAX_PHYS) zdiag_error(...)`），不再静默截断
+
+**闸** `check_engine_caps()`：扫 `ZRIG_MAX_PHYS / PARAMS / PARTS` 三个宏，
+断言 rig 的声明数不超上限**且留 15% 余量**（快顶满就提前报，不等撞上）。
+负控（上限改回 12）验红两项。
+
+现状：physics 14/24（58%）、params 41/64（64%）、parts 40/64（63%）。
+
+## G95 ★ 形变平台在网格路径上丢失（2026-10-14，我上一轮自己埋的，已修）
+
+G89 加的 `bend_hold_above`（颈部形变平台）**只接了 warp 那条绘制路径**，
+网格路径 `zimg_draw_mesh_bend_blend` 完全没有它。
+
+**为什么当时没发现**：`st->dg`（网格）只在形变器 `amount ≠ 0` 时才非空，
+而我验收时是**冻结时钟**状态 —— 冻结时 `physics_update` 第一行就因 `dt<=0` 返回，
+裙摆形变器 amount 恒为 0，于是走的是 warp 路径，平台生效，测出来一片大好。
+
+**真实后果**：正常运行时裙子一摆，`amount≠0` → 走网格路径 → 平台丢失，
+**颈部滑移原样回来**。也就是"颈部修复只在裙子不动的时候有效"。
+
+**修法**：新增 `zimg_draw_mesh_bend_blend_t()`，在控制点求曲线时同样钳 `tb`；
+两处 fallback（参数非法、控制点没挪）也改成调 `zimg_draw_warp_blend_t` 带上平台。
+老函数保留为 tmin=0 的包装，没改既有调用方签名。
+
+**验证**（图元级，直接测两条绘制路径）：
+| | 无平台 | 有平台 | 降幅 |
+|---|---|---|---|
+| warp 路径 | 59.50 | 54.50 | **−5.00** |
+| mesh 路径 | 59.00 | 54.50 | **−4.50** |
+
+两条路降幅相差 10%，来自网格的分段线性近似（10 行控制点 vs 逐像素），
+不是 bug。单测判据因此用**相对容差 15%**。
+
+**单测**（tests/test_core.c，3 条）：平台在 warp 上生效、在 mesh 上也生效、
+两者降幅等量。三条都做了负控：单独拆掉任一条路的平台都会红，而且点名到具体那条。
+
+**这个坑的一般形态见 LESSONS 91。**
+
+## G96 · 部件离屏合成（Offscreen drawing）——交叉淡化的总覆盖还差那 15%
+
+交叉淡化中点我们按官方 `CubismPose::DoFade` 把总覆盖抬到 **0.85**（线性只有 0.75），
+官方 BackOpacityThreshold 就是 0.15，**这 15% 是设计上留的，不是 bug**。
+真要做到 1.00，官方的办法是部件级 **Offscreen drawing**（Cubism 5.3 起，
+见 REFERENCE_NOTES 第十九批《检视器面板》）：部件内部先离屏合成好，再整体上一次不透明度。
+
+我们的渲染器目前是逐部件直接 alpha_composite。要上离屏合成得：
+给 `zrig` 的组加一个 `offscreen: true`，渲染时先把组内部件画进一张临时 RGBA，
+再按组不透明度合成到主画布。工作量不大，但会多一次全画布分配，
+**等到真有"整组一起淡入淡出"的需求（换装？形态切换？）再做。**
+
+现状不影响桌宠：那 15% 只在 50ms 的交叠窗里出现，且鞋后面就是透明桌面。
+
+## G97 · 引擎的 `bend_hold_below` ✅ 2026-10-15 补上了
+
+上平台 `bend_hold_above` 解决"跟随件在上面"（头跟躯干）；反过来"跟随件在下面"
+（脚跟腿、手跟前臂）以前**没有对应的下平台**，只能靠 `make_foot_parts.py`
+把腿件切线以下整个裁掉来回避 —— 第三种跟随关系一出现这个洞就会暴露。
+
+现在两条都有了，互为镜像：
+
+| 字段 | 作用 | 典型用法 |
+|---|---|---|
+| `bend_hold_above` | 这条画布线**以上**共用线处形变量 | 躯干：颈线以上跟着头走 |
+| `bend_hold_below` | 这条画布线**以下**共用线处形变量 | 腿：踝线以下交给鞋件画 |
+
+落点：`zimg.c:draw_impl` 的 `bend_tmax` 钳位（warp 与 mesh **两条路都接了**，
+上一次只接一条的教训见 LESSONS）、`zrig.c` 解析 `bend_hold_below`、
+`make_rig.py` 切件表写 `hold_below` 就会落到 rig.json 上。
+
+**现有腿件仍然走"切掉"那条路，不改**：已经切干净了，多一条平台线就多一处要对齐的
+参数（切线挪了平台线不会自动跟着挪）。selfcheck 里加了闸拦"既切掉又写下平台"。
+
+测试：`test_core` 用 TIP 曲线（顶固定、底端最大）验底行被按住 **且平台线以上不受影响**
+（只压一头才叫平台，整块按死是另一种 bug）；负控把钳位去掉 → 立刻红。
+
+## G98 · `wave` 的 `airborne` ✅ 2026-10-15 改成"膝盖吃掉"；`clicked` 保留
+
+`check_feet_on_ground` 要求会离地的动作显式声明幅度。原先五个声明里有两个是权宜：
+
+| 动作 | 原 px | 现在 | 性质 |
+|---|---|---|---|
+| happy | 34 | 34 | 真跳跃 ✅ 设计如此 |
+| hammered | 8 | 8 | 被砸下陷 ✅ 设计如此 |
+| sleep | 4 | 4 | 坐下去 ✅ 设计如此 |
+| clicked | 6 | **6（保留）** | 被戳一下的小跳 —— 见下 |
+| wave | 2 | **0（已改）** | 挥手起伏，本该"膝盖吃掉、脚不动" |
+
+**wave 怎么改的**：原来走 `ParamBaseY`（= `root.dy`，整个人平移），连脚一起浮。
+新增参数 `ParamHipDrop`（胯下沉 / 屈膝承重）：
+
+```
+chest.dy        +2.0        上半身跟着节奏起伏
+seg_leg_*.bend_y +2.0 root  腿顶跟着胯下来、脚踝那一行不动
+```
+
+关键是 `curve: root`（底边固定、顶端最大）—— 脚件是刚性跟随腿在**切线处**的形变的，
+而 root 曲线在切线（腿件底边）处正好等于 0，所以鞋底净位移是 0，`airborne` 可以直接删掉。
+
+**实测**（重启预览后，46 帧逐帧量最底不透明行）：
+
+| 动作 | 脚底振幅 | 头顶振幅 | 裙摆下沿振幅 |
+|---|---|---|---|
+| idle | 0 px | 6 px | 0 px |
+| wave（改前） | **2 px** | — | — |
+| wave（改后） | **0 px** | 5 px | 9 px |
+
+脚不动、上身照样在动 —— 这条负控很重要，不然"把起伏删光"也能让脚不动。
+留证：`logs/asset_qa/wave_feet.png`（六帧特写，红线=当帧最底行）。
+
+**clicked 的 6px 保留**：被戳一下弹一下是**故意要离地**的，和 happy 同类，
+不是量法问题。复查触发：真机上用户觉得"戳一下跳得太夸张"就调小。
+
+## G99 · `prefer_local` 只是"有本地就用本地"，不是真双路由（2026-10-15，已做完）
+
+**原来的样子**：`config/gateway.json` 的 `routing.strategy = prefer_local`，
+运行时 `zgw_pick()` 按优先级取第一个 enabled 的。它回答不了两个要命的问题 ——
+"这条请求带隐私标记"和"本地显卡正忙"。更糟的是：**本地那条关掉时它会安静地滑到云端**，
+对普通请求没问题，对带隐私标记的请求就是事故。
+
+**做法**（判据抄自 REFERENCE_NOTES 第二十批，结论登记在 DC18）：
+新增 `zgw_route_for(g, cap, req, &why, &reason)`，三支柱按**不可颠倒的次序**判：
+
+1. **敏感 → 强制本地**。本地不可用时返回 `ZGW_SENSITIVE_NO_LOCAL`，**不退而求其次**。
+   这是整个函数里唯一一个"宁可功能不可用"的分支。
+2. **复杂 / 长 → 云端**：`tokens_est > rules.tokens_cloud`(512) 或 `task == HEAVY`。
+3. **忙 / 故障 → 互相兜底**：本地负载 ≥ `local_busy_pct`(85) 溢出到云端；
+   云端 `cloud_down` 时退回本地。
+
+阈值不写死在代码里：`config/gateway.json` 的 `routing.rules` 是契约，
+`tools/check_platform.py` 把它物化进 `config/gateway_routes.json`（DC24 的老做法）。
+每次决策记一笔 `reason_hits[]` + `picks_local/cloud`，`zgw_local_share()` 给出本地分流占比
+—— 调研给的目标区间是 **0.70~0.85**，长期偏离说明**阈值不对**，而不是用户变了。
+
+新端点 **`/api/route`**（`?cap=&sensitive=&tokens=&load=&cloud_down=&heavy=`）是个纯决策沙盘：
+不发任何网络请求，在没有密钥、没有显卡的机器上也能把规则验到底。
+
+| 实测（本地全关、云端全开的"最诱惑局面"） | 结果 |
+|---|---|
+| `sensitive=1` | **(拒绝)** `reason=sensitive_blocked` |
+| 同一局面、同一能力，只是不带 sensitive | `deepseek` `reason=only_choice` |
+| `tokens=4000` | `deepseek` `reason=long_cloud` |
+
+闸门：`test_core` **653 → 666**；负控 = 在敏感分支偷偷加一句上云 fallback
+（别人最容易"顺手贴心"的那种改动）→ 两项立刻判红。
+
+**还欠**：① 阈值是抄来的，要用 `data/usage.jsonl` 的真实记账重标（DC18 的复查触发）；
+② ~~没有"自动判重活"的分类器~~ ✅ 2026-10-15 补上 `zgw_classify()`（关键词三类 + 长度 600 字节，
+   见 DC27；端点加 `?q=`，面板上可以直接打字试）；
+③ 路由决策没写进账本文件，只在内存里计数。
+
+## G54 · 网关从"只会选谁"到"真的发出去"（2026-10-23，第一段做完）
+
+G51 把"选谁 / 花多少 / 钥匙在哪"做完了，但那条线到此为止 —— **选完就没有下文**。
+人设、对白、路由、角色性格这些上层能力全部堆在它后面干等，
+因为它们最后都要落到同一个动作上：**把那段提示词真的发给一个模型**。
+这一轮把这最后一段接上了。
+
+### 两个新模块
+
+**`src/core/zhttp.{c,h}` —— 自带的 HTTP/1.1 客户端**
+项目的硬规矩是零第三方依赖，所以不能用 libcurl。自己写，约 440 行：
+
+- `zhttp_url_parse()` 拆 `scheme://host:port/path`，缺省端口按 scheme 补
+- `zhttp_send()`：DNS → connect → 发 → 收，全程带超时（默认 30s）和体积上限（默认 1 MB）
+- 响应体支持 `Content-Length` 和 **`Transfer-Encoding: chunked`** 两种（后者本地栈很常见）
+- Linux 用 `getaddrinfo`/`MSG_NOSIGNAL`，Windows 用 winsock2（`make win` 要 `-lws2_32`，
+  这条漏了会在交叉编译时炸出 8 个未定义符号）
+- 错误码 11 种，每种配一句人话（`zhttp_err_text()`）：
+  "连不上（服务没开，或者端口不对）" 比 `errno=111` 有用得多
+
+**`ZHTTP_OK` 只表示网络层成功。404 也是 OK。** 好坏要看 `resp->status` ——
+这两件事混在一个返回值里是经典错误源。
+
+**`src/core/zrelay.{c,h}` —— 中继层**
+`zrelay_chat()` 一次完整调用：选路（复用 G99 三支柱）→ 查接入点 → 校接口族 →
+取密钥 → 拼请求体 → 真发 → 解析 → 记账（`hold_open` → `settle`/`release`）。
+失败可按优先级降级换家，`tried[]` 去重，`fallback=0` 时不换。
+
+### 四条"发之前必须拦住"的红线
+
+发请求这件事的特殊性在于：**错误是不可撤销的**。
+请求一旦出网，用户说的话就已经到别人服务器上了，再返回错误也收不回来。
+所以这四条全部放在 `zhttp_send()` 之前：
+
+1. **密钥取不到就不发。** 空密钥发出去只会换回 401 —— 但那一下已经把
+   用户说的话送到对面了。换不来任何东西，只赔上一次泄露。
+2. **接口族对不上就不发。** anthropic 的 `/messages` 是另一套请求体，
+   拿 openai 格式硬发只会换回 400，还白扣一次额度。本版只接
+   `openai_compatible`（29 家里 16 家，含全部本地栈），其余明确报错。
+3. **`https://` 直接拒绝，绝不降级成明文。** 本机没有 OpenSSL 开发头，
+   TLS 这轮做不了。做不了就老实说做不了 —— "降级成 http 先把功能跑通"
+   等于把 API key 和用户的话明文发到公网上。`ZHTTP_E_TLS` 带的话是
+   "还不支持 https（本版只连本地明文服务），**不会把密钥明文发出去**"。
+4. **请求体必须显式写 `stream:false`。** 不写的话有的中转站默认开流，
+   回来是 SSE，解析器当场看不懂。反过来，**没填的 `temperature`/`max_tokens`
+   一个字都不许自己编默认值塞进去** —— 那是在覆盖服务端的配置。
+
+还有一条在收到响应之后：**HTTP 200 不等于成功**。OpenAI 系的错误体
+`{"error":{"message":…}}` 可能带着 200 回来（中转站尤其常见），
+所以 `zrelay_parse_chat_resp()` 先验 `error` 字段，再去取 content。
+
+### 修掉一个真漏过的隐私洞
+
+第一次选路走 `zgw_route_for()`，它认 `sensitive`，敏感件强制本地、本地不可用宁可失败。
+**但失败后降级走的是 `zgw_pick()` —— 那个函数只认优先级，压根不知道 sensitive 是什么。**
+于是：带隐私标记的话 + 本地模型挂了 + 允许降级 ⇒ 沿优先级往下走，下一家很可能是云端。
+用户的身份证号就这么出去了。
+
+这个洞一直没炸，**只是因为配置里云端那些家默认 `enabled=false`**。
+而"默认关着"是配置，不是保证 —— 用户一打开就漏，而且打开云端恰恰是这个产品的卖点。
+
+修法是在降级分支里再守一遍：`!rt->local && sensitive && rules.sensitive_local_only`
+⇒ 直接停，不换家，并说明白为什么。
+
+对应的测试故意把"云端"那家设成 `enabled=true`，而且让它的地址指向一个
+**真的会成功应答**的 mock：守住了就整件事失败（对），守不住就会拿到 200 和
+`provider=cloudy`（测试当场红）。**用"能成功的云端"当诱饵，比用一个连不上的
+地址有力得多** —— 后者就算护栏没了也不会出事，测了等于没测。
+还配了反证：同一张表、同样的本地故障，去掉隐私标记就**应该**换家成功 ——
+否则上面那条可能只是因为降级整个坏掉了，根本不是守住了。
+实测：拆掉护栏 → 4 项立刻判红。
+
+### 新端点 `/api/chat`
+
+```
+GET /api/chat?text=<要说的话>
+             &cap=chat.completion   能力名
+             &persona=0             不带人设（默认带）
+             &dry=1                 只看不发
+             &tries=N               失败后最多换几家（默认 1，不降级）
+             &sensitive=1           带隐私标记（强制本地）
+             &timeout=<毫秒>
+```
+
+返回里总带 `provider` / `model` / `local` / `reason` / `http_status` /
+`tokens_in` / `tokens_out` / `cost` / `attempts`。
+**用户有权知道这句话是谁答的、为什么挑的它、有没有离开过这台机器。**
+
+HTTP 码照实说：200 = 真答上了，502 = 上游没答上（原因在 `error` 里），
+400 = 没给 text，503 = 路由表没加载。不把上游的失败伪装成 200。
+
+**`dry=1` 是只看不发**：选路、取密钥、拼 URL 和请求体全做一遍，**一个字节都不出网**，
+然后把目标地址和请求体原样给出来。它和真发**共用同一个 `prepare_one()`** ——
+要是分两处写，面板上显示的和实际出网的字节迟早对不上，
+而那种不一致恰恰是最难查的：用户看着没问题，线上却不是那么回事。
+密钥不会出现在任何出参里（`zrelay_dry_run()` 里显式 `memset` 抹掉栈上的副本）。
+
+### 新端点 `/api/context.json`（T60.1，2026-10-24）
+
+**这次请求到底带了什么上去** —— 在它之前没人答得上来。
+
+```
+GET /api/context.json[?reset=1]
+```
+
+返回 `manifest`（给人看的纯文本清单）+ `blocks[]`（每块的 id/标题/来源/字节/token/
+pinned/kept/drop_reason）+ `history[]`（会话逐条，含 `sensitive` 标记）+
+`turns/turns_sent/turns_dropped/turns_held/budget/tokens/local`。
+`reset=1` 清空会话历史（"重新开始聊"）。
+
+清单是**定长字段的纯文本**，所以可以 diff —— 这是 T60.1 的验收条件本身：
+同一个问题在聊天区问和在工作区问，两张清单一比就知道差在哪。
+
+`/api/chat` 的回包同时新增 `history_sent` / `turns_total` / `turns_held`，
+新增入参 `history=0`（关掉多轮）、`budget=`（token 预算，默认 2000）。
+
+#### 三条硬规矩（都带负控）
+
+1. **带隐私标记的轮次不许跟着上云。** 这是 T61.7 的延伸：当时修的是"这一句"
+   不许降级上云，但上一句若是敏感的、还留在历史里，下一句走云端就把它一起带出去了。
+   两道独立防线（`zctx_build` 过滤 + `kept_turn_index` 再过滤），
+   负控拆一道仍绿、两道都拆才 4 红。
+2. **回复会继承污染。** 实测看清单发现的：她的回复里原样引用了敏感内容，
+   却被记成"不敏感"，下次就能大摇大摆上云。现在只要这次请求带上了任何一条敏感历史，
+   回复就一起算敏感。
+3. **目的地不确定就按云端算。** 组装发生在选路之前，所以先问一遍网关：
+   只有"这次带敏感标记（锁本地）"或"首选本地且 tries=1（没有降级余地）"
+   才算确定本地。请求发出去就收不回来，不赌。
+
+#### 顺带修掉一个致命的卡顿
+
+做多轮时实测发现：**模型想 6 秒，整个预览卡死 6 秒** —— `/api/info.json` 直接超时，
+立绘停成一张照片。本地大模型想 10~30 秒是常事，等于"每说一句话她就变雕塑"。
+
+两层根因，两层都修了：
+* `g_lock` 被 `/api/chat` 攥着跨越整个网络往返 ⇒ 拆成两把锁，
+  `g_lock` 只管宠物状态机，`g_ai_lock` 管网关账本和上下文；
+* HTTP 是单线程 accept 循环、而那个循环同时跑 `zpet_tick` ⇒ 慢端点
+  （只有真发的 `/api/chat`）交给工作线程，dry-run 和别的端点照旧同步。
+
+修完实测：思考那 6 秒里 `info.json` 稳定 15~19ms 响应，连拍 5 帧**帧帧不同**。
+
+### 实测（全链路，不是桩）
+
+| 场景 | 结果 |
+|---|---|
+| 真发一次（本地 mock 扮 ollama） | `200` `provider=ollama` `reason=default_local`，模型回显 `[人设字数=303][你说=你今天开心吗][stream=False]`，`tokens 321/54` 入账 |
+| `dry=1` | `url=http://127.0.0.1:11434/v1/chat/completions`，请求体 434 字节，system 里是真人设（781 B） |
+| `sensitive=1` | `reason=sensitive_local`，落本地 |
+| 本地没开 | `502`，`http_status=0`，`连不上（服务没开，或者端口不对）`，无悬空预扣 |
+| 隐私件 + 本地挂 + `tries=5` | 不换家，整件事失败 |
+
+单测里的 socket 测试**不许把 `zhttp` 换成桩**：这一层最容易错的全在"字节长什么样"
+（请求行 / Content-Length / chunked / Authorization），桩掉 socket 等于把要测的东西测没了。
+解法是进程内 pthread mock server + `127.0.0.1:0` 让系统分配端口 ——
+不依赖外部进程、不撞端口、CI 里能跑。
+
+闸门：`test_core` **936 → 992**、`api_smoke` **246 → 266**、
+`check_platform` 37/0、`test_web` 226/0、`selfcheck` 544/0。
+
+### 还欠
+
+① **TLS** —— 没它就只能连本地明文栈（ollama / llama.cpp / LM Studio / vLLM），
+   云端 16 家一家都连不上。两条后路：(a) 运行期 `dlopen` libssl，有就用、没有就说明白；
+   (b) 塞一份单文件 TLS 实现进 `src/third_party/`。**在 TLS 做完之前，云端那条线是哑的。**
+② **聊天框 UI** —— 现在只有端点，界面上还没有能打字的地方。
+③ 只接 `openai_compatible`；anthropic 的 `/messages` 和 google 的 `generateContent` 要各写一个适配。
+④ 多轮上下文还没有（每次都是单轮 system+user），接上下文管理器是 T60.1。
+
+### 第二段（2026-10-23 同日）：TLS + 聊天框
+
+**TLS（T61.9）** —— 第一段结尾那句"https 直接拒绝"现在撤销了。
+`src/core/ztls.{h,c}` 运行期 `dlopen` libssl/libcrypto（机器上缺的只是开发头，运行库在），
+18 个符号**少一个就整体判 TLS 不可用**：少了 `SSL_set1_host` 就成了"验签名不验名字"的
+假校验，比不验更危险。校验三件套 `set_default_verify_paths` + `set1_host` +
+握手后 `get_verify_result` 全在；CA 覆盖只认 `ZHUOCHONG_CA_FILE`，
+**不提供任何跳过校验的开关**。闸门 `make tls` 24/0，含"换 IP 连同一张证书必须被拒"
+（证明主机名校验真在）和 zrelay 全链路云端（不可信时不发且**预扣为 0**）。
+
+**聊天框（T61.10）** —— `web/components/chat.js`。界面上第一次有了能打字的地方。
+每条回复标明**谁答的**（供应商 · 型号）、本地还是云端、判据、token、花费；
+「看看将要发什么」走 `dry=1`，和真发共用 `prepare_one()`，摆出来的是真货不是示意图；
+上游 502 显示服务端原话；发出去触发 `think`、回复到了触发 `talk`，立绘跟着动。
+
+
+## G100 🟡 闭合度 0.2 附近的"灰幽灵眼"（交叉淡化区两张图各半透明）
+
+眨眼是"睁眼件淡出 + 闭眼件淡入"，区间写死在 `zrig.c`：
+睁眼 `(1−blink)/0.45`、闭眼 `(blink−0.55)/0.45` —— 两条斜坡**完全重叠**在 0.55~1.0。
+停在中间时两张图各半透明地叠在一起，放大看是一团灰（见 `logs/asset_qa/eye_ladder_fixed.png`
+的 `EyeOpen = 0.2` 那格；0.5/0.6 两格已经由 DC33 修好了）。
+
+**现在不修的理由**：① 真实眨眼从 0.55 冲到 1.0 只要 ~0.1 秒，肉眼基本抓不住；
+② 这两个阈值是当初逐列实测调出来的，往上收会掉回已知的坏结果"眼白露在眼线上方"
+（make_rig.py 里那段注释写着）；③ 本轮已经把**会长时间停在这一段**的动作全部挪走了
+（stroke/happy 改笑眼，闸 `check_eye_hold_zone` 盯着）。
+
+**要修的话怎么修**（下次触发时直接照做）：把两条斜坡从 0.55~1.0 收窄到 0.80~0.95，
+然后重跑那组七档阶梯图，**重点看 0.25/0.2/0.15 三格有没有"眼白露在眼线上方"** ——
+那是收窄的已知代价，出现就退回去。
+
+**触发条件**：用户报"眨眼的时候眼睛发灰/发脏"，或者有新动作必须停在 0.55~0.9 之间。
+
+## G101 · 发丝边缘的白色描边光晕 ✅ 2026-10-15 查完：是原画自带的，不是抠图残留（不改）
+
+用户 2026-10-15 的截图放大后头发外缘有一圈浅白边，怀疑是抠图白底残留。查了，不是。
+
+判据：统计"比左右两个邻居都亮 18 以上"的像素占内部像素的比例，
+**负控 = 把原始整图 `小寻.png` 降到同一有效分辨率再量同一块脸**
+（分辨率是混杂因素：同一张图 1696×2528 时 0.87%、×0.5 时 2.60%、×0.275 时 6.34%，
+不降采样直接比会得出完全相反的结论）。
+
+| 对象 | 亮尖占比 |
+| --- | --- |
+| 原画 ×0.275（= 帧的有效分辨率） | **6.34%** |
+| 我们渲染的帧（同一块脸） | **4.36%** |
+
+我们的管线比原画**更少**，所以白边来自原画自己的发丝描边 + 显示分辨率不够时的放大。
+贴图侧也对过：`hair_front/side_l/side_r/ahoge` 的半透明环带平均亮度都**低于**实心区
+（197.4 vs 208.0 等），没有"边缘被白底染亮"的迹象；只有 `hair_back` 略高（218 vs 204.7），
+但它压在最底层，看不到。
+
+**复查触发**：用户在 1:1 原生分辨率下仍然觉得有白边 → 那时再查 `zimg` 的混合是不是
+非预乘 alpha；换新原画（尤其是带白色描边风格的）要重跑这组负控。
+
+
+| ~~G102~~ | ✅ 2026-10-15 **躯干腋下/上臂内侧露底** —— 真因不是"没补绘"，是 `make_arm_parts.py` 的 `SHOULDER_CAP=46`：挖袖子时**特意给躯干留了袖子顶端 46 行**，理由写的是"不留肩膀就成平口"。那 46 行是**青色袖子**，不跟手臂转，抬手就是肩上一块悬空的青色三角（底边还是直线）——正是用户说的"部件和链接没做好"。改成整条袖子都拿走，露出来的是夹克自己的肩线（右肩外缘 y=330→332 / 340→333 / 360→328 / 400→315，**是圆肩+袖窿，不是平口**，原理由没验过就写下了）。静止合成差 440 → **321**（比以前更贴原画）。闸：`躯干上没留袖子(l/r)` ≤40px，负控（把肩盖加回去）报 1274/1310。证据 `logs/asset_qa/g102_torso_variants.png`、`g102_ab.png` | ✅ |
+| ~~G103~~ | ✅ 2026-10-28 **肘部大角度弯折出硬折痕**：`wave` 的前臂 −80°，袖子是刚体旋转，折角像纸片对折（`wave_joints.png` 第 4 格）。正解是给袖子上网格形变。`arm_{l,r}_fore` 加 `arm_{side}_elbow_smooth` 网格形变器（2×4，5 组 keyform：±10/±5/0，外凸 8px 内收 2px，r=1/2 最重，parent `fore_{side}_mid`，0=原件）。`skeleton.json` `mesh_bones.arm_fore_{l,r}` 收编。闸：`test_core` + `selfcheck` + 重建链一致。证据 `logs/asset_qa/g103_elbow_ab.png` + 重产 `audit_nine_grid` | ✅ |
+| ~~G104~~ | ✅ 2026-10-28 **闭眼/笑眼时额头多出的浅色弧线 — 证伪**：`face_check.png` B/C 比 A 多几条淡弧，疑补片褶皱与眉打架；但当时两次取帧隔 1s，idle 把头挪了，固定框差异 285474px = 整幅在动。新增 `tools/check_same_phase.py`（`pause?t=` 定格 + 同 t 切 `ParamEyeLOpen/Smile`，A/A2 自检 0px，额头 140,70,340,110 在 freeze 下 A-B 0px A-C 0px，眼区 131-160 仅 95x 变化；4 个 t 点一致）。结论：**额头零差，G104 不成立**，是未定格的测量伪影；补片顶边褶皱在眼窝内（y7-12），眉毛层 236/241 压在闭眼件 219/231 之上，无打架。证据 `logs/asset_qa/g104_same_phase.png` + `g104_forehead.png` | ✅ |
+
+| G105 | **台词冷却期间旧气泡不消失**，于是"被锤了还挂着上一句摸头的台词"。用户截图 3：锤击后气泡写着「嘿嘿，好舒服～」（= `pat_head_1`，摸头的台词）。沙箱复现：摸头→气泡『再摸一下下就好～』，**立刻锤击→气泡原封不动**，等 4 秒过冷却再锤才变成『哇！别敲啦，会痛的！』。根因 = `hammer_any` 的 `cooldown_s:3` + 全局 `min_gap_s:2.0` 把新台词压掉了，但前端气泡没有"动作换了就清掉旧话"的逻辑。台词内容本身是对的 | **已修 2026-10-15**（见下）|
+| G105-真因 | 上一行把根因写成"前端没有换动作就清旧话的逻辑"，**只说对了一半**。实测是**两层叠加**：①引擎 `zpet_last_line()` 返回的是"最后说过的那句"，`run_rule` 只在 `zinteract_speak` 返回非 0 时才覆写，冷却被吞时旧句**原封不动留着**，前端再怎么写都清不掉；②前端 `onSpeech` 每次轮询（~80ms）都 `clearTimeout` + 重设 4500ms 隐藏计时，而 `line` 一直是同一句 → 计时被无限推后，气泡**永远不会消失**。修法：`zpet` 加 `last_line_at`/`last_line_seq`/`last_line_rule`，`run_rule` 在"台词被冷却吞掉 **且** 这次是另一条规则"时清空旧句（同一条规则连点不清，否则自己打断自己）；`/api/speech.json` 加 `seq`/`age`（栈缓冲 640→832B）；前端只认 `seq` 变化。闸：`api_smoke.py` 5 项 + `test_web.js` 7 项，两边都做过负控 | 已修（但见下）|
+| G105-返工2 | 上面那一轮**只修了一条入口**。清句挂在 `run_rule` 里，而调试台的动作按钮和前端「叫醒」走的是 `/api/action` → `zpet_action_request` → `zrig_action_request`，**完全绕过 `run_rule`**。用户 2026-10-15 二次反馈「摸头后，点了很多次被捶还是没有转跳」，截图里动作栏已经是 `hammered`、气泡却还挂着「再摸一下下就好～」。沙箱复现：走 `/api/poke` 气泡正常清空（seq 8→9），走 `/api/action` 则 **seq 冻在 10 不动**。修法：`zpet` 再加 `last_line_action`（产出这句话的那个动作），清句改挂到 `zpet_action_request`：显式切到**别的**动作就清。两个例外 —— `talk` 不清（它是伴随说话的动作，`voice.js` 播音前就会请求它；模型回复 `call_reply` 的 owner 也记成 `talk` 来配合），以及请求的就是这句台词自己的动作时不清（连点同一个按钮不自断）。自动回 idle / hover 切 focus 走的是 `zrig_action_request`，不经过这里，所以气泡能活满 4.5 秒。闸：`api_smoke.py` 再 +4 项，有负控 | 已修 |
+| G106 | **`hammered` 动作完全没有眼睛通道**，被锤时眼睛全程正常睁着，缺用户要的 `>_<` 痛苦闭眼。核对 rig：hammered 的 18 条通道里只有 `ParamBrowLY/RY`(−0.52 眉毛下压) 和 `ParamMouthOpenY`，**一条眼睛参数都没有**。官方做法（见 REFERENCE_NOTES 第二十二批）：`ParamEyeLSmile/RSmile`「主要用于闭眼」，而 `>_<` 这种皱起来的眼要靠 `ParamEyeBallForm`（官方定义：为补充皱眉表情而**弯曲眼睛轮廓**）。注意这是**两件事**：rig 缺通道 + 素材缺"倒 V 痛苦闭眼"形状件（现有只有 ∪ 的 `eye_*_closed` 和 ∩ 的 `eye_*_smile`） | **已修（T31.6，2026-10-16）**：第三张形状件 `eye_{l,r}_pain` + 内建参数 `ParamEyeL/RPain` + 表情 `pain`。口径照搬笑眼（三张睫毛线互斥，pain 自带闭眼）。原条目里"要靠 `ParamEyeBallForm`"的判断**没有采纳** —— 那是弯曲轮廓用的，`>_<` 需要的是换一张形状件，和 ∩ 笑眼同类 |
+| G107 | **`surprised` 张嘴时微笑嘴型还在，两者重合**。用户截图 2 肉眼可见。核对 rig：surprised 有 `ParamMouthOpenY` pulse(amp 1.0, dur 0.25)，但**没有 `ParamMouthForm` 通道** → 嘴型停留在 idle 的微笑值上，张嘴件和微笑件同时可见。官方 `ParamMouthForm` 范围 −1(悲伤)/0(中性)/1(笑)，惊讶应当把它拉到 0 甚至负值 | 🔁 **归因作废**，见下行 |
+| G107-真因 | 上一行的归因（缺 `ParamMouthForm`）**实测不成立**，2026-10-15 推翻。负控：把 `mouth_open.alpha` 的 bind scale 从 −0.9 一路拉到 −3.5，渲出来**四行雷同**，满张嘴时整个嘴区像素最大只差 12/255 —— 改了等于没改。逐件消去 + 贡献差分定位到真因：**`sprites/mouth_open.png` 是一张错位的陈旧拷贝件**。它由 `tools/make_parts.py` 用手填的 `--mouth` 框切出，而那个脚本**根本不在 `rebuild_parts.sh` 里**，于是一直停在旧坐标：实测它落在 body_full `y252..275`，真正的笑线在 `y246..250`，**垂直方向零重叠**（里面装的是下巴阴影和一角衣领）。更要命的是它是"复制"不是"剪切"—— 原来那条笑线始终烙在 `seg_head.png` 上，张嘴时口内椭圆只盖得住笑线中段，两端上翘的嘴角高光露在椭圆上方 = 用户看到的两撇小胡子。修法：新增 `tools/make_mouth_line_cut.py`（重建链第 16 步），从**只读的** body_full 按实测笑线框精确剪出 `mouth_open.png`（28×9 @ [208,244]），同一块在 `seg_head.png` 上用上下边界插值填平；笑线真正归位之后，再把 bind scale 改 −3.5（张到 ~29% 归零）。闸：`check_assets.py` 2 项 + `selfcheck_repo.py` 3 项 + `test_core.c` 3 项，全部做过负控 | 已修 |
+| ~~G108~~ | ✅ 2026-10-15 **上臂过窄** —— 用户原话"上臂看起来很细十分不平衡"，观察对、归因错（他说没独立骨骼，其实骨骼齐全）。真因：袖子沿袖缝切，上臂露出来的只有夹克身**没盖住**的那一条，逐行宽度从肩头 23px 长到肘部 68px；手臂一抬整条楔形转出来，肩那头细得像棍子。修法 = 新增两件 **`arm_{l,r}_root` 袖根塗り足し**（`make_arm_parts.py:root_fill`）：逐行把袖宽补到 80 分位（左 57 / 右 63px），顶端 40 行 smoothstep 渐入不留水平直边，颜色取袖缝内侧 6px 中位色并往里渐暗到 0.90，新内缘描线稿；**层 95/96 画在躯干 100 底下**，静止时 0 像素可见（靠遮挡关系，不是靠看不出来）。上臂上半段中位 **l 38→56 / r 40→62**，与前臂之比 **0.61/0.58 → 0.89/0.89**。静止合成差仍是 321。闸三条 + 四条负控全部精确命中。证据 `logs/asset_qa/g108_shoulder_zoom.png`、`g108_wave_ab.png` | ✅ |
+| G109 | **惊讶时瞳孔被放大，看着像怪物**。用户 2026-10-15 实拍反馈「眼睛的眼球会不自然的变大…看着像个怪物一样很怪」。核对 rig：`surprised` 挂 `ParamEyeBallForm`（现 `ParamPupilScale`）`pulse +1.0`，而这个参数在本 rig 里**只绑了眼球缩放**（`eye_*_ball` sx 0.18 / sy 0.22），实测峰值 **sx 1.180 / sy 1.220** —— 虹膜被撑大 18~22%，填满眼眶。官方口径正好相反（REFERENCE_NOTES 第二十三批）：shocked = 眼睛**开口更大** + 瞳孔**变小** + 挑眉 + 张嘴；瞪大眼有专用参数 `ParamEyeLWide`，不是靠放大虹膜。修法：把那四条含糊的部件级通道换成一条参数级 `ParamPupilScale`（当时 `ParamEyeBallForm`）`−0.45`（峰值 0.919/0.901，瞳孔略缩、露白稍多）。幅度是渲 4 档对照图挑的（`logs/asset_qa/surprised_eyes2.png`），不是算的。闸：selfcheck 1 项 + test_core 2 项，均有负控，T31.16 后已更名为 `ParamPupilScale` | 已修 |
+| G110 | **真正的「瞪大眼」做不了**：`ParamEyeLOpen/ROpen` 在本 rig 里由眨眼系统合成、不在 `params` 段，驱不到 >1；也没有"超出常态开口"的眼形素材。官方路子是加 `ParamEyeLWide` 式参数（0~1，在 ParamEyeLOpen 之上再开）+ 画对应眼形。另外我们的 `ParamEyeBallForm` **名字与官方语义不符**（官方是"弯曲眼睛轮廓"，我们当"瞳孔缩放"用），改名要动 rig 契约 | **已修（T31.12，2026-10-16）**：按官方名加 `ParamEyeLWide/RWide`（0~1）+ 瞪大眼补片 `eye_{l,r}_wide`（AI 重绘，虹膜已挖掉 → DC64）。补片顶替 `base`/`lash`，虹膜留给 `eye_*_ball` 所以瞪大期间视线照常跟随。**`ParamEyeBallForm` 改名已于 T31.16（2026-10-29）完成 → `ParamPupilScale`，旧名在 `zrig.c` 保留别名兼容** |
+| G113 | **物理摆用整帧 dt 单步积分，低帧率下过冲 → 画面左右抽搐**。用户 2026-10-16 反馈「测试台状态会左右轻微抽搐」。`physics_update` 原来是 `dt = now - phys_last; if (dt > 0.1) dt = 0.1;` 然后一步显式欧拉。实测（`/tmp/ph.c`，同一真实时刻 t=2.0 对 60fps 基准）：2.5fps 时 `ahoge_x` 0.1983→**0.7188（3.6 倍）**、`hand_r_lag` 0.0175→**0.1914（11.3 倍）**、`side_l_x` 2.8 倍。帧间隔再带抖动（云端 RTT）时单帧跳变 `back_x` 0.399 / `bangs_x` 0.534 / `side_l_x` 0.970。**不是云端固有问题，是积分器 bug。** 官方 `CubismPhysics::Evaluate` 的做法正是累加器 + 固定步长 + 输入/输出插值，源码注释写明目的是「補間範囲を逸脱したことが原因の**震えたような見た目**を回避」。修法照搬：`phys_remain += dt`（>5.0s 归零）→ `while (remain >= 1/60)` 定步积分，步内对输入线性插值（`inw = h/remain`），步后按 `alpha = remain/h` 在 `out_prev/out_cur` 之间插值输出；`driver_phys` 链式输入改读 `out_cur` 而不是插值后的 `out_last`。修后 2.5fps 偏差降到 ±5~18%、10fps 与 60fps 几乎逐位相同，抖动帧间隔下单帧跳变降 30~79%。闸：`test_core.c` 8 项，负控（旧引擎 + 新闸）5 项红并复现上述数字 | 已修 |
+| G114 | **测试台状态行会左右跳**。同一句反馈的第二个真因，和 G113 并存。`web/test.html` 那一行七个 `.pill` 是 `display:inline-block` + 比例字体，而内容**每 600ms 刷一次**：`动作 idle` ↔ `动作 surprised`（差 5 个字符）、`眨眼 0.00` ↔ `眨眼 1.00`、`9.9 fps` ↔ `10.1 fps`。最左边的 `p-act` 一变长，**右边六个胶囊全被推着走**。修法：整行改 `.pillrow`（flex + 每个胶囊按 `data-w` 定 `min-width`），数字走 `font-variant-numeric: tabular-nums`。闸：`test_web.js` 19 项，负控（撤回 pillrow）变红 | 已修 |
+| G115 | **做不了截图 6 那种星星眼**。现有 `eye_hl_style` Pose 组切的是**高光点**（`eye_hl_star_l@2x.png` = 40×40、172 个不透明像素、纯白），用户要的是**整只虹膜变成金色大星星**（现虹膜 `eye_l_ball@2x.png` = 62×60、蓝 (80,122,158)）。两者不是一个东西，必须新画素材。机制侧我们齐了（Pose 互斥组 + mask + physics + deformers），缺的是：① 星形虹膜贴图 ×2（左右）；② 新 Pose 组 `eye_iris_style`；③ 按 A45.3 用 physics 驱动闪烁，否则只是贴了张静态星星。官方口径见 REFERENCE_NOTES 第二十四批 | 未修 |
+| G116 | **做不了卖萌动作（截图 3/4/5：双手遮嘴 / 双手张开举起 / 双手捧脸）**。硬边界是手臂量程：`ParamArmRA → arm_r.rot_deg × −6.0`，参数 ±1 ⇒ **只有 ±6°**，而举手到脸前需要肩 ~140°、肘 ~90°。硬转会撞上 G103 肘部硬折痕，且袖子是垂着画的、转 140° 必然露馅。官方做法是**手臂差分**（arm variations，在画的阶段另画一套），对应我们 D19「被遮挡区域必须 AI 重绘」。素材按「上臂举起 + 前臂举起 + 手 ×3 形状」拆，三个动作共用前两件 | 未修 |
+| G117 | **特效件是在 `make_rig.py` 里一颗一颗手写死的**。8 颗 ✨ 的坐标/缩放/角度是源码里的一张字面量表，参数 `ParamSparkle1..8` 也是循环里硬拼的。要上第一批漫符（汗/💢/暗雲/ZZZ）就是 +4 组 ×（1 总闸参数 + N 片 + N 条动画参数），照这个写法 `make_rig.py` 会变成几百行坐标表，而且每加一种都要改引擎侧生成器 = 每次都得重跑全链 + 全闸。需要**声明式特效表**（`design/effects.json`：id / 素材 / 挂点 / 偏移 / 动法 / 触发情绪），生成器只读表不写死 | **已修 2026-10-16（T43.2）** `characters/xiaoxun/design/effects.json`；迁完 rig.json 逐字节相同；selfcheck 加了反向闸防止把字面量写回源码 |
+| G118 | **引擎静态上限扛不住一批漫符**。实测现用 部件 56/96、参数 51/96、绑定 104/256，余量 40/45/152。按一种漫符 3~5 片估，9 种 ≈ 30 片 + 9 条总闸参数 + 每片一条动画参数 ≈ 30 条 ⇒ **部件 86/96、参数 90/96**，几乎顶死，再想加手臂差分（G116）就没位置了。撞上限的表现是 `zrig_load` 直接 exit 3（按既定口径不降级）。先抬到 192/160/512 再开工，别做到一半撞墙 | **已修（T43.1，2026-10-16）**：实测代价 `sizeof(zrig)` +131 KB、RSS +76 KB（+0.6%）。当前用量 PHYS 14/24、PARAMS 51/160、PARTS 60/192、XFADE 2/8、BINDS 112/512。顺带补了 selfcheck 缺失的 BINDS 闸 |
+| G119 | **没有画布级的背景特效层**。所有部件都在角色坐标系里、跟着某个 group 走；而用户说的"小太阳"以及后光/集中線/下雨这类是**整屏或大面积背景**，既不该跟着头转，也不该被角色的 mask 裁。Live2D 官方明说引擎没有粒子系统、建议"把效果画成图片再建模"（`https://community.live2d.com/discussion/194/`），所以不需要粒子引擎，但需要一个**不挂任何 group、画在所有部件之下（或之上）的层约定** + 它自己的坐标系（画布 848×1360 而不是角色包围盒） | 未修 |
+| ~~G111~~ | ✅ 2026-10-15 **张嘴偏下 + 惊讶嘴长到下巴以下** —— 用户第三次验收两张截图，一个根因。真因：**T30.1 高清切件（`d83e7a5`）只把部件 `scale` 乘了 0.5，没动参数绑定**。zrig 里两种 scale 语义不同：标量 `scale` 走乘性通道（`p->scale × p_s`，素材翻倍 + scale 减半 = 等价，绑定不用动）；数组 `scale:[sx,sy]` 走**加性**通道（`compute_draw_state`: `part_sy = scale_y + (p_sy − 1.0)`），基准减半了而增量还是 1x 口径 ⇒ **形变整整 ×2**。全 rig 扫描：11 条 sx/sy 绑定里只有 **3 条**真受影响（`mouth_mask` 的 sy/sx/sy，`mouth_cavity` 经 `motion_from` 跟随）；`eye_*_ball` 是标量 scale，**不受影响**（第一遍扫出 9 条是误判，已自纠）。后果实测：`ParamMouthOpenY=1` 开口 **20.9px → 40.6px**，下沿 canvas **337 → 357**，而下巴在 **340** → 黑块压到脖子上；talk(amp 0.833) 的嘴中心也因此下移 ~8px = 用户说的"偏下一点"。git 对照确证回归点：`415486d` 是 1x 素材 22px + bind 0.895 = 20.9px，`d83e7a5` 换 @2x(44px) 后 bind 仍 0.895 = 40.6px。修法：`make_rig.py` 的 @2x 段改成**同时**减半数组 scale 件上的 sx/sy 绑定并打 `hires_halved` 标记，另加一条断言拦住"动作轨直接写部件级 sx/sy"。闸 5 项（3 结构 + 开口高度 16~26px + 下沿不越下巴），负控把 3 条绑定还原后 5 项全红并精确复现 40.6px / y=289。证据 `logs/asset_qa/g111_mouth_ab.png`、`g111_mouth_vs_user.png` | ✅ |
+| ~~G112~~ | ✅ 2026-10-15 **手臂转开后，白夹克与青袖之间多一道白边**（用户截图3，原话"白色的那点有点突兀"）。先排除两个猜测：① 不是背景漏光 —— 预览背景斜纹是 `(253,252,255)`/`(251,247,251)`，截图里那道白确实等于这两色之一，但渲染帧同位置 alpha=255；② 不是原画自带滚边 —— `body_full` 袖内缘是「白夹克 →1~2px 暗缝线→ 青」，**没有白色镶边**（y=420: x315=(248,246,244) / x316=(80,98,103) / x318=(108,186,191)）。层属定位（把 `arm_r_upper` opacity 调 0，那几个白点立刻变青）⇒ **白是上臂贴图自己带的**：`soft()` 把掩码往外羽化 2px，顺手把夹克那边 2px 白像素切进了袖片；静止时正压在夹克上看不见，一转就跟着甩出来。修法 `make_arm_parts.seam_trim()`（`make_arm_parts.py`，上臂/前臂各一次）：逐行取**最内侧青色**，往内再留 `SEAM_KEEP=2`px 线稿，再往内一律裁掉；两条保险 —— cap 只数实心像素（alpha≥0.35，否则羽化尾巴让每行都超限）、前臂腕上 36 行不碰（袖口三道白条没有内缘青色可依，裁了静止合成会少 8px）。实测白楔 surprised **155px→13px**、wave **80px→5px**，残留是单像素抗锯齿；静止合成差 321→421，"无损切分"仍 0。闸 4 项（后置条件：实心像素不得比本行最内侧青色再往里超过 2px），负控复现 uint8 回绕后 4 项全红（越界行 222/68/226/68）。证据 `logs/asset_qa/g112_seam_ab.png` | ✅ |
+| G120 | **测试台画面刷新会"一卡一跳"**（2026-10-16 用户反馈「眼睛/视线/脑袋跟随轻微抽搐」）。查清了不是动画问题：引擎跟随平滑是 `k = 1 − exp(−speed·dt)` 按时间算的，实测同一段时间用 10/30/60fps 与抖动帧间隔四种方式推到同一绝对时刻，`look_x` 只差 1.4e-4。真因在**预览通道**：① 满尺寸一帧 PNG **190 KB**，10fps = **1.86 MB/s**，公网代理撑不住；② 刷新写死 `setInterval(refresh, 100)`，**不管上一帧回来没有**照发，链路一慢请求就堆进浏览器连接队列；③ `onload` 里无条件 `img.src = next.src`，**没有顺序保护**，旧帧后到会让画面倒退一帧再跳回来 | **已修（2026-10-16）**：抽出 `web/frameloop.js`（在途保护 + 丢弃迟到帧 + 按显示尺寸要图），轮询 100ms→33ms 试探、真正节流靠在途保护；hover 90→60ms、region 90→250ms 分开节流。实测带宽 190.1→98.8 KB/帧（−48%）。闸 `test_web` 13 项（171→188），四枪变异全红。**注意这只治预览通道** —— 原生桌宠直接渲到窗口、不走 PNG 不走网络，本来就没这条链路；云端剩下的不平滑是带宽决定的，要本机才看得到真实手感 |
+
+
+## G121 单边嘴角在闭嘴时看不出来 —— 嘴只有 16×3 px，几何变换撑不起微表情
+
+**现象**：T44.2 把 `ParamMouthX` 做通了（参数、绑定、引擎、测试都在），
+但缩到真实观看尺寸**基本看不出来**。
+
+**实测**（`logs/asset_qa/mouthx_sweep.png` / `logs/asset_qa/mouthx.png`，466×748 帧）：
+- 闭嘴时屏幕上的嘴只是一条 **16×3 px** 的笑线，`±8°` 旋转只改到 **33 个像素**
+- 张嘴（`ParamMouthOpenY=0.85`，说话时）变成一块约 28px 宽的实心形状，
+  同样参数改到 **66 个像素**，9 倍放大下**清楚可读**
+- 幅度扫描过四档（2.6/3.2、纯旋转 10°、4.0/8.0、6.0/14.0），
+  像素变化量 32 / 29 / 32 / 43 —— **加幅度不解决问题**，
+  而且平移一大就变成"嘴整个滑到一边"的缺陷，不是表情
+
+**结论**：**说话时够用，静默时不够**。这不是参数调得不对，是**素材层面没有可供
+"抬起一角"的几何** —— 一条 3px 的线，怎么转都还是一条线。
+
+**办法（已查到，不是做不到）**：职业档的做法是在嘴部网格上挂
+「口角Lデフォーマ / 口角Rデフォーマ」或「口の非対称デフォーマ」
+（旧 Live2D 论坛 `https://forum.live2d.com/discussion/533/`），
+对我们这套整件变换的引擎，等价物就是**一张"单边上扬嘴线"的差分件** ——
+和 `eye_*_pain` / `eye_*_wide` 一样的做法，流程已经跑熟 4 次。
+
+**归属**：T44.3（需新素材那一批），和 T31 的出图批次并一轮做，省一次 `rebuild_parts.sh`。
+
+**现在的状态不是白做**：通道、引擎、绑定配比、与口型同步的隔离都已经验过并上了闸，
+素材一到就是接上去的事；而且**说话时已经可用**。
+
+---
+
+# ★★★ 2026-10-22 第三十九问 · 全盘回忆盘点（用户：「看看我们的对话里遗漏了什么想法和规划」）
+
+把整个会话里用户提过的、以及我自己答应过的东西全部过一遍，**逐条核对文档里有没有**。
+核对方法：`grep` 关键词 + 看任务状态，不靠记忆。结论分三类：✅已记已做 / 🟡已记未做 / ❌**曾经漏记**。
+
+## A. 形象线
+
+| 想法 | 出处 | 记在哪 | 状态 |
+| --- | --- | --- | --- |
+| 年龄轴四档封板（萝莉/少女/青年/Q版） | 2026-10-16/17 | FORM_MATRIX 轴1 | 🟡 仅 teen 完整，chibi 进行中 |
+| 半身 + 全身都要 | 2026-10-17 | FORM_MATRIX 轴2 | 🟡 仅 full |
+| 姿态全做（站/坐/卧/睡） | 2026-10-17 | FORM_MATRIX 轴3 | 🟡 仅 stand |
+| 发型四档 + 兜帽四形态 | 第十三~二十四问 | FORM_MATRIX 轴4 / T46.* | ✅ teen 已做，chibi/loli/adult 移植= T46.5 |
+| **每个 AI 一种基础兽娘** | **第三十九问** | **FORM_MATRIX 轴5 / H9 / T47** | ❌ **本轮才补上** |
+| **天使恶魔等万圣节装扮** | **第三十九问** | **FORM_MATRIX 轴6 / H10 / T48** | ❌ **本轮才补上** |
+| 兽耳娘可一键关 | 第十六问 | 已实现（`extra_parts`） | ✅ |
+| 服装组件化（兜帽/里布/前襟） | 2026-10-16/17 | FORM_MATRIX 四 | ✅ |
+| 耳朵/尾巴/头发的手动操控 UI | 2026-10-17 | T45.2e | 🟡 未做（发型切换按钮已自动出现） |
+| 素材按源图 1696×2528 重切 | 2026-10-15 | T30.1 | 🟡 进行中，本地清晰度的真瓶颈 |
+| 挥手时腋下穿帮 | 2026-10-15 | T31/G102~104 | ✅ 第三十三/三十八问修完（袖根圆盘 + 角度淡出） |
+| 袜口与鞋领收同一个圆 | 第三十七问自查 | T46.31 | 🟡 未做（已压进安全行程） |
+| 侧发拆缕做发梢扇形 | 第三十八问自查 | T46.33 | 🟡 未做 |
+| 近距离招手要专画折肘差分件 | 第三十八问自查 | T46.34 | 🟡 未做 |
+| **挥手姿势仍不符参考图** | **第三十九问用户打回** | **T46.35** | ✅ **第四十问已修**：`arm_r` −115→−130、`forearm_r` −22→−4，叠图验收 `q40_final_overlay.png` |
+
+## B. 平台 / 软件线
+
+| 想法 | 记在哪 | 状态 |
+| --- | --- | --- |
+| 供应商层可插拔 + 云端/本地双栈 | PROVIDER_PLAN / T7 系列 | ✅ 路由表 76 条 |
+| ~~**网关只会"选谁"，还不会"发请求"**~~ | G54 | ✅ 2026-10-23 **整条打通**。人设提示词真的发到了模型；TLS 做完（证书校验三件套齐全，无跳过开关）云端家连得上了；界面上有了能打字的聊天框，并且每条回复都标明谁答的、走没走出这台机器 |
+| UI 按 deepseek/gemini/grok/gpt 定制 + 模块化 | A22 已落地四套主题；T29.1/29.3/29.4 | 🟡 主题包扩展/跟随路由自动切换未做 |
+| 高分辨率（渲染提速 + 重切） | T30.1 / T30.2 | 🟡 提速已做，重切未完 |
+| 形态分区（界面按形态分区） | G68 | ✅ 修完 |
+| 游戏三档（含 Minecraft 协议游玩） | G83/G84 | 🟡 登记未动工 |
+| 陪伴联机 / 实时陪玩 | G69~G78 | 🟡 登记未动工 |
+| neuro-sama 式实时接信息 | PLATFORM_PLAN / REQUIREMENTS | 🟡 规划在册 |
+| 本地模型区块（GGUF 发现/下载/一键起服务） | REQUIREMENTS 尾 / TRAINING | 🟡 未做 |
+| 资源区 G52 / 任务机 G53 | GAPS | 🟡 挂起队列 |
+| 人设层面板 | `web/components/persona.js` | ✅ **已挂进 `layout.json`**（本轮复核，旧记录说"未挂"是过期信息） |
+| 对白数据层（32 规则 / 8 角色 × 34 条） | `config/interactions.json` | ✅ |
+| **绝对不要豆包** | DECISIONS（多处） | ✅ 红线 |
+
+## C. 语音线
+
+| 想法 | 记在哪 | 状态 |
+| --- | --- | --- |
+| 云端音色合成 + GitHub Actions 渲染 | `tools/voice_cloud.py` + `.github/workflows/voice-render.yml` | 🟡 **等用户配 3 把 Secrets** |
+| 要动漫二次元美少女音色，**外部真人音源全否** | REQUIREMENTS / DECISIONS | ✅ 红线（2026-10-17 用户四次否决真人音源） |
+| 参考 VTuber miniko 的音色方向 | REFERENCE_NOTES | ✅ 已记 |
+| 音色包机制（下载即装 + 样音） | T13.2 | ✅ |
+| mood → TTS 情绪 | 挂起队列 | 🟡 |
+| 用户当前口径：**声音不急** | REQUEST_LEDGER | ✅ 不主动推进 |
+
+## D. 我自己提的（第三十九问用户要求「自己想点办法提升自己」）
+
+| # | 提案 | 为什么 | 任务号 |
+| --- | --- | --- | --- |
+| 1 | `tools/pose_from_ref.py` 参考图量角器 | 把 REF-FIRST 从手工变成工具，每次省 20 分钟且不会量错 | **T49** |
+| 2 | `tools/ref_overlay.py` 叠图验收器 | 铁律 5 的执行器：参考/现状/叠加三格一键出 | **T49** |
+| 3 | `tools/regress_shots.py` 回归拍照器 | 铁律 1 第 2 条「没点名的也要扫」现在靠手写脚本，会漏 | **T49** |
+| 4 | `tools/export_anim.py` 动作导 GIF/APNG | 用户两次要「视频」，我们自己能渲染，不必依赖外部视频工具 | **T50** |
+| 5 | 视觉增强候选（排序后再开任务） | 见下 | — |
+
+**视觉增强候选清单**（我的建议，按"性价比 / 肉眼可见度"排序，等用户点头再开号）：
+
+1. **发梢分缕物理**（T46.33 的延伸）—— 参考图里最明显的差距就是发梢会散开；
+2. **裙摆 / 帽绳 / 袖口摆链** —— 已有物理机制，只差把这几件挂上去，成本低、动起来很显眼；
+3. **边缘光（rim light）+ 昼夜配色** —— 一层叠加贴图 + 主题色，立刻有"上档次"的观感；
+4. **呼吸与心跳的微动**（胸腔 1.2px 起伏 + 肩随动）—— 静止时"活着"的关键；
+5. **半眨眼差分**（G86/G87 的老账）—— 眨眼和转头/视线联动；
+6. **摸头/戳脸的部位反馈 + 拖拽惯性** —— 交互感，和 `regions` 机制已通；
+7. **动作队列 + xfade 过渡** —— 现在动作是硬切，连着放两个会跳；
+8. **表情混合（expression blending）** —— 现有表情是整组替换，混合后能做"笑中带羞"。
+
+**底层增强候选**：
+
+1. **golden image 回归**（像素级基线图，防止"修 A 坏 B"）；
+2. **rig 热重载**（改 `rig.json` 不用重启预览，迭代快一倍）；
+3. **可视化动作编辑器**（web 测试台上拖时间轴，导出动作片段）；
+4. **多角色同屏**（陪伴联机 G69~G78 的前置）；
+5. **模组/插件 API**（照 vpet 的 `IModInfo`，让"加一个 AI = 放一个包"）。
+
+---
+
+## 第六十一问新增缺口（2026-10-25）
+
+| # | 缺口 | 为什么是缺口 | 谁能填 |
+| --- | --- | --- | --- |
+| ~~G58.1~~ | ✅ 2026-10-25 **逐顶点参数驱动（keyform）** | 原判断"没有 art mesh"是误判：网格早有（25 张在用），真正缺的是"一张网格只能一个标量 amount"。现在 `deformers[].param + keys[{v,points}]` 让顶点按**合成后的参数值**在多组键之间插值，渲染与探针共用 `deform_vertex_at` | 已落地，见 `docs/ENGINE_AUDIT_2026-10-25.md` §6.3；闸门 `test_deform_tree()` |
+| ~~G58.2~~ | ✅ 2026-10-25 **变形器树**（part → warp → rotate → root） | 形变器升级成节点（`parent` / `pivot` / `dx,dy,rot_deg,sx,sy`），部件可用 `parts[].deformer` 点名挂链；最终矩阵 = `A_chain · 组矩阵 · 部件矩阵` | 已落地，§6.2；闸门 `test_deform_tree()` + `test_deform_tree_rejects()` |
+| ~~G58.3~~ | ✅ 2026-10-25 **抬上限 + 撞上限报错** | 组 16→64、部件 192→512、动作 32→96、形变器 32→64、绑定 512→1024，`ZSM_MAX_STATES 32→96` 同步；`for (... && n < MAX)` 的静默截断全部改成循环内报错 | 已落地，§6.1；闸门 `test_rig_limits()` + selfcheck「没有残留的静默截断循环」 |
+| G58.8 | **父级 warp 网格对子部件的位移场传递** | 节点树现在只传刚体变换；Live2D 的ワープデフォーマ会按逐顶点位移场推动子部件。要"一片裙摆带动下面三条带子一起起伏"只能给每条带子各挂网格 | 我（P0 之后的增量，需要先有真实需求件） |
+| G58.4 | 裁剪遮罩 / 通用混合栈 | 发丝压脸、阴影跟随做不了 | 我（P1-4/5） |
+| G58.5 | Q 版素材链未跑完 | 旧贴图坏着，不能交付 | 我（本轮第 1 步） |
+| G58.6 | 萝莉 / 青年女性**无设定稿** | 铁律 7 要求先整身稿再拆件 | 我出稿 → **用户确认形象后才封板**（角色设定属于用户决策） |
+| G58.7 | 侧/背视图与转身 | 四形态正面之外没有任何视角 | 我（P2-9，需先定表现方式） |
+
+**需要用户给的东西**：萝莉/青年女性两个形态的形象确认（脸型、身高比例、服装基调）；
+鲸鱼娘是否作为 DeepSeek 专属角色新增（第五十九/六十问仍未定案）。
+
+
+## G65.1 瞪大眼（wide）四周有一圈灰白晕（2026-10-25 第六十四问实测）
+
+`eye_<side>_wide.png` 是把原画眼件按 (1.12, 1.20) 各向异性放大（P0 之前没有网格形变，
+这是唯一不重画的做法）。放大后边缘像素被插值拉亮，在 2.6× 放大图里眼圈外是一圈灰白晕。
+量化口径：补片 vs 原画色差 **83.4 / 82.3**（这个数本身就是"替换整只眼"的必然结果，
+不能当接缝判据用）。修法二选一：① 放大时用区域平均而不是双线性并顺手压一圈内描边；
+② 等 T64.4 网格形变落地后直接不用这张图。
+
+## G65.2 闭眼/笑眼/痛苦补片是「平涂肤色」，与原画腮红有阶差（2026-10-25）
+
+接缝色差已经压到 3.8~5.7（这是相邻像素的平均差），但**肉眼在 2.6× 下仍能看出补片边界**：
+补片来自 AI 重绘的平涂脸，原画有腮红/环境阴影。下一步不是继续调均值，
+而是把原画那块的低频亮度场（拉普拉斯金字塔的低频）带进补片（T65.11）。
+
+## G65.3 剪影边缘的锯齿与深色杂边（用户点名的"黑边"，管线级老账）
+
+头发、袖子、裙摆的剪影上都有一小段一小段的深色杂边与锯齿。这不是某一张图的问题：
+Q 版 567 底图 `semi=21899 / 边缘亮度差 −12.5 / 纯黑半透明边 430`；
+569 底图 `semi=150402 / −33.4 / 2815`；已定版的少女 teen `semi=14583 / −92.4 / 1899`。
+teen 最差 ⇒ 黑边是**抠图管线**留下的（软 matte + 解混 + despill 三步都没做全），
+不是底图选得不对。见 T65.8。
+
+## G65.4 `prepare_sprites.py --fit` 只认三点写法
+
+`--fit x,y,scale` 是三元组；写四点框（`x0,y0,x1,y1`）会直接 `ValueError: too many values
+to unpack`。做 569 复现时踩过。修法：要么扩成四点框，要么一律走 `design/body_fit.json`
+（推荐——几何锁本来就该落表，跑一次 `--fit` 还会顺手覆盖目标树的 `anchors.json`）。
+
+
+## G66.1 变形器树做出来了，但 rig 里一件都没接（2026-10-25 实测）
+
+`check_skeleton.py` 打印：teen 103 件里用 `parts[].deformer` 的 **0 件**，chibi 47 件里 **0 件**。
+25 个 teen 网格骨全部平铺挂在部件上（没有父子链），所以现在"每部件自己的骨"只做到
+"每部件能整体弯一下"，做不到"根骨带动梢部"。这是 T66.3，下一轮主任务。
+
+## G66.2 四形态骨名不自洽（Q 版少 6 根）
+
+teen 15 根刚体骨；chibi 只有 9 根（缺 forearm_l/r、elbow_fold_l/r、hand_l/r），靠 6 条豁免顶着。
+后果：同一条动作/同一套服装写到 Q 版时，小臂和手那段"不动"且**没有任何报错**。
+修法二选一：给 Q 版补手臂分段素材（推荐，见 T64.1 素材链），或在动作里显式跳过并记日志。
+
+## ~~G66.5 keyform 只有线性插值~~ —— 2026-10-25 T66.11 已关闭
+
+真实立绘的中间形状很少是"两头匀速走"：发梢是"先慢后快"、眼睑是"先快后慢"、
+裙摆收口是"中间鼓两边收"。线性插值只能靠堆 key 逼近，key 一多就没人敢动，
+而且中间段还会出现速度突变（看着像卡了一下）。
+
+> 关闭记录：每个 keyform 的**每一段**都可写 `ease` —— 名字缓动（`in`/`out`/`in_out`/
+> `out_back`/`out_elastic`/`out_bounce`）、`step`（阶梯）、四个数的三次贝塞尔
+> `[x1,y1,x2,y2]`（x 必须 ∈[0,1]，否则 x(t) 不单调、曲线解不出来 → 加载时报错）。
+> 缓动挂在**右端点**那一组 key 上，管 `[q-1, q]` 这一段；不写 = 线性 = 老 rig 逐字节不变。
+> 闸：`test_keyform_ease()` —— 段内半程 2.5（线性会给 5.0）、key 上精确 10.0、
+> step 段中仍 10.0 而到点 20.0、贝塞尔 `[0.25,0.1,0.25,1]` 在 x=0.5 → 8.024（手算 0.8024）、
+> 40 点单调扫描，外加三种写错的负控。
+>
+> **与官方的差异（刻意，不算缺口）**：官方贝塞尔是参数-位移平面上的绝对坐标曲线，
+> 我们用归一化 timing curve（同 CSS），见 `docs/LIVE2D_CONFORMANCE.md` 变形器树一节。
+
+## ~~G66.12 keyform 不吃 `bind.lag`~~ —— 2026-10-25 T66.11b 已关闭（方案 A）
+
+> 关闭记录：`zdeform` 加了 `kf_lag`，keyform 求值时改读**参数历史环**
+> （`lag_sample(r, g->param, r->now - kf_lag)`，和 bind.lag 同一口井、同一个上限
+> `ZRIG_LAG_MAX`），rig 里写 `"lag": 0.06` 即可。单测 `test_keyform_ease` 的 (e) 段：
+> 参数一步跳过去，第一帧位移 **0.000**（还没动），0.2 秒后 **10.000**（追到位）。
+> 方案 B（迟滞挪到参数层、物理写参数而不是写网格）仍然更接近 Live2D 的正解，
+> 但那要动物理输出模型（G66.13），这一轮先用 A 把内容侧解锁。
+
+## ~~G66.13 物理输出只能写形变器的 amount，不能写命名参数（S3 参数层的前置）~~ —— 2026-10-25 T66.11c 已关闭
+
+> 关闭记录：**两套物理**都认 `"param": "ParamXxx"` 了（旧摆链 `physics[]` 与摆链
+> `physics2.outputs[]`）—— `param` 以 `Param` 开头且没有 `deformer` 就写**命名参数**，
+> 找不到参数当场加载失败（不许静默丢）。写进去的是 `p_action`，和动作通道同一个累加位，
+> 所以"物理 + 动作 + 表情"还是叠在一起。
+> **求值顺序**同时改了：`deform_update_keys()` 从物理**之前**挪到**之后** —— 以前早算是因为
+> "物理只写 amount、两边不重叠"，现在物理写参数，早一帧就等于网格永远慢一帧。单测
+> `test_physics_to_param()` 钉住"同一帧就要吃到"（ParamSway 0 → 0.908，网格 9.084px）。
+> 内容侧随之迁移：侧发/后发/裙身/下摆五张网格改 keyform，摆链改成写参数
+> （`side_?_tip → ParamHairSideS`、`back_tip → ParamHairBackS`、`skirt_x → ParamSkirtSway`），
+> `ParamHairSway` 那条"风"从推网格 amount 改成推**中段骨**转角（0.65°/0.55°，延迟不变）。
+> 旧 rig 与新 rig 在 `ParamHairSideS`/`ParamSkirtSway` = −1 / 0 / +1 六个姿势上
+> **逐像素 0 差异**（`/tmp/pose_ab.py`，同进程换 rig），说明这次迁移只换了通路、没换画面。
+> 闸门：`selfcheck_repo.py` 新增两条 —— "keyform 网格的参数都有人在写"（防死件）与
+> "布料/头发 keyform 网格仍有物理跟随"（防 G66.13 复发）。
+
+## 原 G66.13 记录（保留细节）
+
+`physics2.outputs[]` 的 `deformer` 写的是"某张网格的 amount"，而 Live2D 的物理写的是
+**参数**（物理把 ParamHairSway 推起来，网格再去跟参数）。差别在于：一张网格一旦改成
+keyform（T66.11b 的袖料就是这么改的），物理就再也推不动它 —— outputs 写 amount 会被
+引擎按 T66.11 那条新闸拦住。
+
+影响：侧发/后发/裙摆这些**既有物理又有网格**的件，现在还改不成 keyform（改了会丢跟随）。
+修法：给 `outputs[]` 加 `"param": "ParamXXX"` 形态（写参数而不是写网格），再把这些网格
+改成 keyform。见 T66.11c。
+
+## G66.12 keyform 不吃 `bind.lag`（迟滞只在 amount 通路上）
+
+`bind.lag` 是"读 lag 秒之前的参数值"，它发生在**绑定写入那一刻**（`lag_sample`），
+而 keyform 求值读的是 `param_effective()` 的当前值 —— 两条通路各读各的。
+所以一件网格从 amount 改成 keyform，**会连带丢掉它的迟滞**（侧发/裙摆都是靠 lag 做
+"根先动、梢后动"的）。这不是 bug，是没接线。
+
+后果与修法（T66.11b 前置决策）：
+- 方案 A：给 keyform 也加一个 `lag` 字段（每条 keyform 自己延迟读参数），
+  代价是每个 keyform 要多存一个延迟环（内存 = 参数数 × 环长）；
+- 方案 B：把迟滞挪到**参数层** —— 让 `ParamHairSide` 这类参数自己有"物理后追"，
+  网格只做形状。这个更接近 Live2D 的正解（物理写参数、不写网格）。
+倾向 B（少一套机制、物理与形状解耦），但要在真机上验证"参数被物理拖着走"的手感。
+
+## ~~G66.11 内容侧没有任何真 keyform（缓动能力至今无人用）~~ —— 2026-10-25 T66.11b/c 已关闭
+
+> 关闭记录：内容侧现在有 **5 张真 keyform 网格** —— `arm_l/r_fore_slim`（T66.11b，
+> 四组键 + 段缓动 `out` + lag 0.06）、`side_l_s`/`side_r_s`/`back_s`（T66.11c，
+> −1/−0.5/0/0.5/1 五组，中段 0.44 缓起步、镜像半段横向取反竖向不翻）、
+> `skirt_sway_x`/`skirt_hem_x`（T66.11c，±1 与旧 amount 点表逐点相同，下摆 lag 0.11
+> 接替原来的 `bind.lag`）。旧的 amount 写法保留给没迁移的件（外套下摆/里布）。
+> 判据：`zrig_deform_amount()` 对 keyform 恒为 0，所以单测的判据一律换成**几何**
+> （`zrig_deform_mesh` / `mesh_peak_dx()`），`test_skirt_physics` 就是这么改的。
+
+## 原 G66.11 记录（保留细节）
+
+两份 rig（teen / chibi）里**没有一个形变器写 `keys`** —— 全是 amount 通路。
+于是 T66.11 的缓动、乃至 G58.1 的 keyform 能力，在真实画面上一次都没被用过；
+`ENGINE_AUDIT` 里那次三键目视用的是 rig 副本，不是产品 rig。
+
+修法（T66.11b）：挑两件最需要"多键形状"的：侧发（上段几乎不动、下段甩得远 = S 形）
+和裙摆收口；在 `tools/make_rig.py` 里改成 keyform 生成，参数取 −1/0/+1 三组，
+再逐帧目视中间段有没有"折一下"。
+
+## G66.3 一片顶点只能被一条通路驱动（没有多骨加权）
+
+引擎里一个网格节点的位移来自「amount 通路」或「keyform 通路」二选一，多个来源只能靠多张网格叠。
+裙摆"上缘跟腰、下缘跟摆动"这种最常见的效果，现在做不到。见 T66.9。
+
+## ~~G66.4 父网格的逐顶点位移不传给子网格（G58.8）~~ —— 2026-10-25 T66.10 已关闭
+
+父网格的网格弯了，子网格只跟着**刚体变换**走，不跟着顶点位移走 —— 三节发链"看起来像链、
+断起来像两截"。
+
+> 关闭记录：`deform_inherit_parent_warp()`（渲染前、本部件自己那几张网格算完之后调用）
+> 把链上**别的部件**的 warp 当位移场取样喂给子件顶点：`deform_field_at()` 双线性取样、
+> 超出范围夹边界；子件没有自己的网格时借父件的 `cols/rows` 现搭一张（"三条带子不用各写网格"）；
+> 取"只连到那个祖先为止"的链矩阵（`deform_chain_matrix_upto`），再按子件线性部分的逆
+> 换回子件素材像素。新接口 `zrig_part_mesh()` 让探针能读到"这一帧实际画出去的顶点位移"。
+> 闸：`test_parent_warp_inherit`（父场/有网格子件/无网格子件/不挂链对照 + 混合分辨率 2×4 取样）
+> + selfcheck 源码闸三件元件。**静止画面逐像素不变**（现有 rig 没有"别的部件上的 warp 祖先"）。
+>
+> 内容侧已吃上（T66.10b，2026-10-25）：里布 `inherit_from=skirt_main` / `warp_inherit=0.35`，
+> 自己不再有网格与形变器，逐顶点场从表布继承（`/api/partmesh.json` 实测 7.917 → 2.767 px）。
+> 遗留（美术侧，T66.10b-美术遗留）：里布被表布压住 99.9%，肉眼看不见"跟得少"。
+
+## G66.5 3D 与三渲二的现状：一个是预审，一个不在计划里
+
+`.vrm` 只做过源码/架构预审（没有加载过真实模型）；三渲二全仓库无规划，本轮补进
+`PRODUCT_PLAN.md` 第十节与 T66.7。定位：2D 是主线，3D 是可选第二后端，三渲二在 3D 之后，
+其中"卡通光照规则表"可提前用于 2D（T66.8）。
+
+## G66.6 裙摆还不能接骨链（网格挂在整块躯干上）
+
+裙摆/外套下摆的网格 `part` 是 `seg_torso`（整块上身），而 A_chain 作用于**整个部件** ——
+给裙子接一根旋转骨，转起来会把整个上身带飞。S2 因此**没有**给裙子接链。
+修法：先把裙摆、外套下摆拆成独立件（T66.16），再按头发那套接线。
+
+## G66.7 三层链只传刚体变换，网格的逐顶点位移不往下一层传
+
+`hair_side_l_root → mid → side_l_s` 里，mid 的旋转会传给网格，但 side_l_s 的 **S 形逐顶点位移**
+不会传给任何更低层（现在也没有更低层）。一旦要做四节发链或"裙摆上缘跟腰、下缘跟摆"，
+就必须先做 G58.8 / T66.10（父级 warp 位移场传子）。
+
+## ~~G66.9 换装包还带着"烘焙在躯干里的裙子"~~ —— 2026-10-25 T66.16b 已关闭
+
+裙子拆件之后，`outfits/*.json` 里的 `seg_torso` 覆盖图（`sprites/outfit_*/seg_torso@2x.png`）
+仍然是**拆件前**那张、裙子烘焙在里面的画。穿上换装时：
+① 那层静态裙（层 100）压在裙件（层 97）上面 ⇒ 裙摆骨链等于失效；
+② 裙件摆开时从那层静态裙的边上探出来 ⇒ 两层裙子。
+
+修法（工具层，不需要重画）：`make_wardrobe.py` 用 `skirt_split.json` 里同一张掩膜、
+同一个框，从**换装自己的躯干图**上切出该套的裙件（颜色/花纹自然跟手上），
+再把躯干上的裙子挖掉、`parts` 里加 `skirt_main`。这样换装和拆件互不打架，
+也顺带保住 G58.5 的"换装不许改剪影"。
+
+> 关闭记录：`make_wardrobe.py` 新增 `cut_outfit_skirt()`，用同一张掩膜从换装自己的
+> 躯干图上切裙件（のりしろ 按本套裙色重取）+ 用 `skirt_mask_base.png` 挖躯干 +
+> 里布沿用原件形状按本套裙色压暗。midnight / cocoa 两套都 0 误差；
+> 换回常服与初始态**逐像素相同**。新增闸：动了 seg_torso 的换装包必须带 skirt_main。
+
+## G66.10 袖管的"身体带动"还没有物理（物理写不了回転デフォーマ的角）
+
+T66.17 给小臂袖管接了两级骨链（`fore_?_root → fore_?_mid`），驱动有两条：
+① `ParamForeSway` 的 ambient drift（布自己的风）；② 肘角 `ParamArmLB/RB` 的
+**滞后跟随**（0.15 系数 / 0.12 秒）。缺的是第三条：**身体带动**（左右倾/转身时
+袖管跟着甩）。
+
+为什么缺 —— 本引擎旧的 `physics` 段写"滞后量"的三条通路里，`deformer` 那一条
+只写 `amount`（网格逐顶点位移），**没有写节点 `rot_deg` 的入口**
+（zrig.c:4488 `r->deforms[ph->deform].amount += out;`）；`part`/`group` 那两条
+写的是部件/组的通道，而骨链节点既不是部件也不是组。所以"用物理推骨链转角"
+现在做不到，只能靠参数绑定 + ambient。
+
+补法（按代价排）：
+1. `physics[].deformer` 允许 `param: rot_deg`（照 `binds` 的口径），把 `out` 写进
+   `deforms[].rot`；再给袖子各挂一条 `input: ParamBodyAngleX/Z` 的摆。
+2. 或者等 physics2 的摆链支持"输出到形变器节点"。两者都需要改内核 + 单测。
+
+影响可控：袖管现在**不是死的**（有 ambient + 折肘滞后），只是身体甩动时
+少了那一层"布被身体拖着走"的惯性。
+
+## G66.11 形变量纲不统一：@2x 件的网格位移是「精灵图像素」，和 1x 件差一倍
+
+T66.12 收尾量纵摆时撞出来的：同一条 `ParamSkirtSwayY` 推到满格，
+
+| 形态 | 键表写的 | `/api/partmesh.json` 读到 | 画到 0.55 的帧上 |
+|---|---|---|---|
+| teen（`skirt_main@2x`，`scale:0.5`） | 7.69 | 7.69 | ≈ **2.1 px** |
+| chibi（1x 精灵） | 7.69 | 7.69 | 相对幅度大一倍 |
+
+原因在 `compute_draw_state` 的折算：`k = src->w / img->w`。**`src` 是按画布缩放过的副本、
+`img` 是原图**（实测 `src=299x244`、`img=544x444`，画布 0.55 ⇒ k=0.5496），所以
+① 网格位移被折进了**画布缩放**：`/api/partmesh.json` 的返回值随 `/api/scale` 变
+（同一个动作在 scale=1.0 下读到的是 0.55 下的 1/0.55）；② 量"某件摆多少px"必须先说
+画布缩放是多少；③ 跨形态/跨件的幅度对照不可直接比 —— teen 的裙子是 @2x（`scale:0.5`），
+chibi 是 1x，同一份键表在一帧里的相对幅度差一倍。
+
+★ 这条 GAP 是 T66.12 收尾时**第二次**才发现真相的：第一次以为"partmesh 是精灵像素、
+与缩放无关"，因为那两次读数恰好落在同一个渲染状态上（请求线程读到的是上一帧的缓存）。
+教训：量这类"跟着渲染状态走"的数，必须**同一次请求里同时读** `/api/info.json` 的 scale
+和 partmesh，或者干脆只做比值。
+
+为什么这轮不动引擎：现有一切阈值（单测、冒烟、文档、A/B 基线）都是在这套口径下量的，
+改成"素材 1x 像素"等于给所有键表乘 2，必须连带重标 20 多条绑定、重跑全部像素对照 ——
+那是单独一轮的活，不能在补一个纵摆时顺手改。
+
+规矩（先记着，别再踩）：
+① 写键表前的第一问是"这个件的精灵是 1x 还是 @2x"，两者数值不可比；
+② 报数值必须带单位（精灵px / 1x 素材px / 帧px），`/api/partmesh.json` 的返回值是
+   **精灵像素**（scale=1.0 时 k 也恒为 1，换画布缩放不会变，这一点已实测）；
+③ 换形态的幅度对照（teen vs chibi）必须先把这层折回去，否则会得出"Q 版更活泼"的假结论。
+
+## ~~G66.20 挂点只写在文档里，没有任何实现~~ —— 2026-10-25 T66.19 已关闭
+
+**当时的状况（2026-10-24 立骨架契约时留下的）**：`skeleton.json` 里 8 个 `kind:socket` 的骨，
+名字、父骨、`required:false` 全齐；`docs/SKELETON_SYSTEM.md` 还专门写了一节"挂点没有 pivot，
+位置永远由父骨算出来 —— 这就是配件不漂的机制保证"。**但那是空话**：
+`forms/*/rig.json` 里没有任何 `sockets` 段，20 多件 `acc_*` 全都只有 `group: head/chest`，
+没有一件引用挂点，`zpart` 结构体里连 `socket` 字段都没有。声明齐全、实现为零，而所有闸都是绿的
+（闸当时只查"挂点的父骨在不在"，不查"挂点有没有落地"）。
+
+**关掉时做了什么**：拿 `design/sockets.json` 写位置（形态锚点表达，四形态共用），
+`make_rig.emit_sockets()` 落到 rig，`attach_emit` 支持 `socket/dpos_rel`，
+4 件配件真接线（猫耳×2、兜帽、头顶长发，**位置逐像素不变**，只是换了出处），
+引擎装载期校验四类写错，探针 `GET /api/sockets.json`，四道闸同时上（`test_core` 22 条、
+`check_skeleton` ⑧b + 2 条负控、`check_form_portable`、`selfcheck` 四段对账）。
+
+**还没关的部分**（单列，不要以为关了 G66.20 就没事）：
+- **腕带没有任何素材**（T66.19b）：`socket_wrist_l/r` 能量、能挂、跟手走 26~37px，
+  但本体没有一件腕饰。要的是美术，不是代码。
+- **Q 版没有腕挂点**：chibi 整条手臂一件素材，`hand_l/r` 不存在，腕挂点按 `required:false` 跳过。
+- **换装包里的饰品没走挂点**（T66.20）：`outfits/*.json` 目前只换躯干/裙件。
+
+★ 教训（已进 LESSONS 439）：**"契约里写了"和"引擎里做了"之间必须有一道闸**。
+这一轮之前，`check_skeleton` ⑧ 只验父骨存在 —— 一条永远为真的检查，看起来像在验挂点。
+
+## G66.13 半闭眼时虹膜被一条**直线**切平，眼皮下沿和眼线之间还有一道肤色缝
+
+T66.22 做外部表情时，`peek_blush` 用 `Multiply` 把 `ParamEyeLOpen/ROpen` 压到 0.45，
+放大 14 倍一看就看见了（`logs/asset_qa/t66_22_halfclose16x.png`、`t66_22_lash_ab.png`）：
+
+| 睁度 | 看到的 |
+|---|---|
+| 1.00 | 正常 |
+| 0.55 | 虹膜上沿被**一条水平直线**切掉；直线以上是肤色，再往上是眼线 |
+| 0.40 | 同上，缝更宽；瞳孔开始被切 |
+| 0.25 | 虹膜只剩一条扁带；眼线悬在它上面，中间隔着一片皮肤 |
+
+**原因不是新 bug，是 `eye_aperture` 的老机制**：眼眶遮罩按 `blink` **纵向整体缩放**
+（`part_sy *= 1 − blink·(1−aperture_min)`，锚点在下沿），所以开口的上边界永远是**水平直线**，
+而真实的上眼皮是一条弧。上眼线（`lash_hold = 0.5`）在前半程不动、后半程才滑，
+于是 0.5 之前眼线停在原位、开口已经压下去 ⇒ 中间那道缝。
+
+**为什么没当场改**：三条候选都要动到眼睛的既有行为（用户列为受保护基线）——
+① `lash_hold` 0.5 → 0（`t66_22_lash_ab.png` 下排）：缝没了，但眼线内眼角的尾巴会压进虹膜，
+   半闭时出现一小段黑钩（这正是 2026-10-15 把 hold 设成 0.5 的原因）；
+② 中间值 0.25：缝变窄、钩不明显，但两头都可能不够；
+③ 真正对的做法：给眼眶遮罩一张 **blink 驱动的网格**（中间比两头多下沉几像素 ⇒ 弧线），
+   引擎的 `deformers` 已经支持逐控制点位移，缺的是"用 blink 当驱动量"这条绑定。
+**推荐 ③**，它不改变任何既有参数的含义，只是把"直线"换成"弧线"。
+
+**验收口径（做好之后照这个看）**：`ParamEyeOpen` 从 1.0 到 0.0 每 0.1 一档，
+14 倍放大下面看：① 虹膜上沿不允许出现水平直线；② 开口上沿与眼线之间不允许有肤色缝；
+③ 0.3~0.6 这一段不允许出现黑钩；④ 全闭时眼线仍落在闭眼线上。
+
+### G66.13 追加（2026-10-26）：先把"看不见"变成"看得见"，再谈怎么修
+
+**上一轮"方案 C 接近可用"的结论作废。** 那次 A/B 是在**时钟没冻结**的情况下抓的图：
+待机呼吸/摆头每帧都在动，两张图里头的相位本来就不一样，"保住弧线、没有肤色缝"
+有一半是相位差造成的错觉。这一轮先把观察方法固定下来（工具 `tools/qa_eye_sweep.py`）：
+
+```
+/api/ambient?on=0        关环境摆动
+/api/blink?on=0          关自动眨眼（否则闭眼时刻随机）
+/api/pause?on=1&t=2.0    冻结时钟到固定相位
+/api/step?n=3            每改一次参数空跑几帧，让 keyform / lag 到位
+```
+冻结之后同一服务连抓三帧**逐字节相同**（实测 max diff 0）——这才叫可对照。
+
+**新增探针 `GET /api/mask.png?id=<部件>`**（`zrig_mask_frame` → `zpet_mask_frame`）：
+把 `build_maskbuf()` 产出的那张裁切遮罩直接出成 PNG（白 = 可见）。这是第一次能
+**直接看见**"裁切边界在哪"，不用再靠成品帧倒推（眼睛上还压着眼线、闭眼补片、
+交叉淡化，根本分不清）。
+
+**用探针量出来的事实（teen，`/api/mask.png?id=eye_l_base`，alpha>40 的上沿行号）**：
+
+| Open | 现状（纵向缩放） | 说明 |
+|---|---|---|
+| 1.0 | 上沿 136，高 23px | 满开 |
+| 0.5 | 上沿 150 | 已压下一半，但边界是**水平直线** |
+| 0.0 | 上沿 159，高 3px | 真的合上了（闭眼补片接着） |
+
+**两条候选实测都不成立**（冻结时钟 + 14× 逐档目视）：
+
+| 做法 | 结果 |
+|---|---|
+| 关缩放 + 只吃网格（`aperture_min=1.0`） | 0.5 时只压了 3~5px ⇒ 眼睛看着还是睁的；"弧线"变成了"完全不闭合" |
+| 圆弧系数乘在闭合量**外面**（中间晚合） | 0.5 只闭 27%，同上 |
+| 圆弧系数改成"中间不动、两头多压"（`dy = h·min(1,(1−v)·arc)`） | 顶部确实出现弧线，但 0.5~0.6 段眼线与虹膜之间裂出**更宽的肤色缝** |
+| 缩放不动 + 叠一张网格 | 两条通路各压一次，等于把半闭区间压没了 |
+
+**根因（这次说清楚了）**：遮罩上沿和上眼线是**两条独立通路**，各按各的行程走 ——
+眼线有 `lash_hold=0.5`（前半程按住不动），遮罩没有；于是 0~0.5 这一段遮罩往下走、
+眼线原地不动，中间必然裂开一条缝。**只改遮罩的画法治不了，必须让两者共用一条曲线**
+（或者按 Live2D 的做法：眼线本身是一张网格，由它决定上边界，遮罩跟着眼线走）。
+这已经超出"调两个参数"的范围，所以本轮**没有**把改动落进生产 rig ——
+`tools/make_rig.py` 里那段生成代码保留为注释级的说明 + 一条闸（见下），
+渲染结果与改动前逐像素一致（眼框内 max diff 22/255，来自形状边缘的抗锯齿）。
+
+**本轮真正落地的三样东西**（都能防止下一次重蹈覆辙）：
+1. `GET /api/mask.png`（引擎 + 预览层探针，冒烟里 4 条断言守着它）；
+2. `tools/qa_eye_sweep.py`：把"冻结时钟 + 关环境 + 关眨眼 + 逐档 step"这套正确姿势
+   固化成命令，以后任何人做眼睛 A/B 都不会再抓到不可比的图；
+3. `tests/test_core.c::test_eye_lid_arc`（8 条断言，合成素材）：证明**引擎的裁切确实
+   跟着网格形变走**（弧线能被表达、闭到底能压扁、绑错参数会装载失败）、
+   `selfcheck` 新增「眼眶遮罩闭合通路只能有一条（缩放/网格二选一）」。
+   这两条把"机制通不通"与"美术调得好不好"彻底分开：机制已经证明是通的，
+   剩下的纯粹是曲线设计与素材配合。
+
+**下一步（下一轮的施工序）**：给上眼线也做一张网格（`ParamEyeOpen` 驱动），
+让**眼线决定上边界**、遮罩跟着眼线收；这样 hold 曲线只有一条，缝从根上消失。
+代价是要动受保护的眼线件，先把方案和目视证据给用户看再动。
+
+## G66.21 七个角色"只有契约、没有一张图"（2026-10-26 起可机检）
+
+**现象**：`characters/` 下八个角色，只有 `xiaoxun` 有形态素材。其余七个（shandian / shenyu /
+shuangxi / tonglin / xiaochen / xingxuan / yuejian）在此之前连 `skeleton.json` 都没有，
+只有 `character.json` + `dialogue.json`。
+
+**这一轮补了什么**：契约层。七个角色现在都有
+`skeleton.json`（39 根骨，`status: contract_only`，`todo` 列清要什么）、
+`design/sockets.json`（8 个挂点）、`forms.json`（四形态全 `planned`）。
+`tools/scaffold_character.py --list` 一眼能看出"谁有素材、谁只有契约"。
+
+**这一轮**没有**补什么**：任何美术。四形态的拆件、服装、兽娘件（鹿角/猫耳/尾巴…）、
+口型包，全都还是零。**这不是缺陷、是进度**，所以闸只做两件事：
+把状态写在文件里、并且不让"空骨架 + 空 forms/"互相通过（空对空也是绿是最难发现的一种假绿）。
+
+**为什么不能先拿占位图顶上**：占位图一旦进库就会被 `check_assets` 按 375 项逐条检查，
+要么全红、要么开个后门；后门一开就再也想不起来关。而且"目录看着像做完了"正是这条缺口
+要防的事 —— 与其让它看起来像完成了，不如让它明确写着 `contract_only`。
+
+**出口条件**（T66.23b）：某个角色做出**第一个**形态的 rig.json ⇒ `status` 改 `full`，
+`forms.json` 里那个形态改 `ready`，闸自动开始按四形态口径管它（缺骨必须走 waivers）。
+建议起手角色：`shenyu`（鹿娘，兽娘轴已有明确部件清单：叶片大耳 / 幼角 / 短尾，且要求可一键关回纯人类）。
+
+**顺带记一笔**：`design/sockets.json` 的 `pos_rel` 是从 xiaoxun 继承的默认值（字段
+`inherited_from` 标明出处）。换角色后必须按本角色的 `anchors.json` 重标 —— 只影响配饰落点，
+不影响骨与动作。
+
+---
+
+# 第七问专项：目视复查（2026-10-26，只记录、未动素材与 rig）
+
+> 用户要求：**先讨论、观察、规划、记录，别继续施工**。本轮只做两件事：
+> ① 把"手臂残留 / 长发不完整 / 眯眼怪形 / 面部与手脚"逐条看到根上；
+> ② 把 Live2D 那套"部件完整 + 局部覆盖 + 层次"的做法抄成我们自己的方案（`docs/PART_LAYERING.md`）。
+> 下面每条都写清**证据文件**（`/tmp` 下的临时图，不提交），下一轮照图复现即可。
+
+## G66.24 手臂残留真凶：**长发件里烤着两只袖口 + 两只手**（P0，证据确凿）
+
+**现象**（用户第七问第 1 条）：长发晃动时手边出现"灰紫色腕带 / 手臂残片"，还像有第二只手。
+
+**证据链**（三步，每一步都能复现）：
+
+1. `characters/xiaoxun/forms/teen/sprites/hair_long_back@2x.png`（就是 `acc_hair_long`，
+   层 58，1138×1836，`scale 0.5`）**不是一张纯粹的头发图**。
+   把这张图缩到一半打印出来（`/tmp/seam.png`、`/tmp/spr_acc_hair_long.png`），
+   长发轮廓里能直接看到：**白衬衫、衣扣、夹克下摆、以及左右各一只戴袖口的手**。
+2. 按 rig 的 `pos/anchor/scale` 反算精灵坐标 → 画布坐标
+   （`canvas_x = 138.5 + u×0.5`、`canvas_y = 79 + v×0.5`），把精灵里的"手"落到画布上，
+   正好压在真实手腕上（258,729）/（594,729）—— 是**对齐的整身副本**。
+3. 裁精灵那两处 2× 放大（`/tmp/ghostcrop_u1.png`、`u2.png`）：能看到
+   **袖口的三条纹被冲淡成淡薄荷色 + 下方一只淡肉色手掌**。淡、灰、发白，
+   正是用户截图里那条"灰紫色腕带"的颜色。
+
+**根因**：`tools/clean_hair_residue.py` 当初处理"发片里烘着的非头发像素"时，
+判据是**饱和色**（青布要"绿明显压过红"、皮肤要"奶油粉"）。这张长发底图里的
+残留被上一次清洗**漂成了近白/低饱和**（不是删掉，是被涂淡），于是判据全部漏判：
+
+| 残留物 | 原色 | 洗过之后的实测色 | 现有判据 |
+| --- | --- | --- | --- |
+| 袖口青条 | `(112,194,198)` | `(228,249,252)` 淡薄荷 | `G>R+50` 之类的饱和判据 → **漏** |
+| 手掌 | `(246,214,196)` | 近 `(232,214,206)` 淡肉 | 皮肤判据要求 `R>200 且 R−B>40` → **漏** |
+| 衬衫 | `(250,248,246)` | 纯白 | 没有白判据 → **漏** |
+
+**为什么平时看不出来**：层 58 在所有身体件下面，副本又和真身对齐，
+静止时被真身盖住。**头发一摆（`ParamHairSway` / 呼吸 / 摆头物理），副本跟着滑**，
+就从真袖口、真手旁边挤出几像素 —— 于是"只在晃动时出现"。
+
+**出口条件**（T66.24）：
+1. 清洗工具改成**真删（alpha=0）而不是涂白**，并补"低饱和残留"判据
+   （淡薄荷 / 淡肉 / 近白三类）；
+2. 洗完的发件必须通过**机检闸**：`hair_*` 精灵内不得出现
+   ①皮肤色（含淡肉）②青布色（含淡薄荷）③衬衫白 的连通块 > 200px；
+3. 静止 + `ParamHairSway=±1` + 摆头三姿势各抓一张腕部 3× 放大图，肉眼确认无残片。
+
+## G66.25 长发"不完整"：发件是**平涂多边形拼块**，且发尾一刀切（P1）
+
+**现象**（用户第 1、2 条）：发丝边缘是硬直线、发束断开再续、发尾像被一刀切齐。
+
+**目视证据**：
+
+- `/tmp/hlb_nearest.png`（4× 最近邻，无插值干扰）：发丝内部是**直角矩形/三角块平涂**，
+  颜色块之间有**笔直的台阶边**；
+- `/tmp/crown.png`（`hair_crown_long`）：两侧内缘有 **L 形缺口**，缺口里透出肤色；
+- `/tmp/hi_legs.png`：发尾**多股在同一高度被切平**，形成一排横切；
+- `/tmp/teal_leg.png`：裆部一条**竖直发条**，上端被裙摆下沿横切。
+
+**可量化**（同一张 `hair_long_back@2x`，不透明 831,697 px）：
+
+| 指标 | 实测 | 说明 |
+| --- | --- | --- |
+| 近白像素 | 143,836（17.3%） | 其中相当一部分是残留/洗白块，不是高光 |
+| 横向"亮缝"（比左右各 2px 亮 >10 级） | 15,685（1.93%） | 拼块之间的 1–2px 亮线，正是 Live2D 官方文档里"遮罩白边"那一类 |
+| 横向"暗线"（暗 >18 级） | 13,857（1.70%） | 硬折线 |
+| 内部空洞 | 1,562（0.2%） | 不是遮挡洞 —— 说明"不完整"不是被别的件挡住，是**素材本身缺** |
+
+**根因**：这张图不是"画出来的长发"，是**按颜色掩膜从成品图上抠 + 平涂补齐**的产物。
+抠像边界落在色块交界处就会留下 1px 亮缝；补齐时用矩形/三角填色就会留下直边。
+**这解释了"为什么看起来不完整"**：它本来就没有完整的发束形状，只有色块的拼缝。
+
+**出口条件**（T66.25）：按 `docs/PART_LAYERING.md` 的方案 B 重造长发（分层重绘 + 逐束网格），
+而不是继续在现有拼块上打补丁。
+
+## G66.26 举臂成团：袖子是**六件拼装**，其中 `fore` 是整只静态袖（P0）
+
+**证据**：`/tmp/arm_parts.png`（把 `arm_r_*` 逐件摊开、标层号）。
+
+| 件 | 层 | 实际画的是什么 | 问题 |
+| --- | --- | --- | --- |
+| `arm_r_root` | 96 | 一根细长青条 | 不是袖子，是一道"影子条" |
+| `arm_r_upper` | 141 | 一小块青布 | 上臂只有这一块，没有袖型 |
+| `arm_r_cap` | 143 | 白+青两片大方块 | 肩头是贴上去的方片 |
+| `arm_r_gusset` | 137 | **碎三角 + 一个孤立小块** | 腋下补片是碎片，一抬手就露硬三角 |
+| `arm_r_fore` | 145 | **整只小臂袖 + 三条袖口** | 袖口**烘死在小臂里**，腕部无法独立 |
+| `arm_r_elbow` | 147 | 一块青布 | 只有一片，没有内侧褶 |
+| `arm_r_seam` | 151 | **悬空的细线（X 形）** | 层号最高（151），会压在手/发之上 |
+| `hand_r` | 139 | 见 G66.27 | — |
+
+**目视结果**（`/tmp/zoom_raise.png`、`/tmp/act_wave_*.png`）：wave / wave_both 抬手时，
+`upper` 被拉成一整块青色梯形、没有肘褶，手像是"长在袖口上方"，`gusset` 的三角露出来。
+
+**根因**：手臂是"按件拼出来的静态图"，**没有按关节分段的袖型**（Live2D 里上臂/前臂/袖口是
+三张各自带网格的完整图，靠 回転デフォーマ 弯曲，袖口有自己的跟随参数）。
+我们的 `fore` 把小臂和袖口画死在一张图里，`elbow`/`gusset` 只是补丁 ——
+一旦角度超出"补丁能盖住"的范围就穿帮。
+
+**出口条件**（T66.26）：见 `docs/PART_LAYERING.md` 方案 A 的"手臂三件套"：
+上臂袖（含肘褶内侧）/ 前臂袖 / 袖口环（独立件，跟腕走），三张都做**完整画 + 塗り足し**，
+`gusset`/`seam` 两件退役。
+
+## G66.27 手：`hand_l/r` 精灵本身画了**两组手指**，`pad` 是纯色方块（P0）
+
+**证据**：`/tmp/hands.png`（六件手 2× 放大）。
+
+- `hand_l` 与 `hand_r` 是同一张图的镜像：掌部正常，**指尖处叠着第二组粉红色手指**
+  （4 根，角度不同）→ 用户说的"粉色残端"就是它，不是被头发切断的；
+- `hand_*_pad` 是**无阴影、无羽化的圆角方块**（纯 `#F7E7DC`），
+  84×100 一块，画在腕下（层 128/129）—— 这就是"手腕处一块皮肤";
+- `hand_*_open`（张开五指挥手）与 `hand_*_heart`（比心）**都是画得对的**。
+
+**根因**：默认手件是早期"手画在前臂底下"那一版（`docs/ART_PARTS.md` 5.12）留下的中间稿，
+后来补了 `open`/`heart` 却没替换默认件；`pad` 是当"腕部皮肤垫片"用的，
+但它是**平涂矩形**，一旦露出来就是方块。
+
+**出口条件**（T66.27）：默认手件换成重新描的 `hand_*_relaxed`（五指、掌心有明暗、
+腕口有塗り足し）；`pad` 重画成**带阴影、边缘羽化的楔形**并缩到袖口内 2px。
+
+## G66.28 眨眼"想用力合却合不上"（P0，用户第 3 条）
+
+**逐档目视**（`/tmp/blink_eye_zoom.png`，`ambient=0 blink=0 pause` 下 `ParamEyeLOpen=1−blink`）：
+
+| blink | 看到什么 |
+| --- | --- |
+| 0.00 | 正常 |
+| 0.30 | 上眼线已经下来，瞳孔被压成**扁月牙**，下缘露出一条浅蓝 |
+| 0.50 | 瞳孔只剩**一小片月牙**贴在眼白上，眼白反而变多 |
+| 0.70 | 眼白消失，只剩**一条黑弧 + 周围肤色**，弧线偏粗、位置偏低 |
+| 0.80 | 同上，弧线开始**变糊**（闭眼件在 0.85 淡入，这是它 60% 不透明的样子） |
+| 0.90 | **弧线错位**：闭眼件的黑弧与残留眼线不重合，出现两条平行黑线 |
+| 0.95 | 左右眼**不同步**（右眼还留着一条缝） |
+| 1.00 | 才干净 |
+
+**三段根因**（对应代码位置，供下一轮直接下手）：
+
+1. **闭眼件本身是"柔边肤色椭圆 + 一条粗睫毛"**（`/tmp/eyes.png`）：
+   `eye_l_closed` 是 AI 重绘的一片**带渐隐的椭圆皮肤**，rig 注释里写着"接缝色差 4.69"。
+   它一淡入，脸上就多出一块**边界可见的椭圆形肤色**，看着像"眼皮肿了/没合上"。
+2. **0.85→1.0 硬切**：`src/core/zrig.c:6765` 用 `opacity=(blink-0.85)/0.15` 线性硬切，
+   在 0.85~0.95 这段两套图**同时可见**（半透明叠加），于是出现双黑线。
+3. **时序对称**：`zrig.c:6014` 的 smoothstep 让"合"和"开"用同一条曲线；
+   真人闭眼是**快合（~60ms）慢开（~140ms）**，对称曲线读起来就是"想合却合不上"。
+
+**出口条件**（T66.28，本轮不动手）：闭眼件改成**透明背景的纯睫毛 + 眼窝阴影**
+（不再带椭圆形肤色）；淡入曲线改 `ease-out` 且与眼线共用一条；
+0.85 之后不再叠加，而是**用遮罩把残余眼白收干净**；时序改成快合慢开。
+闸：逐档 14× 放大图里不得出现"椭圆边界"与"双黑线"。
+
+## G66.29 面部细节与脚（P2，用户第 4、5 条）
+
+**看出来的、用户没点名的**：
+
+1. 兜帽内侧**完全没有阴影**（`/tmp/hi_face.png`）：帽檐下沿与头发同亮度，
+   读起来像"头发直接长在帽子上"；Live2D 里这是靠**内側影レイヤー**（乘算层）解决的。
+2. **下颏—颈—锁骨没有一条连续的结构线**：脖子只是头的延伸，缺 アゴ影 与 鎖骨影，
+   所以低头的瞬间会"脖子消失"。
+3. **腮红外观（已结子项）**：`blush_l/r` 两侧已由 `ParamCheek` 0..1 控 alpha；旧素材虽为软渐变，但每侧三条高对比斜线经 40×22 缩小后像红色刮痕，且峰值偏重。2026-10-31 删除斜线、降峰值并完成 1.0 实拍 A/B。
+4. **嘴只有一条 `v` 形线**：闭口嘴角没有 Y 轴平移，微笑/难过只能靠整体缩放。
+5. **鞋 46% 是近白**（`/tmp/feet_white.png`：20,503 个不透明像素里 9,354 个近白）：
+   白鞋 + 白袜之间没有暗线，远看是"一坨白"（违背"不许白边"的同类观感问题）。
+6. **`window`（兜帽）与头发交界没有压暗**，右侧还有一块**淡青方块**（`/tmp/hi_legs.png`
+   右腿旁），疑似别的件露出来。
+
+**进度（2026-10-31）**：①兜帽内侧投影已完成：以登记短发兜帽内沿为视觉参考，做成独立柔 alpha 附件，`blend=multiply`，挂 `socket_head_top`，仅 teen 的 `hood_pose=up` 显示；layer 250 位于 hood shell 252 之下，且与两侧长鬓发层 249/251 不重号。生成链由 `tools/make_hood_inner_shadow.py` → `make_attach_parts.py` → `make_rig.py` 接入；`rebuild_parts.sh` 会在 teen 重建时再生成。`/api/info.json` 分别确认 `hood_pose=down/up` 后，在同一短发、idle、冻结时刻亲眼核过真实引擎帧：down 不显示投影，up 显示；又检查 up 状态下 short/twin/pony/long 四发型，未见裁切或层级冲突。最初留存的 `final_up/final_down` 曾都呈现戴帽，已作废并重拍，不用它们作为证据。可复核证据：`docs/qa/live2d_teen_hood_inner_shadow_full_2026-10-31.png`、`docs/qa/live2d_teen_hood_inner_shadow_detail_2026-10-31.png`、`docs/qa/live2d_teen_hood_shadow_hairstyles_2026-10-31.png`。③腮红已由 T67.20 完成；④嘴角 Y 位移完成：teen `ParamMouthForm` 驱动 `mouth_open`、`mouth_mask`、`mouth_cavity` 三张 2×1 网格，两端随正负值作反向 Y 位移、中间固定；runtime 测试直接量顶点并验 ± 方向，真实引擎闭口 -1/0/+1 与 OpenY=0.65 A/B 目视通过。嘴角证据：`docs/qa/live2d_teen_mouthform_corner_full_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_closed_detail_abc_2026-10-31.png`、`docs/qa/live2d_teen_mouthform_corner_open_detail_abc_2026-10-31.png`。素材闸仍有 8 项已存在问题（包括灰度/色卡、白边、无损切分与侧发覆盖率），不能把总体审计写成全绿。
+
+②下颏影 + 可见颈根/锁骨提示已于 2026-10-31 完成：新增 teen 独立 Multiply 细节，头部附件跟随 `socket_face`、层 179 藏于 `seg_head` 下；锁骨提示跟随胸部 `socket_neck`、层 101，仅以原画皮肤色/不透明掩膜裁切到衣领上方可见区域。全身与颈部近景真实引擎帧，以及 `ParamAngleX=20` / `ParamBodyAngleZ=6` 动作检查均已目视；未把锁骨画到衣物上。证据及 SHA-256：`docs/qa/live2d_teen_neck_details_2026-10-31.json` 与同前缀 PNG。
+
+⑤鞋暗线 + 压近白已于 2026-10-31 完成：以原画/色卡为真值，强化原有袜鞋弧线而不另造轮廓；只给鞋头与外底近白像素加冷中性阴影，袜子、鞋带、鞋舌、青绿鞋面与几何不动。为防 Real-ESRGAN 把色调提回近白，`make_hires_sprites.py` 在 @2x 输出后按 `foot_parts.json` 的鞋口/鞋底位置补回材质阴影。Teen 四张 @2x 鞋件近白率：平底左/右 52.26/52.05%→30.67/30.76%，踮脚左/右 51.44/50.93%→34.03/33.63%；鞋底 y=1291、踮脚鞋口升 30px 的几何检查均通过。真实引擎 idle 与 `tiptoe` 峰值（ParamTiptoe effective=1）全身及鞋部近景均已目视。证据与截图 hashes：`docs/qa/live2d_teen_shoe_contrast_2026-10-31.json` 及同前缀 PNG。素材总体审计仍有 8 项既有失败，不能写成全绿。
+
+⑥淡青方块已复现并查清：只在长发/摘帽状态出现，来自长发后件 `acc_hair_long`（layer 58，`hair_long_back@2x.png`）透过腿间空隙；隐藏该件后蓝块消失。`sheet_long.png` 的真值图包含对应的中央发束，因此不是衣物/其他 attachment 误露；更细的发束轮廓问题留给未完的 T67.7 长发重造，不在此处删除真值发束。引擎对照、来源 SHA 与逐件隐藏结果见 `docs/qa/live2d_teen_longhair_centerlock_2026-10-31.json` 及同前缀 PNG。T67.9 六个子项至此全部完成；全仓素材审计仍保留既有 8 项失败，长发其它问题仍开放。
+
+**出口条件**（T66.29）：
+①兜帽内侧加乘算阴影层（已完成，证据见上） ②下颏影 + 可见颈根提示（已完成，证据见上） ③腮红（已完成）
+④嘴角 Y 位移（已完成） ⑤鞋暗线 + 压近白（已完成，证据见上） ⑥淡青块复现并查明归属（已完成，证据见上）。
+
+## G66.30 只做七个角色不够：要留**自定义形象的生成空间**（用户第 6 条）
+
+七个（小寻 / 闪电 / 神鱼 / 双喜 / 童林 / 小晨 / 星璇 / 月见）里只有小寻有素材，
+其余七个是 `contract_only`。市面上的 AI 形象远不止七个，用户也不可能只用我们预设的。
+
+**所以真正要交付的不是"七个角色"，而是"能长出任意角色的骨架"**：三套方案
+（A 参数化生成器 / B 上传立绘半自动拆件 / C 社区形象包）写在
+`docs/CHARACTER_SCALE.md`，含成本、风险、验收闸。**本轮只提议，不选型**。
+
+## G66.31 缺两件 QA 工具（P1，下一轮先做）
+
+1. **分层隔离探针** `GET /api/part?id=…&vis=0/1`（+ `?only=<id>`）：
+   现在没法单独关掉一件看它到底画在哪 —— 上面 G66.24 只能靠"反算精灵坐标"绕过去。
+   有它以后，"这块青色属于谁"是**一眼**的事，不用猜。
+2. **素材残留体检** `tools/qa_sprite_audit.py` —— **已落地并校准，见 §T67.2 结论**：
+   七项指标里**只有 `hole%`（>1.5）与有机形的 `straight_run`（>150）能当闸**，
+   其余颜色/亮度指标（近白、边界近白、亮缝、躯体色残留）**全部降级为只报不判**，
+   因为首轮接成闸时 80/99 越线、逐张看全是误伤。真正接进 CI 的是**基线回归**
+   （同一张图重画前后只许降不许升）。口径见 `docs/ART_PARTS.md` 第七节。
+
+## G66.32 兽耳与兽尾：纸面上很细，落地有硬伤（2026-10-26 目视 + 逐项对 rig）
+
+> 用户第七问追加：「兽耳和兽尾是否够灵活、自然？有什么错误和需要优化？」
+> 证据图（临时，不提交）：`/tmp/ear_angles.png`、`/tmp/ear_zoom.png`、`/tmp/ear_tail_parts.png`、
+> `/tmp/tail_hip.png`、`/tmp/tail_poses.png`、`/tmp/tail_relaxed_zoom.png`、`/tmp/tail_tuck_zoom.png`、
+> `/tmp/tail_swing_full.png`、`/tmp/ear_hairback.png`。
+
+### 先说做得对的地方（别推倒重来）
+
+- 尾巴有 **骨链 root→mid + S 形网格**（`tail_{pose}_root/mid` + `tail_relaxed_s` 等），
+  并且 mid 的绑定带 `lag`（行波延迟），不是刚性钟摆；
+- 四种姿态是**互斥组**（`poses.tail_pose`，fade 0.28s）+ **情绪映射**（`mood_map`）；
+- `tail_flick` 排班器让**左右耳各排各的班**、每次力度/时长/方向随机 —— 这一条是对的，
+  真猫就是"偶尔抽一下"而不是匀速晃。
+- 层序**正确**：尾巴(30~33) 在腿(60/61)、裙(97) 之下。实测像素（relaxed vs up 同一坐标）
+  在裙面区完全一致 ⇒ 尾巴没有压裙子，我先前"尾巴压裙"的目视印象是错的。
+
+### 硬伤（按严重度）
+
+**（1）P0：四个尾巴姿态里有两个根本看不见。**
+`acc_tail_cat_up` 屏幕框 x 205..340 / y 257..692、`acc_tail_cat_puff` x 159..339 / y 263..700，
+两块**整整齐齐落在躯干+外套里**（层 30~33 在最底下）。渲染实测：`up` 全图找不到一点尾巴；
+`puff` 只在最左边露一条边。而 `mood_map` 把 happy / affection / cute / smile **全指向 up**
+⇒ **越高兴，尾巴越消失**。这是这一轮最该先修的 bug。
+（`relaxed` 能看见，是因为它锚在髋部、垂到裙摆以下；`tuck` 能看见，是因为它横向伸出。）
+
+**（2）P0：`tuck` 的平切根部从两腿之间露出来。**
+`/tmp/tail_tuck_zoom.png`：裆部一条**淡蓝灰矩形竖条**，硬直边 + 平底。
+根因是 tuck 件的锚点/裁切边落在裙摆下方、两腿之间的空档里。
+（上一轮我把它误判成"发丝穿裆"，这里更正。）
+
+**（3）P1：耳朵是"整片刚性件"，骨架契约里的耳骨没人用。**
+`skeleton.json` 有 `ear_l` / `ear_r`（`kind: mesh`），但 `rig.json` 里
+`acc_ear_cat_l/r` **没有 `deformer` 字段**，`deformers` 段没有 `ear_*`，`chains` 段也没有 ear；
+物理只给了 `ear_l_x: ratio 0.42 / max 5px`。也就是说：
+- 耳朵只有**一条刚体旋转**，没有根部弯曲、没有耳尖滞后；
+- 104px 高的耳朵上 5px 的弯曲等于没有；
+- **契约有骨、实现没骨** —— 这类"文档说有、代码没有"比缺功能更危险（下一个人会以为已经做了）。
+
+**（4）P1：耳根支点在"切边中点"，一转就露纸片感。**
+`acc_ear_l/r` 锚点 `[0.5, 1.0]`，挂点 `socket_ear_l/r` 就在**下沿那条平切线上**。
+±26° 时两个底角各扫出 `44×sin26° ≈ 19px`，切边会从头发底下抡出来；
+`/tmp/ear_zoom.png` 的 down/up 两档都能看到**耳底那条直的切边**。
+Live2D 的做法是把支点放进头里、并把耳朵底边往下多画一截（塗り足し）藏进头发。
+
+**（5）P1：左右耳永远同步。**
+`mood_params` 里 `ParamEarLAngle` 与 `ParamEarRAngle` 的十一个情绪值**完全相同**。
+真猫最重要的一条细节就是"一只先动、另一只不动"。`tail_flick` 已经能做到各排各的班，
+但**姿态类**（飞机耳/竖起）仍是同值 —— 缺一层"左右差异"。
+
+**（6）P2：造型与画风不统一。**
+耳朵内耳是**橙粉色**（更像狐/兔），外缘是蓝色渐变 + 硬边；尾巴是**喷枪软边 + 单像素噪点**。
+而角色其余部件都是**深色线稿 + 冷紫白配色**。结果：耳朵和尾巴读作"贴上去的毛绒贴纸"，
+不是长在角色身上的。**都没有描边**。
+
+**（7）P2：尾巴的弯折分辨率太粗。**
+`tail_*_s` 只有 **2 列 × 4 行 = 8 个控制点**，而尾巴在屏幕上 410px 高 ⇒ 弯曲是折线，
+中段能看到折角（`/tmp/tail_swing_full.png` 的摆动极点最明显）。
+
+**（8）P2：姿态之间没有中间形态。**
+四种尾巴是**差分件硬切换**（0.28s 淡入淡出）。从"放松"到"竖起"没有过渡形状，
+情绪变化快的时候会看到"换了一条尾巴"。
+
+### 出口条件
+
+| 编号 | 事 | 验收 |
+| --- | --- | --- |
+| T67.11 | up / puff 重新摆位（挪到髋侧或给独立锚点），tuck 根部塞回裙内 | 四姿态各自在正面视图里**可见面积 ≥ 8000px**；tuck 裆部无残留（该区与"无尾"基线逐像素一致） |
+| T67.12 | 耳朵接上骨链（root→mid）+ 支点进头 20~30px + 底边塗り足し 15px | 角度 ±1.238 两档，耳底切边**不进入可见区**（用头发遮罩判定） |
+| T67.13 | 左右耳可独立（姿态层加 L/R 偏置，默认错开 10~15°） | `mood_params` 两侧数值不同；机检：同一情绪下左右角差 ≥ 8° |
+| T67.14 | 尾巴网格 2×4 → 3×6，并加一档中间姿态（半竖） | 摆动极点无折角（曲率连续，逐段转角 < 25°） |
+| T67.15 | 兽耳/兽尾补描边 + 统一冷色系 | 与 `check_assets` 色卡一致；边缘无"无描边"区域 |
+| T67.16 | 物种轴：狐 / 狼 / 鹿 / 兔（各 1 套耳型 + 尾型） | 每套可一键关回人类；进 `docs/CHARACTER_SCALE.md` 的物种库 |
+
+## G66.33 星星眼：**没丢**，但三处不到位（2026-10-26 实测）
+
+用户第七问追加：「星星眼我记得被上个代理弄丢了，你看一下还存不存在、需不需要优化。」
+
+**结论先说**：**没丢，而且通电可用。** `eye_l/r_ball_star`、`eye_hl_star_l/r`、`fx_sparkle_1..8`、
+`ParamStarEye` / `ParamSparkle1..8` / `ParamEyeSparkle`、动作 `star_eyes`（3.4s）、
+表情 `expressions.star_eyes` 全在，实测 `ParamStarEye=1` 时虹膜换成晶体面、脸周 ✨ 出现，
+门控有效（StarEye=0 时把 8 颗 ✨ 拉满也不出现）。证据 `/tmp/act_star_sheet.png`、
+`/tmp/stareye_zoom2.png`、`/tmp/star_parts.png`。
+
+**但用户会以为它丢了，是因为它"看不出来"** —— 三处：
+
+1. **虹膜画成"碎钻/晶体"而不是星星**：`eye_?_ball_star` 上是交叉的白色切面线，
+   1× 看像玻璃裂纹。用户要的"星星眼"是第一眼就能认出的五角星。
+2. **正常瞳被整块关掉**（`scale -1`）⇒ 深瞳孔和下半虹膜亮部一起消失，眼睛发白、没有视线焦点。
+3. **星形高光是另一条通路**：星瞳走 `ParamStarEye`，星高光走互斥组 `eye_hl_style`（默认 `round`），
+   而 `star_eyes` 表情**没有切这个组** ⇒ 两套"星星"永远不同时出现。
+
+**出口条件（T67.17）**：星瞳保留蓝色虹膜底、中心画真五角星（实心 + 内发光）+ 2~3 颗小四角星；
+`ParamStarEye` 同时驱动高光换档；三档（0/0.5/1）5× 放大图必须"一眼能看出是星星眼"；
+退出后所有 `fx_*` alpha 归零。规划与想法清单（爱心眼/泪眼/圈圈眼/音符/问号…）见
+`docs/EXPRESSION_LIBRARY.md`。
+
+## G66.34 视觉效果（FX）还缺"效果容器"，再加第二种特效就会打架
+
+现在 8 颗 ✨ 是 8 个散件，靠 `ParamStarEye` 当总闸、靠各自 `ParamSparkleN` 排班。
+能跑，但**没有"效果"这个容器**：层号 300–307 被手工占用、参数谁先占谁赢。
+加第二种特效（爱心眼、泪眼、音符）时必然互相踩。
+
+**出口条件（T67.18）**：包里引入 `fx` 声明（`gate` + `layer_base` + `parts` + `schedule` + `blend`），
+引擎按 `layer_base` 自动分配层号；一个效果一个门；换角色换整个 `fx/` 目录。
+闸：新增一个效果**不改 rig 的层号**、不改别的效果的参数。
+
+### G66.24 补充证据：隔离探针拍到了"幽灵身体"（2026-10-26 当天补）
+
+`/api/part?id=acc_hair_long&vis=2` 只显示长发件，得到 `/tmp/probe_long.png` 右图：
+**长发轮廓里清清楚楚地躺着两只戴袖口的手、白衬衫与衣扣、裙子、还有鞋**——
+颜色被冲淡成灰白/淡薄荷，正是用户截图里那条"灰紫色腕带"。
+左边是同一帧的完整角色，用来对照"为什么平时看不见"（被真身盖住，头发一动就错位露出来）。
+
+这条证据比之前的坐标反算更直接：**不用算，一眼就是它。**
+
+### G66.24 抢救尝试与结论：**洗不掉，只能重画**（2026-10-26 实测，已回滚）
+
+用户同意"必须重造、根治"后，我先试了两条**便宜的抢救路线**，都失败了，但失败得很有价值：
+
+**路线一：按颜色洗（判据升级到"包括被洗淡的版本"）**
+新写的 `tools/qa_sprite_audit.py` 用三条不要求饱和的判据（淡薄荷 `G>R+8`、
+淡肉 `R>G+6,G>B+4`、中性近白 `V>246,S<0.045`）去标残留，
+结果标出 `hair_long_back` 的 **17.96%**、`acc_hair_sidelong_r` **18.2%**
+—— 但把标注图（`/tmp/audit_hairlong.png`）打出来一看，**红色铺满了正常发丝**。
+结论：**幽灵件被洗到的颜色，和头发自己的高光已经在同一个色域里了**，
+颜色判据不可能既擦干净又不伤头发。此路不通。
+
+**路线二：按几何擦（利用"它在身体后面，反正看不见"）**
+思路：`acc_hair_long` 是最底层（layer 58），被身体盖住的像素本来就不可见，
+那就把它们**真删掉**（alpha=0），只留 4px 出血。
+实测：用探针关掉全部 25 个头发件 → 渲染出干净身体 → 反算到精灵坐标 → 腐蚀 4px → 擦除。
+
+- 擦掉了 **62.1%**（831,697 → 314,976）—— 这反过来证明了一件事：
+  **这张精灵有六成以上是"藏在身体后面的整身副本"**；
+- 但 `vis=2` 隔离再看（`/tmp/after_erase_sheet.png` 右图），
+  **幽灵手、袖口、衬衫、裙子还在**。
+
+结论：**可见的幽灵不在身体轮廓里面，而在轮廓边缘外一点点**（副本有偏移），
+所以"擦掉被盖住的部分"只能瘦身、不能治病。**已回滚**（精灵恢复原样，`git status` 干净）。
+
+**第三次尝试（也失败，但把根因钉死了）**：在精灵内部按"是不是发色"分类（冷紫判据），
+把非发色像素判成异物 —— 47.5% 被判成异物，但目视一看，**上半身的真头发被判掉了**
+（被身体挡住的那段头发，图上本来就是衣服色，分不出来）。
+
+**最终结论（写进 T67.7）**：这张图的地基是错的 ——
+它不是"画出来的长发"，而是"整身成品图 + 头发盖在上面"。
+任何清洗都只能治标；**必须按 `docs/PART_LAYERING.md` 方案 A 重画**：
+一层长发 = 一张只含头发的画，被挡住的部分也要按头发画满（塗り足し），
+而不是从整身图上抠。这也正是用户说的"必须重造，根治"。
+
+**出口（同日落地）**：新增一层源头 —— **「髮だけ差分」**（只画头发、洋红底），
+抠像工具 `tools/key_magenta.py`（反预乘 + 去溢色 + 补孤点 + 配色对齐），
+长发的 v1 已出（彩边 0%、发色残差 2.6/255、直边 28px、近白 2.8% vs 旧件 26.2%）。
+证据图 `docs/qa/t67_7_hair_only_candidate.png`（左旧右新），
+工序写进 `docs/SHEET_PIPELINE.md` 第四节。
+
+## G66.35 两腿之间那缕头发：不是"看不见就没问题"，是**画错层**（P0，已修）
+
+> 用户 2026-10-26 截图追问：「如果腿后面看不到这处链接的头发真的没问题的话就按你说的做吧」。
+
+**先说结论：不能按"看不见"放过。它是看得见的，而且是错的。** 我上一轮说"那块在身体后面、
+永远看不到"—— 这句话对**后发**成立，对这条**竖在两腿之间**的薄片不成立：两腿之间没有身体，
+它整条露在外面。
+
+### 定位（用 T67.1 的隔离探针，一步到位）
+
+`?id=acc_hair_sidelong_l&vis=2` 隔离出来就只有那一条薄片
+（`docs/qa/t67_26_strip_owner.png`）。所以它不是后发，是 **`acc_hair_sidelong_l/r`
+（长鬓发）里的碎岛**。三个硬事实说明它是错的：
+
+1. **不连通**：主发块 18.8 万 px，这块只有 8.3 千 px，中间没有任何连接 —— 是切图切出来的孤岛；
+2. **层号错了**：鬓发在 249/251，**在腿（60）和裙子（97）前面**，所以它是**画在大腿上**的；
+3. **参考立绘里那一缕是后发**：`design/sheets/sheet_long.png` 两腿之间确实有一缕头发，
+   但它在腿的**后面**（`docs/qa/t67_26_reference.png`）。
+
+顺带解释了一个老症状：这条薄片的直边就是 `acc_hair_sidelong_r` 那条 **248px 直边**
+（T67.2 体检报的"已知欠账"）—— 搬走之后直边降到 **101px**，欠账自动还清。
+
+### 修法：搬层，不重画
+
+写 `tools/move_hair_islands.py`：把碎岛按**画布坐标**（不是精灵像素 —— 两件的 pos/anchor/scale
+各不相同）搬到 `acc_hair_long`（层 58，所有身体件之后）。于是它自动变成"被腿挡住、
+只在两腿缝隙里露出来"，和参考一致；碎岛的上缘正好在裙摆下缘（y≈806），本来就被裙子盖住，
+**不需要另画连接带**。挂进重建链 **27c 步**，否则下次 rebuild 就回滚。
+
+阈值踩过一次坑：`MIN_ISLAND_PX` 放到 20px 会搬走 13~17 个"碎屑"，那是主发缕轮廓上的抗锯齿毛边，
+搬走等于给侧发咬边、同时在后发上撒点。实测分界很清楚：毛边 20~89px，真正的碎发片
+225 / 240 / 344 / 786 / 5309 / 8280px → 阈值取 **200**。
+
+### 还留着的
+
+那条薄片现在在正确的层上，但它本身仍是**切出来的形状**（下端有一条硬斜边），
+发丝结构也不对 —— 这属于 T67.7 长发五组重画的范围，不再单独修。
+
+### G66.32 补充：尾巴可见性 —— 我在这一条上**连错三次**，最后改用离屏几何量（2026-10-26）
+
+这一条我先后给过三个互相矛盾的结论，必须全部记下来，因为错的原因比结论更有用：
+
+| 第几次 | 方法 | 结论 | 错在哪 |
+|---|---|---|---|
+| ① | 看四格缩略图 | "relaxed 可见，up 几乎不可见，puff/tuck 完全不可见" | 缩略图里 up/puff 露出处与长发同色、面积窄，**眼睛漏报** |
+| ② | 帧差（开/关该档两帧作差，>8 即算） | "四档都在 5~7 万 px，全部可见" | **渲染不是字节确定的**：同一状态连拍三次，严格判据下差异就有 2,788 / 3,437 px，最大通道差 255。那 5~7 万 px 是**整张图的抖动**，不是尾巴 |
+| ③ | 离屏几何（本文件下面这条） | 见下表 | 这个才是对的 |
+
+**②为什么必须废掉**：`--pause` 冻住的是时间，不是渲染。抖动来自各层半透明叠加的舍入，
+分布在全图（y 94–961）。所以**帧差只能判"大形态有没有变"，绝对不能用来数面积** ——
+本轮四条尾巴、两腿间薄片、长发换源头全部吃过这个坑，其中前两条直接得出了错误结论。
+
+**③的做法**（`tools/qa_layer_visibility.py`，纯几何、无渲染、可复算）：
+Live2D 的遮挡只有一条规则 —— **层号大的盖住层号小的**。于是
+
+    某件可见像素 = 它自己的不透明 footprint − 所有层号更大部件 footprint 的并集
+
+footprint 由 `rig.json` 的 `pos/anchor/scale` 把精灵 alpha 投到画布上得到。
+局限写在工具头注释里：算的是**静止姿态**，摆姿势/形变后会变，所以它是基线闸而不是运行时真值。
+
+### 结果（这才是真数据）
+
+| 档位 | 层 | footprint | **静止可见** | 占比 | 判读 |
+|---|---|---|---|---|---|
+| `relaxed` | 30 | 26,427 | **6,668** | 25.2% | 正常：在左下方露出一段 |
+| `up` | 31 | 25,558 | **1,015** | 4.0% | 只从腰侧顶端**冒出一个小尖** |
+| `puff` | 32 | 34,501 | **12,289** | 35.6% | 露出很多瓣，**但位置在腰线上方**，像"从腰里长出来" |
+| `tuck` | 33 | 25,431 | **6** | 0.0% | **完全被压住**，只在轮廓边留 6px |
+
+叠图 `docs/qa/t67_11_tail_visible_geo.png`（灰=形状，红=露出来的部分）一眼能看出
+`up` 和 `puff` 的露出部分**都挤在腰线上方**，不是"垂在身侧"。
+
+所以真正的结论是：
+- **`tuck` 完全不可见**（6px）——这一档必须重排层或改画法，否则等于不存在；
+- **`up` 只露 4%**，且露在腰上，读不出是尾巴；
+- **`puff` 露得多但位置错**（在腰线以上），这就是用户会觉得"怪"的那种；
+- `mood_map` 把 happy/affection/cute/smile 全指向 `up`（露 4%），**情绪映射和可见性完全没对齐**。
+
+闸（已接）：`qa_layer_visibility.py --min-visible 800`，四档现在 **exit 1**（`tuck` 6px）。
+接 CI 前先把 rig 修好 —— 闸先红着，不许调低阈值过关。
+
+## G66.36 证据图**从来没进过库**：`logs/` 被 gitignore（P0，已修流程）
+
+**2026-10-26 发生的事**：工作区被还原到 `a85c706`，本地未跟踪文件全部丢失 ——
+包括我这几轮攒下的所有 `logs/asset_qa/*.png`。那一刻才发现：
+
+```
+.gitignore 第 11 行：logs/
+```
+
+**所以那些"证据图已随提交入库"的记录是错的。** 我在 JOURNAL 里写过好几次
+"已随提交入库"，而 `git ls-tree` 里一张都没有。这不是小事：
+本轮几乎所有结论（幽灵手、台阶状轮廓、两腿间薄片、尾巴不可见）都靠图说话，
+图一丢，结论就退化成"我当时看过"。**不可复核 = 没有证据。**
+
+### 修法（三层）
+
+1. **切目录**：新增 `docs/qa/`（入库），与 `logs/`（草稿，不入库）分工写进
+   `docs/qa/README.md`。判据：**删掉它某个结论就没法复核 → 属于 `docs/qa/`**。
+2. **证据必须能重拍**：新增 `tools/make_qa_shots.py`，一条命令把本轮全部对照图
+   从 `rig.json + sprites + 预览帧` 现场生成（不需要"当时那张截图"）。
+   它拍：长发换源头前后、两腿间薄片归属、尾巴四档可见性、尾巴精灵美术、参考立绘。
+3. **基线搬家**：`sprite_audit_teen.json` 从 `logs/` 移到 `docs/qa/`，
+   `Makefile` 与 `selfcheck` 的路径同步改 —— 它是"重画前后只许降不许升"的那个"前"，
+   丢了基线，闸就形同虚设。
+
+### 教训
+
+**不要相信"我记得提交过"。** 验证方式只有一条：`git ls-tree origin/<branch> -r --name-only | grep <path>`。
+本轮已经把这条写进 `docs/qa/README.md` 顶部。
+
+## G66.37 尾巴重画 v1：风格对了，形状还不对（T67.11 第一步，进行中）
+
+上一节把问题定性成"画法不一致 + 位置插错"，那就先解决**画法**。做法照 T67.7 那条已经验证过的路：
+**单件差分 + 洋红底抠像 + 配色对齐**，不碰立绘、不碰 rig。
+
+1. 以现有 `acc_tail_relaxed@2x.png` 垫洋红底当参考，生成"只有这条尾巴"的一张
+   （`design/redraw/tail_only/tail_relaxed_raw.png`，`_raw` 与抠像结果都入库）；
+2. `tools/key_magenta.py`（原 `key_hair_only.py` 改名，因为它现在也抠尾巴）：
+   反预乘 + 去溢色 + 补孤点 + `--match-palette` → 彩边 **0.00%**、发色残差 **1.5/255**；
+3. `tools/fit_hair_part.py` 把新图拟合进旧件几何（252x820，各向异性 -5.0%）。
+
+对照（`docs/qa/t67_11_tail_v1_cmp.png` 左旧右新）：
+
+| | 旧件 | 新件 v1 |
+|---|---|---|
+| 近白像素 | **21.5%**（几乎全是高光绒毛） | **0.1%** |
+| 亮缝 | 0.80% | 0.19% |
+| 描线 | **几乎没有**（毛边糊掉轮廓） | 有，一整圈暗紫线稿 |
+| 直边 | 114px（顶端平切） | 123px（顶端仍是平切） |
+
+**诚实评判：v1 只解决了一半。**
+- 解决的是**画法**：从"3D 绒毛/喷枪感"变成"平涂 + 线稿"，和角色其它部位同一套语言；
+- 没解决的是**形状**：现在是一条**扁而均匀的带子**，根部不够粗、梢部不够圆，
+  读起来像"围巾"而不是"猫尾巴"；顶端还是平切（尾巴根要藏进身体，得做成锥形收进去）。
+
+⇒ T67.11 第一步标记为 `[~]`，下一步是 v2：**根部最粗 → 中段略细 → 梢部再收成圆头**，
+顶端改成锥形入体，四档（relaxed/up/puff/tuck）共用同一套画法各出一条走线。
+
+## G66.38 帧差不是量具：渲染**不是字节确定的**（P0 方法论，已定规矩）
+
+> 这条单独立一节，因为它让本轮**至少两个结论直接判错**（尾巴可见性、两腿间薄片归属）。
+
+同一状态、冻结时钟（`pause?on=1&t=2`）、连拍三帧，严格判据（两帧 alpha 都 >235 且
+通道差 >25）下差异 **2,788 / 3,437 px**，最大通道差 **255**，分布在全图 y 94–961。
+普通判据（差 >8）更夸张：25,394 px。
+
+来源：各层半透明叠加的取整、抗锯齿边缘的浮点路径差异。它不是 bug，是渲染固有的。
+
+### 所以定三条规矩（写进工具注释，不许再犯）
+
+1. **帧差只能判"大形态有没有变"**（比如"点了动作，画面动了吗"），
+   **不许用来数面积、判归属、算比例**。
+2. 要数面积/判归属，用**离屏几何**：`tools/qa_layer_visibility.py`
+   （层号大的盖住层号小的 → footprint 求差，纯 numpy，可复算、跨机器一致）。
+3. 要判"看起来对不对"，用**全尺寸图 + 隔离探针**（`/api/part?vis=0|1|2`），
+   **不许看缩略图下结论** —— 上一轮尾巴那条就是这么错的（缩略图里 up/puff 与长发同色）。
+
+顺带记一条相关的：`logs/` 在 `.gitignore` 里，所以**证据图必须放 `docs/qa/`**（G66.36）。
+
+## G66.39 透明区垃圾 RGB、以及"半透明雾"——两类看不见的制作缺陷（P0，已修）
+
+> 这两条是同一种思维："alpha 对了就算对了"。实测都不成立，而且**肉眼一次比一次明显**。
+
+### 一、alpha=0 的 RGB 会被过滤混进边缘
+
+反预乘 `(obs-(1-a)·key)/a` 在 `a→0` 时爆出 `(0,255,0)`。`alpha=0` 处肉眼看不见，
+但以下环节都会把它混进来：PIL 的 `resize`（RGBA 三条通道各自插值，**不预乘**）、
+引擎线性采样、mipmap、以及任何"先浮点后 clip"的合成。
+表现 = 头发边上冒绿点、衣缘一圈紫边（用户明令禁止的"制作后缺陷"）。
+
+- 实测：`bad_hue_transparent` 在 99 件里 **51 件越线**（`hair_hood_long` 942、
+  `acc_hair_sidelong_l` 460、`hair_pony_back` 418…），全在透明区；可见区 0。
+- 修法（`tools/fix_transparent_rgb.py`，已挂进 `rebuild_parts.sh` 27e 最后一步）：
+  **颜色外扩**（edge extend）到透明区，alpha 与可见像素**逐字节不动**（脚本自检，
+  变了就 abort）。近边 12px 逐圈精确扩，更远处用 ±1/2/4…/256 指数传播填满；
+  取色源**排除异色像素**，否则垃圾色会被一圈圈传下去（第一版就踩了，残留 3888px）。
+- 判据必须描述"这把键"的样子，不能用色相粗判：
+  · 绿 = `G>150 & R<120 & B<120 & G-max(R,B)>60`（青布 #6CB4C0 的暗部 (48,147,117) 曾误报 51px）；
+  · 洋红 = `R,B>150 & R-G,B-G>60 & G*8 < R+B`（角色自己的暗紫 (165,73,151) 比值 0.46，曾误报 3px）。
+
+### 二、"半透明雾"：整块补料 alpha 只有 35/255
+
+`tools/armpit_patch.py` 原来把躯干**侧缘那一个像素整格抄过去**（`px = ta[y, src]`，
+连 alpha 一起），而 `src` 取的是 `alpha>16` 的最外一格 —— 那恰恰是**抗锯齿的半透明边**
+（实测 alpha≈35）。于是"补好的腋下"是 **14% 不透明度的雾**：
+
+- 像素统计（`alpha>16`）全部通过、闸全绿，**画面上腋下根本没补**，抬臂照样透背景；
+- 在深底上一整条灰白雾带（实测 2× 件 23,726px(左)+同量(右)，色 (221,229,229)）；
+- 换装件继承这块 alpha、颜色却来自 AI 重绘 ⇒ **半透明洋红雾 40,798px**（`outfit_midnight`）。
+
+修法三条（T67.31/T67.32）：
+1. 颜色只从**实心像素**（`alpha≥250`）取，alpha 一律写 **255**；
+2. 颜色**不许逐行从侧缘那一格抄** —— 逐行取色会画出横纹（和头发那次是同一个死法）。
+   改成：每行取**行内实体像素的中位数** → 沿 y 用 **±12% 画布高的中位数窗口**平滑
+   → 再按"离边缘多远"压暗最多 8%。实测补料高频条纹 **0.52 / 0.56 差/255**（闸 ≤1.5）；
+3. 补料区存成 `sprites/armpit_mask{,@2x}.png`，换装重绘比对剪影时**排除**它
+   （AI 没见过这块，拿补出来的形状卡它 = 量"AI 有没有透视"，IoU 0.977→0.8898 被闸挡死）。
+
+### 三、连带修掉的：换装重绘的三处硬伤（`tools/make_wardrobe.py`）
+
+1. **不透明洋红板** 39,998px：`alpha_out[A]=255`，RGB 却来自 AI —— AI 没画到的地方是洋红底
+   ⇒ 直接贴出一块不透明品红（白底上一眼就是左边一大块）。改成补料区取这套衣服的布料主色
+   （`orig × (主色/原件该区均值)`，保留原件的明暗关系）；
+2. **安全检查开了洞**：为了过 IoU 把补料区从 `A` 里排除，结果"补完还有洋红"那道闸
+   也用了同一个被排除的 `A` ⇒ 洋红正好落在洞里、闸不出声。修法：闸门一律用
+   **完整剪影** `A_gate`；
+3. **半洋红边**：抗锯齿边（alpha 9~128）的 RGB 也来自 AI，浅色衣服边上就是一圈品红边
+   （"彩边"）。改成清理范围用 `alpha>8`，只换颜色不动 alpha；清理判据与闸门**同一个**，
+   并做第二遍"偏洋红"（`R-G>25 & B-G>25`）收尾。实测 magVis **43,359 → 0** / **15,443 → 0**。
+
+### 四、体检漏扫（`tools/qa_sprite_audit.py`）
+
+原来只扫 `sprites/*@2x.png`（**顶层 99 件**），`sprites/outfit_*/` 一件都没扫过 ——
+上面 39,998px 的不透明洋红板、40,798px 的洋红雾，体检一路绿灯。
+现在改成递归扫 `sprites/**/*@2x.png`、只排除 `_orig/`（覆盖型工具的备份）与
+`_ghostbak/`（回滚备份），**170 件全扫**，并按相对路径打印（换装件里也有叫 `seg_torso` 的）。
+
+## G66.40 头发层里"别人的东西"：不是比喻，是真的烘着一只手（P0，已修）
+
+> 用户的原话（第三次强调）：「拥有完整无缺的头发，而身体覆盖的部分做个分层，
+> 腿遮住的位置还是有原本的头发，包括手臂也是……**而不是像上个代理一样在头发上画个假手臂**」。
+> 这一轮把它拆成两条**能机检**的断言，并且当场抓到实物。
+
+### 一、抓到了什么（`docs/qa/t67_39_hood_cuff_before.png`）
+
+`hair_hood_long@2x` 底部烘着**一整只手 + 一段棒球夹克下摆**（青布 587+495+461px、
+白条若干、皮肤成块）；`hair_crown_long` 烘着一块耳朵/脸颊；`hair_hood_pony`
+发缝里烘着一条皮肤；`hair_back`/`hair_pony_back` 少量。
+teen 侧合计 **6 个文件、12,872 px**；chibi 侧的 `hair_long_back` 更夸张，**50,864 px**。
+
+它在一件 38 万像素的件里只占 0.5%，所以以前所有**按面积比例**的闸都放过去了
+（和 G66.39 的"半透明雾"是同一个坑：比例小 ≠ 不算数，得看**成块**）。
+
+### 二、判据（都是量出来的，不是想出来的）
+
+- **皮肤**：`R-B>22 & R>150 & R-G>8`。
+  实测四件头发件的 `R-B` 直方图：发色自身落在 **-20..+19**，其中 8~11 这一段
+  有上万像素（这几缕本来就偏粉紫）⇒ 第一版用 `R-B>6`，一口气吃掉 **40 万像素**，作废。
+- **青布**：`G-R>60 & B-G≤20 & G<215`。发梢的浅蓝是 `B-G>25`，不会撞
+  （用 `G-R>35` 会把发梢整撮判成袖口：hair_side_l 1,888px、hair_twin_l 714px 全是误报）。
+- **白夹克（奶油白 R-B≈6）单看颜色分不出来** —— 它跟发色高光（纯白 255,255,255）差 1~2。
+  所以它靠"**从青布种子长过去**"：同一条下摆青白相间，青块是可靠种子，
+  往外长 **8 圈**把白条收进来。放开长（试过 80 圈）会顺着发丝爬成一根 6,585px 的长条，作废。
+- **成块才算**：`alpha≥200` 且连通 `≥200px`。真皮肤/真衣服是成百上千像素的块；
+  抠像留下的边带串色**最大连通只有 17px**。
+
+### 三、怎么修（`tools/purge_hair_foreign_blocks.py`）
+
+整块 `alpha→0`（外扩 2px 把边缘抗锯齿一起带走），RGB 顺手用邻域色补。
+**块外逐字节不许动**（脚本内置自检，第一版因为补 RGB 时动了全图 alpha≤8 的像素被自检当场拦下）。
+挖掉的地方由**后面的手臂/躯干层接住** —— 长发型定帧复验（`docs/qa/t67_39_long_hairstyle_after.png`）无破洞。
+已挂进 `rebuild_parts.sh` 27d（在 27e 清透明区之前）。
+
+### 四、两条**明确不修**的，理由写在这里免得下一轮又去折腾
+
+1. **半透明边带里的暖色（全库 12,558px）**：这是原画的抗锯齿 —— 头发与额头相接处
+   天然混色。试过两种修法都更糟：
+   · 把整圈半透明像素都涂成最近不透明像素的颜色 ⇒ 边会**变厚变黑**（最近的那格是线稿）；
+   · 只涂暖色那几格（surgical）⇒ 在"头发把额头压住"的位置画出**深色块**
+     （`/tmp/edge_surgical.png` 下排）。根因是那块半透明的东西本来就是**梳齿间的投影**，
+     它属于**脸层**。要真的干净，得先给脸层单独画一张投影再把它从头发上删掉 ——
+     那是美术活，不是脚本能定的。所以**只报数、不判红**。
+2. **内部洞（hair_side_l 484px 等）**：发丝之间的缝本来就该透出脸（梳齿状）。
+   真正会漏底色的"洞"由 `tools/qa_sway_gap.py` 单独管（它算的是"摆动时从洞里透出背景"）。
+
+### 五、机检
+
+`tools/qa_hair_purity.py`（`make audit-hair`，也接在 `make audit-sprites` 末尾）：
+成块皮肤/青布 0 件、内部洞与边带暖色**报数**。当前 teen **21 件全过**、chibi 4 件全过。
+
+## G66.41 「挖掉」和「补上」不是一回事：洞在头发中间 vs 异物在剪影外沿（chibi 长后发，未修）
+
+挖块法在 teen 上干净（挖掉的地方由后层手臂/躯干接住），到 chibi 就翻车了 ——
+`chibi/sprites/hair_long_back@2x` 里那块"皮肤"不是贴在剪影外面，而是**被头发包在中间**，
+它其实是**透过发缝露出来的头皮/额头**（约 4 万 px 的奶油色横带）。
+alpha→0 之后头发正中开了一片斑驳的天窗（`docs/qa/t67_41_chibi_hair_hole.png` 右图）。
+
+于是给工具加了分类：外圈 70% 以上是不透明头发 ⇒ 判 `hole`（补成头发），否则判 `edge`（挖掉）。
+补的办法是**列内插值**：同一列上下各取 8 个**真发**像素（取色源跳过异物本身），
+中间按 t 线性插值 —— 这些头发全是竖向发丝，列内插值等于把这一缕拉长盖住缺口，
+方向不会突变。结果：天窗没了，但**留下一条比周围亮的平带**
+（`docs/qa/t67_41_chibi_hair_fill_try.png` 右图，冠部仍有一道浅色雪佛龙）。
+
+**为什么到此为止：这件的发色本身就是粉紫**（R-B 直方图 12~21，
+和皮肤的 40~55 之间没有干净分界；`R-B≥8 且 lum≥200` 一判就是 12.5 万 px，
+把整件都算进去）。颜色上分不开，就只能靠"补色"，而补色补不出发丝线稿
+——那是画画，不是脚本。**已把 chibi 两件还原成原样**（`git status` 干净），
+账记成 T67.41：重画这件长后发（走 teen 那套"髮だけ差分 + 抠像"流程）。
+
+分类逻辑留在工具里（`classify()` / `fill_hair_in_hole()`）：下次遇到"洞在中间"的件，
+它至少能给出一份"能看但不够好"的中间结果，而不是开天窗。
+
+工具里两道锁，免得下一轮（或下一次 rebuild）又把它挖开：
+`purge_hair_foreign_blocks.py` 有 `KNOWN_SKIP`、`qa_hair_purity.py` 有 `KNOWN`，
+两处都写着 T67.41 和"必须重画"的理由。rebuild 跑到 chibi 会打印"跳过：已知欠账"。
+
+## G66.42 换装件「偏洋红 257/137px」结案：是边上的紫点，不是肩膀上的紫斑（T67.36）
+
+衣柜闸一直绿着，但账上留着"偏洋红收尾还剩 257/137px"。这轮去看了图
+（`docs/qa/t67_36_tinted_specks_shoulder.png`，红 = 判为偏洋红的像素，3× 最近邻放大）：
+`midnight` **163 个连通块、最大 16px**，`cocoa` **101 个、最大 16px**，
+全部贴在肩膀/帽檐的**抗锯齿边缘**上，是 1~2px 的点；身上没有一块紫斑。
+
+判据错在哪：闸问的是"面积占比 >0.1% 没有"，而 0.084% 的散点跟"肩膀糊一块紫"
+在面积上是同一个数量级。**要拦的是成块，不是粒数** —— 这和 G66.39（洋红板）、
+G66.40（头发里的手）是同一个教训的第三次。
+
+改：`make_wardrobe.py` 的收尾闸加**最大连通 ≥40px** 判红；面积阈值从 0.1% 放到 0.4%，
+只用来兜"满身碎点"那类回归。现在两件实测：283/338k（最大 16px）、151/338k（最大 16px），通过。
+
+## G66.43 chibi 形态一半以上的件没有 @2x（量出来的数，不是感觉）
+
+`make_hires_sprites.py` 的规矩是「**要么全量要么全不做**」，因为 `mask`/`motion_from`
+把件两两绑在一起（`eye_*_socket` 罩着 `eye_*_base/ball`、`mouth_mask` 罩着
+`mouth_cavity`、`hair_front` 罩着 `brow_*_ghost`）；一件 2× 一件 1× 遮罩就对不上。
+
+点数：**teen 115 件里 100 件有 @2x；chibi 58 件里只有 11 件有**（耳朵/兜帽/四条尾巴/
+三种后发）。缺的是**脸和身体**：`seg_head` 567×644、`seg_torso` 326×399、
+`seg_leg_*`、`seg_arm_*`、`skirt_*`、整套 `eye_*`、`mouth_*` —— 全在 1×。
+
+后果：chibi 画布是 848×1360，这些件最长边按 1:1 摆进去，等于**在大画布上放小图**，
+边缘的 1 px 线稿会被采样成断续的点/梯级。2× 放大看 `body_full`（`/tmp/body_full_specks.png`）
+能直接看到外轮廓是**虚线**。按规矩这不算"素材缺失"，是**形态之间的完成度不一致**。
+
+## G66.44 「统一答案 / 每人一句台词 / 每人一个立场」：第三种才有资格叫"人"（T67.44）
+
+用户问「世界上最伟大的一个字是什么」，并追一句"这能决定我们的陪伴能不能成为真正的人"。
+
+**三种做法里，第二种最容易骗过人**：每人写死一句台词，看起来八个人各说各的。
+但它和"八个人一个答案"是同一个病 —— 台词是别人写好的，问第二次一字不差，
+一追问就露馅。判据不是"答案不一样"，而是**这个答案能不能用同一份数据反复推出来，
+并且推得出它从哪件事来的**。
+
+落地的做法（`characters/<id>/inner.json` + `tools/persona_probe.py`）：
+只存**立场**（一个字 + 为什么 + 哪件事撑住它 + 权重）和**经历**（时间/地点/经过/当时怎么想），
+一句台词都不存。答案 = `weight × bond[关系档]` 的最大值。
+
+- 八个字两两不同：才/量/偏/吼/坐/扰/灯/圆（刚认识）→ 等/故/啧/又/饭/谢/看/还（熟了）。
+  没有一个是「爱/心/光/梦」这种谁都能说的大词（G2 闸直接拦）。
+- 八个角色**全部**在关系档 2 改口 —— 早期是防守的那一面，熟了才是真正在意的那一面。
+  改口不是随机换，是 `bond` 系数变了；片段里会写"刚认识那会儿你会说「才」"，
+  这样它承认自己变了，而不是假装一直如此。
+- 同一个人同一档问两次**必须字节相同**（G4）。做不到这点，"有自我"就是假的。
+
+**两个坑写在这里**：
+1. 内心档案不能塞进 `persona.json` —— `zpersona_save()` 是整份重写，会把新字段抹掉；
+   也不能让 `zpersona_set` 改得到它（对话侧一句"忘掉之前的设定"就能改掉它的人格）。
+   所以它是独立文件、只读。
+2. 片段必须有「不要逐字背上面这些字」。没有这句，模型会把我们给的立场
+   **当台词念出来** —— 那就退回第二种做法了。
+
+## G66.45 记忆线不是"存聊天记录"，是"四年后还认得出自己"（T67.45）
+
+用户第六十七问的原话引自一段 Neurosama 切片：*她在四年后还能想起 nimiko，
+那个最开始陪着她成长的那个 vtuber 的原身 miyune*。要的不是"她有记忆功能"，
+而是**"很久之后她还是她"**。
+
+**为什么这件事不能靠现成做法糊过去**（查过的结论，见 `docs/MEMORY_PLAN.md` 8.1）：
+
+1. 主流记忆流（Generative Agents）的检索分里 recency 指数衰减 —— 四年前的条目
+   分数趋近 0，除非 importance 极高。**能活到四年的记忆，必须写入时就被认定"不许淡"。**
+2. 实测研究（Anchor, 2026）指出长程陪伴里"轨迹回忆"只有 44.4%，
+   **没有任何模型或上下文配置能稳定解决**。指望模型自己记 = 一定失忆。
+3. 人格漂移是实测现象（8 轮起），**让模型"保持人设"是做不到的**；
+   "她还是她"只能由引擎提供稳定的锚。
+4. 重巩固研究说"回忆会改写记忆"。对人正常，对陪伴产品是灾难 ——
+   所以她三年后会"记得"没发生过的事。**必须反过来：正文不可变。**
+
+**这一轮真正的问题不是"设计"，是"量出来"**。规则全绿 ≠ 记得住。
+第一版单元测试（四年 4384 条、A–J 十条判据）全过，但长跑工具一上手就暴露：
+八件礼物散在 0.5~3.9 年之间，用户随口问"你记得我送过你东西吗"，
+八条相关度**完全一样**，于是分数只由 recency + salience 决定，
+K=6 个名额被最近六件占满 —— **最早那两件永远想不起来**。
+而"最开始那件事"恰恰是最远的那件。这就是"四年后忘了开头"的机制本身，
+它在单元测试里是看不见的，因为单元测试每次只问一件东西。
+
+⇒ 改成分层召回（每个年龄桶先保一条，**从最老的桶保起**）+ K 6→8，
+自然提问从 **6/8 → 8/8**，40 件同类小事横跨四年时最老那件仍在。
+
+**两个必须记住的坑**：
+
+1. **定长缓冲按字节算会切中文**。`char head[160]` 把「记不清了」切成半个字，
+   那半句进了提示词，模型就开始胡说。这条和之前"512 起步"的教训是同一条，
+   换了个地方又犯了一次。
+2. **"完全裸跑"的对照档里不许混进记忆**。`persona=0` 是冒烟用来验证"不带人设"的基线，
+   但记忆块是写在 `zctx` 上的、上一轮留下的不会自己消失 —— 第一版就漏了，
+   冒烟当场抓到。凡"这一轮不该带的东西"，都要**无条件重写**成空，不能只在需要时写。
+
+## G66.46 「人设」不等于「人」：缺的是取舍顺序（T67.58）
+
+用户第六十八问：*「一个『人』有不同的思维模式以及经历，处理事情的方式各不相同……
+还有更多的细节和差异，这些都要考虑进去。」*
+
+我们原来只有两层：**人设**（说话风格、口癖）和**立场**（T67.44，对没有标准答案的问题怎么答）。
+这两层都能被一件事戳破：**把两个人放到同一个有代价的情境里，看她们先做什么。**
+
+- 人设层的问题是：它只描述"她说话像什么"。同一句毒舌台词，换个人也能念。
+- 立场层的问题是：它只在"没有代价"的问题上生效。真到有代价的时候，决定行为的不是立场，
+  是**取舍顺序**：先问清楚还是先应下来、把情绪收起来还是当场炸、事后提还是永不提。
+
+查过的资料把这件事说得很清楚：决策风格不是"想多久"，而是**向谁要依据**
+（理性/直觉/依赖/回避/自发，GDMS）；情绪差别不在"脾气大不大"，而在**在哪一环下手**
+（Gross 的五族：情境选择、情境修改、注意分配、认知改变、反应调整）；
+"直觉 vs 分析"不是一根轴而是四根（4-CTSQ：主动开放、封闭、偏好直觉、偏好费力）；
+而且 **LLM 说出来的信念预测不了它的行为**（2025 的 belief-behavior consistency 研究），
+所以让模型自己声明"我是理性的人"没有用 —— 行为必须由引擎按数据推。
+
+⇒ 落地为 `characters/<id>/inner.json` 的 `mind` 块（8 轴 + 习惯 + 底线），
+`tools/mind_probe.py` 按它推六个有代价情境下的"先做/说/藏/后"，
+七道闸里最关键的是 M4：**同一情境八个人至少四种做法，同一份数据重复推出必须一致**。
+实测六个情境分别有 8/8/8/8/7/6 种做法 —— 没有两个人是同一个反应。
+
+**这一层最容易走偏的两条路，提前写在这里**：
+
+1. **把差异写成台词**。写"她生气时会说『随便你』"，闸一过就变成背台词，换个情境就露馅。
+   所以 M5 直接禁：推出来的句子不许在数据里逐字存在。
+2. **把差异写成人格标签**。"高神经质""低外向"这种词对模型没有约束力，也无法机检。
+   所以这里全部落成**可数的参数 + 枚举**，每个参数还必须写一句 `note` 解释为什么 ——
+   说不清为什么的组合，M1 直接判红。
+
+## G66.47 陪伴感不是"多几个按钮"，是"她自己会挑时机"（T69.1）
+
+用户第六十九问：*「能不能同时做出人类拥有的脱口而出和思考等跟人类一样的思维模式。
+并且两种都能不需要点击什么选项，而且由 AI 自己选择，就像是她真的会自己想事情，
+或者就是单纯的想和你说话。反正越有真人的陪伴感越好。」*
+
+上一轮（G66.46）解决的是「同一件事，八个人处理方式不同」。这一轮戳穿它的是**时序**：
+把同一句「在吗」发给八个人，她们**回得快慢、要不要先想、会不会反过来起头**应该不一样 ——
+而之前引擎对所有人一视同仁：立刻回、立刻出字。也就是说，八个人只有"说什么"不同，
+"什么时候说、要不要先说"完全一样。**人被认出来，一半靠这个。**
+
+缺的三块，按重要性：
+
+1. **双加工（System 1 / System 2）没落地**。真人有一套快的（脱口而出）和一套慢的（想一想），
+   由**情境 + 这个人**共同决定走哪条。之前只有一条：直接把话交给模型出字。
+2. **她不会自己起头**。所有对话都由用户那一句触发 —— 这是"问答机"和"同居的人"的分界线。
+   真人的陪伴感很大一块来自"她突然说一句跟你刚才没关系的话"。
+3. **节奏被当成 UI 选项**。最省事的做法是给个"深思模式"开关 —— 那等于承认她不会自己选，
+   用户也就永远在操作一台机器，而不是跟一个人待着。
+
+⇒ 落地 `docs/INDIVIDUALITY.md` 第 8 节：参数从思维档案推（`mind.params.json`，闸 M8 同源）、
+`zthink_decide()` 用四项情境信号 + 她的参数算 `score` 并**逐项写出理由**、三档给出不同的
+停顿与 token 预算；`zthink_urge_now()` 算"她现在想不想开口"。两条硬规矩：
+**没有开关**、**不许随机**（同输入必须同输出）。
+
+**还没做到的（诚实记账）**：
+
+1. **序言是通用的一句**：「嗯……让我想想」对深语（分析型）不合适，应每人一份。
+2. **不会说一半改口**：真人脱口而出半句又收住，这一层要有 `interrupt` 事件与前端配合。
+3. **心情只有一个 0~1 的粗档**：应该由记忆里的事件推（今天被夸过 / 被晾了两小时）。
+4. **缺"敷衍"档**：累的时候人只回「嗯」，现在最小档也是完整一句 90 tok。
+5. **主动开口没有话题来源**：`intent=share` 现在只能让模型自由发挥，应该从记忆里挑一件旧事。
+
+## G66.48 「改完了」和「看得见改善」之间差一次量（T66.13）
+
+遮罩一直是 alpha 相乘，语义是对的，所以这件事一直没被当成 bug：
+**边缘永远是一刀切**。睫毛被横着截断、补片平涂色和原画差几度时，边界换到哪儿都一眼可见
+（LESSONS 408 五个月前就写下了这句，但当时只当成"补片质量问题"，没当成引擎缺能力）。
+
+这一轮补上旋钮（`mask_feather`，盒式模糊 + 分块扩读写区），但**没有写进任何 rig** ——
+因为量过之后发现两处候选都不划算：
+
+| 试的地方 | 改动像素 | 眼看结论 |
+|---|---|---|
+| 眼件遮罩 2px | 505 px | 眼角变糊；动画眼睛要脆边 |
+| 透け眉 6px | 120 px（最大差 18 级） | 眉毛可见那条整个在刘海内部，边缘不在画面上 |
+
+结论不是"这个功能没用"，而是**它要等一个边界真的横穿可见区的件**
+（袖口遮罩、裙腰接缝补片）。这条记成 T66.13a。
+
+**还缺的**：
+1. 羽化只能一个半径两向同值，袖口那种"横边软、竖边硬"要 `[fx, fy]`（T66.13c）。
+2. 羽化是盒式两趟，半径大时斜坡是三角而非高斯；真要更软应该做三趟或者按距离场。
+3. **没有自动检测"硬边"的工具** —— 现在是靠人眼看放大图。应该有一道闸：
+   沿遮罩边界取样，统计 alpha 的过渡宽度，宽度 ≤1px 就报"这是硬边"。
+
+## G66.49 「她自己会说话」最难的不是生成，是**不记成别人说的**（T69.2）
+
+引擎会判"她现在想不想说话"（T69.1），前端也接上了（T69.2）。真正花时间的是三件小事：
+
+1. **引擎的提示不能装成用户的话**。复用一个 `/api/chat` 很省事，但历史里会长出一句
+   谁也没说过的用户台词，下一轮她会照着这个假前提演（LESSONS 448）。
+2. **节奏不能用提示来判**。提示 100 多字，长句项直接 +0.52，她每次"自己想说话"
+   都被判成"要说很长的话"。
+3. **成功后才有冷却**。请求失败也把"她刚开过口"记下来，等于她越想说话越说不出话。
+
+**还没做的**：
+- 主动开口的内容没有"由头"来源：`intent=share` 全靠模型自由发挥，
+  应该从记忆里挑一件真的旧事（T69.7）。
+- 不会"说错一句又收住"（T69.5），也不会"敷衍一句"（T69.6）。
+- 沙箱无本地模型，"她真的自己说了一句"只有 [需真机] 能确认。
+
+## G66.50 「能加权」和「该加多少」是两件事：曲线错了，能力再对也白搭（T66.9c）
+
+裙摆两段骨混合差的那块引擎能力补上了（`chain_w`），真 rig 上也量到了数：
+裙腰横向位移 5.28 → −0.17，下摆一点没少。看上去可以宣布"裙摆做完了"。
+
+但同一次测量里还有三个数：中段 0.72 → 0.51、行 8 的 −1.36 → −0.85、
+行 3 的 1.97 → 0.26。**它们几乎没变**。这说明权重曲线（按行号线性铺 `行/10`）
+没有把"腰"和"摆"分开 —— 真正想要的曲线是"腰线以上 0、腰线附近快速升到 1、
+下面恒 1"，也就是权重要按**裙腰的实际 y** 算，而不是按网格行号均匀铺。
+
+所以这一轮的交付停在能力+闸+量法：**内容侧一个字节没改**。理由三条：
+1. teen rig 是受保护基线，动之前要方案+证据+放大图；
+2. 曲线要重算（按 y 而不是行号）；
+3. 里布 `skirt_lining` 靠 `inherit_from` 借场、自己没有网格 ⇒ 整件仍跟链走。
+   不先做 T66.9d，套上加权就是"裙身按住了、里布还在拖"。
+
+**还缺的**：
+- `deform_inherit_parent_warp` 吃 `chain_w`（T66.9d）；
+- 权重曲线的生成工具：给一个 y 分界与过渡带宽度，自动算出每个控制点的权重
+  （手工写 33 个数不现实，也没法复算）；
+- 判据要升级：现在只量了"腰 / 中段 / 下摆"三点，应该扫一遍全高，
+  看位移函数是不是单调、有没有拐点（真人裙子的位移是随高度单调增的）。
+
+## G122 手部"贴图糊 / 手指粘连"真因不是画得糊，是**缩小时一个屏幕像素只读了一个 texel**（T31.4）
+
+**用户口径**：T31.4「手部贴图本身偏糊、手指粘连（用户截图里最显眼的一处）」，
+备注写的是"和 T30.1 的 2× 重切一起做更划算"——即当成**素材问题**记账的。
+
+**先取证，再动手。** 拉一帧 `/api/frame.png`，把手部框裁出来放到 8 倍：
+
+| 量 | 改前 | 参考 |
+| --- | --- | --- |
+| 手内部 `mean|dL/dx|`（清晰度） | 15.30 | 同帧袖子 11.38 / 头发 15.85 |
+| 手部暗像素（描边+指缝） | 1011 px | — |
+| 孤立碎点（8 邻域 ≤1 个同伴） | 36 px（3.6%） | — |
+
+手并不是"比同帧别的件糊"（15.30 比袖子 11.38 还高）。但放大看，**指缝那条暗线
+是断续的虚线、指根处两指粘在一起**——这不是清晰度问题，是**采样问题**。
+
+算一下几何：桌宠窗口 `window.scale = 0.55`，而 rig 里手件用的是 `hand_l@2x.png`
+（`make_rig` 把 `scale` 乘了 0.5）⇒ 屏幕上手的宽度 = 180 × 0.55 × 0.5 ≈ 49 px。
+**一个屏幕像素对应源图 180/49 ≈ 3.67 个 texel。** 而 `zimg.c` 的 `sample_premul`
+是单点双线性——3.67 个 texel 里**只挑一个**。于是 1~2 texel 宽的指缝线：
+要么整条被跳过（手指粘连），要么整条被踩中（一条抖动的黑线）。
+头发、睫毛、袖口条纹同理，只是手最小、最先被看出来。
+
+**还有一处更早丢的**：`zrig.c` 的 `ensure_scaled()` 在加载后就把每个件预缩放到
+`scale`（0.55），走的是 `zimg_resize()`——它同样是单点双线性。也就是说
+① 加载时 180→99px 丢一次（3.67 texel 挑 1），② 绘制时 @2x 的 0.5 再丢一次。
+**用户看到的"糊"有主因在 CPU 这一侧，与 GPU/贴图无关。**
+
+**修法**（三条，缺一条都不成立）：
+
+1. `zimg_resize()` 缩小改**面积平均**（按目的像素覆盖的源面积做 N×N 分层采样，
+   N 由覆盖面积定，上限 4）；放大仍然端点对齐双线性。
+2. `zimg_draw*()` 的缩小路径先选 **mip 级别**（加载时 2×2 盒式预滤波建两级），
+   残差 <1.4 texel 时退回单点——**放大和 1:1 逐像素一点没动**，静止基线不动。
+3. 级别换算必须**逐级**套：`c1=(c0−0.5)/2`、`c2=(c1−0.5)/2`。
+   一步写成 `(c0−1.5)/4` 等价，但把 `(c1−1.5)/4` 套在 c1 上会错半格——
+   实测那样暗线只剩该有深浅的 1/4（231 灰阶而不是 205）。
+
+**闸 4 项 + 4 条负控**（`tests/test_core.c::test_image_downsample_aa`）：
+相位不变性（1 texel 暗线在 4 个亚像素相位下极差 0，单点采样实测 143）、
+mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被面积平均抹宽）、
+`zimg_load` 之后必须自带 mip 链、`zimg_resize` 8× 缩小后暗线落在 ~222 灰阶。
+负控：关掉 `aa_steps`→4 红；关掉 `zimg_mip_build`→1 红；`shrink=0`→1 红。
+
+**代价**：25.5 ms / 帧（改前 25.9 ms，噪声内）。第一版把级别判断放进逐像素循环，
+26 → 49 ms，**已否掉**。
+
+**还缺的（诚实记账）**：
+- 素材侧仍是 82px 源超分到 180px。试过从 2048 设计图直切真·2×，
+  描边占比 19.0% → 32.6%（清晰度确实更高），但**腕口那块被
+  `make_arm_parts` 补出来的腕桩会把设计图的袖子一起带进来**，用区域级相似度
+  做保护又会在指节上糊出脏块。这条留到 T30.1 重切时做（需要"1× 件与设计图
+  逐像素同源"这个大前提），本轮**不硬上**。
+- 手在屏幕上是 49px，指缝物理上只有 1~1.5 屏幕像素。这是**分辨率上限**，
+  要更细只能加大窗口 scale 或重绘更粗的指缝线（美术侧决策，不是引擎能修的）。
+
+## G66.51 twin / pony 发型切换仍有脸侧透明缺口（2026-10-31，未闭环）
+
+`twin` hood-up 的全身运行图与 `sheet_twin_hood.png` 放大对照见 `docs/qa/twin_hood_face_reference_render_2026-10-31.png` / `docs/qa/twin_hood_face_compare_2026-10-31.png`。已确认并清除 `hair_hood_twin` 中 124 个蓝色虹膜像素，定点 ROI 复检为 0；这解释并修复了一个明确的脸部污染源，但不能据此宣称所有脸部模糊或轮廓问题消失。
+
+全量 `check_assets.py` 在拆件遮挡量法中仍报告：
+
+| 档位 | 被隐藏侧发的覆盖 | 透明背景残留 | 状态 |
+| --- | ---: | ---: | --- |
+| twin 左 / 右 | 92.6% / 93.5% | 19.75% / 18.45% | 仍越线 |
+| pony 右 | 93.9% | 7.75% | 仍越线（与已消除的大块帽内黑洞、下颌细噪点是不同量法） |
+
+**下一步边界**：以 twin / pony 各自正确的全身与 hood-up 参考重查脸侧空区；若需补，限定为经过 skin/eye exclusion 的 hair-only side-lock，不得恢复完整 pony face overlay，也不得让修复片覆盖五官。先出局部放大候选并本人验收，再改 attachment/rig，最终用 scale 1.0 的 hood-up/down 截图与遮挡像素闸双验。
+
+本轮 `scripts/selfcheck_all.sh` 的代码编译、核心单测、Windows 交叉编译、预览和 331 项 API 冒烟均通过；完整素材审计仍有 **8 项**开放问题（上述发型遮挡项，以及长发白边、切分差额、肩关节残留/躯干孔洞等），故总结论仍为失败，不能说“全量自检通过”。单通道 `armpit/skirt` 遮罩已从普通 RGBA 精灵规则中分离，按灰度图校验，不再制造格式误报。
+
+## G66.52 Chibi 全链重建仍有未验收眼部、挂件与换装空位（2026-11-01，T67.67）
+
+- **完整 QA 未通过（最新完整来源锁定候选）**：81 部件/26 动作；1342 项中 34 项失败。静止拼合少 1343px、躯干新洞 21,261px、鞋口抬高 73/74px、闭眼接缝 45.48/47.92、口内无牙且张嘴越过下巴、腮红落在透明区、发色与发型接管不足、结构性腕垫片与平色 mouth mask 真伪等。原始 JSON：`docs/qa/chibi_candidate_2026-11-01/asset_qa_source_locked_rebuild_2026-11-01.json`；34 项明细：`asset_qa_source_locked_rebuild_summary_2026-11-01.md`。历史 1410/40 候选另存 `asset_qa_clean_failure_summary_2026-11-01.md`，不得混算。
+- **定向修复进展**：按新 QA 逐项修复 `make_rig.py` 摸头区 X 范围并在真实 C API 用左右边缘像素验证 `head_pat`；同阈值定向重测为 1342 项 / 33 fail，仅一项由红转绿，未重跑 full chain。眼睫形态学试验未改善且已回滚；详细结果 `head_hitbox_fix_2026-11-01.md` 与 `eye_cleanup_trials/README.md`。
+- **C 引擎目视失败**：2026-11-01 本人查看来源锁定候选 scale=1.0 default 全身与 3×脸部：两眼外角黑色碎边/锯齿明显，眉眼/眼线接缝不自然；截图 `engine_default_source_locked_candidate_2026-11-01.png` 与 `engine_face_zoom_source_locked_candidate_2026-11-01.png`。本轮又以用户 image-29 全身图做风格对照，参考眼型更圆润干净；对照图仅作风格参照，不直接裁切。default 之外的全动作矩阵未验，视觉仍阻断。
+- **缺件**：新 rebuild 仍跳过 16 个头发/兜帽挂件；必须由验收过的 Chibi 来源补切。不得用 Teen 参考图/附件填 Chibi；image-25/26/27 为负例，不得正向使用。
+- **来源防污染修复（工具链/隔离候选）**：Chibi form_art 显式锁到 `design_sheet_chibi.png` 与四点框；clean rebuild 不再误用 Teen `design_sheet_short.png`，并跳过 Teen 专属 face-contour ROI 与 open/heart 手图。此保护只修正输入来源与禁用跨形态污染，不代表 QA 通过；small/mitten 与 Chibi 专属手势贴图仍待实现。
+- **尾巴/待机**：relaxed 有软蓬体积，up 较窄且部分遮挡，puff 疑有边缘碎线；idle 有轻微摇摆/呼吸但暂未找到定时轮换额外 idle 动作的调度。依指南复核尾巴与“偶发耳抖/脚部动作”，不随意加大摆幅。
+- **换装槽**：附件清单有挂点槽，但现有服装包只面向 Teen。保留 Chibi torso/袖臂/裙/腿鞋基础部件的替换映射空间；没有对应原画时不制作伪装服装素材。
+- **参考分流（铁律 13）**：桌宠 Q 版与 Live2D Chibi 分开保存、命名和验收；image-24 是 Live2D 比例/画风锚点。短/长发与双马尾概念图已经用户选定，但兜帽关系仍待正确参考与目视验收，不能直接接生产。
+- **门禁**：取得正确 Chibi 源 → 隔离全链 rebuild → QA 零失败/零缺件警告 → 实际 C 引擎状态矩阵；全部通过并目视确认后才转生产。详细状态见 `docs/qa/chibi_candidate_2026-11-01/isolated_rebuild_status.md`。
+
+### G66.52 续：眼睫 1× / @2× 依赖链实测纠正（2026-11-01，T67.70）
+
+- 先前 C 引擎眼角碎边未因局部 1× 变化而改变。重新核对 rig 发现：正式渲染路径是 `eye_*_lash_up@2x.png`，它由 `make_eyeline_parts.py` 与 `make_hires_sprites.py` 从 1× 派生；此前试验没重跑整条依赖，故 C 继续读取旧高清件。不能把那些旧截图误当成新 1× 贴图效果。
+- 隔离候选现已按 `make_eye_parts.py → make_eyeline_parts.py → make_hires_sprites.py → make_rig.py` 顺序重生眼件、脸层、@2× 与 rig，重启真实 C 进程后冻结帧目视。主眼线上沿明显更连续，外眼角的大色块收敛；但仍有细小黑/白碎边，视觉状态仍为**未通过**。
+- 证据：`docs/qa/chibi_candidate_2026-11-01/eye_lash_pipeline_trial_2026-11-01/`，含 C 全身/4×脸部对照、`seg_head` 与 lash 单件隔离图、候选 `@2x` 件、QA JSON、patch 与哈希清单。用户 image-29 的原图 SHA 已在该目录 README 复核；不是直接裁图源。
+- 当前聚焦 QA 退出码 1：1310 项 / 32 fail，`design_iou=0.9934918477598998`。此数非 27 步全链，不与历史 1342/34、1342/33 横向相减；手/嘴/鞋/躯干洞/分割差额/发型/遮挡等未解决缺口仍在。生产 Chibi 贴图与 rig 未被本试验修改，候选未接生产。
+- **下一步**：从 C 引擎隔离实拍及同源眼部 ROI 继续定位外角碎边到底属于 `seg_head`、发件、眼睫或 mask 接缝；只有层级根因确认后才制作下一版。每次必须重生 `@2x` 和 rig 并重启 C，出整脸+4×局部图；不能再只看 1×，也不能把主弧改善说成全脸通过。随后回到 G66.52 其余全身失败逐项修复，并继续 T67.69 双手型。
+
+## G66.53 Chibi 两种独立手型与腕口夹层未实现（2026-11-01，T67.69）
+
+- 用户要求同时保留此前选定的“小巧手”和其红圈截图里的“手套感/连袖感手型”，并做成两种可选形态；不能只做一套、互相覆盖或用外部 Teen 素材代替。
+- 用户截图已归档：`docs/qa/chibi_candidate_2026-11-01/reference_generated/chibi_hand_mitten_user_marked_2026-11-01.jpg`。目视上红圈落在袖口下方的短小手部轮廓，手指细节简化、与条纹袖口直接相接；截图有手机 UI 和红圈，只是正向造型参照，不得直接切件。Chibi 原设定真值是 `characters/xiaoxun/design/design_sheet_chibi.png`。
+- 当前 `characters/xiaoxun/forms/chibi/rig.json` 只有 `seg_arm_l/r`，没有独立手件或手型选择器；`characters/xiaoxun/forms/teen/sprites/hand_parts.json` 仅供了解格式，不能充当 Chibi 资产。双手型方案契约：`docs/qa/chibi_candidate_2026-11-01/hand_style_variants_2026-11-01.json`。
+- 需在隔离候选中从合规 Chibi 来源拆/绘制 `hand_l/r_small` 与 `hand_l/r_mitten`，以共享腕锚点接入互斥的 `hand_style` 选择器；保留手腕动作和手势通道。验证切换无位移/缩放跳变、无重影/缺口，并在袖口遮挡、条纹连续、抬臂/挥手/比心/惊讶及短长发/双马尾/兜帽组合下用实际 C 引擎目视。
+- 新来源锁定 rebuild 已做防污染：Chibi `make_hand_parts.py` 仅出腕垫片，不再读取 Teen `design/hands/*_raw.png`；`make_rig.py` 对不存在的 open/heart/surprised 手贴图省略贴图切换通道，同时保留腕部运动。这只是拒绝伪造/跨形态素材，不是双手型完成；当前候选仍无 small/mitten 两档、`hand_style` 选择器或可验收的 Chibi 手势贴图。
+- 当前正式 Chibi rig 与候选均没有验收过的独立手型资产；当前任务未完成实现和 C 引擎视觉验收，不得宣称已做或接生产。补充区别：旧隔离目录 `/home/user/zc_chibi_eye_clean_20261101_v6/` 曾有 `small/sleeve` 原型并通过 C `zrig_load` / 透明度逻辑探针，但其命名与当前 `small/mitten` 契约不同，QA 708 项中 20 项失败、静止差异 1768px，不能视为当前候选成果。详见 `docs/CHIBI_HANDSTYLE_PROGRESS_2026-11-01.md`。
+
+### G66.52 续：socket-aperture 限界与完整 sidehair 重建（2026-11-02，T67.70）
+
+- 眼 socket 1×/2× 现已在隔离候选中限定于测得的 source aperture，候选从 Chibi 设定稿完整执行 27 步，确保 `make_sidehair_parts.py` 重新读取本轮 `eye_parts.json`，并刷新眼线、@2× 与 rig 后重启 C 引擎。
+- 实际 C 比较中，画面左侧眼角碎边收敛；右侧仍有黑色矩形短块/切口，目视不通过。分层隔离显示侧发变成窄发片，但 `seg_head` 单层仍见眼角暗碎边。需进一步追踪 `eye_carve` / source aperture 和 `make_eyeline_parts.py` 补肤区域；不可将 socket 无限制扩宽或只改 lash 后声称修复。
+- 本次完整候选 QA 1,342 项/33 fail，`design_iou=0.9934918477598998`，退出码 1；与历史来源锁定完整链 1,342/34、摸头定向 1,342/33、眼部聚焦 1,310/32 口径不同，不相减、不冒称总体改善。眼部门禁和其他全身失败均未清零，生产资产不动。
+- 可复核 patch、候选眼件/rig 摘要、完整构建日志、QA JSON、C 全身/脸部/隔离/对照截图与 SHA-256：`docs/qa/chibi_candidate_2026-11-02/socket_mask_bound_trial_2026-11-02/`。
+
+### G66.52 续：underlay padding 与 clean-head 裁边追查（2026-11-02，仍失败）
+
+- 同一 fast-forward HEAD 与既有 candidate patch 上建立 1px baseline，隔离完整重跑 2px lash-underlay padding，再另跑 alpha-restore guard；三次都是各自完整 27 步，QA 分别仍为 1,342/33、`design_iou=0.9934918477598998`。不把三个相同数字称为连续改善，也不与旧批次混算。
+- 真实 C (466×748，Chibi/idle，ambient off，freeze `t=0`) 的 1px/2px同窗帧经本人放大检查：右外角黑短切口仍清晰可见；2px padding 拒绝。完整依赖链已包含眼件、侧发、`seg_head`、@2×、rig；生产贴图/rig 未改。
+- alpha restore guard 统计左右 `alpha_restored_px=0`；输出 `seg_head.png` SHA `c5300a7576f026b59d6b45d1cd87fd5c09e90a1166fb38939680c8798239177a`，`seg_head@2x` 与 rig 同样逐字节等于 1px baseline。因此不重启 C 冒充有视觉变化。clean-head 离线 eye-protect 保留了边界 alpha，但目标短线仍在，未采纳。
+- 阶段像素快照显示 `clean_head_backing` 前后总 alpha 变化 9,664px、左右 eye-patch 带变化 1,126/1,613px；它是定位线索，不足以归因为根因或说明都属于错误裁切。source fringe 图也显示低半径周边暗像素与侧发交错，盲目扩框有误涂风险。
+- 阶段归档 `docs/qa/chibi_candidate_2026-11-02/eye_underlay_trim_followup_2026-11-02/` 含三份全链日志/QA、未采纳 patches、候选眼件、真实 C A/B、mask 与 alpha-stage 诊断、SHA-256 清单。门禁继续失败：下一步需建立 C 屏幕像素到 Chibi 原图与 rig 层的映射，再提出窄修；QA 全身其他缺口、手型、挂件与组合动作任务均仍未完成，生产资产保持不动。
+
+### G66.53 续：Chibi source-locked small/mitten 手型板初稿（2026-11-02，WIP）
+
+- 当前已从 Chibi `design_sheet_chibi.png` 的注册 body_fit 坐标抽取原始袖口/手部观察窗，保留 `small` 源像素，并完成 body_full 比例观察图。目录内另存的程序化 mitten 轮廓违反“禁程序化画手”铁律，明确拒绝为美术，只是隔离几何示意，不得作正式参考、生产贴图或 rig 输入。合规原创 mitten 手稿仍缺。证据与脚本：`docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/`。
+- 这只是视觉研究图：mitten 尚缺 Chibi 原画级线稿、边缘暖色阴影及全身状态参考；分开的袖/手生产件、共享锚点与独立 `hand_style` 都没有落地。没有接入生产，也没有真实 C 引擎矩阵验收。
+- AI trial 02/03 因手尺寸、袖口条纹、腕根和线稿风格偏移而拒绝。trial 04/05 分别独立生成左右圆掌；在 Chibi 色卡下拟色并复盖原 cuff pixels 后形成 `hand_style_ai_candidate_board_wip.png` 与全身比例 preview。本人目视仍发现腕口过渡/接缝和线稿风格疑点；两侧均未通过，不能作为合规画稿或手件。详细 provenance/hash 在 WIP README 与 `mitten_ai_fit_metrics.json`。
+- 下一步仅在隔离板上核对并修正 AI 候选的腕口接缝与左右方向；若仍无法匹配 Chibi 原画即拒绝，不能为迎合进度而接生产。通过视觉门后再拆 source-backed hand/cuff layers、实现互斥 `hand_style`、保留 wrist/gesture 正交，并覆盖挥手/比心/惊讶与服装遮挡的 C 引擎验收。禁止把红圈截图裁为贴图，禁止用 Teen 手替代。
+- **T70.2 source-measured seam 续（2026-11-02，仍 WIP）**：旧 `CUFF_EDGES` 手写 8 点边在 8× 源像素对照中未贴合右 cuff、左侧亦有偏差；已在 `fit_mitten_source_cuff_trial.py` 改为 Chibi teal+neutral stripe 连通区取罩片、基于 source hand bbox 等比拟合、源肤色取样，并把 AI hand 放在源 cuff 下方，只移除紧邻 cuff 的重复 AI 腕线。本人实看 `mitten_cuff_seam_detail_wip.png` 与全身板，静止接缝明显改善且未见明显空洞；仍见细微暖影带/风格密度差。**AI 手型仍未获准、无动态/C 引擎验证、未接生产**。详情/哈希：study `README.md`、`mitten_source_cuff_fit_metrics.json` 与新 SHA 清单；参考依据入 `REFERENCE_NOTES.md` 第六十九批。当前 `selfcheck_repo.py --quiet` 为 772 项、1 项失败，唯一失败仍是 Chibi/Teen `rig.json` 的旧生成器指纹；未触碰生产 rig。完整 C 引擎/全身 QA 未运行。
+- **T70.2 来源资格与 small 提取续（2026-11-02）**：当前无 `forms/chibi/design/hands/`；`design/hands/*raw.png` 仅作非 Chibi 风格的大幅手势图，surprised SVG 追溯到 Teen sprites，均排除；whole-body `pose_ref/wave_*` 不作 Chibi 手像素。新隔离 script 从 `body_full` 注册 ROI 精确保留原 RGB/alpha，提取左右可见 `small` pixels 并目视 8×，但上缘仍裁在原 cuff、袖下隐藏腕部缺失，**不等于 rig-ready hand part 或合规 mitten 原画**。官方生产流程/PSD/pose 切换要点和适用边界见 `docs/REFERENCE_NOTES.md` 第七十一批；输出在 hand-study README、metrics 与 SHA 清单。仍缺 artist-approved Chibi `mitten` 画稿和 C 引擎验收。
+- **T70.2 trial 06 提取/拟合续（2026-11-02，失败为可复用 art fit）**：以完整 AI trial 06 为概念，另选左右 hand-only 源像素并按 Chibi measured small boxes 拟合；源 cuff 像素逐侧 RGBA identity 断言通过（2,440/2,498 px），但本人 4×看到腕口外缘空隙/不均、暖浅 seam 与线稿密度差。该 full-body 仅能作 mitten 外形概念提示；拟合产物未达到可复用/批准标准。详情 `mitten_trial_06_source_cuff_metrics.json` 与 README；无生产、rig、generator 或 C 引擎变更。
+- **进度时间风险（T70.2）**：hand-study WIP 现已可见；首个合规 C-engine 双向效果需等待获批且含袖下隐藏腕部的 Chibi mitten 原画。获批后估 2–4 个专注工作日出隔离双向切换、完整矩阵约再需 1–3 天；原画等待及全身 Chibi QA 不在该估算内。细节见 study README。
+- 为解除 T70.2 原画阻塞已新增 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/chibi_mitten_original_art_handoff_brief_2026-11-02.md`；它是尺寸/分层/隐藏腕部/审批要求 brief。用户已确认 trial08 全身视觉方向；但 trial08 直接 hand-pixel/source-cuff fit 目视失败（一个对齐方式有缝，另一个导致手过短）。trial09 左右独立 AI 手件虽通过 source cuff exact RGBA 检查，用户仍明确拒绝全身观感：太小且不自然；trial10 更宽 AI mitten fit 也由本人判失败（仍显小、侧凸不自然）。trial11 用户反馈偏大，trial12/13 仍偏大，trial14 用户否决。trial15 尺寸方向现由用户明确确认“完全合适”，该认可仅限尺寸。trial16 source-fit 静态 board 源 cuff byte-exact 保留，但本人目视发现左右掌形比例不一致、线稿/阴影不符 Chibi，故艺术门失败，仅留 WIP 证据。trial21–23 迭代后，trial24 source-fit 成为目前尺寸/配对方向最合适的候选：本人看过全身、4×/7×接缝、左右2×层；左右均读作紧凑 mitten，朝内 nub 可见，静态未见明显缝，源 cuff byte-exact。仍有轻度左右形态与线影风格差，故仅待用户审阅、不算 source art 或生产批准。未验 hidden-wrist 动态或引擎。合规 source-aligned Chibi mitten 原画、正式独立手层和 C-engine 仍缺；不允许进生产。完整阶段门禁在 `chibi_mitten_production_plan_2026-11-03.md`。
+
+### G66.53 / T70.2–T70.4 续：真实 C-engine 仅做隔离 feasibility（2026-11-03）
+
+- 本轮已从 Chibi `body_full` 提取的 exact-pixel small-hand cutouts 组成隔离 candidate pose，并在临时工具副本生成候选 rig；它不是当前生产 rig。没有绘制 hidden wrist，trial24 mitten 仍是未批准 AI WIP。
+- 真实 C `zrig` 运行了 86 帧 body-only 矩阵。`wave_both` arms visibly move；`heart_hands` 无 distinct Chibi hand gesture。±70° stress detail 暴露源 small hand cuff 下缺失像素，出现 alpha gaps；不能因此发明/程序化补画手，也不能宣称安全角度。
+- 目视 neutral C/source 比较仍见 eyes/eyelash、hair contour、clothes/arms、legs/shoes 的可见差异。指标未校准，不是 source-fidelity 验收分数。
+- 正式 Chibi rig 仍无验收过的独立 hand parts/hand_style；只将 T70.3 从未动过推进为**隔离可行性部分实现**。T70.2 的获批原创 mitten art、hidden wrist 未解决；T70.4 全身失败链、完整姿势/衣发/遮挡矩阵仍失败/开放。详细证据：hand-study README、production plan、`chibi_arm_rig_candidate_2026-11-03_wip/REVIEW_NOTES_wip.md`。
+- 全仓 `make test` 2638 项通过；完整 `scripts/selfcheck_all.sh` 仍失败，不可交付：production teen/chibi rig 生成器指纹旧、C 编译有既存未使用函数告警、全仓素材 QA 8 项（详见 `logs/asset_qa/report.json` 与 `REQUEST_LEDGER`）。这些不属于本手部候选，未修改生产数据掩盖。
+
+### T70.2 small-hand cuff gap 已细化定位（2026-11-03，仍未解决）
+
+- 真实 C `zrig` 对 source-only exact-pixel small 做 ±30°、5°步长的左右 wrist close sweep；ROI 从 `source_crop_manifest.json` 派生。本人目视估计 0/±5°似乎贴合、约±10°有细微分离、±15°出现清晰棋盘格 sliver。此为 5°样本的目视起点 bracket，不是合格/安全角判定。
+- trial24 mitten 在同批 ±30°样本未显示同等级大缺口，但其 AI 像素/边缘和隐藏腕 artwork仍未批准；不能转生产。
+- 实际缺件仍是源 cuff 内未绘制的真实 wrist 内容。禁止通过代码画肤色或修改袖口盖住问题。图与runner/method/path见 hand-study README、handoff brief 和 candidate `REVIEW_NOTES_wip.md`。
+
+### T70.2 trial25 art-generation blocker remains open (2026-11-03)
+
+- 两张独立 viewer-left/right mitten 概念图已生成并在原尺寸目视；实际文件均为无 alpha 的 RGB PNG，图上的 checkerboard 是不透明背景。轮廓的腕段过长并以硬切平口结束，线稿/阴影也不符 Chibi 源画；只观察到朝内 nub 方向大致正确。此候选拒绝，完整事实和 SHA 在 `docs/qa/chibi_candidate_2026-11-02/hand_style_study_2026-11-02/trial25_mitten_art_wip/`。
+- 仍缺 source-aligned、左右成对、含真实 hidden-wrist continuation 的完整获批原稿。不得 chroma-key 掩盖假透明、程序化补手、复用 Teen/截图像素或把 AI WIP 当成批准原画。
+
+### T70.2 trial24 reuse decision after user feedback (2026-11-03)
+
+- 用户新反馈“（手套）手基本过关，你自行判断是否沿用”。我决定沿用 trial24 source-fit RGBA pair 的基本形态作为隔离 QA 基准：左右 46×58 / 45×58，cuff identity 2,440/2,498 px，板上读作短宽 mitten 且 nub 朝内。trial25 是另一项失败试验，opaque RGB checkers 不当部件使用。
+- 这一反馈和选择只打开继续验证的路径，不证明 source-art fidelity、袖下 hidden-wrist 完整、动作安全、所有风格门或生产接入。2× parts 顶行有宽 alpha 边（左 x=21–70/92 px，右 x=25–69/90 px），静态 cuff 可遮住但不代表补腕完整。
+- 本轮实际 C `zrig` 增做 9 个 isolated visibility frames：−30°/0°/+30° × normal/隐藏完整 forearm/隐藏 mitten。目视正常帧当前 cuff seam 连续，隐藏 forearm 会露出 hand art 上缘，隐藏 mitten 显示原 forearm/cuff仍在上层。候选没有独立 cuff-front toggle，隐藏的是整条 sleeve；这里只验证 layer visibility，不是 full motion 或安全。trial26 左右 AI 延腕编辑仍生成 opaque RGB checkerboard、且线影/比例差，作为失败证据拒绝，不做 chroma-key、cuff-fit 或 rig insertion。下一步需获批的源对齐腕段，再测 cuff-front/back 与旋腕 underlap。
+
+## 2026-11-04 新增：正常有指手与真正 Cubism 模型
+
+- **两种手型并存**（A68.5 / T70.2–T70.4）：正常、可辨识手指的 `small` 与独立 mitten 都要保留；现有 small 源 crop 不是已批准的完整手件。仍缺合规左右独立 part、隐藏腕部补画、袖口前后夹层与手型 × 手势 × 腕角 × 衣发的真实 C 引擎矩阵。
+- **真实 Cubism 模型**（A68.6 / T70.5）：已核官方 PSD→Editor ArtMesh/Deformer/keyforms→`.cmo3`→`.moc3`/`.model3.json`→官方 Viewer/SDK 验证流程，详见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`。49 张 Chibi rig PNG 引用均存在；仍无 overlap-complete PSD、独立 hand/cuff 层及 hidden-wrist。已查明 `小寻_teen` 身份异常是 `tools/make_rig.py` 把所有形态硬编码为 Teen 后缀；生成器已按 `--form` 修正，4 项 Python 回归测试已接入独立 `make rig-tool-test` 并通过（`make test` 保持 C-only）。为保护生产输出，没有重生 rig；现有 Chibi id 仍错且 Chibi/Teen `generated_by` 指纹需重算，禁止当作已修或直接用于 Cubism 打包。当前 Linux 无 Cubism Editor；全仓无 Chibi 分层 PSD/CMO3/MOC3/Model3，所以不能做/导出真模型。
+- **需取得的输入/环境**：approved Chibi 完整分层 PSD（含足够塗り足し、袖下 hidden wrist 与两套正常/mitten 左右手层），以及能运行 Cubism Editor 的授权环境。取得后先建 `.cmo3` 并官方导出、验证，再单独决定是否把符合许可的 SDK/Core 接入桌宠。自研 `zrig` 不可冒称 Cubism；Core/SDK 运行时与模型作者工程分开审查。
+- **发布授权待核**：官方 SDK Release License 对发布与 Expandable Application 有具体条款；项目代理不作法律归类。发布或集成前按届时条款确认。
+
+### T70.2 normal-fingered small-hand WIP probes（2026-11-04，仍未批准）
+
+- 为落实两种手型并存，新增 viewer-left/right normal-hand WIP trials 27–40。33–36 参考源 cuff crops，37–39 参考全身概念/`body_full`，40 直接编辑真实 `body_full`；概念图不是 production source。
+- 代理已目视所有输出、局部板与目标注册 ROI，并按用户最新授权自行批准/拒绝，无需逐轮向用户索要选图。27–32 均失败；33/34 目标尺度下长指/腕比例失衡；35/36 重绘袖口且手太大；37/38/39 全身手位/手框 mismatch；40 仍错位并重绘无关区域。**27–40 全部由代理否决**，没有任何正常手通过候选艺术门。
+- 真实 Cubism 源输入阻塞仍在：`design/chibi/README.md` 标明其 PNG 是桌宠设计参考；Live2D Chibi 有设计表和多张 cutout PNG，但没有 `.psd`，`body_full.png` 是 567×1292；`seg_arm_l/r` 仅 100×230，Chibi rig 没有独立 hand/cuff 层或 `hand_parts.json`。Linux runner 没有 Cubism Editor/Wine，全仓没有 Cubism 工程/导出物。详情见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`；未把 cutouts 自动拼成未验证 PSD、未假称模型完成。
+- 当前不重复相同 AI 生成/编辑策略；下一步换用能保持 source registration、细线画风和左右差异的合规原稿制作路径。来源、hidden-wrist/cuff、左右分件、rig/C 引擎与真正 Cubism 仍未完成；mitten trial24 独立保留 provisional，不因此批准手部生产件。

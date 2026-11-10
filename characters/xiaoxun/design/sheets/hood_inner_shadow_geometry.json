@@ -1,0 +1,20 @@
+{
+  "source": "sheetcut_hood_inner_shadow_short.png",
+  "pos_rel": [
+    0.027353,
+    0.446045
+  ],
+  "dpos_rel": [
+    0.001602,
+    0.306031
+  ],
+  "sprite_h_rel": 0.235192,
+  "width_ratio": 1.0,
+  "template_bbox": [
+    422,
+    170,
+    594,
+    238
+  ],
+  "scale_sheet_to_bodyfull": 0.89042
+}

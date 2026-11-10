@@ -1,0 +1,422 @@
+{
+  "L_neutral_hide_none": {
+    "params": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 0
+    },
+    "hidden": null
+  },
+  "L_neutral_hide_hand": {
+    "params": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 0
+    },
+    "hidden": "hand_l"
+  },
+  "L_neutral_hide_little": {
+    "params": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 0
+    },
+    "hidden": "finger_l_little"
+  },
+  "L_neutral_hide_ring": {
+    "params": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 0
+    },
+    "hidden": "finger_l_ring"
+  },
+  "L_neutral_hide_middle": {
+    "params": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 0
+    },
+    "hidden": "finger_l_middle"
+  },
+  "L_neutral_hide_index": {
+    "params": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 0
+    },
+    "hidden": "finger_l_index"
+  },
+  "L_neutral_hide_thumb": {
+    "params": {
+      "ParamFingerLLittle": 0,
+      "ParamFingerLRing": 0,
+      "ParamFingerLMiddle": 0,
+      "ParamFingerLIndex": 0,
+      "ParamFingerLThumb": 0
+    },
+    "hidden": "finger_l_thumb"
+  },
+  "L_alternating_hide_none": {
+    "params": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "hidden": null
+  },
+  "L_alternating_hide_hand": {
+    "params": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "hidden": "hand_l"
+  },
+  "L_alternating_hide_little": {
+    "params": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "hidden": "finger_l_little"
+  },
+  "L_alternating_hide_ring": {
+    "params": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "hidden": "finger_l_ring"
+  },
+  "L_alternating_hide_middle": {
+    "params": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "hidden": "finger_l_middle"
+  },
+  "L_alternating_hide_index": {
+    "params": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "hidden": "finger_l_index"
+  },
+  "L_alternating_hide_thumb": {
+    "params": {
+      "ParamFingerLLittle": -1,
+      "ParamFingerLRing": 1,
+      "ParamFingerLMiddle": -1,
+      "ParamFingerLIndex": 1,
+      "ParamFingerLThumb": -1
+    },
+    "hidden": "finger_l_thumb"
+  },
+  "L_reverse_hide_none": {
+    "params": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "hidden": null
+  },
+  "L_reverse_hide_hand": {
+    "params": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "hidden": "hand_l"
+  },
+  "L_reverse_hide_little": {
+    "params": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "hidden": "finger_l_little"
+  },
+  "L_reverse_hide_ring": {
+    "params": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "hidden": "finger_l_ring"
+  },
+  "L_reverse_hide_middle": {
+    "params": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "hidden": "finger_l_middle"
+  },
+  "L_reverse_hide_index": {
+    "params": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "hidden": "finger_l_index"
+  },
+  "L_reverse_hide_thumb": {
+    "params": {
+      "ParamFingerLLittle": 1,
+      "ParamFingerLRing": -1,
+      "ParamFingerLMiddle": 1,
+      "ParamFingerLIndex": -1,
+      "ParamFingerLThumb": 1
+    },
+    "hidden": "finger_l_thumb"
+  },
+  "R_neutral_hide_none": {
+    "params": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 0
+    },
+    "hidden": null
+  },
+  "R_neutral_hide_hand": {
+    "params": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 0
+    },
+    "hidden": "hand_r"
+  },
+  "R_neutral_hide_little": {
+    "params": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 0
+    },
+    "hidden": "finger_r_little"
+  },
+  "R_neutral_hide_ring": {
+    "params": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 0
+    },
+    "hidden": "finger_r_ring"
+  },
+  "R_neutral_hide_middle": {
+    "params": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 0
+    },
+    "hidden": "finger_r_middle"
+  },
+  "R_neutral_hide_index": {
+    "params": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 0
+    },
+    "hidden": "finger_r_index"
+  },
+  "R_neutral_hide_thumb": {
+    "params": {
+      "ParamFingerRLittle": 0,
+      "ParamFingerRRing": 0,
+      "ParamFingerRMiddle": 0,
+      "ParamFingerRIndex": 0,
+      "ParamFingerRThumb": 0
+    },
+    "hidden": "finger_r_thumb"
+  },
+  "R_alternating_hide_none": {
+    "params": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "hidden": null
+  },
+  "R_alternating_hide_hand": {
+    "params": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "hidden": "hand_r"
+  },
+  "R_alternating_hide_little": {
+    "params": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "hidden": "finger_r_little"
+  },
+  "R_alternating_hide_ring": {
+    "params": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "hidden": "finger_r_ring"
+  },
+  "R_alternating_hide_middle": {
+    "params": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "hidden": "finger_r_middle"
+  },
+  "R_alternating_hide_index": {
+    "params": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "hidden": "finger_r_index"
+  },
+  "R_alternating_hide_thumb": {
+    "params": {
+      "ParamFingerRLittle": -1,
+      "ParamFingerRRing": 1,
+      "ParamFingerRMiddle": -1,
+      "ParamFingerRIndex": 1,
+      "ParamFingerRThumb": -1
+    },
+    "hidden": "finger_r_thumb"
+  },
+  "R_reverse_hide_none": {
+    "params": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "hidden": null
+  },
+  "R_reverse_hide_hand": {
+    "params": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "hidden": "hand_r"
+  },
+  "R_reverse_hide_little": {
+    "params": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "hidden": "finger_r_little"
+  },
+  "R_reverse_hide_ring": {
+    "params": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "hidden": "finger_r_ring"
+  },
+  "R_reverse_hide_middle": {
+    "params": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "hidden": "finger_r_middle"
+  },
+  "R_reverse_hide_index": {
+    "params": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "hidden": "finger_r_index"
+  },
+  "R_reverse_hide_thumb": {
+    "params": {
+      "ParamFingerRLittle": 1,
+      "ParamFingerRRing": -1,
+      "ParamFingerRMiddle": 1,
+      "ParamFingerRIndex": -1,
+      "ParamFingerRThumb": 1
+    },
+    "hidden": "finger_r_thumb"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "status": "user_approved_size_direction_only_ai_concept_wip_not_source_art_or_production",
+  "created_on": "2026-11-03",
+  "feedback_context": {
+    "user_feedback": "Trials 11, 12/13, and 14 were judged too large; the user now says trial15 size is completely suitable.", 
+    "latest_revision": "trial15 makes both visible mitten silhouettes clearly smaller than trial14 while preserving a compact rounded shape and inward thumb nubs."
+  },
+  "approved_direction": {
+    "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+    "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368"
+  },
+  "source_truth": {
+    "body_full": {
+      "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+      "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+    },
+    "design_sheet_chibi": {
+      "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+      "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+    }
+  },
+  "generation_brief": {
+    "method": "isolated full-body AI concept revision; not a hand extraction or programmatic scaling/drawing operation",
+    "summary": "Compared with rejected trial14, reduce both hands noticeably (target roughly 20–30% smaller in visible width/height); retain compact round mitten silhouette, a subtle but readable inward thumb nub, and no finger separations. Keep body, arms, sleeves and cuffs unchanged in intent.",
+    "reference_inputs": [
+      {
+        "path": "chibi_mitten_original_fullbody_concept_trial_14_wip.png",
+        "sha256": "f7815da5d293d037ead75a361b0409080b5ce73356c84d6f3c87a98ad8bb491d"
+      },
+      {
+        "path": "chibi_mitten_original_fullbody_concept_trial_08_refined_wip.png",
+        "sha256": "670f009e6d09da599d9d8cfebb0b21238a6e9a650e809bed58515db142e14368"
+      },
+      {
+        "path": "characters/xiaoxun/forms/chibi/sprites/body_full.png",
+        "sha256": "a1d19edbf84a6b8a902ab81e84a464a478b79c3e0a0c81f040321b33c115b1ff"
+      },
+      {
+        "path": "characters/xiaoxun/design/design_sheet_chibi.png",
+        "sha256": "496dc41f935d35619da35f6a3a2b8408aeb2646847ac0807334c5a466be5097c"
+      }
+    ],
+    "limits": "AI redraw only; cuff/body details are not source-exact; no production/layer/rig approval."
+  },
+  "output": {
+    "full_body": {
+      "path": "chibi_mitten_original_fullbody_concept_trial_15_wip.png",
+      "sha256": "63fd306a54e4de75a6a3ee4389de48e57b28d2af560b0dec13c7fd6cd6c228a3",
+      "size": [1024, 1024]
+    },
+    "comparison_board": {
+      "path": "chibi_mitten_trial_15_fullbody_size_comparison_board_wip.png",
+      "sha256": "237ebf20f8c0065ab3ccac5305a7ae93aea13942692f0dc0a5dc76e845559a75"
+    },
+    "board_builder": {
+      "path": "build_mitten_trial_15_review_board.py",
+      "sha256": "cb8819eed634658ce935b1edd21a5aa79c20e7010db424488013bc9991736424"
+    }
+  },
+  "visual_review": {
+    "status": "user_approved_size_direction_only", 
+    "reviewer": "assistant visual inspection of raw trial15 and 08/11/13/14/15 same-position board",
+    "observations": [
+      "Trial15 hands are visibly smaller than rejected trial14 in the matched cuff/hand crops; no percentage claim is treated as measured acceptance.",
+      "Both hands remain compact and rounded with small inward-facing thumb nubs; the matched crops show the reduced silhouette clearly.",
+      "The full-body redraw remains close to the approved trial08 concept direction, but background, outfit and cuff pixels are AI redraws and not source-exact.",
+      "No source-cuff extraction, hidden-wrist completion, rigging or engine validation was done."
+    ],
+    "decision": "user explicitly approved trial15 size direction; approval is limited to scale and does not approve AI pixels/source art, disassembly, or production",
+    "next_step": "Continue source-art workflow in isolation; obtain visual approval of the actual left/right source-fitted art before production integration."
+  }
+}

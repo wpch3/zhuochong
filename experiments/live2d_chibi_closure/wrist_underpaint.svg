@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- New hidden wrist continuations, clipped against the opaque cuff in the builder. -->
+ <defs><linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e9b6b1"/><stop offset="1" stop-color="#f8dad1"/></linearGradient></defs>
+ <path d="M 78 202 C 79 194 84 188 91 188 C 102 190 113 197 117 204 L 114 214 C 102 211 90 206 78 205 Z" fill="url(#skin)"/>
+ <path d="M 343 204 C 347 197 359 191 369 189 C 376 188 381 194 382 202 L 382 205 C 370 207 357 212 346 214 Z" fill="url(#skin)"/>
+</svg>

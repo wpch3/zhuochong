@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="512" viewBox="0 0 480 512">
+ <!-- Two independent, intentionally different wrist sections in body-local
+      coordinates. Drawn below the original hand and hidden by its cuff at rest. -->
+ <defs>
+  <linearGradient id="skinL" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#edb4b0"/><stop offset=".35" stop-color="#f5d1c8"/><stop offset="1" stop-color="#fff0e5"/></linearGradient>
+  <linearGradient id="skinR" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e8aaa9"/><stop offset=".4" stop-color="#f6d1c9"/><stop offset="1" stop-color="#fff0e6"/></linearGradient>
+ </defs>
+ <g id="left_wrist">
+  <path d="M 84 193 C 93 194 106 200 117 205 L 116 215 C 110 223 98 225 85 222 C 79 220 76 215 78 208 Z" fill="url(#skinL)"/>
+  <path d="M 82 200 C 92 201 104 207 114 210 L 114 214 C 101 212 90 207 81 206 Z" fill="#d99899" opacity=".3"/>
+ </g>
+ <g id="right_wrist">
+  <path d="M 337 205 C 348 200 364 195 377 192 L 383 207 C 386 215 382 219 375 222 C 364 226 350 222 344 216 Z" fill="url(#skinR)"/>
+  <path d="M 340 210 C 351 205 367 200 378 200 L 380 206 C 368 206 352 212 342 215 Z" fill="#d69498" opacity=".28"/>
+ </g>
+</svg>

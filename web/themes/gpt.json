@@ -1,0 +1,19 @@
+{
+  "name": "GPT · 黑与青绿",
+  "note": "OpenAI 官方 token：#000000 / #10A37F / #FFFFFF / #202123（colorbase、loftlyy 两处一致）。2025 改版后品牌整体偏黑白灰，青绿 #10A37F 作为那一点识别色保留，这里就按这个比例配：浅色底 + 青绿强调 + 近黑文字。",
+  "vars": {
+    "--pink": "#10a37f",
+    "--pink-deep": "#0d8a6a",
+    "--blue": "#202123",
+    "--mint": "#6ee7b7",
+    "--cream": "#fafafa",
+    "--card": "#ffffff",
+    "--ink": "#202123",
+    "--ink-soft": "#6e6e80",
+    "--line": "#e5e5e5",
+    "--radius": "6px",
+    "--shadow": "0 6px 18px rgba(16, 163, 127, .15)",
+    "--bg-1": "#e9f7f2",
+    "--bg-2": "#fafafa"
+  }
+}

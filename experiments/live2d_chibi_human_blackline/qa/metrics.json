@@ -1,0 +1,11 @@
+{
+  "frame": [
+    563,
+    563
+  ],
+  "left_blink_pixels": 2714,
+  "right_blink_pixels": 2534,
+  "mouth_pixels": 296,
+  "head_motion_pixels": 32083,
+  "head_test_body_pixels": 0
+}

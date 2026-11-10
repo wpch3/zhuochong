@@ -1,0 +1,40 @@
+{
+  "name": "智谱 GLM",
+  "kind": "openai_compatible",
+  "local": false,
+  "enabled": false,
+  "priority": 50,
+  "base_url": "https://open.bigmodel.cn/api/paas/v4",
+  "auth": {
+    "type": "bearer",
+    "key_ref": "secret://zhipu"
+  },
+  "capabilities": [
+    {
+      "cap": "chat.completion",
+      "model": "glm-4-flash",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "chat.stream",
+      "model": "glm-4-flash",
+      "price": {
+        "free": true
+      }
+    },
+    {
+      "cap": "vision.describe",
+      "model": "glm-4v-flash",
+      "price": {
+        "free": true
+      }
+    }
+  ],
+  "balance": {
+    "mode": "ledger"
+  },
+  "note": "注意 base_url 结尾是 /api/paas/v4 而**不是** /v1 —— 按 OpenAI SDK 的默认拼法会 404。glm-4-flash 一档长期免费，适合当\"没钱也能聊\"的云端保底（和本地 Ollama 互为备份）。",
+  "id": "zhipu"
+}

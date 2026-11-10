@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-31",
+  "task": "Chibi / Q 版 Live2D baseline review (pre-repair; not a completion claim)",
+  "renderer": "Live C engine preview API /api/frame.png; face detail is an enlarged crop of the raw engine frame.",
+  "setup": {
+    "form": "chibi",
+    "hairstyle": "none (default)",
+    "hood_pose": "down",
+    "action": "idle",
+    "scale": 1.1,
+    "frame": [933, 1496],
+    "paused": true,
+    "parameters_reset": true
+  },
+  "asset_check": {
+    "command": "PYTHONPATH=/tmp/zc-py-lib python3 tools/check_assets.py --character xiaoxun --form chibi --quiet --json /tmp/zc_chibi_baseline_assets_2026-10-31.json",
+    "pass": true,
+    "fail_count": 0,
+    "design_iou": 0.9819505654288961,
+    "scope_note": "This automated asset/geometry check does not test rendered edge quality and does not replace visual acceptance."
+  },
+  "visual_review": {
+    "status": "not visually accepted; retained as a pre-repair baseline",
+    "observations": [
+      "The real C engine can switch to and render the existing chibi form; this is an in-engine prototype, not an empty form.",
+      "The full frame and enlarged face crop show conspicuous dark/purple fragmenting and jagged seams around the bangs, forehead sides, and temple/hair edges.",
+      "The asset checker passes despite those visible artifacts; no cosmetic change was made in this baseline pass."
+    ],
+    "next_scope": "Keep existing chibi hair/redraw and high-resolution gaps open (including T67.41/T67.42); do not treat this screenshot or the green static audit as Q-version completion."
+  },
+  "captures": [
+    {
+      "file": "live2d_chibi_baseline_engine_2026-10-31.png",
+      "sha256": "fefc1578ec006630bb45a0cd1cf13c87c92684bfab97ecb862b916505b74ba2c",
+      "purpose": "Raw full-body engine baseline."
+    },
+    {
+      "file": "live2d_chibi_baseline_face_detail_2026-10-31.png",
+      "sha256": "ab1223bd529c4ede4408aa55c69d89f96a2378b0a6a524a735ff9f614718f761",
+      "purpose": "Enlarged face/hair-boundary crop from the same engine frame; records the visible baseline defects."
+    }
+  ]
+}

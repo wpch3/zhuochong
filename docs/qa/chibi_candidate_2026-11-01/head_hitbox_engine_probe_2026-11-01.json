@@ -1,0 +1,123 @@
+{
+  "date": "2026-11-01",
+  "status": "isolated targeted check; not full-chain or production acceptance",
+  "form": "chibi",
+  "scale": 1.0,
+  "action": "idle",
+  "rig_region_rect": {
+    "head": [
+      136,
+      0,
+      575,
+      718
+    ],
+    "old_head": [
+      196,
+      0,
+      453,
+      718
+    ],
+    "seg_head_bbox": [
+      140,
+      68,
+      707,
+      712
+    ]
+  },
+  "change": "derive head interaction X bounds from seg_head bbox with 4px margin; preserve chin split to body",
+  "engine_region_probes": [
+    {
+      "canvas_xy": [
+        180,
+        500
+      ],
+      "expected": "head/head_pat",
+      "result": {
+        "region": "head",
+        "action": "head_pat",
+        "cursor": "hand",
+        "x": 180,
+        "y": 500,
+        "space": "canvas",
+        "cx": 180,
+        "cy": 500
+      }
+    },
+    {
+      "canvas_xy": [
+        200,
+        500
+      ],
+      "expected": "head/head_pat",
+      "result": {
+        "region": "head",
+        "action": "head_pat",
+        "cursor": "hand",
+        "x": 200,
+        "y": 500,
+        "space": "canvas",
+        "cx": 200,
+        "cy": 500
+      }
+    },
+    {
+      "canvas_xy": [
+        690,
+        500
+      ],
+      "expected": "head/head_pat",
+      "result": {
+        "region": "head",
+        "action": "head_pat",
+        "cursor": "hand",
+        "x": 690,
+        "y": 500,
+        "space": "canvas",
+        "cx": 690,
+        "cy": 500
+      }
+    },
+    {
+      "canvas_xy": [
+        705,
+        500
+      ],
+      "expected": "head/head_pat",
+      "result": {
+        "region": "head",
+        "action": "head_pat",
+        "cursor": "hand",
+        "x": 705,
+        "y": 500,
+        "space": "canvas",
+        "cx": 705,
+        "cy": 500
+      }
+    },
+    {
+      "canvas_xy": [
+        150,
+        500
+      ],
+      "expected": "empty transparent pixel",
+      "result": {
+        "region": "",
+        "action": "",
+        "cursor": "arrow",
+        "x": 150,
+        "y": 500,
+        "space": "canvas",
+        "cx": 150,
+        "cy": 500
+      }
+    }
+  ],
+  "all_expected": true,
+  "frame_sha256": "e6508e6db31524d1c6830e6cf913308a922b6b04911ef6bfc930bf3ffe1e5b43",
+  "asset_qa_after_targeted_rig_regen": {
+    "checks": 1342,
+    "failures": 33,
+    "design_iou": 0.9934918477598998,
+    "thresholds_changed": false
+  }
+}

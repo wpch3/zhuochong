@@ -1,0 +1,2677 @@
+{
+  "scope": "diagnostic C-engine pose × hair-sway matrix; not artwork approval or a repair",
+  "engine": "0.1.0",
+  "preview_base": "http://127.0.0.1:5173",
+  "form": "teen",
+  "poses": {
+    "hairstyle": "long",
+    "hood_pose": "up"
+  },
+  "canvas_px": [
+    848,
+    1360
+  ],
+  "scale": 1,
+  "ambient": "off",
+  "physics": "on during captures; reset by switching off at common virtual start t=2 before each branch",
+  "visibility": "all parts for matrix frames; target-only and target-hidden controls recorded at both ParamHairSway endpoints for each pose",
+  "target_part": "acc_hair_hood_long",
+  "display_diff_method": {
+    "matte_rgb": [
+      38,
+      40,
+      44
+    ],
+    "report_threshold": "per-channel RGB delta > 4",
+    "transparent_hidden_rgb": "composited away before counting"
+  },
+  "states": [
+    {
+      "action": "idle",
+      "action_capture_seconds": 3.0,
+      "action_note": "arms-down baseline; 3 s fixed-step settle",
+      "sway_requested": -1.0,
+      "info": {
+        "action": "idle",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -0.0193,
+          "effective": -0.0193
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.0193,
+          "effective": 0.0193
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.011,
+          "effective": 0.011
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.011,
+          "effective": 0.011
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": -1.0,
+          "expr": -1.0,
+          "effective": -1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            317.15,
+            462.62
+          ],
+          "elbow": [
+            276.07,
+            623.19
+          ],
+          "wrist": [
+            255.67,
+            735.75
+          ],
+          "upper_len": 165.75,
+          "forearm_len": 114.39,
+          "included_angle_deg": 175.92,
+          "flex_deg": 4.08,
+          "straight_fault": true
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            522.16,
+            466.04
+          ],
+          "elbow": [
+            565.04,
+            621.9
+          ],
+          "wrist": [
+            591.92,
+            734.02
+          ],
+          "upper_len": 161.65,
+          "forearm_len": 115.3,
+          "included_angle_deg": 178.1,
+          "flex_deg": 1.9,
+          "straight_fault": true
+        }
+      ],
+      "file": "matrix_idle_sway_minus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_idle_sway_minus1_hair_isolated.png",
+        "hidden": "matrix_idle_sway_minus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "idle",
+      "action_capture_seconds": 3.0,
+      "action_note": "arms-down baseline; 3 s fixed-step settle",
+      "sway_requested": 0.0,
+      "info": {
+        "action": "idle",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -0.0193,
+          "effective": -0.0193
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.0193,
+          "effective": 0.0193
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.011,
+          "effective": 0.011
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.011,
+          "effective": 0.011
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            317.15,
+            462.62
+          ],
+          "elbow": [
+            276.07,
+            623.19
+          ],
+          "wrist": [
+            255.67,
+            735.75
+          ],
+          "upper_len": 165.75,
+          "forearm_len": 114.39,
+          "included_angle_deg": 175.92,
+          "flex_deg": 4.08,
+          "straight_fault": true
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            522.16,
+            466.04
+          ],
+          "elbow": [
+            565.04,
+            621.9
+          ],
+          "wrist": [
+            591.92,
+            734.02
+          ],
+          "upper_len": 161.65,
+          "forearm_len": 115.3,
+          "included_angle_deg": 178.1,
+          "flex_deg": 1.9,
+          "straight_fault": true
+        }
+      ],
+      "file": "matrix_idle_sway_plus0_c_engine.png",
+      "visibility_controls": {}
+    },
+    {
+      "action": "idle",
+      "action_capture_seconds": 3.0,
+      "action_note": "arms-down baseline; 3 s fixed-step settle",
+      "sway_requested": 1.0,
+      "info": {
+        "action": "idle",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -0.0193,
+          "effective": -0.0193
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.0193,
+          "effective": 0.0193
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.011,
+          "effective": 0.011
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.011,
+          "effective": 0.011
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 1.0,
+          "expr": 1.0,
+          "effective": 1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            317.15,
+            462.62
+          ],
+          "elbow": [
+            276.07,
+            623.19
+          ],
+          "wrist": [
+            255.67,
+            735.75
+          ],
+          "upper_len": 165.75,
+          "forearm_len": 114.39,
+          "included_angle_deg": 175.92,
+          "flex_deg": 4.08,
+          "straight_fault": true
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            522.16,
+            466.04
+          ],
+          "elbow": [
+            565.04,
+            621.9
+          ],
+          "wrist": [
+            591.92,
+            734.02
+          ],
+          "upper_len": 161.65,
+          "forearm_len": 115.3,
+          "included_angle_deg": 178.1,
+          "flex_deg": 1.9,
+          "straight_fault": true
+        }
+      ],
+      "file": "matrix_idle_sway_plus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_idle_sway_plus1_hair_isolated.png",
+        "hidden": "matrix_idle_sway_plus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "surprised",
+      "action_capture_seconds": 1.1,
+      "action_note": "same 1.1 s capture time as prior control",
+      "sway_requested": -1.0,
+      "info": {
+        "action": "surprised",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.6,
+          "effective": 0.6
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.6,
+          "effective": 0.6
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 8.35,
+          "effective": 8.35
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 8.1,
+          "effective": 8.1
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": -1.0,
+          "expr": -1.0,
+          "effective": -1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            316.97,
+            460.33
+          ],
+          "elbow": [
+            273.3,
+            582.1
+          ],
+          "wrist": [
+            248.06,
+            444.95
+          ],
+          "upper_len": 129.36,
+          "forearm_len": 139.45,
+          "included_angle_deg": 30.16,
+          "flex_deg": 149.84,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            521.98,
+            463.65
+          ],
+          "elbow": [
+            564.86,
+            582.17
+          ],
+          "wrist": [
+            595.75,
+            445.42
+          ],
+          "upper_len": 126.04,
+          "forearm_len": 140.2,
+          "included_angle_deg": 32.62,
+          "flex_deg": 147.38,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_surprised_sway_minus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_surprised_sway_minus1_hair_isolated.png",
+        "hidden": "matrix_surprised_sway_minus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "surprised",
+      "action_capture_seconds": 1.1,
+      "action_note": "same 1.1 s capture time as prior control",
+      "sway_requested": 0.0,
+      "info": {
+        "action": "surprised",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.6,
+          "effective": 0.6
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.6,
+          "effective": 0.6
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 8.35,
+          "effective": 8.35
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 8.1,
+          "effective": 8.1
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            316.97,
+            460.33
+          ],
+          "elbow": [
+            273.3,
+            582.1
+          ],
+          "wrist": [
+            248.06,
+            444.95
+          ],
+          "upper_len": 129.36,
+          "forearm_len": 139.45,
+          "included_angle_deg": 30.16,
+          "flex_deg": 149.84,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            521.98,
+            463.65
+          ],
+          "elbow": [
+            564.86,
+            582.17
+          ],
+          "wrist": [
+            595.75,
+            445.42
+          ],
+          "upper_len": 126.04,
+          "forearm_len": 140.2,
+          "included_angle_deg": 32.62,
+          "flex_deg": 147.38,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_surprised_sway_plus0_c_engine.png",
+      "visibility_controls": {}
+    },
+    {
+      "action": "surprised",
+      "action_capture_seconds": 1.1,
+      "action_note": "same 1.1 s capture time as prior control",
+      "sway_requested": 1.0,
+      "info": {
+        "action": "surprised",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.6,
+          "effective": 0.6
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.6,
+          "effective": 0.6
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 8.35,
+          "effective": 8.35
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 8.1,
+          "effective": 8.1
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 1.0,
+          "effective": 1.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 1.0,
+          "expr": 1.0,
+          "effective": 1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            316.97,
+            460.33
+          ],
+          "elbow": [
+            273.3,
+            582.1
+          ],
+          "wrist": [
+            248.06,
+            444.95
+          ],
+          "upper_len": 129.36,
+          "forearm_len": 139.45,
+          "included_angle_deg": 30.16,
+          "flex_deg": 149.84,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            521.98,
+            463.65
+          ],
+          "elbow": [
+            564.86,
+            582.17
+          ],
+          "wrist": [
+            595.75,
+            445.42
+          ],
+          "upper_len": 126.04,
+          "forearm_len": 140.2,
+          "included_angle_deg": 32.62,
+          "flex_deg": 147.38,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_surprised_sway_plus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_surprised_sway_plus1_hair_isolated.png",
+        "hidden": "matrix_surprised_sway_plus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "wave_both",
+      "action_capture_seconds": 1.0,
+      "action_note": "1.0 s; arm/elbow keys near raised hold",
+      "sway_requested": -1.0,
+      "info": {
+        "action": "wave_both",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.4161,
+          "effective": 0.4161
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3828,
+          "effective": 0.3828
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.4981,
+          "effective": 7.4981
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.5212,
+          "effective": 7.5212
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": -1.0,
+          "expr": -1.0,
+          "effective": -1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            316.67,
+            432.98
+          ],
+          "elbow": [
+            254.15,
+            587.31
+          ],
+          "wrist": [
+            189.26,
+            461.28
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 141.75,
+          "included_angle_deg": 49.29,
+          "flex_deg": 130.71,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            521.68,
+            436.17
+          ],
+          "elbow": [
+            582.31,
+            586.82
+          ],
+          "wrist": [
+            641.89,
+            457.8
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 142.11,
+          "included_angle_deg": 46.71,
+          "flex_deg": 133.29,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_wave_both_sway_minus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_wave_both_sway_minus1_hair_isolated.png",
+        "hidden": "matrix_wave_both_sway_minus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "wave_both",
+      "action_capture_seconds": 1.0,
+      "action_note": "1.0 s; arm/elbow keys near raised hold",
+      "sway_requested": 0.0,
+      "info": {
+        "action": "wave_both",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.4161,
+          "effective": 0.4161
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3828,
+          "effective": 0.3828
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.4981,
+          "effective": 7.4981
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.5212,
+          "effective": 7.5212
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            316.67,
+            432.98
+          ],
+          "elbow": [
+            254.15,
+            587.31
+          ],
+          "wrist": [
+            189.26,
+            461.28
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 141.75,
+          "included_angle_deg": 49.29,
+          "flex_deg": 130.71,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            521.68,
+            436.17
+          ],
+          "elbow": [
+            582.31,
+            586.82
+          ],
+          "wrist": [
+            641.89,
+            457.8
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 142.11,
+          "included_angle_deg": 46.71,
+          "flex_deg": 133.29,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_wave_both_sway_plus0_c_engine.png",
+      "visibility_controls": {}
+    },
+    {
+      "action": "wave_both",
+      "action_capture_seconds": 1.0,
+      "action_note": "1.0 s; arm/elbow keys near raised hold",
+      "sway_requested": 1.0,
+      "info": {
+        "action": "wave_both",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.4161,
+          "effective": 0.4161
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3828,
+          "effective": 0.3828
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.4981,
+          "effective": 7.4981
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.5212,
+          "effective": 7.5212
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 1.0,
+          "expr": 1.0,
+          "effective": 1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            316.67,
+            432.98
+          ],
+          "elbow": [
+            254.15,
+            587.31
+          ],
+          "wrist": [
+            189.26,
+            461.28
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 141.75,
+          "included_angle_deg": 49.29,
+          "flex_deg": 130.71,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            521.68,
+            436.17
+          ],
+          "elbow": [
+            582.31,
+            586.82
+          ],
+          "wrist": [
+            641.89,
+            457.8
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 142.11,
+          "included_angle_deg": 46.71,
+          "flex_deg": 133.29,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_wave_both_sway_plus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_wave_both_sway_plus1_hair_isolated.png",
+        "hidden": "matrix_wave_both_sway_plus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "heart_hands",
+      "action_capture_seconds": 0.6,
+      "action_note": "0.6 s; both hand pose pulses reached",
+      "sway_requested": -1.0,
+      "info": {
+        "action": "heart_hands",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.1111,
+          "effective": 0.1111
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3333,
+          "effective": 0.3333
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -7.0556,
+          "effective": -7.0556
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -7.2778,
+          "effective": -7.2778
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": -1.0,
+          "expr": -1.0,
+          "effective": -1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            319.41,
+            459.55
+          ],
+          "elbow": [
+            270.6,
+            618.75
+          ],
+          "wrist": [
+            375.42,
+            571.61
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 114.93,
+          "included_angle_deg": 48.74,
+          "flex_deg": 131.26,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            524.39,
+            464.48
+          ],
+          "elbow": [
+            581.38,
+            616.54
+          ],
+          "wrist": [
+            474.39,
+            572.13
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 115.84,
+          "included_angle_deg": 46.91,
+          "flex_deg": 133.09,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_heart_hands_sway_minus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_heart_hands_sway_minus1_hair_isolated.png",
+        "hidden": "matrix_heart_hands_sway_minus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "heart_hands",
+      "action_capture_seconds": 0.6,
+      "action_note": "0.6 s; both hand pose pulses reached",
+      "sway_requested": 0.0,
+      "info": {
+        "action": "heart_hands",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.1111,
+          "effective": 0.1111
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3333,
+          "effective": 0.3333
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -7.0556,
+          "effective": -7.0556
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -7.2778,
+          "effective": -7.2778
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            319.41,
+            459.55
+          ],
+          "elbow": [
+            270.6,
+            618.75
+          ],
+          "wrist": [
+            375.42,
+            571.61
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 114.93,
+          "included_angle_deg": 48.74,
+          "flex_deg": 131.26,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            524.39,
+            464.48
+          ],
+          "elbow": [
+            581.38,
+            616.54
+          ],
+          "wrist": [
+            474.39,
+            572.13
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 115.84,
+          "included_angle_deg": 46.91,
+          "flex_deg": 133.09,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_heart_hands_sway_plus0_c_engine.png",
+      "visibility_controls": {}
+    },
+    {
+      "action": "heart_hands",
+      "action_capture_seconds": 0.6,
+      "action_note": "0.6 s; both hand pose pulses reached",
+      "sway_requested": 1.0,
+      "info": {
+        "action": "heart_hands",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.1111,
+          "effective": 0.1111
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3333,
+          "effective": 0.3333
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -7.0556,
+          "effective": -7.0556
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": -7.2778,
+          "effective": -7.2778
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 1.0,
+          "expr": 1.0,
+          "effective": 1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            319.41,
+            459.55
+          ],
+          "elbow": [
+            270.6,
+            618.75
+          ],
+          "wrist": [
+            375.42,
+            571.61
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 114.93,
+          "included_angle_deg": 48.74,
+          "flex_deg": 131.26,
+          "straight_fault": false
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            524.39,
+            464.48
+          ],
+          "elbow": [
+            581.38,
+            616.54
+          ],
+          "wrist": [
+            474.39,
+            572.13
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 115.84,
+          "included_angle_deg": 46.91,
+          "flex_deg": 133.09,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_heart_hands_sway_plus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_heart_hands_sway_plus1_hair_isolated.png",
+        "hidden": "matrix_heart_hands_sway_plus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "wave",
+      "action_capture_seconds": 1.0,
+      "action_note": "1.0 s; single right-arm wave near raised hold",
+      "sway_requested": -1.0,
+      "info": {
+        "action": "wave",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.1466,
+          "effective": 0.1466
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3828,
+          "effective": 0.3828
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.5212,
+          "effective": 7.5212
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": -1.0,
+          "expr": -1.0,
+          "effective": -1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            305.11,
+            462.61
+          ],
+          "elbow": [
+            260.98,
+            623.17
+          ],
+          "wrist": [
+            238.83,
+            735.95
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 114.93,
+          "included_angle_deg": 175.74,
+          "flex_deg": 4.26,
+          "straight_fault": true
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            509.19,
+            433.26
+          ],
+          "elbow": [
+            574.6,
+            581.9
+          ],
+          "wrist": [
+            630.03,
+            451.04
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 142.11,
+          "included_angle_deg": 46.71,
+          "flex_deg": 133.29,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_wave_sway_minus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_wave_sway_minus1_hair_isolated.png",
+        "hidden": "matrix_wave_sway_minus1_hair_hidden.png"
+      }
+    },
+    {
+      "action": "wave",
+      "action_capture_seconds": 1.0,
+      "action_note": "1.0 s; single right-arm wave near raised hold",
+      "sway_requested": 0.0,
+      "info": {
+        "action": "wave",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.1466,
+          "effective": 0.1466
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3828,
+          "effective": 0.3828
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.5212,
+          "effective": 7.5212
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            305.11,
+            462.61
+          ],
+          "elbow": [
+            260.98,
+            623.17
+          ],
+          "wrist": [
+            238.83,
+            735.95
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 114.93,
+          "included_angle_deg": 175.74,
+          "flex_deg": 4.26,
+          "straight_fault": true
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            509.19,
+            433.26
+          ],
+          "elbow": [
+            574.6,
+            581.9
+          ],
+          "wrist": [
+            630.03,
+            451.04
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 142.11,
+          "included_angle_deg": 46.71,
+          "flex_deg": 133.29,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_wave_sway_plus0_c_engine.png",
+      "visibility_controls": {}
+    },
+    {
+      "action": "wave",
+      "action_capture_seconds": 1.0,
+      "action_note": "1.0 s; single right-arm wave near raised hold",
+      "sway_requested": 1.0,
+      "info": {
+        "action": "wave",
+        "reason": "preview",
+        "form": "teen",
+        "frame_w": 848,
+        "frame_h": 1360,
+        "poses": [
+          {
+            "id": "eye_hl_style",
+            "current": "round",
+            "entries": [
+              "round",
+              "star"
+            ]
+          },
+          {
+            "id": "tail_pose",
+            "current": "relaxed",
+            "entries": [
+              "relaxed",
+              "up",
+              "puff",
+              "tuck"
+            ]
+          },
+          {
+            "id": "hood_pose",
+            "current": "up",
+            "entries": [
+              "up",
+              "down"
+            ]
+          },
+          {
+            "id": "hairstyle",
+            "current": "long",
+            "entries": [
+              "long",
+              "twin",
+              "pony"
+            ]
+          }
+        ]
+      },
+      "params": {
+        "ParamSurpriseForeshorten": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmLA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.1466,
+          "effective": 0.1466
+        },
+        "ParamArmRA": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.3828,
+          "effective": 0.3828
+        },
+        "ParamArmLB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamArmRB": {
+          "min": -10.0,
+          "max": 10.0,
+          "value": 0.0,
+          "expr": 7.5212,
+          "effective": 7.5212
+        },
+        "ParamSurpriseElbowHide": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamSurpriseArmSwap": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandLSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHandRSurprised": {
+          "min": 0.0,
+          "max": 1.0,
+          "value": 0.0,
+          "expr": 0.0,
+          "effective": 0.0
+        },
+        "ParamHairSway": {
+          "min": -1.0,
+          "max": 1.0,
+          "value": 1.0,
+          "expr": 1.0,
+          "effective": 1.0
+        }
+      },
+      "arms": [
+        {
+          "side": "l",
+          "available": true,
+          "shoulder": [
+            305.11,
+            462.61
+          ],
+          "elbow": [
+            260.98,
+            623.17
+          ],
+          "wrist": [
+            238.83,
+            735.95
+          ],
+          "upper_len": 166.52,
+          "forearm_len": 114.93,
+          "included_angle_deg": 175.74,
+          "flex_deg": 4.26,
+          "straight_fault": true
+        },
+        {
+          "side": "r",
+          "available": true,
+          "shoulder": [
+            509.19,
+            433.26
+          ],
+          "elbow": [
+            574.6,
+            581.9
+          ],
+          "wrist": [
+            630.03,
+            451.04
+          ],
+          "upper_len": 162.39,
+          "forearm_len": 142.11,
+          "included_angle_deg": 46.71,
+          "flex_deg": 133.29,
+          "straight_fault": false
+        }
+      ],
+      "file": "matrix_wave_sway_plus1_c_engine.png",
+      "visibility_controls": {
+        "isolated": "matrix_wave_sway_plus1_hair_isolated.png",
+        "hidden": "matrix_wave_sway_plus1_hair_hidden.png"
+      }
+    }
+  ],
+  "same_pose_sway_extreme_diffs": {
+    "idle": {
+      "visible_pixels_any_rgb_change": 7526,
+      "visible_pixels_channel_delta_gt_4": 3894,
+      "max_visible_channel_delta": 168,
+      "interpretation": "same action/time, reset physics state, only requested ParamHairSway differs; whole-frame visible diff includes all dependent hair/physics pixels and is not a source-pixel motion field",
+      "hair_isolated_extreme_diff": {
+        "visible_pixels_any_rgb_change": 0,
+        "visible_pixels_channel_delta_gt_4": 0,
+        "max_visible_channel_delta": 0,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      },
+      "hair_hidden_extreme_diff": {
+        "visible_pixels_any_rgb_change": 17468,
+        "visible_pixels_channel_delta_gt_4": 12176,
+        "max_visible_channel_delta": 201,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      }
+    },
+    "surprised": {
+      "visible_pixels_any_rgb_change": 32467,
+      "visible_pixels_channel_delta_gt_4": 3947,
+      "max_visible_channel_delta": 156,
+      "interpretation": "same action/time, reset physics state, only requested ParamHairSway differs; whole-frame visible diff includes all dependent hair/physics pixels and is not a source-pixel motion field",
+      "hair_isolated_extreme_diff": {
+        "visible_pixels_any_rgb_change": 21719,
+        "visible_pixels_channel_delta_gt_4": 0,
+        "max_visible_channel_delta": 2,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      },
+      "hair_hidden_extreme_diff": {
+        "visible_pixels_any_rgb_change": 25094,
+        "visible_pixels_channel_delta_gt_4": 12353,
+        "max_visible_channel_delta": 202,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      }
+    },
+    "wave_both": {
+      "visible_pixels_any_rgb_change": 7802,
+      "visible_pixels_channel_delta_gt_4": 4067,
+      "max_visible_channel_delta": 172,
+      "interpretation": "same action/time, reset physics state, only requested ParamHairSway differs; whole-frame visible diff includes all dependent hair/physics pixels and is not a source-pixel motion field",
+      "hair_isolated_extreme_diff": {
+        "visible_pixels_any_rgb_change": 0,
+        "visible_pixels_channel_delta_gt_4": 0,
+        "max_visible_channel_delta": 0,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      },
+      "hair_hidden_extreme_diff": {
+        "visible_pixels_any_rgb_change": 17763,
+        "visible_pixels_channel_delta_gt_4": 12301,
+        "max_visible_channel_delta": 201,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      }
+    },
+    "heart_hands": {
+      "visible_pixels_any_rgb_change": 7619,
+      "visible_pixels_channel_delta_gt_4": 3928,
+      "max_visible_channel_delta": 180,
+      "interpretation": "same action/time, reset physics state, only requested ParamHairSway differs; whole-frame visible diff includes all dependent hair/physics pixels and is not a source-pixel motion field",
+      "hair_isolated_extreme_diff": {
+        "visible_pixels_any_rgb_change": 0,
+        "visible_pixels_channel_delta_gt_4": 0,
+        "max_visible_channel_delta": 0,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      },
+      "hair_hidden_extreme_diff": {
+        "visible_pixels_any_rgb_change": 17573,
+        "visible_pixels_channel_delta_gt_4": 12057,
+        "max_visible_channel_delta": 201,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      }
+    },
+    "wave": {
+      "visible_pixels_any_rgb_change": 7861,
+      "visible_pixels_channel_delta_gt_4": 4106,
+      "max_visible_channel_delta": 170,
+      "interpretation": "same action/time, reset physics state, only requested ParamHairSway differs; whole-frame visible diff includes all dependent hair/physics pixels and is not a source-pixel motion field",
+      "hair_isolated_extreme_diff": {
+        "visible_pixels_any_rgb_change": 0,
+        "visible_pixels_channel_delta_gt_4": 0,
+        "max_visible_channel_delta": 0,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      },
+      "hair_hidden_extreme_diff": {
+        "visible_pixels_any_rgb_change": 17889,
+        "visible_pixels_channel_delta_gt_4": 12463,
+        "max_visible_channel_delta": 201,
+        "interpretation": "same frozen pose/action and target visibility; displayed-image diff, not an individual source-pixel motion field"
+      }
+    }
+  },
+  "unresolved": [
+    "source-art continuity behind hand/cuff cutouts",
+    "complete arm-angle/occlusion extremes beyond these four actions",
+    "reviewed repair path and production approval"
+  ]
+}

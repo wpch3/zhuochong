@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="215" height="228" viewBox="0 0 215 228">
+ <!-- Top half: smile; bottom half: pain. Positioned at the end of lid travel. -->
+ <g fill="none" stroke="#241521" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M 15 67 Q 48 51 83 65 M 132 65 Q 167 51 200 67" stroke-width="4.5"/>
+  <path d="M 15 170 L 82 176 L 15 183 M 200 170 L 133 176 L 200 183" stroke-width="4"/>
+ </g>
+</svg>
