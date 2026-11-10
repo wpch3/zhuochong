@@ -38,6 +38,7 @@
       "base": "eye_l_base.png",
       "ball": "eye_l_ball.png",
       "lash": "eye_l_lash.png",
+      "carve": "eye_l_carve.png",
       "ball_pos": [
         152,
         419
@@ -80,6 +81,7 @@
       "base": "eye_r_base.png",
       "ball": "eye_r_ball.png",
       "lash": "eye_r_lash.png",
+      "carve": "eye_r_carve.png",
       "ball_pos": [
         336,
         419

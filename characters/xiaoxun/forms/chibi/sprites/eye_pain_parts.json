@@ -25,16 +25,16 @@
         1.0
       ],
       "offset": [
-        2.47,
-        1.08,
-        22.15
+        2.6,
+        -0.88,
+        20.94
       ],
       "checks": {
         "cover_ratio": 1.0,
-        "seam_mean_abs": 4.51,
-        "semi_px": 2192,
-        "opaque_px_alpha": 9053,
-        "opaque_px": 9053,
+        "seam_mean_abs": 41.84,
+        "semi_px": 2056,
+        "opaque_px_alpha": 9195,
+        "opaque_px": 9195,
         "iris_erased_px": 0
       }
     },
@@ -55,16 +55,16 @@
         1.0
       ],
       "offset": [
-        2.3,
-        2.63,
-        22.87
+        2.07,
+        -0.8,
+        20.89
       ],
       "checks": {
         "cover_ratio": 1.0,
-        "seam_mean_abs": 5.73,
-        "semi_px": 2018,
-        "opaque_px_alpha": 9217,
-        "opaque_px": 9217,
+        "seam_mean_abs": 46.29,
+        "semi_px": 2089,
+        "opaque_px_alpha": 9172,
+        "opaque_px": 9172,
         "iris_erased_px": 0
       }
     }

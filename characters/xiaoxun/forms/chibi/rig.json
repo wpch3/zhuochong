@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "id": "小寻_teen",
+  "id": "小寻_chibi",
   "name": "小寻",
   "canvas": {
     "w": 848,
@@ -37,21 +37,21 @@
     },
     "arm_l": {
       "pivot": [
-        250,
-        804
+        271,
+        839
       ],
       "parent": "chest",
       "bend_follow": "seg_torso",
-      "bend_follow_at": 804
+      "bend_follow_at": 839
     },
     "arm_r": {
       "pivot": [
-        597,
-        804
+        576,
+        842
       ],
       "parent": "chest",
       "bend_follow": "seg_torso",
-      "bend_follow_at": 804
+      "bend_follow_at": 842
     },
     "leg_l": {
       "pivot": [
@@ -84,6 +84,48 @@
       "parent": "leg_r",
       "bend_follow": "seg_leg_r",
       "bend_follow_at": 1258
+    },
+    "forearm_l": {
+      "pivot": [
+        245.5,
+        901.0
+      ],
+      "parent": "arm_l"
+    },
+    "forearm_r": {
+      "pivot": [
+        600.5,
+        901.0
+      ],
+      "parent": "arm_r"
+    },
+    "elbow_fold_l": {
+      "pivot": [
+        245.5,
+        901.0
+      ],
+      "parent": "arm_l"
+    },
+    "elbow_fold_r": {
+      "pivot": [
+        600.5,
+        901.0
+      ],
+      "parent": "arm_r"
+    },
+    "hand_l": {
+      "pivot": [
+        234.5,
+        964.0
+      ],
+      "parent": "forearm_l"
+    },
+    "hand_r": {
+      "pivot": [
+        613.0,
+        963.0
+      ],
+      "parent": "forearm_r"
     }
   },
   "sockets": {
@@ -120,6 +162,20 @@
       "pos": [
         422,
         691
+      ]
+    },
+    "socket_wrist_l": {
+      "group": "hand_l",
+      "pos": [
+        234,
+        982
+      ]
+    },
+    "socket_wrist_r": {
+      "group": "hand_r",
+      "pos": [
+        614,
+        982
       ]
     },
     "socket_back": {
@@ -208,12 +264,12 @@
   "parts": [
     {
       "id": "seg_leg_l",
-      "file": "sprites/seg_leg_l.png",
+      "file": "sprites/seg_leg_l@2x.png",
       "group": "leg_l",
       "layer": 60,
       "pos": [
-        263,
-        951
+        264,
+        952
       ],
       "anchor": [
         0,
@@ -222,11 +278,14 @@
       "tags": [
         "leg"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_leg_r",
-      "file": "sprites/seg_leg_r.png",
+      "file": "sprites/seg_leg_r@2x.png",
       "group": "leg_r",
       "layer": 61,
       "pos": [
@@ -240,16 +299,19 @@
       "tags": [
         "leg"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "skirt_main",
-      "file": "sprites/skirt_main.png",
+      "file": "sprites/skirt_main@2x.png",
       "group": "chest",
       "layer": 97,
       "pos": [
-        263,
-        851
+        271,
+        863
       ],
       "anchor": [
         0,
@@ -259,11 +321,56 @@
         "body"
       ],
       "note": "裙子从 seg_torso 切出来的独立件（T66.16）：只有它自己能接旋转骨，否则一转就把上身带飞。层 97 = 腿(60/61)之上、躯干(100)之下；骨链 skirt_root→skirt_mid（S2）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
       "deformer": "skirt_root"
     },
     {
+      "id": "torso_top_patch",
+      "file": "sprites/torso_top_patch@2x.png",
+      "group": "chest",
+      "layer": 98,
+      "pos": [
+        458,
+        651
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "重画的衣领顶边：原画里衣领上沿一直被鬓发盖着、画师没画过，所以上面那件一藏，下巴和衣领之间就裂洞。这件按切线下方的干净衣领重画（轮廓借切线行、颜色借干净行 + 横向平滑 + 向上淡出），**只覆盖各发型档真的会破洞的那一小片**（need 掩膜），四档常显。（第四十八问 (c) 第四轮）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "torso_top_fill",
+      "file": "sprites/torso_top_fill@2x.png",
+      "group": "chest",
+      "layer": 99,
+      "pos": [
+        261,
+        635
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "seg_torso 顶部那条塗り足し（make_body_parts 复制颈线做出来的脖子桩）单独成件。短发档它藏在鬓发后面、发梢甩动时正好顶住，所以**短发档必须显示**；长发/双马尾/高马尾三档把鬓发撤走，它就露成脖子两侧的青绿碎渣 ⇒ 那三档 hide。（第四十八问 (c)）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "seg_torso",
-      "file": "sprites/seg_torso.png",
+      "file": "sprites/seg_torso@2x.png",
       "group": "chest",
       "layer": 100,
       "pos": [
@@ -278,47 +385,36 @@
         "body"
       ],
       "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；颈线 y=673 以上形变不再加大（衣领跟着头走，不然脖子会横向滑移）",
-      "bend_hold_above": 673
+      "bend_hold_above": 673,
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
-      "id": "seg_arm_l",
-      "file": "sprites/seg_arm_l.png",
-      "group": "arm_l",
-      "layer": 140,
+      "id": "hair_back",
+      "file": "sprites/hair_back@2x.png",
+      "group": "head",
+      "layer": 170,
       "pos": [
-        200,
-        766
+        140,
+        172
       ],
       "anchor": [
         0,
         0
       ],
       "tags": [
-        "arm"
+        "hair"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
-    },
-    {
-      "id": "seg_arm_r",
-      "file": "sprites/seg_arm_r.png",
-      "group": "arm_r",
-      "layer": 141,
-      "pos": [
-        548,
-        766
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "arm"
-      ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；骨链 hair_back_root→hair_back_mid（S2）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
+      "deformer": "hair_back_root"
     },
     {
       "id": "seg_head",
-      "file": "sprites/seg_head.png",
+      "file": "sprites/seg_head@2x.png",
       "group": "head",
       "layer": 180,
       "pos": [
@@ -332,15 +428,18 @@
       "tags": [
         "head_base"
       ],
-      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "hair_ahoge",
-      "file": "sprites/hair_ahoge.png",
+      "file": "sprites/hair_ahoge@2x.png",
       "group": "head",
       "layer": 190,
       "pos": [
-        359,
+        363,
         68
       ],
       "anchor": [
@@ -351,16 +450,464 @@
         "hair"
       ],
       "note": "呆毛：整根露在剪影外，可以无损切下来；根在底边，用 curve=root 摆动；骨链 hair_ahoge_root→hair_ahoge_mid（S2）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
       "deformer": "hair_ahoge_root"
     },
     {
+      "id": "hair_front",
+      "file": "sprites/hair_front@2x.png",
+      "group": "head",
+      "layer": 240,
+      "pos": [
+        359,
+        392
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "刘海：原画像素原样切出；它底下的额头由 AI 重绘补全，所以能摆动",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "hair_side_l",
+      "file": "sprites/hair_side_l@2x.png",
+      "group": "head",
+      "layer": 245,
+      "pos": [
+        140,
+        475
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；骨链 hair_side_l_root→hair_side_l_mid（S2）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
+      "deformer": "hair_side_l_root"
+    },
+    {
+      "id": "hair_side_r",
+      "file": "sprites/hair_side_r@2x.png",
+      "group": "head",
+      "layer": 246,
+      "pos": [
+        453,
+        475
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "hair"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）；骨链 hair_side_r_root→hair_side_r_mid（S2）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
+      "deformer": "hair_side_r_root"
+    },
+    {
+      "id": "arm_l_root",
+      "file": "sprites/arm_l_root@2x.png",
+      "group": "arm_l",
+      "layer": 95,
+      "pos": [
+        271.3,
+        839.0
+      ],
+      "anchor": [
+        -0.019999999999999674,
+        0.43209876543209874
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_upper",
+      "file": "sprites/arm_l_upper@2x.png",
+      "group": "arm_l",
+      "layer": 140,
+      "pos": [
+        271.3,
+        839.0
+      ],
+      "anchor": [
+        0.6422680412371136,
+        0.4607329842931937
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_fore",
+      "file": "sprites/arm_l_fore@2x.png",
+      "group": "forearm_l",
+      "layer": 144,
+      "pos": [
+        205,
+        866
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）；骨链 fore_l_root→fore_l_mid（S2）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
+      "deformer": "fore_l_root"
+    },
+    {
+      "id": "hand_l",
+      "file": "sprites/hand_l@2x.png",
+      "group": "hand_l",
+      "layer": 138,
+      "pos": [
+        234,
+        964
+      ],
+      "anchor": [
+        0.4932,
+        0.28
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_root",
+      "file": "sprites/arm_r_root@2x.png",
+      "group": "arm_r",
+      "layer": 96,
+      "pos": [
+        575.5,
+        842.0
+      ],
+      "anchor": [
+        0.9868421052631579,
+        0.43023255813953487
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_upper",
+      "file": "sprites/arm_r_upper@2x.png",
+      "group": "arm_r",
+      "layer": 141,
+      "pos": [
+        575.5,
+        842.0
+      ],
+      "anchor": [
+        0.3484848484848485,
+        0.46875
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_fore",
+      "file": "sprites/arm_r_fore@2x.png",
+      "group": "forearm_r",
+      "layer": 145,
+      "pos": [
+        553,
+        864
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "arm"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）；骨链 fore_r_root→fore_r_mid（S2）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
+      "deformer": "fore_r_root"
+    },
+    {
+      "id": "hand_r",
+      "file": "sprites/hand_r@2x.png",
+      "group": "hand_r",
+      "layer": 139,
+      "pos": [
+        613,
+        963
+      ],
+      "anchor": [
+        0.48,
+        0.2692
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_cap",
+      "file": "sprites/arm_l_cap@2x.png",
+      "group": "chest",
+      "layer": 142,
+      "pos": [
+        236,
+        751
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_cap",
+      "file": "sprites/arm_r_cap@2x.png",
+      "group": "chest",
+      "layer": 143,
+      "pos": [
+        486,
+        752
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_elbow",
+      "file": "sprites/arm_l_elbow@2x.png",
+      "group": "forearm_l",
+      "layer": 146,
+      "pos": [
+        207,
+        880
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_elbow",
+      "file": "sprites/arm_r_elbow@2x.png",
+      "group": "forearm_r",
+      "layer": 147,
+      "pos": [
+        558,
+        878
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_gusset",
+      "file": "sprites/arm_l_gusset@2x.png",
+      "group": "elbow_fold_l",
+      "layer": 136,
+      "pos": [
+        178,
+        868
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_l_seam",
+      "file": "sprites/arm_l_seam@2x.png",
+      "group": "elbow_fold_l",
+      "layer": 150,
+      "pos": [
+        190,
+        867
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_gusset",
+      "file": "sprites/arm_r_gusset@2x.png",
+      "group": "elbow_fold_r",
+      "layer": 137,
+      "pos": [
+        622,
+        871
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_seam",
+      "file": "sprites/arm_r_seam@2x.png",
+      "group": "elbow_fold_r",
+      "layer": 151,
+      "pos": [
+        606,
+        877
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "hand_l_pad",
+      "file": "sprites/hand_l_pad@2x.png",
+      "group": "forearm_l",
+      "layer": 128,
+      "pos": [
+        209,
+        929
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "hand_r_pad",
+      "file": "sprites/hand_r_pad@2x.png",
+      "group": "forearm_r",
+      "layer": 129,
+      "pos": [
+        587,
+        928
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "skirt_lining",
-      "file": "sprites/skirt_lining.png",
+      "file": "sprites/skirt_lining@2x.png",
       "group": "chest",
       "layer": 50,
       "pos": [
-        267,
-        936
+        279,
+        943
       ],
       "anchor": [
         0,
@@ -373,11 +920,14 @@
       "note": "层 50 = 腿（60/61）之后、尾巴（30~33）之前；挂裙子的中段骨 skirt_mid（T66.10b）",
       "inherit_from": "skirt_main",
       "warp_inherit": 0.35,
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2,
       "deformer": "skirt_mid"
     },
     {
       "id": "seg_foot_l",
-      "file": "sprites/seg_foot_l.png",
+      "file": "sprites/seg_foot_l@2x.png",
       "group": "foot_l",
       "layer": 62,
       "pos": [
@@ -392,11 +942,14 @@
         "leg",
         "foot"
       ],
-      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_foot_l_tip",
-      "file": "sprites/seg_foot_l_tip.png",
+      "file": "sprites/seg_foot_l_tip@2x.png",
       "group": "foot_l",
       "layer": 64,
       "pos": [
@@ -411,11 +964,14 @@
         "leg",
         "foot"
       ],
-      "note": "踮脚鞋（鞋身×1.476 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+      "note": "踮脚鞋（鞋身×1.445 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_foot_r",
-      "file": "sprites/seg_foot_r.png",
+      "file": "sprites/seg_foot_r@2x.png",
       "group": "foot_r",
       "layer": 63,
       "pos": [
@@ -430,11 +986,14 @@
         "leg",
         "foot"
       ],
-      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）"
+      "note": "常态鞋（原画切下，往上多带 38 px 袜子当重叠带）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "seg_foot_r_tip",
-      "file": "sprites/seg_foot_r_tip.png",
+      "file": "sprites/seg_foot_r_tip@2x.png",
       "group": "foot_r",
       "layer": 65,
       "pos": [
@@ -449,15 +1008,18 @@
         "leg",
         "foot"
       ],
-      "note": "踮脚鞋（鞋身×1.476 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）"
+      "note": "踮脚鞋（鞋身×1.445 纵向拉伸、鞋底带×0.65 压扁、袜段上移 30 px）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "mouth_mask",
-      "file": "sprites/mouth_mask.png",
+      "file": "sprites/mouth_mask@2x.png",
       "group": "head",
       "layer": 205,
       "pos": [
-        423,
+        422,
         604
       ],
       "anchor": [
@@ -465,22 +1027,27 @@
         0
       ],
       "scale": [
-        1.0,
+        0.5,
         0.0
       ],
       "tags": [
         "mouth"
       ],
       "mask_only": true,
-      "note": "开口形状：锚点在上唇线，sy=0.0 是闭嘴，sy≈0.95 是张到最大（24px）"
+      "note": "开口形状：锚点在上唇线，sy=0.0 是闭嘴，sy≈0.95 是张到最大（24px）",
+      "scale_1x": [
+        1.0,
+        0.0
+      ],
+      "hires": 2
     },
     {
       "id": "mouth_cavity",
-      "file": "sprites/mouth_cavity.png",
+      "file": "sprites/mouth_cavity@2x.png",
       "group": "head",
       "layer": 206,
       "pos": [
-        423,
+        422,
         604
       ],
       "anchor": [
@@ -488,7 +1055,7 @@
         0
       ],
       "scale": [
-        1.0,
+        0.5,
         0.0
       ],
       "tags": [
@@ -496,16 +1063,21 @@
       ],
       "mask": "mouth_mask",
       "motion_from": "mouth_mask",
-      "note": "口内（牙/上颚/舌/嘴角，AI 重绘的真素材）。motion_from=mouth_mask：口内跟着开口形状一起压扁，所以半开时是一张压扁的嘴，而不是把整张口内图裁掉下半截（那样半开只剩一条黑缝）"
+      "note": "口内（牙/上颚/舌/嘴角，AI 重绘的真素材）。motion_from=mouth_mask：口内跟着开口形状一起压扁，所以半开时是一张压扁的嘴，而不是把整张口内图裁掉下半截（那样半开只剩一条黑缝）",
+      "scale_1x": [
+        1.0,
+        0.0
+      ],
+      "hires": 2
     },
     {
       "id": "mouth_open",
-      "file": "sprites/mouth_open.png",
+      "file": "sprites/mouth_open@2x.png",
       "group": "head",
       "layer": 210,
       "pos": [
         422.5,
-        595.0
+        596.0
       ],
       "anchor": [
         0.5,
@@ -514,29 +1086,38 @@
       "tags": [
         "mouth"
       ],
-      "note": "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移"
+      "note": "上唇线（闭合笑线），压在口内上面。锚点在上唇线中点，所以 ParamMouthForm 改宽度时是两边一起张/收，不是整条线平移",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_socket",
-      "file": "sprites/eye_l_socket.png",
+      "file": "sprites/eye_l_socket@2x.png",
       "group": "head",
       "layer": 211,
       "pos": [
-        141,
-        467
+        334.5,
+        562.0
       ],
       "anchor": [
-        0,
-        0
+        0.73295,
+        0.62914
       ],
-      "tags": [],
+      "tags": [
+        "eye_aperture"
+      ],
       "mask_only": true,
-      "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）",
-      "eye_side": "l"
+      "note": "眼眶开口（115×74px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
+      "aperture_min": 0.06,
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_base",
-      "file": "sprites/eye_l_base.png",
+      "file": "sprites/eye_l_base@2x.png",
       "group": "head",
       "layer": 212,
       "pos": [
@@ -553,11 +1134,14 @@
       ],
       "mask": "eye_l_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_ball",
-      "file": "sprites/eye_l_ball.png",
+      "file": "sprites/eye_l_ball@2x.png",
       "group": "head",
       "layer": 214,
       "pos": [
@@ -574,11 +1158,39 @@
       ],
       "mask": "eye_l_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±10px，由眼眶裁切",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_l_ball_star",
+      "file": "sprites/eye_l_ball_star@2x.png",
+      "group": "head",
+      "layer": 215,
+      "pos": [
+        292,
+        487
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_l_socket",
+      "motion_from": "eye_l_ball",
+      "note": "星形虹膜（星星眼 L1+L2：五角星瞳 + 眼内碎钻高光）。ParamStarEye=0 时全透明、常态虹膜露出来；=1 时反过来",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_lash",
-      "file": "sprites/eye_l_lash.png",
+      "file": "sprites/eye_l_lash_up@2x.png",
       "group": "head",
       "layer": 218,
       "pos": [
@@ -590,15 +1202,20 @@
         0
       ],
       "tags": [
-        "eye_open",
+        "eyelid",
         "eye_not_wide"
       ],
-      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线",
-      "eye_side": "l"
+      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 2.0px，闭到底 = 那条闭眼线",
+      "eyelid_travel": 2.0,
+      "lash_hold": 0.5,
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_closed",
-      "file": "sprites/eye_l_closed.png",
+      "file": "sprites/eye_l_closed@2x.png",
       "group": "head",
       "layer": 219,
       "pos": [
@@ -612,12 +1229,15 @@
       "tags": [
         "eye_closed"
       ],
-      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 3.81）：blink=1 时完全显形",
-      "eye_side": "l"
+      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 45.48）：blink=1 时完全显形",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_smile",
-      "file": "sprites/eye_l_smile.png",
+      "file": "sprites/eye_l_smile@2x.png",
       "group": "head",
       "layer": 221,
       "pos": [
@@ -631,12 +1251,15 @@
       "tags": [
         "eye_smile"
       ],
-      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.54）：ParamEyeL/RSmile=1 时显形",
-      "eye_side": "l"
+      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 43.16）：ParamEyeL/RSmile=1 时显形",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_pain",
-      "file": "sprites/eye_l_pain.png",
+      "file": "sprites/eye_l_pain@2x.png",
       "group": "head",
       "layer": 222,
       "pos": [
@@ -650,17 +1273,20 @@
       "tags": [
         "eye_pain"
       ],
-      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.51）：ParamEyeL/RPain=1 时显形",
-      "eye_side": "l"
+      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 41.84）：ParamEyeL/RPain=1 时显形",
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_l_wide",
-      "file": "sprites/eye_l_wide.png",
+      "file": "sprites/eye_l_wide@2x.png",
       "group": "head",
       "layer": 213,
       "pos": [
         140,
-        455
+        461
       ],
       "anchor": [
         0,
@@ -671,29 +1297,38 @@
         "eye_open"
       ],
       "note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_l_ball",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_socket",
-      "file": "sprites/eye_r_socket.png",
+      "file": "sprites/eye_r_socket@2x.png",
       "group": "head",
       "layer": 223,
       "pos": [
-        438,
-        467
+        511.0,
+        563.0
       ],
       "anchor": [
-        0,
-        0
+        0.27547,
+        0.63576
       ],
-      "tags": [],
+      "tags": [
+        "eye_aperture"
+      ],
       "mask_only": true,
-      "note": "眼眶：只当遮罩用，不出现在画面上（Live2D 的 clipping mask）",
-      "eye_side": "r"
+      "note": "眼眶开口（112×75px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
+      "aperture_min": 0.06,
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_base",
-      "file": "sprites/eye_r_base.png",
+      "file": "sprites/eye_r_base@2x.png",
       "group": "head",
       "layer": 224,
       "pos": [
@@ -710,11 +1345,14 @@
       ],
       "mask": "eye_r_socket",
       "note": "眼白底：眼球移开也不会露洞；同样由眼眶裁切",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_ball",
-      "file": "sprites/eye_r_ball.png",
+      "file": "sprites/eye_r_ball@2x.png",
       "group": "head",
       "layer": 226,
       "pos": [
@@ -731,11 +1369,39 @@
       ],
       "mask": "eye_r_socket",
       "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±11px，由眼眶裁切",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "eye_r_ball_star",
+      "file": "sprites/eye_r_ball_star@2x.png",
+      "group": "head",
+      "layer": 227,
+      "pos": [
+        476,
+        487
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "gaze",
+        "eye_open"
+      ],
+      "mask": "eye_r_socket",
+      "motion_from": "eye_r_ball",
+      "note": "星形虹膜（星星眼 L1+L2：五角星瞳 + 眼内碎钻高光）。ParamStarEye=0 时全透明、常态虹膜露出来；=1 时反过来",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_lash",
-      "file": "sprites/eye_r_lash.png",
+      "file": "sprites/eye_r_lash_up@2x.png",
       "group": "head",
       "layer": 230,
       "pos": [
@@ -747,15 +1413,20 @@
         0
       ],
       "tags": [
-        "eye_open",
+        "eyelid",
         "eye_not_wide"
       ],
-      "note": "眼线睫毛：跟着眼皮下滑，闭到底时就是那条闭眼线",
-      "eye_side": "r"
+      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 7.0px，闭到底 = 那条闭眼线",
+      "eyelid_travel": 7.0,
+      "lash_hold": 0.5,
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_closed",
-      "file": "sprites/eye_r_closed.png",
+      "file": "sprites/eye_r_closed@2x.png",
       "group": "head",
       "layer": 231,
       "pos": [
@@ -769,12 +1440,15 @@
       "tags": [
         "eye_closed"
       ],
-      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.74）：blink=1 时完全显形",
-      "eye_side": "r"
+      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 47.92）：blink=1 时完全显形",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_smile",
-      "file": "sprites/eye_r_smile.png",
+      "file": "sprites/eye_r_smile@2x.png",
       "group": "head",
       "layer": 233,
       "pos": [
@@ -788,12 +1462,15 @@
       "tags": [
         "eye_smile"
       ],
-      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.76）：ParamEyeL/RSmile=1 时显形",
-      "eye_side": "r"
+      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 45.85）：ParamEyeL/RSmile=1 时显形",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_pain",
-      "file": "sprites/eye_r_pain.png",
+      "file": "sprites/eye_r_pain@2x.png",
       "group": "head",
       "layer": 234,
       "pos": [
@@ -807,17 +1484,20 @@
       "tags": [
         "eye_pain"
       ],
-      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 5.73）：ParamEyeL/RPain=1 时显形",
-      "eye_side": "r"
+      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 46.29）：ParamEyeL/RPain=1 时显形",
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_r_wide",
-      "file": "sprites/eye_r_wide.png",
+      "file": "sprites/eye_r_wide@2x.png",
       "group": "head",
       "layer": 225,
       "pos": [
-        410,
-        455
+        431,
+        461
       ],
       "anchor": [
         0,
@@ -828,11 +1508,14 @@
         "eye_open"
       ],
       "note": "瞪大眼（AI 重绘·挖掉虹膜 0px）：ParamEyeL/RWide=1 时顶替常态眼白与上睫毛，虹膜仍是 eye_r_ball",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "blush_l",
-      "file": "sprites/blush_l.png",
+      "file": "sprites/blush_l@2x.png",
       "group": "head",
       "layer": 203,
       "pos": [
@@ -846,11 +1529,14 @@
       "opacity": 1.0,
       "blend": "multiply",
       "tags": [],
-      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来"
+      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "blush_r",
-      "file": "sprites/blush_r.png",
+      "file": "sprites/blush_r@2x.png",
       "group": "head",
       "layer": 204,
       "pos": [
@@ -864,11 +1550,14 @@
       "opacity": 1.0,
       "blend": "multiply",
       "tags": [],
-      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来"
+      "note": "腮红（乘算）：默认全透明，由 ParamCheek / 害羞表情推上来",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_hl_star_l",
-      "file": "sprites/eye_hl_star_l.png",
+      "file": "sprites/eye_hl_star_l@2x.png",
       "group": "head",
       "layer": 220,
       "pos": [
@@ -887,11 +1576,14 @@
       ],
       "mask": "eye_l_socket",
       "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_hl_l",
-      "file": "sprites/eye_hl_l.png",
+      "file": "sprites/eye_hl_l@2x.png",
       "group": "head",
       "layer": 217,
       "pos": [
@@ -910,11 +1602,14 @@
       ],
       "mask": "eye_l_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
-      "eye_side": "l"
+      "eye_side": "l",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_hl_star_r",
-      "file": "sprites/eye_hl_star_r.png",
+      "file": "sprites/eye_hl_star_r@2x.png",
       "group": "head",
       "layer": 232,
       "pos": [
@@ -933,11 +1628,14 @@
       ],
       "mask": "eye_r_socket",
       "note": "星形高光（加算）：Pose 组 eye_hl_style 的另一个档位",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
     },
     {
       "id": "eye_hl_r",
-      "file": "sprites/eye_hl_r.png",
+      "file": "sprites/eye_hl_r@2x.png",
       "group": "head",
       "layer": 229,
       "pos": [
@@ -956,7 +1654,202 @@
       ],
       "mask": "eye_r_socket",
       "note": "眼高光（加算）：跟着眼球走、被眼眶裁切、闭眼时随睁眼件一起淡出",
-      "eye_side": "r"
+      "eye_side": "r",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_1",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 300,
+      "pos": [
+        4,
+        120
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.5,
+      "rot_deg": -12.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "note": "闪光 lg（加算）：默认全透明，ParamStarEye 开门、ParamSparkle1 管这一颗的生命周期",
+      "scale_1x": 1.0,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_2",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 301,
+      "pos": [
+        843,
+        152
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.5,
+      "rot_deg": 14.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "note": "闪光 lg（加算）：默认全透明，ParamStarEye 开门、ParamSparkle2 管这一颗的生命周期",
+      "scale_1x": 1.0,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_3",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 302,
+      "pos": [
+        72,
+        351
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.34,
+      "rot_deg": 22.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "note": "闪光 md（加算）：默认全透明，ParamStarEye 开门、ParamSparkle3 管这一颗的生命周期",
+      "scale_1x": 0.68,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_4",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 303,
+      "pos": [
+        775,
+        319
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.34,
+      "rot_deg": -18.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "note": "闪光 md（加算）：默认全透明，ParamStarEye 开门、ParamSparkle4 管这一颗的生命周期",
+      "scale_1x": 0.68,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_5",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 304,
+      "pos": [
+        214,
+        49
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.34,
+      "rot_deg": 8.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "note": "闪光 md（加算）：默认全透明，ParamStarEye 开门、ParamSparkle5 管这一颗的生命周期",
+      "scale_1x": 0.68,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_6",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 305,
+      "pos": [
+        633,
+        36
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.34,
+      "rot_deg": -26.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "note": "闪光 md（加算）：默认全透明，ParamStarEye 开门、ParamSparkle6 管这一颗的生命周期",
+      "scale_1x": 0.68,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_7",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 306,
+      "pos": [
+        -19,
+        506
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.225,
+      "rot_deg": 31.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "note": "闪光 sm（加算）：默认全透明，ParamStarEye 开门、ParamSparkle7 管这一颗的生命周期",
+      "scale_1x": 0.45,
+      "hires": 2
+    },
+    {
+      "id": "fx_sparkle_8",
+      "file": "sprites/fx_sparkle@2x.png",
+      "group": "head",
+      "layer": 307,
+      "pos": [
+        866,
+        480
+      ],
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "scale": 0.225,
+      "rot_deg": -34.0,
+      "opacity": 1.0,
+      "blend": "normal",
+      "tags": [
+        "fx_eye_open"
+      ],
+      "note": "闪光 sm（加算）：默认全透明，ParamStarEye 开门、ParamSparkle8 管这一颗的生命周期",
+      "scale_1x": 0.45,
+      "hires": 2
     },
     {
       "id": "acc_tail_cat_relaxed",
@@ -1217,9 +2110,9 @@
     {
       "id": "head",
       "rect": [
-        196,
+        136,
         0,
-        453,
+        575,
         718
       ],
       "action": "head_pat",
@@ -1279,14 +2172,14 @@
         {
           "target": "ParamArmLA",
           "wave": "sine",
-          "amp": -0.375,
+          "amp": -0.0139,
           "freq": 0.28,
           "phase": 0.15
         },
         {
           "target": "ParamArmRA",
           "wave": "sine",
-          "amp": 0.375,
+          "amp": 0.0139,
           "freq": 0.28,
           "phase": 0.15
         },
@@ -1295,6 +2188,24 @@
           "wave": "sine",
           "amp": 0.16,
           "freq": 0.3
+        },
+        {
+          "target": "ParamHairFront",
+          "wave": "sine",
+          "amp": 0.1,
+          "freq": 0.26
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.1143,
+          "freq": 0.24
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "sine",
+          "amp": 0.06,
+          "freq": 0.24
         }
       ],
       "title": "呼吸"
@@ -1334,16 +2245,30 @@
         {
           "target": "ParamArmLA",
           "wave": "sine",
-          "amp": -1.75,
+          "amp": -0.0648,
           "freq": 0.18,
           "phase": 0.06
         },
         {
           "target": "ParamArmRA",
           "wave": "sine",
-          "amp": 1.75,
+          "amp": 0.0648,
           "freq": 0.18,
           "phase": 0.06
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "sine",
+          "amp": 0.1591,
+          "freq": 0.18,
+          "phase": 0.34
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "sine",
+          "amp": 0.1591,
+          "freq": 0.18,
+          "phase": 0.34
         },
         {
           "target": "ParamLegL",
@@ -1360,10 +2285,42 @@
           "phase": 0.12
         },
         {
+          "target": "ParamArmLB",
+          "wave": "sine",
+          "amp": 0.1333,
+          "freq": 0.18,
+          "phase": 0.22
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "sine",
+          "amp": 0.1333,
+          "freq": 0.18,
+          "phase": 0.22
+        },
+        {
           "target": "ParamHairAhoge",
           "wave": "sine",
           "amp": 0.4,
           "freq": 0.35
+        },
+        {
+          "target": "ParamHairFront",
+          "wave": "sine",
+          "amp": 0.4,
+          "freq": 0.33
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.5143,
+          "freq": 0.31
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "sine",
+          "amp": 0.32,
+          "freq": 0.3
         }
       ],
       "title": "摇摆"
@@ -1407,16 +2364,80 @@
           "freq": 0.2
         },
         {
+          "target": "ParamSparkle1",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.37,
+          "phase": 0.0
+        },
+        {
+          "target": "ParamSparkle2",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.29,
+          "phase": 0.42
+        },
+        {
+          "target": "ParamSparkle3",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.53,
+          "phase": 0.17
+        },
+        {
+          "target": "ParamSparkle4",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.43,
+          "phase": 0.63
+        },
+        {
+          "target": "ParamSparkle5",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.61,
+          "phase": 0.85
+        },
+        {
+          "target": "ParamSparkle6",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.47,
+          "phase": 0.31
+        },
+        {
+          "target": "ParamSparkle7",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.71,
+          "phase": 0.54
+        },
+        {
+          "target": "ParamSparkle8",
+          "wave": "sine",
+          "amp": 0.62,
+          "bias": 0.38,
+          "freq": 0.67,
+          "phase": 0.09
+        },
+        {
           "target": "ParamArmLA",
           "wave": "sine",
-          "amp": -0.55,
+          "amp": -0.0203,
           "freq": 0.06,
           "phase": 0.12
         },
         {
           "target": "ParamArmRA",
           "wave": "sine",
-          "amp": 0.55,
+          "amp": 0.0203,
           "freq": 0.06,
           "phase": 0.12
         },
@@ -1426,6 +2447,20 @@
           "amp": -0.75,
           "freq": 0.24,
           "phase": 0.18
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "sine",
+          "amp": 0.0545,
+          "freq": 0.06,
+          "phase": 0.42
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "sine",
+          "amp": 0.0545,
+          "freq": 0.06,
+          "phase": 0.42
         },
         {
           "target": "ParamLegL",
@@ -1442,10 +2477,42 @@
           "phase": 0.2
         },
         {
+          "target": "ParamArmLB",
+          "wave": "sine",
+          "amp": 0.0444,
+          "freq": 0.06,
+          "phase": 0.28
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "sine",
+          "amp": 0.0444,
+          "freq": 0.06,
+          "phase": 0.28
+        },
+        {
           "target": "ParamHairAhoge",
           "wave": "sine",
           "amp": 0.12,
           "freq": 0.22
+        },
+        {
+          "target": "ParamHairFront",
+          "wave": "sine",
+          "amp": 0.15,
+          "freq": 0.2
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.1857,
+          "freq": 0.19
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "sine",
+          "amp": 0.1,
+          "freq": 0.18
         }
       ],
       "title": "待机"
@@ -1554,6 +2621,28 @@
               0.0
             ]
           ]
+        },
+        {
+          "target": "ParamHairSide",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              -0.3143
+            ],
+            [
+              0.6,
+              0.2286
+            ],
+            [
+              1.1,
+              0.0
+            ]
+          ],
+          "interp": "smooth"
         }
       ],
       "title": "点头"
@@ -1621,6 +2710,24 @@
           "freq": 1.1
         },
         {
+          "target": "ParamHairFront",
+          "wave": "sine",
+          "amp": 0.4333,
+          "freq": 1.1
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.5143,
+          "freq": 1.0
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "sine",
+          "amp": 0.3,
+          "freq": 1.0
+        },
+        {
           "target": "ParamKneeL",
           "wave": "pulse",
           "amp": 0.2,
@@ -1683,14 +2790,28 @@
         {
           "target": "ParamArmLA",
           "wave": "bounce",
-          "amp": 2.25,
+          "amp": 0.0833,
           "freq": 0.0,
           "dur": 0.5
         },
         {
           "target": "ParamArmRA",
           "wave": "bounce",
-          "amp": 2.25,
+          "amp": 0.0833,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "bounce",
+          "amp": 0.5455,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "bounce",
+          "amp": 0.5455,
           "freq": 0.0,
           "dur": 0.5
         },
@@ -1709,6 +2830,20 @@
           "dur": 0.5
         },
         {
+          "target": "ParamArmLB",
+          "wave": "bounce",
+          "amp": 0.7778,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "bounce",
+          "amp": 0.7778,
+          "freq": 0.0,
+          "dur": 0.5
+        },
+        {
           "target": "ParamMouthForm",
           "wave": "pulse",
           "amp": 1.0,
@@ -1719,6 +2854,27 @@
           "target": "ParamHairAhoge",
           "wave": "bounce",
           "amp": 0.7,
+          "dur": 1.4,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairFront",
+          "wave": "bounce",
+          "amp": 0.5333,
+          "dur": 1.4,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "bounce",
+          "amp": 0.6857,
+          "dur": 1.4,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "bounce",
+          "amp": 0.38,
           "dur": 1.4,
           "ease": "out"
         }
@@ -1811,6 +2967,106 @@
           "ease": "out"
         },
         {
+          "target": "ParamHandL",
+          "wave": "pulse",
+          "amp": 1.25,
+          "freq": 0.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "pulse",
+          "amp": 1.25,
+          "freq": 0.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmLA",
+          "wave": "pulse",
+          "amp": 0.6,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmRA",
+          "wave": "pulse",
+          "amp": 0.6,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmLB",
+          "wave": "pulse",
+          "amp": 8.35,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "pulse",
+          "amp": 8.1,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamSurpriseForeshorten",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeLWide",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.15,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRWide",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.15,
+          "ease": "out"
+        },
+        {
+          "target": "ParamAngleZ",
+          "wave": "pulse",
+          "amp": -12.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "ParamBodyAngleZ",
+          "wave": "pulse",
+          "amp": 5.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "ParamLegL",
+          "wave": "pulse",
+          "amp": -0.35,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamLegR",
+          "wave": "pulse",
+          "amp": 0.35,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamSurpriseElbowHide",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
           "target": "ParamMouthForm",
           "wave": "pulse",
           "amp": -0.7,
@@ -1823,6 +3079,27 @@
           "amp": 0.8,
           "dur": 0.8,
           "freq": 2.4
+        },
+        {
+          "target": "ParamHairFront",
+          "wave": "decay",
+          "amp": 0.6333,
+          "dur": 0.8,
+          "freq": 2.2
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "decay",
+          "amp": 0.7714,
+          "dur": 0.9,
+          "freq": 2.2
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "decay",
+          "amp": 0.44,
+          "dur": 0.9,
+          "freq": 2.0
         },
         {
           "target": "ParamHipL",
@@ -1893,14 +3170,28 @@
         {
           "target": "ParamArmLA",
           "wave": "decay",
-          "amp": -2.5,
+          "amp": -0.0926,
           "freq": 2.6,
           "dur": 0.7
         },
         {
           "target": "ParamArmRA",
           "wave": "decay",
-          "amp": 2.5,
+          "amp": 0.0926,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "decay",
+          "amp": 0.5,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "decay",
+          "amp": 0.5,
           "freq": 2.6,
           "dur": 0.7
         },
@@ -1919,6 +3210,20 @@
           "dur": 0.7
         },
         {
+          "target": "ParamArmLB",
+          "wave": "decay",
+          "amp": 0.5,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "decay",
+          "amp": 0.5,
+          "freq": 2.6,
+          "dur": 0.7
+        },
+        {
           "target": "ParamMouthOpenY",
           "wave": "decay",
           "amp": 0.7368,
@@ -1931,6 +3236,27 @@
           "amp": 0.9,
           "dur": 1.0,
           "freq": 3.0
+        },
+        {
+          "target": "ParamHairFront",
+          "wave": "decay",
+          "amp": 0.6667,
+          "dur": 1.0,
+          "freq": 2.8
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "decay",
+          "amp": 0.8571,
+          "dur": 1.0,
+          "freq": 2.8
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "decay",
+          "amp": 0.52,
+          "dur": 1.0,
+          "freq": 2.6
         }
       ],
       "part_overrides": {
@@ -2169,6 +3495,24 @@
           "freq": 0.1
         },
         {
+          "target": "ParamHairFront",
+          "wave": "sine",
+          "amp": 0.0833,
+          "freq": 0.1
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.0857,
+          "freq": 0.1
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "sine",
+          "amp": 0.05,
+          "freq": 0.1
+        },
+        {
           "target": "ParamWeightShift",
           "wave": "sine",
           "amp": 0.26,
@@ -2209,23 +3553,211 @@
       "channels": [
         {
           "target": "ParamArmRA",
-          "wave": "pulse",
-          "amp": 15.0,
-          "dur": 2.4,
-          "ease": "out"
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.08,
+              -0.0778
+            ],
+            [
+              0.3,
+              0.2889
+            ],
+            [
+              0.45,
+              0.4333
+            ],
+            [
+              0.64,
+              0.3611
+            ],
+            [
+              0.85,
+              0.3828
+            ]
+          ]
+        },
+        {
+          "target": "ParamForeLongR",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.14,
+              -0.75
+            ],
+            [
+              0.34,
+              -1.0
+            ],
+            [
+              0.55,
+              -0.35
+            ],
+            [
+              0.72,
+              0.72
+            ],
+            [
+              0.88,
+              1.05
+            ],
+            [
+              1.05,
+              1.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamShoulderRY",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.06,
+              0.0
+            ],
+            [
+              0.42,
+              7.4
+            ],
+            [
+              0.58,
+              9.3
+            ],
+            [
+              0.78,
+              8.67
+            ]
+          ]
+        },
+        {
+          "target": "ParamForeSlimR",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.1,
+              0.0
+            ],
+            [
+              0.5,
+              0.55
+            ],
+            [
+              0.8,
+              1.0
+            ]
+          ]
         },
         {
           "target": "ParamArmRB",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.1,
+              0.1667
+            ],
+            [
+              0.26,
+              1.6667
+            ],
+            [
+              0.44,
+              4.7778
+            ],
+            [
+              0.62,
+              6.8889
+            ],
+            [
+              0.78,
+              7.8333
+            ],
+            [
+              0.95,
+              7.3333
+            ],
+            [
+              1.12,
+              7.4511
+            ]
+          ]
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "sine",
+          "amp": -0.2778,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamBodyAngleZ",
           "wave": "pulse",
-          "amp": -11.25,
+          "amp": -6.4,
+          "dur": 0.9,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmLA",
+          "wave": "pulse",
+          "amp": 0.2222,
           "dur": 2.4,
           "ease": "out"
         },
         {
-          "target": "ParamArmRA",
+          "target": "ParamHandR",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.18,
+              -0.0
+            ],
+            [
+              0.55,
+              0.3636
+            ],
+            [
+              0.88,
+              0.8636
+            ],
+            [
+              1.1,
+              0.6182
+            ],
+            [
+              1.3,
+              0.6818
+            ]
+          ]
+        },
+        {
+          "target": "ParamHandR",
           "wave": "sine",
-          "amp": 3.5,
-          "freq": 1.8,
+          "amp": -0.5455,
+          "freq": 2.2,
+          "phase": 0.18,
           "dur": 2.4
         },
         {
@@ -2246,6 +3778,24 @@
           "target": "ParamHairAhoge",
           "wave": "sine",
           "amp": 0.3,
+          "freq": 1.2
+        },
+        {
+          "target": "ParamHairFront",
+          "wave": "sine",
+          "amp": 0.2333,
+          "freq": 1.2
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.2857,
+          "freq": 1.2
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "sine",
+          "amp": 0.18,
           "freq": 1.2
         },
         {
@@ -2275,6 +3825,961 @@
         }
       },
       "title": "挥手"
+    },
+    {
+      "id": "wave_both",
+      "priority": 6,
+      "duration": 2.4,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "ParamArmRA",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.08,
+              -0.0778
+            ],
+            [
+              0.3,
+              0.2889
+            ],
+            [
+              0.45,
+              0.4333
+            ],
+            [
+              0.64,
+              0.3611
+            ],
+            [
+              0.85,
+              0.3828
+            ]
+          ]
+        },
+        {
+          "target": "ParamShoulderRY",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.06,
+              0.0
+            ],
+            [
+              0.42,
+              7.4
+            ],
+            [
+              0.58,
+              9.3
+            ],
+            [
+              0.78,
+              8.67
+            ]
+          ]
+        },
+        {
+          "target": "ParamForeSlimR",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.1,
+              0.0
+            ],
+            [
+              0.5,
+              0.55
+            ],
+            [
+              0.8,
+              1.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamForeLongR",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.14,
+              -0.75
+            ],
+            [
+              0.34,
+              -1.0
+            ],
+            [
+              0.55,
+              -0.35
+            ],
+            [
+              0.72,
+              0.72
+            ],
+            [
+              0.88,
+              1.05
+            ],
+            [
+              1.05,
+              1.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamArmRB",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.1,
+              0.1667
+            ],
+            [
+              0.26,
+              1.6667
+            ],
+            [
+              0.44,
+              4.7778
+            ],
+            [
+              0.62,
+              6.8889
+            ],
+            [
+              0.78,
+              7.8333
+            ],
+            [
+              0.95,
+              7.3333
+            ],
+            [
+              1.12,
+              7.4511
+            ]
+          ]
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "sine",
+          "amp": -0.2778,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamArmLA",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.13,
+              -0.0846
+            ],
+            [
+              0.35,
+              0.314
+            ],
+            [
+              0.5,
+              0.4711
+            ],
+            [
+              0.69,
+              0.3926
+            ],
+            [
+              0.9,
+              0.4161
+            ]
+          ]
+        },
+        {
+          "target": "ParamShoulderLY",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.11,
+              0.0
+            ],
+            [
+              0.47,
+              7.4
+            ],
+            [
+              0.63,
+              9.3
+            ],
+            [
+              0.83,
+              8.67
+            ]
+          ]
+        },
+        {
+          "target": "ParamForeSlimL",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.15,
+              0.0
+            ],
+            [
+              0.55,
+              0.55
+            ],
+            [
+              0.85,
+              1.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamForeLongL",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.19,
+              -0.75
+            ],
+            [
+              0.39,
+              -1.0
+            ],
+            [
+              0.6,
+              -0.35
+            ],
+            [
+              0.77,
+              0.72
+            ],
+            [
+              0.93,
+              1.05
+            ],
+            [
+              1.1,
+              1.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamArmLB",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.15,
+              0.1667
+            ],
+            [
+              0.31,
+              1.667
+            ],
+            [
+              0.49,
+              4.7787
+            ],
+            [
+              0.67,
+              6.8903
+            ],
+            [
+              0.83,
+              7.8349
+            ],
+            [
+              1.0,
+              7.3348
+            ],
+            [
+              1.17,
+              7.4526
+            ]
+          ]
+        },
+        {
+          "target": "ParamArmLB",
+          "wave": "sine",
+          "amp": -0.2778,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamHandR",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.18,
+              -0.0
+            ],
+            [
+              0.55,
+              0.3636
+            ],
+            [
+              0.88,
+              0.8636
+            ],
+            [
+              1.1,
+              0.6182
+            ],
+            [
+              1.3,
+              0.6818
+            ]
+          ]
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "sine",
+          "amp": -0.5455,
+          "freq": 2.2,
+          "phase": 0.18,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamHandL",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.23,
+              -0.0
+            ],
+            [
+              0.6,
+              0.2909
+            ],
+            [
+              0.93,
+              0.6909
+            ],
+            [
+              1.15,
+              0.4945
+            ],
+            [
+              1.35,
+              0.5455
+            ]
+          ]
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "sine",
+          "amp": -0.5455,
+          "freq": 2.2,
+          "phase": 0.3,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamAngleZ",
+          "wave": "sine",
+          "amp": 3.2,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamAngleY",
+          "wave": "sine",
+          "amp": -3.6,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamHipDrop",
+          "wave": "sine",
+          "amp": 1.2,
+          "freq": 1.6,
+          "dur": 2.4
+        },
+        {
+          "target": "ParamEyeLSmile",
+          "wave": "pulse",
+          "amp": 0.55,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRSmile",
+          "wave": "pulse",
+          "amp": 0.55,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairAhoge",
+          "wave": "sine",
+          "amp": 0.3,
+          "freq": 1.2
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.2857,
+          "freq": 1.2
+        }
+      ],
+      "part_overrides": {
+        "mouth_open": {
+          "opacity": 0.8
+        }
+      },
+      "title": "双手挥"
+    },
+    {
+      "id": "heart_hands",
+      "priority": 6,
+      "duration": 2.8,
+      "return_state": "idle",
+      "interruptible": false,
+      "channels": [
+        {
+          "target": "ParamArmRA",
+          "wave": "pulse",
+          "amp": 0.3333,
+          "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmRB",
+          "wave": "pulse",
+          "amp": -7.2778,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "pulse",
+          "amp": -2.5,
+          "dur": 0.55,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmLA",
+          "wave": "pulse",
+          "amp": 0.1111,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamArmLB",
+          "wave": "pulse",
+          "amp": -7.0556,
+          "dur": 0.55,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "pulse",
+          "amp": -2.5,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "sine",
+          "amp": -0.1818,
+          "freq": 1.1,
+          "phase": 0.25
+        },
+        {
+          "target": "ParamBodyAngleZ",
+          "wave": "sine",
+          "amp": 5.6,
+          "freq": 1.1
+        },
+        {
+          "target": "ParamAngleZ",
+          "wave": "pulse",
+          "amp": 12.0,
+          "dur": 0.6,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeLSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.35,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.35,
+          "ease": "out"
+        },
+        {
+          "target": "ParamCheek",
+          "wave": "pulse",
+          "amp": 0.9,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.22,
+          "freq": 0.9
+        }
+      ],
+      "part_overrides": {
+        "mouth_open": {
+          "opacity": 0.45
+        }
+      },
+      "title": "比心"
+    },
+    {
+      "id": "kirara_jump",
+      "priority": 7,
+      "duration": 2.0,
+      "return_state": "idle",
+      "interruptible": false,
+      "airborne": 60,
+      "channels": [
+        {
+          "target": "ParamBaseY",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.26,
+              -0.0
+            ],
+            [
+              0.52,
+              6.7143
+            ],
+            [
+              0.69,
+              8.5714
+            ],
+            [
+              0.86,
+              6.7143
+            ],
+            [
+              1.04,
+              -0.0
+            ],
+            [
+              2.0,
+              -0.0
+            ]
+          ],
+          "note": "滞空弧线：上行 0.43s、下行 0.35s（下落比上抛略快，像有重力）"
+        },
+        {
+          "target": "ParamHipDrop",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.22,
+              4.5
+            ],
+            [
+              0.42,
+              -1.2
+            ],
+            [
+              0.65,
+              1.5
+            ],
+            [
+              0.88,
+              0.3
+            ],
+            [
+              1.08,
+              3.6
+            ],
+            [
+              1.35,
+              0.6
+            ],
+            [
+              1.75,
+              0.0
+            ]
+          ],
+          "note": "预蹲 4.5（=胯沉 9px）→ 蹬伸 −1.2（腿绷直拉长，squash&stretch 的 stretch）→ 滞空 1.5（空中膝盖是收着的）→ 落地缓冲 3.6 → 站直"
+        },
+        {
+          "target": "ParamArmLA",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.22,
+              -0.7778
+            ],
+            [
+              0.58,
+              5.7778
+            ],
+            [
+              0.72,
+              7.4444
+            ],
+            [
+              1.25,
+              7.3333
+            ],
+            [
+              1.75,
+              1.6667
+            ],
+            [
+              2.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamArmRA",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.22,
+              -0.7778
+            ],
+            [
+              0.58,
+              5.7778
+            ],
+            [
+              0.72,
+              7.4444
+            ],
+            [
+              1.25,
+              7.3333
+            ],
+            [
+              1.75,
+              1.6667
+            ],
+            [
+              2.0,
+              -0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamArmLB",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              -0.4444
+            ],
+            [
+              0.75,
+              1.0
+            ],
+            [
+              1.25,
+              0.8333
+            ],
+            [
+              1.8,
+              0.2222
+            ],
+            [
+              2.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamArmRB",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              -0.0
+            ],
+            [
+              0.3,
+              -0.4444
+            ],
+            [
+              0.75,
+              1.0
+            ],
+            [
+              1.25,
+              0.8333
+            ],
+            [
+              1.8,
+              0.2222
+            ],
+            [
+              2.0,
+              -0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamHandL",
+          "wave": "sine",
+          "amp": 0.7273,
+          "freq": 1.1,
+          "phase": 0.25
+        },
+        {
+          "target": "ParamHandR",
+          "wave": "sine",
+          "amp": -0.7273,
+          "freq": 1.1,
+          "phase": 0.25
+        },
+        {
+          "target": "ParamHipL",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.24,
+              1.0
+            ],
+            [
+              0.69,
+              -2.0
+            ],
+            [
+              1.04,
+              0.5556
+            ],
+            [
+              1.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamHipR",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.24,
+              -1.0
+            ],
+            [
+              0.69,
+              2.0
+            ],
+            [
+              1.04,
+              -0.5556
+            ],
+            [
+              1.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamAnkleL",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.26,
+              1.6667
+            ],
+            [
+              0.6,
+              -3.3333
+            ],
+            [
+              0.86,
+              -2.8333
+            ],
+            [
+              1.04,
+              1.3333
+            ],
+            [
+              1.35,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamAnkleR",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.26,
+              -1.6667
+            ],
+            [
+              0.6,
+              3.3333
+            ],
+            [
+              0.86,
+              2.8333
+            ],
+            [
+              1.04,
+              -1.3333
+            ],
+            [
+              1.35,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamAngleZ",
+          "wave": "sine",
+          "amp": -6.0,
+          "freq": 0.5
+        },
+        {
+          "target": "ParamEyeLSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.35,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeRSmile",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.35,
+          "ease": "out"
+        },
+        {
+          "target": "ParamCheek",
+          "wave": "pulse",
+          "amp": 0.7,
+          "dur": 0.4,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairFluffy",
+          "wave": "bounce",
+          "amp": 0.85,
+          "dur": 1.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairBack",
+          "wave": "bounce",
+          "amp": -0.7,
+          "dur": 1.3,
+          "ease": "out"
+        },
+        {
+          "target": "ParamHairBackS",
+          "wave": "sine",
+          "amp": 0.45,
+          "freq": 0.75,
+          "phase": 0.3
+        },
+        {
+          "target": "ParamHairFront",
+          "wave": "bounce",
+          "amp": -0.5,
+          "dur": 1.2,
+          "ease": "out"
+        }
+      ],
+      "part_overrides": {
+        "mouth_open": {
+          "opacity": 0.9
+        }
+      },
+      "title": "蹦一下"
     },
     {
       "id": "look_around",
@@ -2342,6 +4847,159 @@
       "title": "张望"
     },
     {
+      "id": "star_eyes",
+      "priority": 6,
+      "duration": 3.4,
+      "return_state": "idle",
+      "interruptible": true,
+      "fade": 0.15,
+      "channels": [
+        {
+          "target": "ParamStarEye",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.28,
+              1.0
+            ],
+            [
+              2.8,
+              1.0
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamEyeOpen",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              0.25
+            ],
+            [
+              2.8,
+              0.2
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamPupilScale",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              0.35
+            ],
+            [
+              2.8,
+              0.3
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamMouthForm",
+          "wave": "pulse",
+          "amp": 0.8,
+          "dur": 0.45,
+          "ease": "out"
+        },
+        {
+          "target": "ParamMouthOpenY",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              0.28
+            ],
+            [
+              2.6,
+              0.22
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamCheek",
+          "wave": "pulse",
+          "amp": 0.7,
+          "dur": 0.5,
+          "ease": "out"
+        },
+        {
+          "target": "ParamEyeSparkle",
+          "wave": "pulse",
+          "amp": 1.0,
+          "dur": 0.35,
+          "ease": "out"
+        },
+        {
+          "target": "ParamAngleZ",
+          "interp": "smooth",
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              -5.0
+            ],
+            [
+              1.7,
+              4.0
+            ],
+            [
+              2.9,
+              -2.0
+            ],
+            [
+              3.4,
+              0.0
+            ]
+          ]
+        },
+        {
+          "target": "ParamAngleY",
+          "wave": "sine",
+          "amp": -4.8,
+          "freq": 1.1,
+          "dur": 3.4
+        }
+      ],
+      "title": "星星眼"
+    },
+    {
       "id": "shift_weight",
       "priority": 2,
       "duration": 0,
@@ -2387,6 +5045,13 @@
           "amp": 1.2,
           "freq": 0.11,
           "phase": 0.2
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "sine",
+          "amp": 0.18,
+          "freq": 0.11,
+          "phase": 0.3
         }
       ],
       "title": "换重心"
@@ -2443,6 +5108,12 @@
           "target": "ParamHairAhoge",
           "wave": "bounce",
           "amp": 0.6,
+          "dur": 1.0
+        },
+        {
+          "target": "ParamHairSide",
+          "wave": "bounce",
+          "amp": 0.4,
           "dur": 1.0
         }
       ],
@@ -2503,7 +5174,7 @@
     {
       "id": "hair_ahoge_root",
       "pivot": [
-        419.5,
+        421.0,
         71.5
       ],
       "note": "hair_ahoge 的根骨：绕发根/挂接点转，梢部才会被带起来"
@@ -2511,8 +5182,8 @@
     {
       "id": "hair_ahoge_mid",
       "pivot": [
-        419.5,
-        126.5
+        421.0,
+        126.0
       ],
       "parent": "hair_ahoge_root",
       "note": "hair_ahoge 的中段骨：比根慢半拍，做出分层摆动"
@@ -2591,18 +5262,2112 @@
       "parent": "hair_ahoge_mid"
     },
     {
+      "id": "fore_l_root",
+      "pivot": [
+        245.5,
+        901.0
+      ],
+      "note": "fore_l 的根骨：绕该件的轴线根部转，梢部才会被带起来"
+    },
+    {
+      "id": "fore_l_mid",
+      "pivot": [
+        240.0,
+        932.5
+      ],
+      "parent": "fore_l_root",
+      "note": "fore_l 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
+      "id": "arm_l_fore_slim",
+      "part": "arm_l_fore",
+      "cols": 2,
+      "rows": 4,
+      "param": "ParamForeSlimL",
+      "lag": 0.06,
+      "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）。keyform 三组（T66.11b）：0 不动 → 0.5 只收 16% → 1.5 收满，段缓动 out + lag 0.06s（袖料晚手臂一拍塌下去）。0 = 原件，静止画面零改动；挂在中段骨 fore_l_mid 下（S2 骨链）",
+      "keys": [
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 0.5,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 1.35
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.05
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -1.44
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 1.8
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -0.29
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -2.38
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 1.26
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -0.41
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -2.08
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 0.54
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.29
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -1.13
+            }
+          ]
+        },
+        {
+          "v": 1.0,
+          "ease": "out",
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 8.41
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.29
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -8.99
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 11.23
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -1.82
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -14.87
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 7.89
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -2.55
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -12.99
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 3.39
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -1.83
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -7.05
+            }
+          ]
+        },
+        {
+          "v": 1.5,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 12.62
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.43
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -13.48
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 16.84
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -2.73
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -22.3
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 11.83
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -3.82
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -19.48
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 5.08
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -2.75
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -10.57
+            }
+          ]
+        }
+      ],
+      "parent": "fore_l_mid"
+    },
+    {
+      "id": "arm_l_fore_long",
+      "part": "arm_l_fore",
+      "cols": 2,
+      "rows": 4,
+      "note": "前臂折起时沿肘→腕轴线加长 26px（肘端 0、袖口满额，袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动；挂在中段骨 fore_l_mid 下（S2 骨链）",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": -1.34,
+          "dy": 7.68
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": -1.34,
+          "dy": 7.68
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": -1.34,
+          "dy": 7.68
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": -4.92,
+          "dy": 28.17
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": -4.92,
+          "dy": 28.17
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": -4.92,
+          "dy": 28.17
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": -8.94,
+          "dy": 51.23
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": -8.94,
+          "dy": 51.23
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": -8.94,
+          "dy": 51.23
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": -8.94,
+          "dy": 51.23
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": -8.94,
+          "dy": 51.23
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": -8.94,
+          "dy": 51.23
+        }
+      ],
+      "parent": "fore_l_mid"
+    },
+    {
+      "id": "arm_l_elbow_smooth",
+      "part": "arm_l_fore",
+      "cols": 2,
+      "rows": 4,
+      "param": "ParamArmLB",
+      "parent": "fore_l_mid",
+      "note": "G103 肘部硬折痕平滑：弯曲 -80° 时外凸内收消除纸片对折，外凸 8px 内收 2px，0=原件",
+      "keys": [
+        {
+          "v": -10.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -7.0
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -1.75
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 1.75
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -10.0
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -2.5
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 2.5
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -6.0
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -1.5
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 1.5
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -2.0
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.5
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.5
+            }
+          ]
+        },
+        {
+          "v": -5.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -3.36
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.84
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 0.84
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -4.8
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -1.2
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 1.2
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -2.88
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -0.72
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 0.72
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.96
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.24
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.24
+            }
+          ]
+        },
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 5.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -3.36
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.84
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 0.84
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -4.8
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -1.2
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 1.2
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -2.88
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -0.72
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 0.72
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.96
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.24
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.24
+            }
+          ]
+        },
+        {
+          "v": 10.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -7.0
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -1.75
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 1.75
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -10.0
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -2.5
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 2.5
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -6.0
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -1.5
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 1.5
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -2.0
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.5
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fore_r_root",
+      "pivot": [
+        600.5,
+        901.0
+      ],
+      "note": "fore_r 的根骨：绕该件的轴线根部转，梢部才会被带起来"
+    },
+    {
+      "id": "fore_r_mid",
+      "pivot": [
+        606.8,
+        932.0
+      ],
+      "parent": "fore_r_root",
+      "note": "fore_r 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
+      "id": "arm_r_fore_slim",
+      "part": "arm_r_fore",
+      "cols": 2,
+      "rows": 4,
+      "param": "ParamForeSlimR",
+      "lag": 0.06,
+      "note": "前臂折起时沿肘→腕轴线横向收窄（肘端 0%、袖口 17%）。keyform 三组（T66.11b）：0 不动 → 0.5 只收 16% → 1.5 收满，段缓动 out + lag 0.06s（袖料晚手臂一拍塌下去）。0 = 原件，静止画面零改动；挂在中段骨 fore_r_mid 下（S2 骨链）",
+      "keys": [
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 0.5,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 1.45
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.01
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -1.43
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 2.44
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 0.28
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -1.88
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 2.15
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 0.43
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -1.3
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 1.18
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.32
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -0.55
+            }
+          ]
+        },
+        {
+          "v": 1.0,
+          "ease": "out",
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 9.08
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.08
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -8.92
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 15.22
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 1.72
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -11.78
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 13.46
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 2.66
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -8.14
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 7.37
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 1.97
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -3.43
+            }
+          ]
+        },
+        {
+          "v": 1.5,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 13.62
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.12
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -13.38
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 22.83
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 2.58
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -17.67
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 20.19
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 3.99
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -12.21
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 11.05
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 2.96
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -5.15
+            }
+          ]
+        }
+      ],
+      "parent": "fore_r_mid"
+    },
+    {
+      "id": "arm_r_fore_long",
+      "part": "arm_r_fore",
+      "cols": 2,
+      "rows": 4,
+      "note": "前臂折起时沿肘→腕轴线加长 26px（肘端 0、袖口满额，袖口条纹那一格刚性平移）；0 = 原件，静止画面零改动；挂在中段骨 fore_r_mid 下（S2 骨链）",
+      "points": [
+        {
+          "c": 0,
+          "r": 1,
+          "dx": 1.54,
+          "dy": 7.65
+        },
+        {
+          "c": 1,
+          "r": 1,
+          "dx": 1.54,
+          "dy": 7.65
+        },
+        {
+          "c": 2,
+          "r": 1,
+          "dx": 1.54,
+          "dy": 7.65
+        },
+        {
+          "c": 0,
+          "r": 2,
+          "dx": 5.65,
+          "dy": 28.04
+        },
+        {
+          "c": 1,
+          "r": 2,
+          "dx": 5.65,
+          "dy": 28.04
+        },
+        {
+          "c": 2,
+          "r": 2,
+          "dx": 5.65,
+          "dy": 28.04
+        },
+        {
+          "c": 0,
+          "r": 3,
+          "dx": 10.28,
+          "dy": 50.97
+        },
+        {
+          "c": 1,
+          "r": 3,
+          "dx": 10.28,
+          "dy": 50.97
+        },
+        {
+          "c": 2,
+          "r": 3,
+          "dx": 10.28,
+          "dy": 50.97
+        },
+        {
+          "c": 0,
+          "r": 4,
+          "dx": 10.28,
+          "dy": 50.97
+        },
+        {
+          "c": 1,
+          "r": 4,
+          "dx": 10.28,
+          "dy": 50.97
+        },
+        {
+          "c": 2,
+          "r": 4,
+          "dx": 10.28,
+          "dy": 50.97
+        }
+      ],
+      "parent": "fore_r_mid"
+    },
+    {
+      "id": "arm_r_elbow_smooth",
+      "part": "arm_r_fore",
+      "cols": 2,
+      "rows": 4,
+      "param": "ParamArmRB",
+      "parent": "fore_r_mid",
+      "note": "G103 肘部硬折痕平滑：弯曲 -80° 时外凸内收消除纸片对折，外凸 8px 内收 2px，0=原件",
+      "keys": [
+        {
+          "v": -10.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -1.75
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 1.75
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 7.0
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -2.5
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 2.5
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 10.0
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -1.5
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 1.5
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 6.0
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.5
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.5
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 2.0
+            }
+          ]
+        },
+        {
+          "v": -5.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -0.84
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.84
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 3.36
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -1.2
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 1.2
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 4.8
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -0.72
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 0.72
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 2.88
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.24
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.24
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.96
+            }
+          ]
+        },
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 5.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -0.84
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.84
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 3.36
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -1.2
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 1.2
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 4.8
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -0.72
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 0.72
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 2.88
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.24
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.24
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.96
+            }
+          ]
+        },
+        {
+          "v": 10.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -1.75
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 1.75
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 7.0
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -2.5
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 2.5
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 10.0
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -1.5
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 1.5
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 6.0
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -0.5
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.5
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hair_side_l_root",
+      "pivot": [
+        266.5,
+        481.1
+      ],
+      "note": "hair_side_l 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "hair_side_l_mid",
+      "pivot": [
+        266.5,
+        587.8
+      ],
+      "parent": "hair_side_l_root",
+      "note": "hair_side_l 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
+      "id": "side_l_s",
+      "part": "hair_side_l",
+      "cols": 2,
+      "rows": 4,
+      "param": "ParamHairSideS",
+      "note": "侧发 S 形甩动：发根固定，中段与发梢反向。keyform（T66.11c）：v>0 段与旧 amount 逐点相同，v<0 段是镜像（横向取反、竖向不变），中段缓起步；挂在中段骨 hair_side_l_mid 下（S2 骨链）",
+      "keys": [
+        {
+          "v": -1.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 1.4
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 1.6
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 1.4
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 3.2
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 3.6
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 3.2
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -1.8
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -2.2
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -1.8
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -5.4,
+              "dy": -1.0
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -5.8,
+              "dy": -1.2
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -5.4,
+              "dy": -1.0
+            }
+          ]
+        },
+        {
+          "v": -0.44,
+          "ease": "out",
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 0.616
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.704
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 0.616
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 1.408
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 1.584
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 1.408
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -0.792
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -0.968
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -0.792
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -2.376,
+              "dy": -0.44
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -2.552,
+              "dy": -0.528
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -2.376,
+              "dy": -0.44
+            }
+          ]
+        },
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 0.44,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -0.616
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.704
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -0.616
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -1.408
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -1.584
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -1.408
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 0.792
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 0.968
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 0.792
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 2.376,
+              "dy": 0.44
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 2.552,
+              "dy": 0.528
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 2.376,
+              "dy": 0.44
+            }
+          ]
+        },
+        {
+          "v": 1.0,
+          "ease": "out",
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -1.4
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -1.6
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -1.4
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -3.2
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -3.6
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -3.2
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 1.8
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 2.2
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 1.8
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 5.4,
+              "dy": 1.0
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 5.8,
+              "dy": 1.2
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 5.4,
+              "dy": 1.0
+            }
+          ]
+        }
+      ],
+      "parent": "hair_side_l_mid"
+    },
+    {
+      "id": "hair_side_r_root",
+      "pivot": [
+        580.0,
+        481.1
+      ],
+      "note": "hair_side_r 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "hair_side_r_mid",
+      "pivot": [
+        580.0,
+        587.8
+      ],
+      "parent": "hair_side_r_root",
+      "note": "hair_side_r 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
+      "id": "side_r_s",
+      "part": "hair_side_r",
+      "cols": 2,
+      "rows": 4,
+      "param": "ParamHairSideS",
+      "note": "侧发 S 形甩动：发根固定，中段与发梢反向。keyform（T66.11c）：v>0 段与旧 amount 逐点相同，v<0 段是镜像（横向取反、竖向不变），中段缓起步；挂在中段骨 hair_side_r_mid 下（S2 骨链）",
+      "keys": [
+        {
+          "v": -1.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 1.4
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 1.6
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 1.4
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 3.2
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 3.6
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 3.2
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -1.8
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -2.2
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -1.8
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -5.4,
+              "dy": -1.0
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -5.8,
+              "dy": -1.2
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -5.4,
+              "dy": -1.0
+            }
+          ]
+        },
+        {
+          "v": -0.44,
+          "ease": "out",
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": 0.616
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": 0.704
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": 0.616
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": 1.408
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": 1.584
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": 1.408
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": -0.792
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": -0.968
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": -0.792
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -2.376,
+              "dy": -0.44
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -2.552,
+              "dy": -0.528
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -2.376,
+              "dy": -0.44
+            }
+          ]
+        },
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 0.44,
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -0.616
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -0.704
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -0.616
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -1.408
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -1.584
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -1.408
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 0.792
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 0.968
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 0.792
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 2.376,
+              "dy": 0.44
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 2.552,
+              "dy": 0.528
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 2.376,
+              "dy": 0.44
+            }
+          ]
+        },
+        {
+          "v": 1.0,
+          "ease": "out",
+          "points": [
+            {
+              "c": 0,
+              "r": 1,
+              "dx": -1.4
+            },
+            {
+              "c": 1,
+              "r": 1,
+              "dx": -1.6
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "dx": -1.4
+            },
+            {
+              "c": 0,
+              "r": 2,
+              "dx": -3.2
+            },
+            {
+              "c": 1,
+              "r": 2,
+              "dx": -3.6
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "dx": -3.2
+            },
+            {
+              "c": 0,
+              "r": 3,
+              "dx": 1.8
+            },
+            {
+              "c": 1,
+              "r": 3,
+              "dx": 2.2
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "dx": 1.8
+            },
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 5.4,
+              "dy": 1.0
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 5.8,
+              "dy": 1.2
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 5.4,
+              "dy": 1.0
+            }
+          ]
+        }
+      ],
+      "parent": "hair_side_r_mid"
+    },
+    {
+      "id": "hair_back_root",
+      "pivot": [
+        423.5,
+        182.2
+      ],
+      "note": "hair_back 的根骨：绕发根/挂接点转，梢部才会被带起来"
+    },
+    {
+      "id": "hair_back_mid",
+      "pivot": [
+        423.5,
+        341.5
+      ],
+      "parent": "hair_back_root",
+      "note": "hair_back 的中段骨：比根慢半拍，做出分层摆动"
+    },
+    {
+      "id": "back_s",
+      "part": "hair_back",
+      "cols": 3,
+      "rows": 6,
+      "param": "ParamHairBackS",
+      "note": "后发第二段（下沿）：r0~r3（头顶到 y187）全固定——那一段是头部剪影；只有脸侧露出来的下沿甩动。最外两列比中列多甩一点，中列整片藏在脑袋后面。keyform（T66.11c）；挂在中段骨 hair_back_mid 下（S2 骨链）",
+      "keys": [
+        {
+          "v": -1.0,
+          "points": [
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -2.5
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -1.8
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -1.8
+            },
+            {
+              "c": 3,
+              "r": 4,
+              "dx": -2.5
+            },
+            {
+              "c": 0,
+              "r": 5,
+              "dx": -7.0
+            },
+            {
+              "c": 1,
+              "r": 5,
+              "dx": -5.04
+            },
+            {
+              "c": 2,
+              "r": 5,
+              "dx": -5.04
+            },
+            {
+              "c": 3,
+              "r": 5,
+              "dx": -7.0
+            },
+            {
+              "c": 0,
+              "r": 6,
+              "dx": -12.0,
+              "dy": -1.2
+            },
+            {
+              "c": 1,
+              "r": 6,
+              "dx": -8.64,
+              "dy": -1.2
+            },
+            {
+              "c": 2,
+              "r": 6,
+              "dx": -8.64,
+              "dy": -1.2
+            },
+            {
+              "c": 3,
+              "r": 6,
+              "dx": -12.0,
+              "dy": -1.2
+            }
+          ]
+        },
+        {
+          "v": -0.44,
+          "ease": "out",
+          "points": [
+            {
+              "c": 0,
+              "r": 4,
+              "dx": -1.1
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": -0.792
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": -0.792
+            },
+            {
+              "c": 3,
+              "r": 4,
+              "dx": -1.1
+            },
+            {
+              "c": 0,
+              "r": 5,
+              "dx": -3.08
+            },
+            {
+              "c": 1,
+              "r": 5,
+              "dx": -2.218
+            },
+            {
+              "c": 2,
+              "r": 5,
+              "dx": -2.218
+            },
+            {
+              "c": 3,
+              "r": 5,
+              "dx": -3.08
+            },
+            {
+              "c": 0,
+              "r": 6,
+              "dx": -5.28,
+              "dy": -0.528
+            },
+            {
+              "c": 1,
+              "r": 6,
+              "dx": -3.802,
+              "dy": -0.528
+            },
+            {
+              "c": 2,
+              "r": 6,
+              "dx": -3.802,
+              "dy": -0.528
+            },
+            {
+              "c": 3,
+              "r": 6,
+              "dx": -5.28,
+              "dy": -0.528
+            }
+          ]
+        },
+        {
+          "v": 0.0,
+          "points": []
+        },
+        {
+          "v": 0.44,
+          "points": [
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 1.1
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 0.792
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 0.792
+            },
+            {
+              "c": 3,
+              "r": 4,
+              "dx": 1.1
+            },
+            {
+              "c": 0,
+              "r": 5,
+              "dx": 3.08
+            },
+            {
+              "c": 1,
+              "r": 5,
+              "dx": 2.218
+            },
+            {
+              "c": 2,
+              "r": 5,
+              "dx": 2.218
+            },
+            {
+              "c": 3,
+              "r": 5,
+              "dx": 3.08
+            },
+            {
+              "c": 0,
+              "r": 6,
+              "dx": 5.28,
+              "dy": 0.528
+            },
+            {
+              "c": 1,
+              "r": 6,
+              "dx": 3.802,
+              "dy": 0.528
+            },
+            {
+              "c": 2,
+              "r": 6,
+              "dx": 3.802,
+              "dy": 0.528
+            },
+            {
+              "c": 3,
+              "r": 6,
+              "dx": 5.28,
+              "dy": 0.528
+            }
+          ]
+        },
+        {
+          "v": 1.0,
+          "ease": "out",
+          "points": [
+            {
+              "c": 0,
+              "r": 4,
+              "dx": 2.5
+            },
+            {
+              "c": 1,
+              "r": 4,
+              "dx": 1.8
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "dx": 1.8
+            },
+            {
+              "c": 3,
+              "r": 4,
+              "dx": 2.5
+            },
+            {
+              "c": 0,
+              "r": 5,
+              "dx": 7.0
+            },
+            {
+              "c": 1,
+              "r": 5,
+              "dx": 5.04
+            },
+            {
+              "c": 2,
+              "r": 5,
+              "dx": 5.04
+            },
+            {
+              "c": 3,
+              "r": 5,
+              "dx": 7.0
+            },
+            {
+              "c": 0,
+              "r": 6,
+              "dx": 12.0,
+              "dy": 1.2
+            },
+            {
+              "c": 1,
+              "r": 6,
+              "dx": 8.64,
+              "dy": 1.2
+            },
+            {
+              "c": 2,
+              "r": 6,
+              "dx": 8.64,
+              "dy": 1.2
+            },
+            {
+              "c": 3,
+              "r": 6,
+              "dx": 12.0,
+              "dy": 1.2
+            }
+          ]
+        }
+      ],
+      "parent": "hair_back_mid"
+    },
+    {
       "id": "skirt_root",
       "pivot": [
-        423.0,
-        858.3
+        422.0,
+        869.7
       ],
       "note": "skirt 的根骨：绕发根/挂接点转，梢部才会被带起来"
     },
     {
       "id": "skirt_mid",
       "pivot": [
-        423.0,
-        951.6
+        422.0,
+        955.4
       ],
       "parent": "skirt_root",
       "note": "skirt 的中段骨：比根慢半拍，做出分层摆动"
@@ -2650,17 +7415,17 @@
             },
             {
               "c": 0,
-              "r": 6,
+              "r": 5,
               "dx": -4.2
             },
             {
               "c": 1,
-              "r": 6,
+              "r": 5,
               "dx": -4.536
             },
             {
               "c": 2,
-              "r": 6,
+              "r": 5,
               "dx": -4.2
             },
             {
@@ -2737,17 +7502,17 @@
             },
             {
               "c": 0,
-              "r": 6,
+              "r": 5,
               "dx": 4.2
             },
             {
               "c": 1,
-              "r": 6,
+              "r": 5,
               "dx": 4.536
             },
             {
               "c": 2,
-              "r": 6,
+              "r": 5,
               "dx": 4.2
             },
             {
@@ -2802,17 +7567,17 @@
           "points": [
             {
               "c": 0,
-              "r": 6,
+              "r": 5,
               "dx": -0.6
             },
             {
               "c": 1,
-              "r": 6,
+              "r": 5,
               "dx": -0.636
             },
             {
               "c": 2,
-              "r": 6,
+              "r": 5,
               "dx": -0.6
             },
             {
@@ -2856,17 +7621,17 @@
           "points": [
             {
               "c": 0,
-              "r": 6,
+              "r": 5,
               "dx": 0.6
             },
             {
               "c": 1,
-              "r": 6,
+              "r": 5,
               "dx": 0.636
             },
             {
               "c": 2,
-              "r": 6,
+              "r": 5,
               "dx": 0.6
             },
             {
@@ -2947,17 +7712,17 @@
             },
             {
               "c": 0,
-              "r": 6,
+              "r": 5,
               "dy": 1.936
             },
             {
               "c": 1,
-              "r": 6,
+              "r": 5,
               "dy": 2.13
             },
             {
               "c": 2,
-              "r": 6,
+              "r": 5,
               "dy": 1.936
             },
             {
@@ -3035,17 +7800,17 @@
             },
             {
               "c": 0,
-              "r": 6,
+              "r": 5,
               "dy": -2.944
             },
             {
               "c": 1,
-              "r": 6,
+              "r": 5,
               "dy": -3.238
             },
             {
               "c": 2,
-              "r": 6,
+              "r": 5,
               "dy": -2.944
             },
             {
@@ -3086,6 +7851,14 @@
         }
       ],
       "parent": "skirt_mid"
+    },
+    {
+      "id": "jacket_hem_x",
+      "part": "seg_torso",
+      "cols": 2,
+      "rows": 10,
+      "note": "外套前襟下摆横摆：腰线(y=286)钉住、罗纹上沿(r=8) 推到最大 8.0，再往下回零 —— 罗纹和裙子不跟着走。中间开襟那一列恒为 0。幅度约为裙摆的六成：上着は重い素材",
+      "points": []
     },
     {
       "id": "tail_relaxed_root",
@@ -4002,6 +8775,115 @@
       "note": "呆毛上下点头（Q37 调强：.45/55/6.0/5 → .62/40/4.6/9，点头时呆毛要能甩出来）"
     },
     {
+      "id": "hand_l_lag",
+      "part": "hand_l",
+      "driver": "forearm_l",
+      "axis": "x",
+      "param": "rot_deg",
+      "ratio": 0.22,
+      "stiffness": 34,
+      "damping": 4.4,
+      "max": 6,
+      "note": "手腕跟随滞后：部件锚点就在腕上，所以 rot_deg 绕腕转"
+    },
+    {
+      "id": "hand_r_lag",
+      "part": "hand_r",
+      "driver": "forearm_r",
+      "axis": "x",
+      "param": "rot_deg",
+      "ratio": 0.22,
+      "stiffness": 34,
+      "damping": 4.4,
+      "max": 6,
+      "note": "第四十七问：上限 9 → 6。滞后是叠在腕角上的，9° 会把峰值推出人的尺偏极限"
+    },
+    {
+      "id": "bangs_x",
+      "part": "hair_front",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.5,
+      "stiffness": 44,
+      "damping": 5.6,
+      "max": 9,
+      "note": "刘海吊在额头上，发梢在下 → 曲线 tip，幅度要小。Q37 从 .3/65/7.5/4 调强：前髪は1段で十分但不能是死的"
+    },
+    {
+      "id": "side_l_x",
+      "part": "hair_side_l",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.85,
+      "stiffness": 26,
+      "damping": 4.1,
+      "max": 16,
+      "note": "左侧发第一段：整缕跟着头甩，根固定所以曲线用 tip"
+    },
+    {
+      "id": "side_l_tip",
+      "part": "hair_side_l",
+      "driver": "side_l_x",
+      "param": "ParamHairSideS",
+      "ratio": 0.12,
+      "stiffness": 14,
+      "damping": 3.0,
+      "max": 1.6,
+      "note": "左侧发第二段（梢）：串在第一段后面，比发根再慢半拍"
+    },
+    {
+      "id": "side_r_x",
+      "part": "hair_side_r",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.85,
+      "stiffness": 26,
+      "damping": 4.1,
+      "max": 16,
+      "note": "右侧发第一段（数值同左侧，Q37 调强）"
+    },
+    {
+      "id": "side_r_tip",
+      "part": "hair_side_r",
+      "driver": "side_r_x",
+      "param": "ParamHairSideS",
+      "ratio": 0.12,
+      "stiffness": 14,
+      "damping": 3.0,
+      "max": 1.6,
+      "note": "右侧发第二段（梢）"
+    },
+    {
+      "id": "back_x",
+      "part": "hair_back",
+      "driver": "head",
+      "axis": "x",
+      "param": "bend_x",
+      "curve": "tip",
+      "ratio": 0.5,
+      "stiffness": 34,
+      "damping": 4.9,
+      "max": 10,
+      "note": "后发第一段（根）：整团壳慢半拍地晃（Q37 从 .22/72/8.0/3.5 调强；幅度大了会从脸边上露出来，所以 max 只给到 10px＝头宽的 4%）"
+    },
+    {
+      "id": "back_tip",
+      "part": "hair_back",
+      "driver": "back_x",
+      "param": "ParamHairBackS",
+      "ratio": 0.1,
+      "stiffness": 11,
+      "damping": 2.8,
+      "max": 1.4,
+      "note": "后发第二段（梢）：串在 back_x 后面，比发根再慢一拍；比侧发更软更慢（头发越重越慢）"
+    },
+    {
       "id": "skirt_x",
       "part": "skirt_main",
       "param": "ParamSkirtSway",
@@ -4036,6 +8918,26 @@
       "damping": 7.2,
       "max": 1.0,
       "note": "裙摆纵摆：上身上下起伏时裙摆滞后一拍，比横摆更软更钝；T66.12 起写命名参数 ParamSkirtSwayY（以前写 amount，幅度小到看不见）"
+    },
+    {
+      "id": "jacket_x",
+      "part": "seg_torso",
+      "deformer": "jacket_hem_x",
+      "input": [
+        {
+          "param": "ParamBodyAngleX",
+          "weight": 1.0
+        },
+        {
+          "param": "ParamBodyAngleZ",
+          "weight": 1.0
+        }
+      ],
+      "ratio": 0.06,
+      "stiffness": 30,
+      "damping": 7.0,
+      "max": 1.0,
+      "note": "外套下摆的身体带动：比裙摆(0.12/24/6.5)**幅度更小、刚度更高** —— 厚实的棒球外套，甩不远也停得快"
     },
     {
       "id": "tail_relaxed_x",
@@ -4500,7 +9402,8 @@
         {
           "part": "mouth_mask",
           "param": "sy",
-          "scale": 0.95
+          "scale": 0.475,
+          "hires_halved": true
         },
         {
           "part": "mouth_open",
@@ -4530,12 +9433,62 @@
         {
           "part": "mouth_mask",
           "param": "sx",
-          "scale": 0.26
+          "scale": 0.13,
+          "hires_halved": true
         },
         {
           "part": "mouth_mask",
           "param": "sy",
-          "scale": -0.045
+          "scale": -0.0225,
+          "hires_halved": true
+        },
+        {
+          "part": "fx_sparkle_1",
+          "param": "alpha",
+          "scale": 2.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_2",
+          "param": "alpha",
+          "scale": 2.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_3",
+          "param": "alpha",
+          "scale": 2.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_4",
+          "param": "alpha",
+          "scale": 2.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_5",
+          "param": "alpha",
+          "scale": 2.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_6",
+          "param": "alpha",
+          "scale": 2.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_7",
+          "param": "alpha",
+          "scale": 2.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_8",
+          "param": "alpha",
+          "scale": 2.0,
+          "offset": -1.0
         }
       ]
     },
@@ -4580,65 +9533,365 @@
       "note": "单边嘴角：Animaze 扩展参数表 ParamMouthX。mouth_cavity 靠 motion_from=mouth_mask 自动跟随，不用单列。不要用 ParamMouthForm 代替 —— 那条被口型同步占着"
     },
     {
+      "id": "ParamSurpriseForeshorten",
+      "label": "惊讶 上臂透视短缩",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "arm_l_upper",
+          "param": "sy",
+          "scale": -0.2
+        },
+        {
+          "part": "arm_l_upper",
+          "param": "sx",
+          "scale": -0.35
+        },
+        {
+          "group": "forearm_l",
+          "param": "dy",
+          "scale": -13.431
+        },
+        {
+          "part": "arm_l_root",
+          "param": "sy",
+          "scale": -0.2
+        },
+        {
+          "part": "arm_r_upper",
+          "param": "sy",
+          "scale": -0.2
+        },
+        {
+          "part": "arm_r_upper",
+          "param": "sx",
+          "scale": -0.35
+        },
+        {
+          "group": "forearm_r",
+          "param": "dy",
+          "scale": -12.816
+        },
+        {
+          "part": "arm_r_root",
+          "param": "sy",
+          "scale": -0.2
+        }
+      ],
+      "note": "只由 surprised 驱动：上臂局部 sy≈0.80，实测骨长保持在授权的 0.75–0.85 区间；同步内移肘 pivot，不改袖片源图，也不影响 happy/talk/wave。"
+    },
+    {
       "id": "ParamArmLA",
-      "label": "左臂 摆动",
+      "label": "左臂 抬起",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
       "binds": [
         {
-          "part": "seg_arm_l",
-          "param": "bend_x",
-          "scale": -4.0,
-          "curve": "tip"
+          "group": "arm_l",
+          "param": "rot_deg",
+          "scale": 18.0
         }
       ],
-      "note": "手臂只有形变没有肘关节（G4c 未做），上限按 ±40px 给"
+      "note": "绕肩旋转，±10 → ±180°（人的肩就是 180°：手能举到头顶正上方）。肩关节靠两件东西兜住：① 躯干不留任何袖子像素（G102：留了就是一块不跟着转的青色三角）；② `arm_*_root` 袖根塗り足し画在躯干底下（G108），转开后补上关节、上臂不至于细得像棍子；③ arm_*_cap 肩帽盖住肩窝（Q35）"
     },
     {
       "id": "ParamArmRA",
-      "label": "右臂 摆动",
+      "label": "右臂 抬起",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
       "binds": [
         {
-          "part": "seg_arm_r",
-          "param": "bend_x",
-          "scale": 4.0,
-          "curve": "tip"
+          "group": "arm_r",
+          "param": "rot_deg",
+          "scale": -18.0
         }
       ]
     },
     {
       "id": "ParamArmLB",
-      "label": "左臂 抬起（未拆件：整条弯）",
+      "label": "左小臂 弯曲",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
       "binds": [
         {
-          "part": "seg_arm_l",
-          "param": "bend_y",
-          "scale": 4.0,
-          "curve": "tip"
+          "group": "forearm_l",
+          "param": "rot_deg",
+          "scale": 18.0
+        },
+        {
+          "group": "elbow_fold_l",
+          "param": "rot_deg",
+          "scale": 9.0
+        },
+        {
+          "part": "arm_l_elbow",
+          "param": "alpha",
+          "scale": 0.3333,
+          "offset": -1.8333
+        },
+        {
+          "part": "arm_l_gusset",
+          "param": "alpha",
+          "scale": 7.692,
+          "offset": -55.0
+        },
+        {
+          "part": "arm_l_seam",
+          "param": "alpha",
+          "scale": 7.692,
+          "offset": -55.0
+        },
+        {
+          "deformer": "fore_l_mid",
+          "param": "rot_deg",
+          "scale": 0.15,
+          "lag": 0.12
+        }
+      ],
+      "note": "绕肘旋转，±10 → ±180°。**这里写的是画面上看见的 2D 投影角，不是解剖屈曲角**：人的肘屈曲极限 145°，但画里小臂往镜头方向折时有透视缩短，正面看见的夹角会超过 145° —— Q38 在参考图 characters/xiaoxun/design/pose_ref/wave_up.png 上实测：肩(455,315)→肘(495,475)→腕(487,352)，投影夹角 170°。倍率 14.5（±145°）封顶时这个姿势根本摆不出来，所以提到 18.0；动作源码写的仍是度数，GEO2PARAM 自动换算，既有动作角度不变；袖管中段骨 fore_l_mid 以 0.15 系数、0.12 秒延迟跟随本参数（T66.17：折肘时袖料比手臂晚一步到位）"
+    },
+    {
+      "id": "ParamArmRB",
+      "label": "右小臂 弯曲",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "forearm_r",
+          "param": "rot_deg",
+          "scale": -18.0
+        },
+        {
+          "group": "elbow_fold_r",
+          "param": "rot_deg",
+          "scale": -9.0
+        },
+        {
+          "part": "arm_r_elbow",
+          "param": "alpha",
+          "scale": 0.3333,
+          "offset": -1.8333
+        },
+        {
+          "part": "arm_r_gusset",
+          "param": "alpha",
+          "scale": 7.692,
+          "offset": -55.0
+        },
+        {
+          "part": "arm_r_seam",
+          "param": "alpha",
+          "scale": 7.692,
+          "offset": -55.0
+        },
+        {
+          "deformer": "fore_r_mid",
+          "param": "rot_deg",
+          "scale": -0.15,
+          "lag": 0.12
+        }
+      ],
+      "note": "；袖管中段骨 fore_r_mid 以 0.15 系数、0.12 秒延迟跟随本参数（T66.17：折肘时袖料比手臂晚一步到位）"
+    },
+    {
+      "id": "ParamHandL",
+      "label": "左手腕",
+      "min": -3.2,
+      "max": 3.2,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "hand_l",
+          "param": "rot_deg",
+          "scale": 22.0
+        }
+      ],
+      "note": "绕腕旋转 ±70°（掌屈 80°/背屈 70°，取小的那头）。手件往袖子里续了 16px 的腕柄，柄的半对角 20.6px < 袖口半宽 22.5px，**任何角度都缩在袖口里**，所以大角度也不会露腕"
+    },
+    {
+      "id": "ParamHandR",
+      "label": "右手腕",
+      "min": -3.2,
+      "max": 3.2,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "hand_r",
+          "param": "rot_deg",
+          "scale": -22.0
         }
       ]
     },
     {
-      "id": "ParamArmRB",
-      "label": "右臂 抬起（未拆件：整条弯）",
+      "id": "ParamShoulderRY",
+      "label": "右肩 上提",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
       "binds": [
         {
-          "part": "seg_arm_r",
-          "param": "bend_y",
-          "scale": 4.0,
-          "curve": "tip"
+          "group": "arm_r",
+          "param": "dy",
+          "scale": -3.0
+        }
+      ],
+      "note": "只抬右肩，±10 → ±30px；双肩一起抬仍然走 ParamShoulderY"
+    },
+    {
+      "id": "ParamShoulderLY",
+      "label": "左肩 上提",
+      "min": -10.0,
+      "max": 10.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "group": "arm_l",
+          "param": "dy",
+          "scale": -3.0
         }
       ]
+    },
+    {
+      "id": "ParamForeSlimR",
+      "label": "右前臂 收窄",
+      "min": 0.0,
+      "max": 1.5,
+      "default": 0.0,
+      "binds": [],
+      "note": "折肘时前臂横向收窄（肘端不动、袖口收 17%），避免前臂压在上臂上糊成一坨"
+    },
+    {
+      "id": "ParamForeSlimL",
+      "label": "左前臂 收窄",
+      "min": 0.0,
+      "max": 1.5,
+      "default": 0.0,
+      "binds": []
+    },
+    {
+      "id": "ParamForeLongR",
+      "label": "右前臂 伸缩",
+      "min": -1.2,
+      "max": 1.2,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "arm_r_fore_long",
+          "scale": 1.0
+        },
+        {
+          "group": "hand_r",
+          "param": "dx",
+          "scale": 5.139
+        },
+        {
+          "group": "hand_r",
+          "param": "dy",
+          "scale": 25.487
+        }
+      ],
+      "note": "折肘时前臂沿肘→腕轴线拉长 26px（+22%），手件同步外移；0 = 原件，静止画面零改动。**负值 = 缩短**，用来做挥手甩过程中的透视收缩（marunaru「前腕を潰して回転軌道を小さくする」）"
+    },
+    {
+      "id": "ParamForeLongL",
+      "label": "左前臂 伸缩",
+      "min": -1.2,
+      "max": 1.2,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "arm_l_fore_long",
+          "scale": 1.0
+        },
+        {
+          "group": "hand_l",
+          "param": "dx",
+          "scale": -4.472
+        },
+        {
+          "group": "hand_l",
+          "param": "dy",
+          "scale": 25.613
+        }
+      ]
+    },
+    {
+      "id": "ParamSurpriseElbowHide",
+      "label": "惊讶 折肘浮片抑制",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "arm_l_gusset",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_l_seam",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_r_gusset",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "arm_r_seam",
+          "param": "alpha",
+          "scale": -1.0
+        }
+      ],
+      "note": "仅惊讶姿势压低折肘补布/接缝；不改 wave 等动作的原有肘部层级"
+    },
+    {
+      "id": "ParamForeSwayL",
+      "label": "左前臂 袖摆",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "fore_l_root",
+          "param": "rot_deg",
+          "scale": 1.2
+        },
+        {
+          "deformer": "fore_l_mid",
+          "param": "rot_deg",
+          "scale": 2.6,
+          "lag": 0.09
+        }
+      ],
+      "note": "小臂袖管自己摆（T66.17）。骨链 fore_l_root（绕肘）→ fore_l_mid（绕肘→腕中点，带 0.09 秒行波延迟）两级驱动，袖管的两张网格（slim/long）挂在链尾 ⇒ 袖口比肘慢半拍。同一条骨链的中段还挂了一条**肘角（ParamArmLB/RB）的滞后跟随**（系数 0.15、延迟 0.12s）：折肘时袖料比手臂晚一步到位，稳态下与静止姿势**零偏移**（lag 读的是 0.12 秒前的参数值，参数不动时两者相等）。"
+    },
+    {
+      "id": "ParamForeSwayR",
+      "label": "右前臂 袖摆",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "fore_r_root",
+          "param": "rot_deg",
+          "scale": -1.2
+        },
+        {
+          "deformer": "fore_r_mid",
+          "param": "rot_deg",
+          "scale": -2.6,
+          "lag": 0.09
+        }
+      ],
+      "note": "小臂袖管自己摆（T66.17）。骨链 fore_r_root（绕肘）→ fore_r_mid（绕肘→腕中点，带 0.09 秒行波延迟）两级驱动，袖管的两张网格（slim/long）挂在链尾 ⇒ 袖口比肘慢半拍。同一条骨链的中段还挂了一条**肘角（ParamArmLB/RB）的滞后跟随**（系数 0.15、延迟 0.12s）：折肘时袖料比手臂晚一步到位，稳态下与静止姿势**零偏移**（lag 读的是 0.12 秒前的参数值，参数不动时两者相等）。"
     },
     {
       "id": "ParamLegL",
@@ -4782,6 +10035,21 @@
       "note": "整体上提 30px；两只脚的组同量下压抵消 = 鞋底钉在地面。鞋本身换成踮脚姿态图（seg_foot_*_tip，鞋身纵向拉长 30px、鞋底带压扁），鞋口因此正好抬到抬高后的脚踝上 —— 腿不再需要拉伸"
     },
     {
+      "id": "ParamHairFront",
+      "label": "刘海 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hair_front",
+          "param": "bend_x",
+          "scale": 6.0,
+          "curve": "tip"
+        }
+      ]
+    },
+    {
       "id": "ParamHairAhoge",
       "label": "呆毛 摆动",
       "min": -1.0,
@@ -4828,10 +10096,103 @@
       "default": 0.0,
       "binds": [
         {
+          "part": "hair_front",
+          "param": "bend_x",
+          "scale": 2.0,
+          "curve": "tip"
+        },
+        {
           "part": "hair_ahoge",
           "param": "bend_x",
           "scale": 4.0,
           "curve": "root"
+        }
+      ]
+    },
+    {
+      "id": "ParamHairSide",
+      "label": "侧发 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "hair_side_l_root",
+          "param": "rot_deg",
+          "scale": -2.6
+        },
+        {
+          "deformer": "hair_side_r_root",
+          "param": "rot_deg",
+          "scale": 2.6
+        },
+        {
+          "part": "hair_side_l",
+          "param": "bend_x",
+          "scale": 7.0,
+          "curve": "tip"
+        },
+        {
+          "part": "hair_side_r",
+          "param": "bend_x",
+          "scale": 7.0,
+          "curve": "tip"
+        }
+      ]
+    },
+    {
+      "id": "ParamHairSideS",
+      "label": "侧发 S 形甩动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "hair_side_l_mid",
+          "param": "rot_deg",
+          "scale": -5.2,
+          "lag": 0.08
+        },
+        {
+          "deformer": "hair_side_r_mid",
+          "param": "rot_deg",
+          "scale": 5.2,
+          "lag": 0.08
+        }
+      ]
+    },
+    {
+      "id": "ParamHairBack",
+      "label": "后发 摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "hair_back_root",
+          "param": "rot_deg",
+          "scale": -2.0
+        },
+        {
+          "part": "hair_back",
+          "param": "bend_x",
+          "scale": 5.0,
+          "curve": "tip"
+        }
+      ]
+    },
+    {
+      "id": "ParamHairBackS",
+      "label": "后发 S 形甩动（第二段·发梢）",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "hair_back_mid",
+          "param": "rot_deg",
+          "scale": -4.0,
+          "lag": 0.08
         }
       ]
     },
@@ -4888,6 +10249,310 @@
           "offset": -1.0
         }
       ]
+    },
+    {
+      "id": "ParamStarEye",
+      "label": "星星眼 0/1",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "eye_l_ball",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "eye_r_ball",
+          "param": "alpha",
+          "scale": -1.0
+        },
+        {
+          "part": "eye_l_ball_star",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "eye_r_ball_star",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_1",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_2",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_3",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_4",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_5",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_6",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_7",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_8",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        }
+      ],
+      "note": "0 = 常态蓝瞳，1 = 五角星瞳 + 脸周围 ✨；中间值是交叉淡化"
+    },
+    {
+      "id": "ParamSparkle1",
+      "label": "闪光1 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.25,
+      "binds": [
+        {
+          "part": "fx_sparkle_1",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_1",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_1",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "lg；idle / star_eyes 里以 freq=0.37 phase=0.0 驱动"
+    },
+    {
+      "id": "ParamSparkle2",
+      "label": "闪光2 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.46,
+      "binds": [
+        {
+          "part": "fx_sparkle_2",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_2",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_2",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "lg；idle / star_eyes 里以 freq=0.29 phase=0.42 驱动"
+    },
+    {
+      "id": "ParamSparkle3",
+      "label": "闪光3 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.335,
+      "binds": [
+        {
+          "part": "fx_sparkle_3",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_3",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_3",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "md；idle / star_eyes 里以 freq=0.53 phase=0.17 驱动"
+    },
+    {
+      "id": "ParamSparkle4",
+      "label": "闪光4 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.565,
+      "binds": [
+        {
+          "part": "fx_sparkle_4",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_4",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_4",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "md；idle / star_eyes 里以 freq=0.43 phase=0.63 驱动"
+    },
+    {
+      "id": "ParamSparkle5",
+      "label": "闪光5 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.675,
+      "binds": [
+        {
+          "part": "fx_sparkle_5",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_5",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_5",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "md；idle / star_eyes 里以 freq=0.61 phase=0.85 驱动"
+    },
+    {
+      "id": "ParamSparkle6",
+      "label": "闪光6 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.405,
+      "binds": [
+        {
+          "part": "fx_sparkle_6",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_6",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_6",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "md；idle / star_eyes 里以 freq=0.47 phase=0.31 驱动"
+    },
+    {
+      "id": "ParamSparkle7",
+      "label": "闪光7 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.52,
+      "binds": [
+        {
+          "part": "fx_sparkle_7",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_7",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_7",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "sm；idle / star_eyes 里以 freq=0.71 phase=0.54 驱动"
+    },
+    {
+      "id": "ParamSparkle8",
+      "label": "闪光8 生命周期",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.295,
+      "binds": [
+        {
+          "part": "fx_sparkle_8",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "fx_sparkle_8",
+          "param": "sx",
+          "scale": 0.55,
+          "offset": -0.55
+        },
+        {
+          "part": "fx_sparkle_8",
+          "param": "sy",
+          "scale": 0.55,
+          "offset": -0.55
+        }
+      ],
+      "note": "sm；idle / star_eyes 里以 freq=0.67 phase=0.09 驱动"
     },
     {
       "id": "ParamPupilScale",
@@ -4980,6 +10645,62 @@
       "note": "脚掌绕踝 ±12°：跳跃绷脚尖、落地勾脚"
     },
     {
+      "id": "ParamHairSway",
+      "label": "头发飘动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "hair_side_l_mid",
+          "param": "rot_deg",
+          "scale": -0.65,
+          "lag": 0.17
+        },
+        {
+          "deformer": "hair_side_r_mid",
+          "param": "rot_deg",
+          "scale": 0.65,
+          "lag": 0.26
+        },
+        {
+          "deformer": "hair_back_mid",
+          "param": "rot_deg",
+          "scale": -0.55,
+          "lag": 0.3
+        },
+        {
+          "part": "hair_side_l",
+          "param": "bend_x",
+          "scale": 7.2,
+          "curve": "tip",
+          "lag": 0.0
+        },
+        {
+          "part": "hair_front",
+          "param": "bend_x",
+          "scale": 3.0,
+          "curve": "tip",
+          "lag": 0.04
+        },
+        {
+          "part": "hair_side_r",
+          "param": "bend_x",
+          "scale": 6.8,
+          "curve": "tip",
+          "lag": 0.09
+        },
+        {
+          "part": "hair_back",
+          "param": "bend_x",
+          "scale": 4.2,
+          "curve": "tip",
+          "lag": 0.13
+        }
+      ],
+      "note": "头发自己飘：一条参数推四件短发（刘海/左右侧发/后发），每件带不同的行波延迟 ⇒ 风从一侧扫到另一侧，发梢那级再慢半拍。物理链 bangs_x/side_?_x/back_x 照旧挂着，在这个自主飘动之上再叠摇头带来的滞后。幅度（侧发满格 7.2px ≈ 头宽的 3%）：第一版给 5.4px，实拍发梢\n只摆 5.9px，肉眼要盯着才看得出来 ⇒ 提到 7.2px；\n再大就会从脸侧甩出去，参考 「意外と揺れを控えめにした方が自然に見える」"
+    },
+    {
       "id": "ParamSkirtSway",
       "label": "裙摆摆动",
       "min": -1.15,
@@ -4999,6 +10720,21 @@
         }
       ],
       "note": "裙摆自己摆：一条参数推两级形变器，下摆那级带 0.11 秒行波延迟 ⇒ 裙身先走、下摆后到（動画の wave principle，也是 Live2D 「複数階層デフォーマ・親→子」的等价写法）。物理链 skirt_x/skirt_y 照旧挂着，在这个自主摆动**之上**再叠身体带动的滞后。幅度刻意压小——教程口径是「意外と揺れを控えめにした方が自然に見える」"
+    },
+    {
+      "id": "ParamJacketSway",
+      "label": "外套下摆摆动",
+      "min": -1.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "deformer": "jacket_hem_x",
+          "scale": 1.0,
+          "lag": 0.16
+        }
+      ],
+      "note": "外套下摆自己摆。比裙摆慢、比裙摆小：教程口径「上着は少し重い素材なのであまり揺らさない」。lag 0.16 让它比裙摆（0.11）更迟钝，两件衣服就不会同拍子动。摆动做在躯干的网格上而不是切件上：原画是烘焙的，切出来会留洞，教程也不建议把腕より後ろ的衣服单独切开摆（境目が飛び出しがち）"
     },
     {
       "id": "ParamSkirtSwayY",
@@ -5303,7 +11039,9 @@
             "acc_hair_long"
           ],
           "hide": [
-            "acc_hood_up"
+            "hair_back",
+            "acc_hood_up",
+            "torso_top_fill"
           ]
         },
         {
@@ -5313,7 +11051,11 @@
             "acc_hair_twin_r"
           ],
           "hide": [
-            "acc_hood_up"
+            "hair_back",
+            "hair_side_l",
+            "hair_side_r",
+            "acc_hood_up",
+            "torso_top_fill"
           ]
         },
         {
@@ -5322,7 +11064,11 @@
             "acc_hair_pony"
           ],
           "hide": [
-            "acc_hood_up"
+            "hair_back",
+            "hair_side_l",
+            "hair_side_r",
+            "acc_hood_up",
+            "torso_top_fill"
           ]
         }
       ],
@@ -5433,6 +11179,10 @@
           "param": "ParamBreath",
           "wx": 1.8,
           "wy": -0.8
+        },
+        {
+          "param": "ParamHairSway",
+          "wx": 3.2
         }
       ],
       "angle_input": [
@@ -5502,6 +11252,10 @@
           "param": "ParamBreath",
           "wx": 1.8,
           "wy": -0.8
+        },
+        {
+          "param": "ParamHairSway",
+          "wx": 2.6
         }
       ],
       "angle_input": [
@@ -5558,6 +11312,10 @@
           "param": "ParamBreath",
           "wx": 1.8,
           "wy": -0.8
+        },
+        {
+          "param": "ParamHairSway",
+          "wx": 2.4
         }
       ],
       "angle_input": [
@@ -5614,6 +11372,10 @@
           "param": "ParamBreath",
           "wx": 1.8,
           "wy": -0.8
+        },
+        {
+          "param": "ParamHairSway",
+          "wx": 2.8
         }
       ],
       "angle_input": [
@@ -5985,9 +11747,68 @@
         }
       ],
       "note": "痛苦闭眼：闭眼线的第三种形状（∪ / ∩ / ∧），口径同笑眼"
+    },
+    {
+      "id": "star_eyes",
+      "name": "星星眼",
+      "fade": 0.25,
+      "params": [
+        {
+          "id": "ParamMouthForm",
+          "value": 0.6
+        },
+        {
+          "id": "ParamStarEye",
+          "value": 1.0,
+          "mode": "set"
+        },
+        {
+          "id": "ParamPupilScale",
+          "value": 0.3
+        },
+        {
+          "id": "ParamCheek",
+          "value": 0.4,
+          "mode": "set"
+        },
+        {
+          "id": "ParamEyeSparkle",
+          "value": 1.0,
+          "mode": "set"
+        }
+      ],
+      "note": "L1 星形瞳 + L2 眼内碎钻（画进贴图）+ L3 脸周围 ✨；✨ 的闪烁由 idle 的 ParamSparkle1..N 驱动。这里**故意不写 ParamEyeOpen** —— 见下方注释"
     }
   ],
   "ambient": [
+    {
+      "target": "ParamForeSwayL",
+      "wave": "drift",
+      "amp": 0.55,
+      "bias": 0.0,
+      "freq": 0.23
+    },
+    {
+      "target": "ParamForeSwayR",
+      "wave": "drift",
+      "amp": 0.5,
+      "bias": 0.0,
+      "freq": 0.165
+    },
+    {
+      "target": "ParamHairSway",
+      "wave": "drift",
+      "amp": 0.92,
+      "bias": 0.0,
+      "freq": 0.19
+    },
+    {
+      "target": "ParamJacketSway",
+      "wave": "drift",
+      "amp": 0.5,
+      "bias": 0.0,
+      "freq": 0.105
+    },
     {
       "target": "ParamSkirtSway",
       "wave": "drift",
@@ -6204,7 +12025,7 @@
   "generated_by": {
     "tool": "tools/make_rig.py",
     "sources": {
-      "tools/make_rig.py": "b2ec826f708a90d38527dbedbc20f72943330eb2c0b10dda5c840e5adf3da836",
+      "tools/make_rig.py": "2db888f68b25c552bfeaf4cc0d1755550c432689aa7048a638ce8f8edb7fff5c",
       "tools/attach_geom.py": "e4482ffdc391bcb05c0aea3a72c2c9b10dc0097f919435ffdac7f145297cbfc3",
       "characters/xiaoxun/motions/curious_tilt.motion3.json": "c05671027102e29efe3b12983b430e4e769a13cff62df70217f168e1681d20a3",
       "characters/xiaoxun/expressions/peek_blush.exp3.json": "d692dbda9205d8cf4451226e5d2adcbffff984246f1f2156723e005aa63ae59b"

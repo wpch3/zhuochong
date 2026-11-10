@@ -1,9 +1,9 @@
 {
-  "source": "eye_<side>_base.png（原画眼白 + 上睫毛）各向异性放大",
+  "source": "eye_<side>_socket + eye_<side>_lash_up（无裁切脸块）各向异性放大",
   "register": {
     "scale": [
-      1.12,
-      1.2
+      1.04,
+      1.1
     ],
     "ncc": null,
     "tx": 0.0,
@@ -17,11 +17,11 @@
       "file": "eye_l_wide.png",
       "pos": [
         0,
-        387
+        393
       ],
       "size": [
-        296,
-        181
+        275,
+        166
       ],
       "gain": [
         1.0,
@@ -34,22 +34,22 @@
         0.0
       ],
       "checks": {
-        "cover_ratio": 0.9988,
-        "seam_mean_abs": 83.42,
-        "opaque_px": 24240,
-        "iris_erased_px": 0
+        "added_sclera_px": 342,
+        "upper_lash_px": 1853,
+        "seam_mean_abs": 76.3,
+        "keyed_px_removed": 54
       }
     },
     {
       "side": "r",
       "file": "eye_r_wide.png",
       "pos": [
-        270,
-        387
+        291,
+        393
       ],
       "size": [
-        297,
-        181
+        276,
+        166
       ],
       "gain": [
         1.0,
@@ -62,10 +62,10 @@
         0.0
       ],
       "checks": {
-        "cover_ratio": 1.0,
-        "seam_mean_abs": 82.27,
-        "opaque_px": 23653,
-        "iris_erased_px": 0
+        "added_sclera_px": 274,
+        "upper_lash_px": 1833,
+        "seam_mean_abs": 86.8,
+        "keyed_px_removed": 23
       }
     }
   ]

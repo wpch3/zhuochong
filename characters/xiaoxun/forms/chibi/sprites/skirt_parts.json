@@ -7,21 +7,22 @@
       "id": "skirt_lining",
       "file": "sprites/skirt_lining.png",
       "pos": [
-        127,
-        868
+        139,
+        875
       ],
       "size": [
-        312,
-        98
+        288,
+        86
       ],
       "layer": 50,
       "note": "层 50 = 腿（60/61）之后、尾巴（30~33）之前"
     }
   ],
   "checks": {
-    "px": 24381,
+    "px": 21231,
     "dark": 0.58,
     "bounce": 0.16,
-    "leak": 0
+    "leak": 0,
+    "px_2x": 84744
   }
 }

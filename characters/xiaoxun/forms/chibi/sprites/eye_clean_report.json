@@ -1,0 +1,125 @@
+{
+  "note": "烘进别的部件里的头发/衣领残留已擦除（tools/clean_baked_residue.py）",
+  "body": [],
+  "keep_ellipse": [
+    20.0,
+    17.0
+  ],
+  "feather": 6.0,
+  "hair_threshold_b_minus_r": [
+    2.0,
+    7.0
+  ],
+  "iris_centers": {
+    "l": [
+      390.4,
+      524.9
+    ],
+    "r": [
+      573.9,
+      525.0
+    ]
+  },
+  "parts": [
+    {
+      "file": "eye_l_base.png",
+      "origin": [
+        201,
+        467
+      ],
+      "removed_px": 0,
+      "total_px": 5413,
+      "removed_pct": 0.0
+    },
+    {
+      "file": "eye_r_base.png",
+      "origin": [
+        498,
+        467
+      ],
+      "removed_px": 0,
+      "total_px": 6105,
+      "removed_pct": 0.0
+    },
+    {
+      "file": "eye_l_wide.png",
+      "origin": [
+        200,
+        461
+      ],
+      "removed_px": 66,
+      "total_px": 2567,
+      "removed_pct": 2.57
+    },
+    {
+      "file": "eye_r_wide.png",
+      "origin": [
+        491,
+        461
+      ],
+      "removed_px": 204,
+      "total_px": 2432,
+      "removed_pct": 8.39
+    },
+    {
+      "file": "eye_l_closed.png",
+      "origin": [
+        313,
+        448
+      ],
+      "removed_px": 292,
+      "total_px": 10340,
+      "removed_pct": 2.82
+    },
+    {
+      "file": "eye_r_closed.png",
+      "origin": [
+        497,
+        448
+      ],
+      "removed_px": 196,
+      "total_px": 10485,
+      "removed_pct": 1.87
+    },
+    {
+      "file": "eye_l_smile.png",
+      "origin": [
+        313,
+        448
+      ],
+      "removed_px": 112,
+      "total_px": 10520,
+      "removed_pct": 1.06
+    },
+    {
+      "file": "eye_r_smile.png",
+      "origin": [
+        497,
+        448
+      ],
+      "removed_px": 65,
+      "total_px": 10616,
+      "removed_pct": 0.61
+    },
+    {
+      "file": "eye_l_pain.png",
+      "origin": [
+        309,
+        446
+      ],
+      "removed_px": 62,
+      "total_px": 10570,
+      "removed_pct": 0.59
+    },
+    {
+      "file": "eye_r_pain.png",
+      "origin": [
+        493,
+        446
+      ],
+      "removed_px": 28,
+      "total_px": 10653,
+      "removed_pct": 0.26
+    }
+  ]
+}

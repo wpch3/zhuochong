@@ -1,0 +1,73 @@
+{
+  "redraw": "characters/xiaoxun/forms/chibi/design/redraw/head_nosidehair.png",
+  "align": {
+    "scale": 0.8261,
+    "dx": 429.7,
+    "dy": 743.8
+  },
+  "root_y": 428,
+  "bleed_root": 16,
+  "bleed_in": 14,
+  "grow_px": 8,
+  "eye_feature_protected_px": 18252,
+  "px": {
+    "side_l": 20431,
+    "side_r": 20788,
+    "back": 109171,
+    "torso_band_cut": 7038
+  },
+  "skin_gain": [
+    0.8,
+    0.8,
+    0.8
+  ],
+  "skin_offset": [
+    86.29,
+    71.55,
+    54.7
+  ],
+  "parts": [
+    {
+      "id": "hair_side_l",
+      "file": "sprites/hair_side_l.png",
+      "pos": [
+        0,
+        407
+      ],
+      "size": [
+        253,
+        205
+      ],
+      "group": "head",
+      "layer": 245
+    },
+    {
+      "id": "hair_side_r",
+      "file": "sprites/hair_side_r.png",
+      "pos": [
+        313,
+        407
+      ],
+      "size": [
+        254,
+        205
+      ],
+      "group": "head",
+      "layer": 246
+    },
+    {
+      "id": "hair_back",
+      "file": "sprites/hair_back.png",
+      "pos": [
+        0,
+        104
+      ],
+      "size": [
+        567,
+        339
+      ],
+      "group": "head",
+      "layer": 170
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "hair_ahoge.png": {
+    "repaint": 0,
+    "erase": 70,
+    "opaque": 4309
+  },
+  "hair_back.png": {
+    "repaint": 299,
+    "erase": 157,
+    "opaque": 125578
+  },
+  "hair_front.png": {
+    "repaint": 15,
+    "erase": 1481,
+    "opaque": 11211
+  },
+  "hair_long_back.png": {
+    "repaint": 0,
+    "erase": 223,
+    "opaque": 347111
+  },
+  "hair_long_back@2x.png": {
+    "repaint": 0,
+    "erase": 468,
+    "opaque": 1388250
+  },
+  "hair_side_l.png": {
+    "repaint": 305,
+    "erase": 956,
+    "opaque": 22696
+  },
+  "hair_side_r.png": {
+    "repaint": 374,
+    "erase": 933,
+    "opaque": 22935
+  }
+}
