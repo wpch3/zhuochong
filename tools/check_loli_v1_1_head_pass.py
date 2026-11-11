@@ -11,8 +11,8 @@ import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1/head_pass_02"
-EXPECTED = {"Whale_Clip", "Brow_L", "Brow_R", "Eye_L", "Eye_R", "Nose", "Mouth_Closed"}
+OUT = ROOT / "characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1/head_pass_03"
+EXPECTED = {"Whale_Clip", "Brow_L", "Brow_R", "EyeWhite_L", "EyeWhite_R", "EyeBall_L", "EyeBall_R", "Eyelash_L", "Eyelash_R", "Nose", "Mouth_Closed"}
 
 
 def main() -> int:
@@ -21,8 +21,8 @@ def main() -> int:
     if manifest.get("status") != "WIP head/face cutout pass based on selected v1.1; not finished art, not PSD, not Cubism":
         errors.append("WIP/non-Cubism status missing")
     parts = manifest.get("parts", [])
-    if {p.get("name") for p in parts} != EXPECTED or len(parts) != 7:
-        errors.append("expected exactly seven v1.1 face cutouts")
+    if {p.get("name") for p in parts} != EXPECTED or len(parts) != 11:
+        errors.append("expected 11 v1.1 semantic face/accessory cutouts")
     for part in parts:
         file = OUT / part["file"]
         if not file.is_file():
@@ -34,6 +34,20 @@ def main() -> int:
         bbox = im.getchannel("A").getbbox()
         if bbox is None or bbox[2] - bbox[0] > 150 or bbox[3] - bbox[1] > 130:
             errors.append(f"unexpected cutout bounds on {file.name}: {bbox}")
+        pixel_count = int(np.count_nonzero(np.asarray(im.getchannel("A")) > 0))
+        limits = {"Nose": 60, "Mouth_Closed": 250, "Brow_L": 1000, "Brow_R": 1000}
+        if part["name"] in limits and pixel_count > limits[part["name"]]:
+            errors.append(f"selection unexpectedly broad on {file.name}: {pixel_count} pixels")
+    # The three semantic eye layers must not double-own the same source pixels.
+    for side in ("L", "R"):
+        eye_masks = []
+        for prefix in ("EyeWhite", "EyeBall", "Eyelash"):
+            layer = Image.open(OUT / f"{prefix}_{side}.png").convert("RGBA")
+            eye_masks.append(np.asarray(layer.getchannel("A")) > 0)
+        for i in range(len(eye_masks)):
+            for j in range(i + 1, len(eye_masks)):
+                if np.any(eye_masks[i] & eye_masks[j]):
+                    errors.append(f"overlapping semantic eye-layer ownership for side {side}")
     ora = OUT / manifest["ora_file"]
     with zipfile.ZipFile(ora) as z:
         names = z.namelist()
@@ -46,7 +60,7 @@ def main() -> int:
             errors.append("ORA canvas mismatch")
         layers = root.findall(".//layer")
         layer_names = {x.get("name", "") for x in layers}
-        if len(layers) != 9 or not EXPECTED.issubset(layer_names):
+        if len(layers) != 13 or not EXPECTED.issubset(layer_names):
             errors.append(f"ORA layer list mismatch: {len(layers)} layers")
         merged = np.asarray(Image.open(z.open("mergedimage.png")).convert("RGBA"))
     composite = np.asarray(Image.open(OUT / "head_pass_composite.png").convert("RGBA"))
@@ -64,7 +78,7 @@ def main() -> int:
         for e in errors:
             print("FAIL:", e)
         return 1
-    print(f"PASS: 7 nonempty facial cutouts; 9-layer ORA and preview match; reconstruction delta {changed}px / max RGB {max_diff}")
+    print(f"PASS: 11 nonempty semantic facial cutouts; 13-layer ORA and preview match; reconstruction delta {changed}px / max RGB {max_diff}")
     print("LIMIT: only face/clip cutouts; algorithmic underpaint; not artistic approval or Cubism validation")
     return 0
 

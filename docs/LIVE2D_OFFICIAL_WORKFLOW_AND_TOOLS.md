@@ -1,4 +1,4 @@
-# Live2D 官方工序与自制工具清单（2026-11-10 查证）
+# Live2D 官方工序与自制工具清单（2026-11-11 官方网页检索复核）
 
 ## 官方标准工序（Cubism Editor 口径）
 来源：Live2D 官方教程/手册（docs.live2d.com）与 Cubism Cookbook 基本工作流。
@@ -23,6 +23,17 @@
 - 官方 [FREE vs PRO comparison](https://www.live2d.com/en/cubism/comparison/) 与 [SDK release license](https://www.live2d.com/en/sdk/license/)：编辑器能力/商业使用及 SDK/Core 的授权需分别查，不把 Cubism 泛称开源或默认免费。
 - 官方 GitHub [`Live2D/CubismNativeSamples`](https://github.com/Live2D/CubismNativeSamples) README 明确它是**显示由 Cubism Editor 输出模型的应用样例**，依赖 Native Framework 和不包含在该仓库的专有 Cubism Core；它不是原画教程，也不能用来伪造 Editor 工程或 `.moc3`。其 LICENSE 也分别列出 Components、Core 与样例模型授权边界。
 
+### 搜索到的官方教程内容，转成制作规格
+
+1. **《1. Illustration Processing》**：[官方教程](https://docs.live2d.com/en/cubism-editor-tutorials/psd/)写明：头发至少区分刘海、侧发、后发，并补出源图中被遮住的区域；眼睛分睫毛、眼球、眼白，眼白可作 clipping 素材且需补出被眼球挡住的白眼区域；嘴分上唇、下唇、口腔内部，闭嘴时口腔内层须隐藏，口腔内部适当大于原线稿，并在嘴周加肤色遮挡。脸部轮廓在刘海遮挡处也要用肤色补齐。身体按颈、躯干、手臂/手、裙与左右腿组织。这直接说明现有 pass02 的整只眼睛作为一个大贴片并非合格最终拆件，须改为语义层。
+2. **《2. Preparing to Move the Illustration》**：[官方教程](https://docs.live2d.com/en/cubism-editor-tutorials/import/)讲 PSD 实际导入、ArtMesh 与手调三角网格；网格必须完整包住纹理，眉/睫毛/嘴需要沿笔画及边界做更细网格。
+3. **《Notes on PSD Creation》**：[官方手册](https://docs.live2d.com/en/cubism-editor-manual/precautions-for-psd-data/)要求正式导入稿用 PSD、RGB、8-bit/channel、sRGB，避免重名图层和 layer masks，并将每个部件的线稿、填色、滤镜/剪贴效果合并在同一部件图层。ORA 不是 Editor PSD 验收替代物。
+4. **《3. Adding Facial Expressions》**：[官方教程](https://docs.live2d.com/en/cubism-editor-tutorials/expression/)以睫毛开闭、眼白剪贴、眉变形和嘴开闭参数示范；嘴部闭合需同步收缩口腔内层，避免越出肤色区域。
+5. **《4. Adding Body Movement》**：[官方教程](https://docs.live2d.com/en/cubism-editor-tutorials/deformer/)说明先把脸部件组织进 Rotation Deformer，再设 Angle Z 关键形；头发摆动用 Warp Deformer 对刘海/发束做参数形变。它们建立在完成的分层原画之上。
+6. **《5. Adding XY Facial Movement》**：[官方教程](https://docs.live2d.com/en/cubism-editor-tutorials/xy/)用 Warp Deformer 制作 Angle X/Y，并以四角自动生成建立对角形状；强调隐藏其他部件、逐件处理并在参数移动过程中检查透视，不只对着静态端点修。
+7. **《6. Creating Animations》**：[官方教程](https://docs.live2d.com/en/cubism-editor-tutorials/animator/)在 Animator 模式载入已建模数据，通过时间线、图表编辑器制作动画，可将眨眼等重复动作存为动画模板。
+8. **嵌入导出**：[官方导出手册](https://docs.live2d.com/en/cubism-editor-manual/export-moc3-motion3-files/)区分 `.moc3`、`.model3.json`、纹理图集与可选 physics/motion 等文件；导出须由官方 Editor 完成并指定 SDK 目标版本，不是把 PNG/rig JSON 改名即可。
+
 ### 变成实际制作前的逐项检查
 
 1. **来源定位**：所有新件从选定 v1.1 的已注册坐标截取或手绘；对照带坐标的原图近景，不能靠猜中心点/多边形后只看整张拼合图。
@@ -32,9 +43,11 @@
 5. **文件格式边界**：ORA 可供阶段编辑和审查，但不是 Cubism 可导入 PSD/PSB 的替代证明。最终源稿要在官方 Editor 实际导入并检查，然后才可开始 ArtMesh、Warp/Rotation hierarchy、keyforms、physics 和 expressions/motions。
 6. **正式验收边界**：保存 `.cmo3` 项目，按官方导出流程输出并在 Viewer/授权 SDK 中运行；只有真实 Editor、导出文件和动态目视记录齐全后才称 Cubism 交付。
 
-### 对 pass 01 的复盘与修正
+### 对 pass 01/02 的复盘与当前 pass 03
 
-第一次切脸失败的关键原因不是 Live2D 工具本身，而是制作流程不符合上述门禁：坐标是粗猜、没有先检查切出的透明 PNG，眼眉偏到发束区域，鼻嘴切成大块皮肤，并将重建指标误当作足够的结构检查。本次新建 pass 02 而保留且标记 pass 01 为 superseded；对照原图坐标放大图重新放置眉眼，并将鼻/嘴收紧为暗色笔画。第二版仍只是源像素 cutout + 插值底图，不是手绘完成件，也不准进入变形生产。自动差异 80px/max50 比旧版 67px/max41 更大，因此只报告事实，不宣称质量提升。
+制作错误来自于没有按官方教程先定语义部件、逐层近检和规划隐藏像素：pass01 的猜测坐标错位，眉眼混进发束，鼻嘴切成肤色块；pass02 修了大块肤色和明显坐标错误，但仍把整只眼睛作为一个贴片，不符合官方眼白/眼球/睫毛分层。两版均保留为 superseded 历史稿，不要接着用于 rig。
+
+本轮按官方教程重新生成 pass03，眼睛拆成左右 `EyeWhite` / `EyeBall` / `Eyelash`，眉毛选区缩到主笔画；鼻、闭嘴沿用小区域暗笔画选择。当前有 11 个独立图层、ORA 共 13 层。静态合成 RGB/alpha 与登记源图逐像素相同（0 diff），这是同一组源像素/Alpha 完整覆盖后的静态拼合检查，**不能证明部件语义或动态边缘正确**。人工透明棋盘图检查显示眼白/睫毛/眉仍有碎边和原图互相遮挡；白眼遮挡后的像素、闭眼造型、口腔上下唇/内部、刘海遮挡下脸部均未手绘。第三版更接近教程要求的分件结构，但仍是自动/坐标 cutout WIP，不是美术验收件或 Cubism-ready source。
 
 ## 官方工具 → 我们自制对应（zrig 体系，不抄代码、学思路）
 | 官方工具/概念 | 本项目自制对应 | 状态 |

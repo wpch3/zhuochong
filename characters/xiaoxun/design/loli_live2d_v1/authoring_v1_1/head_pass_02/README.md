@@ -1,6 +1,6 @@
-# v1.1 head/face separation — pass 02 (corrected WIP)
+# v1.1 head/face separation — pass 02 (superseded WIP)
 
-This revision follows a source-at-native-resolution review after the first pass exposed coordinate/mask mistakes. The earlier `head_pass_01` files remain as history only and are **superseded; do not rig or continue from pass 01**.
+**Do not rig or continue from this pass. Pass 03 replaces the combined eye stickers with separate sclera, eyeball and eyelash layers.** This revision followed a source-at-native-resolution review after the first pass exposed coordinate/mask mistakes. The earlier `head_pass_01` files remain as history only and are **superseded; do not rig or continue from pass 01**.
 
 ## Editable deliverable
 

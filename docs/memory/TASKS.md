@@ -1522,4 +1522,4 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 
 | 编号 | 事 | 状态 | 说明 |
 |---|---|---|---|
-| T70.6 | **小寻 Loli v1.1 可编辑分层启动** | [~] | 复习官方 PSD/ArtMesh/Deformer/导出工作流，细则见 `docs/LIVE2D_OFFICIAL_WORKFLOW_AND_TOOLS.md`。首轮 ORA `authoring_v1_1/head_pass_01/` 经本人局部目视发现坐标偏移、刘海混入眼眉、鼻嘴大块肤色遮罩，已显式标 superseded。第二轮 `head_pass_02/` 重新对准坐标，鼻/嘴仅暗色笔画，七层 ORA / manifest / SHA 及脚本检查通过；重建差异 **80px >2 RGB、max50**，反而高于 pass01 的 67/41，不声称质量提升。脸部底图仍为插值，眉眼遮挡/隐藏内容还未手绘，其他全身仍扁平。没有 PSD/PSB、官方 Cubism 工程/导出/运行时。后续先取得/启用真正的栅格编辑器、人工修选区并手绘隐藏补画，再继续全身分层；见 `docs/LIVE2D_LOLI_V1_AUTHORING_2026-11-11.md` 和 `authoring_v1_1/head_pass_02/README.md`。 |
+| T70.6 | **小寻 Loli v1.1 可编辑分层启动** | [~] | 本轮明确执行 web 搜索并复习官方 1–6 教程、PSD 准备/导入规范与 MOC3 导出说明，记录在 `docs/LIVE2D_OFFICIAL_WORKFLOW_AND_TOOLS.md`。pass01 坐标/选区错误和鼻嘴肤色块、pass02 整只眼睛贴片均标 superseded。当前 pass03 按官方拆件思路建立 11 个面部/附件图层，左右眼分 EyeWhite/EyeBall/Eyelash，13 层 ORA、PNG/manifest/SHA；静态重建 0px diff 仅证明源像素静态拼合，不证明语义/动态质量。隔离板仍见少量碎边/交叠，底图仍为算法插值；隐藏白眼、闭眼、内口/嘴型、刘海下皮肤和全身隐藏区均未手绘。无 PSD/PSB、Cubism Editor 工程、导出/运行时。下一步须在真实栅格编辑器手修选区和绘制 underdraw，再继续全身分层；见 `docs/LIVE2D_LOLI_V1_AUTHORING_2026-11-11.md`、`authoring_v1_1/head_pass_03/README.md`。 |
