@@ -1518,8 +1518,8 @@ T46.67 为了把 13 倍降采样里丢掉的描边找回来，`MaxFilter` 膨胀
 
 **T70.2 续（2026-11-02，trial 06 source-cuff fit WIP）**：全身 AI trial 06 中仅选左右 hand pixels（45×43），按 source small box 等比/底对齐拟合，再逐侧断言原 `body_full` cuff 选区 RGBA 完全相同（左 2,440 px、右 2,498 px）。4×本人目视仍见腕口边缘空隙/不均、暖/浅 seam band 和 outline-density 风格差；判为 mitten **形状提示 only**，不是可复用 source-aligned hand art，也未通过艺术门。之前把衣服碎片连入的宽邻域分割图已删除。脚本/metrics/board/SHA 在 hand-study 子目录；新增 `chibi_mitten_original_art_handoff_brief_2026-11-02.md` 整理来源真值与合规原画交付条件（非画稿/非批准）；无生产或 C 引擎改动。
 
-### T70.6（2026-11-11）Loli v1.1 实际分层与首轮脸部补画
+### T70.6（2026-11-11）Loli v1.1 实际分层与脸部首轮纠错
 
 | 编号 | 事 | 状态 | 说明 |
 |---|---|---|---|
-| T70.6 | **小寻 Loli v1.1 可编辑分层启动** | [~] | 从用户唯一当前基准 `concept_front_proportion_v1_1.png` 继续。新建 `authoring_v1_1/head_pass_01/` 的 1280×1920 ORA：七个独立源像素面部/鲸鱼发夹层、隐藏 NEW v1.1 全参考层、面部局部 OpenCV Telea 底图；独立 PNG、图层清单、哈希、README。构建/检查脚本 `tools/build_loli_v1_1_head_pass.py`、`tools/check_loli_v1_1_head_pass.py`；检查通过，静态拼合 67px >2 RGB、最大通道差 41，属于文件/注册检查而非美术通过。本人目视局部板发现眉眼边缘仍混有刘海像素，且算法补画粗糙；限定 WIP、不作动态件。头发、脸轮廓、身体/衣物/关节仍为扁平层，完整遮挡补画、PSD/PSB、官方 Cubism 工程/导出/运行时均未做。下一步先在编辑器手修边缘并手绘底稿，再继续全身拆件和隐藏区域补画；详见 `docs/LIVE2D_LOLI_V1_AUTHORING_2026-11-11.md` 与 `authoring_v1_1/head_pass_01/README.md`。 |
+| T70.6 | **小寻 Loli v1.1 可编辑分层启动** | [~] | 复习官方 PSD/ArtMesh/Deformer/导出工作流，细则见 `docs/LIVE2D_OFFICIAL_WORKFLOW_AND_TOOLS.md`。首轮 ORA `authoring_v1_1/head_pass_01/` 经本人局部目视发现坐标偏移、刘海混入眼眉、鼻嘴大块肤色遮罩，已显式标 superseded。第二轮 `head_pass_02/` 重新对准坐标，鼻/嘴仅暗色笔画，七层 ORA / manifest / SHA 及脚本检查通过；重建差异 **80px >2 RGB、max50**，反而高于 pass01 的 67/41，不声称质量提升。脸部底图仍为插值，眉眼遮挡/隐藏内容还未手绘，其他全身仍扁平。没有 PSD/PSB、官方 Cubism 工程/导出/运行时。后续先取得/启用真正的栅格编辑器、人工修选区并手绘隐藏补画，再继续全身分层；见 `docs/LIVE2D_LOLI_V1_AUTHORING_2026-11-11.md` 和 `authoring_v1_1/head_pass_02/README.md`。 |

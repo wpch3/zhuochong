@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1/head_pass_01"
+OUT = ROOT / "characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1/head_pass_02"
 EXPECTED = {"Whale_Clip", "Brow_L", "Brow_R", "Eye_L", "Eye_R", "Nose", "Mouth_Closed"}
 
 

@@ -21,19 +21,22 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1"
 SOURCE = BASE / "reference_v1_1_alpha_edge_connected.png"
-OUT = BASE / "head_pass_01"
+OUT = BASE / "head_pass_02"
 CANVAS = (1280, 1920)
 SCALE = 4
 
 PARTS = [
     # Source coordinates, full-resolution, from the approved v1.1 front reference.
     ("Whale_Clip", "30 Hair and accessory", None),
-    ("Brow_L", "20 Face parts", [(491, 390), (498, 380), (512, 375), (528, 373), (543, 375), (555, 381), (560, 386), (552, 391), (538, 384), (520, 382), (506, 385), (496, 393)]),
-    ("Brow_R", "20 Face parts", [(643, 386), (650, 380), (666, 374), (683, 373), (700, 376), (714, 383), (720, 390), (713, 394), (702, 385), (685, 382), (668, 384), (652, 392)]),
-    ("Eye_L", "20 Face parts", [(490, 401), (496, 392), (507, 386), (524, 382), (542, 383), (558, 388), (572, 397), (582, 408), (584, 420), (579, 431), (570, 439), (557, 444), (541, 447), (526, 445), (512, 441), (501, 434), (494, 424)]),
-    ("Eye_R", "20 Face parts", [(638, 408), (648, 397), (661, 389), (676, 384), (693, 383), (710, 387), (722, 394), (728, 404), (728, 420), (722, 431), (713, 439), (699, 444), (683, 447), (667, 445), (653, 440), (644, 432), (639, 420)]),
-    ("Nose", "20 Face parts", [(634, 443), (637, 440), (642, 440), (646, 443), (647, 450), (644, 456), (639, 457), (635, 453)]),
-    ("Mouth_Closed", "20 Face parts", [(615, 481), (619, 476), (628, 477), (640, 480), (652, 479), (664, 476), (672, 479), (675, 484), (671, 489), (661, 493), (648, 495), (636, 495), (625, 492), (618, 488)]),
+    # Revised after plotting a full-resolution native-coordinate close-up; the
+    # previous guesses were shifted left and caught adjacent fringe as eye art.
+    ("Brow_L", "20 Face parts", [(539, 389), (544, 383), (553, 378), (565, 375), (578, 375), (590, 379), (600, 385), (602, 388), (595, 390), (583, 384), (570, 381), (557, 383), (547, 389)]),
+    ("Brow_R", "20 Face parts", [(677, 389), (682, 383), (695, 378), (708, 375), (721, 377), (732, 383), (736, 388), (730, 391), (719, 385), (706, 381), (694, 383), (684, 389)]),
+    ("Eye_L", "20 Face parts", [(526, 408), (531, 399), (540, 393), (551, 388), (563, 385), (576, 386), (589, 392), (600, 400), (605, 410), (605, 419), (600, 428), (591, 436), (579, 441), (565, 442), (552, 440), (541, 435), (533, 428), (528, 419)]),
+    ("Eye_R", "20 Face parts", [(676, 408), (681, 399), (690, 393), (701, 388), (713, 385), (726, 386), (739, 392), (743, 400), (745, 410), (745, 419), (740, 428), (731, 436), (719, 441), (705, 442), (692, 440), (681, 435), (679, 428), (678, 419)]),
+    ("Nose", "20 Face parts", None),  # preserve the original tiny dark nose mark only
+    ("Mouth_Closed", "20 Face parts", None),  # dark smile strokes only; do not cut a pink skin patch
+
 ]
 CLIP_ROI = (458, 288, 552, 358)
 
@@ -52,6 +55,24 @@ def polygon_mask(points: list[tuple[int, int]], size: tuple[int, int]) -> np.nda
     draw = ImageDraw.Draw(mask)
     draw.polygon([(x * SCALE, y * SCALE) for x, y in points], fill=255)
     return np.asarray(mask.resize((w, h), Image.Resampling.LANCZOS), dtype=np.uint8)
+
+
+def dark_mark_mask(rgba: np.ndarray, name: str) -> np.ndarray:
+    """Isolate only dark source marks in tiny, registered face ROIs.
+
+    This avoids cutting a conspicuous cheek-colored patch around static nose or
+    mouth strokes. The threshold includes antialiased dark stroke pixels but not
+    the surrounding peach skin; hand cleanup is still required for animation.
+    """
+    rois = {"Nose": (631, 438, 650, 461), "Mouth_Closed": (610, 477, 678, 498)}
+    x0, y0, x1, y1 = rois[name]
+    crop = rgba[y0:y1, x0:x1]
+    rgb = crop[..., :3].astype(np.float32)
+    gray = 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
+    selected = ((gray < 215) & (crop[..., 3] > 0)).astype(np.uint8) * 255
+    full = np.zeros(rgba.shape[:2], dtype=np.uint8)
+    full[y0:y1, x0:x1] = selected
+    return full
 
 
 def clip_mask(rgba: np.ndarray) -> np.ndarray:
@@ -88,9 +109,15 @@ def main() -> int:
 
     masks: dict[str, np.ndarray] = {}
     for name, _, points in PARTS:
-        m = clip_mask(rgba) if name == "Whale_Clip" else polygon_mask(points, (w, h))
+        if name == "Whale_Clip":
+            m = clip_mask(rgba)
+        elif points is None:
+            m = dark_mark_mask(rgba, name)
+        else:
+            m = polygon_mask(points, (w, h))
         m = ((m.astype(np.uint16) * rgba[..., 3].astype(np.uint16)) // 255).astype(np.uint8)
-        if np.count_nonzero(m > 32) < 25:
+        min_pixels = 5 if name == "Nose" else 25
+        if np.count_nonzero(m > 32) < min_pixels:
             raise SystemExit(f"cutout selection unexpectedly small: {name}")
         masks[name] = m
 
@@ -125,7 +152,7 @@ def main() -> int:
             "file": f"{name}.png",
             "group": group,
             "state": "source-pixel cutout from selected v1.1 reference",
-            "selection": "hand-traced native-coordinate polygon" if name != "Whale_Clip" else "ROI-constrained teal color mask with 2px outline expansion",
+            "selection": ("ROI-constrained dark-pixel mask (gray < 215)" if name in {"Nose", "Mouth_Closed"} else ("hand-traced native-coordinate polygon" if name != "Whale_Clip" else "ROI-constrained teal color mask with 2px outline expansion")),
             "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
             "canvas_px": list(CANVAS),
         })
@@ -145,7 +172,7 @@ def main() -> int:
     ref_bytes = png_bytes(ref)
     base_bytes = png_bytes(base_img)
     part_bytes = {f"data/part_{i:02d}.png": png_bytes(layer) for i, (_, layer, _) in enumerate(layer_images)}
-    xml_root = Element("image", {"version": "0.0.1", "w": str(w), "h": str(h), "name": "Xiaoxun Loli v1.1 - head pass 01 WIP", "xres": "72", "yres": "72"})
+    xml_root = Element("image", {"version": "0.0.1", "w": str(w), "h": str(h), "name": "Xiaoxun Loli v1.1 - head pass 02 WIP", "xres": "72", "yres": "72"})
     stack = SubElement(xml_root, "stack")
     SubElement(stack, "layer", {"name": "NEW v1.1 full reference - locked, hidden", "src": "data/reference.png", "opacity": "0.55", "visibility": "hidden", "composite-op": "svg:src-over", "x": "0", "y": "0"})
     group = SubElement(stack, "stack", {"name": "20 Face cutouts - WIP", "opacity": "1.0", "visibility": "visible", "composite-op": "svg:src-over"})
@@ -153,7 +180,7 @@ def main() -> int:
         name, _, _ = layer_images[i]
         SubElement(group, "layer", {"name": name, "src": f"data/part_{i:02d}.png", "opacity": "1.0", "visibility": "visible", "composite-op": "svg:src-over", "x": "0", "y": "0"})
     SubElement(stack, "layer", {"name": "00 Figure base with approximate face underpaint (WIP; body/hair still flat)", "src": "data/base.png", "opacity": "1.0", "visibility": "visible", "composite-op": "svg:src-over", "x": "0", "y": "0"})
-    ora = OUT / "xiaoxun_loli_v1_1_head_pass_01.ora"
+    ora = OUT / "xiaoxun_loli_v1_1_head_pass_02.ora"
     with zipfile.ZipFile(ora, "w") as z:
         z.writestr("mimetype", "image/openraster", compress_type=zipfile.ZIP_STORED)
         files = {"data/reference.png": ref_bytes, "data/base.png": base_bytes, **part_bytes,

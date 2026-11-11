@@ -1,6 +1,6 @@
-# v1.1 head/face separation — pass 01 (WIP)
+# v1.1 head/face separation — pass 01 (superseded WIP)
 
-This is the first **actual editable-layer pass** from the user's selected NEW/current v1.1 reference. It is deliberately limited to a small facial/accessory area; it is not finished source art and is not a Live2D model.
+**Do not use this version as the current basis. Pass 02 corrects the coordinate errors and large skin patches found on close inspection.** This archive is retained to record the first attempt. This is the first actual editable-layer pass from the user's selected NEW/current v1.1 reference. It is deliberately limited to a small facial/accessory area; it is not finished source art and is not a Live2D model.
 
 ## Editable deliverable
 
