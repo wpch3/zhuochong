@@ -24,7 +24,7 @@ import argparse, json, os, sys
 from collections import deque
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 
 # ----------------------------------------------------------------- 形态学
@@ -110,7 +110,41 @@ def largest_cc(m):
 
 
 # ----------------------------------------------------------------- 拆件
-def split_eye(path, side, debug=None, form=None):
+def keep_big_cc(m, min_px: int):
+    """去掉面积小于 min_px 的碎连通块（睫毛边缘的麻点就是这些）。"""
+    lab = np.zeros(m.shape, np.int32)
+    keep = np.zeros(m.shape, bool)
+    n = 0
+    for sy in range(m.shape[0]):
+        for sx in range(m.shape[1]):
+            if m[sy, sx] and lab[sy, sx] == 0:
+                n += 1
+                comp = flood(m & (lab == 0), (sy, sx))
+                lab[comp] = n
+                if int(comp.sum()) >= min_px:
+                    keep |= comp
+    return keep
+
+
+def _align_mask(src, ref):
+    """把 src 掩膜平移到 ref 掩膜的中心（按内容外接框中心对齐）。"""
+    ay, ax = np.nonzero(src)
+    by, bx = np.nonzero(ref)
+    if not len(ay) or not len(by):
+        return src
+    dy = int(round((by.min() + by.max()) * 0.5 - (ay.min() + ay.max()) * 0.5))
+    dx = int(round((bx.min() + bx.max()) * 0.5 - (ax.min() + ax.max()) * 0.5))
+    h, w = ref.shape          # ★ 按**目标**形状建画布：左右眼画布可能差 1px
+    out = np.zeros((h, w), bool)
+    sh, sw = src.shape
+    y0, y1 = max(0, dy), min(h, dy + sh)
+    x0, x1 = max(0, dx), min(w, dx + sw)
+    if y1 > y0 and x1 > x0:
+        out[y0:y1, x0:x1] = src[y0 - dy:y1 - dy, x0 - dx:x1 - dx]
+    return fill_holes(out)
+
+
+def split_eye(path, side, debug=None, form=None, mirror_socket=None):
     im = Image.open(path).convert("RGBA")
     a = np.array(im).astype(int)
     al = a[..., 3]
@@ -127,8 +161,28 @@ def split_eye(path, side, debug=None, form=None):
     seed = (int(np.median(ys)), int(np.median(xs)))
     core_box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
 
-    # 2) 从虹膜往外长到整只眼睛：蓝色 + 深色线稿都算眼睛（眼白是洞，稍后补）
-    loose = solid & (((rgb[..., 2] - rgb[..., 0]) > 38) | (rgb.sum(2) < 400))
+    # 2) 从虹膜往外长到整只眼睛：蓝色 + 深色线稿 + **眼白**都算眼睛。
+    #    ★ 2026-11-11 修复（用户"眼睛两边很乱很糊"）：旧判据只有「蓝」和「暗」，
+    #      眼白（R≈250 G≈247 B≈247）既不蓝也不暗 ⇒ 长不到，aperture 只剩
+    #      「虹膜 + 上睫毛」，眼白整个露在掩膜外，于是 base 在眼白处被填成
+    #      云状白团、又被椭圆 envelope 切成方块缺口。
+    #      现在把眼白也加进判据，但必须排除脸部皮肤（皮肤也亮且低饱和）：
+    #      皮肤是暖色（R 明显 > B），眼白是冷/中性（B ≥ R-10）。
+    _rr, _gg, _bb = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    _skin = solid & (_rr > 200) & (_rr > _bb + 18)
+    _sclera = solid & (_rr > 222) & (_gg > 210) & (_bb > 210) \
+        & ((_bb - _rr) > -10) & (~_skin)
+    #    还要限制在虹膜附近：否则眼白判据会顺着皮肤/白衣服一路漫出去。
+    _iy0, _iy1 = ys.min(), ys.max() + 1
+    _ix0, _ix1 = xs.min(), xs.max() + 1
+    _ih, _iw = max(1, _iy1 - _iy0), max(1, _ix1 - _ix0)
+    _ex, _ey = (_ix0 + _ix1 - 1) * 0.5, (_iy0 + _iy1 - 1) * 0.5
+    _yy2, _xx2 = np.mgrid[0:h, 0:w]
+    _near_iris = (((_xx2 - _ex) / (_iw * 1.15)) ** 2
+                  + ((_yy2 - _ey) / (_ih * 1.45)) ** 2) <= 1.0
+    loose = solid & ((((rgb[..., 2] - rgb[..., 0]) > 38)
+                      | (rgb.sum(2) < 400)
+                      | _sclera) & _near_iris)
     blob = flood(loose, seed)
     lens = fill_holes(blob)
     # 眉毛/发丝是细线，开运算（先腐蚀后膨胀）能把它们断掉，只留下眼睛这块"豆荚"
@@ -213,15 +267,38 @@ def split_eye(path, side, debug=None, form=None):
     sclera = sclera_px.mean(0) if len(sclera_px) >= 8 else np.array([253, 248, 246])
     base = np.array(im).copy()
     inner = aperture & ~lash
+    if form == "chibi":
+        # ★ 2026-11-11：原来把**整个眼眶**都填成平涂眼白，结果眼角外侧那片
+        #   被 socket 吃进来的原画眼白/皮肤全变成一块死白云（用户看到的
+        #   "眼角白色残渣"）。只填**眼球真正会挪出去的那块**才需要兜底：
+        #   以虹膜圆心为中心、半径 = 眼球半径 + 可动幅度，其余保持原画像素。
+        _ay, _ax = np.nonzero(aperture)
+        _tr = max(2, int(round((_ax.max() - _ax.min() + 1) * 0.18)))
+        _ty = max(2, int(round((_ay.max() - _ay.min() + 1) * 0.12)))
+        _fill = inner & (((xx - cx) ** 2) / ((rad + _tr + 1) ** 2)
+                         + ((yy - cy) ** 2) / ((rad + _ty + 1) ** 2) <= 1.0)
+    else:
+        _fill = inner
     for c in range(3):
-        base[..., c] = np.where(inner, int(round(sclera[c])), base[..., c])
-    base[..., 3] = np.where(inner, 255, base[..., 3])
+        base[..., c] = np.where(_fill, int(round(sclera[c])), base[..., c])
+    base[..., 3] = np.where(_fill, 255, base[..., 3])
 
     # 7) 眼线层：只留深色笔触，边缘按原 alpha 软化
     lash_img = np.zeros((h, w, 4), np.uint8)
     lash_img[..., :3] = rgb
     soft = np.clip((430 - rgb.sum(2)) / 60.0, 0.0, 1.0)
-    lash_img[..., 3] = (np.where(lash, 1.0, 0.0) * soft * (al / 255.0) * 255.0).astype(np.uint8)
+    if form == "chibi":
+        # ★ 2026-11-11：旧写法把「soft 灰度×源 alpha」直接当不透明度，中灰区域
+        #   留下大量半透明麻点，放大看睫毛边缘是一圈噪点（用户说的"糊"）。
+        #   改成：只认真正的深色笔触 → 去掉小于 24px 的碎点 → 用高斯把二值
+        #   掩膜柔化出 1px 抗锯齿边。整条线因此是实心、边缘连续。
+        _lm = lash & (rgb.sum(2) < 400)
+        _lm = keep_big_cc(_lm, 24)
+        _la = Image.fromarray((_lm * 255).astype(np.uint8), "L")
+        _la = _la.filter(ImageFilter.GaussianBlur(0.8))
+        lash_img[..., 3] = np.asarray(_la)
+    else:
+        lash_img[..., 3] = (np.where(lash, 1.0, 0.0) * soft * (al / 255.0) * 255.0).astype(np.uint8)
 
     # 8) 眼眶剪影（遮罩源）
     #    遮罩要比"眼眶"再往下吃一点：原画里眼白下缘有一层淡蓝（#CCE2E7 一类），
@@ -261,57 +338,64 @@ def split_eye(path, side, debug=None, form=None):
     sock_m = fill_holes(sock_m)
 
     carve_m = aperture
-    # Chibi eyes have long external lash tips. The legacy dark-line flood used for
-    # `aperture` intentionally includes those lashes, but that silhouette is too
-    # broad to use as the sclera/iris clipping mask: filling the entire lash shape
-    # paints pale rectangles over cheek and side hair. For Chibi, derive the socket
-    # from the eye's neutral sclera + blue iris colors in a tight iris-relative ROI;
-    # keep the lash silhouette separate on `lash_img` above.
+    # Chibi：socket 直接取**真实眼形**（眼白+虹膜+眼线围出来的那块），
+    # 不再用「椭圆 envelope ∪ 虹膜圆盘」拼。旧做法把眼眶画成圆坨 + 方形缺口，
+    # 于是 base 在眼白处是一片云状白团、又被 envelope 的矩形边切成硬方块，
+    # 用户看到的就是"眼白是方块、眼角有白色残渣"。
+    # 现在 aperture（第 2 步已经把眼白算进去）本身就是眼形，先去掉睫毛尖这类
+    # 细长外延（开运算），再 fill_holes 补严，最后只保留与虹膜相连的那一大块。
     if form == "chibi":
-        socket_core = (solid & ((rgb[..., 2] - rgb[..., 0]) > 40)
-                       & (rgb[..., 0] < 110) & (rgb[..., 2] > 90)
-                       & (rgb[..., 2] < 195))
-        socket_core = largest_cc(socket_core)
-        sy_, sx_ = np.nonzero(socket_core)
-        if len(sx_) >= 80:
-            ix0, iy0 = int(sx_.min()), int(sy_.min())
-            ix1, iy1 = int(sx_.max()) + 1, int(sy_.max()) + 1
-        else:
-            ix0, iy0, ix1, iy1 = core_box
-        iris_h = max(1, iy1 - iy0)
-        iris_w = max(1, ix1 - ix0)
-        # Use a soft almond-like envelope around the measured iris, not a rectangular
-        # ROI: a rectangular cutoff created visible white columns at the inner corners.
-        ex, ey = (ix0 + ix1 - 1) * 0.5, (iy0 + iy1 - 1) * 0.5 + iris_h * 0.20
-        rx, ry = max(1.0, iris_w * 1.00), max(23.0, iris_h * 1.05)
-        yy_, xx_ = np.mgrid[0:h, 0:w]
-        envelope = ((xx_ - ex) / rx) ** 2 + ((yy_ - ey) / ry) ** 2 <= 1.0
-        rr, gg, bb = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-        sclera_like = (solid & (rr > 235) & (gg > 225) & (bb > 225)
-                       & (np.abs(rr - bb) < 28))
-        iris_like = (solid & ((bb - rr) > 28) & (bb > 90) & (bb < 230)
-                     & (rr < 190) & (gg < 235))
-        socket_seed = (int(round(ey)), int(round(ex)))
-        # Do not flood only from the iris center: dark outlines disconnect the white
-        # sclera wings from the blue pupil. That used to leave baked white eye wedges
-        # on seg_head and clipped the upper iris. Keep all eye-colored pixels inside
-        # this narrow iris-relative envelope, fill tiny internal gaps, then union the
-        # complete modeled iris disk (including its near-black crown).
-        eye_color = (sclera_like | iris_like) & envelope
-        interior = fill_holes(eye_color) & envelope
-        if 100 <= int(interior.sum()) <= int(h * w * 0.45):
-            sock_m = interior | disc
-            carve_m = aperture | interior | disc
-        else:
-            raise SystemExit(f"{path}: Chibi 眼眶颜色掩膜异常 ({int(interior.sum())} px)，拒绝写出")
+        sock_m = fill_holes(largest_cc(erode(aperture, 1)))
+        sock_m = dilate(sock_m, 1) & fill_holes(aperture)
+        sock_m = fill_holes(sock_m)
+        # 轮廓平滑：色块判据出来的边界是锯齿多边形，直接当眼眶会在眼白外缘留下
+        # 一圈阶梯边（用户看到的"糊"）。反复做「高斯模糊→按 0.5 二值化」，
+        # 相当于对轮廓做几次温和的低通，边界变连续曲线。
+        _f = Image.fromarray((sock_m * 255).astype(np.uint8), "L")
+        for _ in range(3):
+            _f = _f.filter(ImageFilter.GaussianBlur(2.2))
+            _f = _f.point(lambda v: 255 if v >= 128 else 0)
+        sock_m = np.asarray(_f) >= 128
+        # 左右眼在原画里是同一只眼镜像出来的（实测镜像重合 98.5%）。右眼单独做
+        # 色块分割时，上睫毛尖会和眼孔连成一条"月牙钩"，形态学剥不掉（同一条
+        # run）。既然本来就对称，右眼直接复用左眼掩膜的镜像，按内容外接框对齐。
+        if mirror_socket is not None:
+            sock_m = _align_mask(mirror_socket[:, ::-1], sock_m)
+
+        # 眼眶里必须至少包住虹膜，否则说明判据崩了，宁可报错不写脏图
+        if int((sock_m & iris).sum()) < 0.85 * int(iris.sum()) or int(sock_m.sum()) < 1500:
+            raise SystemExit(
+                f"{path}: Chibi 眼眶掩膜异常（覆盖虹膜 "
+                f"{int((sock_m & iris).sum())}/{int(iris.sum())}，"
+                f"总面积 {int(sock_m.sum())}），拒绝写出")
+        carve_m = sock_m
 
     # The base is masked by this expanded socket in the rig. Therefore its pixels
     # across the *whole* socket must be clean sclera underlay, not source iris/hair
     # pixels left over from the rectangular eye crop. The lash is a separate moving
     # layer, so it must not remain baked into the base either. Keep the mask's soft
     # edge for compositing; make the base opaque inside the binary socket core.
-    for c in range(3):
-        base[..., c] = np.where(sock_m, int(round(sclera[c])), base[..., c])
+    if form == "chibi":
+        # ★ 2026-11-11：这一段原来把**整个眼眶**无条件刷成平涂眼白，
+        #   于是把步骤 6 里"只在眼球可动区兜底"的结果又覆盖掉了，眼角外侧
+        #   那片本可以保留原画柔和眼白的地方变成一块死白云 —— 正是用户说的
+        #   "眼角白色残渣"。现在分两层：
+        #     ① 眼眶内、原画本来就是眼白/浅色的像素 → 原样保留（有明暗过渡）
+        #     ② 眼球可动区内、原画是虹膜/眼线的像素 → 刷平涂眼白兜底
+        #        （眼球挪开后这里必须不留虹膜残像）
+        # ② 保留原画的柔和眼白：眼眶里**本来就是亮/低饱和**的像素原样留着
+        #    （原画眼白有淡淡的冷暖过渡和眼窝阴影，全刷平涂才会读出"云块"）。
+        #    只有真的深色（虹膜/睫毛根）才刷眼白，因为眼球挪开后那里不能留残像。
+        _rr4, _gg4, _bb4 = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+        _lum4 = 0.299 * _rr4 + 0.587 * _gg4 + 0.114 * _bb4
+        _orig_sclera = sock_m & (_lum4 > 196) & ((_rr4 - _bb4) < 26)
+        for c in range(3):
+            base[..., c] = np.where(_fill, int(round(sclera[c])), base[..., c])
+            base[..., c] = np.where(sock_m & ~_fill & ~_orig_sclera,
+                                    int(round(sclera[c])), base[..., c])
+    else:
+        for c in range(3):
+            base[..., c] = np.where(sock_m, int(round(sclera[c])), base[..., c])
     # The rig attaches a socket mask, so Chibi's base only needs clean pixels in
     # that aperture. Do not retain its opaque crop halo: the wide-eye generator could
     # otherwise stretch surrounding face/hair into a visible rectangle. Preserve the
@@ -396,9 +480,13 @@ def main():
     pos_of = {p["name"]: p["pos"] for p in report["parts"]}
 
     out = {"source": "eye_open_left.png / eye_open_right.png", "eyes": []}
+    _left_socket = None
     for side, src_name in (("l", "eye_open_left.png"), ("r", "eye_open_right.png")):
         src = os.path.join(sp_dir, src_name)
-        imgs, info = split_eye(src, side, form=args.form)
+        imgs, info = split_eye(src, side, form=args.form,
+                               mirror_socket=_left_socket)
+        if side == "l" and args.form == "chibi":
+            _left_socket = np.asarray(imgs["socket"])[..., 3] > 128
         px, py = pos_of[src_name]
         info["patch_pos"] = [px, py]
         info["patch_size"] = list(Image.open(src).size)

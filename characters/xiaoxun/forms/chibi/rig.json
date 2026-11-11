@@ -147,14 +147,14 @@
       "group": "head",
       "pos": [
         310,
-        307
+        268
       ]
     },
     "socket_ear_r": {
       "group": "head",
       "pos": [
         549,
-        307
+        268
       ]
     },
     "socket_neck": {
@@ -594,8 +594,8 @@
         964
       ],
       "anchor": [
-        0.4932,
-        0.28
+        0.5351,
+        0.1034
       ],
       "tags": [
         "body"
@@ -679,8 +679,8 @@
         963
       ],
       "anchor": [
-        0.48,
-        0.2692
+        0.4655,
+        0.1017
       ],
       "tags": [
         "body"
@@ -719,48 +719,6 @@
       "pos": [
         486,
         752
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "body"
-      ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
-      "id": "arm_l_elbow",
-      "file": "sprites/arm_l_elbow@2x.png",
-      "group": "forearm_l",
-      "layer": 146,
-      "pos": [
-        207,
-        880
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "tags": [
-        "body"
-      ],
-      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
-      "scale_1x": 1.0,
-      "scale": 0.5,
-      "hires": 2
-    },
-    {
-      "id": "arm_r_elbow",
-      "file": "sprites/arm_r_elbow@2x.png",
-      "group": "forearm_r",
-      "layer": 147,
-      "pos": [
-        558,
-        878
       ],
       "anchor": [
         0,
@@ -859,12 +817,54 @@
       "hires": 2
     },
     {
+      "id": "arm_l_elbow",
+      "file": "sprites/arm_l_elbow@2x.png",
+      "group": "forearm_l",
+      "layer": 146,
+      "pos": [
+        207,
+        880
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
+      "id": "arm_r_elbow",
+      "file": "sprites/arm_r_elbow@2x.png",
+      "group": "forearm_r",
+      "layer": 147,
+      "pos": [
+        558,
+        878
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "手臂拆件（make_arm_parts.py：袖缝切 + 肘关节）",
+      "scale_1x": 1.0,
+      "scale": 0.5,
+      "hires": 2
+    },
+    {
       "id": "hand_l_pad",
       "file": "sprites/hand_l_pad@2x.png",
       "group": "forearm_l",
       "layer": 128,
       "pos": [
-        209,
+        212,
         929
       ],
       "anchor": [
@@ -874,10 +874,28 @@
       "tags": [
         "body"
       ],
-      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩",
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
+    },
+    {
+      "id": "hand_l_finger",
+      "file": "sprites/hand_l_finger.png",
+      "group": "hand_l",
+      "layer": 142,
+      "pos": [
+        212,
+        956
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
     },
     {
       "id": "hand_r_pad",
@@ -885,7 +903,7 @@
       "group": "forearm_r",
       "layer": 129,
       "pos": [
-        587,
+        590,
         928
       ],
       "anchor": [
@@ -895,10 +913,28 @@
       "tags": [
         "body"
       ],
-      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩",
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）",
       "scale_1x": 1.0,
       "scale": 0.5,
       "hires": 2
+    },
+    {
+      "id": "hand_r_finger",
+      "file": "sprites/hand_r_finger.png",
+      "group": "hand_r",
+      "layer": 143,
+      "pos": [
+        586,
+        955
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "tags": [
+        "body"
+      ],
+      "note": "分段部件（make_body_parts.py 切出，关节处有重叠带兜底）"
     },
     {
       "id": "skirt_lining",
@@ -1097,18 +1133,18 @@
       "group": "head",
       "layer": 211,
       "pos": [
-        334.5,
+        316.5,
         562.0
       ],
       "anchor": [
-        0.73295,
+        0.66477,
         0.62914
       ],
       "tags": [
         "eye_aperture"
       ],
       "mask_only": true,
-      "note": "眼眶开口（115×74px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
+      "note": "眼眶开口（99×87px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
       "aperture_min": 0.06,
       "eye_side": "l",
       "scale_1x": 1.0,
@@ -1145,8 +1181,8 @@
       "group": "head",
       "layer": 214,
       "pos": [
-        292,
-        487
+        296,
+        485
       ],
       "anchor": [
         0,
@@ -1157,7 +1193,7 @@
         "eye_open"
       ],
       "mask": "eye_l_socket",
-      "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±10px，由眼眶裁切",
+      "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±18/±10px，由眼眶裁切",
       "eye_side": "l",
       "scale_1x": 1.0,
       "scale": 0.5,
@@ -1169,8 +1205,8 @@
       "group": "head",
       "layer": 215,
       "pos": [
-        292,
-        487
+        296,
+        485
       ],
       "anchor": [
         0,
@@ -1205,8 +1241,8 @@
         "eyelid",
         "eye_not_wide"
       ],
-      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 2.0px，闭到底 = 那条闭眼线",
-      "eyelid_travel": 2.0,
+      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 57.0px，闭到底 = 那条闭眼线",
+      "eyelid_travel": 57.0,
       "lash_hold": 0.5,
       "eye_side": "l",
       "scale_1x": 1.0,
@@ -1229,7 +1265,7 @@
       "tags": [
         "eye_closed"
       ],
-      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 45.48）：blink=1 时完全显形",
+      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 6.61）：blink=1 时完全显形",
       "eye_side": "l",
       "scale_1x": 1.0,
       "scale": 0.5,
@@ -1251,7 +1287,7 @@
       "tags": [
         "eye_smile"
       ],
-      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 43.16）：ParamEyeL/RSmile=1 时显形",
+      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 5.47）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "l",
       "scale_1x": 1.0,
       "scale": 0.5,
@@ -1273,7 +1309,7 @@
       "tags": [
         "eye_pain"
       ],
-      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 41.84）：ParamEyeL/RPain=1 时显形",
+      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 4.27）：ParamEyeL/RPain=1 时显形",
       "eye_side": "l",
       "scale_1x": 1.0,
       "scale": 0.5,
@@ -1308,18 +1344,18 @@
       "group": "head",
       "layer": 223,
       "pos": [
-        511.0,
-        563.0
+        525.5,
+        561.0
       ],
       "anchor": [
-        0.27547,
-        0.63576
+        0.33019,
+        0.62252
       ],
       "tags": [
         "eye_aperture"
       ],
       "mask_only": true,
-      "note": "眼眶开口（112×75px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
+      "note": "眼眶开口（99×87px）：当遮罩用，锚点在开口下沿，blink=1 时压到 6% = 上眼皮合下来（G66.13：闭合上边界是直线，待改成弧）",
       "aperture_min": 0.06,
       "eye_side": "r",
       "scale_1x": 1.0,
@@ -1356,8 +1392,8 @@
       "group": "head",
       "layer": 226,
       "pos": [
-        476,
-        487
+        472,
+        485
       ],
       "anchor": [
         0,
@@ -1368,7 +1404,7 @@
         "eye_open"
       ],
       "mask": "eye_r_socket",
-      "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±19/±11px，由眼眶裁切",
+      "note": "眼球：完整的圆（被眼皮挡住的部分已补全），可动范围 ±17/±10px，由眼眶裁切",
       "eye_side": "r",
       "scale_1x": 1.0,
       "scale": 0.5,
@@ -1380,8 +1416,8 @@
       "group": "head",
       "layer": 227,
       "pos": [
-        476,
-        487
+        472,
+        485
       ],
       "anchor": [
         0,
@@ -1416,8 +1452,8 @@
         "eyelid",
         "eye_not_wide"
       ],
-      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 7.0px，闭到底 = 那条闭眼线",
-      "eyelid_travel": 7.0,
+      "note": "上眼线：脸上的眼线已挖除，这条线在闭合度 0.5 之后滑 12.0px，闭到底 = 那条闭眼线",
+      "eyelid_travel": 12.0,
       "lash_hold": 0.5,
       "eye_side": "r",
       "scale_1x": 1.0,
@@ -1440,7 +1476,7 @@
       "tags": [
         "eye_closed"
       ],
-      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 47.92）：blink=1 时完全显形",
+      "note": "闭眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 8.57）：blink=1 时完全显形",
       "eye_side": "r",
       "scale_1x": 1.0,
       "scale": 0.5,
@@ -1462,7 +1498,7 @@
       "tags": [
         "eye_smile"
       ],
-      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 45.85）：ParamEyeL/RSmile=1 时显形",
+      "note": "笑眼（AI 重绘·盖住原画眼睛 100.0%，接缝色差 10.21）：ParamEyeL/RSmile=1 时显形",
       "eye_side": "r",
       "scale_1x": 1.0,
       "scale": 0.5,
@@ -1484,7 +1520,7 @@
       "tags": [
         "eye_pain"
       ],
-      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 46.29）：ParamEyeL/RPain=1 时显形",
+      "note": "痛苦闭眼 >_<（AI 重绘·盖住原画眼睛 100.0%，接缝色差 7.6）：ParamEyeL/RPain=1 时显形",
       "eye_side": "r",
       "scale_1x": 1.0,
       "scale": 0.5,
@@ -1857,8 +1893,8 @@
       "group": "chest",
       "layer": 30,
       "pos": [
-        322,
-        857
+        248,
+        918
       ],
       "anchor": [
         0.5,
@@ -1880,8 +1916,8 @@
       "group": "chest",
       "layer": 31,
       "pos": [
-        276,
-        909
+        197,
+        963
       ],
       "anchor": [
         0.5,
@@ -1903,8 +1939,8 @@
       "group": "chest",
       "layer": 32,
       "pos": [
-        253,
-        917
+        184,
+        970
       ],
       "anchor": [
         0.5,
@@ -1926,8 +1962,8 @@
       "group": "chest",
       "layer": 33,
       "pos": [
-        451,
-        860
+        352,
+        911
       ],
       "anchor": [
         0.5,
@@ -1950,7 +1986,7 @@
       "layer": 165,
       "pos": [
         310,
-        307
+        268
       ],
       "socket": "socket_ear_l",
       "anchor": [
@@ -1973,7 +2009,7 @@
       "layer": 166,
       "pos": [
         549,
-        307
+        268
       ],
       "socket": "socket_ear_r",
       "anchor": [
@@ -5148,7 +5184,7 @@
         {
           "target": "ParamEyeBallX",
           "wave": "sine",
-          "amp": 4.75,
+          "amp": 4.25,
           "freq": 0.45
         },
         {
@@ -8219,16 +8255,16 @@
     {
       "id": "tail_relaxed_root",
       "pivot": [
-        322.0,
-        1254.7
+        248.0,
+        1271.1
       ],
       "note": "tail_relaxed 的根骨：绕发根/挂接点转，梢部才会被带起来"
     },
     {
       "id": "tail_relaxed_mid",
       "pivot": [
-        322.0,
-        1062.0
+        248.0,
+        1100.0
       ],
       "parent": "tail_relaxed_root",
       "note": "tail_relaxed 的中段骨：比根慢半拍，做出分层摆动"
@@ -8306,16 +8342,16 @@
     {
       "id": "tail_up_root",
       "pivot": [
-        276.0,
-        896.0
+        197.0,
+        950.2
       ],
       "note": "tail_up 的根骨：绕发根/挂接点转，梢部才会被带起来"
     },
     {
       "id": "tail_up_mid",
       "pivot": [
-        276.0,
-        691.5
+        197.0,
+        750.0
       ],
       "parent": "tail_up_root",
       "note": "tail_up 的中段骨：比根慢半拍，做出分层摆动"
@@ -8393,16 +8429,16 @@
     {
       "id": "tail_puff_root",
       "pivot": [
-        253.0,
-        903.9
+        184.0,
+        957.2
       ],
       "note": "tail_puff 的根骨：绕发根/挂接点转，梢部才会被带起来"
     },
     {
       "id": "tail_puff_mid",
       "pivot": [
-        253.0,
-        698.5
+        184.0,
+        757.0
       ],
       "parent": "tail_puff_root",
       "note": "tail_puff 的中段骨：比根慢半拍，做出分层摆动"
@@ -8480,16 +8516,16 @@
     {
       "id": "tail_tuck_root",
       "pivot": [
-        451.0,
-        1101.5
+        352.0,
+        1180.7
       ],
       "note": "tail_tuck 的根骨：绕发根/挂接点转，梢部才会被带起来"
     },
     {
       "id": "tail_tuck_mid",
       "pivot": [
-        451.0,
-        984.5
+        352.0,
+        1050.0
       ],
       "parent": "tail_tuck_root",
       "note": "tail_tuck 的中段骨：比根慢半拍，做出分层摆动"
@@ -10978,6 +11014,48 @@
         }
       ],
       "note": "surprised 动作把它推到 -0.45（缩瞳）；旧名 ParamEyeBallForm 仍可作别名写入"
+    },
+    {
+      "id": "ParamHandLFinger",
+      "label": "左手 finger",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hand_l_finger",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "hand_l",
+          "param": "alpha",
+          "scale": -1.0
+        }
+      ],
+      "note": "0=常态手，1=这一档；动作里用 pulse 整段拉满（官方：不要在动作中途切手）"
+    },
+    {
+      "id": "ParamHandRFinger",
+      "label": "右手 finger",
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0,
+      "binds": [
+        {
+          "part": "hand_r_finger",
+          "param": "alpha",
+          "scale": 1.0,
+          "offset": -1.0
+        },
+        {
+          "part": "hand_r",
+          "param": "alpha",
+          "scale": -1.0
+        }
+      ],
+      "note": "0=常态手，1=这一档；动作里用 pulse 整段拉满（官方：不要在动作中途切手）"
     },
     {
       "id": "ParamHipL",

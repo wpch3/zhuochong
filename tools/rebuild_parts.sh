@@ -384,6 +384,16 @@ python3 tools/make_rig.py --character "$CH" --form "$FM"
 #       `bad_hue_transparent` 从 51 件越线降到 0。
 "$PY" tools/fix_transparent_rgb.py --character "$CH" --quiet
 
+# 27f 眼眶区回归原画皮肤（铁律 19，2026-11-11）。
+#     ★ 必须是**最后一步**：seg_head 在 18/19/20/20b/20d 里会被反复重写，
+#       在 18 步内填会被后面全部冲掉（实测填完再跑链路，锯齿原样回来）。
+#     ★ 病因：挖眼是「硬权重换皮 + 邻域生长」，carve 边界外圈必然留参差台阶，
+#       引擎里就是眼角那几根白色尖刺 + 一圈浅紫锯齿（用户说的"眼睛两边很乱"）。
+#     ★ 修法：不用插值（单尺度 SOR→NaN、多尺度→乱码、8 方向径向→斜条纹，
+#       三条都试过），直接拿**同一张原画**的 body_full 在同一坐标取像素填回,
+#       边界两侧本就连着，实测接缝均差 42.6 → 1.1。
+"$PY" tools/eye_socket_harmonic_fill.py --character "$CH" --form "$FM" | tail -2
+
 "$PY" tools/check_assets.py --character "$CH" --form "$FM" | tail -3
 rm -rf tools/__pycache__
 echo

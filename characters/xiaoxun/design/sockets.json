@@ -12,56 +12,80 @@
     {
       "id": "socket_head_top",
       "ref": "head_top",
-      "pos_rel": [0.025751, 0.140014],
+      "pos_rel": [
+        0.025751,
+        0.140014
+      ],
       "unit": "head",
       "note": "头顶（发饰/帽子/呆毛夹）。数值 = hood_up / hair_crown_long 一直以来的落点，挂上去位置不变。"
     },
     {
       "id": "socket_face",
       "ref": "eye_line",
-      "pos_rel": [0.0, 0.0],
+      "pos_rel": [
+        0.0,
+        0.0
+      ],
       "unit": "head",
       "note": "脸面中心（眼镜/口罩）。眼下缘高度，横向落在脸中线上。"
     },
     {
       "id": "socket_ear_l",
       "ref": "head_top",
-      "pos_rel": [-0.18702, 0.39563],
+      "pos_rel": [
+        -0.18702,
+        0.33
+      ],
       "unit": "head",
-      "note": "左耳。数值 = acc_ear_cat_l 一直以来的落点。"
+      "note": "左耳。数值 = acc_ear_cat_l 一直以来的落点。 ★ 2026-11-11：耳根上抬 0.39563→0.330。素材换成细长三角后覆盖从 58% 掉到 38%，粉色内耳几乎全被头发吃掉；上抬 40px 后露出高接近参考立绘。"
     },
     {
       "id": "socket_ear_r",
       "ref": "head_top",
-      "pos_rel": [0.2086, 0.39563],
+      "pos_rel": [
+        0.2086,
+        0.33
+      ],
       "unit": "head",
-      "note": "右耳。数值 = acc_ear_cat_r 一直以来的落点。"
+      "note": "右耳。数值 = acc_ear_cat_r 一直以来的落点。 ★ 2026-11-11：耳根上抬 0.39563→0.330。素材换成细长三角后覆盖从 58% 掉到 38%，粉色内耳几乎全被头发吃掉；上抬 40px 后露出高接近参考立绘。"
     },
     {
       "id": "socket_neck",
       "ref": "neck",
-      "pos_rel": [0.0, 0.03],
+      "pos_rel": [
+        0.0,
+        0.03
+      ],
       "unit": "head",
       "note": "颈根（项链/围巾）。挂在 chest 骨上，所以身体前倾时项链跟着躯干走而不是跟着头。"
     },
     {
       "id": "socket_wrist_l",
       "ref": "wrist_l",
-      "pos_rel": [0.0, 0.0],
+      "pos_rel": [
+        0.0,
+        0.0
+      ],
       "unit": "head",
       "note": "左手腕（腕带/手链）。挂在 hand_l 骨上 —— 手一抬，腕带就跟着抬，这是这个挂点存在的唯一理由。"
     },
     {
       "id": "socket_wrist_r",
       "ref": "wrist_r",
-      "pos_rel": [0.0, 0.0],
+      "pos_rel": [
+        0.0,
+        0.0
+      ],
       "unit": "head",
       "note": "右手腕。"
     },
     {
       "id": "socket_back",
       "ref": "neck",
-      "pos_rel": [0.0, 0.30],
+      "pos_rel": [
+        0.0,
+        0.3
+      ],
       "unit": "head",
       "note": "后背中线（背包/披风/翅膀）。挂 chest 骨：身体前倾时披风跟躯干，不跟头。"
     }

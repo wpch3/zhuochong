@@ -8,21 +8,21 @@
         399
       ],
       "aperture_box": [
-        136,
-        21,
-        251,
+        126,
+        8,
+        225,
         95
       ],
       "socket_size": [
         264,
         151
       ],
-      "lash_travel": 2.0,
+      "lash_travel": 57.0,
       "lash_file": "eye_l_lash_up.png",
-      "lash_cut_px": 545,
-      "carved_px": 6754,
-      "filled_px": 1165,
-      "line_px": 2167
+      "lash_cut_px": 866,
+      "carved_px": 6481,
+      "filled_px": 733,
+      "line_px": 3233
     },
     {
       "side": "r",
@@ -31,21 +31,21 @@
         399
       ],
       "aperture_box": [
-        17,
-        21,
-        129,
-        96
+        38,
+        7,
+        137,
+        94
       ],
       "socket_size": [
         265,
         151
       ],
-      "lash_travel": 7.0,
+      "lash_travel": 12.0,
       "lash_file": "eye_r_lash_up.png",
-      "lash_cut_px": 614,
-      "carved_px": 7349,
-      "filled_px": 1291,
-      "line_px": 2247
+      "lash_cut_px": 1091,
+      "carved_px": 6498,
+      "filled_px": 462,
+      "line_px": 2050
     }
   ]
 }

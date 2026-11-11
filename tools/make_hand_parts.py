@@ -50,6 +50,11 @@ WRIST_DOWN = 16.0              # 露在袖口下面的那截腕子（下端是�
 PAD = 8                        # 切件四周留白，防旋转时边缘被裁
 
 POSES = ("open", "heart")      # Teen 生图差分；Chibi 无合法来源时只生成腕垫片
+# ★ 2026-11-11：用户要求「Chibi 也要有手指的那一档手」。Chibi 原画切件是连指
+#   （mitten）造型，指缝只有一道浅缺口；手指档必须另有一张**本形态专属**源图。
+#   源图由代理原创生成（design/hands/hand_relaxed_raw.png，Q 版短圆五指），
+#   不再借用 Teen 的 open/heart（那两个是 Teen 来源，跨形态挪用会被判为污染）。
+CHIBI_POSES = ("finger",)
 
 
 def key_magenta(im):
@@ -109,7 +114,30 @@ def wrist_line(al):
     return (x0 + x1) * 0.5, float(by), float(best)
 
 
-def load_pose(path, target_len, line_gain=0.58, line_inner=0.16, width_fac=1.0):
+def fold_to_relaxed(im, cx, cy, squeeze=0.82, stretch=1.06):
+    """把「掌心朝前、五指张开」的手读成「自然垂手」：指尖往中间收 + 略微变长。
+
+    为什么做几何而不重新生图（铁律 19，2026-11-11）：生成出来的五指手形状是
+    对的（指缝清楚、Q 版短圆），错的只是**张开角度**。重新生图会再抽一次奖，
+    而同一张图做一次各向异性收缩是确定性的：x 方向按到枢轴的距离压缩
+    （越靠指尖收得越多 = 指端聚拢），y 方向略微拉长。
+    """
+    b = np.asarray(im).astype(np.float32)
+    h, w = b.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    # 越往下（远离腕口）收得越紧：t 从腕口的 1 线性降到指尖的 squeeze
+    t = np.clip((yy - cy) / max(1.0, float(h - cy)), 0.0, 1.0)
+    k = 1.0 + (squeeze - 1.0) * t
+    src_x = cx + (xx - cx) / np.maximum(k, 1e-3)
+    src_y = cy + (yy - cy) / stretch
+    sx = np.clip(np.round(src_x), 0, w - 1).astype(np.int32)
+    sy = np.clip(np.round(src_y), 0, h - 1).astype(np.int32)
+    out = b[sy, sx]
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA"), cx, cy
+
+
+def load_pose(path, target_len, line_gain=0.58, line_inner=0.16, width_fac=1.0,
+              pose_fold=None, prealigned=False):
     """生图 → 键出 → 按**手长**定标 → 压回描边 → 旋 180°（腕口朝上）→ 裁掉腕线
     以下的小臂 → 返回 (RGBA, 腕中心在图中的 (x, y))。
 
@@ -133,9 +161,25 @@ def load_pose(path, target_len, line_gain=0.58, line_inner=0.16, width_fac=1.0):
     im = im.crop(im.getbbox())
     al = np.asarray(im)[:, :, 3]
     tline = line_mask(im)
-    cx, cy, _w = wrist_line(al)
-    ys, xs = np.nonzero(al > 40)
-    reach = float(np.hypot(xs - cx, ys - cy).max())
+    if prealigned:
+        # ★ 已正位的源不能用 wrist_line：那个函数按「生图习惯」在下 38% 找最窄行
+        #   当腕口，而研究图切片的腕口就在**图顶**，最窄行落在掌心 ⇒ 定标基准
+        #   和裁切位置全错（实测手只剩腕口一条缝）。正位源的定义很明确：
+        #   腕口 = 墨迹顶行，腕中心 = 顶行的水平中点，手长 = 墨迹全高。
+        ys0, xs0 = np.nonzero(al > 40)
+        y_top = int(ys0.min())
+        top_row = np.nonzero(al[y_top + 2] > 40)[0]
+        cx = float((top_row.min() + top_row.max()) * 0.5) if len(top_row) else \
+            float((xs0.min() + xs0.max()) * 0.5)
+        cy = float(y_top)
+        reach_pre = float(ys0.max() - y_top + 1)
+    else:
+        cx, cy, _w = wrist_line(al)
+    if prealigned:
+        reach = reach_pre
+    else:
+        ys, xs = np.nonzero(al > 40)
+        reach = float(np.hypot(xs - cx, ys - cy).max())
     s = target_len / max(1.0, reach)
     # ★★★ width_fac：只压**横向**，用来把生图那只「方墩墩的大手掌」收窄。
     #   第五十三问量的：参考模板 wave_up.png 里那只挥手的手是 101×80 rig px，
@@ -173,12 +217,122 @@ def load_pose(path, target_len, line_gain=0.58, line_inner=0.16, width_fac=1.0):
     im = Image.fromarray(np.dstack([b[:, :, :3] * (1.0 - t2) + line * t2,
                                     b[:, :, 3]]).astype(np.uint8), "RGBA")
     cx, cy = cx * sx, cy * sy
+    if prealigned:
+        # ★ 已正位的源（hand_study 研究图切片）：腕口本来就在图顶、指尖朝下，
+        #   和 rig 同向，**整张保留**。
+        #   两个坑都在这里：① 分支必须在 rotate 之前返回，否则手上下颠倒；
+        #   ② 必须在下面的 `keep = cy + 6` 裁切**之前**返回 —— 正位源的腕口
+        #   就在图顶（cy≈0），按那个公式裁只剩 6px 高的腕口一条缝。
+        return im, (cx, cy)
     # 腕线以下的小臂不要（袖子自己会画），留 6px 塞进袖口里当塗り足し
     keep = int(min(nh, cy + 6))
     im = im.crop((0, 0, nw, keep))
     im = im.rotate(180, expand=True)                 # 腕口翻到上边
     cx, cy = (im.width - 1) - cx, (im.height - 1) - cy
+    # ★ Chibi 手指档：垂手收拢。
+    #   生成的手是"手掌朝前、五指张开"，直接切进角色会读成"举手打招呼"，
+    #   而参考立绘里手是**自然垂在身侧、手指并拢略弯**。
+    #   做法：以腕枢轴为原点做一次**纵向拉伸 + 横向收窄**（指尖往中间聚拢），
+    #   再用 alpha 掩膜把横向越界部分裁掉。这是"同一张画好的手换个读法"，
+    #   不是重画 —— 指缝仍然是原画那条，只是角度变陡。
+    if pose_fold is not None:
+        im, cx, cy = pose_fold(im, cx, cy)
     return im, (cx, cy)
+
+
+def _replace_relaxed_from_study(sp, design, armp, report):
+    """把 chibi 的放松手（hand_l / hand_r）换成 hand_study 切片。
+
+    与 rescale_relaxed 的区别：那个函数按腕枢轴**等比放大**原件，只改尺度；
+    这里换的是**另一张源图**，所以要把研究图按原手件的墨迹高度重新定标，
+    再把腕枢轴对齐到原枢轴位置 —— 否则手会脱开袖口。
+
+    幂等三条（踩过坑，别再动）：
+      ① 枢轴/尺寸基线**只从 `_orig/arm_parts_hand_baseline.json` 读**。
+         不能读 arm_parts.json 里的现值 —— 上一轮换源已经把它改成
+         [19,7]/[0,0]，再读就是拿污染值当基线，位置直接飞到画布左上角。
+      ② 不能拿 `_orig/hand_l.png` 现算墨迹当基线：那个文件可能已经被
+         上一次换源覆盖成 38x58 的小手。
+      ③ 枢轴 y 用「腕口那条横线的中点」，不是图顶 3px。研究图的腕口是
+         一条笔直的裁断边，所以取墨迹顶行左右端点的中点最稳。
+    """
+    orig = os.path.join(sp, "_orig")
+    basep = os.path.join(orig, "arm_parts_hand_baseline.json")
+    if not os.path.exists(basep):
+        report["checks"].setdefault("relaxed_baseline_missing", []).append(basep)
+        return
+    with io.open(basep, encoding="utf-8") as f:
+        B = {x["id"]: x for x in json.load(f)["parts"]}
+    src_l = os.path.join(design, "hand_relaxed_v2.png")
+    if not os.path.exists(src_l):
+        report["checks"].setdefault("relaxed_src_missing", []).append(src_l)
+        return
+    AP = {p["id"]: p for p in armp["parts"]}
+    for side in ("l", "r"):
+        pid = "hand_%s" % side
+        p, b = AP.get(pid), B.get(pid)
+        if not p or not b:
+            continue
+        # 目标手长 = 基线手件里「腕口 → 最低墨迹」的高度（不含袖口碎片的框边）
+        bimg = Image.open(os.path.join(orig, pid + ".png")).convert("RGBA")
+        ba = np.asarray(bimg)[..., 3]
+        bys = np.nonzero(ba > 40)[0]
+        want_h = float(bys.max() - bys.min() + 1)
+
+        src = Image.open(src_l).convert("RGBA")
+        if side == "r":
+            src = src.transpose(Image.FLIP_LEFT_RIGHT)
+        sa = np.asarray(src)[..., 3]
+        sy, sx = np.nonzero(sa > 40)
+        src = src.crop((sx.min(), sy.min(), sx.max() + 1, sy.max() + 1))
+        # ★ 研究图的切片上半截是**腕管**（为了好画而留的一长段方筒），不是手。
+        #   直接整张按手长定标 ⇒ 手只占 45%，做出来 38x58，比原手小一半，
+        #   而且枢轴落在腕管顶上，位置整只飘走（实测右手整个被袖口吃掉）。
+        #   腕 = 宽度曲线的极小点：方筒往下收、到手掌又开始变宽。
+        aa = np.asarray(src)[..., 3]
+        rows_w = np.array([(lambda r: (r.max() - r.min() + 1) if len(r) else 0)(
+            np.nonzero(aa[y] > 40)[0]) for y in range(aa.shape[0])])
+        hh = len(rows_w)
+        lo = int(hh * 0.25)                      # 只在 25%~75% 找，避开方筒顶和指尖
+        hi = int(hh * 0.75)
+        wy = lo + int(np.argmin(rows_w[lo:hi]))
+        src = src.crop((0, max(0, wy - 10), src.width, src.height))   # 留 10px 当塗り足し
+        k = want_h / max(1.0, float(src.height))
+        nw = max(1, int(round(src.width * k)))
+        nh = max(1, int(round(src.height * k)))
+        new = src.resize((nw, nh), Image.LANCZOS)
+        # 枢轴 = 腕口横线中点。研究图腕口在图顶，但裁切后可能留了 1~2px 描边，
+        # 所以拿墨迹顶行往里 2px 那一行的左右端点中点。
+        na = np.asarray(new)[..., 3]
+        r0 = 2
+        row = np.nonzero(na[min(r0, na.shape[0] - 1)] > 40)[0]
+        px = float((row.min() + row.max()) * 0.5) if len(row) else nw * 0.5
+        py = float(r0)
+        out = Image.new("RGBA", (nw + 8, nh + 8), (0, 0, 0, 0))
+        out.alpha_composite(new, (4, 4))
+        out.save(os.path.join(sp, pid + ".png"))
+        # ★ 必须同时写 @2x：make_rig 的「有高清件就改用它」是**按文件名自动**
+        #   触发的（tools/make_rig.py 4046 起），只要目录里存在同名 @2x，rig
+        #   就会改指过去并把 scale 减半。只写 1x 的话引擎仍在读**旧的高清件**
+        #   —— 实测换源后 1x 已经是并指手，屏幕上映的却还是旧的两叉手。
+        #   这里 2x 由 1x 放大而来（源是 AI 研究图，本身没有更高密度），
+        #   几何口径不变，符合 make_rig 的 hires 约定。
+        out.resize((out.width * 2, out.height * 2), Image.LANCZOS).save(
+            os.path.join(sp, pid + "@2x.png"))
+        # ★ pivot 的口径是**画布世界坐标**，不是件内坐标 —— make_rig 用
+        #   `anchor=(pivot-pos)/size`、`pos=pivot` 把锚点挪到腕关节上
+        #   （tools/make_rig.py 1855 起）。第一版把件内坐标写进 pivot，
+        #   结果手指档的锚点算成负值、整只手被推出画布（实测右侧只剩一块腕口）。
+        #   所以：pivot 保持基线的世界值，只改 pos / size。
+        p["size"] = [out.width, out.height]
+        # pos 必须是**整数**：check_assets 会直接 Image.paste(im, tuple(pos))，
+        # 浮点会抛 TypeError（实测）。pivot 允许一位小数。
+        p["pos"] = [int(round(b["pivot"][0] - (px + 4))),
+                    int(round(b["pivot"][1] - (py + 4)))]
+        p["pivot"] = [b["pivot"][0], b["pivot"][1]]
+        report["checks"].setdefault("relaxed_replaced", []).append(pid)
+    with io.open(os.path.join(sp, "arm_parts.json"), "w", encoding="utf-8") as f:
+        json.dump(armp, f, ensure_ascii=False, indent=2)
 
 
 def rescale_relaxed(sp, armp, factor, report):
@@ -338,7 +492,10 @@ def main():
     # Teen 的 open/heart 参考稿属于 Teen 来源，不能跨形态挪用给 Chibi。
     # Chibi 目前只可生成依附于其原画手腕的结构垫片；专属 small/mitten 与手势
     # 需有 Chibi 源图后由独立 T67.69 流程注册，不在此处伪装成已完成。
-    poses = () if (args.character, args.form) == ("xiaoxun", "chibi") else POSES
+    if (args.character, args.form) == ("xiaoxun", "chibi"):
+        poses = CHIBI_POSES
+    else:
+        poses = POSES
 
     base = os.path.join(args.root, "characters", args.character, "forms", args.form)
     sp = os.path.join(base, "sprites")
@@ -359,6 +516,18 @@ def main():
     if abs(args.relax_scale - 1.0) > 1e-6:
         rescale_relaxed(sp, armp, args.relax_scale, report)
         AP = {p["id"]: p for p in armp["parts"]}
+
+    # ---- Chibi 放松手换源（2026-11-11）----
+    # ★ 旧放松手是从 design_sheet_chibi.png 切出来的，而那页原画的手本身是坏的
+    #   —— 放大看是「一块带单个凹口的面团 + 一个拇指」，用户原话「像岔开了一样
+    #   非常别扭」。那不是切片 bug，是源图就是残的，任何修边都救不回来。
+    #   换源为 design/hands/hand_study_sheet_v1.png 的第 2 格（四指并拢桨形、
+    #   浅缺口、内侧拇指瓣），实测 66px 生产尺寸下仍读得出指缝。
+    #   **必须排在 rescale_relaxed 之后**：那个函数会从 _orig 重写 hand_l/r，
+    #   放前面会被它覆盖掉（实测第一版就是这个顺序，换源等于没生效）。
+    if (args.character, args.form) == ("xiaoxun", "chibi"):
+        _replace_relaxed_from_study(sp, design, armp, report)
+        AP = {p["id"]: p for p in armp["parts"]}
         with io.open(os.path.join(sp, "arm_parts.json"), "w", encoding="utf-8") as f:
             json.dump(armp, f, ensure_ascii=False, indent=2)
 
@@ -368,7 +537,11 @@ def main():
     # 不伪造新手、不加新骨；非 open 姿态（原画手/比心）保持原层序。
     LAY = {("l", "pad"): 128, ("r", "pad"): 129,
            ("l", "open"): 260, ("l", "heart"): 131,
-           ("r", "open"): 261, ("r", "heart"): 133}
+           ("r", "open"): 261, ("r", "heart"): 133,
+           # ★ Chibi 手指档：**必须高于**放松手本体（hand_l=138 / hand_r=139）。
+           #   原来写 132/134 低于本体，结果切到 finger 档什么也看不见 ——
+           #   引擎里还是那张连指手。层号取自 rig 实测，不是估的。
+           ("l", "finger"): 142, ("r", "finger"): 143}
 
     for side in ("l", "r"):
         src = AP[f"hand_{side}"]
@@ -412,10 +585,17 @@ def main():
         # ---- ② 生图差分档 ----
         for pose in poses:
             raw = os.path.join(design, f"hand_{pose}_raw.png")
+            # Chibi 的 finger 源是 hands/hand_study 切出来的研究图切片：
+            # 已是「腕口在上、指尖朝下」的正位，且不需要收拢（本来就是并指）。
+            _chibi_finger = ((args.character, args.form) == ("xiaoxun", "chibi")
+                             and pose == "finger")
+            _fold = None
             im, (wx, wy) = load_pose(raw, target_len=args.hand_len * 2,          # 2× 画布上量
                                       line_gain=args.line_gain,
                                       line_inner=args.line_inner,
-                                      width_fac=args.hand_width)
+                                      width_fac=args.hand_width,
+                                      pose_fold=_fold,
+                                      prealigned=_chibi_finger)
             if side == "l":
                 im = im.transpose(Image.FLIP_LEFT_RIGHT)
                 wx = (im.width - 1) - wx
@@ -423,6 +603,27 @@ def main():
             canvas = Image.new("RGBA", (cw2, ch2), (0, 0, 0, 0))
             px, py = wx + PAD * 2, wy + PAD * 2
             canvas.alpha_composite(im, (PAD * 2, PAD * 2))
+            # ★ 腕口塗り足し：生图手件的顶端只到腕线、宽约腕宽的 1/10，
+            #   而袖口内宽是 46px（半宽 22）。不垫就会在腕口露出一条缝，
+            #   手一摆缝就变成"断手"。官方口径：隙間が生じる部分は描き足し。
+            #   这里复用 pad 那套正圆/方肩形状，画在**同一枢轴**上、压在手下面。
+            # 垫片半宽取「袖口内宽一半」与「手件腕口实际半宽」的较大值：
+            # 生成的手比袖口窄时用 WRIST_HW 不漏边；生成的手比袖口宽时
+            # 按手的实宽走，否则手的顶端两侧会各露出一小块无料的透明缺口。
+            _top_w = 0
+            _al = np.asarray(canvas)[..., 3]
+            _row = int(round(py))
+            for _dy in (0, 1, 2, 3):
+                _r = min(_al.shape[0] - 1, max(0, _row + _dy))
+                _xs = np.nonzero(_al[_r] > 24)[0]
+                if len(_xs):
+                    _top_w = max(_top_w, int(_xs.max() - _xs.min() + 1))
+            _hw = max(WRIST_HW, _top_w / 2.0 + 1.0)
+            _stub = wrist_stub((cw2, ch2), (px, py), _hw, WRIST_UP, WRIST_DOWN)
+            _under = Image.new("RGBA", (cw2, ch2), (0, 0, 0, 0))
+            _under.alpha_composite(_stub, (0, 0))
+            _under.alpha_composite(canvas, (0, 0))
+            canvas = _under
             emit(sp, f"hand_{side}_{pose}", canvas,
                  (piv[0] - px / 2.0, piv[1] - py / 2.0), piv,
                  LAY[(side, pose)], f"hand_{side}", report)

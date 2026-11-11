@@ -7,19 +7,37 @@
       "group": "forearm_l",
       "layer": 128,
       "pos": [
-        69,
+        72,
         861
       ],
       "size": [
-        51,
-        40
+        46,
+        52
       ],
       "pivot": [
         94.5,
         896.0
       ],
-      "wrist_w": 43,
-      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩"
+      "wrist_w": 43
+    },
+    {
+      "id": "hand_l_finger",
+      "file": "sprites/hand_l_finger.png",
+      "group": "hand_l",
+      "layer": 142,
+      "pos": [
+        72,
+        888
+      ],
+      "size": [
+        51,
+        74
+      ],
+      "pivot": [
+        94.5,
+        896.0
+      ],
+      "wrist_w": 21
     },
     {
       "id": "hand_r_pad",
@@ -27,19 +45,37 @@
       "group": "forearm_r",
       "layer": 129,
       "pos": [
-        447,
+        450,
         860
       ],
       "size": [
-        53,
-        40
+        46,
+        52
       ],
       "pivot": [
         473.0,
         895.0
       ],
-      "wrist_w": 43,
-      "note": "腕正圆关节（Q44）：以腕枢轴为心的正圆 ∩ 袖口掩膜。圆关于枢轴旋转不变 ⇒ 手摆任何角度，袖口这个洞都是满的；裁掉袖口以外的料 ⇒ 不会再从袖口下面探出肉色疙瘩"
+      "wrist_w": 43
+    },
+    {
+      "id": "hand_r_finger",
+      "file": "sprites/hand_r_finger.png",
+      "group": "hand_r",
+      "layer": 143,
+      "pos": [
+        446,
+        887
+      ],
+      "size": [
+        51,
+        74
+      ],
+      "pivot": [
+        473.0,
+        895.0
+      ],
+      "wrist_w": 21
     }
   ],
   "checks": {
@@ -47,67 +83,28 @@
       "hand_l": 1.1,
       "hand_r": 1.1
     },
+    "relaxed_replaced": [
+      "hand_l",
+      "hand_r"
+    ],
     "cuff_cleaned": [
       "hand_l",
       "hand_r"
     ],
     "wrist_w": {
       "hand_l_pad": 43,
-      "hand_r_pad": 43
+      "hand_l_finger": 21,
+      "hand_r_pad": 43,
+      "hand_r_finger": 21
     }
   },
-  "note": "tools/make_hand_parts.py 产物。放松档=本形态原画切件；Chibi 仅生成腕部结构垫片，未提供 Chibi small/mitten 或手势贴图，不得视作手型完成。",
+  "note": "tools/make_hand_parts.py 产物。放松档=本形态原画切件；张开/比心档=按原画风格的 design/hands/*_raw.png 键出配准而来。",
   "poses": {
-    "": ""
+    "": "",
+    "finger": "finger"
   },
   "art_base": {
     "l": "hand_l",
     "r": "hand_r"
-  },
-  "round_wrist": {
-    "sig": {
-      "margin": -2.0,
-      "v": 2
-    },
-    "sides": {
-      "l": {
-        "R": 25.5,
-        "size_1x": [
-          51,
-          40,
-          1721
-        ],
-        "size_2x": [
-          102,
-          80,
-          6980
-        ]
-      },
-      "r": {
-        "R": 26.0,
-        "size_1x": [
-          53,
-          40,
-          1755
-        ],
-        "size_2x": [
-          106,
-          80,
-          6882
-        ]
-      }
-    }
-  },
-  "wrist_bridge": {
-    "sig": {
-      "inset": 1.5,
-      "v": 2,
-      "angles": [
-        -36.0,
-        62.0
-      ]
-    },
-    "done": {},
-    "note": "tools/wrist_bridge.py：手件腕口补正圆塗り足し"
   }
 }

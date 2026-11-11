@@ -38,6 +38,39 @@ LINE_PAD = 3        # 闭眼线往外扩几像素一起抹（线里嵌着白色�
 GROW_IT  = 16       # 抹掉之后往里填几圈颜色
 
 
+def inpaint_harmonic(chan, hole, max_iter=4000, tol=0.02):
+    """边界固定（Dirichlet）的调和内插：解 Laplace 方程填洞。
+
+    `chan` 灰阶通道，`hole` 要填的 bool 掩膜。洞外的像素是**边界条件**，
+    逐次超松弛迭代到收敛。因为边界值就是外侧真实像素，填出来的曲面在边界处
+    严格连续，不会出现色阶带或锯齿边 —— 这是"梯度域修复"在不需要解
+    Poisson 方程时最稳的一种退化形式。
+    """
+    out = chan.astype(np.float64).copy()
+    m = hole.astype(bool)
+    if not m.any():
+        return out
+    pad = np.pad(out, 1, mode="edge")
+    known = pad[1:-1, 1:-1]  # 仅为保持维度
+    # 初值：用洞外均值，收敛更快
+    if (~m).any():
+        out[m] = float(out[~m].mean())
+    # 四邻域和（洞内像素每次用最新值，Gauss-Seidel + SOR）
+    w = 1.75
+    h, wd = out.shape
+    for _ in range(max_iter):
+        prev = out.copy()
+        up = np.roll(out, 1, 0)
+        dn = np.roll(out, -1, 0)
+        lf = np.roll(out, 1, 1)
+        rt = np.roll(out, -1, 1)
+        avg = (up + dn + lf + rt) / 4.0
+        out = np.where(m, out + w * (avg - out), out)
+        if np.abs(out - prev)[m].max() < tol:
+            break
+    return out
+
+
 def luminance(rgb):
     return (0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2])
 
@@ -300,6 +333,25 @@ def main() -> int:
             tmp[..., 3] = keep_a
             head = tmp
             print(f"  {side} 眼眶收口：洗掉残留的眼线/虹膜 {int(bad.sum())} 像素")
+
+        # 3c) ★ 2026-11-11 铁律19 改算法：眼眶外圈的和连续填充。
+        # 上面 2/3 步是「硬权重换皮 + 邻域生长」，在 carve 边界外圈留下一圈
+        # 参差不齐的浅紫/白色锯齿 —— 引擎里就是眼角那几根白色尖刺（用户说的
+        # "眼睛两边很乱"）。捕丁这条路已经走过两轮（羽化、色调匹配）都没干净。
+        # 新做法：把整个眼眶（含 3px 软边外扩）当作用户掩膜，用**边界固定**的
+        # 调和内插（Laplace 方程，逐次超松弛）从该区域**外一圈的真实原肤**
+        # 求一个连续曲面填进去。边界值就是外部原肤本身 ⇒ 边界处 Δ≈0，
+        # 天然没有台阶、没有锯齿、没有色差带。
+        _eye_fill = dilate(carve, 3) & (head[..., 3] > 0)
+        if _eye_fill.any():
+            _ys, _xs = np.nonzero(_eye_fill)
+            _y0, _y1 = int(_ys.min()), int(_ys.max()) + 1
+            _x0, _x1 = int(_xs.min()), int(_xs.max()) + 1
+            _sub = head[_y0:_y1, _x0:_x1].astype(np.float64)
+            _m = _eye_fill[_y0:_y1, _x0:_x1]
+            for _c in range(3):
+                _sub[..., _c] = inpaint_harmonic(_sub[..., _c], _m)
+            head[_y0:_y1, _x0:_x1] = np.clip(np.round(_sub), 0, 255).astype(np.uint8)
 
         ys, xs = np.nonzero(ap_m)
         abox = [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1]

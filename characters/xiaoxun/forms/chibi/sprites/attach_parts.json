@@ -152,8 +152,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_relaxed.png",
       "size": [
-        357,
-        410
+        120,
+        364
       ]
     },
     {
@@ -161,8 +161,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_up.png",
       "size": [
-        185,
-        435
+        161,
+        426
       ]
     },
     {
@@ -170,8 +170,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_puff.png",
       "size": [
-        242,
-        437
+        228,
+        426
       ]
     },
     {
@@ -179,8 +179,8 @@
       "slot": "hip_back",
       "file": "sprites/acc_tail_tuck.png",
       "size": [
-        154,
-        249
+        244,
+        278
       ]
     },
     {
@@ -188,8 +188,8 @@
       "slot": "head_in_hair",
       "file": "sprites/acc_ear_l.png",
       "size": [
-        188,
-        226
+        124,
+        250
       ]
     },
     {
@@ -197,8 +197,8 @@
       "slot": "head_in_hair",
       "file": "sprites/acc_ear_r.png",
       "size": [
-        188,
-        226
+        124,
+        250
       ]
     },
     {
