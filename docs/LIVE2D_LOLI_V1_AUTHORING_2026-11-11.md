@@ -29,6 +29,19 @@ This first pass isolates only small facial parts. Hair, ears, face outline, neck
 4. The previous environment probe found no Cubism Editor or desktop paint application executable installed. Do not claim an Editor import, official project, export, or runtime test until such a tool is actually available and those steps have run.
 5. Only after Editor access and finished art: import PSD; build and inspect ArtMeshes, deformers, parameters, physics, expressions/motions; save the official project; export and run-check the real output. Check component-specific current licensing before using Editor tiers or redistributing runtime SDK/Core output.
 
+## Proportion revision brief (user feedback; no candidate approved yet)
+
+The user judged the current selected flat v1 as too lanky and supplied two visual proportion references. Follow-up feedback rejected the overcorrection: the legs were spread too far, the skirt was too long and made the legs look short, and one candidate placed the skirt waistband unnaturally high near the chest. Preserve the existing v1 as-is until a replacement is explicitly approved. Multiple regenerated candidates were not selected and were not saved; do not treat them as approved artwork or silently replace the accepted source.
+
+For the next proportion-only full-body candidate:
+
+- Keep the same character identity, hair, whale clip, teal/white jacket, ivory shirt, navy pleated skirt, socks, and shoes; do not borrow hats/uniform details from the references.
+- Use a close, nearly parallel stance: knees close, feet beneath hips, only a small natural ankle gap; no splayed legs.
+- Keep the skirt short at upper-to-mid thigh, clearly above the knees, with a natural visible length of thigh. Do not extend it to knee level or compress the legs into stubs.
+- Set the skirt waistband at the natural waist/upper hips, just below the jacket hem and below the navel; never under the bust/chest. Keep the shirt visibly extending to the waist.
+- Maintain balanced youthful proportions without overcorrecting head/body or leg lengths. Use the first full-body reference mainly for compactness; the cropped second reference cannot define full-body leg length.
+- Because full-image generation repeatedly missed the waistband/skirt constraints, prefer a staged/local correction and compare a full-body front preview before accepting a candidate. Preserve the existing v1 and its face-pass source until the user explicitly selects a revision.
+
 ## Official references checked earlier
 
 - [Illustration Processing](https://docs.live2d.com/en/cubism-editor-tutorials/psd/) — split hair/face/body; complete hidden parts; PSD prep recommendations.
