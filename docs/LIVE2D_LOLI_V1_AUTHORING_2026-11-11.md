@@ -10,6 +10,12 @@ Per the user's request to discard earlier-version work, the old-version placehol
 
 The sandbox now has a reference board at `/loli-reference-board.html`, linked from its home page, with unambiguous NEW/current and OLD/reference-only labels.
 
+## Round 01 — transparent-background reference isolation
+
+Created `characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1/reference_v1_1_alpha_edge_connected.png`, plus light/dark reviews and `isolation_metrics.json`. This removes only near-white components connected to the image border, preserving enclosed white clothing; it is not a global white key. On visual checks the white jacket/shirt, hair, legs and both shoes remain. The derivative is still a single flat full-body raster, not semantic part separation or hidden-region redraw. Automated checks confirm 1,878,839 transparent exterior pixels, full-character bounds `(297, 57, 983, 1864)`, exact RGB preservation for opaque pixels and sample white/cream clothing pixels retained. These checks do not certify edge quality; close manual alpha cleanup remains.
+
+Rebuild/check: `python3 tools/isolate_loli_v1_1_reference.py` and `python3 tools/check_loli_v1_1_isolation.py` (Pillow, NumPy, OpenCV). The sandbox reference board links the alpha review and dark-background edge check.
+
 ## Next work
 
 1. Start a **new** editable art-source pipeline from the selected v1.1 reference. Keep the white jacket/shirt whites intact while creating transparency; manually redraw/segment edges instead of applying a white color key.

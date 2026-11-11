@@ -25,7 +25,7 @@
 
 - **Teen / Chibi 当前审计**：当前文件实测 Teen 112部件/26动作/15组/9表情，check_assets 1792项8失败；Chibi 97/26/15/9，1585项28失败。可在自研 C `zrig` 使用不代表美术验收通过。逐项 JSON 和目视证据入口：`docs/LIVE2D_FORM_AUDIT_2026-11-11.md`。
 - **真 Cubism 能力**：仓库没有 `.psd/.psb/.cmo3/.moc3/.model3.json`，环境没有 Cubism Editor。现有 `rig.json` + PNG 是自研 zrig，不得称真正 Cubism 模型。
-- **萝莉形态优先**：当前唯一制作基准是用户选中的 `characters/xiaoxun/design/loli_live2d_v1/concept_front_proportion_v1_1.png`（1280×1920 RGB 白底）。原 v1 keyed/raw/review 图只留旧版参考；旧版 cubism_source、空白模板、face-pass 拆件/补色及专用脚本已从当前工作树删除。新图仍是扁平概念，`forms/loli` 仍 planned；无生产拆件、anchors、rig 或动态验证。白衣服不能白色抠图；下一步从新参考新建手绘/编辑式透明分层源稿，补齐遮挡区，再走官方 Editor。
+- **萝莉形态优先**：当前唯一制作基准是用户选中的 `characters/xiaoxun/design/loli_live2d_v1/concept_front_proportion_v1_1.png`（1280×1920 RGB 白底）。原 v1 keyed/raw/review 图只留旧版参考；旧版 cubism_source、空白模板、face-pass 拆件/补色及专用脚本已从当前工作树删除。第一轮新增 `authoring_v1_1/reference_v1_1_alpha_edge_connected.png`，以边缘连通拓扑隔离背景，仍为单张扁平图，不是拆件。`forms/loli` 仍 planned；无生产拆件、anchors、rig 或动态验证。白衣服不能白色抠图；下一步做轮廓清理和实际分层补遮挡，再走官方 Editor。
 - **本轮回归**：`make test` 2638/0；当前 Teen/Chibi 素材 QA 有失败，不能用软件测试绿灯替代素材验收。
 
 ## 2026-11-05 及以前状态归档

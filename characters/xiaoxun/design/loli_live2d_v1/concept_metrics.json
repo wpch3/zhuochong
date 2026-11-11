@@ -70,5 +70,27 @@
     "not used in forms/loli and forms.json remains planned"
   ],
   "review_scope": "Review JPGs and keyed metrics above refer to old v1 only; the selected v1.1 reference is separately recorded in selected_proportion_revision.",
-  "current_baseline": "selected_proportion_revision"
+  "current_baseline": "selected_proportion_revision",
+  "first_round_preparation": {
+    "status": "flat reference isolation QA derivative; not separated artwork; not PSD; not Cubism",
+    "path": "authoring_v1_1/reference_v1_1_alpha_edge_connected.png",
+    "sha256": "d9296a627f8e98527e4cd095fddc1c33c0ecee368f440acb918f9b57331e5895",
+    "method": "remove only near-white pixels in 8-connected components touching any image edge; preserve enclosed near-white components",
+    "transparent_pixels": 1878839,
+    "foreground_bbox_xyxy": [
+      297,
+      57,
+      983,
+      1864
+    ],
+    "visual_review": [
+      "authoring_v1_1/review_light.jpg",
+      "authoring_v1_1/review_dark.jpg"
+    ],
+    "limitations": [
+      "one flat RGBA image only; no semantic part separation or hidden-region redraw",
+      "requires manual contour/alpha cleanup before production use",
+      "not a PSD/PSB or Cubism model"
+    ]
+  }
 }

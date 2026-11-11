@@ -1,0 +1,114 @@
+{
+  "status": "flat reference isolation QA derivative; not separated artwork; not PSD; not Cubism",
+  "source": "characters/xiaoxun/design/loli_live2d_v1/concept_front_proportion_v1_1.png",
+  "source_sha256": "eb7fcaf4233ae8db71235c293ea3251dc84da9a81ae4c2dbeb55264dd1863593",
+  "output": "reference_v1_1_alpha_edge_connected.png",
+  "output_sha256": "d9296a627f8e98527e4cd095fddc1c33c0ecee368f440acb918f9b57331e5895",
+  "canvas_px": [
+    1280,
+    1920
+  ],
+  "method": "remove only near-white pixels in 8-connected components touching any image edge; preserve enclosed near-white components",
+  "parameters": {
+    "near_white_min_channel": 240,
+    "near_white_max_channel_spread": 24,
+    "connectivity": 8
+  },
+  "foreground_bbox_xyxy": [
+    297,
+    57,
+    983,
+    1864
+  ],
+  "transparent_pixels": 1878839,
+  "opaque_pixels": 578761,
+  "retained_near_white_component_count": 381,
+  "largest_retained_near_white_components": [
+    {
+      "label": 145,
+      "pixels": 38395
+    },
+    {
+      "label": 144,
+      "pixels": 38394
+    },
+    {
+      "label": 369,
+      "pixels": 12378
+    },
+    {
+      "label": 370,
+      "pixels": 12309
+    },
+    {
+      "label": 379,
+      "pixels": 2354
+    },
+    {
+      "label": 380,
+      "pixels": 2323
+    },
+    {
+      "label": 382,
+      "pixels": 1432
+    },
+    {
+      "label": 381,
+      "pixels": 1361
+    },
+    {
+      "label": 336,
+      "pixels": 1064
+    },
+    {
+      "label": 337,
+      "pixels": 1037
+    },
+    {
+      "label": 175,
+      "pixels": 875
+    },
+    {
+      "label": 176,
+      "pixels": 834
+    },
+    {
+      "label": 186,
+      "pixels": 713
+    },
+    {
+      "label": 360,
+      "pixels": 658
+    },
+    {
+      "label": 185,
+      "pixels": 643
+    },
+    {
+      "label": 361,
+      "pixels": 564
+    },
+    {
+      "label": 173,
+      "pixels": 395
+    },
+    {
+      "label": 172,
+      "pixels": 315
+    },
+    {
+      "label": 171,
+      "pixels": 311
+    },
+    {
+      "label": 112,
+      "pixels": 246
+    }
+  ],
+  "known_limits": [
+    "The input illustration is still one flat full-body image; this does not create Live2D parts.",
+    "Connected-component isolation is only a background removal aid. Inspect hairline, white garments, shoe edges, and inter-limb gaps before painting or model import.",
+    "No hidden/occluded artwork is synthesized; no ArtMesh, PSD/PSB, CMO3, MOC3, Model3 JSON, Cubism Editor or runtime output is present.",
+    "The original white-background reference remains immutable and is not replaced by this derivative."
+  ]
+}

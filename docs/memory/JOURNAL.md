@@ -8330,3 +8330,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **按指令清理旧产物**：删除旧版空白 ORA 脚手架、基于 old v1 的七件 face cutouts/算法补色、相关 manifest/checksum/readme、四个 source-specific 脚本及旧拆件 sandbox inspector。旧参考图保留。更新角色 README/metrics/SHA、`LIVE2D_LOLI...` 当前状态、REQUIREMENTS A70.4、TASKS/MEMORY/GAPS 与本 JOURNAL。Sandbox 首页入口改为 `/loli-reference-board.html`，并列标记 NEW/current 与 OLD/reference-only。
 - **当前真实缺口**：v1.1 仍是扁平白底概念，不是透明分层美术。没有 Loli PSD/PSB、Cubism Editor 工程、ArtMesh/MOC3/model3 或 runtime 验证；之前 face-pass 不兼容新图且已移除。后续必须从 v1.1 新建真透明/白衣保真的分层源并补完遮挡，官方 Editor 环境确认后才进建模。
 - **验证/交付**：新图 SHA-256 清单全部通过、metrics JSON 可解析；当前沙箱对首页、reference board 页面/CSS、新图/旧图均 HTTP 200。所有改动提交推送到固定 branch；不得把清理或概念图说成 Cubism 成模。
+
+
+## 2026-11-11｜Loli v1.1 自制 Live2D 第一轮：透明背景准备
+
+- **对位**：按用户“开始第一轮工作”执行；当前唯一制作基准为选定 `concept_front_proportion_v1_1.png`。旧版非参考产物已删除，原 v1 只作为旧参考图。此轮目标是新图的透明背景准备，不把整图当 Cubism 资产。
+- **制作**：新增 `tools/isolate_loli_v1_1_reference.py`，对白底做边缘连通的近白色区域隔离，保留被轮廓包围的白色夹克/上衣/袜鞋区域；没有使用全图白色色键。输出 `authoring_v1_1/reference_v1_1_alpha_edge_connected.png`、浅/深底检查图、metrics、README、SHA。
+- **本人目视**：打开深/浅底全图，白色夹克与奶油上衣仍在，腿间透明区和全身轮廓完整，头发/双手/双鞋仍可见；深底外缘有轻微生成边缘/抗锯齿感，需要后续手工清边，不称美术终审。
+- **验证**：`tools/check_loli_v1_1_isolation.py` 通过；1280×1920 尺寸，透明背景 1,878,839 px，前景 bounds `(297,57,983,1864)`；抽查白色布料及奶油上衣采样点仍 opaque，所有 opaque RGB 与原图相同。SHA 清单和 JSON 解析通过。沙箱 reference board 增加透明检查稿/暗底边缘链接，静态资源 HTTP 200。
+- **范围**：结果仍是一张整图，不是语义拆件、无隐藏区域补绘、无 PSD/PSB/Cubism Editor 工程/ArtMesh/MOC3/model3/runtime。下一轮应先边缘清理及实际手工拆分/补遮挡；官方 Editor 尚不可用。
