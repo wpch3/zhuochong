@@ -1,6 +1,6 @@
 {
   "created_utc": "2026-11-11",
-  "status": "isolated concept source; not a layered model and not production-ready",
+  "status": "original v1 archived; user-selected v1.1 proportion reference; neither is a layered model or production-ready",
   "identity_reference": "characters/xiaoxun/design/design_sheet_chibi.png; same character identity/colors, but not a Chibi source asset",
   "raw_source": {
     "path": "concept_front_raw_magenta.png",
@@ -24,12 +24,37 @@
     "semi_or_opaque_pixels": 254916,
     "magenta_fringe_pct": 0.0
   },
-  "review": ["concept_front_review.jpg on light neutral background", "concept_front_dark_review.jpg on dark background"],
+  "review": [
+    "concept_front_review.jpg on light neutral background",
+    "concept_front_dark_review.jpg on dark background"
+  ],
   "limitations": [
     "raw artwork is 848x1264 RGB, below the project 848x1360 model-canvas target and has a single flattened full-body view",
     "no alpha-complete hidden underdraw for hair/face/arms/skirt joints",
     "no left/center/right bangs, separated eyes/brows/mouth, sleeves/forearms/hands, skirt/legs/feet parts",
     "no anchors, pose/expression sheets, physics/deformer map, .psd/.cmo3/.moc3/model3.json",
     "not used in forms/loli and forms.json remains planned"
-  ]
+  ],
+  "selected_proportion_revision": {
+    "path": "concept_front_proportion_v1_1.png",
+    "sha256": "eb7fcaf4233ae8db71235c293ea3251dc84da9a81ae4c2dbeb55264dd1863593",
+    "size_px": [
+      1280,
+      1920
+    ],
+    "mode": "RGB",
+    "background": "white/near-white RGB; intentionally not keyed because the clothing includes white fabric",
+    "user_selected_option": "2 of 2",
+    "accepted_adjustments": [
+      "short upper-to-mid-thigh pleated skirt",
+      "skirt waistband at natural waist/upper hips, not chest",
+      "ivory shirt worn untucked and outside the skirt",
+      "legs close together with a narrow natural stance gap"
+    ],
+    "limitations": [
+      "generated concept reference only; not final hand-cleaned production art",
+      "single front view only",
+      "no separated layers, repaired hidden art, PSD/PSB, Cubism project or runtime model"
+    ]
+  }
 }

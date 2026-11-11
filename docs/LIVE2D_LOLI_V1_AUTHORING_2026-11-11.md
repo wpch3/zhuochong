@@ -2,7 +2,9 @@
 
 ## Selected source and first saved step
 
-The user selected the original Loli v1 concept. Its flat source remains `characters/xiaoxun/design/loli_live2d_v1/concept_front_keyed.png` (848×1264). A first general layer scaffold was created at `characters/xiaoxun/design/loli_live2d_v1/cubism_source/`: an 848×1360 OpenRaster with 69 transparent part placeholders and one locked reference. The placeholders were never presented as artwork.
+The original Loli v1 concept remains archived at `characters/xiaoxun/design/loli_live2d_v1/concept_front_keyed.png` (848×1264). The user has now selected `characters/xiaoxun/design/loli_live2d_v1/concept_front_proportion_v1_1.png` as the new full-body proportion reference (1280×1920 RGB on white): short upper/mid-thigh skirt, natural waist, untucked shirt outside the skirt, close leg stance. Do not remove/overwrite the original v1. The new white-background reference is not layered production art and must not be keyed white because the clothes are also white.
+
+A first general layer scaffold was created at `characters/xiaoxun/design/loli_live2d_v1/cubism_source/`: an 848×1360 OpenRaster with 69 transparent part placeholders and one locked reference. The later `face_pass_01` cutouts were made against the old v1 source, not the newly selected proportion reference; assess/rebuild them from the new approved reference before continuing production parts. The placeholders were never presented as artwork.
 
 ## Face cutout pass 01
 
@@ -29,18 +31,18 @@ This first pass isolates only small facial parts. Hair, ears, face outline, neck
 4. The previous environment probe found no Cubism Editor or desktop paint application executable installed. Do not claim an Editor import, official project, export, or runtime test until such a tool is actually available and those steps have run.
 5. Only after Editor access and finished art: import PSD; build and inspect ArtMeshes, deformers, parameters, physics, expressions/motions; save the official project; export and run-check the real output. Check component-specific current licensing before using Editor tiers or redistributing runtime SDK/Core output.
 
-## Proportion revision brief (user feedback; no candidate approved yet)
+## Proportion revision brief and selected result
 
-The user judged the current selected flat v1 as too lanky and supplied two visual proportion references. Follow-up feedback rejected the overcorrection: the legs were spread too far, the skirt was too long and made the legs look short, and one candidate placed the skirt waistband unnaturally high near the chest. Preserve the existing v1 as-is until a replacement is explicitly approved. Multiple regenerated candidates were not selected and were not saved; do not treat them as approved artwork or silently replace the accepted source.
+The user judged the original flat v1 too lanky and supplied two visual proportion references. Early regenerated candidates were not selected; feedback identified legs spread too far, skirts too long/shortening the apparent legs, and a skirt waistband lifted unnaturally near the chest. The latest user-selected result is `concept_front_proportion_v1_1.png`; it preserves the identity and applies a closer stance, a short visible pleated skirt, natural waist placement, and an untucked ivory shirt outside the skirt. Keep the original v1 archived; the selected revision is the current full-body proportion reference, not finished production art.
 
-For the next proportion-only full-body candidate:
+For subsequent art production:
 
 - Keep the same character identity, hair, whale clip, teal/white jacket, ivory shirt, navy pleated skirt, socks, and shoes; do not borrow hats/uniform details from the references.
-- Use a close, nearly parallel stance: knees close, feet beneath hips, only a small natural ankle gap; no splayed legs.
-- Keep the skirt short at upper-to-mid thigh, clearly above the knees, with a natural visible length of thigh. Do not extend it to knee level or compress the legs into stubs.
-- Set the skirt waistband at the natural waist/upper hips, just below the jacket hem and below the navel; never under the bust/chest. Keep the shirt visibly extending to the waist.
-- Maintain balanced youthful proportions without overcorrecting head/body or leg lengths. Use the first full-body reference mainly for compactness; the cropped second reference cannot define full-body leg length.
-- Because full-image generation repeatedly missed the waistband/skirt constraints, prefer a staged/local correction and compare a full-body front preview before accepting a candidate. Preserve the existing v1 and its face-pass source until the user explicitly selects a revision.
+- Use the selected candidate's close, nearly parallel stance: knees close, feet beneath hips, only a small natural ankle gap; no splayed legs.
+- Keep the skirt short at upper-to-mid thigh, clearly above the knees, with visible thigh; do not extend it to knee level or compress legs into stubs.
+- Set the skirt waistband at the natural waist/upper hips, well below the bust/chest. Keep the shirt untucked and outside the skirt, visible below the jacket hem; do not let the skirt cover or tuck the shirt.
+- Use the first full-body reference mainly for compactness; the cropped second reference cannot define full-body leg length.
+- The selected image has a white background shared with white clothing. Do not use white-key removal; prepare production transparency through a carefully drawn silhouette/mask and inspect edges. Existing v1 face-pass cutouts are not automatically reusable for this revision.
 
 ## Official references checked earlier
 
