@@ -25,13 +25,13 @@
         1.0
       ],
       "offset": [
-        2.6,
-        -0.88,
-        20.94
+        0.0,
+        0.0,
+        0.0
       ],
       "checks": {
         "cover_ratio": 1.0,
-        "seam_mean_abs": 41.84,
+        "seam_mean_abs": 4.27,
         "semi_px": 2056,
         "opaque_px_alpha": 9195,
         "opaque_px": 9195,
@@ -55,13 +55,13 @@
         1.0
       ],
       "offset": [
-        2.07,
-        -0.8,
-        20.89
+        0.0,
+        0.0,
+        0.0
       ],
       "checks": {
         "cover_ratio": 1.0,
-        "seam_mean_abs": 46.29,
+        "seam_mean_abs": 7.6,
         "semi_px": 2089,
         "opaque_px_alpha": 9172,
         "opaque_px": 9172,

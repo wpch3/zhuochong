@@ -495,70 +495,31 @@ def main():
                 # 只接受小修正（<20px 画布），否则说明暗块认错对象了
                 if abs(ntx - tx) * s < 20 and abs(nty - ty) * s < 20:
                     tx, ty = ntx, nty
-        patch, pa = warp_box(rd_rgba, s, tx, ty, box)
-        if (pa > 128).mean() < 0.9:
-            raise SystemExit(f"[eye_{variant}] {side} 眼补片在重绘图里没盖满（配准失败？）")
-        hh, ww = patch.shape[:2]
-        n_iris = 0
-        if want_erase:
-            # ⚠️ 必须在肤色配色之前挖：配色的权重按亮度走，会把暖偏移糊到虹膜上
-            patch, n_iris = erase_iris(patch, pa > 128, (gw, gh),
-                                       sclera_color(os.path.join(sp, f"eye_{side}_base.png")))
-            if n_iris < 150:
-                raise SystemExit(f"[eye_{variant}] {side} 眼没找到虹膜（只 {n_iris} px）："
-                                 "重绘图的眼白没围成一圈，或瞳色对不上色卡（DC55）")
-        if want_erase:
-            # 眼白**尺寸归一**：AI 把"瞪大"画成了整只眼放大（重绘眼白 114x118 画布像素，
-            # 本体眼眶只有 104x87），照抄就是脸颊上一块白圆角矩形（沙箱实拍
-            # /tmp/f_surprise.png、/tmp/surprise_zoom2.png）。
-            # 正确处理：把补片各向异性缩到「眼白 = 本体眼眶 x1.06」，并以**眼球中心**为锚。
-            # 虹膜早就在上一步挖掉了，缩放大小时虹膜由 eye_<side>_ball 负责，不受影响。
-            whites = ((patch[..., 0] > 232) & (patch[..., 1] > 228) & (patch[..., 2] > 230)
-                      & (pa > 0.5))
-            if whites.sum() > 400:
-                ys_, xs_ = np.nonzero(whites)
-                sw = xs_.max() - xs_.min() + 1
-                sh = ys_.max() - ys_.min() + 1
-                aw, ah = e.get("aperture_size") or (gw, gh)
-                kx = float(np.clip(aw * 1.06 / max(1, sw), 0.55, 1.15))
-                ky = float(np.clip(ah * 1.06 / max(1, sh), 0.55, 1.15))
-                if abs(kx - 1) > 0.02 or abs(ky - 1) > 0.02:
-                    scx = (xs_.min() + xs_.max()) / 2.0
-                    scy = (ys_.min() + ys_.max()) / 2.0
-                    patch, pa = _scale_rgba(patch, pa.astype(np.float32), kx, ky)
-                    hh, ww = patch.shape[:2]
-                    ax0 = int(round(gx0 + gw / 2.0 - scx * kx))
-                    ay0 = int(round(gy0 + gh / 2.0 - scy * ky))
-                    ax0 = max(0, min(W - ww, ax0))
-                    ay0 = max(0, min(H - hh, ay0))
-                    ax1, ay1 = ax0 + ww, ay0 + hh
-                    eye_zone = np.zeros((hh, ww), bool)
-                    eye_zone[max(0, gy0 - 6 - ay0):min(hh, gy0 + gh + 6 - ay0),
-                             max(0, gx0 - 6 - ax0):min(ww, gx0 + gw + 6 - ax0)] = True
-                    print(f"  眼白归一到本体眼眶：{sw}x{sh} → 缩放 ({kx:.3f},{ky:.3f}) "
-                          f"→ {ww}x{hh} @ ({ax0},{ay0})")
-
-        tgt = brgb[ay0:ay1, ax0:ax1]
+        # ★ 重做路线（2026-11-11，铁律 19）：闭眼/笑眼/痛苦件的皮肤不再来自
+        #   AI 重绘底图，而取自 body_full 本体同一区域 → 边界 Δ≈0，彻底消灭
+        #   接缝色差；只从 AI 重绘里取「闭眼线」（暗色睫毛弧线）盖在本体皮肤上。
+        tgt = brgb[ay0:ay1, ax0:ax1]                      # 本体同区域皮肤
         bk_box = bkeep[ay0:ay1, ax0:ax1]
-
-        # ---- 逐通道最小二乘配色：只用"两边都是皮肤"的像素，别把头发和睫毛算进去 ----
-        both_skin = (skin_mask(patch.astype(np.int32), pa > 128)
-                     & skin_mask(tgt.astype(np.int32), bk_box))
-        # ⚠️ 皮肤像素的取值范围很窄（都在 240 上下），直接最小二乘解 gain+offset 是**病态**的：
-        # 实测解出 gain=0.15 / offset=214，皮肤是对上了，但睫毛那种暗像素被映射成亮红色
-        # （40*0.15+214=246，而绿通道只到 123）——截图里那条"红杠"就是这么来的。
-        # 正确做法（cel 风格专用）：
-        #   · 只解**平移**（gain 固定 1），把两张图的肤色均值对齐；
-        #   · 而且只把这个平移**作用在肤色像素上**：睫毛/线稿这种暗像素原样保留
-        #     （AI 出图时 prompt 已经锁死了线稿色，本来就是对的）。
-        gain = [1.0, 1.0, 1.0]; off = [0.0, 0.0, 0.0]
-        if both_skin.sum() > 60:
-            for c in range(3):
-                X = patch[..., c][both_skin]; Y = tgt[..., c][both_skin]
-                off[c] = float(np.clip(Y.mean() - X.mean(), -45, 45))
-        lum_p = patch.mean(axis=2)
-        w = np.clip((lum_p - 130.0) / 50.0, 0.0, 1.0)[..., None]   # 亮=皮肤才改色
-        patch = patch + w * np.array(off, np.float32)[None, None, :]
+        hh, ww = ay1 - ay0, ax1 - ax0
+        patch = tgt.astype(np.float32).copy()             # 与原图逐像素相等，边界无色差
+        pa = np.full((hh, ww), 255.0, np.float32)         # 全覆盖，轮廓靠下面 feather 铺开
+        n_iris = 0
+        # 把「眼眶/眼球」区填成本体肤色：闭眼件要遮住张眼，不能把原画虹膜/眼白
+        # 留在件里否则闭眼时还能看到一只眼。取眼眶外围本体肤色均值当填充色。
+        _t_r2 = tgt[..., 0]; _t_b2 = tgt[..., 2]
+        body_skin_now = (_t_r2 > 200) & (_t_r2 > _t_b2 + 8)
+        skin_px = body_skin_now & ~eye_zone
+        fill = tgt[skin_px].mean(axis=0) if skin_px.sum() > 10 else np.array([250.0, 228.0, 218.0])
+        patch[eye_zone] = fill[None, None, :]
+        gain = [1.0, 1.0, 1.0]
+        off = [0.0, 0.0, 0.0]
+        # 把 AI 重绘里的闭眼线（暗色睫毛弧线）贴到本体皮肤上，保留闭眼形态；
+        # 其余浅色阴影/腮红轻度混合，让闭眼更有神又不引入新色调。
+        line_src, line_a = warp_box(rd_rgba, s, tx, ty, box)
+        line_lum = line_src.mean(axis=2)
+        line_m = (line_a > 128) & (line_lum < 160) & bk_box
+        if line_m.sum() > 20:
+            patch[line_m] = line_src[line_m]
         patch = np.clip(patch, 0, 255)
 
         # ---- 羽化成一个软椭圆：方补丁的直角边在脸上一眼就看得出来 ----
