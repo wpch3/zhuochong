@@ -1,38 +1,37 @@
-# Loli v1 Cubism authoring — first saved step (2026-11-11)
+# Loli v1 Cubism authoring — progress log (2026-11-11)
 
-## Current deliverable
+## Selected source and first saved step
 
-`characters/xiaoxun/design/loli_live2d_v1/cubism_source/` contains:
+The user selected the original Loli v1 concept. Its flat source remains `characters/xiaoxun/design/loli_live2d_v1/concept_front_keyed.png` (848×1264). A first general layer scaffold was created at `characters/xiaoxun/design/loli_live2d_v1/cubism_source/`: an 848×1360 OpenRaster with 69 transparent part placeholders and one locked reference. The placeholders were never presented as artwork.
 
-- `xiaoxun_loli_cubism_source_v1.ora` — editable OpenRaster scaffold at 848×1360.
-- `layer_manifest.json` — layer IDs, intended part/group, state, source checksum, registration, and limitations.
-- `reference_front_848x1360.png` — accepted flattened v1 placed at native pixel size with 48 transparent pixels above it.
-- `template_preview.jpg` — visual check of that reference canvas.
+## Face cutout pass 01
 
-The ORA contains 69 transparent placeholder drawing layers plus one 55%-opacity flattened reference. It is a practical organizer for subsequent painting, **not** completed layered art, PSD/PSB, a Cubism Editor project, MOC3, or an animation-ready/verified model. No automatic segmentation or fabricated hidden art was added. The existing concept itself remains 848×1264 and is unchanged.
+`characters/xiaoxun/design/loli_live2d_v1/cubism_source/face_pass_01/` now contains seven actual raster cutout layers: whale clip, two brows, two eyes, nose, and closed mouth. The masks were hand traced from the accepted image (the clip also uses color thresholding). Source pixels are retained in those cutout layers. Matching holes in the base are filled by OpenCV Telea inpainting; this is approximate occlusion underpaint, not human-finished art. Visual review caught and fixed an initial brow-selection misregistration and reduced the inpaint mask to prevent smearing adjacent hair/lash lines. The current aligned reconstruction differs at only 87 RGB pixels by more than two levels, with max channel difference 57; this is a structural comparison and not art approval.
 
-## Reproduction and checks
+Rebuild/check:
 
 ```sh
-python3 tools/make_loli_cubism_template.py
-python3 tools/check_loli_cubism_template.py
+python3 tools/build_loli_face_pass.py
+python3 tools/check_loli_face_pass.py
 ```
 
-Both scripts require Pillow. The scaffold was generated using the session's temporary Pillow environment and validated with the same environment. Validation checks ORA archive structure, canvas registration, 69 fully transparent placeholder layers, reference pixel identity, merged preview, and clear WIP/non-model status. It is a structural check, not an artistic or Cubism validation. `python3 -m py_compile tools/make_loli_cubism_template.py tools/check_loli_cubism_template.py` checks syntax.
+Requires Pillow, NumPy, and OpenCV. The web inspector is served by the existing C engine at `/loli-authoring.html`. It toggles layers, shows a reference overlay, permits temporary pixel nudges/drag for cutout QA, and exports a review PNG. Those offsets do not create Cubism parameters or motion. A link to the inspector is also on the sandbox home page.
 
-## Official guidance verified this round
+## Current visual and production limits
 
-Live2D's official illustration-processing tutorial describes splitting hair, face, and body, adding hidden parts/underdrawing to avoid gaps during movement, and separating face components such as eyes, lashes, whites, brows, nose, mouth, and ears. It explicitly recommends Photoshop or CLIP STUDIO PAINT for PSD preparation and warns that other tools may not always read/write correctly. The official deformer tutorial then covers rotation/warp deformers, face tilt, hair swing, arm and body movement.
+This first pass isolates only small facial parts. Hair, ears, face outline, neck, torso, jacket, sleeves, hands, skirt, legs, socks, and shoes remain fused in the flat base. The selection edges and algorithmic inpaint need close visual cleanup, and the source still lacks a full set of hidden/overlap underdraws. The included ORA is editable OpenRaster, **not** PSD/PSB, not a Cubism Editor project, and not a runtime model. The flat base remains unsuitable for meaningful body/hair deformation.
 
-- [Illustration Processing](https://docs.live2d.com/en/cubism-editor-tutorials/psd/)
+## Next sequence
+
+1. Use the new sandbox inspector for layer and edge review; then continue art separation from the accepted source: full face/scalp, bangs, side/back hair and ears, with hand-painted skin/hair underdraws. Keep the reference hidden and locked.
+2. Split neck, torso, jacket body/sleeves, arms/hands, skirt, legs, socks, shoes. Build overlapping pieces with deliberately painted hidden regions; test each group at small offsets in the inspector, then replace approximate inpaint patches with painted cleanup.
+3. Keep an editable layered art source and an approved flat reconstruction before importing. The ORA is a work-in-progress interchange file; Cubism Editor's PSD workflow must be verified against the eventual layered PSD.
+4. The previous environment probe found no Cubism Editor or desktop paint application executable installed. Do not claim an Editor import, official project, export, or runtime test until such a tool is actually available and those steps have run.
+5. Only after Editor access and finished art: import PSD; build and inspect ArtMeshes, deformers, parameters, physics, expressions/motions; save the official project; export and run-check the real output. Check component-specific current licensing before using Editor tiers or redistributing runtime SDK/Core output.
+
+## Official references checked earlier
+
+- [Illustration Processing](https://docs.live2d.com/en/cubism-editor-tutorials/psd/) — split hair/face/body; complete hidden parts; PSD prep recommendations.
 - [Adding Body Movement / Deformers](https://docs.live2d.com/en/cubism-editor-tutorials/deformer/)
 - [Cubism Editor FREE vs PRO](https://www.live2d.com/en/cubism/comparison/)
 - [SDK Release License](https://www.live2d.com/en/sdk/license/)
-
-Licensing is component-specific. Cubism Editor FREE has feature and eligible-user/commercial restrictions; PRO is not universally free. Live2D SDK downloads are available for development under the applicable agreements, but publishing content using the SDK can require a publication license/payment, with stated individual/small-scale exemptions and exclusions. Cubism Core is proprietary, not an open-source component. Review current agreements for the eventual author's/user's status and target use before choosing Editor tier or distributing runtime output. This project has not added an Editor, Core, SDK binaries, or third-party assets.
-
-## Next work
-
-1. Turn the chosen flat concept into actual painted, occlusion-complete, editable parts. Keep the reference locked and excluded from export. Do not call the blank layer names real parts.
-2. Create and visually inspect a layered PSD/PSB in an appropriate editor, preserving a source copy and meaningful layer names. Since no art editor or Cubism Editor was found on PATH/common install locations in this environment, do not claim native-app acceptance until tested in the official editor.
-3. Import the real layered PSD into Cubism Editor, build meshes/deformers/parameters/physics/expressions, save the official project, export, and test the exported model in a compatible official/runtime viewer before calling it a Cubism model.

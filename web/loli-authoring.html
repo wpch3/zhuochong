@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Loli v1 · 分层美术检查台</title>
+  <link rel="stylesheet" href="loli-authoring.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="返回小寻工作台"><span class="brand-mark">小</span><span>小寻工作台 <i>AUTHORING LAB</i></span></a>
+    <div class="crumb">角色制作 <b>/</b> Loli v1 <b>/</b> 面部拆件 01</div>
+    <span class="stage-pill"><span></span> 美术 WIP · 非 Cubism 模型</span>
+  </header>
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">LAYER AUTHORING · PASS 01</p><h1>面部拆件检查台</h1><p class="sub">首轮从已选概念稿中提取了 7 个实际面部图层，并制作了初步遮挡补色。这里用于检查分层与相对位置，不模拟 Cubism 变形。</p></div>
+      <div class="progress"><div class="progress-label"><span>首轮范围</span><b>7 / 69 个原占位部件</b></div><div class="track"><i></i></div><small>仅头部小件已拆；头发、身体与衣物仍是扁平底图</small></div>
+    </section>
+    <section class="workspace">
+      <aside class="panel layers-panel">
+        <div class="panel-heading"><div><span class="eyebrow">01 · LAYERS</span><h2>图层</h2></div><button id="reset" class="quiet" type="button">重置位置</button></div>
+        <div id="layer-list" class="layer-list" aria-live="polite"><div class="loading">正在读取图层清单…</div></div>
+        <div class="layer-note"><span class="note-icon">i</span><p>图层来自扁平概念稿的多边形选区。隐藏补色为算法插值；导入 Cubism 前仍需手工绘制与检查。</p></div>
+      </aside>
+      <section class="stage panel">
+        <div class="stage-toolbar">
+          <div class="tool-group"><button id="fit" class="tool active" type="button">适合窗口</button><button id="checker" class="tool" type="button">棋盘底</button></div>
+          <div class="tool-hint"><span class="dot"></span>拖动选中部件可做拆件边缘检查</div>
+          <button id="save-png" class="tool export" type="button">导出检查 PNG</button>
+        </div>
+        <div id="viewport" class="viewport">
+          <div class="canvas-wrap"><canvas id="artboard" width="848" height="1360" aria-label="Loli v1 分层合成预览"></canvas><div id="canvas-loader" class="canvas-loader">加载概念稿与拆件图层…</div></div>
+        </div>
+        <footer class="stage-footer"><span>848 × 1360 px · 原图 848 × 1264 px（上方留白 48 px）</span><span id="selected-label">选中：Base + 面部补色</span></footer>
+      </section>
+      <aside class="panel inspector">
+        <div class="panel-heading"><div><span class="eyebrow">02 · INSPECTOR</span><h2>检查选项</h2></div></div>
+        <div class="control-block"><label class="switch-row"><span><b>显示原始概念参考</b><small>只作对照，锁定且不参与导出</small></span><input id="show-ref" type="checkbox"></label><label class="range-label" for="ref-opacity">参考透明度 <output id="opacity-out">45%</output></label><input id="ref-opacity" type="range" min="0" max="100" value="45"></div>
+        <div class="control-block"><div class="block-title">拆件检查模式</div><button id="isolate" class="wide-button" type="button">单独显示所选部件</button><p class="microcopy">单独显示用于查看透明边缘；它不是模型动作或物理模拟。</p></div>
+        <div class="control-block"><div class="block-title">选中部件偏移 <em>像素</em></div><div class="nudge-grid"><button data-dx="0" data-dy="-1">↑</button><button data-dx="-1" data-dy="0">←</button><button data-dx="0" data-dy="1">↓</button><button data-dx="1" data-dy="0">→</button><span>方向键也可微调</span></div><button id="clear-offset" class="text-button" type="button">清除所选偏移</button></div>
+        <div class="warning-card"><b>当前阶段不代表成模</b><p>还没有 PSD/PSB、Cubism Editor 工程、ArtMesh、参数、物理或 MOC3 导出。下一段需要继续拆头发与身体，并手工补齐遮挡内容。</p></div>
+      </aside>
+    </section>
+    <section class="bottom-info"><div><span class="status-dot"></span><b>本地静态检查台</b><span>不依赖外部运行时 SDK</span></div><a href="/media/characters/xiaoxun/design/loli_live2d_v1/cubism_source/face_pass_01/xiaoxun_loli_face_pass_01.ora" download>下载可编辑 ORA 图层源 ↗</a></section>
+  </main>
+  <script src="loli-authoring.js"></script>
+</body>
+</html>
