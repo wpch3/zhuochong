@@ -16,12 +16,20 @@ Created `characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1/reference_v1_1_
 
 Rebuild/check: `python3 tools/isolate_loli_v1_1_reference.py` and `python3 tools/check_loli_v1_1_isolation.py` (Pillow, NumPy, OpenCV). The sandbox reference board links the alpha review and dark-background edge check.
 
+## Round 02 — first editable face/accessory pass (WIP)
+
+Created `characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1/head_pass_01/` and its OpenRaster stack `xiaoxun_loli_v1_1_head_pass_01.ora`. It is 1280×1920 with a visible flat figure base (face-local algorithmic underpaint), a seven-layer cutout group (`Whale_Clip`, `Brow_L`, `Brow_R`, `Eye_L`, `Eye_R`, `Nose`, `Mouth_Closed`), and a hidden full-reference layer. The separate full-canvas PNGs, `layer_manifest.json`, rebuild instructions and SHA-256 list are alongside it. It can be opened in an ORA-compatible editor such as Krita/GIMP; it is **not PSD/PSB**.
+
+Selections were traced in native coordinates from the NEW v1.1 alpha reference; a limited teal ROI mask for the whale clip discards detached specks. Face features were removed from the base alpha and locally filled with OpenCV Telea, so feature layers can be placed above the reconstructed base. Static reassembly QA: 67 pixels differ by >2 RGB levels, max channel difference 41; `tools/check_loli_v1_1_head_pass.py` passes the bounded first-pass checks and ORA structure/reassembly comparison. This is only file/registration QA, **not artistic approval**. A zoomed WIP review showed some eye/brow selection edges include adjacent fringe pixels; those boundaries need manual ownership cleanup.
+
+Scope is intentionally small and clearly unfinished: hair, face silhouette, ears/neck, torso, jacket, sleeves/hands, skirt, legs, socks and shoes remain fused in a single base. The underpaint is algorithmic, visibly approximate, and must be replaced/refined by hand before deformation. No full overlap-complete source, PSD/PSB, Cubism Editor project, ArtMeshes, `.moc3`, `.model3.json`, or runtime validation exists. See `authoring_v1_1/head_pass_01/README.md`.
+
 ## Next work
 
-1. Start a **new** editable art-source pipeline from the selected v1.1 reference. Keep the white jacket/shirt whites intact while creating transparency; manually redraw/segment edges instead of applying a white color key.
-2. Create real separated, overlap-complete parts and hand-painted underdraw for face, eyes, brows, mouth, hair strands/whale clip, neck, jacket body/sleeves/cuffs, arms/hands, skirt, legs, socks, and shoes. Preserve the approved body proportions and neutral close stance. The reference itself is flat art and is never a model ArtMesh.
-3. Save source layers and manifests in a new v1.1-specific directory, build a static reassembly/visibility/edge QA board, and verify the complete still matches the approved reference before progressing.
-4. Obtain a supported official Cubism Editor environment; verify that it imports the layered PSD/PSB. Then create ArtMeshes, deformer hierarchy, parameters, physics, expressions/motions; save the official project; export and run-test the actual model. Until that happens, do not claim a real Cubism project/model or runtime validation.
+1. In a raster editor, zoom-clean the seven masks (especially fringe crossings), replace the algorithmic face underpaint with hand-painted opaque backing, and check edges over light/dark backgrounds.
+2. Separate head silhouette, bangs/back hair/strands, neck, jacket body/sleeves/cuffs, arms/hands, skirt, legs, socks and shoes into a proper overlap-complete source; hand-paint the hidden regions needed for motion while preserving the selected v1.1 design.
+3. Save a reviewed PSD/PSB-capable source, build static reassembly/visibility/edge QA, and compare the complete neutral still to the approved reference.
+4. Obtain a supported official Cubism Editor environment; verify PSD/PSB import. Then create ArtMeshes, deformer hierarchy, parameters, physics, expressions/motions; save the official project; export and run-test the actual model. Until that happens, do not claim a real Cubism project/model or runtime validation.
 
 ## Official workflow and licensing
 

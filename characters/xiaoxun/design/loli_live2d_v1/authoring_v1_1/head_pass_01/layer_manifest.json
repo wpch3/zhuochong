@@ -1,0 +1,111 @@
+{
+  "status": "WIP head/face cutout pass based on selected v1.1; not finished art, not PSD, not Cubism",
+  "source": "../reference_v1_1_alpha_edge_connected.png",
+  "source_sha256": "d9296a627f8e98527e4cd095fddc1c33c0ecee368f440acb918f9b57331e5895",
+  "canvas_px": [
+    1280,
+    1920
+  ],
+  "ora_file": "xiaoxun_loli_v1_1_head_pass_01.ora",
+  "base_layer": {
+    "file": "Base_Figure_Face_Underpaint_WIP.png",
+    "note": "face details removed and locally inpainted; all other character art remains one flat figure"
+  },
+  "parts": [
+    {
+      "name": "Whale_Clip",
+      "file": "Whale_Clip.png",
+      "group": "30 Hair and accessory",
+      "state": "source-pixel cutout from selected v1.1 reference",
+      "selection": "ROI-constrained teal color mask with 2px outline expansion",
+      "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Brow_L",
+      "file": "Brow_L.png",
+      "group": "20 Face parts",
+      "state": "source-pixel cutout from selected v1.1 reference",
+      "selection": "hand-traced native-coordinate polygon",
+      "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Brow_R",
+      "file": "Brow_R.png",
+      "group": "20 Face parts",
+      "state": "source-pixel cutout from selected v1.1 reference",
+      "selection": "hand-traced native-coordinate polygon",
+      "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Eye_L",
+      "file": "Eye_L.png",
+      "group": "20 Face parts",
+      "state": "source-pixel cutout from selected v1.1 reference",
+      "selection": "hand-traced native-coordinate polygon",
+      "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Eye_R",
+      "file": "Eye_R.png",
+      "group": "20 Face parts",
+      "state": "source-pixel cutout from selected v1.1 reference",
+      "selection": "hand-traced native-coordinate polygon",
+      "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Nose",
+      "file": "Nose.png",
+      "group": "20 Face parts",
+      "state": "source-pixel cutout from selected v1.1 reference",
+      "selection": "hand-traced native-coordinate polygon",
+      "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Mouth_Closed",
+      "file": "Mouth_Closed.png",
+      "group": "20 Face parts",
+      "state": "source-pixel cutout from selected v1.1 reference",
+      "selection": "hand-traced native-coordinate polygon",
+      "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    }
+  ],
+  "reconstruction_check": {
+    "pixels_changed_over_2_rgb_levels": 67,
+    "max_channel_difference": 41,
+    "interpretation": "registered cutout assembly only, not art approval"
+  },
+  "known_limits": [
+    "Only the whale clip, brows, eyes, nose and closed mouth are cut out in this pass.",
+    "The face parts are source-pixel selections; hair, scalp, face silhouette, ears, neck, torso, jacket, sleeves, hands, skirt, legs, socks and shoes remain fused in the flat base.",
+    "Underpaint is algorithmic interpolation, not hand-painted production art; masks need edge review and hidden-region redraw before deformation.",
+    "No PSD/PSB, Cubism Editor project, ArtMesh, CMO3, MOC3, Model3 JSON or runtime validation is included."
+  ]
+}
