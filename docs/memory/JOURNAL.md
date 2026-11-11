@@ -8311,3 +8311,13 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **最新 WIP 处理**：检查用户中断后留下的 `painted_volume_v1/`，实际打开 `t67_71_painted_volume_v1_review.png`。观察到单一圆钝水滴团、纹理线过少、根部无法和现有侧发融接；判拒绝。metrics/完整 manifest/部分 crops 不存在，脚本依赖一次性 `/tmp/arena_t67_packages` 中 Pillow；这批文件只按不完整负例归档，不作为候选。review SHA `f45a4653836aae2a4a45d6c68e8deed30dd2adaa855855c6e3afcbed95bad7a4`。
 - **交接文件**：新增 `docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`，列出真值源限制、用户新设计授权边界、历史拒绝路径、代理能力边界、下一执行顺序和局部/C/生产门。更新 `REQUIREMENTS.md` A69.6、TASKS/GAPS/MEMORY/JOURNAL/REQUEST_LEDGER/LESSONS 与 WIP review。后续提交只含交接/QA 负例与记忆，不动生产。
 - **诚实自评**：代理可承担来源追踪、图层隔离、配准和 QA 工程；目前连续多轮设计均未达标，未证明能独立交付原画质量的连续发丝图。不得继续靠程序化换名或调参承诺视觉完成。该结论不撤销用户已给的新设计授权；但具体图稿仍须局部目视通过和用户确认。
+
+## 2026-11-11｜Teen/Chibi 当前审计并启动 Loli 概念制作
+
+- **任务对位**：按用户本轮要求先审项目现有 Teen 与 Chibi 的可用/不可用，再把真实缺陷持久化，随后开始 Loli。固定分支 `arena/866e0a06-zhuochong`，起始 HEAD `84c233f`，初始工作区干净。查当前 rig、forms 路线图、现存视觉证据和 A69/工作流边界；没有沿用过时交接中的 Chibi 数量。
+- **当前机检**：安装临时审计用 Pillow/NumPy 到 `/tmp/zhuochong-audit-env`（不入库）；当前 Teen `check_assets.py` 1792 项/8 fail，Chibi 1585/28 fail。原始 JSON 留 `docs/qa/loli_start_audit_{teen,chibi}_2026-11-11.json`。Teen 主要是空 armpit mask、弯前臂青色色卡、长发 @2x 白边、静止拼合缺像素、twin 侧发切换露底。Chibi 主要是袖/手偏色、空 mask、分段洞/鞋口/裙缝/头发摆动露底、张嘴无牙/越下巴、腮红不落脸、发型覆盖透明缝、hood 尺寸、手垫/口 mask 素材真伪等。详细单项和正确解释写入 `docs/LIVE2D_FORM_AUDIT_2026-11-11.md`。
+- **真实模型边界**：当前 Teen rig 实测112部件/26动作/15组/9表情；Chibi 97/26/15/9。自研 C `zrig` 有可运行结构，不是 Cubism。全仓没有 PSD/PSB/CMO3/MOC3/model3.json，Cubism Editor 不在本环境。Chibi 11-10 引擎截图早于当前 HEAD 的闭眼/笑眼/痛眼更新，故最新眼部真实 C 状态写“未知，未复拍”，不冒称修好。
+- **实际视觉制作**：生图制作了萝莉全身正面概念，视身份锚点复用小寻银紫发/蓝眼/鲸鱼夹/白青外套/藏青裙/条纹袜鞋。第一版夹子在错误侧，保留 raw 后用 `tools/key_magenta.py` 抠洋红、水平翻转校正，输出 `characters/xiaoxun/design/loli_live2d_v1/concept_front_keyed.png` 和浅底目视图 `concept_front_review.jpg`。本人看到全身轮廓、双手、双鞋清楚，发色/服装身份相符；下巴下尖碎发需要修正。metrics 记载 key fringe 0%、RGBA；原图848×1264低于848×1360目标，且整图扁平，没有分层/补图。
+- **状态纠正**：`forms/loli` 无目录、无 rig；`forms.json` 保持 planned。T2.2.1 改 `[~]` 仅表示已开始概念稿；不把图当模型或入生产。发现 Chibi README/forms 路线图的部件/失败数字滞后，已按当前 rig/QA 更新为97件/28 fail，并标明11-10 C截图陈旧。
+- **验证**：`make test` 本轮实跑 2638 通过/0失败（既知 unused-function warning与负控诊断仍在）；Teen/Chibi `check_assets.py` 都按非零退出表示有失败，并成功保存JSON。本人目视 `concept_front_review.jpg` 和 11-10 Chibi `engine_new_face/full/blink0` 历史截图。真实 C 没有本轮重拍；无 loli rig、无正式 Cubism 工程。`forms/loli` 仍不可用。
+- **下一步核心制作**：重新校正 concept 下巴下碎发与 848×1360全身画布；制作一致视角的侧背/表情稿和覆盖遮挡下的完整分层作者源；然后 loli anchors → 隔离拆件/QA → loli 专属 rig → 当前 C 引擎动态帧。每过一道门才继续，不借用 Teen/Chibi 部件填坑。

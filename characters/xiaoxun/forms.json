@@ -8,7 +8,7 @@
       "name": "少女",
       "status": "ready",
       "head_body_ratio": "1:4.65",
-      "note": "主形态。40 部件 / 18 动作 / 46 参数 / 7 表情，Live2D 合规 39 项全部实测通过。 ★ 2026-10-17 更正头身比：这里原来写 1:6，而 anchors.json 实测 meta.heads_tall=4.65 —— 设计稿的目标和成品不一样，元数据必须描述**成品**（挂件的相对几何就是按它定标的，写错会让别的形态一起偏）。"
+      "note": "主形态。当前 rig 实测 112 部件 / 26 动作 / 15 组 / 9 表情；本轮 2026-11-11 素材检查 1792 项中 8 项失败，视觉与动态缺口见 docs/LIVE2D_FORM_AUDIT_2026-11-11.md。形态可运行不代表素材验收全通过。头身比 1:4.65 为当前成品 anchors 实测值。"
     },
     {
       "id": "loli",
@@ -31,7 +31,7 @@
       "name": "Q 版",
       "status": "ready",
       "head_body_ratio": "1:2.14",
-      "note": "NEW新版（2026-11-10）：从 design_sheet_chibi.png 隔离重建27步入库，81部件/26动作/15组/71参数，rig id=小寻_chibi。旧49部件版已按用户命令彻底删除。check_assets 33项未过与引擎接缝问题见 forms/chibi/README_NEW_新版.md，未冒充验收完成。"
+      "note": "NEW新版：当前 rig 实测97部件/26动作/15组/9表情，id=小寻_chibi。旧49部件版已按用户命令彻底删除。本轮2026-11-11 check_assets 1585项中28项未过；最近真实C截图是11-10旧帧，HEAD眼件更新后尚未复拍。详情见 forms/chibi/README_NEW_新版.md 与 docs/LIVE2D_FORM_AUDIT_2026-11-11.md；模型可运行但未通过素材/目视验收。"
     }
   ]
 }

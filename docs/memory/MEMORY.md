@@ -19,9 +19,17 @@
 > 规则：**每次工作开始先读本文件与自己上次的日志；结束时必须追加 `JOURNAL.md` 并更新本文件的"当前状态"。**
 > 用户的新要求**当轮就要写进 `REQUIREMENTS.md`**，不许只留在聊天里。
 
-更新：**2026-11-05（T70.2：trial08 全身概念方向仍获用户确认；trial09 用户拒绝、trial10 内部失败；trial11 与 trial12/13 手型尺寸被用户指出偏大；trial14 用户仍嫌偏大而否决；trial15 尺寸方向已由用户明确确认合适；trial16 隔离 source-fit art 自检未通过、留作 failure evidence；trial21–23 迭代未达标；用户后续称手套手基本过关，我选择 trial24 source-fit 作为隔离 QA 的基本形态继续用（非 source art/生产批准）；trial25 左右 hand art 因 opaque RGB checkerboards/比例与画风失败仅存负例；没有生产手层/hidden wrist/C-engine 验收；A66.1–A66.2/T70.1–T70.4；T67.70 眼部仍失败；旧全链基线 1342/33 fail；新增 A69 / WORKFLOW 铁律 17：每轮任务对位、记忆核验与反空转；T67.39 静态验收后以 T67.71 追查长发动态 cutout/残留异物；用户建议与附件须逐条核验）** ｜ 当前分支：`arena/aaf1408c-zhuochong` ｜ 版本：0.1.0
+更新：**2026-11-11（A70：按当前 HEAD 重审 Teen/Chibi 可用性与 QA 缺陷；T2.2.1 Loli 自主概念稿启动；Teen 1792/8 fail、Chibi 1585/28 fail；Cubism 模型文件仍不存在；当前分支改为 `arena/866e0a06-zhuochong`）** ｜ 当前分支：`arena/866e0a06-zhuochong` ｜ 版本：0.1.0
 
-## 最新状态（2026-11-05）
+## 最新状态（2026-11-11）
+
+- **Teen / Chibi 当前审计**：当前文件实测 Teen 112部件/26动作/15组/9表情，check_assets 1792项8失败；Chibi 97/26/15/9，1585项28失败。可在自研 C `zrig` 使用不代表美术验收通过。逐项 JSON 和目视证据入口：`docs/LIVE2D_FORM_AUDIT_2026-11-11.md`。
+- **真 Cubism 能力**：仓库没有 `.psd/.psb/.cmo3/.moc3/.model3.json`，环境没有 Cubism Editor。现有 `rig.json` + PNG 是自研 zrig，不得称真正 Cubism 模型。
+- **萝莉形态优先**：T2.2.1 已开始，概念稿/抠像/目视记录在 `characters/xiaoxun/design/loli_live2d_v1/`；目前只有扁平 848×1264 概念图，`forms/loli` 仍 planned，没有生产拆件、anchors、rig 或动态验证。下一步先修正碎发与画布比例，再产完整遮挡补图分层稿，然后拆件、rig、C 动态验收。
+- **本轮回归**：`make test` 2638/0；当前 Teen/Chibi 素材 QA 有失败，不能用软件测试绿灯替代素材验收。
+
+## 2026-11-05 及以前状态归档
+
 
 - **双手型/候选自审**：normal fingered hand 与 mitten 必须同时保留；`small` 名称或 source crop 不证明完整正常手通过。用户授权候选批准由代理判断；不逐轮索要选图。代理目视 trial27–42 全部否决：27–32 尺寸/姿势/风格问题；按侧背视角标准复审后，33–36 目标尺寸能看出约三枚圆指尖，仍因姿势、比例、线稿或袖口未保真而拒绝；37–40 注册 ROI 未含三枚圆指尖；41/42 精确 ROI 编辑仍放大重画袖口、产出 opaque checkerboard。全为 WIP 负例；拒绝继续相同 AI prompt 迭代。左右合规源手件、hidden wrist、cuff、动作/rig 与生产验收仍欠。
 - **用户建议审阅 / T67.71 续查**：源链 Teen 扁平 `sheet_long_hood.png` → `sheetcut_hair_hood_long.png` → `hair_hood_long@2x.png`；cutout 与生产 hair 层均可见袖口/手形，strict QA 目标件内部透明 11,336px/3块，颜色 blob 列为 clean。C rig `acc_hair_hood_long` 是 head/layer258、无 physics/deformer；正常手臂138–151，surprised替换件319–322。新增真实C矩阵：long+hood-up 的 idle/surprised/wave_both/heart_hands/wave × `ParamHairSway=-1/0/+1` 共15全身帧，端点附目标件only/hidden。腕点依次 idle y≈735、surprised y≈445、wave_both y≈459、heart_hands y≈572、单臂wave左≈736/右≈451；隐藏目标件时旧手/袖口碎片消失而动作臂仍在。另补neutral sway下surprised/wave共13个时序帧：surprised腕y约661→506→445→658，wave右腕y约716→651→491→455→448→610，惊讶0.30s的 `ParamSurpriseArmSwap=0.75` 明确是交叉替换帧。全身画面 sway 两端差异约3.9–4.1k px（RGB Δ>4）；目标件隔离端点 max RGB差≤2、无 >4 差异，表示其它可见头发件响应 sway，目标 cutout 自身未证实有意义摆动。证据 `docs/qa/t67_71_source_trace_2026-11-04/`。无生产改动；分层源缺失、完整 arm-angle/transition 矩阵及可审阅修复路径仍阻塞，T67.71开放。禁止 blanket `alpha==255`、未审邻域补色或任意偏移。

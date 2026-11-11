@@ -2,10 +2,10 @@
 
 - 真值源（NEW）：`characters/xiaoxun/design/design_sheet_chibi.png`（干净银紫短发母图）
 - 整图：`sprites/body_full.png` MD5 ceb9e613…（由 prepare_sprites 按 body_fit 四点框重抠）
-- 拆件：`sprites/` 202 文件，`rig.json` id=`小寻_chibi`，81 部件 / 26 动作 / 15 组
+- 拆件：`sprites/` 204 张 PNG，当前 `rig.json` id=`小寻_chibi`，实测 97 部件 / 26 动作 / 15 组 / 9 表情（以当前 rig 为准；勿沿用旧 81 部件数字）
 - 生成命令：隔离目录 `ZC_PYTHON=<venv> bash tools/rebuild_parts.sh xiaoxun chibi`（27步，日志 docs/qa/new_chibi_preview_2026-11-10/rebuild_new_chibi.log）
 - 旧版（OLD，已删除）：原 49 部件 rig（id 误写小寻_teen）+ 粉白带黑点 body_full MD5 f56c542d…，2026-11-10 经用户命令彻底删除，禁止恢复/禁止在其上补丁。
-- 已知未过（不冒充完成）：check_assets 1342项33项不通过（缺双马尾/马尾/兜帽差分源件、口内牙、闭眼接缝、腮红落点、躯干洞等，清单见审计）；引擎脸放大仍有额前浅矩形接缝、眼角小碎边、颈部粉块，待下一轮修。
+- 已知未过（不冒充完成）：本轮 2026-11-11 以当前工作树重跑 `tools/check_assets.py --character xiaoxun --form chibi`：1585 项 / 28 项失败；准确逐项结果见 `docs/qa/loli_start_audit_chibi_2026-11-11.json`，分段/遮挡/鞋口、口内牙、腮红落点、发型接管、hood 尺寸及素材真伪均有失败。历史 1342/33 是旧候选口径，不与本轮混算。最近可见 C 引擎脸图是 2026-11-10 旧快照，仍见眼角碎边与额前接缝；但 HEAD `84c233f` 刚重做闭眼/笑眼/痛眼件，尚无更新后的真实 C 帧，本项复验状态未知，不虚报已修/仍一致。
 
 ## 修复轮 2026-11-10（第二轮）
 - 诊断（逐件放大）：额前矩形=`make_eyeline_parts` 换皮硬边界+补片肤色偏差；眼角碎边=睫毛尖被1px抗锯齿断成独立块；颈部粉块经色值实测为正常颈影（两件差<3），不改。

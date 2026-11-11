@@ -2661,3 +2661,10 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - 代理已目视所有输出、局部板与目标注册 ROI，并按用户最新授权自行批准/拒绝，无需逐轮向用户索要选图。27–32 均失败；33/34 目标尺度下长指/腕比例失衡；35/36 重绘袖口且手太大；37/38/39 全身手位/手框 mismatch；40 仍错位并重绘无关区域。**27–40 全部由代理否决**，没有任何正常手通过候选艺术门。
 - 真实 Cubism 源输入阻塞仍在：`design/chibi/README.md` 标明其 PNG 是桌宠设计参考；Live2D Chibi 有设计表和多张 cutout PNG，但没有 `.psd`，`body_full.png` 是 567×1292；`seg_arm_l/r` 仅 100×230，Chibi rig 没有独立 hand/cuff 层或 `hand_parts.json`。Linux runner 没有 Cubism Editor/Wine，全仓没有 Cubism 工程/导出物。详情见 `CHIBI_CUBISM_TRUE_MODEL_AUDIT_2026-11-04.md`；未把 cutouts 自动拼成未验证 PSD、未假称模型完成。
 - 当前不重复相同 AI 生成/编辑策略；下一步换用能保持 source registration、细线画风和左右差异的合规原稿制作路径。来源、hidden-wrist/cuff、左右分件、rig/C 引擎与真正 Cubism 仍未完成；mitten trial24 独立保留 provisional，不因此批准手部生产件。
+
+## 2026-11-11 小寻 Live2D 形态审计与 Loli 启动
+
+- **当前可运行性与真实格式**：Teen（112 parts/26 actions/15 groups/9 expressions）与 Chibi（97/26/15/9）都有现存 `rig.json`，由项目自研 C `zrig` 使用；在 forms 路线图均标 ready，意味着可在应用内切换/渲染，不等于素材/美术验收通过，更不等于 Live2D Cubism 模型。全仓没有 `.psd/.psb/.cmo3/.moc3/.model3.json`，当前环境也无 Cubism Editor。
+- **本轮当前文件体检（不是历史指标）**：`check_assets.py` Teen 1792 项/8 fail；Chibi 1585 项/28 fail。完整逐项 JSON：`docs/qa/loli_start_audit_teen_2026-11-11.json`、`docs/qa/loli_start_audit_chibi_2026-11-11.json`；分类根因、动态目视问题及旧数字纠正见 `docs/LIVE2D_FORM_AUDIT_2026-11-11.md`。Chibi 当前截图为 11-10 旧引擎快照，而 HEAD 后续已改眼部资产；改后真实 C 重拍未知，不把旧图当现况。
+- **T2.2.1 萝莉**：本轮首次自主生成并审视隔离概念 `characters/xiaoxun/design/loli_live2d_v1/`，底图 848×1264 RGB，键色 RGBA 输出测得洋红 fringe 0%。这是完整人物外观起稿，不是分层作者文件/生产部件；萝莉缺少 848×1360 统一画布、锚点、侧背/表情稿、遮挡补图、拆件和 rig，故 `forms/loli` 不得标 ready。概念稿已指出的下巴下碎发形需修正，不能带入下一轮。
+- **防重犯**：新形态先整身与比例基准，再拆件/补隐藏区，再建 rig；拆件生成器不得复用 Teen 坐标或把 Chibi/Teen 的旧失败产物当 donor。自动 QA、静帧、真实 C 动作目视与真 Cubism Editor 导出分别记状态。
