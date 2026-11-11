@@ -8321,3 +8321,12 @@ Live2D 底层"每根骨都能独立绑"的最后一块硬骨头：一片顶点�
 - **状态纠正**：`forms/loli` 无目录、无 rig；`forms.json` 保持 planned。T2.2.1 改 `[~]` 仅表示已开始概念稿；不把图当模型或入生产。发现 Chibi README/forms 路线图的部件/失败数字滞后，已按当前 rig/QA 更新为97件/28 fail，并标明11-10 C截图陈旧。
 - **验证**：`make test` 本轮实跑 2638 通过/0失败（既知 unused-function warning与负控诊断仍在）；Teen/Chibi `check_assets.py` 都按非零退出表示有失败，并成功保存JSON。本人目视 `concept_front_review.jpg` 和 11-10 Chibi `engine_new_face/full/blink0` 历史截图。真实 C 没有本轮重拍；无 loli rig、无正式 Cubism 工程。`forms/loli` 仍不可用。
 - **下一步核心制作**：重新校正 concept 下巴下碎发与 848×1360全身画布；制作一致视角的侧背/表情稿和覆盖遮挡下的完整分层作者源；然后 loli anchors → 隔离拆件/QA → loli 专属 rig → 当前 C 引擎动态帧。每过一道门才继续，不借用 Teen/Chibi 部件填坑。
+
+
+## 2026-11-11｜用户选定 Loli v1.1 并要求舍弃旧版非参考产物
+
+- **用户指令**：认可最新版完整参考并要求以它制作自制 Live2D；旧版本除参考图外都舍弃，同时明确标注新旧参考。此前纠正裙子不要高腰到胸口、保持短裙/露腿、上衣放在外面、腿距收窄。
+- **新基准**：用户在两候选中选择 option 2，保存为 `characters/xiaoxun/design/loli_live2d_v1/concept_front_proportion_v1_1.png`（1280×1920 RGB）。本人目视：短百褶裙、自然腰线、上衣外放、双腿靠拢、全身双鞋完整。该图为当前唯一制作参考；白底与白衣共存，不对白色做色键。原 `concept_front_keyed.png`、raw、review 图只作 OLD reference。
+- **按指令清理旧产物**：删除旧版空白 ORA 脚手架、基于 old v1 的七件 face cutouts/算法补色、相关 manifest/checksum/readme、四个 source-specific 脚本及旧拆件 sandbox inspector。旧参考图保留。更新角色 README/metrics/SHA、`LIVE2D_LOLI...` 当前状态、REQUIREMENTS A70.4、TASKS/MEMORY/GAPS 与本 JOURNAL。Sandbox 首页入口改为 `/loli-reference-board.html`，并列标记 NEW/current 与 OLD/reference-only。
+- **当前真实缺口**：v1.1 仍是扁平白底概念，不是透明分层美术。没有 Loli PSD/PSB、Cubism Editor 工程、ArtMesh/MOC3/model3 或 runtime 验证；之前 face-pass 不兼容新图且已移除。后续必须从 v1.1 新建真透明/白衣保真的分层源并补完遮挡，官方 Editor 环境确认后才进建模。
+- **验证/交付**：新图 SHA-256 清单全部通过、metrics JSON 可解析；当前沙箱对首页、reference board 页面/CSS、新图/旧图均 HTTP 200。所有改动提交推送到固定 branch；不得把清理或概念图说成 Cubism 成模。

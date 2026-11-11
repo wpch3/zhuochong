@@ -2668,3 +2668,10 @@ mip 路径同判据、1:1 逐像素原样、放大 2× 只占 4 列（不许被�
 - **本轮当前文件体检（不是历史指标）**：`check_assets.py` Teen 1792 项/8 fail；Chibi 1585 项/28 fail。完整逐项 JSON：`docs/qa/loli_start_audit_teen_2026-11-11.json`、`docs/qa/loli_start_audit_chibi_2026-11-11.json`；分类根因、动态目视问题及旧数字纠正见 `docs/LIVE2D_FORM_AUDIT_2026-11-11.md`。Chibi 当前截图为 11-10 旧引擎快照，而 HEAD 后续已改眼部资产；改后真实 C 重拍未知，不把旧图当现况。
 - **T2.2.1 萝莉**：本轮首次自主生成并审视隔离概念 `characters/xiaoxun/design/loli_live2d_v1/`，底图 848×1264 RGB，键色 RGBA 输出测得洋红 fringe 0%。这是完整人物外观起稿，不是分层作者文件/生产部件；萝莉缺少 848×1360 统一画布、锚点、侧背/表情稿、遮挡补图、拆件和 rig，故 `forms/loli` 不得标 ready。概念稿已指出的下巴下碎发形需修正，不能带入下一轮。
 - **防重犯**：新形态先整身与比例基准，再拆件/补隐藏区，再建 rig；拆件生成器不得复用 Teen 坐标或把 Chibi/Teen 的旧失败产物当 donor。自动 QA、静帧、真实 C 动作目视与真 Cubism Editor 导出分别记状态。
+
+## 2026-11-11 Loli v1.1 reference selected; old authoring artifacts discarded
+
+- Current production/design baseline: `characters/xiaoxun/design/loli_live2d_v1/concept_front_proportion_v1_1.png` (user-selected 1280×1920 white-background concept). Old v1 raw/keyed/review images remain clearly marked reference-only; sandbox page `/loli-reference-board.html` labels NEW/current vs OLD/reference-only.
+- Per user direction, removed old-version non-reference artifacts from the working tree: the 69-layer blank ORA, old v1 seven-piece face pass and inpaint, their manifests and source-specific scripts, and the obsolete face-layer sandbox inspector. Their reference images are retained. Git history remains historical; no current assets use the old face pass.
+- v1.1 is still one flat concept image, not a Cubism source. There is no current Loli ORA/PSD/PSB, official Editor project, ArtMesh, MOC3/model3 JSON, or runtime model. White apparel shares the near-white reference background, so do not white-key it.
+- Next: create a new v1.1 production art source with genuine transparency, white cloth preserved, hand-drawn/painted separations and occlusion underdraw; then run visual still/edge checks, import the PSD/PSB in official Cubism Editor, rig/export/run-test only when the Editor environment exists.

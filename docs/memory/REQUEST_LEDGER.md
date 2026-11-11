@@ -1711,3 +1711,10 @@ check_platform 37/0 · api_smoke 274/0（没开/正常/很慢三种模型状态�
 - **交接范围**：新写 `docs/T67_71_HANDOFF_CURRENT_2026-11-05.md`，总结任务目标、源/隐藏真值边界、用户已授权但未批准具体稿的 new-design 范围、各路线视觉拒绝原因、未完成门禁、交接入口及下一执行顺序；如实记代理艺术能力自评。
 - **不完整试作**：`painted_volume_v1` 在此前被用户打断后留下部分图和 board；本人打开 board 后拒绝（圆钝水滴团，根部不融接）；metrics/完整 manifest 未生成，明确不作候选。WIP review、TASKS/GAPS/MEMORY/JOURNAL/LESSONS 与 REQUIREMENTS 已链接当前交接。
 - **范围**：无 C 动作/袖口/转场/ParamHairSway 验证，无生产 sprite/rig/generator/engine 改动。需在固定活动分支提交交接及部分 WIP 证据，不能声称修复完成。
+
+
+## 2026-11-11 · Loli v1.1 制作基准确认与旧版清理
+
+- **用户要求**：确认当前比例参考可行，以此制作自制 Live2D；之前版本除参考图外全部舍弃，并标清新旧参考。
+- **执行**：选中的 `concept_front_proportion_v1_1.png`（option 2/2）设为唯一当前制作参考；原 v1 raw/keyed/review 图保留为 OLD/reference only。删除所有基于旧 concept 的空 ORA 模板、七个面部拆件/算法补色、专用清单脚本及过时 inspector。更新新旧标记和比例要求；沙箱 reference board 用 NEW/current 与 OLD/reference-only 明示。
+- **门禁**：v1.1 仍是白底 RGB 扁平图，需新建保白衣的透明分层原画；旧 face-pass 不得复用。当前无官方 Cubism Editor 工程、PSD/PSB/MOC3/model3 或 runtime 模型。

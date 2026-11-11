@@ -9,7 +9,8 @@
       848,
       1264
     ],
-    "mode": "RGB"
+    "mode": "RGB",
+    "status": "old v1 reference only; not current production base"
   },
   "keyed_output": {
     "path": "concept_front_keyed.png",
@@ -22,18 +23,12 @@
     "background_key": "tools/key_magenta.py; horizontal flip after key to put whale clip at viewer-left, matching current identity reference",
     "transparent_pixels": 816956,
     "semi_or_opaque_pixels": 254916,
-    "magenta_fringe_pct": 0.0
+    "magenta_fringe_pct": 0.0,
+    "status": "old v1 reference only; superseded for production by selected_proportion_revision; preserve as historical reference"
   },
   "review": [
     "concept_front_review.jpg on light neutral background",
     "concept_front_dark_review.jpg on dark background"
-  ],
-  "limitations": [
-    "raw artwork is 848x1264 RGB, below the project 848x1360 model-canvas target and has a single flattened full-body view",
-    "no alpha-complete hidden underdraw for hair/face/arms/skirt joints",
-    "no left/center/right bangs, separated eyes/brows/mouth, sleeves/forearms/hands, skirt/legs/feet parts",
-    "no anchors, pose/expression sheets, physics/deformer map, .psd/.cmo3/.moc3/model3.json",
-    "not used in forms/loli and forms.json remains planned"
   ],
   "selected_proportion_revision": {
     "path": "concept_front_proportion_v1_1.png",
@@ -56,5 +51,24 @@
       "single front view only",
       "no separated layers, repaired hidden art, PSD/PSB, Cubism project or runtime model"
     ]
-  }
+  },
+  "production_reference": {
+    "path": "concept_front_proportion_v1_1.png",
+    "sha256": "eb7fcaf4233ae8db71235c293ea3251dc84da9a81ae4c2dbeb55264dd1863593",
+    "status": "current production baseline selected by user; all subsequent art work must derive from this image"
+  },
+  "discarded_old_version_work": [
+    "old cubism_source OpenRaster placeholder scaffold",
+    "old v1 face_pass_01 cutouts and algorithmic inpaint",
+    "scripts specific to those old-source artifacts"
+  ],
+  "old_v1_limitations": [
+    "raw artwork is 848x1264 RGB, below the project 848x1360 model-canvas target and has a single flattened full-body view",
+    "no alpha-complete hidden underdraw for hair/face/arms/skirt joints",
+    "no left/center/right bangs, separated eyes/brows/mouth, sleeves/forearms/hands, skirt/legs/feet parts",
+    "no anchors, pose/expression sheets, physics/deformer map, .psd/.cmo3/.moc3/model3.json",
+    "not used in forms/loli and forms.json remains planned"
+  ],
+  "review_scope": "Review JPGs and keyed metrics above refer to old v1 only; the selected v1.1 reference is separately recorded in selected_proportion_revision.",
+  "current_baseline": "selected_proportion_revision"
 }

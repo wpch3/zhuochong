@@ -40,9 +40,9 @@ body {
 }
 .brand h1 { font-size: 20px; margin: 0; letter-spacing: 1px; }
 .brand .sub { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); }
-.loli-authoring-link { font-size: 11px; color: #365d64; text-decoration: none; padding: 8px 11px; border: 1px solid #a9d8d0; border-radius: 999px; background: rgba(255,255,255,.76); box-shadow: var(--shadow); white-space: nowrap; }
-.loli-authoring-link span { color: #866cc3; margin-right: 4px; }
-.loli-authoring-link:hover { background: #fff; border-color: #79bfb2; }
+.loli-reference-link { font-size: 11px; color: #365d64; text-decoration: none; padding: 8px 11px; border: 1px solid #a9d8d0; border-radius: 999px; background: rgba(255,255,255,.76); box-shadow: var(--shadow); white-space: nowrap; }
+.loli-reference-link span { color: #866cc3; margin-right: 4px; }
+.loli-reference-link:hover { background: #fff; border-color: #79bfb2; }
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {
