@@ -1,0 +1,870 @@
+{
+  "schema_version": "1.0",
+  "status": "WIP authoring scaffold; not PSD; not Cubism model; not for runtime",
+  "source_image": "characters/xiaoxun/design/loli_live2d_v1/concept_front_keyed.png",
+  "source_sha256": "6c6c9dcf57594a6ac0e8184932e1fd27f76bb0e2fcd1ab9431c005f176b5e8dc",
+  "source_px": [
+    848,
+    1264
+  ],
+  "target_canvas_px": [
+    848,
+    1360
+  ],
+  "source_offset_px": [
+    0,
+    48
+  ],
+  "resampling": "none; source pixel size preserved",
+  "ora_file": "xiaoxun_loli_cubism_source_v1.ora",
+  "blank_placeholder_count": 69,
+  "reference_layer_count": 1,
+  "layers": [
+    {
+      "name": "Reference_Front_Flat_v1",
+      "ora_src": "data/layer000.png",
+      "group": "00 Reference - LOCK / DO NOT EXPORT",
+      "state": "reference_only",
+      "role": "source reference only; excluded from production export",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Body_Base",
+      "ora_src": "data/layer001.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Neck",
+      "ora_src": "data/layer002.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Blouse",
+      "ora_src": "data/layer003.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Jacket_Back",
+      "ora_src": "data/layer004.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Jacket_Body_L",
+      "ora_src": "data/layer005.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Jacket_Body_R",
+      "ora_src": "data/layer006.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Jacket_Sleeve_L",
+      "ora_src": "data/layer007.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Jacket_Sleeve_R",
+      "ora_src": "data/layer008.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Cuff_Back_L",
+      "ora_src": "data/layer009.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Cuff_Back_R",
+      "ora_src": "data/layer010.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Cuff_Front_L",
+      "ora_src": "data/layer011.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Cuff_Front_R",
+      "ora_src": "data/layer012.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Arm_Upper_L",
+      "ora_src": "data/layer013.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Arm_Upper_R",
+      "ora_src": "data/layer014.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Arm_Fore_L",
+      "ora_src": "data/layer015.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Arm_Fore_R",
+      "ora_src": "data/layer016.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Hand_L",
+      "ora_src": "data/layer017.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Hand_R",
+      "ora_src": "data/layer018.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Skirt_Back",
+      "ora_src": "data/layer019.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Skirt_Front",
+      "ora_src": "data/layer020.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Skirt_Lining",
+      "ora_src": "data/layer021.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Leg_L",
+      "ora_src": "data/layer022.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Leg_R",
+      "ora_src": "data/layer023.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Sock_L",
+      "ora_src": "data/layer024.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Sock_R",
+      "ora_src": "data/layer025.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Shoe_L",
+      "ora_src": "data/layer026.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Shoe_R",
+      "ora_src": "data/layer027.png",
+      "group": "10 Body and wardrobe",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Face_Base",
+      "ora_src": "data/layer028.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Ear_L",
+      "ora_src": "data/layer029.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Ear_R",
+      "ora_src": "data/layer030.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Brow_L",
+      "ora_src": "data/layer031.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Brow_R",
+      "ora_src": "data/layer032.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Nose",
+      "ora_src": "data/layer033.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Blush_L",
+      "ora_src": "data/layer034.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Blush_R",
+      "ora_src": "data/layer035.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_Socket",
+      "ora_src": "data/layer036.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_White",
+      "ora_src": "data/layer037.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_Iris",
+      "ora_src": "data/layer038.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_Pupil",
+      "ora_src": "data/layer039.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_Highlight",
+      "ora_src": "data/layer040.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_Lash_Upper",
+      "ora_src": "data/layer041.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_Lash_Lower",
+      "ora_src": "data/layer042.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_Lid_Upper",
+      "ora_src": "data/layer043.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_L_Lid_Lower",
+      "ora_src": "data/layer044.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_Socket",
+      "ora_src": "data/layer045.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_White",
+      "ora_src": "data/layer046.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_Iris",
+      "ora_src": "data/layer047.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_Pupil",
+      "ora_src": "data/layer048.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_Highlight",
+      "ora_src": "data/layer049.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_Lash_Upper",
+      "ora_src": "data/layer050.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_Lash_Lower",
+      "ora_src": "data/layer051.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_Lid_Upper",
+      "ora_src": "data/layer052.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Eye_R_Lid_Lower",
+      "ora_src": "data/layer053.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Mouth_Closed",
+      "ora_src": "data/layer054.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Mouth_A",
+      "ora_src": "data/layer055.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Mouth_I",
+      "ora_src": "data/layer056.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Mouth_U",
+      "ora_src": "data/layer057.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Mouth_E",
+      "ora_src": "data/layer058.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Mouth_O",
+      "ora_src": "data/layer059.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Mouth_Smile",
+      "ora_src": "data/layer060.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Mouth_Surprised",
+      "ora_src": "data/layer061.png",
+      "group": "20 Face and expressions",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Hair_Back",
+      "ora_src": "data/layer062.png",
+      "group": "30 Hair and signature accessory",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Hair_Side_L",
+      "ora_src": "data/layer063.png",
+      "group": "30 Hair and signature accessory",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Hair_Side_R",
+      "ora_src": "data/layer064.png",
+      "group": "30 Hair and signature accessory",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Bangs_Center",
+      "ora_src": "data/layer065.png",
+      "group": "30 Hair and signature accessory",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Bangs_L",
+      "ora_src": "data/layer066.png",
+      "group": "30 Hair and signature accessory",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Bangs_R",
+      "ora_src": "data/layer067.png",
+      "group": "30 Hair and signature accessory",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Ahoge",
+      "ora_src": "data/layer068.png",
+      "group": "30 Hair and signature accessory",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    },
+    {
+      "name": "Whale_Clip",
+      "ora_src": "data/layer069.png",
+      "group": "30 Hair and signature accessory",
+      "state": "blank_placeholder",
+      "role": "transparent authoring placeholder; draw/paint real artwork before model import",
+      "visible": true,
+      "canvas_px": [
+        848,
+        1360
+      ]
+    }
+  ],
+  "known_limits": [
+    "All drawing layers are intentionally blank; no automatic segmentation or guessed underdraw was added.",
+    "The sole reference layer contains one flattened concept and must not be exported as a model ArtMesh.",
+    "No PSD, CMO3, MOC3, Model3 JSON, Cubism Editor or Cubism SDK/Core output is included.",
+    "The concept source is not yet approved production art; body/face proportions and anchors still need measurement."
+  ]
+}
