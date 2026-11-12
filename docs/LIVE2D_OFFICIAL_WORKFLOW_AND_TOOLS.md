@@ -20,7 +20,9 @@
 
 - 官方 [Cubism PSD illustration preparation / PSD import tutorial](https://docs.live2d.com/en/cubism-editor-tutorials/psd/)：要先准备语义正确、层级清晰的分层原画与遮挡区域，再导入 Cubism；不能把扁平图的任意多边形抠片当作完整的 Live2D source art。需要逐件在编辑器中核对导入结果和图层顺序。
 - 官方 [Deformer tutorial](https://docs.live2d.com/en/cubism-editor-tutorials/deformer/)：变形器和参数建在可用、完整的部件原画上；变形器不是修复缺失像素或替代隐藏区补画的方法。
-- 官方 [FREE vs PRO comparison](https://www.live2d.com/en/cubism/comparison/) 与 [SDK release license](https://www.live2d.com/en/sdk/license/)：编辑器能力/商业使用及 SDK/Core 的授权需分别查，不把 Cubism 泛称开源或默认免费。
+- 官方 [FREE vs PRO comparison](https://www.live2d.com/en/cubism/comparison/)：FREE 版有 ArtMesh、Motion Parameter、Part 等数量上限，PRO 的参数/素材数限制较宽；例如对比页当前列出 FREE 的最大 100 ArtMeshes、30 Motion Parameters、30 Parts。角色完整拆件及参数设计前应先盘点数量并据此决定 Editor 版型，不能假设 FREE 无限。
+- 官方 [Cubism Editor system requirements](https://www.live2d.com/en/cubism/download/spec/) 当前页面列出的宿主为 Windows/macOS；未列 Linux。该仓库 sandbox 是 Linux x86_64，且无 Krita/GIMP/Wine，可生成和检查 ORA/PNG，却不能在这里手绘或验证 Cubism Editor 导入。
+- 官方 [SDK release license](https://www.live2d.com/en/sdk/license/) 与 [Cubism Core manual](https://docs.live2d.com/en/cubism-sdk-manual/cubism-core/)：编辑器能力/商业使用及 SDK/Core 授权需分别查；Cubism Core 专有，不把 Cubism 泛称开源或默认免费。
 - 官方 GitHub [`Live2D/CubismNativeSamples`](https://github.com/Live2D/CubismNativeSamples) README 明确它是**显示由 Cubism Editor 输出模型的应用样例**，依赖 Native Framework 和不包含在该仓库的专有 Cubism Core；它不是原画教程，也不能用来伪造 Editor 工程或 `.moc3`。其 LICENSE 也分别列出 Components、Core 与样例模型授权边界。
 
 ### 搜索到的官方教程内容，转成制作规格

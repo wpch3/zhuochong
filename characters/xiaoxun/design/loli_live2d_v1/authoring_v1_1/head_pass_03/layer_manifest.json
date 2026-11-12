@@ -1,5 +1,5 @@
 {
-  "status": "WIP head/face cutout pass based on selected v1.1; not finished art, not PSD, not Cubism",
+  "status": "WIP source-visible cutout stack based on selected v1.1; not finished art, not PSD, not Cubism",
   "source": "../reference_v1_1_alpha_edge_connected.png",
   "source_sha256": "d9296a627f8e98527e4cd095fddc1c33c0ecee368f440acb918f9b57331e5895",
   "canvas_px": [
@@ -17,7 +17,7 @@
       "file": "EyeWhite_L.png",
       "group": "20 Face parts / left eye",
       "state": "source-pixel cutout from selected v1.1 reference",
-      "selection": "near-neutral light-pixel selection inside the eye contour, excluding eyeball/lash ownership",
+      "selection": "near-neutral light-pixel selection inside traced sclera crescents",
       "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
       "canvas_px": [
         1280,
@@ -65,7 +65,7 @@
       "file": "EyeWhite_R.png",
       "group": "20 Face parts / right eye",
       "state": "source-pixel cutout from selected v1.1 reference",
-      "selection": "near-neutral light-pixel selection inside the eye contour, excluding eyeball/lash ownership",
+      "selection": "near-neutral light-pixel selection inside traced sclera crescents",
       "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
       "canvas_px": [
         1280,

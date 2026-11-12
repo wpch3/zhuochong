@@ -7,6 +7,7 @@ OpenCV inpainting under features is approximate WIP and requires visual cleanup.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import zipfile
@@ -23,6 +24,7 @@ BASE = ROOT / "characters/xiaoxun/design/loli_live2d_v1/authoring_v1_1"
 SOURCE = BASE / "reference_v1_1_alpha_edge_connected.png"
 OUT = BASE / "head_pass_03"
 CANVAS = (1280, 1920)
+IS_PASS_04 = False
 SCALE = 4
 
 # Facial parts follow the official material-preparation tutorial's semantic
@@ -49,12 +51,15 @@ BROW_POLY = {
     "L": [(565, 381), (568, 378), (574, 375), (581, 374), (589, 376), (596, 379), (598, 382), (594, 383), (587, 381), (580, 379), (573, 379), (568, 382)],
     "R": [(686, 382), (690, 379), (696, 376), (704, 374), (711, 376), (717, 379), (720, 382), (716, 383), (710, 381), (703, 379), (696, 380), (691, 382)],
 }
-PARTS = [
+FACE_PARTS = [
     ("EyeWhite_L", "20 Face parts / left eye"), ("EyeBall_L", "20 Face parts / left eye"), ("Eyelash_L", "20 Face parts / left eye"),
     ("Brow_L", "20 Face parts"),
     ("EyeWhite_R", "20 Face parts / right eye"), ("EyeBall_R", "20 Face parts / right eye"), ("Eyelash_R", "20 Face parts / right eye"),
     ("Brow_R", "20 Face parts"), ("Nose", "20 Face parts"), ("Mouth_Closed", "20 Face parts"), ("Whale_Clip", "30 Hair and accessory"),
 ]
+SLEEVE_L_PATH = [(453, 641), (472, 642), (483, 670), (493, 705), (497, 745), (496, 785), (487, 820), (474, 855), (461, 890), (451, 925), (444, 958), (436, 985), (420, 1002), (396, 1012), (365, 1013), (340, 1006), (323, 988), (320, 962), (327, 934), (341, 902), (357, 875), (373, 846), (388, 816), (400, 785), (412, 750), (424, 713), (438, 680)]
+SLEEVE_PARTS = [("JacketSleeve_Teal_L", "10 Jacket / visible teal sleeve"), ("JacketSleeve_Teal_R", "10 Jacket / visible teal sleeve")]
+PARTS = FACE_PARTS
 CLIP_ROI = (458, 288, 552, 358)
 
 
@@ -136,6 +141,19 @@ def semantic_face_masks(rgba: np.ndarray) -> dict[str, np.ndarray]:
     result["Nose"] = dark_mark_mask(rgba, "Nose")
     result["Mouth_Closed"] = dark_mark_mask(rgba, "Mouth_Closed")
     result["Whale_Clip"] = clip_mask(rgba)
+    # Round 04 garment study: extract the visible teal sleeve fabric only.
+    # Cuffs, white stripes, hands, and hidden upper-arm art remain unseparated.
+    for side in ("L", "R"):
+        path = SLEEVE_L_PATH if side == "L" else [(1280 - x, y) for x, y in SLEEVE_L_PATH]
+        boundary = polygon_mask(path, (w, h))
+        r = rgba[..., :3].astype(np.int16)
+        teal = ((r[..., 1] > r[..., 0] + 20) & (r[..., 2] > r[..., 0] + 10) & (r[..., 1] > 100) & (boundary > 0) & (rgba[..., 3] > 0)).astype(np.uint8)
+        teal = cv2.morphologyEx(teal, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+        teal = largest_component(teal)
+        expanded = cv2.dilate(teal, np.ones((3, 3), np.uint8), iterations=1)
+        # Keep a binary registered cutout in this WIP pass; fractional polygon
+        # alpha over an inpainted base causes double-compositing halos.
+        result[f"JacketSleeve_Teal_{side}"] = ((expanded > 0) & (boundary > 127)).astype(np.uint8) * 255
     return result
 
 
@@ -164,6 +182,18 @@ def png_bytes(img: Image.Image) -> bytes:
 
 
 def main() -> int:
+    global OUT, PARTS, IS_PASS_04
+    parser = argparse.ArgumentParser(description="Build an editable WIP cutout stack from the selected Loli v1.1 reference.")
+    parser.add_argument("--with-sleeves", action="store_true", help="write pass 04 with two visible teal sleeve-region cutouts")
+    args = parser.parse_args()
+    if args.with_sleeves:
+        OUT = BASE / "authoring_pass_04"
+        PARTS = SLEEVE_PARTS + FACE_PARTS
+        IS_PASS_04 = True
+    else:
+        OUT = BASE / "head_pass_03"
+        PARTS = FACE_PARTS
+        IS_PASS_04 = False
     OUT.mkdir(parents=True, exist_ok=True)
     source = Image.open(SOURCE).convert("RGBA")
     if source.size != CANVAS:
@@ -171,14 +201,15 @@ def main() -> int:
     rgba = np.asarray(source).copy()
     h, w = rgba.shape[:2]
 
-    masks = semantic_face_masks(rgba)
+    all_masks = semantic_face_masks(rgba)
+    masks = {name: all_masks[name] for name, _ in PARTS}
     for name in masks:
         masks[name] = ((masks[name].astype(np.uint16) * rgba[..., 3].astype(np.uint16)) // 255).astype(np.uint8)
         min_pixels = 5 if name == "Nose" else 12
         if np.count_nonzero(masks[name] > 32) < min_pixels:
             raise SystemExit(f"cutout selection unexpectedly small: {name}")
     if set(masks) != {name for name, _ in PARTS}:
-        raise SystemExit("semantic face-mask set does not match declared layer stack")
+        raise SystemExit("semantic source-mask set does not match declared layer stack")
 
     union = np.zeros((h, w), dtype=np.uint8)
     for m in masks.values():
@@ -211,7 +242,7 @@ def main() -> int:
             "file": f"{name}.png",
             "group": group,
             "state": "source-pixel cutout from selected v1.1 reference",
-            "selection": ("near-neutral light-pixel selection inside the eye contour, excluding eyeball/lash ownership" if name.startswith("EyeWhite_") else ("hand-traced iris/eyeball region" if name.startswith("EyeBall_") else ("dark pixels in a hand-traced upper-lash band" if name.startswith("Eyelash_") else ("dark pixels in a hand-traced brow ROI" if name.startswith("Brow_") else ("ROI dark-pixel mask, gray < 215" if name in {"Nose", "Mouth_Closed"} else "ROI-constrained teal mask, largest component with 2px expansion"))))),
+            "selection": ("native-coordinate teal fabric mask in traced sleeve ROI; largest component plus 1px expansion" if name.startswith("JacketSleeve_Teal_") else ("near-neutral light-pixel selection inside traced sclera crescents" if name.startswith("EyeWhite_") else ("hand-traced iris/eyeball region" if name.startswith("EyeBall_") else ("dark pixels in a hand-traced upper-lash band" if name.startswith("Eyelash_") else ("dark pixels in a hand-traced brow ROI" if name.startswith("Brow_") else ("ROI dark-pixel mask, gray < 215" if name in {"Nose", "Mouth_Closed"} else "ROI-constrained teal mask, largest component with 2px expansion")))))),
             "underpaint": "feature selection removed from base and filled by OpenCV Telea; approximate WIP",
             "canvas_px": list(CANVAS),
         })
@@ -231,15 +262,18 @@ def main() -> int:
     ref_bytes = png_bytes(ref)
     base_bytes = png_bytes(base_img)
     part_bytes = {f"data/part_{i:02d}.png": png_bytes(layer) for i, (_, layer, _) in enumerate(layer_images)}
-    xml_root = Element("image", {"version": "0.0.1", "w": str(w), "h": str(h), "name": "Xiaoxun Loli v1.1 - head pass 03 WIP", "xres": "72", "yres": "72"})
+    pass_name = "authoring pass 04" if IS_PASS_04 else "head pass 03"
+    xml_root = Element("image", {"version": "0.0.1", "w": str(w), "h": str(h), "name": f"Xiaoxun Loli v1.1 - {pass_name} WIP", "xres": "72", "yres": "72"})
     stack = SubElement(xml_root, "stack")
     SubElement(stack, "layer", {"name": "NEW v1.1 full reference - locked, hidden", "src": "data/reference.png", "opacity": "0.55", "visibility": "hidden", "composite-op": "svg:src-over", "x": "0", "y": "0"})
-    group = SubElement(stack, "stack", {"name": "20 Face semantic layers - WIP; verify layer ownership before rigging", "opacity": "1.0", "visibility": "visible", "composite-op": "svg:src-over"})
+    group_name = "10 Body and 20 Face semantic layers - WIP" if IS_PASS_04 else "20 Face semantic layers - WIP; verify layer ownership before rigging"
+    group = SubElement(stack, "stack", {"name": group_name, "opacity": "1.0", "visibility": "visible", "composite-op": "svg:src-over"})
     for i in reversed(range(len(layer_images))):
         name, _, _ = layer_images[i]
         SubElement(group, "layer", {"name": name, "src": f"data/part_{i:02d}.png", "opacity": "1.0", "visibility": "visible", "composite-op": "svg:src-over", "x": "0", "y": "0"})
     SubElement(stack, "layer", {"name": "00 Figure base with approximate face underpaint (WIP; body/hair still flat)", "src": "data/base.png", "opacity": "1.0", "visibility": "visible", "composite-op": "svg:src-over", "x": "0", "y": "0"})
-    ora = OUT / "xiaoxun_loli_v1_1_head_pass_03.ora"
+    ora_name = "xiaoxun_loli_v1_1_authoring_pass_04.ora" if IS_PASS_04 else "xiaoxun_loli_v1_1_head_pass_03.ora"
+    ora = OUT / ora_name
     with zipfile.ZipFile(ora, "w") as z:
         z.writestr("mimetype", "image/openraster", compress_type=zipfile.ZIP_STORED)
         files = {"data/reference.png": ref_bytes, "data/base.png": base_bytes, **part_bytes,
@@ -248,8 +282,17 @@ def main() -> int:
         for name, data in files.items():
             z.writestr(name, data, compress_type=zipfile.ZIP_DEFLATED)
 
+    known_limits = [
+        "The current eye components are approximate source-pixel selections; sclera/eyeball/upper-lash masks need manual ownership review and are not deformation-ready.",
+        "No pupil/highlight subparts, blink-closed redraw, open-mouth shapes or hand-painted hidden eye/mouth art are included.",
+        "Hair, scalp, face silhouette, ears, neck, torso, jacket, sleeves, hands, skirt, legs, socks and shoes remain fused in the flat base.",
+        "Underpaint is algorithmic interpolation, not hand-painted production art; all masks need edge review and hidden-region redraw before deformation.",
+        "No PSD/PSB, Cubism Editor project, ArtMesh, CMO3, MOC3, Model3 JSON or runtime validation is included.",
+    ]
+    if IS_PASS_04:
+        known_limits.append("Pass 04 additionally has visible teal sleeve-color selections only; cuffs, white stripes, hands, hidden overlaps and complete sleeve parts remain unseparated.")
     manifest = {
-        "status": "WIP head/face cutout pass based on selected v1.1; not finished art, not PSD, not Cubism",
+        "status": "WIP source-visible cutout stack based on selected v1.1; not finished art, not PSD, not Cubism",
         "source": "../reference_v1_1_alpha_edge_connected.png",
         "source_sha256": digest(SOURCE),
         "canvas_px": list(CANVAS),
@@ -257,13 +300,7 @@ def main() -> int:
         "base_layer": {"file": "Base_Figure_Face_Underpaint_WIP.png", "note": "face details removed and locally inpainted; all other character art remains one flat figure"},
         "parts": part_entries,
         "reconstruction_check": {"pixels_changed_over_2_rgb_levels": changed, "max_channel_difference": max_diff, "interpretation": "registered cutout assembly only, not art approval"},
-        "known_limits": [
-            "The current eye components are approximate source-pixel selections; sclera/eyeball/upper-lash masks need manual ownership review and are not deformation-ready.",
-            "No pupil/highlight subparts, blink-closed redraw, open-mouth shapes or hand-painted hidden eye/mouth art are included.",
-            "Hair, scalp, face silhouette, ears, neck, torso, jacket, sleeves, hands, skirt, legs, socks and shoes remain fused in the flat base.",
-            "Underpaint is algorithmic interpolation, not hand-painted production art; all masks need edge review and hidden-region redraw before deformation.",
-            "No PSD/PSB, Cubism Editor project, ArtMesh, CMO3, MOC3, Model3 JSON or runtime validation is included.",
-        ],
+        "known_limits": known_limits,
 
     }
     mp = OUT / "layer_manifest.json"
