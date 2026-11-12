@@ -54,12 +54,21 @@ Added `authoring_v1_1/authoring_pass_06/`: pass05's 20 source-visible parts plus
 
 Visible boundaries around the jacket body/zipper/pocket seams and small neck/hand contours still require real high-zoom brush cleanup and semantic line ownership. Neck fill behind the hair is intentionally not fabricated because the hair is still fused into the flat base. Arms are not yet split into full upper-arm/forearm/hand overlap-ready parts. See the pass06 README and `upper_body_edge_review.jpg` for limitations. No PSD/PSB or Cubism work was started.
 
+## Round 08 — initial hair split and high-zoom edge review (WIP; checked)
+
+Searched and reread the official [Illustration Processing tutorial](https://docs.live2d.com/en/cubism-editor-tutorials/psd/) again. It calls for bangs/sides/back as separate hair areas, separate left/right locks and movable cowlicks where useful, and specifically says to add the parts hidden in the flattened illustration. This round applies that inventory by adding `Hair_Bangs`, `Hair_Side_L/R`, `Hair_Back` and `Hair_Ahoge` in `authoring_v1_1/authoring_pass_07/`, plus one flat sampled-color `Underpaint_FaceBehindHair_WIP`. The full ORA carries pass06 forward: 38 stack parts total.
+
+`hair_edge_review.jpg` was inspected at magnified size. The broad head/crown mask separates from the front locks and ahoge, but the side-lock boundaries still have isolated edge fragments and the fringe needs high-zoom line ownership cleanup near the eyelids/brows. A source-pixel checker validates five traced-ROI hair cuts, exact source RGB, fill coverage beneath selected hair, 40 ORA layer nodes and static reconstruction at 0 changed pixels / max difference 0. These are technical checks only. The skin-colored underfill is a flat estimate, does not recreate the hidden face contour, hair texture or line art, and is not brush-painted. No PSD/PSB or Cubism work was started.
+
+The sandbox still has no raster paint UI, so the requested genuine hand-brush edge cleanup cannot be honestly completed here; the pass remains WIP rather than being mislabeled as final. See pass07 README and `hair_edge_review.jpg` for the current visible mask defects and exact limitations.
+
 ## Next work
 
-1. Continue the complete editable illustration/source-layer stage, not PSD/PSB or Cubism yet. The immediate dependency is a raster paint editor that can do real edge cleanup and hand-painted hidden regions; retain the current v1.1 shape, natural skirt waist, shirt hem outside skirt, and close leg stance.
-2. Finish and inspect the complete part inventory: hair (bangs/sides/back/strands), head/ears/neck, jacket body/collars/cuffs and sleeves, shirt, arms/hands, skirt, both legs, socks/shoes, plus semantically correct eyes/mouth. Paint all motion-relevant occluded material and correct each mask by isolated-layer inspection; do not use interpolation as final art.
-3. Only after the complete source illustration is visually accepted, create the final PSD/PSB and a separate Cubism import copy (unique merged part layers, RGB 8-bit sRGB, no layer masks); verify import in the official Editor.
-4. Only after successful PSD/PSB import, create the official Cubism project, ArtMeshes/deformers/parameters/physics/expressions/motions, export through Cubism Editor, and visually test actual runtime outputs. Record the environment/tier and applicable licenses; do not claim any of these stages before execution.
+1. Continue the complete editable illustration/source-layer stage, not PSD/PSB or Cubism yet. Genuine manual edge repair and hidden painting still require a raster paint editor; retain the v1.1 shape, natural skirt waist, shirt hem outside skirt, and close leg stance.
+2. Refine pass07 hair masks and hand-paint hidden face/head under hair; separate ears/head outline/neck, jacket collar/facings, and upper arms/forearms with overlap-complete underdraw. Keep isolated-layer review at high zoom and remove every detected edge fragment.
+3. Complete and visually accept the full source, including garment/body hidden overlaps and semantic eye/mouth variants. Do not use interpolation or flat estimated fills as final art.
+4. Only after the complete source illustration is visually accepted, create final PSD/PSB and a separate Cubism import copy (unique merged part layers, RGB 8-bit sRGB, no layer masks); verify import in the official Editor.
+5. Only after successful PSD/PSB import, create the official Cubism project, ArtMeshes/deformers/parameters/physics/expressions/motions, export through Cubism Editor, and visually test actual runtime outputs. Record the environment/tier and applicable licenses; do not claim any of these stages before execution.
 
 ## Official workflow and licensing
 

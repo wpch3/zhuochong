@@ -1,0 +1,373 @@
+{
+  "status": "WIP source-visible hair split with estimated hidden face fill; not complete art/PSD/PSB/Cubism",
+  "source": "../reference_v1_1_alpha_edge_connected.png",
+  "source_sha256": "d9296a627f8e98527e4cd095fddc1c33c0ecee368f440acb918f9b57331e5895",
+  "canvas_px": [
+    1280,
+    1920
+  ],
+  "ora_file": "xiaoxun_loli_v1_1_authoring_pass_07.ora",
+  "parts": [
+    {
+      "name": "Leg_Skin_L",
+      "file": "Leg_Skin_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Leg_Skin_R",
+      "file": "Leg_Skin_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Sock_L",
+      "file": "Sock_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Sock_R",
+      "file": "Sock_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Shoe_L",
+      "file": "Shoe_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Shoe_R",
+      "file": "Shoe_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_Shirt_WIP",
+      "file": "Underpaint_Shirt_WIP.png",
+      "state": "estimated flat face-color fill; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_Hand_L_WIP",
+      "file": "Underpaint_Hand_L_WIP.png",
+      "state": "estimated flat face-color fill; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_Hand_R_WIP",
+      "file": "Underpaint_Hand_R_WIP.png",
+      "state": "estimated flat face-color fill; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_Jacket_WIP",
+      "file": "Underpaint_Jacket_WIP.png",
+      "state": "estimated flat face-color fill; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Skirt",
+      "file": "Skirt.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Shirt_Front",
+      "file": "Shirt_Front.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Jacket_Body_L",
+      "file": "Jacket_Body_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Jacket_Body_R",
+      "file": "Jacket_Body_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Neck",
+      "file": "Neck.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hand_L",
+      "file": "Hand_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hand_R",
+      "file": "Hand_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Cuff_L",
+      "file": "Cuff_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Cuff_R",
+      "file": "Cuff_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "JacketSleeve_Teal_L",
+      "file": "JacketSleeve_Teal_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "JacketSleeve_Teal_R",
+      "file": "JacketSleeve_Teal_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_FaceBehindHair_WIP",
+      "file": "Underpaint_FaceBehindHair_WIP.png",
+      "state": "estimated flat face-color fill; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hair_Back",
+      "file": "Hair_Back.png",
+      "state": "source-visible color/ROI cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeWhite_L",
+      "file": "EyeWhite_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeBall_L",
+      "file": "EyeBall_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Eyelash_L",
+      "file": "Eyelash_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Brow_L",
+      "file": "Brow_L.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeWhite_R",
+      "file": "EyeWhite_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeBall_R",
+      "file": "EyeBall_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Eyelash_R",
+      "file": "Eyelash_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Brow_R",
+      "file": "Brow_R.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Nose",
+      "file": "Nose.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Mouth_Closed",
+      "file": "Mouth_Closed.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hair_Side_L",
+      "file": "Hair_Side_L.png",
+      "state": "source-visible color/ROI cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hair_Side_R",
+      "file": "Hair_Side_R.png",
+      "state": "source-visible color/ROI cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hair_Bangs",
+      "file": "Hair_Bangs.png",
+      "state": "source-visible color/ROI cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hair_Ahoge",
+      "file": "Hair_Ahoge.png",
+      "state": "source-visible color/ROI cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Whale_Clip",
+      "file": "Whale_Clip.png",
+      "state": "carried from pass06",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    }
+  ],
+  "hair_selection_pixels": {
+    "Hair_Ahoge": 7743,
+    "Hair_Bangs": 18809,
+    "Hair_Side_L": 18028,
+    "Hair_Side_R": 20703,
+    "Hair_Back": 24356
+  },
+  "reconstruction_check": {
+    "pixels_changed_over_2_rgb_levels": 0,
+    "max_channel_difference": 0,
+    "interpretation": "static registered pixels only; no hidden-art/edge/deformation acceptance"
+  },
+  "known_gaps": [
+    "Hair color masks are ROI-constrained source cuts, not full semantic painted parts; visible alpha edges need brush cleanup.",
+    "Face fill under fringe is a flat sampled-color estimate and does not restore line art, shading, or a complete 3D head surface.",
+    "No true back-hair extensions beneath bangs or strand-specific overlap reconstruction.",
+    "Ears/head contour remain fused; brows/eyes and mouth hidden-state artwork remain incomplete.",
+    "No manual raster-editor work, PSD/PSB, Cubism Editor project/export, or runtime QA."
+  ]
+}
