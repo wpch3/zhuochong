@@ -15,14 +15,15 @@
   </header>
   <main>
     <section class="intro">
-      <p class="eyebrow">STATIC AUTHORING REVIEW · PASS 07</p>
-      <div class="title-row"><div><h1>小寻 Loli 原画拆件进度</h1><p>这是当前分层原画的静态检查预览，可逐层显隐、单独查看部件；不是动态 Live2D / Cubism 模型。</p></div><a class="download" id="oraDownload" href="#" download>下载当前 ORA WIP</a></div>
+      <p class="eyebrow">SOURCE LAYER REVIEW · PASS 07</p>
+      <div class="title-row"><div><h1>小寻 Loli 原画拆件进度</h1><p>可逐层检查当前原画，并试用刚体/缩放占位运动观察露馅；动态面板是非 Cubism 测试，不是正式 Live2D 模型。</p></div><a class="download" id="oraDownload" href="#" download>下载当前 ORA WIP</a></div>
     </section>
     <section class="workspace">
       <article class="viewer-panel">
         <div class="viewer-toolbar">
           <div class="tabs" role="tablist" aria-label="预览视图">
             <button class="tab active" data-mode="stack">拆件合成</button>
+            <button class="tab" data-mode="motion">动态暴露检查</button>
             <button class="tab" data-mode="hair">头发边缘检查</button>
             <button class="tab" data-mode="all">全图拆件板</button>
           </div>
@@ -33,6 +34,15 @@
         <div class="view-caption" id="viewCaption">所有部件叠加：静态重组与 v1.1 参考一致；隐藏单层以检查当前拆件。</div>
         <div class="canvas-wrap" id="canvasWrap"><canvas id="stage" width="1280" height="1920" aria-label="Loli 当前拆件静态预览"></canvas><img id="reviewImage" alt="头发拆件边缘检查板"></div>
         <div class="viewer-footer"><span id="renderStatus">正在加载 ORA WIP 图层…</span><button id="resetLayers" type="button">恢复全部图层</button></div>
+        <section class="motion-controls" id="motionControls" hidden>
+          <div class="motion-head"><div><p class="eyebrow">MOTION EXPOSURE MOCK</p><h3>伪动态遮挡检查 · 非 Cubism</h3></div><button id="autoMotion" type="button" aria-pressed="false">▶ 自动摆动</button></div>
+          <div class="motion-sliders">
+            <label>头部 Z 角（近似） <output id="angleValue">0°</output><input id="angleZ" type="range" min="-10" max="10" step="1" value="0"></label>
+            <label>头发摆幅 <output id="hairValue">0 px</output><input id="hairSwing" type="range" min="-20" max="20" step="1" value="0"></label>
+            <label>眼部压缩占位（无正式闭眼图） <output id="blinkValue">0%</output><input id="blink" type="range" min="0" max="75" step="1" value="0"></label>
+          </div>
+          <p>仅用独立 PNG 图层做刚体/缩放占位，以暴露穿帮与缺失的遮挡底稿；没有 ArtMesh、Warp Deformer、真实闭眼形、参数插值或 Cubism 导出。</p>
+        </section>
       </article>
       <aside class="layers-panel">
         <div class="layers-head"><div><p class="eyebrow">LAYER INSPECTOR</p><h2>图层显隐</h2></div><span class="count" id="layerCount">—</span></div>

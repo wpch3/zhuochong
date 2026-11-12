@@ -15,7 +15,7 @@
     Leg_Skin_L:'左腿可见皮肤',Leg_Skin_R:'右腿可见皮肤',Skirt:'裙子',Sock_L:'左袜',Sock_R:'右袜',Shoe_L:'左鞋',Shoe_R:'右鞋',
     EyeWhite_L:'左眼白',EyeBall_L:'左眼球',Eyelash_L:'左睫毛',Brow_L:'左眉',EyeWhite_R:'右眼白',EyeBall_R:'右眼球',Eyelash_R:'右睫毛',Brow_R:'右眉',Nose:'鼻',Mouth_Closed:'闭嘴线稿',Whale_Clip:'鲸鱼发夹'
   };
-  const state={parts:[],images:new Map(),offsets:new Map(),visible:new Map(),base:null,baseVisible:true,reference:null,referenceVisible:false,mode:'stack',solo:null};
+  const state={parts:[],images:new Map(),offsets:new Map(),visible:new Map(),base:null,baseVisible:true,reference:null,referenceVisible:false,mode:'stack',solo:null,motion:{angleZ:0,hairSwing:0,blink:0},autoMotion:false,raf:0};
   function category(name){
     if(name.startsWith('Hair_'))return '头发';
     if(name.startsWith('Underpaint_'))return '遮挡估算';
@@ -28,14 +28,29 @@
   function draw(){
     ctx.clearRect(0,0,1280,1920);
     if(state.baseVisible&&state.base)ctx.drawImage(state.base,0,0,1280,1920);
-    for(const p of state.parts){if(state.visible.get(p.name)!==false){const im=state.images.get(p.name),at=state.offsets.get(p.name)||[0,0];ctx.drawImage(im,at[0],at[1]);}}
+    for(const p of state.parts){
+      if(state.visible.get(p.name)===false)continue;
+      const im=state.images.get(p.name),at=state.offsets.get(p.name)||[0,0],name=p.name;
+      const head=/^(Hair_|Eye|Brow|Nose|Mouth|Whale)/.test(name);
+      ctx.save();
+      if(state.mode==='motion'&&head){
+        ctx.translate(640,430);ctx.rotate(state.motion.angleZ*Math.PI/180);ctx.translate(-640,-430);
+        let swing=0;if(name==='Hair_Side_L'||name==='Hair_Side_R')swing=state.motion.hairSwing*.8;else if(name==='Hair_Bangs')swing=state.motion.hairSwing*.48;else if(name==='Hair_Back')swing=state.motion.hairSwing*.16;else if(name==='Hair_Ahoge')swing=state.motion.hairSwing*.25;
+        if(swing)ctx.translate(swing,0);
+      }
+      if(state.mode==='motion'&&state.motion.blink>0&&(name==='EyeWhite_L'||name==='EyeBall_L'||name==='EyeWhite_R'||name==='EyeBall_R')){
+        const cx=name.endsWith('_L')?520:744,cy=412,sy=1-state.motion.blink;ctx.translate(cx,cy);ctx.scale(1,sy);ctx.translate(-cx,-cy);
+      }
+      ctx.drawImage(im,at[0],at[1]);ctx.restore();
+    }
     if(state.referenceVisible&&state.reference){ctx.save();ctx.globalAlpha=.34;ctx.drawImage(state.reference,0,0,1280,1920);ctx.restore();}
   }
   function setMode(mode){
     state.mode=mode;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
-    const staticImage=mode==='hair'||mode==='all';canvas.style.display=staticImage?'none':'block';review.style.display=staticImage?'block':'none';
+    const staticImage=mode==='hair'||mode==='all';canvas.style.display=staticImage?'none':'block';review.style.display=staticImage?'block':'none';$('motionControls').hidden=mode!=='motion';
     if(mode==='hair'){review.src=ROOT+'hair_edge_review.jpg';$('viewCaption').textContent='头发独立层放大板：可检查刘海、侧发、后发与呆毛的透明边缘；未通过手工美术验收。';}
     else if(mode==='all'){review.src=ROOT+'layer_review_board.jpg';$('viewCaption').textContent='全 38 层检查板。透明棋盘用于查看选区；估算填色图层以金色标签标注。';}
+    else if(mode==='motion'){$('viewCaption').textContent='非 Cubism 动态暴露测试：头发与五官只做刚体/缩放占位，出现的断边正是待补画清单；不能当作 Live2D 验收。';draw();}
     else{$('viewCaption').textContent='所有部件叠加：静态重组与 v1.1 参考一致；切换右侧图层以检查当前拆件。';draw();}
   }
   function buildRows(){
@@ -69,12 +84,26 @@
       await Promise.all(jobs);buildRows();draw();
     }catch(err){$('renderStatus').textContent='加载失败：'+err.message;console.error(err);}
   }
+  function refreshMotionUI(){
+    $('angleZ').value=state.motion.angleZ;$('hairSwing').value=state.motion.hairSwing;$('blink').value=Math.round(state.motion.blink*100);
+    $('angleValue').textContent=`${Math.round(state.motion.angleZ)}°`;$('hairValue').textContent=`${Math.round(state.motion.hairSwing)} px`;$('blinkValue').textContent=`${Math.round(state.motion.blink*100)}%`;
+  }
+  function stopAutoMotion(){state.autoMotion=false;if(state.raf)cancelAnimationFrame(state.raf);state.raf=0;$('autoMotion').setAttribute('aria-pressed','false');$('autoMotion').textContent='▶ 自动摆动';}
+  function autoFrame(t){
+    if(!state.autoMotion)return;
+    const s=t/1000;state.motion.angleZ=Math.sin(s*.9)*6;state.motion.hairSwing=Math.sin(s*1.7)*14;
+    const blinkPhase=(s%3.2)/3.2;state.motion.blink=blinkPhase<.07?Math.sin(blinkPhase/.07*Math.PI)*.72:0;
+    refreshMotionUI();draw();state.raf=requestAnimationFrame(autoFrame);
+  }
   document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+  for(const [id,key] of [['angleZ','angleZ'],['hairSwing','hairSwing']])$(id).addEventListener('input',e=>{stopAutoMotion();state.motion[key]=Number(e.target.value);refreshMotionUI();setMode('motion');});
+  $('blink').addEventListener('input',e=>{stopAutoMotion();state.motion.blink=Number(e.target.value)/100;refreshMotionUI();setMode('motion');});
+  $('autoMotion').addEventListener('click',()=>{if(state.autoMotion){stopAutoMotion();return;}state.autoMotion=true;$('autoMotion').setAttribute('aria-pressed','true');$('autoMotion').textContent='■ 停止摆动';setMode('motion');state.raf=requestAnimationFrame(autoFrame);});
   $('bgMode').addEventListener('change',bg);
   $('baseToggle').addEventListener('change',e=>{state.baseVisible=e.target.checked;draw();});
   $('showAll').addEventListener('click',()=>{state.solo=null;state.baseVisible=true;$('baseToggle').checked=true;state.parts.forEach(p=>state.visible.set(p.name,true));list.querySelectorAll('.layer-row').forEach(r=>{r.querySelector('input').checked=true;r.classList.remove('hidden');});draw();});
   $('hideAll').addEventListener('click',()=>{state.solo=null;state.baseVisible=false;$('baseToggle').checked=false;state.parts.forEach(p=>state.visible.set(p.name,false));list.querySelectorAll('.layer-row').forEach(r=>{r.querySelector('input').checked=false;r.classList.add('hidden');});draw();});
-  $('resetLayers').addEventListener('click',()=>{$('showAll').click();$('bgMode').value='checker';bg();});
+  $('resetLayers').addEventListener('click',()=>{stopAutoMotion();state.motion={angleZ:0,hairSwing:0,blink:0};refreshMotionUI();$('showAll').click();$('bgMode').value='checker';bg();});
   $('layerSearch').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();list.querySelectorAll('.layer-row').forEach(r=>{r.hidden=!!q&&!(r.dataset.name.toLowerCase().includes(q)||r.dataset.category.toLowerCase().includes(q)||(labels[r.dataset.name]||'').toLowerCase().includes(q));});});
   $('viewCaption').insertAdjacentHTML('beforeend',' <label class="overlay-toggle"><input id="referenceOverlay" type="checkbox"> 叠加参考</label>');
   $('referenceOverlay').addEventListener('change',e=>{state.referenceVisible=e.target.checked;draw();});

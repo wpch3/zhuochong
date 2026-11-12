@@ -68,6 +68,12 @@ Added `/loli-authoring-preview.html` to the running preview interface and linked
 
 For browser efficiency, `tools/build_loli_authoring_preview_assets.py` creates crop-to-alpha layer previews; all 38 assets together cover 1.4% of the full-canvas RGBA pixel slots (664 KiB files). A separate source-canvas reconstruction check confirms the cropped preview assets render identically (0 changed pixels / max 0). C preview service is running on `0.0.0.0:5174` because port 5173 was already occupied; HTTP checks passed for the viewer page, CSS/JS, manifest and every cropped layer asset. This is viewer/file QA only; there is no Loli rig/model motion in the preview.
 
+## Round 10 — non-Cubism motion-exposure mock
+
+In response to the request to continue dynamic Loli work, added a clearly labelled “动态暴露检查” mode to the progress viewer. It applies rigid rotation of head-layer cutouts around a pivot (−10° to +10°), small hair translations, and a vertical eye-compression placeholder. Auto-wiggle helps expose mask gaps and underpaint failures at intermediate poses. The choices follow the official [Adding Body Movement tutorial](https://docs.live2d.com/en/cubism-editor-tutorials/deformer/), which demonstrates Angle Z rotation and front/side/back hair Warp Deformers, but the browser mock implements neither ArtMeshes nor Warp Deformers. It is a diagnostic transform-only prototype, **not a Live2D/Cubism model**: no real head mesh/skin layer, no closed-eye art, no parameter interpolation, no physics, no `.cmo3` or `.moc3`. The preview warning is shown beside the controls.
+
+This mode intentionally stresses the current WIP masks; any visible seam is evidence of missing hidden art, not successful rigging. Keep finishing the source illustration first. Genuine Cubism work still awaits complete hand-painted source, PSD/PSB preparation and a supported official Editor environment.
+
 ## Next work
 
 1. Continue the complete editable illustration/source-layer stage, not PSD/PSB or Cubism yet. Genuine manual edge repair and hidden painting still require a raster paint editor; retain the v1.1 shape, natural skirt waist, shirt hem outside skirt, and close leg stance.
