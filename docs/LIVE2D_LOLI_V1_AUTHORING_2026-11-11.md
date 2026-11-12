@@ -46,6 +46,14 @@ The official [Illustration Processing tutorial](https://docs.live2d.com/en/cubis
 
 See `authoring_v1_1/authoring_pass_05/README.md`, `layer_manifest.json`, `layer_review_board.jpg`, and `SHA256SUMS.txt`. Full-body upper parts, leg/thigh under-skirt extension, feet under shoes and all other obscured overlap paint remain outstanding; algorithmic underpaint and inherited face/sleeve WIPs remain unapproved.
 
+## Round 07 — upper-body visible parts and estimated overlap fills (WIP; checked)
+
+This round searched and reread the official [Illustration Processing tutorial](https://docs.live2d.com/en/cubism-editor-tutorials/psd/). Its practical body guidance is to draw the neck larger so it does not cut off when the face moves, and to separate arms into upper arm, forearm and hand. It also recommends separating collar/cardigan areas when they need movement. This confirms that extracting just the visible neck/hand pieces is not completion; full hair/neck and arm hierarchy still must be drawn and checked.
+
+Added `authoring_v1_1/authoring_pass_06/`: pass05's 20 source-visible parts plus eight new upper-body cutouts (`Jacket_Body_L/R`, `Shirt_Front`, `Neck`, `Cuff_L/R`, `Hand_L/R`) and four flat overlap-fill layers. The source silhouettes were visually reviewed against the zoomed checkerboard board and their traced ROIs; teal pixels were assigned back to the existing sleeve layers rather than duplicated in the white jacket panels. The fill layers are vector/coordinate-guided color estimates beneath current jacket/skirt/sleeve/cuff coverage, **not hand-painted underdraw**. Current static reconstruction and ORA `mergedimage.png` match the reference exactly (0 changed pixels over 2 RGB levels, max channel difference 0); the pass06 checker validates 32 parts, 34 ORA layer nodes, ROIs and reconstruction. This is only structural/source registration QA.
+
+Visible boundaries around the jacket body/zipper/pocket seams and small neck/hand contours still require real high-zoom brush cleanup and semantic line ownership. Neck fill behind the hair is intentionally not fabricated because the hair is still fused into the flat base. Arms are not yet split into full upper-arm/forearm/hand overlap-ready parts. See the pass06 README and `upper_body_edge_review.jpg` for limitations. No PSD/PSB or Cubism work was started.
+
 ## Next work
 
 1. Continue the complete editable illustration/source-layer stage, not PSD/PSB or Cubism yet. The immediate dependency is a raster paint editor that can do real edge cleanup and hand-painted hidden regions; retain the current v1.1 shape, natural skirt waist, shirt hem outside skirt, and close leg stance.

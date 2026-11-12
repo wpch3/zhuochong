@@ -1,0 +1,312 @@
+{
+  "status": "WIP only; source-visible upper-body cutouts plus estimated hidden fills; not complete illustration/PSD/PSB/Cubism",
+  "source": "../reference_v1_1_alpha_edge_connected.png",
+  "source_sha256": "d9296a627f8e98527e4cd095fddc1c33c0ecee368f440acb918f9b57331e5895",
+  "canvas_px": [
+    1280,
+    1920
+  ],
+  "ora_file": "xiaoxun_loli_v1_1_authoring_pass_06.ora",
+  "parts": [
+    {
+      "name": "Leg_Skin_L",
+      "file": "Leg_Skin_L.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Leg_Skin_R",
+      "file": "Leg_Skin_R.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Sock_L",
+      "file": "Sock_L.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Sock_R",
+      "file": "Sock_R.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Shoe_L",
+      "file": "Shoe_L.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Shoe_R",
+      "file": "Shoe_R.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_Shirt_WIP",
+      "file": "Underpaint_Shirt_WIP.png",
+      "state": "estimated flat overlap underpaint; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_Hand_L_WIP",
+      "file": "Underpaint_Hand_L_WIP.png",
+      "state": "estimated flat overlap underpaint; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_Hand_R_WIP",
+      "file": "Underpaint_Hand_R_WIP.png",
+      "state": "estimated flat overlap underpaint; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Underpaint_Jacket_WIP",
+      "file": "Underpaint_Jacket_WIP.png",
+      "state": "estimated flat overlap underpaint; not hand-painted",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Skirt",
+      "file": "Skirt.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Shirt_Front",
+      "file": "Shirt_Front.png",
+      "state": "source-visible polygon cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Jacket_Body_L",
+      "file": "Jacket_Body_L.png",
+      "state": "source-visible polygon cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Jacket_Body_R",
+      "file": "Jacket_Body_R.png",
+      "state": "source-visible polygon cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Neck",
+      "file": "Neck.png",
+      "state": "source-visible polygon cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hand_L",
+      "file": "Hand_L.png",
+      "state": "source-visible polygon cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Hand_R",
+      "file": "Hand_R.png",
+      "state": "source-visible polygon cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Cuff_L",
+      "file": "Cuff_L.png",
+      "state": "source-visible polygon cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Cuff_R",
+      "file": "Cuff_R.png",
+      "state": "source-visible polygon cutout WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "JacketSleeve_Teal_L",
+      "file": "JacketSleeve_Teal_L.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "JacketSleeve_Teal_R",
+      "file": "JacketSleeve_Teal_R.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeWhite_L",
+      "file": "EyeWhite_L.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeBall_L",
+      "file": "EyeBall_L.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Eyelash_L",
+      "file": "Eyelash_L.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Brow_L",
+      "file": "Brow_L.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeWhite_R",
+      "file": "EyeWhite_R.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeBall_R",
+      "file": "EyeBall_R.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Eyelash_R",
+      "file": "Eyelash_R.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Brow_R",
+      "file": "Brow_R.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Nose",
+      "file": "Nose.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Mouth_Closed",
+      "file": "Mouth_Closed.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Whale_Clip",
+      "file": "Whale_Clip.png",
+      "state": "carried from pass05",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    }
+  ],
+  "reconstruction_check": {
+    "pixels_changed_over_2_rgb_levels": 0,
+    "max_channel_difference": 0,
+    "interpretation": "static registration only; not artistic/edge/motion acceptance"
+  },
+  "known_gaps": [
+    "Flat underfills are vector/coordinate-guided estimates, not brush-painted art; hidden extension and deformation fit are still unverified.",
+    "Torso/neck/hand/cuff silhouettes are bounded cutouts and require manual line ownership/edge cleanup.",
+    "Hair is still fused into the base; neck overlap behind hair is not safely painted.",
+    "No upper arm/forearm articulation, no jacket collar/facing split, no hidden face/eye/mouth art, and no motion-validated overlap.",
+    "No PSD/PSB or official Cubism Editor project/export/runtime validation."
+  ]
+}
