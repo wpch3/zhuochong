@@ -33,8 +33,8 @@
 
 - Sole approved base: `characters/xiaoxun/design/loli_live2d_v1/concept_front_proportion_v1_1.png`, 1280×1920 flattened RGB concept.
 - A border-connected-alpha version that preserves white fabric, plus original/alpha QA.
-- `authoring_v1_1/head_pass_03/`: an ORA WIP with 11 visible face/accessory cutouts (left/right sclera, eyeball, eyelashes, brows; nose; closed-mouth ink; whale clip), a flat full-body base, and a hidden approved reference. `layer_review_board.jpg` is for edge inspection; pass 01/02 are superseded.
-- Tutorial notes, generation/check scripts, and static reassembly QA. This does not equal hand-drawn clean art.
+- `authoring_v1_1/head_pass_03/`: an ORA WIP with 11 visible face/accessory cutouts (left/right sclera, eyeball, eyelashes, brows; nose; closed-mouth ink; whale clip), a flat full-body base, and a hidden approved reference. `authoring_v1_1/authoring_pass_04/` adds two visible teal sleeve-color regions. `authoring_v1_1/authoring_pass_05/` adds skirt, left/right visible legs, socks and shoes, for 20 source-visible layers total. These are still cutout WIPs; pass01/02 are superseded.
+- Tutorial notes, generation/check scripts, isolated-layer boards and static reassembly QA. These are not hand-drawn complete production art.
 
 ### Blocking gaps before production-ready illustration
 
@@ -56,4 +56,4 @@
 
 ## Current production checkpoint
 
-The latest deliverable is still an **ORA face-layer WIP**, not a PSD, Editor project or Cubism model. Zero static reconstruction difference means the selected source pixels reassemble; it does not validate the extracted part ownership or reveal hidden content. The exact next unblock is access to a supported raster editor (and later a supported Cubism Editor host); do not claim hand-painted or Editor work until the files are actually made and checked there.
+The latest deliverable is an **ORA visible-cutout WIP** in `authoring_v1_1/authoring_pass_05/`, with 20 source-visible layers spanning face/accessory, two sleeve-color regions, skirt, legs, socks and shoes. It is not complete illustration art, a PSD/PSB, Editor project or Cubism model. Zero static reconstruction difference means the visible source pixels reassemble; it does not validate part ownership, edge quality or hidden content. The official illustration-processing tutorial explicitly calls for painting hidden regions behind hair/eyes and enlarging the neck; apply this to the acceptance checklist rather than treating region cutouts as completed body parts. The exact next unblock is a supported raster paint editor for hand-painted hidden parts/cleanup (and later a supported Cubism Editor host); do not claim hand-painted or Editor work until actually made and checked there.

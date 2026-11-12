@@ -1,0 +1,243 @@
+{
+  "status": "WIP source-visible split from selected v1.1; not complete art, not PSD/PSB, not Cubism",
+  "source": "../reference_v1_1_alpha_edge_connected.png",
+  "source_sha256": "d9296a627f8e98527e4cd095fddc1c33c0ecee368f440acb918f9b57331e5895",
+  "canvas_px": [
+    1280,
+    1920
+  ],
+  "ora_file": "xiaoxun_loli_v1_1_authoring_pass_05.ora",
+  "parts": [
+    {
+      "name": "Leg_Skin_L",
+      "file": "Leg_Skin_L.png",
+      "group": "10 Lower body / legs",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "native-coordinate polygon/ROI visible-pixel selection",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Leg_Skin_R",
+      "file": "Leg_Skin_R.png",
+      "group": "10 Lower body / legs",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "native-coordinate polygon/ROI visible-pixel selection",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Skirt",
+      "file": "Skirt.png",
+      "group": "10 Lower body / skirt",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "native-coordinate polygon/ROI visible-pixel selection",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Sock_L",
+      "file": "Sock_L.png",
+      "group": "10 Lower body / socks",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "native-coordinate polygon/ROI visible-pixel selection",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Sock_R",
+      "file": "Sock_R.png",
+      "group": "10 Lower body / socks",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "native-coordinate polygon/ROI visible-pixel selection",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Shoe_L",
+      "file": "Shoe_L.png",
+      "group": "10 Lower body / shoes",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "native-coordinate polygon/ROI visible-pixel selection",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Shoe_R",
+      "file": "Shoe_R.png",
+      "group": "10 Lower body / shoes",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "native-coordinate polygon/ROI visible-pixel selection",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "JacketSleeve_Teal_L",
+      "file": "JacketSleeve_Teal_L.png",
+      "group": "20 Body / visible sleeve color",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "JacketSleeve_Teal_R",
+      "file": "JacketSleeve_Teal_R.png",
+      "group": "20 Body / visible sleeve color",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeWhite_L",
+      "file": "EyeWhite_L.png",
+      "group": "30 Face / left eye",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeBall_L",
+      "file": "EyeBall_L.png",
+      "group": "30 Face / left eye",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Eyelash_L",
+      "file": "Eyelash_L.png",
+      "group": "30 Face / left eye",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Brow_L",
+      "file": "Brow_L.png",
+      "group": "30 Face",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeWhite_R",
+      "file": "EyeWhite_R.png",
+      "group": "30 Face / right eye",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "EyeBall_R",
+      "file": "EyeBall_R.png",
+      "group": "30 Face / right eye",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Eyelash_R",
+      "file": "Eyelash_R.png",
+      "group": "30 Face / right eye",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Brow_R",
+      "file": "Brow_R.png",
+      "group": "30 Face",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Nose",
+      "file": "Nose.png",
+      "group": "30 Face",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Mouth_Closed",
+      "file": "Mouth_Closed.png",
+      "group": "30 Face",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    },
+    {
+      "name": "Whale_Clip",
+      "file": "Whale_Clip.png",
+      "group": "40 Hair accessory",
+      "state": "source-visible cutout WIP; not hand-painted/rig-ready",
+      "selection": "carried from pass04 source-visible WIP",
+      "canvas_px": [
+        1280,
+        1920
+      ]
+    }
+  ],
+  "reconstruction_check": {
+    "pixels_changed_over_2_rgb_levels": 0,
+    "max_channel_difference": 0,
+    "interpretation": "source-pixel static reassembly only; no motion/art quality claim"
+  },
+  "known_gaps": [
+    "Only lower-body visible source regions were added this round; jacket front, shirt, hair, neck/head outline, arms/hands, socks/shoes hidden interiors remain incomplete or source-only.",
+    "Leg/skirt/sock/shoe cutouts have no hidden overlap paint; underpaint is algorithmic interpolation.",
+    "Eye/face layers and visible teal sleeve regions are carried forward from pass04 WIP; their masks are not art-approved.",
+    "No PSD/PSB or official Cubism Editor project/export/runtime validation."
+  ]
+}
