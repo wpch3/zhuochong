@@ -62,6 +62,12 @@ Searched and reread the official [Illustration Processing tutorial](https://docs
 
 The sandbox still has no raster paint UI, so the requested genuine hand-brush edge cleanup cannot be honestly completed here; the pass remains WIP rather than being mislabeled as final. See pass07 README and `hair_edge_review.jpg` for the current visible mask defects and exact limitations.
 
+## Round 09 — Loli authoring progress viewer (live preview, static only)
+
+Added `/loli-authoring-preview.html` to the running preview interface and linked it from both the home header and reference board. The page renders pass07's 38 layers into a browser canvas in ORA stack order; controls support layer visibility, solo, base visibility, checker/dark/light backgrounds, the head edge board, full-layer board, and direct ORA download. The labels explicitly identify this as static authoring review, **not** a dynamic Live2D/Cubism model. The actual product root remains unchanged; use the “拆件进度预览” link.
+
+For browser efficiency, `tools/build_loli_authoring_preview_assets.py` creates crop-to-alpha layer previews; all 38 assets together cover 1.4% of the full-canvas RGBA pixel slots (664 KiB files). A separate source-canvas reconstruction check confirms the cropped preview assets render identically (0 changed pixels / max 0). C preview service is running on `0.0.0.0:5174` because port 5173 was already occupied; HTTP checks passed for the viewer page, CSS/JS, manifest and every cropped layer asset. This is viewer/file QA only; there is no Loli rig/model motion in the preview.
+
 ## Next work
 
 1. Continue the complete editable illustration/source-layer stage, not PSD/PSB or Cubism yet. Genuine manual edge repair and hidden painting still require a raster paint editor; retain the v1.1 shape, natural skirt waist, shirt hem outside skirt, and close leg stance.

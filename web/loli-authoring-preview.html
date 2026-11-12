@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>小寻 Loli · 原画拆件进度预览</title>
+  <link rel="stylesheet" href="loli-authoring-preview.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="返回小寻工作台"><span class="brand-mark">小</span><span>小寻 Loli <i>AUTHORING PREVIEW</i></span></a>
+    <nav class="toplinks"><a href="/loli-reference-board.html">新旧参考</a><a class="active" href="/loli-authoring-preview.html">拆件进度</a></nav>
+    <span class="status"><b></b> v1.1 基准 · WIP</span>
+  </header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">STATIC AUTHORING REVIEW · PASS 07</p>
+      <div class="title-row"><div><h1>小寻 Loli 原画拆件进度</h1><p>这是当前分层原画的静态检查预览，可逐层显隐、单独查看部件；不是动态 Live2D / Cubism 模型。</p></div><a class="download" id="oraDownload" href="#" download>下载当前 ORA WIP</a></div>
+    </section>
+    <section class="workspace">
+      <article class="viewer-panel">
+        <div class="viewer-toolbar">
+          <div class="tabs" role="tablist" aria-label="预览视图">
+            <button class="tab active" data-mode="stack">拆件合成</button>
+            <button class="tab" data-mode="hair">头发边缘检查</button>
+            <button class="tab" data-mode="all">全图拆件板</button>
+          </div>
+          <label class="background-select">底色
+            <select id="bgMode"><option value="checker">棋盘透明底</option><option value="dark">深色</option><option value="light">浅色</option></select>
+          </label>
+        </div>
+        <div class="view-caption" id="viewCaption">所有部件叠加：静态重组与 v1.1 参考一致；隐藏单层以检查当前拆件。</div>
+        <div class="canvas-wrap" id="canvasWrap"><canvas id="stage" width="1280" height="1920" aria-label="Loli 当前拆件静态预览"></canvas><img id="reviewImage" alt="头发拆件边缘检查板"></div>
+        <div class="viewer-footer"><span id="renderStatus">正在加载 ORA WIP 图层…</span><button id="resetLayers" type="button">恢复全部图层</button></div>
+      </article>
+      <aside class="layers-panel">
+        <div class="layers-head"><div><p class="eyebrow">LAYER INSPECTOR</p><h2>图层显隐</h2></div><span class="count" id="layerCount">—</span></div>
+        <p class="hint">点眼睛切换显隐；按「独看」查看单层透明边缘。底图可单独关掉。</p>
+        <label class="base-toggle"><input id="baseToggle" type="checkbox" checked><span>底图与算法修复底色（WIP）</span></label>
+        <div class="layer-actions"><button id="showAll" type="button">全开</button><button id="hideAll" type="button">全关</button></div>
+        <label class="search"><span>筛选图层</span><input id="layerSearch" type="search" placeholder="如 Hair、Hand、Underpaint"></label>
+        <div id="layerList" class="layer-list" aria-live="polite"></div>
+      </aside>
+    </section>
+    <section class="notes-grid">
+      <article><span class="note-kicker">当前进度</span><b>38 个 ORA 图层</b><p>含 pass06 上身/下身可见拆件，以及刘海、左右侧发、后发/冠部、呆毛的初步拆分。</p></article>
+      <article class="warning"><span class="note-kicker">未完成美术</span><b>补画与修边仍是 WIP</b><p>当前脸部遮挡填色是平涂估算；发束边缘和眉眼归属还需手工细修。未做动态验证。</p></article>
+      <article><span class="note-kicker">验收边界</span><b>0 像素差仅代表静态拼回</b><p>不代表遮挡补画、部件边缘、变形或 Cubism 验收。完整原画通过目视验收前，不制作 PSD/PSB 或 Cubism。</p></article>
+    </section>
+    <footer class="page-footer"><a href="/">返回工作台</a><span>v1.1 是唯一当前制作基准 · OLD v1 仅作历史参考</span><a href="/loli-reference-board.html">新旧参考图</a></footer>
+  </main>
+  <script src="loli-authoring-preview.js" defer></script>
+</body>
+</html>

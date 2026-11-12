@@ -1,0 +1,653 @@
+{
+  "source_pass": "authoring_pass_07",
+  "source_manifest_sha256": "28a7cbb9ba21db1179909b3764909a9cc4ecd7e8c1ae4bbb038e42e62951da1f",
+  "parts": [
+    {
+      "name": "Leg_Skin_L",
+      "file": "Leg_Skin_L.png",
+      "offset_xy": [
+        483,
+        1193
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        141,
+        320
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Leg_Skin_R",
+      "file": "Leg_Skin_R.png",
+      "offset_xy": [
+        656,
+        1193
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        142,
+        320
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Sock_L",
+      "file": "Sock_L.png",
+      "offset_xy": [
+        500,
+        1500
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        97,
+        221
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Sock_R",
+      "file": "Sock_R.png",
+      "offset_xy": [
+        683,
+        1500
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        97,
+        221
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Shoe_L",
+      "file": "Shoe_L.png",
+      "offset_xy": [
+        510,
+        1716
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        107,
+        148
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Shoe_R",
+      "file": "Shoe_R.png",
+      "offset_xy": [
+        664,
+        1716
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        107,
+        148
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Underpaint_Shirt_WIP",
+      "file": "Underpaint_Shirt_WIP.png",
+      "offset_xy": [
+        437,
+        625
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        407,
+        582
+      ],
+      "state": "estimated flat face-color fill; not hand-painted"
+    },
+    {
+      "name": "Underpaint_Hand_L_WIP",
+      "file": "Underpaint_Hand_L_WIP.png",
+      "offset_xy": [
+        324,
+        1009
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        73,
+        53
+      ],
+      "state": "estimated flat face-color fill; not hand-painted"
+    },
+    {
+      "name": "Underpaint_Hand_R_WIP",
+      "file": "Underpaint_Hand_R_WIP.png",
+      "offset_xy": [
+        883,
+        1009
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        73,
+        53
+      ],
+      "state": "estimated flat face-color fill; not hand-painted"
+    },
+    {
+      "name": "Underpaint_Jacket_WIP",
+      "file": "Underpaint_Jacket_WIP.png",
+      "offset_xy": [
+        325,
+        641
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        630,
+        372
+      ],
+      "state": "estimated flat face-color fill; not hand-painted"
+    },
+    {
+      "name": "Skirt",
+      "file": "Skirt.png",
+      "offset_xy": [
+        437,
+        1100
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        407,
+        107
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Shirt_Front",
+      "file": "Shirt_Front.png",
+      "offset_xy": [
+        587,
+        650
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        115,
+        492
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Jacket_Body_L",
+      "file": "Jacket_Body_L.png",
+      "offset_xy": [
+        474,
+        625
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        122,
+        462
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Jacket_Body_R",
+      "file": "Jacket_Body_R.png",
+      "offset_xy": [
+        684,
+        625
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        122,
+        462
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Neck",
+      "file": "Neck.png",
+      "offset_xy": [
+        592,
+        568
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        96,
+        52
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Hand_L",
+      "file": "Hand_L.png",
+      "offset_xy": [
+        321,
+        1050
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        55,
+        94
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Hand_R",
+      "file": "Hand_R.png",
+      "offset_xy": [
+        905,
+        1050
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        54,
+        94
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Cuff_L",
+      "file": "Cuff_L.png",
+      "offset_xy": [
+        324,
+        1018
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        73,
+        44
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Cuff_R",
+      "file": "Cuff_R.png",
+      "offset_xy": [
+        883,
+        1018
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        73,
+        44
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "JacketSleeve_Teal_L",
+      "file": "JacketSleeve_Teal_L.png",
+      "offset_xy": [
+        325,
+        641
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        172,
+        372
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "JacketSleeve_Teal_R",
+      "file": "JacketSleeve_Teal_R.png",
+      "offset_xy": [
+        783,
+        641
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        172,
+        372
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Underpaint_FaceBehindHair_WIP",
+      "file": "Underpaint_FaceBehindHair_WIP.png",
+      "offset_xy": [
+        455,
+        300
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        365,
+        209
+      ],
+      "state": "estimated flat face-color fill; not hand-painted"
+    },
+    {
+      "name": "Hair_Back",
+      "file": "Hair_Back.png",
+      "offset_xy": [
+        503,
+        161
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        276,
+        199
+      ],
+      "state": "source-visible color/ROI cutout WIP"
+    },
+    {
+      "name": "EyeWhite_L",
+      "file": "EyeWhite_L.png",
+      "offset_xy": [
+        541,
+        404
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        63,
+        31
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "EyeBall_L",
+      "file": "EyeBall_L.png",
+      "offset_xy": [
+        551,
+        392
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        47,
+        51
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Eyelash_L",
+      "file": "Eyelash_L.png",
+      "offset_xy": [
+        524,
+        385
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        74,
+        30
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Brow_L",
+      "file": "Brow_L.png",
+      "offset_xy": [
+        566,
+        375
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        33,
+        8
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "EyeWhite_R",
+      "file": "EyeWhite_R.png",
+      "offset_xy": [
+        679,
+        404
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        61,
+        29
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "EyeBall_R",
+      "file": "EyeBall_R.png",
+      "offset_xy": [
+        683,
+        391
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        47,
+        52
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Eyelash_R",
+      "file": "Eyelash_R.png",
+      "offset_xy": [
+        681,
+        385
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        70,
+        31
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Brow_R",
+      "file": "Brow_R.png",
+      "offset_xy": [
+        686,
+        376
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        31,
+        6
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Nose",
+      "file": "Nose.png",
+      "offset_xy": [
+        639,
+        449
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        3,
+        5
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Mouth_Closed",
+      "file": "Mouth_Closed.png",
+      "offset_xy": [
+        617,
+        483
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        46,
+        7
+      ],
+      "state": "carried from pass06"
+    },
+    {
+      "name": "Hair_Side_L",
+      "file": "Hair_Side_L.png",
+      "offset_xy": [
+        411,
+        215
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        127,
+        318
+      ],
+      "state": "source-visible color/ROI cutout WIP"
+    },
+    {
+      "name": "Hair_Side_R",
+      "file": "Hair_Side_R.png",
+      "offset_xy": [
+        742,
+        213
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        125,
+        328
+      ],
+      "state": "source-visible color/ROI cutout WIP"
+    },
+    {
+      "name": "Hair_Bangs",
+      "file": "Hair_Bangs.png",
+      "offset_xy": [
+        502,
+        267
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        244,
+        135
+      ],
+      "state": "source-visible color/ROI cutout WIP"
+    },
+    {
+      "name": "Hair_Ahoge",
+      "file": "Hair_Ahoge.png",
+      "offset_xy": [
+        562,
+        58
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        126,
+        145
+      ],
+      "state": "source-visible color/ROI cutout WIP"
+    },
+    {
+      "name": "Whale_Clip",
+      "file": "Whale_Clip.png",
+      "offset_xy": [
+        467,
+        305
+      ],
+      "canvas_px": [
+        1280,
+        1920
+      ],
+      "crop_px": [
+        80,
+        45
+      ],
+      "state": "carried from pass06"
+    }
+  ],
+  "total_cropped_pixels": 1287710
+}

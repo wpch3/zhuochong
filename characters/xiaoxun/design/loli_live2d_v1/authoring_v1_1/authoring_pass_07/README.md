@@ -18,7 +18,7 @@ python3 tools/check_loli_v1_1_hair_pass.py
 
 ## Inspection and limitations
 
-The current selections are native-coordinate ROI and color masks, not brush-traced finished layers. The review board still shows small isolated edge fragments and uneven boundaries around the side locks/fringe; those require manual cleanup in a raster editor. The fringe mask also needs line-ownership review against brows/eyelids at high zoom. The ahoge root and crown overlaps are only approximated from visible source pixels.
+The current selections are native-coordinate ROI and color masks, not brush-traced finished layers. Tiny disconnected/ambiguous mask fragments were intentionally left fused in the base instead of being force-assigned; this avoids inventing ownership but means those hair pixels are not separated yet. The review board still shows uneven side-lock/fringe boundaries that require manual cleanup in a raster editor. The fringe mask also needs line-ownership review against brows/eyelids at high zoom. The ahoge root and crown overlaps are only approximated from visible source pixels.
 
 The hidden face fill is flat and does not provide a complete head/skin surface, line art, shading, or a back-hair extension behind the fringe. Ears and the face outline remain fused to the base. The zero-difference static reconstruction, bounds and source RGB checks certify only registration/file structure. No manual brush cleanup, dynamic deformation review, PSD/PSB import, Cubism project/export or runtime validation has been performed.
 

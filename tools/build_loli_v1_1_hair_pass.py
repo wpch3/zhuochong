@@ -88,7 +88,9 @@ def main():
  for name in m:
   num,labels,stats,_=cv2.connectedComponentsWithStats((m[name]>0).astype(np.uint8),8)
   cleaned=np.zeros((h,w),np.uint8)
-  minarea=12 if name=='Hair_Ahoge' else 20
+  # Small isolated components in the face ROI were inspected as stray edge
+  # fragments/ambiguous line ownership; keep only coherent hair masses here.
+  minarea=12 if name=='Hair_Ahoge' else (500 if name in ('Hair_Bangs','Hair_Side_L','Hair_Side_R') else 20)
   for i in range(1,num):
    if stats[i,cv2.CC_STAT_AREA]>=minarea:cleaned[labels==i]=255
   m[name]=cleaned
@@ -150,7 +152,7 @@ def main():
  for n,im in layers:
   state='estimated flat face-color fill; not hand-painted' if n.startswith('Underpaint_') else ('carried from pass06' if n in old else 'source-visible color/ROI cutout WIP')
   parts.append({'name':n,'file':f'{n}.png','state':state,'canvas_px':[w,h]})
- manifest={'status':'WIP source-visible hair split with estimated hidden face fill; not complete art/PSD/PSB/Cubism','source':'../reference_v1_1_alpha_edge_connected.png','source_sha256':sha(SOURCE),'canvas_px':[w,h],'ora_file':ora.name,'parts':parts,'hair_selection_pixels':areas,'reconstruction_check':{'pixels_changed_over_2_rgb_levels':changed,'max_channel_difference':maxdiff,'interpretation':'static registered pixels only; no hidden-art/edge/deformation acceptance'},'known_gaps':['Hair color masks are ROI-constrained source cuts, not full semantic painted parts; visible alpha edges need brush cleanup.','Face fill under fringe is a flat sampled-color estimate and does not restore line art, shading, or a complete 3D head surface.','No true back-hair extensions beneath bangs or strand-specific overlap reconstruction.','Ears/head contour remain fused; brows/eyes and mouth hidden-state artwork remain incomplete.','No manual raster-editor work, PSD/PSB, Cubism Editor project/export, or runtime QA.']}
+ manifest={'status':'WIP source-visible hair split with estimated hidden face fill; not complete art/PSD/PSB/Cubism','source':'../reference_v1_1_alpha_edge_connected.png','source_sha256':sha(SOURCE),'canvas_px':[w,h],'ora_file':ora.name,'parts':parts,'hair_selection_pixels':areas,'reconstruction_check':{'pixels_changed_over_2_rgb_levels':changed,'max_channel_difference':maxdiff,'interpretation':'static registered pixels only; no hidden-art/edge/deformation acceptance'},'known_gaps':['Hair color masks are ROI-constrained source cuts, not full semantic painted parts; visible alpha edges need brush cleanup. Small disconnected/ambiguous edge fragments were deliberately not force-assigned and remain fused in the base.','Face fill under fringe is a flat sampled-color estimate and does not restore line art, shading, or a complete 3D head surface.','No true back-hair extensions beneath bangs or strand-specific overlap reconstruction.','Ears/head contour remain fused; brows/eyes and mouth hidden-state artwork remain incomplete.','No manual raster-editor work, PSD/PSB, Cubism Editor project/export, or runtime QA.']}
  (OUT/'layer_manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
  files=sorted(p for p in OUT.iterdir() if p.is_file() and p.name!='SHA256SUMS.txt')
  (OUT/'SHA256SUMS.txt').write_text(''.join(f'{sha(p)}  {p.name}\n' for p in files),encoding='utf-8')

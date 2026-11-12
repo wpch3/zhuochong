@@ -353,9 +353,9 @@
   ],
   "hair_selection_pixels": {
     "Hair_Ahoge": 7743,
-    "Hair_Bangs": 18809,
-    "Hair_Side_L": 18028,
-    "Hair_Side_R": 20703,
+    "Hair_Bangs": 18226,
+    "Hair_Side_L": 16950,
+    "Hair_Side_R": 19867,
     "Hair_Back": 24356
   },
   "reconstruction_check": {
@@ -364,7 +364,7 @@
     "interpretation": "static registered pixels only; no hidden-art/edge/deformation acceptance"
   },
   "known_gaps": [
-    "Hair color masks are ROI-constrained source cuts, not full semantic painted parts; visible alpha edges need brush cleanup.",
+    "Hair color masks are ROI-constrained source cuts, not full semantic painted parts; visible alpha edges need brush cleanup. Small disconnected/ambiguous edge fragments were deliberately not force-assigned and remain fused in the base.",
     "Face fill under fringe is a flat sampled-color estimate and does not restore line art, shading, or a complete 3D head surface.",
     "No true back-hair extensions beneath bangs or strand-specific overlap reconstruction.",
     "Ears/head contour remain fused; brows/eyes and mouth hidden-state artwork remain incomplete.",
